@@ -380,6 +380,9 @@ def exercise_array():
   c = a.phase_transfer(b.data())
   assert approx_equal(tuple(c.amplitudes().data()), a.data())
   assert approx_equal(tuple(c.phases(deg=0001).data()), (10,0))
+  a = miller.array(miller_set=a, data=flex.complex_double([1+2j,2-3j]))
+  c = a.conjugate()
+  assert approx_equal(a.data(), flex.conj(c.data()))
 
 def exercise_array_2(space_group_info):
   xs = crystal.symmetry(
