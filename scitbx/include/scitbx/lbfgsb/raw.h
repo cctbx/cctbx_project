@@ -1475,8 +1475,8 @@ namespace raw {
     SCITBX_ASSERT(t.size() == n);
     SCITBX_ASSERT(d.size() == n);
     SCITBX_ASSERT(xcp.size() == n);
-    SCITBX_ASSERT(wy.size() == n*m); // fix: wy(n, col)
-    SCITBX_ASSERT(ws.size() == n*m); // fix: ws(n, col)
+    SCITBX_ASSERT(wy.size() == n*col);
+    SCITBX_ASSERT(ws.size() == n*col);
     SCITBX_ASSERT(sy.size() == m*m);
     SCITBX_ASSERT(wt.size() == m*m);
     SCITBX_ASSERT(p.size() == 2*m);
@@ -3838,7 +3838,7 @@ namespace raw {
     timer(cpu1);
     cauchy(
            n,x,l,u,nbd,g,indx2,iwhere,t,d,z,
-           m,wy,ws,sy,wt,theta,col,head,
+           m,wy.get2(1,1,n,col),ws.get2(1,1,n,col),sy,wt,theta,col,head,
            wa.get1(1, 2*m),
            wa.get1(2*m+1, 2*m),
            wa.get1(4*m+1, 2*m),
