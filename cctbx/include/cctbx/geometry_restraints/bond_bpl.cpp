@@ -175,6 +175,12 @@ namespace {
     bond_sorted_asu_proxies_wrappers::wrap();
     def("extract_bond_params", extract_bond_params, (
       (arg_("n_seq"), arg_("bond_simple_proxies"))));
+    def("bond_distances_model",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<bond_simple_proxy> const&))
+      bond_distances_model,
+      (arg_("sites_cart"), arg_("proxies")));
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,

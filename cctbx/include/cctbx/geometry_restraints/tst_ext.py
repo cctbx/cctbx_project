@@ -91,6 +91,9 @@ def exercise_bond():
   assert approx_equal(tab[0].values()[0].distance_ideal, 3.5)
   assert approx_equal(tab[0].values()[0].weight, 1)
   assert tab[1].keys() == []
+  assert approx_equal(geometry_restraints.bond_distances_model(
+    sites_cart=sites_cart,
+    proxies=proxies), [14**0.5]*2)
   assert approx_equal(geometry_restraints.bond_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [-0.241657386774]*2)

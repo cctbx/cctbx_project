@@ -289,6 +289,21 @@ namespace cctbx { namespace geometry_restraints {
     return tab;
   }
 
+  //! Fast computation of bond::distance_model given an array of bond proxies.
+  inline
+  af::shared<double>
+  bond_distances_model(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<bond_simple_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      bond restraint(sites_cart, proxies[i]);
+      result.push_back(restraint.distance_model);
+    }
+    return result;
+  }
+
   //! Fast computation of bond::delta given an array of bond proxies.
   inline
   af::shared<double>
