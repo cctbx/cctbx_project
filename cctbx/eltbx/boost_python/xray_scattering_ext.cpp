@@ -1,3 +1,5 @@
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/tuple.hpp>
@@ -41,7 +43,10 @@ namespace {
         .def("all_zero", &w_t::all_zero)
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
-        .def("at_d_star_sq", &w_t::at_d_star_sq)
+        .def("at_d_star_sq", (double(w_t::*)(double) const) &w_t::at_d_star_sq)
+        .def("at_d_star_sq",
+          (af::shared<double>(w_t::*)(af::const_ref<double> const&) const)
+          &w_t::at_d_star_sq)
         .def("gradient_at_d_star", &w_t::gradient_at_d_star)
         .def("integral_at_d_star", &w_t::integral_at_d_star)
         .def("gradients_at_d_star_sq", &w_t::gradients_at_d_star_sq)
@@ -91,7 +96,10 @@ namespace {
         .def("fetch", &w_t::fetch)
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
-        .def("at_d_star_sq", &w_t::at_d_star_sq)
+        .def("at_d_star_sq", (double(w_t::*)(double) const) &w_t::at_d_star_sq)
+        .def("at_d_star_sq",
+          (af::shared<double>(w_t::*)(af::const_ref<double> const&) const)
+          &w_t::at_d_star_sq)
         .def("gradient_at_d_star", &w_t::gradient_at_d_star)
         .def("integral_at_d_star", &w_t::integral_at_d_star)
         .def("gradients_at_d_star_sq", &w_t::gradients_at_d_star_sq)
