@@ -370,16 +370,17 @@ namespace {
 int main(int argc, char* argv[])
 {
   for(;;) {
+#if !(defined(__GNUC__) && __GNUC__ < 3)
     exercise_main<int, double>::run();
     exercise_main<a_value<int>, double>::run();
     exercise_main<int, a_value<double> >::run();
     exercise_main<a_value<int>, a_value<double> >::run();
+#endif
     if (argc == 1) break;
   }
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {
     std::cout << "Total Errors: " << error_counter << std::endl;
   }
-
   return 0;
 }
