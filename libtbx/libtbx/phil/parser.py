@@ -1,4 +1,4 @@
-import phil
+import libtbx.phil
 
 def collect_assigned_words(word_iterator, lead_word):
   is_disabled = False
@@ -49,10 +49,10 @@ def collect_objects(
         and (word.value == "{"
           or (word.line_number != lead_word.line_number
               and (word.value[:1] == "." or word.value[:2] == "#.")))):
-      if (not phil.is_standard_identifier(lead_word.value)):
+      if (not libtbx.phil.is_standard_identifier(lead_word.value)):
         lead_word.raise_syntax_error("improper scope name ")
       active_definition = None
-      scope = phil.scope(
+      scope = libtbx.phil.scope(
         name=lead_word.value,
         primary_id=primary_id_generator.next(),
         is_disabled=is_disabled,
@@ -86,11 +86,11 @@ def collect_objects(
     else:
       word_iterator.backup()
       if (lead_word.value[:1] != "."):
-        if (not phil.is_standard_identifier(lead_word.value)):
+        if (not libtbx.phil.is_standard_identifier(lead_word.value)):
           lead_word.raise_syntax_error("improper definition name ")
         if (lead_word.value != "include"):
           word_iterator.pop_unquoted().assert_expected("=")
-        active_definition = phil.definition(
+        active_definition = libtbx.phil.definition(
           name=lead_word.value,
           words=collect_assigned_words(word_iterator, lead_word),
           primary_id=primary_id_generator.next(),

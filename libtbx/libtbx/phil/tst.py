@@ -1,5 +1,5 @@
-import phil
-import phil.command_line
+from libtbx import phil
+import libtbx.phil.command_line
 from libtbx.utils import UserError
 from cStringIO import StringIO
 import copy

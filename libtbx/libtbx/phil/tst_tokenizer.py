@@ -1,4 +1,4 @@
-from phil import tokenizer
+from libtbx.phil import tokenizer
 import sys
 
 def exercise():

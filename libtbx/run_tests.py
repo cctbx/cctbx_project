@@ -4,7 +4,8 @@ import os, os.path
 def run():
   tst_list = (
   "$D/libtbx/str_utils.py",
-  "$D/phil/tst.py",
+  "$D/libtbx/phil/tst_tokenizer.py",
+  "$D/libtbx/phil/tst.py",
   )
 
   build_dir = None
