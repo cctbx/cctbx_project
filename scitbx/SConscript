@@ -3,7 +3,8 @@ Import("env_etc", "env_boost_python_ext")
 
 env_etc.scitbx_dist = os.environ["SCITBX_DIST"]
 env_etc.scitbx_include = env_etc.norm_join(env_etc.scitbx_dist, "include")
-CScanRegisterFlags(scitbx=env_etc.scitbx_include)
+try: CScanRegisterFlags(scitbx=env_etc.scitbx_include)
+except: pass
 env_etc.scitbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.scitbx_include,
