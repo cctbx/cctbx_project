@@ -29,12 +29,13 @@ namespace {
           (arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"),
            arg_("periodicity")=0)))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
-        .def_readonly("angle_ideal", &w_t::angle_ideal)
-        .def_readonly("weight", &w_t::weight)
-        .def_readonly("periodicity", &w_t::periodicity)
+        .def_readwrite("angle_ideal", &w_t::angle_ideal)
+        .def_readwrite("weight", &w_t::weight)
+        .def_readwrite("periodicity", &w_t::periodicity)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
           "shared_dihedral_proxy");
       }
     }
