@@ -203,31 +203,31 @@ namespace cctbx { namespace xray {
       bs = -four_pi_sq / b_all;
     }
 
-    template <typename FloatTypeCaasfB,
+    template <typename FloatTypeGaussianB,
               typename FloatType>
     inline
     scitbx::sym_mat3<FloatType>
     compose_anisotropic_b_all(
-      FloatTypeCaasfB const& caasf_b,
+      FloatTypeGaussianB const& gaussian_b,
       FloatType const& u_extra,
       scitbx::sym_mat3<FloatType> const& u_cart)
     {
-      return scitbx::sym_mat3<FloatType>(caasf_b + adptbx::u_as_b(u_extra))
+      return scitbx::sym_mat3<FloatType>(gaussian_b + adptbx::u_as_b(u_extra))
            + scitbx::sym_mat3<FloatType>(adptbx::u_as_b(u_cart));
     }
 
     template <typename FloatType>
-    class caasf_fourier_transformed
+    class gaussian_fourier_transformed
     {
       public:
         BOOST_STATIC_CONSTANT(std::size_t,
-          max_n_rho_real_terms = eltbx::caasf::custom::max_n_ab + 1);
+          max_n_rho_real_terms = eltbx::xray_scattering::gaussian::max_n_ab+1);
 
-        caasf_fourier_transformed() {}
+        gaussian_fourier_transformed() {}
 
-        caasf_fourier_transformed(
+        gaussian_fourier_transformed(
           exponent_table<FloatType>& exp_table,
-          eltbx::caasf::custom const& caasf,
+          eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
           FloatType const& fdp,
           FloatType const& w,
@@ -236,26 +236,26 @@ namespace cctbx { namespace xray {
         :
           exp_table_(&exp_table),
           anisotropic_flag_(false),
-          n_rho_real_terms(caasf.n_ab()+1)
+          n_rho_real_terms(gaussian.n_ab()+1)
         {
           FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
           std::size_t i = 0;
-          for(;i<caasf.n_ab();i++) {
+          for(;i<gaussian.n_ab();i++) {
             isotropic_3d_gaussian_fourier_transform(
-              w * caasf.a(i), caasf.b(i) + b_incl_extra,
+              w * gaussian.a(i), gaussian.b(i) + b_incl_extra,
               as_real_[i], bs_real_[i]);
           }
           isotropic_3d_gaussian_fourier_transform(
-            w * (caasf.c() + fp), b_incl_extra,
+            w * (gaussian.c() + fp), b_incl_extra,
             as_real_[i], bs_real_[i]);
           isotropic_3d_gaussian_fourier_transform(
             w * fdp, b_incl_extra,
             as_imag_, bs_imag_);
         }
 
-        caasf_fourier_transformed(
+        gaussian_fourier_transformed(
           exponent_table<FloatType>& exp_table,
-          eltbx::caasf::custom const& caasf,
+          eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
           FloatType const& fdp,
           FloatType const& w,
@@ -264,17 +264,17 @@ namespace cctbx { namespace xray {
         :
           exp_table_(&exp_table),
           anisotropic_flag_(true),
-          n_rho_real_terms(caasf.n_ab()+1)
+          n_rho_real_terms(gaussian.n_ab()+1)
         {
           std::size_t i = 0;
-          for(;i<caasf.n_ab();i++) {
+          for(;i<gaussian.n_ab();i++) {
             anisotropic_3d_gaussian_fourier_transform(
-              w * caasf.a(i),
-              compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart),
+              w * gaussian.a(i),
+              compose_anisotropic_b_all(gaussian.b(i), u_extra, u_cart),
               as_real_[i], aniso_bs_real_[i]);
           }
           anisotropic_3d_gaussian_fourier_transform(
-            w * (caasf.c() + fp),
+            w * (gaussian.c() + fp),
             compose_anisotropic_b_all(0, u_extra, u_cart),
             as_real_[i], aniso_bs_real_[i]);
           anisotropic_3d_gaussian_fourier_transform(
@@ -375,14 +375,14 @@ namespace cctbx { namespace xray {
         uctbx::unit_cell const& unit_cell,
         FloatType const& wing_cutoff,
         GridPointType const& grid_n,
-        caasf_fourier_transformed<FloatType> const& caasf_ft)
+        gaussian_fourier_transformed<FloatType> const& gaussian_ft)
       :
         max_d_sq(0)
       {
-        CCTBX_ASSERT(!caasf_ft.anisotropic_flag());
+        CCTBX_ASSERT(!gaussian_ft.anisotropic_flag());
         af::tiny<FloatType, 3> grid_n_f = grid_n;
         FloatType rho_cutoff = scitbx::fn::absolute(
-          caasf_ft.rho_real_0() * wing_cutoff);
+          gaussian_ft.rho_real_0() * wing_cutoff);
         for(std::size_t i_basis_vec=0;i_basis_vec<3;i_basis_vec++) {
           typename GridPointType::value_type ig;
           for (ig = 1; ig < grid_n[i_basis_vec]; ig++) {
@@ -390,7 +390,7 @@ namespace cctbx { namespace xray {
             d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
             FloatType d_sq = unit_cell.length_sq(d_frac);
             if (scitbx::fn::absolute(
-                  caasf_ft.rho_real(d_sq)) < rho_cutoff) {
+                  gaussian_ft.rho_real(d_sq)) < rho_cutoff) {
               break;
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;

@@ -8,9 +8,8 @@ import math
 import sys
 from cctbx import crystal
 from cctbx import adptbx
-from cctbx.eltbx import caasf
+from cctbx.eltbx.xray_scattering import wk1995
 from iotbx.shelx import crystal_symmetry_from_ins
-from cctbx.eltbx.caasf import wk1995
 
 def from_ins(file_name=None,
              crystal_symmetry=None, force_symmetry=00000,
@@ -23,7 +22,8 @@ def from_ins(file_name=None,
   pdb_records = collect_records(raw_records=file)
 
   crystal_symmetry = None
-  crystal_symmetry = crystal_symmetry_from_ins.extract_from(file_name=file_name)
+  crystal_symmetry = crystal_symmetry_from_ins.extract_from(
+    file_name=file_name)
   assert crystal_symmetry is not None, "Unknown crystal symmetry."
   assert crystal_symmetry.unit_cell() is not None, "Unknown unit cell."
   assert crystal_symmetry.space_group_info() is not None,"Unknown space group."
@@ -48,44 +48,52 @@ def from_ins(file_name=None,
     if(record.record_iden == "ATOM" and record.rec_part == 1):
       record_next = pdb_records[i+1]
       b = record.tempFactor + record_next.tempFactor
-      scatterer = xray.scatterer(label     = " %s" % record.name, 
-                                 site      = record.coordinates,
-                                 b         = record.tempFactor + record_next.tempFactor,
-                                 occupancy = record.occupancy,
-                                 caasf     = wk1995(dict_allowed_atoms[record.name_id], 1))
-      scatterer = scatterer.copy(u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
+      scatterer = xray.scatterer(
+        label     = " %s" % record.name,
+        site      = record.coordinates,
+        b         = record.tempFactor + record_next.tempFactor,
+        occupancy = record.occupancy,
+        scattering_type = wk1995(
+          dict_allowed_atoms[record.name_id], 1).label())
+      scatterer = scatterer.copy(
+        u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
       structure.add_scatterer(scatterer)
     elif(record.record_iden == "ATOM" and record.rec_part == 0):
       u_cif_iso_diag = record.tempFactor
       u_star=adptbx.u_cif_as_u_star(structure.unit_cell(), u_cif_iso_diag)
       u_iso = adptbx.u_star_as_u_iso(structure.unit_cell(), u_star)
       if(u_iso < 0.0): u_iso_negative = 1
-      scatterer = xray.scatterer(label     = " %s" % record.name, 
-                                 site      = record.coordinates,
-                                 u         = u_iso,
-                                 occupancy = record.occupancy,
-                                 caasf     = wk1995(dict_allowed_atoms[record.name_id], 1))
-      structure.add_scatterer(scatterer)  
-  if(u_iso_negative == 1): if_u_iso_negative(structure)  
+      scatterer = xray.scatterer(
+        label     = " %s" % record.name,
+        site      = record.coordinates,
+        u         = u_iso,
+        occupancy = record.occupancy,
+        scattering_type = wk1995(
+          dict_allowed_atoms[record.name_id], 1).label())
+      structure.add_scatterer(scatterer)
+  if(u_iso_negative == 1): if_u_iso_negative(structure)
   return structure
-  
+
 def if_u_iso_negative(structure):
   for j in xrange(structure.scatterers().size()):
-    atom_chem_type = caasf.wk1995(structure.scatterers()[j].label).label()
-    if(atom_chem_type == "H" and structure.scatterers()[j].u_iso < 0.0): 
+    atom_chem_type = wk1995(structure.scatterers()[j].label).label()
+    if(atom_chem_type == "H" and structure.scatterers()[j].u_iso < 0.0):
       check_bond_number = 0
       for i in xrange(structure.scatterers().size()):
-        site_i = structure.unit_cell().orthogonalize(structure.scatterers()[i].site)
-        site_j = structure.unit_cell().orthogonalize(structure.scatterers()[j].site)
-        atom_chem_type = caasf.wk1995(structure.scatterers()[i].label).label()
+        site_i = structure.unit_cell().orthogonalize(
+          structure.scatterers()[i].site)
+        site_j = structure.unit_cell().orthogonalize(
+          structure.scatterers()[j].site)
+        atom_chem_type = wk1995(structure.scatterers()[i].label).label()
         if(atom_chem_type != "H"):
-          dist = math.sqrt((site_i[0]-site_j[0])**2 + 
+          dist = math.sqrt((site_i[0]-site_j[0])**2 +
                            (site_i[1]-site_j[1])**2 +
                            (site_i[2]-site_j[2])**2)
           if(dist < 1.2 and dist > 0.6):
             check_bond_number += 1
             assert check_bond_number == 1, "multiple choice of bond possible"
-            u_iso = adptbx.u_star_as_u_iso(structure.unit_cell(), structure.scatterers()[i].u_star)
+            u_iso = adptbx.u_star_as_u_iso(
+              structure.unit_cell(), structure.scatterers()[i].u_star)
             u_iso_new = u_iso * abs(structure.scatterers()[j].u_iso)
             structure.scatterers()[j].u_iso = u_iso_new
       assert structure.scatterers()[j].u_iso > 0.0
@@ -219,8 +227,8 @@ class ins_record:
     atom_rec_length = len(atom_rec_items)
     self.dict_sfac_content = {}
     for i in range(1,atom_rec_length,1):
-       assert atom_rec_items[i] == caasf.wk1995(atom_rec_items[i]).label()
-       self.dict_sfac_content[i] = caasf.wk1995(atom_rec_items[i]).label()
+       assert atom_rec_items[i] == wk1995(atom_rec_items[i]).label()
+       self.dict_sfac_content[i] = wk1995(atom_rec_items[i]).label()
 
 def collect_records(raw_records):
   line_number = 0

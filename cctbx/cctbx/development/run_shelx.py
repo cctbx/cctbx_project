@@ -1,5 +1,6 @@
 from iotbx.shelx.write_ins import LATT_SYMM
 from cctbx import adptbx
+import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -38,16 +39,16 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
       UNIT.append(str(max(1, int(celcon[sf] + 0.5))))
   else:
     for scatterer in xray_structure.scatterers():
-      caasf = eltbx.caasf.it1992(scatterer.scattering_type)
-      a = caasf.a()
-      b = caasf.b()
+      gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type)
+      a = gaussian.a()
+      b = gaussian.b()
       l("SFAC %s %.6g %.6g %.6g %.6g %.6g %.6g =" %
         (scatterer.label,
          a[0], b[0],
          a[1], b[1],
          a[2], b[2]))
       l("     %.6g %.6g %.6g %.6g %.6g 0 1 1" %
-        (a[3], b[3], caasf.c(),
+        (a[3], b[3], gaussian.c(),
          scatterer.fp, scatterer.fdp))
       UNIT.append(
         str(max(1, int(scatterer.occupancy * scatterer.multiplicity() + 0.5))))

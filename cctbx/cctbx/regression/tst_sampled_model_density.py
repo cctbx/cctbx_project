@@ -8,14 +8,14 @@ from scitbx import fftpack
 import random
 import sys
 
-def exercise(space_group_info, caasf_const,
+def exercise(space_group_info, const_gaussian,
              anomalous_flag, anisotropic_flag,
              d_min=1., resolution_factor=1./3, max_prime=5,
              quality_factor=100, wing_cutoff=1.e-6,
              exp_table_one_over_step_size=-100,
              force_complex=00000,
              verbose=0):
-  if (caasf_const):
+  if (const_gaussian):
     elements=["const"]*8
   else:
     elements=["N", "C", "C", "O", "N", "C", "C", "O"]
@@ -119,7 +119,7 @@ def run_call_back(flags, space_group_info):
     for anisotropic_flag in (00000, 0001)[:]: #SWITCH
       exercise(
         space_group_info,
-        caasf_const=random.random()<0.5,
+        const_gaussian=random.random()<0.5,
         anomalous_flag=anomalous_flag,
         anisotropic_flag=anisotropic_flag,
         verbose=flags.Verbose)

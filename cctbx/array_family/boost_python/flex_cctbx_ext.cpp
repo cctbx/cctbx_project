@@ -8,7 +8,7 @@
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/utils.h>
-#include <cctbx/eltbx/caasf.h>
+#include <cctbx/eltbx/xray_scattering.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>
@@ -46,7 +46,7 @@ namespace {
     tuple_mapping_fixed_size<cctbx::miller::index<> >();
 
     tuple_mapping_fixed_capacity<
-      small<float, cctbx::eltbx::caasf::custom::max_n_ab> >();
+      small<float, cctbx::eltbx::xray_scattering::gaussian::max_n_ab> >();
   }
 
   void register_cctbx_c_grid_conversions()

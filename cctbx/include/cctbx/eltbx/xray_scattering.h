@@ -1,8 +1,8 @@
-#ifndef CCTBX_ELTBX_CAASF_H
-#define CCTBX_ELTBX_CAASF_H
+#ifndef CCTBX_ELTBX_XRAY_SCATTERING_H
+#define CCTBX_ELTBX_XRAY_SCATTERING_H
 
-#ifndef CCTBX_ELTBX_CAASF_CUSTOM_MAX_N_AB
-#define CCTBX_ELTBX_CAASF_CUSTOM_MAX_N_AB 5
+#ifndef CCTBX_ELTBX_XRAY_SCATTERING_GAUSSIAN_MAX_N_AB
+#define CCTBX_ELTBX_XRAY_SCATTERING_GAUSSIAN_MAX_N_AB 5
 #endif
 
 #include <cctbx/eltbx/basic.h>
@@ -13,26 +13,26 @@
 #include <cmath>
 #include <ctype.h>
 
-namespace cctbx { namespace eltbx { namespace caasf {
+namespace cctbx { namespace eltbx { namespace xray_scattering {
 
-  class custom
+  class gaussian
   {
     public:
       //! Maximum number of a,b pairs.
       BOOST_STATIC_CONSTANT(std::size_t,
-        max_n_ab=CCTBX_ELTBX_CAASF_CUSTOM_MAX_N_AB);
+        max_n_ab=CCTBX_ELTBX_XRAY_SCATTERING_GAUSSIAN_MAX_N_AB);
 
       //! Default constructor. Some data members are not initialized!
-      custom() {}
+      gaussian() {}
 
       //! Initialization of constant scatterer.
-      custom(float c)
+      gaussian(float c)
       :
         c_(c)
       {}
 
       //! Initialization with label and coefficients.
-      custom(
+      gaussian(
         af::small<float, max_n_ab> const& a,
         af::small<float, max_n_ab> const& b,
         float c)
@@ -83,7 +83,7 @@ namespace cctbx { namespace eltbx { namespace caasf {
         return n_ab() == 0 && c() == 0;
       }
 
-#     include <cctbx/eltbx/caasf_at_d_star_sq.h>
+#     include <cctbx/eltbx/xray_scattering_gaussian_at.h>
 
     private:
       af::small<float, max_n_ab> a_;
@@ -147,17 +147,17 @@ namespace cctbx { namespace eltbx { namespace caasf {
       static std::size_t n_ab() { return N; }
 
       //! Array of coefficients a.
-      af::small<float, custom::max_n_ab>
+      af::small<float, gaussian::max_n_ab>
       a() const
       {
-        return af::small<float, custom::max_n_ab>(entry_->a, entry_->a+N);
+        return af::small<float, gaussian::max_n_ab>(entry_->a, entry_->a+N);
       }
 
       //! Array of coefficients a.
-      af::small<float, custom::max_n_ab>
+      af::small<float, gaussian::max_n_ab>
       b() const
       {
-        return af::small<float, custom::max_n_ab>(entry_->b, entry_->b+N);
+        return af::small<float, gaussian::max_n_ab>(entry_->b, entry_->b+N);
       }
 
       //! Coefficient a(i), with 0 <= i < n_ab().
@@ -177,13 +177,13 @@ namespace cctbx { namespace eltbx { namespace caasf {
       //! Coefficient c.
       float c() const { return entry_->c; }
 
-      custom
-      as_custom() const
+      gaussian
+      fetch() const
       {
-        return custom(a(), b(), c());
+        return gaussian(a(), b(), c());
       }
 
-#     include <cctbx/eltbx/caasf_at_d_star_sq.h>
+#     include <cctbx/eltbx/xray_scattering_gaussian_at.h>
 
     protected:
       const char *table_;
@@ -259,16 +259,16 @@ namespace cctbx { namespace eltbx { namespace caasf {
       The value from IT Vol IV is presumed to be the correct one
       and used here.
       <p>
-      If possible, the class caasf::wk1995 should be used
+      If possible, the class xray_scattering::wk1995 should be used
       instead of this class.
       The coefficients of Waasmaier & Kirfel give more precise
       approximations than the coefficients of Volume C
       and some errors are corrected.
       <p>
       See also:
-        caasf::it1992_iterator,
-        caasf::wk1995,
-        caasf::base
+        xray_scattering::it1992_iterator,
+        xray_scattering::wk1995,
+        xray_scattering::base
    */
   class it1992: public base<4>
   {
@@ -288,7 +288,7 @@ namespace cctbx { namespace eltbx { namespace caasf {
           See also: eltbx::basic::strip_label()
           <p>
           Note that the other methods of this class are inherited from
-          class caasf::base.
+          class xray_scattering::base.
        */
       it1992(std::string const& label, bool exact=false);
 
@@ -341,9 +341,9 @@ namespace cctbx { namespace eltbx { namespace caasf {
       </pre>
       <p>
       See also:
-        caasf::wk1995_iterator,
-        caasf::it1992,
-        caasf::base
+        xray_scattering::wk1995_iterator,
+        xray_scattering::it1992,
+        xray_scattering::base
    */
   class wk1995: public base<5>
   {
@@ -390,6 +390,6 @@ namespace cctbx { namespace eltbx { namespace caasf {
       wk1995 current_;
   };
 
-}}} // cctbx::eltbx::caasf
+}}} // cctbx::eltbx::xray_scattering
 
-#endif // CCTBX_ELTBX_CAASF_H
+#endif // CCTBX_ELTBX_XRAY_SCATTERING_H

@@ -101,7 +101,7 @@ namespace cctbx { namespace xray {
     typedef dict_type::const_iterator dict_iter;
     dict_type const& scd = scattering_dict.dict();
     for(dict_iter di=scd.begin();di!=scd.end();di++) {
-      eltbx::caasf::custom const& caasf = di->second.coefficients;
+      eltbx::xray_scattering::gaussian const& gaussian = di->second.gaussian;
       af::const_ref<std::size_t>
         member_indices = di->second.member_indices.const_ref();
       for(std::size_t mi=0;mi<member_indices.size();mi++) {
@@ -119,24 +119,24 @@ namespace cctbx { namespace xray {
           u_iso = this->get_u_cart_and_u_iso(scatterer.u_star, u_cart);
         }
         CCTBX_ASSERT(u_iso >= 0);
-        detail::caasf_fourier_transformed<FloatType> caasf_ft(
+        detail::gaussian_fourier_transformed<FloatType> gaussian_ft(
           exp_table,
-          caasf, scatterer.fp, scatterer.fdp, scatterer.weight(),
+          gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
           u_iso, this->u_extra_);
         detail::calc_shell<FloatType, grid_point_type> shell(
-          this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
+          this->unit_cell_, this->wing_cutoff_, grid_f, gaussian_ft);
         detail::array_update_max(this->max_shell_radii_, shell.radii);
         if (electron_density_must_be_positive) {
-          if (   caasf_ft.rho_real_0() < 0
-              || caasf_ft.rho_real(shell.max_d_sq) < 0) {
+          if (   gaussian_ft.rho_real_0() < 0
+              || gaussian_ft.rho_real(shell.max_d_sq) < 0) {
 
             throw error("Negative electron density at sampling point.");
           }
         }
         if (scatterer.anisotropic_flag) {
-          caasf_ft = detail::caasf_fourier_transformed<FloatType>(
+          gaussian_ft = detail::gaussian_fourier_transformed<FloatType>(
             exp_table,
-            caasf, scatterer.fp, scatterer.fdp, scatterer.weight(),
+            gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
             u_cart, this->u_extra_);
         }
         grid_point_type pivot = detail::calc_nearest_grid_point(
@@ -144,15 +144,15 @@ namespace cctbx { namespace xray {
 #       include <cctbx/xray/sampling_loop.h>
           if (this->anomalous_flag_) i_map *= 2;
           if (!scatterer.anisotropic_flag) {
-            map_begin[i_map] += caasf_ft.rho_real(d_sq);
+            map_begin[i_map] += gaussian_ft.rho_real(d_sq);
             if (fdp) {
-              map_begin[i_map+1] += caasf_ft.rho_imag(d_sq);
+              map_begin[i_map+1] += gaussian_ft.rho_imag(d_sq);
             }
           }
           else {
-            map_begin[i_map] += caasf_ft.rho_real(d);
+            map_begin[i_map] += gaussian_ft.rho_real(d);
             if (fdp) {
-              map_begin[i_map+1] += caasf_ft.rho_imag(d);
+              map_begin[i_map+1] += gaussian_ft.rho_imag(d);
             }
           }
         }}}

@@ -1,4 +1,5 @@
-from cctbx.eltbx.caasf import wk1995
+import cctbx.eltbx.xray_scattering
+from cctbx import eltbx
 from cctbx.array_family import flex
 import math
 
@@ -21,15 +22,15 @@ class wilson_plot:
       use_binning=0001,
       use_multiplicities=0001)
     # cache scattering factor info
-    caasf = {}
+    gaussians = {}
     for chemical_type in asu_contents.keys():
-      caasf[chemical_type] = wk1995(chemical_type)
+      gaussians[chemical_type] = eltbx.xray_scattering.wk1995(chemical_type)
     # compute expected f_calc^2 in resolution shells
     self.expected_f_sq = flex.double()
     for stol_sq in self.mean_stol_sq:
       sum_fj_sq = 0
       for chemical_type, n_atoms in asu_contents.items():
-        f0 = caasf[chemical_type].at_stol_sq(stol_sq)
+        f0 = gaussians[chemical_type].at_stol_sq(stol_sq)
         sum_fj_sq += f0 * f0 * n_atoms
       self.expected_f_sq.append(sum_fj_sq)
     self.expected_f_sq *= f_obs.space_group().order_z() \

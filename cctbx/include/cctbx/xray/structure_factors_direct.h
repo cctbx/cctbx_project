@@ -68,9 +68,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
       f_t d_star_sq = unit_cell.d_star_sq(h);
       dict_type const& scd = scattering_dict.dict();
       for(dict_iter di=scd.begin();di!=scd.end();di++) {
-        bool caasf_is_const = di->second.coefficients.n_ab() == 0;
-        f_t caasf_c = di->second.coefficients.c();
-        f_t f0 = di->second.coefficients.at_d_star_sq(d_star_sq);
+        bool gaussian_is_const = di->second.gaussian.n_ab() == 0;
+        f_t gaussian_c = di->second.gaussian.c();
+        f_t f0 = di->second.gaussian.at_d_star_sq(d_star_sq);
         af::const_ref<std::size_t>
           member_indices = di->second.member_indices.const_ref();
         for(std::size_t mi=0;mi<member_indices.size();mi++) {
@@ -79,7 +79,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           f_t fp_w = scatterer.fp;
           f_t fdp_w = scatterer.fdp;
           bool have_fdp = fdp_w != 0;
-          if (caasf_is_const) fp_w += caasf_c;
+          if (gaussian_is_const) fp_w += gaussian_c;
           fp_w *= w;
           if (have_fdp) fdp_w *= w;
           direct_one_h_one_scatterer<CosSinType, ScattererType> sf(
@@ -93,7 +93,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           else if (hr_ht.is_centric) {
             sf.f_calc += std::conj(sf.f_calc) * f_h_inv_t;
           }
-          if (caasf_is_const) {
+          if (gaussian_is_const) {
             if (have_fdp) sf.f_calc *= c_t(fp_w, fdp_w);
             else sf.f_calc *= fp_w;
           }

@@ -2,6 +2,7 @@ from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
+import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx import adptbx
 from cctbx.web import cgi_utils
@@ -44,10 +45,12 @@ def read_scatterer(flds, default_b_iso=3.0):
       float(flds[1])
     except:
       offs = 2
-      scatterer.scattering_type = eltbx.caasf.wk1995(flds[1], 0001).label()
+      scatterer.scattering_type = eltbx.xray_scattering.wk1995(
+        flds[1], 0001).label()
     else:
       offs = 1
-      scatterer.scattering_type = eltbx.caasf.wk1995(flds[0], 00000).label()
+      scatterer.scattering_type = eltbx.xray_scattering.wk1995(
+        flds[0], 00000).label()
     site = flds[offs : offs + 3]
     for i in xrange(3):
       site[i] = float(site[i])

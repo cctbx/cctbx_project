@@ -86,8 +86,8 @@ namespace xray {
       LabelType label;
 
       //! Direct access to the scattering type.
-      /*! See also: eltbx::caasf::it1992,
-                    eltbx::caasf::wk1995
+      /*! See also: eltbx::xray_scattering::it1992,
+                    eltbx::xray_scattering::wk1995
        */
       ScatteringTypeType scattering_type;
 

@@ -2,6 +2,7 @@ from cctbx import sgtbx
 from cctbx import crystal
 from cctbx import adptbx
 from cctbx import xray
+import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from scitbx.python_utils.misc import adopt_init_args
 import random
@@ -162,7 +163,7 @@ class xray_structure(xray.structure):
     sf_dict = {}
     for element in elements:
       if (not sf_dict.has_key(element)):
-        sf_dict[element] = eltbx.caasf.best_approximation(element)
+        sf_dict[element] = eltbx.xray_scattering.best_approximation(element)
     fp = 0
     fdp = 0
     n_existing = self.scatterers().size()

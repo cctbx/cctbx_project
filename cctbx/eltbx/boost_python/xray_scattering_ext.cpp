@@ -3,16 +3,17 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
-#include <cctbx/eltbx/caasf.h>
+#include <cctbx/eltbx/xray_scattering.h>
 #include <scitbx/boost_python/iterator_wrappers.h>
 
-namespace cctbx { namespace eltbx { namespace caasf { namespace boost_python {
+namespace cctbx { namespace eltbx { namespace xray_scattering {
+namespace boost_python {
 
 namespace {
 
-  struct custom_wrappers : boost::python::pickle_suite
+  struct gaussian_wrappers : boost::python::pickle_suite
   {
-    typedef custom w_t;
+    typedef gaussian w_t;
 
     static
     boost::python::tuple
@@ -26,7 +27,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("custom", no_init)
+      class_<w_t>("gaussian", no_init)
         .def(init<float>())
         .def(init<af::small<float, w_t::max_n_ab> const&,
                   af::small<float, w_t::max_n_ab> const&,
@@ -41,7 +42,7 @@ namespace {
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
         .def("at_d_star_sq", &w_t::at_d_star_sq)
-        .def_pickle(custom_wrappers())
+        .def_pickle(gaussian_wrappers())
       ;
     }
   };
@@ -58,12 +59,12 @@ namespace {
       class_<w_t>(python_name, no_init)
         .def("table", &w_t::table)
         .def("label", &w_t::label)
-        .def("a", (af::small<float, custom::max_n_ab>(w_t::*)()const)
+        .def("a", (af::small<float, gaussian::max_n_ab>(w_t::*)()const)
           &w_t::a)
-        .def("b", (af::small<float, custom::max_n_ab>(w_t::*)()const)
+        .def("b", (af::small<float, gaussian::max_n_ab>(w_t::*)()const)
           &w_t::b)
         .def("c", &w_t::c)
-        .def("as_custom", &w_t::as_custom)
+        .def("fetch", &w_t::fetch)
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
         .def("at_d_star_sq", &w_t::at_d_star_sq)
@@ -105,7 +106,7 @@ namespace {
   {
     using namespace boost::python;
 
-    custom_wrappers::wrap();
+    gaussian_wrappers::wrap();
 
     it1992_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
@@ -117,9 +118,9 @@ namespace {
   }
 
 } // namespace <anonymous>
-}}}} // namespace cctbx::eltbx::caasf::boost_python
+}}}} // namespace cctbx::eltbx::xray_scattering::boost_python
 
-BOOST_PYTHON_MODULE(caasf_ext)
+BOOST_PYTHON_MODULE(xray_scattering_ext)
 {
-  cctbx::eltbx::caasf::boost_python::init_module();
+  cctbx::eltbx::xray_scattering::boost_python::init_module();
 }

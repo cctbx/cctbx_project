@@ -3,6 +3,7 @@ from cctbx.development import debug_utils
 from cctbx import xray
 from cctbx import crystal
 from cctbx import adptbx
+import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
@@ -84,11 +85,11 @@ def exercise_structure():
   assert xs.scatterers().size() == 1
   assert tuple(xs.special_position_indices()) == (0,)
   sd = ys.scattering_dict()
-  assert sd.lookup("Si").coefficients.n_ab() == 5
+  assert sd.lookup("Si").gaussian.n_ab() == 5
   sd = ys.scattering_dict(d_min=3)
-  assert sd.lookup("Si").coefficients.n_ab() == 4
-  sd = ys.scattering_dict(custom_dict={"Si": eltbx.caasf.custom(1)})
-  assert sd.lookup("Si").coefficients.n_ab() == 0
+  assert sd.lookup("Si").gaussian.n_ab() == 4
+  sd = ys.scattering_dict(custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
+  assert sd.lookup("Si").gaussian.n_ab() == 0
 
 def exercise_u_extra():
   d_min = 9

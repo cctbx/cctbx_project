@@ -1,4 +1,4 @@
-#if !defined(CCTBX_ELTBX_CAASF_H)
+#if !defined(CCTBX_ELTBX_XRAY_SCATTERING_H)
 #error "Do not include this file directly."
 #endif
       //! Analytical approximation to the scattering factor.
