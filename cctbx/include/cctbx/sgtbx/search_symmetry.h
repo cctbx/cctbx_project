@@ -12,19 +12,28 @@ namespace cctbx { namespace sgtbx {
       search_symmetry_flags() {}
 
       explicit
-      search_symmetry_flags(bool use_space_group_symmetry,
-                            bool use_normalizer_k2l=false,
-                            bool use_normalizer_l2n=false,
-                            bool use_structure_seminvariants=false)
+      search_symmetry_flags(
+        bool use_space_group_symmetry,
+        bool use_space_group_ltr=false,
+        bool use_seminvariant=false,
+        bool use_normalizer_k2l=false,
+        bool use_normalizer_l2n=false)
       :
         use_space_group_symmetry_(use_space_group_symmetry),
+        use_space_group_ltr_(use_space_group_ltr),
+        use_seminvariant_(use_seminvariant),
         use_normalizer_k2l_(use_normalizer_k2l),
-        use_normalizer_l2n_(use_normalizer_l2n),
-        use_structure_seminvariants_(use_structure_seminvariants)
+        use_normalizer_l2n_(use_normalizer_l2n)
       {}
 
       bool
       use_space_group_symmetry() const { return use_space_group_symmetry_; }
+
+      bool
+      use_space_group_ltr() const { return use_space_group_ltr_; }
+
+      bool
+      use_seminvariant() const { return use_seminvariant_; }
 
       bool
       use_normalizer_k2l() const { return use_normalizer_k2l_; }
@@ -33,19 +42,14 @@ namespace cctbx { namespace sgtbx {
       use_normalizer_l2n() const { return use_normalizer_l2n_; }
 
       bool
-      use_structure_seminvariants() const
-      {
-        return use_structure_seminvariants_;
-      }
-
-      bool
       operator==(search_symmetry_flags const& rhs) const
       {
         return
              use_space_group_symmetry_ == rhs.use_space_group_symmetry_
+          && use_space_group_ltr_ == rhs.use_space_group_ltr_
+          && use_seminvariant_ == rhs.use_seminvariant_
           && use_normalizer_k2l_ == rhs.use_normalizer_k2l_
-          && use_normalizer_l2n_ == rhs.use_normalizer_l2n_
-          && use_structure_seminvariants_ == rhs.use_structure_seminvariants_;
+          && use_normalizer_l2n_ == rhs.use_normalizer_l2n_;
       }
 
       bool
@@ -56,9 +60,10 @@ namespace cctbx { namespace sgtbx {
 
     protected:
       bool use_space_group_symmetry_;
+      bool use_space_group_ltr_;
+      bool use_seminvariant_;
       bool use_normalizer_k2l_;
       bool use_normalizer_l2n_;
-      bool use_structure_seminvariants_;
   };
 
   class search_symmetry
@@ -107,12 +112,13 @@ namespace cctbx { namespace sgtbx {
         if (flags_.use_space_group_symmetry()) {
           group_ = group_type.group();
         }
-        else if (flags_.use_structure_seminvariants()) {
+        else if (flags_.use_space_group_ltr()) {
           for(std::size_t i=1;i<group_type.group().n_ltr();i++) {
             group_.expand_ltr(group_type.group().ltr(i));
           }
         }
-        if (flags_.use_structure_seminvariants() && seminvariant) {
+        if (flags_.use_seminvariant()) {
+          CCTBX_ASSERT(seminvariant != 0);
           af::small<ss_vec_mod, 3> const&
             ss = seminvariant->vectors_and_moduli();
           for(std::size_t i_ss=0;i_ss<ss.size();i_ss++) {

@@ -141,6 +141,18 @@ class euclidean_match_symmetry:
         # add discrete allowed origin shifts to self.rt_mx
         self.rt_mx.expand_ltr(
           sgtbx.tr_vec(vm.v, vm.m).new_denominator(self.rt_mx.t_den()))
+    # XXX just a test for now
+    search_symmetry = sgtbx.search_symmetry(
+      flags=sgtbx.search_symmetry_flags(
+        use_space_group_symmetry=00000,
+        use_space_group_ltr=00000,
+        use_seminvariant=0001,
+        use_normalizer_k2l=use_k2l,
+        use_normalizer_l2n=use_l2n),
+      space_group_type=sg_type,
+      seminvariant=self.ss)
+    assert search_symmetry.group() == self.rt_mx
+    assert tuple(self.continuous_shifts) == search_symmetry.continuous_shifts()
 
   def continuous_shifts_are_principal(self):
     for pa in self.continuous_shifts:
@@ -480,11 +492,12 @@ class model_matches:
     assert 0 <= i_refined_matches < self.n_matches()
     rt = self.refined_matches[i_refined_matches].rt
     if (i_model == 1):
+      result = model(special_position_settings=self.model2)
       source_model = self.model1
       rt = rt.inverse()
     else:
+      result = model(special_position_settings=self.model1)
       source_model = self.model2
-    result = model(special_position_settings=source_model)
     for pos in source_model.positions():
       result.add_position(position(label=pos.label, site=(rt*pos.site).elems))
     return result

@@ -19,15 +19,17 @@ namespace {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("search_symmetry_flags", no_init)
-        .def(init<bool, optional<bool, bool, bool> >(
+        .def(init<bool, optional<bool, bool, bool, bool> >(
           (arg_("use_space_group_symmetry"),
+           arg_("use_space_group_ltr")=false,
+           arg_("use_seminvariant")=false,
            arg_("use_normalizer_k2l")=false,
-           arg_("use_normalizer_l2n")=false,
-           arg_("use_structure_seminvariants")=false)))
+           arg_("use_normalizer_l2n")=false)))
         .def("use_space_group_symmetry", &w_t::use_space_group_symmetry)
+        .def("use_space_group_ltr", &w_t::use_space_group_ltr)
+        .def("use_seminvariant", &w_t::use_seminvariant)
         .def("use_normalizer_k2l", &w_t::use_normalizer_k2l)
         .def("use_normalizer_l2n", &w_t::use_normalizer_l2n)
-        .def("use_structure_seminvariants", &w_t::use_structure_seminvariants)
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
       ;
