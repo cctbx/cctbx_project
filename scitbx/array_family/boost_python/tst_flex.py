@@ -476,6 +476,10 @@ def exercise_complex_functions():
   d = y[0]
   assert approx_equal(d.real, c.real)
   assert approx_equal(d.imag, c.imag)
+  y = flex.polar(1, p)
+  d = y[0]
+  assert approx_equal(abs(d), 1)
+  assert approx_equal(flex.arg(y)[0], p[0])
   y = flex.polar(a, math.pi/2)
   d = y[0]
   assert approx_equal(d.real, 0)

@@ -167,6 +167,20 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static versa<std::complex<FloatType>, flex_grid<> >
+    polar_complex_rs_r(
+      FloatType const& rho,
+      versa<FloatType, flex_grid<> > const& theta)
+    {
+      shared_plain<std::complex<FloatType> > result(
+        theta.size(), init_functor_null<std::complex<FloatType> >());
+      for(std::size_t i=0;i<theta.size();i++) {
+        result[i] = std::polar(rho, theta[i]);
+      }
+      return versa<std::complex<FloatType>, flex_grid<> >(
+        result, theta.accessor());
+    }
+
+    static versa<std::complex<FloatType>, flex_grid<> >
     polar_complex_r_rs(
       versa<FloatType, flex_grid<> > const& rho,
       FloatType const& theta)
@@ -196,6 +210,7 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::def("polar", polar_complex_c_r_2);
       boost::python::def("polar", polar_complex_r_c);
       boost::python::def("polar", polar_complex_c_c);
+      boost::python::def("polar", polar_complex_rs_r);
       boost::python::def("polar", polar_complex_r_rs);
     }
   };
