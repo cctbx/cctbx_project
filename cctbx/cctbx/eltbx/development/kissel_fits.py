@@ -27,14 +27,14 @@ def run(args, cutoff, max_n_terms, six_term=00000, params=None,
       plots_dir = None
     if (chunk_n > 1):
       assert plots_dir is not None
-  results = {}
-  results["fit_parameters"] = params
   i_chunk = 0
   for file_name in args:
     flag = i_chunk % chunk_n == chunk_i
     i_chunk += 1
     if (not flag):
       continue
+    results = {}
+    results["fit_parameters"] = params
     tab = kissel_io.read_table(file_name)
     more_selection = tab.itvc_sampling_selection()
     fit_selection = more_selection & (tab.x <= cutoff + 1.e-6)
