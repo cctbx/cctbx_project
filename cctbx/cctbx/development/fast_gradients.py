@@ -125,21 +125,8 @@ class resampling(crystal.symmetry):
                      dp,
                      d_target_d_f_calc=None,
                      derivative_flags=None,
-                     force_complex=00000,
                      electron_density_must_be_positive=0001):
     self.setup_fft()
-    if (0):
-      xray.sampled_model_density(
-        xray_structure.unit_cell(),
-        xray_structure.scatterers(),
-        self.rfft().n_real(),
-        self.rfft().m_real(),
-        self.u_extra(),
-        self.wing_cutoff(),
-        self.exp_table_one_over_step_size(),
-        force_complex,
-        electron_density_must_be_positive)
-      print "sampled_model_density OK"
     cmap = self.ft_dp(dp).complex_map()
     print "ft_dt_map real: %.4g %.4g" % (
       flex.min(flex.real(cmap)), flex.max(flex.real(cmap)))
@@ -151,12 +138,9 @@ class resampling(crystal.symmetry):
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
       self.ft_dp(dp).complex_map(),
-      self.rfft().n_real(),
-      self.rfft().m_real(),
       self.u_extra(),
       self.wing_cutoff(),
       self.exp_table_one_over_step_size(),
-      force_complex,
       electron_density_must_be_positive)
     time_sampling = time_sampling.elapsed()
     return result

@@ -11,9 +11,7 @@
 
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/xray/scatterer_utils.h>
-#include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/overloads.hpp>
 
@@ -21,6 +19,7 @@ namespace cctbx { namespace xray { namespace boost_python {
 
   void wrap_fast_gradients();
   void wrap_conversions();
+  void wrap_sampling_base();
   void wrap_sampled_model_density();
   void wrap_scatterer();
   void wrap_structure_factors();
@@ -39,11 +38,9 @@ namespace {
   {
     using namespace boost::python;
 
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
-    wrap_fast_gradients();
     wrap_conversions();
+    wrap_sampling_base();
+    wrap_fast_gradients();
     wrap_sampled_model_density();
     wrap_scatterer();
     wrap_structure_factors();
