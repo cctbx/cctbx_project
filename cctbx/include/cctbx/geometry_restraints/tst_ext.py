@@ -1,8 +1,8 @@
+from cctbx.array_family import flex
 from cctbx import geometry_restraints
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.crystal import direct_space_asu
-from cctbx.array_family import flex
 from scitbx import matrix
 from scitbx import stl
 from libtbx.test_utils import approx_equal, eps_eq
