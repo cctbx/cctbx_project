@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/versa_matrix.h>
 #include <boost/python/args.hpp>
 #include <boost/python/make_constructor.hpp>
 
@@ -69,6 +70,10 @@ namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("__init__", make_constructor(
         from_stl_vector_double, default_call_policies()))
+      .def("matrix_multiply",
+        (versa<double, c_grid<2> >(*)(
+          const_ref<double, c_grid<2> > const&,
+          const_ref<double, c_grid<2> > const&)) matrix_multiply)
     ;
 
     def("extract_double_attributes", extract_double_attributes,
