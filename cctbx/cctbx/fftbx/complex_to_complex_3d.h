@@ -12,7 +12,7 @@
 #ifndef CCTBX_FFTBX_COMPLEX_TO_COMPLEX_3D_H
 #define CCTBX_FFTBX_COMPLEX_TO_COMPLEX_3D_H
 
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 #include <cctbx/fftbx/error.h>
 #include <cctbx/fftbx/complex_to_complex.h>
 
@@ -114,7 +114,7 @@ namespace cctbx { namespace fftbx {
   }
       }
     private:
-      array<complex_to_complex<real_type, complex_type>, 3> m_fft1d;
+      carray<complex_to_complex<real_type, complex_type>, 3> m_fft1d;
       std::vector<complex_type> m_Seq;
   };
 

@@ -8,41 +8,41 @@
      Dec 2001: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef CCTBX_VECTOR_ARRAY_TRAITS_H
-#define CCTBX_VECTOR_ARRAY_TRAITS_H
+#ifndef CCTBX_VECTOR_CARRAY_TRAITS_H
+#define CCTBX_VECTOR_CARRAY_TRAITS_H
 
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 
 namespace cctbx { namespace vector {
 
 template <class T, class U, std::size_t N>
-struct algebra_traits<array<T, N>, array<U, N> >
+struct algebra_traits<carray<T, N>, carray<U, N> >
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
-  typedef array<value_type, N> promotion_type;
-  typedef array<bool, N> bool_type;
+  typedef carray<value_type, N> promotion_type;
+  typedef carray<bool, N> bool_type;
   typedef qualifier_v_v type_qualifier;
   template <typename ResultType, typename SizeType>
   static void init(ResultType& v, const SizeType& n) {}
 };
 
 template <class T, class U, std::size_t N>
-struct algebra_traits<array<T, N>, U>
+struct algebra_traits<carray<T, N>, U>
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
-  typedef array<value_type, N> promotion_type;
-  typedef array<bool, N> bool_type;
+  typedef carray<value_type, N> promotion_type;
+  typedef carray<bool, N> bool_type;
   typedef qualifier_v_s type_qualifier;
   template <typename ResultType, typename SizeType>
   static void init(ResultType& v, const SizeType& n) {}
 };
 
 template <class T, class U, std::size_t N>
-struct algebra_traits<T, array<U, N> >
+struct algebra_traits<T, carray<U, N> >
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
-  typedef array<value_type, N> promotion_type;
-  typedef array<bool, N> bool_type;
+  typedef carray<value_type, N> promotion_type;
+  typedef carray<bool, N> bool_type;
   typedef qualifier_s_v type_qualifier;
   template <typename ResultType, typename SizeType>
   static void init(ResultType& v, const SizeType& n) {}
@@ -50,4 +50,4 @@ struct algebra_traits<T, array<U, N> >
 
 }} // namespace cctbx::vector
 
-#endif // CCTBX_VECTOR_ARRAY_TRAITS_H
+#endif // CCTBX_VECTOR_CARRAY_TRAITS_H

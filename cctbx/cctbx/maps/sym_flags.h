@@ -17,12 +17,12 @@ namespace cctbx { namespace maps {
 
   template <typename DimTupleType,
             typename IndexTupleType>
-  array<int, 3>
+  int3
   multiply(const DimTupleType& N,
            const sgtbx::RTMx& M,
            const IndexTupleType& X)
   {
-    array<int, 3> result = M.Rpart() * X;
+    int3 result = M.Rpart() * X;
     for(int i=0;i<3;i++) {
       result[i] = result[i] * M.TBF() + M.Tpart()[i] * M.RBF() * N[i];
       if (result[i] % (M.RBF() * M.TBF())) {
@@ -43,7 +43,7 @@ namespace cctbx { namespace maps {
     std::size_t i1d_pivot = p1_flags.dim()(pivot);
     for(int iSMx=1;iSMx<SgOps.OrderZ();iSMx++) {
       sgtbx::RTMx M = SgOps(iSMx);
-      array<int, 3> sym_equiv_point = multiply(p1_flags.dim(), M, pivot);
+      int3 sym_equiv_point = multiply(p1_flags.dim(), M, pivot);
       std::size_t i1d_sep = p1_flags.dim()(sym_equiv_point);
       if (i1d_sep != i1d_pivot) p1_flags[i1d_sep] = i1d_pivot;
     }

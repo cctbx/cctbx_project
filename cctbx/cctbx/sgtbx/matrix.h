@@ -102,8 +102,8 @@ namespace cctbx { namespace sgtbx {
       }
       friend std::ostream& operator<<(std::ostream& os, const TrVec& T);
       template <class FloatType>
-      array<FloatType, 3> as_array(const FloatType&) const {
-        array<FloatType, 3> result;
+      carray<FloatType, 3> as_array(const FloatType&) const {
+        carray<FloatType, 3> result;
         for(int i=0;i<3;i++) {
           result[i] = FloatType(elems[i]) / FloatType(m_BF);
         }
@@ -276,8 +276,8 @@ namespace cctbx { namespace sgtbx {
       }
       friend std::ostream& operator<<(std::ostream& os, const RotMx& R);
       template <class FloatType>
-      array<FloatType, 9> as_array(const FloatType&) const {
-        array<FloatType, 9> result;
+      carray<FloatType, 9> as_array(const FloatType&) const {
+        carray<FloatType, 9> result;
         for(int i=0;i<9;i++) {
           result[i] = FloatType(elems[i]) / FloatType(m_BF);
         }
@@ -414,28 +414,28 @@ namespace cctbx { namespace sgtbx {
       std::string as_xyz(bool Decimal = false, bool TrFirst = false,
                          const char* LettersXYZ = "xyz",
                          const char* Separator = ",") const;
-      //! Export matrix elements to a plain boost array of integers.
+      //! Export matrix elements to a plain array of integers.
       /*! The 9 elements of the rotation part are copied to
-          elements 0..8 of the plain boost array.
+          elements 0..8 of the plain array.
           The 3 elements of the translation part are copied to
-          elements 9..11 of the plain boost array.
+          elements 9..11 of the plain array.
           Use RBF() and TBF() to access the base factors
           for conversion to floating point representations.
           <p>
           See also: as_array()
        */
-      array<int, 12> as_int_array() const;
-      //! Export matrix elements to a floating point boost array.
+      carray<int, 12> as_int_array() const;
+      //! Export matrix elements to a floating point array.
       /*! The 9 elements of the rotation part are divided by RBF()
-          and copied to elements 0..8 of the boost array.
+          and copied to elements 0..8 of the array.
           The 3 elements of the translation part are divided by TBF()
-          and copied to elements 9..11 of the boost array.
+          and copied to elements 9..11 of the array.
           <p>
           See also: as_int_array()
        */
       template <class FloatType>
-      array<FloatType, 12> as_array(const FloatType&) const {
-        array<FloatType, 12> result;
+      carray<FloatType, 12> as_array(const FloatType&) const {
+        carray<FloatType, 12> result;
         int i;
         for(i=0;i<9;i++) {
           result[i    ] = FloatType(Rpart()[i]) / FloatType(RBF());

@@ -11,7 +11,7 @@
 #ifndef CCTBX_COORDINATES_H
 #define CCTBX_COORDINATES_H
 
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 #include <cctbx/basic/matrixlite.h>
 
 namespace cctbx {
@@ -23,7 +23,7 @@ namespace cctbx {
       See also: class fractional
    */
   template <class FloatType>
-  class cartesian : public array<FloatType, 3> {
+  class cartesian : public carray<FloatType, 3> {
     public:
       //! The elements of the coordinate vector are initialized with 0.
       cartesian() {
@@ -31,7 +31,7 @@ namespace cctbx {
       }
       //! The elements of the coordinate vector are copied from v.
       template <class U>
-      cartesian(const array<U, 3> v) {
+      cartesian(const carray<U, 3> v) {
         for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
       }
       //! The elements of the coordinate vector are copied from xyz.
@@ -56,7 +56,7 @@ namespace cctbx {
       See also: class cartesian
    */
   template <class FloatType>
-  class fractional : public array<FloatType, 3> {
+  class fractional : public carray<FloatType, 3> {
     public:
       //! The elements of the coordinate vector are initialized with 0.
       fractional() {
@@ -64,7 +64,7 @@ namespace cctbx {
       }
       //! The elements of the coordinate vector are copied from v.
       template <class U>
-      fractional(const array<U, 3> v) {
+      fractional(const carray<U, 3> v) {
         for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
       }
       //! The elements of the coordinate vector are copied from xyz.

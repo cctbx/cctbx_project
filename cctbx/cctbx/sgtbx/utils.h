@@ -87,7 +87,7 @@ namespace cctbx { namespace sgtbx {
     }
   }
 
-  template <class AnyType>
+  template <class AnyType> // XXX use vecrefnd
   class Array2DAdaptor {
     public:
       Array2DAdaptor(AnyType *M, int mc) : m_M(M), m_mc(mc) { }

@@ -323,7 +323,7 @@ namespace cctbx {
         m_ASU(ReciprocalSpaceASU(SgInfo)),
         m_Qhigh(-1.)
     {
-      InitializeLoop(Miller::Index(array_abs(MaxIndex)));
+      InitializeLoop(Miller::Index(carray_abs(MaxIndex)));
     }
 
     Miller::Index MillerIndexGenerator::next()

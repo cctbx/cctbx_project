@@ -9,7 +9,7 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.files = (
       "global/error.cpp",
       "global/bpl_utils.cpp",
-      "global/array_bpl.cpp",
+      "global/carray_bpl.cpp",
       "sftbx/sftbxmodule.cpp",
       "sftbx/tst.py",
     )
@@ -17,5 +17,5 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.boost_python_modules = {
       "sftbx": (("sftbxmodule",
                  "error",
-                 "bpl_utils", "array_bpl"), ("sgtbx", "uctbx")),
+                 "bpl_utils", "carray_bpl"), ("sgtbx", "uctbx")),
     }

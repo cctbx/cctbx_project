@@ -14,7 +14,7 @@
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
 #include <cctbx/std_vector_bpl.h>
-#include <cctbx/array_bpl.h>
+#include <cctbx/carray_bpl.h>
 
 using namespace cctbx;
 

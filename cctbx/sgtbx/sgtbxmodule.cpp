@@ -19,7 +19,7 @@
 #include <cctbx/sgtbx/miller_asu.h>
 #include <cctbx/sgtbx/seminvariant.h>
 #include <boost/python/cross_module.hpp>
-#include <cctbx/array_bpl.h>
+#include <cctbx/carray_bpl.h>
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 
@@ -86,9 +86,9 @@ namespace {
     RTMx N = M.newBaseFactors(RBF, TBF);
     tuple result(2);
     result.set_item(0,
-      ref(to_python(static_cast<array<int, 9> >(N.Rpart()))));
+      ref(to_python(static_cast<carray<int, 9> >(N.Rpart()))));
     result.set_item(1,
-      ref(to_python(static_cast<array<int, 3> >(N.Tpart()))));
+      ref(to_python(static_cast<carray<int, 3> >(N.Tpart()))));
     return result;
   }
 
@@ -110,8 +110,8 @@ namespace {
   RTMx RTMx_multiply_RTMx(const RTMx& lhs, const RTMx& rhs) {
     return lhs.multiply(rhs);
   }
-  array<double, 3>
-  RTMx_multiply_Vec3(const RTMx& lhs, const array<double, 3>& rhs) {
+  carray<double, 3>
+  RTMx_multiply_Vec3(const RTMx& lhs, const carray<double, 3>& rhs) {
     return lhs * rhs;
   }
 
@@ -211,7 +211,7 @@ namespace {
   SpaceGroup_StructureFactor_aniso(const SpaceGroup& SgOps,
                                    const Miller::Index& H,
                                    const cctbx::fractional<double>& X,
-                                   const array<double, 6>& Ustar) {
+                                   const carray<double, 6>& Ustar) {
     return SgOps.StructureFactor(H, X, Ustar);
   }
 
@@ -224,15 +224,15 @@ namespace {
     return SgOps.getZ2POp();
   }
 
-  array<int, 3>
+  carray<int, 3>
   SpaceGroup_refine_gridding_0(
     const SpaceGroup& SgOps) {
     return SgOps.refine_gridding();
   }
-  array<int, 3>
+  carray<int, 3>
   SpaceGroup_refine_gridding_1(
     const SpaceGroup& SgOps,
-    const array<int, 3>& grid) {
+    const carray<int, 3>& grid) {
     return SgOps.refine_gridding(grid);
   }
 
@@ -418,26 +418,26 @@ namespace {
   }
 
   bool SiteSymmetry_isCompatibleUstar_1(const SiteSymmetry& SS,
-                                        const array<double, 6>& Ustar) {
+                                        const carray<double, 6>& Ustar) {
     return SS.isCompatibleUstar(Ustar);
   }
   bool SiteSymmetry_isCompatibleUstar_2(const SiteSymmetry& SS,
-                                        const array<double, 6>& Ustar,
+                                        const carray<double, 6>& Ustar,
                                         double tolerance) {
     return SS.isCompatibleUstar(Ustar, tolerance);
   }
   void SiteSymmetry_CheckUstar_1(const SiteSymmetry& SS,
-                                 const array<double, 6>& Ustar) {
+                                 const carray<double, 6>& Ustar) {
     SS.CheckUstar(Ustar);
   }
   void SiteSymmetry_CheckUstar_2(const SiteSymmetry& SS,
-                                 const array<double, 6>& Ustar,
+                                 const carray<double, 6>& Ustar,
                                  double tolerance) {
     SS.CheckUstar(Ustar, tolerance);
   }
-  array<double, 6>
+  carray<double, 6>
   SiteSymmetry_AverageUstar(const SiteSymmetry& SS,
-                            const array<double, 6>& Ustar) {
+                            const carray<double, 6>& Ustar) {
     return SS.AverageUstar(Ustar);
   }
 
@@ -494,15 +494,15 @@ namespace {
     return TLA.ShiftPhase(F);
   }
 
-  array<int, 3>
+  carray<int, 3>
   StructureSeminvariant_refine_gridding_0(
     const StructureSeminvariant& ssVM) {
     return ssVM.refine_gridding();
   }
-  array<int, 3>
+  carray<int, 3>
   StructureSeminvariant_refine_gridding_1(
     const StructureSeminvariant& ssVM,
-    const array<int, 3>& grid) {
+    const carray<int, 3>& grid) {
     return ssVM.refine_gridding(grid);
   }
 

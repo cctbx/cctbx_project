@@ -28,7 +28,7 @@ namespace cctbx { namespace sgtbx {
 
     template <class FloatType>
     TrVec
-    getUnitShifts(const array<FloatType, 3>& Delta)
+    getUnitShifts(const carray<FloatType, 3>& Delta)
     {
       TrVec result(1);
       for(std::size_t i=0;i<3;i++) {
@@ -41,7 +41,7 @@ namespace cctbx { namespace sgtbx {
     template <class FloatType>
     double
     modShortLength2(const uctbx::UnitCell& uc,
-                    const array<FloatType, 3>& Diff) {
+                    const carray<FloatType, 3>& Diff) {
       return uc.Length2(fractional<FloatType>(Diff).modShort());
     }
 
@@ -263,7 +263,7 @@ namespace cctbx { namespace sgtbx {
        */
       template <class FloatType>
       bool
-      isCompatibleUstar(const array<FloatType, 6>& Ustar,
+      isCompatibleUstar(const carray<FloatType, 6>& Ustar,
                         FloatType tolerance = 1.e-6) const
       {
         FloatType scaled_tolerance = 0.;
@@ -273,15 +273,15 @@ namespace cctbx { namespace sgtbx {
           if (scaled_tolerance < x) scaled_tolerance = x;
         }
         scaled_tolerance *= tolerance;
-        array<FloatType, 9>
+        carray<FloatType, 9>
         U = MatrixLite::CondensedSymMx33_as_FullSymMx33(
           Ustar, MatrixLite::return_type<FloatType>());
         for (std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
-          array<FloatType, 9>
+          carray<FloatType, 9>
           R = m_PointGroup.Matrices[i].Rpart().as_array(FloatType());
-          array<FloatType, 9>
+          carray<FloatType, 9>
           RURt = MatrixLite::FullTensorTransformation(R, U);
-          array<FloatType, 6>
+          carray<FloatType, 6>
           Up = MatrixLite::FullSymMx33_as_CondensedSymMx33(
             RURt, MatrixLite::return_type<FloatType>());
           for(std::size_t j=0;j<6;j++) {
@@ -301,7 +301,7 @@ namespace cctbx { namespace sgtbx {
        */
       template <class FloatType>
       void
-      CheckUstar(const array<FloatType, 6>& Ustar,
+      CheckUstar(const carray<FloatType, 6>& Ustar,
                  double tolerance = 1.e-6) const
       {
         if (!isCompatibleUstar(Ustar, tolerance)) {
@@ -317,18 +317,18 @@ namespace cctbx { namespace sgtbx {
           p. 189.
        */
       template <class FloatType>
-      array<FloatType, 6>
-      AverageUstar(const array<FloatType, 6>& Ustar) const
+      carray<FloatType, 6>
+      AverageUstar(const carray<FloatType, 6>& Ustar) const
       {
-        array<FloatType, 9>
+        carray<FloatType, 9>
         U = MatrixLite::CondensedSymMx33_as_FullSymMx33(
           Ustar, MatrixLite::return_type<FloatType>());
-        array<FloatType, 9> SumRURt;
+        carray<FloatType, 9> SumRURt;
         SumRURt.assign(0.);
         for (std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
-          array<FloatType, 9>
+          carray<FloatType, 9>
           R = m_PointGroup.Matrices[i].Rpart().as_array(FloatType());
-          array<FloatType, 9>
+          carray<FloatType, 9>
           RURt = MatrixLite::FullTensorTransformation(R, U);
           SumRURt = SumRURt + RURt;
         }

@@ -46,14 +46,14 @@ namespace cctbx {
   }
   //! Convert anisotropic displacement parameters U -> B.
   template <class FloatType>
-  array<FloatType, 6>
-  U_as_B(const array<FloatType, 6>& Uaniso) {
+  carray<FloatType, 6>
+  U_as_B(const carray<FloatType, 6>& Uaniso) {
     return EightPiSquared * Uaniso;
   }
   //! Convert anisotropic displacement parameters B -> U.
   template <class FloatType>
-  array<FloatType, 6>
-  B_as_U(const array<FloatType, 6>& Baniso) {
+  carray<FloatType, 6>
+  B_as_U(const carray<FloatType, 6>& Baniso) {
     return (1. / EightPiSquared) * Baniso;
   }
 
@@ -73,11 +73,11 @@ namespace cctbx {
           Ustar23 = b* c* Uuvrs23</pre>
    */
   template <class FloatType>
-  array<FloatType, 6>
+  carray<FloatType, 6>
   Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
-                 const array<FloatType, 6>& Uuvrs) {
+                 const carray<FloatType, 6>& Uuvrs) {
     const uctbx::Vec3& R_Len = uc.getLen(true);
-    array<FloatType, 6> Ustar;
+    carray<FloatType, 6> Ustar;
     Ustar[0] = Uuvrs[0] * (R_Len[0] * R_Len[0]);
     Ustar[1] = Uuvrs[1] * (R_Len[1] * R_Len[1]);
     Ustar[2] = Uuvrs[2] * (R_Len[2] * R_Len[2]);
@@ -90,11 +90,11 @@ namespace cctbx {
   /*! Inverse of Uuvrs_as_Ustar().
    */
   template <class FloatType>
-  array<FloatType, 6>
+  carray<FloatType, 6>
   Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
-                 const array<FloatType, 6>& Ustar) {
+                 const carray<FloatType, 6>& Ustar) {
     const uctbx::Vec3& R_Len = uc.getLen(true);
-    array<FloatType, 6> Uuvrs;
+    carray<FloatType, 6> Uuvrs;
     Uuvrs[0] = Ustar[0] / (R_Len[0] * R_Len[0]);
     Uuvrs[1] = Ustar[1] / (R_Len[1] * R_Len[1]);
     Uuvrs[2] = Ustar[2] / (R_Len[2] * R_Len[2]);
@@ -111,9 +111,9 @@ namespace cctbx {
       where Ct is the transposed of C.
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Ucart_as_Ustar(const uctbx::UnitCell& uc,
-                 const array<FloatType, 6>& Ucart) {
+                 const carray<FloatType, 6>& Ucart) {
     return MatrixLite::CondensedTensorTransformation(
       uc.getFractionalizationMatrix(), Ucart);
   }
@@ -125,9 +125,9 @@ namespace cctbx {
       where Ct is the transposed of C.
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Ustar_as_Ucart(const uctbx::UnitCell& uc,
-                 const array<FloatType, 6>& Ustar) {
+                 const carray<FloatType, 6>& Ustar) {
     return MatrixLite::CondensedTensorTransformation(
       uc.getOrthogonalizationMatrix(), Ustar);
   }
@@ -137,9 +137,9 @@ namespace cctbx {
       as Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Ucart_as_Uuvrs(const uctbx::UnitCell& uc,
-                 const array<FloatType, 6>& Ucart) {
+                 const carray<FloatType, 6>& Ucart) {
     return Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart));
   }
   //! Convert anisotropic displacement parameters Uuvrs -> Ucart.
@@ -147,9 +147,9 @@ namespace cctbx {
       as Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Uuvrs_as_Ucart(const uctbx::UnitCell& uc,
-                 const array<FloatType, 6>& Uuvrs) {
+                 const carray<FloatType, 6>& Uuvrs) {
     return Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs));
   }
 
@@ -157,16 +157,16 @@ namespace cctbx {
   /*! The elements of Ustar are multiplied by 2pi^2.
    */
   template <class FloatType>
-  inline array<FloatType, 6>
-  Ustar_as_beta(const array<FloatType, 6>& Ustar) {
+  inline carray<FloatType, 6>
+  Ustar_as_beta(const carray<FloatType, 6>& Ustar) {
     return TwoPiSquared * Ustar;
   }
   //! Convert anisotropic displacement parameters beta -> Ustar.
   /*! The elements of beta are divided by 2pi^2.
    */
   template <class FloatType>
-  inline array<FloatType, 6>
-  beta_as_Ustar(const array<FloatType, 6>& beta) {
+  inline carray<FloatType, 6>
+  beta_as_Ustar(const carray<FloatType, 6>& beta) {
     return beta / TwoPiSquared;
   }
 
@@ -174,18 +174,18 @@ namespace cctbx {
   /*! This is implemented as Ustar_as_beta(Ucart_as_Ustar(uc, Ucart)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Ucart_as_beta(const uctbx::UnitCell& uc,
-                const array<FloatType, 6>& Ucart) {
+                const carray<FloatType, 6>& Ucart) {
     return Ustar_as_beta(Ucart_as_Ustar(uc, Ucart));
   }
   //! Convert anisotropic displacement parameters beta -> Ucart.
   /*! This is implemented as Ustar_as_Ucart(uc, beta_as_Ustar(beta)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   beta_as_Ucart(const uctbx::UnitCell& uc,
-                const array<FloatType, 6>& beta) {
+                const carray<FloatType, 6>& beta) {
     return Ustar_as_Ucart(uc, beta_as_Ustar(beta));
   }
 
@@ -193,18 +193,18 @@ namespace cctbx {
   /*! This is implemented as Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Uuvrs_as_beta(const uctbx::UnitCell& uc,
-                const array<FloatType, 6>& Uuvrs) {
+                const carray<FloatType, 6>& Uuvrs) {
     return Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs));
   }
   //! Convert anisotropic displacement parameters beta -> Uuvrs.
   /*! This is implemented as Ustar_as_Uuvrs(uc, beta_as_Ustar(beta)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   beta_as_Uuvrs(const uctbx::UnitCell& uc,
-                const array<FloatType, 6>& beta) {
+                const carray<FloatType, 6>& beta) {
     return Ustar_as_Uuvrs(uc, beta_as_Ustar(beta));
   }
 
@@ -214,7 +214,7 @@ namespace cctbx {
    */
   template <class FloatType>
   inline FloatType
-  Ucart_as_Uiso(const array<FloatType, 6>& Ucart)
+  Ucart_as_Uiso(const carray<FloatType, 6>& Ucart)
   {
     return (Ucart[0] + Ucart[1] + Ucart[2]) / 3.;
   }
@@ -223,10 +223,10 @@ namespace cctbx {
       The off-diagonal components Ucart are set to zero.
    */
   template <class FloatType>
-  array<FloatType, 6>
+  carray<FloatType, 6>
   Uiso_as_Ucart(const FloatType& Uiso)
   {
-    array<FloatType, 6> result;
+    carray<FloatType, 6> result;
     result.assign(0.);
     for(std::size_t i=0;i<3;i++) result[i] = Uiso;
     return result;
@@ -238,7 +238,7 @@ namespace cctbx {
   template <class FloatType>
   inline FloatType
   Ustar_as_Uiso(const uctbx::UnitCell& uc,
-                const array<FloatType, 6>& Ustar)
+                const carray<FloatType, 6>& Ustar)
   {
     return Ucart_as_Uiso(Ustar_as_Ucart(uc, Ustar));
   }
@@ -246,7 +246,7 @@ namespace cctbx {
   /*! This is implemented as Ucart_as_Ustar(uc, Uiso_as_Ucart(Uiso)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Uiso_as_Ustar(const uctbx::UnitCell& uc,
                 const FloatType& Uiso)
   {
@@ -259,7 +259,7 @@ namespace cctbx {
   template <class FloatType>
   inline FloatType
   Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
-                const array<FloatType, 6>& Uuvrs)
+                const carray<FloatType, 6>& Uuvrs)
   {
     return Ucart_as_Uiso(Uuvrs_as_Ucart(uc, Uuvrs));
   }
@@ -267,7 +267,7 @@ namespace cctbx {
   /*! This is implemented as Ucart_as_Uuvrs(uc, Uiso_as_Ucart(Uiso)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
                 const FloatType& Uiso)
   {
@@ -280,7 +280,7 @@ namespace cctbx {
   template <class FloatType>
   inline FloatType
   beta_as_Uiso(const uctbx::UnitCell& uc,
-                const array<FloatType, 6>& beta)
+               const carray<FloatType, 6>& beta)
   {
     return Ucart_as_Uiso(beta_as_Ucart(uc, beta));
   }
@@ -288,7 +288,7 @@ namespace cctbx {
   /*! This is implemented as Ucart_as_beta(uc, Uiso_as_Ucart(Uiso)).
    */
   template <class FloatType>
-  inline array<FloatType, 6>
+  inline carray<FloatType, 6>
   Uiso_as_beta(const uctbx::UnitCell& uc,
                 const FloatType& Uiso)
   {
@@ -330,7 +330,7 @@ namespace cctbx {
   template <class FloatType>
   inline FloatType
   DebyeWallerFactorUstar(const Miller::Index& MIx,
-                         const array<FloatType, 6>& Ustar)
+                         const carray<FloatType, 6>& Ustar)
   {
     return std::exp(-TwoPiSquared * (
         (MIx[0] * MIx[0]) * Ustar[0]
@@ -345,7 +345,7 @@ namespace cctbx {
   template <class FloatType>
   inline FloatType
   DebyeWallerFactor_beta(const Miller::Index& MIx,
-                         const array<FloatType, 6>& beta)
+                         const carray<FloatType, 6>& beta)
   {
     return DebyeWallerFactorUstar(MIx, beta_as_Ustar(beta));
   }
@@ -355,7 +355,7 @@ namespace cctbx {
   inline FloatType
   DebyeWallerFactorUuvrs(const uctbx::UnitCell& uc,
                          const Miller::Index& MIx,
-                         const array<FloatType, 6>& Uuvrs)
+                         const carray<FloatType, 6>& Uuvrs)
   {
     return DebyeWallerFactorUstar(MIx, Uuvrs_as_Ustar(uc, Uuvrs));
   }
@@ -364,7 +364,7 @@ namespace cctbx {
   inline FloatType
   DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
                          const Miller::Index& MIx,
-                         const array<FloatType, 6>& Ucart)
+                         const carray<FloatType, 6>& Ucart)
   {
     return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));
   }
@@ -383,8 +383,8 @@ namespace cctbx {
       See also: Eigenvectors().
    */
   template <class FloatType>
-  array<FloatType, 3>
-  Eigenvalues(const array<FloatType, 6>& adp)
+  carray<FloatType, 3>
+  Eigenvalues(const carray<FloatType, 6>& adp)
   {
     /* The eigenvalues lambda are found by:
          1. Determining the elements of the matrix (adp - lambda * I),
@@ -427,7 +427,7 @@ namespace cctbx {
     std::complex<FloatType> epsilon2 = std::conj(epsilon1);
     // since the anisotropic displacement tensor is a symmetric matrix,
     // all the imaginary components of the roots must be zero.
-    array<FloatType, 3> result;
+    carray<FloatType, 3> result;
     result[0] = (u + v).real();
     result[1] = (epsilon1 * u + epsilon2 * v).real();
     result[2] = (epsilon2 * u + epsilon1 * v).real();
@@ -446,8 +446,8 @@ namespace cctbx {
    */
   template <class FloatType>
   bool
-  isPositiveDefinite(const array<FloatType, 3>& adp_eigenvalues) {
-    return adp_eigenvalues[array_min_index(adp_eigenvalues)] > 0.;
+  isPositiveDefinite(const carray<FloatType, 3>& adp_eigenvalues) {
+    return adp_eigenvalues[carray_min_index(adp_eigenvalues)] > 0.;
   }
 
   /*! \brief Test if the anisotropic displacement tensor is
@@ -459,7 +459,7 @@ namespace cctbx {
    */
   template <class FloatType>
   bool
-  isPositiveDefinite(const array<FloatType, 6>& adp) {
+  isPositiveDefinite(const carray<FloatType, 6>& adp) {
     return isPositiveDefinite(Eigenvalues(adp));
   }
 
@@ -472,7 +472,7 @@ namespace cctbx {
    */
   template <class FloatType>
   void
-  CheckPositiveDefinite(const array<FloatType, 3>& adp_eigenvalues) {
+  CheckPositiveDefinite(const carray<FloatType, 3>& adp_eigenvalues) {
     if (!(isPositiveDefinite(adp_eigenvalues))) {
      throw not_positive_definite;
     }
@@ -487,27 +487,27 @@ namespace cctbx {
    */
   template <class FloatType>
   void
-  CheckPositiveDefinite(const array<FloatType, 6>& adp) {
+  CheckPositiveDefinite(const carray<FloatType, 6>& adp) {
     CheckPositiveDefinite(Eigenvalues(adp));
   }
 
   namespace detail {
 
     template <class FloatType>
-    std::pair<array<FloatType, 3>, FloatType>
-    recursively_multiply(const array<FloatType, 9>& M,
-                         array<FloatType, 3> V,
+    std::pair<carray<FloatType, 3>, FloatType>
+    recursively_multiply(const carray<FloatType, 9>& M,
+                         carray<FloatType, 3> V,
                          FloatType tolerance = 1.e-6)
     {
       unsigned int RunAwayCounter = 0;
       for (;;) {
-        array<FloatType, 3> MV;
+        carray<FloatType, 3> MV;
         MatrixLite::multiply<FloatType>(M.elems, V.elems, 3, 3, 1, MV.elems);
         FloatType abs_lambda = std::sqrt(MV * MV);
         if (abs_lambda == 0.) throw not_positive_definite;
         MV = MV / abs_lambda;
-        array<FloatType, 3> absMV = array_abs(MV);
-        std::size_t iMax = array_max_index(absMV);
+        carray<FloatType, 3> absMV = carray_abs(MV);
+        std::size_t iMax = carray_max_index(absMV);
         FloatType scaled_tolerance = absMV[iMax] * tolerance;
         bool converged = MatrixLite::approx_equal_scaled(
           MV, V, scaled_tolerance);
@@ -550,10 +550,10 @@ namespace cctbx {
           <p>
           See also: Eigenvalues().
        */
-      Eigensystem(const array<FloatType, 6>& adp,
+      Eigensystem(const carray<FloatType, 6>& adp,
                   FloatType tolerance = 1.e-6)
       {
-        array<FloatType, 9> M[2];
+        carray<FloatType, 9> M[2];
         M[0] = MatrixLite::CondensedSymMx33_as_FullSymMx33(adp,
                MatrixLite::return_type<FloatType>());
         FloatType d = MatrixLite::Determinant(M[0]);
@@ -563,18 +563,18 @@ namespace cctbx {
         M[1] = MatrixLite::CoFactorMxTp(M[0]) / d;
         std::size_t iLarge[2];
         for(std::size_t iM=0;iM<2;iM++) {
-          array<FloatType, 3>
-          absDiag = array_abs(MatrixLite::DiagonalElements(M[iM]));
-          iLarge[iM] = array_max_index(absDiag);
+          carray<FloatType, 3>
+          absDiag = carray_abs(MatrixLite::DiagonalElements(M[iM]));
+          iLarge[iM] = carray_max_index(absDiag);
           if (iM != 0 && iLarge[1] == iLarge[0]) {
             absDiag[iLarge[1]] = -1.;
-            iLarge[1] = array_max_index(absDiag);
+            iLarge[1] = carray_max_index(absDiag);
             cctbx_assert(iLarge[1] != iLarge[0]);
           }
-          array<FloatType, 3> V;
+          carray<FloatType, 3> V;
           V.assign(0.);
           V[iLarge[iM]] = 1.;
-          std::pair<array<FloatType, 3>, FloatType>
+          std::pair<carray<FloatType, 3>, FloatType>
           V_lambda = detail::recursively_multiply(M[iM], V);
           m_vectors[iM] = V_lambda.first;
           m_values[iM] = V_lambda.second;
@@ -587,7 +587,7 @@ namespace cctbx {
       //! Access the i'th eigenvector.
       /*! An exception is thrown if i >= 3.
        */
-      const array<FloatType, 3>&
+      const carray<FloatType, 3>&
       vectors(std::size_t i) const {
         if (i >= m_vectors.size()) throw error_index();
         return m_vectors[i];
@@ -601,8 +601,8 @@ namespace cctbx {
         return m_values[i];
       }
     private:
-      array<array<FloatType, 3>, 3> m_vectors;
-      array<FloatType, 3> m_values;
+      carray<carray<FloatType, 3>, 3> m_vectors;
+      carray<FloatType, 3> m_values;
   };
 
 }} // namespace cctbx::adptbx

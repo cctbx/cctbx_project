@@ -1,7 +1,7 @@
 # $Id$
 
 # Visual C++ 6.0 does not support partial ordering. Therefore the
-# Boost.Python converters for boost arrays need to be enumerated
+# Boost.Python converters for carrays need to be enumerated
 # explicitly.
 
 def write_copyright():
@@ -17,8 +17,8 @@ def write_copyright():
 
 def one_definition(T, N, declaration):
   prototype = """
-  cctbx::array<%s, %d> from_python(PyObject* p,
-    boost::python::type<const cctbx::array<%s, %d>&>)""" % (T, N, T, N)
+  cctbx::carray<%s, %d> from_python(PyObject* p,
+    boost::python::type<const cctbx::carray<%s, %d>&>)""" % (T, N, T, N)
   if (declaration):
     print prototype + ";"
   else:
@@ -27,7 +27,7 @@ def one_definition(T, N, declaration):
   {
     boost::python::tuple
     tup = cctbx::bpl_utils::tuple_from_python_list_or_tuple(p);
-    cctbx::array<%s, %d> result;
+    cctbx::carray<%s, %d> result;
     if (tup.size() != result.size()) {
       PyErr_SetString(PyExc_ValueError,
         "incorrect number of values in tuple.");
@@ -40,7 +40,7 @@ def one_definition(T, N, declaration):
   }""" % (T, N, T)
 
   prototype = """
-  PyObject* to_python(const cctbx::array<%s, %d>& tobj)""" % (T, N)
+  PyObject* to_python(const cctbx::carray<%s, %d>& tobj)""" % (T, N)
   if (declaration):
     print prototype + ";"
   else:
@@ -58,10 +58,10 @@ def one_definition(T, N, declaration):
 def write_declarations(T_N_List):
   write_copyright()
   print """
-#ifndef CCTBX_ARRAY_BPL_H
-#define CCTBX_ARRAY_BPL_H
+#ifndef CCTBX_CARRAY_BPL_H
+#define CCTBX_CARRAY_BPL_H
 
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 """
@@ -72,13 +72,13 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
   print """
 BOOST_PYTHON_END_CONVERSION_NAMESPACE
 
-#endif // CCTBX_BASIC_BOOST_ARRAY_BPL_H
+#endif // CCTBX_CARRAY_BPL_H
 """
 
 def write_definitions(T_N_List):
   write_copyright()
   print """
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 #include <cctbx/bpl_utils.h>
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
@@ -105,12 +105,12 @@ def run():
     T_N("double", 9),
   )
   import sys
-  f = open("array_bpl.h", "w")
+  f = open("carray_bpl.h", "w")
   sys.stdout = f
   write_declarations(T_N_List)
   sys.stdout = sys.__stdout__
   f.close()
-  f = open("array_bpl.cpp", "w")
+  f = open("carray_bpl.cpp", "w")
   sys.stdout = f
   write_definitions(T_N_List)
   sys.stdout = sys.__stdout__

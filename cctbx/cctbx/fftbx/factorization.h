@@ -12,7 +12,7 @@
 #define CCTBX_FFTBX_FACTORIZATION_H
 
 #include <vector>
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 
 namespace cctbx { namespace fftbx {
 
