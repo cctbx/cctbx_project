@@ -32,7 +32,7 @@ def exercise(space_group_info, anomalous_flag,
   asu_contents = dicts.with_default_value(0)
   for elem in elements: asu_contents[elem] += 1
   wp = statistics.wilson_plot(f_obs_array, asu_contents)
-  if (1 or verbose):
+  if (0 or verbose):
     print "wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b
   assert 0.6 < wp.wilson_k < 1.4
   assert 9 < wp.wilson_b < 11
