@@ -39,8 +39,8 @@ def exercise(space_group_info, n_scatterers=8, d_min=2.5,
     verbose=verbose)
   if (f_calc is None): return
   data = flex.norm(f_calc.data())
-  scale_factor = 9999999/flex.max(data)
-  data = data * scale_factor
+  scale_factor = 9999998/flex.max(data)
+  data = data * scale_factor + 1
   f_calc = miller.array(
     miller_set=f_calc,
     data=data,
