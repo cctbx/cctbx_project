@@ -337,8 +337,10 @@ def emit_env_run_sh(env):
   f.close()
   os.chmod(env_run_sh, 0755)
 
-def emit_setpaths_csh(env):
-  setpaths_csh_path = norm(join(env.LIBTBX_BUILD, "setpaths.csh"))
+def emit_setpaths_csh(env, all):
+  if (all): s = "_all"
+  else:     s = ""
+  setpaths_csh_path = norm(join(env.LIBTBX_BUILD, "setpaths%s.csh"%s))
   unsetpaths_csh_path = norm(join(env.LIBTBX_BUILD, "unsetpaths.csh"))
   s = open_info(setpaths_csh_path)
   u = open_info(unsetpaths_csh_path)
@@ -355,11 +357,13 @@ def emit_setpaths_csh(env):
       """  alias libtbx.%ssetpaths 'source "%s/%ssetpaths.csh"'""" % (
         un, env.LIBTBX_BUILD, un)
   print >> u, '  unalias libtbx.unsetpaths'
-  print >> s, '  if ($#argv != 0) then'
+  if (all): c = "#"
+  else:     c = ""
+  print >> s, '  %sif ($#argv != 0) then' % c
   print >> s, \
-    '    if ($#argv != 1 || ("$1" != "all" && "$1" != "debug")) then'
-  print >> s, '      echo "usage: source setpaths.csh [all|debug]"'
-  print >> s, '    else'
+    '    %sif ($#argv != 1 || ("$1" != "all" && "$1" != "debug")) then' % c
+  print >> s, '    %s  echo "usage: source setpaths.csh [all|debug]"' % c
+  print >> s, '    %selse' % c
   print >> s, '      setenv %s "%s"' % ("LIBTBX_BUILD", env.LIBTBX_BUILD)
   print >> u, '  unsetenv %s' % "LIBTBX_BUILD"
   for var_name, values in env.items():
@@ -374,8 +378,8 @@ def emit_setpaths_csh(env):
     ld_library_path = "LD_LIBRARY_PATH"
   update_path.write(("        ", "  "), ld_library_path, env.LD_LIBRARY_PATH)
   print >> s, '      endif'
-  print >> s, '    endif'
-  print >> s, '  endif'
+  print >> s, '    %sendif' % c
+  print >> s, '  %sendif' % c
   for f in s, u:
     print >> f, 'endif'
   s.close()
@@ -605,7 +609,8 @@ def run(libtbx_dist, args, old_env=None):
   if (hasattr(os, "symlink")):
     emit_setpaths_sh(env)
     emit_env_run_sh(env)
-    emit_setpaths_csh(env)
+    for all in [False, True]:
+      emit_setpaths_csh(env, all)
   else:
     emit_setpaths_bat(env)
   if (len(packages.missing_for_build) == 0):
