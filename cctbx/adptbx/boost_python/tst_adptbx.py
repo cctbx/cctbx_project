@@ -94,6 +94,21 @@ def exercise_debye_waller():
   assert abs(adptbx.debye_waller_factor_u_cif(ucell, (1, 2, 3), u)
              - 0.335822877927) < 1.e-6
 
+def exercise_grad_u_transformations():
+  uc = uctbx.unit_cell(
+    (12.296512479074615, 15.985466222796999, 20.904071214426843,
+     83.0, 109.0, 129.0))
+  grad_u_star = (
+    1681615.347859645, 1740095.5140965185, 2212142.6517873215,
+    -2802250.0492254314, -1934508.748421974, 1503834.0901063806)
+  grad_u_cart = adptbx.grad_u_star_as_u_cart(uc, grad_u_star)
+  assert approx_equal(grad_u_cart,
+    (11121.484290152286, 3713.1538936460488, 4293.4422553333607,
+     -332.12536958297818, -340.3709419122527, 406.25522344235526))
+  assert approx_equal(
+    grad_u_star,
+    adptbx.grad_u_cart_as_u_star(uc, grad_u_cart))
+
 def exercise_eigen_core(diag):
   u = adptbx.random_rotate_ellipsoid(diag + [0.,0.,0.])
   ev = list(adptbx.eigenvalues(u))
@@ -132,6 +147,7 @@ def exercise_eigen(n_trials=100):
 def run():
   exercise_interface()
   exercise_debye_waller()
+  exercise_grad_u_transformations()
   exercise_eigen()
   print "OK"
 
