@@ -265,6 +265,19 @@ class environment:
     for name,path in module.name_and_dist_path_pairs():
       self.module_dist_paths[name] = path
 
+  def find_dist_path(self, module_name, optional=False):
+    for path in self.repository_paths:
+      dist_path = self.abs_path_clean(libtbx.path.norm_join(path, module_name))
+      if (os.path.isdir(dist_path)):
+        return dist_path
+    if (not optional):
+      msg = ["Module not found: %s" % module_name,
+             "  Repository directories searched:"]
+      for path in self.repository_paths:
+        msg.append("    " + path)
+      raise UserError("\n".join(msg))
+    return None
+
   def process_module(self, dependent_module, module_name, optional):
     dist_path = self.find_dist_path(module_name, optional=optional)
     if (dist_path is None): return False
@@ -286,19 +299,6 @@ class environment:
         break
     else:
       self.repository_paths.append(path)
-
-  def find_dist_path(self, module_name, optional=False):
-    for path in self.repository_paths:
-      dist_path = self.abs_path_clean(libtbx.path.norm_join(path, module_name))
-      if (os.path.isdir(dist_path)):
-        return dist_path
-    if (not optional):
-      msg = ["Module not found: %s" % module_name,
-             "  Repository directories searched:"]
-      for path in self.repository_paths:
-        msg.append("    " + path)
-      raise UserError("\n".join(msg))
-    return None
 
   def process_args(self, args, default_repository=None):
     cold_start = default_repository is not None
