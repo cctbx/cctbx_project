@@ -270,6 +270,13 @@ class structure(crystal.special_position_settings):
     if (sum_w == 0): return sum_wc
     return sum_wc / sum_w
 
+def u_extra_as_quality_factor(d_min, grid_resolution_factor, u_extra):
+  assert d_min > 0
+  b = adptbx.u_as_b(u_extra)
+  sigma = 1 / (2 * grid_resolution_factor)
+  log_quality_factor = b * sigma * (sigma - 1) / (d_min * d_min)
+  return 10**log_quality_factor
+
 class _target_functor_base:
 
   def __call__(self, f_calc, compute_derivatives):

@@ -63,8 +63,18 @@ def exercise_structure():
   ys.shift_occupancy(1, -0.1)
   assert approx_equal(ys.scatterers()[1].weight(),0.2)
 
+def exercise_u_extra():
+  d_min = 9
+  grid_resolution = 1/3.
+  for quality_factor in (1,2,4,8,10,100,200,1000):
+    u_extra = xray.calc_u_extra(d_min, grid_resolution, quality_factor)
+    assert approx_equal(
+      quality_factor,
+      xray.u_extra_as_quality_factor(d_min, grid_resolution, u_extra))
+
 def run():
   exercise_structure()
+  exercise_u_extra()
   print "OK"
 
 if (__name__ == "__main__"):
