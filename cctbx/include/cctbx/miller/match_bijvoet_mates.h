@@ -83,6 +83,9 @@ namespace cctbx { namespace miller {
       void
       size_assert(std::size_t sz) const;
 
+      af::shared<bool>
+      hemisphere_selection(char plus_or_minus) const;
+
       af::shared<index<> >
       miller_indices_in_hemisphere(char plus_or_minus) const;
 

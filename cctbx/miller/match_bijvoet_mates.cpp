@@ -55,6 +55,20 @@ namespace cctbx { namespace miller {
     CCTBX_ASSERT(sz == size_processed());
   }
 
+  af::shared<bool>
+  match_bijvoet_mates::hemisphere_selection(char plus_or_minus) const
+  {
+    CCTBX_ASSERT(plus_or_minus == '+' || plus_or_minus == '-');
+    size_assert_intrinsic();
+    std::size_t j = 0;
+    if (plus_or_minus == '-') j = 1;
+    af::shared<bool> result(miller_indices_.size(), false);
+    for(std::size_t i=0;i<pairs_.size();i++) {
+      result[pairs_[i][j]] = true;
+    }
+    return result;
+  }
+
   af::shared<index<> >
   match_bijvoet_mates::miller_indices_in_hemisphere(char plus_or_minus) const
   {

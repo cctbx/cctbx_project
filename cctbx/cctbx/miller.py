@@ -283,29 +283,46 @@ class array(set):
       asu = self.map_to_asu()
       matching = match_bijvoet_mates(
         asu.space_group_info().type(), asu.indices())
-      d = asu.data()
     else:
-      matching = match_bijvoet_mates(self.indices())
-      d = self.data()
+      asu = self
+      matching = match_bijvoet_mates(asu.indices())
     i = matching.miller_indices_in_hemisphere("+")
-    d = matching.minus(d)
+    d = matching.minus(asu.data())
     s = None
-    if (self.sigmas() != None):
-      s = matching.additive_sigmas(self.sigmas())
-    return array(set(self, i, anomalous_flag=00000), d, s)
+    if (asu.sigmas() != None):
+      s = matching.additive_sigmas(asu.sigmas())
+    return array(set(asu, i, anomalous_flag=00000), d, s)
+
+  def hemisphere(self, plus_or_minus):
+    assert plus_or_minus in ("+", "-")
+    assert self.anomalous_flag() == 0001
+    assert self.indices() != None
+    assert self.data() != None
+    if (self.space_group() != None):
+      asu = self.map_to_asu()
+      matching = match_bijvoet_mates(
+        asu.space_group_info().type(), asu.indices())
+    else:
+      asu = self
+      matching = match_bijvoet_mates(asu.indices())
+    return asu.apply_selection(
+      flags=matching.hemisphere_selection(plus_or_minus),
+      anomalous_flag=00000)
 
   def all_selection(self):
     return flex.bool(self.indices().size(), 0001)
 
-  def apply_selection(self, flags, negate=00000):
+  def apply_selection(self, flags, negate=00000, anomalous_flag=None):
     assert self.indices() != None
+    if (anomalous_flag == None):
+      anomalous_flag = self.anomalous_flag()
     if (negate): flags = ~flags
     i = self.indices().select(flags)
     d = None
     if (self.data() != None): d = self.data().select(flags)
     s = None
     if (self.sigmas() != None): s = self.sigmas().select(flags)
-    return array(set(self, i, self.anomalous_flag()), d, s)
+    return array(set(self, i, anomalous_flag), d, s)
 
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
     d = self.d_spacings().data()

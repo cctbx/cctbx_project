@@ -33,6 +33,7 @@ namespace {
         .def("pairs", &w_t::pairs)
         .def("singles", &w_t::singles)
         .def("have_singles", &w_t::have_singles)
+        .def("hemisphere_selection",&w_t::hemisphere_selection)
         .def("miller_indices_in_hemisphere",&w_t::miller_indices_in_hemisphere)
 #define CCTBX_DEF(function_name) \
         .def(# function_name, \
