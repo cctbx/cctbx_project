@@ -32,9 +32,10 @@ of settings where the result of the transformation depends
 on the choice.  For these settings IT-A1983 does not
 unambiguously define a specific space group representation
 for the given Hermann-Mauguin symbol (see e.g. F41 below).
-The situation is similar for the transformation from
-a primitive trigonal or hexagonal setting to a triple cell
-H setting.
+The situation is similar for the transformation from a
+primitive trigonal or hexagonal setting to a triple cell H
+setting. Unfortunately there is no established notation
+for resolving these ambigous definitions of IT-1983.
 
 \par
 
@@ -73,16 +74,14 @@ space groups.
 
 It is beyond the scope of the sgtbx to provide a table of
 historic space group symbols that are only referred to in
-very old papers. Unfortunately there is no established
-notation for resolving the ambigous definition of IT-1983.
-A related problem is that the Protein Data Bank (PDB)
-sometimes (and sometimes not...) uses the symbol H to
-distinguish between the hexagonal and the rhombohedral
-setting of trigonal space groups (e.g. the symbol <i>H
-3</i> in the PDB corresponds to <i>R 3 with hexangonal
-axes</i> in IT-A1983). It could therefore cause significant
-confusion if the sgtbx interprets the PDB symbols according
-to the IT-1935 conventions.
+very old papers. A related problem is that the Protein Data
+Bank (PDB) sometimes uses the symbol H to distinguish
+between the hexagonal and the rhombohedral setting of
+trigonal space groups (e.g. the symbol <i>H 3</i> in the
+PDB corresponds to <i>R 3 with hexangonal axes</i> in
+IT-A1983). It could therefore cause significant confusion
+if the sgtbx interprets the PDB symbols according to the
+IT-1935 conventions.
 
 \par
 

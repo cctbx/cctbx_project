@@ -119,6 +119,8 @@ namespace sgtbx {
         used!
         <p>
       </ul>
+      <p>
+      See also: \ref page_multiple_cell
    */
   class SpaceGroupSymbols {
     public:
