@@ -6,6 +6,7 @@ from cctbx_boost import fftbx
 from cctbx import xutils
 from cctbx.development import debug_utils
 from cctbx_boost import dmtbx
+from cctbx import euclidean_model_matching as emma
 
 def ampl_phase(f, deg=0):
   amplidutes = shared.double()
@@ -15,6 +16,12 @@ def ampl_phase(f, deg=0):
     amplidutes.append(a)
     phases.append(p)
   return amplidutes, phases
+
+def show_ampl_phases(miller_indices, ampl, phases, deg=0):
+  for i in xrange(miller_indices.size()):
+    phi = phases[i]
+    if (not deg): phi *= 180/math.pi
+    print miller_indices[i], "%.2f %.2f" % (ampl[i], phi)
 
 def inplace_divide(array, arg):
   for i in xrange(array.size()):
@@ -50,6 +57,7 @@ def compute_mean_weighted_phase_error(tprs, sgops, h, f, phi1, phi2, verbose=0):
 def square_emap(xtal, e000, p1_miller_indices,
                 miller_indices, e_values, phases):
   index_span = sftbx.index_span(p1_miller_indices)
+  # XXX index_span = xtal.SgOps.get_index_span(miller_indices)
   if (1):
     print "index_span:"
     print "  min:", index_span.min()
@@ -114,6 +122,62 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
     tprs.dump_triplets(miller_indices_h)
   return tprs
 
+class simulated_data:
+
+  def __init__(self, SgInfo,
+               number_of_point_atoms = 10,
+               d_min=1.,
+               e_min=1.8,
+               verbose=0):
+    elements = ["const"] * number_of_point_atoms
+    print "random.getstate():", debug_utils.random.getstate()
+    if (0):
+      debug_utils.random.setstate((1, (29212, 18333, 13885), None))
+    xtal = debug_utils.random_structure(
+      SgInfo, elements,
+      volume_per_atom=50.,
+      min_distance=1.5,
+      general_positions_only=0,
+      no_random_u=1)
+    print "Unit cell:", xtal.UnitCell
+    print "Space group:", xtal.SgInfo.BuildLookupSymbol()
+    debug_utils.print_sites(xtal)
+    MillerIndices = xutils.build_miller_indices(
+      xtal, friedel_flag=1,d_min=d_min)
+    if (0):
+      MillerIndices.H = shared.Miller_Index()
+      MillerIndices.H.append((0,2,0))
+      MillerIndices.H.append((1,1,15))
+    MillerIndices.H.append((0,0,0))
+    Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=1)
+    print "F000:", Fcalc.F[MillerIndices.H.size()-1]
+    e_values = Fcalc.F
+    inplace_divide(
+      e_values, math.sqrt(xtal.SgOps.OrderZ() * number_of_point_atoms))
+    e000 = e_values[MillerIndices.H.size()-1]
+    print "E000:", e000
+    MillerIndices.H.pop_back()
+    e_values.pop_back()
+    dmtbx.inplace_sort(MillerIndices.H, e_values, 1)
+    s = shared.statistics(e_values)
+    print "mean2:", s.mean2()
+    print "number of structure factors:", e_values.size()
+    erase_small(MillerIndices.H, e_values, e_min)
+    print "number of structure factors:", e_values.size()
+    normalize_quasi_normalized(xtal.SgOps, MillerIndices.H, e_values)
+    Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=0)
+    dummy, phases = ampl_phase(Fcalc.F) # XXX use shared.arg()
+    Fcalc.F = e_values
+    if (0 or verbose):
+      debug_utils.print_structure_factors(Fcalc)
+    if (0 or verbose):
+      show_ampl_phases(Fcalc.H, e_values, phases)
+    self.xtal = xtal
+    self.miller_indices = MillerIndices
+    self.e_values = e_values
+    self.phases = phases
+    self.e000 = e000
+
 def exercise(SgInfo,
              number_of_point_atoms = 10,
              d_min=1.,
@@ -122,76 +186,33 @@ def exercise(SgInfo,
              other_than_sigma_2=0,
              exercise_squaring=0,
              verbose=0):
-  elements = ["const"] * number_of_point_atoms
-  print "random.getstate():", debug_utils.random.getstate()
-  if (0):
-    debug_utils.random.setstate((1, (29212, 18333, 13885), None))
-  xtal = debug_utils.random_structure(
-    SgInfo, elements,
-    volume_per_atom=50.,
-    min_distance=1.5,
-    general_positions_only=0,
-    no_random_u=1)
-  print "Unit cell:", xtal.UnitCell
-  print "Space group:", xtal.SgInfo.BuildLookupSymbol()
-  debug_utils.print_sites(xtal)
-  MillerIndices = xutils.build_miller_indices(xtal, friedel_flag=1,d_min=d_min)
-  if (0):
-    MillerIndices.H = shared.Miller_Index()
-    MillerIndices.H.append((0,2,0))
-    MillerIndices.H.append((1,1,15))
-  MillerIndices.H.append((0,0,0))
-  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=1)
-  print "F000:", Fcalc.F[MillerIndices.H.size()-1]
-  e_values = Fcalc.F
-  inplace_divide(
-    e_values, math.sqrt(xtal.SgOps.OrderZ() * number_of_point_atoms))
-  e000 = e_values[MillerIndices.H.size()-1]
-  print "E000:", e000
-  MillerIndices.H.pop_back()
-  e_values.pop_back()
-  dmtbx.inplace_sort(MillerIndices.H, e_values, 1)
-  s = shared.statistics(e_values)
-  print "mean2:", s.mean2()
-  print "number of structure factors:", e_values.size()
-  erase_small(MillerIndices.H, e_values, e_min)
-  print "number of structure factors:", e_values.size()
-  normalize_quasi_normalized(xtal.SgOps, MillerIndices.H, e_values)
-  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=0)
-  dummy, phases = ampl_phase(Fcalc.F)
-  Fcalc.F = e_values
-  if (0 or verbose):
-    debug_utils.print_structure_factors(Fcalc)
-  if (0 or verbose):
-    for i in xrange(Fcalc.H.size()):
-      print Fcalc.H[i], "%.2f %.2f" % (e_values[i], phases[i]*180/math.pi)
+  sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
   p1_H = shared.Miller_Index()
   p1_e_values = shared.double()
   p1_phases = shared.double()
   sgtbx.expand_to_p1(
-    xtal.SgOps, 1,
-    MillerIndices.H, e_values, phases,
+    sim.xtal.SgOps, 1,
+    sim.miller_indices.H, sim.e_values, sim.phases,
     p1_H, p1_e_values, p1_phases)
   print "number of structure factors p1:", p1_H.size()
   if (0 or verbose):
-    for i in xrange(p1_H.size()):
-      print p1_H[i], "%.2f %.2f" % (p1_e_values[i], p1_phases[i]*180/math.pi)
+    show_ampl_phases(p1_H, p1_e_values, p1_phases)
   tprs_sg = None
   if (exercise_triplets):
     tprs_sg = test_triplet_invariants(
-      xtal.SgInfo, MillerIndices.H, e_values, phases, other_than_sigma_2,
-      verbose)
+      sim.xtal.SgInfo, sim.miller_indices.H, sim.e_values, sim.phases,
+      other_than_sigma_2, verbose)
     if (other_than_sigma_2):
       tprs_p1 = test_triplet_invariants(
         sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, 1, verbose)
-      sg_new_phases = tprs_sg.apply_tangent_formula(e_values, phases)
+      sg_new_phases = tprs_sg.apply_tangent_formula(sim.e_values, sim.phases)
       p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
       ref_p1_H = shared.Miller_Index()
       ref_p1_e_values = shared.double()
       ref_p1_phases = shared.double()
       sgtbx.expand_to_p1(
-        xtal.SgOps, 1,
-        MillerIndices.H, e_values, sg_new_phases,
+        sim.xtal.SgOps, 1,
+        sim.miller_indices.H, sim.e_values, sg_new_phases,
         ref_p1_H, ref_p1_e_values, ref_p1_phases)
       js = shared.join_sets(ref_p1_H, p1_H)
       assert not js.have_singles()
@@ -211,16 +232,104 @@ def exercise(SgInfo,
         print
   if (exercise_squaring):
     new_phases = square_emap(
-      xtal, e000, p1_H, MillerIndices.H, e_values, phases)
+      sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, sim.phases)
     tprs_plus = [tprs_sg]
     if (tprs_sg != None): tprs_plus.append(None)
     for t in tprs_plus:
       mwpe = compute_mean_weighted_phase_error(
         t,
-        MillerIndices.SgOps, MillerIndices.H, e_values, phases, new_phases,
+        sim.miller_indices.SgOps, sim.miller_indices.H,
+        sim.e_values, sim.phases, new_phases,
         verbose)
       print "squaring mean weighted phase error: %.2f" % (mwpe,)
   print
+
+class map_from_ampl_phases:
+
+  def __init__(self, xtal, d_min,
+               grid_resolution_factor = 1./3):
+    self.xtal = xtal
+    max_q = 1. / (d_min**2)
+    max_prime = 5
+    mandatory_grid_factors = xtal.SgOps.refine_gridding()
+    grid_logical = sftbx.determine_grid(
+      xtal.UnitCell,
+      max_q, grid_resolution_factor, max_prime, mandatory_grid_factors)
+    self.rfft = fftbx.real_to_complex_3d(grid_logical)
+    self.tags = sftbx.grid_tags(self.rfft.Nreal())
+    self.sym_flags = sftbx.map_symmetry_flags(1)
+    self.tags.build(xtal.SgInfo, self.sym_flags)
+    print "tags.n_independent:", self.tags.n_independent()
+
+  def __call__(self, miller_indices, ampl, phases, deg=0):
+    f = shared.polar(ampl, phases, deg)
+    friedel_flag = 1
+    n_complex = self.rfft.Ncomplex()
+    conjugate = 1
+    map = sftbx.structure_factor_map(
+      self.xtal.SgOps, friedel_flag, miller_indices,
+      f, n_complex, conjugate)
+    self.rfft.backward(map)
+    return shared.reinterpret_complex_as_real(map)
+
+  def get_peak_list(self, map, peak_search_level, max_peaks):
+    return sftbx.get_peak_list(
+      self.rfft.Nreal(), self.rfft.Mreal(), map,
+      self.tags, peak_search_level, max_peaks)
+
+def xtal_as_emma_model(xtal):
+  positions = []
+  for site in xtal.Sites:
+    positions.append(emma.labeled_position(site.Label(), site.Coordinates()))
+  return emma.model(xtal, positions)
+
+def peak_list_as_emma_model(xtal, n_real, peak_list):
+  positions = []
+  i_label = 0
+  for peak in peak_list:
+    i_label += 1
+    label = "peak%d" % (i_label,)
+    coordinates = [peak["index"][i] / float(n_real[i]) for i in xrange(3)]
+    positions.append(emma.labeled_position(label, coordinates))
+  return emma.model(xtal, positions)
+
+def recycle(SgInfo,
+            number_of_point_atoms = 10,
+            d_min=1.,
+            e_min=1.8,
+            use_triplets=0,
+            other_than_sigma_2=0,
+            use_squaring=0,
+            verbose=0):
+  sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
+  sim_emma_model = xtal_as_emma_model(sim.xtal)
+  sim_emma_model.show("Random model")
+  p1_H = shared.Miller_Index()
+  sgtbx.expand_to_p1(sim.xtal.SgOps, 1, sim.miller_indices.H, p1_H)
+  random_phi = debug_utils.random_phases(
+    sim.xtal.SgOps, sim.miller_indices.H, sim.e_values)
+  if (0 or verbose):
+    show_ampl_phases(sim.miller_indices.H, sim.e_values, random_phi)
+  map_calculator = map_from_ampl_phases(sim.xtal, d_min)
+  print "Nreal:", map_calculator.rfft.Nreal()
+  print "Mreal:", map_calculator.rfft.Mreal()
+  new_phases = random_phi
+  for cycle in xrange(1):
+    print "cycle:", cycle
+    new_phases = square_emap(
+      sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, new_phases)
+    if (1): # XXX
+      new_phases = sim.phases
+    map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
+    peak_list = map_calculator.get_peak_list(map, 1, 10)
+    if (0 or verbose):
+      for peak in peak_list:
+        print "peak (%d,%d,%d)" % peak["index"], "%.6g" % (peak["value"],)
+    peaks_emma_model = peak_list_as_emma_model(
+      sim.xtal, map_calculator.rfft.Nreal(), peak_list)
+    peaks_emma_model.show("Peak list")
+    refined_matches = emma.match_models(sim_emma_model, peaks_emma_model)
+    refined_matches[0].show()
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
@@ -229,8 +338,9 @@ def run():
     "IncludeVeryHighSymmetry",
     "ShowSymbolOnly",
     "triplets",
-    "all_triplets",
+    "sigma_2",
     "squaring",
+    "recycle",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   symbols_to_stdout = 0
@@ -262,11 +372,17 @@ def run():
       continue
     if (Flags.ShowSymbolOnly):
       print "Space group:", LookupSymbol
+    elif (Flags.recycle):
+      recycle(
+        SgInfo,
+        use_triplets=Flags.triplets,
+        other_than_sigma_2=not Flags.sigma_2,
+        use_squaring=Flags.squaring)
     else:
       exercise(
         SgInfo,
         exercise_triplets=Flags.triplets,
-        other_than_sigma_2=Flags.all_triplets,
+        other_than_sigma_2=not Flags.sigma_2,
         exercise_squaring=Flags.squaring)
     sys.stdout.flush()
 

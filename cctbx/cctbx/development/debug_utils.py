@@ -365,3 +365,14 @@ def show_structure_factor_correlation(label, h1, joined_sets, f1, f2,
     for i,j in joined_sets.pairs():
       sf_cmp.add(h1[i], f1[i], f2[j])
   sf_cmp.report()
+
+def random_phases(sgops, miller_indices, amplitudes, deg=0):
+  assert miller_indices.size() == amplitudes.size()
+  phases = shared.double()
+  for i in xrange(miller_indices.size()):
+    h = miller_indices[i]
+    phi = random.random() - 0.5
+    if (deg): phi *= 360
+    else:     phi *= 2 * math.pi
+    phases.append(sgops.getPhaseRestriction(h).nearest_valid_phase(phi, deg))
+  return phases

@@ -15,6 +15,8 @@
 #include <cctbx/sftbx/xray_scatterer.h>
 #include <cctbx/sftbx/sfmap.h>
 
+#include <cctbx/maps/peak_search.h>
+
 namespace {
 
   using namespace cctbx;
@@ -613,6 +615,42 @@ namespace {
     return result;
   }
 
+  std::size_t peak_list_size(const maps::peak_list<double>& pl) {
+    return pl.size();
+  }
+  boost::python::dictionary
+  peak_list_getitem(const maps::peak_list<double>& pl, std::size_t i) {
+    boost::python::dictionary res;
+    res.set_item("index", boost::python::ref(to_python(pl[i].index)));
+    res.set_item("value", boost::python::ref(to_python(pl[i].value)));
+    return res;
+  }
+
+  maps::peak_list<double>
+  get_peak_list(
+    af::int3 const& n_real,
+    af::int3 const& m_real,
+    af::shared<double> data,
+    maps::grid_tags<long>& tags,
+    int peak_search_level,
+    std::size_t max_peaks)
+  {
+    cctbx_assert(af::product(n_real) <= af::product(m_real));
+    cctbx_assert(af::product(n_real) == tags.size());
+    cctbx_assert(af::product(m_real) == data.size());
+    typedef af::grid<3> grid_type;
+    typedef grid_type::index_type grid_point_type;
+    af::ref<double, grid_type> data_3d(data.begin(), grid_type(m_real));
+    af::versa<double, grid_type> data_compact_3d; // XXX why do we need the
+    data_compact_3d.resize(grid_type(n_real));    // XXX separate resize()?
+    af::nested_loop<grid_point_type> loop(data_compact_3d.accessor());
+    for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
+      data_compact_3d(pt) = data_3d(pt);
+    }
+    return maps::peak_list<double>(
+      data_compact_3d, tags, peak_search_level, max_peaks);
+  }
+
   void init_module(python::module_builder& this_module)
   {
     const std::string Revision = "$Revision$";
@@ -670,6 +708,9 @@ namespace {
 
     class_builder<maps::grid_tags<long> >
     py_grid_tags(this_module, "grid_tags");
+
+    class_builder<maps::peak_list<double> >
+    py_peak_list(this_module, "peak_list");
 
     class_builder<Miller::index_span>
     py_index_span(this_module, "index_span");
@@ -935,6 +976,13 @@ namespace {
     py_grid_tags.def(&maps::grid_tags<long>::n_independent, "n_independent");
     py_grid_tags.def(grid_tags_verify_1, "verify");
     py_grid_tags.def(grid_tags_verify_2, "verify");
+
+    py_peak_list.def(constructor<>());
+    py_peak_list.def(peak_list_size, "size");
+    py_peak_list.def(peak_list_size, "__len__");
+    py_peak_list.def(peak_list_getitem, "__getitem__");
+
+    this_module.def(get_peak_list, "get_peak_list");
 
     this_module.def(py_determine_grid, "determine_grid");
 
