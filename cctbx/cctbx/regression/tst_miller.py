@@ -302,21 +302,27 @@ def exercise_array():
     ma.sigmas()[i] /= 3
   sa = ma.sigma_filter(2)
   assert sa.indices().size() == 5
-  assert approx_equal(ma.mean(0,0), 1.6460739)
-  assert approx_equal(ma.mean(0,1), 1.5146784)
+  assert approx_equal(ma.mean(False,False), 1.6460739)
+  assert approx_equal(ma.mean(False,True), 1.5146784)
   ma.setup_binner(n_bins=3)
-  assert approx_equal(tuple(ma.mean(1,0)), (2.228192, 1.2579831, 1.0639812))
-  assert approx_equal(tuple(ma.mean(1,1)), (2.069884, 1.2587977, 1.0779636))
-  assert approx_equal(ma.mean_sq(0,0), 3.3287521)
-  assert approx_equal(ma.mean_sq(0,1), 2.6666536)
-  assert approx_equal(tuple(ma.mean_sq(1,0)), (5.760794, 1.5889009, 1.1336907))
-  assert approx_equal(tuple(ma.mean_sq(1,1)), (4.805354, 1.5916849, 1.1629777))
-  assert approx_equal(ma.rms(0,0)**2, 3.3287521)
-  assert approx_equal(ma.rms(0,1)**2, 2.6666536)
-  assert approx_equal([x**2 for x in ma.rms(1,0)], tuple(ma.mean_sq(1,0)))
-  assert approx_equal([x**2 for x in ma.rms(1,1)], tuple(ma.mean_sq(1,1)))
-  for use_binning in (0,1):
-    for use_multiplicities in (0,1):
+  assert approx_equal(ma.mean(True,False).data[1:-1],
+    (2.228192, 1.2579831, 1.0639812))
+  assert approx_equal(ma.mean(True,True).data[1:-1],
+    (2.069884, 1.2587977, 1.0779636))
+  assert approx_equal(ma.mean_sq(False,False), 3.3287521)
+  assert approx_equal(ma.mean_sq(False,True), 2.6666536)
+  assert approx_equal(ma.mean_sq(True,False).data[1:-1],
+    (5.760794, 1.5889009, 1.1336907))
+  assert approx_equal(ma.mean_sq(True,True).data[1:-1],
+    (4.805354, 1.5916849, 1.1629777))
+  assert approx_equal(ma.rms(False,False)**2, 3.3287521)
+  assert approx_equal(ma.rms(False,True)**2, 2.6666536)
+  assert approx_equal([x**2 for x in ma.rms(True,False).data[1:-1]],
+    ma.mean_sq(True,False).data[1:-1])
+  assert approx_equal([x**2 for x in ma.rms(True,True).data[1:-1]],
+    ma.mean_sq(True,True).data[1:-1])
+  for use_binning in (False,True):
+    for use_multiplicities in (False,True):
       sa = ma.rms_filter(-1, use_binning, use_multiplicities)
       assert sa.indices().size() == 0
       sa = ma.rms_filter(100, use_binning, use_multiplicities, False)

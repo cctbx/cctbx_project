@@ -135,16 +135,23 @@ class binner(ext.binner):
         show_bin_number=True,
         show_d_range=True,
         show_counts=True,
+        show_unused=True,
         f=None,
         prefix=""):
     assert len(data) == self.n_bins_all()
     if (f is None): f = sys.stdout
-    for i_bin in self.range_all():
-      print >> f, prefix + self.bin_legend(
+    if (show_unused):
+      i_bins = self.range_all()
+    else:
+      i_bins = self.range_used()
+    legend = None
+    for i_bin in i_bins:
+      legend = self.bin_legend(
         i_bin=i_bin,
         show_bin_number=show_bin_number,
         show_d_range=show_d_range,
-        show_counts=show_counts),
+        show_counts=show_counts)
+      print >> f, prefix + legend,
       if (data[i_bin] is not None):
         if (isinstance(data[i_bin], str) or data_fmt is None):
           print >> f, data[i_bin],
@@ -154,6 +161,8 @@ class binner(ext.binner):
           s = data_fmt(binner=self, i_bin=i_bin, data=data)
           if (s is not None and len(s) > 0): print >> f, s,
       print >> f
+    if (legend is not None): return len(legend)
+    return None
 
 class binned_data:
 
@@ -167,15 +176,17 @@ class binned_data:
         show_bin_number=True,
         show_d_range=True,
         show_counts=True,
+        show_unused=True,
         f=None,
         prefix=""):
     if (data_fmt is None): data_fmt = self.data_fmt
-    self.binner.show_data(
+    return self.binner.show_data(
       data=self.data,
       data_fmt=data_fmt,
       show_bin_number=show_bin_number,
       show_d_range=show_d_range,
       show_counts=show_counts,
+      show_unused=show_unused,
       f=f,
       prefix=prefix)
 
@@ -1218,59 +1229,65 @@ class array(set):
     if (self.sigmas() is not None): s = self.sigmas().select(selection)
     return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
-  def sigma_filter(self, cutoff_factor, negate=0):
+  def sigma_filter(self, cutoff_factor, negate=False):
     assert self.data() is not None
     assert self.sigmas() is not None
     flags = flex.abs(self.data()) >= self.sigmas() * cutoff_factor
     return self.select(flags, negate)
 
-  def _generic_binner_action(self, use_binning, use_multiplicities,
-                             function,
-                             function_weighted):
-    assert self.indices() is not None
-    assert self.data() is not None
-    if (use_multiplicities):
-      mult = self.multiplicities().data().as_double()
+  def mean(self,
+        use_binning=False,
+        use_multiplicities=False,
+        squared=False,
+        rms=False):
+    assert squared is False or rms is False
     if (not use_binning):
-      if (not use_multiplicities):
-        result = function(self.data())
-      else:
-        result = function_weighted(self.data(), mult)
-    else:
-      result = flex.double()
-      for i_bin in self.binner().range_used():
-        sel = self.binner().selection(i_bin)
-        if (sel.count(True) == 0):
-          result.append(0)
+      if (self.data().size() == 0): return None
+      if (not squared and not rms):
+        if (not use_multiplicities):
+          return flex.mean(self.data())
         else:
-          sel_data = self.data().select(sel)
-          if (not use_multiplicities):
-            result.append(function(sel_data))
-          else:
-            sel_mult = mult.select(sel)
-            result.append(function_weighted(sel_data, sel_mult))
-    return result
+          return flex.mean_weighted(
+            self.data(),
+            self.multiplicities().data().as_double())
+      if (not use_multiplicities):
+        result = flex.mean_sq(self.data())
+      else:
+        result = flex.mean_sq_weighted(
+          self.data(),
+          self.multiplicities().data().as_double())
+      if (rms): return math.sqrt(result)
+      return result
+    assert self.binner() is not None
+    data = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      data.append(self.select(sel).mean(
+        use_multiplicities=use_multiplicities,
+        squared=squared,
+        rms=rms))
+    return binned_data(binner=self.binner(), data=data)
 
-  def mean(self, use_binning=0, use_multiplicities=0):
-    return self._generic_binner_action(use_binning, use_multiplicities,
-      flex.mean,
-      flex.mean_weighted)
+  def mean_sq(self, use_binning=False, use_multiplicities=False):
+    return self.mean(
+      use_binning=use_binning,
+      use_multiplicities=use_multiplicities,
+      squared=True)
 
-  def mean_sq(self, use_binning=0, use_multiplicities=0):
-    return self._generic_binner_action(use_binning, use_multiplicities,
-      flex.mean_sq,
-      flex.mean_sq_weighted)
+  def rms(self, use_binning=False, use_multiplicities=False):
+    return self.mean(
+      use_binning=use_binning,
+      use_multiplicities=use_multiplicities,
+      rms=True)
 
-  def rms(self, use_binning=0, use_multiplicities=0):
-    ms = self.mean_sq(use_binning, use_multiplicities)
-    if (not use_binning):
-      return math.sqrt(ms)
-    else:
-      return flex.sqrt(ms)
-
-  def rms_filter(self, cutoff_factor,
-                 use_binning=0, use_multiplicities=0, negate=0):
-    rms = self.rms(use_binning, use_multiplicities)
+  def rms_filter(self,
+        cutoff_factor,
+        use_binning=False,
+        use_multiplicities=False,
+        negate=False):
+    rms = self.rms(
+      use_binning=use_binning,
+      use_multiplicities=use_multiplicities)
     abs_data = flex.abs(self.data())
     if (not use_binning):
       keep = abs_data <= cutoff_factor * rms
@@ -1278,7 +1295,7 @@ class array(set):
       keep = self.all_selection()
       for i_bin in self.binner().range_used():
         keep &= ~self.binner().selection(i_bin) \
-             | (abs_data <= cutoff_factor * rms[i_bin-1])
+             | (abs_data <= cutoff_factor * rms.data[i_bin])
     return self.select(keep, negate)
 
   def statistical_mean(self, use_binning=0):
