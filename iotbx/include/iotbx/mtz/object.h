@@ -9,6 +9,13 @@ namespace iotbx { namespace mtz {
 
   namespace af = scitbx::af;
 
+  inline
+  bool
+  is_ccp4_nan(float const& datum)
+  {
+    return CCP4::ccp4_utils_isnan((union float_uint_uchar *) &datum);
+  }
+
   class column;
   class dataset;
   class crystal;

@@ -57,10 +57,16 @@ def exercise_basic():
     column = mtz.wrapper.column(mtz_dataset=dataset, i_column=0)
     assert column.mtz_dataset().mtz_crystal().i_crystal() == 1
     assert column.i_column() == 0
+    assert column.mtz_crystal().i_crystal() == 1
+    assert column.mtz_object().n_reflections() == 165
     assert column.label() == "H"
     assert column.type() == "H"
     assert column.is_active()
     assert column.path() == "/unknown/unknown230103:23:14:49/H"
+    assert column.lookup_other("H").i_column() == 0
+    assert column.lookup_other("K").i_column() == 1
+    assert column.lookup_other("L").i_column() == 2
+    assert column.valid_indices().size() == 165
     column = mtz_object.lookup_column("F*")
     assert column.label() == "Frem"
     expected_dataset_ids = iter(range(4))
@@ -76,6 +82,9 @@ def exercise_basic():
       "Finf", "SIGFinf", "DANOinf", "SIGDANOinf", "ISYMinf",
       "Fabs", "SIGFabs", "DANOabs", "SIGDANOabs", "ISYMabs"])
     expected_column_types = iter("HHHFQDQYFQDQYFQDQY")
+    expected_valid_indices_size = iter([
+      165, 165, 165, 163, 163, 163, 163, 163, 165,
+      165, 164, 164, 165, 165, 165, 164, 164, 165])
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
       assert crystal.mtz_object().n_reflections() == 165
       assert crystal.i_crystal() == i_crystal
@@ -94,6 +103,12 @@ def exercise_basic():
           assert column.type() == expected_column_types.next()
           assert column.is_active()
           assert column.path().endswith(column.label())
+          assert column.valid_indices().size() \
+              == expected_valid_indices_size.next()
+          assert column.valid_values().size() == column.valid_indices().size()
+          if (column.type() in ["H", "B", "Y", "I"]):
+            assert column.valid_integers().size() \
+                == column.valid_indices().size()
           lookup_column = mtz_object.lookup_column(column.label())
           assert lookup_column.label() == column.label()
 

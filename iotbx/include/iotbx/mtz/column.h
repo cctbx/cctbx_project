@@ -25,6 +25,12 @@ namespace iotbx { namespace mtz {
       int
       i_column() const { return i_column_; }
 
+      crystal
+      mtz_crystal() const { return mtz_dataset().mtz_crystal(); }
+
+      object
+      mtz_object() const { return mtz_crystal().mtz_object(); }
+
       CMtz::MTZCOL*
       ptr() const
       {
@@ -44,10 +50,75 @@ namespace iotbx { namespace mtz {
       std::string
       path() const
       {
-        boost::shared_ptr<char> p(CMtz::MtzColPath(
-            mtz_dataset_.mtz_crystal().mtz_object().ptr(), ptr()),
-          free);
+        boost::shared_ptr<char>
+          p(CMtz::MtzColPath(mtz_object().ptr(), ptr()), free);
         return std::string(p.get());
+      }
+
+      column
+      lookup_other(const char* label) const
+      {
+        return mtz_object().lookup_column(label);
+      }
+
+      float const&
+      float_datum(int i) const { return ptr()->ref[i]; }
+
+      bool
+      is_ccp4_nan(int i) const { return mtz::is_ccp4_nan(float_datum(i)); }
+
+      int
+      int_datum(int i) const { return static_cast<int>(float_datum(i)); }
+
+      af::shared<cctbx::miller::index<> >
+      valid_indices() const
+      {
+        int n_reflections = mtz_object().n_reflections();
+        af::shared<cctbx::miller::index<> >
+          result((af::reserve(n_reflections)));
+        column h(lookup_other("H"));
+        column k(lookup_other("K"));
+        column l(lookup_other("L"));
+        for(int i=0;i<n_reflections;i++) {
+          if (!is_ccp4_nan(i)) {
+            result.push_back(cctbx::miller::index<>(
+              h.int_datum(i), k.int_datum(i), l.int_datum(i)));
+          }
+        }
+        return result;
+      }
+
+      af::shared<double>
+      valid_values()
+      {
+        int n_reflections = mtz_object().n_reflections();
+        af::shared<double> result((af::reserve(n_reflections)));
+        for(int i=0;i<n_reflections;i++) {
+          if (!is_ccp4_nan(i)) {
+            result.push_back(float_datum(i));
+          }
+        }
+        return result;
+      }
+
+      af::shared<int>
+      valid_integers()
+      {
+        if (   strcmp(type(), "H") != 0
+            && strcmp(type(), "B") != 0
+            && strcmp(type(), "Y") != 0
+            && strcmp(type(), "I") != 0) {
+          throw cctbx::error(
+            std::string("Not a MTZ integer column: ") + label());
+        }
+        int n_reflections = mtz_object().n_reflections();
+        af::shared<int> result((af::reserve(n_reflections)));
+        for(int i=0;i<n_reflections;i++) {
+          if (!is_ccp4_nan(i)) {
+            result.push_back(int_datum(i));
+          }
+        }
+        return result;
       }
 
     protected:
