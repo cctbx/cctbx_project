@@ -786,6 +786,15 @@ def exercise_histogram():
   hy = flex.histogram(other=h, data=y, relative_tolerance=1)
   assert tuple(hy.slots()) == (7,4,4,4,7)
   assert hy.n_out_of_slot_range() == 0
+  s = StringIO()
+  hy.show(f=s, prefix="*")
+  assert s.getvalue() == """\
+*0 - 3.8: 7
+*3.8 - 7.6: 4
+*7.6 - 11.4: 4
+*11.4 - 15.2: 4
+*15.2 - 19: 7
+"""
 
 def exercise_linear_regression():
   x = flex.double((1,2,3))
