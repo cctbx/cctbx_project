@@ -9,7 +9,7 @@
  */
 
 /*! \file
-    Toolbox for the handling of atomic displacement parameters (adp).
+    Toolbox for the handling of anisotropic displacement parameters (adp).
  */
 
 #ifndef CCTBX_ADPTBX_H
@@ -24,35 +24,36 @@ namespace adptbx {
   using namespace cctbx;
 
   static const error
-    not_positive_definite("anisotropic adp tensor is not positive definite.");
+    not_positive_definite(
+      "anisotropic displacement tensor is not positive definite.");
 
   const double   TwoPiSquared = 2. * constants::pi * constants::pi;
   const double EightPiSquared = 8. * constants::pi * constants::pi;
 
-  //! Convert isotropic adp U -> B.
+  //! Convert isotropic displacement parameter U -> B.
   inline double
   U_as_B(double Uiso) {
     return Uiso * EightPiSquared;
   }
-  //! Convert isotropic adp B -> U.
+  //! Convert isotropic displacement parameter B -> U.
   inline double
   B_as_U(double Biso) {
     return Biso / EightPiSquared;
   }
-  //! Convert anisotropic adp U -> B.
+  //! Convert anisotropic displacement parameters U -> B.
   template <class FloatType>
   boost::array<FloatType, 6>
   U_as_B(const boost::array<FloatType, 6>& Uaniso) {
     return EightPiSquared * Uaniso;
   }
-  //! Convert anisotropic adp B -> U.
+  //! Convert anisotropic displacement parameters B -> U.
   template <class FloatType>
   boost::array<FloatType, 6>
   B_as_U(const boost::array<FloatType, 6>& Baniso) {
     return (1. / EightPiSquared) * Baniso;
   }
 
-  //! Convert anisotropic adp Uuvrs -> Ustar.
+  //! Convert anisotropic displacement parameters Uuvrs -> Ustar.
   /*! The transformation matrix used is:<pre>
               (a*  0  0)
           C = ( 0 b*  0)
@@ -81,7 +82,7 @@ namespace adptbx {
     Ustar[5] = Uuvrs[5] * (R_Len[1] * R_Len[2]);
     return Ustar;
   }
-  //! Convert anisotropic adp Ustar -> Uuvrs.
+  //! Convert anisotropic displacement parameters Ustar -> Uuvrs.
   /*! Inverse of Uuvrs_as_Ustar().
    */
   template <class FloatType>
@@ -99,7 +100,7 @@ namespace adptbx {
     return Uuvrs;
   }
 
-  //! Convert anisotropic adp Ucart -> Ustar.
+  //! Convert anisotropic displacement parameters Ucart -> Ustar.
   /*! The transformation matrix C used is the orthogonalization
       matrix for the given UnitCell.
       The formula for the transformation is Ustar = C Ucart Ct,
@@ -112,7 +113,7 @@ namespace adptbx {
     return MatrixLite::CondensedTensorTransformation(
       uc.getFractionalizationMatrix(), Ucart);
   }
-  //! Convert anisotropic adp Ustar -> Ucart.
+  //! Convert anisotropic displacement parameters Ustar -> Ucart.
   /*! Inverse of Ucart_as_Ustar(). I.e., the transformation matrix
       C used is the fractionalization matrix for the given
       UnitCell.
@@ -127,7 +128,7 @@ namespace adptbx {
       uc.getOrthogonalizationMatrix(), Ustar);
   }
 
-  //! Convert anisotropic adp Ucart -> Uuvrs.
+  //! Convert anisotropic displacement parameters Ucart -> Uuvrs.
   /*! This is implemented without a significant loss of efficiency
       as Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart)).
    */
@@ -137,7 +138,7 @@ namespace adptbx {
                  const boost::array<FloatType, 6>& Ucart) {
     return Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart));
   }
-  //! Convert anisotropic adp Uuvrs -> Ucart.
+  //! Convert anisotropic displacement parameters Uuvrs -> Ucart.
   /*! This is implemented without a significant loss of efficiency
       as Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs)).
    */
@@ -148,7 +149,7 @@ namespace adptbx {
     return Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs));
   }
 
-  //! Convert anisotropic adp Ustar -> beta.
+  //! Convert anisotropic displacement parameters Ustar -> beta.
   /*! The elements of Ustar are multiplied by 2pi^2.
    */
   template <class FloatType>
@@ -156,7 +157,7 @@ namespace adptbx {
   Ustar_as_beta(const boost::array<FloatType, 6>& Ustar) {
     return TwoPiSquared * Ustar;
   }
-  //! Convert anisotropic adp beta -> Ustar.
+  //! Convert anisotropic displacement parameters beta -> Ustar.
   /*! The elements of beta are divided by 2pi^2.
    */
   template <class FloatType>
@@ -165,7 +166,7 @@ namespace adptbx {
     return beta / TwoPiSquared;
   }
 
-  //! Convert anisotropic adp Ucart -> beta.
+  //! Convert anisotropic displacement parameters Ucart -> beta.
   /*! This is implemented as Ustar_as_beta(Ucart_as_Ustar(uc, Ucart)).
    */
   template <class FloatType>
@@ -174,7 +175,7 @@ namespace adptbx {
                 const boost::array<FloatType, 6>& Ucart) {
     return Ustar_as_beta(Ucart_as_Ustar(uc, Ucart));
   }
-  //! Convert anisotropic adp beta -> Ucart.
+  //! Convert anisotropic displacement parameters beta -> Ucart.
   /*! This is implemented as Ustar_as_Ucart(uc, beta_as_Ustar(beta)).
    */
   template <class FloatType>
@@ -184,7 +185,7 @@ namespace adptbx {
     return Ustar_as_Ucart(uc, beta_as_Ustar(beta));
   }
 
-  //! Convert anisotropic adp Uuvrs -> beta.
+  //! Convert anisotropic displacement parameters Uuvrs -> beta.
   /*! This is implemented as Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs)).
    */
   template <class FloatType>
@@ -193,7 +194,7 @@ namespace adptbx {
                 const boost::array<FloatType, 6>& Uuvrs) {
     return Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs));
   }
-  //! Convert anisotropic adp beta -> Uuvrs.
+  //! Convert anisotropic displacement parameters beta -> Uuvrs.
   /*! This is implemented as Ustar_as_Uuvrs(uc, beta_as_Ustar(beta)).
    */
   template <class FloatType>
@@ -203,7 +204,7 @@ namespace adptbx {
     return Ustar_as_Uuvrs(uc, beta_as_Ustar(beta));
   }
 
-  //! Convert Ucart -> Uiso.
+  //! Convert anisotropic displacement parameters Ucart -> Uiso.
   /*! Uiso is defined as the mean of the diagonal elements of Ucart:<pre>
           Uiso = 1/3 (Ucart11 + Ucart22 + Ucart33)</pre>
    */
@@ -213,7 +214,7 @@ namespace adptbx {
   {
     return (Ucart[0] + Ucart[1] + Ucart[2]) / 3.;
   }
-  //! Convert Uiso -> Ucart.
+  //! Convert Uiso -> anisotropic displacement parameters Ucart.
   /*! The diagonal elements of Ucart are set to the value of Uiso.
       The off-diagonal components Ucart are set to zero.
    */
@@ -328,9 +329,9 @@ namespace adptbx {
     return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));
   }
 
-  //! Determine the eigenvalues of the anisotropic adp tensor.
-  /*! Since the anisotropic adp tensor is a symmetric matrix, all
-      eigenvalues are real. The eigenvalues lambda are determined
+  //! Determine the eigenvalues of the anisotropic displacement tensor.
+  /*! Since the anisotropic displacement tensor is a symmetric matrix,
+      all eigenvalues are real. The eigenvalues lambda are determined
       as the three real roots of the cubic equation
       <p>
           |(adp - lambda * I)| = 0
@@ -341,7 +342,7 @@ namespace adptbx {
       <p>
       An exception is thrown if the cubic equation has
       roots that are negative or zero. This indicates that
-      the anisotropic adp tensor is not positive definite.
+      the anisotropic displacement tensor is not positive definite.
    */
   template <class FloatType>
   boost::array<FloatType, 3>
@@ -386,8 +387,8 @@ namespace adptbx {
     std::complex<FloatType> v = std::pow(mq2 - sqrtD, 1/3.);
     std::complex<FloatType> epsilon1(-0.5, std::sqrt(3.) * 0.5);
     std::complex<FloatType> epsilon2 = std::conj(epsilon1);
-    // since the adp tensor is a symmetric matrix, all the imaginary
-    // components of the roots must be zero.
+    // since the anisotropic displacement tensor is a symmetric matrix,
+    // all the imaginary components of the roots must be zero.
     boost::array<FloatType, 3> result;
     result[0] = (u + v).real();
     result[1] = (epsilon1 * u + epsilon2 * v).real();
@@ -433,9 +434,9 @@ namespace adptbx {
 
   } // namespace detail
 
-  //! Determine the eigenvectors of the anisotropic adp tensor.
-  /*! Since the anisotropic adp tensor is a symmetric matrix, all
-      eigenvalues lambda are real and the eigenvectors can
+  //! Determine the eigenvectors of the anisotropic displacement tensor.
+  /*! Since the anisotropic displacement tensor is a symmetric matrix,
+      all eigenvalues lambda are real and the eigenvectors can
       be chosen orthonormal.
       <p>
       The eigenvectors are determined according to the procedure
@@ -445,7 +446,7 @@ namespace adptbx {
       <p>
       An exception is thrown if any of the eigenvalues is
       less than or equal to zero. This indicates that the
-      anisotropic adp tensor is not positive definite.
+      anisotropic displacement tensor is not positive definite.
    */
   template <class FloatType>
   boost::array<boost::array<FloatType, 3>, 3>
