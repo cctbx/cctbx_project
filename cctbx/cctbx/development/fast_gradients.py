@@ -318,7 +318,7 @@ def u_iso(structure_ideal, f_obs):
               * complex_math.polar((1, p)))
     print "gxm[%d]:" % i_scatterer, gxm
     gl = map0.grad_u_iso()[i_scatterer]
-    print " m0[%d]:" % i_scatterer, gl
+    print " m0[%d]: " % i_scatterer, gl
     print
 
 class two_p_shifted_occupancy:
@@ -493,8 +493,7 @@ def u_star(structure_ideal, f_obs):
                 * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d][%d]:" % (i_scatterer, ij), gxm
-      gl = (map0.grad_u_00, map0.grad_u_11, map0.grad_u_22,
-            map0.grad_u_01, map0.grad_u_02, map0.grad_u_12)[ij]()[i_scatterer]
+      gl = map0.grad_u_star()[i_scatterer][ij]
       print " m0[%d][%d]: " % (i_scatterer, ij), gl
       print " gc[%d][%d]: " % (i_scatterer, ij), gc
       print "s2c[%d][%d]: " % (i_scatterer, ij), sfd_cart[ij]

@@ -96,25 +96,39 @@ namespace cctbx { namespace xray {
           return this->aniso_bs_imag_*d*(2*this->rho_imag(d));
         }
 
+        /* Mathematica script used to determine analytical gradients:
+             f=a*(4 Pi / b)^(3/2) Exp[-4 Pi^2 d^2 / b]
+             as=a*(4 Pi / b)^(3/2)
+             bs=-4 Pi^2 / b
+             FullSimplify[D[f,b]/f]
+         */
+        static
         FloatType
-        d_rho_real_d_u_iso(FloatType const& d_sq) const
+        d_rho_d_b_iso_term(
+          FloatType const& d_sq,
+          FloatType const& rho_term,
+          FloatType const& b)
         {
-          using scitbx::constants::pi_sq;
-          FloatType drdb(0);
-          for(std::size_t i=0;i<b_.size();i++) {
-            drdb += (3*b_[i] - 8*pi_sq*d_sq) / (2*b_[i]*b_[i])
-                    * this->rho_real_term(d_sq, i);
-          }
-          return adptbx::u_as_b(drdb);
+          static const FloatType eight_pi_sq = 8 * scitbx::constants::pi_sq;
+          return (3*b - eight_pi_sq*d_sq) / (2*b*b) * rho_term;
         }
 
         FloatType
-        d_rho_imag_d_u_iso(FloatType const& d_sq) const
+        d_rho_real_d_b_iso(FloatType const& d_sq) const
         {
-          using scitbx::constants::pi_sq;
-          FloatType b = b_[this->n_rho_real_terms-1];
-          return adptbx::u_as_b(
-            (3*b - 8*pi_sq*d_sq) / (2*b*b) * this->rho_imag(d_sq));
+          FloatType drdb(0);
+          for(std::size_t i=0;i<b_.size();i++) {
+            drdb += d_rho_d_b_iso_term(
+              d_sq, this->rho_real_term(d_sq, i), b_[i]);
+          }
+          return drdb;
+        }
+
+        FloatType
+        d_rho_imag_d_b_iso(FloatType const& d_sq) const
+        {
+          return d_rho_d_b_iso_term(
+            d_sq, this->rho_imag(d_sq), b_[this->n_rho_real_terms-1]);
         }
 
         /* Mathematica script used to determine analytical gradients:
@@ -140,22 +154,35 @@ namespace cctbx { namespace xray {
                      cbd bd[[3]] bd[[3]] + bcfmt[[3,3]]/2}}/(-detb)
              FullSimplify[g-r*chk]
         */
+        static
+        scitbx::sym_mat3<FloatType>
+        d_rho_d_b_cart_term(
+          scitbx::vec3<FloatType> const& d,
+          FloatType const& rho_term,
+          FloatType const& detb,
+          scitbx::sym_mat3<FloatType> const& bcfmt)
+        {
+          scitbx::sym_mat3<FloatType> drdb;
+          scitbx::vec3<FloatType> bd = bcfmt * d;
+          FloatType cbd = const_minus_4_pi_sq / detb;
+          FloatType rd = rho_term / detb;
+          for(std::size_t i=0;i<3;i++) {
+            drdb[i] = rd * (cbd*bd[i]*bd[i] + bcfmt[i]*.5);
+          }
+          cbd *= 2;
+          drdb[3] = rd * (cbd*bd[0]*bd[1] + bcfmt[3]);
+          drdb[4] = rd * (cbd*bd[0]*bd[2] + bcfmt[4]);
+          drdb[5] = rd * (cbd*bd[1]*bd[2] + bcfmt[5]);
+          return drdb;
+        }
+
         scitbx::sym_mat3<FloatType>
         d_rho_real_d_b_cart(scitbx::vec3<FloatType> const& d) const
         {
           scitbx::sym_mat3<FloatType> drdb(0,0,0,0,0,0);
           for (std::size_t i=0;i<this->n_rho_real_terms;i++) {
-            FloatType r = this->rho_real_term(d, i);
-            scitbx::vec3<FloatType> bd = bcfmt_[i] * d;
-            FloatType cbd = const_minus_4_pi_sq / detb_[i];
-            FloatType rd = r / detb_[i];
-            for(std::size_t j=0;j<3;j++) {
-              drdb[j] += rd * (cbd*bd[j]*bd[j] + bcfmt_[i][j]*.5);
-            }
-            cbd *= 2;
-            drdb[3] += rd * (cbd*bd[0]*bd[1] + bcfmt_[i][3]);
-            drdb[4] += rd * (cbd*bd[0]*bd[2] + bcfmt_[i][4]);
-            drdb[5] += rd * (cbd*bd[1]*bd[2] + bcfmt_[i][5]);
+            drdb += d_rho_d_b_cart_term(
+              d, this->rho_real_term(d, i), detb_[i], bcfmt_[i]);
           }
           return drdb;
         }
@@ -163,20 +190,10 @@ namespace cctbx { namespace xray {
         scitbx::sym_mat3<FloatType>
         d_rho_imag_d_b_cart(scitbx::vec3<FloatType> const& d) const
         {
-          scitbx::sym_mat3<FloatType> drdb;
-          FloatType r = this->rho_imag(d);
-          std::size_t i = this->n_rho_real_terms-1;
-          scitbx::vec3<FloatType> bd = bcfmt_[i] * d;
-          FloatType cbd = const_minus_4_pi_sq / detb_[i];
-          FloatType rd = r / detb_[i];
-          for(std::size_t j=0;j<3;j++) {
-            drdb[j] = rd * (cbd*bd[j]*bd[j] + bcfmt_[i][j]*.5);
-          }
-          cbd *= 2;
-          drdb[3] = rd * (cbd*bd[0]*bd[1] + bcfmt_[i][3]);
-          drdb[4] = rd * (cbd*bd[0]*bd[2] + bcfmt_[i][4]);
-          drdb[5] = rd * (cbd*bd[1]*bd[2] + bcfmt_[i][5]);
-          return drdb;
+          return d_rho_d_b_cart_term(
+            d, this->rho_imag(d),
+            detb_[this->n_rho_real_terms-1],
+            bcfmt_[this->n_rho_real_terms-1]);
         }
 
         template <typename DistanceType>
@@ -300,26 +317,11 @@ namespace cctbx { namespace xray {
       af::shared<std::complex<FloatType> >
       grad_z() const { return grad_z_; }
 
-      af::shared<std::complex<FloatType> >
+      af::shared<FloatType>
       grad_u_iso() const { return grad_u_iso_; }
 
-      af::shared<FloatType>
-      grad_u_00() const { return grad_u_00_; }
-
-      af::shared<FloatType>
-      grad_u_11() const { return grad_u_11_; }
-
-      af::shared<FloatType>
-      grad_u_22() const { return grad_u_22_; }
-
-      af::shared<FloatType>
-      grad_u_01() const { return grad_u_01_; }
-
-      af::shared<FloatType>
-      grad_u_02() const { return grad_u_02_; }
-
-      af::shared<FloatType>
-      grad_u_12() const { return grad_u_12_; }
+      af::shared<scitbx::sym_mat3<FloatType> >
+      grad_u_star() const { return grad_u_star_; }
 
       af::shared<std::complex<FloatType> >
       grad_occupancy() const { return grad_occupancy_; }
@@ -346,13 +348,8 @@ namespace cctbx { namespace xray {
       af::shared<std::complex<FloatType> > grad_x_;
       af::shared<std::complex<FloatType> > grad_y_;
       af::shared<std::complex<FloatType> > grad_z_;
-      af::shared<std::complex<FloatType> > grad_u_iso_;
-      af::shared<FloatType> grad_u_00_;
-      af::shared<FloatType> grad_u_11_;
-      af::shared<FloatType> grad_u_22_;
-      af::shared<FloatType> grad_u_01_;
-      af::shared<FloatType> grad_u_02_;
-      af::shared<FloatType> grad_u_12_;
+      af::shared<FloatType> grad_u_iso_;
+      af::shared<scitbx::sym_mat3<FloatType> > grad_u_star_;
       af::shared<std::complex<FloatType> > grad_occupancy_;
       af::shared<std::complex<FloatType> > grad_fp_;
       af::shared<std::complex<FloatType> > grad_fdp_;
@@ -451,8 +448,8 @@ namespace cctbx { namespace xray {
       }
       std::complex<FloatType> gr(0);
       scitbx::vec3<std::complex<FloatType> > gr_site(0,0,0);
-      std::complex<FloatType> gr_u_iso(0);
-      scitbx::sym_mat3<FloatType> gr_u_cart(0,0,0,0,0,0);
+      FloatType gr_b_iso(0);
+      scitbx::sym_mat3<FloatType> gr_b_cart(0,0,0,0,0,0);
       std::complex<FloatType> gr_occupancy(0);
       std::complex<FloatType> gr_fp(0);
       std::complex<FloatType> gr_fdp(0);
@@ -509,31 +506,15 @@ namespace cctbx { namespace xray {
             }
           }
           if (!scatterer->anisotropic_flag) {
-            if (!fdp) {
-              gr_u_iso += f * caasf_ft.d_rho_real_d_u_iso(d_sq);
-            }
-            else {
-              gr_u_iso += f * std::complex<FloatType>(
-                 caasf_ft.d_rho_real_d_u_iso(d_sq),
-                -caasf_ft.d_rho_imag_d_u_iso(d_sq));
+            gr_b_iso += f.real() * caasf_ft.d_rho_real_d_b_iso(d_sq);
+            if (fdp) {
+              gr_b_iso += f.imag() * caasf_ft.d_rho_imag_d_b_iso(d_sq);
             }
           }
           else {
-            scitbx::sym_mat3<FloatType>
-              drdu_real = adptbx::u_as_b(caasf_ft.d_rho_real_d_b_cart(d));
-            if (!fdp) {
-              for(std::size_t i=0;i<6;i++) {
-                gr_u_cart[i] += (f * drdu_real[i]).real();
-              }
-            }
-            else {
-              scitbx::sym_mat3<FloatType>
-                drdu_imag = adptbx::u_as_b(caasf_ft.d_rho_imag_d_b_cart(d));
-              for(std::size_t i=0;i<6;i++) {
-                gr_u_cart[i] += (f * std::complex<FloatType>(
-                   drdu_real[i],
-                  -drdu_imag[i])).real();
-              }
+            gr_b_cart += f.real() * caasf_ft.d_rho_real_d_b_cart(d);
+            if (fdp) {
+              gr_b_cart += f.imag() * caasf_ft.d_rho_imag_d_b_cart(d);
             }
           }
           FloatType drdo_real;
@@ -581,17 +562,11 @@ namespace cctbx { namespace xray {
         grad_y_.push_back(gr_site[1]);
         grad_z_.push_back(gr_site[2]);
         if (!scatterer->anisotropic_flag) {
-          grad_u_iso_.push_back(gr_u_iso);
+          grad_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
         }
         else {
-          scitbx::sym_mat3<FloatType>
-            gr_u_star = adptbx::grad_u_cart_as_u_star(unit_cell_, gr_u_cart);
-          grad_u_00_.push_back(gr_u_star[0]);
-          grad_u_11_.push_back(gr_u_star[1]);
-          grad_u_22_.push_back(gr_u_star[2]);
-          grad_u_01_.push_back(gr_u_star[3]);
-          grad_u_02_.push_back(gr_u_star[4]);
-          grad_u_12_.push_back(gr_u_star[5]);
+          grad_u_star_.push_back(adptbx::grad_u_cart_as_u_star(
+            unit_cell_, adptbx::u_as_b(gr_b_cart)));
         }
         grad_occupancy_.push_back(gr_occupancy);
         grad_fp_.push_back(gr_fp);
