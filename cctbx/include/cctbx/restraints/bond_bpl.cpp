@@ -62,13 +62,10 @@ namespace {
     {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
-      class_<w_t, bases<bond_params> >("bond_asu_proxy", no_init)
-        .def(init<
-          direct_space_asu::asu_mapping_index_pair const&,
-          double,
-          double>(
-            (arg_("pair"), arg_("distance_ideal"), arg_("weight"))))
-        .def_readonly("pair", &w_t::pair)
+      class_<w_t, bases<bond_params, asu_mapping_index_pair> >(
+            "bond_asu_proxy", no_init)
+        .def(init<asu_mapping_index_pair const&, double, double>(
+          (arg_("pair"), arg_("distance_ideal"), arg_("weight"))))
         .def("as_simple_proxy", &w_t::as_simple_proxy)
       ;
       {
@@ -96,7 +93,7 @@ namespace {
                   bond_simple_proxy const&>(
           (arg_("sites_cart"), arg_("proxy"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
-                  direct_space_asu::asu_mappings<> const&,
+                  asu_mappings const&,
                   bond_asu_proxy const&>(
           (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
@@ -120,7 +117,7 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("bond_sorted_asu_proxies", no_init)
         .def(init<
-          boost::shared_ptr<direct_space_asu::asu_mappings<> > const&>(
+          boost::shared_ptr<asu_mappings> const&>(
             (arg_("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("process", (bool(w_t::*)(bond_simple_proxy const&)) &w_t::process,
@@ -175,21 +172,21 @@ namespace {
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        direct_space_asu::asu_mappings<> const&,
+        asu_mappings const&,
         af::const_ref<bond_asu_proxy> const&))
       bond_deltas,
       (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        direct_space_asu::asu_mappings<> const&,
+        asu_mappings const&,
         af::const_ref<bond_asu_proxy> const&))
       bond_residuals,
       (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        direct_space_asu::asu_mappings<> const&,
+        asu_mappings const&,
         af::const_ref<bond_asu_proxy> const&,
         af::ref<scitbx::vec3<double> > const&,
         bool)) bond_residual_sum,
