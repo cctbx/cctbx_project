@@ -28,7 +28,9 @@ class find_best_cell:
   def __init__(self, input_symmetry, angular_tolerance):
     space_group_number = input_symmetry.space_group_info().type().number()
     if (space_group_number < 3 or space_group_number >= 75):
-      return input_symmetry
+      self._cb_op = sgtbx.change_of_basis_op()
+      self._symmetry = input_symmetry
+      return
     standard_info = sgtbx.space_group_info(
       symbol=space_group_number,
       table_id="A1983")
@@ -54,7 +56,8 @@ class find_best_cell:
       affine_group = sgtbx.space_group(affine_hall_symbol).change_basis(
         cb_op_std_inp)
       for affine_s in affine_group:
-        affine_cb_op = sgtbx.change_of_basis_op(affine_s)
+        affine_cb_op = sgtbx.change_of_basis_op(affine_s) \
+          .new_denominators(best_cb_op)
         alt_symmetry = input_symmetry.change_basis(affine_cb_op)
         if (alt_symmetry.space_group() == input_symmetry.space_group()):
           alt_cell_parameters = alt_symmetry.unit_cell().parameters()
@@ -81,7 +84,7 @@ class find_best_cell:
 def exercise():
   from cctbx import crystal
   cb_op = sgtbx.change_of_basis_op("y,z,x")
-  for space_group_number in xrange(3,75):
+  for space_group_number in xrange(3,76):
     sgi = sgtbx.space_group_info(symbol=space_group_number)
     uc = sgi.any_compatible_unit_cell(volume=1000)
     best = find_best_cell(
