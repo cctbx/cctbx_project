@@ -476,6 +476,10 @@ def exercise_complex_functions():
   d = y[0]
   assert approx_equal(d.real, c.real)
   assert approx_equal(d.imag, c.imag)
+  y = flex.polar(a, math.pi/2)
+  d = y[0]
+  assert approx_equal(d.real, 0)
+  assert approx_equal(d.imag, a[0])
 
 def exercise_linear_regression():
   x = flex.double((1,2,3))

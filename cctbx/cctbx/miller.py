@@ -480,9 +480,7 @@ class fft_map(crystal.symmetry):
     if (cf.size() == 0):
       cf = flex.complex_double()
     elif (type(cf[0]) != type(0j)):
-      ph = flex.double(cf.size(), 0)
-      cf = flex.polar(cf, ph)
-      del ph
+      cf = flex.polar(cf, 0)
     n_real = coeff_array.determine_gridding(
       resolution_factor=self.resolution_factor(),
       d_min=d_min,
