@@ -47,6 +47,7 @@ class scalepack_reader:
     self.miller_indices = shared.miller_Index()
     self.fobs = shared.double()
     self.sigmas = shared.double()
+    self.anomalous = 0
     line_count = 3
     while 1:
       line = self.file_handle.readline()
@@ -71,7 +72,9 @@ class scalepack_reader:
             fobs, sigma = (float(flds[j]), float(flds[j+1]))
           except:
             raise ScalepackFormatError, line_error
-          if (i): h = [-e for e in h]
+          if (i):
+            h = [-e for e in h]
+            self.anomalous = 1
           self.miller_indices.append(h)
           self.fobs.append(fobs)
           self.sigmas.append(sigma)
@@ -87,14 +90,34 @@ class scalepack_reader:
     xsym = xutils.crystal_symmetry(
       self.unit_cell, self.space_group_info, auto_check=1)
     miller_set = xutils.miller_set(xsym, self.miller_indices)
+    miller_set.set_friedel_flag(not self.anomalous)
     return xutils.reciprocal_space_array(
       miller_set, self.fobs, self.sigmas, info=info)
 
+def run():
+  import sys, os
+  import cPickle
+  import pickle
+  binary_pickle = 1
+  to_pickle = "--pickle" in sys.argv[1:]
+  for file_name in sys.argv[1:]:
+    if (file_name.startswith("--")): continue
+    f = open(file_name, "r")
+    s = scalepack_reader(f)
+    f.close()
+    miller_data = s.as_reciprocal_space_array(info="From file: "+file_name)
+    miller_data.show_summary()
+    if (to_pickle):
+      pickle_file_name = file_name + ".pickle"
+      f = open(pickle_file_name, "wb")
+      pickle.dump(miller_data, f, binary_pickle)
+      f.close()
+      f = open(pickle_file_name, "rb")
+      cPickle.load(f)
+      f.close()
+    print
+  t = os.times()
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+
 if (__name__ == "__main__"):
-  import sys
-  file_name = sys.argv[1]
-  f = open(file_name, "r")
-  s = scalepack_reader(f)
-  f.close()
-  r = s.as_reciprocal_space_array(info="From file: "+file_name)
-  r.show_summary()
+  run()

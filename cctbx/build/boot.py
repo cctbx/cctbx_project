@@ -102,20 +102,26 @@ if ( ! $?PYTHONPATH ) then
   setenv PYTHONPATH ""
 endif
 setenv PYTHONPATH ".:%s:%s:${PYTHONPATH}"
+set path = (%s/command_line $path)
     """ % ( norm(join(os.getcwd(),"../lib")),
             structured_package_dir,
-            norm(join(os.getcwd(),"../lib_python")))
+            norm(join(os.getcwd(),"../lib_python")),
+            structured_package_dir)
 
   else:
     for file in ( "test_imports.py",):
       print "Copying:", file
       shutil.copy(structured_package_dir + "/build/" + file, file)
     file = norm("..\setpythonpath.bat")
-    proc = """
+    proc = r"""
 if not defined PYTHONPATH set PYTHONPATH=
+if not defined PATHEXT set PATHEXT=
 set PYTHONPATH=.;%s;%s;%%PYTHONPATH%%
+set PATH=%s\command_line;%%PATH%%
+set PATHEXT=.PY;%%PATHEXT%%
     """ % ( structured_package_dir,
-            norm(join(os.getcwd(),"../lib_python")))
+            norm(join(os.getcwd(),"../lib_python")),
+            structured_package_dir)
   print "Updating:", file
   f = open(file, "a")
   f.write(proc)

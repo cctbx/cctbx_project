@@ -63,7 +63,7 @@ class miller_set(crystal_symmetry):
 
   def friedel_info(self):
     if (not hasattr(self, "friedel_flag")): return "undefined"
-    return friedel_flag
+    return self.friedel_flag
 
   def show_summary(self):
     crystal_symmetry.show_summary(self)
