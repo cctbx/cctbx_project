@@ -12,29 +12,6 @@
 
 namespace scitbx { namespace serialization { namespace base_256 {
 
-  namespace detail {
-
-    double
-    pow_10(double x, int e)
-    {
-      if (e < 0) {
-        e = -e;
-        while (e >= 4) { x /= 10000; e -= 4; }
-        while (e >= 3) { x /= 1000; e -= 3; }
-        while (e >= 2) { x /= 100; e -= 2; }
-        if (e) x /= 10;
-      }
-      else {
-        while (e >= 4) { x *= 10000; e -= 4; }
-        while (e >= 3) { x *= 1000; e -= 3; }
-        while (e >= 2) { x *= 100; e -= 2; }
-        if (e) x *= 10;
-      }
-      return x;
-    }
-
-  } // namespace detail
-
   namespace integer {
 
     namespace signed_ {
@@ -208,6 +185,18 @@ namespace scitbx { namespace serialization { namespace base_256 {
   namespace floating_point {
 
     template <typename T>
+    struct decomposition
+    {
+      decomposition(double x)
+      {
+        f = static_cast<T>(std::frexp(x, &e));
+      }
+
+      T f;
+      int e;
+    };
+
+    template <typename T>
     inline
     unsigned char*
     to_string(unsigned char* buf, T value)
@@ -219,18 +208,17 @@ namespace scitbx { namespace serialization { namespace base_256 {
         *buf0 = 128;
         value = -value;
       }
-      int e = static_cast<int>(std::log10(value)) + 1;
-      T m = detail::pow_10(value, -e);
+      decomposition<T> v(value);
       for(int i=0;i<sizeof(T);i++) {
-        m *= 256;
-        int d = static_cast<int>(m);
+        v.f = static_cast<T>(std::ldexp(v.f, 8)); // v.f *= 256;
+        int d = static_cast<int>(v.f);
         SCITBX_ASSERT(d < 256);
         *buf++ = static_cast<unsigned char>(d);
-        m -= d;
-        if (m == 0) break;
+        v.f -= d;
+        if (v.f == 0) break;
       }
       *buf0 += static_cast<unsigned char>(buf - buf0);
-      return base_256::to_string(buf, e);
+      return base_256::to_string(buf, v.e);
     }
 
     template<typename T>
@@ -249,12 +237,12 @@ namespace scitbx { namespace serialization { namespace base_256 {
         end += len-1;
         for(;;) {
           value += static_cast<T>(*end--);
-          value /= 256;
+          value = static_cast<T>(std::ldexp(value, -8)); // value /= 256;
           if (end == buf) break;
         }
         if (*buf > 128) value = -value;
         base_256::from_string<int> e_proxy(buf + len);
-        value = detail::pow_10(value, e_proxy.value);
+        value = static_cast<T>(std::ldexp(value, e_proxy.value));
         end = e_proxy.end;
       }
 
