@@ -27,6 +27,7 @@ def exercise_space_group_info():
   i = sgtbx.space_group_info("B 2", "i")
   assert not i.is_reference_setting()
   assert str(i.reference_setting()) == "C 1 2 1"
+  assert str(i.as_reference_setting()) == "C 1 2 1"
   assert str(i.primitive_setting()) == "Hall:  C 2y (-x+y,z,x+y)"
 
 def test_enantiomorphic_pairs():
