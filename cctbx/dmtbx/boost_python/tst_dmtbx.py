@@ -21,7 +21,7 @@ def exercise_triplet_generator():
   assert t.discard_weights() == 0001
   assert tuple(t.n_relations()) == (0,0)
   assert t.relations_for(0) == ()
-  assert approx_equal(tuple(t.sum_of_amplitude_products(i, a)), (0,0))
+  assert approx_equal(tuple(t.sums_of_amplitude_products(a)), (0,0))
   s = flex.bool()
   o = flex.size_t()
   r = t.raw_apply_tangent_formula(a, a, s, o, 00000, 1.e-15)
@@ -37,12 +37,12 @@ def exercise_triplet_generator():
       == ["(5,2,5) (4,6,0) 0 (6,1,5) 0 3 2"]
   assert [r.format(i, 2) for r in t.relations_for(2)] \
       == ["(6,1,5) (4,6,0) 0 (5,2,5) 0 9 2"]
-  assert approx_equal(tuple(t.sum_of_amplitude_products(i, a)), (24,6,4))
+  assert approx_equal(tuple(t.sums_of_amplitude_products(a)), (24,6,4))
   t = dmtbx.triplet_generator(sg, i, 00000, 0001)
   assert tuple(t.n_relations()) == (1,1,1)
   assert [r.format(i, 0) for r in t.relations_for(0)] \
       == ["(4,6,0) (5,2,5) 1 (6,1,5) 0 3 1"]
-  assert approx_equal(tuple(t.sum_of_amplitude_products(i, a)), (6,3,2))
+  assert approx_equal(tuple(t.sums_of_amplitude_products(a)), (6,3,2))
   t = dmtbx.triplet_generator(sg, i, 00000, 00000)
   r0 = t.relations_for(0)
   r1 = t.relations_for(1)

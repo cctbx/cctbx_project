@@ -126,14 +126,12 @@ namespace cctbx { namespace dmtbx {
       }
 
       af::shared<FloatType>
-      sum_of_amplitude_products(
-        af::const_ref<miller::index<> > const& miller_indices,
+      sums_of_amplitude_products(
         af::const_ref<FloatType> const& amplitudes) const
       {
-        CCTBX_ASSERT(miller_indices.size() == array_of_wtprs_.size());
-        CCTBX_ASSERT(miller_indices.size() == amplitudes.size());
-        af::shared<FloatType> result((af::reserve(amplitudes.size())));
         std::size_t n_miller_indices = array_of_wtprs_.size();
+        CCTBX_ASSERT(amplitudes.size() == n_miller_indices);
+        af::shared<FloatType> result((af::reserve(n_miller_indices)));
         for(std::size_t ih=0;ih<n_miller_indices;ih++) {
           cr_wtprs_t tprs = array_of_wtprs_[ih].const_ref();
           FloatType sum = 0;
