@@ -377,6 +377,14 @@ namespace iotbx { namespace mtz {
       batch
       add_batch();
 
+      inline
+      void
+      sort_batches()
+      {
+        CMtz::MTZ* p = ptr();
+        p->batch = CMtz::sort_batches(p->batch, n_batches());
+      }
+
       int
       n_reflections() const { return ptr()->nref; }
 

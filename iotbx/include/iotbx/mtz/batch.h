@@ -1,7 +1,7 @@
 #ifndef IOTBX_MTZ_BATCH_H
 #define IOTBX_MTZ_BATCH_H
 
-#include <iotbx/mtz/object.h>
+#include <iotbx/mtz/dataset.h>
 
 namespace iotbx { namespace mtz {
 
@@ -273,6 +273,33 @@ namespace iotbx { namespace mtz {
     CCTBX_ASSERT(p->next == 0);
     CCTBX_ASSERT(p->num == max_batch_number+1);
     return batch(*this, i_batch);
+  }
+
+  inline
+  af::shared<batch>
+  dataset::batches() const
+  {
+    af::shared<batch> result;
+    int n_orig_bat = mtz_object().ptr()->n_orig_bat;
+    CMtz::MTZBAT* batch_ptr = mtz_object().ptr()->batch;
+    for(int i_batch=0;
+            batch_ptr!=0;
+            i_batch++, batch_ptr=batch_ptr->next) {
+      if (   batch_ptr->nbsetid == id()
+          && i_batch >= n_orig_bat) {
+        result.push_back(batch(mtz_object(), i_batch));
+      }
+    }
+    return result;
+  }
+
+  inline
+  batch
+  dataset::add_batch()
+  {
+    batch result = mtz_object().add_batch();
+    result.set_nbsetid(id());
+    return result;
   }
 
 }} // namespace iotbx::mtz

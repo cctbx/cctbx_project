@@ -3,6 +3,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_arg.hpp>
+#include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 
@@ -27,6 +28,9 @@ namespace {
         .def("set_id", &w_t::set_id, (arg_("id")), return_self<>())
         .def("name", &w_t::name)
         .def("wavelength", &w_t::wavelength)
+        .def("n_batches", &w_t::n_batches)
+        .def("batches", &w_t::batches)
+        .def("add_batch", &w_t::add_batch)
         .def("n_columns", &w_t::n_columns)
         .def("columns", &w_t::columns)
         .def("add_column", &w_t::add_column, (

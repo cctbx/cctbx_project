@@ -1039,6 +1039,25 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
   restored.batches()[3].show(out=out)
   if (not verbose):
     assert out.getvalue() == batch_3_show.getvalue()
+  for i_trial in xrange(10):
+    perm = flex.random_permutation(size=10)
+    for batch,new_num in zip(mtz_object.batches(), perm):
+      batch.set_num(value=new_num+1)
+    mtz_object.sort_batches()
+    assert [batch.num() for batch in mtz_object.batches()] \
+        == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  for batch,nbsetid in zip(mtz_object.batches(), [0,0,1,0,1,1,1,0,1,1]):
+    batch.set_nbsetid(value=nbsetid)
+  for crystal in mtz_object.crystals():
+    for dataset in crystal.datasets():
+      assert dataset.id() in [0,1]
+      assert dataset.n_batches() == [4,6][dataset.id()]
+      assert dataset.batches().size() == dataset.n_batches()
+      for batch in dataset.batches():
+        assert batch.nbsetid() == dataset.id()
+      batch = dataset.add_batch()
+      assert batch.nbsetid() == dataset.id()
+      assert dataset.n_batches() == [5,7][dataset.id()]
 
 def exercise():
   command_line = (iotbx_option_parser()

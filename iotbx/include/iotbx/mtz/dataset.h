@@ -61,6 +61,20 @@ namespace iotbx { namespace mtz {
       wavelength() const { return ptr()->wavelength; }
 
       int
+      n_batches() const
+      {
+        return CMtz::MtzNbatchesInSet(mtz_object().ptr(), ptr());
+      }
+
+      inline
+      af::shared<batch>
+      batches() const;
+
+      inline
+      batch
+      add_batch();
+
+      int
       n_columns() const { return CMtz::MtzNcolsInSet(ptr()); }
 
       af::shared<column>
