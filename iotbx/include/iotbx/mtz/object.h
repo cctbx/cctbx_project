@@ -128,6 +128,7 @@ namespace iotbx { namespace mtz {
       af::shared<crystal>
       crystals() const;
 
+      inline
       column
       lookup_column(const char* label) const;
 
