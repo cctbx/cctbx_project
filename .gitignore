@@ -37,3 +37,4 @@ cctbx/include/cctbx/array_family/tiny_plain_apply.h
 cctbx/include/cctbx/array_family/versa_algebra.h
 cctbx/include/cctbx/array_family/versa_apply.h
 cctbx/include/cctbx/array_family/versa_plain_apply.h
+cctbx/misc/tiny_bpl.cpp

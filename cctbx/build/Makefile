@@ -6,6 +6,7 @@ usage:
 
 softlinks:
 	cd external/boost_python; make softlinks
+	cd misc; make softlinks
 	cd uctbx; make softlinks
 	cd sgtbx; make softlinks
 	cd arraytbx; make softlinks
@@ -18,6 +19,7 @@ softlinks:
 
 unlink:
 	cd external/boost_python; make unlink
+	cd misc; make unlink
 	cd uctbx; make unlink
 	cd sgtbx; make unlink
 	cd arraytbx; make unlink
@@ -30,6 +32,7 @@ unlink:
 
 cp:
 	cd external/boost_python; make cp
+	cd misc; make cp
 	cd uctbx; make cp
 	cd sgtbx; make cp
 	cd arraytbx; make cp
@@ -42,6 +45,7 @@ cp:
 
 rm:
 	cd external/boost_python; make rm
+	cd misc; make rm
 	cd uctbx; make rm
 	cd sgtbx; make rm
 	cd arraytbx; make rm
@@ -54,6 +58,7 @@ rm:
 
 clean:
 	cd external/boost_python; make clean
+	cd misc; make clean
 	cd uctbx; make clean
 	cd sgtbx; make clean
 	cd arraytbx; make clean
@@ -69,6 +74,7 @@ all_clean: clean
 
 depend:
 	cd external/boost_python; make -f Makefile.nodepend depend > Makefile
+	cd misc; make -f Makefile.nodepend depend > Makefile
 	cd uctbx; make -f Makefile.nodepend depend > Makefile
 	cd sgtbx; make -f Makefile.nodepend depend > Makefile
 	cd arraytbx; make -f Makefile.nodepend depend > Makefile
@@ -80,6 +86,7 @@ depend:
 	cd examples/cpp; make -f Makefile.nodepend depend > Makefile
 
 libraries:
+	cd misc; make libraries
 	cd uctbx; make libraries
 	cd sgtbx; make libraries
 	cd eltbx; make libraries
@@ -93,6 +100,7 @@ executables:
 
 all:
 	cd external/boost_python; make
+	cd misc; make
 	cd uctbx; make
 	cd sgtbx; make
 	cd arraytbx; make

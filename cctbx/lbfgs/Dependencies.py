@@ -9,16 +9,15 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.lib_python_subdir = "cctbx_boost"
 
     self.files = (
-      "global/error.cpp",
       "lbfgs/lbfgs_driver.cpp",
       "lbfgs/lbfgsmodule.cpp",
       "lbfgs/tst.py",
     )
 
     self.executables = {
-      "lbfgs_driver": (("lbfgs_driver", "error"), ()),
+      "lbfgs_driver": (("lbfgs_driver",), ("cctbx_misc",)),
     }
 
     self.boost_python_modules = {
-      "lbfgs": (("lbfgsmodule", "error"), ()),
+      "lbfgs": (("lbfgsmodule",), ("cctbx_misc",)),
     }

@@ -9,9 +9,6 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.lib_python_subdir = "cctbx_boost"
 
     self.files = (
-      "global/error.cpp",
-      "global/bpl_utils.cpp",
-      "global/tiny_bpl.cpp",
       "uctbx/uctbx.cpp",
       "uctbx/uctbxmodule.cpp",
       "uctbx/uctbxdriver.cpp",
@@ -19,16 +16,13 @@ class write_makefiles(makefile_generator.write_makefiles):
     )
 
     self.libraries = {
-      "uctbx": ("uctbx", "error"),
+      "uctbx": ("uctbx",),
     }
 
     self.executables = {
-      "uctbxdriver": (("uctbxdriver", "uctbx", "error"), ()),
+      "uctbxdriver": (("uctbxdriver", "uctbx"), ("cctbx_misc",)),
     }
 
     self.boost_python_modules = {
-      "uctbx": (("uctbxmodule",
-                 "uctbx",
-                 "error",
-                 "bpl_utils", "tiny_bpl"), ()),
+      "uctbx": (("uctbxmodule", "uctbx"), ("cctbx_misc", "cctbx_bpl1")),
     }
