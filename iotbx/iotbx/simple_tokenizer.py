@@ -69,9 +69,9 @@ default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
 def split_into_words(
       input_string,
       file_name=None,
+      unquoted_single_character_words="",
       contiguous_word_characters=None,
-      enable_unquoted_embedded_quotes=True,
-      auto_split_unquoted={}):
+      enable_unquoted_embedded_quotes=True):
   if (contiguous_word_characters is None):
     contiguous_word_characters = default_contiguous_word_characters
   words = []
@@ -121,31 +121,26 @@ def split_into_words(
     else:
       word_value = c
       word_line_number = char_iter.line_number
-      if (contiguous_word_characters != ""
-          and c not in contiguous_word_characters):
+      if (c in unquoted_single_character_words
+          or (contiguous_word_characters != ""
+              and c not in contiguous_word_characters)):
         c = char_iter.next()
       else:
         while True:
           c = char_iter.next()
           if (c is None): break
           if (c.isspace()): break
+          if (c in unquoted_single_character_words): break
           if (contiguous_word_characters != ""
               and c not in contiguous_word_characters
               and (not enable_unquoted_embedded_quotes
                    or c not in ['"', "'"])):
             break
           word_value += c
-      if (word_value not in auto_split_unquoted):
-        words.append(word(
-          value=word_value,
-          line_number=word_line_number,
-          file_name=file_name))
-      else:
-        for value in auto_split_unquoted[word_value]:
-          words.append(word(
-            value=value,
-            line_number=word_line_number,
-            file_name=file_name))
+      words.append(word(
+        value=word_value,
+        line_number=word_line_number,
+        file_name=file_name))
   return words
 
 class word_stack:
@@ -175,12 +170,12 @@ class word_stack:
 def as_word_stack(
       input_string,
       file_name=None,
+      unquoted_single_character_words="",
       contiguous_word_characters=None,
-      enable_unquoted_embedded_quotes=True,
-      auto_split_unquoted={}):
+      enable_unquoted_embedded_quotes=True):
   return word_stack(split_into_words(
     input_string=input_string,
     file_name=file_name,
+    unquoted_single_character_words=unquoted_single_character_words,
     contiguous_word_characters=contiguous_word_characters,
-    enable_unquoted_embedded_quotes=enable_unquoted_embedded_quotes,
-    auto_split_unquoted=auto_split_unquoted))
+    enable_unquoted_embedded_quotes=enable_unquoted_embedded_quotes))
