@@ -111,7 +111,7 @@ namespace cctbx { namespace crystal {
       add_pair(unsigned i_seq, unsigned j_seq, sgtbx::rt_mx const& rt_mx_ji)
       {
         bool is_new = process_pair(i_seq, j_seq, rt_mx_ji);
-        if (is_new and i_seq != j_seq) {
+        if (is_new && i_seq != j_seq) {
           is_new = process_pair(j_seq, i_seq, rt_mx_ji.inverse_cancel());
           CCTBX_ASSERT(is_new);
         }
@@ -123,7 +123,7 @@ namespace cctbx { namespace crystal {
       {
         sgtbx::rt_mx rt_mx_ji(1, 1);
         bool is_new = process_pair(i_seqs[0], i_seqs[1], rt_mx_ji);
-        if (is_new and i_seqs[0] != i_seqs[1]) {
+        if (is_new && i_seqs[0] != i_seqs[1]) {
           is_new = process_pair(i_seqs[1], i_seqs[0], rt_mx_ji);
           CCTBX_ASSERT(is_new);
         }
