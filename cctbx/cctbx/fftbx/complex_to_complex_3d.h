@@ -5,9 +5,9 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Dec 21: iterator-based interface (rwgk)
      2001 Nov 03: fftbx started, based on fftpack41 (rwgk)
      XXX update all
-     XXX const NdimAccessor&
  */
 
 #ifndef CCTBX_FFTBX_COMPLEX_TO_COMPLEX_3D_H
@@ -43,7 +43,7 @@ namespace cctbx { namespace fftbx {
        */
       complex_to_complex_3d(std::size_t N0, std::size_t N1, std::size_t N2);
       //! Access the N (or N0, N1, N2) that was passed to the constructor.
-      triple N() const {
+      boost::array<std::size_t, 3> N() const {
         return triple(m_fft1d[0].N(), m_fft1d[1].N(), m_fft1d[2].N());
       }
       //! In-place "forward" Fourier transformation.
@@ -60,9 +60,24 @@ namespace cctbx { namespace fftbx {
       void backward(NdimAccessor Map) {
         transform(select_sign<backward_tag>(), Map);
       }
-      //! Generic in-place Fourier transformation.
+    protected:
+      // This accepts complex or real maps.
       template <typename Tag, typename NdimAccessor>
       void transform(select_sign<Tag> tag, NdimAccessor Map) {
+        typedef typename NdimAccessor::value_type real_or_complex_type;
+        transform(tag, Map, real_or_complex_type());
+      }
+      // Cast map of real to map of complex.
+      template <typename Tag, typename NdimAccessor>
+      void transform(select_sign<Tag> tag, NdimAccessor Map, real_type) {
+        typedef typename NdimAccessor::dimension_type dim_type;
+        ndim_accessor<dim_type, complex_type*, complex_type>
+        cmap(Map, reinterpret_cast<complex_type*>(&Map[triple(0,0,0)]));
+        transform(tag, cmap, complex_type());
+      }
+      // Core routine always works on complex maps.
+      template <typename Tag, typename NdimAccessor>
+      void transform(select_sign<Tag> tag, NdimAccessor Map, complex_type) {
   // FUTURE: move out of class body
   {
     complex_type* Seq = &(*(m_Seq.begin()));

@@ -68,10 +68,22 @@ namespace cctbx {
         elems[1] = n1;
         elems[2] = n2;
       }
+
       std::size_t N1d() const { return cctbx::vector::product(*this); }
+
       template <typename IndexTuple>
       std::size_t operator()(const IndexTuple& I) const {
         return Index1dType()(*this, I);
+      }
+
+      template <typename IndexTuple>
+      bool is_valid_index(const IndexTuple& I) const {
+        if (I.size() != size()) return false;
+        for(std::size_t j=0;j<size();j++) {
+          std::size_t i = I[j];
+          if (i >= elems[j]) return false;
+        }
+        return true;
       }
   };
 
@@ -80,12 +92,13 @@ namespace cctbx {
             typename ValueType = typename IteratorType::value_type>
   class ndim_accessor : public DimensionType {
     public:
+      typedef DimensionType dimension_type;
       typedef IteratorType iterator_type;
       typedef ValueType value_type;
-      typedef DimensionType dimension_type;
 
       ndim_accessor() {}
-      ndim_accessor(const dimension_type& dim, const iterator_type& start)
+      ndim_accessor(const dimension_type& dim,
+                    const iterator_type& start)
         : dimension_type(dim),
           m_start(start)
       {}
@@ -99,6 +112,32 @@ namespace cctbx {
 
     protected:
       iterator_type m_start;
+  };
+
+  template <typename DimensionType,
+            typename VectorType>
+  class ndim_vector_accessor
+    : public ndim_accessor<DimensionType,
+                           typename VectorType::iterator,
+                           typename VectorType::value_type> {
+    public:
+      typedef DimensionType dimension_type;
+      typedef VectorType vector_type;
+      typedef typename vector_type::iterator iterator_type;
+      typedef typename vector_type::value_type value_type;
+
+      ndim_vector_accessor() {}
+      ndim_vector_accessor(const dimension_type& dim,
+                           vector_type& vec,
+                           bool resize_vector = true)
+        : ndim_accessor<dimension_type, iterator_type, value_type>(
+            dim, vec.begin())
+      {
+        if (resize_vector) {
+          vec.resize(N1d());
+          m_start = vec.begin();
+        }
+      }
   };
 
 }

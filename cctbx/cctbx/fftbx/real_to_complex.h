@@ -68,6 +68,8 @@ namespace cctbx { namespace fftbx {
       /*! See also: Ncomplex_from_Nreal()
        */
       std::size_t Ncomplex() { return m_Ncomplex; }
+      //! XXX
+      std::size_t Mreal() { return 2 * m_Ncomplex; }
       //! Access to the Nreal() pre-computed "twiddle factors."
       const std::vector<real_type>& WA() const {
         return m_WA;

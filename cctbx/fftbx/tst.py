@@ -1,69 +1,70 @@
 import fftbx
 
-def initcseq(N):
-  cseq = fftbx.vector_of_double()
-  for i in xrange(1, N + 1):
-    cseq.append(float(37-i)/(N+11))
-    cseq.append(float(i-73)/(N+13))
-  return cseq
-
-def showcseq(cseq):
-  for i in xrange(len(cseq) / 2):
-    print "%12.4f %12.4f" % (cseq[2*i], cseq[2*i+1])
-  sys.stdout.flush()
-
-def initrseq(N):
-  rseq = fftbx.vector_of_double()
-  for i in xrange(1, N + 1):
-    rseq.append(float(37-i)/(N+11))
-  return rseq
-
-def showrseq(rseq):
-  for i in xrange(len(rseq)):
-    print "%12.4f" % (rseq[i],)
-  sys.stdout.flush()
-
-def showfactors(xfft):
-  print N,
-  for f in xfft.Factors(): print f,
+def show_cseq(vc):
+  for i in xrange(len(vc)):
+    print "(%.6g,%.6g)" % (vc[i].real, vc[i].imag)
   print
-  #for w in xfft.WA(): print "%8.5f" % (w,)
-  sys.stdout.flush()
 
-def test_complex(Nmax, transform_type):
-  for N in xrange(2, Nmax + 1):
-    print "N %4d" % (N,)
-    cseq = initcseq(N)
-    cfft = fftbx.complex_to_complex(N)
-    if (transform_type == "f"):
-      cfft.forward(cseq)
-    else:
-      cfft.backward(cseq)
-    showcseq(cseq)
+def show_rseq(vr, N):
+  for i in xrange(N):
+    print "%.6g" % (vr[i],)
+  print
 
-def test_real(Nmax, transform_type):
-  for N in xrange(2, Nmax + 1):
-    print "N %4d" % (N,)
-    rseq = initrseq(N)
-    rfft = fftbx.real_to_complex(N)
-    if (transform_type == "f"):
-      rfft.forward(rseq)
-    else:
-      rfft.backward(rseq)
-    showrseq(rseq)
+def show_rseq_3d(map, N):
+  for i in xrange(N[0]):
+    for j in xrange(N[1]):
+      for k in xrange(N[2]):
+        print "%.6g" % (map[(i, j, k)],)
+  print
 
-def trace_func(frame, event, arg):
-  #if (event == "call"):
-  print frame.f_code.co_filename, frame.f_lineno
-  return trace_func
+def test_complex_to_complex():
+  fft = fftbx.complex_to_complex(10)
+  vc = fftbx.vector_of_complex(fft.N())
+  for i in xrange(fft.N()):
+    vc[i] = complex(2.*i, 2.*i+1.)
+  fft.forward(vc)
+  show_cseq(vc)
+  fft.backward(vc)
+  show_cseq(vc)
+
+def test_complex_to_complex_3d():
+  fft = fftbx.complex_to_complex_3d((3,4,5))
+  vc = fftbx.vector_of_complex()
+  map = fftbx.vc3d_accessor(fft.N(), vc, 1)
+  map[(0,0,0)] = 123+4j
+  assert map[(0,0,0)] == 123+4j
+  for i in xrange(vc.size()):
+    vc[i] = complex(2.*i, 2.*i+1.)
+  fft.forward(map)
+  show_cseq(vc)
+  fft.backward(map)
+  show_cseq(vc)
+
+def test_real_to_complex():
+  fft = fftbx.real_to_complex(10)
+  vd = fftbx.vector_of_double(fft.Mreal())
+  for i in xrange(fft.Nreal()):
+    vd[i] = 1.*i
+  fft.forward(vd)
+  show_rseq(vd, fft.Mreal())
+  fft.backward(vd)
+  show_rseq(vd, fft.Nreal())
+
+def test_real_to_complex_3d():
+  fft = fftbx.real_to_complex_3d((3,4,5))
+  vd = fftbx.vector_of_double()
+  map = fftbx.vd3d_accessor(fft.Mreal(), vd, 1)
+  map[(0,0,0)] = 123
+  assert map[(0,0,0)] == 123
+  for i in xrange(vd.size()):
+    vd[i] = 1.*i
+  fft.forward(map)
+  show_rseq_3d(map, fft.Mreal())
+  fft.backward(map)
+  show_rseq_3d(map, fft.Nreal())
 
 if (__name__ == "__main__"):
-  import sys
-  #sys.settrace(trace_func)
-  assert sys.argv[1][0] in "cr"
-  assert sys.argv[1][1] in "bf"
-  Nmax = float(sys.argv[2])
-  if (sys.argv[1][0] == "c"):
-    test_complex(Nmax, sys.argv[1][1])
-  else:
-    test_real(Nmax, sys.argv[1][1])
+  test_complex_to_complex()
+  test_real_to_complex()
+  test_complex_to_complex_3d()
+  test_real_to_complex_3d()

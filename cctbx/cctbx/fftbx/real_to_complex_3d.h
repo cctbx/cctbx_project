@@ -90,18 +90,38 @@ namespace cctbx { namespace fftbx {
         init();
       }
       //! XXX
-      triple Nreal() const { return m_Nreal; }
+      boost::array<std::size_t, 3> Nreal() const { return m_Nreal; }
       //! XXX
-      triple Mreal() const {
-        triple result = Ncomplex_from_Nreal(m_Nreal);
-        result[2] *= 2;
-        return result;
+      boost::array<std::size_t, 3> Mreal() const {
+        return Mreal_from_Nreal(m_Nreal);
+      }
+      //! XXX
+      boost::array<std::size_t, 3> Ncomplex() const {
+        return Ncomplex_from_Nreal(m_Nreal);
       }
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex, real_to_complex
        */
       template <typename NdimAccessor>
-      void forward(NdimAccessor Map)
+      void forward(NdimAccessor Map) {
+        typedef typename NdimAccessor::value_type real_or_complex_type;
+        forward(Map, real_or_complex_type());
+      }
+      //! In-place "backward" Fourier transformation.
+      /*! <b>It is important to provide both
+          Map(i,j,0) and Map(-i,-j,0)</b>. See class details.
+          <p>
+          See also: complex_to_complex, real_to_complex
+       */
+      template <typename NdimAccessor>
+      void backward(NdimAccessor Map) {
+        typedef typename NdimAccessor::value_type real_or_complex_type;
+        backward(Map, real_or_complex_type());
+      }
+    private:
+      void init();
+      template <typename NdimAccessor>
+      void forward(NdimAccessor Map, real_type)
   // FUTURE: move out of class body
   {
     real_type* Seq = &(*(m_Seq.begin()));
@@ -140,14 +160,8 @@ namespace cctbx { namespace fftbx {
       }
     }
   }
-      //! In-place "backward" Fourier transformation.
-      /*! <b>It is important to provide both
-          Map(i,j,0) and Map(-i,-j,0)</b>. See class details.
-          <p>
-          See also: complex_to_complex, real_to_complex
-       */
       template <typename NdimAccessor>
-      void backward(NdimAccessor Map)
+      void backward(NdimAccessor Map, real_type)
   // FUTURE: move out of class body
   {
     real_type* Seq = &(*(m_Seq.begin()));
@@ -186,8 +200,6 @@ namespace cctbx { namespace fftbx {
       }
     }
   }
-    private:
-      void init();
     private:
       triple m_Nreal;
       complex_to_complex<real_type, complex_type> m_fft1d_x;
