@@ -5,6 +5,7 @@ env.SharedLibrary(
   target="#libtbx/clipper_ext",
   source=[
     "clipper_ext.cpp",
+    "hendrickson_lattman_bpl.cpp",
     "sigmaa_bpl.cpp",
     "../../clipper/clipper/contrib/sfweight.cpp",
     "../../clipper/clipper/cctbx/clipper_cctbx.cpp"])

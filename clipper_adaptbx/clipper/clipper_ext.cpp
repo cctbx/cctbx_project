@@ -14,6 +14,7 @@ namespace clipper {
 
 namespace boost_python {
 
+  void wrap_hendrickson_lattman();
   void wrap_sigmaa();
 
 }
@@ -54,6 +55,7 @@ namespace {
   {
     sanity_check<ftype32> check32(Util::nanf());
     sanity_check<ftype64> check64(Util::nand());
+    boost_python::wrap_hendrickson_lattman();
     boost_python::wrap_sigmaa();
   }
 
