@@ -1,17 +1,10 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/change_of_basis_op.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/overloads.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 
@@ -40,6 +33,11 @@ namespace {
     {
       o.update(other);
     }
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      as_xyz_overloads, as_xyz, 0, 4)
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      as_hkl_overloads, as_hkl, 0, 3)
 
     static boost::python::tuple
     getinitargs(w_t const& o)
@@ -86,6 +84,15 @@ namespace {
           &w_t::operator())
         .def("update", update_w_t)
         .def("__mul__", &w_t::operator*)
+        .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
+           arg_("decimal")=false,
+           arg_("t_first")=false,
+           arg_("letters_xyz")="xyz",
+           arg_("separator")=",")))
+        .def("as_hkl", &w_t::as_hkl, as_hkl_overloads((
+           arg_("decimal")=false,
+           arg_("letters_hkl")="hkl",
+           arg_("separator")=",")))
         .def_pickle(change_of_basis_op_wrappers())
       ;
     }

@@ -1,18 +1,5 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of sgtbx/matrix.cpp (rwgk)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/sgtbx/row_echelon.h>
-#include <cctbx/rational.h>
 #include <ctype.h>
 #include <string.h>
 
@@ -62,55 +49,6 @@ namespace cctbx { namespace sgtbx {
     return rt_mx(r_, t_ + rhs);
   }
 
-  std::string rt_mx::as_xyz(bool decimal, bool t_first,
-                            const char* letters_xyz,
-                            const char* separator) const
-  {
-    CCTBX_ASSERT(strlen(letters_xyz) == 3);
-    std::string result;
-    for (int i = 0; i < 3; i++) {
-      std::string R_term;
-      for (int j = 0; j < 3; j++) {
-        boost::rational<int> R_frac(r_(i, j), r_.den());
-        if (R_frac != 0) {
-          if (R_frac > 0) {
-            if (!R_term.empty()) {
-              R_term += "+";
-            }
-          }
-          else {
-            R_term += "-";
-            R_frac *= -1;
-          }
-          if (R_frac != 1) {
-            R_term += format(R_frac, decimal) + "*";
-          }
-          R_term += letters_xyz[j];
-        }
-      }
-      if (i != 0) result += separator;
-      boost::rational<int> T_frac(t_[i], t_.den());
-      if (T_frac == 0) {
-        if (R_term.empty()) result += "0";
-        else                result += R_term;
-      }
-      else if (R_term.empty()) {
-        result += format(T_frac, decimal);
-      }
-      else if (t_first) {
-        result += format(T_frac, decimal);
-        if (R_term[0] != '-') result += "+";
-        result += R_term;
-      }
-      else {
-        result += R_term;
-        if (T_frac > 0) result += "+";
-        result += format(T_frac, decimal);
-      }
-    }
-    return result;
-  }
-
   namespace {
 
     void throw_parse_error() { throw error("Parse error."); }
@@ -130,11 +68,16 @@ namespace cctbx { namespace sgtbx {
 
   } // namespace <anonymous>
 
-  rt_mx::rt_mx(parse_string& str_xyz, const char* stop_chars,
-               int r_den, int t_den)
-    : r_(0), t_(0)
+  rt_mx_from_xyz::rt_mx_from_xyz(
+    parse_string& str_xyz,
+    const char* stop_chars,
+    int r_den,
+    int t_den)
+  :
+    rt_mx(r_den, t_den),
+    have_xyz(false),
+    have_hkl(false)
   {
-    rt_mx result(r_den, t_den);
     int Row    = 0;
     int Column = -1;
     int Sign   = 1;
@@ -214,13 +157,20 @@ namespace cctbx { namespace sgtbx {
             P_mode = P_Comma | P_Add | P_Mult | P_XYZ;
             break;
           case 'X':
-          case 'x': Column = 0; goto Process_XYZ;
+          case 'x': Column = 0; have_xyz = true; goto Process_XYZ;
           case 'Y':
-          case 'y': Column = 1; goto Process_XYZ;
+          case 'y': Column = 1; have_xyz = true; goto Process_XYZ;
           case 'Z':
-          case 'z': Column = 2;
+          case 'z': Column = 2; have_xyz = true; goto Process_XYZ;
+          case 'H':
+          case 'h': Column = 0; have_hkl = true; goto Process_XYZ;
+          case 'K':
+          case 'k': Column = 1; have_hkl = true; goto Process_XYZ;
+          case 'L':
+          case 'l': Column = 2; have_hkl = true; goto Process_XYZ;
            Process_XYZ:
             if ((P_mode & P_XYZ) == 0) throw_parse_error();
+            if (have_xyz && have_hkl) throw_parse_error();
             if (!have_value) { Value = Sign; Sign = 1; }
             P_mode = P_Comma | P_Add | P_Mult;
             break;
@@ -232,11 +182,11 @@ namespace cctbx { namespace sgtbx {
             if (Column >= 0) ValR[Column] += Value;
             else             ValT         += Value;
             for(i=0;i<3;i++) {
-              if (rationalize(ValR[i], result.r_(Row, i), r_den) != 0) {
+              if (rationalize(ValR[i], r()(Row, i), r_den) != 0) {
                 throw_unsuitable_rot_mx(__FILE__, __LINE__);
               }
             }
-            if (rationalize(ValT, result.t_[Row], t_den) != 0) {
+            if (rationalize(ValT, t()[Row], t_den) != 0) {
               throw_unsuitable_tr_vec(__FILE__, __LINE__);
             }
             Row++;
@@ -253,12 +203,24 @@ namespace cctbx { namespace sgtbx {
             throw_parse_error();
         }
       }
-      if (strchr(stop_chars, str_xyz()))
+      if (strchr(stop_chars, str_xyz())) {
         break;
+      }
     }
     if (Row != 3) throw_parse_error();
-    r_ = result.r_;
-    t_ = result.t_;
+  }
+
+  rt_mx::rt_mx(parse_string& str_xyz, const char* stop_chars,
+               int r_den, int t_den)
+    : r_(0), t_(0)
+  {
+    rt_mx_from_xyz result(str_xyz, stop_chars, r_den, t_den);
+    if (result.have_hkl) {
+      CCTBX_ASSERT(result.t().is_zero());
+      r_ = result.r().transpose();
+    }
+    else r_ = result.r();
+    t_ = result.t();
   }
 
   rt_mx::rt_mx(std::string const& str_xyz, const char* stop_chars,

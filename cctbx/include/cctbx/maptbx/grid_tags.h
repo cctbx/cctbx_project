@@ -4,8 +4,8 @@
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/sgtbx/search_symmetry.h>
-#include <cctbx/rational.h>
 #include <cctbx/tagged_value.h>
+#include <scitbx/rational.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
@@ -24,7 +24,7 @@ namespace grid_tags_detail {
   DimTupleType
   factors_for_common_denominator(DimTupleType const& n)
   {
-    typename DimTupleType::value_type lcm = array_lcm(n);
+    typename DimTupleType::value_type lcm = scitbx::array_lcm(n);
     DimTupleType result;
     for(std::size_t i=0;i<n.size();i++) {
       CCTBX_ASSERT(n[i] != 0);

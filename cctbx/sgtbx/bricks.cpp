@@ -1,15 +1,5 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Jul: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/sgtbx/brick.h>
-#include <cctbx/rational.h>
+#include <scitbx/rational.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -836,13 +826,13 @@ namespace cctbx { namespace sgtbx {
   {
     std::string result;
     for(std::size_t i=0;i<3;i++) {
-      result += format(points_[i][0].value());
+      result += scitbx::format(points_[i][0].value());
       result += "<";
       if (!points_[i][0].off()) result += "=";
       result += "xyz"[i];
       result += "<";
       if (!points_[i][1].off()) result += "=";
-      result += format(points_[i][1].value());
+      result += scitbx::format(points_[i][1].value());
       if (i < 2) result += "; ";
     }
     return result;

@@ -157,6 +157,9 @@ def exercise_rot_mx():
   assert r.den() == 12
   assert r.num() == (36,0,0,0,36,0,0,0,36)
   assert r.determinant() == 27
+  r = rot_mx(range(9), 2).transpose()
+  assert r.num() == (0, 3, 6, 1, 4, 7, 2, 5, 8)
+  assert r.den() == 2
   assert rot_mx().inverse().num() == rot_mx().num()
   r3 = (0,-1,0,1,-1,0,0,0,1)
   r = rot_mx(r3).inverse()
@@ -288,6 +291,9 @@ def exercise_rot_mx():
   i = rot_mx_info(rot_mx((-1,1,0,0,1,0,0,0,-1)))
   assert i.type() == 2
   assert i.ev() == (1,2,0), i.ev()
+  r = rot_mx((-1,1,0,0,1,0,0,0,-1))
+  assert r.as_xyz() == "-x+y,y,-z"
+  assert r.as_hkl() == "-h,h+k,-l"
 
 def exercise_rt_mx():
   tr_vec = sgtbx.tr_vec
@@ -427,6 +433,11 @@ def exercise_rt_mx():
   assert l.size() == 0
   assert str(rt_mx("z,x,y") + (1,2,-3)) == "z+1,x+2,y-3"
   assert str(rt_mx("z+1/6,x,y") + tr_vec((1,2,-3),12)) == "z+1/4,x+1/6,y-1/4"
+  assert str(rt_mx("-x+y,y,-z")) == "-x+y,y,-z"
+  assert str(rt_mx("-h,h+k,-l")) == "-x+y,y,-z"
+  try: rt_mx("h,x,z")
+  except RuntimeError, e: assert str(e) == "cctbx Error: Parse error."
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx
@@ -490,6 +501,11 @@ def exercise_change_of_basis_op():
   s = pickle.dumps(c)
   l = pickle.loads(s)
   assert str(c.c()) == str(l.c())
+  c = change_of_basis_op("-x+y,y,-z")
+  assert c.as_xyz() == "-x+y,y,-z"
+  c = change_of_basis_op("-h,h+k,-l")
+  assert c.as_xyz() == "-x+y,y,-z"
+  assert c.as_hkl() == "-h,h+k,-l"
 
 def exercise_space_group():
   tr_vec = sgtbx.tr_vec

@@ -2,7 +2,7 @@
 #define CCTBX_SGTBX_ROT_MX_H
 
 #include <cctbx/sgtbx/tr_vec.h>
-#include <boost/rational.hpp>
+#include <scitbx/matrix/as_xyz.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -118,6 +118,10 @@ namespace cctbx { namespace sgtbx {
           cannot be represented using the denominator den().
        */
       rot_mx inverse() const;
+
+      //! New rotation matrix with num().transpose(), den().
+      rot_mx
+      transpose() const { return rot_mx(num_.transpose(), den_); }
 
       //! New rotation matrix with -num(), den().
       rot_mx operator-() const { return rot_mx(-num_, den_); }
@@ -267,6 +271,36 @@ namespace cctbx { namespace sgtbx {
       as_double() const
       {
         return as_floating_point(scitbx::type_holder<double>());
+      }
+
+      //! Conversion to a symbolic expression, e.g. "x,x-y,z".
+      /*! Constants can be formatted as fractional or decimal numbers.<br>
+          E.g. "1/2*x,y,z" or "0.5*x,y,z".<br>
+          letters_xyz must contain three characters that are used to
+          represent x, y, and z, respectively. Typical examples are
+          letters_xyz = "xyz" or letters_xyz = "XYZ".<br>
+          separator is inserted between the terms for two rows.
+          Typical strings used are separator = "," and separator = ", ".
+       */
+      std::string
+      as_xyz(
+        bool decimal=false,
+        const char* letters_xyz="xyz",
+        const char* separator=",") const
+      {
+        return scitbx::matrix::rational_as_xyz(
+          3, 3, num_.begin(), den_, static_cast<const int*>(0), 0,
+          decimal, false, letters_xyz, separator);
+      }
+
+      //! Shorthand for: transpose().as_xyz(decimal, letters_hkl, separator)
+      std::string
+      as_hkl(
+        bool decimal=false,
+        const char* letters_hkl="hkl",
+        const char* separator=",") const
+      {
+        return transpose().as_xyz(decimal, letters_hkl, separator);
       }
 
     private:

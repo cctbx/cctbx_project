@@ -1,18 +1,6 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of sgtbx/matrix.cpp (rwgk)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/sgtbx/tr_vec.h>
 #include <cctbx/sgtbx/utils.h>
-#include <cctbx/rational.h>
+#include <scitbx/rational.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -76,7 +64,7 @@ namespace cctbx { namespace sgtbx {
     for(int i=0;i<3;i++) {
       if (i != 0) result += separator;
       boost::rational<int> t_frac((*this)[i], den());
-      result += format(t_frac, decimal);
+      result += scitbx::format(t_frac, decimal);
     }
     return result;
   }

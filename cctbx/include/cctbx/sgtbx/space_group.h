@@ -139,6 +139,10 @@ namespace cctbx { namespace sgtbx {
         }
       }
 
+      //! Shorthand for: expand_smx(rt_mx(str_xyz))
+      void
+      expand_smx(std::string const& str_xyz) { expand_smx(rt_mx(str_xyz)); }
+
       //! Adds lattice translation vectors to the space group.
       /*! The lattice translation vectors corresponding to the
           conventional centring type symbol are determined from
