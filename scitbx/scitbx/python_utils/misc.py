@@ -49,7 +49,7 @@ class time_log:
     assert self.timer == None
     return "time_log: %s: %d %.2f %.2f %.2f" % (
       self.label, self.n, self.accumulation,
-      self.delta, self.accumulation/self.n)
+      self.delta, self.accumulation/max(1,self.n))
 
 def adopt_init_args(obj, args, exclude=(), hide=00000):
   del args["self"]
