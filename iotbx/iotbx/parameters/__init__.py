@@ -772,7 +772,13 @@ class scope:
                 sub_python_object_i, custom_converters))
     return self.customized_copy(objects=result)
 
-  def _fetch(self, source):
+  def fetch(self, source=None, sources=None):
+    assert [source, sources].count(None) == 1
+    if (sources is not None):
+      combined_objects = []
+      for source in sources:
+        combined_objects.extend(source.objects)
+      source = self.customized_copy(objects=combined_objects)
     assert source.name == self.name
     if (not isinstance(source, scope)):
       raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
@@ -806,20 +812,8 @@ class scope:
           result_objects.append(master_object.copy())
         else:
           result_objects.append(result_object)
-    return result_objects
-
-  def fetch(self, source=None, sources=None):
-    assert [source, sources].count(None) == 1
-    if (source is not None):
-      result = objects=self._fetch(source=source)
-    elif (len(sources) == 0):
-      return self
-    else:
-      result = []
-      for source in sources:
-        result.extend(self._fetch(source=source))
     return self.customized_copy(
-      objects=clean_fetched_scope(fetched_scope=result))
+      objects=clean_fetched_scope(fetched_objects=result_objects))
 
   def process_includes(self,
         definition_type_names,
@@ -863,9 +857,9 @@ class scope:
         result.append(object.unique())
     return self.customized_copy(objects=result)
 
-def clean_fetched_scope(fetched_scope):
+def clean_fetched_scope(fetched_objects):
   result = []
-  for object in fetched_scope:
+  for object in fetched_objects:
     if (not isinstance(object, scope) or len(object.objects) < 2):
       result.append(object)
     else:
