@@ -20,8 +20,6 @@
 #include <scitbx/type_holder.h>
 #include <cctbx/error.h>
 
-#include <scitbx/array_family/simple_io.h>
-
 namespace cctbx {
 
   //! ADP (anisotropic displacement parameters) Toolbox namespace.
@@ -594,32 +592,39 @@ namespace cctbx {
   namespace detail {
 
     template <typename FloatType>
-    std::pair<vec3<FloatType>, FloatType>
-    recursively_multiply(mat3<FloatType> const& m,
-                         vec3<FloatType> v,
-                         FloatType tolerance=1.e-6)
+    struct recursively_multiply
     {
-      unsigned int run_away_counter = 0;
-      for (;;) {
-        vec3<FloatType> mv = m * v;
-        FloatType abs_lambda = mv.length();
-        if (abs_lambda == 0.) throw_not_positive_definite();
-        mv /= abs_lambda;
-        vec3<FloatType> abs_mv = af::fabs(mv.as_tiny());
-        std::size_t i_max = af::max_index(abs_mv);
-        FloatType scaled_tolerance = abs_mv[i_max] * tolerance;
-        bool converged = mv.const_ref().all_approx_equal(
-                          v.const_ref(), scaled_tolerance);
-        if (!converged && mv.const_ref().all_approx_equal(
-                          (-v).const_ref(), scaled_tolerance)) {
-          throw_not_positive_definite(); // lambda < 0
+      vec3<FloatType> v;
+      FloatType abs_lambda;
+
+      recursively_multiply(mat3<FloatType> const& m,
+                           vec3<FloatType> const& v_start,
+                           FloatType tolerance=1.e-6)
+      :
+        v(v_start)
+      {
+        unsigned int run_away_counter = 0;
+        for (;;) {
+          vec3<FloatType> mv = m * v;
+          abs_lambda = mv.length();
+          if (abs_lambda == 0.) throw_not_positive_definite();
+          mv /= abs_lambda;
+          vec3<FloatType> abs_mv = af::fabs(mv.as_tiny());
+          std::size_t i_max = af::max_index(abs_mv);
+          FloatType scaled_tolerance = abs_mv[i_max] * tolerance;
+          bool converged = mv.const_ref().all_approx_equal(
+                            v.const_ref(), scaled_tolerance);
+          if (!converged && mv.const_ref().all_approx_equal(
+                            (-v).const_ref(), scaled_tolerance)) {
+            throw_not_positive_definite(); // lambda < 0
+          }
+          v = mv;
+          if (converged) return;
+          run_away_counter++;
+          CCTBX_ASSERT(run_away_counter < 10000000);
         }
-        v = mv;
-        if (converged) return std::make_pair(v, abs_lambda);
-        run_away_counter++;
-        CCTBX_ASSERT(run_away_counter < 10000000);
       }
-    }
+    };
 
   } // namespace detail
 
@@ -693,10 +698,9 @@ namespace cctbx {
       }
       vec3<FloatType> v(0,0,0);
       v[i_large[i_m]] = 1.;
-      std::pair<vec3<FloatType>, FloatType>
-        v_lambda = detail::recursively_multiply(m[i_m], v);
-      vectors_[i_m] = v_lambda.first;
-      values_[i_m] = v_lambda.second;
+      detail::recursively_multiply<FloatType> v_lambda(m[i_m], v);
+      vectors_[i_m] = v_lambda.v;
+      values_[i_m] = v_lambda.abs_lambda;
     }
     vectors_[2] = vectors_[0].cross(vectors_[1]);
     CCTBX_ASSERT(vectors_[2].length() != 0);
