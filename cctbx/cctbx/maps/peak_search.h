@@ -50,7 +50,7 @@ namespace cctbx { namespace maps {
     typedef typename DataVecRefNdType::value_type data_value_type;
     typedef typename FlagsVecRefNdType::value_type flags_value_type;
 
-    data_value_type* pdata = data.begin();
+    const data_value_type* pdata = data.begin();
     flags_value_type* pflags = flags.begin();
     int Nx = data.dim()[0];
     int Ny = data.dim()[1];
@@ -69,7 +69,7 @@ namespace cctbx { namespace maps {
       if (pflags[i] < 0) pflags[i] = -1;
     }
 
-    data_value_type* pd = pdata;
+    const data_value_type* pd = pdata;
     flags_value_type* pf = pflags;
     im = ni_nj_nk - nj_nk;
     i0 = 0;
