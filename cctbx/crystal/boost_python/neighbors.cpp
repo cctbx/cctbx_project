@@ -15,14 +15,14 @@ namespace {
   {
     typedef simple_pair_generator<> w_t;
 
-    static direct_space_asu::asu_mapping_index_pair<>
+    static boost::python::object
     next(w_t& o)
     {
       if (o.at_end()) {
         PyErr_SetString(PyExc_StopIteration, "asu_mappings are exhausted.");
         boost::python::throw_error_already_set();
       }
-      return o.next();
+      return boost::python::object(o.next());
     }
 
     static void
