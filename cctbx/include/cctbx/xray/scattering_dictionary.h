@@ -82,7 +82,7 @@ namespace cctbx { namespace xray {
           e->second.coefficients = eltbx::caasf::custom(1);
           return true;
         }
-        if (std::strncmp(e->first.c_str(), "custom", 6) == 0) {
+        if (e->first == "custom") {
           return true;
         }
         return false;
