@@ -1,26 +1,102 @@
 /*! \page page_installation Installing the cctbx
 
-\section prerequisites Prerequisites
+\section platforms Supported platforms
 
-Python and Boost must be installed before the cctbx can be installed.
+The cctbx is being used on these platforms:
+
+<ul>
+<li>RedHat Linux 6.2 with gcc-2.95.2
+<li>Windows 98 and Windows 2000 with Microsoft Visual C++ 6.0 Service Pack 4
+<li>Windows 98 and Windows 2000 with MINGW32 (a gcc-2.95.2 derivative)
+<li>Compaq Tru64 Unix with Compaq C++ V6.2 (cxx)
+<li>Silicon Graphics IRIX 6.5 with MIPSpro Compilers Version 7.3.1.1m (CC)
+</ul>
+
+\par
+The cctbx is written in ANSI C++ and should therefore compile on most
+platforms where a standards compliant C++ compiler is available.
+The cctbx build system is designed to make it easy to add support for
+additional platforms.
+
+\ref compiler_notes
+
+\section compilation_dependencies Compilation dependencies
+
+\par
+The core of the cctbx is written in pure ANSI C++ and can be used
+as a pure C++ library. However, the cctbx is intended to be used
+in a Python environment. This is, the cctbx also includes Python
+bindings for most high-level classes.
+
+\par
+The cctbx requires the Boost library. This open-source library is a
+high-quality, peer-reviewed collection of generally useful C++ template
+libraries. Currently, the cctbx uses three components of Boost:
+
+<dl>
+<dt><strong>Boost.Array</strong>
+<dd>Class array, an STL Container (as Wrapper) for Arrays of Constant
+    Size.<br>
+    http://www.boost.org/libs/array/array.html
+<dt><strong>Boost.Rational</strong>
+<dd>The header rational.hpp provides an implementation of rational
+    numbers. The implementation is template-based, in a similar manner
+    to the standard complex number class.<br>
+    http://www.boost.org/libs/rational/index.html
+<dt><strong>Boost.Python</strong>
+<dd>The Boost.Python Library can be used to quickly and easily export a
+    C++ library to Python such that the Python interface is very
+    similar to the C++ interface. It is designed to be minimally
+    intrusive on the C++ design. In most cases, one should not have to
+    alter the C++ classes in any way in order to use them with
+    Boost.Python. The system should simply ``reflect'' the C++ classes
+    and functions into Python.<br>
+    http://www.boost.org/libs/python/doc/index.html
+</dl>
+
+\par
+Boost.Array and Boost.Rational are required even if the cctbx is used
+as a pure C++ library. However, in that case it is sufficient to add
+the Boost include directory to the include path.
+
+\par
+If the cctbx Python bindings are used, the support for Boost.Python has
+to be compiled before the cctbx can be linked. This is, the modules
+that supply the Python bindings are linked against a file
+libboost_python.a (Unix) or boost_python.lib (Microsoft Visual C++).
+
+\par
+Of course, Python itself is also required for compiling and using the
+cctbx Python bindings. Currently, Python version 1.5.2 is used in the
+development. Some limited testing has been done with Python 2.0. It is
+expected that the cctbx is fully functional with Python 2.0.
 
 \section installing_python Installing Python
 
-Simple enough!
+In theory, Python has to be installed only if the cctbx Python bindings
+are to be used. However, the cctbx build system uses Python to
+automatically generate Makefiles. The Makefiles used in the development
+are provided and could be modified by hand, but this can be quite
+cumbersome, especially if more than one platform is used. Installing
+Python is easy. Therefore it is highly recommended to always install
+Python before installing the cctbx.
+
+\par
+On RedHat Linux systems, Python 1.5.2 is part of the operating system
+(<tt>/usr/bin/python</tt>). This pre-installed version of Python can be
+used for installing the cctbx. Installation instructions for other
+platforms are provided here:
+
+  \ref installation_python_windows
+
+  \ref installation_python_unix
 
 \section installing_boost Installing Boost
 
-Simple enough!
+To be done.
 
 \section installing_cctbx Installing the cctbx
 
-<pre>
-cd cctbx
-clone /your/target/directory linux_gcc
-</pre>
-
-\section compiler_notes Ever changing notes on compilers
-
-This is where you pay your dues for high-level programming.
+To be done.
 
 */
