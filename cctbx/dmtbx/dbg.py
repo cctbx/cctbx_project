@@ -30,7 +30,6 @@ def exercise(SgInfo,
              d_min=1.,
              e_min=1.2,
              loop_k_equiv=0,
-             use_weights=0,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
   xtal = debug_utils.random_structure(
@@ -58,8 +57,7 @@ def exercise(SgInfo,
   if (0 or verbose):
     debug_utils.print_structure_factors(Fcalc)
   tprs = dmtbx.triplet_invariants(
-   xtal.SgInfo, MillerIndices.H, e_values,
-     loop_k_equiv, use_weights)
+   xtal.SgInfo, MillerIndices.H, e_values, loop_k_equiv)
   print "number_of_weighted_triplets:", \
        tprs.number_of_weighted_triplets()
   print "total_number_of_triplets:", \
@@ -88,7 +86,6 @@ def run():
     "AllSpaceGroups",
     "IncludeVeryHighSymmetry",
     "loop_k_equiv",
-    "use_weights",
     "ShowSymbolOnly",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
@@ -117,9 +114,7 @@ def run():
     if (Flags.ShowSymbolOnly):
       print "Space group:", LookupSymbol
     else:
-      exercise(SgInfo,
-        loop_k_equiv=Flags.loop_k_equiv,
-        use_weights=Flags.use_weights)
+      exercise(SgInfo, loop_k_equiv=Flags.loop_k_equiv)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):

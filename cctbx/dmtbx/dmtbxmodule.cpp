@@ -55,7 +55,6 @@ namespace {
       sgtbx::SpaceGroupInfo const&,
       af::shared<Miller::Index>,
       af::shared<double>,
-      bool,
       bool>());
     py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::number_of_weighted_triplets,
