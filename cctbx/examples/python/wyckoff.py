@@ -1,6 +1,6 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx"
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
 
 import sys
 sys.stderr = sys.stdout

@@ -1,6 +1,6 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx"
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
 
 import sys
 sys.stderr = sys.stdout
@@ -101,6 +101,13 @@ def ShowSgOpsGeneric(SgOps):
     print "Space group is enantiomorphic."
   print "Number of representative symmetry operations:", SgOps.nSMx()
   print "Total number of symmetry operations:", SgOps.OrderZ()
+  print
+  print "Parallelepiped containing an asymmetric unit:"
+  try: Brick = SgOps.getBrick()
+  except RuntimeError, e:
+    print " ", e
+  else:
+    print " ", Brick
   print
   print "List of symmetry operations:"
   print "</pre><table border=2>"

@@ -1,6 +1,6 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx"
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
 
 import sys
 sys.stderr = sys.stdout
@@ -77,7 +77,8 @@ def Write_SHELX_LATT_SYMM(SgOps):
   print "LATT", LATT_N
 
   # The operator x,y,z is always assumed, so MUST NOT be input.
-  for i in xrange(1, SgOps.nSMx()): print "SYMM", SgOps(i)
+  for i in xrange(1, SgOps.nSMx()):
+    print "SYMM", SgOps(i).as_xyz(0, 0, "XYZ", ",")
 
 inp = GetFormData()
 
