@@ -1,0 +1,57 @@
+<html>
+<head>
+<title>cctbx - unit cell transformation</title>
+</head>
+<body bgcolor=#ffffff>
+
+<h1>cctbx - unit cell transformation</h1>
+<hr>
+
+<FORM METHOD=POST ACTION="uc_transform.py">
+
+<strong>Unit cell parameters: </strong><input
+name="ucparams" size=40
+value="">
+
+<p>
+<strong>Space group symbol 1: </strong><input
+name="sgsymbol_1" size=40
+value="">
+Convention:
+<select name="convention_1">
+  <option value="" selected
+    >Default</option>
+  <option value="A1983"
+    >International Tables for Crystallography, Volume A 1983</option>
+  <option value="I1952"
+    >International Tables for Crystallography, Volume I 1952</option>
+  <option value="Hall"
+    >Hall symbol</option>
+</select>
+
+<p>
+<strong>Space group symbol 2: </strong><input
+name="sgsymbol_2" size=40
+value="">
+Convention:
+<select name="convention_2">
+  <option value="" selected
+    >Default</option>
+  <option value="A1983"
+    >International Tables for Crystallography, Volume A 1983</option>
+  <option value="I1952"
+    >International Tables for Crystallography, Volume I 1952</option>
+  <option value="Hall"
+    >Hall symbol</option>
+</select>
+<p>
+For transformation to the standard setting leave second space group
+symbol blank.
+<p>
+<input type="submit" value="Transform unit cell parameters">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+<hr>
+</body>
+</html>
