@@ -100,7 +100,7 @@ class XplorMap(ext.XplorMap):
     for x in xrange(3):
       assert self.data.focus()[2-x] == self.sections[3*x+2] - self.sections[3*x+1] + 1
       
-    f = open(arg,'w')
+    f = open(arg,'wb')
     f.write("\n")
     f.write("%8d !NTITLE\n"%len(self.title))
     for line in self.title:

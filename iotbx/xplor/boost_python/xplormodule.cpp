@@ -33,12 +33,13 @@ private:
   char iformat[10];
   int digits, frac;
   bool stdprintf;
+  const char pad;
 public:
   ScientificFormatter(std::string s);
   boost::shared_array<char> operator() (double d);
 };
 
-ScientificFormatter::ScientificFormatter(std::string s){
+ScientificFormatter::ScientificFormatter(std::string s): pad(' ') {
     //parse the format %12.5E becomes TOKEN digits TOKEN decimal LETTER
     //could re-implement this with the boost tokenizer
     assert (s.find("%") == 0);
@@ -68,7 +69,9 @@ boost::shared_array<char> ScientificFormatter::operator() (double d) {
     boost::shared_array<char> a(new char[frac+10]);
     sprintf(a.get(),iformat,d);
     assert (*(a.get()+frac+5)=='0'); //Prevent floating overflow or underflow
-    std::strncpy(b.get(), a.get(), digits-2);
+    for (int x=0; x<digits-frac-7; ++x){ //forward padding
+      std::strncpy(b.get()+x, &pad, 1);}
+    std::strncpy(b.get()+digits-frac-7, a.get(), frac+5);
     std::strncpy(b.get()+digits-2, a.get()+frac+6, 3);
     return b;
   }
@@ -95,7 +98,7 @@ af::flex_double XplorMap::ReadXplorMap(const std::string& filename,
   std::ifstream cin(filename.c_str());
   std::string line;
   for (std::size_t i = 0; i < headers; i++) {
-    getline(cin,line);
+    std::getline(cin,line);
   }
   // dump everything to a 3-D array
   int nX,nY,nZ;
@@ -106,10 +109,10 @@ af::flex_double XplorMap::ReadXplorMap(const std::string& filename,
   af::flex_double m(af::flex_grid<>(nZ,nY,nX)); //arrays have first dimension slow
   double* e = m.begin();
   for (int section = 0; section < nZ; section++) {
-    getline(cin,line); //reads section number
+    std::getline(cin,line); //reads section number
     for (int rect = 0, fast = 0; rect < (nX*nY); rect++,fast++) {
       if (fast%6==0) 
-        {    getline(cin,line); fast=0;      }
+        {    std::getline(cin,line); fast=0;      }
       *e = std::atof(line.substr(fast*12,12).c_str());
       ++e;      
     }
@@ -124,7 +127,7 @@ void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell uc,
                              double average, 
                              double stddev,
                              std::string outputfile) {
-  FILE* fh = fopen(outputfile.c_str(),"a");
+  FILE* fh = fopen(outputfile.c_str(),"ab");
   //Unit Cell
   fprintf(fh,"%s%s%s%s%s%s\n", pretty(uc.parameters()[0]).get(), 
                                pretty(uc.parameters()[1]).get(), 
