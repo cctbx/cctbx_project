@@ -999,6 +999,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SymEquivCoordinates.def(
     &SymEquivCoordinates<double>::getShortestDifference,
                                  "getShortestDifference");
+  py_SymEquivCoordinates.def(&SymEquivCoordinates<double>
+     ::getShortestDifferenceUnderAllowedOriginShifts,
+      "getShortestDifferenceUnderAllowedOriginShifts");
   py_SymEquivCoordinates.def(
     &SymEquivCoordinates<double>::getShortestDistance2,
                                  "getShortestDistance2");

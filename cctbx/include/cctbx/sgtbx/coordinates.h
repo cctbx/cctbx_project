@@ -779,9 +779,47 @@ namespace cctbx { namespace sgtbx {
         FloatType shortest_dist2(0);
         fractional<FloatType> shortest_diff;
         for(std::size_t i=0;i<m_Coordinates.size();i++) {
+          // XXX use cctbx::modShortDifference?
           fractional<FloatType> diff = Y - m_Coordinates[i];
           diff = diff.modShort();
           FloatType dist2 = uc.Length2(diff);
+          if (shortest_dist2 > dist2 || i == 0) {
+              shortest_dist2 = dist2;
+              shortest_diff = diff;
+          }
+        }
+        return shortest_diff;
+      }
+      /*! \brief Shortest difference vector between the symmetry mates
+           of X and Y under consideration of continuous allowed origin
+           shifts.
+       */
+      /*! See also: getShortestDifference().
+
+          Requirement: All continuous shifts must be parallel to
+          the basis vectors of the unit cell.
+
+          @param continuous_shift_flags flag for x,y,z, respectively.
+            A value != 0 indicates that there is a continuous allowed
+            origin shift in the respective direction.
+       */
+      fractional<FloatType>
+      getShortestDifferenceUnderAllowedOriginShifts(
+        const uctbx::UnitCell& uc,
+        const fractional<FloatType>& Y,
+        const af::int3& continuous_shift_flags) const
+      {
+        FloatType shortest_dist2(0);
+        fractional<FloatType> shortest_diff;
+        for(std::size_t i=0;i<m_Coordinates.size();i++) {
+          // XXX use cctbx::modShortDifference?
+          fractional<FloatType> diff = Y - m_Coordinates[i];
+          diff = diff.modShort();
+          fractional<FloatType> diff_unallowed = diff;
+          for (std::size_t i=0;i<3;i++) {
+            if (continuous_shift_flags[i]) diff_unallowed[i] = FloatType(0);
+          }
+          FloatType dist2 = uc.Length2(diff_unallowed);
           if (shortest_dist2 > dist2 || i == 0) {
               shortest_dist2 = dist2;
               shortest_diff = diff;
