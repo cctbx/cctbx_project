@@ -78,7 +78,7 @@ namespace {
                   af::const_ref<double> const&,
                   double const&,
                   af::const_ref<int> const&,
-                  af::const_ref<int> const&,
+                  af::const_ref<bool> const&,
                   bool const& >())
         .def("target", &w_t::target)
         .def("derivatives", &w_t::derivatives)

@@ -427,7 +427,7 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
   template <typename FobsValueType    = double,
             typename FcalcValueType   = std::complex<FobsValueType>,
             typename EpsilonValueType = int,
-            typename FlagValueType    = bool>
+            typename CentricValueType = bool>
   class maximum_likelihood_criterion {
 
   public:
@@ -437,8 +437,8 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
                                  af::const_ref<FobsValueType> const& beta,
                                  FobsValueType const& k,
                                  af::const_ref<EpsilonValueType> const& eps,
-                                 af::const_ref<EpsilonValueType> const& cs,
-                                 FlagValueType const& compute_derivatives)
+                                 af::const_ref<CentricValueType> const& cs,
+                                 bool compute_derivatives)
     {
        compute(fobs,fcalc,alpha,beta,k,eps,cs,compute_derivatives);
     }
@@ -459,8 +459,8 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
             af::const_ref<FobsValueType> const& beta,
             FobsValueType const& k,
             af::const_ref<EpsilonValueType> const& eps,
-            af::const_ref<EpsilonValueType> const& cs,
-            FlagValueType const& compute_derivatives)
+            af::const_ref<CentricValueType> const& cs,
+            bool compute_derivatives)
   {
     CCTBX_ASSERT(fobs.size()==fcalc.size()&&alpha.size()==beta.size());
     CCTBX_ASSERT(beta.size()==eps.size()&&eps.size()==cs.size());
@@ -475,7 +475,7 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
       FobsValueType    a  = alpha[i];
       FobsValueType    b  = beta[i];
       EpsilonValueType e  = eps[i];
-      EpsilonValueType c  = cs[i];
+      int c = static_cast<int>(cs[i]);
       target_ += maximum_likelihood_target_one_h(fo,fc,a,b,k,e,c);
       if(compute_derivatives) {
         derivatives_[i] = d_maximum_likelihood_target_one_h_over_fc(fo,fcalc[i],a,b,k,e,c);
