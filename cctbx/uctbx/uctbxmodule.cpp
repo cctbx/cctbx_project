@@ -166,6 +166,7 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     UnitCell_class.def(UnitCell_Distance2, "Distance2");
     UnitCell_class.def(UnitCell_Distance, "Distance");
     UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
+    UnitCell_class.def(&UnitCell::MaxResolution, "MaxResolution");
     UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
     UnitCell_class.def(UnitCell_ChangeBasis_2, "ChangeBasis");
     UnitCell_class.def(&UnitCell::Q, "Q");
