@@ -94,7 +94,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       gaussian_fit
       apply_shifts(
         af::const_ref<double> const& shifts,
-        double b_min) const
+        bool enforce_positive_b) const
       {
         size_assert_intrinsic();
         CCTBX_ASSERT(   shifts.size() == n_ab() * 2
@@ -107,7 +107,14 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
           sh_a.push_back(a(i) + shifts[i]);
         }
         for(std::size_t j=0;j<n_ab();j++,i++) {
-          sh_b.push_back(std::max(b_min, b(j) + shifts[i]));
+          if (!enforce_positive_b) {
+            sh_b.push_back(b(j) + shifts[i]);
+          }
+          else {
+            CCTBX_ASSERT(b(j) >= 0);
+            double sqrt_b = std::sqrt(b(j));
+            sh_b.push_back(scitbx::fn::pow2(sqrt_b + shifts[i]));
+          }
         }
         if (i == shifts.size()) sh_c = 0;
         else                    sh_c = shifts[i];
@@ -142,7 +149,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       }
 
       af::shared<double>
-      gradients(
+      gradients_w_r_t_abc(
         int power,
         bool use_sigmas,
         af::const_ref<double> const& differences,
@@ -177,6 +184,24 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
           if (include_constant_term) {
             g[i] += nwpd * grg.c();
           }
+        }
+        return result;
+      }
+
+      af::shared<double>
+      gradients_w_r_t_shifts(
+        af::const_ref<double> const& shifts,
+        af::const_ref<double> const& gradients_abc) const
+      {
+        CCTBX_ASSERT(shifts.size() >= n_ab() * 2);
+        CCTBX_ASSERT(gradients_abc.size() == shifts.size());
+        af::shared<double> result(af::adapt(gradients_abc));
+        af::ref<double> g = result.ref();
+        std::size_t i = n_ab();
+        for(std::size_t j=0;j<n_ab();j++,i++) {
+          CCTBX_ASSERT(b(j) >= 0);
+          double sqrt_b = std::sqrt(b(j));
+          g[i] *= 2 * (sqrt_b + shifts[i]);
         }
         return result;
       }

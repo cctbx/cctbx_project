@@ -4,6 +4,7 @@ from scitbx.test_utils import approx_equal, eps_eq
 import StringIO
 import pickle
 import string
+import math
 
 def gaussian_finite_gradient(gaussian, d_star, eps=1.e-6):
   if (d_star == 0): return 0
@@ -211,9 +212,13 @@ def exercise_gaussian_fit():
     stols, reference_gaussian, flex.double(),
     xray_scattering.gaussian((1,2), (4,5)))
   assert approx_equal(gf.sigmas(), [1,1,1])
-  sgf = gf.apply_shifts(flex.double((3,4,-5,6)), 1)
+  sgf = gf.apply_shifts(flex.double((3,4,-3,6)), 0001)
   assert approx_equal(sgf.a(), (1+3,2+4))
-  assert approx_equal(sgf.b(), (1,5+6))
+  assert approx_equal(sgf.b(), ((math.sqrt(4)-3)**2,(math.sqrt(5)+6)**2))
+  assert approx_equal(sgf.c(), 0)
+  sgf = gf.apply_shifts(flex.double((3,4,-3,6)), 00000)
+  assert approx_equal(sgf.a(), (1+3,2+4))
+  assert approx_equal(sgf.b(), (4-3,5+6))
   assert approx_equal(sgf.c(), 0)
   differences = sgf.differences()
   assert approx_equal(differences,
@@ -224,7 +229,7 @@ def exercise_gaussian_fit():
     assert approx_equal(sgf.target_function(4, use_sigmas, differences),
       256.2682575)
     assert approx_equal(
-      sgf.gradients(2, use_sigmas, differences, 00000),
+      sgf.gradients_w_r_t_abc(2, use_sigmas, differences, 00000),
       [15.6539271, 10.4562306, -4.1090114, -1.6376781])
   gf = xray_scattering.gaussian_fit(
     flex.double([0.0, 0.066666666666666666, 0.13333333333333333,
@@ -241,7 +246,7 @@ def exercise_gaussian_fit():
     0.098159179757290715, 0.060724224581695019, -0.10766283796372011])
   assert approx_equal(gf.differences(), differences)
   assert approx_equal(
-    gf.gradients(2, 00000, differences, 00000),
+    gf.gradients_w_r_t_abc(2, 00000, differences, 00000),
     [-0.016525391425206391, 0.020055876723667564, -0.018754011379726425,
     0.0074465239375589107, 0.00054794635257838251, -0.0011194004809549143])
   for include_constant_term in (00000, 0001):
@@ -259,12 +264,11 @@ def exercise_gaussian_fit():
     assert approx_equal(gf.differences(), [-5.01177418232])
     shifts = flex.double(8,-1)
     if (include_constant_term): shifts.append(-.2)
-    b_min = -1
-    sgf = gf.apply_shifts(shifts, b_min)
+    sgf = gf.apply_shifts(shifts, 00000)
     assert approx_equal(sgf.a(),
                         [-5.2410698, 1.657506, 0.49090898, 0.078078985])
     assert approx_equal(sgf.b(),
-                        [-1, 13.780758, 41.086842, -0.223225])
+                        [-1.0002940, 13.780758, 41.086842, -0.223225])
     if (include_constant_term):
       assert approx_equal(sgf.c(), -.2)
     expected_gradients = [1,1,1,1,0,0,0,0]
@@ -281,7 +285,7 @@ def exercise_gaussian_fit():
         sgf)
       differences = flex.double([0.5])
       assert approx_equal(
-        gf.gradients(2, 00000, differences, include_constant_term),
+        gf.gradients_w_r_t_abc(2, 00000, differences, include_constant_term),
         finite_diff_gradients(gf, include_constant_term, gf.stols()[0]),
         eps=1.e-4)
       for sigma in [0.04,0.02,0.01]:
@@ -293,7 +297,7 @@ def exercise_gaussian_fit():
         for power in [2,4]:
           for use_sigmas in [00000, 0001]:
             differences = gf.differences()
-            an = gf.gradients(
+            an = gf.gradients_w_r_t_abc(
               power, use_sigmas, differences, include_constant_term)
             fi = finite_diff_target_gradients(
               gf, include_constant_term, power, use_sigmas)
