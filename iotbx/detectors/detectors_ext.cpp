@@ -60,7 +60,7 @@ af::flex_int ReadRAXIS(const std::string& characters,
 
   std::string::const_iterator ptr = characters.begin();
   char* raw = new char[2];
-  
+
   if (big_endian) {
     for (std::size_t i = 0; i < sz; i++) {
       raw[0] = *(ptr++); raw[1] = *(ptr++);
@@ -71,7 +71,7 @@ af::flex_int ReadRAXIS(const std::string& characters,
         begin[i] = ((signed short int)(*usi_raw) + 32768) * 32;
       }
     }
-    
+
   } else {
     for (std::size_t i = 0; i < sz; i++) {
       raw[1] = *(ptr++); raw[0] = *(ptr++);
@@ -83,7 +83,7 @@ af::flex_int ReadRAXIS(const std::string& characters,
       }
     }
   }
-  
+
   delete[] raw;
   return z;
 }
