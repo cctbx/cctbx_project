@@ -27,51 +27,83 @@ namespace cctbx {
 
   namespace detail {
 
-    template <typename FloatType,
-              typename AccumulatorType>
-    void
-    generic_sum_over_symmetry(const sgtbx::SpaceGroup& SgOps,
-                              const Miller::Index& H,
-                              const fractional<FloatType>& X,
-                              AccumulatorType& accu)
-    {
-      using constants::pi;
-      for (int s = 0; s < SgOps.nSMx(); s++) {
-        Miller::Index HR = H * SgOps[s].Rpart();
-        FloatType HRX = HR * X;
-        sgtbx::TrVec T = SgOps[s].Tpart();
-        accu.inner_sum_reset();
-        for (int i = 0; i < SgOps.fInv(); i++) {
-          if (i) {
-            HR = -HR;
-            HRX = -HRX;
-            T = SgOps.InvT() - T;
-          }
-          for (int l = 0; l < SgOps.nLTr(); l++) {
-            FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-            FloatType phase = FloatType(2 * pi) * (HRX + HT);
-            accu.inner_sum_add(
-              std::complex<FloatType>(std::cos(phase), std::sin(phase)), HR);
-          }
-        }
-        accu.outer_sum_add();
-      }
-      accu.finalize();
-    }
-
     template <typename FloatType>
     struct null_accumulator
     {
-      void outer_sum_reset() {}
       void inner_sum_reset() {}
+      void inner_sum_add(const std::complex<FloatType>&,
+                         const Miller::Index&) {}
       void outer_sum_add() {}
       void finalize() {}
+    };
+
+    template <typename FloatType,
+              typename AccumulatorType1,
+              typename AccumulatorType2 = null_accumulator<FloatType>,
+              typename AccumulatorType3 = null_accumulator<FloatType>,
+              typename AccumulatorType4 = null_accumulator<FloatType>,
+              typename AccumulatorType5 = null_accumulator<FloatType> >
+    struct generic_sum_over_symmetry
+    {
+      static
+      void
+      run(const sgtbx::SpaceGroup& SgOps,
+          const Miller::Index& H,
+          const fractional<FloatType>& X,
+          AccumulatorType1* accu1,
+          AccumulatorType2* accu2 = 0,
+          AccumulatorType3* accu3 = 0,
+          AccumulatorType4* accu4 = 0,
+          AccumulatorType5* accu5 = 0)
+      {
+        using constants::pi;
+        for (int s = 0; s < SgOps.nSMx(); s++) {
+          Miller::Index HR = H * SgOps[s].Rpart();
+          FloatType HRX = HR * X;
+          sgtbx::TrVec T = SgOps[s].Tpart();
+                     accu1->inner_sum_reset();
+          if (accu2) accu2->inner_sum_reset();
+          if (accu3) accu3->inner_sum_reset();
+          if (accu4) accu4->inner_sum_reset();
+          if (accu5) accu5->inner_sum_reset();
+          for (int i = 0; i < SgOps.fInv(); i++) {
+            if (i) {
+              HR = -HR;
+              HRX = -HRX;
+              T = SgOps.InvT() - T;
+            }
+            for (int l = 0; l < SgOps.nLTr(); l++) {
+              FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
+              FloatType phase = FloatType(2 * pi) * (HRX + HT);
+              std::complex<FloatType> e2piiHXs(
+                std::cos(phase), std::sin(phase));
+                         accu1->inner_sum_add(e2piiHXs, HR);
+              if (accu2) accu2->inner_sum_add(e2piiHXs, HR);
+              if (accu3) accu3->inner_sum_add(e2piiHXs, HR);
+              if (accu4) accu4->inner_sum_add(e2piiHXs, HR);
+              if (accu5) accu5->inner_sum_add(e2piiHXs, HR);
+            }
+          }
+                     accu1->outer_sum_add();
+          if (accu2) accu2->outer_sum_add();
+          if (accu3) accu3->outer_sum_add();
+          if (accu4) accu4->outer_sum_add();
+          if (accu5) accu5->outer_sum_add();
+        }
+                   accu1->finalize();
+        if (accu2) accu2->finalize();
+        if (accu3) accu3->finalize();
+        if (accu4) accu4->finalize();
+        if (accu5) accu5->finalize();
+      }
     };
 
     template <typename FloatType>
     struct structure_factor_plain_accumulator : null_accumulator<FloatType>
     {
-      void outer_sum_reset() { outer_sum = std::complex<FloatType>(0); }
+      structure_factor_plain_accumulator()
+      : outer_sum(0)
+      {}
       void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
                          const Miller::Index&) {
         outer_sum += e2piiHXs;
@@ -87,8 +119,9 @@ namespace cctbx {
         const std::complex<FloatType>& dTarget_dFcalc)
       : pic_(phase_indep_coeff),
         dT_dF_(dTarget_dFcalc)
-      {}
-      void outer_sum_reset() { outer_sum.fill(FloatType(0)); }
+      {
+        outer_sum.fill(FloatType(0));
+      }
       void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
                          const Miller::Index& HR) {
         std::complex<FloatType> f = pic_ * e2piiHXs;
@@ -113,9 +146,9 @@ namespace cctbx {
         const std::complex<FloatType>& phase_indep_coeff,
         const std::complex<FloatType>& dTarget_dFcalc)
       : pic_(phase_indep_coeff),
-        dT_dF_(dTarget_dFcalc)
+        dT_dF_(dTarget_dFcalc),
+        outer_sum(0)
       {}
-      void outer_sum_reset() { outer_sum = FloatType(0); }
       void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
                          const Miller::Index& HR) {
         std::complex<FloatType> f = pic_ * e2piiHXs;
@@ -139,8 +172,10 @@ namespace cctbx {
                   const Miller::Index& H,
                   const fractional<FloatType>& X)
   {
-    detail::structure_factor_plain_accumulator<FloatType> accu;
-    detail::generic_sum_over_symmetry(SgOps, H, X, accu);
+    typedef detail::structure_factor_plain_accumulator<FloatType> accu_type;
+    accu_type accu;
+    detail::generic_sum_over_symmetry<FloatType, accu_type>::run(
+      SgOps, H, X, &accu);
     return accu.outer_sum;
   }
 
@@ -219,40 +254,6 @@ namespace cctbx {
       F += Fs * adptbx::DebyeWallerFactorUstar(HR, Ustar);
     }
     return F;
-  }
-
-  //! XXX
-  template <typename FloatType>
-  af::tiny<FloatType, 3>
-  StructureFactor_dT_dX(
-    const sgtbx::SpaceGroup& SgOps,
-    const Miller::Index& H,
-    const fractional<FloatType>& X,
-    const std::complex<FloatType>& phase_indep_coeff,
-    const std::complex<FloatType>& dTarget_dFcalc)
-  {
-    detail::dTarget_dX_accumulator<FloatType> accu(
-      phase_indep_coeff, dTarget_dFcalc);
-    accu.outer_sum_reset();
-    detail::generic_sum_over_symmetry(SgOps, H, X, accu);
-    return accu.outer_sum;
-  }
-
-  //! XXX
-  template <typename FloatType>
-  FloatType
-  StructureFactor_dT_dS(
-    const sgtbx::SpaceGroup& SgOps,
-    const Miller::Index& H,
-    const fractional<FloatType>& X,
-    const std::complex<FloatType>& phase_indep_coeff,
-    const std::complex<FloatType>& dTarget_dFcalc)
-  {
-    detail::dTarget_dS_accumulator<FloatType> accu(
-      phase_indep_coeff, dTarget_dFcalc);
-    accu.outer_sum_reset();
-    detail::generic_sum_over_symmetry(SgOps, H, X, accu);
-    return accu.outer_sum;
   }
 
   /*! \brief This class groups the information about an atom that
@@ -455,6 +456,7 @@ namespace cctbx {
                 const fractional<FloatType>& other_coordinates) const {
         return ucell.orthogonalize(difference(other_coordinates)).Length2();
       }
+
       //! XXX
       FloatType
       distance(const uctbx::UnitCell& ucell,
@@ -481,6 +483,7 @@ namespace cctbx {
             m_w * (m_CAASF.Q(Q) + m_fpfdp)
           * sftbx::StructureFactor(SgOps, H, m_Coordinates, m_U);
       }
+
       //! XXX
       af::tiny<FloatType, 3>
       StructureFactor_dT_dX(
@@ -490,15 +493,19 @@ namespace cctbx {
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
         if (!m_Anisotropic) {
-          return sftbx::StructureFactor_dT_dX(
-            SgOps, H, m_Coordinates,
+          typedef detail::dTarget_dX_accumulator<FloatType> accu_type;
+          accu_type accu(
               m_w
             * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
             * (m_CAASF.Q(Q) + m_fpfdp),
             dTarget_dFcalc);
+          detail::generic_sum_over_symmetry<FloatType, accu_type>::run(
+            SgOps, H, m_Coordinates, &accu);
+          return accu.outer_sum;
         }
         throw cctbx_not_implemented();
       }
+
       //! XXX
       FloatType
       StructureFactor_dT_dOcc(
@@ -508,15 +515,19 @@ namespace cctbx {
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
         if (!m_Anisotropic) {
-          return sftbx::StructureFactor_dT_dS(
-            SgOps, H, m_Coordinates,
+          typedef detail::dTarget_dS_accumulator<FloatType> accu_type;
+          accu_type accu(
               FloatType(m_M) / SgOps.OrderZ()
             * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
             * (m_CAASF.Q(Q) + m_fpfdp),
             dTarget_dFcalc);
+          detail::generic_sum_over_symmetry<FloatType, accu_type>::run(
+            SgOps, H, m_Coordinates, &accu);
+          return accu.outer_sum;
         }
         throw cctbx_not_implemented();
       }
+
       //! XXX
       FloatType
       StructureFactor_dT_dUiso(
@@ -526,109 +537,47 @@ namespace cctbx {
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
         if (!m_Anisotropic) {
-          return FloatType(-adptbx::U_as_B(1.) * Q / 4.)
-            * sftbx::StructureFactor_dT_dS(
-                SgOps, H, m_Coordinates,
-                  m_w
-                * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
-                * (m_CAASF.Q(Q) + m_fpfdp),
-                dTarget_dFcalc);
+          typedef detail::dTarget_dS_accumulator<FloatType> accu_type;
+          accu_type accu(
+              m_w
+            * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
+            * (m_CAASF.Q(Q) + m_fpfdp),
+            dTarget_dFcalc);
+          detail::generic_sum_over_symmetry<FloatType, accu_type>::run(
+            SgOps, H, m_Coordinates, &accu);
+          return FloatType(-adptbx::U_as_B(1.) * Q / 4.) * accu.outer_sum;
         }
         throw cctbx_not_implemented();
       }
-      /*! \brief Contribution of the (one) scatterer to an array of
-          structure factors.
-       */
-      /*! The Miller indices H and d-spacing measures Q
-          (cctbx::uctbx::UnitCell::Q())
-          are passed as arrays. The contribution of the scatterer
-          to each of the structure factors is added to the complex
-          valued array Fcalc.
-          <p>
-          Requirements for all array types:
-          <ul>
-          <li>Must support the size() method.
-          <li>Elements must be accessible with operator[].
-          </ul>
-          <p>
-          See also: cctbx::StructureFactorArray()
-       */
-      template <typename MillerIndexArrayType,
-                typename QArrayType,
-                typename FcalcArrayType>
-      void
-      StructureFactorArray(
-        const sgtbx::SpaceGroup& SgOps,
-        const MillerIndexArrayType& H,
-        const QArrayType& Q,
-        FcalcArrayType Fcalc) const
-      {
-        CheckMultiplicity();
-        cctbx_assert(Q.size() == H.size());
-        cctbx_assert(Fcalc.size() == H.size());
-        for (std::size_t i = 0; i < H.size(); i++) {
-          Fcalc[i] += StructureFactor(SgOps, H[i], Q[i]);
-        }
-      }
+
       //! XXX
-      template <typename MillerIndexArrayType,
-                typename QArrayType,
-                typename DerivativesArrayType>
       void
-      StructureFactor_dT_dX_Array(
+      StructureFactor_dT_dX_dUiso(
         const sgtbx::SpaceGroup& SgOps,
-        const MillerIndexArrayType& H,
-        const QArrayType& Q,
-        const DerivativesArrayType& dTarget_dFcalc,
-        af::tiny<FloatType, 3>& dT_dX) const
-      {
-        CheckMultiplicity();
-        cctbx_assert(Q.size() == H.size());
-        cctbx_assert(dTarget_dFcalc.size() == H.size());
-        for (std::size_t i = 0; i < H.size(); i++) {
-          dT_dX += StructureFactor_dT_dX(
-            SgOps, H[i], Q[i], dTarget_dFcalc[i]);
-        }
-      }
-      //! XXX
-      template <typename MillerIndexArrayType,
-                typename QArrayType,
-                typename DerivativesArrayType>
-      void
-      StructureFactor_dT_dOcc_Array(
-        const sgtbx::SpaceGroup& SgOps,
-        const MillerIndexArrayType& H,
-        const QArrayType& Q,
-        const DerivativesArrayType& dTarget_dFcalc,
-        FloatType& dT_dOcc) const
-      {
-        CheckMultiplicity();
-        cctbx_assert(Q.size() == H.size());
-        cctbx_assert(dTarget_dFcalc.size() == H.size());
-        for (std::size_t i = 0; i < H.size(); i++) {
-          dT_dOcc += StructureFactor_dT_dOcc(
-            SgOps, H[i], Q[i], dTarget_dFcalc[i]);
-        }
-      }
-      //! XXX
-      template <typename MillerIndexArrayType,
-                typename QArrayType,
-                typename DerivativesArrayType>
-      void
-      StructureFactor_dT_dUiso_Array(
-        const sgtbx::SpaceGroup& SgOps,
-        const MillerIndexArrayType& H,
-        const QArrayType& Q,
-        const DerivativesArrayType& dTarget_dFcalc,
+        const Miller::Index& H,
+        double Q,
+        const std::complex<FloatType>& dTarget_dFcalc,
+        af::tiny<FloatType, 3>& dT_dX,
         FloatType& dT_dUiso) const
       {
-        CheckMultiplicity();
-        cctbx_assert(Q.size() == H.size());
-        cctbx_assert(dTarget_dFcalc.size() == H.size());
-        for (std::size_t i = 0; i < H.size(); i++) {
-          dT_dUiso += StructureFactor_dT_dUiso(
-            SgOps, H[i], Q[i], dTarget_dFcalc[i]);
+        if (!m_Anisotropic) {
+          std::complex<FloatType> phase_indep_coeff(
+              m_w
+            * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
+            * (m_CAASF.Q(Q) + m_fpfdp));
+          typedef detail::dTarget_dX_accumulator<FloatType> accu_dX_type;
+          typedef detail::dTarget_dS_accumulator<FloatType> accu_dU_type;
+          accu_dX_type accu_dX(phase_indep_coeff, dTarget_dFcalc);
+          accu_dU_type accu_dU(phase_indep_coeff, dTarget_dFcalc);
+          detail::generic_sum_over_symmetry<
+            FloatType, accu_dX_type, accu_dU_type>::run(
+              SgOps, H, m_Coordinates, &accu_dX, &accu_dU);
+          dT_dX += accu_dX.outer_sum;
+          dT_dUiso +=   FloatType(-adptbx::U_as_B(1.) * Q / 4.)
+                      * accu_dU.outer_sum;
+          return;
         }
+        throw cctbx_not_implemented();
       }
     private:
       std::string m_Label;
@@ -689,14 +638,10 @@ namespace cctbx {
     return std::sqrt(af::mean(af::make_ref(len2)));
   }
 
-  /*! \brief Compute structure factors for an array of
+  /*! \brief Computation of structure factors for an array of
        Miller indices and an array of sites.
    */
-  /*! The contribution for each site is added to each Fcalc.
-      <p>
-      The array of pre-computed d-spacing measures Q avoids the
-      overhead of recomputing these values for each pass
-      through the structure factor array (for each site).
+  /*! The contribution of each site is added to each Fcalc.
       <p>
       Requirements for all array types:
       <ul>
@@ -704,41 +649,7 @@ namespace cctbx {
       <li>Elements must be accessible with operator[].
       </ul>
       <p>
-      See also: XrayScatterer::StructureFactorArray()
-   */
-  template <typename MillerIndexArrayType,
-            typename QArrayType,
-            typename SiteArrayType,
-            typename FcalcArrayType>
-  void
-  StructureFactorArray(const sgtbx::SpaceGroup& SgOps,
-                       const MillerIndexArrayType& H,
-                       const QArrayType& Q,
-                       const SiteArrayType& Sites,
-                       FcalcArrayType Fcalc)
-  {
-    for (std::size_t i = 0; i < Sites.size(); i++) {
-      Sites[i].StructureFactorArray(SgOps, H, Q, Fcalc);
-    }
-  }
-
-  /*! \brief Compute structure factors for an array of
-       Miller indices and an array of sites.
-   */
-  /*! The contribution for each site is added to each Fcalc.
-      <p>
-      This functions pre-computed the d-spacing measures Q
-      and calls the alternative overload.
-      If the d-spacing measures Q are already available to
-      the caller, use the alternative overload directly.
-      <p>
-      Requirements for all array types:
-      <ul>
-      <li>Must support the size() method.
-      <li>Elements must be accessible with operator[].
-      </ul>
-      <p>
-      See also: XrayScatterer::StructureFactorArray()
+      See also: cctbx::sftbx::XrayScatterer::StructureFactor()
    */
   template <typename MillerIndexArrayType,
             typename SiteArrayType,
@@ -750,143 +661,113 @@ namespace cctbx {
                        const SiteArrayType& Sites,
                        FcalcArrayType Fcalc)
   {
-    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
+    cctbx_assert(H.size() == Fcalc.size());
     for (std::size_t i = 0; i < H.size(); i++) {
-      Q[i] = UC.Q(H[i]);
+      double Q = UC.Q(H[i]);
+      for (std::size_t j = 0; j < Sites.size(); j++) {
+        Fcalc[i] += Sites[j].StructureFactor(SgOps, H[i], Q);
+      }
     }
-    StructureFactorArray(SgOps, H, Q, Sites, Fcalc);
   }
 
   //! XXX
   template <typename MillerIndexArrayType,
-            typename QArrayType,
-            typename DerivativesArrayType,
+            typename DerivativesFcalcArrayType,
             typename SiteArrayType,
             typename DerivativesXArrayType>
   void
   StructureFactor_dT_dX_Array(
+    const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const MillerIndexArrayType& H,
-    const QArrayType& Q,
-    const DerivativesArrayType& dTarget_dFcalc,
+    const DerivativesFcalcArrayType& dTarget_dFcalc,
     const SiteArrayType& Sites,
     DerivativesXArrayType dT_dX)
   {
     cctbx_assert(Sites.size() == dT_dX.size());
-    for (std::size_t i = 0; i < Sites.size(); i++) {
-      Sites[i].StructureFactor_dT_dX_Array(
-        SgOps, H, Q, dTarget_dFcalc, dT_dX[i]);
-    }
-  }
-
-  //! XXX
-  template <typename MillerIndexArrayType,
-            typename DerivativesArrayType,
-            typename SiteArrayType,
-            typename DerivativesXArrayType>
-  void
-  StructureFactor_dT_dX_Array(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const MillerIndexArrayType& H,
-    const DerivativesArrayType& dTarget_dFcalc,
-    const SiteArrayType& Sites,
-    DerivativesXArrayType dT_dX)
-  {
-    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
     for (std::size_t i = 0; i < H.size(); i++) {
-      Q[i] = UC.Q(H[i]);
+      double Q = UC.Q(H[i]);
+      for (std::size_t j = 0; j < Sites.size(); j++) {
+        dT_dX[j] += Sites[j].StructureFactor_dT_dX(
+          SgOps, H[i], Q, dTarget_dFcalc[i]);
+      }
     }
-    StructureFactor_dT_dX_Array(
-      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dT_dX);
   }
 
   //! XXX
   template <typename MillerIndexArrayType,
-            typename QArrayType,
-            typename DerivativesArrayType,
+            typename DerivativesFcalcArrayType,
             typename SiteArrayType,
             typename DerivativesOccArrayType>
   void
   StructureFactor_dT_dOcc_Array(
+    const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const MillerIndexArrayType& H,
-    const QArrayType& Q,
-    const DerivativesArrayType& dTarget_dFcalc,
+    const DerivativesFcalcArrayType& dTarget_dFcalc,
     const SiteArrayType& Sites,
     DerivativesOccArrayType dT_dOcc)
   {
     cctbx_assert(Sites.size() == dT_dOcc.size());
-    for (std::size_t i = 0; i < Sites.size(); i++) {
-      Sites[i].StructureFactor_dT_dOcc_Array(
-        SgOps, H, Q, dTarget_dFcalc, dT_dOcc[i]);
-    }
-  }
-
-  //! XXX
-  template <typename MillerIndexArrayType,
-            typename DerivativesArrayType,
-            typename SiteArrayType,
-            typename DerivativesOccArrayType>
-  void
-  StructureFactor_dT_dOcc_Array(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const MillerIndexArrayType& H,
-    const DerivativesArrayType& dTarget_dFcalc,
-    const SiteArrayType& Sites,
-    DerivativesOccArrayType dT_dOcc)
-  {
-    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
     for (std::size_t i = 0; i < H.size(); i++) {
-      Q[i] = UC.Q(H[i]);
+      double Q = UC.Q(H[i]);
+      for (std::size_t j = 0; j < Sites.size(); j++) {
+        dT_dOcc[j] += Sites[j].StructureFactor_dT_dOcc(
+          SgOps, H[i], Q, dTarget_dFcalc[i]);
+      }
     }
-    StructureFactor_dT_dOcc_Array(
-      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dT_dOcc);
   }
 
   //! XXX
   template <typename MillerIndexArrayType,
-            typename QArrayType,
-            typename DerivativesArrayType,
+            typename DerivativesFcalcArrayType,
             typename SiteArrayType,
             typename DerivativesUisoArrayType>
   void
   StructureFactor_dT_dUiso_Array(
+    const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const MillerIndexArrayType& H,
-    const QArrayType& Q,
-    const DerivativesArrayType& dTarget_dFcalc,
+    const DerivativesFcalcArrayType& dTarget_dFcalc,
     const SiteArrayType& Sites,
     DerivativesUisoArrayType dT_dUiso)
   {
     cctbx_assert(Sites.size() == dT_dUiso.size());
-    for (std::size_t i = 0; i < Sites.size(); i++) {
-      Sites[i].StructureFactor_dT_dUiso_Array(
-        SgOps, H, Q, dTarget_dFcalc, dT_dUiso[i]);
+    for (std::size_t i = 0; i < H.size(); i++) {
+      double Q = UC.Q(H[i]);
+      for (std::size_t j = 0; j < Sites.size(); j++) {
+        dT_dUiso[j] += Sites[j].StructureFactor_dT_dUiso(
+          SgOps, H[i], Q, dTarget_dFcalc[i]);
+      }
     }
   }
 
   //! XXX
   template <typename MillerIndexArrayType,
-            typename DerivativesArrayType,
+            typename DerivativesFcalcArrayType,
             typename SiteArrayType,
+            typename DerivativesXArrayType,
             typename DerivativesUisoArrayType>
   void
-  StructureFactor_dT_dUiso_Array(
+  StructureFactor_dT_dX_dUiso_Array(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const MillerIndexArrayType& H,
-    const DerivativesArrayType& dTarget_dFcalc,
+    const DerivativesFcalcArrayType& dTarget_dFcalc,
     const SiteArrayType& Sites,
+    DerivativesXArrayType dT_dX,
     DerivativesUisoArrayType dT_dUiso)
   {
-    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
+    cctbx_assert(Sites.size() == dT_dX.size());
+    cctbx_assert(Sites.size() == dT_dUiso.size());
     for (std::size_t i = 0; i < H.size(); i++) {
-      Q[i] = UC.Q(H[i]);
+      double Q = UC.Q(H[i]);
+      for (std::size_t j = 0; j < Sites.size(); j++) {
+        Sites[j].StructureFactor_dT_dX_dUiso(
+          SgOps, H[i], Q, dTarget_dFcalc[i],
+          dT_dX[j], dT_dUiso[j]);
+      }
     }
-    StructureFactor_dT_dUiso_Array(
-      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dT_dUiso);
   }
 
 }} // namespace cctbx::sftbx
