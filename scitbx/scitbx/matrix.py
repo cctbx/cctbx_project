@@ -266,10 +266,16 @@ class rt:
     assert self.r.n_rows() == self.t.n_rows()
 
   def __add__(self, other):
-    return rt((self.r, self.t + other))
+    if (isinstance(other, rt)):
+      return rt((self.r + other.r, self.t + other.t))
+    else:
+      return rt((self.r, self.t + other))
 
   def __sub__(self, other):
-    return rt((self.r, self.t - other))
+    if (isinstance(other, rt)):
+      return rt((self.r - other.r, self.t - other.t))
+    else:
+      return rt((self.r, self.t - other))
 
   def __mul__(self, other):
     try: return rt((self.r * other.r, self.r * other.t + self.t))
@@ -285,6 +291,20 @@ class rt:
   def inverse(self):
     r_inv = self.r.inverse()
     return rt((r_inv, -(r_inv*self.t)))
+
+  def __float__(self):
+    return rt((float(self.r), float(self.t)))
+
+  def as_augmented_matrix(self):
+    assert self.r.n_rows() == self.r.n_columns()
+    n = self.r.n_rows()
+    result = []
+    for i_row in xrange(n):
+      result.extend(self.r.elems[i_row*n:(i_row+1)*n])
+      result.append(self.t[i_row])
+    result.extend([0]*n)
+    result.append(1)
+    return rec(result, (n+1,n+1))
 
 if (__name__ == "__main__"):
   from libtbx.test_utils import approx_equal
@@ -306,6 +326,21 @@ if (__name__ == "__main__"):
   f = e - col((1,2,3))
   assert f.r.mathematica_form() == "{{9, 12, 15}, {19, 26, 33}, {29, 40, 51}}"
   assert f.t.mathematica_form() == "{{3}, {5}, {6}}"
+  e = e + f
+  assert e.r.mathematica_form() \
+      == "{{18, 24, 30}, {38, 52, 66}, {58, 80, 102}}"
+  assert e.t.mathematica_form() == "{{7}, {12}, {15}}"
+  f = f - e
+  assert f.r.mathematica_form() \
+      == "{{-9, -12, -15}, {-19, -26, -33}, {-29, -40, -51}}"
+  assert f.t.mathematica_form() == "{{-4}, {-7}, {-9}}"
+  e = float(f)*.5
+  assert e.r.mathematica_form() \
+      == "{{-4.5, -6.0, -7.5}, {-9.5, -13.0, -16.5}, {-14.5, -20.0, -25.5}}"
+  assert e.t.mathematica_form() == "{{-4.0}, {-7.0}, {-9.0}}"
+  a = f.as_augmented_matrix()
+  assert a.mathematica_form() == "{{-9, -12, -15, -4}, {-19, -26, -33, -7}," \
+                               + " {-29, -40, -51, -9}, {0, 0, 0, 1}}"
   ar = range(1,10)
   at = range(1,4)
   br = range(11,20)
