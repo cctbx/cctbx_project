@@ -310,7 +310,10 @@ def exercise_sampled_model_density():
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
   for scatterer in scatterers:
     scatterer.apply_symmetry(uc, sg.group())
-  d = xray.sampled_model_density(uc, scatterers, (20,20,22), (20,20,23))
+  scattering_dict = xray.ext.scattering_dictionary(scatterers)
+  scattering_dict.assign_from_table("WK1995")
+  d = xray.sampled_model_density(
+    uc, scatterers, scattering_dict, (20,20,22), (20,20,23))
   assert d.unit_cell().is_similar_to(uc)
   assert approx_equal(d.u_extra(), 0.25)
   assert approx_equal(d.wing_cutoff(), 1.e-6)

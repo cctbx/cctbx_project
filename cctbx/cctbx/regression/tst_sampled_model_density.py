@@ -41,9 +41,12 @@ def exercise(space_group_info, caasf_const,
   u_extra = xray.calc_u_extra(d_min, resolution_factor, quality_factor)
   electron_density_must_be_positive = 1
   tolerance_positive_definite = 1.e-5
+  scattering_dict = xray.scattering_dictionary(structure.scatterers())
+  scattering_dict.assign_from_table("WK1995")
   sampled_density = xray.sampled_model_density(
     structure.unit_cell(),
     structure.scatterers(),
+    scattering_dict,
     rfft.n_real(),
     rfft.m_real(),
     u_extra,

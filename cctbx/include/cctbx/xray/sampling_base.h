@@ -1,7 +1,7 @@
 #ifndef CCTBX_XRAY_SAMPLING_BASE_H
 #define CCTBX_XRAY_SAMPLING_BASE_H
 
-#include <cctbx/xray/scatterer.h>
+#include <cctbx/xray/scattering_dictionary.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 
 namespace cctbx { namespace xray {
@@ -216,19 +216,18 @@ namespace cctbx { namespace xray {
            + scitbx::sym_mat3<FloatType>(adptbx::u_as_b(u_cart));
     }
 
-    template <typename FloatType,
-              typename CaasfType>
+    template <typename FloatType>
     class caasf_fourier_transformed
     {
       public:
-        BOOST_STATIC_CONSTANT(
-          std::size_t, n_rho_real_terms = CaasfType::n_plus_1);
+        BOOST_STATIC_CONSTANT(std::size_t,
+          max_n_rho_real_terms = eltbx::caasf::custom::max_n_ab + 1);
 
         caasf_fourier_transformed() {}
 
         caasf_fourier_transformed(
           exponent_table<FloatType>& exp_table,
-          CaasfType const& caasf,
+          eltbx::caasf::custom const& caasf,
           FloatType const& fp,
           FloatType const& fdp,
           FloatType const& w,
@@ -236,7 +235,8 @@ namespace cctbx { namespace xray {
           FloatType const& u_extra)
         :
           exp_table_(&exp_table),
-          anisotropic_flag_(false)
+          anisotropic_flag_(false),
+          n_rho_real_terms(caasf.n_ab()+1)
         {
           FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
           std::size_t i = 0;
@@ -255,7 +255,7 @@ namespace cctbx { namespace xray {
 
         caasf_fourier_transformed(
           exponent_table<FloatType>& exp_table,
-          CaasfType const& caasf,
+          eltbx::caasf::custom const& caasf,
           FloatType const& fp,
           FloatType const& fdp,
           FloatType const& w,
@@ -263,7 +263,8 @@ namespace cctbx { namespace xray {
           FloatType const& u_extra)
         :
           exp_table_(&exp_table),
-          anisotropic_flag_(true)
+          anisotropic_flag_(true),
+          n_rho_real_terms(caasf.n_ab()+1)
         {
           std::size_t i = 0;
           for(;i<caasf.n_ab();i++) {
@@ -294,7 +295,11 @@ namespace cctbx { namespace xray {
         FloatType
         rho_real_0() const
         {
-          return af::sum(as_real_);
+          FloatType result = 0;
+          for (std::size_t i=0;i<n_rho_real_terms;i++) {
+            result += as_real_[i];
+          }
+          return result;
         }
 
         FloatType
@@ -349,9 +354,10 @@ namespace cctbx { namespace xray {
       protected:
         exponent_table<FloatType>* exp_table_;
         bool anisotropic_flag_;
-        af::tiny<FloatType, CaasfType::n_plus_1> as_real_;
-        af::tiny<FloatType, CaasfType::n_plus_1> bs_real_;
-        af::tiny<scitbx::sym_mat3<FloatType>, CaasfType::n_plus_1>
+        std::size_t n_rho_real_terms;
+        af::tiny<FloatType, max_n_rho_real_terms> as_real_;
+        af::tiny<FloatType, max_n_rho_real_terms> bs_real_;
+        af::tiny<scitbx::sym_mat3<FloatType>, max_n_rho_real_terms>
           aniso_bs_real_;
         FloatType as_imag_;
         FloatType bs_imag_;
@@ -365,12 +371,11 @@ namespace cctbx { namespace xray {
       GridPointType radii;
       FloatType max_d_sq;
 
-      template <typename CaasfType>
       calc_shell(
         uctbx::unit_cell const& unit_cell,
         FloatType const& wing_cutoff,
         GridPointType const& grid_n,
-        caasf_fourier_transformed<FloatType, CaasfType> const& caasf_ft)
+        caasf_fourier_transformed<FloatType> const& caasf_ft)
       :
         max_d_sq(0)
       {
@@ -448,9 +453,6 @@ namespace cctbx { namespace xray {
   class sampling_base
   {
     public:
-      typedef XrayScattererType xray_scatterer_type;
-      typedef typename xray_scatterer_type::caasf_type::base_type caasf_type;
-
       typedef typename maptbx::c_grid_padded_p1<3> accessor_type;
       typedef typename accessor_type::index_type grid_point_type;
       typedef typename grid_point_type::value_type grid_point_element_type;
@@ -579,11 +581,11 @@ namespace cctbx { namespace xray {
         " according to the PDB convention. The orthogonalization"
         " matrix passed is not compatible with this convention.");
     }
-    const xray_scatterer_type* scatterer;
-    for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++) {
-      if (scatterer->weight() == 0) continue;
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      XrayScattererType const& scatterer = scatterers[i];
+      if (scatterer.weight() == 0) continue;
       n_contributing_scatterers_++;
-      if (scatterer->fdp != 0) {
+      if (scatterer.fdp != 0) {
         n_anomalous_scatterers_++;
       }
     }
