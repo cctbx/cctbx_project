@@ -1,4 +1,5 @@
 import sys
+from generate_af_functors import *
 
 def write_copyright():
   print \
@@ -66,6 +67,18 @@ complex_special = (
                                        "ElementType"),
 )
 
+complex_special_addl_1arg = ("real", "imag", "arg", "norm")
+complex_special_addl_2arg = ("polar",)
+
+def generate_1arg_functors():
+  for function_name in (
+    cmath_1arg + cstdlib_1arg + complex_1arg + complex_special_addl_1arg):
+    generate_unary_functor(function_name, function_name + "(x)")
+
+def generate_2arg_functors():
+  for function_name in cmath_2arg + complex_special_addl_2arg:
+    generate_binary_functor(function_name, function_name + "(x, y)")
+
 def run():
   f = open("std_imports.h", "w")
   sys.stdout = f
@@ -94,6 +107,9 @@ namespace cctbx { namespace af {
 
   for function_name in all_function_names:
     print "  using std::" + function_name + ";"
+
+  generate_1arg_functors()
+  generate_2arg_functors()
 
   print """
 }} // namespace cctbx::af

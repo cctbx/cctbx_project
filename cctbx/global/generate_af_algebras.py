@@ -23,9 +23,9 @@ def write_copyright():
 
 misc_functions_2arg = (
   (["approx_equal_scaled"], 1,
-   [",\n    const ElementType& scaled_tolerance", ", scaled_tolerance"]),
+   ["const ElementType& scaled_tolerance", "scaled_tolerance"]),
   (["approx_equal_unscaled"], 1,
-   [",\n    const ElementType& tolerance", ", tolerance"]),
+   ["const ElementType& tolerance", "tolerance"]),
 )
 
 reduction_functions_1arg = (
@@ -153,6 +153,10 @@ def special_decl_params(array_type_name, special_def):
   for aet in r.arg_element_types:
     r.arg_array_types.append(wrap_element_type(
       array_type_name, aet, addl))
+  r.false_or_true_type_selector = (
+    "has_trivial_destructor<%s >::value()" % (special_def[0],))
+  if (array_type_name == "tiny"):
+    r.false_or_true_type_selector = "true_type()"
   return r
 
 def operator_decl_params(array_type_name, op_type, op_class, type_flags,
@@ -171,9 +175,6 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
       r.return_element_type = [
         "typename binary_operator_traits<",
         "  ElementType, ElementType>::" + op_class]
-      r.op_functor_element_type = [
-        "typename binary_operator_traits<",
-        "  ElementType, ElementType>::arithmetic"]
   else:
     r = get_template_header_and_parameters(
       array_type_name, 2, equal_element_type)
@@ -182,9 +183,6 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
       r.return_element_type = [
         "typename binary_operator_traits<",
         "  ElementType1, ElementType2>::" + op_class]
-      r.op_functor_element_type = [
-        "typename binary_operator_traits<",
-        "  ElementType1, ElementType1>::arithmetic"]
   if (len(r.return_element_type) == 1):
     r.return_array_type = [array_type_name + "<" + r.return_element_type[0]]
   else:
@@ -200,6 +198,13 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
   r.return_array_type[-1] += ">"
   r.typedef_return_array_type = (["typedef " +  r.return_array_type[0]]
     + r.return_array_type[1:])
+  r.false_or_true_type_selector = (
+    "has_trivial_destructor<return_element_type>::value()")
+  if (array_type_name == "tiny"):
+    r.false_or_true_type_selector = "true_type()"
+  r.element_types = ["ElementType", "ElementType"]
+  if (type_flags == (1,1)):
+    r.element_types = ["ElementType1", "ElementType2"]
   return r
 
 def get_result_constructor_args(array_type_name, type_flags = None):
@@ -214,9 +219,6 @@ def binary_operator_algo_params(array_type_name, type_flags):
   r = empty()
   r.loop_n = "N"
   r.size_assert = ""
-  r.sz1_sz2 = "N"
-  if (type_flags == (1,1)):
-    r.sz1_sz2 = "N, N"
   r.result_constructor_args = ""
   r.set_size_back_door = ""
   if (array_type_name != "tiny"):
@@ -224,16 +226,10 @@ def binary_operator_algo_params(array_type_name, type_flags):
     if (type_flags == (1,1)):
       r.size_assert = """if (a1.size() != a2.size()) throw_range_error();
     """
-      r.sz1_sz2 = "a1.size(), a2.size()"
-    else:
-      r.sz1_sz2 = r.loop_n
     r.result_constructor_args = get_result_constructor_args(
       array_type_name, type_flags)
     r.set_size_back_door = """result.set_size_back_door(%s);
     """ % (r.loop_n,)
-  r.opsqbr = ["", ""] # XXX can go
-  for i in xrange(2):
-    if (type_flags[i]): r.opsqbr[i] = "[i]"
   r.begin = ["", ""]
   for i in xrange(2):
     if (type_flags[i]): r.begin[i] = ".begin()"
@@ -257,9 +253,11 @@ def generate_unary_ops(array_type_name):
     result_array_type;
     typedef typename result_array_type::value_type return_element_type;
     result_array_type result%s;
-    array_operation_unary(%s<return_element_type>(),
+    array_operation_unary(functor_%s<
+        return_element_type,
+        ElementType>(),
       a.begin(), result.begin(), a.size(),
-      has_trivial_destructor<return_element_type>::value());
+      %s);
     %sreturn result;
   }
 """ % (format_header("  ", d.header),
@@ -267,7 +265,8 @@ def generate_unary_ops(array_type_name):
        op_symbol, d.params[0],
        format_list("    ", d.typedef_return_array_type),
        result_constructor_args,
-       std_unary_function_objects[op_symbol],
+       unary_functors[op_symbol],
+       d.false_or_true_type_selector,
        set_size_back_door(array_type_name))
 
 def elementwise_binary_op(
@@ -284,9 +283,12 @@ def elementwise_binary_op(
     result_array_type;
     typedef typename result_array_type::value_type return_element_type;
     %sresult_array_type result%s;
-    array_operation_binary(%s<return_element_type>(),
+    array_operation_binary(functor_%s<
+        return_element_type,
+        %s,
+        %s>(),
       a1%s, a2%s, result.begin(), %s,
-      has_trivial_destructor<return_element_type>::value());
+      %s);
     %sreturn result;
   }
 """ % (format_header("  ", d.header),
@@ -295,8 +297,9 @@ def elementwise_binary_op(
        format_list("    ", d.typedef_return_array_type),
        a.size_assert,
        a.result_constructor_args,
-       std_all_function_objects[op_symbol],
+       binary_functors[op_symbol], d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1], a.loop_n,
+       d.false_or_true_type_selector,
        a.set_size_back_door)
 
 def elementwise_inplace_binary_op(
@@ -309,7 +312,9 @@ def elementwise_inplace_binary_op(
   operator%s(
     %s& a1,
     const %s& a2) {
-    %sarray_operation_in_place_binary(%s<%s>(),
+    %sarray_operation_in_place_binary(functor_%s<
+        %s,
+        %s>(),
       a1.begin(), a2%s, %s);
     return a1;
   }
@@ -317,8 +322,9 @@ def elementwise_inplace_binary_op(
        d.params[0],
        op_symbol, d.params[0], d.params[1],
        a.size_assert,
-       aipbinop_function_objects[op_symbol],
+       in_place_binary_functors[op_symbol],
        d.return_element_type[0],
+       d.element_types[1],
        a.begin[1], a.loop_n);
 
 def generate_elementwise_binary_op(
@@ -352,17 +358,21 @@ def reducing_boolean_op(array_type_name, op_symbol, type_flags):
   operator%s(
     const %s& a1,
     const %s& a2) {
-    return array_operation_reducing_boolean_op%s(%s<
-%s>(),
+    %sreturn array_operation_reducing_boolean%s(functor_%s<
+%s,
+        %s,
+        %s>(),
       a1%s, a2%s, %s);
   }
 """ % (format_header("  ", d.header),
        format_list("  ", d.return_element_type),
        op_symbol, d.params[0], d.params[1],
+       a.size_assert,
        op_group_tags[op_symbol],
-       std_all_function_objects[op_symbol],
-       format_list("      ", d.op_functor_element_type),
-       a.begin[0], a.begin[1], a.sz1_sz2)
+       binary_functors[op_symbol],
+       format_list("        ", d.return_element_type),
+       d.element_types[0], d.element_types[1],
+       a.begin[0], a.begin[1], a.loop_n)
 
 def generate_reducing_boolean_op(array_type_name, op_symbol):
   for type_flags in ((1,1), (1,0), (0,1)):
@@ -397,29 +407,34 @@ def generate_2arg_reductions(array_type_name):
        function_name)
 
 def generate_1arg_element_wise(array_type_name, function_names):
-  hp = get_template_header_and_parameters(array_type_name, 1)
-  rt = derive_return_array_type_simple(hp.params[0])
   result_constructor_args = get_result_constructor_args(array_type_name)
+  d = operator_decl_params(array_type_name, "unary", "arithmetic", (1,0))
   for function_name in function_names:
     print """%s
   inline
-  %s
+%s
   %s(const %s& a) {
-    %s result%s;
-    CCTBX_ARRAY_FAMILY_ARRAY_OPERATION_1ARG_ELEMENT_WISE(%s)
+%s
+    result_array_type;
+    typedef typename result_array_type::value_type return_element_type;
+    result_array_type result%s;
+    array_operation_unary(functor_%s<return_element_type, ElementType>(),
+      a.begin(), result.begin(), a.size(),
+      %s);
     %sreturn result;
   }
-""" % (format_header("  ", hp.header), rt,
-       function_name, hp.params[0],
-       rt, result_constructor_args,
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name, d.params[0],
+       format_list("    ", d.typedef_return_array_type),
+       result_constructor_args,
        function_name,
+       d.false_or_true_type_selector,
        set_size_back_door(array_type_name))
 
 def generate_2arg_element_wise(
-  # XXX addl_args need to be passed do function call
   array_type_name, function_names,
-  equal_element_type = 0,
-  addl_args = ["", ""]
+  equal_element_type = 0
 ):
   for function_name in function_names:
     for type_flags in ((1,1), (1,0), (0,1)):
@@ -431,25 +446,68 @@ def generate_2arg_element_wise(
 %s
   %s(
     const %s& a1,
-    const %s& a2%s) {
+    const %s& a2) {
 %s
-    result%s;
-    %sCCTBX_ARRAY_FAMILY_ARRAY_OPERATION_2ARG_ELEMENT_WISE_%s_%s(%s)
+    result_array_type;
+    typedef typename result_array_type::value_type return_element_type;
+    %sresult_array_type result%s;
+    array_operation_binary(functor_%s<
+        return_element_type, %s, %s>(),
+      a1%s, a2%s, result.begin(), %s,
+      %s);
+    %sreturn result;
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name, d.params[0], d.params[1],
+       format_list("    ", d.typedef_return_array_type),
+       a.size_assert,
+       a.result_constructor_args,
+       function_name, d.element_types[0], d.element_types[1],
+       a.begin[0], a.begin[1], a.loop_n,
+       d.false_or_true_type_selector,
+       a.set_size_back_door)
+
+def generate_2arg_addl_element_wise(
+  array_type_name, function_names,
+  equal_element_type,
+  addl_args
+):
+  for function_name in function_names:
+    for type_flags in ((1,1), (1,0), (0,1)):
+      d = operator_decl_params(
+        array_type_name, "binary", "n/a", type_flags, equal_element_type)
+      a = binary_operator_algo_params(array_type_name, type_flags)
+      print """%s
+  inline
+%s
+  %s(
+    const %s& a1,
+    const %s& a2,
+    %s) {
+%s
+    result_array_type;
+    typedef typename result_array_type::value_type return_element_type;
+    %sresult_array_type result%s;
+    array_operation_binary_addl(functor_%s<
+        return_element_type, %s, %s, %s>(),
+      a1%s, a2%s, %s, result.begin(), %s,
+      %s);
     %sreturn result;
   }
 """ % (format_header("  ", d.header),
        format_list("  ", d.return_array_type),
        function_name, d.params[0], d.params[1], addl_args[0],
-       format_list("    ", d.return_array_type),
-       a.result_constructor_args, a.size_assert,
-       "SA"[type_flags[0]],
-       "SA"[type_flags[1]],
-       function_name,
+       format_list("    ", d.typedef_return_array_type),
+       a.size_assert,
+       a.result_constructor_args,
+       function_name, "ElementType", "ElementType", "ElementType",
+       a.begin[0], a.begin[1], addl_args[1], a.loop_n,
+       d.false_or_true_type_selector,
        a.set_size_back_door)
 
 def generate_element_wise_special(
-  array_type_name, special_def,
-  addl_args = ["", ""]
+  array_type_name, special_def
 ):
   p = special_decl_params(array_type_name, special_def)
   if (len(p.arg_array_types) == 1):
@@ -457,18 +515,24 @@ def generate_element_wise_special(
     print """%s
   inline
   %s
-  %s(const %s& a%s) {
+  %s(const %s& a) {
     %s result%s;
-    for(std::size_t i=0;i<a.size();i++) {
-      result[i] = %s(a[i]%s);
-    }
-    return result;
+    array_operation_unary(functor_%s<
+      %s,
+      %s >(),
+      a.begin(), result.begin(), a.size(),
+      %s);
+    %sreturn result;
   }
-""" % (format_header("  ", p.header), p.return_array_type,
-       p.function_name, p.arg_array_types[0], addl_args[0],
+""" % (format_header("  ", p.header),
+       p.return_array_type,
+       p.function_name, p.arg_array_types[0],
        p.return_array_type,
        result_constructor_args,
-       p.function_name, addl_args[1])
+       p.function_name,
+       special_def[0], special_def[2],
+       p.false_or_true_type_selector,
+       set_size_back_door(array_type_name))
   else:
     for type_flags in ((1,1), (1,0), (0,1)):
       a = binary_operator_algo_params(array_type_name, type_flags)
@@ -483,18 +547,26 @@ def generate_element_wise_special(
   %s
   %s(
     const %s& a1,
-    const %s& a2%s) {
+    const %s& a2) {
     %s result%s;
-    %sfor(std::size_t i=0;i<%s;i++) {
-      result[i] = %s(a1%s, a2%s%s);
-    }
-    return result;
+    %sarray_operation_binary(functor_%s<
+        %s,
+        %s,
+        %s >(),
+      a1%s, a2%s, result.begin(), %s,
+      %s);
+    %sreturn result;
   }
 """ % (format_header("  ", p.header), p.return_array_type,
-       p.function_name, params[0], params[1], addl_args[0],
+       p.function_name, params[0], params[1],
        p.return_array_type,
-       a.result_constructor_args, a.size_assert, a.loop_n,
-       p.function_name, a.opsqbr[0], a.opsqbr[1], addl_args[1])
+       a.result_constructor_args,
+       a.size_assert,
+       p.function_name,
+       special_def[0], special_def[2], special_def[3],
+       a.begin[0], a.begin[1], a.loop_n,
+       p.false_or_true_type_selector,
+       a.set_size_back_door)
 
 def one_type(array_type_name):
   f = open("%s_algebra.h" % (array_type_name,), "w")
@@ -536,7 +608,7 @@ namespace cctbx { namespace af {
       ("<=", "less_equal")):
       generate_elementwise_binary_op(
         array_type_name, "boolean", op_symbol, function_name)
-    for op_symbol in boolean_ops:
+    for op_symbol in boolean_binary_ops:
       generate_reducing_boolean_op(array_type_name, op_symbol)
     generate_1arg_element_wise(
       array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
@@ -544,7 +616,7 @@ namespace cctbx { namespace af {
     for special_def in complex_special:
       generate_element_wise_special(array_type_name, special_def)
     for args in misc_functions_2arg:
-      apply(generate_2arg_element_wise, (array_type_name,) + args)
+      apply(generate_2arg_addl_element_wise, (array_type_name,) + args)
   generate_1arg_reductions(array_type_name)
   generate_2arg_reductions(array_type_name)
 

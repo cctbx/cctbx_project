@@ -69,6 +69,7 @@ namespace cctbx { namespace af {
 
   template <typename T>
   struct has_trivial_destructor {
+    // XXX use int2type<boost::is_const<X>::value>() ?
     typedef typename bool_as_type<
       ::boost::has_trivial_destructor<T>::value>::value value;
   };

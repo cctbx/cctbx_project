@@ -15,12 +15,12 @@
 
 namespace cctbx { namespace af {
 
-  template <typename UnaryOperatorType,
+  template <typename UnaryFunctorType,
             typename ElementType,
             typename ElementTypeResult>
   void // not inline
   array_operation_unary(
-    const UnaryOperatorType& op,
+    const UnaryFunctorType& ftor,
     const ElementType* a,
     ElementTypeResult* result,
     const std::size_t& sz,
@@ -30,7 +30,7 @@ namespace cctbx { namespace af {
     try {
       ElementTypeResult* result_end = result + sz;
       for(;result != result_end; a++, result++) {
-        *result = op(*a);
+        new (result) ElementTypeResult(ftor(*a));
       }
     }
     catch (...) {
@@ -40,12 +40,12 @@ namespace cctbx { namespace af {
     }
   }
 
-  template <typename UnaryOperatorType,
+  template <typename UnaryFunctorType,
             typename ElementType,
             typename ElementTypeResult>
   inline void
   array_operation_unary(
-    const UnaryOperatorType& op,
+    const UnaryFunctorType& ftor,
     const ElementType* a,
     ElementTypeResult* result,
     const std::size_t& sz,
@@ -53,18 +53,18 @@ namespace cctbx { namespace af {
   {
     ElementTypeResult* result_end = result + sz;
     for(;result != result_end; a++, result++) {
-      *result = op(*a);
+      *result = ftor(*a);
     }
   }
 
-  // op(array, array), non-POD result type
-  template <typename BinaryOperatorType,
+  // ftor(array, array), non-POD result type
+  template <typename BinaryFunctorType,
             typename ElementType1,
             typename ElementType2,
             typename ElementTypeResult>
   void // not inline
   array_operation_binary(
-    const BinaryOperatorType& op,
+    const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     ElementTypeResult* result,
@@ -75,7 +75,7 @@ namespace cctbx { namespace af {
     try {
       ElementTypeResult* result_end = result + sz;
       for(;result != result_end; a1++, a2++, result++) {
-        *result = op(ElementTypeResult(*a1), ElementTypeResult(*a2));
+        new (result) ElementTypeResult(ftor(*a1, *a2));
       }
     }
     catch (...) {
@@ -84,14 +84,14 @@ namespace cctbx { namespace af {
     }
   }
 
-  // op(array, array), POD result type
-  template <typename BinaryOperatorType,
+  // ftor(array, array), POD result type
+  template <typename BinaryFunctorType,
             typename ElementType1,
             typename ElementType2,
             typename ElementTypeResult>
   inline void
   array_operation_binary(
-    const BinaryOperatorType& op,
+    const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     ElementTypeResult* result,
@@ -100,17 +100,17 @@ namespace cctbx { namespace af {
   {
     ElementTypeResult* result_end = result + sz;
     for(;result != result_end; a1++, a2++, result++) {
-      *result = op(ElementTypeResult(*a1), ElementTypeResult(*a2));
+      *result = ftor(*a1, *a2);
     }
   }
 
-  // op(array, scalar), non-POD result type
-  template <typename BinaryOperatorType,
+  // ftor(array, scalar), non-POD result type
+  template <typename BinaryFunctorType,
             typename ElementType,
             typename ElementTypeResult>
   void // not inline
   array_operation_binary(
-    const BinaryOperatorType& op,
+    const BinaryFunctorType& ftor,
     const ElementType* a1,
     const ElementType& a2,
     ElementTypeResult* result,
@@ -121,7 +121,7 @@ namespace cctbx { namespace af {
     try {
       ElementTypeResult* result_end = result + sz;
       for(;result != result_end; a1++, result++) {
-        *result = op(ElementTypeResult(*a1), ElementTypeResult(a2));
+        new (result) ElementTypeResult(ftor(*a1, a2));
       }
     }
     catch (...) {
@@ -130,32 +130,32 @@ namespace cctbx { namespace af {
     }
   }
 
-  // op(array, scalar), POD result type
-  template <typename BinaryOperatorType,
+  // ftor(array, scalar), POD result type
+  template <typename BinaryFunctorType,
             typename ElementType,
             typename ElementTypeResult>
   inline void
   array_operation_binary(
-    const BinaryOperatorType& op,
-    const ElementType& a1,
-    const ElementType* a2,
+    const BinaryFunctorType& ftor,
+    const ElementType* a1,
+    const ElementType& a2,
     ElementTypeResult* result,
     const std::size_t& sz,
     true_type) // POD result type
   {
     ElementTypeResult* result_end = result + sz;
     for(;result != result_end; a1++, result++) {
-      *result = op(ElementTypeResult(*a1), ElementTypeResult(a2));
+      *result = ftor(*a1, a2);
     }
   }
 
-  // op(scalar, array), non-POD result type
-  template <typename BinaryOperatorType,
+  // ftor(scalar, array), non-POD result type
+  template <typename BinaryFunctorType,
             typename ElementType,
             typename ElementTypeResult>
   void // not inline
   array_operation_binary(
-    const BinaryOperatorType& op,
+    const BinaryFunctorType& ftor,
     const ElementType& a1,
     const ElementType* a2,
     ElementTypeResult* result,
@@ -166,7 +166,7 @@ namespace cctbx { namespace af {
     try {
       ElementTypeResult* result_end = result + sz;
       for(;result != result_end; a2++, result++) {
-        *result = op(ElementTypeResult(a1), ElementTypeResult(*a2));
+        new (result) ElementTypeResult(ftor(a1, *a2));
       }
     }
     catch (...) {
@@ -175,281 +175,347 @@ namespace cctbx { namespace af {
     }
   }
 
-  // op(scalar, array), POD result type
-  template <typename BinaryOperatorType,
+  // ftor(scalar, array), POD result type
+  template <typename BinaryFunctorType,
             typename ElementType,
             typename ElementTypeResult>
   inline void
   array_operation_binary(
-    const BinaryOperatorType& op,
-    const ElementType* a1,
-    const ElementType& a2,
+    const BinaryFunctorType& ftor,
+    const ElementType& a1,
+    const ElementType* a2,
     ElementTypeResult* result,
     const std::size_t& sz,
     true_type) // POD result type
   {
     ElementTypeResult* result_end = result + sz;
     for(;result != result_end; a2++, result++) {
-      *result = op(ElementTypeResult(a1), ElementTypeResult(*a2));
+      *result = ftor(a1, *a2);
     }
   }
 
-  // inplace_op(array, array)
-  template <typename InPlaceBinaryOperatorType,
+  // functor(array, array, addl), non-POD result type
+  template <typename BinaryFunctorType,
+            typename ElementType1,
+            typename ElementType2,
+            typename ElementType3,
+            typename ElementTypeResult>
+  void // not inline
+  array_operation_binary_addl(
+    const BinaryFunctorType& ftor,
+    const ElementType1* a1,
+    const ElementType2* a2,
+    const ElementType3& a3,
+    ElementTypeResult* result,
+    const std::size_t& sz,
+    false_type) // non-POD result type
+  {
+    ElementTypeResult* result_start = result;
+    try {
+      ElementTypeResult* result_end = result + sz;
+      for(;result != result_end; a1++, a2++, result++) {
+        new (result) ElementTypeResult(ftor(*a1, *a2, a3));
+      }
+    }
+    catch (...) {
+      cctbx::af::detail::destroy_array_elements(result_start, result);
+      throw;
+    }
+  }
+
+  // functor(array, array, addl), POD result type
+  template <typename BinaryFunctorType,
+            typename ElementType1,
+            typename ElementType2,
+            typename ElementType3,
+            typename ElementTypeResult>
+  inline void
+  array_operation_binary_addl(
+    const BinaryFunctorType& ftor,
+    const ElementType1* a1,
+    const ElementType2* a2,
+    const ElementType3& a3,
+    ElementTypeResult* result,
+    const std::size_t& sz,
+    true_type) // POD result type
+  {
+    ElementTypeResult* result_end = result + sz;
+    for(;result != result_end; a1++, a2++, result++) {
+      *result = ftor(*a1, *a2, a3);
+    }
+  }
+
+  // functor(array, scalar), non-POD result type
+  template <typename BinaryFunctorType,
+            typename ElementType,
+            typename ElementTypeResult>
+  void // not inline
+  array_operation_binary_addl(
+    const BinaryFunctorType& ftor,
+    const ElementType* a1,
+    const ElementType& a2,
+    const ElementType& a3,
+    ElementTypeResult* result,
+    const std::size_t& sz,
+    false_type) // non-POD result type
+  {
+    ElementTypeResult* result_start = result;
+    try {
+      ElementTypeResult* result_end = result + sz;
+      for(;result != result_end; a1++, result++) {
+        new (result) ElementTypeResult(ftor(*a1, a2, a3));
+      }
+    }
+    catch (...) {
+      cctbx::af::detail::destroy_array_elements(result_start, result);
+      throw;
+    }
+  }
+
+  // functor(array, scalar), POD result type
+  template <typename BinaryFunctorType,
+            typename ElementType,
+            typename ElementTypeResult>
+  inline void
+  array_operation_binary_addl(
+    const BinaryFunctorType& ftor,
+    const ElementType& a1,
+    const ElementType* a2,
+    const ElementType& a3,
+    ElementTypeResult* result,
+    const std::size_t& sz,
+    true_type) // POD result type
+  {
+    ElementTypeResult* result_end = result + sz;
+    for(;result != result_end; a1++, result++) {
+      *result = ftor(*a1, a2, a3);
+    }
+  }
+
+  // functor(scalar, array), non-POD result type
+  template <typename BinaryFunctorType,
+            typename ElementType,
+            typename ElementTypeResult>
+  void // not inline
+  array_operation_binary_addl(
+    const BinaryFunctorType& ftor,
+    const ElementType& a1,
+    const ElementType* a2,
+    const ElementType& a3,
+    ElementTypeResult* result,
+    const std::size_t& sz,
+    false_type) // non-POD result type
+  {
+    ElementTypeResult* result_start = result;
+    try {
+      ElementTypeResult* result_end = result + sz;
+      for(;result != result_end; a2++, result++) {
+        new (result) ElementTypeResult(ftor(a1, *a2, a3));
+      }
+    }
+    catch (...) {
+      cctbx::af::detail::destroy_array_elements(result_start, result);
+      throw;
+    }
+  }
+
+  // functor(scalar, array), POD result type
+  template <typename BinaryFunctorType,
+            typename ElementType,
+            typename ElementTypeResult>
+  inline void
+  array_operation_binary_addl(
+    const BinaryFunctorType& ftor,
+    const ElementType* a1,
+    const ElementType& a2,
+    const ElementType& a3,
+    ElementTypeResult* result,
+    const std::size_t& sz,
+    true_type) // POD result type
+  {
+    ElementTypeResult* result_end = result + sz;
+    for(;result != result_end; a2++, result++) {
+      *result = ftor(a1, *a2, a3);
+    }
+  }
+
+  // in_place_ftor(array, array)
+  template <typename InPlaceBinaryFunctorType,
             typename ElementType1,
             typename ElementType2>
   inline void
   array_operation_in_place_binary(
-    const InPlaceBinaryOperatorType& op,
+    const InPlaceBinaryFunctorType& ftor,
     ElementType1* a1,
     const ElementType2* a2,
     const std::size_t& sz)
   {
     ElementType1* a1_end = a1 + sz;
-    for(;a1 != a1_end; a1++, a2++) op(*a1, ElementType1(*a2));
+    for(;a1 != a1_end; a1++, a2++) ftor(*a1, ElementType1(*a2));
   }
 
-  // inplace_op(array, scalar)
-  template <typename InPlaceBinaryOperatorType,
+  // in_place_ftor(array, scalar)
+  template <typename InPlaceBinaryFunctorType,
             typename ElementType>
   inline void
   array_operation_in_place_binary(
-    const InPlaceBinaryOperatorType& op,
+    const InPlaceBinaryFunctorType& ftor,
     ElementType* a1,
     const ElementType& a2,
     const std::size_t& sz)
   {
     ElementType* a1_end = a1 + sz;
-    for(;a1 != a1_end; a1++) op(*a1, a2);
+    for(;a1 != a1_end; a1++) ftor(*a1, a2);
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType1,
             typename ElementType2>
   inline bool
-  array_operation_reducing_boolean_op(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean(
+    const BooleanFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
-    const std::size_t& sz1,
-    const std::size_t& sz2)
+    const std::size_t& sz)
   {
-    if (sz1 != sz2) throw_range_error();
-    const ElementType1* a1_end = a1 + sz1;
+    const ElementType1* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++, a2++) {
-      if (!op(*a1, *a2)) return false;
+      if (!ftor(*a1, *a2)) return false;
     }
     return true;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType>
   inline bool
-  array_operation_reducing_boolean_op(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean(
+    const BooleanFunctorType& ftor,
     const ElementType* a1,
     const ElementType& a2,
-    const std::size_t& sz1)
+    const std::size_t& sz)
   {
-    const ElementType* a1_end = a1 + sz1;
+    const ElementType* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++) {
-      if (!op(*a1, a2)) return false;
+      if (!ftor(*a1, a2)) return false;
     }
     return true;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType>
   inline bool
-  array_operation_reducing_boolean_op(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean(
+    const BooleanFunctorType& ftor,
     const ElementType& a1,
     const ElementType* a2,
-    const std::size_t& sz2)
+    const std::size_t& sz)
   {
-    const ElementType* a2_end = a2 + sz2;
+    const ElementType* a2_end = a2 + sz;
     for(;a2 != a2_end; a2++) {
-      if (!op(a1, *a2)) return false;
+      if (!ftor(a1, *a2)) return false;
     }
     return true;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType1,
             typename ElementType2>
   inline bool
-  array_operation_reducing_boolean_op_not_equal_to(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean_not_equal_to(
+    const BooleanFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
-    const std::size_t& sz1,
-    const std::size_t& sz2)
+    const std::size_t& sz)
   {
-    if (sz1 != sz2) throw_range_error();
-    const ElementType1* a1_end = a1 + sz1;
+    const ElementType1* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++, a2++) {
-      if (op(*a1, *a2)) return true;
+      if (ftor(*a1, *a2)) return true;
     }
     return false;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType>
   inline bool
-  array_operation_reducing_boolean_op_not_equal_to(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean_not_equal_to(
+    const BooleanFunctorType& ftor,
     const ElementType* a1,
     const ElementType& a2,
-    const std::size_t& sz1)
+    const std::size_t& sz)
   {
-    const ElementType* a1_end = a1 + sz1;
+    const ElementType* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++) {
-      if (op(*a1, a2)) return true;
+      if (ftor(*a1, a2)) return true;
     }
     return false;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType>
   inline bool
-  array_operation_reducing_boolean_op_not_equal_to(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean_not_equal_to(
+    const BooleanFunctorType& ftor,
     const ElementType& a1,
     const ElementType* a2,
-    const std::size_t& sz2)
+    const std::size_t& sz)
   {
-    const ElementType* a2_end = a2 + sz2;
+    const ElementType* a2_end = a2 + sz;
     for(;a2 != a2_end; a2++) {
-      if (op(a1, *a2)) return true;
+      if (ftor(a1, *a2)) return true;
     }
     return false;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType1,
             typename ElementType2>
   inline bool
-  array_operation_reducing_boolean_op_greater_less(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean_greater_less(
+    const BooleanFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
-    const std::size_t& sz1,
-    const std::size_t& sz2)
+    const std::size_t& sz)
   {
-    if (sz1 != sz2) throw_range_error();
-    const ElementType1* a1_end = a1 + sz1;
+    const ElementType1* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++, a2++) {
-      if (op(*a1, *a2)) return true;
-      if (op(*a2, *a1)) return false;
+      if (ftor(*a1, *a2)) return true;
+      if (ftor(*a2, *a1)) return false;
     }
     return false;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType>
   inline bool
-  array_operation_reducing_boolean_op_greater_less(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean_greater_less(
+    const BooleanFunctorType& ftor,
     const ElementType* a1,
     const ElementType& a2,
-    const std::size_t& sz1)
+    const std::size_t& sz)
   {
-    const ElementType* a1_end = a1 + sz1;
+    const ElementType* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++) {
-      if (op(*a1, a2)) return true;
-      if (op(a2, *a1)) return false;
+      if (ftor(*a1, a2)) return true;
+      if (ftor(a2, *a1)) return false;
     }
     return false;
   }
 
-  template <typename BooleanOperatorType,
+  template <typename BooleanFunctorType,
             typename ElementType>
   inline bool
-  array_operation_reducing_boolean_op_greater_less(
-    const BooleanOperatorType& op,
+  array_operation_reducing_boolean_greater_less(
+    const BooleanFunctorType& ftor,
     const ElementType& a1,
     const ElementType* a2,
-    const std::size_t& sz2)
+    const std::size_t& sz)
   {
-    const ElementType* a2_end = a2 + sz2;
+    const ElementType* a2_end = a2 + sz;
     for(;a2 != a2_end; a2++) {
-      if (op(a1, *a2)) return true;
-      if (op(*a2, a1)) return false;
+      if (ftor(a1, *a2)) return true;
+      if (ftor(*a2, a1)) return false;
     }
     return false;
-  }
-
-#define CCTBX_ARRAY_FAMILY_ARRAY_OPERATION_1ARG_ELEMENT_WISE(f) \
-  { \
-    ElementType* result_start = result.begin(); \
-    ElementType* result_iter = result_start; \
-    try { \
-      ElementType* result_end = result_iter + a.size(); \
-      const ElementType* a_iter = a.begin(); \
-      for(;result_iter != result_end; a_iter++, result_iter++) { \
-        *result_iter = f(*a_iter); \
-      } \
-    } \
-    catch (...) { \
-      cctbx::af::detail::destroy_array_elements(result_start, result_iter, \
-        has_trivial_destructor<ElementType>::value()); \
-      throw; \
-    } \
-  }
-
-#define CCTBX_ARRAY_FAMILY_ARRAY_OPERATION_2ARG_ELEMENT_WISE_A_A(f) \
-  { \
-    ElementType1* result_start = result.begin(); \
-    ElementType1* result_iter = result_start; \
-    try { \
-      ElementType1* result_end = result_iter + a1.size(); \
-      const ElementType1* a1_iter = a1.begin(); \
-      const ElementType2* a2_iter = a2.begin(); \
-      for(;result_iter != result_end; a1_iter++, a2_iter_++, result_iter++) { \
-        *result_iter = f(*a1_iter, *a2_iter); \
-      } \
-    } \
-    catch (...) { \
-      cctbx::af::detail::destroy_array_elements(result_start, result_iter, \
-        has_trivial_destructor<ElementType>::value()); \
-      throw; \
-    } \
-  }
-
-#define CCTBX_ARRAY_FAMILY_ARRAY_OPERATION_2ARG_ELEMENT_WISE_A_S(f) \
-  { \
-    ElementType* result_start = result.begin(); \
-    ElementType* result_iter = result_start; \
-    try { \
-      ElementType* result_end = result_iter + a1.size(); \
-      const ElementType* a1_iter = a1.begin(); \
-      for(;result_iter != result_end; a1_iter++, result_iter++) { \
-        *result_iter = f(*a1_iter, a2); \
-      } \
-    } \
-    catch (...) { \
-      cctbx::af::detail::destroy_array_elements(result_start, result_iter, \
-        has_trivial_destructor<ElementType>::value()); \
-      throw; \
-    } \
-  }
-
-#define CCTBX_ARRAY_FAMILY_ARRAY_OPERATION_2ARG_ELEMENT_WISE_S_A(f) \
-  { \
-    ElementType* result_start = result.begin(); \
-    ElementType* result_iter = result_start; \
-    try { \
-      ElementType* result_end = result_iter + a2.size(); \
-      const ElementType* a2_iter = a2.begin(); \
-      for(;result_iter != result_end; a2_iter++, result_iter++) { \
-        *result_iter = f(a1, *a2_iter); \
-      } \
-    } \
-    catch (...) { \
-      cctbx::af::detail::destroy_array_elements(result_start, result_iter, \
-        has_trivial_destructor<ElementType>::value()); \
-      throw; \
-    } \
   }
 
 }} // namespace cctbx::af
