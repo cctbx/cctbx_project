@@ -364,6 +364,11 @@ def exercise_rt_mx():
   assert s.as_xyz(0, 0, "xyz", " ; ") == "y ; -x+y ; z+1/4"
   assert s.as_int_array() == (0,3,0,-3,3,0,0,0,3,0,0,2)
   assert s.as_double_array() == (0,1,0,-1,1,0,0,0,1,0,0,0.25)
+  assert s.new_denominators(6).r().den() == 6
+  assert s.new_denominators(9,16).r().den() == 9
+  assert s.new_denominators(9,16).t().den() == 16
+  assert s.new_denominators(rt_mx("x,y,z", "", 9, 16)).r().den() == 9
+  assert s.new_denominators(rt_mx("x,y,z", "", 9, 16)).t().den() == 16
   assert rt_mx("x-1/2,y+4/3,z-1/3").mod_positive() \
       == rt_mx("x+1/2,y+1/3,z+2/3")
   assert rt_mx("x-1/2,y+5/3,z-2/3").mod_short() \

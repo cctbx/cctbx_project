@@ -59,6 +59,9 @@ class space_group_info:
       cache._structure_seminvariant = structure_seminvariant(self._group)
     return cache._structure_seminvariant
 
+  def reference_setting(self):
+    return space_group_info(symbol=self.type().number())
+
   def is_reference_setting(self):
     return self.type().cb_op().is_identity_op()
 
