@@ -272,7 +272,7 @@ def emit_SConstruct(env, build_options, packages_dict):
   print >> f, '  scan_boost=%d)' % int(build_options.scan_boost)
   print >> f, 'if ("SConsignFile" in dir()):'
   print >> f, \
-    '  SConsignFile(dbm_module=libtbx.config.select_sconsign_dbm_module())'
+    '  SConsignFile(name=libtbx.config.sconsign_dbm_file_name())'
   print >> f
   print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
   print >> f, 'SConscript("libtbx/SConscript")'
