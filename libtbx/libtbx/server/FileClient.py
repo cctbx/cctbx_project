@@ -175,7 +175,7 @@ if __name__=="__main__":
 
   import FileServer
   import time
-  import libtbx.env
+  import libtbx.load_env
 
   cmd = libtbx.env.under_dist("libtbx", "libtbx/server/StartServer.py")
   python_path = sys.executable

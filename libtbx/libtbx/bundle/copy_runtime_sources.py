@@ -1,6 +1,5 @@
 import libtbx.bundle.utils
-import libtbx.config
-import libtbx.env
+import libtbx.load_env
 import libtbx.path
 import shutil
 import sys, os
@@ -36,23 +35,14 @@ def copy_dist_files(dist_copy, dirname, names):
 
 def run(target_root):
   cwd = os.getcwd()
-  abs_target_root = os.path.normpath(os.path.abspath(os.path.join(
-    target_root)))
-  libtbx_env = libtbx.env.cache
-  dist_root = libtbx.env.under_dist("libtbx", "..")
-  for package in ["libtbx"] + libtbx_env.package_list:
-    for package_suf in libtbx.config.package_pair(
-                         name=package).primary_first():
-      if (package_suf == "boost"):
-        continue
-      dist = libtbx.config.resolve_redirection(
-        dist_root=dist_root,
-        name=package_suf).dist_path
-      if (os.path.isdir(dist)):
-        dist_copy = libtbx.path.norm_join(abs_target_root, package_suf)
-        os.chdir(dist)
-        os.path.walk(".", copy_dist_files, dist_copy)
-  libtbx.bundle.utils.write_bundle_info(dist_root, abs_target_root)
+  abs_target_root = libtbx.env.abs_path_clean(target_root)
+  for module in libtbx.env.module_list:
+    for name,dist_path in module.name_and_dist_path_pairs():
+      if (name == "boost"): continue
+      dist_copy = libtbx.path.norm_join(abs_target_root, name)
+      os.chdir(dist_path)
+      os.path.walk(".", copy_dist_files, dist_copy)
+  libtbx.bundle.utils.write_bundle_info(abs_target_root)
   os.chdir(cwd)
 
 if (__name__ == "__main__"):

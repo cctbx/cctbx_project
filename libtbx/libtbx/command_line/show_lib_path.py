@@ -1,2 +1,2 @@
-import libtbx.env
-print libtbx.env.under_build("lib")
+import libtbx.load_env
+print libtbx.env.lib_path

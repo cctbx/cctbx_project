@@ -1,5 +1,5 @@
 from libtbx.command_line import create_unzipsfx
-import libtbx.config
+import libtbx.path
 import sys, os
 
 def create_autorun(bundle_prefix):
@@ -13,7 +13,8 @@ def run(args):
   if (len(args) < 2):
     print run.__doc__
     return
-  path_zip = libtbx.config.full_path(command="zip.exe", search_first=["."])
+  path_zip = libtbx.path.full_command_path(
+    command="zip.exe", search_first=["."])
   if (path_zip is None):
     raise RuntimeError("Fatal: zip executable not found.")
   bundle_prefix = args[0]

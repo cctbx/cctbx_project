@@ -1,4 +1,4 @@
-import libtbx.env
+import libtbx.load_env
 import os
 print "# Listing of commands in: %s" % libtbx.env.bin_path
 file_names = os.listdir(libtbx.env.bin_path)

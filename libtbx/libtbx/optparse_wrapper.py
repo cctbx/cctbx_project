@@ -2,9 +2,8 @@
 # mv lib optik
 import sys, os
 if (sys.version_info[0] < 3 and sys.version_info[1] < 3):
-  import libtbx.config
   sys.path.insert(0, os.path.join(
-    libtbx.config.env().dist_path("libtbx"),
+    os.path.dirname(os.path.dirname(__file__)),
     "optik141"))
   from optik import *
 else:

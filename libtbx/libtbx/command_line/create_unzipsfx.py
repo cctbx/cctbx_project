@@ -1,4 +1,4 @@
-import libtbx.config
+import libtbx.path
 import sys, os
 
 buf_size = 1000000
@@ -13,7 +13,8 @@ def find_unzipsfx():
   for command in ("unzipsfx_autorun_yes.exe",
                   "unzipsfx_autorun.exe",
                   "unzipsfx.exe"):
-    path_cmd = libtbx.config.full_path(command=command, search_first=["."])
+    path_cmd = libtbx.path.full_command_path(
+      command=command, search_first=["."])
     if (path_cmd is not None): return path_cmd
   return None
 

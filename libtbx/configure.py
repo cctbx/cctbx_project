@@ -13,8 +13,8 @@ def run():
     return
   if (os.name == "nt"):
     open("shortpath.bat", "w").write("@echo off\necho %~s1\n")
-  from libtbx.command_line import configure
-  configure.cold_start(sys.argv)
+  import libtbx.config
+  libtbx.config.cold_start(sys.argv)
 
 if (__name__ == "__main__"):
   run()

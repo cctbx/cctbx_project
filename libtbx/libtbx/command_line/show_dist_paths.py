@@ -1,8 +1,8 @@
-import libtbx.env
+import libtbx.load_env
 import sys
 if (len(sys.argv) == 1):
-  for path in libtbx.env.cache.dist_paths.values():
+  for path in libtbx.env.dist_paths():
     print path
 else:
   for arg in sys.argv[1:]:
-    print libtbx.env.cache.dist_path(arg, None)
+    print libtbx.env.dist_path(arg, None)
