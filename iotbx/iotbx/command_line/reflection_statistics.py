@@ -164,6 +164,17 @@ class array_cache:
     show_average_of_binned_data([sm])
     print
 
+  def show_measurability(self, cutoff=3):
+    if (self.input.sigmas() is not None):
+      work_array = self.input.select(self.input.sigmas() > 0)
+      if (work_array.size() > 0):
+        print "Observed measurabilities of %s:" % str(self.input.info())
+        print self.input.measurability.__doc__.replace("cutoff", str(cutoff))
+        work_array.use_binning_of(self.input)
+        meas_obs = work_array.measurability(use_binning=True, cutoff=cutoff)
+        meas_obs.show()
+      print
+
   def unique_reindexing_operators(self,
         other,
         relative_length_tolerance,
@@ -374,13 +385,7 @@ def run(args):
       anom_signal = cache_0.input.anomalous_signal(use_binning=True)
       anom_signal.show()
       print
-      if (cache_0.input.sigmas() is not None):
-        print "Observed measurabilities of %s:" % str(cache_0.input.info())
-        print cache_0.input.measurability.__doc__
-        meas_obs = cache_0.input.measurability(use_binning=True)
-        meas_obs.show()
-      print
-
+      cache_0.show_measurability()
     if (not command_line.options.quick):
       for i_1,cache_1 in enumerate(array_caches):
         if (i_1 == i_0): break
