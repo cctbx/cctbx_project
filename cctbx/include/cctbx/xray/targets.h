@@ -1,14 +1,3 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
-
-   Revision history:
-     Oct 2002: Modified copy of phenix/xray_targets.h (rwgk)
-     Mar 2002: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_XRAY_TARGETS_H
 #define CCTBX_XRAY_TARGETS_H
 
@@ -294,7 +283,7 @@ namespace cctbx { namespace xray { namespace targets {
     target_ = 1 - correlation_;
   }
 
-/*  Amplitude based Maximum-Likelihhod target for one miller index.
+/*  Amplitude based Maximum-Likelihood target for one miller index.
     No phase information included.
     Pavel Afonine, 28-DEC-2004.
     fo   = |Fobs|
@@ -313,11 +302,13 @@ double maximum_likelihood_target_one_h(double fo,
                                        int c)
 {
   CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e > 0) );
-  CCTBX_ASSERT( fo >= 0 && fc >= 0 && a >= 0. && k > 0. );
+  CCTBX_ASSERT( fo >= 0 && fc >= 0 );
+  CCTBX_ASSERT( a >= 0. );
+  CCTBX_ASSERT( std::abs(k) > 1.e-9 );
   double target = 0.0;
-  double eb = e * b;
   a *= k;
   b *= k*k;
+  double eb = e * b;
   if(c == 0) {
     double t1 = -std::log( 2. * fo / eb );
     double t2 = fo * fo / eb;
@@ -339,7 +330,7 @@ double maximum_likelihood_target_one_h(double fo,
 /*  Derivatiove of Amplitude based Maximum-Likelihhod target for one miller
     index w.r.t. Fcalc
     No phase information included.
-    Pavel Afonine, 28-DEC-2004.
+    Pavel Afonine, 03-JAN-2005.
     fo   = |Fobs|
     fc   = Fcalc
     a, b = distribution parameters alpha and beta
@@ -360,9 +351,9 @@ std::complex<double> d_maximum_likelihood_target_one_h_over_fc(
   CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e > 0) );
   CCTBX_ASSERT( fo >= 0 && fc > 0 && a >= 0. && k > 0. );
   std::complex<double> d_target_over_fc = std::complex<double> (0.0,0.0);
-  double eb = e * b;
   a *= k;
   b *= k*k;
+  double eb = e * b;
   if(c == 0) {
     double d1 = 2. * a * a * fc / eb;
     double d2 = -2. * a * fo / eb * scitbx::math::bessel::i1_over_i0(2.*a*fo*fc/eb);
@@ -374,6 +365,46 @@ std::complex<double> d_maximum_likelihood_target_one_h_over_fc(
     d_target_over_fc = (d1 + d2) * ( std::conj(fc_complex) / fc );
   }
   return d_target_over_fc;
+}
+
+/*  Derivative of Amplitude based Maximum-Likelihood target for one miller
+    index w.r.t. k
+    No phase information included.
+    Pavel Afonine, 03-JAN-2005.
+    fo   = |Fobs|
+    fc   = |Fcalc|
+    a, b = distribution parameters alpha and beta
+    eps  = epsilon, statistical weight for reflection
+    c    = flag (0 fro acentric, 1 for centric)
+    k    = overall scale coefficient
+*/
+double d_maximum_likelihood_target_one_h_over_k(double fo,
+                                                double fc,
+                                                double a,
+                                                double b,
+                                                double k,
+                                                int e,
+                                                int c)
+{
+  CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e > 0) );
+  CCTBX_ASSERT( fo >= 0 && fc > 0 && a >= 0. );
+  CCTBX_ASSERT( std::abs(k) > 1.e-9 );
+  double d_target_over_k = 0.0;
+  double eb = e * b;
+  if(c == 0) {
+    double d1 = 2. / k;
+    double d2 = -2. * fo * fo / (eb * k*k*k);
+    double d3 = 2. * a * fo * fc / (eb * k*k) *
+                scitbx::math::bessel::i1_over_i0(2. * a * fo * fc / (eb * k));
+    d_target_over_k = d1 + d2 + d3;
+  }
+  if(c == 1) {
+    double d1 = 1. / k;
+    double d2 = - fo * fo / (eb * k*k*k);
+    double d3 = a * fo * fc / (eb * k*k) * std::tanh(a * fo * fc / (eb * k));
+    d_target_over_k = d1 + d2 + d3;
+  }
+  return d_target_over_k;
 }
 
 // maximum-likelihood target function and gradients

@@ -29,8 +29,7 @@ class target_functors_manager:
                      use_sigmas_as_weights  = False,
                      scale_factor           = 0):
     adopt_init_args(self, locals())
-    assert self.target_name == "ml" or self.target_name == "ls" or \
-           self.target_name == "mlhl"
+    assert self.target_name in ("ml","ls","mlhl")
     assert self.f_obs.data().size() == self.flags.size()
     if(self.flags.count(True) > 0):
       self.f_obs_w = self.f_obs.select(~self.flags)
@@ -38,51 +37,80 @@ class target_functors_manager:
     else:
       self.f_obs_w = self.f_obs
       self.f_obs_t = self.f_obs
-    if(self.target_name == "ml"):
-      self.tf_w = maximum_likelihood_criterion(f_obs = self.f_obs_w)
-      self.tf_t = maximum_likelihood_criterion(f_obs = self.f_obs_t)
     if(self.target_name == "mlhl"):
-      assert self.abcd is not None and self.step_for_integration is not None
+      assert self.abcd is not None and self.step_for_integration
+    if(self.abcd is not None):
+      assert self.target_name == "mlhl"
       if(self.flags.count(True) > 0):
         self.abcd_w = self.abcd.select(~self.flags)
         self.abcd_t = self.abcd.select( self.flags)
       else:
         self.abcd_w = self.abcd
         self.abcd_t = self.abcd
-      self.tf_w = maximum_likelihood_criterion_hl(
-                              f_obs                = self.f_obs_w,
-                              abcd                 = self.abcd_w.data(),
-                              step_for_integration = self.step_for_integration)
-      self.tf_t = maximum_likelihood_criterion_hl(
-                              f_obs                = self.f_obs_t,
-                              abcd                 = self.abcd_t.data(),
-                              step_for_integration = self.step_for_integration)
-    if(self.target_name == "ls"):
-      if(self.weights is not None):
-        if(self.flags.count(True) > 0):
-          self.weights_w = self.weights.select(~self.flags)
-          self.weights_t = self.weights.select( self.flags)
-        else:
-          self.weights_w = self.weights
-          self.weights_t = self.weights
+    else:
+      self.abcd_w, self.abcd_t = None, None
+    if(self.weights is not None):
+      assert self.target_name == "ls"
+      if(self.flags.count(True) > 0):
+        self.weights_w = self.weights.select(~self.flags)
+        self.weights_t = self.weights.select( self.flags)
       else:
-        self.weights_w, self.weights_t = None, None
-      self.tf_w = least_squares_residual(
-                            f_obs                 = self.f_obs_w,
-                            weights               = self.weights_w,
+        self.weights_w = self.weights
+        self.weights_t = self.weights
+    else:
+      self.weights_w, self.weights_t = None, None
+
+  def target_functor_w(self, selection = None):
+    if(selection is None):
+      f_obs   = self.f_obs_w
+      weights = self.weights_w
+      abcd = self.abcd_w
+    else:
+      assert selection.size() == self.f_obs_w.data().size()
+      f_obs   = self.f_obs_w.select(selection)
+      if(self.weights_w is not None): weights = self.weights_w.select(selection)
+      else:                           weights = self.weights_w
+      if(self.abcd_w is not None): abcd = self.abcd_w.select(selection)
+      else:                        abcd = self.abcd_w
+    if(self.target_name == "ls"):
+      return least_squares_residual(
+                            f_obs                 = f_obs,
+                            weights               = weights,
                             use_sigmas_as_weights = self.use_sigmas_as_weights,
                             scale_factor          = self.scale_factor)
-      self.tf_t = least_squares_residual(
-                            f_obs                 = self.f_obs_t,
-                            weights               = self.weights_t,
+    if(self.target_name == "ml"):
+      return maximum_likelihood_criterion(f_obs = f_obs)
+    if(self.target_name == "mlhl"):
+      return maximum_likelihood_criterion_hl(
+                              f_obs                = f_obs,
+                              abcd                 = abcd.data(),
+                              step_for_integration = self.step_for_integration)
+
+  def target_functor_t(self, selection = None):
+    if(selection is None):
+      f_obs   = self.f_obs_t
+      weights = self.weights_t
+      abcd = self.abcd_t
+    else:
+      assert selection.size() == self.f_obs_t.data().size()
+      f_obs   = self.f_obs_t.select(selection)
+      if(self.weights_t is not None): weights = self.weights_t.select(selection)
+      else:                           weights = self.weights_t
+      if(self.abcd_t is not None): abcd = self.abcd_t.select(selection)
+      else:                        abcd = self.abcd_t
+    if(self.target_name == "ls"):
+      return least_squares_residual(
+                            f_obs                 = f_obs,
+                            weights               = weights,
                             use_sigmas_as_weights = self.use_sigmas_as_weights,
                             scale_factor          = self.scale_factor)
-
-  def target_functor_w(self):
-    return self.tf_w
-
-  def target_functor_t(self):
-    return self.tf_t
+    if(self.target_name == "ml"):
+      return maximum_likelihood_criterion(f_obs = f_obs)
+    if(self.target_name == "mlhl"):
+      return maximum_likelihood_criterion_hl(
+                              f_obs                = f_obs,
+                              abcd                 = abcd.data(),
+                              step_for_integration = self.step_for_integration)
 
 
 class least_squares_residual:
