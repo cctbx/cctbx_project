@@ -473,11 +473,78 @@ m $@
     assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
   else: raise RuntimeError("Exception expected.")
 
+def exercise_include():
+  print >> open("tmp1.params", "w"), """\
+include tmp1.params
+a x
+"""
+  print >> open("tmp2.params", "w"), """\
+b y
+"""
+  print >> open("tmp3.params", "w"), """\
+c z
+include tmp2.params
+d $z
+"""
+  parameters = iotbx.parameters.parse(
+    input_string="""\
+tmp2 tmp2.params
+include tmp1.params $tmp2
+r 0
+include tmp3.params
+s 1
+""",
+    process_includes=True)
+  out = StringIO()
+  parameters.show(out=out)
+  assert out.getvalue() == """\
+tmp2 tmp2.params
+a x
+b y
+r 0
+c z
+d $z
+s 1
+"""
+  try: parameters.get_with_variable_substitution(path="d")
+  except RuntimeError, e:
+    assert str(e) == 'Undefined variable: $z (file "tmp3.params", line 3)'
+  else: raise RuntimeError("Exception expected.")
+  try: os.makedirs("tmp")
+  except OSError: pass
+  print >> open("tmp1.params", "w"), """\
+a 0
+include tmp/tmp1.params
+x 1
+"""
+  print >> open("tmp/tmp1.params", "w"), """\
+b 1
+include tmp2.params
+y 2
+"""
+  print >> open("tmp/tmp2.params", "w"), """\
+c 2
+include tmp1.params
+z 3
+"""
+  parameters = iotbx.parameters.parse(file_name="tmp1.params", process_includes=True)
+  out = StringIO()
+  parameters.show(out=out)
+  assert out.getvalue() == """\
+a 0
+b 1
+c 2
+z 3
+y 2
+x 1
+"""
+
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
   exercise_get()
   exercise_get_with_variable_substitution()
+  exercise_include()
   print "OK"
 
 if (__name__ == "__main__"):
