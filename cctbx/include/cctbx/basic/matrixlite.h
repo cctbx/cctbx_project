@@ -63,17 +63,21 @@ namespace cctbx {
       for (int i = 0; i < nr * nc; i++) M[i] = Mt[i];
     }
 
-    template <class NumType>
+    template <typename NumTypeA,
+              typename NumTypeB,
+              typename NumTypeAB>
     void
-    multiply(const NumType *A, const NumType *B,
+    multiply(const NumTypeA *A, const NumTypeB *B,
              const std::size_t ma,
              const std::size_t na, const std::size_t nb,
-             NumType *AB) {
+             NumTypeAB *AB) {
       // AB[ma, nb] = A[ma, na] * B[na, nb]
       for (int i = 0; i < ma; i++) {
         for (int k = 0; k < nb; k++) {
-          *AB = 0;
-          for (int j = 0; j < na; j++) *AB += A[i * na + j] * B[j * nb + k];
+          *AB = NumTypeAB(0);
+          for (int j = 0; j < na; j++) {
+            *AB += NumTypeAB(A[i * na + j] * B[j * nb + k]);
+          }
           AB++;
         }
       }

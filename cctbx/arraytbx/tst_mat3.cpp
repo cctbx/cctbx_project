@@ -65,8 +65,12 @@ int main(int argc, char* argv[])
       48,54,60,111,126,141,174,198,222));
     check_true(__LINE__, a * vec3<int>(1,2,3) == vec3<int>(
       14,32,50));
+    check_true(__LINE__, std::fabs(af::max(
+      (a * vec3<double>(1,2,3) - vec3<double>(14,32,50)).ref())) < 1.e-6);
     check_true(__LINE__, vec3<int>(1,2,3) * a == vec3<int>(
       30,36,42));
+    check_true(__LINE__, std::fabs(af::max(
+      (vec3<double>(1,2,3) * a - vec3<double>(30,36,42)).ref())) < 1.e-6);
     check_true(__LINE__, a * 2 == d);
     check_true(__LINE__, 2 * a == d);
     check_true(__LINE__, d / 2 == a);
