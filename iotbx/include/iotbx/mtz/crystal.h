@@ -90,7 +90,7 @@ namespace iotbx { namespace mtz {
   object::add_crystal(
     const char* name,
     const char* project_name,
-    af::double6 unit_cell_parameters)
+    af::double6 const& unit_cell_parameters)
   {
     float uc_params[6];
     for(int i=0;i<6;i++) uc_params[i] = unit_cell_parameters[i];

@@ -102,7 +102,7 @@ namespace {
         .def("crystals", &w_t::crystals)
         .def("add_crystal",
           (crystal(w_t::*)(
-            const char*, const char*, af::double6))
+            const char*, const char*, af::double6 const&))
               &w_t::add_crystal, (
           arg_("name"),
           arg_("project_name"),

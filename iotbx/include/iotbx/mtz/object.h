@@ -279,7 +279,7 @@ namespace iotbx { namespace mtz {
       add_crystal(
         const char* name,
         const char* project_name,
-        af::double6 unit_cell_parameters);
+        af::double6 const& unit_cell_parameters);
 
       inline
       crystal
