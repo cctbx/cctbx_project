@@ -76,6 +76,9 @@ def exercise_tensor_constraints_core(crystal_symmetry):
   u_star = adptbx.u_cart_as_u_star(unit_cell, u_cart)
   u_star = site_symmetry.average_u_star(u_star)
   independent_params = adp_constraints.independent_params(u_star)
+  assert adp_constraints.n_independent_params() == independent_params.size()
+  assert adp_constraints.n_independent_params() \
+       + adp_constraints.n_dependent_params() == 6
   u_star_vfy = adp_constraints.all_params(independent_params)
   u_cart = adptbx.u_star_as_u_cart(unit_cell, u_star)
   u_cart_vfy = adptbx.u_star_as_u_cart(unit_cell, list(u_star_vfy))
