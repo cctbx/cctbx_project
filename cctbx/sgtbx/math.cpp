@@ -12,6 +12,7 @@
  */
 
 #include <cctbx/fixes/cstdlib>
+#include <cctbx/ndim.h>
 #include <cctbx/sgtbx/math.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/basic/define_range.h>
@@ -26,8 +27,8 @@ namespace cctbx { namespace sgtbx {
     //     Computing Maximal Subgroups and Wyckoff Positions of Space Groups
     //     Acta Cryst. (1997). A53, 467 - 474
 
-    Array2DAdaptor<int> M2D(M, mc);
-    Array2DAdaptor<int> T2D(T, tc);
+    vecrefnd<int, dimension<2> > M2D(M, mr, mc);
+    vecrefnd<int, dimension<2> > T2D(T, mr, tc);
     int i, j;
     for (i = j = 0; i < mr && j < mc;) {
       int k = i; while (k < mr && M2D(k, j) == 0) k++;
@@ -70,7 +71,7 @@ namespace cctbx { namespace sgtbx {
                    const int nr, const int nc,
                    int *Sol, int *FlagIndep)
   {
-    Array2DAdaptor<const int> M2D(M, nc);
+    vecrefnd<const int, dimension<2> > M2D(M, nr, nc);
     if (FlagIndep) {
       for (int ic = 0; ic < nc; ic++) FlagIndep[ic] = 1;
     }

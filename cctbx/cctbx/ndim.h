@@ -12,6 +12,7 @@
 #define CCTBX_NDIM_H
 
 #include <algorithm>
+#include <cctbx/carray.h>
 #include <cctbx/vecref.h>
 #include <cctbx/vector/reductions.h>
 
