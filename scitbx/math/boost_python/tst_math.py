@@ -3,7 +3,7 @@ from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
 from scitbx.math import bessel_inverse_i1_over_i0
-from scitbx.math import incomplete_gamma
+from scitbx.math import incomplete_gamma, incomplete_gamma_complement
 from scitbx.math import complete_gamma
 from scitbx.math import lambertw
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
@@ -155,6 +155,30 @@ def exercise_incomplete_gamma():
   assert approx_equal(incomplete_gamma(20.0, 5.0),3.452135821646607e-7)
   assert approx_equal(incomplete_gamma(20.0,15.5),0.154492096867129)
   assert approx_equal(incomplete_gamma(20.0,21.0),0.615737227735658)
+  ## This is not supposed to converge and spits out a plain text warning
+  assert not approx_equal(incomplete_gamma(a=20.0,x=15.5,
+                                       max_iterations=5),0.154492096867129)
+
+
+
+def exercise_incomplete_gamma_complement():
+  assert approx_equal(incomplete_gamma_complement(2.0, 0.1),1-0.0046788401604)
+  assert approx_equal(incomplete_gamma_complement(2.0, 0.5),1-0.0902040104310)
+  assert approx_equal(incomplete_gamma_complement(2.0, 2.5),1-0.7127025048163)
+  assert approx_equal(incomplete_gamma_complement(2.0, 5.0),1-0.9595723180054)
+  assert approx_equal(incomplete_gamma_complement(2.0,15.5),1-0.9999969386042)
+  assert approx_equal(incomplete_gamma_complement(2.0,21.0),1-0.9999999833183)
+
+  assert approx_equal(incomplete_gamma_complement(20.0, 0.1),1-0)
+  assert approx_equal(incomplete_gamma_complement(20.0, 0.5),1-0)
+  assert approx_equal(incomplete_gamma_complement(20.0, 2.5),1-3.480438159e-12)
+  assert approx_equal(incomplete_gamma_complement(20.0, 5.0),1-3.452135821e-7)
+  assert approx_equal(incomplete_gamma_complement(20.0,15.5),1-0.1544920968671)
+  assert approx_equal(incomplete_gamma_complement(20.0,21.0),1-0.6157372277356)
+  ## This is not supposed to converge and spits out a plain text warning
+  assert not approx_equal(incomplete_gamma_complement(a=20.0,x=15.5,
+                                       max_iterations=5),0.154492096867129)
+
 
 def exercise_complete_gamma():
   ## complete gamma with lanczos approx for x<12 and minimax otherwise
@@ -1102,6 +1126,7 @@ def run():
   exercise_euler_angles()
   exercise_erf()
   exercise_incomplete_gamma()
+  exercise_incomplete_gamma_complement()
   exercise_complete_gamma()
   exercise_bessel()
   exercise_lambertw()

@@ -1,9 +1,6 @@
+// Peter Zwart, April 1st, 2005
 #ifndef SCITBX_MATH_GAMMA_H
 #define SCITBX_MATH_GAMMA_H
-#define MAX_COUNT 500
-#define FPMIN 1E-30
-#define XBIG 171.624
-#define XINF 1.79E308
 
 #include <iostream>
 #include <cmath>
@@ -13,17 +10,22 @@
 
 namespace scitbx { namespace math {
 
-//! The Gamma function and his friends
+//! The Gamma function and some of his/her friends
+
+  static const double fpmin = 1E-30;
+  static const double xbig = 171.624;
+  static const double xinf = 1.97E307;
+
+  /*
+   * Calculates the factorial/Gamma function
+   * Expression and coefficients obtained from
+   * http://www.rskey.org/gamma.htm
+   */
 
   template <typename FloatType>
   FloatType
   complete_gamma_lanczos(FloatType const& x)
   {
-    /*
-      Calculates the factorial/Gamma function
-      Expression and coefficients obtained from
-      http://www.rskey.org/gamma.htm
-    */
 
     typedef FloatType f_t;
 
@@ -49,14 +51,17 @@ namespace scitbx { namespace math {
     return result;
   }
 
+  /*
+   * minimax approach for arguments larger then 12.
+   * http://www.netlib.no/netlib/specfun/gamma
+   */
   template <typename FloatType>
   FloatType
   complete_gamma_minimax(FloatType const& x)
   {
-    /*
-      minimax approach for arguments larger then 12.
-      http://www.netlib.no/netlib/specfun/gamma
-    */
+
+    SCITBX_ASSERT (x>12);
+
     typedef FloatType f_t;
     f_t sqrtpi = 0.9189385332046727417803297;
     f_t q[] = {-1.910444077728E-03,         8.4171387781295E-04,
@@ -64,7 +69,7 @@ namespace scitbx { namespace math {
                -2.777777777777681622553E-03,8.333333333333333331554247E-02,
                 5.7083835261E-03};
     f_t result = 0;
-    if (x<XBIG){
+    if (x<xbig){
       f_t xsq = x*x;
       f_t sum = q[6];
       for (int i = 0;i<6;i++){
@@ -75,23 +80,22 @@ namespace scitbx { namespace math {
       result = std::exp(sum);
       return(result);
     }
-    if (x>=XBIG){
-      return(XINF);
+    if (x>=xbig){
+      return(xinf);
     }
-
-
+    // never end up here
+    return(EXIT_FAILURE);
   }
 
+  /*
+   * Compute the gamma function with the ability to
+   * choose which approximation is needed.
+   */
 
   template <typename FloatType>
   FloatType
   complete_gamma(FloatType const& x, bool minimax=true)
   {
-    /*
-      Compute the gamma function with the ability to
-      choose which approximation is needed.
-      The default is set in a sensible way.
-    */
     typedef FloatType f_t;
     if (x>12) {
       if (minimax){
@@ -104,21 +108,24 @@ namespace scitbx { namespace math {
       return ( complete_gamma_lanczos(x) );
     }
 
+    // never end up here
+    return(EXIT_FAILURE);
   }
 
+    /*
+     * Computes incomplete gamma function using series expansion.
+     */
 
   template <typename FloatType>
   FloatType
-  incomplete_gamma_series(FloatType const& a, FloatType const& x)
+  incomplete_gamma_series(FloatType const& a,
+                          FloatType const& x,
+                          unsigned max_count=500)
   {
-    /*
-      Computes incomplete gamma function using series expansion
-      Hack from NR.
-    */
 
     typedef FloatType f_t;
     f_t eps = scitbx::math::floating_point_epsilon<FloatType>::get();
-    f_t result;
+    f_t result=0.0;
 
 
     SCITBX_ASSERT(a>0);
@@ -129,7 +136,7 @@ namespace scitbx { namespace math {
       f_t del = 1.0/a;
       f_t sum = 1.0/a;
 
-      for (int i=1;i<MAX_COUNT;i++){
+      for (int i=1;i<max_count;i++){
         ++ap;
         del *= x/ap;
         sum += del;
@@ -140,28 +147,26 @@ namespace scitbx { namespace math {
 
       }
       std::cout << "Incomplete gamma series failed to converge " << std::endl;
-      std::cout << "Returnoing best guess " << std::endl;
+      std::cout << "Returning best guess " << std::endl;
       return(result);
 
     }
-    if (x==0){
-      return(0);
-    }
 
+    return(0);
   }
 
 
+    /*
+     * Computes the incomplete gamma function using continued fraction method
+     */
 
 
   template <typename FloatType>
   FloatType
   incomplete_gamma_continued_fraction(FloatType const& a,
-                                      FloatType const& x)
+                                      FloatType const& x,
+                                      unsigned max_iterations=500)
   {
-    /*
-       Computes the incomplete gamma function using continued fraction method
-       Hack from NR.
-    */
 
     SCITBX_ASSERT(a>0);
     SCITBX_ASSERT(x>=0);
@@ -172,22 +177,22 @@ namespace scitbx { namespace math {
     f_t result;
     int i;
     b = x+1.0-a;
-    c = 1.0/FPMIN;
+    c = 1.0/fpmin;
     d = 1.0/b;
     h = d;
-    for (i=1;i<MAX_COUNT;i++){
+    for (i=1;i<max_iterations;i++){
       an = -i*(i-a);
       b +=2.0;
       d = an*d+b;
-      if (std::fabs(d) < FPMIN){ d = FPMIN; }
+      if (std::fabs(d) < fpmin){ d = fpmin; }
       c = b+an/c;
-      if (std::fabs(c) < FPMIN){ c = FPMIN; }
+      if (std::fabs(c) < fpmin){ c = fpmin; }
       d=1.0/d;
       del = d*c;
       h *= del;
       if (std::fabs(del-1.0) <eps){ break; }
     }
-    if (i>=MAX_COUNT) {
+    if (i>=max_iterations) {
       std::cout << "Continued fractions for incomplete gamma function failed to converge" << std::endl;
       std::cout << "Returning best guess" << std::endl;
     }
@@ -196,40 +201,42 @@ namespace scitbx { namespace math {
     return(result);
   }
 
+
+  /* Computes the incomplete gamma function in it's normalised form:
+   * (1/\Gamma(a))int_{0}^{x}exp(-t) t^{a-1} dt
+   */
+
   template <typename FloatType>
   FloatType
-  incomplete_gamma(FloatType const& a, FloatType const& x)
+  incomplete_gamma(FloatType const& a,
+                   FloatType const& x,
+                   unsigned max_iterations=500)
   {
-    /* Computes the incomplete gamma function in it's normalised form:
-       (1/\Gamma(a))int_{0}^{x}exp(-t) t^{a-1} dt
-    */
-
     SCITBX_ASSERT (x >= 0.0);
     SCITBX_ASSERT (a >  0.0);
     if (x < a+1.0) {// Use series expansion.
-      return incomplete_gamma_series(a,x);
+      return incomplete_gamma_series(a,x,max_iterations);
     } else { // Use cont. fraction.
       return incomplete_gamma_continued_fraction(a,x);
     }
-
+    // never end up here
+    return(EXIT_FAILURE);
   }
 
+  /* Computes the complement of the incomplete gamma function in it's normalised form:
+   * 1-(1/\Gamma(a))int_{0}^{x}exp(-t) t^{a-1} dt
+   */
 
   template <typename FloatType>
   FloatType
-  incomplete_gamma_complement(FloatType const& a, FloatType const& x)
+  incomplete_gamma_complement(FloatType const& a,
+                              FloatType const& x,
+                              unsigned max_iterations=500)
   {
-    /* Computes the complement of the incomplete gamma function in it's normalised form:
-       (1/\Gamma(a))int_{0}^{x}exp(-t) t^{a-1} dt
-    */
-
     SCITBX_ASSERT(x >= 0.0);
     SCITBX_ASSERT(a >  0.0);
-    return (1.0 - incomplete_gamma(a,x));
-
+    return (1.0 - incomplete_gamma(a,x,max_iterations));
   }
-
-
 
 
 
