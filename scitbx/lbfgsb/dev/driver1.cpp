@@ -47,12 +47,12 @@ namespace {
     iprint = 1;
     factr=1.0e+7;
     pgtol=1.0e-5;
-    for(int i=1;i<=2;i+=2) {
+    for(int i=1;i<=n;i+=2) {
       nbd(i)=2;
       l(i)=1.0e0;
       u(i)=1.0e2;
     }
-    for(int i=2;i<=2;i+=2) {
+    for(int i=2;i<=n;i+=2) {
       nbd(i)=2;
       l(i)=-1.0e2;
       u(i)=1.0e2;
