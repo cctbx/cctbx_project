@@ -32,7 +32,7 @@ def show_status(path, flag_x):
   if (n_tabs_or_trailing_whitespace > 0):
     status += "tabs or trailing whitespace=%d, " \
            % n_tabs_or_trailing_whitespace
-  if (n_trailing_empty_lines > 0):
+  if (n_trailing_empty_lines > 1):
     status += "trailing empty lines=%d, " % n_trailing_empty_lines
   if (missing_eol):
     status += "missing end-of-line, "
@@ -42,7 +42,7 @@ def show_status(path, flag_x):
 def is_text_file(file_name):
   name = file_name.lower()
   if (name.startswith("scons")): return True
-  for extension in (".c", ".cpp", ".h", ".hpp", ".py",
+  for extension in (".c", ".cpp", ".h", ".hpp", ".py", ".params",
                     ".dox", ".txt", ".html", ".csh", ".sh"):
     if (name.endswith(extension)): return True
   return False
