@@ -106,6 +106,9 @@ class env:
   def dist_path(self, package_name):
     return self.dist_paths[self.dist_name(package_name)]
 
+  def effective_root(self, package_name):
+    return os.path.dirname(self.dist_path(package_name))
+
   def current_working_directory_is_libtbx_build(self):
     return os.path.normpath(os.getcwd()) == self.LIBTBX_BUILD
 
