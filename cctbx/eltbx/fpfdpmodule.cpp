@@ -30,10 +30,12 @@ BOOST_PYTHON_MODULE_INIT(fpfdp)
     python::export_converters(py_fpfdp);
 
     py_fpfdp.def(constructor<float, float>());
+    py_fpfdp.def(&fpfdp::isValid_fp, "isValid_fp");
+    py_fpfdp.def(&fpfdp::isValid_fdp, "isValid_fdp");
+    py_fpfdp.def(&fpfdp::isValid, "isValid");
     py_fpfdp.def(&fpfdp::fp, "fp");
     py_fpfdp.def(&fpfdp::fdp, "fdp");
-    py_fpfdp.def(&fpfdp::isValid_fp, "fp");
-    py_fpfdp.def(&fpfdp::isValid_fdp, "fdp");
+    py_fpfdp.def(&fpfdp::operator(), "__call__");
   }
   catch(...)
   {

@@ -16,10 +16,10 @@ using namespace eltbx;
 
 namespace {
 
-  double keV(double Length) {
+  double keV_as_Angstrom(double Length) {
     return cctbx::constants::factor_keV_Angstrom / Length;
   }
-  double Angstrom(double Energy) {
+  double Angstrom_as_keV(double Energy) {
     return cctbx::constants::factor_keV_Angstrom / Energy;
   }
 }
@@ -39,8 +39,8 @@ BOOST_PYTHON_MODULE_INIT(wavelengths)
     class_builder<WaveLength>
     py_WaveLength(this_module, "WaveLength");
 
-    this_module.def(keV, "keV");
-    this_module.def(Angstrom, "Angstrom");
+    this_module.def(keV_as_Angstrom, "keV_as_Angstrom");
+    this_module.def(Angstrom_as_keV, "Angstrom_as_keV");
 
     py_WaveLength.def(constructor<int>());
     py_WaveLength.def(constructor<const std::string&>());

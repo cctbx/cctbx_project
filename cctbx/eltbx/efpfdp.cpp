@@ -57,7 +57,6 @@ namespace eltbx {
         if (   Data[i-2].fp != Efpfdp_undefined
             && Data[i-1].fp != Efpfdp_undefined) {
           fp = Data[i-2].fp + f * (Data[i-1].fp - Data[i-2].fp);
-          fp -= m_Label_Z_Efpfdp->Z; // subtract the number of electrons
         }
         fdp = Data[i-2].fdp + f * (Data[i-1].fdp - Data[i-2].fdp);
       }

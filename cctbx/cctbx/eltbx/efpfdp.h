@@ -12,6 +12,8 @@
 #ifndef CCTBX_ELTBX_EFPFDP_H
 #define CCTBX_ELTBX_EFPFDP_H
 
+#include <complex>
+
 namespace eltbx {
 
   namespace detail {
@@ -37,14 +39,20 @@ namespace eltbx {
     public:
       //! Constructor. For internal use only.
       inline fpfdp(float fp, float fdp) : m_fp(fp), m_fdp(fdp) {}
+      //! Test if f-prime is defined.
+      inline bool isValid_fp() const { return m_fp != Efpfdp_undefined; }
+      //! Test if f-double-prime is defined.
+      inline bool isValid_fdp() const { return m_fdp != Efpfdp_undefined; }
+      //! Test if f-prime and f-double-prime are defined.
+      inline bool isValid() const { return isValid_fp() && isValid_fdp(); }
       //! Return f-prime (f').
       inline float fp() const { return m_fp; }
       //! Return f-double-prime (f").
       inline float fdp() const { return m_fdp; }
-      //! Test if f-prime is undefined.
-      inline bool isValid_fp() const { return m_fp != Efpfdp_undefined; }
-      //! Test if f-double-prime is undefined.
-      inline bool isValid_fdp() const { return m_fdp != Efpfdp_undefined; }
+      //! Return complex(f-prime, f-double-prime).
+      inline std::complex<float> operator()() const {
+        return std::complex<float>(m_fp, m_fdp);
+      }
     private:
       float m_fp;
       float m_fdp;
