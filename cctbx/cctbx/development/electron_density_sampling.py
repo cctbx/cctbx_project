@@ -30,8 +30,10 @@ def timings(structure, wing_cutoff=1.e-3):
           algorithm="fft")
         times.append(f_calc_object.manager().estimate_time_fft.time_sampling)
         print "  %.2f seconds," % times[-1]
-      print "d_min=%d: %.2f s / %.2f s = %.2f" % (
-        d_min, times[0], times[1], times[0]/times[1])
+      print "d_min=%d: %.2f s / %.2f s" % (d_min, times[0], times[1]),
+      if (times[1] != 0):
+        print "= %.2f" % times[1],
+      print
       sys.stdout.flush()
   print
 
