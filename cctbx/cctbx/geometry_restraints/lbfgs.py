@@ -12,6 +12,7 @@ class lbfgs:
       geometry_restraints_flags=None,
       lbfgs_termination_params=None,
       lbfgs_core_params=None,
+      lbfgs_exception_handling_params=None,
       disable_asu_cache=00000):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -29,7 +30,8 @@ class lbfgs:
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=lbfgs_termination_params,
-      core_params=lbfgs_core_params)
+      core_params=lbfgs_core_params,
+      exception_handling_params=lbfgs_exception_handling_params)
     self.apply_shifts()
     self.compute_target(compute_gradients=0001)
     self.final_target_result = self.tmp.target_result

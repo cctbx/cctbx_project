@@ -175,8 +175,13 @@ def run_fortran(target_evaluator,
 def run(target_evaluator,
         termination_params=None,
         core_params=None,
+        exception_handling_params=None,
         use_fortran=00000):
   if (use_fortran):
     return run_fortran(target_evaluator, termination_params, core_params)
   else:
-    return run_c_plus_plus(target_evaluator, termination_params, core_params)
+    return run_c_plus_plus(
+      target_evaluator,
+      termination_params,
+      core_params,
+      exception_handling_params)
