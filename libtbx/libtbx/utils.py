@@ -1,3 +1,5 @@
+from __future__ import division
+import time
 import sys
 
 class Keep: pass
@@ -25,3 +27,14 @@ class UserError(Exception):
         del sys.tracebacklimit
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
+
+def date_and_time():
+  localtime = time.localtime()
+  if (time.daylight and localtime[8] != 0):
+    tzname = time.tzname[1]
+    offs = -time.altzone
+  else:
+    tzname = time.tzname[0]
+    offs = -time.timezone
+  return time.strftime("Date %Y-%m-%d Time %H:%M:%S", localtime) \
+       + " %s %+03d%02d" % (tzname, offs//3600, offs//60%60)
