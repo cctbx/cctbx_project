@@ -41,11 +41,13 @@ def exercise_basic():
 
 def rewrite_parser(
       word_stack,
+      stop_if_parse_stack_is_empty=False,
       stop_word=None,
       expect_nonmatching_closing_parenthesis=False):
   result_stack = []
   for word,word_stack in simple_parser.infix_as_postfix(
          word_stack=word_stack,
+         stop_if_parse_stack_is_empty=stop_if_parse_stack_is_empty,
          stop_word=stop_word,
          expect_nonmatching_closing_parenthesis
            =expect_nonmatching_closing_parenthesis):
@@ -63,20 +65,28 @@ def rewrite_parser(
       assert word_stack.pop().value == "("
       radius = float(word_stack.pop().value)
       assert word_stack.pop().value == ","
-      sel = rewrite_parser(
+      nested_result = rewrite_parser(
         word_stack=word_stack,
         expect_nonmatching_closing_parenthesis=True)
-      if (sel == ""): raise RuntimeError("Missing argument.")
-      result_stack.append("@(%.2f,%s)" % (radius, sel))
+      if (nested_result == ""): raise RuntimeError("Missing argument.")
+      result_stack.append("@(%.2f,%s)" % (radius, nested_result))
     elif (word.value == "around"):
       assert word_stack.pop().value == "("
-      sel = rewrite_parser(
+      nested_result = rewrite_parser(
         word_stack=word_stack,
         stop_word=",")
-      if (sel == ""): raise RuntimeError("Missing argument.")
+      if (nested_result == ""): raise RuntimeError("Missing argument.")
       radius = float(word_stack.pop().value)
       assert word_stack.pop().value == ")"
-      result_stack.append("@(%.2f,%s)" % (radius, sel))
+      result_stack.append("@(%.2f,%s)" % (radius, nested_result))
+    elif (word.value == "for"):
+      var = word_stack.pop().value
+      assert word_stack.pop().value == "in"
+      nested_result = rewrite_parser(
+        word_stack=word_stack,
+        stop_if_parse_stack_is_empty=True)
+      if (nested_result == ""): raise RuntimeError("Missing argument.")
+      result_stack.append("(for %s in %s)" % (var, nested_result))
     else:
       result_stack.append(word.value)
   if (len(result_stack) == 0):
@@ -120,15 +130,31 @@ def exercise_nested():
   ["around((a or b) and within(3, c or d), 5)",
     "@(5.00,((a|b)&@(3.00,(c|d))))"
   ],
+  ["for i in a",
+    "(for i in a)",
+  ],
+  ["for i in not a",
+    "(for i in (!a))",
+  ],
+  ["for i in a or b",
+    "((for i in a)|b)",
+  ],
+  ["for i in (a or b)",
+    "(for i in (a|b))",
+  ],
+  ["for i in (a or b) and c",
+    "((for i in (a|b))&c)",
+  ],
   ]
   verbose = "--verbose" in sys.argv[1:]
   for input_string,expected_result in tests:
-    if (verbose): print input_string
+    show = verbose or expected_result is None
+    if (show): print input_string
     result = rewrite(input_string=input_string)
-    if (verbose): print result
+    if (show): print result
     if (expected_result is not None):
       assert result == expected_result
-    if (verbose): print
+    if (show): print
 
 def exercise():
   exercise_basic()

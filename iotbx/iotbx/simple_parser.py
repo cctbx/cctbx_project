@@ -13,6 +13,7 @@ def infix_as_postfix(
       words=None,
       word_stack=None,
       operator_dict={"not": 3, "and": 2, "or": 1},
+      stop_if_parse_stack_is_empty=False,
       stop_word=None,
       expect_nonmatching_closing_parenthesis=False):
   """http://www.programmersheaven.com/2/Art_Expressions_p1"""
@@ -37,10 +38,12 @@ def infix_as_postfix(
         item = parse_stack.pop()
         if (item.value == "("): break
         yield item, word_stack
+      if (len(parse_stack) == 0 and stop_if_parse_stack_is_empty): return
     else:
       word_priority = operator_priority(word)
       if (word_priority == 0):
         yield word, word_stack
+        if (len(parse_stack) == 0 and stop_if_parse_stack_is_empty): return
       else:
         while True:
           if (len(parse_stack) == 0
