@@ -14,6 +14,16 @@
 
 namespace cctbx { namespace maptbx {
 
+  //! Miller index element corresponding to 1-dimensional array index.
+  template <typename IntegerType>
+  inline
+  IntegerType
+  ih_as_h(IntegerType ih, std::size_t n)
+  {
+    if (ih <= n/2) return ih;
+    return ih - n;
+  }
+
   //! 1-dimensional array index corresponding to Miller index element.
   template <typename IntegerType>
   inline
@@ -45,14 +55,28 @@ namespace cctbx { namespace maptbx {
     return ih;
   }
 
-  //! Miller index element corresponding to 1-dimensional array index.
+  /*! \brief 1-dimensional under-sampled array index corresponding
+      to Miller index element.
+   */
   template <typename IntegerType>
   inline
   IntegerType
-  ih_as_h(IntegerType ih, std::size_t n)
+  h_as_ih_under_sampled(IntegerType h, IntegerType const& n)
   {
-    if (ih <= n/2) return ih;
-    return ih - n;
+    h %= n;
+    if (h < 0) return h + n;
+    return h;
+  }
+
+  template <typename IndexTypeN>
+  IndexTypeN
+  h_as_ih_array_under_sampled(miller::index<> const& h, IndexTypeN const& n)
+  {
+    IndexTypeN ih;
+    for(std::size_t i=0;i<3;i++) {
+      ih[i] = h_as_ih_under_sampled(h[i], n[i]);
+    }
+    return ih;
   }
 
 }} // namespace cctbx::maptbx
