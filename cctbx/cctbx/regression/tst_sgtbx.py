@@ -1,5 +1,6 @@
 from cctbx import sgtbx
 from scitbx.test_utils import approx_equal
+import pickle
 
 def exercise_space_group_info():
   i = sgtbx.space_group_info("P 1")
@@ -20,6 +21,9 @@ def exercise_space_group_info():
     assert approx_equal(
       sgtbx.space_group_info(sg_number).any_compatible_unit_cell(100).volume(),
       100)
+  s = pickle.dumps(i)
+  j = pickle.loads(s)
+  assert str(i) == str(j)
 
 def run():
   exercise_space_group_info()

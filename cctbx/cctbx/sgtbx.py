@@ -11,6 +11,8 @@ import sys
 
 class space_group_info:
 
+  __safe_for_unpickling__ = True
+
   def __init__(self, symbol=None, table_id=None, group=None):
     if (symbol == None):
       assert table_id == None
@@ -28,6 +30,15 @@ class space_group_info:
   def _copy_constructor(self, other):
     self._group = other._group
     self._space_group_info_cache = other._space_group_info_cache
+
+  def __getinitargs__(self):
+    return (str(self),)
+
+  def __getstate__(self):
+    return None
+
+  def __setstate__(self, state):
+    pass
 
   def group(self):
     return self._group
