@@ -7,7 +7,9 @@ import libtbx.itertbx
 import math
 import sys, os
 
-class pair_asu_table:
+pair_asu_table = crystal.pair_asu_table
+
+class _pair_asu_table:
 
   def __init__(self, asu_mappings):
     self.asu_mappings = asu_mappings
@@ -132,9 +134,9 @@ def is_sym_equiv_interaction_simple(unit_cell,
 
 def check_sym_equiv(structure, bond_asu_table, weak=00000):
   unit_cell = structure.unit_cell()
-  asu_mappings = bond_asu_table.asu_mappings
+  asu_mappings = bond_asu_table.asu_mappings()
   sites_frac = structure.scatterers().extract_sites()
-  for i_seq,records in enumerate(bond_asu_table.table):
+  for i_seq,records in enumerate(bond_asu_table.table()):
     rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
     for j_seq,j_sym_groups in records.items():
       i_group_rt_mx_jis = []
@@ -160,7 +162,7 @@ def check_sym_equiv(structure, bond_asu_table, weak=00000):
 
 def check_connectivities(bond_asu_table, connectivities, verbose=0):
   n_mismatches = 0
-  for records,connectivity in zip(bond_asu_table.table, connectivities):
+  for records,connectivity in zip(bond_asu_table.table(), connectivities):
     n = 0
     for j_seq,j_sym_groups in records.items():
       for j_sym_group in j_sym_groups:
@@ -182,14 +184,12 @@ def exercise(
     if (i_pass == 0):
       bond_asu_table = pair_asu_table(asu_mappings=asu_mappings)
       bond_asu_table.add_all_pairs(
-        distance_cutoff=distance_cutoff,
-        verbose=verbose)
+        distance_cutoff=distance_cutoff)
     else:
       bond_sym_table = bond_asu_table.extract_pair_sym_table()
       bond_asu_table = pair_asu_table(asu_mappings=asu_mappings)
       bond_asu_table.add_pair_sym_table(
-        sym_table=bond_sym_table,
-        verbose=verbose)
+        sym_table=bond_sym_table)
     if (connectivities is not None):
       check_connectivities(bond_asu_table, connectivities, verbose)
     check_sym_equiv(

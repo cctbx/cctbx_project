@@ -1,5 +1,4 @@
 from cctbx.crystal import minimization
-from cctbx.crystal import pair_asu_table
 from cctbx import restraints
 from cctbx import xray
 from cctbx import crystal
@@ -27,11 +26,11 @@ class add_oxygen:
   def __init__(self, si_structure, si_pair_asu_table):
     self.structure = si_structure.deep_copy_scatterers()
     self.bond_sym_table = crystal.pair_sym_table(
-      si_pair_asu_table.table.size())
+      si_pair_asu_table.table().size())
     sites_frac = si_structure.sites_frac()
-    si_asu_mappings = si_pair_asu_table.asu_mappings
+    si_asu_mappings = si_pair_asu_table.asu_mappings()
     i_oxygen = count(1)
-    for i_seq,table_i_seq in enumerate(si_pair_asu_table.table):
+    for i_seq,table_i_seq in enumerate(si_pair_asu_table.table()):
       rt_mx_i_inv = si_asu_mappings.get_rt_mx(i_seq, 0).inverse()
       site_frac_i = sites_frac[i_seq]
       for j_seq,j_sym_groups in table_i_seq.items():
@@ -53,10 +52,10 @@ class add_oxygen:
 
 def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
   scatterers = si_o_structure.scatterers()
-  asu_mappings = si_o_bond_asu_table.asu_mappings
-  o_si_o_asu_table = pair_asu_table.pair_asu_table(
+  asu_mappings = si_o_bond_asu_table.asu_mappings()
+  o_si_o_asu_table = crystal.pair_asu_table(
     asu_mappings=asu_mappings)
-  for i_seq,table_i_seq in enumerate(si_o_bond_asu_table.table):
+  for i_seq,table_i_seq in enumerate(si_o_bond_asu_table.table()):
     if (scatterers[i_seq].scattering_type != "Si"): continue
     pair_list = []
     for j_seq,j_sym_groups in table_i_seq.items():
@@ -85,7 +84,7 @@ def get_all_proxies(
   bond_asu_proxies = restraints.shared_bond_asu_proxy()
   repulsion_asu_proxies = restraints.shared_repulsion_asu_proxy()
   pair_generator = crystal.neighbors_fast_pair_generator(
-    asu_mappings=bond_asu_table.asu_mappings,
+    asu_mappings=bond_asu_table.asu_mappings(),
     distance_cutoff=max(bonded_distance_cutoff, nonbonded_distance_cutoff),
     minimal=minimal)
   for pair in pair_generator:
@@ -143,8 +142,8 @@ class show_pairs:
     unit_cell = structure.unit_cell()
     scatterers = structure.scatterers()
     sites_frac = structure.sites_frac()
-    asu_mappings = pair_asu_table.asu_mappings
-    for i_seq,table_i_seq in enumerate(pair_asu_table.table):
+    asu_mappings = pair_asu_table.asu_mappings()
+    for i_seq,table_i_seq in enumerate(pair_asu_table.table()):
       rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
       site_frac_i = sites_frac[i_seq]
       pair_count = 0
@@ -218,7 +217,7 @@ def distance_and_repulsion_least_squares(
   print
   si_asu_mappings = si_structure.asu_mappings(
     buffer_thickness=distance_cutoff)
-  si_pair_asu_table = pair_asu_table.pair_asu_table(
+  si_pair_asu_table = crystal.pair_asu_table(
     asu_mappings=si_asu_mappings)
   si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
   si_pairs = show_pairs(
@@ -236,7 +235,7 @@ def distance_and_repulsion_least_squares(
        > flex.max(si_pairs.distances)/2.*(1-1.e-6)
   si_o_asu_mappings = si_o.structure.asu_mappings(
     buffer_thickness=nonbonded_distance_cutoff)
-  si_o_bond_asu_table = pair_asu_table.pair_asu_table(
+  si_o_bond_asu_table = crystal.pair_asu_table(
     asu_mappings=si_o_asu_mappings)
   si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
   si_o_bonds = show_pairs(

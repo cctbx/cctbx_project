@@ -1,7 +1,6 @@
 from iotbx.kriber import strudat
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
-import cctbx.crystal.pair_asu_table
 import sys, os
 
 def exercise(distance_cutoff=3.5, n_shells=5):
@@ -15,7 +14,7 @@ def exercise(distance_cutoff=3.5, n_shells=5):
     if ("--Full" in sys.argv[1:] or i % 20 == 0):
       asu_mappings = structure.asu_mappings(
         buffer_thickness=distance_cutoff)
-      pair_asu_table = cctbx.crystal.pair_asu_table.pair_asu_table(
+      pair_asu_table = cctbx.crystal.pair_asu_table(
         asu_mappings=asu_mappings)
       pair_asu_table.add_all_pairs(
         distance_cutoff=distance_cutoff)
@@ -23,8 +22,8 @@ def exercise(distance_cutoff=3.5, n_shells=5):
         pair_asu_table=pair_asu_table,
         n_shells=n_shells)
       term_table_simple = cctbx.crystal.coordination_sequences_simple(
-        asu_mappings=pair_asu_table.asu_mappings,
-        pair_asu_table_table=pair_asu_table.table,
+        asu_mappings=pair_asu_table.asu_mappings(),
+        pair_asu_table_table=pair_asu_table.table(),
         n_shells=n_shells)
       if (verbose):
         print "term_table_slow:"
