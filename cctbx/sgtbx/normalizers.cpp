@@ -117,4 +117,18 @@ namespace sgtbx {
     }
 
   } // namespace ReferenceSettings
+
+  std::vector<RTMx>
+  SpaceGroupType::getAddlGeneratorsOfEuclideanNormalizer(bool getK2L,
+                                                         bool getL2N) const
+  {
+    std::vector<RTMx> result
+      = ReferenceSettings::GetNormAddlG(SgNumber(), false, getK2L, getL2N);
+    ChOfBasisOp C = CBOp().swap();
+    for(std::size_t i=0;i<result.size();i++) {
+      result[i] = C(result[i]);
+    }
+    return result;
+  }
+
 } // namespace sgtbx

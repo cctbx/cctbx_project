@@ -90,13 +90,28 @@ print up.BuildHallSymbol(1)
 enantiomorphic_pairs = []
 cbop = sgtbx.ChOfBasisOp(sgtbx.RTMx("x+1/12,y+1/12,z+1/12"))
 iter = sgtbx.SpaceGroupSymbolIterator()
-print iter.next().ExtendedHermann_Mauguin()
+#print iter.next().ExtendedHermann_Mauguin()
 for s in iter:
-  print s.ExtendedHermann_Mauguin()
   sgo = sgtbx.SgOps(s.Hall())#ChangeBasis(cbop)
-  e = sgo.getEnantiomorphSgOps()
+  ch1 = sgo.getChangeOfHandOp()
+  print s.ExtendedHermann_Mauguin(), ch1.M()
+  e = sgo.ChangeBasis(ch1)
   if (e != sgo):
+    assert sgo.isEnantiomorphic()
     enantiomorphic_pairs.append(
       (s.ExtendedHermann_Mauguin(), e.BuildLookupSymbol()))
+  else:
+    assert not sgo.isEnantiomorphic()
+  ch2 = e.getChangeOfHandOp()
+  ch1ch2 = ch1.M().multiply(ch2.M()).modPositive()
+  assert ch1ch2.isUnit() # this is sufficient, but not necessary.
+  SECg = sgtbx.SymEquivCoordinates(sgo, (0.123,0.456,0.789))
+  flippedX = ch1(SECg(0))
+  SECf = sgtbx.SymEquivCoordinates(e, flippedX)
+  Fg = SECg.StructureFactor((3,5,7))
+  Ff = SECf.StructureFactor((3,5,7))
+  d = abs(Fg) - abs(Ff)
+  assert d < 1.e-5
 for p in enantiomorphic_pairs:
   print p
+assert len(enantiomorphic_pairs) == 22

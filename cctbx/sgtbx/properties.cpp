@@ -10,6 +10,7 @@
  */
 
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/reference.h>
 #include <cctbx/basic/define_range.h>
 
 namespace sgtbx {
@@ -132,21 +133,25 @@ namespace sgtbx {
 
   bool SgOps::isEnantiomorphic() const
   {
-    RTMx FlipCBMx(RotMx(CRBF, -1), CTBF);
-    SgOps FlipSgOps = ChangeBasis(ChOfBasisOp(FlipCBMx, FlipCBMx));
-    return              getSpaceGroupType().SgNumber()
-           != FlipSgOps.getSpaceGroupType().SgNumber();
+    if (isCentric()) return false;
+    SpaceGroupType SgType = getSpaceGroupType();
+    std::vector<RTMx>
+    AddlG = ReferenceSettings::GetNormAddlG(SgType.SgNumber(),
+                                            false, true, false);
+    if (AddlG.size() == 1) return false;
+    cctbx_assert(AddlG.size() == 0);
+    return true;
   }
 
-  SgOps SgOps::getEnantiomorphSgOps() const
+  ChOfBasisOp SgOps::getChangeOfHandOp() const
   {
-    RTMx FlipCBMx(RotMx(CRBF, -1), CTBF);
-    SgOps FlipSgOps = ChangeBasis(ChOfBasisOp(FlipCBMx, FlipCBMx));
-    if (             getSpaceGroupType().SgNumber()
-        != FlipSgOps.getSpaceGroupType().SgNumber()) {
-      return FlipSgOps;
-    }
-    return *this;
+    if (isCentric()) return ChOfBasisOp(1, STBF);
+    SpaceGroupType SgType = getSpaceGroupType();
+    std::vector<RTMx>
+    AddlG = SgType.getAddlGeneratorsOfEuclideanNormalizer(true, false);
+    if (AddlG.size() == 1) return ChOfBasisOp(AddlG[0]);
+    cctbx_assert(AddlG.size() == 0);
+    return ChOfBasisOp(SgType.CBOp().swap()(RTMx(RotMx(1, -1), STBF)));
   }
 
 } // namespace sgtbx
