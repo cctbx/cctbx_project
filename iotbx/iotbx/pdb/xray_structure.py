@@ -104,7 +104,8 @@ def from_pdb(file_name=None, file_iterator=None,
              ignore_atom_element_q=0001,
              scan_atom_element_columns=0001,
              fractional_coordinates=00000,
-             min_distance_sym_equiv=0.5):
+             min_distance_sym_equiv=0.5,
+             keep_scatterer_pdb_records=00000):
   assert [file_name, file_iterator].count(None) == 1
   if (file_iterator is None):
     file_iterator = open(file_name)
@@ -137,6 +138,9 @@ def from_pdb(file_name=None, file_iterator=None,
       crystal_symmetry=crystal_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv))
   scatterer = None
+  scatterer_pdb_record = None
+  if (keep_scatterer_pdb_records):
+    scatterer_pdb_records = []
   prev_record = None
   for record in pdb_records:
     if (record.record_name in ("ATOM", "HETATM")):
@@ -144,9 +148,12 @@ def from_pdb(file_name=None, file_iterator=None,
         try: structure.add_scatterer(scatterer)
         except RuntimeError, e:
           raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
+        if (keep_scatterer_pdb_records):
+          scatterer_pdb_records.append(scatterer_pdb_record)
       if (ignore_atom_element_q
           and (record.element == " Q" or record.name[1] == "Q")):
         scatterer = None
+        scatterer_pdb_record = None
       else:
         if (fractional_coordinates):
           site=record.coordinates
@@ -159,6 +166,7 @@ def from_pdb(file_name=None, file_iterator=None,
           occupancy=record.occupancy,
           scattering_type=scattering_type_interpr.from_pdb_atom_record(
             record, have_useful_atom_element_columns))
+        scatterer_pdb_record = record
     elif (record.record_name == "SIGATM"):
       if (not prev_record.record_name in ("ATOM", "HETATM")):
         record.raise_FormatError(
@@ -182,10 +190,17 @@ def from_pdb(file_name=None, file_iterator=None,
       try: structure.add_scatterer(scatterer)
       except RuntimeError, e:
         raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
+      if (keep_scatterer_pdb_records):
+        scatterer_pdb_records.append(scatterer_pdb_record)
       scatterer = None
+      scatterer_pdb_record = None
     prev_record = record
   if (scatterer is not None):
     try: structure.add_scatterer(scatterer)
     except RuntimeError, e:
       raise RuntimeError("%s%s" % (prev_record.error_prefix(), str(e)))
+    if (keep_scatterer_pdb_records):
+      scatterer_pdb_records.append(scatterer_pdb_record)
+  if (keep_scatterer_pdb_records):
+    structure.scatterer_pdb_records = scatterer_pdb_records
   return structure
