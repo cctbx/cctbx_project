@@ -25,6 +25,14 @@
 
 namespace cctbx { namespace af {
 
+  // defined in flexmodule.cpp
+  boost::python::ref
+  make_ref_flex_grid(flex_grid<> const& fg);
+
+  // defined in flexmodule.cpp
+  flex_grid<>
+  flex_grid_from_python(PyObject* obj);
+
   namespace picklers {
 
     inline char* o_advance(char *ptr)
@@ -330,32 +338,37 @@ namespace cctbx { namespace af {
     struct array_fast
     {
       static
-      boost::python::ref
+      boost::python::tuple
       getstate(
         versa<ElementType, flex_grid<> > const& a,
         std::size_t size_per_element)
       {
+        boost::python::tuple state(2);
+        state.set_item(0, make_ref_flex_grid(a.accessor()));
         getstate_manager mgr(a.size(), size_per_element);
         for(std::size_t i=0;i<a.size();i++) {
           mgr.advance(to_string(mgr.str_end, a[i]));
         }
-        return boost::python::ref(mgr.finalize());
+        state.set_item(1, boost::python::ref(mgr.finalize()));
+        return state;
       }
 
       static
       void
       setstate(
         versa<ElementType, flex_grid<> >& a,
-        boost::python::ref state)
+        boost::python::tuple state)
       {
-        setstate_manager mgr(a.size(), state.get());
+        flex_grid<> a_accessor = flex_grid_from_python(state[0].get());
+        setstate_manager mgr(a.size(), state[1].get());
         shared_plain<ElementType> b = a.as_base_array();
         b.reserve(mgr.a_capacity);
         for(std::size_t i=0;i<mgr.a_capacity;i++) {
           b.push_back(mgr.get_value(type_holder<ElementType>()));
         }
         mgr.assert_end();
-        a.resize(make_flex_grid(b.size()));
+        cctbx_assert(b.size() == a_accessor.size1d());
+        a.resize(a_accessor);
       }
     };
 
@@ -549,31 +562,35 @@ namespace cctbx { namespace af {
       typedef sftbx::XrayScatterer<FloatType, CAASF_Type> xs_type;
 
       static
-      boost::python::ref
+      boost::python::tuple
       getstate(versa<xs_type, flex_grid<> > const& a)
       {
-        make_pickle_string result;
-        result << a.size();
+        boost::python::tuple state(2);
+        state.set_item(0, make_ref_flex_grid(a.accessor()));
+        make_pickle_string array_pickle;
+        array_pickle << a.size();
         for(std::size_t i=0;i<a.size();i++) {
           xs_type const& site = a[i];
-          result << site.Label()
-                 << site.CAASF().Label()
-                 << site.fpfdp()
-                 << site.Coordinates().const_ref()
-                 << site.Occ()
-                 << site.isAnisotropic();
-          if (site.isAnisotropic()) result << site.Uaniso().const_ref();
-          else                      result << site.Uiso();
+          array_pickle << site.Label()
+                       << site.CAASF().Label()
+                       << site.fpfdp()
+                       << site.Coordinates().const_ref()
+                       << site.Occ()
+                       << site.isAnisotropic();
+          if (site.isAnisotropic()) array_pickle << site.Uaniso().const_ref();
+          else                      array_pickle << site.Uiso();
         }
-        return boost::python::make_ref(result.buffer);
+        state.set_item(1, boost::python::make_ref(array_pickle.buffer));
+        return state;
       }
 
       static
       void
-      setstate(versa<xs_type, flex_grid<> >& a, boost::python::ref state)
+      setstate(versa<xs_type, flex_grid<> >& a, boost::python::tuple state)
       {
         cctbx_assert(a.size() == 0);
-        read_from_pickle_string inp(state.get());
+        flex_grid<> a_accessor = flex_grid_from_python(state[0].get());
+        read_from_pickle_string inp(state[1].get());
         std::size_t a_capacity;
         inp >> a_capacity;
         shared_plain<xs_type> b = a.as_base_array();
@@ -599,67 +616,70 @@ namespace cctbx { namespace af {
           }
         }
         inp.assert_end();
-        a.resize(make_flex_grid(b.size()));
+        cctbx_assert(b.size() == a_accessor.size1d());
+        a.resize(a_accessor);
       }
     };
 
   } // picklers
 
-  boost::python::ref flex_bool_getstate(versa<bool, flex_grid<> > const& a)
+  boost::python::tuple flex_bool_getstate(versa<bool, flex_grid<> > const& a)
   {
     return picklers::array_fast<bool>::getstate(a, 1);
   }
 
   void flex_bool_setstate(
-    versa<bool, flex_grid<> >& a, boost::python::ref state)
+    versa<bool, flex_grid<> >& a, boost::python::tuple state)
   {
     picklers::array_fast<bool>::setstate(a, state);
   }
 
-  boost::python::ref flex_int_getstate(versa<int, flex_grid<> > const& a)
+  boost::python::tuple flex_int_getstate(versa<int, flex_grid<> > const& a)
   {
     return picklers::array_fast<int>::getstate(a, 12);
   }
 
-  void flex_int_setstate(versa<int, flex_grid<> >& a, boost::python::ref state)
+  void flex_int_setstate(
+    versa<int, flex_grid<> >& a, boost::python::tuple state)
   {
     picklers::array_fast<int>::setstate(a, state);
   }
 
-  boost::python::ref flex_long_getstate(versa<long, flex_grid<> > const& a)
+  boost::python::tuple flex_long_getstate(versa<long, flex_grid<> > const& a)
   {
     return picklers::array_fast<long>::getstate(a, 21);
   }
 
   void flex_long_setstate(
-    versa<long, flex_grid<> >& a, boost::python::ref state)
+    versa<long, flex_grid<> >& a, boost::python::tuple state)
   {
     picklers::array_fast<long>::setstate(a, state);
   }
 
-  boost::python::ref flex_float_getstate(versa<float, flex_grid<> > const& a)
+  boost::python::tuple flex_float_getstate(versa<float, flex_grid<> > const& a)
   {
     return picklers::array_fast<float>::getstate(a, 14);
   }
 
   void flex_float_setstate(
-    versa<float, flex_grid<> >& a, boost::python::ref state)
+    versa<float, flex_grid<> >& a, boost::python::tuple state)
   {
     picklers::array_fast<float>::setstate(a, state);
   }
 
-  boost::python::ref flex_double_getstate(versa<double, flex_grid<> > const& a)
+  boost::python::tuple flex_double_getstate(
+    versa<double, flex_grid<> > const& a)
   {
     return picklers::array_fast<double>::getstate(a, 20);
   }
 
   void flex_double_setstate(
-    versa<double, flex_grid<> >& a, boost::python::ref state)
+    versa<double, flex_grid<> >& a, boost::python::tuple state)
   {
     picklers::array_fast<double>::setstate(a, state);
   }
 
-  boost::python::ref flex_complex_double_getstate(
+  boost::python::tuple flex_complex_double_getstate(
     versa<std::complex<double>, flex_grid<> > const& a)
   {
     return picklers::array_fast<std::complex<double> >::getstate(a, 2*20);
@@ -667,12 +687,12 @@ namespace cctbx { namespace af {
 
   void flex_complex_double_setstate(
     versa<std::complex<double>, flex_grid<> >& a,
-    boost::python::ref state)
+    boost::python::tuple state)
   {
     picklers::array_fast<std::complex<double> >::setstate(a, state);
   }
 
-  boost::python::ref flex_miller_index_getstate(
+  boost::python::tuple flex_miller_index_getstate(
     versa<miller::Index, flex_grid<> > const& a)
   {
     return picklers::array_fast<miller::Index>::getstate(a, 3*12);
@@ -680,12 +700,12 @@ namespace cctbx { namespace af {
 
   void flex_miller_index_setstate(
     versa<miller::Index, flex_grid<> >& a,
-    boost::python::ref state)
+    boost::python::tuple state)
   {
     picklers::array_fast<miller::Index>::setstate(a, state);
   }
 
-  boost::python::ref flex_hendrickson_lattman_double_getstate(
+  boost::python::tuple flex_hendrickson_lattman_double_getstate(
     versa<hendrickson_lattman<double>, flex_grid<> > const& a)
   {
     return
@@ -694,12 +714,12 @@ namespace cctbx { namespace af {
 
   void flex_hendrickson_lattman_double_setstate(
     versa<hendrickson_lattman<double>, flex_grid<> >& a,
-    boost::python::ref state)
+    boost::python::tuple state)
   {
     picklers::array_fast<hendrickson_lattman<double> >::setstate(a, state);
   }
 
-  boost::python::ref flex_xray_scatterer_double_wk1995_getstate(
+  boost::python::tuple flex_xray_scatterer_double_wk1995_getstate(
     versa<sftbx::XrayScatterer<
       double, eltbx::CAASF_WK1995>, flex_grid<> > const& a)
   {
@@ -709,7 +729,7 @@ namespace cctbx { namespace af {
   void flex_xray_scatterer_double_wk1995_setstate(
     versa<sftbx::XrayScatterer<
       double, eltbx::CAASF_WK1995>, flex_grid<> >& a,
-    boost::python::ref state)
+    boost::python::tuple state)
   {
     picklers::xray_scatterer_<double, eltbx::CAASF_WK1995>::setstate(a, state);
   }
