@@ -96,10 +96,10 @@ automatically processed into a web-based format for ease of
 navigation.
 
 - cctbx Python interfaces:
-  `libtbx <python/libtbx>`_
-  `scitbx <python/scitbx>`_
-  `cctbx <python/cctbx>`_
-  `iotbx <python/iotbx>`_
+  `libtbx <python/libtbx/>`_
+  `scitbx <python/scitbx/>`_
+  `cctbx <python/cctbx/>`_
+  `iotbx <python/iotbx/>`_
 
 - `cctbx C++ interfaces <c_plus_plus/namespaces.html>`_
 
