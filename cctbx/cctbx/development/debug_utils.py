@@ -34,7 +34,7 @@ def get_test_space_group_symbols(FlagAllSpaceGroups):
   if (FlagAllSpaceGroups):
     sgnumbers = xrange(1, 231)
   else:
-    sgnumbers = (1,2,3,15,16,74,75,142,143,157,167,168,194,195,230)
+    sgnumbers = (1,2,3,15,16,74,75,142,143,144,157,167,168,194,195,230)
   return [sgtbx.SpaceGroupSymbols(sgno).ExtendedHermann_Mauguin()
           for sgno in sgnumbers]
 
