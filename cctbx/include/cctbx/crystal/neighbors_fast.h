@@ -41,6 +41,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
       fast_pair_generator(
         asu_mappings_t* asu_mappings,
         FloatType const& distance_cutoff,
+        bool full_matrix=false,
         FloatType const& epsilon=1.e-6)
       :
         epsilon_(epsilon)
@@ -50,6 +51,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
         CCTBX_ASSERT(epsilon < 0.01);
         this->asu_mappings_ = asu_mappings;
         this->distance_cutoff_sq_ = distance_cutoff*distance_cutoff;
+        this->full_matrix_ = full_matrix;
         asu_mappings->lock();
         create_boxes(distance_cutoff * (1 + epsilon));
         restart();
@@ -189,7 +191,8 @@ namespace cctbx { namespace crystal { namespace neighbors {
           for(boxes_ji_=boxes_j_->begin();
               boxes_ji_!=boxes_j_->end();
               boxes_ji_++) {
-            if (   boxes_ji_->i_seq <  this->pair_.i_seq) continue;
+            if (!this->full_matrix_
+                && boxes_ji_->i_seq <  this->pair_.i_seq) continue;
             if (   boxes_ji_->i_seq == this->pair_.i_seq
                 && boxes_ji_->i_sym == 0) continue;
             this->pair_.j_seq = boxes_ji_->i_seq;
