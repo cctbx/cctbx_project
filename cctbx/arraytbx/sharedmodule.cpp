@@ -13,7 +13,7 @@
 #include <cctbx/array_family/tiny_bpl.h>
 #include <cctbx/array_family/shared_bpl.h>
 #include <cctbx/math/linear_regression.h>
-#include <cctbx/math/utils.h>
+#include <cctbx/math/array_utils.h>
 
 #include <cctbx/miller_bpl.h>
 
@@ -21,6 +21,15 @@
 #include <cctbx/sftbx/xray_scatterer.h>
 
 namespace {
+
+  cctbx::af::shared<double>
+  py_square(const cctbx::af::shared<double>& a) {
+    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<a.size();i++) {
+      result[i] = a[i] * a[i];
+    }
+    return result;
+  }
 
   // to preserve VC6 compatibility we are not using shared_algebra.h
   cctbx::af::shared<double>
@@ -32,7 +41,7 @@ namespace {
     return result;
   }
   cctbx::af::shared<double>
-  py_arg_complex_rad(const cctbx::af::shared<std::complex<double> >& a) {
+  py_arg_rad_complex(const cctbx::af::shared<std::complex<double> >& a) {
     cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
     for(std::size_t i=0;i<a.size();i++) {
       result[i] = std::arg(a[i]);
@@ -40,10 +49,10 @@ namespace {
     return result;
   }
   cctbx::af::shared<double>
-  py_arg_complex_deg(const cctbx::af::shared<std::complex<double> >& a) {
+  py_arg_deg_complex(const cctbx::af::shared<std::complex<double> >& a) {
     cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
     for(std::size_t i=0;i<a.size();i++) {
-      result[i] = std::arg(a[i]) * (180. / cctbx::constants::pi);
+      result[i] = std::arg(a[i]) / cctbx::constants::pi_180;
     }
     return result;
   }
@@ -52,6 +61,33 @@ namespace {
     cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
     for(std::size_t i=0;i<a.size();i++) {
       result[i] = std::norm(a[i]);
+    }
+    return result;
+  }
+  cctbx::af::shared<std::complex<double> >
+  py_polar_rad_complex(
+    cctbx::af::shared<double> rho,
+    cctbx::af::shared<double> theta)
+  {
+    cctbx_assert(rho.size() == theta.size());
+    cctbx::af::shared<std::complex<double> > result;
+    result.reserve(rho.size());
+    for(std::size_t i=0;i<rho.size();i++) {
+      result.push_back(std::polar(rho[i], theta[i]));
+    }
+    return result;
+  }
+  cctbx::af::shared<std::complex<double> >
+  py_polar_deg_complex(
+    cctbx::af::shared<double> rho,
+    cctbx::af::shared<double> theta)
+  {
+    cctbx_assert(rho.size() == theta.size());
+    cctbx::af::shared<std::complex<double> > result;
+    result.reserve(rho.size());
+    for(std::size_t i=0;i<rho.size();i++) {
+      result.push_back(
+        std::polar(rho[i], theta[i] * cctbx::constants::pi_180));
     }
     return result;
   }
@@ -137,10 +173,13 @@ namespace {
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
     WRAP_TYPE("tiny_size_t_2", tiny_size_t_2);
 
+    this_module.def(py_square, "square");
     this_module.def(py_abs_complex, "abs");
-    this_module.def(py_arg_complex_rad, "arg_rad");
-    this_module.def(py_arg_complex_deg, "arg_deg");
+    this_module.def(py_arg_rad_complex, "arg_rad");
+    this_module.def(py_arg_deg_complex, "arg_deg");
     this_module.def(py_norm_complex, "norm");
+    this_module.def(py_polar_rad_complex, "polar_rad");
+    this_module.def(py_polar_deg_complex, "polar_deg");
 
     class_builder<ex_linear_regression<double> >
     py_linear_regression(this_module, "linear_regression");
