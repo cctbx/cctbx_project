@@ -24,6 +24,22 @@ namespace cctbx { namespace geometry_restraints {
       periodicity(periodicity_)
     {}
 
+    //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
+    dihedral_proxy
+    sort_i_seqs() const
+    {
+      dihedral_proxy result(*this);
+      if (result.i_seqs[0] > result.i_seqs[3]) {
+        std::swap(result.i_seqs[0], result.i_seqs[3]);
+        result.angle_ideal *= -1;
+      }
+      if (result.i_seqs[1] > result.i_seqs[2]) {
+        std::swap(result.i_seqs[1], result.i_seqs[2]);
+        result.angle_ideal *= -1;
+      }
+      return result;
+    }
+
     //! Indices into array of sites.
     af::tiny<unsigned, 4> i_seqs;
     //! Parameter.

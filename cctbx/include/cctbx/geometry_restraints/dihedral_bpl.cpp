@@ -29,6 +29,7 @@ namespace {
           (arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"),
            arg_("periodicity")=0)))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .def("sort_i_seqs", &w_t::sort_i_seqs)
         .def_readwrite("angle_ideal", &w_t::angle_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("periodicity", &w_t::periodicity)
