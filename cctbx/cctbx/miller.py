@@ -110,8 +110,6 @@ class set(crystal.symmetry):
       print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
       if (isinstance(self, array)):
         obs = no_sys_abs.apply_selection(no_sys_abs.data() > 0)
-        if (self.is_xray_intensity_array()):
-          obs = obs.f_sq_as_f()
         print >> f, "Anomalous signal: %.4f" % obs.anomalous_signal()
     return self
 
@@ -458,6 +456,11 @@ class array(set):
       result.set_observation_type_xray_intensity()
     return result
 
+  def as_amplitude_array(self):
+    if (self.is_xray_intensity_array()):
+      return self.f_sq_as_f()
+    return self
+
   def map_to_asu(self):
     i = self.indices().deep_copy()
     d = self.data().deep_copy()
@@ -467,6 +470,11 @@ class array(set):
       i, d)
     return (array(set(self, i, self.anomalous_flag()), d, self.sigmas())
       .set_observation_type(self))
+
+  def eliminate_sys_absent(self):
+    sys_absent_flags = self.sys_absent_flags().data()
+    if (sys_absent_flags.all_eq(False)): return self
+    return self.apply_selection(flags=~sys_absent_flags)
 
   def adopt_set(self, other):
     assert self.unit_cell().is_similar_to(other.unit_cell())
@@ -646,7 +654,7 @@ class array(set):
     "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
     assert not use_binning, "Not implemented." # XXX
     assert self.data().all_gt(0)
-    f_plus, f_minus = self.hemispheres()
+    f_plus, f_minus = self.as_amplitude_array().hemispheres()
     assert f_plus.data().size() == f_minus.data().size()
     if (f_plus.data().size() == 0): return 0
     mean_sq_diff = flex.mean(flex.pow2(f_plus.data() - f_minus.data()))
