@@ -15,6 +15,6 @@
 #include <cctbx/array_family/small.h>
 #include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/versa.h>
-#include <cctbx/array_family/operator_traits.h>
+#include <cctbx/array_family/flagged_value.h>
 
 #endif // CCTBX_ARRAY_FAMILY_H
