@@ -21,10 +21,13 @@ class word:
 
 def split_into_words(
       input_string,
-      contiguous_word_characters="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                 "abcdefghijklmnopqrstuvwxyz"
-                                 "0123456789"
-                                 "_"):
+      contiguous_word_characters=None,
+      enable_unquoted_embedded_quotes=True):
+  if (contiguous_word_characters is None):
+    contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+                               + "abcdefghijklmnopqrstuvwxyz" \
+                               + "0123456789" \
+                               + "_"
   words = []
   char_iter = character_iterator(input_string)
   c = char_iter.next()
@@ -53,7 +56,10 @@ def split_into_words(
         while True:
           c = char_iter.next()
           if (c is None): break
-          if (c not in contiguous_word_characters): break
+          if (c not in contiguous_word_characters
+              and (not enable_unquoted_embedded_quotes
+                   or c not in ['"', "'"])):
+            break
           word_value += c
       words.append(word(value=word_value))
   return words
@@ -102,6 +108,8 @@ def exercise():
     ['resname', '"\'']],
   ["resname \"'\\\"\"",
     ['resname', '\'"']],
+  ["name o1'",
+    ['name', 'o1\'']],
   ]
   for input_string,expected_result in tests:
     assert [word.value for word in split_into_words(input_string=input_string)
