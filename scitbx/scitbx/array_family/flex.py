@@ -145,6 +145,17 @@ class _linear_correlation(boost.python.injector, ext.linear_correlation):
     print >> f, "mean_y:", self.mean_y()
     print >> f, "coefficient:", self.coefficient()
 
+class _histogram(boost.python.injector, ext.histogram):
+
+  def show(self, f=None, prefix=""):
+    if (f is None): f = sys.stdout
+    low_cutoff = self.data_min()
+    for i,n in enumerate(self.slots()):
+      high_cutoff = self.data_min() + self.slot_width() * (i+1)
+      print >> f, "%s%.8g - %.8g: %d" % (
+        prefix, low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
   import pickle
