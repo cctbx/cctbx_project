@@ -1,3 +1,4 @@
+import iotbx.pdb
 from iotbx.pdb import parser
 from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb import scattering_type_interpr
@@ -6,7 +7,6 @@ from cctbx import crystal
 from cctbx.eltbx import tiny_pse
 from cctbx import adptbx
 from cctbx.array_family import flex
-from scitbx.python_utils.math_utils import iround
 from cStringIO import StringIO
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
@@ -25,37 +25,8 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
     print >> s, "REMARK Fractional coordinates"
   else:
     print >> s, "REMARK Cartesian coordinates"
-  # CRYST1
-  #  7 - 15       Real(9.3)      a             a (Angstroms).
-  # 16 - 24       Real(9.3)      b             b (Angstroms).
-  # 25 - 33       Real(9.3)      c             c (Angstroms).
-  # 34 - 40       Real(7.2)      alpha         alpha (degrees).
-  # 41 - 47       Real(7.2)      beta          beta (degrees).
-  # 48 - 54       Real(7.2)      gamma         gamma (degrees).
-  # 56 - 66       LString        sGroup        Space group.
-  # 67 - 70       Integer        z             Z value.
-  print >> s, "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %s" % (
-    self.unit_cell().parameters()
-    + (str(self.space_group_info()).replace(" ", ""),))
-  # ATOM
-  #  7 - 11  Integer       serial        Atom serial number.
-  # 13 - 16  Atom          name          Atom name.
-  # 17       Character     altLoc        Alternate location indicator.
-  # 18 - 20  Residue name  resName       Residue name.
-  # 22       Character     chainID       Chain identifier.
-  # 23 - 26  Integer       resSeq        Residue sequence number.
-  # 27       AChar         iCode         Code for insertion of residues.
-  # 31 - 38  Real(8.3)     x             Orthogonal coordinates for X in
-  #                                      Angstroms.
-  # 39 - 46  Real(8.3)     y             Orthogonal coordinates for Y in
-  #                                      Angstroms.
-  # 47 - 54  Real(8.3)     z             Orthogonal coordinates for Z in
-  #                                      Angstroms.
-  # 55 - 60  Real(6.2)     occupancy     Occupancy.
-  # 61 - 66  Real(6.2)     tempFactor    Temperature factor.
-  # 73 - 76  LString(4)    segID         Segment identifier, left-justified.
-  # 77 - 78  LString(2)    element       Element symbol, right-justified.
-  # 79 - 80  LString(2)    charge        Charge on the atom.
+  print >> s, iotbx.pdb.format_cryst1_record(crystal_symmetry=self)
+  print >> s, iotbx.pdb.format_scale_records(unit_cell=self.unit_cell())
   if (res_name is not None):
     res_name_i = res_name.upper()
   serial = 0
@@ -76,14 +47,23 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
     assert len(element_symbol) in (1,2)
     if (res_name is None):
       res_name_i = label[:3]
-    atom_07_27 = ("%5d %-4s %-3s  %4d" % (
-      serial, label[:4], res_name_i, serial%100000),)
-    print >> s, "ATOM  %s    %8.3f%8.3f%8.3f%6.2f%6.2f          %2s" % (
-      atom_07_27 + xyz + (scatterer.occupancy, adptbx.u_as_b(u),
-      element_symbol.upper()))
+    print >> s, iotbx.pdb.format_atom_record(
+      serial=serial,
+      name=label[:4],
+      resName=res_name_i,
+      resSeq=serial,
+      site=xyz,
+      occupancy=scatterer.occupancy,
+      tempFactor=adptbx.u_as_b(u),
+      element=element_symbol.upper())
     if (u_cart is not None):
-      print >> s, "ANISOU%s%7d%7d%7d%7d%7d%7d" % (
-        atom_07_27 + tuple([iround(x*10000) for x in u_cart]))
+      print >> s, iotbx.pdb.format_anisou_record(
+        serial=serial,
+        name=label[:4],
+        resName=res_name_i,
+        resSeq=serial,
+        u_cart=u_cart,
+        element=element_symbol.upper())
   if (connect is not None):
     assert len(connect) == self.scatterers().size()
     i = 0
