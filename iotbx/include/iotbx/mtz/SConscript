@@ -2,6 +2,8 @@ Import("mtz_env", "env_etc")
 
 env = mtz_env.Copy()
 env.Prepend(LIBS=["cctbx", "cmtz"]+env_etc.libm)
+env.Append(CXXFLAGS=env_etc.ccp4io_defines)
+env.Append(SHCXXFLAGS=env_etc.ccp4io_defines)
 env.Append(LIBPATH=["#lib"])
 if (env_etc.static_libraries): builder = env.StaticLibrary
 else:                          builder = env.SharedLibrary
