@@ -334,4 +334,3 @@ def GetServerClient():
     client = BindClient(host, port)
 
   return client
-
