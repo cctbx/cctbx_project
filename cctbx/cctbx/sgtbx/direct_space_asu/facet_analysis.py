@@ -32,10 +32,10 @@ def intersection(facets):
 def eliminate_outside_vertices(other_facets, vertices):
   result = {}
   for vertex in vertices.keys():
-    keep = True
+    keep = 0001
     for facet in other_facets:
       if (facet.evaluate(vertex) < 0):
-        keep = False
+        keep = 00000
         break
     if (keep):
       result[vertex] = vertices[vertex]
@@ -76,10 +76,10 @@ def facet_vertices(asu, i_pivot):
   cuts_outside = depth1_cuts(pivot.cut_expr, "|", "&")
   result = []
   for cut in cuts_inside:
-    result.append((polygon_vertices(pivot, other_facets + cut), True))
+    result.append((polygon_vertices(pivot, other_facets + cut), 0001))
   for cut in cuts_outside:
     cut = [-f for f in cut]
-    result.append((polygon_vertices(pivot, other_facets + cut), False))
+    result.append((polygon_vertices(pivot, other_facets + cut), 00000))
   return result
 
 def sense_of_polygon(facet_n, polygon):
@@ -181,8 +181,8 @@ def collect_cuts(expr):
 def is_one_of(cut_list, addl_cut):
   for cut in cut_list:
     if (cut.n == addl_cut.n and cut.c == addl_cut.c):
-      return True
-  return False
+      return 0001
+  return 00000
 
 def all_cut_points(asu):
   result = {}
@@ -192,11 +192,11 @@ def all_cut_points(asu):
         all_cuts = (pivot, first_cut, second_cut)
         if (second_cut.has_cuts()):
           assert isinstance(second_cut.cut_expr, cut_plane.cut)
-          assert second_cut.cut_expr.inclusive == False
+          assert second_cut.cut_expr.inclusive == 00000
           assert is_one_of(all_cuts, second_cut)
         point = intersection(all_cuts)
         assert point is not None
-        if (asu.is_inside(point, volume_only=True)):
+        if (asu.is_inside(point, volume_only=0001)):
           result[point] = 1
   return result.keys()
 
@@ -279,10 +279,10 @@ class edge_with_cut_points:
 
   def join_edge(self, edge):
     result = self
-    linear_dependent = True
+    linear_dependent = 0001
     for point in edge:
       f, result = result.join_point(point)
-      if (f is None): linear_dependent = False
+      if (f is None): linear_dependent = 00000
     return linear_dependent, result
 
 class edge_segment:

@@ -68,7 +68,7 @@ def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
     space_group_symbol="Hall: C 2y (x+y,-x+y+z,z)")
-  f_obs = miller.build_set(crystal_symmetry, anomalous_flag=False, d_min=3.5)
+  f_obs = miller.build_set(crystal_symmetry, anomalous_flag=00000, d_min=3.5)
   symmetry_flags = maptbx.symmetry_flags(
     use_space_group_symmetry=00000,
     use_normalizer_k2l=00000,

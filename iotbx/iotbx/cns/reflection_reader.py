@@ -87,7 +87,7 @@ class cns_reciprocal_space_object:
       self.data = flex.double()
     elif (type == "complex"):
       self.data = flex.complex_double()
-      self.has_non_zero_phases = False
+      self.has_non_zero_phases = 00000
     elif (type == "integer"):
       self.data = flex.int()
     else:

@@ -54,8 +54,8 @@ class cut_expression(cut_expr_ops):
 
 class cut(cut_expr_ops):
 
-  def __init__(self, n, c, inclusive=True, cut_expr=None):
-    assert inclusive in (True, False)
+  def __init__(self, n, c, inclusive=0001, cut_expr=None):
+    assert inclusive in (0001, 00000)
     assert cut_expr is None or isinstance(cut_expr, cut_expr_ops)
     self.n = tuple(n)
     self.c = c
@@ -161,9 +161,9 @@ class cut(cut_expr_ops):
 
   def __pos__(self):
     "unsets inclusive flag"
-    assert self.inclusive == True
+    assert self.inclusive == 0001
     assert self.cut_expr is None
-    return cut(self.n, self.c, inclusive=False)
+    return cut(self.n, self.c, inclusive=00000)
 
   def __neg__(self):
     "-n, -c: flips inside/outside"
@@ -192,7 +192,7 @@ class cut(cut_expr_ops):
                inclusive=self.inclusive, cut_expr=self.cut_expr)
 
   def __call__(self, expr):
-    assert self.inclusive == True
+    assert self.inclusive == 0001
     assert self.cut_expr is None
     return cut(self.n, self.c, cut_expr=expr)
 
@@ -207,8 +207,8 @@ class cut(cut_expr_ops):
 
   def is_inside(self, point):
     i = self.evaluate(point)
-    if (i < 0): return False
-    if (i > 0): return True
+    if (i < 0): return 00000
+    if (i > 0): return 0001
     if (not self.has_cuts()): return self.inclusive
     return self.cut_expr.is_inside(point)
 

@@ -24,14 +24,14 @@ class direct_space_asu:
       print "    &", facet
     return self
 
-  def is_inside(self, point, volume_only=False):
+  def is_inside(self, point, volume_only=00000):
     if (volume_only):
       for facet in self.facets:
-        if (facet.evaluate(point) < 0): return False
+        if (facet.evaluate(point) < 0): return 00000
     else:
       for facet in self.facets:
-        if (not facet.is_inside(point)): return False
-    return True
+        if (not facet.is_inside(point)): return 00000
+    return 0001
 
   def in_which_facets(self, point):
     result = []
