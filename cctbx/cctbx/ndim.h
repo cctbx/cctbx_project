@@ -75,42 +75,30 @@ namespace cctbx {
       }
   };
 
-  template <typename VectorType, typename DimensionType>
+  template <typename DimensionType,
+            typename IteratorType,
+            typename ValueType = typename IteratorType::value_type>
   class ndim_accessor : public DimensionType {
     public:
-      typedef VectorType vector_type;
-      typedef typename vector_type::iterator iterator_type;
-      typedef typename vector_type::value_type value_type;
+      typedef IteratorType iterator_type;
+      typedef ValueType value_type;
       typedef DimensionType dimension_type;
 
-      ndim_accessor() : m_vector_pointer(0) {}
-      ndim_accessor(vector_type& vector, const dimension_type& dim)
+      ndim_accessor() {}
+      ndim_accessor(const dimension_type& dim, const iterator_type& start)
         : dimension_type(dim),
-          m_vector_pointer(&vector),
-          m_iterator(vector.begin())
-      {}
-      ndim_accessor(const iterator_type& iter, const dimension_type& dim)
-        : dimension_type(dim),
-          m_vector_pointer(0),
-          m_iterator(iter)
+          m_start(start)
       {}
 
-      vector_type& vector() { return *m_vector_pointer; }
-      const vector_type& vector() const { return *m_vector_pointer; }
-      const iterator_type& iterator() const { return m_iterator; }
+      const iterator_type& start() const { return m_start; }
 
       template <typename IndexTuple>
-      value_type& operator[](const IndexTuple& I) {
-        return m_iterator[operator()(I)];
-      }
-      template <typename IndexTuple>
-      const value_type& operator[](const IndexTuple& I) const {
-        return m_iterator[operator()(I)];
+      value_type& operator[](const IndexTuple& I) const {
+        return m_start[operator()(I)];
       }
 
     protected:
-      vector_type* m_vector_pointer;
-      iterator_type m_iterator;
+      iterator_type m_start;
   };
 
 }

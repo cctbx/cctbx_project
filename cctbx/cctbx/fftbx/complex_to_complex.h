@@ -111,9 +111,9 @@ namespace cctbx { namespace fftbx {
           </pre>
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
-      template <typename ComplexOrRealType>
-      void forward(ComplexOrRealType* Seq_begin) {
-        transform(select_sign<forward_tag>(), Seq_begin);
+      template <typename ComplexOrRealIterOrPtrType>
+      void forward(ComplexOrRealIterOrPtrType Seq_begin) {
+        transform(select_sign<forward_tag>(), &(*Seq_begin));
       }
       /*! \brief In-place "backward" Fourier transformation of a
           sequence of length N().
@@ -127,9 +127,9 @@ namespace cctbx { namespace fftbx {
           </pre>
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
-      template <typename ComplexOrRealType>
-      void backward(ComplexOrRealType* Seq_begin) {
-        transform(select_sign<backward_tag>(), Seq_begin);
+      template <typename ComplexOrRealIterOrPtrType>
+      void backward(ComplexOrRealIterOrPtrType Seq_begin) {
+        transform(select_sign<backward_tag>(), &(*Seq_begin));
       }
 
       //! Generic in-place Fourier transformation of a contiguous sequence.
@@ -145,8 +145,8 @@ namespace cctbx { namespace fftbx {
   {
     if (m_N < 2) return;
     real_type* C = Seq_begin;
-    real_type* CH = m_CH.begin();
-    const real_type* WA = m_WA.begin();
+    real_type* CH = &(*(m_CH.begin()));
+    const real_type* WA = &(*(m_WA.begin()));
     bool NA = false;
     std::size_t L1 = 1;
     std::size_t IW = 0;
@@ -635,7 +635,7 @@ namespace cctbx { namespace fftbx {
     m_cos36 = std::cos(deg_as_rad(36));
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/cffti1.f.
-    real_type* WA = m_WA.begin();
+    real_type* WA = &(*(m_WA.begin()));
     real_type ARGH = m_TwoPi / real_type(m_N);
     std::size_t I = 0;
     std::size_t L1 = 1;
