@@ -20,7 +20,7 @@ namespace {
 # include "tst_af_helpers.cpp"
 
   template <typename ArrayType>
-  struct array_excercise {
+  struct array_exercise {
     typedef typename ArrayType::value_type element_type;
     static void run() {
       run_1();
@@ -187,7 +187,7 @@ namespace {
   };
 
   template <typename ArrayType>
-  struct shared_excercise {
+  struct shared_exercise {
     typedef typename ArrayType::value_type element_type;
     static void run() {
       run_1();
@@ -349,10 +349,10 @@ namespace {
   };
 
   template <typename ArrayType, typename AltArrayType>
-  struct versa_excercise {
+  struct versa_exercise {
     typedef typename ArrayType::value_type element_type;
     static void run() {
-      shared_excercise<ArrayType>::run_2();
+      shared_exercise<ArrayType>::run_2();
       run_1();
     }
     static void run_1() {
@@ -520,24 +520,24 @@ int main(int argc, char* argv[])
   for(;;)
   {
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
-    array_excercise<af::small_plain<int, 128> >::run();
+    array_exercise<af::small_plain<int, 128> >::run();
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
-    array_excercise<af::small<int, 128> >::run();
+    array_exercise<af::small<int, 128> >::run();
 
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
-    array_excercise<af::shared_plain<int> >::run();
+    array_exercise<af::shared_plain<int> >::run();
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
-    shared_excercise<af::shared_plain<int> >::run();
+    shared_exercise<af::shared_plain<int> >::run();
 
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
-    array_excercise<af::shared<int> >::run();
+    array_exercise<af::shared<int> >::run();
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
-    shared_excercise<af::shared<int> >::run();
+    shared_exercise<af::shared<int> >::run();
 
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
-    versa_excercise<af::versa_plain<int>,
+    versa_exercise<af::versa_plain<int>,
                     af::versa_plain<int, af::grid<2> > >::run();
-    versa_excercise<af::versa<int>,
+    versa_exercise<af::versa<int>,
                     af::versa<int, af::grid<2> > >::run();
 
     exercise_apply_all<int, double>::run();
