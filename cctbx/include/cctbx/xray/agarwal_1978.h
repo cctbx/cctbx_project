@@ -35,6 +35,8 @@ namespace cctbx { namespace xray {
             b_[i] = caasf.b(i) + b_incl_extra;
           }
           b_[i] = b_incl_extra;
+          FloatType d = b_incl_extra * b_incl_extra * b_incl_extra;
+          eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 / std::sqrt(d);
         }
 
         d_caasf_fourier_transformed(
@@ -60,6 +62,8 @@ namespace cctbx { namespace xray {
             b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
           detb_[i] = b_all.determinant();
           bcfmt_[i] = b_all.co_factor_matrix_transposed();
+          FloatType d = b_all.determinant();
+          eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 / std::sqrt(d);
         }
 
         scitbx::vec3<FloatType>
@@ -162,11 +166,28 @@ namespace cctbx { namespace xray {
           return -this->rho_real(exp_table, d) / occupancy_;
         }
 
+        FloatType
+        d_rho_real_d_fp(exponent_table<FloatType>& exp_table,
+                        FloatType const& d_sq) const
+        {
+          return -eight_pi_pow_3_2_w_d_
+                 * exp_table(this->bs_real_.back() * d_sq);
+        }
+
+        FloatType
+        d_rho_real_d_fp(exponent_table<FloatType>& exp_table,
+                        scitbx::vec3<FloatType> const& d) const
+        {
+          return -eight_pi_pow_3_2_w_d_
+                 * exp_table(d * this->aniso_bs_real_.back() * d);
+        }
+
       protected:
+        FloatType occupancy_;
         af::tiny<FloatType, CaasfType::n_plus_1> b_;
         af::tiny<FloatType, CaasfType::n_plus_1> detb_;
         af::tiny<scitbx::sym_mat3<FloatType>, CaasfType::n_plus_1> bcfmt_;
-        FloatType occupancy_;
+        FloatType eight_pi_pow_3_2_w_d_;
     };
 
   } // namespace detail
@@ -288,6 +309,9 @@ namespace cctbx { namespace xray {
       af::shared<std::complex<FloatType> >
       grad_occupancy() const { return grad_occupancy_; }
 
+      af::shared<std::complex<FloatType> >
+      grad_fp() const { return grad_fp_; }
+
       template <typename TagType>
       void
       apply_symmetry(maptbx::grid_tags<TagType> const& tags)
@@ -335,6 +359,7 @@ namespace cctbx { namespace xray {
       af::shared<FloatType> grad_u_02_;
       af::shared<FloatType> grad_u_12_;
       af::shared<std::complex<FloatType> > grad_occupancy_;
+      af::shared<std::complex<FloatType> > grad_fp_;
   };
 
   template <typename FloatType,
@@ -448,6 +473,7 @@ namespace cctbx { namespace xray {
       std::complex<FloatType> gr_u_iso(0);
       scitbx::sym_mat3<FloatType> gr_u_cart(0,0,0,0,0,0);
       std::complex<FloatType> gr_occupancy(0);
+      std::complex<FloatType> gr_fp(0);
       for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
         g01 = math::mod_positive(gp[0],grid_f[0]) * grid_a[1];
         f0 = FloatType(gp[0]) / grid_f[0] - coor_frac[0];
@@ -523,6 +549,12 @@ namespace cctbx { namespace xray {
             gr_occupancy += f * caasf_ft.d_rho_real_d_occupancy(
               exp_table, d);
           }
+          if (!scatterer->anisotropic_flag) {
+            gr_fp += f * caasf_ft.d_rho_real_d_fp(exp_table, d_sq);
+          }
+          else {
+            gr_fp += f * caasf_ft.d_rho_real_d_fp(exp_table, d);
+          }
         }
       }}}
       if (!lifchitz) {
@@ -546,6 +578,7 @@ namespace cctbx { namespace xray {
           grad_u_12_.push_back(gr_u_star[5]);
         }
         grad_occupancy_.push_back(gr_occupancy);
+        grad_fp_.push_back(gr_fp);
       }
     }
     exp_table_size_ = exp_table.table().size();
