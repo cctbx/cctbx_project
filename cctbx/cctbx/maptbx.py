@@ -5,6 +5,7 @@ ext = misc.import_ext("cctbx_boost.maptbx_ext")
 misc.import_regular_symbols(globals(), ext.__dict__)
 del misc
 
+from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
@@ -47,27 +48,75 @@ structure_factors = dicts.easy(
   to_map=structure_factors_to_map,
   from_map=structure_factors_from_map)
 
-def determine_gridding(unit_cell,
-                       d_min,
-                       resolution_factor=1./3,
-                       symmetry_flags=None,
-                       space_group_info=None,
-                       mandatory_factors=None,
-                       max_prime=5,
-                       assert_shannon_sampling=0001):
-  assert symmetry_flags == None or mandatory_factors == None
-  if (symmetry_flags != None): assert space_group_info != None
-  if (symmetry_flags != None):
-    return ext.determine_gridding(
-      unit_cell, d_min, resolution_factor,
-      symmetry_flags, space_group_info.type(),
-      max_prime, assert_shannon_sampling)
-  if (mandatory_factors == None): mandatory_factors = (1,1,1)
-  assert len(mandatory_factors) == 3
-  return ext.determine_gridding(
-    unit_cell, d_min, resolution_factor,
-    mandatory_factors,
-    max_prime, assert_shannon_sampling)
+class crystal_gridding:
+
+  def __init__(self, unit_cell,
+                     d_min,
+                     resolution_factor=1./3,
+                     symmetry_flags=None,
+                     space_group_info=None,
+                     mandatory_factors=None,
+                     max_prime=5,
+                     assert_shannon_sampling=0001):
+    adopt_init_args(self, locals(), hide=0001)
+    assert symmetry_flags == None or mandatory_factors == None
+    if (symmetry_flags != None): assert space_group_info != None
+    if (symmetry_flags != None):
+      self._n_real = determine_gridding(
+        unit_cell, d_min, resolution_factor,
+        symmetry_flags, space_group_info.type(),
+        max_prime, assert_shannon_sampling)
+    else:
+      if (mandatory_factors == None): mandatory_factors = (1,1,1)
+      assert len(mandatory_factors) == 3
+      self._n_real = determine_gridding(
+        unit_cell, d_min, resolution_factor,
+        mandatory_factors,
+        max_prime, assert_shannon_sampling)
+
+  def _copy_constructor(self, other):
+    self._unit_cell = other._unit_cell
+    self._d_min = other._d_min
+    self._resolution_factor = other._resolution_factor
+    self._symmetry_flags = other._symmetry_flags
+    self._space_group_info = other._space_group_info
+    self._mandatory_factors = other._mandatory_factors
+    self._max_prime = other._max_prime
+    self._n_real = other._n_real
+
+  def unit_cell(self):
+    return self._unit_cell
+
+  def d_min(self):
+    return self._d_min
+
+  def resolution_factor(self):
+    return self._resolution_factor
+
+  def symmetry_flags(self):
+    return self._symmetry_flags
+
+  def space_group_info(self):
+    return self._space_group_info
+
+  def mandatory_factors(self):
+    return self._mandatory_factors
+
+  def max_prime(self):
+    return self._max_prime
+
+  def n_real(self):
+    return self._n_real
+
+  def space_group(self):
+    assert self.space_group_info() != None
+    return self.space_group_info().group()
+
+  def crystal_symmetry(self):
+    assert self.space_group_info() != None
+    return crystal.symmetry(
+      unit_cell=self.unit_cell(),
+      space_group_info=self.space_group_info())
 
 class peak_list_cluster_reduction:
 

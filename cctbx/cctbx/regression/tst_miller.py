@@ -222,17 +222,16 @@ def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,-2,3), (0,0,-4)))
   for anomalous_flag in (00000, 0001):
-    for data in (flex.double((1,2)), flex.complex_double((1,2))):
-      ms = miller.set(xs, mi, anomalous_flag=anomalous_flag)
-      ma = miller.array(ms, data)
-      fft_map = miller.fft_map(ma)
-      assert approx_equal(fft_map.resolution_factor(), 1./3)
-      assert fft_map.symmetry_flags() == None
-      assert approx_equal(fft_map.max_prime(), 5)
-      assert fft_map.anomalous_flag() == anomalous_flag
-      assert fft_map.real_map().size() > 0
-      if (anomalous_flag):
-        assert fft_map.complex_map().size() > 0
+    ms = miller.set(xs, mi, anomalous_flag=anomalous_flag)
+    ma = miller.array(ms, flex.complex_double((1,2)))
+    fft_map = ma.fft_map()
+    assert approx_equal(fft_map.resolution_factor(), 1./3)
+    assert fft_map.symmetry_flags() == None
+    assert approx_equal(fft_map.max_prime(), 5)
+    assert fft_map.anomalous_flag() == anomalous_flag
+    assert fft_map.real_map().size() > 0
+    if (anomalous_flag):
+      assert fft_map.complex_map().size() > 0
 
 def exercise_squaring_and_patterson_map(space_group_info,
                                         n_scatterers=8,
@@ -261,8 +260,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
   d_star_sq = e.unit_cell().d_star_sq(e.indices())
   dw = flex.exp(d_star_sq*2*(math.pi**2)*u_extra)
   eb = miller.array(miller_set=e, data=e.data()/dw)
-  eb_map = miller.fft_map(
-    coeff_array=eb.phase_transfer(f_calc),
+  eb_map = eb.phase_transfer(f_calc).fft_map(
     resolution_factor=grid_resolution_factor,
     d_min=d_min,
     f_000=e_000).real_map()
@@ -274,14 +272,13 @@ def exercise_squaring_and_patterson_map(space_group_info,
   assert mwpe < 2
   for sharpening in (00000, 0001):
     for origin_peak_removal in (00000, 0001):
-      patterson_map = miller.patterson_map(
-        coeff_array=eb,
+      patterson_map = eb.patterson_map(
         symmetry_flags=maptbx.use_space_group_symmetry,
         resolution_factor=grid_resolution_factor,
         f_000=e_000,
         sharpening=sharpening,
         origin_peak_removal=origin_peak_removal)
-      grid_tags = maptbx.grid_tags(patterson_map.gridding())
+      grid_tags = maptbx.grid_tags(patterson_map.n_real())
       grid_tags.build(
         patterson_map.space_group_info().type(),
         maptbx.use_space_group_symmetry)

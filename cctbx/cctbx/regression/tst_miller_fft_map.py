@@ -32,8 +32,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     f_obs_array.show_summary()
   if (0 or verbose):
     f_obs_array.show_array()
-  fft_map = miller.fft_map(
-    coeff_array=f_obs_array,
+  fft_map = f_obs_array.fft_map(
     resolution_factor=grid_resolution_factor,
     symmetry_flags=maptbx.use_space_group_symmetry)
   real_map = maptbx.copy(

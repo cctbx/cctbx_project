@@ -58,6 +58,10 @@ class symmetry(object):
       unit_cell=self.unit_cell(),
       space_group=self.space_group().build_derived_patterson_group())
 
+  def is_patterson_symmetry(self):
+    return self.space_group().build_derived_patterson_group() \
+        == self.space_group()
+
 class special_position_settings(symmetry):
 
   def __init__(self, crystal_symmetry,
