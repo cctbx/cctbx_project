@@ -12,6 +12,7 @@ import scitbx.math
 from scitbx.python_utils import complex_math
 from libtbx.test_utils import approx_equal
 from cStringIO import StringIO
+import pickle
 import random
 import math
 import sys
@@ -171,6 +172,19 @@ unused: 10.0715 -         1.000
  1.000
  1.000
 """
+  try:
+    pickle.dumps(set1.binner())
+  except RuntimeError, e:
+    assert str(e).startswith(
+      "cctbx.miller.binner instances are not picklable.")
+  else: raise RuntimeError("Exception expected.")
+  bng = miller.binning(set1.unit_cell(), 10, set1.indices(), 0, 0)
+  try:
+    pickle.dumps(bng)
+  except RuntimeError, e:
+    assert str(e).startswith(
+      "cctbx.miller.binning instances are not picklable.")
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
@@ -520,6 +534,20 @@ bin  7:  3.3805 -  3.2139 [ 2/2 ]  0.9941
 bin  8:  3.2139 -  3.0759 [11/10]  0.9134
 unused:  3.0759 -         [ 0/0 ]
 """
+  assert ma.binner() is not None
+  try:
+    pickle.dumps(ma)
+  except RuntimeError, e:
+    assert str(e).startswith(
+      "cctbx.miller.binner instances are not picklable.")
+  else: raise RuntimeError("Exception expected.")
+  ma.clear_binner()
+  ml = pickle.loads(pickle.dumps(ma))
+  sa = StringIO()
+  sl = StringIO()
+  ma.show_summary(f=sa).show_array(f=sa)
+  ml.show_summary(f=sl).show_array(f=sl)
+  assert sa.getvalue() == sl.getvalue()
 
 def exercise_array_2(space_group_info):
   xs = crystal.symmetry(

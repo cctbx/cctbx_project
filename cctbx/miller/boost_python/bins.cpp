@@ -34,6 +34,7 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("binning", no_init)
+        .enable_pickling()
         .def(init<uctbx::unit_cell const&,
                   std::size_t,
                   double,
@@ -75,6 +76,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<binning> >("binner", no_init)
+        .enable_pickling()
         .def(init<binning const&,
                   af::shared<index<> > const&>())
         .def("miller_indices", &w_t::miller_indices, ccr())
