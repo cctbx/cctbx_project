@@ -354,7 +354,7 @@ namespace scitbx { namespace fftpack { namespace {
 
     scitbx::af::boost_python::register_tiny_types_conversions();
     scitbx::boost_python::import_module(
-      "scitbx_boost.array_family.flex_scitbx");
+      "scitbx_boost.array_family.flex_scitbx_ext");
 
     def("adjust_gridding", adjust_gridding_2);
     def("adjust_gridding", adjust_gridding_3);
@@ -370,7 +370,7 @@ namespace scitbx { namespace fftpack { namespace {
 
 }}} // namespace scitbx::fftpack::<anonymous>
 
-BOOST_PYTHON_MODULE(fftpack)
+BOOST_PYTHON_MODULE(fftpack_ext)
 {
   scitbx::fftpack::init_module();
 }

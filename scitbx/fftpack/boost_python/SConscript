@@ -1,5 +1,5 @@
 Import("env_scitbx_boost_python_ext")
 pyd = env_scitbx_boost_python_ext.SharedLibrary(
-  target="fftpack",
+  target="fftpack_ext",
   source=["fftpack_module.cpp"])
 env_scitbx_boost_python_ext.Install("#libtbx/scitbx_boost", pyd)

@@ -112,7 +112,7 @@ namespace scitbx { namespace {
       "$Revision$");
 
     scitbx::boost_python::import_module(
-      "scitbx_boost.array_family.flex_scitbx");
+      "scitbx_boost.array_family.flex_scitbx_ext");
 
     def("std_vector", std_vector);
     def("std_list", std_list);

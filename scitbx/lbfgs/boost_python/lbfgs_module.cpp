@@ -146,7 +146,7 @@ namespace scitbx { namespace lbfgs { namespace {
       "$Revision$");
 
     scitbx::boost_python::import_module(
-      "scitbx_boost.array_family.flex_scitbx");
+      "scitbx_boost.array_family.flex_scitbx_ext");
 
     minimizer_wrappers::wrap();
     traditional_convergence_test_wrappers::wrap();
@@ -155,7 +155,7 @@ namespace scitbx { namespace lbfgs { namespace {
 
 }}} // namespace scitbx::lbfgs::<anonymous>
 
-BOOST_PYTHON_MODULE(lbfgs)
+BOOST_PYTHON_MODULE(lbfgs_ext)
 {
   scitbx::lbfgs::init_module();
 }
