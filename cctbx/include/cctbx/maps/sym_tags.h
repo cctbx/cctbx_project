@@ -307,6 +307,8 @@ namespace cctbx { namespace maps {
   {
     public:
       typedef af::versa<TagType, grid_p1<3> > base_type;
+      typedef typename base_type::accessor_type accessor_type;
+      typedef typename accessor_type::index_type grid_point_type;
 
       grid_tags() {}
       grid_tags(const af::grid<3>& dim)
@@ -357,6 +359,40 @@ namespace cctbx { namespace maps {
         cctbx_assert(vfy.n_dependent + m_n_independent == this->size());
         if (vfy.is_well_defined() && vfy.cc() < min_correlation) return false;
         return true;
+      }
+
+      template <typename FloatType>
+      void
+      sum_sym_equiv_points(af::ref<FloatType, padded_grid_p1<3> > map) const
+      {
+        cctbx_assert(m_is_valid);
+        cctbx_assert(this->accessor() == map.accessor().n_logical());
+        {
+          // 1. pass: accumulate contributions for sym. equiv. grid points.
+          const sgtbx::SpaceGroup& sgops = m_SgInfo.SgOps();
+          af::nested_loop<grid_point_type> loop(this->accessor());
+          for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
+            if ((*this)(pt) >= 0) continue;
+            std::size_t i_pt = map.accessor()(pt);
+            for(int ismx=1;ismx<sgops.OrderZ();ismx++) {
+              sgtbx::RTMx m = sgops(ismx);
+              tagged_value<grid_point_type>
+              sym_equiv_point = multiply(this->accessor(), m, pt);
+              cctbx_assert(sym_equiv_point.tag);
+              map[i_pt] += map(sym_equiv_point.tag);
+            }
+          }
+        }
+        {
+          // 2. pass: copy density at asym. grid point to sym. equiv. points.
+          af::nested_loop<grid_point_type> loop(this->accessor());
+          for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
+            if ((*this)(pt) < 0) continue;
+            grid_point_type
+            asym_pt = this->accessor().i_1d_as_i_nd((*this)(pt));
+            map(pt) = map(asym_pt);
+          }
+        }
       }
 
     protected:
