@@ -72,8 +72,7 @@ def exercise_tensor_constraints_core(crystal_symmetry):
   group = crystal_symmetry.space_group()
   assert site_symmetry.n_matrices() == group.order_p()
   adp_constraints = group.adp_constraints()
-  u_cart_p1 = adptbx.random_rotate_ellipsoid(
-    u_cart=[random.random() for i in xrange(3)] + [0,0,0])
+  u_cart_p1 = adptbx.random_u_cart()
   u_star_p1 = adptbx.u_cart_as_u_star(unit_cell, u_cart_p1)
   u_star = site_symmetry.average_u_star(u_star_p1)
   f = unit_cell.volume()**(2/3.)

@@ -11,6 +11,51 @@
 namespace cctbx { namespace xray {
 
   template <typename ScattererType>
+  af::shared<bool>
+  is_positive_definite_u(
+    af::const_ref<ScattererType> const& scatterers,
+    uctbx::unit_cell const& unit_cell)
+  {
+    af::shared<bool> result((af::reserve(scatterers.size())));
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      result.push_back(scatterers[i_seq].is_positive_definite_u(
+        unit_cell));
+    }
+    return result;
+  }
+
+  template <typename ScattererType>
+  af::shared<bool>
+  is_positive_definite_u(
+    af::const_ref<ScattererType> const& scatterers,
+    uctbx::unit_cell const& unit_cell,
+    double u_cart_tolerance)
+  {
+    af::shared<bool> result((af::reserve(scatterers.size())));
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      result.push_back(scatterers[i_seq].is_positive_definite_u(
+        unit_cell, u_cart_tolerance));
+    }
+    return result;
+  }
+
+  template <typename ScattererType>
+  void
+  tidy_us(
+    af::ref<ScattererType> const& scatterers,
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::site_symmetry_table const& site_symmetry_table,
+    double u_min)
+  {
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      scatterers[i_seq].tidy_u(
+        unit_cell,
+        site_symmetry_table.get(i_seq),
+        u_min);
+    }
+  }
+
+  template <typename ScattererType>
   void
   apply_symmetry_sites(
     sgtbx::site_symmetry_table const& site_symmetry_table,
@@ -32,9 +77,7 @@ namespace cctbx { namespace xray {
     uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_table const& site_symmetry_table,
     af::ref<ScattererType> const& scatterers,
-    double u_star_tolerance=0,
-    bool assert_is_positive_definite=false,
-    bool assert_min_distance_sym_equiv=true)
+    double u_star_tolerance=0)
   {
     CCTBX_ASSERT(
       scatterers.size() == site_symmetry_table.indices_const_ref().size());
@@ -45,9 +88,7 @@ namespace cctbx { namespace xray {
       scatterers[i_seq].apply_symmetry_u_star(
         unit_cell,
         site_symmetry_table.get(i_seq),
-        u_star_tolerance,
-        assert_is_positive_definite,
-        assert_min_distance_sym_equiv);
+        u_star_tolerance);
     }
   }
 
@@ -61,7 +102,6 @@ namespace cctbx { namespace xray {
     sgtbx::site_symmetry_table const& site_symmetry_table_for_new,
     double min_distance_sym_equiv,
     double u_star_tolerance,
-    bool assert_is_positive_definite,
     bool assert_min_distance_sym_equiv)
   {
     if (site_symmetry_table_for_new.indices_const_ref().size() == 0) {
@@ -75,7 +115,6 @@ namespace cctbx { namespace xray {
           space_group,
           min_distance_sym_equiv,
           u_star_tolerance,
-          assert_is_positive_definite,
           assert_min_distance_sym_equiv);
         site_symmetry_table.process(site_symmetry);
       }
@@ -93,9 +132,7 @@ namespace cctbx { namespace xray {
         scatterers[i].apply_symmetry(
           unit_cell,
           site_symmetry_ops,
-          u_star_tolerance,
-          assert_is_positive_definite,
-          assert_min_distance_sym_equiv);
+          u_star_tolerance);
         site_symmetry_table.process(site_symmetry_ops);
       }
     }

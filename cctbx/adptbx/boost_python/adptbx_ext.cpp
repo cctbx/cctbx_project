@@ -4,6 +4,8 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 
@@ -26,6 +28,9 @@ namespace {
       ;
     }
   };
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    eigenvalue_filtering_overloads, eigenvalue_filtering, 1, 2)
 
   void init_module()
   {
@@ -133,7 +138,11 @@ namespace {
     def("is_positive_definite",
       (bool(*)(sym_mat3<double> const&, double const&)) is_positive_definite);
     def("eigenvalue_filtering",
-      (sym_mat3<double>(*)(sym_mat3<double> const&)) eigenvalue_filtering);
+      (sym_mat3<double>(*)(
+        sym_mat3<double> const&, double const&)) eigenvalue_filtering,
+        eigenvalue_filtering_overloads((
+      arg_("u_cart"),
+      arg_("u_min"))));
 
     eigensystem_wrappers::wrap();
 

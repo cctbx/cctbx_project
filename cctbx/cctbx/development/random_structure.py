@@ -153,7 +153,6 @@ class xray_structure(xray.structure):
       crystal_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv,
       u_star_tolerance=0,
-      assert_is_positive_definite=False,
       assert_min_distance_sym_equiv=True)
     xray.structure.__init__(self, special_position_settings)
     if (elements is not None):
@@ -208,9 +207,7 @@ class xray_structure(xray.structure):
         while 1:
           run_away_counter += 1
           assert run_away_counter < 100
-          u_cart = [random.random()*self.random_u_cart_scale
-                    for i in xrange(3)] + [0.,0.,0.]
-          u_cart = adptbx.random_rotate_ellipsoid(u_cart)
+          u_cart = adptbx.random_u_cart(u_scale=self.random_u_cart_scale)
           scatterer.u_star = site_symmetry.average_u_star(
                                adptbx.u_cart_as_u_star(
                                  self.unit_cell(), u_cart))

@@ -19,13 +19,13 @@ namespace {
     typedef w_t::float_type flt_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_1_overloads, apply_symmetry, 2, 6)
+      apply_symmetry_1_overloads, apply_symmetry, 2, 5)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_2_overloads, apply_symmetry, 2, 5)
+      apply_symmetry_2_overloads, apply_symmetry, 2, 4)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_u_star_overloads, apply_symmetry_u_star, 2, 5)
+      apply_symmetry_u_star_overloads, apply_symmetry_u_star, 2, 3)
 
     static void
     wrap()
@@ -82,33 +82,46 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
+        .def("is_positive_definite_u",
+          (bool(w_t::*)(uctbx::unit_cell const&) const)
+            &w_t::is_positive_definite_u, (
+          arg_("unit_cell")))
+        .def("is_positive_definite_u",
+          (bool(w_t::*)(uctbx::unit_cell const&, double const&) const)
+            &w_t::is_positive_definite_u, (
+          arg_("unit_cell"),
+          arg_("u_cart_tolerance")))
+        .def("tidy_u",
+          (bool(w_t::*)(
+            uctbx::unit_cell const&,
+            sgtbx::site_symmetry_ops const&,
+            double const&)) &w_t::tidy_u, (
+          arg_("unit_cell"),
+          arg_("site_symmetry_ops"),
+          arg_("u_min")))
         .def("apply_symmetry",
           (sgtbx::site_symmetry(w_t::*)(
              uctbx::unit_cell const&,
              sgtbx::space_group const&,
-             double,
-             double,
-             bool,
+             double const&,
+             double const&,
              bool)) &w_t::apply_symmetry,
           apply_symmetry_1_overloads((
             arg_("unit_cell"),
             arg_("space_group"),
             arg_("min_distance_sym_equiv")=0.5,
             arg_("u_star_tolerance")=0,
-            arg_("assert_is_positive_definite")=false,
             arg_("assert_min_distance_sym_equiv")=true)))
         .def("apply_symmetry",
           (void(w_t::*)(
              uctbx::unit_cell const&,
              sgtbx::site_symmetry_ops const&,
-             double,
-             bool,
+             double const&,
              bool)) &w_t::apply_symmetry,
           apply_symmetry_2_overloads((
             arg_("unit_cell"),
             arg_("site_symmetry_ops"),
             arg_("u_star_tolerance")=0,
-            arg_("assert_is_positive_definite")=false,
             arg_("assert_min_distance_sym_equiv")=true)))
         .def("apply_symmetry_site", &w_t::apply_symmetry_site, (
           arg_("site_symmetry_ops")))
@@ -116,9 +129,7 @@ namespace {
           apply_symmetry_u_star_overloads((
             arg_("unit_cell"),
             arg_("site_symmetry_ops"),
-            arg_("u_star_tolerance")=0,
-            arg_("assert_is_positive_definite")=false,
-            arg_("assert_min_distance_sym_equiv")=true)))
+            arg_("u_star_tolerance")=0)))
         .def("multiplicity", &w_t::multiplicity)
         .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)
@@ -127,7 +138,7 @@ namespace {
   };
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    apply_symmetry_u_stars_overloads, apply_symmetry_u_stars, 3, 6)
+    apply_symmetry_u_stars_overloads, apply_symmetry_u_stars, 3, 4)
 
 } // namespace <anoymous>
 
@@ -136,6 +147,33 @@ namespace {
     using namespace boost::python;
 
     scatterer_wrappers::wrap();
+
+    def("is_positive_definite_u",
+      (af::shared<bool>(*)(
+        af::const_ref<scatterer<> > const&,
+        uctbx::unit_cell const&)) is_positive_definite_u, (
+          arg_("scatterers"),
+          arg_("unit_cell")));
+
+    def("is_positive_definite_u",
+      (af::shared<bool>(*)(
+        af::const_ref<scatterer<> > const&,
+        uctbx::unit_cell const&,
+        double)) is_positive_definite_u, (
+          arg_("scatterers"),
+          arg_("unit_cell"),
+          arg_("u_cart_tolerance")));
+
+    def("tidy_us",
+      (void(*)(
+        af::ref<scatterer<> > const&,
+        uctbx::unit_cell const&,
+        sgtbx::site_symmetry_table const&,
+        double u_min)) tidy_us, (
+          arg_("scatterers"),
+          arg_("unit_cell"),
+          arg_("site_symmetry_table"),
+          arg_("u_min")));
 
     def("apply_symmetry_sites",
       (void(*)(
@@ -153,9 +191,7 @@ namespace {
           arg_("unit_cell"),
           arg_("site_symmetry_table"),
           arg_("scatterers"),
-          arg_("u_star_tolerance")=0,
-          arg_("assert_is_positive_definite")=false,
-          arg_("assert_min_distance_sym_equiv")=true)));
+          arg_("u_star_tolerance")=0)));
 
     def("add_scatterers_ext",
       (void(*)(
@@ -164,7 +200,9 @@ namespace {
         af::ref<scatterer<> > const&,
         sgtbx::site_symmetry_table&,
         sgtbx::site_symmetry_table const&,
-        double, double, bool, bool)) add_scatterers_ext, (
+        double,
+        double,
+        bool)) add_scatterers_ext, (
           arg_("unit_cell"),
           arg_("space_group"),
           arg_("scatterers"),
@@ -172,7 +210,6 @@ namespace {
           arg_("site_symmetry_table_for_new"),
           arg_("min_distance_sym_equiv"),
           arg_("u_star_tolerance"),
-          arg_("assert_is_positive_definite"),
           arg_("assert_min_distance_sym_equiv")));
 
     def("change_basis",

@@ -218,19 +218,16 @@ class special_position_settings(symmetry):
   def __init__(self, crystal_symmetry,
                min_distance_sym_equiv=0.5,
                u_star_tolerance=0,
-               assert_is_positive_definite=False,
                assert_min_distance_sym_equiv=True):
     symmetry._copy_constructor(self, crystal_symmetry)
     self._min_distance_sym_equiv = min_distance_sym_equiv
     self._u_star_tolerance = u_star_tolerance
-    self._assert_is_positive_definite = assert_is_positive_definite
     self._assert_min_distance_sym_equiv = assert_min_distance_sym_equiv
 
   def _copy_constructor(self, other):
     symmetry._copy_constructor(self, other)
     self._min_distance_sym_equiv = other._min_distance_sym_equiv
     self._u_star_tolerance = other._u_star_tolerance
-    self._assert_is_positive_definite = other._assert_is_positive_definite
     self._assert_min_distance_sym_equiv = other._assert_min_distance_sym_equiv
 
   def min_distance_sym_equiv(self):
@@ -238,9 +235,6 @@ class special_position_settings(symmetry):
 
   def u_star_tolerance(self):
     return self._u_star_tolerance
-
-  def assert_is_positive_definite(self):
-    return self._assert_is_positive_definite
 
   def assert_min_distance_sym_equiv(self):
     return self._assert_min_distance_sym_equiv
@@ -294,7 +288,6 @@ class special_position_settings(symmetry):
       crystal_symmetry=symmetry.change_basis(self, cb_op),
       min_distance_sym_equiv=self.min_distance_sym_equiv(),
       u_star_tolerance=self.u_star_tolerance(),
-      assert_is_positive_definite=self.assert_is_positive_definite(),
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
 
 def correct_special_position(

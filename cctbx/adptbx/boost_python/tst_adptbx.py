@@ -77,7 +77,7 @@ def exercise_interface():
   try: s.vectors(4)
   except RuntimeError, e: assert str(e).endswith("Index out of range.")
   else: raise AssertionError, "Exception expected."
-  uf = adptbx.eigenvalue_filtering(u)
+  uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0)
   assert approx_equal(uf, (3.0810418, 4.7950710, 9.3400030,
                            1.7461615, 1.1659954, 6.4800706))
   assert approx_equal(scitbx.math.eigensystem.real_symmetric(u).values(),

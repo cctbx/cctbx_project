@@ -120,9 +120,7 @@ def exercise_xray_scatterer():
   x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss)
   x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5)
   x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5,
-    assert_is_positive_definite=0)
-  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5,
-    assert_is_positive_definite=0, assert_min_distance_sym_equiv=0)
+    assert_min_distance_sym_equiv=0)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, 0)
   ss = x.apply_symmetry(
@@ -130,7 +128,6 @@ def exercise_xray_scatterer():
     space_group=sg.group(),
     min_distance_sym_equiv=0.5,
     u_star_tolerance=0,
-    assert_is_positive_definite=False,
     assert_min_distance_sym_equiv=False)
   assert ss.is_compatible_u_star(x.u_star)
   assert approx_equal(x.u_star, (0.0035625, 0.0035625, 0.002884, 0, 0, 0))
@@ -141,24 +138,41 @@ def exercise_xray_scatterer():
   x.apply_symmetry_u_star(
     unit_cell=uc,
     site_symmetry_ops=ss,
-    u_star_tolerance=0,
-    assert_is_positive_definite=False,
-    assert_min_distance_sym_equiv=False)
+    u_star_tolerance=0)
   assert approx_equal(x.u_star, (1.5,1.5,3.0,0,0,0))
   x.site = (0.2,0.5,0.4)
   ss = x.apply_symmetry(uc, sg.group(), 1.e-10, 0)
   assert ss.is_point_group_1()
   x.u_star = (1,2,3,4,5,6)
-  x.apply_symmetry_u_star(
-    unit_cell=uc,
-    site_symmetry_ops=ss,
-    u_star_tolerance=0,
-    assert_is_positive_definite=False,
-    assert_min_distance_sym_equiv=False)
-  # check if eigenvalue filtering was applied
+  assert not x.is_positive_definite_u(unit_cell=uc)
+  assert not x.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=1.e2)
+  assert x.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=1.e3)
+  x.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=0)
   assert approx_equal(x.u_star,
     (3.3379643647809192, 4.5640522609325131, 4.4690204772593507,
      3.9031581835726965, 3.8623090371651934, 4.5162864184404032))
+  x.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1)
+  assert approx_equal(x.u_star,
+    (3.3458045216665266, 4.5710990727698393, 4.4720459395534728,
+     3.9006326295505751, 3.8598099147456764, 4.5133641373560351))
+  assert x.is_positive_definite_u(unit_cell=uc)
+  y = x.customized_copy(u=-1)
+  assert not y.anisotropic_flag
+  assert approx_equal(y.u_iso, -1)
+  assert not y.is_positive_definite_u(unit_cell=uc)
+  assert not y.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=0.5)
+  assert y.is_positive_definite_u(unit_cell=uc, u_cart_tolerance=2)
+  a = flex.xray_scatterer([x,y])
+  assert list(xray.is_positive_definite_u(
+    scatterers=a, unit_cell=uc)) == [True, False]
+  a = flex.xray_scatterer([y,x])
+  assert list(xray.is_positive_definite_u(
+    scatterers=a, unit_cell=uc)) == [False, True]
+  assert list(xray.is_positive_definite_u(
+    scatterers=a, unit_cell=uc, u_cart_tolerance=2)) == [True, True]
+  y.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1)
+  assert approx_equal(y.u_iso, 1)
+  assert y.is_positive_definite_u(unit_cell=uc)
 
 def exercise_rotate():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -282,9 +296,15 @@ def exercise_structure_factors():
     site_symmetry_table_for_new=sgtbx.site_symmetry_table(),
     min_distance_sym_equiv=0.5,
     u_star_tolerance=0,
-    assert_is_positive_definite=False,
     assert_min_distance_sym_equiv=True)
   assert list(site_symmetry_table.special_position_indices()) == [0]
+  xray.tidy_us(
+    scatterers=scatterers,
+    unit_cell=uc,
+    site_symmetry_table=site_symmetry_table,
+    u_min=0)
+  assert approx_equal(scatterers[0].u_iso, 0)
+  assert approx_equal(scatterers[1].u_star, (0.4,0.5,0.6,-.05,0.2,-0.02))
   for s in scatterers:
     assert s.multiplicity() != 0
   assert xray.n_undefined_multiplicities(scatterers) == 0
@@ -298,6 +318,15 @@ def exercise_structure_factors():
     p = flex.arg(fc, 1)
     assert approx_equal(tuple(a), (10.50871, 9.049631))
     assert approx_equal(tuple(p), (-36, 72))
+  xray.tidy_us(
+    scatterers=scatterers,
+    unit_cell=uc,
+    site_symmetry_table=site_symmetry_table,
+    u_min=100)
+  assert approx_equal(scatterers[0].u_iso, 100)
+  assert approx_equal(scatterers[1].u_star,
+    (1.0134539945616343, 1.0005190241807682, 0.64980451464405997,
+     -0.0026425269166861672, 0.027955730692513142, -0.0054908429234285239))
   xray.ext.structure_factors_direct(
     math_module.cos_sin_table(12),
     uc, sg.group(), mi, scatterers, scattering_dict).f_calc()

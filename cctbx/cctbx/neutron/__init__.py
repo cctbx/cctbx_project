@@ -51,7 +51,6 @@ class scatterer:
                            space_group,
                            min_distance_sym_equiv=0.5,
                            u_star_tolerance=0,
-                           assert_is_positive_definite=False,
                            assert_min_distance_sym_equiv=True):
     site_symmetry = sgtbx.site_symmetry(
       unit_cell,
@@ -65,12 +64,6 @@ class scatterer:
     if (self.anisotropic_flag):
       if (u_star_tolerance > 0.):
         assert site_symmetry.is_compatible_u_star(self.u_star,u_star_tolerance)
-      self.u_star = site_symmetry.average_u_star(self.u_star)
-      u_cart = adptbx.u_star_as_u_cart(unit_cell, self.u_star)
-      if (assert_is_positive_definite):
-        assert adptbx.is_positive_definite(u_cart)
-      u_cart = adptbx.eigenvalue_filtering(u_cart)
-      self.u_star = adptbx.u_cart_as_u_star(unit_cell, u_cart)
       self.u_star = site_symmetry.average_u_star(self.u_star)
     return site_symmetry
 
@@ -102,7 +95,6 @@ class structure(crystal.special_position_settings):
       self.space_group(),
       self.min_distance_sym_equiv(),
       self.u_star_tolerance(),
-      self.assert_is_positive_definite(),
       self.assert_min_distance_sym_equiv())
     if (not site_symmetry.is_point_group_1()):
       self.special_position_indices().append(i)

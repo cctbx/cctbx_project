@@ -672,14 +672,16 @@ namespace cctbx {
     return is_positive_definite(eigenvalues(adp), tolerance);
   }
 
-  //! Modifies u_cart such that all eigenvalues are >= 0.
+  //! Modifies u_cart such that all eigenvalues are >= u_min.
   template <typename FloatType>
   sym_mat3<FloatType>
-  eigenvalue_filtering(sym_mat3<FloatType> const& u_cart)
+  eigenvalue_filtering(
+    sym_mat3<FloatType> const& u_cart,
+    FloatType const& u_min=0)
   {
     scitbx::math::eigensystem::real_symmetric<FloatType> es(u_cart);
     scitbx::vec3<FloatType> es_val(es.values().begin());
-    for(std::size_t i=0;i<3;i++) if (es_val[i] < 0) es_val[i] = 0;
+    for(std::size_t i=0;i<3;i++) if (es_val[i] < u_min) es_val[i] = u_min;
     scitbx::mat3<FloatType> es_vec(es.vectors().begin());
     scitbx::mat3<FloatType> es_vec_inv = es_vec.inverse();
     return sym_mat3<FloatType>(es_val).tensor_transform(es_vec_inv);
