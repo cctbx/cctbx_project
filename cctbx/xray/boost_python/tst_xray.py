@@ -600,6 +600,11 @@ def exercise_minimization_add_site_gradients():
     site_gradients=geometry_restraints_site_gradients)
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,1,1,13,8,9,10,11,12,13,14,15])
+  site_gradients = xray.ext.minimization_extract_site_gradients(
+    scatterers=scatterers,
+    gradient_flags=gradient_flags,
+    xray_gradients=xray_gradients)
+  assert approx_equal(site_gradients, [(1,-1,5), (1,1,13)])
 
 def exercise_minimization_add_u_iso_gradients():
   uc = uctbx.unit_cell((20, 20, 23))
