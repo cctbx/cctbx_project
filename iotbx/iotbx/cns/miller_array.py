@@ -15,7 +15,7 @@ def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
   if (self.sigmas() is not None):
     assert isinstance(self.data(), flex.double)
     assert isinstance(self.sigmas(), flex.double)
-    if (isinstance(self, miller.intensity_array)):
+    if (self.is_xray_intensity_array()):
       f_obs = self.f_sq_as_f()
     else:
       f_obs = self

@@ -94,7 +94,7 @@ def _columnCombinations(self,label,datatype,carry_miller,carry_data):
 
 def add_miller_array(self, miller_array, mtz_label):
   if (not miller_array.anomalous_flag()):
-    if (miller_array.is_intensity_array()):
+    if (miller_array.is_xray_intensity_array()):
       column_types = "JQ"
     else:
       column_types = "FQ"
@@ -104,7 +104,7 @@ def add_miller_array(self, miller_array, mtz_label):
       self._columnCombinations(self.label_sigmas(mtz_label), column_types[1],
         [miller_array.indices()],[miller_array.sigmas()])
   else:
-    if (miller_array.is_intensity_array()):
+    if (miller_array.is_xray_intensity_array()):
       column_types = "KM"
     else:
       column_types = "GL"

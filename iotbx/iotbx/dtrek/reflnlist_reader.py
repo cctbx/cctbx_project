@@ -108,15 +108,16 @@ class reflnlist:
         force=force_symmetry)
     miller_arrays = []
     sigmas=self.column_dict["fSigmaI"]
-    i_obs = miller.array(
+    miller_arrays.append(miller.array(
       miller_set=miller.set(
         crystal_symmetry=crystal_symmetry,
         indices=self.miller_indices,
         anomalous_flag=False),
       data=self.column_dict["fIntensity"],
-      sigmas=sigmas).apply_selection(sigmas > 0)
-    i_obs.set_info(info_prefix+"Intensity,SigmaI")
-    miller_arrays.append(miller.intensity_array(i_obs))
+      sigmas=sigmas)
+      .apply_selection(sigmas > 0)
+      .set_info(info_prefix+"Intensity,SigmaI")
+      .set_observation_type_xray_intensity())
     if ("fIntensity+" in self.column_dict):
       assert "fSigmaI+" in self.column_dict
       assert "fIntensity-" in self.column_dict
@@ -129,14 +130,15 @@ class reflnlist:
         self.column_dict["fSigmaI+"],
         self.column_dict["fIntensity-"],
         self.column_dict["fSigmaI-"])
-      miller_arrays.append(miller.intensity_array(miller.array(
+      miller_arrays.append(miller.array(
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
           indices=ac.miller_indices(),
           anomalous_flag=True),
         data=ac.data(),
-        sigmas=ac.sigmas(),
-        info=info_prefix+"Intensity+-,SigmaI+-")))
+        sigmas=ac.sigmas())
+        .set_info(info_prefix+"Intensity+-,SigmaI+-")
+        .set_observation_type_xray_intensity())
     for column_name in self.column_names:
       if (column_name in ("nH", "nK", "nL",
                           "fSigmaI", "fIntensity",

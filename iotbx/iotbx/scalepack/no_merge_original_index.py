@@ -73,9 +73,9 @@ class reader:
 
   def as_miller_array(self, crystal_symmetry=None, force_symmetry=00000,
                             info_prefix=""):
-    return miller.intensity_array(
-       self.merge_equivalents(crystal_symmetry, force_symmetry)
-        .array()).set_info(info_prefix+"i_obs,sigma")
+    return (self.merge_equivalents(crystal_symmetry, force_symmetry).array()
+      .set_info(info_prefix+"i_obs,sigma")
+      .set_observation_type_xray_intensity())
 
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
                              info_prefix=""):
