@@ -72,7 +72,13 @@ def select_sconsign_dbm_module():
       or (sys.version_info[0] == 2 and sys.version_info[1] > 2)):
     import dumbdbm
     return dumbdbm
-  return None # use default
+  import anydbm
+  return anydbm
+
+def sconsign_dbm_file_name(name=".sconsign.dbm"):
+  dbm_module = select_sconsign_dbm_module()
+  dbm_module.open(name, "c")
+  return name
 
 class include_registry:
 
