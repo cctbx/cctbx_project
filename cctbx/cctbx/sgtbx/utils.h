@@ -23,7 +23,7 @@ namespace cctbx { namespace sgtbx {
       or a constructor of class sgtbx::RTMx to communitcate errors
       that are detected during the interpretation of an input string.<br>
       Intended use:<pre>
-      using namespace sgtbx;
+      using namespace cctbx::sgtbx;
       parse_string HSym("P x");
       SpaceGroup SgOps;
       try {

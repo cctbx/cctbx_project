@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <iterator>
 #include <algorithm>
+#include <cctbx/vector/simple_io.h>
 
 // FIXES for broken compilers
 #include <boost/config.hpp>
@@ -161,6 +162,11 @@ namespace cctbx {
     inline void swap (fixcap_vector<T,N>& x, fixcap_vector<T,N>& y) {
         x.swap(y);
     }
+
+  template<class T, std::size_t N>
+  std::ostream& operator<<(std::ostream& os, const fixcap_vector<T, N>& v) {
+    return vector::simple_output(os, v);
+  }
 
 } // namespace cctbx
 
