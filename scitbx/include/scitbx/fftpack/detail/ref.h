@@ -19,17 +19,18 @@ namespace scitbx { namespace fftpack { namespace detail {
   {
     public:
       ref_2d_tp(ElementType* Start,
-                std::size_t Nx,
+                std::size_t nx,
                 std::size_t)
-        : m_Start(Start),
-          m_Nx(Nx) {}
+        : start_(Start),
+          nx_(nx) {}
       ElementType&
-      operator()(std::size_t ix, std::size_t iy) {
-        return m_Start[iy * m_Nx + ix];
+      operator()(std::size_t ix, std::size_t iy)
+      {
+        return start_[iy * nx_ + ix];
       }
     private:
-      ElementType* m_Start;
-      std::size_t m_Nx;
+      ElementType* start_;
+      std::size_t nx_;
   };
 
   template <class ElementType>
@@ -37,20 +38,21 @@ namespace scitbx { namespace fftpack { namespace detail {
   {
     public:
       ref_3d_tp(ElementType* Start,
-                std::size_t Nx,
-                std::size_t Ny,
+                std::size_t nx,
+                std::size_t ny,
                 std::size_t)
-        : m_Start(Start),
-          m_Nx(Nx),
-          m_Ny(Ny) {}
+        : start_(Start),
+          nx_(nx),
+          ny_(ny) {}
       ElementType&
-      operator()(std::size_t ix, std::size_t iy, std::size_t iz) {
-        return m_Start[(iz * m_Ny + iy) * m_Nx + ix];
+      operator()(std::size_t ix, std::size_t iy, std::size_t iz)
+      {
+        return start_[(iz * ny_ + iy) * nx_ + ix];
       }
     private:
-      ElementType* m_Start;
-      std::size_t m_Nx;
-      std::size_t m_Ny;
+      ElementType* start_;
+      std::size_t nx_;
+      std::size_t ny_;
   };
 
 }}} // namespace scitbx::fftpack::detail

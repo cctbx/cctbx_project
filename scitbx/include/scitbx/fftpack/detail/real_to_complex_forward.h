@@ -17,12 +17,12 @@ namespace scitbx { namespace fftpack {
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::forward_compressed(real_type* Seq_begin)
+                  ComplexType>::forward_compressed(real_type* seq_begin)
   {
-    if (m_N < 2) return;
-    real_type* C = Seq_begin;
-    real_type* CH = &(*(m_CH.begin()));
-    const real_type* WA = &(*(m_WA.begin()));
+    if (n_ < 2) return;
+    real_type* C = seq_begin;
+    real_type* CH = &(*(CH_.begin()));
+    const real_type* WA = &(*(WA_.begin()));
     std::size_t IDL1;
     std::size_t IDO;
     std::size_t IP;
@@ -35,13 +35,13 @@ namespace scitbx { namespace fftpack {
     std::size_t L2;
     std::size_t NA;
     NA = 1;
-    L2 = m_N;
-    IW = m_N;
-    for (std::size_t K1 = 1; K1 <= m_Factors.size(); K1++) {
-      KH = m_Factors.size()-K1;
-      IP = m_Factors[KH+3-2-1];
+    L2 = n_;
+    IW = n_;
+    for (std::size_t K1 = 1; K1 <= factors_.size(); K1++) {
+      KH = factors_.size()-K1;
+      IP = factors_[KH+3-2-1];
       L1 = L2/IP;
-      IDO = m_N/L2;
+      IDO = n_/L2;
       IDL1 = IDO*L1;
       IW = IW-(IP-1)*IDO;
       NA = 1-NA;
@@ -97,7 +97,7 @@ namespace scitbx { namespace fftpack {
       L2 = L1;
     }
     if (NA == 1) return;
-    for (std::size_t I = 1; I <= m_N; I++) {
+    for (std::size_t I = 1; I <= n_; I++) {
       C[I-1] = CH[I-1];
     }
   }

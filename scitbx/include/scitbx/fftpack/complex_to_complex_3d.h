@@ -31,30 +31,33 @@ namespace scitbx { namespace fftpack {
 
       //! Default constructor.
       complex_to_complex_3d() {}
-      //! Initialization for transforms of lengths N.
+      //! Initialization for transforms of lengths n.
       /*! See also: Constructor of complex_to_complex.
        */
-      complex_to_complex_3d(const af::int3& N);
-      //! Initialization for transforms of lengths N0, N1, N2.
+      complex_to_complex_3d(const af::int3& n);
+      //! Initialization for transforms of lengths n0, n1, n2.
       /*! See also: Constructor of complex_to_complex.
        */
-      complex_to_complex_3d(std::size_t N0, std::size_t N1, std::size_t N2);
-      //! Access the N (or N0, N1, N2) that was passed to the constructor.
-      af::int3 N() const {
-        return af::int3(m_fft1d[0].N(), m_fft1d[1].N(), m_fft1d[2].N());
+      complex_to_complex_3d(std::size_t n0, std::size_t n1, std::size_t n2);
+      //! Access the n (or n0, n1, n2) that was passed to the constructor.
+      af::int3 n() const
+      {
+        return af::int3(fft1d_[0].n(), fft1d_[1].n(), fft1d_[2].n());
       }
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex
        */
       template <typename MapType>
-      void forward(MapType map) {
+      void forward(MapType map)
+      {
         transform(select_sign<forward_tag>(), map);
       }
       //! In-place "backward" Fourier transformation.
       /*! See also: complex_to_complex
        */
       template <typename MapType>
-      void backward(MapType map) {
+      void backward(MapType map)
+      {
         transform(select_sign<backward_tag>(), map);
       }
     protected:
@@ -82,62 +85,62 @@ namespace scitbx { namespace fftpack {
       void transform(select_sign<Tag> tag, MapType map, complex_type) {
   // FUTURE: move out of class body
   {
-    complex_type* Seq = &(*(m_Seq.begin()));
-    for (std::size_t iz = 0; iz < m_fft1d[2].N(); iz++) {
-      for (std::size_t iy = 0; iy < m_fft1d[1].N(); iy++) {
+    complex_type* seq = &(*(seq_.begin()));
+    for (std::size_t iz = 0; iz < fft1d_[2].n(); iz++) {
+      for (std::size_t iy = 0; iy < fft1d_[1].n(); iy++) {
         std::size_t ix;
-        for (ix = 0; ix < m_fft1d[0].N(); ix++) {
-          Seq[ix] = map(ix, iy, iz);
+        for (ix = 0; ix < fft1d_[0].n(); ix++) {
+          seq[ix] = map(ix, iy, iz);
         }
         // Transform along x (slow direction)
-        m_fft1d[0].transform(tag, Seq);
-        for (ix = 0; ix < m_fft1d[0].N(); ix++) {
-          map(ix, iy, iz) = Seq[ix];
+        fft1d_[0].transform(tag, seq);
+        for (ix = 0; ix < fft1d_[0].n(); ix++) {
+          map(ix, iy, iz) = seq[ix];
         }
       }
-      for (std::size_t ix = 0; ix < m_fft1d[0].N(); ix++) {
+      for (std::size_t ix = 0; ix < fft1d_[0].n(); ix++) {
         std::size_t iy;
-        for (iy = 0; iy < m_fft1d[1].N(); iy++) {
-          Seq[iy] = map(ix, iy, iz);
+        for (iy = 0; iy < fft1d_[1].n(); iy++) {
+          seq[iy] = map(ix, iy, iz);
         }
         // Transform along y (medium direction)
-        m_fft1d[1].transform(tag, Seq);
-        for (iy = 0; iy < m_fft1d[1].N(); iy++) {
-          map(ix, iy, iz) = Seq[iy];
+        fft1d_[1].transform(tag, seq);
+        for (iy = 0; iy < fft1d_[1].n(); iy++) {
+          map(ix, iy, iz) = seq[iy];
         }
       }
     }
-    for (std::size_t ix = 0; ix < m_fft1d[0].N(); ix++) {
-      for (std::size_t iy = 0; iy < m_fft1d[1].N(); iy++) {
+    for (std::size_t ix = 0; ix < fft1d_[0].n(); ix++) {
+      for (std::size_t iy = 0; iy < fft1d_[1].n(); iy++) {
         // Transform along z (fast direction)
-        m_fft1d[2].transform(tag, &map(ix, iy, 0));
+        fft1d_[2].transform(tag, &map(ix, iy, 0));
       }
     }
   }
       }
     private:
-      af::tiny<complex_to_complex<real_type, complex_type>, 3> m_fft1d;
-      af::shared<complex_type> m_Seq;
+      af::tiny<complex_to_complex<real_type, complex_type>, 3> fft1d_;
+      af::shared<complex_type> seq_;
   };
 
   template <typename RealType, typename ComplexType>
   complex_to_complex_3d<RealType, ComplexType
-    >::complex_to_complex_3d(const af::int3& N)
-    : m_Seq(af::max(N))
+    >::complex_to_complex_3d(const af::int3& n)
+    : seq_(af::max(n))
   {
     for(std::size_t i=0;i<3;i++) {
-      m_fft1d[i] = complex_to_complex<real_type, complex_type>(N[i]);
+      fft1d_[i] = complex_to_complex<real_type, complex_type>(n[i]);
     }
   }
 
   template <typename RealType, typename ComplexType>
   complex_to_complex_3d<RealType, ComplexType
-    >::complex_to_complex_3d(std::size_t N0, std::size_t N1, std::size_t N2)
-    : m_Seq(af::max(af::tiny<std::size_t, 3>(N0, N1, N2)))
+    >::complex_to_complex_3d(std::size_t n0, std::size_t n1, std::size_t n2)
+    : seq_(af::max(af::tiny<std::size_t, 3>(n0, n1, n2)))
   {
-    m_fft1d[0] = complex_to_complex<real_type, complex_type>(N0);
-    m_fft1d[1] = complex_to_complex<real_type, complex_type>(N1);
-    m_fft1d[2] = complex_to_complex<real_type, complex_type>(N2);
+    fft1d_[0] = complex_to_complex<real_type, complex_type>(n0);
+    fft1d_[1] = complex_to_complex<real_type, complex_type>(n1);
+    fft1d_[2] = complex_to_complex<real_type, complex_type>(n2);
   }
 
 }} // namespace scitbx::fftpack

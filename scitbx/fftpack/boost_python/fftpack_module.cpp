@@ -89,8 +89,8 @@ namespace scitbx { namespace fftpack { namespace {
         class_<w_t>("factorization",
           args<>())
           .def_init(args<std::size_t, bool>())
-          .def("N", &w_t::N)
-          .def("Factors", &w_t::Factors)
+          .def("n", &w_t::n)
+          .def("factors", &w_t::factors)
       );
     }
   };
@@ -107,37 +107,37 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_1d_size(a.accessor(), fft.N());
+      assert_0_based_1d_size(a.accessor(), fft.n());
       fft.forward(a.begin());
-      return flex_complex_array(a, af::flex_grid<>(fft.N())
-        .set_layout(fft.N()));
+      return flex_complex_array(a, af::flex_grid<>(fft.n())
+        .set_layout(fft.n()));
     }
 
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_1d_size(a.accessor(), 2 * fft.N());
+      assert_0_based_1d_size(a.accessor(), 2 * fft.n());
       fft.forward(a.begin());
-      return flex_complex_array(a.handle(), af::flex_grid<>(fft.N())
-        .set_layout(fft.N()));
+      return flex_complex_array(a.handle(), af::flex_grid<>(fft.n())
+        .set_layout(fft.n()));
     }
 
     static flex_complex_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_1d_size(a.accessor(), fft.N());
+      assert_0_based_1d_size(a.accessor(), fft.n());
       fft.backward(a.begin());
-      return flex_complex_array(a, af::flex_grid<>(fft.N())
-        .set_layout(fft.N()));
+      return flex_complex_array(a, af::flex_grid<>(fft.n())
+        .set_layout(fft.n()));
     }
 
     static flex_complex_array
     backward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_1d_size(a.accessor(), 2 * fft.N());
+      assert_0_based_1d_size(a.accessor(), 2 * fft.n());
       fft.backward(a.begin());
-      return flex_complex_array(a.handle(), af::flex_grid<>(fft.N())
-        .set_layout(fft.N()));
+      return flex_complex_array(a.handle(), af::flex_grid<>(fft.n())
+        .set_layout(fft.n()));
     }
 
     static void
@@ -148,7 +148,7 @@ namespace scitbx { namespace fftpack { namespace {
         class_<w_t, bases<factorization> >("complex_to_complex",
           args<>())
           .def_init(args<std::size_t>())
-          .def("WA", &w_t::WA)
+          .def("wa", &w_t::wa)
           .def("forward", forward_complex)
           .def("forward", forward_real)
           .def("backward", backward_complex)
@@ -164,37 +164,37 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_1d_size(a.accessor(), fft.Ncomplex());
+      assert_0_based_1d_size(a.accessor(), fft.n_complex());
       fft.forward(a.begin());
-      return flex_complex_array(a, af::flex_grid<>((fft.Ncomplex()))
-        .set_layout(fft.Ncomplex()));
+      return flex_complex_array(a, af::flex_grid<>((fft.n_complex()))
+        .set_layout(fft.n_complex()));
     }
 
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_1d_size(a.accessor(), fft.Mreal());
+      assert_0_based_1d_size(a.accessor(), fft.m_real());
       fft.forward(a.begin());
-      return flex_complex_array(a.handle(), af::flex_grid<>((fft.Ncomplex()))
-        .set_layout(fft.Ncomplex()));
+      return flex_complex_array(a.handle(), af::flex_grid<>((fft.n_complex()))
+        .set_layout(fft.n_complex()));
     }
 
     static flex_real_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_1d_size(a.accessor(), fft.Ncomplex());
+      assert_0_based_1d_size(a.accessor(), fft.n_complex());
       fft.backward(a.begin());
-      return flex_real_array(a.handle(), af::flex_grid<>((fft.Mreal()))
-        .set_layout(fft.Nreal()));
+      return flex_real_array(a.handle(), af::flex_grid<>((fft.m_real()))
+        .set_layout(fft.n_real()));
     }
 
     static flex_real_array
     backward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_1d_size(a.accessor(), fft.Mreal());
+      assert_0_based_1d_size(a.accessor(), fft.m_real());
       fft.backward(a.begin());
-      return flex_real_array(a, af::flex_grid<>((fft.Mreal()))
-        .set_layout(fft.Nreal()));
+      return flex_real_array(a, af::flex_grid<>((fft.m_real()))
+        .set_layout(fft.n_real()));
     }
 
     static void
@@ -205,10 +205,10 @@ namespace scitbx { namespace fftpack { namespace {
         class_<w_t, bases<factorization> >("real_to_complex",
           args<>())
           .def_init(args<std::size_t>())
-          .def("Nreal", &w_t::Nreal)
-          .def("Mreal", &w_t::Mreal)
-          .def("Ncomplex", &w_t::Ncomplex)
-          .def("WA", &w_t::WA)
+          .def("n_real", &w_t::n_real)
+          .def("m_real", &w_t::m_real)
+          .def("n_complex", &w_t::n_complex)
+          .def("wa", &w_t::wa)
           .def("forward", forward_complex)
           .def("forward", forward_real)
           .def("backward", backward_complex)
@@ -224,43 +224,43 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_3d_size(a.accessor(), fft.N());
-      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
+      assert_0_based_3d_size(a.accessor(), fft.n());
+      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n()));
       fft.forward(map);
-      return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.N()))
-        .set_layout(af::adapt(fft.N())));
+      return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.n()))
+        .set_layout(af::adapt(fft.n())));
     }
 
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_3d_size(a.accessor(), Nreal_from_Ncomplex(fft.N()));
+      assert_0_based_3d_size(a.accessor(), n_real_from_n_complex(fft.n()));
       ref_3d_real_array map(
-        a.begin(), af::grid<3>(Nreal_from_Ncomplex(fft.N())));
+        a.begin(), af::grid<3>(n_real_from_n_complex(fft.n())));
       fft.forward(map);
-      return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.N()))
-        .set_layout(af::adapt(fft.N())));
+      return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.n()))
+        .set_layout(af::adapt(fft.n())));
     }
 
     static flex_complex_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_3d_size(a.accessor(), fft.N());
-      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
+      assert_0_based_3d_size(a.accessor(), fft.n());
+      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n()));
       fft.backward(map);
-      return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.N()))
-        .set_layout(af::adapt(fft.N())));
+      return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.n()))
+        .set_layout(af::adapt(fft.n())));
     }
 
     static flex_complex_array
     backward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_3d_size(a.accessor(), Nreal_from_Ncomplex(fft.N()));
+      assert_0_based_3d_size(a.accessor(), n_real_from_n_complex(fft.n()));
       ref_3d_real_array map(
-        a.begin(), af::grid<3>(Nreal_from_Ncomplex(fft.N())));
+        a.begin(), af::grid<3>(n_real_from_n_complex(fft.n())));
       fft.backward(map);
-      return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.N()))
-        .set_layout(af::adapt(fft.N())));
+      return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.n()))
+        .set_layout(af::adapt(fft.n())));
     }
 
     static void
@@ -272,7 +272,7 @@ namespace scitbx { namespace fftpack { namespace {
           args<>())
           .def_init(args<std::size_t, std::size_t, std::size_t>())
           .def_init(args<af::int3>())
-          .def("N", &w_t::N)
+          .def("n", &w_t::n)
           .def("forward", forward_complex)
           .def("forward", forward_real)
           .def("backward", backward_complex)
@@ -288,43 +288,44 @@ namespace scitbx { namespace fftpack { namespace {
     static flex_complex_array
     forward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_3d_size(a.accessor(), fft.Ncomplex());
-      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
+      assert_0_based_3d_size(a.accessor(), fft.n_complex());
+      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n_complex()));
       fft.forward(map);
-      return flex_complex_array(a, af::flex_grid<>(af::adapt((fft.Ncomplex())))
-        .set_layout(af::adapt(fft.Ncomplex())));
+      return flex_complex_array(a,
+        af::flex_grid<>(af::adapt((fft.n_complex())))
+        .set_layout(af::adapt(fft.n_complex())));
     }
 
     static flex_complex_array
     forward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_3d_size(a.accessor(), fft.Mreal());
-      ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
+      assert_0_based_3d_size(a.accessor(), fft.m_real());
+      ref_3d_real_array map(a.begin(), af::grid<3>(fft.m_real()));
       fft.forward(map);
       return flex_complex_array(a.handle(),
-        af::flex_grid<>(af::adapt((fft.Ncomplex())))
-        .set_layout(af::adapt(fft.Ncomplex())));
+        af::flex_grid<>(af::adapt((fft.n_complex())))
+        .set_layout(af::adapt(fft.n_complex())));
     }
 
     static flex_real_array
     backward_complex(w_t& fft, flex_complex_array a)
     {
-      assert_0_based_3d_size(a.accessor(), fft.Ncomplex());
-      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
+      assert_0_based_3d_size(a.accessor(), fft.n_complex());
+      ref_3d_complex_array map(a.begin(), af::grid<3>(fft.n_complex()));
       fft.backward(map);
       return flex_real_array(a.handle(),
-        af::flex_grid<>(af::adapt((fft.Mreal())))
-        .set_layout(af::adapt(fft.Nreal())));
+        af::flex_grid<>(af::adapt((fft.m_real())))
+        .set_layout(af::adapt(fft.n_real())));
     }
 
     static flex_real_array
     backward_real(w_t& fft, flex_real_array a)
     {
-      assert_0_based_3d_size(a.accessor(), fft.Mreal());
-      ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
+      assert_0_based_3d_size(a.accessor(), fft.m_real());
+      ref_3d_real_array map(a.begin(), af::grid<3>(fft.m_real()));
       fft.backward(map);
-      return flex_real_array(a, af::flex_grid<>(af::adapt((fft.Mreal())))
-        .set_layout(af::adapt(fft.Nreal())));
+      return flex_real_array(a, af::flex_grid<>(af::adapt((fft.m_real())))
+        .set_layout(af::adapt(fft.n_real())));
     }
 
     static void
@@ -336,9 +337,9 @@ namespace scitbx { namespace fftpack { namespace {
           args<>())
           .def_init(args<std::size_t, std::size_t, std::size_t>())
           .def_init(args<af::int3>())
-          .def("Nreal", &w_t::Nreal)
-          .def("Mreal", &w_t::Mreal)
-          .def("Ncomplex", &w_t::Ncomplex)
+          .def("n_real", &w_t::n_real)
+          .def("m_real", &w_t::m_real)
+          .def("n_complex", &w_t::n_complex)
           .def("forward", forward_complex)
           .def("forward", forward_real)
           .def("backward", backward_complex)

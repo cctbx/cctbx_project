@@ -12,16 +12,16 @@ def show_cseq(vc):
     print "(%s,%s)" % (fmtfloat(vc[i].real), fmtfloat(vc[i].imag))
   print
 
-def show_rseq(vr, N):
-  for i in xrange(N):
+def show_rseq(vr, n):
+  for i in xrange(n):
     print fmtfloat(vr[i])
   print
 
-def show_rseq_3d(a, M, N):
-  for i in xrange(N[0]):
-    for j in xrange(N[1]):
-      for k in xrange(N[2]):
-        print fmtfloat(a[(i * M[1] + j) * M[2] + k])
+def show_rseq_3d(a, m, n):
+  for i in xrange(n[0]):
+    for j in xrange(n[1]):
+      for k in xrange(n[2]):
+        print fmtfloat(a[(i * m[1] + j) * m[2] + k])
   print
 
 def assert_complex_eq_real(vc, vd):
@@ -31,9 +31,9 @@ def assert_complex_eq_real(vc, vd):
 
 def test_complex_to_complex(verbose):
   fft = fftpack.complex_to_complex(5)
-  vc = flex.complex_double(fft.N())
-  vd = flex.double(fft.N() * 2)
-  for i in xrange(fft.N()):
+  vc = flex.complex_double(fft.n())
+  vd = flex.double(fft.n() * 2)
+  for i in xrange(fft.n()):
     vc[i] = complex(2.*i, 2.*i+1.)
     vd[2*i] = 2.*i
     vd[2*i+1] = 2.*i+1.
@@ -41,24 +41,24 @@ def test_complex_to_complex(verbose):
   vdt = fft.forward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.N()
-    assert t.layout()[0] == fft.N()
+    assert t.grid()[0] == fft.n()
+    assert t.layout()[0] == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
   vct = fft.backward(vc)
   vdt = fft.backward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.N()
-    assert t.layout()[0] == fft.N()
+    assert t.grid()[0] == fft.n()
+    assert t.layout()[0] == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
 
 def test_complex_to_complex_3d(verbose):
   fft = fftpack.complex_to_complex_3d((3,4,5))
-  N = fft.N()
-  vc = flex.complex_double(flex.grid(N))
-  vd = flex.double(flex.grid((N[0], N[1], 2 * N[2])))
+  n = fft.n()
+  vc = flex.complex_double(flex.grid(n))
+  vd = flex.double(flex.grid((n[0], n[1], 2 * n[2])))
   for i in xrange(vc.size()):
     vc[i] = complex(2*i, 2*i+1)
   for i in xrange(vd.size()):
@@ -67,49 +67,49 @@ def test_complex_to_complex_3d(verbose):
   vdt = fft.forward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.N()
-    assert t.layout() == fft.N()
+    assert t.grid() == fft.n()
+    assert t.layout() == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
   vct = fft.backward(vc)
   vdt = fft.backward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.N()
-    assert t.layout() == fft.N()
+    assert t.grid() == fft.n()
+    assert t.layout() == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
 
 def test_real_to_complex(verbose):
   fft = fftpack.real_to_complex(6)
-  vd = flex.double(fft.Mreal())
-  vc = flex.complex_double(fft.Ncomplex())
-  for i in xrange(fft.Nreal()):
+  vd = flex.double(fft.m_real())
+  vc = flex.complex_double(fft.n_complex())
+  for i in xrange(fft.n_real()):
     vd[i] = 1.*i
-  for i in xrange(fft.Ncomplex()):
+  for i in xrange(fft.n_complex()):
     vc[i] = complex(vd[2*i], vd[2*i+1])
   vdt = fft.forward(vd)
   vct = fft.forward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.Ncomplex()
-    assert t.layout()[0] == fft.Ncomplex()
-  if (verbose): show_rseq(vd, fft.Mreal())
+    assert t.grid()[0] == fft.n_complex()
+    assert t.layout()[0] == fft.n_complex()
+  if (verbose): show_rseq(vd, fft.m_real())
   assert_complex_eq_real(vc, vd)
   vdt = fft.backward(vd)
   vct = fft.backward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.Mreal()
-    assert t.layout()[0] == fft.Nreal()
-  if (verbose): show_rseq(vd, fft.Nreal())
+    assert t.grid()[0] == fft.m_real()
+    assert t.layout()[0] == fft.n_real()
+  if (verbose): show_rseq(vd, fft.n_real())
   assert_complex_eq_real(vc, vd)
 
 def test_real_to_complex_3d(verbose):
   fft = fftpack.real_to_complex_3d((3,4,5))
-  M = fft.Mreal()
-  vd = flex.double(flex.grid(M))
-  vc = flex.complex_double(flex.grid((M[0], M[1], M[2]/2)))
+  m = fft.m_real()
+  vd = flex.double(flex.grid(m))
+  vc = flex.complex_double(flex.grid((m[0], m[1], m[2]/2)))
   assert vd.size() == 2 * vc.size()
   for i in xrange(vd.size()):
     vd[i] = i
@@ -119,17 +119,17 @@ def test_real_to_complex_3d(verbose):
   vct = fft.forward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.Ncomplex()
-    assert t.layout() == fft.Ncomplex()
-  if (verbose): show_rseq_3d(vd, fft.Mreal(), fft.Mreal())
+    assert t.grid() == fft.n_complex()
+    assert t.layout() == fft.n_complex()
+  if (verbose): show_rseq_3d(vd, fft.m_real(), fft.m_real())
   assert_complex_eq_real(vc, vd)
   vdt = fft.backward(vd)
   vct = fft.backward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.Mreal()
-    assert t.layout() == fft.Nreal()
-  if (verbose): show_rseq_3d(vd, fft.Mreal(), fft.Nreal())
+    assert t.grid() == fft.m_real()
+    assert t.layout() == fft.n_real()
+  if (verbose): show_rseq_3d(vd, fft.m_real(), fft.n_real())
   assert_complex_eq_real(vc, vd)
 
 def compare_vectors(n, m, v_in, v_tr):
@@ -153,7 +153,7 @@ def test_comprehensive_cc_1d(max_transform_size):
 def test_comprehensive_rc_1d(max_transform_size):
   for n in xrange(1,max_transform_size+1):
     fft = fftpack.real_to_complex(n)
-    m = fft.Mreal()
+    m = fft.m_real()
     v_in = flex.double()
     for i in xrange(n):
       v_in.append(random.random())
@@ -183,8 +183,8 @@ def run():
   assert fftpack.adjust_gridding_triple((13,22,34), 5) == (15,24,36)
   assert fftpack.adjust_gridding_triple((13,22,34), 5, (6,10,8)) == (18,30,40)
   f = fftpack.factorization(30, 0)
-  assert f.N() == 30
-  assert tuple(f.Factors()) == (2, 3, 5)
+  assert f.n() == 30
+  assert tuple(f.factors()) == (2, 3, 5)
   test_complex_to_complex(Flags.verbose)
   test_real_to_complex(Flags.verbose)
   test_complex_to_complex_3d(Flags.verbose)

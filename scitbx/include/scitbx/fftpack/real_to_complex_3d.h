@@ -21,31 +21,33 @@ namespace scitbx { namespace fftpack {
   /*! \brief Physical dimensions of 3-dimensional real-to-complex array
       as complex array, given generic dimensions of real array.
    */
-  /*! The real-to-complex array contains product(Ncomplex) complex
-      values, i.e. product(2*Ncomplex) real values.
+  /*! The real-to-complex array contains product(n_complex) complex
+      values, i.e. product(2*n_complex) real values.
       <p>
-      See also: Mreal_from_Nreal()
+      See also: m_real_from_n_real()
    */
   template <typename IntegerType, std::size_t D>
   inline af::tiny<IntegerType, D>
-  Ncomplex_from_Nreal(const af::tiny<IntegerType, D>& Nreal) {
-    af::tiny<IntegerType, D> result = Nreal;
-    result[D-1] = Ncomplex_from_Nreal(result[D-1]);
+  n_complex_from_n_real_(const af::tiny<IntegerType, D>& n_real)
+  {
+    af::tiny<IntegerType, D> result = n_real;
+    result[D-1] = n_complex_from_n_real(result[D-1]);
     return result;
   }
 
   /*! \brief Physical dimensions of 3-dimensional real-to-complex array
       as real array, given generic dimensions of complex array.
    */
-  /*! The real-to-complex array contains product(Ncomplex) complex
-      values, i.e. product(2*Ncomplex) real values.
+  /*! The real-to-complex array contains product(n_complex) complex
+      values, i.e. product(2*n_complex) real values.
       <p>
-      See also: Ncomplex_from_Nreal()
+      See also: n_complex_from_n_real_()
    */
   template <typename IntegerType, std::size_t D>
   inline af::tiny<IntegerType, D>
-  Nreal_from_Ncomplex(const af::tiny<IntegerType, D>& Ncomplex) {
-    af::tiny<IntegerType, D> result = Ncomplex;
+  n_real_from_n_complex(const af::tiny<IntegerType, D>& n_complex)
+  {
+    af::tiny<IntegerType, D> result = n_complex;
     result[D-1] *= 2;
     return result;
   }
@@ -53,16 +55,17 @@ namespace scitbx { namespace fftpack {
   /*! \brief Physical dimensions of 3-dimensional real-to-complex array
       as real array, given generic dimensions of real array.
    */
-  /*! The real-to-complex array contains product(Ncomplex) complex
-      values, i.e. product(2*Ncomplex) real values.
+  /*! The real-to-complex array contains product(n_complex) complex
+      values, i.e. product(2*n_complex) real values.
       <p>
-      See also: Ncomplex_from_Nreal()
+      See also: n_complex_from_n_real_()
    */
   template <typename IntegerType, std::size_t D>
   inline af::tiny<IntegerType, D>
-  Mreal_from_Nreal(const af::tiny<IntegerType, D>& Nreal) {
-    af::tiny<IntegerType, D> result = Nreal;
-    result[D-1] = Mreal_from_Nreal(result[D-1]);
+  m_real_from_n_real(const af::tiny<IntegerType, D>& n_real)
+  {
+    af::tiny<IntegerType, D> result = n_real;
+    result[D-1] = m_real_from_n_real(result[D-1]);
     return result;
   }
 
@@ -75,7 +78,7 @@ namespace scitbx { namespace fftpack {
       In this implementation, the Hermitian symmetry is exploited
       by omitting the negative half-space in the third dimension.
       I.e., the real-to-complex transformed array contains
-      only Nreal/2+1 (Nreal_to_Ncomplex()) complex values
+      only n_real/2+1 (n_real_to_n_complex()) complex values
       in the third dimension.
       <p>
       Note that sligthly more than half the data are present
@@ -97,41 +100,46 @@ namespace scitbx { namespace fftpack {
 
       //! Default constructor.
       real_to_complex_3d() {}
-      //! Initialization for transforms of lengths Nreal.
+      //! Initialization for transforms of lengths n_real.
       /*! See also: Constructors of complex_to_complex and real_to_complex.
        */
-      real_to_complex_3d(const af::int3& Nreal)
-        : m_Nreal(Nreal) {
+      real_to_complex_3d(const af::int3& n_real)
+        : n_real_(n_real)
+      {
         init();
       }
-      //! Initialization for transforms of lengths N0, N1, N2.
+      //! Initialization for transforms of lengths n0, n1, n2.
       /*! See also: Constructors of complex_to_complex and real_to_complex.
        */
-      real_to_complex_3d(std::size_t N0, std::size_t N1, std::size_t N2)
-        : m_Nreal(N0, N1, N2) {
+      real_to_complex_3d(std::size_t n0, std::size_t n1, std::size_t n2)
+        : n_real_(n0, n1, n2)
+      {
         init();
       }
       //! Generic dimensions of real array.
-      af::int3 Nreal() const { return m_Nreal; }
+      af::int3 n_real() const { return n_real_; }
       //! Physical dimensions of real-to-complex array as complex array.
-      /*! See also: Mreal(), Ncomplex_from_Nreal()
+      /*! See also: m_real(), n_complex_from_n_real_()
        */
-      af::int3 Ncomplex() const {
-        return Ncomplex_from_Nreal(m_Nreal);
+      af::int3 n_complex() const
+      {
+        return n_complex_from_n_real_(n_real_);
       }
       //! Physical dimensions of real-to-complex array as real array.
-      /*! See also: Ncomplex(), Mreal_from_Nreal()
+      /*! See also: n_complex(), m_real_from_n_real()
        */
-      af::int3 Mreal() const {
-        return Mreal_from_Nreal(m_Nreal);
+      af::int3 m_real() const
+      {
+        return m_real_from_n_real(n_real_);
       }
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex, real_to_complex
        */
       template <typename RealOrComplexMapType>
-      void forward(RealOrComplexMapType map) {
-        typedef
-        typename RealOrComplexMapType::value_type real_or_complex_type;
+      void forward(RealOrComplexMapType map)
+      {
+        typedef typename RealOrComplexMapType::value_type
+          real_or_complex_type;
         forward(map, real_or_complex_type());
       }
       //! In-place "backward" Fourier transformation.
@@ -141,20 +149,22 @@ namespace scitbx { namespace fftpack {
           See also: complex_to_complex, real_to_complex
        */
       template <typename RealOrComplexMapType>
-      void backward(RealOrComplexMapType map) {
-        typedef
-        typename RealOrComplexMapType::value_type real_or_complex_type;
+      void backward(RealOrComplexMapType map)
+      {
+        typedef typename RealOrComplexMapType::value_type
+          real_or_complex_type;
         backward(map, real_or_complex_type());
       }
     private:
       void init();
       // Cast map of complex to map of real.
       template <typename MapType>
-      void forward(MapType map, complex_type) {
+      void forward(MapType map, complex_type)
+      {
         typedef typename MapType::accessor_type accessor_type;
         af::ref<real_type, accessor_type> rmap(
           reinterpret_cast<real_type*>(map.begin()),
-          Nreal_from_Ncomplex(map.accessor()));
+          n_real_from_n_complex(map.accessor()));
         forward(rmap, real_type());
       }
       // Core routine always works on real maps.
@@ -163,49 +173,50 @@ namespace scitbx { namespace fftpack {
   // FUTURE: move out of class body
   {
     // TODO: avoid i, i+1 by casting to complex
-    real_type* Seq = &(*(m_Seq.begin()));
-    for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
-      for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
+    real_type* seq = &(*(seq_.begin()));
+    for (std::size_t ix = 0; ix < n_real_[0]; ix++) {
+      for (std::size_t iy = 0; iy < n_real_[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.forward(&map(ix, iy, 0));
+        fft1d_z_.forward(&map(ix, iy, 0));
       }
-      for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
+      for (std::size_t iz = 0; iz < fft1d_z_.n_complex(); iz++) {
         std::size_t iy;
-        for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Seq[2*iy] = map(ix, iy, 2*iz);
-          Seq[2*iy+1] = map(ix, iy, 2*iz+1);
+        for (iy = 0; iy < n_real_[1]; iy++) {
+          seq[2*iy] = map(ix, iy, 2*iz);
+          seq[2*iy+1] = map(ix, iy, 2*iz+1);
         }
         // Transform along y (medium direction)
-        m_fft1d_y.transform(select_sign<forward_tag>(), Seq);
-        for (iy = 0; iy < m_Nreal[1]; iy++) {
-          map(ix, iy, 2*iz) = Seq[2*iy];
-          map(ix, iy, 2*iz+1) = Seq[2*iy+1];
+        fft1d_y_.transform(select_sign<forward_tag>(), seq);
+        for (iy = 0; iy < n_real_[1]; iy++) {
+          map(ix, iy, 2*iz) = seq[2*iy];
+          map(ix, iy, 2*iz+1) = seq[2*iy+1];
         }
       }
     }
-    for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
-      for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
+    for (std::size_t iy = 0; iy < n_real_[1]; iy++) {
+      for (std::size_t iz = 0; iz < fft1d_z_.n_complex(); iz++) {
         std::size_t ix;
-        for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Seq[2*ix] = map(ix, iy, 2*iz);
-          Seq[2*ix+1] = map(ix, iy, 2*iz+1);
+        for (ix = 0; ix < n_real_[0]; ix++) {
+          seq[2*ix] = map(ix, iy, 2*iz);
+          seq[2*ix+1] = map(ix, iy, 2*iz+1);
         }
         // Transform along x (slow direction)
-        m_fft1d_x.transform(select_sign<forward_tag>(), Seq);
-        for (ix = 0; ix < m_Nreal[0]; ix++) {
-          map(ix, iy, 2*iz) = Seq[2*ix];
-          map(ix, iy, 2*iz+1) = Seq[2*ix+1];
+        fft1d_x_.transform(select_sign<forward_tag>(), seq);
+        for (ix = 0; ix < n_real_[0]; ix++) {
+          map(ix, iy, 2*iz) = seq[2*ix];
+          map(ix, iy, 2*iz+1) = seq[2*ix+1];
         }
       }
     }
   }
       // Cast map of complex to map of real.
       template <typename MapType>
-      void backward(MapType map, complex_type) {
+      void backward(MapType map, complex_type)
+      {
         typedef typename MapType::accessor_type accessor_type;
         af::ref<real_type, accessor_type> rmap(
           reinterpret_cast<real_type*>(map.begin()),
-          Nreal_from_Ncomplex(map.accessor()));
+          n_real_from_n_complex(map.accessor()));
         backward(rmap, real_type());
       }
       // Core routine always works on real maps.
@@ -214,57 +225,57 @@ namespace scitbx { namespace fftpack {
   // FUTURE: move out of class body
   {
     // TODO: avoid i, i+1 by casting to complex
-    real_type* Seq = &(*(m_Seq.begin()));
-    for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
-      for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
+    real_type* seq = &(*(seq_.begin()));
+    for (std::size_t iz = 0; iz < fft1d_z_.n_complex(); iz++) {
+      for (std::size_t iy = 0; iy < n_real_[1]; iy++) {
         std::size_t ix;
-        for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Seq[2*ix] = map(ix, iy, 2*iz);
-          Seq[2*ix+1] = map(ix, iy, 2*iz+1);
+        for (ix = 0; ix < n_real_[0]; ix++) {
+          seq[2*ix] = map(ix, iy, 2*iz);
+          seq[2*ix+1] = map(ix, iy, 2*iz+1);
         }
         // Transform along x (slow direction)
-        m_fft1d_x.transform(select_sign<backward_tag>(), Seq);
-        for (ix = 0; ix < m_Nreal[0]; ix++) {
-          map(ix, iy, 2*iz) = Seq[2*ix];
-          map(ix, iy, 2*iz+1) = Seq[2*ix+1];
+        fft1d_x_.transform(select_sign<backward_tag>(), seq);
+        for (ix = 0; ix < n_real_[0]; ix++) {
+          map(ix, iy, 2*iz) = seq[2*ix];
+          map(ix, iy, 2*iz+1) = seq[2*ix+1];
         }
       }
-      for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
+      for (std::size_t ix = 0; ix < n_real_[0]; ix++) {
         std::size_t iy;
-        for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Seq[2*iy] = map(ix, iy, 2*iz);
-          Seq[2*iy+1] = map(ix, iy, 2*iz+1);
+        for (iy = 0; iy < n_real_[1]; iy++) {
+          seq[2*iy] = map(ix, iy, 2*iz);
+          seq[2*iy+1] = map(ix, iy, 2*iz+1);
         }
         // Transform along y (medium direction)
-        m_fft1d_y.transform(select_sign<backward_tag>(), Seq);
-        for (iy = 0; iy < m_Nreal[1]; iy++) {
-          map(ix, iy, 2*iz) = Seq[2*iy];
-          map(ix, iy, 2*iz+1) = Seq[2*iy+1];
+        fft1d_y_.transform(select_sign<backward_tag>(), seq);
+        for (iy = 0; iy < n_real_[1]; iy++) {
+          map(ix, iy, 2*iz) = seq[2*iy];
+          map(ix, iy, 2*iz+1) = seq[2*iy+1];
         }
       }
     }
-    for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
-      for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
+    for (std::size_t ix = 0; ix < n_real_[0]; ix++) {
+      for (std::size_t iy = 0; iy < n_real_[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.backward(&map(ix, iy, 0));
+        fft1d_z_.backward(&map(ix, iy, 0));
       }
     }
   }
     private:
-      af::int3 m_Nreal;
-      complex_to_complex<real_type, complex_type> m_fft1d_x;
-      complex_to_complex<real_type, complex_type> m_fft1d_y;
-      real_to_complex<real_type, complex_type>    m_fft1d_z;
-      af::shared<real_type> m_Seq;
+      af::int3 n_real_;
+      complex_to_complex<real_type, complex_type> fft1d_x_;
+      complex_to_complex<real_type, complex_type> fft1d_y_;
+      real_to_complex<real_type, complex_type>    fft1d_z_;
+      af::shared<real_type> seq_;
   };
 
   template <typename RealType, typename ComplexType>
   void real_to_complex_3d<RealType, ComplexType>::init()
   {
-    m_fft1d_x = complex_to_complex<real_type, complex_type>(m_Nreal[0]);
-    m_fft1d_y = complex_to_complex<real_type, complex_type>(m_Nreal[1]);
-    m_fft1d_z = real_to_complex<real_type, complex_type>(m_Nreal[2]);
-    m_Seq.resize(2 * af::max(Ncomplex_from_Nreal(m_Nreal)));
+    fft1d_x_ = complex_to_complex<real_type, complex_type>(n_real_[0]);
+    fft1d_y_ = complex_to_complex<real_type, complex_type>(n_real_[1]);
+    fft1d_z_ = real_to_complex<real_type, complex_type>(n_real_[2]);
+    seq_.resize(2 * af::max(n_complex_from_n_real_(n_real_)));
   }
 
 }} // namespace scitbx::fftpack

@@ -23,23 +23,25 @@ namespace scitbx { namespace fftpack {
   /*! \brief Length of a real-to-complex sequence given
       length of the real sequence.
    */
-  /*! Ncomplex = Nreal / 2 + 1. I.e., for even Nreal, the
+  /*! n_complex = n_real / 2 + 1. I.e., for even n_real, the
       real-to-complex transformed sequence viewed as
       consecutive real numbers (real and imaginary parts)
       contains two additional slots for the given
-      floating-point type. For odd Nreal, the complex
+      floating-point type. For odd n_real, the complex
       sequence contains one additional slot.
    */
-  inline std::size_t Ncomplex_from_Nreal(std::size_t Nreal) {
-    return Nreal/2+1;
+  inline std::size_t n_complex_from_n_real(std::size_t n_real)
+  {
+    return n_real/2+1;
   }
   /*! \brief Minimum array dimension for a real-to-complex sequence
       as number of real values, given length of the real sequence.
    */
-  /*! Equivalent to 2 * Ncomplex_from_Nreal(Nreal).
+  /*! Equivalent to 2 * n_complex_from_n_real(n_real).
    */
-  inline std::size_t Mreal_from_Nreal(std::size_t Nreal) {
-    return 2 * Ncomplex_from_Nreal(Nreal);
+  inline std::size_t m_real_from_n_real(std::size_t n_real)
+  {
+    return 2 * n_complex_from_n_real(n_real);
   }
 
   //! Real-to-complex Fast Fourier Transformation.
@@ -57,35 +59,36 @@ namespace scitbx { namespace fftpack {
 
       //! Default constructor.
       real_to_complex() : factorization() {}
-      //! Initialization for transforms of length Nreal.
-      /*! This constructor determines the factorization of Nreal,
+      //! Initialization for transforms of length n_real.
+      /*! This constructor determines the factorization of n_real,
           pre-computes some constants, determines the
           "twiddle factors" needed in the transformation
-          (Nreal RealType values), and allocates scratch space
-          (Nreal RealType values).
+          (n_real RealType values), and allocates scratch space
+          (n_real RealType values).
        */
-      real_to_complex(std::size_t Nreal);
+      real_to_complex(std::size_t n_real);
       //! Length of real sequence.
-      /*! See also: Ncomplex_from_Nreal()
+      /*! See also: n_complex_from_n_real()
        */
-      std::size_t Nreal() { return m_N; }
+      std::size_t n_real() { return n_; }
       //! Length of complex sequence.
-      /*! See also: Ncomplex_from_Nreal()
+      /*! See also: n_complex_from_n_real()
        */
-      std::size_t Ncomplex() { return m_Ncomplex; }
+      std::size_t n_complex() { return n_complex_; }
       /*! \brief Minimum array dimension for a real-to-complex sequence
           as number of real values.
        */
-      /*! See also: Mreal_from_Nreal()
+      /*! See also: m_real_from_n_real()
        */
-      std::size_t Mreal() { return 2 * m_Ncomplex; }
-      //! Access to the Nreal() pre-computed "twiddle factors."
-      af::shared<real_type> WA() const {
-        return m_WA;
+      std::size_t m_real() { return 2 * n_complex_; }
+      //! Access to the n_real() pre-computed "twiddle factors."
+      af::shared<real_type> wa() const
+      {
+        return WA_;
       }
 
       /*! \brief In-place "forward" Fourier transformation of a
-          sequence of Nreal() real numbers to Ncomplex()
+          sequence of n_real() real numbers to n_complex()
           complex numbers.
        */
       /*! For the forward transformation, the sign in the exponent
@@ -94,11 +97,12 @@ namespace scitbx { namespace fftpack {
           See also: class details.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void forward(ComplexOrRealIterOrPtrType Seq_begin) {
-        forward_adaptor(&(*Seq_begin));
+      void forward(ComplexOrRealIterOrPtrType seq_begin)
+      {
+        forward_adaptor(&(*seq_begin));
       }
       /*! \brief In-place "backward" Fourier transformation of a sequence
-          of Ncomplex() complex numbers to Nreal() real numbers.
+          of n_complex() complex numbers to n_real() real numbers.
        */
       /*! For the backward transform, the sign in the exponent
           is "+". See also class complex_to_complex.
@@ -106,19 +110,20 @@ namespace scitbx { namespace fftpack {
           See also: class details.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void backward(ComplexOrRealIterOrPtrType Seq_begin) {
-        backward_adaptor(&(*Seq_begin));
+      void backward(ComplexOrRealIterOrPtrType seq_begin)
+      {
+        backward_adaptor(&(*seq_begin));
       }
     private:
-      std::size_t m_Ncomplex;
-      af::shared<real_type> m_WA;
-      af::shared<real_type> m_CH;
-      void forward_adaptor(complex_type* Seq_begin);
-      void forward_adaptor(real_type* Seq_begin);
-      void backward_adaptor(complex_type* Seq_begin);
-      void backward_adaptor(real_type* Seq_begin);
-      void forward_compressed(real_type* Seq_begin);
-      void backward_compressed(real_type* Seq_begin);
+      std::size_t n_complex_;
+      af::shared<real_type> WA_;
+      af::shared<real_type> CH_;
+      void forward_adaptor(complex_type* seq_begin);
+      void forward_adaptor(real_type* seq_begin);
+      void backward_adaptor(complex_type* seq_begin);
+      void backward_adaptor(real_type* seq_begin);
+      void forward_compressed(real_type* seq_begin);
+      void backward_compressed(real_type* seq_begin);
       void passf2(std::size_t IDO,
                   std::size_t L1,
                   real_type* CC_start,
@@ -195,25 +200,25 @@ namespace scitbx { namespace fftpack {
 
   template <typename RealType, typename ComplexType>
   real_to_complex<RealType,
-                  ComplexType>::real_to_complex(std::size_t Nreal)
-    : factorization(Nreal, true), m_WA(Nreal), m_CH(Nreal),
-      m_Ncomplex(Ncomplex_from_Nreal(Nreal))
+                  ComplexType>::real_to_complex(std::size_t n_real)
+    : factorization(n_real, true), WA_(n_real), CH_(n_real),
+      n_complex_(n_complex_from_n_real(n_real))
   {
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/rffti1.f.
-    if (m_N < 2) return;
-    real_type* WA = &(*(m_WA.begin()));
+    if (n_ < 2) return;
+    real_type* WA = &(*(WA_.begin()));
     const real_type TPI = real_type(8) * std::atan(real_type(1));
-    real_type ARGH = TPI / real_type(m_N);
+    real_type ARGH = TPI / real_type(n_);
     std::size_t IS = 0;
-    std::size_t NFM1 = m_Factors.size()-1;
+    std::size_t NFM1 = factors_.size()-1;
     std::size_t L1 = 1;
     if (NFM1 == 0) return;
     for (std::size_t K1 = 0; K1 < NFM1; K1++) {
-      std::size_t IP = m_Factors[K1];
+      std::size_t IP = factors_[K1];
       std::size_t LD = 0;
       std::size_t L2 = L1*IP;
-      std::size_t IDO = m_N/L2;
+      std::size_t IDO = n_/L2;
       std::size_t IPM = IP-1;
       for (std::size_t J = 1; J <= IPM; J++) {
         LD = LD+L1;
@@ -239,7 +244,7 @@ namespace scitbx { namespace fftpack {
      observation that the imaginary part of the first
      complex number in the sequence is always zero, and
      the imaginary part of the last complex number in the
-     sequence is also zero if Nreal() is even. FFTPACK
+     sequence is also zero if n_real() is even. FFTPACK
      removes these zeros, and therefore the number of RealType
      slots in the real and the corresonding transformed
      (complex) sequence are identical.
@@ -253,50 +258,52 @@ namespace scitbx { namespace fftpack {
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::forward_adaptor(complex_type* Seq_begin) {
-    forward_adaptor(reinterpret_cast<real_type*>(Seq_begin));
+                  ComplexType>::forward_adaptor(complex_type* seq_begin)
+  {
+    forward_adaptor(reinterpret_cast<real_type*>(seq_begin));
   }
 
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::forward_adaptor(real_type* Seq_begin)
+                  ComplexType>::forward_adaptor(real_type* seq_begin)
   {
-    forward_compressed(Seq_begin);
+    forward_compressed(seq_begin);
     // The imaginary part of the first coefficient is always zero.
     // FFTPACK uses this knowledge to conserve space: the sequence
     // of floating point numbers is shifted down one real-sized slot.
     // Here the shift is undone.
-    std::copy_backward(Seq_begin + 1, Seq_begin + m_N, Seq_begin + m_N + 1);
+    std::copy_backward(seq_begin + 1, seq_begin + n_, seq_begin + n_ + 1);
     // Insert the trivial imaginary part.
-    Seq_begin[1] = real_type(0);
+    seq_begin[1] = real_type(0);
     // If the transform length is even, the imaginary part of the
     // last complex number in the sequence is also always zero.
     // FFTPACK does not set this imaginary part. It is done here
     // instead.
-    if (m_N % 2 == 0) {
-      Seq_begin[m_N + 1] = real_type(0);
+    if (n_ % 2 == 0) {
+      seq_begin[n_ + 1] = real_type(0);
     }
   }
 
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::backward_adaptor(complex_type* Seq_begin) {
-    backward_adaptor(reinterpret_cast<real_type*>(Seq_begin));
+                  ComplexType>::backward_adaptor(complex_type* seq_begin)
+  {
+    backward_adaptor(reinterpret_cast<real_type*>(seq_begin));
   }
 
   template <typename RealType, typename ComplexType>
   void
   real_to_complex<RealType,
-                  ComplexType>::backward_adaptor(real_type* Seq_begin)
+                  ComplexType>::backward_adaptor(real_type* seq_begin)
   {
     // The imaginary part of the first coefficient is always zero.
     // FFTPACK uses this knowledge to conserve space: the sequence
     // of floating point numbers is shifted down one real-sized slot.
     // Here the shift is applied before calling the core transform.
-    std::copy(Seq_begin + 2, Seq_begin + 2 * m_Ncomplex, Seq_begin + 1);
-    backward_compressed(Seq_begin);
+    std::copy(seq_begin + 2, seq_begin + 2 * n_complex_, seq_begin + 1);
+    backward_compressed(seq_begin);
   }
 
 }} // namespace scitbx::fftpack

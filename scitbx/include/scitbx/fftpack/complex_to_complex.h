@@ -86,42 +86,52 @@ namespace fftpack {
 
   // FUTURE: use partial specialiation
   template <>
-  struct select_sign<forward_tag> {
+  struct select_sign<forward_tag>
+  {
     template <class FloatType>
-    static FloatType plusminus(const FloatType&a, const FloatType& b) {
+    static FloatType plusminus(const FloatType&a, const FloatType& b)
+    {
       return a + b;
     }
     template <class FloatType>
-    static FloatType minusplus(const FloatType&a, const FloatType& b) {
+    static FloatType minusplus(const FloatType&a, const FloatType& b)
+    {
       return a - b;
     }
     template <class FloatType>
-    static FloatType unaryplusminus(const FloatType&a) {
+    static FloatType unaryplusminus(const FloatType&a)
+    {
       return a;
     }
     template <class FloatType>
-    static FloatType unaryminusplus(const FloatType&a) {
+    static FloatType unaryminusplus(const FloatType&a)
+    {
       return -a;
     }
   };
 
   // FUTURE: use partial specialiation
   template <>
-  struct select_sign<backward_tag> {
+  struct select_sign<backward_tag>
+  {
     template <class FloatType>
-    static FloatType plusminus(const FloatType&a, const FloatType& b) {
+    static FloatType plusminus(const FloatType&a, const FloatType& b)
+    {
       return a - b;
     }
     template <class FloatType>
-    static FloatType minusplus(const FloatType&a, const FloatType& b) {
+    static FloatType minusplus(const FloatType&a, const FloatType& b)
+    {
       return a + b;
     }
     template <class FloatType>
-    static FloatType unaryplusminus(const FloatType&a) {
+    static FloatType unaryplusminus(const FloatType&a)
+    {
       return -a;
     }
     template <class FloatType>
-    static FloatType unaryminusplus(const FloatType&a) {
+    static FloatType unaryminusplus(const FloatType&a)
+    {
       return a;
     }
   };
@@ -143,74 +153,78 @@ namespace fftpack {
 
       //! Default constructor.
       complex_to_complex() : factorization() {}
-      //! Initialization for transforms of length N.
-      /*! This constructor determines the factorization of N,
+      //! Initialization for transforms of length n.
+      /*! This constructor determines the factorization of n,
           pre-computes some constants, determines the
           "twiddle factors" needed in the transformation
-          (N complex values), and allocates scratch space
-          (N complex values).
+          (n complex values), and allocates scratch space
+          (n complex values).
        */
-      complex_to_complex(std::size_t N);
+      complex_to_complex(std::size_t n);
       //! Access to the pre-computed "twiddle factors."
-      af::shared<real_type> WA() const {
-        return m_WA;
+      af::shared<real_type> wa() const
+      {
+        return WA_;
       }
 
       /*! \brief In-place "forward" Fourier transformation of a
-          sequence of length N().
+          sequence of length n().
        */
       /*! Equivalent to, but much faster than the following Python code:<pre>
-          for i in range(N):
+          for i in range(n):
             Sum = 0
-            for k in range(N):
-              Sum += Seq_in[k] * exp(-2*pi*1j*i*k/N)
+            for k in range(n):
+              Sum += Seq_in[k] * exp(-2*pi*1j*i*k/n)
             Seq_out.append(Sum)
           </pre>
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void forward(ComplexOrRealIterOrPtrType Seq_begin) {
-        transform(select_sign<forward_tag>(), &(*Seq_begin));
+      void forward(ComplexOrRealIterOrPtrType seq_begin)
+      {
+        transform(select_sign<forward_tag>(), &(*seq_begin));
       }
       /*! \brief In-place "backward" Fourier transformation of a
-          sequence of length N().
+          sequence of length n().
        */
       /*! Equivalent to, but much faster than the following Python code:<pre>
-          for i in range(N):
+          for i in range(n):
             Sum = 0
-            for k in range(N):
-              Sum += Seq_in[k] * exp(+2*pi*1j*i*k/N)
+            for k in range(n):
+              Sum += Seq_in[k] * exp(+2*pi*1j*i*k/n)
             Seq_out.append(Sum)
           </pre>
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void backward(ComplexOrRealIterOrPtrType Seq_begin) {
-        transform(select_sign<backward_tag>(), &(*Seq_begin));
+      void backward(ComplexOrRealIterOrPtrType seq_begin)
+      {
+        transform(select_sign<backward_tag>(), &(*seq_begin));
       }
 
       //! Generic in-place Fourier transformation of a contiguous sequence.
       template <typename Tag>
-      void transform(select_sign<Tag> tag, complex_type* Seq_begin) {
-        transform(tag, reinterpret_cast<real_type*>(Seq_begin));
+      void transform(select_sign<Tag> tag, complex_type* seq_begin)
+      {
+        transform(tag, reinterpret_cast<real_type*>(seq_begin));
       }
 
       //! Generic in-place Fourier transformation of a contiguous sequence.
       template <typename Tag>
-      void transform(select_sign<Tag> tag, real_type* Seq_begin)
+      void transform(select_sign<Tag> tag, real_type* seq_begin)
   // FUTURE: move out of class body
   {
-    if (m_N < 2) return;
-    real_type* C = Seq_begin;
-    real_type* CH = &(*(m_CH.begin()));
-    const real_type* WA = &(*(m_WA.begin()));
+    if (n_ < 2) return;
+    real_type* C = seq_begin;
+    real_type* CH = &(*(CH_.begin()));
+    const real_type* WA = &(*(WA_.begin()));
     bool NA = false;
     std::size_t L1 = 1;
     std::size_t IW = 0;
-    for (std::size_t K1 = 0; K1 < m_Factors.size(); K1++) {
-      std::size_t IP = m_Factors[K1];
+    for (std::size_t K1 = 0; K1 < factors_.size(); K1++) {
+      std::size_t IP = factors_[K1];
       std::size_t L2 = IP*L1;
-      std::size_t IDO = m_N/L2;
+      std::size_t IDO = n_/L2;
       std::size_t IDOT = IDO+IDO;
       std::size_t IDL1 = IDOT*L1;
       if (IP == 4) {
@@ -269,25 +283,27 @@ namespace fftpack {
       IW = IW+(IP-1)*IDOT;
     }
     if (NA) {
-      std::copy(CH, CH + 2 * m_N, Seq_begin);
+      std::copy(CH, CH + 2 * n_, seq_begin);
     }
   }
     private:
       // Constants.
-      real_type m_TwoPi;
-      real_type m_OneHalf;
-      real_type m_cos30;
-      real_type m_sin18;
-      real_type m_cos18;
-      real_type m_sin36;
-      real_type m_cos36;
-      static real_type deg_as_rad(const real_type& phi) {
+      real_type two_pi_;
+      real_type one_half_;
+      real_type cos30_;
+      real_type sin18_;
+      real_type cos18_;
+      real_type sin36_;
+      real_type cos36_;
+
+      static real_type deg_as_rad(const real_type& phi)
+      {
         return phi * std::atan(real_type(1)) / real_type(45);
       }
 
       // Scratch space.
-      af::shared<real_type> m_WA;
-      af::shared<real_type> m_CH;
+      af::shared<real_type> WA_;
+      af::shared<real_type> CH_;
 
       // Codelets for prime factors 2,3,4,5 and a general transform.
 
@@ -337,13 +353,13 @@ namespace fftpack {
   {
     dim3 CC(CC_begin, IDO, 3, L1);
     dim3 CH(CH_begin, IDO, L1, 3);
-    real_type TAUI = select_sign<Tag>::unaryminusplus(m_cos30);
+    real_type TAUI = select_sign<Tag>::unaryminusplus(cos30_);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
         real_type TR2 = CC(0,1,K) + CC(0,2,K);
         real_type TI2 = CC(1,1,K) + CC(1,2,K);
-        real_type CR2 = CC(0,0,K) - m_OneHalf * TR2;
-        real_type CI2 = CC(1,0,K) - m_OneHalf * TI2;
+        real_type CR2 = CC(0,0,K) - one_half_ * TR2;
+        real_type CI2 = CC(1,0,K) - one_half_ * TI2;
         real_type CR3 = TAUI * (CC(0,1,K) - CC(0,2,K));
         real_type CI3 = TAUI * (CC(1,1,K) - CC(1,2,K));
         CH(0,K,0) = CC(0,0,K) + TR2;
@@ -360,8 +376,8 @@ namespace fftpack {
           std::size_t I1 = I0 + 1;
           real_type TR2 = CC(I0,1,K) + CC(I0,2,K);
           real_type TI2 = CC(I1,1,K) + CC(I1,2,K);
-          real_type CR2 = CC(I0,0,K) - m_OneHalf * TR2;
-          real_type CI2 = CC(I1,0,K) - m_OneHalf * TI2;
+          real_type CR2 = CC(I0,0,K) - one_half_ * TR2;
+          real_type CI2 = CC(I1,0,K) - one_half_ * TI2;
           real_type CR3 = TAUI * (CC(I0,1,K) - CC(I0,2,K));
           real_type CI3 = TAUI * (CC(I1,1,K) - CC(I1,2,K));
           real_type DR2 = CR2 - CI3;
@@ -461,8 +477,8 @@ namespace fftpack {
   {
     dim3 CC(CC_begin, IDO, 5, L1);
     dim3 CH(CH_begin, IDO, L1, 5);
-    real_type TI11 = select_sign<Tag>::unaryminusplus(m_cos18);
-    real_type TI12 = select_sign<Tag>::unaryminusplus(m_sin36);
+    real_type TI11 = select_sign<Tag>::unaryminusplus(cos18_);
+    real_type TI12 = select_sign<Tag>::unaryminusplus(sin36_);
     if (IDO == 2) {
       for (std::size_t K = 0; K < L1; K++) {
         real_type TR2 = CC(0,1,K)+CC(0,4,K);
@@ -473,10 +489,10 @@ namespace fftpack {
         real_type TI4 = CC(1,2,K)-CC(1,3,K);
         real_type TR5 = CC(0,1,K)-CC(0,4,K);
         real_type TI5 = CC(1,1,K)-CC(1,4,K);
-        real_type CR2 = CC(0,0,K)+m_sin18*TR2-m_cos36*TR3;
-        real_type CI2 = CC(1,0,K)+m_sin18*TI2-m_cos36*TI3;
-        real_type CR3 = CC(0,0,K)-m_cos36*TR2+m_sin18*TR3;
-        real_type CI3 = CC(1,0,K)-m_cos36*TI2+m_sin18*TI3;
+        real_type CR2 = CC(0,0,K)+sin18_*TR2-cos36_*TR3;
+        real_type CI2 = CC(1,0,K)+sin18_*TI2-cos36_*TI3;
+        real_type CR3 = CC(0,0,K)-cos36_*TR2+sin18_*TR3;
+        real_type CI3 = CC(1,0,K)-cos36_*TI2+sin18_*TI3;
         real_type CR5 = TI11*TR5+TI12*TR4;
         real_type CI5 = TI11*TI5+TI12*TI4;
         real_type CR4 = TI12*TR5-TI11*TR4;
@@ -505,10 +521,10 @@ namespace fftpack {
           real_type TI4 = CC(I1,2,K)-CC(I1,3,K);
           real_type TR5 = CC(I0,1,K)-CC(I0,4,K);
           real_type TI5 = CC(I1,1,K)-CC(I1,4,K);
-          real_type CR2 = CC(I0,0,K)+m_sin18*TR2-m_cos36*TR3;
-          real_type CI2 = CC(I1,0,K)+m_sin18*TI2-m_cos36*TI3;
-          real_type CR3 = CC(I0,0,K)-m_cos36*TR2+m_sin18*TR3;
-          real_type CI3 = CC(I1,0,K)-m_cos36*TI2+m_sin18*TI3;
+          real_type CR2 = CC(I0,0,K)+sin18_*TR2-cos36_*TR3;
+          real_type CI2 = CC(I1,0,K)+sin18_*TI2-cos36_*TI3;
+          real_type CR3 = CC(I0,0,K)-cos36_*TR2+sin18_*TR3;
+          real_type CI3 = CC(I1,0,K)-cos36_*TI2+sin18_*TI3;
           real_type CR4 = TI12*TR5-TI11*TR4;
           real_type CI4 = TI12*TI5-TI11*TI4;
           real_type CR5 = TI11*TR5+TI12*TR4;
@@ -678,29 +694,29 @@ namespace fftpack {
 
   template <typename RealType,
             typename ComplexType>
-  complex_to_complex<RealType, ComplexType>::complex_to_complex(std::size_t N)
-    : factorization(N, false), m_WA(2 * N), m_CH(2 * N)
+  complex_to_complex<RealType, ComplexType>::complex_to_complex(std::size_t n)
+    : factorization(n, false), WA_(2 * n), CH_(2 * n)
   {
-    if (m_N < 2) return;
+    if (n_ < 2) return;
     // Precompute constants for real_type.
-    m_TwoPi = real_type(8) * std::atan(real_type(1));
-    m_OneHalf = real_type(1) / real_type(2);
-    m_cos30 = std::cos(deg_as_rad(30));
-    m_sin18 = std::sin(deg_as_rad(18));
-    m_cos18 = std::cos(deg_as_rad(18));
-    m_sin36 = std::sin(deg_as_rad(36));
-    m_cos36 = std::cos(deg_as_rad(36));
+    two_pi_ = real_type(8) * std::atan(real_type(1));
+    one_half_ = real_type(1) / real_type(2);
+    cos30_ = std::cos(deg_as_rad(30));
+    sin18_ = std::sin(deg_as_rad(18));
+    cos18_ = std::cos(deg_as_rad(18));
+    sin36_ = std::sin(deg_as_rad(36));
+    cos36_ = std::cos(deg_as_rad(36));
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/cffti1.f.
-    real_type* WA = &(*(m_WA.begin()));
-    real_type ARGH = m_TwoPi / real_type(m_N);
+    real_type* WA = &(*(WA_.begin()));
+    real_type ARGH = two_pi_ / real_type(n_);
     std::size_t I = 0;
     std::size_t L1 = 1;
-    for (std::size_t K1 = 0; K1 < m_Factors.size(); K1++) {
-      std::size_t IP = m_Factors[K1];
+    for (std::size_t K1 = 0; K1 < factors_.size(); K1++) {
+      std::size_t IP = factors_[K1];
       std::size_t LD = 0;
       std::size_t L2 = L1 * IP;
-      std::size_t IDOT = 2 * (m_N / L2) + 2;
+      std::size_t IDOT = 2 * (n_ / L2) + 2;
       for (std::size_t J = 0; J < IP - 1; J++) {
         std::size_t I1 = I;
         WA[I  ] = real_type(1);
