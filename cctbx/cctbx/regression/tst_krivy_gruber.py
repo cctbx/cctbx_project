@@ -6,6 +6,7 @@ from cctbx import sgtbx
 from cctbx import matrix
 from scitbx.python_utils.misc import time_log
 from scitbx.test_utils import approx_equal
+import math
 import random
 import sys
 
@@ -136,6 +137,9 @@ def exercise_bravais_plus():
       reduce(sgi.any_compatible_unit_cell(volume=100).change_basis(
         r_inv.num(),r_inv.den()))
 
+def cos_deg(x):
+  return math.cos(x*math.pi/180)
+
 def exercise_grid(quick=00000, verbose=0):
   if (quick):
     sample_lengths = (10,)
@@ -150,8 +154,18 @@ def exercise_grid(quick=00000, verbose=0):
         for alpha in sample_angles:
           for beta in sample_angles:
             for gamma in sample_angles:
+              a_b = a*b*cos_deg(gamma)
+              a_c = a*c*cos_deg(beta)
+              b_c = b*c*cos_deg(alpha)
+              g = matrix.sqr((a*a,a_b,a_c,
+                              a_b,b*b,b_c,
+                              a_c,b_c,c*c))
+              det_g = g.determinant()
               try: unit_cell = uctbx.unit_cell((a,b,c,alpha,beta,gamma))
-              except: continue
+              except:
+                assert det_g <= 1.e-5
+                continue
+              assert abs(det_g-unit_cell.volume()**2) < 1.e-5
               if (unit_cell.volume() < a*b*c/1000): continue
               n_trials += 1
               reduce(unit_cell)
