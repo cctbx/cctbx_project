@@ -49,11 +49,11 @@ namespace sgtbx {
       <p>
       Bricks for 530 conventional settings (see class
       SpaceGroupSymbols) and an additional 223 primitive settings of
-      centred space groups have been computed with sginfo2 and were
+      centred space groups were computed with sginfo2 and were
       formatted as a table for C++ with a Python script. Currently, the
       algorithm for computing the bricks is not available in the
       %cctbx. However, given the large number of tabulated bricks,
-      this should rarely be noticeable.
+      this should hardly ever be noticeable.
       <p>
       The bricks minimize the memory that has to be allocated for
       storing a part of a map (e.g. an electron density map) that
@@ -69,14 +69,14 @@ namespace sgtbx {
       outside.
       <p>
       Unfortunately, this simple algorithm does not necessarily lead to
-      a contigous asymmetric unit. If this could be achieved, it would
+      a contiguous asymmetric unit. If this could be achieved, it would
       not be necessary to allocate an entire 3-dimensional map of
       flags, but a 2-dimensional grid could be used. Each point in the
       2-dimensional grid would contain the indices of the first and the
       last grid point in the third dimension that is inside the
       asymmetric unit. Attempts to devise an algorithm that produces
       bricks with contiguous asymmetric units have not been successful.
-      Ideas are very welcome. Unit then, the bricks provided by this
+      Ideas are very welcome. Until then, the bricks provided by this
       class are the best solution available.
    */
   class Brick {
