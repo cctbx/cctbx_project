@@ -147,6 +147,11 @@ def exercise_generate_r_free_flags():
       flag_distances = isel[1:] - isel[:-1]
       assert flex.min(flag_distances) > 0
       assert flex.max(flag_distances) <= 20
+      flags = trial_set.generate_r_free_flags(max_free=10)
+      if (not anomalous_flag):
+        assert flags.data().count(True) == 10
+      else:
+        assert 10 <= flags.data().count(True) <= 20
 
 def exercise_binner():
   crystal_symmetry = crystal.symmetry(

@@ -516,10 +516,9 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
-  def generate_r_free_flags(self, fraction=0.1):
+  def generate_r_free_flags(self, fraction=0.1, max_free=2000):
     assert fraction > 0 and fraction < 0.5
-    group_size = 1/fraction
-    assert group_size >= 2
+    assert max_free is None or max_free > 0
     if (self.anomalous_flag()):
       matches = self.match_bijvoet_mates()[1]
       sel_pp = matches.pairs_hemisphere_selection("+")
@@ -531,6 +530,10 @@ class set(crystal.symmetry):
     else:
       assert self.is_unique_set_under_symmetry()
       n = self.indices().size()
+    if (max_free is not None):
+      fraction = min(fraction, max_free/max(1,n))
+    group_size = 1/fraction
+    assert group_size >= 2
     result = flex.bool(n, False)
     i_start = 0
     for i_group in count(1):
