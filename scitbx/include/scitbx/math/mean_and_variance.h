@@ -64,7 +64,7 @@ namespace scitbx { namespace math {
       }
 
       FloatType
-      variance() const
+      gsl_variance() const
       {
         SCITBX_ASSERT(fn::pow2(sum_weights_) > sum_weights_sq_);
         return sum_weights_ / (fn::pow2(sum_weights_) - sum_weights_sq_)
@@ -72,7 +72,32 @@ namespace scitbx { namespace math {
       }
 
       FloatType
-      standard_deviation() const { return std::sqrt(variance()); }
+      gsl_standard_deviation() const { return std::sqrt(gsl_variance()); }
+
+      FloatType
+      cumulative_variance() const
+      {
+        SCITBX_ASSERT(sum_weights_ > 0);
+        return 1 / sum_weights_;
+      }
+
+      FloatType
+      cumulative_standard_deviation() const
+      {
+        return std::sqrt(cumulative_variance());
+      }
+
+      FloatType
+      conservative_variance() const
+      {
+        return std::max(gsl_variance(), cumulative_variance());
+      }
+
+      FloatType
+      conservative_standard_deviation() const
+      {
+        return std::sqrt(conservative_variance());
+      }
 
       FloatType
       sum_weights() const { return sum_weights_; }
