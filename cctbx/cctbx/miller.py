@@ -495,15 +495,16 @@ class array(set):
     assert self.data() != None
     asu, matches = self.match_bijvoet_mates()
     return asu.apply_selection(
-      flags=matches.hemisphere_selection(plus_or_minus),
+      flags=matches.pairs_hemisphere_selection(plus_or_minus),
       anomalous_flag=00000)
 
   def hemispheres(self):
     assert self.data() != None
     asu, matches = self.match_bijvoet_mates()
     return tuple(
-      [asu.apply_selection(flags=matches.hemisphere_selection(plus_or_minus),
-                           anomalous_flag=00000)
+      [asu.apply_selection(
+        flags=matches.pairs_hemisphere_selection(plus_or_minus),
+        anomalous_flag=00000)
        for plus_or_minus in ("+", "-")])
 
   def anomalous_signal(self, use_binning=00000):
