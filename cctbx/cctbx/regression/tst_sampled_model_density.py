@@ -19,7 +19,9 @@ def assign_custom_gaussians(structure):
       (2.657505989074707, 1.0780789852142334, 1.4909089803695679),
       (14.780757904052734, 0.77677500247955322, 42.086841583251953), 0),
   }
-  d = structure.scattering_dict(custom_dict=custom_gaussians).dict()
+  d = structure.scattering_dict(
+    custom_dict=custom_gaussians,
+    table="wk1995").dict()
   assert d["N"].gaussian.n_terms() == 2
   assert d["N"].gaussian.c() == 0
   assert d["C"].gaussian.n_terms() == 3
