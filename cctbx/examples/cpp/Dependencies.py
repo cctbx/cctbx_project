@@ -15,5 +15,5 @@ class write_makefiles(makefile_generator.write_makefiles):
       "getting_started":
         (("getting_started",), ("sgtbx", "uctbx")),
       "convert_ccp4_symop_lib":
-        (("convert_ccp4_symop_lib",), ("sgtbx",)),
+        (("convert_ccp4_symop_lib",), ("uctbx", "sgtbx")),
     }
