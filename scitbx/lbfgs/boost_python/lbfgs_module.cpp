@@ -67,7 +67,7 @@ namespace scitbx { namespace lbfgs { namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("minimizer")
+      class_<w_t>("minimizer", no_init)
         .def(init<optional<std::size_t, std::size_t, std::size_t,
           double, double, double, double> >())
         .def("run", run_4)
@@ -110,7 +110,6 @@ namespace scitbx { namespace lbfgs { namespace {
     {
       using namespace boost::python;
       class_<w_t>("traditional_convergence_test")
-        .def(init<>())
         .def(init<std::size_t, optional<double> >())
         .def("n", &w_t::n)
         .def("eps", &w_t::eps)
@@ -127,7 +126,7 @@ namespace scitbx { namespace lbfgs { namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("drop_convergence_test")
+      class_<w_t>("drop_convergence_test", no_init)
         .def(init<optional<std::size_t, double, double> >())
         .def("p", &w_t::p)
         .def("max_drop_eps", &w_t::max_drop_eps)

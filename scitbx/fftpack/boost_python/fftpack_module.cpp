@@ -93,7 +93,6 @@ namespace scitbx { namespace fftpack { namespace {
     {
       using namespace boost::python;
       class_<w_t>("factorization")
-        .def(init<>())
         .def(init<std::size_t, bool>())
         .def("n", &w_t::n)
         .def("factors", &w_t::factors)
@@ -151,7 +150,6 @@ namespace scitbx { namespace fftpack { namespace {
     {
       using namespace boost::python;
       class_<w_t, bases<factorization> >("complex_to_complex")
-        .def(init<>())
         .def(init<std::size_t>())
         .def("wa", &w_t::wa)
         .def("forward", forward_complex)
@@ -207,7 +205,6 @@ namespace scitbx { namespace fftpack { namespace {
     {
       using namespace boost::python;
       class_<w_t, bases<factorization> >("real_to_complex")
-        .def(init<>())
         .def(init<std::size_t>())
         .def("n_real", &w_t::n_real)
         .def("m_real", &w_t::m_real)
@@ -272,7 +269,6 @@ namespace scitbx { namespace fftpack { namespace {
     {
       using namespace boost::python;
       class_<w_t>("complex_to_complex_3d")
-        .def(init<>())
         .def(init<std::size_t, std::size_t, std::size_t>())
         .def(init<af::int3>())
         .def("n", &w_t::n)
@@ -336,7 +332,6 @@ namespace scitbx { namespace fftpack { namespace {
     {
       using namespace boost::python;
       class_<w_t>("real_to_complex_3d")
-        .def(init<>())
         .def(init<std::size_t, std::size_t, std::size_t>())
         .def(init<af::int3>())
         .def("n_real", &w_t::n_real)
