@@ -31,4 +31,18 @@ namespace cctbx { namespace af {
 
 #include <cctbx/array_family/flagged_value_algebra.h>
 
+namespace cctbx { namespace af {
+
+  template<typename ValueTypeLhs, typename ValueTypeRhs>
+  struct binary_operator_traits<
+    flagged_value<ValueTypeLhs>,
+    flagged_value<ValueTypeRhs> > {
+    typedef binary_operator_traits<ValueTypeLhs, ValueTypeRhs> val_traits;
+    typedef flagged_value<typename val_traits::arithmetic> arithmetic;
+    typedef flagged_value<typename val_traits::logical> logical;
+    typedef flagged_value<typename val_traits::boolean> boolean;
+  };
+
+}} // namespace cctbx::af
+
 #endif // CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_H
