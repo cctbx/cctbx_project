@@ -153,12 +153,23 @@ def run_call_back(flags, space_group_info):
       anomalous_flag=anomalous_flag,
       verbose=flags.Verbose)
 
+def exercise_read_corrupt():
+  for i_trial in xrange(2):
+    f = open("tmp.mtz", "wb")
+    if (i_trial > 0):
+      f.write("\0"*80)
+    f.close()
+    try: mtz.Mtz("tmp.mtz")
+    except RuntimeError, e: assert str(e) == "Mtz read failed"
+    else: raise AssertionError("Exception expected.")
+
 def run():
   assert mtz.ccp4_liberr_verbosity(-1) == 0
   assert mtz.ccp4_liberr_verbosity(1) == 1
   assert mtz.ccp4_liberr_verbosity(-1) == 1
   assert mtz.ccp4_liberr_verbosity(0) == 0
   assert mtz.ccp4_liberr_verbosity(-1) == 0
+  exercise_read_corrupt()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
