@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/arraytbx/flexmodule.cpp (rwgk)
-     2002 Aug: Created, based on sharedmodule.cpp, shared_bpl.h (rwgk)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_WRAPPER_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_WRAPPER_H
 
@@ -796,9 +786,11 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__mul__", mul_a_a)
         .def("__div__", div_a_a)
         .def("__add__", add_a_s)
+        .def("__radd__", add_a_s)
         .def("__sub__", sub_a_s)
         .def("__rsub__", rsub_a_s)
         .def("__mul__", mul_a_s)
+        .def("__rmul__", mul_a_s)
         .def("__div__", div_a_s)
         .def("__rdiv__", rdiv_a_s)
         .def("__iadd__", iadd_a_s)

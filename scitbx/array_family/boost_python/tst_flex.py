@@ -363,9 +363,11 @@ def exercise_operators():
   assert tuple(a / b) == (2, 3)
   assert tuple(a % b) == (0, 0)
   assert tuple(a + 3) == (7, 12)
+  assert tuple(3 + a) == (7, 12)
   assert tuple(a - 4) == (0, 5)
   assert tuple(4 - a) == (0, -5)
   assert tuple(a * 5) == (20, 45)
+  assert tuple(5 * a) == (20, 45)
   assert tuple(a / 2) == (2, 4)
   assert tuple(9 / a) == (2, 1)
   assert tuple(a % 2) == (0, 1)
@@ -524,6 +526,9 @@ def exercise_complex_functions():
   d = y[0]
   assert approx_equal(d.real, 0)
   assert approx_equal(d.imag, a[0])
+  y = flex.double([2])
+  assert approx_equal(x*y, [(2+4j)])
+  assert approx_equal(y*x, [(2+4j)])
 
 def exercise_sort():
   for flex_type in (flex.int, flex.size_t, flex.double):
