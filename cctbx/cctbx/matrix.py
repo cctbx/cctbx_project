@@ -4,8 +4,10 @@ class rec:
 
   def __init__(self, elems, n):
     assert len(n) == 2
+    if (not isinstance(elems, tuple)):
+      elems = tuple(elems)
     assert len(elems) == n[0] * n[1]
-    self.elems = tuple(elems)
+    self.elems = elems
     self.n = tuple(n)
 
   def n_rows(self):
@@ -122,14 +124,17 @@ class rec:
         elems.append(self(i,j))
     return rec(elems, (self.n_columns(), self.n_rows()))
 
-  def mathematica_form(self, label="", one_row_per_line=00000):
+  def mathematica_form(self, label="", one_row_per_line=00000, format=None):
     s = ""
     if (label): s = label + "="
     s += "{"
     for ir in xrange(self.n_rows()):
       s += "{"
       for ic in xrange(self.n_columns()):
-        s += str(self(ir, ic))
+        if (format is None):
+          s += str(self(ir, ic))
+        else:
+          s += format % self(ir, ic)
         s += ", "
       s = s[:-2] + "},"
       if (one_row_per_line): s += "\n  "
