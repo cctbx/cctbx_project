@@ -17,6 +17,17 @@ class character_iterator:
     if (len(self.remaining) < n): return None
     return self.remaining[:n]
 
+def where(file_name, line_number):
+  result = []
+  if (file_name is not None):
+    result.append('file "%s"' % file_name)
+    if (line_number is not None):
+      result.append("line %d" % line_number)
+  elif (line_number is not None):
+    result.append("input line %d" % line_number)
+  if (len(result) == 0): return None
+  return ", ".join(result)
+
 class word:
 
   def __init__(self,
@@ -39,15 +50,7 @@ class word:
          + self.quote_token
 
   def where(self):
-    result = []
-    if (self.file_name is not None):
-      result.append('file "%s"' % self.file_name)
-      if (self.line_number is not None):
-        result.append("line %d" % self.line_number)
-    elif (self.line_number is not None):
-      result.append("input line %d" % self.line_number)
-    if (len(result) == 0): return None
-    return ", ".join(result)
+    return where(self.file_name, self.line_number)
 
   def where_str(self):
     where = self.where()
@@ -109,8 +112,8 @@ def split_into_words(
             c = char_iter.next()
         if (c is None):
           raise RuntimeError(
-            "Syntax error: missing closing quote (input line %d)." % (
-              char_iter.line_number))
+            "Syntax error: missing closing quote (%s)" % (
+              where(file_name, char_iter.line_number)))
         word_value += c
       words.append(word(
         value=word_value,

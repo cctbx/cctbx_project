@@ -284,7 +284,7 @@ def exercise_syntax_errors():
   test_exception("{}",
     'Syntax error: unexpected "{" (input line 1)')
   test_exception("a {",
-    'Syntax error: missing "}".')
+    'Syntax error: no matching "}" for "{" at input line 1')
   test_exception("table name\n.foo none {}",
     'Unexpected table attribute: .foo (input line 2)')
   test_exception("table name foo {",
@@ -294,7 +294,7 @@ def exercise_syntax_errors():
   test_exception("a b\n.foo none",
     'Unexpected attribute: .foo (input line 2)')
   test_exception('a b\nc "abc',
-    'Syntax error: missing closing quote (input line 2).')
+    'Syntax error: missing closing quote (input line 2)')
   test_exception('table 1',
     'Syntax error: improper table name "1" (input line 1)')
   test_exception('table name { 1',
@@ -674,6 +674,16 @@ group {
     .type path
   h "var.tmp.junk"
     .type key
+  i ceil(4/3)
+    .type int
+  i 1/2
+    .type int
+  j 1/(5-3)
+    .type float
+  j "'a'"
+    .type float
+  j a
+    .type float
   u 10,12 13 80,90 100
     .type unit_cell
   s 19
@@ -689,17 +699,33 @@ group {
   try: parameters.get(path="group.e").objects[1].extract()
   except RuntimeError, e:
     assert str(e) \
-      == 'Multiple choices where only one is possible (input line 13).'
+      == 'Multiple choices where only one is possible (input line 13)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.e").objects[2].extract()
   except RuntimeError, e:
-    assert str(e) == 'Unspecified choice (input line 15).'
+    assert str(e) == 'Unspecified choice (input line 15)'
   else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.f").objects[0].extract() == ["b"]
   assert parameters.get(path="group.f").objects[1].extract() == ["b", "c"]
   assert parameters.get(path="group.f").objects[2].extract() == []
   assert parameters.get(path="group.g").objects[0].extract() == "/var/tmp/junk"
   assert parameters.get(path="group.h").objects[0].extract() == "var.tmp.junk"
+  assert parameters.get(path="group.i").objects[0].extract() == 2
+  try: parameters.get(path="group.i").objects[1].extract()
+  except RuntimeError, e:
+    assert str(e) == 'Integer expression expected, "1/2" found (input line 29)'
+  else: raise RuntimeError("Exception expected.")
+  assert parameters.get(path="group.j").objects[0].extract() == 0.5
+  try: parameters.get(path="group.j").objects[1].extract()
+  except RuntimeError, e:
+    assert str(e) == \
+      """Floating-point expression expected, "'a'" found (input line 33)"""
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get(path="group.j").objects[2].extract()
+  except RuntimeError, e:
+    assert str(e) == 'Error interpreting "a" as a numeric expression:' \
+                   + " name 'a' is not defined (input line 35)"
+  else: raise RuntimeError("Exception expected.")
   assert str(parameters.get(path="group.u").objects[0].extract()) \
       == "(10, 12, 13, 80, 90, 100)"
   assert str(parameters.get(path="group.s").objects[0].extract()) \
@@ -709,7 +735,7 @@ group {
   try: definition.extract()
   except RuntimeError, e:
     str(e) == 'No converter for parameter definition type "junk"' \
-            + ' required for converting values of "a" (input line 3).'
+            + ' required for converting values of "a" (input line 3)'
   else: raise RuntimeError("Exception expected.")
   parameters = iotbx.parameters.parse(input_string="""\
 group {
