@@ -1,0 +1,72 @@
+#Main Sconscript for the ---iotbx--- module
+
+import os,sys
+Import("env_base", "env_etc")
+
+env_etc.iotbx_dist = os.environ["IOTBX_DIST"]
+env_etc.cctbx_dist = os.environ["CCTBX_DIST"]
+
+parent_src = env_etc.norm_join(env_etc.iotbx_dist,"..")
+newsrc_src = env_etc.norm_join(parent_src,"newsrc")
+env_etc.iotbx_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.norm_join(env_etc.iotbx_dist, "include"),
+  env_etc.norm_join(env_etc.scitbx_dist, "include"),
+  env_etc.norm_join(env_etc.cctbx_dist, "include"),
+  env_etc.boost_include,
+  newsrc_src,
+]
+
+
+myccflags_base = env_etc.ccflags_base[:]
+mycxxflags_base = env_etc.cxxflags_base[:]
+
+if (sys.platform == "win32"):
+  myccflags_base.extend(['-D_MVS','-Di386'])
+  mycxxflags_base.extend(['-D_MVS','-Di386'])  
+
+
+env = env_base.Copy(
+  CXXFLAGS=mycxxflags_base,
+  SHCXXFLAGS=mycxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
+  CPPPATH=env_etc.iotbx_common_includes,
+)
+
+envlm = env.Copy(
+  LIBS=env_etc.libm
+)
+
+lib_iotbx_sources = [
+  "mtz/testcppmtz.cpp",
+  "mtz/cppmtz.cpp",
+]
+
+envlm.Prepend(LIBS=["cmtz"])
+envlm.Append(LIBPATH=["#libtbx",])
+
+lib_iotbx_node = envlm.StaticLibrary(
+    target="iotbx",
+    source=lib_iotbx_sources)
+env.Install("#libtbx", lib_iotbx_node)
+
+SConscript("mtz/SConscript")
+
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+
+  env_iotbx_boost_python_ext = env_boost_python_ext.Copy()
+  env_iotbx_boost_python_ext.Replace(                                           
+    SHCXXFLAGS=mycxxflags_base,)                                                
+  
+  env_iotbx_boost_python_ext.Replace(
+    CPPPATH=env_etc.iotbx_common_includes + [env_etc.python_include])
+
+  Export("env_iotbx_boost_python_ext")
+
+  env_iotbx_boost_python_ext.Command(
+    "#libtbx/iotbx_boost/__init__.py",
+    "#libtbx/build/SConscript", env_etc.touch_init)
+
+  SConscript("detectors/SConscript")
+  SConscript("mtz/boost_python/SConscript")
