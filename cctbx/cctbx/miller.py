@@ -1315,10 +1315,14 @@ class fft_map(maptbx.crystal_gridding):
     return self._complex_map
 
   def apply_sigma_scaling(self):
-    assert not self.anomalous_flag()
-    statistics = maptbx.statistics(self._real_map)
-    if (statistics.sigma() != 0):
-      self._real_map /= statistics.sigma()
+    if (not self.anomalous_flag()):
+      statistics = maptbx.statistics(self._real_map)
+      if (statistics.sigma() != 0):
+        self._real_map /= statistics.sigma()
+    else:
+      statistics = maptbx.statistics(self.real_map())
+      if (statistics.sigma() != 0):
+        self._complex_map /= complex(statistics.sigma())
     return self
 
 def patterson_map(crystal_gridding, f_patt, f_000=None,
