@@ -201,8 +201,10 @@ namespace scitbx { namespace fftpack {
   template <typename RealType, typename ComplexType>
   real_to_complex<RealType,
                   ComplexType>::real_to_complex(std::size_t n_real)
-    : factorization(n_real, true), WA_(n_real), CH_(n_real),
-      n_complex_(n_complex_from_n_real(n_real))
+    : factorization(n_real, true),
+      n_complex_(n_complex_from_n_real(n_real)),
+      WA_(n_real),
+      CH_(n_real)
   {
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/rffti1.f.

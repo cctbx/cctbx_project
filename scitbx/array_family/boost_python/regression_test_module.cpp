@@ -25,7 +25,7 @@ namespace scitbx { namespace {
   {
     double s = 0;
     for(std::size_t i=0;i<a.size();i++) s += a[i];
-    return (int) s + .5;
+    return static_cast<int>(s + .5);
   }
 
   int std_list(std::list<double> const& lst)
@@ -34,28 +34,28 @@ namespace scitbx { namespace {
     for(std::list<double>::const_iterator i=lst.begin();i!=lst.end();i++) {
       s += *i;
     }
-    return (int) s + .5;
+    return static_cast<int>(s + .5);
   }
 
   int boost_array_3(boost::array<double, 3> const& a)
   {
     double s = 0;
     for(std::size_t i=0;i<a.size();i++) s += a[i];
-    return (int) s + .5;
+    return static_cast<int>(s + .5);
   }
 
   int boost_array_4(boost::array<double, 4> const& a)
   {
     double s = 0;
     for(std::size_t i=0;i<a.size();i++) s += a[i];
-    return (int) s + .5;
+    return static_cast<int>(s + .5);
   }
 
   int small_6(af::small<double, 6> const& a)
   {
     double s = 0;
     for(std::size_t i=0;i<a.size();i++) s += a[i];
-    return (int) s + .5;
+    return static_cast<int>(s + .5);
   }
 
   af::shared<double> make_shared()
@@ -71,7 +71,7 @@ namespace scitbx { namespace {
   {
     double s = 0;
     for(std::size_t i=0;i<a.size();i++) s += a[i];
-    return (int) s + .5;
+    return static_cast<int>(s + .5);
   }
 
   void modify_shared(af::shared<double>& a)
@@ -83,7 +83,7 @@ namespace scitbx { namespace {
   {
     double s = 0;
     for(std::size_t i=0;i<a.size();i++) s += a[i];
-    return (int) s + .5;
+    return static_cast<int>(s + .5);
   }
 
   void modify_ref(af::ref<double> a)
@@ -94,7 +94,9 @@ namespace scitbx { namespace {
   boost::array<int, 2>
   make_boost_int_2(int x0=7, int x1=2)
   {
-    boost::array<int, 2> result = {x0, x1};
+    boost::array<int, 2> result;
+    result[0] = x0;
+    result[1] = x1;
     return result;
   }
 

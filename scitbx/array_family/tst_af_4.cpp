@@ -220,7 +220,7 @@ namespace {
 
     a_value() { m_init(ValueType()); }
     template <typename OtherValueType>
-    a_value(OtherValueType const& v) { m_init(v); }
+    a_value(OtherValueType const& v) { m_init(static_cast<ValueType>(v)); }
     a_value(a_value<ValueType> const& other) { m_init(*(other.m_value)); }
     a_value<ValueType>&
     operator=(a_value<ValueType> const& other) {
