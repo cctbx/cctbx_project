@@ -261,7 +261,6 @@ namespace cctbx { namespace dmtbx {
       {
         cctbx_assert(miller_indices.size() == list_of_tpr_maps_.size());
         af::shared<int> epsilons = sginfo.SgOps().epsilon(miller_indices);
-        std::size_t result = 0;
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
         for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
           for(tpr_map_type::const_iterator
