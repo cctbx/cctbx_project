@@ -48,7 +48,9 @@ The SourceForge cctbx project currently contains these modules:
 **libtbx**
   The build system common to all other modules. This is a very
   thin wrapper around the SCons_ software construction tool.
-  The libtbx also contains platform-independent instructions
+
+**boost_adaptbx**
+  A very small *adaptor toolbox* with platform-independent instructions
   for building the Boost.Python_ library.
 
 **scitbx**
@@ -111,11 +113,15 @@ the C++ documention.
 Links
 =====
 
+- `cctbx - Automatic multi-platform builds`_
+
 - `cctbx - Public CVS repository`_
 
 - `cctbx - Project page at SourceForge`_
 
 - `cctbx - Development history <history.html>`_
+
+.. _`cctbx - Automatic multi-platform builds`: http://cci.lbl.gov/cctbx_build/
 
 .. _`cctbx - Public CVS repository`: http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/
 
