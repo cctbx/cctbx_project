@@ -84,7 +84,7 @@ namespace {
         .def("multiply", &w_t::multiply)
         .def("__mul__", mul)
         .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
-        .def("__add__", (rt_mx(*)(rt_mx const&, tr_vec const&))operator+)
+        .def("__add__", (rt_mx(w_t::*)(tr_vec const&) const)&w_t::operator+)
       ;
 
       scitbx::stl::boost_python::vector_wrapper<rt_mx>::wrap(
