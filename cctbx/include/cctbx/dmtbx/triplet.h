@@ -30,36 +30,46 @@ namespace cctbx { namespace dmtbx {
 
   struct triplet_phase_relation
   {
-    std::size_t ik;
-    std::size_t ihmk;
-    Miller::AsymIndex asym_k;
-    Miller::AsymIndex asym_hmk;
-
-    triplet_phase_relation swap() const
+    triplet_phase_relation(
+      std::size_t ik,
+      std::size_t ihmk,
+      Miller::AsymIndex asym_k,
+      Miller::AsymIndex asym_hmk)
     {
-      triplet_phase_relation result;
-      result.ik = ihmk;
-      result.ihmk = ik;
-      result.asym_k = asym_hmk;
-      result.asym_hmk = asym_k;
-      return result;
+      if (ik <= ihmk) {
+        ik_ = ik;
+        ihmk_ = ihmk;
+        asym_k_ = asym_k;
+        asym_hmk_ = asym_hmk;
+      }
+      else {
+        ik_ = ihmk;
+        ihmk_ = ik;
+        asym_k_ = asym_hmk;
+        asym_hmk_ = asym_k;
+      }
     }
 
     bool operator<(triplet_phase_relation const& other) const
     {
-      if (ik < other.ik) return true;
-      if (ik > other.ik) return false;
-      if (ihmk < other.ihmk) return true;
-      if (ihmk > other.ihmk) return false;
-      if (asym_k.HT() < other.asym_k.HT()) return true;
-      if (asym_k.HT() > other.asym_k.HT()) return false;
-      if (!asym_k.FriedelFlag() && other.asym_k.FriedelFlag()) return true;
-      if (asym_k.FriedelFlag() && !other.asym_k.FriedelFlag()) return false;
-      if (asym_hmk.HT() < other.asym_hmk.HT()) return true;
-      if (asym_hmk.HT() > other.asym_hmk.HT()) return false;
-      if (!asym_hmk.FriedelFlag() && other.asym_hmk.FriedelFlag()) return true;
+      if (ik_ < other.ik_) return true;
+      if (ik_ > other.ik_) return false;
+      if (ihmk_ < other.ihmk_) return true;
+      if (ihmk_ > other.ihmk_) return false;
+      if (asym_k_.HT() < other.asym_k_.HT()) return true;
+      if (asym_k_.HT() > other.asym_k_.HT()) return false;
+      if (!asym_k_.FriedelFlag() && other.asym_k_.FriedelFlag()) return true;
+      if (asym_k_.FriedelFlag() && !other.asym_k_.FriedelFlag()) return false;
+      if (asym_hmk_.HT() < other.asym_hmk_.HT()) return true;
+      if (asym_hmk_.HT() > other.asym_hmk_.HT()) return false;
+      if (!asym_hmk_.FriedelFlag() && other.asym_hmk_.FriedelFlag())return true;
       return false;
     }
+
+    std::size_t ik_;
+    std::size_t ihmk_;
+    Miller::AsymIndex asym_k_;
+    Miller::AsymIndex asym_hmk_;
   };
 
   template <typename FloatType>
@@ -75,6 +85,7 @@ namespace cctbx { namespace dmtbx {
       triplet_invariants(sgtbx::SpaceGroupInfo const& SgInfo,
                          af::shared<Miller::Index> miller_indices,
                          af::shared<FloatType> e_values)
+      : TBF_(SgInfo.SgOps().TBF())
       {
         cctbx_assert(miller_indices.size() == e_values.size());
         sgtbx::ReciprocalSpaceASU asu(SgInfo);
@@ -82,8 +93,7 @@ namespace cctbx { namespace dmtbx {
         // Assert that all Miller indices are in the standard asymmetric unit.
         for(i=0;i<miller_indices.size();i++) {
           cctbx_assert(
-            Miller::AsymIndex(SgInfo.SgOps(), asu, miller_indices[i]
-              ).one_column(true).H()
+               Miller::AsymIndex(SgInfo.SgOps(), asu, miller_indices[i]).H()
             == miller_indices[i]);
         }
         Miller::index_span miller_index_span(miller_indices);
@@ -97,46 +107,29 @@ namespace cctbx { namespace dmtbx {
         for(i=0;i<miller_indices.size();i++) {
           list_of_tpr_maps_.push_back(tpr_map_type());
         }
-        triplet_phase_relation tpr;
         for(std::size_t ih=0;ih<miller_indices.size();ih++) {
-          //if (ih == tpr.ik) continue;
+          //if (ik == ih) continue;
           Miller::Index h = miller_indices[ih];
-          for(tpr.ik=0;tpr.ik<miller_indices.size();tpr.ik++) {
-            Miller::Index k = miller_indices[tpr.ik];
+          for(std::size_t ik=0;ik<miller_indices.size();ik++) {
+            Miller::Index k = miller_indices[ik];
             sgtbx::SymEquivMillerIndices
             sym_eq_k = SgInfo.SgOps().getEquivMillerIndices(k);
             for (std::size_t ik_eq=0;ik_eq<sym_eq_k.M(true);ik_eq++) {
               Miller::Index k_eq = sym_eq_k(ik_eq).H();
               Miller::Index hmk = h - k_eq;
-              //std::cout << h.ref()
-              //   << " " << k_eq.ref()
-              //   << " " << hmk.ref()
-              //   << " under consideration"
-              //   << std::endl;
-              tpr.asym_hmk = Miller::AsymIndex(SgInfo.SgOps(), asu, hmk);
-              Miller::Index asym_hmk = tpr.asym_hmk.one_column(true).H();
-              //std::cout << asym_hmk.ref()
-              //   << " asym_hmk"
-              //   << std::endl;
-              if (miller_index_span.is_in_domain(asym_hmk)) {
+              Miller::AsymIndex asym_hmk(SgInfo.SgOps(), asu, hmk);
+              Miller::Index asym_hmk_h = asym_hmk.H();
+              if (miller_index_span.is_in_domain(asym_hmk_h)) {
                 typename lookup_dict_type::const_iterator
-                ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk));
+                ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk_h));
                 if (ld_pos != lookup_dict.end()) {
-                  tpr.ihmk = ld_pos->second;
-                  cctbx_assert(miller_indices[tpr.ihmk] == asym_hmk);
-                  //if (tpr.ihmk == ih) continue;
-                  //if (tpr.ihmk == tpr.ik) continue;
-                  tpr.asym_k = Miller::AsymIndex(SgInfo.SgOps(), asu, k_eq);
-                  //std::cout << h.ref()
-                  //   << " " << k_eq.ref()
-                  //   << " " << hmk.ref()
-                  //   << std::endl;
-                  if (tpr.ik > tpr.ihmk) {
-                    list_of_tpr_maps_[ih][tpr.swap()]++;
-                  }
-                  else {
-                    list_of_tpr_maps_[ih][tpr]++;
-                  }
+                  std::size_t ihmk = ld_pos->second;
+                  cctbx_assert(miller_indices[ihmk] == asym_hmk_h);
+                  //if (ihmk == ih) continue;
+                  //if (ihmk == ik) continue;
+                  Miller::AsymIndex asym_k(SgInfo.SgOps(), asu, k_eq);
+                  triplet_phase_relation tpr(ik, ihmk, asym_k, asym_hmk);
+                  list_of_tpr_maps_[ih][tpr]++;
                 }
               }
             }
@@ -195,8 +188,8 @@ namespace cctbx { namespace dmtbx {
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const& tpr = lij->first;
             std::cout << miller_indices[i].ref()
-               << " " << miller_indices[tpr.ik].ref()
-               << " " << miller_indices[tpr.ihmk].ref()
+               << " " << miller_indices[tpr.ik_].ref()
+               << " " << miller_indices[tpr.ihmk_].ref()
                << " " << lij->second
                << std::endl;
           }
@@ -220,12 +213,12 @@ namespace cctbx { namespace dmtbx {
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const&
             tpr = lij->first;
-            cctbx_assert(tpr.ik < e_values.size());
-            cctbx_assert(tpr.ihmk < e_values.size());
-            FloatType e_k = e_values[tpr.ik];
-            FloatType phi_k = tpr.asym_k.phase_in(phases[tpr.ik]);
-            FloatType e_hmk = e_values[tpr.ihmk];
-            FloatType phi_hmk = tpr.asym_hmk.phase_in(phases[tpr.ihmk]);
+            cctbx_assert(tpr.ik_ < e_values.size());
+            cctbx_assert(tpr.ihmk_ < e_values.size());
+            FloatType e_k = e_values[tpr.ik_];
+            FloatType phi_k = tpr.asym_k_.phase_in(phases[tpr.ik_]);
+            FloatType e_hmk = e_values[tpr.ihmk_];
+            FloatType phi_hmk = tpr.asym_hmk_.phase_in(phases[tpr.ihmk_]);
             FloatType e_k_e_hmk = lij->second * e_k * e_hmk;
             FloatType phi_k_phi_hmk = phi_k + phi_hmk;
             sum_sin += e_k_e_hmk * std::sin(phi_k_phi_hmk);
@@ -258,12 +251,12 @@ namespace cctbx { namespace dmtbx {
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const&
             tpr = lij->first;
-            cctbx_assert(tpr.ik < e_values.size());
-            cctbx_assert(tpr.ihmk < e_values.size());
-            FloatType e_k = e_values[tpr.ik];
-            FloatType phi_k = tpr.asym_k.phase_in(phases[tpr.ik]);
-            FloatType e_hmk = e_values[tpr.ihmk];
-            FloatType phi_hmk = tpr.asym_hmk.phase_in(phases[tpr.ihmk]);
+            cctbx_assert(tpr.ik_ < e_values.size());
+            cctbx_assert(tpr.ihmk_ < e_values.size());
+            FloatType e_k = e_values[tpr.ik_];
+            FloatType phi_k = tpr.asym_k_.phase_in(phases[tpr.ik_]);
+            FloatType e_hmk = e_values[tpr.ihmk_];
+            FloatType phi_hmk = tpr.asym_hmk_.phase_in(phases[tpr.ihmk_]);
             std::complex<FloatType> e_k_complex = std::polar(e_k, phi_k);
             std::complex<FloatType> e_hmk_complex = std::polar(e_hmk, phi_hmk);
             estimated_e_h
@@ -280,6 +273,7 @@ namespace cctbx { namespace dmtbx {
       }
 
     private:
+      int TBF_;
       list_of_tpr_maps_type list_of_tpr_maps_;
   };
 
