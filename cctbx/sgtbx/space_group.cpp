@@ -1,20 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of sgtbx/groups.cpp (rwgk)
-     2001 Sep: space_groupType -> space_groupInfo (R.W. Grosse-Kunstleve)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: Initial is_tidy_ = false (R.W. Grosse-Kunstleve)
-       This fixes a bug (interaction with SgOps::ChangeBasis())
-       and is safer in general.
-     2001 Apr: Bug fix in TrOps::expand() (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/sgtbx/space_group.h>
 #include <cctbx/sgtbx/lattice_tr.h>
 #include <cctbx/sgtbx/utils.h>
@@ -45,6 +28,7 @@ namespace cctbx { namespace sgtbx {
     }
     inv_t_ = new_inv_t.mod_positive();
     f_inv_ = 2;
+    is_tidy_ = false;
     if (!no_expand_) {
       for(std::size_t i=1;i<n_smx();i++) {
         if (ltr_.add(      smx_[i].r() * inv_t_
@@ -194,6 +178,8 @@ namespace cctbx { namespace sgtbx {
   bool
   space_group::operator==(space_group const& rhs) const
   {
+    CCTBX_ASSERT(r_den() == rhs.r_den());
+    CCTBX_ASSERT(t_den() == rhs.t_den());
     if (n_ltr() != rhs.n_ltr()) return false;
     if (f_inv() != rhs.f_inv()) return false;
     if (n_smx() != rhs.n_smx()) return false;
