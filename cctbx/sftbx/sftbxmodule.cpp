@@ -58,7 +58,7 @@ namespace {
 
 #   include <cctbx/basic/from_bpl_import.h>
 
-  void init_module(boost::python::module_builder& this_module)
+  void init_module(python::module_builder& this_module)
   {
     const std::string Revision = "$Revision$";
     this_module.add(ref(to_python(
@@ -75,14 +75,22 @@ namespace {
 
     class_builder<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
     py_XrayScatterer(this_module, "XrayScatterer");
+    python::export_converters(py_XrayScatterer);
 
-    (void) cctbx::wrap_std_vector(this_module,
+    python::class_builder<
+      std::vector<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >,
+      python::std_vector_wrapper<
+        sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > >
+    py_vector_of_XrayScatterer =
+    python::wrap_std_vector(this_module,
       "vector_of_XrayScatterer",
       sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>());
-    (void) cctbx::wrap_std_vector(this_module,
+    python::export_converters(py_vector_of_XrayScatterer);
+
+    (void) python::wrap_std_vector(this_module,
       "vector_of_Miller_Index",
       cctbx::Miller::Index());
-    (void) cctbx::wrap_std_vector(this_module,
+    (void) python::wrap_std_vector(this_module,
       "vector_of_complex",
       std::complex<double>());
 
