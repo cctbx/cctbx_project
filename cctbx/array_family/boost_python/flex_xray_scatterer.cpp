@@ -114,6 +114,16 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  std::size_t
+  count_anisotropic(af::const_ref<scatterer<> > const& scatterers)
+  {
+    std::size_t result = 0;
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      if (scatterers[i].anisotropic_flag) result++;
+    }
+    return result;
+  }
+
 }}} // namespace cctbx::xray::<anonymous>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -131,6 +141,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("set_sites", cctbx::xray::set_sites)
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
       .def("set_occupancies", cctbx::xray::set_occupancies)
+      .def("count_anisotropic", cctbx::xray::count_anisotropic)
     ;
   }
 
