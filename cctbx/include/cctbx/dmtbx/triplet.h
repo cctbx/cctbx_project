@@ -99,11 +99,9 @@ namespace cctbx { namespace dmtbx {
       triplet_invariants() {}
 
       triplet_invariants(sgtbx::SpaceGroupInfo const& SgInfo,
-                         af::shared<Miller::Index> miller_indices,
-                         af::shared<FloatType> e_values)
+                         af::shared<Miller::Index> miller_indices)
       : TBF_(SgInfo.SgOps().TBF())
       {
-        cctbx_assert(miller_indices.size() == e_values.size());
         sgtbx::ReciprocalSpaceASU asu(SgInfo);
         std::size_t i=0;
         // Assert that all Miller indices are in the standard asymmetric unit.

@@ -95,7 +95,7 @@ def square_emap(xtal, e000, p1_miller_indices,
 
 def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
                             verbose):
-  tprs = dmtbx.triplet_invariants(sginfo, miller_indices_h, e_values)
+  tprs = dmtbx.triplet_invariants(sginfo, miller_indices_h)
   print "number_of_weighted_triplets:", \
        tprs.number_of_weighted_triplets()
   print "total_number_of_triplets:", \

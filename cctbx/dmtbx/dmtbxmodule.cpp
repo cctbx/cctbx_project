@@ -53,8 +53,7 @@ namespace {
     py_triplet_invariants.def(constructor<>());
     py_triplet_invariants.def(constructor<
       sgtbx::SpaceGroupInfo const&,
-      af::shared<Miller::Index>,
-      af::shared<double> >());
+      af::shared<Miller::Index> >());
     py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::number_of_weighted_triplets,
                                          "number_of_weighted_triplets");
