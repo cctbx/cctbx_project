@@ -29,6 +29,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sgtbx/wyckoff.cpp",
       "sgtbx/bricks.cpp",
       "sgtbx/miller_asu.cpp",
+      "sgtbx/seminvariant.cpp",
       "sgtbx/sgtbxmodule.cpp",
       "sgtbx/sgtbxdriver.cpp",
       "sgtbx/symbols.py",
@@ -67,6 +68,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "wyckoff",
       "bricks",
       "miller_asu",
+      "seminvariant",
     )
 
     self.libraries = {
