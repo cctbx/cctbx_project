@@ -56,15 +56,16 @@ class Mtz (ext.Mtz):
       return None
     return sgtbx.space_group_info(group=self.getSgtbxSpaceGroup())
 
-  def as_miller_arrays(self, crystal_symmetry, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
                              info_prefix=""):
+    other_symmetry = crystal_symmetry
     result = []
     for i_crystal in xrange(self.ncrystals()):
       cryst = self.getCrystal(i_crystal)
       crystal_symmetry = crystal.symmetry(
         unit_cell=cryst.get_unit_cell(),
         space_group_info=self.get_space_group_info()).join_symmetry(
-          other_symmetry=crystal_symmetry,
+          other_symmetry=other_symmetry,
           force=force_symmetry)
       for i_dataset in xrange(cryst.ndatasets()):
         dataset = cryst.getDataset(i_dataset)
