@@ -226,6 +226,10 @@ namespace cctbx { namespace sgtbx {
       scitbx::sym_mat3<FloatType>
       average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const;
 
+      //! Symmetry matrices of site symmetry point group.
+      af::shared<rt_mx> const&
+      matrices() const { return point_group_.matrices(); }
+
     private:
 #if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1495
       bool dummy_;
