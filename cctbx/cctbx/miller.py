@@ -169,9 +169,9 @@ class set(crystal.symmetry):
 
   def structure_factors_from_map(self, map, in_place_fft=00000):
     assert map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based()
-    assert type(map[0]) in (type(float()), type(complex()))
+    assert isinstance(map, flex.double) or isinstance(map, flex.complex_double)
     assert in_place_fft in (00000, 0001)
-    if (type(map[0]) == type(float())):
+    if (isinstance(map, flex.double)):
       fft = fftpack.real_to_complex_3d(map.focus())
       if (not map.is_padded()):
         assert not in_place_fft
@@ -286,6 +286,9 @@ class array(set):
       data=d,
       sigmas=s)
 
+  def is_complex(self):
+    return isinstance(self.data(), flex.complex_double)
+
   def __getitem__(self, slice_object):
     return array(
       miller_set=set.__getitem__(self, slice_object),
@@ -377,7 +380,7 @@ class array(set):
 
   def patterson_symmetry(self):
     data = self.data()
-    if (type(data) == type(flex.complex_double())):
+    if (self.is_complex()):
       data = flex.abs(self.data())
     return array(
       set.patterson_symmetry(self),
@@ -390,14 +393,14 @@ class array(set):
     assert self.anomalous_flag() != None
     assert self.data() != None
     new_sigmas = None
-    if (type(self.data()) == type(flex.complex_double())):
+    if (self.is_complex()):
       assert phase_deg == None
       p1 = expand_to_p1(
         self.space_group(), self.anomalous_flag(), self.indices(),
         self.data())
       new_data = p1.structure_factors()
     else:
-      assert type(self.data()) == type(flex.double())
+      assert isinstance(self.data(), flex.double)
       assert phase_deg in (None, 00000, 0001)
       if (phase_deg == None):
         p1 = expand_to_p1(
@@ -405,7 +408,7 @@ class array(set):
           self.data())
         new_data = p1.amplitudes()
         if (self.sigmas() != None):
-          assert type(self.sigmas()) == type(flex.double())
+          assert isinstance(self.sigmas(), flex.double)
           p1 = expand_to_p1(
             self.space_group(), self.anomalous_flag(), self.indices(),
             self.sigmas())
@@ -425,10 +428,10 @@ class array(set):
     new_data = None
     new_sigmas = None
     if (self.data() != None):
-      assert type(self.data()) == type(flex.double())
+      assert isinstance(self.data(), flex.double)
       new_data = self.data().deep_copy()
     if (self.sigmas() != None):
-      assert type(self.sigmas()) == type(flex.double())
+      assert isinstance(self.sigmas(), flex.double)
       new_sigmas = self.sigmas().deep_copy()
     return array(
       miller_set=set.change_basis(self, cb_op),
@@ -760,7 +763,7 @@ class fft_map(maptbx.crystal_gridding):
       cfft = fftpack.complex_to_complex_3d(self.n_real())
       n_complex = cfft.n()
     conjugate_flag = 0001
-    assert type(fourier_coefficients.data()) == type(flex.complex_double())
+    assert isinstance(fourier_coefficients.data(), flex.complex_double)
     map = maptbx.structure_factors.to_map(
       self.space_group(),
       self.anomalous_flag(),
