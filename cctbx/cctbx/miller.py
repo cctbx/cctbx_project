@@ -997,7 +997,7 @@ class array(set):
     assert self.indices().size() == other.indices().size()
     assert self.anomalous_flag() == other.anomalous_flag()
     p = match_indices(other.indices(), self.indices()).permutation()
-    assert flex.order(self.indices().select(p), other.indices()) == 0
+    assert self.indices().select(p).all_eq(other.indices())
     d = self.data()
     s = self.sigmas()
     if (d is not None): d = d.select(p)
@@ -1579,7 +1579,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       s = match.additive_sigmas(self.sigmas(), other.sigmas())
     return array(set(self, i), d, s)
 
-  def as_anomalous(self):
+  def generate_bijvoet_mates(self):
     if (self.anomalous_flag()): return self
     sel = ~self.centric_flags().data()
     indices = self.indices().deep_copy()
@@ -1590,6 +1590,8 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       data = self.data().deep_copy()
       if (self.is_complex_array()):
         data.extend(flex.conj(data.select(sel)))
+      elif (self.is_hendrickson_lattman_array()):
+        data.extend(data.select(sel).conj())
       else:
         data.extend(data.select(sel))
     if (self.sigmas() is not None):
@@ -1614,9 +1616,9 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert not use_binning or self.binner() is not None
     lhs = self
     if (lhs.anomalous_flag() and not other.anomalous_flag()):
-      other = other.as_anomalous()
+      other = other.generate_bijvoet_mates()
     elif (not lhs.anomalous_flag() and other.anomalous_flag()):
-      lhs = lhs.as_anomalous()
+      lhs = lhs.generate_bijvoet_mates()
     lhs, other = lhs.common_sets(
       other=other, assert_is_similar_symmetry=assert_is_similar_symmetry)
     if (not use_binning):

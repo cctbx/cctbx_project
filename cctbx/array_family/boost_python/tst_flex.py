@@ -51,6 +51,8 @@ def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman(3, (1,2,3,4))
   assert a.all_eq((1,2,3,4))
   assert not a.all_eq((1,2,0,4))
+  assert approx_equal(a.conj(), [(1,-2,3,-4), (1,-2,3,-4), (1,-2,3,-4)])
+  assert approx_equal(a.conj().conj(), a)
 
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()
