@@ -86,16 +86,6 @@ namespace cctbx { namespace sgtbx {
     }
   }
 
-  template <class AnyType> // XXX use vecrefnd
-  class Array2DAdaptor {
-    public:
-      Array2DAdaptor(AnyType *M, int mc) : m_M(M), m_mc(mc) { }
-      AnyType& operator()(int ir, int ic) { return m_M[ir * m_mc + ic]; }
-    private:
-      AnyType*  m_M;
-      int m_mc;
-  };
-
   int ChangeBaseFactor(const int *Old, int OldBF, int *New, int NewBF, int n);
 
   int SignHemisphere(const int3& v);

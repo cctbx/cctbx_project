@@ -15,6 +15,8 @@
 #include <cstddef>
 #include <cctbx/error.h>
 
+#include <boost/config.hpp> // FIXES for broken compilers
+
 namespace cctbx {
 
   template <typename ArrayType>
