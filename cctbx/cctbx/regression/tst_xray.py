@@ -161,6 +161,8 @@ def exercise_structure():
   xs1.scatterers().set_occupancies(flex.random_double(size=5))
   xs2 = xs1.sort(by_value="occupancy")
   assert xs2.special_position_indices().size() == 2
+  xs2.set_sites_frac(xs2.sites_frac()+(0.1,0.2,0.3))
+  xs2.set_sites_cart(xs2.sites_cart()+(1,2,3))
 
 def exercise_u_base():
   d_min = 9

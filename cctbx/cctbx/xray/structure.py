@@ -62,8 +62,16 @@ class structure(crystal.special_position_settings):
   def sites_frac(self):
     return self.scatterers().extract_sites()
 
+  def set_sites_frac(self, sites_frac):
+    assert sites_frac.size() == self._scatterers.size()
+    self._scatterers.set_sites(sites_frac)
+
   def sites_cart(self):
     return self.unit_cell().orthogonalization_matrix() * self.sites_frac()
+
+  def set_sites_cart(self, sites_cart):
+    self.set_sites_frac(
+      self.unit_cell().fractionalization_matrix() * sites_cart)
 
   def site_symmetry_table(self):
     return self._site_symmetry_table
