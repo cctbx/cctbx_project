@@ -15,6 +15,7 @@
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/sgtbx/seminvariant.h>
+#include <cctbx/rational.h>
 #include <cctbx/tagged_value.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
@@ -30,20 +31,35 @@ namespace grid_tags_detail {
   struct space_group_symmetry_tag {};
   struct seminvariant_tag {};
 
+  template <typename DimTupleType>
+  DimTupleType
+  factors_for_common_denominator(DimTupleType const& n)
+  {
+    typename DimTupleType::value_type lcm = array_lcm(n);
+    DimTupleType result;
+    for(std::size_t i=0;i<n.size();i++) {
+      CCTBX_ASSERT(n[i] != 0);
+      result[i] = lcm / n[i];
+    }
+    return result;
+  }
+
   template <typename DimTupleType,
             typename IndexTupleType>
   inline tagged_value<IndexTupleType>
   multiply(DimTupleType const& n,
+           DimTupleType const& f,
            sgtbx::rt_mx const& s,
-           IndexTupleType const& x)
+           IndexTupleType const& fx)
   {
-    IndexTupleType result = s.r() * x;
+    IndexTupleType result = s.r() * fx;
     for(std::size_t i=0;i<3;i++) {
-      result[i] = result[i] * s.t().den() + s.t()[i] * s.r().den() * n[i];
-      if (result[i] % (s.r().den() * s.t().den())) {
+      result[i] = result[i] * s.t().den()
+                + s.t()[i] * s.r().den() * f[i] * n[i];
+      if (result[i] % (s.r().den() * s.t().den() * f[i])) {
         return tagged_value<IndexTupleType>(result, false);
       }
-      result[i] /= (s.r().den() * s.t().den());
+      result[i] /= (s.r().den() * s.t().den() * f[i]);
     }
     return tagged_value<IndexTupleType>(result, true);
   }
@@ -80,18 +96,24 @@ namespace grid_tags_detail {
              space_group_symmetry_tag)
   {
     std::size_t grid_misses = 0;
-    std::size_t i1d_pivot = p1_tags.accessor()(pivot);
-    for(std::size_t i_smx=1;i_smx<space_group.order_z();i_smx++) {
-      sgtbx::rt_mx s = space_group(i_smx);
-      tagged_value<IndexTupleType>
-      sym_equiv_point = multiply(p1_tags.accessor(), s, pivot);
-      if (sym_equiv_point.tag) {
-        std::size_t i1d_sep = p1_tags.accessor()(sym_equiv_point.value);
-        while (p1_tags[i1d_sep] != -1) i1d_sep = p1_tags[i1d_sep];
-        if (i1d_sep != i1d_pivot) p1_tags[i1d_sep] = i1d_pivot;
-      }
-      else {
-        grid_misses++;
+    if (space_group.order_z() > 1) {
+      typedef typename TagVersaType::accessor_type dim_tuple_type;
+      dim_tuple_type f = factors_for_common_denominator(p1_tags.accessor());
+      IndexTupleType f_pivot;
+      for(std::size_t i=0;i<3;i++) f_pivot[i] = f[i] * pivot[i];
+      std::size_t i1d_pivot = p1_tags.accessor()(pivot);
+      for(std::size_t i_smx=1;i_smx<space_group.order_z();i_smx++) {
+        sgtbx::rt_mx s = space_group(i_smx);
+        tagged_value<IndexTupleType>
+        sym_equiv_point = multiply(p1_tags.accessor(), f, s, f_pivot);
+        if (sym_equiv_point.tag) {
+          std::size_t i1d_sep = p1_tags.accessor()(sym_equiv_point.value);
+          while (p1_tags[i1d_sep] != -1) i1d_sep = p1_tags[i1d_sep];
+          if (i1d_sep != i1d_pivot) p1_tags[i1d_sep] = i1d_pivot;
+        }
+        else {
+          grid_misses++;
+        }
       }
     }
     return grid_misses;
@@ -271,19 +293,26 @@ namespace grid_tags_detail {
         using namespace grid_tags_detail;
         {
           // 1. pass: accumulate contributions for sym. equiv. grid points.
+          tag_accessor_type
+            f = grid_tags_detail::factors_for_common_denominator(
+              tag_array_.accessor());
           sgtbx::space_group const& space_group = sg_type_.group();
           af::nested_loop<grid_point_type> loop(tag_array_.accessor());
           for (grid_point_type const& pt = loop(); !loop.over(); loop.incr()) {
             if (tag_array_(pt) >= 0) continue;
             std::size_t i_pt = data.accessor()(pt);
             FloatType sum = data[i_pt];
-            for(std::size_t i_smx=1;i_smx<space_group.order_z();i_smx++) {
-              sgtbx::rt_mx m = space_group(i_smx);
-              tagged_value<grid_point_type>
-              sym_equiv_point
-                = grid_tags_detail::multiply(tag_array_.accessor(), m, pt);
-              CCTBX_ASSERT(sym_equiv_point.tag);
-              sum += data(sym_equiv_point.value);
+            if (space_group.order_z() > 1) {
+              grid_point_type f_pt;
+              for(std::size_t i=0;i<3;i++) f_pt[i] = f[i] * pt[i];
+              for(std::size_t i_smx=1;i_smx<space_group.order_z();i_smx++) {
+                sgtbx::rt_mx m = space_group(i_smx);
+                tagged_value<grid_point_type>
+                sym_equiv_point = grid_tags_detail::multiply(
+                  tag_array_.accessor(), f, m, f_pt);
+                CCTBX_ASSERT(sym_equiv_point.tag);
+                sum += data(sym_equiv_point.value);
+              }
             }
             data[i_pt] = sum;
           }
