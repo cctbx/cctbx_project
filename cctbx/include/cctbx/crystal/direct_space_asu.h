@@ -357,6 +357,8 @@ namespace direct_space_asu {
         asu_(asu),
         buffer_thickness_(buffer_thickness),
         min_distance_sym_equiv_(min_distance_sym_equiv),
+        space_group_ops_(space_group.all_ops()),
+        space_group_ops_const_ref_(space_group_ops_.const_ref()),
         asu_buffer_(asu.add_buffer(buffer_thickness)),
         buffer_covering_sphere_(
           scitbx::math::minimum_covering_sphere_3d<FloatType>(
@@ -612,7 +614,7 @@ namespace direct_space_asu {
       {
         asu_mapping<FloatType, IntShiftType> const&
           am = get_asu_mapping(i_seq, i_sym);
-        sgtbx::rt_mx rt = space_group_(am.i_sym_op());
+        sgtbx::rt_mx const& rt = space_group_ops_const_ref_[am.i_sym_op()];
         int t_den = rt.t().den();
         return rt + sgtbx::tr_vec(am.unit_shifts()*t_den, t_den);
       }
@@ -642,7 +644,7 @@ namespace direct_space_asu {
           for(std::size_t i_sym_op=0;
               i_sym_op<space_group_.order_z();
               i_sym_op++) {
-            sgtbx::rt_mx s = space_group_(i_sym_op);
+            sgtbx::rt_mx const& s = space_group_ops_const_ref_[i_sym_op];
             typedef scitbx::type_holder<FloatType> t_h;
             r_cart_.push_back(o*s.r().as_floating_point(t_h())*f);
             t_cart_.push_back(o*s.t().as_floating_point(t_h()));
@@ -675,7 +677,7 @@ namespace direct_space_asu {
           for(std::size_t i_sym_op=0;
               i_sym_op<space_group_.order_z();
               i_sym_op++) {
-            sgtbx::rt_mx s = space_group_(i_sym_op);
+            sgtbx::rt_mx const& s = space_group_ops_const_ref_[i_sym_op];
             typedef scitbx::type_holder<FloatType> t_h;
             r_inv_cart_
               .push_back(o*s.r().inverse().as_floating_point(t_h())*f);
@@ -752,6 +754,8 @@ namespace direct_space_asu {
       float_asu<FloatType> asu_;
       FloatType buffer_thickness_;
       FloatType min_distance_sym_equiv_;
+      af::shared<sgtbx::rt_mx> space_group_ops_;
+      af::const_ref<sgtbx::rt_mx> space_group_ops_const_ref_;
       float_asu<FloatType> asu_buffer_;
       scitbx::math::sphere_3d<FloatType> buffer_covering_sphere_;
       array_of_array_of_mappings_for_one_site mappings_;
