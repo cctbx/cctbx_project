@@ -14,6 +14,7 @@ SConscript("array_family/SConscript")
 SConscript("serialization/SConscript")
 SConscript("fftpack/timing/SConscript")
 SConscript("lbfgs/SConscript")
+SConscript("lbfgsb/dev/SConscript")
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
@@ -29,3 +30,4 @@ if (not env_etc.no_boost_python):
   SConscript("math/boost_python/SConscript")
   SConscript("fftpack/boost_python/SConscript")
   SConscript("lbfgs/boost_python/SConscript")
+  SConscript("lbfgsb/boost_python/SConscript")
