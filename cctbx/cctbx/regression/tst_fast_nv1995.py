@@ -64,7 +64,9 @@ def run_fast_terms(structure_fixed, structure_p1,
           assert i_sample != 0
       i_grid = flex.norm(f_obs.structure_factors_from_scatterers(
         xray_structure=structure_shifted, algorithm="direct").f_calc().data())
-      map_value = map[grid_point]
+      if (squared_flag): p = 4
+      else: p = 2
+      map_value = map[grid_point] * f_obs.space_group().n_ltr()**p
       if (not squared_flag):
         sum_m_i_grid = flex.sum(m * i_grid)
       else:
@@ -260,7 +262,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
   assert peak_list.heights()[0] > 0.99
 
 def run_call_back(flags, space_group_info):
-  if (space_group_info.group().order_p() > 8 and not flags.HighSymmetry):
+  if (space_group_info.group().order_p() > 24 and not flags.HighSymmetry):
     print "High symmetry space group skipped."
     return
   if (not (flags.Atom or flags.Molecule)):

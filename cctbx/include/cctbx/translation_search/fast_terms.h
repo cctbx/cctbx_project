@@ -40,6 +40,13 @@ namespace cctbx { namespace translation_search {
           squared_flag == true: summation according to equation 15.<br>
           The array m corresponds to mH in equation 15.
           <p>
+          The summation is only over the space_group.order_p()
+          symmetry operations. Compared to the summation over
+          all space_group.order_z() symmetry operations, the
+          results are smaller by a factor space_group.n_ltr()**p,
+          with p=2 for squared_flag=false,
+          and p=4 for squared_flag=true.
+          <p>
           Target functions other than the correlation coefficient
           may be evaluated by passing different factors in the
           array m.
