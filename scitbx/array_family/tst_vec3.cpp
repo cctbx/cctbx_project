@@ -99,6 +99,13 @@ int main(int argc, char* argv[])
     check_true(__LINE__, vec3<int>(3,5,7).product() == 3*5*7);
   }
   {
+    vec3<int> m(1,2,3);
+    m.each_update_min(vec3<int>(0,3,3));
+    check_true(__LINE__, m == vec3<int>(0,2,3));
+    m.each_update_max(vec3<int>(0,3,4));
+    check_true(__LINE__, m == vec3<int>(0,3,4));
+  }
+  {
     vec3<double> a(2., 3., 4.);
     check_true(__LINE__, std::fabs(a.length_sq() - 29.) < 1.e-6);
     check_true(__LINE__, std::fabs(a.length() - std::sqrt(29.)) < 1.e-6);

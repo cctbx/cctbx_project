@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copy of cctbx/vec3.h (Ralf W. Grosse-Kunstleve)
-     2002 May: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_VEC3_H
 #define SCITBX_VEC3_H
 
@@ -72,6 +62,24 @@ namespace scitbx {
         if (result < this->elems[1]) result = this->elems[1];
         if (result < this->elems[2]) result = this->elems[2];
         return result;
+      }
+
+      //! In-place minimum of this and other for each element.
+      void
+      each_update_min(vec3 const& other)
+      {
+        for(std::size_t i=0;i<3;i++) {
+          if (this->elems[i] > other[i]) this->elems[i] = other[i];
+        }
+      }
+
+      //! In-place maximum of this and other for each element.
+      void
+      each_update_max(vec3 const& other)
+      {
+        for(std::size_t i=0;i<3;i++) {
+          if (this->elems[i] < other[i]) this->elems[i] = other[i];
+        }
       }
 
       //! Sum of vector elements.
