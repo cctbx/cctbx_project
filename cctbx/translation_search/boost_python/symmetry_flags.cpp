@@ -7,8 +7,8 @@
      2002 Oct: Created (rwgk)
  */
 
-#include <cctbx/translation_search/symmetry_flags.h>
 #include <boost/python/class.hpp>
+#include <cctbx/translation_search/symmetry_flags.h>
 
 namespace cctbx { namespace translation_search { namespace boost_python {
 
