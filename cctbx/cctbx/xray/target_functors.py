@@ -17,13 +17,13 @@ class target_functor_base:
                                      f_calc.data(),
                                      compute_derivatives)
 
-class least_squares_residual(target_functor_base):
+class least_squares_residual:
 
   def __init__(self, f_obs, weights=None,
-               use_sigmas_as_weights=00000):
+               use_sigmas_as_weights=00000,
+               scale_factor=0):
     adopt_init_args(self, locals(), hide=0001)
     assert self._weights is None or self._use_sigmas_as_weights == 00000
-    self._target_calculator = ext.targets_least_squares_residual
     if (self._use_sigmas_as_weights):
       self._weights = self._f_obs.sigmas().data()
 
@@ -35,6 +35,24 @@ class least_squares_residual(target_functor_base):
 
   def use_sigmas_as_weights(self):
     return self._use_sigmas_as_weights
+
+  def __call__(self, f_calc, compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(
+           self.f_obs().unit_cell())
+    assert f_calc.space_group() == self.f_obs().space_group()
+    if (self.weights() is not None):
+      return ext.targets_least_squares_residual(
+        self.f_obs().data(),
+        self.weights(),
+        f_calc.data(),
+        compute_derivatives,
+        self._scale_factor)
+    else:
+      return ext.targets_least_squares_residual(
+        self.f_obs().data(),
+        f_calc.data(),
+        compute_derivatives,
+        self._scale_factor)
 
 class intensity_correlation(target_functor_base):
 
