@@ -329,6 +329,11 @@ class environment:
       for dist_path in module.dist_paths_active():
         yield dist_path
 
+  def set_os_environ_all_dist(self):
+    for module in self.module_list:
+      for name,path in module.name_and_dist_path_pairs():
+        os.environ[name.upper()+"_DIST"] = path
+
   def clear_bin_directory(self):
     if (not os.path.isdir(self.bin_path)): return
     for file_name in os.listdir(self.bin_path):
