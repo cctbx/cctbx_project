@@ -1,0 +1,51 @@
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
+
+   Revision history:
+     2002 Sep: Renamed sgtbx/change_basis.cpp (rwgk)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
+ */
+
+#include <cctbx/sgtbx/change_of_basis_op.h>
+#include <cctbx/uctbx.h>
+
+namespace cctbx { namespace sgtbx {
+
+  tr_vec change_of_basis_op::operator()(
+    tr_vec const& t,
+    int sign_identity) const
+  {
+    // (C|V)( I|T)(C^-1|W)=( C|CT+V)(C^-1|W)=( I|CT+V+CW)=( I|C(T+W)+V)
+    // (C|V)(-I|T)(C^-1|W)=(-C|CT+V)(C^-1|W)=(-I|CT+V-CW)=(-I|C(T-W)+V)
+    tr_vec tf = t.new_denominator(c_inv_.t().den());
+    tr_vec tw;
+    if (sign_identity >= 0) tw = tf + c_inv_.t();
+    else                    tw = tf - c_inv_.t();
+    return (  c_.r() * tw
+            + c_.t().scale(c_.r().den())).new_denominator(t.den());
+  }
+
+  rot_mx change_of_basis_op::operator()(rot_mx const& r) const
+  {
+    CCTBX_ASSERT(r.den() == 1);
+    return (c_.r() * r * c_inv_.r()).new_denominator(1);
+  }
+
+  rt_mx change_of_basis_op::operator()(rt_mx const& s) const
+  {
+    CCTBX_ASSERT(s.r().den() == 1);
+    CCTBX_ASSERT(c_.t().den() % s.t().den() == 0);
+    return (c_ * (s.scale(1, c_.t().den() / s.t().den()) * c_inv_))
+      .new_denominators(s);
+  }
+
+  rt_mx change_of_basis_op::apply(rt_mx const& s) const
+  {
+    return c_.multiply(s.multiply(c_inv_));
+  }
+
+}} // namespace cctbx::sgtbx

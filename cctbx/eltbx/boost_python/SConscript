@@ -1,0 +1,14 @@
+Import("env_etc", "env_cctbx_boost_python_ext")
+
+env_cctbx_boost_python_ext.Command(
+  "#libtbx/cctbx_boost/eltbx/__init__.py",
+  "#libtbx/build/SConscript", env_etc.touch_init)
+
+env = env_cctbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["cctbx"])
+for module in ("caasf", "henke", "fp_fdp", "icsd_radii", "neutron",
+               "sasaki", "tiny_pse", "wavelengths"):
+  pyd = env.SharedLibrary(target=module+"_ext", source=[
+    module+"_ext.cpp",
+  ])
+  env.Install("#libtbx/cctbx_boost/eltbx", pyd)

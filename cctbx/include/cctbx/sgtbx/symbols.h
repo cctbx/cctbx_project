@@ -1,12 +1,11 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_SGTBX_SYMBOLS_H
@@ -19,11 +18,12 @@ namespace cctbx { namespace sgtbx {
   namespace symbols {
     namespace tables {
 
-      struct Main_Symbol_Dict_Entry {
-        int         SgNumber;
-        const char* Qualifier;
-        const char* Hermann_Mauguin;
-        const char* Hall;
+      struct main_symbol_dict_entry
+      {
+        int         sg_number;
+        const char* qualifier;
+        const char* hermann_mauguin;
+        const char* hall;
       };
 
     } // namespace tables
@@ -31,7 +31,7 @@ namespace cctbx { namespace sgtbx {
 
   //! class for the handling of space group symbols of various types.
   /*! The purpose of this class is to convert several conventional
-      space group notations to Hall() symbols by using lookup tables.
+      space group notations to hall() symbols by using lookup tables.
       The Hall symbols can then be used to initialize objects
       of class SpaceGroup.
       <p>
@@ -114,21 +114,23 @@ namespace cctbx { namespace sgtbx {
         <p>
         When Hall symbols are used, all the lookup algorithms provided
         by this class are bypassed. This feature is provided for
-        generality and convenience. Note that SgNumber(),
-        Hermann_Mauguin() etc. are not defined if a Hall symbol is
+        generality and convenience. Note that number(),
+        hermann_mauguin() etc. are not defined if a Hall symbol is
         used!
         <p>
       </ul>
       <p>
       See also: \ref page_multiple_cell
    */
-  class SpaceGroupSymbols {
+  class space_group_symbols
+  {
     public:
       //! Default constructor. Some data members are not initialized!
-      SpaceGroupSymbols() {}
+      space_group_symbols() {}
+
       //! Lookup space group Symbol.
       /*! For a general introduction see class details.<br>
-          TableId is one of "" (the empty string), "I1952",
+          table_id is one of "" (the empty string), "I1952",
           "A1983", or "Hall".<br>
           <p>
           The default table lookup preferences are described
@@ -148,24 +150,35 @@ namespace cctbx { namespace sgtbx {
           <p>
           <b>Hall</b> signals that Symbol is a Hall symbols
           without a leading "Hall: ". The table lookup is bypassed.
-          Note that SgNumber(), Hermann_Mauguin() etc. are not defined
+          Note that number(), hermann_mauguin() etc. are not defined
           if a Hall symbol is used!
        */
       explicit
-      SpaceGroupSymbols(const std::string& Symbol,
-                        const std::string& TableId = "");
+      space_group_symbols(std::string const& symbol,
+                          std::string const& table_id = "");
+
       //! Lookup space group number.
       /*! For a general introduction see class details.<br>
-          TableId is one of "", "I1952", "A1983", or "Hall". See the
+          table_id is one of "", "I1952", "A1983", or "Hall". See the
           other constructor for details.<br>
           See also: Extension()
        */
       explicit
-      SpaceGroupSymbols(int SgNumber, const std::string& Extension = "",
-                        const std::string& TableId = "");
+      space_group_symbols(int sg_number, std::string const& extension = "",
+                          std::string const& table_id = "");
+
       //! For internal use only.
-      SpaceGroupSymbols(const symbols::tables::Main_Symbol_Dict_Entry* Entry,
-                        char Extension);
+      space_group_symbols(const symbols::tables::main_symbol_dict_entry* entry,
+                          char extension);
+
+      //! Tests if the instance is constructed properly.
+      /*! Shorthand for: number() != 0
+          <p>
+          Not available in Python.
+       */
+      bool
+      is_valid() const { return number_ != 0; }
+
       //! Space group number according to the International Tables.
       /*! A number in the range 1 - 230. This number uniquely defines
           the space group type.<br>
@@ -175,7 +188,8 @@ namespace cctbx { namespace sgtbx {
           are multiple space group representations listed in the
           International Tables.
        */
-      int SgNumber() const { return m_SgNumber; }
+      int number() const { return number_; }
+
       //! Schoenflies symbol.
       /*! One of the 230 unique Schoenflies symbols defined in the
           International Tables. A Schoenflies symbol uniquely defines
@@ -186,7 +200,8 @@ namespace cctbx { namespace sgtbx {
           are multiple space group representations listed in the
           International Tables.
        */
-      const std::string& Schoenflies() const { return m_Schoenflies; }
+      std::string const& schoenflies() const { return schoenflies_; }
+
       //! A qualifier for the classification of alternative representations.
       /*! A qualifier for monoclinic and orthorhombic space groups.<br>
           For monoclinic space groups, the qualifier takes the
@@ -201,7 +216,8 @@ namespace cctbx { namespace sgtbx {
           Note that this qualifier is purely informational and not
           actively used in any of the symbol lookup algorithms.
        */
-      const std::string& Qualifier() const { return m_Qualifier; }
+      std::string const& qualifier() const { return qualifier_; }
+
       //! Hermann-Mauguin symbol as defined in the International Tables.
       /*! Hermann-Mauguin (H-M) symbols were originally designed as a
           convenient description of given space-group representations.
@@ -215,8 +231,8 @@ namespace cctbx { namespace sgtbx {
           ambiguity in the origin selection is overcome by using an
           Extension().
        */
-      const std::string& Hermann_Mauguin() const {
-        return m_Hermann_Mauguin; }
+      std::string const& hermann_mauguin() const { return hermann_mauguin_; }
+
       //! Extension to the Hermann-Mauguin symbol.
       /*! For some space groups, the extension is used to distinguish
           between origin choices, or the choice of hexagonal or
@@ -226,60 +242,68 @@ namespace cctbx { namespace sgtbx {
           Extension "H": Hexagonal axes.<br>
           Extension "R": Rhombohedral axes.<br>
           The extension is '\0' (the null character) otherwise.<br>
-          See also: Hermann_Mauguin()
+          See also: hermann_mauguin()
        */
-      char Extension() const { return m_Extension; }
+      char extension() const { return extension_; }
+
       //! Hermann-Mauguin symbol with extension appended (if any).
       /*! If the extension is '\0' (the null character),
-          ExtendedHermann_Mauguin() is equivalent to
-          Hermann_Mauguin(). Otherwise a colon and the one-character
+          extended_hermann_mauguin() is equivalent to
+          hermann_mauguin(). Otherwise a colon and the one-character
           extension is appended to the Hermann-Mauguin symbol.
           <p>
           The extended Hermann-Mauguin symbol uniquely identifies a
           tabulated space group representation.
        */
-      const std::string& ExtendedHermann_Mauguin() const {
-        return m_ExtendedHermann_Mauguin; }
+      std::string const& extended_hermann_mauguin() const
+      {
+        return extended_hermann_mauguin_;
+      }
+
       //! Hall symbol.
       /*! The space group notation of Hall was designed to be "computer
           adapted". Hall symbols have some similarities with
-          Hermann_Mauguin() symbols, but define the space group
+          hermann_mauguin() symbols, but define the space group
           representation without ambiguities. Another advantage is that
           any 3-dimensional crystallographic space group representation
           can be described by a Hall symbol.<br>
           The most common use of Hall symbols in this implementation
           is to initialize objects of class SpaceGroup.
        */
-      const std::string& Hall() const { return m_Hall; }
+      std::string const& hall() const { return hall_; }
+
     private:
-      int         m_SgNumber;
-      std::string m_Schoenflies;
-      std::string m_Qualifier;
-      std::string m_Hermann_Mauguin;
-      char        m_Extension;
-      std::string m_ExtendedHermann_Mauguin;
-      std::string m_Hall;
-      void SetAll(const symbols::tables::Main_Symbol_Dict_Entry* Entry,
-                  char WorkExtension,
-                  const std::string& StdTableId);
-      int HallPassThrough(const std::string& Symbol);
-      void Clear();
+      int         number_;
+      std::string schoenflies_;
+      std::string qualifier_;
+      std::string hermann_mauguin_;
+      char        extension_;
+      std::string extended_hermann_mauguin_;
+      std::string hall_;
+      void set_all(const symbols::tables::main_symbol_dict_entry* entry,
+                   char work_extension,
+                   std::string const& std_table_id);
+      int hall_pass_through(std::string const& symbol);
+      void clear();
   };
 
-  //! Iterator for the 656 tabulated space group representations.
-  class SpaceGroupSymbolIterator {
+  //! Iterator for the 530 tabulated space group representations.
+  class space_group_symbol_iterator
+  {
     public:
       //! Initialize the iterator.
-      SpaceGroupSymbolIterator();
+      space_group_symbol_iterator();
+
       //! Get symbols for next space group representation.
-      /*! result.SgNumber() == 0 signals that the end of the internal
+      /*! result.number() == 0 signals that the end of the internal
           table was reached.
        */
-      SpaceGroupSymbols next();
+      space_group_symbols next();
+
     private:
-      const symbols::tables::Main_Symbol_Dict_Entry* Entry;
-      int nHall;
-      int iHall;
+      const symbols::tables::main_symbol_dict_entry* entry_;
+      int n_hall_;
+      int i_hall_;
   };
 
 }} // namespace cctbx::sgtbx

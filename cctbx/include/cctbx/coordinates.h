@@ -1,21 +1,22 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Created 2001 Jul 03 (R.W. Grosse-Kunstleve)
+     2001 Jul: Created (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_COORDINATES_H
 #define CCTBX_COORDINATES_H
 
-#include <cctbx/array_family/tiny_types.h>
-#include <cctbx/array_family/tiny_reductions.h>
-#include <cctbx/array_family/tiny_algebra.h>
+#include <scitbx/vec3.h>
+#include <cctbx/import_scitbx_af.h>
 
 namespace cctbx {
+
+  template <typename FloatType>
+  class fractional;
 
   //! Class for cartesian (orthogonal, real) coordinates.
   /*! The template parameter FloatType should be a floating point type
@@ -23,48 +24,40 @@ namespace cctbx {
       <p>
       See also: class fractional
    */
-  template <class FloatType>
-  class cartesian : public af::tiny<FloatType, 3> {
+  template <typename FloatType = double>
+  class cartesian : public scitbx::vec3<FloatType>
+  {
     public:
-      //! The elements of the coordinate vector are initialized with 0.
-      cartesian() {
-        for(std::size_t i=0;i<3;i++) this->elems[i] = 0;
-      }
+      typedef scitbx::vec3<FloatType> base_type;
+
+      //! Default constructor: elements are not initialized!
+      cartesian() {}
+
       //! The elements of the coordinate vector are copied from v.
-      template <class OtherFloatType>
-      cartesian(const af::tiny<OtherFloatType, 3> v) {
+      template <typename OtherFloatType>
+      cartesian(af::tiny_plain<OtherFloatType, 3> const& v)
+      {
         for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
       }
+
       //! The elements of the coordinate vector are copied from xyz.
-      template <class OtherFloatType>
-      cartesian(const OtherFloatType* xyz) {
+      explicit
+      cartesian(const FloatType* xyz)
+      {
         for(std::size_t i=0;i<3;i++) this->elems[i] = xyz[i];
       }
+
       //! The elements of the coordinate vector are initialized with x,y,z.
-      cartesian(const FloatType& x, const FloatType& y, const FloatType& z) {
+      cartesian(FloatType const& x, FloatType const& y, FloatType const& z)
+      {
         this->elems[0] = x; this->elems[1] = y; this->elems[2] = z;
       }
-      //! Length squared (scalar product) of the coordinate vector.
-      FloatType Length2() const {
-        return af::sum((*this) * (*this));
-      }
+
+    private:
+      // disables construction from fractional
+      template <typename OtherFloatType>
+      cartesian(fractional<OtherFloatType> const&);
   };
-
-  namespace detail {
-
-    template <class FloatType>
-    af::int3
-    getUnitShifts(const af::tiny<FloatType, 3>& Delta)
-    {
-      af::int3 result;
-      for(std::size_t i=0;i<3;i++) {
-        if (Delta[i] >= 0.) result[i] = int(Delta[i] + 0.5);
-        else                result[i] = int(Delta[i] - 0.5);
-      }
-      return result;
-    }
-
-  } // namespace detail
 
   //! Class for fractional coordinates.
   /*! The template parameter FloatType should be a floating point type
@@ -72,31 +65,41 @@ namespace cctbx {
       <p>
       See also: class cartesian
    */
-  template <class FloatType>
-  class fractional : public af::tiny<FloatType, 3> {
+  template <typename FloatType = double>
+  class fractional : public scitbx::vec3<FloatType>
+  {
     public:
-      //! The elements of the coordinate vector are initialized with 0.
-      fractional() {
-        for(std::size_t i=0;i<3;i++) this->elems[i] = 0;
-      }
+      typedef scitbx::vec3<FloatType> base_type;
+
+      //! Default constructor: elements are not initialized!
+      fractional() {}
+
       //! The elements of the coordinate vector are copied from v.
-      template <class OtherFloatType>
-      fractional(const af::tiny<OtherFloatType, 3> v) {
+      template <typename OtherFloatType>
+      fractional(af::tiny_plain<OtherFloatType, 3> const& v)
+      {
         for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
       }
+
       //! The elements of the coordinate vector are copied from xyz.
-      template <class OtherFloatType>
-      fractional(const OtherFloatType* xyz) {
+      template <typename OtherFloatType>
+      explicit
+      fractional(const OtherFloatType* xyz)
+      {
         for(std::size_t i=0;i<3;i++) this->elems[i] = xyz[i];
       }
+
       //! The elements of the coordinate vector are initialized with x,y,z.
-      fractional(const FloatType& x, const FloatType& y, const FloatType& z) {
+      fractional(FloatType const& x, FloatType const& y, FloatType const& z)
+      {
         this->elems[0] = x; this->elems[1] = y; this->elems[2] = z;
       }
+
       /*! \brief Apply modulus operation such that 0.0 <= x < 1.0
           for all elements of the coordinate vector.
        */
-      fractional modPositive() const {
+      fractional mod_positive() const
+      {
         fractional result;
         for(std::size_t i=0;i<3;i++) {
           result[i] = std::fmod(this->elems[i], 1.);
@@ -105,10 +108,12 @@ namespace cctbx {
         }
         return result;
       }
+
       /*! \brief Apply modulus operation such that -0.5 < x <= 0.5
           for all elements of the coordinate vector.
        */
-      fractional modShort() const {
+      fractional mod_short() const
+      {
         fractional result;
         for(std::size_t i=0;i<3;i++) {
           result[i] = std::fmod(this->elems[i], 1.);
@@ -117,6 +122,22 @@ namespace cctbx {
         }
         return result;
       }
+
+      scitbx::vec3<int>
+      unit_shifts() const
+      {
+        scitbx::vec3<int> result;
+        for(std::size_t i=0;i<3;i++) {
+          if (this->elems[i] >= 0.) result[i] = int(this->elems[i] + 0.5);
+          else                      result[i] = int(this->elems[i] - 0.5);
+        }
+        return result;
+      }
+
+    private:
+      // disables construction from cartesian
+      template <typename OtherFloatType>
+      fractional(cartesian<OtherFloatType> const&);
   };
 
 } // namespace cctbx

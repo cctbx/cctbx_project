@@ -1,18 +1,19 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/icsd_radii.h>
+#include <cctbx/eltbx/basic.h>
 
-namespace cctbx { namespace eltbx {
-  namespace tables {
+namespace cctbx { namespace eltbx { namespace icsd_radii {
+
+namespace detail {
+namespace {
 
 /* Table of ionic radii
 
@@ -47,7 +48,7 @@ namespace cctbx { namespace eltbx {
    Radii "not in ICSD manual" were taken from Xtal 3.2 routine SX20
  */
 
-    const detail::Label_Radius ICSD_Radii[] = {
+    const raw_record table[] = {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       {"H",     0.78},
       {"H1+",  -0.38},
@@ -495,40 +496,45 @@ namespace cctbx { namespace eltbx {
 // END_COMPILED_IN_REFERENCE_DATA
     };
 
-  } // namespace tables
-}} // namespace cctbx::eltbx
-
-namespace {
-
-  const cctbx::eltbx::detail::Label_Radius*
-  FindEntry(const std::string& WorkLabel, bool Exact)
+  const raw_record*
+  find_record(std::string const& work_label, bool exact)
   {
     int m = 0;
-    const cctbx::eltbx::detail::Label_Radius* mEntry = 0;
-    for (const cctbx::eltbx::detail::Label_Radius*
-         Entry = cctbx::eltbx::tables::ICSD_Radii; Entry->Label; Entry++)
-    {
-      int i = cctbx::eltbx::MatchLabels(WorkLabel, Entry->Label);
-      if (i < 0) return Entry;
+    const raw_record* matching_record = 0;
+    for (const raw_record* record = table; record->label; record++) {
+      int i = basic::match_labels(work_label, record->label);
+      if (i < 0) return record;
       if (i > m) {
         m = i;
-        mEntry = Entry;
+        matching_record = record;
       }
     }
-    if (Exact || !mEntry) {
-      throw cctbx::eltbx::error("Unknown ion label.");
+    if (exact || !matching_record) {
+      throw error("Unknown ion label.");
     }
-    return mEntry;
+    return matching_record;
   }
 
 } // namespace <anonymous>
+} // namespace detail
 
-namespace cctbx { namespace eltbx {
-
-  ICSD_Radius::ICSD_Radius(const std::string& Label, bool Exact)
+  table::table(std::string const& label, bool exact)
   {
-    std::string WorkLabel = StripLabel(Label, Exact);
-    m_Label_Radius = FindEntry(WorkLabel, Exact);
+    std::string work_label = basic::strip_label(label, exact);
+    record_ = detail::find_record(work_label, exact);
   }
 
-}} // namespace cctbx::eltbx
+  table_iterator::table_iterator()
+  :
+    current_("H", true)
+  {}
+
+  table
+  table_iterator::next()
+  {
+    table result = current_;
+    if (current_.is_valid()) current_.record_++;
+    return result;
+  }
+
+}}} // namespace cctbx::eltbx::icsd_radii

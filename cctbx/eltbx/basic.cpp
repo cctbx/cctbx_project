@@ -1,28 +1,28 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Dec: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/eltbx/basic.h>
+#include <cstddef>
+#include <ctype.h>
 
-namespace cctbx { namespace eltbx {
+namespace cctbx { namespace eltbx { namespace basic {
 
-  std::string StripLabel(const std::string& Label, bool Exact)
+  std::string strip_label(std::string const& label, bool exact)
   {
     std::string result;
     std::string::const_iterator l;
-    for (l = Label.begin(); l != Label.end(); l++) {
+    for (l = label.begin(); l != label.end(); l++) {
       if (!isspace(*l)) break;
     }
     char digit = '\0';
-    for (; l != Label.end(); l++) {
+    for (; l != label.end(); l++) {
       if (isspace(*l)) {
         break;
       }
@@ -44,20 +44,20 @@ namespace cctbx { namespace eltbx {
         result += toupper(*l);
       }
     }
-    if (Exact && l != Label.end() && !isspace(*l)) {
+    if (exact && l != label.end() && !isspace(*l)) {
       return "";
     }
     return result;
   }
 
-  int MatchLabels(const std::string& WorkLabel, const char* TabLabel)
+  int match_labels(std::string const& work_label, const char* tab_label)
   {
     int i;
-    for (i = 0; i < WorkLabel.size() && TabLabel[i]; i++)
-      if (WorkLabel[i] != toupper(TabLabel[i])) break;
-    if (i == WorkLabel.size() && TabLabel[i] == '\0') return -i;
-    if (i == 1 && isalpha(TabLabel[1])) return 0;
+    for (i = 0; i < work_label.size() && tab_label[i]; i++)
+      if (work_label[i] != toupper(tab_label[i])) break;
+    if (i == work_label.size() && tab_label[i] == '\0') return -i;
+    if (i == 1 && isalpha(tab_label[1])) return 0;
     return i;
   }
 
-}} // namespace cctbx::eltbx
+}}} // namespace cctbx::eltbx::basic

@@ -1,55 +1,105 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_ELTBX_WAVELENGTHS_H
 #define CCTBX_ELTBX_WAVELENGTHS_H
 
+#include <scitbx/constants.h>
 #include <string>
-#include <cctbx/constants.h>
 
-namespace cctbx { namespace eltbx {
+namespace cctbx { namespace eltbx { namespace wavelengths {
 
-  namespace detail {
-    struct RawWaveLength {
-      const char* Label;
-      float       lambda;
+  namespace detail
+  {
+    struct raw
+    {
+      const char* label;
+      float       value;
     };
   }
 
   //! Characteristic wavelengths of commonly used x-ray tube target materials.
-  class WaveLength {
+  class characteristic
+  {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
-      WaveLength() : m_RawEntry(0) {}
-      //! Get i'th entry in the internal table.
-      /*! Can be used to iterate over all entries.
-       */
-      explicit
-      WaveLength(int i);
-      //! Lookup characteristic wavelength for given label.
+      characteristic() : raw_(0) {}
+
+      //! Retrieves characteristic wavelength for given label.
       /*! The lookup is not case-sensitive.
+          <p>
+          See also: is_valid()
        */
-      WaveLength(const std::string& Label);
-      //! Return label.
-      const char* Label() const { return m_RawEntry->Label; }
-      //! Return wavelength (Angstrom).
-      float operator()() const { return m_RawEntry->lambda; }
-      //! Return energy (keV).
-      float Energy() const {
-        if (m_RawEntry->lambda == 0.) return 0.;
-        return cctbx::constants::factor_keV_Angstrom / m_RawEntry->lambda;
+      characteristic(std::string const& label);
+
+      //! Tests if the label passed to the contructor could be matched.
+      /*! Shorthand for: as_angstrom() != 0
+       */
+      bool
+      is_valid() const { return raw_->value != 0; }
+
+      //! Returns label (e.g. Cu or CuA1).
+      /*! See also: is_valid()
+       */
+      const char*
+      label() const
+      {
+        return raw_->label;
       }
+
+      //! Wavelength (Angstrom).
+      /*! See also: is_valid()
+       */
+      float
+      as_angstrom() const
+      {
+        return raw_->value;
+      }
+
+      //! Energy [keV].
+      /*! See also: is_valid()
+       */
+      float
+      as_kev() const
+      {
+        if (raw_->value == 0.) return 0.;
+        return scitbx::constants::factor_kev_angstrom / raw_->value;
+      }
+
+      //! Energy [eV].
+      /*! See also: is_valid()
+       */
+      float
+      as_ev() const { return as_kev() * 1000; }
+
     private:
-      const detail::RawWaveLength* m_RawEntry;
+      const detail::raw* raw_;
+      friend class characteristic_iterator;
   };
 
-}} // cctbx::eltbx
+  //! Iterator over characteristic wavelengths.
+  class characteristic_iterator
+  {
+    public:
+      //! Initialization of the iterator.
+      characteristic_iterator();
+
+      //! Retrieves the next entry from the internal table.
+      /*! Use characteristic::is_valid() to detect end-of-iteration.
+       */
+      characteristic
+      next();
+
+    private:
+      characteristic current_;
+  };
+
+}}} // cctbx::eltbx::wavelengths
 
 #endif // CCTBX_ELTBX_WAVELENGTHS_H

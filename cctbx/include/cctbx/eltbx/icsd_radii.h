@@ -1,11 +1,10 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_ELTBX_ICSD_RADII_H
@@ -13,13 +12,16 @@
 
 #include <string>
 
-namespace cctbx { namespace eltbx {
+namespace cctbx { namespace eltbx { namespace icsd_radii {
 
   namespace detail {
-    struct Label_Radius {
-      const char* Label;
-      float       Radius;
+
+    struct raw_record
+    {
+      const char* label;
+      float       radius;
     };
+
   }
 
   //! Access to table of ionic radii.
@@ -49,28 +51,64 @@ namespace cctbx { namespace eltbx {
       In  this  connection,   negative increments are obtained for the
       specially small atoms C+4, D+1, H+1 and N+5.
    */
-  class ICSD_Radius {
+  class table
+  {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
-      ICSD_Radius() : m_Label_Radius(0)  {}
-      //! Lookup ionic radius for the given ion label.
-      /*! If Exact == true, the ion label must exactly
+      table() : record_(0)  {}
+
+      //! Looks up ionic radius for the given ion label.
+      /*! If exact == true, the ion label must exactly
           match the tabulated label. However, the lookup is not
-          case-sensitive.<br>
+          case-sensitive.
+          <p>
           E.g., "SI4" will be matched with "Si".<br>
           "Si4+" and "Si+4" will be matched with "Si4+".<br>
-          See also: eltbx::StripLabel()
+          <p>
+          See also: eltbx::basic::strip_label()
        */
       explicit
-      ICSD_Radius(const std::string& Label, bool Exact = false);
-      //! Return label from table.
-      const char* Label() const { return m_Label_Radius->Label; }
-      //! Return radius (Angstrom) from table.
-      float Radius() const { return m_Label_Radius->Radius; }
+      table(std::string const& label, bool exact=false);
+
+      //! Tests if the instance is constructed properly.
+      /*! Shorthand for: label() != 0
+          <p>
+          Not available in Python.
+       */
+      bool
+      is_valid() const { return record_->label != 0; }
+
+      //! Label from table.
+      const char*
+      label() const { return record_->label; }
+
+      //! Radius [Angstrom] from table.
+      float
+      radius() const { return record_->radius; }
+
     private:
-      const detail::Label_Radius* m_Label_Radius;
+      const detail::raw_record* record_;
+      friend class table_iterator;
   };
 
-}} // cctbx::eltbx
+  /*! \brief Iterator over table of radii.
+   */
+  class table_iterator
+  {
+    public:
+      //! Initialization of the iterator.
+      table_iterator();
+
+      //! Retrieves the next entry from the internal table.
+      /*! Use table::is_valid() to detect end-of-iteration.
+       */
+      table
+      next();
+
+    private:
+      table current_;
+  };
+
+}}} // cctbx::eltbx::icsd_radii
 
 #endif // CCTBX_ELTBX_ICSD_RADII_H

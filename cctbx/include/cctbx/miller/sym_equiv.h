@@ -1,8 +1,7 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
      2002 Jul: Created from fragments of cctbx/sgtbx/miller.h (rwgk)
@@ -11,69 +10,79 @@
 #ifndef CCTBX_MILLER_SYM_EQUIV_H
 #define CCTBX_MILLER_SYM_EQUIV_H
 
-#include <complex>
 #include <cctbx/hendrickson_lattman.h>
-#include <cctbx/sgtbx/groups.h>
-#include <cctbx/sgtbx/miller_ops.h>
+#include <cctbx/sgtbx/space_group.h>
 
 namespace cctbx { namespace miller {
 
   //! Class for symmetrically equivalent Miller indices.
-  class SymEquivIndex
+  class sym_equiv_index
   {
     public:
       //! Default constructor. Some data members are not initialized!
-      SymEquivIndex() {}
+      sym_equiv_index() {}
 
       //! Constructor.
-      /*! HR is the product of the input index H and the
-          rotation part of a symmetry operation.
+      /*! hr is the product of the input index h and the
+          rotation part r of a symmetry operation.
           <p>
-          HT is the product of the input index H and the
+          ht is the product of the input index h and the
           translation part of the symmetry operation,
-          multiplied by the translation base-factor TBF
-          in order to obtain an integer value for HT.
+          multiplied by the translation-part denominator t_den
+          in order to obtain an integer value for ht.
           <p>
-          FriedelFlag indicates if Friedel's law was applied
-          to arrive at H().
+          friedel_flag indicates if Friedel's law was applied
+          to arrive at h().
+          <p>
+          Not available in Python.
        */
-      SymEquivIndex(const Index& HR, int HT, int TBF, bool FriedelFlag)
-        : m_HR(HR), m_HT(HT) , m_TBF(TBF), m_FriedelFlag(FriedelFlag) {}
+      sym_equiv_index(index<> const& hr, int ht, int t_den, bool friedel_flag)
+      : hr_(hr), ht_(ht) , t_den_(t_den), friedel_flag_(friedel_flag)
+      {}
 
       //! The symmetrically equivalent index.
-      Index H() const
+      index<>
+      h() const
       {
-        if (m_FriedelFlag) return -m_HR;
-        return m_HR;
+        if (friedel_flag_) return -hr_;
+        return hr_;
       }
 
       //! Product of Miller index and rotation part of symmetry operation.
-      const Index& HR() const { return m_HR; }
+      index<> const&
+      hr() const { return hr_; }
 
       //! Product of Miller index and translation part of symmetry operation.
-      int HT() const { return m_HT; }
+      int
+      ht() const { return ht_; }
 
-      //! Translation base factor.
-      /*! This is the factor by which HT() is multiplied.
+      //! Translation-part denominator.
+      /*! This is the factor by which ht() is multiplied.
        */
-      int TBF() const { return m_TBF; }
+      int
+      t_den() const { return t_den_; }
 
-      //! Phase shift H*T in radians or degrees.
-      double HT_angle(bool deg = false) const
+      //! Phase shift h*t in radians or degrees.
+      double
+      ht_angle(bool deg = false) const
       {
-        if (deg) return HT_angle_(360.);
-        return HT_angle_(cctbx::constants::two_pi);
+        if (deg) return ht_angle_(360.);
+        return ht_angle_(scitbx::constants::two_pi);
       }
 
       //! Flag for application of Friedel's law.
-      /*! For centric reflections, FriedelFlag() is always false.
+      /*! For centric reflections, friedel_flag() is always false.
        */
-      bool FriedelFlag() const { return m_FriedelFlag; }
+      bool
+      friedel_flag() const { return friedel_flag_; }
 
-      //! Returns new SymEquivIndex with flipped FriedelFlag() if iMate != 0.
-      SymEquivIndex Mate(int iMate = 1) const
+      /*! \brief Returns new sym_equiv_index with flipped
+          friedel_flag() if i_mate != 0.
+       */
+      sym_equiv_index
+      mate(std::size_t i_mate=1) const
       {
-        if (iMate) return SymEquivIndex(m_HR, m_HT, m_TBF, !m_FriedelFlag);
+        if (i_mate) return sym_equiv_index(hr_, ht_, t_den_, !friedel_flag_);
         return *this;
       }
 
@@ -81,15 +90,16 @@ namespace cctbx { namespace miller {
           input Miller index.
        */
       /*! Formula used:<br>
-          deg == 0: phi_eq = phi_in - (2 * pi * HT()) / TBF();<br>
-          deg != 0: phi_eq = phi_in - (360 * HT()) / TBF();<br>
-          if (FriedelFlag()) phi_eq = -phi_eq;
+          deg == 0: phi_eq = phi_in - (2 * pi * ht()) / t_den();<br>
+          deg != 0: phi_eq = phi_in - (360 * ht()) / t_den();<br>
+          if (friedel_flag()) phi_eq = -phi_eq;
        */
       template <class FloatType>
-      FloatType phase_eq(const FloatType& phi_in, bool deg = false) const
+      FloatType
+      phase_eq(FloatType const& phi_in, bool deg=false) const
       {
-        FloatType phi_eq = phi_in - HT_angle(deg);
-        if (m_FriedelFlag) return -phi_eq;
+        FloatType phi_eq = phi_in - ht_angle(deg);
+        if (friedel_flag_) return -phi_eq;
         return phi_eq;
       }
 
@@ -97,33 +107,33 @@ namespace cctbx { namespace miller {
           equivalent Miller index.
        */
       /*! Formula used:<br>
-          if (FriedelFlag()) phi_eq = -phi_eq;<br>
-          deg == 0: phi_in = phi_eq + (2 * pi * HT()) / TBF();<br>
-          deg != 0: phi_in = phi_eq + (360 * HT()) / TBF();
+          if (friedel_flag()) phi_eq = -phi_eq;<br>
+          deg == 0: phi_in = phi_eq + (2 * pi * ht()) / t_den();<br>
+          deg != 0: phi_in = phi_eq + (360 * ht()) / t_den();
        */
-
       template <class FloatType>
-      FloatType phase_in(FloatType phi_eq, bool deg = false) const
+      FloatType
+      phase_in(FloatType phi_eq, bool deg=false) const
       {
-        if (m_FriedelFlag) phi_eq = -phi_eq;
-        return phi_eq + HT_angle(deg);
+        if (friedel_flag_) phi_eq = -phi_eq;
+        return phi_eq + ht_angle(deg);
       }
 
       /*! \brief Complex value for equivalent index, given complex
           value for input index.
        */
       /*! Formula used:<br>
-          f_eq = f_in * exp(-2 * pi * j * HT() / TBF());<br>
+          f_eq = f_in * exp(-2 * pi * j * ht() / t_den());<br>
           where j is the imaginary number.<br>
-          if (FriedelFlag()) f_eq = conj(f_eq);
+          if (friedel_flag()) f_eq = conj(f_eq);
        */
       template <class FloatType>
       std::complex<FloatType>
-      complex_eq(const std::complex<FloatType>& f_in) const
+      complex_eq(std::complex<FloatType> const& f_in) const
       {
         std::complex<FloatType>
-        f_eq = f_in * std::polar(FloatType(1), -HT_angle());
-        if (m_FriedelFlag) return std::conj(f_eq);
+        f_eq = f_in * std::polar(FloatType(1), -ht_angle());
+        if (friedel_flag_) return std::conj(f_eq);
         return f_eq;
       }
 
@@ -131,16 +141,16 @@ namespace cctbx { namespace miller {
           value for equivalent index.
        */
       /*! Formula used:<br>
-          if (FriedelFlag()) f_eq = conj(f_eq);<br>
-          f_in = f_eq * exp(2 * pi * j * HT() / TBF());<br>
+          if (friedel_flag()) f_eq = conj(f_eq);<br>
+          f_in = f_eq * exp(2 * pi * j * ht() / t_den());<br>
           where j is the imaginary number.
        */
       template <class FloatType>
       std::complex<FloatType>
       complex_in(std::complex<FloatType> f_eq) const
       {
-        if (m_FriedelFlag) f_eq = std::conj(f_eq);
-        return f_eq * std::polar(FloatType(1), HT_angle());
+        if (friedel_flag_) f_eq = std::conj(f_eq);
+        return f_eq * std::polar(FloatType(1), ht_angle());
       }
 
       /*! \brief Hendrickson-Lattman coefficients for equivalent index,
@@ -148,12 +158,11 @@ namespace cctbx { namespace miller {
        */
       template <class FloatType>
       hendrickson_lattman<FloatType>
-      hl_eq(hendrickson_lattman<FloatType> const& coeff_in) const
+      hendrickson_lattman_eq(hendrickson_lattman<FloatType> const& hl_in) const
       {
-        hendrickson_lattman<FloatType>
-        coeff_eq = coeff_in.shift_phase(-HT_angle());
-        if (m_FriedelFlag) return coeff_eq.conj();
-        return coeff_eq;
+        hendrickson_lattman<FloatType> hl_eq = hl_in.shift_phase(-ht_angle());
+        if (friedel_flag_) return hl_eq.conj();
+        return hl_eq;
       }
 
       /*! \brief Hendrickson-Lattman coefficients for input index,
@@ -161,30 +170,30 @@ namespace cctbx { namespace miller {
        */
       template <class FloatType>
       hendrickson_lattman<FloatType>
-      hl_in(hendrickson_lattman<FloatType> coeff_eq) const
+      hendrickson_lattman_in(hendrickson_lattman<FloatType> hl_eq) const
       {
-        if (m_FriedelFlag) coeff_eq = coeff_eq.conj();
-        return coeff_eq.shift_phase(HT_angle());
+        if (friedel_flag_) hl_eq = hl_eq.conj();
+        return hl_eq.shift_phase(ht_angle());
       }
 
     protected:
-      double HT_angle_(double Period) const
+      double ht_angle_(double period) const
       {
-        return (Period * m_HT) / m_TBF;
+        return (period * ht_) / t_den_;
       }
 
-      Index m_HR;
-      int   m_HT;
-      int   m_TBF;
-      bool  m_FriedelFlag;
+      index<> hr_;
+      int   ht_;
+      int   t_den_;
+      bool  friedel_flag_;
   };
 
   //! class for the handling of symmetrically equivalent Miller indices.
-  class SymEquivIndices
+  class sym_equiv_indices
   {
     public:
       //! Default constructor. Some data members are not initialized!
-      SymEquivIndices() {}
+      sym_equiv_indices() {}
 
       //! Computation of the symmetrically equivalent Miller indices.
       /*! The Miller index passed to the constructor is referred
@@ -193,140 +202,155 @@ namespace cctbx { namespace miller {
           The conditions for systematically absent reflections are
           NOT tested.
        */
-      SymEquivIndices(
-        sgtbx::SpaceGroup const& sgops,
-        Index const& h_in);
+      sym_equiv_indices(sgtbx::space_group const& sg, index<> const& h_in);
 
-      //! The phase restriction (if any) for the input Miller index.
-      sgtbx::PhaseInfo getPhaseRestriction() const
+      //! Phase restriction (if any) for the input Miller index.
+      sgtbx::phase_info
+      phase_restriction() const
       {
-        return sgtbx::PhaseInfo(m_HT_Restriction, m_TBF, false);
+        return sgtbx::phase_info(ht_restriction_, t_den_, false);
       }
 
-      //! Test if reflection with input Miller index is centric.
-      /*! A reflection with the Miller index H is "centric" if
-          there is a symmetry operation with rotation part R such
-          that H*R = -H.<br>
-          See also: class PhaseInfo
+      //! Tests if a reflection with the input Miller index is centric.
+      /*! A reflection with the Miller index h is "centric" if
+          there is a symmetry operation with rotation part r such
+          that h*r = -h.<br>
+          See also: phase_info
        */
-      bool isCentric() const { return m_HT_Restriction >= 0; }
+      bool
+      is_centric() const { return ht_restriction_ >= 0; }
 
-      //! Number of symmetrically equivalent Miller indices.
-      /*! Note that this is not in general equal to the multiplicity.<br>
-          See also: M()
+      //! Raw array of symmetrically equivalent Miller indices.
+      /*! Note that indices().size() is not in general equal to
+          multiplicity().
        */
-      int N() const { return m_List.size(); }
+      af::shared<sym_equiv_index> const&
+      indices() const { return indices_; }
 
       //! Multiplicity of the input Miller index.
       /*! For acentric reflections and in the presence of Friedel symmetry
-          (no anomalous signal), the multiplicity is twice the number
-          of symmetrically equivalent Miller indices N().<br>
+          (anomalous_flag == false), multiplicity() is twice the number
+          of symmetrically equivalent Miller indices().size().
+          <p>
           For centric reflections or in the absence of Friedel symmetry
-          (i.e. in the presence of an anomalous signal), the multiplicity
-          is equal to the number of symmetrically equivalent Miller indices
-          N().<br>
-          See also: N()
+          (anomalous_flag == true), the multiplicity is equal to the
+          number of symmetrically equivalent Miller indices().size().
        */
-      int M(bool FriedelFlag) const {
-        if (FriedelFlag && !isCentric()) return 2 * N();
-        return N();
+      int
+      multiplicity(bool anomalous_flag) const
+      {
+        if (!anomalous_flag && !is_centric()) return 2 * indices_.size();
+        return indices_.size();
       }
 
-      //! Flag for Friedel mates == M(FriedelFlag)/N().
+      //! Factor for loop over Friedel mates.
       /*! Useful for looping over all symmetrically equivalent reflections
-          including Friedel mates (if FriedelFlag == true).<br>
+          including Friedel mates (if anomalous_flag == false):
+          <p>
+          f_mates() == multiplicity(anomalous_flag) / indices().size()
+          <p>
           See also: operator()
        */
-      int fMates(bool FriedelFlag) const {
-        if (FriedelFlag && !isCentric()) return 2;
+      int
+      f_mates(bool anomalous_flag) const
+      {
+        if (!anomalous_flag && !is_centric()) return 2;
         return 1;
       }
 
-      //! Determine "epsilon" for the given Miller index.
+      //! Determines "epsilon" for the given Miller index.
       /*! The factor epsilon counts the number of times a Miller
-          index H is mapped onto itself by symmetry. This factor
+          index h is mapped onto itself by symmetry. This factor
           is used for "statistical averaging" and in direct methods
-          formulae.<br>
+          formulae.
+          <p>
           Note that epsilon is directly related to the number
-          of symmetrically equivalent indices N():<br>
-          epsilon == sgtbx::SpaceGroup::OrderP() / N()
+          of symmetrically equivalent indices().size():
+          <p>
+          epsilon == sgtbx::space_group::order_p() / indices().size()
        */
-      int epsilon() const { return m_OrderP / N(); }
-
-      /*! \brief Low-level access to the N() symmetrically
-          equivalent Miller indices.
-       */
-      /*! See also: operator()
-       */
-      const SymEquivIndex& operator[](int iList) const {
-        return m_List[iList];
-      }
+      int
+      epsilon() const { return order_p_ / indices_.size(); }
 
       //! Medium-level access to the symmetrically equivalent Miller indices.
       /*! Intended use:<pre>
-          sgtbx::SpaceGroup SgOps = ... // define space group
-          miller::Index H = ... // define input Miller index.
-          bool FriedelFlag = ... // define Friedel symmetry.
-          miller::SymEquivIndices SEMI(SgOps, H);
-          for (int iList = 0; iList < SEMI.N(); iList++)
-            for (int iMate = 0; iMate < SEMI.fMates(FriedelFlag); iMate++)
-              miller::Index EquivH = SEMI(iMate, iList);
+       sgtbx::space_group sg = ... // define space group
+       miller::index<> h = ... // define input Miller index.
+       bool anomalous_flag = ...
+       miller::sym_equiv_indices h_eq(sg, h);
+       for(std::size_t i_indices=0;i_indices<h_eq.indices().size();i_indices++)
+         for(std::size_t i_mate=0;i_mate<h_eq.f_mates(anomalous_flag);i_mate++)
+           miller::index<> k = h_eq(i_mate, i_indices).h();
           </pre>
           Note that it is possible and often more convenient to have a
-          one-deep loop with M() iterations.<br>
-          See also: operator()(int iIL)
+          one-deep loop with multiplicity() iterations.
+          <p>
+          See also: operator()(std::size_t i)
+          <p>
+          Not available in Python.
        */
-      SymEquivIndex operator()(int iMate, int iList) const;
+      sym_equiv_index
+      operator()(std::size_t i_mate, std::size_t i_indices) const;
 
       //! High-level access to the symmetrically equivalent Miller indices.
       /*! Intended use:<pre>
-          sgtbx::SpaceGroup SgOps = ... // define space group
-          miller::Index H = ... // define input Miller index.
-          bool FriedelFlag = ... // define Friedel symmetry.
-          miller::SymEquivIndices SEMI(SgOps, H);
-          for (int iIL = 0; iIL < SEMI.M(FriedelFlag); iIL++)
-            miller::Index EquivH = SEMI(iIL);
+          sgtbx::space_group sg = ... // define space group
+          miller::index<> h = ... // define input Miller index.
+          bool anomalous_flag = ...
+          miller::sym_equiv_indices h_eq(sg, h);
+          for(std::size_t i=0;i<h_eq.multiplicity(anomalous_flag);i++)
+            miller::index<> k = h_eq(i).h();
           </pre>
        */
-      SymEquivIndex operator()(int iIL) const;
+      sym_equiv_index
+      operator()(std::size_t i) const;
 
-      //! Test if phase phi is compatible with restriction.
-      /*! The tolerance compensates for rounding errors.<br>
-          See also: class PhaseInfo
+      //! Tests if the phase phi is compatible with phase_restriction().
+      /*! tolerance compensates for rounding errors.
+          <p>
+          See also: phase_info
        */
-      bool isValidPhase(double phi,
-                        bool deg = false,
-                        double tolerance = 1.e-5) const {
-        return getPhaseRestriction().isValidPhase(phi, deg, tolerance);
+      bool
+      is_valid_phase(double phi,
+                     bool deg=false,
+                     double tolerance=1.e-5) const
+      {
+        return phase_restriction().is_valid_phase(phi, deg, tolerance);
       }
 
       //! Equivalent indices for a P1 listing.
-      /*! If friedel_flag == false (anomalous listing) the number of
-          indices in P1 is always equal to N().
-          If friedel_flag == true the number of indices in P1 is
-          N() for non-centric reflections and N()/2 for centric
-          reflections.
+      /*! If anomalous_flag == true the number of
+          indices in P1 is always equal to indices().size().
+          If anomalous_flag == false the number of indices in P1 is
+          indices().size() for non-centric reflections and
+          indices().size()/2 for centric reflections.
        */
-      af::shared<SymEquivIndex>
-      p1_listing(bool friedel_flag) const;
+      af::shared<sym_equiv_index>
+      p1_listing(bool anomalous_flag) const;
 
-    private:
-      void add(const SymEquivIndex& SEI);
+    protected:
+      void
+      add(sym_equiv_index const& eq);
 
-      struct iIL_decomposition
+      struct index_mate_indices_decomposition
       {
-        iIL_decomposition(int iMate_, int iList_)
-          : iMate(iMate_), iList(iList_)
+        index_mate_indices_decomposition(
+          std::size_t i_mate_,
+          std::size_t i_indices_)
+        :
+          i_mate(i_mate_), i_indices(i_indices_)
         {}
-        int iMate, iList;
+
+        std::size_t i_mate, i_indices;
       };
 
-      iIL_decomposition decompose_iIL(int iIL) const;
+      index_mate_indices_decomposition
+      decompose_index_mate_indices(std::size_t i) const;
 
-      int m_TBF;
-      int m_OrderP;
-      int m_HT_Restriction;
-      std::vector<SymEquivIndex> m_List;
+      int t_den_;
+      std::size_t order_p_;
+      int ht_restriction_;
+      af::shared<sym_equiv_index> indices_;
   };
 
 }} // namespace cctbx::miller

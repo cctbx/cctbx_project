@@ -1,8 +1,7 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
      2002 Jul: Created (R.W. Grosse-Kunstleve)
@@ -12,66 +11,72 @@
 #define CCTBX_MINTBX_K_B_SCALING_H
 
 #include <cctbx/adptbx.h>
-#include <cctbx/sgtbx/groups.h>
+#include <scitbx/array_family/misc_functions.h>
 
 namespace cctbx { namespace mintbx {
 
-  template <typename FloatType>
+  template <typename FloatType = double>
   class k_b_scaling_target_and_gradients
   {
     public:
+      typedef FloatType float_type;
+
       k_b_scaling_target_and_gradients() {}
 
       k_b_scaling_target_and_gradients(
-        uctbx::UnitCell const& ucell,
-        af::shared<miller::Index> miller_indices,
-        af::shared<int> multiplicities,
-        af::shared<FloatType> data_reference,
-        af::shared<FloatType> data_scaled,
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<int> const& multiplicities,
+        af::const_ref<FloatType> const& data_reference,
+        af::const_ref<FloatType> const& data_scaled,
         FloatType k,
         FloatType b_iso,
         bool calc_gradient_k,
         bool calc_gradient_b)
-      : anisotropic_(false)
+      :
+        anisotropic_flag_(false)
       {
         calculate(
-          ucell, miller_indices, multiplicities,
+          unit_cell, miller_indices, multiplicities,
           data_reference, data_scaled,
-          k, b_iso, af::tiny<FloatType, 6>(),
+          k, b_iso, scitbx::sym_mat3<FloatType>(),
           calc_gradient_k, calc_gradient_b);
       }
 
       k_b_scaling_target_and_gradients(
-        uctbx::UnitCell const& ucell,
-        af::shared<miller::Index> miller_indices,
-        af::shared<int> multiplicities,
-        af::shared<FloatType> data_reference,
-        af::shared<FloatType> data_scaled,
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<int> const& multiplicities,
+        af::const_ref<FloatType> const& data_reference,
+        af::const_ref<FloatType> const& data_scaled,
         FloatType k,
-        af::tiny<FloatType, 6> const& b_cif,
+        scitbx::sym_mat3<FloatType> const& b_cif,
         bool calc_gradient_k,
         bool calc_gradient_b)
-      : anisotropic_(true)
+      :
+        anisotropic_flag_(true)
       {
         calculate(
-          ucell, miller_indices, multiplicities,
+          unit_cell, miller_indices, multiplicities,
           data_reference, data_scaled,
           k, 0, b_cif,
           calc_gradient_k, calc_gradient_b);
       }
 
-      FloatType target() const { return target_; }
+      FloatType
+      target() const { return target_; }
 
-      FloatType gradient_k() const { return gradient_k_; }
+      FloatType
+      gradient_k() const { return gradient_k_; }
 
-      bool anisotropic() const { return anisotropic_; }
+      bool
+      anisotropic_flag() const { return anisotropic_flag_; }
 
-      FloatType gradient_b_iso() const { return gradient_b_iso_; }
+      FloatType
+      gradient_b_iso() const { return gradient_b_iso_; }
 
-      af::tiny<FloatType, 6> const& gradients_b_cif() const
-      {
-        return gradients_b_cif_;
-      }
+      scitbx::sym_mat3<FloatType> const&
+      gradients_b_cif() const { return gradients_b_cif_; }
 
     protected:
       /* Mathematica:
@@ -80,22 +85,22 @@ namespace cctbx { namespace mintbx {
            D[f,b0]
        */
       void calculate(
-        uctbx::UnitCell const& ucell,
-        af::shared<miller::Index> miller_indices,
-        af::shared<int> multiplicities,
-        af::shared<FloatType> data_reference,
-        af::shared<FloatType> data_scaled,
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<int> const& multiplicities,
+        af::const_ref<FloatType> const& data_reference,
+        af::const_ref<FloatType> const& data_scaled,
         FloatType k,
         FloatType b_iso,
-        af::tiny<FloatType, 6> const& b_cif,
+        scitbx::sym_mat3<FloatType> const& b_cif,
         bool calc_gradient_k,
         bool calc_gradient_b);
 
-      bool anisotropic_;
+      bool anisotropic_flag_;
       FloatType target_;
       FloatType gradient_k_;
       FloatType gradient_b_iso_;
-      af::tiny<FloatType, 6> gradients_b_cif_;
+      scitbx::sym_mat3<FloatType> gradients_b_cif_;
   };
 
   /* Mathematica input:
@@ -105,23 +110,28 @@ namespace cctbx { namespace mintbx {
    */
   template <typename FloatType>
   void k_b_scaling_target_and_gradients<FloatType>::calculate(
-    uctbx::UnitCell const& ucell,
-    af::shared<miller::Index> miller_indices,
-    af::shared<int> multiplicities,
-    af::shared<FloatType> data_reference,
-    af::shared<FloatType> data_scaled,
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<miller::index<> > const& miller_indices,
+    af::const_ref<int> const& multiplicities,
+    af::const_ref<FloatType> const& data_reference,
+    af::const_ref<FloatType> const& data_scaled,
     FloatType k,
     FloatType b_iso,
-    af::tiny<FloatType, 6> const& b_cif,
+    scitbx::sym_mat3<FloatType> const& b_cif,
     bool calc_gradient_k,
     bool calc_gradient_b)
   {
-    using namespace adptbx;
+    using adptbx::b_as_u;
+    using adptbx::u_cif_as_u_star;
+    using adptbx::debye_waller_factor_b_iso;
+    using adptbx::debye_waller_factor_u_star;
+    using adptbx::debye_waller_factor_u_star_coefficients;
+    using scitbx::fn::pow2;
     if (multiplicities.size()) {
-      cctbx_assert(miller_indices.size() == multiplicities.size());
+      CCTBX_ASSERT(miller_indices.size() == multiplicities.size());
     }
-    cctbx_assert(miller_indices.size() == data_reference.size());
-    cctbx_assert(miller_indices.size() == data_scaled.size());
+    CCTBX_ASSERT(miller_indices.size() == data_reference.size());
+    CCTBX_ASSERT(miller_indices.size() == data_scaled.size());
     target_ = 0;
     gradient_k_ = 0;
     gradient_b_iso_ = 0;
@@ -131,44 +141,46 @@ namespace cctbx { namespace mintbx {
     std::size_t i;
     for(i=0;i<miller_indices.size();i++) {
       if (multiplicities.size()) mult = multiplicities[i];
-      sum_mult_data_scaled_sq += mult * fn::pow2(data_scaled[i]);
+      sum_mult_data_scaled_sq += mult * pow2(data_scaled[i]);
     }
     if (sum_mult_data_scaled_sq < 1.) sum_mult_data_scaled_sq = 1.;
-    af::tiny<FloatType, 6> u_star;
-    if (anisotropic_) {
-      u_star = Ucif_as_Ustar(ucell, B_as_U(b_cif));
+    scitbx::sym_mat3<FloatType> u_star;
+    if (anisotropic_flag_) {
+      u_star = u_cif_as_u_star(unit_cell, b_as_u(b_cif));
     }
     for(i=0;i<miller_indices.size();i++) {
       if (multiplicities.size()) mult = multiplicities[i];
-      FloatType dw, stol2;
-      if (anisotropic_) {
-        dw = DebyeWallerFactorUstar(miller_indices[i], u_star);
+      FloatType dw, stol_sq;
+      if (anisotropic_flag_) {
+        dw = debye_waller_factor_u_star(miller_indices[i], u_star);
       }
       else {
-        stol2 = ucell.stol2(miller_indices[i]);
-        dw = DebyeWallerFactorBiso(stol2, b_iso);
+        stol_sq = unit_cell.stol_sq(miller_indices[i]);
+        dw = debye_waller_factor_b_iso(stol_sq, b_iso);
       }
       FloatType drkdw = data_reference[i] * k * dw;
       FloatType diff = data_scaled[i] - drkdw;
-      target_ += mult * fn::pow2(
-        diff / std::sqrt(sum_mult_data_scaled_sq));
+      target_ += mult * pow2(diff / std::sqrt(sum_mult_data_scaled_sq));
       if (calc_gradient_k || calc_gradient_b) {
         FloatType gk = -2 * mult * drkdw * diff / sum_mult_data_scaled_sq;
         if (calc_gradient_k) gradient_k_ += gk;
         if (calc_gradient_b) {
-          if (anisotropic_) {
-            af::tiny<FloatType, 6> dwc = B_as_U(Ucif_as_Ustar(ucell,
-              DebyeWallerFactorUstarCoefficients(
-                miller_indices[i], af::type_holder<FloatType>())));
+          if (anisotropic_flag_) {
+            scitbx::sym_mat3<FloatType> dwc = b_as_u(u_cif_as_u_star(unit_cell,
+              debye_waller_factor_u_star_coefficients(
+                miller_indices[i], scitbx::type_holder<FloatType>())));
             for(std::size_t j=0;j<dwc.size();j++) {
               gradients_b_cif_[j] += dwc[j] * gk;
             }
           }
           else {
-            gradient_b_iso_ -= stol2 * gk;
+            gradient_b_iso_ -= stol_sq * gk;
           }
         }
       }
+    }
+    if (calc_gradient_b && anisotropic_flag_) {
+      gradients_b_cif_ *= -scitbx::constants::two_pi_sq;
     }
   }
 

@@ -1,0 +1,21 @@
+Import("env_etc", "env_cctbx_boost_python_ext")
+
+env_cctbx_boost_python_ext.Command(
+  "#libtbx/cctbx_boost/array_family/__init__.py",
+  "#libtbx/build/SConscript", env_etc.touch_init)
+
+env = env_cctbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["cctbx"])
+flex_pyd = env.SharedLibrary(
+  target="flex_cctbx_ext",
+  source=[
+  "flex_cctbx_ext.cpp",
+  "flex_hendrickson_lattman.cpp",
+  "flex_miller_index.cpp",
+  "flex_vec3_double.cpp",
+  "flex_sym_mat3_double.cpp",
+  "flex_tiny_size_t_2.cpp",
+  "flex_xray_scatterer.cpp",
+])
+env.Install(
+  "#libtbx/cctbx_boost/array_family", flex_pyd)

@@ -1,28 +1,26 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Sep 02: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
+     2002 Sep: Refactored (rwgk)
+     2001 Sep: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_SGTBX_SEMINVARIANT_H
 #define CCTBX_SGTBX_SEMINVARIANT_H
 
-#include <cctbx/array_family/small.h>
-#include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/space_group.h>
 
 namespace cctbx { namespace sgtbx {
 
-#ifndef DOXYGEN_SHOULD_SKIP_THIS
-  //! Helper struct for class StructureSeminvariant.
-  struct ssVM {
-    af::int3 V;
-    int M;
+  //! Entry in list of structure seminvariant vectors and moduli.
+  struct ss_vec_mod
+  {
+    sg_vec3 v;
+    int m;
   };
-#endif // DOXYGEN_SHOULD_SKIP_THIS
 
   //! Structure-seminvariant vector and moduli.
   /*! Implementation of the algorithm published in section 6. of
@@ -47,56 +45,45 @@ namespace cctbx { namespace sgtbx {
       Tables for Crystallography Volume A, 1983, Table
       15.3.2., column "Translations."
       <p>
-      See also: SpaceGroup::getAddlGeneratorsOfEuclideanNormalizer()
+      See also: space_group_type::addl_generators_of_euclidean_normalizer()
    */
-  class StructureSeminvariant {
+  class structure_seminvariant
+  {
     public:
       //! Default constructor.
       /*! Default-constructed instances have 0 vectors and moduli.
+          <p>
+          Not available in Python.
        */
-      StructureSeminvariant() {}
-      /*! \brief Compute structure-seminvariant vectors and moduli
-          for given symmetry operations.
+      structure_seminvariant() {}
+
+      /*! \brief Computes structure-seminvariant vectors and moduli
+          for the given space group.
        */
       /*! See class details.
        */
-      StructureSeminvariant(const SpaceGroup& SgOps);
-      //! Number of structure-seminvariant vectors and moduli.
-      /*! Possible results are in the range from 0 (e.g. space group
-          Im-3m) to 3 (e.g. space group P1).
+      structure_seminvariant(space_group const& sg);
+
+      //! The computed structure-seminvariant vectors and moduli.
+      af::small<ss_vec_mod, 3> const&
+      vectors_and_moduli() const { return vec_mod_; }
+
+      //! Shorthand for vectors_and_moduli().size()
+      std::size_t
+      size() const { return vectors_and_moduli().size(); }
+
+      /*! \brief Tests if the phase angle of the reflection with
+          the Miller index h is a structure-seminvariant.
        */
-      std::size_t size() const { return m_VM.size(); }
-      //! The i'th structure-seminvariant vector and modulus.
-      /*! An exception is thrown if i is out of range.
-          <p>
-          See also: V(), M()
-       */
-      const ssVM& VM(std::size_t i) const {
-        if (i >= size()) throw error_index();
-        return m_VM[i];
-      }
-      //! The i'th structure-seminvariant vector.
-      /*! An exception is thrown if i is out of range.
-          <p>
-          See also: VM(), M()
-       */
-      const af::int3& V(std::size_t i) const { return VM(i).V; }
-      //! The i'th structure-seminvariant modulus.
-      /*! An exception is thrown if i is out of range.
-          <p>
-          See also: VM(), V()
-       */
-      int M(std::size_t i) const { return VM(i).M; }
-      /*! \brief Test if the phase angle of the reflection with
-          given Miller index is a structure-seminvariant.
-       */
-      bool is_ss(const miller::Index& H) const;
-      /*! \brief Reduce given Miller index for establishing the
+      bool
+      is_ss(miller::index<> const& h) const;
+
+      /*! \brief Reduces the Miller index h for establishing the
            <i>primitivity condition</i>.
        */
-      /*! The expression (V(i) * H) % M(i) is computed for
-          each of the size() structure-seminvariant
-          vectors and moduli. The size() results can be
+      /*! The expression (vectors(i) * h) % moduli(i) is computed for
+          each of the size() structure-seminvariant vectors and moduli.
+          The size() results can be
           used to establish the <i>primitivity condition</i>
           (see International Tables for Crystallography Volume B,
           2001, chapter 2.2.3(h)):
@@ -107,52 +94,67 @@ namespace cctbx { namespace sgtbx {
           is +1 or -1.
        */
       af::small<int, 3>
-      apply_mod(const miller::Index& H) const;
-      /*! \brief Refine gridding such that each grid point is
+      apply_mod(miller::index<> const& h) const;
+
+      //! Refines gridding starting with grid (1,1,1).
+      /*! See also: refine_gridding()
+       */
+      sg_vec3
+      gridding() const { return refine_gridding(sg_vec3(1,1,1)); }
+
+      /*! \brief Refines gridding such that each grid point is
           mapped onto another grid point by the seminvariant
           translations.
        */
       template <typename GridTupleType>
-      GridTupleType refine_gridding(const GridTupleType& grid) const {
-        GridTupleType ref_grid = grid;
-        for(int i_ss=0;i_ss<m_VM.size();i_ss++) {
-          const ssVM& ss = m_VM[i_ss];
-          if (ss.M != 0) {
-            for(int i=0;i<3;i++) {
-              ref_grid[i] = lcm(ref_grid[i], norm_denominator(ss.V[i], ss.M));
-            }
-          }
-        }
-        return ref_grid;
-      }
-      //! Refine gridding starting with grid 1,1,1.
-      /*! See also: other overload.
-       */
-      af::int3 refine_gridding() const {
-        return refine_gridding(af::int3(1, 1, 1));
-      }
+      GridTupleType
+      refine_gridding(GridTupleType const& grid) const;
 
-      //! XXX
+      //! Replaces the moduli with the value 0 by the corresponding gridding.
       template <typename DimensionTupleType>
-      af::small<ssVM, 3>
-      grid_adapted_moduli(const DimensionTupleType& dim) const {
-        af::small<ssVM, 3> result = m_VM;
-        for(ssVM* r = result.begin(); r != result.end(); r++) {
-          if (r->M == 0) {
-            r->M = 1;
-            for(int i=0;i<3;i++) {
-              if (r->V[i] != 0) {
-                r->M = lcm(r->M, norm_denominator(r->V[i], dim[i]));
-              }
-            }
-          }
-        }
-        return result;
-      }
+      af::small<ss_vec_mod, 3>
+      grid_adapted_moduli(DimensionTupleType const& dim) const;
 
     private:
-      af::small<ssVM, 3> m_VM;
+      af::small<ss_vec_mod, 3> vec_mod_;
   };
+
+  template <typename GridTupleType>
+  GridTupleType
+  structure_seminvariant
+  ::refine_gridding(GridTupleType const& grid) const
+  {
+    GridTupleType ref_grid = grid;
+    for(std::size_t i_ss=0;i_ss<size();i_ss++) {
+      ss_vec_mod const& ss = vec_mod_[i_ss];
+      if (ss.m != 0) {
+        for(std::size_t i=0;i<3;i++) {
+          ref_grid[i] = boost::lcm(ref_grid[i],
+                                   norm_denominator(ss.v[i], ss.m));
+        }
+      }
+    }
+    return ref_grid;
+  }
+
+  template <typename DimensionTupleType>
+  af::small<ss_vec_mod, 3>
+  structure_seminvariant
+  ::grid_adapted_moduli(DimensionTupleType const& dim) const
+  {
+    af::small<ss_vec_mod, 3> result = vec_mod_;
+    for(ss_vec_mod* r = result.begin(); r != result.end(); r++) {
+      if (r->m == 0) {
+        r->m = 1;
+        for(std::size_t i=0;i<3;i++) {
+          if (r->v[i] != 0) {
+            r->m = boost::lcm(r->m, norm_denominator(r->v[i], dim[i]));
+          }
+        }
+      }
+    }
+    return result;
+  }
 
 }} // namespace cctbx::sgtbx
 

@@ -1,15 +1,14 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
      2002 Jul: Renamed from miller.h to phase_info.h (rwgk)
-     2001 Oct 27: Redesign: AsymIndex (rwgk)
-     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Oct: Redesign: AsymIndex (rwgk)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_SGTBX_PHASE_INFO_H
@@ -19,116 +18,118 @@
 
 namespace cctbx { namespace sgtbx {
 
-  class SpaceGroup; // forward declaration
+  class space_group; // forward declaration
 
   /*! \brief Handling of phase restrictions and optional evaluation
       of conditions for systematically absent reflections.
    */
-  /*! A reflection with the Miller index H is "centric" if
-      there is a symmetry operation with rotation part R such that
-      H*R = -H. The phase of a centric reflection is restricted to
+  /*! A reflection with the Miller index h is "centric" if
+      there is a symmetry operation with rotation part r such that
+      h*r = -h. The phase of a centric reflection is restricted to
       two phase angels (modulo pi).
       <p>
-      A reflection with the Miller index H is "systematically absent"
-      if there is a symmetry operation with the rotation part R and
-      the translation part T such that H*R == H and H*T != 0 mod 1.
+      A reflection with the Miller index h is "systematically absent"
+      if there is a symmetry operation with the rotation part r and
+      the translation part t such that h*r = h and h*t != 0 mod 1.
    */
-  class PhaseInfo
+  class phase_info
   {
     public:
       //! Default constructor. Some data members are not initialized!
-      PhaseInfo() {}
+      phase_info() {}
 
-      //! Determination of the phase restriction for a given Miller index.
-      /*! If no_test_sys_absent == false, it is also tested if a
+      //! Determines the phase restriction for a given Miller index.
+      /*! If no_test_sys_absent = false, it is also tested if a
           reflection with the given Miller index is systematically
-          absent. If no_test_sys_absent == true, a faster algorithm
+          absent. If no_test_sys_absent = true, a faster algorithm
           is used that only determines the phase restriction. In the
-          latter case the isSysAbsent() member function must not
+          latter case the is_sys_absent() member function must not
           be used (an exception is thrown otherwise).
        */
-      PhaseInfo(SpaceGroup const& sgops, miller::Index const& h,
-                bool no_test_sys_absent = false);
+      phase_info(space_group const& sg, miller::index<> const& h,
+                 bool no_test_sys_absent=false);
 
-      //! Initialization with known product H*T and given base factor.
+      /*! \brief Initialization with known product h*t and given
+          translation denominator.
+       */
       /*! sys_abs_was_tested indicates if it is known if a reflection
           with the given Miller index is systematically absent.
-          The isSysAbsent() member function must not be used
-          if sys_abs_was_tested == false (an exception is thrown
+          The is_sys_absent() member function must not be used
+          if sys_abs_was_tested = false (an exception is thrown
           otherwise).
+          <p>
+          Not available in Python.
        */
-      PhaseInfo(int HT, int TBF, bool sys_abs_was_tested)
-        : m_HT(HT), m_TBF(TBF), m_SysAbsWasTested(sys_abs_was_tested)
+      phase_info(int ht, int t_den, bool sys_abs_was_tested)
+      : ht_(ht), t_den_(t_den), sys_abs_was_tested_(sys_abs_was_tested)
       {}
 
-      //! Test if isSysAbsent() can be used.
-      bool SysAbsWasTested() const { return m_SysAbsWasTested; }
+      //! Tests if is_sys_absent() can be used.
+      bool sys_abs_was_tested() const { return sys_abs_was_tested_; }
 
-      //! Test for systematically absent reflection.
-      /*! Use SysAbsWasTested() to determine if this test can be used.
-          If the result of SysAbsWasTested() == false, an exception
+      //! Tests for systematically absent reflection.
+      /*! Use sys_abs_was_tested() to determine if this test can be used.
+          If the result of sys_abs_was_tested() = false, an exception
           is thrown if this test is used.
        */
-      bool isSysAbsent() const
+      bool is_sys_absent() const
       {
-        cctbx_assert(m_SysAbsWasTested);
-        return m_HT == -2;
+        CCTBX_ASSERT(sys_abs_was_tested_);
+        return ht_ == -2;
       }
 
-      //! Test if there actually is a phase restriction.
+      //! Tests if there actually is a phase restriction.
       /*! See class details.
        */
-      bool isCentric() const { return m_HT >= 0; }
+      bool is_centric() const { return ht_ >= 0; }
 
-      //! Phase shift H*T (mod 1) corresponding to H*R = -H.
+      //! Phase shift h*t (mod 1) corresponding to h*r = -h.
       /*! Low-level information for computing the restricted phases.
-          HT() is multiplied by a base factor TBF() in order to obtain
+          ht() is multiplied by a factor t_den() in order to obtain
           an integer value.
           <p>
-          See also: HT_angle()
+          See also: ht_angle()
        */
-      int HT() const { return m_HT; }
-      //! Translation base factor.
-      /*! This is the factor by which HT() is multiplied.
+      int ht() const { return ht_; }
+
+      //! Translation part denominator.
+      /*! This is the factor by which ht() is multiplied.
        */
-      int TBF() const { return m_TBF; }
+      int t_den() const { return t_den_; }
 
       //! Phase restriction in radians or degrees.
       /*! The return value is -1 if the phase is not restricted,
           and >= 0 and < pi or 180 otherwise.
        */
-      double HT_angle(bool deg = false) const
+      double ht_angle(bool deg=false) const
       {
-        if (!isCentric()) return -1.;
-        return (ht_period(deg) * m_HT) / m_TBF;
+        if (!is_centric()) return -1.;
+        return (ht_period(deg) * ht_) / t_den_;
       }
 
-      /*! \brief Test if phase phi (with given Period) is
-          compatible with restriction.
-       */
-      //! Test if phase phi is compatible with restriction.
+      //! Tests if phase phi is compatible with restriction.
       /*! The tolerance compensates for rounding errors.
        */
-      bool isValidPhase(
-        double phi, bool deg = false, double tolerance = 1.e-5) const;
+      bool is_valid_phase(double phi, bool deg=false,
+                          double tolerance=1.e-5) const;
 
       //! Nearest valid phase.
       /*! For acentric reflections equivalent to the input phase phi.
           For centric reflections, the restricted phase which is
           closest to the input phase phi.
        */
-      double nearest_valid_phase(double phi, bool deg = false) const;
+      double nearest_valid_phase(double phi, bool deg=false) const;
 
     private:
+      int ht_;
+      int t_den_;
+      bool sys_abs_was_tested_;
+
       double ht_period(bool deg) const
       {
         if (deg) return 180.;
-        return cctbx::constants::pi;
+        return scitbx::constants::pi;
       }
-
-      int m_HT;
-      int m_TBF;
-      bool m_SysAbsWasTested;
   };
 
 }} // namespace cctbx::sgtbx

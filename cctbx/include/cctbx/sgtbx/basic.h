@@ -1,57 +1,63 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_SGTBX_BASIC_H
 #define CCTBX_SGTBX_BASIC_H
 
-#include <exception>
-#include <string>
+#include <scitbx/mat3.h>
 #include <cctbx/error.h>
-#include <cctbx/basic/matrixlite.h>
-#include <cctbx/array_family/tiny_types.h>
 
 namespace cctbx {
+
+  //! Shorthand for default vec3 type in space group toolbox.
+  typedef scitbx::vec3<int> sg_vec3;
+  //! Shorthand for default mat3 type in space group toolbox.
+  typedef scitbx::mat3<int> sg_mat3;
+
   //! Space Group Toolbox namespace.
   namespace sgtbx {
 
-  //! Special class for "out of base factor" exceptions.
-  class error_base_factor : public error {
+  //! Special class for rational vector exceptions.
+  /*! Used by sgtbx::tr_vec, sgtbx::rot_mx
+   */
+  class error_rational_vector : public error
+  {
     public:
-      // NO DEFAULT CONSTRUCTOR
       //! Constructor.
-      error_base_factor(const char* file, long line,
-                        const std::string& msg = "") throw()
-        : error(file, line, msg) {}
+      error_rational_vector(const char* file, long line,
+                            std::string const& msg = "") throw()
+      : error(file, line, msg) {}
+
       //! Virtual destructor.
-      virtual ~error_base_factor() throw() {}
+      virtual ~error_rational_vector() throw() {}
   };
 
   /*! \brief Maximum number of representative rotation matrices for
       3-dimensional crystallographic space groups.
    */
-  static const int nMaxReprRotMx = 24;
+  static const std::size_t n_max_repr_rot_mx = 24;
 
-  //! Seitz           Matrix Translation Base Factor.
-  const int STBF = 12;
-  //! Change of Basis Matrix Rotation    Base Factor.
-  const int CRBF = 12;
-  //! Change of Basis Matrix Translation Base Factor.
-  const int CTBF = 72;
+  //! Default space_group translation vector denominator.
+  const int sg_t_den = 12;
+  //! Default change_of_basis rotation matrix denominator.
+  const int cb_r_den = 12;
+  //! Default change_of_basis translation vector denominator.
+  const int cb_t_den = 72;
 
-  //! Check base factors for consistency.
-  inline void sanity_check() {
-    cctbx_assert(STBF % 12 == 0);
-    cctbx_assert(CTBF >= 2 * STBF);
-    cctbx_assert(CTBF % STBF == 0);
+  //! Checks default rotation and translation denominators for consistency.
+  inline void sanity_check()
+  {
+    CCTBX_ASSERT(sg_t_den % 12 == 0);
+    CCTBX_ASSERT(cb_t_den >= 2 * sg_t_den);
+    CCTBX_ASSERT(cb_t_den % sg_t_den == 0);
   }
 
 }} // namespace cctbx::sgtbx

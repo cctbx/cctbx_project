@@ -1,11 +1,11 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Oct 11: Created (R.W. Grosse-Kunstleve)
+     2002 Oct: Refactored (rwgk)
+     2001 Oct: Created (R.W. Grosse-Kunstleve)
  */
 
 /*! \file
@@ -15,371 +15,436 @@
 #ifndef CCTBX_ADPTBX_H
 #define CCTBX_ADPTBX_H
 
-#include <complex>
-#include <utility>
-#include <cctbx/array_family/tiny_algebra.h>
 #include <cctbx/uctbx.h>
+#include <scitbx/array_family/tiny_algebra.h>
+#include <scitbx/type_holder.h>
+#include <cctbx/error.h>
+
+#include <scitbx/array_family/simple_io.h>
 
 namespace cctbx {
+
   //! ADP (anisotropic displacement parameters) Toolbox namespace.
   namespace adptbx {
 
-  using namespace cctbx;
+  using scitbx::vec3;
+  using scitbx::mat3;
+  using scitbx::sym_mat3;
 
-  static const error
-    not_positive_definite(
-      "anisotropic displacement tensor is not positive definite.");
+  inline void
+  throw_not_positive_definite()
+  {
+    throw error("anisotropic displacement tensor is not positive definite.");
+  }
 
-  //! Convert isotropic displacement parameter U -> B.
+  //! Converts isotropic displacement parameter U -> B.
   inline double
-  U_as_B(double Uiso) {
-    return Uiso * constants::eight_pi_sq;
-  }
-  //! Convert isotropic displacement parameter B -> U.
-  inline double
-  B_as_U(double Biso) {
-    return Biso / constants::eight_pi_sq;
-  }
-  //! Convert anisotropic displacement parameters U -> B.
-  template <typename FloatType>
-  af::tiny<FloatType, 6>
-  U_as_B(const af::tiny_plain<FloatType, 6>& Uaniso) {
-    return constants::eight_pi_sq * af::tiny<FloatType, 6>(Uaniso);
-  }
-  //! Convert anisotropic displacement parameters B -> U.
-  template <typename FloatType>
-  af::tiny<FloatType, 6>
-  B_as_U(const af::tiny<FloatType, 6>& Baniso) {
-    return (1. / constants::eight_pi_sq) * Baniso;
+  u_as_b(double u_iso)
+  {
+    return u_iso * scitbx::constants::eight_pi_sq;
   }
 
-  //! Convert anisotropic displacement parameters Ucif -> Ustar.
+  //! Converts isotropic displacement parameter B -> U.
+  inline double
+  b_as_u(double b_iso)
+  {
+    return b_iso / scitbx::constants::eight_pi_sq;
+  }
+
+  //! Converts anisotropic displacement parameters U -> B.
+  template <typename FloatType>
+  sym_mat3<FloatType>
+  u_as_b(sym_mat3<FloatType> const& u_aniso)
+  {
+    return
+      scitbx::constants::eight_pi_sq * sym_mat3<FloatType>(u_aniso);
+  }
+
+  //! Converts anisotropic displacement parameters B -> U.
+  template <typename FloatType>
+  sym_mat3<FloatType>
+  b_as_u(sym_mat3<FloatType> const& b_aniso)
+  {
+    return FloatType(1. / scitbx::constants::eight_pi_sq) * b_aniso;
+  }
+
+  //! Converts anisotropic displacement parameters u_cif -> u_star.
   /*! The transformation matrix used is:<pre>
               (a*  0  0)
-          C = ( 0 b*  0)
+          c = ( 0 b*  0)
               ( 0  0 c*)</pre>
-      The formula for the transformation is Ustar = C Ucif Ct,
-      where Ct is the transposed of C. In this particular case
-      the expression simplifies to:<pre>
-          Ustar11 = a*^2  Ucif11
-          Ustar22 = b*^2  Ucif22
-          Ustar33 = c*^2  Ucif33
-          Ustar12 = a* b* Ucif12
-          Ustar13 = a* c* Ucif13
-          Ustar23 = b* c* Ucif23</pre>
+      The formula for the transformation is
+      u_star = c * u_cif * c.transpose().
+      In this particular case the expression simplifies to:<pre>
+          u_star_11 = a*^2  u_cif_11
+          u_star_22 = b*^2  u_cif_22
+          u_star_33 = c*^2  u_cif_33
+          u_star_12 = a* b* u_cif_12
+          u_star_13 = a* c* u_cif_13
+          u_star_23 = b* c* u_cif_23</pre>
    */
   template <typename FloatType>
-  af::tiny<FloatType, 6>
-  Ucif_as_Ustar(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Ucif) {
-    const af::double3& R_Len = uc.getLen(true);
-    af::tiny<FloatType, 6> Ustar;
-    Ustar[0] = Ucif[0] * (R_Len[0] * R_Len[0]);
-    Ustar[1] = Ucif[1] * (R_Len[1] * R_Len[1]);
-    Ustar[2] = Ucif[2] * (R_Len[2] * R_Len[2]);
-    Ustar[3] = Ucif[3] * (R_Len[0] * R_Len[1]);
-    Ustar[4] = Ucif[4] * (R_Len[0] * R_Len[2]);
-    Ustar[5] = Ucif[5] * (R_Len[1] * R_Len[2]);
-    return Ustar;
-  }
-  //! Convert anisotropic displacement parameters Ustar -> Ucif.
-  /*! Inverse of Ucif_as_Ustar().
-   */
-  template <typename FloatType>
-  af::tiny<FloatType, 6>
-  Ustar_as_Ucif(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Ustar) {
-    const af::double3& R_Len = uc.getLen(true);
-    af::tiny<FloatType, 6> Ucif;
-    Ucif[0] = Ustar[0] / (R_Len[0] * R_Len[0]);
-    Ucif[1] = Ustar[1] / (R_Len[1] * R_Len[1]);
-    Ucif[2] = Ustar[2] / (R_Len[2] * R_Len[2]);
-    Ucif[3] = Ustar[3] / (R_Len[0] * R_Len[1]);
-    Ucif[4] = Ustar[4] / (R_Len[0] * R_Len[2]);
-    Ucif[5] = Ustar[5] / (R_Len[1] * R_Len[2]);
-    return Ucif;
+  sym_mat3<FloatType>
+  u_cif_as_u_star(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_cif)
+  {
+    af::double6 const& r_params = unit_cell.reciprocal_parameters();
+    return sym_mat3<FloatType>(
+      u_cif[0] * (r_params[0] * r_params[0]),
+      u_cif[1] * (r_params[1] * r_params[1]),
+      u_cif[2] * (r_params[2] * r_params[2]),
+      u_cif[3] * (r_params[0] * r_params[1]),
+      u_cif[4] * (r_params[0] * r_params[2]),
+      u_cif[5] * (r_params[1] * r_params[2]));
   }
 
-  //! Convert anisotropic displacement parameters Ucart -> Ustar.
-  /*! The transformation matrix C used is the orthogonalization
-      matrix for the given UnitCell.
-      The formula for the transformation is Ustar = C Ucart Ct,
-      where Ct is the transposed of C.
+  //! Converts anisotropic displacement parameters u_star -> u_cif.
+  /*! Inverse of u_cif_as_u_star().
    */
   template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Ucart_as_Ustar(const uctbx::UnitCell& uc,
-                 const af::tiny<FloatType, 6>& Ucart) {
-    return MatrixLite::CondensedTensorTransformation(
-      uc.getFractionalizationMatrix(), Ucart);
-  }
-  //! Convert anisotropic displacement parameters Ustar -> Ucart.
-  /*! Inverse of Ucart_as_Ustar(). I.e., the transformation matrix
-      C used is the fractionalization matrix for the given
-      UnitCell.
-      The formula for the transformation is Ucart = C Ustar Ct,
-      where Ct is the transposed of C.
-   */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Ustar_as_Ucart(const uctbx::UnitCell& uc,
-                 const af::tiny<FloatType, 6>& Ustar) {
-    return MatrixLite::CondensedTensorTransformation(
-      uc.getOrthogonalizationMatrix(), Ustar);
+  sym_mat3<FloatType>
+  u_star_as_u_cif(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_star)
+  {
+    af::double6 const& r_params = unit_cell.reciprocal_parameters();
+    return sym_mat3<FloatType>(
+      u_star[0] / (r_params[0] * r_params[0]),
+      u_star[1] / (r_params[1] * r_params[1]),
+      u_star[2] / (r_params[2] * r_params[2]),
+      u_star[3] / (r_params[0] * r_params[1]),
+      u_star[4] / (r_params[0] * r_params[2]),
+      u_star[5] / (r_params[1] * r_params[2]));
   }
 
-  //! Convert anisotropic displacement parameters Ucart -> Ucif.
-  /*! This is implemented without a significant loss of efficiency
-      as Ustar_as_Ucif(uc, Ucart_as_Ustar(uc, Ucart)).
+  //! Converts anisotropic displacement parameters u_cart -> u_star.
+  /*! The formula for the transformation is
+      u_star = c * u_cart * c.transpose(),
+      with c = unit_cell.fractionalization_matrix().
    */
   template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Ucart_as_Ucif(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Ucart) {
-    return Ustar_as_Ucif(uc, Ucart_as_Ustar(uc, Ucart));
-  }
-  //! Convert anisotropic displacement parameters Ucif -> Ucart.
-  /*! This is implemented without a significant loss of efficiency
-      as Ustar_as_Ucart(uc, Ucif_as_Ustar(uc, Ucif)).
-   */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Ucif_as_Ucart(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Ucif) {
-    return Ustar_as_Ucart(uc, Ucif_as_Ustar(uc, Ucif));
+  inline sym_mat3<FloatType>
+  u_cart_as_u_star(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_cart)
+  {
+    return u_cart.tensor_transform(unit_cell.fractionalization_matrix());
   }
 
-  //! Convert anisotropic displacement parameters Ustar -> beta.
-  /*! The elements of Ustar are multiplied by 2pi^2.
+  //! Converts anisotropic displacement parameters u_star -> u_cart.
+  /*! Inverse of u_cart_as_u_star().
    */
   template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Ustar_as_beta(const af::tiny<FloatType, 6>& Ustar) {
-    return constants::two_pi_sq * Ustar;
+  inline sym_mat3<FloatType>
+  u_star_as_u_cart(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_star)
+  {
+    return u_star.tensor_transform(unit_cell.orthogonalization_matrix());
   }
-  //! Convert anisotropic displacement parameters beta -> Ustar.
+
+  //! Converts anisotropic displacement parameters u_cart -> u_cif.
+  /*! Implemented without a significant loss of efficiency as
+      u_star_as_u_cif(unit_cell, u_cart_as_u_star(unit_cell, u_cart)).
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  u_cart_as_u_cif(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_cart)
+  {
+    return u_star_as_u_cif(unit_cell, u_cart_as_u_star(unit_cell, u_cart));
+  }
+
+  //! Converts anisotropic displacement parameters u_cif -> u_cart.
+  /*! Implemented without a significant loss of efficiency as
+      u_star_as_u_cart(unit_cell, u_cif_as_u_star(unit_cell, u_cif)).
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  u_cif_as_u_cart(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_cif)
+  {
+    return u_star_as_u_cart(unit_cell, u_cif_as_u_star(unit_cell, u_cif));
+  }
+
+  //! Converts anisotropic displacement parameters u_star -> beta.
+  /*! The elements of u_star are multiplied by 2pi^2.
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  u_star_as_beta(sym_mat3<FloatType> const& u_star)
+  {
+    return FloatType(scitbx::constants::two_pi_sq) * u_star;
+  }
+
+  //! Converts anisotropic displacement parameters beta -> u_star.
   /*! The elements of beta are divided by 2pi^2.
    */
   template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  beta_as_Ustar(const af::tiny<FloatType, 6>& beta) {
-    return beta / constants::two_pi_sq;
+  inline sym_mat3<FloatType>
+  beta_as_u_star(sym_mat3<FloatType> const& beta)
+  {
+    return beta / FloatType(scitbx::constants::two_pi_sq);
   }
 
-  //! Convert anisotropic displacement parameters Ucart -> beta.
-  /*! This is implemented as Ustar_as_beta(Ucart_as_Ustar(uc, Ucart)).
+  //! Converts anisotropic displacement parameters u_cart -> beta.
+  /*! Implemented as
+      u_star_as_beta(u_cart_as_u_star(unit_cell, u_cart)).
    */
   template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Ucart_as_beta(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Ucart) {
-    return Ustar_as_beta(Ucart_as_Ustar(uc, Ucart));
-  }
-  //! Convert anisotropic displacement parameters beta -> Ucart.
-  /*! This is implemented as Ustar_as_Ucart(uc, beta_as_Ustar(beta)).
-   */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  beta_as_Ucart(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& beta) {
-    return Ustar_as_Ucart(uc, beta_as_Ustar(beta));
+  inline sym_mat3<FloatType>
+  u_cart_as_beta(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_cart)
+  {
+    return u_star_as_beta(u_cart_as_u_star(unit_cell, u_cart));
   }
 
-  //! Convert anisotropic displacement parameters Ucif -> beta.
-  /*! This is implemented as Ustar_as_beta(Ucif_as_Ustar(uc, Ucif)).
+  //! Converts anisotropic displacement parameters beta -> u_cart.
+  /*! Implemented as
+      u_star_as_u_cart(unit_cell, beta_as_u_star(beta)).
    */
   template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Ucif_as_beta(const uctbx::UnitCell& uc,
-               const af::tiny<FloatType, 6>& Ucif) {
-    return Ustar_as_beta(Ucif_as_Ustar(uc, Ucif));
-  }
-  //! Convert anisotropic displacement parameters beta -> Ucif.
-  /*! This is implemented as Ustar_as_Ucif(uc, beta_as_Ustar(beta)).
-   */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  beta_as_Ucif(const uctbx::UnitCell& uc,
-               const af::tiny<FloatType, 6>& beta) {
-    return Ustar_as_Ucif(uc, beta_as_Ustar(beta));
+  inline sym_mat3<FloatType>
+  beta_as_u_cart(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& beta)
+  {
+    return u_star_as_u_cart(unit_cell, beta_as_u_star(beta));
   }
 
-  //! Convert anisotropic displacement parameters Ucart -> Uiso.
-  /*! Uiso is defined as the mean of the diagonal elements of Ucart:<pre>
-          Uiso = 1/3 (Ucart11 + Ucart22 + Ucart33)</pre>
+  //! Converts anisotropic displacement parameters u_cif -> beta.
+  /*! Implemented as
+      u_star_as_beta(u_cif_as_u_star(unit_cell, u_cif)).
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  u_cif_as_beta(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_cif)
+  {
+    return u_star_as_beta(u_cif_as_u_star(unit_cell, u_cif));
+  }
+
+  //! Converts anisotropic displacement parameters beta -> u_cif.
+  /*! Implemented as
+      u_star_as_u_cif(unit_cell, beta_as_u_star(beta)).
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  beta_as_u_cif(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& beta)
+  {
+    return u_star_as_u_cif(unit_cell, beta_as_u_star(beta));
+  }
+
+  //! Converts anisotropic displacement parameters u_cart -> u_iso.
+  /*! u_iso is defined as the mean of the diagonal elements of u_cart:<pre>
+          u_iso = 1/3 (u_cart_11 + u_cart_22 + u_cart_33)</pre>
    */
   template <typename FloatType>
   inline FloatType
-  Ucart_as_Uiso(const af::tiny_plain<FloatType, 6>& Ucart)
+  u_cart_as_u_iso(sym_mat3<FloatType> const& u_cart)
   {
-    return (Ucart[0] + Ucart[1] + Ucart[2]) / 3.;
-  }
-  //! Convert Uiso -> anisotropic displacement parameters Ucart.
-  /*! The diagonal elements of Ucart are set to the value of Uiso.
-      The off-diagonal components Ucart are set to zero.
-   */
-  template <typename FloatType>
-  af::tiny<FloatType, 6>
-  Uiso_as_Ucart(const FloatType& Uiso)
-  {
-    af::tiny<FloatType, 6> result;
-    result.fill(0.);
-    for(std::size_t i=0;i<3;i++) result[i] = Uiso;
-    return result;
+    return (u_cart[0] + u_cart[1] + u_cart[2]) / 3.;
   }
 
-  //! Convert Ustar -> Uiso.
-  /*! This is implemented as Ucart_as_Uiso(Ustar_as_Ucart(uc, Ustar)).
+  //! Converts u_iso -> anisotropic displacement parameters u_cart.
+  /*! The diagonal elements of u_cart are set to the value of u_iso.
+      The off-diagonal components u_cart are set to zero.
+   */
+  template <typename FloatType>
+  sym_mat3<FloatType>
+  u_iso_as_u_cart(FloatType const& u_iso)
+  {
+    return sym_mat3<FloatType>(u_iso,u_iso,u_iso,0,0,0);
+  }
+
+  //! Converts u_star -> u_iso.
+  /*! Implemented as
+      u_cart_as_u_iso(u_star_as_u_cart(unit_cell, u_star)).
    */
   template <typename FloatType>
   inline FloatType
-  Ustar_as_Uiso(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Ustar)
+  u_star_as_u_iso(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_star)
   {
-    return Ucart_as_Uiso(Ustar_as_Ucart(uc, Ustar));
-  }
-  //! Convert Uiso -> Ustar.
-  /*! This is implemented as Ucart_as_Ustar(uc, Uiso_as_Ucart(Uiso)).
-   */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Uiso_as_Ustar(const uctbx::UnitCell& uc,
-                const FloatType& Uiso)
-  {
-    return Ucart_as_Ustar(uc, Uiso_as_Ucart(Uiso));
+    return u_cart_as_u_iso(u_star_as_u_cart(unit_cell, u_star));
   }
 
-  //! Convert Ucif -> Uiso.
-  /*! This is implemented as Ucart_as_Uiso(Ucif_as_Ucart(uc, Ucif)).
+  //! Converts u_iso -> u_star.
+  /*! Implemented as u_cart_as_u_star(unit_cell, u_iso_as_u_cart(u_iso)).
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  u_iso_as_u_star(
+    uctbx::unit_cell const& unit_cell,
+    FloatType const& u_iso)
+  {
+    return u_cart_as_u_star(unit_cell, u_iso_as_u_cart(u_iso));
+  }
+
+  //! Converts u_cif -> u_iso.
+  /*! Implemented as
+      u_cart_as_u_iso(u_cif_as_u_cart(unit_cell, u_cif)).
    */
   template <typename FloatType>
   inline FloatType
-  Ucif_as_Uiso(const uctbx::UnitCell& uc,
-               const af::tiny<FloatType, 6>& Ucif)
+  u_cif_as_u_iso(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& u_cif)
   {
-    return Ucart_as_Uiso(Ucif_as_Ucart(uc, Ucif));
-  }
-  //! Convert Uiso -> Ucif.
-  /*! This is implemented as Ucart_as_Ucif(uc, Uiso_as_Ucart(Uiso)).
-   */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Uiso_as_Ucif(const uctbx::UnitCell& uc,
-               const FloatType& Uiso)
-  {
-    return Ucart_as_Ucif(uc, Uiso_as_Ucart(Uiso));
+    return u_cart_as_u_iso(u_cif_as_u_cart(unit_cell, u_cif));
   }
 
-  //! Convert beta -> Uiso.
-  /*! This is implemented as Ucart_as_Uiso(beta_as_Ucart(uc, beta)).
+  //! Converts u_iso -> u_cif.
+  /*! Implemented as
+      u_cart_as_u_cif(unit_cell, u_iso_as_u_cart(u_iso)).
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  u_iso_as_u_cif(
+    uctbx::unit_cell const& unit_cell,
+    FloatType const& u_iso)
+  {
+    return u_cart_as_u_cif(unit_cell, u_iso_as_u_cart(u_iso));
+  }
+
+  //! Converts beta -> u_iso.
+  /*! Implemented as
+      u_cart_as_u_iso(beta_as_u_cart(unit_cell, beta)).
    */
   template <typename FloatType>
   inline FloatType
-  beta_as_Uiso(const uctbx::UnitCell& uc,
-               const af::tiny<FloatType, 6>& beta)
+  beta_as_u_iso(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& beta)
   {
-    return Ucart_as_Uiso(beta_as_Ucart(uc, beta));
-  }
-  //! Convert Uiso -> beta.
-  /*! This is implemented as Ucart_as_beta(uc, Uiso_as_Ucart(Uiso)).
-   */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  Uiso_as_beta(const uctbx::UnitCell& uc,
-                const FloatType& Uiso)
-  {
-    return Ucart_as_beta(uc, Uiso_as_Ucart(Uiso));
+    return u_cart_as_u_iso(beta_as_u_cart(unit_cell, beta));
   }
 
-  //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and Biso.
+  //! Converts u_iso -> beta.
+  /*! Implemented as
+      u_cart_as_beta(unit_cell, u_iso_as_u_cart(u_iso)).
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  u_iso_as_beta(
+    uctbx::unit_cell const& unit_cell,
+    FloatType const& u_iso)
+  {
+    return u_cart_as_beta(unit_cell, u_iso_as_u_cart(u_iso));
+  }
+
+  //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and b_iso.
   inline double
-  DebyeWallerFactorBiso(double stol2,
-                        double Biso)
+  debye_waller_factor_b_iso(
+    double stol_sq,
+    double b_iso)
   {
-    return std::exp(-Biso * stol2);
-  }
-  //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and Uiso.
-  inline double
-  DebyeWallerFactorUiso(double stol2,
-                        double Uiso)
-  {
-    return DebyeWallerFactorBiso(stol2, U_as_B(Uiso));
-  }
-  //! Isotropic Debye-Waller factor given Miller index and Biso.
-  inline double
-  DebyeWallerFactorBiso(const uctbx::UnitCell& uc,
-                        const miller::Index& MIx,
-                        double Biso)
-  {
-    return DebyeWallerFactorBiso(uc.Q(MIx) / 4., Biso);
-  }
-  //! Isotropic Debye-Waller factor given Miller index and Uiso.
-  inline double
-  DebyeWallerFactorUiso(const uctbx::UnitCell& uc,
-                        const miller::Index& MIx,
-                        double Uiso)
-  {
-    return DebyeWallerFactorBiso(uc, MIx, U_as_B(Uiso));
+    return std::exp(-b_iso * stol_sq);
   }
 
-  //! Anisotropic Debye-Waller factor given Miller index and Ustar.
+  //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and u_iso.
+  inline double
+  debye_waller_factor_u_iso(
+    double stol_sq,
+    double u_iso)
+  {
+    return debye_waller_factor_b_iso(stol_sq, u_as_b(u_iso));
+  }
+
+  //! Isotropic Debye-Waller factor given a Miller index and b_iso.
+  inline double
+  debye_waller_factor_b_iso(
+    uctbx::unit_cell const& unit_cell,
+    miller::index<> const& h,
+    double b_iso)
+  {
+    return debye_waller_factor_b_iso(unit_cell.d_star_sq(h) / 4., b_iso);
+  }
+
+  //! Isotropic Debye-Waller factor given a Miller index and u_iso.
+  inline double
+  debye_waller_factor_u_iso(
+    uctbx::unit_cell const& unit_cell,
+    miller::index<> const& h,
+    double u_iso)
+  {
+    return debye_waller_factor_b_iso(unit_cell, h, u_as_b(u_iso));
+  }
+
+  //! Anisotropic Debye-Waller factor given a Miller index and u_star.
   template <typename FloatType>
   inline FloatType
-  DebyeWallerFactorUstar(const miller::Index& MIx,
-                         const af::tiny<FloatType, 6>& Ustar)
+  debye_waller_factor_u_star(
+    miller::index<> const& h,
+    sym_mat3<FloatType> const& u_star)
   {
-    return std::exp(-constants::two_pi_sq * (
-        (MIx[0] * MIx[0]) * Ustar[0]
-      + (MIx[1] * MIx[1]) * Ustar[1]
-      + (MIx[2] * MIx[2]) * Ustar[2]
-      + (2 * MIx[0] * MIx[1]) * Ustar[3]
-      + (2 * MIx[0] * MIx[2]) * Ustar[4]
-      + (2 * MIx[1] * MIx[2]) * Ustar[5]));
+    return std::exp(-scitbx::constants::two_pi_sq * (
+        (h[0] * h[0]) * u_star[0]
+      + (h[1] * h[1]) * u_star[1]
+      + (h[2] * h[2]) * u_star[2]
+      + (2 * h[0] * h[1]) * u_star[3]
+      + (2 * h[0] * h[2]) * u_star[4]
+      + (2 * h[1] * h[2]) * u_star[5]));
   }
 
   //! Coefficients used in anisotropic Debye-Waller factor calculation.
-  /*! Useful for computing partial derivatives w.r.t. Ustar.
+  /*! Useful for computing partial derivatives w.r.t. u_star.
+      <p>
+      Not available in Python.
    */
-  template <typename FloatType>
-  inline af::tiny<FloatType, 6>
-  DebyeWallerFactorUstarCoefficients(miller::Index const& MIx,
-                                     af::type_holder<FloatType>)
+  template <typename NumType>
+  inline sym_mat3<NumType>
+  debye_waller_factor_u_star_coefficients(
+    miller::index<> const& h,
+    scitbx::type_holder<NumType>)
   {
-    return -constants::two_pi_sq * af::tiny<FloatType, 6>(
-        (MIx[0] * MIx[0]),
-        (MIx[1] * MIx[1]),
-        (MIx[2] * MIx[2]),
-        (2 * MIx[0] * MIx[1]),
-        (2 * MIx[0] * MIx[2]),
-        (2 * MIx[1] * MIx[2]));
+    return sym_mat3<NumType>(
+        (h[0] * h[0]),
+        (h[1] * h[1]),
+        (h[2] * h[2]),
+        (2 * h[0] * h[1]),
+        (2 * h[0] * h[2]),
+        (2 * h[1] * h[2]));
   }
 
-  //! Anisotropic Debye-Waller factor given Miller index and beta.
+  //! Anisotropic Debye-Waller factor given a Miller index and beta.
   template <typename FloatType>
   inline FloatType
-  DebyeWallerFactor_beta(const miller::Index& MIx,
-                         const af::tiny<FloatType, 6>& beta)
+  debye_waller_factor_beta(
+    miller::index<> const& h,
+    sym_mat3<FloatType> const& beta)
   {
-    return DebyeWallerFactorUstar(MIx, beta_as_Ustar(beta));
+    return debye_waller_factor_u_star(h, beta_as_u_star(beta));
   }
 
-  //! Anisotropic Debye-Waller factor given Miller index and Ucif.
+  //! Anisotropic Debye-Waller factor given a Miller index and u_cif.
   template <typename FloatType>
   inline FloatType
-  DebyeWallerFactorUcif(const uctbx::UnitCell& uc,
-                        const miller::Index& MIx,
-                        const af::tiny<FloatType, 6>& Ucif)
+  debye_waller_factor_u_cif(
+    uctbx::unit_cell const& unit_cell,
+    miller::index<> const& h,
+    sym_mat3<FloatType> const& u_cif)
   {
-    return DebyeWallerFactorUstar(MIx, Ucif_as_Ustar(uc, Ucif));
+    return debye_waller_factor_u_star(h, u_cif_as_u_star(unit_cell, u_cif));
   }
-  //! Anisotropic Debye-Waller factor given Miller index and Ucart.
+
+  //! Anisotropic Debye-Waller factor given a Miller index and u_cart.
   template <typename FloatType>
   inline FloatType
-  DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
-                         const miller::Index& MIx,
-                         const af::tiny<FloatType, 6>& Ucart)
+  debye_waller_factor_u_cart(
+    uctbx::unit_cell const& unit_cell,
+    miller::index<> const& h,
+    sym_mat3<FloatType> const& u_cart)
   {
-    return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));
+    return debye_waller_factor_u_star(h, u_cart_as_u_star(unit_cell, u_cart));
   }
 
   namespace detail {
@@ -387,13 +452,13 @@ namespace cctbx {
     template <class T>
     inline
     std::complex<T>
-    root(const std::complex<T>& c, unsigned int m, unsigned int k=0)
+    root(std::complex<T> const& c, unsigned int m, unsigned int k=0)
     {
       T rho = std::abs(c);
       if (rho == T(0)) return std::complex<T>(0, 0);
       return std::polar(
         std::pow(rho, T(1./m)),
-        (std::arg(c) + T(k * constants::two_pi)) / T(m));
+        (std::arg(c) + T(k * scitbx::constants::two_pi)) / T(m));
     }
 
     // To ensure numerical stability we have to try all 3 roots
@@ -406,12 +471,13 @@ namespace cctbx {
         std::complex<FloatType> const& c1,
         std::complex<FloatType> const& c2)
       {
+        using scitbx::fn::absolute;
         u = detail::root(c1, 3);
         v = detail::root(c2, 3);
-        FloatType diff = fn::absolute(u.imag() + v.imag());
+        FloatType diff = absolute(u.imag() + v.imag());
         for(unsigned int k=1;k<3;k++) {
           std::complex<FloatType> trial_v = detail::root(c2, 3, k);
-          FloatType trial_diff = fn::absolute(u.imag() + trial_v.imag());
+          FloatType trial_diff = absolute(u.imag() + trial_v.imag());
           if (diff > trial_diff) {
             diff = trial_diff;
             v = trial_v;
@@ -425,7 +491,7 @@ namespace cctbx {
 
   } // namespace detail
 
-  //! Determine the eigenvalues of the anisotropic displacement tensor.
+  //! Determines the eigenvalues of the anisotropic displacement tensor.
   /*! Since the anisotropic displacement tensor is a symmetric matrix,
       all eigenvalues are real. The eigenvalues lambda are determined
       as the three real roots of the cubic equation
@@ -436,11 +502,11 @@ namespace cctbx {
       obtained analytically using Cardan's formula.
       Detailed comments are embedded in the source code.
       <p>
-      See also: Eigenvectors().
+      See also: eigensystem().
    */
   template <typename FloatType>
-  af::tiny<FloatType, 3>
-  Eigenvalues(const af::tiny_plain<FloatType, 6>& adp)
+  vec3<FloatType>
+  eigenvalues(sym_mat3<FloatType> const& adp)
   {
     /* The eigenvalues lambda are found by:
          1. Determining the elements of the matrix (adp - lambda * I),
@@ -475,21 +541,21 @@ namespace cctbx {
                   - r * s / FloatType(3) + t;
     // to circumvent instabilities due to rounding errors the
     // roots are determined as complex numbers.
-    FloatType D(p*p*p / FloatType(27) + q*q / FloatType(4));
-    std::complex<FloatType> sqrtD;
-    if (D < FloatType(0)) {
-      sqrtD = std::complex<FloatType>(0, std::sqrt(-D));
+    FloatType d(p*p*p / FloatType(27) + q*q / FloatType(4));
+    std::complex<FloatType> sqrt_d;
+    if (d < FloatType(0)) {
+      sqrt_d = std::complex<FloatType>(0, std::sqrt(-d));
     }
     else {
-      sqrtD = std::complex<FloatType>(std::sqrt(D), 0);
+      sqrt_d = std::complex<FloatType>(std::sqrt(d), 0);
     }
     FloatType mq2 = -q / FloatType(2);
-    detail::third_roots<FloatType> roots(mq2 + sqrtD, mq2 - sqrtD);
+    detail::third_roots<FloatType> roots(mq2 + sqrt_d, mq2 - sqrt_d);
     std::complex<FloatType> epsilon1(-0.5, std::sqrt(3.) * 0.5);
     std::complex<FloatType> epsilon2 = std::conj(epsilon1);
     // since the anisotropic displacement tensor is a symmetric matrix,
     // all the imaginary components of the roots must be zero.
-    af::tiny<FloatType, 3> result;
+    vec3<FloatType> result;
     result[0] = (roots.u + roots.v).real();
     result[1] = (epsilon1 * roots.u + epsilon2 * roots.v).real();
     result[2] = (epsilon2 * roots.u + epsilon1 * roots.v).real();
@@ -499,102 +565,73 @@ namespace cctbx {
     return result;
   }
 
-  /*! \brief Test if the anisotropic displacement tensor is
-      positive definite, given eigenvalues.
+  /*! \brief Tests if the anisotropic displacement tensor is
+      positive definite, given adp_eigenvalues.
    */
-  /*! Test if all eigenvalues are > 0.
+  /*! Tests if all adp_eigenvalues are > 0.
       <p>
-      See also: CheckPositiveDefinite(), Eigenvalues().
+      See also: eigenvalues().
    */
   template <typename FloatType>
   bool
-  isPositiveDefinite(const af::tiny<FloatType, 3>& adp_eigenvalues) {
-    return adp_eigenvalues[af::min_index(adp_eigenvalues)] > 0.;
+  is_positive_definite(vec3<FloatType> const& adp_eigenvalues)
+  {
+    return scitbx::af::min(adp_eigenvalues.const_ref()) > 0.;
   }
 
-  /*! \brief Test if the anisotropic displacement tensor is
+  /*! \brief Tests if the anisotropic displacement tensor is
       positive definite.
    */
-  /*! Test if all eigenvalues are > 0.
-      <p>
-      See also: CheckPositiveDefinite(), Eigenvalues().
+  /*! Tests if all eigenvalues(adp) are > 0.
    */
   template <typename FloatType>
   bool
-  isPositiveDefinite(const af::tiny<FloatType, 6>& adp) {
-    return isPositiveDefinite(Eigenvalues(adp));
-  }
-
-  /*! \brief Assert that the anisotropic displacement tensor is
-      positive definite, given eigenvalues.
-   */
-  /*! An exception is thrown if the assertion fails.
-      <p>
-      See also: isPositiveDefinite(), Eigenvalues().
-   */
-  template <typename FloatType>
-  void
-  CheckPositiveDefinite(const af::tiny<FloatType, 3>& adp_eigenvalues) {
-    if (!(isPositiveDefinite(adp_eigenvalues))) {
-     throw not_positive_definite;
-    }
-  }
-
-  /*! \brief Assert that the anisotropic displacement tensor is
-      positive definite.
-   */
-  /*! An exception is thrown if the assertion fails.
-      <p>
-      See also: isPositiveDefinite(), Eigenvalues().
-   */
-  template <typename FloatType>
-  void
-  CheckPositiveDefinite(const af::tiny<FloatType, 6>& adp) {
-    CheckPositiveDefinite(Eigenvalues(adp));
+  is_positive_definite(sym_mat3<FloatType> const& adp)
+  {
+    return is_positive_definite(eigenvalues(adp));
   }
 
   namespace detail {
 
     template <typename FloatType>
-    std::pair<af::tiny<FloatType, 3>, FloatType>
-    recursively_multiply(const af::tiny<FloatType, 9>& M,
-                         af::tiny<FloatType, 3> V,
-                         FloatType tolerance = 1.e-6)
+    std::pair<vec3<FloatType>, FloatType>
+    recursively_multiply(mat3<FloatType> const& m,
+                         vec3<FloatType> v,
+                         FloatType tolerance=1.e-6)
     {
-      unsigned int RunAwayCounter = 0;
+      unsigned int run_away_counter = 0;
       for (;;) {
-        af::tiny<FloatType, 3> MV;
-        MatrixLite::multiply<FloatType>(
-          M.begin(), V.begin(), 3, 3, 1, MV.begin());
-        FloatType abs_lambda = std::sqrt(af::sum(MV * MV));
-        if (abs_lambda == 0.) throw not_positive_definite;
-        MV = MV / abs_lambda;
-        af::tiny<FloatType, 3> absMV = af::fabs(MV);
-        std::size_t iMax = af::max_index(absMV);
-        FloatType scaled_tolerance = absMV[iMax] * tolerance;
-        bool converged = !af::cmp(af::approx_equal_scaled(
-          MV, V, scaled_tolerance), true);
-        if (!converged && !af::cmp(af::approx_equal_scaled(
-          MV, -V, scaled_tolerance), true)) {
-          throw not_positive_definite; // lambda < 0
+        vec3<FloatType> mv = m * v;
+        FloatType abs_lambda = mv.length();
+        if (abs_lambda == 0.) throw_not_positive_definite();
+        mv /= abs_lambda;
+        vec3<FloatType> abs_mv = af::fabs(mv.as_tiny());
+        std::size_t i_max = af::max_index(abs_mv);
+        FloatType scaled_tolerance = abs_mv[i_max] * tolerance;
+        bool converged = mv.const_ref().all_approx_equal(
+                          v.const_ref(), scaled_tolerance);
+        if (!converged && mv.const_ref().all_approx_equal(
+                          (-v).const_ref(), scaled_tolerance)) {
+          throw_not_positive_definite(); // lambda < 0
         }
-        V = MV;
-        if (converged) return std::make_pair(V, abs_lambda);
-        RunAwayCounter++;
-        if (RunAwayCounter > 10000000) throw cctbx_internal_error();
+        v = mv;
+        if (converged) return std::make_pair(v, abs_lambda);
+        run_away_counter++;
+        CCTBX_ASSERT(run_away_counter < 10000000);
       }
     }
 
   } // namespace detail
 
-  //! Group of associated eigenvectors and values.
+  //! Group of associated eigenvectors and eigenvalues.
   template <typename FloatType>
-  class Eigensystem
+  class eigensystem
   {
     public:
       //! Default constructor. Some data members are not initialized!
-      Eigensystem() {}
-      /*! \brief Determine the eigenvectors and eigenvalues of the
+      eigensystem() {}
+
+      /*! \brief Determines the eigenvectors and eigenvalues of the
           anisotropic displacement tensor.
        */
       /*! Since the anisotropic displacement tensor is a symmetric matrix,
@@ -611,62 +648,71 @@ namespace cctbx {
           less than or equal to zero. This indicates that the
           anisotropic displacement tensor is not positive definite.
           <p>
-          See also: Eigenvalues().
+          See also: eigenvalues().
        */
-      Eigensystem(const af::tiny<FloatType, 6>& adp,
-                  FloatType tolerance = 1.e-6)
+      eigensystem(sym_mat3<FloatType> const& adp,
+                  FloatType tolerance=1.e-6);
+
+      //! The i'th eigenvector.
+      /*! An exception is thrown if i >= 3.
+       */
+      vec3<FloatType> const&
+      vectors(std::size_t i) const
       {
-        af::tiny<FloatType, 9> M[2];
-        M[0] = MatrixLite::CondensedSymMx33_as_FullSymMx33(adp,
-               af::type_holder<FloatType>());
-        FloatType d = MatrixLite::Determinant(M[0]);
-        if (d == 0.) {
-          throw not_positive_definite;
-        }
-        M[1] = MatrixLite::CoFactorMxTp(M[0]) / d;
-        std::size_t iLarge[2];
-        for(std::size_t iM=0;iM<2;iM++) {
-          af::tiny<FloatType, 3>
-          absDiag = af::fabs(MatrixLite::DiagonalElements(M[iM]));
-          iLarge[iM] = af::max_index(absDiag);
-          if (iM != 0 && iLarge[1] == iLarge[0]) {
-            absDiag[iLarge[1]] = -1.;
-            iLarge[1] = af::max_index(absDiag);
-            cctbx_assert(iLarge[1] != iLarge[0]);
-          }
-          af::tiny<FloatType, 3> V;
-          V.fill(0.);
-          V[iLarge[iM]] = 1.;
-          std::pair<af::tiny<FloatType, 3>, FloatType>
-          V_lambda = detail::recursively_multiply(M[iM], V);
-          m_vectors[iM] = V_lambda.first;
-          m_values[iM] = V_lambda.second;
-        }
-        m_vectors[2] = MatrixLite::cross_product(m_vectors[0], m_vectors[1]);
-        cctbx_assert(af::cmp((m_vectors[2] * m_vectors[2]), 0.));
-        m_values[1] = 1. / m_values[1];
-        m_values[2] = (adp[0] + adp[1] + adp[2]) - (m_values[0] + m_values[1]);
+        if (i >= vectors_.size()) throw error_index();
+        return vectors_[i];
       }
-      //! Access the i'th eigenvector.
-      /*! An exception is thrown if i >= 3.
-       */
-      const af::tiny<FloatType, 3>&
-      vectors(std::size_t i) const {
-        if (i >= m_vectors.size()) throw error_index();
-        return m_vectors[i];
-      }
-      //! Access the i'th eigenvalue.
-      /*! An exception is thrown if i >= 3.
-       */
-      FloatType
-      values(std::size_t i) const {
-        if (i >= m_values.size()) throw error_index();
-        return m_values[i];
-      }
+
+      //! The eigenvalues.
+      vec3<FloatType> const&
+      values() const { return values_; }
+
     private:
-      af::tiny<af::tiny<FloatType, 3>, 3> m_vectors;
-      af::tiny<FloatType, 3> m_values;
+      af::tiny<vec3<FloatType>, 3> vectors_;
+      vec3<FloatType> values_;
   };
+
+  template <typename FloatType>
+  eigensystem<FloatType>
+  ::eigensystem(sym_mat3<FloatType> const& adp,
+                FloatType tolerance)
+  {
+    mat3<FloatType> m[2];
+    m[0] = mat3<FloatType>(adp);
+    FloatType d = m[0].determinant();
+    if (d == 0.) throw_not_positive_definite();
+    m[1] = m[0].co_factor_matrix_transposed() / d;
+    std::size_t i_large[2];
+    for(std::size_t i_m=0;i_m<2;i_m++) {
+      vec3<FloatType> abs_diag = af::fabs(m[i_m].diagonal().as_tiny());
+      i_large[i_m] = af::max_index(abs_diag);
+      if (i_m != 0 && i_large[1] == i_large[0]) {
+        abs_diag[i_large[1]] = -1.;
+        i_large[1] = af::max_index(abs_diag);
+        CCTBX_ASSERT(i_large[1] != i_large[0]);
+      }
+      vec3<FloatType> v(0,0,0);
+      v[i_large[i_m]] = 1.;
+      std::pair<vec3<FloatType>, FloatType>
+        v_lambda = detail::recursively_multiply(m[i_m], v);
+      vectors_[i_m] = v_lambda.first;
+      values_[i_m] = v_lambda.second;
+    }
+    vectors_[2] = vectors_[0].cross(vectors_[1]);
+    CCTBX_ASSERT(vectors_[2].length() != 0);
+    values_[1] = 1. / values_[1];
+    values_[2] = (adp[0] + adp[1] + adp[2]) - (values_[0] + values_[1]);
+  }
+
+  //! Tensor transformation: c * u * c.transpose().
+  /*! For use in Python only.
+   */
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  c_u_c_transpose(mat3<FloatType> const& c, sym_mat3<FloatType> const& u)
+  {
+    return u.tensor_transform(c);
+  }
 
 }} // namespace cctbx::adptbx
 

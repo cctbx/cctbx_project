@@ -1,22 +1,21 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctbx/fixes/cmath>
 #include <cctbx/eltbx/caasf.h>
 
-namespace cctbx { namespace eltbx {
-  namespace tables {
+namespace cctbx { namespace eltbx { namespace caasf {
+
+  namespace {
 
     /*
-      WK1995_CAASF_RawTable contains the reformatted data found in
+      wk1995_raw_table contains the reformatted data found in
 
           ftp://wrzx02.rz.uni-wuerzburg.de/pub/local/Crystallography/sfac.dat
 
@@ -24,7 +23,7 @@ namespace cctbx { namespace eltbx {
       File verified  Sep 12, 2001.
      */
 
-    static const eltbx::detail::CAASF_Raw<5> WK1995_CAASF_RawTable[] =
+    static const detail::raw_table_entry<5> wk1995_raw_table[] =
     {
       { "const", { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
@@ -673,28 +672,43 @@ namespace cctbx { namespace eltbx {
                  3.502325 },
       { "Es",    { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
-                 caasf_undefined },
+                 detail::undefined },
       { "Fm",    { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
-                 caasf_undefined },
+                 detail::undefined },
       { "Md",    { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
-                 caasf_undefined },
+                 detail::undefined },
       { "No",    { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
-                 caasf_undefined },
+                 detail::undefined },
       { "Lr",    { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
-                 caasf_undefined },
+                 detail::undefined },
       { 0,       { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
                  0. }
 // END_COMPILED_IN_REFERENCE_DATA
     };
 
-  } // namespace tables
+  } // namespace <anonymous>
 
-  CAASF_WK1995::CAASF_WK1995(const std::string& Label, bool Exact)
-    : CAASF<5>(tables::WK1995_CAASF_RawTable, "WK1995", Label, Exact) {}
+  wk1995::wk1995(std::string const& label, bool exact)
+  :
+    base<5>(wk1995_raw_table, "WK1995", label, exact)
+  {}
 
-}} // namespace cctbx::eltbx
+  wk1995_iterator::wk1995_iterator()
+  :
+    current_("const", true)
+  {}
+
+  wk1995
+  wk1995_iterator::next()
+  {
+    wk1995 result = current_;
+    current_.next_entry();
+    return result;
+  }
+
+}}} // namespace cctbx::eltbx::caasf

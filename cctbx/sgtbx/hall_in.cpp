@@ -1,37 +1,41 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <ctype.h> // cannot use cctype b/o non-conforming compilers
+#include <cctbx/sgtbx/space_group.h>
+#include <cctbx/sgtbx/rotation_matrices.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <cctbx/sgtbx/groups.h>
-#include <cctbx/sgtbx/rotation_matrices.h>
 
 namespace cctbx { namespace sgtbx {
-  namespace hall {
 
-    bool IsHSymSpace(char c)
-    {
-      if (c == '\0') return 0;
-      if (c == '_') return 1;
-      return isspace(c);
-    }
+  namespace {
 
-    bool IsHSymChar(char c)
-    {
-      if (c == '\0') return 0;
-      return !IsHSymSpace(c);
-    }
+    namespace hall {
 
-    int GetAbsOrder(char c)
+      bool is_space(char c)
+      {
+        if (c == '\0') return false;
+        if (c == '_') return true;
+        return isspace(c);
+      }
+
+      bool is_char(char c)
+      {
+        if (c == '\0') return false;
+        return !is_space(c);
+      }
+
+    } // namespace hall
+
+    int get_abs_order(char c)
     {
       if (c == '1') return 1;
       if (c == '2') return 2;
@@ -41,7 +45,7 @@ namespace cctbx { namespace sgtbx {
       return 0;
     }
 
-    int GetScrew(char c)
+    int get_screw(char c)
     {
       if (c == '1') return 1;
       if (c == '2') return 2;
@@ -51,7 +55,7 @@ namespace cctbx { namespace sgtbx {
       return 0;
     }
 
-    char GetRefAxis(char c)
+    char get_reference_axis(char c)
     {
       c = tolower(c);
       if (   c == 'x'
@@ -60,7 +64,7 @@ namespace cctbx { namespace sgtbx {
       return '\0';
     }
 
-    char GetDirCode(char c)
+    char get_direction_code(char c)
     {
       if (   c == '\''
           || c ==  '"'
@@ -72,202 +76,211 @@ namespace cctbx { namespace sgtbx {
       return '\0';
     }
 
-    const TrVec& GetTr(char Sym)
+    tr_vec const& get_translation(char symbol)
     {
-      struct TrMap {
-        char  Sym;
-        TrVec Vec;
-        TrMap(const char S, const TrVec& V) : Sym(S), Vec(V) {}
-      };
-      static const TrMap HallTrs[] =
+      struct tr_map
       {
-        TrMap('a', TrVec12(6, 0, 0)),
-        TrMap('b', TrVec12(0, 6, 0)),
-        TrMap('c', TrVec12(0, 0, 6)),
-        TrMap('n', TrVec12(6, 6, 6)),
-        TrMap('u', TrVec12(3, 0, 0)),
-        TrMap('v', TrVec12(0, 3, 0)),
-        TrMap('w', TrVec12(0, 0, 3)),
-        TrMap('d', TrVec12(3, 3, 3)),
+        tr_map(char s, tr_vec const& v) : symbol(s), vec(v) {}
+        char symbol;
+        tr_vec vec;
       };
-      const int nHallTrs = sizeof HallTrs / sizeof (*HallTrs);
-      Sym = tolower(Sym);
-      for (int i = 0; i < nHallTrs; i++)
-        if (HallTrs[i].Sym == Sym) return HallTrs[i].Vec;
-      static TrVec null(0);
+      static const tr_map hall_translations[] =
+      {
+        tr_map('a', tr_vec_12(6, 0, 0)),
+        tr_map('b', tr_vec_12(0, 6, 0)),
+        tr_map('c', tr_vec_12(0, 0, 6)),
+        tr_map('n', tr_vec_12(6, 6, 6)),
+        tr_map('u', tr_vec_12(3, 0, 0)),
+        tr_map('v', tr_vec_12(0, 3, 0)),
+        tr_map('w', tr_vec_12(0, 0, 3)),
+        tr_map('d', tr_vec_12(3, 3, 3)),
+      };
+      const std::size_t n_hall_translations =
+        sizeof hall_translations / sizeof (*hall_translations);
+      symbol = tolower(symbol);
+      for(std::size_t i=0;i<n_hall_translations;i++) {
+        if (hall_translations[i].symbol == symbol) {
+          return hall_translations[i].vec;
+        }
+      }
+      static tr_vec null(0);
       return null;
     }
 
-    const RotMx GetRMx(bool Improper, int AbsOrder,
-                       char RefAxis, char DirCode)
+    const rot_mx get_rot_mx(bool improper, int abs_order,
+                            char reference_axis, char direction_code)
     {
-      struct TabRMxEntry
+      struct tab_rot_mx_entry
       {
-        int          Order;
-        char         DirCode;
-        const RotMx* RMx;
+        int order;
+        char direction_code;
+        const rot_mx* r;
       };
-      using namespace tables::RotationMatrices;
-      const TabRMxEntry TabRMx[] = {
-        { 1, '\0', &R_1_000 },
-        { 2, '\0', &R_2_001 },
-        { 2, '\'', &R_2_1b0 },
-        { 2,  '"', &R_2_110 },
-        { 3, '\0', &R_3_001 },
-        { 3,  '*', &R_3_111 },
-        { 4, '\0', &R_4_001 },
-        { 6, '\0', &R_6_001 },
+      using namespace tables::rotation_matrices;
+      const tab_rot_mx_entry tab_rot_mx[] = {
+        { 1, '\0', &r_1_000 },
+        { 2, '\0', &r_2_001 },
+        { 2, '\'', &r_2_1b0 },
+        { 2,  '"', &r_2_110 },
+        { 3, '\0', &r_3_001 },
+        { 3,  '*', &r_3_111 },
+        { 4, '\0', &r_4_001 },
+        { 6, '\0', &r_6_001 },
       };
-      const int n = (sizeof TabRMx / sizeof (*TabRMx));
+      const std::size_t n = (sizeof tab_rot_mx / sizeof (*tab_rot_mx));
       for(std::size_t i=0;i<n;i++) {
-        if (   TabRMx[i].Order == AbsOrder
-            && TabRMx[i].DirCode == DirCode) {
-          RotMx R;
-          if (!Improper)  R =  (*TabRMx[i].RMx);
-          else            R = -(*TabRMx[i].RMx);
-          if (RefAxis == 'x') return R_3_111 * R * R_3i111;
-          if (RefAxis == 'y') return R_3i111 * R * R_3_111;
-          return R;
+        if (   tab_rot_mx[i].order == abs_order
+            && tab_rot_mx[i].direction_code == direction_code) {
+          rot_mx r;
+          if (!improper)  r =  (*tab_rot_mx[i].r);
+          else            r = -(*tab_rot_mx[i].r);
+          if (reference_axis == 'x') return r_3_111 * r * r_3i111;
+          if (reference_axis == 'y') return r_3i111 * r * r_3_111;
+          return r;
         }
       }
-      throw cctbx_internal_error();
+      throw CCTBX_INTERNAL_ERROR();
     }
 
-    TrVec ParseShortCBO(parse_string& HSym, const char* StopChars, int TBF)
+    tr_vec
+    parse_short_cb_op(parse_string& hall_symbol,
+                      const char* stop_chars,
+                      int t_den)
     {
-      cctbx_assert(TBF % 12 == 0);
-      TrVec result(TBF);
-      for (int Row = 0; Row < 3; Row++) {
-        while (IsHSymSpace(HSym())) HSym.skip();
-        if (Row && HSym() == ',') {
-          HSym.skip();
-          while (IsHSymSpace(HSym())) HSym.skip();
+      CCTBX_ASSERT(t_den % 12 == 0);
+      tr_vec result(t_den);
+      for (std::size_t row = 0; row < 3; row++) {
+        while (hall::is_space(hall_symbol())) hall_symbol.skip();
+        if (row && hall_symbol() == ',') {
+          hall_symbol.skip();
+          while (hall::is_space(hall_symbol())) hall_symbol.skip();
         }
-        if (strchr(StopChars, HSym()))
-          return TrVec(0);
+        if (strchr(stop_chars, hall_symbol())) return tr_vec(0);
         int i = 1;
-        int n = sscanf(HSym.peek(), "%d%n", &result[Row], &i);
-        HSym.skip(i - 1);
-        if (n != 1) return TrVec(0);
-        HSym.skip();
-        result[Row] *= (TBF / 12);
+        int n = sscanf(hall_symbol.peek(), "%d%n", &result[row], &i);
+        hall_symbol.skip(i - 1);
+        if (n != 1) return tr_vec(0);
+        hall_symbol.skip();
+        result[row] *= (t_den / 12);
       }
       return result;
     }
 
-  } // namespace hall
+  } // namespace <anonymous>
 
-  int SpaceGroup::ParseHallSymbolCBOp(parse_string& HSym, ChOfBasisOp& CBOp,
-                                      bool Pedantic, bool NoCType)
+  std::size_t
+  space_group::parse_hall_symbol_cb_op(
+    parse_string& hall_symbol,
+    change_of_basis_op& cb_op,
+    bool pedantic,
+    bool no_centring_type_symbol)
   {
-    using namespace hall;
-
-    int nAddedMx = 0;
+    std::size_t n_added_mx = 0;
 
     // Interpret the lattice type code.
-    if (!NoCType) {
-      while (IsHSymSpace(HSym())) HSym.skip();
-      if (HSym() == '-') {
-        expandInv(TrVec(STBF));
-        HSym.skip();
-        nAddedMx++;
+    if (!no_centring_type_symbol) {
+      while (hall::is_space(hall_symbol())) hall_symbol.skip();
+      if (hall_symbol() == '-') {
+        expand_inv(tr_vec(t_den()));
+        hall_symbol.skip();
+        n_added_mx++;
       }
-      if (HSym() == '\0') throw error("Lattice type not specified.");
-      nAddedMx += expandConventionalCentringType(HSym());
-      HSym.skip();
+      if (hall_symbol() == '\0') throw error("Lattice type not specified.");
+      n_added_mx += expand_conventional_centring_type(hall_symbol());
+      hall_symbol.skip();
     }
 
-    const char char_after_lattice_type_symbol = HSym();
-    while (IsHSymSpace(HSym())) HSym.skip();
-    if (HSym() == '\0' || HSym() == '(') {
-      if (Pedantic) throw error("Matrix symbol expected.");
-      if (HSym() == '\0') return nAddedMx;
+    const char char_after_lattice_type_symbol = hall_symbol();
+    while (hall::is_space(hall_symbol())) hall_symbol.skip();
+    if (hall_symbol() == '\0' || hall_symbol() == '(') {
+      if (pedantic) throw error("Matrix symbol expected.");
+      if (hall_symbol() == '\0') return n_added_mx;
     }
-    if (   !NoCType
-        && Pedantic
-        && !IsHSymSpace(char_after_lattice_type_symbol))
+    if (   !no_centring_type_symbol
+        && pedantic
+        && !hall::is_space(char_after_lattice_type_symbol))
       throw error("Space expected after lattice type symbol.");
 
     // Loop over the matrix symbols.
-    int  iMxSym = 0;
-    int  FirstAbsOrder = 0;
-    char FirstRefAxis  = '\0';
-    while (HSym() != '\0' && HSym() != '(')
+    int  i_mx_symbol = 0;
+    int  first_abs_order = 0;
+    char first_reference_axis  = '\0';
+    while (hall_symbol() != '\0' && hall_symbol() != '(')
     {
-      bool Improper = false;
-      int  AbsOrder =  0;
-      int  Screw = 0;
-      char RefAxis = '\0';
-      char DirCode = '\0';
-      RotMx SMx_R;
-      TrVec SMx_T;
+      bool improper = false;
+      int abs_order =  0;
+      int screw = 0;
+      char reference_axis = '\0';
+      char direction_code = '\0';
+      rot_mx smx_r;
+      tr_vec smx_t;
 
-      if (HSym() == '-') {
-        Improper = true;
-        HSym.skip();
-        if (!IsHSymChar(HSym())) {
+      if (hall_symbol() == '-') {
+        improper = true;
+        hall_symbol.skip();
+        if (!hall::is_char(hall_symbol())) {
           throw error("Incomplete matrix symbol.");
         }
       }
-            AbsOrder = GetAbsOrder(HSym());
-      if (!AbsOrder) {
+           abs_order = get_abs_order(hall_symbol());
+      if (!abs_order) {
         throw error("Improper symbol for rotational order.");
       }
-      HSym.skip();
+      hall_symbol.skip();
 
-          Screw = GetScrew(HSym());
-      if (Screw) {
-        if (Screw >= AbsOrder) {
+          screw = get_screw(hall_symbol());
+      if (screw) {
+        if (screw >= abs_order) {
           throw error("Improper screw translation.");
         }
-        HSym.skip();
+        hall_symbol.skip();
       }
 
-      while (IsHSymChar(HSym()))
+      while (hall::is_char(hall_symbol()))
       {
-        if (  RefAxis == '\0') {
-              RefAxis = GetRefAxis(HSym());
-          if (RefAxis != '\0') {
-            if (    AbsOrder == 1
-                || (AbsOrder == 3 && DirCode == '*')) {
+        if (  reference_axis == '\0') {
+              reference_axis = get_reference_axis(hall_symbol());
+          if (reference_axis != '\0') {
+            if (    abs_order == 1
+                || (abs_order == 3 && direction_code == '*')) {
               throw error("Inconsistent matrix symbol.");
             }
-            HSym.skip();
+            hall_symbol.skip();
             continue;
           }
         }
-        else if (GetRefAxis(HSym()) != '\0') {
+        else if (get_reference_axis(hall_symbol()) != '\0') {
           throw error("Multiple axis symbols.");
         }
 
-        if (  DirCode == '\0') {
-              DirCode = GetDirCode(HSym());
-          if (DirCode != '\0') {
-            if (   !(AbsOrder == 2 && (   DirCode ==  '"'
-                                       || DirCode == '\''))
-                && !(AbsOrder == 3 && DirCode == '*')) {
+        if (  direction_code == '\0') {
+              direction_code = get_direction_code(hall_symbol());
+          if (direction_code != '\0') {
+            if (   !(abs_order == 2 && (  direction_code ==  '"'
+                                       || direction_code == '\''))
+                && !(abs_order == 3 && direction_code == '*')) {
               throw error("Inconsistent matrix symbol.");
             }
-            if (Screw) {
+            if (screw) {
               throw error("Screw translation for non-principal direction.");
             }
-            HSym.skip();
+            hall_symbol.skip();
             continue;
           }
         }
-        else if (GetDirCode(HSym()) != '\0') {
+        else if (get_direction_code(hall_symbol()) != '\0') {
           throw error("Multiple axis symbols.");
         }
 
-        const TrVec& HTr = GetTr(HSym());
-        if (HTr.isValid()) {
-          SMx_T = (SMx_T + HTr).modPositive();
-          HSym.skip();
+        tr_vec const& hall_translation = get_translation(hall_symbol());
+        if (hall_translation.is_valid()) {
+          smx_t = (smx_t + hall_translation).mod_positive();
+          hall_symbol.skip();
           continue;
         }
 
-        if (HSym() == '(') {
-          if (Pedantic) {
+        if (hall_symbol() == '(') {
+          if (pedantic) {
             throw error("Space expected before change-of-basis operator.");
           }
           break;
@@ -276,153 +289,167 @@ namespace cctbx { namespace sgtbx {
         throw error("Malformed matrix symbol.");
       }
 
-      if (RefAxis == '\0') {
-        if      (iMxSym == 0) {
-          if (      AbsOrder != 1
-              && !(AbsOrder == 3 && DirCode == '*'))
-            RefAxis = 'z';
+      if (reference_axis == '\0') {
+        if      (i_mx_symbol == 0) {
+          if (     abs_order != 1
+              && !(abs_order == 3 && direction_code == '*'))
+            reference_axis = 'z';
         }
-        else if (iMxSym == 1) {
-          if      (AbsOrder == 2) {
-            if      (FirstAbsOrder == 2 || FirstAbsOrder == 4) {
-              if (DirCode == '\0') {
-                RefAxis = 'x';
+        else if (i_mx_symbol == 1) {
+          if      (abs_order == 2) {
+            if      (first_abs_order == 2 || first_abs_order == 4) {
+              if (direction_code == '\0') {
+                reference_axis = 'x';
               }
             }
-            else if (FirstAbsOrder == 3 || FirstAbsOrder == 6) {
-              if (DirCode == '\0') {
-                DirCode = '\'';
+            else if (first_abs_order == 3 || first_abs_order == 6) {
+              if (direction_code == '\0') {
+                direction_code = '\'';
               }
-              RefAxis = FirstRefAxis;
+              reference_axis = first_reference_axis;
             }
           }
-          else if (   AbsOrder == 3
-                   && (FirstAbsOrder == 2 || FirstAbsOrder == 4)
-                   && DirCode == '\0') {
-            DirCode = '*';
+          else if (   abs_order == 3
+                   && (first_abs_order == 2 || first_abs_order == 4)
+                   && direction_code == '\0') {
+            direction_code = '*';
           }
         }
-        else if (iMxSym == 2) {
-          if (AbsOrder == 3 && DirCode == '\0') {
-            DirCode = '*';
+        else if (i_mx_symbol == 2) {
+          if (abs_order == 3 && direction_code == '\0') {
+            direction_code = '*';
           }
         }
       }
 
-      if (RefAxis == '\0' && (   DirCode ==  '"'
-                              || DirCode == '\'')) {
-        RefAxis = 'z';
+      if (reference_axis == '\0' && (   direction_code ==  '"'
+                              || direction_code == '\'')) {
+        reference_axis = 'z';
       }
 
-      if (RefAxis == '\0' && AbsOrder != 1 && DirCode != '*') {
+      if (reference_axis == '\0' && abs_order != 1 && direction_code != '*') {
         throw error("Need explicit axis symbol.");
       }
 
-      SMx_R = GetRMx(Improper, AbsOrder, RefAxis, DirCode);
+      smx_r = get_rot_mx(improper, abs_order, reference_axis, direction_code);
 
-      if (Screw) {
-        int i;
-        switch (RefAxis) {
+      if (screw) {
+        std::size_t i;
+        switch (reference_axis) {
           case 'x': i = 0; break;
           case 'y': i = 1; break;
           default:  i = 2; break;
         }
-        cctbx_assert(SMx_T.BF() * Screw % AbsOrder == 0);
-        SMx_T[i] += SMx_T.BF() * Screw / AbsOrder;
+        CCTBX_ASSERT(smx_t.den() * screw % abs_order == 0);
+        smx_t[i] += smx_t.den() * screw / abs_order;
       }
 
-      expandSMx(RTMx(SMx_R, SMx_T));
+      expand_smx(rt_mx(smx_r, smx_t));
 
-      if (iMxSym == 0) {
-        FirstAbsOrder = AbsOrder;
-        FirstRefAxis  = RefAxis;
+      if (i_mx_symbol == 0) {
+        first_abs_order = abs_order;
+        first_reference_axis  = reference_axis;
       }
-      iMxSym++;
+      i_mx_symbol++;
 
-      if (Improper || AbsOrder != 1)
-        nAddedMx++;
+      if (improper || abs_order != 1) {
+        n_added_mx++;
+      }
 
-      while (IsHSymSpace(HSym())) HSym.skip();
+      while (hall::is_space(hall_symbol())) hall_symbol.skip();
     }
 
     // Interpret the change-of-basis operator.
-    if (HSym() == '(') {
-      HSym.skip();
-      HSym.set_mark();
-      RTMx V = RTMx(ParseShortCBO(HSym, ")", CTBF), CRBF);
-      if (!V.isValid()) {
-        HSym.go_to_mark();
-        V = RTMx(HSym, ")", CRBF, CTBF);
-        if (!V.isValid()) {
+    if (hall_symbol() == '(') {
+      hall_symbol.skip();
+      hall_symbol.set_mark();
+      rt_mx v = rt_mx(parse_short_cb_op(hall_symbol, ")", cb_t_den), cb_r_den);
+      if (!v.is_valid()) {
+        hall_symbol.go_to_mark();
+        v = rt_mx(hall_symbol, ")", cb_r_den, cb_t_den);
+        if (!v.is_valid()) {
           throw error("Malformed change-of-basis operator.");
         }
       }
-      while (IsHSymSpace(HSym())) HSym.skip();
-      if (HSym() != ')') {
+      while (hall::is_space(hall_symbol())) hall_symbol.skip();
+      if (hall_symbol() != ')') {
         throw error(
           "Closing parenthesis expected after change-of-basis operator");
       }
       try {
-        CBOp = ChOfBasisOp(V);
+        cb_op = change_of_basis_op(v);
       }
-      catch (const error&) {
+      catch (error const&) {
         throw error("Change-of-basis operator is not invertible.");
       }
-      HSym.skip();
+      hall_symbol.skip();
     }
 
-    while (IsHSymSpace(HSym())) HSym.skip();
-    if (HSym() != '\0') {
+    while (hall::is_space(hall_symbol())) hall_symbol.skip();
+    if (hall_symbol() != '\0') {
       throw error("Unexpected extra character.");
     }
 
-    return nAddedMx;
+    return n_added_mx;
   }
 
-  int
-  SpaceGroup::ParseHallSymbol(parse_string& HSym, bool Pedantic, bool NoCType)
+  std::size_t
+  space_group::parse_hall_symbol(
+    parse_string& hall_symbol,
+    bool pedantic,
+    bool no_centring_type_symbol)
   {
-    ChOfBasisOp CBOp(0, 0);
-    int nAddedMx = ParseHallSymbolCBOp(HSym, CBOp, Pedantic, NoCType);
-    if (CBOp.isValid()) {
-      SpaceGroup NewSgOps = ChangeBasis(CBOp);
-      *this = NewSgOps;
+    change_of_basis_op cb_op(0, 0);
+    std::size_t n_added_mx = parse_hall_symbol_cb_op(
+      hall_symbol, cb_op, pedantic, no_centring_type_symbol);
+    if (cb_op.is_valid()) {
+      space_group new_sg = change_basis(cb_op);
+      *this = new_sg;
     }
-    return nAddedMx;
+    return n_added_mx;
   }
 
-  SpaceGroup::SpaceGroup(parse_string& HSym, bool Pedantic, bool NoCType,
-                         bool NoExpand)
-    : m_NoExpand(NoExpand)
+  space_group::space_group(
+    parse_string& hall_symbol,
+    bool pedantic,
+    bool no_centring_type_symbol,
+    bool no_expand)
+  : no_expand_(no_expand)
   {
     reset();
-    ParseHallSymbol(HSym, Pedantic, NoCType);
+    parse_hall_symbol(hall_symbol, pedantic, no_centring_type_symbol);
   }
 
-  SpaceGroup::SpaceGroup(const std::string& HSym, bool Pedantic, bool NoCType,
-                         bool NoExpand)
-    : m_NoExpand(NoExpand)
+  space_group::space_group(
+    std::string const& hall_symbol,
+    bool pedantic,
+    bool no_centring_type_symbol,
+    bool no_expand)
+  : no_expand_(no_expand)
   {
     reset();
-    parse_string HSymPS(HSym);
-    ParseHallSymbol(HSymPS, Pedantic, NoCType);
+    parse_string hall_symbol_ps(hall_symbol);
+    parse_hall_symbol(hall_symbol_ps, pedantic, no_centring_type_symbol);
   }
 
-  SpaceGroup::SpaceGroup(const char* HSym, bool Pedantic, bool NoCType,
-                         bool NoExpand)
-    : m_NoExpand(NoExpand)
+  space_group::space_group(
+    const char* hall_symbol,
+    bool pedantic,
+    bool no_centring_type_symbol,
+    bool no_expand)
+  : no_expand_(no_expand)
   {
     reset();
-    parse_string HSymPS(HSym);
-    ParseHallSymbol(HSymPS, Pedantic, NoCType);
+    parse_string hall_symbol_ps(hall_symbol);
+    parse_hall_symbol(hall_symbol_ps, pedantic, no_centring_type_symbol);
   }
 
-  SpaceGroup::SpaceGroup(const SpaceGroupSymbols& SgSymbols)
-    : m_NoExpand(false)
+  space_group::space_group(space_group_symbols const& symbols)
+  : no_expand_(false)
   {
     reset();
-    parse_string HSymPS(SgSymbols.Hall());
-    ParseHallSymbol(HSymPS, true);
+    parse_string hall_symbol_ps(symbols.hall());
+    parse_hall_symbol(hall_symbol_ps, true);
   }
 
 }} // namespace cctbx::sgtbx

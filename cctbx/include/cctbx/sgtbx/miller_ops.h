@@ -1,8 +1,7 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
      2002 Jul: Created from fragments of cctbx/sgtbx/miller.h (rwgk)
@@ -11,34 +10,33 @@
 #ifndef CCTBX_SGTBX_MILLER_OPS_H
 #define CCTBX_SGTBX_MILLER_OPS_H
 
-#include <cctbx/sgtbx/matrix.h>
+#include <cctbx/miller.h>
+#include <cctbx/sgtbx/rot_mx.h>
 
 namespace cctbx { namespace sgtbx {
 
-#ifndef DOXYGEN_SHOULD_SKIP_THIS
-
-  inline miller::Index
-  operator*(const miller::Index& lhs, const RotMx& rhs)
+  template <typename NumType>
+  inline
+  miller::index<NumType>
+  operator*(miller::index<NumType> const& h, rot_mx const& r)
   {
-    return miller::Index(
-      lhs[0] * rhs[0] + lhs[1] * rhs[3] + lhs[2] * rhs[6],
-      lhs[0] * rhs[1] + lhs[1] * rhs[4] + lhs[2] * rhs[7],
-      lhs[0] * rhs[2] + lhs[1] * rhs[5] + lhs[2] * rhs[8]);
+    return miller::index<NumType>(h * r.num());
   }
 
-  inline int operator*(const miller::Index& lhs, const TrVec& rhs)
+  template <typename NumType>
+  inline
+  NumType
+  operator*(miller::index<NumType> const& h, tr_vec const& t)
   {
-    int result = 0;
-    for(int i=0;i<3;i++) result += lhs[i] * rhs[i];
-    return result;
+    return h * t.num();
   }
 
-  inline int HT_mod_1(const miller::Index& H, const TrVec& T)
+  inline
+  int
+  ht_mod_1(miller::index<> const& h, tr_vec const& t)
   {
-    return modPositive(H * T, T.BF());
+    return math::mod_positive(h * t, t.den());
   }
-
-#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 }} // namespace cctbx::sgtbx
 

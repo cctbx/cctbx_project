@@ -1,10 +1,27 @@
+from cctbx import adptbx
+from cctbx.eltbx.caasf import it1992
+from cctbx.development import random_structure
+from cctbx.development import debug_utils
 from cctbx.development.fmt_utils import *
-from cctbx_boost import adptbx
+from scitbx.python_utils import dicts
+import sys, os
 
-def LATT_SYMM(SgOps):
+def check_shelx_availability():
+  shelxl_out = []
+  try:
+    f = os.popen("shelxl", "r")
+    shelxl_out = f.readlines()
+    f.close()
+  except:
+    pass
+  if (len(shelxl_out) == 0):
+    print "SHELX not available."
+    sys.exit(1)
+
+def LATT_SYMM(space_group):
   lines = []
   l = lines.append
-  Z = SgOps.getConventionalCentringTypeSymbol()
+  Z = space_group.conventional_centring_type_symbol()
   Z_dict = {
     "P": 1,
     "I": 2,
@@ -19,8 +36,8 @@ def LATT_SYMM(SgOps):
   except:
     raise RuntimeError, "Error: Lattice type not supported by SHELX."
   # N must be made negative if the structure is non-centrosymmetric.
-  if (SgOps.isCentric()):
-    if (not SgOps.isOriginCentric()):
+  if (space_group.is_centric()):
+    if (not space_group.is_origin_centric()):
       raise RuntimeError, "Error: " \
         + " SHELX manual: If the structure is centrosymmetric, the" \
         + " origin MUST lie on a center of symmetry."
@@ -28,45 +45,42 @@ def LATT_SYMM(SgOps):
     LATT_N = -LATT_N;
   l("LATT %d" % (LATT_N,))
   # The operator x,y,z is always assumed, so MUST NOT be input.
-  for i in xrange(1, SgOps.nSMx()):
-    l("SYMM %s" % (SgOps(i).as_xyz(0, 0, "XYZ", ","),))
+  for i in xrange(1, space_group.n_smx()):
+    l("SYMM %s" % (space_group(i).as_xyz(0, 0, "XYZ", ","),))
   return lines
 
-def calculate_cell_content(xtal):
-  result = {}
-  for site in xtal.Sites:
-    lbl = site.CAASF().Label()
-    if (not result.has_key(lbl)):
-      result[lbl] = site.Occ() * site.M()
-    else:
-      result[lbl] += site.Occ() * site.M()
+def calculate_cell_content(xray_structure):
+  result = dicts.with_default_value(0)
+  for sc in xray_structure.scatterers():
+    result[sc.caasf.label()] += sc.occupancy * sc.multiplicity()
   return result
 
-def SFAC_DISP_UNIT(xtal, short_sfac):
-  import string
+def SFAC_DISP_UNIT(xray_structure, short_sfac):
   lines = []
   l = lines.append
   UNIT = []
   if (short_sfac):
-    celcon = calculate_cell_content(xtal)
-    l("SFAC " + string.join(celcon.keys()))
+    celcon = calculate_cell_content(xray_structure)
+    l("SFAC " + " ".join(celcon.keys()))
     for sf in celcon.keys():
       l("DISP %s 0 0 0" % (sf,))
       UNIT.append(str(max(1, int(celcon[sf] + 0.5))))
   else:
-    from cctbx_boost.eltbx.caasf_it1992 import CAASF_IT1992
-    for site in xtal.Sites:
-      sf = CAASF_IT1992(site.CAASF().Label())
+    for scatterer in xray_structure.scatterers():
+      caasf = it1992(scatterer.caasf.label())
+      a = caasf.a()
+      b = caasf.b()
       l("SFAC %s %.6g %.6g %.6g %.6g %.6g %.6g =" %
-        (site.Label(),
-         sf.a(0), sf.b(0),
-         sf.a(1), sf.b(1),
-         sf.a(2), sf.b(2)))
+        (scatterer.label,
+         a[0], b[0],
+         a[1], b[1],
+         a[2], b[2]))
       l("     %.6g %.6g %.6g %.6g %.6g 0 1 1" %
-        (sf.a(3), sf.b(3), sf.c(),
-         site.fpfdp().real, site.fpfdp().imag))
-      UNIT.append(str(max(1, int(site.Occ() * site.M() + 0.5))))
-  l("UNIT " + string.join(UNIT))
+        (a[3], b[3], caasf.c(),
+         scatterer.fp_fdp.real, scatterer.fp_fdp.imag))
+      UNIT.append(
+        str(max(1, int(scatterer.occupancy * scatterer.multiplicity() + 0.5))))
+  l("UNIT " + " ".join(UNIT))
   return lines
 
 def NOFIX(x):
@@ -76,140 +90,147 @@ def FIX(x):
   if (x < 0.): return -10. + x
   return 10. + x
 
-def atoms(xtal, short_sfac):
+def atoms(xray_structure, short_sfac):
   if (short_sfac):
-    celcon = calculate_cell_content(xtal).keys()
+    celcon = calculate_cell_content(xray_structure).keys()
   lines = []
   l = lines.append
   i = 0
-  for site in xtal.Sites:
+  for scatterer in xray_structure.scatterers():
     i += 1
-    lbl = site.CAASF().Label() + str(i)
+    lbl = scatterer.caasf.label() + str(i)
     if (short_sfac):
-      sfac = celcon.index(site.CAASF().Label()) + 1
+      sfac = celcon.index(scatterer.caasf.label()) + 1
     else:
       sfac = i
     coor = []
-    for x in site.Coordinates(): coor.append(NOFIX(x))
+    for x in scatterer.site: coor.append(NOFIX(x))
     coor = dot5fdot_list(coor)
-    sof = NOFIX(site.w())
-    if (not site.isAnisotropic()):
+    sof = NOFIX(scatterer.weight())
+    if (not scatterer.anisotropic_flag):
       l("%-4s %d %s %s %s" % (lbl, sfac, coor, dot6gdot(sof),
-        dot6gdot(NOFIX(site.Uiso()))))
+        dot6gdot(NOFIX(scatterer.u_iso))))
     else:
-      U = adptbx.Ustar_as_Ucif(xtal.UnitCell, site.Uaniso())
-      Ufix = []
-      for c in U: Ufix.append(NOFIX(c))
-      U = Ufix
+      u = adptbx.u_star_as_u_cif(xray_structure.unit_cell(), scatterer.u_star)
+      u_fix = []
+      for c in u: u_fix.append(NOFIX(c))
+      u = u_fix
       l("%-4s %d %s %s %s =" % (lbl, sfac, coor, dot6gdot(sof),
-        dot6gdot_list(U[:2])))
-      l("    %s" % dot6gdot_list((U[2], U[5], U[4], U[3])))
+        dot6gdot_list(u[:2])))
+      l("    %s" % dot6gdot_list((u[2], u[5], u[4], u[3])))
   return lines
 
-def HKLF(fcalc):
+def HKLF(fcalc_array):
   lines = []
   l = lines.append
   l("HKLF -3")
-  for i in xrange(len(fcalc.H)):
-    F = abs(fcalc.F[i])
-    s = "%8.2f" % (F,)
-    assert  len(s) == 8, "F does not fit f8.2 format."
-    l("%4d%4d%4d%s%8.2f" % (fcalc.H[i] + (s, 0.01)))
+  for i,h in fcalc_array.indices().items():
+    f = abs(fcalc_array.data()[i])
+    s = "%8.2f" % (f,)
+    assert  len(s) == 8, "structure factor does not fit f8.2 format."
+    l("%4d%4d%4d%s%8.2f" % (h + (s, 0.01)))
   l("   0   0   0    0.00    0.00")
   return lines
 
-def pre_check(xtal):
-  if (len(xtal.Sites) > 99):
+def pre_check(xray_structure):
+  if (len(xray_structure.scatterers()) > 99):
     # SHELX WPDB will mess up atom labels.
-    raise RuntimeError, "Cannot handle more than 99 sites."
-  for site in xtal.Sites:
-    if (site.Occ() > 1.1):
-      raise RuntimeError, "Error: occ too large: %s: %.6g" % (
-        site.Label(), site.Occ())
-    if (site.Uiso() > 1.0):
-      raise RuntimeError, "Error: Uiso too large: %s: %.6g" % (
-        site.Label(), site.Uiso())
+    raise RuntimeError, "Cannot handle more than 99 scatterer."
+  for scatterer in xray_structure.scatterers():
+    if (scatterer.occupancy > 1.1):
+      raise RuntimeError, "Error: occupancy too large: %s: %.6g" % (
+        scatterer.label, scatterer.occupancy)
+    if (scatterer.u_iso > 1.0):
+      raise RuntimeError, "Error: u_iso too large: %s: %.6g" % (
+        scatterer.label, scatterer.u_iso)
 
-def check_r1(SgInfo, miller_indices, shelx_lst):
-  import string
+def check_r1(miller_set, shelx_lst, verbose):
   for l in shelx_lst:
-    if (string.find(l, "R1 = ") >= 0):
-      flds = string.split(l)
-      R1 = string.atof(flds[9])
-      nData = string.atof(flds[12])
-      if (len(miller_indices) != nData):
+    if (l.find("R1 = ") >= 0):
+      flds = l.split()
+      R1 = float(flds[9])
+      n_data = int(flds[12])
+      if (len(miller_set.indices()) != n_data):
         raise RuntimeError, "Shelx lost Miller indices."
-      print "R1", R1, SgInfo.BuildLookupSymbol()
+      if (0 or verbose):
+        print "R1", R1, miller_set.space_group_info()
       if (R1 > 0.01):
         raise RuntimeError, "Error: " + l[:-1]
       return
   raise RuntimeError, "R1 not found in Shelx .lst file."
 
-def check_anisou(shelx_titl, xtal, shelx_pdb):
-  import string
+def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
   # SHELXL WPDB does not include H atoms. Therefore we
   # need a dictionary of labels to map back to the index
-  # in the xtal.Sites list.
+  # in the xray_structure.scatterers() list.
   lbl_dict = {}
   i = 0
-  for site in xtal.Sites:
+  for scatterer in xray_structure.scatterers():
     i += 1
-    lbl = string.upper(site.CAASF().Label() + str(i))
+    lbl = (scatterer.caasf.label() + str(i)).upper()
     lbl_dict[lbl] = i - 1
   TotalANISOU = 0
   TotalMismatches = 0
   for l in shelx_pdb[4:]:
     if (l[:6] == "ANISOU"):
       TotalANISOU += 1
-      lbl = string.strip(l[11:16])
+      lbl = l[11:16].strip()
       i = lbl_dict[lbl]
-      assert xtal.Sites[i].isAnisotropic()
-      U = l[28:70]
-      Ucart = adptbx.Ustar_as_Ucart(xtal.UnitCell, xtal.Sites[i].Uaniso())
+      assert xray_structure.scatterers()[i].anisotropic_flag
+      u = l[28:70]
+      u_cart = adptbx.u_star_as_u_cart(
+        xray_structure.unit_cell(), xray_structure.scatterers()[i].u_star)
       mismatch = 0
       s = ""
       for i in xrange(6):
-        ushelx = string.atoi(U[i*7:(i+1)*7])
-        uadptbx = int(round(Ucart[i] * 1.e+4,))
-        s += "%7d" % uadptbx
-        if (abs(ushelx - uadptbx) > 1): mismatch = 1
+        u_shelx = int(u[i*7:(i+1)*7])
+        u_adptbx = int(round(u_cart[i] * 1.e+4,))
+        s += "%7d" % u_adptbx
+        if (abs(u_shelx - u_adptbx) > 1): mismatch = 1
       if (mismatch != 0):
         print l[:-1]
-        print U
+        print u
         print s
         print "Error: ANISOU mismatch."
         TotalMismatches += 1
-  print shelx_titl + (": ANISOU mismatches: %d of %d" % (
-    TotalMismatches, TotalANISOU))
+  if (0 or verbose or TotalMismatches > 0):
+    print shelx_titl + (": ANISOU mismatches: %d of %d" % (
+      TotalMismatches, TotalANISOU))
   assert TotalMismatches == 0
 
-def run_shelx(shelx_titl, xtal, fcalc, short_sfac=0):
-  import os, sys
-  pre_check(xtal)
+def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
+  xray_structure = structure_factors.xray_structure()
+  assert xray_structure.scatterers().size() > 0
+  pre_check(xray_structure)
+  f_calc_array = structure_factors.f_calc_array()
   lines = []
   l = lines.append
   l("TITL " + shelx_titl)
-  l("CELL 1.0 " + dot6gdot_list(xtal.UnitCell.getParameters()))
+  l("CELL 1.0 " + dot6gdot_list(xray_structure.unit_cell().parameters()))
   l("ZERR 1 0.01 0.01 0.01 0 0 0")
-  lines += LATT_SYMM(xtal.SgOps)
-  lines += SFAC_DISP_UNIT(xtal, short_sfac)
+  lines += LATT_SYMM(xray_structure.space_group())
+  lines += SFAC_DISP_UNIT(xray_structure, short_sfac)
   l("FVAR 1.")
   l("L.S. 1")
   l("BLOC 0")
   l("SPEC -0.1")
   l("WPDB 2")
-  lines += atoms(xtal, short_sfac)
-  lines += HKLF(fcalc)
+  lines += atoms(xray_structure, short_sfac)
+  lines += HKLF(f_calc_array)
   f = open("tmp.ins", "w")
   for l in lines:
-    print l
+    if (0 or verbose): print l
     f.write(l + "\n")
   f.close()
   sys.stdout.flush()
   sys.stderr.flush()
   try: os.unlink("tmp.lst")
   except: pass
-  os.system("shelxl tmp")
+  f = os.popen("shelxl tmp", "r")
+  shelx_out = f.readlines()
+  f.close()
+  if (0 or verbose):
+    for l in shelx_out: print l[:-1]
   f = open("tmp.lst", "r")
   shelx_lst = f.readlines()
   f.close()
@@ -218,8 +239,43 @@ def run_shelx(shelx_titl, xtal, fcalc, short_sfac=0):
   shelx_pdb = f.readlines()
   f.close()
   sys.stderr.flush()
-  for l in shelx_lst:
-    print l[:-1]
+  if (0 or verbose):
+    for l in shelx_lst: print l[:-1]
   sys.stdout.flush()
-  check_r1(xtal.SgInfo, fcalc.H, shelx_lst)
-  check_anisou(shelx_titl, xtal, shelx_pdb)
+  check_r1(f_calc_array, shelx_lst, verbose)
+  check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose)
+
+def exercise(space_group_info,
+             anomalous_flag=False,
+             anisotropic_flag=False,
+             d_min=2.,
+             verbose=0):
+  structure_factors = random_structure.xray_structure(
+    space_group_info,
+    elements=("N", "C", "C", "O"),
+    anisotropic_flag=anisotropic_flag,
+    random_f_prime_d_min=1.0,
+    random_f_double_prime=anomalous_flag
+    ).structure_factors_direct(
+        anomalous_flag=anomalous_flag, d_min=d_min)
+  if (0 or verbose):
+    structure_factors.xray_structure().show_summary()
+  shelx_titl = str(space_group_info) \
+             + ", anomalous=" + str(anomalous_flag) \
+             + ", anisotropic_flag=" + str(anisotropic_flag)
+  run_shelx(shelx_titl, structure_factors, verbose=verbose)
+
+def run_call_back(flags, space_group_info):
+  for anomalous_flag in (False, True):
+    for anisotropic_flag in (False, True):
+      exercise(space_group_info, anomalous_flag, anisotropic_flag,
+               verbose=flags.Verbose)
+
+def run():
+  check_shelx_availability()
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+
+if (__name__ == "__main__"):
+  run()
+  t = os.times()
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])

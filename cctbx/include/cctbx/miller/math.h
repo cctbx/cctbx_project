@@ -1,8 +1,7 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
      2002 Aug: Created (R.W. Grosse-Kunstleve)
@@ -11,32 +10,34 @@
 #ifndef CCTBX_MILLER_MATH_H
 #define CCTBX_MILLER_MATH_H
 
-#include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/space_group.h>
 
 namespace cctbx { namespace miller {
 
-  /*! sum((w/epsilon)*f) / sum(w)
-      friedel_flag = false: w = 1
-      friedel_flag = true: w = 1 for centric reflections
-                           w = 2 for acentric reflections
+  /*! sum((w/epsilon)*data) / sum(w)
+      anomalous_flag = true: w = 1
+      anomalous_flag = false: w = 1 for centric reflections
+                              w = 2 for acentric reflections
+      <p>
+      See also: sgtbx::space_group::epsilon()
    */
   template <typename FloatType>
   FloatType
   statistical_mean(
-    sgtbx::SpaceGroup const& SgOps,
-    bool friedel_flag,
-    af::shared<Index> miller_indices,
-    af::shared<FloatType> data)
+    sgtbx::space_group const& space_group,
+    bool anomalous_flag,
+    af::const_ref<index<> > const& miller_indices,
+    af::const_ref<FloatType> const& data)
   {
     FloatType sum_numerator = 0;
     FloatType sum_denominator = 0;
     FloatType w = 1;
-    bool fixed_w = (!friedel_flag || SgOps.isCentric());
+    bool fixed_w = (anomalous_flag || space_group.is_centric());
     for(std::size_t i=0;i<miller_indices.size();i++) {
-      FloatType e = SgOps.epsilon(miller_indices[i]);
+      FloatType e = space_group.epsilon(miller_indices[i]);
       if (!fixed_w) {
         w = 1;
-        if (!SgOps.isCentric(miller_indices[i])) w = 2;
+        if (!space_group.is_centric(miller_indices[i])) w = 2;
         sum_denominator += w;
       }
       sum_numerator += w / e * data[i];

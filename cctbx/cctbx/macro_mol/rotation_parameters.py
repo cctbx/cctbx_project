@@ -24,7 +24,7 @@ based on the FORTRAN program CONVROT:
   J. Appl. Cryst. 30, 402-410.
 
 Revision history:
-  Jan 2002: Created (Ralf W. Grosse-Kunstleve)
+  2002 Jan: Created (Ralf W. Grosse-Kunstleve)
 """
 
 import math, types

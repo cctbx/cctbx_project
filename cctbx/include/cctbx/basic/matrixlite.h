@@ -1,15 +1,14 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Oct 16: Moved tensor transformations from adptbx (rwgk)
-     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 May 07 added: identidy, isDiagonal, transpose
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Oct: Moved tensor transformations from adptbx (rwgk)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 May: added: identidy, isDiagonal, transpose
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_BASIC_MATRIXLITE_H
@@ -24,7 +23,7 @@ namespace cctbx {
 
     template <class NumType>
     void
-    identity(NumType *M, const std::size_t n, const NumType& diagonal = 1)
+    identity(NumType *M, std::size_t n, NumType const& diagonal = 1)
     {
       std::size_t i;
       for(i=0;i<n*n;i++) M[i] = 0;
@@ -85,7 +84,7 @@ namespace cctbx {
 
     template <class NumType>
     af::tiny<NumType, 3>
-    DiagonalElements(const af::tiny_plain<NumType, 9>& M)
+    DiagonalElements(af::tiny_plain<NumType, 9> const& M)
     {
       af::tiny<NumType, 3> result;
       for(std::size_t i=0;i<3;i++) {
@@ -96,7 +95,7 @@ namespace cctbx {
 
     template <class NumType>
     inline NumType
-    Determinant(const af::tiny_plain<NumType, 9>& M) {
+    Determinant(af::tiny_plain<NumType, 9> const& M) {
       return   M[0] * (M[4] * M[8] - M[5] * M[7])
              - M[1] * (M[3] * M[8] - M[5] * M[6])
              + M[2] * (M[3] * M[7] - M[4] * M[6]);
@@ -104,7 +103,7 @@ namespace cctbx {
 
     template <class NumType>
     af::tiny<NumType, 9>
-    CoFactorMxTp(const af::tiny_plain<NumType, 9>& M)
+    CoFactorMxTp(af::tiny_plain<NumType, 9> const& M)
     {
       af::tiny<NumType, 9> result;
       result[0] =  M[4] * M[8] - M[5] * M[7];
@@ -121,8 +120,8 @@ namespace cctbx {
 
     template <class NumType>
     af::tiny<NumType, 3>
-    cross_product(const af::tiny_plain<NumType, 3>& a,
-                  const af::tiny_plain<NumType, 3>& b)
+    cross_product(af::tiny_plain<NumType, 3> const& a,
+                  af::tiny_plain<NumType, 3> const& b)
     {
       af::tiny<NumType, 3> result;
       result[0] = a[1] * b[2] - b[1] * a[2];
@@ -134,7 +133,7 @@ namespace cctbx {
     template <class FloatType6, class FloatType33>
     af::tiny<FloatType33, 3*3>
     CondensedSymMx33_as_FullSymMx33(
-      const af::tiny<FloatType6, 6>& Mcond,
+      af::tiny<FloatType6, 6> const& Mcond,
       af::type_holder<FloatType33>)
     {
       af::tiny<FloatType33, 3*3> Mfull;
@@ -153,7 +152,7 @@ namespace cctbx {
     template <class FloatType33, class FloatType6>
     inline af::tiny<FloatType6, 6>
     FullSymMx33_as_CondensedSymMx33(
-      const af::tiny<FloatType33, 3*3>& Mfull,
+      af::tiny<FloatType33, 3*3> const& Mfull,
       af::type_holder<FloatType6>)
     {
       af::tiny<FloatType6, 6> Mcond;
@@ -168,8 +167,8 @@ namespace cctbx {
 
     template <class FloatType>
     af::tiny<FloatType, 9>
-    FullTensorTransformation(const af::tiny<FloatType, 9>& C,
-                             const af::tiny<FloatType, 9>& T)
+    FullTensorTransformation(af::tiny<FloatType, 9> const& C,
+                             af::tiny<FloatType, 9> const& T)
     {
       af::tiny<FloatType, 9> CT;
       multiply<FloatType>(C.begin(), T.begin(), 3, 3, 3, CT.begin());
@@ -182,8 +181,8 @@ namespace cctbx {
 
     template <class FloatTypeC, class FloatTypeT>
     inline af::tiny<FloatTypeT, 6>
-    CondensedTensorTransformation(const af::tiny<FloatTypeC, 9>& C,
-                                  const af::tiny<FloatTypeT, 6>& Tcond)
+    CondensedTensorTransformation(af::tiny<FloatTypeC, 9> const& C,
+                                  af::tiny<FloatTypeT, 6> const& Tcond)
     {
       return
         FullSymMx33_as_CondensedSymMx33(
@@ -198,8 +197,8 @@ namespace cctbx {
     inline
     af::tiny<NumTypeV, 3>
     matrix_mul_vector(
-      const af::tiny<NumTypeM, 9>& m,
-      const af::tiny<NumTypeV, 3>& v)
+      af::tiny<NumTypeM, 9> const& m,
+      af::tiny<NumTypeV, 3> const& v)
     {
       return af::tiny<NumTypeV, 3>(
         m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
@@ -212,8 +211,8 @@ namespace cctbx {
     inline
     af::tiny<NumTypeV, 3>
     vector_mul_matrix(
-      const af::tiny<NumTypeV, 3>& v,
-      const af::tiny<NumTypeM, 9>& m)
+      af::tiny<NumTypeV, 3> const& v,
+      af::tiny<NumTypeM, 9> const& m)
     {
       return af::tiny<NumTypeV, 3>(
         m[0] * v[0] + m[3] * v[1] + m[6] * v[2],

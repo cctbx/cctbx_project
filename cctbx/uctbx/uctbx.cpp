@@ -1,111 +1,127 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2002 Sep: Refactored (R.W. Grosse-Kunstleve)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
+#include <cctbx/error.h>
 #include <cctbx/uctbx.h>
-#include <cctbx/math/utils.h>
-
-namespace { // Helper functions in anonymous namespace.
-
-  using namespace cctbx;
-
-  const double EpsPI = 1.e-6; // ARBITRARY
-
-  inline double sinC(double arg) {
-    if (constants::pi_2 - EpsPI <= arg && arg <= constants::pi_2 + EpsPI) {
-      return 1.;
-    }
-    return std::sin(arg);
-  }
-
-  inline double cosC(double arg) {
-    if (constants::pi_2 - EpsPI <= arg && arg <= constants::pi_2 + EpsPI) {
-      return 0.;
-    }
-    return std::cos(arg);
-  }
-
-  inline
-  double
-  DotG(const af::double3& u, const af::double9& G, const af::double3& v) {
-    return   u[0] * (G[0] * v[0] + G[1] * v[1] + G[2] * v[2])
-           + u[1] * (G[3] * v[0] + G[4] * v[1] + G[5] * v[2])
-           + u[2] * (G[6] * v[0] + G[7] * v[1] + G[8] * v[2]);
-  }
-
-  af::double3 CrossG(const double& sqrtdetG, const af::double9& G,
-                     const af::double3& r, const af::double3& s) {
-    af::double3 Gr, Gs;
-    MatrixLite::multiply<double>(G.begin(), r.begin(), 3, 3, 1, Gr.begin());
-    MatrixLite::multiply<double>(G.begin(), s.begin(), 3, 3, 1, Gs.begin());
-    return sqrtdetG * MatrixLite::cross_product(Gr, Gs);
-  }
-
-  af::double9
-  ConstructMetricalMatrix(const af::double3& Len, const af::double3& cosAng)
-  {
-    af::double9 G;
-    for(std::size_t i=0;i<3;i++) G[i * 4] = Len[i] * Len[i];
-    G[1] = G[3] = Len[0] * Len[1] * cosAng[2];
-    G[2] = G[6] = Len[0] * Len[2] * cosAng[1];
-    G[5] = G[7] = Len[1] * Len[2] * cosAng[0];
-    return G;
-  }
-
-  bool isSymmetric(const af::double9& M, double tolerance = 1.e-6)
-  {
-    double maxelem = M[0];
-    for(int i=1;i<9;i++) if (maxelem < M[i]) maxelem = M[i];
-    return    fn::approx_equal_scaled(M[1], M[3], maxelem * tolerance)
-           && fn::approx_equal_scaled(M[2], M[6], maxelem * tolerance)
-           && fn::approx_equal_scaled(M[5], M[7], maxelem * tolerance);
-  }
-}
+#include <cctbx/sgtbx/rot_mx.h>
 
 namespace cctbx { namespace uctbx {
 
-  void UnitCell::SetVolume()
+  namespace {
+
+    void throw_corrupt_unit_cell_parameters()
+    {
+      throw error("Corrupt unit cell parameters.");
+    }
+
+    void throw_corrupt_metrical_matrix()
+    {
+      throw error("Corrupt metrical matrix.");
+    }
+
+    inline double
+    sin_eps(double arg, double eps_pi = 1.e-6)
+    {
+      using scitbx::constants::pi_2;
+      if (pi_2 - eps_pi <= arg && arg <= pi_2 + eps_pi) return 1.;
+      return std::sin(arg);
+    }
+
+    inline double
+    cos_eps(double arg, double eps_pi = 1.e-6)
+    {
+      using scitbx::constants::pi_2;
+      if (pi_2 - eps_pi <= arg && arg <= pi_2 + eps_pi) return 0.;
+      return std::cos(arg);
+    }
+
+    double
+    dot_g(uc_vec3 const& u, uc_sym_mat3 const& g, uc_vec3 const& v)
+    {
+      return u * (g * v);
+    }
+
+    uc_vec3
+    cross_g(double sqrt_det_g, uc_sym_mat3 const& g,
+            uc_vec3 const& r, uc_vec3 const& s)
+    {
+      return sqrt_det_g * (g * r).cross(g * s);
+    }
+
+    double acos_deg(double x) { return scitbx::rad_as_deg(std::acos(x)); }
+
+    af::double6
+    parameters_from_metrical_matrix(const double* metrical_matrix)
+    {
+      af::double6 params;
+      for(std::size_t i=0;i<3;i++) {
+        if (metrical_matrix[i] <= 0.) throw_corrupt_metrical_matrix();
+        params[i] = std::sqrt(metrical_matrix[i]);
+      }
+      params[3] = acos_deg(metrical_matrix[5] / params[1] / params[2]);
+      params[4] = acos_deg(metrical_matrix[4] / params[2] / params[0]);
+      params[5] = acos_deg(metrical_matrix[3] / params[0] / params[1]);
+      return params;
+    }
+
+    uc_sym_mat3
+    construct_metrical_matrix(
+      af::double6 const& params, uc_vec3 const& cos_ang)
+    {
+      return uc_sym_mat3(
+       params[0] * params[0],
+       params[1] * params[1],
+       params[2] * params[2],
+       params[0] * params[1] * cos_ang[2],
+       params[0] * params[2] * cos_ang[1],
+       params[1] * params[2] * cos_ang[0]);
+    }
+
+  } // namespace <anonymous>
+
+  void unit_cell::init_volume()
   {
     /* V = a * b * c * sqrt(1 - cos(alpha)^2 - cos(beta)^2 - cos(gamma)^2
                               + 2 * cos(alpha) * cos(beta) * cos(gamma))
      */
-    double D = 1.;
-    for(std::size_t i=0;i<3;i++) D -= cosAng[i] * cosAng[i];
-    D += 2. * cosAng[0] * cosAng[1] * cosAng[2];
-    if (D < 0.) throw corrupt_unit_cell_parameters;
-
-        Vol = Len[0] * Len[1] * Len[2] * std::sqrt(D);
-    if (Vol <= 0.) throw corrupt_unit_cell_parameters;
+    double d = 1.;
+    for(std::size_t i=0;i<3;i++) d -= cos_ang_[i] * cos_ang_[i];
+    d += 2. * cos_ang_[0] * cos_ang_[1] * cos_ang_[2];
+    if (d < 0.) throw_corrupt_unit_cell_parameters();
+        volume_ = params_[0] * params_[1] * params_[2] * std::sqrt(d);
+    if (volume_ <= 0.) throw_corrupt_unit_cell_parameters();
   }
 
-  void UnitCell::SetReciprocal()
+  void unit_cell::init_reciprocal()
   {
     // Transformation Lattice Constants -> Reciprocal Lattice Constants
     // after Kleber, W., 17. Aufl., Verlag Technik GmbH Berlin 1990, P.352
-
-    int i;
-    for(i=0;i<3;i++) R_Len[i] =   Len[(i + 1) % 3]
-                                * Len[(i + 2) % 3]
-                                * sinAng[i] / Vol;
-    for(i=0;i<3;i++) R_cosAng[i] =   (  cosAng[(i + 1) % 3]
-                                      * cosAng[(i + 2) % 3]
-                                      - cosAng[i])
-                                   / (  sinAng[(i + 1) % 3]
-                                      * sinAng[(i + 2) % 3]);
-    for(i=0;i<3;i++) R_Ang[i]    = std::acos(R_cosAng[i]);
-    for(i=0;i<3;i++) R_sinAng[i] = sinC(R_Ang[i]);
-    for(i=0;i<3;i++) R_cosAng[i] = cosC(R_Ang[i]);
+    for(std::size_t i=0;i<3;i++) r_params_[i] = params_[(i + 1) % 3]
+                                              * params_[(i + 2) % 3]
+                                              * sin_ang_[i] / volume_;
+    for(std::size_t i=0;i<3;i++) r_cos_ang_[i] = (  cos_ang_[(i + 1) % 3]
+                                                  * cos_ang_[(i + 2) % 3]
+                                                  - cos_ang_[i])
+                                               / (  sin_ang_[(i + 1) % 3]
+                                                  * sin_ang_[(i + 2) % 3]);
+    for(std::size_t i=0;i<3;i++) {
+      double a_rad = std::acos(r_cos_ang_[i]);
+      r_params_[i+3] = scitbx::rad_as_deg(a_rad);
+      r_sin_ang_[i] = sin_eps(a_rad);
+      r_cos_ang_[i] = cos_eps(a_rad);
+    }
   }
 
-  void UnitCell::SetOrthAndFracMatrix()
+  void unit_cell::init_orth_and_frac_matrices()
   {
     // Crystallographic Basis: D = {a,b,c}
     // Cartesian Basis:        C = {i,j,k}
@@ -115,261 +131,205 @@ namespace cctbx { namespace uctbx {
     //   j is in (a,b) plane
     //   k = i x j
 
-    double s1rca2 = std::sqrt(1. - R_cosAng[0] * R_cosAng[0]);
-    if (s1rca2 == 0.) throw corrupt_unit_cell_parameters;
+    double s1rca2 = std::sqrt(1. - r_cos_ang_[0] * r_cos_ang_[0]);
+    if (s1rca2 == 0.) throw_corrupt_unit_cell_parameters();
 
     // fractional to cartesian
-    Orth[0] =  Len[0];
-    Orth[1] =  cosAng[2] * Len[1];
-    Orth[2] =  cosAng[1] * Len[2];
-    Orth[3] =  0.;
-    Orth[4] =  sinAng[2] * Len[1];
-    Orth[5] = -sinAng[1] * R_cosAng[0] * Len[2];
-    Orth[6] =  0.;
-    Orth[7] =  0.;
-    Orth[8] =  sinAng[1] * Len[2] * s1rca2;
+    orth_[0] =  params_[0];
+    orth_[1] =  cos_ang_[2] * params_[1];
+    orth_[2] =  cos_ang_[1] * params_[2];
+    orth_[3] =  0.;
+    orth_[4] =  sin_ang_[2] * params_[1];
+    orth_[5] = -sin_ang_[1] * r_cos_ang_[0] * params_[2];
+    orth_[6] =  0.;
+    orth_[7] =  0.;
+    orth_[8] =  sin_ang_[1] * params_[2] * s1rca2;
 
     // cartesian to fractional
-    Frac[0] =  1. / Len[0];
-    Frac[1] = -cosAng[2] / (sinAng[2] * Len[0]);
-    Frac[2] = -(  cosAng[2] * sinAng[1] * R_cosAng[0]
-                + cosAng[1] * sinAng[2])
-              / (sinAng[1] * s1rca2 * sinAng[2] * Len[0]);
-    Frac[3] =  0.;
-    Frac[4] =  1. / (sinAng[2] * Len[1]);
-    Frac[5] =  R_cosAng[0] / (s1rca2 * sinAng[2] * Len[1]);
-    Frac[6] =  0.;
-    Frac[7] =  0.;
-    Frac[8] =  1. / (sinAng[1] * s1rca2 * Len[2]);
+    frac_[0] =  1. / params_[0];
+    frac_[1] = -cos_ang_[2] / (sin_ang_[2] * params_[0]);
+    frac_[2] = -(  cos_ang_[2] * sin_ang_[1] * r_cos_ang_[0]
+                 + cos_ang_[1] * sin_ang_[2])
+             / (sin_ang_[1] * s1rca2 * sin_ang_[2] * params_[0]);
+    frac_[3] =  0.;
+    frac_[4] =  1. / (sin_ang_[2] * params_[1]);
+    frac_[5] =  r_cos_ang_[0] / (s1rca2 * sin_ang_[2] * params_[1]);
+    frac_[6] =  0.;
+    frac_[7] =  0.;
+    frac_[8] =  1. / (sin_ang_[1] * s1rca2 * params_[2]);
   }
 
-  void UnitCell::SetMetricalMatrices()
+  void unit_cell::init_metrical_matrices()
   {
-    G = ConstructMetricalMatrix(Len, cosAng);
-    R_G = ConstructMetricalMatrix(R_Len, R_cosAng);
+    metr_mx_ = construct_metrical_matrix(params_, cos_ang_);
+    r_metr_mx_ = construct_metrical_matrix(r_params_, r_cos_ang_);
   }
 
-  void UnitCell::SetLongestVector2()
+  void unit_cell::initialize()
   {
-    LongestVector2 = 0.;
-    int Corner[3];
-    for (Corner[0] = 0; Corner[0] <= 1; Corner[0]++)
-    for (Corner[1] = 0; Corner[1] <= 1; Corner[1]++)
-    for (Corner[2] = 0; Corner[2] <= 1; Corner[2]++) {
-      fractional<double> Frac;
-      for(std::size_t i=0;i<3;i++) Frac[i] = Corner[i];
-      double Cart2 = orthogonalize(Frac).Length2();
-      if (LongestVector2 < Cart2) LongestVector2 = Cart2;
+    std::size_t i;
+    for(i=0;i<6;i++) {
+      if (params_[i] <= 0.) throw_corrupt_unit_cell_parameters();
     }
-  }
-
-  void UnitCell::Initialize()
-  {
-    int i;
-    for(i=0;i<3;i++) if (Len[i] <= 0.) throw corrupt_unit_cell_parameters;
-    for(i=0;i<3;i++) if (Ang[i] <= 0. || Ang[i] >= constants::pi)
-      throw corrupt_unit_cell_parameters;
-
-    for(i=0;i<3;i++) sinAng[i] = std::sin(Ang[i]);
-    for(i=0;i<3;i++) cosAng[i] = std::cos(Ang[i]);
-
-    for(i=0;i<3;i++) if (sinAng[i] == 0.) throw corrupt_unit_cell_parameters;
-
-    SetVolume();
-    SetReciprocal();
-    SetMetricalMatrices();
-    SetOrthAndFracMatrix();
-    SetLongestVector2();
-  }
-
-  UnitCell::UnitCell() {
-    int i;
-    for(i=0;i<3;i++) Len[i] = 1.;
-    for(i=0;i<3;i++) Ang[i] = deg_as_rad(90.);
-    Initialize();
-  }
-
-  UnitCell::UnitCell(const uc_params& ucp) {
-    int i;
-    for(i=0;i<3;i++) Len[i] = ucp.Len(i);
-    for(i=0;i<3;i++) Ang[i] = deg_as_rad(ucp.Ang(i));
-    Initialize();
-  }
-
-  UnitCell::UnitCell(const af::double9& MetricalMatrix)
-  {
-    for (int i = 0; i < 9; i += 4) {
-      if (MetricalMatrix[i] <= 0.) throw corrupt_metrical_matrix;
+    for(i=3;i<6;i++) {
+      double a_deg = params_[i];
+      if (a_deg >= 180.) throw_corrupt_unit_cell_parameters();
+      double a_rad = scitbx::deg_as_rad(a_deg);
+      cos_ang_[i-3] = std::cos(a_rad);
+      sin_ang_[i-3] = std::sin(a_rad);
+      if (sin_ang_[i-3] == 0.) throw_corrupt_unit_cell_parameters();
     }
-    if (!isSymmetric(MetricalMatrix)) throw corrupt_metrical_matrix;
-    Len[0] = std::sqrt(MetricalMatrix[0]);
-    Len[1] = std::sqrt(MetricalMatrix[4]);
-    Len[2] = std::sqrt(MetricalMatrix[8]);
-    Ang[0] = std::acos(MetricalMatrix[5] / Len[1] / Len[2]);
-    Ang[1] = std::acos(MetricalMatrix[2] / Len[2] / Len[0]);
-    Ang[2] = std::acos(MetricalMatrix[1] / Len[0] / Len[1]);
+    init_volume();
+    init_reciprocal();
+    init_metrical_matrices();
+    init_orth_and_frac_matrices();
+    longest_vector_sq_ = -1.;
+  }
+
+  unit_cell::unit_cell(af::small<double, 6> const& parameters,
+                       bool is_metrical_matrix)
+  : params_(1,1,1,90,90,90)
+  {
+    if (!is_metrical_matrix) {
+      std::copy(parameters.begin(), parameters.end(), params_.begin());
+    }
+    else {
+      if (parameters.size() != 6) throw_corrupt_metrical_matrix();
+      params_ = parameters_from_metrical_matrix(parameters.begin());
+    }
+    initialize();
+  }
+
+  unit_cell::unit_cell(af::double6 const& parameters)
+  : params_(parameters)
+  {
+    initialize();
+  }
+
+  unit_cell::unit_cell(uc_sym_mat3 const& metrical_matrix)
+  : params_(parameters_from_metrical_matrix(metrical_matrix.begin()))
+  {
     try {
-      Initialize();
+      initialize();
     }
-    catch (const error&) {
-      throw corrupt_metrical_matrix;
+    catch (error const&) {
+      throw_corrupt_metrical_matrix();
     }
   }
 
-  uc_params UnitCell::getParameters(bool reciprocal) const
+  // used by reciprocal()
+  unit_cell::unit_cell(
+    af::double6 const& params,
+    af::double3 const& sin_ang,
+    af::double3 const& cos_ang,
+    double volume,
+    uc_sym_mat3 const& metr_mx,
+    af::double6 const& r_params,
+    af::double3 const& r_sin_ang,
+    af::double3 const& r_cos_ang,
+    uc_sym_mat3 const& r_metr_mx)
+  :
+    params_(params),
+    sin_ang_(sin_ang),
+    cos_ang_(cos_ang),
+    volume_(volume),
+    metr_mx_(metr_mx),
+    r_params_(r_params),
+    r_sin_ang_(r_sin_ang),
+    r_cos_ang_(r_cos_ang),
+    r_metr_mx_(r_metr_mx),
+    longest_vector_sq_(-1.)
   {
-    uc_params ucp;
-    if (reciprocal == false) ucp = uc_params(Len, Ang);
-    else                     ucp = uc_params(R_Len, R_Ang);
-    for(std::size_t i=0;i<3;i++) ucp.Ang()[i] = rad_as_deg(ucp.Ang()[i]);
-    return ucp;
+    init_orth_and_frac_matrices();
   }
 
-  // XXX design as isSimilarTo(other, len_tolerance, ang_tolerance)
+  unit_cell
+  unit_cell::reciprocal() const
+  {
+    return unit_cell(
+      r_params_,
+      r_sin_ang_,
+      r_cos_ang_,
+      1. / volume_,
+      r_metr_mx_,
+      params_,
+      sin_ang_,
+      cos_ang_,
+      metr_mx_);
+  }
+
+  double
+  unit_cell::longest_vector_sq() const
+  {
+    if (longest_vector_sq_ < 0.) {
+      longest_vector_sq_ = 0.;
+      int corner[3];
+      for (corner[0] = 0; corner[0] <= 1; corner[0]++)
+      for (corner[1] = 0; corner[1] <= 1; corner[1]++)
+      for (corner[2] = 0; corner[2] <= 1; corner[2]++) {
+        fractional<> xf;
+        for(std::size_t i=0;i<3;i++) xf[i] = corner[i];
+        math::update_max(longest_vector_sq_, length_sq(xf));
+      }
+    }
+    return longest_vector_sq_;
+  }
+
   bool
-  UnitCell::isEqual(const UnitCell& other, double tolerance) const
+  unit_cell::is_similar_to(unit_cell const& other,
+                           double relative_length_tolerance,
+                           double absolute_angle_tolerance) const
   {
-    for(int i=0;i<3;i++) {
-      if (!fn::approx_equal_unscaled(Len[i],other.Len[i], tolerance))
+    using scitbx::fn::absolute;
+    const double* l1 = params_.begin();
+    const double* l2 = other.params_.begin();
+    for(std::size_t i=0;i<3;i++) {
+      if (absolute(std::min(l1[i], l2[i]) / std::max(l1[i], l2[i]) - 1)
+          > relative_length_tolerance) {
         return false;
-      if (!fn::approx_equal_unscaled(Ang[i],other.Ang[i], tolerance))
+      }
+    }
+    const double* a1 = l1 + 3;
+    const double* a2 = l2 + 3;
+    for(std::size_t i=0;i<3;i++) {
+      if (absolute(a1[i] - a2[i]) > absolute_angle_tolerance) {
         return false;
+      }
     }
     return true;
   }
 
-  miller::Index UnitCell::MaxMillerIndices(double dmin) const
+  unit_cell
+  unit_cell::change_basis(uc_mat3 const& r, double r_den) const
   {
-    miller::Index MaxMIx;
-    int i, j;
-    for(i=0;i<3;i++) {
-      af::double3 u, v, uxv;
-      for(j=0;j<3;j++) u[j] = 0.; u[(i + 1) % 3] = 1.;
-      for(j=0;j<3;j++) v[j] = 0.; v[(i + 2) % 3] = 1.;
-      uxv = CrossG(1., R_G, u, v); // Since length of uxv is not used
-                                   //   sqrt(det(G)) is set to 1
-      double uxv2 = DotG(uxv, R_G, uxv);
-      MaxMIx[i] = (int) (uxv[i] / std::sqrt(uxv2) / dmin + 1.e-4);
-                                                        // ARBITRARY
+    uc_mat3 r_ = r;
+    if (r_den != 0) {
+      r_ /= r_den;
     }
-    return MaxMIx;
+    return unit_cell(metr_mx_.tensor_transpose_transform(r_));
   }
 
-  af::shared<double>
-  UnitCell::Q(const af::shared<miller::Index>& MIx) const
+  unit_cell
+  unit_cell::change_basis(sgtbx::rot_mx const& c_inv_r) const
   {
-    af::shared<double> result;
-    result.reserve(MIx.size());
-    for(std::size_t i=0;i<MIx.size();i++) {
-      result.push_back(Q(MIx[i]));
+    return change_basis(c_inv_r.as_double(), 1.);
+  }
+
+  miller::index<>
+  unit_cell::max_miller_indices(double d_min, double tolerance) const
+  {
+    miller::index<> max_h;
+    for(std::size_t i=0;i<3;i++) {
+      uc_vec3 u(0,0,0);
+      uc_vec3 v(0,0,0);
+      u[(i + 1) % 3] = 1.;
+      v[(i + 2) % 3] = 1.;
+      // length of uxv is not used => sqrt(det(metr_mx)) is simply set to 1
+      uc_vec3 uxv = cross_g(1., r_metr_mx_, u, v);
+      double uxv2 = dot_g(uxv, r_metr_mx_, uxv);
+      max_h[i] = (int)(uxv[i] / std::sqrt(uxv2) / d_min + tolerance);
     }
-    return result;
-  }
-
-  double
-  UnitCell::max_Q(const af::shared<miller::Index>& MIx) const
-  {
-    double result = 0;
-    for(std::size_t i=0;i<MIx.size();i++) {
-      math::update_max(result, Q(MIx[i]));
-    }
-    return result;
-  }
-
-  af::double2
-  UnitCell::min_max_Q(const af::shared<miller::Index>& MIx) const
-  {
-    af::double2 result(0, 0);
-    if (MIx.size()) {
-      result.fill(Q(MIx[0]));
-      for(std::size_t i=1;i<MIx.size();i++) {
-        double q = Q(MIx[i]);
-        math::update_min(result[0], q);
-        math::update_max(result[1], q);
-      }
-    }
-    return result;
-  }
-
-  af::shared<double>
-  UnitCell::stol2(const af::shared<miller::Index>& MIx) const
-  {
-    af::shared<double> result;
-    result.reserve(MIx.size());
-    for(std::size_t i=0;i<MIx.size();i++) {
-      result.push_back(stol2(MIx[i]));
-    }
-    return result;
-  }
-
-  af::shared<double>
-  UnitCell::two_stol(const af::shared<miller::Index>& MIx) const
-  {
-    af::shared<double> result;
-    result.reserve(MIx.size());
-    for(std::size_t i=0;i<MIx.size();i++) {
-      result.push_back(two_stol(MIx[i]));
-    }
-    return result;
-  }
-
-  af::shared<double>
-  UnitCell::stol(const af::shared<miller::Index>& MIx) const
-  {
-    af::shared<double> result;
-    result.reserve(MIx.size());
-    for(std::size_t i=0;i<MIx.size();i++) {
-      result.push_back(stol(MIx[i]));
-    }
-    return result;
-  }
-
-  af::shared<double>
-  UnitCell::d(const af::shared<miller::Index>& MIx) const
-  {
-    af::shared<double> result;
-    result.reserve(MIx.size());
-    for(std::size_t i=0;i<MIx.size();i++) {
-      result.push_back(d(MIx[i]));
-    }
-    return result;
-  }
-
-  af::shared<double>
-  UnitCell::two_theta(
-    af::shared<miller::Index> MIx, double wavelength, bool deg) const
-  {
-    af::shared<double> result;
-    result.reserve(MIx.size());
-    for(std::size_t i=0;i<MIx.size();i++) {
-      result.push_back(two_theta(MIx[i], wavelength, deg));
-    }
-    return result;
-  }
-
-  UnitCell UnitCell::ChangeBasis(const af::double9& InvCBMxR, double RBF) const
-  {
-    af::double9 R = InvCBMxR;
-    if (RBF != 0.) for(std::size_t i=0;i<9;i++) R[i] /= RBF;
-    af::double9 RtGR = getRtGR(G, R);
-    return UnitCell(RtGR);
-  }
-
-  UnitCell UnitCell::ChangeBasis(const sgtbx::RotMx& InvCBMxR) const
-  {
-    return ChangeBasis(InvCBMxR.as_array(double()), 1.);
-  }
-
-  std::ostream& UnitCell::print(std::ostream& os) const {
-    os << Len[0] << " " << Len[1] << " " << Len[2] << " "
-       << rad_as_deg(Ang[0]) << " "
-       << rad_as_deg(Ang[1]) << " "
-       << rad_as_deg(Ang[2]);
-    return os;
-  }
-
-  std::ostream& operator<<(std::ostream& os, const UnitCell& uc) {
-    return uc.print(os);
+    return max_h;
   }
 
 }} // namespace cctbx::uctbx

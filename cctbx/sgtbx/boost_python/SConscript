@@ -1,0 +1,22 @@
+Import("env_cctbx_boost_python_ext")
+env = env_cctbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["cctbx"])
+pyd = env.SharedLibrary(target="sgtbx_ext", source=[
+  "sgtbx_ext.cpp",
+  "brick.cpp",
+  "change_of_basis.cpp",
+  "phase_info.cpp",
+  "reciprocal_space_asu.cpp",
+  "rot_mx.cpp",
+  "rt_mx.cpp",
+  "seminvariant.cpp",
+  "site_symmetry.cpp",
+  "space_group.cpp",
+  "space_group_2.cpp",
+  "space_group_type.cpp",
+  "sym_equiv_sites.cpp",
+  "symbols.cpp",
+  "tr_vec.cpp",
+  "wyckoff.cpp",
+])
+env.Install("#libtbx/cctbx_boost", pyd)

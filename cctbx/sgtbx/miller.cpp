@@ -1,40 +1,39 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Oct 31: Redesign: AsymIndex (rwgk)
-     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Oct: Redesign: AsymIndex (rwgk)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/space_group.h>
+#include <cctbx/sgtbx/reciprocal_space_reference_asu.h>
 #include <cctbx/sgtbx/miller_ops.h>
-#include <cctbx/sgtbx/miller_ref_asu.h>
 
 namespace cctbx { namespace sgtbx {
 
-  PhaseInfo::PhaseInfo(
-    SpaceGroup const& sgops,
-    miller::Index const& h,
+  phase_info::phase_info(
+    space_group const& sg,
+    miller::index<> const& h,
     bool no_test_sys_absent)
-    : m_HT(-1), m_TBF(sgops.TBF()), m_SysAbsWasTested(!no_test_sys_absent)
+    : ht_(-1), t_den_(sg.t_den()), sys_abs_was_tested_(!no_test_sys_absent)
   {
-    // systematically absent reflection: if HR == H and HT != 0 mod 1
-    // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
+    // systematically absent reflection: if hr == h and ht != 0 mod 1
+    // restricted phase: if hr == -h: phi(h) = pi*ht + n*pi
     if (no_test_sys_absent) {
       // Fast determination of phase restriction without considering
       // conditions for systematically absent reflections.
-      if (sgops.isCentric()) {
-        m_HT = HT_mod_1(h, sgops.InvT());
+      if (sg.is_centric()) {
+        ht_ = ht_mod_1(h, sg.inv_t());
       }
       else {
-        for(int i=0;i<sgops.nSMx();i++) {
-          if (h * sgops[i].Rpart() == -h) {
-            m_HT = HT_mod_1(h, sgops[i].Tpart());
+        for(std::size_t i=0;i<sg.n_smx();i++) {
+          if (h * sg.smx(i).r() == -h) {
+            ht_ = ht_mod_1(h, sg.smx(i).t());
             break;
           }
         }
@@ -43,34 +42,34 @@ namespace cctbx { namespace sgtbx {
     }
     // Simulatenous determination of phase restriction and evaluation
     // conditions for systematically absent reflections.
-    for(int iSMx=0;iSMx<sgops.nSMx();iSMx++) {
-      const RotMx& R = sgops[iSMx].Rpart();
-      const TrVec& T = sgops[iSMx].Tpart();
-      TrVec TS(0);
-      TrVec TR(0);
-      miller::Index HR = h * R;
-      if      (h == HR) {
-        TS = T;
-        if (sgops.isCentric()) TR = sgops.InvT() - T;
+    for(std::size_t i_smx=0;i_smx<sg.n_smx();i_smx++) {
+      rot_mx const& r = sg.smx(i_smx).r();
+      tr_vec const& t = sg.smx(i_smx).t();
+      tr_vec ts(0);
+      tr_vec tr(0);
+      miller::index<> hr = h * r;
+      if      (h == hr) {
+        ts = t;
+        if (sg.is_centric()) tr = sg.inv_t() - t;
       }
-      else if (h == -HR) {
-        TR = T;
-        if (sgops.isCentric()) TS = sgops.InvT() - T;
+      else if (h == -hr) {
+        tr = t;
+        if (sg.is_centric()) ts = sg.inv_t() - t;
       }
-      if (TS.isValid()) {
-        for(int iLTr=0;iLTr<sgops.nLTr();iLTr++) {
-          if ((h * (TS + sgops.LTr(iLTr))) % TS.BF() != 0) {
-            m_HT = -2;
+      if (ts.is_valid()) {
+        for(std::size_t i_ltr=0;i_ltr<sg.n_ltr();i_ltr++) {
+          if ((h * (ts + sg.ltr(i_ltr))) % ts.den() != 0) {
+            ht_ = -2;
             return;
           }
         }
       }
-      if (TR.isValid()) {
-        for(int iLTr=0;iLTr<sgops.nLTr();iLTr++) {
-          int HT = HT_mod_1(h, TR + sgops.LTr(iLTr));
-          if      (m_HT < 0) m_HT = HT;
-          else if (m_HT != HT) {
-            m_HT = -2;
+      if (tr.is_valid()) {
+        for(std::size_t i_ltr=0;i_ltr<sg.n_ltr();i_ltr++) {
+          int ht = ht_mod_1(h, tr + sg.ltr(i_ltr));
+          if      (ht_ < 0) ht_ = ht;
+          else if (ht_ != ht) {
+            ht_ = -2;
             return;
           }
         }
@@ -79,11 +78,11 @@ namespace cctbx { namespace sgtbx {
   }
 
   bool
-  PhaseInfo::isValidPhase(double phi, bool deg, double tolerance) const
+  phase_info::is_valid_phase(double phi, bool deg, double tolerance) const
   {
-    if (!isCentric()) return true;
+    if (!is_centric()) return true;
     double period = ht_period(deg);
-    double delta = std::fmod(phi - HT_angle(deg), period);
+    double delta = std::fmod(phi - ht_angle(deg), period);
     if (delta >  tolerance) delta -= period;
     if (delta < -tolerance) delta += period;
     if (delta <= tolerance) return true;
@@ -91,97 +90,90 @@ namespace cctbx { namespace sgtbx {
   }
 
   double
-  PhaseInfo::nearest_valid_phase(double phi, bool deg) const
+  phase_info::nearest_valid_phase(double phi, bool deg) const
   {
-    if (!isCentric()) return phi;
+    using scitbx::fn::absolute;
+    if (!is_centric()) return phi;
     double period = ht_period(deg);
-    double phi_restr = HT_angle(deg);
+    double phi_restr = ht_angle(deg);
     double delta0 = phi - phi_restr;
     double delta1 = delta0 - period;
-    if (  fn::absolute(std::fmod(delta1, period))
-        < fn::absolute(std::fmod(delta0, period))) return phi_restr + period;
+    if (  absolute(std::fmod(delta1, period))
+        < absolute(std::fmod(delta0, period))) return phi_restr + period;
     return phi_restr;
   }
 
   af::shared<bool>
-  SpaceGroup::isSysAbsent(af::shared<miller::Index> H) const
+  space_group::is_sys_absent(af::const_ref<miller::index<> > const& h) const
   {
-    af::shared<bool> result;
-    result.reserve(H.size());
-    for(std::size_t i=0;i<H.size();i++) {
-      result.push_back(isSysAbsent(H[i]));
-    }
+    af::shared<bool> result(h.size(), af::init_functor_null<bool>());
+    for(std::size_t i=0;i<h.size();i++) result[i] = is_sys_absent(h[i]);
     return result;
   }
 
-  bool SpaceGroup::isCentric(const miller::Index& H) const
+  bool space_group::is_centric(miller::index<> const& h) const
   {
-    if (isCentric()) return true;
-    for(std::size_t i=0;i<m_nSMx;i++) {
-      if (H * m_SMx[i].Rpart() == -H) return true;
+    if (is_centric()) return true;
+    for(std::size_t i=1;i<n_smx();i++) {
+      if (h * smx_[i].r() == -h) return true;
     }
     return false;
   }
 
   af::shared<bool>
-  SpaceGroup::isCentric(const af::shared<miller::Index>& H) const
+  space_group::is_centric(af::const_ref<miller::index<> > const& h) const
   {
-    af::shared<bool> result;
-    result.reserve(H.size());
-    for(std::size_t i=0;i<H.size();i++) {
-      result.push_back(isCentric(H[i]));
-    }
+    af::shared<bool> result(h.size(), af::init_functor_null<bool>());
+    for(std::size_t i=0;i<h.size();i++) result[i] = is_centric(h[i]);
     return result;
   }
 
-  int SpaceGroup::epsilon(const miller::Index& H) const
+  int space_group::epsilon(miller::index<> const& h) const
   {
-    int result = 0;
-    for(std::size_t i=0;i<m_nSMx;i++) {
-      miller::Index HR = H * m_SMx[i].Rpart();
-      if (HR == H || (isCentric() && HR == -H))
+    int result = 1;
+    for(std::size_t i=1;i<n_smx();i++) {
+      miller::index<> hr = h * smx_[i].r();
+      if (hr == h || (is_centric() && hr == -h))
         result++;
     }
-    cctbx_assert(result != 0 && m_nSMx % result == 0);
+    CCTBX_ASSERT(n_smx() % result == 0);
     return result;
   }
 
   af::shared<int>
-  SpaceGroup::epsilon(const af::shared<miller::Index>& H) const
+  space_group::epsilon(af::const_ref<miller::index<> > const& h) const
   {
-    af::shared<int> result;
-    result.reserve(H.size());
-    for(std::size_t i=0;i<H.size();i++) {
-      result.push_back(epsilon(H[i]));
-    }
+    af::shared<int> result(h.size(), af::init_functor_null<int>());
+    for(std::size_t i=0;i<h.size();i++) result[i] = epsilon(h[i]);
     return result;
   }
 
-  int SpaceGroup::multiplicity(const miller::Index& H, bool FriedelFlag) const
+  int
+  space_group
+  ::multiplicity(miller::index<> const& h, bool anomalous_flag) const
   {
-    if (H.is000()) return 1;
-    int Centro = (isCentric() || FriedelFlag);
-    int M = 0;
-    int R = 0;
-    for(std::size_t i=0;i<m_nSMx;i++) {
-      miller::Index HR = H * m_SMx[i].Rpart();
-      if      (HR == H) M++;
-      else if (HR == -H) R++;
+    if (h.is_zero()) return 1;
+    int centro = (is_centric() || !anomalous_flag);
+    int m = 1;
+    int r = 0;
+    for(std::size_t i=1;i<n_smx();i++) {
+      miller::index<> hr = h * smx_[i].r();
+      if      (hr == h) m++;
+      else if (hr == -h) r++;
     }
-    cctbx_assert(M != 0 && m_nSMx % M == 0 && (R == 0 || R == M));
-    M = m_nSMx / M;
-    if (Centro && R == 0) M *= 2;
-    return M;
+    CCTBX_ASSERT(n_smx() % m == 0 && (r == 0 || r == m));
+    m = n_smx() / m;
+    if (centro && r == 0) m *= 2;
+    return m;
   }
 
   af::shared<int>
-  SpaceGroup::multiplicity(const af::shared<miller::Index>& H,
-                           bool FriedelFlag) const
+  space_group::multiplicity(af::const_ref<miller::index<> > const& h,
+                            bool anomalous_flag) const
   {
-    af::shared<int> result;
-    result.reserve(H.size());
-    for(std::size_t i=0;i<H.size();i++) {
-      result.push_back(multiplicity(H[i], FriedelFlag));
+    af::shared<int> result(h.size(), af::init_functor_null<int>());
+    for(std::size_t i=0;i<h.size();i++) {
+      result[i] = multiplicity(h[i], anomalous_flag);
     }
     return result;
   }

@@ -1,6 +1,6 @@
-Copyright (c) 2001 The Regents of the University of California through
-E.O. Lawrence Berkeley National Laboratory, subject to approval by
-the U.S. Department of Energy.
+Copyright (c) 2001-2002 The Regents of the University of California
+through E.O. Lawrence Berkeley National Laboratory, subject to
+approval by the U.S. Department of Energy.
 
 Your use of this software is under license -- the license agreement
 is attached and included in the directory as license.txt or you may
