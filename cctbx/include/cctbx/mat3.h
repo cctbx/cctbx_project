@@ -11,9 +11,9 @@
 #ifndef CCTBX_MAT3_H
 #define CCTBX_MAT3_H
 
+#include <utility>
 #include <cctbx/error.h>
 #include <cctbx/vec3.h>
-#include <cctbx/basic/matrixlite.h>
 #include <cctbx/array_family/reductions.h>
 
 namespace cctbx {
@@ -66,6 +66,19 @@ namespace cctbx {
        */
       mat3(const NumType& angle, const af::tiny_plain<NumType,3>& axis);
 
+      //! Access elements with 2-dimensional indices.
+      const NumType&
+      operator()(std::size_t r, std::size_t c) const
+      {
+        return this->elems[r * 3 + c];
+      }
+      //! Access elements with 2-dimensional indices.
+            NumType&
+      operator()(std::size_t r, std::size_t c)
+      {
+        return this->elems[r * 3 + c];
+      }
+
       //! Return a row.
       vec3<NumType>
       get_row(std::size_t i) const
@@ -78,6 +91,12 @@ namespace cctbx {
       set_row(std::size_t i, const af::tiny_plain<NumType,3>& v)
       {
         std::copy(v.begin(), v.end(), &this->elems[i * 3]);
+      }
+
+      //! Swap two rows in place.
+      void
+      swap_rows(std::size_t i1, std::size_t i2) {
+        std::swap_ranges(&(*this)(i1,0), &(*this)(i1+1,0), &(*this)(i2,0));
       }
 
       //! Return a column.
@@ -94,6 +113,14 @@ namespace cctbx {
       set_column(std::size_t i, const af::tiny_plain<NumType,3>& v)
       {
         for(std::size_t j=0;j<3;j++) this->elems[j * 3 + i] = v[j];
+      }
+
+      //! Swap two columns in place.
+      void
+      swap_columns(std::size_t i1, std::size_t i2) {
+        for(std::size_t i=0;i<9;i+=3) {
+          std::swap(this->elems[i + i1], this->elems[i + i2]);
+        }
       }
 
       //! Return diagonal elements.
@@ -164,6 +191,10 @@ namespace cctbx {
 
       //! Return a matrix with orthogonal base vectors.
       mat3 ortho() const;
+
+      //! Decomposes the matrix into a rotation and scaling part.
+      std::pair<mat3, vec3<NumType> >
+      decompose() const;
   };
 
   // non-inline constructor
@@ -199,16 +230,40 @@ namespace cctbx {
     vec3<NumType> x = get_column(0);
     vec3<NumType> y = get_column(1);
     vec3<NumType> z = get_column(2);
-    NumType xl = x.length(); // XXX use length2
-    xl *= xl;
+    NumType xl = x.length2();
     y = y - ((x * y) / xl) * x;
     z = z - ((x * z) / xl) * x;
-    NumType yl = y.length(); // XXX use length2
-    yl *= yl;
+    NumType yl = y.length2();
     z = z - ((y * z) / yl) * y;
     return mat3(x[0], y[0], z[0],
                 x[1], y[1], z[1],
                 x[2], y[2], z[2]);
+  }
+
+  // non-inline member function
+  template <typename NumType>
+  std::pair<mat3<NumType>, vec3<NumType> >
+  mat3<NumType>::decompose() const
+  {
+    mat3 ro = ortho();
+    vec3<NumType> x = ro.get_column(0);
+    vec3<NumType> y = ro.get_column(1);
+    vec3<NumType> z = ro.get_column(2);
+    NumType xl = x.length();
+    NumType yl = y.length();
+    NumType zl = z.length();
+    vec3<NumType> sc(xl, yl, zl);
+    x /= xl;
+    y /= yl;
+    z /= zl;
+    ro.set_column(0, x);
+    ro.set_column(1, y);
+    ro.set_column(2, z);
+    if (ro.determinant() < NumType(0)) {
+      ro.set_column(0, -x);
+      sc[0] = -sc[0];
+    }
+    return std::make_pair(ro, sc);
   }
 
   //! Test equality.

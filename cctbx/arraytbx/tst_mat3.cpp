@@ -46,6 +46,15 @@ int main(int argc, char* argv[])
     mat3<int> d(2,4,6,8,10,12,14,16,18);
     mat3<int> r3(0,-1,0, 1,-1,0, 0,0,1);
     mat3<int> r3i(-1,1,0, -1,0,0, 0,0,1);
+    check_true(__LINE__, a(0,0) == 1);
+    check_true(__LINE__, a(0,1) == 2);
+    check_true(__LINE__, a(0,2) == 3);
+    check_true(__LINE__, a(1,0) == 4);
+    check_true(__LINE__, a(1,1) == 5);
+    check_true(__LINE__, a(1,2) == 6);
+    check_true(__LINE__, a(2,0) == 7);
+    check_true(__LINE__, a(2,1) == 8);
+    check_true(__LINE__, a(2,2) == 9);
     check_true(__LINE__, a + b == c);
     check_true(__LINE__, a + 3 == b);
     check_true(__LINE__, 3 + a == b);
@@ -104,6 +113,14 @@ int main(int argc, char* argv[])
       t.set_row(1, vec3<int>(4,5,6));
       t.set_row(2, vec3<int>(7,8,9));
       check_true(__LINE__, t == a);
+      t.set_row(0, vec3<int>(4,5,6));
+      t.set_row(1, vec3<int>(1,2,3));
+      t.swap_rows(0, 1);
+      check_true(__LINE__, t == a);
+      t.set_row(1, vec3<int>(7,8,9));
+      t.set_row(2, vec3<int>(4,5,6));
+      t.swap_rows(1, 2);
+      check_true(__LINE__, t == a);
     }
     check_true(__LINE__, a.get_column(0) == vec3<int>(1,4,7));
     check_true(__LINE__, a.get_column(1) == vec3<int>(2,5,8));
@@ -113,6 +130,14 @@ int main(int argc, char* argv[])
       t.set_column(0, vec3<int>(1,4,7));
       t.set_column(1, vec3<int>(2,5,8));
       t.set_column(2, vec3<int>(3,6,9));
+      check_true(__LINE__, t == a);
+      t.set_column(0, vec3<int>(2,5,8));
+      t.set_column(1, vec3<int>(1,4,7));
+      t.swap_columns(0, 1);
+      check_true(__LINE__, t == a);
+      t.set_column(1, vec3<int>(3,6,9));
+      t.set_column(2, vec3<int>(2,5,8));
+      t.swap_columns(1, 2);
       check_true(__LINE__, t == a);
     }
     check_true(__LINE__, a.diagonal() == vec3<int>(1,5,9));
@@ -140,12 +165,25 @@ int main(int argc, char* argv[])
       mat3<double> t = r3_111 - r3_111i.inverse();
       check_true(__LINE__, std::fabs(af::max(t.ref())) < 1.e-6);
     }
-    std::cout << r3_111.ortho().ref() << std::endl;
   }
   {
     mat3<int> a(1,2,3,4,5,6,7,8,9);
     a.scale(vec3<int>(1,2,3));
     check_true(__LINE__, a == mat3<int>(1,4,9,4,10,18,7,16,27));
+  }
+  {
+    mat3<double> a(3,2,3,5,7,3,4,2,7);
+    check_true(__LINE__, std::fabs(af::max((a.ortho() - mat3<double>(
+      3., -0.94, -1.16258352,
+      5., 2.1, 0.12917595,
+      4., -1.92, 0.71046771)).ref())) < 1.e-6);
+    std::pair<mat3<double>, vec3<double> > d = a.decompose();
+    check_true(__LINE__, std::fabs(af::max((d.first - mat3<double>(
+      0.424264069, -0.313682063, -0.849472521,
+      0.707106781,  0.700779076,  0.094385836,
+      0.565685425, -0.640712298,  0.519122096)).ref())) < 1.e-6);
+    check_true(__LINE__, std::fabs(af::max((d.second - vec3<double>(
+      7.071067812,  2.996664813,  1.368594617)).ref())) < 1.e-6);
   }
 
   std::cout << "Total OK: " << ok_counter << std::endl;
