@@ -244,8 +244,8 @@ namespace cctbx { namespace dmtbx {
             sum_sin += e_k_e_hmk * std::sin(phi_k_phi_hmk);
             sum_cos += e_k_e_hmk * std::cos(phi_k_phi_hmk);
           }
-          if (   math::abs(sum_sin) < sum_cutoff
-              && math::abs(sum_cos) < sum_cutoff) {
+          if (   fn::absolute(sum_sin) < sum_cutoff
+              && fn::absolute(sum_cos) < sum_cutoff) {
             result.push_back(phases[i]);
           }
           else {

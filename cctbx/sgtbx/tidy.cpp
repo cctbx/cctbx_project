@@ -11,7 +11,6 @@
  */
 
 #include <algorithm>
-#include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/groups.h>
 
 namespace cctbx { namespace sgtbx {
@@ -47,8 +46,10 @@ namespace cctbx { namespace sgtbx {
       bool operator()(const RTMx& a, const RTMx& b) {
         RotMxInfo RI_a = a.Rpart().getInfo();
         RotMxInfo RI_b = b.Rpart().getInfo();
-        if (math::abs(RI_a.Rtype()) > math::abs(RI_b.Rtype())) return true;
-        if (math::abs(RI_a.Rtype()) < math::abs(RI_b.Rtype())) return false;
+        if (  fn::absolute(RI_a.Rtype())
+            > fn::absolute(RI_b.Rtype())) return true;
+        if (  fn::absolute(RI_a.Rtype())
+            < fn::absolute(RI_b.Rtype())) return false;
         if (RI_a.Rtype() > RI_b.Rtype()) return true;
         if (RI_a.Rtype() < RI_b.Rtype()) return false;
         if (CmpiVect(3)(RI_a.EV().begin(), RI_b.EV().begin())) return true;

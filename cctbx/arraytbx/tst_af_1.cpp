@@ -1,7 +1,7 @@
 #include <cctbx/array_family.h>
+#include <cctbx/array_family/misc_functions.h>
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/array_family/simple_io.h>
-#include <cctbx/math/utils.h>
 #include <boost/bind.hpp>
 #include <vector>
 
@@ -492,13 +492,13 @@ namespace {
     af::tiny<double, 3> a4(4,5,6);
     af::const_ref<double> r3 = a3.const_ref();
     af::const_ref<double> r4 = a4.const_ref();
-    check_true(__LINE__, math::abs(
+    check_true(__LINE__, fn::absolute(
       af::mean_sq(r3)
       - (r3[0]*r3[0] + r3[1]*r3[1] + r3[2]*r3[2]) / 3) < 1.e-6);
-    check_true(__LINE__, math::abs(
+    check_true(__LINE__, fn::absolute(
       af::mean_weighted(r3, r4)
       - ((r3[0]*r4[0] + r3[1]*r4[1] + r3[2]*r4[2]) / af::sum(r4))) < 1.e-6);
-    check_true(__LINE__, math::abs(
+    check_true(__LINE__, fn::absolute(
       af::mean_sq_weighted(r3, r4)
       - ((  r3[0]*r3[0]*r4[0]
           + r3[1]*r3[1]*r4[1]

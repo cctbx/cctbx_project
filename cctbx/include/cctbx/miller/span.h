@@ -12,6 +12,8 @@
 #define CCTBX_MILLER_SPAN_H
 
 #include <cctbx/miller.h>
+#include <cctbx/math/utils.h>
+#include <cctbx/array_family/misc_functions.h>
 #include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace miller {
@@ -62,8 +64,8 @@ namespace cctbx { namespace miller {
       af::int3 result;
       std::size_t j;
       for(j=0;j<3;j++) {
-        result[j] = math::abs((*this)[j][0]);
-        math::update_max(result[j], math::abs((*this)[j][1]-1));
+        result[j] = fn::absolute((*this)[j][0]);
+        math::update_max(result[j], fn::absolute((*this)[j][1]-1));
       }
       for(j=0;j<3;j++) result[j] += 1;
       return result;

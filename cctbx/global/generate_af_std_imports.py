@@ -93,7 +93,7 @@ def run():
 #include <cstdlib>
 #include <complex>
 
-namespace cctbx { namespace af {
+namespace cctbx { namespace fn {
 """
 
   all_function_names = []
@@ -112,7 +112,7 @@ namespace cctbx { namespace af {
   generate_2arg_functors()
 
   print """
-}} // namespace cctbx::af
+}} // namespace cctbx::fn
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 

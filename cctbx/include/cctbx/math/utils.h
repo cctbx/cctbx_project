@@ -13,21 +13,6 @@
 
 namespace cctbx { namespace math {
 
-  template <typename NumType>
-  inline
-  NumType
-  abs(NumType const& x) {
-    if (x < NumType(0)) return -x;
-    return x;
-  }
-
-  template <typename NumType>
-  inline
-  NumType
-  pow2(NumType const& x) {
-    return x * x;
-  }
-
   template <typename NumType1, typename NumType2>
   inline
   NumType1&

@@ -12,7 +12,26 @@
 #ifndef CCTBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 #define CCTBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 
-namespace cctbx { namespace af {
+namespace cctbx { namespace fn {
+
+  //! Absolute value.
+  template <typename NumType>
+  inline
+  NumType
+  absolute(NumType const& x)
+  {
+    if (x < NumType(0)) return -x;
+    return x;
+  }
+
+  //! Square.
+  template <typename NumType>
+  inline
+  NumType
+  pow2(NumType const& x)
+  {
+    return x * x;
+  }
 
   //! Test if abs(a-b) < scaled_tolerance.
   template <class FloatType>
@@ -43,6 +62,26 @@ namespace cctbx { namespace af {
 
   //! Helper function object for array operations.
   template <typename ResultType,
+            typename ArgumentType>
+  struct functor_absolute {
+    typedef ResultType result_type;
+    ResultType operator()(ArgumentType const& x) const {
+      return ResultType(absolute(x));
+    }
+  };
+
+  //! Helper function object for array operations.
+  template <typename ResultType,
+            typename ArgumentType>
+  struct functor_pow2 {
+    typedef ResultType result_type;
+    ResultType operator()(ArgumentType const& x) const {
+      return ResultType(pow2(x));
+    }
+  };
+
+  //! Helper function object for array operations.
+  template <typename ResultType,
             typename ArgumentType1,
             typename ArgumentType2,
             typename ArgumentType3>
@@ -67,6 +106,6 @@ namespace cctbx { namespace af {
     return ResultType(approx_equal_unscaled(x, y, z)); }
   };
 
-}} // namespace cctbx::af
+}} // namespace cctbx::fn
 
 #endif // CCTBX_ARRAY_FAMILY_MISC_FUNCTIONS_H

@@ -105,8 +105,12 @@ namespace {
     a[0] = 0.1;
     a[1] = 0.2;
     a[2] = 0.3;
+    { ResultArrayType r = af::absolute(a);
+      check_true(__LINE__, fn::absolute(r[2] - fn::absolute(a[2])) < 1.e-6); }
+    { ResultArrayType r = af::pow2(a);
+      check_true(__LINE__, fn::absolute(r[2] - fn::pow2(a[2])) < 1.e-6); }
     { ResultArrayType r = af::acos(a);
-      check_true(__LINE__, std::fabs(r[2] - std::acos(a[2])) < 1.e-6); }
+      check_true(__LINE__, fn::absolute(r[2] - std::acos(a[2])) < 1.e-6); }
     { ResultArrayType r = af::pow(a, a);
       check_true(__LINE__, r[2] == std::pow(a[2], a[2])); }
     { ResultArrayType r = af::pow(a, a[0]);
@@ -114,13 +118,13 @@ namespace {
     { ResultArrayType r = af::pow(a[0], a);
       check_true(__LINE__, r[2] == std::pow(a[0], a[2])); }
     { BoolArrayType r = af::approx_equal_scaled(a, a, element_type(1));
-      check_true(__LINE__, r[2] == af::approx_equal_scaled(
+      check_true(__LINE__, r[2] == fn::approx_equal_scaled(
         a[2], a[2], element_type(1))); }
     { BoolArrayType r = af::approx_equal_scaled(a, a[0], element_type(1));
-      check_true(__LINE__, r[2] == af::approx_equal_scaled(
+      check_true(__LINE__, r[2] == fn::approx_equal_scaled(
         a[2], a[0], element_type(1))); }
     { BoolArrayType r = af::approx_equal_scaled(a[0], a, element_type(1));
-      check_true(__LINE__, r[2] == af::approx_equal_scaled(
+      check_true(__LINE__, r[2] == fn::approx_equal_scaled(
         a[0], a[2], element_type(1))); }
   }
 

@@ -11,7 +11,6 @@
  */
 
 #include <boost/rational.hpp>
-#include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
 
@@ -71,11 +70,11 @@ namespace cctbx { namespace sgtbx {
       for(int i=0;i<3;i++) {
         int l = lcm(CBMxR[i], CBMxR[6 + i]);
         if (CBMxR[i]) {
-          int n = math::abs(l / CBMxR[i]);
+          int n = fn::absolute(l / CBMxR[i]);
           if (r00 < n) r00 = n;
         }
         if (CBMxR[i + 6]) {
-          int n = math::abs(l / CBMxR[6 + i]);
+          int n = fn::absolute(l / CBMxR[6 + i]);
           if (r22 < n) r22 = n;
         }
       }
