@@ -40,3 +40,13 @@ def add_miller_array(self, miller_array, label_data, label_sigmas=None):
     if (miller_array.sigmas()):
       _columnCombinations(self,label_sigmas,"Q",
         [miller_array.indices()],[miller_array.sigmas()])
+
+def Hall_to_CCP4_Converter(spacegroup):
+  symbol = spacegroup.type().lookup_symbol()
+  symbol = symbol.replace(" ","")
+  if len(symbol)>10: symbol=symbol[0:10]
+  return symbol
+
+def setSpaceGroup(self, spacegroup):
+  ccp4_symbol = Hall_to_CCP4_Converter(spacegroup)
+  self.ll_setSpaceGroup(spacegroup,ccp4_symbol)

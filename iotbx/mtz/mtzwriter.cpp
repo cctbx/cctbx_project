@@ -13,17 +13,8 @@ void iotbx::mtz::MtzWriter::setTitle(const std::string& title){
   sprintf(mtz->title,"%s",title.c_str());
 }
 
-void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg){
-  cctbx::sgtbx::space_group_type sgtype(sg.type());
-  
-  std::string whole_symbol = sgtype.lookup_symbol();
-  std::size_t ind;
-  while ((ind=whole_symbol.find(' '))!=std::string::npos) {
-    whole_symbol = whole_symbol.erase(ind,1);
-  }
-  char sgtype_s[11];
-  sprintf(sgtype_s,"%s",whole_symbol.c_str());
-
+void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
+                                          const std::string& symbol){
   int val_nsymx = sg.order_z();
   int val_nsympx= sg.order_p();
   float rsymx[192][4][4];
@@ -46,8 +37,13 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg){
   }
 
   char val_ltypex = sg.conventional_centring_type_symbol();
+
+  cctbx::sgtbx::space_group_type sgtype(sg.type());
   int val_nspgrx = sgtype.number();
   
+  char sgtype_s[11];
+  sprintf(sgtype_s,"%s",symbol.c_str());
+
   cctbx::sgtbx::matrix_group::code mgcode = sg.point_group_type();
   char pgname[11];
   sprintf(pgname,"%s",mgcode.label());

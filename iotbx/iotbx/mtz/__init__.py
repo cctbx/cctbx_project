@@ -47,3 +47,4 @@ class Mtz (ext.Mtz):
             return cryst
 
 MtzWriter.add_miller_array = writer.add_miller_array
+MtzWriter.setSpaceGroup = writer.setSpaceGroup
