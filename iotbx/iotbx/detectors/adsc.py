@@ -12,28 +12,29 @@ class ADSCImage:
       rawdata = open(self.filename,"rb").read(maxlength)
       headeropen = rawdata.index("{")
       headerclose= rawdata.index("}")
-      header = rawdata[headeropen+1:headerclose-headeropen]
+      self.header = rawdata[headeropen+1:headerclose-headeropen]
 
-      parameters={}
-      for item in ['HEADER_BYTES','SIZE1','SIZE2','CCD_IMAGE_SATURATION',
-                   'DETECTOR_SN']:
-          pattern = re.compile(item+'='+r'(.*);')
-          matches = pattern.findall(header)
+      self.parameters={}
+      for tag,search,datatype in [
+          ('HEADER_BYTES','HEADER_BYTES',int),
+          ('SIZE1','SIZE1',int),
+          ('SIZE2','SIZE2',int),
+          ('CCD_IMAGE_SATURATION','CCD_IMAGE_SATURATION',int),
+          ('DETECTOR_SN','DETECTOR_SN',int),
+          ('PIXEL_SIZE','PIXEL_SIZE',float),
+          ('OSC_START','OSC_START',float),
+          ('DISTANCE','DISTANCE',float),
+          ('WAVELENGTH','WAVELENGTH',float),
+          ('BEAM_CENTER_X',r'\nBEAM_CENTER_X',float),
+          ('BEAM_CENTER_Y',r'\nBEAM_CENTER_Y',float),
+          ('OSC_RANGE','OSC_RANGE',float),
+          ('TWOTHETA','TWOTHETA',float),
+          ('BYTE_ORDER','BYTE_ORDER',str)
+          ]:
+          pattern = re.compile(search+'='+r'(.*);')
+          matches = pattern.findall(self.header)
           if len(matches)>0:
-            parameters[item] = int(matches[-1])
-      for item in ['PIXEL_SIZE','OSC_START','DISTANCE','WAVELENGTH',
-                   'BEAM_CENTER_X','BEAM_CENTER_Y','OSC_RANGE',
-                   'TWOTHETA']:
-        pattern = re.compile(item+'='+r'(.*);')
-        matches = pattern.findall(header)
-        if len(matches)>0:
-          parameters[item] = float(matches[-1])
-      for item in ['BYTE_ORDER']:
-        pattern = re.compile(item+'='+r'(.*);')
-        matches = pattern.findall(header)
-        if len(matches)>0:
-          parameters[item] = matches[-1]
-      self.parameters=parameters
+            self.parameters[tag] = datatype(matches[-1])
 
   def fileLength(self):
     self.readHeader()
