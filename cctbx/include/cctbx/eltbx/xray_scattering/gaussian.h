@@ -87,6 +87,23 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         return at_x_sq(d_star_sq / 4);
       }
 
+      /*! \brief Sum of Gaussian terms at the points d_star
+          (1/d), given d_star^2.
+       */
+      /*! See also: at_stol_sq(), at_stol(), at_d_star(),
+                    uctbx::unit_cell::d_star_sq()
+       */
+      af::shared<double>
+      at_d_star_sq(af::const_ref<double> const& d_star_sq) const
+      {
+        af::shared<double>
+          result(d_star_sq.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<d_star_sq.size();i++) {
+          result[i] = at_d_star_sq(d_star_sq[i]);
+        }
+        return result;
+      }
+
       /*! \brief Sum of Gaussian terms at the point d_star
           (1/d).
        */

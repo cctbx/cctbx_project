@@ -40,7 +40,12 @@ namespace {
           optional<double, bool> >())
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
-        .def("at_d_star_sq", &w_t::at_d_star_sq)
+        .def("at_d_star_sq",
+          (double(w_t::*)(double) const)
+            &w_t::at_d_star_sq)
+        .def("at_d_star_sq",
+          (af::shared<double>(w_t::*)(af::const_ref<double> const&) const)
+            &w_t::at_d_star_sq)
         .def("at_d_star", &w_t::at_d_star)
       ;
     }
