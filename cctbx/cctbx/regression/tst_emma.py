@@ -4,6 +4,7 @@ from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from scitbx.python_utils import list_algebra
+from libtbx.test_utils import approx_equal
 import random
 import sys
 
@@ -197,6 +198,10 @@ def run_call_back(flags, space_group_info):
       equiv_sites1 = sgtbx.sym_equiv_sites(m1.site_symmetry(site1))
       dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites1, site2)
       assert dist_info.dist() < model_matches.tolerance + 1.e-6
+      site2_closest = dist_info.sym_op() * site2
+      assert approx_equal(
+        m1.unit_cell().distance(site1, site2_closest),
+        dist_info.dist())
     if (i1 == 1):
       singles = model_matches.refined_matches[0].singles2
     else:
