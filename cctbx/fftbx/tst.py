@@ -1,5 +1,7 @@
+import sys, os
 from cctbx_boost.arraytbx import shared
 from cctbx_boost import fftbx
+from cctbx.development import debug_utils
 
 def fmtfloat(f):
   s = "%.1f" % (f,)
@@ -99,14 +101,64 @@ def test_real_to_complex_3d(verbose):
   if (verbose): show_rseq_3d(vd, fft.Mreal(), fft.Nreal())
   assert_complex_eq_real(vc, vd)
 
-if (__name__ == "__main__"):
-  import sys
-  verbose = not "--quiet" in sys.argv[1:]
+def compare_vectors(n, m, v_in, v_tr):
+  for i in xrange(m):
+    x = v_tr[i] / n
+    assert abs(x - v_in[i]) < 1.e-6, "%d/%d %.6g %.6g" % (i, n, v_in[i], x)
+
+def test_comprehensive_cc_1d(max_transform_size):
+  for n in xrange(1,max_transform_size+1):
+    fft = fftbx.complex_to_complex(n)
+    m = n * 2
+    v_in = shared.double()
+    for i in xrange(m):
+      v_in.append(debug_utils.random.random())
+    for f,b in ((fft.forward, fft.backward), (fft.backward, fft.forward)):
+      v_tr = v_in.deep_copy()
+      f(v_tr)
+      b(v_tr)
+      compare_vectors(n, m, v_in, v_tr)
+
+def test_comprehensive_rc_1d(max_transform_size):
+  for n in xrange(1,max_transform_size+1):
+    fft = fftbx.real_to_complex(n)
+    m = fft.Mreal()
+    v_in = shared.double()
+    for i in xrange(n):
+      v_in.append(debug_utils.random.random())
+    for i in xrange(n, m):
+      v_in.append(999)
+    v_tr = v_in.deep_copy()
+    fft.forward(v_tr)
+    fft.backward(v_tr)
+    compare_vectors(n, n, v_in, v_tr)
+    v_in[n] = v_in[1]
+    v_in[1] = 0
+    if (n % 2 == 0): v_in[n+1] = 0
+    v_tr = v_in.deep_copy()
+    fft.backward(v_tr)
+    fft.forward(v_tr)
+    compare_vectors(n, m, v_in, v_tr)
+
+def run():
+  Flags = debug_utils.command_line_options(sys.argv[1:], (
+    "RandomSeed",
+    "verbose",
+  ))
+  if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   assert fftbx.adjust_gridding(13, 5) == 15
   assert fftbx.adjust_gridding(13, 5, 6) == 18
   assert fftbx.adjust_gridding_triple((13,22,34), 5) == (15,24,36)
   assert fftbx.adjust_gridding_triple((13,22,34), 5, (6,10,8)) == (18,30,40)
-  test_complex_to_complex(verbose)
-  test_real_to_complex(verbose)
-  test_complex_to_complex_3d(verbose)
-  test_real_to_complex_3d(verbose)
+  test_complex_to_complex(Flags.verbose)
+  test_real_to_complex(Flags.verbose)
+  test_complex_to_complex_3d(Flags.verbose)
+  test_real_to_complex_3d(Flags.verbose)
+  max_transform_size = 300
+  test_comprehensive_cc_1d(max_transform_size)
+  test_comprehensive_rc_1d(max_transform_size)
+
+if (__name__ == "__main__"):
+  run()
+  t = os.times()
+  print "u+s,u,s:", t[0] + t[1], t[0], t[1]
