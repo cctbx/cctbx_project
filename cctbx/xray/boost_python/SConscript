@@ -2,6 +2,7 @@ Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(target="#libtbx/cctbx_boost/xray_ext", source=[
+  "agarwal_1978.cpp",
   "xray_ext.cpp",
   "conversions.cpp",
   "scatterer.cpp",
