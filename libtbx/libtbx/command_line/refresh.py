@@ -31,7 +31,7 @@ def create_driver(target_dir, package_name, source_dir, file_name):
 
 def create_drivers(target_dir, package_name, source_dir):
   if (not isdir(source_dir)): return
-  print "Creating drivers for files in:", source_dir
+  print "Processing:", source_dir
   for file_name in os.listdir(source_dir):
     create_driver(target_dir, package_name, source_dir, file_name)
 
