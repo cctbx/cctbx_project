@@ -61,7 +61,17 @@ def exercise_shared_flex_conversions(verbose=0):
   s = rt.return_shared()
   assert rt.use_shared(s) == 6
   # rt.modify_shared(s) # XXX needs lvalue converter
+  # assert tuple(s) == (6,2,4)
   assert rt.use_shared((8,9,10)) == 27
+  if (verbose): print 'OK'
+
+def exercise_ref_flex_conversions(verbose=0):
+  if (verbose): print 'Checking flex->ref conversions'
+  s = rt.return_shared()
+  assert rt.use_const_ref(s) == 6
+  rt.modify_ref(s)
+  assert tuple(s) == (6,2,4)
+  if (verbose): print 'OK'
 
 def run(args):
   iterations = 100
@@ -76,6 +86,7 @@ def run(args):
     exercise_boost_array_conversions(verbose)
     exercise_small_conversions(verbose)
     exercise_shared_flex_conversions(verbose)
+    exercise_ref_flex_conversions(verbose)
     i += 1
   if (not verbose): print 'OK'
 

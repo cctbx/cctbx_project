@@ -80,6 +80,18 @@ namespace {
     for(std::size_t i=0;i<a.size();i++) a[i] *= 2;
   }
 
+  int use_const_ref(af::const_ref<double> const& a)
+  {
+    double s = 0;
+    for(std::size_t i=0;i<a.size();i++) s += a[i];
+    return (int) s + .5;
+  }
+
+  void modify_ref(af::ref<double> a)
+  {
+    for(std::size_t i=0;i<a.size();i++) a[i] *= 2;
+  }
+
   void init_module(boost::python::module& this_module)
   {
     this_module
@@ -98,6 +110,8 @@ namespace {
       .def("return_shared", return_shared)
       .def("use_shared", use_shared)
       .def("modify_shared", modify_shared)
+      .def("use_const_ref", use_const_ref)
+      .def("modify_ref", modify_ref)
     ;
 
     scitbx::boost_python::container_conversions::from_python_sequence<
