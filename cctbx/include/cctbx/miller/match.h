@@ -10,8 +10,6 @@
 #ifndef CCTBX_MILLER_MATCH_H
 #define CCTBX_MILLER_MATCH_H
 
-#include <cctbx/boost_python/flex_fwd.h>
-
 #include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 #include <functional>

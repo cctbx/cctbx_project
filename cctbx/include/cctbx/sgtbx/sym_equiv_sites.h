@@ -14,8 +14,6 @@
 #ifndef CCTBX_SGTBX_SYM_EQUIV_SITES_H
 #define CCTBX_SGTBX_SYM_EQUIV_SITES_H
 
-#include <cctbx/boost_python/flex_fwd.h>
-
 #include <cctbx/uctbx.h>
 #include <cctbx/sgtbx/wyckoff.h>
 

@@ -129,6 +129,16 @@ class structure(crystal.special_position_settings):
       r = matrix.sqr(site_symmetry.special_op().r().as_double())
       d_target_d_site[i] = (matrix.row(d_target_d_site[i]) * r).elems
 
+  def change_basis(self, cb_op):
+    new_structure = structure(
+      crystal.special_position_settings.change_basis(self, cb_op))
+    for scatterer in self.scatterers():
+      assert not scatterer.anisotropic_flag, "Not implemented." # XXX
+      new_scatterer = scatterer.copy()
+      new_scatterer.site = cb_op(new_scatterer.site)
+      new_structure.add_scatterer(new_scatterer)
+    return new_structure
+
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma
     positions = []
