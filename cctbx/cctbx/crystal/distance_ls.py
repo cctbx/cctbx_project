@@ -407,29 +407,41 @@ def run(distance_cutoff=3.5):
               print "    GOOD GRAD", si_o_structure.space_group_info(),
               print special_op
         if (1):
-          if (1):
-            sites_cart = si_o_structure.sites_cart()
-          else:
-            sites_frac = flex.vec3_double(flex.random_double(
-              size=si_o_structure.scatterers().size()*3))
-            sites_special = flex.vec3_double()
-            for site_frac,site_symmetry in zip(sites_frac,
-                                               si_o_proxies.site_symmetries):
-              sites_special.append(site_symmetry.special_op()*site_frac)
-            sites_cart = si_o_structure.unit_cell() \
-              .orthogonalization_matrix() * sites_special
-          minimized = minimization.lbfgs(
-            sites_cart=sites_cart,
-            site_symmetries=si_o_proxies.site_symmetries,
-            asu_mappings=si_o_proxies.asu_mappings,
-            bond_sym_proxies=si_o_proxies.proxies,
-            lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-              max_iterations=1000))
-          print minimized.minimizer.error
-          print "first_target_value: %12.6f" % minimized.first_target_value, \
-            entry.tag
-          print "final_target_value: %12.6f" % minimized.final_target_value, \
-            entry.tag
+          best_target_value = None
+          best_sites_cart = None
+          for i_trial in xrange(10):
+            if (1 and i_trial == 0):
+              sites_cart = si_o_structure.sites_cart()
+            else:
+              sites_frac = flex.vec3_double(flex.random_double(
+                size=si_o_structure.scatterers().size()*3))
+              sites_special = flex.vec3_double()
+              for site_frac,site_symmetry in zip(sites_frac,
+                                                 si_o_proxies.site_symmetries):
+                sites_special.append(site_symmetry.special_op()*site_frac)
+              sites_cart = si_o_structure.unit_cell() \
+                .orthogonalization_matrix() * sites_special
+            minimized = minimization.lbfgs(
+              sites_cart=sites_cart,
+              site_symmetries=si_o_proxies.site_symmetries,
+              asu_mappings=si_o_proxies.asu_mappings,
+              bond_sym_proxies=si_o_proxies.proxies,
+              lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+                max_iterations=1000))
+            if (0):
+              print minimized.minimizer.error
+            if (0):
+              print "first_target_value: %12.6f"%minimized.first_target_value,\
+              entry.tag
+            print "final_target_value: %12.6f" % minimized.final_target_value,\
+              entry.tag
+            if (   best_target_value is None
+                or best_target_value > minimized.final_target_value):
+              best_target_value = minimized.final_target_value
+              best_sites_cart = sites_cart
+          assert best_target_value is not None
+          print "best_target_value: %12.6f" % best_target_value, entry.tag
+          sites_cart = best_sites_cart
           sites_frac=si_o_structure.unit_cell().fractionalization_matrix() \
                     *sites_cart
           minimized_structure = si_o_structure.deep_copy_scatterers()
