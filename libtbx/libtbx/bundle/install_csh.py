@@ -1,7 +1,7 @@
 import sys
 
-def create_script(bundle, top_modules):
-  return """\
+def create_script(bundle, top_modules, prefer_usr_bin_python=00001):
+  result = """\
 #! /bin/csh -f
 
 set install_root="$cwd"
@@ -98,6 +98,17 @@ else
           set python_exe="$build/python/bin/python"
         endif
       endif
+""" % vars()
+  if (prefer_usr_bin_python):
+    result += """\
+      if ("$python_exe" == None && -x /usr/bin/python) then
+        /usr/bin/python -V |& head -1
+        if ($status == 0) then
+          set python_exe=/usr/bin/python
+        endif
+      endif
+""" % vars()
+  result += """\
       if ("$python_exe" == None) then
         python -V |& head -1
         if ($status == 0) then
@@ -110,9 +121,18 @@ else
           set python_exe=python2
         endif
       endif
-      if ("$python_exe" == None) then
-        echo "Cannot find a working Python."
-      else
+""" % vars()
+  if (not prefer_usr_bin_python):
+    result += """\
+      if ("$python_exe" == None && -x /usr/bin/python) then
+        /usr/bin/python -V |& head -1
+        if ($status == 0) then
+          set python_exe=/usr/bin/python
+        endif
+      endif
+""" % vars()
+  result += """\
+      if ("$python_exe" != None) then
         set python_version=(`"$python_exe" -V |& tr "." " "`)
         if ("$python_version[2]") then
           set minor=`echo "$python_version[3]" | cut -c-1`
@@ -123,7 +143,13 @@ else
         endif
       endif
       if ("$python_exe" == None) then
-        echo "Please use the installer that includes the Python sources."
+        echo ""
+        echo "Cannot find a Python interpreter."
+        echo ""
+        echo "Please download an installer with Python included"
+        echo "or add a matching Python to the PATH environment variable."
+        echo ""
+        echo "Installation aborted."
         exit 1
       endif
 
@@ -196,6 +222,7 @@ cat << EOT
 ***
 EOT
 """ % vars()
+  return result
 
 if (__name__ == "__main__"):
   assert len(sys.argv) == 3

@@ -26,9 +26,9 @@ call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
 cd ..
 echo.
-echo Cannot find Python.
+echo Cannot find a Python interpreter.
 echo.
-echo Please download a binary bundle with Python included
+echo Please download an installer with Python included
 echo or add a matching Python to the PATH environment variable.
 echo.
 echo Installation aborted.
