@@ -5,43 +5,43 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
-     Dec 2001: Created (R.W. Grosse-Kunstleve)
+     Jan 2002: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef CCTBX_VECTOR_STD_VECTOR_TRAITS_H
-#define CCTBX_VECTOR_STD_VECTOR_TRAITS_H
+#ifndef CCTBX_VECTOR_SHARED_STORAGE_TRAITS_H
+#define CCTBX_VECTOR_SHARED_STORAGE_TRAITS_H
 
-#include <vector>
+#include <cctbx/shared_storage.h>
 
 namespace cctbx { namespace vector {
 
 template <class T, class U>
-struct algebra_traits<std::vector<T>, std::vector<U> >
+struct algebra_traits<shared_storage<T>, shared_storage<U> >
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
-  typedef std::vector<value_type> promotion_type;
-  typedef std::vector<bool> bool_type;
+  typedef shared_storage<value_type> promotion_type;
+  typedef shared_storage<bool> bool_type;
   typedef qualifier_v_v type_qualifier;
 };
 
 template <class T, class U>
-struct algebra_traits<std::vector<T>, U>
+struct algebra_traits<shared_storage<T>, U>
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
-  typedef std::vector<value_type> promotion_type;
-  typedef std::vector<bool> bool_type;
+  typedef shared_storage<value_type> promotion_type;
+  typedef shared_storage<bool> bool_type;
   typedef qualifier_v_s type_qualifier;
 };
 
 template <class T, class U>
-struct algebra_traits<T, std::vector<U> >
+struct algebra_traits<T, shared_storage<U> >
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
-  typedef std::vector<value_type> promotion_type;
-  typedef std::vector<bool> bool_type;
+  typedef shared_storage<value_type> promotion_type;
+  typedef shared_storage<bool> bool_type;
   typedef qualifier_s_v type_qualifier;
 };
 
 }} // namespace cctbx::vector
 
-#endif // CCTBX_VECTOR_STD_VECTOR_TRAITS_H
+#endif // CCTBX_VECTOR_SHARED_STORAGE_TRAITS_H
