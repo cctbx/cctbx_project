@@ -212,11 +212,13 @@ class structure(crystal.special_position_settings):
         miller_set=miller_set,
         algorithm=algorithm)
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "Number of scatterers:", self.scatterers().size()
-    print >> f, "At special positions:", self.special_position_indices().size()
-    crystal.symmetry.show_summary(self, f)
+    print >> f, prefix + "Number of scatterers:", \
+      self.scatterers().size()
+    print >> f, prefix + "At special positions:", \
+      self.special_position_indices().size()
+    crystal.symmetry.show_summary(self, f=f, prefix=prefix)
     return self
 
   def show_scatterers(self, f=None):

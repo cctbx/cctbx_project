@@ -6,11 +6,12 @@ import sys
 
 class _scattering_dictionary(boost.python.injector, scattering_dictionary):
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
     for key,val in self.dict().items():
       gn = str(val.gaussian.n_terms())
       if (val.gaussian.c() != 0):
         gn += "+c"
-      print >> f, "%s:%s*%d" % (key, gn, val.member_indices.size()),
+      print >> f, "%s%s:%s*%d" % (prefix, key, gn, val.member_indices.size()),
+      prefix = ""
     print >> f

@@ -61,16 +61,16 @@ class symmetry(object):
   def space_group(self):
     return self.space_group_info().group()
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
     if (self.unit_cell() is None):
-      print >> f, "Unit cell:", None
+      print >> f, prefix + "Unit cell:", None
     else:
-      self.unit_cell().show_parameters(f)
+      self.unit_cell().show_parameters(f=f, prefix=prefix+"Unit cell: ")
     if (self.space_group_info() is None):
-      print >> f, "Space group:", None
+      print >> f, prefix + "Space group:", None
     else:
-      self.space_group_info().show_summary(f)
+      self.space_group_info().show_summary(f=f, prefix=prefix+"Space group: ")
 
   def is_similar_symmetry(self, other, relative_length_tolerance=0.01,
                                        absolute_angle_tolerance=1.):
