@@ -1,8 +1,9 @@
 # $Id$
 
-import uctbx
 import math
 import pickle
+from cctbx_boost.arraytbx import flex
+from cctbx_boost import uctbx
 
 print uctbx.__version__
 print uctbx.UnitCell.__converters__
@@ -121,6 +122,5 @@ print o.isEqual(u)
 print u.isEqual(o, 0.1)
 print o.isEqual(u, 0.1)
 
-from cctbx_boost.arraytbx import flex
 miller_indices = flex.miller_Index(((1,2,3), (4,5,6)))
 print tuple(u.Q(miller_indices))
