@@ -859,6 +859,24 @@ def pickle_large_arrays(max_exp):
     try: os.unlink("pickle.tmp")
     except: pass
 
+def exercise_py_object():
+  a = flex.py_object(flex.grid(2,3), value=3)
+  assert a.accessor().focus() == (2,3)
+  assert a.data() == [3,3,3,3,3,3]
+  a = flex.py_object(flex.grid(2,3), value_factory=list)
+  assert a.data() == [[],[],[],[],[],[]]
+  a = flex.py_object(flex.grid(2,3), values=range(6))
+  assert a.data() == range(6)
+  assert a[(1,2)] == 5
+  a[(1,2)] = -5
+  assert a[(1,2)] == -5
+  a[(0,0)] = -10
+  a[(0,1)] = -1
+  a[(0,2)] = -2
+  a[(1,0)] = -3
+  a[(1,1)] = -4
+  assert a.data() == [-10,-1,-2,-3,-4,-5]
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -885,6 +903,7 @@ def run(iterations):
     exercise_exceptions()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()
+    exercise_py_object()
     i += 1
 
 if (__name__ == "__main__"):
