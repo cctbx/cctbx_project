@@ -1,7 +1,10 @@
+import libtbx.env
 import sys, os
 if (len(sys.argv) < 3):
   raise RuntimeError(
     "usage: libtbx.env_run MODULE_DIST path/to/command [arg ...]")
+for key,value in libtbx.env.cache.dist_paths.items():
+  os.environ[key] = value
 try:
   cmd_root = os.environ[sys.argv[1]]
 except KeyError:
