@@ -112,6 +112,17 @@ namespace neighbors {
         return result;
       }
 
+      //! Maximum distance squared of all remaining pairs.
+      FloatType
+      max_distance_sq()
+      {
+        FloatType result = -1;
+        while (!this->at_end_) {
+          result = std::max(result, next().dist_sq);
+        }
+        return result;
+      }
+
       /*! \brief Selection of all neighbors within distance_cutoff
           of primary_selection.
        */

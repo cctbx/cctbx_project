@@ -128,9 +128,7 @@ def distance_and_repulsion_least_squares(
   si_pair_asu_table = crystal.pair_asu_table(
     asu_mappings=si_asu_mappings)
   si_pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
-  si_pairs = xray.show_pairs(
-    xray_structure=si_structure,
-    pair_asu_table=si_pair_asu_table)
+  si_pairs = si_structure.show_distances(pair_asu_table=si_pair_asu_table)
   if (connectivities is not None):
     assert list(si_pairs.pair_counts) == connectivities
   print
@@ -144,8 +142,7 @@ def distance_and_repulsion_least_squares(
   si_o_bond_asu_table = crystal.pair_asu_table(
     asu_mappings=si_o_asu_mappings)
   si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
-  si_o_bonds = xray.show_pairs(
-    xray_structure=si_o.structure,
+  si_o_bonds = si_o.structure.show_distances(
     pair_asu_table=si_o_bond_asu_table)
   n_si = si_pairs.pair_counts.size()
   n_si_o = si_o_bonds.pair_counts.size()
@@ -155,9 +152,7 @@ def distance_and_repulsion_least_squares(
   o_si_o_asu_table = make_o_si_o_asu_table(
     si_o_structure=si_o.structure,
     si_o_bond_asu_table=si_o_bond_asu_table)
-  o_si_o_pairs = xray.show_pairs(
-    xray_structure=si_o.structure,
-    pair_asu_table=o_si_o_asu_table)
+  o_si_o_pairs = si_o.structure.show_distances(pair_asu_table=o_si_o_asu_table)
   assert o_si_o_pairs.pair_counts[:n_si].all_eq(0)
   if (si_pairs.pair_counts.count(4) == n_si):
     assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
@@ -259,9 +254,7 @@ def distance_and_repulsion_least_squares(
     print "WARNING: LARGE final target value: %.6g" % (
       minimized[1].final_target_result.target())
   print
-  xray.show_pairs(
-    xray_structure=minimized_structure,
-    pair_asu_table=si_o_bond_asu_table)
+  minimized_structure.show_distances(pair_asu_table=si_o_bond_asu_table)
   print
   sites_cart = minimized_structure.sites_cart()
   pair_proxies = geometry_restraints_manager.pair_proxies(

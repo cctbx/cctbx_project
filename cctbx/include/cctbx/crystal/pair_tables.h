@@ -193,6 +193,29 @@ namespace cctbx { namespace crystal {
         return !((*this) == other);
       }
 
+      //! Pair count for each site.
+      af::shared<std::size_t>
+      pair_counts() const
+      {
+        af::const_ref<pair_asu_dict> tab = table_.const_ref();
+        af::shared<std::size_t> result((af::reserve(tab.size())));
+        for(unsigned i_seq=0;i_seq<tab.size();i_seq++) {
+          std::size_t count = 0;
+          pair_asu_dict const& dict = tab[i_seq];
+          for(pair_asu_dict::const_iterator
+                dict_i=dict.begin();
+                dict_i!=dict.end();
+                dict_i++) {
+            pair_asu_j_sym_groups const& jgs = dict_i->second;
+            for(unsigned ig=0;ig<jgs.size();ig++) {
+              count += jgs[ig].size();
+            }
+          }
+          result.push_back(count);
+        }
+        return result;
+      }
+
       /*! \brief Uses neighbors::fast_pair_generator to add all pairs with
           distances <= distance_cutoff*(1+epsilon).
        */

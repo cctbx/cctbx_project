@@ -23,6 +23,7 @@ namespace {
         .def(init<int>((arg_("level"))))
         .def_readonly("level", &w_t::level)
         .add_property("sites", make_getter(&w_t::sites, rbv()))
+        .def("next_neighbors_distance", &w_t::next_neighbors_distance)
       ;
     }
   };

@@ -454,20 +454,23 @@ class structure(crystal.special_position_settings):
       pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
     return pair_asu_table
 
-  def show_pairs(self,
-        distance_cutoff,
+  def show_distances(self,
+        distance_cutoff=None,
         asu_mappings_buffer_thickness=None,
         asu_mappings_is_inside_epsilon=None,
+        pair_asu_table=None,
         show_cartesian=False,
         keep_pair_asu_table=False,
         out=None):
-    assert distance_cutoff is not None
-    return show_pairs(
-      xray_structure=self,
-      pair_asu_table=self.pair_asu_table(
+    assert [distance_cutoff, pair_asu_table].count(None) == 1
+    if (pair_asu_table is None):
+      pair_asu_table = self.pair_asu_table(
         distance_cutoff=distance_cutoff,
         asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
-        asu_mappings_is_inside_epsilon=asu_mappings_is_inside_epsilon),
+        asu_mappings_is_inside_epsilon=asu_mappings_is_inside_epsilon)
+    return pair_asu_table.show_distances(
+      site_labels=self.scatterers().extract_labels(),
+      sites_frac=self.sites_frac(),
       show_cartesian=show_cartesian,
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
@@ -477,78 +480,3 @@ class structure(crystal.special_position_settings):
 
   def rms_difference(self, other):
     return self.sites_cart().rms_difference(other.sites_cart())
-
-class show_pairs:
-
-  def __init__(self,
-        xray_structure,
-        pair_asu_table,
-        show_cartesian=False,
-        keep_pair_asu_table=False,
-        out=None):
-    if (out is None): out = sys.stdout
-    if (keep_pair_asu_table):
-      self.pair_asu_table = pair_asu_table
-    else:
-      self.pair_asu_table = None
-    self.distances = flex.double()
-    self.pair_counts = flex.size_t()
-    label_len = 1
-    for scatterer in xray_structure.scatterers():
-      label_len = max(label_len, len(scatterer.label))
-    label_fmt = "%%-%ds" % (label_len+1)
-    unit_cell = xray_structure.unit_cell()
-    scatterers = xray_structure.scatterers()
-    sites_frac = xray_structure.sites_frac()
-    asu_mappings = pair_asu_table.asu_mappings()
-    for i_seq,asu_dict in enumerate(pair_asu_table.table()):
-      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
-      site_frac_i = sites_frac[i_seq]
-      pair_count = 0
-      dists = flex.double()
-      j_seq_i_group = []
-      for j_seq,j_sym_groups in asu_dict.items():
-        site_frac_j = sites_frac[j_seq]
-        for i_group,j_sym_group in enumerate(j_sym_groups):
-          pair_count += j_sym_group.size()
-          j_sym = j_sym_group[0]
-          rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
-          distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
-          dists.append(distance)
-          j_seq_i_group.append((j_seq,i_group))
-      s = label_fmt % scatterers[i_seq].label \
-        + " pair count: %3d" % pair_count
-      if (show_cartesian):
-        formatted_site = [" %7.2f" % x
-          for x in unit_cell.orthogonalize(site_frac_i)]
-      else:
-        formatted_site = [" %7.4f" % x for x in site_frac_i]
-      print >> out, ("%%-%ds" % (label_len+23)) % s, \
-        "<<"+",".join(formatted_site)+">>"
-      permutation = flex.sort_permutation(data=dists)
-      for j_seq,i_group in flex.select(j_seq_i_group, permutation):
-        site_frac_j = sites_frac[j_seq]
-        j_sym_groups = asu_dict[j_seq]
-        j_sym_group = j_sym_groups[i_group]
-        for i_j_sym,j_sym in enumerate(j_sym_group):
-          rt_mx_ji = rt_mx_i_inv.multiply(
-            asu_mappings.get_rt_mx(j_seq, j_sym))
-          site_frac_ji = rt_mx_ji * site_frac_j
-          distance = unit_cell.distance(site_frac_i, site_frac_ji)
-          self.distances.append(distance)
-          print >> out, " ", label_fmt % (scatterers[j_seq].label + ":"),
-          print >> out, "%8.4f" % distance,
-          if (i_j_sym != 0):
-            s = "sym. equiv."
-          else:
-            s = "           "
-          if (show_cartesian):
-            formatted_site = [" %7.2f" % x
-              for x in unit_cell.orthogonalize(site_frac_ji)]
-          else:
-            formatted_site = [" %7.4f" % x for x in site_frac_ji]
-          s += " (" + ",".join(formatted_site) +")"
-          print >> out, s
-      if (pair_count == 0):
-        print >> out, "  no neighbors"
-      self.pair_counts.append(pair_count)

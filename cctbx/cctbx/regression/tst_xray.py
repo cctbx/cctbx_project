@@ -246,7 +246,7 @@ Number of scattering types: 2
   assert approx_equal(xs2.scatterers()[i].site, (0, 0, 0.7))
   xs2.apply_symmetry_u_stars()
   s = StringIO()
-  xs1.show_pairs(distance_cutoff=0.1, out=s)
+  xs1.show_distances(distance_cutoff=0.1, out=s)
   assert s.getvalue() == """\
 C  pair count:   2       <<  0.0200,  0.0000,  0.1000>>
   C:   0.0000             (  0.0200,  0.0000,  0.1000)

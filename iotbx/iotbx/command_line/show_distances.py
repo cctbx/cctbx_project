@@ -15,7 +15,7 @@ def display(
       xray_structure):
   xray_structure.show_summary().show_scatterers()
   print
-  pairs = xray_structure.show_pairs(
+  pairs = xray_structure.show_distances(
     distance_cutoff=distance_cutoff,
     show_cartesian=show_cartesian,
     keep_pair_asu_table=True)

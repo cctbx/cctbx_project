@@ -334,6 +334,111 @@ class _pair_asu_table(boost.python.injector, pair_asu_table):
           for j_syms in j_sym_group:
             print >> f, "    j_syms:", list(j_syms)
 
+  def show_distances(self,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        show_cartesian=False,
+        keep_pair_asu_table=False,
+        out=None):
+    return show_distances(
+      pair_asu_table=self,
+      site_labels=site_labels,
+      sites_frac=sites_frac,
+      sites_cart=sites_cart,
+      show_cartesian=show_cartesian,
+      keep_pair_asu_table=keep_pair_asu_table,
+      out=out)
+
+class show_distances:
+
+  def __init__(self,
+        pair_asu_table,
+        site_labels=None,
+        sites_frac=None,
+        sites_cart=None,
+        show_cartesian=False,
+        keep_pair_asu_table=False,
+        out=None):
+    assert [sites_frac, sites_cart].count(None) == 1
+    if (out is None): out = sys.stdout
+    if (keep_pair_asu_table):
+      self.pair_asu_table = pair_asu_table
+    else:
+      self.pair_asu_table = None
+    self.distances = flex.double()
+    self.pair_counts = flex.size_t()
+    asu_mappings = pair_asu_table.asu_mappings()
+    unit_cell = asu_mappings.unit_cell()
+    if (sites_frac is None):
+      sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+    if (site_labels is None):
+      label_len = len("%d" % (sites_frac.size()+1))
+      label_fmt = "site_%%0%dd" % label_len
+      label_len += 5
+    else:
+      label_len = 1
+      for label in site_labels:
+        label_len = max(label_len, len(label))
+      label_fmt = "%%-%ds" % (label_len+1)
+    for i_seq,asu_dict in enumerate(pair_asu_table.table()):
+      rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
+      site_frac_i = sites_frac[i_seq]
+      pair_count = 0
+      dists = flex.double()
+      j_seq_i_group = []
+      for j_seq,j_sym_groups in asu_dict.items():
+        site_frac_j = sites_frac[j_seq]
+        for i_group,j_sym_group in enumerate(j_sym_groups):
+          pair_count += j_sym_group.size()
+          j_sym = j_sym_group[0]
+          rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
+          distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
+          dists.append(distance)
+          j_seq_i_group.append((j_seq,i_group))
+      if (site_labels is None):
+        s = label_fmt % (i_seq+1)
+      else:
+        s = label_fmt % site_labels[i_seq]
+      s += " pair count: %3d" % pair_count
+      if (show_cartesian):
+        formatted_site = [" %7.2f" % x
+          for x in unit_cell.orthogonalize(site_frac_i)]
+      else:
+        formatted_site = [" %7.4f" % x for x in site_frac_i]
+      print >> out, ("%%-%ds" % (label_len+23)) % s, \
+        "<<"+",".join(formatted_site)+">>"
+      permutation = flex.sort_permutation(data=dists)
+      for j_seq,i_group in flex.select(j_seq_i_group, permutation):
+        site_frac_j = sites_frac[j_seq]
+        j_sym_groups = asu_dict[j_seq]
+        j_sym_group = j_sym_groups[i_group]
+        for i_j_sym,j_sym in enumerate(j_sym_group):
+          rt_mx_ji = rt_mx_i_inv.multiply(
+            asu_mappings.get_rt_mx(j_seq, j_sym))
+          site_frac_ji = rt_mx_ji * site_frac_j
+          distance = unit_cell.distance(site_frac_i, site_frac_ji)
+          self.distances.append(distance)
+          if (site_labels is None):
+            print >> out, " ", label_fmt % (j_seq+1) + ":",
+          else:
+            print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
+          print >> out, "%8.4f" % distance,
+          if (i_j_sym != 0):
+            s = "sym. equiv."
+          else:
+            s = "           "
+          if (show_cartesian):
+            formatted_site = [" %7.2f" % x
+              for x in unit_cell.orthogonalize(site_frac_ji)]
+          else:
+            formatted_site = [" %7.4f" % x for x in site_frac_ji]
+          s += " (" + ",".join(formatted_site) +")"
+          print >> out, s
+      if (pair_count == 0):
+        print >> out, "  no neighbors"
+      self.pair_counts.append(pair_count)
+
 class sym_pair:
 
   def __init__(self, i_seq, j_seq, rt_mx_ji):

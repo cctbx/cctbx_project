@@ -1,9 +1,57 @@
 from iotbx.kriber import strudat
 from cctbx import geometry_restraints
 from cctbx import crystal
+from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
+import scitbx.math
+from libtbx.test_utils import approx_equal
+from cStringIO import StringIO
 import math
 import sys, os
+
+def exercise_icosahedron(max_level=2, verbose=0):
+  for level in xrange(0,max_level+1):
+    if (0 or verbose):
+      print "level:", level
+    icosahedron = scitbx.math.icosahedron(level=level)
+    try:
+      distance_cutoff = icosahedron.next_neighbors_distance()*(1+1.e-3)
+      estimated_distance_cutoff = False
+    except RuntimeError, e:
+      assert str(e) == "next_neighbors_distance not known."
+      distance_cutoff = 0.4/(2**(level-1))
+      estimated_distance_cutoff = True
+    asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
+      sites_cart=icosahedron.sites)
+    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+    if (0 or verbose):
+      ps = pair_asu_table.show_distances(sites_cart=icosahedron.sites)
+      print "level", level, "min", flex.min(ps.distances)
+      print "     ", " ",   "max", flex.max(ps.distances)
+      assert ps.pair_counts.all_eq(pair_asu_table.pair_counts())
+      if (level == 0):
+        for d in ps.distances:
+          assert approx_equal(d, 1.0514622242382672)
+    elif (level < 2):
+      s = StringIO()
+      ps = pair_asu_table.show_distances(sites_cart=icosahedron.sites, out=s)
+      assert ps.pair_counts.all_eq(pair_asu_table.pair_counts())
+      assert len(s.getvalue().splitlines()) == [72,320][level]
+      del s
+    if (level == 0):
+      assert pair_asu_table.pair_counts().all_eq(5)
+    else:
+      assert pair_asu_table.pair_counts().all_eq(3)
+    del pair_asu_table
+    max_distance = crystal.neighbors_fast_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=distance_cutoff).max_distance_sq()**.5
+    if (0 or verbose):
+      print "max_distance:", max_distance
+    if (not estimated_distance_cutoff):
+      assert approx_equal(max_distance, icosahedron.next_neighbors_distance())
+      assert approx_equal(max_distance/icosahedron.next_neighbors_distance(),1)
 
 def is_sym_equiv_interaction_simple(unit_cell,
                                     i_seq,
@@ -149,6 +197,7 @@ def exercise_bond_sorted_asu_proxies(
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_icosahedron(verbose=verbose)
   default_distance_cutoff=3.5
   regression_misc = os.path.join(
     os.environ["LIBTBX_DIST_ROOT"], "regression", "misc")

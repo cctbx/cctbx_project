@@ -8,6 +8,7 @@ from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
 from cStringIO import StringIO
+import md5
 import sys
 
 def trial_structure():
@@ -284,8 +285,14 @@ def exercise_direct_space_asu():
           flex.sort_permutation(data=dist_sq))
         assert approx_equal(dist_sq_sorted, short_dist_sq_sorted)
       assert pair_generator.count_pairs() == 0
+      assert pair_generator.max_distance_sq() == -1
       pair_generator.restart()
       assert pair_generator.count_pairs() == len(index_pairs)
+      pair_generator.restart()
+      if (len(index_pairs) == 0):
+        assert pair_generator.max_distance_sq() == -1
+      else:
+        assert approx_equal(pair_generator.max_distance_sq(), 0.1)
       pair_generator.restart()
       primary_selection = flex.bool(
         pair_generator.asu_mappings().mappings().size(), False)
@@ -416,6 +423,7 @@ def exercise_pair_tables():
   assert asu_table.asu_mappings().is_locked()
   assert asu_table.table().size() == 3
   assert not asu_table.contains(i_seq=0, j_seq=1, j_sym=2)
+  assert asu_table.pair_counts().all_eq(0)
   assert asu_table.add_all_pairs(distance_cutoff=3.5) is asu_table
   assert [d.size() for d in asu_table.table()] == [2,3,2]
   assert asu_table.add_all_pairs(3.5, epsilon=1.e-6) is asu_table
@@ -433,6 +441,7 @@ def exercise_pair_tables():
       minimal=minimal)
     for pair in pair_generator:
       asu_table.add_pair(pair=pair)
+    asu_table.pair_counts().all_eq(4)
     check_pair_asu_table(asu_table, expected_asu_pairs)
   for p in expected_asu_pairs:
     assert asu_table.contains(i_seq=p[0], j_seq=p[1], j_sym=p[2])
@@ -782,20 +791,19 @@ def exercise_coordination_sequences_shell_asu_tables():
     pair_asu_table=asu_table,
     max_shell=3)
   check_pair_asu_table(shell_asu_tables[0], expected_asu_pairs)
-  if (0):
-    from cctbx.crystal import distance_ls
-    distance_ls.show_pairs(
-      structure=structure,
-      pair_asu_table=shell_asu_tables[1])
-    print
-    s1_sym_table = shell_asu_tables[1].extract_pair_sym_table(
-      skip_j_seq_less_than_i_seq=False)
-    s1_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-    s1_asu_table.add_pair_sym_table(sym_table=s1_sym_table)
-    distance_ls.show_pairs(
-      structure=structure,
-      pair_asu_table=s1_asu_table)
-    print
+  s = StringIO()
+  structure.show_distances(pair_asu_table=shell_asu_tables[1], out=s)
+  print >> s
+  s1_sym_table = shell_asu_tables[1].extract_pair_sym_table(
+    skip_j_seq_less_than_i_seq=False)
+  s1_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  s1_asu_table.add_pair_sym_table(sym_table=s1_sym_table)
+  structure.show_distances(pair_asu_table=s1_asu_table, out=s)
+  print >> s
+  s = s.getvalue().replace("-0.0000", " 0.0000")
+  if (md5.md5(s).hexdigest() != "2644729423835c824fafc53919d2ccf4"):
+    sys.stderr.write(s)
+    raise AssertionError("Unexpected show_distances() output.")
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(

@@ -103,7 +103,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
         }
       }
 
-      //! Count the number of pairs.
+      //! Counts the number of pairs.
       std::size_t
       count_pairs()
       {
@@ -111,6 +111,17 @@ namespace cctbx { namespace crystal { namespace neighbors {
         while (!this->at_end_) {
           next();
           result++;
+        }
+        return result;
+      }
+
+      //! Maximum distance squared of all remaining pairs.
+      FloatType
+      max_distance_sq()
+      {
+        FloatType result = -1;
+        while (!this->at_end_) {
+          result = std::max(result, next().dist_sq);
         }
         return result;
       }
