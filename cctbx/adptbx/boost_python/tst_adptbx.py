@@ -65,19 +65,17 @@ def exercise_interface():
   assert adptbx.is_positive_definite(u, 1.22)
   up = (0.534, 0.812, 0.613, 0.0166, 0.134, -0.0124)
   s = adptbx.eigensystem(up)
-  s = adptbx.eigensystem(up, 1.e-7)
   assert approx_equal(s.values(), (0.813132, 0.713201, 0.432668))
   for i in xrange(3):
     check_eigenvector(up, s.values()[i], s.vectors(i))
   c = (1,2,3, 3,-4,5, 4,5,6)
   v = (198,18,1020,116,447,269)
   assert approx_equal(adptbx.c_u_c_transpose(c, u), v)
-  try: eigensystem(u)
-  except: pass
-  else: raise AssertionError, "Exception expected."
+  assert approx_equal(adptbx.eigensystem(u).values(),
+    (14.279201519086316, 2.9369143826320214, -1.2161159017183376))
   s = adptbx.eigensystem(up)
   try: s.vectors(4)
-  except: pass
+  except RuntimeError, e: assert str(e).endswith("Index out of range.")
   else: raise AssertionError, "Exception expected."
   uf = adptbx.eigenvalue_filtering(u)
   assert approx_equal(uf, (3.0810418, 4.7950710, 9.3400030,

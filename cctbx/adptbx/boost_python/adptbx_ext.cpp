@@ -20,7 +20,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("eigensystem", no_init)
-        .def(init<sym_mat3<double> const&, optional<double> >())
+        .def(init<sym_mat3<double> const&>())
         .def("vectors", &w_t::vectors, ccr())
         .def("values", &w_t::values, ccr())
       ;
