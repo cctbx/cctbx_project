@@ -148,7 +148,6 @@ return_arg
 keywords,keywords,keywords_test
 properties
 map_indexing_suite
-member_function_cast
 """)
     Import("env_boost_python_ext")
     env = env_boost_python_ext.Copy()
