@@ -16,7 +16,6 @@
 #include <vector>
 #include <cctbx/error.h>
 #include <cctbx/array_family/versa.h>
-#include <cctbx/array_family/reductions.h>
 #include <cctbx/sym_mat3.h>
 #include <cctbx/maps/accessors.h>
 #include <cctbx/maps/gridding.h>

@@ -14,6 +14,7 @@
 #include <cctbx/array_family/tiny_bpl.h>
 #include <cctbx/array_family/tiny_types.h>
 #include <cctbx/math/linear_regression.h>
+#include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/loops.h>
 #include <cctbx/math/array_utils.h>
 #include <cctbx/maps/accessors.h>

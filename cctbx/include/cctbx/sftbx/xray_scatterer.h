@@ -19,7 +19,6 @@
 #include <cctbx/adptbx.h>
 #include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/tiny_algebra.h>
-#include <cctbx/array_family/reductions.h>
 
 namespace cctbx {
   //! Structure Factor Toolbox namespace.

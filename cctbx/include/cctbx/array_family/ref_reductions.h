@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2002 Aug: Renamed: reductions.h -> ref_reductions.h (rwgk)
      Feb 2002: Created (R.W. Grosse-Kunstleve)
  */
 
