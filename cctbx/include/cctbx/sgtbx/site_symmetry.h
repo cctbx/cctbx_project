@@ -67,11 +67,22 @@ namespace cctbx { namespace sgtbx {
       af::shared<rt_mx> const&
       matrices() const { return matrices_; }
 
+      //! Shorthand for: matrices().size()
+      std::size_t
+      n_matrices() const { return matrices_.size(); }
+
       //! Tests if the site symmetry is point group 1.
       bool
-      is_point_group_1() const
+      is_point_group_1() const { return n_matrices() == 1; }
+
+      //! Shorthand for: space_group_order_z / n_matrices()
+      /*! An exception is thrown if space_group_order_z % n_matrices() != 0.
+       */
+      std::size_t
+      multiplicity(std::size_t space_group_order_z) const
       {
-        return matrices_.size() == 1;
+        CCTBX_ASSERT(space_group_order_z % n_matrices() == 0);
+        return space_group_order_z / n_matrices();
       }
 
       /*! \brief Tests if the given anisotropic displacement parameters
@@ -107,10 +118,34 @@ namespace cctbx { namespace sgtbx {
       make_point_group_1() const
       {
         site_symmetry_ops result;
-        result.special_op_ = special_op_.unit_mx();
+        result.special_op_ = rt_mx(1,1);
         result.matrices_.push_back(matrices_[0]);
         return result;
       }
+
+      //! Apply change-of-basis operator.
+      site_symmetry_ops
+      change_basis(change_of_basis_op const& cb_op) const
+      {
+        site_symmetry_ops result;
+        result.special_op_ = cb_op.apply(special_op_);
+        af::const_ref<rt_mx> m = matrices_.const_ref();
+        result.matrices_.reserve(m.size());
+        result.matrices_.push_back(m[0]); // identity matrix
+        for(std::size_t i=1;i<m.size();i++) {
+          result.matrices_.push_back(cb_op(m[i]));
+        }
+        return result;
+      }
+
+      //! Support for Python's pickle facility. Do not use for other purposes.
+      site_symmetry_ops(
+        rt_mx const& special_op,
+        af::shared<rt_mx> const& matrices)
+      :
+        special_op_(special_op),
+        matrices_(matrices)
+      {}
 
     protected:
       rt_mx special_op_;

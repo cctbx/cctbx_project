@@ -104,13 +104,11 @@ namespace xray {
       FloatType fdp;
 
       //! Direct access to fractional coordinates.
-      /*! See also: apply_symmetry()
+      /*! See also: apply_symmetry(), apply_symmetry_site()
        */
       fractional<FloatType> site;
 
       //! Direct access to occupancy factor.
-      /*! See also: apply_symmetry()
-       */
       FloatType occupancy;
 
       //! Direct access to flag indicating anisotropic displacement parameters.
@@ -121,8 +119,6 @@ namespace xray {
           <p>
           Conversions between isotropic and anisotropic displacement
           parameters are provided by cctbx::adptbx.
-          <p>
-          See also: apply_symmetry()
        */
       FloatType u_iso;
 
@@ -132,7 +128,7 @@ namespace xray {
           Conversions between isotropic and anisotropic displacement
           parameters are provided by cctbx::adptbx.
           <p>
-          See also: apply_symmetry()
+          See also: apply_symmetry(), apply_symmetry_u_star()
        */
       scitbx::sym_mat3<FloatType> u_star;
 
@@ -140,21 +136,43 @@ namespace xray {
           weight() and symmetry-averaged anisotropic displacement parameters.
        */
       /*! This member function must be called before the
-          scatterer is used in a structure factor calculation
-          and after the last change of site and u_star.
-          <p>
-          See also: cctbx::sgtbx::site_symmetry,
-                    cctbx::sgtbx::site_symmetry::average_u_star
-          <p>
-          For scatterers with anisotropic displacement
+          scatterer is used in a structure factor calculation.
+
+          See also:
+            apply_symmetry_site,
+            apply_symmetry_u_star,
+            cctbx::sgtbx::site_symmetry,
+            cctbx::sgtbx::site_symmetry::exact_site,
+            cctbx::sgtbx::site_symmetry_ops::average_u_star
+       */
+      sgtbx::site_symmetry
+      apply_symmetry(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        double min_distance_sym_equiv=0.5,
+        double u_star_tolerance=0,
+        bool assert_is_positive_definite=false,
+        bool assert_min_distance_sym_equiv=true);
+
+      //! Apply previously determined site symmetry to site.
+      /*! Shorthand for: site = site_symmetry_ops.special_op() * site
+       */
+      void
+      apply_symmetry_site(sgtbx::site_symmetry_ops const& site_symmetry_ops)
+      {
+        site = site_symmetry_ops.special_op() * site;
+      }
+
+      //! Apply previously determined site symmetry to u_star.
+      /*! For scatterers with anisotropic displacement
           parameters, the symmetry-averaged u_star is determined
-          using cctbx::sgtbx::site_symmetry::average_u_star .
+          using cctbx::sgtbx::site_symmetry_ops::average_u_star .
           If u_star_tolerance is greater than zero an
           exception is thrown if the discrepancy between
           components of u_star before and after the
           application of the site symmetry is greater than
           u_star_tolerance.
-          <p>
+
           If assert_is_positive_definite == true,
           for scatterers with anisotropic displacement
           parameters it is tested if the symmetry-averaged
@@ -164,27 +182,16 @@ namespace xray {
           negative eigenvalues of u_star to zero.
           cctbx::sgtbx::site_symmetry::average_u_star
           is applied again to compute the final u_star.
-       */
-      sgtbx::site_symmetry
-      apply_symmetry(uctbx::unit_cell const& unit_cell,
-                     sgtbx::space_group const& space_group,
-                     double min_distance_sym_equiv=0.5,
-                     double u_star_tolerance=0,
-                     bool assert_is_positive_definite=false,
-                     bool assert_min_distance_sym_equiv=true);
 
-      //! Updates weight() and weight_without_occupancy().
-      /*! This member function must be called if the occupancy
-          factor is changed after calling apply_symmetry(),
-          and calling apply_symmetry() again is not desired
-          for some reason.
+          This function has no effect if anisotropic_flag == false.
        */
       void
-      update_weight(std::size_t space_group_order_z)
-      {
-        weight_without_occupancy_ = FloatType(multiplicity_)
-                                  / space_group_order_z;
-      }
+      apply_symmetry_u_star(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::site_symmetry_ops const& site_symmetry_ops,
+        double u_star_tolerance=0,
+        bool assert_is_positive_definite=false,
+        bool assert_min_distance_sym_equiv=true);
 
       //! Access to multiplicity computed by apply_symmetry().
       int
@@ -230,12 +237,13 @@ namespace xray {
             typename ScatteringTypeType>
   sgtbx::site_symmetry
   scatterer<FloatType, LabelType, ScatteringTypeType>
-  ::apply_symmetry(uctbx::unit_cell const& unit_cell,
-                   sgtbx::space_group const& space_group,
-                   double min_distance_sym_equiv,
-                   double u_star_tolerance,
-                   bool assert_is_positive_definite,
-                   bool assert_min_distance_sym_equiv)
+  ::apply_symmetry(
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::space_group const& space_group,
+    double min_distance_sym_equiv,
+    double u_star_tolerance,
+    bool assert_is_positive_definite,
+    bool assert_min_distance_sym_equiv)
   {
     sgtbx::site_symmetry site_symmetry(
       unit_cell,
@@ -243,15 +251,37 @@ namespace xray {
       site,
       min_distance_sym_equiv,
       assert_min_distance_sym_equiv);
-    site = site_symmetry.exact_site();
     multiplicity_ = site_symmetry.multiplicity();
-    update_weight(space_group.order_z());
+    weight_without_occupancy_ = FloatType(multiplicity_)
+                              / space_group.order_z();
+    site = site_symmetry.exact_site();
+    apply_symmetry_u_star(
+      unit_cell,
+      site_symmetry,
+      u_star_tolerance,
+      assert_is_positive_definite,
+      assert_min_distance_sym_equiv);
+    return site_symmetry;
+  }
+
+  template <typename FloatType,
+            typename LabelType,
+            typename ScatteringTypeType>
+  void
+  scatterer<FloatType, LabelType, ScatteringTypeType>
+  ::apply_symmetry_u_star(
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::site_symmetry_ops const& site_symmetry_ops,
+    double u_star_tolerance,
+    bool assert_is_positive_definite,
+    bool assert_min_distance_sym_equiv)
+  {
     if (anisotropic_flag) {
       if (u_star_tolerance > 0.) {
         CCTBX_ASSERT(
-          site_symmetry.is_compatible_u_star(u_star, u_star_tolerance));
+          site_symmetry_ops.is_compatible_u_star(u_star, u_star_tolerance));
       }
-      u_star = site_symmetry.average_u_star(u_star);
+      u_star = site_symmetry_ops.average_u_star(u_star);
       scitbx::sym_mat3<FloatType>
         u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
       if (assert_is_positive_definite) {
@@ -259,9 +289,8 @@ namespace xray {
       }
       u_cart = adptbx::eigenvalue_filtering(u_cart);
       u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
-      u_star = site_symmetry.average_u_star(u_star);
+      u_star = site_symmetry_ops.average_u_star(u_star);
     }
-    return site_symmetry;
   }
 
 }} // namespace cctbx::xray

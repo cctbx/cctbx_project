@@ -23,25 +23,33 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("sym_equiv_sites", no_init)
-        .def(init<site_symmetry const&>())
-        .def(init<wyckoff::mapping const&>(
-          (arg_("wyckoff_mapping"))))
+        .def(init<site_symmetry const&>((
+          arg_("site_symmetry"))))
+        .def(init<uctbx::unit_cell const&,
+                  sgtbx::space_group const&,
+                  fractional<> const&,
+                  sgtbx::site_symmetry_ops const&> ((
+          arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
+          arg_("site_symmetry_ops"))))
+        .def(init<wyckoff::mapping const&>((
+          arg_("wyckoff_mapping"))))
         .def(init<sgtbx::space_group const&,
                   fractional<> const&,
-                  optional<uctbx::unit_cell const&> >(
-          (arg_("space_group"), arg_("original_site"), arg_("unit_cell"))))
+                  optional<uctbx::unit_cell const&> >((
+          arg_("space_group"), arg_("original_site"), arg_("unit_cell"))))
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   fractional<> const&,
-                  rt_mx const&>(
-          (arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
-           arg_("special_op"))))
+                  rt_mx const&,
+                  optional<std::size_t> >((
+          arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
+          arg_("special_op"), arg_("multiplicity"))))
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   fractional<> const&,
-                  optional<double, double> >(
-          (arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
-           arg_("minimum_distance"), arg_("tolerance"))))
+                  optional<double, double> >((
+          arg_("unit_cell"), arg_("space_group"), arg_("original_site"),
+          arg_("minimum_distance"), arg_("tolerance"))))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("space_group", &w_t::space_group, rir())
         .def("original_site", &w_t::original_site, ccr())

@@ -100,35 +100,59 @@ def exercise_xray_scatterer():
   assert x.scattering_type == "Si"
   uc = uctbx.unit_cell((10, 10, 13))
   sg = sgtbx.space_group_info("P 4")
-  ss = x.apply_symmetry(uc, sg.group())
+  ss = x.apply_symmetry(unit_cell=uc, space_group=sg.group())
   assert x.multiplicity() == 1
   assert approx_equal(x.weight_without_occupancy(), 1/4.)
   assert approx_equal(x.weight(), 0.9/4.)
   assert approx_equal(x.site, (0,0,0.3))
   assert ss.multiplicity() == x.multiplicity()
   x.occupancy = 0.8
-  x.update_weight(sg.group().order_z())
-  assert approx_equal(x.weight_without_occupancy(), 1/4.)
   assert approx_equal(x.weight(), 0.8/4.)
   u_cart = (0.3354, 0.3771, 0.4874, -0.05161, 0.026763, -0.02116)
   x.u_star = adptbx.u_cart_as_u_star(uc, u_cart)
   x.anisotropic_flag = 1
-  try: x.apply_symmetry(uc, sg.group(), u_star_tolerance=0.1)
-  except: pass
-  else: raise AssertionError, "Exception expected."
+  try:
+    x.apply_symmetry(uc, sg.group(), u_star_tolerance=0.1)
+  except RuntimeError, e:
+    assert str(e).find("is_compatible_u_star") > 0
+  else:
+    raise AssertionError("Exception expected.")
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, 0)
-  ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, 0, 0)
+  ss = x.apply_symmetry(
+    unit_cell=uc,
+    space_group=sg.group(),
+    min_distance_sym_equiv=0.5,
+    u_star_tolerance=0,
+    assert_is_positive_definite=00000,
+    assert_min_distance_sym_equiv=00000)
   assert ss.is_compatible_u_star(x.u_star)
   assert approx_equal(x.u_star, (0.0035625, 0.0035625, 0.002884, 0, 0, 0))
+  site = (0.2,0.5,0.4)
+  x.apply_symmetry_site(ss)
+  assert approx_equal(x.site, (0,0,0.3))
+  x.u_star = (1,2,3,4,5,6)
+  x.apply_symmetry_u_star(
+    unit_cell=uc,
+    site_symmetry_ops=ss,
+    u_star_tolerance=0,
+    assert_is_positive_definite=00000,
+    assert_min_distance_sym_equiv=00000)
+  assert approx_equal(x.u_star, (1.5,1.5,3.0,0,0,0))
 
 def exercise_rotate():
   uc = uctbx.unit_cell((10, 10, 13))
   s = flex.xray_scatterer((xray.scatterer("Si1", site=(0.01,0.02,0.3)),))
-  r = xray.rotate(uc, ((1,0,0, 0,1,0, 0,0,1)), s)
+  r = xray.rotate(
+    unit_cell=uc,
+    rotation_matrix=((1,0,0, 0,1,0, 0,0,1)),
+    scatterers=s)
   assert r.size() == 1
   assert approx_equal(s[0].site, r[0].site)
-  r = xray.rotate(uc, ((0,-1,0, -1,0,0, 0,0,-1)), s)
+  r = xray.rotate(
+    unit_cell=uc,
+    rotation_matrix=((0,-1,0, -1,0,0, 0,0,-1)),
+    scatterers=s)
   assert approx_equal(r[0].site, (-0.02,-0.01,-0.3))
 
 def exercise_scattering_dictionary():
@@ -228,7 +252,18 @@ def exercise_structure_factors():
     xray.scatterer("O1", site=(0.3,0.4,0.5), u=(0.4,0.5,0.6,-.05,0.2,-0.02))))
   for s in scatterers:
     assert s.multiplicity() == 0
-  assert tuple(xray.apply_symmetry(uc, sg.group(), scatterers)) == (0,)
+  site_symmetry_table = sgtbx.site_symmetry_table()
+  xray.add_scatterers_ext(
+    unit_cell=uc,
+    space_group=sg.group(),
+    scatterers=scatterers,
+    site_symmetry_table=site_symmetry_table,
+    site_symmetry_table_for_new=sgtbx.site_symmetry_table(),
+    min_distance_sym_equiv=0.5,
+    u_star_tolerance=0,
+    assert_is_positive_definite=00000,
+    assert_min_distance_sym_equiv=0001)
+  assert list(site_symmetry_table.special_position_indices()) == [0]
   for s in scatterers:
     assert s.multiplicity() != 0
   mi = flex.miller_index(((1,2,3), (2,3,4)))

@@ -12,6 +12,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <boost/python/make_constructor.hpp>
 #include <cctbx/sgtbx/rt_mx.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
@@ -21,6 +22,20 @@ namespace {
   struct rt_mx_wrappers
   {
     typedef rt_mx w_t;
+
+    static rt_mx*
+    unpickle_init(af::const_ref<int> const& values)
+    {
+      CCTBX_ASSERT(values.size() == 14);
+      rt_mx result(values[12], values[13]);
+      for(std::size_t i=0;i<9;i++) {
+        result.r().num()[i] = values[i];
+      }
+      for(std::size_t i=0;i<3;i++) {
+        result.t().num()[i] = values[i+9];
+      }
+      return new rt_mx(result);
+    }
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       as_xyz_overloads, as_xyz, 0, 4)
@@ -40,6 +55,8 @@ namespace {
       using namespace boost::python;
       typedef return_internal_reference<> rir;
       class_<w_t>("rt_mx", no_init)
+        .enable_pickling()
+        .def("__init__", boost::python::make_constructor(unpickle_init))
         .def(init<optional<int, int> >())
         .def(init<rot_mx const&, tr_vec const&>())
         .def(init<rot_mx const&, optional<int> >())
