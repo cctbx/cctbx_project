@@ -1,0 +1,4 @@
+Import("env_scitbx_boost_python")
+env_scitbx_boost_python.SharedLibrary(target="regression_test_ext", source=[
+  "regression_test_module.cpp",
+])
