@@ -261,6 +261,11 @@ namespace cctbx { namespace af {
       }
 
       // non-std
+      void set_size_back_door(const size_type& sz) {
+        m_set_size(sz);
+      }
+
+      // non-std
       shared_plain<ElementType>
       deep_copy() const {
         return shared_plain<ElementType>(begin(), end());

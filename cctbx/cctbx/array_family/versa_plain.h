@@ -39,6 +39,11 @@ namespace cctbx { namespace af {
           m_accessor(ac)
       {}
 
+      versa_plain(const AccessorType& ac, reserve_flag)
+        : base_class(ac.size1d(), reserve_flag()),
+          m_accessor(ac)
+      {}
+
       explicit
       versa_plain(long n0)
         : base_class(AccessorType(n0).size1d()),
