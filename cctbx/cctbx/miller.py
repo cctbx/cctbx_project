@@ -609,6 +609,7 @@ class set(crystal.symmetry):
       n_bins = int(len(self.indices()) / reflections_per_bin + .5)
     assert n_bins > 0
     assert self.unit_cell() is not None
+    assert self.indices().size() > 0 or d_min > 0
     bng = binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min)
     self._binner = binner(bng, self)
     return self.binner()
