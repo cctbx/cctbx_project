@@ -1,5 +1,4 @@
 from cctbx import restraints
-from cctbx.crystal import bond_records
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils.misc import time_log
@@ -9,106 +8,41 @@ import sys
 class energies:
 
   def __init__(self, sites_cart,
-                     asu_mappings=None,
-                     bond_proxies=None,
-                     bond_sym_proxies=None,
-                     bond_sorted_proxies=None,
-                     bond_records=None,
-                     angle_proxies=None,
-                     dihedral_proxies=None,
-                     chirality_proxies=None,
-                     planarity_proxies=None,
-                     repulsion_proxies=None,
+                     asu_mappings,
+                     bond_asu_proxies=None,
+                     repulsion_asu_proxies=None,
                      compute_gradients=0001):
     if (compute_gradients):
       self.gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
     else:
       self.gradients = None
-    if (bond_proxies is None):
-      self.n_bond_proxies = 0
-      self.bond_residual_sum = 0
-    else:
-      self.n_bond_proxies = len(bond_proxies)
-      self.bond_residual_sum = restraints.bond_residual_sum(
-        sites_cart=sites_cart,
-        proxies=bond_proxies,
-        gradient_array=self.gradients)
-    if (bond_sym_proxies is None):
-      self.n_bond_sym_proxies = 0
-      self.bond_sym_residual_sum = 0
+    if (bond_asu_proxies is None):
+      self.n_bond_asu_proxies = 0
+      self.bond_asu_residual_sum = 0
     else:
       assert asu_mappings is not None
-      self.n_bond_sym_proxies = len(bond_sym_proxies)
-      self.bond_sym_residual_sum=restraints.bond_residual_sum(
+      self.n_bond_asu_proxies = len(bond_asu_proxies)
+      self.bond_asu_residual_sum = restraints.bond_residual_sum(
         sites_cart=sites_cart,
         asu_mappings=asu_mappings,
-        proxies=bond_sym_proxies,
-        gradient_array=self.gradients)
-    if (bond_sorted_proxies is None):
-      self.n_bond_sorted_proxies = 0
-      self.bond_sorted_residual_sum = 0
-    else:
-      self.n_bond_sorted_proxies = bond_sorted_proxies.n_total()
-      self.bond_sorted_residual_sum=restraints.bond_residual_sum(
-        sites_cart=sites_cart,
-        sorted_proxies=bond_sorted_proxies,
-        gradient_array=self.gradients)
-    if (angle_proxies is None):
-      self.n_angle_proxies = 0
-      self.angle_residual_sum = 0
-    else:
-      self.n_angle_proxies = len(angle_proxies)
-      self.angle_residual_sum = restraints.angle_residual_sum(
-        sites_cart=sites_cart,
-        proxies=angle_proxies,
-        gradient_array=self.gradients)
-    if (dihedral_proxies is None):
-      self.n_dihedral_proxies = 0
-      self.dihedral_residual_sum = 0
-    else:
-      self.n_dihedral_proxies = len(dihedral_proxies)
-      self.dihedral_residual_sum = restraints.dihedral_residual_sum(
-          sites_cart=sites_cart,
-          proxies=dihedral_proxies,
-          gradient_array=self.gradients)
-    if (chirality_proxies is None):
-      self.n_chirality_proxies = 0
-      self.chirality_residual_sum = 0
-    else:
-      self.n_chirality_proxies = len(chirality_proxies)
-      self.chirality_residual_sum = restraints.chirality_residual_sum(
-          sites_cart=sites_cart,
-          proxies=chirality_proxies,
-          gradient_array=self.gradients)
-    if (planarity_proxies is None):
-      self.n_planarity_proxies = 0
-      self.planarity_residual_sum = 0
-    else:
-      self.n_planarity_proxies = len(planarity_proxies)
-      self.planarity_residual_sum = restraints.planarity_residual_sum(
-          sites_cart=sites_cart,
-          proxies=planarity_proxies,
-          gradient_array=self.gradients)
-    if (repulsion_proxies is None):
-      self.n_repulsion_proxies = 0
+        proxies=bond_asu_proxies,
+        gradient_array=self.gradients,
+        disable_cache=0001)
+    if (repulsion_asu_proxies is None):
+      self.n_repulsion_asu_proxies = 0
       self.repulsion_residual_sum = 0
     else:
-      self.n_repulsion_proxies = repulsion_proxies.n_total()
+      self.n_repulsion_asu_proxies = repulsion_asu_proxies.size()
       self.repulsion_residual_sum = restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
-        sorted_proxies=repulsion_proxies,
+        asu_mappings=asu_mappings,
+        proxies=repulsion_asu_proxies,
         gradient_array=self.gradients,
         function=restraints.repulsion_function(),
-        disable_cache=00000)
+        disable_cache=0001)
 
   def target(self):
-    return(self.bond_residual_sum
-         + self.bond_sym_residual_sum
-         + self.bond_sorted_residual_sum
-         + self.angle_residual_sum
-         + self.dihedral_residual_sum
-         + self.chirality_residual_sum
-         + self.planarity_residual_sum
+    return(self.bond_asu_residual_sum
          + self.repulsion_residual_sum)
 
   def gradient_norm(self):
@@ -117,42 +51,20 @@ class energies:
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "target:", self.target()
-    print >> f, "  bond_residual_sum (n=%d):" % self.n_bond_proxies,\
-      self.bond_residual_sum
-    print >> f, "  bond_sym_residual_sum (n=%d):" % self.n_bond_sym_proxies,\
-      self.bond_sym_residual_sum
-    print >> f, "  bond_sorted_residual_sum (n=%d):" % \
-      self.n_bond_sorted_proxies, self.bond_sorted_residual_sum
-    print >> f, "  angle_residual_sum (n=%d):" % self.n_angle_proxies,\
-      self.angle_residual_sum
-    print >> f, "  dihedral_residual_sum (n=%d):" % self.n_dihedral_proxies,\
-      self.dihedral_residual_sum
-    print >> f, "  chirality_residual_sum (n=%d):" % self.n_chirality_proxies,\
-      self.chirality_residual_sum
-    print >> f, "  planarity_residual_sum (n=%d):" % self.n_planarity_proxies,\
-      self.planarity_residual_sum
-    print >> f, "  repulsion_residual_sum (n=%d):" % self.n_repulsion_proxies,\
-      self.repulsion_residual_sum
+    print >> f, "target: %.6g" % self.target()
     if (self.gradients is not None):
-      print >> f, "  norm of gradients:", self.gradient_norm()
+      print >> f, "  norm of gradients: %.6g" % self.gradient_norm()
+    print >> f, "  bond_asu_residual_sum (n=%d): %.6g" % (
+      self.n_bond_asu_proxies, self.bond_asu_residual_sum)
+    print >> f, "  repulsion_residual_sum (n=%d): %.6g" % (
+      self.n_repulsion_asu_proxies, self.repulsion_residual_sum)
 
 class lbfgs:
 
   def __init__(self, sites_cart,
-                     site_symmetries=None,
                      asu_mappings=None,
-                     bond_proxies=None,
-                     bond_sym_proxies=None,
-                     bond_sorted_proxies=None,
-                     bond_records=None,
-                     structure=None,
-                     nonbonded_cutoff=None,
-                     angle_proxies=None,
-                     dihedral_proxies=None,
-                     chirality_proxies=None,
-                     planarity_proxies=None,
-                     repulsion_proxies=None,
+                     bond_asu_proxies=None,
+                     repulsion_asu_proxies=None,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None):
     adopt_init_args(self, locals())
@@ -179,73 +91,26 @@ class lbfgs:
 
   def apply_shifts(self):
     self._sites_shifted = self.sites_cart + flex.vec3_double(self.x)
-    if (self.site_symmetries is not None):
-      sites_frac = self.site_symmetries[0].unit_cell() \
-        .fractionalization_matrix() * self._sites_shifted
-      sites_special = flex.vec3_double()
-      i_sc = -1
-      for site_frac,site_symmetry in zip(sites_frac, self.site_symmetries):
-        i_sc += 1
-        sites_special.append(site_symmetry.special_op()*site_frac)
-        distance_moved = self.site_symmetries[0].unit_cell().distance(
-          sites_special[-1], site_frac)
-        if (distance_moved > 1.e-6):
-          print "LARGE distance_moved:", distance_moved,
-          print self.structure.scatterers()[i_sc].label
-      self._sites_shifted = self.site_symmetries[0].unit_cell() \
-        .orthogonalization_matrix() * sites_special
+    if (1):
+      unit_cell = self.asu_mappings.unit_cell()
+      site_symmetry_table = self.asu_mappings.site_symmetry_table()
+      for i_seq in site_symmetry_table.special_position_indices():
+        site_frac = unit_cell.fractionalize(self._sites_shifted[i_seq])
+        site_special_frac = site_symmetry_table.get(i_seq).special_op() \
+                          * site_frac
+        distance_moved = unit_cell.distance(site_special_frac, site_frac)
+        if (distance_moved > 1.e-2):
+          print "LARGE distance_moved: i_seq+1=%d, %.6g" % (
+            i_seq+1, distance_moved)
 
   def compute_target(self, compute_gradients):
-    if (0):
-      assert self.bond_proxies is None
-      assert self.bond_sym_proxies is None
-      self.time_compute_target.start()
-      self.target_result = energies(
-        sites_cart=self._sites_shifted,
-        bond_sorted_proxies=self.bond_sorted_proxies,
-        angle_proxies=self.angle_proxies,
-        dihedral_proxies=self.dihedral_proxies,
-        chirality_proxies=self.chirality_proxies,
-        planarity_proxies=self.planarity_proxies,
-        repulsion_proxies=self.repulsion_proxies,
-        compute_gradients=compute_gradients)
-    else:
-      assert self.bond_records is not None
-      assert self.nonbonded_cutoff is not None
-      interaction_proxies = bond_records.recompute_interaction_proxies(
-        structure=self.structure.deep_copy_scatterers(),
-        original_asu_mappings=self.asu_mappings,
-        bond_records=self.bond_records,
-        sites_cart=self._sites_shifted,
-        nonbonded_cutoff=self.nonbonded_cutoff)
-      self.time_compute_target.start()
-      rep_proxies = None
-      if (0):
-        rep_proxies = interaction_proxies.repulsion_proxies.sorted_proxies
-      if (   self.bond_sorted_proxies.n_total()
-          != interaction_proxies.bond_sorted_proxies.n_total()):
-        print "n_total mismatch:",
-        print "original:", self.bond_sorted_proxies.n_total(),
-        print "recomputed:", interaction_proxies.bond_sorted_proxies.n_total()
-      else:
-        print "n_total OK"
-      bond_records.check_bond_proxies(
-        structure=self.structure,
-        sites_cart=self._sites_shifted,
-        sorted_proxies_a=self.bond_sorted_proxies,
-        sorted_proxies_b=interaction_proxies.bond_sorted_proxies)
-      self.target_result = energies(
-        sites_cart=self._sites_shifted,
-        bond_sorted_proxies=interaction_proxies.bond_sorted_proxies,
-        angle_proxies=self.angle_proxies,
-        dihedral_proxies=self.dihedral_proxies,
-        chirality_proxies=self.chirality_proxies,
-        planarity_proxies=self.planarity_proxies,
-        repulsion_proxies=rep_proxies,
-        compute_gradients=compute_gradients)
-    if (0):
-      print "call:"
-      self.target_result.show()
+    self.time_compute_target.start()
+    self.target_result = energies(
+      sites_cart=self._sites_shifted,
+      asu_mappings=self.asu_mappings,
+      bond_asu_proxies=self.bond_asu_proxies,
+      repulsion_asu_proxies=self.repulsion_asu_proxies,
+      compute_gradients=compute_gradients)
     self.time_compute_target.stop()
 
   def __call__(self):
