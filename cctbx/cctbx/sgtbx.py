@@ -82,6 +82,9 @@ class space_group_info:
   def change_basis(self, cb_op):
     return space_group_info(group=self.group().change_basis(cb_op))
 
+  def primitive_setting(self):
+    return self.change_basis(self.group().z2p_op())
+
   def __str__(self):
     cache = self._space_group_info_cache
     if (not hasattr(cache, "_lookup_symbol")):
