@@ -380,7 +380,7 @@ class array(set):
       sigmas=_slice_or_none(self.sigmas(), slice_object))
 
   def show_summary(self, f=sys.stdout):
-    print >> f, "Miller array info:", self.info()
+    print >> f, "Miller %s info:" % self.__class__.__name__, self.info()
     print >> f, "Type of data:", _array_info(self.data())
     print >> f, "Type of sigmas:", _array_info(self.sigmas())
     set.show_summary(self, f)
@@ -807,6 +807,11 @@ class array(set):
       f_000=f_000,
       sharpening=sharpening,
       origin_peak_removal=origin_peak_removal)
+
+class intensity_array(array):
+
+  def __init__(self, miller_array):
+    array._copy_constructor(self, miller_array)
 
 class fft_map(maptbx.crystal_gridding):
 
