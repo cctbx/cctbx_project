@@ -35,15 +35,15 @@ namespace {
   boost::shared_ptr<std::vector<cctbx::Miller::Index> >
   py_BuildMillerIndices_Resolution_d_min(
     const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
+    const sgtbx::SpaceGroupInfo& SgInfo,
     double Resolution_d_min) {
-    return cctbx::BuildMillerIndices(UC, SgOps, Resolution_d_min);
+    return cctbx::BuildMillerIndices(UC, SgInfo, Resolution_d_min);
   }
   boost::shared_ptr<std::vector<cctbx::Miller::Index> >
   py_BuildMillerIndices_MaxIndex(
-    const sgtbx::SpaceGroup& SgOps,
+    const sgtbx::SpaceGroupInfo& SgInfo,
     const cctbx::Miller::Index& MaxIndex) {
-    return cctbx::BuildMillerIndices(SgOps, MaxIndex);
+    return cctbx::BuildMillerIndices(SgInfo, MaxIndex);
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
@@ -58,6 +58,8 @@ namespace {
     UnitCell_converters("uctbx", "UnitCell");
     python::import_converters<sgtbx::SpaceGroup>
     SpaceGroup_converters("sgtbx", "SpaceGroup");
+    python::import_converters<sgtbx::SpaceGroupInfo>
+    SpaceGroupInfo_converters("sgtbx", "SpaceGroupInfo");
     python::import_converters<eltbx::CAASF_WK1995>
     CAASF_WK1995_converters("eltbx.caasf_wk1995", "CAASF_WK1995");
 

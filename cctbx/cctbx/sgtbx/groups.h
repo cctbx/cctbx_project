@@ -652,6 +652,7 @@ namespace sgtbx {
           option is relatively expensive. However, the absolute
           runtime is only a small fraction of a second.
        */
+      explicit
       SpaceGroupInfo(const SpaceGroup& SgOps,
                      bool TidyCBOp = true,
                      int RBF = CRBF, int TBF = CTBF);
