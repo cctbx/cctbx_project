@@ -157,6 +157,7 @@ def exercise_rot_mx():
   r = r.scale(3)
   assert r.den() == 12
   assert r.num() == (36,0,0,0,36,0,0,0,36)
+  assert r.determinant() == 27
   assert rot_mx().inverse().num() == rot_mx().num()
   r3 = (0,-1,0,1,-1,0,0,0,1)
   r = rot_mx(r3).inverse()
@@ -855,6 +856,7 @@ def exercise_site_symmetry():
   u = uctbx.unit_cell((10,10,15,90,90,120))
   g = sgtbx.space_group("-P 3 2")
   s = site_symmetry(unit_cell=u, space_group=g, original_site=(0,0,0))
+  assert s.multiplicity() == 1
   a = (5,2,3,-1,2,-2)
   assert not s.is_compatible_u_star(u_star=a)
   assert s.is_compatible_u_star(u_star=a, tolerance=1.e6)
@@ -874,6 +876,7 @@ def exercise_site_symmetry():
   assert t.indices().size() == 2
   assert t.n_unique() == 2
   s2 = site_symmetry(unit_cell=u, space_group=g, original_site=(0.5,0.5,0.5))
+  assert s2.multiplicity() == 3
   t.process(site_symmetry_ops=s2)
   assert t.indices().size() == 3
   assert t.n_unique() == 3
@@ -881,6 +884,7 @@ def exercise_site_symmetry():
   assert t.indices().size() == 4
   assert t.n_unique() == 3
   s3 = site_symmetry(unit_cell=u, space_group=g, original_site=(0.25,0.66,0.0))
+  assert s3.multiplicity() == 12
   assert s3.is_point_group_1()
   t.process(site_symmetry_ops=s3)
   assert t.indices().size() == 5
@@ -889,16 +893,25 @@ def exercise_site_symmetry():
   assert list(t.indices()) == [1,1,2,1,0]
   assert t.n_special_positions() == 4
   assert list(t.special_position_indices()) == [0,1,2,3]
+  assert t.get(0).multiplicity() == s.multiplicity()
+  assert t.get(1).multiplicity() == s.multiplicity()
+  assert t.get(2).multiplicity() == s2.multiplicity()
+  assert t.get(3).multiplicity() == s.multiplicity()
+  assert t.get(4).multiplicity() == s3.multiplicity()
   assert t.get(0).special_op() == s.special_op()
   assert t.get(1).special_op() == s.special_op()
   assert t.get(2).special_op() == s2.special_op()
   assert t.get(3).special_op() == s.special_op()
+  assert t.get(4).special_op() == s3.special_op()
   assert t.get(0).n_matrices() == 12
+  assert t.get(1).n_matrices() == 12
+  assert t.get(2).n_matrices() == 4
+  assert t.get(3).n_matrices() == 12
   assert t.get(4).n_matrices() == 1
+  for i in xrange(5):
+    assert t.get(i).n_matrices() * t.get(i).multiplicity() == g.order_z()
   assert not t.get(0).is_point_group_1()
   assert t.get(4).is_point_group_1()
-  assert t.get(0).multiplicity(space_group_order_z=g.order_z()) == 1
-  assert t.get(4).multiplicity(g.order_z()) == 12
   assert str(t.get(0).matrices()[0]) == "x,y,z"
   assert str(t.get(4).matrices()[0]) == "x,y,z"
   tc = t.deep_copy()
@@ -919,14 +932,17 @@ def exercise_site_symmetry():
   assert ts.get(3).special_op() == tc.get(1).special_op()
   ts = tc.select(indices=flex.size_t())
   assert ts.indices().size() == 0
-  s = tc.get(0)
-  p = pickle.dumps(s)
-  l = pickle.loads(p)
-  assert l.special_op() == s.special_op()
-  assert len(s.matrices()) == 12
-  assert len(l.matrices()) == 12
-  for unpickled,original in zip(l.matrices(), s.matrices()):
-    assert unpickled == original
+  for i in xrange(tc.indices().size()):
+    s = tc.get(i)
+    p = pickle.dumps(s)
+    l = pickle.loads(p)
+    assert l.multiplicity() == s.multiplicity()
+    assert l.special_op() == s.special_op()
+    if (i == 0):
+      assert len(s.matrices()) == 12
+      assert len(l.matrices()) == 12
+    for unpickled,original in zip(l.matrices(), s.matrices()):
+      assert unpickled == original
   p = pickle.dumps(ts)
   l = pickle.loads(p)
   assert l.indices().size() == 0

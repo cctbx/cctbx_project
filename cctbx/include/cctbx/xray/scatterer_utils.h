@@ -88,19 +88,27 @@ namespace cctbx { namespace xray {
                       i++,j++) {
         sgtbx::site_symmetry_ops const&
           site_symmetry_ops = site_symmetry_table_for_new.get(j);
-        if (!site_symmetry_ops.is_point_group_1()) {
-          scatterers[i].apply_symmetry_site(
-            site_symmetry_ops);
-          scatterers[i].apply_symmetry_u_star(
-            unit_cell,
-            site_symmetry_ops,
-            u_star_tolerance,
-            assert_is_positive_definite,
-            assert_min_distance_sym_equiv);
-        }
+        scatterers[i].apply_symmetry(
+          unit_cell,
+          site_symmetry_ops,
+          u_star_tolerance,
+          assert_is_positive_definite,
+          assert_min_distance_sym_equiv);
         site_symmetry_table.process(site_symmetry_ops);
       }
     }
+  }
+
+  template <typename ScattererType>
+  std::size_t
+  n_undefined_multiplicities(
+    af::const_ref<ScattererType> const& scatterers)
+  {
+    std::size_t result = 0;
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      if (scatterers[i].multiplicity() <= 0) result += 1;
+    }
+    return result;
   }
 
   template <typename AsuMappingsType, typename ScattererType>

@@ -43,6 +43,7 @@ namespace {
         .def("minus_unit_mx", &w_t::minus_unit_mx)
         .def("new_denominator", &w_t::new_denominator)
         .def("scale", &w_t::scale)
+        .def("determinant", &w_t::determinant)
         .def("inverse", &w_t::inverse)
         .def("cancel", &w_t::cancel)
         .def("inverse_cancel", &w_t::inverse_cancel)

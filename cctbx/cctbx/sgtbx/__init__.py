@@ -185,7 +185,7 @@ class _rt_mx(boost.python.injector, ext.rt_mx):
 class _site_symmetry_ops(boost.python.injector, ext.site_symmetry_ops):
 
   def __getinitargs__(self):
-    return (self.special_op(), self.matrices())
+    return (self.multiplicity(), self.special_op(), self.matrices())
 
 class _site_symmetry_table(boost.python.injector, ext.site_symmetry_table):
 

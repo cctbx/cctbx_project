@@ -22,7 +22,10 @@ namespace {
     typedef w_t::float_type flt_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      apply_symmetry_overloads, apply_symmetry, 2, 6)
+      apply_symmetry_1_overloads, apply_symmetry, 2, 6)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      apply_symmetry_2_overloads, apply_symmetry, 2, 5)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       apply_symmetry_u_star_overloads, apply_symmetry_u_star, 2, 5)
@@ -83,11 +86,31 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
-        .def("apply_symmetry", &w_t::apply_symmetry,
-          apply_symmetry_overloads((
+        .def("apply_symmetry",
+          (sgtbx::site_symmetry(w_t::*)(
+             uctbx::unit_cell const&,
+             sgtbx::space_group const&,
+             double,
+             double,
+             bool,
+             bool)) &w_t::apply_symmetry,
+          apply_symmetry_1_overloads((
             arg_("unit_cell"),
             arg_("space_group"),
             arg_("min_distance_sym_equiv")=0.5,
+            arg_("u_star_tolerance")=0,
+            arg_("assert_is_positive_definite")=false,
+            arg_("assert_min_distance_sym_equiv")=true)))
+        .def("apply_symmetry",
+          (void(w_t::*)(
+             uctbx::unit_cell const&,
+             sgtbx::site_symmetry_ops const&,
+             double,
+             bool,
+             bool)) &w_t::apply_symmetry,
+          apply_symmetry_2_overloads((
+            arg_("unit_cell"),
+            arg_("site_symmetry_ops"),
             arg_("u_star_tolerance")=0,
             arg_("assert_is_positive_definite")=false,
             arg_("assert_min_distance_sym_equiv")=true)))
@@ -153,6 +176,11 @@ namespace {
           arg_("u_star_tolerance"),
           arg_("assert_is_positive_definite"),
           arg_("assert_min_distance_sym_equiv")));
+
+    def("n_undefined_multiplicities",
+      (std::size_t(*)(
+        af::const_ref<scatterer<> > const&)) n_undefined_multiplicities, (
+      arg_("scatterers")));
 
     def("asu_mappings_process",
       (void(*)(

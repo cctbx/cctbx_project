@@ -45,11 +45,18 @@ namespace cctbx { namespace sgtbx {
       af::shared<rt_mx> matrices_;
   };
 
+  //! Base class for site_symmetry, holding the essential results.
   class site_symmetry_ops
   {
     public:
-      //! Default constructor.
-      site_symmetry_ops() : special_op_(0, 0) {}
+      //! Default constructor. Some data members are not initialized!
+      site_symmetry_ops() {}
+
+      /*! \brief Number of distinct symmetrically equivalent positions
+          of site_symmetry::exact_site().
+       */
+      int
+      multiplicity() const { return multiplicity_; }
 
       //! Special position operation.
       /*! This operation is used to compute site_symmetry::exact_site() from
@@ -74,16 +81,6 @@ namespace cctbx { namespace sgtbx {
       //! Tests if the site symmetry is point group 1.
       bool
       is_point_group_1() const { return n_matrices() == 1; }
-
-      //! Shorthand for: space_group_order_z / n_matrices()
-      /*! An exception is thrown if space_group_order_z % n_matrices() != 0.
-       */
-      std::size_t
-      multiplicity(std::size_t space_group_order_z) const
-      {
-        CCTBX_ASSERT(space_group_order_z % n_matrices() == 0);
-        return space_group_order_z / n_matrices();
-      }
 
       /*! \brief Tests if the given anisotropic displacement parameters
           u_star are compatible with the site symmetry.
@@ -117,8 +114,7 @@ namespace cctbx { namespace sgtbx {
       site_symmetry_ops
       make_point_group_1() const
       {
-        site_symmetry_ops result;
-        result.special_op_ = rt_mx(1,1);
+        site_symmetry_ops result(multiplicity_*matrices_.size(), 1, 1);
         result.matrices_.push_back(matrices_[0]);
         return result;
       }
@@ -128,6 +124,10 @@ namespace cctbx { namespace sgtbx {
       change_basis(change_of_basis_op const& cb_op) const
       {
         site_symmetry_ops result;
+        boost::rational<int>
+          new_multiplicity = cb_op.c_inv().r().determinant() * multiplicity_;
+        CCTBX_ASSERT(new_multiplicity.denominator() == 1);
+        result.multiplicity_ = new_multiplicity.numerator();
         result.special_op_ = cb_op.apply(special_op_);
         af::const_ref<rt_mx> m = matrices_.const_ref();
         result.matrices_.reserve(m.size());
@@ -140,16 +140,25 @@ namespace cctbx { namespace sgtbx {
 
       //! Support for Python's pickle facility. Do not use for other purposes.
       site_symmetry_ops(
+        int multiplicity,
         rt_mx const& special_op,
         af::shared<rt_mx> const& matrices)
       :
+        multiplicity_(multiplicity),
         special_op_(special_op),
         matrices_(matrices)
       {}
 
     protected:
+      int multiplicity_;
       rt_mx special_op_;
       af::shared<rt_mx> matrices_;
+
+      site_symmetry_ops(int multiplicity, int r_den, int t_den)
+      :
+        multiplicity_(multiplicity),
+        special_op_(r_den, t_den)
+      {}
   };
 
   template <class FloatType>
@@ -290,12 +299,6 @@ namespace cctbx { namespace sgtbx {
         return shortest_distance_sq_ > min_distance_sym_equiv_sq_;
       }
 
-      /*! \brief Number of distinct symmetrically equivalent positions
-          of exact_site().
-       */
-      int
-      multiplicity() const { return multiplicity_; }
-
       //! Oriented and translated site-symmetry point group.
       /*! Not available in Python.
        */
@@ -323,7 +326,6 @@ namespace cctbx { namespace sgtbx {
 
       double shortest_distance_sq_;
       rt_point_group point_group_;
-      int multiplicity_;
       fractional<> exact_site_;
 
       void build_special_op();

@@ -59,8 +59,11 @@ class structure(crystal.special_position_settings):
   def scatterers(self):
     return self._scatterers
 
+  def n_undefined_multiplicities(self):
+    return ext.n_undefined_multiplicities(self._scatterers)
+
   def sites_frac(self):
-    return self.scatterers().extract_sites()
+    return self._scatterers.extract_sites()
 
   def set_sites_frac(self, sites_frac):
     assert sites_frac.size() == self._scatterers.size()
@@ -134,10 +137,8 @@ class structure(crystal.special_position_settings):
         u_star_tolerance=self.u_star_tolerance(),
         assert_is_positive_definite=self.assert_is_positive_definite(),
         assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
-    elif (not site_symmetry_ops.is_point_group_1()):
-      self._scatterers[-1].apply_symmetry_site(
-        site_symmetry_ops=site_symmetry_ops)
-      self._scatterers[-1].apply_symmetry_u_star(
+    else:
+      self._scatterers[-1].apply_symmetry(
         unit_cell=self.unit_cell(),
         site_symmetry_ops=site_symmetry_ops,
         u_star_tolerance=self.u_star_tolerance(),
@@ -363,6 +364,5 @@ class structure(crystal.special_position_settings):
   def difference_vectors_cart(self, other):
     return other.sites_cart() - self.sites_cart()
 
-  def rms(self, other):
-    d = self.difference_vectors_cart(other)
-    return math.sqrt(flex.mean(d.dot(d)))
+  def rms_difference(self, other):
+    return self.sites_cart().rms_difference(other.sites_cart())

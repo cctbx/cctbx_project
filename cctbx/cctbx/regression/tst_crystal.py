@@ -109,12 +109,16 @@ def exercise_site_symmetry(space_group_info):
     tab = sgtbx.site_symmetry_table()
     tab.process(site_symmetry)
     ss_ops = tab.get(0)
-    assert ss_ops.multiplicity(site_symmetry.space_group().order_z()) \
-        == site_symmetry.multiplicity()
+    assert ss_ops.multiplicity() == site_symmetry.multiplicity()
+    assert ss_ops.multiplicity() * ss_ops.n_matrices() \
+        == site_symmetry.space_group().order_z()
     site_p = z2p_op.c() * site_symmetry.exact_site()
     site_symmetry_p = special_position_settings_p.site_symmetry(site_p)
     ss_ops_p = ss_ops.change_basis(z2p_op)
+    assert ss_ops_p.multiplicity() == site_symmetry_p.multiplicity()
     assert ss_ops_p.special_op() == site_symmetry_p.special_op()
+    assert ss_ops_p.multiplicity() * ss_ops_p.n_matrices() \
+        == site_symmetry_p.space_group().order_z()
     references = [str(m) for m in site_symmetry_p.matrices()]
     testees = [str(m) for m in ss_ops_p.matrices()]
     references.sort()
