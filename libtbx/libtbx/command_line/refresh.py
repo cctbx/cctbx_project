@@ -35,7 +35,7 @@ def create_show_path_duplicates(target_dir):
   for file_name in os.listdir(target_dir):
     if (file_name.startswith(".")): continue
     if (file_name.startswith("libtbx.")): continue
-    if (file_name == "python"): continue
+    if (file_name == "python" or file_name.startswith("python.")): continue
     package_names[file_name.split(".")[0]] = None
   package_names = package_names.keys()
   for command in ["show_build_path", "show_dist_paths"]:
