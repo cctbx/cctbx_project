@@ -540,7 +540,7 @@ namespace cctbx {
         FloatType abs_lambda = std::sqrt(af::sum(MV * MV));
         if (abs_lambda == 0.) throw not_positive_definite;
         MV = MV / abs_lambda;
-        af::tiny<FloatType, 3> absMV = af::abs(MV);
+        af::tiny<FloatType, 3> absMV = af::fabs(MV);
         std::size_t iMax = af::max_index(absMV);
         FloatType scaled_tolerance = absMV[iMax] * tolerance;
         bool converged = (af::approx_equal_scaled(
@@ -598,7 +598,7 @@ namespace cctbx {
         std::size_t iLarge[2];
         for(std::size_t iM=0;iM<2;iM++) {
           af::tiny<FloatType, 3>
-          absDiag = af::abs(MatrixLite::DiagonalElements(M[iM]));
+          absDiag = af::fabs(MatrixLite::DiagonalElements(M[iM]));
           iLarge[iM] = af::max_index(absDiag);
           if (iM != 0 && iLarge[1] == iLarge[0]) {
             absDiag[iLarge[1]] = -1.;
