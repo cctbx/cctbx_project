@@ -2,6 +2,7 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
 
 namespace scitbx { namespace af {
@@ -11,14 +12,14 @@ namespace {
   flex<double>::type*
   from_stl_vector_double(std::vector<double> const& v)
   {
-    af::shared<double> result(af::reserve(v.size()));
+    shared<double> result(reserve(v.size()));
     for(std::size_t i=0;i<v.size();i++) {
       result.push_back(v[i]);
     }
     return new flex<double>::type(result, result.size());
   }
 
-  af::shared<double>
+  shared<double>
   extract_double_attributes(
     boost::python::object array,
     const char* attribute_name,
@@ -29,7 +30,7 @@ namespace {
     PyObject* none_substitute_ptr = none_substitute.ptr();
     if (PyList_Check(array_ptr)) {
       std::size_t len_array = PyList_GET_SIZE(array_ptr);
-      af::shared<double> result((reserve(len_array)));
+      shared<double> result((reserve(len_array)));
       for(std::size_t i=0;i<len_array;i++) {
         PyObject* elem = PyList_GET_ITEM(array_ptr, i);
         PyObject* elem_attr = PyObject_GetAttrString(elem, attr_name);
@@ -43,7 +44,7 @@ namespace {
     }
     if (PyTuple_Check(array_ptr)) {
       std::size_t len_array = PyTuple_GET_SIZE(array_ptr);
-      af::shared<double> result((reserve(len_array)));
+      shared<double> result((reserve(len_array)));
       for(std::size_t i=0;i<len_array;i++) {
         PyObject* elem = PyTuple_GET_ITEM(array_ptr, i);
         PyObject* elem_attr = PyObject_GetAttrString(elem, attr_name);
@@ -58,9 +59,32 @@ namespace {
     throw error("array must be a Python list or tuple.");
   }
 
+  bool
+  all_approx_equal_a_a(
+    af::const_ref<double> const& self,
+    af::const_ref<double> const& other,
+    double tolerance=1.e-6)
+  {
+    return self.all_approx_equal(other, tolerance);
+  }
+
+  bool
+  all_approx_equal_a_s(
+    af::const_ref<double> const& self,
+    double other,
+    double tolerance=1.e-6)
+  {
+    return self.all_approx_equal(other, tolerance);
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    all_approx_equal_a_a_overloads, all_approx_equal_a_a, 2, 3)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    all_approx_equal_a_s_overloads, all_approx_equal_a_s, 2, 3)
 
   void wrap_flex_double()
   {
@@ -70,6 +94,18 @@ namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("__init__", make_constructor(
         from_stl_vector_double, default_call_policies()))
+      .def("all_approx_equal",
+        all_approx_equal_a_a,
+        all_approx_equal_a_a_overloads((
+          arg_("self"),
+          arg_("other"),
+          arg_("tolerance")=1.e-6)))
+      .def("all_approx_equal",
+        all_approx_equal_a_s,
+        all_approx_equal_a_s_overloads((
+          arg_("self"),
+          arg_("other"),
+          arg_("tolerance")=1.e-6)))
       .def("matrix_diagonal",
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&)) matrix_diagonal)

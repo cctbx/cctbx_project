@@ -562,6 +562,13 @@ def exercise_functions():
   b = flex.double((1, 1, 1))
   assert (flex.mean(a) - flex.mean_weighted(a, b)) < 1.e-6
   assert (flex.mean_sq(a) - flex.mean_sq_weighted(a, b)) < 1.e-6
+  assert a.all_approx_equal(a)
+  assert a.all_approx_equal(other=a, tolerance=1.e-6)
+  assert not a.all_approx_equal(other=b)
+  assert a.all_approx_equal(b, tolerance=3)
+  assert not a.all_approx_equal(1)
+  assert b.all_approx_equal(other=1)
+  assert a.all_approx_equal(other=1, tolerance=3)
   a = flex.std_string(["a"]*3 + ["b"]*4)
   assert a.count("a") == 3
   assert a.count("b") == 4
