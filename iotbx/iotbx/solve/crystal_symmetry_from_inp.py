@@ -14,7 +14,7 @@ def extract_from(file_name=None, file=None, monitor_initial=None):
       if (is_binary is not None):
         if (is_binary): break
         detect_binary = None
-    flds = line.split()
+    flds = line.split("!",1)[0].split()
     if (len(flds) > 0):
       keyword = flds[0].upper()
       if (keyword == "CELL"):
