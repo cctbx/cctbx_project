@@ -189,7 +189,7 @@ namespace {
         .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu,
           (arg_("moved_original_site"), arg_("i_seq"), arg_("i_sym")))
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
-        .def("is_direct_interaction", &w_t::is_direct_interaction,
+        .def("is_simple_interaction", &w_t::is_simple_interaction,
           (arg_("pair")))
         .def("interaction_type_id", &w_t::interaction_type_id,
           (arg_("pair")))
