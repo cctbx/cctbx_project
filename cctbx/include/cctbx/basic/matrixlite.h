@@ -168,11 +168,11 @@ namespace cctbx {
                              const af::tiny<FloatType, 9>& T)
     {
       af::tiny<FloatType, 9> CT;
-      multiply<FloatType>(C.elems, T.elems, 3, 3, 3, CT.elems);
+      multiply<FloatType>(C.begin(), T.begin(), 3, 3, 3, CT.begin());
       af::tiny<FloatType, 9> Ct;
-      transpose<FloatType>(C.elems, 3, 3, Ct.elems);
+      transpose<FloatType>(C.begin(), 3, 3, Ct.begin());
       af::tiny<FloatType, 9> CTCt;
-      multiply<FloatType>(CT.elems, Ct.elems, 3, 3, 3, CTCt.elems);
+      multiply<FloatType>(CT.begin(), Ct.begin(), 3, 3, 3, CTCt.begin());
       return CTCt;
     }
 

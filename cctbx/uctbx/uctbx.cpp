@@ -44,8 +44,8 @@ namespace { // Helper functions in anonymous namespace.
   af::double3 CrossG(const double& sqrtdetG, const af::double9& G,
                      const af::double3& r, const af::double3& s) {
     af::double3 Gr, Gs;
-    MatrixLite::multiply<double>(G.elems, r.elems, 3, 3, 1, Gr.elems);
-    MatrixLite::multiply<double>(G.elems, s.elems, 3, 3, 1, Gs.elems);
+    MatrixLite::multiply<double>(G.begin(), r.begin(), 3, 3, 1, Gr.begin());
+    MatrixLite::multiply<double>(G.begin(), s.begin(), 3, 3, 1, Gs.begin());
     return sqrtdetG * MatrixLite::cross_product(Gr, Gs);
   }
 

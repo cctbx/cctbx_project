@@ -61,9 +61,9 @@ namespace cctbx {
   inline af::double9 getRtGR(const af::double9& G, const af::double9& R)
   {
     af::double9 Rt, GR, RtGR;
-    MatrixLite::transpose<double>(R.elems, 3, 3, Rt.elems);
-    MatrixLite::multiply<double>(G.elems, R.elems, 3, 3, 3, GR.elems);
-    MatrixLite::multiply<double>(Rt.elems, GR.elems, 3, 3, 3, RtGR.elems);
+    MatrixLite::transpose<double>(R.begin(), 3, 3, Rt.begin());
+    MatrixLite::multiply<double>(G.begin(), R.begin(), 3,3,3, GR.begin());
+    MatrixLite::multiply<double>(Rt.begin(), GR.begin(), 3,3,3, RtGR.begin());
     return RtGR;
   }
 

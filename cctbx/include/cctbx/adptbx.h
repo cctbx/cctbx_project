@@ -523,7 +523,8 @@ namespace cctbx {
       unsigned int RunAwayCounter = 0;
       for (;;) {
         af::tiny<FloatType, 3> MV;
-        MatrixLite::multiply<FloatType>(M.elems, V.elems, 3, 3, 1, MV.elems);
+        MatrixLite::multiply<FloatType>(
+          M.begin(), V.begin(), 3, 3, 1, MV.begin());
         FloatType abs_lambda = std::sqrt(af::sum(MV * MV));
         if (abs_lambda == 0.) throw not_positive_definite;
         MV = MV / abs_lambda;
