@@ -41,6 +41,20 @@ namespace cctbx {
     return std::string(buf);
   }
 
+  template <typename ArrayType>
+  typename ArrayType::value_type
+  array_lcm(ArrayType const& a)
+  {
+    typename ArrayType::value_type result;
+    if (a.size() > 0) {
+      result = a[0];
+      for(std::size_t i=1;i<a.size();i++) {
+        result = boost::lcm(result, a[i]);
+      }
+    }
+    return result;
+  }
+
 } // namespace cctbx
 
 #endif // CCTBX_RATIONAL_H
