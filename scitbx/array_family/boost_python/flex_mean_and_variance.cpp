@@ -27,8 +27,14 @@ namespace scitbx { namespace af { namespace boost_python { namespace {
         .def(init<af::const_ref<double> const&,
                   af::const_ref<double> const&>())
         .def("mean", &w_t::mean)
-        .def("variance", &w_t::variance)
-        .def("standard_deviation", &w_t::standard_deviation)
+        .def("gsl_variance", &w_t::gsl_variance)
+        .def("gsl_standard_deviation", &w_t::gsl_standard_deviation)
+        .def("cumulative_variance", &w_t::cumulative_variance)
+        .def("cumulative_standard_deviation",
+          &w_t::cumulative_standard_deviation)
+        .def("conservative_variance", &w_t::conservative_variance)
+        .def("conservative_standard_deviation",
+          &w_t::conservative_standard_deviation)
         .def("sum_weights", &w_t::sum_weights)
         .def("sum_weights_sq", &w_t::sum_weights_sq)
         .def("sum_weights_values", &w_t::sum_weights_values)
