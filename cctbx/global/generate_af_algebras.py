@@ -478,12 +478,12 @@ def generate_2arg_element_wise(
        prefix + function_name, addl_args[1])
 
 def one_type(array_type_name):
-  f = open("%s_operators.h" % (array_type_name,), "w")
+  f = open("%s_algebra.h" % (array_type_name,), "w")
   sys.stdout = f
   write_copyright()
   print """
-#ifndef CCTBX_ARRAY_FAMILY_%s_OPERATORS_H
-#define CCTBX_ARRAY_FAMILY_%s_OPERATORS_H
+#ifndef CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
+#define CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
 """ % ((array_type_name.upper(),) * 2)
   if (array_type_name != "ref"):
     print """#include <cmath>
@@ -535,7 +535,7 @@ namespace cctbx { namespace af {
 
   print """}} // namespace cctbx::af
 
-#endif // CCTBX_ARRAY_FAMILY_%s_OPERATORS_H""" % (array_type_name.upper(),)
+#endif // CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H""" % (array_type_name.upper(),)
   sys.stdout = sys.__stdout__
   f.close()
 

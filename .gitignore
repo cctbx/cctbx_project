@@ -1,10 +1,10 @@
 cctbx/cctbx/array_family/flagged_value_operators.h
 cctbx/cctbx/array_family/operator_traits_builtin.h
-cctbx/cctbx/array_family/ref_operators.h
-cctbx/cctbx/array_family/shared_operators.h
-cctbx/cctbx/array_family/small_operators.h
-cctbx/cctbx/array_family/tiny_operators.h
-cctbx/cctbx/array_family/versa_operators.h
+cctbx/cctbx/array_family/ref_algebra.h
+cctbx/cctbx/array_family/shared_algebra.h
+cctbx/cctbx/array_family/small_algebra.h
+cctbx/cctbx/array_family/tiny_algebra.h
+cctbx/cctbx/array_family/versa_algebra.h
 cctbx/cctbx/carray_bpl.h
 cctbx/cctbx/vector/algebra.h
 cctbx/cctbx/vector/algebra_operators.h

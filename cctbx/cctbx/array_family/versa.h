@@ -45,6 +45,6 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/versa_operators.h>
+#include <cctbx/array_family/versa_algebra.h>
 
 #endif // CCTBX_ARRAY_FAMILY_VERSA_H

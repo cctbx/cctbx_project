@@ -31,6 +31,6 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/tiny_operators.h>
+#include <cctbx/array_family/tiny_algebra.h>
 
 #endif // CCTBX_ARRAY_FAMILY_TINY_H
