@@ -282,6 +282,7 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
 
   def show_summary(self, f=None, prefix=""):
+    "Minimal Miller set summary"
     if (f is None): f = sys.stdout
     print >> f, prefix + "Number of Miller indices:", len(self.indices())
     print >> f, prefix + "Anomalous flag:", self.anomalous_flag()
@@ -289,6 +290,7 @@ class set(crystal.symmetry):
     return self
 
   def show_comprehensive_summary(self, f=None, prefix=""):
+    "Comprehensive Miller set or array summary"
     if (f is None): f = sys.stdout
     self.show_summary(f=f, prefix=prefix)
     no_sys_abs = self.copy()
@@ -1471,6 +1473,7 @@ class array(set):
     return binned_data(binner=lhs.binner(), data=data, data_fmt="%6.3f")
 
   def show_array(self, f=None, prefix=""):
+    "Listing of Miller indices and data"
     if (f is None): f = sys.stdout
     assert self.data().size() == self.indices().size()
     if (self.sigmas() is None):
