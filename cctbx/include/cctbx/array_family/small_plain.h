@@ -108,7 +108,7 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(small_plain,
         ((ElementType*)(m_elems.buffer)), m_size) // fix this
 
-      CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), N)
+      CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), m_size)
 
       void swap(small_plain<ElementType, N>& other) {
         std::swap(*this, other);
