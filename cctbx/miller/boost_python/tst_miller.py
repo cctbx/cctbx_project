@@ -392,6 +392,17 @@ def exercise_phase_interpolation():
     centric_flags, reference_amplitudes, f_1, f_2, 0001, 1.e-10)),
     (10, 20, 30, 40, 32))
 
+def exercise_phase_transfer():
+  sg = sgtbx.space_group_info("P 21 21 21").group()
+  i = flex.miller_index(((1,2,3), (3,0,3)))
+  a = flex.double((3,4))
+  p = flex.complex_double((1+2j, 0))
+  assert approx_equal(tuple(miller.phase_transfer(sg, i, a, p, 1.e-10)),
+                      ((1.341640786+2.68328157j), 0j))
+  a = flex.complex_double((3,4))
+  assert approx_equal(tuple(miller.phase_transfer(sg, i, a, p, 1.e-10)),
+                      ((1.341640786+2.68328157j), 0j))
+
 def run():
   exercise_sym_equiv()
   exercise_asu()
@@ -402,6 +413,7 @@ def run():
   exercise_match_bijvoet_mates()
   exercise_match_indices()
   exercise_phase_interpolation()
+  exercise_phase_transfer()
   print "OK"
 
 if (__name__ == "__main__"):
