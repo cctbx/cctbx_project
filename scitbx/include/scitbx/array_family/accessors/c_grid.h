@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 // The implementations in this file are highly redundant in order
 // to help the optimizer.
 
@@ -19,13 +10,13 @@
 
 namespace scitbx { namespace af {
 
-  template <std::size_t Nd>
-  class c_grid : public tiny<std::size_t, Nd>
+  template <std::size_t Nd, typename IndexValueType=std::size_t>
+  class c_grid : public tiny<IndexValueType, Nd>
   {
     public:
-      typedef tiny<std::size_t, Nd> index_type;
-      typedef typename index_type::value_type index_value_type;
+      typedef IndexValueType index_value_type;
       typedef index_value_type value_type;
+      typedef tiny<IndexValueType, Nd> index_type;
 
       c_grid() { for(std::size_t i=0;i<Nd;i++) this->elems[i] = 0; }
 
@@ -79,13 +70,13 @@ namespace scitbx { namespace af {
       }
   };
 
-  template <>
-  class c_grid<2> : public tiny<std::size_t, 2>
+  template <typename IndexValueType>
+  class c_grid<2, IndexValueType> : public tiny<IndexValueType, 2>
   {
     public:
-      typedef tiny<std::size_t, 2> index_type;
-      typedef index_type::value_type index_value_type;
+      typedef IndexValueType index_value_type;
       typedef index_value_type value_type;
+      typedef tiny<IndexValueType, 2> index_type;
 
       c_grid() : index_type(0,0) {}
 
@@ -144,13 +135,13 @@ namespace scitbx { namespace af {
       }
   };
 
-  template <>
-  class c_grid<3> : public tiny<std::size_t, 3>
+  template <typename IndexValueType>
+  class c_grid<3, IndexValueType> : public tiny<IndexValueType, 3>
   {
     public:
-      typedef tiny<std::size_t, 3> index_type;
-      typedef index_type::value_type index_value_type;
+      typedef IndexValueType index_value_type;
       typedef index_value_type value_type;
+      typedef tiny<IndexValueType, 3> index_type;
 
       c_grid() : index_type(0,0,0) {}
 
