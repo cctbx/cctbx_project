@@ -32,17 +32,20 @@ def symmetry_flags(use_space_group_symmetry,
 
 use_space_group_symmetry = symmetry_flags(use_space_group_symmetry=0001)
 
-def peak_list(data,
-              tags,
-              peak_search_level=1,
-              max_peaks=0,
-              peak_cutoff=None,
-              interpolate=0001):
-  if (peak_cutoff is None):
-    return ext.peak_list(
-      data, tags, peak_search_level, max_peaks, interpolate)
-  return ext.peak_list(
-    data, tags, peak_search_level, peak_cutoff, max_peaks, interpolate)
+class peak_list(ext.peak_list):
+
+  def __init__(self, data,
+                     tags,
+                     peak_search_level=1,
+                     max_peaks=0,
+                     peak_cutoff=None,
+                     interpolate=0001):
+    if (peak_cutoff is None):
+      ext.peak_list.__init__(self,
+        data, tags, peak_search_level, max_peaks, interpolate)
+    else:
+      ext.peak_list.__init__(self,
+        data, tags, peak_search_level, peak_cutoff, max_peaks, interpolate)
 
 def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
   return ext.as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling)
