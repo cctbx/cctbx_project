@@ -11,7 +11,7 @@ import cctbx
 import scitbx.math
 from scitbx.python_utils import complex_math
 from libtbx.test_utils import approx_equal
-import StringIO
+from cStringIO import StringIO
 import random
 import math
 import sys
@@ -79,7 +79,7 @@ def exercise_set():
     min_fraction_bijvoet_pairs=4/5.-1.e-4).anomalous_flag() == True
   assert ma.auto_anomalous(
     min_fraction_bijvoet_pairs=4/5.+1.e-4).anomalous_flag() == False
-  s = StringIO.StringIO()
+  s = StringIO()
   mc.show_comprehensive_summary(f=s)
   assert s.getvalue() == """\
 Number of Miller indices: 36
@@ -105,7 +105,7 @@ def exercise_binner():
       anomalous_flag=anomalous_flag,
       d_min=10)
     set1.setup_binner(n_bins=3)
-    s = StringIO.StringIO()
+    s = StringIO()
     set1.binner().show_summary(f=s)
     assert s.getvalue() == """\
 unused:         - 28.7186 [0/0]
@@ -119,7 +119,7 @@ unused: 10.0715 -         [0/0]
       anomalous_flag=anomalous_flag,
       d_min=8)
     set2.use_binning_of(set1)
-    s = StringIO.StringIO()
+    s = StringIO()
     set2.completeness(use_binning=True).show(f=s)
     assert s.getvalue() == """\
 unused:         - 28.7186 [0/0]
@@ -128,7 +128,7 @@ bin  2: 14.1305 - 11.4473 [3/3] 1.000
 bin  3: 11.4473 - 10.0715 [2/2] 1.000
 unused: 10.0715 -         [8/8] 1.000
 """
-    s = StringIO.StringIO()
+    s = StringIO()
     set2.completeness(use_binning=True).show(show_bin_number=False, f=s)
     assert s.getvalue() == """\
         - 28.7186 [0/0]
@@ -137,7 +137,7 @@ unused: 10.0715 -         [8/8] 1.000
 11.4473 - 10.0715 [2/2] 1.000
 10.0715 -         [8/8] 1.000
 """
-    s = StringIO.StringIO()
+    s = StringIO()
     set2.completeness(use_binning=True).show(show_d_range=False, f=s)
     assert s.getvalue() == """\
 unused: [0/0]
@@ -146,7 +146,7 @@ bin  2: [3/3] 1.000
 bin  3: [2/2] 1.000
 unused: [8/8] 1.000
 """
-    s = StringIO.StringIO()
+    s = StringIO()
     set2.completeness(use_binning=True).show(show_counts=False, f=s)
     assert s.getvalue() == """\
 unused:         - 28.7186
@@ -155,7 +155,7 @@ bin  2: 14.1305 - 11.4473 1.000
 bin  3: 11.4473 - 10.0715 1.000
 unused: 10.0715 -         1.000
 """
-    s = StringIO.StringIO()
+    s = StringIO()
     set2.completeness(use_binning=True).show(
       show_bin_number=False, show_d_range=False, show_counts=False, f=s)
     assert s.getvalue() == """\
@@ -437,6 +437,55 @@ def exercise_array():
   a = miller.array(miller_set=a, data=flex.complex_double([1+2j,2-3j]))
   c = a.conjugate()
   assert approx_equal(a.data(), flex.conj(c.data()))
+  ms = miller_set=miller.build_set(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(11,11,13,90,90,120),
+      space_group_symbol="P31m"),
+    anomalous_flag=True,
+    d_min=3)
+  ma = miller.array(
+    miller_set=ms,
+    data=flex.double(xrange(ms.indices().size())))
+  ma.set_observation_type_xray_amplitude()
+  assert ma.select_acentric().data().size() == 48
+  assert ma.select_centric().data().size() == 3
+  ma.setup_binner(auto_binning=True).counts_complete(
+    include_acentric=False,
+    include_centric=False)
+  assert ma.binner().counts_complete() == [0]*10
+  for i_trial in [0,1]:
+    if (i_trial == 1): ma = ma.f_as_f_sq()
+    assert approx_equal(ma.second_moment_of_intensities(), 1.81758415842)
+    assert approx_equal(ma.wilson_ratio(), 0.742574257426)
+    ma.setup_binner(auto_binning=True).counts_complete(include_centric=False)
+    s = StringIO()
+    ma.second_moment_of_intensities(use_binning=True).show(f=s)
+    assert s.getvalue() == """\
+unused:         - 13.0001 [ 0/0 ]
+bin  1: 13.0001 -  5.9727 [ 7/6 ]  2.1658
+bin  2:  5.9727 -  4.8197 [ 8/8 ]  1.1899
+bin  3:  4.8197 -  4.2345 [ 5/4 ]  1.6278
+bin  4:  4.2345 -  3.8585 [ 6/6 ]  1.2952
+bin  5:  3.8585 -  3.5881 [ 4/4 ]  1.0429
+bin  6:  3.5881 -  3.3805 [ 8/8 ]  1.2980
+bin  7:  3.3805 -  3.2139 [ 2/2 ]  1.0234
+bin  8:  3.2139 -  3.0759 [11/10]  1.2283
+unused:  3.0759 -         [ 0/0 ]
+"""
+    s = StringIO()
+    ma.wilson_ratio(use_binning=True).show(f=s)
+    assert s.getvalue() == """\
+unused:         - 13.0001 [ 0/0 ]
+bin  1: 13.0001 -  5.9727 [ 7/6 ]  0.6007
+bin  2:  5.9727 -  4.8197 [ 8/8 ]  0.9349
+bin  3:  4.8197 -  4.2345 [ 5/4 ]  0.7079
+bin  4:  4.2345 -  3.8585 [ 6/6 ]  0.9247
+bin  5:  3.8585 -  3.5881 [ 4/4 ]  0.9892
+bin  6:  3.5881 -  3.3805 [ 8/8 ]  0.9079
+bin  7:  3.3805 -  3.2139 [ 2/2 ]  0.9941
+bin  8:  3.2139 -  3.0759 [11/10]  0.9134
+unused:  3.0759 -         [ 0/0 ]
+"""
 
 def exercise_array_2(space_group_info):
   xs = crystal.symmetry(

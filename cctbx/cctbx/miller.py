@@ -41,7 +41,10 @@ class binner(ext.binner):
         self._counts_given.append(self.count(i_bin))
     return self._counts_given
 
-  def counts_complete(self, d_min_tolerance=1.e-6):
+  def counts_complete(self,
+        include_centric=True,
+        include_acentric=True,
+        d_min_tolerance=1.e-6):
     if (self._counts_complete is None):
       assert self.anomalous_flag in (False, True)
       complete_set = build_set(
@@ -50,6 +53,10 @@ class binner(ext.binner):
           space_group_info=self.space_group_info),
         anomalous_flag=self.anomalous_flag,
         d_min=self.given_indices_d_min*(1-d_min_tolerance))
+      if (not include_centric):
+        complete_set = complete_set.select_acentric()
+      if (not include_acentric):
+        complete_set = complete_set.select_centric()
       binner_complete = binner(binning=self, miller_set=complete_set)
       self._counts_complete = binner_complete.counts_given()
     return self._counts_complete
@@ -390,6 +397,12 @@ class set(crystal.symmetry):
     i = self.indices().select(selection)
     return set(self, i, anomalous_flag)
 
+  def select_acentric(self):
+    return self.select(~self.centric_flags().data())
+
+  def select_centric(self):
+    return self.select(self.centric_flags().data())
+
   def remove_systematic_absences(self, negate=False):
     return self.select(
       selection=self.sys_absent_flags().data(),
@@ -556,11 +569,11 @@ class set(crystal.symmetry):
         exp_table_one_over_step_size=exp_table_one_over_step_size).f_calc())
 
   def setup_binner(self, d_max=0, d_min=0,
-                   auto_binning=0,
+                   auto_binning=False,
                    reflections_per_bin=0,
                    n_bins=0):
-    assert auto_binning != 0 or reflections_per_bin != 0 or n_bins != 0
-    assert auto_binning != 0 or (reflections_per_bin == 0 or n_bins == 0)
+    assert auto_binning or reflections_per_bin != 0 or n_bins != 0
+    assert auto_binning or (reflections_per_bin == 0 or n_bins == 0)
     if (auto_binning):
       if (reflections_per_bin == 0): reflections_per_bin = 200
       if (n_bins == 0): n_bins = 8
@@ -1056,7 +1069,7 @@ class array(set):
        for i_column in (0,1)])
 
   def anomalous_signal(self, use_binning=False):
-    "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
+    "sqrt((<||F(+)|-|F(-)||**2>)/(1/2(<|F(+)|>**2+<|F(-)|>**2)))"
     assert not use_binning or self.binner() is not None
     if (not use_binning):
       obs = self.select(self.data() > 0)
@@ -1076,6 +1089,47 @@ class array(set):
       sel = self.binner().selection(i_bin)
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
+
+  def second_moment(self, use_binning=False):
+    "<data^2>/(<data>)^2"
+    assert not use_binning or self.binner() is not None
+    if (not use_binning):
+      if (self.indices().size() == 0): return None
+      mean_data_sq = flex.mean(self.data())**2
+      if (mean_data_sq == 0): return None
+      return flex.mean_sq(self.data()) / mean_data_sq
+    result = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      result.append(self.select(sel).second_moment())
+    return binned_data(binner=self.binner(), data=result, data_fmt="%7.4f")
+
+  def second_moment_of_intensities(self, use_binning=False):
+    "<I^2>/(<I>)^2 (2.0 for untwinned, 1.5 for twinned data)"
+    if (self.is_xray_intensity_array()):
+      a = self
+    else:
+      a = self.f_as_f_sq()
+      if (use_binning):
+        a.use_binner_of(self)
+    return a.second_moment(use_binning=use_binning)
+
+  def wilson_ratio(self, use_binning=False):
+    "(<F>)^2/<F^2> (0.785 for untwinned, 0.885 for twinned data)"
+    if (not self.is_xray_intensity_array()):
+      a = self
+    else:
+      a = self.f_sq_as_f()
+      if (use_binning):
+        a.use_binner_of(self)
+    second_moment = a.second_moment(use_binning=use_binning)
+    if (second_moment is None): return None
+    if (not use_binning): return 1/second_moment
+    result = []
+    for sm in second_moment.data:
+      if (sm is None or sm == 0): result.append(None)
+      else: result.append(1/sm)
+    return binned_data(binner=a.binner(), data=result, data_fmt="%7.4f")
 
   def select(self, selection, negate=False, anomalous_flag=None):
     assert self.indices() is not None
@@ -1491,11 +1545,11 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
                   origin_peak_removal=False):
   assert f_patt.is_patterson_symmetry()
   if (sharpening):
-    f_patt.setup_binner(auto_binning=1)
+    f_patt.setup_binner(auto_binning=True)
     f_patt = f_patt.quasi_normalize_structure_factors()
   i_patt = f_patt.f_as_f_sq()
   if (origin_peak_removal):
-    i_patt.setup_binner(auto_binning=1)
+    i_patt.setup_binner(auto_binning=True)
     i_patt = i_patt.remove_patterson_origin_peak()
   i_patt = array(i_patt, data=flex.polar(i_patt.data(), 0))
   if (f_000 is not None):
