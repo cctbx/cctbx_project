@@ -222,8 +222,7 @@ def run_cns(elements, xtal, d_min, grid_resolution_factor,
   except: pass
   os.system("cns < tmp.cns > tmp.out")
   f = open("tmp.hkl", "r")
-  reader = cns_input.CNS_xray_reflection_Reader(f)
-  reflection_file = reader.load()
+  reflection_file = cns_input.cns_reflection_file(f)
   f.close()
   f_dir_h = reflection_file.reciprocal_space_objects["F_DIR"].H
   f_dir_f = reflection_file.reciprocal_space_objects["F_DIR"].data

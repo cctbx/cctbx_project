@@ -100,8 +100,7 @@ def exercise(SgInfo, d_min=2., friedel_flag=0, verbose=0):
   except: pass
   os.system("cns < tmp.cns > tmp.out")
   f = open("tmp.hkl", "r")
-  reader = cns_input.CNS_xray_reflection_Reader(f)
-  reflection_file = reader.load()
+  reflection_file = cns_input.cns_reflection_file(f)
   f.close()
   if (0 or verbose):
     print reflection_file
