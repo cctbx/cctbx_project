@@ -1,4 +1,5 @@
 from iotbx.mtz import extract_from_symop_lib
+from cctbx import miller
 from cctbx.array_family import flex
 
 def setSpaceGroup(self, space_group_info, symbol=None):
@@ -116,3 +117,32 @@ def add_miller_array(self, miller_array, mtz_label):
     if (asu.sigmas()):
       self._columnCombinations(
         self.label_sigmas(mtz_label),"L",carry_miller,carry_sigma)
+
+def miller_array_export_as_mtz(self, file_name, column_label,
+                                     title=None,
+                                     crystal_label="crystal",
+                                     project_label="project",
+                                     dataset_label="dataset",
+                                     wavelength=1.0):
+  from iotbx import mtz
+  from cctbx import uctbx
+  from cctbx import sgtbx
+  w = mtz.MtzWriter()
+  if (title == None):
+    title = self.info()
+  if (title == None):
+    title = "cctbx.miller.array"
+  unit_cell = self.unit_cell()
+  if (unit_cell == None):
+    unit_cell = uctbx.unit_cell((1,1,1,90,90,90))
+  space_group_info = self.space_group_info()
+  if (space_group_info == None):
+    space_group_info = sgtbx.space_group_info(symbol="P 1")
+  w.setTitle(title)
+  w.setSpaceGroup(space_group_info)
+  w.oneCrystal(crystal_label, project_label, unit_cell)
+  w.oneDataset(dataset_label, wavelength)
+  w.add_miller_array(self, column_label)
+  w.write(file_name)
+
+miller.array.export_as_mtz = miller_array_export_as_mtz

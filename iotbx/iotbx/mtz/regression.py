@@ -110,6 +110,7 @@ def recycle(miller_array, mtz_label, verbose=0):
   r = p.as_miller_arrays()
   assert len(r) == 1
   verify_miller_arrays(miller_array, r[0])
+  miller_array.export_as_mtz("tmp.mtz", column_label="data")
 
 def verify_miller_arrays(a1, a2):
   v = a2.adopt_set(a1)
