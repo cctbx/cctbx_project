@@ -203,15 +203,37 @@ class scope:
 
   def __init__(self,
         name,
-        objects):
-    if (objects is None): objects = []
+        objects,
+        help=None,
+        caption=None,
+        short_caption=None,
+        expert_level=None):
     introspection.adopt_init_args()
+    self.attribute_names = self.__init__varnames__[3:]
+
+  def has_attribute_with_name(self, name):
+    return name in self.attribute_names
+
+  def assign_attribute(self, name, value_words):
+    assert self.has_attribute_with_name(name)
+    if (name in ["expert_level"]):
+      value = int_from_value_words(value_words)
+    else:
+      value = str_from_value_words(value_words)
+    setattr(self, name, value)
 
   def show(self, out, prefix="", attributes_level=0, print_width=79,
                  previous_object=None):
     if (previous_object is not None):
       print >> out, prefix.rstrip()
-    print >> out, prefix + self.name + " {"
+    print >> out, prefix + self.name
+    show_attributes(
+      self=self,
+      out=out,
+      prefix=prefix,
+      attributes_level=attributes_level,
+      print_width=print_width)
+    print >> out, prefix+"{"
     previous_object = None
     for object in self.objects:
       object.show(

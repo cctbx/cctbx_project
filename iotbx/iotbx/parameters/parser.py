@@ -30,7 +30,7 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
       table = parameters.table(name=word.value, row_names=[], row_objects=[])
       while True:
         word = word_stack.pop_unquoted()
-        if (word.value[0] != "."): break
+        if (word.value[:1] != "."): break
         if (not table.has_attribute_with_name(word.value[1:])):
           raise RuntimeError(
             "Unexpected table attribute: %s%s" % (
@@ -62,18 +62,32 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
         raise RuntimeError(
           'Syntax error: unexpected "{"%s' % lead_word.where_str())
       word = word_stack.pop()
-      if (word.quote_token is None and word.value == "{"):
+      if (word.quote_token is None
+          and (word.value == "{"
+            or (word.line_number != lead_word.line_number
+                and word.value[:1] == "."))):
         if (not parameters.is_standard_identifier(lead_word.value)):
           lead_word.raise_syntax_error("improper scope name ")
-        objects.append(parameters.scope(
-          name=lead_word.value,
-          objects=collect_objects(
-            word_stack=word_stack,
-            definition_type_names=definition_type_names,
-            stop_token="}")))
+        scope = parameters.scope(name=lead_word.value, objects=None)
+        while True:
+          if (word.value[:1] == "{"):
+            break
+          if (not scope.has_attribute_with_name(word.value[1:])):
+            raise RuntimeError(
+              "Unexpected scope attribute: %s%s" % (
+                word.value, word.where_str()))
+          scope.assign_attribute(
+            name=word.value[1:],
+            value_words=collect_values(word_stack, word, stop_token))
+          word = word_stack.pop_unquoted()
+        scope.objects = collect_objects(
+          word_stack=word_stack,
+          definition_type_names=definition_type_names,
+          stop_token="}")
+        objects.append(scope)
       else:
         word_stack.push_back(word)
-        if (lead_word.value[0] != "."):
+        if (lead_word.value[:1] != "."):
           if (not parameters.is_standard_identifier(lead_word.value)):
             lead_word.raise_syntax_error("improper definition name ")
           objects.append(parameters.definition(
