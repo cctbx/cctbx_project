@@ -8,8 +8,21 @@ class write_makefiles:
 
   def __init__(self, configuration):
     self.platform = strip(configuration[0])
-    assert (self.platform in ("tru64_cxx", "linux_gcc", "irix_CC",
-                              "mingw32", "vc60"))
+    if (not (self.platform in ("tru64_cxx", "linux_gcc", "irix_CC",
+                               "mingw32", "vc60"))):
+      stdout = sys.stdout
+      sys.stdout = sys.__stdout__
+      print "*" * 78
+      print 'WARNING: Unsupported platform identifier: "' \
+            + self.platform + '"'
+      print "If the installation fails you might have to modify the file"
+      print "cctbx/build/makefile_generator.py"
+      print "If there are error messages, study them carefully."
+      print "The installation will proceed in 20 seconds."
+      print "*" * 78
+      sys.stdout = stdout
+      import time
+      time.sleep(20)
     self.macros = configuration[1:]
     # remove empty lines at beginning
     while (len(strip(self.macros[0])) == 0): del self.macros[0]

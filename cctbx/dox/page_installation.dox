@@ -1,4 +1,4 @@
-/*! \page page_installation Installation
+/*! \page page_installation cctbx - Installation
 
 <hr>
 
@@ -58,8 +58,8 @@ libboost_python.a (Unix) or boost_python.lib (Microsoft Visual C++).
 \par
 Of course, Python itself is also required for compiling and using the
 cctbx Python bindings. Currently, Python version 1.5.2 is used in the
-development. Some limited testing has been done with Python 2.0. It is
-expected that the cctbx is fully functional with Python 2.0.
+development. On the supported Unix platforms the cctbx has also been
+tested with Python 2.0.
 
 \section installing_compilers Compilers
 
@@ -97,7 +97,7 @@ instructions for other platforms are provided here:
 
   \ref installation_python_unix
 
-\section installing_fast_track Fast-track installation of the cctbx including Boost
+\section installation_fast_track Fast-track installation of the cctbx including Boost
 
 The cctbx distribution includes a set of "fast track" csh and Python
 installation scripts for all supported configurations. These scripts
@@ -136,11 +136,12 @@ can be used if the following assumptions are valid:
 
 If any of the assumptions is not valid, you have to adjust the
 pathnames in the Boost.Python makefile and the
-<tt>configuration</tt> file for the cctbx, and execute the commands in
-the fast track scripts manually. This is explained in more detail in
-the \ref page_installation_advanced section.
+<tt>configuration</tt> file for the cctbx and use a
+generic fast_track.py script for all platforms.
+This is explained in more detail in the following section.
 
-Both Boost.Python and the cctbx can now be installed with just one
+If all assumptions above are valid,
+both Boost.Python and the cctbx can be installed with just one
 command by invoking the appropriate fast track script with the
 absolute path name. For example on Linux:<pre>
         cd /scratch/build
@@ -189,6 +190,14 @@ All these files can be moved to convenient locations, such as
 <tt>/usr/local/lib</tt>.
 
 \par
+To conveniently access the cctbx Python modules, the environment
+variable <tt>PYTHONPATH</tt> should be defined in, e.g. <tt>.cshrc</tt>
+or <tt>C:\autoexec.bat</tt>. For example on a Unix system:<pre>
+        setenv PYTHONPATH "/usr/local/cctbx-1.0/lib/python"</pre>
+Under Windows:<pre>
+        set PYTHONPATH=C:\tools\cctbx-1.0\lib\python</pre>
+
+\par
 The makefile that is created in
 <tt>/scratch/build/linux_gcc/cctbx/examples/cpp</tt> can be used as a
 starting point for creating makefiles for your own applications.
@@ -204,6 +213,36 @@ used for the fast track script instead of csh. For example:<pre>
 \par
 The resulting directory structure in <tt>\\scratch\\build\\vc60</tt> is
 similar to the one for the Unix systems.
+
+<hr>
+
+\section installation_fast_track_adj Fast-track with adjustments
+
+The fast-track procedure is only slightly more complicated if some of
+the pathnames in the Boost.Python makefile or the cctbx
+<tt>configuration</tt> file need to be adjusted (e.g., if you
+prefer a more recent version of Python, or different comiler options).
+
+First, copy one of the supplied Boost.Python makefiles and the
+corresponding cctbx <tt>configuration</tt> file. For example:<pre>
+        cd /scratch/py20
+        cp ~/cctbx/build/configuration_irix_CC .
+        cp ~/boost/libs/python/build/irix_CC.mak .</pre>
+
+Edit the two files to adjust the pathnames or the compiler and linker
+options. Refer to section \ref page_installation_adv for more
+information.
+
+The installation can be started with the command:<pre>
+        python ~/cctbx/build/fast_track.py irix_CC irix_CC.mak configuration_irix_CC</pre>
+
+From this point on the documentation in the previous section applies.
+
+In the example, the Boost.Python makefile and the cctbx
+<tt>configuration</tt> file are copied to the locations
+<tt>/scratch/py20/irix_CC/boost/Makefile</tt> and
+<tt>/scratch/py20/irix_CC/cctbx/configuration</tt>, respectively.
+The original files in <tt>/scratch/py20</tt> may therefore be discarded.
 
 <hr>
 
