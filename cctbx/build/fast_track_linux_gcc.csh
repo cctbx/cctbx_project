@@ -1,10 +1,22 @@
 #! /bin/csh -f
 if ("`gcc --version`" !~ 2.95.*) then
-  echo "FATAL CONFIGURATION PROBLEM:"
-  echo "  Available compiler: gcc version" `gcc --version`
-  echo "  Required compiler:  gcc version 2.95.x, with x >= 2"
-  echo "  See http://cctbx.sourceforge.net/page_compilers.html for more information."
-  exit 1
+  if ("`gcc --version`" == 2.96) then
+    echo "WARNING:"
+    echo "  If you are running RedHat 7.0 then you need to update"
+    echo "  glibc to version 2.2 and gcc to version 2.96-69."
+    echo "  See http://www.redhat.com/support/errata/rh7-errata-bugfixes.html"
+    echo "  for more information."
+    echo ""
+    echo "The installation will proceed in 10 seconds."
+    echo ""
+    sleep 10
+  else
+    echo "FATAL CONFIGURATION PROBLEM:"
+    echo "  Available compiler: gcc version" `gcc --version`
+    echo "  Required compiler:  gcc version 2.95.x, with x >= 2, or 2.96"
+    echo "  See http://cctbx.sourceforge.net/page_compilers.html for more information."
+    exit 1
+  endif
 endif
 set try_python = "`python -c 'print __name__'`"
 if ($status != 0 || "$try_python" !~ __main__) then

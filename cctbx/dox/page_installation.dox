@@ -10,6 +10,8 @@ The %cctbx is being used on these platforms:
 <li>Windows 98 and Windows 2000 with Microsoft Visual C++ 6.0 Service Pack 4
 <li>Windows 98 and Windows 2000 with MINGW32 (a gcc-2.95.2 derivative)
 <li>x86 RedHat Linux 6.1 with gcc-2.95.2
+<li>x86 RedHat Linux 7.0 with gcc-2.96 (with errata bugfixes)
+<li>Alpha RedHat Linux 7.0 with gcc-2.96
 <li>x86 Debian Linux 2.2 with gcc-2.95.2
 <li>sparc64 Debian Linux 2.2 with gcc-2.95.2
 <li>Compaq Tru64 Unix with Compaq C++ V6.2 (cxx)
