@@ -34,8 +34,11 @@ use_space_group_symmetry = symmetry_flags(use_space_group_symmetry=0001)
 def peak_list(data,
               tags,
               peak_search_level=1,
-              max_peaks=0):
-  return ext.peak_list(data, tags, peak_search_level, max_peaks)
+              max_peaks=0,
+              peak_cutoff=None):
+  if (peak_cutoff == None):
+    return ext.peak_list(data, tags, peak_search_level, max_peaks)
+  return ext.peak_list(data, tags, peak_search_level, peak_cutoff, max_peaks)
 
 def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
   return ext.as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling)
@@ -118,3 +121,10 @@ class peak_list_cluster_reduction:
   def peak_height(self, reduced_index):
     return self._peak_list.entries()[
       self._unreduced_indices[reduced_index]].value
+
+  def peak_heights(self):
+    result = flex.double()
+    entries = self._peak_list.entries()
+    for i in self._unreduced_indices:
+      result.append(entries[i].value)
+    return result

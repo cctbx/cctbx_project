@@ -256,6 +256,25 @@ namespace cctbx { namespace maptbx {
         std::sort(entries_.begin(), entries_.end());
       }
 
+      template <typename DataType,
+                typename TagType>
+      peak_list(af::const_ref<DataType, af::c_grid_padded<3> > const& data,
+                af::ref<TagType, af::c_grid<3> > const& tags,
+                int peak_search_level,
+                ValueType peak_cutoff,
+                std::size_t max_peaks)
+      :
+        gridding_(data.accessor().focus())
+      {
+        peak_search_unit_cell(data, tags, peak_search_level);
+        if (max_peaks) {
+          peak_histogram<ValueType> hist(data, tags);
+          peak_cutoff = std::max(peak_cutoff, hist.get_cutoff(max_peaks));
+        }
+        collect_peaks(data, tags, peak_cutoff, true);
+        std::sort(entries_.begin(), entries_.end());
+      }
+
       IndexType const&
       gridding() const { return gridding_; }
 
