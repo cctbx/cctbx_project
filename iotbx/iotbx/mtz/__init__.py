@@ -234,8 +234,10 @@ def column_group(crystal_symmetry, primary_column_type, labels,
     data=data,
     sigmas=sigmas,
     info=",".join(labels))
-  if (primary_column_type in "JK"):
-    return miller.intensity_array(result)
+  if (primary_column_type in "FG"):
+    result.set_observation_type_xray_amplitude()
+  elif (primary_column_type in "JK"):
+    result.set_observation_type_xray_intensity()
   return result
 
 for v in writer.__dict__.values():

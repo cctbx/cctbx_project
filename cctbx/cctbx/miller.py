@@ -110,7 +110,7 @@ class set(crystal.symmetry):
       print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
       if (isinstance(self, array)):
         obs = no_sys_abs.apply_selection(no_sys_abs.data() > 0)
-        if (isinstance(self, intensity_array)):
+        if (self.is_xray_intensity_array()):
           obs = obs.f_sq_as_f()
         print >> f, "Anomalous signal: %.4f" % obs.anomalous_signal()
     return self
@@ -351,20 +351,40 @@ def _array_info(array):
 
 class array(set):
 
-  def __init__(self, miller_set, data=None, sigmas=None, info=None):
+  def __init__(self, miller_set, data=None, sigmas=None,
+                     info=None, observation_type=None):
     set._copy_constructor(self, miller_set)
     self._data = data
     self._sigmas = sigmas
     self._info = info
+    self._observation_type = observation_type
 
   def _copy_constructor(self, other):
     set._copy_constructor(self, other)
     self._data = other._data
     self._sigmas = other._sigmas
     self._info = other._info
+    self._observation_type = other._observation_type
 
-  def is_intensity_array(self):
-    return isinstance(self, intensity_array)
+  def set_info(self, info):
+    self._info = info
+    return self
+
+  def set_observation_type(self, observation_type):
+    from cctbx.xray import observation_types
+    if (isinstance(observation_type, array)):
+      observation_type = observation_type.observation_type()
+    assert observation_type is None or isinstance(observation_type, observation_types.any)
+    self._observation_type = observation_type
+    return self
+
+  def set_observation_type_xray_amplitude(self):
+    from cctbx.xray import observation_types
+    return self.set_observation_type(observation_types.amplitude())
+
+  def set_observation_type_xray_intensity(self):
+    from cctbx.xray import observation_types
+    return self.set_observation_type(observation_types.intensity())
 
   def data(self):
     return self._data
@@ -375,6 +395,20 @@ class array(set):
   def info(self):
     return self._info
 
+  def observation_type(self):
+    return self._observation_type
+
+  def is_xray_amplitude_array(self):
+    from cctbx.xray import observation_types
+    return isinstance(self.observation_type(), observation_types.amplitude)
+
+  def is_xray_intensity_array(self):
+    from cctbx.xray import observation_types
+    return isinstance(self.observation_type(), observation_types.intensity)
+
+  def is_complex(self):
+    return isinstance(self.data(), flex.complex_double)
+
   def deep_copy(self):
     d = None
     s = None
@@ -383,10 +417,7 @@ class array(set):
     return array(
       miller_set = set.deep_copy(self),
       data=d,
-      sigmas=s)
-
-  def is_complex(self):
-    return isinstance(self.data(), flex.complex_double)
+      sigmas=s).set_observation_type(self)
 
   def __getitem__(self, slice_object):
     return array(
@@ -396,28 +427,35 @@ class array(set):
 
   def show_summary(self, f=sys.stdout):
     print >> f, "Miller %s info:" % self.__class__.__name__, self.info()
+    print >> f, "Observation type:", self.observation_type()
     print >> f, "Type of data:", _array_info(self.data())
     print >> f, "Type of sigmas:", _array_info(self.sigmas())
     set.show_summary(self, f)
     return self
 
-  def set_info(self, info):
-    self._info = info
-    return self
-
   def f_sq_as_f(self, tolerance=1.e-6):
     from cctbx import xray
-    if (self.sigmas() is not None):
+    assert self.observation_type() is None or self.is_xray_intensity_array()
+    if (self.sigmas() is None):
+      result = array(self, xray.array_f_sq_as_f(self.data()).f)
+    else:
       r = xray.array_f_sq_as_f(self.data(), self.sigmas(), tolerance)
-      return array(self, r.f, r.sigma_f)
-    return array(self, xray.array_f_sq_as_f(self.data()).f)
+      result = array(self, r.f, r.sigma_f)
+    if (self.is_xray_intensity_array()):
+      result.set_observation_type_xray_amplitude()
+    return result
 
   def f_as_f_sq(self):
     from cctbx import xray
-    if (self.sigmas() is not None):
+    assert self.observation_type() is None or self.is_xray_amplitude_array()
+    if (self.sigmas() is None):
+      result = array(self, xray.array_f_as_f_sq(self.data()).f_sq)
+    else:
       r = xray.array_f_as_f_sq(self.data(), self.sigmas())
-      return array(self, r.f_sq, r.sigma_f_sq)
-    return array(self, xray.array_f_as_f_sq(self.data()).f_sq)
+      result = array(self, r.f_sq, r.sigma_f_sq)
+    if (self.is_xray_amplitude_array()):
+      result.set_observation_type_xray_intensity()
+    return result
 
   def map_to_asu(self):
     i = self.indices().deep_copy()
@@ -426,7 +464,8 @@ class array(set):
       self.space_group_info().type(),
       self.anomalous_flag(),
       i, d)
-    return array(set(self, i, self.anomalous_flag()), d, self.sigmas())
+    return (array(set(self, i, self.anomalous_flag()), d, self.sigmas())
+      .set_observation_type(self))
 
   def adopt_set(self, other):
     assert self.unit_cell().is_similar_to(other.unit_cell())
@@ -439,7 +478,8 @@ class array(set):
     s = self.sigmas()
     if (d is not None): d = d.shuffle(p)
     if (s is not None): s = s.shuffle(p)
-    return array(miller_set=other, data=d, sigmas=s)
+    return (array(miller_set=other, data=d, sigmas=s)
+      .set_observation_type(self))
 
   def common_set(self, other):
     assert self.unit_cell().is_similar_to(other.unit_cell())
@@ -476,7 +516,7 @@ class array(set):
     s = None
     if (self.data() is not None): d = self.data().shuffle(permutation)
     if (self.sigmas() is not None): s = self.sigmas().shuffle(permutation)
-    return array(new_set, d, s)
+    return array(new_set, d, s).set_observation_type(self)
 
   def patterson_symmetry(self):
     data = self.data()
@@ -522,7 +562,7 @@ class array(set):
     return array(
       set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag()),
       data=new_data,
-      sigmas=new_sigmas)
+      sigmas=new_sigmas).set_observation_type(self)
 
   def change_basis(self, cb_op):
     new_data = None
@@ -536,7 +576,7 @@ class array(set):
     return array(
       miller_set=set.change_basis(self, cb_op),
       data=new_data,
-      sigmas=new_sigmas)
+      sigmas=new_sigmas).set_observation_type(self)
 
   def phase_transfer(self, phase_source, epsilon=1.e-10):
     assert self.data() is not None
@@ -553,7 +593,7 @@ class array(set):
 
   def mean_weighted_phase_error(self, phase_source):
     assert self.data() is not None
-    if (hasattr(phase_source, "data")):
+    if (isinstance(phase_source, array)):
       assert flex.order(phase_source.indices(), self.indices()) == 0
       phase_source = phase_source.data()
     p1 = flex.arg(self.data())
@@ -564,6 +604,7 @@ class array(set):
       p2 = phase_source
     assert p1.size() == p2.size()
     e = flex.double()
+    # XXX push to C++
     for i in p1.indices():
       e.append(phase_error(p1[i], p2[i]))
     w = flex.abs(self.data())
@@ -574,6 +615,7 @@ class array(set):
 
   def anomalous_differences(self):
     assert self.data() is not None
+    assert self.observation_type() is None or self.is_xray_amplitude_array()
     asu, matches = self.match_bijvoet_mates()
     i = matches.miller_indices_in_hemisphere("+")
     d = matches.minus(asu.data())
@@ -622,7 +664,7 @@ class array(set):
     if (self.data() is not None): d = self.data().select(flags)
     s = None
     if (self.sigmas() is not None): s = self.sigmas().select(flags)
-    return array(set(self, i, anomalous_flag), d, s)
+    return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
   def sigma_filter(self, cutoff_factor, negate=0):
     assert self.data() is not None
@@ -715,6 +757,7 @@ class array(set):
     return array(self, result_data.unshuffle(result_perm))
 
   def remove_patterson_origin_peak(self):
+    assert self.observation_type() is None or self.is_xray_intensity_array()
     s_mean = self.statistical_mean(use_binning=1)
     result_data = flex.double()
     return self._generic_binner_application(s_mean, _ftor_a_s_sub, result_data)
@@ -724,6 +767,7 @@ class array(set):
     assert first_moment in (00000, 0001)
     assert self.binner() is not None
     assert self.data().all_ge(0)
+    assert self.observation_type() is None or self.is_xray_amplitude_array()
     if (first_moment):
       assert quasi == 00000
       mean = self.mean(use_binning=1, use_multiplicities=1)
@@ -749,6 +793,7 @@ class array(set):
     return array(self, e.unshuffle(e_perm))
 
   def quasi_normalized_as_normalized(self):
+    assert self.observation_type() is None or self.is_xray_amplitude_array()
     return array(
       miller_set=self,
       data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
@@ -831,11 +876,6 @@ class array(set):
       sharpening=sharpening,
       origin_peak_removal=origin_peak_removal)
 
-class intensity_array(array):
-
-  def __init__(self, miller_array):
-    array._copy_constructor(self, miller_array)
-
 class merge_equivalents:
 
   def __init__(self, miller_array):
@@ -865,7 +905,7 @@ class merge_equivalents:
         indices=merge_ext.indices(),
         anomalous_flag=miller_array.anomalous_flag()),
       data=merge_ext.data(),
-      sigmas=sigmas)
+      sigmas=sigmas).set_observation_type(miller_array)
     self._redundancies = merge_ext.redundancies()
 
   def array(self):
