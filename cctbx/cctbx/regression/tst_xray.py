@@ -91,7 +91,7 @@ def exercise_structure():
   xs.apply_special_position_ops_d_target_d_site(g)
   assert approx_equal(g[0], (0,0,0))
   assert approx_equal(g[1], (-0.05,0.05,0))
-  xs.replace_scatterers(xs.scatterers()[:1])
+  xs.replace_scatterers(xs.scatterers()[:1], None)
   assert xs.scatterers().size() == 1
   assert tuple(xs.special_position_indices()) == (0,)
   sd = ys.scattering_dict(table="wk1995")
@@ -142,7 +142,7 @@ def exercise_structure():
   xs2 = xs1[2::2]
   assert xs2.scatterers().size() == 5
   assert list(xs2[:].special_position_indices()) == [1,4]
-  xs1.replace_scatterers(xs2.scatterers())
+  xs1.replace_scatterers(xs2.scatterers(), None)
   assert list(xs1[:].special_position_indices()) == [0,1,2,3,4]
   xs1.replace_scatterers(xs2.scatterers(), xs2.site_symmetry_table())
   assert list(xs1[:].special_position_indices()) == [1,4]

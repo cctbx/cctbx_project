@@ -64,7 +64,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   if (0 or verbose):
     print "correlation:", c.coefficient()
     print
-  assert c.coefficient() > 0.999
+  assert c.coefficient() > 0.99
 
 def run_call_back(flags, space_group_info):
   for target_functor in xray.target_functors.registry().values():

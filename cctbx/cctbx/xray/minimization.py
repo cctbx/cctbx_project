@@ -51,14 +51,13 @@ class lbfgs:
       gradient_flags=self.gradient_flags,
       shifts=self.x,
       d_min=self._d_min)
-    if (0): # XXX ASSERTION FAILURE
-      site_symmetry_table = self.xray_structure.site_symmetry_table()
-      for i_seq in site_symmetry_table.special_position_indices():
-        scatterers_shifted[i_seq].site = crystal.correct_special_position(
-          unit_cell=unit_cell,
-          special_op=site_symmetry_table.get(i_seq).special_op(),
-          site_frac=scatterers_shifted[i_seq].site)
-    self.xray_structure.replace_scatterers(scatterers_shifted)
+    site_symmetry_table = self.xray_structure.site_symmetry_table()
+    for i_seq in site_symmetry_table.special_position_indices():
+      scatterers_shifted[i_seq].site = crystal.correct_special_position(
+        unit_cell=unit_cell,
+        special_op=site_symmetry_table.get(i_seq).special_op(),
+        site_frac=scatterers_shifted[i_seq].site)
+    self.xray_structure.replace_scatterers(scatterers=scatterers_shifted)
 
   def compute_target(self, compute_gradients):
     self.f_calc = self.structure_factors_from_scatterers(
