@@ -42,6 +42,8 @@ namespace {
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
         .def("at_d_star_sq", &w_t::at_d_star_sq)
+        .def("gradient_at_d_star", &w_t::gradient_at_d_star)
+        .def("integral_at_d_star", &w_t::integral_at_d_star)
         .def_pickle(gaussian_wrappers())
       ;
     }
@@ -68,6 +70,8 @@ namespace {
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
         .def("at_d_star_sq", &w_t::at_d_star_sq)
+        .def("gradient_at_d_star", &w_t::gradient_at_d_star)
+        .def("integral_at_d_star", &w_t::integral_at_d_star)
       ;
     }
   };

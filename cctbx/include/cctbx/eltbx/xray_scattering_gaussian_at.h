@@ -10,7 +10,7 @@
       at_stol_sq(double stol_sq) const
       {
         double sf = c();
-        for (std::size_t i = 0; i < n_ab(); i++)
+        for(std::size_t i=0;i<n_ab();i++)
           sf += a(i) * std::exp(-b(i) * stol_sq);
         return sf;
       }
@@ -31,4 +31,28 @@
       at_d_star_sq(double d_star_sq) const
       {
         return at_stol_sq(d_star_sq / 4.);
+      }
+
+      double
+      gradient_at_d_star(double d_star) const
+      {
+        double d_star_sq = d_star * d_star;
+        double result = 0;
+        for(std::size_t i=0;i<n_ab();i++) {
+          result -= (a(i)*b(i)*d_star)/(2*std::exp((b(i)*d_star_sq/4)));
+        }
+        return result;
+      }
+
+      double
+      integral_at_d_star(double d_star) const
+      {
+        double result = c() * d_star;
+        for(std::size_t i=0;i<n_ab();i++) {
+          result += one_gaussian_term_integral_at_d_star(
+            static_cast<double>(a(i)),
+            static_cast<double>(b(i)),
+            d_star);
+        }
+        return result;
       }

@@ -3,6 +3,105 @@ from scitbx.test_utils import approx_equal
 import pickle
 import string
 
+def one_integral_at_d_star(a, b, d_star):
+  from scitbx.math import erf
+  from math import exp, sqrt, pi
+  if (b == 0):
+    return a*d_star
+  if (b > 1.e-3):
+    sqrt_b = sqrt(b)
+    return (a*sqrt(pi)*erf(sqrt_b*d_star*.5))/sqrt_b
+  as = a*d_star
+  bss = b/4.*d_star*d_star
+  part = 1
+  result = 1
+  prev_result = result
+  n=0
+  tnp1=1
+  while 1:
+    n += 1
+    tnp1 += 2
+    part *= bss / n
+    result -= part / tnp1
+    if (result == prev_result):
+      break
+    prev_result = result
+    n += 1
+    tnp1 += 2
+    part *= bss / n
+    result += part / tnp1
+    if (result == prev_result):
+      break
+    prev_result = result
+  result *= as
+  return result
+
+class gaussdbg(xray_scattering.gaussian):
+
+  def yyy_integral_at_d_star(self, d_star):
+    result = self.c() * d_star
+    for a,b in zip(self.a(), self.b()):
+      result += one_integral_at_d_star(a, b, d_star)
+    return result
+
+  def xxx_integral_at_d_star(self, d_star):
+    result = self.c() * d_star
+    as = []
+    bss = []
+    part = []
+    for a,b in zip(self.a(), self.b()):
+      result += a*d_star
+      as.append(a*d_star)
+      bss.append(b/4.*d_star*d_star)
+      part.append(1)
+    prev_result = result
+    f=1
+    n=0
+    tnp1=1
+    while 1:
+      f = -f
+      n += 1
+      tnp1 += 2
+      for i in xrange(len(as)):
+        part[i] *= bss[i] / n
+        result += f*as[i]*part[i]/tnp1
+      if (result == prev_result):
+        break
+      prev_result = result
+    return result
+
+def gaussian_finite_gradient(gaussian, d_star, eps=1.e-6):
+  if (d_star == 0): return 0
+  assert d_star >= eps
+  tm = gaussian.at_d_star_sq((d_star-eps)**2)
+  tp = gaussian.at_d_star_sq((d_star+eps)**2)
+  return (tp-tm)/(2*eps)
+
+def exercise_gaussian_gradient(gaussian, d_min=0.5, n_points=50):
+  d_star_max = 1./d_min
+  for i in xrange(n_points+1):
+    d_star = d_star_max * i / n_points
+    grad_finite = gaussian_finite_gradient(gaussian, d_star)
+    grad_analytical = gaussian.gradient_at_d_star(d_star)
+    if (0):
+      print d_star, grad_finite, grad_analytical
+    assert abs(grad_finite - grad_analytical) < 1.e-6
+
+def exercise_gaussian_integral(gaussian, d_min=0.5, n_points=1000):
+  d_star_max = 1./d_min
+  d_step = d_star_max / n_points
+  numerical_integral = 0
+  for i in xrange(n_points+1):
+    d_star = d_star_max * i / n_points
+    new_value = gaussian.at_d_star_sq(d_star**2)
+    if (i):
+      numerical_integral += (prev_value + new_value) * .5
+    prev_value = new_value
+    analytical_integral = gaussian.integral_at_d_star(d_star)
+    if (0):
+      print d_star, numerical_integral*d_step, analytical_integral
+    assert abs(numerical_integral*d_step - analytical_integral) < 1.e-4
+
 def exercise_gaussian():
   c = xray_scattering.gaussian(0)
   assert c.n_ab() == 0
@@ -32,6 +131,24 @@ def exercise_gaussian():
   assert approx_equal(l.a(), c.a())
   assert approx_equal(l.b(), c.b())
   assert approx_equal(l.c(), c.c())
+  exercise_gaussian_gradient(xray_scattering.gaussian(
+    [5.5480], [10.4241], 0))
+  exercise_gaussian_gradient(xray_scattering.gaussian(
+   [2.657506,1.078079,1.490909,-4.241070,0.713791],
+   [14.780758,0.776775,42.086842,-0.000294,0.239535],
+   4.297983))
+  exercise_gaussian_integral(xray_scattering.gaussian(
+    [5.5480], [10.4241], 0))
+  exercise_gaussian_integral(xray_scattering.gaussian(
+    [5.5480], [10.4241], 3))
+  exercise_gaussian_integral(xray_scattering.gaussian(
+    [5.5480], [0], 0))
+  exercise_gaussian_integral(xray_scattering.gaussian(
+    [5.5480], [-0.01], 0))
+  exercise_gaussian_integral(xray_scattering.gaussian(
+   [2.657506,1.078079,1.490909,-4.241070,0.713791],
+   [14.780758,0.776775,42.086842,-0.000294,0.239535],
+   4.297983))
 
 def exercise_it1992():
   c = xray_scattering.it1992("c1")
