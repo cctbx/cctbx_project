@@ -97,6 +97,14 @@ namespace neighbors {
         return result;
       }
 
+      //! Calls direct_space_asu::asu_mappings::is_symmetry_interaction.
+      bool
+      is_symmetry_interaction(
+        direct_space_asu::asu_mapping_index_pair const& pair) const
+      {
+        return asu_mappings_->is_symmetry_interaction(pair);
+      }
+
     protected:
       direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
       FloatType distance_cutoff_sq_;
