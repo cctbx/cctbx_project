@@ -30,25 +30,25 @@ namespace cctbx {
       typedef std::size_t      size_type;
       typedef std::ptrdiff_t   difference_type;
 
-      typedef boost::shared_array<char> shared_array_type;
+      typedef boost::shared_array<char> handle_type;
 
       explicit shared_storage(const size_type& sz = 0)
-        : m_storage(new char[sizeof(value_type) * sz]),
+        : m_handle(new char[sizeof(value_type) * sz]),
           m_size(sz)
       {
-        m_begin = reinterpret_cast<value_type*>(m_storage.get());
+        m_begin = reinterpret_cast<value_type*>(m_handle.get());
       }
-      shared_storage(const shared_array_type& storage, size_type size)
-        : m_storage(storage),
-          m_begin(reinterpret_cast<value_type*>(storage.get())),
+      shared_storage(const handle_type& handle, size_type size)
+        : m_handle(handle),
+          m_begin(reinterpret_cast<value_type*>(handle.get())),
           m_size(size)
       {}
       template <typename T>
       shared_storage(const std::vector<T>& std_vec)
-        : m_storage(new char[sizeof(value_type) * std_vec.size()]),
+        : m_handle(new char[sizeof(value_type) * std_vec.size()]),
           m_size(std_vec.size())
       {
-        m_begin = reinterpret_cast<value_type*>(m_storage.get());
+        m_begin = reinterpret_cast<value_type*>(m_handle.get());
         std::copy(std_vec.begin(), std_vec.end(), m_begin);
       }
 
@@ -62,7 +62,7 @@ namespace cctbx {
 
       size_type size() const { return m_size; }
 
-      shared_array_type handle() const { return m_storage; }
+      const handle_type& handle() const { return m_handle; }
 
       shared_storage<value_type>
       deepcopy() const
@@ -73,7 +73,7 @@ namespace cctbx {
       }
 
     protected:
-      shared_array_type m_storage;
+      handle_type m_handle;
       value_type* m_begin;
       size_type m_size;
   };
