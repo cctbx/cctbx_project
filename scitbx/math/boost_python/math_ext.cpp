@@ -2,6 +2,7 @@
 
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/math/erf.h>
+#include <scitbx/math/bessel.h>
 #include <scitbx/math/eigensystem.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -47,6 +48,8 @@ namespace {
     def("erf", (double(*)(double const&)) erf);
     def("erfc", (double(*)(double const&)) erfc);
     def("erfcx", (double(*)(double const&)) erfcx);
+
+    def("bessel_i1_over_i0", (double(*)(double const&)) bessel::i1_over_i0);
 
     eigensystem_real_symmetric_wrappers::wrap();
 
