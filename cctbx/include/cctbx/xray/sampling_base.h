@@ -708,6 +708,7 @@ namespace cctbx { namespace xray {
       sum_w_gaussian_a += w * gaussian_a;
       FloatType u_min;
       if (!scatterer.anisotropic_flag) {
+        CCTBX_ASSERT(scatterer.u_iso >= 0);
         u_radius_cache_.push_back(scatterer.u_iso);
         u_min = scatterer.u_iso;
         sum_w_u_equiv += w * scatterer.u_iso;
