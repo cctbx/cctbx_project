@@ -157,46 +157,11 @@ class symmetry(object):
     return self.space_group().build_derived_patterson_group() \
         == self.space_group()
 
-  def lattice_symmetry(self,
-        max_delta=1.e-3,
-        include_centre_of_inversion=True,
-        assert_is_compatible_unit_cell=True):
-    from cctbx.sgtbx import lattice_symmetry
-    cb_op_to_minimum = self.change_of_basis_op_to_minimum_cell()
-    minimum_symmetry = self.change_basis(cb_op_to_minimum)
-    lattice_group = lattice_symmetry.group(
-      minimum_symmetry.unit_cell(), max_delta=max_delta)
-    if (include_centre_of_inversion):
-      lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
-    return symmetry(
-      unit_cell=self.unit_cell(),
-      space_group=lattice_group.change_basis(cb_op_to_minimum.inverse()),
-      assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
+  def reindexing_info(self, max_delta=0.1):
+    return reindexing_info(crystal_symmetry=self, max_delta=max_delta)
 
-  def reindexing_matrices(self,
-        max_delta=1,
-        assert_is_compatible_unit_cell=True):
-    lattice_symmetry = self.lattice_symmetry(
-      max_delta=max_delta,
-      include_centre_of_inversion=False,
-      assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
-    patterson_group = self.space_group().build_derived_patterson_group()
-    patterson_group.make_tidy()
-    expanded_groups = [patterson_group]
-    result = []
-    for i_smx in xrange(lattice_symmetry.space_group().order_p()):
-      s = lattice_symmetry.space_group()[i_smx]
-      expanded_group = sgtbx.space_group(patterson_group)
-      expanded_group.expand_smx(s)
-      expanded_group.make_tidy()
-      def is_in_expanded_groups():
-        for g in expanded_groups:
-          if (g == expanded_group): return True
-        return False
-      if (not is_in_expanded_groups()):
-        expanded_groups.append(expanded_group)
-        result.append(s)
-    return result
+  def reindexing_matrices(self, max_delta=0.1):
+    return self.reindexing_info(max_delta=max_delta).matrices
 
   def join_symmetry(self, other_symmetry, force=False):
     if (other_symmetry is None):
@@ -246,6 +211,46 @@ class symmetry(object):
       asu=self.direct_space_asu().as_float_asu(
         is_inside_epsilon=is_inside_epsilon),
       buffer_thickness=buffer_thickness)
+
+class reindexing_info:
+
+  def __init__(self, crystal_symmetry, max_delta=0.1):
+    from cctbx.sgtbx import lattice_symmetry
+    self.max_delta = max_delta
+    self.cb_op_to_minimum_cell \
+      = crystal_symmetry.change_of_basis_op_to_minimum_cell()
+    self.minimum_symmetry = crystal_symmetry.change_basis(
+      self.cb_op_to_minimum_cell)
+    self.lattice_group = lattice_symmetry.group(
+      self.minimum_symmetry.unit_cell(),
+      max_delta=max_delta)
+    patterson_group = self.minimum_symmetry.space_group() \
+      .build_derived_patterson_group()
+    patterson_group.make_tidy()
+    expanded_groups = [patterson_group]
+    self.matrices = []
+    for s in self.lattice_group:
+      expanded_group = sgtbx.space_group(patterson_group)
+      expanded_group.expand_smx(s)
+      expanded_group.make_tidy()
+      def is_in_expanded_groups():
+        for g in expanded_groups:
+          if (g == expanded_group): return True
+        return False
+      if (not is_in_expanded_groups()):
+        expanded_groups.append(expanded_group)
+        self.matrices.append(self.cb_op_to_minimum_cell.inverse().apply(s))
+
+  def lattice_symmetry(self):
+    self.lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
+    return symmetry(
+      unit_cell=self.minimum_symmetry.unit_cell(),
+      space_group=self.lattice_group,
+      assert_is_compatible_unit_cell=False)
+
+  def idealized_unit_cell(self):
+    return self.cb_op_to_minimum_cell.inverse().apply(
+      self.lattice_symmetry().unit_cell())
 
 class special_position_settings(symmetry):
 
