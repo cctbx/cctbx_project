@@ -2,6 +2,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 #include <scitbx/boost_python/utils.h>
 #include "iotbx/cppmtz.h"
+#include <iotbx/mtzwriter.h>
 using namespace boost::python;
 
 BOOST_PYTHON_MODULE(mtz)
@@ -59,5 +60,13 @@ BOOST_PYTHON_MODULE(mtz)
 
     class_<iotbx::mtz::Foo>("Foo")
       .def("value",&iotbx::mtz::Foo::value)
+    ;
+    
+    class_<iotbx::mtz::MtzWriter>("MtzWriter", init<>())
+      .def("setTitle",      &iotbx::mtz::MtzWriter::setTitle)
+      .def("setSpaceGroup", &iotbx::mtz::MtzWriter::setSpaceGroup)
+      .def("oneCrystal",    &iotbx::mtz::MtzWriter::oneCrystal)
+      .def("oneDataset",    &iotbx::mtz::MtzWriter::oneDataset)
+      .def("write",         &iotbx::mtz::MtzWriter::write)
     ;
 }
