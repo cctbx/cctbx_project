@@ -9,9 +9,7 @@ class from_scatterers_fft(managed_calculation_base):
 
   def __init__(self, manager,
                      xray_structure,
-                     miller_set,
-                     force_complex=00000,
-                     electron_density_must_be_positive=0001):
+                     miller_set):
     managed_calculation_base.__init__(self, manager, xray_structure, miller_set)
     assert manager.symmetry_flags().use_space_group_symmetry()
     assert miller_set.d_min() >= manager.d_min()
@@ -25,8 +23,8 @@ class from_scatterers_fft(managed_calculation_base):
       manager.u_extra(),
       manager.wing_cutoff(),
       manager.exp_table_one_over_step_size(),
-      force_complex,
-      electron_density_must_be_positive)
+      manager.force_complex(),
+      manager.electron_density_must_be_positive())
     time_sampling = time_sampling.elapsed()
     time_symmetry_mapping = user_plus_sys_time()
     sampled_density.apply_symmetry(manager.crystal_gridding_tags().tags())
@@ -42,7 +40,7 @@ class from_scatterers_fft(managed_calculation_base):
       sf_map = cfft.backward(map)
       collect_conj = 0
     time_fft = time_fft.elapsed()
-    time_collect = user_plus_sys_time()
+    time_process_coefficients = user_plus_sys_time()
     self._f_calc_data = maptbx.structure_factors.from_map(
       sampled_density.anomalous_flag(),
       miller_set.indices(),
@@ -51,11 +49,14 @@ class from_scatterers_fft(managed_calculation_base):
     sampled_density.eliminate_u_extra_and_normalize(
       miller_set.indices(),
       self._f_calc_data)
-    time_collect = time_collect.elapsed()
+    time_process_coefficients = time_process_coefficients.elapsed()
     manager.estimate_time_fft.register(
-      xray_structure.scatterers().size(),
-      miller_set.indices().size(),
-      time_sampling, time_symmetry_mapping, time_fft, time_collect)
+      n_scatterers=xray_structure.scatterers().size(),
+      n_miller_indices=miller_set.indices().size(),
+      time_sampling=time_sampling,
+      time_symmetry_mapping=time_symmetry_mapping,
+      time_fft=time_fft,
+      time_process_coefficients=time_process_coefficients)
 
   def f_calc(self):
     return miller.array(self.miller_set(), self._f_calc_data)
