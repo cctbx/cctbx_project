@@ -1,4 +1,6 @@
-import os, pickle
+import sys, os, pickle
+
+class UserError(Exception): pass
 
 class env:
 
@@ -8,13 +10,17 @@ class env:
     try:
       f = open(file_name)
     except:
-      raise RuntimeError("Cannot open libtbx environment file: " + file_name)
+      raise UserError("Cannot open libtbx environment file: " + file_name)
     try:
       e = pickle.load(f)
     except:
-      raise RuntimeError("Corrupt libtbx environment file: " + file_name)
+      raise UserError("Corrupt libtbx environment file: " + file_name)
     self.__dict__.update(e)
     assert self.LIBTBX_BUILD == libtbx_build
+    if (not self.python_version_major_minor == sys.version_info[:2]):
+      raise UserError("Python version incompatible with this build."
+       + " Version used to configure: %d.%d." % self.python_version_major_minor
+       + " Version used now: %d.%d." % sys.version_info[:2])
 
   def dist_path(self, package_name):
     return self.dist_paths[package_name.upper() + "_DIST"]
