@@ -37,29 +37,34 @@ namespace {
       grid.insert(grid.begin(), g.begin(), g.end());
       origin.insert(origin.begin(), o.begin(), o.end());
       last.insert(last.begin(), l.begin(), l.end());
+    }
+    {
       af::flex_grid<> g2(grid);
       check_true(__LINE__, g2.nd() == 3);
       check_true(__LINE__, g2.size1d() == 30);
+      verify(__LINE__, g2.origin(), af::tiny<long, 3>(0,0,0));
+      verify(__LINE__, g2.grid(), grid);
+      verify(__LINE__, g2.last(), grid);
+      verify(__LINE__, g2.last(true), grid);
+      verify(__LINE__, g2.last(false), af::tiny<long, 3>(1,2,4));
       af::flex_grid<> g3(origin, last, false);
       check_true(__LINE__, g3.nd() == 3);
       check_true(__LINE__, g3.size1d() == 60);
+      verify(__LINE__, g3.origin(), origin);
+      verify(__LINE__, g3.grid(), af::tiny<long, 3>(3,4,5));
+      verify(__LINE__, g3.last(false), last);
+      verify(__LINE__, g3.last(true), af::tiny<long, 3>(4,6,8));
+      verify(__LINE__, g3.last(), af::tiny<long, 3>(4,6,8));
       af::flex_grid<> g4(origin, last, true);
       check_true(__LINE__, g4.nd() == 3);
       check_true(__LINE__, g4.size1d() == 24);
-    }
-    {
-      af::tiny<long, 3> g(2,3,5);
-      af::tiny<long, 3> o(1,2,3);
-      af::tiny<long, 3> l(3,5,7);
-      af::flex_grid<> g2(g);
-      check_true(__LINE__, g2.nd() == 3);
-      check_true(__LINE__, g2.size1d() == 30);
-      af::flex_grid<> g3(o, l, false);
-      check_true(__LINE__, g3.nd() == 3);
-      check_true(__LINE__, g3.size1d() == 60);
-      af::flex_grid<> g4(o, l, true);
-      check_true(__LINE__, g4.nd() == 3);
-      check_true(__LINE__, g4.size1d() == 24);
+      verify(__LINE__, g4.origin(), origin);
+      verify(__LINE__, g4.grid(), af::tiny<long, 3>(2,3,4));
+      verify(__LINE__, g4.last(false), af::tiny<long, 3>(2,4,6));
+      verify(__LINE__, g4.last(true), last);
+      verify(__LINE__, g4.last(), last);
+      af::flex_grid<> g5(origin, last);
+      check_true(__LINE__, g5.size1d() == 24);
     }
     {
       af::flex_grid<> g2(grid);

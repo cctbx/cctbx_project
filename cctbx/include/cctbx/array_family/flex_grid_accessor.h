@@ -12,7 +12,6 @@
 #define CCTBX_ARRAY_FAMILY_FLEX_GRID_ACCESSOR_H
 
 #include <cctbx/error.h>
-#include <cctbx/array_family/tiny_plain.h>
 #include <cctbx/array_family/small_plain.h>
 #include <cctbx/array_family/reductions.h>
 
@@ -25,13 +24,13 @@ namespace cctbx { namespace af {
   {
     public:
       typedef IndexType index_type;
-      typedef typename IndexType::value_type value_type;
+      typedef typename IndexType::value_type index_value_type;
 
       flex_grid() {}
 
       explicit
       flex_grid(IndexType const& grid)
-      : origin_(grid.size(), value_type(0)),
+      : origin_(grid.size(), index_value_type(0)),
         grid_(grid)
       {}
 
@@ -44,30 +43,26 @@ namespace cctbx { namespace af {
         set_grid_(origin.size(), origin.begin(), last.begin(), open_range);
       }
 
-      template <typename value_type, std::size_t N>
-      explicit
-      flex_grid(
-        tiny_plain<value_type, N> const& grid)
-      : origin_(grid.size(), value_type(0))
-      {
-        grid_.insert(grid_.begin(), grid.begin(), grid.end());
-      }
-
-      template <typename value_type, std::size_t N>
-      flex_grid(
-        tiny_plain<value_type, N> const& origin,
-        tiny_plain<value_type, N> const& last,
-        bool open_range = true)
-      {
-        origin_.insert(origin_.begin(), origin.begin(), origin.end());
-        set_grid_(N, origin.begin(), last.begin(), open_range);
-      }
-
       std::size_t nd() const { return grid_.size(); }
 
       std::size_t size1d() const
       {
         return af::product(grid_.const_ref());
+      }
+
+      IndexType const& origin() const { return origin_; }
+
+      IndexType const& grid() const { return grid_; }
+
+      IndexType last(bool open_range = true) const
+      {
+        index_value_type incl = 1;
+        if (open_range) incl = 0;
+        IndexType result = origin_;
+        for(std::size_t i=0;i<result.size();i++) {
+          result[i] += grid_[i] - incl;
+        }
+        return result;
       }
 
       std::size_t operator()(IndexType const& i) const
@@ -103,17 +98,27 @@ namespace cctbx { namespace af {
 
       void set_grid_(
         std::size_t sz,
-        const value_type* origin,
-        const value_type* last,
+        const index_value_type* origin,
+        const index_value_type* last,
         bool open_range)
       {
-        value_type incl = 1;
+        index_value_type incl = 1;
         if (open_range) incl = 0;
         for(std::size_t i=0;i<sz;i++) {
           grid_.push_back(last[i] - origin[i] + incl);
         }
       }
   };
+
+  // XXX more general? flex_grid<>::make()?
+  inline
+  flex_grid<>
+  make_flex_grid(flex_grid<>::index_value_type const& n)
+  {
+    flex_grid_default_index_type grid;
+    grid.push_back(n);
+    return flex_grid<>(grid);
+  }
 
 }} // namespace cctbx::af
 

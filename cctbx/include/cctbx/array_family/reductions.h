@@ -93,8 +93,10 @@ namespace cctbx { namespace af {
   ElementType
   product(const const_ref<ElementType, AccessorType>& a)
   {
+    std::size_t sz = a.size();
+    if (sz == 0) return 0;
     ElementType result = 1;
-    for(std::size_t i=0;i<a.size();i++) result *= a[i];
+    for(std::size_t i=0;i<sz;i++) result *= a[i];
     return result;
   }
 
