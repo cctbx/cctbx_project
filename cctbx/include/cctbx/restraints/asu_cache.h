@@ -19,6 +19,7 @@ namespace cctbx { namespace restraints {
       asu_cache(
         af::const_ref<scitbx::vec3<FloatType> > const& moved_sites_cart,
         asu_mappings_t const& asu_mappings,
+        std::vector<bool> const& sym_active_flags,
         bool allocate_gradients)
       {
         std::size_t n_sites = moved_sites_cart.size();
@@ -28,14 +29,19 @@ namespace cctbx { namespace restraints {
         sites.resize(n_sites, 0);
         scitbx::vec3<FloatType>* sites_ptr = &*sites_memory_.begin();
         for(std::size_t i_seq=0;i_seq<n_sites;i_seq++) {
-          sites[i_seq] = sites_ptr;
-          std::size_t n_sym = mappings_[i_seq].size();
-          for(std::size_t i_sym=0;i_sym<n_sym;i_sym++) {
-            *sites_ptr++ = asu_mappings.map_moved_site_to_asu(
-              moved_sites_cart[i_seq], i_seq, i_sym);
+          if (!sym_active_flags[i_seq]) {
+            sites[i_seq] = 0;
+          }
+          else {
+            sites[i_seq] = sites_ptr;
+            std::size_t n_sym = mappings_[i_seq].size();
+            for(std::size_t i_sym=0;i_sym<n_sym;i_sym++) {
+              *sites_ptr++ = asu_mappings.map_moved_site_to_asu(
+                moved_sites_cart[i_seq], i_seq, i_sym);
+            }
           }
         }
-        CCTBX_ASSERT(sites_ptr == &*sites_memory_.end());
+        CCTBX_ASSERT(sites_ptr <= &*sites_memory_.end());
         if (allocate_gradients) {
           gradients.resize(n_sites, scitbx::vec3<FloatType>(0,0,0));
         }

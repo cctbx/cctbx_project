@@ -17,7 +17,8 @@ namespace cctbx { namespace restraints {
           direct_space_asu::asu_mappings<> > const& asu_mappings)
       :
         asu_mappings_owner_(asu_mappings),
-        asu_mappings_(asu_mappings.get())
+        asu_mappings_(asu_mappings.get()),
+        sym_active_flags(asu_mappings->mappings_const_ref().size(), false)
       {}
 
       //! Instance as passed to the constructor.
@@ -41,6 +42,8 @@ namespace cctbx { namespace restraints {
           return false;
         }
         sym_proxies.push_back(proxy);
+        sym_active_flags[proxy.pair.i_seq] = true;
+        sym_active_flags[proxy.pair.j_seq] = true;
         return true;
       }
 
@@ -57,6 +60,7 @@ namespace cctbx { namespace restraints {
     public:
       af::shared<ProxyType> proxies;
       af::shared<SymProxyType> sym_proxies;
+      std::vector<bool> sym_active_flags;
   };
 
 }} // namespace cctbx::restraints
