@@ -425,6 +425,8 @@ def exercise_rt_mx():
   assert l.size() == 4
   l.clear()
   assert l.size() == 0
+  assert str(rt_mx("z,x,y") + (1,2,-3)) == "z+1,x+2,y-3"
+  assert str(rt_mx("z+1/6,x,y") + tr_vec((1,2,-3),12)) == "z+1/4,x+1/6,y-1/4"
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx
