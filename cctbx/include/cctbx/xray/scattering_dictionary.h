@@ -36,6 +36,9 @@ namespace cctbx { namespace xray {
       dict_type const&
       dict() const { return dict_; }
 
+      dict_type&
+      dict() { return dict_; }
+
       void
       assign(
         std::string const& label,

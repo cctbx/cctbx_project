@@ -1,5 +1,6 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <cctbx/eltbx/caasf.h>
@@ -9,9 +10,16 @@ namespace cctbx { namespace eltbx { namespace caasf { namespace boost_python {
 
 namespace {
 
-  struct custom_wrappers
+  struct custom_wrappers : boost::python::pickle_suite
   {
     typedef custom w_t;
+
+    static
+    boost::python::tuple
+    getinitargs(w_t const& w)
+    {
+      return boost::python::make_tuple(w.a(), w.b(), w.c());
+    }
 
     static void
     wrap()
@@ -32,6 +40,7 @@ namespace {
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
         .def("at_d_star_sq", &w_t::at_d_star_sq)
+        .def_pickle(custom_wrappers())
       ;
     }
   };
