@@ -59,7 +59,7 @@ class group_search:
     for axis in self.potential_axes():
       t = orth * axis.u
       tau = matrix.col((axis.h * frac).elems)
-      delta = abs(math.atan(abs(t.cross(tau))/axis.abs_uh))
+      delta = abs(math.atan2(abs(t.cross(tau)), axis.abs_uh))
       if (delta < max_delta):
         deltas.append(delta)
         ts.append(t)
