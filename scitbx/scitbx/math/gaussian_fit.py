@@ -111,7 +111,7 @@ class minimize_lbfgsb(minimize_mixin):
     nbd = flex.int(self.n, 0)
     if (self.apply_lower_bounds_on_b):
       bound_flags = self.gaussian_fit.bound_flags(00000, 0001)
-      nbd.set_selected(bound_flags, flex.int(bound_flags.count(0001), 1))
+      nbd.set_selected(bound_flags, 1)
     self.minimizer = lbfgsb.minimizer(
       n=self.n,
       m=self.lbfgsb_m,
