@@ -6,6 +6,7 @@ def exercise_symmetry():
   xs = crystal.symmetry(uctbx.unit_cell((3,4,5)))
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   xs = crystal.symmetry([4,5,6], space_group_info=xs.space_group_info())
+  xs = crystal.symmetry([4,5,6], space_group=xs.space_group())
   assert xs.unit_cell().is_similar_to(uctbx.unit_cell((4,5,6)))
   assert str(xs.space_group_info()) == "P 2 2 2"
   assert xs.space_group() == xs.space_group_info().group()
@@ -20,6 +21,9 @@ def exercise_symmetry():
   p1 = xs.cell_equivalent_p1()
   assert p1.unit_cell().is_similar_to(uctbx.unit_cell((3,4,5)))
   assert p1.space_group().order_z() == 1
+  ps = xs.patterson_symmetry()
+  assert ps.unit_cell().is_similar_to(xs.unit_cell())
+  assert str(ps.space_group_info()) == "P m m m"
 
 def exercise_special_position_settings():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
