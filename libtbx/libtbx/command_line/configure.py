@@ -213,7 +213,7 @@ def emit_setpaths_csh(env):
   s = open_info(setpaths_csh_path)
   u = open_info(unsetpaths_csh_path)
   for f in s, u:
-    print >> f, '%s -V >& /dev/null' % libtbx_python
+    print >> f, '"%s" -V >& /dev/null' % libtbx_python
     print >> f, 'if ($status != 0 || ! -f "%s") then' % libtbx_path_utility
     print >> f, '  echo "*******************************************"'
     print >> f, '  echo "Fatal Error: Incomplete libtbx environment!"'
@@ -230,8 +230,8 @@ def emit_setpaths_csh(env):
       print >> s, '  setenv LIBTBX_%s "%s"' % (var_name, val)
       print >> u, '  unsetenv LIBTBX_%s' % var_name
       fmt_args = (var_name, libtbx_python, libtbx_path_utility, var_name, val)
-      print >> s, '''  setenv %s "`%s %s prepend %s '%s'`"''' % fmt_args
-      print >> u, '''  setenv %s "`%s %s delete %s '%s'`"''' % fmt_args
+      print >> s, '''  setenv %s "`'%s' '%s' prepend %s '%s'`"''' % fmt_args
+      print >> u, '''  setenv %s "`'%s' '%s' delete %s '%s'`"''' % fmt_args
       print >> s, '  setenv LIBTBX0%s "$%s"' % (var_name, var_name)
       print >> u, '  unsetenv LIBTBX0%s' % var_name
     else:
