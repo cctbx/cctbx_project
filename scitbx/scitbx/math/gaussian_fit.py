@@ -166,7 +166,6 @@ class find_max_x:
           print "Aborting this minimization."
           print
           sys.stdout.flush()
-          if (enforce_positive_b_mod_n == 1): raise
           minimized = None
           max_error = None
           break
@@ -311,7 +310,6 @@ class fit_with_golay_starts:
             print "Aborting this minimization."
             print
             sys.stdout.flush()
-            if (enforce_positive_b_mod_n == 1): raise
             minimized = None
             break
           if (min(minimized.final_gaussian_fit.array_of_b()) < b_min):
