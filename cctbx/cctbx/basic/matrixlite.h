@@ -259,11 +259,13 @@ namespace cctbx {
 
     template <class FloatType, std::size_t N>
     bool
-    approx_equal(const boost::array<FloatType, N>& a,
-                 const boost::array<FloatType, N>& b,
-                 FloatType scaled_tolerance) {
+    approx_equal_scaled(const boost::array<FloatType, N>& a,
+                        const boost::array<FloatType, N>& b,
+                        FloatType scaled_tolerance) {
       for (std::size_t i = 0; i < N; i++) {
-        if (!cctbx::approx_equal(a[i], b[i], scaled_tolerance)) return false;
+        if (!cctbx::approx_equal_scaled(a[i], b[i], scaled_tolerance)) {
+          return false;
+        }
       }
       return true;
     }

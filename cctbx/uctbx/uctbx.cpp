@@ -65,9 +65,9 @@ namespace { // Helper functions in anonymous namespace.
   {
     double maxelem = M[0];
     for(int i=1;i<9;i++) if (maxelem < M[i]) maxelem = M[i];
-    return    approx_equal(M[1], M[3], maxelem * tolerance)
-           && approx_equal(M[2], M[6], maxelem * tolerance)
-           && approx_equal(M[5], M[7], maxelem * tolerance);
+    return    approx_equal_scaled(M[1], M[3], maxelem * tolerance)
+           && approx_equal_scaled(M[2], M[6], maxelem * tolerance)
+           && approx_equal_scaled(M[5], M[7], maxelem * tolerance);
   }
 }
 
@@ -227,16 +227,13 @@ namespace cctbx { namespace uctbx {
   }
 
   bool
-  UnitCell::isEqual(const UnitCell& uc, const double& epsilon=0.000001) const
+  UnitCell::isEqual(const UnitCell& other, double tolerance) const
   {
-    //This is a kludge--no good way to define whether or not two unit cell
-    //dimensions are the same.  Isomorphism is a subjective judgement.
-    bool result(true);
-    for (int i  = 0; i<3; i++) {
-      result = result && ((Len[i] - uc.Len[i])/Len[i])<epsilon;
-      result = result && ((Ang[i] - uc.Ang[i])/Ang[i])<epsilon;
+    for(int i=0;i<3;i++) {
+      if (!approx_equal_unscaled(Len[i],other.Len[i], tolerance)) return false;
+      if (!approx_equal_unscaled(Ang[i],other.Ang[i], tolerance)) return false;
     }
-    return result;
+    return true;
   }
 
   Miller::Index UnitCell::MaxMillerIndices(double dmin) const

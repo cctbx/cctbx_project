@@ -16,12 +16,27 @@ namespace cctbx {
   //! Test if abs(a-b) < scaled_tolerance.
   template <class FloatType>
   bool
-  approx_equal(const FloatType& a,
-               const FloatType& b,
-               const FloatType& scaled_tolerance) {
+  approx_equal_scaled(const FloatType& a,
+                      const FloatType& b,
+                      const FloatType& scaled_tolerance) {
     FloatType diff = a - b;
     if (diff < 0.) diff = -diff;
     if (diff < scaled_tolerance) return true;
+    return false;
+  }
+
+  //! Test if 2*abs((a-b)/(a+b)) < tolerance.
+  template <class FloatType>
+  bool
+  approx_equal_unscaled(const FloatType& a,
+                        const FloatType& b,
+                        const FloatType& tolerance) {
+    FloatType sum = a + b;
+    cctbx_assert(sum != 0);
+    FloatType diff = a - b;
+    FloatType ratio = diff / sum;
+    if (ratio < 0) ratio = -ratio;
+    if (FloatType(2) * ratio < tolerance) return true;
     return false;
   }
 
