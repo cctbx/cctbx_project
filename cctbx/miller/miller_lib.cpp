@@ -289,6 +289,14 @@ namespace cctbx { namespace miller {
     af::shared<Index> miller_indices_1)
   : miller_indices_(miller_indices_0, miller_indices_1)
   {
+    if (miller_indices_[0].id() == miller_indices_[1].id()) {
+      // short-cut if same shared array
+      pairs_.reserve(miller_indices_[0].size());
+      for(std::size_t i=0;i<miller_indices_[0].size();i++) {
+        pairs_.push_back(af::tiny<std::size_t, 2>(i, i));
+      }
+      return;
+    }
     typedef std::map<Index, std::size_t> lookup_map_type;
     lookup_map_type lookup_map;
     std::size_t i;
