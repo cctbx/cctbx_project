@@ -4,6 +4,12 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/error.h>
 
+#if !defined(CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_OVERZEALOUS_OPTIMIZER)
+# if defined(__GNUC__) && __GNUC__ == 2 && __GNUC_MINOR__ == 96
+#  define CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_OVERZEALOUS_OPTIMIZER
+# endif
+#endif
+
 namespace cctbx { namespace uctbx {
 
   //! Specific exception to indicate failure of reduction algorithm.
@@ -227,6 +233,9 @@ namespace cctbx { namespace uctbx {
         FloatType m_new = multiplier_significant_change_test_ * new_value;
         FloatType diff = new_value - last_abc_significant_change_test_[i];
         FloatType m_new_plus_diff = spoil_optimization(m_new + diff);
+#if defined(CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_OVERZEALOUS_OPTIMIZER)
+        char buf[80]; std::sprintf(buf, "%g", m_new_plus_diff);
+#endif
         FloatType m_new_plus_diff_minus_m_new = m_new_plus_diff - m_new;
         return m_new_plus_diff_minus_m_new != 0;
       }
