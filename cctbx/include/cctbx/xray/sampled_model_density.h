@@ -143,6 +143,30 @@ namespace cctbx { namespace xray {
 
     template <typename FloatType>
     inline
+    FloatType
+    anisotropic_3d_gaussian_fourier_transform(
+      FloatType const& a,
+      scitbx::sym_mat3<FloatType> const& b_all)
+    {
+      FloatType d = b_all.determinant();
+      CCTBX_ASSERT(d != 0);
+      return const_8_pi_pow_3_2 * a / std::sqrt(d);
+    }
+
+    template <typename FloatType>
+    inline
+    FloatType
+    isotropic_3d_gaussian_fourier_transform(
+      FloatType const& a,
+      FloatType const& b_all)
+    {
+      FloatType d = b_all * b_all * b_all;
+      CCTBX_ASSERT(d != 0);
+      return const_8_pi_pow_3_2 * a / std::sqrt(d);
+    }
+
+    template <typename FloatType>
+    inline
     void
     isotropic_3d_gaussian_fourier_transform(
       FloatType const& a,
@@ -150,10 +174,8 @@ namespace cctbx { namespace xray {
       FloatType& as,
       FloatType& bs)
     {
-      FloatType d = b_all * b_all * b_all;
-      CCTBX_ASSERT(d != 0);
-      as = const_8_pi_pow_3_2 * a / std::sqrt(d);
-      bs = 1 / b_all * const_minus_4_pi_sq;
+      as = isotropic_3d_gaussian_fourier_transform(a, b_all);
+      bs = const_minus_4_pi_sq / b_all;
     }
 
     template <typename FloatTypeCaasfB,

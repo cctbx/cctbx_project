@@ -85,6 +85,7 @@ namespace {
         .def("apply_symmetry", &w_t::apply_symmetry,apply_symmetry_overloads())
         .def("update_weight", &w_t::update_weight)
         .def("multiplicity", &w_t::multiplicity)
+        .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)
         .def("raw_copy", raw_copy)
       ;

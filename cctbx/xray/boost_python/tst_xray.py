@@ -60,11 +60,13 @@ def exercise_xray_scatterer():
   sg = sgtbx.space_group_info("P 4")
   ss = x.apply_symmetry(uc, sg.group())
   assert x.multiplicity() == 1
+  assert approx_equal(x.weight_without_occupancy(), 1/4.)
   assert approx_equal(x.weight(), 0.9/4.)
   assert approx_equal(x.site, (0,0,0.3))
   assert ss.multiplicity() == x.multiplicity()
   x.occupancy = 0.8
   x.update_weight(sg.group().order_z())
+  assert approx_equal(x.weight_without_occupancy(), 1/4.)
   assert approx_equal(x.weight(), 0.8/4.)
   u_cart = (0.3354, 0.3771, 0.4874, -0.05161, 0.026763, -0.02116)
   x.u_star = adptbx.u_cart_as_u_star(uc, u_cart)
@@ -126,6 +128,7 @@ def exercise_pack_parameters():
     assert approx_equal(sc[0].site, (0.02, 0.04, 0.6))
     assert approx_equal(sc[0].u_iso, 0.4)
     assert approx_equal(sc[0].occupancy, 2)
+    assert approx_equal(sc[0].weight_without_occupancy(), 1)
     assert approx_equal(sc[0].weight(), 2)
     assert approx_equal(sc[1].site, (0.6, 0.8, 1))
     assert approx_equal(sc[1].occupancy, 2)

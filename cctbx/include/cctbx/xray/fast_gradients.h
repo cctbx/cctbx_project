@@ -21,23 +21,46 @@ namespace cctbx { namespace xray {
           CaasfType const& caasf,
           std::complex<FloatType> const& fp_fdp,
           FloatType const& occupancy,
+          FloatType const& weight_without_occupancy,
           FloatType const& w,
           FloatType const& u_iso,
           FloatType const& u_extra)
         :
           caasf_fourier_transformed<FloatType, CaasfType>(
-            exp_table, caasf, fp_fdp, w, u_iso, u_extra),
-          occupancy_(occupancy)
+            exp_table, caasf, fp_fdp, w, u_iso, u_extra)
         {
-          using scitbx::constants::pi_sq;
-          FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
-          std::size_t i = 0;
-          for(;i<caasf.n_ab();i++) {
-            b_[i] = caasf.b(i) + b_incl_extra;
+          // if (d_rho_d_b_iso||d_rho_d_occupancy||d_rho_d_fp||d_rho_d_fdp)
+          {
+            FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
+            // if (d_rho_d_b_iso)
+            {
+              std::size_t i = 0;
+              for(;i<caasf.n_ab();i++) {
+                b_[i] = caasf.b(i) + b_incl_extra;
+              }
+              b_[i] = b_incl_extra;
+            }
+            // if (d_rho_d_occupancy)
+            {
+              std::size_t i = 0;
+              for(;i<caasf.n_ab();i++) {
+                as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
+                  weight_without_occupancy * caasf.a(i),
+                  caasf.b(i) + b_incl_extra);
+              }
+              as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
+                weight_without_occupancy * (caasf.c() + fp_fdp.real()),
+                b_incl_extra);
+              as_occupancy_imag_=isotropic_3d_gaussian_fourier_transform(
+                weight_without_occupancy * fp_fdp.imag(),
+                b_incl_extra);
+            }
+            // if (d_rho_d_fp||d_rho_d_fdp)
+            {
+              FloatType d = b_incl_extra * b_incl_extra * b_incl_extra;
+              eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 * w / std::sqrt(d);
+            }
           }
-          b_[i] = b_incl_extra;
-          FloatType d = b_incl_extra * b_incl_extra * b_incl_extra;
-          eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 * w / std::sqrt(d);
         }
 
         d_caasf_fourier_transformed(
@@ -45,27 +68,57 @@ namespace cctbx { namespace xray {
           CaasfType const& caasf,
           std::complex<FloatType> const& fp_fdp,
           FloatType const& occupancy,
+          FloatType const& weight_without_occupancy,
           FloatType const& w,
           scitbx::sym_mat3<FloatType> const& u_cart,
           FloatType const& u_extra)
         :
           caasf_fourier_transformed<FloatType, CaasfType>(
-            exp_table, caasf, fp_fdp, w, u_cart, u_extra),
-          occupancy_(occupancy)
+            exp_table, caasf, fp_fdp, w, u_cart, u_extra)
         {
-          std::size_t i = 0;
-          for(;i<caasf.n_ab();i++) {
-            scitbx::sym_mat3<FloatType>
-              b_all = compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart);
-            detb_[i] = b_all.determinant();
-            bcfmt_[i] = b_all.co_factor_matrix_transposed();
+          // if (d_rho_d_b_cart)
+          {
+            for(std::size_t i=0;i<caasf.n_ab();i++) {
+              scitbx::sym_mat3<FloatType>
+                b_all = compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart);
+              detb_[i] = b_all.determinant();
+              bcfmt_[i] = b_all.co_factor_matrix_transposed();
+            }
           }
-          scitbx::sym_mat3<FloatType>
-            b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
-          detb_[i] = b_all.determinant();
-          bcfmt_[i] = b_all.co_factor_matrix_transposed();
-          FloatType d = b_all.determinant();
-          eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 * w / std::sqrt(d);
+          // if (d_rho_d_b_cart || d_rho_d_fp || d_rho_d_fdp)
+          {
+            scitbx::sym_mat3<FloatType>
+              b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
+            FloatType d = b_all.determinant();
+            // if (d_rho_d_b_cart)
+            {
+              static const std::size_t i = this->n_rho_real_terms - 1;
+              detb_[i] = d;
+              bcfmt_[i] = b_all.co_factor_matrix_transposed();
+            }
+            // for d_rho_d_fp, d_rho_d_fdp
+            {
+              eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 * w / std::sqrt(d);
+            }
+          }
+          // if (d_rho_d_occupancy)
+          {
+            std::size_t i = 0;
+            for(;i<caasf.n_ab();i++) {
+              as_occupancy_real_[i] =
+                anisotropic_3d_gaussian_fourier_transform(
+                  weight_without_occupancy * caasf.a(i),
+                  compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart));
+            }
+            as_occupancy_real_[i] =
+              anisotropic_3d_gaussian_fourier_transform(
+                weight_without_occupancy * (caasf.c() + fp_fdp.real()),
+                compose_anisotropic_b_all(0, u_extra, u_cart));
+            as_occupancy_imag_ =
+              anisotropic_3d_gaussian_fourier_transform(
+                weight_without_occupancy * (fp_fdp.imag()),
+                compose_anisotropic_b_all(0, u_extra, u_cart));
+          }
         }
 
         /* Mathematica script used to determine analytical gradients:
@@ -212,14 +265,18 @@ namespace cctbx { namespace xray {
         FloatType
         d_rho_real_d_occupancy(DistanceType const& d_or_d_sq) const
         {
-          return -this->rho_real(d_or_d_sq) / occupancy_;
+          FloatType drdo(0);
+          for (std::size_t i=0;i<this->n_rho_real_terms;i++) {
+            drdo -= as_occupancy_real_[i] * this->exp_term(d_or_d_sq, i);
+          }
+          return drdo;
         }
 
         template <typename DistanceType>
         FloatType
         d_rho_imag_d_occupancy(DistanceType const& d_or_d_sq) const
         {
-          return -this->rho_imag(d_or_d_sq) / occupancy_;
+          return -as_occupancy_imag_ * this->exp_term(d_or_d_sq);
         }
 
         template <typename DistanceType>
@@ -238,10 +295,11 @@ namespace cctbx { namespace xray {
         }
 
       protected:
-        FloatType occupancy_;
         af::tiny<FloatType, CaasfType::n_plus_1> b_;
         af::tiny<FloatType, CaasfType::n_plus_1> detb_;
         af::tiny<scitbx::sym_mat3<FloatType>, CaasfType::n_plus_1> bcfmt_;
+        af::tiny<FloatType, CaasfType::n_plus_1> as_occupancy_real_;
+        FloatType as_occupancy_imag_;
         FloatType eight_pi_pow_3_2_w_d_;
     };
 
@@ -325,7 +383,7 @@ namespace cctbx { namespace xray {
       af::shared<scitbx::sym_mat3<FloatType> >
       grad_u_star() const { return grad_u_star_; }
 
-      af::shared<std::complex<FloatType> >
+      af::shared<FloatType>
       grad_occupancy() const { return grad_occupancy_; }
 
       af::shared<std::complex<FloatType> >
@@ -349,7 +407,7 @@ namespace cctbx { namespace xray {
       af::shared<scitbx::vec3<FloatType> > grad_site_;
       af::shared<FloatType> grad_u_iso_;
       af::shared<scitbx::sym_mat3<FloatType> > grad_u_star_;
-      af::shared<std::complex<FloatType> > grad_occupancy_;
+      af::shared<FloatType> grad_occupancy_;
       af::shared<std::complex<FloatType> > grad_fp_;
       af::shared<std::complex<FloatType> > grad_fdp_;
   };
@@ -427,7 +485,8 @@ namespace cctbx { namespace xray {
       detail::d_caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
         exp_table,
         scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
-        scatterer->weight(), u_iso, u_extra_);
+        scatterer->weight_without_occupancy(), scatterer->weight(),
+        u_iso, u_extra_);
       detail::calc_shell<FloatType, grid_point_type> shell(
         unit_cell_, wing_cutoff_, grid_f, caasf_ft);
       detail::array_update_max(max_shell_radii_, shell.radii);
@@ -442,12 +501,13 @@ namespace cctbx { namespace xray {
         caasf_ft = detail::d_caasf_fourier_transformed<FloatType,caasf_type>(
           exp_table,
           scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
-          scatterer->weight(), u_cart, u_extra_);
+          scatterer->weight_without_occupancy(), scatterer->weight(),
+          u_cart, u_extra_);
       }
       scitbx::vec3<FloatType> gr_site(0,0,0);
       FloatType gr_b_iso(0);
       scitbx::sym_mat3<FloatType> gr_b_cart(0,0,0,0,0,0);
-      std::complex<FloatType> gr_occupancy(0);
+      FloatType gr_occupancy(0);
       std::complex<FloatType> gr_fp(0);
       std::complex<FloatType> gr_fdp(0);
       grid_point_type pivot = detail::calc_nearest_grid_point(
@@ -498,26 +558,17 @@ namespace cctbx { namespace xray {
             gr_b_cart += f.imag() * caasf_ft.d_rho_imag_d_b_cart(d);
           }
         }
-        FloatType drdo_real;
         if (!scatterer->anisotropic_flag) {
-          drdo_real = caasf_ft.d_rho_real_d_occupancy(d_sq);
+          gr_occupancy += f.real() * caasf_ft.d_rho_real_d_occupancy(d_sq);
+          if (fdp) {
+            gr_occupancy += f.imag() * caasf_ft.d_rho_imag_d_occupancy(d_sq);
+          }
         }
         else {
-          drdo_real = caasf_ft.d_rho_real_d_occupancy(d);
-        }
-        if (!fdp) {
-          gr_occupancy += f * drdo_real;
-        }
-        else {
-          FloatType drdo_imag;
-          if (!scatterer->anisotropic_flag) {
-            drdo_imag = caasf_ft.d_rho_imag_d_occupancy(d_sq);
+          gr_occupancy += f.real() * caasf_ft.d_rho_real_d_occupancy(d);
+          if (fdp) {
+            gr_occupancy += f.imag() * caasf_ft.d_rho_imag_d_occupancy(d);
           }
-          else {
-            drdo_imag = caasf_ft.d_rho_imag_d_occupancy(d);
-          }
-          gr_occupancy += f * std::complex<FloatType>(
-              drdo_real, -drdo_imag);
         }
         if (!scatterer->anisotropic_flag) {
           gr_fp += f * caasf_ft.d_rho_real_d_fp(d_sq);

@@ -379,7 +379,7 @@ def occupancy(structure_ideal, f_obs):
               * complex_math.polar((1, p)))
     print "gxm[%d]:" % i_scatterer, gxm/m.occupancy
     gl = map0.grad_occupancy()[i_scatterer]
-    print " m0[%d]:" % i_scatterer, gl
+    print " m0[%d]: " % i_scatterer, gl
     print
 
 class two_p_shifted_u_cart:
@@ -677,8 +677,8 @@ def run_one(n_elements=3, volume_per_atom=1000, d_min=2,
     fdp(structure_ideal, f_obs)
 
 def run():
-  for fdp_flag in (0, 1):
-    for anisotropic_flag in (0, 1):
+  for fdp_flag in [0,1]:
+    for anisotropic_flag in [0,1]:
       run_one(fdp_flag=fdp_flag, anisotropic_flag=anisotropic_flag)
 
 if (__name__ == "__main__"):
