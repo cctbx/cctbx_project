@@ -7,11 +7,11 @@ from cctbx import xutils
 from cctbx.development import debug_utils
 from cctbx_boost import dmtbx
 
-def ampl_phase_rad(f):
+def ampl_phase(f, deg=0):
   amplidutes = shared.double()
   phases = shared.double()
   for i in xrange(f.size()):
-    a, p = xutils.f_as_ampl_phase(f[i], deg=0)
+    a, p = xutils.f_as_ampl_phase(f[i], deg)
     amplidutes.append(a)
     phases.append(p)
   return amplidutes, phases
@@ -27,20 +27,28 @@ def erase_small(miller_indices, data, cutoff):
       miller_indices.erase(i)
       data.erase(i)
 
-def compute_mean_weighted_phase_error(h, f, phi1, phi2, verbose=0):
+def normalize_quasi_normalized(sgops, miller_indices, data):
+  epsilons = sgops.epsilon(miller_indices)
+  for i in xrange(miller_indices.size()):
+    data[i] /= epsilons[i]
+
+def compute_mean_weighted_phase_error(tprs, sgops, h, f, phi1, phi2, verbose=0):
   sum_w_phase_error = 0
   sum_w = 0
   for i in xrange(h.size()):
+    if (tprs != None and tprs.n_relations(i) == 0): continue
     phase_error = debug_utils.phase_error(
       phi1[i], phi2[i], deg=0) * 180/math.pi
     if (0 or verbose):
       print h[i], "%.3f %.3f %.3f" % (
         phi1[i], phi2[i], phase_error)
-    sum_w_phase_error += f[i] * phase_error
-    sum_w += f[i]
+    m = sgops.multiplicity(h[i], 1)
+    sum_w_phase_error += m * f[i] * phase_error
+    sum_w += m * f[i]
   return sum_w_phase_error / sum_w
 
-def square_emap(xtal, e000, p1_miller_indices, miller_indices, e_values, phases):
+def square_emap(xtal, e000, p1_miller_indices,
+                miller_indices, e_values, phases):
   index_span = sftbx.index_span(p1_miller_indices)
   if (1):
     print "index_span:"
@@ -48,28 +56,36 @@ def square_emap(xtal, e000, p1_miller_indices, miller_indices, e_values, phases)
     print "  max:", index_span.max()
     print "  abs_range:", index_span.abs_range()
     print "  map_grid:", index_span.map_grid()
-  grid_logical = list(index_span.map_grid())
-  if (grid_logical[2] % 2): grid_logical[2] -= 1
-  grid_logical = [n * 1 for n in grid_logical]
+  grid_logical_min = list(index_span.map_grid())
+  if (grid_logical_min[2] % 2): grid_logical_min[2] -= 1
+  print "grid_logical_min:", grid_logical_min
+  grid_logical_n = [n * 2 + 0 for n in grid_logical_min]
+  print "grid_logical_n:", grid_logical_n
+  if (0):
+    mandatory_gridding_factors = xtal.SgOps.refine_gridding()
+  else:
+    mandatory_gridding_factors = (1,1,1)
+  grid_logical = fftbx.adjust_gridding_triple(
+    grid_logical_n, 1, mandatory_gridding_factors)
   print "grid_logical:", grid_logical
   rfft = fftbx.real_to_complex_3d(grid_logical)
   friedel_flag = 1
-  old_e_complex = shared.polar_rad(e_values, phases)
+  old_e_complex = shared.polar(e_values, phases)
   n_complex = rfft.Ncomplex()
   print "n_complex:", n_complex
   conjugate = 0
   map = sftbx.structure_factor_map(
     xtal.SgOps, friedel_flag, miller_indices,
     old_e_complex, n_complex, conjugate)
-  map[0] = e000
+  # XXX map[0] = e000
   rfft.backward(map)
   rmap = shared.reinterpret_complex_as_real(map)
-  shared.set_if_less_than(rmap, 0, 0)
+  # XXX shared.set_if_less_than(rmap, 0, 0)
   shared.square(rmap)
   rfft.forward(map)
   new_e_complex = sftbx.collect_structure_factors(
     friedel_flag, miller_indices, map, n_complex, conjugate)
-  new_phases = shared.arg_rad(new_e_complex)
+  new_phases = shared.arg(new_e_complex)
   if (0):
     for i in xrange(miller_indices.size()):
       print miller_indices[i], "%.2f %.2f" % (
@@ -78,7 +94,7 @@ def square_emap(xtal, e000, p1_miller_indices, miller_indices, e_values, phases)
   return new_phases
 
 def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
-                            verbose):
+                            use_tangent_formula, verbose):
   tprs = dmtbx.triplet_invariants(sginfo, miller_indices_h, e_values)
   utprs = tprs.unique_triplets()
   print "number_of_weighted_triplets:", \
@@ -94,11 +110,15 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
   for t in (tprs, utprs):
     mean_weighted_phase_error = []
     for ignore_weights in (0, 1):
-      new_phases = t.refine_phases(
-        miller_indices_h, e_values, phases, ignore_weights)
+      if (use_tangent_formula):
+        new_phases = t.apply_tangent_formula(e_values, phases, ignore_weights)
+      else:
+        new_phases = t.estimate_phases(e_values, phases, ignore_weights)
       mean_weighted_phase_error.append(
         compute_mean_weighted_phase_error(
-          miller_indices_h, e_values, phases, new_phases, verbose))
+          t,
+          sginfo.SgOps(), miller_indices_h, e_values, phases, new_phases,
+          verbose))
     print "mean weighted phase error: %.2f %.2f delta: %.2f" % (
       mean_weighted_phase_error[0],
       mean_weighted_phase_error[1],
@@ -114,11 +134,15 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
 def exercise(SgInfo,
              number_of_point_atoms = 10,
              d_min=1.,
-             e_min=1.4,
+             e_min=1.8,
              exercise_triplets=0,
              exercise_squaring=0,
+             use_tangent_formula=0,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
+  print "random.getstate():", debug_utils.random.getstate()
+  if (0):
+    debug_utils.random.setstate((1, (29212, 18333, 13885), None))
   xtal = debug_utils.random_structure(
     SgInfo, elements,
     volume_per_atom=50.,
@@ -128,6 +152,10 @@ def exercise(SgInfo,
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
   MillerIndices = xutils.build_miller_indices(xtal, friedel_flag=1,d_min=d_min)
+  if (0):
+    MillerIndices.H = shared.Miller_Index()
+    MillerIndices.H.append((0,2,0))
+    MillerIndices.H.append((1,1,15))
   MillerIndices.H.append((0,0,0))
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=1)
   print "F000:", Fcalc.F[MillerIndices.H.size()-1]
@@ -144,42 +172,74 @@ def exercise(SgInfo,
   print "number of structure factors:", e_values.size()
   erase_small(MillerIndices.H, e_values, e_min)
   print "number of structure factors:", e_values.size()
+  normalize_quasi_normalized(xtal.SgOps, MillerIndices.H, e_values)
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=0)
-  dummy, phases = ampl_phase_rad(Fcalc.F)
+  dummy, phases = ampl_phase(Fcalc.F)
   Fcalc.F = e_values
   if (0 or verbose):
     debug_utils.print_structure_factors(Fcalc)
+  if (0 or verbose):
+    for i in xrange(Fcalc.H.size()):
+      print Fcalc.H[i], "%.2f %.2f" % (e_values[i], phases[i]*180/math.pi)
   p1_H = shared.Miller_Index()
   p1_e_values = shared.double()
   p1_phases = shared.double()
   sgtbx.expand_to_p1(
-    xtal.SgOps,
+    xtal.SgOps, 1,
     MillerIndices.H, e_values, phases,
-    p1_H, p1_e_values, p1_phases,
-    0, 0)
+    p1_H, p1_e_values, p1_phases)
   print "number of structure factors p1:", p1_H.size()
+  if (0 or verbose):
+    for i in xrange(p1_H.size()):
+      print p1_H[i], "%.2f %.2f" % (p1_e_values[i], p1_phases[i]*180/math.pi)
+  tprs_sg = None
   if (exercise_triplets):
     tprs_sg = test_triplet_invariants(
-      xtal.SgInfo, MillerIndices.H, e_values, phases, verbose)
+      xtal.SgInfo, MillerIndices.H, e_values, phases,
+      use_tangent_formula, verbose)
     tprs_p1 = test_triplet_invariants(
-      sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, verbose)
-    js = shared.join_sets(MillerIndices.H, p1_H)
-    assert js.pairs().size() == MillerIndices.H.size()
-    sg_new_phases = tprs_sg.refine_phases(MillerIndices.H, e_values, phases)
-    p1_new_phases = tprs_p1.refine_phases(p1_H, p1_e_values, p1_phases)
+      sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases,
+      use_tangent_formula, verbose)
+    if (use_tangent_formula):
+      sg_new_phases = tprs_sg.apply_tangent_formula(e_values, phases)
+      p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
+    else:
+      sg_new_phases = tprs_sg.estimate_phases(e_values, phases)
+      p1_new_phases = tprs_p1.estimate_phases(p1_e_values, p1_phases)
+    ref_p1_H = shared.Miller_Index()
+    ref_p1_e_values = shared.double()
+    ref_p1_phases = shared.double()
+    sgtbx.expand_to_p1(
+      xtal.SgOps, 1,
+      MillerIndices.H, e_values, sg_new_phases,
+      ref_p1_H, ref_p1_e_values, ref_p1_phases)
+    js = shared.join_sets(ref_p1_H, p1_H)
+    assert not js.have_singles()
+    for i,j in js.pairs():
+      phase_error = debug_utils.phase_error(
+        ref_p1_phases[i], p1_new_phases[j], deg=0)
+      if (phase_error >= 1.e-4):
+        print "Error: phase mismatch" # XXX assert
+      if (0 or verbose or phase_error >= 1.e-4):
+        assert ref_p1_H[i] == p1_H[j]
+        h = str(ref_p1_H[i])
+        print "%-15s %.2f" % (h, p1_phases[i]*180/math.pi)
+        print "%-15s %.2f sg" % ("", ref_p1_phases[i]*180/math.pi)
+        print "%-15s %.2f p1" % ("", p1_new_phases[j]*180/math.pi)
+        print "tprs_p1.n_relations():", tprs_p1.n_relations(j)
     if (0 or verbose):
-      for i,j in js.pairs():
-        h = str(MillerIndices.H[i])
-        print "%-15s %.2f %.2f" % (
-          h, phases[i]*180/math.pi, sg_new_phases[i]*180/math.pi)
-        print "%-15s %.2f %.2f" % (
-          "", p1_phases[j]*180/math.pi, p1_new_phases[j]*180/math.pi)
       print
   if (exercise_squaring):
-    new_phases = square_emap(xtal, e000, p1_H, MillerIndices.H, e_values, phases)
-    mwpe = compute_mean_weighted_phase_error(
-      MillerIndices.H, e_values, phases, new_phases, verbose)
-    print "squaring mean weighted phase error: %.2f" % (mwpe,)
+    new_phases = square_emap(
+      xtal, e000, p1_H, MillerIndices.H, e_values, phases)
+    tprs_plus = [tprs_sg]
+    if (tprs_sg != None): tprs_plus.append(None)
+    for t in tprs_plus:
+      mwpe = compute_mean_weighted_phase_error(
+        t,
+        MillerIndices.SgOps, MillerIndices.H, e_values, phases, new_phases,
+        verbose)
+      print "squaring mean weighted phase error: %.2f" % (mwpe,)
   print
 
 def run():
@@ -209,7 +269,12 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
-    if (SgInfo.SgOps().OrderZ() > 48 and not Flags.IncludeVeryHighSymmetry):
+    if (SgInfo.SgOps().isCentric()):
+      print "Centric space group skipped."
+      print
+      sys.stdout.flush()
+      continue
+    if (SgInfo.SgOps().OrderZ() > 24 and not Flags.IncludeVeryHighSymmetry):
       print "High symmetry space group skipped."
       print
       sys.stdout.flush()
