@@ -60,6 +60,19 @@ namespace cctbx {
     return result;
   }
 
+  template <typename FloatType>
+  FloatType
+  mean_square_difference(
+    scitbx::mat3<FloatType> const& a,
+    scitbx::mat3<FloatType> const& b)
+  {
+    FloatType result = 0;
+    for(std::size_t i=0;i<9;i++) {
+      result += scitbx::fn::pow2(a[i] - b[i]);
+    }
+    return result;
+  }
+
   //! Class for the handling of unit cell information.
   /*! All angles are in degrees.
       <p>
@@ -494,6 +507,12 @@ namespace cctbx {
           result[i] = two_theta(h[i], wavelength, deg);
         }
         return result;
+      }
+
+      double
+      bases_mean_square_difference(unit_cell const& other) const
+      {
+        return mean_square_difference(orth_, other.orth_) / 3;
       }
 
       /*! \brief Sort order for alternative settings of otherwise

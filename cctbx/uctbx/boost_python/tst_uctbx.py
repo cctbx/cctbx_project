@@ -2,8 +2,10 @@ from math import pi, cos, asin, sqrt
 import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
+from scitbx import matrix
 from libtbx.test_utils import approx_equal
 import random
+import math
 import sys
 
 def exercise_functions():
@@ -325,6 +327,28 @@ def exercise_similarity_transformations():
       unimodular_generator_range=1)
     assert list(transformations) == expected
 
+def unit_cell_bases_mean_square_difference(self, other):
+  diff_sqs = flex.double()
+  for basis_vector in [(1,0,0),(0,1,0),(0,0,1)]:
+    self_v = matrix.col(self.orthogonalize(basis_vector))
+    other_v = matrix.col(other.orthogonalize(basis_vector))
+    diff_sqs.append((self_v - other_v).norm())
+  return flex.mean(diff_sqs)
+
+def exercise_bases_rmsd():
+  unit_cells = [uctbx.unit_cell(params) for params in [
+    (79, 85.6519, 97.0483, 89.6713, 65.9826, 62.5374),
+    (79, 85.6519, 97.0483, 68.3049, 65.9826, 62.5374),
+    (110, 58.4, 69.2, 90, 127, 90),
+    (56.48, 56.48, 182.39, 90, 90, 120)]]
+  for cell_a in unit_cells:
+    for cell_b in unit_cells:
+      v_cpp = cell_a.bases_mean_square_difference(cell_b)
+      v_py = unit_cell_bases_mean_square_difference(cell_a, cell_b)
+      assert approx_equal(v_cpp, v_py)
+      if (cell_a is cell_b):
+        assert approx_equal(v_cpp, 0)
+
 def run():
   exercise_functions()
   exercise_basic()
@@ -336,6 +360,7 @@ def run():
   exercise_exceptions()
   exercise_fast_minimum_reduction()
   exercise_similarity_transformations()
+  exercise_bases_rmsd()
   e = exercise_is_degenerate()
   if (e.n_iterations > 100):
     e.report()
