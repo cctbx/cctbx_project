@@ -26,14 +26,15 @@ def collect_assigned_words(word_iterator, lead_word):
 def collect_objects(
       word_iterator,
       definition_type_names,
+      parser_parent_scope,
       stop_token=None,
       start_word=None):
-  objects = []
+  active_definition = None
   while True:
     lead_word = word_iterator.try_pop_unquoted()
     if (lead_word is None): break
     if (stop_token is not None and lead_word.value == stop_token):
-      return objects
+      return
     if (lead_word.value == "{"):
       raise RuntimeError(
         'Syntax error: unexpected "{"%s' % lead_word.where_str())
@@ -49,9 +50,9 @@ def collect_objects(
               and (word.value[:1] == "." or word.value[:2] == "#.")))):
       if (not parameters.is_standard_identifier(lead_word.value)):
         lead_word.raise_syntax_error("improper scope name ")
+      active_definition = None
       scope = parameters.scope(
         name=lead_word.value,
-        objects=None,
         is_disabled=is_disabled,
         where_str=lead_word.where_str())
       while True:
@@ -74,12 +75,13 @@ def collect_objects(
             name=word.value[1:],
             assigned_words=assigned_words)
         word = word_iterator.pop_unquoted()
-      scope.objects = collect_objects(
+      collect_objects(
         word_iterator=word_iterator,
         definition_type_names=definition_type_names,
+        parser_parent_scope=scope,
         stop_token="}",
         start_word=word)
-      objects.append(scope)
+      parser_parent_scope.adopt(scope)
     else:
       word_iterator.backup()
       if (lead_word.value[:1] != "."):
@@ -87,22 +89,23 @@ def collect_objects(
           lead_word.raise_syntax_error("improper definition name ")
         if (lead_word.value != "include"):
           word_iterator.pop_unquoted().assert_expected("=")
-        objects.append(parameters.definition(
+        active_definition = parameters.definition(
           name=lead_word.value,
           words=collect_assigned_words(word_iterator, lead_word),
           is_disabled=is_disabled,
-          where_str=lead_word.where_str()))
+          where_str=lead_word.where_str())
+        parser_parent_scope.adopt(active_definition)
       else:
-        if (len(objects) == 0
-            or not isinstance(objects[-1], parameters.definition)
-            or not objects[-1].has_attribute_with_name(lead_word.value[1:])):
+        if (active_definition is None
+            or not active_definition.has_attribute_with_name(
+                     lead_word.value[1:])):
           raise RuntimeError("Unexpected definition attribute: %s%s" % (
             lead_word.value, lead_word.where_str()))
         word = word_iterator.pop_unquoted()
         word.assert_expected("=")
         assigned_words = collect_assigned_words(word_iterator, lead_word)
         if (not is_disabled):
-          objects[-1].assign_attribute(
+          active_definition.assign_attribute(
             name=lead_word.value[1:],
             assigned_words=assigned_words,
             type_names=definition_type_names)
@@ -115,4 +118,3 @@ def collect_objects(
       raise RuntimeError('Syntax error: missing "%s"' % stop_token)
     raise RuntimeError('Syntax error: no matching "%s" for "%s" at %s' %
       (stop_token, str(start_word), where))
-  return objects
