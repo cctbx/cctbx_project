@@ -164,9 +164,9 @@ namespace uctbx {
 
       //! @name Test equality.
       //@{
-      bool isEqual(const UnitCell& uc, const double& epsilon) const;
       //! Test the equality of two Unit Cell instances.  Test the fractional
       //! difference of each of the six parameters and compare to epsilon
+      bool isEqual(const UnitCell& uc, const double& epsilon) const;
       //@}
 
       //! @name Orthogonalization and fractionalization of coordinates.
