@@ -88,6 +88,7 @@ namespace {
         .def("focus_size_1d", &w_t::focus_size_1d)
         .def("is_0_based", &w_t::is_0_based)
         .def("is_padded", &w_t::is_padded)
+        .def("is_trivial_1d", &w_t::is_trivial_1d)
         .def("shift_origin", &w_t::shift_origin)
         .def("is_valid_index", &w_t::is_valid_index)
         .def("__call__", &w_t::operator())

@@ -269,6 +269,14 @@ namespace scitbx { namespace af {
         return !last().all_eq(focus_);
       }
 
+      bool
+      is_trivial_1d() const
+      {
+        if (nd() != 1) return false;
+        if (!is_0_based()) return false;
+        return !is_padded();
+      }
+
       flex_grid
       shift_origin() const
       {
