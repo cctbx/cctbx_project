@@ -270,17 +270,6 @@ def emit_SConstruct(env, build_options, packages_dict):
   print >> f, '  static_libraries=%d,' % int(build_options.static_libraries)
   print >> f, '  static_exe=%d,' % int(build_options.static_exe)
   print >> f, '  scan_boost=%d)' % int(build_options.scan_boost)
-  print >> f, 'try:'
-  print >> f, '  CScanSetFlags('
-  print >> f, '    python=0,'
-  for package_name in env.package_list:
-    flag = 1
-    if (package_name == "boost"): flag = 0
-    print >> f, '    %s=%d,' % (package_name, flag)
-  print >> f, '  )'
-  print >> f, 'except:'
-  print >> f, '  pass'
-  print >> f, '#SetContentSignatureType("timestamp")'
   print >> f, 'if ("SConsignFile" in dir()):'
   print >> f, \
     '  SConsignFile(dbm_module=libtbx.config.select_sconsign_dbm_module())'

@@ -3,11 +3,6 @@ import sys
 Import("env_base", "env_etc")
 env_etc.boost_dist = env_etc.libtbx_env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
-try:
-  CScanRegisterFlags(
-    boost=env_etc.boost_include)
-except:
-  pass
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = ["-DBOOST_PYTHON_MAX_BASES=2"]
   env_no_includes_boost_python_ext = env_base.Copy(

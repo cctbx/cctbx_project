@@ -297,9 +297,4 @@ env_etc.libtbx_build = env_etc.libtbx_env.LIBTBX_BUILD
 env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "libtbx/include")
 env_etc.libtbx_lib = norm_join(env_etc.libtbx_build, "libtbx")
 
-try:
-  CScanRegisterFlags(python=env_etc.python_include)
-except:
-  pass
-
 Export("env_base", "env_etc")
