@@ -143,9 +143,9 @@ class get_r_free_flags_score:
       self.reversed = True
       n_free = n - n_free
     self.flag_score = 0
-    if (n*0.01 < n_free < n*0.35):
+    if (min(2000,n*0.01) < n_free < n*0.35):
       if (   looks_like_r_free_flags_info(miller_array_info)
-          or n*0.05 < n_free < n*0.20):
+          or min(2000,n*0.04) < n_free < n*0.20):
         self.flag_score = 2
       else:
         self.flag_score = 1
