@@ -154,6 +154,35 @@ class selection_cache:
       self.element.setdefault(atom_attributes.element).append(i_seq)
       self.charge.setdefault(atom_attributes.charge).append(i_seq)
 
+  def get_all_altLocs_sorted(self):
+    result = self.altLoc.keys()
+    if (" " in self.altLoc):
+      result.remove(" ")
+    result.sort()
+    result.insert(0, " ")
+    return result
+
+  def get_model_indices(self):
+    if (self.MODELserial.size() < 2):
+      return None
+    result = flex.size_t(self.n_seq, self.n_seq)
+    for model_index,selection in self.MODELserial.items():
+      assert model_index >= 0
+      result.set_selected(selection, model_index)
+    assert result.all_ne(self.n_seq)
+    return result
+
+  def get_conformer_indices(self):
+    result = flex.size_t(self.n_seq, self.n_seq)
+    for i,altLoc in enumerate(self.get_all_altLocs_sorted()):
+      selection = self.altLoc.get(altLoc, None)
+      if (selection is None):
+        assert altLoc == " "
+      else:
+        result.set_selected(selection, i)
+    assert result.all_ne(self.n_seq)
+    return result
+
   def get_name(self, pattern):
     return _get_map_string(map=self.name, pattern=pattern)
 
