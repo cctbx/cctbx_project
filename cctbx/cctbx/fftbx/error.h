@@ -11,6 +11,8 @@
 #ifndef CCTBX_FFTBX_ERROR_H
 #define CCTBX_FFTBX_ERROR_H
 
+// XXX do we still need this file?
+
 #include <exception>
 #include <string>
 

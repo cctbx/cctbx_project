@@ -6,15 +6,15 @@
 
    Revision history:
      2001 Nov 03: fftbx started, based on fftpack41 (rwgk)
+     XXX avoid z, z+1 by casting to complex
  */
 
 #ifndef CCTBX_FFTBX_REAL_TO_COMPLEX_3D_H
 #define CCTBX_FFTBX_REAL_TO_COMPLEX_3D_H
 
-#include <algorithm>
+#include <cctbx/array.h>
 #include <cctbx/fftbx/complex_to_complex.h>
 #include <cctbx/fftbx/real_to_complex.h>
-#include <cctbx/fftbx/adaptors.h>
 
 namespace cctbx { namespace fftbx {
 
@@ -24,27 +24,13 @@ namespace cctbx { namespace fftbx {
   /*! The complex array contains product(Ncomplex) complex
       values, i.e. product(2*Ncomplex) real values.
    */
-  inline triple Ncomplex_from_Nreal(const triple& Nreal) {
-    return triple(Nreal[0], Nreal[1], Ncomplex_from_Nreal(Nreal[2]));
+  template <typename IntegerType, std::size_t D>
+  inline boost::array<std::size_t, D>
+  Ncomplex_from_Nreal(const boost::array<IntegerType, D>& Nreal) {
+    boost::array<std::size_t, D> result = Nreal;
+    result[D-1] = Ncomplex_from_Nreal(result[D-1]);
+    return result;
   }
-
-  namespace adaptors {
-
-    //! 1-dimensional vector -> 3-dimensional array of real numbers.
-    /*! Currently, the only difference between cc_3d and rc_3d is
-        that the dimensions for rc_3d are adjusted using
-        Ncomplex_from_Nreal().
-     */
-    template <class VectorType>
-    class rc_3d : public base_3d<VectorType>
-    {
-      public:
-        //! Constructor given an iterator and a triple of array dimensions.
-        rc_3d(typename VectorType::iterator Start, const triple& Nreal)
-          : base_3d<VectorType>(Start, Ncomplex_from_Nreal(Nreal)) {}
-    };
-
-  } // namespace adaptors
 
   //! 3-dimensional real-to-complex Fast Fourier Transformation.
   /*! The real-to-complex Fourier transform of a real array
@@ -65,14 +51,18 @@ namespace cctbx { namespace fftbx {
       <b>For the backward transform, it is important to
       provide both Map(i,j,0) and Map(-i,-j,0)</b>.
    */
-  template <class VectorType>
+  template <typename RealType,
+            typename ComplexType = std::complex<RealType> >
   class real_to_complex_3d
   {
     public:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-      typedef typename VectorType::iterator iterator_type;
-      typedef typename VectorType::value_type value_type;
+      typedef RealType real_type;
+      typedef ComplexType complex_type;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
+
+      //! Convenience typedef.
+      typedef cctbx::array<std::size_t, 3> triple;
 
       //! Default constructor.
       real_to_complex_3d() {}
@@ -83,87 +73,45 @@ namespace cctbx { namespace fftbx {
         : m_Nreal(Nreal) {
         init();
       }
-      //! Initialization for transforms of lengths Nx, Ny, Nz.
+      //! Initialization for transforms of lengths N0, N1, N2.
       /*! See also: Constructors of complex_to_complex and real_to_complex.
        */
-      real_to_complex_3d(std::size_t Nx, std::size_t Ny, std::size_t Nz)
-        : m_Nreal(Nx, Ny, Nz) {
+      real_to_complex_3d(std::size_t N0, std::size_t N1, std::size_t N2)
+        : m_Nreal(N0, N1, N2) {
         init();
+      }
+      //! XXX
+      triple Nreal() const { return m_Nreal; }
+      //! XXX
+      triple Mreal() const {
+        triple result = Ncomplex_from_Nreal(m_Nreal);
+        result[2] *= 2;
+        return result;
       }
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex, real_to_complex
        */
-      void forward(adaptors::rc_3d<VectorType>& Map);
-      //! In-place "backward" Fourier transformation.
-      /*! <b>It is important to provide both
-          Map(i,j,0) and Map(-i,-j,0)</b>. See class details.
-          <p>
-          See also: complex_to_complex, real_to_complex
-       */
-      void backward(adaptors::rc_3d<VectorType>& Map);
-      //! In-place "forward" Fourier transformation.
-      /*! It is assumed that the dimensions of the Map are equal to
-          Nreal.
-          <p>
-          See also: complex_to_complex, real_to_complex
-       */
-      void forward(VectorType& Map) {
-        adaptors::rc_3d<VectorType> a(Map.begin(), m_Nreal);
-        forward(a);
-      }
-      //! In-place "backward" Fourier transformation.
-      /*! It is assumed that the dimensions of the Map are equal to
-          Ncomplex_from_Nreal().
-          <p>
-          <b>It is important to provide both
-          Map(i,j,0) and Map(-i,-j,0)</b>. See class details.
-          <p>
-          See also: complex_to_complex, real_to_complex
-       */
-      void backward(VectorType& Map) {
-        adaptors::rc_3d<VectorType> a(Map.begin(), m_Nreal);
-        backward(a);
-      }
-    private:
-      void init();
-    private:
-      triple m_Nreal;
-      complex_to_complex<VectorType> m_fft1d_x;
-      complex_to_complex<VectorType> m_fft1d_y;
-      real_to_complex<VectorType>   m_fft1d_z;
-      VectorType m_Seq;
-  };
-
-  template <class VectorType>
-  void real_to_complex_3d<VectorType>::init()
+      template <typename NdimAccessor>
+      void forward(NdimAccessor Map)
+  // FUTURE: move out of class body
   {
-    m_fft1d_x = complex_to_complex<VectorType>(m_Nreal[0]);
-    m_fft1d_y = complex_to_complex<VectorType>(m_Nreal[1]);
-    m_fft1d_z = real_to_complex<VectorType>(m_Nreal[2]);
-    m_Seq.resize(2 * cctbx::vector::max(Ncomplex_from_Nreal(m_Nreal)));
-  }
-
-  template <class VectorType>
-  void
-  real_to_complex_3d<VectorType>::forward(adaptors::rc_3d<VectorType>& Map)
-  {
-    iterator_type Seq_begin = m_Seq.begin();
+    real_type* Seq = m_Seq.begin();
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.forward(Map[triple(ix, iy, 0)]);
+        m_fft1d_z.forward(&Map[triple(ix, iy, 0)]);
       }
       for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t iy;
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          m_Seq[2*iy] = Map(ix, iy, 2*iz); // Seq_begin
-          m_Seq[2*iy+1] = Map(ix, iy, 2*iz+1);
+          Seq[2*iy] = Map[triple(ix, iy, 2*iz)];
+          Seq[2*iy+1] = Map[triple(ix, iy, 2*iz+1)];
         }
         // Transform along y (medium direction)
-        m_fft1d_y.transform(select_sign<forward_tag>(), Seq_begin);
+        m_fft1d_y.transform(select_sign<forward_tag>(), Seq);
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Map(ix, iy, 2*iz) = m_Seq[2*iy];
-          Map(ix, iy, 2*iz+1) = m_Seq[2*iy+1];
+          Map[triple(ix, iy, 2*iz)] = Seq[2*iy];
+          Map[triple(ix, iy, 2*iz+1)] = Seq[2*iy+1];
         }
       }
     }
@@ -171,58 +119,81 @@ namespace cctbx { namespace fftbx {
       for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          m_Seq[2*ix] = Map(ix, iy, 2*iz);
-          m_Seq[2*ix+1] = Map(ix, iy, 2*iz+1);
+          Seq[2*ix] = Map[triple(ix, iy, 2*iz)];
+          Seq[2*ix+1] = Map[triple(ix, iy, 2*iz+1)];
         }
         // Transform along x (slow direction)
-        m_fft1d_x.transform(select_sign<forward_tag>(), Seq_begin);
+        m_fft1d_x.transform(select_sign<forward_tag>(), Seq);
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Map(ix, iy, 2*iz) = m_Seq[2*ix];
-          Map(ix, iy, 2*iz+1) = m_Seq[2*ix+1];
+          Map[triple(ix, iy, 2*iz)] = Seq[2*ix];
+          Map[triple(ix, iy, 2*iz+1)] = Seq[2*ix+1];
         }
       }
     }
   }
-
-  template <class VectorType>
-  void
-  real_to_complex_3d<VectorType>::backward(adaptors::rc_3d<VectorType>& Map)
+      //! In-place "backward" Fourier transformation.
+      /*! <b>It is important to provide both
+          Map(i,j,0) and Map(-i,-j,0)</b>. See class details.
+          <p>
+          See also: complex_to_complex, real_to_complex
+       */
+      template <typename NdimAccessor>
+      void backward(NdimAccessor Map)
+  // FUTURE: move out of class body
   {
-    iterator_type Seq_begin = m_Seq.begin();
+    real_type* Seq = m_Seq.begin();
     for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          m_Seq[2*ix] = Map(ix, iy, 2*iz);
-          m_Seq[2*ix+1] = Map(ix, iy, 2*iz+1);
+          Seq[2*ix] = Map[triple(ix, iy, 2*iz)];
+          Seq[2*ix+1] = Map[triple(ix, iy, 2*iz+1)];
         }
         // Transform along x (slow direction)
-        m_fft1d_x.transform(select_sign<backward_tag>(), Seq_begin);
+        m_fft1d_x.transform(select_sign<backward_tag>(), Seq);
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Map(ix, iy, 2*iz) = m_Seq[2*ix];
-          Map(ix, iy, 2*iz+1) = m_Seq[2*ix+1];
+          Map[triple(ix, iy, 2*iz)] = Seq[2*ix];
+          Map[triple(ix, iy, 2*iz+1)] = Seq[2*ix+1];
         }
       }
       for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
         std::size_t iy;
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          m_Seq[2*iy] = Map(ix, iy, 2*iz);
-          m_Seq[2*iy+1] = Map(ix, iy, 2*iz+1);
+          Seq[2*iy] = Map[triple(ix, iy, 2*iz)];
+          Seq[2*iy+1] = Map[triple(ix, iy, 2*iz+1)];
         }
         // Transform along y (medium direction)
-        m_fft1d_y.transform(select_sign<backward_tag>(), Seq_begin);
+        m_fft1d_y.transform(select_sign<backward_tag>(), Seq);
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Map(ix, iy, 2*iz) = m_Seq[2*iy];
-          Map(ix, iy, 2*iz+1) = m_Seq[2*iy+1];
+          Map[triple(ix, iy, 2*iz)] = Seq[2*iy];
+          Map[triple(ix, iy, 2*iz+1)] = Seq[2*iy+1];
         }
       }
     }
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.backward(Map[triple(ix, iy, 0)]);
+        m_fft1d_z.backward(&Map[triple(ix, iy, 0)]);
       }
     }
+  }
+    private:
+      void init();
+    private:
+      triple m_Nreal;
+      complex_to_complex<real_type, complex_type> m_fft1d_x;
+      complex_to_complex<real_type, complex_type> m_fft1d_y;
+      real_to_complex<real_type, complex_type>    m_fft1d_z;
+      std::vector<real_type> m_Seq;
+  };
+
+  template <typename RealType, typename ComplexType>
+  void real_to_complex_3d<RealType, ComplexType>::init()
+  {
+    m_fft1d_x = complex_to_complex<real_type, complex_type>(m_Nreal[0]);
+    m_fft1d_y = complex_to_complex<real_type, complex_type>(m_Nreal[1]);
+    m_fft1d_z = real_to_complex<real_type, complex_type>(m_Nreal[2]);
+    m_Seq.resize(2 * cctbx::vector::max(Ncomplex_from_Nreal(m_Nreal)));
   }
 
 }} // namespace cctbx::fftbx

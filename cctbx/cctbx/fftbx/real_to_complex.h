@@ -11,9 +11,11 @@
 #ifndef CCTBX_FFTBX_REAL_TO_COMPLEX_H
 #define CCTBX_FFTBX_REAL_TO_COMPLEX_H
 
+#include <vector>
+#include <complex>
 #include <cctbx/fixes/cmath>
-#include <cctbx/fftbx/error.h>
 #include <cctbx/fftbx/factorization.h>
+#include <cctbx/fftbx/detail/adaptors.h>
 
 namespace cctbx { namespace fftbx {
 
@@ -26,25 +28,22 @@ namespace cctbx { namespace fftbx {
       contains two additional slots for the given
       floating-point type. For odd Nreal, the complex
       sequence contains one additional slot.
-      <p>
-      Note that 1-dimensional real-to-complex arrays are
-      "compressed" (see real_to_complex class details),
-      but 3-dimensional real-to-complex arrays are not
-      compressed.
    */
   inline std::size_t Ncomplex_from_Nreal(std::size_t Nreal) {
     return Nreal/2+1;
   }
 
   //! Real-to-complex Fast Fourier Transformation.
-  template <class VectorType>
+  template <typename RealType,
+            typename ComplexType = std::complex<RealType> >
   class real_to_complex : public factorization
   {
     public:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-      typedef typename VectorType::value_type value_type;
-      typedef typename VectorType::iterator iterator_type;
-      typedef typename VectorType::const_iterator const_iterator_type;
+      typedef RealType real_type;
+      typedef ComplexType complex_type;
+      typedef detail::access_tp<2, real_type*, real_type> dim2;
+      typedef detail::access_tp<3, real_type*, real_type> dim3;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
       //! Default constructor.
@@ -53,8 +52,8 @@ namespace cctbx { namespace fftbx {
       /*! This constructor determines the factorization of Nreal,
           pre-computes some constants, determines the
           "twiddle factors" needed in the transformation
-          (Nreal float values), and allocates scratch space
-          (Nreal float values).
+          (Nreal RealType values), and allocates scratch space
+          (Nreal RealType values).
        */
       real_to_complex(std::size_t Nreal);
       //! Length of real sequence.
@@ -65,8 +64,8 @@ namespace cctbx { namespace fftbx {
       /*! See also: Ncomplex_from_Nreal()
        */
       std::size_t Ncomplex() { return m_Ncomplex; }
-      //! Access to the pre-computed "twiddle factors."
-      const VectorType& WA() const {
+      //! Access to the Nreal() pre-computed "twiddle factors."
+      const std::vector<real_type>& WA() const {
         return m_WA;
       }
 
@@ -79,11 +78,9 @@ namespace cctbx { namespace fftbx {
           <p>
           See also: class details.
        */
-      void forward(VectorType& Seq) {
-        if (Seq.size() < 2 * m_Ncomplex) {
-          throw error("Input sequence is too short.");
-        }
-        forward(Seq.begin());
+      template <typename ComplexOrRealType>
+      void forward(ComplexOrRealType* Seq_begin) {
+        forward_adaptor(Seq_begin);
       }
       /*! \brief In-place "backward" Fourier transformation of a sequence
           of Ncomplex() complex numbers to Nreal() real numbers.
@@ -93,110 +90,106 @@ namespace cctbx { namespace fftbx {
           <p>
           See also: class details.
        */
-      void backward(VectorType& Seq) {
-        if (Seq.size() < 2 * m_Ncomplex) {
-          throw error("Input sequence is too short.");
-        }
-        forward(Seq.begin());
+      template <typename ComplexOrRealType>
+      void backward(ComplexOrRealType* Seq_begin) {
+        backward_adaptor(Seq_begin);
       }
-      /*! \brief In-place "forward" Fourier transformation of a sequence
-          of Nreal() real numbers to Ncomplex() complex numbers.
-       */
-      void forward(iterator_type Seq_begin);
-      /*! \brief In-place "backward" Fourier transformation of a sequence
-          of Ncomplex() complex numbers to Nreal() real numbers.
-       */
-      void backward(iterator_type Seq_begin);
     private:
       std::size_t m_Ncomplex;
-      VectorType m_WA;
-      VectorType m_CH;
-      void forward_compressed(iterator_type Seq_begin);
-      void backward_compressed(iterator_type Seq_begin);
+      std::vector<real_type> m_WA;
+      std::vector<real_type> m_CH;
+      void forward_adaptor(complex_type* Seq_begin);
+      void forward_adaptor(real_type* Seq_begin);
+      void backward_adaptor(complex_type* Seq_begin);
+      void backward_adaptor(real_type* Seq_begin);
+      void forward_compressed(real_type* Seq_begin);
+      void backward_compressed(real_type* Seq_begin);
       void passf2(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1);
       void passf3(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1,
-                  const_iterator_type WA2);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1,
+                  const real_type* WA2);
       void passf4(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1,
-                  const_iterator_type WA2,
-                  const_iterator_type WA3);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1,
+                  const real_type* WA2,
+                  const real_type* WA3);
       void passf5(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1,
-                  const_iterator_type WA2,
-                  const_iterator_type WA3,
-                  const_iterator_type WA4);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1,
+                  const real_type* WA2,
+                  const real_type* WA3,
+                  const real_type* WA4);
       void passfg(std::size_t IDO,
                   std::size_t IP,
                   std::size_t L1,
                   std::size_t IDL1,
-                  iterator_type CC_start,
-                  iterator_type C1_start,
-                  iterator_type C2_start,
-                  iterator_type CH_start,
-                  iterator_type CH2_start,
-                  const_iterator_type WA);
+                  real_type* CC_start,
+                  real_type* C1_start,
+                  real_type* C2_start,
+                  real_type* CH_start,
+                  real_type* CH2_start,
+                  const real_type* WA);
       void passb2(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1);
       void passb3(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1,
-                  const_iterator_type WA2);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1,
+                  const real_type* WA2);
       void passb4(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1,
-                  const_iterator_type WA2,
-                  const_iterator_type WA3);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1,
+                  const real_type* WA2,
+                  const real_type* WA3);
       void passb5(std::size_t IDO,
                   std::size_t L1,
-                  iterator_type CC_start,
-                  iterator_type CH_start,
-                  const_iterator_type WA1,
-                  const_iterator_type WA2,
-                  const_iterator_type WA3,
-                  const_iterator_type WA4);
+                  real_type* CC_start,
+                  real_type* CH_start,
+                  const real_type* WA1,
+                  const real_type* WA2,
+                  const real_type* WA3,
+                  const real_type* WA4);
       void passbg(std::size_t IDO,
                   std::size_t IP,
                   std::size_t L1,
                   std::size_t IDL1,
-                  iterator_type CC_start,
-                  iterator_type C1_start,
-                  iterator_type C2_start,
-                  iterator_type CH_start,
-                  iterator_type CH2_start,
-                  const_iterator_type WA);
+                  real_type* CC_start,
+                  real_type* C1_start,
+                  real_type* C2_start,
+                  real_type* CH_start,
+                  real_type* CH2_start,
+                  const real_type* WA);
   };
 
-  template <class VectorType>
-  real_to_complex<VectorType>::real_to_complex(std::size_t Nreal)
-    : factorization(Nreal, true), m_WA(Nreal), m_CH(Nreal)
+  template <typename RealType, typename ComplexType>
+  real_to_complex<RealType,
+                  ComplexType>::real_to_complex(std::size_t Nreal)
+    : factorization(Nreal, true), m_WA(Nreal), m_CH(Nreal),
+      m_Ncomplex(Ncomplex_from_Nreal(Nreal))
   {
-    m_Ncomplex = Ncomplex_from_Nreal(Nreal);
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/rffti1.f.
     if (m_N < 2) return;
-    const value_type TPI = value_type(8) * std::atan(value_type(1));
-    value_type ARGH = TPI / value_type(m_N);
+    real_type* WA = m_WA.begin();
+    const real_type TPI = real_type(8) * std::atan(real_type(1));
+    real_type ARGH = TPI / real_type(m_N);
     std::size_t IS = 0;
     std::size_t NFM1 = m_Factors.size()-1;
     std::size_t L1 = 1;
@@ -210,14 +203,14 @@ namespace cctbx { namespace fftbx {
       for (std::size_t J = 1; J <= IPM; J++) {
         LD = LD+L1;
         std::size_t I = IS;
-        value_type ARGLD = value_type(LD)*ARGH;
-        value_type FI = 0.;
+        real_type ARGLD = real_type(LD)*ARGH;
+        real_type FI = 0.;
         for (std::size_t II = 3; II <= IDO; II += 2) {
           I = I+2;
           FI = FI+1.;
-          value_type ARG = FI*ARGLD;
-          m_WA[I-1-1] = std::cos(ARG);
-          m_WA[I-1] = std::sin(ARG);
+          real_type ARG = FI*ARGLD;
+          WA[I-1-1] = std::cos(ARG);
+          WA[I-1] = std::sin(ARG);
         }
         IS = IS+IDO;
       }
@@ -232,7 +225,7 @@ namespace cctbx { namespace fftbx {
      complex number in the sequence is always zero, and
      the imaginary part of the last complex number in the
      sequence is also zero if Nreal() is even. FFTPACK
-     removes these zeros, and therefore the number of float
+     removes these zeros, and therefore the number of RealType
      slots in the real and the corresonding transformed
      (complex) sequence are identical.
 
@@ -242,9 +235,17 @@ namespace cctbx { namespace fftbx {
      at the cost of a small runtime penalty.
    */
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::forward(iterator_type Seq_begin)
+  real_to_complex<RealType,
+                  ComplexType>::forward_adaptor(complex_type* Seq_begin) {
+    forward_adaptor(reinterpret_cast<real_type*>(Seq_begin));
+  }
+
+  template <typename RealType, typename ComplexType>
+  void
+  real_to_complex<RealType,
+                  ComplexType>::forward_adaptor(real_type* Seq_begin)
   {
     forward_compressed(Seq_begin);
     // The imaginary part of the first coefficient is always zero.
@@ -253,19 +254,27 @@ namespace cctbx { namespace fftbx {
     // Here the shift is undone.
     std::copy_backward(Seq_begin + 1, Seq_begin + m_N, Seq_begin + m_N + 1);
     // Insert the trivial imaginary part.
-    Seq_begin[1] = value_type(0);
+    Seq_begin[1] = real_type(0);
     // If the transform length is even, the imaginary part of the
     // last complex number in the sequence is also always zero.
     // FFTPACK does not set this imaginary part. It is done here
     // instead.
     if (m_N % 2 == 0) {
-      Seq_begin[m_N + 1] = value_type(0);
+      Seq_begin[m_N + 1] = real_type(0);
     }
   }
 
-  template <class VectorType>
+  template <typename RealType, typename ComplexType>
   void
-  real_to_complex<VectorType>::backward(iterator_type Seq_begin)
+  real_to_complex<RealType,
+                  ComplexType>::backward_adaptor(complex_type* Seq_begin) {
+    backward_adaptor(reinterpret_cast<real_type*>(Seq_begin));
+  }
+
+  template <typename RealType, typename ComplexType>
+  void
+  real_to_complex<RealType,
+                  ComplexType>::backward_adaptor(real_type* Seq_begin)
   {
     // The imaginary part of the first coefficient is always zero.
     // FFTPACK uses this knowledge to conserve space: the sequence

@@ -17,44 +17,52 @@
 namespace cctbx { namespace fftbx {
   namespace detail {
 
-    template <class VectorType, std::size_t D>
-    class array_tp
+    // XXX use ndim_accessor
+    template <std::size_t D,
+              typename IteratorType,
+              typename ValueType = typename IteratorType::value_type>
+    class access_tp
     {
       public:
-        template <typename SizeTypeX, typename SizeTypeY>
-        array_tp(typename VectorType::iterator Start,
-                 const SizeTypeX& Nx,
-                 const SizeTypeY& Ny)
+        typedef IteratorType iterator_type;
+        typedef ValueType value_type;
+
+        access_tp(iterator_type Start,
+                  const std::size_t& N0,
+                  const std::size_t& N1)
           : m_Start(Start) {
-          boost::array<std::size_t, D> N = { Nx, Ny };
-          m_N = N;
+          m_N[0] = N0;
+          m_N[1] = N1;
         }
-        template <typename SizeTypeX, typename SizeTypeY, typename SizeTypeZ>
-        array_tp(typename VectorType::iterator Start,
-                 const SizeTypeX& Nx,
-                 const SizeTypeY& Ny,
-                 const SizeTypeZ& Nz)
+        access_tp(iterator_type Start,
+                  const std::size_t& N0,
+                  const std::size_t& N1,
+                  const std::size_t& N2)
           : m_Start(Start) {
-          boost::array<std::size_t, D> N = { Nx, Ny, Nz };
-          m_N = N;
+          m_N[0] = N0;
+          m_N[1] = N1;
+          m_N[2] = N2;
         }
-        template <typename SizeTypeX, typename SizeTypeY>
-        typename VectorType::value_type&
-        operator()(const SizeTypeX& ix,
-                   const SizeTypeY& iy) {
-          boost::array<std::size_t, D> I = { ix, iy };
+        value_type&
+        operator()(const std::size_t& i0,
+                   const std::size_t& i1) {
+          boost::array<std::size_t, D> I;
+          I[0] = i0;
+          I[1] = i1;
           return m_Start[fortran_index_1d<D>()(m_N, I)];
         }
-        template <typename SizeTypeX, typename SizeTypeY, typename SizeTypeZ>
-        typename VectorType::value_type&
-        operator()(const SizeTypeX& ix,
-                   const SizeTypeY& iy,
-                   const SizeTypeZ& iz) {
-          boost::array<std::size_t, D> I = { ix, iy, iz };
+        value_type&
+        operator()(const std::size_t& i0,
+                   const std::size_t& i1,
+                   const std::size_t& i2) {
+          boost::array<std::size_t, D> I;
+          I[0] = i0;
+          I[1] = i1;
+          I[2] = i2;
           return m_Start[fortran_index_1d<D>()(m_N, I)];
         }
       private:
-        typename VectorType::iterator m_Start;
+        iterator_type m_Start;
         boost::array<std::size_t, D> m_N;
     };
 
