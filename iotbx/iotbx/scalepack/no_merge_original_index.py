@@ -24,7 +24,7 @@ class reader:
   #    orig. hkl   uniq. hkl    b# c s  a       I    sigI
   #    0   0   3   0   0   3    14 0 0  1    -1.8     1.3
 
-  def __init__(self, file_name):
+  def __init__(self, file_name, header_only=00000):
     self.file_name = os.path.normpath(file_name)
     f = open(file_name)
     line = f.readline()
@@ -40,6 +40,7 @@ class reader:
       self.space_group.expand_smx(sgtbx.rt_mx(r, t))
     assert self.space_group.order_p() == n_sym_ops_from_file
     f.close()
+    if (header_only): return
     all_arrays = scalepack_ext.no_merge_original_index_arrays(
       file_name, n_sym_ops_from_file*2+1)
     self.original_indices = all_arrays.original_indices()
