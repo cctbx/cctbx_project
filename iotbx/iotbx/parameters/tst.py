@@ -59,15 +59,16 @@ name = value
   .help = None
   .caption = None
   .short_caption = None
-  .required = None
+  .optional = None
   .type = None
+  .multiple = None
   .input_size = None
   .expert_level = None
 """)
   input_string = """
 name=value
 .help=help message with detailed information
-.required=True
+.optional=True
 .type=path
 """
   recycle(input_string=input_string, attributes_level=3, expected_out="""\
@@ -75,15 +76,16 @@ name = value
   .help = "help message with detailed information"
   .caption = None
   .short_caption = None
-  .required = %s
+  .optional = %s
   .type = "path"
+  .multiple = None
   .input_size = None
   .expert_level = None
 """ % str(True))
   recycle(input_string=input_string, attributes_level=2, expected_out="""\
 name = value
   .help = "help message with detailed information"
-  .required = %s
+  .optional = %s
   .type = "path"
 """ % str(True))
   recycle(input_string=input_string, attributes_level=1, expected_out="""\
@@ -115,7 +117,8 @@ name
   .help = "message"
   .caption = None
   .short_caption = None
-  .required = None
+  .optional = None
+  .multiple = None
   .sequential_format = None
   .disable_add = None
   .disable_delete = None
@@ -526,7 +529,7 @@ group {
     .type=choice
   e=a b c
     .type=choice
-    .required=yes
+    .optional=no
   f=a *b c
     .type=multi_choice
   f=a *b *c
@@ -689,6 +692,310 @@ group
     assert str(e) == 'No converter for parameter definition type "foo"' \
       + ' required for converting values for "a" (input line 4)'
   else: raise RuntimeError("Exception expected.")
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+a=1
+  .type=int
+b {
+  a=2
+    .type=int
+  b {
+    a=3
+      .type=int
+  }
+}
+c.a {
+  b=4
+    .type=int
+  c.d=5
+    .type=int
+  c.e=6
+    .type=int
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.a == 1
+  assert extracted.b.a == 2
+  assert extracted.b.b.a == 3
+  assert extracted.c.a.b == 4
+  assert extracted.c.a.c.d == 5
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+a=1
+ .type=int
+a=2
+ .type=int
+b {
+  a=3
+    .type=int
+  a=4
+    .type=int
+}
+b {
+  b=5
+    .type=int
+  b=6
+    .type=int
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.a == 2
+  assert extracted.b.b == 6
+  #
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+ .type=int
+ .multiple=True
+b
+  .multiple=True
+{
+  a=None
+    .type=int
+    .multiple=True
+  b=None
+    .type=int
+    .multiple=True
+    .optional=True
+  c=None
+    .type=int
+}
+c
+  .multiple=True
+  .optional=True
+{
+  a=None
+}
+d
+  .multiple=True
+  .optional=False
+{
+  a=None
+    .type=int
+}
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+a=2
+b {
+  a=3
+  a=4
+  c=10
+  c=20
+}
+b {
+  b=5
+  b=6
+}
+c {
+  a=None
+}
+""")
+  merged = master.merge(custom)
+  extracted = merged.extract()
+  assert extracted.a == [1,2]
+  assert extracted.b[0].a == [3,4]
+  assert extracted.b[0].b == []
+  assert extracted.b[0].c == 20
+  assert extracted.b[1].a == [None]
+  assert extracted.b[1].b == [5,6]
+  assert extracted.b[1].c is None
+  assert extracted.c == []
+  assert extracted.d[0].a is None
+  #
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+ .type=int
+ .multiple=False
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+a=2
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == 2
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+#a=2
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == 1
+  custom = iotbx.parameters.parse(input_string="""\
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == None
+  #
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+ .type=int
+ .multiple=True
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+a=2
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == [1,2]
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+#a=2
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == [1]
+  custom = iotbx.parameters.parse(input_string="""\
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == [None]
+  #
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+ .type=int
+ .multiple=True
+ .optional=True
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+a=2
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == [1,2]
+  custom = iotbx.parameters.parse(input_string="""\
+a=1
+#a=2
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == [1]
+  custom = iotbx.parameters.parse(input_string="""\
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == []
+  custom = iotbx.parameters.parse(input_string="""\
+a=None
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.a == []
+  #
+  master = iotbx.parameters.parse(input_string="""\
+s
+  .multiple=False
+{
+  a=None
+   .type=int
+   .multiple=False
+}
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s.a is None
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  a=2
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s.a == 2
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  a=2
+  a=3
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s.a == 3
+  #
+  master = iotbx.parameters.parse(input_string="""\
+s
+  .multiple=True
+{
+  a=None
+   .type=int
+   .multiple=False
+}
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s[0].a == None
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=None
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s[0].a == None
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  a=2
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s[0].a == 1
+  assert extracted.s[1].a == 2
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  a=2
+  a=3
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s[0].a == 1
+  assert extracted.s[1].a == 3
+  master = iotbx.parameters.parse(input_string="""\
+s
+  .multiple=True
+  .optional=True
+{
+  a=None
+   .type=int
+   .multiple=False
+}
+""")
+  custom = iotbx.parameters.parse(input_string="""\
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s == []
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=None
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s == []
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  a=2
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s[0].a == 1
+  assert extracted.s[1].a == 2
+  custom = iotbx.parameters.parse(input_string="""\
+s {
+  a=1
+}
+s {
+  a=2
+  a=3
+}
+""")
+  extracted = master.merge(custom).extract()
+  assert extracted.s[0].a == 1
+  assert extracted.s[1].a == 3
 
 def exercise_deepcopy():
   parameters = iotbx.parameters.parse(input_string="""\
