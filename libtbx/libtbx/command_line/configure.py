@@ -267,8 +267,7 @@ def run(libtbx_dist, args):
   for arg in args:
     packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
   if (len(packages.list) == 0):
-    print "Error: At least one package must be specified."
-    return
+    raise UserError("At least one package must be specified.")
   if (not packages.build_disabled):
     print "Build mode:", build_mode
   print "Top-down list of all packages involved:"
