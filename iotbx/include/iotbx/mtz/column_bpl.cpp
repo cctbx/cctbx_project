@@ -21,10 +21,16 @@ namespace {
           arg_("mtz_dataset"), arg_("i_column"))))
         .def("mtz_dataset", &w_t::mtz_dataset)
         .def("i_column", &w_t::i_column)
+        .def("mtz_crystal", &w_t::mtz_crystal)
+        .def("mtz_object", &w_t::mtz_object)
         .def("label", &w_t::label)
         .def("type", &w_t::type)
         .def("is_active", &w_t::is_active)
         .def("path", &w_t::path)
+        .def("lookup_other", &w_t::lookup_other, (arg_("label")))
+        .def("valid_indices", &w_t::valid_indices)
+        .def("valid_values", &w_t::valid_values)
+        .def("valid_integers", &w_t::valid_integers)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
