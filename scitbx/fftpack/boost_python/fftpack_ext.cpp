@@ -9,6 +9,8 @@
      2001 Nov: Created (R.W. Grosse-Kunstleve)
  */
 
+#include <scitbx/array_family/boost_python/flex_fwd.h>
+
 #include <scitbx/error.h>
 #include <scitbx/fftpack/gridding.h>
 #include <scitbx/fftpack/complex_to_complex_3d.h>

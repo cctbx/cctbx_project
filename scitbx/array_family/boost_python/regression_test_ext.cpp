@@ -7,6 +7,8 @@
      2002 Aug: Created (R.W. Grosse-Kunstleve)
  */
 
+#include <scitbx/array_family/boost_python/flex_fwd.h>
+
 #include <vector>
 #include <list>
 #include <boost/array.hpp>

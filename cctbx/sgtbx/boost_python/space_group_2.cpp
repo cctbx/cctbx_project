@@ -7,6 +7,8 @@
      2002 Sep: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/sgtbx/space_group_type.h>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>

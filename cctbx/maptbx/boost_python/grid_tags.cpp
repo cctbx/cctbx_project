@@ -7,6 +7,8 @@
      2002 Oct: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/maptbx/grid_tags.h>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>

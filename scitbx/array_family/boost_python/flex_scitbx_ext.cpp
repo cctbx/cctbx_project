@@ -8,6 +8,8 @@
      2002 Aug: Created, based on sharedmodule.cpp, shared_bpl.h (rwgk)
  */
 
+#include <scitbx/array_family/boost_python/flex_fwd.h>
+
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>

@@ -7,6 +7,8 @@
      2002 Oct: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/miller/index_generator.h>
 #include <scitbx/boost_python/iterator_wrappers.h>
 #include <boost/python/class.hpp>

@@ -7,11 +7,7 @@ import sys
 import random
 
 def flex_types():
-  result = (flex.float, flex.double)
-  if (sys.platform == "irix646" and not "--no_skip" in sys.argv[1:]):
-    result = (flex.double,)
-    print "NOT CHECKING with flex.float"
-  return result
+  return (flex.float, flex.double)
 
 def exercise_copy():
   for flex_type in flex_types():
