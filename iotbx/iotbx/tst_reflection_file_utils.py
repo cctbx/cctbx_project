@@ -92,24 +92,6 @@ to specify an unambiguous substring of the target label.
 
 """
     err = reflection_file_srv.err = StringIO()
-  f_obs = reflection_file_srv.get_xray_data(
-    file_name=None,
-    labels=["1"],
-    ignore_all_zeros=True,
-    parameter_scope="xray_data")
-  assert str(f_obs.info()) == "tmp2.mtz:F0,SIGF0"
-  f_obs = reflection_file_srv.get_xray_data(
-    file_name=None,
-    labels=["2"],
-    ignore_all_zeros=True,
-    parameter_scope="xray_data")
-  assert str(f_obs.info()) == "tmp2.mtz:F1,SIGF1"
-  f_obs = reflection_file_srv.get_xray_data(
-    file_name="tmp2.mtz",
-    labels=["2"],
-    ignore_all_zeros=True,
-    parameter_scope="xray_data")
-  assert str(f_obs.info()) == "tmp2.mtz:F1,SIGF1"
   assert len(reflection_file_srv.file_name_miller_arrays) == 1
   f_obs = reflection_file_srv.get_xray_data(
     file_name="tmp1.mtz",

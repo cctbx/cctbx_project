@@ -91,8 +91,7 @@ def run(args, simply_return_all_miller_arrays=False):
   elif (command_line.options.label is None):
     print
     print "Please use --label to select a reflection array."
-    print "For example: --label=2"
-    print "         or: --label=%s" % str(
+    print "For example: --label=%s" % str(
       all_miller_arrays[1].info()).split(":")[-1]
     print
     label_table.show_possible_choices()
