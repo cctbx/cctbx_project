@@ -54,6 +54,9 @@ namespace cctbx {
   {
     public:
       dimension() {};
+      dimension(const boost::array<int, D>& N) {
+        for(std::size_t i=0;i<size();i++) elems[i] = N[i];
+      }
       dimension(const boost::array<std::size_t, D>& N) {
         std::copy(N.begin(), N.end(), begin());
       }
