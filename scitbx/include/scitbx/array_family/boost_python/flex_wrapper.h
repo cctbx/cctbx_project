@@ -426,29 +426,31 @@ namespace scitbx { namespace af { namespace boost_python {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       assert_0_based_1d(a.accessor());
       assert_0_based_1d(permutation.accessor());
-      if (a.size() != permutation.size()) {
-        raise_incompatible_arrays();
-      }
     }
 
     static f_t
     shuffle(f_t const& a, flex_size_t const& permutation)
     {
       shuffle_assertions(a, permutation);
+      std::size_t a_size = a.size();
+      std::size_t p_size = permutation.size();
       base_array_type result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) {
-        std::size_t j = permutation[i];
-        SCITBX_ASSERT(j < a.size());
-        result.push_back(a[j]);
+      result.reserve(p_size);
+      for(std::size_t i=0;i<p_size;i++) {
+        std::size_t permutation_i = permutation[i];
+        SCITBX_ASSERT(permutation_i < a_size);
+        result.push_back(a[permutation_i]);
       }
-      return f_t(result, a.accessor());
+      return f_t(result, flex_grid<>(p_size));
     }
 
     static f_t
     unshuffle(f_t const& a, flex_size_t const& permutation)
     {
       shuffle_assertions(a, permutation);
+      if (a.size() != permutation.size()) {
+        raise_incompatible_arrays();
+      }
       base_array_type result;
       if (a.size()) {
         result.resize(a.size(), a[0]); // avoid requirement that e_t is
