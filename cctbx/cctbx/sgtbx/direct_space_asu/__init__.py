@@ -1,4 +1,6 @@
 from cctbx import sgtbx
+from cctbx.array_family import flex
+from scitbx.math import minimum_covering_sphere
 import boost.python
 import sys
 
@@ -80,6 +82,15 @@ class direct_space_asu_with_metric(direct_space_asu):
   def __init__(self, asu, unit_cell):
     direct_space_asu.__init__(self, asu.hall_symbol, asu.facets)
     self.unit_cell = unit_cell
+
+  def minimum_covering_sphere(self, epsilon=None):
+    if (epsilon is None):
+      epsilon = self.unit_cell.volume()**(1/3.)*1.e-5
+    points = flex.vec3_double()
+    orth = self.unit_cell.orthogonalize
+    for vertex in self.volume_vertices():
+      points.append(orth([float(e) for e in vertex]))
+    return minimum_covering_sphere(points=points, epsilon=epsilon)
 
   def as_float_asu(self):
     return float_asu(
