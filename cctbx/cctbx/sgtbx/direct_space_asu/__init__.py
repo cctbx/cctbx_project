@@ -67,3 +67,22 @@ class direct_space_asu:
     for facet in self.facets:
       facets.append(facet.add_buffer(unit_cell=unit_cell, thickness=thickness))
     return float_asu(facets)
+
+  def define_metric(self, unit_cell):
+    return direct_space_asu_with_metric(asu=self, unit_cell=unit_cell)
+
+class direct_space_asu_with_metric(direct_space_asu):
+
+  def __init__(self, asu, unit_cell):
+    direct_space_asu.__init__(self, asu.hall_symbol, asu.facets)
+    self.unit_cell = unit_cell
+
+  def add_buffer(self, thickness=None, relative_thickness=None):
+    assert [thickness, relative_thickness].count(None) > 0
+    if (relative_thickness is None):
+      relative_thickness = 1.e-6
+    if (thickness is None):
+      thickness = self.unit_cell.volume()**(1/3.)*relative_thickness
+    return direct_space_asu.add_buffer(self,
+      unit_cell=self.unit_cell,
+      thickness=thickness)

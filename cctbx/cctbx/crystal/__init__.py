@@ -135,6 +135,10 @@ class symmetry(object):
        unit_cell=unit_cell,
        space_group_info=space_group_info)
 
+  def direct_space_asu(self):
+    return self.space_group_info().direct_space_asu().define_metric(
+      unit_cell=self.unit_cell())
+
 class special_position_settings(symmetry):
 
   def __init__(self, crystal_symmetry,
