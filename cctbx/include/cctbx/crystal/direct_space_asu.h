@@ -315,6 +315,12 @@ namespace direct_space_asu {
     unsigned j_seq;
     //! Symmetry index of second site.
     unsigned j_sym;
+
+    /*! Inside-inside upper triangle (i_seq < j_seq) or
+        inside-outside (j_sym != 0).
+     */
+    bool
+    is_active() const { return i_seq < j_seq || j_sym != 0; }
   };
 
   //! asu_mapping_index_pair plus difference vector and distance squared.
@@ -596,6 +602,14 @@ namespace direct_space_asu {
         return special_op_indices_const_ref_;
       }
 
+      //! Shorthand for special_ops()[special_op_indices()[i_seq]].
+      sgtbx::rt_mx const&
+      special_op(std::size_t i_seq) const
+      {
+        CCTBX_ASSERT(i_seq < special_op_indices_const_ref_.size());
+        return special_ops_const_ref_[special_op_indices_const_ref_[i_seq]];
+      }
+
       //! mappings()[i_seq][i_sym] with range checking of i_seq and i_sym.
       /*! Not available in Python.
        */
@@ -701,42 +715,56 @@ namespace direct_space_asu {
         return (rt_i == rt_j);
       }
 
-      //! Classification of interactions.
-      /*! The result is 0 if is_direct_interaction(pair) is false.
-          The result is 1 if pair.j_sym == 0 or pair.i_seq < pair.j_seq.
-          The result is -1 otherwise.
+      /*! \brief Classification of interactions as
+            1: simple,
+            0: symmetry,
+            -1: redundant symmetry,
+            -2: redundant simple.
        */
       int
       interaction_type_id(asu_mapping_index_pair const& pair) const
       {
-        if (!is_direct_interaction(pair)) return 0;
-        if (pair.j_sym == 0 || pair.i_seq < pair.j_seq) {
-          return 1;
+        if (is_direct_interaction(pair)) {
+          if (pair.i_seq < pair.j_seq) return 1;
+          return -2;
+        }
+        else if (pair.is_active()) {
+          return 0;
         }
         return -1;
       }
 
       //! Returns a new pair after checking the indices.
       asu_mapping_index_pair
-      make_pair(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
+      make_trial_pair(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
       {
         CCTBX_ASSERT(mappings_const_ref_.begin() == mappings_.begin());
         CCTBX_ASSERT(i_seq < mappings_const_ref_.size());
         CCTBX_ASSERT(j_seq < mappings_const_ref_.size());
         CCTBX_ASSERT(j_sym < mappings_const_ref_[j_seq].size());
-        CCTBX_ASSERT(i_seq < j_seq || j_sym != 0);
-        asu_mapping_index_pair result;
-        result.i_seq = i_seq;
-        result.j_seq = j_seq;
-        result.j_sym = j_sym;
-        return result;
+        asu_mapping_index_pair new_pair;
+        new_pair.i_seq = i_seq;
+        new_pair.j_seq = j_seq;
+        new_pair.j_sym = j_sym;
+        return new_pair;
+      }
+
+      /*! Returns a new pair after checking the indices and asserting
+          pair.is_active().
+       */
+      asu_mapping_index_pair
+      make_pair(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
+      {
+        asu_mapping_index_pair new_pair = make_trial_pair(i_seq, j_seq, j_sym);
+        CCTBX_ASSERT(new_pair.is_active());
+        return new_pair;
       }
 
       //! Determination of the index i_sym corresponding to the given rt_mx.
       /*! The result value i_sym satisfies the relation:
 
-               mappings()[i_seq][i_sym] * special_ops()[i_seq]
-            == rt_mx * special_ops()[i_seq]
+               mappings()[i_seq][i_sym] * special_op(i_seq)
+            == rt_mx * special_op(i_seq)
 
           The result value is -1 if the site corresponding to rt_mx is not
           in the asymmetric unit or the surrounding buffer region.

@@ -118,6 +118,7 @@ namespace {
         .def_readonly("i_seq", &w_t::i_seq)
         .def_readonly("j_seq", &w_t::j_seq)
         .def_readonly("j_sym", &w_t::j_sym)
+        .def("is_active", &w_t::is_active)
       ;
     }
   };
@@ -182,6 +183,7 @@ namespace {
         .def("mapped_sites_span", &w_t::mapped_sites_span)
         .def("special_ops", &w_t::special_ops, ccr())
         .def("special_op_indices", &w_t::special_op_indices, ccr())
+        .def("special_op", &w_t::special_op, (arg_("i_seq")), ccr())
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
         .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu,
@@ -191,6 +193,8 @@ namespace {
           (arg_("pair")))
         .def("interaction_type_id", &w_t::interaction_type_id,
           (arg_("pair")))
+        .def("make_trial_pair", &w_t::make_trial_pair,
+          (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
         .def("make_pair", &w_t::make_pair,
           (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
         .def("find_i_sym", &w_t::find_i_sym, (arg_("i_seq"), arg_("rt_mx")))

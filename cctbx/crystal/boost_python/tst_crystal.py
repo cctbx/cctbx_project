@@ -256,10 +256,16 @@ def exercise_direct_space_asu():
       assert pair_generator.count_pairs() == 0
       pair_generator.restart()
       assert pair_generator.count_pairs() == len(index_pairs)
+  pair = asu_mappings.make_trial_pair(i_seq=1, j_seq=0, j_sym=0)
+  assert pair.i_seq == 1
+  assert pair.j_seq == 0
+  assert pair.j_sym == 0
+  assert not pair.is_active()
   pair = asu_mappings.make_pair(i_seq=0, j_seq=1, j_sym=1)
   assert pair.i_seq == 0
   assert pair.j_seq == 1
   assert pair.j_sym == 1
+  assert pair.is_active()
   from cctbx import xray
   structure = xray.structure(
     crystal_symmetry=crystal.symmetry(
@@ -284,6 +290,9 @@ def exercise_direct_space_asu():
   assert str(asu_mappings.special_ops()[0]) == "x,y,z"
   assert str(asu_mappings.special_ops()[1]) == "x,y,1/4"
   assert str(asu_mappings.special_ops()[2]) == "x-1/2*y,0,0"
+  assert str(asu_mappings.special_op(0)) == "x,y,1/4"
+  assert str(asu_mappings.special_op(1)) == "x,y,z"
+  assert str(asu_mappings.special_op(2)) == "x-1/2*y,0,0"
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(
