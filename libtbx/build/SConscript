@@ -279,8 +279,7 @@ env_etc.boost_include = env_etc.libtbx_boost
 try:
   CScanRegisterFlags(
     python=env_etc.python_include,
-    boost=env_etc.boost_include,
-    libtbx=env_etc.libtbx_include)
+    boost=env_etc.boost_include)
 except:
   pass
 
