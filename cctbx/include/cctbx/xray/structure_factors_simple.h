@@ -23,7 +23,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
       sgtbx::space_group const& space_group,
       miller::index<> const& h,
       float_type d_star_sq,
-      ScattererType const& scatterer)
+      ScattererType const& scatterer,
+      float_type f0)
     :
       f_calc(0,0)
     {
@@ -46,7 +47,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
         }
         f_calc += e_j_phase * dw;
       }
-      f_t f0 = scatterer.caasf.at_d_star_sq(d_star_sq);
       f_calc *= (f0 + c_t(scatterer.fp, scatterer.fdp)) * scatterer.weight();
     }
 
@@ -54,29 +54,42 @@ namespace cctbx { namespace xray { namespace structure_factors {
   };
 
   template <typename ScattererType=scatterer<> >
-  struct simple_one_scatterer
+  struct simple_one_h
   {
     typedef typename ScattererType::float_type float_type;
 
-    simple_one_scatterer(
+    simple_one_h(
       uctbx::unit_cell const& unit_cell,
       sgtbx::space_group const& space_group,
-      af::const_ref<miller::index<> > const& miller_indices,
-      ScattererType const& scatterer,
-      af::ref<std::complex<float_type> > const& f_calc)
+      miller::index<> const& h,
+      af::const_ref<ScattererType> const& scatterers,
+      scattering_dictionary const& scattering_dict)
+    :
+      f_calc(0,0)
     {
+      typedef scattering_dictionary::dict_type dict_type;
+      typedef dict_type::const_iterator dict_iter;
       typedef float_type f_t;
-      for(std::size_t i=0;i<miller_indices.size();i++) {
-        miller::index<> const& h = miller_indices[i];
-        f_t d_star_sq = unit_cell.d_star_sq(h);
-        simple_one_h_one_scatterer<ScattererType> sf(
-          space_group,
-          h,
-          d_star_sq,
-          scatterer);
-        f_calc[i] += sf.f_calc;
+      f_t d_star_sq = unit_cell.d_star_sq(h);
+      dict_type const& scd = scattering_dict.dict();
+      for(dict_iter di=scd.begin();di!=scd.end();di++) {
+        f_t f0 = di->second.coefficients.at_d_star_sq(d_star_sq);
+        af::const_ref<std::size_t>
+          member_indices = di->second.member_indices.const_ref();
+        for(std::size_t mi=0;mi<member_indices.size();mi++) {
+          ScattererType const& scatterer = scatterers[member_indices[mi]];
+          simple_one_h_one_scatterer<ScattererType> sf(
+            space_group,
+            h,
+            d_star_sq,
+            scatterer,
+            f0);
+          f_calc += sf.f_calc;
+        }
       }
     }
+
+    std::complex<float_type> f_calc;
   };
 
   template <typename ScattererType=scatterer<> >
@@ -95,15 +108,14 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::const_ref<ScattererType> const& scatterers,
         scattering_dictionary const& scatter_dict)
       {
-        f_calc_.resize(miller_indices.size());
-        for(std::size_t i=0;i<scatterers.size();i++) {
-          ScattererType const& scatterer = scatterers[i];
-          simple_one_scatterer<ScattererType> sf(
+        f_calc_.reserve(miller_indices.size());
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          f_calc_.push_back(simple_one_h<ScattererType>(
             unit_cell,
             space_group,
-            miller_indices,
-            scatterer,
-            f_calc_.ref());
+            miller_indices[i],
+            scatterers,
+            scatter_dict).f_calc);
         }
       }
 
