@@ -23,7 +23,8 @@ class symmetry(object):
     if (    assert_is_compatible_unit_cell
         and self.unit_cell() is not None
         and self.space_group_info() is not None):
-      assert self.is_compatible_unit_cell()
+      assert self.is_compatible_unit_cell(), \
+        "Space group is incompatible with unit cell parameters."
 
   def _copy_constructor(self, other):
     self._unit_cell = other._unit_cell
