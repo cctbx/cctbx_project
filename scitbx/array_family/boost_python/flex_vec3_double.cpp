@@ -3,6 +3,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
 #include <scitbx/mat3.h>
+#include <scitbx/math/utils.h>
 #include <scitbx/error.h>
 #include <boost/python/make_constructor.hpp>
 
@@ -191,6 +192,20 @@ namespace {
   }
 
   double
+  max_distance(
+    af::const_ref<vec3<double> > const& lhs,
+    af::const_ref<vec3<double> > const& rhs)
+  {
+    SCITBX_ASSERT(lhs.size() == rhs.size());
+    if (lhs.size() == 0) return 0;
+    double max_length_sq = 0;
+    for(std::size_t i=0;i<lhs.size();i++) {
+      math::update_max(max_length_sq, (lhs[i]-rhs[i]).length_sq());
+    }
+    return std::sqrt(max_length_sq);
+  }
+
+  double
   rms_difference(
     af::const_ref<vec3<double> > const& lhs,
     af::const_ref<vec3<double> > const& rhs)
@@ -243,6 +258,7 @@ namespace boost_python {
       .def("__rmul__", rmul_a_mat3)
       .def("dot", dot_a_a)
       .def("dot", dot_a)
+      .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
     ;
