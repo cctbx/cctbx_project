@@ -101,6 +101,7 @@ namespace lbfgsb {
         lsave_(4, false),
         isave_(44, int(0)),
         dsave_(29, FloatType(0)),
+        requests_f_and_g_(false),
         is_terminated_(false)
       {
         SCITBX_ASSERT(l.size() == n);
@@ -109,9 +110,10 @@ namespace lbfgsb {
       }
 
       //! This routine is called repeatedly under the control of task().
-      /*! Calls raw::setulb(). The return value is equivalent to task().
+      /*! Calls raw::setulb(). The return value is equivalent to
+          requests_f_and_g_().
        */
-      std::string
+      bool
       process(
         af::ref<FloatType> const& x,
         FloatType const& f,
@@ -143,18 +145,36 @@ namespace lbfgsb {
           raw::ref1<bool>(lsave_.ref()),
           raw::ref1<int>(isave_.ref()),
           raw::ref1<FloatType>(dsave_.ref()));
+        requests_f_and_g_ = false;
         int t0 = task_[0];
         if (t0 == 'N') { // "NEW_X"
           f_list_.push_back(f_);
         }
-        else if (t0 != 'F') { // "FG"
+        else if (t0 == 'F') { // "FG"
+          requests_f_and_g_ = true;
+        }
+        else {
           is_terminated_ = true;
           if (f_ != f_list_.back()) {
             f_list_.push_back(f_);
           }
         }
-        return task_;
+        return requests_f_and_g_;
       }
+
+      //! Request to call process() again with newly evaluated f(x) and g(x).
+      /*! Equivalent to task().substr(0,2) == "FG".
+       */
+      bool
+      requests_f_and_g() const { return requests_f_and_g_; }
+
+      //! The minimization was terminated.
+      /*! Use task() to obtain detailed information.
+          Subsequent calls to process() will lead to an exception
+          unless request_restart() was called before.
+       */
+      bool
+      is_terminated() const { return is_terminated_; }
 
       //! Status of minimization process.
       /*! Possible values:
@@ -201,14 +221,6 @@ namespace lbfgsb {
       std::string
       task() const { return task_; }
 
-      //! The minimization was terminated.
-      /*! Use task() to obtain detailed information.
-          Subsequent calls to process() will lead to an exception
-          unless request_restart() was called before.
-       */
-      bool
-      is_terminated() const { return is_terminated_; }
-
       //! List of f(x_start) and f(x) after each iteration.
       af::shared<FloatType>
       f_list() const { return f_list_; }
@@ -227,6 +239,7 @@ namespace lbfgsb {
       request_restart()
       {
         task_ = "START";
+        requests_f_and_g_ = false;
         is_terminated_ = false;
         f_list_ = af::shared<FloatType>();
       }
@@ -484,6 +497,7 @@ namespace lbfgsb {
       af::shared<bool> lsave_;
       af::shared<int> isave_;
       af::shared<FloatType> dsave_;
+      bool requests_f_and_g_;
       bool is_terminated_;
       af::shared<FloatType> f_list_;
   };

@@ -22,23 +22,27 @@ def exercise_minimizer_interface():
   assert eps_eq(minimizer.factr(), factr)
   assert eps_eq(minimizer.pgtol(), pgtol)
   assert eps_eq(minimizer.iprint(), iprint)
+  assert not minimizer.requests_f_and_g()
+  assert not minimizer.is_terminated()
   assert minimizer.task() == "START"
   x = flex.double(n, 0)
   f = 1
   g = flex.double(n, -1)
-  task = minimizer.process(x, f, g)
-  assert task == "FG_START"
+  assert minimizer.process(x, f, g)
+  assert minimizer.task() == "FG_START"
   assert minimizer.f() == 0
-  task = minimizer.process(x, f, g)
+  assert minimizer.process(x, f, g)
   assert minimizer.f() == 1
-  assert task == "FG_LNSRCH"
+  assert minimizer.task() == "FG_LNSRCH"
   assert not minimizer.is_terminated()
   minimizer.request_stop()
-  task = minimizer.process(x, f, g)
-  assert task == "STOP: NO RESTORE"
+  assert not minimizer.process(x, f, g)
+  assert minimizer.task() == "STOP: NO RESTORE"
   minimizer.request_stop_with_restore()
   assert minimizer.task() == "STOP: CPU"
   minimizer.request_restart()
+  assert not minimizer.requests_f_and_g()
+  assert not minimizer.is_terminated()
   assert minimizer.task() == "START"
   minimizer = lbfgsb.minimizer(n=n)
   assert minimizer.l().size() == n
@@ -78,8 +82,7 @@ def driver1():
     iprint=iprint)
   f = 0
   while 0001:
-    task = minimizer.process(x, f, g)
-    if (task[:2] == "FG"):
+    if (minimizer.process(x, f, g)):
       f=.25e0*(x[0]-1.e0)**2
       for i in xrange(1,n):
         f=f+(x[i]-x[i-1]**2)**2
@@ -91,10 +94,9 @@ def driver1():
         t1=x[i+1]-x[i]**2
         g[i]=8.e0*t2-1.6e1*x[i]*t1
       g[n-1]=8.e0*t1
-    elif (task[:5] != "NEW_X"):
+    elif (minimizer.is_terminated()):
       break
   assert minimizer.task() == "CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH"
-  assert minimizer.is_terminated()
   assert minimizer.f_list().size() == minimizer.n_iteration() + 1
   assert minimizer.f_list()[-1] == minimizer.f()
   assert minimizer.f_list()[-2] == minimizer.f_previous_iteration()

@@ -25,8 +25,9 @@ namespace scitbx { namespace lbfgsb { namespace {
                   FloatType const&,
                   int const&>())
         .def("process", &w_t::process)
-        .def("task", &w_t::task)
+        .def("requests_f_and_g", &w_t::requests_f_and_g)
         .def("is_terminated", &w_t::is_terminated)
+        .def("task", &w_t::task)
         .def("f_list", &w_t::f_list)
         .def("f", &w_t::f)
         .def("request_restart", &w_t::request_restart)
