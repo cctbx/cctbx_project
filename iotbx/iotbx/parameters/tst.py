@@ -101,12 +101,26 @@ name value
 """)
   recycle(
     input_string="name { }", expected_out="""\
-name {
+name
+{
+}
+""")
+  recycle(
+    input_string="name\n.help message\n.expert_level 3\n{ }",
+    attributes_level=3,
+    expected_out="""\
+name
+  .help "message"
+  .caption None
+  .short_caption None
+  .expert_level 3
+{
 }
 """)
   recycle(
     input_string="name { a b \n c d }", expected_out="""\
-name {
+name
+{
   a b
   c d
 }
@@ -238,7 +252,8 @@ table name
  prefix a b
  prefix c d
  prefix
- prefix e {
+ prefix e
+ prefix {
  prefix }
  prefix
  prefix table name
@@ -286,6 +301,8 @@ def exercise_syntax_errors():
     'Syntax error: improper table row name "1" (input line 1)')
   test_exception('1 {',
     'Syntax error: improper scope name "1" (input line 1)')
+  test_exception('scope\n.junk',
+    'Unexpected scope attribute: .junk (input line 2)')
   test_exception('a. 2',
     'Syntax error: improper definition name "a." (input line 1)')
 
@@ -331,7 +348,8 @@ e g""")
 a b
 """)
   check_get(parameters, path="e", expected_out="""\
-e {
+e
+{
   a 1
   b x
 }
@@ -406,10 +424,12 @@ a0 {
 }
 """,
     expected_out="""\
-a0 {
+a0
+{
   d1 a b c
 
-  a1 {
+  a1
+  {
     table t0
     {
       row0 {
@@ -437,11 +457,13 @@ a0 {
   out = StringIO()
   parameters.show(out=out, attributes_level=2)
   assert out.getvalue() == """\
-a0 {
+a0
+{
   d1 a b c
     .type "str"
 
-  a1 {
+  a1
+  {
     table t0
     {
       row0 {
