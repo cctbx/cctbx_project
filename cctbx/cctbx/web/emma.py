@@ -27,7 +27,7 @@ def interpret_form_data(form):
   return inp
 
 def interpret_generic_coordinate_line(line, skip_columns):
-  flds = line.split()
+  flds = line.replace(",", " ").split()
   try: site = [float(x) for x in flds[skip_columns: skip_columns+3]]
   except: raise RuntimeError, "FormatError: " + line
   return " ".join(flds[:skip_columns]), site
