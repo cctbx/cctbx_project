@@ -108,8 +108,8 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.74
-    jamfile_md5 = "15f28887719a7864eb006cdb3e06ad80"
+    # based on boost/libs/python/test/Jamfile revision 1.75
+    jamfile_md5 = "3791b2bac095818b407cf58cbf265d03"
     if (m.hexdigest() != jamfile_md5):
       print "***************************************************"
       print "Warning: boost/libs/python/test/Jamfile has changed"
@@ -166,7 +166,7 @@ vector_indexing_suite
 return_arg
 keywords,keywords,keywords_test
 properties
-map_indexing_suite
+map_indexing_suite;int_map_indexing_suite,map_indexing_suite_ext,map_indexing_suite
 injected
 slice
 """)
@@ -190,7 +190,7 @@ slice
         all_tst.append(tst)
       env_pure_boost_python_ext.SharedLibrary(
         target="#libtbx/%s" % pyd,
-        source="#boost/libs/python/test/%s.cpp" % src,
+        source=["#boost/libs/python/test/%s.cpp" % s for s in src.split(";")],
       )
     if (sys.platform == "win32"):
       boost_python_run_tests = \
