@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copy of cctbx/mat3.h (Ralf W. Grosse-Kunstleve)
-     2002 May: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_MAT3_H
 #define SCITBX_MAT3_H
 
@@ -168,6 +158,13 @@ namespace scitbx {
                + m[2] * (m[3] * m[7] - m[4] * m[6]);
       }
 
+      //! Maximum of the absolute values of the elements of this matrix.
+      NumType
+      max_abs() const
+      {
+        return af::max_absolute(this->const_ref());
+      }
+
       //! Test for symmetric matrix.
       /*! Returns false iff the absolute value of the difference between
           any pair of off-diagonal elements is different from zero.
@@ -184,15 +181,13 @@ namespace scitbx {
       //! Test for symmetric matrix.
       /*! Returns false iff the absolute value of the difference between
           any pair of off-diagonal elements is larger than
-          max_abs*relative_tolerance, where max_abs is the maximum of
-          the absolute values of the elements of this matrix.
+          max_abs()*relative_tolerance.
        */
       bool
       is_symmetric(NumType const& relative_tolerance) const
       {
         mat3 const& m = *this;
-        NumType
-          tolerance = af::max_absolute(m.const_ref()) * relative_tolerance;
+        NumType tolerance = max_abs() * relative_tolerance;
         return    fn::approx_equal(m[1], m[3], tolerance)
                && fn::approx_equal(m[2], m[6], tolerance)
                && fn::approx_equal(m[5], m[7], tolerance);
