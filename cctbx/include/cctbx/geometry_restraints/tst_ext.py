@@ -654,6 +654,15 @@ def exercise_planarity():
     weights=weights)
   assert tuple(p.i_seqs) == (0,1,2,3)
   assert approx_equal(p.weights, weights)
+  perm = flex.size_t([3,1,0,2])
+  p = geometry_restraints.planarity_proxy(
+    i_seqs=flex.size_t([0,1,2,3]).select(perm),
+    weights=weights.select(perm))
+  assert tuple(p.i_seqs) == (3,1,0,2)
+  assert not approx_equal(p.weights, weights)
+  p = p.sort_i_seqs()
+  assert tuple(p.i_seqs) == (0,1,2,3)
+  assert approx_equal(p.weights, weights)
   for i_constructor in xrange(2):
     if (i_constructor == 0):
       l = geometry_restraints.planarity(

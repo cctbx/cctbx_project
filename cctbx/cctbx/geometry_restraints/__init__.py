@@ -68,7 +68,7 @@ class dihedral_proxy_registry:
     result = proxy_registry_add_result()
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
-    i_seqs_1_2_3 = (proxy.i_seqs[0], proxy.i_seqs[2], proxy.i_seqs[3])
+    i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
     if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
@@ -100,7 +100,7 @@ class chirality_proxy_registry:
     result = proxy_registry_add_result()
     proxy = proxy.sort_i_seqs()
     tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
-    i_seqs_1_2_3 = (proxy.i_seqs[0], proxy.i_seqs[2], proxy.i_seqs[3])
+    i_seqs_1_2_3 = (proxy.i_seqs[1], proxy.i_seqs[2], proxy.i_seqs[3])
     if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
@@ -114,6 +114,35 @@ class chirality_proxy_registry:
                > tolerance
           or abs(result.tabulated_proxy.weight - proxy.weight)
                > tolerance):
+        result.is_conflicting = 0001
+      else:
+        self.counts[i_list] += 1
+    return result
+
+class planarity_proxy_registry:
+
+  def __init__(self):
+    self.table = {}
+    self.proxies = shared_planarity_proxy()
+    self.counts = flex.size_t()
+
+  def process(self, proxy, tolerance=1.e-6):
+    assert proxy.i_seqs.size() > 0
+    result = proxy_registry_add_result()
+    proxy = proxy.sort_i_seqs()
+    tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
+    i_seqs_1_up = tuple(proxy.i_seqs[1:])
+    if (not tab_i_seq_0.has_key(i_seqs_1_up)):
+      tab_i_seq_0[i_seqs_1_up] = self.proxies.size()
+      self.proxies.append(proxy)
+      self.counts.append(1)
+      result.tabulated_proxy = proxy
+      result.is_new = 0001
+    else:
+      i_list = tab_i_seq_0[i_seqs_1_up]
+      result.tabulated_proxy = self.proxies[i_list]
+      if (not approx_equal(result.tabulated_proxy.weights, proxy.weights,
+                           eps=tolerance)):
         result.is_conflicting = 0001
       else:
         self.counts[i_list] += 1

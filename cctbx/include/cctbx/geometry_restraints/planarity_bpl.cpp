@@ -28,6 +28,7 @@ namespace {
           af::shared<std::size_t> const&,
           af::shared<double> const&>(
             (arg_("i_seqs"), arg_("weights"))))
+        .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .add_property("weights", make_getter(&w_t::weights, rbv()))
       ;
