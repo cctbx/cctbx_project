@@ -134,7 +134,7 @@ namespace scitbx { namespace lbfgs {
     FloatType sliding_tolerance =
       max_drop_ * max_drop_eps_ * std::pow(
         FloatType(x_.size()), iteration_coefficient_);
-    if (-linreg_y.m() * max_f_ <= sliding_tolerance) {
+    if (-linreg_y.slope() * max_f_ <= sliding_tolerance) {
       return true;
     }
     return false;
