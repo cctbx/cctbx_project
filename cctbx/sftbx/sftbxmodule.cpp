@@ -19,14 +19,34 @@ namespace {
 
   typedef sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> ex_xray_scatterer;
 
+  fractional<double>
+  py_least_squares_shift(
+    const uctbx::UnitCell& ucell,
+    const af::shared<ex_xray_scatterer>& sites1,
+    const af::shared<ex_xray_scatterer>& sites2)
+  {
+    return sftbx::least_squares_shift(
+      ucell, sites1.const_ref(), sites2.const_ref());
+  }
+
   double
-  py_rms_coordinates(
+  py_rms_coordinates_plain(
     const uctbx::UnitCell& ucell,
     const af::shared<ex_xray_scatterer>& sites1,
     const af::shared<ex_xray_scatterer>& sites2)
   {
     return sftbx::rms_coordinates(
       ucell, sites1.const_ref(), sites2.const_ref());
+  }
+  double
+  py_rms_coordinates_shift(
+    const uctbx::UnitCell& ucell,
+    const af::shared<ex_xray_scatterer>& sites1,
+    const af::shared<ex_xray_scatterer>& sites2,
+    const fractional<double>& shift)
+  {
+    return sftbx::rms_coordinates(
+      ucell, sites1.const_ref(), sites2.const_ref(), shift);
   }
 
   std::complex<double>
@@ -62,7 +82,7 @@ namespace {
   }
 
   void
-  py_StructureFactorArray(
+  py_StructureFactorArray_add(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const af::shared<Miller::Index>& H,
@@ -74,8 +94,21 @@ namespace {
       Fcalc.ref());
   }
 
+  af::shared<std::complex<double> >
+  py_StructureFactorArray_new(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<ex_xray_scatterer>& Sites)
+  {
+    af::shared<std::complex<double> > fcalc(H.size());
+    sftbx::StructureFactorArray(
+      UC, SgOps, H.const_ref(), Sites.const_ref(), fcalc.ref());
+    return fcalc;
+  }
+
   void
-  py_StructureFactor_dX_Array(
+  py_StructureFactor_dX_Array_add(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const af::shared<Miller::Index>& H,
@@ -86,6 +119,22 @@ namespace {
     sftbx::StructureFactor_dX_Array(
       UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
       dF_dX.ref());
+  }
+
+  af::shared<af::double3>
+  py_StructureFactor_dX_Array_new(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<std::complex<double> >& dTarget_dFcalc,
+    const af::shared<ex_xray_scatterer>& Sites)
+  {
+    af::shared<af::double3> dF_dX(Sites.size());
+    dF_dX.fill(af::double3(0.,0.,0.));
+    sftbx::StructureFactor_dX_Array(
+      UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
+      dF_dX.ref());
+    return dF_dX;
   }
 
   af::shared<Miller::Index>
@@ -214,6 +263,14 @@ namespace {
     py_XrayScatterer.def(
       &ex_xray_scatterer::w, "w");
     py_XrayScatterer.def(
+      &ex_xray_scatterer::CheckMultiplicity, "CheckMultiplicity");
+    py_XrayScatterer.def(
+      &ex_xray_scatterer::difference, "difference");
+    py_XrayScatterer.def(
+      &ex_xray_scatterer::distance2, "distance2");
+    py_XrayScatterer.def(
+      &ex_xray_scatterer::distance, "distance");
+    py_XrayScatterer.def(
       &ex_xray_scatterer::ApplySymmetry, "ApplySymmetry");
     py_XrayScatterer.def(
       &ex_xray_scatterer::set_Coordinates, "set_Coordinates");
@@ -222,10 +279,16 @@ namespace {
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor_dX, "StructureFactor_dX");
 
-    this_module.def(py_rms_coordinates, "rms_coordinates");
+    this_module.def(py_least_squares_shift, "least_squares_shift");
+    this_module.def(py_rms_coordinates_plain, "rms_coordinates");
+    this_module.def(py_rms_coordinates_shift, "rms_coordinates");
 
-    this_module.def(py_StructureFactorArray, "StructureFactorArray");
-    this_module.def(py_StructureFactor_dX_Array, "StructureFactor_dX_Array");
+    this_module.def(py_StructureFactorArray_add, "StructureFactorArray");
+    this_module.def(py_StructureFactorArray_new, "StructureFactorArray");
+    this_module.def(
+      py_StructureFactor_dX_Array_add, "StructureFactor_dX_Array");
+    this_module.def(
+      py_StructureFactor_dX_Array_new, "StructureFactor_dX_Array");
 
     this_module.def(py_BuildMillerIndices_Resolution_d_min,
                       "BuildMillerIndices");
