@@ -73,6 +73,31 @@ class intensity_correlation(target_functor_base):
   def use_multiplicities_as_weights(self):
     return self._use_multiplicities_as_weights
 
+class maximum_likelihood_criterion:
+
+  def __init__(self, f_obs):
+    adopt_init_args(self, locals(), hide=0001)
+
+  def f_obs(self):
+    return self._f_obs
+
+  def __call__(self, f_calc,
+                     alpha,
+                     beta,
+                     eps,
+                     cs,
+                     compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(self.f_obs().unit_cell())
+    assert f_calc.space_group() == self.f_obs().space_group()
+    return ext.targets_maximum_likelihood_criterion(
+        self.f_obs().data(),
+        f_calc.data(),
+        alpha,
+        beta,
+        eps,
+        cs,
+        compute_derivatives)
+
 def registry():
   result = {}
   for key,value in globals().items():

@@ -17,9 +17,9 @@
 #include <cctbx/error.h>
 #include <complex>
 #include <cmath>
+#include <scitbx/math/bessel.h>
 
 namespace cctbx { namespace xray { namespace targets {
-
   namespace detail {
 
     template <typename FobsValueType,
@@ -291,6 +291,74 @@ namespace cctbx { namespace xray { namespace targets {
     }
     target_ = 1 - correlation_;
   }
+
+// maximum-likelihood target function and gradients
+// Pavel Afonine, 26-MAY-2004
+  template <typename FobsValueType    = double,
+            typename FcalcValueType   = std::complex<FobsValueType>,
+            typename AlphaValueType   = FobsValueType,
+            typename BetaValueType    = FobsValueType,
+            typename EpsilonValueType = int,
+            typename CentricValueType = EpsilonValueType,
+            typename FlagValueType    = bool >
+  class maximum_likelihood_criterion {
+
+  public:
+    maximum_likelihood_criterion(af::const_ref<FobsValueType> const& fobs,
+                                 af::const_ref<FcalcValueType> const& fcalc,
+                                 af::const_ref<AlphaValueType> const& alpha,
+                                 af::const_ref<BetaValueType> const& beta,
+                                 af::const_ref<EpsilonValueType> const& eps,
+                                 af::const_ref<CentricValueType> const& cs,
+                                 FlagValueType const& compute_derivatives)
+    {
+       compute(fobs,fcalc,alpha,beta,eps,cs,compute_derivatives);
+    }
+
+    FobsValueType
+      target() const { return target_; }
+
+    af::shared<FcalcValueType>
+      derivatives() const { return derivatives_; }
+
+  protected:
+    FobsValueType target_;
+    af::shared<FcalcValueType> derivatives_;
+    void
+    compute(af::const_ref<FobsValueType> const& fobs,
+            af::const_ref<FcalcValueType> const& fcalc,
+            af::const_ref<AlphaValueType> const& alpha,
+            af::const_ref<BetaValueType> const& beta,
+            af::const_ref<EpsilonValueType> const& eps,
+            af::const_ref<CentricValueType> const& cs,
+            FlagValueType const& compute_derivatives)
+  {
+    CCTBX_ASSERT(fobs.size()==fcalc.size()&&alpha.size()==beta.size());
+    CCTBX_ASSERT(beta.size()==eps.size()&&eps.size()==cs.size());
+    CCTBX_ASSERT(fobs.size()==alpha.size());
+    target_ = 0;
+    if (compute_derivatives) {
+      derivatives_ = af::shared<FcalcValueType>(fobs.size());
+    }
+    for(std::size_t i=0;i<fobs.size();i++) {
+      FobsValueType abs_fcalc = std::abs(fcalc[i]);
+      FobsValueType t_p =-alpha[i]*alpha[i]*abs_fcalc*abs_fcalc/(eps[i]*beta[i]);
+      FobsValueType t_q = alpha[i]*fobs[i]*abs_fcalc/(eps[i]*beta[i]);
+      FobsValueType t_r = scitbx::math::bessel::ln_of_i0(2.*t_q);
+      FobsValueType t_s = t_q + std::log(1.+std::exp(-2.*t_q)) - std::log(2.);
+      target_ += -1.*( (1-cs[i])*(t_p+t_r)+cs[i]*(t_p/2.+t_s) );
+      if (compute_derivatives && abs_fcalc != 0) {
+        FobsValueType d_p =-alpha[i]*alpha[i]*abs_fcalc/(eps[i]*beta[i]);
+        FobsValueType d_q = alpha[i]*fobs[i]/(eps[i]*beta[i]);
+        FobsValueType d_r = scitbx::math::bessel::i1_over_i0(2.*t_q);
+        FobsValueType d_s = std::tanh(t_q);
+        FcalcValueType dmfodf = std::conj(fcalc[i]) / abs_fcalc;
+        derivatives_[i] = ( (1-cs[i])*(2.*d_p+2.*d_q*d_r)+cs[i]*(d_p+d_q*d_s) )*(-dmfodf);
+      }
+    }
+  }
+  };
+// max-like end
 
 }}} // namespace cctbx::xray::targets
 
