@@ -11,7 +11,7 @@
 #ifndef CCTBX_SGTBX_SEMINVARIANT_H
 #define CCTBX_SGTBX_SEMINVARIANT_H
 
-#include <cctbx/static_vector.h>
+#include <cctbx/fixcap_vector.h>
 #include <cctbx/sgtbx/groups.h>
 
 namespace sgtbx {
@@ -104,11 +104,11 @@ namespace sgtbx {
           the origin uniquely if the determinant of the matrix
           is +1 or -1.
        */
-      cctbx::static_vector<int, 3>
+      cctbx::fixcap_vector<int, 3>
       apply_mod(const Miller::Index& H) const;
 
     private:
-      cctbx::static_vector<ssVM, 3> m_VM;
+      cctbx::fixcap_vector<ssVM, 3> m_VM;
   };
 
 } // namespace sgtbx
