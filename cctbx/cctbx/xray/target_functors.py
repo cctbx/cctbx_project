@@ -148,6 +148,8 @@ class maximum_likelihood_criterion:
 
   def __init__(self, f_obs):
     adopt_init_args(self, locals(), hide=True)
+    self.epsilons = f_obs.epsilons().data()
+    self.centric_flags = flex.int(flex.to_list(f_obs.centric_flags().data()))
 
   def f_obs(self):
     return self._f_obs
@@ -163,8 +165,8 @@ class maximum_likelihood_criterion:
         f_calc.data(),
         alpha,
         beta,
-        f_calc.epsilons().data(),
-        flex.int(flex.to_list(f_calc.centric_flags().data())),
+        self.epsilons,
+        self.centric_flags,
         compute_derivatives)
 
 class maximum_likelihood_criterion_hl:

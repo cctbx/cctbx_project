@@ -294,6 +294,34 @@ namespace cctbx { namespace xray { namespace targets {
     target_ = 1 - correlation_;
   }
 
+double maximum_likelihood_target_one_h(double fo,
+                                       double fc,
+                                       double a,
+                                       double b,
+                                       int e,
+                                       int c)
+{
+  CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e != 0) );
+  double target = 0.0;
+  double eb = e * b;
+  if(c == 0) {
+    double t1 = -std::log( 2. * fo / eb );
+    double t2 = fo * fo / eb;
+    double t3 = (a * fc) * (a * fc) / eb;
+    double t4 = -scitbx::math::bessel::ln_of_i0( 2. * a * fo * fc / eb );
+    target = (t1 + t2 + t3 + t4);
+  }
+  if(c == 1) {
+    double Pi = scitbx::constants::pi;
+    double t1 = -0.5 * std::log(2. / (Pi * eb));
+    double t2 = fo * fo / (2. * eb);
+    double t3 = (a * fc) * (a * fc) / (2.0 * eb);
+    double t4 = -a * fo * fc / eb - std::log((1. + std::exp(-2.*a*fo*fc/eb))/2.);
+    target = (t1 + t2 + t3 + t4);
+  }
+  return target;
+}
+
 // maximum-likelihood target function and gradients
 // Pavel Afonine, 26-MAY-2004
   template <typename FobsValueType    = double,
@@ -335,7 +363,6 @@ namespace cctbx { namespace xray { namespace targets {
     CCTBX_ASSERT(fobs.size()==fcalc.size()&&alpha.size()==beta.size());
     CCTBX_ASSERT(beta.size()==eps.size()&&eps.size()==cs.size());
     CCTBX_ASSERT(fobs.size()==alpha.size());
-    double Pi = scitbx::constants::pi;
     target_ = 0;
     if (compute_derivatives) {
       derivatives_ = af::shared<FcalcValueType>(fobs.size());
@@ -348,30 +375,19 @@ namespace cctbx { namespace xray { namespace targets {
       EpsilonValueType e  = eps[i];
       EpsilonValueType c  = cs[i];
       CCTBX_ASSERT( (c == 1 || c == 0) && (b > 0.) && (e != 0) );
-      if(c == 0) {
-        FobsValueType t1 = -std::log( 2.*fo/(e*b) );
-        FobsValueType t2 = fo*fo/(e*b);
-        FobsValueType t3 = (a*fc)*(a*fc)/(e*b);
-        FobsValueType t4 = -scitbx::math::bessel::ln_of_i0( 2.*a*fo*fc/(e*b) );
-        target_ += (t1 + t2 + t3 + t4);
-        if(compute_derivatives && fc != 0) {
-          FobsValueType  d1 = 2.*a*a*fc/(e*b);
-          FobsValueType  d2 = -2.*a*fo/(e*b)*scitbx::math::bessel::i1_over_i0(2.*a*fo*fc/(e*b));
-          FcalcValueType d3 = std::conj(fcalc[i]) / fc;
-          derivatives_[i] = (d1 + d2) * d3;
+      target_ += maximum_likelihood_target_one_h(fo,fc,a,b,e,c);
+      if(compute_derivatives && fc != 0) {
+        if(c == 0) {
+            FobsValueType  d1 = 2.*a*a*fc/(e*b);
+            FobsValueType  d2 = -2.*a*fo/(e*b)*scitbx::math::bessel::i1_over_i0(2.*a*fo*fc/(e*b));
+            FcalcValueType d3 = std::conj(fcalc[i]) / fc;
+            derivatives_[i] = (d1 + d2) * d3;
         }
-      }
-      if(c == 1) {
-        FobsValueType t1 = -0.5*std::log(2./(Pi*e*b));
-        FobsValueType t2 = fo*fo/(2.*e*b);
-        FobsValueType t3 = (a*fc)*(a*fc)/(2.*e*b);
-        FobsValueType t4 = -a*fo*fc/(e*b) - std::log(1.+std::exp(-2.*a*fo*fc/(e*b))) + std::log(2.);
-        target_ += (t1 + t2 + t3 + t4);
-        if(compute_derivatives && fc != 0) {
-          FobsValueType  d1 = a*a*fc/(e*b);
-          FobsValueType  d2 = -a*fo/(e*b)*std::tanh(a*fo*fc/(e*b));
-          FcalcValueType d3 = std::conj(fcalc[i]) / fc;
-          derivatives_[i] = (d1 + d2) * d3;
+        if(c == 1) {
+            FobsValueType  d1 = a*a*fc/(e*b);
+            FobsValueType  d2 = -a*fo/(e*b)*std::tanh(a*fo*fc/(e*b));
+            FcalcValueType d3 = std::conj(fcalc[i]) / fc;
+            derivatives_[i] = (d1 + d2) * d3;
         }
       }
     }
