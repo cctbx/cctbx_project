@@ -6,7 +6,7 @@ import sys
 def run(distance_cutoff=3.5, nonbonded_distance_cutoff=5):
   command_line = (iotbx_option_parser(
     usage="iotbx.distance_least_squares [options] studat_file [...]",
-    description="Example: python distance_ls.py strudat --tag=SOD")
+    description="Example: iotbx.distance_least_squares strudat --tag=SOD")
     .option(None, "--tag",
       action="store",
       type="string",
