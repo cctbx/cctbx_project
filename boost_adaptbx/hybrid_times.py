@@ -9,7 +9,7 @@ if (not hasattr(sys, "gettickeraccumulation")):
   print "***************************************************"
   print
   def gettickeraccumulation():
-    return math.ceil(time.time()*1.e6)
+    return 1000000
   sys.gettickeraccumulation = gettickeraccumulation
 
 def factorial(n):
@@ -63,8 +63,26 @@ class time_per_python_tick:
   def report(self, label):
     print "%-6s %6.3f %10d %10.3f" % (
       label, self.time_diff, self.ticks_diff,
-      self.time_diff/self.ticks_diff*1.e6)
+      self.time_diff/max(1,self.ticks_diff)*1.e6)
     return self
+
+def forever(n_terms, n=200):
+  sys.tracebacklimit = 0
+  n_ratios = 0
+  sum_py = 0
+  sum_cpp = 0
+  while True:
+    time_0 = time.time()
+    run_python(n, n_terms)
+    sum_py += time.time() - time_0
+    time_0 = time.time()
+    run_c_plus_plus(n, n_terms)
+    sum_cpp += time.time() - time_0
+    n_ratios += 1
+    print "mean Python: %6.3f" % (sum_py/n_ratios)
+    print "mean C++:    %6.3f" % (sum_cpp/n_ratios)
+    print "%d ratio %6.3f" % (n_ratios, sum_py/sum_cpp)
+    print
 
 def end_points(n_terms):
   print "         time      ticks  time/tick"
@@ -93,8 +111,11 @@ def plot(n_terms):
 
 def run():
   n_terms = 6 # larger values lead to integer overflows in factorial()
-  end_points(n_terms)
-  plot(n_terms)
+  if ("--forever" in sys.argv[1:]):
+    forever(n_terms)
+  else:
+    end_points(n_terms)
+    plot(n_terms)
 
 if (__name__ == "__main__"):
   run()
