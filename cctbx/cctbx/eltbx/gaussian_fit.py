@@ -147,11 +147,23 @@ def make_start_gaussian(reference_gaussian,
     assert abs(result.at_stol_sq(stol_sq) - fs_reference) < 1.e-4
   return result
 
+def get_errors(diff_gaussian, d_min, n_points):
+  assert d_min > 0
+  d_star_max = 1. / d_min
+  errors = flex.double()
+  for i in xrange(1,n_points+1):
+    d_star = d_star_max * i / n_points
+    fr = diff_gaussian.reference_gaussian().at_d_star_sq(d_star**2)
+    f = diff_gaussian.at_d_star_sq(d_star**2)
+    assert fr > 0
+    errors.append((f - fr) / fr)
+  return errors
+
 class find_d_min:
 
   def __init__(self, diff_gaussian,
                      n_points,
-                     max_target_value,
+                     max_max_error,
                      start_interval,
                      min_interval):
     adopt_init_args(self, locals())
@@ -161,21 +173,28 @@ class find_d_min:
       self.d_min = (interval[0] + interval[1]) / 2.
       d_star_sq = d_star_sq_points(d_min=self.d_min, n_points=n_points)
       self.min = minimize(diff_gaussian, d_star_sq=d_star_sq)
-      if (    self.min.final_target_value <= max_target_value
+      self.max_error = flex.max(flex.abs(get_errors(
+        diff_gaussian=self.min.final_diff_gaussian,
+        d_min=self.d_min,
+        n_points=n_points*2)))
+      if (    self.max_error <= max_max_error
           and min(self.min.final_diff_gaussian.b()) > self.min.b_min):
         if (interval[0] - interval[1] < min_interval):
           break
         diff_gaussian = self.min.final_diff_gaussian
         interval[0] = self.d_min
         good_min = self.min
+        good_max_error = self.max_error
       else:
         if (interval[0] - interval[1] < min_interval):
           if (good_min is not None):
             self.d_min = interval[0]
             self.min = good_min
+            self.max_error = good_max_error
           else:
             self.d_min = None
             self.min = None
+            self.max_error = None
           break
         interval[1] = self.d_min
 
@@ -187,7 +206,7 @@ class find_d_min_multi:
                      n_trial_points_factor,
                      n_start_fractions,
                      n_points,
-                     max_target_value,
+                     max_max_error,
                      min_interval):
     n_terms = existing_gaussian.n_ab() + 1
     n_trial_points = n_terms * n_trial_points_factor
@@ -206,7 +225,7 @@ class find_d_min_multi:
         fit = find_d_min(
           diff_gaussian=diff_gaussian,
           n_points=n_points,
-          max_target_value=max_target_value,
+          max_max_error=max_max_error,
           start_interval=start_interval,
           min_interval=min_interval)
         if (fit.d_min is not None):
@@ -215,22 +234,24 @@ class find_d_min_multi:
     if (best_fit is None):
       self.d_min = None
       self.min = None
+      self.max_error = None
     else:
       self.d_min = best_fit.d_min
       self.min = best_fit.min
+      self.max_error = best_fit.max_error
 
-def show_fit_summary(source, label, gaussian, d_min, q, q_other=None):
+def show_fit_summary(source, label, gaussian, d_min, e, e_other=None):
   n_terms = str(gaussian.n_ab())
   if (gaussian.c() != 0): n_terms += "+c"
   n_terms += ","
-  print "%24s: %s n_terms=%-4s d_min=%.2f, q=%.6g" % (
-    source, label, n_terms, d_min, q),
-  if (q_other is not None and q_other > q):
+  print "%24s: %s n_terms=%-4s d_min=%.2f, e=%.4f" % (
+    source, label, n_terms, d_min, e),
+  if (e_other is not None and e_other > e):
     print "Better",
   print
 
-def show_literature_fits(label, d_min, reference_gaussian, n_terms, d_star_sq,
-                         q_other=None):
+def show_literature_fits(label, d_min, reference_gaussian, n_terms, n_points,
+                         e_other=None):
   for lib in [xray_scattering.it1992,
               xray_scattering.two_gaussian_agarwal_isaacs,
               xray_scattering.two_gaussian_agarwal_1978,
@@ -246,9 +267,11 @@ def show_literature_fits(label, d_min, reference_gaussian, n_terms, d_star_sq,
     if (lib_gaussian is not None and lib_gaussian.n_ab() == n_terms):
       diff_gaussian = xray_scattering.difference_gaussian(
         reference_gaussian, lib_gaussian)
-      tt = diff_gaussian.target_terms_at_points(d_star_sq)
-      q = flex.sum(flex.pow2(tt))
-      show_fit_summary(lib_source, label, lib_gaussian, d_min, q, q_other)
+      e = flex.max(flex.abs(get_errors(
+        diff_gaussian=diff_gaussian,
+        d_min=d_min,
+        n_points=n_points*2)))
+      show_fit_summary(lib_source, label, lib_gaussian, d_min, e, e_other)
 
 def write_plot(f, gaussian, d_min, n_points):
   assert d_min > 0
@@ -270,7 +293,7 @@ def write_plots(plots_dir, label, reference_gaussian, gaussian,
 class fit_parameters:
 
   def __init__(self, n_points=50,
-                     max_target_value_factor=1.e-4,
+                     max_max_error=0.01,
                      n_trial_points_factor=3,
                      n_start_fractions=2,
                      find_d_min_min_interval=0.01):
@@ -305,7 +328,6 @@ def run(args=[], params=fit_parameters(), verbose=0):
     if (len(args) > 0 and g5c.label() not in args): continue
     reference_gaussian = g5c.fetch()
     f0 = reference_gaussian.at_d_star_sq(0)
-    max_target_value = params.max_target_value_factor * f0
     results[g5c.label()] = []
     previous_d_min = None
     existing_gaussian = xray_scattering.gaussian([],[])
@@ -318,7 +340,7 @@ def run(args=[], params=fit_parameters(), verbose=0):
         n_trial_points_factor=params.n_trial_points_factor,
         n_start_fractions=params.n_start_fractions,
         n_points=params.n_points,
-        max_target_value=max_target_value,
+        max_max_error=params.max_max_error,
         min_interval=params.find_d_min_min_interval)
       if (fit.d_min is None):
         print "Warning: No fit: %s n_terms=%d" % (g5c.label(), n_terms)
@@ -329,14 +351,14 @@ def run(args=[], params=fit_parameters(), verbose=0):
       previous_d_min = fit.d_min
       show_fit_summary(
         "Best fit", g5c.label(), fit.min.final_diff_gaussian, fit.d_min,
-        fit.min.final_target_value)
+        fit.max_error)
       show_literature_fits(
         label=g5c.label(),
         reference_gaussian=reference_gaussian,
         n_terms=n_terms,
         d_min=fit.d_min,
-        d_star_sq=fit.min.d_star_sq,
-        q_other=fit.min.final_target_value)
+        n_points=params.n_points,
+        e_other=fit.max_error)
       fit.min.final_diff_gaussian.show()
       existing_gaussian = fit.min.final_diff_gaussian
       print
@@ -348,7 +370,7 @@ def run(args=[], params=fit_parameters(), verbose=0):
           reference_gaussian=reference_gaussian,
           gaussian=fit.min.final_diff_gaussian,
           d_min=fit.d_min,
-          n_points=100)
+          n_points=params.n_points*2)
       g = fit.min.final_diff_gaussian
       results[g5c.label()].append(xray_scattering.fitted_gaussian(
         d_min=fit.d_min, a=g.a(),b=g.b()))
