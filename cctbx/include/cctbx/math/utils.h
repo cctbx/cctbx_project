@@ -29,6 +29,7 @@ namespace cctbx { namespace math {
   }
 
   template <typename NumType1, typename NumType2>
+  inline
   NumType1&
   update_min(NumType1& m, NumType2 const& x)
   {
@@ -37,6 +38,7 @@ namespace cctbx { namespace math {
   }
 
   template <typename NumType1, typename NumType2>
+  inline
   NumType1&
   update_max(NumType1& m, NumType2 const& x)
   {
