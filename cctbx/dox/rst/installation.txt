@@ -94,6 +94,7 @@ compilations scales linearly with the number of CPUs available.
 
 To run some regression tests after the compilation is finished enter::
 
+  source setpaths_all.csh
   python $SCITBX_DIST/run_tests.py
   python $CCTBX_DIST/run_tests.py --Quick
 
@@ -144,6 +145,7 @@ compilations scales linearly with the number of CPUs available.
 
 To run some regression tests after the compilation is finished enter::
 
+  setpaths.bat all
   python %SCITBX_DIST%\run_tests.py
   python %CCTBX_DIST%\run_tests.py --Quick
 
