@@ -11,6 +11,20 @@ namespace iotbx { namespace mtz {
   namespace af = scitbx::af;
 
   inline
+  af::shared<std::size_t>
+  cmtz_struct_sizes()
+  {
+    af::shared<std::size_t> result;
+    result.push_back(sizeof(CMtz::MTZCOL));
+    result.push_back(sizeof(CMtz::MTZSET));
+    result.push_back(sizeof(CMtz::MTZXTAL));
+    result.push_back(sizeof(CMtz::MTZBAT));
+    result.push_back(sizeof(CMtz::SYMGRP));
+    result.push_back(sizeof(CMtz::MTZ));
+    return result;
+  }
+
+  inline
   int
   ccp4_liberr_verbosity(int level)
   {

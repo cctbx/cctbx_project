@@ -188,6 +188,7 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
+    def("cmtz_struct_sizes", cmtz_struct_sizes);
     def("ccp4_liberr_verbosity", ccp4_liberr_verbosity, (arg_("level")));
     data_group_wrappers<int>::wrap("integer_group");
     data_group_wrappers<double>::wrap("real_group");
