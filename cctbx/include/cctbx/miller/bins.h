@@ -58,21 +58,12 @@ namespace cctbx { namespace miller {
       af::shared<double> limits() const { return limits_; }
 
       std::size_t
-      get_j_bin(double d_star_sq, double relative_tolerance=1.-6) const
-      {
-        double abs_tolerance = relative_tolerance * span_;
-        if (d_star_sq > limits_[0] + abs_tolerance) return 0;
-        std::size_t i = 1;
-        for(;i<limits_.size();i++) {
-          if (d_star_sq > limits_[i]) return i;
-        }
-        if (d_star_sq > limits_[i] + abs_tolerance) i--;
-        return i;
-      }
+      get_bin_index(double d_star_sq, double relative_tolerance=1.e-6) const;
+
       std::size_t
-      get_j_bin(Index const& h, double relative_tolerance=1.-6) const
+      get_bin_index(Index const& h, double relative_tolerance=1.e-6) const
       {
-        return get_j_bin(unit_cell_.Q(h), relative_tolerance);
+        return get_bin_index(unit_cell_.Q(h), relative_tolerance);
       }
 
     protected:
@@ -82,6 +73,21 @@ namespace cctbx { namespace miller {
       uctbx::UnitCell unit_cell_;
       af::shared<double> limits_;
       double span_;
+  };
+
+  class binner
+  {
+    public:
+      binner() {}
+
+      binner(binning const& bng, af::shared<Index> miller_indices);
+
+      af::shared<std::size_t> bin_indices() const { return bin_indices_; }
+
+      af::shared<bool> bin_selection(std::size_t i_bin) const;
+
+    private:
+      af::shared<std::size_t> bin_indices_;
   };
 
 }} // namespace cctbx::miller

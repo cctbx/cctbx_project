@@ -91,11 +91,12 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1):
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
   binning = miller.binning(xtal.UnitCell, miller_set.H, n_bins)
   assert binning.n_bins() == n_bins
+  assert binning.limits().size() == n_bins + 1
+  binner = miller.binner(binning, miller_set.H)
   print "binning.d(0):", binning.d(0)
   for i in binning.limits().indices():
     print "binning.d(%d):" % (i,), binning.d(i)
   print "binning.d_min():", binning.d_min()
-  assert binning.limits().size() == n_bins + 1
 
 def run():
   exercise_join_sets()
