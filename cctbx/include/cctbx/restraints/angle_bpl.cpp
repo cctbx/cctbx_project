@@ -25,7 +25,7 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle_proxy", no_init)
-        .def(init<af::tiny<std::size_t, 3> const&, double, double>(
+        .def(init<af::tiny<unsigned, 3> const&, double, double>(
           (arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)

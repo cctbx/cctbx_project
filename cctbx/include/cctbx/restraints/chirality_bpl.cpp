@@ -25,7 +25,7 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("chirality_proxy", no_init)
-        .def(init<af::tiny<std::size_t, 4> const&, double, bool, double>(
+        .def(init<af::tiny<unsigned, 4> const&, double, bool, double>(
           (arg_("i_seqs"),
            arg_("volume_ideal"),
            arg_("both_signs"),
