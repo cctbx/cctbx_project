@@ -69,7 +69,7 @@ def exercise_rigid_bond_test():
   Analysis used as a part of WinGX (WinGX - Crystallographic Program
   System for Windows)
   """
-  ins_file = libtbx.env.under_dist_root("regression/pdb/enk_11i.res")
+  ins_file = libtbx.env.under_dist("libtbx", "../regression/pdb/enk_11i.res")
   if (not os.path.isfile(ins_file)):
     print "Skipping exercise_rigid_bond_test(): input file not available"
     return

@@ -41,8 +41,8 @@ def exercise_basic():
   assert mtz_object.max_min_resolution() == (-1, -1)
   assert mtz_object.n_crystals() == 0
   assert mtz_object.n_active_crystals() == 0
-  file_name = libtbx.env.under_dist_root(
-    "regression/reflection_files/dano.mtz")
+  file_name = libtbx.env.under_dist(
+    "libtbx", "../regression/reflection_files/dano.mtz")
   if (not os.path.isfile(file_name)):
     print "Skipping dano.mtz test: input file not available"
   else:

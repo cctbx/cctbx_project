@@ -1,6 +1,6 @@
 #! /bin/csh -f
 
-source "`libtbx.show_build_path`/setpaths.csh"
+source "`libtbx.show_build_path`/setpaths.csh" all
 set echo
 
 mkdir -p dist
@@ -20,7 +20,7 @@ cd ..
 if ($#argv == 0) then
   mkdir -p bintbx
   cd bintbx
-  cp -r $LIBTBX_BUILD/libtbx .
+  cp -r `libtbx.show_build_path`/libtbx .
   python ../dist/libtbx/configure.py iotbx
   cd ..
 endif

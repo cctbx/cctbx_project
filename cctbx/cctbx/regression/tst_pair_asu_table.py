@@ -200,7 +200,7 @@ def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_icosahedron(verbose=verbose)
   default_distance_cutoff=3.5
-  regression_misc = libtbx.env.under_dist_root("regression/misc")
+  regression_misc = libtbx.env.under_dist("libtbx", "../regression/misc")
   file_names = []
   for file_name in ["strudat_zeolite_atlas", "strudat_special_bonds"]:
     path = os.path.join(regression_misc, file_name)
