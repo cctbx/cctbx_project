@@ -159,9 +159,19 @@ namespace cctbx { namespace af {
       static size_type element_size() { return sizeof(ElementType); }
 
       explicit
-      shared_base(const size_type& sz = 0)
+      shared_base(const size_type& sz = 0,
+                  const ElementType& x = ElementType())
         : m_handle(element_size() * sz)
-      {}
+      {
+        std::fill(this->begin(), this->end(), x);
+      }
+
+      template <typename OtherElementType>
+      shared_base(const OtherElementType* first, const OtherElementType* last)
+        : m_handle(element_size() * (last - first))
+      {
+        copy_typeconv(first, last, this->begin());
+      }
 
       explicit
       shared_base(const handle_type& handle)
