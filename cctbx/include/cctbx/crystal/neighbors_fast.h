@@ -39,7 +39,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
           epsilon must be greater than zero and smaller than 0.01.
        */
       fast_pair_generator(
-        asu_mappings_t* asu_mappings,
+        boost::shared_ptr<asu_mappings_t>& asu_mappings,
         FloatType const& distance_cutoff,
         FloatType const& epsilon=1.e-6)
       :
@@ -48,9 +48,10 @@ namespace cctbx { namespace crystal { namespace neighbors {
         CCTBX_ASSERT(distance_cutoff > 0);
         CCTBX_ASSERT(epsilon > 0);
         CCTBX_ASSERT(epsilon < 0.01);
-        this->asu_mappings_ = asu_mappings;
-        this->distance_cutoff_sq_ = distance_cutoff*distance_cutoff;
         asu_mappings->lock();
+        this->asu_mappings_owner_ = asu_mappings;
+        this->asu_mappings_ = asu_mappings.get();
+        this->distance_cutoff_sq_ = distance_cutoff*distance_cutoff;
         create_boxes(distance_cutoff * (1 + epsilon));
         restart();
       }

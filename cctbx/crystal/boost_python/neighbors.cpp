@@ -35,11 +35,12 @@ namespace {
     {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
+      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("neighbors_simple_pair_generator", no_init)
-        .def(init<direct_space_asu::asu_mappings<>*,
+        .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
                   optional<double const&> >(
-          (arg_("asu_mappings"), arg_("distance_cutoff")))
-          [with_custodian_and_ward_postcall<0,1>()])
+          (arg_("asu_mappings"), arg_("distance_cutoff"))))
+        .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("distance_cutoff_sq", &w_t::distance_cutoff_sq)
         .def("at_end", &w_t::at_end)
         .def("next", helper<w_t>::next)
@@ -63,13 +64,12 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<simple_pair_generator<> > >(
         "neighbors_fast_pair_generator", no_init)
-        .def(init<direct_space_asu::asu_mappings<>*,
+        .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
                   double const&,
                   optional<double const&> >(
           (arg_("asu_mappings"),
            arg_("distance_cutoff"),
-           arg_("epsilon")))
-          [with_custodian_and_ward_postcall<0,1>()])
+           arg_("epsilon"))))
         .def("epsilon", &w_t::epsilon)
         .def("n_boxes", &w_t::n_boxes, ccr())
         .def("next", helper<w_t>::next)
