@@ -1,4 +1,4 @@
-import phil
+import libtbx.phil
 from libtbx.utils import UserError
 
 class argument_interpreter:
@@ -30,7 +30,7 @@ class argument_interpreter:
 
   def process(self, arg):
     try:
-      params = phil.parse(
+      params = libtbx.phil.parse(
         input_string=arg.replace(r"\n", "\n"),
         source_info=self.argument_description+"argument")
     except RuntimeError, e:
@@ -63,6 +63,6 @@ class argument_interpreter:
     if (complete_definitions == ""):
       raise UserError(('%sparameter definition has no effect: "%s"' % (
         self.argument_description, arg)).capitalize())
-    return phil.parse(
+    return libtbx.phil.parse(
       input_string=complete_definitions,
       source_info="command line argument")

@@ -1,6 +1,6 @@
 from __future__ import division
 from __future__ import generators
-from phil import tokenizer
+from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
 from libtbx.itertbx import count
 from libtbx import introspection
@@ -1013,7 +1013,7 @@ def parse(
       converter_registry=None,
       process_includes=False,
       include_stack=None):
-  from phil import parser
+  from libtbx.phil import parser
   assert source_info is None or file_name is None
   if (input_string is None):
     assert file_name is not None
