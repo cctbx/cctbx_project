@@ -18,6 +18,7 @@
 #include <vector>
 #include <cstddef>
 #include <iostream>
+#include <cctbx/basic/meta.h>
 #include <cctbx/carray.h>
 #include <cctbx/utils.h>
 
@@ -237,14 +238,11 @@ namespace cctbx {
       return true;
     }
 
-    template <class FloatType>
-    struct return_type {};
-
     template <class FloatType6, class FloatType33>
     carray<FloatType33, 3*3>
     CondensedSymMx33_as_FullSymMx33(
       const carray<FloatType6, 6>& Mcond,
-      return_type<FloatType33>)
+      type_holder<FloatType33>)
     {
       carray<FloatType33, 3*3> Mfull;
       Mfull[0] = Mcond[0];
@@ -263,7 +261,7 @@ namespace cctbx {
     inline carray<FloatType6, 6>
     FullSymMx33_as_CondensedSymMx33(
       const carray<FloatType33, 3*3>& Mfull,
-      return_type<FloatType6>)
+      type_holder<FloatType6>)
     {
       carray<FloatType6, 6> Mcond;
       Mcond[0] = Mfull[0];
@@ -297,8 +295,8 @@ namespace cctbx {
       return
         FullSymMx33_as_CondensedSymMx33(
           FullTensorTransformation(C,
-            CondensedSymMx33_as_FullSymMx33(Tcond, return_type<FloatTypeT>())),
-            return_type<FloatTypeT>());
+            CondensedSymMx33_as_FullSymMx33(Tcond, type_holder<FloatTypeT>())),
+            type_holder<FloatTypeT>());
     }
 
   } // namespace MatrixLite

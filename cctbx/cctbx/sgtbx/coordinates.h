@@ -275,7 +275,7 @@ namespace cctbx { namespace sgtbx {
         scaled_tolerance *= tolerance;
         carray<FloatType, 9>
         U = MatrixLite::CondensedSymMx33_as_FullSymMx33(
-          Ustar, MatrixLite::return_type<FloatType>());
+          Ustar, type_holder<FloatType>());
         for (std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
           carray<FloatType, 9>
           R = m_PointGroup.Matrices[i].Rpart().as_array(FloatType());
@@ -283,7 +283,7 @@ namespace cctbx { namespace sgtbx {
           RURt = MatrixLite::FullTensorTransformation(R, U);
           carray<FloatType, 6>
           Up = MatrixLite::FullSymMx33_as_CondensedSymMx33(
-            RURt, MatrixLite::return_type<FloatType>());
+            RURt, type_holder<FloatType>());
           for(std::size_t j=0;j<6;j++) {
             if (!approx_equal_scaled(Ustar[j], Up[j], scaled_tolerance)) {
               return false;
@@ -322,7 +322,7 @@ namespace cctbx { namespace sgtbx {
       {
         carray<FloatType, 9>
         U = MatrixLite::CondensedSymMx33_as_FullSymMx33(
-          Ustar, MatrixLite::return_type<FloatType>());
+          Ustar, type_holder<FloatType>());
         carray<FloatType, 9> SumRURt;
         SumRURt.assign(0.);
         for (std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
@@ -333,7 +333,7 @@ namespace cctbx { namespace sgtbx {
           SumRURt = SumRURt + RURt;
         }
         return MatrixLite::FullSymMx33_as_CondensedSymMx33(
-          SumRURt, MatrixLite::return_type<FloatType>())
+          SumRURt, type_holder<FloatType>())
             / FloatType(m_PointGroup.Matrices.size());
       }
       //! Expand the special position symmetry operation.
