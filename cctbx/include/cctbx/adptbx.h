@@ -399,7 +399,7 @@ namespace cctbx {
    */
   template <typename FloatType>
   af::tiny<FloatType, 3>
-  Eigenvalues(const af::tiny<FloatType, 6>& adp)
+  Eigenvalues(const af::tiny_plain<FloatType, 6>& adp)
   {
     /* The eigenvalues lambda are found by:
          1. Determining the elements of the matrix (adp - lambda * I),
