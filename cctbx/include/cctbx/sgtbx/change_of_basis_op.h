@@ -31,7 +31,7 @@ namespace cctbx { namespace sgtbx {
       {}
 
       /*! \brief Initializes the change-of-basis operator with
-          matrix given as xyz string.
+          matrix given as xyz or hkl string.
        */
       /*! The inverse matrix is computed by inversion.
           An exception is thrown if the given matrix is not invertible.
@@ -41,9 +41,7 @@ namespace cctbx { namespace sgtbx {
       change_of_basis_op(std::string const& str_xyz,
                          const char* stop_chars="",
                          int r_den=cb_r_den,
-                         int t_den=cb_t_den)
-      : c_(rt_mx(str_xyz, stop_chars, r_den, t_den)), c_inv_(c_.inverse())
-      {}
+                         int t_den=cb_t_den);
 
       //! Initializes the change-of-basis operator with unit matrices.
       /*! The unit matrices are initialized with the rotation part
@@ -254,6 +252,27 @@ namespace cctbx { namespace sgtbx {
         return change_of_basis_op(
           (c() * rhs.c()).new_denominators(c()),
           (rhs.c_inv() * c_inv()).new_denominators(c_inv()));
+      }
+
+      //! Shorthand for: c().as_xyz(decimal, t_first, letters_xyz, separator)
+      std::string
+      as_xyz(bool decimal=false,
+             bool t_first=false,
+             const char* letters_xyz="xyz",
+             const char* separator=",") const
+      {
+        return c_.as_xyz(decimal, t_first, letters_xyz, separator);
+      }
+
+      //! Shorthand for: c_inv().r().as_hkl(decimal, letters_hkl, separator)
+      std::string
+      as_hkl(
+        bool decimal=false,
+        const char* letters_hkl="hkl",
+        const char* separator=",") const
+      {
+        CCTBX_ASSERT(c_inv_.t().is_zero());
+        return c_inv_.r().as_hkl(decimal, letters_hkl, separator);
       }
 
     private:

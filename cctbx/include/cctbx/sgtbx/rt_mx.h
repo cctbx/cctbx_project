@@ -131,20 +131,24 @@ namespace cctbx { namespace sgtbx {
           The translation component can appear last or first.<br>
           E.g. "x+1/2,y,z" or "1/2+x,y,z".<br>
           letters_xyz must contain three characters that are used to
-          represent x, y, and z, respectively. Typically one only
-          uses either letters_xyz = "xyz" or letters_xyz = "XYZ".
+          represent x, y, and z, respectively. Typical examples are
+          letters_xyz = "xyz" or letters_xyz = "XYZ".
           Other letters could be used, but the resulting symbolic
           expression cannot be translated back with the constructors
           above.<br>
-          separator is inserted after the first and the second term
-          of the symbolic expression. Typical strings used are
-          separator = "," and separator = ", ".
+          separator is inserted between the terms for two rows.
+          Typical strings used are separator = "," and separator = ", ".
        */
       std::string
       as_xyz(bool decimal=false,
              bool t_first=false,
              const char* letters_xyz="xyz",
-             const char* separator=",") const;
+             const char* separator=",") const
+      {
+        return scitbx::matrix::rational_as_xyz(
+          3, 3, r_.num().begin(), r_.den(), t_.num().begin(), t_.den(),
+          decimal, t_first, letters_xyz, separator);
+      }
 
       //! Copy matrix elements to a plain array of int.
       /*! The 9 elements of the rotation part are copied to
@@ -430,6 +434,21 @@ namespace cctbx { namespace sgtbx {
     }
     return result;
   }
+
+  //! Parser for xyz expressions.
+  struct rt_mx_from_xyz : rt_mx
+  {
+    bool have_xyz;
+    bool have_hkl;
+
+    rt_mx_from_xyz() {}
+
+    rt_mx_from_xyz(
+      parse_string& str_xyz,
+      const char* stop_chars,
+      int r_den,
+      int t_den);
+  };
 
   //! Analysis of the translation part of a rotation-translation matrix.
   /*! Grouping of the results of rt_mx::t_intrinsic_part(),

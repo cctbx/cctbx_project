@@ -1,5 +1,6 @@
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <cctbx/sgtbx/rot_mx_info.h>
@@ -16,6 +17,10 @@ namespace {
       order_overloads, order, 0, 1)
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       accumulate_overloads, accumulate, 0, 1)
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      as_xyz_overloads, as_xyz, 0, 3)
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      as_hkl_overloads, as_hkl, 0, 3)
 
     static void
     wrap()
@@ -35,6 +40,7 @@ namespace {
         .def("new_denominator", &w_t::new_denominator)
         .def("scale", &w_t::scale)
         .def("determinant", &w_t::determinant)
+        .def("transpose", &w_t::transpose)
         .def("inverse", &w_t::inverse)
         .def("cancel", &w_t::cancel)
         .def("inverse_cancel", &w_t::inverse_cancel)
@@ -46,6 +52,14 @@ namespace {
         .def("accumulate", &w_t::accumulate, accumulate_overloads())
         .def("info", &w_t::info)
         .def("as_double", &w_t::as_double)
+        .def("as_xyz", &w_t::as_xyz, as_xyz_overloads((
+           arg_("decimal")=false,
+           arg_("letters_xyz")="xyz",
+           arg_("separator")=",")))
+        .def("as_hkl", &w_t::as_hkl, as_hkl_overloads((
+           arg_("decimal")=false,
+           arg_("letters_hkl")="hkl",
+           arg_("separator")=",")))
       ;
     }
   };

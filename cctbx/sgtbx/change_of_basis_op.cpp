@@ -2,6 +2,28 @@
 
 namespace cctbx { namespace sgtbx {
 
+  change_of_basis_op::change_of_basis_op(
+    std::string const& str_xyz,
+    const char* stop_chars,
+    int r_den,
+    int t_den)
+  :
+    c_(0, 0),
+    c_inv_(0, 0)
+  {
+    parse_string parse_str_xyz(str_xyz);
+    rt_mx_from_xyz result(parse_str_xyz, stop_chars, r_den, t_den);
+    if (result.have_hkl) {
+      CCTBX_ASSERT(result.t().is_zero());
+      c_inv_ = rt_mx(result.r().transpose(), result.t());
+      c_ = c_inv_.inverse();
+    }
+    else {
+      c_ = rt_mx(result);
+      c_inv_ = c_.inverse();
+    }
+  }
+
   tr_vec change_of_basis_op::operator()(
     tr_vec const& t,
     int sign_identity) const
