@@ -1,11 +1,10 @@
 import re,struct
-from iotbx.detectors import ReadMAR
+from iotbx.detectors.detectorbase import DetectorImageBase
 
-class MARImage:
+class MARImage(DetectorImageBase):
   def __init__(self,filename):
-    self.filename=filename
-    self.parameters=None
-    self.linearintdata=None
+    DetectorImageBase.__init__(self,filename)
+    self.vendortype = "MARCCD"
 
     byte_order = str(open(self.filename,"rb").read(2))
     if byte_order == 'II':
@@ -71,13 +70,13 @@ class MARImage:
       file_comments = f.read(512) # read file_comments
 
       parameters={}
-      for item in ['Detector Serial Number']: #expected integers
-        pattern = re.compile(item+' = '+r'(.*)')
+      for item in [('Detector Serial Number','DETECTOR_SN')]: #expected integers
+        pattern = re.compile(item[0]+' = '+r'(.*)')
         matches = pattern.findall(file_comments)
         if len(matches) > 0:
-          parameters[item] = int(matches[-1])
+          parameters[item[1]] = int(matches[-1])
         else:
-          parameters[item] = 0
+          parameters[item[1]] = 0
 
       f.seek(offset+28)
       rawdata = f.read(8)
@@ -173,29 +172,11 @@ class MARImage:
       f.close()
       self.parameters=parameters
 
-  def fileLength(self):
-    self.readHeader()
-    return 4096+self.size1*self.size2*self.depth
+  def dataoffset(self):
+    return 4096
 
-  def read(self):
-    self.fileLength()
-    self.linearintdata = ReadMAR(self.filename,4096,self.size1,self.size2,self.getEndian())
-
-  def __getattr__(self, attr):
-    if   attr=='size1' : return self.parameters['SIZE1']
-    elif attr=='size2' : return self.parameters['SIZE2']
-    elif attr=='npixels' : return self.parameters['SIZE1'] * self.parameters['SIZE2']
-    elif attr=='saturation' : return self.parameters['CCD_IMAGE_SATURATION']
-    elif attr=='rawdata' : return self.linearintdata
-    elif attr=='pixel_size' : return self.parameters['PIXEL_SIZE']
-    elif attr=='osc_start' : return self.parameters['OSC_START']
-    elif attr=='distance' : return self.parameters['DISTANCE']
-    elif attr=='wavelength' : return self.parameters['WAVELENGTH']
-    elif attr=='beamx' : return self.parameters['BEAM_CENTER_X']
-    elif attr=='beamy' : return self.parameters['BEAM_CENTER_Y']
-    elif attr=='deltaphi' : return self.parameters['OSC_RANGE']
-    elif attr=='twotheta' : return self.parameters['TWOTHETA']
-    elif attr=='serial_number' : return self.parameters['Detector Serial Number']
+  def integerdepth(self):
+    return self.depth
 
 if __name__=='__main__':
   i = "/net/racer/scratch1/ttleese/lyso201.0002"
