@@ -132,6 +132,9 @@ class d_interval:
     self.d_star_max = 1./d_min
     self.d_star_range = self.d_star_max - self.d_star_min
 
+  def __str__(self):
+    return "d_interval(d_max=%.6g, d_min=%.6g)" % (self.d_max, self.d_min)
+
   def d_star(self, f_range):
     return self.d_star_min + f_range * self.d_star_range
 

@@ -14,7 +14,7 @@ class _gaussian(injector, ext.gaussian):
     if (f is None): f = sys.stdout
     if (format is None): format = "%.8g"
     for l,v in (("a:", self.a()), ("b:", self.b())):
-      print >> f, l, ", ".join([format % x for x in v])
+      print >> f, l, " ".join([format % x for x in v])
     print >> f, "c:", format % self.c()
     return self
 
@@ -70,5 +70,5 @@ class fitted_gaussian(gaussian):
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
-    print "d_min: %.2f" % self.d_min
+    print "d_min: %.8g" % self.d_min
     gaussian.show(self, f, format)
