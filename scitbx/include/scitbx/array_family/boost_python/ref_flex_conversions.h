@@ -10,7 +10,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_REF_FLEX_CONVERSIONS_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_REF_FLEX_CONVERSIONS_H
 
-#include <scitbx/array_family/flex_grid_accessor.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/object.hpp>

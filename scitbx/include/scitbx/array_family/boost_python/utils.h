@@ -11,7 +11,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_UTILS_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_UTILS_H
 
-#include <scitbx/array_family/flex_grid_accessor.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
 
 namespace scitbx { namespace af { namespace boost_python {

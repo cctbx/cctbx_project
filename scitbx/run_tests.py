@@ -12,7 +12,7 @@ def run():
   "$B/array_family/tst_mat3",
   "$B/array_family/tst_sym_mat3",
   "$B/array_family/tst_mat_ref",
-  "$B/array_family/tst_flex",
+  "$B/array_family/tst_accessors",
   "$D/array_family/boost_python/regression_test.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$D/lbfgs/boost_python/tst_lbfgs.py",
