@@ -3,6 +3,7 @@ from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb import scattering_type_interpr
 from cctbx import xray
 from cctbx import crystal
+from cctbx.eltbx import tiny_pse
 from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import iround
@@ -51,6 +52,9 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
   #                                      Angstroms.
   # 55 - 60  Real(6.2)     occupancy     Occupancy.
   # 61 - 66  Real(6.2)     tempFactor    Temperature factor.
+  # 73 - 76  LString(4)    segID         Segment identifier, left-justified.
+  # 77 - 78  LString(2)    element       Element symbol, right-justified.
+  # 79 - 80  LString(2)    charge        Charge on the atom.
   serial = 0
   for scatterer in self.scatterers():
     serial += 1
@@ -64,11 +68,15 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
     if (not fractional_coordinates):
       xyz = self.unit_cell().orthogonalize(xyz)
     label = scatterer.label.upper()
+    element_symbol = scatterer.element_symbol()
+    if (element_symbol is None): element_symbol = "Q"
+    assert len(element_symbol) in (1,2)
     assert serial < 100000
     atom_07_27 = ("%5d %-4s %-3s  %4d" % (
       serial, label[:4], label[:3], serial%10000),)
-    print >> s, "ATOM  %s    %8.3f%8.3f%8.3f%6.2f%6.2f" % (
-      atom_07_27 + xyz + (scatterer.occupancy, adptbx.u_as_b(u)))
+    print >> s, "ATOM  %s    %8.3f%8.3f%8.3f%6.2f%6.2f          %2s" % (
+      atom_07_27 + xyz + (scatterer.occupancy, adptbx.u_as_b(u),
+      element_symbol.upper()))
     if (u_cart is not None):
       print >> s, "ANISOU%s%7d%7d%7d%7d%7d%7d" % (
         atom_07_27 + tuple([iround(x*10000) for x in u_cart]))

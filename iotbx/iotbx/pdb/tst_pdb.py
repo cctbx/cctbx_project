@@ -8,7 +8,7 @@ import sys
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info=sgtbx.space_group_info("P 31"),
-    elements=["N","C","C","O"]*2,
+    elements=["N","C","C","O","Si"]*2,
     volume_per_atom=500,
     min_distance=2.,
     general_positions_only=00000,
