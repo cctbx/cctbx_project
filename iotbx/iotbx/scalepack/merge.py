@@ -58,7 +58,9 @@ class reader:
       line_count += 1
       line_error = "line %d: expecting (3I4, 4F8.1)" % line_count
       if (line == ""): break
-      line = line.rstrip() + (" " * 44)
+      line = line.rstrip()
+      if (len(line) == 0): continue
+      line += (" " * 44)
       flds = []
       used = 0
       for width in (4,4,4,8,8,8,8):
