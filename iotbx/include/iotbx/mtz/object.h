@@ -2,6 +2,7 @@
 #define IOTBX_MTZ_OBJECT_H
 
 #include <cmtzlib.h>
+#include <ccp4_array.h>
 #include <ccp4_errno.h>
 #include <cctbx/sgtbx/space_group.h>
 
@@ -20,7 +21,31 @@ namespace iotbx { namespace mtz {
   bool
   is_ccp4_nan(float const& datum)
   {
-    return CCP4::ccp4_utils_isnan((union float_uint_uchar *) &datum);
+    return CCP4::ccp4_utils_isnan(
+      reinterpret_cast<const union float_uint_uchar*>(&datum));
+  }
+
+  inline
+  ccp4array_base*
+  ccp4array_base_ptr(CMtz::MTZCOL* ptr)
+  {
+    ccp4_ptr* p = reinterpret_cast<ccp4_ptr*>(&ptr->ref);
+    return reinterpret_cast<ccp4array_base*>(
+      reinterpret_cast<ccp4_byteptr>(*p) - sizeof(ccp4array_base));
+  }
+
+  inline
+  int
+  column_array_size(CMtz::MTZCOL* ptr)
+  {
+    return ccp4array_base_ptr(ptr)->size;
+  }
+
+  inline
+  int
+  column_array_capacity(CMtz::MTZCOL* ptr)
+  {
+    return ccp4array_base_ptr(ptr)->capacity;
   }
 
   template <typename DataType>
@@ -253,11 +278,59 @@ namespace iotbx { namespace mtz {
         return *this;
       }
 
+      void
+      reserve(int capacity)
+      {
+        CMtz::MTZ* p = ptr();
+        if (!p->refs_in_memory) return;
+        for(int i=0;i<p->nxtal;i++) {
+          for(int j=0;j<p->xtal[i]->nset;j++) {
+            for(int k=0;k<p->xtal[i]->set[j]->ncol;k++) {
+              capacity = std::max(
+                capacity,
+                column_array_capacity(p->xtal[i]->set[j]->col[k]));
+            }
+          }
+        }
+        for(int i=0;i<p->nxtal;i++) {
+          for(int j=0;j<p->xtal[i]->nset;j++) {
+            for(int k=0;k<p->xtal[i]->set[j]->ncol;k++) {
+              ccp4array_reserve(p->xtal[i]->set[j]->col[k]->ref, capacity);
+            }
+          }
+        }
+      }
+
+      void
+      adjust_column_array_sizes(int new_nref)
+      {
+        CMtz::MTZ* p = ptr();
+        if (!p->refs_in_memory) return;
+        if (new_nref > p->nref) {
+          reserve(new_nref);
+          for(int i=0;i<p->nxtal;i++) {
+            for(int j=0;j<p->xtal[i]->nset;j++) {
+              for(int k=0;k<p->xtal[i]->set[j]->ncol;k++) {
+                CMtz::MTZCOL* col_k = p->xtal[i]->set[j]->col[k];
+                int old_size = column_array_size(col_k);
+                if (new_nref > old_size) {
+                  ccp4array_resize(col_k->ref, new_nref);
+                  for(int iref=old_size;iref<new_nref;iref++) {
+                    *(reinterpret_cast<union float_uint_uchar*>(
+                      &col_k->ref[iref])) = CCP4::ccp4_nan();
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
       int
       n_batches() const { return CMtz::MtzNbat(ptr()); }
 
       int
-      n_reflections() const { return CMtz::MtzNref(ptr()); }
+      n_reflections() const { return ptr()->nref; }
 
       af::tiny<double, 2>
       max_min_resolution() const

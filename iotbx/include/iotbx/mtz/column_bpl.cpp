@@ -26,9 +26,23 @@ namespace {
         .def("label", &w_t::label)
         .def("type", &w_t::type)
         .def("is_active", &w_t::is_active)
+        .def("array_size", &w_t::array_size)
+        .def("array_capacity", &w_t::array_capacity)
         .def("path", &w_t::path)
         .def("lookup_other", &w_t::lookup_other, (arg_("label")))
         .def("n_valid_values", &w_t::n_valid_values)
+        .def("set_reals",
+          (af::shared<int>(w_t::*)(
+            af::const_ref<cctbx::miller::index<> > const&,
+            af::const_ref<double> const&))
+              &w_t::set_reals, (
+          arg_("miller_indices"), arg_("data")))
+        .def("set_reals",
+          (void(w_t::*)(
+            af::const_ref<int> const&,
+            af::const_ref<double> const&))
+              &w_t::set_reals, (
+          arg_("mtz_reflection_indices"), arg_("data")))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
