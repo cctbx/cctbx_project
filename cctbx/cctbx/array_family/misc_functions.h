@@ -49,8 +49,8 @@ namespace cctbx { namespace af {
   struct functor_approx_equal_scaled {
     ResultType operator()(const ArgumentType1& x,
                           const ArgumentType2& y,
-                          const ArgumentType3& z) {
-    return approx_equal_scaled(x, y, z); }
+                          const ArgumentType3& z) const {
+    return ResultType(approx_equal_scaled(x, y, z)); }
   };
 
   //! Helper function object for array operations.
@@ -61,8 +61,8 @@ namespace cctbx { namespace af {
   struct functor_approx_equal_unscaled {
     ResultType operator()(const ArgumentType1& x,
                           const ArgumentType2& y,
-                          const ArgumentType3& z) {
-    return approx_equal_unscaled(x, y, z); }
+                          const ArgumentType3& z) const {
+    return ResultType(approx_equal_unscaled(x, y, z)); }
   };
 
 }} // namespace cctbx::af
