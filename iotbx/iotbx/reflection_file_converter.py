@@ -16,24 +16,13 @@ def run(args):
       default=00000,
       dest="weak_symmetry",
       help="symmetry on command line is weaker than symmetry found in files")
+    .enable_resolutions()
     .option(None, "--label",
       action="store",
       type="string",
       dest="label",
       help="Substring of reflection data label or number",
       metavar="STRING")
-    .option(None, "--resolution",
-      action="store",
-      type="float",
-      dest="resolution",
-      help="High resolution limit",
-      metavar="FLOAT")
-    .option(None, "--low_resolution",
-      action="store",
-      type="float",
-      dest="low_resolution",
-      help="Low resolution limit",
-      metavar="FLOAT")
     .option(None, "--observation_type",
       choices=("amplitude", "intensity"),
       metavar="amplitude|intensity")

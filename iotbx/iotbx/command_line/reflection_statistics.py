@@ -19,12 +19,7 @@ def run(args):
       action="store_true",
       dest="quick",
       help="Do not compute statistics between pairs of data arrays")
-    .option(None, "--resolution",
-      action="store",
-      type="float",
-      dest="resolution",
-      help="High resolution limit",
-      metavar="FLOAT")
+    .enable_resolutions()
     .option(None, "--bins",
       action="store",
       type="int",
@@ -76,8 +71,10 @@ def run(args):
               print
               command_line.parser.show_help()
               return
-            if (command_line.options.resolution is not None):
+            if (   command_line.options.resolution is not None
+                or command_line.options.low_resolution is not None):
               miller_array = miller_array.resolution_filter(
+                d_max=command_line.options.low_resolution,
                 d_min=command_line.options.resolution)
             miller_array.set_info(info=info)
             all_miller_arrays.append(miller_array)

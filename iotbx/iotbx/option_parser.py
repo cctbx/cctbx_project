@@ -66,6 +66,31 @@ class iotbx_option_parser(OptionParser):
     self.enable_symmetry()
     return self
 
+  def enable_resolution(self, default=None):
+    self.add_option(make_option(None, "--resolution",
+      action="store",
+      default=default,
+      type="float",
+      dest="resolution",
+      help="High resolution limit (minimum d-spacing, d_min)",
+      metavar="FLOAT"))
+    return self
+
+  def enable_low_resolution(self, default=None):
+    self.add_option(make_option(None, "--low_resolution",
+      action="store",
+      default=default,
+      type="float",
+      dest="low_resolution",
+      help="Low resolution limit (maximum d-spacing, d_max)",
+      metavar="FLOAT"))
+    return self
+
+  def enable_resolutions(self, default_low=None, default_high=None):
+    self.enable_resolution(default=default_high)
+    self.enable_low_resolution(default=default_low)
+    return self
+
   def enable_chunk(self):
     self.add_option(make_option(None, "--chunk",
       action="callback",
