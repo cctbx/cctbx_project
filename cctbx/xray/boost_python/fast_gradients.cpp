@@ -27,7 +27,6 @@ namespace {
                   af::const_ref<scatterer<> > const&,
                   af::const_ref<std::complex<double>,
                                 maptbx::c_grid_padded_p1<3> > const&,
-                  bool,
                   grid_point_type const&,
                   grid_point_type const&,
                   optional<double const&,
@@ -47,10 +46,7 @@ namespace {
         .def("exp_table_size", &w_t::exp_table_size)
         .def("max_shell_radii", &w_t::max_shell_radii, ccr())
         .def("max_shell_radii_frac", &w_t::max_shell_radii_frac)
-        .def("grad", &w_t::grad)
-        .def("grad_x", &w_t::grad_x)
-        .def("grad_y", &w_t::grad_y)
-        .def("grad_z", &w_t::grad_z)
+        .def("grad_site", &w_t::grad_site)
         .def("grad_u_iso", &w_t::grad_u_iso)
         .def("grad_u_star", &w_t::grad_u_star)
         .def("grad_occupancy", &w_t::grad_occupancy)
