@@ -18,13 +18,13 @@ class rec:
     assert self.n == other.n
     a = self.elems
     b = other.elems
-    return rec([a[i] + b[i] for i in xrange(len(other.elems))], self.n)
+    return rec([a[i] + b[i] for i in xrange(len(a))], self.n)
 
   def __sub__(self, other):
     assert self.n == other.n
     a = self.elems
     b = other.elems
-    return rec([a[i] - b[i] for i in xrange(len(other.elems))], self.n)
+    return rec([a[i] - b[i] for i in xrange(len(a))], self.n)
 
   def __mul__(self, other):
     if (not hasattr(other, "elems")):
