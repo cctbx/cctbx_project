@@ -135,8 +135,8 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   if (0 or verbose):
     r.show_summary()
   assert r.is_well_defined()
-  assert abs(r.y_intercept()) < 0.2
-  assert abs(r.slope() - 1) < 0.3
+  assert abs(r.y_intercept()) < 0.1
+  assert abs(r.slope() - 1) < 0.2
   q_large = q_obs.apply_selection(
     q_obs.quasi_normalized_as_normalized().data() > e_min)
   if (0 or verbose):

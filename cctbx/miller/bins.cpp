@@ -90,13 +90,15 @@ namespace cctbx { namespace miller {
 
   binner::binner(
     binning const& bng,
-    af::const_ref<index<> > const& miller_indices)
+    af::shared<index<> > const& miller_indices)
   :
-    binning(bng)
+    binning(bng),
+    miller_indices_(miller_indices)
   {
-    bin_indices_.reserve(miller_indices.size());
-    for(std::size_t i=0;i<miller_indices.size();i++) {
-      bin_indices_.push_back(this->get_i_bin(miller_indices[i]));
+    af::const_ref<index<> > mi = miller_indices_.const_ref();
+    bin_indices_.reserve(mi.size());
+    for(std::size_t i=0;i<mi.size();i++) {
+      bin_indices_.push_back(this->get_i_bin(mi[i]));
     }
   }
 

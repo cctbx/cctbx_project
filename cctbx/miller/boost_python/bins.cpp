@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/bins.h>
@@ -85,12 +76,22 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<binning> >("binner", no_init)
         .def(init<binning const&,
-                  af::const_ref<index<> > >())
+                  af::shared<index<> > const&>())
+        .def("miller_indices", &w_t::miller_indices, ccr())
         .def("bin_indices", &w_t::bin_indices, ccr())
         .def("count", &w_t::count)
         .def("counts", &w_t::counts)
         .def("selection", &w_t::selection)
         .def("array_indices", &w_t::array_indices)
+        .def("bin_centers",
+          (af::shared<double>(w_t::*)(
+            double const&) const)
+          &w_t::bin_centers)
+        .def("interpolate",
+          (af::shared<double>(w_t::*)(
+            af::const_ref<double> const&,
+            double const&) const)
+          &w_t::interpolate)
       ;
     }
   };

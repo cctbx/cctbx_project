@@ -209,9 +209,12 @@ def exercise_array():
   no = ma.remove_patterson_origin_peak()
   assert approx_equal(no.data()[0], 3.231974)
   assert approx_equal(no.data()[47], 0.004956642)
-  no = ma.quasi_normalize_structure_factors()
+  no = ma.quasi_normalize_structure_factors(d_star_power=0)
   assert approx_equal(no.data()[0], 2.4378468)
   assert approx_equal(no.data()[47], 0.9888979)
+  no = ma.quasi_normalize_structure_factors()
+  assert approx_equal(no.data()[0], 2.00753806261)
+  assert approx_equal(no.data()[47], 1.09976342511)
   su = ma + 3
   assert approx_equal(tuple(su.data()), tuple(ma.data() + 3))
   su = ma + ma

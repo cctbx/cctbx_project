@@ -208,6 +208,7 @@ def exercise_bins():
   assert binning1.limits().size() == n_bins + 1
   assert binning1.n_bins_all() == n_bins + 2
   binner1 = miller.binner(binning1, m)
+  assert binner1.miller_indices().id() == m.id()
   assert binner1.count(binner1.i_bin_d_too_large()) == 0
   assert binner1.count(binner1.i_bin_d_too_small()) == 0
   counts = binner1.counts()
@@ -230,6 +231,29 @@ def exercise_bins():
   assert perm_array_indices1.size() == m.size()
   assert perm_array_indices2.size() == m.size()
   assert tuple(perm_array_indices1) == tuple(perm_array_indices2)
+  b = miller.binner(miller.binning(uc, n_bins, m, 0, d_min), m)
+  assert approx_equal(b.bin_centers(1),
+    (0.23207956, 0.52448148, 0.62711856, 0.70311998, 0.7652538,
+     0.818567, 0.86566877, 0.90811134, 0.94690405, 0.98274518))
+  assert approx_equal(b.bin_centers(2),
+    (0.10772184, 0.27871961, 0.39506823, 0.49551249, 0.58642261,
+     0.67067026, 0.74987684, 0.82507452, 0.89697271, 0.96608584))
+  assert approx_equal(b.bin_centers(3),
+    (0.050000075, 0.15000023, 0.25000038, 0.35000053, 0.45000068,
+     0.55000083, 0.65000098, 0.75000113, 0.85000128, 0.95000143))
+  v = flex.double(xrange(b.n_bins_used()))
+  i = b.interpolate(v, 0)
+  for i_bin in b.range_used():
+    assert i.select(b.selection(i_bin)).all_eq(v[i_bin-1])
+  dss = uc.d_star_sq(m)
+  for d_star_power in (1,2,3):
+    j = b.interpolate(v, d_star_power)
+    x = flex.pow(dss, (d_star_power/2.))
+    r = flex.linear_correlation(x, j)
+    assert r.is_well_defined()
+    assert approx_equal(
+      r.coefficient(),
+      (0.946400976706,0.99076390185,1.0)[d_star_power-1])
 
 def exercise_expand():
   sg = sgtbx.space_group("P 41 (1,-1,0)")
