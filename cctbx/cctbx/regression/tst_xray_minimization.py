@@ -15,7 +15,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     volume_per_atom=200,
     random_u_iso=0001,
     random_occupancy=0001)
-  f_obs_array = abs(structure_ideal.structure_factors(
+  f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
@@ -38,17 +38,17 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   if (0 or verbose):
     structure_shake.show_summary().show_scatterers()
   minimizer = minimization.lbfgs(
-    target_functor(f_obs_array),
+    target_functor(f_obs),
     minimization_options,
     structure_shake)
   if (0 or verbose):
     print "first:", minimizer.first_target_value
     print "final:", minimizer.final_target_value
   assert minimizer.final_target_value < minimizer.first_target_value
-  f_final_array = abs(f_obs_array.structure_factors_from_scatterers(
+  f_final = abs(f_obs.structure_factors_from_scatterers(
     xray_structure=structure_shake,
     direct=0001).f_calc())
-  c = flex.linear_correlation(f_obs_array.data(), f_final_array.data())
+  c = flex.linear_correlation(f_obs.data(), f_final.data())
   assert c.is_well_defined()
   if (0 or verbose):
     print "correlation:", c.coefficient()

@@ -20,16 +20,16 @@ def exercise(space_group_info, anomalous_flag,
         anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
-  f_obs_array = abs(structure_factors.f_calc())
-  f_obs_array.setup_binner(
+  f_obs = abs(structure_factors.f_calc())
+  f_obs.setup_binner(
     auto_binning=0001,
     reflections_per_bin=reflections_per_bin,
     n_bins=n_bins)
   if (0 or verbose):
-    f_obs_array.binner().show_summary()
+    f_obs.binner().show_summary()
   asu_contents = dicts.with_default_value(0)
   for elem in elements: asu_contents[elem] += 1
-  wp = statistics.wilson_plot(f_obs_array, asu_contents)
+  wp = statistics.wilson_plot(f_obs, asu_contents)
   if (0 or verbose):
     print "wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b
   assert 0.6 < wp.wilson_k < 1.4

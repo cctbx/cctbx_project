@@ -20,8 +20,8 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
     random_occupancy=0001
     ).structure_factors(
         anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
-  f_calc_array = structure_factors.f_calc()
-  n_real = f_calc_array.crystal_gridding(
+  f_calc = structure_factors.f_calc()
+  n_real = f_calc.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
     max_prime=max_prime).n_real()
@@ -32,10 +32,10 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
     cfft = fftpack.complex_to_complex_3d(n_real)
     n_complex = cfft.n()
   map = maptbx.structure_factors.to_map(
-    f_calc_array.space_group(),
+    f_calc.space_group(),
     anomalous_flag,
-    f_calc_array.indices(),
-    f_calc_array.data(),
+    f_calc.indices(),
+    f_calc.data(),
     n_real,
     flex.grid(n_complex),
     conjugate_flag)
@@ -51,34 +51,34 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
   assert real_map.focus() == n_real
   assert complex_map.focus() == n_complex
   from_map = maptbx.structure_factors.from_map(
-    f_calc_array.unit_cell(),
-    f_calc_array.space_group_info().type(),
+    f_calc.unit_cell(),
+    f_calc.space_group_info().type(),
     anomalous_flag,
     d_min,
     complex_map,
     conjugate_flag)
   match = miller.match_indices(
-    f_calc_array.indices(),
+    f_calc.indices(),
     from_map.miller_indices())
   for i in (0,1):
-    if (i == 0): m = f_calc_array.indices()
+    if (i == 0): m = f_calc.indices()
     else: m = from_map.miller_indices()
     for j in match.singles(i):
-      assert abs(f_calc_array.unit_cell().d(m[j]) - d_min) < 1.e-5
+      assert abs(f_calc.unit_cell().d(m[j]) - d_min) < 1.e-5
   structure_factor_utils.check_correlation(
-    "from_map-1", f_calc_array.indices(), match,
-    f_calc_array.data(), from_map.data(),
+    "from_map-1", f_calc.indices(), match,
+    f_calc.data(), from_map.data(),
     min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
     verbose=verbose)
   from_map = maptbx.structure_factors.from_map(
     anomalous_flag,
-    f_calc_array.indices(),
+    f_calc.indices(),
     complex_map,
     conjugate_flag)
   assert from_map.miller_indices().size() == 0
   structure_factor_utils.check_correlation(
-    "from_map-2", f_calc_array.indices(), 0,
-    f_calc_array.data(), from_map.data(),
+    "from_map-2", f_calc.indices(), 0,
+    f_calc.data(), from_map.data(),
     min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
     verbose=verbose)
 
@@ -96,9 +96,9 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     random_occupancy=0001
     ).structure_factors(
         anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
-  f_calc_array = structure_factors.f_calc()
+  f_calc = structure_factors.f_calc()
   n_real = maptbx.crystal_gridding(
-    unit_cell=f_calc_array.unit_cell(),
+    unit_cell=f_calc.unit_cell(),
     d_min=d_min,
     resolution_factor=resolution_factor,
     max_prime=max_prime,
@@ -110,10 +110,10 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     cfft = fftpack.complex_to_complex_3d(n_real)
     n_complex = cfft.n()
   map = maptbx.structure_factors.to_map(
-    f_calc_array.space_group(),
+    f_calc.space_group(),
     anomalous_flag,
-    f_calc_array.indices(),
-    f_calc_array.data(),
+    f_calc.indices(),
+    f_calc.data(),
     n_real,
     flex.grid(n_complex),
     conjugate_flag)
@@ -138,10 +138,10 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     cfft = fftpack.complex_to_complex_3d(n_real_under_sampled)
     n_complex_under_sampled = cfft.n()
   under_sampled_map = maptbx.structure_factors.to_map(
-    f_calc_array.space_group(),
+    f_calc.space_group(),
     anomalous_flag,
-    f_calc_array.indices(),
-    f_calc_array.data(),
+    f_calc.indices(),
+    f_calc.data(),
     n_real_under_sampled,
     flex.grid(n_complex_under_sampled),
     conjugate_flag)

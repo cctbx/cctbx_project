@@ -244,17 +244,17 @@ namespace cctbx { namespace miller {
       sgtbx::space_group_type const& sg_type,
       bool anomalous_flag,
       af::ref<miller::index<> > const& miller_indices,
-      af::ref<ValueType> const& data_array,
+      af::ref<ValueType> const& data,
       bool deg)
     {
-      CCTBX_ASSERT(miller_indices.size() == data_array.size());
+      CCTBX_ASSERT(miller_indices.size() == data.size());
       sgtbx::reciprocal_space::asu asu(sg_type);
       sgtbx::space_group const& sg = sg_type.group();
       for(std::size_t i=0;i<miller_indices.size();i++) {
         asym_index ai(sg, asu, miller_indices[i]);
         index_table_layout_adaptor ila = ai.one_column(anomalous_flag);
         miller_indices[i] = ila.h();
-        map_to_asu_policy<PolicySelectType>::eq(ila, data_array[i], deg);
+        map_to_asu_policy<PolicySelectType>::eq(ila, data[i], deg);
       }
     }
 
@@ -266,10 +266,10 @@ namespace cctbx { namespace miller {
     sgtbx::space_group_type const& sg_type,
     bool anomalous_flag,
     af::ref<miller::index<> > const& miller_indices,
-    af::ref<ValueType> const& data_array)
+    af::ref<ValueType> const& data)
   {
     detail::map_to_asu<ValueType, ValueType>(
-      sg_type, anomalous_flag, miller_indices, data_array, false);
+      sg_type, anomalous_flag, miller_indices, data, false);
   }
 
   template <typename ValueType>
@@ -278,11 +278,11 @@ namespace cctbx { namespace miller {
     sgtbx::space_group_type const& sg_type,
     bool anomalous_flag,
     af::ref<miller::index<> > const& miller_indices,
-    af::ref<ValueType> const& data_array,
+    af::ref<ValueType> const& data,
     bool deg)
   {
     detail::map_to_asu<ValueType, data_classes::phase_type>(
-      sg_type, anomalous_flag, miller_indices, data_array, deg);
+      sg_type, anomalous_flag, miller_indices, data, deg);
   }
 
 }} // namespace cctbx::miller

@@ -24,21 +24,21 @@ def are_similar_hl(coeff1, coeff2, tolerance=1.e-2):
     if (abs(coeff1[i] - coeff2[i]) > tolerance): return 0
   return 1
 
-def verify(sg_fcalc_array, sg_hl,
+def verify(sg_fcalc, sg_hl,
            p1_miller_indices, p1_fcalc, p1_hl):
-  space_group = sg_fcalc_array.space_group()
-  asu = sg_fcalc_array.space_group_info().reciprocal_space_asu()
-  lookup_dict = miller.make_lookup_dict(sg_fcalc_array.indices())
+  space_group = sg_fcalc.space_group()
+  asu = sg_fcalc.space_group_info().reciprocal_space_asu()
+  lookup_dict = miller.make_lookup_dict(sg_fcalc.indices())
   for p1_i, p1_h in p1_miller_indices.items():
     h_asu = miller.asym_index(space_group, asu, p1_h)
-    h_eq = h_asu.one_column(sg_fcalc_array.anomalous_flag())
+    h_eq = h_asu.one_column(sg_fcalc.anomalous_flag())
     fcalc_asu = h_eq.complex_eq(p1_fcalc[p1_i])
     hl_asu = h_eq.hendrickson_lattman_eq(p1_hl[p1_i])
     sg_i = lookup_dict[h_eq.h()]
-    assert abs(sg_fcalc_array.data()[sg_i] - fcalc_asu) < 1.e-2
+    assert abs(sg_fcalc.data()[sg_i] - fcalc_asu) < 1.e-2
     if (not are_similar_hl(sg_hl[sg_i], hl_asu)):
-      print "Error:", sg_fcalc_array.space_group_info()
-      print sg_fcalc_array.indices()[sg_i]
+      print "Error:", sg_fcalc.space_group_info()
+      print sg_fcalc.indices()[sg_i]
       print "i:", sg_hl[sg_i]
       print "o:", hl_asu
       if (0): return
@@ -78,15 +78,15 @@ def write_cns_input(fcalc_array, hl):
   f.close()
 
 def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
-  sg_fcalc_array = random_structure.xray_structure(
+  sg_fcalc = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O"),
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
       anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc()
-  sg_hl = generate_random_hl(sg_fcalc_array)
-  write_cns_input(sg_fcalc_array, sg_hl)
+  sg_hl = generate_random_hl(sg_fcalc)
+  write_cns_input(sg_fcalc, sg_hl)
   try: os.unlink("tmp.hkl")
   except: pass
   os.system("cns < tmp.cns > tmp.out")
@@ -95,12 +95,12 @@ def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
   f.close()
   if (0 or verbose):
     print reflection_file.show_summary()
-  assert reflection_file.anomalous == sg_fcalc_array.anomalous_flag()
+  assert reflection_file.anomalous == sg_fcalc.anomalous_flag()
   p1_miller_indices, p1_hl = reflection_file.join_hl_group()
   p1_fcalc_rso = reflection_file.reciprocal_space_objects["FCALC"]
   assert not miller.match_indices(
     p1_miller_indices, p1_fcalc_rso.indices).have_singles()
-  verify(sg_fcalc_array, sg_hl, p1_miller_indices, p1_fcalc_rso.data, p1_hl)
+  verify(sg_fcalc, sg_hl, p1_miller_indices, p1_fcalc_rso.data, p1_hl)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001):

@@ -195,32 +195,32 @@ class structure(crystal.special_position_settings):
 
 class _target_functor_base:
 
-  def __call__(self, f_calc_array, compute_derivatives):
-    assert f_calc_array.unit_cell().is_similar_to(
-           self.f_obs_array().unit_cell())
-    assert f_calc_array.space_group() == self.f_obs_array().space_group()
+  def __call__(self, f_calc, compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(
+           self.f_obs().unit_cell())
+    assert f_calc.space_group() == self.f_obs().space_group()
     if (self.weights() != None):
-      return self._target_calculator(self.f_obs_array().data(),
+      return self._target_calculator(self.f_obs().data(),
                                      self.weights(),
-                                     f_calc_array.data(),
+                                     f_calc.data(),
                                      compute_derivatives)
     else:
-      return self._target_calculator(self.f_obs_array().data(),
-                                     f_calc_array.data(),
+      return self._target_calculator(self.f_obs().data(),
+                                     f_calc.data(),
                                      compute_derivatives)
 
 class _least_squares_residual(_target_functor_base):
 
-  def __init__(self, f_obs_array, weights=None,
+  def __init__(self, f_obs, weights=None,
                use_sigmas_as_weights=00000):
     adopt_init_args(self, locals(), hide=0001)
     assert self._weights == None or self._use_sigmas_as_weights == 00000
     self._target_calculator = targets_least_squares_residual
     if (self._use_sigmas_as_weights):
-      self._weights = self._f_obs_array.sigmas().data()
+      self._weights = self._f_obs.sigmas().data()
 
-  def f_obs_array(self):
-    return self._f_obs_array
+  def f_obs(self):
+    return self._f_obs
 
   def weights(self):
     return self._weights
@@ -230,16 +230,16 @@ class _least_squares_residual(_target_functor_base):
 
 class _intensity_correlation(_target_functor_base):
 
-  def __init__(self, f_obs_array, weights=None,
+  def __init__(self, f_obs, weights=None,
                use_multiplicities_as_weights=00000):
     adopt_init_args(self, locals(), hide=0001)
     assert self._weights==None or self._use_multiplicities_as_weights==00000
     self._target_calculator = targets_intensity_correlation
     if (self._use_multiplicities_as_weights):
-      self._weights = self._f_obs_array.multiplicities().data()
+      self._weights = self._f_obs.multiplicities().data()
 
-  def f_obs_array(self):
-    return self._f_obs_array
+  def f_obs(self):
+    return self._f_obs
 
   def weights(self):
     return self._weights

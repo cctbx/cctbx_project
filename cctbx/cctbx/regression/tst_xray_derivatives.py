@@ -25,11 +25,10 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
           site_cart[ix] += d_sign * delta
           site = unit_cell.fractionalize(site_cart)
         ms.site = site
-        f_calc_array = \
-          target_ftor.f_obs_array().structure_factors_from_scatterers(
+        f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
             xray_structure=modified_structure,
             direct=0001).f_calc()
-        target_result = target_ftor(f_calc_array, compute_derivatives=00000)
+        target_result = target_ftor(f_calc, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       if (not cartesian_flag): derivative *= abc[ix]
@@ -50,11 +49,10 @@ def finite_differences_u_star(target_ftor, structure,
         u_star = list(ms.u_star)
         u_star[iu] += d_sign * delta
         ms.u_star = u_star
-        f_calc_array = \
-          target_ftor.f_obs_array().structure_factors_from_scatterers(
+        f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
           xray_structure=modified_structure,
           direct=0001).f_calc()
-        target_result = target_ftor(f_calc_array, compute_derivatives=00000)
+        target_result = target_ftor(f_calc, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       d_target_d_u_star[iu] = derivative
@@ -80,11 +78,10 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
         ms.fp_fdp = complex(ms.fp_fdp.real, ms.fp_fdp.imag + d_sign * delta)
       else:
         raise RuntimeError
-      f_calc_array = \
-        target_ftor.f_obs_array().structure_factors_from_scatterers(
+      f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
         xray_structure=modified_structure,
         direct=0001).f_calc()
-      target_result = target_ftor(f_calc_array, compute_derivatives=00000)
+      target_result = target_ftor(f_calc, compute_derivatives=00000)
       target_values.append(target_result.target())
     derivative = (target_values[1] - target_values[0]) / (2 * delta)
     derivatives.append(derivative)
@@ -133,26 +130,26 @@ def exercise(target_functor, parameter_name, space_group_info,
     anisotropic_flag=(parameter_name == "u_star"),
     random_u_iso=0001,
     random_occupancy=0001)
-  f_obs_array = abs(structure_ideal.structure_factors(
+  f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
     print "n_special_positions:", \
           structure_ideal.special_position_indices().size()
   if (0 or verbose):
-    f_obs_array.show_summary()
+    f_obs.show_summary()
   structure_shake = structure_ideal.random_modify_parmeters(
     parameter_name, shake_sigma, vary_z_only=00000)
   assert tuple(structure_ideal.special_position_indices()) \
       == tuple(structure_shake.special_position_indices())
   if (0 or verbose):
     structure_shake.show_summary().show_scatterers()
-  target_ftor = target_functor(f_obs_array)
+  target_ftor = target_functor(f_obs)
   for structure in (structure_ideal, structure_shake)[:]: #SWITCH
-    f_calc_array = f_obs_array.structure_factors_from_scatterers(
+    f_calc = f_obs.structure_factors_from_scatterers(
       xray_structure=structure,
       direct=0001).f_calc()
-    target_result = target_ftor(f_calc_array, compute_derivatives=0001)
+    target_result = target_ftor(f_calc, compute_derivatives=0001)
     if (structure == structure_ideal):
       assert abs(target_result.target()) < 1.e-5
   if (0 or verbose):
@@ -163,7 +160,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     print "target = %.6g" % (target_result.target(),)
   sf = xray.structure_factors.from_scatterers_direct(
     xray_structure=structure,
-    miller_set=f_obs_array,
+    miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
     derivative_flags=xray.structure_factors.derivative_flags(
       site=(parameter_name=="site" or random.choice((0,1))),

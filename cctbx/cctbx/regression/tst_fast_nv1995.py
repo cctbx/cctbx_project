@@ -9,26 +9,26 @@ from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
 import sys
 
-def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
+def run_fast_nv1995(f_obs, f_calc_fixed, f_calc_p1,
                     symmetry_flags, gridding, grid_tags, verbose):
-  if (f_calc_fixed_array == None):
+  if (f_calc_fixed == None):
     f_part = flex.complex_double()
   else:
-    f_part = f_calc_fixed_array.data()
+    f_part = f_calc_fixed.data()
   fast_nv1995 = translation_search.fast_nv1995(
     gridding=gridding,
-    space_group=f_obs_array.space_group(),
+    space_group=f_obs.space_group(),
     anomalous_flag=00000,
-    miller_indices_f_obs=f_obs_array.indices(),
-    f_obs=f_obs_array.data(),
+    miller_indices_f_obs=f_obs.indices(),
+    f_obs=f_obs.data(),
     f_part=f_part,
-    miller_indices_p1_f_calc=f_calc_p1_array.indices(),
-    p1_f_calc=f_calc_p1_array.data())
+    miller_indices_p1_f_calc=f_calc_p1.indices(),
+    p1_f_calc=f_calc_p1.data())
   assert fast_nv1995.target_map().all() == gridding
   map_stats = maptbx.statistics(fast_nv1995.target_map())
   if (0 or verbose):
     map_stats.show_summary()
-  grid_tags.build(f_obs_array.space_group_info().type(), symmetry_flags)
+  grid_tags.build(f_obs.space_group_info().type(), symmetry_flags)
   assert grid_tags.n_grid_misses() == 0
   assert grid_tags.verify(fast_nv1995.target_map())
   peak_list = maptbx.peak_list(
@@ -70,14 +70,14 @@ def test_atom(space_group_info, use_primitive_setting,
     grid=gridding)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
-  f_obs_array = abs(miller_set_f_obs.structure_factors_from_scatterers(
+  f_obs = abs(miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
     direct=0001).f_calc())
   if (0 or verbose):
-    f_obs_array.show_summary()
+    f_obs.show_summary()
   if (0 or verbose):
-    f_obs_array.show_array()
-  miller_set_p1 = miller.set.expand_to_p1(f_obs_array)
+    f_obs.show_array()
+  miller_set_p1 = miller.set.expand_to_p1(f_obs)
   special_position_settings_p1 = crystal.special_position_settings(
     crystal_symmetry=miller_set_p1)
   structure_fixed = xray.structure(special_position_settings=structure)
@@ -89,19 +89,19 @@ def test_atom(space_group_info, use_primitive_setting,
     structure_p1.add_scatterer(scatterer_at_origin)
     if (0 or verbose):
       structure_p1.show_summary().show_scatterers()
-    f_calc_p1_array = miller_set_p1.structure_factors_from_scatterers(
+    f_calc_p1 = miller_set_p1.structure_factors_from_scatterers(
       xray_structure=structure_p1,
       direct=0001).f_calc()
     if (0 or verbose):
-      f_calc_p1_array.show_array()
-    f_calc_fixed_array = None
+      f_calc_p1.show_array()
+    f_calc_fixed = None
     if (structure_fixed.scatterers().size() > 0):
-      f_calc_fixed_array = f_obs_array.structure_factors_from_scatterers(
+      f_calc_fixed = f_obs.structure_factors_from_scatterers(
         xray_structure=structure_fixed,
         direct=0001).f_calc()
     symmetry_flags = translation_search.symmetry_flags(
       is_isotropic_search_model=0001,
-      have_f_part=(f_calc_fixed_array != None))
+      have_f_part=(f_calc_fixed != None))
     if (structure_fixed.scatterers().size() <= 1):
       gridding = miller_set_f_obs.crystal_gridding(
         symmetry_flags=symmetry_flags,
@@ -112,7 +112,7 @@ def test_atom(space_group_info, use_primitive_setting,
     if (0 or verbose):
       structure_fixed.show_summary().show_scatterers()
     peak_list = run_fast_nv1995(
-      f_obs_array, f_calc_fixed_array, f_calc_p1_array,
+      f_obs, f_calc_fixed, f_calc_p1,
       symmetry_flags, gridding, grid_tags, verbose)
     if (structure_fixed.scatterers().size() < n_elements):
       assert peak_list.entries()[0].value < 1
@@ -140,14 +140,14 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     crystal_symmetry=structure,
     anomalous_flag=00000,
     d_min=d_min)
-  f_obs_array = abs(miller_set_f_obs.structure_factors_from_scatterers(
+  f_obs = abs(miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
     direct=0001).f_calc())
   if (0 or verbose):
-    f_obs_array.show_summary()
+    f_obs.show_summary()
   if (0 or verbose):
-    f_obs_array.show_array()
-  miller_set_p1 = miller.set.expand_to_p1(f_obs_array)
+    f_obs.show_array()
+  miller_set_p1 = miller.set.expand_to_p1(f_obs)
   special_position_settings_p1 = crystal.special_position_settings(
     crystal_symmetry=miller_set_p1)
   structure_p1 = xray.structure(
@@ -165,12 +165,12 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     if (flag_f_part):
       structure_fixed.show_summary().show_scatterers()
     structure_p1.show_summary().show_scatterers()
-  f_calc_fixed_array = None
+  f_calc_fixed = None
   if (flag_f_part):
-    f_calc_fixed_array = f_obs_array.structure_factors_from_scatterers(
+    f_calc_fixed = f_obs.structure_factors_from_scatterers(
       xray_structure=structure_fixed,
       direct=0001).f_calc()
-  f_calc_p1_array = miller_set_p1.structure_factors_from_scatterers(
+  f_calc_p1 = miller_set_p1.structure_factors_from_scatterers(
     xray_structure=structure_p1,
     direct=0001).f_calc()
   symmetry_flags = translation_search.symmetry_flags(
@@ -182,7 +182,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     max_prime=max_prime).n_real()
   grid_tags = maptbx.grid_tags(gridding)
   peak_list = run_fast_nv1995(
-    f_obs_array, f_calc_fixed_array, f_calc_p1_array,
+    f_obs, f_calc_fixed, f_calc_p1,
     symmetry_flags, gridding, grid_tags, verbose)
   assert peak_list.entries()[0].value > 0.99
 

@@ -698,7 +698,7 @@ class array(set):
         mandatory_factors=mandatory_factors,
         max_prime=max_prime,
         assert_shannon_sampling=assert_shannon_sampling),
-      coeff_array=self,
+      fourier_coefficients=self,
       f_000=f_000)
 
   def patterson_map(self, resolution_factor=1/3.,
@@ -710,28 +710,28 @@ class array(set):
                           f_000=None,
                           sharpening=00000,
                           origin_peak_removal=00000):
-    self_patt = self.patterson_symmetry()
+    f_patt = self.patterson_symmetry()
     return patterson_map(
-      crystal_gridding=self_patt.crystal_gridding(
+      crystal_gridding=f_patt.crystal_gridding(
         resolution_factor=resolution_factor,
         d_min=d_min,
         symmetry_flags=symmetry_flags,
         mandatory_factors=mandatory_factors,
         max_prime=max_prime,
         assert_shannon_sampling=assert_shannon_sampling),
-      coeff_array=self_patt,
+      f_patt=f_patt,
       f_000=f_000,
       sharpening=sharpening,
       origin_peak_removal=origin_peak_removal)
 
 class fft_map(maptbx.crystal_gridding):
 
-  def __init__(self, crystal_gridding, coeff_array, f_000=None):
+  def __init__(self, crystal_gridding, fourier_coefficients, f_000=None):
     maptbx.crystal_gridding._copy_constructor(self, crystal_gridding)
-    assert coeff_array.anomalous_flag() in (00000, 0001)
-    assert coeff_array.unit_cell().is_similar_to(self.unit_cell())
-    assert coeff_array.space_group() == self.space_group()
-    self._anomalous_flag = coeff_array.anomalous_flag()
+    assert fourier_coefficients.anomalous_flag() in (00000, 0001)
+    assert fourier_coefficients.unit_cell().is_similar_to(self.unit_cell())
+    assert fourier_coefficients.space_group() == self.space_group()
+    self._anomalous_flag = fourier_coefficients.anomalous_flag()
     if (not self.anomalous_flag()):
       rfft = fftpack.real_to_complex_3d(self.n_real())
       n_complex = rfft.n_complex()
@@ -739,12 +739,12 @@ class fft_map(maptbx.crystal_gridding):
       cfft = fftpack.complex_to_complex_3d(self.n_real())
       n_complex = cfft.n()
     conjugate_flag = 0001
-    assert type(coeff_array.data()) == type(flex.complex_double())
+    assert type(fourier_coefficients.data()) == type(flex.complex_double())
     map = maptbx.structure_factors.to_map(
       self.space_group(),
       self.anomalous_flag(),
-      coeff_array.indices(),
-      coeff_array.data(),
+      fourier_coefficients.indices(),
+      fourier_coefficients.data(),
       self.n_real(),
       flex.grid(n_complex),
       conjugate_flag)
@@ -776,18 +776,18 @@ class fft_map(maptbx.crystal_gridding):
       self._real_map /= statistics.sigma()
     return self
 
-def patterson_map(crystal_gridding, coeff_array, f_000=None,
+def patterson_map(crystal_gridding, f_patt, f_000=None,
                   sharpening=00000,
                   origin_peak_removal=00000):
-  assert coeff_array.is_patterson_symmetry()
+  assert f_patt.is_patterson_symmetry()
   if (sharpening):
-    coeff_array.setup_binner(auto_binning=1)
-    coeff_array = coeff_array.normalize_structure_factors(quasi=0001)
-  coeff_array = coeff_array.f_as_f_sq()
+    f_patt.setup_binner(auto_binning=1)
+    f_patt = f_patt.normalize_structure_factors(quasi=0001)
+  i_patt = f_patt.f_as_f_sq()
   if (origin_peak_removal):
-    coeff_array.setup_binner(auto_binning=1)
-    coeff_array = coeff_array.remove_patterson_origin_peak()
-  coeff_array = array(coeff_array, data=flex.polar(coeff_array.data(), 0))
+    i_patt.setup_binner(auto_binning=1)
+    i_patt = i_patt.remove_patterson_origin_peak()
+  i_patt = array(i_patt, data=flex.polar(i_patt.data(), 0))
   if (f_000 != None):
     f_000 = f_000 * f_000
-  return fft_map(crystal_gridding, coeff_array, f_000)
+  return fft_map(crystal_gridding, i_patt, f_000)
