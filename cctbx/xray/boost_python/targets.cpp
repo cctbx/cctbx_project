@@ -11,6 +11,7 @@
 
 #include <cctbx/xray/targets.h>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 
 namespace cctbx { namespace xray { namespace targets { namespace boost_python {
 
@@ -109,6 +110,56 @@ namespace {
     }
   };
 
+  struct ls_target_with_scale_k1_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<ls_target_with_scale_k1>("ls_target_with_scale_k1",
+             init<af::const_ref<double> const&,
+                  af::const_ref<double> const&,
+                  af::const_ref< std::complex<double> > const&,
+                  bool const&,
+                  bool const&,
+                  optional<double> >((arg_("f_obs"),
+                                      arg_("weights"),
+                                      arg_("f_calc"),
+                                      arg_("compute_derivatives"),
+                                      arg_("fix_scale"),
+                                      arg_("scale"))))
+        .def("target",      &ls_target_with_scale_k1::target)
+        .def("derivatives", &ls_target_with_scale_k1::derivatives)
+        .def("scale",       &ls_target_with_scale_k1::scale)
+      ;
+    }
+  };
+
+struct ls_target_with_scale_k2_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<ls_target_with_scale_k2>("ls_target_with_scale_k2",
+             init<af::const_ref<double> const&,
+                  af::const_ref<double> const&,
+                  af::const_ref< std::complex<double> > const&,
+                  bool const&,
+                  bool const&,
+                  optional<double> >((arg_("f_obs"),
+                                      arg_("weights"),
+                                      arg_("f_calc"),
+                                      arg_("compute_derivatives"),
+                                      arg_("fix_scale"),
+                                      arg_("scale"))))
+        .def("target",      &ls_target_with_scale_k2::target)
+        .def("derivatives", &ls_target_with_scale_k2::derivatives)
+        .def("scale",       &ls_target_with_scale_k2::scale)
+      ;
+    }
+  };
+
 } // namespace <anoymous>
 
 }} // namespace targets::boost_python
@@ -121,6 +172,8 @@ namespace boost_python {
     targets::boost_python::intensity_correlation_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_hl_wrappers::wrap();
+    targets::boost_python::ls_target_with_scale_k1_wrappers::wrap();
+    targets::boost_python::ls_target_with_scale_k2_wrappers::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python
