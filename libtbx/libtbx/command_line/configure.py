@@ -116,7 +116,9 @@ def insert_normed_path(path_list, addl_path):
 
 def open_info(path, mode="w", info="Creating:"):
   print info, path
-  return open(path, mode)
+  try: return open(path, mode)
+  except IOError, e:
+    raise UserError(str(e))
 
 class libtbx_env:
 
@@ -179,7 +181,7 @@ class libtbx_env:
   def python_api_from_libtbx_build_libtbx(self):
     api_file_name = libtbx.config.python_api_version_file_name(
       self.LIBTBX_BUILD)
-    if (os.path.isfile(api_file_name)):
+    if (isfile(api_file_name)):
       return open(api_file_name).readline().strip()
     return None
 
@@ -215,6 +217,14 @@ class libtbx_env:
       else:
         clean.append(s)
     return os.sep.join(clean)
+
+def emit_dispatcher_includes_sh(env):
+  file_name = norm(join(env.LIBTBX_BUILD, "dispatcher_includes.sh"))
+  if (not isfile(file_name)):
+    f = open_info(file_name)
+    print >> f, \
+      "# sh commands to be included in the auto-generated dispatchers"
+    f.close()
 
 def write_incomplete_libtbx_environment(f):
   message = [
@@ -493,7 +503,7 @@ def find_test_scripts(
   result = []
   for file_name in file_names:
     path = norm(join(directory, file_name))
-    if (os.path.isfile(path)):
+    if (isfile(path)):
       result.append(path)
   return result
 
@@ -607,6 +617,7 @@ def run(libtbx_dist, args, old_env=None):
   build_options.add_to_libtbx_env(env=env)
   env.pickle_dict()
   if (hasattr(os, "symlink")):
+    emit_dispatcher_includes_sh(env)
     emit_setpaths_sh(env)
     emit_env_run_sh(env)
     for all in [False, True]:
