@@ -90,6 +90,7 @@ namespace {
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_a)
       .def("slice", slice, (arg_("self"), arg_("i_param")))
+      .def("all_eq", f_w::all_eq_a_s)
     ;
   }
 
