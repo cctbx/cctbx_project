@@ -365,26 +365,6 @@ namespace cctbx { namespace restraints {
     return result;
   }
 
-  inline
-  af::shared<std::set<asu_mapping_index> >
-  bond_asu_sets(
-    std::size_t n_sites,
-    af::const_ref<restraints::bond_asu_proxy> const& proxies)
-  {
-    af::shared<std::set<asu_mapping_index> > result;
-    result.resize(n_sites);
-    for(std::size_t i=0;i<proxies.size();i++) {
-      asu_mapping_index_pair const& pair = proxies[i];
-      CCTBX_ASSERT(pair.i_seq < n_sites);
-      CCTBX_ASSERT(pair.j_seq < n_sites);
-      result[pair.i_seq].insert(asu_mapping_index(pair.j_seq, pair.j_sym));
-      if (pair.j_sym == 0) {
-        result[pair.j_seq].insert(asu_mapping_index(pair.i_seq, 0));
-      }
-    }
-    return result;
-  }
-
 }} // namespace cctbx::restraints
 
 #endif // CCTBX_RESTRAINTS_BOND_H
