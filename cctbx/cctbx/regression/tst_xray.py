@@ -187,6 +187,7 @@ def exercise_structure():
   assert approx_equal(xs2.scatterers()[i].site, (0.2, 0.4, 0.7))
   xs2.apply_symmetry_sites()
   assert approx_equal(xs2.scatterers()[i].site, (0, 0, 0.7))
+  xs2.apply_symmetry_u_stars()
   s = StringIO()
   xs1.show_pairs(distance_cutoff=0.1, out=s)
   assert s.getvalue() == """\

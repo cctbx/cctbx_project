@@ -242,9 +242,18 @@ class structure(crystal.special_position_settings):
     return self
 
   def apply_symmetry_sites(self):
-    for i in self.special_position_indices():
-      self._scatterers[i].apply_symmetry_site(
-        site_symmetry_ops=self._site_symmetry_table.get(i))
+    ext.apply_symmetry_sites(
+      site_symmetry_table=self._site_symmetry_table,
+      scatterers=self._scatterers)
+
+  def apply_symmetry_u_stars(self):
+    ext.apply_symmetry_u_stars(
+      unit_cell=self.unit_cell(),
+      site_symmetry_table=self._site_symmetry_table,
+      scatterers=self._scatterers,
+      u_star_tolerance=self.u_star_tolerance(),
+      assert_is_positive_definite=self.assert_is_positive_definite(),
+      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
 
   def apply_special_position_ops_d_target_d_site(self, d_target_d_site):
     for i in self.special_position_indices():
