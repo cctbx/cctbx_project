@@ -2,6 +2,7 @@
 #include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/mat3.h>
 #include <iostream>
+#include <string.h>
 
 using namespace CMtz;
 
@@ -18,7 +19,7 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
   int val_nsymx = sg.order_z();
   int val_nsympx= sg.order_p();
   float rsymx[192][4][4];
-  
+
   for(std::size_t i=0;i<sg.order_z();i++) {
     cctbx::sgtbx::rt_mx s = sg(i);
     cctbx::sgtbx::rot_mx r = s.r();
@@ -36,19 +37,22 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
     rsymx[i][3][3] = 1.0;
   }
 
+  CCTBX_ASSERT(sg.conventional_centring_type_symbol() != '\0');
   char val_ltypex = sg.conventional_centring_type_symbol();
 
   cctbx::sgtbx::space_group_type sgtype(sg.type());
   int val_nspgrx = sgtype.number();
-  
+
   char sgtype_s[11];
+  CCTBX_ASSERT(strlen(symbol.c_str()) <= 10);
   sprintf(sgtype_s,"%s",symbol.c_str());
 
   cctbx::sgtbx::matrix_group::code mgcode = sg.point_group_type();
   char pgname[11];
+  CCTBX_ASSERT(strlen(mgcode.label()) <= 10);
   sprintf(pgname,"%s",mgcode.label());
 
-  ccp4_lwsymm(mtz, &val_nsymx, &val_nsympx, rsymx, &val_ltypex, 
+  ccp4_lwsymm(mtz, &val_nsymx, &val_nsympx, rsymx, &val_ltypex,
               &val_nspgrx, sgtype_s, pgname);
 }
 
@@ -84,7 +88,7 @@ void iotbx::mtz::MtzWriter::oneDataset(const std::string& dataset,
   MtzAddColumn (mtz,oneset,"L","H");
 }
 
-void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup[], 
+void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup[],
            const int ncol, const int iref)
 { int i,j,k;
   /* if this is extra reflection, check memory */
@@ -117,13 +121,13 @@ void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup
     }
    }
   }
-  
+
   for (i = 0; i < ncol; ++i) {
     if (lookup[i]) {
       /* update reflection in memory or add to refldata array. */
       if (mtz->refs_in_memory) {
         lookup[i]->ref[iref-1] = adata[i];
-      } 
+      }
       /* update column ranges */
       if (!ccp4_ismnf(mtz, adata[i])) {
         if (adata[i] < lookup[i]->min) lookup[i]->min = adata[i];
@@ -149,7 +153,7 @@ iotbx::mtz::MtzWriter::addColumn(
   write_columns[0]=MtzColLookup(mtz,"H");
   write_columns[1]=MtzColLookup(mtz,"K");
   write_columns[2]=MtzColLookup(mtz,"L");
-  if (MtzColLookup(mtz,name.c_str())!=NULL) 
+  if (MtzColLookup(mtz,name.c_str())!=NULL)
     throw iotbx::mtz::Error("Attempt to overwrite existing column "+name);
   write_columns[3]=MtzAddColumn(mtz,oneset,name.c_str(),&type_code);
   CCTBX_ASSERT(miller_indices.size() == data.size());
@@ -178,7 +182,7 @@ iotbx::mtz::MtzWriter::addColumn(
                         data[i]}; //ADD miller_indices[i] TO THE MTZ OBJECT
       //ccp4_lwrefl(mtz, adata, write_columns, 4, i_mtz);
       safe_ccp4_lwrefl(adata, write_columns, 4, i_mtz);
-      
+
       //FILL IN MISSING VALUES FOR ALL OTHER COLUMNS
     }
   }
