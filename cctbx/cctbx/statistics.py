@@ -8,15 +8,15 @@ class empty: pass
 
 class wilson_plot:
 
-  def __init__(self, f_obs_array, asu_contents):
-    self.info = f_obs_array.info()
+  def __init__(self, f_obs, asu_contents):
+    self.info = f_obs.info()
     # compute <fobs^2> in resolution shells
-    self.mean_fobs_sq = f_obs_array.mean_sq(
+    self.mean_fobs_sq = f_obs.mean_sq(
       use_binning=0001,
       use_multiplicities=0001)
     # compute <s^2> = <(sin(theta)/lambda)^2> in resolution shells
-    stol_sq = f_obs_array.sin_theta_over_lambda_sq()
-    stol_sq.use_binner_of(f_obs_array)
+    stol_sq = f_obs.sin_theta_over_lambda_sq()
+    stol_sq.use_binner_of(f_obs)
     self.mean_stol_sq = stol_sq.mean(
       use_binning=0001,
       use_multiplicities=0001)
@@ -32,8 +32,8 @@ class wilson_plot:
         f0 = caasf[chemical_type].at_stol_sq(stol_sq)
         sum_fj_sq += f0 * f0 * n_atoms
       self.expected_f_sq.append(sum_fj_sq)
-    self.expected_f_sq *= f_obs_array.space_group().order_z() \
-                        * f_obs_array.space_group().n_ltr()
+    self.expected_f_sq *= f_obs.space_group().order_z() \
+                        * f_obs.space_group().n_ltr()
     # fit to straight line
     self.x = self.mean_stol_sq
     self.y = flex.log(self.mean_fobs_sq / self.expected_f_sq)

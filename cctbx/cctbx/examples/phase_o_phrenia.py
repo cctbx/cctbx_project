@@ -37,13 +37,13 @@ def peak_cluster_reduction(crystal_symmetry, peak_list,
 def calculate_exp_i_two_phi_peaks(xray_structure, d_min,
                                   min_peak_distance,
                                   max_reduced_peaks):
-  f_h_array = xray_structure.structure_factors(
+  f_h = xray_structure.structure_factors(
     anomalous_flag=00000,
     d_min=d_min).f_calc()
-  two_i_phi_h_array = miller.array(
-    miller_set=f_h_array,
-    data=flex.polar(1, flex.arg(f_h_array.data())*2))
-  fft_map = two_i_phi_h_array.fft_map(
+  two_i_phi_h = miller.array(
+    miller_set=f_h,
+    data=flex.polar(1, flex.arg(f_h.data())*2))
+  fft_map = two_i_phi_h.fft_map(
     d_min=d_min,
     symmetry_flags=maptbx.use_space_group_symmetry)
   real_map = fft_map.real_map()

@@ -62,9 +62,9 @@ namespace {
       sgtbx::space_group_type const& sg_type,
       bool anomalous_flag,
       af::ref<index<> > const& miller_indices,
-      af::ref<ValueType> const& data_array)
+      af::ref<ValueType> const& data)
     {
-      map_to_asu(sg_type, anomalous_flag, miller_indices, data_array);
+      map_to_asu(sg_type, anomalous_flag, miller_indices, data);
     }
 
     static
@@ -73,10 +73,10 @@ namespace {
       sgtbx::space_group_type const& sg_type,
       bool anomalous_flag,
       af::ref<index<> > const& miller_indices,
-      af::ref<ValueType> const& data_array,
+      af::ref<ValueType> const& data,
       bool deg)
     {
-      map_to_asu(sg_type, anomalous_flag, miller_indices, data_array, deg);
+      map_to_asu(sg_type, anomalous_flag, miller_indices, data, deg);
     }
   };
 

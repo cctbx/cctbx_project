@@ -74,24 +74,24 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
         anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
-  f_ref_array = abs(structure_factors.f_calc())
-  multiplicity_array = f_ref_array.multiplicities()
+  f_ref = abs(structure_factors.f_calc())
+  multiplicities = f_ref.multiplicities()
   for anisotropic_flag in (00000, 0001):
-    f_sca_array = miller.array(miller_set=f_ref_array, data=flex.double())
+    f_sca = miller.array(miller_set=f_ref, data=flex.double())
     k_sim = 1000
     b_iso = 13
     b_cif = [5,10,15,20,25,30]
     if (anisotropic_flag):
       u_star = adptbx.u_cif_as_u_star(
-        f_ref_array.unit_cell(), adptbx.b_as_u(b_cif))
-    for i,h in f_ref_array.indices().items():
+        f_ref.unit_cell(), adptbx.b_as_u(b_cif))
+    for i,h in f_ref.indices().items():
       if (anisotropic_flag):
         dw = adptbx.debye_waller_factor_u_star(h, u_star)
       else:
-        dw = adptbx.debye_waller_factor_b_iso(f_ref_array.unit_cell(),h,b_iso)
-      f_sca_array.data().push_back(k_sim * f_ref_array.data()[i] * dw)
+        dw = adptbx.debye_waller_factor_b_iso(f_ref.unit_cell(),h,b_iso)
+      f_sca.data().push_back(k_sim * f_ref.data()[i] * dw)
       if (0 or verbose):
-        print h, f_ref_array.data()[i], f_sca_array.data()[i]
+        print h, f_ref.data()[i], f_sca.data()[i]
     k_min = 1
     if (anisotropic_flag):
       b_min = [0,0,0,0,0,0]
@@ -100,11 +100,11 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
     for p in xrange(10):
       for refine_k, refine_b in ((1,0), (0,1), (1,0), (0,1), (1,0), (1,1)):
         minimized = k_b_scaling_minimizer(
-          f_ref_array.unit_cell(),
-          f_ref_array.indices(),
-          multiplicity_array.data(),
-          f_ref_array.data(),
-          f_sca_array.data(),
+          f_ref.unit_cell(),
+          f_ref.indices(),
+          multiplicities.data(),
+          f_ref.data(),
+          f_sca.data(),
           k_min, b_min,
           refine_k, refine_b)
         k_min = minimized.k_min

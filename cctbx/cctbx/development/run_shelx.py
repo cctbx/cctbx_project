@@ -90,12 +90,12 @@ def atoms(xray_structure, short_sfac):
       l("    %s" % dot6gdot_list((u[2], u[5], u[4], u[3])))
   return lines
 
-def HKLF(fcalc_array):
+def HKLF(f_calc):
   lines = []
   l = lines.append
   l("HKLF -3")
-  for i,h in fcalc_array.indices().items():
-    f = abs(fcalc_array.data()[i])
+  for i,h in f_calc.indices().items():
+    f = abs(f_calc.data()[i])
     s = "%8.2f" % (f,)
     assert  len(s) == 8, "structure factor does not fit f8.2 format."
     l("%4d%4d%4d%s%8.2f" % (h + (s, 0.01)))
@@ -172,7 +172,7 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=00000, verbose=0):
   xray_structure = structure_factors.xray_structure()
   assert xray_structure.scatterers().size() > 0
   pre_check(xray_structure)
-  f_calc_array = structure_factors.f_calc()
+  f_calc = structure_factors.f_calc()
   lines = []
   l = lines.append
   l("TITL " + shelx_titl)
@@ -186,7 +186,7 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=00000, verbose=0):
   l("SPEC -0.1")
   l("WPDB 2")
   lines += atoms(xray_structure, short_sfac)
-  lines += HKLF(f_calc_array)
+  lines += HKLF(f_calc)
   f = open("tmp.ins", "w")
   for l in lines:
     if (0 or verbose): print l
@@ -212,7 +212,7 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=00000, verbose=0):
   if (0 or verbose):
     for l in shelx_lst: print l[:-1]
   sys.stdout.flush()
-  check_r1(f_calc_array, shelx_lst, verbose)
+  check_r1(f_calc, shelx_lst, verbose)
   check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose)
 
 def exercise(space_group_info,

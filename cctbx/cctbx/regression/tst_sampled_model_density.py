@@ -22,11 +22,11 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     random_u_iso=0001,
     random_occupancy=0001
     )
-  f_direct_array = structure.structure_factors(
+  f_direct = structure.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
     direct=0001).f_calc()
-  n_real = f_direct_array.crystal_gridding(
+  n_real = f_direct.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
     symmetry_flags=maptbx.use_space_group_symmetry,
@@ -81,30 +81,30 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     collect_conj = 0
   f_fft_data = maptbx.structure_factors.from_map(
     sampled_density.anomalous_flag(),
-    f_direct_array.indices(),
+    f_direct.indices(),
     sf_map,
     collect_conj).data()
   sampled_density.eliminate_u_extra_and_normalize(
-    f_direct_array.indices(),
+    f_direct.indices(),
     f_fft_data)
   structure_factor_utils.check_correlation(
-    "direct/fft_regression", f_direct_array.indices(), 0,
-    f_direct_array.data(), f_fft_data,
+    "direct/fft_regression", f_direct.indices(), 0,
+    f_direct.data(), f_fft_data,
     min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
     verbose=verbose)
-  f_fft_array = xray.structure_factors.from_scatterers(
-    miller_set=f_direct_array,
+  f_fft = xray.structure_factors.from_scatterers(
+    miller_set=f_direct,
     grid_resolution_factor=resolution_factor,
     quality_factor=quality_factor,
     wing_cutoff=wing_cutoff,
     exp_table_one_over_step_size=exp_table_one_over_step_size,
     max_prime=max_prime)(
       xray_structure=structure,
-      miller_set=f_direct_array,
+      miller_set=f_direct,
       fft=0001).f_calc()
   structure_factor_utils.check_correlation(
-    "direct/fft_xray", f_direct_array.indices(), 0,
-    f_direct_array.data(), f_fft_array.data(),
+    "direct/fft_xray", f_direct.indices(), 0,
+    f_direct.data(), f_fft.data(),
     min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
     verbose=verbose)
 

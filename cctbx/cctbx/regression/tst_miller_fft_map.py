@@ -35,15 +35,15 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     crystal_symmetry=structure,
     anomalous_flag=00000,
     d_min=d_min)
-  f_obs_array = miller_set_f_obs.structure_factors_from_scatterers(
+  f_obs = miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
     direct=0001).f_calc()
-  structure_factor_utils.check_phase_restrictions(f_obs_array, verbose=verbose)
+  structure_factor_utils.check_phase_restrictions(f_obs, verbose=verbose)
   if (0 or verbose):
-    f_obs_array.show_summary()
+    f_obs.show_summary()
   if (0 or verbose):
-    f_obs_array.show_array()
-  fft_map = f_obs_array.fft_map(
+    f_obs.show_array()
+  fft_map = f_obs.fft_map(
     resolution_factor=grid_resolution_factor,
     symmetry_flags=maptbx.use_space_group_symmetry)
   real_map = maptbx.copy(

@@ -14,7 +14,7 @@ def exercise(space_group_info, anomalous_flag,
     random_f_double_prime=anomalous_flag,
     random_u_iso=0001,
     random_occupancy=0001)
-  f_abs_z_array = abs(structure_z.structure_factors(
+  f_abs_z = abs(structure_z.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
   if (0 or verbose):
     structure_z.show_summary().show_scatterers()
@@ -31,26 +31,26 @@ def exercise(space_group_info, anomalous_flag,
   structure_pz = structure_p.change_basis(z2p_op.inverse())
   assert structure_pz.unit_cell().is_similar_to(structure_z.unit_cell())
   assert structure_pz.space_group() == structure_z.space_group()
-  f_abs_pz_array = abs(f_abs_z_array.structure_factors_from_scatterers(
+  f_abs_pz = abs(f_abs_z.structure_factors_from_scatterers(
     xray_structure=structure_pz,
     direct=0001).f_calc())
-  c = flex.linear_correlation(f_abs_z_array.data(), f_abs_pz_array.data())
+  c = flex.linear_correlation(f_abs_z.data(), f_abs_pz.data())
   assert c.is_well_defined()
   if (0 or verbose):
     print "correlation:", c.coefficient()
   assert c.coefficient() > 0.999
-  f_abs_p_array_cb = f_abs_z_array.change_basis(z2p_op)
-  o = flex.order(f_abs_p_array_cb.indices(), f_abs_z_array.indices())
-  if (f_abs_z_array.space_group().n_ltr() == 1):
+  f_abs_p_cb = f_abs_z.change_basis(z2p_op)
+  o = flex.order(f_abs_p_cb.indices(), f_abs_z.indices())
+  if (f_abs_z.space_group().n_ltr() == 1):
     assert o == 0
   else:
     assert o != 0
-  f_abs_pz_array = f_abs_p_array_cb.change_basis(z2p_op.inverse())
-  assert flex.order(f_abs_pz_array.indices(), f_abs_z_array.indices()) == 0
-  f_abs_p_array_sf = abs(f_abs_p_array_cb.structure_factors_from_scatterers(
+  f_abs_pz = f_abs_p_cb.change_basis(z2p_op.inverse())
+  assert flex.order(f_abs_pz.indices(), f_abs_z.indices()) == 0
+  f_abs_p_sf = abs(f_abs_p_cb.structure_factors_from_scatterers(
     xray_structure=structure_p,
     direct=0001).f_calc())
-  c = flex.linear_correlation(f_abs_p_array_sf.data(), f_abs_p_array_cb.data())
+  c = flex.linear_correlation(f_abs_p_sf.data(), f_abs_p_cb.data())
   assert c.is_well_defined()
   if (0 or verbose):
     print "correlation:", c.coefficient()

@@ -13,7 +13,7 @@ class lbfgs:
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
       xray.structure_factors.from_scatterers(
-        miller_set=self.target_functor.f_obs_array())
+        miller_set=self.target_functor.f_obs())
     self.pack_parameters()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(self)
@@ -42,11 +42,11 @@ class lbfgs:
       self.options.occupancy)
 
   def compute_target(self, compute_derivatives):
-    self.f_calc_array = self.structure_factors_from_scatterers(
+    self.f_calc = self.structure_factors_from_scatterers(
       xray_structure=self.xray_structure,
-      miller_set=self.target_functor.f_obs_array()).f_calc()
+      miller_set=self.target_functor.f_obs()).f_calc()
     self.target_result = self.target_functor(
-      self.f_calc_array,
+      self.f_calc,
       compute_derivatives)
 
   def __call__(self):
@@ -55,7 +55,7 @@ class lbfgs:
     self.compute_target(compute_derivatives=0001)
     sf = self.structure_factors_from_scatterers(
       xray_structure=self.xray_structure,
-      miller_set=self.target_functor.f_obs_array(),
+      miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
       derivative_flags=xray.structure_factors.derivative_flags(
         site=self.options.site,
