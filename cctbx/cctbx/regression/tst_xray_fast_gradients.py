@@ -1,3 +1,4 @@
+from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import xray
@@ -5,7 +6,6 @@ from cctbx import maptbx
 from cctbx import miller
 from cctbx import crystal
 from cctbx import adptbx
-from cctbx.array_family import flex
 from cctbx.regression.tst_xray_derivatives import linear_regression_test
 from cctbx.regression.tst_sampled_model_density import assign_custom_gaussians
 from scitbx import fftpack
