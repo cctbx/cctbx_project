@@ -6,12 +6,14 @@ from cctbx_miller_ext import *
 
 from cctbx import crystal
 from cctbx import maptbx
+from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import fftpack
 import scitbx.math
 from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
+from libtbx.utils import Keep
 import sys
 import math
 import types
@@ -126,6 +128,23 @@ class set(crystal.symmetry):
         space_group_symbol=str(self.space_group_info())),
       indices=self.indices().deep_copy(),
       anomalous_flag=self.anomalous_flag())
+
+  def customized_copy(self,
+        crystal_symmetry=Keep,
+        indices=Keep,
+        anomalous_flag=Keep,
+        unit_cell=Keep,
+        space_group_info=Keep):
+    if (crystal_symmetry is Keep): crystal_symmetry = self
+    if (indices is Keep): indices = self.indices()
+    if (anomalous_flag is Keep): anomalous_flag = self.anomalous_flag()
+    crystal_symmetry = crystal.symmetry.customized_copy(crystal_symmetry,
+      unit_cell=unit_cell,
+      space_group_info=space_group_info)
+    return set(
+      crystal_symmetry=crystal_symmetry,
+      indices=indices,
+      anomalous_flag=anomalous_flag)
 
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
@@ -364,10 +383,10 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
 
   def change_basis(self, cb_op):
-    return set(
+    if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
+    return set.customized_copy(self,
       crystal_symmetry=crystal.symmetry.change_basis(self, cb_op),
-      indices=cb_op.apply(self.indices()),
-      anomalous_flag=self.anomalous_flag())
+      indices=cb_op.apply(self.indices()))
 
   def expand_to_p1(self):
     assert self.space_group_info() is not None
@@ -379,10 +398,8 @@ class set(crystal.symmetry):
 
   def patterson_symmetry(self):
     assert self.anomalous_flag() == False
-    return set(
-      crystal.symmetry.patterson_symmetry(self),
-      self.indices(),
-      self.anomalous_flag())
+    return set.customized_copy(self,
+      crystal_symmetry=crystal.symmetry.patterson_symmetry(self))
 
   def crystal_gridding(self, resolution_factor=1/3.,
                              d_min=None,
@@ -622,12 +639,32 @@ class array(set):
       .set_info(self.info())
       .set_observation_type(self))
 
+  def customized_copy(self,
+        miller_set=Keep,
+        data=Keep,
+        sigmas=Keep,
+        crystal_symmetry=Keep,
+        indices=Keep,
+        anomalous_flag=Keep,
+        unit_cell=Keep,
+        space_group_info=Keep):
+    if (miller_set is Keep): miller_set = self
+    if (data is Keep): data = self.data()
+    if (sigmas is Keep): sigmas = self.sigmas()
+    miller_set = set.customized_copy(miller_set,
+      crystal_symmetry=crystal_symmetry,
+      indices=indices,
+      anomalous_flag=anomalous_flag,
+      unit_cell=unit_cell,
+      space_group_info=space_group_info)
+    return array(miller_set=miller_set, data=data, sigmas=sigmas)
+
   def discard_sigmas(self):
-    return array(miller_set=self, data=self.data())
+    return array.customized_copy(self, sigmas=None)
 
   def conjugate(self):
     assert self.is_complex_array()
-    return array(miller_set=self, data=flex.conj(self.data()))
+    return array.customized_copy(self, data=flex.conj(self.data()))
 
   def __getitem__(self, slice_object):
     return array(
@@ -749,10 +786,8 @@ class array(set):
     return result
 
   def apply_sort_permutation(self, permutation):
-    new_set = set(
-      crystal_symmetry=self,
-      indices=self.indices().select(permutation),
-      anomalous_flag=self.anomalous_flag())
+    new_set = set.customized_copy(self,
+      indices=self.indices().select(permutation))
     d = None
     s = None
     if (self.data() is not None): d = self.data().select(permutation)
@@ -811,6 +846,7 @@ class array(set):
       sigmas=new_sigmas).set_observation_type(self)
 
   def change_basis(self, cb_op, deg=None):
+    if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
     if (deg is False or deg is True):
       assert self.is_real_array()
       result = change_basis_phases_double(

@@ -14,6 +14,7 @@ from scitbx import stl
 import scitbx.stl.set
 import scitbx.stl.vector
 from scitbx.python_utils.misc import adopt_init_args
+from libtbx.utils import Keep
 import sys
 
 pair_sym_ops = sgtbx.stl_vector_rt_mx
@@ -54,6 +55,11 @@ class symmetry(object):
   def _copy_constructor(self, other):
     self._unit_cell = other._unit_cell
     self._space_group_info = other._space_group_info
+
+  def customized_copy(self, unit_cell=Keep, space_group_info=Keep):
+    if (unit_cell is Keep): unit_cell = self._unit_cell
+    if (space_group_info is Keep): space_group_info = self._space_group_info
+    return symmetry(unit_cell=unit_cell, space_group_info=space_group_info)
 
   def unit_cell(self):
     return self._unit_cell

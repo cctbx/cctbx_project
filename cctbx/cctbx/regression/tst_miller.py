@@ -3,6 +3,7 @@ from cctbx import miller
 from cctbx import xray
 from cctbx import maptbx
 from cctbx import sgtbx
+from cctbx import uctbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
@@ -91,6 +92,8 @@ Resolution range: 5 1.1776
 Completeness in resolution range: 1
 Completeness with d_max=infinity: 1
 """ % str(False)
+  c = mc.change_basis(cb_op="k,h,-l")
+  assert c.unit_cell().is_similar_to(uctbx.unit_cell((4,3,5,90,90,90)))
 
 def exercise_binner():
   crystal_symmetry = crystal.symmetry(
@@ -209,6 +212,7 @@ def exercise_array():
   sigmas = flex.double((0.1,0.2,0.3,0.4,0.5))
   ms = miller.set(xs, mi, anomalous_flag=True)
   ma = miller.array(ms, data, sigmas)
+  assert ma.discard_sigmas().sigmas() is None
   ad = ma.anomalous_differences()
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
   assert approx_equal(tuple(ad.data()), (-1.0, 2.0))
