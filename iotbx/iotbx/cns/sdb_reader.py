@@ -1,7 +1,12 @@
+from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
+from cctbx import adptbx
+from cctbx import xray
+from cctbx.eltbx.caasf import wk1995
 from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import adopt_init_args
+import re
 import os
 
 class sdb_site:
@@ -10,9 +15,6 @@ class sdb_site:
     adopt_init_args(self, locals())
 
   def as_xray_scatterer(self, unit_cell=None):
-    from cctbx import adptbx
-    from cctbx import xray
-    from cctbx.eltbx.caasf import wk1995
     caasf = None
     try: caasf = wk1995(self.type)
     except:
@@ -33,16 +35,16 @@ class sdb_file:
   def __init__(self, file_name, unit_cell, space_group_info, sites):
     adopt_init_args(self, locals())
 
+  def crystal_symmetry(self):
+    return crystal.symmetry(
+      unit_cell=self.unit_cell,
+      space_group_info=self.space_group_info)
+
   def as_xray_structure(self, min_distance_sym_equiv=0.5):
     assert self.unit_cell is not None
     assert self.space_group_info is not None
-    from cctbx import crystal
-    from cctbx import xray
-    symmetry = crystal.symmetry(
-      unit_cell=self.unit_cell,
-      space_group_info=self.space_group_info)
     structure = xray.structure(crystal.special_position_settings(
-      crystal_symmetry=symmetry,
+      crystal_symmetry=self.crystal_symmetry(),
       min_distance_sym_equiv=min_distance_sym_equiv))
     for site in self.sites:
       structure.add_scatterer(site.as_xray_scatterer(self.unit_cell))
@@ -105,7 +107,7 @@ class raw_parameters:
     return sdb_file(
       self.file_name, self.unit_cell, self.space_group_info, sites)
 
-def multi_sdb_parser(lines, file_name=None):
+def multi_sdb_parser(lines, file_name=None, max_characters=1000000):
   # Parser for one or more cns sdb files.
   # Lines interpreted:
   #   {+ file: heavy_search_1.sdb +}
@@ -115,13 +117,16 @@ def multi_sdb_parser(lines, file_name=None):
   #   {===>} site.x_1=18.7869; site.y_1=12.1257; site.z_1=0.163635;
   #   {===>} site.b_1=65.6408; site.q_1=1; site.g_1="";
   # Sites must be sorted.
-  import re
   sdb_files = []
   block_name = None
   current_unit_cell = None
   current_space_group_info = None
+  n_characters = 0
   p = 0
   for line in lines:
+    if (max_characters != 0):
+      n_characters += len(line)
+      if (n_characters > max_characters): break
     m = re.search(r'\{\+\s+file:\s*(\S*)', line)
     if (m):
       block_name = m.group(1)
