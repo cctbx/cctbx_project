@@ -165,6 +165,14 @@ def exercise_reindexing_matrices_special():
     space_group_symbol="P4")
   reindexing_matrices = crystal_symmetry.reindexing_matrices()
   assert len(reindexing_matrices) == 2
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(10,10,12,90,90,90),
+    space_group_symbol="I4")
+  reindexing_matrices = crystal_symmetry.reindexing_matrices()
+  assert len(reindexing_matrices) == 1
+  cb_symmetry = crystal_symmetry.change_basis(str(reindexing_matrices[0]))
+  assert cb_symmetry.space_group() == crystal_symmetry.space_group()
+  assert cb_symmetry.unit_cell().is_similar_to(crystal_symmetry.unit_cell())
 
 def run_call_back(flags, space_group_info):
   exercise_site_symmetry(space_group_info)
