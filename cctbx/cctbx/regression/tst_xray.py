@@ -21,6 +21,9 @@ def exercise_structure():
   ys.add_scatterer(ys.scatterers()[0])
   assert ys.scatterers().size() == 5
   assert tuple(ys.special_position_indices()) == (0, 1, 2, 3, 4)
+  sx = xs.primitive_setting()
+  assert sx.unit_cell().is_similar_to(xs.unit_cell())
+  assert str(sx.space_group_info()) == "P 62 2 2"
   sx = xs.change_hand()
   assert sx.unit_cell().is_similar_to(xs.unit_cell())
   assert str(sx.space_group_info()) == "P 64 2 2"
