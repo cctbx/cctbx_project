@@ -78,6 +78,21 @@ class model(crystal.special_position_settings):
     ch_op = self.space_group_info().type().change_of_hand_op()
     return self.change_basis(ch_op)
 
+  def expand_to_p1(self):
+    new_model = model(
+      crystal.special_position_settings(
+        crystal.symmetry.cell_equivalent_p1(self)))
+    for pos in self._positions:
+      site_symmetry = self.site_symmetry(pos.site)
+      equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
+      i = 0
+      for site in equiv_sites.coordinates():
+        i += 1
+        new_model.add_position(position(
+          label=pos.label+"_%03d"%i,
+          site=site))
+    return new_model
+
   def show(self, title, f=sys.stdout):
     print >> f, title
     crystal.special_position_settings.show_summary(self, f)
