@@ -74,6 +74,7 @@ class lbfgs:
         site=self.options.site,
         u_iso=self.options.u_iso,
         occupancy=self.options.occupancy),
+      n_parameters=0,
       direct=self.direct,
       fft=self.fft)
     self.g = flex.double()

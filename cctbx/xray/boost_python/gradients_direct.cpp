@@ -24,15 +24,18 @@ namespace {
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
                   af::const_ref<std::complex<float_type> > const&,
-                  gradient_flags const&>())
+                  gradient_flags const&,
+                  std::size_t>())
         .def(init<math::cos_sin_table<double> const&,
                   uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
                   af::const_ref<std::complex<float_type> > const&,
-                  gradient_flags const&>())
-        .def("d_target_d_site", &w_t::d_target_d_site)
+                  gradient_flags const&,
+                  std::size_t>())
+        .def("packed", &w_t::packed)
+        .def("d_target_d_site_frac", &w_t::d_target_d_site_frac)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)
         .def("d_target_d_u_star", &w_t::d_target_d_u_star)
         .def("d_target_d_occupancy", &w_t::d_target_d_occupancy)

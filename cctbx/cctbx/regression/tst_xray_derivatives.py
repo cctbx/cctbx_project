@@ -171,7 +171,8 @@ def exercise(target_functor, parameter_name, space_group_info,
       u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
       occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
       fp=(parameter_name=="fp" or random.choice((0,1))),
-      fdp=(parameter_name=="fdp" or random.choice((0,1)))))
+      fdp=(parameter_name=="fdp" or random.choice((0,1)))),
+    n_parameters=0)
   if (parameter_name == "site"):
     d_analytical = sf.d_target_d_site_frac()
     if (cartesian_flag): # average d_analytical or d_numerical, but not both

@@ -14,6 +14,22 @@ from scitbx import fftpack
 import random
 import sys
 
+def randomize_gradient_flags(gradient_flags, anomalous_flag,
+                             thresholds=(2/3., 1/3.)):
+  r = random.random()
+  if (r >= thresholds[0]):
+    gradient_flags = xray.structure_factors.gradient_flags(default=0001)
+  elif (r >= thresholds[1]):
+    gradient_flags = gradient_flags.copy()
+    if (random.random() > 0.5): gradient_flags.site = 0001
+    if (random.random() > 0.5): gradient_flags.u_iso = 0001
+    if (random.random() > 0.5): gradient_flags.u_aniso = 0001
+    if (random.random() > 0.5): gradient_flags.occupancy = 0001
+    if (random.random() > 0.5): gradient_flags.fp = 0001
+    if (anomalous_flag):
+      if (random.random() > 0.5): gradient_flags.fdp = 0001
+  return gradient_flags
+
 class resampling(crystal.symmetry):
 
   def __init__(self, miller_set=None,
@@ -128,23 +144,10 @@ class resampling(crystal.symmetry):
 
   def __call__(self, xray_structure,
                      dp,
-                     d_target_d_f_calc=None,
-                     gradient_flags=None,
+                     gradient_flags,
+                     n_parameters,
                      electron_density_must_be_positive=0001,
                      verbose=0):
-    assert not gradient_flags is None
-    r = random.random()
-    if (r > 2/3.):
-      gradient_flags = xray.structure_factors.gradient_flags(default=0001)
-    elif (r > 1/3.):
-      gradient_flags = gradient_flags.copy()
-      if (random.random() > 0.5): gradient_flags.site = 0001
-      if (random.random() > 0.5): gradient_flags.u_iso = 0001
-      if (random.random() > 0.5): gradient_flags.u_aniso = 0001
-      if (random.random() > 0.5): gradient_flags.occupancy = 0001
-      if (random.random() > 0.5): gradient_flags.fp = 0001
-      if (random.random() > 0.5): gradient_flags.fdp = 0001
-    self.setup_fft()
     gradient_map = self.ft_dp(dp)
     if (not gradient_map.anomalous_flag()):
       gradient_map_real = gradient_map.real_map()
@@ -169,6 +172,7 @@ class resampling(crystal.symmetry):
       gradient_map_real,
       gradient_map_complex,
       gradient_flags,
+      n_parameters,
       self.u_extra(),
       self.wing_cutoff(),
       self.exp_table_one_over_step_size(),
@@ -216,16 +220,21 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
+  gradient_flags = randomize_gradient_flags(
+    xray.structure_factors.gradient_flags(site=0001),
+    f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(site=0001))
+    gradient_flags=gradient_flags,
+    n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    gradient_flags=xray.structure_factors.gradient_flags(site=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=0,
     verbose=verbose)
   sfd_d_target_d_site_cart = sfd.d_target_d_site_cart()
   top_gradient = None
@@ -260,16 +269,21 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
+  gradient_flags = randomize_gradient_flags(
+    xray.structure_factors.gradient_flags(u_iso=0001),
+    f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(u_iso=0001))
+    gradient_flags=gradient_flags,
+    n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    gradient_flags=xray.structure_factors.gradient_flags(u_iso=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=0,
     verbose=verbose)
   top_gradient = None
   for i_scatterer in sh.structure_shifted.scatterers().indices():
@@ -305,16 +319,21 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
+  gradient_flags = randomize_gradient_flags(
+    xray.structure_factors.gradient_flags(u_aniso=0001),
+    f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(u_aniso=0001))
+    gradient_flags=gradient_flags,
+    n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    gradient_flags=xray.structure_factors.gradient_flags(u_aniso=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=0,
     verbose=verbose)
   sfd_d_target_d_u_cart = sfd.d_target_d_u_cart()
   map0_d_target_d_u_cart = map0.d_target_d_u_cart()
@@ -356,16 +375,21 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
+  gradient_flags = randomize_gradient_flags(
+    xray.structure_factors.gradient_flags(occupancy=0001),
+    f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(occupancy=0001))
+    gradient_flags=gradient_flags,
+    n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    gradient_flags=xray.structure_factors.gradient_flags(occupancy=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=0,
     verbose=verbose)
   top_gradient = None
   for i_scatterer in sh.structure_shifted.scatterers().indices():
@@ -398,16 +422,21 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
+  gradient_flags = randomize_gradient_flags(
+    xray.structure_factors.gradient_flags(fp=0001),
+    f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(fp=0001))
+    gradient_flags=gradient_flags,
+    n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    gradient_flags=xray.structure_factors.gradient_flags(fp=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=0,
     verbose=verbose)
   top_gradient = None
   for i_scatterer in sh.structure_shifted.scatterers().indices():
@@ -440,16 +469,21 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     print
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
+  gradient_flags = randomize_gradient_flags(
+    xray.structure_factors.gradient_flags(fdp=0001),
+    f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(fdp=0001))
+    gradient_flags=gradient_flags,
+    n_parameters=0)
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
-    gradient_flags=xray.structure_factors.gradient_flags(fdp=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=0,
     verbose=verbose)
   top_gradient = None
   for i_scatterer in sh.structure_shifted.scatterers().indices():
@@ -465,9 +499,7 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     assert not match.is_bad
   sys.stdout.flush()
 
-def exercise_gradient_manager(structure_ideal, d_min, f_obs,
-                              anomalous_flag, anisotropic_flag,
-                              verbose=0):
+def shift_all(structure_ideal, f_obs, anomalous_flag, anisotropic_flag):
   sh = shifted_site(None, structure_ideal, 0, 0, 0.01)
   if (not anisotropic_flag):
     sh = shifted_u_iso(None, sh.structure_shifted, 0, 0.05)
@@ -479,44 +511,92 @@ def exercise_gradient_manager(structure_ideal, d_min, f_obs,
   sh = shifted_fp(f_obs, sh.structure_shifted, 0, -0.2)
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
+  return sh, ls
+
+def exercise_packed(structure_ideal, f_obs,
+                    anomalous_flag, anisotropic_flag,
+                    verbose=0):
+  sh, ls = shift_all(structure_ideal, f_obs, anomalous_flag, anisotropic_flag)
+  flag = (random.random() > 0.5)
+  gradient_flags = randomize_gradient_flags(
+    xray.structure_factors.gradient_flags(site=flag, u=not flag),
+    f_obs.anomalous_flag(),
+    thresholds=(1/2.,0))
+  n_parameters = structure_ideal.n_parameters(gradient_flags)
+  assert n_parameters > 0
+  sfd = xray.structure_factors.gradients_direct(
+    xray_structure=sh.structure_shifted,
+    miller_set=f_obs,
+    d_target_d_f_calc=ls.derivatives(),
+    gradient_flags=gradient_flags,
+    n_parameters=n_parameters)
+  assert sfd.packed().size() == n_parameters
+  re = resampling(miller_set=f_obs)
+  map0 = re(
+    xray_structure=sh.structure_shifted,
+    dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
+    gradient_flags=gradient_flags,
+    n_parameters=n_parameters,
+    verbose=verbose)
+  assert map0.packed().size() == n_parameters
+  correlation = flex.linear_correlation(sfd.packed(), map0.packed())
+  assert correlation.is_well_defined()
+  assert correlation.coefficient() > 0.9999
+
+def exercise_gradient_manager(structure_ideal, f_obs,
+                              anomalous_flag, anisotropic_flag,
+                              verbose=0):
+  sh, ls = shift_all(structure_ideal, f_obs, anomalous_flag, anisotropic_flag)
   grad_manager = xray.structure_factors.gradients(
     miller_set=f_obs,
     quality_factor=100000,
     wing_cutoff=1.e-10)
+  gradient_flags=xray.structure_factors.gradient_flags(default=0001)
+  if (random.random() > 0.5):
+    n_parameters = 0
+  else:
+    n_parameters = structure_ideal.n_parameters(gradient_flags)
   gd = grad_manager(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(default=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=n_parameters,
     direct=0001)
   gf = grad_manager(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(default=0001),
+    gradient_flags=gradient_flags,
+    n_parameters=n_parameters,
     fft=0001)
-  d = gd.d_target_d_site_frac()
-  f = gf.d_target_d_site_frac()
-  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-  d = gd.d_target_d_site_cart()
-  f = gf.d_target_d_site_cart()
-  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-  d = gd.d_target_d_u_iso()
-  f = gf.d_target_d_u_iso()
-  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-  d = gd.d_target_d_u_cart()
-  f = gf.d_target_d_u_cart()
-  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-  d = gd.d_target_d_occupancy()
-  f = gf.d_target_d_occupancy()
-  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-  d = gd.d_target_d_fp()
-  f = gf.d_target_d_fp()
-  linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
-  if (anomalous_flag):
-    d = gd.d_target_d_fdp()
-    f = gf.d_target_d_fdp()
+  if (n_parameters == 0):
+    d = gd.d_target_d_site_frac()
+    f = gf.d_target_d_site_frac()
     linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+    d = gd.d_target_d_site_cart()
+    f = gf.d_target_d_site_cart()
+    linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+    d = gd.d_target_d_u_iso()
+    f = gf.d_target_d_u_iso()
+    linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+    d = gd.d_target_d_u_cart()
+    f = gf.d_target_d_u_cart()
+    linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+    d = gd.d_target_d_occupancy()
+    f = gf.d_target_d_occupancy()
+    linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+    d = gd.d_target_d_fp()
+    f = gf.d_target_d_fp()
+    linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+    if (anomalous_flag):
+      d = gd.d_target_d_fdp()
+      f = gf.d_target_d_fdp()
+      linear_regression_test(d, f, slope_tolerance=1.e-2, verbose=verbose)
+  else:
+    correlation = flex.linear_correlation(gd.packed(), gf.packed())
+    assert correlation.is_well_defined()
+    assert correlation.coefficient() > 0.9999
 
 def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
             anomalous_flag=0, anisotropic_flag=0, verbose=0):
@@ -558,7 +638,10 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     fdp(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
     exercise_gradient_manager(
-      structure_ideal, d_min, f_obs, anomalous_flag, anisotropic_flag)
+      structure_ideal, f_obs, anomalous_flag, anisotropic_flag)
+  if (1):
+    exercise_packed(
+      structure_ideal, f_obs, anomalous_flag, anisotropic_flag)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in [0,1]:

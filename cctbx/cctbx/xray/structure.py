@@ -209,3 +209,16 @@ class structure(crystal.special_position_settings):
       sum_wc += matrix.col(site_cart) * w
     if (sum_w == 0): return sum_wc
     return sum_wc / sum_w
+
+  def n_parameters(self, gradient_flags):
+    n_scatterers = self.scatterers().size()
+    n_anisotropic = self.scatterers().count_anisotropic()
+    n_isotropic = n_scatterers - n_anisotropic
+    result = 0
+    if (gradient_flags.site): result += n_scatterers * 3
+    if (gradient_flags.u_iso): result += n_isotropic
+    if (gradient_flags.u_aniso): result += n_anisotropic * 6
+    if (gradient_flags.occupancy): result += n_scatterers
+    if (gradient_flags.fp): result += n_scatterers
+    if (gradient_flags.fdp): result += n_scatterers
+    return result
