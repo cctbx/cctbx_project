@@ -544,6 +544,54 @@ namespace {
     expand_to_p1(SgOps, in, out);
   }
 
+  void
+  py_expand_to_p1_9(
+    SpaceGroup const& SgOps,
+    af::shared<Miller::Index> const& h_in,
+    af::shared<double> const& ampl_in,
+    af::shared<double> const& phase_in,
+    af::shared<Miller::Index> h_out,
+    af::shared<double> ampl_out,
+    af::shared<double> phase_out,
+    bool phase_degrees,
+    bool friedel_flag) {
+    expand_to_p1(
+      SgOps,
+      h_in, ampl_in, phase_in,
+      h_out, ampl_out, phase_out,
+      phase_degrees, friedel_flag);
+  }
+  void
+  py_expand_to_p1_8(
+    SpaceGroup const& SgOps,
+    af::shared<Miller::Index> const& h_in,
+    af::shared<double> const& ampl_in,
+    af::shared<double> const& phase_in,
+    af::shared<Miller::Index> h_out,
+    af::shared<double> ampl_out,
+    af::shared<double> phase_out,
+    bool phase_degrees) {
+    expand_to_p1(
+      SgOps,
+      h_in, ampl_in, phase_in,
+      h_out, ampl_out, phase_out,
+      phase_degrees);
+  }
+  void
+  py_expand_to_p1_7(
+    SpaceGroup const& SgOps,
+    af::shared<Miller::Index> const& h_in,
+    af::shared<double> const& ampl_in,
+    af::shared<double> const& phase_in,
+    af::shared<Miller::Index> h_out,
+    af::shared<double> ampl_out,
+    af::shared<double> phase_out) {
+    expand_to_p1(
+      SgOps,
+      h_in, ampl_in, phase_in,
+      h_out, ampl_out, phase_out);
+  }
+
 } // namespace <anonymous>
 
 namespace boost { namespace python {
@@ -579,6 +627,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
   python::import_converters<af::shared<int> >
   py_shared_int("cctbx_boost.arraytbx.shared", "int");
+
+  python::import_converters<af::shared<double> >
+  py_shared_double("cctbx_boost.arraytbx.shared", "double");
 
   python::import_converters<af::shared<Miller::Index> >
   py_shared_Miller_Index("cctbx_boost.arraytbx.shared", "Miller_Index");
@@ -1107,6 +1158,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
   this_module.def(py_expand_to_p1_4, "expand_to_p1");
   this_module.def(py_expand_to_p1_3, "expand_to_p1");
+  this_module.def(py_expand_to_p1_9, "expand_to_p1");
+  this_module.def(py_expand_to_p1_8, "expand_to_p1");
+  this_module.def(py_expand_to_p1_7, "expand_to_p1");
 
   sgtbx::sanity_check();
 }
