@@ -67,21 +67,19 @@ option (<tt>-g</tt>).</strong>
 
 <hr>
 
-\section compilers_linux Linux (gcc 2.95.2 and gcc 2.95.3)
+\section compilers_linux Linux (gcc 2.95.2, gcc 2.95.3, and gcc 2.96)
 
 \par
 First, log on to your Linux system and enter <tt>gcc --version</tt>.
 If the output is <tt>2.95.2</tt> or <tt>2.95.3</tt> you may skip the
 rest of this section. Otherwise, take a deep breath and read on.
 
+\subsection redhat_6x RedHat 6.x
+
 \par
 The compiler that ships with RedHat 6.1 and RedHat 6.2 (egcs-2.91.66)
-is out of date and cannot be used to install the %cctbx. Unfortunately,
-the compiler that ships with RedHat 7.0 (gcc 2.96) is a development
-snapshot that is
-<a href="http://gcc.gnu.org/gcc-2.96.html">not recommended</a>
-for production use. This is, no matter which version of RedHat you
-are running, you have to install
+is out of date and cannot be used to install the %cctbx.
+You have to upgrade to
 <a href="http://gcc.gnu.org/gcc-2.95/gcc-2.95.2.html">gcc 2.95.2</a>
 or
 <a href="http://gcc.gnu.org/gcc-2.95/gcc-2.95.3.html">gcc 2.95.3</a>.
@@ -122,6 +120,30 @@ Please note:
 We have no experience with installing gcc on Linux systems other
 than RedHat 6.1. However, the installation procedure should be very
 similar for other Linux based systems.
+
+\subsection redhat_70 RedHat 7.0
+
+The information in this section was kindly provided by
+<a href="http://www.ysbl.york.ac.uk/~cowtan/"
+>Kevin Cowtan</a>.
+<p>
+The compiler that ships with RedHat 7.0 (gcc 2.96) is a
+development snapshot that is
+<a href="http://gcc.gnu.org/gcc-2.96.html">not recommended</a>
+for production use. However, if the
+<a href="http://www.redhat.com/support/errata/rh7-errata-bugfixes.html"
+>Red Hat Linux 7.0 Bug Fixes</a>
+are installed, gcc 2.96 can be used to install the %cctbx.
+In particular, you need to install
+<ul>
+<li><a href="http://www.redhat.com/support/errata/RHBA-2000-132.html"
+    >Bug fixing update of GCC 2.96</a>
+<li><a href="http://www.redhat.com/support/errata/RHBA-2000-079.html"
+    >Update to official glibc 2.2</a>
+</ul>
+Please refer to the
+<a href="http://www.redhat.com/support/errata/rh7-errata-bugfixes.html"
+>RedHat web pages</a> for more information.
 
 <hr>
 
