@@ -98,6 +98,11 @@ def crystal_symmetry(cryst1_record, line_number=None):
     cryst1_record = pdb_parser.pdb_record(
       raw_record=cryst1_record,
       line_number=line_number)
+  if (    cryst1_record.ucparams in ([0]*6, [1,1,1,90,90,90])
+      and cryst1_record.sGroup.replace(" ","") == "P1"):
+    return crystal.symmetry(
+      unit_cell=None,
+      space_group_info=None)
   space_group_info = categorize(cryst1_record.sGroup).space_group_info(
     unit_cell=cryst1_record.ucparams)
   return crystal.symmetry(
