@@ -19,7 +19,7 @@ def interpret_form_data(form):
      ("format_2", None),
      ("coor_type_2", None),
      ("skip_columns_2", 0),
-     ("tolerance", "1.0"),
+     ("tolerance", "3.0"),
      ("diffraction_index_equivalent", None)))
   inp.coordinates = []
   for suffix in ("1", "2"):
@@ -142,7 +142,11 @@ def run(server_info, inp, status):
     model2 = models2.get_next()
     if (not model2): break
     model2.show(model2.label)
-    model_matches = emma.model_matches(model1, model2)
+    model_matches = emma.model_matches(
+      model1=model1,
+      model2=model2,
+      tolerance=tolerance,
+      models_are_diffraction_index_equivalent=diffraction_index_equivalent)
     if (model_matches.n_matches() == 0):
       print "No matches."
       print
