@@ -751,6 +751,9 @@ class array(set):
   def arg(self, deg=00000):
     return array(self, flex.arg(self.data(), deg))
 
+  def merge_equivalents(self):
+    return merge_equivalents(self)
+
   def __add__(self, other):
     assert self.indices() != None
     assert self.data() != None
@@ -825,14 +828,41 @@ class intensity_array(array):
   def __init__(self, miller_array):
     array._copy_constructor(self, miller_array)
 
-class merged:
+class merge_equivalents:
 
   def __init__(self, miller_array):
+    assert isinstance(miller_array.data(), flex.double)
+    if (miller_array.sigmas() != None):
+      assert isinstance(miller_array.sigmas(), flex.double)
     asu_set = set.map_to_asu(miller_array)
     span = index_span(asu_set.indices())
     packed_indices = span.pack(asu_set.indices())
-    p = flex.sort_permutation(packed_indices.as_double()) # XXX sort std::size_t
-    # XXX
+    p = flex.sort_permutation(packed_indices)
+    if (miller_array.sigmas() != None):
+      merge_ext = ext.merge_equivalents(
+        asu_set.indices().shuffle(p),
+        miller_array.data().shuffle(p),
+        miller_array.sigmas().shuffle(p))
+      sigmas = merge_ext.sigmas()
+    else:
+      merge_ext = ext.merge_equivalents(
+        asu_set.indices().shuffle(p),
+        miller_array.data().shuffle(p))
+      sigmas = None
+    self._array = array(
+      miller_set=set(
+        crystal_symmetry=miller_array,
+        indices=merge_ext.indices(),
+        anomalous_flag=miller_array.anomalous_flag()),
+      data=merge_ext.data(),
+      sigmas=sigmas)
+    self._redundancies = merge_ext.redundancies()
+
+  def array(self):
+    return self._array
+
+  def redundancies(self):
+    return self._redundancies
 
 class fft_map(maptbx.crystal_gridding):
 
