@@ -323,8 +323,11 @@ namespace adptbx {
     for (int i = 0; i < 3; i++) {
       result[i] =   rzeta * std::cos((phi + (i * 2) * constants::pi) / 3.)
                   - r / 3.; // the term on this line converts the
-    }                       // solutions y of the reduced form to
-    return result;          // the solutions x of the normal form.
+                            // solutions y of the reduced form to
+                            // the solutions x of the normal form.
+      if (result[i] <= 0.) throw not_positive_definite;
+    }
+    return result;
   }
 
   namespace detail {
@@ -335,6 +338,7 @@ namespace adptbx {
                          boost::array<FloatType, 3> V,
                          FloatType tolerance = 1.e-6)
     {
+      unsigned int RunAwayCounter = 0;
       for (;;) {
         boost::array<FloatType, 3> MV;
         MatrixLite::multiply<FloatType>(M.elems, V.elems, 3, 3, 1, MV.elems);
@@ -344,9 +348,14 @@ namespace adptbx {
         boost::array<FloatType, 3> absMV = boost::array_abs(MV);
         std::size_t iMax = boost::array_max_index(absMV);
         FloatType scaled_tolerance = absMV[iMax] * tolerance;
+        if (MatrixLite::approx_equal(MV, -V, scaled_tolerance)) {
+          throw not_positive_definite;
+        }
         bool converged = MatrixLite::approx_equal(MV, V, scaled_tolerance);
         V = MV;
         if (converged) break;
+        RunAwayCounter++;
+        if (RunAwayCounter > 1000) throw cctbx_internal_error();
       }
       return V;
     }
