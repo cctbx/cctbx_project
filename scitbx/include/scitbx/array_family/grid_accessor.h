@@ -80,7 +80,8 @@ namespace scitbx { namespace af {
   {
     public:
       typedef IndexType index_type;
-      typedef typename IndexType::value_type value_type;
+      typedef typename IndexType::value_type index_value_type;
+      typedef index_value_type value_type;
 
       grid() { std::fill(this->begin(), this->end(), value_type(0)); }
 

@@ -31,6 +31,7 @@ namespace scitbx { namespace af {
 
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
+      typedef typename accessor_type::index_value_type index_value_type;
       typedef versa<ElementType> one_dim_type;
       typedef typename one_dim_type::accessor_type one_dim_accessor_type;
 
@@ -47,7 +48,7 @@ namespace scitbx { namespace af {
       {}
 
       explicit
-      versa(long n0)
+      versa(index_value_type const& n0)
         : base_class(n0)
       {}
 
@@ -55,7 +56,7 @@ namespace scitbx { namespace af {
         : base_class(ac, x)
       {}
 
-      versa(long n0, ElementType const& x)
+      versa(index_value_type const& n0, ElementType const& x)
         : base_class(n0, x)
       {}
 
@@ -68,7 +69,7 @@ namespace scitbx { namespace af {
 
       // non-std
       template <typename FunctorType>
-      versa(long n0, init_functor<FunctorType> const& ftor)
+      versa(index_value_type const& n0, init_functor<FunctorType> const& ftor)
         : base_class(n0, ftor)
       {}
 #endif
@@ -87,7 +88,7 @@ namespace scitbx { namespace af {
       {}
 
       versa(base_array_type const& other,
-            long n0)
+            index_value_type const& n0)
         : base_class(other, n0)
       {}
 
@@ -98,7 +99,7 @@ namespace scitbx { namespace af {
       {}
 
       versa(base_array_type const& other,
-            long n0,
+            index_value_type const& n0,
             ElementType const& x)
         : base_class(other, n0, x)
       {}
@@ -107,7 +108,7 @@ namespace scitbx { namespace af {
         : base_class(other_handle, ac)
       {}
 
-      versa(sharing_handle* other_handle, long n0)
+      versa(sharing_handle* other_handle, index_value_type const& n0)
         : base_class(other_handle, n0)
       {}
 
@@ -116,7 +117,7 @@ namespace scitbx { namespace af {
         : base_class(other_handle, ac)
       {}
 
-      versa(sharing_handle* other_handle, long n0,
+      versa(sharing_handle* other_handle, index_value_type const& n0,
             ElementType const& x)
         : base_class(other_handle, n0)
       {}
