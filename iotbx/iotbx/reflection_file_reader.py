@@ -44,29 +44,35 @@ class any_reflection_file:
       else: self._file_type = "scalepack_merge"
     if (self._file_type is None):
       try: self._file_content = scalepack_no_merge.reader(file_name)
+      except KeyboardInterrupt: raise
       except: pass
       else: self._file_type = "scalepack_no_merge_original_index"
     if (self._file_type is None):
       try: self._file_content = dtrek_reflnlist_reader.reflnlist(
         open(file_name))
+      except KeyboardInterrupt: raise
       except: pass
       else: self._file_type = "dtrek_reflnlist"
     if (self._file_type is None):
       try: self._file_content = shelx_hklf.reader(
         open(file_name))
+      except KeyboardInterrupt: raise
       except: pass
       else: self._file_type = "shelx_hklf"
     if (self._file_type is None):
       try: self._file_content = xds_ascii_reader(
         open(file_name))
+      except KeyboardInterrupt: raise
       except: pass
       else: self._file_type = "xds_ascii"
     if (self._file_type is None):
       try: self._file_content = solve_fpfm_reader(file_name=file_name)
+      except KeyboardInterrupt: raise
       except: pass
       else: self._file_type = "solve_fpfm"
     if (self._file_type is None):
       try: self._file_content = easy_pickle.load(file_name)
+      except KeyboardInterrupt: raise
       except: pass
       else:
         if (isinstance(self._file_content, miller.array)):
@@ -79,8 +85,8 @@ class any_reflection_file:
                 if (hasattr(miller_array.info(), "source")):
                   miller_array.info().source = os.path.abspath(self._file_name)
                 miller_arrays.append(miller_array)
-          except:
-            pass
+          except KeyboardInterrupt: raise
+          except: pass
           else:
             if (len(miller_arrays) == 0):
               self._file_content = None
