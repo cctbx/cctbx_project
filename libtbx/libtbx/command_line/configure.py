@@ -287,7 +287,6 @@ def emit_SConstruct(env, build_options, packages_dict):
   SConstruct_path = norm(join(env.LIBTBX_BUILD, "SConstruct"))
   f = open_info(SConstruct_path)
   print >> f, 'import libtbx.config'
-  print >> f, 'import libtbx.dblite'
   print >> f, 'libtbx.config.build_options.set('
   print >> f, '  compiler="%s",' % build_options.compiler
   print >> f, '  optimization=%d,' % int(build_options.mode == "release")
@@ -295,9 +294,8 @@ def emit_SConstruct(env, build_options, packages_dict):
   print >> f, '  static_libraries=%d,' % int(build_options.static_libraries)
   print >> f, '  static_exe=%d,' % int(build_options.static_exe)
   print >> f, '  scan_boost=%d)' % int(build_options.scan_boost)
-  print >> f, 'if ("SConsignFile" in dir()):'
-  print >> f, '  SConsignFile(name=".sconsign", dbm_module=libtbx.dblite)'
   print >> f
+  print >> f, 'SConsignFile()'
   print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
   print >> f, 'SConscript("libtbx/SConscript")'
   done = {}
