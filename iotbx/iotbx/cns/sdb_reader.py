@@ -118,11 +118,20 @@ def multi_sdb_parser(lines, file_name=None):
   import re
   sdb_files = []
   block_name = None
+  current_unit_cell = None
+  current_space_group_info = None
   p = 0
   for line in lines:
     m = re.search(r'\{\+\s+file:\s*(\S*)', line)
     if (m):
       block_name = m.group(1)
+    m = re.match(  r'sg=\s*(\S+)\s*a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)'
+                 + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)',
+                 line)
+    if (m):
+      current_unit_cell = uctbx.unit_cell(
+        [float(m.group(i+2)) for i in xrange(6)])
+      current_space_group_info = sgtbx.space_group_info(m.group(1))
     m = re.search(
       r'\{\-\s+begin\s+block\s+parameter\s+definition\s+\-\}', line)
     if (m):
@@ -135,19 +144,15 @@ def multi_sdb_parser(lines, file_name=None):
           block_name = file_name + "_%d" % i
       if (p): sdb_files.append(p.as_sdb_sites())
       p = raw_parameters(block_name)
+      p.unit_cell = current_unit_cell
+      p.space_group_info = current_space_group_info
       block_name = None
+      current_unit_cell = None
+      current_space_group_info = None
     if (not p): continue
-    m = re.match(  r'sg=\s*(\S+)\s*a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)'
-                 + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)',
-                 line)
+    m = re.match(r'\{===>\}\s*sg=\s*"(\S+)"\s*;', line)
     if (m):
-      p.unit_cell = uctbx.unit_cell(
-        [float(m.group(i+2)) for i in xrange(6)])
       p.space_group_info = sgtbx.space_group_info(m.group(1))
-    else:
-      m = re.match(r'\{===>\}\s*sg=\s*"(\S+)"\s*;', line)
-      if (m):
-        p.space_group_info = sgtbx.space_group_info(m.group(1))
     p.add_action(re.search(r'site\.action_(\d+)\s*=\s*"([^"]*)"', line))
     p.add_segid(re.search(r'site\.segid_(\d+)\s*=\s*"([^"]*)"', line))
     p.add_type(re.search(r'site\.type_(\d+)\s*=\s*"([^"]*)"', line))
