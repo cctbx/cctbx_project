@@ -199,11 +199,7 @@ class get_r_free_flags_scores:
                   else:
                     flag_score = 1
                   if (test_flag_value is None):
-                    if (miller_array.info().source_type.startswith("cns_")
-                        and 1 in counts):
-                      effective_test_flag_value = 1
-                    else:
-                      effective_test_flag_value = min(c_keys)
+                    effective_test_flag_value = min(c_keys)
                   else:
                     effective_test_flag_value = test_flag_value
       self.scores.append(flag_score)
