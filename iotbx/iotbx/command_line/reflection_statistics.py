@@ -107,12 +107,15 @@ class array_cache:
       print "  %8.3f  %8.3f" % (height, dist_info.dist())
     print
 
-  def show_perfect_merohedral_twinning_test(self):
+  def show_perfect_merohedral_twinning_test(self, n_bins=None):
     print "Perfect merohedral twinning test for %s:"%str(self.input.info())
     acentric = self.input.select_acentric()
     assert acentric.observation_type() is self.input.observation_type()
-    acentric.setup_binner(auto_binning=True).counts_complete(
-      include_centric=False)
+    if (n_bins is not None):
+      acentric.setup_binner(n_bins=n_bins)
+    else:
+      acentric.setup_binner(auto_binning=True)
+    acentric.binner().counts_complete(include_centric=False)
     sm = acentric.second_moment_of_intensities(use_binning=True)
     wr = acentric.wilson_ratio(use_binning=True)
     print acentric.second_moment_of_intensities.__doc__
@@ -222,6 +225,13 @@ def run(args):
       default=10,
       help="Number of bins",
       metavar="INT")
+    .option(None, "--bins_twinning_test",
+      action="store",
+      type="int",
+      dest="n_bins_twinning_test",
+      default=None,
+      help="Number of bins for twinning test",
+      metavar="INT")
   ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
@@ -302,7 +312,8 @@ def run(args):
     cache_0.input.completeness(use_binning=True).show()
     print
     cache_0.show_patterson_peaks()
-    cache_0.show_perfect_merohedral_twinning_test()
+    cache_0.show_perfect_merohedral_twinning_test(
+      n_bins=command_line.options.n_bins_twinning_test)
     if (cache_0.input.anomalous_flag()):
       print "Anomalous signal of %s:" % str(cache_0.input.info())
       print cache_0.input.anomalous_signal.__doc__
