@@ -174,7 +174,6 @@ namespace iotbx { namespace mtz {
         CCTBX_ASSERT(title != 0);
         int set_title_success = CMtz::ccp4_lwtitl(ptr(), title, append);
         CCTBX_ASSERT(set_title_success);
-        ptr()->title[sizeof(ptr()->title)-1] = '\0';
         return *this;
       }
 
