@@ -77,8 +77,9 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
       int
       which(miller::index<> const& h) const
       {
-        if      (is_inside( h)) return  1;
-        else if (is_inside(-h)) return -1;
+        if (is_inside(h)) return 1;
+        miller::index<> minus_h = -h; // work around Visual C++ 7.1 bug
+        if (is_inside(minus_h)) return -1;
         return 0;
       }
 
