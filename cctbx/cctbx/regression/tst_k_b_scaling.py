@@ -71,10 +71,10 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
+        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
-  f_ref_array = abs(structure_factors.f_calc_array())
+  f_ref_array = abs(structure_factors.f_calc())
   multiplicity_array = f_ref_array.multiplicities()
   for anisotropic_flag in (00000, 0001):
     f_sca_array = miller.array(miller_set=f_ref_array, data=flex.double())

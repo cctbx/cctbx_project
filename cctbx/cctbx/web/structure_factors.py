@@ -29,7 +29,7 @@ def run(server_info, inp, status):
 
   structure = io_utils.structure_from_inp(inp, status, special_position_settings)
   f_calc_array = structure.structure_factors(
-    anomalous_flag=00000, d_min=d_min).f_calc_array()
+    anomalous_flag=00000, d_min=d_min).f_calc()
   print "Number of Miller indices:", f_calc_array.indices().size()
   print
   print "</pre><table border=2 cellpadding=2>"

@@ -267,7 +267,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
     structure.show_summary().show_scatterers()
   e_000 = math.sqrt(n_scatterers * structure.space_group().order_z())
   f_calc = structure.structure_factors(
-    d_min=d_min, anomalous_flag=00000).f_calc_array()
+    d_min=d_min, anomalous_flag=00000).f_calc()
   f_calc = f_calc.sort(by_value="abs")
   f = abs(f_calc)
   f.setup_binner(auto_binning=0001)

@@ -25,8 +25,11 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
           site_cart[ix] += d_sign * delta
           site = unit_cell.fractionalize(site_cart)
         ms.site = site
-        f_calc_array = xray.structure_factors_direct(
-          modified_structure, target_ftor.f_obs_array()).f_calc_array()
+        f_calc_array = xray.structure_factors_new.from_scatterers(
+          miller_set=target_ftor.f_obs_array())(
+            xray_structure=modified_structure,
+            miller_set=target_ftor.f_obs_array(),
+            direct=0001).f_calc()
         target_result = target_ftor(f_calc_array, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -48,8 +51,11 @@ def finite_differences_u_star(target_ftor, structure,
         u_star = list(ms.u_star)
         u_star[iu] += d_sign * delta
         ms.u_star = u_star
-        f_calc_array = xray.structure_factors_direct(
-          modified_structure, target_ftor.f_obs_array()).f_calc_array()
+        f_calc_array = xray.structure_factors_new.from_scatterers(
+          miller_set=target_ftor.f_obs_array())(
+            xray_structure=modified_structure,
+            miller_set=target_ftor.f_obs_array(),
+            direct=0001).f_calc()
         target_result = target_ftor(f_calc_array, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -76,8 +82,11 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
         ms.fp_fdp = complex(ms.fp_fdp.real, ms.fp_fdp.imag + d_sign * delta)
       else:
         raise RuntimeError
-      f_calc_array = xray.structure_factors_direct(
-        modified_structure, target_ftor.f_obs_array()).f_calc_array()
+      f_calc_array = xray.structure_factors_new.from_scatterers(
+        miller_set=target_ftor.f_obs_array())(
+          xray_structure=modified_structure,
+          miller_set=target_ftor.f_obs_array(),
+          direct=0001).f_calc()
       target_result = target_ftor(f_calc_array, compute_derivatives=00000)
       target_values.append(target_result.target())
     derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -128,7 +137,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     random_u_iso=0001,
     random_occupancy=0001)
   f_obs_array = abs(structure_ideal.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, method="direct").f_calc_array())
+    anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -143,8 +152,11 @@ def exercise(target_functor, parameter_name, space_group_info,
     structure_shake.show_summary().show_scatterers()
   target_ftor = target_functor(f_obs_array)
   for structure in (structure_ideal, structure_shake)[:]: #SWITCH
-    f_calc_array = xray.structure_factors_direct(
-      structure, miller_set=f_obs_array).f_calc_array()
+    f_calc_array = xray.structure_factors_new.from_scatterers(
+      miller_set=f_obs_array)(
+        xray_structure=structure,
+        miller_set=f_obs_array,
+        direct=0001).f_calc()
     target_result = target_ftor(f_calc_array, compute_derivatives=0001)
     if (structure == structure_ideal):
       assert abs(target_result.target()) < 1.e-5
@@ -154,16 +166,19 @@ def exercise(target_functor, parameter_name, space_group_info,
     try: print "correlation = %.6g" % (target_result.correlation(),)
     except: pass
     print "target = %.6g" % (target_result.target(),)
-  sf = xray.structure_factors_direct(
-    structure,
-    miller_set=f_obs_array,
-    d_target_d_f_calc=target_result.derivatives(),
-    d_site_flag=(parameter_name=="site" or random.choice((0,1))),
-    d_u_iso_flag=(parameter_name=="u_iso" or random.choice((0,1))),
-    d_u_star_flag=(parameter_name=="u_star" or random.choice((0,1))),
-    d_occupancy_flag=(parameter_name=="occupancy" or random.choice((0,1))),
-    d_fp_flag=(parameter_name=="fp" or random.choice((0,1))),
-    d_fdp_flag=(parameter_name=="fdp" or random.choice((0,1))))
+  sf = xray.structure_factors_new.from_scatterers(
+    miller_set=f_obs_array)(
+      xray_structure=structure,
+      miller_set=f_obs_array,
+      d_target_d_f_calc=target_result.derivatives(),
+      derivative_flags=xray.structure_factors_new.derivative_flags(
+        site=(parameter_name=="site" or random.choice((0,1))),
+        u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
+        u_star=(parameter_name=="u_star" or random.choice((0,1))),
+        occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
+        fp=(parameter_name=="fp" or random.choice((0,1))),
+        fdp=(parameter_name=="fdp" or random.choice((0,1)))),
+      direct=0001)
   if (parameter_name == "site"):
     d_analytical = sf.d_target_d_site()
     if (cartesian_flag): # average d_analytical or d_numerical, but not both

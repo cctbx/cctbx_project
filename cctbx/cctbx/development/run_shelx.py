@@ -172,7 +172,7 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=00000, verbose=0):
   xray_structure = structure_factors.xray_structure()
   assert xray_structure.scatterers().size() > 0
   pre_check(xray_structure)
-  f_calc_array = structure_factors.f_calc_array()
+  f_calc_array = structure_factors.f_calc()
   lines = []
   l = lines.append
   l("TITL " + shelx_titl)
@@ -229,7 +229,7 @@ def exercise(space_group_info,
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
+        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
   shelx_titl = str(space_group_info) \
