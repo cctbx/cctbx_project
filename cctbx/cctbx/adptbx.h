@@ -26,10 +26,14 @@ namespace adptbx {
   const double EightPiSquared = 8. * constants::pi * constants::pi;
 
   template <class FloatType>
-  inline uctbx::Mx33
-  Xaniso_as_SymMx33(const boost::array<FloatType, 6>& Xaniso)
+  struct return_type {};
+
+  template <class FloatType6, class FloatType33>
+  boost::array<FloatType33, 3*3>
+  Xaniso_as_SymMx33(const boost::array<FloatType6, 6>& Xaniso,
+                    return_type<FloatType33> t)
   {
-    uctbx::Mx33 M;
+    boost::array<FloatType33, 3*3> M;
     M[0] = Xaniso[0];
     M[1] = Xaniso[3];
     M[2] = Xaniso[4];
@@ -42,14 +46,12 @@ namespace adptbx {
     return M;
   }
 
-  template <class FloatType>
-  struct return_type {};
-
-  template <class FloatType>
-  inline boost::array<FloatType, 6>
-  SymMx33_as_Xaniso(const uctbx::Mx33& M, return_type<FloatType>)
+  template <class FloatType33, class FloatType6>
+  inline boost::array<FloatType6, 6>
+  SymMx33_as_Xaniso(const boost::array<FloatType33, 3*3>& M,
+                    return_type<FloatType6> t)
   {
-    boost::array<FloatType, 6> Xaniso;
+    boost::array<FloatType6, 6> Xaniso;
     Xaniso[0] = M[0];
     Xaniso[1] = M[4];
     Xaniso[2] = M[8];
@@ -60,17 +62,26 @@ namespace adptbx {
   }
 
   template <class FloatType>
+  boost::array<FloatType, 9>
+  A_X_At(const boost::array<FloatType, 9>& A,
+         const boost::array<FloatType, 9>& X)
+  {
+    boost::array<FloatType, 9> AX;
+    MatrixLite::multiply<FloatType>(A.elems, X.elems, 3, 3, 3, AX.elems);
+    boost::array<FloatType, 9> At;
+    MatrixLite::transpose<FloatType>(A.elems, 3, 3, At.elems);
+    boost::array<FloatType, 9> AXAt;
+    MatrixLite::multiply<FloatType>(AX.elems, At.elems, 3, 3, 3, AXAt.elems);
+    return AXAt;
+  }
+
+  template <class FloatType>
   inline boost::array<FloatType, 6>
   A_Xaniso_At(const uctbx::Mx33& A, const boost::array<FloatType, 6>& Xaniso)
   {
-    uctbx::Mx33 X = Xaniso_as_SymMx33(Xaniso);
-    uctbx::Mx33 AX;
-    MatrixLite::multiply<double>(A.elems, X.elems, 3, 3, 3, AX.elems);
-    uctbx::Mx33 At;
-    MatrixLite::transpose<double>(A.elems, 3, 3, At.elems);
-    uctbx::Mx33 AXAt;
-    MatrixLite::multiply<double>(AX.elems, At.elems, 3, 3, 3, AXAt.elems);
-    return SymMx33_as_Xaniso(AXAt, return_type<FloatType>());
+    boost::array<FloatType, 9>
+    X = Xaniso_as_SymMx33(Xaniso, return_type<FloatType>());
+    return SymMx33_as_Xaniso(A_X_At(A, X), return_type<FloatType>());
   }
 
   //! Convert isotropic adp U -> B.
