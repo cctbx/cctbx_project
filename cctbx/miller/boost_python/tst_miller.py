@@ -336,6 +336,8 @@ def exercise_match_bijvoet_mates():
   assert tuple(bm.pairs()) == ((0,1), (2,3))
   assert tuple(bm.singles()) == (4,)
   assert bm.have_singles()
+  assert tuple(bm.hemisphere_selection("+")) == (0001,00000,0001,00000,00000)
+  assert tuple(bm.hemisphere_selection("-")) == (00000,0001,00000,0001,00000)
   assert tuple(bm.miller_indices_in_hemisphere("+")) == ((1,2,3), (2,3,4))
   assert tuple(bm.miller_indices_in_hemisphere("-")) == ((-1,-2,-3),(-2,-3,-4))
   assert approx_equal(tuple(bm.minus(d0)), (-1, -1))
