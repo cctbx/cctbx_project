@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <complex>
 #include <scitbx/error.h>
-#include <scitbx/array_family/type_holder.h>
+#include <scitbx/type_holder.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
 
 namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
@@ -111,7 +111,7 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
     }
 
     template <typename ValueType>
-    ValueType get_value(af::type_holder<ValueType>)
+    ValueType get_value(type_holder<ValueType>)
     {
       pickle_single_buffered::from_string<ValueType> proxy(str_ptr);
       str_ptr = proxy.end;
@@ -120,56 +120,56 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
 
     from_string& operator>>(std::string& val)
     {
-      val = get_value(af::type_holder<std::string>());
+      val = get_value(type_holder<std::string>());
       return *this;
     }
 
     from_string& operator>>(bool& val)
     {
-      val = get_value(af::type_holder<bool>());
+      val = get_value(type_holder<bool>());
       return *this;
     }
 
     from_string& operator>>(int& val)
     {
-      val = get_value(af::type_holder<int>());
+      val = get_value(type_holder<int>());
       return *this;
     }
 
     from_string& operator>>(unsigned int& val)
     {
-      val = get_value(af::type_holder<unsigned int>());
+      val = get_value(type_holder<unsigned int>());
       return *this;
     }
 
     from_string& operator>>(long& val)
     {
-      val = get_value(af::type_holder<long>());
+      val = get_value(type_holder<long>());
       return *this;
     }
 
     from_string& operator>>(unsigned long& val)
     {
-      val = get_value(af::type_holder<unsigned long>());
+      val = get_value(type_holder<unsigned long>());
       return *this;
     }
 
     from_string& operator>>(float& val)
     {
-      val = get_value(af::type_holder<float>());
+      val = get_value(type_holder<float>());
       return *this;
     }
 
     from_string& operator>>(double& val)
     {
-      val = get_value(af::type_holder<double>());
+      val = get_value(type_holder<double>());
       return *this;
     }
 
     template <typename FloatType>
     from_string& operator>>(std::complex<FloatType>& val)
     {
-      val = get_value(af::type_holder<std::complex<FloatType> >());
+      val = get_value(type_holder<std::complex<FloatType> >());
       return *this;
     }
 

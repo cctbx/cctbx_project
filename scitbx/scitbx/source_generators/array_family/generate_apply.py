@@ -43,7 +43,7 @@ def one_type(array_type_name):
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
-#include <scitbx/array_family/type_holder.h>
+#include <scitbx/type_holder.h>
 #include <scitbx/array_family/%s.h>
 #include <scitbx/array_family/generic_array_%s.h>
 
