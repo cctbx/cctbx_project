@@ -77,7 +77,7 @@ name = value
   .caption = None
   .short_caption = None
   .optional = %s
-  .type = "path"
+  .type = path
   .multiple = None
   .input_size = None
   .expert_level = None
@@ -86,7 +86,7 @@ name = value
 name = value
   .help = "help message with detailed information"
   .optional = %s
-  .type = "path"
+  .type = path
 """ % str(True))
   recycle(input_string=input_string, attributes_level=1, expected_out="""\
 name = value
@@ -113,7 +113,7 @@ name {
     expected_out="""\
 name
   .style = None
-  .help = "message"
+  .help = message
   .caption = None
   .short_caption = None
   .optional = None
@@ -177,7 +177,7 @@ d=a b c # 1 2 3 \\
   .expert_level = 1
 {
   #a = b
-    .type = "int"
+    .type = int
   c = d
     .expert_level = 2
 }
@@ -339,28 +339,28 @@ a0 {
   parameters.show(out=out, attributes_level=2)
   assert out.getvalue() == """\
 d0 = 0
-  .type = "int"
+  .type = int
 
 a0 {
   d1 = a b c
-    .type = "str"
+    .type = str
 
   a1 {
     t0 {
       c = yes
-        .type = "bool"
+        .type = bool
 
       t1 {
         x = 0
-          .type = "int"
+          .type = int
         y = 1.
-          .type = "float"
+          .type = float
       }
     }
   }
 
   d2 = e f 0g
-    .type = "UNKNOWN"
+    .type = UNKNOWN
   #d3 = x
 }
 """
@@ -1112,14 +1112,14 @@ c {
     x = 1
       .expert_level = 6
     y = 3
-      .type = "int"
+      .type = int
       .expert_level = 7
 
     t
       .expert_level = 8
     {
       r = x
-        .help = "help"
+        .help = help
     }
   }
 }
@@ -1134,7 +1134,7 @@ t
 }
 
 u = a b *c
-  .type = "choice"
+  .type = choice
 """
   master = iotbx.parameters.parse(input_string="""\
 c=a *b c

@@ -132,9 +132,12 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
       if (not isinstance(value, str)):
         print >> out, prefix+"  ."+name, "=", value
       else:
-        value = str(simple_tokenizer.word(value=value, quote_token='"'))
         indent = " " * (len(prefix) + 3 + len(name) + 3)
-        if (len(indent+value) < print_width):
+        fits_on_one_line = len(indent+value) < print_width
+        if (not is_standard_identifier(value) or not fits_on_one_line):
+          value = str(simple_tokenizer.word(value=value, quote_token='"'))
+          fits_on_one_line = len(indent+value) < print_width
+        if (fits_on_one_line):
           print >> out, prefix+"  ."+name, "=", value
         else:
           is_first = True
