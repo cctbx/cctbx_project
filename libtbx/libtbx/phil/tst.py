@@ -67,7 +67,7 @@ name = value
   .input_size = None
   .expert_level = None
 """)
-  input_string = """
+  input_string = """\
 name=value
 .help=help message with detailed information
 .optional=True
@@ -277,6 +277,46 @@ def exercise_syntax_errors():
     'Reserved identifier: "include" (input line 1)')
   test_exception('a=None\n.type=foo',
     'Unexpected definition type: "foo" (input line 2)')
+
+def exercise_phil_on_off_end():
+  assert phil.parse(input_string="#phil __ON__\na=1").as_str() == "a = 1\n"
+  assert phil.parse(input_string="#phil __OFF__\na=1").as_str() == ""
+  assert phil.parse(input_string="#phil __END__\na=1").as_str() == ""
+  assert phil.parse(input_string="#phil __OFF__\n#phil __ON__ \na=1").as_str()\
+    == "a = 1\n"
+  assert phil.parse(input_string="#phil __END__\n#phil __ON__ \na=1").as_str()\
+    == ""
+  params = phil.parse(input_string="""\
+
+#phil __OFF__
+a b c
+#phil __ON__
+a=1
+#phil __OFF__
+c a b
+ #phil __ON__
+b=2
+#phil __ON__
+c=3
+# phil __OFF__
+d=4
+#phil __OFF__ b
+e=5
+#phil __OFF__
+f=6
+""")
+  assert params.as_str() == """\
+a = 1
+c = 3
+d = 4
+"""
+  assert params.get(path="a").objects[0].words[0].line_number == 5
+  assert params.get(path="c").objects[0].words[0].line_number == 11
+  assert params.get(path="d").objects[0].words[0].line_number == 13
+  try: phil.parse(input_string="#phil __Off__\n")
+  except RuntimeError, e:
+    assert str(e) == "Unknown: #phil __Off__ (input line 1)"
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_deepcopy():
   parameters = phil.parse(input_string="""\
@@ -2352,6 +2392,7 @@ Error interpreting command line argument as parameter definition:
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
+  exercise_phil_on_off_end()
   exercise_deepcopy()
   exercise_get_without_substitution()
   exercise_nested()
