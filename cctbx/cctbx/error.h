@@ -34,7 +34,8 @@ namespace cctbx {
       std::string message;
     public:
       error(const std::string& msg) throw();
-      error(const char* file, long line, const std::string& msg = "") throw();
+      error(const char* file, long line, const std::string& msg = "",
+            bool Internal = true) throw();
       virtual ~error() throw() { }
       virtual const char* what() const throw();
   };
