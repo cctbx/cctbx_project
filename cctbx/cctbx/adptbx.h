@@ -15,6 +15,7 @@
 #ifndef CCTBX_ADPTBX_H
 #define CCTBX_ADPTBX_H
 
+#include <complex>
 #include <cctbx/uctbx.h>
 
 //! ADP Toolbox namespace.
@@ -27,66 +28,6 @@ namespace adptbx {
 
   const double   TwoPiSquared = 2. * constants::pi * constants::pi;
   const double EightPiSquared = 8. * constants::pi * constants::pi;
-
-  template <class FloatType>
-  struct return_type {};
-
-  template <class FloatType6, class FloatType33>
-  boost::array<FloatType33, 3*3>
-  Xaniso_as_SymMx33(const boost::array<FloatType6, 6>& Xaniso,
-                    return_type<FloatType33> t)
-  {
-    boost::array<FloatType33, 3*3> M;
-    M[0] = Xaniso[0];
-    M[1] = Xaniso[3];
-    M[2] = Xaniso[4];
-    M[3] = Xaniso[3];
-    M[4] = Xaniso[1];
-    M[5] = Xaniso[5];
-    M[6] = Xaniso[4];
-    M[7] = Xaniso[5];
-    M[8] = Xaniso[2];
-    return M;
-  }
-
-  template <class FloatType33, class FloatType6>
-  inline boost::array<FloatType6, 6>
-  SymMx33_as_Xaniso(const boost::array<FloatType33, 3*3>& M,
-                    return_type<FloatType6> t)
-  {
-    boost::array<FloatType6, 6> Xaniso;
-    Xaniso[0] = M[0];
-    Xaniso[1] = M[4];
-    Xaniso[2] = M[8];
-    Xaniso[3] = M[1];
-    Xaniso[4] = M[2];
-    Xaniso[5] = M[5];
-    return Xaniso;
-  }
-
-  // XXX implement using tensor formula, move to matrixlite
-  template <class FloatType>
-  boost::array<FloatType, 9>
-  A_X_At(const boost::array<FloatType, 9>& A,
-         const boost::array<FloatType, 9>& X)
-  {
-    boost::array<FloatType, 9> AX;
-    MatrixLite::multiply<FloatType>(A.elems, X.elems, 3, 3, 3, AX.elems);
-    boost::array<FloatType, 9> At;
-    MatrixLite::transpose<FloatType>(A.elems, 3, 3, At.elems);
-    boost::array<FloatType, 9> AXAt;
-    MatrixLite::multiply<FloatType>(AX.elems, At.elems, 3, 3, 3, AXAt.elems);
-    return AXAt;
-  }
-
-  template <class FloatType>
-  inline boost::array<FloatType, 6>
-  A_Xaniso_At(const uctbx::Mx33& A, const boost::array<FloatType, 6>& Xaniso)
-  {
-    boost::array<FloatType, 9>
-    X = Xaniso_as_SymMx33(Xaniso, return_type<FloatType>());
-    return SymMx33_as_Xaniso(A_X_At(A, X), return_type<FloatType>());
-  }
 
   //! Convert isotropic adp U -> B.
   inline double
@@ -168,7 +109,8 @@ namespace adptbx {
   inline boost::array<FloatType, 6>
   Ucart_as_Ustar(const uctbx::UnitCell& uc,
                  const boost::array<FloatType, 6>& Ucart) {
-    return A_Xaniso_At(uc.getFractionalizationMatrix(), Ucart);
+    return MatrixLite::CondensedTensorTransformation(
+      uc.getFractionalizationMatrix(), Ucart);
   }
   //! Convert anisotropic adp Ustar -> Ucart.
   /*! Inverse of Ucart_as_Ustar(). I.e., the transformation matrix
@@ -181,7 +123,8 @@ namespace adptbx {
   inline boost::array<FloatType, 6>
   Ustar_as_Ucart(const uctbx::UnitCell& uc,
                  const boost::array<FloatType, 6>& Ustar) {
-    return A_Xaniso_At(uc.getOrthogonalizationMatrix(), Ustar);
+    return MatrixLite::CondensedTensorTransformation(
+      uc.getOrthogonalizationMatrix(), Ustar);
   }
 
   //! Convert anisotropic adp Ucart -> Uuvrs.
@@ -387,7 +330,7 @@ namespace adptbx {
 
   //! Determine the eigenvalues of the anisotropic adp tensor.
   /*! Since the anisotropic adp tensor is a symmetric matrix, all
-      eigenvalues lambda are real. The eigenvalues are determined
+      eigenvalues are real. The eigenvalues lambda are determined
       as the three real roots of the cubic equation
       <p>
           |(adp - lambda * I)| = 0
@@ -397,8 +340,8 @@ namespace adptbx {
       Detailed comments are embedded in the source code.
       <p>
       An exception is thrown if the cubic equation has
-      negative roots. This indicates that the anisotropic
-      adp tensor is not positive definite.
+      roots that are negative or zero. This indicates that
+      the anisotropic adp tensor is not positive definite.
    */
   template <class FloatType>
   boost::array<FloatType, 3>
@@ -434,23 +377,25 @@ namespace adptbx {
     // reduced form: y^3 + p y + q == 0
     FloatType p = s - r * r / 3.;
     FloatType q = 2. * r * r * r / 27. - r * s / 3. + t;
-    // "D" is computed to test for the number of real roots.
-    FloatType p3 = p * p * p;
-    FloatType q2 = q * q;
-    FloatType D = p3 / 27. + q2 / 4.;
-    cctbx_assert(D <= 0.); // If D > 0 there are imaginary roots.
-    /* At this point it is clear that there are only real eigenvalues.
-       They can now be determined without involving complex numbers.
-     */
-    FloatType zeta = std::sqrt(-p3 / 27);
-    FloatType phi = std::acos(-q / (2. * zeta));
-    FloatType rzeta = 2. * std::pow(zeta, FloatType(1/3.));
+    // to circumvent numerical instabilities due to rounding errors the
+    // roots are determined as complex numbers.
+    std::complex<FloatType> D(p * p * p / 27. + q * q / 4.);
+    std::complex<FloatType> sqrtD = std::sqrt(D);
+    FloatType mq2 = -q / 2.;
+    std::complex<FloatType> u = std::pow(mq2 + sqrtD, 1/3.);
+    std::complex<FloatType> v = std::pow(mq2 - sqrtD, 1/3.);
+    std::complex<FloatType> epsilon1(-0.5, std::sqrt(3.) * 0.5);
+    std::complex<FloatType> epsilon2 = std::conj(epsilon1);
+    // since the adp tensor is a symmetric matrix, all the imaginary
+    // components of the roots must be zero.
     boost::array<FloatType, 3> result;
-    for (int i = 0; i < 3; i++) {
-      result[i] =   rzeta * std::cos((phi + (i * 2) * constants::pi) / 3.)
-                  - r / 3.; // the term on this line converts the
-                            // solutions y of the reduced form to
-                            // the solutions x of the normal form.
+    result[0] = (u + v).real();
+    result[1] = (epsilon1 * u + epsilon2 * v).real();
+    result[2] = (epsilon2 * u + epsilon1 * v).real();
+    for(std::size_t i = 0;i<3;i++) {
+      // convert the solutions y of the reduced form to the
+      // solutions x of the normal form.
+      result[i] -= r / 3.;
       if (result[i] <= 0.) throw not_positive_definite;
     }
     return result;
@@ -474,10 +419,10 @@ namespace adptbx {
         boost::array<FloatType, 3> absMV = boost::array_abs(MV);
         std::size_t iMax = boost::array_max_index(absMV);
         FloatType scaled_tolerance = absMV[iMax] * tolerance;
-        if (MatrixLite::approx_equal(MV, -V, scaled_tolerance)) {
+        bool converged = MatrixLite::approx_equal(MV, V, scaled_tolerance);
+        if (!converged && MatrixLite::approx_equal(MV, -V, scaled_tolerance)) {
           throw not_positive_definite; // lambda < 0
         }
-        bool converged = MatrixLite::approx_equal(MV, V, scaled_tolerance);
         V = MV;
         if (converged) break;
         RunAwayCounter++;
@@ -496,6 +441,7 @@ namespace adptbx {
       The eigenvectors are determined according to the procedure
       outlined in J.F. Nye, Physical Properties of Crystals,
       Oxford Science Publications, 1992, pp.165-168.
+      The given tolerance is used to determine convergence.
       <p>
       An exception is thrown if any of the eigenvalues is
       less than or equal to zero. This indicates that the
@@ -506,20 +452,27 @@ namespace adptbx {
   Eigenvectors(const boost::array<FloatType, 6>& adp, double tolerance = 1.e-6)
   {
     boost::array<FloatType, 9> M[2];
-    M[0] = Xaniso_as_SymMx33(adp, return_type<FloatType>());
+    M[0] = MatrixLite::CondensedSymMx33_as_FullSymMx33(adp,
+           MatrixLite::return_type<FloatType>());
     FloatType d = MatrixLite::Determinant(M[0]);
     if (d == 0.) {
       throw not_positive_definite;
     }
     M[1] = MatrixLite::CoFactorMxTp(M[0]) / d;
+    std::size_t iLarge[2];
     boost::array<boost::array<FloatType, 3>, 3> result;
     for(std::size_t iM=0;iM<2;iM++) {
       boost::array<FloatType, 3>
-      Diag = MatrixLite::DiagonalElements(M[iM]);
-      std::size_t iLarge = boost::array_max_index(boost::array_abs(Diag));
+      absDiag = boost::array_abs(MatrixLite::DiagonalElements(M[iM]));
+      iLarge[iM] = boost::array_max_index(absDiag);
+      if (iM != 0 && iLarge[1] == iLarge[0]) {
+        absDiag[iLarge[1]] = -1.;
+        iLarge[1] = boost::array_max_index(absDiag);
+        cctbx_assert(iLarge[1] != iLarge[0]);
+      }
       boost::array<FloatType, 3> V;
       V.assign(0.);
-      V[iLarge] = 1.;
+      V[iLarge[iM]] = 1.;
       result[iM] = detail::recursively_multiply(M[iM], V);
       if (result[iM] * result[iM] == 0.) {
         throw not_positive_definite;
