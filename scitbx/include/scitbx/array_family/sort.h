@@ -41,9 +41,9 @@ namespace scitbx { namespace af {
   } // namespace detail
 
   template <typename DataType>
-  af::shared<std::size_t>
+  shared<std::size_t>
   sort_permutation(
-    af::const_ref<DataType> const& data,
+    const_ref<DataType> const& data,
     bool reverse=false)
   {
     if (reverse) {
@@ -52,6 +52,21 @@ namespace scitbx { namespace af {
     else {
       return detail::sort_permutation(data, std::less<DataType>());
     }
+  }
+
+  template <typename DataType>
+  shared<DataType>
+  shuffle(
+    const_ref<DataType> const& data,
+    const_ref<std::size_t> const& permutation)
+  {
+    shared<DataType> result((reserve(data.size())));
+    for(std::size_t i=0;i<permutation.size();i++) {
+      std::size_t permutation_i = permutation[i];
+      SCITBX_ASSERT(permutation_i < data.size());
+      result.push_back(data[permutation_i]);
+    }
+    return result;
   }
 
 }} // namespace scitbx::af
