@@ -1,5 +1,4 @@
 from iotbx import mtz
-import iotbx.mtz.wrapper
 from iotbx.option_parser import iotbx_option_parser
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -15,18 +14,18 @@ def exercise_read_corrupt():
     if (i_trial > 0):
       f.write("\0"*(40*i_trial))
     f.close()
-    try: mtz.wrapper.object(file_name="tmp.mtz")
+    try: mtz.object(file_name="tmp.mtz")
     except RuntimeError, e:
       assert str(e) == "cctbx Error: MTZ file read error: tmp.mtz"
     else: raise AssertionError("Exception expected.")
 
 def exercise_basic():
-  assert mtz.wrapper.ccp4_liberr_verbosity(-1) == 0
-  assert mtz.wrapper.ccp4_liberr_verbosity(1) == 1
-  assert mtz.wrapper.ccp4_liberr_verbosity(-1) == 1
-  assert mtz.wrapper.ccp4_liberr_verbosity(0) == 0
-  assert mtz.wrapper.ccp4_liberr_verbosity(-1) == 0
-  mtz_object = mtz.wrapper.object()
+  assert mtz.ccp4_liberr_verbosity(-1) == 0
+  assert mtz.ccp4_liberr_verbosity(1) == 1
+  assert mtz.ccp4_liberr_verbosity(-1) == 1
+  assert mtz.ccp4_liberr_verbosity(0) == 0
+  assert mtz.ccp4_liberr_verbosity(-1) == 0
+  mtz_object = mtz.object()
   assert mtz_object.title() == ""
   assert mtz_object.history().size() == 0
   assert mtz_object.space_group_name() == ""
@@ -41,13 +40,13 @@ def exercise_basic():
   assert mtz_object.max_min_resolution() == (-1, -1)
   assert mtz_object.n_crystals() == 0
   assert mtz_object.n_active_crystals() == 0
-  mtz_object = mtz.wrapper.object(
+  mtz_object = mtz.object(
     n_datasets_for_each_crystal=flex.int([3,2,3]))
   assert mtz_object.n_crystals() == 3
   file_name = os.path.expandvars(
     "$LIBTBX_DIST_ROOT/regression/reflection_files/dano.mtz")
   if (os.path.isfile(file_name)):
-    mtz_object = mtz.wrapper.object(file_name=file_name)
+    mtz_object = mtz.object(file_name=file_name)
     assert mtz_object.title() == "......"
     assert mtz_object.history().size() == 17
     assert mtz_object.space_group_name() == "P212121"
@@ -63,7 +62,7 @@ def exercise_basic():
       (19.869975507347792, 15.001543055390009))
     assert mtz_object.n_crystals() == 4
     assert mtz_object.n_active_crystals() == 3
-    crystal = mtz.wrapper.crystal(mtz_object=mtz_object, i_crystal=1)
+    crystal = mtz.crystal(mtz_object=mtz_object, i_crystal=1)
     assert crystal.mtz_object().n_reflections() == 165
     assert crystal.i_crystal() == 1
     assert mtz_object.crystals().size() == mtz_object.n_crystals()
@@ -75,14 +74,14 @@ def exercise_basic():
     assert approx_equal(crystal.unit_cell().parameters(),
       (84.511, 104.308, 174.103, 90, 90, 90))
     assert crystal.n_datasets() == 1
-    dataset = mtz.wrapper.dataset(mtz_crystal=crystal, i_dataset=0)
+    dataset = mtz.dataset(mtz_crystal=crystal, i_dataset=0)
     assert dataset.mtz_crystal().i_crystal() == 1
     assert dataset.i_dataset() == 0
     assert dataset.mtz_object().n_crystals() == mtz_object.n_crystals()
     assert dataset.id() == 1
     assert dataset.name() == "unknown230103:23:14:49"
     assert dataset.wavelength() == 0
-    column = mtz.wrapper.column(mtz_dataset=dataset, i_column=0)
+    column = mtz.column(mtz_dataset=dataset, i_column=0)
     assert column.mtz_dataset().mtz_crystal().i_crystal() == 1
     assert column.i_column() == 0
     assert column.mtz_crystal().i_crystal() == 1
@@ -259,7 +258,7 @@ class exercise_extract_any:
     if (self.all_tests_ran_at_least_once()): raise QuickStop
 
   def __call__(self, file_name, out):
-    mtz_object = mtz.wrapper.object(file_name=file_name)
+    mtz_object = mtz.object(file_name=file_name)
     mtz_object.show_summary(out=out)
     types = "".join(mtz_object.column_types())
     for type_group in ["B", "H", "I", "Y"]:
@@ -376,7 +375,7 @@ def exercise_walk(root_dir, full, verbose=False):
 def exercise_modifiers(verbose=0):
   if (verbose):
     out = sys.stdout
-  mtz_object = mtz.wrapper.object()
+  mtz_object = mtz.object()
   mtz_object.set_title(title="012345678")
   assert mtz_object.title() == "012345678"
   mtz_object.set_title(title="012345678", append=True)
@@ -404,7 +403,7 @@ def exercise_modifiers(verbose=0):
     mtz_object.set_space_group(space_group)
     assert mtz_object.space_group() == space_group
     assert mtz_object.n_symmetry_matrices() == space_group.order_z()
-  mtz_object = mtz.wrapper.object() \
+  mtz_object = mtz.object() \
     .set_title(title="exercise") \
     .add_history(lines=flex.std_string(["h2"])) \
     .add_history(line="h1") \
@@ -724,7 +723,7 @@ Crystal 3:
     assert column.array_size() == 2000
     assert column.array_capacity() == 5000
   #
-  mtz_object = mtz.wrapper.object() \
+  mtz_object = mtz.object() \
     .set_title(title="exercise") \
     .set_space_group_name("sg") \
     .set_space_group_number(123) \
@@ -817,7 +816,7 @@ Crystal 2:
 """
   mtz_object.write(file_name="tmp.mtz")
   if (not verbose): out = StringIO()
-  mtz.wrapper.object(file_name="tmp.mtz").show_summary(out=out)
+  mtz.object(file_name="tmp.mtz").show_summary(out=out)
   if (not verbose):
     assert out.getvalue() == """\
 Title: exercise
@@ -1055,7 +1054,7 @@ detector tilt angle: [85.0, 86.0]
 min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.0, 92.0, 93.0]
 """
   mtz_object.write(file_name="tmp.mtz")
-  restored = mtz.wrapper.object(file_name="tmp.mtz")
+  restored = mtz.object(file_name="tmp.mtz")
   assert restored.n_batches() == 10
   if (not verbose): out = StringIO()
   restored.batches()[3].show(out=out)

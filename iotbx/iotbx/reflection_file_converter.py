@@ -1,4 +1,4 @@
-import iotbx.mtz.wrapper
+import iotbx.mtz
 import iotbx.cns.miller_array
 import iotbx.scalepack.merge
 import iotbx.shelx.hklf

@@ -1,5 +1,4 @@
 from iotbx import mtz
-import iotbx.mtz.wrapper
 from cctbx.development import debug_utils
 from cctbx import miller
 from cctbx import crystal
@@ -10,7 +9,7 @@ from libtbx.test_utils import eps_eq
 import sys
 
 def to_mtz(miller_array, column_root_label, column_types=None):
-  mtz_object = mtz.wrapper.object()
+  mtz_object = mtz.object()
   mtz_object.set_title("mtz writer test")
   mtz_object.add_history(line="start")
   mtz_object.set_space_group_info(miller_array.space_group_info())
@@ -31,12 +30,12 @@ def to_mtz(miller_array, column_root_label, column_types=None):
 
 def recycle(miller_array, column_root_label, column_types=None, verbose=0):
   original_dataset = to_mtz(miller_array, column_root_label, column_types)
-  label_decorator = mtz.wrapper.label_decorator()
+  label_decorator = mtz.label_decorator()
   written = original_dataset.mtz_object()
   if (0 or verbose):
     written.show_summary()
   original_dataset.mtz_object().write(file_name="tmp.mtz")
-  restored = mtz.wrapper.object(file_name="tmp.mtz")
+  restored = mtz.object(file_name="tmp.mtz")
   if (0 or verbose):
     restored.show_summary()
   assert restored.title() == written.title()

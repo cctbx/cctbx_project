@@ -5,9 +5,9 @@ if (not env_etc.no_boost_python):
   env = env_iotbx_boost_python_ext.Copy()
   env.Prepend(LIBS=["cmtz", "cctbx", "scitbx_boost_python"])
   env.SharedLibrary(
-    target="#libtbx/iotbx_mtz_wrapper_ext",
+    target="#libtbx/iotbx_mtz_ext",
     source=[
-      "wrapper_ext.cpp",
+      "ext.cpp",
       "object_bpl.cpp",
       "crystal_bpl.cpp",
       "dataset_bpl.cpp",
