@@ -2,6 +2,7 @@ from iotbx import mtz
 from iotbx.scalepack import reader as scalepack_reader
 from iotbx.cns import reflection_reader as cns_reflection_reader
 from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
+from iotbx.shelx import hklf as shelx_hklf
 from iotbx import crystal_symmetry_from_any
 from cctbx import miller
 from cctbx import crystal
@@ -35,6 +36,11 @@ class any_reflection_file:
         open(file_name))
       except: pass
       else: self._file_type = "dtrek_reflnlist"
+    if (self._file_type == None):
+      try: self._file_content = shelx_hklf.reader(
+        open(file_name))
+      except: pass
+      else: self._file_type = "shelx_hklf"
     if (self._file_type == None):
       try: self._file_content = easy_pickle.load(file_name)
       except: pass

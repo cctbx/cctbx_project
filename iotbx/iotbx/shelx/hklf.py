@@ -1,17 +1,20 @@
+from cctbx import miller
 from cctbx.array_family import flex
 import sys
 
-def write(miller_array, file_object=sys.stdout):
-  data = miller_array.data()
-  sigmas = miller_array.sigmas()
+def miller_export_as_shelx_hklf(self, file_object=sys.stdout):
+  data = self.data()
+  sigmas = self.sigmas()
   s = 0.01
   fmt = "%4d%4d%4d%8.2f%8.2f"
-  for i,h in miller_array.indices().items():
+  for i,h in self.indices().items():
     if (sigmas != None): s = sigmas[i]
     print >> file_object, fmt % (h + (data[i],s))
   print >> file_object, fmt % (0,0,0,0,0)
 
-class read:
+miller.miller_export_as_shelx_hklf = miller_export_as_shelx_hklf
+
+class reader:
 
   def __init__(self, file_object):
     self._indices = flex.miller_index()
@@ -46,3 +49,24 @@ class read:
 
   def count_alphas(self):
     return self._count_alphas
+
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+                             info_prefix=""):
+    if (crystal_symmetry == None):
+      crystal_symmetry = crystal.symmetry()
+    miller_set = miller.set(
+      crystal_symmetry=crystal_symmetry,
+      indices=self.indices()).auto_anomalous()
+    miller_arrays = []
+    obs = miller.array(
+      miller_set=miller_set,
+      data=self.data(),
+      sigmas=self.sigmas(),
+      info=info_prefix+"obs,sigmas")
+    miller_arrays.append(obs)
+    if (self.count_alphas() > 0):
+      miller_arrays.append(miller.array(
+        miller_set=miller_set,
+        data=self.alphas(),
+        info=info_prefix+"alphas"))
+    return miller_arrays

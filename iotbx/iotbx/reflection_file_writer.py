@@ -41,6 +41,9 @@ def run(args):
       elif (file_name.lower().endswith(".cns")):
         print "Writing CNS reflection file:", file_name
         miller_array.export_as_cns_hkl(open(file_name, "w"), file_name)
+      elif (file_name.lower().endswith(".shelx")):
+        print "Writing SHELX HKLF reflection file:", file_name
+        miller_array.export_as_shelx_hklf(open(file_name, "w"))
       elif (file_name.lower().endswith(".pickle")):
         print "Writing pickle file:", file_name
         easy_pickle.dump(file_name, miller_array)
