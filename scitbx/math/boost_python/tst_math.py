@@ -1261,13 +1261,13 @@ def exercise_icosahedron():
         (0.79803500000000005, 0.44999699999999998, 0.40080300000000002),
         (0.76232699999999998, 0.58046699999999996, 0.28621099999999999),
         (0.816797, 0.55912499999999998, 0.142204)]
-  ico = icosahedron(2)
+  ico = icosahedron(level=2)
   assert ico.level == 2
   diff = ico.sites - flex.vec3_double(expected_sites_level_2)
   for d in diff.min(): assert abs(d) < 0.02
   for d in diff.max(): assert abs(d) < 0.02
   for level in xrange(1,6):
-    ico = icosahedron(level)
+    ico = icosahedron(level=level)
     assert ico.level == level
     assert ico.sites.size() == 80 * 4**(level-1)
 
