@@ -1,5 +1,6 @@
 from cctbx.xray import ext
 import cctbx.eltbx.xray_scattering
+import cctbx.eltbx.tiny_pse
 from cctbx import eltbx
 from cctbx import adptbx
 from scitbx.boost_python_utils import injector
@@ -52,6 +53,12 @@ class _scatterer(injector, ext.scatterer):
       scattering_type=scattering_type,
       fp=fp,
       fdp=fdp)
+
+  def element_symbol(self):
+    try:
+      return eltbx.tiny_pse.table(self.scattering_type).symbol()
+    except RuntimeError:
+      return None
 
   def show(self, f=None, unit_cell=None):
     if (f is None): f = sys.stdout
