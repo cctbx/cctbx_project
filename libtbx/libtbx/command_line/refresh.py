@@ -8,24 +8,26 @@ import shutil
 
 class create_bin_sh_dispatcher:
 
-  def __init__(self, is_python_exe=00000, precall_commands=None):
-    self.is_python_exe = is_python_exe
+  def __init__(self, python_exe, precall_commands=None):
+    self.python_exe = python_exe
     self.precall_commands = precall_commands
 
   def __call__(self, source_file, target_file):
     f = open(target_file, "w")
     print >> f, "#! /bin/sh"
     print >> f, "# LIBTBX_DISPATCHER DO NOT EDIT"
+    print >> f, "unset PYTHONHOME"
     if (self.precall_commands is not None):
       for line in self.precall_commands:
         print >> f, line
     cmd = "  exec"
-    if (not self.is_python_exe and source_file.lower().endswith(".py")):
-      cmd += " python"
+    if (    source_file != self.python_exe
+        and source_file.lower().endswith(".py")):
+      cmd += " '"+self.python_exe+"'"
     print >> f, "if [ $# -eq 0 ]; then"
-    print >> f, cmd, source_file
+    print >> f, cmd, "'"+source_file+"'"
     print >> f, "else"
-    print >> f, cmd, source_file, '"$@"'
+    print >> f, cmd, "'"+source_file+"'", '"$@"'
     print >> f, "fi"
     f.close()
     os.chmod(target_file, 0755)
@@ -35,7 +37,7 @@ def create_python_execfile_dispatcher(source_file, target_file):
   print >> f, 'execfile(r"%s")' % source_file
   f.close()
 
-def create_driver(target_dir, package_name, source_dir, file_name):
+def create_driver(python_exe, target_dir, package_name, source_dir, file_name):
   source_file = norm(join(source_dir, file_name))
   if (not isfile(source_file)): return
   if (file_name.lower().startswith("__init__.py")): return
@@ -49,7 +51,7 @@ def create_driver(target_dir, package_name, source_dir, file_name):
     target_file += ".px"
     action = create_python_execfile_dispatcher
   else:
-    action = create_bin_sh_dispatcher()
+    action = create_bin_sh_dispatcher(python_exe=python_exe)
     try: os.chmod(source_file, 0755)
     except: pass
   if (isfile(target_file) or islink(target_file)):
@@ -59,11 +61,16 @@ def create_driver(target_dir, package_name, source_dir, file_name):
   else:
     action(source_file, target_file)
 
-def create_drivers(target_dir, package_name, source_dir):
+def create_drivers(python_exe, target_dir, package_name, source_dir):
   if (not isdir(source_dir)): return
   print "Processing:", source_dir
   for file_name in os.listdir(source_dir):
-    create_driver(target_dir, package_name, source_dir, file_name)
+    create_driver(
+      python_exe=python_exe,
+      target_dir=target_dir,
+      package_name=package_name,
+      source_dir=source_dir,
+      file_name=file_name)
 
 def create_posix_icc_ld_preload(libtbx_env):
   path_icc = libtbx.config.full_path("icc")
@@ -133,7 +140,8 @@ def create_python_dispatchers(libtbx_env, target_dir, python_exe):
       action = shutil.copyfile
     else:
       action = create_bin_sh_dispatcher(
-        is_python_exe=0001, precall_commands=precall_commands)
+        python_exe=python_exe,
+        precall_commands=precall_commands)
       try: os.chmod(source_file, 0755)
       except: pass
     if (isfile(target_file) or islink(target_file)):
@@ -154,8 +162,9 @@ def run():
     package_name = os.path.basename(dist_path)
     for dist_path_suf in libtbx.config.package_pair(dist_path).primary_first():
       create_drivers(
-        target_dir,
-        package_name,
+        python_exe=libtbx_env.LIBTBX_PYTHON_EXE,
+        target_dir=target_dir,
+        package_name=package_name,
         source_dir=norm(join(dist_path_suf, package_name, "command_line")))
 
 if (__name__ == "__main__"):

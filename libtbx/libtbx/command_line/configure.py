@@ -184,7 +184,6 @@ def emit_setpaths_sh(env):
   for file_name in ("setpaths.sh", "env_run.sh"):
     full_path = norm(join(env.LIBTBX_BUILD, file_name))
     f = open_info(full_path)
-    print >> f, 'unset PYTHONHOME'
     for var_name, values in env.items():
       if (var_name.upper() != var_name): continue
       if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
@@ -214,7 +213,6 @@ def emit_setpaths_csh(env):
   unsetpaths_csh_path = norm(join(env.LIBTBX_BUILD, "unsetpaths.csh"))
   s = open_info(setpaths_csh_path)
   u = open_info(unsetpaths_csh_path)
-  print >> s, 'unsetenv PYTHONHOME'
   for f in s, u:
     print >> f, '%s -V >& /dev/null' % libtbx_python
     print >> f, 'if ($status != 0 || ! -f "%s") then' % libtbx_path_utility
@@ -252,7 +250,6 @@ def emit_setpaths_bat(env):
   setpaths_bat_path = norm(join(env.LIBTBX_BUILD, "setpaths.bat"))
   f = open_info(setpaths_bat_path)
   print >> f, '@ECHO off'
-  print >> f, 'set PYTHONHOME='
   for var_name, values in env.items():
     if (var_name.upper() != var_name): continue
     if (type(values) == type([])):
