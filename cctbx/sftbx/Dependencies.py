@@ -14,14 +14,8 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sftbx/tst.py",
     )
 
-    self.libraries = {
-    }
-
-    self.executables = {
-    }
-
     self.boost_python_modules = {
-      "sftbx": ("sftbxmodule",
-                "error",
-                "bpl_utils", "boost_array_bpl"),
+      "sftbx": (("sftbxmodule",
+                 "error",
+                 "bpl_utils", "boost_array_bpl"), ("sgtbx", "uctbx")),
     }

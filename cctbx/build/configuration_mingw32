@@ -6,6 +6,9 @@ CCTBX_UNIX="$(HOME)/cctbx"
 CCTBX_WIN="$(ROOT)\cctbx"
 CCTBXINC=-I"$(ROOT)\cctbx"
 
+CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
+CCTBXLIBDIR_WIN=@(CCTBXLIBDIR_WIN)
+
 BOOSTINC=-I"$(ROOT)\boost"
 BOOST_PYTHONLIB="@(CWD)\..\boost\libboost_python.a"
 
@@ -14,8 +17,6 @@ PYINC=-I"C:\usr\include\python1.5"
 PYLIB="C:\usr\lib\libpython15.a"
 
 STDFIXINC=
-
-CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
 
 CPP=g++
 LD=g++

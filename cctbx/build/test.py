@@ -9,5 +9,6 @@ from eltbx.henke import *
 from eltbx.sasaki import *
 from eltbx.neutron import *
 import uctbx
-import adptbx
 import sgtbx
+import adptbx
+import sftbx

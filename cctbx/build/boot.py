@@ -9,7 +9,7 @@ def create_makefile(path_cctbx, configuration, subdir):
     os.makedirs(subdir)
   except OSError:
     pass
-  h = exe_l['write_makefiles'](configuration)
+  h = exe_l['write_makefiles'](subdir, configuration)
   f = open(subdir + "/Makefile", "wb")
   h.write(f)
   f.close()
@@ -25,7 +25,12 @@ if (__name__ == "__main__"):
     print "Error: Must run under Windows!"
     sys.exit(1)
   if (len(sys.argv) == 1):
-    for subdir in ("eltbx", "sgtbx", "uctbx", "adptbx", "examples/cpp"):
+    for subdir in ("eltbx",
+                   "uctbx",
+                   "sgtbx",
+                   "adptbx",
+                   "sftbx",
+                   "examples/cpp"):
       create_makefile(path_cctbx, cf, subdir)
   else:
     for subdir in sys.argv[1:]:

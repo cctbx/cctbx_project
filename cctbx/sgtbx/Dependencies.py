@@ -10,7 +10,6 @@ class write_makefiles(makefile_generator.write_makefiles):
       "global/error.cpp",
       "global/bpl_utils.cpp",
       "global/boost_array_bpl.cpp",
-      "uctbx/uctbx.cpp",
       "sgtbx/utils.cpp",
       "sgtbx/math.cpp",
       "sgtbx/matrix.cpp",
@@ -80,10 +79,11 @@ class write_makefiles(makefile_generator.write_makefiles):
     }
 
     self.executables = {
-      "sgtbxdriver": ("sgtbxdriver",) + lib + ("uctbx",),
+      "sgtbxdriver": (("sgtbxdriver",) + lib, ("uctbx",)),
     }
 
     self.boost_python_modules = {
-      "sgtbx":   ("sgtbxmodule",) + lib
-               + ("bpl_utils", "boost_array_bpl", "uctbx"),
+      "sgtbx": (  ("sgtbxmodule",) + lib
+                + ("bpl_utils", "boost_array_bpl"),
+                ("uctbx",)),
     }
