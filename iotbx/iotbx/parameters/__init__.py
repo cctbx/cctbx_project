@@ -276,6 +276,7 @@ class definition: # FUTURE definition(object)
         print_width=None):
     if (self.expert_level is not None
         and expert_level is not None
+        and expert_level >= 0
         and self.expert_level > expert_level): return
     if (out is None): out = sys.stdout
     if (print_width is None): print_width = default_print_width
@@ -626,6 +627,7 @@ class scope:
         print_width=None):
     if (self.expert_level is not None
         and expert_level is not None
+        and expert_level >= 0
         and self.expert_level > expert_level): return
     if (out is None): out = sys.stdout
     if (print_width is None): print_width = default_print_width
