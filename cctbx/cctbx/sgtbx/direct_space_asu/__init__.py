@@ -84,8 +84,7 @@ class direct_space_asu_with_metric(direct_space_asu):
     self.unit_cell = unit_cell
 
   def minimum_covering_sphere(self, epsilon=None):
-    if (epsilon is None):
-      epsilon = self.unit_cell.volume()**(1/3.)*1.e-5
+    if (epsilon is None): epsilon = 1.e-3
     points = flex.vec3_double()
     orth = self.unit_cell.orthogonalize
     for vertex in self.volume_vertices():
