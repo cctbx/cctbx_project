@@ -21,6 +21,8 @@ namespace {
           af::const_ref<bond_params_dict> const&>((
            arg_("bond_params_table"))))
         .def(init<
+          af::const_ref<std::size_t> const&,
+          af::const_ref<std::size_t> const&,
           nonbonded_params const&,
           af::const_ref<std::string> const&,
           af::const_ref<bond_params_dict> const&,
@@ -28,13 +30,15 @@ namespace {
           double,
           double,
           double>((
-           arg_("nonbonded_params"),
-           arg_("nonbonded_types"),
-           arg_("bond_params_table"),
-           arg_("shell_asu_tables"),
-           arg_("bonded_distance_cutoff"),
-           arg_("nonbonded_distance_cutoff"),
-           arg_("nonbonded_buffer"))))
+            arg_("model_indices"),
+            arg_("conformer_indices"),
+            arg_("nonbonded_params"),
+            arg_("nonbonded_types"),
+            arg_("bond_params_table"),
+            arg_("shell_asu_tables"),
+            arg_("bonded_distance_cutoff"),
+            arg_("nonbonded_distance_cutoff"),
+            arg_("nonbonded_buffer"))))
         .def_readonly("bond_proxies", &w_t::bond_proxies)
         .def_readonly("nonbonded_proxies", &w_t::nonbonded_proxies)
         .def_readonly("n_bonded", &w_t::n_bonded)

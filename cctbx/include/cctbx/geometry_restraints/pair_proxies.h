@@ -59,6 +59,8 @@ namespace cctbx { namespace geometry_restraints {
           nonbonded_params.
        */
       pair_proxies(
+        af::const_ref<std::size_t> const& model_indices,
+        af::const_ref<std::size_t> const& conformer_indices,
         geometry_restraints::nonbonded_params const& nonbonded_params,
         af::const_ref<std::string> const& nonbonded_types,
         af::const_ref<bond_params_dict> const& bond_params_table,
@@ -73,7 +75,11 @@ namespace cctbx { namespace geometry_restraints {
         n_nonbonded(0),
         n_unknown_nonbonded_type_pairs(0)
       {
-        CCTBX_ASSERT(nonbonded_types.size() == bond_params_table.size());
+        CCTBX_ASSERT(model_indices.size() == 0
+                  || model_indices.size() == nonbonded_types.size());
+        CCTBX_ASSERT(conformer_indices.size() == 0
+                  || conformer_indices.size() == nonbonded_types.size());
+        CCTBX_ASSERT(bond_params_table.size() == nonbonded_types.size());
         CCTBX_ASSERT(shell_asu_tables.size() > 0);
         for(unsigned i=0; i<shell_asu_tables.size(); i++) {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
@@ -109,16 +115,24 @@ namespace cctbx { namespace geometry_restraints {
                    && shell_asu_tables[1].contains(pair)) {
             n_1_3++;
           }
-          else if (shell_asu_tables.size() > 2
-                   && shell_asu_tables[2].contains(pair)) {
-            nonbonded_proxies.process(make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, pair, true));
-            n_1_4++;
-          }
-          else if (pair.dist_sq <= nonbonded_distance_cutoff_sq) {
-            nonbonded_proxies.process(make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, pair, false));
-            n_nonbonded++;
+          else if ((model_indices.size() == 0
+                    || model_indices[pair.i_seq] == model_indices[pair.j_seq])
+                   && (conformer_indices.size() == 0
+                       || conformer_indices[pair.i_seq] == 0
+                       || conformer_indices[pair.j_seq] == 0
+                       || conformer_indices[pair.i_seq]
+                       == conformer_indices[pair.j_seq])) {
+            if (shell_asu_tables.size() > 2
+                && shell_asu_tables[2].contains(pair)) {
+              nonbonded_proxies.process(make_nonbonded_asu_proxy(
+                nonbonded_params, nonbonded_types, pair, true));
+              n_1_4++;
+            }
+            else if (pair.dist_sq <= nonbonded_distance_cutoff_sq) {
+              nonbonded_proxies.process(make_nonbonded_asu_proxy(
+                nonbonded_params, nonbonded_types, pair, false));
+              n_nonbonded++;
+            }
           }
         }
       }

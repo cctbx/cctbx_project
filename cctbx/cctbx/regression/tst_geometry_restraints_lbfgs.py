@@ -141,7 +141,9 @@ def exercise(verbose=0):
   nonbonded_params.distance_table.setdefault(
     "Default")["Default"] = default_vdw_distance
   pair_proxies = geometry_restraints.pair_proxies(
-    nonbonded_params = nonbonded_params,
+    model_indices=None,
+    conformer_indices=None,
+    nonbonded_params=nonbonded_params,
     nonbonded_types=atom_energy_types,
     bond_params_table=bond_params_table,
     shell_asu_tables=shell_asu_tables,
