@@ -55,18 +55,11 @@ def run(args, cutoff, max_n_terms, six_term=00000, params=None,
         plots_dir=plots_dir,
         verbose=verbose)
     else:
-      print "label:", tab.element
-      sys.stdout.flush()
       best_min = scitbx.math.gaussian_fit.fit_with_golay_starts(
         label=tab.element,
         null_fit=null_fit,
         null_fit_more=null_fit_more,
-        n_terms=6,
-        target_powers=params.target_powers,
-        minimize_using_sigmas=params.minimize_using_sigmas,
-        shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
-        b_min=params.b_min,
-        n_repeats_minimization=params.n_repeats_minimization)
+        params=params)
       g = best_min.final_gaussian_fit
       results[tab.element] = [xray_scattering.fitted_gaussian(
         stol=g.table_x()[-1], gaussian_sum=g)]

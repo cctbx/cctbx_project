@@ -42,8 +42,24 @@ class minimize_mixin:
     self.compute_fg()
     self.final_target_value = self.f
     self.final_gaussian_fit = self.gaussian_fit_shifted
+    self.max_x = self.final_gaussian_fit.table_x()[-1]
     self.max_error = flex.max(
       self.final_gaussian_fit.significant_relative_errors())
+
+  def is_better_than(self, other):
+    if (other is None): return 0001
+    if (self.max_x > other.max_x): return 0001
+    if (self.max_x < other.max_x): return 00000
+    if (self.max_error < other.max_error): return 0001
+    return 00000
+
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "n_terms:", self.final_gaussian_fit.n_terms(),
+    print >> f, "max_x: %.2f" % self.final_gaussian_fit.table_x()[-1],
+    print >> f, "max_error: %.4f" % self.max_error
+    f.flush()
+    return self
 
   def show_minimization_parameters(self, f=None):
     if (f is None): f = sys.stdout
@@ -52,6 +68,8 @@ class minimize_mixin:
       s += " shift_sqrt_b_mod_n:%d" % self.shift_sqrt_b_mod_n
       s += " i_repeat:%d" % self.i_repeat
     print >> f, s
+    f.flush()
+    return self
 
 class minimize_lbfgs(minimize_mixin):
 
@@ -383,7 +401,8 @@ def find_max_x_multi(null_fit,
       i_x_end = i
       break
   assert i_x_begin is not None
-  assert i_x_end is not None
+  if (i_x_end is None):
+    i_x_end = null_fit.table_y().size()-1
   n_terms = existing_gaussian.n_terms() + 1
   i_x_step = max(1, ifloor((i_x_end-i_x_begin) / (factor_x_step*n_terms)))
   if (n_terms == 1): n_start_fractions = 2
@@ -406,14 +425,8 @@ def find_max_x_multi(null_fit,
             shift_sqrt_b_mod_n=shift_sqrt_b_mod_n,
             b_min=b_min,
             max_max_error=max_max_error)
-          if (good_min is not None):
-            if (best_min is None
-                or best_min.final_gaussian_fit.table_x().size()
-                 < good_min.final_gaussian_fit.table_x().size()
-                or best_min.final_gaussian_fit.table_x().size()
-                == good_min.final_gaussian_fit.table_x().size()
-                  and best_min.max_error > good_min.max_error):
-              best_min = good_min
+          if (good_min is not None and good_min.is_better_than(best_min)):
+            best_min = good_min
   return best_min
 
 def make_golay_based_start_gaussian(null_fit, code):
@@ -438,29 +451,25 @@ def make_golay_based_start_gaussian(null_fit, code):
 def fit_with_golay_starts(label,
                           null_fit,
                           null_fit_more,
-                          n_terms,
-                          target_powers,
-                          minimize_using_sigmas,
-                          shift_sqrt_b_mod_n,
-                          b_min,
-                          n_repeats_minimization,
-                          negligible_max_error=0.001,
+                          params,
                           print_to=None):
-  assert n_terms == 6
   if (label is not None and print_to is None):
     print_to = sys.stdout
   good_min = None
+  if (print_to is not None):
+    print >> print_to, "label:", label
+    print_to.flush()
   for golay_code in golay_24_12_generator():
     start_fit = make_golay_based_start_gaussian(
       null_fit=null_fit,
       code=golay_code)
     best_min = minimize_multi(
       start_fit=start_fit,
-      target_powers=target_powers,
-      minimize_using_sigmas=minimize_using_sigmas,
-      shift_sqrt_b_mod_n=shift_sqrt_b_mod_n,
-      b_min=b_min,
-      n_repeats_minimization=n_repeats_minimization)
+      target_powers=params.target_powers,
+      minimize_using_sigmas=params.minimize_using_sigmas,
+      shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
+      b_min=params.b_min,
+      n_repeats_minimization=params.n_repeats_minimization)
     if (best_min is not None):
       if (good_min is None or good_min.max_error > best_min.max_error):
         good_min = best_min
@@ -470,23 +479,67 @@ def fit_with_golay_starts(label,
           null_fit_more.table_sigmas(),
           good_min.final_gaussian_fit)
         if (print_to is not None):
-          print >> print_to, label, "max_error fitted=%.4f, more=%.4f" % (
-            good_min.max_error,
-            flex.max(fit_more.significant_relative_errors()))
+          print >> print_to, label, "max_error fitted=%.4f" % (
+            good_min.max_error),
+          if (null_fit_more.table_x().size() > null_fit.table_x().size()):
+            print >> print_to, label, "more=%.4f" % (
+              flex.max(fit_more.significant_relative_errors())),
+          print >> print_to
           fit_more.show(f=print_to)
           fit_more.show_table(f=print_to)
           print >> print_to
-          print_to.flush()
-        if (good_min.max_error <= negligible_max_error):
+        print_to.flush()
+        if (good_min.max_error <= params.negligible_max_error):
           break
   if (print_to is not None):
     if (good_min is None):
       print >> print_to, "Final: %s: No successful minimization." % label
     else:
-      print >> print_to, "Final:", label, "max_error fitted=%.4f, more=%.4f" %(
-        good_min.max_error,
-        flex.max(fit_more.significant_relative_errors()))
+      print >> print_to, "Final:", label, "max_error fitted=%.4f" %(
+        good_min.max_error),
+      if (null_fit_more.table_x().size() > null_fit.table_x().size()):
+        print >> print_to, label, "more=%.4f" % (
+          flex.max(fit_more.significant_relative_errors())),
+      print >> print_to
     good_min.show_minimization_parameters(f=print_to)
     print >> print_to
     show_minimize_multi_histogram(f=print_to)
+  return good_min
+
+def decremental_fit(existing_gaussian, params):
+  n_terms = existing_gaussian.n_terms() - 1
+  good_min = None
+  last_a = list(existing_gaussian.array_of_a())
+  last_b = list(existing_gaussian.array_of_b())
+  for i_del in xrange(existing_gaussian.n_terms()):
+    a_del = last_a[i_del]
+    sel_a = last_a[:i_del] + last_a[i_del+1:]
+    sel_b = last_b[:i_del] + last_b[i_del+1:]
+    for i_add in xrange(n_terms):
+      a = sel_a[:]
+      a[i_add] += a_del
+      start_fit = scitbx.math.gaussian.fit(
+        existing_gaussian.table_x(),
+        existing_gaussian.table_y(),
+        existing_gaussian.table_sigmas(),
+        scitbx.math.gaussian.sum(a, sel_b))
+      while 1:
+        best_min = scitbx.math.gaussian_fit.minimize_multi(
+          start_fit=start_fit,
+          target_powers=params.target_powers,
+          minimize_using_sigmas=params.minimize_using_sigmas,
+          shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
+          b_min=params.b_min,
+          n_repeats_minimization=params.n_repeats_minimization)
+        if (best_min is None):
+          break
+        if (best_min.max_error <= params.max_max_error):
+          if (best_min.is_better_than(good_min)):
+            good_min = best_min
+          break
+        start_fit = scitbx.math.gaussian.fit(
+          start_fit.table_x()[:-1],
+          start_fit.table_y()[:-1],
+          start_fit.table_sigmas()[:-1],
+          best_min.final_gaussian_fit)
   return good_min

@@ -67,6 +67,9 @@ class fitted_gaussian(gaussian):
   def __getinitargs__(self):
     return (self.stol, gaussian(self), self.max_error)
 
+  def sort(self):
+    return fitted_gaussian(self.stol, gaussian.sort(self), self.max_error)
+
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
     if (self.max_error is None):
