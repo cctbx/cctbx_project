@@ -2,8 +2,36 @@ from cctbx.crystal import coordination_sequences
 from cctbx import xray
 from cctbx import crystal
 from iotbx.kriber import strudat
+from iotbx import pdb
+import iotbx.pdb.interpretation
 from iotbx.option_parser import iotbx_option_parser
 import sys
+
+def display(
+      distance_cutoff,
+      show_cartesian,
+      max_shell,
+      coseq_dict,
+      xray_structure):
+  xray_structure.show_summary().show_scatterers()
+  print
+  pairs = xray_structure.show_pairs(
+    distance_cutoff=distance_cutoff,
+    show_cartesian=show_cartesian,
+    keep_pair_asu_table=True)
+  print
+  if (pairs.pair_counts.size() <= 15):
+    print "Pair counts:", list(pairs.pair_counts)
+    print
+  if (max_shell is not None):
+    term_table = crystal.coordination_sequences.simple(
+      pair_asu_table=pairs.pair_asu_table,
+      max_shell=max_shell)
+    coordination_sequences.show_terms(
+      structure=xray_structure,
+      term_table=term_table,
+      coseq_dict=coseq_dict)
+    print
 
 def run(args):
   command_line = (iotbx_option_parser(
@@ -21,6 +49,10 @@ def run(args):
       dest="distance_cutoff",
       help="Maximum distance to be considered",
       metavar="FLOAT")
+    .option(None, "--show_cartesian",
+      action="store_true",
+      dest="show_cartesian",
+      help="Show Cartesian coordinates (instead of fractional)")
     .option(None, "--cs",
       action="store",
       type="int",
@@ -45,37 +77,31 @@ def run(args):
   else:
     coseq_dict = None
   for file_name in command_line.args:
-    strudat_entries = strudat.read_all_entries(open(file_name))
-    for entry in strudat_entries.entries:
-      if (    command_line.options.tag is not None
-          and command_line.options.tag != entry.tag):
-        continue
-      print "strudat tag:", entry.tag
-      print
-      structure = entry.as_xray_structure()
-      structure.show_summary().show_scatterers()
-      print
-      asu_mappings = structure.asu_mappings(
-        buffer_thickness=command_line.options.distance_cutoff)
-      pair_asu_table = crystal.pair_asu_table(
-        asu_mappings=asu_mappings)
-      pair_asu_table.add_all_pairs(
-        distance_cutoff=command_line.options.distance_cutoff)
-      pairs = xray.show_pairs(
-        xray_structure=structure,
-        pair_asu_table=pair_asu_table)
-      print
-      print "Pair counts:", list(pairs.pair_counts)
-      print
-      if (max_shell is not None):
-        term_table = crystal.coordination_sequences.simple(
-          pair_asu_table=pair_asu_table,
-          max_shell=max_shell)
-        coordination_sequences.show_terms(
-          structure=structure,
-          term_table=term_table,
-          coseq_dict=coseq_dict)
+    if (pdb.interpretation.is_pdb_file(file_name=file_name)):
+      stage_1 = pdb.interpretation.stage_1(file_name=file_name)
+      xray_structure = stage_1.extract_xray_structure(
+        unknown_scattering_type_substitute="?")
+      display(
+        distance_cutoff=command_line.options.distance_cutoff,
+        show_cartesian=command_line.options.show_cartesian,
+        max_shell=max_shell,
+        coseq_dict=coseq_dict,
+        xray_structure=xray_structure)
+    else:
+      strudat_entries = strudat.read_all_entries(open(file_name))
+      for entry in strudat_entries.entries:
+        if (    command_line.options.tag is not None
+            and command_line.options.tag != entry.tag):
+          continue
+        print "strudat tag:", entry.tag
         print
+        xray_structure = entry.as_xray_structure()
+        display(
+          distance_cutoff=command_line.options.distance_cutoff,
+          show_cartesian=command_line.options.show_cartesian,
+          max_shell=max_shell,
+          coseq_dict=coseq_dict,
+          xray_structure=xray_structure)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
