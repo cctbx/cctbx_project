@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -163,7 +164,7 @@ namespace sgtbx {
   {
     if (   iMate < 0 || iMate >= fMates(true)
         || iList < 0 || iList >= N()) {
-      throw error("Index out of range.");
+      throw error_index();
     }
     if (iMate == 0) return m_List[iList].HR();
     return m_List[iList].HR().FriedelMate();
@@ -173,7 +174,7 @@ namespace sgtbx {
   {
     // iIL = iMate * N + iList
     if (iIL < 0 || iIL >= M(true)) {
-      throw error("Index out of range.");
+      throw error_index();
     }
     int iList = iIL % N();
     int iMate = iIL / N();

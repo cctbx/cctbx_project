@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -38,6 +39,13 @@ namespace cctbx {
             bool Internal = true) throw();
       virtual ~error() throw() { }
       virtual const char* what() const throw();
+  };
+
+  class error_index : public error {
+    public:
+      error_index(const std::string& msg = "Index out of range.") throw()
+        : error(msg) {}
+      virtual ~error_index() throw() {}
   };
 
 } // namespace cctbx

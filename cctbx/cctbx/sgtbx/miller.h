@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -413,7 +414,7 @@ namespace sgtbx {
           Miller::Index H = ... // define input Miller index.
           bool FriedelSym = ... // define Friedel symmetry.
           sgtbx::SymEquivMillerIndices SEMI = getEquivMillerIndices(H);
-          for (int iIL = 0; iIL < SEMI.M(); iIL++)
+          for (int iIL = 0; iIL < SEMI.M(FriedelSym); iIL++)
             Miller::Index EquivH = SEMI(iIL);
           </pre>
        */

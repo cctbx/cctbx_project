@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      2001 May 08 added: SmithNormalForm (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
@@ -147,6 +148,7 @@ namespace sgtbx {
       MatrixLite::transpose(M, rc, rr);
     }
 
+    MatrixLite::transpose(Q, mc, mc);
     return rr;
   }
 

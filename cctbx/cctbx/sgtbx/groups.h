@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -214,6 +215,8 @@ namespace sgtbx {
       //! Order of the space-group = nLTr() * fInv() * nSMx().
       inline int OrderZ() const { return m_LTr.nVects() * m_fInv * m_nSMx; }
 
+      //! Access to the list of lattice translation vectors.
+      inline const TrVec& LTr(int i) const { return m_LTr[i]; }
       //! Access to the list of representative Seitz matrices.
       inline RTMx& operator[](int i) { return m_SMx[i]; }
       //! Access to the list of representative Seitz matrices.

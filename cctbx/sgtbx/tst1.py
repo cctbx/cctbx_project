@@ -24,10 +24,21 @@ print mi.isValid()
 print mi.as_xyz()
 m = sgtbx.RTMx("-x,-y,z")
 print (m * m).as_xyz()
+m = sgtbx.RTMx("y+z-1/3,x+z-1/3,x+y", "", 2, 3)
+print m
+print m.inverse()
+assert (m * m.inverse()).isUnit()
+assert (m.multiply(m.inverse())).isUnit()
+mi = m.inverse_with_cancel()
+print mi
+mmi = m.multiply(mi)
+print mmi
+assert mmi.isUnit()
 
-sgo = sgtbx.SgOps("P 3")
+sgo = sgtbx.SgOps("P 61")
 for i in xrange(sgo.OrderZ()):
   print sgo(i).as_xyz()
+  print sgo(i).cancel().TBF()
 sgo.makeTidy()
 for i in xrange(sgo.OrderZ()):
   print sgo(i).as_xyz()

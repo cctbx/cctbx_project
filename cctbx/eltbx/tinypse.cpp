@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -170,7 +171,7 @@ namespace eltbx {
          m_RawEntry++) {
       if (m_RawEntry->Z == Z) return;
     }
-    throw eltbx::error("Atomic number out of range.");
+    throw eltbx::error_index("Atomic number out of range.");
   }
 
 } // namespace eltbx

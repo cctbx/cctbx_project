@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -62,15 +63,20 @@ namespace { // Helper functions in anonymous namespace.
     return G;
   }
 
-  bool approx_equal(double a, double b, double tolerance = 1.e-6) {
-    if (a == b) return true;
-    if (a == -b) return false;
-    double n = a - b;
-    double d = a + b;
-    if (n < 0.) n = -n;
-    if (d < 0.) d = -d;
-    if (n < d * tolerance) return true;
+  bool approx_equal(double a, double b, double scaled_tolerance) {
+    double diff = a - b;
+    if (diff < 0.) diff = -diff;
+    if (diff < scaled_tolerance) return true;
     return false;
+  }
+
+  bool isSymmetric(const Mx33& M, double tolerance = 1.e-6)
+  {
+    double maxelem = M[0];
+    for(int i=1;i<9;i++) if (maxelem < M[i]) maxelem = M[i];
+    return    approx_equal(M[1], M[3], maxelem * tolerance)
+           && approx_equal(M[2], M[6], maxelem * tolerance)
+           && approx_equal(M[5], M[7], maxelem * tolerance);
   }
 }
 
@@ -153,6 +159,21 @@ namespace uctbx {
     R_G = ConstructMetricalMatrix(R_Len, R_cosAng);
   }
 
+  void UnitCell::SetLongestVector2()
+  {
+    LongestVector2 = 0.;
+    int Corner[3];
+    for (Corner[0] = 0; Corner[0] <= 1; Corner[0]++)
+    for (Corner[1] = 0; Corner[1] <= 1; Corner[1]++)
+    for (Corner[2] = 0; Corner[2] <= 1; Corner[2]++) {
+      Vec3 Frac;
+      for(int i=0;i<3;i++) Frac[i] = Corner[i];
+      Vec3 Cart = orthogonalize(Frac);
+      double Cart2 = Cart * Cart;
+      if (LongestVector2 < Cart2) LongestVector2 = Cart2;
+    }
+  }
+
   void UnitCell::Initialize()
   {
     int i;
@@ -169,6 +190,7 @@ namespace uctbx {
     SetReciprocal();
     SetMetricalMatrices();
     SetOrthAndFracMatrix();
+    SetLongestVector2();
   }
 
   UnitCell::UnitCell(const uc_params& ucp) {
@@ -183,10 +205,7 @@ namespace uctbx {
     for (int i = 0; i < 9; i += 4) {
       if (MetricalMatrix[i] <= 0.) throw corrupt_metrical_matrix;
     }
-    if (   !approx_equal(MetricalMatrix[1], MetricalMatrix[3])
-        || !approx_equal(MetricalMatrix[2], MetricalMatrix[6])
-        || !approx_equal(MetricalMatrix[5], MetricalMatrix[7]))
-      throw corrupt_metrical_matrix;
+    if (!isSymmetric(MetricalMatrix)) throw corrupt_metrical_matrix;
     Len[0] = std::sqrt(MetricalMatrix[0]);
     Len[1] = std::sqrt(MetricalMatrix[4]);
     Len[2] = std::sqrt(MetricalMatrix[8]);

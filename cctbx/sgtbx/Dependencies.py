@@ -25,6 +25,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sgtbx/coordinates.cpp",
       "sgtbx/type.cpp",
       "sgtbx/normalizers.cpp",
+      "sgtbx/wyckoff.cpp",
       "sgtbx/sgtbxmodule.cpp",
       "sgtbx/sgtbxdriver.cpp",
       "sgtbx/symbols.py",
@@ -37,6 +38,9 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sgtbx/tst5.py",
       "sgtbx/tst6.py",
       "sgtbx/tst7.py",
+      "sgtbx/tst8.py",
+      "sgtbx/tst9.py",
+      "sgtbx/tst10.py",
     )
 
     lib = (
@@ -56,6 +60,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "coordinates",
       "type",
       "normalizers",
+      "wyckoff",
     )
 
     self.libraries = {

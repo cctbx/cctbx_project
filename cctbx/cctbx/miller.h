@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -90,6 +91,14 @@ namespace Miller {
       }
       //@}
   };
+
+  //! Multiplication of Miller indices and fractional coordiantes.
+  inline double
+  operator*(const Index& lhs, const MatrixLite::dtype::Vec3& rhs) {
+    double result = 0.;
+    for(int i=0;i<3;i++) result += lhs[i] * rhs[i];
+    return result;
+  }
 
   //! Definition of fast comparison for use in, e.g., std::map<Miller::Index>.
   class hashCompare {

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Created: 24-Apr-2001 (R.W. Grosse-Kunstleve)
  */
@@ -591,7 +592,7 @@ namespace sgtbx {
             xp[i] = Pb[i] / d;
           }
         }
-        MatrixLite::multiply<int>(xp, Q, 1, nc, nc, x);
+        MatrixLite::multiply<int>(Q, xp, nc, nc, 1, x);
       }
 
       return true;
