@@ -10,19 +10,50 @@
 namespace iotbx { namespace mtz {
 namespace {
 
-  struct array_group_wrappers
+  template <typename DataType>
+  struct data_group_wrappers
   {
-    typedef array_group w_t;
+    typedef data_group<DataType> w_t;
+
+    static void
+    wrap(const char* python_name)
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>(python_name, no_init)
+        .add_property("indices", make_getter(&w_t::indices, rbv()))
+        .add_property("data", make_getter(&w_t::data, rbv()))
+      ;
+    }
+  };
+
+  struct observations_group_wrappers
+  {
+    typedef observations_group w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("array_group", no_init)
+      class_<w_t, bases<data_group<double> > >("observations_group", no_init)
+        .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
+      ;
+    }
+  };
+
+  struct complex_group_wrappers
+  {
+    typedef complex_group w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("complex_group", no_init)
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
-        .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
       ;
     }
   };
@@ -53,30 +84,39 @@ namespace {
         .def("n_active_crystals", &w_t::n_active_crystals)
         .def("crystals", &w_t::crystals)
         .def("lookup_column", &w_t::lookup_column, (arg_("label")))
-        .def("valid_indices", &w_t::valid_indices, (arg_("column_label")))
-        .def("valid_values", &w_t::valid_values, (arg_("column_label")))
-        .def("valid_integers", &w_t::valid_integers, (arg_("column_label")))
-        .def("valid_indices_anomalous", &w_t::valid_indices_anomalous, (
+        .def("extract_integers", &w_t::extract_integers, (
+          (arg_("column_label"))))
+        .def("extract_reals", &w_t::extract_reals, (
+          (arg_("column_label"))))
+        .def("extract_reals_anomalous", &w_t::extract_reals_anomalous, (
           arg_("column_label_plus"), arg_("column_label_minus")))
-        .def("valid_values_anomalous", &w_t::valid_values_anomalous, (
-          arg_("column_label_plus"), arg_("column_label_minus")))
-        .def("valid_complex", &w_t::valid_complex, (
-          arg_("column_label_ampl"), arg_("column_label_phi")))
-        .def("valid_complex_anomalous", &w_t::valid_complex_anomalous, (
-          arg_("column_label_ampl_plus"),
-          arg_("column_label_phi_plus"),
-          arg_("column_label_ampl_minus"),
-          arg_("column_label_phi_minus")))
-        .def("valid_delta_anomalous", &w_t::valid_delta_anomalous, (
-          arg_("column_label_f_data"),
-          arg_("column_label_f_sigmas"),
-          arg_("column_label_d_data"),
-          arg_("column_label_d_sigmas")))
-        .def("valid_hl", &w_t::valid_hl, (
+        .def("extract_hls", &w_t::extract_hls, (
           arg_("column_label_a"),
           arg_("column_label_b"),
           arg_("column_label_c"),
           arg_("column_label_d")))
+        .def("extract_observations", &w_t::extract_observations, (
+          arg_("column_label_data"),
+          arg_("column_label_sigmas")))
+        .def("extract_observations_anomalous",
+          &w_t::extract_observations_anomalous, (
+            arg_("column_label_data_plus"),
+            arg_("column_label_sigmas_plus"),
+            arg_("column_label_data_minus"),
+            arg_("column_label_sigmas_minus")))
+        .def("extract_delta_anomalous", &w_t::extract_delta_anomalous, (
+          arg_("column_label_f_data"),
+          arg_("column_label_f_sigmas"),
+          arg_("column_label_d_data"),
+          arg_("column_label_d_sigmas")))
+        .def("extract_complex", &w_t::extract_complex, (
+          arg_("column_label_ampl"),
+          arg_("column_label_phi")))
+        .def("extract_complex_anomalous", &w_t::extract_complex_anomalous, (
+          arg_("column_label_ampl_plus"),
+          arg_("column_label_phi_plus"),
+          arg_("column_label_ampl_minus"),
+          arg_("column_label_phi_minus")))
       ;
     }
   };
@@ -86,7 +126,11 @@ namespace {
   {
     using namespace boost::python;
     def("ccp4_liberr_verbosity", ccp4_liberr_verbosity, (arg_("level")));
-    array_group_wrappers::wrap();
+    data_group_wrappers<int>::wrap("integer_group");
+    data_group_wrappers<double>::wrap("real_group");
+    data_group_wrappers<cctbx::hendrickson_lattman<> >::wrap("hl_group");
+    observations_group_wrappers::wrap();
+    complex_group_wrappers::wrap();
     object_wrappers::wrap();
   }
 

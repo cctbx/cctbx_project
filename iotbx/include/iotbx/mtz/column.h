@@ -70,53 +70,13 @@ namespace iotbx { namespace mtz {
       int
       int_datum(int i) const { return static_cast<int>(float_datum(i)); }
 
-      af::shared<cctbx::miller::index<> >
-      valid_indices() const
+      int
+      n_valid_values() const
       {
-        int n_reflections = mtz_object().n_reflections();
-        af::shared<cctbx::miller::index<> >
-          result((af::reserve(n_reflections)));
-        column h(lookup_other("H"));
-        column k(lookup_other("K"));
-        column l(lookup_other("L"));
-        for(int i=0;i<n_reflections;i++) {
-          if (!is_ccp4_nan(i)) {
-            result.push_back(cctbx::miller::index<>(
-              h.int_datum(i), k.int_datum(i), l.int_datum(i)));
-          }
-        }
-        return result;
-      }
-
-      af::shared<double>
-      valid_values()
-      {
-        int n_reflections = mtz_object().n_reflections();
-        af::shared<double> result((af::reserve(n_reflections)));
-        for(int i=0;i<n_reflections;i++) {
-          if (!is_ccp4_nan(i)) {
-            result.push_back(float_datum(i));
-          }
-        }
-        return result;
-      }
-
-      af::shared<int>
-      valid_integers()
-      {
-        if (   strcmp(type(), "H") != 0
-            && strcmp(type(), "B") != 0
-            && strcmp(type(), "Y") != 0
-            && strcmp(type(), "I") != 0) {
-          throw cctbx::error(
-            std::string("Not a MTZ integer column: ") + label());
-        }
-        int n_reflections = mtz_object().n_reflections();
-        af::shared<int> result((af::reserve(n_reflections)));
-        for(int i=0;i<n_reflections;i++) {
-          if (!is_ccp4_nan(i)) {
-            result.push_back(int_datum(i));
-          }
+        int result = 0;
+        int n_refl = mtz_object().n_reflections();
+        for(int i=0;i<n_refl;i++) {
+          if (!is_ccp4_nan(i)) result += 1;
         }
         return result;
       }
@@ -124,6 +84,26 @@ namespace iotbx { namespace mtz {
     protected:
       dataset mtz_dataset_;
       int i_column_;
+  };
+
+  class hkl_columns : public af::tiny<column, 3>
+  {
+    public:
+      hkl_columns() {}
+
+      hkl_columns(column const& h, column const& k, column const& l)
+      :
+        af::tiny<column, 3>(h, k, l)
+      {}
+
+      cctbx::miller::index<>
+      get_miller_index(int i) const
+      {
+        return cctbx::miller::index<>(
+          this->elems[0].int_datum(i),
+          this->elems[1].int_datum(i),
+          this->elems[2].int_datum(i));
+      }
   };
 
   inline
@@ -157,70 +137,13 @@ namespace iotbx { namespace mtz {
   }
 
   inline
-  af::shared<cctbx::miller::index<> >
-  object::valid_indices(const char* column_label) const
+  hkl_columns
+  object::lookup_hkl_columns() const
   {
-    return lookup_column(column_label).valid_indices();
-  }
-
-  inline
-  af::shared<double>
-  object::valid_values(const char* column_label) const
-  {
-    return lookup_column(column_label).valid_values();
-  }
-
-  inline
-  af::shared<int>
-  object::valid_integers(const char* column_label) const
-  {
-    return lookup_column(column_label).valid_integers();
-  }
-
-  inline
-  af::shared<cctbx::miller::index<> >
-  object::valid_indices_anomalous(
-    const char* column_label_plus,
-    const char* column_label_minus) const
-  {
-    column h(lookup_column("H"));
-    column k(lookup_column("K"));
-    column l(lookup_column("L"));
-    column values_plus(lookup_column(column_label_plus));
-    column values_minus(lookup_column(column_label_minus));
-    af::shared<cctbx::miller::index<> >
-      result((af::reserve(2*n_reflections())));
-    for(int i=0;i<n_reflections();i++) {
-      if (!values_plus.is_ccp4_nan(i)) {
-        result.push_back(cctbx::miller::index<>(
-          h.int_datum(i), k.int_datum(i), l.int_datum(i)));
-      }
-      if (!values_minus.is_ccp4_nan(i)) {
-        result.push_back(cctbx::miller::index<>(
-          -h.int_datum(i), -k.int_datum(i), -l.int_datum(i)));
-      }
-    }
-    return result;
-  }
-
-  inline
-  af::shared<double>
-  object::valid_values_anomalous(
-    const char* column_label_plus,
-    const char* column_label_minus) const
-  {
-    column values_plus(lookup_column(column_label_plus));
-    column values_minus(lookup_column(column_label_minus));
-    af::shared<double> result((af::reserve(2*n_reflections())));
-    for(int i=0;i<n_reflections();i++) {
-      if (!values_plus.is_ccp4_nan(i)) {
-        result.push_back(values_plus.float_datum(i));
-      }
-      if (!values_minus.is_ccp4_nan(i)) {
-        result.push_back(values_minus.float_datum(i));
-      }
-    }
-    return result;
+    return hkl_columns(
+      lookup_column("H"),
+      lookup_column("K"),
+      lookup_column("L"));
   }
 
   namespace detail {
@@ -233,59 +156,164 @@ namespace iotbx { namespace mtz {
   }
 
   inline
-  af::shared<std::complex<double> >
-  object::valid_complex(
-    const char* column_label_ampl,
-    const char* column_label_phi)
+  integer_group
+  object::extract_integers(
+    const char* column_label)
   {
-    column values_ampl(lookup_column(column_label_ampl));
-    column values_phi(lookup_column(column_label_phi));
-    af::shared<std::complex<double> > result((af::reserve(n_reflections())));
-    for(int i=0;i<n_reflections();i++) {
-      if (values_ampl.is_ccp4_nan(i) != values_phi.is_ccp4_nan(i)) {
-        throw cctbx::error(std::string(
-          "Unexpected NAN while extracting complex array from columns: ")
-          + column_label_ampl + ", " + column_label_phi);
-      }
-      if (!values_ampl.is_ccp4_nan(i)) {
-        result.push_back(detail::polar_deg(
-          values_ampl.float_datum(i), values_phi.float_datum(i)));
+    int n_refl = n_reflections();
+    integer_group result(n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data(lookup_column(column_label));
+    for(int i=0;i<n_refl;i++) {
+      if (!data.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(data.int_datum(i));
       }
     }
     return result;
   }
 
   inline
-  af::shared<std::complex<double> >
-  object::valid_complex_anomalous(
-    const char* column_label_ampl_plus,
-    const char* column_label_phi_plus,
-    const char* column_label_ampl_minus,
-    const char* column_label_phi_minus)
+  real_group
+  object::extract_reals(
+    const char* column_label)
   {
-    column values_ampl_plus(lookup_column(column_label_ampl_plus));
-    column values_phi_plus(lookup_column(column_label_phi_plus));
-    column values_ampl_minus(lookup_column(column_label_ampl_minus));
-    column values_phi_minus(lookup_column(column_label_phi_minus));
-    af::shared<std::complex<double> > result((af::reserve(2*n_reflections())));
-    for(int i=0;i<n_reflections();i++) {
-      if (values_ampl_plus.is_ccp4_nan(i) != values_phi_plus.is_ccp4_nan(i)) {
+    int n_refl = n_reflections();
+    real_group result(n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data(lookup_column(column_label));
+    for(int i=0;i<n_refl;i++) {
+      if (!data.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(data.float_datum(i));
+      }
+    }
+    return result;
+  }
+
+  inline
+  real_group
+  object::extract_reals_anomalous(
+    const char* column_label_plus,
+    const char* column_label_minus)
+  {
+    int n_refl = n_reflections();
+    real_group result(2*n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data_plus(lookup_column(column_label_plus));
+    column data_minus(lookup_column(column_label_minus));
+    for(int i=0;i<n_refl;i++) {
+      if (!data_plus.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(data_plus.float_datum(i));
+      }
+      if (!data_minus.is_ccp4_nan(i)) {
+        result.indices.push_back(-hkl.get_miller_index(i));
+        result.data.push_back(data_minus.float_datum(i));
+      }
+    }
+    return result;
+  }
+
+  inline
+  hl_group
+  object::extract_hls(
+    const char* column_label_a,
+    const char* column_label_b,
+    const char* column_label_c,
+    const char* column_label_d)
+  {
+    int n_refl = n_reflections();
+    hl_group result(n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data_a(lookup_column(column_label_a));
+    column data_b(lookup_column(column_label_b));
+    column data_c(lookup_column(column_label_c));
+    column data_d(lookup_column(column_label_d));
+    for(int i=0;i<n_refl;i++) {
+      if (   data_b.is_ccp4_nan(i) != data_a.is_ccp4_nan(i)
+          || data_c.is_ccp4_nan(i) != data_a.is_ccp4_nan(i)
+          || data_d.is_ccp4_nan(i) != data_a.is_ccp4_nan(i)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
-          + column_label_ampl_plus + ", " + column_label_phi_plus);
+          + column_label_a + ", "
+          + column_label_b + ", "
+          + column_label_c + ", "
+          + column_label_d);
       }
-      if (!values_ampl_plus.is_ccp4_nan(i)) {
-        result.push_back(detail::polar_deg(
-          values_ampl_plus.float_datum(i), values_phi_plus.float_datum(i)));
+      if (!data_a.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(cctbx::hendrickson_lattman<>(
+          data_a.float_datum(i),
+          data_b.float_datum(i),
+          data_c.float_datum(i),
+          data_d.float_datum(i)));
       }
-      if (values_ampl_minus.is_ccp4_nan(i) != values_phi_minus.is_ccp4_nan(i)){
+    }
+    return result;
+  }
+
+  inline
+  observations_group
+  object::extract_observations(
+    const char* column_label_data,
+    const char* column_label_sigmas)
+  {
+    int n_refl = n_reflections();
+    observations_group result(n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data(lookup_column(column_label_data));
+    column sigmas(lookup_column(column_label_sigmas));
+    for(int i=0;i<n_refl;i++) {
+      if (data.is_ccp4_nan(i) != sigmas.is_ccp4_nan(i)) {
         throw cctbx::error(std::string(
-          "Unexpected NAN while extracting complex array from columns: ")
-          + column_label_ampl_minus + ", " + column_label_phi_minus);
+          "Unexpected NAN while extracting observation array from columns: ")
+          + column_label_data + ", " + column_label_sigmas);
       }
-      if (!values_ampl_minus.is_ccp4_nan(i)) {
-        result.push_back(detail::polar_deg(
-          values_ampl_minus.float_datum(i), values_phi_minus.float_datum(i)));
+      if (!data.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(data.float_datum(i));
+        result.sigmas.push_back(sigmas.float_datum(i));
+      }
+    }
+    return result;
+  }
+
+  inline
+  observations_group
+  object::extract_observations_anomalous(
+    const char* column_label_data_plus,
+    const char* column_label_sigmas_plus,
+    const char* column_label_data_minus,
+    const char* column_label_sigmas_minus)
+  {
+    int n_refl = n_reflections();
+    observations_group result(2*n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data_plus(lookup_column(column_label_data_plus));
+    column sigmas_plus(lookup_column(column_label_sigmas_plus));
+    column data_minus(lookup_column(column_label_data_minus));
+    column sigmas_minus(lookup_column(column_label_sigmas_minus));
+    for(int i=0;i<n_refl;i++) {
+      if (data_plus.is_ccp4_nan(i) != sigmas_plus.is_ccp4_nan(i)) {
+        throw cctbx::error(std::string(
+          "Unexpected NAN while extracting observation array from columns: ")
+          + column_label_data_plus + ", " + column_label_sigmas_plus);
+      }
+      if (!data_plus.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(data_plus.float_datum(i));
+        result.sigmas.push_back(sigmas_plus.float_datum(i));
+      }
+      if (data_minus.is_ccp4_nan(i) != sigmas_minus.is_ccp4_nan(i)) {
+        throw cctbx::error(std::string(
+          "Unexpected NAN while extracting observation array from columns: ")
+          + column_label_data_minus + ", " + column_label_sigmas_minus);
+      }
+      if (!data_minus.is_ccp4_nan(i)) {
+        result.indices.push_back(-hkl.get_miller_index(i));
+        result.data.push_back(data_minus.float_datum(i));
+        result.sigmas.push_back(sigmas_minus.float_datum(i));
       }
     }
     return result;
@@ -298,25 +326,24 @@ namespace iotbx { namespace mtz {
         SIGF(-) = SIGF(+)
    */
   inline
-  array_group
-  object::valid_delta_anomalous(
+  observations_group
+  object::extract_delta_anomalous(
     const char* column_label_f_data,
     const char* column_label_f_sigmas,
     const char* column_label_d_data,
     const char* column_label_d_sigmas)
   {
-    column h(lookup_column("H"));
-    column k(lookup_column("K"));
-    column l(lookup_column("L"));
-    column values_fd(lookup_column(column_label_f_data));
-    column values_fs(lookup_column(column_label_f_sigmas));
-    column values_dd(lookup_column(column_label_d_data));
-    column values_ds(lookup_column(column_label_d_sigmas));
-    array_group result(2*n_reflections());
-    for(int i=0;i<n_reflections();i++) {
-      if (   values_fs.is_ccp4_nan(i) != values_fd.is_ccp4_nan(i)
-          || values_ds.is_ccp4_nan(i) != values_dd.is_ccp4_nan(i)
-          || (values_fd.is_ccp4_nan(i) && !values_dd.is_ccp4_nan(i))) {
+    int n_refl = n_reflections();
+    observations_group result(2*n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column f_data(lookup_column(column_label_f_data));
+    column f_sigmas(lookup_column(column_label_f_sigmas));
+    column d_data(lookup_column(column_label_d_data));
+    column d_sigmas(lookup_column(column_label_d_sigmas));
+    for(int i=0;i<n_refl;i++) {
+      if (   f_sigmas.is_ccp4_nan(i) != f_data.is_ccp4_nan(i)
+          || d_sigmas.is_ccp4_nan(i) != d_data.is_ccp4_nan(i)
+          || (f_data.is_ccp4_nan(i) && !d_data.is_ccp4_nan(i))) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
           + column_label_f_data   + ", "
@@ -324,21 +351,19 @@ namespace iotbx { namespace mtz {
           + column_label_d_data   + ", "
           + column_label_d_sigmas);
       }
-      if (!values_fd.is_ccp4_nan(i)) {
-        result.indices.push_back(cctbx::miller::index<>(
-           h.int_datum(i),  k.int_datum(i),  l.int_datum(i)));
-        double fd = values_fd.float_datum(i);
-        double fs = values_fs.float_datum(i);
-        if (values_dd.is_ccp4_nan(i)) {
+      if (!f_data.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        double fd = f_data.float_datum(i);
+        double fs = f_sigmas.float_datum(i);
+        if (d_data.is_ccp4_nan(i)) {
           result.data.push_back(fd);
           result.sigmas.push_back(fs);
         }
         else {
-          double ddh = values_dd.float_datum(i) * .5;
-          double dsh = values_ds.float_datum(i) * .5;
+          double ddh = d_data.float_datum(i) * .5;
+          double dsh = d_sigmas.float_datum(i) * .5;
           double s = std::sqrt(fs*fs + dsh*dsh);
-          result.indices.push_back(cctbx::miller::index<>(
-            -h.int_datum(i), -k.int_datum(i), -l.int_datum(i)));
+          result.indices.push_back(-hkl.get_miller_index(i));
           result.data.push_back(fd + ddh);
           result.data.push_back(fd - ddh);
           result.sigmas.push_back(std::sqrt(s));
@@ -350,36 +375,66 @@ namespace iotbx { namespace mtz {
   }
 
   inline
-  af::shared<cctbx::hendrickson_lattman<> >
-  object::valid_hl(
-    const char* column_label_a,
-    const char* column_label_b,
-    const char* column_label_c,
-    const char* column_label_d)
+  complex_group
+  object::extract_complex(
+    const char* column_label_ampl,
+    const char* column_label_phi)
   {
-    column values_a(lookup_column(column_label_a));
-    column values_b(lookup_column(column_label_b));
-    column values_c(lookup_column(column_label_c));
-    column values_d(lookup_column(column_label_d));
-    af::shared<cctbx::hendrickson_lattman<> >
-      result((af::reserve(n_reflections())));
-    for(int i=0;i<n_reflections();i++) {
-      if (   values_b.is_ccp4_nan(i) != values_a.is_ccp4_nan(i)
-          || values_c.is_ccp4_nan(i) != values_a.is_ccp4_nan(i)
-          || values_d.is_ccp4_nan(i) != values_a.is_ccp4_nan(i)) {
+    int n_refl = n_reflections();
+    complex_group result(n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data_ampl(lookup_column(column_label_ampl));
+    column data_phi(lookup_column(column_label_phi));
+    for(int i=0;i<n_refl;i++) {
+      if (data_ampl.is_ccp4_nan(i) != data_phi.is_ccp4_nan(i)) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
-          + column_label_a + ", "
-          + column_label_b + ", "
-          + column_label_c + ", "
-          + column_label_d);
+          + column_label_ampl + ", " + column_label_phi);
       }
-      if (!values_a.is_ccp4_nan(i)) {
-        result.push_back(cctbx::hendrickson_lattman<>(
-          values_a.float_datum(i),
-          values_b.float_datum(i),
-          values_c.float_datum(i),
-          values_d.float_datum(i)));
+      if (!data_ampl.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(detail::polar_deg(
+          data_ampl.float_datum(i), data_phi.float_datum(i)));
+      }
+    }
+    return result;
+  }
+
+  inline
+  complex_group
+  object::extract_complex_anomalous(
+    const char* column_label_ampl_plus,
+    const char* column_label_phi_plus,
+    const char* column_label_ampl_minus,
+    const char* column_label_phi_minus)
+  {
+    int n_refl = n_reflections();
+    complex_group result(n_refl);
+    hkl_columns hkl = lookup_hkl_columns();
+    column data_ampl_plus(lookup_column(column_label_ampl_plus));
+    column data_phi_plus(lookup_column(column_label_phi_plus));
+    column data_ampl_minus(lookup_column(column_label_ampl_minus));
+    column data_phi_minus(lookup_column(column_label_phi_minus));
+    for(int i=0;i<n_refl;i++) {
+      if (data_ampl_plus.is_ccp4_nan(i) != data_phi_plus.is_ccp4_nan(i)) {
+        throw cctbx::error(std::string(
+          "Unexpected NAN while extracting complex array from columns: ")
+          + column_label_ampl_plus + ", " + column_label_phi_plus);
+      }
+      if (!data_ampl_plus.is_ccp4_nan(i)) {
+        result.indices.push_back(hkl.get_miller_index(i));
+        result.data.push_back(detail::polar_deg(
+          data_ampl_plus.float_datum(i), data_phi_plus.float_datum(i)));
+      }
+      if (data_ampl_minus.is_ccp4_nan(i) != data_phi_minus.is_ccp4_nan(i)) {
+        throw cctbx::error(std::string(
+          "Unexpected NAN while extracting complex array from columns: ")
+          + column_label_ampl_minus + ", " + column_label_phi_minus);
+      }
+      if (!data_ampl_minus.is_ccp4_nan(i)) {
+        result.indices.push_back(-hkl.get_miller_index(i));
+        result.data.push_back(detail::polar_deg(
+          data_ampl_minus.float_datum(i), data_phi_minus.float_datum(i)));
       }
     }
     return result;

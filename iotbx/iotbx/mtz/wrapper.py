@@ -70,14 +70,14 @@ class _object(boost.python.injector, ext.object):
         print >> out, "    Id:", dataset.id()
         print >> out, "    Wavelength: %.6g" % dataset.wavelength()
         print >> out, "    Number of columns:", dataset.n_columns()
-        print >> out, "    Column number, label, observations, type:"
+        print >> out, "    Column number, label, number of valid values, type:"
         for i_column,column in enumerate(dataset.columns()):
-          n_observations = column.valid_indices().size()
+          n_valid_values = column.n_valid_values()
           print >> out, "      %3d, %s, %d/%d=%.2f%%, %s: %s" % (
             i_column+1,
             column.label(),
-            n_observations,
+            n_valid_values,
             self.n_reflections(),
-            100.*n_observations/self.n_reflections(),
+            100.*n_valid_values/self.n_reflections(),
             column.type(),
             column_type_legend[column.type()])

@@ -23,23 +23,55 @@ namespace iotbx { namespace mtz {
     return CCP4::ccp4_utils_isnan((union float_uint_uchar *) &datum);
   }
 
-  struct array_group
+  template <typename DataType>
+  struct data_group
   {
-    array_group() {}
+    data_group() {}
 
-    array_group(std::size_t size)
+    data_group(std::size_t size)
     {
       indices.reserve(size);
       data.reserve(size);
-      sigmas.reserve(size);
     }
 
     af::shared<cctbx::miller::index<> > indices;
-    af::shared<double> data;
+    af::shared<DataType> data;
+  };
+
+  typedef data_group<int> integer_group;
+  typedef data_group<double> real_group;
+  typedef data_group<cctbx::hendrickson_lattman<> > hl_group;
+
+  struct observations_group : real_group
+  {
+    observations_group() {}
+
+    observations_group(std::size_t size)
+    :
+      real_group(size)
+    {
+      sigmas.reserve(size);
+    }
+
     af::shared<double> sigmas;
   };
 
+  struct complex_group
+  {
+    complex_group() {}
+
+    complex_group(std::size_t size)
+    {
+      indices.reserve(size);
+      data.reserve(size);
+    }
+
+    af::shared<cctbx::miller::index<> > indices;
+    af::shared<std::complex<double> > data;
+  };
+
   class column;
+  class hkl_columns;
   class dataset;
   class crystal;
 
@@ -156,54 +188,68 @@ namespace iotbx { namespace mtz {
       lookup_column(const char* label) const;
 
       inline
-      af::shared<cctbx::miller::index<> >
-      valid_indices(const char* column_label) const;
+      hkl_columns
+      lookup_hkl_columns() const;
 
       inline
-      af::shared<double>
-      valid_values(const char* column_label) const;
+      integer_group
+      extract_integers(
+        const char* column_label);
 
       inline
-      af::shared<int>
-      valid_integers(const char* column_label) const;
+      real_group
+      extract_reals(
+        const char* column_label);
 
       inline
-      af::shared<cctbx::miller::index<> >
-      valid_indices_anomalous(
+      real_group
+      extract_reals_anomalous(
         const char* column_label_plus,
-        const char* column_label_minus) const;
+        const char* column_label_minus);
 
       inline
-      af::shared<double>
-      valid_values_anomalous(
-        const char* column_label_plus,
-        const char* column_label_minus) const;
+      hl_group
+      extract_hls(
+        const char* column_label_a,
+        const char* column_label_b,
+        const char* column_label_c,
+        const char* column_label_d);
 
-      af::shared<std::complex<double> >
-      valid_complex(
-        const char* column_label_ampl,
-        const char* column_label_phi);
+      inline
+      observations_group
+      extract_observations(
+        const char* column_label_data,
+        const char* column_label_sigmas);
 
-      af::shared<std::complex<double> >
-      valid_complex_anomalous(
-        const char* column_label_ampl_plus,
-        const char* column_label_phi_plus,
-        const char* column_label_ampl_minus,
-        const char* column_label_phi_minus);
+      inline
+      observations_group
+      extract_observations_anomalous(
+        const char* column_label_data_plus,
+        const char* column_label_sigmas_plus,
+        const char* column_label_data_minus,
+        const char* column_label_sigmas_minus);
 
-      array_group
-      valid_delta_anomalous(
+      inline
+      observations_group
+      extract_delta_anomalous(
         const char* column_label_f_data,
         const char* column_label_f_sigmas,
         const char* column_label_d_data,
         const char* column_label_d_sigmas);
 
-      af::shared<cctbx::hendrickson_lattman<> >
-      valid_hl(
-        const char* column_label_a,
-        const char* column_label_b,
-        const char* column_label_c,
-        const char* column_label_d);
+      inline
+      complex_group
+      extract_complex(
+        const char* column_label_ampl,
+        const char* column_label_phi);
+
+      inline
+      complex_group
+      extract_complex_anomalous(
+        const char* column_label_ampl_plus,
+        const char* column_label_phi_plus,
+        const char* column_label_ampl_minus,
+        const char* column_label_phi_minus);
 
     protected:
       boost::shared_ptr<CMtz::MTZ> ptr_;
