@@ -451,6 +451,16 @@ namespace {
     return StdASU.LaueGroupCode().Label();
   }
 
+  Miller::Index
+  MillerIndexGenerator_getitem(MillerIndexGenerator& MIG, std::size_t) {
+    Miller::Index result = MIG.next();
+    if (result.is000()) {
+      PyErr_SetString(PyExc_IndexError, "End of list.");
+      throw python::error_already_set();
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
 namespace boost { namespace python {
@@ -913,6 +923,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
                                             const SgOps&,
                                             double>());
     py_MillerIndexGenerator.def(&MillerIndexGenerator::next, "next");
+    py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");
 
     sgtbx::sanity_check();
   }

@@ -94,13 +94,23 @@ namespace eltbx {
       /*! stol2 = sin-theta-over-lambda-squared: (sin(theta)/lambda)^2<br>
           See also: uctbx::UnitCell::Q()
        */
-      double operator()(double stol2)
+      double stol2(double stol2_value) const
       {
         double sf = c();
         for (int i = 0; i < n_ab(); i++)
-          sf += a(i) * std::exp(-b(i) * stol2);
+          sf += a(i) * std::exp(-b(i) * stol2_value);
         return sf;
       }
+      //! Return the analytical approximation to the scattering factor.
+      /*! See also: stol2(), uctbx::UnitCell::Q()
+       */
+      inline double stol(double stol_value) const {
+        return stol2(stol_value * stol_value);
+      }
+      //! Return the analytical approximation to the scattering factor.
+      /*! See also: stol2(), uctbx::UnitCell::Q()
+       */
+      inline double Q(double Q_value) const { return stol2(Q_value / 4.); }
     private:
       const char *m_Table;
       const detail::CAASF_Raw<N>* m_Entry;

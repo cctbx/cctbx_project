@@ -47,11 +47,8 @@ def hkl(sgo):
 def BuildIndices(SgOps):
   import uctbx
   UnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  MG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, 3)
-  while 1:
-    H = MG.next()
-    if (H == (0, 0, 0)): break
-    print H
+  MIG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, 3)
+  for H in MIG: print H
 
 if (__name__ == '__main__'):
   sgo = parse(sys.argv[1])
