@@ -83,7 +83,7 @@ else:
   if (env_etc.compiler == "tru64_cxx"):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 1
-    cxx = "cxx"# -model ansi"
+    cxx = "cxx -model ansi"
     env_base.Replace(
       CXX=cxx,
       LINK=cxx,
@@ -134,7 +134,7 @@ else:
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "darwin_c++"):
-    env_etc.static_libraries = 0
+    env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     env_base.Replace(
       CXX="c++",
@@ -176,7 +176,7 @@ env_boost_python_ext = env_base.Copy(
   SHLINKFLAGS=env_etc.shlinkflags_bpl,
   SHLIBPREFIX="",
   LIBPATH=["#libtbx"] + env_etc.libpath_python,
-  LIBS=["bpl"] + env_etc.libs_python + env_etc.libm,
+  LIBS=["boost_python"] + env_etc.libs_python + env_etc.libm,
 )
 env_boost_python_ext.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env_boost_python_ext.Replace(SHLIBSUFFIX=env_etc.extension_module_suffix)

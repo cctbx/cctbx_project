@@ -15,9 +15,10 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
-#include <boost/python/module_init.hpp>
+#include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/overloads.hpp>
 
 namespace scitbx { namespace {
 
@@ -154,7 +155,7 @@ namespace scitbx { namespace {
 
 }} // namespace::scitbx::<anonymous>
 
-BOOST_PYTHON_MODULE_INIT(regression_test_ext)
+BOOST_PYTHON_MODULE(regression_test_ext)
 {
   scitbx::init_module();
 }

@@ -14,7 +14,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <scitbx/boost_python/utils.h>
-#include <boost/python/module_init.hpp>
+#include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -155,7 +155,7 @@ namespace scitbx { namespace lbfgs { namespace {
 
 }}} // namespace scitbx::lbfgs::<anonymous>
 
-BOOST_PYTHON_MODULE_INIT(lbfgs)
+BOOST_PYTHON_MODULE(lbfgs)
 {
   scitbx::lbfgs::init_module();
 }

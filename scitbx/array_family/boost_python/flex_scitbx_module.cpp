@@ -10,10 +10,11 @@
 
 #include <scitbx/array_family/flex_grid_accessor.h>
 #include <scitbx/boost_python/utils.h>
-#include <boost/python/module_init.hpp>
+#include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/overloads.hpp>
 #include <scitbx/array_family/boost_python/small_conversions.h>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -110,7 +111,7 @@ namespace {
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
 
-BOOST_PYTHON_MODULE_INIT(flex_scitbx)
+BOOST_PYTHON_MODULE(flex_scitbx)
 {
   scitbx::af::boost_python::init_module();
 }

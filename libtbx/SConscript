@@ -16,12 +16,12 @@ env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
 env.Replace(LINKFLAGS=env_etc.shlinkflags)
 
 jamfile_path = os.path.normpath(os.path.join(
-  os.environ["LIBTBX_BOOST"], "libs/python/Jamfile"))
+  os.environ["LIBTBX_BOOST"], "libs/python/build/Jamfile"))
 jamfile_lines = [
   line.strip() for line in open(str(jamfile_path), "r").readlines()]
 for i in xrange(len(jamfile_lines)):
   line = jamfile_lines[i]
-  if (line == "dll bpl"):
+  if (line == "dll boost_python"):
     assert jamfile_lines[i+1] == ":"
     jamfile_lines = jamfile_lines[i+2:]
     break
@@ -30,10 +30,10 @@ for i in xrange(len(jamfile_lines)):
   line = jamfile_lines[i]
   if (line == ":"): break
   if (line):
-    bpl_dll_sources.append(os.path.join("#boost/libs/python", line))
+    bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
 assert len(bpl_dll_sources) > 0
 
 if (env_etc.static_bpl):
-  env.StaticLibrary(target="bpl", source=bpl_dll_sources)
+  env.StaticLibrary(target="boost_python", source=bpl_dll_sources)
 else:
-  env.SharedLibrary(target="bpl", source=bpl_dll_sources)
+  env.SharedLibrary(target="boost_python", source=bpl_dll_sources)
