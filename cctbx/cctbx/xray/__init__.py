@@ -330,20 +330,28 @@ target_functors = dicts.easy(
 
 class gradient_flags(ext.gradient_flags):
 
-  def __init__(self, site=00000,
+  def __init__(self, site=None,
                      u_iso=None,
                      u_aniso=None,
+                     occupancy=None,
+                     fp=None,
+                     fdp=None,
                      u=None,
-                     occupancy=00000,
-                     fp=00000,
-                     fdp=00000):
+                     default=00000):
     if (u is not None): assert u_iso is None and u_aniso is None
-    if (u is None): u = 00000
+    if (u is None): u = default
+    if (site is None): site = default
     if (u_iso is None): u_iso = u
     if (u_aniso is None): u_aniso = u
+    if (occupancy is None): occupancy = default
+    if (fp is None): fp = default
+    if (fdp is None): fdp = default
     ext.gradient_flags.__init__(self, site, u_iso, u_aniso, occupancy, fp, fdp)
 
 class _gradient_flags(injector, ext.gradient_flags):
+
+  def copy(self):
+    return ext.gradient_flags(self)
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout

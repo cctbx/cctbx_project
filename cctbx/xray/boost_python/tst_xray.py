@@ -44,6 +44,13 @@ def exercise_gradient_flags():
   assert not f.occupancy
   assert f.fp
   assert not f.fdp
+  c = xray.ext.gradient_flags(f)
+  assert c.site
+  assert not c.u_iso
+  assert c.u_aniso
+  assert not c.occupancy
+  assert c.fp
+  assert not c.fdp
   assert not f.all_false()
   assert xray.ext.gradient_flags(
     00000, 00000, 00000, 00000, 00000, 00000).all_false()
