@@ -91,7 +91,7 @@ def write_plots(plots_dir, label, gaussian_fit):
 
 class fit_parameters:
 
-  def __init__(self, max_n_terms=6,
+  def __init__(self, max_n_terms=5,
                      target_powers=[2,4],
                      minimize_using_sigmas=00000,
                      n_repeats_minimization=5,
@@ -114,7 +114,7 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
       print
       break
     n_terms = existing_gaussian.n_terms() + 1
-    fit = find_max_x_multi(
+    best_min = find_max_x_multi(
       null_fit=null_fit,
       existing_gaussian=existing_gaussian,
       target_powers=params.target_powers,
@@ -124,31 +124,107 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
       b_min=params.b_min,
       max_max_error=params.max_max_error,
       n_start_fractions=params.n_start_fractions)
-    if (fit.min is None):
+    if (best_min is None):
       print "Warning: No fit: %s n_terms=%d" % (label, n_terms)
       print
       break
-    if (previous_n_points > fit.min.final_gaussian_fit.table_x().size()):
+    if (previous_n_points > best_min.final_gaussian_fit.table_x().size()):
       print "Warning: previous fit included more sampling points."
-    previous_n_points = fit.min.final_gaussian_fit.table_x().size()
+    previous_n_points = best_min.final_gaussian_fit.table_x().size()
     show_fit_summary(
-      "Best fit", label, fit.min.final_gaussian_fit, fit.max_error)
+      "Best fit", label, best_min.final_gaussian_fit, best_min.max_error)
     show_literature_fits(
       label=label,
       n_terms=n_terms,
       null_fit=null_fit,
-      n_points=fit.min.final_gaussian_fit.table_x().size(),
-      e_other=fit.max_error)
-    fit.min.final_gaussian_fit.show()
-    existing_gaussian = fit.min.final_gaussian_fit
+      n_points=best_min.final_gaussian_fit.table_x().size(),
+      e_other=best_min.max_error)
+    best_min.final_gaussian_fit.show()
+    existing_gaussian = best_min.final_gaussian_fit
     print
     sys.stdout.flush()
     if (plots_dir):
       write_plots(
         plots_dir=plots_dir,
         label=label+"_%d"%n_terms,
-        gaussian_fit=fit.min.final_gaussian_fit)
-    g = fit.min.final_gaussian_fit
+        gaussian_fit=best_min.final_gaussian_fit)
+    g = best_min.final_gaussian_fit
+    results.append(xray_scattering.fitted_gaussian(
+      stol=g.table_x()[-1], gaussian_sum=g))
+  return results
+
+def decremental_fits(label, null_fit, full_fit=None, params=None,
+                     plots_dir=None, verbose=0):
+  if (params is None): params = fit_parameters()
+  results = []
+  last_fit = scitbx.math.gaussian.fit(
+    null_fit.table_x(),
+    null_fit.table_y(),
+    null_fit.table_sigmas(),
+    full_fit)
+  while last_fit.n_terms() > 1:
+    n_terms = last_fit.n_terms() - 1
+    good_min = None
+    good_x = None
+    last_a = list(last_fit.array_of_a())
+    last_b = list(last_fit.array_of_b())
+    for i_del in xrange(last_fit.n_terms()):
+      a_del = last_a[i_del]
+      sel_a = last_a[:i_del] + last_a[i_del+1:]
+      sel_b = last_b[:i_del] + last_b[i_del+1:]
+      for i_add in xrange(n_terms):
+        a = sel_a[:]
+        a[i_add] += a_del
+        start_fit = scitbx.math.gaussian.fit(
+          last_fit.table_x(),
+          last_fit.table_y(),
+          last_fit.table_sigmas(),
+          scitbx.math.gaussian.sum(a, sel_b))
+        while 1:
+          best_min = scitbx.math.gaussian_fit.minimize_multi(
+            start_fit=start_fit,
+            target_powers=params.target_powers,
+            minimize_using_sigmas=params.minimize_using_sigmas,
+            enforce_positive_b_mod_n=params.enforce_positive_b_mod_n,
+            b_min=params.b_min,
+            n_repeats_minimization=params.n_repeats_minimization)
+          if (best_min is None):
+            break
+          if (best_min.max_error <= params.max_max_error):
+            max_x = best_min.final_gaussian_fit.table_x()[-1]
+            if (good_min is None or good_x < max_x
+                or (good_x == max_x
+                    and best_min.max_error > good_min.max_error)):
+              good_min = best_min
+              good_x = max_x
+            break
+          start_fit = scitbx.math.gaussian.fit(
+            start_fit.table_x()[:-1],
+            start_fit.table_y()[:-1],
+            start_fit.table_sigmas()[:-1],
+            best_min.final_gaussian_fit)
+    if (good_min is None):
+      print "%s n_terms=%d: No successful minimization. Aborting." % (
+        label, n_terms)
+      break
+    show_fit_summary(
+      "Best fit", label, good_min.final_gaussian_fit, good_min.max_error)
+    show_literature_fits(
+      label=label,
+      n_terms=n_terms,
+      null_fit=null_fit,
+      n_points=good_min.final_gaussian_fit.table_x().size(),
+      e_other=good_min.max_error)
+    good_min.final_gaussian_fit.show()
+    last_fit = good_min.final_gaussian_fit
+    print
+    sys.stdout.flush()
+    if (plots_dir):
+      write_plots(
+        plots_dir=plots_dir,
+        label=label+"_%d"%n_terms,
+        gaussian_fit=good_min.final_gaussian_fit)
+    g = good_min.final_gaussian_fit
     results.append(xray_scattering.fitted_gaussian(
       stol=g.table_x()[-1], gaussian_sum=g))
   return results
