@@ -16,6 +16,7 @@
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
@@ -102,13 +103,27 @@ namespace scitbx { namespace {
   af::flex_grid<>
   use_const_ref_c_grid_2(af::const_ref<double, af::c_grid<2> > const& a)
   {
-    return af::flex_grid<>(af::adapt(a.accessor()));
+    return a.accessor().as_flex_grid();
   }
 
   af::flex_grid<>
   use_const_ref_c_grid_3(af::const_ref<double, af::c_grid<3> > const& a)
   {
-    return af::flex_grid<>(af::adapt(a.accessor()));
+    return a.accessor().as_flex_grid();
+  }
+
+  af::flex_grid<>
+  use_const_ref_c_grid_padded_2(
+    af::const_ref<double, af::c_grid_padded<2> > const& a)
+  {
+    return a.accessor().as_flex_grid();
+  }
+
+  af::flex_grid<>
+  use_const_ref_c_grid_padded_3(
+    af::const_ref<double, af::c_grid_padded<3> > const& a)
+  {
+    return a.accessor().as_flex_grid();
   }
 
   boost::array<int, 2>
@@ -146,6 +161,8 @@ namespace scitbx { namespace {
     def("use_const_ref_flex_grid", use_const_ref_flex_grid);
     def("use_const_ref_c_grid_2", use_const_ref_c_grid_2);
     def("use_const_ref_c_grid_3", use_const_ref_c_grid_3);
+    def("use_const_ref_c_grid_padded_2", use_const_ref_c_grid_padded_2);
+    def("use_const_ref_c_grid_padded_3", use_const_ref_c_grid_padded_3);
     def("make_boost_int_2", (boost::array<int, 2>(*)(int, int)) 0,
       make_boost_int_2_stubs());
 

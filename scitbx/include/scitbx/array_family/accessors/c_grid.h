@@ -7,6 +7,9 @@
      2002 Oct: Created (R.W. Grosse-Kunstleve)
  */
 
+// The implementations in this file are highly redundant in order
+// to help the optimizer.
+
 #ifndef SCITBX_ARRAY_FAMILY_ACCESSORS_C_GRID_H
 #define SCITBX_ARRAY_FAMILY_ACCESSORS_C_GRID_H
 
@@ -34,6 +37,12 @@ namespace scitbx { namespace af {
         index_type(af::adapt(flex_g.grid()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
+      }
+
+      af::flex_grid<>
+      as_flex_grid() const
+      {
+        return af::flex_grid<>(af::adapt(*this));
       }
 
       std::size_t
@@ -93,6 +102,12 @@ namespace scitbx { namespace af {
         index_type(af::adapt(flex_g.grid()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
+      }
+
+      af::flex_grid<>
+      as_flex_grid() const
+      {
+        return af::flex_grid<>(af::adapt(*this));
       }
 
       std::size_t

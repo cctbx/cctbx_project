@@ -8,14 +8,12 @@
  */
 
 #include <scitbx/array_family/boost_python/ref_c_grid_flex_conversions.h>
-#include <scitbx/array_family/accessors/c_grid.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_complex_double_2()
   {
-    ref_c_grid_flex_conversions<std::complex<double>, c_grid<2> >();
-    ref_c_grid_flex_conversions<std::complex<double>, c_grid<3> >();
+    default_ref_c_grid_flex_conversions<std::complex<double> >();
   }
 
 }}} // namespace scitbx::af::boost_python
