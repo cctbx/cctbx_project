@@ -173,43 +173,52 @@ def get_significant_relative_errors(diff_gaussian, n_points):
 
 class find_max_stol:
 
-  def __init__(self, diff_gaussian, i_stol_low, target_power, max_max_error,
-                     best_fit=None):
+  def __init__(self, diff_gaussian, target_power, n_repeats_minimization,
+                     max_max_error):
     self.n_points = None
     self.min = None
     self.max_error = None
     stols = international_tables_sampling_stols
     sigmas = international_tables_sampled_value_sigmas
-    good_n_points = None
+    prev_n_points = 0
+    good_n_points = 0
     i_stol_high = stols.size() - 1
     while 1:
-      stol = (stols[i_stol_low] + stols[i_stol_high]) / 2
-      n_points = n_less_than(sorted_array=stols, cutoff=stol)
-      minimized = minimize(
-        diff_gaussian=diff_gaussian,
-        target_power=target_power,
-        stols=stols[:n_points])
+      if (good_n_points == 0):
+        stol = (stols[0] + stols[i_stol_high]) / 2
+        n_points = n_less_than(sorted_array=stols, cutoff=stol)
+        if (n_points == prev_n_points):
+          n_points -= 1
+          if (n_points < diff_gaussian.n_ab()*2):
+            break
+        prev_n_points = n_points
+      else:
+        n_points = good_n_points + 1
+      min_diff_gaussian = diff_gaussian
+      for i in xrange(n_repeats_minimization):
+        minimized = minimize(
+          diff_gaussian=min_diff_gaussian,
+          target_power=target_power,
+          stols=stols[:n_points])
+        if (min(minimized.final_diff_gaussian.b()) <= minimized.b_min):
+          break
+        min_diff_gaussian = minimized.final_diff_gaussian
       max_error = flex.max(get_significant_relative_errors(
         diff_gaussian=minimized.final_diff_gaussian,
         n_points=n_points))
       if (    max_error > max_max_error
           or min(minimized.final_diff_gaussian.b()) <= minimized.b_min):
-        if (i_stol_high == n_points - 1):
+        if (good_n_points != 0):
           break
-        if (best_fit is not None and best_fit.n_points >= n_points):
-          return
         i_stol_high = n_points - 1
       else:
         good_n_points = n_points
         good_min = minimized
         good_max_error = max_error
         diff_gaussian = minimized.final_diff_gaussian
-        if (i_stol_low == n_points - 1):
+        if (good_n_points == stols.size()):
           break
-        i_stol_low = n_points - 1
-        if (i_stol_low + 1 == i_stol_high and i_stol_high == stols.size() - 1):
-          i_stol_low += 1
-    if (good_n_points is not None):
+    if (good_n_points != 0):
       self.n_points = good_n_points
       self.min = good_min
       self.max_error = good_max_error
@@ -220,7 +229,10 @@ class find_max_stol_multi:
                      existing_gaussian,
                      target_powers,
                      n_start_fractions,
-                     max_max_error):
+                     n_repeats_minimization,
+                     max_max_error,
+                     factor_f0_stol_begin=0.9,
+                     factor_f0_stol_end=0.1):
     stols = international_tables_sampling_stols
     sigmas = international_tables_sampled_value_sigmas
     i_stol_begin = None
@@ -228,10 +240,10 @@ class find_max_stol_multi:
     f0 = reference_gaussian.at_stol(0)
     for i,stol in stols.items():
       if (i_stol_begin is None
-          and reference_gaussian.at_stol(stol) < f0 * 0.9):
+          and reference_gaussian.at_stol(stol) < f0 * factor_f0_stol_begin):
         i_stol_begin = i
       if (i_stol_end is None
-          and reference_gaussian.at_stol(stol) < f0 * 0.1):
+          and reference_gaussian.at_stol(stol) < f0 * factor_f0_stol_end):
         i_stol_end = i
         break
     assert i_stol_begin is not None
@@ -248,10 +260,9 @@ class find_max_stol_multi:
         for target_power in target_powers:
           fit = find_max_stol(
             diff_gaussian=diff_gaussian,
-            i_stol_low=i_stol_begin,
             target_power=target_power,
-            max_max_error=max_max_error,
-            best_fit=best_fit)
+            n_repeats_minimization=n_repeats_minimization,
+            max_max_error=max_max_error)
           if (fit.n_points is not None):
             if (best_fit is None
                 or best_fit.n_points < fit.n_points
@@ -320,7 +331,8 @@ class fit_parameters:
   def __init__(self, max_n_terms=5,
                      target_powers=[2,4],
                      max_max_error=0.01,
-                     n_start_fractions=3):
+                     n_start_fractions=3,
+                     n_repeats_minimization=5):
     adopt_init_args(self, locals())
 
 def incremental_fits(label, reference_gaussian, params=None, plots_dir=None,
@@ -342,6 +354,7 @@ def incremental_fits(label, reference_gaussian, params=None, plots_dir=None,
       existing_gaussian=existing_gaussian,
       target_powers=params.target_powers,
       n_start_fractions=params.n_start_fractions,
+      n_repeats_minimization=params.n_repeats_minimization,
       max_max_error=params.max_max_error)
     if (fit.n_points is None):
       print "Warning: No fit: %s n_terms=%d" % (label, n_terms)
