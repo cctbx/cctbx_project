@@ -157,6 +157,12 @@ namespace {
         af::ref<scitbx::vec3<double> > const&))
       bond_residual_sum,
       (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+    def("bond_distances_model",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        bond_sorted_asu_proxies_base const&))
+      bond_distances_model,
+      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
