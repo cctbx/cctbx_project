@@ -16,7 +16,6 @@ namespace scitbx { namespace af {
     SCITBX_ASSERT(table_x.size() > 0);
     SCITBX_ASSERT(tolerance >= 0);
     FloatType range_x = table_x.back() - table_x.front();
-    FloatType eps = range_x * tolerance;
     if (x <= table_x.front()) {
       if (table_x.front() - x < range_x * tolerance) {
         if (table_x.size() == 1) return table_y[0];
