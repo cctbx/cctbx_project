@@ -37,9 +37,9 @@ def peak_list(data,
 def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
   return ext.as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling)
 
-structure_factors = dicts.easy()
-structure_factors.to_map = structure_factors_to_map
-structure_factors.from_map = structure_factors_from_map
+structure_factors = dicts.easy(
+  to_map=structure_factors_to_map,
+  from_map=structure_factors_from_map)
 
 def determine_gridding(unit_cell,
                        d_min,

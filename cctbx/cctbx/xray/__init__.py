@@ -365,6 +365,6 @@ class _intensity_correlation(_target_functor_base):
   def use_multiplicities_as_weights(self):
     return self._use_multiplicities_as_weights
 
-target_functors = dicts.easy()
-target_functors.least_squares_residual = _least_squares_residual
-target_functors.intensity_correlation = _intensity_correlation
+target_functors = dicts.easy(
+  least_squares_residual=_least_squares_residual,
+  intensity_correlation=_intensity_correlation)
