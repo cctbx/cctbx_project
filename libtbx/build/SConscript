@@ -56,7 +56,7 @@ if (sys.platform == "win32"):
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".pyd"
   if (env_etc.compiler == "win32_cl"):
-    env_base.Update(
+    env_base.Replace(
       SHCC="cl",
       SHCXX="cl",
       SHLINK="link",
