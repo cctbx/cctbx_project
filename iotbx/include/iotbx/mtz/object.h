@@ -3,6 +3,7 @@
 
 #if defined(__sgi) && defined(__host_mips)
 # include <sys/stat.h>
+# include <math.h>
 #endif
 
 #include <cmtzlib.h>
