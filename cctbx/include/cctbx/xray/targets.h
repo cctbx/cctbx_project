@@ -776,8 +776,121 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
     } // end loop over reflections
   }
   };
-
 // max-like_hl end
+
+//! Least-squares target and its derivatives w.r.t. fc
+//! ls = sum( w*(fo - k*fc)**2 ) / sum( w*fo**2 )
+//! scale k can be fixed or recalculated
+class ls_target_with_scale_k1 {
+public:
+   ls_target_with_scale_k1(af::const_ref<double> const& fo,
+                           af::const_ref<double> const& w,
+                           af::const_ref< std::complex<double> > const& fc,
+                           bool const& compute_derivatives,
+                           bool const& fix_scale,
+                           double const& scale=0.0)
+
+   {
+       CCTBX_ASSERT(fo.size() == fc.size() && fo.size() == w.size());
+       double num         = 0.0;
+       double denum       = 0.0;
+       double sum_w_fo_sq = 0.0;
+       for(std::size_t i=0; i < fo.size(); i++) {
+           double fc_abs = std::abs(fc[i]);
+           num += fo[i] * fc_abs * w[i];
+           denum += fc_abs * fc_abs * w[i];
+           sum_w_fo_sq += w[i]*fo[i]*fo[i];
+       }
+       if(fix_scale) {
+          CCTBX_ASSERT(scale > 0.0);
+          scale_ = scale;
+       }
+       else {
+          CCTBX_ASSERT(scale == 0.0);
+          CCTBX_ASSERT(denum > 0.0);
+          scale_ = num/denum;
+       }
+       CCTBX_ASSERT(sum_w_fo_sq > 0.0);
+       if(compute_derivatives) {
+          derivatives_ = af::shared<std::complex<double> >(fo.size());
+       }
+       target_ = 0.0;
+       for(std::size_t i=0; i < fo.size(); i++) {
+          double fc_abs = std::abs(fc[i]);
+          double delta = fo[i] - scale_ * fc_abs;
+          target_ += w[i] * delta * delta;
+          if(compute_derivatives && fc_abs != 0) {
+             derivatives_[i] = -2. * scale_ * w[i] * delta
+                        / (sum_w_fo_sq * fc_abs) * std::conj(fc[i]);
+          }
+       }
+       target_ /= sum_w_fo_sq;
+   }
+
+   double target() const { return target_; }
+   af::shared<std::complex<double> > derivatives() { return derivatives_; }
+   double scale() const { return scale_; }
+private:
+   double target_, scale_;
+   af::shared<std::complex<double> > derivatives_;
+};
+
+//! Least-squares target and its derivatives w.r.t. fc
+//! ls = sum( w*(k*fo - fc)**2 ) / sum( w*fo**2 )
+//! scale k can be fixed or recalculated
+class ls_target_with_scale_k2 {
+public:
+   ls_target_with_scale_k2(af::const_ref<double> const& fo,
+                           af::const_ref<double> const& w,
+                           af::const_ref< std::complex<double> > const& fc,
+                           bool const& compute_derivatives,
+                           bool const& fix_scale,
+                           double const& scale=0.0)
+
+   {
+       CCTBX_ASSERT(fo.size() == fc.size() && fo.size() == w.size());
+       double num         = 0.0;
+       double denum       = 0.0;
+       double sum_w_fo_sq = 0.0;
+       for(std::size_t i=0; i < fo.size(); i++) {
+           double fc_abs = std::abs(fc[i]);
+           num += fo[i] * fc_abs * w[i];
+           denum += fo[i] * fo[i] * w[i];
+           sum_w_fo_sq += w[i] * fo[i] * fo[i];
+       }
+       if(fix_scale) {
+          CCTBX_ASSERT(scale > 0.0);
+          scale_ = scale;
+       }
+       else {
+          CCTBX_ASSERT(scale == 0.0);
+          CCTBX_ASSERT(denum > 0.0);
+          scale_ = num/denum;
+       }
+       CCTBX_ASSERT(sum_w_fo_sq > 0.0);
+       if(compute_derivatives) {
+          derivatives_ = af::shared<std::complex<double> >(fo.size());
+       }
+       target_ = 0.0;
+       for(std::size_t i=0; i < fo.size(); i++) {
+          double fc_abs = std::abs(fc[i]);
+          double delta = scale_ * fo[i] - fc_abs;
+          target_ += w[i] * delta * delta;
+          if(compute_derivatives && fc_abs != 0) {
+             derivatives_[i] = -2. * w[i] * delta
+                        / (sum_w_fo_sq * fc_abs) * std::conj(fc[i]);
+          }
+       }
+       target_ /= sum_w_fo_sq;
+   }
+
+   double target() const { return target_; }
+   af::shared<std::complex<double> > derivatives() { return derivatives_; }
+   double scale() const { return scale_; }
+private:
+   double target_, scale_;
+   af::shared<std::complex<double> > derivatives_;
+};
 
 }}} // namespace cctbx::xray::targets
 
