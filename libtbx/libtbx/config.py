@@ -1044,9 +1044,21 @@ class module:
     if (file_name_lower.endswith(".pyc")): return
     if (file_name_lower.endswith(".pyo")): return
     if (file_name[0] == "."): return
+    ext = os.path.splitext(file_name_lower)[1]
     if (os.name == "nt"):
-      ext = os.path.splitext(file_name_lower)[1]
       if (ext not in windows_pathext): return
+    elif (ext != ".sh" and ext != ".py"):
+      try: hash_bang = open(source_file).read(2)
+      except IOError:
+        raise UserError('Cannot read file: "%s"' % source_file)
+      if (hash_bang != "#!"):
+        if (ext != ".bat"):
+          msg = 'WARNING: Ignoring file "%s" due to missing "#!"' % (
+            source_file)
+          print "*"*len(msg)
+          print msg
+          print "*"*len(msg)
+        return
     target_file = self.name
     if (file_name_lower != "main.py"):
       target_file += "." + os.path.splitext(file_name)[0]
