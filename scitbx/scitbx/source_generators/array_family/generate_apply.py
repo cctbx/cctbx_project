@@ -1,12 +1,11 @@
-import sys
+import sys, os.path
 
-import path_to_include
 import generate_algebras
 
-def write_copyright():
+def write_copyright(f):
   try: name = __file__
   except: name = sys.argv[0]
-  print \
+  print >> f, \
 """/* Copyright (c) 2001-2002 The Regents of the University of California
    through E.O. Lawrence Berkeley National Laboratory, subject to
    approval by the U.S. Department of Energy.
@@ -24,20 +23,19 @@ def write_copyright():
      %s
  */""" % (name,)
 
-def one_type(array_type_name):
-  output_file_name = path_to_include.expand(
-    "%s_apply.h" % (array_type_name,))
+def one_type(target_dir, array_type_name):
+  output_file_name = os.path.normpath(os.path.join(
+    target_dir, "%s_apply.h" % (array_type_name,)))
   print "Generating:", output_file_name
   f = open(output_file_name, "w")
-  sys.stdout = f
-  write_copyright()
+  write_copyright(f)
   include_array_type_name = array_type_name
   if (array_type_name == "ref"):
     include_array_type_name = "versa"
   generic_include = "functors"
   if (generate_algebras.base_array_type_name(array_type_name) == "tiny"):
     generic_include = "operators"
-  print """
+  print >> f, """
 #ifndef SCITBX_ARRAY_FAMILY_%s_APPLY_H
 #define SCITBX_ARRAY_FAMILY_%s_APPLY_H
 
@@ -51,24 +49,23 @@ namespace scitbx { namespace af {
 """ % ((array_type_name.upper(),) * 2 + (
     include_array_type_name, generic_include))
 
-  generate_algebras.generate_unary_apply(array_type_name)
+  generate_algebras.generate_unary_apply(f, array_type_name)
 
-  print """}} // namespace scitbx::af
+  print >> f, """}} // namespace scitbx::af
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // SCITBX_ARRAY_FAMILY_%s_APPLY_H""" % (array_type_name.upper(),)
-  sys.stdout = sys.__stdout__
   f.close()
 
-def run():
+def run(target_dir):
   for array_type_name in (
     "tiny_plain", "tiny",
     "small_plain", "small",
     "shared_plain", "shared",
     "versa_plain", "versa",
     "ref"):
-    one_type(array_type_name)
+    one_type(target_dir, array_type_name)
 
 if (__name__ == "__main__"):
-  run()
+  run(".")

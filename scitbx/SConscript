@@ -1,14 +1,24 @@
+import os
 Import("env_etc", "env_boost_python_ext")
 
-env_scitbx_boost_python = env_boost_python_ext.Copy()
-env_scitbx_boost_python.Prepend(CPPPATH=[env_etc.scitbx_include])
-env_scitbx_boost_python.Prepend(LIBS=["scitbx_boost_python"])
-Export("env_scitbx_boost_python")
+env_etc.scitbx_dist = os.environ["SCITBX_DIST"]
+env_etc.scitbx_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.norm_join(env_etc.scitbx_dist, "include"),
+  env_etc.boost_include,
+]
 
-env_scitbx_boost_python.Command(
+env_scitbx_boost_python_ext = env_boost_python_ext.Copy()
+env_scitbx_boost_python_ext.Replace(
+  CPPPATH=env_etc.scitbx_common_includes + [env_etc.python_include])
+env_scitbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
+Export("env_scitbx_boost_python_ext")
+
+env_scitbx_boost_python_ext.Command(
   "#/libtbx/scitbx_boost/__init__.py",
   "#/libtbx/build/SConscript", env_etc.touch_init)
 
+SConscript("scitbx/source_generators/array_family/SConscript")
 SConscript("boost_python/SConscript")
 SConscript("array_family/SConscript")
 SConscript("array_family/boost_python/SConscript")

@@ -1,0 +1,44 @@
+import sys, os
+Import("env_base")
+
+from scitbx.source_generators.array_family import generate_all
+
+generated_files = Split("""
+  tiny_reductions.h
+  small_reductions.h
+  shared_reductions.h
+  versa_reductions.h
+  detail/std_imports.h
+  detail/operator_functors.h
+  operator_traits_builtin.h
+  ref_algebra.h
+  tiny_algebra.h
+  small_algebra.h
+  shared_algebra.h
+  versa_algebra.h
+  tiny_plain_apply.h
+  tiny_apply.h
+  small_plain_apply.h
+  small_apply.h
+  shared_plain_apply.h
+  shared_apply.h
+  versa_plain_apply.h
+  versa_apply.h
+  ref_apply.h
+""")
+
+generated_files = [
+  "#/libtbx/include/scitbx/array_family/" + name
+  for name in generated_files]
+
+env_base.Command(
+  generated_files,
+  ["generate_all.py",
+   "generate_reductions.py",
+   "generate_std_imports.py",
+   "generate_operator_functors.py",
+   "generate_operator_traits_builtin.py",
+   "generate_algebras.py",
+   "generate_apply.py",
+  ],
+  generate_all.run)

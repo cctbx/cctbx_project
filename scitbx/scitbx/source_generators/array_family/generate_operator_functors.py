@@ -1,12 +1,11 @@
-import sys
+import sys, os.path
 
-import path_to_include
 import operator_functor_info
 
-def write_copyright():
+def write_copyright(f):
   try: name = __file__
   except: name = sys.argv[0]
-  print \
+  print >> f, \
 """/* Copyright (c) 2001-2002 The Regents of the University of California
    through E.O. Lawrence Berkeley National Laboratory, subject to
    approval by the U.S. Department of Energy.
@@ -24,8 +23,8 @@ def write_copyright():
      %s
  */""" % (name,)
 
-def generate_unary(name, op):
-  print """
+def generate_unary(f, name, op):
+  print >> f, """
   template <typename ResultType,
             typename ArgumentType>
   struct functor_%s {
@@ -35,8 +34,8 @@ def generate_unary(name, op):
     }
   };""" % (name, op)
 
-def generate_binary(name, op):
-  print """
+def generate_binary(f, name, op):
+  print >> f, """
   template <typename ResultType,
             typename ArgumentType1,
             typename ArgumentType2>
@@ -48,8 +47,8 @@ def generate_binary(name, op):
     }
   };""" % (name, op)
 
-def generate_in_place_binary(name, op):
-  print """
+def generate_in_place_binary(f, name, op):
+  print >> f, """
   template <typename ArgumentType1,
             typename ArgumentType2>
   struct functor_%s {
@@ -60,31 +59,30 @@ def generate_in_place_binary(name, op):
     }
   };""" % (name, op)
 
-def run():
-  output_file_name = path_to_include.expand("detail/operator_functors.h")
+def run(target_dir):
+  output_file_name = os.path.normpath(os.path.join(
+    target_dir, "operator_functors.h"))
   print "Generating:", output_file_name
   f = open(output_file_name, "w")
-  sys.stdout = f
-  write_copyright()
-  print """
+  write_copyright(f)
+  print >> f, """
 #ifndef SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 #define SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 
 namespace scitbx { namespace fn {"""
 
   for op, ftor_name in operator_functor_info.unary_functors.items():
-    generate_unary(ftor_name, op + "x")
+    generate_unary(f, ftor_name, op + "x")
   for op, ftor_name in operator_functor_info.binary_functors.items():
-    generate_binary(ftor_name, "x " + op + " y")
+    generate_binary(f, ftor_name, "x " + op + " y")
   for op, ftor_name in operator_functor_info.in_place_binary_functors.items():
-    generate_in_place_binary(ftor_name, "x " + op + " y")
+    generate_in_place_binary(f, ftor_name, "x " + op + " y")
 
-  print """
+  print >> f, """
 }} // namespace scitbx::fn
 
 #endif // SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H"""
-  sys.stdout = sys.__stdout__
   f.close()
 
 if (__name__ == "__main__"):
-  run()
+  run(".")

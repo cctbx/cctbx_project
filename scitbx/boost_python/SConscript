@@ -2,9 +2,7 @@ Import("env_base", "env_etc")
 
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
-  CPPPATH=[env_etc.scitbx_include,
-           env_etc.boost_include,
-           env_etc.python_include],
+  CPPPATH=env_etc.scitbx_common_includes + [env_etc.python_include],
 )
 env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 

@@ -26,6 +26,7 @@ def update_libtbx_info(env, package_name, package_dist):
     "LIBTBX_DIST": env.libtbx_dist,
     "LIBTBX_SCONS": env.libtbx_scons,
     "LIBTBX_BUILD": env.libtbx_build,
+    "LIBTBX_BOOST": env.libtbx_boost,
     package_dist_varname: package_dist,
     "package_names": [],
   }
@@ -145,6 +146,9 @@ def find_scons(env):
 def emit_SConstruct(env, libtbx_info):
   SConstruct_path = norm(join(env.libtbx_build, "SConstruct"))
   f = open_info(SConstruct_path)
+  print >> f, 'import os, os.path'
+  print >> f, 'norm = os.path.normpath'
+  print >> f, 'assert norm(os.getcwd()) == norm(os.environ["LIBTBX_BUILD"])'
   print >> f, 'Repository(r"%s")' % (env.dist_root,)
   print >> f, 'SConscript("libtbx/SConscript")'
   for package_name in libtbx_info["package_names"]:
@@ -157,6 +161,7 @@ def run():
   env.libtbx_build = norm(os.path.abspath(os.getcwd()))
   env.libtbx_dist = norm(os.path.dirname(norm(os.path.abspath(sys.argv[0]))))
   env.dist_root = norm(os.path.dirname(env.libtbx_dist))
+  env.libtbx_boost = norm(join(env.dist_root, "boost"))
   find_scons(env)
   libtbx_info = None
   for arg in sys.argv[1:]:
