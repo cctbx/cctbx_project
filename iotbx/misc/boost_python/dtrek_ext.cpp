@@ -33,26 +33,25 @@ namespace {
             sigmas_.push_back(sigmas_minus[i]);
           }
           else {
-            unsigned n = 0;
-            double sum_data = 0;
-            double sum_sigma_sq = 0;
+            double sum_w_data = 0;
+            double sum_w = 0;
             if (sigmas_plus[i] > 0) {
-              sum_data += data_plus[i];
-              sum_sigma_sq += sigmas_plus[i];
-              n++;
+              double w = 1 / (sigmas_plus[i]*sigmas_plus[i]);
+              sum_w_data += w * data_plus[i];
+              sum_w += w;
             }
             if (sigmas_minus[i] > 0) {
-              sum_data += data_minus[i];
-              sum_sigma_sq += sigmas_minus[i];
-              n++;
+              double w = 1 / (sigmas_minus[i]*sigmas_minus[i]);
+              sum_w_data += w * data_minus[i];
+              sum_w += w;
             }
-            if (n == 0) {
+            if (sum_w == 0) {
               data_.push_back(data_plus[i]);
               sigmas_.push_back(sigmas_plus[i]);
             }
             else {
-              data_.push_back(sum_data / n);
-              sigmas_.push_back(std::sqrt(sum_sigma_sq) / n);
+              data_.push_back(sum_w_data / sum_w);
+              sigmas_.push_back(1/std::sqrt(sum_w));
             }
           }
         }
