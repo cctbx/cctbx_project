@@ -1,4 +1,4 @@
-#! /usr/local/Python-1.5.2/bin/python
+#! /usr/local/Python-2.1/bin/python
 
 import sys
 sys.stderr = sys.stdout
