@@ -9,18 +9,21 @@ from cctbx import xutils
 from cctbx.development import debug_utils
  
 # XXX move to cctbx.minimization
-def run_lbfgs(target_evaluator, max_calls=100, traditional_convergence_test=0):
+def run_lbfgs(target_evaluator,
+              min_iterations=10,
+              max_calls=100,
+              traditional_convergence_test=0):
   minimizer = lbfgs.minimizer(target_evaluator.n)
   if (traditional_convergence_test):
     is_converged = lbfgs.traditional_convergence_test(target_evaluator.n)
   else:
-    is_converged = lbfgs.drop_convergence_test()
+    is_converged = lbfgs.drop_convergence_test(min_iterations)
   try:
     while 1:
       x, f, g = target_evaluator()
       if (minimizer.run(x, f, g)): continue
       if (traditional_convergence_test):
-        if (is_converged(x, g)): break
+        if (minimizer.iter() >= min_iterations and is_converged(x, g)): break
       else:
         if (is_converged(f)): break
       if (minimizer.nfun() > max_calls): break
@@ -32,39 +35,56 @@ def run_lbfgs(target_evaluator, max_calls=100, traditional_convergence_test=0):
 
 class k_b_scaling_minimizer:
 
-  def __init__(self, miller_indices, multiplicities,
+  def __init__(self, unit_cell, miller_indices, multiplicities,
                data_reference, data_scaled,
-               k_initial, u_initial):
+               k_initial, u_initial,
+               refine_k, refine_u,
+               min_iterations=50, max_calls=1000):
     python_utils.adopt_init_args(self, locals())
-    if (hasattr(self.u_initial, "__len__")):
-      self.anisotropic = 1
-      self.n = 7
+    self.anisotropic = hasattr(self.u_initial, "__len__")
+    self.k_min = 1 # refine correction factor for k_initial
+    self.u_scale = unit_cell.getLongestVector2()
+    if (self.anisotropic):
+      self.u_min = [u * self.u_scale for u in self.u_initial]
     else:
-      self.n = 2
-    self.x = self.pack(self.k_initial, self.u_initial)
-    self.minimizer = run_lbfgs(self)
+      self.u_min = self.u_initial * self.u_scale
+    self.x = self.pack(self.k_min, self.u_min)
+    self.n = self.x.size()
+    self.minimizer = run_lbfgs(self, min_iterations, max_calls)
     self()
     del self.x
+    self.k_min *= self.k_initial
+    if (self.anisotropic):
+      self.u_min = [u / self.u_scale for u in self.u_min]
+    else:
+      self.u_min /= self.u_scale
 
   def pack(self, k, u):
-    if (self.anisotropic):
-      return shared.double((k,) + tuple(u))
-    else:
-      return shared.double((k, u))
+    v = []
+    if (self.refine_k): v.append(k)
+    if (self.refine_u):
+      if (self.anisotropic): v += list(u)
+      else:                  v.append(u)
+    return shared.double(tuple(v))
 
   def unpack_x(self):
-    self.k_min = self.x[0]
-    if (self.anisotropic):
-      self.u_min = self.x.as_tuple()[1:]
-    else:
-      self.u_min = self.x[1]
+    i = 0
+    if (self.refine_k):
+      self.k_min = self.x[i]
+      i += 1
+    if (self.refine_u):
+      if (self.anisotropic):
+        self.u_min = self.x.as_tuple()[i:]
+      else:
+        self.u_min = self.x[i]
 
   def __call__(self):
     self.unpack_x()
     tg = mintbx.k_b_scaling_target_and_gradients(
       self.miller_indices, self.multiplicities,
       self.data_reference, self.data_scaled,
-      self.k_min, self.u_min, 1)
+      self.k_initial * self.k_min, self.u_min, self.u_scale,
+      self.refine_k, self.refine_u)
     self.f = tg.target()
     if (self.anisotropic):
       self.g = self.pack(tg.gradient_k(), tg.gradients_u_star())
@@ -87,21 +107,28 @@ def exercise(SgInfo, d_min=2., verbose=0):
     xtal.SgOps.multiplicity(miller_set.H, friedel_flag))
   f_ref = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
   f_sca = xutils.reciprocal_space_array(miller_set, shared.double())
-  k_sim = 1
-  u_star = [0,0,0,0,0,0]
+  k_sim = 1000
+  u_star = [0.001,0.002,0.003,0.004,0.005,0.006]
   for i in xrange(len(miller_set.H)):
     h = miller_set.H[i]
     f_sca.F.push_back(
       k_sim * f_ref.F[i] * adptbx.DebyeWallerFactorUstar(h, u_star))
     if (0 or verbose): print h, f_ref.F[i], f_sca.F[i]
-  minimized = k_b_scaling_minimizer(
-    miller_set.H, multiplicity_set.F, f_ref.F, f_sca.F,
-    k_initial=1+1.e-4,
-    u_initial=[0,0,0,0,0,0])
+  k_min = 1
+  u_min = [0,0,0,0,0,0]
+  for p in xrange(20):
+    for refine_k, refine_u in ((1,0), (0,1), (1,0), (0,1), (1,0), (1,1)):
+      minimized = k_b_scaling_minimizer(
+        xtal.UnitCell, miller_set.H, multiplicity_set.F, f_ref.F, f_sca.F,
+        k_min, u_min,
+        refine_k, refine_u)
+      k_min = minimized.k_min
+      u_min = minimized.u_min
   print "k_min:", minimized.k_min
   print "u_min:", minimized.u_min
   print "target:", minimized.f,
-  print "after %d iterations" % (minimized.minimizer.iter(),)
+  print "after %d iteration(s)" % (minimized.minimizer.iter(),)
+  print
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
