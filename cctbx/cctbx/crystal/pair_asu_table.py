@@ -1,7 +1,6 @@
 from iotbx.kriber import strudat
 import iotbx.pdb
 from iotbx.option_parser import iotbx_option_parser
-from cctbx import restraints
 from cctbx import crystal
 from scitbx.python_utils.misc import adopt_init_args
 import libtbx.itertbx
@@ -17,7 +16,8 @@ class pair_asu_table:
 
   def __init__(self, asu_mappings):
     self.asu_mappings = asu_mappings
-    self.table = restraints.pair_asu_table(self.asu_mappings.mappings().size())
+    self.table = crystal.pair_asu_table_table(
+      self.asu_mappings.mappings().size())
     #self.table = [{} for i_seq in xrange(self.asu_mappings.mappings().size())]
 
   def add_all_pairs(self, distance_cutoff, verbose=0):

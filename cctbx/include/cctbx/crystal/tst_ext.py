@@ -333,6 +333,54 @@ def exercise_direct_space_asu():
     site_symmetry_table=structure.site_symmetry_table())
   assert asu_mappings.n_sites_in_asu_and_buffer() == 33
 
+def exercise_pair_tables():
+  d = crystal.pair_sym_dict()
+  assert len(d) == 0
+  sym_ops = sgtbx.space_group("P 41").all_ops()
+  for i,j_sym in enumerate([10,18,13]):
+    d[j_sym] = crystal.pair_sym_ops(sym_ops[:i])
+    assert len(d) == i+1
+    assert len(d[j_sym]) == i
+    assert [str(s) for s in sym_ops[:i]] == [str(s) for s in d[j_sym]]
+    d[j_sym] = sym_ops[:i]
+    assert [str(s) for s in sym_ops[:i]] == [str(s) for s in d[j_sym]]
+  assert [key for key in d] == [10,13,18]
+  assert d[13].size() == 2
+  d[13].append(sym_ops[-1])
+  assert d[13].size() == 3
+  del d[13][0]
+  assert d[13].size() == 2
+  d[13].clear()
+  assert d[13].size() == 0
+  t = crystal.pair_sym_table()
+  t.append(d)
+  assert t.size() == 1
+  assert len(t[0][10]) == 0
+  t.append(d)
+  assert t.size() == 2
+  assert len(t[1][18]) == 1
+  t = crystal.pair_sym_table(3)
+  for d in t:
+    assert len(d) == 0
+  t[1][10] = sym_ops[:2]
+  assert len(t[1]) == 1
+  assert len(t[1][10]) == 2
+  #
+  t = crystal.pair_asu_table_table(3)
+  for d in t:
+    assert len(d) == 0
+  t[1][10] = crystal.pair_asu_j_sym_groups()
+  assert t[1][10].size() == 0
+  t[1][10].append(crystal.pair_asu_j_sym_group())
+  assert t[1][10].size() == 1
+  assert t[1][10][0].size() == 0
+  t[1][10][0].insert(3)
+  assert t[1][10][0].size() == 1
+  t[1][10].append(crystal.pair_asu_j_sym_group())
+  assert t[1][10][1].size() == 0
+  t[1][10][1].insert([4,5,4])
+  assert t[1][10][1].size() == 2
+
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(
     unit_cell=uctbx.unit_cell([1,2,3,80,90,100]),
@@ -349,6 +397,7 @@ def exercise_symmetry():
 
 def run():
   exercise_direct_space_asu()
+  exercise_pair_tables()
   exercise_symmetry()
   print "OK"
 

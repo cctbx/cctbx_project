@@ -5,6 +5,7 @@ namespace cctbx { namespace crystal { namespace boost_python {
   void wrap_close_packing();
   void wrap_direct_space_asu();
   void wrap_neighbors();
+  void wrap_pair_tables();
   void wrap_symmetry();
 
 namespace {
@@ -14,6 +15,7 @@ namespace {
     wrap_close_packing();
     wrap_direct_space_asu();
     wrap_neighbors();
+    wrap_pair_tables();
     wrap_symmetry();
   }
 

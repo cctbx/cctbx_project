@@ -1,18 +1,14 @@
-Import("env_base", "env_etc")
-
-if (not env_etc.no_boost_python):
-  Import("env_cctbx_boost_python_ext")
-  env_bpl = env_cctbx_boost_python_ext.Copy()
-  env_bpl.Prepend(LIBS=["cctbx"])
-  env_bpl.SharedLibrary(
-    target="#libtbx/cctbx_restraints_ext",
-    source=[
-      "restraints_ext.cpp",
-      "bond_bpl.cpp",
-      "repulsion_bpl.cpp",
-      "angle_bpl.cpp",
-      "dihedral_bpl.cpp",
-      "chirality_bpl.cpp",
-      "planarity_bpl.cpp",
-      "pair_tables_bpl.cpp",
-      "bonded_interactions_bpl.cpp"])
+Import("env_cctbx_boost_python_ext")
+env_bpl = env_cctbx_boost_python_ext.Copy()
+env_bpl.Prepend(LIBS=["cctbx"])
+env_bpl.SharedLibrary(
+  target="#libtbx/cctbx_restraints_ext",
+  source=[
+    "restraints_ext.cpp",
+    "bond_bpl.cpp",
+    "repulsion_bpl.cpp",
+    "angle_bpl.cpp",
+    "dihedral_bpl.cpp",
+    "chirality_bpl.cpp",
+    "planarity_bpl.cpp",
+    "bonded_interactions_bpl.cpp"])
