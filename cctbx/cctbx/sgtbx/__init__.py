@@ -11,6 +11,13 @@ from cctbx import matrix
 from boost import rational
 import sys
 
+class _space_group(boost.python.injector, ext.space_group):
+
+  def expand_smx(self, smx):
+    if (isinstance(smx, str)):
+      smx = rt_mx(smx)
+    self.raw_expand_smx(smx)
+
 class space_group_info:
 
   __safe_for_unpickling__ = 0001
