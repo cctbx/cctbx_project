@@ -18,18 +18,18 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  template <typename Ref1dType>
-  struct ref_1d_from_flex
+  template <typename RefType>
+  struct ref_from_flex
   {
-    typedef typename Ref1dType::value_type element_type;
+    typedef typename RefType::value_type element_type;
     typedef versa<element_type, flex_grid<> > flex_type;
 
-    ref_1d_from_flex()
+    ref_from_flex()
     {
       boost::python::converter::registry::push_back(
         &convertible,
         &construct,
-        boost::python::type_id<Ref1dType>());
+        boost::python::type_id<RefType>());
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -59,20 +59,63 @@ namespace scitbx { namespace af { namespace boost_python {
       assert(a.accessor().is_0_based());
       assert(!a.accessor().is_padded());
       void* storage = (
-        (converter::rvalue_from_python_storage<Ref1dType>*)
+        (converter::rvalue_from_python_storage<RefType>*)
           data)->storage.bytes;
-      new (storage) Ref1dType(a.begin(), a.size());
+      new (storage) RefType(a.begin(), a.size());
+      data->convertible = storage;
+    }
+  };
+
+  template <typename RefType>
+  struct ref_flex_grid_from_flex
+  {
+    typedef typename RefType::value_type element_type;
+    typedef versa<element_type, flex_grid<> > flex_type;
+
+    ref_flex_grid_from_flex()
+    {
+      boost::python::converter::registry::push_back(
+        &convertible,
+        &construct,
+        boost::python::type_id<RefType>());
+    }
+
+    static void* convertible(PyObject* obj_ptr)
+    {
+      using namespace boost::python;
+      using boost::python::borrowed; // works around gcc 2.96 bug
+      object obj(borrowed(obj_ptr));
+      extract<flex_type&> flex_proxy(obj);
+      if (!flex_proxy.check()) return 0;
+      return obj_ptr;
+    }
+
+    static void construct(
+      PyObject* obj_ptr,
+      boost::python::converter::rvalue_from_python_stage1_data* data)
+    {
+      using namespace boost::python;
+      using boost::python::borrowed;
+      object obj(borrowed(obj_ptr));
+      flex_type& a = extract<flex_type&>(obj)();
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
+      void* storage = (
+        (converter::rvalue_from_python_storage<RefType>*)
+          data)->storage.bytes;
+      new (storage) RefType(a.begin(), a.accessor());
       data->convertible = storage;
     }
   };
 
   template <typename ElementType>
-  struct ref_1d_flex_conversions
+  struct ref_flex_conversions
   {
-    ref_1d_flex_conversions()
+    ref_flex_conversions()
     {
-      ref_1d_from_flex<const_ref<ElementType> >();
-      ref_1d_from_flex<ref<ElementType> >();
+      ref_from_flex<const_ref<ElementType> >();
+      ref_from_flex<ref<ElementType> >();
+      ref_flex_grid_from_flex<const_ref<ElementType, flex_grid<> > >();
+      ref_flex_grid_from_flex<ref<ElementType, flex_grid<> > >();
     }
   };
 

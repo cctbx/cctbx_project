@@ -650,7 +650,7 @@ namespace scitbx { namespace af { namespace boost_python {
         scitbx::boost_python::container_conversions
           ::variable_capacity_policy>();
       shared_flex_conversions<ElementType>();
-      ref_1d_flex_conversions<ElementType>();
+      ref_flex_conversions<ElementType>();
 
       class_<flex_items<ElementType> >((python_name+"_items").c_str())
         .def(init<>())
