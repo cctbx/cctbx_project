@@ -45,6 +45,10 @@ namespace {
     return RTMx(RotMx(1, 0), tc.OriginShift());
   }
 
+  RTMx RTMx_newBaseFactors(const RTMx& M, int RBF, int TBF) {
+    return M.newBaseFactors(RBF, TBF);
+  }
+
   std::string RTMx_as_xyz_0(const RTMx& M) {
     return M.as_xyz();
   }
@@ -537,6 +541,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RTMx.def(&RTMx::TBF, "TBF");
     py_RTMx.def(&RTMx::Unit, "Unit");
     py_RTMx.def(&RTMx::isUnit, "isUnit");
+    py_RTMx.def(RTMx_newBaseFactors, "newBaseFactors");
     py_RTMx.def(&RTMx::cancel, "cancel");
     py_RTMx.def(&RTMx::modPositiveInPlace, "modPositiveInPlace");
     py_RTMx.def(&RTMx::modPositive, "modPositive");
@@ -550,6 +555,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RTMx.def(RTMx_as_tuple_0, "as_tuple");
     py_RTMx.def(RTMx_as_tuple_2, "as_tuple");
     py_RTMx.def(&RTMx::getRotMxInfo, "getRotMxInfo");
+    py_RTMx.def(&RTMx::isPerpendicular, "isPerpendicular");
     py_RTMx.def(&RTMx::analyzeTpart, "analyzeTpart");
     py_RTMx.def(RTMx_mul_RTMx, "__mul__");
     py_RTMx.def(RTMx_multiply_RTMx, "multiply");

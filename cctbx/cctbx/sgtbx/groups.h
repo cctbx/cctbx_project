@@ -265,9 +265,12 @@ namespace sgtbx {
       //! Tidy the lists of representative symmetry operations in place.
       /*! The list of lattice translations is sorted in a certain order.
           If there is a centre of inversion, a certain normalized
-          translation part is selected. The list of representative
-          Seitz matrices is sorted, and the translation parts are
-          normalized.<br>
+          translation part is selected for InvT(), and a proper
+          rotation part is selected for all Seitz matrices in the
+          representative list. The list of representative Seitz
+          matrices is sorted, and the translation parts are
+          normalized.
+          <p>
           After application of makeTidy(), a given space group
           representation will always result in exactly the same
           internal representation.
