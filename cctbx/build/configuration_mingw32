@@ -1,0 +1,26 @@
+mingw32
+
+CCTBX_UNIX=$(HOME)/cctbx
+CCTBX_WIN="L:\cctbx"
+CCTBXINC=-I$(CCTBX_WIN)
+
+BOOSTINC=-I"L:\boost"
+BOOST_PYTHONLIB="@(CWD)\..\boost\boost_python.lib"
+
+PYEXE="C:\Program files\Python\python.exe"
+PYINC=-I"C:\usr\include\python1.5"
+PYLIB="C:\usr\lib\libpython15.a"
+
+STDFIXINC=
+
+CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
+
+CPP=g++
+LD=g++
+STDOPTS=-ftemplate-depth-21
+WARNOPTS=
+OPTOPTS=-g
+MAKEDEP=-M
+LDEXE=
+LDDLL=
+LDMATH=-lm

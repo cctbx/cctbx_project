@@ -1,0 +1,26 @@
+irix_CC
+
+CCTBX_UNIX=$(HOME)/cctbx
+CCTBX_WIN=
+CCTBXINC=-I$(CCTBX_UNIX)
+
+BOOSTINC=-I$(HOME)/boost
+BOOST_PYTHONLIB=@(CWD)/../boost/libboost_python.a
+
+PYEXE=/usr/local/Python-1.5.2/bin/python
+PYINC=-I/usr/local/Python-1.5.2/include/python1.5
+PYLIB=
+
+STDFIXINC=-I/net/cci/xp/C++_C_headers
+
+CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
+
+CPP=CC -LANG:std -n32 -mips4
+LD=CC -LANG:std -n32 -mips4
+STDOPTS=
+WARNOPTS=-woff 1001,1234,1682
+OPTOPTS=-g
+MAKEDEP=-M
+LDEXE=-LD_MSG:off=15,84
+LDDLL=-shared -LD_MSG:off=15,84
+LDMATH=-lm

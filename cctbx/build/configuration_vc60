@@ -1,0 +1,26 @@
+vc60
+
+CCTBX_UNIX=$(HOME)/cctbx
+CCTBX_WIN="L:\cctbx"
+CCTBXINC=-I$(CCTBX_WIN)
+
+BOOSTINC=-I"L:\boost"
+BOOST_PYTHONLIB="@(CWD)\..\boost\boost_python.lib"
+
+PYEXE="C:\Program files\Python\python.exe"
+PYINC=-I"C:\Program files\Python\include"
+PYLIB="C:\Program files\Python\libs\python15.lib"
+
+STDFIXINC=
+
+CCTBXLIB=..\..\lib\lib*.lib
+
+CPP=cl.exe
+LD=link.exe
+STDOPTS=/nologo /MD /GR /GX /Zm200
+WARNOPTS=
+OPTOPTS=
+MAKEDEP=
+LDEXE=/nologo /incremental:no
+LDDLL=/nologo /incremental:no /dll
+LDMATH=
