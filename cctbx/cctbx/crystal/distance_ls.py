@@ -250,23 +250,33 @@ def distance_and_repulsion_least_squares(
   minimized = None
   for i_trial in xrange(n_trials):
     trial_structure = si_o.structure.deep_copy_scatterers()
-    if (i_trial > 0):
-      n_scatterers = trial_structure.scatterers().size()
-      trial_structure.set_sites_frac(flex.vec3_double(flex.random_double(
-        size=n_scatterers*3)))
-      trial_structure.apply_symmetry_sites()
-    trial_minimized = minimization.lbfgs(
-      structure=trial_structure,
-      shell_sym_tables=shell_sym_tables,
-      bond_params_table=bond_params_table,
-      repulsion_types=repulsion_types,
-      repulsion_distance_table=repulsion_distance_table,
-      repulsion_radius_table=restraints.repulsion_radius_table(),
-      repulsion_distance_default=0,
-      nonbonded_distance_cutoff=nonbonded_distance_cutoff,
-      nonbonded_buffer=nonbonded_buffer,
-      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=100))
+    for run_away_counter in count():
+      assert run_away_counter < 10
+      if (i_trial > 0):
+        n_scatterers = trial_structure.scatterers().size()
+        trial_structure.set_sites_frac(flex.vec3_double(flex.random_double(
+          size=n_scatterers*3)))
+        trial_structure.apply_symmetry_sites()
+      try:
+        trial_minimized = minimization.lbfgs(
+          structure=trial_structure,
+          shell_sym_tables=shell_sym_tables,
+          bond_params_table=bond_params_table,
+          repulsion_types=repulsion_types,
+          repulsion_distance_table=repulsion_distance_table,
+          repulsion_radius_table=restraints.repulsion_radius_table(),
+          repulsion_distance_default=0,
+          nonbonded_distance_cutoff=nonbonded_distance_cutoff,
+          nonbonded_buffer=nonbonded_buffer,
+          lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+            max_iterations=100))
+      except RuntimeError, e:
+        if (str(e) != "lbfgs error: Line search failed:"
+                    + " The step is at the lower bound stpmin()."):
+          raise
+        assert i_trial > 0
+      else:
+        break
     print "i_trial, target value: %d, %.6g" % (
       i_trial, trial_minimized.final_target_result.target())
     if (minimized is None or       minimized.final_target_result.target()
