@@ -37,6 +37,13 @@ namespace scitbx { namespace math {
         return sphere_3d(center_, radius_+additional_radius);
       }
 
+      //! New sphere with radius*(1+additional_relative_radius).
+      sphere_3d
+      expand_relative(FloatType const& additional_relative_radius) const
+      {
+        return sphere_3d(center_, radius_*(1+additional_relative_radius));
+      }
+
       //! True if point is inside sphere.
       bool
       is_inside(vec3<FloatType> const& point)

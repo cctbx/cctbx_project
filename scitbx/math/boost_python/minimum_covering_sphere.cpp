@@ -21,6 +21,8 @@ namespace {
         .def("center", &w_t::center)
         .def("radius", &w_t::radius)
         .def("expand", &w_t::expand, (arg_("additional_radius")))
+        .def("expand_relative", &w_t::expand_relative,
+          (arg_("additional_relative_radius")))
         .def("is_inside", &w_t::is_inside, (arg_("point")))
         .def("box_min", &w_t::box_min)
         .def("box_max", &w_t::box_max)
