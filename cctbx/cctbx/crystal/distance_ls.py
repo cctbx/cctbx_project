@@ -15,6 +15,7 @@ from libtbx.test_utils import approx_equal
 class create_bond_proxies:
 
   def __init__(self, structure, distance_cutoff=3.5, distance_ideal=3.1,
+                     heterogeneous_bonds_only=00000,
                      diff_vec_frac_tolerance=1.e-8):
     distance_cutoff_plus = distance_cutoff * (1+1.e-4)
     distance_cutoff_minus = distance_cutoff * (1-1.e-4)
@@ -55,6 +56,9 @@ class create_bond_proxies:
         if (pair.dist_sq**.5 > distance_cutoff):
           break
         scatterer_j = scatterers[pair.j_seq]
+        if (    heterogeneous_bonds_only
+            and scatterer_i.scattering_type == scatterer_j.scattering_type):
+          continue
         site_symmetry_j = site_symmetries[pair.j_seq]
         rt_mx_j = asu_mappings.get_rt_mx(i_seq=pair.j_seq, i_sym=pair.j_sym)
         rt_mx_ji = rt_mx_i_inverse.multiply(rt_mx_j)
@@ -170,7 +174,6 @@ def run(distance_cutoff=3.5):
       print "proxies.bond_counts:", list(proxies.bond_counts)
       if (proxies.bond_counts.count(4) != proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
-      print "number of bond proxies:", proxies.proxies.size()
       if (0):
         sites_cart = structure.sites_cart()
         gradients_cart = flex.vec3_double(sites_cart.size(), [0,0,0])
@@ -204,43 +207,59 @@ def run(distance_cutoff=3.5):
         else:
           complete_structure = add_oxygen(structure, proxies)
           complete_structure.show_summary().show_scatterers()
-          show_distances(complete_structure, distance_cutoff=distance_cutoff/2.)
+          show_distances(
+            complete_structure,
+            distance_cutoff=distance_cutoff/2.)
           complete_proxies = create_bond_proxies(
             structure=complete_structure,
             distance_cutoff=distance_cutoff/2.,
-            distance_ideal=1.61)
-        for proxy in complete_proxies.proxies:
-          print "proxy:", proxy.pair.i_seq, proxy.pair.j_seq,
-          print proxy.distance_ideal
+            distance_ideal=1.61,
+            heterogeneous_bonds_only=0001)
+          print "complete: number of bond proxies:", \
+            complete_proxies.proxies.size()
+          print "complete: proxies.bond_counts:", \
+            list(complete_proxies.bond_counts)
+          n_nodes = len(proxies.bond_counts)
+          assert list(complete_proxies.bond_counts[:n_nodes]) \
+              == list(proxies.bond_counts)
+          assert list(complete_proxies.bond_counts[n_nodes:]) \
+              == [2] * (len(complete_proxies.bond_counts) - n_nodes)
+          for proxy in complete_proxies.proxies:
+            print "proxy:", proxy.pair.i_seq, proxy.pair.j_seq,
+            print proxy.distance_ideal
         if (1):
-          sites_cart = complete_structure.sites_cart()
-        else:
-          sites_frac = flex.vec3_double(flex.random_double(
-            size=complete_structure.scatterers().size()*3))
-          sites_special = flex.vec3_double()
-          for site_frac,site_symmetry in zip(sites_frac,
+          if (1):
+            sites_cart = complete_structure.sites_cart()
+          else:
+            sites_frac = flex.vec3_double(flex.random_double(
+              size=complete_structure.scatterers().size()*3))
+            sites_special = flex.vec3_double()
+            for site_frac,site_symmetry in zip(sites_frac,
                                              complete_proxies.site_symmetries):
-            sites_special.append(site_symmetry.special_op()*site_frac)
-          sites_cart = complete_structure.unit_cell() \
-            .orthogonalization_matrix() * sites_special
-        minimized = minimization.lbfgs(
-          sites_cart=sites_cart,
-          site_symmetries=complete_proxies.site_symmetries,
-          asu_mappings=complete_proxies.asu_mappings,
-          bond_sym_proxies=complete_proxies.proxies,
-          lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-            max_iterations=100))
-        print minimized.minimizer.error
-        print "first:", minimized.first_target_value
-        print "final:", minimized.final_target_value
-        sites_frac = complete_structure.unit_cell().fractionalization_matrix()\
-                   * sites_cart
-        minimized_structure = complete_structure.deep_copy_scatterers()
-        for scatterer,site in zip(minimized_structure.scatterers(),sites_frac):
-          scatterer.site = site
-        print "minimized_structure:"
-        minimized_structure.show_summary().show_scatterers()
-        show_distances(minimized_structure, distance_cutoff=distance_cutoff)
+              sites_special.append(site_symmetry.special_op()*site_frac)
+            sites_cart = complete_structure.unit_cell() \
+              .orthogonalization_matrix() * sites_special
+          minimized = minimization.lbfgs(
+            sites_cart=sites_cart,
+            site_symmetries=complete_proxies.site_symmetries,
+            asu_mappings=complete_proxies.asu_mappings,
+            bond_sym_proxies=complete_proxies.proxies,
+            lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+              max_iterations=100))
+          print minimized.minimizer.error
+          print "first_target_value: %12.6f" % minimized.first_target_value, \
+            entry.tag
+          print "final_target_value: %12.6f" % minimized.final_target_value, \
+            entry.tag
+          sites_frac=complete_structure.unit_cell().fractionalization_matrix()\
+                    *sites_cart
+          minimized_structure = complete_structure.deep_copy_scatterers()
+          for scatterer,site in zip(minimized_structure.scatterers(),
+                                    sites_frac):
+            scatterer.site = site
+          print "minimized_structure:"
+          minimized_structure.show_summary().show_scatterers()
+          show_distances(minimized_structure, distance_cutoff=distance_cutoff)
       print
 
 if (__name__ == "__main__"):
