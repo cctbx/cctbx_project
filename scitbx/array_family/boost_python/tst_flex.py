@@ -565,6 +565,7 @@ def exercise_random():
       == (4182529786L,2180050607L,3809380472L)
   assert approx_equal(flex.random_double(3),
     (0.68936349374460137, 0.94325460841489361, 0.92878638322669693))
+  assert list(flex.random_permutation(size=5)) == [0, 3, 4, 1, 2]
 
 def exercise_flex_vec3_double():
   flex.exercise_triple(flex.vec3_double, as_double=0001)
