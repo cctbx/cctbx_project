@@ -47,6 +47,7 @@ namespace cctbx { namespace af {
             typename ArgumentType2,
             typename ArgumentType3>
   struct functor_approx_equal_scaled {
+    typedef ResultType result_type;
     ResultType operator()(const ArgumentType1& x,
                           const ArgumentType2& y,
                           const ArgumentType3& z) const {
@@ -59,6 +60,7 @@ namespace cctbx { namespace af {
             typename ArgumentType2,
             typename ArgumentType3>
   struct functor_approx_equal_unscaled {
+    typedef ResultType result_type;
     ResultType operator()(const ArgumentType1& x,
                           const ArgumentType2& y,
                           const ArgumentType3& z) const {

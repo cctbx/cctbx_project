@@ -45,15 +45,6 @@ namespace cctbx { namespace af {
         if (N < sz) throw_range_error();
       }
 
-      // non-std
-      small_plain(const size_type& sz, no_initialization_flag)
-        : m_size(0)
-      {
-        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
-        if (N < sz) throw_range_error();
-        m_size = sz;
-      }
-
       small_plain(const size_type& sz, const ElementType& x)
         : m_size(0)
       {
@@ -61,6 +52,18 @@ namespace cctbx { namespace af {
         std::uninitialized_fill_n(begin(), sz, x);
         m_size = sz;
       }
+
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+      // non-std
+      template <typename InitFunctorType>
+      small_plain(const size_type& sz, InitFunctorType ftor)
+        : m_size(0)
+      {
+        if (N < sz) throw_range_error();
+        ftor(begin(), sz);
+        m_size = sz;
+      }
+#endif
 
       small_plain(const ElementType* first, const ElementType* last)
         : m_size(0)
@@ -115,11 +118,6 @@ namespace cctbx { namespace af {
 
       void reserve(const size_type& sz) {
         if (N < sz) throw_range_error();
-      }
-
-      // non-std
-      void set_size_back_door(const size_type& sz) {
-        m_set_size(sz);
       }
 
 #     include <cctbx/array_family/push_back_etc.h>

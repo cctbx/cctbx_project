@@ -306,7 +306,7 @@ namespace cctbx {
                        const XrayScattererArrayType& Sites,
                        StdComplexArrayType Fcalc)
   {
-    af::shared<double> Q(H.size(), af::no_initialization_flag());
+    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
     for (std::size_t i = 0; i < H.size(); i++) {
       Q[i] = UC.Q(H[i]);
     }

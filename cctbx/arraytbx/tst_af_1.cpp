@@ -21,8 +21,6 @@ namespace {
       check_true(__LINE__, a1.size() == 0);
       ArrayType a2(10);
       check_true(__LINE__, a2.size() == 10);
-      ArrayType a3(10, af::no_initialization_flag());
-      check_true(__LINE__, a3.size() == 10);
       ArrayType a4(10, element_type(123));
       check_true(__LINE__, a4.size() == 10);
       ArrayType a5(a4.begin(), a4.begin());
@@ -192,9 +190,6 @@ namespace {
       ArrayType a2(10, af::reserve_flag());
       check_true(__LINE__, a2.size() == 0);
       check_true(__LINE__, a2.capacity() == 10);
-      ArrayType a3(10, af::no_initialization_flag());
-      check_true(__LINE__, a3.size() == 10);
-      check_true(__LINE__, a3.capacity() == 10);
       ArrayType a4(10, element_type(123));
       check_true(__LINE__, a4.size() == 10);
       check_true(__LINE__, a4.capacity() == 10);

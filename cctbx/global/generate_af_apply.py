@@ -22,17 +22,21 @@ def one_type(array_type_name):
   f = open("%s_apply.h" % (array_type_name,), "w")
   sys.stdout = f
   write_copyright()
+  if (base_array_type_name(array_type_name) == "tiny"):
+    generic_include = "operators"
+  else:
+    generic_include = "functors"
   print """
 #ifndef CCTBX_ARRAY_FAMILY_%s_APPLY_H
 #define CCTBX_ARRAY_FAMILY_%s_APPLY_H
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
-#include <cctbx/array_family/generic_array_operators.h>
+#include <cctbx/array_family/generic_array_%s.h>
 #include <cctbx/basic/meta.h>
 
 namespace cctbx { namespace af {
-""" % ((array_type_name.upper(),) * 2)
+""" % ((array_type_name.upper(),) * 2 + (generic_include,))
 
   generate_unary_apply(array_type_name)
 

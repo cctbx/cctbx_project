@@ -124,15 +124,6 @@ namespace cctbx { namespace af {
           m_handle(new handle_type(sz * element_size()))
       {}
 
-      // non-std
-      shared_plain(const size_type& sz, no_initialization_flag)
-        : m_is_weak_ref(false),
-          m_handle(new handle_type(sz * element_size()))
-      {
-        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
-        m_handle->size = m_handle->capacity;
-      }
-
       shared_plain(const size_type& sz, const ElementType& x)
         : m_is_weak_ref(false),
           m_handle(new handle_type(sz * element_size()))
@@ -140,6 +131,18 @@ namespace cctbx { namespace af {
         std::uninitialized_fill_n(begin(), sz, x);
         m_handle->size = m_handle->capacity;
       }
+
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+      // non-std
+      template <typename InitFunctorType>
+      shared_plain(const size_type& sz, InitFunctorType ftor)
+        : m_is_weak_ref(false),
+          m_handle(new handle_type(sz * element_size()))
+      {
+        ftor(begin(), sz);
+        m_handle->size = m_handle->capacity;
+      }
+#endif
 
       shared_plain(const ElementType* first, const ElementType* last)
         : m_is_weak_ref(false),
@@ -258,11 +261,6 @@ namespace cctbx { namespace af {
           new_this.m_set_size(size());
           new_this.swap(*this);
         }
-      }
-
-      // non-std
-      void set_size_back_door(const size_type& sz) {
-        m_set_size(sz);
       }
 
       // non-std
