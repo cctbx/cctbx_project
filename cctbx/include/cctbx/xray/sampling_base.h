@@ -25,7 +25,7 @@ namespace cctbx { namespace xray {
       @param d_min = 1/d*max
       @param grid_resolution_factor = 1/(2*sigma)
       @param quality_factor = Q
-      @param max_u_extra is a user-defined upper limit.
+      @param max_u_base is a user-defined upper limit.
 
       quality_factor = 100 for 1% accuracy.
 
@@ -34,19 +34,19 @@ namespace cctbx { namespace xray {
     */
   inline // Potential NOINLINE
   double
-  calc_u_extra(double d_min,
-               double grid_resolution_factor,
-               double quality_factor=100,
-               double max_u_extra=adptbx::b_as_u(1000))
+  calc_u_base(double d_min,
+              double grid_resolution_factor,
+              double quality_factor=100,
+              double max_u_base=adptbx::b_as_u(1000))
   {
     CCTBX_ASSERT(d_min > 0);
     double numerator = adptbx::b_as_u(std::log10(quality_factor));
     double sigma = 1 / (2 * grid_resolution_factor);
     double denominator = sigma * (sigma - 1) / (d_min * d_min);
-    if (max_u_extra * denominator > numerator) {
+    if (max_u_base * denominator > numerator) {
       return numerator / denominator;
     }
-    return max_u_extra;
+    return max_u_base;
   }
 
   // Not available in Python.
@@ -520,6 +520,8 @@ namespace cctbx { namespace xray {
       typedef typename maptbx::c_grid_padded_p1<3> accessor_type;
       typedef typename accessor_type::index_type grid_point_type;
       typedef typename grid_point_type::value_type grid_point_element_type;
+      typedef std::vector<FloatType> u_radius_cache_t;
+      typedef std::vector<scitbx::sym_mat3<FloatType> > u_cart_cache_t;
 
       typedef af::versa<FloatType, accessor_type>
         real_map_type;
@@ -532,17 +534,25 @@ namespace cctbx { namespace xray {
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
         scattering_dictionary const& scattering_dict,
-        FloatType const& u_extra,
+        FloatType const& u_base,
         FloatType const& wing_cutoff,
         FloatType const& exp_table_one_over_step_size,
-        FloatType const& tolerance_positive_definite,
-        grid_point_type const& grid_n);
+        FloatType const& tolerance_positive_definite);
 
       uctbx::unit_cell const&
       unit_cell() { return unit_cell_; }
 
       FloatType
+      u_base() const { return u_base_; }
+
+      FloatType
       u_extra() const { return u_extra_; }
+
+      FloatType
+      u_min() const { return u_min_; }
+
+      FloatType
+      ave_u_iso_or_equiv() const { return ave_u_iso_or_equiv_; }
 
       FloatType
       wing_cutoff() const { return wing_cutoff_; }
@@ -594,6 +604,7 @@ namespace cctbx { namespace xray {
       fractional<FloatType>
       max_sampling_box_edges_frac() const
       {
+        CCTBX_ASSERT(map_accessor_.focus_size_1d() != 0);
         fractional<FloatType> r;
         for(std::size_t i=0;i<3;i++) {
           r[i] = FloatType(max_sampling_box_edges_[i])
@@ -605,14 +616,16 @@ namespace cctbx { namespace xray {
     protected:
       uctbx::unit_cell unit_cell_;
       std::size_t n_scatterers_passed_;
-      FloatType u_extra_;
-      FloatType average_u_iso_estimate_;
+      FloatType u_base_;
       FloatType wing_cutoff_;
       FloatType exp_table_one_over_step_size_;
       FloatType tolerance_positive_definite_;
       std::size_t n_contributing_scatterers_;
       std::size_t n_anomalous_scatterers_;
       bool anomalous_flag_;
+      FloatType u_min_;
+      FloatType ave_u_iso_or_equiv_;
+      FloatType u_extra_;
       FloatType rho_cutoff_;
       FloatType max_d_sq_upper_bound_;
       std::size_t exp_table_size_;
@@ -620,19 +633,8 @@ namespace cctbx { namespace xray {
       std::size_t sum_sampling_box_n_points_;
       grid_point_type max_sampling_box_edges_;
       accessor_type map_accessor_;
-
-      FloatType
-      get_u_cart_and_u_iso(
-        scitbx::sym_mat3<FloatType> const& u_star,
-        scitbx::sym_mat3<FloatType>& u_cart)
-      {
-        u_cart = adptbx::u_star_as_u_cart(unit_cell_, u_star);
-        scitbx::vec3<FloatType>
-          u_cart_eigenvalues = adptbx::eigenvalues(u_cart);
-        CCTBX_ASSERT(adptbx::is_positive_definite(u_cart_eigenvalues,
-          tolerance_positive_definite_));
-        return af::max(u_cart_eigenvalues);
-      }
+      u_radius_cache_t u_radius_cache_;
+      u_cart_cache_t u_cart_cache_;
 
       void
       update_sampling_box_statistics(
@@ -652,29 +654,31 @@ namespace cctbx { namespace xray {
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
     scattering_dictionary const& scattering_dict,
-    FloatType const& u_extra,
+    FloatType const& u_base,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
-    FloatType const& tolerance_positive_definite,
-    grid_point_type const& grid_n)
+    FloatType const& tolerance_positive_definite)
   :
     unit_cell_(unit_cell),
     n_scatterers_passed_(scatterers.size()),
-    u_extra_(u_extra),
-    average_u_iso_estimate_(0.25),
+    u_base_(u_base),
     wing_cutoff_(wing_cutoff),
     exp_table_one_over_step_size_(exp_table_one_over_step_size),
     tolerance_positive_definite_(tolerance_positive_definite),
     n_contributing_scatterers_(0),
     n_anomalous_scatterers_(0),
     anomalous_flag_(false),
-    rho_cutoff_(0),
+    u_min_(-1),
+    ave_u_iso_or_equiv_(-1),
+    u_extra_(-1),
+    rho_cutoff_(1),
     max_d_sq_upper_bound_(unit_cell.shortest_vector_sq() * 0.25),
     exp_table_size_(0),
     max_sampling_box_n_points_(0),
     sum_sampling_box_n_points_(0),
     max_sampling_box_edges_(0,0,0)
   {
+    CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
     if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
       throw error(
@@ -684,18 +688,64 @@ namespace cctbx { namespace xray {
         " according to the PDB convention. The orthogonalization"
         " matrix passed is not compatible with this convention.");
     }
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      XrayScattererType const& scatterer = scatterers[i];
-      if (scatterer.weight() == 0) continue;
-      n_contributing_scatterers_++;
-      if (scatterer.fdp != 0) {
-        n_anomalous_scatterers_++;
+    u_radius_cache_.reserve(scatterers.size());
+    u_cart_cache_.reserve(scatterers.size());
+    FloatType sum_w = 0;
+    FloatType sum_w_gaussian_a = 0;
+    FloatType sum_w_u_equiv = 0;
+    typedef scattering_dictionary::dict_type dict_type;
+    typedef dict_type::const_iterator dict_iter;
+    dict_type const& scd = scattering_dict.dict();
+    for(dict_iter di=scd.begin();di!=scd.end();di++) {
+      eltbx::xray_scattering::gaussian const& gaussian = di->second.gaussian;
+      af::const_ref<std::size_t>
+        member_indices = di->second.member_indices.const_ref();
+      FloatType gaussian_a = scitbx::fn::absolute(gaussian.at_stol_sq(0));
+      for(std::size_t mi=0;mi<member_indices.size();mi++) {
+        XrayScattererType const& scatterer = scatterers[member_indices[mi]];
+        FloatType w = scatterer.weight();
+        if (w == 0) continue;
+        n_contributing_scatterers_++;
+        if (scatterer.fdp != 0) {
+          n_anomalous_scatterers_++;
+        }
+        sum_w += w;
+        sum_w_gaussian_a += w * gaussian_a;
+        FloatType u_min;
+        if (!scatterer.anisotropic_flag) {
+          u_radius_cache_.push_back(scatterer.u_iso);
+          u_min = scatterer.u_iso;
+          sum_w_u_equiv += w * scatterer.u_iso;
+        }
+        else {
+          u_cart_cache_.push_back(adptbx::u_star_as_u_cart(unit_cell_,
+            scatterer.u_star));
+          scitbx::vec3<FloatType>
+            u_cart_eigenvalues = adptbx::eigenvalues(u_cart_cache_.back());
+          CCTBX_ASSERT(adptbx::is_positive_definite(
+            u_cart_eigenvalues, tolerance_positive_definite));
+          u_radius_cache_.push_back(af::max(u_cart_eigenvalues));
+          u_min = af::min(u_cart_eigenvalues);
+          sum_w_u_equiv += w * adptbx::u_cart_as_u_iso(u_cart_cache_.back());
+        }
+        CCTBX_ASSERT(u_radius_cache_.back() >= 0);
+        if (u_min_ < 0) {
+          u_min_ = u_min;
+        }
+        else {
+          u_min_ = std::min(u_min_, u_min);
+        }
       }
     }
-    rho_cutoff_ = detail::get_average_gaussian_ft_a(
-      scattering_dict,
-      adptbx::u_as_b(average_u_iso_estimate_ + u_extra_)) * wing_cutoff_;
+    u_extra_ = u_base_ - u_min_;
+    if (sum_w != 0) {
+      ave_u_iso_or_equiv_ = sum_w_u_equiv / sum_w;
+      rho_cutoff_ = detail::isotropic_3d_gaussian_fourier_transform(
+        sum_w_gaussian_a / sum_w,
+        adptbx::u_as_b(ave_u_iso_or_equiv_ + u_extra_)) * wing_cutoff_;
+    }
     CCTBX_ASSERT(rho_cutoff_ > 0);
+    CCTBX_ASSERT(n_contributing_scatterers_ == u_radius_cache_.size());
   }
 
 }} // namespace cctbx::xray

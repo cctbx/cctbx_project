@@ -20,6 +20,14 @@ class gradients_fft(gradients_base):
     self._d_target_d_f_calc = d_target_d_f_calc
     manager.setup_fft() # before timing
     time_apply_u_extra = user_plus_sys_time()
+    self._results = ext.fast_gradients(
+      unit_cell=xray_structure.unit_cell(),
+      scatterers=xray_structure.scatterers(),
+      scattering_dict=xray_structure.scattering_dict(),
+      u_base=manager.u_base(),
+      wing_cutoff=manager.wing_cutoff(),
+      exp_table_one_over_step_size=manager.exp_table_one_over_step_size(),
+      tolerance_positive_definite=manager.tolerance_positive_definite())
     coeff = self._gradient_map_coeff()
     time_apply_u_extra = time_apply_u_extra.elapsed()
     time_from_or_to_map = user_plus_sys_time()
@@ -27,26 +35,19 @@ class gradients_fft(gradients_base):
     time_from_or_to_map = time_from_or_to_map.elapsed()
     time_fft = user_plus_sys_time()
     if (not miller_set.anomalous_flag()):
-      gradient_map_real = manager.rfft().backward(coeff_map.complex_map())
-      gradient_map_complex = flex.complex_double(flex.grid(0,0,0))
+      gradient_map = manager.rfft().backward(coeff_map.complex_map())
     else:
-      gradient_map_real = flex.double(flex.grid(0,0,0))
-      gradient_map_complex = manager.cfft().backward(coeff_map.complex_map())
+      gradient_map = manager.cfft().backward(coeff_map.complex_map())
     time_fft = time_fft.elapsed()
     time_sampling = user_plus_sys_time()
-    self._results = ext.fast_gradients(
-      xray_structure.unit_cell(),
-      xray_structure.scatterers(),
-      xray_structure.scattering_dict(),
-      gradient_map_real,
-      gradient_map_complex,
-      gradient_flags,
-      n_parameters,
-      manager.u_extra(),
-      manager.wing_cutoff(),
-      manager.exp_table_one_over_step_size(),
-      manager.electron_density_must_be_positive(),
-      manager.tolerance_positive_definite())
+    self._results.sampling(
+      scatterers=xray_structure.scatterers(),
+      scattering_dict=xray_structure.scattering_dict(),
+      ft_d_target_d_f_calc=gradient_map,
+      grad_flags=gradient_flags,
+      n_parameters=n_parameters,
+      electron_density_must_be_positive=
+        manager.electron_density_must_be_positive())
     time_sampling = time_sampling.elapsed()
     manager.estimate_time_fft.register(
       n_scatterers=xray_structure.scatterers().size(),
@@ -66,7 +67,7 @@ class gradients_fft(gradients_base):
     coeff = self.d_target_d_f_calc().deep_copy()
     ext.apply_u_extra(
       self.manager().unit_cell(),
-      self.manager().u_extra(),
+      self._results.u_extra(),
       self.miller_set().indices(),
       coeff,
       multiplier)

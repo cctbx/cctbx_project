@@ -67,7 +67,7 @@ def exercise(space_group_info, const_gaussian,
     max_prime=max_prime)
   assert crystal_gridding.symmetry_flags() is None
   rfft = fftpack.real_to_complex_3d(crystal_gridding.n_real())
-  u_extra = xray.calc_u_extra(d_min, resolution_factor, quality_factor)
+  u_base = xray.calc_u_base(d_min, resolution_factor, quality_factor)
   electron_density_must_be_positive = 1
   tolerance_positive_definite = 1.e-5
   sampled_density = xray.sampled_model_density(
@@ -76,7 +76,7 @@ def exercise(space_group_info, const_gaussian,
     structure.scattering_dict(),
     rfft.n_real(),
     rfft.m_real(),
-    u_extra,
+    u_base,
     wing_cutoff,
     exp_table_one_over_step_size,
     force_complex,

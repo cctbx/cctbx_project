@@ -17,7 +17,7 @@ class manager(crystal.symmetry):
                      grid_resolution_factor=1/3.,
                      symmetry_flags=None,
                      mandatory_grid_factors=None,
-                     quality_factor=None, u_extra=None, b_extra=None,
+                     quality_factor=None, u_base=None, b_base=None,
                      wing_cutoff=None,
                      exp_table_one_over_step_size=None,
                      max_prime=5,
@@ -35,7 +35,7 @@ class manager(crystal.symmetry):
         assert d_min <= miller_set.d_min()
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     quality_factor = quality_factor_from_any(
-      d_min, grid_resolution_factor, quality_factor, u_extra, b_extra)
+      d_min, grid_resolution_factor, quality_factor, u_base, b_base)
     if (wing_cutoff is None):
       wing_cutoff = 1.e-3
     if (exp_table_one_over_step_size is None):
@@ -45,7 +45,7 @@ class manager(crystal.symmetry):
     self._crystal_gridding = None
     self._rfft = None
     self._cfft = None
-    self._u_extra = None
+    self._u_base = None
     self.estimate_time_direct = _estimate_time_direct(
       self.space_group().order_z())
     self.estimate_time_fft = _estimate_time_fft()
@@ -111,18 +111,18 @@ class manager(crystal.symmetry):
         self.crystal_gridding().n_real())
     return self._cfft
 
-  def u_extra(self):
-    if (self._u_extra is None):
-      self._u_extra = ext.calc_u_extra(
+  def u_base(self):
+    if (self._u_base is None):
+      self._u_base = ext.calc_u_base(
         self.d_min(),
         self.grid_resolution_factor(),
         self.quality_factor())
-    return self._u_extra
+    return self._u_base
 
   def setup_fft(self):
     self.rfft()
     self.cfft()
-    self.u_extra()
+    self.u_base()
     return self
 
   def have_good_timing_estimates(self):

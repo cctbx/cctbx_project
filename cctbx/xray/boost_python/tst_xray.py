@@ -325,7 +325,7 @@ def exercise_targets():
     (0.024748929-0.029698715j)))
 
 def exercise_sampled_model_density():
-  assert approx_equal(xray.calc_u_extra(2, 1./3), 0.1350949)
+  assert approx_equal(xray.calc_u_base(2, 1./3), 0.1350949)
   uc = uctbx.unit_cell((20, 20, 23))
   sg = sgtbx.space_group_info("P 4")
   scatterers = flex.xray_scatterer((
@@ -340,7 +340,10 @@ def exercise_sampled_model_density():
   d = xray.sampled_model_density(
     uc, scatterers, scattering_dict, (20,20,22), (20,20,23))
   assert d.unit_cell().is_similar_to(uc)
+  assert approx_equal(d.u_base(), 0.25)
   assert approx_equal(d.u_extra(), 0.25)
+  assert approx_equal(d.u_min(), 0)
+  assert approx_equal(d.ave_u_iso_or_equiv(), 0.025)
   assert approx_equal(d.wing_cutoff(), 1.e-3)
   assert approx_equal(d.exp_table_one_over_step_size(), -100)
   assert approx_equal(d.tolerance_positive_definite(), 1.e-5)
@@ -350,12 +353,12 @@ def exercise_sampled_model_density():
   assert d.anomalous_flag()
   assert d.real_map().size() == 0
   assert d.complex_map().size() == (20*20*22)
-  assert d.exp_table_size() == 2889
-  assert d.max_sampling_box_n_points() == 216
-  assert d.sum_sampling_box_n_points() == 341
-  assert approx_equal(d.ave_sampling_box_n_points(), 341/2.)
-  assert d.max_sampling_box_edges() == (6,6,6)
-  assert approx_equal(d.max_sampling_box_edges_frac(), (6/20.,6/20.,6/22.))
+  assert d.exp_table_size() == 2834
+  assert d.max_sampling_box_n_points() == 180
+  assert d.sum_sampling_box_n_points() == 305
+  assert approx_equal(d.ave_sampling_box_n_points(), 305/2.)
+  assert d.max_sampling_box_edges() == (5,6,6)
+  assert approx_equal(d.max_sampling_box_edges_frac(), (5/20.,6/20.,6/22.))
   i = flex.miller_index(((1,2,3), (2,3,4)))
   f = flex.complex_double((1+2j, 2+3j))
   d.eliminate_u_extra_and_normalize(i, f)
