@@ -35,6 +35,10 @@ if (not env_etc.no_boost_python):
     source="meta_ext.cpp")
 
   env_pure_boost_python_ext.SharedLibrary(
+    target="#libtbx/boost_python_hybrid_times_ext",
+    source="hybrid_times_ext.cpp")
+
+  env_pure_boost_python_ext.SharedLibrary(
     target="#libtbx/boost_rational_ext",
     source="rational_ext.cpp")
 
