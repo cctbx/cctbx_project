@@ -17,7 +17,7 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, std::size_t N>
   std::ostream&
-  operator<<(std::ostream& os, const tiny<ElementType, N>& a) {
+  operator<<(std::ostream& os, tiny<ElementType, N> const& a) {
     return os << a.const_ref();
   }
 

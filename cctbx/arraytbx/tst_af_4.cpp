@@ -1,5 +1,5 @@
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
 #include <cctbx/array_family/simple_io.h>
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
 #include <cctbx/array_family_ew.h>
 #endif
 
@@ -9,12 +9,12 @@ namespace {
 
 # include "tst_af_helpers.cpp"
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
 
   template <typename ArrayType1,
             typename ArrayType2>
   void
-  exercise_ew_bool(const ArrayType1& a1, const ArrayType2& a2)
+  exercise_ew_bool(ArrayType1 const& a1, ArrayType2 const& a2)
   {
     typedef typename ArrayType1::value_type element_type1;
     verify(__LINE__, a1 == a2,
@@ -63,7 +63,7 @@ namespace {
   template <typename ArrayType1,
             typename ArrayType2>
   void
-  exercise_logical(const ArrayType1& a1, ArrayType2& a2)
+  exercise_logical(ArrayType1 const& a1, ArrayType2& a2)
   {
     typedef typename ArrayType1::value_type element_type1;
     verify(__LINE__, !a1,
@@ -79,7 +79,7 @@ namespace {
   template <typename ArrayType1,
             typename ArrayType2>
   void
-  exercise_arithmetic(const ArrayType1& a1, ArrayType2& a2)
+  exercise_arithmetic(ArrayType1 const& a1, ArrayType2& a2)
   {
     typedef typename ArrayType1::value_type element_type1;
     typedef typename ArrayType2::value_type element_type2;
@@ -98,14 +98,15 @@ namespace {
             typename ResultArrayType>
   void
   exercise_functions(
-    ArrayType& a, const ResultArrayType&, const BoolArrayType&)
+    ArrayType& a, ResultArrayType const&, BoolArrayType const&)
   {
     typedef typename ArrayType::value_type element_type;
+    typedef typename ResultArrayType::value_type result_element_type;
     a[0] = 0.1;
     a[1] = 0.2;
     a[2] = 0.3;
     { ResultArrayType r = af::acos(a);
-      check_true(__LINE__, r[2] == std::acos(a[2])); }
+      check_true(__LINE__, std::fabs(r[2] - std::acos(a[2])) < 1.e-6); }
     { ResultArrayType r = af::pow(a, a);
       check_true(__LINE__, r[2] == std::pow(a[2], a[2])); }
     { ResultArrayType r = af::pow(a, a[0]);
@@ -159,12 +160,15 @@ namespace {
         check_true(__LINE__, r[2] == std::real(c[2])); }
       { af::shared<ElementType> r = af::imag(c);
         check_true(__LINE__, r[2] == std::imag(c[2])); }
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
       { af::shared<ElementType> r = af::abs(c);
         check_true(__LINE__, r[2] == std::abs(c[2])); }
+#endif
       { af::shared<ElementType> r = af::arg(c);
         check_true(__LINE__, r[2] == std::arg(c[2])); }
       { af::shared<ElementType> r = af::norm(c);
         check_true(__LINE__, r[2] == std::norm(c[2])); }
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
       { af::shared<std::complex<ElementType> > r = af::pow(c, i);
         check_true(__LINE__, r[2] == std::pow(c[2], i[2])); }
       { af::shared<std::complex<ElementType> > r = af::pow(c, i[0]);
@@ -195,6 +199,7 @@ namespace {
         check_true(__LINE__, r[2] == std::polar(e[2], e[0])); }
       { af::shared<std::complex<ElementType> > r = af::polar(e[0], e);
         check_true(__LINE__, r[2] == std::polar(e[0], e[2])); }
+#endif
     }
   };
 
@@ -270,10 +275,10 @@ namespace {
 
     a_value() { m_init(ValueType()); }
     template <typename OtherValueType>
-    a_value(const OtherValueType& v) { m_init(v); }
-    a_value(const a_value<ValueType>& other) { m_init(*(other.m_value)); }
+    a_value(OtherValueType const& v) { m_init(v); }
+    a_value(a_value<ValueType> const& other) { m_init(*(other.m_value)); }
     a_value<ValueType>&
-    operator=(const a_value<ValueType>& other) {
+    operator=(a_value<ValueType> const& other) {
       m_destory();
       m_init(*(other.m_value));
       return *this;
@@ -288,32 +293,32 @@ namespace {
 
     template <typename OtherValueType>
     a_value<ValueType>&
-    operator+=(const a_value<OtherValueType>& other) {
+    operator+=(a_value<OtherValueType> const& other) {
       (*m_value) += *(other.m_value);
       return *this;
     }
 
     template <typename OtherValueType>
     a_value<ValueType>&
-    operator*=(const a_value<OtherValueType>& other) {
+    operator*=(a_value<OtherValueType> const& other) {
       (*m_value) *= *(other.m_value);
       return *this;
     }
 
     template <typename OtherValueType>
     a_value<ValueType>&
-    operator+=(const OtherValueType& other) {
+    operator+=(OtherValueType const& other) {
       (*m_value) += other;
       return *this;
     }
 
     operator double() const { return *m_value; }
 
-    void m_init(const ValueType& v) { m_value = new ValueType(v); }
+    void m_init(ValueType const& v) { m_value = new ValueType(v); }
     void m_destory() { delete m_value; }
     ValueType* m_value;
   };
-#endif // ! VC++ 7.0
+#endif // ! VC++ 6.0
 
 } // namespace <anonymous>
 
@@ -321,12 +326,10 @@ int main(int argc, char* argv[])
 {
   for(;;) {
 #if !(defined(__GNUC__) && __GNUC__ < 3)
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
     exercise_main<int, double>::run();
     exercise_main<a_value<int>, double>::run();
     exercise_main<int, a_value<double> >::run();
     exercise_main<a_value<int>, a_value<double> >::run();
-#endif
 #endif
     if (argc == 1) break;
   }

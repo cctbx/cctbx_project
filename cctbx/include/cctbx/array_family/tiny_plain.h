@@ -56,7 +56,7 @@ namespace cctbx { namespace af {
 
   template <typename ArrayType>
   const_ref<typename ArrayType::value_type>
-  make_const_ref(const ArrayType& a) {
+  make_const_ref(ArrayType const& a) {
     typedef typename ArrayType::value_type value_type;
     typedef const_ref<value_type> return_type;
     typedef typename return_type::accessor_type accessor_type;

@@ -24,7 +24,7 @@ namespace cctbx { namespace af {
   template<typename AnyType, std::size_t N>
   inline
   bool
-  operator==(const tiny<AnyType,N>& x, const tiny<AnyType,N>& y) {
+  operator==(tiny<AnyType,N> const& x, tiny<AnyType,N> const& y) {
       for (std::size_t i = 0; i < x.size(); i++)
           if (x[i] != y[i]) return false;
       return true;
@@ -33,7 +33,7 @@ namespace cctbx { namespace af {
   template<typename AnyType, std::size_t N>
   inline
   bool
-  operator==(const tiny<AnyType,N>& x, const AnyType& value) {
+  operator==(tiny<AnyType,N> const& x, AnyType const& value) {
       for (std::size_t i = 0; i < x.size(); i++)
           if (x[i] != value) return false;
       return true;
@@ -42,7 +42,7 @@ namespace cctbx { namespace af {
   template<typename AnyType, std::size_t N>
   inline
   bool
-  operator!=(const tiny<AnyType,N>& x, const tiny<AnyType,N>& y) {
+  operator!=(tiny<AnyType,N> const& x, tiny<AnyType,N> const& y) {
       for (std::size_t i = 0; i < x.size(); i++)
           if (x[i] != y[i]) return true;
       return false;
@@ -51,7 +51,7 @@ namespace cctbx { namespace af {
   template<typename AnyType, std::size_t N>
   inline
   bool
-  operator!=(const tiny<AnyType,N>& x, const AnyType& value) {
+  operator!=(tiny<AnyType,N> const& x, AnyType const& value) {
       for (std::size_t i = 0; i < x.size(); i++)
           if (x[i] != value) return true;
       return false;
@@ -60,8 +60,8 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
-  operator+(const tiny<NumType,N>& lhs,
-            const tiny<NumType,N>& rhs) {
+  operator+(tiny<NumType,N> const& lhs,
+            tiny<NumType,N> const& rhs) {
       tiny<NumType,N> result;
       for (std::size_t i = 0; i < lhs.size(); i++) {
           result[i] = lhs[i] + rhs[i];
@@ -73,7 +73,7 @@ namespace cctbx { namespace af {
   inline
   tiny<NumType,N>&
   operator+=(tiny<NumType,N>& lhs,
-            const tiny<NumType,N>& rhs) {
+            tiny<NumType,N> const& rhs) {
       for (std::size_t i = 0; i < lhs.size(); i++) {
           lhs[i] += rhs[i];
       }
@@ -83,8 +83,8 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
-  operator-(const tiny<NumType,N>& lhs,
-            const tiny<NumType,N>& rhs) {
+  operator-(tiny<NumType,N> const& lhs,
+            tiny<NumType,N> const& rhs) {
       tiny<NumType,N> result;
       for (std::size_t i = 0; i < lhs.size(); i++) {
           result[i] = lhs[i] - rhs[i];
@@ -95,7 +95,7 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
-  operator-(const tiny<NumType,N>& rhs) {
+  operator-(tiny<NumType,N> const& rhs) {
       tiny<NumType,N> result;
       for (std::size_t i = 0; i < rhs.size(); i++) {
           result[i] = -rhs[i];
@@ -106,8 +106,8 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
-  operator*(const tiny<NumType,N>& lhs,
-            const tiny<NumType,N>& rhs) {
+  operator*(tiny<NumType,N> const& lhs,
+            tiny<NumType,N> const& rhs) {
       tiny<NumType,N> result;
       for (std::size_t i = 0; i < lhs.size(); i++) {
           result[i] = lhs[i] * rhs[i];
@@ -118,8 +118,8 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
-  operator*(const NumType& lhs,
-            const tiny<NumType,N>& rhs) {
+  operator*(NumType const& lhs,
+            tiny<NumType,N> const& rhs) {
       tiny<NumType,N> result;
       for (std::size_t i = 0; i < rhs.size(); i++) result[i] = lhs * rhs[i];
       return result;
@@ -128,8 +128,8 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
-  operator*(const tiny<NumType,N>& lhs,
-            const NumType& rhs) {
+  operator*(tiny<NumType,N> const& lhs,
+            NumType const& rhs) {
       tiny<NumType,N> result;
       for (std::size_t i = 0; i < lhs.size(); i++) result[i] = lhs[i] * rhs;
       return result;
@@ -139,7 +139,7 @@ namespace cctbx { namespace af {
   inline
   tiny<NumType,N>&
   operator*=(tiny<NumType,N>& lhs,
-             const NumType& rhs) {
+             NumType const& rhs) {
       for (std::size_t i = 0; i < lhs.size(); i++) lhs[i] *= rhs;
       return lhs;
   }
@@ -147,8 +147,8 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
-  operator/(const tiny<NumType,N>& lhs,
-            const NumType& rhs) {
+  operator/(tiny<NumType,N> const& lhs,
+            NumType const& rhs) {
       tiny<NumType,N> result;
       for (std::size_t i = 0; i < lhs.size(); i++) result[i] = lhs[i] / rhs;
       return result;
@@ -157,8 +157,8 @@ namespace cctbx { namespace af {
   template<typename NumType, std::size_t N>
   inline
   bool
-  operator>=(const tiny<NumType,N>& lhs,
-             const NumType& rhs) {
+  operator>=(tiny<NumType,N> const& lhs,
+             NumType const& rhs) {
       for (std::size_t i = 0; i < lhs.size(); i++) {
           if (!(lhs[i] >= rhs)) return false;
       }
@@ -168,7 +168,7 @@ namespace cctbx { namespace af {
   template <typename NumType, std::size_t N>
   inline
   tiny<NumType, N>
-  abs(const tiny<NumType, N>& a)
+  abs(tiny<NumType, N> const& a)
   {
     tiny<NumType, N> result;
     for (std::size_t i = 0; i < N; i++) {
@@ -181,7 +181,7 @@ namespace cctbx { namespace af {
   template<typename ElementType, std::size_t N>
   inline
   tiny<ElementType, N>
-  fabs(const tiny<ElementType, N>& a)
+  fabs(tiny<ElementType, N> const& a)
   {
     tiny<ElementType, N> result;
     for (std::size_t i = 0; i < N; i++) {
@@ -193,8 +193,8 @@ namespace cctbx { namespace af {
   template <typename FloatType, std::size_t N>
   inline
   tiny<bool, N>
-  approx_equal_scaled(const tiny<FloatType, N>& a,
-                      const tiny<FloatType, N>& b,
+  approx_equal_scaled(tiny<FloatType, N> const& a,
+                      tiny<FloatType, N> const& b,
                       FloatType scaled_tolerance) {
     tiny<bool, N> result;
     for (std::size_t i = 0; i < N; i++) {

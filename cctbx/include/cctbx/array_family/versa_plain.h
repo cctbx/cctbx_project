@@ -35,12 +35,12 @@ namespace cctbx { namespace af {
       {}
 
       explicit
-      versa_plain(const AccessorType& ac)
+      versa_plain(AccessorType const& ac)
         : base_class(ac.size1d()),
           m_accessor(ac)
       {}
 
-      versa_plain(const AccessorType& ac, reserve_flag)
+      versa_plain(AccessorType const& ac, reserve_flag)
         : base_class(ac.size1d(), reserve_flag()),
           m_accessor(ac)
       {}
@@ -51,47 +51,45 @@ namespace cctbx { namespace af {
           m_accessor(n0)
       {}
 
-      versa_plain(const AccessorType& ac, const ElementType& x)
+      versa_plain(AccessorType const& ac, ElementType const& x)
         : base_class(ac.size1d(), x),
           m_accessor(ac)
       {}
 
-      versa_plain(long n0, const ElementType& x)
+      versa_plain(long n0, ElementType const& x)
         : base_class(AccessorType(n0).size1d(), x),
           m_accessor(n0)
       {}
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
-      template <typename InitFunctorType>
-      versa_plain(const AccessorType& ac, InitFunctorType ftor)
+      template <typename FunctorType>
+      versa_plain(AccessorType const& ac, init_functor<FunctorType> const& ftor)
         : base_class(ac.size1d(), ftor),
           m_accessor(ac)
       {}
 
       // non-std
-      template <typename InitFunctorType>
-      versa_plain(long n0, InitFunctorType ftor)
+      template <typename FunctorType>
+      versa_plain(long n0, init_functor<FunctorType> const& ftor)
         : base_class(AccessorType(n0).size1d(), ftor),
           m_accessor(n0)
       {}
-#endif
 
-      versa_plain(const versa_plain<ElementType, AccessorType>& other,
+      versa_plain(versa_plain<ElementType, AccessorType> const& other,
                   weak_ref_flag)
         : base_class(other, weak_ref_flag()),
           m_accessor(other.m_accessor)
       {}
 
-      versa_plain(const base_class& other,
-                  const AccessorType& ac)
+      versa_plain(base_class const& other,
+                  AccessorType const& ac)
         : base_class(other),
           m_accessor(ac)
       {
         if (other.size() < size()) throw_range_error();
       }
 
-      versa_plain(const base_class& other,
+      versa_plain(base_class const& other,
                   long n0)
         : base_class(other),
           m_accessor(n0)
@@ -99,25 +97,25 @@ namespace cctbx { namespace af {
         if (other.size() < size()) throw_range_error();
       }
 
-      versa_plain(const base_class& other,
-                  const AccessorType& ac,
-                  const ElementType& x)
+      versa_plain(base_class const& other,
+                  AccessorType const& ac,
+                  ElementType const& x)
         : base_class(other),
           m_accessor(ac)
       {
         base_class::resize(m_accessor.size1d(), x);
       }
 
-      versa_plain(const base_class& other,
+      versa_plain(base_class const& other,
                   long n0,
-                  const ElementType& x)
+                  ElementType const& x)
         : base_class(other),
           m_accessor(n0)
       {
         base_class::resize(m_accessor.size1d(), x);
       }
 
-      versa_plain(sharing_handle* other_handle, const AccessorType& ac)
+      versa_plain(sharing_handle* other_handle, AccessorType const& ac)
         : base_class(other_handle),
           m_accessor(ac)
       {
@@ -135,8 +133,8 @@ namespace cctbx { namespace af {
         }
       }
 
-      versa_plain(sharing_handle* other_handle, const AccessorType& ac,
-                  const ElementType& x)
+      versa_plain(sharing_handle* other_handle, AccessorType const& ac,
+                  ElementType const& x)
         : base_class(other_handle),
           m_accessor(ac)
       {
@@ -144,14 +142,14 @@ namespace cctbx { namespace af {
       }
 
       versa_plain(sharing_handle* other_handle, long n0,
-                  const ElementType& x)
+                  ElementType const& x)
         : base_class(other_handle),
           m_accessor(n0)
       {
         base_class::resize(m_accessor.size1d(), x);
       }
 
-      const AccessorType& accessor() const { return m_accessor; }
+      AccessorType const& accessor() const { return m_accessor; }
       size_type size() const { return m_accessor.size1d(); }
 
       // since size() is not a virtual function end() needs to be redefined.
@@ -160,12 +158,12 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(begin(), m_accessor)
 
-      void resize(const AccessorType& ac) {
+      void resize(AccessorType const& ac) {
         m_accessor = ac;
         base_class::resize(m_accessor.size1d(), ElementType());
       }
 
-      void resize(const AccessorType& ac, const ElementType& x) {
+      void resize(AccessorType const& ac, ElementType const& x) {
         m_accessor = ac;
         base_class::resize(m_accessor.size1d(), x);
       }
@@ -190,22 +188,22 @@ namespace cctbx { namespace af {
         return versa_plain<ElementType, AccessorType>(*this, weak_ref_flag());
       }
 
-            value_type& operator()(const index_type& i)       {
+            value_type& operator()(index_type const& i)       {
         return begin()[m_accessor(i)];
       }
-      const value_type& operator()(const index_type& i) const {
+      value_type const& operator()(index_type const& i) const {
         return begin()[m_accessor(i)];
       }
 
       // Convenience operator()
 
-      const value_type& operator()(long i0) const {
+      value_type const& operator()(long i0) const {
         return operator()(index_type(i0));
       }
             value_type& operator()(long i0)       {
         return operator()(index_type(i0));
       }
-      const value_type& operator()(long i0,
+      value_type const& operator()(long i0,
                                    long i1) const {
         return operator()(index_type(i0, i1));
       }
@@ -213,7 +211,7 @@ namespace cctbx { namespace af {
                                    long i1)       {
         return operator()(index_type(i0, i1));
       }
-      const value_type& operator()(long i0,
+      value_type const& operator()(long i0,
                                    long i1,
                                    long i2) const {
         return operator()(index_type(i0, i1, i2));

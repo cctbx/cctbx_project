@@ -392,9 +392,9 @@ namespace {
   double foo(int x) { return .1 + x; }
 
   template <typename ArrayType1, typename ArrayType2>
-  void exercise_apply(const ArrayType1& a1, const ArrayType2&)
+  void exercise_apply(ArrayType1 const& a1, ArrayType2 const&)
   {
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
     ArrayType2 r = af::apply(boost::bind(foo, _1), a1);
     for(std::size_t i=0;i<a1.size();i++) {
       check_true(__LINE__, std::abs(r[i] - foo(a1[i])) < 1.e-6);

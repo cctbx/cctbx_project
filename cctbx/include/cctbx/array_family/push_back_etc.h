@@ -2,7 +2,7 @@
 // Included from small_plain.h and shared_plain.h
 // DO NOT INCLUDE THIS FILE DIRECTLY.
 
-      void assign(const size_type& sz, const ElementType& x) {
+      void assign(size_type const& sz, ElementType const& x) {
         if (sz > capacity()) {
           clear();
           reserve(sz);
@@ -41,7 +41,7 @@
         }
       }
 
-      void push_back(const ElementType& x) {
+      void push_back(ElementType const& x) {
         if (size() < capacity()) {
           new (end()) ElementType(x);
           m_incr_size(1);
@@ -52,7 +52,7 @@
       }
 
       // non-std
-      void append(const ElementType& x) { push_back(x); }
+      void append(ElementType const& x) { push_back(x); }
 
       void pop_back() {
         m_decr_size(1);
@@ -60,7 +60,7 @@
           has_trivial_destructor<ElementType>::value());
       }
 
-      ElementType* insert(ElementType* pos, const ElementType& x) {
+      ElementType* insert(ElementType* pos, ElementType const& x) {
         size_type n = pos - begin();
         if (size() == capacity()) {
           m_insert_overflow(pos, size_type(1), x, false);
@@ -110,7 +110,7 @@
         }
       }
 
-      void insert(ElementType* pos, const size_type& n, const ElementType& x) {
+      void insert(ElementType* pos, size_type const& n, ElementType const& x) {
         if (n == 0) return;
         if (size() + n > capacity()) {
           m_insert_overflow(pos, n, x, false);
@@ -151,7 +151,7 @@
         return first;
       }
 
-      void resize(const size_type& new_size, const ElementType& x) {
+      void resize(size_type const& new_size, ElementType const& x) {
         if (new_size < size())  {
           erase(begin() + new_size, end());
         }
@@ -160,7 +160,7 @@
         }
       }
 
-      void resize(const size_type& new_size) {
+      void resize(size_type const& new_size) {
         resize(new_size, ElementType());
       }
 
@@ -184,6 +184,6 @@
       // non-std
       template <typename OtherArrayType>
       void
-      assign(const OtherArrayType& other) {
+      assign(OtherArrayType const& other) {
         assign(&*(other.begin()), &*(other.end()));
       }

@@ -17,6 +17,21 @@ namespace cctbx { namespace af {
 
   struct reserve_flag {};
 
+  template <typename FunctorType>
+  struct init_functor
+  {
+    explicit init_functor(FunctorType const& ftor) : held(ftor) {}
+    FunctorType const& held;
+  };
+
+  template <typename FunctorType>
+  inline
+  init_functor<FunctorType>
+  make_init_functor(FunctorType const& ftor)
+  {
+    return init_functor<FunctorType>(ftor);
+  }
+
   namespace detail {
 
     template <class ElementType>

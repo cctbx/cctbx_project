@@ -17,9 +17,9 @@ namespace cctbx { namespace af {
   //! Test if abs(a-b) < scaled_tolerance.
   template <class FloatType>
   bool
-  approx_equal_scaled(const FloatType& a,
-                      const FloatType& b,
-                      const FloatType& scaled_tolerance) {
+  approx_equal_scaled(FloatType const& a,
+                      FloatType const& b,
+                      FloatType const& scaled_tolerance) {
     FloatType diff = a - b;
     if (diff < 0.) diff = -diff;
     if (diff < scaled_tolerance) return true;
@@ -29,9 +29,9 @@ namespace cctbx { namespace af {
   //! Test if 2*abs((a-b)/(a+b)) < tolerance.
   template <class FloatType>
   bool
-  approx_equal_unscaled(const FloatType& a,
-                        const FloatType& b,
-                        const FloatType& tolerance) {
+  approx_equal_unscaled(FloatType const& a,
+                        FloatType const& b,
+                        FloatType const& tolerance) {
     FloatType sum = a + b;
     cctbx_assert(sum != 0);
     FloatType diff = a - b;
@@ -48,9 +48,9 @@ namespace cctbx { namespace af {
             typename ArgumentType3>
   struct functor_approx_equal_scaled {
     typedef ResultType result_type;
-    ResultType operator()(const ArgumentType1& x,
-                          const ArgumentType2& y,
-                          const ArgumentType3& z) const {
+    ResultType operator()(ArgumentType1 const& x,
+                          ArgumentType2 const& y,
+                          ArgumentType3 const& z) const {
     return ResultType(approx_equal_scaled(x, y, z)); }
   };
 
@@ -61,9 +61,9 @@ namespace cctbx { namespace af {
             typename ArgumentType3>
   struct functor_approx_equal_unscaled {
     typedef ResultType result_type;
-    ResultType operator()(const ArgumentType1& x,
-                          const ArgumentType2& y,
-                          const ArgumentType3& z) const {
+    ResultType operator()(ArgumentType1 const& x,
+                          ArgumentType2 const& y,
+                          ArgumentType3 const& z) const {
     return ResultType(approx_equal_unscaled(x, y, z)); }
   };
 

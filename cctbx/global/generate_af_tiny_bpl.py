@@ -19,7 +19,7 @@ def write_copyright():
 def one_definition(T, N, declaration):
   prototype = """
   cctbx::af::tiny<%s, %d> from_python(PyObject* p,
-    boost::python::type<const cctbx::af::tiny<%s, %d>&>)""" % (T, N, T, N)
+    boost::python::type<cctbx::af::tiny<%s, %d> const&>)""" % (T, N, T, N)
   if (declaration):
     print prototype + ";"
   else:
@@ -41,7 +41,7 @@ def one_definition(T, N, declaration):
   }""" % (T, N, T)
 
   prototype = """
-  PyObject* to_python(const cctbx::af::tiny<%s, %d>& tobj)""" % (T, N)
+  PyObject* to_python(cctbx::af::tiny<%s, %d> const& tobj)""" % (T, N)
   if (declaration):
     print prototype + ";"
   else:

@@ -123,7 +123,7 @@ namespace cctbx { namespace af {
         return result;
       }
 
-      bool is_valid_index(const index_type& i) const
+      bool is_valid_index(index_type const& i) const
       {
         std::size_t n = nd();
         if (i.size() != n) return false;

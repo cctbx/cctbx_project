@@ -110,7 +110,7 @@ def print_henke_cpp(tables):
   print """
   } // namespace tables
 
-  Henke::Henke(const std::string& Label, bool Exact)
+  Henke::Henke(std::string const& Label, bool Exact)
   {
     std::string WorkLabel = StripLabel(Label, Exact);
     m_Label_Z_Efpfdp = detail::FindEntry(tables::HenkeTables, WorkLabel, Exact);

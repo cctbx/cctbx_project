@@ -28,7 +28,7 @@ namespace cctbx { namespace af {
       {}
 
       explicit
-      small_plain(const size_type& sz)
+      small_plain(size_type const& sz)
         : m_size(0)
       {
         if (N < sz) throw_range_error();
@@ -37,13 +37,13 @@ namespace cctbx { namespace af {
       }
 
       // non-std
-      small_plain(const size_type& sz, reserve_flag)
+      small_plain(size_type const& sz, reserve_flag)
         : m_size(0)
       {
         if (N < sz) throw_range_error();
       }
 
-      small_plain(const size_type& sz, const ElementType& x)
+      small_plain(size_type const& sz, ElementType const& x)
         : m_size(0)
       {
         if (N < sz) throw_range_error();
@@ -51,17 +51,15 @@ namespace cctbx { namespace af {
         m_size = sz;
       }
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 6.0
       // non-std
-      template <typename InitFunctorType>
-      small_plain(const size_type& sz, InitFunctorType ftor)
+      template <typename FunctorType>
+      small_plain(size_type const& sz, init_functor<FunctorType> const& ftor)
         : m_size(0)
       {
         if (N < sz) throw_range_error();
-        ftor(begin(), sz);
+        ftor.held(begin(), sz);
         m_size = sz;
       }
-#endif
 
       small_plain(const ElementType* first, const ElementType* last)
         : m_size(0)
@@ -82,7 +80,7 @@ namespace cctbx { namespace af {
       }
 #endif
 
-      small_plain(const small_plain<ElementType, N>& other)
+      small_plain(small_plain<ElementType, N> const& other)
         : m_size(0)
       {
         std::uninitialized_copy(other.begin(), other.end(), begin());
@@ -101,7 +99,7 @@ namespace cctbx { namespace af {
       ~small_plain() { clear(); }
 
       small_plain<ElementType, N>&
-      operator=(const small_plain<ElementType, N>& other)
+      operator=(small_plain<ElementType, N> const& other)
       {
         clear();
         std::uninitialized_copy(other.begin(), other.end(), begin());
@@ -123,7 +121,7 @@ namespace cctbx { namespace af {
         std::swap(*this, other);
       }
 
-      void reserve(const size_type& sz) {
+      void reserve(size_type const& sz) {
         if (N < sz) throw_range_error();
       }
 
@@ -131,7 +129,7 @@ namespace cctbx { namespace af {
 
     protected:
       void m_insert_overflow(ElementType* pos,
-                             const size_type& n, const ElementType& x,
+                             size_type const& n, ElementType const& x,
                              bool at_end) {
         throw_range_error();
       }
@@ -142,15 +140,15 @@ namespace cctbx { namespace af {
         throw_range_error();
       }
 
-      void m_set_size(const size_type& sz) {
+      void m_set_size(size_type const& sz) {
         m_size = sz;
       }
 
-      void m_incr_size(const size_type& n) {
+      void m_incr_size(size_type const& n) {
         m_size += n;
       }
 
-      void m_decr_size(const size_type& n) {
+      void m_decr_size(size_type const& n) {
         m_size -= n;
       }
 
