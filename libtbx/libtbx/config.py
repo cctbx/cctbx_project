@@ -277,6 +277,9 @@ class environment:
     self.missing_for_use = {}
     self.missing_optional = {}
 
+  def is_ready_for_build(self):
+    return (len(self.missing_for_build) == 0)
+
   def abs_path_short(self, abs_path):
     if (os.name != "nt"): return abs_path
     if (self._shortpath_bat is None):
@@ -797,7 +800,7 @@ class environment:
 
   def write_setpath_files(self):
     print "Python:", sys.version.split()[0], repr(sys.executable)
-    if (len(self.missing_for_build) == 0):
+    if (self.is_ready_for_build()):
       self.build_options.report()
     print "command_version_suffix:", self.command_version_suffix
     print "Top-down list of all packages involved:"
@@ -808,14 +811,14 @@ class environment:
     if (len(self.missing_for_use) > 0):
       raise UserError("Missing modules: "
         + " ".join(self.missing_for_use.keys()))
-    if (len(self.missing_for_build) != 0):
+    if (not self.is_ready_for_build()):
       if (self.scons_dist_path is not None):
         print "***********************************"
         print "Warning: modules missing for build:"
         for module_name in self.missing_for_build.keys():
           print " ", module_name
         print "***********************************"
-        remove_or_rename(self.under_build("SConstruct"))
+      remove_or_rename(self.under_build("SConstruct"))
     for suffix in ["", "_all", "_debug"]:
       if (hasattr(os, "symlink")):
         self.write_setpaths_sh(suffix)
@@ -876,7 +879,7 @@ class environment:
     self.assemble_pythonpath()
     self.write_setpath_files()
     self.pickle()
-    if (len(self.missing_for_build) == 0):
+    if (self.is_ready_for_build()):
       self.write_SConstruct()
     if (os.name != "nt"):
       self.write_run_tests_csh()
