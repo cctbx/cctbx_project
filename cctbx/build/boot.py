@@ -49,15 +49,15 @@ if (__name__ == "__main__"):
       try: os.symlink(path_cctbx + "/build/" + file, file)
       except: pass
     file = "setpythonpath.csh"
-    set = "setenv PYTHONPATH '.:%s/lib_python'\n"
+    set = "setenv PYTHONPATH '.:%s:%s/lib_python'\n"
   else:
     for file in ("make.py", "test_imports.py"):
       print "Copying:", file
       shutil.copy(path_cctbx + "/build/" + file, file)
     file = "setpythonpath.bat"
-    set = "set PYTHONPATH=.;%s\\lib_python\n"
+    set = "set PYTHONPATH=.;%s;%s\\lib_python\n"
   if (not os.path.exists(file)):
     print "Creating:", file
     f = open(file, "w")
-    f.write(set % (os.getcwd(),))
+    f.write(set % (path_cctbx, os.getcwd()))
     f.close()
