@@ -1,6 +1,7 @@
 from cctbx import crystal
 from cctbx import matrix
 from cctbx import sgtbx
+from cctbx.array_family import flex
 from scitbx.python_utils import list_algebra
 from scitbx.python_utils.misc import adopt_init_args
 import sys, math
@@ -96,9 +97,10 @@ class euclidean_match_symmetry:
   def __init__(self, space_group_info, use_k2l, use_l2n):
     adopt_init_args(self, locals())
     sg_type = space_group_info.type()
-    self.rt_mx = sg_type.expand_addl_generators_of_euclidean_normalizer(
-      use_k2l, use_l2n)
-    self.ss = sgtbx.structure_seminvariant(space_group_info.group())
+    self.rt_mx = sgtbx.space_group()
+    for s in sg_type.addl_generators_of_euclidean_normalizer(use_k2l, use_l2n):
+      self.rt_mx.expand_smx(s)
+    self.ss = space_group_info.structure_seminvariant()
     self.continuous_shifts = []
     for vm in self.ss.vectors_and_moduli():
       if (vm.m == 0):
@@ -120,9 +122,12 @@ class euclidean_match_symmetry:
   def set_continuous_shift_flags(self):
     assert self.continuous_shifts_are_principal()
     self.continuous_shift_flags = [0,0,0]
+    self.continuous_shift_count = 0
     for pa in self.continuous_shifts:
       for i in xrange(3):
-        if (pa[i]): self.continuous_shift_flags[i] = 1
+        if (pa[i]):
+          self.continuous_shift_flags[i] = 1
+          self.continuous_shift_count += 1
 
   def show(self, title="", f=sys.stdout):
     print >> f, "euclidean_match_symmetry:", title
@@ -152,6 +157,7 @@ class match_refine:
     self.singles2 = generate_singles(self.ref_model2.size(), self.i_pivot2)
     self.pairs = [(self.i_pivot1, self.i_pivot2)]
     self.adjusted_shift = initial_shift[:]
+    self.exclude_pairs()
     self.add_pairs()
     self.eliminate_weak_pairs()
     self.ref_eucl_rt = sgtbx_rt_mx_as_matrix_rt(self.eucl_symop) \
@@ -159,7 +165,41 @@ class match_refine:
     self.pairs.sort(pair_sort_function)
     self.calculate_rms()
 
+  def exclude_pairs(self):
+    # exclude all pairs with dist >= 4 * tolerance
+    # dist_allowed is invariant under refine_adjusted_shift:
+    #   exclude all pairs with dist_allowed >= tolerance
+    # if 0 continuous shifts: dist_allowed == dist:
+    #   exclude all pairs with dist >= tolerance
+    continuous_shift_count = self.match_symmetry.continuous_shift_count
+    length = self.ref_model1.unit_cell().length
+    self.pair_flags = flex.bool(flex.grid(self.ref_model1.size(),
+                                          self.ref_model2.size()))
+    for is2 in self.singles2:
+      c2 = self.eucl_symop * self.ref_model2[is2].site
+      c2 = list_algebra.plus(c2, self.adjusted_shift)
+      for is1 in self.singles1:
+        dist_info = sgtbx.min_sym_equiv_distance_info(self.equiv1[is1], c2)
+        dist = dist_info.dist()
+        if (continuous_shift_count == 0):
+          if (dist < self.tolerance):
+            self.pair_flags[(is1,is2)] = 0001
+        elif (dist < 4 * self.tolerance):
+          # ensure that this pair can be matched within 1 * tolerance.
+          # (not entirely sure that this is safe under all circumstances.)
+          diff = dist_info.diff()
+          diff_allowed = self.match_symmetry.filter_shift(diff, selector=1)
+          dist_allowed = length(diff_allowed)
+          if (dist_allowed < self.tolerance):
+            self.pair_flags[(is1,is2)] = 0001
+
   def add_pairs(self):
+    # XXX possible optimizations:
+    #   if 0 continuous shifts:
+    #     tabulate dist
+    #     keep all <= tolerance
+    #     sort
+    #     we do not need eliminate_weak_matches
     length = self.ref_model1.unit_cell().length
     while (len(self.singles1) and len(self.singles2)):
       shortest_dist = 2 * self.tolerance
@@ -168,14 +208,10 @@ class match_refine:
         c2 = self.eucl_symop * self.ref_model2[is2].site
         c2 = list_algebra.plus(c2, self.adjusted_shift)
         for is1 in self.singles1:
-          dist_info = sgtbx.min_sym_equiv_distance_info(self.equiv1[is1], c2)
-          dist = dist_info.dist()
-          if (dist < shortest_dist):
-            # ensure that this pair can be matched within 1 * tolerance.
-            diff = dist_info.diff()
-            diff_allowed = self.match_symmetry.filter_shift(diff, selector=1)
-            dist_allowed = length(diff_allowed)
-            if (dist_allowed < self.tolerance):
+          if (self.pair_flags[(is1,is2)]):
+            dist_info = sgtbx.min_sym_equiv_distance_info(self.equiv1[is1], c2)
+            dist = dist_info.dist()
+            if (dist < shortest_dist):
               shortest_dist = dist
               new_pair = (is1, is2)
       if (new_pair == 0):
