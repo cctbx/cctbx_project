@@ -54,15 +54,12 @@ namespace cctbx { namespace miller {
       }
 
       af::shared<std::size_t>
-      singles() const
-      {
-        return singles_;
-      }
+      singles(char plus_or_minus) const;
 
-      bool
-      have_singles() const
+      std::size_t
+      n_singles() const
       {
-        return singles_.size();
+        return singles_[0].size() + singles_[1].size();
       }
 
       /*! Not available in Python.
@@ -70,7 +67,7 @@ namespace cctbx { namespace miller {
       std::size_t
       size_processed() const
       {
-        return 2 * pairs_.size() + singles_.size();
+        return 2 * pairs_.size() + n_singles();
       }
 
       /*! Not available in Python.
@@ -84,7 +81,10 @@ namespace cctbx { namespace miller {
       size_assert(std::size_t sz) const;
 
       af::shared<bool>
-      hemisphere_selection(char plus_or_minus) const;
+      pairs_hemisphere_selection(char plus_or_minus) const;
+
+      af::shared<bool>
+      singles_hemisphere_selection(char plus_or_minus) const;
 
       af::shared<index<> >
       miller_indices_in_hemisphere(char plus_or_minus) const;
@@ -120,9 +120,12 @@ namespace cctbx { namespace miller {
       void
       match_(sgtbx::reciprocal_space::asu const& asu);
 
+      std::size_t
+      plus_or_minus_index_(char plus_or_minus) const;
+
       af::shared<index<> > miller_indices_;
       af::shared<pair_type> pairs_;
-      af::shared<std::size_t> singles_;
+      af::tiny<af::shared<std::size_t>, 2> singles_;
   };
 
 }} // namespace cctbx::miller

@@ -24,13 +24,18 @@ namespace cctbx { namespace miller {
     std::vector<bool> paired_already(miller_indices_.size(), false);
     for(std::size_t i=0;i<miller_indices_.size();i++) {
       if (paired_already[i]) continue;
+      int asu_which = asu.which(miller_indices_[i]);
+      CCTBX_ASSERT(asu_which != 0 || miller_indices_[i].is_zero());
       lookup_map_type::const_iterator l = lookup_map.find(-miller_indices_[i]);
       if (l == lookup_map.end()) {
-        singles_.push_back(i);
+        if (asu_which > 0) {
+          singles_[0].push_back(i);
+        }
+        else {
+          singles_[1].push_back(i);
+        }
       }
       else {
-        int asu_which = asu.which(miller_indices_[i]);
-        CCTBX_ASSERT(asu_which != 0 || miller_indices_[i].is_zero());
         if (asu_which > 0) {
           pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
         }
@@ -40,6 +45,13 @@ namespace cctbx { namespace miller {
         paired_already[l->second] = true;
       }
     }
+  }
+
+  af::shared<std::size_t>
+  match_bijvoet_mates::singles(char plus_or_minus) const
+  {
+    std::size_t j = plus_or_minus_index_(plus_or_minus);
+    return singles_[j];
   }
 
   void
@@ -56,12 +68,9 @@ namespace cctbx { namespace miller {
   }
 
   af::shared<bool>
-  match_bijvoet_mates::hemisphere_selection(char plus_or_minus) const
+  match_bijvoet_mates::pairs_hemisphere_selection(char plus_or_minus) const
   {
-    CCTBX_ASSERT(plus_or_minus == '+' || plus_or_minus == '-');
-    size_assert_intrinsic();
-    std::size_t j = 0;
-    if (plus_or_minus == '-') j = 1;
+    std::size_t j = plus_or_minus_index_(plus_or_minus);
     af::shared<bool> result(miller_indices_.size(), false);
     for(std::size_t i=0;i<pairs_.size();i++) {
       result[pairs_[i][j]] = true;
@@ -69,18 +78,36 @@ namespace cctbx { namespace miller {
     return result;
   }
 
+  af::shared<bool>
+  match_bijvoet_mates::singles_hemisphere_selection(char plus_or_minus) const
+  {
+    std::size_t j = plus_or_minus_index_(plus_or_minus);
+    af::shared<bool> result(miller_indices_.size(), false);
+    af::const_ref<std::size_t> singles_j = singles_[j].const_ref();
+    for(std::size_t i=0;i<singles_j.size();i++) {
+      result[singles_j[i]] = true;
+    }
+    return result;
+  }
+
   af::shared<index<> >
   match_bijvoet_mates::miller_indices_in_hemisphere(char plus_or_minus) const
   {
-    CCTBX_ASSERT(plus_or_minus == '+' || plus_or_minus == '-');
-    size_assert_intrinsic();
-    std::size_t j = 0;
-    if (plus_or_minus == '-') j = 1;
+    std::size_t j = plus_or_minus_index_(plus_or_minus);
     af::shared<index<> > result((af::reserve(pairs_.size())));
     for(std::size_t i=0;i<pairs_.size();i++) {
       result.push_back(miller_indices_[pairs_[i][j]]);
     }
     return result;
+  }
+
+  std::size_t
+  match_bijvoet_mates::plus_or_minus_index_(char plus_or_minus) const
+  {
+    CCTBX_ASSERT(plus_or_minus == '+' || plus_or_minus == '-');
+    size_assert_intrinsic();
+    if (plus_or_minus == '-') return 1;
+    return 0;
   }
 
 }} // namespace cctbx::miller
