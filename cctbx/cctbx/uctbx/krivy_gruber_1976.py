@@ -87,14 +87,14 @@ class reduction(reduction_base.gruber_parameterization):
 
   def a3_action(self):
     lt = self.eps_lt
-    x,y,z = 1,1,1
-    if (lt(self.d, 0)): x = -1
-    if (lt(self.e, 0)): y = -1
-    if (lt(self.f, 0)): z = -1
+    i,j,k = 1,1,1
+    if (lt(self.d, 0)): i = -1
+    if (lt(self.e, 0)): j = -1
+    if (lt(self.f, 0)): k = -1
     self.d = abs(self.d)
     self.e = abs(self.e)
     self.f = abs(self.f)
-    self.cb_update((x,0,0, 0,y,0, 0,0,z))
+    self.cb_update((i,0,0, 0,j,0, 0,0,k))
 
   def a4_action(self):
     lt = self.eps_lt
