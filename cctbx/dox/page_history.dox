@@ -13,7 +13,7 @@ contributed by
 
 <dt>sgtbx - Space Group Toolbox
 <dd>The %cctbx Space Group Toolbox is based on
-<a href="http://cvs.sourceforge.net/cgi-bin/cvsweb.cgi/pymol/contrib/sglite/?cvsroot=pymol">SgLite</a>, which in turn is based on
+<a href="http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/pymol/pymol/contrib/sglite/">SgLite</a>, which in turn is based on
 <a href="http://www.kristall.ethz.ch/LFK/software/sginfo/">SgInfo 1.01</a>.
 All new development will be focussed on the %sgtbx.
 SgLite and SgInfo are not being developed anymore.<br>
