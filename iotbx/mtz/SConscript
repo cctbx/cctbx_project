@@ -1,0 +1,45 @@
+import sys
+
+Import("env_base","env_etc")
+
+myccflags_base = env_etc.ccflags_base[:]
+mycxxflags_base = env_etc.cxxflags_base[:]
+
+if (sys.platform == "win32"):
+  myccflags_base.extend(['-D_MVS','-Di386'])
+  mycxxflags_base.extend(['-D_MVS','-Di386'])  
+
+env = env_base.Copy(
+  CXXFLAGS=mycxxflags_base,
+  CCFLAGS=myccflags_base,
+  CPPPATH=["."] + env_etc.iotbx_common_includes,
+)
+
+env.StaticLibrary(target='#libtbx/cmtz',
+  source = ["../../newsrc/library_err.c",
+            "../../newsrc/library_file.c",
+            "../../newsrc/library_utils.c",
+            "../../newsrc/ccp4_array.c",
+            "../../newsrc/ccp4_parser.c",
+            "../../newsrc/cvecmat.c",
+            "../../newsrc/cmtzlib.c",
+            "../../newsrc/csymlib.c",
+           ])
+
+env.Append(LIBPATH=["#libtbx",])
+env.Prepend(LIBS=["iotbx","cmtz"])
+env.Append(LIBS=env_etc.libm)
+env.Program(target="test3",
+            source="test3.cpp")
+#The test4 program is all good and wonderful on all platforms except
+#irix 6.5, MIPSpro Compilers: Version 7.3.1.2m
+#The error message is cc-1070 CC: ERROR File = /usr/include/CC/stl_threads.h, Line = 185
+#  The indicated type is incomplete.
+#            struct timespec __ts;
+#                            ^
+#cc-1020 CC: ERROR File = /usr/include/CC/stl_threads.h, Line = 189
+#  The identifier "nanosleep" is undefined.
+#            nanosleep(&__ts, 0);
+#            ^
+#env.Program(target="test4",
+#            source="test4.cpp")
