@@ -504,7 +504,10 @@ class stage_1:
         new_sites_cart=None,
         new_occupancies=None,
         new_u_iso=None,
-        crystal_symmetry=None):
+        crystal_symmetry=None,
+        selection=None):
+    if selection is not None:
+      assert selection.size()==len(self.atom_attributes_list)
     if (new_sites_cart is not None):
       assert new_sites_cart.size() == len(self.atom_attributes_list)
     if (new_occupancies is not None):
@@ -525,6 +528,7 @@ class stage_1:
     serial = count(1)
     prev_atom = None
     for i_seq,atom in enumerate(self.atom_attributes_list):
+      if selection is not None and not selection[i_seq]:continue
       if (prev_atom is None or atom.MODELserial != prev_atom.MODELserial):
         if (prev_atom is not None and prev_atom.MODELserial > 0):
           print >> out, "ENDMDL"
