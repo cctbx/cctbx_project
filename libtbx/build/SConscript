@@ -187,7 +187,7 @@ else:
         -ftemplate-depth-100
         -Wno-long-double
     """)
-    env_etc.cxxflags_base = Split("""
+    env_etc.ccflags_base = Split("""
     """)
     if (env_etc.release_build):
       opts = ["-DNDEBUG", "-O3"]
