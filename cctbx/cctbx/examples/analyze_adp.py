@@ -1,7 +1,7 @@
 # Simple example for the use of the adptbx.
 
-from cctbx import adptbx # anisotropic displacement parameter toolbox
 from cctbx import crystal
+from cctbx import adptbx # anisotropic displacement parameter toolbox
 
 symmetry = crystal.symmetry(
   unit_cell=(10.67, 10.67, 4.68, 90, 90, 120),
