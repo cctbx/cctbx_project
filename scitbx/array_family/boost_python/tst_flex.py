@@ -943,6 +943,11 @@ def exercise_matrix():
   for a_n_rows in xrange(1,4):
     for a_n_columns in xrange(1,4):
       a = flex.random_double(size=a_n_rows*a_n_columns)
+      b = flex.random_double(size=a_n_rows*a_n_columns)
+      c = a.matrix_multiply(b)
+      d = matrix.row(a) * matrix.col(b)
+      assert approx_equal(c, d[0])
+      assert approx_equal(a.dot(b), matrix.row(a).dot(matrix.col(b)))
       a.resize(flex.grid(a_n_rows, a_n_columns))
       for b_n_columns in xrange(1,4):
         b = flex.random_double(size=a_n_columns*b_n_columns)
@@ -956,6 +961,18 @@ def exercise_matrix():
         assert approx_equal(c, d.transpose())
         c.transpose_in_place()
         assert c.focus() == d.n
+        assert approx_equal(c, d)
+        b = flex.random_double(size=a_n_columns)
+        c = a.matrix_multiply(b)
+        d = matrix.rec(a, a.focus()) * matrix.col(b)
+        assert d.n[1] == 1
+        assert c.focus() == (d.n[0],)
+        assert approx_equal(c, d)
+        b = flex.random_double(size=a_n_rows)
+        c = b.matrix_multiply(a)
+        d = matrix.row(b) * matrix.rec(a, a.focus())
+        assert d.n[0] == 1
+        assert c.focus() == (d.n[1],)
         assert approx_equal(c, d)
 
 def exercise_pickle_single_buffered():

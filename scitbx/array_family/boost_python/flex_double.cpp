@@ -74,6 +74,22 @@ namespace boost_python {
         (versa<double, c_grid<2> >(*)(
           const_ref<double, c_grid<2> > const&,
           const_ref<double, c_grid<2> > const&)) matrix_multiply)
+      .def("matrix_multiply",
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&,
+          const_ref<double> const&)) matrix_multiply)
+      .def("matrix_multiply",
+        (shared<double>(*)(
+          const_ref<double> const&,
+          const_ref<double, c_grid<2> > const&)) matrix_multiply)
+      .def("matrix_multiply",
+        (double(*)(
+          const_ref<double> const&,
+          const_ref<double> const&)) matrix_multiply)
+      .def("dot",
+        (double(*)(
+          const_ref<double> const&,
+          const_ref<double> const&)) matrix_multiply)
       .def("transpose_in_place",
         (void(*)(versa<double, flex_grid<> >&)) transpose_in_place);
     ;
