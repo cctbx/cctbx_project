@@ -26,7 +26,7 @@ if ($#argv == 0) then
 endif
 
 echo '#! /bin/sh -f' > cctbx_web.cgi
-echo "exec ./bintbx/libtbx/bin/libtbx.env_run CCTBX_DIST cctbx/web/dispatcher.py" >> cctbx_web.cgi
+echo "exec ./bintbx/bin/libtbx.env_run CCTBX_DIST cctbx/web/dispatcher.py" >> cctbx_web.cgi
 chmod 755 cctbx_web.cgi
 
 cp dist/cctbx/cctbx/web/*.html .

@@ -9,7 +9,7 @@ if (os.path.isfile(os.path.join(env_etc.libtbx_lib, "liblbfgsb_fortran.a"))):
     env.Append(LIBS=["g2c"])
   env.Prepend(CPPFLAGS=["-DSCITBX_LBFGSB_HAVE_FORTRAN_LIB"])
 env.SharedLibrary(
-  target="#libtbx/scitbx_lbfgsb_ext",
+  target="#lib/scitbx_lbfgsb_ext",
   source=[
     "lbfgsb_ext.cpp",
 ])

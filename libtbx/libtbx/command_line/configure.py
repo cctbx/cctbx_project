@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 import sys, os, copy, pickle
 from os.path import normpath, join, abspath, dirname, isdir, isfile
 norm = normpath
@@ -134,12 +132,11 @@ class libtbx_env:
     else:
       self.LIBTBX_PYTHON_EXE = self.abs_path_clean(join(
         sys.prefix, "bin/python"))
-    self.LD_LIBRARY_PATH = [norm(join(self.LIBTBX_BUILD, "libtbx"))]
-    self.PYTHONPATH = [norm(join(self.LIBTBX_BUILD, "libtbx")), libtbx_dist]
-    self.PATH = [norm(join(self.LIBTBX_BUILD, "libtbx/bin"))]
+    self.LD_LIBRARY_PATH = [norm(join(self.LIBTBX_BUILD, "lib"))]
+    self.PYTHONPATH = [norm(join(self.LIBTBX_BUILD, "lib")), libtbx_dist]
+    self.PATH = [norm(join(self.LIBTBX_BUILD, "bin"))]
     self.libtbx_dist_root = dirname(libtbx_dist)
-    self.libtbx_python = norm(join(
-      self.LIBTBX_BUILD,"libtbx","bin","libtbx.python"))
+    self.libtbx_python = norm(join(self.LIBTBX_BUILD, "bin/libtbx.python"))
     self.libtbx_path_utility = norm(join(
       libtbx_dist, "libtbx/command_line/path_utility.py"))
     self.package_list = []
@@ -342,7 +339,7 @@ def emit_env_run_sh(env):
   f = open_info(env_run_sh)
   print >> f, '. "%s" all' % (os.path.join(env.LIBTBX_BUILD, "setpaths.sh"))
   print >> f, '"%s" "%s" "$@"' % (
-    "$LIBTBX_BUILD/libtbx/bin/python",
+    "$LIBTBX_BUILD/bin/python",
     "$LIBTBX_DIST/libtbx/command_line/env_run.py")
   f.close()
   os.chmod(env_run_sh, 0755)

@@ -2,5 +2,5 @@ Import("env_iotbx_boost_python_ext")
 env = env_iotbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(
-  target="#libtbx/iotbx_xplor_ext",
+  target="#lib/iotbx_xplor_ext",
   source=["xplor_ext.cpp"])

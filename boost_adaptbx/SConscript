@@ -11,7 +11,7 @@ if (not env_etc.no_boost_python):
     SHCXXFLAGS=env_etc.cxxflags_base,
     SHLINKFLAGS=env_etc.shlinkflags_bpl,
     SHLIBPREFIX="",
-    LIBPATH=["#libtbx"] + env_etc.libpath_python,
+    LIBPATH=["#lib"] + env_etc.libpath_python,
     LIBS=["boost_python"] + env_etc.libs_python + env_etc.libm,
   )
   env_no_includes_boost_python_ext.Append(
@@ -31,15 +31,15 @@ if (not env_etc.no_boost_python):
   Export("env_boost_python_ext")
 
   env_pure_boost_python_ext.SharedLibrary(
-    target="#libtbx/boost_python_meta_ext",
+    target="#lib/boost_python_meta_ext",
     source="meta_ext.cpp")
 
   env_pure_boost_python_ext.SharedLibrary(
-    target="#libtbx/boost_python_hybrid_times_ext",
+    target="#lib/boost_python_hybrid_times_ext",
     source="hybrid_times_ext.cpp")
 
   env_pure_boost_python_ext.SharedLibrary(
-    target="#libtbx/boost_rational_ext",
+    target="#lib/boost_rational_ext",
     source="rational_ext.cpp")
 
   import os, os.path
@@ -103,9 +103,9 @@ if (not env_etc.no_boost_python):
   assert len(bpl_dll_sources) > 0
 
   if (env_etc.static_bpl):
-    env.StaticLibrary(target="#libtbx/boost_python", source=bpl_dll_sources)
+    env.StaticLibrary(target="#lib/boost_python", source=bpl_dll_sources)
   else:
-    env.SharedLibrary(target="#libtbx/boost_python", source=bpl_dll_sources)
+    env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
 
   if (int(ARGUMENTS.get("boost_python_tests", 0))):
     jamfile_path = os.path.normpath(os.path.join(
@@ -202,7 +202,7 @@ raw_ctor
       if (not tst in all_tst):
         all_tst.append(tst)
       env_pure_boost_python_ext.SharedLibrary(
-        target="#libtbx/%s" % pyd,
+        target="#lib/%s" % pyd,
         source=["#boost/libs/python/test/%s.cpp" % s for s in src.split(";")],
       )
     test_dir = os.path.normpath(os.path.join(

@@ -46,7 +46,7 @@ def python_api_from_process(must_exist=True):
   return python_api_version
 
 def python_api_version_file_name(libtbx_build):
-  return norm_join(libtbx_build, "libtbx", "PYTHON_API_VERSION")
+  return norm_join(libtbx_build, "lib", "PYTHON_API_VERSION")
 
 class resolve_redirection:
 
@@ -146,6 +146,8 @@ class env:
 
   def write_api_file(self):
     api_file_name = python_api_version_file_name(self.LIBTBX_BUILD)
+    if (not isdir(os.path.dirname(api_file_name))):
+      os.makedirs(os.path.dirname(api_file_name))
     api_from_process = python_api_from_process()
     print >> open(api_file_name, "w"), api_from_process
 
@@ -202,7 +204,9 @@ class env:
       ld_preload.append(path_libirc_so)
     else:
       if (isfile(path_libirc_a)):
-        path_libirc_so = join(self.LIBTBX_BUILD, "libtbx/libirc.so")
+        path_libirc_so = join(self.LIBTBX_BUILD, "lib/libirc.so")
+        if (not isdir(os.path.dirname(path_libirc_so))):
+          os.makedirs(os.path.dirname(path_libirc_so))
         if (not isfile(path_libirc_so)):
           cmd = "%s -shared -o %s %s" % (
             path_icc, path_libirc_so, path_libirc_a)
@@ -308,8 +312,8 @@ class env:
            (python_executable, self.LIBTBX_PYTHON_EXE),
            (pythonpath, os.pathsep.join(self.PYTHONPATH)),
            (main_path, os.pathsep.join([
-                         norm(join(self.LIBTBX_BUILD, "libtbx/bin")),
-                         norm(join(self.LIBTBX_BUILD, "libtbx"))]))]:
+                         norm(join(self.LIBTBX_BUILD, "bin")),
+                         norm(join(self.LIBTBX_BUILD, "lib"))]))]:
        self.partially_customized_windows_dispatcher = patch_windows_dispatcher(
          dispatcher_exe_file_name=dispatcher_exe_file_name,
          binary_string=self.partially_customized_windows_dispatcher,
@@ -349,7 +353,7 @@ class env:
   def create_dispatcher_in_bin(self, source_file, target_file):
     self.create_dispatcher(
       source_file=source_file,
-      target_file=norm(join(self.LIBTBX_BUILD, "libtbx/bin", target_file)))
+      target_file=norm(join(self.LIBTBX_BUILD, "bin", target_file)))
 
 def patch_windows_dispatcher(
       dispatcher_exe_file_name,

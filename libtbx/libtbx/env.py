@@ -12,4 +12,4 @@ def under_dist(package_name, path):
 def under_build(path):
   return os.path.normpath(os.path.join(build_path, path))
 
-bin_path = under_build("libtbx/bin")
+bin_path = under_build("bin")

@@ -5,5 +5,5 @@ env.Prepend(LIBS=["cctbx"])
 for module in ("henke", "fp_fdp", "icsd_radii", "neutron",
                "sasaki", "tiny_pse", "wavelengths", "xray_scattering"):
   env.SharedLibrary(
-    target="#libtbx/cctbx_eltbx_"+module+"_ext",
+    target="#lib/cctbx_eltbx_"+module+"_ext",
     source=[module+"_ext.cpp"])
