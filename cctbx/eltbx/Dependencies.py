@@ -37,7 +37,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "eltbx/tst_neutron.py",
     )
 
-    lib = (
+    lib = [
       "error",
       "basic",
       "tinypse",
@@ -47,13 +47,13 @@ class write_makefiles(makefile_generator.write_makefiles):
       "caasf_wk1995",
       "efpfdp",
       "neutron",
-    )
+    ]
     if (self.platform != "vc60"): # XXX vc70
       lib.append("henke")
       lib.append("sasaki")
 
     self.libraries = {
-      "eltbx": lib,
+      "eltbx": tuple(lib),
     }
 
     self.boost_python_modules = {
