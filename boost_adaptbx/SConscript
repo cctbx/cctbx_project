@@ -113,7 +113,7 @@ polymorphism2
 auto_ptr
 minimal
 args
-#numpy
+numpy
 enum
 exception_translator
 test_pointer_adoption
