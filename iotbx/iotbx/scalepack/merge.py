@@ -35,6 +35,7 @@ class reader:
       raise FormatError, line_error
     try:
       uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in xrange(6)]
+    except KeyboardInterrupt: raise
     except:
       raise FormatError, line_error
     self.unit_cell = uctbx.unit_cell(uc_params)
@@ -43,6 +44,7 @@ class reader:
       raise FormatError, line_error
     try:
       self.space_group_info = sgtbx.space_group_info(self.space_group_symbol)
+    except KeyboardInterrupt: raise
     except:
       self.space_group_info = None
     if (header_only): return
@@ -67,6 +69,7 @@ class reader:
         used = next_used
       try:
         h = [int(flds[i]) for i in xrange(3)]
+      except KeyboardInterrupt: raise
       except:
         raise FormatError, line_error
       for i in (0,1):
@@ -74,14 +77,16 @@ class reader:
         if (len(flds[j])):
           try:
             i_obs, sigma = (float(flds[j]), float(flds[j+1]))
+          except KeyboardInterrupt: raise
           except:
             raise FormatError, line_error
           if (i):
             h = [-e for e in h]
             self.anomalous = 1
-          self.miller_indices.append(h)
-          self.i_obs.append(i_obs)
-          self.sigmas.append(sigma)
+          if (i_obs != 0 or sigma != 0):
+            self.miller_indices.append(h)
+            self.i_obs.append(i_obs)
+            self.sigmas.append(sigma)
 
   def as_miller_array(self,
         crystal_symmetry=None,
