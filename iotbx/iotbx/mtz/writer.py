@@ -81,53 +81,41 @@ def _DoubleOrComplex(self,label,datatype,item_miller,item_data):
   else:
     raise RuntimeError, "Not implemented." # XXX
 
-def _columnCombinations(self,label,datatype,carry_miller,carry_data):
-  if len(carry_miller)==1:  # anomalous flag is False
-    self._DoubleOrComplex(label,datatype,carry_miller[0],carry_data[0])
-  elif len(carry_miller)==2:  # anomalous data
-    self._DoubleOrComplex(
-      self.label_plus(label),datatype,carry_miller[0],carry_data[0])
-    self._DoubleOrComplex(
-      self.label_minus(label),datatype,carry_miller[1],carry_data[1])
-  else:
-    raise RuntimeError, "Internal error."
-
 def add_miller_array(self, miller_array, mtz_label):
   if (not miller_array.anomalous_flag()):
     if (miller_array.is_xray_intensity_array()):
       column_types = "JQ"
     else:
       column_types = "FQ"
-    self._columnCombinations(mtz_label, column_types[0],
-      [miller_array.indices()],[miller_array.data()])
+    self._DoubleOrComplex(
+      mtz_label, column_types[0],
+      miller_array.indices(), miller_array.data())
     if (miller_array.sigmas()):
-      self._columnCombinations(self.label_sigmas(mtz_label), column_types[1],
-        [miller_array.indices()],[miller_array.sigmas()])
+      self._DoubleOrComplex(
+        self.label_sigmas(mtz_label), column_types[1],
+        miller_array.indices(), miller_array.sigmas())
   else:
     if (miller_array.is_xray_intensity_array()):
       column_types = "KM"
     else:
       column_types = "GL"
-    carry_miller = []
-    carry_data = []
-    carry_sigma = []
     asu, matches = miller_array.match_bijvoet_mates()
-    for i,s in ((0,"+"),(1,"-")):
-      sel = matches.pairs_hemisphere_selection(s)
-      sel.extend(matches.singles_hemisphere_selection(s))
-      if (i == 0):
-        carry_miller.append(asu.indices().select(sel))
+    for sign in ("+","-"):
+      sel = matches.pairs_hemisphere_selection(sign)
+      sel.extend(matches.singles_hemisphere_selection(sign))
+      if (sign == "+"):
+        label_sign = self.label_plus
+        indices = asu.indices().select(sel)
       else:
-        carry_miller.append(-asu.indices().select(sel))
-      carry_data.append(asu.data().select(sel))
+        label_sign = self.label_minus
+        indices = -asu.indices().select(sel)
+      self._DoubleOrComplex(
+        label_sign(mtz_label), column_types[0],
+        indices, asu.data().select(sel))
       if (asu.sigmas() is not None):
-        carry_sigma.append(asu.sigmas().select(sel))
-    self._columnCombinations(mtz_label, column_types[0],
-      carry_miller,carry_data)
-    if (asu.sigmas()):
-      self._columnCombinations(
-        self.label_sigmas(mtz_label), column_types[1],
-          carry_miller,carry_sigma)
+        self._DoubleOrComplex(
+          label_sign(self.label_sigmas(mtz_label)), column_types[1],
+          indices, asu.sigmas().select(sel))
 
 def miller_array_export_as_mtz(self, file_name, column_label,
                                      title=None,
