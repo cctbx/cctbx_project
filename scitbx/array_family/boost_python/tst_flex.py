@@ -714,10 +714,10 @@ def exercise_linear_regression():
   s = StringIO()
   r.show_summary(f=s)
   assert s.getvalue() == """\
-is_well_defined: 0
+is_well_defined: %s
 y_intercept: 0.0
 slope: 0.0
-"""
+""" % str(False)
 
 def exercise_linear_correlation():
   x = flex.double((1,2,3))
@@ -746,11 +746,11 @@ def exercise_linear_correlation():
   s = StringIO()
   c.show_summary(f=s)
   assert s.getvalue() == """\
-is_well_defined: 0
+is_well_defined: %s
 mean_x: 0.0
 mean_y: 0.0
 coefficient: 0.0
-"""
+""" % str(False)
 
 def exercise_mean_and_variance():
   x = flex.double((1,2,3))
