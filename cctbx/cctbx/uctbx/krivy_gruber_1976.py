@@ -116,19 +116,10 @@ class minimum_reduction(minimum_reduction_mixin, reduction):
      Use uctbx.fast_minimum_reduction instead.
   """
 
-  def __init__(self, unit_cell, expected_cycle_limit=None,
-                                iteration_limit=None):
-    minimum_reduction_mixin.__init__(self,
-      unit_cell, expected_cycle_limit, iteration_limit)
+  def __init__(self, unit_cell, iteration_limit=None):
+    minimum_reduction_mixin.__init__(self, unit_cell, iteration_limit)
 
   def a4_action(self):
-    self.current_cycle_id = 1
     reduction.a4_action(self)
-
-  def a6_action(self):
-    self.current_cycle_id = 2
-    reduction.a6_action(self)
-
-  def a8_action(self):
-    self.current_cycle_id = 2
-    reduction.a8_action(self)
+    if (not self.significant_change_test()):
+      raise StopIteration

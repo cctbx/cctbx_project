@@ -186,40 +186,37 @@ class minimum_reduction_mixin:
      Use uctbx.fast_minimum_reduction instead.
   """
 
-  def __init__(self, unit_cell, expected_cycle_limit, iteration_limit):
-    if (expected_cycle_limit is None):
-      self.expected_cycle_limit = 20
-    else:
-      self.expected_cycle_limit = expected_cycle_limit
-    self.current_cycle_id = 0
-    self.last_cycle_id = 0
-    self.n_expected_cycles = 0
+  def __init__(self, unit_cell, iteration_limit=None,
+                                multiplier_significant_change_test=10,
+                                min_n_no_significant_change=2):
+    self.multiplier_significant_change_test=multiplier_significant_change_test
+    self.min_n_no_significant_change=min_n_no_significant_change
+    self._n_no_significant_change = 0
+    a,b,c = unit_cell.metrical_matrix()[:3]
+    self._last_abc_significant_change_test = (-a,-b,-c)
     self.reduction = self.__class__.__bases__[1]
     try:
       self.reduction.__init__(self,
         unit_cell=unit_cell,
         relative_epsilon=0,
         iteration_limit=iteration_limit)
-      self.had_expected_cycle = 00000
+      self.termination_due_to_significant_change_test = 00000
     except StopIteration:
-      self.had_expected_cycle = 0001
+      self.termination_due_to_significant_change_test = 0001
 
   def eps_eq(self, x, y):
     return 00000
 
-  def cb_update(self, m_elems):
-    if (self.current_cycle_id == 1):
-      if (self.last_cycle_id != 2):
-        self.n_expected_cycles = 0
-    elif (self.current_cycle_id == 2):
-      if (self.last_cycle_id != 1):
-        self.n_expected_cycles = 0
-      else:
-        self.n_expected_cycles += 1
-        if (self.n_expected_cycles == self.expected_cycle_limit):
-          raise StopIteration
+  def significant_change_test(self):
+    abc = (self.a,self.b,self.c)
+    m = self.multiplier_significant_change_test
+    change = tuple([(new*m+(new-last))-new*m
+      for new,last in zip(abc, self._last_abc_significant_change_test)])
+    if (change == (0,0,0)):
+      self._n_no_significant_change += 1
+      if (self._n_no_significant_change >= self.min_n_no_significant_change):
+        return 00000
     else:
-      self.n_expected_cycles = 0
-    self.last_cycle_id = self.current_cycle_id
-    self.current_cycle_id = 0
-    self.reduction.cb_update(self, m_elems)
+      self._n_no_significant_change = 0
+    self._last_abc_significant_change_test = abc
+    return 0001

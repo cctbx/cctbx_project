@@ -126,9 +126,6 @@ def do_reduce(inp):
   time_krivy_gruber_1976_minimum.stop()
   assert min_reduction.type() in (1,2)
   min_cell = min_reduction.as_unit_cell()
-  if (not approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])):
-    print red_cell.parameters()
-    print min_cell.parameters()
   assert approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])
   assert inp.change_basis(min_reduction.r_inv().elems).is_similar_to(min_cell)
   time_gruber_1973_minimum.start()
@@ -464,9 +461,13 @@ def exercise_real_world_examples():
   assert red.r_inv().elems == (-1, 0, 1, 1, -1, 0, 0, 0, 1)
 
 def exercise_problem_parameters():
-  # krivy_gruber_1976 and gruber_1973 minimum reduction problems
-  # if a6_action or b3_action do not set current_cycle_id = 2
   problem_parameters = (
+    (13.892443989449804, 13.892443989449804, 14.7648230602334,
+     61.936000954634402, 61.936000954634402, 88.515487291567879),
+    (10.0, 10.0, 20.0,
+     90.0, 45.0, 120.0),
+    (10.0, 20.0, 30.0,
+     120.0, 60.0, 120.0),
     (10.816653826391969, 13.820274961085254, 13.820274961085254,
      60.0, 66.962544368849834, 66.962544368849834),
     (10.148891565092219, 13.379088160259652, 13.379088160259652,
@@ -487,29 +488,12 @@ def exercise_problem_parameters():
      115.81608733396159, 104.29612977641231, 104.29612977641233),
     (11.832159566199232, 13.784048752090222, 13.784048752090222,
      110.67521616123457, 104.95317005195066, 110.01926787579129))
-  for inp in problem_parameters:
-    reduce(uctbx.unit_cell(inp))
-  return
-  red0 = reduction_with_tracking_and_eq_always_false(inp)
-  n = min(len(red0.action_log), 20)
-  print inp
-  print "red0.action_log:", red0.action_log[-n:]
-  for cell in red0.cell_log[-n:]:
-    print cell
-  if (red0.iteration_limit_exceeded):
-    print "Iteration limit exceeded."
-  min_reduction = uctbx.fast_minimum_reduction(inp)
-  red = krivy_gruber_1976.reduction(inp)
+  for parameters in problem_parameters:
+    reduce(uctbx.unit_cell(parameters))
 
 def exercise():
-  if (1):
-    exercise_problem_parameters()
-    return
-  exercise_extreme()
   quick = "--Quick" in sys.argv[1:]
   verbose = "--Verbose" in sys.argv[1:]
-  exercise_gruber_1973_example()
-  exercise_krivy_gruber_1976_example()
   global relative_epsilon
   global track_infinite
   global eq_always_false
@@ -520,6 +504,10 @@ def exercise():
   if ("--eq_always_false" in sys.argv[1:]):
     track_infinite = 0001
     eq_always_false = 0001
+  exercise_problem_parameters()
+  exercise_extreme()
+  exercise_gruber_1973_example()
+  exercise_krivy_gruber_1976_example()
   exercise_bravais_plus()
   exercise_grid(quick=quick, verbose=verbose)
   if (quick): n_trials_per_type=10
