@@ -1,4 +1,5 @@
 operator_traits_builtin.h
+operator_functors.h
 std_imports.h
 ref_algebra.h
 tiny_algebra.h
