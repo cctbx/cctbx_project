@@ -46,10 +46,16 @@ def to_list(array):
     result.append(array[i])
   return result
 
-def select(sequence, permutation):
+def select(sequence, permutation=None, flags=None):
   result = []
-  for i in permutation:
-    result.append(sequence[i])
+  if (permutation is not None):
+    assert flags is None
+    for i in permutation:
+      result.append(sequence[i])
+  else:
+    assert flags is not None
+    for s,f in zip(sequence, flags):
+      if (f): result.append(s)
   return result
 
 def get_random_seed():
