@@ -17,8 +17,7 @@ if ($#argv == 0) then
   mkdir build
   cd build
   cp -r $LIBTBX_BUILD/libtbx .
-  unsetenv LIBTBX_SCONS
-  python ../dist/libtbx/configure.py scitbx cctbx iotbx
+  python ../dist/libtbx/configure.py iotbx
   cd ..
 endif
 

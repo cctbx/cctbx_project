@@ -9,7 +9,7 @@ from scitbx.python_utils import easy_pickle
 import sys
 
 def usage():
-  return (  "usage: iotbx.pdb.as_xray_structure.py"
+  return (  "usage: iotbx.pdb.as_xray_structure"
           + " [--unit_cell=1,1,1,90,90,90]"
           + " [--space_group=P212121]"
           + " [--extract_symmetry=any_file_format]"
