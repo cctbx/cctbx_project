@@ -37,11 +37,11 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     for(i[0]=0;i[0]<n[0];i[0]++)
     for(i[1]=0;i[1]<n[1];i[1]++)
     for(i[2]=0;i[2]<n[2];i[2]++, j++) {
-      f_t r14p = result_eq14(i) + interm.sum_mh_f_sq;
-      f_t r15p = target_map[j] + interm.sum_mh_f_sq_f_sq;
-      f_t d = r15p - r14p * r14p / interm.sum_mh;
+      f_t r14p = result_eq14(i) + interm.sum_m_f_sq;
+      f_t r15p = target_map[j] + interm.sum_m_f_sq_f_sq;
+      f_t d = r15p - r14p * r14p / interm.sum_m;
       if (d > f_t(0)) {
-        target_map[j] = std::sqrt(d) * std::sqrt(interm.sum_mh_d_i_obs_sq);
+        target_map[j] = std::sqrt(d) * std::sqrt(interm.sum_m_d_i_obs_sq);
       }
       else {
         target_map[j] = f_t(0);
@@ -70,7 +70,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     for(i[0]=0;i[0]<n[0];i[0]++)
     for(i[1]=0;i[1]<n[1];i[1]++)
     for(i[2]=0;i[2]<n[2];i[2]++, j++) {
-      f_t r14ip = result_eq14_with_i_obs(i) + interm.sum_mh_f_sq_d_i_obs;
+      f_t r14ip = result_eq14_with_i_obs(i) + interm.sum_m_f_sq_d_i_obs;
       if (scitbx::fn::absolute(r14ip / big_correlation) < target_map[j]) {
         target_map[j] = r14ip / target_map[j];
       }

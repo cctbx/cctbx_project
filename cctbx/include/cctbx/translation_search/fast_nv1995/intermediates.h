@@ -27,36 +27,36 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       for(std::size_t i=0;i<miller_indices.size();i++) {
         i_obs.push_back(f_obs[i] * f_obs[i]);
       }
-      mh.reserve(miller_indices.size());
+      m.reserve(miller_indices.size());
       for(std::size_t i=0;i<miller_indices.size();i++) {
-        mh.push_back(
+        m.push_back(
           space_group.multiplicity(miller_indices[i], anomalous_flag));
       }
-      sum_mh = af::sum(mh);
-      array_type d_i_obs = i_obs - af::sum(mh * i_obs) / sum_mh;
-      mh_d_i_obs = mh * d_i_obs;
-      sum_mh_d_i_obs_sq = af::sum(mh_d_i_obs * d_i_obs);
-      sum_mh_f_sq = 0;
-      sum_mh_f_sq_f_sq = 0;
-      sum_mh_f_sq_d_i_obs = 0;
+      sum_m = af::sum(m);
+      array_type d_i_obs = i_obs - af::sum(m * i_obs) / sum_m;
+      m_d_i_obs = m * d_i_obs;
+      sum_m_d_i_obs_sq = af::sum(m_d_i_obs * d_i_obs);
+      sum_m_f_sq = 0;
+      sum_m_f_sq_f_sq = 0;
+      sum_m_f_sq_d_i_obs = 0;
       if (f_part.size()) {
         array_type f_sq((af::reserve(f_part.size())));
         for(std::size_t i=0;i<f_part.size();i++) {
           f_sq.push_back(std::norm(f_part[i]));
         }
-        sum_mh_f_sq = af::sum(mh * f_sq);
-        sum_mh_f_sq_f_sq = af::sum(mh * f_sq * f_sq);
-        sum_mh_f_sq_d_i_obs = af::sum(mh * f_sq * d_i_obs);
+        sum_m_f_sq = af::sum(m * f_sq);
+        sum_m_f_sq_f_sq = af::sum(m * f_sq * f_sq);
+        sum_m_f_sq_d_i_obs = af::sum(m * f_sq * d_i_obs);
       }
     }
 
-    FloatTypeSummation sum_mh;
-    array_type         mh;
-    array_type         mh_d_i_obs;
-    FloatTypeSummation sum_mh_d_i_obs_sq;
-    FloatTypeSummation sum_mh_f_sq;
-    FloatTypeSummation sum_mh_f_sq_f_sq;
-    FloatTypeSummation sum_mh_f_sq_d_i_obs;
+    FloatTypeSummation sum_m;
+    array_type         m;
+    array_type         m_d_i_obs;
+    FloatTypeSummation sum_m_d_i_obs_sq;
+    FloatTypeSummation sum_m_f_sq;
+    FloatTypeSummation sum_m_f_sq_f_sq;
+    FloatTypeSummation sum_m_f_sq_d_i_obs;
   };
 
 }}} // namespace cctbx::translation_search::fast_nv1995_detail

@@ -59,19 +59,19 @@ namespace cctbx { namespace translation_search {
             miller::index<>(rfft.n_complex()));
 
         summation_eq15(space_group, miller_indices_f_obs,
-          interm.mh.const_ref(), f_part, fc_map, accu);
+          interm.m.const_ref(), f_part, fc_map, accu);
         rfft.backward(accu_mem_complex);
         maptbx::copy(accu_mem_real_const_ref, target_map_.ref());
 
         accu_mem_complex.fill(0);
         summation_eq14(space_group, miller_indices_f_obs,
-          interm.mh.const_ref(), f_part, fc_map, accu);
+          interm.m.const_ref(), f_part, fc_map, accu);
         rfft.backward(accu_mem_complex);
         combination_eq13(interm, accu_mem_real_const_ref, target_map_.ref());
 
         accu_mem_complex.fill(0);
         summation_eq14(space_group, miller_indices_f_obs,
-          interm.mh_d_i_obs.const_ref(), f_part, fc_map, accu);
+          interm.m_d_i_obs.const_ref(), f_part, fc_map, accu);
         rfft.backward(accu_mem_complex);
         combination_eq12(interm, accu_mem_real_const_ref, target_map_.ref());
       }
