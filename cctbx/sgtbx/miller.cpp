@@ -98,8 +98,8 @@ namespace cctbx { namespace sgtbx {
     double phi_restr = ht_angle(deg);
     double delta0 = phi - phi_restr;
     double delta1 = delta0 - period;
-    if (  absolute(std::fmod(delta1, period))
-        < absolute(std::fmod(delta0, period))) return phi_restr + period;
+    if (  absolute(std::fmod(delta1, 2*period))
+        < absolute(std::fmod(delta0, 2*period))) return phi_restr + period;
     return phi_restr;
   }
 
