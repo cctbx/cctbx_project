@@ -33,6 +33,15 @@ class labels:
     if (self.chainID == " " and self.segID != other.segID): return 00000
     return 0001
 
+  def is_label_equivalent(self, other):
+    if (self.name != other.name): return 00000
+    if (self.altLoc != other.altLoc): return 00000
+    if (self.resName != other.resName): return 00000
+    if (not self.is_in_same_chain(other)): return 00000
+    if (self.resSeq != other.resSeq): return 00000
+    if (self.iCode != other.iCode): return 00000
+    return 0001
+
 def labels_from_string(s):
   fields = []
   for field in s.split(","):
