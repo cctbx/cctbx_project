@@ -49,7 +49,7 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
   if (itvc_file_name is not None):
     itvc_tab = itvc_section61_io.read_table6111(itvc_file_name)
   fits = read_pickled_fits(gaussian_fit_pickle_file_names)
-  easy_pickle.dump("all_fits.pickle", fits)
+  #easy_pickle.dump("all_fits.pickle", fits)
   for k,v in fits.parameters.items():
     print "# %s:" % k, v
   print
@@ -63,10 +63,18 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
       print "# Warning: Missing scattering_type:", label
     else:
       print "scattering_type:", label
+      prev_fit = None
       for fit in fit_group:
+        if (prev_fit is not None):
+          if (fit.stol > prev_fit.stol):
+            print "# Warning: decreasing stol"
+          elif (fit.stol == prev_fit.stol):
+            if (fit.max_error < prev_fit.max_error):
+              print "# Warning: same stol but previous has larger error"
+        prev_fit = fit
         fit.sort().show()
         gaussian_fit = None
-        if (itvc_tab is not None):
+        if (itvc_tab is not None and label != "O2-"):
           entry = itvc_tab.entries[label]
           sel = international_tables_stols <= fit.stol + 1.e-6
           gaussian_fit = scitbx.math.gaussian.fit(
@@ -88,8 +96,6 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
           max_errors.append(
             flex.max(gaussian_fit.significant_relative_errors()))
           labeled_fits.append(labeled_fit(label, gaussian_fit))
-          print label, "n_terms=%d max_error: %.4f" % (
-            fit.n_terms(), max_errors[-1])
       n_processed += 1
   print
   if (n_processed != len(fits.all)):
@@ -115,7 +121,7 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
           print "%4.2f %7.4f %7.4f %7.4f %7.4f%s" % (s,y,a,a-y,r,comment)
         print
     print
-    easy_pickle.dump("quick_summary.pickle", quick_summary)
+    #easy_pickle.dump("quick_summary.pickle", quick_summary)
 
 def cross_check(args):
   quick_summaries = []
