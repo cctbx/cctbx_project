@@ -36,11 +36,13 @@ namespace cctbx { namespace sgtbx { namespace direct_space_asu {
         return n * point + c;
       }
 
-      //! Equivalent to evaluate(point) >= 0.
+      //! Equivalent to evaluate(point) >= -epsilon.
       bool
-      is_inside(fractional<FloatType> const& point) const
+      is_inside(
+        fractional<FloatType> const& point,
+        FloatType const& epsilon=0) const
       {
-        if (evaluate(point) < 0) return false;
+        if (evaluate(point) < -epsilon) return false;
         return true;
       }
 
@@ -101,17 +103,19 @@ namespace cctbx { namespace sgtbx { namespace direct_space_asu {
       facets_t const&
       facets() const { return facets_; }
 
-      //! True if is-inside test is true for all facets().
+      //! True if is_inside() is true for all facets().
       bool
-      is_inside(fractional<FloatType> const& point) const
+      is_inside(
+        fractional<FloatType> const& point,
+        FloatType const& epsilon=0) const
       {
         for(std::size_t i=0;i<facets_.size();i++) {
-          if (!facets_[i].is_inside(point)) return false;
+          if (!facets_[i].is_inside(point, epsilon)) return false;
         }
         return true;
       }
 
-      /*! New asymmetric unit with all facets shifted by the distance
+      /*! \brief New asymmetric unit with all facets shifted by the distance
           specified as thickness.
        */
       float_asu
@@ -123,6 +127,40 @@ namespace cctbx { namespace sgtbx { namespace direct_space_asu {
             facets_[i].add_buffer(unit_cell_, thickness));
         }
         return float_asu(unit_cell_, buffer_facets);
+      }
+
+      //! List of vertices. Duplicates are possible.
+      /*! epsilon is used to detect singular matrices and when
+          testing if a putative vertex is_inside() this asymmetric
+          unit. epsilon must be strictly greater than zero.
+       */
+      af::shared<scitbx::vec3<FloatType> >
+      volume_vertices(FloatType const& epsilon=1.e-6) const
+      {
+        CCTBX_ASSERT(epsilon > 0);
+        af::shared<scitbx::vec3<FloatType> > result;
+        scitbx::mat3<FloatType> m;
+        scitbx::vec3<FloatType> b;
+        for(std::size_t i0=0   ;i0<facets_.size()-2;i0++) {
+          m.set_row(0, facets_[i0].n);
+          b[0] = -facets_[i0].c;
+        for(std::size_t i1=i0+1;i1<facets_.size()-1;i1++) {
+          m.set_row(1, facets_[i1].n);
+          b[1] = -facets_[i1].c;
+        for(std::size_t i2=i1+1;i2<facets_.size()  ;i2++) {
+          m.set_row(2, facets_[i2].n);
+          b[2] = -facets_[i2].c;
+          FloatType d = m.determinant();
+          scitbx::mat3<FloatType> c = m.co_factor_matrix_transposed();
+          if (scitbx::fn::absolute(d) > c.max_abs() * epsilon) {
+            c /= d;
+            scitbx::vec3<FloatType> vertex = c * b;
+            if (is_inside(vertex, epsilon)) {
+              result.push_back(vertex);
+            }
+          }
+        }}}
+        return result;
       }
 
     protected:
