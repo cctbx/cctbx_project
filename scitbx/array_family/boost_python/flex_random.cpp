@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/random/mersenne_twister.hpp>
 
@@ -88,11 +89,12 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<mersenne_twister>("mersenne_twister", no_init)
-        .def(init<optional<unsigned> >())
-        .def("random_size_t", &w_t::random_size_t)
-        .def("random_double", &w_t::random_double)
-        .def("seed", &w_t::seed, seed_overloads())
+        .def(init<optional<unsigned> >((arg_("seed")=0)))
+        .def("random_size_t", &w_t::random_size_t, (arg_("size")))
+        .def("random_double", &w_t::random_double, (arg_("size")))
+        .def("seed", &w_t::seed, seed_overloads((arg_("value")=0)))
       ;
     }
   };

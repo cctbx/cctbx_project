@@ -3,10 +3,22 @@ boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
-import sys
+import time
+import sys, os
+
+builtin_int = __builtins__["int"]
+builtin_long = __builtins__["long"]
 
 def export_to(target_module_name):
-  export_list = ["to_list", "select", "py_object", "linear_regression"]
+  export_list = [
+    "to_list",
+    "select",
+    "get_random_seed",
+    "random_generator",
+    "random_size_t",
+    "random_double",
+    "py_object",
+    "linear_regression"]
   target_module = sys.modules[target_module_name]
   g = globals()
   for attr in export_list:
@@ -25,6 +37,22 @@ def select(sequence, permutation):
   for i in permutation:
     result.append(sequence[i])
   return result
+
+def get_random_seed():
+  try:
+    result = builtin_long(os.getpid() * (2**16)) \
+           + builtin_long(time.time() * (2**8))
+  except:
+    result = time.time()
+  return builtin_int(result % (2**31-1))
+
+random_generator = ext.mersenne_twister(seed=get_random_seed())
+
+def set_random_seed(value):
+  random_generator.seed(value=value)
+
+random_size_t = random_generator.random_size_t
+random_double = random_generator.random_double
 
 class py_object:
 
