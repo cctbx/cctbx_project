@@ -29,6 +29,7 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_index_span();
   void wrap_match_bijvoet_mates();
   void wrap_match_indices();
+  void wrap_phase_interpolation();
   void wrap_sym_equiv();
 
 namespace {
@@ -60,6 +61,7 @@ namespace {
     wrap_index_span();
     wrap_match_bijvoet_mates();
     wrap_match_indices();
+    wrap_phase_interpolation();
 
     def("statistical_mean",
       (double(*)(sgtbx::space_group const&,

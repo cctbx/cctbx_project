@@ -65,6 +65,11 @@ class set(crystal.symmetry):
     crystal.symmetry.show_summary(self, f)
     return self
 
+  def centric_flags(self):
+    return array(
+      self,
+      self.space_group().is_centric(self.indices()))
+
   def multiplicities(self):
     return array(
       self,

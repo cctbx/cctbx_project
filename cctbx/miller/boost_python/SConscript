@@ -10,6 +10,7 @@ pyd = env.SharedLibrary(target="miller_ext", source=[
   "index_span.cpp",
   "match_bijvoet_mates.cpp",
   "match_indices.cpp",
+  "phase_interpolation.cpp",
   "sym_equiv.cpp",
 ])
 env.Install("#libtbx/cctbx_boost", pyd)
