@@ -2,6 +2,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.development import debug_utils
+from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import sys
 
@@ -86,6 +87,10 @@ def exercise_special_position_settings():
   assert sp.assert_min_distance_sym_equiv() == False
   assert sp.site_symmetry((0,0,0)).multiplicity() == 1
   assert str(sp.sym_equiv_sites((0,0,0)).special_op()) == "0,0,0"
+  t = sp.site_symmetry_table(sites_cart=flex.vec3_double([
+    (2,1,3),
+    (0,0,0)]))
+  assert list(t.special_position_indices()) == [1]
 
 def exercise_site_symmetry(space_group_info):
   special_position_settings = crystal.special_position_settings(
