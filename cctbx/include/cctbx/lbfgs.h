@@ -60,8 +60,6 @@
 #include <boost/config.hpp>
 #include <cctbx/fixes/cmath>
 
-// XXX un-inline most functions
-
 namespace cctbx {
 
   class lbfgs_error : public std::exception {
@@ -117,6 +115,589 @@ namespace cctbx {
       {}
   };
 
+  namespace lbfgs_detail {
+
+    // This class implements an algorithm for multi-dimensional line search.
+    template <typename FloatType>
+    class mcsrch
+    {
+      protected:
+        int infoc;
+        FloatType dginit;
+        bool brackt;
+        bool stage1;
+        FloatType finit;
+        FloatType dgtest;
+        FloatType width;
+        FloatType width1;
+        FloatType stx;
+        FloatType fx;
+        FloatType dgx;
+        FloatType sty;
+        FloatType fy;
+        FloatType dgy;
+        FloatType stmin;
+        FloatType stmax;
+
+        static FloatType sqr(const FloatType& x) { return x * x; }
+
+        static const FloatType& max3(
+          const FloatType& x,
+          const FloatType& y,
+          const FloatType& z)
+        {
+          return x < y ? (y < z ? z : y ) : (x < z ? z : x );
+        }
+
+        static FloatType abs(const FloatType& x) {
+          if (x < FloatType(0)) return -x;
+          return x;
+        }
+
+      public:
+        /* Minimize a function along a search direction. This code is
+           a Java translation of the function <code>MCSRCH</code> from
+           <code>lbfgs.f</code>, which in turn is a slight modification
+           of the subroutine <code>CSRCH</code> of More' and Thuente.
+           The changes are to allow reverse communication, and do not
+           affect the performance of the routine. This function, in turn,
+           calls <code>mcstep</code>.<p>
+
+           The Java translation was effected mostly mechanically, with
+           some manual clean-up; in particular, array indices start at 0
+           instead of 1.  Most of the comments from the Fortran code have
+           been pasted in here as well.<p>
+
+           The purpose of <code>mcsrch</code> is to find a step which
+           satisfies a sufficient decrease condition and a curvature
+           condition.<p>
+
+           At each stage this function updates an interval of uncertainty
+           with endpoints <code>stx</code> and <code>sty</code>. The
+           interval of uncertainty is initially chosen so that it
+           contains a minimizer of the modified function
+           <pre>
+                f(x+stp*s) - f(x) - ftol*stp*(gradf(x)'s).
+           </pre>
+           If a step is obtained for which the modified function has a
+           nonpositive function value and nonnegative derivative, then
+           the interval of uncertainty is chosen so that it contains a
+           minimizer of <code>f(x+stp*s)</code>.<p>
+
+           The algorithm is designed to find a step which satisfies
+           the sufficient decrease condition
+           <pre>
+                 f(x+stp*s) &lt;= f(X) + ftol*stp*(gradf(x)'s),
+           </pre>
+           and the curvature condition
+           <pre>
+                 abs(gradf(x+stp*s)'s)) &lt;= gtol*abs(gradf(x)'s).
+           </pre>
+           If <code>ftol</code> is less than <code>gtol</code> and if,
+           for example, the function is bounded below, then there is
+           always a step which satisfies both conditions. If no step can
+           be found which satisfies both conditions, then the algorithm
+           usually stops when rounding errors prevent further progress.
+           In this case <code>stp</code> only satisfies the sufficient
+           decrease condition.<p>
+
+           @author Original Fortran version by Jorge J. More' and
+             David J. Thuente as part of the Minpack project, June 1983,
+             Argonne National Laboratory. Java translation by Robert
+             Dodier, August 1997.
+
+           @param n The number of variables.
+
+           @param x On entry this contains the base point for the line
+             search. On exit it contains <code>x + stp*s</code>.
+
+           @param f On entry this contains the value of the objective
+             function at <code>x</code>. On exit it contains the value
+             of the objective function at <code>x + stp*s</code>.
+
+           @param g On entry this contains the gradient of the objective
+             function at <code>x</code>. On exit it contains the gradient
+             at <code>x + stp*s</code>.
+
+           @param s The search direction.
+
+           @param stp On entry this contains an initial estimate of a
+             satifactory step length. On exit <code>stp</code> contains
+             the final estimate.
+
+           @param ftol Tolerance for the sufficient decrease condition.
+
+           @param xtol Termination occurs when the relative width of the
+             interval of uncertainty is at most <code>xtol</code>.
+
+           @param maxfev Termination occurs when the number of evaluations
+             of the objective function is at least <code>maxfev</code> by
+             the end of an iteration.
+
+           @param info This is an output variable, which can have these
+             values:
+             <ul>
+             <li><code>info = -1</code> A return is made to compute
+                 the function and gradient.
+             <li><code>info = 1</code> The sufficient decrease condition
+                 and the directional derivative condition hold.
+             </ul>
+
+           @param nfev On exit, this is set to the number of function
+             evaluations.
+
+           @param wa Temporary storage array, of length <code>n</code>.
+         */
+        void run(
+          const FloatType& gtol,
+          const FloatType& stpmin,
+          const FloatType& stpmax,
+          std::size_t n,
+          FloatType* x,
+          FloatType f,
+          const FloatType* g,
+          FloatType* s,
+          std::size_t is0,
+          FloatType& stp,
+          FloatType ftol,
+          FloatType xtol,
+          int maxfev,
+          int& info,
+          std::size_t& nfev,
+          FloatType* wa);
+
+        /* The purpose of this function is to compute a safeguarded step
+           for a linesearch and to update an interval of uncertainty for
+           a minimizer of the function.<p>
+
+           The parameter <code>stx</code> contains the step with the
+           least function value. The parameter <code>stp</code> contains
+           the current step. It is assumed that the derivative at
+           <code>stx</code> is negative in the direction of the step. If
+           <code>brackt</code> is <code>true</code> when
+           <code>mcstep</code> returns then a minimizer has been
+           bracketed in an interval of uncertainty with endpoints
+           <code>stx</code> and <code>sty</code>.<p>
+
+           Variables that must be modified by <code>mcstep</code> are
+           implemented as 1-element arrays.
+
+           @param stx Step at the best step obtained so far.
+             This variable is modified by <code>mcstep</code>.
+           @param fx Function value at the best step obtained so far.
+             This variable is modified by <code>mcstep</code>.
+           @param dx Derivative at the best step obtained so far.
+             The derivative must be negative in the direction of the
+             step, that is, <code>dx</code> and <code>stp-stx</code> must
+             have opposite signs.  This variable is modified by
+             <code>mcstep</code>.
+
+           @param sty Step at the other endpoint of the interval of
+             uncertainty. This variable is modified by <code>mcstep</code>.
+           @param fy Function value at the other endpoint of the interval
+             of uncertainty. This variable is modified by
+             <code>mcstep</code>.
+
+           @param dy Derivative at the other endpoint of the interval of
+             uncertainty. This variable is modified by <code>mcstep</code>.
+
+           @param stp Step at the current step. If <code>brackt</code> is set
+             then on input <code>stp</code> must be between <code>stx</code>
+             and <code>sty</code>. On output <code>stp</code> is set to the
+             new step.
+           @param fp Function value at the current step.
+           @param dp Derivative at the current step.
+
+           @param brackt Tells whether a minimizer has been bracketed.
+             If the minimizer has not been bracketed, then on input this
+             variable must be set <code>false</code>. If the minimizer has
+             been bracketed, then on output this variable is
+             <code>true</code>.
+
+           @param stpmin Lower bound for the step.
+           @param stpmax Upper bound for the step.
+
+           If the return value is 1, 2, 3, or 4, then the step has
+           been computed successfully. A return value of 0 indicates
+           improper input parameters.
+
+           @author Jorge J. More, David J. Thuente: original Fortran version,
+             as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
+             Robert Dodier: Java translation, August 1997.
+         */
+        static int mcstep(
+          FloatType& stx,
+          FloatType& fx,
+          FloatType& dx,
+          FloatType& sty,
+          FloatType& fy,
+          FloatType& dy,
+          FloatType& stp,
+          FloatType fp,
+          FloatType dp,
+          bool& brackt,
+          FloatType stpmin,
+          FloatType stpmax);
+    };
+
+    template <typename FloatType>
+    void mcsrch<FloatType>::run(
+      const FloatType& gtol,
+      const FloatType& stpmin,
+      const FloatType& stpmax,
+      std::size_t n,
+      FloatType* x,
+      FloatType f,
+      const FloatType* g,
+      FloatType* s,
+      std::size_t is0,
+      FloatType& stp,
+      FloatType ftol,
+      FloatType xtol,
+      int maxfev,
+      int& info,
+      std::size_t& nfev,
+      FloatType* wa)
+    {
+      if (info != -1) {
+        infoc = 1;
+        if (   n == 0
+            || xtol < FloatType(0)
+            || maxfev <= 0
+            || gtol < FloatType(0)
+            || stpmin < FloatType(0)
+            || stpmax < stpmin) {
+          throw lbfgs_error_internal_error(__FILE__, __LINE__);
+        }
+        if (stp <= FloatType(0) || ftol < FloatType(0)) {
+          throw lbfgs_error_internal_error(__FILE__, __LINE__);
+        }
+        // Compute the initial gradient in the search direction
+        // and check that s is a descent direction.
+        dginit = FloatType(0);
+        for (std::size_t j = 0; j < n; j++) {
+          dginit += g[j] * s[is0+j];
+        }
+        if (dginit >= FloatType(0)) {
+          throw lbfgs_error_search_direction_not_descent();
+        }
+        brackt = false;
+        stage1 = true;
+        nfev = 0;
+        finit = f;
+        dgtest = ftol*dginit;
+        width = stpmax - stpmin;
+        width1 = FloatType(2) * width;
+        std::copy(x, x+n, wa);
+        // The variables stx, fx, dgx contain the values of the step,
+        // function, and directional derivative at the best step.
+        // The variables sty, fy, dgy contain the value of the step,
+        // function, and derivative at the other endpoint of
+        // the interval of uncertainty.
+        // The variables stp, f, dg contain the values of the step,
+        // function, and derivative at the current step.
+        stx = FloatType(0);
+        fx = finit;
+        dgx = dginit;
+        sty = FloatType(0);
+        fy = finit;
+        dgy = dginit;
+      }
+      for (;;) {
+        if (info != -1) {
+          // Set the minimum and maximum steps to correspond
+          // to the present interval of uncertainty.
+          if (brackt) {
+            stmin = std::min(stx, sty);
+            stmax = std::max(stx, sty);
+          }
+          else {
+            stmin = stx;
+            stmax = stp + FloatType(4) * (stp - stx);
+          }
+          // Force the step to be within the bounds stpmax and stpmin.
+          stp = std::max(stp, stpmin);
+          stp = std::min(stp, stpmax);
+          // If an unusual termination is to occur then let
+          // stp be the lowest point obtained so far.
+          if (   (brackt && (stp <= stmin || stp >= stmax))
+              || nfev >= maxfev - 1 || infoc == 0
+              || (brackt && stmax - stmin <= xtol * stmax)) {
+            stp = stx;
+          }
+          // Evaluate the function and gradient at stp
+          // and compute the directional derivative.
+          // We return to main program to obtain F and G.
+          for (std::size_t j = 0; j < n; j++) {
+            x[j] = wa[j] + stp * s[is0+j];
+          }
+          info=-1;
+          break;
+        }
+        info = 0;
+        nfev++;
+        FloatType dg(0);
+        for (std::size_t j = 0; j < n; j++) {
+          dg += g[j] * s[is0+j];
+        }
+        FloatType ftest1 = finit + stp*dgtest;
+        // Test for convergence.
+        if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
+          throw lbfgs_error_line_search_failed(
+            "Rounding errors prevent further progress."
+            " There may not be a step which satisfies the"
+            " sufficient decrease and curvature conditions."
+            " Tolerances may be too small.");
+        }
+        if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
+          throw lbfgs_error_line_search_failed(
+            "The step is at the upper bound stpmax().");
+        }
+        if (stp == stpmin && (f > ftest1 || dg >= dgtest)) {
+          throw lbfgs_error_line_search_failed(
+            "The step is at the lower bound stpmin().");
+        }
+        if (nfev >= maxfev) {
+          throw lbfgs_error_line_search_failed(
+            "Number of function evaluations has reached maxfev().");
+        }
+        if (brackt && stmax - stmin <= xtol * stmax) {
+          throw lbfgs_error_line_search_failed(
+            "Relative width of the interval of uncertainty"
+            " is at most xtol().");
+        }
+        // Check for termination.
+        if (f <= ftest1 && abs(dg) <= gtol * (-dginit)) {
+          info = 1;
+          break;
+        }
+        // In the first stage we seek a step for which the modified
+        // function has a nonpositive value and nonnegative derivative.
+        if (   stage1 && f <= ftest1
+            && dg >= std::min(ftol, gtol) * dginit) {
+          stage1 = false;
+        }
+        // A modified function is used to predict the step only if
+        // we have not obtained a step for which the modified
+        // function has a nonpositive function value and nonnegative
+        // derivative, and if a lower function value has been
+        // obtained but the decrease is not sufficient.
+        if (stage1 && f <= fx && f > ftest1) {
+          // Define the modified function and derivative values.
+          FloatType fm = f - stp*dgtest;
+          FloatType fxm = fx - stx*dgtest;
+          FloatType fym = fy - sty*dgtest;
+          FloatType dgm = dg - dgtest;
+          FloatType dgxm = dgx - dgtest;
+          FloatType dgym = dgy - dgtest;
+          // Call cstep to update the interval of uncertainty
+          // and to compute the new step.
+          infoc = mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
+                         brackt, stmin, stmax);
+          // Reset the function and gradient values for f.
+          fx = fxm + stx*dgtest;
+          fy = fym + sty*dgtest;
+          dgx = dgxm + dgtest;
+          dgy = dgym + dgtest;
+        }
+        else {
+          // Call mcstep to update the interval of uncertainty
+          // and to compute the new step.
+          infoc = mcstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg,
+                         brackt, stmin, stmax);
+        }
+        // Force a sufficient decrease in the size of the
+        // interval of uncertainty.
+        if (brackt) {
+          if (abs(sty - stx) >= FloatType(0.66) * width1) {
+            stp = stx + FloatType(0.5) * (sty - stx);
+          }
+          width1 = width;
+          width = abs(sty - stx);
+        }
+      }
+    }
+
+    template <typename FloatType>
+    int mcsrch<FloatType>::mcstep(
+      FloatType& stx,
+      FloatType& fx,
+      FloatType& dx,
+      FloatType& sty,
+      FloatType& fy,
+      FloatType& dy,
+      FloatType& stp,
+      FloatType fp,
+      FloatType dp,
+      bool& brackt,
+      FloatType stpmin,
+      FloatType stpmax)
+    {
+      bool bound;
+      FloatType gamma, p, q, r, s, sgnd, stpc, stpf, stpq, theta;
+      int info = 0;
+      if (   (   brackt && (stp <= std::min(stx, sty)
+              || stp >= std::max(stx, sty)))
+          || dx * (stp - stx) >= FloatType(0) || stpmax < stpmin) {
+        return 0;
+      }
+      // Determine if the derivatives have opposite sign.
+      sgnd = dp * (dx / abs(dx));
+      if (fp > fx) {
+        // First case. A higher function value.
+        // The minimum is bracketed. If the cubic step is closer
+        // to stx than the quadratic step, the cubic step is taken,
+        // else the average of the cubic and quadratic steps is taken.
+        info = 1;
+        bound = true;
+        theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
+        s = max3(abs(theta), abs(dx), abs(dp));
+        gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
+        if (stp < stx) gamma = - gamma;
+        p = (gamma - dx) + theta;
+        q = ((gamma - dx) + gamma) + dp;
+        r = p/q;
+        stpc = stx + r * (stp - stx);
+        stpq = stx
+          + ((dx / ((fx - fp) / (stp - stx) + dx)) / FloatType(2))
+            * (stp - stx);
+        if (abs(stpc - stx) < abs(stpq - stx)) {
+          stpf = stpc;
+        }
+        else {
+          stpf = stpc + (stpq - stpc) / FloatType(2);
+        }
+        brackt = true;
+      }
+      else if (sgnd < FloatType(0)) {
+        // Second case. A lower function value and derivatives of
+        // opposite sign. The minimum is bracketed. If the cubic
+        // step is closer to stx than the quadratic (secant) step,
+        // the cubic step is taken, else the quadratic step is taken.
+        info = 2;
+        bound = false;
+        theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
+        s = max3(abs(theta), abs(dx), abs(dp));
+        gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
+        if (stp > stx) gamma = - gamma;
+        p = (gamma - dp) + theta;
+        q = ((gamma - dp) + gamma) + dx;
+        r = p/q;
+        stpc = stp + r * (stx - stp);
+        stpq = stp + (dp / (dp - dx)) * (stx - stp);
+        if (abs(stpc - stp) > abs(stpq - stp)) {
+          stpf = stpc;
+        }
+        else {
+          stpf = stpq;
+        }
+        brackt = true;
+      }
+      else if (abs(dp) < abs(dx)) {
+        // Third case. A lower function value, derivatives of the
+        // same sign, and the magnitude of the derivative decreases.
+        // The cubic step is only used if the cubic tends to infinity
+        // in the direction of the step or if the minimum of the cubic
+        // is beyond stp. Otherwise the cubic step is defined to be
+        // either stpmin or stpmax. The quadratic (secant) step is also
+        // computed and if the minimum is bracketed then the the step
+        // closest to stx is taken, else the step farthest away is taken.
+        info = 3;
+        bound = true;
+        theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
+        s = max3(abs(theta), abs(dx), abs(dp));
+        gamma = s * std::sqrt(
+          std::max(FloatType(0), sqr(theta / s) - (dx / s) * (dp / s)));
+        if (stp > stx) gamma = -gamma;
+        p = (gamma - dp) + theta;
+        q = (gamma + (dx - dp)) + gamma;
+        r = p/q;
+        if (r < FloatType(0) && gamma != FloatType(0)) {
+          stpc = stp + r * (stx - stp);
+        }
+        else if (stp > stx) {
+          stpc = stpmax;
+        }
+        else {
+          stpc = stpmin;
+        }
+        stpq = stp + (dp / (dp - dx)) * (stx - stp);
+        if (brackt) {
+          if (abs(stp - stpc) < abs(stp - stpq)) {
+            stpf = stpc;
+          }
+          else {
+            stpf = stpq;
+          }
+        }
+        else {
+          if (abs(stp - stpc) > abs(stp - stpq)) {
+            stpf = stpc;
+          }
+          else {
+            stpf = stpq;
+          }
+        }
+      }
+      else {
+        // Fourth case. A lower function value, derivatives of the
+        // same sign, and the magnitude of the derivative does
+        // not decrease. If the minimum is not bracketed, the step
+        // is either stpmin or stpmax, else the cubic step is taken.
+        info = 4;
+        bound = false;
+        if (brackt) {
+          theta = FloatType(3) * (fp - fy) / (sty - stp) + dy + dp;
+          s = max3(abs(theta), abs(dy), abs(dp));
+          gamma = s * std::sqrt(sqr(theta / s) - (dy / s) * (dp / s));
+          if (stp > sty) gamma = -gamma;
+          p = (gamma - dp) + theta;
+          q = ((gamma - dp) + gamma) + dy;
+          r = p/q;
+          stpc = stp + r * (sty - stp);
+          stpf = stpc;
+        }
+        else if (stp > stx) {
+          stpf = stpmax;
+        }
+        else {
+          stpf = stpmin;
+        }
+      }
+      // Update the interval of uncertainty. This update does not
+      // depend on the new step or the case analysis above.
+      if (fp > fx) {
+        sty = stp;
+        fy = fp;
+        dy = dp;
+      }
+      else {
+        if (sgnd < FloatType(0)) {
+          sty = stx;
+          fy = fx;
+          dy = dx;
+        }
+        stx = stp;
+        fx = fp;
+        dx = dp;
+      }
+      // Compute the new step and safeguard it.
+      stpf = std::min(stpmax, stpf);
+      stpf = std::max(stpmin, stpf);
+      stp = stpf;
+      if (brackt && bound) {
+        if (sty > stx) {
+          stp = std::min(stx + FloatType(0.66) * (sty - stx), stp);
+        }
+        else {
+          stp = std::max(stx + FloatType(0.66) * (sty - stx), stp);
+        }
+      }
+      return info;
+    }
+
+  } // namespace lbfgs_detail
+
   /*! This class solves the unconstrained minimization problem
       <pre>
           min f(x),  x = (x1,x2,...,x_n),
@@ -158,7 +739,7 @@ namespace cctbx {
   class lbfgs
   {
     public:
-      //! Default constructor. Members are not initialized!
+      //! Default constructor. Some members are not initialized!
       lbfgs()
       : n_(0), m_(0), eps_(0), xtol_(0), maxfev_(0),
         gtol_(0), stpmin_(0), stpmax_(0),
@@ -374,122 +955,9 @@ namespace cctbx {
         FloatType f,
         const FloatType* g,
         bool diagco,
-        FloatType* diag)
-      {
-        FloatType* w = &(*(w_.begin()));
-        bool execute_entire_while_loop = false;
-        if (iflag_ == 0) { // Initialize.
-          nfun_ = 1;
-          if (diagco) {
-            for (std::size_t i = 0; i < n_; i++) {
-              if (diag[i] <= FloatType(0)) {
-                throw_diagonal_element_not_positive(i);
-              }
-            }
-          }
-          else {
-            std::fill_n(diag, n_, FloatType(1));
-          }
-          for (std::size_t i = 0; i < n_; i++) {
-            w[ispt + i] = -g[i] * diag[i];
-          }
-          gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
-          stp1 = FloatType(1) / gnorm_;
-          execute_entire_while_loop = true;
-        }
-        for (;;) {
-          if (execute_entire_while_loop) {
-            bound = iter_;
-            iter_++;
-            info = 0;
-            if (iter_ != 1) {
-              if (iter_ > m_) bound = m_;
-              ys = ddot(n_, w, iypt + npt, 1, w, ispt + npt, 1);
-              if (!diagco) {
-                FloatType yy = ddot(n_, w, iypt + npt, 1, w, iypt + npt, 1);
-                std::fill_n(diag, n_, ys / yy);
-              }
-              else {
-                iflag_ = 2;
-                return;
-              }
-            }
-          }
-          if (execute_entire_while_loop || iflag_ == 2) {
-            if (iter_ != 1) {
-              if (diagco) {
-                for (std::size_t i = 0; i < n_; i++) {
-                  if (diag[i] <= FloatType(0)) {
-                    throw_diagonal_element_not_positive(i);
-                  }
-                }
-              }
-              std::size_t cp = point;
-              if (point == 0) cp = m_;
-              w[n_ + cp -1] = 1 / ys;
-              std::size_t i;
-              for (i = 0; i < n_; i++) {
-                w[i] = -g[i];
-              }
-              cp = point;
-              for (i = 0; i < bound; i++) {
-                if (cp == 0) cp = m_;
-                cp--;
-                FloatType sq = ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
-                std::size_t inmc=n_+m_+cp;
-                std::size_t iycn=iypt+cp*n_;
-                w[inmc] = w[n_ + cp] * sq;
-                daxpy(n_, -w[inmc], w, iycn, 1, w, 0, 1);
-              }
-              for (i = 0; i < n_; i++) {
-                w[i] *= diag[i];
-              }
-              for (i = 0; i < bound; i++) {
-                FloatType yr = ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
-                FloatType beta = w[n_ + cp] * yr;
-                std::size_t inmc=n_+m_+cp;
-                beta = w[inmc] - beta;
-                std::size_t iscn=ispt+cp*n_;
-                daxpy(n_, beta, w, iscn, 1, w, 0, 1);
-                cp++;
-                if (cp == m_) cp = 0;
-              }
-              std::copy(w, w+n_, w+(ispt + point * n_));
-            }
-            stp_ = FloatType(1);
-            if (iter_ == 1) stp_ = stp1;
-            std::copy(g, g+n_, w);
-          }
-          mcsrch_instance.run(
-            gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
-            stp_, ftol, xtol_, maxfev_, info, nfev, diag);
-          if (info == -1) {
-            iflag_ = 1;
-            return;
-          }
-          if (info != 1) {
-            throw lbfgs_error_internal_error(__FILE__, __LINE__);
-          }
-          nfun_ += nfev;
-          npt = point*n_;
-          for (std::size_t i = 0; i < n_; i++) {
-            w[ispt + npt + i] = stp_ * w[ispt + npt + i];
-            w[iypt + npt + i] = g[i] - w[i];
-          }
-          point++;
-          if (point == m_) point = 0;
-          gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
-          FloatType xnorm = std::max(
-            FloatType(1), std::sqrt(ddot(n_, x, 0, 1, x, 0, 1)));
-          if (gnorm_ / xnorm <= eps_) {
-            iflag_ = 0;
-            break;
-          }
-          execute_entire_while_loop = true; // from now on, execute whole loop
-        }
-      }
+        FloatType* diag);
 
-      /* Compute the sum of a vector times a scalara plus another vector.
+      /* Compute the sum of a vector times a scalar plus another vector.
          Adapted from the subroutine <code>daxpy</code> in
          <code>lbfgs.f</code>.
        */
@@ -501,32 +969,7 @@ namespace cctbx {
         std::size_t incx,
         FloatType* dy,
         std::size_t iy0,
-        std::size_t incy)
-      {
-        std::size_t i, ix, iy, m;
-        if (n == 0) return;
-        if (da == FloatType(0)) return;
-        if  (!(incx == 1 && incy == 1)) {
-          ix = 0;
-          iy = 0;
-          for (i = 0; i < n; i++) {
-            dy[iy0+iy] += da * dx[ix0+ix];
-            ix += incx;
-            iy += incy;
-          }
-          return;
-        }
-        m = n % 4;
-        for (i = 0; i < m; i++) {
-          dy[iy0+i] += da * dx[ix0+i];
-        }
-        for (; i < n;) {
-          dy[iy0+i] += da * dx[ix0+i]; i++;
-          dy[iy0+i] += da * dx[ix0+i]; i++;
-          dy[iy0+i] += da * dx[ix0+i]; i++;
-          dy[iy0+i] += da * dx[ix0+i]; i++;
-        }
-      }
+        std::size_t incy);
 
       /* Compute the dot product of two vectors.
          Adapted from the subroutine <code>ddot</code>
@@ -539,580 +982,9 @@ namespace cctbx {
         std::size_t incx,
         const FloatType* dy,
         std::size_t iy0,
-        std::size_t incy)
-      {
-        std::size_t i, ix, iy, m, mp1;
-        FloatType dtemp(0);
-        if (n == 0) return FloatType(0);
-        if (!(incx == 1 && incy == 1)) {
-          ix = 0;
-          iy = 0;
-          for (i = 0; i < n; i++) {
-            dtemp += dx[ix0+ix] * dy[iy0+iy];
-            ix += incx;
-            iy += incy;
-          }
-          return dtemp;
-        }
-        m = n % 5;
-        for (i = 0; i < m; i++) {
-          dtemp += dx[ix0+i] * dy[iy0+i];
-        }
-        for (; i < n;) {
-          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-        }
-        return dtemp;
-      }
+        std::size_t incy);
 
-      // This class implements an algorithm for multi-dimensional line search.
-      class mcsrch
-      {
-        protected:
-          int infoc;
-          FloatType dginit;
-          bool brackt;
-          bool stage1;
-          FloatType finit;
-          FloatType dgtest;
-          FloatType width;
-          FloatType width1;
-          FloatType stx;
-          FloatType fx;
-          FloatType dgx;
-          FloatType sty;
-          FloatType fy;
-          FloatType dgy;
-          FloatType stmin;
-          FloatType stmax;
-
-          static FloatType sqr(const FloatType& x) { return x * x; }
-
-          static const FloatType& max3(
-            const FloatType& x,
-            const FloatType& y,
-            const FloatType& z)
-          {
-            return x < y ? (y < z ? z : y ) : (x < z ? z : x );
-          }
-
-          static FloatType abs(const FloatType& x) {
-            if (x < FloatType(0)) return -x;
-            return x;
-          }
-
-        public:
-          /* Minimize a function along a search direction. This code is
-             a Java translation of the function <code>MCSRCH</code> from
-             <code>lbfgs.f</code>, which in turn is a slight modification
-             of the subroutine <code>CSRCH</code> of More' and Thuente.
-             The changes are to allow reverse communication, and do not
-             affect the performance of the routine. This function, in turn,
-             calls <code>mcstep</code>.<p>
-
-             The Java translation was effected mostly mechanically, with
-             some manual clean-up; in particular, array indices start at 0
-             instead of 1.  Most of the comments from the Fortran code have
-             been pasted in here as well.<p>
-
-             The purpose of <code>mcsrch</code> is to find a step which
-             satisfies a sufficient decrease condition and a curvature
-             condition.<p>
-
-             At each stage this function updates an interval of uncertainty
-             with endpoints <code>stx</code> and <code>sty</code>. The
-             interval of uncertainty is initially chosen so that it
-             contains a minimizer of the modified function
-             <pre>
-                  f(x+stp*s) - f(x) - ftol*stp*(gradf(x)'s).
-             </pre>
-             If a step is obtained for which the modified function has a
-             nonpositive function value and nonnegative derivative, then
-             the interval of uncertainty is chosen so that it contains a
-             minimizer of <code>f(x+stp*s)</code>.<p>
-
-             The algorithm is designed to find a step which satisfies
-             the sufficient decrease condition
-             <pre>
-                   f(x+stp*s) &lt;= f(X) + ftol*stp*(gradf(x)'s),
-             </pre>
-             and the curvature condition
-             <pre>
-                   abs(gradf(x+stp*s)'s)) &lt;= gtol*abs(gradf(x)'s).
-             </pre>
-             If <code>ftol</code> is less than <code>gtol</code> and if,
-             for example, the function is bounded below, then there is
-             always a step which satisfies both conditions. If no step can
-             be found which satisfies both conditions, then the algorithm
-             usually stops when rounding errors prevent further progress.
-             In this case <code>stp</code> only satisfies the sufficient
-             decrease condition.<p>
-
-             @author Original Fortran version by Jorge J. More' and
-               David J. Thuente as part of the Minpack project, June 1983,
-               Argonne National Laboratory. Java translation by Robert
-               Dodier, August 1997.
-
-             @param n The number of variables.
-
-             @param x On entry this contains the base point for the line
-               search. On exit it contains <code>x + stp*s</code>.
-
-             @param f On entry this contains the value of the objective
-               function at <code>x</code>. On exit it contains the value
-               of the objective function at <code>x + stp*s</code>.
-
-             @param g On entry this contains the gradient of the objective
-               function at <code>x</code>. On exit it contains the gradient
-               at <code>x + stp*s</code>.
-
-             @param s The search direction.
-
-             @param stp On entry this contains an initial estimate of a
-               satifactory step length. On exit <code>stp</code> contains
-               the final estimate.
-
-             @param ftol Tolerance for the sufficient decrease condition.
-
-             @param xtol Termination occurs when the relative width of the
-               interval of uncertainty is at most <code>xtol</code>.
-
-             @param maxfev Termination occurs when the number of evaluations
-               of the objective function is at least <code>maxfev</code> by
-               the end of an iteration.
-
-             @param info This is an output variable, which can have these
-               values:
-               <ul>
-               <li><code>info = -1</code> A return is made to compute
-                   the function and gradient.
-               <li><code>info = 1</code> The sufficient decrease condition
-                   and the directional derivative condition hold.
-               </ul>
-
-             @param nfev On exit, this is set to the number of function
-               evaluations.
-
-             @param wa Temporary storage array, of length <code>n</code>.
-           */
-          void run(
-            const FloatType& gtol,
-            const FloatType& stpmin,
-            const FloatType& stpmax,
-            std::size_t n,
-            FloatType* x,
-            FloatType f,
-            const FloatType* g,
-            FloatType* s,
-            std::size_t is0,
-            FloatType& stp,
-            FloatType ftol,
-            FloatType xtol,
-            int maxfev,
-            int& info,
-            std::size_t& nfev,
-            FloatType* wa)
-          {
-            if (info != -1) {
-              infoc = 1;
-              if (   n == 0
-                  || xtol < FloatType(0)
-                  || maxfev <= 0
-                  || gtol < FloatType(0)
-                  || stpmin < FloatType(0)
-                  || stpmax < stpmin) {
-                throw lbfgs_error_internal_error(__FILE__, __LINE__);
-              }
-              if (stp <= FloatType(0) || ftol < FloatType(0)) {
-                throw lbfgs_error_internal_error(__FILE__, __LINE__);
-              }
-              // Compute the initial gradient in the search direction
-              // and check that s is a descent direction.
-              dginit = FloatType(0);
-              for (std::size_t j = 0; j < n; j++) {
-                dginit += g[j] * s[is0+j];
-              }
-              if (dginit >= FloatType(0)) {
-                throw lbfgs_error_search_direction_not_descent();
-              }
-              brackt = false;
-              stage1 = true;
-              nfev = 0;
-              finit = f;
-              dgtest = ftol*dginit;
-              width = stpmax - stpmin;
-              width1 = FloatType(2) * width;
-              std::copy(x, x+n, wa);
-              // The variables stx, fx, dgx contain the values of the step,
-              // function, and directional derivative at the best step.
-              // The variables sty, fy, dgy contain the value of the step,
-              // function, and derivative at the other endpoint of
-              // the interval of uncertainty.
-              // The variables stp, f, dg contain the values of the step,
-              // function, and derivative at the current step.
-              stx = FloatType(0);
-              fx = finit;
-              dgx = dginit;
-              sty = FloatType(0);
-              fy = finit;
-              dgy = dginit;
-            }
-            for (;;) {
-              if (info != -1) {
-                // Set the minimum and maximum steps to correspond
-                // to the present interval of uncertainty.
-                if (brackt) {
-                  stmin = std::min(stx, sty);
-                  stmax = std::max(stx, sty);
-                }
-                else {
-                  stmin = stx;
-                  stmax = stp + FloatType(4) * (stp - stx);
-                }
-                // Force the step to be within the bounds stpmax and stpmin.
-                stp = std::max(stp, stpmin);
-                stp = std::min(stp, stpmax);
-                // If an unusual termination is to occur then let
-                // stp be the lowest point obtained so far.
-                if (   (brackt && (stp <= stmin || stp >= stmax))
-                    || nfev >= maxfev - 1 || infoc == 0
-                    || (brackt && stmax - stmin <= xtol * stmax)) {
-                  stp = stx;
-                }
-                // Evaluate the function and gradient at stp
-                // and compute the directional derivative.
-                // We return to main program to obtain F and G.
-                for (std::size_t j = 0; j < n; j++) {
-                  x[j] = wa[j] + stp * s[is0+j];
-                }
-                info=-1;
-                break;
-              }
-              info = 0;
-              nfev++;
-              FloatType dg(0);
-              for (std::size_t j = 0; j < n; j++) {
-                dg += g[j] * s[is0+j];
-              }
-              FloatType ftest1 = finit + stp*dgtest;
-              // Test for convergence.
-              if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
-                throw lbfgs_error_line_search_failed(
-                  "Rounding errors prevent further progress."
-                  " There may not be a step which satisfies the"
-                  " sufficient decrease and curvature conditions."
-                  " Tolerances may be too small.");
-              }
-              if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
-                throw lbfgs_error_line_search_failed(
-                  "The step is at the upper bound stpmax().");
-              }
-              if (stp == stpmin && (f > ftest1 || dg >= dgtest)) {
-                throw lbfgs_error_line_search_failed(
-                  "The step is at the lower bound stpmin().");
-              }
-              if (nfev >= maxfev) {
-                throw lbfgs_error_line_search_failed(
-                  "Number of function evaluations has reached maxfev().");
-              }
-              if (brackt && stmax - stmin <= xtol * stmax) {
-                throw lbfgs_error_line_search_failed(
-                  "Relative width of the interval of uncertainty"
-                  " is at most xtol().");
-              }
-              // Check for termination.
-              if (f <= ftest1 && abs(dg) <= gtol * (-dginit)) {
-                info = 1;
-                break;
-              }
-              // In the first stage we seek a step for which the modified
-              // function has a nonpositive value and nonnegative derivative.
-              if (   stage1 && f <= ftest1
-                  && dg >= std::min(ftol, gtol) * dginit) {
-                stage1 = false;
-              }
-              // A modified function is used to predict the step only if
-              // we have not obtained a step for which the modified
-              // function has a nonpositive function value and nonnegative
-              // derivative, and if a lower function value has been
-              // obtained but the decrease is not sufficient.
-              if (stage1 && f <= fx && f > ftest1) {
-                // Define the modified function and derivative values.
-                FloatType fm = f - stp*dgtest;
-                FloatType fxm = fx - stx*dgtest;
-                FloatType fym = fy - sty*dgtest;
-                FloatType dgm = dg - dgtest;
-                FloatType dgxm = dgx - dgtest;
-                FloatType dgym = dgy - dgtest;
-                // Call cstep to update the interval of uncertainty
-                // and to compute the new step.
-                infoc = mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
-                               brackt, stmin, stmax);
-                // Reset the function and gradient values for f.
-                fx = fxm + stx*dgtest;
-                fy = fym + sty*dgtest;
-                dgx = dgxm + dgtest;
-                dgy = dgym + dgtest;
-              }
-              else {
-                // Call mcstep to update the interval of uncertainty
-                // and to compute the new step.
-                infoc = mcstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg,
-                               brackt, stmin, stmax);
-              }
-              // Force a sufficient decrease in the size of the
-              // interval of uncertainty.
-              if (brackt) {
-                if (abs(sty - stx) >= FloatType(0.66) * width1) {
-                  stp = stx + FloatType(0.5) * (sty - stx);
-                }
-                width1 = width;
-                width = abs(sty - stx);
-              }
-            }
-          }
-
-          /* The purpose of this function is to compute a safeguarded step
-             for a linesearch and to update an interval of uncertainty for
-             a minimizer of the function.<p>
-
-             The parameter <code>stx</code> contains the step with the
-             least function value. The parameter <code>stp</code> contains
-             the current step. It is assumed that the derivative at
-             <code>stx</code> is negative in the direction of the step. If
-             <code>brackt</code> is <code>true</code> when
-             <code>mcstep</code> returns then a minimizer has been
-             bracketed in an interval of uncertainty with endpoints
-             <code>stx</code> and <code>sty</code>.<p>
-
-             Variables that must be modified by <code>mcstep</code> are
-             implemented as 1-element arrays.
-
-             @param stx Step at the best step obtained so far.
-               This variable is modified by <code>mcstep</code>.
-             @param fx Function value at the best step obtained so far.
-               This variable is modified by <code>mcstep</code>.
-             @param dx Derivative at the best step obtained so far.
-               The derivative must be negative in the direction of the
-               step, that is, <code>dx</code> and <code>stp-stx</code> must
-               have opposite signs.  This variable is modified by
-               <code>mcstep</code>.
-
-             @param sty Step at the other endpoint of the interval of
-               uncertainty. This variable is modified by <code>mcstep</code>.
-             @param fy Function value at the other endpoint of the interval
-               of uncertainty. This variable is modified by
-               <code>mcstep</code>.
-
-             @param dy Derivative at the other endpoint of the interval of
-               uncertainty. This variable is modified by <code>mcstep</code>.
-
-             @param stp Step at the current step. If <code>brackt</code> is set
-               then on input <code>stp</code> must be between <code>stx</code>
-               and <code>sty</code>. On output <code>stp</code> is set to the
-               new step.
-             @param fp Function value at the current step.
-             @param dp Derivative at the current step.
-
-             @param brackt Tells whether a minimizer has been bracketed.
-               If the minimizer has not been bracketed, then on input this
-               variable must be set <code>false</code>. If the minimizer has
-               been bracketed, then on output this variable is
-               <code>true</code>.
-
-             @param stpmin Lower bound for the step.
-             @param stpmax Upper bound for the step.
-
-             If the return value is 1, 2, 3, or 4, then the step has
-             been computed successfully. A return value of 0 indicates
-             improper input parameters.
-
-             @author Jorge J. More, David J. Thuente: original Fortran version,
-               as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
-               Robert Dodier: Java translation, August 1997.
-           */
-          static int mcstep(
-            FloatType& stx,
-            FloatType& fx,
-            FloatType& dx,
-            FloatType& sty,
-            FloatType& fy,
-            FloatType& dy,
-            FloatType& stp,
-            FloatType fp,
-            FloatType dp,
-            bool& brackt,
-            FloatType stpmin,
-            FloatType stpmax)
-          {
-            bool bound;
-            FloatType gamma, p, q, r, s, sgnd, stpc, stpf, stpq, theta;
-            int info = 0;
-            if (   (   brackt && (stp <= std::min(stx, sty)
-                    || stp >= std::max(stx, sty)))
-                || dx * (stp - stx) >= FloatType(0) || stpmax < stpmin) {
-              return 0;
-            }
-            // Determine if the derivatives have opposite sign.
-            sgnd = dp * (dx / abs(dx));
-            if (fp > fx) {
-              // First case. A higher function value.
-              // The minimum is bracketed. If the cubic step is closer
-              // to stx than the quadratic step, the cubic step is taken,
-              // else the average of the cubic and quadratic steps is taken.
-              info = 1;
-              bound = true;
-              theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
-              s = max3(abs(theta), abs(dx), abs(dp));
-              gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
-              if (stp < stx) gamma = - gamma;
-              p = (gamma - dx) + theta;
-              q = ((gamma - dx) + gamma) + dp;
-              r = p/q;
-              stpc = stx + r * (stp - stx);
-              stpq = stx
-                + ((dx / ((fx - fp) / (stp - stx) + dx)) / FloatType(2))
-                  * (stp - stx);
-              if (abs(stpc - stx) < abs(stpq - stx)) {
-                stpf = stpc;
-              }
-              else {
-                stpf = stpc + (stpq - stpc) / FloatType(2);
-              }
-              brackt = true;
-            }
-            else if (sgnd < FloatType(0)) {
-              // Second case. A lower function value and derivatives of
-              // opposite sign. The minimum is bracketed. If the cubic
-              // step is closer to stx than the quadratic (secant) step,
-              // the cubic step is taken, else the quadratic step is taken.
-              info = 2;
-              bound = false;
-              theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
-              s = max3(abs(theta), abs(dx), abs(dp));
-              gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
-              if (stp > stx) gamma = - gamma;
-              p = (gamma - dp) + theta;
-              q = ((gamma - dp) + gamma) + dx;
-              r = p/q;
-              stpc = stp + r * (stx - stp);
-              stpq = stp + (dp / (dp - dx)) * (stx - stp);
-              if (abs(stpc - stp) > abs(stpq - stp)) {
-                stpf = stpc;
-              }
-              else {
-                stpf = stpq;
-              }
-              brackt = true;
-            }
-            else if (abs(dp) < abs(dx)) {
-              // Third case. A lower function value, derivatives of the
-              // same sign, and the magnitude of the derivative decreases.
-              // The cubic step is only used if the cubic tends to infinity
-              // in the direction of the step or if the minimum of the cubic
-              // is beyond stp. Otherwise the cubic step is defined to be
-              // either stpmin or stpmax. The quadratic (secant) step is also
-              // computed and if the minimum is bracketed then the the step
-              // closest to stx is taken, else the step farthest away is taken.
-              info = 3;
-              bound = true;
-              theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
-              s = max3(abs(theta), abs(dx), abs(dp));
-              gamma = s * std::sqrt(
-                std::max(FloatType(0), sqr(theta / s) - (dx / s) * (dp / s)));
-              if (stp > stx) gamma = -gamma;
-              p = (gamma - dp) + theta;
-              q = (gamma + (dx - dp)) + gamma;
-              r = p/q;
-              if (r < FloatType(0) && gamma != FloatType(0)) {
-                stpc = stp + r * (stx - stp);
-              }
-              else if (stp > stx) {
-                stpc = stpmax;
-              }
-              else {
-                stpc = stpmin;
-              }
-              stpq = stp + (dp / (dp - dx)) * (stx - stp);
-              if (brackt) {
-                if (abs(stp - stpc) < abs(stp - stpq)) {
-                  stpf = stpc;
-                }
-                else {
-                  stpf = stpq;
-                }
-              }
-              else {
-                if (abs(stp - stpc) > abs(stp - stpq)) {
-                  stpf = stpc;
-                }
-                else {
-                  stpf = stpq;
-                }
-              }
-            }
-            else {
-              // Fourth case. A lower function value, derivatives of the
-              // same sign, and the magnitude of the derivative does
-              // not decrease. If the minimum is not bracketed, the step
-              // is either stpmin or stpmax, else the cubic step is taken.
-              info = 4;
-              bound = false;
-              if (brackt) {
-                theta = FloatType(3) * (fp - fy) / (sty - stp) + dy + dp;
-                s = max3(abs(theta), abs(dy), abs(dp));
-                gamma = s * std::sqrt(sqr(theta / s) - (dy / s) * (dp / s));
-                if (stp > sty) gamma = -gamma;
-                p = (gamma - dp) + theta;
-                q = ((gamma - dp) + gamma) + dy;
-                r = p/q;
-                stpc = stp + r * (sty - stp);
-                stpf = stpc;
-              }
-              else if (stp > stx) {
-                stpf = stpmax;
-              }
-              else {
-                stpf = stpmin;
-              }
-            }
-            // Update the interval of uncertainty. This update does not
-            // depend on the new step or the case analysis above.
-            if (fp > fx) {
-              sty = stp;
-              fy = fp;
-              dy = dp;
-            }
-            else {
-              if (sgnd < FloatType(0)) {
-                sty = stx;
-                fy = fx;
-                dy = dx;
-              }
-              stx = stp;
-              fx = fp;
-              dx = dp;
-            }
-            // Compute the new step and safeguard it.
-            stpf = std::min(stpmax, stpf);
-            stpf = std::max(stpmin, stpf);
-            stp = stpf;
-            if (brackt && bound) {
-              if (sty > stx) {
-                stp = std::min(stx + FloatType(0.66) * (sty - stx), stp);
-              }
-              else {
-                stp = std::max(stx + FloatType(0.66) * (sty - stx), stp);
-              }
-            }
-            return info;
-          }
-      };
-
-      mcsrch mcsrch_instance;
+      lbfgs_detail::mcsrch<FloatType> mcsrch_instance;
       const std::size_t n_;
       const std::size_t m_;
       const FloatType eps_;
@@ -1139,6 +1011,200 @@ namespace cctbx {
       std::vector<FloatType> w_;
       std::vector<FloatType> diag_;
   };
+
+  template <typename FloatType>
+  void lbfgs<FloatType>::generic_run(
+    FloatType* x,
+    FloatType f,
+    const FloatType* g,
+    bool diagco,
+    FloatType* diag)
+  {
+    FloatType* w = &(*(w_.begin()));
+    bool execute_entire_while_loop = false;
+    if (iflag_ == 0) { // Initialize.
+      nfun_ = 1;
+      if (diagco) {
+        for (std::size_t i = 0; i < n_; i++) {
+          if (diag[i] <= FloatType(0)) {
+            throw_diagonal_element_not_positive(i);
+          }
+        }
+      }
+      else {
+        std::fill_n(diag, n_, FloatType(1));
+      }
+      for (std::size_t i = 0; i < n_; i++) {
+        w[ispt + i] = -g[i] * diag[i];
+      }
+      gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
+      stp1 = FloatType(1) / gnorm_;
+      execute_entire_while_loop = true;
+    }
+    for (;;) {
+      if (execute_entire_while_loop) {
+        bound = iter_;
+        iter_++;
+        info = 0;
+        if (iter_ != 1) {
+          if (iter_ > m_) bound = m_;
+          ys = ddot(n_, w, iypt + npt, 1, w, ispt + npt, 1);
+          if (!diagco) {
+            FloatType yy = ddot(n_, w, iypt + npt, 1, w, iypt + npt, 1);
+            std::fill_n(diag, n_, ys / yy);
+          }
+          else {
+            iflag_ = 2;
+            return;
+          }
+        }
+      }
+      if (execute_entire_while_loop || iflag_ == 2) {
+        if (iter_ != 1) {
+          if (diagco) {
+            for (std::size_t i = 0; i < n_; i++) {
+              if (diag[i] <= FloatType(0)) {
+                throw_diagonal_element_not_positive(i);
+              }
+            }
+          }
+          std::size_t cp = point;
+          if (point == 0) cp = m_;
+          w[n_ + cp -1] = 1 / ys;
+          std::size_t i;
+          for (i = 0; i < n_; i++) {
+            w[i] = -g[i];
+          }
+          cp = point;
+          for (i = 0; i < bound; i++) {
+            if (cp == 0) cp = m_;
+            cp--;
+            FloatType sq = ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
+            std::size_t inmc=n_+m_+cp;
+            std::size_t iycn=iypt+cp*n_;
+            w[inmc] = w[n_ + cp] * sq;
+            daxpy(n_, -w[inmc], w, iycn, 1, w, 0, 1);
+          }
+          for (i = 0; i < n_; i++) {
+            w[i] *= diag[i];
+          }
+          for (i = 0; i < bound; i++) {
+            FloatType yr = ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
+            FloatType beta = w[n_ + cp] * yr;
+            std::size_t inmc=n_+m_+cp;
+            beta = w[inmc] - beta;
+            std::size_t iscn=ispt+cp*n_;
+            daxpy(n_, beta, w, iscn, 1, w, 0, 1);
+            cp++;
+            if (cp == m_) cp = 0;
+          }
+          std::copy(w, w+n_, w+(ispt + point * n_));
+        }
+        stp_ = FloatType(1);
+        if (iter_ == 1) stp_ = stp1;
+        std::copy(g, g+n_, w);
+      }
+      mcsrch_instance.run(
+        gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
+        stp_, ftol, xtol_, maxfev_, info, nfev, diag);
+      if (info == -1) {
+        iflag_ = 1;
+        return;
+      }
+      if (info != 1) {
+        throw lbfgs_error_internal_error(__FILE__, __LINE__);
+      }
+      nfun_ += nfev;
+      npt = point*n_;
+      for (std::size_t i = 0; i < n_; i++) {
+        w[ispt + npt + i] = stp_ * w[ispt + npt + i];
+        w[iypt + npt + i] = g[i] - w[i];
+      }
+      point++;
+      if (point == m_) point = 0;
+      gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
+      FloatType xnorm = std::max(
+        FloatType(1), std::sqrt(ddot(n_, x, 0, 1, x, 0, 1)));
+      if (gnorm_ / xnorm <= eps_) {
+        iflag_ = 0;
+        break;
+      }
+      execute_entire_while_loop = true; // from now on, execute whole loop
+    }
+  }
+
+  template <typename FloatType>
+  void lbfgs<FloatType>::daxpy(
+    std::size_t n,
+    FloatType da,
+    const FloatType* dx,
+    std::size_t ix0,
+    std::size_t incx,
+    FloatType* dy,
+    std::size_t iy0,
+    std::size_t incy)
+  {
+    std::size_t i, ix, iy, m;
+    if (n == 0) return;
+    if (da == FloatType(0)) return;
+    if  (!(incx == 1 && incy == 1)) {
+      ix = 0;
+      iy = 0;
+      for (i = 0; i < n; i++) {
+        dy[iy0+iy] += da * dx[ix0+ix];
+        ix += incx;
+        iy += incy;
+      }
+      return;
+    }
+    m = n % 4;
+    for (i = 0; i < m; i++) {
+      dy[iy0+i] += da * dx[ix0+i];
+    }
+    for (; i < n;) {
+      dy[iy0+i] += da * dx[ix0+i]; i++;
+      dy[iy0+i] += da * dx[ix0+i]; i++;
+      dy[iy0+i] += da * dx[ix0+i]; i++;
+      dy[iy0+i] += da * dx[ix0+i]; i++;
+    }
+  }
+
+  template <typename FloatType>
+  FloatType lbfgs<FloatType>::ddot(
+    std::size_t n,
+    const FloatType* dx,
+    std::size_t ix0,
+    std::size_t incx,
+    const FloatType* dy,
+    std::size_t iy0,
+    std::size_t incy)
+  {
+    std::size_t i, ix, iy, m, mp1;
+    FloatType dtemp(0);
+    if (n == 0) return FloatType(0);
+    if (!(incx == 1 && incy == 1)) {
+      ix = 0;
+      iy = 0;
+      for (i = 0; i < n; i++) {
+        dtemp += dx[ix0+ix] * dy[iy0+iy];
+        ix += incx;
+        iy += incy;
+      }
+      return dtemp;
+    }
+    m = n % 5;
+    for (i = 0; i < m; i++) {
+      dtemp += dx[ix0+i] * dy[iy0+i];
+    }
+    for (; i < n;) {
+      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+    }
+    return dtemp;
+  }
 
 } // namespace cctbx
 
