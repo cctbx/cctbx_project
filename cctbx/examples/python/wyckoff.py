@@ -25,11 +25,10 @@ class Empty: pass
 def GetFormData():
   form = cgi.FieldStorage()
   inp = Empty()
-  for key in (("ucparams_old", "1 1 1 90 90 90"),
-              ("sgsymbol_old", "P1"),
-              ("convention_old", ""),
-              ("sgsymbol_new", ""),
-              ("convention_new", ""),
+  for key in (("ucparams", "1 1 1 90 90 90"),
+              ("sgsymbol", "P1"),
+              ("MinMateDistance", "0.5"),
+              ("convention", ""),
               ("coor_type", None),
               ("skip_columns", "0")):
     if (form.has_key(key[0])):
@@ -84,61 +83,44 @@ def InterpretCoordinateLine(line, skip_columns):
 inp = GetFormData()
 
 try:
-  u = string.split(inp.ucparams_old)
+  u = string.split(inp.ucparams)
   for i in xrange(len(u)): u[i] = string.atof(u[i])
-  UnitCell_old = uctbx.UnitCell(u)
-  print "Old unit cell parameters:", UnitCell_old
+  UnitCell = uctbx.UnitCell(u)
+  print "Unit cell parameters:", UnitCell
   print
-  ShowInputSymbol(inp.sgsymbol_old, inp.convention_old, "Old")
-  SgOps_old = Symbol_to_SgOps(inp.sgsymbol_old, inp.convention_old)
-  SgType_old = SgOps_old.getSpaceGroupType()
-  print
-
-  if (len(inp.sgsymbol_new) == 0):
-    inp.sgsymbol_new = sgtbx.SpaceGroupSymbols(
-      SgType_old.SgNumber()).ExtendedHermann_Mauguin()
-    inp.convention_new = ""
-
-  ShowInputSymbol(inp.sgsymbol_new, inp.convention_new, "New")
-  SgOps_new = Symbol_to_SgOps(inp.sgsymbol_new, inp.convention_new)
-  SgType_new = SgOps_new.getSpaceGroupType()
+  ShowInputSymbol(inp.sgsymbol, inp.convention, "Input ")
+  SgOps = Symbol_to_SgOps(inp.sgsymbol, inp.convention)
+  SgType = SgOps.getSpaceGroupType()
+  print "Space group: (%d) %s" % (
+    SgType.SgNumber(), SgOps.BuildLookupSymbol(SgType))
   print
 
-  print "Old space group: (%d) %s" % (
-    SgType_old.SgNumber(), SgOps_old.BuildLookupSymbol(SgType_old))
-  print "New space group: (%d) %s" % (
-    SgType_new.SgNumber(), SgOps_new.BuildLookupSymbol(SgType_new))
+  SgOps.CheckUnitCell(UnitCell)
+
+  MinMateDistance = string.atof(inp.MinMateDistance)
+  SnapParameters = \
+    sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 1, MinMateDistance)
+  WyckoffTable = sgtbx.WyckoffTable(SgOps, SgType)
+
+  print inp.coor_type, "coordinates:"
   print
-
-  if (SgType_old.SgNumber() != SgType_new.SgNumber()):
-    print "Space group numbers are not equal!"
-  else:
-    M = SgType_new.CBOp().InvM() * SgType_old.CBOp().M()
-    CBOp = sgtbx.ChOfBasisOp(M)
-    print "Change-of-basis matrix:", CBOp.M()
-    print "               Inverse:", CBOp.InvM()
-    print
-
-    SgOps_old.CheckUnitCell(UnitCell_old)
-    UnitCell_new = UnitCell_old.ChangeBasis(CBOp.InvM().as_tuple()[0])
-    print "New unit cell parameters: ", UnitCell_new
-    SgOps_new.CheckUnitCell(UnitCell_new)
-    print
-
-    print inp.coor_type, "coordinates:"
-    print
-    skip_columns = string.atoi(inp.skip_columns)
-    if (skip_columns < 0):
-      raise FormatError, "Negative number for columns to skip."
-    for line in inp.coordinates:
-      skipped, coordinates = InterpretCoordinateLine(line, skip_columns)
-      if (inp.coor_type == "Fractional"):
-        c = CBOp(coordinates)
-      else:
-        c = UnitCell_old.fractionalize(coordinates)
-        c = CBOp(c)
-        c = UnitCell_new.orthogonalize(c)
-      print skipped, "%.6g %.6g %.6g" % tuple(c)
+  skip_columns = string.atoi(inp.skip_columns)
+  if (skip_columns < 0):
+    raise FormatError, "Negative number for columns to skip."
+  for line in inp.coordinates:
+    skipped, coordinates = InterpretCoordinateLine(line, skip_columns)
+    if (inp.coor_type != "Fractional"):
+      coordinates = UnitCell.fractionalize(coordinates)
+    SP = sgtbx.SpecialPosition(SnapParameters, coordinates, 0, 1)
+    SnapPosition = SP.SnapPosition()
+    SiteSymmetry = SP.getPointGroupType()
+    WyckoffMapping = WyckoffTable.getWyckoffMapping(SP)
+    if (inp.coor_type != "Fractional"):
+      SnapPosition = UnitCell.orthogonalize(SnapPosition)
+    print skipped, "%.6g %.6g %.6g" % tuple(SnapPosition),
+    print "(%d %s %s %s)" % (
+       WyckoffMapping.WP().M(), WyckoffMapping.WP().Letter(),
+       SiteSymmetry, SP.SpecialOp())
 
 except RuntimeError, e:
   print e
