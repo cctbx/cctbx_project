@@ -26,8 +26,8 @@ namespace scitbx { namespace af {
       void operator()(
         ElementTypeResult* result,
         std::size_t const& sz) const {
-        array_operation_a(m_ftor, m_a, result, sz,
-          has_trivial_destructor<ElementTypeResult>::value());
+        typedef typename has_trivial_destructor<ElementTypeResult>::value htd;
+        array_operation_a(m_ftor, m_a, result, sz, htd());
       }
     protected:
       FunctorType const& m_ftor;
@@ -65,8 +65,8 @@ namespace scitbx { namespace af {
       void operator()(
         ElementTypeResult* result,
         std::size_t const& sz) const {
-        array_operation_a_a(m_ftor, m_a1, m_a2, result, sz,
-          has_trivial_destructor<ElementTypeResult>::value());
+        typedef typename has_trivial_destructor<ElementTypeResult>::value htd;
+        array_operation_a_a(m_ftor, m_a1, m_a2, result, sz, htd());
       }
     protected:
       FunctorType const& m_ftor;
@@ -109,8 +109,8 @@ namespace scitbx { namespace af {
       void operator()(
         ElementTypeResult* result,
         std::size_t const& sz) const {
-        array_operation_a_s(m_ftor, m_a1, m_a2, result, sz,
-          has_trivial_destructor<ElementTypeResult>::value());
+        typedef typename has_trivial_destructor<ElementTypeResult>::value htd;
+        array_operation_a_s(m_ftor, m_a1, m_a2, result, sz, htd());
       }
     protected:
       FunctorType const& m_ftor;
@@ -153,8 +153,8 @@ namespace scitbx { namespace af {
       void operator()(
         ElementTypeResult* result,
         std::size_t const& sz) const {
-        array_operation_s_a(m_ftor, m_a1, m_a2, result, sz,
-          has_trivial_destructor<ElementTypeResult>::value());
+        typedef typename has_trivial_destructor<ElementTypeResult>::value htd;
+        array_operation_s_a(m_ftor, m_a1, m_a2, result, sz, htd());
       }
     protected:
       FunctorType const& m_ftor;
@@ -199,8 +199,8 @@ namespace scitbx { namespace af {
       void operator()(
         ElementTypeResult* result,
         std::size_t const& sz) const {
-        array_operation_a_a_s(m_ftor, m_a1, m_a2, m_a3, result, sz,
-          has_trivial_destructor<ElementTypeResult>::value());
+        typedef typename has_trivial_destructor<ElementTypeResult>::value htd;
+        array_operation_a_a_s(m_ftor, m_a1, m_a2, m_a3, result, sz, htd());
       }
     protected:
       FunctorType const& m_ftor;
@@ -250,8 +250,8 @@ namespace scitbx { namespace af {
       void operator()(
         ElementTypeResult* result,
         std::size_t const& sz) const {
-        array_operation_a_s_s(m_ftor, m_a1, m_a2, m_a3, result, sz,
-          has_trivial_destructor<ElementTypeResult>::value());
+        typedef typename has_trivial_destructor<ElementTypeResult>::value htd;
+        array_operation_a_s_s(m_ftor, m_a1, m_a2, m_a3, result, sz, htd());
       }
     protected:
       FunctorType const& m_ftor;
@@ -301,8 +301,8 @@ namespace scitbx { namespace af {
       void operator()(
         ElementTypeResult* result,
         std::size_t const& sz) const {
-        array_operation_s_a_s(m_ftor, m_a1, m_a2, m_a3, result, sz,
-          has_trivial_destructor<ElementTypeResult>::value());
+        typedef typename has_trivial_destructor<ElementTypeResult>::value htd;
+        array_operation_s_a_s(m_ftor, m_a1, m_a2, m_a3, result, sz, htd());
       }
     protected:
       FunctorType const& m_ftor;
