@@ -38,7 +38,9 @@ lib_iotbx_sources = [
 envlm.Prepend(LIBS=["cmtz"])
 envlm.Append(LIBPATH=["#libtbx",])
 
-envlm.StaticLibrary(
+if (env_etc.static_libraries): builder = envlm.StaticLibrary
+else:                          builder = envlm.SharedLibrary
+builder(
   target="#libtbx/iotbx",
   source=lib_iotbx_sources)
 
