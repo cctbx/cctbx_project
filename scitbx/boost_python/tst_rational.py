@@ -80,6 +80,9 @@ def exercise_functions():
 def exercise_python_code():
   assert rational.from_string("1") == 1
   assert rational.from_string("2/4").as_tuple() == (1,2)
+  assert rational.vector((2,3,4), 3) == [rational.int(d,3) for d in (2,3,4)]
+  assert rational.vector((2,3,4), (3,4,5)) == [
+    rational.int(d,n) for d,n in zip((2,3,4), (3,4,5))]
 
 def run():
   exercise_int()
