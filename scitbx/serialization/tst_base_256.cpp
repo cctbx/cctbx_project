@@ -1,4 +1,5 @@
 #include <scitbx/serialization/base_256.h>
+#include <cstddef>
 #include <iostream>
 
 using namespace scitbx;
