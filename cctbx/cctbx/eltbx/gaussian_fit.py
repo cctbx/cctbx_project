@@ -48,7 +48,7 @@ def show_fit_summary(source, label, gaussian_fit, e,
   print
 
 def show_literature_fits(label, n_terms, null_fit, n_points,
-                         e_other=None):
+                         e_other=None, table_rounding_error=0.0005):
   for lib in [xray_scattering.wk1995,
               xray_scattering.it1992,
               xray_scattering.two_gaussian_agarwal_isaacs,
@@ -71,7 +71,8 @@ def show_literature_fits(label, n_terms, null_fit, n_points,
         null_fit.table_y()[:n_points],
         null_fit.table_sigmas()[:n_points],
         lib_gaussian)
-      e = flex.max(gaussian_fit.significant_relative_errors())
+      e = flex.max(gaussian_fit.significant_relative_errors(
+        table_rounding_error))
       show_fit_summary(lib_source, label, gaussian_fit, e,
                        e_other, lib_gaussian.n_terms())
 
@@ -80,7 +81,7 @@ def write_plot(f, xs, ys):
     print >> f, x, y
   print >> f, "&"
 
-def write_plots(plots_dir, label, gaussian_fit):
+def write_plots(plots_dir, label, gaussian_fit, table_rounding_error=0.0005):
   label = label.replace("'", "prime")
   file_name = os.path.join(plots_dir, label+".xy")
   f = open(file_name, "w")
@@ -92,7 +93,8 @@ def write_plots(plots_dir, label, gaussian_fit):
   for x,y,a,e in zip(gaussian_fit.table_x(),
                      gaussian_fit.table_y(),
                      gaussian_fit.fitted_values(),
-                     gaussian_fit.significant_relative_errors()):
+                     gaussian_fit.significant_relative_errors(
+                       table_rounding_error)):
     print >> f, "%4.2f %6.3f %6.3f %8.4f %6.3f" % (x, y, a, a-y, e)
   f.close()
   return file_name
@@ -106,7 +108,8 @@ class fit_parameters:
                      enforce_positive_b_mod_n=1,
                      b_min=1.e-6,
                      max_max_error=0.01,
-                     n_start_fractions=5):
+                     n_start_fractions=5,
+                     table_rounding_error=0.0005):
     adopt_init_args(self, locals())
 
 def incremental_fits(label, null_fit, params=None, plots_dir=None,
@@ -147,7 +150,8 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None,
       n_terms=n_terms,
       null_fit=null_fit,
       n_points=fit.min.final_gaussian_fit.table_x().size(),
-      e_other=fit.max_error)
+      e_other=fit.max_error,
+      table_rounding_error=params.table_rounding_error)
     fit.min.final_gaussian_fit.show()
     existing_gaussian = fit.min.final_gaussian_fit
     print
@@ -156,7 +160,8 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None,
       write_plots(
         plots_dir=plots_dir,
         label=label+"_%d"%n_terms,
-        gaussian_fit=fit.min.final_gaussian_fit)
+        gaussian_fit=fit.min.final_gaussian_fit,
+        table_rounding_error=params.table_rounding_error)
     g = fit.min.final_gaussian_fit
     results.append(xray_scattering.fitted_gaussian(
       stol=g.table_x()[-1], gaussian_sum=g))
