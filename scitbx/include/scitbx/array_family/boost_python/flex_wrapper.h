@@ -115,6 +115,9 @@ namespace scitbx { namespace af { namespace boost_python {
     static flex_grid_default_index_type
     layout(f_t const& a) { return a.accessor().layout(); }
 
+    static std::size_t
+    layout_size_1d(f_t const& a) { return a.accessor().layout_size_1d(); }
+
     static bool
     is_0_based(f_t const& a) { return a.accessor().is_0_based(); }
 
@@ -677,6 +680,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("last", last_0)
         .def("last", last_1)
         .def("layout", layout)
+        .def("layout_size_1d", layout_size_1d)
         .def("is_0_based", is_0_based)
         .def("is_padded", is_padded)
         .def("shift_origin", shift_origin)

@@ -229,6 +229,12 @@ namespace scitbx { namespace af {
 
       index_type const& layout() const { return layout_; }
 
+      std::size_t layout_size_1d() const
+      {
+        if (layout_.size() == 0) return size_1d();
+        return af::product(shift_origin().layout());
+      }
+
       bool is_0_based() const
       {
         return origin_.all_eq(0);
