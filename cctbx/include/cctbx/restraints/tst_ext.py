@@ -532,7 +532,7 @@ def exercise_bonded_interactions():
       weight=1))
   bond_sets = restraints.bond_sets(
     n_sites=12,
-    bond_proxies=bond_proxies)
+    proxies=bond_proxies)
   expected_1_2_all = [
     (1,),
     (0, 2),

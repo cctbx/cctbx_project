@@ -332,7 +332,8 @@ class node:
 
   def __init__(self, i_seq, rt_mx, special_ops):
     adopt_init_args(self, locals())
-    self.rt_mx_unique = str(rt_mx.multiply(special_ops[i_seq]))
+    self.special_op = special_ops[i_seq]
+    self.rt_mx_unique = str(rt_mx.multiply(self.special_op))
 
 def find_node(test_node, node_list):
   for list_node in node_list:
@@ -367,6 +368,13 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
       nodes_for_pdb = nodes_next[:]
     terms = flex.size_t([1])
     for i_shell in xrange(1,n_shells+1):
+      if (1):
+        # XXX currently for testing only
+        for n in nodes_next:
+          i_sym = asu_mappings.find_i_sym(
+            i_seq=n.i_seq,
+            rt_mx=n.rt_mx,
+            special_op=n.special_op)
       nodes_previous = nodes_middle
       nodes_middle = nodes_next
       nodes_next = []

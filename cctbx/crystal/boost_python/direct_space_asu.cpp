@@ -192,6 +192,8 @@ namespace {
           (arg_("pair")))
         .def("make_pair", &w_t::make_pair,
           (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
+        .def("find_i_sym", &w_t::find_i_sym,
+          (arg_("i_seq"), arg_("rt_mx"), arg_("special_op")))
       ;
       {
         using namespace scitbx::boost_python::container_conversions;

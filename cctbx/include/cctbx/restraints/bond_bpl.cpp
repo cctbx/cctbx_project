@@ -192,7 +192,7 @@ namespace {
         arg_("gradient_array"),
         arg_("disable_cache")=false)));
     def("bond_sets", bond_sets,
-      (arg_("n_sites"), arg_("bond_proxies")));
+      (arg_("n_sites"), arg_("proxies")));
   }
 
 } // namespace <anonymous>

@@ -348,16 +348,37 @@ namespace cctbx { namespace restraints {
   af::shared<std::set<std::size_t> >
   bond_sets(
     std::size_t n_sites,
-    af::const_ref<restraints::bond_proxy> const& bond_proxies)
+    af::const_ref<restraints::bond_proxy> const& proxies)
   {
     af::shared<std::set<std::size_t> > result;
     result.resize(n_sites);
-    for(std::size_t i=0;i<bond_proxies.size();i++) {
-      restraints::bond_proxy const& proxy = bond_proxies[i];
+    for(std::size_t i=0;i<proxies.size();i++) {
+      restraints::bond_proxy const& proxy = proxies[i];
       CCTBX_ASSERT(proxy.i_seqs[0] < n_sites);
       CCTBX_ASSERT(proxy.i_seqs[1] < n_sites);
       result[proxy.i_seqs[0]].insert(proxy.i_seqs[1]);
       result[proxy.i_seqs[1]].insert(proxy.i_seqs[0]);
+    }
+    return result;
+  }
+
+  inline
+  af::shared<std::set<direct_space_asu::asu_mapping_index> >
+  bond_sym_sets(
+    std::size_t n_sites,
+    af::const_ref<restraints::bond_sym_proxy> const& proxies)
+  {
+    typedef direct_space_asu::asu_mapping_index ami;
+    af::shared<std::set<ami> > result;
+    result.resize(n_sites);
+    for(std::size_t i=0;i<proxies.size();i++) {
+      direct_space_asu::asu_mapping_index_pair const& pair = proxies[i].pair;
+      CCTBX_ASSERT(pair.i_seq < n_sites);
+      CCTBX_ASSERT(pair.j_seq < n_sites);
+      result[pair.i_seq].insert(ami(pair.j_seq, pair.j_sym));
+      if (pair.j_sym == 0) {
+        result[pair.j_seq].insert(ami(pair.i_seq, 0));
+      }
     }
     return result;
   }

@@ -257,6 +257,23 @@ def exercise_direct_space_asu():
       assert pair_generator.count_pairs() == 0
       pair_generator.restart()
       assert pair_generator.count_pairs() == len(index_pairs)
+  pair = asu_mappings.make_pair(i_seq=0, j_seq=1, j_sym=1)
+  assert pair.i_seq == 0
+  assert pair.j_seq == 1
+  assert pair.j_sym == 1
+  for i_seeq,m in zip(count(), asu_mappings.mappings()):
+    for i_sym in xrange(len(m)):
+      rt_mx = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=i_sym)
+      i_sym_found = asu_mappings.find_i_sym(
+        i_seq=i_seq,
+        rt_mx=rt_mx,
+        special_op=sgtbx.rt_mx())
+      assert i_sym_found == i_sym
+      i_sym_found = asu_mappings.find_i_sym(
+        i_seq=i_seq,
+        rt_mx=sgtbx.rt_mx("0,0,0"),
+        special_op=sgtbx.rt_mx())
+      assert i_sym_found == -1
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(

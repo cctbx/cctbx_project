@@ -285,6 +285,23 @@ namespace direct_space_asu {
    */
   struct asu_mapping_index
   {
+    asu_mapping_index() {}
+
+    asu_mapping_index(unsigned i_seq_, unsigned i_sym_)
+    :
+      i_seq(i_seq_),
+      i_sym(i_sym_)
+    {}
+
+    bool
+    operator<(asu_mapping_index const& other) const
+    {
+      if (i_seq < other.i_seq) return true;
+      if (i_seq > other.i_seq) return false;
+      if (i_sym < other.i_sym) return true;
+      return false;
+    }
+
     unsigned i_seq;
     unsigned i_sym;
   };
@@ -657,7 +674,7 @@ namespace direct_space_asu {
         return r_inv_cart_[get_asu_mapping(i_seq, i_sym).i_sym_op()];
       }
 
-      /*! \brief True if the interaction is between sites on general
+      /*! \brief True if the interaction is between sites in general
           positions as passed to process().
        */
       /*! For sites in special positions the return value is always false.
@@ -680,11 +697,45 @@ namespace direct_space_asu {
         CCTBX_ASSERT(i_seq < mappings_const_ref_.size());
         CCTBX_ASSERT(j_seq < mappings_const_ref_.size());
         CCTBX_ASSERT(j_sym < mappings_const_ref_[j_seq].size());
+        CCTBX_ASSERT(i_seq < j_seq || j_sym != 0);
         asu_mapping_index_pair result;
         result.i_seq = i_seq;
         result.j_seq = j_seq;
         result.j_sym = j_sym;
         return result;
+      }
+
+      //! Determination of the index i_sym corresponding to the given rt_mx.
+      /*! The result value i_sym satisfies the relation:
+
+            mappings()[i_seq][i_sym] * special_op == rt_mx * special_op
+
+          The result value is -1 if the site corresponding to rt_mx is not
+          in the asymmetric unit or the surrounding buffer region.
+       */
+      int
+      find_i_sym(
+        unsigned i_seq,
+        sgtbx::rt_mx const& rt_mx,
+        sgtbx::rt_mx const& special_op) const
+      {
+        CCTBX_ASSERT(i_seq < mappings_const_ref_.size());
+        if (!special_position_flags_const_ref_[i_seq]) {
+          for(int i_sym=0; i_sym<mappings_const_ref_[i_seq].size(); i_sym++) {
+            if (get_rt_mx(i_seq, i_sym) == rt_mx) {
+              return i_sym;
+            }
+          }
+        }
+        else {
+          sgtbx::rt_mx rt_mx_sp = rt_mx.multiply(special_op);
+          for(int i_sym=0; i_sym<mappings_const_ref_[i_seq].size(); i_sym++) {
+            if (get_rt_mx(i_seq, i_sym).multiply(special_op) == rt_mx_sp) {
+              return i_sym;
+            }
+          }
+        }
+        return -1;
       }
 
     protected:
