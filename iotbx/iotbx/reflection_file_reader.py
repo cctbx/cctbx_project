@@ -45,7 +45,9 @@ class any_reflection_file:
         open(file_name))
       except KeyboardInterrupt: raise
       except:
-        raise UserError("Not a SHELX reflection file: %s" % file_name)
+        raise UserError("Not a SHELX reflection file: %s\n"
+          "  =%s can only be used for SHELX reflection files."
+          % (file_name, self._observation_type))
       else: self._file_type = "shelx_hklf"
     else:
       if (self._file_type is None):
