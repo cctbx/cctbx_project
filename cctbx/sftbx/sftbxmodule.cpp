@@ -169,11 +169,6 @@ namespace {
 
 BOOST_PYTHON_MODULE_INIT(sftbx)
 {
-  try {
-    boost::python::module_builder this_module("sftbx");
-    init_module(this_module);
-  }
-  catch(...) {
-    boost::python::handle_exception();
-  }
+  boost::python::module_builder this_module("sftbx");
+  init_module(this_module);
 }

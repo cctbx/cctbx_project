@@ -1,1 +1,3 @@
 algebra.h
+algebra_operators.h
+algebra_traits.h

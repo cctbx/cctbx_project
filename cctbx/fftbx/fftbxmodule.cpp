@@ -122,11 +122,6 @@ namespace {
 
 BOOST_PYTHON_MODULE_INIT(fftbx)
 {
-  try {
-    boost::python::module_builder this_module("fftbx");
-    init_module(this_module);
-  }
-  catch(...) {
-    boost::python::handle_exception();
-  }
+  boost::python::module_builder this_module("fftbx");
+  init_module(this_module);
 }

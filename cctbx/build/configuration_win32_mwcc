@@ -1,0 +1,34 @@
+win32_mwcc
+
+ROOT=@(ROOT)
+
+BOOST_UNIX="$(HOME)/boost"
+BOOST_WIN="$(ROOT)\boost"
+BOOSTINC=-I"$(ROOT)\boost"
+
+CCTBX_UNIX="$(HOME)/cctbx"
+CCTBX_WIN="$(ROOT)\cctbx"
+CCTBXINC=-I"$(ROOT)\cctbx" -I"$(ROOT)\phenix"
+
+CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
+CCTBXLIBDIR_WIN=@(CCTBXLIBDIR_WIN)
+
+PHENIX_UNIX="$(HOME)/phenix"
+PHENIX_WIN="$(ROOT)\phenix"
+PHENIXINC=-I"$(ROOT)\phenix\source"
+
+PYEXE="@(python_executable)"
+PYINC=-I"@(python_include)"
+PYLIB="@(python_lib)"
+
+STDFIXINC=
+
+CPP=mwcc
+LD=mwld
+STDOPTS=-gccinc -prefix UseDLLPrefix.h
+WARNOPTS=-warn off
+OPTOPTS=-O
+MAKEDEP=
+LDEXE=
+LDDLL=-export dllexport -shared
+LDMATH=

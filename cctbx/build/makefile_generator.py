@@ -19,7 +19,7 @@ class write_makefiles:
   def __init__(self, subdir, configuration):
     self.platform = strip(configuration[0])
     if (not (self.platform in ("tru64_cxx", "unix_gcc", "irix_CC",
-                               "macosx", "mingw32", "vc60"))):
+                               "macosx", "mingw32", "vc60", "win32_mwcc"))):
       stdout = sys.stdout
       sys.stdout = sys.__stdout__
       print "*" * 78
@@ -77,7 +77,7 @@ class write_makefiles:
     print
 
   def format_objects(self, objects):
-    if (self.platform == "vc60"):
+    if (self.platform in ("vc60", "win32_mwcc")):
       doto = ".obj"
     else:
       doto = ".o"
@@ -89,7 +89,7 @@ class write_makefiles:
   def format_libs(self, libs, macros):
     s = ""
     if (len(libs)):
-      if (self.platform == "vc60"):
+      if (self.platform in ("vc60", "win32_mwcc")):
         s = s + " $(CCTBXLIBDIR_WIN)\\lib*.lib"
       else:
         s = s + " -L$(CCTBXLIBDIR_UNIX)"
@@ -127,7 +127,7 @@ class write_makefiles:
 
     if (self.platform != "vc60"):
       print "depend:"
-      if (self.platform == "mingw32"):
+      if (self.platform in ("mingw32", "win32_mwcc")):
         print "\t@type Makefile.nodepend"
       else:
         print "\t@cat Makefile.nodepend"
@@ -153,7 +153,7 @@ class write_makefiles:
     for srcf in self.files:
       print "\t-rm " + split(srcf, "/")[-1]
     print
-    if (self.platform in ("mingw32", "vc60")):
+    if (self.platform in ("mingw32", "vc60", "win32_mwcc")):
       print "copy:"
       for srcf in self.files:
         f = translate(srcf, transl_table_slash_backslash)
@@ -171,7 +171,17 @@ class write_makefiles:
 
   def make_library(self, name, objects):
     objstr = self.format_objects(objects)
-    if (self.platform != "vc60"):
+    if (self.platform == "vc60"):
+      lib = "lib" + name + ".lib"
+      print "%s: %s" % (lib, objstr)
+      print "\t-del %s" % (lib,)
+      print "\t$(LD) -lib /nologo /out:%s %s" % (lib, objstr)
+    elif (self.platform == "win32_mwcc"):
+      lib = "lib" + name + ".lib"
+      print "%s: %s" % (lib, objstr)
+      print "\t-del %s" % (lib,)
+      print "\t$(LD) -library -o %s %s" % (lib, objstr)
+    else:
       lib = "lib" + name + ".a"
       print "%s: %s" % (lib, objstr)
       if (self.platform == "mingw32"):
@@ -190,12 +200,7 @@ class write_makefiles:
         print "\tlibtool -static -o %s %s" % (lib, objstr)
       else:
         print "\tar r %s %s" % (lib, objstr)
-    else:
-      lib = "lib" + name + ".lib"
-      print "%s: %s" % (lib, objstr)
-      print "\t-del %s" % (lib,)
-      print "\t$(LD) -lib /nologo /out:%s %s" % (lib, objstr)
-    if (self.platform  in ("vc60", "mingw32")):
+    if (self.platform  in ("vc60", "mingw32", "win32_mwcc")):
       print "\t-mkdir $(CCTBXLIBDIR_WIN)"
       print "\tcopy %s $(CCTBXLIBDIR_WIN)" % (lib,)
       print "\tdel %s" % (lib,)
@@ -211,7 +216,7 @@ class write_makefiles:
     libs = objects_and_libs[1]
     objstr = self.format_objects(objects)
     libstr = self.format_libs(libs, ("$(LDMATH)",))
-    if (not self.platform in ("mingw32", "vc60")):
+    if (not self.platform in ("mingw32", "vc60", "win32_mwcc")):
       nameexe = name
     else:
       nameexe = name + ".exe"
@@ -234,6 +239,8 @@ class write_makefiles:
       self.mingw32_pyd(name, objstr, libs)
     elif (self.platform == "vc60"):
       self.vc60_pyd(name, objstr, libs)
+    elif (self.platform == "win32_mwcc"):
+      self.win32_mwcc_pyd(name, objstr, libs)
     else:
       self.unix_so(name, objstr, libs)
     print
@@ -271,6 +278,14 @@ class write_makefiles:
            + " %s") % (namepyd, name, objstr, libstr)
     self.make_targets["boost_python_modules"].append(namepyd)
 
+  def win32_mwcc_pyd(self, name, objstr, libs):
+    libstr = self.format_libs(libs, ("$(PYLIB)",))
+    namepyd = name + ".pyd"
+    print "%s: %s" % (namepyd, objstr)
+    print (  "\t$(LD) $(LDDLL) -o %s %s %s") % (
+      namepyd, objstr, libstr)
+    self.make_targets["boost_python_modules"].append(namepyd)
+
   def make_clean(self):
     print "clean_unix:"
     for f in self.make_targets["clean"]:
@@ -286,7 +301,7 @@ class write_makefiles:
                 "obj", "lib", "exp", "idb", "exe", "def", "pyd"):
       print "\t-del *." + ext
     print
-    if (self.platform in ("mingw32", "vc60")):
+    if (self.platform in ("mingw32", "vc60", "win32_mwcc")):
       print "clean: clean_win"
     else:
       print "clean: clean_unix"

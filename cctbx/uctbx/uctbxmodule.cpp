@@ -135,53 +135,46 @@ namespace {
 
 BOOST_PYTHON_MODULE_INIT(uctbx)
 {
-  try
-  {
-#   include <cctbx/basic/from_bpl_import.h>
+# include <cctbx/basic/from_bpl_import.h>
 
-    python::module_builder this_module("uctbx");
+  python::module_builder this_module("uctbx");
 
-    const std::string Revision = "$Revision$";
-    this_module.add(ref(to_python(
-        Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
+  const std::string Revision = "$Revision$";
+  this_module.add(ref(to_python(
+      Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    class_builder<UnitCell> UnitCell_class(this_module, "UnitCell");
-    python::export_converters(UnitCell_class);
+  class_builder<UnitCell> UnitCell_class(this_module, "UnitCell");
+  python::export_converters(UnitCell_class);
 
-    UnitCell_class.def(constructor<>());
-    UnitCell_class.def(constructor<const uc_params&>());
+  UnitCell_class.def(constructor<>());
+  UnitCell_class.def(constructor<const uc_params&>());
 
-    UnitCell_class.def(UnitCell_repr, "__repr__");
-    UnitCell_class.def(UnitCell_getinitargs, "__getinitargs__");
-    UnitCell_class.def(&UnitCell::getParameters, "getParameters");
-    UnitCell_class.def(UnitCell_getParameters_0, "getParameters");
-    UnitCell_class.def(&UnitCell::getVolume, "getVolume");
-    UnitCell_class.def(&UnitCell::getMetricalMatrix, "getMetricalMatrix");
-    UnitCell_class.def(UnitCell_getMetricalMatrix_0, "getMetricalMatrix");
-    UnitCell_class.def(&UnitCell::getFractionalizationMatrix,
-                                 "getFractionalizationMatrix");
-    UnitCell_class.def(&UnitCell::getOrthogonalizationMatrix,
-                                 "getOrthogonalizationMatrix");
-    UnitCell_class.def(UnitCell_Length2, "Length2");
-    UnitCell_class.def(UnitCell_Length, "Length");
-    UnitCell_class.def(UnitCell_Distance2, "Distance2");
-    UnitCell_class.def(UnitCell_Distance, "Distance");
-    UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
-    UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
-    UnitCell_class.def(
-      (UnitCell (UnitCell::*)(const Mx33&, double) const)
-      &UnitCell::ChangeBasis, "ChangeBasis");
-    UnitCell_class.def(&UnitCell::Q, "Q");
-    UnitCell_class.def(&UnitCell::s, "s");
-    UnitCell_class.def(&UnitCell::d, "d");
-    UnitCell_class.def(UnitCell_fractionalize, "fractionalize");
-    UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
-    UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
-    UnitCell_class.def(UnitCell_isEqual_1, "isEqual");
-    UnitCell_class.def(&UnitCell::isEqual, "isEqual");
-  }
-  catch(...)
-  {
-    boost::python::handle_exception(); // Deal with the exception for Python
-  }
+  UnitCell_class.def(UnitCell_repr, "__repr__");
+  UnitCell_class.def(UnitCell_getinitargs, "__getinitargs__");
+  UnitCell_class.def(&UnitCell::getParameters, "getParameters");
+  UnitCell_class.def(UnitCell_getParameters_0, "getParameters");
+  UnitCell_class.def(&UnitCell::getVolume, "getVolume");
+  UnitCell_class.def(&UnitCell::getMetricalMatrix, "getMetricalMatrix");
+  UnitCell_class.def(UnitCell_getMetricalMatrix_0, "getMetricalMatrix");
+  UnitCell_class.def(&UnitCell::getFractionalizationMatrix,
+                               "getFractionalizationMatrix");
+  UnitCell_class.def(&UnitCell::getOrthogonalizationMatrix,
+                               "getOrthogonalizationMatrix");
+  UnitCell_class.def(UnitCell_Length2, "Length2");
+  UnitCell_class.def(UnitCell_Length, "Length");
+  UnitCell_class.def(UnitCell_Distance2, "Distance2");
+  UnitCell_class.def(UnitCell_Distance, "Distance");
+  UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
+  UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
+  UnitCell_class.def(
+    (UnitCell (UnitCell::*)(const Mx33&, double) const)
+    &UnitCell::ChangeBasis, "ChangeBasis");
+  UnitCell_class.def(&UnitCell::Q, "Q");
+  UnitCell_class.def(&UnitCell::s, "s");
+  UnitCell_class.def(&UnitCell::d, "d");
+  UnitCell_class.def(UnitCell_fractionalize, "fractionalize");
+  UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
+  UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
+  UnitCell_class.def(UnitCell_isEqual_1, "isEqual");
+  UnitCell_class.def(&UnitCell::isEqual, "isEqual");
 }
