@@ -20,6 +20,8 @@
 
 namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
 
+  namespace base_256 = serialization::base_256;
+
   struct to_string
   {
     std::string buffer;
@@ -34,48 +36,42 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
     to_string& operator<<(int const& val)
     {
       char buf[64];
-      sprintf(buf, "%d,", val);
-      buffer += buf;
+      buffer.append(buf, base_256::to_string(buf, val));
       return *this;
     }
 
     to_string& operator<<(unsigned int const& val)
     {
       char buf[64];
-      sprintf(buf, "%u,", val);
-      buffer += buf;
+      buffer.append(buf, base_256::to_string(buf, val));
       return *this;
     }
 
     to_string& operator<<(long const& val)
     {
       char buf[64];
-      sprintf(buf, "%ld,", val);
-      buffer += buf;
+      buffer.append(buf, base_256::to_string(buf, val));
       return *this;
     }
 
     to_string& operator<<(unsigned long const& val)
     {
       char buf[64];
-      sprintf(buf, "%lu,", val);
-      buffer += buf;
+      buffer.append(buf, base_256::to_string(buf, val));
       return *this;
     }
 
     to_string& operator<<(float const& val)
     {
       char buf[64];
-      sprintf(buf, "%.6g,", val);
-      buffer += buf;
+      buffer.append(buf, base_256::to_string(buf, val));
       return *this;
     }
 
     to_string& operator<<(double const& val)
     {
       char buf[64];
-      sprintf(buf, "%.12g,", val);
-      buffer += buf;
+      buffer.append(buf, base_256::to_string(buf, val));
       return *this;
     }
 
@@ -89,7 +85,6 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
     {
       *this << val.size();
       buffer += val;
-      buffer += ',';
       return *this;
     }
 

@@ -31,7 +31,17 @@ namespace scitbx { namespace af { namespace boost_python {
       DoubleBufferedToString accu;
       accu << a.size();
       for(std::size_t i=0;i<a.size();i++) accu << a[i];
-      return boost::python::make_tuple(a.accessor(), accu.buffer);
+      return boost::python::make_tuple(a.accessor(),
+#if 0
+        accu.buffer
+#else
+        // XXX work around bug in boost 1.29.0
+        boost::python::object(boost::python::handle<>(
+          PyString_FromStringAndSize(
+            accu.buffer.begin(),
+            static_cast<int>(accu.buffer.size()))))
+#endif
+        );
     }
 
     static

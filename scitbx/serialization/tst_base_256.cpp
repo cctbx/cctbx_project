@@ -10,8 +10,8 @@ namespace {
   void
   integer_core_exercise(T const& value)
   {
-    unsigned char buf[128];
-    unsigned char *end = serialization::base_256::to_string(buf, value);
+    char buf[128];
+    char *end = serialization::base_256::to_string(buf, value);
     serialization::base_256::from_string<T> proxy(buf);
     SCITBX_ASSERT(proxy.end == end);
     SCITBX_ASSERT(proxy.value == value);
@@ -52,8 +52,8 @@ namespace {
   void
   floating_point_core_exercise(T const& value)
   {
-    unsigned char buf[128];
-    unsigned char *end = serialization::base_256::to_string(buf, value);
+    char buf[128];
+    char *end = serialization::base_256::to_string(buf, value);
     serialization::base_256::from_string<T> proxy(buf);
     SCITBX_ASSERT(proxy.end == end);
     if (proxy.value != value) {

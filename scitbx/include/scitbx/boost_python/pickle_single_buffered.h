@@ -12,47 +12,19 @@
 #ifndef SCITBX_BOOST_PYTHON_PICKLE_SINGLE_BUFFERED_H
 #define SCITBX_BOOST_PYTHON_PICKLE_SINGLE_BUFFERED_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <scitbx/serialization/base_256.h>
 #include <complex>
-#include <scitbx/error.h>
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
-  namespace detail {
-
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
-    inline double
-    pickle_strtod(const char *nptr, char **endptr)
-    {
-      return strtod(nptr, endptr);
-    }
-#else
-    inline double
-    pickle_strtod(const char *nptr, char **endptr)
-    {
-      char buf[128];
-      char* b = buf;
-      while (*nptr != ',') *b++ = *nptr++;
-      *b = '\0';
-      *endptr = const_cast<char*>(nptr);
-      return strtod(buf, 0);
-    }
-#endif
-
-    inline char* o_advance(char *ptr)
-    {
-      while (*ptr != ',') ptr++;
-      return ptr + 1;
-    }
-
-  }
+  namespace base_256 = serialization::base_256;
 
   template <typename ValueType>
   struct from_string {};
 
   inline
-  char* to_string(char* start, bool const& value)
+  char*
+  to_string(char* start, bool const& value)
   {
     if (value == true) *start = '1';
     else               *start = '0';
@@ -68,133 +40,104 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
       else               value = false;
     }
 
-    bool value;
     const char* end;
+    bool value;
   };
 
   inline
-  char* to_string(char* start, int const& value)
+  char*
+  to_string(char* start, int const& value)
   {
-    SCITBX_ASSERT(sprintf(start, "%d,", value) > 0);
-    return detail::o_advance(start);
+    return base_256::to_string(start, value);
   }
 
   template <>
-  struct from_string<int>
+  struct from_string<int> : base_256::from_string<int>
   {
     from_string(const char* start)
-    {
-      value = static_cast<int>(strtol(start, &end, 10));
-      SCITBX_ASSERT(*end++ == ',');
-    }
-
-    int value;
-    char* end;
+    : base_256::from_string<int>(start)
+    {}
   };
 
   inline
-  char* to_string(char* start, unsigned int const& value)
+  char*
+  to_string(char* start, unsigned int const& value)
   {
-    SCITBX_ASSERT(sprintf(start, "%u,", value) > 0);
-    return detail::o_advance(start);
+    return base_256::to_string(start, value);
   }
 
   template <>
-  struct from_string<unsigned int>
+  struct from_string<unsigned int> : base_256::from_string<unsigned int>
   {
     from_string(const char* start)
-    {
-      value = static_cast<unsigned int>(strtoul(start, &end, 10));
-      SCITBX_ASSERT(*end++ == ',');
-    }
-
-    unsigned int value;
-    char* end;
+    : base_256::from_string<unsigned int>(start)
+    {}
   };
 
   inline
-  char* to_string(char* start, long const& value)
+  char*
+  to_string(char* start, long const& value)
   {
-    SCITBX_ASSERT(sprintf(start, "%ld,", value) > 0);
-    return detail::o_advance(start);
+    return base_256::to_string(start, value);
   }
 
   template <>
-  struct from_string<long>
+  struct from_string<long> : base_256::from_string<long>
   {
     from_string(const char* start)
-    {
-      value = strtol(start, &end, 10);
-      SCITBX_ASSERT(*end++ == ',');
-    }
-
-    long value;
-    char* end;
+    : base_256::from_string<long>(start)
+    {}
   };
 
   inline
-  char* to_string(char* start, unsigned long const& value)
+  char*
+  to_string(char* start, unsigned long const& value)
   {
-    SCITBX_ASSERT(sprintf(start, "%lu,", value) > 0);
-    return detail::o_advance(start);
+    return base_256::to_string(start, value);
   }
 
   template <>
-  struct from_string<unsigned long>
+  struct from_string<unsigned long> : base_256::from_string<unsigned long>
   {
     from_string(const char* start)
-    {
-      value = strtoul(start, &end, 10);
-      SCITBX_ASSERT(*end++ == ',');
-    }
-
-    unsigned long value;
-    char* end;
+    : base_256::from_string<unsigned long>(start)
+    {}
   };
 
   inline
-  char* to_string(char* start, float const& value)
+  char*
+  to_string(char* start, float const& value)
   {
-    SCITBX_ASSERT(sprintf(start, "%.6g,", value) > 0);
-    return detail::o_advance(start);
+    return base_256::to_string(start, value);
   }
 
   template <>
-  struct from_string<float>
+  struct from_string<float> : base_256::from_string<float>
   {
     from_string(const char* start)
-    {
-      value = detail::pickle_strtod(start, &end);
-      SCITBX_ASSERT(*end++ == ',');
-    }
-
-    float value;
-    char* end;
+    : base_256::from_string<float>(start)
+    {}
   };
 
   inline
-  char* to_string(char* start, double const& value)
+  char*
+  to_string(char* start, double const& value)
   {
-    SCITBX_ASSERT(sprintf(start, "%.12g,", value) > 0);
-    return detail::o_advance(start);
+    return base_256::to_string(start, value);
   }
 
   template <>
-  struct from_string<double>
+  struct from_string<double> : base_256::from_string<double>
   {
     from_string(const char* start)
-    {
-      value = detail::pickle_strtod(start, &end);
-      SCITBX_ASSERT(*end++ == ',');
-    }
-
-    double value;
-    char* end;
+    : base_256::from_string<double>(start)
+    {}
   };
 
   template <typename FloatType>
   inline
-  char* to_string(char* start, std::complex<FloatType> const& value)
+  char*
+  to_string(char* start, std::complex<FloatType> const& value)
   {
     return to_string(to_string(start, value.real()), value.imag());
   }
@@ -210,16 +153,16 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
       end = proxy_i.end;
     }
 
-    std::complex<double> value;
     const char* end;
+    std::complex<double> value;
   };
 
   inline
-  char* to_string(char* start, std::string const& value)
+  char*
+  to_string(char* start, std::string const& value)
   {
     start = to_string(start, value.size());
     for(std::size_t i=0;i<value.size();i++) *start++ = value[i];
-    *start++ = ',';
     return start;
   }
 
@@ -231,11 +174,10 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
       from_string<std::size_t> proxy_len(start);
       value.append(proxy_len.end, proxy_len.value);
       end = proxy_len.end + proxy_len.value;
-      SCITBX_ASSERT(*end++ == ',');
     }
 
-    std::string value;
     const char* end;
+    std::string value;
   };
 
 }}} // namespace scitbx::boost_python::pickle_single_buffered
