@@ -148,14 +148,14 @@ class crystal_gridding_tags(crystal_gridding):
       peak_cutoff=parameters.peak_cutoff())
     if (parameters.min_distance_sym_equiv() == None):
       return grid_peaks
-    return peak_list_cluster_reduction(
+    return peak_cluster_analysis(
       peak_list=grid_peaks,
       special_position_settings=crystal.special_position_settings(
         crystal_symmetry=self.crystal_symmetry(),
         min_distance_sym_equiv=parameters.min_distance_sym_equiv()),
       general_positions_only=parameters.general_positions_only(),
       min_cross_distance=parameters.min_cross_distance(),
-      max_reduced_sites=parameters.max_reduced_sites())
+      max_clusters=parameters.max_clusters())
 
 class peak_search_parameters:
 
@@ -165,7 +165,7 @@ class peak_search_parameters:
                      min_distance_sym_equiv=None,
                      general_positions_only=00000,
                      min_cross_distance=None,
-                     max_reduced_sites=None):
+                     max_clusters=None):
     adopt_init_args(self, locals(), hide=0001)
 
   def _copy_constructor(self, other):
@@ -175,7 +175,7 @@ class peak_search_parameters:
     self._min_distance_sym_equiv = other._min_distance_sym_equiv
     self._general_positions_only = other._general_positions_only
     self._min_cross_distance = other._min_cross_distance
-    self._max_reduced_sites = other._max_reduced_sites
+    self._max_clusters = other._max_clusters
 
   def peak_search_level(self):
     return self._peak_search_level
@@ -195,65 +195,91 @@ class peak_search_parameters:
   def min_cross_distance(self):
     return self._min_cross_distance
 
-  def max_reduced_sites(self):
-    return self._max_reduced_sites
+  def max_clusters(self):
+    return self._max_clusters
 
-class peak_list_cluster_reduction:
+class cluster_site_info:
+
+  def __init__(self, peak_list_index, grid_index, grid_height, site):
+    adopt_init_args(self, locals())
+
+class peak_cluster_analysis:
 
   def __init__(self, peak_list,
                      special_position_settings,
                      general_positions_only=00000,
                      min_cross_distance=None,
-                     max_reduced_sites=None):
+                     max_clusters=None):
     adopt_init_args(self, locals(), hide=0001)
-    sites = flex.vec3_double()
-    gridding = peak_list.gridding()
-    for entry in peak_list.entries():
-      site = [float(entry.index[i]) / gridding[i] for i in xrange(3)]
-      sites.append(special_position_settings.site_symmetry(site).exact_site())
     if (min_cross_distance == None):
       min_cross_distance = special_position_settings.min_distance_sym_equiv()
-    self._unreduced_indices = flex.size_t()
-    self._reduced_sites = flex.vec3_double()
-    for unreduced_index,site in sites.items():
-      site_symmetry = special_position_settings.site_symmetry(site)
-      if (general_positions_only and not site_symmetry.is_point_group_1()):
+    self._gridding = peak_list.gridding()
+    self._peak_list_entries = peak_list.entries()
+    self._peak_list_indices = flex.size_t()
+    self._peak_list_index = 0
+    self._sites = flex.vec3_double()
+    self._grid_heights = flex.double()
+
+  def peak_list(self):
+    return self._peak_list()
+
+  def special_position_settings(self):
+    return self._special_position_settings
+
+  def general_positions_only(self):
+    return self._general_positions_only
+
+  def min_cross_distance(self):
+    return self._min_cross_distance
+
+  def max_clusters(self):
+    return self._max_clusters
+
+  def peak_list_indices(self):
+    return self._peak_list_indices
+
+  def sites(self):
+    return self._sites
+
+  def grid_heights(self):
+    return self._grid_heights
+
+  def next(self):
+    while 1:
+      peak_list_index = self._peak_list_index
+      if (peak_list_index >= len(self._peak_list_entries)): return None
+      peak_list_entry = self._peak_list_entries[peak_list_index]
+      self._peak_list_index += 1
+      grid_index = peak_list_entry.index
+      site = [float(grid_index[i]) / self._gridding[i] for i in xrange(3)]
+      site_symmetry = self._special_position_settings.site_symmetry(site)
+      if (    self._general_positions_only
+          and not site_symmetry.is_point_group_1()):
         continue
+      site = site_symmetry.exact_site()
       equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
       keep = 0001
-      for reduced_site in self._reduced_sites:
-        dist = sgtbx.min_sym_equiv_distance_info(
-          equiv_sites, reduced_site).dist()
-        if (dist < min_cross_distance):
+      for s in self._sites:
+        dist = sgtbx.min_sym_equiv_distance_info(equiv_sites, s).dist()
+        if (dist < self._min_cross_distance):
           keep = 00000
           break
       if (keep == 0001):
-        self._unreduced_indices.append(unreduced_index)
-        self._reduced_sites.append(site)
-        if (len(self._reduced_sites) == max_reduced_sites): break
+        self._peak_list_indices.append(peak_list_index)
+        self._sites.append(site)
+        self._grid_heights.append(peak_list_entry.value)
+        return cluster_site_info(
+          peak_list_index=peak_list_index,
+          grid_index=grid_index,
+          grid_height=peak_list_entry.value,
+          site=site)
 
-  def unreduced_peak_list(self):
-    return self._peak_list
-
-  def unreduced_indices(self):
-    return self._unreduced_indices
-
-  def reduced_sites(self):
-    return self._reduced_sites
-
-  def unreduced_index(self, reduced_index):
-    return self._unreduced_indices[reduced_index]
-
-  def reduced_site(self, reduced_index):
-    return self._reduced_sites[reduced_index]
-
-  def peak_height(self, reduced_index):
-    return self._peak_list.entries()[
-      self._unreduced_indices[reduced_index]].value
-
-  def peak_heights(self):
-    result = flex.double()
-    entries = self._peak_list.entries()
-    for i in self._unreduced_indices:
-      result.append(entries[i].value)
-    return result
+  def all(self, max_clusters=None):
+    if (max_clusters == None):
+      max_clusters = self._max_clusters
+    assert max_clusters != None
+    while 1:
+      if (self._sites.size() >= max_clusters): break
+      if (self.next() == None): break
+    assert self._sites.size() == max_clusters
+    return self
