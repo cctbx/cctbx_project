@@ -1,5 +1,6 @@
 from cctbx.eltbx import xray_scattering
 from scitbx.test_utils import approx_equal
+import StringIO
 import pickle
 import string
 
@@ -48,6 +49,11 @@ def exercise_gaussian():
   assert c.b() == ()
   assert approx_equal(c.c(), 1)
   assert not c.all_zero()
+  c = xray_scattering.gaussian((), ())
+  assert c.n_ab() == 0
+  assert c.a() == ()
+  assert c.b() == ()
+  assert c.c() == 0
   c = xray_scattering.gaussian((), (), -2)
   assert c.n_ab() == 0
   assert c.a() == ()
@@ -71,17 +77,28 @@ def exercise_gaussian():
    [14.780758,0.776775,42.086842,-0.000294,0.239535],
    4.297983))
   exercise_gaussian_integral(xray_scattering.gaussian(
-    [5.5480], [10.4241], 0))
+    [5.5480], [10.4241]))
   exercise_gaussian_integral(xray_scattering.gaussian(
     [5.5480], [10.4241], 3))
   exercise_gaussian_integral(xray_scattering.gaussian(
     [5.5480], [0], 0))
   exercise_gaussian_integral(xray_scattering.gaussian(
-    [5.5480], [-0.01], 0))
+    [5.5480], [-0.01]))
   exercise_gaussian_integral(xray_scattering.gaussian(
-   [2.657506,1.078079,1.490909,-4.241070,0.713791],
-   [14.780758,0.776775,42.086842,-0.000294,0.239535],
-   4.297983))
+    [2.657506,1.078079,1.490909,-4.241070,0.713791],
+    [14.780758,0.776775,42.086842,-0.000294,0.239535],
+    4.297983))
+  grg = xray_scattering.gaussian(
+    [-5.2410698, 1.657506, 0.49090898, 0.078078985],
+    [-1, 13.780758, 41.086842, -0.223225]).gradients_at_d_star_sq(0.81)
+  assert approx_equal(grg.a(),
+    [1.2244601, 0.06138416, 0.00024357505, 1.0462403])
+  assert approx_equal(grg.b(),
+    [1.2995399, -0.020603284, -2.4213568e-05, -0.016542099])
+  assert approx_equal(grg.c(), 1)
+  s = StringIO.StringIO()
+  grg.show(s)
+  assert len(s.getvalue().split()) == 12
 
 def exercise_it1992():
   c = xray_scattering.it1992("c1")
