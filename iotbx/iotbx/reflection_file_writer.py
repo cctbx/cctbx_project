@@ -71,7 +71,7 @@ def match_data_label(input_arrays, label):
 def run(args):
   command_line = (iotbx_option_parser(
     usage="iotbx.reflection_file_writer [options] reflection_file ...",
-    description="Example: iotbx.reflection_file_writer w1.sca --sca .")
+    description="Example: iotbx.reflection_file_writer w1.sca --mtz .")
     .enable_symmetry_comprehensive()
     .option(None, "--weak_symmetry",
       action="store_true",
@@ -84,6 +84,33 @@ def run(args):
       dest="label",
       help="Substring of reflection data label or number",
       metavar="STRING")
+    .option(None, "--resolution",
+      action="store",
+      type="float",
+      dest="resolution",
+      help="High resolution limit",
+      metavar="FLOAT")
+    .option(None, "--low_resolution",
+      action="store",
+      type="float",
+      dest="low_resolution",
+      help="Low resolution limit",
+      metavar="FLOAT")
+    .option(None, "--observation_type",
+      choices=("amplitude", "intensity"),
+      metavar="amplitude|intensity")
+    .option(None, "--scale_max",
+      action="store",
+      type="float",
+      dest="scale_max",
+      help="Scales data such that the maximum is equal to the given value",
+      metavar="FLOAT")
+    .option(None, "--scale_factor",
+      action="store",
+      type="float",
+      dest="scale_factor",
+      help="Multiplies data with the given factor",
+      metavar="FLOAT")
     .option(None, "--sca",
       action="store",
       type="string",
@@ -110,9 +137,15 @@ def run(args):
       help="write data to SHELX FILE ('--shelx .' copies name of input file)",
       metavar="FILE")
   ).process()
+  if (    command_line.options.scale_max is not None
+      and command_line.options.scale_factor is not None):
+    print
+    print "--scale_max and --scale_factor are mutually exclusive."
+    print
+    return None
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
-    return 00000
+    return None
   all_miller_arrays = reflection_file_reader.collect_arrays(
     file_names=command_line.args,
     crystal_symmetry=command_line.symmetry,
@@ -131,7 +164,7 @@ def run(args):
     for i,miller_array in zip(count(1), all_miller_arrays):
       print "  %d:" % i, miller_array.info()
     print
-    return 00000
+    return None
   else:
     try: i = int(command_line.options.label)-1
     except: i = None
@@ -142,10 +175,53 @@ def run(args):
         input_arrays=all_miller_arrays,
         label=command_line.options.label)
       if (selected_array is None):
-        return 00000
+        return None
+  if (selected_array.unit_cell() is None):
+    command_line.parser.show_help()
+    print "Unit cell parameters unknown. Please use --symmetry or --unit_cell."
+    print
+    return None
+  if (selected_array.space_group_info() is None):
+    command_line.parser.show_help()
+    print "Space group unknown. Please use --symmetry or --space_group."
+    print
+    return None
+  if (selected_array.observation_type() is None):
+    if (command_line.options.observation_type is None):
+      command_line.parser.show_help()
+      print "Observation type is unknown. Please use --observation_type."
+      print
+      return None
+    if (command_line.options.observation_type == "amplitude"):
+      selected_array.set_observation_type_xray_amplitude()
+    else:
+      selected_array.set_observation_type_xray_intensity()
   print "Selected data:"
   print " ", selected_array.info()
+  print "  Observation type:", selected_array.observation_type()
   print
+  d_max = command_line.options.low_resolution
+  d_min = command_line.options.resolution
+  if (d_max is not None or d_min is not None):
+    if (d_max is not None):
+      print "Applying low resolution cutoff: d_max=%.6g" % d_max
+    if (d_min is not None):
+      print "Applying high resolution cutoff: d_min=%.6g" % d_min
+    selected_array = selected_array.resolution_filter(d_max=d_max, d_min=d_min)
+    print "Number of reflections:", selected_array.indices().size()
+    print
+  if (command_line.options.scale_max is not None):
+    print "Scaling data such that the maximum value is: %.6g" \
+      % command_line.options.scale_max
+    selected_array = selected_array.apply_scaling(
+      target_max=command_line.options.scale_max)
+    print
+  if (command_line.options.scale_factor is not None):
+    print "Multiplying data with the factor: %.6g" \
+      % command_line.options.scale_factor
+    selected_array = selected_array.apply_scaling(
+      factor=command_line.options.scale_factor)
+    print
   n_output_files = 0
   if (command_line.options.sca is not None):
     file_name = construct_output_file_name(
@@ -195,5 +271,5 @@ def run(args):
     print "Please specify at least one output file format,",
     print "e.g. --mtz, --sca, etc."
     print
-    return 00000
-  return 0001
+    return None
+  return selected_array
