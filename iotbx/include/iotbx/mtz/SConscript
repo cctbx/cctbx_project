@@ -9,4 +9,6 @@ if (not env_etc.no_boost_python):
     source=[
       "wrapper_ext.cpp",
       "object_bpl.cpp",
-      "crystal_bpl.cpp"])
+      "crystal_bpl.cpp",
+      "dataset_bpl.cpp",
+      "column_bpl.cpp"])

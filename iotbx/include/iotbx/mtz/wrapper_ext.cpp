@@ -5,6 +5,8 @@ namespace iotbx { namespace mtz { namespace boost_python {
 
   void wrap_object();
   void wrap_crystal();
+  void wrap_dataset();
+  void wrap_column();
 
 namespace {
 
@@ -13,6 +15,8 @@ namespace {
     CCP4::ccp4_liberr_verbosity(0);
     wrap_object();
     wrap_crystal();
+    wrap_dataset();
+    wrap_column();
   }
 
 }}}} // namespace iotbx::mtz::boost_python::<anonymous>
