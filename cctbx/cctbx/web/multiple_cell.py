@@ -1,4 +1,5 @@
-URL_explore_symmetry = "http://cci.lbl.gov/cctbx/explore_symmetry.py"
+URL_cctbx_web = "http://cci.lbl.gov/cctbx/cctbx_web.cgi"
+URL_target_module = "explore_symmetry"
 
 # this list was generated with generate_multiple_cell_stage2.py
 multiple_cell_list = (
@@ -136,13 +137,14 @@ def escape(s):
   return cgi.escape(s, 1)
 
 def LinkExploreSymmetry(Hall):
-  return "<a href=\"%s?convention=Hall;sgsymbol=%s\">%s</a>" % (
-           URL_explore_symmetry,
-           urllib.quote_plus(Hall),
-           Hall)
+  return \
+    "<a href=\"%s?target_module=%s&convention=Hall;sgsymbol=%s\">%s</a>" % (
+     URL_cctbx_web,
+     URL_target_module,
+     urllib.quote_plus(Hall),
+     Hall)
 
 if (__name__ == "__main__"):
-
   tetragonal_list = []
   trigonal_list = []
   hexagonal_list = []
@@ -153,18 +155,19 @@ if (__name__ == "__main__"):
       trigonal_list.append((HM, HallSymbols))
     else:
       hexagonal_list.append((HM, HallSymbols))
-
-  print r"""// This file was automatically generated with multiple_cell.py
-
-/*! \page page_multiple_cell cctbx - Multiple cell C or F and triple cell H settings
-
+  print r"""<html>
+<head>
+<title>cctbx - Multiple cell C or F and triple cell H settings</title>
+</head>
+<body bgcolor=#ffffff>
+<hr>
+<h1>cctbx - Multiple cell C or F and triple cell H settings</h1>
+<hr>
 The Hermann-Mauguin symbols listed in the tables below are
-not recognized by the class sgtbx::SpaceGroupSymbols,
+not recognized by the class sgtbx::space_group_symbols,
 but you may click on the Hall symbols in the right
 columns to explore the symmetries.
-
-\par
-
+<p>
 The multiple cell and triple cell symbols were first
 introduced in "Internationale Tabellen zur Bestimmung von
 Kristallstrukturen" in 1935 (IT-1935). They were dropped in
@@ -175,9 +178,7 @@ International Tables for Crystallography, Volume A from
 reappear in the sub- and supergroup data, and are also
 included in the <i>Synoptic Tables of Space-Group Symbols</i>
 (Table 4.3.1).
-
-\par
-
+<p>
 IT-A1983 defines two transformation matrices for
 transforming from a P- or I-representation in the
 tetragonal system to C or F respectively. The matrices are
@@ -193,31 +194,27 @@ transformation from a primitive trigonal or hexagonal
 setting to a triple cell H setting. Unfortunately there is
 no established notation for resolving these ambigous
 definitions of IT-1983.
-
-\par
-
+<p>
 IT-1935 defines unambigous transformations for the multiple
 cell and triple cell settings (p. 30):
-\par
+<p>
 <i>The equation for transforming from a P- or I-representation
 (in the tetragonal system) to C or F respectively are:</i>
 <ul>
 <li><b>a</b>(C,F) = <b>a</b>(P,I) + <b>b</b>(P,I);
     <b>b</b>(C,F) = -<b>a</b>(P,I) + <b>b</b>(P,I)
 </ul>
-\par
+<p>
 <i>For the change from C to H in the hexagonal system we have:</i>
 <ul>
 <li><b>a</b>(H) = <b>a</b>(C) + 2<b>b</b>(C);
     <b>b</b>(H) = -2<b>a</b>(C) - <b>b</b>(C)
 </ul>
-\par
+<p>
 <b>c</b>(C,F) = <b>c</b>(P,I) and <b>c</b>(H) = <b>c</b>(C) are implied.<br>
 <b>Note that IT-1935 uses the symbol C for the <i>primitive</i>
 settings in the trigonal and hexagonal systems.</b>
-
-\par
-
+<p>
 Unfortunately, some primitive C settings in IT-1935 are
 different from the primitive settings in IT-I1952 and
 IT-A1983 (Schoenflies symbols D3^3 and D3^5). Therefore it
@@ -226,9 +223,7 @@ IT-1935 by applying a consistent transformation to the
 primitive settings in IT-A1983. It is currently not known
 to me (rwgk) if a similar problem exists for the tetragonal
 space groups.
-
-\par
-
+<p>
 It is beyond the scope of the sgtbx to provide a table of
 historic space group symbols that are only referred to in
 very old papers. A related problem is that the Protein Data
@@ -239,26 +234,21 @@ PDB corresponds to <i>R 3 with hexagonal axes</i> in
 IT-A1983). It could therefore cause significant confusion
 if the sgtbx interprets the PDB symbols according to the
 IT-1935 conventions.
-
-\par
-
+<p>
 Considering the ambiguities and conflicting definitions, a
 direct support for multiple cell and triple cell settings
 is not included in the sgtbx. The tables below are
 provided for the rare cases where information about these
 symbols is required.
-
 """
-
   print "<hr>"
-  print "\\section multiple_cell_Tetragonal Tetragonal multiple cell C or F"
+  print "<h2>Tetragonal multiple cell C or F</h2>"
   print "See section 4.3.4 in the International Tables for Crystallography,"
   print "Volume A, 1983 or later."
-  print "\\par"
+  print "<p>"
   print "The Hall symbols in this table were generated with the program"
   print '<a href="http://xtal.crystal.uwa.edu.au/">Xtal 3.7.0</a>.'
-  print "\\par"
-  print "\\htmlonly"
+  print "<p>"
   print "<table border=2 cellpadding=2>"
   print "<tr>"
   print "<th>Hermann-Mauguin<br>symbol"
@@ -273,20 +263,17 @@ symbols is required.
       for Hall in HallSymbols:
         print "<td align=center>" + LinkExploreSymmetry(Hall)
   print "</table>"
-  print "\\endhtmlonly"
-
   for system, section, list in (
     ("Trigonal", "4.3.5", trigonal_list),
     ("Hexagonal", "4.3.5", hexagonal_list)):
     print "<hr>"
-    print "\\section multiple_cell_%s %s triple cell H" % (system, system)
-    print "See section %s" % (section,)
+    print "<h2>%s triple cell H</h2>" % system
+    print "See section %s" % section
     print "in the International Tables for Crystallography,"
     print "Volume A, 1983 or later."
-    print "\\par"
+    print "<p>"
     print "The Hall symbols in this table were generated manually."
-    print "\\par"
-    print "\\htmlonly"
+    print "<p>"
     print "<table border=2 cellpadding=2>"
     print "<tr>"
     print "<th>Hermann-Mauguin<br>symbol"
@@ -304,13 +291,9 @@ symbols is required.
         for Hall in HallSymbols:
           print "<td align=center>" + LinkExploreSymmetry(Hall)
     print "</table>"
-    print "\\endhtmlonly"
-
   print """
 <hr>
-
-\\par
 R.W. Grosse-Kunstleve, October 2001
-
-*/
-"""
+<hr>
+</body>
+</html>"""

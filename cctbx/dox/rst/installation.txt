@@ -1,0 +1,146 @@
+.. contents:: Table of Contents
+
+--------------------
+Installing the cctbx
+--------------------
+
+Python 2.2 or higher must be installed before the cctbx modules can be
+installed and used. Please refer to the Python installation instructions.
+
+There are two options for installing the cctbx:
+
+- Use our precompiled binaries: http://cci.lbl.gov/build/
+
+- Build from scratch after also downloading Boost and SCons.
+
+All installations require the cctbx Python source code.
+To initialize access via anonymous cvs::
+
+  cvs -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx login
+
+At the prompt simply press the Enter key. To get all cctbx modules::
+
+  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co libtbx
+  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co scitbx
+  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co cctbx
+  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co iotbx
+
+--------------------------------------
+Installation with precompiled binaries
+--------------------------------------
+
+Get the correct .tar.gz or .zip file for your platform.
+Unpack this file in a new empty directory which will become your
+cctbx binary installation directory. For example:
+
+  Unix:
+    ``gunzip -c redbelly.tar.gz | tar xf -``
+  Windows:
+    ``unzip libtbxzip.zip``
+
+To create a csh script or Windows .bat file for setting up the environment::
+
+  python <path_to_directory_with_cctbx_modules>/libtbx/configure.py iotbx
+
+At this point the actual installation is finished.
+To setup the environment before using the cctbx installation:
+
+  Unix:
+    ``source setpaths.csh``
+  Windows:
+    ``setpaths.bat``
+
+To run one of the regression tests:
+
+  Unix:
+    ``python $CCTBX_DIST/cctbx/regression/tst_miller.py P31``
+  Windows:
+    ``python %CCTBX_DIST%\cctbx\regression\tst_miller.py P31``
+
+The output should be::
+
+  P 31
+  OK
+
+---------------------
+Building from scratch
+---------------------
+
+Building from scratch requires a working C++ compiler:
+
+  - Linux: any gcc >= 2.96 (tested with gcc up to version 3.2.2)
+  - Windows: Visucal C++ 7.0
+  - Tru64 Unix: cxx 6.5.1
+  - IRIX: CC 7.3.1.2
+
+Compilation requires the Boost libraries and the CCP4 MTZ library; the
+build system requires SCons:
+
+  Unix:
+    - http://cci.lbl.gov/~rwgk/cctbx/boost_1_29_0_cci.tar.gz
+    - http://cci.lbl.gov/~rwgk/cctbx/ccp4_lib_src.tar.gz
+    - http://cci.lbl.gov/~rwgk/cctbx/scons-0.12-go-fast.tar.gz
+  Windows:
+    - http://cci.lbl.gov/~rwgk/cctbx/boost_1_29_0_cci.zip
+    - http://cci.lbl.gov/~rwgk/cctbx/ccp4_lib_src.zip
+    - http://cci.lbl.gov/~rwgk/cctbx/scons-0.12-go-fast.zip
+
+Unpack these files in the directory with the cctbx cvs modules.
+Rename or soft-link the Boost and SCons directories:
+
+  Unix::
+
+    ln -s boost_1_29_0_cci boost
+    ln -s scons-0.12-go-fast scons
+
+  Windows::
+
+    ren boost_1_29_0_cci boost
+    ren scons-0.12-go-fast scons
+
+Change to a new empty directory which will become the
+cctbx binary installation directory.
+
+To create a csh script or Windows .bat file for setting up the environment::
+
+  python <path_to_directory_with_cctbx_modules>/libtbx/configure.py iotbx
+
+To setup the environment before using the cctbx installation:
+
+  Unix:
+    ``source setpaths.csh``
+  Windows:
+    ``setpaths.bat``
+
+To compile all components enter::
+
+  libtbx.scons .
+
+On a machine with multiple CPUs enter::
+
+  libtbx.scons -j N .
+
+where N is the number of CPUs available. The time required for the
+compilations scales linearly with the number of CPUs available.
+
+To run all scitbx and cctbx regression tests:
+
+  Unix::
+
+    python $SCITBX_DIST/run_tests.py
+    python $CCTBX_DIST/run_tests.py --Quick
+
+  Windows::
+
+    python %SCITBX_DIST%\run_tests.py
+    python %CCTBX_DIST%\run_tests.py --Quick
+
+The output should show many OK. A Python Traceback is an indicator
+for problems.
+
+Please direct questions regarding the cctbx installation to
+RWGrosse-Kunstleve@lbl.gov .
+
+Back_
+
+.. _Back: introduction.html

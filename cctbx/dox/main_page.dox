@@ -1,73 +1,11 @@
-/*! \mainpage Computational Crystallography Toolbox
+/*! \mainpage %cctbx C++ interfaces
 
 <hr>
 
-\section intro Introduction
-
-\par
-The Computational Crystallography Toolbox (%cctbx) is a reusable
-software library. A general overview of the new
-organization of the %cctbx is given in this article:
-
-  http://cci.lbl.gov/publications/download/compcomm_1_2003/
-
-\par
-The %cctbx is designed with an open and flexible architecture to
-promote extendability and easy incorporation into other software
-environments.  The package is organized as a set of ISO C++ classes
-with Python (http://www.python.org/) bindings. This organization
-combines the computational efficiency of a strongly typed compiled
-language with the convenience and flexibility of a dynamically typed
-scripting language in a strikingly uniform and very maintainable way.
-
-\par
-Use of the Python bindings is highly recommended, but optional. The
-%cctbx can also be used purely as a C++ class library.
-
-\par
-All the components of the %cctbx including the packages it depends on
-(Python and the Boost library) are available as Open Source. All of
-these packages are covered by licenses that permit installation, use,
-modification, preparation of derivative works, incorporation into other
-computer software, and distribution of the original software or any
-derivative work in binary and source code format.
-
-\par
-The C++ documentation is directly embedded in the C++ source
-code and automatically processed into a web-based format for ease
-of navigation.
+Use the navigation bar at the top to browse the C++ interface documentation.
 
 <hr>
 
-Preliminary installation instructions for the new version:
-
-  http://cctbx.sourceforge.net/preliminary/installation.html
-
-<hr>
-
-\section links Links
-
-<ul>
-<li><a href="http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/cctbx/"
-    >%cctbx - Public CVS repository</a>
-<li><a href="http://sourceforge.net/projects/cctbx/"
-    >%cctbx - Project page at SourceForge</a>
-</ul>
-\par
-
-<hr>
-
-\section contact Contact
-cctbx@cci.lbl.gov
-
-<hr>
-
-\par
-Updated May 2003
-
-<hr>
-The %cctbx CVS development tree is hosted by
-<A href="http://sourceforge.net">
-<IMG src="http://sourceforge.net/sflogo.php?group_id=24107" width="88" height="31" border="0" alt="SourceForge Logo"></A>
+Back to main page: http://cctbx.sourceforge.net/
 
 */
