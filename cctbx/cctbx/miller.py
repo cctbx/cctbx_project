@@ -538,6 +538,23 @@ class array(set):
       assert self.sigmas().size() == self.indices().size()
     return set.size(self)
 
+  def is_bool_array(self):
+    return isinstance(self.data(), flex.bool)
+
+  def is_integer_array(self):
+    return isinstance(self.data(), flex.int) \
+        or isinstance(self.data(), flex.long)
+
+  def is_real(self):
+    return isinstance(self.data(), flex.float) \
+        or isinstance(self.data(), flex.double)
+
+  def is_complex(self):
+    return isinstance(self.data(), flex.complex_double)
+
+  def is_hendrickson_lattman_array(self):
+    return isinstance(self.data(), flex.hendrickson_lattman)
+
   def is_xray_amplitude_array(self):
     from cctbx.xray import observation_types
     return isinstance(self.observation_type(), observation_types.amplitude)
@@ -545,15 +562,6 @@ class array(set):
   def is_xray_intensity_array(self):
     from cctbx.xray import observation_types
     return isinstance(self.observation_type(), observation_types.intensity)
-
-  def is_real(self):
-    return isinstance(self.data(), flex.double)
-
-  def is_complex(self):
-    return isinstance(self.data(), flex.complex_double)
-
-  def is_hendrickson_lattman_array(self):
-    return isinstance(self.data(), flex.hendrickson_lattman)
 
   def copy(self):
     return (array(
@@ -626,10 +634,16 @@ class array(set):
   def map_to_asu(self):
     i = self.indices().deep_copy()
     d = self.data().deep_copy()
-    map_to_asu(
-      self.space_group_info().type(),
-      self.anomalous_flag(),
-      i, d)
+    if (self.is_complex() or self.is_hendrickson_lattman_array()):
+      map_to_asu(
+        self.space_group_info().type(),
+        self.anomalous_flag(),
+        i, d)
+    else:
+      map_to_asu(
+        self.space_group_info().type(),
+        self.anomalous_flag(),
+        i)
     return (array(set(self, i, self.anomalous_flag()), d, self.sigmas())
       .set_observation_type(self))
 
