@@ -12,6 +12,7 @@ from scitbx import matrix
 from scitbx.python_utils.misc import adopt_init_args
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
+import os
 
 if (1):
   flex.set_random_seed(0)
@@ -317,6 +318,16 @@ def write_nodes_as_pdb(label, structure, node_list):
   print >> f, "END"
   f.close()
 
+def get_kriber_coseq_file():
+  if (not os.path.isfile("coseq")): return {}
+  result = {}
+  for line in open("coseq"):
+    flds = line.split()
+    tag = flds[0]
+    terms = [int(f) for f in flds[1:]]
+    result.setdefault(tag, []).append(terms)
+  return result
+
 class node:
 
   def __init__(self, i_seq, rt_mx, special_ops):
@@ -330,7 +341,7 @@ def find_node(test_node, node_list):
       return 0001
   return 00000
 
-def coordination_sequences(structure, proxies):
+def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   scatterers = structure.scatterers()
   pair_lists = [[] for i in xrange(scatterers.size())]
   for proxy in proxies.proxies:
@@ -355,7 +366,7 @@ def coordination_sequences(structure, proxies):
     if (0):
       nodes_for_pdb = nodes_next[:]
     terms = flex.size_t([1])
-    for i_shell in xrange(1,11):
+    for i_shell in xrange(1,n_shells+1):
       nodes_previous = nodes_middle
       nodes_middle = nodes_next
       nodes_next = []
@@ -389,6 +400,17 @@ def coordination_sequences(structure, proxies):
     sums_terms.append(flex.sum(terms))
     multiplicities.append(scatterers[i_seq_pivot].multiplicity())
     print scatterers[i_seq_pivot].label, list(terms)
+    if (coseq_terms is not None and n_shells >= 10):
+      ten_terms = list(terms[1:11])
+      have_match = 00000
+      for cs_terms in coseq_terms:
+        if (cs_terms == ten_terms):
+          have_match = 0001
+          break
+      if (not have_match):
+        print "Warning: Unknown coordination sequence"
+      elif (0):
+        print "Found coordination sequence"
   print "TD%d:" % (terms.size()-1), \
         flex.mean_weighted(sums_terms, multiplicities)
 
@@ -405,6 +427,7 @@ def run(distance_cutoff=3.5):
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
+  coseq_dict = get_kriber_coseq_file()
   for file_name in command_line.args:
     strudat_entries = strudat.read_all_entries(open(file_name))
     for entry in strudat_entries.entries:
@@ -422,7 +445,10 @@ def run(distance_cutoff=3.5):
       if (si_proxies.bond_counts.count(4) != si_proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
       if (1):
-        coordination_sequences(structure=si_structure, proxies=si_proxies)
+        coordination_sequences(
+          structure=si_structure,
+          proxies=si_proxies,
+          coseq_terms=coseq_dict.get(entry.tag, None))
       if (1):
         if (0):
           si_o_structure = si_structure
