@@ -24,14 +24,27 @@ class _unit_cell(injector, ext.unit_cell):
     if (f is None): f = sys.stdout
     print >> f, "Unit cell:", str(self)
 
-  def minimum_reduction(self, expected_cycle_limit=None, iteration_limit=None):
-    if (expected_cycle_limit is None): expected_cycle_limit = 2
-    if (iteration_limit is None): iteration_limit = 100
-    return fast_minimum_reduction(self, expected_cycle_limit, iteration_limit)
+  def minimum_reduction(self, iteration_limit=None,
+                              multiplier_significant_change_test=None,
+                              min_n_no_significant_change=None):
+    if (iteration_limit is None):
+      iteration_limit = 100
+    if (multiplier_significant_change_test is None):
+      multiplier_significant_change_test = 10
+    if (min_n_no_significant_change is None):
+      min_n_no_significant_change = 2
+    return fast_minimum_reduction(self,
+      iteration_limit,
+      multiplier_significant_change_test,
+      min_n_no_significant_change)
 
-  def minimum_cell(self, expected_cycle_limit=None, iteration_limit=None):
+  def minimum_cell(self, iteration_limit=None,
+                         multiplier_significant_change_test=None,
+                         min_n_no_significant_change=None):
     return self.minimum_reduction(
-      expected_cycle_limit, iteration_limit).as_unit_cell()
+      iteration_limit,
+      multiplier_significant_change_test,
+      min_n_no_significant_change).as_unit_cell()
 
   def is_buerger_cell(self, relative_epsilon=None):
     from cctbx.uctbx.reduction_base import gruber_parameterization

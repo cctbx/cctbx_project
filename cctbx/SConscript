@@ -88,6 +88,7 @@ lib_cctbx_sources = [
   "sgtbx/reference_settings/wyckoff.cpp",
 
   "uctbx/uctbx.cpp",
+  "uctbx/spoil_optimization.cpp",
 ]
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
 else:                          builder = envlm.SharedLibrary

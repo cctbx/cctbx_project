@@ -17,16 +17,20 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("fast_minimum_reduction", no_init)
-        .def(init<unit_cell const&, optional<std::size_t, std::size_t> >())
+        .def(init<unit_cell const&,
+                  optional<std::size_t, double, std::size_t> >())
         .def("as_gruber_matrix", &w_t::as_gruber_matrix)
         .def("as_niggli_matrix", &w_t::as_niggli_matrix)
         .def("as_sym_mat3", &w_t::as_sym_mat3)
         .def("as_unit_cell", &w_t::as_unit_cell)
-        .def("expected_cycle_limit", &w_t::expected_cycle_limit)
         .def("iteration_limit", &w_t::iteration_limit)
+        .def("multiplier_significant_change_test",
+             &w_t::multiplier_significant_change_test)
+        .def("min_n_no_significant_change", &w_t::min_n_no_significant_change)
         .def("r_inv", &w_t::r_inv, ccr())
         .def("n_iterations", &w_t::n_iterations)
-        .def("had_expected_cycle", &w_t::had_expected_cycle)
+        .def("termination_due_to_significant_change_test",
+             &w_t::termination_due_to_significant_change_test)
         .def("type", &w_t::type)
       ;
     }

@@ -190,14 +190,21 @@ def exercise_exceptions():
 
 def exercise_fast_minimum_reduction():
   mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)))
-  assert mr.expected_cycle_limit() == 2
   assert mr.iteration_limit() == 100
-  mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 3)
-  assert mr.expected_cycle_limit() == 3
-  assert mr.iteration_limit() == 100
-  mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 5, 10)
-  assert mr.expected_cycle_limit() == 5
-  assert mr.iteration_limit() == 10
+  assert mr.multiplier_significant_change_test() == 10
+  assert mr.min_n_no_significant_change() == 2
+  mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 90)
+  assert mr.iteration_limit() == 90
+  assert mr.multiplier_significant_change_test() == 10
+  assert mr.min_n_no_significant_change() == 2
+  mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 90,8)
+  assert mr.iteration_limit() == 90
+  assert mr.multiplier_significant_change_test() == 8
+  assert mr.min_n_no_significant_change() == 2
+  mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 90,8,4)
+  assert mr.iteration_limit() == 90
+  assert mr.multiplier_significant_change_test() == 8
+  assert mr.min_n_no_significant_change() == 4
   mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((2,3,5,80,90,100)))
   assert approx_equal(mr.as_gruber_matrix(),(4,9,25,-5.209445,0,-2.083778))
   assert approx_equal(mr.as_niggli_matrix(),(4,9,25,-5.209445/2,0,-2.083778/2))
@@ -205,11 +212,11 @@ def exercise_fast_minimum_reduction():
   assert mr.as_unit_cell().is_similar_to(uctbx.unit_cell((2,3,5,100,90,100)))
   assert approx_equal(mr.r_inv(), (-1,0,0,0,-1,0,0,0,1))
   assert mr.n_iterations() == 1
-  assert not mr.had_expected_cycle()
+  assert not mr.termination_due_to_significant_change_test()
   assert mr.type() == 2
-  mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((5,3,2,50,120,130)), 2, 8)
+  mr = uctbx.fast_minimum_reduction(uctbx.unit_cell((5,3,2,50,120,130)), 8)
   assert mr.n_iterations() == 8
-  assert not mr.had_expected_cycle()
+  assert not mr.termination_due_to_significant_change_test()
   try:
     uctbx.fast_minimum_reduction(uctbx.unit_cell((5,3,2,50,120,130)), 2, 7)
   except RuntimeError, e:
