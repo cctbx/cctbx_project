@@ -21,20 +21,25 @@ class reader:
     self._indices = flex.miller_index()
     self._data = flex.double()
     self._sigmas = flex.double()
-    self._alphas = flex.int()
-    self._count_alphas = 0
+    self._alphas = None
     for line in file_object:
       if (len(line.strip()) == 0): break
+      if (len(line.rstrip()) > 32):
+        raise RuntimeError("Not a SHELX hklf file.")
       h = [int(line[i*4:(i+1)*4]) for i in xrange(3)]
       fs = [float(line[12+i*8:12+(i+1)*8]) for i in xrange(2)]
-      try: a = int(line[28:32])
-      except: a = 0
-      else: self._count_alphas += 1
       if (h == [0,0,0]): break
       self._indices.append(h)
       self._data.append(fs[0])
       self._sigmas.append(fs[1])
-      self._alphas.append(a)
+      if (self._indices.size() == 1):
+        try: a = int(line[28:32])
+        except: pass
+        else: self._alphas = flex.int(1, a)
+      elif (self._alphas is not None):
+        self._alphas.append(int(line[28:32]))
+    if (self._indices.size() == 0):
+      raise RuntimeError("No data in SHELX hklf file.")
 
   def indices(self):
     return self._indices
@@ -47,9 +52,6 @@ class reader:
 
   def alphas(self):
     return self._alphas
-
-  def count_alphas(self):
-    return self._count_alphas
 
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
                              info_prefix=""):
@@ -65,7 +67,7 @@ class reader:
       sigmas=self.sigmas())
       .set_info(info_prefix+"obs,sigmas"))
     miller_arrays.append(obs)
-    if (self.count_alphas() > 0):
+    if (self.alphas() is not None):
       miller_arrays.append(miller.array(
         miller_set=miller_set,
         data=self.alphas())
