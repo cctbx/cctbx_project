@@ -92,6 +92,18 @@ def human_readable_time(time_in_seconds):
         time_unit = "days"
   return time_units, time_unit
 
+def show_total_time(
+      out=None,
+      show_micro_seconds_per_bytecode_instruction=True):
+  if (out == None): out = sys.stdout
+  total_time = user_plus_sys_time().get()
+  try: python_ticker = sys.gettickeraccumulation()
+  except AttributeError: pass
+  else:
+    print >> out, "Time per interpreted Python bytecode instruction:",
+    print >> out, "%.3f micro seconds" % (total_time / python_ticker * 1.e6)
+  print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
+
 def adopt_init_args(obj, args, exclude=(), hide=False):
   del args["self"]
   for param in exclude:
