@@ -29,7 +29,8 @@ ElementType& at(size_type i) { \
 } \
 const ElementType& at(size_type i) const { \
   if (i >= sz) throw_range_error(); return beg[i]; \
-}
+} \
+void fill(const ElementType& x) { std::fill(this->begin(), this->end(), x); }
 
 #define CCTBX_ARRAY_FAMILY_TAKE_REF(beg, sz) \
 af::ref<ElementType> \

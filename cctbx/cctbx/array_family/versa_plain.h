@@ -32,11 +32,13 @@ namespace cctbx { namespace af {
 
       versa_plain(const handle_type& handle, const accessor_type& ac)
         : shared_base<ElementType>(handle) {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         this->resize(ac);
       }
 
       versa_plain(const handle_type& handle, const size_type& sz)
         : shared_base<ElementType>(handle) {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         this->resize(accessor_type(sz));
       }
 

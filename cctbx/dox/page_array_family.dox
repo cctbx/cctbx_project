@@ -264,6 +264,11 @@ af::tiny<int, 3> a1(1, 2, 3); // initializes a1 with the values 1, 2, 3.
 af::small<int, 3> a2(2); // size() == 2, elements are not initialized.
 </pre>
 
+XXX elements are default-constructed
+<p>
+XXX it is not checked that the number of arguments of the constructor <= N
+
+<p>
 The std::vector interface for accessing the array elements
 is emulated by the following member functions:
 
@@ -308,21 +313,7 @@ that was proposed recently by Synge Todo
 The af::shared type is similar to std::vector. The main
 distinction is that std::vector has deep copy semantics,
 while af::shared has shallow copy semantics, which implies
-reference counting. Other differences include:
-
-<ul>
-<li>The constructor af::shared(size_type) does not
-    initialize the elements in the array. To construct the array
-    and initialize the elements, supply the value for the elements
-    as the second argument, or use the fill member function:
-    <pre>
-    af::shared<double> a(1000, 0.);
-    a.fill(123.);
-    </pre>
-
-<li>XXX what else?
-
-</ul>
+reference counting.
 
 XXX the managed memory block never shrinks.
 
