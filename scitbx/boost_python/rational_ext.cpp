@@ -16,6 +16,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/python/str.hpp>
 #include <boost/python/operators.hpp>
 
 namespace scitbx { namespace boost_python { namespace {
@@ -28,6 +29,16 @@ namespace scitbx { namespace boost_python { namespace {
     as_tuple(w_t const& o)
     {
       return boost::python::make_tuple(o.numerator(), o.denominator());
+    }
+
+    static boost::python::str
+    as_str(w_t const& o)
+    {
+      using boost::python::str;
+      if (o.denominator() == 1) {
+        return str(o.numerator());
+      }
+      return str(str(o.numerator()) + "/" + str(o.denominator()));
     }
 
     static bool eq_rr(w_t const& lhs, w_t const& rhs) { return lhs == rhs; }
@@ -53,6 +64,9 @@ namespace scitbx { namespace boost_python { namespace {
         .def("numerator", &w_t::numerator)
         .def("denominator", &w_t::denominator)
         .def("as_tuple", as_tuple)
+        .def("__str__", as_str)
+        .def("__repr__", as_str)
+        .def(-self)
         .def(self + self)
         .def(self - self)
         .def(self * self)
