@@ -132,6 +132,11 @@ namespace {
 
     WRAP_TYPE("double3", cctbx::af::double3);
 
+    typedef std::size_t size_t;
+    WRAP_TYPE("size_t", size_t);
+    typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
+    WRAP_TYPE("tiny_size_t_2", tiny_size_t_2);
+
     this_module.def(py_abs_complex, "abs");
     this_module.def(py_arg_complex_rad, "arg_rad");
     this_module.def(py_arg_complex_deg, "arg_deg");
@@ -141,6 +146,9 @@ namespace {
     py_linear_regression(this_module, "linear_regression");
     class_builder<ex_statistics<double> >
     py_statistics(this_module, "statistics");
+
+    class_builder<Miller::join_sets>
+    py_join_sets(this_module, "join_sets");
 
     py_linear_regression.def(constructor<>());
     py_linear_regression.def(constructor<
@@ -166,6 +174,13 @@ namespace {
     py_statistics.def(&ex_statistics<double>::mean, "mean");
     py_statistics.def(&ex_statistics<double>::mean2, "mean2");
     py_statistics.def(&ex_statistics<double>::sigma, "sigma");
+
+    py_join_sets.def(constructor<>());
+    py_join_sets.def(constructor<
+      const cctbx::af::shared<Miller::Index>&,
+      const cctbx::af::shared<Miller::Index>&>());
+    py_join_sets.def(&Miller::join_sets::pairs, "pairs");
+    py_join_sets.def(&Miller::join_sets::singles, "singles");
   }
 
 }
