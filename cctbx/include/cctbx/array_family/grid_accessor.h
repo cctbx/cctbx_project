@@ -64,6 +64,21 @@ namespace cctbx { namespace af {
     }
   };
 
+  template <typename IndexNdType,
+            typename Index1dType>
+  inline
+  IndexNdType
+  index_1d_as_c_index_nd(const IndexNdType& n, Index1dType i_1d)
+  {
+    IndexNdType i_nd;
+    for(std::size_t j=n.size()-1;j;j--) {
+      i_nd[j] = i_1d % n[j];
+      i_1d /= n[j];
+    }
+    i_nd[0] = i_1d;
+    return i_nd;
+  }
+
   template <>
   struct compile_time_product<1> {
     template <typename IndexType>

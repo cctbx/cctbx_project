@@ -20,6 +20,7 @@
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/maps/accessors.h>
 #include <cctbx/maps/gridding.h>
+#include <cctbx/maps/sym_tags.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/miller_asu.h>
 
@@ -46,16 +47,6 @@ namespace cctbx { namespace sftbx {
       return x + FloatType(.5);
     }
 
-    template <typename IntegerType>
-    inline
-    IntegerType
-    mod_positive(IntegerType ix, const IntegerType& iy)
-    {
-      ix %= iy;
-      if (ix < 0) ix += iy;
-      return ix;
-    }
-
     template <typename FloatType,
               typename IndexType>
     IndexType
@@ -65,8 +56,8 @@ namespace cctbx { namespace sftbx {
       typedef typename IndexType::value_type index_value_type;
       IndexType grid_point;
       for(std::size_t i=0;i<3;i++) {
-        grid_point[i] = mod_positive(index_value_type(
-          add_for_rounding(coor[i] * grid_n[i])), grid_n[i]);
+        grid_point[i] = index_value_type(
+          add_for_rounding(coor[i] * grid_n[i]));
       }
       return grid_point;
     }
@@ -106,6 +97,25 @@ namespace cctbx { namespace sftbx {
     return max_u_extra;
   }
 
+  template <typename FloatType>
+  void
+  eliminate_u_extra(
+    const uctbx::UnitCell& ucell,
+    const FloatType& u_extra,
+    const af::const_ref<Miller::Index>& miller_indices,
+    af::ref<std::complex<FloatType> > structure_factors,
+    const FloatType& norm = 1)
+  {
+    cctbx_assert(miller_indices.size() == structure_factors.size());
+    //    f *= exp(b_extra * d_star_sq(h)/4)
+    // => f *= exp(2*pi*pi*u_extra * d_star_sq(h))
+    FloatType tppu = cctbx::constants::two_pi_sq * u_extra;
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      structure_factors[i] *= norm * FloatType(std::exp(
+        tppu * ucell.Q(miller_indices[i])));
+    }
+  }
+
   // self-expanding exponent table
   template <typename FloatType>
   class exponent_table
@@ -118,6 +128,7 @@ namespace cctbx { namespace sftbx {
       {}
       FloatType operator()(const FloatType& x)
       {
+        //return std::exp(x); // XXX
         FloatType xs = x * one_over_step_size_;
         cctbx_assert(xs >= 0); // Use NDEBUG
         std::size_t i(xs + FloatType(.5));
@@ -167,9 +178,10 @@ namespace cctbx { namespace sftbx {
         const grid_point_type& grid_logical,
         const grid_point_type& grid_physical,
         const FloatType& quality_factor = 100,
-        const FloatType& wing_cutoff = 0.01,
+        const FloatType& wing_cutoff = 0.0001,
         const FloatType& exp_table_one_over_step_size = -1000)
-        : map_(map_accessor_type(grid_logical, grid_physical)),
+        : ucell_(ucell),
+          map_(map_accessor_type(grid_logical, grid_physical)),
           max_q_(max_q),
           resolution_factor_(resolution_factor),
           quality_factor_(quality_factor),
@@ -189,7 +201,7 @@ namespace cctbx { namespace sftbx {
           using constants::four_pi_sq;
           cctbx_assert(site->fpfdp().imag() == 0);
           cctbx_assert(!site->isAnisotropic());
-          fractional<FloatType> coor_frac = site->Coordinates();
+          const fractional<FloatType>& coor_frac = site->Coordinates();
           cartesian<FloatType> coor_cart = ucell.orthogonalize(coor_frac);
           FloatType b_incl_extra = adptbx::U_as_B(site->Uiso() + u_extra_);
           // Calculate reciprocal space "form factors"
@@ -197,24 +209,24 @@ namespace cctbx { namespace sftbx {
           af::small<FloatType, 6> be;
           std::size_t i;
           for(i=0;i<site->CAASF().n_ab();i++) {
-            FloatType f = std::sqrt(
-              four_pi / (site->CAASF().b(i) + b_incl_extra));
-            ae.push_back(site->w() * site->CAASF().a(i) * f * f * f);
-            be.push_back(
-              four_pi_sq / (site->CAASF().b(i) + b_incl_extra));
+            FloatType b_i_b_incl_extra = site->CAASF().b(i) + b_incl_extra;
+            FloatType f = std::pow(four_pi / b_i_b_incl_extra, 1.5);
+            ae.push_back(site->w() * site->CAASF().a(i) * f);
+            be.push_back(-four_pi_sq / b_i_b_incl_extra);
           }
-          FloatType f = std::sqrt(four_pi / b_incl_extra);
-          ae.push_back(site->w() * site->CAASF().c() * f * f * f);
-          be.push_back(four_pi_sq / b_incl_extra);
+          FloatType f = std::pow(four_pi / b_incl_extra, 1.5);
+          ae.push_back(site->w() * site->CAASF().c() * f);
+          be.push_back(-four_pi_sq / b_incl_extra);
           FloatType max_d_sq = calc_max_sampling_distance_sq(ae, be);
+          //XXXstd::cout << "max_d_sq: " << max_d_sq << std::endl;
           //Calculate limits of shell search
           cartesian<FloatType> max_d_cart;
           max_d_cart.fill(std::sqrt(max_d_sq));
-          std::cout << "max_d_cart: " << max_d_cart.const_ref() << std::endl;
+          //XXXstd::cout << "max_d_cart: " << max_d_cart.const_ref() << std::endl;
           fractional<FloatType> max_d_frac = ucell.fractionalize(max_d_cart);
-          std::cout << "max_d_frac: " << max_d_frac.const_ref() << std::endl;
+          //XXXstd::cout << "max_d_frac: " << max_d_frac.const_ref() << std::endl;
           const grid_point_type& grid_logical = map_.accessor().n_logical();
-          std::cout << "grid_logical: " << grid_logical.const_ref() << std::endl;
+          //XXXstd::cout << "grid_logical: " << grid_logical.const_ref() << std::endl;
           af::int3 shell_limit;
           for(i=0;i<3;i++) {
             //Round number down to nearest integer as you will never "make it"
@@ -222,32 +234,35 @@ namespace cctbx { namespace sftbx {
             shell_limit[i] = int(
               std::floor(max_d_frac[i] * grid_logical[i]) + .5);
           }
-          std::cout << "shell_limit: " << shell_limit.const_ref() << std::endl;
+          //XXXstd::cout << "shell_limit: " << shell_limit.const_ref() << std::endl;
           grid_point_type pivot = detail::calc_nearest_grid_point(
             coor_frac, grid_logical);
-          std::cout << "pivot: " << pivot.const_ref() << std::endl;
+          //XXXstd::cout << "pivot: " << pivot.const_ref() << std::endl;
           grid_point_type ip;
-          fractional<FloatType> d_frac;
+          fractional<FloatType> g_frac;
           for(ip[0] = -shell_limit[0]; ip[0] <= shell_limit[0]; ip[0]++) {
-            d_frac[0] = FloatType(ip[0]) / grid_logical[0];
+            g_frac[0] = FloatType(pivot[0] + ip[0]) / grid_logical[0];
           for(ip[1] = -shell_limit[1]; ip[1] <= shell_limit[1]; ip[1]++) {
-            d_frac[1] = FloatType(ip[1]) / grid_logical[1];
+            g_frac[1] = FloatType(pivot[1] + ip[1]) / grid_logical[1];
           for(ip[2] = -shell_limit[2]; ip[2] <= shell_limit[2]; ip[2]++) {
-            d_frac[2] = FloatType(ip[2]) / grid_logical[2];
+            g_frac[2] = FloatType(pivot[2] + ip[2]) / grid_logical[2];
+            fractional<FloatType> d_frac = g_frac - coor_frac;
             FloatType d_sq = ucell.Length2(d_frac);
-            std::cout << "d_sq: " << d_sq << std::endl;
+            //XXXstd::cout << "ip: " << ip.const_ref() << std::endl;
+            //XXXstd::cout << "d_frac: " << d_frac.const_ref() << std::endl;
+            //XXXstd::cout << "d_sq: " << d_sq << std::endl;
             if (d_sq > max_d_sq) continue;
-            FloatType rho_d(0);
+            FloatType rho_g(0);
             for (std::size_t i=0;i<ae.size();i++) {
-              //rho_d += ae[i] * exp_table_(-be[i] * d_sq);
-              rho_d += ae[i] * std::exp(-be[i] * d_sq);
+              rho_g += ae[i] * exp_table_(be[i] * d_sq);
             }
-            std::cout << "rho_d: " << rho_d << std::endl;
-            map_(-pivot - ip) += rho_d;
+            //std::cout << "rho_g: " << rho_g << std::endl;
+            map_(-pivot - ip) += rho_g;
           }}}
         }
       }
 
+      const uctbx::UnitCell& ucell() { return ucell_; }
       const FloatType& max_q() const { return max_q_; }
       const FloatType& resolution_factor() const { return resolution_factor_; }
       const FloatType& quality_factor() const { return quality_factor_; }
@@ -256,7 +271,45 @@ namespace cctbx { namespace sftbx {
       const map_type& map() const { return map_; }
             map_type& map()       { return map_; }
 
+      template <typename TagType>
+      void
+      apply_symmetry(const maps::grid_tags<TagType>& tags)
+      {
+        cctbx_assert(tags.is_valid());
+        cctbx_assert(tags.accessor() == map_.accessor().n_logical());
+        {
+          // 1. pass: accumulate contributions for sym. equiv. grid points.
+          af::nested_loop<grid_point_type> loop(tags.accessor());
+          for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
+            if (tags(pt) < 0) continue;
+            grid_point_type asym_pt = tags.accessor().i_1d_as_i_nd(tags(pt));
+            map_(asym_pt) += map_(pt);
+          }
+        }
+        {
+          // 2. pass: copy density at asym. grid point to sym. equiv. points.
+          af::nested_loop<grid_point_type> loop(tags.accessor());
+          for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
+            if (tags(pt) < 0) continue;
+            grid_point_type asym_pt = tags.accessor().i_1d_as_i_nd(tags(pt));
+            map_(pt) = map_(asym_pt);
+          }
+        }
+      }
+
+      void
+      eliminate_u_extra_and_normalize(
+        const af::const_ref<Miller::Index>& miller_indices,
+        af::ref<std::complex<FloatType> > structure_factors) const
+      {
+        FloatType norm = ucell_.getVolume()
+                       / af::product(map_.accessor().n_logical().const_ref());
+        eliminate_u_extra(
+          ucell_, u_extra_, miller_indices, structure_factors, norm);
+      }
+
     private:
+      uctbx::UnitCell ucell_;
       map_type map_;
       FloatType max_q_;
       FloatType resolution_factor_;
@@ -274,11 +327,11 @@ namespace cctbx { namespace sftbx {
         FloatType sampling_unit = resolution_factor_ / std::sqrt(max_q_);
         for (std::size_t radius_step = 1;; radius_step++) {
           FloatType d_sq = detail::pow2(radius_step * sampling_unit);
-          FloatType rho_d = 0;
+          FloatType rho_g = 0;
           for (std::size_t i=0;i<ae.size();i++) {
-            rho_d += ae[i] * exp_table_(-be[i] * d_sq);
+            rho_g += ae[i] * exp_table_(be[i] * d_sq);
           }
-          if (rho_d < rho_origin * wing_cutoff_) {
+          if (rho_g < rho_origin * wing_cutoff_) {
             return d_sq;
           }
           cctbx_assert(
