@@ -3,6 +3,7 @@ from iotbx import simple_tokenizer
 from scitbx.python_utils.str_utils import line_breaker
 from libtbx.itertbx import count
 from libtbx import introspection
+from cStringIO import StringIO
 import copy
 import math
 import sys, os
@@ -77,7 +78,7 @@ def float_from_assigned_words(assigned_words):
           assigned_words[0].where_str()))
   return result
 
-def choice_from_assigned_words(is_required, assigned_words):
+def choice_from_assigned_words(optional, assigned_words):
   result = None
   for word in assigned_words:
     if (word.value.startswith("*")):
@@ -85,7 +86,7 @@ def choice_from_assigned_words(is_required, assigned_words):
         raise RuntimeError("Multiple choices where only one is possible%s" %
           assigned_words[0].where_str())
       result = word.value[1:]
-  if (result is None and is_required):
+  if (result is None and not optional):
     raise RuntimeError("Unspecified choice%s" % assigned_words[0].where_str())
   return result
 
@@ -151,8 +152,8 @@ class object_locator:
 class definition: # FUTURE definition(object)
 
   attribute_names = [
-    "help", "caption", "short_caption", "required",
-    "type", "input_size", "expert_level"]
+    "help", "caption", "short_caption", "optional",
+    "type", "multiple", "input_size", "expert_level"]
 
   __slots__ = ["name", "words", "is_disabled"] + attribute_names
 
@@ -163,8 +164,9 @@ class definition: # FUTURE definition(object)
         help=None,
         caption=None,
         short_caption=None,
-        required=None,
+        optional=None,
         type=None,
+        multiple=None,
         input_size=None,
         expert_level=None):
     self.name = name
@@ -173,8 +175,9 @@ class definition: # FUTURE definition(object)
     self.help = help
     self.caption = caption
     self.short_caption = short_caption
-    self.required = required
+    self.optional = optional
     self.type = type
+    self.multiple = multiple
     self.input_size = input_size
     self.expert_level = expert_level
 
@@ -220,7 +223,7 @@ class definition: # FUTURE definition(object)
 
   def assign_attribute(self, name, assigned_words, type_names):
     assert self.has_attribute_with_name(name)
-    if (name in ["required"]):
+    if (name in ["optional", "multiple"]):
       value = bool_from_assigned_words(assigned_words)
     elif (name == "type"):
       value = definition_type_from_assigned_words(assigned_words, type_names)
@@ -254,6 +257,13 @@ class definition: # FUTURE definition(object)
       prefix=prefix,
       attributes_level=attributes_level,
       print_width=print_width)
+
+  def has_same_definitions(self, other):
+    out_self = StringIO()
+    out_other = StringIO()
+    self.show(out=out_self)
+    other.show(out=out_other)
+    return out_self.getvalue() == out_other.getvalue()
 
   def _all_definitions(self, parent, parent_path, result):
     result.append(object_locator(
@@ -309,7 +319,7 @@ class definition: # FUTURE definition(object)
     if (self.type == "float"):
       return float_from_assigned_words(self.words)
     if (self.type == "choice"):
-      return choice_from_assigned_words(self.required, self.words)
+      return choice_from_assigned_words(self.optional, self.words)
     if (self.type == "multi_choice"):
       return multi_choice_from_assigned_words(self.words)
     if (self.type == "unit_cell"):
@@ -374,7 +384,41 @@ class definition: # FUTURE definition(object)
           self.type, self.name, self.words[0].where_str()))
     return self.copy(words=words)
 
-class scope_extract: pass
+class scope_extract:
+
+  class attribute_error: pass
+  class is_disabled: pass
+
+  def __set__(self, path_as_list, multiple, value):
+    if (len(path_as_list) == 1):
+      if (not multiple):
+        if (value is scope_extract.is_disabled):
+          value = None
+        setattr(self, path_as_list[0], value)
+      else:
+        node = getattr(self, path_as_list[0], scope_extract.attribute_error)
+        if (node is scope_extract.attribute_error):
+          if (value is scope_extract.is_disabled):
+            setattr(self, path_as_list[0], [])
+          else:
+            setattr(self, path_as_list[0], [value])
+        elif (not value is scope_extract.is_disabled):
+          node.append(value)
+    else:
+      node = getattr(self, path_as_list[0], scope_extract.attribute_error)
+      if (node is scope_extract.attribute_error):
+        node = scope_extract()
+        setattr(self, path_as_list[0], node)
+      else:
+        assert isinstance(node, scope_extract)
+      node.__set__(path_as_list[1:], multiple, value)
+
+  def __get__(self, path_as_list):
+    node = getattr(self, path_as_list[0], scope_extract.attribute_error)
+    if (node is not scope_extract.attribute_error
+        and len(path_as_list) > 1):
+      node = node.__get__(path_as_list[1:])
+    return node
 
 class scope:
 
@@ -386,7 +430,8 @@ class scope:
         help=None,
         caption=None,
         short_caption=None,
-        required=None,
+        optional=None,
+        multiple=None,
         sequential_format=None,
         disable_add=None,
         disable_delete=None,
@@ -409,7 +454,7 @@ class scope:
 
   def assign_attribute(self, name, assigned_words):
     assert self.has_attribute_with_name(name)
-    if (name in ["required", "disable_add", "disable_delete"]):
+    if (name in ["optional", "multiple", "disable_add", "disable_delete"]):
       value = bool_from_assigned_words(assigned_words)
     elif (name in ["expert_level"]):
       value = int_from_assigned_words(assigned_words)
@@ -454,6 +499,13 @@ class scope:
       previous_object = object
     if (len(self.name) != 0):
       print >> out, prefix[:-2] + "}"
+
+  def has_same_definitions(self, other):
+    out_self = StringIO()
+    out_other = StringIO()
+    self.show(out=out_self)
+    other.show(out=out_other)
+    return out_self.getvalue() == out_other.getvalue()
 
   def _all_definitions(self, parent, parent_path, result):
     parent_path += self.name+"."
@@ -521,9 +573,26 @@ class scope:
   def extract(self, custom_converters=None):
     result = scope_extract()
     for object in self.objects:
-      setattr(result, object.name, object.extract(
-        custom_converters=custom_converters))
+      if (object.is_disabled):
+        value = scope_extract.is_disabled
+      else:
+        value = object.extract(custom_converters=custom_converters)
+      result.__set__(
+        path_as_list=object.name.split("."),
+        multiple=object.multiple,
+        value=value)
     return result
+
+  def format(self, python_object, custom_converters=None):
+    result = []
+    for object in self.objects:
+      if (isinstance(python_object, scope_extract)):
+        python_object = [python_object]
+      for python_object_i in python_object:
+        sub_python_object = python_object_i.__get__(object.name.split("."))
+        if (sub_python_object is not scope_extract.attribute_error):
+          result.append(object.format(sub_python_object, custom_converters))
+    return self.copy(objects=result)
 
   def extract_last(self, path, with_substitution=True, custom_converters=None):
     raw = self.get_last(path=path, with_substitution=with_substitution)
@@ -535,20 +604,32 @@ class scope:
     master_lookup_dict = {}
     for master_object in self.objects:
       master_lookup_dict[master_object.name] = master_object
-    master_use_flags = {}
+    master_use = {}
     for master_object in self.objects:
-      master_use_flags[master_object.name] = False
+      master_use[master_object.name] = -1
     for source_object in source.objects:
+      if (source_object.is_disabled): continue
       master_object = master_lookup_dict.get(source_object.name, None)
       if (master_object is None):
         result_objects.append(source_object)
       else:
+        if (master_use[source_object.name] == -1):
+          master_use[source_object.name] = len(result_objects)
+        else:
+          master_use[source_object.name] = -2
         result_objects.append(master_object.merge(source=source_object))
-        master_use_flags[source_object.name] = True
     for master_object in self.objects:
-      if (not master_use_flags[master_object.name]
-          and master_object.required is not False):
-        result_objects.append(copy.copy(master_object))
+      use = master_use[master_object.name]
+      if (use == -1):
+        result_objects.append(copy.deepcopy(master_object))
+        if (    master_object.multiple
+            and master_object.optional):
+          result_objects[-1].is_disabled = True
+      elif (use >= 0
+            and master_object.multiple
+            and master_object.optional
+            and master_object.has_same_definitions(result_objects[use])):
+        result_objects[use].is_disabled = True
     return result_objects
 
   def merge(self, source=None, sources=None):
