@@ -544,39 +544,39 @@ Crystal 1:
     Wavelength: 10
     Number of columns: 1
     Column number, label, number of valid values, type:
-        1, column_0, 0/0=0.00%, F: amplitude
+      1 column_0 0/0=0.00% F: amplitude
   Dataset 2:
     Name: dataset_1
     Id: 1
     Wavelength: 9
     Number of columns: 2
     Column number, label, number of valid values, type:
-        1, column_1, 0/0=0.00%, ?: *** UNDEFINED column type ***
-        2, column_2, 0/0=0.00%, F: amplitude
+      1 column_1 0/0=0.00% ?: *** UNDEFINED column type ***
+      2 column_2 0/0=0.00% F: amplitude
   Dataset 3:
     Name: dataset_2
     Id: 2
     Wavelength: 8
     Number of columns: 3
     Column number, label, number of valid values, type:
-        1, column_3, 0/0=0.00%, B: BATCH number
-        2, column_4, 0/0=0.00%, ?: *** UNDEFINED column type ***
-        3, column_5, 0/0=0.00%, F: amplitude
+      1 column_3 0/0=0.00% B: BATCH number
+      2 column_4 0/0=0.00% ?: *** UNDEFINED column type ***
+      3 column_5 0/0=0.00% F: amplitude
   Dataset 4:
     Name: dataset_3
     Id: 3
     Wavelength: 7
     Number of columns: 1
     Column number, label, number of valid values, type:
-        1, column_6, 0/0=0.00%, F: amplitude
+      1 column_6 0/0=0.00% F: amplitude
   Dataset 5:
     Name: dataset_4
     Id: 4
     Wavelength: 6
     Number of columns: 2
     Column number, label, number of valid values, type:
-        1, column_7, 0/0=0.00%, ?: *** UNDEFINED column type ***
-        2, column_8, 0/0=0.00%, F: amplitude
+      1 column_7 0/0=0.00% ?: *** UNDEFINED column type ***
+      2 column_8 0/0=0.00% F: amplitude
 Crystal 2:
   Name: crystal_1
   Project: project_1
@@ -589,32 +589,32 @@ Crystal 2:
     Wavelength: 10
     Number of columns: 2
     Column number, label, number of valid values, type:
-        1, column_9, 0/0=0.00%, B: BATCH number
-        2, column_10, 0/0=0.00%, ?: *** UNDEFINED column type ***
+      1 column_9  0/0=0.00% B: BATCH number
+      2 column_10 0/0=0.00% ?: *** UNDEFINED column type ***
   Dataset 2:
     Name: dataset_1
     Id: 6
     Wavelength: 9
     Number of columns: 3
     Column number, label, number of valid values, type:
-        1, column_11, 0/0=0.00%, F: amplitude
-        2, column_12, 0/0=0.00%, B: BATCH number
-        3, column_13, 0/0=0.00%, ?: *** UNDEFINED column type ***
+      1 column_11 0/0=0.00% F: amplitude
+      2 column_12 0/0=0.00% B: BATCH number
+      3 column_13 0/0=0.00% ?: *** UNDEFINED column type ***
   Dataset 3:
     Name: dataset_2
     Id: 7
     Wavelength: 8
     Number of columns: 1
     Column number, label, number of valid values, type:
-        1, column_14, 0/0=0.00%, ?: *** UNDEFINED column type ***
+      1 column_14 0/0=0.00% ?: *** UNDEFINED column type ***
   Dataset 4:
     Name: dataset_3
     Id: 8
     Wavelength: 7
     Number of columns: 2
     Column number, label, number of valid values, type:
-        1, column_15, 0/0=0.00%, B: BATCH number
-        2, column_16, 0/0=0.00%, ?: *** UNDEFINED column type ***
+      1 column_15 0/0=0.00% B: BATCH number
+      2 column_16 0/0=0.00% ?: *** UNDEFINED column type ***
 Crystal 3:
   Name: crystal_2
   Project: project_2
@@ -627,24 +627,24 @@ Crystal 3:
     Wavelength: 10
     Number of columns: 3
     Column number, label, number of valid values, type:
-        1, column_17, 0/0=0.00%, ?: *** UNDEFINED column type ***
-        2, column_18, 0/0=0.00%, F: amplitude
-        3, column_19, 0/0=0.00%, B: BATCH number
+      1 column_17 0/0=0.00% ?: *** UNDEFINED column type ***
+      2 column_18 0/0=0.00% F: amplitude
+      3 column_19 0/0=0.00% B: BATCH number
   Dataset 2:
     Name: dataset_1
     Id: 10
     Wavelength: 9
     Number of columns: 1
     Column number, label, number of valid values, type:
-        1, column_20, 0/0=0.00%, B: BATCH number
+      1 column_20 0/0=0.00% B: BATCH number
   Dataset 3:
     Name: dataset_2
     Id: 11
     Wavelength: 8
     Number of columns: 2
     Column number, label, number of valid values, type:
-        1, column_21, 0/0=0.00%, F: amplitude
-        2, column_22, 0/0=0.00%, B: BATCH number
+      1 column_21 0/0=0.00% F: amplitude
+      2 column_22 0/0=0.00% B: BATCH number
 """
   for column in mtz_object.columns():
     assert column.array_size() == 2000
@@ -745,13 +745,13 @@ Crystal 2:
     Wavelength: 0
     Number of columns: 7
     Column number, label, number of valid values, type:
-        1, H, 4/4=100.00%, H: index h,k,l
-        2, K, 4/4=100.00%, H: index h,k,l
-        3, L, 4/4=100.00%, H: index h,k,l
-        4, F, 3/4=75.00%, F: amplitude
-        5, SigF, 3/4=75.00%, Q: standard deviation
-        6, I, 3/4=75.00%, F: amplitude
-        7, SigI, 3/4=75.00%, Q: standard deviation
+      1 H    4/4=100.00% H: index h,k,l
+      2 K    4/4=100.00% H: index h,k,l
+      3 L    4/4=100.00% H: index h,k,l
+      4 F    3/4=75.00%  F: amplitude
+      5 SigF 3/4=75.00%  Q: standard deviation
+      6 I    3/4=75.00%  F: amplitude
+      7 SigI 3/4=75.00%  Q: standard deviation
 """
 
 def exercise():

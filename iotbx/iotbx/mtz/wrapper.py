@@ -61,7 +61,7 @@ class _object(boost.python.injector, ext.object):
       print >> out, "Resolution range: %.6g %.6g" % self.max_min_resolution()
     print >> out, "History:"
     for line in self.history():
-      print >> out, " ", line
+      print >> out, " ", line.rstrip()
     for i_crystal,crystal in enumerate(self.crystals()):
       print >> out, "Crystal %d:" % (i_crystal+1)
       print >> out, "  Name:", crystal.name()
@@ -78,14 +78,22 @@ class _object(boost.python.injector, ext.object):
         if (dataset.n_columns() > 0):
           print >> out, \
             "    Column number, label, number of valid values, type:"
+          fields_list = []
+          max_field_lengths = [0]*6
           for i_column,column in enumerate(dataset.columns()):
             n_valid_values = column.n_valid_values()
-            print >> out, "      %3d, %s, %d/%d=%.2f%%, %s: %s" % (
-              i_column+1,
+            fields = [
+              "%d" % (i_column+1),
               column.label(),
-              n_valid_values,
-              self.n_reflections(),
-              100.*n_valid_values/max(1,self.n_reflections()),
-              column.type(),
+              "%d/%d=" % (n_valid_values, self.n_reflections()),
+              "%.2f%%" % (100.*n_valid_values/max(1,self.n_reflections())),
+              column.type()+":",
               column_type_legend.get(
-                column.type(), "*** UNDEFINED column type ***"))
+                column.type(), "*** UNDEFINED column type ***")]
+            fields_list.append(fields)
+            for i,field in enumerate(fields):
+              max_field_lengths[i] = max(max_field_lengths[i], len(field))
+          format = "      %%%ds %%-%ds %%%ds%%-%ds %%%ds %%s" % tuple(
+            max_field_lengths[:5])
+          for fields in fields_list:
+            print >> out, format % tuple(fields)
