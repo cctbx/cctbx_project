@@ -293,6 +293,26 @@ namespace {
 
 #   include <cctbx/basic/from_bpl_import.h>
 
+  tuple
+  py_StructureFactor_dT_dX_dUiso_Array_new(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<std::complex<double> >& dTarget_dFcalc,
+    const af::shared<ex_xray_scatterer>& Sites)
+  {
+    af::shared<af::double3> dT_dX(Sites.size());
+    dT_dX.fill(af::double3(0.,0.,0.));
+    af::shared<double> dT_dUiso(Sites.size());
+    sftbx::StructureFactor_dT_dX_dUiso_Array(
+      UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
+      dT_dX.ref(), dT_dUiso.ref());
+    tuple result(2);
+    result.set_item(0, ref(to_python(dT_dX)));
+    result.set_item(1, ref(to_python(dT_dUiso)));
+    return result;
+  }
+
   void init_module(python::module_builder& this_module)
   {
     const std::string Revision = "$Revision$";
@@ -394,12 +414,6 @@ namespace {
       &ex_xray_scatterer::set_Uiso, "set_Uiso");
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor, "StructureFactor");
-    py_XrayScatterer.def(
-      &ex_xray_scatterer::StructureFactor_dT_dX, "StructureFactor_dT_dX");
-    py_XrayScatterer.def(
-      &ex_xray_scatterer::StructureFactor_dT_dOcc, "StructureFactor_dT_dOcc");
-    py_XrayScatterer.def(
-      &ex_xray_scatterer::StructureFactor_dT_dUiso,"StructureFactor_dT_dUiso");
 
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
@@ -419,6 +433,9 @@ namespace {
       py_StructureFactor_dT_dUiso_Array_add, "StructureFactor_dT_dUiso_Array");
     this_module.def(
       py_StructureFactor_dT_dUiso_Array_new, "StructureFactor_dT_dUiso_Array");
+    this_module.def(
+      py_StructureFactor_dT_dX_dUiso_Array_new,
+        "StructureFactor_dT_dX_dUiso_Array");
 
     this_module.def(py_apply_special_position_ops, "apply");
 
