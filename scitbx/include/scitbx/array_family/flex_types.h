@@ -36,9 +36,9 @@ namespace scitbx { namespace af {
   };
 
 #define SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(T, N) \
-  typedef flex<T>::type flex_ ## N; \
-  typedef flex_const_ref<T>::type flex_ ## N ## _const_ref; \
-  typedef flex_ref<T>::type flex_ ## N ## _ref;
+  typedef flex<T >::type flex_ ## N; \
+  typedef flex_const_ref<T >::type flex_ ## N ## _const_ref; \
+  typedef flex_ref<T >::type flex_ ## N ## _ref;
 
   SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(bool, bool)
   SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int, int)
