@@ -145,6 +145,7 @@ namespace cctbx { namespace sgtbx {
     for(i=0;i<3;i++) ValR[i] = 0.;
     double ValT   = 0.;
     double Value  = 0.;
+    bool have_value = false;
     const unsigned int P_Add   = 0x01u;
     const unsigned int P_Mult  = 0x02u;
     const unsigned int P_Value = 0x04u;
@@ -166,6 +167,7 @@ namespace cctbx { namespace sgtbx {
             if (Column >= 0) ValR[Column] += Value;
             else             ValT         += Value;
             Value = 0.;
+            have_value = false;
             Column = -1;
             Mult = 0;
             P_mode = P_Value | P_XYZ;
@@ -209,6 +211,7 @@ namespace cctbx { namespace sgtbx {
             else
               Value = V;
             }
+            have_value = true;
             P_mode = P_Comma | P_Add | P_Mult | P_XYZ;
             break;
           case 'X':
@@ -219,7 +222,7 @@ namespace cctbx { namespace sgtbx {
           case 'z': Column = 2;
            Process_XYZ:
             if ((P_mode & P_XYZ) == 0) throw_parse_error();
-            if (Value == 0.) { Value = Sign; Sign = 1; }
+            if (!have_value) { Value = Sign; Sign = 1; }
             P_mode = P_Comma | P_Add | P_Mult;
             break;
           case ',':
@@ -244,6 +247,7 @@ namespace cctbx { namespace sgtbx {
             for(i=0;i<3;i++) ValR[i] = 0.;
             ValT = 0.;
             Value = 0.;
+            have_value = false;
             P_mode = P_Add | P_Value | P_XYZ;
             break;
           default:
