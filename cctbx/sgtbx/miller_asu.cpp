@@ -424,9 +424,13 @@ namespace sgtbx {
     Miller::Vec3 CutP = m_ASU.ReferenceASU()->getCutParameters();
     Miller::Index
     ReferenceHmax = ReferenceUnitCell.MaxMillerIndices(Resolution_d_min);
-    Miller::Index ReferenceHmin;
-    for(std::size_t i=0;i<3;i++) ReferenceHmin[i] = ReferenceHmax[i] * CutP[i];
-    m_loop = NestedLoop<Miller::Index>(ReferenceHmin, ReferenceHmax);
+    Miller::Index ReferenceHbegin;
+    Miller::Index ReferenceHend;
+    for(std::size_t i=0;i<3;i++) {
+      ReferenceHbegin[i] = ReferenceHmax[i] * CutP[i];
+      ReferenceHend[i] = ReferenceHmax[i] + 1;
+    }
+    m_loop = NestedLoop<Miller::Index>(ReferenceHbegin, ReferenceHend);
   }
 
   Miller::Index MillerIndexGenerator::next()
