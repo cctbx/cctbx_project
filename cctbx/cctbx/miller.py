@@ -164,17 +164,29 @@ class set(crystal.symmetry):
     asu, matches = self.match_bijvoet_mates()
     return matches.pairs().size()
 
-  def auto_anomalous(self):
+  def auto_anomalous(self, min_n_bijvoet_pairs=None,
+                           min_fraction_bijvoet_pairs=None):
+    assert [min_n_bijvoet_pairs, min_fraction_bijvoet_pairs].count(None) > 0
+    if (min_fraction_bijvoet_pairs is not None):
+      anomalous_flag = (2.*self.n_bijvoet_pairs()/self.indices().size()
+                        >= min_fraction_bijvoet_pairs)
+    elif (min_n_bijvoet_pairs is not None):
+      anomalous_flag = (self.n_bijvoet_pairs() >= min_n_bijvoet_pairs)
+    else:
+      anomalous_flag = (self.n_bijvoet_pairs() > 0)
     return set(
       crystal_symmetry=self,
       indices=self.indices(),
-      anomalous_flag=self.n_bijvoet_pairs()>0)
+      anomalous_flag=anomalous_flag)
 
   def map_to_asu(self):
     i = self.indices().deep_copy()
+    anomalous_flag = self.anomalous_flag()
+    if (anomalous_flag is None):
+      anomalous_flag = 0001
     map_to_asu(
       self.space_group_info().type(),
-      self.anomalous_flag(),
+      anomalous_flag,
       i)
     return set(self, i, self.anomalous_flag())
 
