@@ -26,7 +26,7 @@ else:
 os.mkdir(platform)
 os.chdir(platform)
 # Run the cctbx boot command before installing Boost.Python.
-# The boost script will issue a warning of the platform identifier
+# The boost script will issue a warning if the platform identifier
 # is unsupported.
 os.mkdir("cctbx")
 os.chdir("cctbx")

@@ -50,15 +50,22 @@ namespace sgtbx {
 
     class RT_PointGroup {
       public:
-        bool invalid;
         typedef std::vector<RTMx> vec_type;
         vec_type Matrices;
-        RT_PointGroup(const RTMx& M) : invalid(false), Matrices(1, M) {}
+        bool invalid;
+        RT_PointGroup() : invalid(false) {}
+        void reset(const RTMx& M);
         void add(const RTMx& M);
         void expand(const RTMx& M);
         bool try_expand(const RTMx& M);
         RTMx accumulate() const;
     };
+
+    void RT_PointGroup::reset(const RTMx& M)
+    {
+      Matrices.clear();
+      Matrices.push_back(M);
+    }
 
     void RT_PointGroup::add(const RTMx& M)
     {
@@ -112,7 +119,7 @@ namespace sgtbx {
 
   } // namespace detail
 
-  void SpecialPosition::BuildSpecialOp()
+  void SpecialPosition::BuildSpecialOp(detail::RT_PointGroup& SiteSymmetry)
   {
     const uctbx::UnitCell& uc = m_Parameters.m_UnitCell;
     const SgOps& sgo = m_Parameters.m_SgOps;
@@ -158,40 +165,60 @@ namespace sgtbx {
       std::sort(CloseMates.begin() + 1, CloseMates.end(),
                 detail::CmpCloseMates());
     }
-    detail::RT_PointGroup PG(CloseMates[0].M);
-    for(int i=1;i<CloseMates.size();i++) {
-      if (!PG.try_expand(CloseMates[i].M)) {
+    SiteSymmetry.reset(CloseMates[0].M);
+    for(std::size_t i=1;i<CloseMates.size();i++) {
+      if (!SiteSymmetry.try_expand(CloseMates[i].M)) {
         if (m_ShortestDistance2 > CloseMates[i].CartDelta2)
             m_ShortestDistance2 = CloseMates[i].CartDelta2;
       }
     }
-    cctbx_assert(sgo.OrderZ() % PG.Matrices.size() == 0);
-    m_M = sgo.OrderZ() / PG.Matrices.size();
-    m_SpecialOp = PG.accumulate();
+    cctbx_assert(sgo.OrderZ() % SiteSymmetry.Matrices.size() == 0);
+    m_M = sgo.OrderZ() / SiteSymmetry.Matrices.size();
+    m_SpecialOp = SiteSymmetry.accumulate();
     m_SnapPosition = m_SpecialOp * m_OriginalPosition;
   }
 
   SpecialPosition::SpecialPosition(const SpecialPositionSnapParameters& params,
                                    const fractional<double>& X,
-                                   bool auto_expand)
+                                   bool auto_expand,
+                                   bool determinePointGroupType)
 
     : m_Parameters(params),
       m_OriginalPosition(X),
       m_SnapPosition(X),
       m_ShortestDistance2(-1.),
       m_M(0),
-      m_SpecialOp(0, 0)
+      m_SpecialOp(0, 0),
+      m_PointGroupType(tables::MatrixGroup::Undefined)
   {
+    detail::RT_PointGroup SiteSymmetry;
     RTMx LastSpecialOp(1, 1);
     for (;;) {
-      BuildSpecialOp();
+      BuildSpecialOp(SiteSymmetry);
       if (m_SpecialOp == LastSpecialOp) break;
       LastSpecialOp = m_SpecialOp;
     }
     if (m_Parameters.m_MustBeWellBehaved && !isWellBehaved()) {
       throw error("SpecialPosition: MinMateDistance too large.");
     }
+    if (determinePointGroupType) {
+      SgOps SiteSgOps;
+      for(std::size_t i=0;i<SiteSymmetry.Matrices.size();i++) {
+        SiteSgOps.expandSMx(SiteSymmetry.Matrices[i]);
+      }
+      cctbx_assert(SiteSgOps.nLTr() == 1);
+      m_PointGroupType = SiteSgOps.getPointGroupType();
+    }
     if (auto_expand) expand();
+  }
+
+  tables::MatrixGroup::Code SpecialPosition::getPointGroupType() const
+  {
+    if (m_PointGroupType == tables::MatrixGroup::Undefined) {
+      throw error(
+      "Point group type is undefined. Use determinePointGroupType = true.");
+    }
+    return m_PointGroupType;
   }
 
 } // namespace sgtbx

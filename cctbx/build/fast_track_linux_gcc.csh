@@ -1,5 +1,5 @@
 #! /bin/csh -f
-if ("`gcc --version`" !~ 2.95.*) then
+if ("`gcc --version`" !~ 2.95.* && "`gcc --version`" !~ 3.0) then
   if ("`gcc --version`" == 2.96) then
     echo "WARNING:"
     echo "  If you are running RedHat 7.0 then you need to update"

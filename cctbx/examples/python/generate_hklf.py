@@ -51,13 +51,15 @@ class SiteInfo:
         else:
           raise FormatError
       self.WyckoffMapping = None
+      self.SiteSymmetry = None
     except:
       raise FormatError
 
   def __str__(self):
-    return "%s %s (%d %s) (%.6g %.6g %.6g) %.6g %.6g" % (
+    return "%s %s (%d %s %s) (%.6g %.6g %.6g) %.6g %.6g" % (
       (self.Label, self.Sf.Label(),
-       self.WyckoffMapping.WP().M(), self.WyckoffMapping.WP().Letter())
+       self.WyckoffMapping.WP().M(), self.WyckoffMapping.WP().Letter(),
+       self.SiteSymmetry)
       + tuple(self.Coordinates) + (self.Occ, self.Uiso))
 
 class FormatError(exceptions.Exception):
@@ -135,8 +137,9 @@ class StructureInfo:
     SnapParameters = \
       sgtbx.SpecialPositionSnapParameters(self.UnitCell, self.SgOps)
     for Site in self.Sites:
-      SP = sgtbx.SpecialPosition(SnapParameters, Site.Coordinates)
+      SP = sgtbx.SpecialPosition(SnapParameters, Site.Coordinates, 0, 1)
       Site.WyckoffMapping = self.WyckoffTable.getWyckoffMapping(SP)
+      Site.SiteSymmetry = SP.getPointGroupType()
 
 class MillerIndexSet:
 
@@ -210,7 +213,8 @@ if (__name__ == "__main__"):
   print "Number of sites:", len(Structure.Sites)
   print
 
-  print "Label ScatterLabel WyckoffPosition Coordinates Occupancy Uiso"
+  print "Label ScatterLabel WyckoffPosition SiteSymmetry",
+  print "Coordinates Occupancy Uiso"
   for S in Structure.Sites: print S
   print
 

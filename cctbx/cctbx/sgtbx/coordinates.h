@@ -164,6 +164,8 @@ namespace sgtbx {
       double m_Tolerance2;
   };
 
+  namespace detail { class RT_PointGroup; }
+
   //! Implementation of a robust special position algorithm.
   class SpecialPosition {
     public:
@@ -179,12 +181,17 @@ namespace sgtbx {
           If auto_expand == true, expand() is called at the
           end of the constructor.
           <p>
+          If determinePointGroupType == true, the point group type of
+          the site symmetry is determined and can later be accessed via
+          getPointGroupType().
+          <p>
           See also: WyckoffTable, SymEquivCoordinates,
                     examples/python/generate_hklf.py
        */
       SpecialPosition(const SpecialPositionSnapParameters& params,
                       const fractional<double>& X,
-                      bool auto_expand = false);
+                      bool auto_expand = false,
+                      bool determinePointGroupType = false);
       //! Retrieve the original coordinates (X in the constructor).
       inline const fractional<double>& OriginalPosition() const {
         return m_OriginalPosition;
@@ -228,6 +235,11 @@ namespace sgtbx {
           </ul>
        */
       inline const RTMx& SpecialOp() const { return m_SpecialOp; }
+      //! Access the point group type that has been determined in the constructor.
+      /*! An exception is thrown if the point group type has not been
+          determined in the constructor (determinePointGroupType == false).
+       */
+      tables::MatrixGroup::Code getPointGroupType() const;
       //! Expand the special position symmetry operation.
       /*! The SpecialOp() is multiplied with all symmetry operations.
           The unique results are stored in an internal list which
@@ -273,13 +285,14 @@ namespace sgtbx {
       }
     private:
       friend class WyckoffTable;
-      void BuildSpecialOp();
+      void BuildSpecialOp(detail::RT_PointGroup& SiteSymmetry);
       const SpecialPositionSnapParameters& m_Parameters;
       const fractional<double> m_OriginalPosition;
       fractional<double> m_SnapPosition;
       double m_ShortestDistance2;
       int m_M;
       RTMx m_SpecialOp;
+      tables::MatrixGroup::Code m_PointGroupType;
       std::vector<RTMx> m_UniqueOps;
   };
 
