@@ -26,7 +26,7 @@ namespace cctbx {
     void
     identity(NumType *M, const std::size_t n, const NumType& diagonal = 1)
     {
-      int i;
+      std::size_t i;
       for(i=0;i<n*n;i++) M[i] = 0;
       for(i=0;i<n*n;i+=n+1) M[i] = diagonal;
     }
@@ -36,8 +36,8 @@ namespace cctbx {
     isDiagonal(const NumType *M, const std::size_t nr, const std::size_t nc)
     {
       if (nr != nc) return false;
-      for (int ir = 0; ir < nr; ir++)
-        for (int ic = 0; ic < nc; ic++)
+      for (std::size_t ir = 0; ir < nr; ir++)
+        for (std::size_t ic = 0; ic < nc; ic++)
           if (ir != ic && M[ir * nc + ic]) return false;
       return true;
     }
@@ -47,8 +47,8 @@ namespace cctbx {
     transpose(const NumType *M, const std::size_t nr, const std::size_t nc,
               NumType *Mt)
     {
-      for (unsigned ir = 0; ir < nr; ir++)
-        for (unsigned ic = 0; ic < nc; ic++)
+      for (std::size_t ir = 0; ir < nr; ir++)
+        for (std::size_t ic = 0; ic < nc; ic++)
           Mt[ic * nr + ir] = M[ir * nc + ic];
     }
 
@@ -57,10 +57,10 @@ namespace cctbx {
     transpose(NumType *M, const std::size_t nr, const std::size_t nc)
     {
       std::vector<NumType> Mt(nr * nc);
-      for (int ir = 0; ir < nr; ir++)
-        for (int ic = 0; ic < nc; ic++)
+      for (std::size_t ir = 0; ir < nr; ir++)
+        for (std::size_t ic = 0; ic < nc; ic++)
           Mt[ic * nr + ir] = M[ir * nc + ic];
-      for (int i = 0; i < nr * nc; i++) M[i] = Mt[i];
+      for (std::size_t i = 0; i < nr * nc; i++) M[i] = Mt[i];
     }
 
     template <typename NumTypeA,
@@ -72,10 +72,10 @@ namespace cctbx {
              const std::size_t na, const std::size_t nb,
              NumTypeAB *AB) {
       // AB[ma, nb] = A[ma, na] * B[na, nb]
-      for (unsigned i = 0; i < ma; i++) {
-        for (unsigned k = 0; k < nb; k++) {
+      for (std::size_t i = 0; i < ma; i++) {
+        for (std::size_t k = 0; k < nb; k++) {
           *AB = NumTypeAB(0);
-          for (unsigned j = 0; j < na; j++) {
+          for (std::size_t j = 0; j < na; j++) {
             *AB += NumTypeAB(A[i * na + j] * B[j * nb + k]);
           }
           AB++;
