@@ -46,7 +46,7 @@ namespace {
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
 
-BOOST_PYTHON_MODULE(math_ext)
+BOOST_PYTHON_MODULE(scitbx_math_ext)
 {
   scitbx::math::boost_python::init_module();
 }
