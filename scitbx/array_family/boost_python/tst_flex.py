@@ -6,6 +6,7 @@ def exercise_flex_grid():
   g = flex.grid()
   assert g.nd() == 0
   assert g.size_1d() == 0
+  assert not g.has_origin()
   assert g.origin() == ()
   assert g.grid() == ()
   assert g.last() == ()
@@ -40,6 +41,7 @@ def exercise_flex_grid():
   g = flex.grid((1,2,3), (4,6,8))
   assert g.nd() == 3
   assert g.size_1d() == 60
+  assert g.has_origin()
   assert g.origin() == (1,2,3)
   assert g.grid() == (3,4,5)
   assert g.last() == (4,6,8)
@@ -64,7 +66,13 @@ def exercise_flex_grid():
   assert not g.is_valid_index((5,0,0))
   assert not g.is_0_based()
   assert not g.is_padded()
+  assert not g.has_layout()
   g.set_layout((3,-9,5))
+  assert g.has_layout()
+  assert g.layout() == (3,-9,5)
+  assert g.layout(False) == (2,-10,4)
+  g.set_layout((3,-9,5), False)
+  assert g.layout() == (4,-8,6)
   assert not g.is_0_based()
   assert g.is_padded()
   import pickle
@@ -90,7 +98,7 @@ def exercise_flex_grid():
   s = g.shift_origin()
   assert s.origin() == (0,0,0)
   assert s.grid() == g.grid()
-  assert s.layout() == ()
+  assert s.layout() == (3,4,5)
   assert s.layout_size_1d() == g.size_1d()
   g = flex.grid((1,2,3), (4,6,8)).set_layout((3,5,7))
   assert g.layout_size_1d() == 2*3*4
@@ -109,16 +117,22 @@ def exercise_flex_constructors():
   assert tuple(f.accessor().last()) == (0,)
   assert tuple(f.accessor().last(1)) == (0,)
   assert tuple(f.accessor().last(0)) == (-1,)
-  assert tuple(f.accessor().layout()) == ()
+  assert tuple(f.accessor().layout()) == (0,)
+  assert tuple(f.accessor().layout(1)) == (0,)
+  assert tuple(f.accessor().layout(0)) == (-1,)
   assert f.accessor().is_0_based()
   assert not f.accessor().is_padded()
   assert f.nd() == 1
+  assert not f.has_origin()
   assert tuple(f.origin()) == (0,)
   assert tuple(f.grid()) == (0,)
   assert tuple(f.last()) == (0,)
   assert tuple(f.last(1)) == (0,)
   assert tuple(f.last(0)) == (-1,)
-  assert tuple(f.layout()) == ()
+  assert not f.has_layout()
+  assert tuple(f.layout()) == (0,)
+  assert tuple(f.layout(1)) == (0,)
+  assert tuple(f.layout(0)) == (-1,)
   assert f.layout_size_1d() == 0
   assert f.is_0_based()
   assert not f.is_padded()

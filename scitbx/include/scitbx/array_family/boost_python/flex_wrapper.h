@@ -97,6 +97,9 @@ namespace scitbx { namespace af { namespace boost_python {
     static std::size_t
     nd(f_t const& a) { return a.accessor().nd(); }
 
+    static bool
+    has_origin(f_t const& a) { return a.accessor().has_origin(); }
+
     static flex_grid_default_index_type
     origin(f_t const& a) { return a.accessor().origin(); }
 
@@ -112,8 +115,17 @@ namespace scitbx { namespace af { namespace boost_python {
       return a.accessor().last(open_range);
     }
 
+    static bool
+    has_layout(f_t const& a) { return a.accessor().has_layout(); }
+
     static flex_grid_default_index_type
-    layout(f_t const& a) { return a.accessor().layout(); }
+    layout_0(f_t const& a) { return a.accessor().layout(); }
+
+    static flex_grid_default_index_type
+    layout_1(f_t const& a, bool open_range)
+    {
+      return a.accessor().layout(open_range);
+    }
 
     static std::size_t
     layout_size_1d(f_t const& a) { return a.accessor().layout_size_1d(); }
@@ -675,11 +687,14 @@ namespace scitbx { namespace af { namespace boost_python {
         .def(init<shared_plain<ElementType> const&>())
         .def("accessor", accessor)
         .def("nd", nd)
+        .def("has_origin", has_origin)
         .def("origin", origin)
         .def("grid", grid)
         .def("last", last_0)
         .def("last", last_1)
-        .def("layout", layout)
+        .def("has_layout", has_layout)
+        .def("layout", layout_0)
+        .def("layout", layout_1)
         .def("layout_size_1d", layout_size_1d)
         .def("is_0_based", is_0_based)
         .def("is_padded", is_padded)

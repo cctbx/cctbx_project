@@ -8,7 +8,6 @@
      2002 Aug: Created, based on sharedmodule.cpp, shared_bpl.h (rwgk)
  */
 
-#include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/array_family/boost_python/ref_c_grid_flex_conversions.h>
 #include <scitbx/boost_python/utils.h>
@@ -23,6 +22,7 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  void wrap_flex_grid();
   void wrap_flex_bool();
   void wrap_flex_size_t();
   void wrap_flex_int();
@@ -33,75 +33,6 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_std_string();
 
 namespace {
-
-  struct flex_grid_wrappers : boost::python::pickle_suite
-  {
-    typedef flex_grid_default_index_type df_i_t;
-    typedef flex_grid<> w_t;
-    typedef flex_grid_default_index_type::value_type ivt;
-    typedef boost::python::class_<w_t> c_w_t;
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      last_overloads, last, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      set_layout_overloads, set_layout, 1, 6)
-
-    static boost::python::tuple
-    getinitargs(w_t const& fg)
-    {
-      bool open_range = true;
-      return boost::python::make_tuple(
-        fg.origin(),
-        fg.last(open_range),
-        open_range);
-    }
-
-    static df_i_t
-    getstate(w_t const& fg)
-    {
-      return fg.layout();
-    }
-
-    static void
-    setstate(w_t& fg, df_i_t const& state)
-    {
-      fg.set_layout(state);
-    }
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> copy_const_reference;
-      c_w_t("grid")
-        .def(init<ivt const&, optional<ivt const&, ivt const&,
-                  ivt const&, ivt const&, ivt const&> >())
-        .def(init<df_i_t const&>())
-        .def(init<df_i_t const&, df_i_t const&, optional<bool> >())
-        .def("set_layout", (w_t(w_t::*)(df_i_t const&))&w_t::set_layout)
-        .def("set_layout",
-          (w_t(w_t::*)(ivt const&, ivt const&, ivt const&,
-                       ivt const&, ivt const&, ivt const&)) 0,
-            set_layout_overloads())
-        .def("nd", &w_t::nd)
-        .def("size_1d", &w_t::size_1d)
-        .def("origin", &w_t::origin, copy_const_reference())
-        .def("grid", &w_t::grid, copy_const_reference())
-        .def("last", (df_i_t(w_t::*)(bool)) 0, last_overloads())
-        .def("layout", &w_t::layout, copy_const_reference())
-        .def("layout_size_1d", &w_t::layout_size_1d)
-        .def("is_0_based", &w_t::is_0_based)
-        .def("is_padded", &w_t::is_padded)
-        .def("shift_origin", &w_t::shift_origin)
-        .def("__call__", &w_t::operator())
-        .def("is_valid_index", &w_t::is_valid_index)
-        .def("__eq__", &w_t::operator==)
-        .def("__ne__", &w_t::operator!=)
-        .def_pickle(flex_grid_wrappers())
-      ;
-    }
-  };
 
   struct linear_regression_core_wrappers
   {
@@ -145,8 +76,9 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
+    wrap_flex_grid();
     register_flex_grid_default_index_type_conversions();
-    flex_grid_wrappers::wrap();
+
     linear_regression_core_wrappers::wrap();
     linear_regression_wrappers::wrap();
 
