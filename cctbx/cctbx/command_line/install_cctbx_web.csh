@@ -9,6 +9,8 @@ mkdir scitbx
 cp -r $SCITBX_DIST/scitbx scitbx
 mkdir cctbx
 cp -r $CCTBX_DIST/cctbx cctbx
+mkdir iotbx
+cp -r $IOTBX_DIST/iotbx iotbx
 cd ..
 
 if ($#argv == 0) then
@@ -16,7 +18,7 @@ if ($#argv == 0) then
   cd build
   cp -r $LIBTBX_BUILD/libtbx .
   unsetenv LIBTBX_SCONS
-  python ../dist/libtbx/configure.py scitbx cctbx
+  python ../dist/libtbx/configure.py scitbx cctbx iotbx
   cd ..
 endif
 
