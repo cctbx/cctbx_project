@@ -21,6 +21,41 @@ restraint_parameters_si_o = restraint_parameters(1.61, 2.0)
 restraint_parameters_o_si_o = restraint_parameters(2.629099, 0.41)
 restraint_parameters_si_o_si = restraint_parameters(3.070969, 0.2308)
 
+def setup_bond_params_table(structure, bond_sym_table):
+  scatterers = structure.scatterers()
+  t = restraints.bond_params_table(scatterers.size())
+  for i_seq,bond_sym_dict in enumerate(bond_sym_table):
+    for j_seq in bond_sym_dict.keys():
+      i_seqs = [i_seq, j_seq]
+      i_seqs.sort()
+      scattering_types = [scatterers[i].scattering_type for i in i_seqs]
+      scattering_types.sort()
+      if (scattering_types == ["Si", "Si"]):
+        params = restraint_parameters_si_o_si
+      elif (scattering_types == ["O", "Si"]):
+        params = restraint_parameters_si_o
+      elif (scattering_types == ["O", "O"]):
+        params = restraint_parameters_o_si_o
+      else:
+        raise AssertionError("Unknown scattering type pair.")
+      if (not t[i_seq].has_key(j_seq)):
+        t[i_seq][j_seq] = restraints.bond_params(
+          distance_ideal=params.distance_ideal,
+          weight=params.weight)
+      else:
+        prev_params = t[i_seq][j_seq]
+        assert abs(prev_params.distance_ideal - params.distance_ideal) < 1.e-8
+        assert abs(prev_params.weight - params.weight) < 1.e-8
+  return t
+
+def setup_repulsion_distance_table():
+  t = restraints.repulsion_distance_table()
+  t.setdefault("Si")["Si"] = 3.1
+  t.setdefault("Si")["O"] = 1.5
+  t.setdefault("O")["Si"] = t["Si"]["O"]
+  t.setdefault("O")["O"] = 2.0
+  return t
+
 class add_oxygen:
 
   def __init__(self, si_structure, si_pair_asu_table):
@@ -76,63 +111,60 @@ def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
   return o_si_o_asu_table
 
 def get_all_proxies(
-      structure,
-      bond_asu_table,
-      bonded_distance_cutoff,
+      scatterers,
+      bond_params_table,
+      repulsion_distance_table,
+      shell_asu_tables,
+      shell_distance_cutoffs,
       nonbonded_distance_cutoff,
-      minimal=00000):
+      nonbonded_buffer,
+      vdw_1_4_factor=2/3.):
   bond_asu_proxies = restraints.shared_bond_asu_proxy()
   repulsion_asu_proxies = restraints.shared_repulsion_asu_proxy()
   pair_generator = crystal.neighbors_fast_pair_generator(
-    asu_mappings=bond_asu_table.asu_mappings(),
-    distance_cutoff=max(bonded_distance_cutoff, nonbonded_distance_cutoff),
-    minimal=minimal)
+    asu_mappings=shell_asu_tables[0].asu_mappings(),
+    distance_cutoff=max(
+      max(shell_distance_cutoffs),
+      nonbonded_distance_cutoff+nonbonded_buffer),
+    minimal=00000)
   for pair in pair_generator:
-    if (pair in bond_asu_table):
-      bond_asu_proxies.append(restraints.bond_asu_proxy(
-        pair=pair, distance_ideal=0, weight=0))
+    if   (pair in shell_asu_tables[0]):
+      bond_asu_proxies.append(make_bond_asu_proxy(bond_params_table, pair))
+    elif (pair in shell_asu_tables[1]):
+      continue
+    elif (pair in shell_asu_tables[2]):
+      repulsion_asu_proxies.append(make_repulsion_asu_proxy(
+        scatterers, repulsion_distance_table, pair, vdw_1_4_factor))
     elif (pair.dist_sq**.5 <= nonbonded_distance_cutoff):
-      repulsion_asu_proxies.append(restraints.repulsion_asu_proxy(
-        pair=pair, vdw_radius=-1))
+      repulsion_asu_proxies.append(make_repulsion_asu_proxy(
+        scatterers, repulsion_distance_table, pair))
   return bond_asu_proxies, repulsion_asu_proxies
 
-def edit_bond_asu_proxies(structure, asu_mappings, bond_asu_proxies):
-  scatterers = structure.scatterers()
-  for proxy in bond_asu_proxies:
-    edit_bond_proxy(
-      scatterers=scatterers,
-      i_seqs=(proxy.i_seq, proxy.j_seq),
-      proxy=proxy)
-
-def edit_bond_proxy(scatterers, i_seqs, proxy):
-  scattering_types = [scatterers[i].scattering_type for i in i_seqs]
-  scattering_types.sort()
-  if (scattering_types == ["Si", "Si"]):
-    proxy.distance_ideal = restraint_parameters_si_o_si.distance_ideal
-    proxy.weight = restraint_parameters_si_o_si.weight
-  elif (scattering_types == ["O", "Si"]):
-    proxy.distance_ideal = restraint_parameters_si_o.distance_ideal
-    proxy.weight = restraint_parameters_si_o.weight
-  elif (scattering_types == ["O", "O"]):
-    proxy.distance_ideal = restraint_parameters_o_si_o.distance_ideal
-    proxy.weight = restraint_parameters_o_si_o.weight
+def make_bond_asu_proxy(bond_params_table, pair):
+  if (pair.i_seq <= pair.j_seq):
+    params = bond_params_table[pair.i_seq][pair.j_seq]
   else:
-    raise AssertionError("Unknown scattering type pair.")
+    params = bond_params_table[pair.j_seq][pair.i_seq]
+  return restraints.bond_asu_proxy(
+    pair=pair,
+    distance_ideal=params.distance_ideal,
+    weight=params.weight)
 
-def edit_repulsion_asu_proxies(structure, asu_mappings, repulsion_asu_proxies):
-  scatterers = structure.scatterers()
-  for proxy in repulsion_asu_proxies:
-    i_seqs = proxy.i_seq, proxy.j_seq
-    scattering_types = [scatterers[i].scattering_type for i in i_seqs]
-    scattering_types.sort()
-    if (scattering_types == ["Si", "Si"]):
-      proxy.vdw_radius = 3.1
-    elif (scattering_types == ["O", "Si"]):
-      proxy.vdw_radius = 1.5
-    elif (scattering_types == ["O", "O"]):
-      proxy.vdw_radius = 2.0
-    else:
-      raise AssertionError("Unknown scattering type pair.")
+def make_repulsion_asu_proxy(
+      scatterers,
+      repulsion_distance_table,
+      pair,
+      vdw_factor=1):
+  i_seqs = pair.i_seq, pair.j_seq
+  scattering_types = [scatterers[i].scattering_type for i in i_seqs]
+  try:
+    vdw_radius = repulsion_distance_table[
+      scattering_types[0]][scattering_types[1]]
+  except KeyError:
+    raise AssertionError("Unknown scattering type pair.")
+  return restraints.repulsion_asu_proxy(
+    pair=pair,
+    vdw_radius=vdw_radius*vdw_factor)
 
 class show_pairs:
 
@@ -217,6 +249,7 @@ def distance_and_repulsion_least_squares(
       si_structure,
       distance_cutoff,
       nonbonded_distance_cutoff,
+      nonbonded_buffer=1,
       n_trials=1,
       connectivities=None):
   assert n_trials > 0
@@ -263,13 +296,22 @@ def distance_and_repulsion_least_squares(
   if (si_pairs.pair_counts.count(4) == n_si):
     assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
   print
+  shell_asu_tables = crystal.coordination_sequences_shell_asu_tables(
+    pair_asu_table=si_o_bond_asu_table,
+    n_shells=3)
   if (1):
     si_o_bond_asu_table.add_pair_sym_table(
       sym_table=si_pair_asu_table.extract_pair_sym_table())
   if (1):
     si_o_bond_asu_table.add_pair_sym_table(
       sym_table=o_si_o_asu_table.extract_pair_sym_table())
-  bond_sym_table = si_o_bond_asu_table.extract_pair_sym_table()
+  shell_sym_tables = [si_o_bond_asu_table.extract_pair_sym_table()]
+  for shell_asu_table in shell_asu_tables[1:]:
+    shell_sym_tables.append(shell_asu_table.extract_pair_sym_table())
+  bond_params_table = setup_bond_params_table(
+    structure=si_o.structure,
+    bond_sym_table=shell_sym_tables[0])
+  repulsion_distance_table = setup_repulsion_distance_table()
   minimized = None
   for i_trial in xrange(n_trials):
     trial_structure = si_o.structure.deep_copy_scatterers()
@@ -280,8 +322,11 @@ def distance_and_repulsion_least_squares(
       trial_structure.apply_symmetry_sites()
     trial_minimized = minimization.lbfgs(
       structure=trial_structure,
-      bond_sym_table=bond_sym_table,
+      shell_sym_tables=shell_sym_tables,
+      bond_params_table=bond_params_table,
+      repulsion_distance_table=repulsion_distance_table,
       nonbonded_distance_cutoff=nonbonded_distance_cutoff,
+      nonbonded_buffer=nonbonded_buffer,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=100))
     print "i_trial, target value: %d, %.6g" % (
