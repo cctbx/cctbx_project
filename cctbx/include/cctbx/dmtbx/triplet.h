@@ -57,30 +57,30 @@ namespace cctbx { namespace dmtbx {
 
     triplet_phase_relation(
       std::size_t ik,
-      miller::sym_equiv_index const& k_seq,
+      bool friedel_flag_k,
+      int k_ht,
       std::size_t ihmk,
-      miller::sym_equiv_index const& hmk_seq)
+      bool friedel_flag_hmk,
+      int hmk_ht,
+      int t_den)
     {
-      CCTBX_ASSERT(k_seq.t_den() == hmk_seq.t_den());
-      CCTBX_ASSERT(k_seq.ht() >= 0);
-      CCTBX_ASSERT(hmk_seq.ht() >= 0);
-      if (ik < ihmk || (ik == ihmk && k_seq.friedel_flag() == false)) {
+      CCTBX_ASSERT(k_ht >= 0);
+      CCTBX_ASSERT(hmk_ht >= 0);
+      if (ik < ihmk || (ik == ihmk && friedel_flag_k == false)) {
         ik_ = ik;
         ihmk_ = ihmk;
-        friedel_flag_k_ = k_seq.friedel_flag();
-        friedel_flag_hmk_ = hmk_seq.friedel_flag();
+        friedel_flag_k_ = friedel_flag_k;
+        friedel_flag_hmk_ = friedel_flag_hmk;
       }
       else {
         ik_ = ihmk;
         ihmk_ = ik;
-        friedel_flag_k_ = hmk_seq.friedel_flag();
-        friedel_flag_hmk_ = k_seq.friedel_flag();
+        friedel_flag_k_ = friedel_flag_hmk;
+        friedel_flag_hmk_ = friedel_flag_k;
       }
-      int k_ht = k_seq.ht();
-      if (k_seq.friedel_flag()) k_ht *= -1;
-      int hmk_ht = hmk_seq.ht();
-      if (hmk_seq.friedel_flag()) hmk_ht *= -1;
-      ht_sum_ = math::mod_positive(-k_ht - hmk_ht, k_seq.t_den());
+      if (!friedel_flag_k) k_ht *= -1;
+      if (!friedel_flag_hmk) hmk_ht *= -1;
+      ht_sum_ = math::mod_positive(k_ht + hmk_ht, t_den);
     }
 
     bool operator<(triplet_phase_relation const& other) const
