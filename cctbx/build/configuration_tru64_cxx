@@ -8,7 +8,7 @@ BOOSTINC=-I"$(ROOT)/boost"
 
 CCTBX_UNIX="$(ROOT)/cctbx"
 CCTBX_WIN=
-CCTBXINC=-I"$(ROOT)/cctbx"
+CCTBXINC=-I"$(ROOT)/cctbx/include"
 
 CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
 CCTBXLIBDIR_WIN=
@@ -23,7 +23,7 @@ CPP=cxx
 LD=cxx
 STDOPTS=-std strict_ansi
 WARNOPTS=-msg_display_number -msg_disable 186,450,1115
-OPTOPTS=-O3
+OPTOPTS=-O2
 MAKEDEP=-Em
 LDEXE=
 LDDLL=-shared -expect_unresolved 'Py*' -expect_unresolved '_Py*'

@@ -85,9 +85,9 @@ namespace {
     RTMx N = M.newBaseFactors(RBF, TBF);
     tuple result(2);
     result.set_item(0,
-      ref(to_python(static_cast<int9>(N.Rpart()))));
+      ref(to_python(static_cast<af::int9>(N.Rpart()))));
     result.set_item(1,
-      ref(to_python(static_cast<int3>(N.Tpart()))));
+      ref(to_python(static_cast<af::int3>(N.Tpart()))));
     return result;
   }
 
@@ -98,8 +98,10 @@ namespace {
         " (rotation part and translation part)");
       throw boost::python::error_already_set();
     }
-    int9 Rpart = from_python(t[0].get(), boost::python::type<const int9&>());
-    int3 Tpart = from_python(t[1].get(), boost::python::type<const int3&>());
+    af::int9 Rpart = from_python(
+      t[0].get(), boost::python::type<const af::int9&>());
+    af::int3 Tpart = from_python(
+      t[1].get(), boost::python::type<const af::int3&>());
     return RTMx(RotMx(Rpart, RBF), TrVec(Tpart, TBF));
   }
 
@@ -109,8 +111,8 @@ namespace {
   RTMx RTMx_multiply_RTMx(const RTMx& lhs, const RTMx& rhs) {
     return lhs.multiply(rhs);
   }
-  double3
-  RTMx_multiply_int3(const RTMx& lhs, const double3& rhs) {
+  af::double3
+  RTMx_multiply_int3(const RTMx& lhs, const af::double3& rhs) {
     return lhs * rhs;
   }
 
@@ -184,7 +186,7 @@ namespace {
   }
 
   void SpaceGroup_CheckMetricalMatrix_1(const SpaceGroup& SgOps,
-                                        const double9& G) {
+                                        const af::double9& G) {
     SgOps.CheckMetricalMatrix(G);
   }
   void SpaceGroup_CheckUnitCell_1(const SpaceGroup& SgOps,
@@ -195,22 +197,22 @@ namespace {
   std::complex<double>
   SpaceGroup_StructureFactor(const SpaceGroup& SgOps,
                              const Miller::Index& H,
-                             const cctbx::fractional<double>& X) {
+                             const fractional<double>& X) {
     return SgOps.StructureFactor(H, X);
   }
   std::complex<double>
   SpaceGroup_StructureFactor_iso(const SpaceGroup& SgOps,
                                  const uctbx::UnitCell& uc,
                                  const Miller::Index& H,
-                                 const cctbx::fractional<double>& X,
+                                 const fractional<double>& X,
                                  double Uiso) {
     return SgOps.StructureFactor(uc, H, X, Uiso);
   }
   std::complex<double>
   SpaceGroup_StructureFactor_aniso(const SpaceGroup& SgOps,
                                    const Miller::Index& H,
-                                   const cctbx::fractional<double>& X,
-                                   const double6& Ustar) {
+                                   const fractional<double>& X,
+                                   const af::double6& Ustar) {
     return SgOps.StructureFactor(H, X, Ustar);
   }
 
@@ -223,13 +225,13 @@ namespace {
     return SgOps.getZ2POp();
   }
 
-  int3 SpaceGroup_refine_gridding_0(
+  af::int3 SpaceGroup_refine_gridding_0(
     const SpaceGroup& SgOps) {
     return SgOps.refine_gridding();
   }
-  int3 SpaceGroup_refine_gridding_1(
+  af::int3 SpaceGroup_refine_gridding_1(
     const SpaceGroup& SgOps,
-    const int3& grid) {
+    const af::int3& grid) {
     return SgOps.refine_gridding(grid);
   }
 
@@ -406,26 +408,26 @@ namespace {
   }
 
   bool SiteSymmetry_isCompatibleUstar_1(const SiteSymmetry& SS,
-                                        const double6& Ustar) {
+                                        const af::double6& Ustar) {
     return SS.isCompatibleUstar(Ustar);
   }
   bool SiteSymmetry_isCompatibleUstar_2(const SiteSymmetry& SS,
-                                        const double6& Ustar,
+                                        const af::double6& Ustar,
                                         double tolerance) {
     return SS.isCompatibleUstar(Ustar, tolerance);
   }
   void SiteSymmetry_CheckUstar_1(const SiteSymmetry& SS,
-                                 const double6& Ustar) {
+                                 const af::double6& Ustar) {
     SS.CheckUstar(Ustar);
   }
   void SiteSymmetry_CheckUstar_2(const SiteSymmetry& SS,
-                                 const double6& Ustar,
+                                 const af::double6& Ustar,
                                  double tolerance) {
     SS.CheckUstar(Ustar, tolerance);
   }
-  double6
+  af::double6
   SiteSymmetry_AverageUstar(const SiteSymmetry& SS,
-                            const double6& Ustar) {
+                            const af::double6& Ustar) {
     return SS.AverageUstar(Ustar);
   }
 
@@ -482,29 +484,29 @@ namespace {
     return TLA.ShiftPhase(F);
   }
 
-  int3 StructureSeminvariant_refine_gridding_0(
+  af::int3 StructureSeminvariant_refine_gridding_0(
     const StructureSeminvariant& ssVM) {
     return ssVM.refine_gridding();
   }
-  int3 StructureSeminvariant_refine_gridding_1(
+  af::int3 StructureSeminvariant_refine_gridding_1(
     const StructureSeminvariant& ssVM,
-    const int3& grid) {
+    const af::int3& grid) {
     return ssVM.refine_gridding(grid);
   }
 
   void
   py_expand_to_p1_4(
     const SpaceGroup& SgOps,
-    const std::vector<Miller::Index>& in,
-    std::vector<Miller::Index>& out,
+    const af::shared<Miller::Index>& in,
+    af::shared<Miller::Index>& out,
     bool friedel_flag) {
     expand_to_p1(SgOps, in, out, friedel_flag);
   }
   void
   py_expand_to_p1_3(
     const SpaceGroup& SgOps,
-    const std::vector<Miller::Index>& in,
-    std::vector<Miller::Index>& out,
+    const af::shared<Miller::Index>& in,
+    af::shared<Miller::Index>& out,
     bool friedel_flag) {
     expand_to_p1(SgOps, in, out);
   }
@@ -537,13 +539,13 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
       Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
   python::import_converters<uctbx::UnitCell>
-  py_UnitCell("cctbx.uctbx", "UnitCell");
+  py_UnitCell("cctbx_boost.uctbx", "UnitCell");
 
-  python::import_converters<std::vector<Miller::Index> >
-  py_std_vector_Miller_Index("cctbx.arraytbx.std_vector", "Miller_Index");
+  python::import_converters<af::shared<Miller::Index> >
+  py_shared_Miller_Index("cctbx_boost.arraytbx.shared", "Miller_Index");
 
-  python::import_converters<std::vector<RTMx> >
-  py_std_vector_RTMx("cctbx.arraytbx.std_vector", "RTMx");
+  python::import_converters<af::shared<RTMx> >
+  py_shared_RTMx("cctbx_boost.arraytbx.shared", "RTMx");
 
   this_module.add(ref(to_python(STBF)), "STBF");
   this_module.add(ref(to_python(CRBF)), "CRBF");
@@ -1041,7 +1043,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_StructureSeminvariant.def(&StructureSeminvariant::V, "V");
   py_StructureSeminvariant.def(&StructureSeminvariant::M, "M");
   py_StructureSeminvariant.def(&StructureSeminvariant::is_ss, "is_ss");
-  //XXX: expose fixcap_vector<int, 3>
+  //XXX: expose
   //py_StructureSeminvariant.def(&StructureSeminvariant::apply_mod,
   //                                                    "apply_mod");
   py_StructureSeminvariant.def(

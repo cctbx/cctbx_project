@@ -117,9 +117,9 @@ namespace {
     verify(__LINE__, a2, af::tiny<element_type2, 3>(4,6,8));
   }
 
-  template <typename ArrayType>
+  template <typename ArrayType, typename BoolArrayType>
   void
-  exercise_functions(ArrayType& a)
+  exercise_functions(ArrayType& a, const BoolArrayType&)
   {
     typedef typename ArrayType::value_type element_type;
     a[0] = 0.1;
@@ -133,13 +133,13 @@ namespace {
       check_true(__LINE__, r[2] == std::pow(a[2], a[0])); }
     { ArrayType r = af::pow(a[0], a);
       check_true(__LINE__, r[2] == std::pow(a[0], a[2])); }
-    { ArrayType r = af::approx_equal_scaled(a, a, element_type(1));
+    { BoolArrayType r = af::approx_equal_scaled(a, a, element_type(1));
       check_true(__LINE__, r[2] == af::approx_equal_scaled(
         a[2], a[2], element_type(1))); }
-    { ArrayType r = af::approx_equal_scaled(a, a[0], element_type(1));
+    { BoolArrayType r = af::approx_equal_scaled(a, a[0], element_type(1));
       check_true(__LINE__, r[2] == af::approx_equal_scaled(
         a[2], a[0], element_type(1))); }
-    { ArrayType r = af::approx_equal_scaled(a[0], a, element_type(1));
+    { BoolArrayType r = af::approx_equal_scaled(a[0], a, element_type(1));
       check_true(__LINE__, r[2] == af::approx_equal_scaled(
         a[0], a[2], element_type(1))); }
   }
@@ -168,11 +168,13 @@ namespace {
 
   template <typename ArrayType1,
             typename ArrayType2,
-            typename ArrayType3>
+            typename ArrayType3,
+            typename ArrayType4>
   void
   exercise_all(ArrayType1& a1,
                ArrayType2& a2,
-               ArrayType3& a3)
+               ArrayType3& a3,
+               ArrayType4& a4)
   {
     exercise_reducing_bool(a1, a2);
     exercise_reducing_bool(a1, a3);
@@ -186,7 +188,7 @@ namespace {
     exercise_2arg_reductions(a3, a3);
     exercise_arithmetic(a1, a2);
     exercise_arithmetic(a1, a3);
-    exercise_functions(a3);
+    exercise_functions(a3, a4);
   }
 
   template <typename ElementType>
@@ -255,37 +257,41 @@ namespace {
         af::tiny<IntType, 3> a1 = t1;
         af::tiny<IntType, 3> a2 = t2;
         af::tiny<FloatType, 3> a3 = t2;
-        exercise_all(a1, a2, a3);
+        af::tiny<bool, 3> a4;
+        exercise_all(a1, a2, a3, a4);
       }
       {
         if (verbose) std::cout << __LINE__ << std::endl;
         af::small<IntType, 3> a1;
         af::small<IntType, 3> a2;
         af::small<FloatType, 3> a3;
+        af::small<bool, 3> a4;
         a1.assign(t1);
         a2.assign(t2);
         a3.assign(t2);
-        exercise_all(a1, a2, a3);
+        exercise_all(a1, a2, a3, a4);
       }
       {
         if (verbose) std::cout << __LINE__ << std::endl;
         af::shared<IntType> a1;
         af::shared<IntType> a2;
         af::shared<FloatType> a3;
+        af::shared<bool> a4;
         a1.assign(t1);
         a2.assign(t2);
         a3.assign(t2);
-        exercise_all(a1, a2, a3);
+        exercise_all(a1, a2, a3, a4);
       }
       {
         if (verbose) std::cout << __LINE__ << std::endl;
         af::versa<IntType> a1(af::grid<1>(t1.size()));
         af::versa<IntType> a2(af::grid<1>(t2.size()));
         af::versa<FloatType> a3(af::grid<1>(t1.size()));
+        af::versa<bool> a4;
         a1.as_shared().assign(t1);
         a2.as_shared().assign(t2);
         a3.as_shared().assign(t2);
-        exercise_all(a1, a2, a3);
+        exercise_all(a1, a2, a3, a4);
       }
       exercise_complex_special<double>::run();
     }

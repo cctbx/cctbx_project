@@ -9,7 +9,7 @@
 
 import sys
 import string
-from cctbx import sgtbx
+from cctbx_boost import sgtbx
 
 while 1:
   line = sys.stdin.readline()[:-1]

@@ -15,7 +15,7 @@
 
 #include <string>
 #include <algorithm>
-#include <cctbx/loops.h>
+#include <cctbx/math/loops.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
 #include <cctbx/sgtbx/select_generators.h>
@@ -153,7 +153,7 @@ namespace cctbx { namespace sgtbx {
         if (   (Rtype ==  2 && TwoFold)
             || (Rtype == -2 && Mirror)) {
           RotMxInfo RI = StdSgOps[iSMx].Rpart().getInfo();
-          const int3 EV_100(1, 0, 0);
+          const af::int3 EV_100(1, 0, 0);
           if (RI.EV() == EV_100) {
             if (PointGroupType == MGC_4bm2) return MGC_4b2m;
             if (PointGroupType == MGC_32)   return MGC_321;
@@ -285,7 +285,7 @@ namespace cctbx { namespace sgtbx {
       cctbx_assert(iRowEchelonFormT(CumMx.elems, 3, 3, 0, 0) == 1);
       int IxIndep[2];
       cctbx_assert(iRESetIxIndep(CumMx.elems, 1, 3, IxIndep, 2) == 2);
-      int3 Sol[4];
+      af::int3 Sol[4];
       SolveHomRE1(CumMx.elems, IxIndep, Sol);
       int nIx = 1; if (Ord[0] == 2) nIx++;
       RotMx TrialBasis;
@@ -353,7 +353,7 @@ namespace cctbx { namespace sgtbx {
         cctbx_assert(Rtype != 0);
         if (std::abs(Rtype) == 2) {
           RotMxInfo RI = R.getInfo();
-          const int3 EV_100(1, 0, 0);
+          const af::int3 EV_100(1, 0, 0);
           if (RI.EV() == EV_100) {
             int iInv = 0; if (Rtype == 2) iInv = 1;
             RTMx SMx = WorkSgOps(0, iInv, iSMx);
@@ -480,7 +480,7 @@ namespace cctbx { namespace sgtbx {
         for(i=0;i<3;i++) V[iGen * 3 + i] = DeltaT[iGen][i];
       }
 
-      int3 x;
+      af::int3 x;
       if (SolveInhomModZ(SNF, nrSNF, 3, V, TBF, x.elems)) {
         TrVec CBT = TstGenerators.Z2POp.InvM().Rpart() * TrVec(x, TBF);
         return CBT.newBaseFactor(TBF);
@@ -652,7 +652,7 @@ namespace cctbx { namespace sgtbx {
                              const detail::StdGenerators& TargetGenerators,
                              const ChOfBasisOp& RawCBOp)
     {
-      std::vector<RTMx>
+      af::shared<RTMx>
       AddlG = ReferenceSettings::GetNormAddlG(SgNumber, true, true, true);
       ChOfBasisOp CBOp = RefCBOp.swap();
       SpaceGroup NormSgOps = TargetSgOps;
@@ -690,9 +690,9 @@ namespace cctbx { namespace sgtbx {
           int r00, r22;
           ReferenceSettings::GetMonoAffNormTrialRanges(
             TrialCBOp.M().Rpart(), r00, r22);
-          int9 M, InvM;
-          M.assign(0);
-          InvM.assign(0);
+          af::int9 M, InvM;
+          M.fill(0);
+          InvM.fill(0);
 #define loop(i, r) \
           for (M[i] = -r * RBF; M[i] <= r * RBF; M[i] += RBF)
           loop(0, r00)

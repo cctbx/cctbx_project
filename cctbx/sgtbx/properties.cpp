@@ -36,7 +36,7 @@ namespace cctbx { namespace sgtbx {
     return 0;
   }
 
-  int SenseOfRotation(const RotMx& R, int Rtype, const int3& EV)
+  int SenseOfRotation(const RotMx& R, int Rtype, const af::int3& EV)
   {
     // M.B. Boisen, Jr. & G.V. Gibbs
     // Mathematical Crystallography, Revised Edition 1990
@@ -56,13 +56,13 @@ namespace cctbx { namespace sgtbx {
     return -1;
   }
 
-  int3 SolveHomRE2(const int9& REMx)
+  af::int3 SolveHomRE2(const af::int9& REMx)
   {
     // REMx must be in row echelon form with Rank 2.
 
     int IxIndep[1];
     cctbx_assert(iRESetIxIndep(REMx.elems, 2, 3, IxIndep, 1) == 1);
-    int3 EV;
+    af::int3 EV;
     rangei(3) EV[i] = 0;
     EV[IxIndep[0]] = 1;
     cctbx_assert(iREBacksubst(REMx.elems, 0, 2, 3, EV.elems, 0) >= 1);
@@ -135,7 +135,7 @@ namespace cctbx { namespace sgtbx {
   bool SpaceGroupInfo::isEnantiomorphic() const
   {
     if (SgOps().isCentric()) return false;
-    std::vector<RTMx>
+    af::shared<RTMx>
     AddlG = ReferenceSettings::GetNormAddlG(SgNumber(), false, true, false);
     if (AddlG.size() == 1) return false;
     cctbx_assert(AddlG.size() == 0);
@@ -145,7 +145,7 @@ namespace cctbx { namespace sgtbx {
   ChOfBasisOp SpaceGroupInfo::getChangeOfHandOp() const
   {
     if (SgOps().isCentric()) return ChOfBasisOp(1, STBF);
-    std::vector<RTMx>
+    af::shared<RTMx>
     AddlG = getAddlGeneratorsOfEuclideanNormalizer(true, false);
     if (AddlG.size() == 1) return ChOfBasisOp(AddlG[0]);
     cctbx_assert(AddlG.size() == 0);

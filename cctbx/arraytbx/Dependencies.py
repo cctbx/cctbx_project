@@ -9,24 +9,26 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.files = (
       "global/error.cpp",
       "global/bpl_utils.cpp",
-      "global/carray_bpl.cpp",
-      "arraytbx/std_vectormodule.cpp",
-      "arraytbx/shared_storagemodule.cpp",
-      "arraytbx/tst.py",
+      "global/tiny_bpl.cpp",
+      "arraytbx/sharedmodule.cpp",
+      "arraytbx/tst_shared.py",
       "arraytbx/tst_af_helpers.cpp",
       "arraytbx/tst_af_1.cpp",
       "arraytbx/tst_af_2.cpp",
+      "arraytbx/debug_overloadmodule.cpp",
+      "arraytbx/tst_debug_overload.py",
     )
 
     self.executables = {
       "tst_af_1": (("tst_af_1",), ()),
-      "tst_af_2": (("tst_af_2",), ()),
     }
+    if (self.platform != "vc60"):
+      self.executables["tst_af_2"] = (("tst_af_2",), ())
 
     self.boost_python_modules = {
-      "std_vector":
-        (("std_vectormodule", "error", "bpl_utils", "carray_bpl"), ()),
-      "shared_storage":
-        (("shared_storagemodule", "bpl_utils", "carray_bpl"), ()),
+      "shared":
+        (("sharedmodule", "error", "bpl_utils", "tiny_bpl"), ()),
+      "debug_overload":
+        (("debug_overloadmodule",), ()),
     }
 

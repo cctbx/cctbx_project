@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/array_family/simple_io.h>
 
 int main(void)
 {
@@ -27,8 +28,8 @@ int main(void)
   }
 
   RTMx M = SgOps(1);
-  std::cout << M.as_array(double(0)) << std::endl;
-  std::cout << M.as_int_array() << std::endl;
+  std::cout << M.as_array(double(0)).ref() << std::endl;
+  std::cout << M.as_int_array().ref() << std::endl;
 
   return 0;
 }

@@ -18,8 +18,8 @@ class InternalError(exceptions.Exception):
 import string, re, cgi, math
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-from cctbx import sgtbx
-from cctbx import uctbx
+from cctbx_boost import sgtbx
+from cctbx_boost import uctbx
 
 print "sgtbx version:", sgtbx.__version__
 print "<p>"

@@ -1,16 +1,16 @@
 import sys
 sys.path.insert(0, "lib_python")
-from cctbx import uctbx
-from cctbx import sgtbx
-#import cctbx.arraytbx.shared_storage
-import cctbx.eltbx.tinypse
-import cctbx.eltbx.icsd_radii
-import cctbx.eltbx.wavelengths
-import cctbx.eltbx.caasf_it1992
-import cctbx.eltbx.caasf_wk1995
-import cctbx.eltbx.henke
-import cctbx.eltbx.sasaki
-import cctbx.eltbx.neutron
-from cctbx import adptbx
-from cctbx import sftbx
-from cctbx import fftbx
+from cctbx_boost import uctbx
+from cctbx_boost import sgtbx
+import cctbx_boost.arraytbx.shared
+import cctbx_boost.eltbx.tinypse
+import cctbx_boost.eltbx.icsd_radii
+import cctbx_boost.eltbx.wavelengths
+import cctbx_boost.eltbx.caasf_it1992
+import cctbx_boost.eltbx.caasf_wk1995
+import cctbx_boost.eltbx.henke
+import cctbx_boost.eltbx.sasaki
+import cctbx_boost.eltbx.neutron
+from cctbx_boost import adptbx
+from cctbx_boost import sftbx
+from cctbx_boost import fftbx

@@ -20,12 +20,12 @@ class FormatError(exceptions.Exception): pass
 import math, string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-from cctbx.arraytbx import std_vector
-from cctbx import sgtbx
-from cctbx import uctbx
-from cctbx.eltbx.caasf_wk1995 import CAASF_WK1995
-from cctbx import adptbx
-from cctbx import sftbx
+from cctbx_boost.arraytbx import shared
+from cctbx_boost import sgtbx
+from cctbx_boost import uctbx
+from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
+from cctbx_boost import adptbx
+from cctbx_boost import sftbx
 
 print "sgtbx version:", sgtbx.__version__
 print "<br>"
@@ -170,7 +170,7 @@ if (__name__ == "__main__"):
     print "<th>Occupancy<br>factor"
     print "<th>Biso"
     print "<tr>"
-    Sites = std_vector.XrayScatterer()
+    Sites = shared.XrayScatterer()
     print
     for line in inp.coordinates:
       flds = string.split(line)
@@ -198,7 +198,8 @@ if (__name__ == "__main__"):
     print
 
     MillerIndices = sftbx.BuildMillerIndices(UnitCell, SgInfo, d_min)
-    Fcalc = sftbx.StructureFactorVector(UnitCell, SgOps, MillerIndices, Sites)
+    Fcalc = shared.complex_double(MillerIndices.size())
+    sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites, Fcalc)
 
     print "Number of Miller indices:", len(Fcalc)
     print

@@ -1,7 +1,7 @@
 # $Id$
 
 import math
-from cctbx.eltbx.henke import *
+from cctbx_boost.eltbx.henke import *
 henke = Henke("SI")
 print henke.Label(), henke.Z()
 for i in xrange(16):

@@ -14,17 +14,17 @@
 
 namespace cctbx { namespace sgtbx {
 
-  bool SpaceGroup::isCompatibleMetricalMatrix(const double9& G,
+  bool SpaceGroup::isCompatibleMetricalMatrix(const af::double9& G,
                                               double tolerance) const
   {
     // for all R in the representative set of rotation matrices,
     // assert Transpose[R].G.R == G
 
     for (int iSMx = 1; iSMx < m_nSMx; iSMx++) {
-      double9 R;
+      af::double9 R;
       int i;
       for(i=0;i<9;i++) R[i] = double(m_SMx[iSMx].Rpart()[i]);
-      double9 RtGR = uctbx::getRtGR(G, R);
+      af::double9 RtGR = uctbx::getRtGR(G, R);
       for(i=0;i<9;i++) {
         double delta = RtGR[i] - G[i];
         if (delta < 0.) delta *= -1.;
@@ -34,7 +34,7 @@ namespace cctbx { namespace sgtbx {
     return true;
   }
 
-  void SpaceGroup::CheckMetricalMatrix(const double9& G,
+  void SpaceGroup::CheckMetricalMatrix(const af::double9& G,
                                        double tolerance) const
   {
     if (!isCompatibleMetricalMatrix(G, tolerance)) {

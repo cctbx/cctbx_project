@@ -8,7 +8,7 @@ BOOSTINC=-I"$(ROOT)/boost"
 
 CCTBX_UNIX="$(ROOT)/cctbx"
 CCTBX_WIN=
-CCTBXINC=-I"$(ROOT)/cctbx"
+CCTBXINC=-I"$(ROOT)/cctbx/include"
 
 CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
 CCTBXLIBDIR_WIN=
@@ -21,7 +21,7 @@ STDFIXINC=
 
 CPP=g++
 LD=g++
-STDOPTS=-fPIC -ftemplate-depth-21
+STDOPTS=-fPIC -ftemplate-depth-50
 WARNOPTS=-w
 OPTOPTS=-g
 MAKEDEP=-M

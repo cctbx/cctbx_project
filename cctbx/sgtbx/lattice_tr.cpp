@@ -100,7 +100,7 @@ namespace cctbx { namespace sgtbx {
         }
     };
 
-    bool FirstIsShorter(const int3& a, const int3& b) {
+    bool FirstIsShorter(const af::int3& a, const af::int3& b) {
       rangei(3) {
         if (a[i]) {
           if (std::abs(a[i]) > std::abs(b[i])) return false;
@@ -117,12 +117,11 @@ namespace cctbx { namespace sgtbx {
 
       for (int iLTr = 1; iLTr < LTr.nVects(); iLTr++)
       {
-        int3 nUTr;
-        nUTr.assign(1);
+        af::int3 nUTr(1,1,1);
         int i;
         for(i=0;i<3;i++) if (LTr[iLTr][i]) nUTr[i] = 2;
 
-        int3 UnitTr;
+        af::int3 UnitTr;
         for (UnitTr[0] = 0; UnitTr[0] < nUTr[0]; UnitTr[0]++)
         for (UnitTr[1] = 0; UnitTr[1] < nUTr[1]; UnitTr[1]++)
         for (UnitTr[2] = 0; UnitTr[2] < nUTr[2]; UnitTr[2]++)
@@ -161,7 +160,7 @@ namespace cctbx { namespace sgtbx {
     std::auto_ptr<std::vector<TrVec> >
     TLT = detail::BuildListTotLTr(m_LTr, RBF);
     int iTLT[3], i;
-    int9 Basis;
+    af::int9 Basis;
     for (iTLT[0] =           0; iTLT[0] < TLT->size() - 2; iTLT[0]++) {
       for (i=0;i<3;i++) Basis[i * 3 + 0] = (*TLT)[iTLT[0]][i];
     for (iTLT[1] = iTLT[0] + 1; iTLT[1] < TLT->size() - 1; iTLT[1]++) {

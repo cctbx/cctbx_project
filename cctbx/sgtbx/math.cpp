@@ -12,7 +12,8 @@
  */
 
 #include <cctbx/fixes/cstdlib>
-#include <cctbx/ndim.h>
+#include <cctbx/array_family/ref.h>
+#include <cctbx/array_family/tiny.h>
 #include <cctbx/sgtbx/math.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/basic/define_range.h>
@@ -27,8 +28,8 @@ namespace cctbx { namespace sgtbx {
     //     Computing Maximal Subgroups and Wyckoff Positions of Space Groups
     //     Acta Cryst. (1997). A53, 467 - 474
 
-    vecrefnd<int, dimension<2> > M2D(M, mr, mc);
-    vecrefnd<int, dimension<2> > T2D(T, mr, tc);
+    af::ref<int, af::grid<2> > M2D(M, mr, mc);
+    af::ref<int, af::grid<2> > T2D(T, mr, tc);
     int i, j;
     for (i = j = 0; i < mr && j < mc;) {
       int k = i; while (k < mr && M2D(k, j) == 0) k++;
@@ -71,7 +72,7 @@ namespace cctbx { namespace sgtbx {
                    const int nr, const int nc,
                    int *Sol, int *FlagIndep)
   {
-    vecrefnd<const int, dimension<2> > M2D(M, nr, nc);
+    af::const_ref<int, af::grid<2> > M2D(M, nr, nc);
     if (FlagIndep) {
       for (int ic = 0; ic < nc; ic++) FlagIndep[ic] = 1;
     }
@@ -130,7 +131,7 @@ namespace cctbx { namespace sgtbx {
     return nIndep;
   }
 
-  void SolveHomRE1(const int REMx[3], const int IxIndep[2], int3 Sol[4])
+  void SolveHomRE1(const int REMx[3], const int IxIndep[2], af::int3 Sol[4])
   {
     // REMx must be in row echelon form with Rank 1.
 

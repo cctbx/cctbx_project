@@ -1,5 +1,5 @@
-from cctbx import sgtbx
-from cctbx import uctbx
+from cctbx_boost import sgtbx
+from cctbx_boost import uctbx
 
 UnitCell = uctbx.UnitCell((11, 12, 13, 90, 100, 90))
 print UnitCell

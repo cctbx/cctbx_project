@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     Mar 2002: Using af::shared (rwgk)
      2001 Dec 21: Using iterator-based fftbx interface (rwgk)
      2001 Nov 03: Created (R.W. Grosse-Kunstleve)
  */
@@ -13,7 +14,7 @@
 #include <cctbx/fftbx/gridding.h>
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
-#include <cctbx/carray_bpl.h>
+#include <cctbx/array_family/tiny_bpl.h>
 
 using namespace cctbx;
 
@@ -29,22 +30,22 @@ namespace {
     return fftbx::adjust_gridding(min_grid, max_prime, mandatory_factor);
   }
 
-  int3 adjust_gridding_triple_2(
-    const int3& min_grid,
+  af::int3 adjust_gridding_triple_2(
+    const af::int3& min_grid,
     int max_prime) {
     return fftbx::adjust_gridding_array(min_grid, max_prime);
   }
 
-  int3 adjust_gridding_triple_3(
-    const int3& min_grid,
+  af::int3 adjust_gridding_triple_3(
+    const af::int3& min_grid,
     int max_prime,
-    const int3& mandatory_factors) {
+    const af::int3& mandatory_factors) {
     return fftbx::adjust_gridding_array(min_grid, max_prime,
                                         mandatory_factors);
   }
 
   void throw_size_error() {
-    PyErr_SetString(PyExc_RuntimeError, "Vector is too small.");
+    PyErr_SetString(PyExc_RuntimeError, "Array is too small.");
     throw boost::python::error_already_set();
   }
 
@@ -53,131 +54,102 @@ namespace {
     throw boost::python::error_already_set();
   }
 
-  template <typename ElementType, typename CastElementType>
-  struct v3d_accessor : public vecrefnd<ElementType, dimension<3> >
-  {
-    v3d_accessor() {}
-    v3d_accessor(const int3& dim,
-                 std::vector<ElementType>& vec,
-                 bool resize_vector)
-      : vecrefnd<ElementType, dimension<3> >((char*) 0, dim)
-    {
-      if (resize_vector) vec.resize(this->dim().size1d());
-      m_begin = &(*(vec.begin()));
-    }
-    v3d_accessor(const int3& dim,
-                 std::vector<CastElementType>& vec,
-                 bool resize_vector
-#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-                 , bool MSVC_DUMMY = false
-#endif
-                )
-      : vecrefnd<ElementType, dimension<3> >((char*) 0, dim)
-    {
-      std::size_t se = sizeof(ElementType);
-      std::size_t sc = sizeof(CastElementType);
-      if (se >= sc) {
-        if (resize_vector) vec.resize(this->dim().size1d() * se / sc);
-      }
-      else {
-        if (dim[2] % (sc / se)) {
-          PyErr_SetString(PyExc_RuntimeError,
-            "Vector not properly dimensioned:"
-            " number of elements in third dimension must be even.");
-          throw boost::python::error_already_set();
-        }
-        if (resize_vector) vec.resize(this->dim().size1d() * se / sc);
-      }
-      m_begin = reinterpret_cast<ElementType*>(&(*(vec.begin())));
-    }
-    ElementType
-    getitem(const int3& I) const {
-      if (!dim().is_valid_index(I)) throw_index_error();
-      return operator()(I);
-    }
-    void setitem(const int3& I,
-                 ElementType value) {
-      if (!dim().is_valid_index(I)) throw_index_error();
-      operator()(I) = value;
-    }
-  };
-
-  typedef v3d_accessor<double, std::complex<double> > vd3d_accessor;
-  typedef v3d_accessor<std::complex<double>, double>  vc3d_accessor;
+  typedef af::shared<double> shared_real_array;
+  typedef af::ref<double, af::grid<3> > ref_3d_real_array;
+  typedef af::shared<std::complex<double> > shared_complex_array;
+  typedef af::ref<std::complex<double>, af::grid<3> > ref_3d_complex_array;
 
   void cc_forward_complex(fftbx::complex_to_complex<double>& fft,
-                          std::vector<std::complex<double> >& vec) {
-    if (vec.size() < fft.N()) throw_size_error();
-    fft.forward(vec.begin());
+                          shared_complex_array a) {
+    if (a.size() < fft.N()) throw_size_error();
+    fft.forward(a.begin());
   }
   void cc_backward_complex(fftbx::complex_to_complex<double>& fft,
-                           std::vector<std::complex<double> >& vec) {
-    if (vec.size() < fft.N()) throw_size_error();
-    fft.backward(vec.begin());
+                           shared_complex_array a) {
+    if (a.size() < fft.N()) throw_size_error();
+    fft.backward(a.begin());
   }
   void cc_forward_real(fftbx::complex_to_complex<double>& fft,
-                       std::vector<double>& vec) {
-    if (vec.size() < 2 * fft.N()) throw_size_error();
-    fft.forward(vec.begin());
+                       shared_real_array a) {
+    if (a.size() < 2 * fft.N()) throw_size_error();
+    fft.forward(a.begin());
   }
   void cc_backward_real(fftbx::complex_to_complex<double>& fft,
-                        std::vector<double>& vec) {
-    if (vec.size() < 2 * fft.N()) throw_size_error();
-    fft.backward(vec.begin());
+                        shared_real_array a) {
+    if (a.size() < 2 * fft.N()) throw_size_error();
+    fft.backward(a.begin());
   }
 
   void rc_forward_complex(fftbx::real_to_complex<double>& fft,
-                          std::vector<std::complex<double> >& vec) {
-    if (vec.size() < fft.Ncomplex()) throw_size_error();
-    fft.forward(vec.begin());
+                          shared_complex_array a) {
+    if (a.size() < fft.Ncomplex()) throw_size_error();
+    fft.forward(a.begin());
   }
   void rc_backward_complex(fftbx::real_to_complex<double>& fft,
-                           std::vector<std::complex<double> >& vec) {
-    if (vec.size() < fft.Ncomplex()) throw_size_error();
-    fft.backward(vec.begin());
+                           shared_complex_array a) {
+    if (a.size() < fft.Ncomplex()) throw_size_error();
+    fft.backward(a.begin());
   }
   void rc_forward_real(fftbx::real_to_complex<double>& fft,
-                       std::vector<double>& vec) {
-    if (vec.size() < fft.Mreal()) throw_size_error();
-    fft.forward(vec.begin());
+                       shared_real_array a) {
+    if (a.size() < fft.Mreal()) throw_size_error();
+    fft.forward(a.begin());
   }
   void rc_backward_real(fftbx::real_to_complex<double>& fft,
-                        std::vector<double>& vec) {
-    if (vec.size() < fft.Mreal()) throw_size_error();
-    fft.backward(vec.begin());
+                        shared_real_array a) {
+    if (a.size() < fft.Mreal()) throw_size_error();
+    fft.backward(a.begin());
   }
 
   void cc_3d_forward_complex(fftbx::complex_to_complex_3d<double>& fft,
-                     vc3d_accessor map) {
+                             shared_complex_array a) {
+    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
+    if (a.size() < map.size()) throw_size_error();
     fft.forward(map);
   }
   void cc_3d_backward_complex(fftbx::complex_to_complex_3d<double>& fft,
-                      vc3d_accessor map) {
+                              shared_complex_array a) {
+    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
+    if (a.size() < map.size()) throw_size_error();
     fft.backward(map);
   }
   void cc_3d_forward_real(fftbx::complex_to_complex_3d<double>& fft,
-                          vd3d_accessor map) {
+                          shared_real_array a) {
+    ref_3d_real_array map(
+      a.begin(), af::grid<3>(fftbx::Nreal_from_Ncomplex(fft.N())));
+    if (a.size() < map.size()) throw_size_error();
     fft.forward(map);
   }
   void cc_3d_backward_real(fftbx::complex_to_complex_3d<double>& fft,
-                          vd3d_accessor map) {
+                           shared_real_array a) {
+    ref_3d_real_array map(
+      a.begin(), af::grid<3>(fftbx::Nreal_from_Ncomplex(fft.N())));
+    if (a.size() < map.size()) throw_size_error();
     fft.backward(map);
   }
 
   void rc_3d_forward_complex(fftbx::real_to_complex_3d<double>& fft,
-                             vc3d_accessor map) {
+                             shared_complex_array a) {
+    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
+    if (a.size() < map.size()) throw_size_error();
     fft.forward(map);
   }
   void rc_3d_backward_complex(fftbx::real_to_complex_3d<double>& fft,
-                              vc3d_accessor map) {
+                              shared_complex_array a) {
+    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
+    if (a.size() < map.size()) throw_size_error();
     fft.backward(map);
   }
   void rc_3d_forward_real(fftbx::real_to_complex_3d<double>& fft,
-                          vd3d_accessor map) {
+                          shared_real_array a) {
+    ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
+    if (a.size() < map.size()) throw_size_error();
     fft.forward(map);
   }
   void rc_3d_backward_real(fftbx::real_to_complex_3d<double>& fft,
-                           vd3d_accessor map) {
+                           shared_real_array a) {
+    ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
+    if (a.size() < map.size()) throw_size_error();
     fft.backward(map);
   }
 
@@ -189,22 +161,17 @@ namespace {
     this_module.add(ref(to_python(
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    python::import_converters<std::vector<int> >
-    py_std_vector_int(
-      "cctbx.arraytbx.std_vector", "int");
+    python::import_converters<af::shared<int> >
+    py_shared_int(
+      "cctbx_boost.arraytbx.shared", "int");
 
-    python::import_converters<std::vector<double> >
-    py_std_vector_double(
-      "cctbx.arraytbx.std_vector", "double");
+    python::import_converters<af::shared<double> >
+    py_shared_double(
+      "cctbx_boost.arraytbx.shared", "double");
 
-    python::import_converters<std::vector<std::complex<double> > >
-    py_std_vector_complex_double(
-      "cctbx.arraytbx.std_vector", "complex_double");
-
-    class_builder<vd3d_accessor>
-    py_vd3d_accessor(this_module, "vd3d_accessor");
-    class_builder<vc3d_accessor>
-    py_vc3d_accessor(this_module, "vc3d_accessor");
+    python::import_converters<af::shared<std::complex<double> > >
+    py_shared_complex_double(
+      "cctbx_boost.arraytbx.shared", "complex_double");
 
     class_builder<fftbx::factorization>
     py_factorization(this_module, "factorization");
@@ -226,30 +193,6 @@ namespace {
     this_module.def(adjust_gridding_3, "adjust_gridding");
     this_module.def(adjust_gridding_triple_2, "adjust_gridding_triple");
     this_module.def(adjust_gridding_triple_3, "adjust_gridding_triple");
-
-    py_vd3d_accessor.def(constructor<>());
-    py_vd3d_accessor.def(constructor<
-      const int3&,
-      std::vector<double>&,
-      bool>());
-    py_vd3d_accessor.def(constructor<
-      const int3&,
-      std::vector<std::complex<double> >&,
-      bool>());
-    py_vd3d_accessor.def(&vd3d_accessor::getitem, "__getitem__");
-    py_vd3d_accessor.def(&vd3d_accessor::setitem, "__setitem__");
-
-    py_vc3d_accessor.def(constructor<>());
-    py_vc3d_accessor.def(constructor<
-      const int3&,
-      std::vector<std::complex<double> >&,
-      bool>());
-    py_vc3d_accessor.def(constructor<
-      const int3&,
-      std::vector<double>&,
-      bool>());
-    py_vc3d_accessor.def(&vc3d_accessor::getitem, "__getitem__");
-    py_vc3d_accessor.def(&vc3d_accessor::setitem, "__setitem__");
 
     py_factorization.def(constructor<>());
     py_factorization.def(constructor<std::size_t, bool>());
@@ -281,7 +224,7 @@ namespace {
     py_complex_to_complex_3d.def(
       constructor<std::size_t, std::size_t, std::size_t>());
     py_complex_to_complex_3d.def(
-      constructor<const int3&>());
+      constructor<const af::int3&>());
     py_complex_to_complex_3d.def(
       &fftbx::complex_to_complex_3d<double>::N, "N");
     py_complex_to_complex_3d.def(cc_3d_forward_complex, "forward");
@@ -293,7 +236,7 @@ namespace {
     py_real_to_complex_3d.def(
       constructor<std::size_t, std::size_t, std::size_t>());
     py_real_to_complex_3d.def(
-      constructor<const int3&>());
+      constructor<const af::int3&>());
     py_real_to_complex_3d.def(
       &fftbx::real_to_complex_3d<double>::Nreal, "Nreal");
     py_real_to_complex_3d.def(

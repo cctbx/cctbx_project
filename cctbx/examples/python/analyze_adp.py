@@ -1,8 +1,8 @@
 # Simple example for the use of the adptbx.
 
-from cctbx import uctbx # unit cell toolbox
-from cctbx import sgtbx # space group toolbox
-from cctbx import adptbx # anisotropic displacement parameter toolbox
+from cctbx_boost import uctbx # unit cell toolbox
+from cctbx_boost import sgtbx # space group toolbox
+from cctbx_boost import adptbx # anisotropic displacement parameter toolbox
 
 UnitCell = uctbx.UnitCell((10.67, 10.67, 4.68, 90, 90, 120))
 SpaceGroup = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols("P 3"))

@@ -8,7 +8,7 @@ TidyCBOp = "--TidyCBOp" in sys.argv
 QuickMode = "--Quick" in sys.argv
 ShortCut = "--ShortCut" in sys.argv
 
-from cctbx import sgtbx
+from cctbx_boost import sgtbx
 
 RBFerr = "out of rotation-base-factor range"
 TBFerr = "out of translation-base-factor range"
