@@ -11,10 +11,13 @@
 #ifndef CCTBX_FFTBX_ADAPTORS_H
 #define CCTBX_FFTBX_ADAPTORS_H
 
+#include <cctbx/array.h>
+#include <cctbx/vector/reductions.h>
 #include <cctbx/ndim.h>
-#include <cctbx/fftbx/triple.h>
 
 namespace cctbx { namespace fftbx {
+
+  typedef cctbx::array<std::size_t, 3> triple;
 
   //! Adaptors for 3-dimensional transforms.
   namespace adaptors {

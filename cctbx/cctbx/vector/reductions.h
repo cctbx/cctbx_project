@@ -15,10 +15,41 @@ namespace cctbx { namespace vector {
 
   template <typename VectorType>
   typename VectorType::value_type
+  max(const VectorType& v)
+  {
+    typename VectorType::value_type result = v[0];
+    for(std::size_t i=1;i<v.size();i++) {
+      if (result < v[i]) result = v[i];
+    }
+    return result;
+  }
+
+  template <typename VectorType>
+  typename VectorType::value_type
+  min(const VectorType& v)
+  {
+    typename VectorType::value_type result = v[0];
+    for(std::size_t i=1;i<v.size();i++) {
+      if (result > v[i]) result = v[i];
+    }
+    return result;
+  }
+
+  template <typename VectorType>
+  typename VectorType::value_type
   sum(const VectorType& v)
   {
     typename VectorType::value_type result = 0;
     for(std::size_t i=0;i<v.size();i++) result += v[i];
+    return result;
+  }
+
+  template <typename VectorType>
+  typename VectorType::value_type
+  product(const VectorType& v)
+  {
+    typename VectorType::value_type result = 1;
+    for(std::size_t i=0;i<v.size();i++) result *= v[i];
     return result;
   }
 

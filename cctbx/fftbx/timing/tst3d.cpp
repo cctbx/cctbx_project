@@ -30,9 +30,9 @@ namespace {
   shared_vector init_cseq(const fftbx::triple& N)
   {
     shared_vector cseq(new std::vector<double>);
-    for(int i=0;i<N.product(); i++) {
-      cseq->push_back(double(37-i)/(N.max()+11));
-      cseq->push_back(double(i-73)/(N.max()+13));
+    for(int i=0;i<cctbx::vector::product(N); i++) {
+      cseq->push_back(double(37-i)/(cctbx::vector::max(N)+11));
+      cseq->push_back(double(i-73)/(cctbx::vector::max(N)+13));
     }
     return cseq;
   }
@@ -85,7 +85,8 @@ namespace {
       Plan = fftw3d_create_plan(
         N[0], N[1], N[2], FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
     }
-    //show_fftw_complex((fftw_complex *) &(*cseq)[0], N.product());
+    //show_fftw_complex((fftw_complex *) &(*cseq)[0],
+    //                  cctbx::vector::product(N));
     fftwnd_one(Plan, (fftw_complex *) &(*cseq)[0], 0);
     fftwnd_destroy_plan(Plan);
     return cseq;
@@ -123,7 +124,7 @@ namespace {
   {
     fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
     M[2] *= 2;
-    assert(cseq->size() == M.product());
+    assert(cseq->size() == cctbx::vector::product(M));
     c_index_1d<3> i1d;
     boost::array<std::size_t, 3> I;
     for(I[0]=0;I[0]<N[0];I[0]++)
@@ -142,7 +143,7 @@ namespace {
                                     const fftbx::triple& N,
                                     std::size_t loop_iterations)
   {
-    std::vector<double> cseq(2 * N.product());
+    std::vector<double> cseq(2 * cctbx::vector::product(N));
     fftbx::complex_to_complex_3d<std::vector<double> > fft(N);
     if (dir == 'f') {
       std::cout << "timing_complex_to_complex_3d forward " << N << std::endl;
@@ -163,7 +164,7 @@ namespace {
                                  std::size_t loop_iterations)
   {
     fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    std::vector<double> cseq(2 * M.product());
+    std::vector<double> cseq(2 * cctbx::vector::product(M));
     fftbx::real_to_complex_3d<std::vector<double> > fft(N);
     if (dir == 'f') {
       std::cout << "timing_real_to_complex_3d forward " << N << std::endl;
@@ -183,7 +184,7 @@ namespace {
                       const fftbx::triple& N,
                       std::size_t loop_iterations)
   {
-    std::vector<double> cseq(2 * N.product());
+    std::vector<double> cseq(2 * cctbx::vector::product(N));
     if (dir == 'f') {
       std::cout << "timing_fftw_3d forward " << N << std::endl;
       fftwnd_plan Plan = fftw3d_create_plan(
@@ -209,7 +210,7 @@ namespace {
                        std::size_t loop_iterations)
   {
     fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    std::vector<double> cseq(2 * M.product());
+    std::vector<double> cseq(2 * cctbx::vector::product(M));
     if (dir == 'f') {
       std::cout << "timing_rfftw_3d forward " << N << std::endl;
       rfftwnd_plan Plan = rfftw3d_create_plan(
