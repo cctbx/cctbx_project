@@ -61,6 +61,9 @@ namespace {
         .def("flags", &w_t::flags, rir())
         .def("group", &w_t::group, rir())
         .def("continuous_shifts", &w_t::continuous_shifts, ccr())
+        .def("continuous_shifts_are_principal",
+          &w_t::continuous_shifts_are_principal)
+        .def("continuous_shift_flags", &w_t::continuous_shift_flags)
       ;
     }
   };

@@ -1,16 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of cctbx/sgtbx/coordinates.h (rwgk)
-     2001 Oct: SpecialPosition -> SiteSymmetry (R.W. Grosse-Kunstleve)
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_SYM_EQUIV_SITES_H
 #define CCTBX_SGTBX_SYM_EQUIV_SITES_H
 
@@ -397,8 +384,8 @@ namespace cctbx { namespace sgtbx {
 
       /*! \brief Computes the shortest distance between other and
           reference_sites.coordinates()[0].
-          <p>
-          If principal_continuous_allowed_origin_shift_flags is
+       */
+      /*! If principal_continuous_allowed_origin_shift_flags is
           supplied, the three flags signal a continuous allowed
           origin shift along a,b,c, respectively. These shifts
           are considered in the distance calculations. The
@@ -411,7 +398,35 @@ namespace cctbx { namespace sgtbx {
         frac_t const& other,
         af::tiny<bool, 3> const&
           principal_continuous_allowed_origin_shift_flags
-            = no_continuous_allowed_shifts);
+            = no_continuous_allowed_shifts)
+      {
+        init(
+          reference_sites,
+          af::const_ref<coor_t>(&other, 1),
+          principal_continuous_allowed_origin_shift_flags);
+      }
+
+      /*! \brief Computes the shortest distance between others and
+          reference_sites.coordinates()[0].
+       */
+      min_sym_equiv_distance_info(
+        sym_equiv_sites<FloatType> const& reference_sites,
+        af::const_ref<coor_t> const& others,
+        af::tiny<bool, 3> const&
+          principal_continuous_allowed_origin_shift_flags
+            = no_continuous_allowed_shifts)
+      {
+        init(
+          reference_sites,
+          others,
+          principal_continuous_allowed_origin_shift_flags);
+      }
+
+      //! Index to coordinates in others array as passed to the constructor.
+      /*! The index is zero if the non-array constructor was used.
+       */
+      std::size_t
+      i_other() const { return i_other_; }
 
       //! Symmetry operation that gives rise to the shortest distance.
       /*! The symmetry operation is defined by the equation:
@@ -464,37 +479,44 @@ namespace cctbx { namespace sgtbx {
        */
       // Visual C++ 7 Internal Compiler Error if moved out of class body.
       af::shared<coor_t>
-      apply(af::const_ref<coor_t> const& x) const
+      apply(af::const_ref<coor_t> const& sites_frac) const
       {
-        af::shared<coor_t> result((af::reserve(x.size())));
+        af::shared<coor_t> result((af::reserve(sites_frac.size())));
         if (continuous_shifts().is_zero()) {
-          for(std::size_t i=0;i<x.size();i++) {
-            result.push_back(sym_op_ * x[i]);
+          for(std::size_t i=0;i<sites_frac.size();i++) {
+            result.push_back(sym_op_ * sites_frac[i]);
           }
         }
         else {
-          for(std::size_t i=0;i<x.size();i++) {
-            result.push_back(sym_op_ * x[i] + continuous_shifts_);
+          for(std::size_t i=0;i<sites_frac.size();i++) {
+            result.push_back(sym_op_ * sites_frac[i] + continuous_shifts_);
           }
         }
         return result;
       }
 
-    private:
+    protected:
+      std::size_t i_other_;
       rt_mx sym_op_;
       frac_t continuous_shifts_;
       frac_t diff_;
       FloatType dist_sq_;
+
+      void
+      init(
+        sym_equiv_sites<FloatType> const& reference_sites,
+        af::const_ref<coor_t> const& others,
+        af::tiny<bool, 3> const&
+          principal_continuous_allowed_origin_shift_flags);
   };
 
   template <typename FloatType>
-  min_sym_equiv_distance_info<FloatType>
-  ::min_sym_equiv_distance_info(
+  void
+  min_sym_equiv_distance_info<FloatType>::
+  init(
     sym_equiv_sites<FloatType> const& reference_sites,
-    frac_t const& other,
+    af::const_ref<coor_t> const& others,
     af::tiny<bool, 3> const& continuous_shift_flags)
-  :
-    continuous_shifts_(0,0,0)
   {
     uctbx::unit_cell const& unit_cell = reference_sites.unit_cell();
     af::const_ref<coor_t>
@@ -502,33 +524,40 @@ namespace cctbx { namespace sgtbx {
     bool no_continuous_shifts = continuous_shift_flags.all_eq(false);
     std::size_t min_i_coor;
     frac_t min_unit_shifts;
-    FloatType min_dist_sq = 0;
-    for(std::size_t i=0;i<reference_coordinates.size();i++) {
-      frac_t diff_raw = other - reference_coordinates[i];
-      frac_t diff_mod = diff_raw.mod_short();
-      FloatType dist_sq;
-      if (no_continuous_shifts) {
-        dist_sq = unit_cell.length_sq(diff_mod);
-      }
-      else {
-        frac_t diff_proj;
-        for (std::size_t j=0;j<3;j++) {
-          diff_proj[j] = (continuous_shift_flags[j] ? 0 : diff_mod[j]);
+    FloatType min_dist_sq = -1;
+    for(std::size_t i_corr=0;i_corr<reference_coordinates.size();i_corr++) {
+      for(std::size_t i_other=0;i_other<others.size();i_other++) {
+        frac_t other = others[i_other];
+        frac_t diff_raw = other - reference_coordinates[i_corr];
+        frac_t diff_mod = diff_raw.mod_short();
+        FloatType dist_sq;
+        if (no_continuous_shifts) {
+          dist_sq = unit_cell.length_sq(diff_mod);
         }
-        dist_sq = unit_cell.length_sq(diff_proj);
-      }
-      if (min_dist_sq > dist_sq || i == 0) {
-        min_i_coor = i;
-        min_unit_shifts = diff_raw - diff_mod;
-        min_dist_sq = dist_sq;
+        else {
+          frac_t diff_proj;
+          for (std::size_t i=0;i<3;i++) {
+            diff_proj[i] = (continuous_shift_flags[i] ? 0 : diff_mod[i]);
+          }
+          dist_sq = unit_cell.length_sq(diff_proj);
+        }
+        if (min_dist_sq > dist_sq || min_dist_sq == -1) {
+          i_other_ = i_other;
+          min_i_coor = i_corr;
+          min_unit_shifts = diff_raw - diff_mod;
+          min_dist_sq = dist_sq;
+        }
       }
     }
     rt_mx s = reference_sites.sym_op(min_i_coor);
     sym_op_ = (s + tr_vec(min_unit_shifts.unit_shifts(), 1)
                    .scale(s.t().den()))
               .inverse();
-    diff_ = reference_coordinates[0] - sym_op_ * other;
-    if (!no_continuous_shifts) {
+    diff_ = reference_coordinates[0] - sym_op_ * others[i_other_];
+    if (no_continuous_shifts) {
+      continuous_shifts_ = frac_t(0,0,0);
+    }
+    else {
       frac_t diff_proj;
       for (std::size_t j=0;j<3;j++) {
         diff_proj[j] = (continuous_shift_flags[j] ? 0 : diff_[j]);

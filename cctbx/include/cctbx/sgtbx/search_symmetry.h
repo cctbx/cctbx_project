@@ -99,6 +99,35 @@ namespace cctbx { namespace sgtbx {
       af::small<scitbx::vec3<int>, 3> const&
       continuous_shifts() const { return continuous_shifts_; }
 
+      bool
+      continuous_shifts_are_principal() const
+      {
+        typedef scitbx::vec3<int> v;
+        for(std::size_t i=0;i<continuous_shifts_.size();i++) {
+          v const& s = continuous_shifts_[i];
+          if (   s != v(1,0,0)
+              && s != v(0,1,0)
+              && s != v(0,0,1)) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      af::tiny<bool, 3>
+      continuous_shift_flags() const
+      {
+        af::tiny<bool, 3> result(false,false,false);
+        typedef scitbx::vec3<int> v;
+        for(std::size_t i=0;i<continuous_shifts_.size();i++) {
+          v const& s = continuous_shifts_[i];
+          for(std::size_t j=0;j<3;j++) {
+            if (s[j]) result[j] = true;
+          }
+        }
+        return result;
+      }
+
     protected:
       search_symmetry_flags flags_;
       space_group group_;

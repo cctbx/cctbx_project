@@ -138,21 +138,11 @@ class euclidean_match_symmetry:
       seminvariant=space_group_info.structure_seminvariant())
     self.rt_mx = search_symmetry.group()
     self.continuous_shifts = search_symmetry.continuous_shifts()
-
-  def continuous_shifts_are_principal(self):
-    for pa in self.continuous_shifts:
-      if (not pa in ((1,0,0),(0,1,0),(0,0,1))): return 00000
-    return 0001
+    assert search_symmetry.continuous_shifts_are_principal()
+    self.continuous_shift_flags = search_symmetry.continuous_shift_flags()
 
   def filter_shift(self, shift, selector=1):
     return filter_shift(self.continuous_shift_flags, shift, selector)
-
-  def set_continuous_shift_flags(self):
-    assert self.continuous_shifts_are_principal()
-    self.continuous_shift_flags = [0,0,0]
-    for pa in self.continuous_shifts:
-      for i in xrange(3):
-        if (pa[i]): self.continuous_shift_flags[i] = 1
 
   def show(self, title="", f=None):
     if (f is None): f = sys.stdout
@@ -383,7 +373,6 @@ def compute_refined_matches(ref_model1, ref_model2,
   match_symmetry = euclidean_match_symmetry(
     ref_model1.space_group_info(),
     use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
-  match_symmetry.set_continuous_shift_flags()
   ref_model1_sites = flex.vec3_double([pos.site for pos in ref_model1])
   ref_model2_sites = flex.vec3_double([pos.site for pos in ref_model2])
   add_pair_ext = ext.add_pair(
