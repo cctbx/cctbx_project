@@ -1,0 +1,58 @@
+<html>
+<head>
+<title>cctbx - Structure factor calculation from PDB file</title>
+</head>
+<body bgcolor=#ffffff>
+
+[<a href="index.html">Index of services</a>]
+<hr>
+<h1>cctbx - Structure factor calculation from PDB file</h1>
+<hr>
+
+<FORM METHOD=POST ACTION="cctbx_web.cgi">
+<input type="HIDDEN" name="target_module" value="structure_factors_pdb">
+
+<p>
+<strong>Minimum d-spacing (highest resolution): </strong><input
+name="d_min" size=8
+value="1.0">
+
+<p>
+<strong>Algorithm: </strong>
+<select name="algorithm">
+  <option value="fft" selected
+    >FFT</option>
+  <option value="direct"
+    >direct summation</option>
+</select>
+
+<p>
+<strong>Formfactors: </strong>
+<select name="form_factors">
+  <option value="wk1995" selected
+    >D. Waasmaier and A. Kirfel, Acta Cryst. (1995). A51, 416-431</option>
+  <option value="it1992"
+    >Intl. Tables 1992</option>
+  <option value="n_gaussian"
+    >n_gaussian (IUCr Comp Newsl 3, 2004)</option>
+</select>
+
+
+<p>
+<strong>Coordinates:</strong>
+<p>
+Format: only PDB file format accepted<br>
+Please copy and paste the whole content of your PDB file<br>
+Important: CRYST1 record must be presented (with space group symbol included!)<br>
+<p>
+<textarea name="coordinates" rows=16 cols=80></textarea>
+<p>
+<input type="submit" value="Calculate structure factors">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+<hr>
+[<a href="index.html">Index of services</a>]
+<hr>
+</body>
+</html>
