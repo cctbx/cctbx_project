@@ -87,7 +87,7 @@ namespace scitbx { namespace {
     return static_cast<int>(s + .5);
   }
 
-  void modify_ref(af::ref<double> a)
+  void modify_ref(af::ref<double> const& a)
   {
     for(std::size_t i=0;i<a.size();i++) a[i] *= 2;
   }

@@ -137,61 +137,82 @@ namespace scitbx { namespace af {
 
       ref()
       {}
+
       ref(ElementType* begin, accessor_type ac)
         : base_class(begin, ac)
       {}
+
       // convenience constructors
-      ref(
-        ElementType* begin, long n0)
-        : base_class(begin, n0)
-      {}
-      ref(
-        ElementType* begin, long n0, long n1)
-        : base_class(begin, n0, n1)
-      {}
-      ref(
-        ElementType* begin, long n0, long n1, long n2)
-        : base_class(begin, n0, n1, n2)
+      ref(ElementType* begin, long n0)
+      : base_class(begin, n0)
       {}
 
-      SCITBX_ARRAY_FAMILY_BEGIN_END_ETC(ref,
-        const_cast<ElementType*>(this->m_begin), this->size())
+      ref(ElementType* begin, long n0, long n1)
+      : base_class(begin, n0, n1)
+      {}
 
-      ref<ElementType> as_1d() const {
+      ref(ElementType* begin, long n0, long n1, long n2)
+      : base_class(begin, n0, n1, n2)
+      {}
+
+      ElementType*
+      begin() const { return const_cast<ElementType*>(this->m_begin); }
+
+      ElementType*
+      end() const { return begin() + this->size(); }
+
+      ElementType&
+      front() const { return begin()[0]; }
+
+      ElementType&
+      back() const { return end()[-1]; }
+
+      ElementType&
+      operator[](size_type i) const { return begin()[i]; }
+
+      ElementType&
+      at(size_type i) const
+      {
+        if (i >= this->size()) throw_range_error();
+        return begin()[i];
+      }
+
+      ref const&
+      fill(ElementType const& x) const
+      {
+        std::fill(begin(), end(), x);
+        return *this;
+      }
+
+      ref<ElementType>
+      as_1d() const
+      {
         return ref<ElementType>(this->begin(), this->size());
       }
 
-      value_type const& operator()(index_type const& i) const {
-        return this->begin()[this->m_accessor(i)];
-      }
-            value_type& operator()(index_type const& i) {
-        return this->begin()[this->m_accessor(i)];
+      value_type&
+      operator()(index_type const& i) const
+      {
+        return begin()[this->m_accessor(i)];
       }
 
       // Convenience operator()
 
-      value_type const& operator()(long i0) const {
+      value_type&
+      operator()(long i0) const
+      {
         return operator()(index_type(i0));
       }
-            value_type& operator()(long i0) {
-        return operator()(index_type(i0));
-      }
-      value_type const& operator()(long i0,
-                                   long i1) const {
+
+      value_type&
+      operator()(long i0, long i1) const
+      {
         return operator()(index_type(i0, i1));
       }
-            value_type& operator()(long i0,
-                                   long i1) {
-        return operator()(index_type(i0, i1));
-      }
-      value_type const& operator()(long i0,
-                                   long i1,
-                                   long i2) const {
-        return operator()(index_type(i0, i1, i2));
-      }
-            value_type& operator()(long i0,
-                                   long i1,
-                                   long i2) {
+
+      value_type&
+      operator()(long i0, long i1, long i2) const
+      {
         return operator()(index_type(i0, i1, i2));
       }
   };
