@@ -151,6 +151,40 @@ name
  prefix
  prefix f = g
 """)
+  recycle(
+    input_string="""\
+#name # 1 2 3
+  #.help="a"
+        "b"
+        "c"
+      # 1 2 3
+  .expert_level=1 # x
+        # 1 2 3
+{
+  #a=b
+    .type="int" # y
+  c=d # e
+    #.help="d"
+          "e"
+          "f"
+    .expert_level=2
+}
+d=a b c # 1 2 3 \\
+4 5 6
+""",
+    attributes_level=2,
+    expected_out="""\
+#name
+  .expert_level = 1
+{
+  #a = b
+    .type = "int"
+  c = d
+    .expert_level = 2
+}
+
+d = a b c
+""")
 
 def test_exception(input_string, exception_string=None):
   try: iotbx.parameters.parse(input_string=input_string)
@@ -408,6 +442,7 @@ n='$a'
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
 include tmp1.params
+#include none
 a=x
 """
   print >> open("tmp2.params", "w"), """\
@@ -431,6 +466,7 @@ s=1
   parameters.show(out=out)
   assert out.getvalue() == """\
 tmp2 = tmp2.params
+#include none
 a = x
 b = y
 r = 0

@@ -152,11 +152,12 @@ class definition(object):
     "help", "caption", "short_caption", "required",
     "type", "input_size", "expert_level"]
 
-  __slots__ = ["name", "values"] + attribute_names
+  __slots__ = ["name", "values", "is_disabled"] + attribute_names
 
   def __init__(self,
         name,
         values,
+        is_disabled=False,
         help=None,
         caption=None,
         short_caption=None,
@@ -166,6 +167,7 @@ class definition(object):
         expert_level=None):
     self.name = name
     self.values = values
+    self.is_disabled = is_disabled
     self.help = help
     self.caption = caption
     self.short_caption = short_caption
@@ -195,7 +197,7 @@ class definition(object):
 
   def assign_attribute(self, name, value_words, type_names):
     assert self.has_attribute_with_name(name)
-    if (name == "required"):
+    if (name in ["required"]):
       value = bool_from_value_words(value_words)
     elif (name == "type"):
       value = definition_type_from_value_words(value_words, type_names)
@@ -210,7 +212,9 @@ class definition(object):
     if (previous_object is not None
         and not isinstance(previous_object, definition)):
       print >> out, prefix.rstrip()
-    line = prefix+self.name
+    if (self.is_disabled): hash = "#"
+    else:                  hash = ""
+    line = prefix + hash + self.name
     if (self.name != "include"): line += " ="
     indent = " " * len(line)
     for word in self.values:
@@ -328,6 +332,7 @@ class scope:
   def __init__(self,
         name,
         objects,
+        is_disabled=False,
         style=None,
         help=None,
         caption=None,
@@ -338,7 +343,7 @@ class scope:
         disable_delete=None,
         expert_level=None):
     introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[3:]
+    self.attribute_names = self.__init__varnames__[4:]
     assert style in [None, "row", "column", "block", "page"]
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
@@ -377,7 +382,9 @@ class scope:
                  previous_object=None):
     if (previous_object is not None):
       print >> out, prefix.rstrip()
-    print >> out, prefix + self.name
+    if (self.is_disabled): hash = "#"
+    else:                  hash = ""
+    print >> out, prefix + hash + self.name
     show_attributes(
       self=self,
       out=out,
@@ -523,7 +530,8 @@ class object_list:
     result = []
     for object in self.objects:
       if (not isinstance(object, definition)
-          or object.name != "include"):
+          or object.name != "include"
+          or object.is_disabled):
         result.append(object)
       else:
         object_sub = self.variable_substitution(object=object, path_memory={})
@@ -645,7 +653,8 @@ def parse(
       list_of_settings=[
         simple_tokenizer.settings(
           unquoted_single_character_words="{}=",
-          contiguous_word_characters=""),
+          contiguous_word_characters="",
+          comment_characters="#"),
         simple_tokenizer.settings(
           unquoted_single_character_words="",
           contiguous_word_characters="")]),

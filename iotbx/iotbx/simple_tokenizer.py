@@ -102,13 +102,15 @@ class settings:
   def __init__(self,
         unquoted_single_character_words="",
         contiguous_word_characters=None,
-        enable_unquoted_embedded_quotes=True):
+        enable_unquoted_embedded_quotes=True,
+        comment_characters=""):
     self.unquoted_single_character_words = unquoted_single_character_words
     if (contiguous_word_characters is None):
       self.contiguous_word_characters = default_contiguous_word_characters
     else:
       self.contiguous_word_characters = contiguous_word_characters
     self.enable_unquoted_embedded_quotes = enable_unquoted_embedded_quotes
+    self.comment_characters = comment_characters
 
 class word_iterator:
 
@@ -131,7 +133,12 @@ class word_iterator:
       c = char_iter.next()
       if (c is None): break
       if (c.isspace()): continue
-      if (c in ['"', "'"]):
+      if (c in settings.comment_characters
+          and char_iter.look_ahead_1().isspace()):
+        while True:
+          c = char_iter.next()
+          if (c is None or c == "\n"): break
+      elif (c in ['"', "'"]):
         quote_char = c
         word_value = ""
         word_line_number = char_iter.line_number
