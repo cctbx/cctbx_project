@@ -60,6 +60,7 @@ if (sys.platform == "win32"):
   env_etc.extension_module_suffix = ".pyd"
   if (env_etc.compiler == "win32_cl"):
     env_base.Update(
+      SHCC="cl",
       SHCXX="cl",
       SHLINK="link",
     )
@@ -69,15 +70,18 @@ if (sys.platform == "win32"):
         /GR /GX
         /Zm800
     """)
+    env_etc.ccflags_base = Split("""
+        /nologo
+        /MD
+        /Zm800
+    """)
     env_etc.shlinkflags = "/nologo /incremental:no /dll"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 else:
-  env_base = Environment(ENV=os.environ,
-    # XXX hack to create a default configuration that we can customize
-    tools=['g++', 'gnulink', 'ar'])
+  env_base = Environment(ENV=os.environ)
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
@@ -86,12 +90,20 @@ else:
     env_etc.static_bpl = 0
     cxx = "cxx -model ansi"
     env_base.Replace(
+      CC="cc",
+      SHCC="cc",
       CXX=cxx,
       LINK=cxx,
       SHCXX=cxx,
       SHLINK=cxx,
     )
     env_etc.cxxflags_base = Split("""
+        -std strict_ansi
+        -msg_display_number -msg_disable 186,450,1115
+        -O2
+        -DNDEBUG
+    """)
+    env_etc.ccflags_base = Split("""
         -std strict_ansi
         -msg_display_number -msg_disable 186,450,1115
         -O2
@@ -104,6 +116,8 @@ else:
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     env_base.Replace(
+      CC="gcc",
+      SHCC="gcc",
       CXX="g++",
       LINK="g++",
       SHCXX="g++",
@@ -115,12 +129,18 @@ else:
       -w
       -g
     """)
+    env_etc.ccflags_base = Split("""
+      -w
+      -g
+    """)
     env_etc.shlinkflags = "-shared"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "irix_CC"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     env_base.Replace(
+      CC="cc",
+      SHCC="cc",
       CXX="CC -LANG:std -n32 -mips4",
       LINK="CC -LANG:std -n32 -mips4 -LD_MSG:off=15,84",
       SHCXX="CC -LANG:std -n32 -mips4",
@@ -132,12 +152,17 @@ else:
         -O2 -OPT:Olimit=0
         -DNDEBUG
     """ % (os.environ["LIBTBX_BOOST"],))
+    env_etc.ccflags_base = Split("""
+        -O2 
+    """)
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "darwin_c++"):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     env_base.Replace(
+      CC="cc",
+      SHCC="cc",
       CXX="c++",
       LINK="c++",
       SHCXX="c++",
@@ -151,6 +176,9 @@ else:
         -Wno-long-double
         -g -O0 -fno-inline
         -DNDEBUG
+    """)
+    env_etc.cxxflags_base = Split("""
+        -g
     """)
     env_etc.shlinkflags = "-dynamiclib"
     env_etc.shlinkflags_bpl = "-bundle -flat_namespace -undefined warning"
@@ -173,6 +201,7 @@ env_boost_python_ext = env_base.Copy(
            env_etc.boost_include,
            env_etc.python_include],
   CXXFLAGS=env_etc.cxxflags_base,
+  CCFLAGS=env_etc.ccflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags_bpl,
   SHLIBPREFIX="",
