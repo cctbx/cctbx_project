@@ -1,8 +1,12 @@
 import cPickle as pickle
-import __builtin__
+import time
+import shutil
 import os
+import __builtin__
 
 _open = __builtin__.open # avoid name clash
+
+keep_all_files = 00000
 
 class dblite:
 
@@ -36,6 +40,10 @@ class dblite:
     pickle.dump(self._dict, f, 1)
     f.close()
     self._needs_sync = 00000
+    if (keep_all_files):
+      shutil.copyfile(
+        self._file_name,
+        self._file_name + "_" + str(int(time.time())))
 
   def _check_writable(self):
     if (self._flag == "r"):
