@@ -71,10 +71,8 @@ namespace scitbx { namespace af { namespace boost_python {
       v.reserve(vec_size);
       const double* d = dbl.begin();
       for(std::size_t i=0;i<vec_size;i++) {
-        for(std::size_t j=0;j<3;j++) {
-          v.push_back(vec3<double>(d));
-          d += 3;
-        }
+        v.push_back(vec3<double>(d));
+        d += 3;
       }
       vec.resize(flex_grid<>(vec_size));
       return vec;
