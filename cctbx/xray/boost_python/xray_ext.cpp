@@ -39,9 +39,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.eltbx.caasf_ext");
-
     wrap_conversions();
     wrap_sampled_model_density();
     wrap_scatterer();

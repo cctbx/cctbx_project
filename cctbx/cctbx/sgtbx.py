@@ -1,11 +1,12 @@
-from scitbx.python_utils.misc import import_regular_symbols
-from cctbx_boost import sgtbx_ext as ext
-import_regular_symbols(globals(), ext.__dict__)
-del import_regular_symbols
+from cctbx import uctbx
+
+from scitbx.python_utils import misc
+ext = misc.import_ext("cctbx_boost.sgtbx_ext")
+misc.import_regular_symbols(globals(), ext.__dict__)
+del misc
 
 class empty: pass
 
-from cctbx import uctbx
 import sys
 
 class space_group_info:

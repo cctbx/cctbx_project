@@ -44,9 +44,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.eltbx.fp_fdp_ext");
-
     table_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
       table, table_iterator>::wrap("table_iterator");

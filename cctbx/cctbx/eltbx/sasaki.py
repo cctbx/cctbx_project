@@ -1,4 +1,6 @@
-from scitbx.python_utils.misc import import_regular_symbols
-from cctbx_boost.eltbx import sasaki_ext as ext
-import_regular_symbols(globals(), ext.__dict__)
-del import_regular_symbols
+import cctbx_boost.eltbx.fp_fdp_ext
+
+from scitbx.python_utils import misc
+ext = misc.import_ext("cctbx_boost.eltbx.sasaki_ext")
+misc.import_regular_symbols(globals(), ext.__dict__)
+del misc

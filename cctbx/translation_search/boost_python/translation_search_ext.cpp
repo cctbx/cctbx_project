@@ -27,9 +27,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.maptbx_ext");
-
     wrap_fast_nv1995();
     wrap_map_gridding();
     wrap_symmetry_flags();

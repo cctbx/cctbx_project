@@ -44,9 +44,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.array_family.flex_cctbx_ext"); // for tuple mappings
-
     def("u_as_b", (double(*)(double)) u_as_b);
     def("b_as_u", (double(*)(double)) b_as_u);
     def("u_as_b", (sym_mat3<double>(*)(sym_mat3<double> const&)) u_as_b);

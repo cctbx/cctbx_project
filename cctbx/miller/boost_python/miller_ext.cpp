@@ -48,9 +48,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.sgtbx_ext");
-
     register_tuple_mappings();
 
     wrap_sym_equiv(); // must be wrapped first to enable use of bases<>

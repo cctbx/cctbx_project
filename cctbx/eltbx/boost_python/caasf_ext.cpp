@@ -95,9 +95,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.array_family.flex_cctbx_ext"); // for tuple mappings
-
     it1992_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
       it1992, it1992_iterator>::wrap("it1992_iterator");

@@ -84,9 +84,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.uctbx_ext");
-
     sanity_check();
 
     scope s;
