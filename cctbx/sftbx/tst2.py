@@ -13,8 +13,8 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
     general_positions_only=0,
     anisotropic_displacement_parameters=adp)
   debug_utils.print_sites(xtal)
-  MillerIndices = xutils.miller_index_set(xtal, d_min)
-  Fcalc = xutils.structure_factors(MillerIndices, xtal)
+  MillerIndices = xutils.build_miller_indices(xtal, d_min)
+  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
   debug_utils.print_structure_factors(Fcalc)
 
 def run():
