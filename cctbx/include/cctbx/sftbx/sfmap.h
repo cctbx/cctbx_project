@@ -312,6 +312,7 @@ namespace cctbx { namespace sftbx {
         const FloatType& u_extra = 0.25,
         const FloatType& wing_cutoff = 1.e-3,
         const FloatType& exp_table_one_over_step_size = -100,
+        bool force_complex = false,
         bool electron_density_must_be_positive = true)
         : ucell_(ucell),
           n_passed_scatterers_(sites.size()),
@@ -351,13 +352,16 @@ namespace cctbx { namespace sftbx {
             n_anomalous_scatterers_++;
           }
         }
+        bool friedel_flag;
         FloatType* map_begin;
-        if (n_anomalous_scatterers_ == 0) {
+        if (n_anomalous_scatterers_ == 0 && !force_complex) {
+          friedel_flag = true;
           map_accessor_ = sfmap::accessor_type(grid_logical, grid_physical);
           map_real_.resize(map_accessor_);
           map_begin = map_real_.begin();
         }
         else {
+          friedel_flag = false;
           map_accessor_ = sfmap::accessor_type(grid_logical, grid_logical);
           map_complex_.resize(map_accessor_);
           map_begin = reinterpret_cast<FloatType*>(map_complex_.begin());
@@ -409,7 +413,7 @@ namespace cctbx { namespace sftbx {
             FloatType d_sq = c02*c02 + c12*c12 + c22*c22;
             if (d_sq > shell.max_d_sq) continue;
             std::size_t i_map = g0112 + detail::mod_positive(gp[2],grid_nl[2]);
-            if (n_anomalous_scatterers_ == 0) {
+            if (friedel_flag) {
               map_begin[i_map] += caasf_ft.rho_real(exp_table, d_sq);
             }
             else {
@@ -439,6 +443,7 @@ namespace cctbx { namespace sftbx {
       std::size_t n_anomalous_scatterers() const {
         return n_anomalous_scatterers_;
       }
+      bool friedel_flag() const { return map_real_.size() != 0; }
       const map_real_type& map_real() const { return map_real_; }
             map_real_type  map_real()       { return map_real_; }
       const map_complex_type& map_complex() const { return map_complex_; }
@@ -446,6 +451,14 @@ namespace cctbx { namespace sftbx {
       std::size_t exp_table_size() const { return exp_table_size_; }
       const sfmap::grid_point_type& max_shell_radii() const {
         return max_shell_radii_;
+      }
+      fractional<FloatType>
+      max_shell_radii_frac() const {
+        fractional<FloatType> r;
+        for(std::size_t i=0;i<3;i++) {
+          r[i] = FloatType(max_shell_radii_[i]) / map_accessor_.n_logical()[i];
+        }
+        return r;
       }
 
       template <typename TagType>
@@ -495,18 +508,14 @@ namespace cctbx { namespace sftbx {
     const uctbx::UnitCell& ucell,
     const sgtbx::SpaceGroupInfo& sginfo,
     const FloatType& max_q,
-    const af::const_ref<FloatType>& transformed_real_map,
+    const af::const_ref<std::complex<FloatType> >& complex_map,
     const IndexType& n_complex,
     bool friedel_flag,
     bool conjugate = true)
   {
-    cctbx_assert(
-         transformed_real_map.size()
-      >= 2 * af::compile_time_product<3>::get(n_complex));
-    af::const_ref<std::complex<FloatType> > complex_map(
-      reinterpret_cast<const std::complex<FloatType>*>(
-        transformed_real_map.begin()), transformed_real_map.size()/2);
+    // XXX assert that complex_map is big enough
     sgtbx::ReciprocalSpaceASU asu(sginfo);
+    const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
     af::shared<Miller::Index> miller_indices;
     af::shared<std::complex<FloatType> > structure_factors;
     Miller::Index h;
@@ -533,43 +542,32 @@ namespace cctbx { namespace sftbx {
         if (!friedel_flag) {
           cctbx_assert(loop_i[2] != n_complex[2]/2);
         }
+        // XXX asu_sign = asu.sign(h);
+        int asu_sign = 0;
+        if      (asu.isInASU( h)) asu_sign =  1;
+        else if (asu.isInASU(mh)) asu_sign = -1;
+        if (asu_sign == 0) continue;
+        // XXX combined isSysAbsent, isCentric
+        if (sgops.isSysAbsent(h)) continue;
+        bool f_conj = false;
         if (friedel_flag) {
-          if (asu.isInASU(h)) {
-            if (!sginfo.SgOps().isSysAbsent(h)) {
-              miller_indices.push_back(h);
-              if (!conjugate) {
-                structure_factors.push_back(complex_map[map_i]);
-              }
-              else {
-                structure_factors.push_back(std::conj(complex_map[map_i]));
-              }
-            }
+          if (asu_sign > 0) {
+            miller_indices.push_back(h);
+            f_conj = conjugate;
           }
-          else if (h[2] && asu.isInASU(mh)) {
-            if (!sginfo.SgOps().isSysAbsent(h)) {
-              miller_indices.push_back(mh);
-              if (!conjugate) {
-                structure_factors.push_back(std::conj(complex_map[map_i]));
-              }
-              else {
-                structure_factors.push_back(complex_map[map_i]);
-              }
-            }
+          else {
+            if (h[2] == 0) continue;
+            miller_indices.push_back(mh);
+            f_conj = !conjugate;
           }
         }
-        else { // !friedel_flag
-          if (asu.isInASU(h) || asu.isInASU(mh)) { // XXX asu.isInASU(h, check_both) ?
-            if (!sginfo.SgOps().isSysAbsent(h)) {
-              miller_indices.push_back(h);
-              if (!conjugate) {
-                structure_factors.push_back(complex_map[map_i]);
-              }
-              else {
-                structure_factors.push_back(std::conj(complex_map[map_i]));
-              }
-            }
-          }
+        else {
+          if (((asu_sign < 0) != conjugate) && sgops.isCentric(h)) continue;
+          if (conjugate) miller_indices.push_back(mh);
+          else           miller_indices.push_back(h);
         }
+        if (f_conj) structure_factors.push_back(std::conj(complex_map[map_i]));
+        else        structure_factors.push_back(complex_map[map_i]);
       }
     }}}
     return std::make_pair(miller_indices, structure_factors);
@@ -587,6 +585,7 @@ namespace cctbx { namespace sftbx {
     return ih;
   }
 
+  // XXX needs to be updated to cope with anomalous data
   template <typename FloatType,
             typename IndexType>
   af::versa<std::complex<FloatType>, af::grid<3> >

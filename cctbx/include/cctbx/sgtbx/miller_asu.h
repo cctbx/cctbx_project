@@ -424,6 +424,65 @@ namespace cctbx {
         bool m_FriedelFlag;
     };
 
+    template <typename DataType>
+    class map_to_asym_index
+    {
+      public:
+        map_to_asym_index() {}
+
+        map_to_asym_index(
+          const sgtbx::SpaceGroupInfo& sginfo,
+          bool friedel_flag,
+          af::shared<Miller::Index> miller_indices,
+          af::shared<DataType> data_array,
+          bool in_place = false)
+          : friedel_flag_(friedel_flag),
+            asu_(sginfo)
+        {
+          cctbx_assert(miller_indices.size() == data_array.size());
+          const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
+          IndexTableLayoutAdaptor ila;
+          for(std::size_t i=0;i<miller_indices.size();i++) {
+            AsymIndex ai(sgops, asu_, miller_indices[i]);
+            if (friedel_flag_) {
+              ila = ai.HermitianLayout();
+            }
+            else {
+              ila = ai.AnomalousLayout();
+            }
+            if (in_place) {
+              miller_indices[i] = ila.H();
+              data_array[i] = ila.ShiftPhase(data_array[i]);
+            }
+            else {
+              asym_miller_indices_.push_back(ila.H());
+              asym_data_array_.push_back(ila.ShiftPhase(data_array[i]));
+            }
+          }
+          if (in_place) {
+            asym_miller_indices_ = miller_indices;
+            asym_data_array_ = data_array;
+          }
+        }
+
+        bool friedel_flag() const { return friedel_flag_; }
+
+        const sgtbx::ReciprocalSpaceASU& asu() const { return asu_; }
+
+        af::shared<Miller::Index> asym_miller_indices() const {
+          return asym_miller_indices_;
+        }
+
+        af::shared<DataType> asym_data_array() const {
+          return asym_data_array_;
+        }
+      protected:
+        bool friedel_flag_;
+        sgtbx::ReciprocalSpaceASU asu_;
+        af::shared<Miller::Index> asym_miller_indices_;
+        af::shared<DataType> asym_data_array_;
+    };
+
   } // namespace Miller
 } // namespace cctbx
 
