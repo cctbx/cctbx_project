@@ -308,7 +308,7 @@ def match_rt_from_ref_eucl_rt(model1_cb_op, model2_cb_op, ref_eucl_rt):
 
 def match_models(model1, model2,
                  tolerance=1.,
-                 models_are_diffraction_index_equivalent=0,
+                 models_are_diffraction_index_equivalent=False,
                  rms_penalty_per_site=0.05):
   assert model1.cb_op().is_identity_op()
   assert model2.cb_op().is_identity_op()
