@@ -248,6 +248,35 @@ class array(set):
       i, d)
     return array(set(self, i, self.anomalous_flag()), d, self.sigmas())
 
+  def expand_to_p1(self, phase_deg=None):
+    assert self.space_group() != None
+    assert self.indices() != None
+    assert self.anomalous_flag() != None
+    assert self.data() != None
+    assert self.sigmas() == None, "Not implemented." # XXX
+    if (type(self.data()) == type(flex.complex_double())):
+      assert phase_deg == None
+      p1 = expand_to_p1(
+        self.space_group(), self.anomalous_flag(), self.indices(),
+        self.data())
+      new_data = p1.structure_factors()
+    else:
+      assert type(self.data()) == type(flex.double())
+      assert phase_deg in (None, 00000, 0001)
+      if (phase_deg == None):
+        p1 = expand_to_p1(
+          self.space_group(), self.anomalous_flag(), self.indices(),
+          self.data())
+        new_data = p1.amplitudes()
+      else:
+        p1 = expand_to_p1(
+          self.space_group(), self.anomalous_flag(), self.indices(),
+          self.data(), phase_deg)
+        new_data = p1.phases()
+    return array(
+      set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag()),
+      data=new_data)
+
   def change_basis(self, cb_op):
     new_data = None
     new_sigmas = None

@@ -26,6 +26,7 @@ def run():
   "$D/cctbx/regression/tst_xray.py",
   ["$D/cctbx/regression/tst_emma.py", "P31"],
   ["$D/cctbx/regression/tst_find_centre_of_inversion.py", "P31"],
+  ["$D/cctbx/regression/tst_expand_to_p1.py", "P31"],
   ["$D/cctbx/regression/tst_change_basis.py", "P31"],
   ["$D/cctbx/regression/tst_wilson_plot.py", "P31"],
   ["$D/cctbx/regression/tst_xray_derivatives.py", "P31"],

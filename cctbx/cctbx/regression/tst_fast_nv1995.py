@@ -77,7 +77,7 @@ def test_atom(space_group_info, use_primitive_setting,
     f_obs_array.show_summary()
   if (0 or verbose):
     f_obs_array.show_array()
-  miller_set_p1 = f_obs_array.expand_to_p1()
+  miller_set_p1 = miller.set.expand_to_p1(f_obs_array)
   special_position_settings_p1 = crystal.special_position_settings(
     crystal_symmetry=miller_set_p1)
   structure_fixed = xray.structure(special_position_settings=structure)
@@ -147,7 +147,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     f_obs_array.show_summary()
   if (0 or verbose):
     f_obs_array.show_array()
-  miller_set_p1 = f_obs_array.expand_to_p1()
+  miller_set_p1 = miller.set.expand_to_p1(f_obs_array)
   special_position_settings_p1 = crystal.special_position_settings(
     crystal_symmetry=miller_set_p1)
   structure_p1 = xray.structure(
