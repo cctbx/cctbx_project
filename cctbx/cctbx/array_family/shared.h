@@ -38,7 +38,9 @@ namespace cctbx { namespace af {
 
       explicit shared(const handle_type& handle)
         : shared_plain<ElementType>(handle)
-      {}
+      {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+      }
 
       CCTBX_ARRAY_FAMILY_TAKE_REF(this->begin(), this->size())
   };

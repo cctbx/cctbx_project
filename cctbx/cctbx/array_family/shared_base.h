@@ -15,6 +15,29 @@
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
 
+#if defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+
+#define CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+
+#else
+
+#include <boost/static_assert.hpp>
+#include <boost/type_traits.hpp>
+#define CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR \
+{ \
+  BOOST_STATIC_ASSERT(::boost::has_trivial_destructor<ElementType>::value); \
+}
+
+namespace boost {
+  template <typename T>
+  struct has_trivial_destructor<std::complex<T> > {
+    // we really hope that this is true ...
+    static const bool value = true;
+  };
+}
+
+#endif // defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+
 namespace cctbx { namespace af {
   namespace detail {
 
@@ -176,7 +199,9 @@ namespace cctbx { namespace af {
       explicit
       shared_base(const handle_type& handle)
         : m_handle(handle)
-      {}
+      {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+      }
 
       size_type size() const { return m_handle.size() / element_size(); }
       bool empty() const { if (size() == 0) return true; return false; }
@@ -188,8 +213,14 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
         reinterpret_cast<ElementType*>(m_handle.begin()), size())
 
-            handle_type& handle()       { return m_handle; }
-      const handle_type& handle() const { return m_handle; }
+            handle_type& handle()       {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+        return m_handle;
+      }
+      const handle_type& handle() const {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+        return m_handle;
+      }
 
       shared_base<ElementType>
       deep_copy() const {
@@ -219,12 +250,6 @@ namespace cctbx { namespace af {
         ElementType* old_end = end();
         resize(new_size);
         if (end() > old_end) std::fill(old_end, end(), x);
-      }
-
-      shared_base<ElementType>&
-      fill(const ElementType& x) {
-        std::fill(begin(), end(), x);
-        return *this;
       }
 
     protected:
