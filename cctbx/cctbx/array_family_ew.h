@@ -8,8 +8,8 @@
      Feb 2002: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef CCTBX_ARRAY_FAMILY_PLAIN_H
-#define CCTBX_ARRAY_FAMILY_PLAIN_H
+#ifndef CCTBX_ARRAY_FAMILY_EW_H
+#define CCTBX_ARRAY_FAMILY_EW_H
 
 #include <cctbx/array_family.h>
 #include <cctbx/array_family/tiny_algebra.h>
@@ -17,4 +17,4 @@
 #include <cctbx/array_family/shared_algebra.h>
 #include <cctbx/array_family/versa_algebra.h>
 
-#endif // CCTBX_ARRAY_FAMILY_PLAIN_H
+#endif // CCTBX_ARRAY_FAMILY_EW_H

@@ -1,7 +1,6 @@
 #include <cctbx/array_family/simple_io.h>
-
 #include <cctbx/array_family.h>
-
+#include <boost/bind.hpp>
 #include <vector>
 
 using namespace cctbx;
@@ -382,6 +381,62 @@ namespace {
     }
   };
 
+  double foo(int x) { return .1 + x; }
+
+  template <typename ArrayType1, typename ArrayType2>
+  void exercise_apply(const ArrayType1& a1, const ArrayType2&)
+  {
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+    ArrayType2 r = af::apply(boost::bind(foo, _1), a1);
+    for(std::size_t i=0;i<a1.size();i++) {
+      check_true(__LINE__, std::abs(r[i] - foo(a1[i])) < 1.e-6);
+    }
+#endif
+  }
+
+  template <typename IntType, typename FloatType>
+  struct exercise_apply_all
+  {
+    static void run()
+    {
+      af::tiny<IntType, 3> t1(0,1,2);
+      {
+        if (verbose) std::cout << __LINE__ << std::endl;
+        af::tiny<IntType, 3> a1 = t1;
+        exercise_apply(a1, af::tiny<FloatType, 3>());
+        af::tiny_plain<IntType, 3> a2 = t1;
+        exercise_apply(a2, af::tiny_plain<FloatType, 3>());
+      }
+      {
+        if (verbose) std::cout << __LINE__ << std::endl;
+        af::small<IntType, 3> a1;
+        a1.assign(t1);
+        exercise_apply(a1, af::small<FloatType, 3>());
+        af::small_plain<IntType, 3> a2;
+        a2.assign(t1);
+        exercise_apply(a2, af::small_plain<FloatType, 3>());
+      }
+      {
+        if (verbose) std::cout << __LINE__ << std::endl;
+        af::shared<IntType> a1;
+        a1.assign(t1);
+        exercise_apply(a1, af::shared<FloatType>());
+        af::shared_plain<IntType> a2;
+        a2.assign(t1);
+        exercise_apply(a2, af::shared_plain<FloatType>());
+      }
+      {
+        if (verbose) std::cout << __LINE__ << std::endl;
+        af::versa<IntType> a1(af::grid<1>(t1.size()));
+        a1.as_shared().assign(t1);
+        exercise_apply(a1, af::versa<FloatType>());
+        af::versa_plain<IntType> a2(af::grid<1>(t1.size()));
+        a2.as_shared_plain().assign(t1);
+        exercise_apply(a2, af::versa_plain<FloatType>());
+      }
+    }
+  };
+
 }
 
 int main(int argc, char* argv[])
@@ -408,6 +463,9 @@ int main(int argc, char* argv[])
                     af::versa_plain<int, af::grid<2> > >::run();
     versa_excercise<af::versa<int>,
                     af::versa<int, af::grid<2> > >::run();
+
+    exercise_apply_all<int, double>::run();
+
     if (argc == 1) break;
   }
 

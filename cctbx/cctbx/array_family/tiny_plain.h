@@ -47,4 +47,6 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
+#include <cctbx/array_family/tiny_plain_apply.h>
+
 #endif // CCTBX_ARRAY_FAMILY_TINY_PLAIN_H
