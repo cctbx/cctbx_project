@@ -262,7 +262,7 @@ namespace sgtbx {
 
         const TrVec& HTr = GetTr(HSym());
         if (HTr.isValid()) {
-          SMx_T = (SMx_T + HTr).ModPositive();
+          SMx_T = (SMx_T + HTr).modPositive();
           HSym.skip();
           continue;
         }

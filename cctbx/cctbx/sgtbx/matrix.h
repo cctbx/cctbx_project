@@ -51,14 +51,14 @@ namespace sgtbx {
         return result;
       }
       TrVec cancel() const;
-      inline TrVec ModPositive() const {
+      inline TrVec modPositive() const {
         TrVec result(m_BF);
-        for(int i=0;i<3;i++) result[i] = iModPositive(elems[i], m_BF);
+        for(int i=0;i<3;i++) result[i] = sgtbx::modPositive(elems[i], m_BF);
         return result;
       }
-      inline TrVec ModShort() const {
+      inline TrVec modShort() const {
         TrVec result(m_BF);
-        for(int i=0;i<3;i++) result[i] = iModShort(elems[i], m_BF);
+        for(int i=0;i<3;i++) result[i] = sgtbx::modShort(elems[i], m_BF);
         return result;
       }
       inline friend bool operator==(const TrVec& lhs, const TrVec& rhs) {
@@ -492,12 +492,22 @@ namespace sgtbx {
       /*! The operation is applied to the elements of the
           translation vector. The vector is modified in place.
        */
-      inline void ModPositive() { m_T = m_T.ModPositive(); }
+      inline void modPositiveInPlace() { m_T = m_T.modPositive(); }
+      //! Apply modulus operation such that -TBF()/2+1 < x <= TBF()/2.
+      /*! The operation is applied to the elements of the
+          translation vector. A new instance of RTMx is created.
+       */
+      inline RTMx modPositive() const { return RTMx(m_R, m_T.modPositive()); }
       //! Apply modulus operation such that -TBF()/2+1 < x <= TBF()/2.
       /*! The operation is applied to the elements of the
           translation vector. The vector is modified in place.
        */
-      inline void ModShort() { m_T = m_T.ModShort(); }
+      inline void modShortInPlace() { m_T = m_T.modShort(); }
+      //! Apply modulus operation such that -TBF()/2+1 < x <= TBF()/2.
+      /*! The operation is applied to the elements of the
+          translation vector. A new instance of RTMx is created.
+       */
+      inline RTMx modShort() const { return RTMx(m_R, m_T.modShort()); }
       //! Compute information about the rotation part.
       /*! See information about class RotMxInfo.
        */

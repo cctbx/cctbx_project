@@ -17,15 +17,15 @@
 
 namespace sgtbx {
 
-  inline int iModPositive(int ix, int iy) {
+  inline int modPositive(int ix, int iy) {
     if (iy > 0) {
       ix %= iy;
       if (ix < 0) ix += iy;
     }
     return ix;
   }
-  inline int iModShort(int ix, int iy) {
-        ix = iModPositive(ix, iy);
+  inline int modShort(int ix, int iy) {
+        ix = modPositive(ix, iy);
     if (ix > iy / 2)
         ix -= iy;
     return ix;

@@ -94,18 +94,18 @@ namespace sgtbx {
           translation vectors of M() and InvM(). The vectors are
           modified in place.
        */
-      inline void ModPositive() {
-        Mx.ModPositive();
-        InvMx.ModPositive();
+      inline void modPositiveInPlace() {
+        Mx.modPositive();
+        InvMx.modPositive();
       }
       //! Apply modulus operation such that -TBF()/2+1 < x <= TBF()/2.
       /*! The operation is applied to the elements of the
           translation vectors of M() and InvM(). The vectors are
           modified in place.
        */
-      inline void ModShort() {
-        Mx.ModShort();
-        InvMx.ModShort();
+      inline void modShortInPlace() {
+        Mx.modShort();
+        InvMx.modShort();
       }
       //! M() * RT * InvM(), for RT with rotation base factor 1.
       /*! Similar to apply(), but faster. The translation base factor

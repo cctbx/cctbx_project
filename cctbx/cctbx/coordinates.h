@@ -55,7 +55,7 @@ namespace cctbx {
       fractional(const T& x, const T& y, const T& z) {
         elems[0] = x; elems[1] = y; elems[2] = z;
       }
-      fractional ModPositive() const {
+      fractional modPositive() const {
         fractional result;
         for(std::size_t i=0;i<3;i++) {
           result[i] = std::fmod(elems[i], 1.);
@@ -64,7 +64,7 @@ namespace cctbx {
         }
         return result;
       }
-      fractional ModShort() const {
+      fractional modShort() const {
         fractional result;
         for(std::size_t i=0;i<3;i++) {
           result[i] = std::fmod(elems[i], 1.);

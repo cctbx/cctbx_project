@@ -2240,14 +2240,13 @@ namespace sgtbx {
                                   const fractional<double>& X,
                                   double SnapRadius) const
   {
-    fractional<double> NormX = X.ModShort();
+    fractional<double> NormX = X.modShort();
     TrVec NormU = detail::getUnitShifts(NormX - X);
     for (std::size_t iWP = N() - 1; iWP > 0; iWP--) {
       WyckoffMapping result;
       double ShortestDistance2 = uc.getLongestVector2();
       for (int iOp = 0; iOp < sgo.OrderZ(); iOp++) {
-        RTMx SymOp = sgo(iOp);
-        SymOp.ModShort();
+        RTMx SymOp = sgo(iOp).modShort();
         fractional<double> SX = SymOp * NormX;
         TrVec U(1);
         for (U[0] = -1; U[0] <= 1; U[0]++)
