@@ -357,10 +357,10 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static shared<e_t>
-    select_size_t(
+    select_size_t_3(
       af::const_ref<e_t> const& self,
       af::const_ref<std::size_t> const& indices,
-      bool reverse=false)
+      bool reverse)
     {
       if (!reverse) {
         shared<e_t> result((af::reserve(indices.size())));
@@ -382,6 +382,14 @@ namespace scitbx { namespace af { namespace boost_python {
         }
       }
       return result;
+    }
+
+    static shared<e_t>
+    select_size_t_2(
+      af::const_ref<e_t> const& self,
+      af::const_ref<std::size_t> const& indices)
+    {
+      return select_size_t_3(self, indices, false);
     }
 
     static boost::python::object
@@ -710,17 +718,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("extend", extend)
         .def("reversed", reversed)
         .def("select", select_bool)
-        .def("select",
-          (shared<e_t>(*)(
-            af::const_ref<e_t> const&,
-            af::const_ref<std::size_t> const&)) select_size_t, (
-          arg_("self"), arg_("indices")))
-        .def("select",
-          (shared<e_t>(*)(
-            af::const_ref<e_t> const&,
-            af::const_ref<std::size_t> const&,
-            bool)) select_size_t, (
+        .def("select", select_size_t_3, (
           arg_("self"), arg_("indices"), arg_("reverse")))
+        .def("select", select_size_t_2, (
+          arg_("self"), arg_("indices")))
         .def("set_selected", set_selected_bool_a)
         .def("set_selected", set_selected_bool_s)
         .def("set_selected",
