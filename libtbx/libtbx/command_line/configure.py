@@ -266,7 +266,8 @@ class windows_update_path:
 
   def write(self, prefixes, var_name, val):
     val = os.pathsep.join(val)
-    fmt = '''%sfor /F %%%%i in ('%s "%s" %s %s "%s"') do set %s=%%%%i'''
+    fmt = '''\
+%sfor /F "delims=" %%%%i in ('%s "%s" %s %s "%s"') do set %s=%%%%i'''
     for f,prefix,action in [(self.s, prefixes[0], "prepend"),
                             (self.u, prefixes[1], "delete")]:
       print >> f, fmt % (
