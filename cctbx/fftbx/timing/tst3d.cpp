@@ -25,44 +25,68 @@ using namespace cctbx;
 
 namespace {
 
-  typedef boost::shared_ptr<std::vector<double> > shared_vector;
+  typedef boost::shared_ptr<std::vector<double> >
+  shared_real_vector;
+  typedef boost::shared_ptr<std::vector<std::complex<double> > >
+  shared_complex_vector;
 
-  shared_vector init_cseq(const fftbx::triple& N)
+  typedef cctbx::array<std::size_t, 3> triple;
+
+  shared_complex_vector init_cseq(const triple& N)
   {
-    shared_vector cseq(new std::vector<double>);
+    shared_complex_vector cseq(new shared_complex_vector::element_type);
     for(int i=0;i<cctbx::vector::product(N); i++) {
-      cseq->push_back(double(37-i)/(cctbx::vector::max(N)+11));
-      cseq->push_back(double(i-73)/(cctbx::vector::max(N)+13));
+      cseq->push_back(shared_complex_vector::element_type::value_type(
+        double(37-i)/(cctbx::vector::max(N)+11),
+        double(i-73)/(cctbx::vector::max(N)+13)));
     }
     return cseq;
   }
 
-  shared_vector tst_complex_to_complex(char dir, const fftbx::triple& N)
+  shared_real_vector init_rseq(const triple& N)
   {
-    shared_vector cseq = init_cseq(N);
-    fftbx::complex_to_complex_3d<std::vector<double> > fft(N);
+    shared_real_vector rseq(new shared_real_vector::element_type);
+    for(int i=0;i<cctbx::vector::product(N); i++) {
+      rseq->push_back(double(37-i)/(cctbx::vector::max(N)+11));
+    }
+    return rseq;
+  }
+
+  shared_complex_vector tst_complex_to_complex(char dir, const triple& N)
+  {
+    fftbx::complex_to_complex_3d<double> fft(N);
+    shared_complex_vector cseq = init_cseq(N);
+    ndim_accessor<
+      dimension_end<3>,
+      shared_complex_vector::element_type::iterator,
+      shared_complex_vector::element_type::value_type>
+    cmap(N, cseq->begin());
     if (dir == 'f') {
-      fft.forward(*cseq);
+      fft.forward(cmap);
     }
     else {
-      fft.backward(*cseq);
+      fft.backward(cmap);
     }
     return cseq;
   }
 
-  shared_vector tst_real_to_complex(char dir, const fftbx::triple& N)
+  shared_real_vector tst_real_to_complex(char dir, const triple& N)
   {
-    fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    shared_vector cseq = init_cseq(M);
-    fftbx::real_to_complex_3d<std::vector<double> > fft(N);
+    fftbx::real_to_complex_3d<double> fft(N);
+    shared_real_vector rseq = init_rseq(fft.Mreal());
+    ndim_accessor<
+      dimension_end<3>,
+      shared_real_vector::element_type::iterator,
+      shared_real_vector::element_type::value_type>
+    rmap(fft.Mreal(), rseq->begin());
     if (dir == 'f') {
-      fft.forward(*cseq);
+      fft.forward(rmap);
     }
     else {
-      fft.forward(*cseq); // complex values have some symmetry
-      fft.backward(*cseq);
+      fft.forward(rmap); // complex values have some symmetry
+      fft.backward(rmap);
     }
-    return cseq;
+    return rseq;
   }
 
   void show_fftw_complex(const fftw_complex *cseq, int N)
@@ -73,9 +97,9 @@ namespace {
     }
   }
 
-  shared_vector tst_fftw(char dir, const fftbx::triple& N)
+  shared_complex_vector tst_fftw(char dir, const triple& N)
   {
-    shared_vector cseq = init_cseq(N);
+    shared_complex_vector cseq = init_cseq(N);
     fftwnd_plan Plan;
     if (dir == 'f') {
       Plan = fftw3d_create_plan(
@@ -85,106 +109,119 @@ namespace {
       Plan = fftw3d_create_plan(
         N[0], N[1], N[2], FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
     }
-    //show_fftw_complex((fftw_complex *) &(*cseq)[0],
-    //                  cctbx::vector::product(N));
     fftwnd_one(Plan, (fftw_complex *) &(*cseq)[0], 0);
     fftwnd_destroy_plan(Plan);
     return cseq;
   }
 
-  shared_vector tst_rfftw(char dir, const fftbx::triple& N)
+  shared_real_vector tst_rfftw(char dir, const triple& N)
   {
-    fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    shared_vector cseq = init_cseq(M);
+    fftbx::real_to_complex_3d<double> fft(N);
+    shared_real_vector rseq = init_rseq(fft.Mreal());
     rfftwnd_plan Plan;
     if (dir == 'f') {
       Plan = rfftw3d_create_plan(
         N[0], N[1], N[2], FFTW_FORWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
-      rfftwnd_one_real_to_complex(Plan, (fftw_real *) &(*cseq)[0], 0);
+      rfftwnd_one_real_to_complex(Plan, (fftw_real *) &(*rseq)[0], 0);
     }
     else {
-      fftbx::real_to_complex_3d<std::vector<double> > fft(N);
-      fft.forward(*cseq); // complex values have some symmetry
+      ndim_accessor<
+        dimension_end<3>,
+        shared_real_vector::element_type::iterator,
+        shared_real_vector::element_type::value_type>
+      rmap(fft.Mreal(), rseq->begin());
+      fft.forward(rmap); // complex values have some symmetry
       Plan = rfftw3d_create_plan(
         N[0], N[1], N[2], FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
-      rfftwnd_one_complex_to_real(Plan, (fftw_complex *) &(*cseq)[0], 0);
+      rfftwnd_one_complex_to_real(Plan, (fftw_complex *) &(*rseq)[0], 0);
     }
     rfftwnd_destroy_plan(Plan);
-    return cseq;
+    return rseq;
   }
 
-  void show_cseq(const shared_vector& cseq)
+  void show_cseq(const shared_complex_vector& cseq)
   {
     for(std::size_t i=0;i<cseq->size();i++) {
-      std::cout << (*cseq)[i] << std::endl;
+      std::cout << (*cseq)[i].real() << std::endl;
+      std::cout << (*cseq)[i].imag() << std::endl;
     }
   }
 
-  void show_cseq(const shared_vector& cseq, const fftbx::triple& N)
+  void show_rseq(const shared_real_vector& rseq, const triple& N)
   {
-    fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    M[2] *= 2;
-    assert(cseq->size() == cctbx::vector::product(M));
+    triple M = fftbx::Mreal_from_Nreal(N);
+    assert(rseq->size() == cctbx::vector::product(M));
     c_index_1d<3> i1d;
-    boost::array<std::size_t, 3> I;
+    triple I;
     for(I[0]=0;I[0]<N[0];I[0]++)
     for(I[1]=0;I[1]<N[1];I[1]++)
     for(I[2]=0;I[2]<N[2];I[2]++) {
-      std::cout << (*cseq)[i1d(M, I)] << std::endl;
+      std::cout << (*rseq)[i1d(M, I)] << std::endl;
     }
   }
 
-  std::ostream& operator<<(std::ostream& os, const fftbx::triple& t) {
+  std::ostream& operator<<(std::ostream& os, const triple& t) {
     std::cout << t[0] << " " << t[1] << " " << t[2];
     return os;
   }
 
   void timing_complex_to_complex_3d(char dir,
-                                    const fftbx::triple& N,
+                                    const triple& N,
                                     std::size_t loop_iterations)
   {
-    std::vector<double> cseq(2 * cctbx::vector::product(N));
-    fftbx::complex_to_complex_3d<std::vector<double> > fft(N);
+    shared_complex_vector cseq(new shared_complex_vector::element_type);
+    cseq->resize(cctbx::vector::product(N));
+    ndim_accessor<
+      dimension_end<3>,
+      shared_complex_vector::element_type::iterator,
+      shared_complex_vector::element_type::value_type>
+    cmap(N, cseq->begin());
+    fftbx::complex_to_complex_3d<double> fft(N);
     if (dir == 'f') {
       std::cout << "timing_complex_to_complex_3d forward " << N << std::endl;
       for (std::size_t i=0;i<loop_iterations;i++) {
-        fft.forward(cseq);
+        fft.forward(cmap);
       }
     }
     else {
       std::cout << "timing_complex_to_complex_3d backward " << N << std::endl;
       for (std::size_t i=0;i<loop_iterations;i++) {
-        fft.backward(cseq);
+        fft.backward(cmap);
       }
     }
   }
 
   void timing_real_to_complex_3d(char dir,
-                                 const fftbx::triple& N,
+                                 const triple& N,
                                  std::size_t loop_iterations)
   {
-    fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    std::vector<double> cseq(2 * cctbx::vector::product(M));
-    fftbx::real_to_complex_3d<std::vector<double> > fft(N);
+    fftbx::real_to_complex_3d<double> fft(N);
+    shared_real_vector rseq(new shared_real_vector::element_type);
+    rseq->resize(cctbx::vector::product(fft.Mreal()));
+    ndim_accessor<
+      dimension_end<3>,
+      shared_real_vector::element_type::iterator,
+      shared_real_vector::element_type::value_type>
+    rmap(fft.Mreal(), rseq->begin());
     if (dir == 'f') {
       std::cout << "timing_real_to_complex_3d forward " << N << std::endl;
       for (std::size_t i=0;i<loop_iterations;i++) {
-        fft.forward(cseq);
+        fft.forward(rmap);
       }
     }
     else {
       std::cout << "timing_real_to_complex_3d backward " << N << std::endl;
       for (std::size_t i=0;i<loop_iterations;i++) {
-        fft.backward(cseq);
+        fft.backward(rmap);
       }
     }
   }
 
   void timing_fftw_3d(char dir,
-                      const fftbx::triple& N,
+                      const triple& N,
                       std::size_t loop_iterations)
   {
-    std::vector<double> cseq(2 * cctbx::vector::product(N));
+    std::vector<std::complex<double> > cseq(cctbx::vector::product(N));
     if (dir == 'f') {
       std::cout << "timing_fftw_3d forward " << N << std::endl;
       fftwnd_plan Plan = fftw3d_create_plan(
@@ -206,17 +243,17 @@ namespace {
   }
 
   void timing_rfftw_3d(char dir,
-                       const fftbx::triple& N,
+                       const triple& N,
                        std::size_t loop_iterations)
   {
-    fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    std::vector<double> cseq(2 * cctbx::vector::product(M));
+    triple M = fftbx::Mreal_from_Nreal(N);
+    std::vector<double> rseq(cctbx::vector::product(M));
     if (dir == 'f') {
       std::cout << "timing_rfftw_3d forward " << N << std::endl;
       rfftwnd_plan Plan = rfftw3d_create_plan(
         N[0], N[1], N[2], FFTW_FORWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
       for (std::size_t i=0;i<loop_iterations;i++) {
-        rfftwnd_one_real_to_complex(Plan, (fftw_real *) &cseq[0], 0);
+        rfftwnd_one_real_to_complex(Plan, (fftw_real *) &rseq[0], 0);
       }
       rfftwnd_destroy_plan(Plan);
     }
@@ -225,7 +262,7 @@ namespace {
       rfftwnd_plan Plan = rfftw3d_create_plan(
         N[0], N[1], N[2], FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
       for (std::size_t i=0;i<loop_iterations;i++) {
-        rfftwnd_one_complex_to_real(Plan, (fftw_complex *) &cseq[0], 0);
+        rfftwnd_one_complex_to_real(Plan, (fftw_complex *) &rseq[0], 0);
       }
       rfftwnd_destroy_plan(Plan);
     }
@@ -249,28 +286,27 @@ int main(int argc, const char* argv[])
   if (type_and_dir.size() != 2) usage();
   if (type_and_dir[0] != 'c' && type_and_dir[0] != 'r') usage();
   if (type_and_dir[1] != 'f' && type_and_dir[1] != 'b') usage();
-  fftbx::triple N(atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  triple N(atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   int iter = atoi(argv[6]);
-  shared_vector cseq;
   if (iter < 0) {
     if (package == "fftbx") {
       if (type_and_dir[0] == 'c') {
-        cseq = tst_complex_to_complex(type_and_dir[1], N);
+        shared_complex_vector cseq = tst_complex_to_complex(type_and_dir[1], N);
         show_cseq(cseq);
       }
       else {
-        cseq = tst_real_to_complex(type_and_dir[1], N);
-        show_cseq(cseq, N);
+        shared_real_vector rseq = tst_real_to_complex(type_and_dir[1], N);
+        show_rseq(rseq, N);
       }
     }
     else {
       if (type_and_dir[0] == 'c') {
-        cseq = tst_fftw(type_and_dir[1], N);
+        shared_complex_vector cseq = tst_fftw(type_and_dir[1], N);
         show_cseq(cseq);
       }
       else {
-        cseq = tst_rfftw(type_and_dir[1], N);
-        show_cseq(cseq, N);
+        shared_real_vector rseq = tst_rfftw(type_and_dir[1], N);
+        show_rseq(rseq, N);
       }
     }
   }

@@ -25,10 +25,10 @@ namespace {
   {
     using namespace fftbx;
     std::vector<double> cseq(2 * transform_size);
-    complex_to_complex<std::vector<double> > fft(transform_size);
+    complex_to_complex<double> fft(transform_size);
     for (std::size_t i=0;i<loop_iterations;i++) {
-      fft.forward(cseq);
-      fft.backward(cseq);
+      fft.forward(cseq.begin());
+      fft.backward(cseq.begin());
     }
   }
 
@@ -38,10 +38,10 @@ namespace {
   {
     using namespace fftbx;
     std::vector<double> rseq(transform_size);
-    real_to_complex<std::vector<double> > fftf(transform_size);
+    real_to_complex<double> fft(transform_size);
     for (std::size_t i=0;i<loop_iterations;i++) {
-      fftf.forward(rseq);
-      fftf.backward(rseq);
+      fft.forward(rseq.begin());
+      fft.backward(rseq.begin());
     }
   }
 

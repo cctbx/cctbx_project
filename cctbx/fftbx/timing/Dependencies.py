@@ -7,6 +7,7 @@ class write_makefiles(makefile_generator.write_makefiles):
   def dependencies(self):
 
     self.files = (
+      "fftbx/timing/test0.cpp",
       "fftbx/timing/fftbxtimer.cpp",
       "fftbx/timing/fftwtimer.cpp",
       "fftbx/timing/time_cmd.py",
@@ -19,6 +20,7 @@ class write_makefiles(makefile_generator.write_makefiles):
     )
 
     self.executables = {
+      "test0": (("test0",), ()),
       "fftbxtimer": (("fftbxtimer",), ()),
     }
     if (self.platform in ("tru64_cxx", "unix_gcc", "irix_CC")):
