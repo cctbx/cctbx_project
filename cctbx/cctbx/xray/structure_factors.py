@@ -181,13 +181,17 @@ class _estimate_time_fft:
     self.min_time_collect = 0
     self.max_n_miller_indices = 0
     self.max_time_collect = 0
+    self.time_sampling = 0
+    self.time_symmetry_mapping = 0
     self.time_fft = 0
+    self.time_collect = 0
 
   def have_good_estimate(self):
     return self.time_fft > 0
 
   def register(self, n_scatterers, n_miller_indices,
-                     time_sampling, time_fft, time_collect):
+                     time_sampling, time_symmetry_mapping,
+                     time_fft, time_collect):
     if (   self.min_n_scatterers == 0
         or self.min_n_scatterers >= n_scatterers):
       self.min_n_scatterers = n_scatterers
@@ -202,13 +206,17 @@ class _estimate_time_fft:
     if (self.max_n_miller_indices <= n_miller_indices):
       self.max_n_miller_indices = n_miller_indices
       self.max_time_collect = time_collect
+    self.time_sampling = time_sampling
+    self.time_symmetry_mapping = time_symmetry_mapping
     self.time_fft = time_fft
+    self.time_collect = time_collect
 
   def __call__(self, n_scatterers, n_miller_indices):
     return _linear_estimate(
              self.min_n_scatterers, self.max_n_scatterers,
              self.min_time_sampling, self.max_time_sampling,
              n_scatterers) \
+         + self.time_symmetry_mapping \
          + self.time_fft \
          + _linear_estimate(
              self.min_n_miller_indices, self.max_n_miller_indices,
@@ -341,8 +349,10 @@ class from_scatterers_fft(_from_scatterers_base):
       manager.exp_table_one_over_step_size(),
       force_complex,
       electron_density_must_be_positive)
-    sampled_density.apply_symmetry(manager.crystal_gridding_tags().tags())
     time_sampling = time_sampling.elapsed()
+    time_symmetry_mapping = user_plus_sys_time()
+    sampled_density.apply_symmetry(manager.crystal_gridding_tags().tags())
+    time_symmetry_mapping = time_symmetry_mapping.elapsed()
     time_fft = user_plus_sys_time()
     if (not sampled_density.anomalous_flag()):
       map = sampled_density.real_map()
@@ -367,7 +377,7 @@ class from_scatterers_fft(_from_scatterers_base):
     manager.estimate_time_fft.register(
       xray_structure.scatterers().size(),
       miller_set.indices().size(),
-      time_sampling, time_fft, time_collect)
+      time_sampling, time_symmetry_mapping, time_fft, time_collect)
 
   def f_calc(self):
     return miller.array(self.miller_set(), self._f_calc_data)

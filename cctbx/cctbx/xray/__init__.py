@@ -186,6 +186,17 @@ class structure(crystal.special_position_settings):
     ch_op = self.space_group_info().type().change_of_hand_op()
     return self.change_basis(ch_op)
 
+  def apply_shift(self, shift):
+    # XXX push to C++
+    shifted_scatterers = flex.xray_scatterer()
+    for scatterer in self.scatterers():
+      scatterer = scatterer.copy()
+      scatterer.site = [scatterer.site[i] + shift[i] for i in xrange(3)]
+      shifted_scatterers.append(scatterer)
+    return structure(
+      special_position_settings=self,
+      scatterers=shifted_scatterers)
+
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma
     positions = []
