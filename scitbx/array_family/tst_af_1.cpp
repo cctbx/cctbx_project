@@ -10,7 +10,7 @@
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <scitbx/array_family/misc_functions.h>
-#include <scitbx/array_family/c_grid_accessor.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/simple_io.h>
 #include <boost/bind.hpp>
 #include <vector>

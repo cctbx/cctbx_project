@@ -8,7 +8,7 @@
      2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <scitbx/array_family/flex_grid_accessor.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/boost_python/small_conversions.h>
 
 namespace scitbx { namespace af { namespace boost_python {

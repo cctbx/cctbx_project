@@ -1,4 +1,4 @@
-#include <scitbx/array_family/flex_grid_accessor.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/loops.h>
 #include <scitbx/array_family/simple_io.h>

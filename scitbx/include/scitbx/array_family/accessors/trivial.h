@@ -7,8 +7,8 @@
      2002 Oct: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef SCITBX_ARRAY_FAMILY_TRIVIAL_ACCESSOR_H
-#define SCITBX_ARRAY_FAMILY_TRIVIAL_ACCESSOR_H
+#ifndef SCITBX_ARRAY_FAMILY_ACCESSORS_TRIVIAL_H
+#define SCITBX_ARRAY_FAMILY_ACCESSORS_TRIVIAL_H
 
 #include <cstddef>
 
@@ -32,4 +32,4 @@ namespace scitbx { namespace af {
 
 }} // namespace scitbx::af
 
-#endif // SCITBX_ARRAY_FAMILY_TRIVIAL_ACCESSOR_H
+#endif // SCITBX_ARRAY_FAMILY_ACCESSORS_TRIVIAL_H

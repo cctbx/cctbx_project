@@ -15,7 +15,7 @@
 #include <scitbx/fftpack/real_to_complex_3d.h>
 #include <scitbx/boost_python/utils.h>
 #include <scitbx/array_family/flex_types.h>
-#include <scitbx/array_family/c_grid_accessor.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <scitbx/array_family/boost_python/tiny_conversions.h>
 #include <boost/python/module.hpp>

@@ -8,8 +8,8 @@
      2002 Aug: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef SCITBX_ARRAY_FAMILY_FLEX_GRID_ACCESSOR_H
-#define SCITBX_ARRAY_FAMILY_FLEX_GRID_ACCESSOR_H
+#ifndef SCITBX_ARRAY_FAMILY_ACCESSORS_FLEX_GRID_H
+#define SCITBX_ARRAY_FAMILY_ACCESSORS_FLEX_GRID_H
 
 #include <scitbx/error.h>
 #include <scitbx/array_family/small.h>
@@ -231,4 +231,4 @@ namespace scitbx { namespace af {
 
 }} // namespace scitbx::af
 
-#endif // SCITBX_ARRAY_FAMILY_FLEX_GRID_ACCESSOR_H
+#endif // SCITBX_ARRAY_FAMILY_ACCESSORS_FLEX_GRID_H
