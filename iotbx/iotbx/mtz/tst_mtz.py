@@ -5,7 +5,6 @@ def get_test_files(file):
   urllib.urlretrieve('http://cci.lbl.gov/build/'+file,file)
 
 def print_uc(uc):
-  uctup = tuple(uc)
   for n in uc:
     print "%10.4f"%n,
   print
@@ -13,7 +12,7 @@ def print_uc(uc):
 def comprehensive_mtz(file):
   p = mtz.Mtz(file)    # Instantiate an MTZ file read object
   p.title()                  # title, as a string
-  p.SpaceGroup()             # space group, as a string 
+  p.SpaceGroup()             # space group, as a string
   p.UnitCell(0)              # unit cell of the first crystal as af_shared double
   p.ncolumns(0,0)            # column count of crystal 1, dataset 1
   p.columns()                # all column labels in the file, as a list of strings
@@ -38,19 +37,21 @@ def comprehensive_mtz(file):
   col[0]                     # reference to the first element in this column
   H = p.H                    # a copy of label "H" column in af_shared (double) format
   K = p.K                    #
-  L = p.getShared("L")       # a copy of label "L" column in af_shared (double) format
+  L = p.L                    #
   I = p.getColumn("I")       # lightweight object representing the column labelled "I"
   SIGI = p.getColumn("SIGI") #
-  [H[0],K[0],L[0],I[0],SIGI[0]] # column elements can be referenced from either type
+  [H[0],K[0],L[0],I[0],SIGI[0]] # column elements can be referenced
 
 def comprehensive_mtz_2(file):
   p = mtz.Mtz(file)          # Instantiate an MTZ file read object
-  m=p.MIx()                    # copy of miller index list, as af_shared (miller)
-  h=p.HL("HLA","HLB","HLC","HLD") # copy of HL-coefficients, as af_shared (HL)  
-  c=p.complex("FP","PHIB")     # complex structure factor, as af_shared (complex)
-  #for x in xrange(p.size()):
-  #  print m[x],h[x],c[x]
-  
+  m=p.MIx()                  # copy of miller index list, as af_shared (miller)
+  assert p.valid_indices("FP").size() == p.valid_values("FP").size()
+  assert p.valid_indices("FP", "FP").size() == p.valid_values("FP", "FP").size()
+  assert p.valid_indices("FP").size() == p.valid_complex("FP","PHIB").size()
+  assert p.valid_indices("FP", "FP").size() \
+      == p.valid_complex("FP","PHIB", "FP","PHIB").size()
+  assert p.valid_indices("HLA").size() == p.valid_hl("HLA","HLB","HLC","HLD").size()
+
 def exercise_mtzread(file):
   p = mtz.Mtz(file)
   print "Title:",p.title()

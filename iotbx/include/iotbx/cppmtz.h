@@ -35,6 +35,10 @@ inline Error::~Error() throw() {}
 struct Column {
   CMtz::MTZCOL* p_col;
   Column(CMtz::MTZCOL* c);
+  bool isnan(int i)
+  {
+    return CCP4::ccp4_utils_isnan((union float_uint_uchar *)&p_col->ref[i]);
+  }
   inline double lookup(const int& i){return p_col->ref[i];}
   std::string label();
   std::string type();
@@ -58,7 +62,7 @@ struct Crystal {
   Crystal(CMtz::MTZXTAL* c);
   std::string crystal_name();
   std::string project_name();
-  af::shared<double> UnitCell();
+  af::tiny<double,6> UnitCell();
   int ndatasets();
   Dataset getDataset(const int&);
 };
@@ -80,22 +84,56 @@ public:
   af::shared<std::string> columns();
   af::shared<std::string> history();
   Column getColumn(std::string s);
-  af::shared<double> getShared(std::string s);
   Crystal getCrystal(const int&);
 
   void printHeader(int);
   void printHeaderAdv(int);
 
   // Information indexed by crystal number
-  af::shared<double> UnitCell(const int& xtal);
+  af::tiny<double,6> UnitCell(const int& xtal);
   int ndatasets(const int& xtal);
 
   // Information indexed by crystal and dataset
   int& ncolumns(const int& xtal, const int& set);
 
-  af::shared< cctbx::miller::index<> > MIx();
-  af::shared< cctbx::hendrickson_lattman<> > HL(Column,Column,
-                                                Column,Column);
+  af::shared<cctbx::miller::index<> > MIx();
+
+  af::shared<cctbx::miller::index<> >
+  valid_indices(
+    std::string const& column_label);
+
+  af::shared<cctbx::miller::index<> >
+  valid_indices_anomalous(
+    std::string const& column_label_plus,
+    std::string const& column_label_minus);
+
+  af::shared<double>
+  valid_values(
+    std::string const& column_label);
+
+  af::shared<double>
+  valid_values_anomalous(
+    std::string const& column_label_plus,
+    std::string const& column_label_minus);
+
+  af::shared<std::complex<double> >
+  valid_complex(
+    std::string const& column_label_ampl,
+    std::string const& column_label_phi);
+
+  af::shared<std::complex<double> >
+  valid_complex_anomalous(
+    std::string const& column_label_ampl_plus,
+    std::string const& column_label_phi_plus,
+    std::string const& column_label_ampl_minus,
+    std::string const& column_label_phi_minus);
+
+  af::shared<cctbx::hendrickson_lattman<> >
+  valid_hl(
+    std::string const& column_label_a,
+    std::string const& column_label_b,
+    std::string const& column_label_c,
+    std::string const& column_label_d);
 };
 }} //namespaces
 #endif /* CPPMTZ_H*/
