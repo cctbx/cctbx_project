@@ -46,6 +46,38 @@ namespace coordination_sequences {
     return false;
   }
 
+  struct three_shells
+  {
+    three_shells() {}
+
+    three_shells(
+      direct_space_asu::asu_mappings<> const& asu_mappings,
+      unsigned i_seq_pivot)
+    {
+      prev = &a;
+      middle = &b;
+      next = &c;
+      next->push_back(node(asu_mappings, i_seq_pivot, sgtbx::rt_mx(1,1)));
+    }
+
+    void
+    shift()
+    {
+      std::vector<node>* tmp = prev;
+      prev = middle;
+      middle = next;
+      next = tmp;
+      next->clear();
+    }
+
+    std::vector<node> a;
+    std::vector<node> b;
+    std::vector<node> c;
+    std::vector<node>* prev;
+    std::vector<node>* middle;
+    std::vector<node>* next;
+  };
+
   af::shared<std::vector<unsigned> >
   simple(
     direct_space_asu::asu_mappings<> const& asu_mappings,
@@ -62,19 +94,14 @@ namespace coordination_sequences {
         term_table.push_back(std::vector<unsigned>());
         continue;
       }
-      std::vector<node> nodes_prev;
-      std::vector<node> nodes_middle;
-      std::vector<node> nodes_next;
-      nodes_next.push_back(node(asu_mappings, i_seq_pivot, sgtbx::rt_mx(1,1)));
+      three_shells shells(asu_mappings, i_seq_pivot);
       std::vector<unsigned> terms(1, 1);
       for(unsigned i_shell_minus_1=0;
                    i_shell_minus_1<n_shells;
                    i_shell_minus_1++) {
-        nodes_prev = nodes_middle;
-        nodes_middle = nodes_next;
-        nodes_next.clear();
-        for(unsigned i_node_m=0;i_node_m<nodes_middle.size();i_node_m++) {
-          node node_m = nodes_middle[i_node_m];
+        shells.shift();
+        for(unsigned i_node_m=0;i_node_m<shells.middle->size();i_node_m++) {
+          node node_m = (*shells.middle)[i_node_m];
           sgtbx::rt_mx rt_mx_i = asu_mappings.get_rt_mx(node_m.i_seq, 0);
           sgtbx::rt_mx rt_mx_ni = node_m.rt_mx.multiply(rt_mx_i.inverse());
           pair_asu_dict::const_iterator
@@ -96,16 +123,16 @@ namespace coordination_sequences {
                 unsigned j_sym = *j_sym_group_i;
                 sgtbx::rt_mx rt_mx_j = asu_mappings.get_rt_mx(j_seq, j_sym);
                 node new_node(asu_mappings, j_seq, rt_mx_ni.multiply(rt_mx_j));
-                if (   !find_node(new_node, nodes_prev)
-                    && !find_node(new_node, nodes_middle)
-                    && !find_node(new_node, nodes_next)) {
-                  nodes_next.push_back(new_node);
+                if (   !find_node(new_node, *shells.prev)
+                    && !find_node(new_node, *shells.middle)
+                    && !find_node(new_node, *shells.next)) {
+                  shells.next->push_back(new_node);
                 }
               }
             }
           }
         }
-        terms.push_back(nodes_next.size());
+        terms.push_back(shells.next->size());
       }
       term_table.push_back(terms);
     }
