@@ -6,6 +6,7 @@
 #include <scitbx/math/utils.h>
 #include <scitbx/error.h>
 #include <boost/python/make_constructor.hpp>
+#include <boost/python/args.hpp>
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
@@ -116,18 +117,11 @@ namespace {
   }
 
   vec3<double>
-  vec3_sum(flex<vec3<double> >::type const& a)
+  mean_weighted_a_a(
+    af::const_ref<vec3<double> > const& self,
+    af::const_ref<double> const& weights)
   {
-    SCITBX_ASSERT(!a.accessor().is_padded());
-    vec3<double> result(0,0,0);
-    af::const_ref<vec3<double>, af::flex_grid<> > a_ref = a.const_ref();
-    if (a_ref.size() > 0) {
-      result = a_ref[0];
-      for(std::size_t i=1;i<a_ref.size();i++) {
-        result += a_ref[i];
-      }
-    }
-    return result;
+    return af::mean_weighted(self, weights);
   }
 
   af::shared<vec3<double> >
@@ -237,21 +231,25 @@ namespace boost_python {
 
   void wrap_flex_vec3_double()
   {
-    flex_wrapper<vec3<double> >::plain("vec3_double")
+    using namespace boost::python;
+    typedef flex_wrapper<vec3<double> > f_w;
+    f_w::plain("vec3_double")
       .def_pickle(flex_pickle_single_buffered<vec3<double>,
         3*pickle_size_per_element<double>::value>())
-      .def("__init__", boost::python::make_constructor(join))
-      .def("__init__", boost::python::make_constructor(from_double))
+      .def("__init__", make_constructor(join))
+      .def("__init__", make_constructor(from_double))
       .def("as_double", as_double)
       .def("min", vec3_min)
       .def("max", vec3_max)
-      .def("sum", vec3_sum)
-      .def("__add__", flex_wrapper<vec3<double> >::add_a_s)
-      .def("__add__", flex_wrapper<vec3<double> >::add_a_a)
-      .def("__iadd__", flex_wrapper<vec3<double> >::iadd_a_s)
-      .def("__sub__", flex_wrapper<vec3<double> >::sub_a_s)
-      .def("__sub__", flex_wrapper<vec3<double> >::sub_a_a)
-      .def("__isub__", flex_wrapper<vec3<double> >::isub_a_s)
+      .def("sum", f_w::sum_a)
+      .def("mean", f_w::mean_a)
+      .def("mean_weighted", mean_weighted_a_a, (arg_("self"), arg_("weights")))
+      .def("__add__", f_w::add_a_s)
+      .def("__add__", f_w::add_a_a)
+      .def("__iadd__", f_w::iadd_a_s)
+      .def("__sub__", f_w::sub_a_s)
+      .def("__sub__", f_w::sub_a_a)
+      .def("__isub__", f_w::isub_a_s)
       .def("__mul__", mul_a_scalar)
       .def("__rmul__", mul_a_scalar)
       .def("__mul__", mul_a_mat3)
