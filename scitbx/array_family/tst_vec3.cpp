@@ -115,6 +115,7 @@ int main(int argc, char* argv[])
   {
     vec3<double> a(5., 1., -2.);
     check_true(__LINE__, std::fabs(a * a.ortho()) < 1.e-6);
+    verify(__LINE__, a, a.as_tiny());
   }
 
   std::cout << "Total OK: " << ok_counter << std::endl;
