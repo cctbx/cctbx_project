@@ -126,11 +126,11 @@ else:
       SHLINK="CC -LANG:std -n32 -mips4",
     )
     env_etc.cxxflags_base = Split("""
-        -I/yusr/pom1/rwgrosse/bpl2/boost/boost/compatibility/cpp_c_headers
+        -I%s/boost/compatibility/cpp_c_headers
         -woff 1001,1234,1311,1682,3439
         -O2 -OPT:Olimit=0
         -DNDEBUG
-    """)
+    """ % (os.environ["LIBTBX_BOOST"],))
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "darwin_c++"):
