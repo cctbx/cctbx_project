@@ -62,8 +62,7 @@ class test_model(emma.model):
         model_id,
         elements=["S"]*n_elements,
         volume_per_atom=50.,
-        min_distance=2.0,
-        general_positions_only=0)
+        min_distance=2.0)
       positions = []
       for scatterer in structure.scatterers():
         positions.append(emma.position(scatterer.label, scatterer.site))

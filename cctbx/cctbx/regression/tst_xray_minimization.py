@@ -12,7 +12,9 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   structure_ideal = random_structure.xray_structure(
     space_group_info,
     elements=("Se",)*n_elements,
-    volume_per_atom=200)
+    volume_per_atom=200,
+    random_u_iso=True,
+    random_occupancy=True)
   f_obs_array = abs(structure_ideal.structure_factors_direct(
     anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array())
   if (0 or verbose):

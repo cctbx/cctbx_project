@@ -122,9 +122,11 @@ def exercise(target_functor, parameter_name, space_group_info,
     space_group_info,
     elements=("Se",)*n_elements,
     volume_per_atom=100,
-    anisotropic_flag=(parameter_name == "u_star"),
     random_f_prime_d_min=d_min,
-    random_f_double_prime=True)
+    random_f_double_prime=True,
+    anisotropic_flag=(parameter_name == "u_star"),
+    random_u_iso=True,
+    random_occupancy=True)
   f_obs_array = abs(structure_ideal.structure_factors_direct(
     anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array())
   if (0 or verbose):

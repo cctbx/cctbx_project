@@ -16,9 +16,11 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
   structure = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O", "N", "C", "C", "O"),
-    anisotropic_flag=anisotropic_flag,
     random_f_prime_d_min=1,
-    random_f_double_prime=anomalous_flag
+    random_f_double_prime=anomalous_flag,
+    anisotropic_flag=anisotropic_flag,
+    random_u_iso=True,
+    random_occupancy=True
     )
   f_direct_array = structure.structure_factors_direct(
     anomalous_flag=anomalous_flag,

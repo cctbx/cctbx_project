@@ -52,9 +52,7 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
     n_scatterers=n_elements,
     volume_per_atom=150,
     min_distance=2.,
-    general_positions_only=1,
-    random_u_iso=False,
-    random_occupancy=False)
+    general_positions_only=True)
   miller_set_f_obs = miller.build_set(
     crystal_symmetry=structure,
     anomalous_flag=False,
@@ -135,7 +133,7 @@ def test_molecule(space_group_info, flag_f_part, d_min=3.,
     elements=elements,
     volume_per_atom=50,
     min_distance=2.,
-    general_positions_only=1,
+    general_positions_only=True,
     random_u_iso=True,
     random_occupancy=True)
   if (0 or verbose):
