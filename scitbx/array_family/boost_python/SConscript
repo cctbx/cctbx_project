@@ -24,3 +24,9 @@ env_scitbx_boost_python_ext.SharedLibrary(
   "flex_vec3_double.cpp",
   "loops.cpp",
 ])
+
+env_scitbx_boost_python_ext.SharedLibrary(
+  target="#libtbx/scitbx_array_family_shared_ext",
+  source=[
+  "shared_ext.cpp",
+])
