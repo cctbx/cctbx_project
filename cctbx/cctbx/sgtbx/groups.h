@@ -340,7 +340,7 @@ namespace sgtbx {
           enantiomorphic space groups corresponds to a single
           affine space group type.
           <p>
-          See also: getEnantiomorphSgOps()
+          See also: getChangeOfHandOp()
        */
       bool isEnantiomorphic() const;
       //! Determine a change-of-hand matrix.
