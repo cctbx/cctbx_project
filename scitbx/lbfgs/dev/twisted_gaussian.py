@@ -325,7 +325,7 @@ class fortran_minimizer:
     for i,v in g.items(): self.g[i] = v
     if (diag is not None):
       for i,v in diag.items(): self.diag[i] = v
-    from lbfgs import lbfgs as fortran_lbfgs
+    from fortran_lbfgs import lbfgs as fortran_lbfgs
     fortran_lbfgs(
       self.n, self.m,
       self.x, f, self.g, diagco, self.diag,

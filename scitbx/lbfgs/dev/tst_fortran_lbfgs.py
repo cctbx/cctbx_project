@@ -1,5 +1,5 @@
 import Numeric
-from lbfgs import lbfgs
+from fortran_lbfgs import lbfgs
 
 def run():
   n = 100
