@@ -10,6 +10,7 @@
  */
 
 #include <boost/python/cross_module.hpp>
+#include <cctbx/array_family/tiny_bpl.h>
 #include <cctbx/array_family/shared_bpl.h>
 #include <cctbx/math/linear_regression.h>
 #include <cctbx/math/utils.h>
@@ -93,6 +94,8 @@ namespace {
     WRAP_TYPE("Miller_Index", cctbx::Miller::Index);
     WRAP_TYPE("RTMx", cctbx::sgtbx::RTMx);
     WRAP_TYPE("XrayScatterer", XrayScatterer);
+
+    WRAP_TYPE("double3", cctbx::af::double3);
 
     class_builder<ex_linear_regression<double> >
     py_linear_regression(this_module, "linear_regression");
