@@ -1,5 +1,6 @@
 import iotbx.parameters
 from cStringIO import StringIO
+import copy
 import sys, os
 
 class recycle:
@@ -407,6 +408,7 @@ b = z
 def exercise_nested():
   parameters = recycle(
     input_string="""\
+d0=0
 a0 {
   d1=a b c
   a1 {
@@ -427,6 +429,8 @@ a0 {
 }
 """,
     expected_out="""\
+d0 = 0
+
 a0
 {
   d1 = a b c
@@ -456,10 +460,18 @@ a0
   check_get(parameters, path="a0.a1.t0.row0.c", expected_out="c = yes\n")
   check_get(parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x = 0\n")
   check_get(parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y = 1.\n")
+  assert [item.path for item in parameters.all_scopes_and_tables()] == [
+    "", "a0", "a0.a1", "a0.a1.t0", "a0.a1.t0.row0.t1"]
+  assert [item.path for item in parameters.all_definitions()] == [
+    "d0", "a0.d1", "a0.a1.t0.row0.c", "a0.a1.t0.row0.t1.1.x",
+    "a0.a1.t0.row0.t1.1.y", "a0.d2"]
   parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
   out = StringIO()
   parameters.show(out=out, attributes_level=2)
   assert out.getvalue() == """\
+d0 = 0
+  .type = "int"
+
 a0
 {
   d1 = a b c
@@ -556,7 +568,7 @@ n='$a'
   check_get_sub(parameters, path="d", expected_out="d = x \\$b\n")
   check_get_sub(parameters, path="answer", expected_out="answer = yes no\n")
   check_get_sub(parameters, path="e", expected_out='e = "x"\n')
-  check_get_sub(parameters, path="f", expected_out='f = "x"\n')
+  check_get_sub(parameters, path="f", expected_out='f = x\n')
   check_get_sub(parameters, path="g", expected_out='g = "abcyes nobc"\n')
   check_get_sub(parameters, path="h",
     expected_out='h = "abcyes nobc" "12yes nox56"\n')
@@ -780,6 +792,114 @@ group {
   assert group.b == 13
   assert group.s.type().number() == 19
 
+def exercise_deepcopy():
+  parameters = iotbx.parameters.parse(input_string="""\
+  a=1
+  b {
+    a=1
+  }
+  table c { {
+      a=1
+    }
+  }
+""")
+  copy.deepcopy(parameters)
+
+def exercise_update_from():
+  target = iotbx.parameters.parse(input_string="""\
+a=None
+b=None
+c
+{
+  a=None
+  b=None
+  c
+  {
+    x=1
+    y=2
+    table t
+    {
+    }
+  }
+}
+table t
+{
+}
+""")
+  source = iotbx.parameters.parse(input_string="""\
+a=0
+b=x
+c
+{
+  a=${v.x}
+  b=1
+  c
+  {
+    y=${v.y}
+    table t
+    {
+      {
+        r=x
+      }
+    }
+  }
+}
+v
+{
+  x=y
+  y=3
+}
+table t
+{
+  {
+    a=1
+    b=2
+  }
+  {
+    a=2
+    b=3
+  }
+}
+""")
+  target.update_from(source=source)
+  out = StringIO()
+  target.show(out=out)
+  assert out.getvalue() == """\
+a = 0
+b = x
+
+c
+{
+  a = y
+  b = 1
+
+  c
+  {
+    x = 1
+    y = 3
+
+    table t
+    {
+      {
+        r = x
+      }
+    }
+  }
+}
+
+table t
+{
+  {
+    a = 1
+    b = 2
+  }
+  {
+    a = 2
+    b = 3
+  }
+}
+"""
+
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
@@ -788,6 +908,8 @@ def exercise():
   exercise_get_with_substitution()
   exercise_include()
   exercise_extract()
+  exercise_deepcopy()
+  exercise_update_from()
   print "OK"
 
 if (__name__ == "__main__"):
