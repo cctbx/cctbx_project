@@ -18,4 +18,5 @@ env_bpl.SharedLibrary(
   target="#libtbx/cctbx_adp_restraints_ext",
   source=[
     "adp_restraints_ext.cpp",
-    "rigid_bond_bpl.cpp"])
+    "rigid_bond_bpl.cpp",
+    "rigid_bond.cpp"])
