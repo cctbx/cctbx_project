@@ -115,3 +115,20 @@ class line_feeder:
       except StopIteration:
         self.eof = True
     return ""
+
+class input_with_prompt:
+
+  def __init__(self, prompt, tracebacklimit=0):
+    try: import readline
+    except: pass
+    try: self.previous_tracebacklimit = sys.tracebacklimit
+    except: self.previous_tracebacklimit = None
+    if (tracebacklimit is not None):
+      sys.tracebacklimit = tracebacklimit
+    self.input = raw_input(prompt)
+
+  def __del__(self):
+    if (self.previous_tracebacklimit is None):
+      del sys.tracebacklimit
+    else:
+      sys.tracebacklimit = self.previous_tracebacklimit
