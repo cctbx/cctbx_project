@@ -10,6 +10,7 @@ from cctbx import uctbx
 from cctbx.utils import phase_error
 from cctbx.array_family import flex
 from scitbx import fftpack
+from libtbx.itertbx import count
 import sys
 import math
 import types
@@ -24,22 +25,6 @@ class binner(ext.binner):
   def __init__(self, binning, miller_indices):
     ext.binner.__init__(self, binning, miller_indices)
 
-  def show_summary(self, f=sys.stdout):
-    for i_bin in self.range_all():
-      bin_d_range = self.bin_d_range(i_bin)
-      count = self.count(i_bin)
-      if (i_bin == self.i_bin_d_too_large()):
-        assert bin_d_range[0] == -1
-        print >> f, "unused:              d > %8.4f: %5d" % (
-          bin_d_range[1], count)
-      elif (i_bin == self.i_bin_d_too_small()):
-        assert bin_d_range[1] == -1
-        print >> f, "unused: %9.4f >  d           : %5d" % (
-          bin_d_range[0], count)
-      else:
-        print >> f, "bin %2d: %9.4f >= d > %8.4f: %5d" % (
-          (i_bin,) + bin_d_range + (count,))
-
   def n_bin_d_too_large(self):
     return self.array_indices(self.i_bin_d_too_large()).size()
 
@@ -48,6 +33,47 @@ class binner(ext.binner):
 
   def n_bin_d_too_large_or_small(self):
     return self.n_bin_d_too_large() + self.n_bin_d_too_small()
+
+  def show_summary(self, f=None):
+    counts = []
+    for i_bin in self.range_all():
+      bin_d_range = self.bin_d_range(i_bin)
+      counts.append(self.count(i_bin))
+    self.show_data(data=counts, data_fmt="%5d", f=f)
+
+  def bin_legend(self, i_bin):
+    bin_d_range = self.bin_d_range(i_bin)
+    if (i_bin == self.i_bin_d_too_large()):
+      assert bin_d_range[0] == -1
+      return "unused:              d > %9.4f:" % bin_d_range[1]
+    if (i_bin == self.i_bin_d_too_small()):
+      assert bin_d_range[1] == -1
+      return "unused: %9.4f >  d            :" % bin_d_range[0]
+    return "bin %2d:" % i_bin + " %9.4f >= d > %9.4f:" % bin_d_range
+
+  def show_data(self, data, data_fmt=None, f=None):
+    assert len(data) == self.n_bins_all()
+    if (f is None): f = sys.stdout
+    for i_bin in self.range_all():
+      if (data_fmt is None):
+        print >> f, self.bin_legend(i_bin), data[i_bin]
+      else:
+        print >> f, self.bin_legend(i_bin), data_fmt % data[i_bin]
+
+class binned_data:
+
+  def __init__(self, binner, data):
+    self._binner = binner
+    self._data = data
+
+  def binner(self):
+    return self._binner
+
+  def data(self):
+    return self._data
+
+  def show(self, data_fmt=None, f=None):
+    self.binner().show_data(data=self.data(), data_fmt=data_fmt, f=f)
 
 def make_lookup_dict(indices): # XXX push to C++
   result = {}
@@ -196,9 +222,35 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag(),
       d_min=self.d_min()*(1-tolerance))
 
-  def completeness(self, tolerance=1.e-6):
-    return self.indices().size() \
-         / float(self.complete_set(tolerance).indices().size())
+  def completeness(self, use_binning=00000, tolerance=1.e-6):
+    complete_set = self.complete_set(tolerance=tolerance)
+    if (not use_binning):
+      return self.indices().size() / float(complete_set.indices().size())
+    assert self.binner() is not None
+    complete_set.use_binning_of(self)
+    ratios = []
+    for i_bin in self.binner().range_all():
+      n_complete = complete_set.binner().selection(i_bin).count(0001)
+      n_given = self.binner().selection(i_bin).count(0001)
+      ratios.append((n_given, n_complete))
+    return binned_data(binner=self.binner(), data=ratios)
+
+  def show_completeness_in_bins(self, tolerance=1.e-6, f=None):
+    if (f is None): f = sys.stdout
+    binned_ratios = self.completeness(use_binning=0001, tolerance=tolerance)
+    fractions = []
+    max_len = 0
+    for ratio in binned_ratios.data():
+      fraction = "%d/%d" % ratio
+      fractions.append(fraction)
+      max_len = max(max_len, len(fraction))
+    fmt_fraction = "%%%ds" % max_len
+    bin_legend = binned_ratios.binner().bin_legend
+    for i_bin,ratio,fraction in zip(count(), binned_ratios.data(), fractions):
+      print >> f, bin_legend(i_bin), fmt_fraction % fraction,
+      if (ratio[1] != 0):
+        print >> f, "= %8.4f" % (float(ratio[0]) / ratio[1]),
+      print >> f
 
   def all_selection(self):
     return flex.bool(self.indices().size(), 0001)
@@ -358,7 +410,11 @@ class set(crystal.symmetry):
   def binner(self):
     return self._binner
 
+  def use_binning_of(self, other):
+    self._binner = binner(other.binner(), self.indices())
+
   def use_binner_of(self, other):
+    assert self.indices().all_eq(other.indices())
     self._binner = other._binner
 
 def build_set(crystal_symmetry, anomalous_flag, d_min):

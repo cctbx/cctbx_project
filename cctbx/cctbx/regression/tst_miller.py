@@ -6,6 +6,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+import StringIO
 import math
 import sys
 
@@ -63,6 +64,50 @@ def exercise_set():
     min_fraction_bijvoet_pairs=4/5.-1.e-4).anomalous_flag() == 0001
   assert ma.auto_anomalous(
     min_fraction_bijvoet_pairs=4/5.+1.e-4).anomalous_flag() == 00000
+
+def exercise_binner():
+  crystal_symmetry = crystal.symmetry(
+    unit_cell="14.311  57.437  20.143",
+    space_group_symbol="C m c m")
+  for anomalous_flag in [00000, 0001]:
+    set1 = miller.build_set(
+      crystal_symmetry=crystal_symmetry,
+      anomalous_flag=anomalous_flag,
+      d_min=10)
+    set1.setup_binner(n_bins=3)
+    s = StringIO.StringIO()
+    set1.binner().show_summary(f=s)
+    assert s.getvalue() == """\
+unused:              d >   28.7186:     0
+bin  1:   28.7186 >= d >   14.1305:     3
+bin  2:   14.1305 >= d >   11.4473:     3
+bin  3:   11.4473 >= d >   10.0715:     2
+unused:   10.0715 >  d            :     0
+"""
+    set2 = miller.build_set(
+      crystal_symmetry=crystal_symmetry,
+      anomalous_flag=anomalous_flag,
+      d_min=8)
+    set2.use_binning_of(set1)
+    s = StringIO.StringIO()
+    set2.show_completeness_in_bins(f=s)
+    assert s.getvalue() == """\
+unused:              d >   28.7186: 0/0
+bin  1:   28.7186 >= d >   14.1305: 3/3 =   1.0000
+bin  2:   14.1305 >= d >   11.4473: 3/3 =   1.0000
+bin  3:   11.4473 >= d >   10.0715: 2/2 =   1.0000
+unused:   10.0715 >  d            : 8/8 =   1.0000
+"""
+    binned_ratios = set2.completeness(use_binning=0001)
+    s = StringIO.StringIO()
+    binned_ratios.show(f=s)
+    assert s.getvalue() == """\
+unused:              d >   28.7186: (0, 0)
+bin  1:   28.7186 >= d >   14.1305: (3, 3)
+bin  2:   14.1305 >= d >   11.4473: (3, 3)
+bin  3:   11.4473 >= d >   10.0715: (2, 2)
+unused:   10.0715 >  d            : (8, 8)
+"""
 
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
@@ -427,6 +472,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   exercise_set()
+  exercise_binner()
   exercise_array()
   exercise_crystal_gridding()
   exercise_fft_map()
