@@ -192,6 +192,8 @@ def run_call_back(flags, space_group_info):
   model2.as_xray_structure()
   for i1,i2,m1,m2 in [(1,2,model1,model2),(2,1,model2,model1)]:
     m2_t = model_matches.transform_model(i_model=i2)
+    assert m1.unit_cell().is_similar_to(m2_t.unit_cell())
+    assert m1.space_group() == m2_t.space_group()
     for pair in model_matches.refined_matches[0].pairs:
       site1 = m1.positions()[pair[i1-1]].site
       site2 = m2_t.positions()[pair[i2-1]].site
