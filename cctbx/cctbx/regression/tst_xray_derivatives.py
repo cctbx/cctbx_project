@@ -163,6 +163,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     print "target = %.6g" % (target_result.target(),)
   sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
     gradient_flags=xray.structure_factors.gradient_flags(

@@ -12,6 +12,7 @@ class gradients_fft(gradients_base):
 
   def __init__(self, manager,
                      xray_structure,
+                     mean_displacements,
                      miller_set,
                      d_target_d_f_calc,
                      gradient_flags,
@@ -42,6 +43,7 @@ class gradients_fft(gradients_base):
     time_sampling = user_plus_sys_time()
     self._results.sampling(
       scatterers=xray_structure.scatterers(),
+      mean_displacements=mean_displacements,
       scattering_dict=xray_structure.scattering_dict(),
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,

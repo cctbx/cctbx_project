@@ -1,26 +1,46 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 #include <cctbx/xray/minimization.h>
 
 namespace cctbx { namespace xray { namespace boost_python {
+
+  struct apply_shifts_wrappers
+  {
+    typedef minimization::apply_shifts<scatterer<>, double> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("minimization_apply_shifts", no_init)
+        .def(init<
+          uctbx::unit_cell const&,
+          af::const_ref<scatterer<> > const&,
+          gradient_flags const&,
+          af::const_ref<double> const&>((
+            arg_("unit_cell"),
+            arg_("scatterers"),
+            arg_("gradient_flags"),
+            arg_("shifts"))))
+        .add_property("shifted_scatterers",
+          make_getter(&w_t::shifted_scatterers, rbv()))
+        .add_property("mean_displacements",
+          make_getter(&w_t::mean_displacements, rbv()))
+      ;
+    }
+  };
 
   void wrap_minimization()
   {
     using namespace boost::python;
 
-    def("minimization_apply_shifts",
-      (af::shared<scatterer<> >(*)(
-        uctbx::unit_cell const&,
-        af::const_ref<scatterer<> > const&,
-        gradient_flags const&,
-        af::const_ref<double> const&))
-          minimization::apply_shifts, (
-      arg_("unit_cell"),
-      arg_("scatterers"),
-      arg_("gradient_flags"),
-      arg_("shifts")));
+    apply_shifts_wrappers::wrap();
 
     def("minimization_add_site_gradients",
       (void(*)(

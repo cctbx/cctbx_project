@@ -347,6 +347,7 @@ namespace cctbx { namespace xray {
       void
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
+        af::const_ref<FloatType> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
         af::const_ref<FloatType, accessor_type> const&
           ft_d_target_d_f_calc,
@@ -356,13 +357,15 @@ namespace cctbx { namespace xray {
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
-          scatterers, scattering_dict, &*ft_d_target_d_f_calc.begin(), 0,
+          scatterers, mean_displacements,
+          scattering_dict, &*ft_d_target_d_f_calc.begin(), 0,
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
       void
       sampling(
         af::const_ref<XrayScattererType> const& scatterers,
+        af::const_ref<FloatType> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
           ft_d_target_d_f_calc,
@@ -372,7 +375,8 @@ namespace cctbx { namespace xray {
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
-          scatterers, scattering_dict, 0, &*ft_d_target_d_f_calc.begin(),
+          scatterers, mean_displacements,
+          scattering_dict, 0, &*ft_d_target_d_f_calc.begin(),
           grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
@@ -414,6 +418,7 @@ namespace cctbx { namespace xray {
       void
       sampling_(
         af::const_ref<XrayScattererType> const& scatterers,
+        af::const_ref<FloatType> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
         const FloatType* ft_d_target_d_f_calc_real,
         const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
@@ -428,6 +433,7 @@ namespace cctbx { namespace xray {
   fast_gradients<FloatType, XrayScattererType>::
   sampling_(
     af::const_ref<XrayScattererType> const& scatterers,
+    af::const_ref<FloatType> const& mean_displacements,
     scattering_dictionary const& scattering_dict,
     const FloatType* ft_d_target_d_f_calc_real,
     const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
@@ -438,6 +444,9 @@ namespace cctbx { namespace xray {
     CCTBX_ASSERT(sampling_may_only_be_called_once);
     sampling_may_only_be_called_once = false;
     CCTBX_ASSERT(scatterers.size() == this->n_scatterers_passed_);
+    if (grad_flags.u_iso && grad_flags.sqrt_u_iso) {
+      CCTBX_ASSERT(mean_displacements.size() == scatterers.size());
+    }
     CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
@@ -597,7 +606,13 @@ namespace cctbx { namespace xray {
         }
         if (!scatterer.anisotropic_flag) {
           if (grad_flags.u_iso) {
-            packed_.push_back(adptbx::u_as_b(gr_b_iso));
+            if (grad_flags.sqrt_u_iso) {
+              packed_.push_back(2*mean_displacements[i_seq]
+                               *adptbx::u_as_b(gr_b_iso));
+            }
+            else {
+              packed_.push_back(adptbx::u_as_b(gr_b_iso));
+            }
           }
         }
         else {
@@ -622,7 +637,13 @@ namespace cctbx { namespace xray {
           d_target_d_site_cart_.push_back(gr_site);
         }
         if (grad_flags.u_iso) {
-          d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
+          if (grad_flags.sqrt_u_iso) {
+            d_target_d_u_iso_.push_back(2*mean_displacements[i_seq]
+                                       *adptbx::u_as_b(gr_b_iso));
+          }
+          else {
+            d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
+          }
         }
         if (grad_flags.u_aniso) {
           d_target_d_u_cart_.push_back(adptbx::u_as_b(gr_b_cart));

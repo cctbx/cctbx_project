@@ -241,6 +241,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
+        af::const_ref<float_type> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
         gradient_flags const& grad_flags,
@@ -248,7 +249,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       {
         math::cos_sin_exact<float_type> cos_sin;
         compute(cos_sin, unit_cell, space_group, miller_indices,
-                scatterers, scattering_dict,
+                scatterers, mean_displacements, scattering_dict,
                 d_target_d_f_calc, grad_flags, n_parameters);
       }
 
@@ -258,13 +259,14 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
+        af::const_ref<float_type> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
         gradient_flags const& grad_flags,
         std::size_t n_parameters=0)
       {
         compute(cos_sin, unit_cell, space_group, miller_indices,
-                scatterers, scattering_dict,
+                scatterers, mean_displacements, scattering_dict,
                 d_target_d_f_calc, grad_flags, n_parameters);
       }
 
@@ -306,11 +308,15 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
+        af::const_ref<float_type> const& mean_displacements,
         scattering_dictionary const& scattering_dict,
         af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
         gradient_flags const& grad_flags,
         std::size_t n_parameters)
       {
+        if (grad_flags.u_iso && grad_flags.sqrt_u_iso) {
+          CCTBX_ASSERT(mean_displacements.size() == scatterers.size());
+        }
         CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
         CCTBX_ASSERT(d_target_d_f_calc.size() == miller_indices.size());
         CCTBX_ASSERT(!grad_flags.all_false());
@@ -387,6 +393,15 @@ namespace cctbx { namespace xray { namespace structure_factors {
           if (grad_flags.fdp) {
             d_target_d_fdp_ = detail::unscramble(
               gr_refs.fdp, perm.const_ref(), n_ltr);
+          }
+        }
+        if (grad_flags.u_iso && grad_flags.sqrt_u_iso) {
+          float_type* d_t_d_u = &*d_target_d_u_iso_.begin();
+          for(std::size_t i=0;i<scatterers.size();i++,d_t_d_u++) {
+            ScattererType const& scatterer = scatterers[i];
+            if (!scatterer.anisotropic_flag) {
+              (*d_t_d_u) *= 2 * mean_displacements[i];
+            }
           }
         }
         if (n_parameters != 0) {
