@@ -57,6 +57,8 @@ class _object(boost.python.injector, ext.object):
     print >> out, "Point group symbol from file:", self.point_group_name()
     print >> out, "Number of crystals:", self.n_crystals()
     print >> out, "Number of Miller indices:", self.n_reflections()
+    if (self.n_crystals() > 0 and self.n_reflections() > 0):
+      print >> out, "Resolution range: %.6g %.6g" % self.max_min_resolution()
     print >> out, "History:"
     for line in self.history():
       print >> out, " ", line

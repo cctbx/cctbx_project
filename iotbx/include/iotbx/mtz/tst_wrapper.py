@@ -720,6 +720,7 @@ Space group from matrices: P 4/m m m (No. 123)
 Point group symbol from file: pg
 Number of crystals: 2
 Number of Miller indices: 4
+Resolution range: 2.67261 1.41421
 History:
 Crystal 1:
   Name: HKL_base
