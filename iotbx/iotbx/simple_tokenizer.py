@@ -2,12 +2,14 @@ class character_iterator:
 
   def __init__(self, input_string):
     self.remaining = input_string
+    self.i_char = 0
     self.line_number = 1
 
   def next(self):
     if (len(self.remaining) == 0): return None
     result = self.remaining[0]
     self.remaining = self.remaining[1:]
+    self.i_char += 1
     if (result == "\n"): self.line_number += 1
     return result
 
@@ -34,11 +36,14 @@ class word:
             .replace(self.quote_token, "\\"+self.quote_token) \
          + self.quote_token
 
+  def raise_syntax_error(self, message):
+    raise RuntimeError(
+      'Syntax error: %s"%s" (input line %d)' % (
+        message, self.value, self.line_number))
+
   def assert_expected(self, value):
     if (self.value != value):
-      raise RuntimeError(
-        'Syntax error: expected "{", found "%s" (input line %d)' % (
-          self.value, self.line_number))
+      self.raise_syntax_error('expected "{", found ')
 
 default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                    + "abcdefghijklmnopqrstuvwxyz" \
@@ -54,8 +59,7 @@ def split_into_words(
   words = []
   char_iter = character_iterator(input_string)
   c = char_iter.next()
-  while True:
-    if (c is None): break
+  while (c is not None):
     if (c.isspace()):
       c = char_iter.next()
       continue
