@@ -40,31 +40,47 @@ namespace cctbx { namespace mintbx {
         af::shared<double> data_reference,
         af::shared<double> data_scaled,
         double k,
-        af::tiny<double, 6> const& u_star,
-        bool compute_gradients)
+        af::tiny<double, 6> const& u_star_scaled,
+        double u_scale,
+        bool calc_gradient_k,
+        bool calc_gradient_u)
       {
-        cctbx_assert(miller_indices.size() == multiplicities.size());
+        if (multiplicities.size()) {
+          cctbx_assert(miller_indices.size() == multiplicities.size());
+        }
         cctbx_assert(miller_indices.size() == data_reference.size());
         cctbx_assert(miller_indices.size() == data_scaled.size());
         target_ = 0;
-        if (compute_gradients) {
+        if (calc_gradient_k || calc_gradient_u) {
           gradient_k_ = 0;
-          gradients_u_star_.fill(0);
+          if (calc_gradient_u) gradients_u_star_.fill(0);
         }
+        double sum_mult_data_scaled_sq = 0;
         double mult = 1;
         for(std::size_t i=0;i<miller_indices.size();i++) {
           if (multiplicities.size()) mult = multiplicities[i];
-          double dw = adptbx::DebyeWallerFactorUstar(miller_indices[i], u_star);
-          double drkdw  = mult * data_reference[i] * k * dw;
-          double diff  = mult * data_scaled[i] - drkdw;
-          target_ += math::pow2(diff);
-          if (compute_gradients) {
-            gradient_k_ = -2 * drkdw * diff;
-            af::tiny<double, 6>
-            dwc = adptbx::DebyeWallerFactorUstarCoefficients(miller_indices[i],
-              type_holder<double>());
-            for(std::size_t j=0;j<dwc.size();j++) {
-              gradients_u_star_[j] += dwc[j] * gradient_k_;
+          sum_mult_data_scaled_sq += mult * math::pow2(data_scaled[i]);
+        }
+        if (sum_mult_data_scaled_sq < 1.) sum_mult_data_scaled_sq = 1.;
+        af::tiny<double, 6> u_star = u_star_scaled / u_scale;
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          if (multiplicities.size()) mult = multiplicities[i];
+          double dw = adptbx::DebyeWallerFactorUstar(
+            miller_indices[i], u_star);
+          double drkdw  = data_reference[i] * k * dw;
+          double diff  = data_scaled[i] - drkdw;
+          target_ += mult * math::pow2(
+            diff / std::sqrt(sum_mult_data_scaled_sq));
+          if (calc_gradient_k || calc_gradient_u) {
+            double gk = -2 * mult * drkdw * diff / sum_mult_data_scaled_sq;
+            if (calc_gradient_k) gradient_k_ += gk;
+            if (calc_gradient_u) {
+              af::tiny<double, 6>
+              dwc = adptbx::DebyeWallerFactorUstarCoefficients(
+                miller_indices[i], type_holder<double>());
+              for(std::size_t j=0;j<dwc.size();j++) {
+                gradients_u_star_[j] += dwc[j] / u_scale * gk;
+              }
             }
           }
         }

@@ -53,6 +53,8 @@ namespace {
       af::shared<double>,
       double,
       af::tiny<double, 6> const&,
+      double,
+      bool,
       bool
       >());
     py_kbstg.def(&kbstg::target, "target");
