@@ -1,0 +1,581 @@
+/*! \page page_array_family cctbx Array Family for Scientific Applications
+
+<hr>
+
+<b>This document is a work in progress!</b> It is made
+public for others that might be interested in actively
+contributing to the development of this open source
+project. Ideally, the array family would be moved to
+a project more general than the %cctbx, such as boost.
+
+<hr>
+
+\section af_abstract Abstract
+
+The %cctbx array family for scientific applications
+includes four fundamental array types that implement
+different memory management models and access schemes. To
+maximize reusability, each of the types is implemented as a
+<i>plain</i> type which has non of the arithmetic, boolean
+and logical operators overloaded, and a corresponding type
+with a full set of operators for element-wise operations
+(e.g. element-wise addition or multiplication) and
+reduction operations (e.g.  the comparison operators
+return a bool, as opposed to an array of bools). In
+addition overloads for most functions in standard <cmath>
+and <complex> libraries are provided.  Also included are
+custom functions for the computation of, e.g., the sum,
+minimum or mean of an array.
+
+The array family is accompanied by a type that holds a
+generic value and a flag to indicated if the held value is
+present or missing. This <i>flagged-value</i> type is
+useful for the handling of experimental data sets to
+indicate if a data item is observed or unobserved. The
+array arithmetic is fully compatible with this
+flagged-value type.
+
+The %cctbx array family is implemented in ISO C++. Plans
+for future developments include the implementation of
+comprehensive Python bindings using the Boost.Python
+library. The array family is available under a BSD-style
+Open Source license.
+
+<hr>
+
+\section af_introduction Introduction
+
+While developing a large application for scientific
+computing (http://cci.lbl.gov/), it became clear that the
+dense array types provided by the STL (std::vector and
+std::valarray) and the Boost library (http://www.boost.org/)
+do not sufficiently address the requirements of a
+scientific application. Blitz++
+(http://www.oonumerics.org/) is much more suitable.
+However, the patterns that emerged during the development
+of our application are not fully covered by the combination
+of these established array types (see section Design
+Requirements; std::vector and std::valarray both have
+deep copy semantics; std::valarray only supports homogeneous
+binary operators; boost::array has no constructors; blitz
+arrays do not support array type casts). In addition, The
+Blitz++ license does not grant the right to unrestricted
+use of the library. This presents a problem in many
+environments. Therefore we have undertaken the effort of
+distilling a general and uniform array family from the ad
+hoc dense array types that emerged in the development
+process.
+
+The %cctbx array family includes four fundamental types.
+Three of these types (<i>tiny</i>, <i>small</i>,
+<i>shared</i>) are designed as pure one-dimensional arrays
+that implement different types of memory management. The
+fourth type (<i>versa</i>) is a generalization of a dense
+multi-dimensional array and based on the <i>shared</i>
+type. The design of the <i>versa</i> type is inspired by
+the simple paradigm that a multi-dimensional array is a
+one-dimensional array with a custom <i>access scheme</i>.
+An access scheme is defined as the mapping from a generic
+<i>index object</i> to a one-dimensional array index. A
+trivial access scheme is the mapping from an index tuple
+(ix,iy) to the one-dimensional index ix*ny+iy,
+where nx and ny are the extends of a two-dimensional,
+0-based array. A given access scheme is implemented as a
+policy class, an <i>Accessor</i>, that is passed as a
+template parameter to the <i>versa</i> type. In this way,
+memory management and access schemes are cleanly separated
+and may be used in different combinations.
+
+Currently, the %cctbx array family only includes two
+trivial access schemes: 0-based multi-dimensional arrays in
+C and in FORTRAN storage order, both without strides. More
+sophisticated access schemes for multi-dimensional arrays
+including accessors that are conventional slices could be
+adopted from the <i>multi_array</i> package that was
+recently accepted into boost. Ad hoc combination of the
+<i>shared</i> type with the <i>multi_array_ref</i> type
+should work immediately. However, reusing the array-family
+arithmetic will only be enabled if the
+<i>multi_array_ref</i> type is abstracted to a pure
+accessor that can be used in combination with the <i>versa</i>
+type.
+
+It should be noted that the %cctbx array family is not a
+matrix library (such as the MTL,
+http://www.osl.iu.edu/research/mtl/) and also not a linear
+algebra system (such as ublas, developed in the boost
+environment). A matrix or linear algebra system would be
+layered on top of the array family.
+
+<hr>
+
+\section af_requirements Design requirements
+
+Scope of design: Implementation of a uniform family of dense arrays
+for scientific applications.
+<p>
+The patterns that evolved during the development of our
+application lead us to the following list of requirements
+for the array family:
+
+<ul>
+<li>Type with automatic allocation (fixed capacity), fixed size
+    and deep copy semantics.
+    This type should have a constructor.
+
+<li>Type with automatic allocation (fixed capacity), variable size
+    and deep copy semantics.
+
+<li>Type with dynamic allocation (variable capacity and size) and
+    reference counting (shallow copy semantics).
+
+<li>Support for array type casts for the reference counted type.
+    This enables reuse of a reference-counted memory block for
+    different purposes. E.g., the same memory block can be
+    viewed as an array of std::complex<T> or an array of T
+    (although this particular popular example is not portable
+    unless <i>Enhanced POD's</i> are incorporated into the
+    language; see
+    http://groups.yahoo.com/group/boost/message/22670).
+
+<li>Parameterization of access schemes (e.g. for
+    multi-dimensional arrays).
+
+<li>The library must include an abstraction of a <i>nested loop</i>.
+
+<li>All types must be convertible to a generic array reference type.
+    Benefits: 1: maximize performance, 2: reduction of code size
+    generated by the compiler.
+
+<li>Full set of arithmetic, logical and boolean operators for
+    element-wise operations (incl. type promotions) and reducing
+    operations.
+
+<li>Support for array operations with functions defined in <cmath>
+    and <complex>.
+
+<li>Short names for the types that will be most commonly used in
+    applications.
+
+</ul>
+
+\subsection af_memory_management Memory management considerations
+
+The three array types at the beginning of the requirement
+list present a careful selection from the larger space of
+all combinations of the basic policies:
+
+<ul>
+<li>automatic allocation vs. dynamic allocation
+<li>fixed size vs. variable size
+<li>deep copy semantics vs. shallow copy semantics
+</ul>
+
+The overhead associated with dynamic allocation is
+negligible for large arrays. Therefore automatic allocation
+is only beneficial for relatively small arrays, and for
+these deep copy semantics is always appropriate. For large
+arrays, the small overhead associated with reference
+counting is negligible. An array that is reference counted
+can easily provide a deep copy, but not vice versa. In
+summary, the three types listed above provide sufficient
+flexibility for most if not all applications.
+
+The reference counted array type could be emulated by
+combining, e.g. std::vector and boost::shared_ptr.
+However, the expression for allocation is very inconvenient
+(e.g. boost::shared_ptr<std::vector<double> > a(new
+std::vector<double>;) and accessing the std::vector
+interface requires dereferencing (e.g. (*a)[i]). Therefore
+generic algorithms that expect a std::vector-type interface
+are not applicable. It would also be very difficult to
+implement array type casts.
+
+\subsection af_accessors Accessors, slices, iterators
+
+<b>Accessors</b>:
+<p>
+As explained in the introduction, an access scheme is a
+transformation from a general index object to a
+one-dimensional array index. A simple access scheme is
+that of a conventional n-dimensional grid of points (as
+represented e.g. by multi_array). In real-world
+applications there are many other useful types of access
+schemes, mostly related to some type of symmetry (e.g.
+Hermitian symmetry of complex-valued arrays or periodic
+grids).
+
+<p>
+<b>Slices</b>:
+A conventional slice is a specialized access scheme and
+can therefore be implemented as an accessor.
+
+<p>
+<b>Iterators & nested loops</b>:
+In the context of multi-dimensional arrays, iterators are a
+somewhat artificial concept. An iterator that keeps track
+of the index object corresponding to the position in the
+underlying one-dimensional array (e.g. the mapping from the
+one-dimensional index to the corresponding three-tuple) is
+general but in all likelihood slow. An iterator that does
+not keep track of the index object is is fast but of
+limited use.
+<p>
+A general multi-dimensional iterator must have some sort of
+a nested loop inside. Therefore an iterator and a nested
+loop are very similar. In the context of multi-dimensional
+arrays it seems much more natural to think of a nested loop
+rather than an iterator. One could even argue that the STL
+iterators are the trivial form of a nested loop convoluted
+with accessing memory, and the nested loop is the proper
+abstraction for higher dimensions.
+
+<hr>
+
+\section af_implemented_types Implemented types
+
+The following types are implemented in the %cctbx::af
+namespace. Note that all array types are derived from
+corresponding plain types (e.g. af::tiny is derived from
+af::tiny_plain) that have no operators overloaded (see
+introduction).
+
+<p>
+The documentation in this section highlights the most
+important features of the high-level types.
+Full documentation for all types of the array family
+will be inlined in the source and formated for web-access
+with Doxygen.
+
+\subsection af_impl_tiny af::tiny&lt;ElementType, N&gt;
+
+The af::tiny type is similar to a boost:array, but provides
+convenience constructors and a full set of overloaded
+operators. It was found that the convenience constructors
+greatly increase the readability of source code that uses
+them.
+
+<p>
+Note that the constructors for the af::tiny type are different
+from the constructors for the other types. E.g.:
+
+<pre>
+af::tiny<int, 3> a1(1, 2, 3); // initializes a1 with the values 1, 2, 3.
+af::small<int, 3> a2(2); // size() == 2, elements are not initialized.
+</pre>
+
+The std::vector interface for accessing the array elements
+is emulated by the following member functions:
+
+<ul>
+<li>size
+<li>begin
+<li>end
+<li>front
+<li>back
+<li>operator[]
+<li>at
+<li>swap
+<li>empty
+<li>max_size
+<li>capacity
+</ul>
+
+\subsection af_impl_small af::small&lt;ElementType, N&gt;
+
+Like the af::tiny type, the af::small type is automatically
+allocated (i.e. the capacity is fixed), but has a
+variable size(). In addition to the member functions supported
+by af::tiny, the std::vector interface for modifying
+size() is emulated by the following member functions:
+
+<ul>
+<li>resize
+<li>clear
+<li>push_back
+<li>pop_back
+<li>insert
+<li>erase
+<li>assign
+</ul>
+
+The af::small type is similar to the fixed_capacity_vector
+that was proposed recently by Synge Todo
+(see http://www.itp.phys.ethz.ch/staff/wistaria/).
+
+\subsection af_impl_shared af::shared&lt;ElementType&gt;
+
+The af::shared type is similar to std::vector. The main
+distinction is that std::vector has deep copy semantics,
+while af::shared has shallow copy semantics, which implies
+reference counting. Other differences include:
+
+<ul>
+<li>The constructor af::shared(size_type) does not
+    initialize the elements in the array. To construct the array
+    and initialize the elements, supply the value for the elements
+    as the second argument, or use the fill member function:
+    <pre>
+    af::shared<double> a(1000, 0.);
+    a.fill(123.);
+    </pre>
+
+<li>XXX what else?
+
+</ul>
+
+XXX the managed memory block never shrinks.
+
+<p>
+af::shared is derived from af::shared_plain, which in turn is
+derived from af::shared_base. af::shared_base does not include
+the member functions for changing size(), except for resize().
+This is to facilitate the use of af::shared_base in the
+implementation of af::versa.
+
+\subsection af_impl_grid_accessor af::grid_accessor&lt;Nd, Index1dCalcualtorType, IndexType&gt;
+
+The af::grid_accessor is the default accessor for the
+af::versa type presented in the next section. The
+af:grid_accessor implements a simple 0-based, stride-1
+multi-dimensional array access scheme.  The number of
+dimensions Nd is specified at compile time. The
+Index1dCalcualtorType implements the actual mapping from
+the IndexType (a tuple of integers) to the one-dimensional
+index of type std::size_t.
+The IndexType defaults to af::tiny_plain<int, Nd>.
+
+\subsection af_impl_versa af::versa&lt;ElementType, AccessorType&gt;
+
+af::versa is derived from af::shared_base, which implements
+the memory management (reference counting) but does not include
+member function for changing size(), except for resize().
+AccessorType determines the behavior of af::versa::operator()
+and defaults to af::grid_accessor<1>. The accessor also determines
+the size(). This is the main difference between af::shared and
+af::versa with the default accessor:
+
+<pre>
+af::shared<double> s1(10);
+af::shared<double> s2(s1); // s1 and s2 use the same block of memory
+s2.resize(20);
+cout << s1.size() << endl; // prints 20, not 10
+cout << s2.size() << endl; // prints 20
+
+af::versa<double> v1(10);
+af::versa<double> v2(v1); // v1 and v2 use the same block of memory
+v2.resize(20);
+cout << v1.size() << endl; // prints 10
+cout << v2.size() << endl; // prints 20
+</pre>
+
+The rationale for this distinction is that resizing of multi-dimensional
+arrays is very difficult to handle in a general way, and the need for
+such a feature can often be avoided with simple means (for example
+by nesting arrays).
+
+<p>
+XXX convenience constructors and operator() for Nd up to 3.
+
+\subsection af_nested_loop af::nested_loop&lt;ArrayType&gt;
+
+XXX Abstraction of a nested loop. Example:
+
+<pre>
+    typedef tiny<int, 3> int3;
+    nested_loop<int3> loop(int3(3, 4, 5));
+    for (const int3& pivot = loop(); !loop.over(); loop.incr()) {
+      // use pivot
+    }
+</pre>
+
+XXX requirements for ArrayType: begin(), end(), size(), operator[]
+
+\subsection af_impl_ref af::ref&lt;ElementType, AccessorType&gt;
+
+XXX generic std::vector type interface without ownership of memory.
+All array types in the array family can be converted to a ref or
+const_ref:
+
+<pre>
+shared<double> s(10);
+ref<double> r = s.ref();
+</pre>
+
+XXX maximize performance; generic functions.
+
+\subsection af_operator_overloading Operator overloading
+
+For the types af::tiny, af::small, af::shared and af::versa,
+the following operators are overloaded for element-wise operations:
+
+<pre>
+arithmetic_unary_ops = ("-")
+arithmetic_binary_ops = ("+", "-", "*", "/", "%")
+arithmetic_in_place_binary_ops = ("+=", "-=", "*=", "/=", "%=")
+logical_unary_ops = ("!")
+logical_binary_ops = ("&&", "||")
+logical_in_place_binary_ops = ("&&=", "||=")
+</pre>
+
+Following the example of std::vector,
+the boolean operators are overloaded for reducing operations:
+
+<pre>
+boolean_ops = ("==", "!=", ">", "<", ">=", "<=")
+</pre>
+
+For example, a == b returns a bool. The corresponding element-wise
+operations are provided as functions:
+
+<pre>
+equal_to(a, b)
+not_equal_to(a, b)
+greater(a, b)
+less(a, b)
+greater_equal(a, b)
+less_equal(a, b)
+</pre>
+
+These functions return arrays of bools.
+
+\subsection af_cmath_etc Support for &lt;cmath&gt; and &lt;complex&gt; functions
+
+Most functions declared in <cmath> and <complex> are
+imported into the namespace af with using declarations (see
+array_family/std_imports.h). For all these functions,
+overloads are provided for the types af::tiny, af::small,
+af::shared and af::versa. Example:
+
+<pre>
+af::shared<double> s(1000, 1.);
+af::shared<double> e = af::exp(s);
+</pre>
+
+\subsection af_flagged_value flagged_value<ValueType>
+
+XXX current implementation has full functionality incl. overloads for
+arithmetic, logical and boolean operators. However, the interface
+needs serious refinement work. (compare with MA module of Python Numeric
+extension?)
+
+\subsection af_restrictions Restrictions and deliberate limitations
+
+<ul>
+<li>To avoid the pitfalls of signed/unsigned conversions,
+    type promotions are provided only for signed types and
+    bool.
+
+<li>If a is an array object and s is a scalar object,
+    binary operators such as a+s and s+a are only provided
+    for s that have the same type as the elements of a.
+    This limitation is a consequence of limitations of
+    the C++ language (<i>restricted genericity</i> could
+    help to remove the limitation; see thread starting with
+    http://groups.yahoo.com/group/boost/message/23337).
+
+<li>Custom allocators are currently not supported.
+
+</ul>
+
+\subsection af_alternatives_considered Alternatives considered
+
+A policy-based implementation of the array family could
+help to reduce the number of required operator overloads
+sets to just one. Unfortunately, the C++ language does not
+currently provide adequate support for hiding this
+implementation detail from the user (see
+http://groups.yahoo.com/group/boost/message/24796; the
+missing feature are <i>template typedefs</i>). For types that
+are as frequently used as the types of the array family,
+<i>type generators</i> are deemed too inconvenient.
+
+<p>
+The current implementation minimizes redundancies
+associated with the non-policy-based approach in two ways:
+(1) the use of helper defines (that are not exposed in the
+interface) and (2) the use of Python scripts to generate
+the operator overloads.
+
+<p>
+It is also worth noting that a policy-based implementation
+requires a compiler that supports partial specialization,
+even for the plain array types. With the currently
+implementation, at least the plain array types (no
+operators overloaded) can be used with the ubiquitous Visual
+C++ 6 compiler (the new 7.0 compiler does also not
+support partial specialization).
+
+<p>
+A while ago I suggested a "using namespace" approach for
+the selection of operator overloads in a given scope
+(http://groups.yahoo.com/group/boost/message/21588).
+This suggestion has not created much enthusiasm.
+Admittedly, the approach is not as user-friendly as the
+more traditional type-based approach for providing the
+overloads. Therefore you find me back on the beaten path.
+
+<hr>
+
+\section af_developments_planned Developments planned for the near future
+
+<ul>
+<li>Urgent: tiny, small: avoid default construction of non-POD types
+<li>Urgent: Refinement of shared_base
+<li>Urgent: Refinement of flagged_value
+<li>Urgent: Comprehensive tests and examples
+<li>reductions.h for arrays with flagged_value
+<li>Matrix types:
+  <ul>
+  <li>tiny_matrix
+  <li>tiny_row
+  <li>tiny_column
+  <li>matrix (based on versa)
+  <li>row
+  <li>column
+  </ul>
+</ul>
+
+<hr>
+
+\section af_python_bindings Ideas for Python bindings
+
+<ul>
+<li>Only one multi-dimensional array type exposed to Python, with
+    number of dimensions configurable at runtime (i.e. we will need
+    a new accessor). Otherwise there will be too many Python types.
+<li>Limited selection of value types:<br>
+    plain value, flagged_value of:
+    <ul>
+    <li>bool
+    <li>int
+    <li>float
+    <li>double
+    <li>std::complex<float>
+    <li>std::complex<double>
+    </ul>
+<li>Full set of <i>homogeneous</i> operators.
+<li>Heterogeneous operators: types are coerced to homogeneous types.
+</ul>
+
+<hr>
+
+\section af_potential_developments Potential developments
+
+<ul>
+<li>Slicing (reuse multi_array?).
+<li>Policy-based selection of reducing vs. element-wise boolean operators.
+<li>small type with accessor.
+<li>Promotion traits for numeric boost types (e.g. boost::rational).
+<li>Automatic promotion traits (as in Blitz++).
+<li>Expression templates.
+<li>Sparse arrays = sophisticated accessor? (Should probably be a
+    separate library layered on top of the array family.)
+</ul>
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, February 2002
+
+*/
