@@ -24,6 +24,12 @@ namespace scitbx { namespace boost_python {
 
   void raise_index_error();
 
+  boost::python::object
+  range(long start, long len, long step=1);
+
+  boost::python::object
+  range(long len);
+
 }} // namespace scitbx::boost_python
 
 #endif // SCITBX_BOOST_PYTHON_UTILS_H

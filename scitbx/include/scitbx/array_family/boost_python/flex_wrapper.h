@@ -322,8 +322,7 @@ namespace scitbx { namespace af { namespace boost_python {
     indices(f_t const& a)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
-      return boost::python::object(boost::python::handle<>(
-        PyRange_New(0, a.size(), 1, 1)));
+      return scitbx::boost_python::range(a.size());
     }
 
     static flex_items<e_t>

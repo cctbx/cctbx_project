@@ -33,4 +33,17 @@ namespace scitbx { namespace boost_python {
     boost::python::throw_error_already_set();
   }
 
+  boost::python::object
+  range(long start, long len, long step)
+  {
+    return boost::python::object(boost::python::handle<>(
+      PyRange_New(start, len, step, 1)));
+  }
+
+  boost::python::object
+  range(long len)
+  {
+    return range(0, len);
+  }
+
 }} // namespace scitbx::boost_python
