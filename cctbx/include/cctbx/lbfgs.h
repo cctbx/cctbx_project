@@ -11,46 +11,6 @@
 #ifndef CCTBX_LBFGS_H
 #define CCTBX_LBFGS_H
 
-/*! \file
-    This file contains code for the
-    Limited-memory Broyden-Fletcher-Goldfarb-Shanno (LBFGS)
-    algorithm for large-scale multidimensional minimization
-    problems.
-
-    This code was manually derived from Java code which was
-    in turn derived from the Fortran program
-    <code>lbfgs.f</code>.  The Java translation was
-    effected mostly mechanically, with some manual
-    clean-up; in particular, array indices start at 0
-    instead of 1.  Most of the comments from the Fortran
-    code have been pasted in here as well.
-
-    <p>
-    Information on the original LBFGS Fortran source code is
-    available at
-    http://www.netlib.org/opt/lbfgs_um.shar . The following
-    information is taken verbatim from the Netlib documentation
-    for the Fortran source.
-
-    <p>
-    <pre>
-    file    opt/lbfgs_um.shar
-    for     unconstrained optimization problems
-    alg     limited memory BFGS method
-    by      J. Nocedal
-    contact nocedal@eecs.nwu.edu
-    ref     D. C. Liu and J. Nocedal, ``On the limited memory BFGS method for
-    ,       large scale optimization methods'' Mathematical Programming 45
-    ,       (1989), pp. 503-528.
-    ,       (Postscript file of this paper is available via anonymous ftp
-    ,       to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_um.)
-    </pre>
-
-    @author Jorge Nocedal: original Fortran version, including comments
-    (July 1990). Robert Dodier: Java translation, August 1997.
-    Ralf W. Grosse-Kunstleve: C++ port, March 2002.
- */
-
 #include <cstddef>
 #include <stdexcept>
 #include <algorithm>
@@ -62,60 +22,117 @@
 
 namespace cctbx {
 
-  class lbfgs_error : public std::exception {
+//! Limited-memory Broyden-Fletcher-Goldfarb-Shanno (LBFGS) %minimizer.
+/*! Implementation of the
+    Limited-memory Broyden-Fletcher-Goldfarb-Shanno (LBFGS)
+    algorithm for large-scale multidimensional minimization
+    problems.
+
+    This code was manually derived from Java code which was
+    in turn derived from the Fortran program
+    <code>lbfgs.f</code>.  The Java translation was
+    effected mostly mechanically, with some manual
+    clean-up; in particular, array indices start at 0
+    instead of 1.  Most of the comments from the Fortran
+    code have been pasted in.
+
+    Information on the original LBFGS Fortran source code is
+    available at
+    http://www.netlib.org/opt/lbfgs_um.shar . The following
+    information is taken verbatim from the Netlib documentation
+    for the Fortran source.
+
+    <pre>
+    file    opt/lbfgs_um.shar
+    for     unconstrained optimization problems
+    alg     limited memory BFGS method
+    by      J. Nocedal
+    contact nocedal@eecs.nwu.edu
+    ref     D. C. Liu and J. Nocedal, ``On the limited memory BFGS method for
+    ,       large scale optimization methods'' Mathematical Programming 45
+    ,       (1989), pp. 503-528.
+    ,       (Postscript file of this paper is available via anonymous ftp
+    ,       to eecs.nwu.edu in the directory pub/%lbfgs/lbfgs_um.)
+    </pre>
+
+    @author Jorge Nocedal: original Fortran version, including comments
+    (July 1990).<br>
+    Robert Dodier: Java translation, August 1997.<br>
+    Ralf W. Grosse-Kunstleve: C++ port, March 2002.
+ */
+namespace lbfgs {
+
+  //! Generic exception class for %lbfgs %error messages.
+  /*! All exceptions thrown by the minimizer are derived from this class.
+   */
+  class error : public std::exception {
     public:
-      lbfgs_error(const std::string& msg) throw()
+      //! Constructor.
+      error(const std::string& msg) throw()
         : msg_("lbfgs error: " + msg)
       {}
-      virtual ~lbfgs_error() throw() {}
+      //! Access to error message.
       virtual const char* what() const throw() { return msg_.c_str(); }
     protected:
+      virtual ~error() throw() {}
       std::string msg_;
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
     public:
       static std::string itoa(unsigned long i) {
         char buf[80];
         sprintf(buf, "%lu", i); // FUTURE: use C++ facility
         return std::string(buf);
       }
+#endif
   };
 
-  class lbfgs_error_internal_error : public lbfgs_error {
+  //! Specific exception class.
+  class error_internal_error : public error {
     public:
-      lbfgs_error_internal_error(const char* file, unsigned long line) throw()
-        : lbfgs_error(
+      //! Constructor.
+      error_internal_error(const char* file, unsigned long line) throw()
+        : error(
             "Internal Error: " + std::string(file) + "(" + itoa(line) + ")")
       {}
   };
 
-  class lbfgs_error_improper_input_parameter : public lbfgs_error {
+  //! Specific exception class.
+  class error_improper_input_parameter : public error {
     public:
-      lbfgs_error_improper_input_parameter(const std::string& msg) throw()
-        : lbfgs_error("Improper input parameter: " + msg)
+      //! Constructor.
+      error_improper_input_parameter(const std::string& msg) throw()
+        : error("Improper input parameter: " + msg)
       {}
   };
 
-  class lbfgs_error_improper_input_data : public lbfgs_error {
+  //! Specific exception class.
+  class error_improper_input_data : public error {
     public:
-      lbfgs_error_improper_input_data(const std::string& msg) throw()
-        : lbfgs_error("Improper input data: " + msg)
+      //! Constructor.
+      error_improper_input_data(const std::string& msg) throw()
+        : error("Improper input data: " + msg)
       {}
   };
 
-  class lbfgs_error_search_direction_not_descent : public lbfgs_error {
+  //! Specific exception class.
+  class error_search_direction_not_descent : public error {
     public:
-      lbfgs_error_search_direction_not_descent() throw()
-        : lbfgs_error("The search direction is not a descent direction.")
+      //! Constructor.
+      error_search_direction_not_descent() throw()
+        : error("The search direction is not a descent direction.")
       {}
   };
 
-  class lbfgs_error_line_search_failed : public lbfgs_error {
+  //! Specific exception class.
+  class error_line_search_failed : public error {
     public:
-      lbfgs_error_line_search_failed(const std::string& msg) throw()
-        : lbfgs_error("Line search failed: " + msg)
+      //! Constructor.
+      error_line_search_failed(const std::string& msg) throw()
+        : error("Line search failed: " + msg)
       {}
   };
 
-  namespace lbfgs_detail {
+  namespace detail {
 
     // This class implements an algorithm for multi-dimensional line search.
     template <typename FloatType>
@@ -261,7 +278,7 @@ namespace cctbx {
           FloatType& stp,
           FloatType ftol,
           FloatType xtol,
-          int maxfev,
+          std::size_t maxfev,
           int& info,
           std::size_t& nfev,
           FloatType* wa);
@@ -354,7 +371,7 @@ namespace cctbx {
       FloatType& stp,
       FloatType ftol,
       FloatType xtol,
-      int maxfev,
+      std::size_t maxfev,
       int& info,
       std::size_t& nfev,
       FloatType* wa)
@@ -362,15 +379,15 @@ namespace cctbx {
       if (info != -1) {
         infoc = 1;
         if (   n == 0
-            || xtol < FloatType(0)
-            || maxfev <= 0
+            || maxfev == 0
             || gtol < FloatType(0)
+            || xtol < FloatType(0)
             || stpmin < FloatType(0)
             || stpmax < stpmin) {
-          throw lbfgs_error_internal_error(__FILE__, __LINE__);
+          throw error_internal_error(__FILE__, __LINE__);
         }
         if (stp <= FloatType(0) || ftol < FloatType(0)) {
-          throw lbfgs_error_internal_error(__FILE__, __LINE__);
+          throw error_internal_error(__FILE__, __LINE__);
         }
         // Compute the initial gradient in the search direction
         // and check that s is a descent direction.
@@ -379,7 +396,7 @@ namespace cctbx {
           dginit += g[j] * s[is0+j];
         }
         if (dginit >= FloatType(0)) {
-          throw lbfgs_error_search_direction_not_descent();
+          throw error_search_direction_not_descent();
         }
         brackt = false;
         stage1 = true;
@@ -443,26 +460,26 @@ namespace cctbx {
         FloatType ftest1 = finit + stp*dgtest;
         // Test for convergence.
         if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
-          throw lbfgs_error_line_search_failed(
+          throw error_line_search_failed(
             "Rounding errors prevent further progress."
             " There may not be a step which satisfies the"
             " sufficient decrease and curvature conditions."
             " Tolerances may be too small.");
         }
         if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
-          throw lbfgs_error_line_search_failed(
+          throw error_line_search_failed(
             "The step is at the upper bound stpmax().");
         }
         if (stp == stpmin && (f > ftest1 || dg >= dgtest)) {
-          throw lbfgs_error_line_search_failed(
+          throw error_line_search_failed(
             "The step is at the lower bound stpmin().");
         }
         if (nfev >= maxfev) {
-          throw lbfgs_error_line_search_failed(
+          throw error_line_search_failed(
             "Number of function evaluations has reached maxfev().");
         }
         if (brackt && stmax - stmin <= xtol * stmax) {
-          throw lbfgs_error_line_search_failed(
+          throw error_line_search_failed(
             "Relative width of the interval of uncertainty"
             " is at most xtol().");
         }
@@ -696,8 +713,9 @@ namespace cctbx {
       return info;
     }
 
-  } // namespace lbfgs_detail
+  } // namespace detail
 
+  //! Interface to the LBFGS %minimizer.
   /*! This class solves the unconstrained minimization problem
       <pre>
           min f(x),  x = (x1,x2,...,x_n),
@@ -705,44 +723,55 @@ namespace cctbx {
       using the limited-memory BFGS method. The routine is
       especially effective on problems involving a large number of
       variables. In a typical iteration of this method an
-      approximation <code>Hk</code> to the inverse of the Hessian
+      approximation Hk to the inverse of the Hessian
       is obtained by applying <code>m</code> BFGS updates to a
-      diagonal matrix <code>Hk0</code>, using information from the
-      previous M steps.  The user specifies the number
+      diagonal matrix Hk0, using information from the
+      previous <code>m</code> steps.  The user specifies the number
       <code>m</code>, which determines the amount of storage
       required by the routine. The user may also provide the
-      diagonal matrices <code>Hk0</code> if not satisfied with the
-      default choice.  The algorithm is described in "On the
-      limited memory BFGS method for large scale optimization", by
-      D. Liu and J. Nocedal, Mathematical Programming B 45 (1989)
-      503-528.
-      <p>
+      diagonal matrices Hk0 (parameter <code>diag</code> in the run()
+      function) if not satisfied with the default choice. The
+      algorithm is described in "On the limited memory BFGS method for
+      large scale optimization", by D. Liu and J. Nocedal, Mathematical
+      Programming B 45 (1989) 503-528.
+
       The user is required to calculate the function value
       <code>f</code> and its gradient <code>g</code>. In order to
       allow the user complete control over these computations,
       reverse communication is used. The routine must be called
-      repeatedly under the control of the parameter
-      <code>iflag</code>.
-      <p>
-      The steplength is determined at each iteration by means of
-      the line search routine <code>mcsrch</code>, which is a
-      slight modification of the routine <code>CSRCH</code> written
+      repeatedly under the control of the member functions
+      <code>requests_f_and_g()</code>,
+      <code>requests_diag()</code> and
+      <code>is_converged()</code>.
+
+      The steplength (stp()) is determined at each iteration
+      by means of the line search routine <code>mcsrch</code>, which is
+      a slight modification of the routine <code>CSRCH</code> written
       by More' and Thuente.
-      <p>
+
       The only variables that are machine-dependent are
-      <code>xtol</code>, <code>stpmin</code> and
+      <code>xtol</code>,
+      <code>stpmin</code> and
       <code>stpmax</code>.
-      <p>
-      Fatal errors cause exceptions to be thrown.
+
+      Fatal errors cause <code>error</code> exceptions to be thrown.
+      The generic class <code>error</code> is sub-classed (e.g.
+      class <code>error_line_search_failed</code>) to facilitate
+      granular %error handling.
+
+      A note on performance: Using Compaq Fortran V5.4 and
+      Compaq C++ V6.5, the C++ implementation is about 15% slower
+      than the Fortran implementation.
    */
   template <typename FloatType>
-  class lbfgs
+  class minimizer
   {
     public:
       //! Default constructor. Some members are not initialized!
-      lbfgs()
-      : n_(0), m_(0), eps_(0), xtol_(0), maxfev_(0),
-        gtol_(0), stpmin_(0), stpmax_(0),
+      minimizer()
+      : n_(0), m_(0), maxfev_(0),
+        eps_(0), gtol_(0), xtol_(0),
+        stpmin_(0), stpmax_(0),
         ispt(0), iypt(0)
       {}
 
@@ -757,6 +786,10 @@ namespace cctbx {
              recommended.
              Restriction: <code>m &gt; 0</code>.
 
+          @param maxfev Termination occurs when the number of evaluations
+             of the objective function is at least <code>maxfev</code> by
+             the end of an iteration.
+
           @param eps Determines the accuracy with which the solution
             is to be found. The subroutine terminates when
             <pre>
@@ -764,121 +797,163 @@ namespace cctbx {
             </pre>
             where <code>||.||</code> denotes the Euclidean norm.
 
+          @param gtol Controls the accuracy of the line search.
+            If the function and gradient evaluations are inexpensive with
+            respect to the cost of the iteration (which is sometimes the
+            case when solving very large problems) it may be advantageous
+            to set <code>gtol</code> to a small value. A typical small
+            value is 0.1.
+            Restriction: <code>gtol</code> should be greater than 1e-4.
+
           @param xtol An estimate of the machine precision (e.g. 10e-16
             on a SUN station 3/60). The line search routine will
             terminate if the relative width of the interval of
             uncertainty is less than <code>xtol</code>.
 
-          @param maxfev Termination occurs when the number of evaluations
-             of the objective function is at least <code>maxfev</code> by
-             the end of an iteration.
+          @param stpmin Specifies the lower bound for the step
+            in the line search.
+            The default value is 1e-20. This value need not be modified
+            unless the exponent is too large for the machine being used,
+            or unless the problem is extremely badly scaled (in which
+            case the exponent should be increased).
 
-          <code>gtol</code> controls the accuracy of the line search
-          <code>mcsrch</code>.
-          If the function and gradient evaluations are inexpensive with
-          respect to the cost of the iteration (which is sometimes the
-          case when solving very large problems) it may be advantageous
-          to set <code>gtol</code> to a small value. A typical small
-          value is 0.1.
-          Restriction: <code>gtol</code> should be greater than 1e-4.
-
-          <code>stpmin</code> specifies the lower bound for the step
-          in the line search.
-          The default value is 1e-20. This value need not be modified
-          unless the exponent is too large for the machine being used,
-          or unless the problem is extremely badly scaled (in which
-          case the exponent should be increased).
-
-          <code>stpmax</code> specifies the upper bound for the step
-          in the line search.
-          The default value is 1e20. This value need not be modified
-          unless the exponent is too large for the machine being used,
-          or unless the problem is extremely badly scaled (in which
-          case the exponent should be increased).
+          @param stpmax specifies the upper bound for the step
+            in the line search.
+            The default value is 1e20. This value need not be modified
+            unless the exponent is too large for the machine being used,
+            or unless the problem is extremely badly scaled (in which
+            case the exponent should be increased).
        */
-      explicit lbfgs(
+      explicit minimizer(
         std::size_t n,
         std::size_t m = 5,
+        std::size_t maxfev = 20,
         FloatType eps = FloatType(1.e-5),
-        FloatType xtol = FloatType(1.e-16),
-        int maxfev = 20,
         FloatType gtol = FloatType(0.9),
+        FloatType xtol = FloatType(1.e-16),
         FloatType stpmin = FloatType(1.e-20),
         FloatType stpmax = FloatType(1.e20))
-        : n_(n), m_(m), eps_(eps), xtol_(xtol), maxfev_(maxfev),
-          gtol_(gtol), stpmin_(stpmin), stpmax_(stpmax),
+        : n_(n), m_(m), maxfev_(maxfev),
+          eps_(eps), gtol_(gtol), xtol_(xtol),
+          stpmin_(stpmin), stpmax_(stpmax),
           iflag_(0), iter_(0), nfun_(0), gnorm_(0), stp_(0),
           stp1(0), ftol(0.0001), ys(0), point(0), npt(0),
           ispt(n+2*m), iypt((n+2*m)+n*m),
           info(0), bound(0), nfev(0)
       {
         if (n_ == 0) {
-          throw lbfgs_error_improper_input_parameter("n is not positive.");
+          throw error_improper_input_parameter("n = 0.");
         }
         if (m_ == 0) {
-          throw lbfgs_error_improper_input_parameter("m is not positive.");
+          throw error_improper_input_parameter("m = 0.");
         }
-        if (maxfev_ <= 0) {
-         throw lbfgs_error_improper_input_parameter("maxfev is not positive.");
+        if (maxfev_ == 0) {
+         throw error_improper_input_parameter("maxfev = 0.");
+        }
+        if (eps_ < FloatType(0)) {
+          throw error_improper_input_parameter("eps < 0.");
         }
         if (gtol_ <= FloatType(1.e-4)) {
-          throw lbfgs_error_improper_input_parameter("gtol <= 1.e-4.");
+          throw error_improper_input_parameter("gtol <= 1.e-4.");
+        }
+        if (xtol_ < FloatType(0)) {
+          throw error_improper_input_parameter("xtol < 0.");
         }
         if (stpmin_ < FloatType(0)) {
-          throw lbfgs_error_improper_input_parameter("stpmin < 0.");
+          throw error_improper_input_parameter("stpmin < 0.");
         }
         if (stpmax_ < stpmin) {
-          throw lbfgs_error_improper_input_parameter("stpmax < stpmin");
+          throw error_improper_input_parameter("stpmax < stpmin");
         }
         w_.resize(n_*(2*m_+1)+2*m_);
       }
 
-      //! Number of free parameters.
+      //! Number of free parameters (as passed to the constructor).
       std::size_t n() const { return n_; }
 
-      //! Number of corrections kept.
+      //! Number of corrections kept (as passed to the constructor).
       std::size_t m() const { return m_; }
 
-      //! XXX
+      /*! \brief Maximum number of evaluations of the objective function
+          (as passed to the constructor).
+       */
+      std::size_t maxfev() const { return maxfev_; }
+
+      /*! \brief Accuracy with which the solution is to be found
+          (as passed to the constructor).
+       */
       FloatType eps() const { return eps_; }
 
-      //! XXX
-      FloatType xtol() const { return xtol_; }
-
-      //! XXX
-      int maxfev() const { return maxfev_; }
-
-      //! XXX
+      /*! \brief Control of the accuracy of the line search.
+          (as passed to the constructor).
+       */
       FloatType gtol() const { return gtol_; }
 
-      //! XXX
+      //! Estimate of the machine precision (as passed to the constructor).
+      FloatType xtol() const { return xtol_; }
+
+      /*! \brief Lower bound for the step in the line search.
+          (as passed to the constructor).
+       */
       FloatType stpmin() const { return stpmin_; }
 
-      //! XXX
+      /*! \brief Upper bound for the step in the line search.
+          (as passed to the constructor).
+       */
       FloatType stpmax() const { return stpmax_; }
 
-      //! XXX
-      bool is_converged() const { return iflag_ == 0 && nfun_ > 0; }
-
-      //! XXX
+      //! Status indicator for reverse communication.
+      /*! <code>true</code> if the run() function returns to request
+          evaluation of the objective function (<code>f</code>) and
+          gradients (<code>g</code>) for the current point
+          (<code>x</code>). To continue the minimization the
+          run() function is called again with the updated values for
+          <code>f</code> and <code>g</code>.
+          <p>
+          See also: is_converged(), requests_diag()
+       */
       bool requests_f_and_g() const { return iflag_ == 1; }
 
-      //! XXX
+      //! Status indicator for reverse communication.
+      /*! <code>true</code> if the run() function returns to request
+          evaluation of the diagonal matrix (<code>diag</code>)
+          for the current point (<code>x</code>).
+          To continue the minimization the run() function is called
+          again with the updated values for <code>diag</code>.
+          <p>
+          See also: is_converged(), requests_f_and_g()
+       */
       bool requests_diag() const { return iflag_ == 2; }
 
+      //! Status indicator.
+      /*! <code>true</code> if
+          <pre>
+            ||G|| &lt; eps max(1,||X||),
+          </pre>
+          where <code>||.||</code> denotes the Euclidean norm.
+          <p>
+          See also: requests_f_and_g(), requests_diag()
+       */
+      bool is_converged() const { return iflag_ == 0 && nfun_ > 0; }
+
       //! Number of iterations so far.
+      /*! Note that one iteration may involve multiple evaluations
+          of the objective function.
+          <p>
+          See also: nfun()
+       */
       std::size_t iter() const { return iter_; }
 
-      //! Number of function evaluations so far.
-      /*! This method returns the total number of evaluations of the
-          objective function. The total number of function evaluations
-          increases by the number of evaluations required for the line
-          search; the total is only increased after a successful line
-          search.
-        */
+      //! Total number of evaluations of the objective function so far.
+      /*! The total number of function evaluations increases by the
+          number of evaluations required for the line search. The total
+          is only increased after a successful line search.
+          <p>
+          See also: iter()
+       */
       std::size_t nfun() const { return nfun_; }
 
-      //! Norm of gradient at current solution <code>x</code>.
+      //! Norm of last gradient array passed to the run() function.
       FloatType gnorm() const { return gnorm_; }
 
       //! Norm of gradient given gradient array of length n().
@@ -890,24 +965,25 @@ namespace cctbx {
       FloatType stp() const { return stp_; }
 
       //! Execution of one step of the minimization.
-      /*! @param x On initial entry this must be set by the user to the
-             values of the initial estimate of the solution vector. On
-             exit with <code>iflag = 0</code>, it contains the values
-             of the variables at the best point found (usually a
-             solution).
+      /*! @param x On initial entry this must be set by the user to
+             the values of the initial estimate of the solution vector.
+             On return with is_converted() = <code>true</code> it
+             contains the values of the variables at the best point found.
 
-          @param f Before initial entry and on a re-entry with
-             <code>iflag = 1</code>, it must be set by the user to
-             contain the value of the function <code>f</code> at the
-             point <code>x</code>.
+          @param f Before initial entry or on re-entry under the
+             control of requests_f_and_g(), <code>f</code> must be set
+             by the user to contain the value of the objective function
+             at the current point <code>x</code>.
 
-          @param g Before initial entry and on a re-entry with
-             <code>iflag = 1</code>, it must be set by the user to
-             contain the components of the gradient <code>g</code> at
-             the point <code>x</code>.
+          @param g Before initial entry or on re-entry under the
+             control of requests_f_and_g(), <code>g</code> must be set
+             by the user to contain the components of the gradient at
+             the current point <code>x</code>.
 
-          <code>lbfgs</code> will use a default value for diag
-          as described below. XXX where?
+          Note that <code>x</code> is always modified by the run()
+          function. Depending on the situation it can therefore be
+          necessary to evaluate the objective function one more time
+          after the minimization is terminated.
        */
       void run(
         FloatType* x,
@@ -925,12 +1001,12 @@ namespace cctbx {
 
           @param g See other overload.
 
-          @param diag On initial entry or on re-entry with
-             <code>iflag = 2</code>, <code>diag</code> must be set by
-             the user to contain the values of the diagonal matrix
-             <code>Hk0</code>.
+          @param diag On initial entry or on re-entry under the
+             control of requests_diag(), <code>diag</code> must be set by
+             the user to contain the values of the diagonal matrix Hk0.
              The routine will return at each iteration of the algorithm
-             with <code>iflag = 2</code>.
+             with requests_diag() set to <code>true</code>.
+             <p>
              Restriction: all elements of <code>diag</code> must be
              positive.
        */
@@ -945,8 +1021,8 @@ namespace cctbx {
 
     protected:
       static void throw_diagonal_element_not_positive(std::size_t i) {
-        throw lbfgs_error_improper_input_data(
-          "The " + lbfgs_error::itoa(i) + ". diagonal element of the"
+        throw error_improper_input_data(
+          "The " + error::itoa(i) + ". diagonal element of the"
           " inverse Hessian approximation is not positive.");
       }
 
@@ -984,13 +1060,13 @@ namespace cctbx {
         std::size_t iy0,
         std::size_t incy);
 
-      lbfgs_detail::mcsrch<FloatType> mcsrch_instance;
+      detail::mcsrch<FloatType> mcsrch_instance;
       const std::size_t n_;
       const std::size_t m_;
+      const std::size_t maxfev_;
       const FloatType eps_;
-      const FloatType xtol_;
-      const int maxfev_;
       const FloatType gtol_;
+      const FloatType xtol_;
       const FloatType stpmin_;
       const FloatType stpmax_;
       int iflag_;
@@ -1013,7 +1089,7 @@ namespace cctbx {
   };
 
   template <typename FloatType>
-  void lbfgs<FloatType>::generic_run(
+  void minimizer<FloatType>::generic_run(
     FloatType* x,
     FloatType f,
     const FloatType* g,
@@ -1112,7 +1188,7 @@ namespace cctbx {
         return;
       }
       if (info != 1) {
-        throw lbfgs_error_internal_error(__FILE__, __LINE__);
+        throw error_internal_error(__FILE__, __LINE__);
       }
       nfun_ += nfev;
       npt = point*n_;
@@ -1134,7 +1210,7 @@ namespace cctbx {
   }
 
   template <typename FloatType>
-  void lbfgs<FloatType>::daxpy(
+  void minimizer<FloatType>::daxpy(
     std::size_t n,
     FloatType da,
     const FloatType* dx,
@@ -1170,7 +1246,7 @@ namespace cctbx {
   }
 
   template <typename FloatType>
-  FloatType lbfgs<FloatType>::ddot(
+  FloatType minimizer<FloatType>::ddot(
     std::size_t n,
     const FloatType* dx,
     std::size_t ix0,
@@ -1206,6 +1282,6 @@ namespace cctbx {
     return dtemp;
   }
 
-} // namespace cctbx
+}} // namespace cctbx::lbfgs
 
 #endif // CCTBX_LBFGS_H
