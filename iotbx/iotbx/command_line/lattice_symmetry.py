@@ -5,6 +5,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
 from cctbx.sgtbx import lattice_symmetry
+from cctbx.sgtbx import bravais_types
 from iotbx.option_parser import iotbx_option_parser
 from scitbx.array_family import flex
 import math
@@ -87,18 +88,20 @@ def run():
       unit_cell=niggli_symmetry.unit_cell(),
       space_group=subgrs[i_subgrs],
       assert_is_compatible_unit_cell=00000)
+    cb_op_niggli_ref = subsym.space_group_info().type().cb_op()
+    ref_subsym = subsym.change_basis(cb_op_niggli_ref)
+    if (not str(ref_subsym.space_group_info()) in bravais_types.acentric):
+      continue
+    cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
+    best_subsym = ref_subsym.change_basis(cb_op_best_cell)
+    cb_op_inp_best = cb_op_best_cell * cb_op_niggli_ref * cb_op_inp_niggli
     subsym.space_group_info().show_summary(
       prefix="Symmetry in Niggli cell: ")
     print "      Input Niggli cell:", niggli_symmetry.unit_cell()
     print "  Symmetry-adapted cell:", subsym.unit_cell()
-    cb_op_niggli_ref = subsym.space_group_info().type().cb_op()
-    ref_subsym = subsym.change_basis(cb_op_niggli_ref)
-    cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
-    best_subsym = ref_subsym.change_basis(cb_op_best_cell)
     best_subsym.space_group_info().show_summary(
       prefix="   Conventional setting: ")
     print "              Unit cell:", best_subsym.unit_cell()
-    cb_op_inp_best = cb_op_best_cell * cb_op_niggli_ref * cb_op_inp_niggli
     print "        Change of basis:", cb_op_inp_best.c()
     print "                Inverse:", cb_op_inp_best.c_inv()
     dac = diffraction_angle_comparison(
