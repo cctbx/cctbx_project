@@ -19,39 +19,39 @@ namespace cctbx { namespace maps {
 
   //! Peak search in a 3d-map covering the unit cell.
   /*! Dependencies due to symmetry (space group, Euclidean normalizer,
-      or similar) are encoded in a 3d-map of flags.
+      or similar) are encoded in a 3d-map of tags.
       <p>
       Requirements:
       <ul>
         <li>physical dimensions of %maps are equal to generic dimensions
-        <li>dimensions of data and flags are equal
+        <li>dimensions of data and tags are equal
       </ul>
       <pre>
-      flags:
+      tags:
         on input: < 0: independent grid point
                   >= 0: dependent grid point,
                         flag is 1d-index of corresponding
                         independent grid point
         on output: -1: independent, not a peak
                    -2: independent, peak
-                   flags for dependent grid points are unchanged
+                   tags for dependent grid points are unchanged
 
       level = 1: compare to the 6 nearest neighbors
             = 2: also compare to the 12 second-nearest neighbors
             > 2: also compare to the 8 third-nearest neighbors</pre>
    */
   template <typename DataVecRefNdType,
-            typename FlagsVecRefNdType>
+            typename TagsVecRefNdType>
   void
   peak_search_unit_cell(const DataVecRefNdType& data,
-                        FlagsVecRefNdType& flags,
+                        TagsVecRefNdType& tags,
                         int level)
   {
     typedef typename DataVecRefNdType::value_type data_value_type;
-    typedef typename FlagsVecRefNdType::value_type flags_value_type;
+    typedef typename TagsVecRefNdType::value_type tags_value_type;
 
     const data_value_type* pdata = data.begin();
-    flags_value_type* pflags = flags.begin();
+    tags_value_type* ptags = tags.begin();
     int Nx = data.dim()[0];
     int Ny = data.dim()[1];
     int Nz = data.dim()[2];
@@ -64,13 +64,13 @@ namespace cctbx { namespace maps {
     int ip, jp, kp;
     int ibreak, jbreak, kbreak;
 
-    // reset flags for independent grid points
+    // reset tags for independent grid points
     for (int i = 0; i < ni_nj_nk; i++) {
-      if (pflags[i] < 0) pflags[i] = -1;
+      if (ptags[i] < 0) ptags[i] = -1;
     }
 
     const data_value_type* pd = pdata;
-    flags_value_type* pf = pflags;
+    tags_value_type* pf = ptags;
     im = ni_nj_nk - nj_nk;
     i0 = 0;
     ip = nj_nk;
@@ -86,9 +86,9 @@ namespace cctbx { namespace maps {
         kp = 1;
         kbreak = nk;
         while (kp < kbreak) {
-          flags_value_type* indep_pf;
+          tags_value_type* indep_pf;
           if (*pf < 0) indep_pf = pf;
-          else         indep_pf = &pflags[*pf];
+          else         indep_pf = &ptags[*pf];
           while (! (*indep_pf < -1)) {
             if (level >= 1) {
               /* m00 0m0 00m
@@ -177,7 +177,7 @@ namespace cctbx { namespace maps {
   };
 
   template <typename DataVecRefNdType,
-            typename FlagsVecRefNdType>
+            typename TagsVecRefNdType>
   shared_storage<
     indexed_value<
       typename DataVecRefNdType::dimension_type::index_tuple_type,
@@ -185,7 +185,7 @@ namespace cctbx { namespace maps {
       std::greater<typename DataVecRefNdType::value_type> >
   >
   collect_peaks(const DataVecRefNdType& data,
-                const FlagsVecRefNdType& flags,
+                const TagsVecRefNdType& tags,
                 const typename DataVecRefNdType::value_type& cutoff,
                 bool use_cutoff = true)
   {
@@ -201,7 +201,7 @@ namespace cctbx { namespace maps {
     std::vector<iv_type> result;
     nested_loop<index_tuple_type> loop(data.dim());
     for (const index_tuple_type& pivot = loop(); !loop.over(); loop.incr()) {
-      if (flags(pivot) == -2 && (!use_cutoff || data(pivot) >= cutoff)) {
+      if (tags(pivot) == -2 && (!use_cutoff || data(pivot) >= cutoff)) {
         result.push_back(iv_type(pivot, data(pivot)));
       }
     }
@@ -209,7 +209,7 @@ namespace cctbx { namespace maps {
   }
 
   template <typename ValueType,
-            typename CountType = int>
+            typename CountType = long>
   struct peak_histogram
   {
     typedef ValueType value_type;
@@ -218,15 +218,15 @@ namespace cctbx { namespace maps {
     peak_histogram() {}
 
     template <typename DataVecRefType,
-              typename FlagsVecRefType>
+              typename TagsVecRefType>
     peak_histogram(const DataVecRefType& data,
-                   const FlagsVecRefType& flags,
+                   const TagsVecRefType& tags,
                    std::size_t n_slots = 1000)
       : slots(n_slots)
     {
       std::size_t i;
       for(i=0;i<data.size();i++) {
-        if (flags[i] == -2) break;
+        if (tags[i] == -2) break;
       }
       if (i == data.size()) {
         data_min = 0;
@@ -236,7 +236,7 @@ namespace cctbx { namespace maps {
         data_min = data[i];
         data_max = data[i];
         for(i++;i<data.size();i++) {
-          if (flags[i] != -2) continue;
+          if (tags[i] != -2) continue;
           if (data_min > data[i]) data_min = data[i];
           if (data_max < data[i]) data_max = data[i];
         }
@@ -244,7 +244,7 @@ namespace cctbx { namespace maps {
       slot_width = (data_max - data_min) / slots.size();
       std::fill(slots.begin(), slots.end(), 0);
       for(i=0;i<data.size();i++) {
-        if (flags[i] != -2) continue;
+        if (tags[i] != -2) continue;
         value_type d = data[i] - data_min;
         std::size_t i_slot = 0;
         if (d != 0 && d >= slot_width) {
@@ -271,6 +271,43 @@ namespace cctbx { namespace maps {
     value_type data_max;
     value_type slot_width;
     shared_storage<count_type> slots;
+  };
+
+
+  template <typename ValueType,
+            typename IndexTupleType = carray<int, 3> >
+  class peak_list
+    : public shared_storage<
+        indexed_value<IndexTupleType, ValueType, std::greater<ValueType> > >
+  {
+    public:
+      typedef ValueType value_type;
+      typedef IndexTupleType index_tuple_type;
+      typedef
+        indexed_value<index_tuple_type, value_type, std::greater<value_type> >
+        entry_type;
+
+      peak_list() {}
+
+      template <typename DataVecRefType,
+                typename TagsVecRefType>
+      peak_list(const DataVecRefType& data,
+                TagsVecRefType& tags,
+                int peak_search_level = 1,
+                std::size_t max_peaks = 0)
+      {
+        peak_search_unit_cell(data, tags, peak_search_level);
+        value_type peak_cutoff = 0;
+        bool use_cutoff = false;
+        if (max_peaks) {
+          peak_histogram<value_type> hist(data, tags);
+          peak_cutoff = hist.get_cutoff(max_peaks);
+          use_cutoff = true;
+        }
+        *(static_cast<shared_storage<entry_type>*>(this)) = collect_peaks(
+          data, tags, peak_cutoff, use_cutoff);
+        std::sort(this->begin(), this->end());
+      }
   };
 
 }} // namespace cctbx::maps
