@@ -1,6 +1,6 @@
 # Shelx ins file processing.
 #
-# PAVEL AFONINE / 13h04.20.nov.2003 /
+# PAVEL AFONINE
 #
 # !! Must be optimized in some points...
 #
