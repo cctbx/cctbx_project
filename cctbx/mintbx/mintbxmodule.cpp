@@ -24,27 +24,27 @@ namespace {
     const std::string Revision = "$Revision$";
     this_module.add(ref(to_python(
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
-  
+
     python::import_converters<uctbx::UnitCell>
     py_UnitCell("cctbx_boost.uctbx", "UnitCell");
-  
+
     python::import_converters<sgtbx::SpaceGroup>
     py_SpaceGroup("cctbx_boost.sgtbx", "SpaceGroup");
-  
+
     python::import_converters<af::shared<int> >
     py_shared_int("cctbx_boost.arraytbx.shared", "int");
-  
+
     python::import_converters<af::shared<double> >
     py_shared_double("cctbx_boost.arraytbx.shared", "double");
 
     python::import_converters<af::shared<Miller::Index> >
     py_shared_Miller_Index(
       "cctbx_boost.arraytbx.shared", "Miller_Index");
-  
+
     typedef k_b_scaling_target_and_gradients kbstg;
     class_builder<kbstg>
     py_kbstg(this_module, "k_b_scaling_target_and_gradients");
-  
+
     py_kbstg.def(constructor<>());
     py_kbstg.def(constructor<
       af::shared<Miller::Index>,
