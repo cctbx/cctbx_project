@@ -25,6 +25,7 @@ env_etc.compiler = ARGUMENTS.get("compiler", 0)
 env_etc.release_build = ARGUMENTS.get("release_build", 0)
 env_etc.debug_build = ARGUMENTS.get("debug_build", 0)
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
+env_etc.no_prelink = ARGUMENTS.get("no_prelink", 0)
 env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
 
@@ -141,13 +142,18 @@ else:
   elif (env_etc.compiler == "irix_CC"):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
+    cxx = "CC -n32 -mips4 -LANG:std"
+    if (env_etc.no_prelink):
+      cxx += " -LANG:pch=OFF -no_prelink -ptused" \
+           + " -FE:template_in_elf_section" \
+           + " -FE:eliminate_duplicate_inline_copies"
     env_base.Replace(
       CC="cc",
       SHCC="cc",
-      CXX="CC -LANG:std -n32 -mips4",
-      LINK="CC -LANG:std -n32 -mips4 -LD_MSG:off=15,84",
-      SHCXX="CC -LANG:std -n32 -mips4",
-      SHLINK="CC -LANG:std -n32 -mips4",
+      CXX=cxx,
+      LINK=cxx + " -LD_MSG:off=15,84",
+      SHCXX=cxx,
+      SHLINK=cxx,
     )
     env_etc.cxxflags_base = Split("""
         -I%s/boost/compatibility/cpp_c_headers
