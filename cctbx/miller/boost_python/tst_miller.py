@@ -316,6 +316,7 @@ def exercise_index_span():
   assert s.map_grid() == (7,11,7)
   assert s.is_in_domain((-1,2,1))
   assert not s.is_in_domain((0,6,0))
+  assert tuple(s.pack(miller_indices)) == (131, 28)
 
 def exercise_match_bijvoet_mates():
   h0 = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))

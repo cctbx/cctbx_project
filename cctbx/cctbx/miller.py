@@ -825,6 +825,15 @@ class intensity_array(array):
   def __init__(self, miller_array):
     array._copy_constructor(self, miller_array)
 
+class merged:
+
+  def __init__(self, miller_array):
+    asu_set = set.map_to_asu(miller_array)
+    span = index_span(asu_set.indices())
+    packed_indices = span.pack(asu_set.indices())
+    p = flex.sort_permutation(packed_indices.as_double()) # XXX sort std::size_t
+    # XXX
+
 class fft_map(maptbx.crystal_gridding):
 
   def __init__(self, crystal_gridding, fourier_coefficients, f_000=None):

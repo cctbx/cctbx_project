@@ -11,7 +11,7 @@
 #define CCTBX_MILLER_INDEX_SPAN_H
 
 #include <cctbx/miller.h>
-#include <scitbx/array_family/ref.h>
+#include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny_types.h>
 
 namespace cctbx { namespace miller {
@@ -66,6 +66,17 @@ namespace cctbx { namespace miller {
         return ((h[0] - (*this)[0][0]) * range_((*this)[1])
               + (h[1] - (*this)[1][0])) * range_((*this)[2])
               + (h[2] - (*this)[2][0]);
+      }
+
+      //! Computes 1-dimensional indices for given Miller indices.
+      af::shared<std::size_t>
+      pack(af::const_ref<index<> > const& miller_indices) const
+      {
+        af::shared<std::size_t> result((af::reserve(miller_indices.size())));
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          result.push_back(pack(miller_indices[i]));
+        }
+        return result;
       }
 
     private:
