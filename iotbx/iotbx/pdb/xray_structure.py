@@ -7,10 +7,10 @@ from phenix.foundation.Structure import PDBClass # XXX move to iotbx
 from cStringIO import StringIO
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
-                                     fractional_coordinates=00000):
+                                     fractional_coordinates=00000,
+                                     connect=None):
   if (remark is not None):
     remarks.insert(0, remark)
-  i = 0
   s = StringIO()
   for remark in remarks:
     print >> s, "REMARK", remark
@@ -31,7 +31,8 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
   # 56 - 66       LString        sGroup        Space group.
   # 67 - 70       Integer        z             Z value.
   print >> s, "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %s" % (
-    self.unit_cell().parameters() + (str(self.space_group_info()),))
+    self.unit_cell().parameters()
+    + (str(self.space_group_info()).replace(" ", ""),))
   # ATOM
   #  7 - 11  Integer       serial        Atom serial number.
   # 13 - 16  Atom          name          Atom name.
@@ -48,21 +49,31 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
   #                                      Angstroms.
   # 55 - 60  Real(6.2)     occupancy     Occupancy.
   # 61 - 66  Real(6.2)     tempFactor    Temperature factor.
+  i = 0
   for scatterer in self.scatterers():
+    i += 1
     assert not scatterer.anisotropic_flag, "Not implemented." # XXX
     xyz = scatterer.site
     if (not fractional_coordinates):
       xyz = self.unit_cell().orthogonalize(xyz)
-    i += 1
     label = scatterer.label.upper()
     print >> s, "ATOM  %5d %-4s %-3s  %4d    %8.3f%8.3f%8.3f%6.2f%6.2f" % ((
       i,
-      label,
-      label,
+      label[:4],
+      label[:3],
       i,
       ) + xyz + (
       scatterer.occupancy,
       adptbx.u_as_b(scatterer.u_iso)))
+  if (connect is not None):
+    assert len(connect) == self.scatterers().size()
+    i = 0
+    for bonds in connect:
+      i += 1
+      l = "CONNECT%5d" % i
+      for bond in bonds:
+        l += "%5d" % (bond+1)
+      print >> s, l
   print >> s, "END"
   return s.getvalue()
 
