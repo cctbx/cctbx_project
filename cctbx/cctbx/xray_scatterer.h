@@ -18,7 +18,8 @@
 #include <cctbx/eltbx/caasf.h>
 #include <cctbx/adptbx.h>
 
-namespace cctbx {
+//! Structure Factor Toolbox namespace.
+namespace sftbx {
 
   /*! \brief This class groups the information about an atom that
       is needed for a structure factor calculation.
@@ -28,7 +29,7 @@ namespace cctbx {
       <p>
       The anisotropic displacement parameters have to be
       "Ustar." Converters between different conventions for
-      the representattion of anisotropic displacement
+      the representation of anisotropic displacement
       parameters are provided by the adptbx.
       <p>
       The ApplySymmetry() function has to be called before
@@ -306,6 +307,6 @@ namespace cctbx {
     StructureFactorVector(SgOps, H, Q, Sites, Fcalc);
   }
 
-} // namespace cctbx
+} // namespace sftbx
 
 #endif // CCTBX_XRAY_SCATTERER_H
