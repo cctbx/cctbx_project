@@ -33,27 +33,27 @@ Consequently, the Python programming interface and the C programming
 interface for a given module are very different. To alleviate some of
 these problems, a number of systems have been developed. In
 November 2000, a very powerful new system has become available, the
-Boost Python Library (BPL). The main purpose of the BPL is to quickly
+Boost.Python Library. The main purpose of Boost.Python is to quickly
 and easily export a C++ library to Python such that the Python
 interface is very similar to the C++ interface. Unlike other systems,
-the BPL does not introduce an additional "little language" for the
+Boost.Python does not introduce an additional "little language" for the
 definition of Python/C++ bindings, but relies exclusively on standard
 C++ template techniques. Therefore the definition of the bindings is
 concise, compact, intuitive and highly portable. Since C++ is a
-superset of C, the BPL can also conveniently be used to define Python
+superset of C, Boost.Python can also conveniently be used to define Python
 bindings for existing C libraries. The source code for an Extension
-Module that is based on the BPL is typically almost a factor two
+Module that is based on Boost.Python is typically almost a factor two
 smaller than an equivalent conventional Extension Module.
 
 \section fundamental_uniformity Uniformity
 
 Syntactic differences put aside, Python and C++ objects and functions
-are very similar. The BPL can be viewed as a two-way link between
-Python and C++. As discussed already, the BPL can be used to directly
+are very similar. Boost.Python can be viewed as a two-way link between
+Python and C++. As discussed already, Boost.Python can be used to directly
 reflect C++ classes and functions into Python without obscuring the C++
-interface. In a slightly more abstract way, the BPL links Python to
+interface. In a slightly more abstract way, Boost.Python links Python to
 C++: objects implemented in Python can be relatively easily converted
-to C++, and the BPL re-establishes the Python interface. That is, the
+to C++, and Boost.Python re-establishes the Python interface. That is, the
 time spent to prototype a module in Python is not lost since the C++
 implementation is similar and can quickly be derived from the Python
 implementation. Therefore the advantages of object-oriented design can
