@@ -7,31 +7,37 @@ def check_cns_availability():
     print "CNS not available."
     sys.exit(1)
 
-def topology(structure):
+def write(file_name, cns_input):
+  f = open(file_name, "w")
+  for line in cns_input:
+    print >> f, line
+  f.close()
+
+def topology(scatterers):
   cns_input = []
-  l = cns_input.append
-  l("topology")
-  for atom in structure:
-    lbl = atom.label()
-    l("  residue %s" % (lbl,))
-    l("    atom %s mass=1 charge=0 {chemical}type=%s end" % (lbl, lbl))
-    l("  end")
-  l("end")
-  l("")
-  l("segment")
-  l("  name=A")
-  for atom in structure:
-    lbl = atom.label()
-    l("  molecule {res}name=%s number=1 end" % (lbl,))
-  l("end")
-  l("")
+  a = cns_input.append
+  a("topology")
+  for scatterer in scatterers:
+    name = scatterer.label
+    a("  residue %s" % name)
+    a("    atom %s mass=1 charge=0 {chemical}type=%s end" % (name, name))
+    a("  end")
+  a("end")
+  a("")
+  a("segment")
+  a("  name=A")
+  for scatterer in scatterers:
+    name = scatterer.label
+    a("  molecule {res}name=%s number=1 end" % name)
+  a("end")
+  a("")
   return cns_input
 
-def coordinates(xray_structure):
+def coordinates(scatterers):
   cns_input = []
-  l = cns_input.append
+  a = cns_input.append
   resid = 1
-  for scatterer in xray_structure.scatterers():
+  for scatterer in scatterers:
     x = scatterer.site
     q = scatterer.occupancy
     assert not scatterer.anisotropic_flag
@@ -40,82 +46,198 @@ def coordinates(xray_structure):
     fp = scatterer.fp_fdp.real
     fdp = scatterer.fp_fdp.imag
     for i in xrange(3):
-      l("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
-    l("do (q=%.12g) (resid=%d)" % (q, resid))
-    l("do (b=%.12g) (resid=%d)" % (b, resid))
-    l("xray")
-    l("  scatter (chemical=%s)" % (scatterer.label,))
+      a("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
+    a("do (q=%.12g) (resid=%d)" % (q, resid))
+    a("do (b=%.12g) (resid=%d)" % (b, resid))
+    a("xray")
+    a("  scatter (chemical=%s)" % (scatterer.label,))
     for i in xrange(4):
-      l("    %.6g %.6g" % (caasf.a(i), caasf.b(i)))
-    l("    %.6g" % (caasf.c(),))
-    l("end")
-    l("do (scatter_fp=%.12g) (resid=%d)" % (fp, resid))
-    l("do (scatter_fdp=%.12g) (resid=%d)" % (fdp, resid))
-    l("")
+      a("    %.6g %.6g" % (caasf.a()[i], caasf.b()[i]))
+    a("    %.6g" % (caasf.c(),))
+    a("end")
+    a("do (scatter_fp=%.12g) (resid=%d)" % (fp, resid))
+    a("do (scatter_fdp=%.12g) (resid=%d)" % (fdp, resid))
+    a("")
     resid += 1
-  l("")
-  l("show (name) (all)")
-  l("show (chemical) (all)")
-  l("show (scatter_fp) (all)")
-  l("show (scatter_fdp) (all)")
-  l("")
+  a("coordinates orthogonalize end")
+  a("show (name) (all)")
+  a("show (chemical) (all)")
+  a("show (scatter_fp) (all)")
+  a("show (scatter_fdp) (all)")
+  a("")
   return cns_input
 
 def xray_unit_cell(unit_cell):
   cns_input = []
-  l = cns_input.append
-  l("xray")
-  l("  a=%.12g b=%.12g c=%.12g alpha=%.12g beta=%.12g gamma=%.12g"
+  a = cns_input.append
+  a("xray")
+  a("  a=%.12g b=%.12g c=%.12g alpha=%.12g beta=%.12g gamma=%.12g"
     % unit_cell.parameters())
-  l("end")
-  l("")
+  a("end")
+  a("")
   return cns_input
 
 def xray_symmetry(space_group):
   cns_input = []
-  l = cns_input.append
-  l("xray")
-  for m in space_group:
-    mp = m.mod_positive()
-    l("  symm=(" + mp.as_xyz() + ")")
-  l("end")
-  l("")
+  a = cns_input.append
+  a("xray")
+  for s in space_group:
+    a("  symm=(" + s.mod_positive().as_xyz() + ")")
+  a("end")
+  a("")
+  return cns_input
+
+def xray_structure(structure):
+  cns_input = xray_unit_cell(structure.unit_cell())
+  e = cns_input.extend
+  e(xray_symmetry(structure.space_group()))
+  e(topology(structure.scatterers()))
+  e(coordinates(structure.scatterers()))
   return cns_input
 
 def xray_anomalous(flag):
   cns_input = []
-  l = cns_input.append
-  l("xray")
+  a = cns_input.append
+  a("xray")
   if (flag):
-    l("  anomalous=true")
+    a("  anomalous=true")
   else:
-    l("  anomalous=false")
-  l("end")
-  l("")
+    a("  anomalous=false")
+  a("end")
+  a("")
+  return cns_input
+
+def xray_declare(names, miller_array):
+  assert len(names) in (1,2)
+  if (len(names) == 2): assert miller_array.sigmas() is not None
+  if (miller_array.is_complex()):
+    type = "complex"
+  else:
+    type = "real"
+  cns_input = []
+  a = cns_input.append
+  a("xray")
+  a("  declare name=%s domain=reciprocal type=%s end" % (names[0], type))
+  if (len(names) == 2):
+    a("  declare name=%s domain=reciprocal type=real end" % names[1])
+  a("end")
+  a("")
+  return cns_input
+
+def xray_reflection(names, miller_array):
+  assert len(names) in (1,2)
+  if (len(names) == 2): assert miller_array.sigmas() is not None
+  cns_input = []
+  a = cns_input.append
+  a("xray")
+  a("  nreflections %d" % miller_array.indices().size())
+  a("  reflection")
+  data = miller_array.data()
+  sigmas = miller_array.sigmas()
+  for i,h in miller_array.indices().items():
+    s = "    index %d %d %d" % h + " %s %s" % (names[0], str(data[i]))
+    if (sigmas is not None):
+      s += " %s %s" % (names[1], str(sigmas[i]))
+    a(s)
+  a("  end")
+  a("end")
+  a("")
   return cns_input
 
 def xray_generate(d_max, d_min):
   cns_input = []
-  l = cns_input.append
-  l("xray")
-  l("  generate %.6g %.6g" % (d_max, d_min))
-  l("end")
-  l("")
+  a = cns_input.append
+  a("xray")
+  a("  generate %s %s" % (str(d_max), str(d_min)))
+  a("end")
+  a("")
   return cns_input
 
-def xray_predict(reciprocal_space_array_name, method):
+def xray_mapresolution(d_min):
   cns_input = []
-  l = cns_input.append
-  l("""xray
-  declare name=%s domain=reciprocal type=complex end
-  method=%s
+  a = cns_input.append
+  a("xray")
+  a("  mapresolution %s" % str(d_min))
+  a("end")
+  a("")
+  return cns_input
+
+def xray_method(method):
+  assert method in ["direct", "fft"]
+  cns_input = []
+  a = cns_input.append
+  a("xray")
+  a("  method %s" % method)
+  a("end")
+  a("")
+  return cns_input
+
+def xray_predict(reciprocal_space_array):
+  cns_input = []
+  a = cns_input.append
+  a("""\
+xray
+  declare name=%(reciprocal_space_array)s domain=reciprocal type=complex end
   predict
     mode=reciprocal
-    to=%s
+    to=%(reciprocal_space_array)s
     selection=(all)
     atomselection=(all)
   end
 end
-"""
-% (reciprocal_space_array_name, method, reciprocal_space_array_name))
+""" % vars())
+  return cns_input
+
+def script_predict_methods_comparison(d_min, structure, f_obs):
+  cns_input = xray_structure(structure)
+  a,e = cns_input.append,cns_input.extend
+  e(xray_anomalous(f_obs.anomalous_flag()))
+  e(xray_declare(["fobs"], f_obs))
+  e(xray_reflection(["fobs"], f_obs))
+  e(xray_mapresolution(d_min))
+  e(xray_method("direct"))
+  e(xray_predict("fcalc_dir"))
+  e(xray_method("fft"))
+  e(xray_predict("fcalc_fft"))
+  a("xray")
+  a("  write reflections output=tmp.hkl fcalc_dir fcalc_fft end")
+  a("end")
+  a("")
+  a("stop")
+  return cns_input
+
+def xray_gradients():
+  return ["""\
+xray
+  declare name=fcalc domain=reciprocal type=complex end
+  declare name=fpart domain=reciprocal type=complex end
+  declare name=weight domain=reciprocal type=real end
+  do (weight=1) (all)
+  do (fpart=0) (all)
+  associate reset
+  associate fcalc (all)
+  target=(resi(amplitude(fobs),(fcalc+fpart), weight))
+  dtarget=(dresi(amplitude(fobs),(fcalc+fpart), weight))
+  tselection (all)
+end
+
+flags exclude * include xref end
+
+energy end
+
+show (dx) (all)
+show (dy) (all)
+show (dz) (all)
+"""]
+
+def script_xray_gradients(d_min, f_obs, structure, method):
+  cns_input = xray_structure(structure)
+  a,e = cns_input.append,cns_input.extend
+  e(xray_anomalous(f_obs.anomalous_flag()))
+  e(xray_declare(["fobs"], f_obs))
+  e(xray_reflection(["fobs"], f_obs))
+  e(xray_mapresolution(d_min))
+  e(xray_method(method))
+  e(xray_gradients())
+  a("stop")
   return cns_input
