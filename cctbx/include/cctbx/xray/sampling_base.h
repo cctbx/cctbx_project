@@ -724,7 +724,7 @@ namespace cctbx { namespace xray {
         sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
           adptbx::u_cart_as_u_iso(u_cart_cache_.back()));
       }
-      if (not have_u_min) {
+      if (!have_u_min) {
         u_min_ = u_min;
         have_u_min = true;
       }
