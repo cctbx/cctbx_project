@@ -23,6 +23,8 @@ def run_tests(build_dir, dist_dir, tst_list):
       cmd = python_exe + " " + tst_path
     else:
       cmd = tst_path
+    if ("--valgrind" in sys.argv[1:]):
+      cmd = "valgrind " + cmd
     cmd += cmd_args
     print cmd
     sys.stdout.flush()
