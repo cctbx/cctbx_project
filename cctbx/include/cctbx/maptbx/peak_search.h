@@ -241,6 +241,8 @@ namespace cctbx { namespace maptbx {
                 af::ref<TagType, af::c_grid<3> > const& tags,
                 int peak_search_level=1,
                 std::size_t max_peaks=0)
+      :
+        gridding_(data.accessor().focus())
       {
         peak_search_unit_cell(data, tags, peak_search_level);
         ValueType peak_cutoff = 0;
@@ -254,10 +256,14 @@ namespace cctbx { namespace maptbx {
         std::sort(entries_.begin(), entries_.end());
       }
 
+      IndexType const&
+      gridding() const { return gridding_; }
+
       af::shared<indexed_value_type> const&
       entries() const { return entries_; }
 
     protected:
+      IndexType gridding_;
       af::shared<indexed_value_type> entries_;
 
       template <typename DataType,

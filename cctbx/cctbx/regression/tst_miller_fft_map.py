@@ -23,9 +23,10 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     crystal_symmetry=structure,
     anomalous_flag=00000,
     d_min=d_min)
-  f_obs_array = xray.structure_factors_direct(
+  f_obs_array = xray.structure_factors(
     xray_structure=structure,
-    miller_set=miller_set_f_obs).f_calc_array()
+    miller_set=miller_set_f_obs,
+    method="direct").f_calc_array()
   structure_factor_utils.check_phase_restrictions(f_obs_array, verbose=verbose)
   if (0 or verbose):
     f_obs_array.show_summary()

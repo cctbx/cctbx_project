@@ -35,6 +35,7 @@ namespace {
         .def(init<af::const_ref<double, af::c_grid_padded<3> > const&,
                   af::ref<long, af::c_grid<3> > const&,
                   optional<int, std::size_t> >())
+        .def("gridding", &w_t::gridding, ccr())
         .def("entries", &w_t::entries, ccr())
       ;
     }

@@ -15,8 +15,8 @@ def exercise(space_group_info, anomalous_flag,
     random_f_double_prime=anomalous_flag,
     random_u_iso=0001,
     random_occupancy=0001)
-  f_abs_z_array = abs(structure_z.structure_factors_direct(
-    anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array())
+  f_abs_z_array = abs(structure_z.structure_factors(
+    anomalous_flag=anomalous_flag, d_min=d_min, method="direct").f_calc_array())
   if (0 or verbose):
     structure_z.show_summary().show_scatterers()
     print "n_special_positions:", \
