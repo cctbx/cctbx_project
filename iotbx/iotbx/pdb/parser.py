@@ -308,6 +308,36 @@ class pdb_record:
     self.serial_numbers_hydrogen_bonded_atoms = sn[4:6] + sn[7:9]
     self.serial_numbers_salt_bridged_atoms = [sn[6], sn[9]]
 
+  def read_LINK(self):
+    # 13 - 16      Atom            name1       Atom name.
+    # 17           Character       altLoc1     Alternate location indicator.
+    # 18 - 20      Residue name    resName1    Residue name.
+    # 22           Character       chainID1    Chain identifier.
+    # 23 - 26      Integer         resSeq1     Residue sequence number.
+    # 27           AChar           iCode1      Insertion code.
+    # 43 - 46      Atom            name2       Atom name.
+    # 47           Character       altLoc2     Alternate location indicator.
+    # 48 - 50      Residue name    resName2    Residue name.
+    # 52           Character       chainID2    Chain identifier.
+    # 53 - 56      Integer         resSeq2     Residue sequence number.
+    # 57           AChar           iCode2      Insertion code.
+    # 60 - 65      SymOP           sym1        Symmetry operator for 1st atom.
+    # 67 - 72      SymOP           sym2        Symmetry operator for 2nd atom.
+    self.name1 = self.raw[12:16]
+    self.altLoc1 = self.raw[16]
+    self.resName1 = self.raw[17:20]
+    self.chainID1 = self.raw[21]
+    self.resSeq1 = self.raw[22:26]
+    self.iCode1 = self.raw[26]
+    self.name2 = self.raw[42:46]
+    self.altLoc2 = self.raw[46]
+    self.resName2 = self.raw[47:50]
+    self.chainID2 = self.raw[51]
+    self.resSeq2 = self.raw[52:56]
+    self.iCode2 = self.raw[56]
+    self.sym1 = self.raw[59:65]
+    self.sym2 = self.raw[66:72]
+
 def collect_records(raw_records,
                     ignore_unknown=0001,
                     ignore_coordinate_section=00000,
