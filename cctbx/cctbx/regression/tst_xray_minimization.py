@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 import sys
 
 def exercise(target_functor, space_group_info, anomalous_flag,
-             gradient_flags, u_penalty=None,
+             gradient_flags, u_penalty, occupancy_penalty,
              n_elements=3, d_min=3., shake_sigma=0.1,
              verbose=0):
   structure_ideal = random_structure.xray_structure(
@@ -36,6 +36,8 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   if (gradient_flags.occupancy):
     structure_shake = structure_shake.random_modify_parmeters(
       "occupancy", shake_sigma)
+    if (occupancy_penalty is not None):
+      structure_shake.scatterers()[-1].occupancy = 0
   assert tuple(structure_ideal.special_position_indices()) \
       == tuple(structure_shake.special_position_indices())
   if (0 or verbose):
@@ -47,6 +49,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     gradient_flags=gradient_flags,
     xray_structure=structure_shake,
     u_penalty=u_penalty,
+    occupancy_penalty=occupancy_penalty,
     structure_factor_algorithm="direct")
   if (0 or verbose):
     print "first:", minimizer.first_target_value
@@ -88,12 +91,19 @@ def run_call_back(flags, space_group_info):
             xray.minimization.u_penalty_exp(),
             xray.minimization.u_penalty_singular_at_zero()])
           sqrt_u_isos.append(True)
+        occupancy_penalty_types = [None]
+        if (gradient_flags.occupancy):
+          occupancy_penalty_types.append(
+            xray.minimization.occupancy_penalty_exp())
         for sqrt_u_iso in sqrt_u_isos:
           for u_penalty in u_penalty_types:
             gradient_flags.sqrt_u_iso = sqrt_u_iso
-            exercise(target_functor, space_group_info, anomalous_flag,
-                     gradient_flags, u_penalty=u_penalty,
-                     verbose=flags.Verbose)
+            for occupancy_penalty in occupancy_penalty_types:
+              exercise(target_functor, space_group_info, anomalous_flag,
+                       gradient_flags,
+                       u_penalty=u_penalty,
+                       occupancy_penalty=occupancy_penalty,
+                       verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
