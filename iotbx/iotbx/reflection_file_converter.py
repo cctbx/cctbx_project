@@ -8,8 +8,8 @@ from iotbx.option_parser import iotbx_option_parser
 
 def run(args):
   command_line = (iotbx_option_parser(
-    usage="iotbx.reflection_file_writer [options] reflection_file ...",
-    description="Example: iotbx.reflection_file_writer w1.sca --mtz .")
+    usage="iotbx.reflection_file_converter [options] reflection_file ...",
+    description="Example: iotbx.reflection_file_converter w1.sca --mtz .")
     .enable_symmetry_comprehensive()
     .option(None, "--weak_symmetry",
       action="store_true",
