@@ -135,10 +135,10 @@ namespace cctbx {
 
     //! Determine max(abs(H[i])), i=1..3, for a vector of Miller indices.
     template <class MillerIndexVectorType>
-    carray<int, 3>
+    int3
     IndexRange(const MillerIndexVectorType& Indices)
     {
-      carray<int, 3> result;
+      int3 result;
       result.assign(0);
       for(std::size_t i=0;i<Indices.size();i++) {
         for(std::size_t j=0;j<3;j++) {

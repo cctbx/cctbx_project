@@ -16,7 +16,6 @@
 #include <exception>
 #include <string>
 #include <cctbx/error.h>
-#include <cctbx/carray.h>
 #include <cctbx/basic/matrixlite.h>
 
 namespace cctbx {
@@ -35,7 +34,7 @@ namespace cctbx {
       virtual ~error_base_factor() throw() {}
   };
 
-  using MatrixLite::itype::Mx33;
+  using MatrixLite::itype::Mx33; // XXX remove
   using MatrixLite::itype::Vec3;
 
   /*! \brief Maximum number of representative rotation matrices for
