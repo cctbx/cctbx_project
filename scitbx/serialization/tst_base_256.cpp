@@ -5,6 +5,9 @@ using namespace scitbx;
 
 namespace {
 
+  static std::size_t n_delta_4 = 0;
+  static std::size_t n_delta_8 = 0;
+
   template <typename T>
   inline
   void
@@ -60,9 +63,11 @@ namespace {
       T delta = proxy.value / value - 1;
       if (delta < 0) delta = -delta;
       if (sizeof(T) == 4) {
+        n_delta_4++;
         SCITBX_ASSERT(delta < 1.e-5);
       }
       else {
+        n_delta_8++;
         SCITBX_ASSERT(delta < 1.e-10);
       }
     }
@@ -113,6 +118,8 @@ int main(int argc, char* argv[])
       floating_point<double>::exercise();
       if (argc == 1) break;
     }
+    if (n_delta_4 != 0) std::cout << "n_delta_4: " << n_delta_4 << std::endl;
+    if (n_delta_8 != 0) std::cout << "n_delta_8: " << n_delta_8 << std::endl;
     std::cout << "OK" << std::endl;
   }
   catch (error e) {
