@@ -140,17 +140,19 @@ def exercise_bond():
       [[ 6.1880215351700611]*3,
        [-6.1880215351700611]*3])
   #
-  sorted_proxies = restraints.bond_sorted_proxies(asu_mappings=asu_mappings)
-  assert sorted_proxies.asu_mappings().is_locked()
-  sorted_proxies.push_back(proxy=sym_proxies[0])
-  assert sorted_proxies.proxies.size() == 0
-  assert sorted_proxies.sym_proxies.size() == 1
-  sorted_proxies = restraints.bond_sorted_proxies(asu_mappings=asu_mappings)
-  assert not sorted_proxies.process(proxy=proxies[0])
-  assert not sorted_proxies.process(proxy=sym_proxies[0])
-  assert sorted_proxies.proxies.size() == 2
-  assert sorted_proxies.sym_proxies.size() == 0
-  assert sorted_proxies.n_total() == 2
+  sorted_asu_proxies = restraints.bond_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  assert sorted_asu_proxies.asu_mappings().is_locked()
+  sorted_asu_proxies.push_back(proxy=sym_proxies[0])
+  assert sorted_asu_proxies.simple.size() == 0
+  assert sorted_asu_proxies.sym.size() == 1
+  sorted_asu_proxies = restraints.bond_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  assert not sorted_asu_proxies.process(proxy=proxies[0])
+  assert not sorted_asu_proxies.process(proxy=sym_proxies[0])
+  assert sorted_asu_proxies.simple.size() == 2
+  assert sorted_asu_proxies.sym.size() == 0
+  assert sorted_asu_proxies.n_total() == 2
   residual_0 = restraints.bond(
     sites_cart=sites_cart,
     proxy=proxies[0]).residual()
@@ -162,7 +164,7 @@ def exercise_bond():
   gradient_array = flex.vec3_double(2, [0,0,0])
   assert approx_equal(restraints.bond_residual_sum(
     sites_cart=sites_cart,
-    sorted_proxies=sorted_proxies,
+    sorted_asu_proxies=sorted_asu_proxies,
     gradient_array=gradient_array), residual_0+residual_1)
   assert approx_equal(gradient_array,
     [(5.1354626519124107, 5.1354626519124107, 5.1354626519124107),
@@ -310,14 +312,14 @@ def exercise_repulsion():
       [(1.4216958630745458, 1.4216958630745458, 1.4216958630745458),
        (-1.4216958630745458, -1.4216958630745458, -1.4216958630745458)])
   #
-  sorted_proxies = restraints.repulsion_sorted_proxies(
+  sorted_asu_proxies = restraints.repulsion_sorted_asu_proxies(
     asu_mappings=asu_mappings)
-  assert sorted_proxies.asu_mappings().is_locked()
-  assert not sorted_proxies.process(proxy=proxies[0])
-  assert not sorted_proxies.process(proxy=sym_proxies[0])
-  assert sorted_proxies.proxies.size() == 2
-  assert sorted_proxies.sym_proxies.size() == 0
-  assert sorted_proxies.n_total() == 2
+  assert sorted_asu_proxies.asu_mappings().is_locked()
+  assert not sorted_asu_proxies.process(proxy=proxies[0])
+  assert not sorted_asu_proxies.process(proxy=sym_proxies[0])
+  assert sorted_asu_proxies.simple.size() == 2
+  assert sorted_asu_proxies.sym.size() == 0
+  assert sorted_asu_proxies.n_total() == 2
   residual_0 = restraints.repulsion(
     sites_cart=sites_cart,
     proxy=proxies[0]).residual()
@@ -328,7 +330,7 @@ def exercise_repulsion():
   gradient_array = flex.vec3_double(2, [0,0,0])
   assert approx_equal(restraints.repulsion_residual_sum(
     sites_cart=sites_cart,
-    sorted_proxies=sorted_proxies,
+    sorted_asu_proxies=sorted_asu_proxies,
     gradient_array=gradient_array), residual_0+residual_1)
   assert approx_equal(gradient_array,
     [(1290.2817767146657, 1290.2817767146657, 1290.2817767146657),

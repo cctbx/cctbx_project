@@ -3,7 +3,7 @@
 
 #include <cctbx/restraints/utils.h>
 #include <cctbx/restraints/asu_cache.h>
-#include <cctbx/restraints/sorted_proxies.h>
+#include <cctbx/restraints/sorted_asu_proxies.h>
 #include <set>
 
 namespace cctbx { namespace restraints {
@@ -318,26 +318,26 @@ namespace cctbx { namespace restraints {
       disable_cache);
   }
 
-  typedef sorted_proxies<bond_simple_proxy, bond_asu_proxy>
-    bond_sorted_proxies;
+  typedef sorted_asu_proxies<bond_simple_proxy, bond_asu_proxy>
+    bond_sorted_asu_proxies;
 
   inline
   double
   bond_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    bond_sorted_proxies const& sorted_proxies,
+    bond_sorted_asu_proxies const& sorted_asu_proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     bool disable_cache=false)
   {
     double result = bond_residual_sum(
       sites_cart,
-      sorted_proxies.proxies.const_ref(),
+      sorted_asu_proxies.simple.const_ref(),
       gradient_array);
     result += bond_residual_sum(
       sites_cart,
-      *sorted_proxies.asu_mappings(),
-      sorted_proxies.sym_proxies.const_ref(),
-      sorted_proxies.sym_active_flags,
+      *sorted_asu_proxies.asu_mappings(),
+      sorted_asu_proxies.sym.const_ref(),
+      sorted_asu_proxies.sym_active_flags,
       gradient_array,
       disable_cache);
     return result;

@@ -1,18 +1,18 @@
-#ifndef CCTBX_RESTRAINTS_SORTED_PROXIES_H
-#define CCTBX_RESTRAINTS_SORTED_PROXIES_H
+#ifndef CCTBX_RESTRAINTS_SORTED_ASU_PROXIES_H
+#define CCTBX_RESTRAINTS_SORTED_ASU_PROXIES_H
 
 #include <cctbx/crystal/direct_space_asu.h>
 
 namespace cctbx { namespace restraints {
 
-  template <typename ProxyType,
+  template <typename SimpleProxyType,
             typename SymProxyType>
-  class sorted_proxies
+  class sorted_asu_proxies
   {
     public:
-      sorted_proxies() {}
+      sorted_asu_proxies() {}
 
-      sorted_proxies(
+      sorted_asu_proxies(
         boost::shared_ptr<
           direct_space_asu::asu_mappings<> > const& asu_mappings)
       :
@@ -26,10 +26,10 @@ namespace cctbx { namespace restraints {
       asu_mappings() const { return asu_mappings_owner_; }
 
       bool
-      process(ProxyType const& proxy)
+      process(SimpleProxyType const& proxy)
       {
         CCTBX_ASSERT(proxy.i_seqs[0] < proxy.i_seqs[1]);
-        proxies.push_back(proxy);
+        simple.push_back(proxy);
         return false;
       }
 
@@ -39,7 +39,7 @@ namespace cctbx { namespace restraints {
         int type_id = asu_mappings_->interaction_type_id(proxy.pair);
         if (type_id < 0) return false;
         if (type_id > 0) {
-          proxies.push_back(proxy.as_simple_proxy());
+          simple.push_back(proxy.as_simple_proxy());
           return false;
         }
         push_back(proxy);
@@ -49,27 +49,24 @@ namespace cctbx { namespace restraints {
       void
       push_back(SymProxyType const& proxy)
       {
-        sym_proxies.push_back(proxy);
+        sym.push_back(proxy);
         sym_active_flags[proxy.pair.i_seq] = true;
         sym_active_flags[proxy.pair.j_seq] = true;
       }
 
       std::size_t
-      n_total() const
-      {
-        return proxies.size() + sym_proxies.size();
-      }
+      n_total() const { return simple.size() + sym.size(); }
 
     protected:
       boost::shared_ptr<direct_space_asu::asu_mappings<> > asu_mappings_owner_;
       const direct_space_asu::asu_mappings<>* asu_mappings_;
 
     public:
-      af::shared<ProxyType> proxies;
-      af::shared<SymProxyType> sym_proxies;
+      af::shared<SimpleProxyType> simple;
+      af::shared<SymProxyType> sym;
       std::vector<bool> sym_active_flags;
   };
 
 }} // namespace cctbx::restraints
 
-#endif // CCTBX_RESTRAINTS_SORTED_PROXIES_H
+#endif // CCTBX_RESTRAINTS_SORTED_ASU_PROXIES_H
