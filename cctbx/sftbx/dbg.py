@@ -18,43 +18,34 @@ def add_u_extra(xtal, u_extra):
 def print_structure_factors(SgInfo,
                             adp=0,
                             d_min=3.,
-                            grid_resolution_factor = 1./3):
+                            grid_resolution_factor = 1./3,
+                            use_cns=0):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   xtal = debug_utils.random_structure(
     SgInfo, elements,
     volume_per_atom=50.,
     min_distance=1.5,
-    general_positions_only=1,
+    general_positions_only=0,
     anisotropic_displacement_parameters=adp)
-  if (1):
-    new_sites = shared.XrayScatterer()
-    site = xtal.Sites[3]
-    site.set_Coordinates((0.5,0.5,0.5))
+  if (0):
+    i_select = 3
+    elements = [elements[i_select]]
+    site = xtal.Sites[i_select]
+    site.set_Coordinates((0,0,0))
     site.set_Uiso(0)
     print site.CAASF().Label(), site.w()
+    new_sites = shared.XrayScatterer()
     new_sites.append(site)
     xtal.Sites = new_sites
   if (0):
     assert SgInfo.SgNumber() == 1
     from cctbx_boost import uctbx
     xtal.UnitCell = uctbx.UnitCell((10,10,10))
-  if (0):
-    from cctbx_boost import uctbx
-    from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
-    xtal.UnitCell = uctbx.UnitCell((10,10,10))
-    xtal.Sites = shared.XrayScatterer()
-    #s = sftbx.XrayScatterer("O", CAASF_WK1995("O"), 0j, (1./64,1./64,1./64), 1., 0)
-    s = sftbx.XrayScatterer("O", CAASF_WK1995("O"), 0j, (1./32,1./16,1./6), 1., 0.5)
-    s.ApplySymmetry(xtal.UnitCell, xtal.SgOps, 0.1, 0, 0)
-    xtal.Sites.append(s)
-    s = sftbx.XrayScatterer("O", CAASF_WK1995("O"), 0j, (8./32,5./16,3./6), 1., 0.5)
-    s.ApplySymmetry(xtal.UnitCell, xtal.SgOps, 0.1, 0, 0)
-    xtal.Sites.append(s)
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
   MillerIndices = xutils.build_miller_indices(xtal, d_min)
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
-  if (0):
+  if (use_cns):
     run_cns(elements, xtal, d_min, grid_resolution_factor)
     return
   max_q = 1. / (d_min**2)
@@ -217,6 +208,8 @@ def show_structure_factor_correlation(label, f1, f2,
 def run_cns(elements, xtal, d_min, grid_resolution_factor, fcalc = 0):
   from cctbx.macro_mol import cns_input
   write_cns_input(elements, xtal, d_min, grid_resolution_factor)
+  try: os.unlink("tmp.hkl")
+  except: pass
   os.system("cns < tmp.cns > tmp.out")
   f = open("tmp.hkl", "r")
   reader = cns_input.CNS_xray_reflection_Reader(f)
@@ -262,6 +255,7 @@ def run():
     "AllSpaceGroups",
     "Isotropic",
     "Anisotropic",
+    "cns",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(6) # XXX
   if (not (Flags.Isotropic or Flags.Anisotropic)):
@@ -285,7 +279,7 @@ def run():
       print LookupSymbol
       sys.stdout.flush()
     if (Flags.Isotropic):
-      print_structure_factors(SgInfo, adp=0)
+      print_structure_factors(SgInfo, adp=0, use_cns=Flags.cns)
     if (Flags.Anisotropic):
       print_structure_factors(SgInfo, adp=1)
     sys.stdout.flush()
