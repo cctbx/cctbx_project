@@ -40,18 +40,33 @@ elif (sys.platform.startswith("linux")):
     env_etc.compiler = "unix_"+compiler
     compiler = None
 elif (sys.platform.startswith("osf")):
-  env_etc.compiler = "tru64_cxx"
+  if (compiler == "default"):
+    env_etc.compiler = "tru64_cxx"
+  else:
+    env_etc.compiler = "unix_"+compiler
+    compiler = None
 elif (sys.platform.startswith("irix")):
-  env_etc.compiler = "irix_CC"
+  if (compiler == "default"):
+    env_etc.compiler = "irix_CC"
+  else:
+    env_etc.compiler = "unix_"+compiler
+    compiler = None
 elif (sys.platform.startswith("darwin")):
   if (compiler == "default"):
     env_etc.compiler = "darwin_c++"
   else:
     env_etc.compiler = "darwin_"+compiler
     compiler = None
+elif (os.name == "posix"):
+  if (compiler == "default"):
+    env_etc.compiler = "unix_gcc"
+  else:
+    env_etc.compiler = "unix_"+compiler
+    compiler = None
 if (compiler not in ("default", None)):
+  sys.tracebacklimit = 0
   raise RuntimeError("Compiler not supported on this platform: %s" % compiler)
-assert env_etc.compiler in (
+supported_compilers = (
   "win32_cl",
   "unix_gcc",
   "unix_ecc",
@@ -61,6 +76,10 @@ assert env_etc.compiler in (
   "darwin_c++",
   "darwin_gcc",
 )
+if (not env_etc.compiler in supported_compilers):
+  sys.tracebacklimit = 0
+  raise RuntimeError("Unknown platform/compiler: %s. Choices are: %s" % (
+    env_etc.compiler, ", ".join(supported_compilers)))
 
 static_exe = libtbx.config.build_options.static_exe
 
@@ -92,6 +111,7 @@ if (sys.platform == "win32"):
     else:
       opts = ["/Od"]
     if (libtbx.config.build_options.debug_symbols):
+      sys.tracebacklimit = 0
       raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -99,6 +119,7 @@ if (sys.platform == "win32"):
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   else:
+    sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
 else:
   env_base = Environment(
@@ -223,12 +244,14 @@ else:
     env_etc.shlinkflags = "-shared"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "irix_CC"):
+    mipspro_version = libtbx.config.get_mipspro_version()
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     cxx = "CC -n32 -mips4 -LANG:std"
-    cxx += " -LANG:pch=OFF -no_prelink -ptused" \
-         + " -FE:template_in_elf_section" \
-         + " -FE:eliminate_duplicate_inline_copies"
+    cxx += " -LANG:pch=OFF -no_prelink -ptused"
+    if (mipspro_version == "73XXX"):
+      cxx += " -FE:template_in_elf_section"
+      cxx += " -FE:eliminate_duplicate_inline_copies"
     env_base.Replace(
       CC="cc",
       SHCC="cc",
@@ -237,8 +260,13 @@ else:
       SHCXX=cxx,
       SHLINK=cxx,
     )
-    env_etc.cxxflags_base = ["-woff", "1001,1183,1188,1234,1311,1682,3439"]
-    if (env_etc.libtbx_env.has_dist("boost")):
+    if (mipspro_version == "73"):
+      env_etc.cxxflags_base = [
+        "-woff", "1001,1183,1188,1234,1311,1682,3439"]
+    else:
+      env_etc.cxxflags_base = [
+        "-woff", "1001,1174,1183,1188,1234,1311,1682,3439,3506"]
+    if (mipspro_version == "73" and env_etc.libtbx_env.has_dist("boost")):
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
         % env_etc.libtbx_env.dist_path("boost"))
@@ -327,9 +355,11 @@ else:
       "-bundle",
       "-framework", "Python"]
   else:
+    sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
 
 if (static_exe):
+  sys.tracebacklimit = 0
   raise RuntimeError("Static executables not supported on this platforms.")
 
 if (env_etc.static_libraries == 0
