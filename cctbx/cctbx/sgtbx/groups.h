@@ -325,8 +325,20 @@ namespace sgtbx {
           230 conventional space group types. An pair of
           enantiomorphic space groups corresponds to a single
           affine space group type.
+          <p>
+          See also: getEnantiomorphSgOps()
        */
       bool isEnantiomorphic() const;
+      //! Return the enantiomorph symmetry operations.
+      /*! If the given space group belongs to one of the 22
+          enantiomorphic space groups (11 pairs), the enantiomorph symmetry
+          operations are determined by using -x,-y,-z as a
+          change-of-basis matrix. Otherwise the symmetry operations
+          are copied unmodified.
+          <p>
+          See also: isEnantiomorphic()
+       */
+      SgOps getEnantiomorphSgOps() const;
       //! Test for a centre of inversion.
       inline bool isCentric() const { return m_fInv == 2; }
 
