@@ -79,7 +79,7 @@ def exercise_set():
   mc.show_comprehensive_summary(f=s)
   assert s.getvalue() == """\
 Number of Miller indices: 36
-Anomalous flag: 0
+Anomalous flag: %s
 Unit cell: (3, 4, 5, 90, 90, 90)
 Space group: P 2 2 2 (No. 16)
 Systematic absences: 0
@@ -87,7 +87,7 @@ Centric reflections: 27
 Resolution range: 5 1.1776
 Completeness in resolution range: 1
 Completeness with d_max=infinity: 1
-"""
+""" % str(False)
 
 def exercise_binner():
   crystal_symmetry = crystal.symmetry(
