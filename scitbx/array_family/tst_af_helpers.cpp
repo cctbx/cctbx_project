@@ -40,3 +40,11 @@
   void check_false(long line, bool stat) {
     check_true(line, !stat);
   }
+
+  bool approx_equal(double x, double y, double tolerance=1.e-5)
+  {
+    x -= y;
+    if (x < 0) x = -x;
+    if (x <= tolerance) return true;
+    return false;
+  }
