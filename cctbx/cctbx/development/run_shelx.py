@@ -1,6 +1,6 @@
-import cctbx.eltbx.xray_scattering
 from cctbx import adptbx
 from cctbx import eltbx
+import cctbx.eltbx.xray_scattering
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.development.fmt_utils import *
