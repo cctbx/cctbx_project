@@ -326,8 +326,10 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
         or (value is not None and attributes_level > 1)
         or attributes_level > 2):
       if (not isinstance(value, str)):
-        if   (value is False): value = "False"
-        elif (value is True):  value = "True"
+        # Python 2.2 workaround
+        if (name in ["optional", "multiple", "disable_add", "disable_delete"]):
+          if   (value is False): value = "False"
+          elif (value is True):  value = "True"
         print >> out, prefix+"  ."+name, "=", value
       else:
         indent = " " * (len(prefix) + 3 + len(name) + 3)
