@@ -173,14 +173,14 @@ namespace {
 #define WRAP_PLAIN(python_name, element_type) \
     cctbx::af::shared_wrapper<element_type >::plain( \
       this_module, python_name)
-#define WRAP_EQ_COMPARABLE(python_name, element_type) \
-    cctbx::af::shared_wrapper<element_type >::eq_comparable( \
-      this_module, python_name)
-#define WRAP_NUMERIC(python_name, element_type) \
-    cctbx::af::shared_wrapper<element_type >::numeric( \
+#define WRAP_CMP_COMPARABLE(python_name, element_type) \
+    cctbx::af::shared_wrapper<element_type >::cmp_comparable( \
       this_module, python_name)
 #define WRAP_INTEGER(python_name, element_type) \
     cctbx::af::shared_wrapper<element_type >::integer( \
+      this_module, python_name)
+#define WRAP_NUMERIC(python_name, element_type) \
+    cctbx::af::shared_wrapper<element_type >::numeric( \
       this_module, python_name)
 #define WRAP_COMPLEX(python_name, element_type) \
     cctbx::af::shared_wrapper<element_type >::complex( \
@@ -198,18 +198,18 @@ namespace {
 
 #ifndef FAST_COMPILE
     WRAP_INTEGER("long", long);
-    WRAP_EQ_COMPARABLE("std_string", std::string);
+    WRAP_CMP_COMPARABLE("std_string", std::string);
 
-    WRAP_EQ_COMPARABLE("miller_Index", cctbx::miller::Index);
+    WRAP_CMP_COMPARABLE("miller_Index", cctbx::miller::Index);
     WRAP_PLAIN("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
     WRAP_PLAIN("RTMx", cctbx::sgtbx::RTMx);
     WRAP_PLAIN("XrayScatterer", XrayScatterer);
-    WRAP_EQ_COMPARABLE("double3", cctbx::af::double3);
+    WRAP_PLAIN("double3", cctbx::af::double3);
 
     typedef std::size_t size_t;
-    WRAP_EQ_COMPARABLE("size_t", size_t);
+    WRAP_CMP_COMPARABLE("size_t", size_t);
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
-    WRAP_EQ_COMPARABLE("tiny_size_t_2", tiny_size_t_2);
+    WRAP_PLAIN("tiny_size_t_2", tiny_size_t_2);
 #endif
 
     this_module.def(py_reinterpret_complex_as_real,

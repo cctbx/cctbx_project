@@ -60,7 +60,6 @@ def exercise_operators():
   assert tuple(a.mod(2)) == (0, 1)
   assert shared.sum(a) == 13
   a = shared.int((4, 9))
-  assert tuple(a.as_double()) == (4, 9)
   b = shared.int((2, 12))
   assert tuple(a == b) == (0, 0)
   assert tuple(a != b) == (1, 1)
@@ -69,6 +68,20 @@ def exercise_operators():
   assert tuple(a <= b) == (0, 1)
   assert tuple(a >= b) == (1, 0)
   assert tuple(a == 9) == (0, 1)
+  assert tuple(a.as_double()) == (4, 9)
+  assert cmp(a, b) > 0
+  assert cmp(b, a) < 0
+  assert cmp(a, a) == 0
+  b = a.deep_copy()
+  assert cmp(a, b) == 0
+  assert a.cmp(4) > 0
+  assert a.cmp(5) < 0
+  a = shared.int((1, 1))
+  assert a.cmp(1) == 0
+  a = shared.miller_Index(((1,2,3), (2,3,4)))
+  assert cmp(a, a) == 0
+  b = a.deep_copy()
+  assert cmp(a, b) == 0
 
 def exercise_bool_inplace_operators():
   a = shared.bool((0, 1, 0, 1))
