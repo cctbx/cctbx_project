@@ -157,21 +157,34 @@ class show_pairs:
       rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
       site_frac_i = sites_frac[i_seq]
       pair_count = 0
+      print "%s(%d):" % (scatterers[i_seq].label, i_seq+1)
+      dists = flex.double()
+      j_seq_i_group = []
       for j_seq,j_sym_groups in table_i_seq.items():
         site_frac_j = sites_frac[j_seq]
         for i_group,j_sym_group in enumerate(j_sym_groups):
-          for i_j_sym,j_sym in enumerate(j_sym_group):
-            rt_mx_ji = rt_mx_i_inv.multiply(
-              asu_mappings.get_rt_mx(j_seq, j_sym))
-            distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
-            self.distances.append(distance)
-            if (pair_count == 0):
-              print "%s(%d):" % (scatterers[i_seq].label, i_seq+1)
-            print "  %-10s" % ("%s(%d):" % (scatterers[j_seq].label, j_seq+1)),
-            print "%8.4f" % distance,
-            if (i_j_sym != 0): print "sym. equiv.",
-            print
-            pair_count += 1
+          j_sym = j_sym_group[0]
+          rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
+          distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
+          dists.append(distance)
+          j_seq_i_group.append((j_seq,i_group))
+      permutation = flex.sort_permutation(dists)
+      for j_seq,i_group in flex.select(j_seq_i_group, permutation):
+        site_frac_j = sites_frac[j_seq]
+        j_sym_groups = table_i_seq[j_seq]
+        j_sym_group = j_sym_groups[i_group]
+        for i_j_sym,j_sym in enumerate(j_sym_group):
+          rt_mx_ji = rt_mx_i_inv.multiply(
+            asu_mappings.get_rt_mx(j_seq, j_sym))
+          distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
+          self.distances.append(distance)
+          print "  %-10s" % ("%s(%d):" % (scatterers[j_seq].label, j_seq+1)),
+          print "%8.4f" % distance,
+          if (i_j_sym != 0): print "sym. equiv.",
+          print
+          pair_count += 1
+      if (pair_count == 0):
+        print "  no neighbors"
       self.pair_counts.append(pair_count)
 
 def show_nonbonded_interactions(structure, asu_mappings, nonbonded_proxies):
