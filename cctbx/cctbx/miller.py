@@ -801,11 +801,9 @@ class array(set):
       sigmas=new_sigmas).set_observation_type(self)
 
   def change_basis(self, cb_op):
-    new_data = None
+    assert self.is_bool_array() or self.is_integer_array() or self.is_real_array()
+    new_data = self.data().deep_copy()
     new_sigmas = None
-    if (self.data() is not None):
-      assert isinstance(self.data(), flex.double)
-      new_data = self.data().deep_copy()
     if (self.sigmas() is not None):
       assert isinstance(self.sigmas(), flex.double)
       new_sigmas = self.sigmas().deep_copy()
