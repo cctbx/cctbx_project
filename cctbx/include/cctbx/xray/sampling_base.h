@@ -159,7 +159,7 @@ namespace cctbx { namespace xray {
       scitbx::sym_mat3<FloatType>& bs)
     {
       FloatType d = b_all.determinant();
-      CCTBX_ASSERT(d != 0);
+      CCTBX_ASSERT(d > 0);
       scitbx::sym_mat3<FloatType> cfmt = b_all.co_factor_matrix_transposed();
       as = eight_pi_pow_3_2 * a / std::sqrt(d);
       bs = cfmt / (d / -four_pi_sq);
@@ -173,7 +173,7 @@ namespace cctbx { namespace xray {
       scitbx::sym_mat3<FloatType> const& b_all)
     {
       FloatType d = b_all.determinant();
-      CCTBX_ASSERT(d != 0);
+      CCTBX_ASSERT(d > 0);
       return eight_pi_pow_3_2 * a / std::sqrt(d);
     }
 
@@ -678,6 +678,7 @@ namespace cctbx { namespace xray {
     max_sampling_box_edges_(0,0,0)
   {
     CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
+    CCTBX_ASSERT(u_base > 0);
     scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
     if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
       throw error(
@@ -692,6 +693,7 @@ namespace cctbx { namespace xray {
     FloatType sum_w = 0;
     FloatType sum_w_gaussian_a = 0;
     FloatType sum_w_u_equiv = 0;
+    bool have_u_min = false;
     for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
       XrayScattererType const& scatterer = scatterers[i_seq];
       eltbx::xray_scattering::gaussian const& gaussian=scattering_dict.lookup(
@@ -707,31 +709,32 @@ namespace cctbx { namespace xray {
       sum_w_gaussian_a += w * gaussian_a;
       FloatType u_min;
       if (!scatterer.anisotropic_flag) {
-        CCTBX_ASSERT(scatterer.u_iso >= 0);
         u_radius_cache_.push_back(scatterer.u_iso);
         u_min = scatterer.u_iso;
-        sum_w_u_equiv += w * scatterer.u_iso;
+        sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
+          scatterer.u_iso);
       }
       else {
         u_cart_cache_.push_back(adptbx::u_star_as_u_cart(unit_cell_,
           scatterer.u_star));
         scitbx::vec3<FloatType>
           u_cart_eigenvalues = adptbx::eigenvalues(u_cart_cache_.back());
-        CCTBX_ASSERT(adptbx::is_positive_definite(
-          u_cart_eigenvalues, tolerance_positive_definite));
         u_radius_cache_.push_back(af::max(u_cart_eigenvalues));
         u_min = af::min(u_cart_eigenvalues);
-        sum_w_u_equiv += w * adptbx::u_cart_as_u_iso(u_cart_cache_.back());
+        sum_w_u_equiv += w * std::max(static_cast<FloatType>(0),
+          adptbx::u_cart_as_u_iso(u_cart_cache_.back()));
       }
-      CCTBX_ASSERT(u_radius_cache_.back() >= 0);
-      if (u_min_ < 0) {
+      if (not have_u_min) {
         u_min_ = u_min;
+        have_u_min = true;
       }
       else {
         u_min_ = std::min(u_min_, u_min);
       }
     }
-    u_extra_ = u_base_ - u_min_;
+    if (have_u_min) {
+      u_extra_ = u_base_ - u_min_;
+    }
     if (sum_w != 0) {
       ave_u_iso_or_equiv_ = sum_w_u_equiv / sum_w;
       rho_cutoff_ = detail::isotropic_3d_gaussian_fourier_transform(
