@@ -25,7 +25,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_1b;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[2]>0 || (H[2]==0 && (H[0]>0 || (H[0]==0 && H[1]>=0))));
         }
         virtual const char* representation() const {
@@ -42,7 +42,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_2_m;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[1]>=0 && (H[2]>0 || (H[2]==0 && H[0]>=0)));
         }
         virtual const char* representation() const {
@@ -59,7 +59,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_mmm;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[0]>=0 && H[1]>=0 && H[2]>=0);
         }
         virtual const char* representation() const {
@@ -76,7 +76,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_4_m;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
         }
         virtual const char* representation() const {
@@ -93,7 +93,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_4_mmm;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
         }
         virtual const char* representation() const {
@@ -110,7 +110,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_3b;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0 && H[2]>=0);
         }
         virtual const char* representation() const {
@@ -127,7 +127,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_3b1m;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[0]>=H[1] && H[1]>=0 && (H[1]>0 || H[2]>=0));
         }
         virtual const char* representation() const {
@@ -144,7 +144,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_3bm1;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[0]>=H[1] && H[1]>=0 && (H[0]>H[1] || H[2]>=0));
         }
         virtual const char* representation() const {
@@ -161,7 +161,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_6_m;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
         }
         virtual const char* representation() const {
@@ -178,7 +178,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_6_mmm;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
         }
         virtual const char* representation() const {
@@ -195,7 +195,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_m3b;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[0]>=0 && (   (H[2]>=H[0] && H[1]>H[0])
                               || (H[2]==H[0] && H[1]==H[0])));
         }
@@ -213,7 +213,7 @@ namespace cctbx { namespace sgtbx {
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_m3bm;
         }
-        virtual bool isInASU(const Miller::Index& H) const {
+        virtual bool isInASU(const miller::Index& H) const {
           return (H[1]>=H[2] && H[2]>=H[0] && H[0]>=0);
         }
         virtual const char* representation() const {
@@ -264,7 +264,7 @@ namespace cctbx { namespace sgtbx {
 
   } // namespace detail
 
-  bool isInReferenceReciprocalSpaceASU_1b(Miller::Index const& h)
+  bool isInReferenceReciprocalSpaceASU_1b(miller::Index const& h)
   {
     return detail::ReferenceASU_1b.isInASU(h);
   }

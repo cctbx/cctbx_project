@@ -154,36 +154,36 @@ namespace {
   }
   double
   py_DebyeWallerFactorBiso_3(const uctbx::UnitCell& uc,
-                             const Miller::Index& MIx,
+                             const miller::Index& MIx,
                              double Biso) {
     return DebyeWallerFactorBiso(uc, MIx, Biso);
   }
   double
   py_DebyeWallerFactorUiso_3(const uctbx::UnitCell& uc,
-                             const Miller::Index& MIx,
+                             const miller::Index& MIx,
                              double Uiso) {
     return DebyeWallerFactorUiso(uc, MIx, Uiso);
   }
 
   double
-  py_DebyeWallerFactorUstar(const Miller::Index& MIx,
+  py_DebyeWallerFactorUstar(const miller::Index& MIx,
                             const af::double6& Ustar) {
     return DebyeWallerFactorUstar(MIx, Ustar);
   }
   double
-  py_DebyeWallerFactor_beta(const Miller::Index& MIx,
+  py_DebyeWallerFactor_beta(const miller::Index& MIx,
                             const af::double6& beta) {
     return DebyeWallerFactor_beta(MIx, beta);
   }
   double
   py_DebyeWallerFactorUcif(const uctbx::UnitCell& uc,
-                           const Miller::Index& MIx,
+                           const miller::Index& MIx,
                            const af::double6& Ucif) {
     return DebyeWallerFactorUcif(uc, MIx, Ucif);
   }
   double
   py_DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
-                            const Miller::Index& MIx,
+                            const miller::Index& MIx,
                             const af::double6& Ucart) {
     return DebyeWallerFactorUcart(uc, MIx, Ucart);
   }

@@ -73,9 +73,10 @@ class write_makefiles(makefile_generator.write_makefiles):
     }
 
     self.executables = {
-      "sgtbxdriver": (("sgtbxdriver",) + lib, ("uctbx", "cctbx_misc")),
+      "sgtbxdriver": (("sgtbxdriver",), ("sgtbx", "uctbx", "cctbx_misc")),
     }
 
     self.boost_python_modules = {
-      "sgtbx": (("sgtbxmodule",) + lib, ("uctbx", "cctbx_misc", "cctbx_bpl1")),
+      "sgtbx": (("sgtbxmodule",),
+        ("sgtbx", "uctbx", "cctbx_misc", "cctbx_bpl1")),
     }

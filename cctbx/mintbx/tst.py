@@ -96,7 +96,7 @@ def exercise_k_b_scaling(SgInfo, d_min=2., verbose=0):
     general_positions_only=0)
   print "Unit cell:", xtal.UnitCell
   print "Space group:", xtal.SgInfo.BuildLookupSymbol()
-  miller_set = xutils.build_miller_indices(xtal, friedel_flag, d_min)
+  miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
   multiplicity_set = xutils.reciprocal_space_array(miller_set,
     xtal.SgOps.multiplicity(miller_set.H, friedel_flag))
   f_ref = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)

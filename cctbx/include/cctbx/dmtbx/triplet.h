@@ -23,8 +23,8 @@
 #include <cctbx/error.h>
 #include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/simple_io.h>
-#include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/miller_asu.h>
+#include <cctbx/miller/span.h>
 
 namespace cctbx { namespace dmtbx {
 
@@ -33,8 +33,8 @@ namespace cctbx { namespace dmtbx {
     triplet_phase_relation(
       std::size_t ik,
       std::size_t ihmk,
-      Miller::SymEquivIndex const& k_seq,
-      Miller::AsymIndex const& asym_hmk)
+      miller::SymEquivIndex const& k_seq,
+      miller::AsymIndex const& asym_hmk)
     {
       cctbx_assert(k_seq.TBF() == asym_hmk.TBF());
       cctbx_assert(k_seq.HT() >= 0);
@@ -99,7 +99,7 @@ namespace cctbx { namespace dmtbx {
       triplet_invariants() {}
 
       triplet_invariants(sgtbx::SpaceGroupInfo const& SgInfo,
-                         af::shared<Miller::Index> miller_indices,
+                         af::shared<miller::Index> miller_indices,
                          bool sigma_2,
                          bool other_than_sigma_2)
       : TBF_(SgInfo.SgOps().TBF())
@@ -109,10 +109,10 @@ namespace cctbx { namespace dmtbx {
         // Assert that all Miller indices are in the standard asymmetric unit.
         for(i=0;i<miller_indices.size();i++) {
           cctbx_assert(
-               Miller::AsymIndex(SgInfo.SgOps(), asu, miller_indices[i]).H()
+               miller::AsymIndex(SgInfo.SgOps(), asu, miller_indices[i]).H()
             == miller_indices[i]);
         }
-        Miller::index_span miller_index_span(miller_indices);
+        miller::index_span miller_index_span(miller_indices);
         typedef std::map<std::size_t, std::size_t> lookup_dict_type;
         lookup_dict_type lookup_dict;
         for(i=0;i<miller_indices.size();i++) {
@@ -124,19 +124,19 @@ namespace cctbx { namespace dmtbx {
           list_of_tpr_maps_.push_back(tpr_map_type());
         }
         for(std::size_t ih=0;ih<miller_indices.size();ih++) {
-          Miller::Index h = miller_indices[ih];
+          miller::Index h = miller_indices[ih];
           for(std::size_t ik=0;ik<miller_indices.size();ik++) {
             if (ik == ih) { if (!other_than_sigma_2) continue; }
             else          { if (!sigma_2) continue; }
-            Miller::Index k = miller_indices[ik];
+            miller::Index k = miller_indices[ik];
             sgtbx::SymEquivMillerIndices
             sym_eq_k = SgInfo.SgOps().getEquivMillerIndices(k);
             for (std::size_t ik_eq=0;ik_eq<sym_eq_k.M(true);ik_eq++) {
-              Miller::SymEquivIndex k_seq = sym_eq_k(ik_eq);
-              Miller::Index k_eq = k_seq.H();
-              Miller::Index hmk = h - k_eq;
-              Miller::AsymIndex asym_hmk(SgInfo.SgOps(), asu, hmk);
-              Miller::Index asym_hmk_h = asym_hmk.H();
+              miller::SymEquivIndex k_seq = sym_eq_k(ik_eq);
+              miller::Index k_eq = k_seq.H();
+              miller::Index hmk = h - k_eq;
+              miller::AsymIndex asym_hmk(SgInfo.SgOps(), asu, hmk);
+              miller::Index asym_hmk_h = asym_hmk.H();
               if (miller_index_span.is_in_domain(asym_hmk_h)) {
                 typename lookup_dict_type::const_iterator
                 ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk_h));
@@ -199,7 +199,7 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
-      void dump_triplets(af::shared<Miller::Index> miller_indices)
+      void dump_triplets(af::shared<miller::Index> miller_indices)
       {
         cctbx_assert(miller_indices.size() == list_of_tpr_maps_.size());
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
@@ -258,7 +258,7 @@ namespace cctbx { namespace dmtbx {
 
       void weights_and_epsilon(
         sgtbx::SpaceGroupInfo const& sginfo,
-        af::shared<Miller::Index> miller_indices) const
+        af::shared<miller::Index> miller_indices) const
       {
         cctbx_assert(miller_indices.size() == list_of_tpr_maps_.size());
         af::shared<int> epsilons = sginfo.SgOps().epsilon(miller_indices);
@@ -268,9 +268,9 @@ namespace cctbx { namespace dmtbx {
           for(tpr_map_type::const_iterator
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const& tpr = lij->first;
-            Miller::Index h = miller_indices[i];
-            Miller::Index k = miller_indices[tpr.ik_];
-            Miller::Index hmk = miller_indices[tpr.ihmk_];
+            miller::Index h = miller_indices[i];
+            miller::Index k = miller_indices[tpr.ik_];
+            miller::Index hmk = miller_indices[tpr.ihmk_];
             std::cout << h.ref()
                << " " << k.ref()
                << " " << hmk.ref()

@@ -3,6 +3,7 @@ import math
 import random
 from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
+from cctbx_boost import miller
 from cctbx_boost import sftbx
 from cctbx import xutils
 from cctbx.development import debug_utils
@@ -22,11 +23,11 @@ def OneCycle(settings):
     UnitCell = debug_utils.get_compatible_unit_cell(SgInfo, 1000).UnitCell
     asu = sgtbx.ReciprocalSpaceASU(SgInfo)
     for friedel_flag in (1,0):
-      miller_indices = sftbx.BuildMillerIndices(
+      miller_indices = miller.BuildIndices(
         UnitCell, SgInfo, friedel_flag, 2.)
       for h_asym in miller_indices:
         h_seq = SgOps.getEquivMillerIndices(h_asym)
-        h_asu = sgtbx.Miller_AsymIndex(SgOps, asu, h_asym)
+        h_asu = sgtbx.miller_AsymIndex(SgOps, asu, h_asym)
         assert h_asym == h_asu.one_column(friedel_flag).H()
         assert h_asu.H() == h_asu.one_column(1).H()
         # exercise class PhaseInfo
@@ -42,7 +43,7 @@ def OneCycle(settings):
         if (h_seq.isCentric()):
           assert not restr.isValidPhase(phi_asym[0] + math.pi / 180)
           assert not restr.isValidPhase(phi_asym[1] - 1, 1)
-        # exercise class Miller_SymEquivIndices
+        # exercise class miller_SymEquivIndices
         f_asym = xutils.ampl_phase_as_f((random.random(), phi_asym[0]))
         hlc_asym = [random.random() for i in xrange(4)]
         for i_eq in xrange(h_seq.M(friedel_flag)):
@@ -63,17 +64,17 @@ def OneCycle(settings):
       p1_sgops = sgtbx.SpaceGroup()
       p1_sginfo = p1_sgops.Info()
       p1_asu = sgtbx.ReciprocalSpaceASU(p1_sginfo)
-      p1_miller_indices = shared.Miller_Index()
-      sgtbx.expand_to_p1(
+      p1_miller_indices = shared.miller_Index()
+      miller.expand_to_p1(
         SgOps, friedel_flag, miller_indices, p1_miller_indices)
       h_dict = {}
       for i in xrange(miller_indices.size()):
         h_dict[miller_indices[i]] = 0
       for p1_h in p1_miller_indices:
-        h_asu = sgtbx.Miller_AsymIndex(p1_sgops, p1_asu, p1_h)
+        h_asu = sgtbx.miller_AsymIndex(p1_sgops, p1_asu, p1_h)
         assert h_asu.one_column(friedel_flag).H() == p1_h
         assert h_asu.H() == h_asu.one_column(1).H()
-        h_asu = sgtbx.Miller_AsymIndex(SgOps, asu, p1_h)
+        h_asu = sgtbx.miller_AsymIndex(SgOps, asu, p1_h)
         h_dict[h_asu.one_column(friedel_flag).H()] += 1
       f = 1
       if (friedel_flag): f = 2

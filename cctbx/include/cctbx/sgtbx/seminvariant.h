@@ -90,7 +90,7 @@ namespace cctbx { namespace sgtbx {
       /*! \brief Test if the phase angle of the reflection with
           given Miller index is a structure-seminvariant.
        */
-      bool is_ss(const Miller::Index& H) const;
+      bool is_ss(const miller::Index& H) const;
       /*! \brief Reduce given Miller index for establishing the
            <i>primitivity condition</i>.
        */
@@ -107,7 +107,7 @@ namespace cctbx { namespace sgtbx {
           is +1 or -1.
        */
       af::small<int, 3>
-      apply_mod(const Miller::Index& H) const;
+      apply_mod(const miller::Index& H) const;
       /*! \brief Refine gridding such that each grid point is
           mapped onto another grid point by the seminvariant
           translations.

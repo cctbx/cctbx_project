@@ -238,9 +238,9 @@ namespace cctbx { namespace uctbx {
     return true;
   }
 
-  Miller::Index UnitCell::MaxMillerIndices(double dmin) const
+  miller::Index UnitCell::MaxMillerIndices(double dmin) const
   {
-    Miller::Index MaxMIx;
+    miller::Index MaxMIx;
     int i, j;
     for(i=0;i<3;i++) {
       af::double3 u, v, uxv;
@@ -256,7 +256,7 @@ namespace cctbx { namespace uctbx {
   }
 
   af::shared<double>
-  UnitCell::Q(const af::shared<Miller::Index>& MIx) const
+  UnitCell::Q(const af::shared<miller::Index>& MIx) const
   {
     af::shared<double> result;
     result.reserve(MIx.size());
@@ -266,7 +266,7 @@ namespace cctbx { namespace uctbx {
     return result;
   }
   double
-  UnitCell::max_Q(const af::shared<Miller::Index>& MIx) const
+  UnitCell::max_Q(const af::shared<miller::Index>& MIx) const
   {
     double result = 0;
     for(std::size_t i=0;i<MIx.size();i++) {
@@ -275,7 +275,7 @@ namespace cctbx { namespace uctbx {
     return result;
   }
   af::shared<double>
-  UnitCell::stol2(const af::shared<Miller::Index>& MIx) const
+  UnitCell::stol2(const af::shared<miller::Index>& MIx) const
   {
     af::shared<double> result;
     result.reserve(MIx.size());
@@ -285,7 +285,7 @@ namespace cctbx { namespace uctbx {
     return result;
   }
   af::shared<double>
-  UnitCell::two_stol(const af::shared<Miller::Index>& MIx) const
+  UnitCell::two_stol(const af::shared<miller::Index>& MIx) const
   {
     af::shared<double> result;
     result.reserve(MIx.size());
@@ -295,7 +295,7 @@ namespace cctbx { namespace uctbx {
     return result;
   }
   af::shared<double>
-  UnitCell::stol(const af::shared<Miller::Index>& MIx) const
+  UnitCell::stol(const af::shared<miller::Index>& MIx) const
   {
     af::shared<double> result;
     result.reserve(MIx.size());
@@ -305,7 +305,7 @@ namespace cctbx { namespace uctbx {
     return result;
   }
   af::shared<double>
-  UnitCell::d(const af::shared<Miller::Index>& MIx) const
+  UnitCell::d(const af::shared<miller::Index>& MIx) const
   {
     af::shared<double> result;
     result.reserve(MIx.size());
@@ -316,7 +316,7 @@ namespace cctbx { namespace uctbx {
   }
   af::shared<double>
   UnitCell::two_theta(
-    af::shared<Miller::Index> MIx, double wavelength, bool deg) const
+    af::shared<miller::Index> MIx, double wavelength, bool deg) const
   {
     af::shared<double> result;
     result.reserve(MIx.size());

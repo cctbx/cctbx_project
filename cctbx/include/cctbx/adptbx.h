@@ -308,7 +308,7 @@ namespace cctbx {
   //! Isotropic Debye-Waller factor given Miller index and Biso.
   inline double
   DebyeWallerFactorBiso(const uctbx::UnitCell& uc,
-                        const Miller::Index& MIx,
+                        const miller::Index& MIx,
                         double Biso)
   {
     return DebyeWallerFactorBiso(uc.Q(MIx) / 4., Biso);
@@ -316,7 +316,7 @@ namespace cctbx {
   //! Isotropic Debye-Waller factor given Miller index and Uiso.
   inline double
   DebyeWallerFactorUiso(const uctbx::UnitCell& uc,
-                        const Miller::Index& MIx,
+                        const miller::Index& MIx,
                         double Uiso)
   {
     return DebyeWallerFactorBiso(uc, MIx, U_as_B(Uiso));
@@ -325,7 +325,7 @@ namespace cctbx {
   //! Anisotropic Debye-Waller factor given Miller index and Ustar.
   template <typename FloatType>
   inline FloatType
-  DebyeWallerFactorUstar(const Miller::Index& MIx,
+  DebyeWallerFactorUstar(const miller::Index& MIx,
                          const af::tiny<FloatType, 6>& Ustar)
   {
     return std::exp(-constants::two_pi_sq * (
@@ -342,7 +342,7 @@ namespace cctbx {
    */
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
-  DebyeWallerFactorUstarCoefficients(Miller::Index const& MIx,
+  DebyeWallerFactorUstarCoefficients(miller::Index const& MIx,
                                      type_holder<FloatType>)
   {
     return -constants::two_pi_sq * af::tiny<FloatType, 6>(
@@ -357,7 +357,7 @@ namespace cctbx {
   //! Anisotropic Debye-Waller factor given Miller index and beta.
   template <typename FloatType>
   inline FloatType
-  DebyeWallerFactor_beta(const Miller::Index& MIx,
+  DebyeWallerFactor_beta(const miller::Index& MIx,
                          const af::tiny<FloatType, 6>& beta)
   {
     return DebyeWallerFactorUstar(MIx, beta_as_Ustar(beta));
@@ -367,7 +367,7 @@ namespace cctbx {
   template <typename FloatType>
   inline FloatType
   DebyeWallerFactorUcif(const uctbx::UnitCell& uc,
-                        const Miller::Index& MIx,
+                        const miller::Index& MIx,
                         const af::tiny<FloatType, 6>& Ucif)
   {
     return DebyeWallerFactorUstar(MIx, Ucif_as_Ustar(uc, Ucif));
@@ -376,7 +376,7 @@ namespace cctbx {
   template <typename FloatType>
   inline FloatType
   DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
-                         const Miller::Index& MIx,
+                         const miller::Index& MIx,
                          const af::tiny<FloatType, 6>& Ucart)
   {
     return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));

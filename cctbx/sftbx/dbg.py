@@ -3,6 +3,7 @@ from cctbx.misc import python_utils
 from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
 from cctbx_boost import adptbx
+from cctbx_boost import miller
 from cctbx_boost import sftbx
 from cctbx_boost import fftbx
 from cctbx import xutils
@@ -86,8 +87,8 @@ def exercise(SgInfo,
   debug_utils.print_sites(xtal)
   friedel_flag = not (random_f_double_prime or force_complex)
   print "friedel_flag:", friedel_flag
-  MillerIndices = xutils.build_miller_indices(xtal, friedel_flag, d_min)
-  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
+  miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
+  Fcalc = xutils.calculate_structure_factors(miller_set, xtal)
   if (0):
     # to verify that correlation is significantly different from 1.
     zero_out_fpfdp(xtal)
@@ -157,19 +158,19 @@ def exercise(SgInfo,
   if (0):
     u_extra = sampled_density.u_extra()
     xtal_extra = add_u_extra(xtal, u_extra)
-    fcalc_extra = xutils.calculate_structure_factors(MillerIndices, xtal_extra)
+    fcalc_extra = xutils.calculate_structure_factors(miller_set, xtal_extra)
     debug_utils.show_structure_factor_correlation(
       "before", Fcalc.H, 0, Fcalc.F, fcalc_extra.F)
     sftbx.eliminate_u_extra(
-      xtal.UnitCell, u_extra, MillerIndices.H, fcalc_extra.F)
+      xtal.UnitCell, u_extra, miller_set.H, fcalc_extra.F)
     debug_utils.show_structure_factor_correlation(
       "after", Fcalc.H, 0, Fcalc.F, fcalc_extra.F)
-  js = shared.join_sets(MillerIndices.H, miller_indices)
+  js = miller.join_sets(miller_set.H, miller_indices)
   if (0):
-    show_joined_sets(MillerIndices.H, miller_indices, js)
-  assert js.pairs().size() + js.singles(0).size() == MillerIndices.H.size()
+    show_joined_sets(miller_set.H, miller_indices, js)
+  assert js.pairs().size() + js.singles(0).size() == miller_set.H.size()
   assert js.pairs().size() + js.singles(1).size() == miller_indices.size()
-  assert js.pairs().size() == MillerIndices.H.size()
+  assert js.pairs().size() == miller_set.H.size()
   for i in xrange(2):
     assert js.singles(i).size() == 0
   debug_utils.show_structure_factor_correlation(
@@ -232,10 +233,10 @@ def run_cns(elements, xtal, d_min, grid_resolution_factor,
     "cns_dir/cns_fft", f_dir_h, 0, f_dir_f, f_fft_f, 0.99)
   if (fcalc):
     assert fcalc.H.size() == f_dir_h.size()
-    asym_f_dir = sftbx.map_to_asym_index(
+    asym_f_dir = miller.map_to_asu(
       xtal.SgInfo, friedel_flag, f_dir_h, f_dir_f)
     cns_h = asym_f_dir.asym_miller_indices()
-    js = shared.join_sets(fcalc.H, cns_h)
+    js = miller.join_sets(fcalc.H, cns_h)
     if (0):
       show_joined_sets(fcalc.H, cns_h, js)
     assert js.pairs().size() == fcalc.H.size()

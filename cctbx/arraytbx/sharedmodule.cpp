@@ -194,7 +194,7 @@ namespace {
     WRAP_TYPE("complex_double", std::complex<double>);
     WRAP_TYPE("std_string", std::string);
 
-    WRAP_TYPE("Miller_Index", cctbx::Miller::Index);
+    WRAP_TYPE("miller_Index", cctbx::miller::Index);
     WRAP_TYPE("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
     WRAP_TYPE("RTMx", cctbx::sgtbx::RTMx);
     WRAP_TYPE("XrayScatterer", XrayScatterer);
@@ -225,9 +225,6 @@ namespace {
     class_builder<ex_statistics<double> >
     py_statistics(this_module, "statistics");
 
-    class_builder<cctbx::Miller::join_sets>
-    py_join_sets(this_module, "join_sets");
-
     py_linear_regression.def(constructor<>());
     py_linear_regression.def(constructor<
       const cctbx::af::shared<double>&,
@@ -252,14 +249,6 @@ namespace {
     py_statistics.def(&ex_statistics<double>::mean, "mean");
     py_statistics.def(&ex_statistics<double>::mean2, "mean2");
     py_statistics.def(&ex_statistics<double>::sigma, "sigma");
-
-    py_join_sets.def(constructor<>());
-    py_join_sets.def(constructor<
-      cctbx::af::shared<cctbx::Miller::Index>,
-      cctbx::af::shared<cctbx::Miller::Index> >());
-    py_join_sets.def(&cctbx::Miller::join_sets::pairs, "pairs");
-    py_join_sets.def(&cctbx::Miller::join_sets::singles, "singles");
-    py_join_sets.def(&cctbx::Miller::join_sets::have_singles, "have_singles");
   }
 
 }

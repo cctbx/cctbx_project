@@ -9,6 +9,7 @@ softlinks:
 	cd misc; make softlinks
 	cd uctbx; make softlinks
 	cd sgtbx; make softlinks
+	cd miller; make softlinks
 	cd arraytbx; make softlinks
 	cd adptbx; make softlinks
 	cd eltbx; make softlinks
@@ -24,6 +25,7 @@ unlink:
 	cd misc; make unlink
 	cd uctbx; make unlink
 	cd sgtbx; make unlink
+	cd miller; make unlink
 	cd arraytbx; make unlink
 	cd adptbx; make unlink
 	cd eltbx; make unlink
@@ -39,6 +41,7 @@ cp:
 	cd misc; make cp
 	cd uctbx; make cp
 	cd sgtbx; make cp
+	cd miller; make cp
 	cd arraytbx; make cp
 	cd adptbx; make cp
 	cd eltbx; make cp
@@ -54,6 +57,7 @@ rm:
 	cd misc; make rm
 	cd uctbx; make rm
 	cd sgtbx; make rm
+	cd miller; make rm
 	cd arraytbx; make rm
 	cd adptbx; make rm
 	cd eltbx; make rm
@@ -69,6 +73,7 @@ clean:
 	cd misc; make clean
 	cd uctbx; make clean
 	cd sgtbx; make clean
+	cd miller; make clean
 	cd arraytbx; make clean
 	cd adptbx; make clean
 	cd eltbx; make clean
@@ -87,6 +92,7 @@ depend:
 	cd misc; make -f Makefile.nodepend depend > Makefile
 	cd uctbx; make -f Makefile.nodepend depend > Makefile
 	cd sgtbx; make -f Makefile.nodepend depend > Makefile
+	cd miller; make -f Makefile.nodepend depend > Makefile
 	cd arraytbx; make -f Makefile.nodepend depend > Makefile
 	cd adptbx; make -f Makefile.nodepend depend > Makefile
 	cd eltbx; make -f Makefile.nodepend depend > Makefile
@@ -101,6 +107,7 @@ libraries:
 	cd misc; make libraries
 	cd uctbx; make libraries
 	cd sgtbx; make libraries
+	cd miller; make libraries
 	cd eltbx; make libraries
 
 executables:
@@ -117,6 +124,7 @@ all:
 	cd misc; make
 	cd uctbx; make
 	cd sgtbx; make
+	cd miller; make
 	cd arraytbx; make
 	cd adptbx; make
 	cd eltbx; make

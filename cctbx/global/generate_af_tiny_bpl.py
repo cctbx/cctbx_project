@@ -32,7 +32,7 @@ def one_definition(T, N, declaration):
     if (tup.size() != result.size()) {
       PyErr_SetString(PyExc_ValueError,
         "incorrect number of values in tuple.");
-      throw boost::python::error_already_set();
+      boost::python::throw_error_already_set();
     }
     for(int i=0;i<result.size();i++) {
       result[i] = from_python(tup[i].get(), boost::python::type<%s>());

@@ -19,7 +19,7 @@ namespace cctbx { namespace sgtbx {
 
   PhaseInfo::PhaseInfo(
     SpaceGroup const& sgops,
-    Miller::Index const& h,
+    miller::Index const& h,
     bool no_test_sys_absent)
     : m_HT(-1), m_TBF(sgops.TBF()), m_SysAbsWasTested(!no_test_sys_absent)
   {
@@ -48,7 +48,7 @@ namespace cctbx { namespace sgtbx {
       const TrVec& T = sgops[iSMx].Tpart();
       TrVec TS(0);
       TrVec TR(0);
-      Miller::Index HR = h * R;
+      miller::Index HR = h * R;
       if      (h == HR) {
         TS = T;
         if (sgops.isCentric()) TR = sgops.InvT() - T;
@@ -79,7 +79,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   af::shared<bool>
-  SpaceGroup::isSysAbsent(af::shared<Miller::Index> H) const
+  SpaceGroup::isSysAbsent(af::shared<miller::Index> H) const
   {
     af::shared<bool> result;
     result.reserve(H.size());
@@ -89,7 +89,7 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  bool SpaceGroup::isCentric(const Miller::Index& H) const
+  bool SpaceGroup::isCentric(const miller::Index& H) const
   {
     if (isCentric()) return true;
     rangei(m_nSMx) {
@@ -99,7 +99,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   af::shared<bool>
-  SpaceGroup::isCentric(const af::shared<Miller::Index>& H) const
+  SpaceGroup::isCentric(const af::shared<miller::Index>& H) const
   {
     af::shared<bool> result;
     result.reserve(H.size());
@@ -109,11 +109,11 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  int SpaceGroup::epsilon(const Miller::Index& H) const
+  int SpaceGroup::epsilon(const miller::Index& H) const
   {
     int result = 0;
     rangei(m_nSMx) {
-      Miller::Index HR = H * m_SMx[i].Rpart();
+      miller::Index HR = H * m_SMx[i].Rpart();
       if (HR == H || (isCentric() && HR == -H))
         result++;
     }
@@ -122,7 +122,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   af::shared<int>
-  SpaceGroup::epsilon(const af::shared<Miller::Index>& H) const
+  SpaceGroup::epsilon(const af::shared<miller::Index>& H) const
   {
     af::shared<int> result;
     result.reserve(H.size());
@@ -132,14 +132,14 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  int SpaceGroup::multiplicity(const Miller::Index& H, bool FriedelFlag) const
+  int SpaceGroup::multiplicity(const miller::Index& H, bool FriedelFlag) const
   {
     if (H.is000()) return 1;
     int Centro = (isCentric() || FriedelFlag);
     int M = 0;
     int R = 0;
     rangei(m_nSMx) {
-      Miller::Index HR = H * m_SMx[i].Rpart();
+      miller::Index HR = H * m_SMx[i].Rpart();
       if      (HR == H) M++;
       else if (HR == -H) R++;
     }
@@ -150,7 +150,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   af::shared<int>
-  SpaceGroup::multiplicity(const af::shared<Miller::Index>& H,
+  SpaceGroup::multiplicity(const af::shared<miller::Index>& H,
                            bool FriedelFlag) const
   {
     af::shared<int> result;
@@ -187,7 +187,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   SymEquivMillerIndices
-  SpaceGroup::getEquivMillerIndices(const Miller::Index& H) const
+  SpaceGroup::getEquivMillerIndices(const miller::Index& H) const
   {
     SymEquivMillerIndices SEMI(TBF(), OrderP());
     int iInv;
@@ -195,7 +195,7 @@ namespace cctbx { namespace sgtbx {
       int iSMx;
       for(iSMx=0;iSMx<m_nSMx;iSMx++) {
         RTMx M = operator()(0, iInv, iSMx);
-        Miller::Index HR = H * M.Rpart();
+        miller::Index HR = H * M.Rpart();
         bool found = false;
         for (int i = 0; i < SEMI.N(); i++) {
           if (SEMI[i].HR() == HR) {
@@ -205,7 +205,7 @@ namespace cctbx { namespace sgtbx {
         }
         if (!found) {
           SEMI.add(
-            Miller::SymEquivIndex(HR, HT_mod_1(H, M.Tpart()), TBF(), false));
+            miller::SymEquivIndex(HR, HT_mod_1(H, M.Tpart()), TBF(), false));
         }
       }
     }
@@ -214,7 +214,7 @@ namespace cctbx { namespace sgtbx {
     return SEMI;
   }
 
-  void SymEquivMillerIndices::add(const Miller::SymEquivIndex& SEI)
+  void SymEquivMillerIndices::add(const miller::SymEquivIndex& SEI)
   {
     m_List.push_back(SEI);
     if (m_List.size() > 1) {
@@ -225,7 +225,7 @@ namespace cctbx { namespace sgtbx {
     }
   }
 
-  Miller::SymEquivIndex
+  miller::SymEquivIndex
   SymEquivMillerIndices::operator()(int iMate, int iList) const
   {
     if (   iMate < 0 || iMate >= fMates(true)
@@ -245,17 +245,17 @@ namespace cctbx { namespace sgtbx {
     return iIL_decomposition(iIL / N(), iIL % N());
   }
 
-  Miller::SymEquivIndex
+  miller::SymEquivIndex
   SymEquivMillerIndices::operator()(int iIL) const
   {
     iIL_decomposition d = decompose_iIL(iIL);
     return operator()(d.iMate, d.iList);
   }
 
-  af::shared<Miller::SymEquivIndex>
+  af::shared<miller::SymEquivIndex>
   SymEquivMillerIndices::p1_listing(bool friedel_flag) const
   {
-    af::shared<Miller::SymEquivIndex> result;
+    af::shared<miller::SymEquivIndex> result;
     if (!friedel_flag) {
       result.reserve(N());
       for(std::size_t i=0;i<N();i++) result.push_back(m_List[i]);
@@ -264,7 +264,7 @@ namespace cctbx { namespace sgtbx {
       if (isCentric()) result.reserve(N() / 2);
       else             result.reserve(N());
       for(std::size_t i=0;i<M(true);i++) {
-        Miller::SymEquivIndex h_eq = operator()(i);
+        miller::SymEquivIndex h_eq = operator()(i);
         if (isInReferenceReciprocalSpaceASU_1b(h_eq.H())) {
           result.push_back(h_eq);
         }

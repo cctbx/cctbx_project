@@ -25,6 +25,7 @@ from cctbx_boost import sgtbx
 from cctbx_boost import uctbx
 from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
 from cctbx_boost import adptbx
+from cctbx_boost import miller
 from cctbx_boost import sftbx
 
 print "sgtbx version:", sgtbx.__version__
@@ -197,7 +198,7 @@ if (__name__ == "__main__"):
     InTable = 0
     print
 
-    MillerIndices = sftbx.BuildMillerIndices(UnitCell, SgInfo, 1, d_min)
+    MillerIndices = miller.BuildIndices(UnitCell, SgInfo, 1, d_min)
     Fcalc = sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites)
 
     print "Number of Miller indices:", len(Fcalc)

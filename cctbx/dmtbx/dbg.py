@@ -1,6 +1,7 @@
 import sys, os, math
 from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
+from cctbx_boost import miller
 from cctbx_boost import sftbx
 from cctbx_boost import fftbx
 from cctbx import xutils
@@ -59,7 +60,7 @@ def raise_emap(xtal, e000, p1_miller_indices,
                use_e000, zero_out_negative,
                exponent=2,
                verbose=0):
-  index_span = sftbx.index_span(p1_miller_indices)
+  index_span = miller.index_span(p1_miller_indices)
   # XXX index_span = xtal.SgOps.get_index_span(miller_indices)
   if (0 or verbose):
     print "index_span:"
@@ -106,11 +107,11 @@ def raise_emap(xtal, e000, p1_miller_indices,
         new_phases[i]*180/math.pi)
   return new_phases
 
-def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
+def test_triplet_invariants(sginfo, miller_indices, e_values, phases,
                             other_than_sigma_2,
                             verbose):
   tprs = dmtbx.triplet_invariants(
-    sginfo, miller_indices_h, 1, other_than_sigma_2)
+    sginfo, miller_indices, 1, other_than_sigma_2)
   print "number_of_weighted_triplets:", \
        tprs.number_of_weighted_triplets()
   print "total_number_of_triplets:", \
@@ -120,13 +121,13 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
   new_phases = tprs.apply_tangent_formula(e_values, phases)
   mean_weighted_phase_error = compute_mean_weighted_phase_error(
     tprs,
-    sginfo.SgOps(), miller_indices_h, e_values, phases, new_phases,
+    sginfo.SgOps(), miller_indices, e_values, phases, new_phases,
     verbose)
   print "mean weighted phase error: %.2f" % (mean_weighted_phase_error,)
   if (0 or verbose):
-    tprs.dump_triplets(miller_indices_h)
+    tprs.dump_triplets(miller_indices)
   if (0 or verbose):
-    tprs.weights_and_epsilon(sginfo, miller_indices_h)
+    tprs.weights_and_epsilon(sginfo, miller_indices)
   return tprs
 
 class simulated_data:
@@ -149,31 +150,31 @@ class simulated_data:
     print "Unit cell:", xtal.UnitCell
     print "Space group:", xtal.SgInfo.BuildLookupSymbol()
     debug_utils.print_sites(xtal)
-    MillerIndices = xutils.build_miller_indices(
+    miller_set = xutils.build_miller_set(
       xtal, friedel_flag=1,d_min=d_min)
     if (0):
-      MillerIndices.H = shared.Miller_Index()
-      MillerIndices.H.append((0,2,0))
-      MillerIndices.H.append((1,1,15))
-    MillerIndices.H.append((0,0,0))
-    Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=1)
-    print "F000:", Fcalc.F[MillerIndices.H.size()-1]
+      miller_set.H = shared.miller_Index()
+      miller_set.H.append((0,2,0))
+      miller_set.H.append((1,1,15))
+    miller_set.H.append((0,0,0))
+    Fcalc = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
+    print "F000:", Fcalc.F[miller_set.H.size()-1]
     e_values = Fcalc.F
     inplace_divide(
       e_values, math.sqrt(xtal.SgOps.OrderZ() * number_of_point_atoms))
-    e000 = e_values[MillerIndices.H.size()-1]
+    e000 = e_values[miller_set.H.size()-1]
     print "E000:", e000
-    MillerIndices.H.pop_back()
+    miller_set.H.pop_back()
     e_values.pop_back()
-    dmtbx.inplace_sort(MillerIndices.H, e_values, 1)
+    dmtbx.inplace_sort(miller_set.H, e_values, 1)
     s = shared.statistics(e_values)
     print "mean2:", s.mean2()
     print "number of structure factors:", e_values.size()
-    erase_small(MillerIndices.H, e_values, e_min)
+    erase_small(miller_set.H, e_values, e_min)
     print "number of structure factors:", e_values.size()
     if (0): # XXX
-      normalize_quasi_normalized(xtal.SgOps, MillerIndices.H, e_values)
-    Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=0)
+      normalize_quasi_normalized(xtal.SgOps, miller_set.H, e_values)
+    Fcalc = xutils.calculate_structure_factors(miller_set, xtal, abs_F=0)
     dummy, phases = ampl_phase(Fcalc.F) # XXX use shared.arg()
     Fcalc.F = e_values
     if (0 or verbose):
@@ -181,7 +182,7 @@ class simulated_data:
     if (0 or verbose):
       show_ampl_phases(Fcalc.H, e_values, phases)
     self.xtal = xtal
-    self.miller_indices = MillerIndices
+    self.miller_set = miller_set
     self.e_values = e_values
     self.phases = phases
     self.e000 = e000
@@ -197,12 +198,12 @@ def exercise(SgInfo,
              zero_out_negative=0,
              verbose=0):
   sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
-  p1_H = shared.Miller_Index()
+  p1_H = shared.miller_Index()
   p1_e_values = shared.double()
   p1_phases = shared.double()
-  sgtbx.expand_to_p1(
+  miller.expand_to_p1(
     sim.xtal.SgOps, 1,
-    sim.miller_indices.H, sim.e_values, sim.phases,
+    sim.miller_set.H, sim.e_values, sim.phases,
     p1_H, p1_e_values, p1_phases)
   print "number of structure factors p1:", p1_H.size()
   if (0 or verbose):
@@ -210,21 +211,21 @@ def exercise(SgInfo,
   tprs_sg = None
   if (exercise_triplets):
     tprs_sg = test_triplet_invariants(
-      sim.xtal.SgInfo, sim.miller_indices.H, sim.e_values, sim.phases,
+      sim.xtal.SgInfo, sim.miller_set.H, sim.e_values, sim.phases,
       other_than_sigma_2, verbose)
     if (other_than_sigma_2):
       tprs_p1 = test_triplet_invariants(
         sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, 1, verbose)
       sg_new_phases = tprs_sg.apply_tangent_formula(sim.e_values, sim.phases)
       p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
-      ref_p1_H = shared.Miller_Index()
+      ref_p1_H = shared.miller_Index()
       ref_p1_e_values = shared.double()
       ref_p1_phases = shared.double()
-      sgtbx.expand_to_p1(
+      miller.expand_to_p1(
         sim.xtal.SgOps, 1,
-        sim.miller_indices.H, sim.e_values, sg_new_phases,
+        sim.miller_set.H, sim.e_values, sg_new_phases,
         ref_p1_H, ref_p1_e_values, ref_p1_phases)
-      js = shared.join_sets(ref_p1_H, p1_H)
+      js = miller.join_sets(ref_p1_H, p1_H)
       assert not js.have_singles()
       for i,j in js.pairs():
         phase_error = debug_utils.phase_error(
@@ -242,14 +243,14 @@ def exercise(SgInfo,
         print
   if (exercise_squaring):
     new_phases = raise_emap(
-      sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, sim.phases,
+      sim.xtal, sim.e000, p1_H, sim.miller_set.H, sim.e_values, sim.phases,
       use_e000, zero_out_negative)
     tprs_plus = [tprs_sg]
     if (tprs_sg != None): tprs_plus.append(None)
     for t in tprs_plus:
       mwpe = compute_mean_weighted_phase_error(
         t,
-        sim.miller_indices.SgOps, sim.miller_indices.H,
+        sim.miller_set.SgOps, sim.miller_set.H,
         sim.e_values, sim.phases, new_phases,
         verbose)
       print "squaring mean weighted phase error: %.2f" % (mwpe,)
@@ -320,17 +321,17 @@ def recycle(SgInfo,
   sim_emma_model = xtal_as_emma_model(sim.xtal)
   if (0 or verbose):
     sim_emma_model.show("Random model")
-  p1_H = shared.Miller_Index()
-  sgtbx.expand_to_p1(sim.xtal.SgOps, 1, sim.miller_indices.H, p1_H)
+  p1_H = shared.miller_Index()
+  miller.expand_to_p1(sim.xtal.SgOps, 1, sim.miller_set.H, p1_H)
   map_calculator = map_from_ampl_phases(sim.xtal, d_min)
   print "Nreal:", map_calculator.rfft.Nreal()
   print "Mreal:", map_calculator.rfft.Mreal()
   LookupSymbol = SgInfo.BuildLookupSymbol()
   for i_trial in xrange(n_trials):
     random_phi = debug_utils.random_phases(
-      sim.xtal.SgOps, sim.miller_indices.H, sim.e_values)
+      sim.xtal.SgOps, sim.miller_set.H, sim.e_values)
     if (0 or verbose):
-      show_ampl_phases(sim.miller_indices.H, sim.e_values, random_phi)
+      show_ampl_phases(sim.miller_set.H, sim.e_values, random_phi)
     for exponent in [2]:
       new_phases = random_phi
       if (0): # XXX
@@ -344,13 +345,13 @@ def recycle(SgInfo,
         sys.stdout.flush()
         new_phases = raise_emap(
           sim.xtal, sim.e000,
-          p1_H, sim.miller_indices.H, sim.e_values, new_phases,
+          p1_H, sim.miller_set.H, sim.e_values, new_phases,
           use_e000, zero_out_negative, exponent=exponent)
         use_emma = (cycle == 0 or cycle == n_cycles_per_trial-1)
         if (use_emma):
           if (0): # XXX
             new_phases = sim.phases
-          map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
+          map = map_calculator(sim.miller_set.H, sim.e_values, new_phases)
           peak_list = map_calculator.get_peak_list(map, 3, 20)
           if (0 or verbose):
             for peak in peak_list:

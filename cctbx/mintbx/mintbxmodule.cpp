@@ -37,9 +37,9 @@ namespace {
     python::import_converters<af::shared<double> >
     py_shared_double("cctbx_boost.arraytbx.shared", "double");
 
-    python::import_converters<af::shared<Miller::Index> >
-    py_shared_Miller_Index(
-      "cctbx_boost.arraytbx.shared", "Miller_Index");
+    python::import_converters<af::shared<miller::Index> >
+    py_shared_miller_Index(
+      "cctbx_boost.arraytbx.shared", "miller_Index");
 
     typedef k_b_scaling_target_and_gradients<double> kbstg;
     class_builder<kbstg>
@@ -48,7 +48,7 @@ namespace {
     py_kbstg.def(constructor<>());
     py_kbstg.def(constructor<
       uctbx::UnitCell const&,
-      af::shared<Miller::Index>,
+      af::shared<miller::Index>,
       af::shared<int>,
       af::shared<double>,
       af::shared<double>,
@@ -59,7 +59,7 @@ namespace {
       >());
     py_kbstg.def(constructor<
       uctbx::UnitCell const&,
-      af::shared<Miller::Index>,
+      af::shared<miller::Index>,
       af::shared<int>,
       af::shared<double>,
       af::shared<double>,

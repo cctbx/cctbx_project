@@ -17,23 +17,23 @@
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 
   inline
-  cctbx::Miller::Index from_python(PyObject* p,
-    boost::python::type<const cctbx::Miller::Index&>)
+  cctbx::miller::Index from_python(PyObject* p,
+    boost::python::type<const cctbx::miller::Index&>)
   {
-    return cctbx::Miller::Index(from_python(p,
+    return cctbx::miller::Index(from_python(p,
       boost::python::type<const cctbx::af::int3&>()));
   }
 
   inline
-  cctbx::Miller::Index from_python(PyObject* p,
-    boost::python::type<cctbx::Miller::Index>)
+  cctbx::miller::Index from_python(PyObject* p,
+    boost::python::type<cctbx::miller::Index>)
   {
-    return cctbx::Miller::Index(from_python(p,
+    return cctbx::miller::Index(from_python(p,
       boost::python::type<const cctbx::af::int3&>()));
   }
 
   inline
-  PyObject* to_python(const cctbx::Miller::Index& MIx) {
+  PyObject* to_python(const cctbx::miller::Index& MIx) {
     return to_python(static_cast<const cctbx::af::int3&>(MIx));
   }
 

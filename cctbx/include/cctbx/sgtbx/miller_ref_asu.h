@@ -49,18 +49,18 @@ namespace cctbx { namespace sgtbx {
         throw cctbx_internal_error();
       }
       //! Test if given Miller index is in the tabulated asymmetric unit.
-      virtual bool isInASU(const Miller::Index& H) const {
+      virtual bool isInASU(const miller::Index& H) const {
         throw cctbx_internal_error();
       }
       //! XXX
-      int asu_sign(const Miller::Index& h,
-                   const Miller::Index& minus_h) const {
+      int asu_sign(const miller::Index& h,
+                   const miller::Index& minus_h) const {
         if      (isInASU(      h)) return  1;
         else if (isInASU(minus_h)) return -1;
         return 0;
       }
       //! XXX
-      int asu_sign(const Miller::Index& h) const {
+      int asu_sign(const miller::Index& h) const {
         return asu_sign(h, -h);
       }
       //! String representation of the tabluated asymmetric unit.
@@ -96,7 +96,7 @@ namespace cctbx { namespace sgtbx {
       }
   };
 
-  bool isInReferenceReciprocalSpaceASU_1b(Miller::Index const& h);
+  bool isInReferenceReciprocalSpaceASU_1b(miller::Index const& h);
 
   const ReferenceReciprocalSpaceASU*
   LookupReferenceReciprocalSpaceASU(

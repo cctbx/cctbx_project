@@ -279,7 +279,7 @@ namespace cctbx { namespace sgtbx {
     std::sort(m_VM.begin(), m_VM.end(), Cmp_ssVM());
   }
 
-  bool StructureSeminvariant::is_ss(const Miller::Index& H) const
+  bool StructureSeminvariant::is_ss(const miller::Index& H) const
   {
     for(std::size_t i=0;i<m_VM.size();i++) {
       int u = af::sum(m_VM[i].V * H);
@@ -294,7 +294,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   af::small<int, 3>
-  StructureSeminvariant::apply_mod(const Miller::Index& H) const
+  StructureSeminvariant::apply_mod(const miller::Index& H) const
   {
     af::small<int, 3> result;
     for(std::size_t i=0;i<m_VM.size();i++) {

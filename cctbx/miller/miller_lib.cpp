@@ -1,0 +1,204 @@
+// $Id$
+/* Copyright (c) 2001 The Regents of the University of California through
+   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
+   U.S. Department of Energy. See files COPYRIGHT.txt and
+   cctbx/LICENSE.txt for further details.
+
+   Revision history:
+     Jul 2002: Created (R.W. Grosse-Kunstleve)
+ */
+
+#include <cctbx/miller/build.h>
+#include <cctbx/miller/join.h>
+
+namespace cctbx { namespace miller {
+
+  void IndexGenerator::InitializeLoop(Index const& ReferenceHmax)
+  {
+    af::int3 CutP = m_ASU.ReferenceASU()->getCutParameters();
+    Index ReferenceHbegin;
+    Index ReferenceHend;
+    for(std::size_t i=0;i<3;i++) {
+      ReferenceHbegin[i] = ReferenceHmax[i] * CutP[i];
+      ReferenceHend[i] = ReferenceHmax[i] + 1;
+    }
+    m_loop = af::nested_loop<Index>(ReferenceHbegin, ReferenceHend);
+    m_next_is_minus_previous = false;
+  }
+
+  IndexGenerator::IndexGenerator(uctbx::UnitCell const& uc,
+                                 sgtbx::SpaceGroupInfo const& SgInfo,
+                                 bool FriedelFlag,
+                                 double Resolution_d_min)
+    : m_UnitCell(uc),
+      m_SgNumber(SgInfo.SgNumber()),
+      m_SgOps(SgInfo.SgOps()),
+      m_FriedelFlag(FriedelFlag),
+      m_ASU(SgInfo)
+  {
+    if (Resolution_d_min <= 0.) {
+      throw error("Resolution limit must be greater than zero.");
+    }
+    m_Qhigh = 1. / (Resolution_d_min * Resolution_d_min);
+    uctbx::UnitCell
+    ReferenceUnitCell = m_UnitCell.ChangeBasis(SgInfo.CBOp().InvM().Rpart());
+    InitializeLoop(ReferenceUnitCell.MaxMillerIndices(Resolution_d_min));
+  }
+
+  IndexGenerator::IndexGenerator(sgtbx::SpaceGroupInfo const& SgInfo,
+                                 bool FriedelFlag,
+                                 Index const& MaxIndex)
+    : m_UnitCell(),
+      m_SgNumber(SgInfo.SgNumber()),
+      m_SgOps(SgInfo.SgOps()),
+      m_FriedelFlag(FriedelFlag),
+      m_ASU(SgInfo),
+      m_Qhigh(-1.)
+  {
+    InitializeLoop(Index(af::abs(MaxIndex)));
+  }
+
+  bool IndexGenerator::set_phase_info(Index const& h)
+  {
+    m_phase_info = sgtbx::PhaseInfo(m_SgOps, h, false);
+    return m_phase_info.isSysAbsent();
+  }
+
+  Index IndexGenerator::next_under_friedel_symmetry()
+  {
+    const int RBF = m_ASU.CBOp().M().RBF();
+    for (; m_loop.over() == 0;) {
+      Index ReferenceH = m_loop();
+      m_loop.incr();
+      if (m_ASU.ReferenceASU()->isInASU(ReferenceH)) {
+        if (m_ASU.isReferenceASU()) {
+          if (m_Qhigh < 0.) {
+            if (!ReferenceH.is000() && !set_phase_info(ReferenceH)) {
+              return ReferenceH;
+            }
+          }
+          else {
+            double Q = m_UnitCell.Q(ReferenceH);
+            if (Q != 0 && Q <= m_Qhigh && !set_phase_info(ReferenceH)) {
+              return ReferenceH;
+            }
+          }
+        }
+        else {
+          sgtbx::TrVec HR(ReferenceH * m_ASU.CBOp().M().Rpart(), RBF);
+          HR = HR.cancel();
+          if (HR.BF() == 1) {
+            Index H(HR.vec());
+            if (m_Qhigh < 0.) {
+              if (!H.is000() && !set_phase_info(H)) {
+                return H;
+              }
+            }
+            else {
+              double Q = m_UnitCell.Q(H);
+              if (Q != 0 && Q <= m_Qhigh && !set_phase_info(H)) {
+                return H;
+              }
+            }
+          }
+        }
+      }
+    }
+    return Index(0, 0, 0);
+  }
+
+  Index IndexGenerator::next()
+  {
+    if (m_FriedelFlag) return next_under_friedel_symmetry();
+    if (m_next_is_minus_previous) {
+      m_next_is_minus_previous = false;
+      return -m_previous;
+    }
+    m_previous = next_under_friedel_symmetry();
+    if (m_previous.is000()) return m_previous;
+    m_next_is_minus_previous = !m_phase_info.isCentric();
+    if (m_next_is_minus_previous && 143 <= m_SgNumber && m_SgNumber <= 167) {
+      // For trigonal space groups it has to be checked if a symmetrically
+      // equivalent index of the Friedel opposite is in the ASU.
+      cctbx_assert(!m_SgOps.isCentric());
+      Index minus_h = -m_previous;
+      for(int i=0;i<m_SgOps.nSMx();i++) {
+        Index minus_h_eq = minus_h * m_SgOps[i].Rpart();
+        if (m_ASU.isInASU(minus_h_eq)) {
+          m_next_is_minus_previous = false;
+          break;
+        }
+      }
+    }
+    return m_previous;
+  }
+
+  join_sets::join_sets(
+    af::shared<Index> a1,
+    af::shared<Index> a2)
+  {
+    typedef std::map<Index, std::size_t> lookup_map_type;
+    lookup_map_type lookup_map;
+    std::size_t i;
+    for(i=0;i<a2.size();i++) lookup_map[a2[i]] = i;
+    std::vector<bool> a2_flags(a2.size(), false);
+    for(i=0;i<a1.size();i++) {
+      lookup_map_type::const_iterator l = lookup_map.find(a1[i]);
+      if (l == lookup_map.end()) {
+        singles_[0].push_back(i);
+      }
+      else {
+        pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
+        a2_flags[l->second] = true;
+      }
+    }
+    for(i=0;i<a2.size();i++) {
+      if (!a2_flags[i]) singles_[1].push_back(i);
+    }
+  }
+
+  void join_bijvoet_mates::join_(
+    sgtbx::ReciprocalSpaceASU const& asu,
+    af::shared<Index> miller_indices)
+  {
+    typedef std::map<Index, std::size_t> lookup_map_type;
+    lookup_map_type lookup_map;
+    std::size_t i;
+    for(i=0;i<miller_indices.size();i++) {
+      lookup_map[miller_indices[i]] = i;
+    }
+    std::vector<bool> paired_already(miller_indices.size(), false);
+    for(i=0;i<miller_indices.size();i++) {
+      if (paired_already[i]) continue;
+      lookup_map_type::const_iterator l = lookup_map.find(-miller_indices[i]);
+      if (l == lookup_map.end()) {
+        singles_.push_back(i);
+      }
+      else {
+        int asu_sign = asu.asu_sign(miller_indices[i]);
+        cctbx_assert(asu_sign != 0 || miller_indices[i].is000());
+        if (asu_sign > 0) {
+          pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
+        }
+        else {
+          pairs_.push_back(af::tiny<std::size_t, 2>(l->second, i));
+        }
+        paired_already[l->second] = true;
+      }
+    }
+  }
+
+  af::shared<Index>
+  join_bijvoet_mates::select(af::shared<Index> miller_indices, bool plus) const
+  {
+    std::size_t j = 0;
+    if (!plus) j = 1;
+    af::shared<Index> result;
+    result.reserve(pairs_.size());
+    for(std::size_t i=0;i<pairs_.size();i++) {
+      result.push_back(miller_indices[pairs_[i][j]]);
+    }
+    return result;
+  }
+
+}} // namespace cctbx::miller
