@@ -188,7 +188,10 @@ class definition: # FUTURE definition(object)
     keyword_args["words"] = words
     return definition(**keyword_args)
 
-  def merge(self, source):
+  def fetch(self, source, variable_substitution_scope=None):
+    if (variable_substitution_scope):
+      source = variable_substitution_scope.variable_substitution(
+        object=source, path_memory={})
     if (self.type not in ["choice", "multi_choice"]):
       return self.copy(source.words)
     flags = {}
@@ -565,11 +568,6 @@ class scope:
     del path_memory[path]
     return scope(name="", objects=result_sub)
 
-  def get_last(self, path, with_substitution=True):
-    all = self.get(path=path, with_substitution=with_substitution)
-    if (len(all.objects) == 0): return None
-    return all.objects[-1]
-
   def extract(self, custom_converters=None):
     result = scope_extract()
     for object in self.objects:
@@ -594,12 +592,9 @@ class scope:
           result.append(object.format(sub_python_object, custom_converters))
     return self.copy(objects=result)
 
-  def extract_last(self, path, with_substitution=True, custom_converters=None):
-    raw = self.get_last(path=path, with_substitution=with_substitution)
-    if (raw is None): return None
-    return raw.extract(custom_converters=custom_converters)
-
-  def _merge(self, source):
+  def _fetch(self, source, variable_substitution_scope=None):
+    if (variable_substitution_scope is None):
+      variable_substitution_scope = source
     result_objects = []
     master_lookup_dict = {}
     for master_object in self.objects:
@@ -610,48 +605,41 @@ class scope:
     for source_object in source.objects:
       if (source_object.is_disabled): continue
       master_object = master_lookup_dict.get(source_object.name, None)
-      if (master_object is None):
-        result_objects.append(source_object)
-      else:
+      if (master_object is not None):
         if (master_use[source_object.name] == -1):
           master_use[source_object.name] = len(result_objects)
         else:
           master_use[source_object.name] = -2
-        result_objects.append(master_object.merge(source=source_object))
+        result_objects.append(master_object.fetch(
+         source=source_object,
+         variable_substitution_scope=variable_substitution_scope))
     for master_object in self.objects:
       use = master_use[master_object.name]
       if (use == -1):
         result_objects.append(copy.deepcopy(master_object))
-        if (    master_object.multiple
-            and master_object.optional):
+        if (master_object.multiple and master_object.optional):
           result_objects[-1].is_disabled = True
       elif (use >= 0
-            and master_object.multiple
-            and master_object.optional
+            and master_object.multiple and master_object.optional
             and master_object.has_same_definitions(result_objects[use])):
         result_objects[use].is_disabled = True
     return result_objects
 
-  def merge(self, source=None, sources=None):
+  def fetch(self, source=None, sources=None, variable_substitution_scope=None):
     assert [source, sources].count(None) == 1
     if (source is not None):
-      return self.copy(objects=self._merge(source=source))
+      return self.copy(objects=self._fetch(
+        source=source,
+        variable_substitution_scope=variable_substitution_scope))
     elif (len(sources) == 0):
       return self
     else:
       objects = []
       for source in sources:
-        objects.extend(self._merge(source=source))
+        objects.extend(self._fetch(
+          source=source,
+          variable_substitution_scope=variable_substitution_scope))
       return self.copy(objects=objects)
-
-  def merge_and_extract(self,
-        source=None,
-        sources=None,
-        custom_converters=None):
-    return scope_extractor(
-      master=self,
-      custom=self.merge(source=source, sources=sources),
-      custom_converters=custom_converters)
 
   def variable_substitution(self, object, path_memory):
     new_words = []
@@ -718,31 +706,6 @@ class scope:
               reference_directory=os.path.dirname(file_name_normalized),
               include_memory=include_memory).objects)
     return scope(name="", objects=result)
-
-class scope_extractor:
-
-  def __init__(self, master, custom, custom_converters):
-    self.__custom__ = custom
-    self.__master__ = master
-    for object in master.objects:
-      attr_name = object.name.split(".")[-1]
-      assert attr_name not in ["__custom__", "__master__"]
-      setattr(self, attr_name, custom.extract_last(
-        path=object.name, custom_converters=custom_converters))
-
-  def format(self):
-    scopes = []
-    for scope_object in self.__master__.objects:
-      assert isinstance(scope_object, scope) # not implemented
-      attr_name = scope_object.name.split(".")[-1]
-      py_scope = getattr(self, attr_name)
-      definitions = []
-      for definition_object in scope_object.objects:
-        assert isinstance(definition_object, definition) # not implemented
-        value = getattr(py_scope, definition_object.name)
-        definitions.append(definition_object.format(value))
-      scopes.append(scope_object.copy(objects=definitions))
-    return scope(name="", objects=scopes)
 
 class variable_substitution_fragment(object):
 
