@@ -242,6 +242,19 @@ class array(set):
       data=new_data,
       sigmas=new_sigmas)
 
+  def phase_transfer(self, phase_source, epsilon=1.e-10):
+    assert self.data() != None
+    if (hasattr(phase_source, "data")):
+      phase_source = phase_source.data()
+    return array(
+      miller_set=self,
+      data=phase_transfer(
+        self.space_group(),
+        self.indices(),
+        self.data(),
+        phase_source,
+        epsilon))
+
   def anomalous_differences(self):
     assert self.anomalous_flag() == 0001
     assert self.indices() != None
