@@ -8,17 +8,17 @@
      2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#ifndef SCITBX_BOOST_PYTHON_CONTAINER_CONVERTERS_H
-#define SCITBX_BOOST_PYTHON_CONTAINER_CONVERTERS_H
+#ifndef SCITBX_BOOST_PYTHON_CONTAINER_CONVERSIONS_H
+#define SCITBX_BOOST_PYTHON_CONTAINER_CONVERSIONS_H
 
 #include <boost/python/list.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/extract.hpp>
 
-namespace scitbx { namespace boost_python {
+namespace scitbx { namespace boost_python { namespace container_conversions {
 
   template <typename ContainerType>
-  struct container_to_tuple
+  struct to_tuple
   {
     static PyObject* convert(ContainerType const& a)
     {
@@ -31,7 +31,24 @@ namespace scitbx { namespace boost_python {
     }
   };
 
-  struct fixed_size_container_registration_adaptor
+  struct default_policy
+  {
+    static bool check_convertibility_per_element() { return false; }
+
+    template <typename ContainerType>
+    static bool check_size(boost::type<ContainerType>, std::size_t sz)
+    {
+      return true;
+    }
+
+    template <typename ContainerType>
+    static void assert_size(boost::type<ContainerType>, std::size_t sz) {}
+
+    template <typename ContainerType>
+    static void reserve(ContainerType& a, std::size_t sz) {}
+  };
+
+  struct fixed_size_policy
   {
     static bool check_convertibility_per_element() { return true; }
 
@@ -39,6 +56,16 @@ namespace scitbx { namespace boost_python {
     static bool check_size(boost::type<ContainerType>, std::size_t sz)
     {
       return ContainerType::size() == sz;
+    }
+
+    template <typename ContainerType>
+    static void assert_size(boost::type<ContainerType>, std::size_t sz)
+    {
+      if (!check_size(boost::type<ContainerType>(sz))) {
+        PyErr_SetString(PyExc_RuntimeError,
+          "insufficient elements for fixed-size array");
+        boost::python::throw_error_already_set();
+      }
     }
 
     template <typename ContainerType>
@@ -59,16 +86,8 @@ namespace scitbx { namespace boost_python {
     }
   };
 
-  struct variable_size_container_registration_adaptor
+  struct variable_size_policy : default_policy
   {
-    static bool check_convertibility_per_element() { return false; }
-
-    template <typename ContainerType>
-    static bool check_size(boost::type<ContainerType>, std::size_t sz)
-    {
-      return true;
-    }
-
     template <typename ContainerType>
     static void reserve(ContainerType& a, std::size_t sz)
     {
@@ -83,8 +102,7 @@ namespace scitbx { namespace boost_python {
     }
   };
 
-  struct fixed_capacity_container_registration_adaptor
-    : variable_size_container_registration_adaptor
+  struct fixed_capacity_policy : variable_size_policy
   {
     template <typename ContainerType>
     static bool check_size(boost::type<ContainerType>, std::size_t sz)
@@ -93,19 +111,8 @@ namespace scitbx { namespace boost_python {
     }
   };
 
-  struct growing_container_registration_adaptor
+  struct linked_list_policy : default_policy
   {
-    static bool check_convertibility_per_element() { return false; }
-
-    template <typename ContainerType>
-    static bool check_size(boost::type<ContainerType>, std::size_t sz)
-    {
-      return true;
-    }
-
-    template <typename ContainerType>
-    static void reserve(ContainerType& a, std::size_t sz) { }
-
     template <typename ContainerType, typename ValueType>
     static void set_value(ContainerType& a, std::size_t i, ValueType const& v)
     {
@@ -113,12 +120,12 @@ namespace scitbx { namespace boost_python {
     }
   };
 
-  template <typename ContainerType, typename ContainerAdaptor>
-  struct register_container_from_python_sequence
+  template <typename ContainerType, typename ConversionPolicy>
+  struct from_python_sequence
   {
     typedef typename ContainerType::value_type container_element_type;
 
-    register_container_from_python_sequence()
+    from_python_sequence()
     {
       boost::python::converter::registry::push_back(
         &convertible,
@@ -142,13 +149,13 @@ namespace scitbx { namespace boost_python {
         PyErr_Clear();
         return 0;
       }
-      if (ContainerAdaptor::check_convertibility_per_element()) {
+      if (ConversionPolicy::check_convertibility_per_element()) {
         int obj_size = PyObject_Length(obj_ptr);
         if (obj_size < 0) { // must be a measurable sequence
           PyErr_Clear();
           return 0;
         }
-        if (!ContainerAdaptor::check_size(
+        if (!ConversionPolicy::check_size(
           boost::type<ContainerType>(), obj_size)) return 0;
         bool is_range = PyRange_Check(obj_ptr);
         std::size_t i=0;
@@ -188,46 +195,45 @@ namespace scitbx { namespace boost_python {
         if (!py_elem_hdl.get()) break; // end of iteration
         object py_elem_obj(py_elem_hdl);
         extract<container_element_type> elem_proxy(py_elem_obj);
-        ContainerAdaptor::set_value(result, i, elem_proxy());
+        ConversionPolicy::set_value(result, i, elem_proxy());
       }
-      if (!ContainerAdaptor::check_size(boost::type<ContainerType>(), i)) {
-        PyErr_SetString(PyExc_RuntimeError,
-          "insufficient elements for fixed-size array");
-        boost::python::throw_error_already_set();
-      }
+      ConversionPolicy::assert_size(boost::type<ContainerType>(), i);
     }
   };
 
-  template <typename ContainerType, typename ContainerAdaptor>
-  struct tuple_mapping {
+  template <typename ContainerType, typename ConversionPolicy>
+  struct tuple_mapping
+  {
     tuple_mapping() {
       boost::python::to_python_converter<
         ContainerType,
-        container_to_tuple<ContainerType> >();
-      register_container_from_python_sequence<
+        to_tuple<ContainerType> >();
+      from_python_sequence<
         ContainerType,
-        ContainerAdaptor>();
+        ConversionPolicy>();
     }
   };
 
   template <typename ContainerType>
-  struct tuple_mapping_fixed_size {
+  struct tuple_mapping_fixed_size
+  {
     tuple_mapping_fixed_size() {
       tuple_mapping<
         ContainerType,
-        fixed_size_container_registration_adaptor>();
+        fixed_size_policy>();
     }
   };
 
   template <typename ContainerType>
-  struct tuple_mapping_fixed_capacity {
+  struct tuple_mapping_fixed_capacity
+  {
     tuple_mapping_fixed_capacity() {
       tuple_mapping<
         ContainerType,
-        fixed_capacity_container_registration_adaptor>();
+        fixed_capacity_policy>();
     }
   };
 
-}} // namespace scitbx::boost_python
+}}} // namespace scitbx::boost_python::container_conversions
 
-#endif // SCITBX_BOOST_PYTHON_CONTAINER_CONVERTERS_H
+#endif // SCITBX_BOOST_PYTHON_CONTAINER_CONVERSIONS_H
