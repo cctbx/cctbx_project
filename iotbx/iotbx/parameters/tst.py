@@ -308,10 +308,9 @@ def exercise_syntax_errors():
 
 def check_get(parameters, path, expected_out=None, with_substitution=False):
   out = StringIO()
-  if (not with_substitution):
-    parameters.get(path=path).show(out=out)
-  else:
-    parameters.get_with_variable_substitution(path=path).show(out=out)
+  parameters.get(
+    path=path,
+    with_substitution=with_substitution).show(out=out)
   out = out.getvalue()
   if (expected_out is None or out != expected_out):
     sys.stdout.write(out)
@@ -321,7 +320,7 @@ def check_get(parameters, path, expected_out=None, with_substitution=False):
 def check_get_sub(parameters, path, expected_out=None):
   check_get(parameters, path, expected_out, with_substitution=True)
 
-def exercise_get():
+def exercise_get_without_substitution():
   parameters = iotbx.parameters.parse(input_string="""\
 a b
 c d
@@ -488,7 +487,7 @@ a0
 }
 """
 
-def exercise_get_with_variable_substitution():
+def exercise_get_with_substitution():
   parameters = iotbx.parameters.parse(input_string="""\
 a b
 c   d   e   2
@@ -511,17 +510,18 @@ k $l
 l x
 l y
 """)
-  assert len(parameters.get(path="a").objects) == 1
+  assert len(parameters.get_without_substitution(
+    path="a").objects) == 1
   for path in "abcdefg":
     if (path == "g"):
       diag = "d"
     else:
       diag = path
-  try: parameters.get_with_variable_substitution(path=path)
+  try: parameters.get(path=path)
   except RuntimeError, e:
     assert str(e) == "Dependency cycle in variable substitution: $%s" % diag
   else: raise RuntimeError("Exception expected.")
-  try: parameters.get_with_variable_substitution(path="h")
+  try: parameters.get(path="h")
   except RuntimeError, e:
     assert str(e) == "Undefined variable: $_X_Y_Z_ (input line 8)"
   else: raise RuntimeError("Exception expected.")
@@ -556,25 +556,25 @@ n '$a'
   check_get_sub(parameters, path="g", expected_out='g "abcyes nobc"\n')
   check_get_sub(parameters, path="h",
     expected_out='h "abcyes nobc" "12yes nox56"\n')
-  try: parameters.get_with_variable_substitution(path="i")
+  try: parameters.get(path="i")
   except RuntimeError, e:
     assert str(e) == 'Syntax error: $ must be followed by an identifier:' \
                    + ' "$" (input line 10)'
   else: raise RuntimeError("Exception expected.")
-  try: parameters.get_with_variable_substitution(path="j")
+  try: parameters.get(path="j")
   except RuntimeError, e:
     assert str(e) == 'Syntax error: missing ")": "$(abc" (input line 11)'
   else: raise RuntimeError("Exception expected.")
-  try: parameters.get_with_variable_substitution(path="k")
+  try: parameters.get(path="k")
   except RuntimeError, e:
     assert str(e) == 'Syntax error: improper variable name "$(1bc)"' \
                    + ' (input line 12)'
   else: raise RuntimeError("Exception expected.")
-  try: parameters.get_with_variable_substitution(path="l")
+  try: parameters.get(path="l")
   except RuntimeError, e:
     assert str(e)=='Syntax error: improper variable name "$()" (input line 13)'
   else: raise RuntimeError("Exception expected.")
-  try: parameters.get_with_variable_substitution(path="m")
+  try: parameters.get(path="m")
   except RuntimeError, e:
     assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
   else: raise RuntimeError("Exception expected.")
@@ -613,7 +613,7 @@ c z
 d $z
 s 1
 """
-  try: parameters.get_with_variable_substitution(path="d")
+  try: parameters.get(path="d")
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $z (file "tmp3.params", line 3)'
   else: raise RuntimeError("Exception expected.")
@@ -690,47 +690,68 @@ group {
     .type space_group
 }
 """)
-  assert parameters.get(path="group.a").objects[0].extract() is True
-  assert parameters.get(path="group.a").objects[1].extract() == "yes"
-  assert parameters.get(path="group.b").objects[0].extract() == 13
-  assert parameters.get(path="group.c").objects[0].extract() == 1.3
-  assert parameters.get(path="group.d").objects[0].extract() == "abc def ghi"
-  assert parameters.get(path="group.e").objects[0].extract() == "b"
-  try: parameters.get(path="group.e").objects[1].extract()
+  assert parameters.get_without_substitution(
+    path="group.a").objects[0].extract() is True
+  assert parameters.get_without_substitution(
+    path="group.a").objects[1].extract() == "yes"
+  assert parameters.get_without_substitution(
+    path="group.b").objects[0].extract() == 13
+  assert parameters.get_without_substitution(
+    path="group.c").objects[0].extract() == 1.3
+  assert parameters.get_without_substitution(
+    path="group.d").objects[0].extract() == "abc def ghi"
+  assert parameters.get_without_substitution(
+    path="group.e").objects[0].extract() == "b"
+  try: parameters.get_without_substitution(
+    path="group.e").objects[1].extract()
   except RuntimeError, e:
     assert str(e) \
       == 'Multiple choices where only one is possible (input line 13)'
   else: raise RuntimeError("Exception expected.")
-  try: parameters.get(path="group.e").objects[2].extract()
+  try: parameters.get_without_substitution(
+    path="group.e").objects[2].extract()
   except RuntimeError, e:
     assert str(e) == 'Unspecified choice (input line 15)'
   else: raise RuntimeError("Exception expected.")
-  assert parameters.get(path="group.f").objects[0].extract() == ["b"]
-  assert parameters.get(path="group.f").objects[1].extract() == ["b", "c"]
-  assert parameters.get(path="group.f").objects[2].extract() == []
-  assert parameters.get(path="group.g").objects[0].extract() == "/var/tmp/junk"
-  assert parameters.get(path="group.h").objects[0].extract() == "var.tmp.junk"
-  assert parameters.get(path="group.i").objects[0].extract() == 2
-  try: parameters.get(path="group.i").objects[1].extract()
+  assert parameters.get_without_substitution(
+    path="group.f").objects[0].extract() == ["b"]
+  assert parameters.get_without_substitution(
+    path="group.f").objects[1].extract() == ["b", "c"]
+  assert parameters.get_without_substitution(
+    path="group.f").objects[2].extract() == []
+  assert parameters.get_without_substitution(
+    path="group.g").objects[0].extract() == "/var/tmp/junk"
+  assert parameters.get_without_substitution(
+    path="group.h").objects[0].extract() == "var.tmp.junk"
+  assert parameters.get_without_substitution(
+    path="group.i").objects[0].extract() == 2
+  try: parameters.get_without_substitution(
+    path="group.i").objects[1].extract()
   except RuntimeError, e:
     assert str(e) == 'Integer expression expected, "1/2" found (input line 29)'
   else: raise RuntimeError("Exception expected.")
-  assert parameters.get(path="group.j").objects[0].extract() == 0.5
-  try: parameters.get(path="group.j").objects[1].extract()
+  assert parameters.get_without_substitution(
+    path="group.j").objects[0].extract() == 0.5
+  try: parameters.get_without_substitution(
+    path="group.j").objects[1].extract()
   except RuntimeError, e:
     assert str(e) == \
       """Floating-point expression expected, "'a'" found (input line 33)"""
   else: raise RuntimeError("Exception expected.")
-  try: parameters.get(path="group.j").objects[2].extract()
+  try: parameters.get_without_substitution(
+    path="group.j").objects[2].extract()
   except RuntimeError, e:
     assert str(e) == 'Error interpreting "a" as a numeric expression:' \
                    + " name 'a' is not defined (input line 35)"
   else: raise RuntimeError("Exception expected.")
-  assert str(parameters.get(path="group.u").objects[0].extract()) \
+  assert str(parameters.get_without_substitution(
+    path="group.u").objects[0].extract()) \
       == "(10, 12, 13, 80, 90, 100)"
-  assert str(parameters.get(path="group.s").objects[0].extract()) \
+  assert str(parameters.get_without_substitution(
+    path="group.s").objects[0].extract()) \
       == "P 21 21 21"
-  definition = parameters.get(path="group.a").objects[0]
+  definition = parameters.get_without_substitution(
+    path="group.a").objects[0]
   definition.type = "junk"
   try: definition.extract()
   except RuntimeError, e:
@@ -747,7 +768,8 @@ group {
     .type space_group
 }
 """)
-  group = parameters.get(path="group").objects[0].extract()
+  group = parameters.get_without_substitution(
+    path="group").objects[0].extract()
   assert group.a is True
   assert group.b == 13
   assert group.s.type().number() == 19
@@ -755,9 +777,9 @@ group {
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
-  exercise_get()
+  exercise_get_without_substitution()
   exercise_nested()
-  exercise_get_with_variable_substitution()
+  exercise_get_with_substitution()
   exercise_include()
   exercise_extract()
   print "OK"

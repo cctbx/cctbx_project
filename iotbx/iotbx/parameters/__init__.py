@@ -202,7 +202,7 @@ class definition:
   def all_definitions(self):
     return [self]
 
-  def get(self, path):
+  def get_without_substitution(self, path):
     if (self.name == path): return [self]
     return []
 
@@ -324,13 +324,13 @@ class scope:
       result.extend(object.all_definitions())
     return result
 
-  def get(self, path):
+  def get_without_substitution(self, path):
     if (self.name == path): return [self]
     if (not path.startswith(self.name+".")): return []
     path = path[len(self.name)+1:]
     result = []
     for object in self.objects:
-      result.extend(object.get(path=path))
+      result.extend(object.get_without_substitution(path=path))
     return result
 
   def extract(self, custom_converters=None):
@@ -421,7 +421,7 @@ class table:
         result.extend(object.all_definitions())
     return result
 
-  def get(self, path):
+  def get_without_substitution(self, path):
     if (self.name == path): return [self]
     if (not path.startswith(self.name+".")): return []
     path = path[len(self.name)+1:]
@@ -435,7 +435,8 @@ class table:
           result.extend(row_objects)
         elif (path.startswith(alt_row_name+".")):
           for row_object in row_objects:
-            result.extend(row_object.get(path=path[len(alt_row_name)+1:]))
+            result.extend(row_object.get_without_substitution(
+              path=path[len(alt_row_name)+1:]))
     return result
 
 class object_list:
@@ -463,13 +464,16 @@ class object_list:
       result.extend(object.all_definitions())
     return result
 
-  def get(self, path):
+  def get_without_substitution(self, path):
     result = []
     for object in self.objects:
-      result.extend(object.get(path))
+      result.extend(object.get_without_substitution(path))
     return object_list(objects=result)
 
-  def get_with_variable_substitution(self, path, path_memory=None):
+  def get(self, path, with_substitution=True, path_memory=None):
+    result_raw = self.get_without_substitution(path=path)
+    if (not with_substitution):
+      return result_raw
     if (path_memory is None):
       path_memory = {path: None}
     elif (path not in path_memory):
@@ -477,7 +481,6 @@ class object_list:
     else:
       raise RuntimeError("Dependency cycle in variable substitution: $%s" % (
         path))
-    result_raw = self.get(path=path)
     result_sub = []
     for object in result_raw.objects:
       if (not isinstance(object, definition)):
@@ -501,7 +504,7 @@ class object_list:
             value=fragment.value, quote_token='"')
           continue
         variable_values = None
-        for variable_object in self.get_with_variable_substitution(
+        for variable_object in self.get(
                                  path=fragment.value,
                                  path_memory=path_memory).objects:
           if (isinstance(variable_object, definition)):
