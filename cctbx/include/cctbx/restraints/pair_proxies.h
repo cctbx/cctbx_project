@@ -23,6 +23,27 @@ namespace cctbx { namespace restraints {
       pair_proxies() {}
 
       pair_proxies(
+        af::const_ref<bond_params_dict> const& bond_params_table)
+      :
+        n_bonded(0),
+        n_1_3(0),
+        n_1_4(0),
+        n_nonbonded(0),
+        n_unknown_repulsion_type_pairs(0)
+      {
+        for(unsigned i_seq=0;i_seq<bond_params_table.size();i_seq++) {
+          for(bond_params_dict::const_iterator
+                dict_i=bond_params_table[i_seq].begin();
+                dict_i!=bond_params_table[i_seq].end();
+                dict_i++) {
+            bond_proxies.process(bond_simple_proxy(
+              af::tiny<unsigned, 2>(i_seq, dict_i->first),
+              dict_i->second));
+          }
+        }
+      }
+
+      pair_proxies(
         restraints::repulsion_params const& repulsion_params,
         af::const_ref<std::string> const& repulsion_types,
         af::const_ref<bond_params_dict> const& bond_params_table,

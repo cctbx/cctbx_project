@@ -19,6 +19,9 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("pair_proxies", no_init)
         .def(init<
+          af::const_ref<bond_params_dict> const&>((
+           arg_("bond_params_table"))))
+        .def(init<
           repulsion_params const&,
           af::const_ref<std::string> const&,
           af::const_ref<bond_params_dict> const&,

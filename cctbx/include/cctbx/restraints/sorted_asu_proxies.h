@@ -14,7 +14,10 @@ namespace cctbx { namespace restraints {
   class sorted_asu_proxies
   {
     public:
-      sorted_asu_proxies() {}
+      sorted_asu_proxies()
+      :
+        asu_mappings_(0)
+      {}
 
       sorted_asu_proxies(
         boost::shared_ptr<
@@ -31,7 +34,11 @@ namespace cctbx { namespace restraints {
 
       //! Instance as passed to the constructor.
       boost::shared_ptr<direct_space_asu::asu_mappings<> > const&
-      asu_mappings() const { return asu_mappings_owner_; }
+      asu_mappings() const
+      {
+        CCTBX_ASSERT(asu_mappings_ != 0);
+        return asu_mappings_owner_;
+      }
 
       bool
       process(SimpleProxyType const& proxy)
