@@ -505,6 +505,44 @@ namespace {
       conjugate).as_base_array();
   }
 
+  af::shared<std::complex<double> >
+  py_collect_structure_factors_miller_indices_real(
+    bool friedel_flag,
+    const af::shared<Miller::Index>& miller_indices,
+    const af::shared<double>& transformed_real_map,
+    const af::tiny<long, 3>& n_complex,
+    bool conjugate)
+  {
+    cctbx_assert(
+         transformed_real_map.size()
+      >= 2 * af::compile_time_product<3>::get(n_complex));
+    af::const_ref<std::complex<double> > transformed_complex_map(
+      reinterpret_cast<const std::complex<double>*>(
+        transformed_real_map.begin()), transformed_real_map.size()/2);
+    return sftbx::collect_structure_factors(
+      friedel_flag,
+      miller_indices.const_ref(),
+      transformed_complex_map,
+      n_complex,
+      conjugate);
+  }
+
+  af::shared<std::complex<double> >
+  py_collect_structure_factors_miller_indices_complex(
+    bool friedel_flag,
+    const af::shared<Miller::Index>& miller_indices,
+    const af::shared<std::complex<double> >& transformed_complex_map,
+    const af::tiny<long, 3>& n_complex,
+    bool conjugate)
+  {
+    return sftbx::collect_structure_factors(
+      friedel_flag,
+      miller_indices.const_ref(),
+      transformed_complex_map.const_ref(),
+      n_complex,
+      conjugate);
+  }
+
 #   include <cctbx/basic/from_bpl_import.h>
 
   tuple
@@ -528,7 +566,7 @@ namespace {
   }
 
   tuple
-  py_collect_structure_factors_real(
+  py_collect_structure_factors_max_q_real(
     const uctbx::UnitCell& ucell,
     const sgtbx::SpaceGroupInfo& sginfo,
     bool friedel_flag,
@@ -555,7 +593,7 @@ namespace {
   }
 
   tuple
-  py_collect_structure_factors_complex(
+  py_collect_structure_factors_max_q_complex(
     const uctbx::UnitCell& ucell,
     const sgtbx::SpaceGroupInfo& sginfo,
     bool friedel_flag,
@@ -851,9 +889,13 @@ namespace {
     this_module.def(py_calc_u_extra_2, "calc_u_extra");
     this_module.def(py_eliminate_u_extra_5, "eliminate_u_extra");
     this_module.def(py_eliminate_u_extra_4, "eliminate_u_extra");
-    this_module.def(py_collect_structure_factors_real,
+    this_module.def(py_collect_structure_factors_max_q_real,
       "collect_structure_factors");
-    this_module.def(py_collect_structure_factors_complex,
+    this_module.def(py_collect_structure_factors_max_q_complex,
+      "collect_structure_factors");
+    this_module.def(py_collect_structure_factors_miller_indices_real,
+      "collect_structure_factors");
+    this_module.def(py_collect_structure_factors_miller_indices_complex,
       "collect_structure_factors");
     this_module.def(py_structure_factor_map, "structure_factor_map");
 

@@ -388,6 +388,18 @@ namespace cctbx { namespace sftbx {
       return ix;
     }
 
+    template <typename nType>
+    sfmap::grid_point_type
+    h_as_ih_array(bool friedel_flag, const Miller::Index& h, const nType& n)
+    {
+      sfmap::grid_point_type ih;
+      const bool positive_only[] = {false, false, friedel_flag};
+      for(std::size_t i=0;i<3;i++) {
+        ih[i] = maps::h_as_ih(h[i], n[i], positive_only[i]);
+      }
+      return ih;
+    }
+
   } // namespace detail
 
   template <typename FloatType>
@@ -698,16 +710,43 @@ namespace cctbx { namespace sftbx {
     return std::make_pair(miller_indices, structure_factors);
   }
 
-  template <typename nType>
-  sfmap::grid_point_type
-  h_as_ih_array(bool friedel_flag, const Miller::Index& h, const nType& n)
+  template <typename FloatType,
+            typename IndexType>
+  af::shared<std::complex<FloatType> >
+  collect_structure_factors(
+    bool friedel_flag,
+    const af::const_ref<Miller::Index>& miller_indices,
+    const af::const_ref<std::complex<FloatType> >& complex_map,
+    const IndexType& n_complex,
+    bool conjugate)
   {
-    sfmap::grid_point_type ih;
-    const bool positive_only[] = {false, false, friedel_flag};
-    for(std::size_t i=0;i<3;i++) {
-      ih[i] = maps::h_as_ih(h[i], n[i], positive_only[i]);
+    cctbx_assert(complex_map.size() >= af::product(n_complex.const_ref()));
+    af::const_ref<std::complex<FloatType>, af::grid<3> > map(
+      complex_map.begin(), n_complex);
+    af::shared<std::complex<FloatType> > structure_factors;
+    structure_factors.reserve(miller_indices.size());
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      Miller::Index h = miller_indices[i];
+      bool f_conj = conjugate;
+      if (friedel_flag) {
+        if (h[2] < 0) {
+          h = -h;
+          f_conj = !f_conj;
+        }
+      }
+      else {
+        if (f_conj) {
+          h = -h;
+          f_conj = false;
+        }
+      }
+      sfmap::grid_point_type ih = detail::h_as_ih_array(
+        friedel_flag, h, n_complex);
+      cctbx_assert(ih >= sfmap::grid_point_element_type(0));
+      if (!f_conj) structure_factors.push_back(map(ih));
+      else         structure_factors.push_back(std::conj(map(ih)));
     }
-    return ih;
+    return structure_factors;
   }
 
   template <typename FloatType,
@@ -729,9 +768,10 @@ namespace cctbx { namespace sftbx {
         Miller::Index h = semi(e);
         if (conjugate) h = -h;
         if (friedel_flag && h[2] < 0) continue;
-        sfmap::grid_point_type ih = h_as_ih_array(friedel_flag, h, n_complex);
+        sfmap::grid_point_type ih = detail::h_as_ih_array(
+          friedel_flag, h, n_complex);
         cctbx_assert(ih >= sfmap::grid_point_element_type(0));
-        map(ih) = semi.ShiftPhase(e, structure_factors(i));
+        map(ih) = semi.ShiftPhase(e, structure_factors[i]);
       }
     }
     return map;

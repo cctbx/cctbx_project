@@ -147,49 +147,22 @@ def exercise(SgInfo,
   else:
     map = sampled_density.map_complex_as_shared()
     cfft = fftbx.complex_to_complex_3d(rfft.Nreal())
-    if (0):
-      cfft.forward(map)
-      collect_conj = 1
-    else:
-      cfft.backward(map)
-      collect_conj = 0
+    cfft.backward(map)
+    collect_conj = 0
     n_complex = cfft.N()
   miller_indices, fcal = sftbx.collect_structure_factors(
     xtal.UnitCell, xtal.SgInfo, friedel_flag,
     max_q, map, n_complex, collect_conj)
-  if (1):
-    sf_map = sftbx.structure_factor_map(
-      xtal.SgOps, friedel_flag, miller_indices, fcal, n_complex, collect_conj)
-    if (1):
-      if (friedel_flag):
-        rfft.backward(sf_map)
-        rfft.forward(sf_map)
-      else:
-        if (collect_conj):
-          cfft.backward(map)
-          cfft.forward(map)
-        else:
-          cfft.forward(map)
-          cfft.backward(map)
-    m, f = sftbx.collect_structure_factors(
-      xtal.UnitCell, xtal.SgInfo, friedel_flag,
-      max_q, sf_map, n_complex, collect_conj)
-    js = shared.join_sets(miller_indices, m)
-    assert js.pairs().size() == miller_indices.size()
-    show_structure_factor_correlation(
-      "collect/store", miller_indices, js, fcal, f,
-      min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
-      verbose=1)
   sampled_density.eliminate_u_extra_and_normalize(miller_indices, fcal)
   if (0):
     u_extra = sampled_density.u_extra()
     xtal_extra = add_u_extra(xtal, u_extra)
     fcalc_extra = xutils.calculate_structure_factors(MillerIndices, xtal_extra)
-    show_structure_factor_correlation(
+    debug_utils.show_structure_factor_correlation(
       "before", Fcalc.H, 0, Fcalc.F, fcalc_extra.F)
     sftbx.eliminate_u_extra(
       xtal.UnitCell, u_extra, MillerIndices.H, fcalc_extra.F)
-    show_structure_factor_correlation(
+    debug_utils.show_structure_factor_correlation(
       "after", Fcalc.H, 0, Fcalc.F, fcalc_extra.F)
   js = shared.join_sets(MillerIndices.H, miller_indices)
   if (0):
@@ -199,7 +172,7 @@ def exercise(SgInfo,
   assert js.pairs().size() == MillerIndices.H.size()
   for i in xrange(2):
     assert js.singles(i).size() == 0
-  show_structure_factor_correlation(
+  debug_utils.show_structure_factor_correlation(
     "sgtbx_dir/sgtbx_fft", Fcalc.H, js, Fcalc.F, fcal,
     min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
     verbose=0)
@@ -239,71 +212,6 @@ end
     print >> f, l
   f.close()
 
-def show_regression(x, y, label, min_correlation = 0):
-  xy_regr = shared.linear_regression(x, y)
-  assert xy_regr.is_well_defined()
-  print label, "cc:", xy_regr.cc(), "m:", xy_regr.m()
-  assert min_correlation == 0 or xy_regr.cc() >= min_correlation
-
-def phase_error(p1, p2):
-  d_as_r = math.pi / 180
-  return math.acos(math.cos((p1 - p2) * d_as_r)) / d_as_r
-
-class structure_factor_comparison:
-
-  def __init__(self, label, min_corr_ampl=0, max_mean_w_phase_error=0,
-               verbose=0):
-    python_utils.adopt_init_args(self, locals())
-    self.amp1 = shared.double()
-    self.amp2 = shared.double()
-    self.sum_amp1_minus_amp2_sq = 0
-    self.sum_amp1_sq = 0
-    self.sum_w_phase_error = 0
-    self.sum_w = 0
-
-  def add(self, h, f1, f2):
-    a1, p1 = xutils.f_as_ampl_phase(f1)
-    a2, p2 = xutils.f_as_ampl_phase(f2)
-    if (self.verbose):
-      print h
-      print " ", a1, p1
-      print " ", a2, p2
-      print " " * 20, phase_error(p1, p2)
-    self.amp1.append(a1)
-    self.amp2.append(a2)
-    self.sum_amp1_minus_amp2_sq += (a1 - a2)**2
-    self.sum_amp1_sq += a1**2
-    self.sum_w_phase_error += (a1 + a2) * phase_error(p1, p2)
-    self.sum_w += (a1 + a2)
-
-  def report(self):
-    if (self.sum_amp1_sq):
-      r = self.sum_amp1_minus_amp2_sq / self.sum_amp1_sq
-      print self.label, "R-factor:", r
-    if (self.sum_w):
-      self.mean_w_phase_error = self.sum_w_phase_error / self.sum_w
-    show_regression(
-      self.amp1, self.amp2, self.label + " ampl", self.min_corr_ampl)
-    print self.label + (" mean weighted phase error: %.2f" % (
-      self.mean_w_phase_error,))
-    if (self.max_mean_w_phase_error):
-      assert self.mean_w_phase_error <= self.max_mean_w_phase_error
-
-def show_structure_factor_correlation(label, h1, joined_sets, f1, f2,
-                                      min_corr_ampl=0,
-                                      max_mean_w_phase_error=0,
-                                      verbose=0):
-  sf_cmp = structure_factor_comparison(
-    label, min_corr_ampl, max_mean_w_phase_error, verbose)
-  if (joined_sets == 0):
-    assert f1.size() == f2.size()
-    for i in xrange(f1.size()):
-      sf_cmp.add(h1[i], f1[i], f2[i])
-  else:
-    for i,j in joined_sets.pairs():
-      sf_cmp.add(h1[i], f1[i], f2[j])
-  sf_cmp.report()
-
 def run_cns(elements, xtal, d_min, grid_resolution_factor,
             friedel_flag=0, fcalc=0):
   from cctbx.macro_mol import cns_input
@@ -320,7 +228,7 @@ def run_cns(elements, xtal, d_min, grid_resolution_factor,
   f_fft_h = reflection_file.reciprocal_space_objects["F_FFT"].H
   f_fft_f = reflection_file.reciprocal_space_objects["F_FFT"].data
   assert f_dir_h.size() == f_fft_h.size()
-  show_structure_factor_correlation(
+  debug_utils.show_structure_factor_correlation(
     "cns_dir/cns_fft", f_dir_h, 0, f_dir_f, f_fft_f, 0.99)
   if (fcalc):
     assert fcalc.H.size() == f_dir_h.size()
@@ -331,7 +239,7 @@ def run_cns(elements, xtal, d_min, grid_resolution_factor,
     if (0):
       show_joined_sets(fcalc.H, cns_h, js)
     assert js.pairs().size() == fcalc.H.size()
-    show_structure_factor_correlation(
+    debug_utils.show_structure_factor_correlation(
       "sftbx_dir/cns_dir", fcalc.H, js, fcalc.F, asym_f_dir.asym_data_array(),
       0.99, 1.0, verbose=1)
 
