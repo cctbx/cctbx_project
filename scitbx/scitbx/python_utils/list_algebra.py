@@ -18,3 +18,8 @@ def dot_product(lhs, rhs=0):
   result = 0
   for l, r in zip(lhs, rhs): result += l * r
   return result
+
+def product(l):
+  result = 1
+  for x in l: result *= x
+  return result
