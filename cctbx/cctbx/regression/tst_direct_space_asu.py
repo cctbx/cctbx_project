@@ -33,7 +33,7 @@ def exercise_direct_space_asu(space_group_info, n_grid=6):
       r_cut = facet.strip()
       r_inside = r_cut.is_inside(inp_r)
       for buffer_thickness in [0.001, 1, -1][:1]:
-        f_cut = facet.add_buffer(
+        f_cut = facet.as_float_cut_plane().add_buffer(
           unit_cell=unit_cell,
           thickness=buffer_thickness)
         f_inside = f_cut.is_inside(inp_f)

@@ -1,4 +1,5 @@
 from cctbx import sgtbx
+import boost.python
 import sys
 
 float_cut_plane = sgtbx.direct_space_asu_float_cut_plane
@@ -62,14 +63,13 @@ class direct_space_asu:
       cb_asu.facets.append(facet.change_basis(cb_op))
     return cb_asu
 
-  def add_buffer(self, unit_cell, thickness):
-    facets = []
-    for facet in self.facets:
-      facets.append(facet.add_buffer(unit_cell=unit_cell, thickness=thickness))
-    return float_asu(facets)
-
   def define_metric(self, unit_cell):
     return direct_space_asu_with_metric(asu=self, unit_cell=unit_cell)
+
+  def add_buffer(self, unit_cell, thickness=None, relative_thickness=None):
+    return self.define_metric(unit_cell).add_buffer(
+      thickness=thickness,
+      relative_thickness=relative_thickness)
 
 class direct_space_asu_with_metric(direct_space_asu):
 
@@ -77,12 +77,22 @@ class direct_space_asu_with_metric(direct_space_asu):
     direct_space_asu.__init__(self, asu.hall_symbol, asu.facets)
     self.unit_cell = unit_cell
 
+  def as_float_asu(self):
+    return float_asu(
+      unit_cell=self.unit_cell,
+      facets=[facet.as_float_cut_plane() for facet in self.facets])
+
+  def add_buffer(self, thickness=None, relative_thickness=None):
+    return self.as_float_asu().add_buffer(
+      thickness=thickness,
+      relative_thickness=relative_thickness)
+
+class _float_asu(boost.python.injector, float_asu):
+
   def add_buffer(self, thickness=None, relative_thickness=None):
     assert [thickness, relative_thickness].count(None) > 0
     if (relative_thickness is None):
       relative_thickness = 1.e-6
     if (thickness is None):
-      thickness = self.unit_cell.volume()**(1/3.)*relative_thickness
-    return direct_space_asu.add_buffer(self,
-      unit_cell=self.unit_cell,
-      thickness=thickness)
+      thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
+    return self._add_buffer(thickness)

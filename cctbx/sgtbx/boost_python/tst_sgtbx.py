@@ -1195,31 +1195,42 @@ def exercise_find_affine():
       if (group.n_smx() == 1): break
 
 def exercise_direct_space_asu():
-  cp = sgtbx.direct_space_asu_float_cut_plane([-1,0,0], 1)
+  cp = sgtbx.direct_space_asu_float_cut_plane(n=[-1,0,0], c=1)
   assert approx_equal(cp.n, [-1,0,0])
   assert approx_equal(cp.c, 1)
   assert approx_equal(cp.evaluate([0,2,3]), 1)
   assert approx_equal(cp.evaluate([1,2,3]), 0)
   assert cp.is_inside([0.99,0,0])
   assert not cp.is_inside([1.01,0,0])
+  assert approx_equal(cp.get_point_in_plane(), [1,0,0])
   cp.n = [0,-1,0]
   assert approx_equal(cp.n, [0,-1,0])
   cp.c = 2
   assert approx_equal(cp.c, 2)
+  assert approx_equal(cp.get_point_in_plane(), [0,2,0])
+  unit_cell = uctbx.unit_cell((1,1,1,90,90,90))
+  cpb = cp.add_buffer(unit_cell=unit_cell, thickness=0.5)
+  assert approx_equal(cpb.n, cp.n)
+  assert approx_equal(cpb.c, 2.5)
   facets = []
   for i in xrange(3):
     n = [0,0,0]
     n[i] = -1
-    facets.append(sgtbx.direct_space_asu_float_cut_plane(n, i+1))
-  asu = sgtbx.direct_space_asu_float_asu(facets)
+    facets.append(sgtbx.direct_space_asu_float_cut_plane(n=n, c=i+1))
+  asu = sgtbx.direct_space_asu_float_asu(unit_cell=unit_cell, facets=facets)
+  assert asu.unit_cell().is_similar_to(unit_cell)
   for i in xrange(3):
     n = [0,0,0]
     n[i] = -1
-    assert approx_equal(asu.facets[i].n, n)
-    assert approx_equal(asu.facets[i].c, i+1)
+    assert approx_equal(asu.facets()[i].n, n)
+    assert approx_equal(asu.facets()[i].c, i+1)
   assert asu.is_inside([0.99,0.49,0.32])
   eps = 0.02
   assert not asu.is_inside([0.99+eps,0.49+eps,0.32+eps])
+  buf_asu = asu._add_buffer(0.2)
+  assert buf_asu.is_inside([0.99+0.2,0.49+0.2,0.32+0.2])
+  eps = 0.02
+  assert not buf_asu.is_inside([0.99+0.2+eps,0.49+0.2+eps,0.32+0.2+eps])
 
 def run():
   exercise_symbols()
