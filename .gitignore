@@ -1,2 +1,5 @@
+cctbx/cctbx/basic/boost_array_bpl.h
+cctbx/cctbx/vector/algebra.h
 cctbx/dev
 cctbx/doc
+cctbx/global/boost_array_bpl.cpp
