@@ -17,46 +17,46 @@ namespace {
   exercise_ew_bool(const ArrayType1& a1, const ArrayType2& a2)
   {
     typedef typename ArrayType1::value_type element_type1;
-    verify(__LINE__, af::equal_to(a1, a2),
+    verify(__LINE__, a1 == a2,
       af::tiny<bool, 3>(false, false, false));
-    verify(__LINE__, af::equal_to(a1, element_type1(1)),
+    verify(__LINE__, a1 == element_type1(1),
       af::tiny<bool, 3>(false, true, false));
-    verify(__LINE__, af::equal_to(element_type1(1), a1),
+    verify(__LINE__, element_type1(1) == a1,
       af::tiny<bool, 3>(false, true, false));
 
-    verify(__LINE__, af::not_equal_to(a1, a2),
+    verify(__LINE__, a1 != a2,
       af::tiny<bool, 3>(true, true, true));
-    verify(__LINE__, af::not_equal_to(a1, element_type1(1)),
+    verify(__LINE__, a1 != element_type1(1),
       af::tiny<bool, 3>(true, false, true));
-    verify(__LINE__, af::not_equal_to(element_type1(1), a1),
+    verify(__LINE__, element_type1(1) != a1,
       af::tiny<bool, 3>(true, false, true));
 
-    verify(__LINE__, af::greater(a1, a2),
+    verify(__LINE__, a1 > a2,
       af::tiny<bool, 3>(false, false, false));
-    verify(__LINE__, af::greater(a1, element_type1(1)),
+    verify(__LINE__, a1 > element_type1(1),
       af::tiny<bool, 3>(false, false, true));
-    verify(__LINE__, af::greater(element_type1(1), a1),
+    verify(__LINE__, element_type1(1) > a1,
       af::tiny<bool, 3>(true, false, false));
 
-    verify(__LINE__, af::less(a1, a2),
+    verify(__LINE__, a1 < a2,
       af::tiny<bool, 3>(true, true, true));
-    verify(__LINE__, af::less(a1, element_type1(1)),
+    verify(__LINE__, a1 < element_type1(1),
       af::tiny<bool, 3>(true, false, false));
-    verify(__LINE__, af::less(element_type1(1), a1),
+    verify(__LINE__, element_type1(1) < a1,
       af::tiny<bool, 3>(false, false, true));
 
-    verify(__LINE__, af::greater_equal(a1, a2),
+    verify(__LINE__, a1 >= a2,
       af::tiny<bool, 3>(false, false, false));
-    verify(__LINE__, af::greater_equal(a1, element_type1(1)),
+    verify(__LINE__, a1 >= element_type1(1),
       af::tiny<bool, 3>(false, true, true));
-    verify(__LINE__, af::greater_equal(element_type1(1), a1),
+    verify(__LINE__, element_type1(1) >= a1,
       af::tiny<bool, 3>(true, true, false));
 
-    verify(__LINE__, af::less_equal(a1, a2),
+    verify(__LINE__, a1 <= a2,
       af::tiny<bool, 3>(true, true, true));
-    verify(__LINE__, af::less_equal(a1, element_type1(1)),
+    verify(__LINE__, a1 <= element_type1(1),
       af::tiny<bool, 3>(true, true, false));
-    verify(__LINE__, af::less_equal(element_type1(1), a1),
+    verify(__LINE__, element_type1(1) <= a1,
       af::tiny<bool, 3>(false, true, true));
   }
 
