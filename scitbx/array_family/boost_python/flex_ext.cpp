@@ -32,6 +32,8 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_mean_and_variance();
   void wrap_flex_linear_interpolation();
 
+  void wrap_loops();
+
 namespace {
 
   void register_scitbx_tuple_mappings()
@@ -147,6 +149,8 @@ namespace {
     wrap_flex_histogram();
     wrap_flex_mean_and_variance();
     wrap_flex_linear_interpolation();
+
+    wrap_loops();
 
     linear_regression_core_wrappers::wrap();
     linear_regression_wrappers::wrap();

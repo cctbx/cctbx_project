@@ -13,13 +13,14 @@ namespace scitbx { namespace af {
   class nested_loop
   {
     public:
-      nested_loop() : m_over(1) {}
+      nested_loop() : over_(1) {}
 
       explicit
       nested_loop(typename ArrayType::value_type const& end)
       :
-        m_over(0)
+        over_(end == 0)
       {
+        SCITBX_ASSERT(end >= 0);
         std::fill(begin_.begin(), begin_.end(), 0);
         std::fill(end_.begin(), end_.end(), end);
         current_ = begin_;
@@ -30,11 +31,11 @@ namespace scitbx { namespace af {
         ArrayType const& end,
         bool open_range=true)
       :
-        begin_(end), end_(end), current_(end), m_over(0)
+        begin_(end), end_(end), current_(end), over_(1)
       {
         std::fill(begin_.begin(), begin_.end(), 0);
         current_ = begin_;
-        adjust_end(open_range);
+        adjust_end_and_over(open_range);
       }
 
       nested_loop(
@@ -42,10 +43,10 @@ namespace scitbx { namespace af {
         ArrayType const& end,
         bool open_range=true)
       :
-        begin_(begin), end_(end), current_(begin), m_over(0)
+        begin_(begin), end_(end), current_(begin), over_(1)
       {
         SCITBX_ASSERT(begin_.size() == end_.size());
-        adjust_end(open_range);
+        adjust_end_and_over(open_range);
       }
 
       bool
@@ -57,7 +58,7 @@ namespace scitbx { namespace af {
           if (current_[i] < end_[i]) return true;
           current_[i] = begin_[i];
         }
-        m_over++;
+        over_++;
         return false;
       }
 
@@ -71,21 +72,25 @@ namespace scitbx { namespace af {
       operator()() const { return current_; }
 
       std::size_t over()
-      const { return m_over; }
+      const { return over_; }
 
     protected:
       ArrayType begin_;
       ArrayType end_;
       ArrayType current_;
-      std::size_t m_over;
+      std::size_t over_;
 
       void
-      adjust_end(bool open_range)
+      adjust_end_and_over(bool open_range)
       {
         if (!open_range) {
           for(std::size_t i=0;i<end_.size();i++) {
             end_[i] += 1;
           }
+        }
+        for(std::size_t i=0;i<end_.size();i++) {
+          SCITBX_ASSERT(end_[i] >= begin_[i]);
+          if (end_[i] > begin_[i]) over_ = 0;
         }
       }
   };
