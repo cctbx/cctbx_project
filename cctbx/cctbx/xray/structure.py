@@ -212,6 +212,11 @@ class structure(crystal.special_position_settings):
       scatterer.show(f=f, unit_cell=self.unit_cell())
     return self
 
+  def apply_symmetry_sites(self):
+    for i in self.special_position_indices():
+      self._scatterers[i].apply_symmetry_site(
+        site_symmetry_ops=self._site_symmetry_table.get(i))
+
   def apply_special_position_ops_d_target_d_site(self, d_target_d_site):
     for i in self.special_position_indices():
       special_op = self._site_symmetry_table.get(i).special_op()
@@ -346,11 +351,9 @@ class structure(crystal.special_position_settings):
     return result
 
   def asu_mappings(self, buffer_thickness, is_inside_epsilon=None):
-    result = crystal.direct_space_asu.asu_mappings(
-      space_group=self.space_group(),
-      asu=self.direct_space_asu().as_float_asu(
-        is_inside_epsilon=is_inside_epsilon),
-      buffer_thickness=buffer_thickness)
+    result = crystal.symmetry.asu_mappings(self,
+      buffer_thickness=buffer_thickness,
+      is_inside_epsilon=is_inside_epsilon)
     ext.asu_mappings_process(
       asu_mappings=result,
       scatterers=self._scatterers,

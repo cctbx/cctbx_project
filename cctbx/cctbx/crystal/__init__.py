@@ -111,17 +111,25 @@ class symmetry(object):
   def minimum_cell(self):
     return self.change_basis(self.change_of_basis_op_to_minimum_cell())
 
-  def change_of_basis_op_to_niggli_cell(self):
+  def change_of_basis_op_to_niggli_cell(self,
+        relative_epsilon=None,
+        iteration_limit=None):
     z2p_op = self.space_group().z2p_op()
     r_inv = z2p_op.c_inv().r()
     p_cell = self.unit_cell().change_basis(r_inv.num(), r_inv.den())
-    red = p_cell.niggli_reduction()
+    red = p_cell.niggli_reduction(
+      relative_epsilon=relative_epsilon,
+      iteration_limit=iteration_limit)
     p2n_op = sgtbx.change_of_basis_op(
       sgtbx.rt_mx(sgtbx.rot_mx(red.r_inv().elems, 1))).inverse()
     return p2n_op.new_denominators(z2p_op) * z2p_op
 
-  def niggli_cell(self):
-    return self.change_basis(self.change_of_basis_op_to_niggli_cell())
+  def niggli_cell(self,
+        relative_epsilon=None,
+        iteration_limit=None):
+    return self.change_basis(self.change_of_basis_op_to_niggli_cell(
+      relative_epsilon=relative_epsilon,
+      iteration_limit=iteration_limit))
 
   def patterson_symmetry(self):
     return symmetry(
@@ -173,6 +181,13 @@ class symmetry(object):
       mandatory_factors=mandatory_factors,
       max_prime=max_prime,
       assert_shannon_sampling=assert_shannon_sampling)
+
+  def asu_mappings(self, buffer_thickness, is_inside_epsilon=None):
+    return direct_space_asu.asu_mappings(
+      space_group=self.space_group(),
+      asu=self.direct_space_asu().as_float_asu(
+        is_inside_epsilon=is_inside_epsilon),
+      buffer_thickness=buffer_thickness)
 
 class special_position_settings(symmetry):
 
