@@ -9,7 +9,7 @@ from iotbx.mtz import writer
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
-from scitbx.python_utils import dicts
+from cctbx import uctbx
 from scitbx.python_utils.misc import adopt_init_args
 
 column_type_legend_source = \
@@ -52,22 +52,26 @@ class Mtz (ext.Mtz):
             return cryst
 
   def get_space_group_info(self):
+    if (self.nsym() == 0):
+      return None
     return sgtbx.space_group_info(group=self.getSgtbxSpaceGroup())
 
-  def as_miller_arrays(self):
-    miller_arrays = dicts.easy()
-    assert self.nsym() > 0
+  def as_miller_arrays(self, crystal_symmetry, force_symmetry=00000,
+                             info_prefix=""):
+    result = []
     for i_crystal in xrange(self.ncrystals()):
       cryst = self.getCrystal(i_crystal)
       crystal_symmetry = crystal.symmetry(
-        unit_cell=cryst.UnitCell(),
-        space_group_info=self.get_space_group_info())
+        unit_cell=cryst.get_unit_cell(),
+        space_group_info=self.get_space_group_info()).join_symmetry(
+          other_symmetry=crystal_symmetry,
+          force=force_symmetry)
       for i_dataset in xrange(cryst.ndatasets()):
         dataset = cryst.getDataset(i_dataset)
         column_groups = self.group_columns(crystal_symmetry, dataset)
         for colum_group in column_groups:
-          miller_arrays[colum_group.info()] = colum_group
-    return miller_arrays
+          result.append(colum_group)
+    return result
 
   def group_columns(self, crystal_symmetry, dataset):
     known_mtz_column_types = "".join(column_type_legend.keys())
@@ -86,6 +90,7 @@ class Mtz (ext.Mtz):
       if (t0 in "BYI"): # integer columns
         groups.append(column_group(
           crystal_symmetry=crystal_symmetry,
+          primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
           anomalous_flag=False,
@@ -93,6 +98,7 @@ class Mtz (ext.Mtz):
       elif (t0 in "R"): # general real column
         groups.append(column_group(
           crystal_symmetry=crystal_symmetry,
+          primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
           anomalous_flag=False,
@@ -103,6 +109,7 @@ class Mtz (ext.Mtz):
         i_column += 3
         groups.append(column_group(
           crystal_symmetry=crystal_symmetry,
+          primary_column_type=t0,
           labels=labels,
           indices=self.valid_indices(l0),
           anomalous_flag=False,
@@ -130,6 +137,7 @@ class Mtz (ext.Mtz):
           data=self.valid_values(l0)
         groups.append(column_group(
           crystal_symmetry=crystal_symmetry,
+          primary_column_type=t0,
           labels=labels,
           indices=self.valid_indices(l0),
           anomalous_flag=False,
@@ -156,6 +164,7 @@ class Mtz (ext.Mtz):
         if (len(perm) == 2):
           groups.append(column_group(
             crystal_symmetry=crystal_symmetry,
+            primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices(labels[0], labels[1]),
             anomalous_flag=True,
@@ -163,6 +172,7 @@ class Mtz (ext.Mtz):
         elif ("P" in remaining_types[:4]):
           groups.append(column_group(
             crystal_symmetry=crystal_symmetry,
+            primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices(labels[0], labels[2]),
             anomalous_flag=True,
@@ -170,6 +180,7 @@ class Mtz (ext.Mtz):
         else:
           groups.append(column_group(
             crystal_symmetry=crystal_symmetry,
+            primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices(labels[0], labels[2]),
             anomalous_flag=True,
@@ -178,6 +189,7 @@ class Mtz (ext.Mtz):
       else:
         groups.append(column_group(
           crystal_symmetry=crystal_symmetry,
+          primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
           anomalous_flag=False,
@@ -190,6 +202,15 @@ def _Dataset_all_column_types(self):
     result += self.getColumn(i_column).type()
   return result
 
+
+def _Crystal_get_unit_cell(self):
+  result = self.UnitCell()
+  if (result.is_similar_to(uctbx.unit_cell((1,1,1,90,90,90)))):
+    return None
+  return result
+
+Crystal.get_unit_cell = _Crystal_get_unit_cell
+
 def _Dataset_all_column_labels(self):
   result = []
   for i_column in xrange(self.ncolumns()):
@@ -199,11 +220,12 @@ def _Dataset_all_column_labels(self):
 Dataset.all_column_types = _Dataset_all_column_types
 Dataset.all_column_labels = _Dataset_all_column_labels
 
-def column_group(crystal_symmetry, labels, indices, anomalous_flag,
+def column_group(crystal_symmetry, primary_column_type, labels,
+                 indices, anomalous_flag,
                  data, sigmas=None):
   assert data != None
   if (sigmas != None): assert sigmas.size() == data.size()
-  return miller.array(
+  result = miller.array(
     miller_set=miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=indices,
@@ -211,6 +233,9 @@ def column_group(crystal_symmetry, labels, indices, anomalous_flag,
     data=data,
     sigmas=sigmas,
     info=",".join(labels))
+  if (primary_column_type in "JK"):
+    return miller.intensity_array(result)
+  return result
 
 for v in writer.__dict__.values():
   if (hasattr(v, "func_name")):

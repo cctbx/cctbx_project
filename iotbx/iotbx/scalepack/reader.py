@@ -49,7 +49,7 @@ class scalepack_file:
       self.space_group_info = None
     if (header_only): return
     self.miller_indices = flex.miller_index()
-    self.fobs = flex.double()
+    self.i_obs = flex.double()
     self.sigmas = flex.double()
     self.anomalous = 0
     line_count = 3
@@ -73,30 +73,37 @@ class scalepack_file:
         j = 3+2*i
         if (len(flds[j])):
           try:
-            fobs, sigma = (float(flds[j]), float(flds[j+1]))
+            i_obs, sigma = (float(flds[j]), float(flds[j+1]))
           except:
             raise ScalepackFormatError, line_error
           if (i):
             h = [-e for e in h]
             self.anomalous = 1
           self.miller_indices.append(h)
-          self.fobs.append(fobs)
+          self.i_obs.append(i_obs)
           self.sigmas.append(sigma)
 
-  def redefine_unit_cell(self, unit_cell):
-    self.unit_cell = unit_cell
+  def info(self):
+    return "i_obs,sigma"
 
-  def redefine_space_group(self, space_group_info):
-    self.space_group_info = space_group_info
+  def as_miller_array(self, crystal_symmetry=None, force_symmetry=00000,
+                            info_prefix=""):
+    return miller.intensity_array(miller.array(
+      miller_set=miller.set(
+        crystal_symmetry=crystal.symmetry(
+          unit_cell=self.unit_cell,
+          space_group_info=self.space_group_info).join_symmetry(
+            other_symmetry=crystal_symmetry,
+            force=force_symmetry),
+        indices=self.miller_indices,
+        anomalous_flag=self.anomalous),
+      data=self.i_obs,
+      sigmas=self.sigmas,
+      info=info_prefix+self.info()))
 
-  def as_miller_array(self, info=0, crystal_symmetry=None):
-    if (crystal_symmetry == None):
-      assert self.space_group_info != None
-      crystal_symmetry = crystal.symmetry(
-        self.unit_cell, space_group_info=self.space_group_info)
-    miller_set = miller.set(
-      crystal_symmetry, self.miller_indices, self.anomalous)
-    return miller.array(miller_set, self.fobs, self.sigmas, info=info)
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+                             info_prefix=""):
+    return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
 
 def run(args):
   to_pickle = "--pickle" in args
