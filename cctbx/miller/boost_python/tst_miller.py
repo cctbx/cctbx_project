@@ -395,10 +395,10 @@ def exercise_merge_equivalents():
   assert approx_equal(m.data(), (3/2., 4, 6))
   assert m.sigmas().size() == 0
   assert tuple(m.redundancies()) == (2,3,1)
-  m = miller.ext.merge_equivalents(i, d, s)
+  m = miller.ext.merge_equivalents(i, d, 1./(s*s))
   assert tuple(m.indices()) == ((1,2,3), (3,0,3), (1,1,2))
   assert approx_equal(m.data(), (17/13., (16*3+36*4+9*5)/(16+36+9.), 6))
-  assert approx_equal(flex.pow2(m.sigmas()), (1/13., 1/(16+36+9.), 1/25.))
+  assert approx_equal(m.sigmas(), (math.sqrt(1/2.), 0.84077140277, 1/5.))
   assert tuple(m.redundancies()) == (2,3,1)
 
 def exercise_phase_transfer():
