@@ -18,9 +18,28 @@
 
 namespace scitbx {
 
-  typedef
-    af::grid<2, af::c_index_1d_calculator<2>, af::tiny<std::size_t, 2> >
-      mat_grid;
+  class mat_grid : public af::tiny<std::size_t, 2>
+  {
+    public:
+      typedef af::tiny<std::size_t, 2> index_type;
+      typedef index_type::value_type index_value_type;
+
+      mat_grid() : index_type(0,0) {}
+
+      mat_grid(index_type const& n) : index_type(n) {}
+
+      mat_grid(index_value_type const& n0, index_value_type const& n1)
+      : index_type(n0, n1)
+      {}
+
+      std::size_t size_1d() const { return elems[0] * elems[1]; }
+
+      std::size_t
+      operator()(index_value_type const& r, index_value_type const& c) const
+      {
+        return r * elems[1] + c;
+      }
+  };
 
   template <typename NumType, typename AccessorType = mat_grid>
   class mat_const_ref : public af::const_ref<NumType, AccessorType>
@@ -28,7 +47,7 @@ namespace scitbx {
     public:
       typedef AccessorType accessor_type;
       typedef typename af::const_ref<NumType, AccessorType> base_type;
-      typedef typename accessor_type::index_type::value_type size_type;
+      typedef typename accessor_type::index_value_type index_value_type;
 
       mat_const_ref() {}
 
@@ -36,17 +55,18 @@ namespace scitbx {
       : base_type(begin, grid)
       {}
 
-      mat_const_ref(const NumType* begin, size_type n_rows,size_type n_columns)
+      mat_const_ref(const NumType* begin, index_value_type const& n_rows,
+                                          index_value_type const& n_columns)
       : base_type(begin, accessor_type(n_rows, n_columns))
       {}
 
       accessor_type
       grid() const { return this->accessor(); }
 
-      size_type
+      index_value_type const&
       n_rows() const { return this->accessor()[0]; }
 
-      size_type
+      index_value_type const&
       n_columns() const { return this->accessor()[1]; }
 
       //! Tests for square matrix.
@@ -63,9 +83,9 @@ namespace scitbx {
 
       //! Accesses elements with 2-dimensional indices.
       NumType const&
-      operator()(size_type r, size_type c) const
+      operator()(index_value_type const& r, index_value_type const& c) const
       {
-        return this->begin()[r * n_columns() + c];
+        return this->begin()[this->accessor()(r, c)];
       }
 
       //! Tests for diagonal matrix.
@@ -80,8 +100,8 @@ namespace scitbx {
   ::is_diagonal() const
   {
     if (!is_square()) return false;
-    for (size_type ir=0;ir<n_rows();ir++)
-      for (size_type ic=0;ic<n_columns();ic++)
+    for (index_value_type ir=0;ir<n_rows();ir++)
+      for (index_value_type ic=0;ic<n_columns();ic++)
         if (ir != ic && (*this)(ir,ic)) return false;
     return true;
   }
@@ -92,7 +112,7 @@ namespace scitbx {
     public:
       typedef AccessorType accessor_type;
       typedef mat_const_ref<NumType, AccessorType> base_type;
-      typedef typename accessor_type::index_type::value_type size_type;
+      typedef typename accessor_type::index_value_type index_value_type;
 
       mat_ref() {}
 
@@ -100,7 +120,8 @@ namespace scitbx {
       : base_type(begin, grid)
       {}
 
-      mat_ref(NumType* begin, size_type n_rows, size_type n_columns)
+      mat_ref(NumType* begin, index_value_type n_rows,
+                              index_value_type n_columns)
       : base_type(begin, accessor_type(n_rows, n_columns))
       {}
 
@@ -117,10 +138,10 @@ namespace scitbx {
       back() const { return end()[-1]; }
 
       NumType&
-      operator[](size_type i) const { return begin()[i]; }
+      operator[](index_value_type const& i) const { return begin()[i]; }
 
       NumType&
-      at(size_type i) const
+      at(index_value_type const& i) const
       {
         if (i >= this->size()) af::throw_range_error();
         return begin()[i];
@@ -135,23 +156,24 @@ namespace scitbx {
 
       //! Accesses elements with 2-dimensional indices.
       NumType&
-      operator()(size_type r, size_type c) const
+      operator()(index_value_type const& r, index_value_type const& c) const
       {
-        return this->begin()[r * this->n_columns() + c];
+        return this->begin()[this->accessor()(r, c)];
       }
 
       //! Swaps two rows in place.
       void
-      swap_rows(size_type i1, size_type i2) const
+      swap_rows(index_value_type const& i1, index_value_type const& i2) const
       {
         std::swap_ranges(&(*this)(i1,0), &(*this)(i1+1,0), &(*this)(i2,0));
       }
 
       //! Swaps two columns in place.
       void
-      swap_columns(size_type i1, size_type i2) const
+      swap_columns(index_value_type const& i1,
+                   index_value_type const& i2) const
       {
-        for(size_type ir=0;ir<this->n_rows();ir++) {
+        for(index_value_type ir=0;ir<this->n_rows();ir++) {
           std::swap((*this)(ir,i1), (*this)(ir,i2));
         }
       }
@@ -172,8 +194,8 @@ namespace scitbx {
       void transpose_square_in_place() const
       {
         SCITBX_ASSERT(this->is_square());
-        for (size_type ir=0;ir<this->n_rows();ir++)
-          for (size_type ic=ir+1;ic<this->n_columns();ic++)
+        for (index_value_type ir=0;ir<this->n_rows();ir++)
+          for (index_value_type ic=ir+1;ic<this->n_columns();ic++)
             std::swap((*this)(ir, ic), (*this)(ic, ir));
       }
 
@@ -189,7 +211,7 @@ namespace scitbx {
   {
    SCITBX_ASSERT(this->is_square());
    this->fill(0);
-   for(size_type i=0;i<this->n_rows();i++) (*this)(i,i) = d;
+   for(index_value_type i=0;i<this->n_rows();i++) (*this)(i,i) = d;
   }
 
   // non-inline member function
@@ -199,15 +221,15 @@ namespace scitbx {
   ::transpose_in_place()
   {
     if (this->is_square()) {
-      for (size_type ir=0;ir<this->n_rows();ir++)
-        for (size_type ic=ir+1;ic<this->n_columns();ic++)
+      for (index_value_type ir=0;ir<this->n_rows();ir++)
+        for (index_value_type ic=ir+1;ic<this->n_columns();ic++)
           std::swap((*this)(ir, ic), (*this)(ic, ir));
     }
     else {
       std::vector<NumType> mt_buffer(this->size());
       mat_ref mt(&*mt_buffer.begin(), this->n_columns(), this->n_rows());
-      for (size_type ir=0;ir<this->n_rows();ir++)
-        for (size_type ic=0;ic<this->n_columns();ic++)
+      for (index_value_type ir=0;ir<this->n_rows();ir++)
+        for (index_value_type ic=0;ic<this->n_columns();ic++)
           mt(ic, ir) = (*this)(ir, ic);
       std::copy(mt.begin(), mt.end(), this->begin());
       this->accessor_ = mt.accessor();

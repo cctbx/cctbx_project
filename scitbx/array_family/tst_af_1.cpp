@@ -10,6 +10,7 @@
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <scitbx/array_family/misc_functions.h>
+#include <scitbx/array_family/grid_accessor.h>
 #include <scitbx/array_family/simple_io.h>
 #include <boost/bind.hpp>
 #include <vector>
@@ -359,18 +360,16 @@ namespace {
     }
     static void run_1() {
       ArrayType a1;
-      a1 = ArrayType(af::grid<1>(3));
       a1 = ArrayType(3);
-      a1 = ArrayType(af::grid<1>(3), element_type(123));
       a1 = ArrayType(3, element_type(123));
       ArrayType w1(a1, af::weak_ref_flag());
       check_true(__LINE__, w1.use_count() == 1);
       check_true(__LINE__, w1.weak_count() == 1);
       {
         AltArrayType a2(af::grid<2>(3, 4));
-        ArrayType a3(a2, af::grid<1>(12));
+        ArrayType a3(a2, 12);
         ArrayType a4(a2, 12);
-        ArrayType a5(a2, af::grid<1>(14), element_type(1));
+        ArrayType a5(a2, 14, element_type(1));
         ArrayType a6(a2, 16, element_type(2));
         check_true(__LINE__, a2.use_count() == 5);
         check_true(__LINE__, a2.size() == 12);
@@ -459,10 +458,10 @@ namespace {
       }
       {
         if (verbose) std::cout << __LINE__ << std::endl;
-        af::versa<IntType> a1(af::grid<1>(t1.size()));
+        af::versa<IntType> a1(t1.size());
         a1.as_base_array().assign(t1);
         exercise_apply(a1, af::versa<FloatType>());
-        af::versa_plain<IntType> a2(af::grid<1>(t1.size()));
+        af::versa_plain<IntType> a2(t1.size());
         a2.as_base_array().assign(t1);
         exercise_apply(a2, af::versa_plain<FloatType>());
         exercise_apply(a2.const_ref(), af::versa_plain<FloatType>());

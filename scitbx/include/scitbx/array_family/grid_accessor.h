@@ -11,16 +11,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_GRID_ACCESSOR_H
 #define SCITBX_ARRAY_FAMILY_GRID_ACCESSOR_H
 
-#include <cstddef>
-#include <algorithm>
-#include <scitbx/array_family/detail/tiny_helpers.h>
-#include <scitbx/array_family/array_adaptor.h>
-
-// forward declaration
-namespace scitbx { namespace af {
-  template <typename ElementType, std::size_t N>
-  class tiny;
-}}
+#include <scitbx/array_family/tiny.h>
 
 namespace scitbx { namespace af {
 

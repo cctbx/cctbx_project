@@ -17,7 +17,7 @@
 namespace scitbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = grid<1>,
+            typename AccessorType = trivial_accessor,
             typename BaseArrayType = shared_plain<ElementType> >
   class versa_plain : public BaseArrayType
   {
