@@ -187,6 +187,36 @@ namespace scitbx {
               m[4], m[5], m[2])
   {}
 
+  template <typename NumType>
+  inline
+  sym_mat3<NumType>
+  mat3<NumType>::self_times_self_transpose() const
+  {
+    mat3<NumType> const& m = *this;
+    return sym_mat3<NumType>(
+      m[0]*m[0]+m[1]*m[1]+m[2]*m[2],
+      m[3]*m[3]+m[4]*m[4]+m[5]*m[5],
+      m[6]*m[6]+m[7]*m[7]+m[8]*m[8],
+      m[0]*m[3]+m[1]*m[4]+m[2]*m[5],
+      m[0]*m[6]+m[1]*m[7]+m[2]*m[8],
+      m[3]*m[6]+m[4]*m[7]+m[5]*m[8]);
+  }
+
+  template <typename NumType>
+  inline
+  sym_mat3<NumType>
+  mat3<NumType>::self_transpose_times_self() const
+  {
+    mat3<NumType> const& m = *this;
+    return sym_mat3<NumType>(
+      m[0]*m[0]+m[3]*m[3]+m[6]*m[6],
+      m[1]*m[1]+m[4]*m[4]+m[7]*m[7],
+      m[2]*m[2]+m[5]*m[5]+m[8]*m[8],
+      m[0]*m[1]+m[3]*m[4]+m[6]*m[7],
+      m[0]*m[2]+m[3]*m[5]+m[6]*m[8],
+      m[1]*m[2]+m[4]*m[5]+m[7]*m[8]);
+  }
+
   // non-inline member function
   template <typename NumType>
   sym_mat3<NumType>

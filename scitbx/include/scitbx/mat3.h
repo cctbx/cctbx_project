@@ -245,6 +245,16 @@ namespace scitbx {
       //! Decomposes the matrix into a rotation and scaling part.
       std::pair<mat3, vec3<NumType> >
       decompose() const;
+
+      //! (*this) * this->transpose().
+      inline
+      sym_mat3<NumType>
+      self_times_self_transpose() const;
+
+      //! this->transpose() * (*this).
+      inline
+      sym_mat3<NumType>
+      self_transpose_times_self() const;
   };
 
   // non-inline constructor
