@@ -5,15 +5,28 @@
 # include <complex>
 #endif
 #include <pyconfig.h>
+
+#include <complex>
+#include <vector>
+#include <set>
+
+namespace scitbx { namespace boost_python {
+
+  struct misc_fwd
+  {
+    friend void f(std::vector<unsigned> const&);
+    friend void f(std::set<unsigned> const&);
+    friend void f(std::vector<std::set<unsigned> > const&);
+  };
+
+}} // namespace scitbx::boost_python
+
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/vec3.h>
-#include <complex>
-#include <vector>
-#include <set>
 
 #if defined(__sgi) && !defined(__GNUC__)
 
@@ -31,6 +44,13 @@
  */
 
 namespace scitbx { namespace af { namespace boost_python {
+
+  struct misc_fwd
+  {
+    friend void f(af::tiny<unsigned, 2> const&);
+    friend void f(af::tiny<unsigned, 3> const&);
+    friend void f(af::tiny<unsigned, 4> const&);
+  };
 
   template <typename T>
   struct flex_fwd
