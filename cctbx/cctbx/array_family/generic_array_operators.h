@@ -361,7 +361,7 @@ namespace cctbx { namespace af {
     const std::size_t& sz)
   {
     ElementType1* a1_end = a1 + sz;
-    for(;a1 != a1_end; a1++, a2++) ftor(*a1, ElementType1(*a2));
+    for(;a1 != a1_end; a1++, a2++) ftor(*a1, *a2);
   }
 
   // in_place_ftor(array, scalar)
@@ -489,7 +489,7 @@ namespace cctbx { namespace af {
     const ElementType1* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++, a2++) {
       if (ftor(*a1, *a2)) return true;
-      if (ftor(*a2, *a1)) return false;
+      if (ftor.reverse(*a2, *a1)) return false;
     }
     return false;
   }
@@ -506,7 +506,7 @@ namespace cctbx { namespace af {
     const ElementType* a1_end = a1 + sz;
     for(;a1 != a1_end; a1++) {
       if (ftor(*a1, a2)) return true;
-      if (ftor(a2, *a1)) return false;
+      if (ftor.reverse(a2, *a1)) return false;
     }
     return false;
   }
@@ -523,7 +523,7 @@ namespace cctbx { namespace af {
     const ElementType* a2_end = a2 + sz;
     for(;a2 != a2_end; a2++) {
       if (ftor(a1, *a2)) return true;
-      if (ftor(*a2, a1)) return false;
+      if (ftor.reverse(*a2, a1)) return false;
     }
     return false;
   }
