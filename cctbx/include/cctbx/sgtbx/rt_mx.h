@@ -309,7 +309,7 @@ namespace cctbx { namespace sgtbx {
       rt_mx operator-() const { return rt_mx(-r_, -t_); }
 
       //! Addition operator.
-      friend rt_mx operator+(rt_mx const& lhs, rt_mx const& rhs);
+      rt_mx operator+(rt_mx const& rhs) const;
 
       //! += operator.
       rt_mx& operator+=(rt_mx const& rhs)
@@ -335,10 +335,10 @@ namespace cctbx { namespace sgtbx {
           <p>
           operator*() is faster than multiply().
        */
-      friend rt_mx operator*(rt_mx const& lhs, rt_mx const& rhs);
+      rt_mx operator*(rt_mx const& rhs) const;
 
       //! Addition of translation vector to translation part.
-      friend rt_mx operator+(rt_mx const& lhs, tr_vec const& rhs);
+      rt_mx operator+(tr_vec const& rhs) const;
 
       /*! \brief Refines gridding such that each grid point is
           mapped onto another grid point by the symmetry operation.
