@@ -1,5 +1,6 @@
 #include <cctbx/uctbx/fast_minimum_reduction.h>
 #include <cctbx/sgtbx/rot_mx.h>
+#include <scitbx/math/unimodular_generator.h>
 
 namespace cctbx { namespace uctbx {
 
@@ -308,20 +309,46 @@ namespace cctbx { namespace uctbx {
     return true;
   }
 
-  unit_cell
-  unit_cell::change_basis(uc_mat3 const& r, double r_den) const
+  af::shared<scitbx::mat3<int> >
+  unit_cell::similarity_transformations(
+    unit_cell const& other,
+    double relative_length_tolerance,
+    double absolute_angle_tolerance,
+    int unimodular_generator_range) const
   {
-    uc_mat3 r_ = r;
-    if (r_den != 0) {
-      r_ /= r_den;
+    af::shared<scitbx::mat3<int> > result;
+    scitbx::mat3<int> identity_matrix(1);
+    if (is_similar_to(
+          other, relative_length_tolerance, absolute_angle_tolerance)) {
+      result.push_back(identity_matrix);
     }
-    return unit_cell(metr_mx_.tensor_transpose_transform(r_));
+    scitbx::math::unimodular_generator<int>
+      unimodular_generator(unimodular_generator_range);
+    while (!unimodular_generator.at_end()) {
+      scitbx::mat3<int> c_inv_r = unimodular_generator.next();
+      unit_cell other_cb = other.change_basis(uc_mat3(c_inv_r));
+      if (is_similar_to(
+            other_cb, relative_length_tolerance, absolute_angle_tolerance)
+          && c_inv_r != identity_matrix) {
+        result.push_back(c_inv_r);
+      }
+    }
+    return result;
+  }
+
+  unit_cell
+  unit_cell::change_basis(uc_mat3 const& c_inv_r, double r_den) const
+  {
+    if (r_den == 0) {
+      return unit_cell(metr_mx_.tensor_transpose_transform(c_inv_r));
+    }
+    return unit_cell(metr_mx_.tensor_transpose_transform(c_inv_r/r_den));
   }
 
   unit_cell
   unit_cell::change_basis(sgtbx::rot_mx const& c_inv_r) const
   {
-    return change_basis(c_inv_r.as_double(), 1.);
+    return change_basis(c_inv_r.as_double(), 0);
   }
 
   miller::index<>

@@ -162,6 +162,14 @@ namespace cctbx {
                     double relative_length_tolerance=0.01,
                     double absolute_angle_tolerance=1.) const;
 
+      //! Array of c_inv_r matrices compatible with change_basis.
+      af::shared<scitbx::mat3<int> >
+      similarity_transformations(
+        unit_cell const& other,
+        double relative_length_tolerance=0.02,
+        double absolute_angle_tolerance=2.,
+        int unimodular_generator_range=1) const;
+
       //! Matrix for the conversion of cartesian to fractional coordinates.
       /*! x(fractional) = matrix * x(cartesian). */
       uc_mat3 const& fractionalization_matrix() const { return frac_; }
@@ -299,12 +307,12 @@ namespace cctbx {
       }
 
       //! Transformation (change-of-basis) of unit cell parameters.
-      /*! r is the inverse of the 3x3 change-of-basis matrix
+      /*! c_inv_r is the inverse of the 3x3 change-of-basis matrix
           that transforms coordinates in the old basis system to
           coodinates in the new basis system.
        */
       unit_cell
-      change_basis(uc_mat3 const& r, double r_den=1.) const;
+      change_basis(uc_mat3 const& c_inv_r, double r_den=1.) const;
 
       //! Transformation (change-of-basis) of unit cell parameters.
       /*! r is the inverse of the 3x3 change-of-basis matrix

@@ -35,6 +35,9 @@ namespace {
       is_similar_to_overloads, is_similar_to, 1, 3)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      similarity_transformations_overloads, similarity_transformations, 1, 4)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       change_basis_overloads, change_basis, 1, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
@@ -81,6 +84,13 @@ namespace {
             arg_("other"),
             arg_("relative_length_tolerance")=0.01,
             arg_("absolute_angle_tolerance")=1.)))
+        .def("similarity_transformations",
+          &w_t::similarity_transformations,
+          similarity_transformations_overloads((
+            arg_("other"),
+            arg_("relative_length_tolerance")=0.02,
+            arg_("absolute_angle_tolerance")=2,
+            arg_("unimodular_generator_range")=1)))
         .def("fractionalization_matrix", &w_t::fractionalization_matrix, ccr())
         .def("orthogonalization_matrix", &w_t::orthogonalization_matrix, ccr())
         .def("fractionalize",
