@@ -1,0 +1,25 @@
+Import("env_base", "env_etc")
+env = env_base.Copy(
+  CPPPATH=[env_etc.scitbx_include,
+           env_etc.boost_include,
+           env_etc.python_include],
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags_bpl,
+  SHLIBPREFIX="",
+  LIBPATH=["#/libtbx"] + env_etc.libpath_python,
+  LIBS=["scitbx_boost_python", "bpl"] + env_etc.libs_python + env_etc.libm,
+)
+env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+env.Replace(SHLIBSUFFIX=env_etc.extension_module_suffix)
+env.SharedLibrary(target="flex", source=[
+  "#/scitbx/array_family/boost_python/flex_module.cpp",
+  "#/scitbx/array_family/boost_python/flex_bool.cpp",
+  "#/scitbx/array_family/boost_python/flex_size_t.cpp",
+  "#/scitbx/array_family/boost_python/flex_int.cpp",
+  "#/scitbx/array_family/boost_python/flex_long.cpp",
+  "#/scitbx/array_family/boost_python/flex_float.cpp",
+  "#/scitbx/array_family/boost_python/flex_double.cpp",
+  "#/scitbx/array_family/boost_python/flex_complex_double.cpp",
+  "#/scitbx/array_family/boost_python/flex_std_string.cpp",
+])

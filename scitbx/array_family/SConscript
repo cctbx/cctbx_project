@@ -1,0 +1,16 @@
+Import("env_base", "env_etc")
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  CPPPATH=[".", env_etc.scitbx_include, env_etc.boost_include],
+)
+envlm = env.Copy(
+  LIBS=env_etc.libm
+)
+env.Program(target="tst_af_1", source="tst_af_1.cpp")
+env.Program(target="tst_af_2", source="tst_af_2.cpp")
+env.Program(target="tst_af_3", source="tst_af_3.cpp")
+envlm.Program(target="tst_af_4", source="tst_af_4.cpp")
+envlm.Program(target="tst_af_5", source="tst_af_5.cpp")
+envlm.Program(target="tst_vec3", source="tst_vec3.cpp")
+envlm.Program(target="tst_mat3", source="tst_mat3.cpp")
+env.Program(target="tst_sym_mat3", source="tst_sym_mat3.cpp")

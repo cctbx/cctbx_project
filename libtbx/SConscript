@@ -1,0 +1,54 @@
+import os.path
+Import("env_base", "env_etc")
+env = env_base.Copy(
+  CPPPATH=[env_etc.boost_include, env_etc.python_include],
+  LIBS=env_etc.libs_python,
+  LIBPATH=env_etc.libpath_python,
+)
+env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
+env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
+env.Replace(SHLINKFLAGS=env_etc.shlinkflags_bpl)
+bpl_dll_sources = Split("""
+  src/list.cpp
+  src/long.cpp
+  src/dict.cpp
+  src/tuple.cpp
+  src/str.cpp
+  src/aix_init_module.cpp
+  src/converter/from_python.cpp
+  src/converter/registry.cpp
+  src/converter/type_id.cpp
+  src/object/class.cpp
+  src/object/function.cpp
+  src/object/inheritance.cpp
+  src/object/life_support.cpp
+  src/object/pickle_support.cpp
+  src/errors.cpp
+  src/module.cpp
+  src/converter/builtin_converters.cpp
+  src/converter/arg_to_python_base.cpp
+  src/object/iterator.cpp
+  src/object_protocol.cpp
+  src/object_operators.cpp
+""")
+bpl_dll_sources = [
+  os.path.join("#/boost/libs/python", path)
+    for path in bpl_dll_sources]
+env.SharedLibrary(target="bpl", source=bpl_dll_sources)
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  CPPPATH=[env_etc.scitbx_include,
+           env_etc.boost_include,
+           env_etc.python_include],
+)
+env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+scitbx_boost_python_sources = Split("""
+  #/scitbx/boost_python/utils.cpp
+  #/scitbx/array_family/boost_python/utils.cpp
+  #/scitbx/array_family/boost_python/small_conversions.cpp
+""")
+env.StaticLibrary(
+  target="scitbx_boost_python",
+  source=scitbx_boost_python_sources)

@@ -1,0 +1,98 @@
+import sys, os, os.path
+
+class empty: pass
+
+env_etc = empty()
+env_etc.compiler = ARGUMENTS.get("compiler", 0)
+env_base = Environment(ENV = os.environ)
+
+if (env_etc.compiler == 0):
+  if (sys.platform == "win32"):
+    env_etc.compiler = "win32_cl"
+  elif (sys.platform.startswith("linux")):
+    env_etc.compiler = "unix_gcc"
+  elif (sys.platform.startswith("osf")):
+    env_etc.compiler = "tru64_cxx"
+  elif (sys.platform.startswith("irix")):
+    env_etc.compiler = "irix_CC"
+assert env_etc.compiler in (
+  "win32_cl",
+  #"win32_mwcc",
+  "unix_gcc",
+  "tru64_cxx",
+  #"irix_CC",
+)
+
+if (sys.platform == "win32"):
+  env_etc.python_include = r"c:\Python22\include"
+  env_etc.boost_include = r"r:\boost"
+  env_etc.scitbx_include = r"r:\bpl2\scitbx\include"
+  env_etc.cctbx_include = r"r:\bpl2\cctbx\include"
+  env_etc.boost_libs_python = r"r:\boost\libs\python"
+  env_etc.libs_python = ["python22"]
+  env_etc.libpath_python = [r"c:\Python22\libs"]
+  env_etc.extension_module_suffix = ".pyd"
+  env_base.Update(COPYCOM="copy")
+  if (env_etc.compiler == "win32_cl"):
+    env_base.Update(
+      SHCXX="cl",
+      SHLINK="link",
+    )
+    env_etc.cxxflags_base = Split("""
+        /nologo
+        /MD
+        /GR /GX
+        /Zm800
+    """)
+    env_etc.shlinkflags_bpl="/nologo /incremental:no /dll"
+    env_etc.libm = []
+  else:
+    raise "Unknown compiler choice:", env_etc.compiler
+else:
+  env_etc.python_include = "/usr/local_cci/Python-2.2.1/include/python2.2"
+  env_etc.boost_include = "/net/cci/rwgk/boost"
+  env_etc.scitbx_include = "/net/cci/rwgk/bpl2/scitbx/include"
+  env_etc.cctbx_include = "/net/cci/rwgk/bpl2/cctbx/include"
+  env_etc.boost_libs_python = "/net/cci/rwgk/boost/libs/python"
+  env_etc.libs_python = []
+  env_etc.libpath_python = []
+  env_etc.extension_module_suffix = ".so"
+  env_etc.libm = ["m"]
+  env_base.Replace(COPYCOM="cp")
+  if (env_etc.compiler == "tru64_cxx"):
+    env_base.Replace(
+      CXX="cxx",
+      LINK="cxx",
+      SHCXX="cxx",
+      SHLINK="cxx",
+    )
+    env_etc.cxxflags_base = Split("""
+        -std strict_ansi
+        -msg_display_number -msg_disable 186,450,1115
+        -O2
+        -DNDEBUG
+    """)
+    env_etc.shlinkflags_bpl="-shared -expect_unresolved 'Py*'" \
+                           + " -expect_unresolved '_Py*'"
+  elif (env_etc.compiler == "unix_gcc"):
+    env_base.Replace(
+      CXX="g++",
+      LINK="g++",
+      SHCXX="g++",
+      SHLINK="g++",
+    )
+    env_etc.cxxflags_base = Split("""
+      -fPIC
+      -ftemplate-depth-50
+      -w
+      -g
+    """)
+    env_etc.shlinkflags_bpl="-shared"
+  else:
+    raise "Unknown compiler choice:", env_etc.compiler
+env_etc.cxxflags_bpl_defines_base = Split("""
+    -DBOOST_PYTHON_DYNAMIC_LIB
+    -DBOOST_PYTHON_V2
+""")
+
+Export("env_base", "env_etc")
