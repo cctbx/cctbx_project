@@ -69,6 +69,25 @@ namespace scitbx { namespace math { namespace gaussian {
         }
       }
 
+      //! Initialization of the terms and optionally the constant.
+      /*! If c is different from zero use_c will automatically be
+          set to true.
+       */
+      sum(
+        af::const_ref<FloatType> const& ab,
+        FloatType const& c=0,
+        bool use_c=false)
+      :
+        c_(c),
+        use_c_(use_c || c != 0)
+      {
+        SCITBX_ASSERT(ab.size() % 2 == 0);
+        SCITBX_ASSERT(ab.size() <= max_n_terms * 2);
+        for(std::size_t i=0;i<ab.size();i+=2) {
+          terms_.push_back(term<FloatType>(ab[i], ab[i+1]));
+        }
+      }
+
       //! Number of terms.
       std::size_t
       n_terms() const { return terms_.size(); }

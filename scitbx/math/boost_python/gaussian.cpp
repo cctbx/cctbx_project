@@ -61,6 +61,8 @@ namespace {
         .def(init<af::small<double, w_t::max_n_terms> const&,
                   af::small<double, w_t::max_n_terms> const&,
                   optional<double const&, bool> >())
+        .def(init<af::const_ref<double> const&,
+                  optional<double const&, bool> >())
         .def(init<sum<> const&>())
         .def("n_terms", &w_t::n_terms)
         .def("array_of_a", &w_t::array_of_a)
