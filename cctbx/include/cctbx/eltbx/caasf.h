@@ -140,6 +140,9 @@ namespace cctbx { namespace eltbx { namespace caasf {
     for (const detail::raw_table_entry<N>* entry = table_raw;
          entry->label;
          entry++) {
+      if (std::string(entry->label) == "const" and work_label != "CONST") {
+        continue;
+      }
       int i = basic::match_labels(work_label, entry->label);
       if (i < 0) {
         if (entry->c == detail::undefined) {
