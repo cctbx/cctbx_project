@@ -25,21 +25,10 @@ class erf_verification:
         if (delta > self.tolerance):
           print x, expected_result, result, delta
 
-class minimum_covering_sphere:
+class minimum_covering_sphere_nd:
 
-  def __init__(self, points, epsilon=None):
+  def __init__(self, points, epsilon):
     if (epsilon is None): epsilon = 1.e-6
-    if (isinstance(points, flex.vec3_double)):
-      mcs = scitbx.math.ext.minimum_covering_sphere(
-        points=points, epsilon=epsilon)
-      self._n_iterations = mcs.n_iterations()
-      self._center =mcs.center()
-      self._radius =mcs.radius()
-    else:
-      self._python_implementation(
-        points=points, epsilon=epsilon)
-
-  def _python_implementation(self, points, epsilon):
     assert len(points) > 0
     n_dim = len(points[0].elems)
     w = 1./len(points)
@@ -76,3 +65,10 @@ class minimum_covering_sphere:
 
   def radius(self):
     return self._radius
+
+def minimum_covering_sphere(points, epsilon=None):
+  if (epsilon is None): epsilon = 1.e-6
+  if (isinstance(points, flex.vec3_double)):
+    return minimum_covering_sphere_3d(points=points, epsilon=epsilon)
+  else:
+    return minimum_covering_sphere_nd(points=points, epsilon=epsilon)
