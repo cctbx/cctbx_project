@@ -2,6 +2,7 @@
 # group symbol or symmetry matrices, or a combination of the two.
 
 from cctbx import sgtbx
+from cctbx.sgtbx import harker
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
 
@@ -247,6 +248,24 @@ def run(server_info, inp, status):
       position.multiplicity(),
       position.point_group_type(),
       str(position.special_op()))
+    print "</tr>"
+  print "</table><pre>"
+  status.in_table = 00000
+  print
+
+  print "Harker planes:"
+  print "</pre><table border=2 cellpadding=2>"
+  status.in_table = 0001
+  print "<tr>"
+  print "<th>Algebraic"
+  print "<th>Normal vector"
+  print "<th>A point in the plane"
+  print "</tr>"
+  planes = harker.planes_fractional(sg)
+  for plane in planes.list:
+    print "<tr>"
+    print "<td><tt>%s</tt><td>%s<td>%s" % (
+      plane.algebraic(), str_ev(plane.n), str(plane.p))
     print "</tr>"
   print "</table><pre>"
   status.in_table = 00000

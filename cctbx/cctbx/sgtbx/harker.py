@@ -1,5 +1,8 @@
 from cctbx import crystal
+from cctbx import sgtbx
+from scitbx import rational
 import math
+import sys
 
 def dot3(a, b):
   return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
@@ -13,9 +16,32 @@ def mod_positive3(x_frac):
 
 class plane_fractional:
 
-  def __init__(self, n, p):
+  def __init__(self, s, n, p, c):
+    self.s = s
     self.n = n
     self.p = p
+    self.c = c
+
+  def operation(self):
+    return sgtbx.rt_mx(self.s.r().minus_unit_mx(), self.s.t())
+
+  def algebraic(self):
+    op = self.operation()
+    # eliminate minus signs to make the expression look more like
+    # what people are used to see
+    r = op.r().num()
+    d = op.r().den()
+    signs = [None,None,None]
+    for j in xrange(3):
+      for i in xrange(3):
+        rij = r[i*3+j]
+        if (signs[i] == None and rij != 0):
+          if (rij < 0): signs[i] = -1
+          else: signs[i] = 1
+    m = list(sgtbx.rot_mx(d, d).num())
+    for i in xrange(3):
+      if (signs[i] == -1): m[i*4] *= -1
+    return str(sgtbx.rt_mx(op.r().multiply(sgtbx.rot_mx(m,d)), op.t()))
 
 class planes_fractional:
 
@@ -34,7 +60,8 @@ class planes_fractional:
       c = -dot3(n, p.num())
       if (not nc_dict.has_key((n,c))):
         nc_dict[(n,c)] = 0
-        self.list.append(plane_fractional(n=n, p=p))
+        self.list.append(
+          plane_fractional(s=s, n=n, p=p, c=rational.int(c,p.den())))
 
 class plane_cartesian:
 
@@ -77,3 +104,15 @@ class planes_cartesian(crystal.symmetry):
               if (result == None): result = pl.distance(xuc)
               else: result = min(result, pl.distance(xuc))
     return result
+
+def test_call_back(flags, space_group_info):
+  planes = planes_fractional(space_group_info.group())
+  for plane in planes.list:
+    print plane.s, plane.algebraic(), plane.n, plane.c, plane.p
+
+def test():
+  from cctbx.development import debug_utils
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], test_call_back)
+
+if (__name__ == "__main__"):
+  test()

@@ -556,7 +556,11 @@ class array(set):
       assert flex.order(phase_source.indices(), self.indices()) == 0
       phase_source = phase_source.data()
     p1 = flex.arg(self.data())
-    p2 = flex.arg(phase_source)
+    assert isinstance(phase_source, flex.complex_double) or isinstance(phase_source, flex.double)
+    if (isinstance(phase_source, flex.complex_double)):
+      p2 = flex.arg(phase_source)
+    else:
+      p2 = phase_source
     assert p1.size() == p2.size()
     e = flex.double()
     for i in p1.indices():

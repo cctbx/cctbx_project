@@ -2,19 +2,19 @@
 
 set echo
 
-mkdir dist
+mkdir -p dist
 cd dist
 cp -r $LIBTBX_DIST .
-mkdir scitbx
+mkdir -p scitbx
 cp -r $SCITBX_DIST/{scitbx,libtbx_config} scitbx
-mkdir cctbx
+mkdir -p cctbx
 cp -r $CCTBX_DIST/{cctbx,libtbx_config} cctbx
-mkdir iotbx
+mkdir -p iotbx
 cp -r $IOTBX_DIST/{iotbx,libtbx_config} iotbx
 cd ..
 
 if ($#argv == 0) then
-  mkdir bintbx
+  mkdir -p bintbx
   cd bintbx
   cp -r $LIBTBX_BUILD/libtbx .
   python ../dist/libtbx/configure.py iotbx
