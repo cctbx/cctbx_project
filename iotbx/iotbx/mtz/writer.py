@@ -7,6 +7,8 @@ def _DoubleOrComplex(writer,label,datatype,item_miller,item_data):
   elif isinstance(item_data,flex.complex_double):
     writer.addColumn(label,datatype,item_miller,flex.abs(item_data))
     writer.addColumn("phi_"+label,"P",item_miller,flex.arg(item_data, True))
+  else:
+    raise RuntimeError, "Not implemented." # XXX
 
 def _columnCombinations(writer,label,datatype,carry_miller,carry_data):
   if len(carry_miller)==1:  # anomalous flag is False
@@ -14,6 +16,8 @@ def _columnCombinations(writer,label,datatype,carry_miller,carry_data):
   elif len(carry_miller)==2:  # anomalous data
     _DoubleOrComplex(writer,label+"+",datatype,carry_miller[0],carry_data[0])
     _DoubleOrComplex(writer,label+"-",datatype,carry_miller[1],carry_data[1])
+  else:
+    raise RuntimeError, "Internal error."
 
 def add_miller_array(self, miller_array, label_data, label_sigmas=None):
   assert (miller_array.sigmas() == None) == (label_sigmas == None)

@@ -97,10 +97,16 @@ def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
           anomalous_flag=True),
         data=p.valid_values(label_data+"+", label_data+"-"),
         sigmas=p.valid_values(label_sigmas+"+", label_sigmas+"-"))
-  v = r.adopt_set(miller_array)
-  assert flex.max(flex.abs(miller_array.data() - v.data())) < 1.e-5
+  verify_miller_arrays(miller_array, r)
+  r = p.as_miller_arrays()
+  assert len(r) == 1
+  verify_miller_arrays(miller_array, r.values()[0])
+
+def verify_miller_arrays(a1, a2):
+  v = a2.adopt_set(a1)
+  assert flex.max(flex.abs(a1.data() - v.data())) < 1.e-5
   if (v.sigmas() != None):
-    assert flex.max(flex.abs(miller_array.sigmas() - v.sigmas())) < 1.e-5
+    assert flex.max(flex.abs(a1.sigmas() - v.sigmas())) < 1.e-5
 
 def exercise(space_group_info, n_scatterers=8, d_min=5,
              anomalous_flag=False, verbose=0):

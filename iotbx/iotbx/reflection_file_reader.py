@@ -57,7 +57,9 @@ class any_reflection_file:
       for key,miller_array in miller_arrays.items():
         result[self.file_name+":"+key] = miller_array
     elif (self.file_type == "ccp4_mtz"):
-      pass
+      miller_arrays = self.mtz_file.as_miller_arrays()
+      for key,miller_array in miller_arrays.items():
+        result[self.file_name+":"+key] = miller_array
     else:
       raise RuntimeError, "Internal error."
     return result
