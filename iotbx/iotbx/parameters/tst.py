@@ -628,7 +628,6 @@ a=$b
 
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
-include tmp1.params
 #include none
 a=x
 """
@@ -658,6 +657,7 @@ a = x
 b = y
 r = 0
 c = z
+b = y
 d = $z
 s = 1
 """
@@ -667,6 +667,24 @@ s = 1
   else: raise RuntimeError("Exception expected.")
   try: os.makedirs("tmp")
   except OSError: pass
+  #
+  print >> open("tmp1.params", "w"), """\
+include tmp3.params
+"""
+  print >> open("tmp2.params", "w"), """\
+include tmp1.params
+"""
+  print >> open("tmp3.params", "w"), """\
+include tmp2.params
+"""
+  try: parameters = iotbx.parameters.parse(
+    file_name="tmp1.params",
+    process_includes=True)
+  except RuntimeError, e:
+    assert str(e).startswith("Include dependency cycle: ")
+    assert len(str(e).split(",")) == 4
+  else: raise RuntimeError("Exception expected.")
+  #
   print >> open("tmp1.params", "w"), """\
 a=0
 include tmp/tmp1.params
@@ -679,7 +697,6 @@ y=2
 """
   print >> open("tmp/tmp2.params", "w"), """\
 c=2
-include tmp1.params
 z=3
 """
   parameters = iotbx.parameters.parse(
@@ -694,6 +711,43 @@ c = 2
 z = 3
 y = 2
 x = 1
+"""
+  print >> open("tmp4.params", "w"), """\
+a=1
+include tmp1.params
+s {
+  a=2
+  include tmp1.params
+  z=2
+}
+z=1
+"""
+  parameters = iotbx.parameters.parse(
+    file_name="tmp4.params",
+    process_includes=True)
+  out = StringIO()
+  parameters.show(out=out)
+  assert out.getvalue() == """\
+a = 1
+a = 0
+b = 1
+c = 2
+z = 3
+y = 2
+x = 1
+
+s {
+  a = 2
+  a = 0
+  b = 1
+  c = 2
+  z = 3
+  y = 2
+  x = 1
+  z = 2
+}
+
+z = 1
 """
 
 def exercise_fetch():

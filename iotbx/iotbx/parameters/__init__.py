@@ -784,32 +784,39 @@ class scope:
   def process_includes(self,
         definition_type_names,
         reference_directory,
-        include_memory=None):
+        substitution_scope=None,
+        include_stack=None):
     if (definition_type_names is None):
       definition_type_names = default_definition_type_names
-    if (include_memory is None): include_memory = {}
+    if (substitution_scope is None):
+      substitution_scope = self
+    if (include_stack is None): include_stack = []
     result = []
     for object in self.objects:
-      if (not isinstance(object, definition)
-          or object.name != "include"
-          or object.is_disabled):
+      if (object.is_disabled):
         result.append(object)
-      else:
-        object_sub = self.variable_substitution(object=object, path_memory={})
-        for file_name in [word.value for word in object_sub.words]:
-          if (reference_directory is not None
-              and not os.path.isabs(file_name)):
-            file_name = os.path.join(reference_directory, file_name)
-          file_name_normalized = os.path.normpath(os.path.abspath(file_name))
-          if (file_name_normalized in include_memory): continue
-          include_memory[file_name_normalized] = None
-          result.extend(parse(
-            file_name=file_name,
-            definition_type_names=definition_type_names).process_includes(
+      elif (isinstance(object, definition)):
+        if (object.name != "include"):
+          result.append(object)
+        else:
+          object_sub = substitution_scope.variable_substitution(
+            object=object, path_memory={})
+          for file_name in [word.value for word in object_sub.words]:
+            if (reference_directory is not None
+                and not os.path.isabs(file_name)):
+              file_name = os.path.join(reference_directory, file_name)
+            result.extend(parse(
+              file_name=file_name,
               definition_type_names=definition_type_names,
-              reference_directory=os.path.dirname(file_name_normalized),
-              include_memory=include_memory).objects)
-    return scope(name="", objects=result)
+              process_includes=True,
+              include_stack=include_stack).objects)
+      else:
+        result.append(object.process_includes(
+          definition_type_names=definition_type_names,
+          reference_directory=reference_directory,
+          substitution_scope=substitution_scope,
+          include_stack=include_stack))
+    return self.copy(objects=result)
 
 class variable_substitution_fragment(object):
 
@@ -896,7 +903,8 @@ def parse(
       source_info=None,
       file_name=None,
       definition_type_names=None,
-      process_includes=False):
+      process_includes=False,
+      include_stack=None):
   from iotbx.parameters import parser
   assert source_info is None or file_name is None
   if (input_string is None):
@@ -920,12 +928,23 @@ def parse(
     definition_type_names=definition_type_names))
   if (process_includes):
     if (file_name is None):
+      file_name_normalized = None
       reference_directory = None
     else:
-      reference_directory = os.path.dirname(os.path.abspath(file_name))
+      file_name_normalized = os.path.normpath(os.path.abspath(file_name))
+      reference_directory = os.path.dirname(file_name_normalized)
+      if (include_stack is None):
+        include_stack = []
+      elif (file_name_normalized in include_stack):
+        raise RuntimeError("Include dependency cycle: %s"
+          % ", ".join(include_stack+[file_name_normalized]))
+      include_stack.append(file_name_normalized)
     result = result.process_includes(
       definition_type_names=definition_type_names,
-      reference_directory=reference_directory)
+      reference_directory=reference_directory,
+      include_stack=include_stack)
+    if (include_stack is not None):
+      include_stack.pop()
   return result
 
 def read_default(
