@@ -2,8 +2,7 @@ from cctbx import euclidean_model_matching as emma
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-import sys
-import traceback
+from cctbx.web import utils
 
 class empty: pass
 
@@ -68,7 +67,7 @@ class web_to_models:
     self.sgsymbol = sgsymbol
     self.convention = convention
     if (format == "generic"):
-      skip_columns = int(skip_columns)
+      skip_columns = utils.interpret_skip_columns(skip_columns)
       self.positions = []
       for line in coordinates:
         label, site = interpret_generic_coordinate_line(line, skip_columns)
@@ -115,7 +114,7 @@ class web_to_models:
     self.i_next_model += 1
     return m
 
-def run(cctbx_url, inp):
+def run(cctbx_url, inp, status):
   print "Content-type: text/html"
   print
   print "<pre>"
@@ -126,53 +125,46 @@ def run(cctbx_url, inp):
       inp.sgsymbol_2 = inp.sgsymbol_1
       inp.convention_2 = inp.convention_1
 
-  try:
-    tolerance = float(inp.tolerance)
-    print "Tolerance:", tolerance
-    if (tolerance <= 0.):
-      raise ValueError, "Tolerance must be greater than zero."
+  tolerance = float(inp.tolerance)
+  print "Tolerance:", tolerance
+  if (tolerance <= 0.):
+    raise ValueError, "Tolerance must be greater than zero."
+  print
+
+  diffraction_index_equivalent = int(inp.diffraction_index_equivalent)
+  if (diffraction_index_equivalent):
+    print "Models are diffraction index equivalent."
     print
 
-    diffraction_index_equivalent = int(inp.diffraction_index_equivalent)
-    if (diffraction_index_equivalent):
-      print "Models are diffraction index equivalent."
-      print
+  models1 = web_to_models(
+    inp.ucparams_1,
+    inp.sgsymbol_1, inp.convention_1,
+    inp.format_1, inp.coor_type_1, inp.skip_columns_1,
+    inp.coordinates[0])
+  model1 = models1.get_next()
+  assert model1, "Problems reading reference model."
+  model1.show("Reference model")
+  assert not models1.get_next()
 
-    models1 = web_to_models(
-      inp.ucparams_1,
-      inp.sgsymbol_1, inp.convention_1,
-      inp.format_1, inp.coor_type_1, inp.skip_columns_1,
-      inp.coordinates[0])
-    model1 = models1.get_next()
-    assert model1, "Problems reading reference model."
-    model1.show("Reference model")
-    assert not models1.get_next()
-
-    models2 = web_to_models(
-      inp.ucparams_2,
-      inp.sgsymbol_2, inp.convention_2,
-      inp.format_2, inp.coor_type_2, inp.skip_columns_2,
-      inp.coordinates[1])
-    while 1:
-      print "#" * 79
+  models2 = web_to_models(
+    inp.ucparams_2,
+    inp.sgsymbol_2, inp.convention_2,
+    inp.format_2, inp.coor_type_2, inp.skip_columns_2,
+    inp.coordinates[1])
+  while 1:
+    print "#" * 79
+    print
+    model2 = models2.get_next()
+    if (not model2): break
+    model2.show(model2.label)
+    refined_matches = emma.match_models(model1, model2)
+    if (len(refined_matches) == 0):
+      print "No matches."
       print
-      model2 = models2.get_next()
-      if (not model2): break
-      model2.show(model2.label)
-      refined_matches = emma.match_models(model1, model2)
-      if (len(refined_matches) == 0):
-        print "No matches."
+    else:
+      for match in refined_matches:
+        print "." * 79
         print
-      else:
-        for match in refined_matches:
-          print "." * 79
-          print
-          match.show()
-
-  except RuntimeError, e:
-    print e
-  except AssertionError:
-    ei = sys.exc_info()
-    print traceback.format_exception_only(ei[0], ei[1])[0]
+        match.show()
 
   print "</pre>"
