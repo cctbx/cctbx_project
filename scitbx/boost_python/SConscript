@@ -13,6 +13,7 @@ env.Append(LIBS=["boost_python"])
 
 lib_scitbx_boost_python_sources = [
   "#scitbx/boost_python/utils.cpp",
+  "#scitbx/boost_python/slice.cpp",
   "#scitbx/array_family/boost_python/utils.cpp",
 ]
 if (env_etc.static_libraries): builder = env.StaticLibrary

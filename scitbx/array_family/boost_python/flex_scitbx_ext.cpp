@@ -16,6 +16,7 @@
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/utils.h>
+#include <scitbx/boost_python/slice.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
@@ -122,6 +123,7 @@ namespace {
 
     register_scitbx_tuple_mappings();
 
+    scitbx::boost_python::slice_from_python();
     wrap_flex_grid();
 
     wrap_flex_bool();
