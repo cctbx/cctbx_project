@@ -26,9 +26,7 @@ def run_tests(build_dir, dist_dir, tst_list):
     else:
       cmd = tst_path
     if ("--valgrind" in sys.argv[1:]):
-      cmd = "valgrind " + cmd
-    elif ("--memcheck" in sys.argv[1:]):
-      cmd = "valgrind --tool=memcheck " + cmd
+      cmd = os.environ["LIBTBX_VALGRIND"] + " " + cmd
     cmd += cmd_args
     print cmd
     sys.stdout.flush()
