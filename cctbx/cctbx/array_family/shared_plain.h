@@ -11,7 +11,6 @@
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_PLAIN_H
 #define CCTBX_ARRAY_FAMILY_SHARED_PLAIN_H
 
-#include <cctbx/array_family/apply.h>
 #include <cctbx/array_family/shared_base.h>
 
 namespace cctbx { namespace af {
@@ -50,12 +49,6 @@ namespace cctbx { namespace af {
         this->resize(n);
         std::fill(this->begin(), this->end(), x);
       }
-  };
-
-  template <typename ElementType, typename OtherElementType>
-  struct change_array_element_type<
-    shared_plain<ElementType>, OtherElementType> {
-    typedef shared_plain<OtherElementType> array_type;
   };
 
 }} //namespace cctbx::af

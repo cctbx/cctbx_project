@@ -12,7 +12,6 @@
 #define CCTBX_ARRAY_FAMILY_APPLY_H
 
 #include <cctbx/basic/meta.h>
-#include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
 

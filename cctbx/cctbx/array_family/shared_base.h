@@ -215,32 +215,6 @@ namespace cctbx {
                 element_size() * c.sz
             ))){ }
 
-        //! default copy constructor...reference semantics
-        //! default assignment operator...reference semantics
-
-        // XXX maybe these type-dependent copy semantics is too confusing?
-        // XXX the user could simply use std::copy
-        //! copy constructor templated on different value type...
-        /*! this has deepcopy semantics...will fail unless the r
-            array is initialized first XXX ???
-         */
-        template <class OtherElementType>
-        explicit shared_base(const shared_base<OtherElementType>& r):
-          m_handle (element_size() * r.size())
-        {
-          std::copy(r.begin(), r.end(), this->begin());
-        }
-
-        //! assignment operator templated on OtherElementType
-        // ...deepcopy semantics
-        template <class OtherElementType>
-        shared_base<ElementType>
-        operator= (const shared_base<OtherElementType>& r) {
-          resize(r.size());
-          std::copy(r.begin(), r.end(), this->begin());
-          return *this;
-        }
-
         size_type size() const { return m_handle.size()/element_size(); }
 
         CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
@@ -255,6 +229,10 @@ namespace cctbx {
           std::copy(this->begin(), this->end(), result.begin());
           return result;
         }
+
+        // XXX
+        // template <class OtherElementType>
+        // copy_from(const shared_base<OtherElementType>& r)
 
         CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())
 
