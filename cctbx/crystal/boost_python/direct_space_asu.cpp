@@ -110,15 +110,20 @@ namespace {
   {
     typedef asu_mapping_index_pair w_t;
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      is_active_overloads, is_active, 0, 1)
+
     static void
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("direct_space_asu_asu_mapping_index_pair", no_init)
         .def_readonly("i_seq", &w_t::i_seq)
         .def_readonly("j_seq", &w_t::j_seq)
         .def_readonly("j_sym", &w_t::j_sym)
-        .def("is_active", &w_t::is_active)
+        .def("is_active", &w_t::is_active, is_active_overloads(
+          (arg_("minimal"))))
       ;
     }
   };

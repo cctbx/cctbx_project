@@ -1,5 +1,7 @@
 from cctbx import uctbx
 from cctbx import crystal
+from cctbx.development import debug_utils
+import sys
 
 def exercise_symmetry():
   xs = crystal.symmetry()
@@ -81,9 +83,28 @@ def exercise_special_position_settings():
   assert sp.site_symmetry((0,0,0)).multiplicity() == 1
   assert str(sp.sym_equiv_sites((0,0,0)).special_op()) == "0,0,0"
 
+def exercise_site_symmetry(space_group_info):
+  special_position_settings = crystal.special_position_settings(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=space_group_info.any_compatible_unit_cell(volume=1000),
+      space_group_info=space_group_info))
+  wyckoff_table = space_group_info.wyckoff_table()
+  for i_position in xrange(wyckoff_table.size()):
+    site_symmetry = wyckoff_table.random_site_symmetry(
+      special_position_settings=special_position_settings,
+      i_position=i_position)
+    s = site_symmetry.special_op()
+    assert s.multiply(s) == s
+    for m in site_symmetry.matrices():
+      assert m.multiply(s) == s
+
+def run_call_back(flags, space_group_info):
+  exercise_site_symmetry(space_group_info)
+
 def run():
   exercise_symmetry()
   exercise_special_position_settings()
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 
 if (__name__ == "__main__"):
