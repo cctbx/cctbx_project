@@ -10,6 +10,24 @@ from cctbx_boost import sftbx
 def set_random_seed(seed):
   random.seed(seed)
 
+class command_line_options:
+
+  def __init__(self, argv, keywords):
+    self.n = 0
+    for keyword in keywords:
+      is_keyword = ("--" + keyword in argv)
+      setattr(self, keyword, is_keyword)
+      if (is_keyword):
+        self.n += 1
+
+def get_test_space_group_symbols(FlagAllSpaceGroups):
+  if (FlagAllSpaceGroups):
+    sgnumbers = xrange(1, 231)
+  else:
+    sgnumbers = (1,2,3,15,16,74,75,142,143,167,168,194,195,230)
+  return [sgtbx.SpaceGroupSymbols(sgno).ExtendedHermann_Mauguin()
+          for sgno in sgnumbers]
+
 def get_compatible_unit_cell(SgInfo, Volume):
   if   (SgInfo.SgNumber() <   3):
     uc = uctbx.UnitCell((1., 1.3, 1.7, 83, 109, 129))
@@ -88,8 +106,11 @@ def perturb_coordinates(ucell, sgops, x, sigma, vary_z_only = 0):
 
 class random_structure:
 
-  def __init__(self, SgInfo, Elements, volume_per_atom = 1000.,
-               min_distance = 3.0, general_positions_only = 0):
+  def __init__(self, SgInfo, Elements,
+               volume_per_atom=1000.,
+               min_distance=3.0,
+               general_positions_only=0,
+               anisotropic_displacement_parameters=0):
     self.SgInfo = SgInfo
     self.UnitCell = get_compatible_unit_cell(
       self.SgInfo,
@@ -100,9 +121,16 @@ class random_structure:
       min_mate_distance = min_distance,
       min_hetero_distance = min_distance,
       general_positions_only = general_positions_only)
+    n = 0
     for Elem, Pos in zip(Elements, Positions):
+      n += 1
       SF = CAASF_WK1995(Elem)
-      Site = sftbx.XrayScatterer(Elem, SF, 0j, Pos, 1., 0.035)
+      U = 0.035 # XXX random Uiso
+      if (anisotropic_displacement_parameters):
+        U = adptbx.Uiso_as_Ustar(self.UnitCell, U)
+      Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
+      Site.ApplySymmetry(
+        self.UnitCell, self.SgInfo.SgOps(), min_distance, 0, 1)
       self.Sites.append(Site)
 
 class shake_structure:
@@ -134,6 +162,23 @@ class modify_sites:
         raise RuntimeError, \
           "value_type " + str(value_type) + " not recognized."
       self.Sites.append(Site)
+
+def print_sites(SymSites):
+  print "Label  M  Coordinates            Occ   Uiso or Uaniso"
+  print "     fp     fdp"
+  for Site in SymSites:
+    print "%-4s" % (Site.Label(),),
+    print "%3d" % (Site.M(),),
+    print "%7.4f %7.4f %7.4f" % Site.Coordinates(),
+    print "%4.2f" % (Site.Occ(),),
+    if (not Site.isAnisotropic()):
+      print "%6.4f" % (Site.Uiso(),),
+    else:
+      print ("%6.3f " * 5 + "%6.3f") % adptbx.Ustar_as_Ucart(
+        SymSites.UnitCell, Site.Uaniso()),
+    print
+    if (abs(Site.fpfdp()) != 0):
+      print "     %6.4f %6.4f" % (Site.fpfdp().real, Site.fpfdp().imag)
 
 def write_kriber(file_name, structure, key="z"):
   f = open(file_name, "a")

@@ -805,7 +805,7 @@ namespace lbfgs {
       SizeType iy0,
       SizeType incy)
     {
-      SizeType i, ix, iy, m, mp1;
+      SizeType i, ix, iy, m;
       FloatType dtemp(0);
       if (n == 0) return FloatType(0);
       if (!(incx == 1 && incy == 1)) {

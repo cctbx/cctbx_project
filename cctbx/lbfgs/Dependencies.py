@@ -14,7 +14,7 @@ class write_makefiles(makefile_generator.write_makefiles):
     )
 
     self.executables = {
-      "lbfgs_driver": (("lbfgs_driver",), ()),
+      "lbfgs_driver": (("lbfgs_driver", "error"), ()),
     }
 
     self.boost_python_modules = {
