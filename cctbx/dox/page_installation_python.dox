@@ -5,11 +5,97 @@
 \section installation_python_windows Python Windows
 
 \par
-To be done.
+A one-click Windows installer for Python 1.5.2 is available at
+http://www.python.org/ftp/python/win32/py152.exe
+and mirrored at
+http://prdownloads.sourceforge.net/cctbx/py152.exe .
+Save this installer to your local disk, double click the py152.exe icon
+and accept <strong>all</strong> default choices (this will also install
+Tcl/Tk). Python will be installed in the location
+<tt>C:\Program Files\Python</tt>.
+
+Update your <tt>PATH</tt> by editing <tt>C:\autoexec.bat</tt>.
+For example:<pre>
+        set PATH="C:\Program Files\Python;\%PATH%"
+</pre>
+
+If you want to be
+certain that the changes in <tt>C:\autoexec.bat</tt> take full
+effect, reboot your system. To test the installation, enter
+<tt>python</tt> at a DOS command prompt. You should see the
+output<pre>
+Python 1.5.2 (#0, Apr 13 1999, 10:51:12) [MSC 32 bit (Intel)] on win32
+Copyright 1991-1995 Stichting Mathematisch Centrum, Amsterdam
+>>></pre>
+
+Use Ctrl-Z to exit from Python.
+
+\par
+Note that this version of Python can easily be uninstalled by going
+to Control Panels, Add/Remove Programs, selecting "Python" from the
+list, and clicking the Add/Remove button.
 
 \section installation_python_unix Python Unix
 
 \par
-To be done.
+The Python 1.5.2 source code is available at
+http://www.python.org/ftp/python/src/py152.tgz
+and mirrored at
+http://prdownloads.sourceforge.net/cctbx/py152.tgz .
+
+By default, Python is installed in <tt>/usr/local</tt>. However,
+when using this default it is very difficult to maintain a smooth
+upgrade path. A solution that allows multiple versions of Python
+to coexist is to install into a version specific location, e.g.
+<tt>/usr/local/Python-1.5.2</tt>.
+
+The commands for carrying out a typical Unix Python installation are:<pre>
+        cd Python-1.5.2
+        ./configure --prefix=/usr/local/Python-1.5.2
+        make
+        su root # aquire root permissions!
+        make install</pre>
+
+[Note: If you are compiling Python 1.5.2 under <strong>IRIX 6.5</strong>
+using the native cc compiler, please follow the instructions below.]
+
+To use the installation, the command search path has to be updated, e.g.
+in <tt>.cshrc</tt> in your home directory:<pre>
+        set path = (/usr/local/Python-1.5.2/bin $path)</pre>
+
+To test the installation, enter
+<tt>python</tt> at the command prompt. You should see
+output similar to:<pre>
+Python 1.5.2 (#1, Nov  9 2000, 16:21:10) [C] on osf1V5
+Copyright 1991-1995 Stichting Mathematisch Centrum, Amsterdam
+>>></pre>
+
+Use Ctrl-D to exit from Python.
+
+If you decide to install Python into a location other than
+<tt>/usr/local/Python-1.5.2</tt> (for example because you do not have
+root permissions), you cannot use the fast track scipts.
+In that case the corresponding path name in the
+Boost.Python makefile and the <tt>configuration</tt> file for the
+cctbx have to be adjusted by hand. This is explained in more detail
+in the \ref page_installation_advanced section.
+
+<strong>Instructions for IRIX 6.5 using the native cc compiler</strong>
+
+Due to a problem with the cc optimizer, the source code file
+<tt>complexobject.c</tt> in the Python tree has to be compiled with
+the optimizer turned off. This can be done in the following way:<pre>
+        cd Python-1.5.2
+        ./configure --prefix=/usr/local/Python-1.5.2
+        make
+        rm Objects/complexobject.o
+        make OPT=
+        su # aquire root permissions!
+        make install</pre>
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, April 2001
 
 */

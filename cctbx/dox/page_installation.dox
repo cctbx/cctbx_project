@@ -17,6 +17,12 @@ The cctbx is being used on these platforms:
 </ul>
 
 \par
+<strong>Precompiled cctbx Python modules for Windows are available at
+the SourceForge
+<a href="http://sourceforge.net/project/showfiles.php?group_id=24107"
+>download page</a></strong>.
+
+\par
 The cctbx is written in ANSI C++ and should therefore compile on most
 platforms where a standard-compliant C++ compiler is available. The
 cctbx build system supports simultaneous compilation on multiple

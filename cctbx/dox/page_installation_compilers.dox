@@ -49,13 +49,13 @@ Unpack the first two archives in the
 <strong>suggested default locations</strong>
 and update your <tt>PATH</tt> by editing <tt>C:\autoexec.bat</tt>.
 For example:<pre>
-set PATH="C:\gcc-2.95.2\bin;%PATH%"
+set PATH="C:\gcc-2.95.2\bin;\%PATH%"
 </pre>
 
 Unpack the third archive in <tt>C:\usr</tt>. If you want to be
 certain that the changes in <tt>C:\autoexec.bat</tt> take full
 effect, reboot your system. To test the installation, enter
-<tt>gcc --version</tt>.
+<tt>gcc --version</tt> at a DOS command prompt.
 You should see the output <tt>2.95.2</tt>.
 
 <hr>
@@ -81,15 +81,23 @@ or
 The latter version has not yet been tested for installing the cctbx
 but should be preferred.
 
+\par
+Unfortunately, we experienced problems with a minimally intrusive
+approach that installs gcc 2.95.2 into a non-system location. Unless
+you know better, you have to have <strong>root permissions</strong>
+in order to install a version of gcc that will work for compiling
+the cctbx.
+
 This is what we used to install gcc 2.95.2 on our x86 RedHat 6.1
 system:<pre>
-cd /scratch
-gunzip -c gcc-2.95.2.tar.gz | tar xf -
-mkdir gccbuild
-cd gccbuild
-../gcc-2.95.2/configure --enable-shared --prefix=/usr
-make bootstrap
-make install</pre>
+        cd /scratch
+        gunzip -c gcc-2.95.2.tar.gz | tar xf -
+        mkdir gccbuild
+        cd gccbuild
+        ../gcc-2.95.2/configure --enable-shared --prefix=/usr
+        make bootstrap
+        su root # aquire root permissions!
+        make install</pre>
 
 Please note:
 <ul>
@@ -99,10 +107,6 @@ Please note:
 <li>You may remove <tt>/scratch/gcc-2.95.2</tt> and
     <tt>/scratch/gccbuild</tt> after the installation is completed.
 </ul>
-
-\par
-Unfortunately, there were problems with a less intrusive approach that
-installed gcc 2.95.2 into a non-system location.
 
 \par
 We have no experience with installing gcc on Linux systems other
