@@ -80,7 +80,7 @@ class planes_cartesian(crystal.symmetry):
     self.list = []
     for pf in planes_f.list:
       n_c = self.unit_cell().orthogonalize(pf.n)
-      p_c = self.unit_cell().orthogonalize(float(pf.p))
+      p_c = self.unit_cell().orthogonalize(pf.p.as_double())
       len_n_c = math.sqrt(dot3(n_c, n_c))
       n_c = tuple([x/len_n_c for x in n_c])
       pl = plane_cartesian(n_c, -dot3(n_c, p_c))

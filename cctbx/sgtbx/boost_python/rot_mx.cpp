@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -55,7 +46,6 @@ namespace {
         .def("accumulate", &w_t::accumulate, accumulate_overloads())
         .def("info", &w_t::info)
         .def("as_double", &w_t::as_double)
-        .def("__float__", &w_t::as_double)
       ;
     }
   };

@@ -108,11 +108,11 @@ def exercise_float_asu(space_group_info, n_grid=6):
   for vertex in vertices:
     assert inp_asu.volume_only().is_inside(vertex)
   for vertex in vertices:
-    assert asu_tight.is_inside(float(matrix.col(vertex)).elems)
+    assert asu_tight.is_inside(matrix.col(vertex).as_float().elems)
   for vertex in vertices:
-    assert asu_buffer.is_inside(float(matrix.col(vertex)).elems)
+    assert asu_buffer.is_inside(matrix.col(vertex).as_float().elems)
   for vertex in vertices:
-    assert not asu_shrunk.is_inside(float(matrix.col(vertex)).elems)
+    assert not asu_shrunk.is_inside(matrix.col(vertex).as_float().elems)
 
 def exercise_asu_mappings(space_group_info, n_elements=10):
   structure = random_structure.xray_structure(

@@ -136,8 +136,8 @@ def rt_plus_unit_shifts(rt, unit_shifts):
 
 def rt_times_grid_point(rt, i_grid, n):
   grid_point = matrix.col([i_grid[i]/float(n[i]) for i in xrange(3)])
-  rotat = matrix.sqr(float(rt.r()))
-  trans = matrix.col(float(rt.t()))
+  rotat = matrix.sqr(rt.r().as_double())
+  trans = matrix.col(rt.t().as_double())
   eq_pt = rotat*grid_point+trans
   eq_gpt = [0,0,0]
   unit_shifts = [0,0,0]
