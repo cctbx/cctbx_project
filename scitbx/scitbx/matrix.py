@@ -156,12 +156,32 @@ class rec:
     if (d == 0): return value_if_undefined
     return self.dot(other) / math.sqrt(d)
 
+  def is_square(self):
+    return self.n[0] == self.n[1]
+
   def determinant(self):
-    assert self.n == (3,3)
+    assert self.is_square()
     m = self.elems
-    return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
-           - m[1] * (m[3] * m[8] - m[5] * m[6]) \
-           + m[2] * (m[3] * m[7] - m[4] * m[6])
+    n = self.n[0]
+    if (n == 1):
+      return m[0]
+    if (n == 2):
+      return m[0]*m[3] - m[1]*m[2]
+    if (n == 3):
+      return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
+             - m[1] * (m[3] * m[8] - m[5] * m[6]) \
+             + m[2] * (m[3] * m[7] - m[4] * m[6])
+    from scitbx.array_family import flex
+    lu = flex.double(m)
+    lu.resize(flex.grid(self.n))
+    try: pivot_indices = lu.matrix_lu_decomposition_in_place()
+    except RuntimeError, e:
+      if (str(e) == "lu_decomposition_in_place: singular matrix"): return 0
+      raise
+    result = lu.matrix_diagonal_product()
+    if (pivot_indices[n] % 2):
+      result *= -1
+    return result
 
   def co_factor_matrix_transposed(self):
     assert self.n == (3,3)
@@ -384,7 +404,10 @@ if (__name__ == "__main__"):
   assert gtt.mathematica_form() == "{{33, 79, 125}}"
   gttt = gtt.transpose()
   assert gttt.mathematica_form() == "{{33}, {79}, {125}}"
+  assert sqr([4]).determinant() == 4
+  assert sqr([3,2,-7,15]).determinant() == 59
   m = sqr((7, 7, -4, 3, 1, -1, 15, 16, -9))
+  assert m.determinant() == 1
   mi = m.inverse()
   assert mi.mathematica_form() == "{{7, -1, -3}, {12, -3, -5}, {33, -7, -14}}"
   assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"

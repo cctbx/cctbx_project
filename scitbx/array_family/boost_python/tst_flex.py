@@ -974,6 +974,45 @@ def exercise_matrix():
         assert d.n[0] == 1
         assert c.focus() == (d.n[1],)
         assert approx_equal(c, d)
+  lu = flex.double([1,0,0,0,1,0,0,0,1])
+  lu.resize(flex.grid(3,3))
+  pivot_indices = lu.matrix_lu_decomposition_in_place()
+  assert approx_equal(lu, [1,0,0,0,1,0,0,0,1])
+  assert list(pivot_indices) == [0,1,2,0]
+  for rank in range(1,6) + [18]:
+    for i in xrange(10):
+      m = flex.random_double(size=rank*rank)*3-1.5
+      m.resize(flex.grid(rank,rank))
+      assert approx_equal(
+        m.matrix_diagonal(), [m[j*rank+j] for j in xrange(rank)])
+      assert approx_equal(
+        m.matrix_diagonal_sum(), flex.sum(m.matrix_diagonal()))
+      assert m.matrix_trace() == m.matrix_diagonal_sum()
+      assert approx_equal(
+        m.matrix_diagonal_product(), flex.product(m.matrix_diagonal()))
+      b = flex.random_double(size=rank)*7-3.5
+      lu = m.deep_copy()
+      pivot_indices = lu.matrix_lu_decomposition_in_place()
+      x = lu.matrix_lu_back_substitution(pivot_indices=pivot_indices, b=b)
+      assert approx_equal(m.matrix_multiply(x), b)
+  lu = flex.double([0,0,0,0,1,0,0,0,1])
+  lu.resize(flex.grid(3,3))
+  try: lu.matrix_lu_decomposition_in_place()
+  except RuntimeError, e:
+    assert str(e) == "lu_decomposition_in_place: singular matrix"
+  else: raise RuntimeError("Exception expected.")
+  lu = flex.double([1,0,0,0,1,0,0,0,1])
+  lu.resize(flex.grid(3,3))
+  b = flex.double([1,2,3])
+  pivot_indices = flex.size_t([0,1,4,0])
+  try: lu.matrix_lu_back_substitution(pivot_indices, b)
+  except RuntimeError, e:
+    assert str(e) == "lu_back_substitution: pivot_indices[i] out of range"
+  else: raise RuntimeError("Exception expected.")
+  m = [1,6,4,32,6,2,-1,63,-4,1,4,6,1,0,-13,5]
+  assert approx_equal(matrix.sqr(m).determinant(), -16522)
+  m = [0,0,0,0,6,2,-1,63,-4,1,4,6,1,0,-13,5]
+  assert matrix.sqr(m).determinant() == 0
 
 def exercise_pickle_single_buffered():
   a = flex.bool((1,0,1))

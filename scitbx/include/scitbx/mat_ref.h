@@ -1,19 +1,10 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_MAT_REF_H
 #define SCITBX_MAT_REF_H
 
 #include <scitbx/error.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <scitbx/array_family/tiny.h>
-#include <scitbx/matrix_multiply.h>
+#include <scitbx/matrix/multiply.h>
 #include <vector>
 
 namespace scitbx {
@@ -418,7 +409,7 @@ namespace scitbx {
     SCITBX_ASSERT(a.n_columns() == b.n_rows());
     SCITBX_ASSERT(ab.n_rows() == a.n_rows());
     SCITBX_ASSERT(ab.n_columns() == b.n_columns());
-    matrix_multiply(a.begin(), b.begin(),
+    matrix::multiply(a.begin(), b.begin(),
                     a.n_rows(), a.n_columns(), b.n_columns(),
                     ab.begin());
   }
