@@ -87,6 +87,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__delitem__", delitem_1d)
         .def("__getitem__", getitem_1d_slice)
         .def("__delitem__", delitem_1d_slice)
+        .def("deep_copy", &w_t::deep_copy)
         .def("clear", &w_t::clear)
         .def("insert", insert)
         .def("append", &w_t::append)
