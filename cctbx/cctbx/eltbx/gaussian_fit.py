@@ -91,7 +91,7 @@ class minimize:
 def make_start_gaussian(null_fit_object,
                         existing_gaussian,
                         i_stol,
-                        i_start_fraction):
+                        start_fraction):
   stol_sq = null_fit_object.stols()[i_stol]**2
   f0_reference = null_fit_object.target_values()[0]
   fs_reference = null_fit_object.target_values()[i_stol]
@@ -103,7 +103,7 @@ def make_start_gaussian(null_fit_object,
     b = flex.double()
     fs_part = fs_reference
   else:
-    scale_old = (1-(1.+i_start_fraction)/n_terms)
+    scale_old = 1 - start_fraction
     a = flex.double(existing_gaussian.a()) * scale_old
     a.append(f0_reference - flex.sum(a))
     b = flex.double(existing_gaussian.b())
@@ -156,6 +156,8 @@ class find_max_stol:
         target_values[:n_points],
         sigmas[:n_points],
         fit_object)
+      best_minimized = None
+      best_max_error = None
       for i in xrange(n_repeats_minimization):
         minimized = minimize(
           fit_object=min_fit_object,
@@ -163,8 +165,15 @@ class find_max_stol:
         if (min(minimized.final_fit_object.b()) < b_min):
           break
         min_fit_object = minimized.final_fit_object
-      max_error = flex.max(
-        minimized.final_fit_object.significant_relative_errors())
+        max_error = flex.max(
+          minimized.final_fit_object.significant_relative_errors())
+        if (    (best_max_error > max_error or best_max_error is None)
+            and min(minimized.final_fit_object.b()) >= b_min):
+          best_minimized = minimized
+          best_max_error = max_error
+      if (best_minimized is not None):
+        minimized = best_minimized
+        max_error = best_max_error
       if (    max_error > max_max_error
           or min(minimized.final_fit_object.b()) < b_min):
         if (good_n_points != 0):
@@ -203,14 +212,15 @@ class find_max_stol_multi:
     assert i_stol_begin is not None
     assert i_stol_end is not None
     n_terms = existing_gaussian.n_ab() + 1
+    if (n_terms == 1): n_start_fractions = 2
     best_fit = None
     for i_stol in xrange(i_stol_begin, i_stol_end):
-      for i_start_fraction in xrange(min(n_start_fractions,n_terms)):
+      for i_start_fraction in xrange(1,n_start_fractions):
         fit_object = make_start_gaussian(
           null_fit_object=null_fit_object,
           existing_gaussian=existing_gaussian,
           i_stol=i_stol,
-          i_start_fraction=i_start_fraction)
+          start_fraction=i_start_fraction/float(n_start_fractions))
         for target_power in target_powers:
           fit = find_max_stol(
             fit_object=fit_object,
@@ -285,7 +295,7 @@ class fit_parameters:
   def __init__(self, max_n_terms=5,
                      target_powers=[2,4],
                      max_max_error=0.01,
-                     n_start_fractions=3,
+                     n_start_fractions=5,
                      n_repeats_minimization=5):
     adopt_init_args(self, locals())
 

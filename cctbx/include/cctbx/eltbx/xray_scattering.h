@@ -79,16 +79,16 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       gaussian() {}
 
       //! Initialization of constant scatterer.
-      gaussian(float c)
+      gaussian(double c)
       :
         c_(c)
       {}
 
       //! Initialization with label and coefficients.
       gaussian(
-        af::small<float, max_n_ab> const& a,
-        af::small<float, max_n_ab> const& b,
-        float c=0)
+        af::small<double, max_n_ab> const& a,
+        af::small<double, max_n_ab> const& b,
+        double c=0)
       :
         a_(a),
         b_(b),
@@ -102,11 +102,11 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       n_ab() const { return a_.size(); }
 
       //! Array of coefficients a.
-      af::small<float, max_n_ab> const&
+      af::small<double, max_n_ab> const&
       a() const { return a_; }
 
       //! Array of coefficients b.
-      af::small<float, max_n_ab> const&
+      af::small<double, max_n_ab> const&
       b() const { return b_; }
 
       //! Coefficient a(i), with 0 <= i < n_ab().
@@ -114,7 +114,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
           <p>
           Not available in Python.
        */
-      float
+      double
       a(int i) const { return a_[i]; }
 
       //! Coefficient b(i), with 0 <= i < n_ab().
@@ -122,11 +122,11 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
           <p>
           Not available in Python.
        */
-      float
+      double
       b(int i) const { return b_[i]; }
 
       //! Coefficient c.
-      float
+      double
       c() const { return c_; }
 
       //! Test if n_ab() == 0 and c() == 0.
@@ -139,9 +139,9 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
 #     include <cctbx/eltbx/xray_scattering_gaussian_at.h>
 
     protected:
-      af::small<float, max_n_ab> a_;
-      af::small<float, max_n_ab> b_;
-      float c_;
+      af::small<double, max_n_ab> a_;
+      af::small<double, max_n_ab> b_;
+      double c_;
   };
 
   namespace detail {
@@ -200,17 +200,17 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       static std::size_t n_ab() { return N; }
 
       //! Array of coefficients a.
-      af::small<float, gaussian::max_n_ab>
+      af::small<double, gaussian::max_n_ab>
       a() const
       {
-        return af::small<float, gaussian::max_n_ab>(entry_->a, entry_->a+N);
+        return af::small<double, gaussian::max_n_ab>(entry_->a, entry_->a+N);
       }
 
       //! Array of coefficients a.
-      af::small<float, gaussian::max_n_ab>
+      af::small<double, gaussian::max_n_ab>
       b() const
       {
-        return af::small<float, gaussian::max_n_ab>(entry_->b, entry_->b+N);
+        return af::small<double, gaussian::max_n_ab>(entry_->b, entry_->b+N);
       }
 
       //! Coefficient a(i), with 0 <= i < n_ab().

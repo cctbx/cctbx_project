@@ -30,14 +30,14 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("gaussian", no_init)
-        .def(init<float>())
-        .def(init<af::small<float, w_t::max_n_ab> const&,
-                  af::small<float, w_t::max_n_ab> const&,
-                  optional<float> >())
+        .def(init<double>())
+        .def(init<af::small<double, w_t::max_n_ab> const&,
+                  af::small<double, w_t::max_n_ab> const&,
+                  optional<double> >())
         .def("n_ab", &w_t::n_ab)
-        .def("a", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
+        .def("a", (af::small<double, w_t::max_n_ab> const&(w_t::*)()const)
           &w_t::a, ccr())
-        .def("b", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
+        .def("b", (af::small<double, w_t::max_n_ab> const&(w_t::*)()const)
           &w_t::b, ccr())
         .def("c", &w_t::c)
         .def("all_zero", &w_t::all_zero)
@@ -98,9 +98,9 @@ namespace {
       class_<w_t>(python_name, no_init)
         .def("table", &w_t::table)
         .def("label", &w_t::label)
-        .def("a", (af::small<float, gaussian::max_n_ab>(w_t::*)()const)
+        .def("a", (af::small<double, gaussian::max_n_ab>(w_t::*)()const)
           &w_t::a)
-        .def("b", (af::small<float, gaussian::max_n_ab>(w_t::*)()const)
+        .def("b", (af::small<double, gaussian::max_n_ab>(w_t::*)()const)
           &w_t::b)
         .def("c", &w_t::c)
         .def("fetch", &w_t::fetch)

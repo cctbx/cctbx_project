@@ -46,7 +46,7 @@ namespace {
     tuple_mapping_fixed_size<cctbx::miller::index<> >();
 
     tuple_mapping_fixed_capacity<
-      small<float, cctbx::eltbx::xray_scattering::gaussian::max_n_ab> >();
+      small<double, cctbx::eltbx::xray_scattering::gaussian::max_n_ab> >();
   }
 
   void register_cctbx_c_grid_conversions()

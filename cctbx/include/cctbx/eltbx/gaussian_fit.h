@@ -120,9 +120,9 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         size_assert_intrinsic();
         CCTBX_ASSERT(   shifts.size() == n_ab() * 2
                      || shifts.size() == n_ab() * 2 + 1);
-        af::small<float, gaussian::max_n_ab> sh_a;
-        af::small<float, gaussian::max_n_ab> sh_b;
-        float sh_c;
+        af::small<double, gaussian::max_n_ab> sh_a;
+        af::small<double, gaussian::max_n_ab> sh_b;
+        double sh_c;
         std::size_t i=0;
         for(;i<n_ab();i++) {
           sh_a.push_back(a(i) + shifts[i]);

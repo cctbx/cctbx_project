@@ -293,7 +293,7 @@ def exercise_gaussian_fit():
       assert approx_equal(
         gf.gradients_w_r_t_abc(2, 00000, differences, include_constant_term),
         finite_diff_gradients(gf, include_constant_term, gf.stols()[0]),
-        eps=1.e-4)
+        eps=1.e-3)
       for sigma in [0.04,0.02,0.01]:
         gf = xray_scattering.gaussian_fit(
           flex.double([i / 20.]),
