@@ -1,4 +1,6 @@
 from cctbx import sgtbx
+from cctbx.sgtbx.direct_space_asu import cut_plane
+from scitbx import matrix
 import sys
 
 class direct_space_asu:
@@ -6,6 +8,11 @@ class direct_space_asu:
   def __init__(self, hall_symbol, facets=[]):
     self.hall_symbol = hall_symbol
     self.facets = facets[:]
+
+  def __copy__(self):
+    return direct_space_asu(
+      hall_symbol=self.hall_symbol,
+      facets=self.facets)
 
   def __and__(self, obj):
     self.facets.append(obj)
@@ -49,6 +56,38 @@ class direct_space_asu:
   def volume_vertices(self):
     from cctbx.sgtbx.direct_space_asu import facet_analysis
     return facet_analysis.volume_vertices(self)
+
+  def _box_corner(self, volume_vertices, min_or_max):
+    if (volume_vertices is None):
+      volume_vertices = self.volume_vertices()
+    if (len(volume_vertices) == 0):
+      return None
+    result = list(volume_vertices[0])
+    for vertex in volume_vertices[1:]:
+      for i in xrange(3):
+        result[i] = min_or_max(result[i], vertex[i])
+    return result
+
+  def box_min(self, volume_vertices=None):
+    return self._box_corner(volume_vertices, min)
+
+  def box_max(self, volume_vertices=None):
+    return self._box_corner(volume_vertices, max)
+
+  def add_plane(self, normal_direction, point=None):
+    if (point is None):
+      point = self.box_min()
+    self.facets.append(cut_plane.cut(
+      n=normal_direction,
+      c=-(matrix.col(normal_direction).dot(matrix.col(point)))))
+
+  def add_planes(self, normal_directions, point=None, both_directions=00000):
+    if (point is None):
+      point = self.box_min()
+    for normal_direction in normal_directions:
+      self.add_plane(normal_direction=normal_direction, point=point)
+      if (both_directions):
+        self.facets.append(-self.facets[-1])
 
   def change_basis(self, cb_op):
     if (not isinstance(cb_op, sgtbx.change_of_basis_op)):
