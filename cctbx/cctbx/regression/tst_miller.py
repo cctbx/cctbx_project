@@ -620,6 +620,19 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
+def exercise_common_set((a, b), permutation_only):
+  ab = a.common_set(b)
+  ba = b.common_set(a)
+  if (permutation_only):
+    assert ab.indices().all_eq(b.indices())
+    assert ba.indices().all_eq(a.indices())
+  aab,bab = a.common_sets(b)
+  assert aab.indices().all_eq(bab.indices())
+  assert aab.indices().all_eq(ab.indices())
+  aba,bba = b.common_sets(a)
+  assert aba.indices().all_eq(bba.indices())
+  assert aba.indices().all_eq(ba.indices())
+
 def exercise_array_correlation(space_group_info,
                                n_scatterers=8,
                                d_min=2,
@@ -630,10 +643,12 @@ def exercise_array_correlation(space_group_info,
       space_group_info,
       elements=["const"]*n_scatterers)
     arrays.append(abs(structure.structure_factors(d_min=d_min-i*0.5).f_calc()))
-  arrays[1] = arrays[1].select(flex.random_permutation(
-    size=arrays[1].indices().size()))
-  a,b = arrays[0].common_sets(arrays[1])
-  assert a.indices().all_eq(b.indices())
+  arrays[1] = arrays[1].select(
+    flex.random_permutation(size=arrays[1].indices().size()))
+  exercise_common_set((arrays[0], arrays[0].select(
+      flex.random_permutation(size=arrays[0].indices().size()))),
+    permutation_only=True)
+  exercise_common_set(arrays, permutation_only=False)
   for anomalous_flag in [False, True]:
     if (anomalous_flag):
       arrays[0] = arrays[0].as_anomalous()
