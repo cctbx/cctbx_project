@@ -310,8 +310,8 @@ def run(args):
       anom_signal.show()
       print
     if (not command_line.options.quick):
-      for j_1,cache_1 in enumerate(array_caches[i_0+1:]):
-        i_1 = j_1+i_0+1
+      for i_1,cache_1 in enumerate(array_caches):
+        if (i_1 == i_0): break
         unique_reindexing_operators = cache_0.unique_reindexing_operators(
           other=cache_1,
           relative_length_tolerance=0.05,
