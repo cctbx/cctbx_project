@@ -1,7 +1,7 @@
 from iotbx.kriber import strudat
 from cctbx import crystal
+from cctbx import xray
 import cctbx.crystal.coordination_sequences
-import cctbx.crystal.distance_ls
 from iotbx.option_parser import iotbx_option_parser
 import os
 
@@ -41,8 +41,8 @@ def exercise_shell_asu_tables(structure, verbose):
     n_shells=3)
   for shell_asu_table in shell_asu_tables:
     if (0 or verbose):
-      pairs_1 = cctbx.crystal.distance_ls.show_pairs(
-        structure=structure,
+      pairs_1 = xray.show_pairs(
+        xray_structure=structure,
         pair_asu_table=shell_asu_table)
       print list(pairs_1.pair_counts)
       print
@@ -51,8 +51,8 @@ def exercise_shell_asu_tables(structure, verbose):
     asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     asu_table.add_pair_sym_table(sym_table=sym_table)
     if (0 or verbose):
-      pairs_2 = cctbx.crystal.distance_ls.show_pairs(
-        structure=structure,
+      pairs_2 = xray.show_pairs(
+        xray_structure=structure,
         pair_asu_table=asu_table)
       print list(pairs_2.pair_counts)
       print

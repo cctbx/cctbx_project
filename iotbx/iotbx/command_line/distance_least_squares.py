@@ -1,4 +1,4 @@
-from cctbx.crystal import distance_ls
+from cctbx.restraints import distance_least_squares
 from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 import sys
@@ -31,7 +31,7 @@ def run(distance_cutoff=3.5, nonbonded_distance_cutoff=5):
         continue
       print "strudat tag:", entry.tag
       print
-      distance_ls.distance_and_repulsion_least_squares(
+      distance_least_squares.distance_and_repulsion_least_squares(
         si_structure=entry.as_xray_structure(),
         distance_cutoff=distance_cutoff,
         nonbonded_distance_cutoff=nonbonded_distance_cutoff,

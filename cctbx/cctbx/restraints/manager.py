@@ -1,5 +1,6 @@
 from cctbx import restraints
-from cctbx.restraints import energies
+import cctbx.restraints.flags
+import cctbx.restraints.energies
 from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
@@ -35,7 +36,10 @@ class manager:
   def pair_proxies(self,
         sites_cart=None,
         lock=00000,
-        asu_is_inside_epsilon=None):
+        asu_is_inside_epsilon=None,
+        bonded_distance_cutoff_epsilon=None):
+    if (bonded_distance_cutoff_epsilon is None):
+      bonded_distance_cutoff_epsilon = 1.e-6
     if (self.repulsion_types is None):
       if (self._pair_proxies is None):
         self.n_updates_pair_proxies += 1
@@ -63,9 +67,11 @@ class manager:
               pair_sym_table=shell_sym_table,
               orthogonalization_matrix=unit_cell.orthogonalization_matrix(),
               sites_frac=sites_frac)))
+        bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
         asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
-          buffer_thickness=max(bonded_distance_cutoff,
-                               self.nonbonded_distance_cutoff),
+          buffer_thickness=max(
+            bonded_distance_cutoff,
+            self.nonbonded_distance_cutoff + self.nonbonded_buffer),
           is_inside_epsilon=asu_is_inside_epsilon)
         asu_mappings.process_sites_frac(
           original_sites=sites_frac,
@@ -88,19 +94,34 @@ class manager:
 
   def energies(self,
         sites_cart,
+        flags=None,
         compute_gradients=00000,
         disable_asu_cache=00000,
         lock_pair_proxies=00000):
+    if (flags is None):
+      flags = restraints.flags.flags(default=0001)
     pair_proxies = self.pair_proxies(
       sites_cart=sites_cart,
       lock=lock_pair_proxies)
-    return energies.energies(
+    (bond_proxies,
+     repulsion_proxies,
+     angle_proxies,
+     dihedral_proxies,
+     chirality_proxies,
+     planarity_proxies) = [None]*6
+    if (flags.bond):      bond_proxies = pair_proxies.bond_proxies
+    if (flags.repulsion): repulsion_proxies = pair_proxies.repulsion_proxies
+    if (flags.angle):     angle_proxies = self.angle_proxies
+    if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
+    if (flags.chirality): chirality_proxies = self.chirality_proxies
+    if (flags.planarity): planarity_proxies = self.planarity_proxies
+    return restraints.energies.energies(
       sites_cart=sites_cart,
-      bond_proxies=pair_proxies.bond_proxies,
-      repulsion_proxies=pair_proxies.repulsion_proxies,
-      angle_proxies=self.angle_proxies,
-      dihedral_proxies=self.dihedral_proxies,
-      chirality_proxies=self.chirality_proxies,
-      planarity_proxies=self.planarity_proxies,
+      bond_proxies=bond_proxies,
+      repulsion_proxies=repulsion_proxies,
+      angle_proxies=angle_proxies,
+      dihedral_proxies=dihedral_proxies,
+      chirality_proxies=chirality_proxies,
+      planarity_proxies=planarity_proxies,
       compute_gradients=compute_gradients,
       disable_asu_cache=disable_asu_cache)

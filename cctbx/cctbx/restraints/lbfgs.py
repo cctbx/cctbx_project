@@ -8,6 +8,7 @@ class lbfgs:
   def __init__(self,
       sites_cart,
       restraints_manager,
+      restraints_flags=None,
       lbfgs_termination_params=None,
       lbfgs_core_params=None,
       disable_asu_cache=00000):
@@ -18,6 +19,7 @@ class lbfgs:
     self.x = flex.double(self.n, 0)
     self.tmp = empty()
     self.tmp.restraints_manager = restraints_manager
+    self.tmp.restraints_flags = restraints_flags
     self.tmp.disable_asu_cache = disable_asu_cache
     self.tmp.sites_cart = sites_cart
     self.tmp.sites_shifted = sites_cart
@@ -57,6 +59,7 @@ class lbfgs:
   def compute_target(self, compute_gradients):
     self.tmp.target_result = self.tmp.restraints_manager.energies(
       sites_cart=self.tmp.sites_shifted,
+      flags=self.tmp.restraints_flags,
       compute_gradients=compute_gradients,
       disable_asu_cache=self.tmp.disable_asu_cache,
       lock_pair_proxies=self.tmp.lock_pair_proxies)
