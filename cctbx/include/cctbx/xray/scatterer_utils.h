@@ -12,7 +12,7 @@ namespace cctbx { namespace xray {
 
   template <typename ScattererType>
   void
-  apply_symmetry_site(
+  apply_symmetry_sites(
     sgtbx::site_symmetry_table const& site_symmetry_table,
     af::ref<ScattererType> const& scatterers)
   {
@@ -28,7 +28,7 @@ namespace cctbx { namespace xray {
 
   template <typename ScattererType>
   void
-  apply_symmetry_u_star(
+  apply_symmetry_u_stars(
     uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_table const& site_symmetry_table,
     af::ref<ScattererType> const& scatterers,

@@ -13,9 +13,6 @@ namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
 
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    apply_symmetry_u_star_overloads, apply_symmetry_u_star, 3, 6)
-
   struct scatterer_wrappers
   {
     typedef scatterer<> w_t;
@@ -129,6 +126,9 @@ namespace {
     }
   };
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    apply_symmetry_u_stars_overloads, apply_symmetry_u_stars, 3, 6)
+
 } // namespace <anoymous>
 
   void wrap_scatterer()
@@ -137,19 +137,19 @@ namespace {
 
     scatterer_wrappers::wrap();
 
-    def("apply_symmetry_site",
+    def("apply_symmetry_sites",
       (void(*)(
         sgtbx::site_symmetry_table const&,
-        af::ref<scatterer<> > const&)) apply_symmetry_site, (
+        af::ref<scatterer<> > const&)) apply_symmetry_sites, (
           arg_("site_symmetry_table"),
           arg_("scatterers")));
 
-    def("apply_symmetry_u_star",
+    def("apply_symmetry_u_stars",
       (void(*)(
         uctbx::unit_cell const&,
         sgtbx::site_symmetry_table const&,
         af::ref<scatterer<> > const&,
-        double, bool, bool)) 0, apply_symmetry_u_star_overloads((
+        double, bool, bool)) 0, apply_symmetry_u_stars_overloads((
           arg_("unit_cell"),
           arg_("site_symmetry_table"),
           arg_("scatterers"),
