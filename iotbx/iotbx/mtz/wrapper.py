@@ -231,10 +231,13 @@ class _object(boost.python.injector, ext.object):
         raise RuntimeError(
           'Unknown MTZ column type: "%s" (column label: "%s")' % (
             column.type(), column.label()))
-      l0 = all_column_labels[i_column]
       t0 = all_column_types[i_column]
-      remaining_types = all_column_types[i_column:]
       if (t0 == "H"): continue # skip h,k,l
+      l0 = all_column_labels[i_column]
+      remaining_types = all_column_types[i_column:]
+      labels = None
+      group = None
+      observation_type = None
       if (t0 in "BYI"): # integer columns
         if (len(remaining_types) > 1
             and remaining_types[1] == t0
@@ -243,31 +246,12 @@ class _object(boost.python.injector, ext.object):
           labels = all_column_labels[i_column:i_column+2]
           i_column += 1
           group = self.extract_integers_anomalous(*labels)
-          groups.append(column_group(
-            crystal_symmetry=crystal_symmetry,
-            primary_column_type=t0,
-            labels=labels,
-            indices=group.indices,
-            anomalous_flag=True,
-            data=group.data))
         else:
+          labels = [l0]
           group = self.extract_integers(column_label=l0)
-          groups.append(column_group(
-            crystal_symmetry=crystal_symmetry,
-            primary_column_type=t0,
-            labels=[l0],
-            indices=group.indices,
-            anomalous_flag=False,
-            data=group.data))
       elif (t0 in "R"): # general real column
+        labels = [l0]
         group = self.extract_reals(column_label=l0)
-        groups.append(column_group(
-          crystal_symmetry=crystal_symmetry,
-          primary_column_type=t0,
-          labels=[l0],
-          indices=group.indices,
-          anomalous_flag=False,
-          data=group.data))
       elif (t0 in "A"): # Hendrickson-Lattman coefficients
         if (all_column_types[i_column:i_column+4] != "AAAA"):
           raise RuntimeError(
@@ -284,38 +268,15 @@ class _object(boost.python.injector, ext.object):
           labels = all_column_labels[i_column:i_column+8]
           i_column += 7
           group = self.extract_hls_anomalous(*labels)
-          groups.append(column_group(
-            crystal_symmetry=crystal_symmetry,
-            primary_column_type=t0,
-            labels=labels,
-            indices=group.indices,
-            anomalous_flag=True,
-            data=group.data))
         else:
           labels = all_column_labels[i_column:i_column+4]
           i_column += 3
           group = self.extract_hls(*labels)
-          groups.append(column_group(
-            crystal_symmetry=crystal_symmetry,
-            primary_column_type=t0,
-            labels=labels,
-            indices=group.indices,
-            anomalous_flag=False,
-            data=group.data))
       elif (remaining_types[:4] == "FQDQ"):
         labels = all_column_labels[i_column:i_column+4]
         i_column += 3
         group = self.extract_delta_anomalous(*labels)
-        groups.append(column_group(
-          crystal_symmetry=crystal_symmetry,
-          primary_column_type=t0,
-          labels=labels,
-          indices=group.indices,
-          anomalous_flag=True,
-          data=group.data,
-          sigmas=group.sigmas))
-        groups[-1].set_observation_type(
-          observation_types.reconstructed_amplitude())
+        observation_type = observation_types.reconstructed_amplitude()
       elif (t0 in "JFD"):
         # "J": "intensity"
         # "F": "amplitude"
@@ -323,14 +284,12 @@ class _object(boost.python.injector, ext.object):
         # "Q": "standard deviation"
         # "P": "phase angle in degrees"
         labels = [l0]
-        sigmas = None
         if (    i_column+1 < len(all_column_types)
             and all_column_types[i_column+1] in "QP"):
           labels = all_column_labels[i_column:i_column+2]
           i_column += 1
           if (all_column_types[i_column] == "Q"):
             group = self.extract_observations(*labels)
-            sigmas = group.sigmas
           else:
             if (t0 == "J"):
               raise RuntimeError(
@@ -339,14 +298,6 @@ class _object(boost.python.injector, ext.object):
             group = self.extract_complex(*labels)
         else:
           group = self.extract_reals(column_label=l0)
-        groups.append(column_group(
-          crystal_symmetry=crystal_symmetry,
-          primary_column_type=t0,
-          labels=labels,
-          indices=group.indices,
-          anomalous_flag=False,
-          data=group.data,
-          sigmas=sigmas))
       elif (t0 in "GK"):
         # "G": "F(+) or F(-)"
         # "L": "standard deviation"
@@ -367,64 +318,47 @@ class _object(boost.python.injector, ext.object):
         i_column += len(perm)-1
         if (len(perm) == 2):
           group = self.extract_reals_anomalous(*labels)
-          groups.append(column_group(
-            crystal_symmetry=crystal_symmetry,
-            primary_column_type=t0,
-            labels=labels,
-            indices=group.indices,
-            anomalous_flag=True,
-            data=group.data))
         elif ("P" in remaining_types[:4]):
           group = self.extract_complex_anomalous(*labels)
-          groups.append(column_group(
-            crystal_symmetry=crystal_symmetry,
-            primary_column_type=t0,
-            labels=labels,
-            indices=group.indices,
-            anomalous_flag=True,
-            data=group.data))
         else:
           group = self.extract_observations_anomalous(*labels)
-          groups.append(column_group(
-            crystal_symmetry=crystal_symmetry,
-            primary_column_type=t0,
-            labels=labels,
-            indices=group.indices,
-            anomalous_flag=True,
-            data=group.data,
-            sigmas=group.sigmas))
       else:
+        labels = [l0]
         group = self.extract_reals(l0)
-        groups.append(column_group(
-          crystal_symmetry=crystal_symmetry,
-          primary_column_type=t0,
-          labels=[l0],
-          indices=group.indices,
-          anomalous_flag=False,
-          data=group.data))
+      groups.append(column_group(
+        crystal_symmetry=crystal_symmetry,
+        primary_column_type=t0,
+        labels=labels,
+        group=group,
+        observation_type=observation_type))
     return groups
 
-def column_group(crystal_symmetry, primary_column_type, labels,
-                 indices, anomalous_flag,
-                 data, sigmas=None):
-  assert data is not None
-  assert data.size() == indices.size()
-  if (sigmas is not None): assert sigmas.size() == data.size()
-  if (anomalous_flag):
+def column_group(
+      crystal_symmetry,
+      primary_column_type,
+      labels,
+      group,
+      observation_type):
+  assert group.data.size() == group.indices.size()
+  sigmas = getattr(group, "sigmas", None)
+  if (sigmas is not None): assert sigmas.size() == group.indices.size()
+  if (group.anomalous_flag):
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
-      indices=indices,
+      indices=group.indices,
       anomalous_flag=True)
   else:
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
-      indices=indices).auto_anomalous(min_fraction_bijvoet_pairs=2/3.)
+      indices=group.indices).auto_anomalous(min_fraction_bijvoet_pairs=2/3.)
   result = (miller.array(
     miller_set=miller_set,
-    data=data,
+    data=group.data,
     sigmas=sigmas)
     .set_info(",".join(labels)))
-  if (primary_column_type in "FG"):
+  if (observation_type is not None):
+    result.set_observation_type(observation_type)
+  elif (primary_column_type in "FG"):
     result.set_observation_type_xray_amplitude()
   elif (primary_column_type in "JK"):
     result.set_observation_type_xray_intensity()

@@ -23,6 +23,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>(python_name, no_init)
+        .def_readonly("anomalous_flag", &w_t::anomalous_flag)
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
       ;
@@ -54,6 +55,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("complex_group", no_init)
+        .def_readonly("anomalous_flag", &w_t::anomalous_flag)
         .add_property("indices", make_getter(&w_t::indices, rbv()))
         .add_property("data", make_getter(&w_t::data, rbv()))
       ;
