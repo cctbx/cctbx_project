@@ -33,7 +33,7 @@ namespace cctbx { namespace sgtbx {
         TS = T;
         if (sgops.isCentric()) TR = sgops.InvT() - T;
       }
-      else if (h == HR.FriedelMate()) {
+      else if (h == -HR) {
         TR = T;
         if (sgops.isCentric()) TS = sgops.InvT() - T;
       }
@@ -97,7 +97,7 @@ namespace cctbx { namespace sgtbx {
       return PhaseInfo(HT_mod_1(H, m_InvT), TBF(), false);
     }
     rangei(m_nSMx) {
-      if (H * m_SMx[i].Rpart() == H.FriedelMate()) {
+      if (H * m_SMx[i].Rpart() == -H) {
         return PhaseInfo(HT_mod_1(H, m_SMx[i].Tpart()), TBF(), false);
       }
     }
@@ -109,7 +109,7 @@ namespace cctbx { namespace sgtbx {
     int result = 0;
     rangei(m_nSMx) {
       Miller::Index HR = H * m_SMx[i].Rpart();
-      if (HR == H || (isCentric() && HR == H.FriedelMate()))
+      if (HR == H || (isCentric() && HR == -H))
         result++;
     }
     cctbx_assert(result != 0 && m_nSMx % result == 0);
@@ -136,7 +136,7 @@ namespace cctbx { namespace sgtbx {
     rangei(m_nSMx) {
       Miller::Index HR = H * m_SMx[i].Rpart();
       if      (HR == H) M++;
-      else if (HR == H.FriedelMate()) R++;
+      else if (HR == -H) R++;
     }
     cctbx_assert(M != 0 && m_nSMx % M == 0 && (R == 0 || R == M));
     M = m_nSMx / M;
