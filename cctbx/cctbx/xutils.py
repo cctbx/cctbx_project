@@ -118,6 +118,51 @@ def calculate_structure_factors(miller_indices, xtal, abs_F = 0):
   result.symmetrized_sites = xtal
   return result
 
+def calculate_structure_factors_fft(miller_indices, xtal, abs_F = 0):
+  from cctbx_boost import fftbx
+  max_q = xtal.UnitCell.max_Q(miller_indices.H)
+  grid_resolution_factor = 1/3.
+  max_prime = 5
+  mandatory_grid_factors = xtal.SgOps.refine_gridding()
+  grid_logical = sftbx.determine_grid(
+    xtal.UnitCell,
+    max_q, grid_resolution_factor, max_prime, mandatory_grid_factors)
+  rfft = fftbx.real_to_complex_3d(grid_logical)
+  quality_factor = 100
+  u_extra = sftbx.calc_u_extra(max_q, grid_resolution_factor, quality_factor)
+  wing_cutoff = 1.e-3
+  exp_table_one_over_step_size = -100
+  force_complex = 0
+  electron_density_must_be_positive = 1
+  sampled_density = sftbx.sampled_model_density(
+    xtal.UnitCell, xtal.Sites,
+    rfft.Nreal(), rfft.Mreal(),
+    u_extra, wing_cutoff, exp_table_one_over_step_size,
+    force_complex, electron_density_must_be_positive)
+  friedel_flag = sampled_density.friedel_flag()
+  tags = sftbx.grid_tags(rfft.Nreal())
+  sym_flags = sftbx.map_symmetry_flags(1)
+  tags.build(xtal.SgInfo, sym_flags)
+  sampled_density.apply_symmetry(tags)
+  if (friedel_flag):
+    map = sampled_density.map_real_as_shared()
+    rfft.forward(map)
+    collect_conj = 1
+    n_complex = rfft.Ncomplex()
+  else:
+    map = sampled_density.map_complex_as_shared()
+    cfft = fftbx.complex_to_complex_3d(rfft.Nreal())
+    cfft.backward(map)
+    collect_conj = 0
+    n_complex = cfft.N()
+  fcalc = sftbx.collect_structure_factors(
+    friedel_flag, miller_indices.H, map, n_complex, collect_conj)
+  sampled_density.eliminate_u_extra_and_normalize(miller_indices.H, fcalc)
+  if (abs_F): fcalc = shared.abs(fcalc)
+  result = reciprocal_space_array(miller_indices, fcalc)
+  result.symmetrized_sites = xtal
+  return result
+
 def f_as_ampl_phase(f, deg=1):
   from math import hypot, atan2, pi
   if (abs(f) == 0): return (0., 0.)

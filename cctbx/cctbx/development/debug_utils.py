@@ -291,3 +291,68 @@ def print_structure_factors(F, precision_ampl=3, precision_phase=0):
   for i in xrange(len(F.H)):
     print F.H[i], format_structure_factor(
       F.F[i], precision_ampl, precision_phase)
+
+def show_regression(x, y, label, min_correlation = 0):
+  xy_regr = shared.linear_regression(x, y)
+  assert xy_regr.is_well_defined()
+  print label, "cc: %.4f m: %.3f" % (xy_regr.cc(), xy_regr.m())
+  assert min_correlation == 0 or xy_regr.cc() >= min_correlation
+
+def phase_error(p1, p2):
+  d_as_r = math.pi / 180
+  return math.acos(math.cos((p1 - p2) * d_as_r)) / d_as_r
+
+class structure_factor_comparison:
+
+  def __init__(self, label, min_corr_ampl=0, max_mean_w_phase_error=0,
+               verbose=0):
+    python_utils.adopt_init_args(self, locals())
+    self.amp1 = shared.double()
+    self.amp2 = shared.double()
+    self.sum_amp1_minus_amp2_sq = 0
+    self.sum_amp1_sq = 0
+    self.sum_w_phase_error = 0
+    self.sum_w = 0
+
+  def add(self, h, f1, f2):
+    a1, p1 = xutils.f_as_ampl_phase(f1)
+    a2, p2 = xutils.f_as_ampl_phase(f2)
+    if (self.verbose):
+      print h
+      print " ", a1, p1
+      print " ", a2, p2
+      print " " * 20, phase_error(p1, p2)
+    self.amp1.append(a1)
+    self.amp2.append(a2)
+    self.sum_amp1_minus_amp2_sq += (a1 - a2)**2
+    self.sum_amp1_sq += a1**2
+    self.sum_w_phase_error += (a1 + a2) * phase_error(p1, p2)
+    self.sum_w += (a1 + a2)
+
+  def report(self):
+    if (self.sum_amp1_sq):
+      r = self.sum_amp1_minus_amp2_sq / self.sum_amp1_sq
+      print self.label, "R-factor: %.3f" % (r,)
+    if (self.sum_w):
+      self.mean_w_phase_error = self.sum_w_phase_error / self.sum_w
+    show_regression(
+      self.amp1, self.amp2, self.label + " ampl", self.min_corr_ampl)
+    print self.label + (" mean weighted phase error: %.2f" % (
+      self.mean_w_phase_error,))
+    if (self.max_mean_w_phase_error):
+      assert self.mean_w_phase_error <= self.max_mean_w_phase_error
+
+def show_structure_factor_correlation(label, h1, joined_sets, f1, f2,
+                                      min_corr_ampl=0,
+                                      max_mean_w_phase_error=0,
+                                      verbose=0):
+  sf_cmp = structure_factor_comparison(
+    label, min_corr_ampl, max_mean_w_phase_error, verbose)
+  if (joined_sets == 0):
+    assert f1.size() == f2.size()
+    for i in xrange(f1.size()):
+      sf_cmp.add(h1[i], f1[i], f2[i])
+  else:
+    for i,j in joined_sets.pairs():
+      sf_cmp.add(h1[i], f1[i], f2[j])
+  sf_cmp.report()

@@ -264,6 +264,15 @@ namespace cctbx { namespace uctbx {
     }
     return result;
   }
+  double
+  UnitCell::max_Q(const af::shared<Miller::Index>& MIx) const
+  {
+    double result = 0;
+    for(std::size_t i=0;i<MIx.size();i++) {
+      result = std::max(result, Q(MIx[i]));
+    }
+    return result;
+  }
   af::shared<double>
   UnitCell::stol2(const af::shared<Miller::Index>& MIx) const
   {

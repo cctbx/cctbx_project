@@ -296,6 +296,9 @@ namespace cctbx {
       //! d-spacing measure Q = 1/d^2 = (2*sin(theta)/lambda)^2.
       af::shared<double>
       Q(const af::shared<Miller::Index>& MIx) const;
+      //! Maximum Q for given list of Miller indices.
+      double
+      max_Q(const af::shared<Miller::Index>& MIx) const;
 
       //! d-spacing measure (sin(theta)/lambda)^2 = Q/4.
       double
