@@ -19,6 +19,21 @@ def exercise_symmetry():
   xs = crystal.symmetry(
     (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=00000)
   assert not xs.is_compatible_unit_cell()
+  xs = crystal.symmetry((5,5,29,90,90,120), "R 3")
+  ps = xs.primitive_setting()
+  assert ps.unit_cell().is_similar_to(
+    uctbx.unit_cell((10.0885, 10.0885, 10.0885, 28.6956, 28.6956, 28.6956)))
+  assert str(ps.space_group_info()) == "R 3 :R"
+  cb = xs.change_of_basis_op_to_niggli_cell()
+  assert str(cb.c()) == "y-z,-x-z,3*z"
+  nc = xs.niggli_cell()
+  assert nc.unit_cell().is_similar_to(
+    uctbx.unit_cell((5, 5, 10.0885, 75.6522, 75.6522, 60)))
+  assert str(nc.space_group_info()) == "Hall:  R 3 (x+z,-y+z,-3*z)"
+  assert nc.unit_cell().is_niggli_cell()
+  cn = nc.change_basis(cb.inverse())
+  assert cn.unit_cell().is_similar_to(xs.unit_cell())
+  assert cn.space_group() == xs.space_group()
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   p1 = xs.cell_equivalent_p1()
   assert p1.unit_cell().is_similar_to(uctbx.unit_cell((3,4,5)))
