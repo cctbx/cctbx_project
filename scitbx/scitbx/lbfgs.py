@@ -43,10 +43,13 @@ def run(target_evaluator,
     is_converged = ext.traditional_convergence_test(target_evaluator.n)
   else:
     is_converged = ext.drop_convergence_test(termination_params.min_iterations)
+  callback_after_step = getattr(target_evaluator, "callback_after_step", None)
   try:
     while 1:
       x, f, g = target_evaluator()
       if (minimizer.run(x, f, g)): continue
+      if (callback_after_step is not None):
+        callback_after_step(minimizer)
       if (termination_params.traditional_convergence_test):
         if (    minimizer.iter() >= termination_params.min_iterations
             and is_converged(x, g)):
