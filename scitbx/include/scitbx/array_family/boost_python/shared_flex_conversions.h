@@ -19,12 +19,13 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  template <typename ElementType>
+  template <typename SharedType>
   struct shared_to_flex
   {
-    static PyObject* convert(shared_plain<ElementType> const& a)
+    static PyObject* convert(SharedType const& a)
     {
-      versa<ElementType, flex_grid<> > result(a, flex_grid<>(a.size()));
+      typedef typename SharedType::value_type value_type;
+      versa<value_type, flex_grid<> > result(a, flex_grid<>(a.size()));
       return boost::python::incref(boost::python::object(result).ptr());
     }
   };
@@ -76,10 +77,10 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       boost::python::to_python_converter<
         shared_plain<ElementType>,
-        shared_to_flex<ElementType> >();
+        shared_to_flex<shared_plain<ElementType> > >();
       boost::python::to_python_converter<
         shared<ElementType>,
-        shared_to_flex<ElementType> >();
+        shared_to_flex<shared<ElementType> > >();
       shared_from_flex<shared_plain<ElementType> >();
       shared_from_flex<shared<ElementType> >();
     }
