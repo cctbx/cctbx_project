@@ -729,11 +729,31 @@ namespace direct_space_asu {
       bool
       is_simple_interaction(asu_mapping_index_pair const& pair) const
       {
+        CCTBX_ASSERT(
+             pair.i_seq < mappings_const_ref_.size()
+          && pair.j_seq < mappings_const_ref_.size()
+          && pair.j_sym < mappings_const_ref_[pair.j_seq].size());
         if (   site_symmetry_table_.indices_const_ref()[pair.i_seq]
             || site_symmetry_table_.indices_const_ref()[pair.j_seq]) {
           return false;
         }
-        return (get_rt_mx_i(pair) == get_rt_mx_j(pair));
+        asu_mapping<FloatType, IntShiftType> const&
+          am_i = mappings_const_ref_[pair.i_seq][0];
+        asu_mapping<FloatType, IntShiftType> const&
+          am_j = mappings_const_ref_[pair.j_seq][pair.j_sym];
+        sgtbx::rt_mx const& rt_i = space_group_ops_const_ref_[am_i.i_sym_op()];
+        sgtbx::rt_mx const& rt_j = space_group_ops_const_ref_[am_j.i_sym_op()];
+        CCTBX_ASSERT(rt_i.r().den() == rt_j.r().den()
+                  && rt_i.t().den() == rt_j.t().den());
+        if (rt_i.r().num() != rt_j.r().num()) return false;
+        scitbx::vec3<IntShiftType> const& u_i = am_i.unit_shifts();
+        scitbx::vec3<IntShiftType> const& u_j = am_j.unit_shifts();
+        int t_den = rt_i.t().den();
+        for(unsigned i=0;i<3;i++) {
+          if (   rt_i.t().num()[i] + u_i[i] * t_den
+              != rt_j.t().num()[i] + u_j[i] * t_den) return false;
+        }
+        return true;
       }
 
       //! Returns a new pair after checking the indices.
