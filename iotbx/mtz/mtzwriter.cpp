@@ -1,10 +1,3 @@
-#include "cmtzlib.h"
-#include "ccp4_types.h"
-#include "ccp4_array.h"
-#include "ccp4_parser.h"
-#include "ccp4_vars.h"
-#include "ccp4_errno.h"
-#include "ccp4_lib.h"
 #include <iotbx/mtzwriter.h>
 #include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/mat3.h>
@@ -86,9 +79,7 @@ void iotbx::mtz::MtzWriter::oneDataset(const std::string& dataset,
 
 void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup[], 
            const int ncol, const int iref)
-{ int i,j,k,l,icol,ind[3],ind_xtal,ind_set,ind_col[3];
-  float refldata[MCOLUMNS],res;
-  double coefhkl[6];
+{ int i,j,k;
 
   /* if this is extra reflection, check memory */
   if (mtz->refs_in_memory && iref > mtz->nref) {
@@ -119,7 +110,6 @@ void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup
    }
   }
   
-  icol = -1;
   for (i = 0; i < ncol; ++i) {
     if (lookup[i]) {
       /* update reflection in memory or add to refldata array. */
