@@ -28,6 +28,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_std_string();
   void wrap_flex_vec3_double();
 
+  void wrap_flex_random();
   void wrap_flex_sort();
   void wrap_flex_histogram();
   void wrap_flex_mean_and_variance();
@@ -155,6 +156,7 @@ namespace {
     default_c_grid_flex_conversions<double>();
     default_c_grid_flex_conversions<std::complex<double> >();
 
+    wrap_flex_random();
     wrap_flex_sort();
     wrap_flex_histogram();
     wrap_flex_mean_and_variance();
