@@ -101,15 +101,18 @@ def exercise_gaussian():
   grg.show(s)
   assert len(s.getvalue().split()) == 12
 
-def finite_diff_gradients(diff_gaussian, d_star_sq, eps=1.e-2):
+def finite_diff_gradients(diff_gaussian, include_constant_term, d_star_sq,
+                          eps=1.e-2):
   gr = flex.double()
+  c = diff_gaussian.c()
   for i in xrange(diff_gaussian.n_ab()):
     t = []
     for seps in (eps, -eps):
       a = list(diff_gaussian.a())
       a[i] += seps
       t.append(
-        xray_scattering.gaussian(a, diff_gaussian.b()).at_d_star_sq(d_star_sq))
+        xray_scattering.gaussian(a, diff_gaussian.b(), c)
+          .at_d_star_sq(d_star_sq))
     gr.append((t[0]-t[1])/(2*eps))
   for i in xrange(diff_gaussian.n_ab()):
     t = []
@@ -117,12 +120,23 @@ def finite_diff_gradients(diff_gaussian, d_star_sq, eps=1.e-2):
       b = list(diff_gaussian.b())
       b[i] += seps
       t.append(
-        xray_scattering.gaussian(diff_gaussian.a(), b).at_d_star_sq(d_star_sq))
+        xray_scattering.gaussian(diff_gaussian.a(), b, c)
+          .at_d_star_sq(d_star_sq))
+    gr.append((t[0]-t[1])/(2*eps))
+  if (include_constant_term):
+    t = []
+    for seps in (eps, -eps):
+      t.append(
+        xray_scattering.gaussian(
+          diff_gaussian.a(), diff_gaussian.b(), c+seps)
+            .at_d_star_sq(d_star_sq))
     gr.append((t[0]-t[1])/(2*eps))
   return gr
 
-def finite_diff_target_gradients(diff_gaussian, d_star_sq, weight, eps=1.e-2):
+def finite_diff_target_gradients(diff_gaussian, include_constant_term,
+                                 d_star_sq, weight, eps=1.e-2):
   gr = flex.double()
+  c = diff_gaussian.c()
   for i in xrange(diff_gaussian.n_ab()):
     t = []
     for seps in (eps, -eps):
@@ -131,7 +145,7 @@ def finite_diff_target_gradients(diff_gaussian, d_star_sq, weight, eps=1.e-2):
       t.append(xray_scattering.difference_gaussian(
         diff_gaussian.reference_gaussian(),
         xray_scattering.gaussian(
-          a, diff_gaussian.b())).target_at_d_star_sq(d_star_sq, weight))
+          a, diff_gaussian.b(), c)).target_at_d_star_sq(d_star_sq, weight))
     gr.append((t[0]-t[1])/(2*eps))
   for i in xrange(diff_gaussian.n_ab()):
     t = []
@@ -141,7 +155,16 @@ def finite_diff_target_gradients(diff_gaussian, d_star_sq, weight, eps=1.e-2):
       t.append(xray_scattering.difference_gaussian(
         diff_gaussian.reference_gaussian(),
         xray_scattering.gaussian(
-          diff_gaussian.a(), b)).target_at_d_star_sq(d_star_sq, weight))
+          diff_gaussian.a(), b, c)).target_at_d_star_sq(d_star_sq, weight))
+    gr.append((t[0]-t[1])/(2*eps))
+  if (include_constant_term):
+    t = []
+    for seps in (eps, -eps):
+      t.append(xray_scattering.difference_gaussian(
+        diff_gaussian.reference_gaussian(),
+        xray_scattering.gaussian(
+          diff_gaussian.a(), diff_gaussian.b(), c+seps))
+            .target_at_d_star_sq(d_star_sq, weight))
     gr.append((t[0]-t[1])/(2*eps))
   return gr
 
@@ -166,7 +189,7 @@ def exercise_difference_gaussian():
   target_terms = sdg.target_terms_at_points(d_star_sq)
   assert approx_equal(target_terms, [-3.0, -5.0471280, -5.1115092])
   assert approx_equal(
-    sdg.sum_of_gradients_at_points(d_star_sq, weights, target_terms),
+    sdg.sum_of_gradients_at_points(d_star_sq, weights, target_terms, 00000),
     [-22.8698443, -9.2057633, 12.4157696, 2.8944743])
   dg = xray_scattering.difference_gaussian(
     xray_scattering.gaussian(
@@ -183,40 +206,54 @@ def exercise_difference_gaussian():
     0.098159179757290715, 0.060724224581695019, -0.10766283796372011])
   assert approx_equal(dg.target_terms_at_points(d_star_sq), target_terms)
   assert approx_equal(
-    dg.sum_of_gradients_at_points(d_star_sq, weights, target_terms),
+    dg.sum_of_gradients_at_points(d_star_sq, weights, target_terms, 00000),
     [-0.016525391425206391, 0.020055876723667564, -0.018754011379726425,
     0.0074465239375589107, 0.00054794635257838251, -0.0011194004809549143])
-  g5c = xray_scattering.wk1995("C")
-  a = flex.double(g5c.a())
-  b = flex.double(g5c.b())
-  permutation = flex.sort_permutation(flex.abs(a), 1)[:4]
-  gdiff = xray_scattering.difference_gaussian(
-    g5c.fetch(),
-    xray_scattering.gaussian(
-      iter(a.select(permutation)),
-      iter(b.select(permutation))))
-  assert approx_equal(gdiff.target_term_at_d_star_sq(0), -5.01177418232)
-  assert approx_equal(gdiff.target_at_d_star_sq(0, 1), 25.1178804546)
-  gshifted = gdiff.apply_shifts(flex.double(8,-1), -1)
-  assert approx_equal(gshifted.a(),
-                      [-5.2410698, 1.657506, 0.49090898, 0.078078985])
-  assert approx_equal(gshifted.b(),
-                      [-1, 13.780758, 41.086842, -0.223225])
-  assert approx_equal(finite_diff_gradients(gshifted, 0),
-                      [1,1,1,1,0,0,0,0], eps=1.e-4)
-  for weight in [1,2,3]:
-    for i in xrange(10):
-      d_star_sq = flex.double([(i / 10.)**2])
-      weights = flex.double([weight])
-      tt = flex.double([0.5])
-      assert approx_equal(
-        gshifted.sum_of_gradients_at_points(d_star_sq, flex.double(1,1), tt),
-        finite_diff_gradients(gshifted, d_star_sq[0]), eps=1.e-4)
-      tt = gshifted.target_terms_at_points(d_star_sq)
-      assert approx_equal(
-        gshifted.sum_of_gradients_at_points(d_star_sq, weights, tt),
-        finite_diff_target_gradients(gshifted, d_star_sq[0], weights[0]),
-        eps=1.e-2)
+  for include_constant_term in (00000, 0001):
+    g5c = xray_scattering.wk1995("C")
+    a = flex.double(g5c.a())
+    b = flex.double(g5c.b())
+    permutation = flex.sort_permutation(flex.abs(a), 1)[:4]
+    gdiff = xray_scattering.difference_gaussian(
+      g5c.fetch(),
+      xray_scattering.gaussian(
+        iter(a.select(permutation)),
+        iter(b.select(permutation)), 0))
+    assert approx_equal(gdiff.target_term_at_d_star_sq(0), -5.01177418232)
+    assert approx_equal(gdiff.target_at_d_star_sq(0, 1), 25.1178804546)
+    shifts = flex.double(8,-1)
+    if (include_constant_term): shifts.append(-.2)
+    b_min = -1
+    gshifted = gdiff.apply_shifts(shifts, b_min)
+    assert approx_equal(gshifted.a(),
+                        [-5.2410698, 1.657506, 0.49090898, 0.078078985])
+    assert approx_equal(gshifted.b(),
+                        [-1, 13.780758, 41.086842, -0.223225])
+    if (include_constant_term):
+      assert approx_equal(gshifted.c(), -.2)
+    expected_gradients = [1,1,1,1,0,0,0,0]
+    if (include_constant_term): expected_gradients.append(1)
+    assert approx_equal(
+      finite_diff_gradients(gshifted, include_constant_term, 0),
+      expected_gradients,
+      eps=1.e-4)
+    for weight in [1,2,3]:
+      for i in xrange(10):
+        d_star_sq = flex.double([(i / 10.)**2])
+        weights = flex.double([weight])
+        tt = flex.double([0.5])
+        assert approx_equal(
+          gshifted.sum_of_gradients_at_points(
+            d_star_sq, flex.double(1,1), tt, include_constant_term),
+          finite_diff_gradients(gshifted, include_constant_term, d_star_sq[0]),
+          eps=1.e-4)
+        tt = gshifted.target_terms_at_points(d_star_sq)
+        assert approx_equal(
+          gshifted.sum_of_gradients_at_points(
+            d_star_sq, weights, tt, include_constant_term),
+          finite_diff_target_gradients(
+            gshifted, include_constant_term, d_star_sq[0], weights[0]),
+          eps=1.e-2)
 
 def exercise_it1992():
   c = xray_scattering.it1992("c1")

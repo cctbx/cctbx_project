@@ -19,7 +19,6 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         reference_gaussian_(reference_gaussian)
       {
         CCTBX_ASSERT(reference_gaussian.n_ab() >= target_gaussian.n_ab());
-        CCTBX_ASSERT(target_gaussian.c() == 0);
       }
 
       gaussian const&
@@ -30,7 +29,8 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         af::const_ref<double> const& shifts,
         double b_min)
       {
-        CCTBX_ASSERT(shifts.size() == n_ab() * 2);
+        CCTBX_ASSERT(   shifts.size() == n_ab() * 2
+                     || shifts.size() == n_ab() * 2 + 1);
         difference_gaussian result;
         std::size_t i=0;
         for(;i<n_ab();i++) {
@@ -39,7 +39,8 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         for(std::size_t j=0;j<n_ab();j++,i++) {
           result.b_.push_back(std::max(b_min, b(j) + shifts[i]));
         }
-        result.c_ = 0;
+        if (i == shifts.size()) result.c_ = 0;
+        else                    result.c_ = shifts[i];
         result.reference_gaussian_ = reference_gaussian_;
         return result;
       }
@@ -72,11 +73,13 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       sum_of_gradients_at_points(
         af::const_ref<double> const& d_star_sq,
         af::const_ref<double> const& weights,
-        af::const_ref<double> const& target_terms)
+        af::const_ref<double> const& target_terms,
+        bool include_constant_term)
       {
         CCTBX_ASSERT(weights.size() == d_star_sq.size());
         CCTBX_ASSERT(target_terms.size() == d_star_sq.size());
-        af::shared<double> result(n_ab() * 2, 0);
+        af::shared<double> result(n_ab() * 2 + 1, 0);
+        if (!include_constant_term) result.pop_back();
         af::ref<double> g = result.ref();
         for(std::size_t i_point=0;i_point<d_star_sq.size();i_point++) {
           gaussian grg = gradients_at_d_star_sq(d_star_sq[i_point]);
@@ -87,6 +90,9 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
           }
           for(std::size_t j=0;j<n_ab();j++,i++) {
             g[i] += twtt * grg.b(j);
+          }
+          if (include_constant_term) {
+            g[i] += twtt * grg.c();
           }
         }
         return result;
