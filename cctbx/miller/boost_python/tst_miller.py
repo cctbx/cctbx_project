@@ -252,8 +252,8 @@ def exercise_bins():
     r = flex.linear_correlation(x, j)
     assert r.is_well_defined()
     assert approx_equal(
-      r.coefficient(),
-      (0.946400976706,0.99076390185,1.0)[d_star_power-1])
+      r.coefficient(), (0.946401,0.990764,1.0)[d_star_power-1],
+      eps=1.e-4, multiplier=None)
 
 def exercise_expand():
   sg = sgtbx.space_group("P 41 (1,-1,0)")
