@@ -68,7 +68,7 @@ main author of the Boost.Python library, for his generous help.
 The main classes of the %cctbx are class <tt>uctbx::UnitCell</tt> and
 class <tt>sgtbx::SgOps</tt>. The following Python script shows how to
 define a unit cell, process a space group symbol to obtain symmetry
-matrices, verify that the unit cell is compatibe with the symmetry,
+matrices, verify that the unit cell is compatible with the symmetry,
 and print a list of the symmetry operations:
 
 <hr>
@@ -85,6 +85,16 @@ implementation is very similar:
 \include cpp/getting_started.cpp
 
 <hr>
+
+In both cases the output is as follows:
+
+\verbatim
+11 12 13 90 100 90
+x,y,z
+-x,y,-z
+x+1/2,y+1/2,z
+-x+1/2,y+1/2,-z
+\endverbatim
 
 The examples can be found in the <tt>examples/cpp</tt> and
 <tt>examples/python</tt> directories.

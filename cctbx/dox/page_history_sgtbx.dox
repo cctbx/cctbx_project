@@ -1,0 +1,194 @@
+/*! \page page_history_sgtbx cctbx - sgtbx development history details
+
+<hr>
+
+\par
+Between 1996 and 1999, development based on SgInfo 1.01 has lead to
+sginfo2. However, sginfo2 has never been published since over the years
+the source code has become largely unmaintainable. Instead, in 2000
+SgLite was started as a new project that inherited the useful source
+code fragments from sginfo2. In 2001, when it became clear that future
+low-level source code development of the
+<a href="http://cci.lbl.gov/">Computational Crystallography Initiative</a>
+(CCI) will be in C++, conversion of SgLite to %sgtbx has
+been started. At the point of this writing, not all of SgLite has been
+converted to C++. In particular, the algorithm for the determination of
+the space group type is not yet available in the %sgtbx. Similarly,
+not all of the useful source code fragments of sginfo2 have been
+incorporated into SgLite, and therefore also not yet in the %sgtbx.
+
+\par
+Attached is a list of publications related to space group algorithms,
+and another list that succinctly summarizes all related algorithms
+developed.  If you find an algorithm in this list that is of interest
+to you, but not available in the %sgtbx or the older packages, please
+contact cctbx@cci.lbl.gov . The algorithms that are only implemented in
+sginfo2 are available on request. We are very interested in
+collaborating in the development and implementation of these or other
+algorithms in the %sgtbx, or any other toolbox.
+
+<hr>
+
+\section publications_space_group_algorithms Related publications
+
+<dl>
+<dt>Grosse-Kunstleve RW
+<dd>Algorithms for Deriving Crystallographic Space-Group Information.<br>
+    Acta Cryst. 1999, A55:383-395.
+
+<dt>Shmueli U, Hall SR, Grosse-Kunstleve RW
+<dd>Space-Group Symbols for numeric and symbolic computations.<br>
+    International Tables for Crystallography Volume B, (in press).
+
+<dt>Grosse-Kunstleve RW
+<dd>Zeolite Structure Determination from Powder Data:
+    Computer-based Incorporation of Crystal Chemical Information<br>
+    Dissertation ETH No. 11422<br>
+    Swiss Federal Institute of Technology, Zurich, 1996
+
+</dl>
+
+<hr>
+
+\section algorithms_implemented Implemented algorithms for 3-dimensional crystallographic space groups
+
+<ul>
+
+<li>Handling of space group symbols for a total of 530 conventional space
+    group representations for the 230 space group types listed in the
+    International Tables Volume I (1952) and Volume A (1983).
+
+<li>Handling of the 17 conventional plane group symbols.
+
+<li>Interpretation (parsing) of Hall symbols.
+
+<li>Automatic generation of Hall symbols from symmetry matrices.
+
+<li>Efficient generation of the symmetry operations of a space group.
+
+<li>Characterization of symmetry operations (determination of
+    rotation-part type, axis direction, sense of rotation, screw or glide
+    part and location part).
+
+<li>Determination of Laue group type.
+
+<li>Determination of point group type.
+
+<li>Determination of crystal system.
+
+<li>Determination of Patterson symmetry.
+
+<li>Determination of change-of-basis matrices for the transformation to
+    primitive settings.
+
+<li>Application of change-of-basis matrices to space group representations.
+
+<li>Determination of space-group type (identified by the space group
+    number of the International Tables for Crystallography) and
+    corresponding change-of-basis matrix which transforms a given space
+    group representation to the standard one according to the
+    International Tables.
+
+<li>Application of affine normalizers for the normalization of
+    change-of-basis matrices.
+
+<li>Determination of structure semi-invariant vectors and moduli
+    (algebraic description of allowed origin shifts; equivalent to
+    subgroup of corresponding Euclidean normalizer).
+
+<li>Classification of space groups as chiral/non-chiral.
+
+<li>Classification of space groups as enantiomorphic/non-enantiomorphic.
+
+<li>Determination of additional rotation matrices of the Euclidean
+    normalizer (combination of lookup table for 230 reference settings
+    and the change-of-basis matrix as obtained with the algorithm for the
+    determination of space-group type).
+
+<li>Classification of %Miller indices as systematically absent.
+
+<li>Classification of %Miller indices as centric/acentric.
+
+<li>Determination of phase restrictions for given %Miller indices.
+
+<li>Determination of systematic enhancements for given %Miller indices.
+
+<li>Determination of multiplicity for given %Miller indices.
+
+<li>Determination of "cut parameters" for the optimization of the
+    generation of %Miller indices.
+
+<li>Determination of representative ("asymmetric") %Miller indices.
+    (A light-weight, general alternative to using contiguous asymmetric
+    units. The symmetry equivalent indices of the input index H are
+    computed and sorted in a certain order. The first index in the sorted
+    list is the "master" index.)
+
+<li>Determination of compatibility of given unit cells and space groups.
+    (A given unit cell is compatible with a given space group
+    representation if the following relation holds for all rotation
+    matrices R of the space group: Transpose[R].G.R = G, where G is the
+    metrical matrix for the unit cell.)
+
+<li>Handling of tabulated inequalities for asymmetric units in real
+    space.
+
+<li>Determination of a smallest parallelepiped with edges parallel to the
+    unit cell edges that contains an asymmetric unit (which is not
+    necessarily contiguous) in real space.
+
+<li>Determination of factors for gridding of real space that make the
+    grid compatible with the symmetry operations. This is, for each
+    symmetry operation, each grid point is mapped onto another grid
+    point.
+
+<li>Determination of unique Harker operators.
+
+<li>Determination of Harker sections.
+
+<li>Determination of the plane group of a Harker section.
+
+<li>Determination of the asymmetric unit of a Harker section
+    (combination of lookup table for the plane groups and the
+    change-of-basis matrix as obtained with the algorithm for the
+    determination of space-group type).
+
+<li>Handling of Wyckoff positions (combination of lookup table for 230
+    reference settings and the change-of-basis matrix as obtained with
+    the algorithm for the determination of space-group type).
+
+</ul>
+
+\par
+Outline of a numerically stable algorithm for the movement of an atom
+that is close to a special position to that special position (has not
+yet been implemented):
+
+\verbatim
+  Input: Space group symmetry, xyz (atomic coordinates)
+  Output: Special xyz, Special site expression (can be used to
+          determine Wyckoff letter)
+  Shift original coordinates to fall within 0..1, keep the shift
+  Loop over symmetry operations
+  Loop unit shifts (27 passes)
+    if (symop does not have an intrinsic component)
+      compute mate
+      compute distance to mate
+      if (distance < tolerance)
+        keep symop,mate,distance in table
+  Sort table by distance
+  Loop over sorted table
+    if (symop does not "intersect" with all symops already chosen)
+      remove from list
+  Expand table to full point group (to overcome numerical instabilities).
+  Take average of all mates in table
+  Add back initial shift
+  Done.
+\endverbatim
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, April 2001
+
+*/
