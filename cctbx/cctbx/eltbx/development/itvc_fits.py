@@ -1,4 +1,5 @@
 from cctbx.eltbx.development import itvc_section61_io
+from cctbx.eltbx.development import rez_rez_grant
 from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
@@ -30,24 +31,39 @@ def run(file_name, args, cutoff, params,
   results = {}
   results["fit_parameters"] = params
   i_chunk = 0
-  for element in tab.elements:
+  for element in tab.elements + ["O2-"]:
     if (len(args) > 0 and element not in args): continue
     flag = i_chunk % chunk_n == chunk_i
     i_chunk += 1
     if (not flag):
       continue
     wk = xray_scattering.wk1995(element, 1)
-    entry = tab.entries[element]
-    null_fit = scitbx.math.gaussian.fit(
-      stols,
-      entry.table_y[:stols.size()],
-      entry.table_sigmas[:stols.size()],
-      xray_scattering.gaussian(0, 00000))
-    null_fit_more = scitbx.math.gaussian.fit(
-      stols_more,
-      entry.table_y[:stols_more.size()],
-      entry.table_sigmas[:stols_more.size()],
-      xray_scattering.gaussian(0, 00000))
+    if (element != "O2-"):
+      entry = tab.entries[element]
+      null_fit = scitbx.math.gaussian.fit(
+        stols,
+        entry.table_y[:stols.size()],
+        entry.table_sigmas[:stols.size()],
+        xray_scattering.gaussian(0, 00000))
+      null_fit_more = scitbx.math.gaussian.fit(
+        stols_more,
+        entry.table_y[:stols_more.size()],
+        entry.table_sigmas[:stols_more.size()],
+        xray_scattering.gaussian(0, 00000))
+    else:
+      rrg_stols_more = rez_rez_grant.table_2_stol
+      sel = rrg_stols_more <= cutoff + 1.e-6
+      rrg_stols = rrg_stols_more.select(sel)
+      null_fit = scitbx.math.gaussian.fit(
+        rrg_stols,
+        rez_rez_grant.table_2_o2minus[:rrg_stols.size()],
+        rez_rez_grant.table_2_sigmas[:rrg_stols.size()],
+        xray_scattering.gaussian(0, 00000))
+      null_fit_more = scitbx.math.gaussian.fit(
+        rrg_stols_more,
+        rez_rez_grant.table_2_o2minus[:rrg_stols_more.size()],
+        rez_rez_grant.table_2_sigmas[:rrg_stols_more.size()],
+        xray_scattering.gaussian(0, 00000))
     if (zig_zag):
       results[wk.label()] = cctbx.eltbx.gaussian_fit.zig_zag_fits(
         label=wk.label(),

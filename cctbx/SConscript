@@ -28,6 +28,7 @@ lib_cctbx_sources = [
   "eltbx/basic.cpp",
   "eltbx/xray_scattering_it1992.cpp",
   "eltbx/xray_scattering_wk1995.cpp",
+  "eltbx/xray_scatt_n_gaussian_raw.cpp",
   "eltbx/fp_fdp.cpp",
   "eltbx/henke.cpp",
   "eltbx/henke_tables_01_12.cpp",

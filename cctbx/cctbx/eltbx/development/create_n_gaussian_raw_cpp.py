@@ -43,6 +43,12 @@ def write_fit_group(f, label, group):
     s += " " + str(fit.stol) + ","
   s += " 0 };"
   print >> f, s
+  print >> f, "D %s_e[] = {" % id
+  for fit in group:
+    s = str(fit.max_error)
+    if (fit is not group[-1]): s += ","
+    print >> f, s
+  print >> f, "};"
   labels = []
   for fit in group:
     lbl = "%s_%d" % (id, fit.n_terms())
@@ -64,13 +70,25 @@ def write_fit_group(f, label, group):
   print >> f, """\
 """
 
+def write_labels(f, labels):
+  print >> f, """\
+static const char*
+labels[] = {"""
+  for label in labels:
+    assert not '"' in label
+    print >> f, '"%s",' % label
+  print >> f, """\
+0
+};
+"""
+
 def write_table(f, labels):
   print >> f, """\
 static const cctbx::eltbx::xray_scattering::n_gaussian::raw::entry
 table[] = {"""
   for label in labels:
     id = identifier(label)
-    print >> f, '"%s", %s_s, %s_c,' % (label, id, id)
+    print >> f, '%s_s, %s_e, %s_c,' % (id, id, id)
   print >> f, """\
 0, 0, 0
 };
@@ -83,14 +101,14 @@ def write_tail(f, localtime):
 namespace cctbx { namespace eltbx { namespace xray_scattering {
 namespace n_gaussian { namespace raw {
 
+  const char*
+  get_tag() { return "%s"; }
+
+  const char**
+  get_labels() { return labels; }
+
   const entry*
-  get_%s(const char* label)
-  {
-    for(const entry* e=table; e->label; e++) {
-      if (std::strcmp(label, e->label) == 0) return e;
-    }
-    return 0;
-  }
+  get_table() { return table; }
 
 }}}}} // namespace cctbx::eltbx::xray_scattering::n_gaussian::raw""" % (
   "%04d_%02d_%02d_%02d%02d" % localtime[:5])
@@ -113,6 +131,7 @@ def run(gaussian_fit_pickle_file_names):
   present = []
   missing = []
   for wk in xray_scattering.wk1995_iterator():
+    if (wk.label() in ["H'","D","Siv"]): continue
     try:
       fit_group = fits.all[wk.label()]
     except:
@@ -127,6 +146,7 @@ def run(gaussian_fit_pickle_file_names):
   write_header(f)
   for label in present:
     write_fit_group(f, label, fits.all[label])
+  write_labels(f, present)
   write_table(f, present)
   write_tail(f, localtime)
 
