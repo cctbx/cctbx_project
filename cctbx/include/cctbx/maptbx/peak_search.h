@@ -17,6 +17,7 @@
 #include <scitbx/array_family/loops.h>
 #include <scitbx/array_family/sort.h>
 #include <scitbx/array_family/tiny_algebra.h>
+#include <scitbx/sym_mat3.h>
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 
@@ -319,7 +320,7 @@ namespace cctbx { namespace maptbx {
         bool interpolate)
       {
         collect_peaks(data, tags, cutoff, use_cutoff);
-        if (interpolate) interpolate_sites_and_heights();
+        if (interpolate) interpolate_sites_and_heights(data);
         else copy_sites_and_heights();
         sort();
       }
@@ -347,7 +348,7 @@ namespace cctbx { namespace maptbx {
       copy_sites_and_heights()
       {
         af::const_ref<GridIndexType> gi = grid_indices_.const_ref();
-        af::tiny<ValueType, 3> gr(gridding());
+        af::tiny<ValueType, 3> gr(gridding_);
         sites_.reserve(gi.size());
         for(std::size_t i=0;i<gi.size();i++) {
           sites_.push_back(af::tiny<ValueType, 3>(gi[i]) / gr);
@@ -355,10 +356,65 @@ namespace cctbx { namespace maptbx {
         heights_.assign(grid_heights_);
       }
 
+      template <typename DataType>
       void
-      interpolate_sites_and_heights()
+      interpolate_sites_and_heights(
+        af::const_ref<DataType, af::c_grid_padded<3> > const& data,
+        ValueType epsilon=1.e-6)
       {
-        throw CCTBX_NOT_IMPLEMENTED();
+        af::const_ref<GridIndexType> gi = grid_indices_.const_ref();
+        af::const_ref<ValueType> gh = grid_heights_.const_ref();
+        af::tiny<ValueType, 3> gr(gridding_);
+        sites_.reserve(gi.size());
+        heights_.reserve(gi.size());
+        for(std::size_t i_peak=0;i_peak<gi.size();i_peak++) {
+          af::tiny<ValueType, 3> site = gi[i_peak];
+          ValueType height = gh[i_peak];
+          long u0 = gi[i_peak][0];
+          long up = math::mod_positive(u0+1, gridding_[0]);
+          long um = math::mod_positive(u0-1, gridding_[0]);
+          long v0 = gi[i_peak][1];
+          long vp = math::mod_positive(v0+1, gridding_[1]);
+          long vm = math::mod_positive(v0-1, gridding_[1]);
+          long w0 = gi[i_peak][2];
+          long wp = math::mod_positive(w0+1, gridding_[2]);
+          long wm = math::mod_positive(w0-1, gridding_[2]);
+          scitbx::vec3<ValueType> b(
+            (data(um,v0,w0) - data(up,v0,w0)) / 2,
+            (data(u0,vm,w0) - data(u0,vp,w0)) / 2,
+            (data(u0,v0,wm) - data(u0,v0,wp)) / 2);
+          ValueType two_gh = 2 * height;
+          scitbx::sym_mat3<ValueType> a(
+            data(um,v0,w0) + data(up,v0,w0) - two_gh,
+            data(u0,vm,w0) + data(u0,vp,w0) - two_gh,
+            data(u0,v0,wm) + data(u0,v0,wp) - two_gh,
+            (  (data(up,vp,w0) + data(um,vm,w0))
+             - (data(up,vm,w0) + data(um,vp,w0))) / 4,
+            (  (data(up,v0,wp) + data(um,v0,wm))
+             - (data(up,v0,wm) + data(um,v0,wp))) / 4,
+            (  (data(u0,vp,wp) + data(u0,vm,wm))
+             - (data(u0,vp,wm) + data(u0,vm,wp))) / 4);
+          scitbx::sym_mat3<ValueType> a_inv = a.co_factor_matrix_transposed();
+          ValueType a_inv_max = af::max_absolute(a_inv);
+          ValueType a_det = a.determinant();
+          if (scitbx::fn::absolute(a_det) > a_inv_max * epsilon) {
+            a_inv /= a_det;
+            af::tiny<ValueType, 3> x = a_inv * b;
+            if (af::max_absolute(x) < 1) {
+              site += x;
+              height -= b * scitbx::vec3<ValueType>(x);
+              for(std::size_t i=0;i<3;i++) {
+                height += a[i]*x[i]*x[i]/2;
+              }
+              height += a[3]*x[0]*x[1]
+                      + a[4]*x[0]*x[2]
+                      + a[5]*x[1]*x[2];
+            }
+          }
+          site /= gr;
+          sites_.push_back(site);
+          heights_.push_back(height);
+        }
       }
 
       void
