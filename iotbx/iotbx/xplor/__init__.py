@@ -63,65 +63,51 @@ class map_gridding:
     if (self.last != self.last): return 00000
     return 0001
 
-class XplorMap(ext.XplorMap):
+class map_reader:
 
-  def __init__(self):
-    self.title = []
-    self.gridding = None
-    self.unit_cell = None
-    self.data = None
-    self.average = 0.0
-    self.standard_deviation = 1.0
-    ext.XplorMap.__init__(self)
-
-  def read(self, file_name):
+  def __init__(self, file_name):
     f = open(file_name, "r")
     f.readline()
-    # title
+    self.title = []
     ntitle = int(f.readline().strip().split("!")[0])
     self.title=[]
     for x in xrange(ntitle):
       line = f.readline().rstrip()
       self.title.append(line)
-    # gridding
     line = f.readline()
     values = [int(line[i:i+8]) for i in xrange(0,72,8)]
     self.gridding = map_gridding(
       n     = [values[i] for i in xrange(0,9,3)],
       first = [values[i] for i in xrange(1,9,3)],
       last  = [values[i] for i in xrange(2,9,3)])
-    # unit cell
     line = f.readline()
     params = [float(line[i:i+12]) for i in xrange(0,72,12)]
     self.unit_cell = uctbx.unit_cell(params)
-    # ordering information ZYX
     order = f.readline().strip()
     assert order == "ZYX"
     f.close()
-    self.data = self.ReadXplorMap(
+    ext_reader = ext.map_reader(
       file_name=file_name,
       n_header_lines=len(self.title)+5,
       grid=self.gridding.as_flex_grid())
-    # average and standard deviation
-    f = open(file_name, "r")
-    while (f.readline().strip()!='-9999'):
-      pass
-    (self.average,self.standard_deviation)=tuple(
-      [float(z) for z in f.readline().strip().split()])
-    return self
+    self.data = ext_reader.data
+    self.average = ext_reader.average
+    self.standard_deviation = ext_reader.standard_deviation
 
-  def write(self, file_name):
-    assert self.gridding.is_compatible_flex_grid(self.data.accessor())
-    f = open(file_name, "wb")
-    f.write("\n")
-    f.write("%8d !NTITLE\n" % len(self.title))
-    for line in self.title:
-      f.write("%-264s\n" % line)
-    f.write("%s\n" % self.gridding.format_9i8())
-    f.close()
-    self.WriteXplorMap(
-      file_name=file_name,
-      unit_cell=self.unit_cell,
-      map=self.data,
-      average=self.average,
-      standard_deviation=self.standard_deviation)
+def map_writer(file_name, title, unit_cell, gridding, data,
+               average=0,
+               standard_deviation=1):
+  assert gridding.is_compatible_flex_grid(data.accessor())
+  f = open(file_name, "wb")
+  f.write("\n")
+  f.write("%8d !NTITLE\n" % len(title))
+  for line in title:
+    f.write("%-264s\n" % line)
+  f.write("%s\n" % gridding.format_9i8())
+  f.close()
+  ext.map_writer(
+    file_name=file_name,
+    unit_cell=unit_cell,
+    data=data,
+    average=average,
+    standard_deviation=standard_deviation)
