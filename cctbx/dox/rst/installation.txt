@@ -18,7 +18,7 @@ To initialize access via anonymous cvs::
 
   cvs -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx login
 
-At the prompt simply press the Enter key. To get all cctbx modules::
+At the prompt simply press the Enter key. To get the required cctbx modules::
 
   cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co libtbx
   cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co scitbx
@@ -77,13 +77,13 @@ Compilation requires the Boost libraries and the CCP4 MTZ library; the
 build system requires SCons:
 
   Unix:
-    - http://cci.lbl.gov/~rwgk/cctbx/boost_1_29_0_cci.tar.gz
-    - http://cci.lbl.gov/~rwgk/cctbx/ccp4_lib_src.tar.gz
-    - http://cci.lbl.gov/~rwgk/cctbx/scons-0.12-go-fast.tar.gz
+    - http://cci.lbl.gov/cctbx_downloads/boost_1_29_0_cci.tar.gz
+    - http://cci.lbl.gov/cctbx_downloads/ccp4io.tar.gz
+    - http://cci.lbl.gov/cctbx_downloads/scons-0.12-go-fast.tar.gz
   Windows:
-    - http://cci.lbl.gov/~rwgk/cctbx/boost_1_29_0_cci.zip
-    - http://cci.lbl.gov/~rwgk/cctbx/ccp4_lib_src.zip
-    - http://cci.lbl.gov/~rwgk/cctbx/scons-0.12-go-fast.zip
+    - http://cci.lbl.gov/cctbx_downloads/boost_1_29_0_cci.zip
+    - http://cci.lbl.gov/cctbx_downloads/ccp4io.zip
+    - http://cci.lbl.gov/cctbx_downloads/scons-0.12-go-fast.zip
 
 Unpack these files in the directory with the cctbx cvs modules.
 Rename or soft-link the Boost and SCons directories:
@@ -97,6 +97,10 @@ Rename or soft-link the Boost and SCons directories:
 
     ren boost_1_29_0_cci boost
     ren scons-0.12-go-fast scons
+
+The Boost libraries require an additional adaptor module::
+
+  cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co boost_adaptbx
 
 Change to a new empty directory which will become the
 cctbx binary installation directory.
