@@ -2,18 +2,13 @@
 # group symbol or symmetry matrices, or a combination of the two.
 
 from cctbx import sgtbx
-from cctbx.web import utils
-
-class empty: pass
+from cctbx.web import io_utils
+from cctbx.web import cgi_utils
 
 def interpret_form_data(form):
-  inp = empty()
-  for key in (("sgsymbol", ""),
-              ("convention", "")):
-    if (form.has_key(key[0])):
-      inp.__dict__[key[0]] = form[key[0]].value.strip()
-    else:
-      inp.__dict__[key[0]] = key[1]
+  inp = cgi_utils.inp_from_form(form,
+    (("sgsymbol", ""),
+     ("convention", "")))
   inp.shelx_latt = []
   inp.symxyz = []
   if (form.has_key("symxyz")):
@@ -158,7 +153,7 @@ def expand_shelx_latt(sg, n_fld):
 
 def run(server_info, inp, status):
   print "<pre>"
-  utils.show_input_symbol(inp.sgsymbol, inp.convention)
+  io_utils.show_input_symbol(inp.sgsymbol, inp.convention)
 
   symbols_inp = None
   lookup_symbol = inp.sgsymbol

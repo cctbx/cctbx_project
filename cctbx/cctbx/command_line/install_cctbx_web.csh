@@ -11,12 +11,14 @@ mkdir cctbx
 cp -r $CCTBX_DIST/cctbx cctbx
 cd ..
 
-mkdir build
-cd build
-cp -r $LIBTBX_BUILD/libtbx .
-unsetenv LIBTBX_SCONS
-python ../dist/libtbx/configure.py scitbx cctbx
-cd ..
+if ($#argv == 0) then
+  mkdir build
+  cd build
+  cp -r $LIBTBX_BUILD/libtbx .
+  unsetenv LIBTBX_SCONS
+  python ../dist/libtbx/configure.py scitbx cctbx
+  cd ..
+endif
 
 echo '#! /bin/sh -f' > cctbx_web.cgi
 echo "./build/env_run.sh CCTBX_DIST cctbx/web/dispatcher.py" >> cctbx_web.cgi
