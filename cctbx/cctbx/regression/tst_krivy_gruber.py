@@ -493,9 +493,10 @@ def exercise():
     print time_gruber_1973_minimum.report()
     print time_gruber_1973_fast_minimum.report()
     print time_uctbx_fast_minimum.report()
-    print "fast_minimum Python/C++: %.3g" % (
-        time_gruber_1973_fast_minimum.accumulation
-      / time_uctbx_fast_minimum.accumulation)
+    if (time_uctbx_fast_minimum.accumulation != 0):
+      print "fast_minimum Python/C++: %.3g" % (
+          time_gruber_1973_fast_minimum.accumulation
+        / time_uctbx_fast_minimum.accumulation)
     print "fast_minimum_reduction_max_n_iterations:", \
            fast_minimum_reduction_max_n_iterations
   print "OK"
