@@ -5,6 +5,24 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from stdlib import math
 
+def euler_angles_as_matrix(angles, deg=00000):
+  if (deg):
+    angles = [a*math.pi/180 for a in angles]
+  c = [math.cos(a) for a in angles]
+  s = [math.sin(a) for a in angles]
+  # Based on subroutine angro7 in CONVROT.
+  # Urzhumtseva, L.M. & Urzhumtsev, A.G. (1997).
+  return matrix.sqr((
+     c[0]*c[1]*c[2]-s[0]*s[2],
+    -c[0]*c[1]*s[2]-s[0]*c[2],
+     c[0]*s[1],
+     s[0]*c[1]*c[2]+c[0]*s[2],
+    -s[0]*c[1]*s[2]+c[0]*c[2],
+     s[0]*s[1],
+    -s[1]*c[2],
+     s[1]*s[2],
+     c[1]))
+
 class erf_verification:
 
   def __init__(self, tolerance=1.e-10):
