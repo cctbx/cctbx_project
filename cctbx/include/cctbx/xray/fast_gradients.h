@@ -31,7 +31,8 @@ namespace cctbx { namespace xray {
           FloatType const& u_iso,
           FloatType const& u_extra)
         :
-          base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra)
+          base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra),
+          i_const_term(gaussian.n_ab())
         {
           if (gf.u_iso || gf.occupancy || gf.fp || gf.fdp) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
@@ -50,9 +51,11 @@ namespace cctbx { namespace xray {
                   weight_without_occupancy * gaussian.a(i),
                   gaussian.b(i) + b_incl_extra);
               }
-              as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * (gaussian.c() + fp),
-                b_incl_extra);
+              if (this->n_rho_real_terms > gaussian.n_ab()) {
+                as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
+                  weight_without_occupancy * (gaussian.c() + fp),
+                  b_incl_extra);
+              }
               as_occupancy_imag_=isotropic_3d_gaussian_fourier_transform(
                 weight_without_occupancy * fdp,
                 b_incl_extra);
@@ -76,7 +79,8 @@ namespace cctbx { namespace xray {
           scitbx::sym_mat3<FloatType> const& u_cart,
           FloatType const& u_extra)
         :
-          base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra)
+          base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra),
+          i_const_term(gaussian.n_ab())
         {
           if (gf.u_aniso) {
             for(std::size_t i=0;i<gaussian.n_ab();i++) {
@@ -92,9 +96,8 @@ namespace cctbx { namespace xray {
               b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
             FloatType d = b_all.determinant();
             if (gf.u_aniso) {
-              static const std::size_t i = this->n_rho_real_terms - 1;
-              detb_[i] = d;
-              bcfmt_[i] = b_all.co_factor_matrix_transposed();
+              detb_[i_const_term] = d;
+              bcfmt_[i_const_term] = b_all.co_factor_matrix_transposed();
             }
             if (gf.fp || gf.fdp) {
               eight_pi_pow_3_2_w_d_ = eight_pi_pow_3_2 * w / std::sqrt(d);
@@ -108,10 +111,12 @@ namespace cctbx { namespace xray {
                   weight_without_occupancy * gaussian.a(i),
                   compose_anisotropic_b_all(gaussian.b(i), u_extra, u_cart));
             }
-            as_occupancy_real_[i] =
-              anisotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * (gaussian.c() + fp),
-                compose_anisotropic_b_all(0, u_extra, u_cart));
+            if (this->n_rho_real_terms > gaussian.n_ab()) {
+              as_occupancy_real_[i] =
+                anisotropic_3d_gaussian_fourier_transform(
+                  weight_without_occupancy * (gaussian.c() + fp),
+                  compose_anisotropic_b_all(0, u_extra, u_cart));
+            }
             as_occupancy_imag_ =
               anisotropic_3d_gaussian_fourier_transform(
                 weight_without_occupancy * fdp,
@@ -191,7 +196,7 @@ namespace cctbx { namespace xray {
         d_rho_imag_d_b_iso(FloatType const& d_sq) const
         {
           return d_rho_d_b_iso_term(
-            d_sq, this->rho_imag(d_sq), b_[this->n_rho_real_terms-1]);
+            d_sq, this->rho_imag(d_sq), b_[i_const_term]);
         }
 
         /* Mathematica script used to determine analytical gradients:
@@ -255,8 +260,8 @@ namespace cctbx { namespace xray {
         {
           return d_rho_d_b_cart_term(
             d, this->rho_imag(d),
-            detb_[this->n_rho_real_terms-1],
-            bcfmt_[this->n_rho_real_terms-1]);
+            detb_[i_const_term],
+            bcfmt_[i_const_term]);
         }
 
         template <typename DistanceType>
@@ -282,7 +287,7 @@ namespace cctbx { namespace xray {
         d_rho_real_d_fp(DistanceType const& d_or_d_sq) const
         {
           return -eight_pi_pow_3_2_w_d_
-                 * this->exp_term(d_or_d_sq, this->n_rho_real_terms-1);
+                 * this->exp_term(d_or_d_sq, i_const_term);
         }
 
         template <typename DistanceType>
@@ -293,9 +298,11 @@ namespace cctbx { namespace xray {
         }
 
       protected:
+        std::size_t i_const_term;
         af::tiny<FloatType, base_t::max_n_rho_real_terms> b_;
         af::tiny<FloatType, base_t::max_n_rho_real_terms> detb_;
-        af::tiny<scitbx::sym_mat3<FloatType>, base_t::max_n_rho_real_terms> bcfmt_;
+        af::tiny<scitbx::sym_mat3<FloatType>, base_t::max_n_rho_real_terms>
+          bcfmt_;
         af::tiny<FloatType, base_t::max_n_rho_real_terms> as_occupancy_real_;
         FloatType as_occupancy_imag_;
         FloatType eight_pi_pow_3_2_w_d_;
