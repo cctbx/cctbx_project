@@ -190,20 +190,6 @@ namespace cctbx { namespace dmtbx {
              / list_of_tpr_maps_.size();
       }
 
-      std::size_t
-      n_relations(std::size_t ih) const
-      {
-        std::size_t result = 0;
-        CCTBX_ASSERT(ih < list_of_tpr_maps_.size());
-        list_of_tpr_maps_type::const_iterator
-        li = list_of_tpr_maps_.begin() + ih;
-        for(tpr_map_type::const_iterator
-            lij=li->begin();lij!=li->end();lij++) {
-          result += lij->second;
-        }
-        return result;
-      }
-
       void
       dump_triplets(af::const_ref<miller::index<> > const& miller_indices)
       {
@@ -225,94 +211,140 @@ namespace cctbx { namespace dmtbx {
         }
       }
 
+      af::shared<std::size_t>
+      n_relations(bool discard_weights,
+                  bool first_only) const
+      {
+        af::shared<std::size_t>
+          result((af::reserve(list_of_tpr_maps_.size())));
+        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
+        std::size_t n_miller_indices = list_of_tpr_maps_.size();
+        std::size_t prev_ik = n_miller_indices;
+        std::size_t prev_ihmk = n_miller_indices;
+        for(std::size_t i_h=0;i_h<n_miller_indices;i_h++,li++) {
+          std::size_t n = 0;
+          for(tpr_map_type::const_iterator
+              lij=li->begin();lij!=li->end();lij++) {
+            triplet_phase_relation const& tpr = lij->first;
+            if (first_only) {
+              if (tpr.ik_ == prev_ik && tpr.ihmk_ == prev_ihmk) continue;
+              prev_ik = tpr.ik_;
+              prev_ihmk = tpr.ihmk_;
+            }
+            if (!discard_weights) n += lij->second;
+            else n++;
+          }
+          result.push_back(n);
+        }
+        return result;
+      }
+
       af::shared<FloatType>
       sum_of_e_products(
         af::const_ref<miller::index<> > const& miller_indices,
-        af::const_ref<FloatType> const& e_values)
+        af::const_ref<FloatType> const& e_values,
+        bool discard_weights,
+        bool first_only) const
       {
         CCTBX_ASSERT(miller_indices.size() == list_of_tpr_maps_.size());
         CCTBX_ASSERT(miller_indices.size() == e_values.size());
         af::shared<FloatType> result;
         result.reserve(e_values.size());
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
-        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
-          FloatType e_h = e_values[i];
+        std::size_t n_miller_indices = list_of_tpr_maps_.size();
+        std::size_t prev_ik = n_miller_indices;
+        std::size_t prev_ihmk = n_miller_indices;
+        for(std::size_t i_h=0;i_h<n_miller_indices;i_h++,li++) {
           FloatType sum = 0;
           for(tpr_map_type::const_iterator
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const& tpr = lij->first;
+            if (first_only) {
+              if (tpr.ik_ == prev_ik && tpr.ihmk_ == prev_ihmk) continue;
+              prev_ik = tpr.ik_;
+              prev_ihmk = tpr.ihmk_;
+            }
             FloatType e_k = e_values[tpr.ik_];
             FloatType e_hmk = e_values[tpr.ihmk_];
-            sum += e_k * e_hmk;// * lij->second;
+            FloatType ee = e_k * e_hmk;
+            if (!discard_weights) ee *= lij->second;
+            sum += ee;
           }
-          sum *= e_h;
           result.push_back(sum);
         }
         return result;
       }
 
       af::shared<FloatType>
-      apply_tangent_formula(af::const_ref<FloatType> const& e_values,
-                            af::const_ref<FloatType> const& phases) const
+      apply_tangent_formula(
+        af::const_ref<FloatType> const& e_values,
+        af::const_ref<FloatType> const& phases,
+        af::const_ref<bool> const& selection_fixed,
+        af::const_ref<std::size_t> const& extrapolation_order,
+        bool reuse_results,
+        bool discard_weights,
+        bool first_only) const
       {
         FloatType sum_cutoff(1.e-10); // XXX
         CCTBX_ASSERT(e_values.size() == list_of_tpr_maps_.size());
-        CCTBX_ASSERT(e_values.size() == phases.size());
+        CCTBX_ASSERT(phases.size() == e_values.size());
+        CCTBX_ASSERT(selection_fixed.size() == e_values.size());
+        CCTBX_ASSERT(   extrapolation_order.size() == 0
+                     || extrapolation_order.size() == e_values.size());
+        CCTBX_ASSERT(first_only == false || discard_weights == true);
         af::shared<FloatType> result;
-        result.reserve(e_values.size());
-        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
-        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
+        result.assign(phases.begin(), phases.end());
+        const FloatType* phase_source = (
+          reuse_results ? result.begin() : phases.begin());
+        std::vector<bool> fixed_or_extrapolated(
+          selection_fixed.begin(), selection_fixed.end());
+        list_of_tpr_maps_type::const_iterator
+          li_begin = list_of_tpr_maps_.begin();
+        std::size_t prev_ik = e_values.size();
+        std::size_t prev_ihmk = e_values.size();
+        std::size_t i_h;
+        for(std::size_t i_p=0;i_p<phases.size();i_p++) {
+          if (extrapolation_order.size() == 0) {
+            i_h = i_p;
+          }
+          else {
+            i_h = extrapolation_order[i_p];
+            CCTBX_ASSERT(i_h < e_values.size());
+          }
+          if (selection_fixed[i_h]) continue;
+          CCTBX_ASSERT(!fixed_or_extrapolated[i_h]);
+          list_of_tpr_maps_type::const_iterator li = li_begin + i_h;
           FloatType sum_sin(0);
           FloatType sum_cos(0);
           for(tpr_map_type::const_iterator
               lij=li->begin();lij!=li->end();lij++) {
-            triplet_phase_relation const&
-            tpr = lij->first;
+            triplet_phase_relation const& tpr = lij->first;
+            if (first_only) {
+              if (tpr.ik_ == prev_ik && tpr.ihmk_ == prev_ihmk) continue;
+              prev_ik = tpr.ik_;
+              prev_ihmk = tpr.ihmk_;
+            }
             CCTBX_ASSERT(tpr.ik_ < e_values.size());
             CCTBX_ASSERT(tpr.ihmk_ < e_values.size());
+            if (reuse_results) {
+              if (!fixed_or_extrapolated[tpr.ik_]) continue;
+              if (!fixed_or_extrapolated[tpr.ihmk_]) continue;
+            }
             FloatType e_k = e_values[tpr.ik_];
             FloatType e_hmk = e_values[tpr.ihmk_];
-            FloatType e_k_e_hmk = lij->second * e_k * e_hmk;
-            FloatType phi_k_phi_hmk = tpr.phi_k_phi_hmk(phases.begin(), t_den_);
+            FloatType e_k_e_hmk = e_k * e_hmk;
+            if (!discard_weights) e_k_e_hmk *= lij->second;
+            FloatType phi_k_phi_hmk = tpr.phi_k_phi_hmk(phase_source, t_den_);
             sum_sin += e_k_e_hmk * std::sin(phi_k_phi_hmk);
             sum_cos += e_k_e_hmk * std::cos(phi_k_phi_hmk);
           }
-          if (   scitbx::fn::absolute(sum_sin) < sum_cutoff
-              && scitbx::fn::absolute(sum_cos) < sum_cutoff) {
-            result.push_back(phases[i]);
-          }
-          else {
-            result.push_back(std::atan2(sum_sin, sum_cos));
+          if (   scitbx::fn::absolute(sum_sin) >= sum_cutoff
+              || scitbx::fn::absolute(sum_cos) >= sum_cutoff) {
+            result[i_h] = std::atan2(sum_sin, sum_cos);
+            fixed_or_extrapolated[i_h] = true;
           }
         }
         return result;
-      }
-
-      void
-      weights_and_epsilon(
-        sgtbx::space_group_type const& sg_type,
-        af::const_ref<miller::index<> > const& miller_indices) const
-      {
-        CCTBX_ASSERT(miller_indices.size() == list_of_tpr_maps_.size());
-        af::shared<int> epsilons = sg_type.group().epsilon(miller_indices);
-        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
-        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
-          for(tpr_map_type::const_iterator
-              lij=li->begin();lij!=li->end();lij++) {
-            triplet_phase_relation const& tpr = lij->first;
-            miller::index<> h = miller_indices[i];
-            miller::index<> k = miller_indices[tpr.ik_];
-            miller::index<> hmk = miller_indices[tpr.ihmk_];
-            std::cout << h.ref()
-               << " " << k.ref()
-               << " " << hmk.ref()
-               << " " << epsilons[i]
-               << " " << epsilons[tpr.ik_]
-               << " " << epsilons[tpr.ihmk_]
-               << " " << lij->second
-               << std::endl;
-          }
-        }
       }
 
     private:
