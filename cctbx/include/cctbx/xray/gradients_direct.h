@@ -42,7 +42,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       fractional<float_type> dtds_term;
       scitbx::sym_mat3<f_t> dw_coeff;
       f0_fp_fdp = f0 + c_t(scatterer.fp, scatterer.fdp);
-      f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
+      c_t f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
       for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
         sgtbx::rt_mx const& s = space_group.smx(i_smx);
         miller::index<> hr = h * s.r();
@@ -56,8 +56,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         if (grad_flags_site) dtds_term.fill(0);
         for(std::size_t i=0;i<space_group.f_inv();i++) {
           if (i) {
-            hr = -hr;
-            hrx = -hrx;
+            hrx *= -1;
             t = space_group.inv_t() - t;
           }
           f_t ht = f_t(h * t) / space_group.t_den();
@@ -66,6 +65,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             c_t f = f0_fp_fdp_w * term;
             f_t c = d_target_d_f_calc.imag() * f.real()
                   - d_target_d_f_calc.real() * f.imag();
+            if (i) c *= -1;
             for(std::size_t i=0;i<3;i++) {
               dtds_term[i] += hr[i] * c;
             }
@@ -94,7 +94,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
     }
 
     std::complex<float_type> f0_fp_fdp;
-    std::complex<float_type> f0_fp_fdp_w;
     std::complex<float_type> const_h_sum;
     fractional<float_type> d_target_d_site_frac;
     scitbx::sym_mat3<float_type> d_target_d_u_star;

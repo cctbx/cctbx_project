@@ -66,6 +66,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
       bool is_centric = space_group.is_centric();
       bool is_origin_centric = (
         is_centric ? space_group.is_origin_centric() : false);
+      c_t f_h_inv_t(0,0);
+      if (!is_origin_centric && is_centric) {
+        f_t ht = f_t(h * space_group.inv_t()) / space_group.t_den();
+        f_h_inv_t = cos_sin.get(ht);
+      }
       f_t d_star_sq = unit_cell.d_star_sq(h);
       dict_type const& scd = scattering_dict.dict();
       for(dict_iter di=scd.begin();di!=scd.end();di++) {
@@ -93,8 +98,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             sf.f_calc = c_t(2*sf.f_calc.real(),0);
           }
           else if (is_centric) {
-            f_t ht = f_t(h * space_group.inv_t()) / space_group.t_den();
-            sf.f_calc += std::conj(sf.f_calc) * cos_sin.get(ht);
+            sf.f_calc += std::conj(sf.f_calc) * f_h_inv_t;
           }
           if (caasf_is_const) {
             if (have_fdp) sf.f_calc *= c_t(fp_w, fdp_w);
