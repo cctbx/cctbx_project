@@ -483,8 +483,18 @@ class stage_1:
         break
       print >> f, prefix + self.atom_attributes_list[i_seq].pdb_format()
 
-  def write_modified(self, out, new_sites_cart, crystal_symmetry=None):
-    assert new_sites_cart.size() == len(self.atom_attributes_list)
+  def write_modified(self,
+        out,
+        new_sites_cart=None,
+        new_occupancies=None,
+        new_u_iso=None,
+        crystal_symmetry=None):
+    if (new_sites_cart is not None):
+      assert new_sites_cart.size() == len(self.atom_attributes_list)
+    if (new_occupancies is not None):
+      assert new_occupancies.size() == len(self.atom_attributes_list)
+    if (new_u_iso is not None):
+      assert new_u_iso.size() == len(self.atom_attributes_list)
     if (crystal_symmetry is None):
       crystal_symmetry = self.crystal_symmetry
     if (crystal_symmetry is not None):
@@ -504,6 +514,18 @@ class stage_1:
           print >> out, "ENDMDL"
         if (atom.MODELserial > 0):
           print >> out, "MODEL     %5d" % atom.MODELserial
+      if (new_sites_cart is not None):
+        new_site = new_sites_cart[i_seq]
+      else:
+        new_site = atom.coordinates
+      if (new_u_iso is not None):
+        new_tempFactor = adptbx.u_as_b(new_u_iso[i_seq])
+      else:
+        new_tempFactor = atom.tempFactor
+      if (new_occupancies is not None):
+        new_occupancy = new_occupancies[i_seq]
+      else:
+        new_occupancy = atom.occupancy
       print >> out, pdb.format_atom_record(
         record_name=atom.record_name(),
         serial=serial.next(),
@@ -513,9 +535,9 @@ class stage_1:
         chainID=atom.chainID,
         resSeq=atom.resSeq,
         iCode=atom.iCode,
-        site=new_sites_cart[i_seq],
-        occupancy=atom.occupancy,
-        tempFactor=atom.tempFactor,
+        site=new_site,
+        occupancy=new_occupancy,
+        tempFactor=new_tempFactor,
         segID=atom.segID,
         element=atom.element,
         charge=atom.charge)

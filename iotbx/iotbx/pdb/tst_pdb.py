@@ -5,6 +5,7 @@ import iotbx.pdb.interpretation
 import iotbx.pdb.xray_structure
 from cctbx import crystal
 from cctbx import sgtbx
+from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 from cStringIO import StringIO
@@ -243,21 +244,43 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
 "9H   UNK     0 " H      4 (-0.0334 -0.2951  0.3313) 1.00 0.0000
 """
   s = StringIO()
-  stage_1.write_modified(out=s, new_sites_cart=xray_structure.sites_cart())
+  stage_1.write_modified(out=s)
   assert s.getvalue().replace("-0.000000", " 0.000000") == """\
 CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P121/c1
 SCALE1      0.123487  0.000000  0.084554        0.00000
 SCALE2      0.000000  0.167983  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.140078        0.00000
-HETATM    1  C1  UNK     0      -0.938   0.110   2.344  1.00  0.00           C
-HETATM    2  X2  UNK     0      -0.175   0.975   1.592  1.00  0.00           C
-HETATM    3 8H   UNK     0       1.263   2.326  -0.169  1.00  0.00           H
-HETATM    4  C3  UNK     0       0.207   0.626   0.266  1.00  0.00           C
-HETATM    5 7H   UNK     0       0.122   1.819   1.935  1.00  0.00
-HETATM    6  C_4 UNK     0       0.991   1.499  -0.541  1.00  0.00
-HETATM    7 6H   UNK     0      -1.220   0.351   3.251  1.00  0.00
-HETATM    8  C5  UNK     0      -1.351  -1.132   1.818  1.00  0.00
-HETATM    9 9H   UNK     0      -1.890  -1.757   2.365  1.00  0.00
+HETATM    1  C1  UNK     0       0.550   0.110   2.464  1.00  0.00           C
+HETATM    2  X2  UNK     0       0.755   0.975   1.412  1.00  0.00           C
+HETATM    3 8H   UNK     0       0.947   2.326  -0.853  1.00  0.00           H
+HETATM    4  C3  UNK     0       0.321   0.626   0.102  1.00  0.00           C
+HETATM    5 7H   UNK     0       1.194   1.819   1.528  1.00  0.00
+HETATM    6  C_4 UNK     0       0.512   1.499  -1.006  1.00  0.00
+HETATM    7 6H   UNK     0       0.830   0.351   3.372  1.00  0.00
+HETATM    8  C5  UNK     0      -0.088  -1.132   2.263  1.00  0.00
+HETATM    9 9H   UNK     0      -0.223  -1.757   3.019  1.00  0.00
+TER      10      UNK     0
+END
+"""
+  s = StringIO()
+  stage_1.write_modified(out=s,
+    new_sites_cart=xray_structure.sites_cart(),
+    new_occupancies=flex.double([x*0.1 for x in xrange(1,10)]),
+    new_u_iso=flex.double([adptbx.b_as_u(b) for b in xrange(1,10)]))
+  assert s.getvalue().replace("-0.000000", " 0.000000") == """\
+CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P121/c1
+SCALE1      0.123487  0.000000  0.084554        0.00000
+SCALE2      0.000000  0.167983  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.140078        0.00000
+HETATM    1  C1  UNK     0      -0.938   0.110   2.344  0.10  1.00           C
+HETATM    2  X2  UNK     0      -0.175   0.975   1.592  0.20  2.00           C
+HETATM    3 8H   UNK     0       1.263   2.326  -0.169  0.30  3.00           H
+HETATM    4  C3  UNK     0       0.207   0.626   0.266  0.40  4.00           C
+HETATM    5 7H   UNK     0       0.122   1.819   1.935  0.50  5.00
+HETATM    6  C_4 UNK     0       0.991   1.499  -0.541  0.60  6.00
+HETATM    7 6H   UNK     0      -1.220   0.351   3.251  0.70  7.00
+HETATM    8  C5  UNK     0      -1.351  -1.132   1.818  0.80  8.00
+HETATM    9 9H   UNK     0      -1.890  -1.757   2.365  0.90  9.00
 TER      10      UNK     0
 END
 """
