@@ -18,7 +18,7 @@ def are_similar_unit_cells(ucell1, ucell2,
       return False
   return True
 
-def show_binner_info(binner):
+def show_binner_summary(binner):
   for i_bin in binner.range_all():
     bin_d_range = binner.bin_d_range(i_bin)
     count = binner.count(i_bin)
@@ -89,10 +89,19 @@ class miller_set(crystal_symmetry):
     return miller_set(self.cell_equivalent_p1(), set_p1_H).set_friedel_flag(
       self.friedel_flag)
 
-  def setup_binner(self, d_max=0, d_min=0, reflections_per_bin=0, n_bins=0):
-    assert reflections_per_bin != 0 or n_bins != 0
-    assert reflections_per_bin == 0 or n_bins == 0
-    if (reflections_per_bin):
+  def setup_binner(self, d_max=0, d_min=0,
+                   auto_binning=0,
+                   reflections_per_bin=0,
+                   n_bins=0):
+    assert auto_binning != 0 or reflections_per_bin != 0 or n_bins != 0
+    assert auto_binning != 0 or (reflections_per_bin == 0 or n_bins == 0)
+    if (auto_binning):
+      if (reflections_per_bin == 0): reflections_per_bin = 200
+      if (n_bins == 0): n_bins = 8
+      n_per_bin = int(float(self.H.size()) / n_bins + .5)
+      if (n_per_bin > reflections_per_bin):
+        n_bins = int(self.H.size() / reflections_per_bin + .5)
+    elif (reflections_per_bin):
       n_bins = int(self.H.size() / reflections_per_bin + .5)
     assert n_bins > 0
     binning = miller.binning(self.UnitCell, n_bins, self.H, d_max, d_min)
@@ -155,29 +164,35 @@ class reciprocal_space_array(miller_set):
     flags = shared.abs(self.F) >= self.sigmas.mul(cutoff_factor)
     return self.apply_selection(flags, negate)
 
-  def rms(self, use_binning=0, use_multiplicities=0):
+  def mean_sq(self, use_binning=0, use_multiplicities=0):
     if (use_multiplicities):
       mult = self.multiplicities().F.as_double()
     if (not use_binning):
       if (not use_multiplicities):
-        result = math.sqrt(shared.mean_sq(self.F))
+        result = shared.mean_sq(self.F)
       else:
-        result = math.sqrt(shared.mean_sq_weighted(self.F, mult))
+        result = shared.mean_sq_weighted(self.F, mult)
     else:
       result = shared.double()
-      for i_bin in self.binner.range_all():
+      for i_bin in self.binner.range_used():
         sel = self.binner(i_bin)
         if (sel.count(1) == 0):
           result.append(0)
         else:
           sel_data = self.F.select(sel)
           if (not use_multiplicities):
-            result.append(math.sqrt(shared.mean_sq(sel_data)))
+            result.append(shared.mean_sq(sel_data))
           else:
             sel_mult = mult.select(sel)
-            result.append(
-              math.sqrt(shared.mean_sq_weighted(sel_data, sel_mult)))
+            result.append(shared.mean_sq_weighted(sel_data, sel_mult))
     return result
+
+  def rms(self, use_binning=0, use_multiplicities=0):
+    ms = self.mean_sq(use_binning, use_multiplicities)
+    if (not use_binning):
+      return math.sqrt(ms)
+    else:
+      return shared.sqrt(ms)
 
   def rms_filter(self, cutoff_factor,
                  use_binning=0, use_multiplicities=0, negate=0):
@@ -188,7 +203,7 @@ class reciprocal_space_array(miller_set):
     else:
       keep = self.all_selection()
       for i_bin in self.binner.range_used():
-        keep &= ~self.binner(i_bin) | (abs_f <= cutoff_factor * rms[i_bin])
+        keep &= ~self.binner(i_bin) | (abs_f <= cutoff_factor * rms[i_bin-1])
     return self.apply_selection(keep, negate)
 
   def __add__(self, other):
