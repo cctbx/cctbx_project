@@ -62,19 +62,19 @@ namespace cctbx { namespace translation_search {
         af::c_grid<3> dim_target(
           gridding.target());
         af::c_grid<3> dim_eq14(
-          scitbx::fftpack::n_complex_from_n_real(gridding.quarter()));
+          scitbx::fftpack::n_complex_from_n_real(gridding.target()));
         af::c_grid<3> dim_eq15(
-          scitbx::fftpack::n_complex_from_n_real(gridding.eighth()));
+          scitbx::fftpack::n_complex_from_n_real(gridding.target()));
 
         // separate scope for allocation of large memory block
         {
           af::versa<std::complex<sum_f_t>, af::c_grid<3> > sum_eq15(dim_eq15);
           sum_accu_type accu(
-            sum_eq15.begin(), gridding.eighth(), miller::index<>(dim_eq15));
+            sum_eq15.begin(), gridding.target(), miller::index<>(dim_eq15));
           summation_eq15(space_group, miller_indices_f_obs,
             f_part, fc_map, accu);
           af::ref<target_f_t, af::c_grid<3> > res_eq15 =
-            shrinking_fft::run(sum_eq15.ref(), gridding.eighth(), dim_target);
+            shrinking_fft::run(sum_eq15.ref(), gridding.target(), dim_target);
           target_map_.as_base_array().assign(res_eq15);
           CCTBX_ASSERT(   target_map_.as_base_array().size()
                        == dim_target.size_1d());
@@ -83,18 +83,18 @@ namespace cctbx { namespace translation_search {
 
         af::versa<std::complex<sum_f_t>, af::c_grid<3> > sum_eq14(dim_eq14);
         sum_accu_type accu(
-          sum_eq14.begin(), gridding.quarter(), miller::index<>(dim_eq14));
+          sum_eq14.begin(), gridding.target(), miller::index<>(dim_eq14));
         summation_eq14(space_group, miller_indices_f_obs,
           af::const_ref<sum_f_t>(0,0), f_part, fc_map, accu);
         af::ref<target_f_t, af::c_grid<3> > res_eq14 =
-          shrinking_fft::run(sum_eq14.ref(), gridding.quarter(), dim_target);
+          shrinking_fft::run(sum_eq14.ref(), gridding.target(), dim_target);
         combination_eq13(interm, res_eq14, target_map_.ref());
 
         sum_eq14.fill(0);
         summation_eq14(space_group, miller_indices_f_obs,
           interm.d_i_obs.const_ref(), f_part, fc_map, accu);
         res_eq14 =
-          shrinking_fft::run(sum_eq14.ref(), gridding.quarter(), dim_target);
+          shrinking_fft::run(sum_eq14.ref(), gridding.target(), dim_target);
         combination_eq12(interm, res_eq14, target_map_.ref());
       }
 
