@@ -5,6 +5,40 @@
 
 namespace cctbx { namespace xray {
 
+  namespace detail {
+
+    template <typename FloatType,
+              typename CaasfType>
+    class d_caasf_fourier_transformed
+    :
+      public caasf_fourier_transformed<FloatType, CaasfType>
+    {
+      public:
+        d_caasf_fourier_transformed() {}
+
+        d_caasf_fourier_transformed(
+          caasf_fourier_transformed<FloatType, CaasfType> const& base)
+        :
+          caasf_fourier_transformed<FloatType, CaasfType>(base)
+        {}
+
+        scitbx::vec3<FloatType>
+        d_rho_real_d_site(exponent_table<FloatType>& exp_table,
+                          scitbx::vec3<FloatType> const& d,
+                          FloatType const& d_sq) const
+        {
+          scitbx::vec3<FloatType> drds(0,0,0);
+          for (std::size_t i=0;i<this->as_real_.size();i++) {
+            drds += d * (2 * this->bs_real_[i]
+                         * this->as_real_[i]
+                         * exp_table(this->bs_real_[i] * d_sq));
+          }
+          return drds;
+        }
+    };
+
+  } // namespace detail
+
   template <typename FloatType = double,
             typename XrayScattererType = scatterer<> >
   class agarwal_1978
@@ -28,6 +62,7 @@ namespace cctbx { namespace xray {
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
+        bool lifchitz,
         grid_point_type const& fft_n_real,
         grid_point_type const& fft_m_real,
         FloatType const& u_extra=0.25,
@@ -88,6 +123,15 @@ namespace cctbx { namespace xray {
       af::shared<std::complex<double> >
       grad() const { return grad_; }
 
+      af::shared<std::complex<double> >
+      grad_x() const { return grad_x_; }
+
+      af::shared<std::complex<double> >
+      grad_y() const { return grad_y_; }
+
+      af::shared<std::complex<double> >
+      grad_z() const { return grad_z_; }
+
       template <typename TagType>
       void
       apply_symmetry(maptbx::grid_tags<TagType> const& tags)
@@ -124,6 +168,9 @@ namespace cctbx { namespace xray {
       std::size_t exp_table_size_;
       grid_point_type max_shell_radii_;
       af::shared<std::complex<double> > grad_;
+      af::shared<std::complex<double> > grad_x_;
+      af::shared<std::complex<double> > grad_y_;
+      af::shared<std::complex<double> > grad_z_;
   };
 
   template <typename FloatType,
@@ -133,6 +180,7 @@ namespace cctbx { namespace xray {
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
     af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
+    bool lifchitz,
     grid_point_type const& fft_n_real,
     grid_point_type const& fft_m_real,
     FloatType const& u_extra,
@@ -189,6 +237,7 @@ namespace cctbx { namespace xray {
       exp_table_one_over_step_size);
     for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++)
     {
+      CCTBX_ASSERT(!scatterer->anisotropic_flag); // XXX
       if (scatterer->weight() == 0) continue;
       FloatType fdp = scatterer->fp_fdp.imag();
       fractional<FloatType> coor_frac = scatterer->site;
@@ -232,6 +281,7 @@ namespace cctbx { namespace xray {
       FloatType f0, f1, f2;
       FloatType c00, c01, c11;
       std::complex<FloatType> gr(0);
+      scitbx::vec3<std::complex<FloatType> > grs(0,0,0);
       for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
         g01 = math::mod_positive(gp[0],grid_f[0]) * grid_a[1];
         f0 = FloatType(gp[0]) / grid_f[0] - coor_frac[0];
@@ -263,9 +313,27 @@ namespace cctbx { namespace xray {
             map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d);
           }
         }
-        gr += ft_dt(gp) * map_begin[i_map];
+        if (!lifchitz) {
+          gr += ft_dt(gp) * map_begin[i_map];
+        }
+        else {
+          scitbx::vec3<FloatType>
+            drds = detail::d_caasf_fourier_transformed<FloatType,caasf_type>(
+              caasf_ft).d_rho_real_d_site(exp_table, d, d_sq)
+            * unit_cell_.orthogonalization_matrix();
+          for(std::size_t i=0;i<3;i++) {
+            grs[i] += ft_dt(gp) * drds[i];
+          }
+        }
       }}}
-      grad_.push_back(gr);
+      if (!lifchitz) {
+        grad_.push_back(gr);
+      }
+      else {
+        grad_x_.push_back(grs[0]);
+        grad_y_.push_back(grs[1]);
+        grad_z_.push_back(grs[2]);
+      }
     }
     exp_table_size_ = exp_table.table().size();
   }

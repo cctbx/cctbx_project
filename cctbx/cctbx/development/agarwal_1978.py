@@ -123,6 +123,7 @@ class resampling(crystal.symmetry):
 
   def __call__(self, xray_structure,
                      dp,
+                     lifchitz,
                      d_target_d_f_calc=None,
                      derivative_flags=None,
                      force_complex=00000,
@@ -133,6 +134,7 @@ class resampling(crystal.symmetry):
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
       self.ft_dp(dp).complex_map(),
+      lifchitz,
       self.rfft().n_real(),
       self.rfft().m_real(),
       self.u_extra(),
@@ -196,6 +198,11 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
       f = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))
       gm.append(d*f)
     gms.append(gm)
+  dp0 = flex.complex_double()
+  for i,hkl in f_obs.indices().items():
+    dp0.append(-sh.e[i]
+               *complex_math.polar((1, phi[i])))
+  dp0 = miller.array(miller_set=f_obs, data=dp0)
   dps = []
   for i_xyz in (0,1,2):
     dp = flex.complex_double()
@@ -208,9 +215,12 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
   print
   re = resampling(miller_set=f_obs)
+  map0 = re(xray_structure=sh.structure_shifted,
+            dp=dp0, lifchitz=0001)
   maps = []
   for i_xyz in (0,1,2):
-    map = re(xray_structure=sh.structure_shifted, dp=dps[i_xyz])
+    map = re(xray_structure=sh.structure_shifted,
+             dp=dps[i_xyz], lifchitz=00000)
     maps.append(map)
   for i_scatterer in (0,1,2):
     for i_xyz in (0,1,2):
@@ -231,7 +241,9 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
       print "sfd[%d][%d]: " % (i_scatterer, i_xyz), \
             sfd.d_target_d_site()[i_scatterer][i_xyz] * sum_f_obs_sq/2
       m = maps[i_xyz].grad()[i_scatterer]
-      print "map[%d][%d]:" % (i_xyz, i_scatterer), m
+      print "map[%d][%d]:" % (i_scatterer, i_xyz), m
+      gl = (map0.grad_x, map0.grad_y, map0.grad_z)[i_xyz]()[i_scatterer]
+      print " m0[%d][%d]:" % (i_scatterer, i_xyz), gl
       print m.real / g
 
 if (__name__ == "__main__"):
