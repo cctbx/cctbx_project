@@ -3,8 +3,8 @@ from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
 from scitbx.math import bessel_inverse_i1_over_i0
-from scitbx.math import incomplete_gamma, incomplete_gamma_complement
-from scitbx.math import complete_gamma
+from scitbx.math import gamma_incomplete, gamma_incomplete_complement
+from scitbx.math import gamma_complete
 from scitbx.math import lambertw
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
@@ -141,60 +141,65 @@ def exercise_erf():
   erf_verify(erfcx, -26.6287357137515, 1.790000000000000E+308)
   assert erf_verify.max_delta < erf_verify.tolerance
 
-def exercise_incomplete_gamma():
-  assert approx_equal(incomplete_gamma(2.0, 0.1),0.004678840160445)
-  assert approx_equal(incomplete_gamma(2.0, 0.5),0.090204010431050)
-  assert approx_equal(incomplete_gamma(2.0, 2.5),0.712702504816354)
-  assert approx_equal(incomplete_gamma(2.0, 5.0),0.959572318005487)
-  assert approx_equal(incomplete_gamma(2.0,15.5),0.999996938604252)
-  assert approx_equal(incomplete_gamma(2.0,21.0),0.999999983318367)
+def exercise_gamma_incomplete():
+  assert approx_equal(gamma_incomplete(2.0, 0.1),0.004678840160445)
+  assert approx_equal(gamma_incomplete(2.0, 0.5),0.090204010431050)
+  assert approx_equal(gamma_incomplete(2.0, 2.5),0.712702504816354)
+  assert approx_equal(gamma_incomplete(2.0, 5.0),0.959572318005487)
+  assert approx_equal(gamma_incomplete(2.0,15.5),0.999996938604252)
+  assert approx_equal(gamma_incomplete(2.0,21.0),0.999999983318367)
+  #
+  assert approx_equal(gamma_incomplete(20.0, 0.1),0)
+  assert approx_equal(gamma_incomplete(20.0, 0.5),0)
+  assert eps_eq(gamma_incomplete(20.0, 2.5),
+    3.480438159897403e-12,eps=1.e-5)
+  assert eps_eq(gamma_incomplete(20.0, 5.0),3.452135821646607e-7)
+  assert approx_equal(gamma_incomplete(20.0,15.5),0.154492096867129)
+  assert approx_equal(gamma_incomplete(20.0,21.0),0.615737227735658)
+  try: gamma_incomplete(a=20.0, x=15.5, max_iterations=5)
+  except RuntimeError, e:
+    assert str(e) == \
+      "scitbx Error: gamma::incomplete_series(" \
+      "a=20, x=15.5, max_iterations=5) failed to converge"
+  else: raise RuntimeError("Exception expected.")
+  try: gamma_incomplete(a=20.0, x=25.5, max_iterations=5)
+  except RuntimeError, e:
+    assert str(e) == \
+      "scitbx Error: gamma::incomplete_continued_fraction(" \
+      "a=20, x=25.5, max_iterations=5) failed to converge"
+  else: raise RuntimeError("Exception expected.")
+  #
+  assert approx_equal(1-gamma_incomplete_complement(2.0, 2.5),
+                                   gamma_incomplete(2.0, 2.5))
 
-  assert approx_equal(incomplete_gamma(20.0, 0.1),0)
-  assert approx_equal(incomplete_gamma(20.0, 0.5),0)
-  assert approx_equal(incomplete_gamma(20.0, 2.5),3.480438159897403e-12)
-  assert approx_equal(incomplete_gamma(20.0, 5.0),3.452135821646607e-7)
-  assert approx_equal(incomplete_gamma(20.0,15.5),0.154492096867129)
-  assert approx_equal(incomplete_gamma(20.0,21.0),0.615737227735658)
-  ## This is not supposed to converge and spits out a plain text warning
-  assert not approx_equal(incomplete_gamma(a=20.0,x=15.5,
-                                       max_iterations=5),0.154492096867129)
-
-
-
-def exercise_incomplete_gamma_complement():
-  assert approx_equal(incomplete_gamma_complement(2.0, 0.1),1-0.0046788401604)
-  assert approx_equal(incomplete_gamma_complement(2.0, 0.5),1-0.0902040104310)
-  assert approx_equal(incomplete_gamma_complement(2.0, 2.5),1-0.7127025048163)
-  assert approx_equal(incomplete_gamma_complement(2.0, 5.0),1-0.9595723180054)
-  assert approx_equal(incomplete_gamma_complement(2.0,15.5),1-0.9999969386042)
-  assert approx_equal(incomplete_gamma_complement(2.0,21.0),1-0.9999999833183)
-
-  assert approx_equal(incomplete_gamma_complement(20.0, 0.1),1-0)
-  assert approx_equal(incomplete_gamma_complement(20.0, 0.5),1-0)
-  assert approx_equal(incomplete_gamma_complement(20.0, 2.5),1-3.480438159e-12)
-  assert approx_equal(incomplete_gamma_complement(20.0, 5.0),1-3.452135821e-7)
-  assert approx_equal(incomplete_gamma_complement(20.0,15.5),1-0.1544920968671)
-  assert approx_equal(incomplete_gamma_complement(20.0,21.0),1-0.6157372277356)
-  ## This is not supposed to converge and spits out a plain text warning
-  assert not approx_equal(incomplete_gamma_complement(a=20.0,x=15.5,
-                                       max_iterations=5),0.154492096867129)
-
-
-def exercise_complete_gamma():
+def exercise_gamma_complete():
   ## complete gamma with lanczos approx for x<12 and minimax otherwise
-  assert approx_equal(complete_gamma(0.1),9.5135076986687)
-  assert approx_equal(complete_gamma(0.5),1.7724538509055)
-  assert approx_equal(complete_gamma(2.5),1.3293403881791)
-  assert approx_equal(complete_gamma(5.0),24.0)
-  assert approx_equal(complete_gamma(15.5),3.3483860987356E11)
-  assert approx_equal(complete_gamma(21.0),2432902008176640000)
+  assert approx_equal(gamma_complete(0.1),9.5135076986687)
+  assert approx_equal(gamma_complete(0.5),1.7724538509055)
+  assert approx_equal(gamma_complete(2.5),1.3293403881791)
+  assert approx_equal(gamma_complete(5.0),24.0)
+  assert approx_equal(gamma_complete(15.5),3.3483860987356E11)
+  assert approx_equal(gamma_complete(21.0),2432902008176640000)
   ## complete gamma with lanczos approx for all values
-  assert approx_equal(complete_gamma(0.1,minimax=False),9.5135076986687)
-  assert approx_equal(complete_gamma(0.5,minimax=False),1.7724538509055)
-  assert approx_equal(complete_gamma(2.5,minimax=False),1.3293403881791)
-  assert approx_equal(complete_gamma(5.0,minimax=False),24.)
-  assert approx_equal(complete_gamma(15.5,minimax=False),3.3483860987356E11)
-  assert approx_equal(complete_gamma(21.0,minimax=False),2432902008176640000)
+  assert approx_equal(gamma_complete(0.1,minimax=False),9.5135076986687)
+  assert approx_equal(gamma_complete(0.5,minimax=False),1.7724538509055)
+  assert approx_equal(gamma_complete(2.5,minimax=False),1.3293403881791)
+  assert approx_equal(gamma_complete(5.0,minimax=False),24.)
+  assert approx_equal(gamma_complete(15.5,minimax=False),3.3483860987356E11)
+  assert approx_equal(gamma_complete(21.0,minimax=False),2432902008176640000)
+  assert "%.8g" % gamma_complete(171.624-1.e-6) == "1.7942025e+308"
+  #
+  try: gamma_complete(171.624)
+  except RuntimeError, e:
+    assert str(e) \
+        == "scitbx Error: gamma::complete_minimax(171.624): domain error"
+  else: raise RuntimeError("Exception expected.")
+  assert "%.8g" % gamma_complete(141.691-1.e-6) == "4.1104518e+242"
+  try: gamma_complete(141.691, minimax=False)
+  except RuntimeError, e:
+    assert str(e) \
+        == "scitbx Error: gamma::complete_lanczos(141.691): domain error"
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_bessel():
   assert approx_equal(bessel_i1_over_i0(-1e+9), -1.0)
@@ -1125,9 +1130,8 @@ def run():
   exercise_floating_point_epsilon()
   exercise_euler_angles()
   exercise_erf()
-  exercise_incomplete_gamma()
-  exercise_incomplete_gamma_complement()
-  exercise_complete_gamma()
+  exercise_gamma_incomplete()
+  exercise_gamma_complete()
   exercise_bessel()
   exercise_lambertw()
   exercise_eigensystem()

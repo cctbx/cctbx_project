@@ -61,15 +61,14 @@ namespace {
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    complete_gamma_overloads,
-    complete_gamma, 1, 2)
+    gamma_complete_overloads,
+    gamma::complete, 1, 2)
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    incomplete_gamma_overloads,
-    incomplete_gamma, 2,3)
+    gamma_incomplete_overloads,
+    gamma::incomplete, 2, 3)
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    incomplete_gamma_complement_overloads,
-    incomplete_gamma_complement, 2,3)
-
+    gamma_incomplete_complement_overloads,
+    gamma::incomplete_complement, 2, 3)
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(lambertw_overloads, lambertw, 1, 2)
 
@@ -100,22 +99,22 @@ namespace {
     def("bessel_i1", (double(*)(double const&)) bessel::i1);
     def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
 
-    def("complete_gamma", (double(*)(double const&, bool))
-        complete_gamma,
-        complete_gamma_overloads( (arg_("x"),
+    def("gamma_complete", (double(*)(double const&, bool))
+        gamma::complete,
+        gamma_complete_overloads( (arg_("x"),
                                    arg_("minimax")=true)));
-    def("incomplete_gamma", (double(*)(double const&,
+    def("gamma_incomplete", (double(*)(double const&,
                                        double const&,
                                        unsigned))
-        incomplete_gamma,
-        incomplete_gamma_overloads( (arg_("a"),
+        gamma::incomplete,
+        gamma_incomplete_overloads( (arg_("a"),
                                      arg_("x"),
                                      arg_("max_iterations")=500 )));
-    def("incomplete_gamma_complement",(double(*)(double const&,
+    def("gamma_incomplete_complement",(double(*)(double const&,
                                                  double const&,
                                                  unsigned))
-        incomplete_gamma_complement,
-        incomplete_gamma_complement_overloads( (arg_("a"),
+        gamma::incomplete_complement,
+        gamma_incomplete_complement_overloads( (arg_("a"),
                                                 arg_("x"),
                                                 arg_("max_iterations")=500 )));
 
