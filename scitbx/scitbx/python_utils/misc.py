@@ -51,6 +51,20 @@ class time_log:
       self.label, self.n, self.accumulation,
       self.delta, self.accumulation/max(1,self.n))
 
+def human_readable_time(time_in_seconds):
+  time_units = time_in_seconds
+  time_unit = "seconds"
+  if (time_units > 120):
+    time_units /= 60
+    time_unit = "minutes"
+    if (time_units > 120):
+      time_units /= 60
+      time_unit = "hours"
+      if (time_units > 48):
+        time_units /= 24
+        time_unit = "days"
+  return time_units, time_unit
+
 def adopt_init_args(obj, args, exclude=(), hide=00000):
   del args["self"]
   for param in exclude:
