@@ -2,13 +2,13 @@ from iotbx import crystal_symmetry_from_any
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-from libtbx.optparse_wrapper import OptionParser, OptionError, make_option
+from libtbx.optparse_wrapper import option_parser, OptionError, make_option
 import sys
 
-class iotbx_option_parser(OptionParser):
+class iotbx_option_parser(option_parser):
 
   def __init__(self, usage=None, description=None, more_help=None):
-    OptionParser.__init__(self, usage=usage, description=description)
+    option_parser.__init__(self, usage=usage, description=description)
     self.more_help = more_help
     self.show_defaults_callback = show_defaults_callback()
     self.symmetry_callback = symmetry_callback()
@@ -33,10 +33,6 @@ class iotbx_option_parser(OptionParser):
   def show_help(self, f=None):
     if (f is None): f = sys.stdout
     f.write(self.format_help())
-
-  def option(self, *args, **kw):
-    self.add_option(apply(make_option, args, kw))
-    return self
 
   def enable_show_defaults(self):
     self.add_option(make_option(None, "--show_defaults",
