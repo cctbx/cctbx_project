@@ -38,6 +38,6 @@ class _triplet_generator(injector, ext.triplet_generator):
                                   use_fixed_only=00000,
                                   reuse_results=00000,
                                   sum_epsilon=1.e-10):
-    return ext.triplet_generator.raw_apply_tangent_formula(
-      self, amplitudes, phases,
+    return self.raw_apply_tangent_formula(
+      amplitudes, phases,
       selection_fixed, use_fixed_only, reuse_results, sum_epsilon)
