@@ -77,9 +77,9 @@ namespace cctbx {
           return F * std::polar(1., theta);
         }
       protected:
-        int   m_TBF;
         Index m_HR;
         int   m_HT;
+        int   m_TBF;
     };
 
   } // namespace Miller
