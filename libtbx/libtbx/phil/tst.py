@@ -670,6 +670,10 @@ e=$f
 f=$d
 g=$d
 h=$_X_Y_Z_
+o=$_X_Y_Z_/abc.ext
+p="$_X_Y_Z_/abc.ext"
+q=$o$_X_Y_Z_/abc.ext$p
+r="$o$_X_Y_Z_ abc.ext$p"
 i=0
 i=1
 j=$i
@@ -702,6 +706,12 @@ m=$k
   check_get_sub(parameters, path="h", expected_out='h = "xyz"\n')
   assert parameters.get(path="h").objects[0].words[0].where_str() \
       == ' (environment: "_X_Y_Z_")'
+  check_get_sub(parameters, path="o", expected_out='o = "xyz/abc.ext"\n')
+  check_get_sub(parameters, path="p", expected_out='p = "xyz/abc.ext"\n')
+  check_get_sub(parameters, path="q",
+    expected_out='q = "xyz/abc.extxyz/abc.extxyz/abc.ext"\n')
+  check_get_sub(parameters, path="r",
+    expected_out='r = "xyz/abc.extxyz abc.extxyz/abc.ext"\n')
   check_get_sub(parameters, path="j", expected_out='j = 1\n')
   check_get_sub(parameters, path="l", expected_out='l = y\n')
   check_get_sub(parameters, path="m", expected_out='m = z\n')
