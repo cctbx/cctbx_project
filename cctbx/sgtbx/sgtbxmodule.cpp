@@ -577,6 +577,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpecialPositionTolerances(this_module, "SpecialPositionTolerances");
   class_builder<SiteSymmetry>
   py_SiteSymmetry(this_module, "SiteSymmetry");
+  python::export_converters(py_SiteSymmetry);
   class_builder<SymEquivCoordinates<double> >
   py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
   class_builder<BrickPoint>

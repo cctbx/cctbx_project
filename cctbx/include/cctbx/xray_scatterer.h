@@ -298,11 +298,12 @@ namespace cctbx {
             cctbx::sgtbx::SiteSymmetry,
             cctbx::adptbx::CheckPositiveDefinite
        */
-      void ApplySymmetry(const uctbx::UnitCell& UC,
-                         const sgtbx::SpaceGroup& SgOps,
-                         double MinMateDistance = 0.5,
-                         double Ustar_tolerance = 0.1,
-                         bool TestPositiveDefiniteness = true)
+      sgtbx::SiteSymmetry
+      ApplySymmetry(const uctbx::UnitCell& UC,
+                    const sgtbx::SpaceGroup& SgOps,
+                    double MinMateDistance = 0.5,
+                    double Ustar_tolerance = 0.1,
+                    bool TestPositiveDefiniteness = true)
       {
         sgtbx::SpecialPositionSnapParameters
         SnapParameters(UC, SgOps, true, MinMateDistance);
@@ -320,6 +321,7 @@ namespace cctbx {
             adptbx::CheckPositiveDefinite(m_U);
           }
         }
+        return SS;
       }
       //! Access the multiplicity computed by ApplySymmetry().
       int M() const { return m_M; }
