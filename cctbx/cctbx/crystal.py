@@ -128,6 +128,9 @@ class special_position_settings(symmetry):
       self.min_distance_sym_equiv(),
       self.assert_min_distance_sym_equiv())
 
+  def sym_equiv_sites(self, site):
+    return sgtbx.sym_equiv_sites(self.site_symmetry(site))
+
   def change_basis(self, cb_op):
     return special_position_settings(
       crystal_symmetry=symmetry.change_basis(self, cb_op),
