@@ -150,35 +150,6 @@ namespace {
         a[0], a[2], element_type(1))); }
   }
 
-  template <typename ElementType>
-  struct exercise_rms
-  {
-    template <typename ArrayType>
-    exercise_rms(const ArrayType& a)
-    {}
-  };
-
-  template <>
-  struct exercise_rms<double>
-  {
-    template <typename ArrayType>
-    exercise_rms(const ArrayType& a)
-    {
-      check_true(__LINE__, af::rms(a)
-        == std::sqrt(double(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]) / 3));
-    }
-  };
-
-  template <>
-  struct exercise_rms<int>
-  {
-    template <typename ArrayType>
-    exercise_rms(const ArrayType& a)
-    {
-      exercise_rms<double> x(a);
-    }
-  };
-
   template <typename ArrayType>
   void
   exercise_1arg_reductions(const ArrayType& a)
@@ -190,8 +161,14 @@ namespace {
     check_true(__LINE__, af::sum(a) == a[0] + a[1] + a[2]);
     check_true(__LINE__, af::product(a) == a[0] * a[1] * a[2]);
     check_true(__LINE__, af::mean(a) == (a[0] + a[1] + a[2]) / 3);
-    typedef typename ArrayType::value_type value_type;
-    exercise_rms<value_type> x(a);
+  }
+
+  template <typename ArrayType>
+  void
+  exercise_1arg_float_reductions(const ArrayType& a)
+  {
+    check_true(__LINE__, af::rms(a)
+      == std::sqrt((a[0]*a[0] + a[1]*a[1] + a[2]*a[2]) / 3));
   }
 
   template <typename ArrayType1,
@@ -200,7 +177,12 @@ namespace {
   exercise_2arg_reductions(const ArrayType1& a1, const ArrayType2& a2)
   {
     check_true(__LINE__, std::abs(
-      af::weighted_mean(a1, a2) - af::sum(a1 * a2) / af::sum(a2)) < 1.e-6);
+      af::mean_weighted(a1, a2)
+      - af::sum(a1 * a2) / af::sum(a2)) < 1.e-6);
+    check_true(__LINE__, std::abs(
+      af::rms_weighted(a1, a2)
+      - std::sqrt(af::sum((a1 * a1).const_ref() * af::make_const_ref(a2))
+                  / af::sum(a2))) < 1.e-6);
   }
 
   template <typename ArrayType1,
@@ -223,6 +205,7 @@ namespace {
     exercise_logical(a1, a3);
     exercise_1arg_reductions(a1);
     exercise_1arg_reductions(a3);
+    exercise_1arg_float_reductions(a3);
     exercise_2arg_reductions(a3, a1);
     exercise_2arg_reductions(a3, a3);
     exercise_arithmetic(a1, a2);

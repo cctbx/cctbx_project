@@ -147,7 +147,6 @@ namespace cctbx { namespace af {
   {
     typedef ElementType e_t;
     typedef shared<ElementType> sh_t;
-    typedef typename integer_to_float<ElementType>::float_type f_e_t;
 
     typedef
     std::pair<
@@ -761,6 +760,18 @@ namespace cctbx { namespace af {
       return result;
     }
 
+    static
+    sh_t
+    sqrt_a(sh_t const& a)
+    {
+      sh_t result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) {
+        result.append(std::sqrt(a[i]));
+      }
+      return result;
+    }
+
     static std::size_t
     max_index_a(sh_t const& a) { return af::max_index(a.const_ref()); }
     static std::size_t
@@ -769,8 +780,22 @@ namespace cctbx { namespace af {
     static e_t min_a(sh_t const& a) { return af::min(a.const_ref()); }
     static e_t sum_a(sh_t const& a) { return af::sum(a.const_ref()); }
     static e_t product_a(sh_t const& a) { return af::product(a.const_ref()); }
-    static f_e_t mean_a(sh_t const& a) { return af::mean(a.const_ref()); }
-    static f_e_t rms_a(sh_t const& a) { return af::rms(a.const_ref()); }
+    static e_t mean_a(sh_t const& a) { return af::mean(a.const_ref()); }
+    static e_t rms_a(sh_t const& a) { return af::rms(a.const_ref()); }
+
+    static
+    e_t
+    mean_weighted_a_a(sh_t const& a1, sh_t const& a2)
+    {
+      return af::mean_weighted(a1.const_ref(), a2.const_ref());
+    }
+
+    static
+    e_t
+    rms_weighted_a_a(sh_t const& a1, sh_t const& a2)
+    {
+      return af::rms_weighted(a1.const_ref(), a2.const_ref());
+    }
 
     static
     shared<double>
@@ -997,8 +1022,6 @@ namespace cctbx { namespace af {
       bpl_module.def(max_index_a, "max_index");
       bpl_module.def(min_a, "min");
       bpl_module.def(max_a, "max");
-      bpl_module.def(mean_a, "mean");
-      bpl_module.def(rms_a, "rms");
       return class_blds;
     }
 
@@ -1010,6 +1033,11 @@ namespace cctbx { namespace af {
     {
       sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
       bpl_module.def(pow_a_s, "pow");
+      bpl_module.def(sqrt_a, "sqrt");
+      bpl_module.def(mean_a, "mean");
+      bpl_module.def(rms_a, "rms");
+      bpl_module.def(mean_weighted_a_a, "mean_weighted");
+      bpl_module.def(rms_weighted_a_a, "rms_weighted");
       return class_blds;
     }
 

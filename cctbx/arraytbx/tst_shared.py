@@ -117,8 +117,6 @@ def exercise_arith_inplace_operators():
 def exercise_functions():
   a = shared.int((-1, 0, 1))
   assert tuple(shared.abs(a)) == (1, 0, 1)
-  a = shared.double((-2, 0, 3))
-  assert tuple(shared.pow(a, 2)) == (4, 0, 9)
   a = shared.double((1, 0, 3, 2))
   b = shared.double((4, 5, 6))
   assert shared.min_index(a) == 1
@@ -137,6 +135,13 @@ def exercise_functions():
   assert shared.mean(b) == 15. / 3
   assert shared.rms(a) == math.sqrt((1+3.*3.+2.*2.) / 4)
   assert shared.rms(b) == math.sqrt((4.*4.+5.*5.+6.*6.) / 3)
+  a = shared.double((-2, 0, 3))
+  assert tuple(shared.pow(a, 2)) == (4, 0, 9)
+  a = shared.double((2, 0, 3))
+  assert list(shared.sqrt(a)) == [math.sqrt(x) for x in a]
+  b = shared.double((1, 1, 1))
+  assert (shared.mean(a) - shared.mean_weighted(a, b)) < 1.e-6
+  assert (shared.rms(a) - shared.rms_weighted(a, b)) < 1.e-6
 
 def exercise_complex_functions():
   c = 1+2j
