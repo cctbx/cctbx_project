@@ -52,6 +52,20 @@ def exercise_set():
   assert flex.order(ms.indices(), ma.indices()) == 0
   assert miller.set(xs, mi).auto_anomalous().anomalous_flag() == 00000
 
+def exercise_crystal_gridding():
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
+    space_group_symbol="Hall: C 2y (x+y,-x+y+z,z)")
+  f_obs = miller.build_set(crystal_symmetry, anomalous_flag=False, d_min=3.5)
+  symmetry_flags = maptbx.symmetry_flags(
+    use_space_group_symmetry=00000,
+    use_normalizer_k2l=00000,
+    use_structure_seminvariants=0001)
+  crystal_gridding_tags = f_obs.crystal_gridding(
+    symmetry_flags=symmetry_flags,
+    resolution_factor=1/3.).tags()
+  assert crystal_gridding_tags.n_real() == (90,90,90)
+
 def exercise_array():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,-2,3), (0,0,-4)))
@@ -382,6 +396,7 @@ def run_call_back(flags, space_group_info):
 def run():
   exercise_set()
   exercise_array()
+  exercise_crystal_gridding()
   exercise_fft_map()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
