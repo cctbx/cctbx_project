@@ -1,6 +1,7 @@
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx import tiny_pse
 from cctbx.array_family import flex
+import cctbx.eltbx.gaussian_fit
 import scitbx.math.gaussian
 from scitbx.python_utils.misc import line_feeder
 from scitbx.python_utils.misc import adopt_init_args
@@ -12,6 +13,23 @@ class table:
   def __init__(self, atomic_number, x, y, sigmas):
     adopt_init_args(self, locals())
     self.element = tiny_pse.table(atomic_number).symbol()
+
+  def itvc_sampling_selection(self):
+    xi = cctbx.eltbx.gaussian_fit.international_tables_stols
+    xk = self.x
+    selection = flex.bool(xk.size(), 00000)
+    i_kissel = 0
+    for i_itvc in xrange(xi.size()):
+      while (xk[i_kissel] < xi[i_itvc]):
+        i_kissel += 1
+      if (xk[i_kissel] == xi[i_itvc]):
+        selection[i_kissel] = 0001
+      elif (i_kissel > 0 and xk[i_kissel-1] < xi[i_itvc] < xk[i_kissel]):
+        if (xi[i_itvc] - xk[i_kissel-1] < xk[i_kissel] - xi[i_itvc]):
+          selection[i_kissel-1] = 0001
+        else:
+          selection[i_kissel] = 0001
+    return selection
 
 def read_table(file_name):
   atomic_number = None

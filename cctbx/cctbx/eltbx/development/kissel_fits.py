@@ -9,23 +9,6 @@ from scitbx.python_utils import easy_pickle
 from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
-def itvc_sampling_selection(kissel_tab):
-  xi = cctbx.eltbx.gaussian_fit.international_tables_stols
-  xk = kissel_tab.x
-  selection = flex.bool(xk.size(), 00000)
-  i_kissel = 0
-  for i_itvc in xrange(xi.size()):
-    while (xk[i_kissel] < xi[i_itvc]):
-      i_kissel += 1
-    if (xk[i_kissel] == xi[i_itvc]):
-      selection[i_kissel] = 0001
-    elif (i_kissel > 0 and xk[i_kissel-1] < xi[i_itvc] < xk[i_kissel]):
-      if (xi[i_itvc] - xk[i_kissel-1] < xk[i_kissel] - xi[i_itvc]):
-        selection[i_kissel-1] = 0001
-      else:
-        selection[i_kissel] = 0001
-  return selection
-
 def run(args, cutoff, six_term=00000, params=None,
         plots_dir="kissel_fits_plots", verbose=0):
   timer = user_plus_sys_time()
@@ -52,7 +35,7 @@ def run(args, cutoff, six_term=00000, params=None,
     if (not flag):
       continue
     tab = kissel_io.read_table(file_name)
-    more_selection = itvc_sampling_selection(tab)
+    more_selection = tab.itvc_sampling_selection()
     fit_selection = more_selection & (tab.x <= cutoff + 1.e-6)
     null_fit = scitbx.math.gaussian.fit(
       tab.x.select(fit_selection),
