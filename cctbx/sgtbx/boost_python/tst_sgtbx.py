@@ -734,7 +734,7 @@ def exercise_reciprocal_space_asu():
   a = reciprocal_space_asu(t)
   assert a.cb_op().c() == t.cb_op().c()
   assert a.is_reference()
-  assert a.reference_as_string() == "k>=0 and (l>0 or (l=0 and h>=0))"
+  assert a.reference_as_string() == "k>=0 and (l>0 or (l==0 and h>=0))"
   assert a.is_inside((1,2,3))
   assert not a.is_inside((-1,-2,-3))
   assert a.which((1,2,3)) == 1
