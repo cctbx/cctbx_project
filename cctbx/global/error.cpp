@@ -22,11 +22,14 @@ namespace cctbx {
      return const_cast<char*>(message.c_str());
   }
 
-  error::error(const char* file, long line, const std::string& msg) throw()
+  error::error(const char* file, long line, const std::string& msg,
+               bool Internal) throw()
   {
+    const char *s = "";
+    if (Internal) s = " Internal";
     char buf[64];
     sprintf(buf, "%ld", line);
-    message =   std::string("cctbx Internal Error: ")
+    message =   std::string("cctbx") + s + " Error: "
               + file + "(" + buf + ")";
     if (msg.size()) message += std::string(": ") + msg;
   }

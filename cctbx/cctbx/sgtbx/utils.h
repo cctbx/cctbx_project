@@ -57,9 +57,12 @@ namespace sgtbx {
       //! For internal use only.
       inline char operator()() const { return s[pos]; }
       //! For internal use only.
-      inline const char* peek() { return &s[pos]; }
+      inline const char* peek() { return s.c_str() + pos; }
       //! For internal use only.
-      inline char get() { return s[pos++]; }
+      inline char get() {
+        if (pos >= s.size()) return '\0';
+        return s[pos++];
+      }
       //! For internal use only.
       inline void skip(int n = 1) { pos += n; }
       //! For internal use only.
