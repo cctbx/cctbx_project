@@ -3,6 +3,7 @@
 
 #include <scitbx/rational.h>
 #include <scitbx/error.h>
+#include <cstring>
 
 namespace scitbx { namespace matrix {
 
