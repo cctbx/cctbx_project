@@ -42,6 +42,17 @@ namespace {
     for(std::size_t i=0;i<a.size();i++) a[i] *= a[i];
   }
 
+  void
+  py_set_if_less_than(
+    cctbx::af::shared<double> a,
+    double threshold_value,
+    double imposed_value)
+  {
+    for(std::size_t i=0;i<a.size();i++) {
+      if (a[i] < threshold_value) a[i] = imposed_value;
+    }
+  }
+
   // to preserve VC6 compatibility we are not using shared_algebra.h
   cctbx::af::shared<double>
   py_abs_complex(const cctbx::af::shared<std::complex<double> >& a) {
@@ -190,6 +201,7 @@ namespace {
       "reinterpret_real_as_complex");
 
     this_module.def(py_square, "square");
+    this_module.def(py_set_if_less_than, "set_if_less_than");
     this_module.def(py_abs_complex, "abs");
     this_module.def(py_arg_rad_complex, "arg_rad");
     this_module.def(py_arg_deg_complex, "arg_deg");
