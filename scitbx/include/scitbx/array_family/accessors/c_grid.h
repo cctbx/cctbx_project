@@ -34,7 +34,7 @@ namespace scitbx { namespace af {
       template <typename FlexIndexType>
       c_grid(flex_grid<FlexIndexType> const& flex_g)
       :
-        index_type(af::adapt(flex_g.grid()))
+        index_type(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
       }
@@ -99,7 +99,7 @@ namespace scitbx { namespace af {
       template <typename FlexIndexType>
       c_grid(flex_grid<FlexIndexType> const& flex_g)
       :
-        index_type(af::adapt(flex_g.grid()))
+        index_type(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
       }
@@ -165,7 +165,7 @@ namespace scitbx { namespace af {
       template <typename FlexIndexType>
       c_grid(flex_grid<FlexIndexType> const& flex_g)
       :
-        index_type(af::adapt(flex_g.grid()))
+        index_type(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
       }

@@ -8,7 +8,7 @@ def exercise_flex_grid():
   assert g.size_1d() == 0
   assert not g.has_origin()
   assert g.origin() == ()
-  assert g.grid() == ()
+  assert g.all() == ()
   assert g.last() == ()
   assert g.last(1) == ()
   assert g.last(0) == ()
@@ -18,7 +18,7 @@ def exercise_flex_grid():
   assert g.nd() == 3
   assert g.size_1d() == 30
   assert g.origin() == (0,0,0)
-  assert g.grid() == (2,3,5)
+  assert g.all() == (2,3,5)
   assert g.last() == (2,3,5)
   assert g.last(1) == (2,3,5)
   assert g.last(0) == (1,2,4)
@@ -26,24 +26,24 @@ def exercise_flex_grid():
   assert g((1,2,4)) == 29
   assert g.is_0_based()
   assert not g.is_padded()
-  assert flex.grid(1).grid() == (1,)
-  assert flex.grid(1,2).grid() == (1,2,)
-  assert flex.grid(1,2,3).grid() == (1,2,3)
-  assert flex.grid(1,2,3,4).grid() == (1,2,3,4)
-  assert flex.grid(1,2,3,4,5).grid() == (1,2,3,4,5)
-  assert flex.grid(1,2,3,4,5,6).grid() == (1,2,3,4,5,6)
-  assert flex.grid().set_layout(1).layout() == (1,)
-  assert flex.grid().set_layout(1,2).layout() == (1,2,)
-  assert flex.grid().set_layout(1,2,3).layout() == (1,2,3)
-  assert flex.grid().set_layout(1,2,3,4).layout() == (1,2,3,4)
-  assert flex.grid().set_layout(1,2,3,4,5).layout() == (1,2,3,4,5)
-  assert flex.grid().set_layout(1,2,3,4,5,6).layout() == (1,2,3,4,5,6)
+  assert flex.grid(1).all() == (1,)
+  assert flex.grid(1,2).all() == (1,2,)
+  assert flex.grid(1,2,3).all() == (1,2,3)
+  assert flex.grid(1,2,3,4).all() == (1,2,3,4)
+  assert flex.grid(1,2,3,4,5).all() == (1,2,3,4,5)
+  assert flex.grid(1,2,3,4,5,6).all() == (1,2,3,4,5,6)
+  assert flex.grid().set_focus(1).focus() == (1,)
+  assert flex.grid().set_focus(1,2).focus() == (1,2,)
+  assert flex.grid().set_focus(1,2,3).focus() == (1,2,3)
+  assert flex.grid().set_focus(1,2,3,4).focus() == (1,2,3,4)
+  assert flex.grid().set_focus(1,2,3,4,5).focus() == (1,2,3,4,5)
+  assert flex.grid().set_focus(1,2,3,4,5,6).focus() == (1,2,3,4,5,6)
   g = flex.grid((1,2,3), (4,6,8))
   assert g.nd() == 3
   assert g.size_1d() == 60
   assert g.has_origin()
   assert g.origin() == (1,2,3)
-  assert g.grid() == (3,4,5)
+  assert g.all() == (3,4,5)
   assert g.last() == (4,6,8)
   assert g.last(1) == (4,6,8)
   assert g.last(0) == (3,5,7)
@@ -56,7 +56,7 @@ def exercise_flex_grid():
   assert g.nd() == 3
   assert g.size_1d() == 120
   assert g.origin() == (1,2,3)
-  assert g.grid() == (4,5,6)
+  assert g.all() == (4,5,6)
   assert g.last() == (5,7,9)
   assert g.last(1) == (5,7,9)
   assert g.last(0) == (4,6,8)
@@ -66,30 +66,30 @@ def exercise_flex_grid():
   assert not g.is_valid_index((5,0,0))
   assert not g.is_0_based()
   assert not g.is_padded()
-  assert not g.has_layout()
-  g.set_layout((3,-9,5))
-  assert g.has_layout()
-  assert g.layout() == (3,-9,5)
-  assert g.layout(False) == (2,-10,4)
-  g.set_layout((3,-9,5), False)
-  assert g.layout() == (4,-8,6)
+  assert not g.has_focus()
+  g.set_focus((3,-9,5))
+  assert g.has_focus()
+  assert g.focus() == (3,-9,5)
+  assert g.focus(False) == (2,-10,4)
+  g.set_focus((3,-9,5), False)
+  assert g.focus() == (4,-8,6)
   assert not g.is_0_based()
   assert g.is_padded()
   import pickle
   s = pickle.dumps(g)
   l = pickle.loads(s)
   assert g.origin() == l.origin()
-  assert g.grid() == l.grid()
-  assert g.layout() == l.layout()
+  assert g.all() == l.all()
+  assert g.focus() == l.focus()
   assert g == l
   assert not g != l
-  l = flex.grid((1,2,4), (4,6,8), 0).set_layout((3,-9,5))
+  l = flex.grid((1,2,4), (4,6,8), 0).set_focus((3,-9,5))
   assert not g == l
   assert g != l
-  l = flex.grid((1,2,3), (4,7,8), 0).set_layout((3,-9,5))
+  l = flex.grid((1,2,3), (4,7,8), 0).set_focus((3,-9,5))
   assert not g == l
   assert g != l
-  l = flex.grid((1,2,3), (4,6,8), 0).set_layout((4,-9,5))
+  l = flex.grid((1,2,3), (4,6,8), 0).set_focus((4,-9,5))
   assert not g == l
   assert g != l
   g = flex.grid((1,2,3))
@@ -97,15 +97,15 @@ def exercise_flex_grid():
   g = flex.grid((1,2,3), (4,6,8))
   s = g.shift_origin()
   assert s.origin() == (0,0,0)
-  assert s.grid() == g.grid()
-  assert s.layout() == (3,4,5)
-  assert s.layout_size_1d() == g.size_1d()
-  g = flex.grid((1,2,3), (4,6,8)).set_layout((3,5,7))
-  assert g.layout_size_1d() == 2*3*4
+  assert s.all() == g.all()
+  assert s.focus() == (3,4,5)
+  assert s.focus_size_1d() == g.size_1d()
+  g = flex.grid((1,2,3), (4,6,8)).set_focus((3,5,7))
+  assert g.focus_size_1d() == 2*3*4
   s = g.shift_origin()
   assert s.origin() == (0,0,0)
-  assert s.grid() == g.grid()
-  assert s.layout() == (2,3,4)
+  assert s.all() == g.all()
+  assert s.focus() == (2,3,4)
 
 def exercise_flex_constructors():
   f = flex.double()
@@ -113,27 +113,27 @@ def exercise_flex_constructors():
   assert f.capacity() == 0
   assert f.accessor().nd() == 1
   assert tuple(f.accessor().origin()) == (0,)
-  assert tuple(f.accessor().grid()) == (0,)
+  assert tuple(f.accessor().all()) == (0,)
   assert tuple(f.accessor().last()) == (0,)
   assert tuple(f.accessor().last(1)) == (0,)
   assert tuple(f.accessor().last(0)) == (-1,)
-  assert tuple(f.accessor().layout()) == (0,)
-  assert tuple(f.accessor().layout(1)) == (0,)
-  assert tuple(f.accessor().layout(0)) == (-1,)
+  assert tuple(f.accessor().focus()) == (0,)
+  assert tuple(f.accessor().focus(1)) == (0,)
+  assert tuple(f.accessor().focus(0)) == (-1,)
   assert f.accessor().is_0_based()
   assert not f.accessor().is_padded()
   assert f.nd() == 1
   assert not f.has_origin()
   assert tuple(f.origin()) == (0,)
-  assert tuple(f.grid()) == (0,)
+  assert tuple(f.all()) == (0,)
   assert tuple(f.last()) == (0,)
   assert tuple(f.last(1)) == (0,)
   assert tuple(f.last(0)) == (-1,)
-  assert not f.has_layout()
-  assert tuple(f.layout()) == (0,)
-  assert tuple(f.layout(1)) == (0,)
-  assert tuple(f.layout(0)) == (-1,)
-  assert f.layout_size_1d() == 0
+  assert not f.has_focus()
+  assert tuple(f.focus()) == (0,)
+  assert tuple(f.focus(1)) == (0,)
+  assert tuple(f.focus(0)) == (-1,)
+  assert f.focus_size_1d() == 0
   assert f.is_0_based()
   assert not f.is_padded()
   assert tuple(f) == ()
@@ -195,9 +195,9 @@ def exercise_misc():
   i = flex.double_items(f)
   assert list(f.indices()) == range(6)
   assert list(f.items()) == zip(range(6), [12] * 6)
-  g = flex.grid((1,2,3), (4,6,8)).set_layout((3,5,7))
+  g = flex.grid((1,2,3), (4,6,8)).set_focus((3,5,7))
   f = flex.double(g)
-  assert f.layout_size_1d() == 2*3*4
+  assert f.focus_size_1d() == 2*3*4
   assert f.shift_origin().accessor() == g.shift_origin()
 
 def exercise_push_back_etc():
@@ -471,15 +471,15 @@ def exercise_pickle_single_buffered():
   b = pickle.loads(p)
   assert b.size() == 3
   assert tuple(b) == (1+2j, 2+3j, 4+5j)
-  a = flex.double(flex.grid((-1,2,-3), (7,5,3)).set_layout((3,-5,7)), 13)
+  a = flex.double(flex.grid((-1,2,-3), (7,5,3)).set_focus((3,-5,7)), 13)
   a[(1,2,-1)] = -8
   p = pickle.dumps(a)
   b = pickle.loads(p)
   assert b.size() == 8 * 3 * 6
   assert tuple(a) == tuple(b)
   assert a.origin() == b.origin()
-  assert a.grid() == b.grid()
-  assert a.layout() == b.layout()
+  assert a.all() == b.all()
+  assert a.focus() == b.focus()
   assert a.accessor() == b.accessor()
 
 def exercise_pickle_double_buffered():

@@ -28,77 +28,77 @@ namespace scitbx { namespace af {
 
       c_grid_padded()
       {
-        for(std::size_t i=0;i<Nd;i++) grid_[i] = 0;
-        for(std::size_t i=0;i<Nd;i++) layout_[i] = 0;
+        for(std::size_t i=0;i<Nd;i++) all_[i] = 0;
+        for(std::size_t i=0;i<Nd;i++) focus_[i] = 0;
       }
 
-      c_grid_padded(index_type const& grid)
+      c_grid_padded(index_type const& all)
       :
-        grid_(grid),
-        layout_(grid)
+        all_(all),
+        focus_(all)
       {}
 
-      c_grid_padded(index_type const& grid,
-                    index_type const& layout)
+      c_grid_padded(index_type const& all,
+                    index_type const& focus)
       :
-        grid_(grid),
-        layout_(layout)
+        all_(all),
+        focus_(focus)
       {}
 
       template <typename FlexIndexType>
       c_grid_padded(af::flex_grid<FlexIndexType> const& flex_g)
       :
-        grid_(af::adapt(flex_g.grid()))
+        all_(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
         if (flex_g.is_padded()) {
-          layout_ = index_type(af::adapt(flex_g.layout()));
+          focus_ = index_type(af::adapt(flex_g.focus()));
         }
         else {
-          layout_ = grid_;
+          focus_ = all_;
         }
       }
 
       af::flex_grid<>
       as_flex_grid() const
       {
-        return af::flex_grid<>(af::adapt(grid_))
-                   .set_layout(af::adapt(layout_));
+        return af::flex_grid<>(af::adapt(all_))
+                    .set_focus(af::adapt(focus_));
       }
 
       std::size_t
       size_1d() const
       {
-        return math::compile_time::product<Nd>::get(grid_);
+        return math::compile_time::product<Nd>::get(all_);
       }
 
       index_type const&
-      grid() const { return grid_; }
+      all() const { return all_; }
 
       index_type const&
-      layout() const { return layout_; }
+      focus() const { return focus_; }
 
       std::size_t
-      layout_size_1d() const
+      focus_size_1d() const
       {
-        return math::compile_time::product<Nd>::get(layout_);
+        return math::compile_time::product<Nd>::get(focus_);
       }
 
       bool is_padded() const
       {
-        SCITBX_ASSERT(grid_.all_ge(layout_));
-        return !grid_.all_eq(layout_);
+        SCITBX_ASSERT(all_.all_ge(focus_));
+        return !all_.all_eq(focus_);
       }
 
       std::size_t
       operator()(index_type const& i) const
       {
-        return c_index_1d_calculator<Nd>::get(grid_, i);
+        return c_index_1d_calculator<Nd>::get(all_, i);
       }
 
     protected:
-      index_type grid_;
-      index_type layout_;
+      index_type all_;
+      index_type focus_;
   };
 
   template <>
@@ -108,98 +108,98 @@ namespace scitbx { namespace af {
       typedef tiny<std::size_t, 2> index_type;
       typedef index_type::value_type index_value_type;
 
-      c_grid_padded() : grid_(0,0), layout_(0,0) {}
+      c_grid_padded() : all_(0,0), focus_(0,0) {}
 
-      c_grid_padded(index_type const& grid)
+      c_grid_padded(index_type const& all)
       :
-        grid_(grid),
-        layout_(grid)
+        all_(all),
+        focus_(all)
       {}
 
-      c_grid_padded(index_value_type const& g0,
-                    index_value_type const& g1)
+      c_grid_padded(index_value_type const& all_0,
+                    index_value_type const& all_1)
       :
-        grid_(g0, g1),
-        layout_(g0, g1)
+        all_(all_0, all_1),
+        focus_(all_0, all_1)
       {}
 
-      c_grid_padded(index_type const& grid,
-                    index_type const& layout)
+      c_grid_padded(index_type const& all,
+                    index_type const& focus)
       :
-        grid_(grid),
-        layout_(layout)
+        all_(all),
+        focus_(focus)
       {}
 
-      c_grid_padded(index_value_type const& g0,
-                    index_value_type const& g1,
-                    index_value_type const& l0,
-                    index_value_type const& l1)
+      c_grid_padded(index_value_type const& all_0,
+                    index_value_type const& all_1,
+                    index_value_type const& focus_0,
+                    index_value_type const& focus_1)
       :
-        grid_(g0, g1),
-        layout_(l0, l1)
+        all_(all_0, all_1),
+        focus_(focus_0, focus_1)
       {}
 
       template <typename FlexIndexType>
       c_grid_padded(af::flex_grid<FlexIndexType> const& flex_g)
       :
-        grid_(af::adapt(flex_g.grid()))
+        all_(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
         if (flex_g.is_padded()) {
-          layout_ = index_type(af::adapt(flex_g.layout()));
+          focus_ = index_type(af::adapt(flex_g.focus()));
         }
         else {
-          layout_ = grid_;
+          focus_ = all_;
         }
       }
 
       af::flex_grid<>
       as_flex_grid() const
       {
-        return af::flex_grid<>(af::adapt(grid_))
-                   .set_layout(af::adapt(layout_));
+        return af::flex_grid<>(af::adapt(all_))
+                    .set_focus(af::adapt(focus_));
       }
 
       std::size_t
       size_1d() const
       {
-        return grid_[0] * grid_[1];
+        return all_[0] * all_[1];
       }
 
       index_type const&
-      grid() const { return grid_; }
+      all() const { return all_; }
 
       index_type const&
-      layout() const { return layout_; }
+      focus() const { return focus_; }
 
       std::size_t
-      layout_size_1d() const
+      focus_size_1d() const
       {
-        return layout_[0] * layout_[1];
+        return focus_[0] * focus_[1];
       }
 
       bool is_padded() const
       {
-        SCITBX_ASSERT(grid_[0] >= layout_[0] && grid_[1] >= layout_[1]);
-        return grid_[0] != layout_[0] || grid_[1] != layout_[1];
+        SCITBX_ASSERT(all_[0] >= focus_[0] && all_[1] >= focus_[1]);
+        return all_[0] != focus_[0] || all_[1] != focus_[1];
       }
 
       std::size_t
       operator()(index_type const& i) const
       {
-        return i[0] * grid_[1] + i[1];
+        return i[0] * all_[1] + i[1];
       }
 
       std::size_t
       operator()(index_value_type const& i0,
                  index_value_type const& i1) const
       {
-        return i0 * grid_[1] + i1;
+        return i0 * all_[1] + i1;
       }
 
     protected:
-      index_type grid_;
-      index_type layout_;
+      index_type all_;
+      index_type focus_;
   };
 
   template <>
@@ -209,93 +209,93 @@ namespace scitbx { namespace af {
       typedef tiny<std::size_t, 3> index_type;
       typedef index_type::value_type index_value_type;
 
-      c_grid_padded() : grid_(0,0,0), layout_(0,0,0) {}
+      c_grid_padded() : all_(0,0,0), focus_(0,0,0) {}
 
-      c_grid_padded(index_type const& grid)
+      c_grid_padded(index_type const& all)
       :
-        grid_(grid),
-        layout_(grid)
+        all_(all),
+        focus_(all)
       {}
 
-      c_grid_padded(index_value_type const& g0,
-                    index_value_type const& g1,
-                    index_value_type const& g2)
+      c_grid_padded(index_value_type const& all_0,
+                    index_value_type const& all_1,
+                    index_value_type const& all_2)
       :
-        grid_(g0, g1, g2),
-        layout_(g0, g1, g2)
+        all_(all_0, all_1, all_2),
+        focus_(all_0, all_1, all_2)
       {}
 
-      c_grid_padded(index_type const& grid,
-                    index_type const& layout)
+      c_grid_padded(index_type const& all,
+                    index_type const& focus)
       :
-        grid_(grid),
-        layout_(layout)
+        all_(all),
+        focus_(focus)
       {}
 
-      c_grid_padded(index_value_type const& g0,
-                    index_value_type const& g1,
-                    index_value_type const& g2,
-                    index_value_type const& l0,
-                    index_value_type const& l1,
-                    index_value_type const& l2)
+      c_grid_padded(index_value_type const& all_0,
+                    index_value_type const& all_1,
+                    index_value_type const& all_2,
+                    index_value_type const& focus_0,
+                    index_value_type const& focus_1,
+                    index_value_type const& focus_2)
       :
-        grid_(g0, g1, g2),
-        layout_(l0, l1, l2)
+        all_(all_0, all_1, all_2),
+        focus_(focus_0, focus_1, focus_2)
       {}
 
       template <typename FlexIndexType>
       c_grid_padded(af::flex_grid<FlexIndexType> const& flex_g)
       :
-        grid_(af::adapt(flex_g.grid()))
+        all_(af::adapt(flex_g.all()))
       {
         SCITBX_ASSERT(flex_g.is_0_based());
         if (flex_g.is_padded()) {
-          layout_ = index_type(af::adapt(flex_g.layout()));
+          focus_ = index_type(af::adapt(flex_g.focus()));
         }
         else {
-          layout_ = grid_;
+          focus_ = all_;
         }
       }
 
       af::flex_grid<>
       as_flex_grid() const
       {
-        return af::flex_grid<>(af::adapt(grid_))
-                   .set_layout(af::adapt(layout_));
+        return af::flex_grid<>(af::adapt(all_))
+                    .set_focus(af::adapt(focus_));
       }
 
       std::size_t
       size_1d() const
       {
-        return grid_[0] * grid_[1] * grid_[2];
+        return all_[0] * all_[1] * all_[2];
       }
 
       index_type const&
-      grid() const { return grid_; }
+      all() const { return all_; }
 
       index_type const&
-      layout() const { return layout_; }
+      focus() const { return focus_; }
 
       std::size_t
-      layout_size_1d() const
+      focus_size_1d() const
       {
-        return layout_[0] * layout_[1] * layout_[2];
+        return focus_[0] * focus_[1] * focus_[2];
       }
 
       bool is_padded() const
       {
-        SCITBX_ASSERT(   grid_[0] >= layout_[0]
-                      && grid_[1] >= layout_[1]
-                      && grid_[2] >= layout_[2]);
-        return    grid_[0] != layout_[0]
-               || grid_[1] != layout_[1]
-               || grid_[2] != layout_[2];
+        SCITBX_ASSERT(   all_[0] >= focus_[0]
+                      && all_[1] >= focus_[1]
+                      && all_[2] >= focus_[2]);
+        return    all_[0] != focus_[0]
+               || all_[1] != focus_[1]
+               || all_[2] != focus_[2];
       }
 
       std::size_t
       operator()(index_type const& i) const
       {
-        return (i[0] * grid_[1] + i[1]) * grid_[2] + i[2];
+        return (i[0] * all_[1] + i[1]) * all_[2] + i[2];
       }
 
       std::size_t
@@ -303,12 +303,12 @@ namespace scitbx { namespace af {
                  index_value_type const& i1,
                  index_value_type const& i2) const
       {
-        return (i0 * grid_[1] + i1) * grid_[2] + i2;
+        return (i0 * all_[1] + i1) * all_[2] + i2;
       }
 
     protected:
-      index_type grid_;
-      index_type layout_;
+      index_type all_;
+      index_type focus_;
   };
 
 }} // namespace scitbx::af

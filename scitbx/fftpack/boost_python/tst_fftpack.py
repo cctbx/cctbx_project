@@ -41,16 +41,16 @@ def test_complex_to_complex(verbose):
   vdt = fft.forward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.n()
-    assert t.layout()[0] == fft.n()
+    assert t.all()[0] == fft.n()
+    assert t.focus()[0] == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
   vct = fft.backward(vc)
   vdt = fft.backward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.n()
-    assert t.layout()[0] == fft.n()
+    assert t.all()[0] == fft.n()
+    assert t.focus()[0] == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
 
@@ -67,16 +67,16 @@ def test_complex_to_complex_3d(verbose):
   vdt = fft.forward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.n()
-    assert t.layout() == fft.n()
+    assert t.all() == fft.n()
+    assert t.focus() == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
   vct = fft.backward(vc)
   vdt = fft.backward(vd)
   for t in (vct, vdt):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.n()
-    assert t.layout() == fft.n()
+    assert t.all() == fft.n()
+    assert t.focus() == fft.n()
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
 
@@ -92,16 +92,16 @@ def test_real_to_complex(verbose):
   vct = fft.forward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.n_complex()
-    assert t.layout()[0] == fft.n_complex()
+    assert t.all()[0] == fft.n_complex()
+    assert t.focus()[0] == fft.n_complex()
   if (verbose): show_rseq(vd, fft.m_real())
   assert_complex_eq_real(vc, vd)
   vdt = fft.backward(vd)
   vct = fft.backward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,)
-    assert t.grid()[0] == fft.m_real()
-    assert t.layout()[0] == fft.n_real()
+    assert t.all()[0] == fft.m_real()
+    assert t.focus()[0] == fft.n_real()
   if (verbose): show_rseq(vd, fft.n_real())
   assert_complex_eq_real(vc, vd)
 
@@ -119,16 +119,16 @@ def test_real_to_complex_3d(verbose):
   vct = fft.forward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.n_complex()
-    assert t.layout() == fft.n_complex()
+    assert t.all() == fft.n_complex()
+    assert t.focus() == fft.n_complex()
   if (verbose): show_rseq_3d(vd, fft.m_real(), fft.m_real())
   assert_complex_eq_real(vc, vd)
   vdt = fft.backward(vd)
   vct = fft.backward(vc)
   for t in (vdt, vct):
     assert t.origin() == (0,0,0)
-    assert t.grid() == fft.m_real()
-    assert t.layout() == fft.n_real()
+    assert t.all() == fft.m_real()
+    assert t.focus() == fft.n_real()
   if (verbose): show_rseq_3d(vd, fft.m_real(), fft.n_real())
   assert_complex_eq_real(vc, vd)
 

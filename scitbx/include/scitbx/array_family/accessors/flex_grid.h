@@ -29,188 +29,188 @@ namespace scitbx { namespace af {
 
       flex_grid() {}
 
-      flex_grid(index_type const& grid)
-      : grid_(grid)
+      flex_grid(index_type const& all)
+      : all_(all)
       {}
 
       template <typename OtherArrayType>
       flex_grid(array_adaptor<OtherArrayType> const& a_a)
-      : grid_(a_a)
+      : all_(a_a)
       {}
 
-      flex_grid(index_value_type const& grid_0)
+      flex_grid(index_value_type const& all_0)
       :
-        grid_(1, grid_0)
+        all_(1, all_0)
       {}
 
-      flex_grid(index_value_type const& grid_0,
-                index_value_type const& grid_1)
+      flex_grid(index_value_type const& all_0,
+                index_value_type const& all_1)
       :
-        grid_(1, grid_0)
+        all_(1, all_0)
       {
-        grid_.push_back(grid_1);
+        all_.push_back(all_1);
       }
 
-      flex_grid(index_value_type const& grid_0,
-                index_value_type const& grid_1,
-                index_value_type const& grid_2)
+      flex_grid(index_value_type const& all_0,
+                index_value_type const& all_1,
+                index_value_type const& all_2)
       :
-        grid_(1, grid_0)
+        all_(1, all_0)
       {
-        grid_.push_back(grid_1);
-        grid_.push_back(grid_2);
+        all_.push_back(all_1);
+        all_.push_back(all_2);
       }
 
-      flex_grid(index_value_type const& grid_0,
-                index_value_type const& grid_1,
-                index_value_type const& grid_2,
-                index_value_type const& grid_3)
+      flex_grid(index_value_type const& all_0,
+                index_value_type const& all_1,
+                index_value_type const& all_2,
+                index_value_type const& all_3)
       :
-        grid_(1, grid_0)
+        all_(1, all_0)
       {
-        grid_.push_back(grid_1);
-        grid_.push_back(grid_2);
-        grid_.push_back(grid_3);
+        all_.push_back(all_1);
+        all_.push_back(all_2);
+        all_.push_back(all_3);
       }
 
-      flex_grid(index_value_type const& grid_0,
-                index_value_type const& grid_1,
-                index_value_type const& grid_2,
-                index_value_type const& grid_3,
-                index_value_type const& grid_4)
+      flex_grid(index_value_type const& all_0,
+                index_value_type const& all_1,
+                index_value_type const& all_2,
+                index_value_type const& all_3,
+                index_value_type const& all_4)
       :
-        grid_(1, grid_0)
+        all_(1, all_0)
       {
-        grid_.push_back(grid_1);
-        grid_.push_back(grid_2);
-        grid_.push_back(grid_3);
-        grid_.push_back(grid_4);
+        all_.push_back(all_1);
+        all_.push_back(all_2);
+        all_.push_back(all_3);
+        all_.push_back(all_4);
       }
 
-      flex_grid(index_value_type const& grid_0,
-                index_value_type const& grid_1,
-                index_value_type const& grid_2,
-                index_value_type const& grid_3,
-                index_value_type const& grid_4,
-                index_value_type const& grid_5)
+      flex_grid(index_value_type const& all_0,
+                index_value_type const& all_1,
+                index_value_type const& all_2,
+                index_value_type const& all_3,
+                index_value_type const& all_4,
+                index_value_type const& all_5)
       :
-        grid_(1, grid_0)
+        all_(1, all_0)
       {
-        grid_.push_back(grid_1);
-        grid_.push_back(grid_2);
-        grid_.push_back(grid_3);
-        grid_.push_back(grid_4);
-        grid_.push_back(grid_5);
+        all_.push_back(all_1);
+        all_.push_back(all_2);
+        all_.push_back(all_3);
+        all_.push_back(all_4);
+        all_.push_back(all_5);
       }
 
       flex_grid(index_type const& origin,
                 index_type const& last,
                 bool open_range=true)
       :
-        grid_(last),
+        all_(last),
         origin_(origin)
       {
-        grid_ -= origin_;
-        if (!open_range) grid_ += index_value_type(1);
+        all_ -= origin_;
+        if (!open_range) all_ += index_value_type(1);
       }
 
       flex_grid
-      set_layout(index_type const& layout, bool open_range=true)
+      set_focus(index_type const& focus, bool open_range=true)
       {
-        layout_ = layout;
-        if (!open_range && layout_.size() > 0) layout_ += index_value_type(1);
+        focus_ = focus;
+        if (!open_range && focus_.size() > 0) focus_ += index_value_type(1);
         return *this;
       }
 
       flex_grid
-      set_layout(index_value_type const& layout_0)
+      set_focus(index_value_type const& focus_0)
       {
-        layout_.clear();
-        layout_.push_back(layout_0);
+        focus_.clear();
+        focus_.push_back(focus_0);
         return *this;
       }
 
       flex_grid
-      set_layout(index_value_type const& layout_0,
-                 index_value_type const& layout_1)
+      set_focus(index_value_type const& focus_0,
+                index_value_type const& focus_1)
       {
-        layout_.clear();
-        layout_.push_back(layout_0);
-        layout_.push_back(layout_1);
+        focus_.clear();
+        focus_.push_back(focus_0);
+        focus_.push_back(focus_1);
         return *this;
       }
 
       flex_grid
-      set_layout(index_value_type const& layout_0,
-                 index_value_type const& layout_1,
-                 index_value_type const& layout_2)
+      set_focus(index_value_type const& focus_0,
+                index_value_type const& focus_1,
+                index_value_type const& focus_2)
       {
-        layout_.clear();
-        layout_.push_back(layout_0);
-        layout_.push_back(layout_1);
-        layout_.push_back(layout_2);
+        focus_.clear();
+        focus_.push_back(focus_0);
+        focus_.push_back(focus_1);
+        focus_.push_back(focus_2);
         return *this;
       }
 
       flex_grid
-      set_layout(index_value_type const& layout_0,
-                 index_value_type const& layout_1,
-                 index_value_type const& layout_2,
-                 index_value_type const& layout_3)
+      set_focus(index_value_type const& focus_0,
+                index_value_type const& focus_1,
+                index_value_type const& focus_2,
+                index_value_type const& focus_3)
       {
-        layout_.clear();
-        layout_.push_back(layout_0);
-        layout_.push_back(layout_1);
-        layout_.push_back(layout_2);
-        layout_.push_back(layout_3);
+        focus_.clear();
+        focus_.push_back(focus_0);
+        focus_.push_back(focus_1);
+        focus_.push_back(focus_2);
+        focus_.push_back(focus_3);
         return *this;
       }
 
       flex_grid
-      set_layout(index_value_type const& layout_0,
-                 index_value_type const& layout_1,
-                 index_value_type const& layout_2,
-                 index_value_type const& layout_3,
-                 index_value_type const& layout_4)
+      set_focus(index_value_type const& focus_0,
+                index_value_type const& focus_1,
+                index_value_type const& focus_2,
+                index_value_type const& focus_3,
+                index_value_type const& focus_4)
       {
-        layout_.clear();
-        layout_.push_back(layout_0);
-        layout_.push_back(layout_1);
-        layout_.push_back(layout_2);
-        layout_.push_back(layout_3);
-        layout_.push_back(layout_4);
+        focus_.clear();
+        focus_.push_back(focus_0);
+        focus_.push_back(focus_1);
+        focus_.push_back(focus_2);
+        focus_.push_back(focus_3);
+        focus_.push_back(focus_4);
         return *this;
       }
 
       flex_grid
-      set_layout(index_value_type const& layout_0,
-                 index_value_type const& layout_1,
-                 index_value_type const& layout_2,
-                 index_value_type const& layout_3,
-                 index_value_type const& layout_4,
-                 index_value_type const& layout_5)
+      set_focus(index_value_type const& focus_0,
+                index_value_type const& focus_1,
+                index_value_type const& focus_2,
+                index_value_type const& focus_3,
+                index_value_type const& focus_4,
+                index_value_type const& focus_5)
       {
-        layout_.clear();
-        layout_.push_back(layout_0);
-        layout_.push_back(layout_1);
-        layout_.push_back(layout_2);
-        layout_.push_back(layout_3);
-        layout_.push_back(layout_4);
-        layout_.push_back(layout_5);
+        focus_.clear();
+        focus_.push_back(focus_0);
+        focus_.push_back(focus_1);
+        focus_.push_back(focus_2);
+        focus_.push_back(focus_3);
+        focus_.push_back(focus_4);
+        focus_.push_back(focus_5);
         return *this;
       }
 
       std::size_t
-      nd() const { return grid_.size(); }
+      nd() const { return all_.size(); }
 
       std::size_t
       size_1d() const
       {
-        return af::product(grid_);
+        return af::product(all_);
       }
 
       index_type const&
-      grid() const { return grid_; }
+      all() const { return all_; }
 
       bool
       has_origin() const { return origin_.size() != 0; }
@@ -219,26 +219,26 @@ namespace scitbx { namespace af {
       origin() const
       {
         if (has_origin()) return origin_;
-        return index_type(grid_.size(), index_value_type(0));
+        return index_type(all_.size(), index_value_type(0));
       }
 
       index_type
       last(bool open_range=true) const
       {
         index_type result = origin();
-        result += grid_;
+        result += all_;
         if (!open_range) result -= index_value_type(1);
         return result;
       }
 
       bool
-      has_layout() const { return layout_.size() != 0; }
+      has_focus() const { return focus_.size() != 0; }
 
       index_type
-      layout(bool open_range=true) const
+      focus(bool open_range=true) const
       {
-        if (has_layout()) {
-          index_type result = layout_;
+        if (has_focus()) {
+          index_type result = focus_;
           if (!open_range) result -= index_value_type(1);
           return result;
         }
@@ -246,10 +246,10 @@ namespace scitbx { namespace af {
       }
 
       std::size_t
-      layout_size_1d() const
+      focus_size_1d() const
       {
-        if (layout_.size() == 0) return size_1d();
-        index_type n = layout();
+        if (focus_.size() == 0) return size_1d();
+        index_type n = focus();
         n -= origin();
         return af::product(n);
       }
@@ -263,21 +263,21 @@ namespace scitbx { namespace af {
       bool
       is_padded() const
       {
-        if (!has_layout()) return false;
-        SCITBX_ASSERT(grid_.size() == layout_.size());
-        SCITBX_ASSERT(last().all_ge(layout_));
-        return !last().all_eq(layout_);
+        if (!has_focus()) return false;
+        SCITBX_ASSERT(all_.size() == focus_.size());
+        SCITBX_ASSERT(last().all_ge(focus_));
+        return !last().all_eq(focus_);
       }
 
       flex_grid
       shift_origin() const
       {
         if (is_0_based()) return *this;
-        if (!has_layout()) return flex_grid(grid_);
-        SCITBX_ASSERT(layout_.size() == grid_.size());
-        index_type result_layout = layout_; // step-wise to avoid
-        result_layout -= origin();          // gcc 2.96 internal error
-        return flex_grid(grid_).set_layout(result_layout);
+        if (!has_focus()) return flex_grid(all_);
+        SCITBX_ASSERT(focus_.size() == all_.size());
+        index_type result_focus = focus_; // step-wise to avoid
+        result_focus -= origin();         // gcc 2.96 internal error
+        return flex_grid(all_).set_focus(result_focus);
       }
 
       bool
@@ -287,14 +287,14 @@ namespace scitbx { namespace af {
         if (i.size() != n) return false;
         if (has_origin()) {
           for(std::size_t j=0;j<n;j++) {
-            if (i[j] < origin_[j] || i[j] >= (origin_[j] + grid_[j])) {
+            if (i[j] < origin_[j] || i[j] >= (origin_[j] + all_[j])) {
               return false;
             }
           }
         }
         else {
           for(std::size_t j=0;j<n;j++) {
-            if (i[j] < 0 || i[j] >= grid_[j]) {
+            if (i[j] < 0 || i[j] >= all_[j]) {
               return false;
             }
           }
@@ -313,7 +313,7 @@ namespace scitbx { namespace af {
               result += i[j] - origin_[j];
               j++;
               if (j == n) break;
-              result *= grid_[j];
+              result *= all_[j];
             }
           }
           else {
@@ -321,7 +321,7 @@ namespace scitbx { namespace af {
               result += i[j];
               j++;
               if (j == n) break;
-              result *= grid_[j];
+              result *= all_[j];
             }
           }
         }
@@ -331,9 +331,9 @@ namespace scitbx { namespace af {
       bool
       operator==(flex_grid<index_type> const& other) const
       {
-        if (!grid_.all_eq(other.grid_)) return false;
+        if (!all_.all_eq(other.all_)) return false;
         if (!origin_.all_eq(other.origin_)) return false;
-        return layout_.all_eq(other.layout_);
+        return focus_.all_eq(other.focus_);
       }
 
       bool
@@ -343,9 +343,9 @@ namespace scitbx { namespace af {
       }
 
     protected:
-      index_type grid_;
+      index_type all_;
       index_type origin_;
-      index_type layout_;
+      index_type focus_;
   };
 
 }} // namespace scitbx::af

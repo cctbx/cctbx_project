@@ -49,7 +49,7 @@ namespace scitbx { namespace fftpack { namespace {
     af::flex_grid<> const& grid = a.accessor();
     af::boost_python::assert_0_based_3d(grid);
     for(std::size_t i=0;i<3;i++) {
-      if (grid.grid()[i] != fft_n[i]) raise_size_error();
+      if (grid.all()[i] != fft_n[i]) raise_size_error();
     }
   }
 
@@ -115,7 +115,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, fft.n());
       fft.forward(a.begin());
       return flex_complex_array(a, af::flex_grid<>(fft.n())
-        .set_layout(fft.n()));
+        .set_focus(fft.n()));
     }
 
     static flex_complex_array
@@ -124,7 +124,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, 2 * fft.n());
       fft.forward(a.begin());
       return flex_complex_array(a.handle(), af::flex_grid<>(fft.n())
-        .set_layout(fft.n()));
+        .set_focus(fft.n()));
     }
 
     static flex_complex_array
@@ -133,7 +133,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, fft.n());
       fft.backward(a.begin());
       return flex_complex_array(a, af::flex_grid<>(fft.n())
-        .set_layout(fft.n()));
+        .set_focus(fft.n()));
     }
 
     static flex_complex_array
@@ -142,7 +142,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, 2 * fft.n());
       fft.backward(a.begin());
       return flex_complex_array(a.handle(), af::flex_grid<>(fft.n())
-        .set_layout(fft.n()));
+        .set_focus(fft.n()));
     }
 
     static void
@@ -170,7 +170,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, fft.n_complex());
       fft.forward(a.begin());
       return flex_complex_array(a, af::flex_grid<>((fft.n_complex()))
-        .set_layout(fft.n_complex()));
+        .set_focus(fft.n_complex()));
     }
 
     static flex_complex_array
@@ -179,7 +179,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, fft.m_real());
       fft.forward(a.begin());
       return flex_complex_array(a.handle(), af::flex_grid<>((fft.n_complex()))
-        .set_layout(fft.n_complex()));
+        .set_focus(fft.n_complex()));
     }
 
     static flex_real_array
@@ -188,7 +188,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, fft.n_complex());
       fft.backward(a.begin());
       return flex_real_array(a.handle(), af::flex_grid<>((fft.m_real()))
-        .set_layout(fft.n_real()));
+        .set_focus(fft.n_real()));
     }
 
     static flex_real_array
@@ -197,7 +197,7 @@ namespace scitbx { namespace fftpack { namespace {
       assert_0_based_1d_size(a, fft.m_real());
       fft.backward(a.begin());
       return flex_real_array(a, af::flex_grid<>((fft.m_real()))
-        .set_layout(fft.n_real()));
+        .set_focus(fft.n_real()));
     }
 
     static void
@@ -229,7 +229,7 @@ namespace scitbx { namespace fftpack { namespace {
       ref_3d_complex_array map(a.begin(), af::c_grid<3>(fft.n()));
       fft.forward(map);
       return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.n()))
-        .set_layout(af::adapt(fft.n())));
+        .set_focus(af::adapt(fft.n())));
     }
 
     static flex_complex_array
@@ -240,7 +240,7 @@ namespace scitbx { namespace fftpack { namespace {
         a.begin(), af::c_grid<3>(n_real_from_n_complex(fft.n())));
       fft.forward(map);
       return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.n()))
-        .set_layout(af::adapt(fft.n())));
+        .set_focus(af::adapt(fft.n())));
     }
 
     static flex_complex_array
@@ -250,7 +250,7 @@ namespace scitbx { namespace fftpack { namespace {
       ref_3d_complex_array map(a.begin(), af::c_grid<3>(fft.n()));
       fft.backward(map);
       return flex_complex_array(a, af::flex_grid<>(af::adapt(fft.n()))
-        .set_layout(af::adapt(fft.n())));
+        .set_focus(af::adapt(fft.n())));
     }
 
     static flex_complex_array
@@ -261,7 +261,7 @@ namespace scitbx { namespace fftpack { namespace {
         a.begin(), af::c_grid<3>(n_real_from_n_complex(fft.n())));
       fft.backward(map);
       return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt(fft.n()))
-        .set_layout(af::adapt(fft.n())));
+        .set_focus(af::adapt(fft.n())));
     }
 
     static void
@@ -292,7 +292,7 @@ namespace scitbx { namespace fftpack { namespace {
       fft.forward(map);
       return flex_complex_array(a,
         af::flex_grid<>(af::adapt((fft.n_complex())))
-        .set_layout(af::adapt(fft.n_complex())));
+        .set_focus(af::adapt(fft.n_complex())));
     }
 
     static flex_complex_array
@@ -303,7 +303,7 @@ namespace scitbx { namespace fftpack { namespace {
       fft.forward(map);
       return flex_complex_array(a.handle(),
         af::flex_grid<>(af::adapt((fft.n_complex())))
-        .set_layout(af::adapt(fft.n_complex())));
+        .set_focus(af::adapt(fft.n_complex())));
     }
 
     static flex_real_array
@@ -314,7 +314,7 @@ namespace scitbx { namespace fftpack { namespace {
       fft.backward(map);
       return flex_real_array(a.handle(),
         af::flex_grid<>(af::adapt((fft.m_real())))
-        .set_layout(af::adapt(fft.n_real())));
+        .set_focus(af::adapt(fft.n_real())));
     }
 
     static flex_real_array
@@ -324,7 +324,7 @@ namespace scitbx { namespace fftpack { namespace {
       ref_3d_real_array map(a.begin(), af::c_grid<3>(fft.m_real()));
       fft.backward(map);
       return flex_real_array(a, af::flex_grid<>(af::adapt((fft.m_real())))
-        .set_layout(af::adapt(fft.n_real())));
+        .set_focus(af::adapt(fft.n_real())));
     }
 
     static void
