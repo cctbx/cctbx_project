@@ -51,13 +51,17 @@
     Ralf W. Grosse-Kunstleve: C++ port, March 2002.
  */
 
-#include <exception>
+#include <cstddef>
+#include <stdexcept>
 #include <vector>
 #include <string>
 #include <stdio.h>
 #include <boost/config.hpp>
 #include <cctbx/fixes/cstdlib>
 #include <cctbx/fixes/cmath>
+
+// XXX eliminate std::fabs
+// XXX un-inline most functions
 
 namespace cctbx {
 
@@ -151,6 +155,7 @@ namespace cctbx {
       <p>
       Fatal errors cause exceptions to be thrown.
    */
+  template <typename FloatType>
   class lbfgs
   {
     public:
@@ -214,12 +219,12 @@ namespace cctbx {
       explicit lbfgs(
         std::size_t n,
         std::size_t m = 5,
-        double eps = 1.e-5,
-        double xtol = 1.e-16,
+        FloatType eps = FloatType(1.e-5),
+        FloatType xtol = FloatType(1.e-16),
         int maxfev = 20,
-        double gtol = 0.9,
-        double stpmin = 1.e-20,
-        double stpmax = 1.e20)
+        FloatType gtol = FloatType(0.9),
+        FloatType stpmin = FloatType(1.e-20),
+        FloatType stpmax = FloatType(1.e20))
         : n_(n), m_(m), eps_(eps), xtol_(xtol), maxfev_(maxfev),
           gtol_(gtol), stpmin_(stpmin), stpmax_(stpmax),
           iflag_(0), iter_(0), nfun_(0), gnorm_(0), stp_(0),
@@ -233,8 +238,17 @@ namespace cctbx {
         if (m_ == 0) {
           throw lbfgs_error_improper_input_parameter("m is not positive.");
         }
-        if (gtol_ <= 1.e-4) {
+        if (maxfev_ <= 0) {
+         throw lbfgs_error_improper_input_parameter("maxfev is not positive.");
+        }
+        if (gtol_ <= FloatType(1.e-4)) {
           throw lbfgs_error_improper_input_parameter("gtol <= 1.e-4.");
+        }
+        if (stpmin_ < FloatType(0)) {
+          throw lbfgs_error_improper_input_parameter("stpmin < 0.");
+        }
+        if (stpmax_ < stpmin) {
+          throw lbfgs_error_improper_input_parameter("stpmax < stpmin");
         }
         w_.resize(n_*(2*m_+1)+2*m_);
       }
@@ -246,22 +260,22 @@ namespace cctbx {
       std::size_t m() const { return m_; }
 
       //! XXX
-      double eps() const { return eps_; }
+      FloatType eps() const { return eps_; }
 
       //! XXX
-      double xtol() const { return xtol_; }
+      FloatType xtol() const { return xtol_; }
 
       //! XXX
       int maxfev() const { return maxfev_; }
 
       //! XXX
-      double gtol() const { return gtol_; }
+      FloatType gtol() const { return gtol_; }
 
       //! XXX
-      double stpmin() const { return stpmin_; }
+      FloatType stpmin() const { return stpmin_; }
 
       //! XXX
-      double stpmax() const { return stpmax_; }
+      FloatType stpmax() const { return stpmax_; }
 
       //! XXX
       bool is_converged() const { return iflag_ == 0 && nfun_ > 0; }
@@ -285,15 +299,15 @@ namespace cctbx {
       std::size_t nfun() const { return nfun_; }
 
       //! Norm of gradient at current solution <code>x</code>.
-      double gnorm() const { return gnorm_; }
+      FloatType gnorm() const { return gnorm_; }
 
       //! Norm of gradient given gradient array of length n().
-      double gnorm(const double* g) const {
+      FloatType gnorm(const FloatType* g) const {
         return std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
       }
 
       //! Current stepsize.
-      double stp() const { return stp_; }
+      FloatType stp() const { return stp_; }
 
       //! Execution of one step of the minimization.
       /*! @param x On initial entry this must be set by the user to the
@@ -316,9 +330,9 @@ namespace cctbx {
           as described below. XXX where?
        */
       void run(
-        double* x,
-        double f,
-        const double* g)
+        FloatType* x,
+        FloatType f,
+        const FloatType* g)
       {
         if (diag_.size() == 0) diag_.resize(n_);
         generic_run(x, f, g, false, &(*(diag_.begin())));
@@ -341,10 +355,10 @@ namespace cctbx {
              positive.
        */
       void run(
-        double* x,
-        double f,
-        const double* g,
-        double* diag)
+        FloatType* x,
+        FloatType f,
+        const FloatType* g,
+        FloatType* diag)
       {
         generic_run(x, f, g, true, diag);
       }
@@ -357,31 +371,31 @@ namespace cctbx {
       }
 
       void generic_run(
-        double* x,
-        double f,
-        const double* g,
+        FloatType* x,
+        FloatType f,
+        const FloatType* g,
         bool diagco,
-        double* diag)
+        FloatType* diag)
       {
-        double* w = &(*(w_.begin()));
+        FloatType* w = &(*(w_.begin()));
         bool execute_entire_while_loop = false;
         if (iflag_ == 0) { // Initialize.
           nfun_ = 1;
           if (diagco) {
             for (std::size_t i = 0; i < n_; i++) {
-              if (diag[i] <= 0) {
+              if (diag[i] <= FloatType(0)) {
                 throw_diagonal_element_not_positive(i);
               }
             }
           }
           else {
-            std::fill_n(diag, n_, double(1));
+            std::fill_n(diag, n_, FloatType(1));
           }
           for (std::size_t i = 0; i < n_; i++) {
             w[ispt + i] = -g[i] * diag[i];
           }
           gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
-          stp1= 1/gnorm_;
+          stp1 = FloatType(1) / gnorm_;
           execute_entire_while_loop = true;
         }
         for (;;) {
@@ -393,7 +407,7 @@ namespace cctbx {
               if (iter_ > m_) bound = m_;
               ys = ddot(n_, w, iypt + npt, 1, w, ispt + npt, 1);
               if (!diagco) {
-                double yy = ddot(n_, w, iypt + npt, 1, w, iypt + npt, 1);
+                FloatType yy = ddot(n_, w, iypt + npt, 1, w, iypt + npt, 1);
                 std::fill_n(diag, n_, ys / yy);
               }
               else {
@@ -406,7 +420,7 @@ namespace cctbx {
             if (iter_ != 1) {
               if (diagco) {
                 for (std::size_t i = 0; i < n_; i++) {
-                  if (diag[i] <= 0) {
+                  if (diag[i] <= FloatType(0)) {
                     throw_diagonal_element_not_positive(i);
                   }
                 }
@@ -422,7 +436,7 @@ namespace cctbx {
               for (i = 0; i < bound; i++) {
                 if (cp == 0) cp = m_;
                 cp--;
-                double sq = ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
+                FloatType sq = ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
                 std::size_t inmc=n_+m_+cp;
                 std::size_t iycn=iypt+cp*n_;
                 w[inmc] = w[n_ + cp] * sq;
@@ -432,8 +446,8 @@ namespace cctbx {
                 w[i] *= diag[i];
               }
               for (i = 0; i < bound; i++) {
-                double yr = ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
-                double beta = w[n_ + cp] * yr;
+                FloatType yr = ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
+                FloatType beta = w[n_ + cp] * yr;
                 std::size_t inmc=n_+m_+cp;
                 beta = w[inmc] - beta;
                 std::size_t iscn=ispt+cp*n_;
@@ -443,7 +457,7 @@ namespace cctbx {
               }
               std::copy(w, w+n_, w+(ispt + point * n_));
             }
-            stp_ = double(1);
+            stp_ = FloatType(1);
             if (iter_ == 1) stp_ = stp1;
             std::copy(g, g+n_, w);
           }
@@ -466,8 +480,8 @@ namespace cctbx {
           point++;
           if (point == m_) point = 0;
           gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
-          double xnorm = std::max(
-            double(1), std::sqrt(ddot(n_, x, 0, 1, x, 0, 1)));
+          FloatType xnorm = std::max(
+            FloatType(1), std::sqrt(ddot(n_, x, 0, 1, x, 0, 1)));
           if (gnorm_ / xnorm <= eps_) {
             iflag_ = 0;
             break;
@@ -482,17 +496,17 @@ namespace cctbx {
        */
       static void daxpy(
         std::size_t n,
-        double da,
-        const double* dx,
+        FloatType da,
+        const FloatType* dx,
         std::size_t ix0,
         std::size_t incx,
-        double* dy,
+        FloatType* dy,
         std::size_t iy0,
         std::size_t incy)
       {
         std::size_t i, ix, iy, m;
         if (n == 0) return;
-        if (da == double(0)) return;
+        if (da == FloatType(0)) return;
         if  (!(incx == 1 && incy == 1)) {
           ix = 0;
           iy = 0;
@@ -519,18 +533,18 @@ namespace cctbx {
          Adapted from the subroutine <code>ddot</code>
          in <code>lbfgs.f</code>.
        */
-      static double ddot(
+      static FloatType ddot(
         std::size_t n,
-        const double* dx,
+        const FloatType* dx,
         std::size_t ix0,
         std::size_t incx,
-        const double* dy,
+        const FloatType* dy,
         std::size_t iy0,
         std::size_t incy)
       {
         std::size_t i, ix, iy, m, mp1;
-        double dtemp(0);
-        if (n == 0) return double(0);
+        FloatType dtemp(0);
+        if (n == 0) return FloatType(0);
         if (!(incx == 1 && incy == 1)) {
           ix = 0;
           iy = 0;
@@ -560,25 +574,29 @@ namespace cctbx {
       {
         protected:
           int infoc;
-          double dginit;
+          FloatType dginit;
           bool brackt;
           bool stage1;
-          double finit;
-          double dgtest;
-          double width;
-          double width1;
-          double stx;
-          double fx;
-          double dgx;
-          double sty;
-          double fy;
-          double dgy;
-          double stmin;
-          double stmax;
+          FloatType finit;
+          FloatType dgtest;
+          FloatType width;
+          FloatType width1;
+          FloatType stx;
+          FloatType fx;
+          FloatType dgx;
+          FloatType sty;
+          FloatType fy;
+          FloatType dgy;
+          FloatType stmin;
+          FloatType stmax;
 
-          static double sqr(double x) { return x * x; }
+          static FloatType sqr(const FloatType& x) { return x * x; }
 
-          static double max3(double x, double y, double z) {
+          static const FloatType& max3(
+            const FloatType& x,
+            const FloatType& y,
+            const FloatType& z)
+          {
             return x < y ? (y < z ? z : y ) : (x < z ? z : x );
           }
 
@@ -677,43 +695,43 @@ namespace cctbx {
              @param wa Temporary storage array, of length <code>n</code>.
            */
           void run(
-            const double& gtol,
-            const double& stpmin,
-            const double& stpmax,
+            const FloatType& gtol,
+            const FloatType& stpmin,
+            const FloatType& stpmax,
             std::size_t n,
-            double* x,
-            double f,
-            const double* g,
-            double* s,
+            FloatType* x,
+            FloatType f,
+            const FloatType* g,
+            FloatType* s,
             std::size_t is0,
-            double& stp,
-            double ftol,
-            double xtol,
+            FloatType& stp,
+            FloatType ftol,
+            FloatType xtol,
             int maxfev,
             int& info,
             std::size_t& nfev,
-            double* wa)
+            FloatType* wa)
           {
             if (info != -1) {
               infoc = 1;
-              if (   n <= 0
-                  || xtol < 0
+              if (   n == 0
+                  || xtol < FloatType(0)
                   || maxfev <= 0
-                  || gtol < 0
-                  || stpmin < 0
+                  || gtol < FloatType(0)
+                  || stpmin < FloatType(0)
                   || stpmax < stpmin) {
                 throw lbfgs_error_internal_error(__FILE__, __LINE__);
               }
-              if (stp <= 0 || ftol < 0) {
+              if (stp <= FloatType(0) || ftol < FloatType(0)) {
                 throw lbfgs_error_internal_error(__FILE__, __LINE__);
               }
               // Compute the initial gradient in the search direction
               // and check that s is a descent direction.
-              dginit = 0;
+              dginit = FloatType(0);
               for (std::size_t j = 0; j < n; j++) {
                 dginit += g[j] * s[is0+j];
               }
-              if (dginit >= 0) {
+              if (dginit >= FloatType(0)) {
                 throw lbfgs_error_search_direction_not_descent();
               }
               brackt = false;
@@ -722,7 +740,7 @@ namespace cctbx {
               finit = f;
               dgtest = ftol*dginit;
               width = stpmax - stpmin;
-              width1 = double(2) * width;
+              width1 = FloatType(2) * width;
               std::copy(x, x+n, wa);
               // The variables stx, fx, dgx contain the values of the step,
               // function, and directional derivative at the best step.
@@ -731,10 +749,10 @@ namespace cctbx {
               // the interval of uncertainty.
               // The variables stp, f, dg contain the values of the step,
               // function, and derivative at the current step.
-              stx = 0;
+              stx = FloatType(0);
               fx = finit;
               dgx = dginit;
-              sty = 0;
+              sty = FloatType(0);
               fy = finit;
               dgy = dginit;
             }
@@ -748,7 +766,7 @@ namespace cctbx {
                 }
                 else {
                   stmin = stx;
-                  stmax = stp + double(4) * (stp - stx);
+                  stmax = stp + FloatType(4) * (stp - stx);
                 }
                 // Force the step to be within the bounds stpmax and stpmin.
                 stp = std::max(stp, stpmin);
@@ -771,11 +789,11 @@ namespace cctbx {
               }
               info = 0;
               nfev++;
-              double dg(0);
+              FloatType dg(0);
               for (std::size_t j = 0; j < n; j++) {
                 dg += g[j] * s[is0+j];
               }
-              double ftest1 = finit + stp*dgtest;
+              FloatType ftest1 = finit + stp*dgtest;
               // Test for convergence.
               if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
                 throw lbfgs_error_line_search_failed(
@@ -819,12 +837,12 @@ namespace cctbx {
               // obtained but the decrease is not sufficient.
               if (stage1 && f <= fx && f > ftest1) {
                 // Define the modified function and derivative values.
-                double fm = f - stp*dgtest;
-                double fxm = fx - stx*dgtest;
-                double fym = fy - sty*dgtest;
-                double dgm = dg - dgtest;
-                double dgxm = dgx - dgtest;
-                double dgym = dgy - dgtest;
+                FloatType fm = f - stp*dgtest;
+                FloatType fxm = fx - stx*dgtest;
+                FloatType fym = fy - sty*dgtest;
+                FloatType dgm = dg - dgtest;
+                FloatType dgxm = dgx - dgtest;
+                FloatType dgym = dgy - dgtest;
                 // Call cstep to update the interval of uncertainty
                 // and to compute the new step.
                 infoc = mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
@@ -844,8 +862,8 @@ namespace cctbx {
               // Force a sufficient decrease in the size of the
               // interval of uncertainty.
               if (brackt) {
-                if (std::fabs(sty - stx) >= 0.66 * width1) {
-                  stp = stx + double(0.5) * (sty - stx);
+                if (std::fabs(sty - stx) >= FloatType(0.66) * width1) {
+                  stp = stx + FloatType(0.5) * (sty - stx);
                 }
                 width1 = width;
                 width = std::fabs(sty - stx);
@@ -913,25 +931,25 @@ namespace cctbx {
                Robert Dodier: Java translation, August 1997.
            */
           static int mcstep(
-            double& stx,
-            double& fx,
-            double& dx,
-            double& sty,
-            double& fy,
-            double& dy,
-            double& stp,
-            double fp,
-            double dp,
+            FloatType& stx,
+            FloatType& fx,
+            FloatType& dx,
+            FloatType& sty,
+            FloatType& fy,
+            FloatType& dy,
+            FloatType& stp,
+            FloatType fp,
+            FloatType dp,
             bool& brackt,
-            double stpmin,
-            double stpmax)
+            FloatType stpmin,
+            FloatType stpmax)
           {
             bool bound;
-            double gamma, p, q, r, s, sgnd, stpc, stpf, stpq, theta;
+            FloatType gamma, p, q, r, s, sgnd, stpc, stpf, stpq, theta;
             int info = 0;
             if (   (   brackt && (stp <= std::min(stx, sty)
                     || stp >= std::max(stx, sty)))
-                || dx * (stp - stx) >= 0.0 || stpmax < stpmin) {
+                || dx * (stp - stx) >= FloatType(0) || stpmax < stpmin) {
               return 0;
             }
             // Determine if the derivatives have opposite sign.
@@ -943,7 +961,7 @@ namespace cctbx {
               // else the average of the cubic and quadratic steps is taken.
               info = 1;
               bound = true;
-              theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+              theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
               s = max3(std::fabs(theta), std::fabs(dx), std::fabs(dp));
               gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
               if (stp < stx) gamma = - gamma;
@@ -952,24 +970,24 @@ namespace cctbx {
               r = p/q;
               stpc = stx + r * (stp - stx);
               stpq = stx
-                + ((dx / ((fx - fp) / (stp - stx) + dx)) / 2)
+                + ((dx / ((fx - fp) / (stp - stx) + dx)) / FloatType(2))
                   * (stp - stx);
               if (std::fabs(stpc - stx) < std::fabs(stpq - stx)) {
                 stpf = stpc;
               }
               else {
-                stpf = stpc + (stpq - stpc) / 2;
+                stpf = stpc + (stpq - stpc) / FloatType(2);
               }
               brackt = true;
             }
-            else if (sgnd < 0.0) {
+            else if (sgnd < FloatType(0)) {
               // Second case. A lower function value and derivatives of
               // opposite sign. The minimum is bracketed. If the cubic
               // step is closer to stx than the quadratic (secant) step,
               // the cubic step is taken, else the quadratic step is taken.
               info = 2;
               bound = false;
-              theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+              theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
               s = max3(std::fabs(theta), std::fabs(dx), std::fabs(dp));
               gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
               if (stp > stx) gamma = - gamma;
@@ -997,15 +1015,15 @@ namespace cctbx {
               // closest to stx is taken, else the step farthest away is taken.
               info = 3;
               bound = true;
-              theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+              theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
               s = max3(std::fabs(theta), std::fabs(dx), std::fabs(dp));
               gamma = s * std::sqrt(
-                std::max(double(0), sqr(theta / s) - (dx / s) * (dp / s)));
+                std::max(FloatType(0), sqr(theta / s) - (dx / s) * (dp / s)));
               if (stp > stx) gamma = -gamma;
               p = (gamma - dp) + theta;
               q = (gamma + (dx - dp)) + gamma;
               r = p/q;
-              if (r < 0.0 && gamma != 0.0) {
+              if (r < FloatType(0) && gamma != FloatType(0)) {
                 stpc = stp + r * (stx - stp);
               }
               else if (stp > stx) {
@@ -1040,7 +1058,7 @@ namespace cctbx {
               info = 4;
               bound = false;
               if (brackt) {
-                theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
+                theta = FloatType(3) * (fp - fy) / (sty - stp) + dy + dp;
                 s = max3(std::fabs(theta), std::fabs(dy), std::fabs(dp));
                 gamma = s * std::sqrt(sqr(theta / s) - (dy / s) * (dp / s));
                 if (stp > sty) gamma = -gamma;
@@ -1065,7 +1083,7 @@ namespace cctbx {
               dy = dp;
             }
             else {
-              if (sgnd < 0.0) {
+              if (sgnd < FloatType(0)) {
                 sty = stx;
                 fy = fx;
                 dy = dx;
@@ -1080,10 +1098,10 @@ namespace cctbx {
             stp = stpf;
             if (brackt && bound) {
               if (sty > stx) {
-                stp = std::min(stx + 0.66 * (sty - stx), stp);
+                stp = std::min(stx + FloatType(0.66) * (sty - stx), stp);
               }
               else {
-                stp = std::max(stx + 0.66 * (sty - stx), stp);
+                stp = std::max(stx + FloatType(0.66) * (sty - stx), stp);
               }
             }
             return info;
@@ -1093,20 +1111,20 @@ namespace cctbx {
       mcsrch mcsrch_instance;
       const std::size_t n_;
       const std::size_t m_;
-      const double eps_;
-      const double xtol_;
+      const FloatType eps_;
+      const FloatType xtol_;
       const int maxfev_;
-      const double gtol_;
-      const double stpmin_;
-      const double stpmax_;
+      const FloatType gtol_;
+      const FloatType stpmin_;
+      const FloatType stpmax_;
       int iflag_;
       std::size_t iter_;
       std::size_t nfun_;
-      double gnorm_;
-      double stp_;
-      double stp1;
-      double ftol;
-      double ys;
+      FloatType gnorm_;
+      FloatType stp_;
+      FloatType stp1;
+      FloatType ftol;
+      FloatType ys;
       std::size_t point;
       std::size_t npt;
       const std::size_t ispt;
@@ -1114,8 +1132,8 @@ namespace cctbx {
       int info;
       std::size_t bound;
       std::size_t nfev;
-      std::vector<double> w_;
-      std::vector<double> diag_;
+      std::vector<FloatType> w_;
+      std::vector<FloatType> diag_;
   };
 
 } // namespace cctbx
