@@ -235,7 +235,9 @@ namespace sgtbx {
           </ul>
        */
       inline const RTMx& SpecialOp() const { return m_SpecialOp; }
-      //! Access the point group type that has been determined in the constructor.
+      /*! \brief Access the site symmetry point group type that has been
+          determined in the constructor.
+       */
       /*! An exception is thrown if the point group type has not been
           determined in the constructor (determinePointGroupType == false).
        */

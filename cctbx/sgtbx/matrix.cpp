@@ -406,6 +406,11 @@ namespace sgtbx {
     *this = RTMx(StrXYZ_PS, StopChars, RBF, TBF);
   }
 
+  bool RTMx::isPerpendicular(const Vec3& v) const
+  {
+    return Rpart().accumulate() * v == 0;
+  }
+
   TrVec RTMx::getIntrinsicPart() const
   {
     int Rtype = Rpart().getRtype();

@@ -512,6 +512,10 @@ namespace sgtbx {
       /*! See information about class RotMxInfo.
        */
       inline RotMxInfo getRotMxInfo() const { return m_R.getInfo(); }
+      /*! \brief Test if the vector v is perpendicular to the axis
+          direction of the rotation part.
+       */
+      bool isPerpendicular(const Vec3& v) const;
       //! Compute the intrinsic (screw or glide) part of the translation part.
       /*! Let N be the rotation-part type of Rpart().
           Following the procedure given by Fischer & Koch
