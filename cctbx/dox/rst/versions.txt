@@ -32,3 +32,79 @@ cctbx links
 - `C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
 
 Please direct questions to cctbx@cci.lbl.gov .
+
+-----------------------------------------------------------------------------
+
+The cctbx `Open Source License <http://cvs.sourceforge.net/viewcvs.py/cctbx/cctbx/LICENSE.txt?view=markup>`_ is inspired by this
+
+Historical Note
+---------------
+
+As found in:
+
+- `Thomas W. Judson <http://math.harvard.edu/~judson/>`_,
+  Abstract Algebra: Theory and Applications,
+  PWS Publishing Company, Boston, 1994, pp. 282-283.
+
+Reproduced with kind permission from the author:
+
+Throughout history, the solution of polynomial equations has been a
+challenging problem. The Babylonians knew how to solve the equation
+ax^2+bx+c=0. Omar Khayyam (1048-1131) devised methods of solving cubic
+equations through the use of geometric constructions and conic
+sections. The algebraic solution of the general cubic equation
+ax^3+bx^2+cx+d=0 was not discovered until the sixteenth century. An
+Italian mathematician, Luca Paciola (ca. 1445-1509), wrote in *Summa de
+Arithmetica* that the solution of the cubic was impossible. This was
+taken as a challenge by the rest of the mathematical community.
+
+Scipione del Ferro (1465-1526), of the University of Bologna, solved
+the "depressed cubic,"
+
+        ax^3+cx+d=0.
+
+He kept his solution an absolute secret. This may seem surprising
+today, when mathematicians are usually very eager to publish their
+results, but in the days of the Italian Renaissance secrecy was
+customary. Academic appointments were not easy to secure and dependent
+on the ability to prevail in public contests. Such challenges could be
+issued at any time. Consequently, any major new discovery was a
+valuable weapon in such a contest. If an opponent presented a list of
+problems to be solved, del Ferro could in turn present a list of
+depressed cubics. He kept the secret of his discovery throughout his
+life, passing it on only on his deathbed to his student Antonio Fior
+(ca. 1506-?).
+
+Although Fior was not equal of his teacher, he immediately issued a
+challenge to Niccolo Fontana (1499-1557). Fontana was known as
+Tartaglia (the Stammerer). As a youth he had suffered a blow from the
+sword of a French soldier during an attack on his village. He survived
+the savage wound, but his speech was permanently impaired. Tartaglia
+sent Fior a list of 30 various mathematical problems; Fior countered by
+sending Tartaglia a list of 30 depressed cubics. Tartaglia would either
+solve all 30 of the problems or absolutely fail. After much effort
+Tartaglia finally succeeded in solving the depressed cubic and defeated
+Fior, who faded into obscurity.
+
+At this point another mathematician, Gerolamo Cardano (1501-1576),
+entered the story. Cardano wrote to Tartaglia, begging him for the
+solution to the depressed cubic. Tartaglia refused several of his
+requests, then finally revealed the solution to Cardano after the
+latter swore an oath not to publish the secret or to pass it on to
+anyone else. Using the knowledge that he had obtained from Tartaglia,
+Cardano eventually solved the general cubic
+
+        ax^3+bx^2+cx+d=0.
+
+Cardano shared the secret with his student, Ludovico Ferrari
+(1522-1565), who solved the general quartic equation,
+
+        ax^4+bx^3+cx^2+dx+e=0.
+
+In 1543, Cardano and Ferrari examined del Ferro's papers and discovered
+that he had also solved the depressed cubic. Cardano felt that this
+relieved him of his obligation to Tartaglia, so he proceeded to publish
+the solutions in *Ars Magna* (1545), in which he gave credit to del
+Ferro for solving the special case of the cubic. This resulted in a
+bitter dispute between Cardano and Tartaglia, who published the story
+of the oath a year later.
