@@ -254,6 +254,11 @@ class set(crystal.symmetry):
 
   def complete_set(self, tolerance=1.e-6):
     assert self.anomalous_flag() in (False, True)
+    if (self.indices().size() == 0):
+      return set(
+        crystal_symmetry=self,
+        anomalous_flag=self.anomalous_flag(),
+        indices=flex.miller_index())
     return build_set(
       crystal_symmetry=self,
       anomalous_flag=self.anomalous_flag(),
@@ -262,7 +267,8 @@ class set(crystal.symmetry):
   def completeness(self, use_binning=False, tolerance=1.e-6):
     complete_set = self.complete_set(tolerance=tolerance)
     if (not use_binning):
-      return self.indices().size() / float(complete_set.indices().size())
+      return self.indices().size() \
+           / float(max(1,complete_set.indices().size()))
     assert self.binner() is not None
     complete_set.use_binning_of(self)
     ratios = []
