@@ -9,12 +9,12 @@ namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    sort_permutation_overloads, sort_permutation, 1, 2)
+
   template <typename ElementType>
   struct sort_permutation_wrapper
   {
-    BOOST_PYTHON_FUNCTION_OVERLOADS(
-      sort_permutation_overloads, sort_permutation, 1, 2)
-
     static void
     wrap()
     {
