@@ -188,9 +188,9 @@ class definition: # FUTURE definition(object)
     keyword_args["words"] = words
     return definition(**keyword_args)
 
-  def fetch(self, source, variable_substitution_scope=None):
-    if (variable_substitution_scope):
-      source = variable_substitution_scope.variable_substitution(
+  def fetch(self, source, substitution_scope=None):
+    if (substitution_scope):
+      source = substitution_scope.variable_substitution(
         object=source, path_memory={})
     if (self.type not in ["choice", "multi_choice"]):
       return self.copy(source.words)
@@ -275,6 +275,10 @@ class definition: # FUTURE definition(object)
   def get_without_substitution(self, path):
     if (self.name == path): return [self]
     return []
+
+  def substitute_all(self, substitution_scope, path_memory):
+    return substitution_scope.variable_substitution(
+      object=self, path_memory=path_memory)
 
   def automatic_type(self):
     types = {}
@@ -547,6 +551,14 @@ class scope:
           result.extend(object.get_without_substitution(path=path))
     return result
 
+  def substitute_all(self, substitution_scope, path_memory):
+    result = []
+    for object in self.objects:
+      result.append(object.substitute_all(
+        substitution_scope=substitution_scope,
+        path_memory=path_memory))
+    return self.copy(objects=result)
+
   def get(self, path, with_substitution=True, path_memory=None):
     result_raw = self.get_without_substitution(path=path)
     if (not with_substitution):
@@ -560,11 +572,9 @@ class scope:
         path))
     result_sub = []
     for object in result_raw:
-      if (not isinstance(object, definition)):
-        result_sub.append(object)
-      else:
-        result_sub.append(self.variable_substitution(
-          object=object, path_memory=path_memory))
+      result_sub.append(object.substitute_all(
+        substitution_scope=self,
+        path_memory=path_memory))
     del path_memory[path]
     return scope(name="", objects=result_sub)
 
@@ -592,9 +602,9 @@ class scope:
           result.append(object.format(sub_python_object, custom_converters))
     return self.copy(objects=result)
 
-  def _fetch(self, source, variable_substitution_scope=None):
-    if (variable_substitution_scope is None):
-      variable_substitution_scope = source
+  def _fetch(self, source, substitution_scope=None):
+    if (substitution_scope is None):
+      substitution_scope = source
     result_objects = []
     master_lookup_dict = {}
     for master_object in self.objects:
@@ -612,7 +622,7 @@ class scope:
           master_use[source_object.name] = -2
         result_objects.append(master_object.fetch(
          source=source_object,
-         variable_substitution_scope=variable_substitution_scope))
+         substitution_scope=substitution_scope))
     for master_object in self.objects:
       use = master_use[master_object.name]
       if (use == -1):
@@ -625,12 +635,12 @@ class scope:
         result_objects[use].is_disabled = True
     return result_objects
 
-  def fetch(self, source=None, sources=None, variable_substitution_scope=None):
+  def fetch(self, source=None, sources=None, substitution_scope=None):
     assert [source, sources].count(None) == 1
     if (source is not None):
       return self.copy(objects=self._fetch(
         source=source,
-        variable_substitution_scope=variable_substitution_scope))
+        substitution_scope=substitution_scope))
     elif (len(sources) == 0):
       return self
     else:
@@ -638,7 +648,7 @@ class scope:
       for source in sources:
         objects.extend(self._fetch(
           source=source,
-          variable_substitution_scope=variable_substitution_scope))
+          substitution_scope=substitution_scope))
       return self.copy(objects=objects)
 
   def variable_substitution(self, object, path_memory):

@@ -440,6 +440,30 @@ n='$a'
     assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
   else: raise RuntimeError("Exception expected.")
   check_get_sub(parameters, path="n", expected_out="n = '$a'\n")
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+v=x
+w=y
+s {
+  a=$v
+  s {
+    a=$w
+    b=${s.a}
+  }
+}
+""")
+  check_get_sub(parameters, path="s", expected_out="""\
+s
+{
+  a = x
+
+  s
+  {
+    a = y
+    b = x
+  }
+}
+""")
 
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
