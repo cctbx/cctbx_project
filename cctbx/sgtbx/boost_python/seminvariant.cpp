@@ -10,6 +10,10 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 103000
+#include <boost/python/return_by_value.hpp>
+#endif
 #include <cctbx/sgtbx/seminvariant.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
@@ -24,8 +28,15 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+#if BOOST_VERSION >= 103000
+      typedef return_value_policy<return_by_value> rbv;
+#endif
       class_<w_t>("ss_vec_mod", no_init)
+#if BOOST_VERSION >= 103000
+        .add_property("v", make_getter(&w_t::v, rbv()))
+#else
         .def_readonly("v", &w_t::v)
+#endif
         .def_readonly("m", &w_t::m)
       ;
     }

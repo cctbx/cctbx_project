@@ -13,6 +13,10 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 103000
+#include <boost/python/return_by_value.hpp>
+#endif
 #include <scitbx/boost_python/container_conversions.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
@@ -55,8 +59,15 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+#if BOOST_VERSION >= 103000
+      typedef return_value_policy<return_by_value> rbv;
+#endif
       class_<w_t>("peak_list_indexed_value", no_init)
+#if BOOST_VERSION >= 103000
+        .add_property("index", make_getter(&w_t::index, rbv()))
+#else
         .def_readonly("index", &w_t::index)
+#endif
         .def_readonly("value", &w_t::value)
       ;
 
