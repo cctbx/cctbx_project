@@ -242,7 +242,7 @@ namespace coordination_sequences {
     return core<term_table_actions>(pair_asu_table, max_shell).term_table;
   }
 
-  //! Actions for simple counting.
+  //! Actions for the generation of higher-level (nonbonded) interactions.
   struct shell_asu_tables_actions
   {
     //! Called at start of core<term_table_actions>.
