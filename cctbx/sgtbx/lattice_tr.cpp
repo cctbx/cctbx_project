@@ -173,6 +173,7 @@ namespace sgtbx {
   {
     ChOfBasisOp result;
     SgOps PrimitiveSgOps;
+    const int RBF3 = RBF * RBF * RBF;
     std::auto_ptr<std::vector<TrVec> >
     TLT = detail::BuildListTotLTr(m_LTr, RBF);
     int iTLT[3], i;
@@ -183,9 +184,9 @@ namespace sgtbx {
       for (i=0;i<3;i++) Basis[i * 3 + 1] = (*TLT)[iTLT[1]][i];
     for (iTLT[2] = iTLT[1] + 1; iTLT[2] < TLT->size();     iTLT[2]++) {
       for (i=0;i<3;i++) Basis[i * 3 + 2] = (*TLT)[iTLT[2]][i];
-      int det = RotMx(Basis, RBF).det();
-      if (det != 0) {
-        if (det < 0) for(i=0;i<3;i++) Basis[i * 3] *= -1;
+      int f = RotMx(Basis, RBF).det() * nLTr();
+      if (f == RBF3 || -f == RBF3) {
+        if (f < 0) for(i=0;i<3;i++) Basis[i * 3] *= -1;
         try {
           result = ChOfBasisOp(RTMx(RotMx(Basis, RBF), TBF)).swap();
           PrimitiveSgOps = ChangeBasis(result);
@@ -194,7 +195,7 @@ namespace sgtbx {
           continue;
         }
         if (PrimitiveSgOps.nLTr() == 1) {
-          cctbx_assert(result.M().Rpart().det() > 0);
+          cctbx_assert(result.M().Rpart().det() == nLTr() * RBF3);
           return result;
         }
       }
