@@ -105,6 +105,7 @@ namespace iotbx { namespace mtz {
   class hkl_columns;
   class dataset;
   class crystal;
+  class batch;
 
   class object
   {
@@ -354,6 +355,14 @@ namespace iotbx { namespace mtz {
       int
       n_batches() const { return CMtz::MtzNbat(ptr()); }
 
+      inline
+      af::shared<batch>
+      batches() const;
+
+      inline
+      batch
+      add_batch();
+
       int
       n_reflections() const { return ptr()->nref; }
 
@@ -490,7 +499,12 @@ namespace iotbx { namespace mtz {
       static void
       ptr_deleter(CMtz::MTZ* ptr)
       {
-        if (ptr != 0) CCTBX_ASSERT(CMtz::MtzFree(ptr));
+        if (ptr != 0) {
+          if (ptr->batch != 0 && ptr->n_orig_bat == 0) {
+            ptr->n_orig_bat = 1; // force MtzFreeBatch
+          }
+          CCTBX_ASSERT(CMtz::MtzFree(ptr));
+        }
       }
   };
 

@@ -7,6 +7,7 @@ namespace iotbx { namespace mtz { namespace boost_python {
   void wrap_crystal();
   void wrap_dataset();
   void wrap_column();
+  void wrap_batch();
 
 namespace {
 
@@ -17,6 +18,7 @@ namespace {
     wrap_crystal();
     wrap_dataset();
     wrap_column();
+    wrap_batch();
   }
 
 }}}} // namespace iotbx::mtz::boost_python::<anonymous>

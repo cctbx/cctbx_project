@@ -181,6 +181,8 @@ class _object(boost.python.injector, ext.object):
     self.space_group_info().show_summary(
       f=out, prefix="Space group from matrices: ")
     print >> out, "Point group symbol from file:", self.point_group_name()
+    if (self.n_batches() > 0):
+      print >> out, "Number of batches:", self.n_batches()
     print >> out, "Number of crystals:", self.n_crystals()
     print >> out, "Number of Miller indices:", self.n_reflections()
     if (self.n_crystals() > 0 and self.n_reflections() > 0):
@@ -609,3 +611,60 @@ class _dataset(boost.python.injector, ext.dataset):
                 data=data.slice(i))
         else:
           raise RuntimeError("Fatal programming error.")
+
+class _batch(boost.python.injector, ext.batch):
+
+  def show(self, out=None):
+    if (out is None): out = sys.stdout
+    print >> out, "batch number:", self.num()
+    print >> out, "batch title:", self.title().rstrip()
+    print >> out, "names of the three axes:", list(self.gonlab())
+    print >> out, "type of orientation block:", self.iortyp()
+    print >> out, "refinement flags for cell:", list(self.lbcell())
+    print >> out, "number of phixyz used (0, 1, or 2):", self.misflg()
+    print >> out, "reciprocal axis closest to rotation axis:", self.jumpax()
+    print >> out, "crystal number:", self.ncryst()
+    print >> out, "mosaicity model: 0 = isotropic, 1 = anisotropic:", \
+      self.lcrflg()
+    print >> out, "type of data: 2D (1), 3D (2), or Laue (3):", self.ldtype()
+    print >> out, "goniostat scan axis number:", self.jsaxs()
+    print >> out, "number of batch scales & Bfactors (0 if unset):", \
+      self.nbscal()
+    print >> out, "number of goniostat axes:", self.ngonax()
+    print >> out, "flag for type of beam info:", self.lbmflg()
+    print >> out, "  0: for alambd, delamb; 1: also delcor, divhd, divvd"
+    print >> out, "number of detectors (current maximum 2):", self.ndet()
+    print >> out, "dataset id:", self.nbsetid()
+    print >> out, "cell dimensions:", list(self.cell())
+    print >> out, "orientation matrix U:", list(self.umat())
+    print >> out, "  in Fortranic order, i.e. U(1,1), U(2,1) ..."
+    print >> out, "missetting angles at beginning and end of oscillation:", \
+      list(self.phixyz())
+    print >> out, "mosaicity:", list(self.crydat())
+    print >> out, "datum values of goniostat axes:", list(self.datum())
+    print >> out, "start of phi relative to datum:", self.phistt()
+    print >> out, "end of phi relative to datum:", self.phiend()
+    print >> out, "rotation axis in lab frame:", list(self.scanax())
+    print >> out, "start time:", self.time1()
+    print >> out, "stop time:", self.time2()
+    print >> out, "batch scale:", self.bscale()
+    print >> out, "batch temperature factor:", self.bbfac()
+    print >> out, "sd bscale:", self.sdbscale()
+    print >> out, "sd bbfac:", self.sdbfac()
+    print >> out, "phi range:", self.phirange()
+    print >> out, 'vectors ("Cambridge" laboratory axes) defining' \
+      ' ngonax goniostat axes:'
+    print >> out, "  vector 1:", list(self.e1())
+    print >> out, "  vector 2:", list(self.e2())
+    print >> out, "  vector 3:", list(self.e3())
+    print >> out, "idealised source vector:", list(self.source())
+    print >> out, "source vector:", list(self.so())
+    print >> out, "wavelength (A):", self.alambd()
+    print >> out, "dispersion (deltalambda / lambda):", self.delamb()
+    print >> out, "correlated component:", self.delcor()
+    print >> out, "horizontal beam divergence:", self.divhd()
+    print >> out, "vertical beam divergence:", self.divvd()
+    print >> out, "xtal to detector distance:", list(self.dx())
+    print >> out, "detector tilt angle:", list(self.theta())
+    print >> out, "min & max values of detector coords (pixels):", \
+      list(self.detlm())
