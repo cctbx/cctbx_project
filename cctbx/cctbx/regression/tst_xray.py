@@ -138,8 +138,9 @@ def exercise_from_scatterers_direct(space_group_info,
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_obs_exact = structure.structure_factors(
-    d_min=d_min, anomalous_flag=anomalous_flag, algorithm="direct",
+    d_min=d_min, algorithm="direct",
     cos_sin_table=00000).f_calc()
+  assert f_obs_exact.anomalous_flag() == anomalous_flag
   f_obs_simple = xray.ext.structure_factors_simple(
     f_obs_exact.unit_cell(),
     f_obs_exact.space_group(),

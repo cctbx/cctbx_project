@@ -101,6 +101,7 @@ def exercise_flex_xray_scatterer():
   a.set_occupancies(flex.double((0.1,0.2,0.3)))
   assert approx_equal(a.extract_occupancies(), (0.1,0.2,0.3))
   assert a.count_anisotropic() == 2
+  assert a.count_anomalous() == 1
 
 def run():
   exercise_flex_triple(flex.miller_index, ordered=0001)

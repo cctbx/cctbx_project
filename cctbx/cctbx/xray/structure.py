@@ -137,6 +137,16 @@ class structure(crystal.special_position_settings):
                               quality_factor=None,
                               u_extra=None,
                               b_extra=None):
+    if (anomalous_flag is None):
+      if (self.scatterers().count_anomalous() != 0):
+        anomalous_flag = 0001
+      else:
+        anomalous_flag = 00000
+    elif (not anomalous_flag):
+      if (self.scatterers().count_anomalous() != 0):
+        raise RuntimeError(
+            "xray.structure with anomalous scatterers"
+          + " but miller.array is non-anomalous.")
     miller_set = miller.build_set(self, anomalous_flag, d_min)
     return structure_factors.from_scatterers(
       crystal_symmetry=self,

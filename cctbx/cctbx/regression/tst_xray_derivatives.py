@@ -124,12 +124,13 @@ def exercise(target_functor, parameter_name, space_group_info,
              n_elements=3, d_min=3., shake_sigma=0.25,
              test_hard=0001, verbose=0):
   if (parameter_name != "site" and cartesian_flag == 0001): return
+  if (parameter_name == "fdp" and not anomalous_flag): return
   structure_ideal = random_structure.xray_structure(
     space_group_info,
     elements=("Se",)*n_elements,
     volume_per_atom=100,
     random_f_prime_d_min=d_min,
-    random_f_double_prime=0001,
+    random_f_double_prime=anomalous_flag,
     anisotropic_flag=(parameter_name == "u_star"),
     random_u_iso=0001,
     random_occupancy=0001)
@@ -171,7 +172,8 @@ def exercise(target_functor, parameter_name, space_group_info,
       u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
       occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
       fp=(parameter_name=="fp" or random.choice((0,1))),
-      fdp=(parameter_name=="fdp" or random.choice((0,1)))),
+      fdp=(parameter_name=="fdp"
+           or (anomalous_flag and random.choice((0,1))))),
     n_parameters=0)
   if (parameter_name == "site"):
     d_analytical = sf.d_target_d_site_frac()
