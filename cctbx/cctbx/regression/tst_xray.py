@@ -87,16 +87,16 @@ def exercise_structure():
   aw = xs.atomic_weights()
   assert approx_equal(aw, (28.086, 15.999))
   center_of_mass = xs.center_of_mass(atomic_weights=aw)
-  assert approx_equal(center_of_mass.elems, (1.335228, 1.071897, 2.815899))
+  assert approx_equal(center_of_mass, (1.335228, 1.071897, 2.815899))
   center_of_mass = xs.center_of_mass()
-  assert approx_equal(center_of_mass.elems, (1.335228, 1.071897, 2.815899))
+  assert approx_equal(center_of_mass, (1.335228, 1.071897, 2.815899))
   ys = xs.apply_shift(
-    shift=xs.unit_cell().fractionalize((-center_of_mass).elems),
+    shift=xs.unit_cell().fractionalize([-e for e in center_of_mass]),
     recompute_site_symmetries=True)
-  assert approx_equal(ys.center_of_mass().elems, (0,0,0))
+  assert approx_equal(ys.center_of_mass(), (0,0,0))
   ys = xray.structure(xs)
   assert ys.atomic_weights().size() == 0
-  assert ys.center_of_mass().elems == (0,0,0)
+  assert ys.center_of_mass() == (0,0,0)
   ys = xray.structure(sp, scatterers)
   ys.scatterers()[1].occupancy = 0.5
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
