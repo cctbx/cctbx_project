@@ -436,7 +436,7 @@ class fft_map(crystal.symmetry):
     else:
       cfft = fftpack.complex_to_complex_3d(n_real)
       n_complex = cfft.n()
-    conjugate_flag = 00000 # XXX correct?
+    conjugate_flag = 0001
     map = maptbx.structure_factors.to_map(
       self.space_group(),
       self.anomalous_flag(),
