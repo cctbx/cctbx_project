@@ -4,8 +4,6 @@ set echo
 
 mkdir dist
 cd dist
-mkdir boost
-mkdir ccp4
 cp -r $LIBTBX_DIST .
 mkdir scitbx
 cp -r $SCITBX_DIST/{scitbx,libtbx_config} scitbx
