@@ -1,8 +1,8 @@
-from iotbx.cns import reflection_reader
 from cctbx import miller
 from cctbx import crystal
 from cctbx.development import debug_utils
 from cctbx.development import make_cns_input
+from iotbx.cns import reflection_reader
 import sys, os
 
 def verify(crystal_symmetry, anomalous_flag, reflection_file):
