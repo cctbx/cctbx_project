@@ -243,7 +243,7 @@ namespace cctbx { namespace dmtbx {
             triplet_phase_relation const& tpr = lij->first;
             FloatType e_k = e_values[tpr.ik_];
             FloatType e_hmk = e_values[tpr.ihmk_];
-            sum += e_k * e_hmk;
+            sum += e_k * e_hmk;// * lij->second;
           }
           sum *= e_h;
           result.push_back(sum);
