@@ -1,4 +1,4 @@
-from iotbx.xplor import map_gridding, XplorMap
+from iotbx.xplor import map_gridding, map_reader, map_writer
 from cctbx import uctbx
 from libtbx.test_utils import approx_equal
 import urllib
@@ -24,7 +24,7 @@ def get_test_files():
     'NSFN_C2221.xplor')
 
 def read_xplor(file_name):
-  a = XplorMap().read(file_name=file_name)
+  a = map_reader(file_name=file_name)
   assert a.title == [' REMARKS FILENAME=""',
                      ' REMARKS Phenix Xarray to CNS map format']
   assert a.gridding.n == (24,120,54)
@@ -43,14 +43,14 @@ def read_xplor(file_name):
   return a
 
 def write_xplor(map, file_name):
-  a = XplorMap()
-  a.title = map.title
-  a.gridding = map.gridding
-  a.unit_cell = map.unit_cell
-  a.data = map.data
-  a.avarage = map.average
-  a.standard_deviation = map.standard_deviation
-  a.write(file_name=file_name)
+  map_writer(
+    file_name=file_name,
+    title=map.title,
+    unit_cell=map.unit_cell,
+    gridding=map.gridding,
+    data=map.data,
+    average=map.average,
+    standard_deviation=map.standard_deviation)
 
 def run():
   exercise_map_gridding()
