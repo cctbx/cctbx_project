@@ -14,25 +14,25 @@ class registry:
     self.list = []
     self.missing_for_build = []
 
-  def append(self, key, value):
-    self.dict[key] = value
-    self.list.append(key)
-
   def insert(self, position, key, value):
     self.dict[key] = value
     self.list.insert(position, key)
 
   def merge(self, other):
-    i = 0
-    for key in other.list:
-      if (not key in self.dict):
+    i = len(self.list)
+    other_reverse = other.list[:]
+    other_reverse.reverse()
+    for key in other_reverse:
+      if (key in self.dict):
+        i = self.list.index(key)
+      else:
         self.insert(i, key, other.dict[key])
-        i += 1
-    i = 0
-    for key in other.missing_for_build:
-      if (not key in self.missing_for_build):
+    other_reverse = other.missing_for_build[:]
+    for key in other_reverse:
+      if (key in self.missing_for_build):
+        i = self.missing_for_build.index(key)
+      else:
         self.missing_for_build.insert(i, key)
-        i += 1
 
 class package:
 
@@ -86,39 +86,25 @@ class package:
 
   def _build_dependency_registry(self):
     self.dependency_registry = registry()
-    self._resolve_dependencies(self.dependency_registry)
-
-  def _resolve_dependencies(self, registry):
-    if (self.name in registry.dict):
-      return
-    registry.append(self.name, self)
+    self.dependency_registry.insert(0, self.name, self)
     if (self.config is not None):
       for package_name in self.config.get("packages_required_for_use", []):
-        package(self.dist_root, package_name)._resolve_dependencies(registry)
+        p = package(self.dist_root, package_name)
+        self.dependency_registry.merge(p.dependency_registry)
       for package_name in self.config.get("packages_required_for_build", []):
         p = package(self.dist_root, package_name, must_exist=0)
         if (p.dist_path is None):
-          registry.missing_for_build.append(package_name)
+          self.dependency_registry.missing_for_build.append(package_name)
         else:
-          p._resolve_dependencies(registry)
+          self.dependency_registry.merge(p.dependency_registry)
       for package_name in self.config.get("optional_packages", []):
         try:
-          # look ahead stage 1
           p = package(self.dist_root, package_name)
         except UserError:
           pass
         else:
           if (p.dist_path is not None):
-            registry_copy = copy.deepcopy(registry)
-            try:
-              # look ahead stage 2
-              p._resolve_dependencies(registry_copy)
-            except UserError:
-              pass
-            else:
-              # repeat and keep results
-              p = package(self.dist_root, package_name)
-              p._resolve_dependencies(registry)
+            self.dependency_registry.merge(p.dependency_registry)
 
 def insert_normed_path(path_list, addl_path):
   addl_path = norm(addl_path)
