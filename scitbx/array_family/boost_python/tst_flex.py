@@ -356,6 +356,7 @@ def exercise_select():
       assert list(a) == expected
       assert a.next_permutation() == (expected != [3, 2, 1])
   a = flex.bool((0,1,0,1,1))
+  assert tuple(a.as_int()) == (0,1,0,1,1)
   assert tuple(a.iselection()) == (1,3,4)
   assert tuple(a.iselection(test_value=True)) == (1,3,4)
   assert tuple(a.iselection(test_value=False)) == (0,2)
