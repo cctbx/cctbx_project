@@ -19,6 +19,10 @@
 
 namespace scitbx {
 
+  // forward declaration
+  template <typename NumType>
+  class sym_mat3;
+
   //! Matrix class (3x3).
   /*! This class represents a 3x3 matrix that can be used to store
       linear transformations.
@@ -62,6 +66,10 @@ namespace scitbx {
       mat3(af::tiny_plain<NumType,3> const& diag)
         : base_type(diag[0],0,0,0,diag[1],0,0,0,diag[2])
       {}
+      //! Construction from symmetric matrix.
+      explicit
+      inline
+      mat3(sym_mat3<NumType> const& m);
       //! Constructor for a rotation matrix.
       /*! @param angle is in radians.
        */
@@ -161,6 +169,36 @@ namespace scitbx {
                + m[2] * (m[3] * m[7] - m[4] * m[6]);
       }
 
+      //! Test for symmetric matrix.
+      /*! Returns false iff the absolute value of the difference between
+          any pair of off-diagonal elements is different from zero.
+       */
+      bool
+      is_symmetric() const
+      {
+        mat3 const& m = *this;
+        return    m[1] == m[3]
+               && m[2] == m[6]
+               && m[5] == m[7];
+      }
+
+      //! Test for symmetric matrix.
+      /*! Returns false iff the absolute value of the difference between
+          any pair of off-diagonal elements is larger than
+          max_abs*relative_tolerance, where max_abs is the maximum of
+          the absolute values of the elements of this matrix.
+       */
+      bool
+      is_symmetric(NumType const& relative_tolerance) const
+      {
+        mat3 const& m = *this;
+        NumType scaled_tolerance = af::max_absolute(m.const_ref())
+                                 * relative_tolerance;
+        return    fn::approx_equal_scaled(m[1], m[3], scaled_tolerance)
+               && fn::approx_equal_scaled(m[2], m[6], scaled_tolerance)
+               && fn::approx_equal_scaled(m[5], m[7], scaled_tolerance);
+      }
+
       //! Return the transposed of the co-factor matrix.
       /*! The inverse matrix is obtained by dividing the result
           by the determinant().
@@ -248,10 +286,10 @@ namespace scitbx {
     vec3<NumType> x = get_column(0);
     vec3<NumType> y = get_column(1);
     vec3<NumType> z = get_column(2);
-    NumType xl = x.length2();
+    NumType xl = x.length_sq();
     y = y - ((x * y) / xl) * x;
     z = z - ((x * z) / xl) * x;
-    NumType yl = y.length2();
+    NumType yl = y.length_sq();
     z = z - ((y * z) / yl) * y;
     return mat3(x[0], y[0], z[0],
                 x[1], y[1], z[1],

@@ -13,6 +13,7 @@
 #define SCITBX_ARRAY_FAMILY_REDUCTIONS_H
 
 #include <scitbx/array_family/ref.h>
+#include <scitbx/array_family/misc_functions.h>
 
 namespace scitbx { namespace af {
 
@@ -110,6 +111,21 @@ namespace scitbx { namespace af {
       result = a[0];
       for(std::size_t i=1;i<a.size();i++) {
         if (result > a[i]) result = a[i];
+      }
+    }
+    return result;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  ElementType
+  max_absolute(const_ref<ElementType, AccessorType> const& a)
+  {
+    ElementType result;
+    if (a.size() > 0) {
+      result = fn::absolute(a[0]);
+      for(std::size_t i=1;i<a.size();i++) {
+        ElementType aai = fn::absolute(a[i]);
+        if (result < aai) result = aai;
       }
     }
     return result;

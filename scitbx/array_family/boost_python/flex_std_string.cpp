@@ -14,7 +14,7 @@ namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_std_string()
   {
-    flex_wrapper<std::string>::ordered("std_string")
+    flex_wrapper<std::string>::ordered("std_string", boost::python::scope())
       .def_pickle(flex_pickle_double_buffered<std::string>());
   }
 

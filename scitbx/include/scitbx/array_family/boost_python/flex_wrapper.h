@@ -22,6 +22,7 @@
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/scope.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -671,18 +672,23 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    ordered(std::string const& python_name)
+    ordered(std::string const& python_name,
+            boost::python::object const& flex_root_scope)
     {
       using namespace  boost::python;
-      def("order", order_a_a);
-      def("order", order_a_s);
+      {
+        scope local_scope(flex_root_scope);
+        def("order", order_a_a);
+        def("order", order_a_s);
+      }
       return plain(python_name);
     }
 
     static class_f_t
-    logical(std::string const& python_name)
+    logical(std::string const& python_name,
+            boost::python::object const& flex_root_scope)
     {
-      return ordered(python_name)
+      return ordered(python_name, flex_root_scope)
         .def("__invert__", invert_a)
         .def("__and__", and_a_a)
         .def("__or__", or_a_a)
@@ -695,12 +701,16 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    numeric_common(std::string const& python_name)
+    numeric_common(std::string const& python_name,
+                   boost::python::object const& flex_root_scope)
     {
       using namespace  boost::python;
-      def("sum", sum_a);
-      def("sum_sq", sum_sq_a);
-      def("product", product_a);
+      {
+        scope local_scope(flex_root_scope);
+        def("sum", sum_a);
+        def("sum_sq", sum_sq_a);
+        def("product", product_a);
+      }
       return plain(python_name)
         .def("__neg__", neg_a)
         .def("__add__", add_a_a)
@@ -723,18 +733,22 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    numeric_no_pow(std::string const& python_name)
+    numeric_no_pow(std::string const& python_name,
+                   boost::python::object const& flex_root_scope)
     {
       using namespace  boost::python;
-      def("order", order_a_a);
-      def("order", order_a_s);
-      def("abs", abs_a);
-      def("pow2", pow2_a);
-      def("min_index", min_index_a);
-      def("max_index", max_index_a);
-      def("min", min_a);
-      def("max", max_a);
-      return numeric_common(python_name)
+      {
+        scope local_scope(flex_root_scope);
+        def("order", order_a_a);
+        def("order", order_a_s);
+        def("abs", abs_a);
+        def("pow2", pow2_a);
+        def("min_index", min_index_a);
+        def("max_index", max_index_a);
+        def("min", min_a);
+        def("max", max_a);
+      }
+      return numeric_common(python_name, flex_root_scope)
         .def("as_double", as_double)
         .def("__lt__", lt_a_a)
         .def("__gt__", gt_a_a)
@@ -748,40 +762,45 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    numeric(std::string const& python_name)
+    numeric(std::string const& python_name,
+            boost::python::object const& flex_root_scope)
     {
       using namespace  boost::python;
-      def("pow", pow_a_s);
-      def("fmod", fmod_a_s);
-      def("atan2", atan2_a_a);
-      def("acos", acos_a);
-      def("cos", cos_a);
-      def("tan", tan_a);
-      def("asin", asin_a);
-      def("cosh", cosh_a);
-      def("tanh", tanh_a);
-      def("atan", atan_a);
-      def("exp", exp_a);
-      def("sin", sin_a);
-      def("fabs", fabs_a);
-      def("log", log_a);
-      def("sinh", sinh_a);
-      def("ceil", ceil_a);
-      def("floor", floor_a);
-      def("log10", log10_a);
-      def("sqrt", sqrt_a);
-      def("mean", mean_a);
-      def("mean_sq", mean_sq_a);
-      def("mean_weighted", mean_weighted_a_a);
-      def("mean_sq_weighted", mean_sq_weighted_a_a);
-      return numeric_no_pow(python_name);
+      {
+        scope local_scope(flex_root_scope);
+        def("pow", pow_a_s);
+        def("fmod", fmod_a_s);
+        def("atan2", atan2_a_a);
+        def("acos", acos_a);
+        def("cos", cos_a);
+        def("tan", tan_a);
+        def("asin", asin_a);
+        def("cosh", cosh_a);
+        def("tanh", tanh_a);
+        def("atan", atan_a);
+        def("exp", exp_a);
+        def("sin", sin_a);
+        def("fabs", fabs_a);
+        def("log", log_a);
+        def("sinh", sinh_a);
+        def("ceil", ceil_a);
+        def("floor", floor_a);
+        def("log10", log10_a);
+        def("sqrt", sqrt_a);
+        def("mean", mean_a);
+        def("mean_sq", mean_sq_a);
+        def("mean_weighted", mean_weighted_a_a);
+        def("mean_sq_weighted", mean_sq_weighted_a_a);
+      }
+      return numeric_no_pow(python_name, flex_root_scope);
     }
 
     static class_f_t
-    integer(std::string const& python_name)
+    integer(std::string const& python_name,
+            boost::python::object const& flex_root_scope)
     {
       using namespace  boost::python;
-      return numeric_no_pow(python_name)
+      return numeric_no_pow(python_name, flex_root_scope)
         .def("__mod__", mod_a_a)
         .def("__mod__", mod_a_s)
         .def("__imod__", imod_a_s)
@@ -789,18 +808,22 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    complex(std::string const& python_name)
+    complex(std::string const& python_name,
+            boost::python::object const& flex_root_scope)
     {
       using namespace  boost::python;
-      def("real", real_complex);
-      def("imag", imag_complex);
-      def("abs", abs_complex);
-      def("arg", arg_complex_2);
-      def("arg", arg_complex_1);
-      def("norm", norm_complex);
-      def("polar", polar_complex_3);
-      def("polar", polar_complex_2);
-      return numeric_common(python_name);
+      {
+        scope local_scope(flex_root_scope);
+        def("real", real_complex);
+        def("imag", imag_complex);
+        def("abs", abs_complex);
+        def("arg", arg_complex_2);
+        def("arg", arg_complex_1);
+        def("norm", norm_complex);
+        def("polar", polar_complex_3);
+        def("polar", polar_complex_2);
+      }
+      return numeric_common(python_name, flex_root_scope);
     }
   };
 

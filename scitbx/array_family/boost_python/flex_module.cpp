@@ -111,7 +111,7 @@ namespace {
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
 
-BOOST_PYTHON_MODULE_INIT(flex)
+BOOST_PYTHON_MODULE_INIT(flex_scitbx)
 {
   scitbx::af::boost_python::init_module();
 }

@@ -151,6 +151,12 @@ namespace scitbx { namespace af {
         base_class::resize(m_accessor.size_1d(), x);
       }
 
+      template <typename OtherArrayType>
+      versa_plain(array_adaptor<OtherArrayType> const& a_a)
+        : base_class(a_a),
+          m_accessor((a_a.pointee)->size())
+      {}
+
       AccessorType const& accessor() const { return m_accessor; }
 
       bool check_shared_size() const

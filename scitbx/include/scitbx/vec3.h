@@ -60,7 +60,7 @@ namespace scitbx {
       }
 
       //! Return the length squared of the vector.
-      NumType length2() const
+      NumType length_sq() const
       {
         return (*this) * (*this);
       }
@@ -68,7 +68,7 @@ namespace scitbx {
       //! Return the length of the vector.
       NumType length() const
       {
-        return NumType(std::sqrt(length2()));
+        return NumType(std::sqrt(length_sq()));
       }
 
       //! Return normalized vector.

@@ -28,6 +28,7 @@ namespace scitbx {
   {
     public:
       //! General scitbx error message.
+      explicit
       error(std::string const& msg) throw()
       {
         msg_ = prefix() + " Error: " + msg;
@@ -37,10 +38,10 @@ namespace scitbx {
       /*! Used by the macros below.
        */
       error(const char* file, long line, std::string const& msg = "",
-            bool Internal = true) throw()
+            bool internal = true) throw()
       {
         const char *s = "";
-        if (Internal) s = " Internal";
+        if (internal) s = " Internal";
         char buf[64];
         sprintf(buf, "%ld", line);
         msg_ =   prefix() + s + " Error: "
@@ -57,6 +58,7 @@ namespace scitbx {
         return msg_.c_str();
       }
 
+      //! Prefix for error messages.
       virtual std::string prefix() const throw()
       {
         return std::string("scitbx");

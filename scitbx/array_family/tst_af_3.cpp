@@ -39,6 +39,7 @@ namespace {
     check_true(__LINE__, af::min_index(a1) == 0);
     check_true(__LINE__, af::max(a1) == a1[2]);
     check_true(__LINE__, af::min(a1) == a1[0]);
+    check_true(__LINE__, af::max_absolute(a1) == a1[2]);
     check_true(__LINE__, af::sum(a1) == a1[0] + a1[1] + a1[2]);
     check_true(__LINE__, af::product(a1) == a1[0] * a1[1] * a1[2]);
     check_true(__LINE__, af::mean(a1) == (a1[0] + a1[1] + a1[2]) / 3);
@@ -75,6 +76,22 @@ namespace {
         af::small<IntType, 3> a2(af::adapt(t2));
         af::small<FloatType, 3> a3(af::adapt(t3));
         af::small<FloatType, 3> a4(af::adapt(t4));
+        exercise_reductions(a1, a2, a3, a4);
+      }
+      {
+        if (verbose) std::cout << __LINE__ << std::endl;
+        af::shared<IntType> a1(af::adapt(t1));
+        af::shared<IntType> a2(af::adapt(t2));
+        af::shared<FloatType> a3(af::adapt(t3));
+        af::shared<FloatType> a4(af::adapt(t4));
+        exercise_reductions(a1, a2, a3, a4);
+      }
+      {
+        if (verbose) std::cout << __LINE__ << std::endl;
+        af::versa<IntType> a1(af::adapt(t1));
+        af::versa<IntType> a2(af::adapt(t2));
+        af::versa<FloatType> a3(af::adapt(t3));
+        af::versa<FloatType> a4(af::adapt(t4));
         exercise_reductions(a1, a2, a3, a4);
       }
     }

@@ -52,6 +52,46 @@ namespace scitbx {
       sym_mat3(af::tiny_plain<NumType,3> const& diag)
         : base_type(diag[0],diag[1],diag[2],0,0,0)
       {}
+      //! Construction from full 3x3 matrix.
+      /*! The off-diagonal elements of the new sym_mat3 are copied from
+          the upper-right triangle of m.
+          <p>
+          An exception is thrown if the absolute value of the
+          difference between any pair of off-diagonal elements is
+          different from zero.
+          <p>
+          See also: mat3<>::is_symmetric()
+       */
+      explicit
+      sym_mat3(mat3<NumType> const& m)
+        : base_type(m[0],m[4],m[8],m[1],m[2],m[5])
+      {
+        SCITBX_ASSERT(m.is_symmetric());
+      }
+      //! Construction from full 3x3 matrix.
+      /*! The off-diagonal elements of the new sym_mat3 are determined
+          as the averages of the corresponding off-diagonal elements
+          of the input matrix m.
+          <p>
+          If relative_tolerance is greater than or equal to zero, it is
+          used to check the input matrix m. An exception is thrown if
+          the absolute value of the difference between any pair of
+          off-diagonal elements is larger than
+          max_abs*relative_tolerance, where max_abs is the maximum of
+          the absolute values of the elements of m.
+          <p>
+          See also: mat3<>::is_symmetric()
+       */
+      explicit
+      sym_mat3(mat3<NumType> const& m, NumType const& relative_tolerance)
+        : base_type(m[0],m[4],m[8],
+                    (m[1]+m[3])/2,
+                    (m[2]+m[6])/2,
+                    (m[5]+m[7])/2)
+      {
+        SCITBX_ASSERT(relative_tolerance < 0
+          || m.is_symmetric(relative_tolerance));
+      }
 
       //! Access elements with 2-dimensional indices.
       NumType const&
@@ -129,6 +169,15 @@ namespace scitbx {
         return co_factor_matrix_transposed() / d;
       }
   };
+
+  // Constructor for mat3.
+  template <typename NumType>
+  inline
+  mat3<NumType>::mat3(sym_mat3<NumType> const& m)
+  : base_type(m[0], m[3], m[4],
+              m[3], m[1], m[5],
+              m[4], m[5], m[2])
+  {}
 
   //! Test equality.
   template <typename NumType>
