@@ -42,12 +42,17 @@ def run(target_root):
   for sub_dir,visitor in (("lib", copy_lib_and_exe_files),
                           ("exe", copy_lib_and_exe_files),
                           ("python", copy_python_files)):
-    source_dir = libtbx.path.norm_join(libtbx.env.build_path, sub_dir)
+    source_dir = libtbx.env.under_build(sub_dir)
     if (os.path.isdir(source_dir)):
       target_dir = libtbx.path.norm_join(abs_target_root, sub_dir)
       os.chdir(source_dir)
       os.path.walk(".", visitor, target_dir)
-  libtbx.bundle.utils.write_bundle_info(abs_target_root, write_build_options=True)
+  libtbx.bundle.utils.write_bundle_info(
+    abs_target_root, write_build_options=True)
+  file_name = "command_version_suffix"
+  src = libtbx.env.under_build(file_name)
+  if (os.path.isfile(src)):
+    shutil.copy(src, libtbx.path.norm_join(abs_target_root, file_name))
   os.chdir(cwd)
 
 if (__name__ == "__main__"):
