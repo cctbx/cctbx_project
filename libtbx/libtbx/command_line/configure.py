@@ -282,6 +282,27 @@ class build_options_t:
     print "Static exe:", self.static_exe
     print "Scan Boost headers:", self.scan_boost
 
+  def add_to_libtbx_env(self, env):
+    env.build_options_compiler = self.compiler
+    env.build_options_mode = self.mode
+    env.build_options_static_libraries = self.static_libraries
+    env.build_options_static_exe = self.static_exe
+    env.build_options_scan_boost = self.scan_boost
+
+  def get_from_libtbx_env(self, env):
+    if (hasattr(env, "build_options_compiler")):
+      self.compiler = env.build_options_compiler
+    if (hasattr(env, "build_options_mode")):
+      self.mode = env.build_options_mode
+    if (hasattr(env, "build_options_static_libraries")):
+      self.static_libraries = env.build_options_static_libraries
+    if (hasattr(env, "build_options_static_exe")):
+      self.static_exe = env.build_options_static_exe
+    if (hasattr(env, "build_options_scan_boost")):
+      self.scan_boost = env.build_options_scan_boost
+    if (self.static_exe):
+      self.static_libraries = 0001
+
 def emit_SConstruct(env, build_options, packages_dict):
   SConstruct_path = norm(join(env.LIBTBX_BUILD, "SConstruct"))
   f = open_info(SConstruct_path)
@@ -330,6 +351,8 @@ def show_help(old_env):
 def run(libtbx_dist, args, old_env=None):
   env = libtbx_env(os.getcwd(), libtbx_dist)
   build_options = build_options_t()
+  if (old_env is not None):
+    build_options.get_from_libtbx_env(env=old_env)
   remaining_args = []
   option_only = 00000
   for arg in args:
@@ -386,6 +409,7 @@ def run(libtbx_dist, args, old_env=None):
         print " ", package_name
       print "************************************"
     env.check_python_api()
+  build_options.add_to_libtbx_env(env=env)
   env.pickle_dict()
   if (hasattr(os, "symlink")):
     emit_setpaths_sh(env)
