@@ -159,6 +159,7 @@ def exercise_flex_constructors():
   f = flex.double(xrange(10,13))
   assert f.size() == 3
   assert tuple(f) == (10,11,12)
+  assert flex.to_list(f) == [10,11,12]
 
 def exercise_misc():
   f = flex.double((1,2,3))
