@@ -30,7 +30,6 @@ namespace {
         .def("use_normalizer_k2l", &w_t::use_normalizer_k2l)
         .def("use_structure_seminvariants", &w_t::use_structure_seminvariants)
         .def("select_sub_space_group", &w_t::select_sub_space_group)
-        .def("grid_factors", &w_t::grid_factors)
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
       ;

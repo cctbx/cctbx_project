@@ -10,7 +10,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/maptbx/copy.h>
-#include <cctbx/maptbx/gridding.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
@@ -51,14 +50,6 @@ namespace {
         (af::const_ref<double, af::flex_grid<> > const& map,
          af::flex_grid<> const& result_grid))
            maptbx::copy);
-
-    def("determine_grid",
-      (af::int3(*)(uctbx::unit_cell const&,
-                   double,
-                   double,
-                   int,
-                   af::int3 const&))
-        determine_grid);
   }
 
 } // namespace <anonymous>

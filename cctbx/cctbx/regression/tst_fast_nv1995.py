@@ -57,7 +57,7 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=0001,
     have_f_part=(n_elements>=2))
-  gridding = miller_set_f_obs.determine_grid(
+  gridding = miller_set_f_obs.determine_gridding(
     symmetry_flags=symmetry_flags,
     resolution_factor=grid_resolution_factor,
     max_prime=max_prime)
@@ -99,7 +99,7 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
       is_isotropic_search_model=0001,
       have_f_part=(f_calc_fixed_array != None))
     if (structure_fixed.scatterers().size() <= 1):
-      gridding = miller_set_f_obs.determine_grid(
+      gridding = miller_set_f_obs.determine_gridding(
         symmetry_flags=symmetry_flags,
         resolution_factor=grid_resolution_factor,
         max_prime=max_prime)
@@ -169,7 +169,7 @@ def test_molecule(space_group_info, flag_f_part, d_min=3.,
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=00000,
     have_f_part=flag_f_part)
-  gridding = miller_set_f_obs.determine_grid(
+  gridding = miller_set_f_obs.determine_gridding(
     symmetry_flags=symmetry_flags,
     resolution_factor=grid_resolution_factor,
     max_prime=max_prime)
