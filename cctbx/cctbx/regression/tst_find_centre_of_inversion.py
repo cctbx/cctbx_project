@@ -26,7 +26,7 @@ def exercise(space_group_info, n_scatterers=8, verbose=0):
     min_distance=2.,
     general_positions_only=0001)
   t_centre_of_inversion = tuple([random.random() for i in xrange(3)])
-  if (1 or verbose):
+  if (0 or verbose):
     print "t_centre_of_inversion: %.4f %.4f %.4f" % t_centre_of_inversion
   structure.build_scatterers(
     ["Hg"]*n_scatterers,
