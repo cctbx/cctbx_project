@@ -23,15 +23,15 @@ namespace cctbx { namespace af {
 namespace cctbx { namespace af {
 
   template <std::size_t N>
-  struct c_index_1d {
+  struct c_index_1d_calculator {
     template <typename ExtendArrayType, typename IndexType>
     static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
-      return c_index_1d<N-1>::get(e, i) * e[N-1] + i[N-1];
+      return c_index_1d_calculator<N-1>::get(e, i) * e[N-1] + i[N-1];
     }
   };
 
   template<>
-  struct c_index_1d<1> {
+  struct c_index_1d_calculator<1> {
     template <typename ExtendArrayType, typename IndexType>
     static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
       return i[0];
@@ -39,15 +39,16 @@ namespace cctbx { namespace af {
   };
 
   template <std::size_t N>
-  struct fortran_index_1d {
+  struct fortran_index_1d_calculator {
     template <typename ExtendArrayType, typename IndexType>
     static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
-      return fortran_index_1d<N-1>::get(e, i) * e[e.size()-N] + i[e.size()-N];
+      return fortran_index_1d_calculator<N-1>::get(e, i)
+        * e[e.size()-N] + i[e.size()-N];
     }
   };
 
   template<>
-  struct fortran_index_1d<1> {
+  struct fortran_index_1d_calculator<1> {
     template <typename ExtendArrayType, typename IndexType>
     static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
       return i[e.size()-1];
@@ -71,7 +72,7 @@ namespace cctbx { namespace af {
   };
 
   template <std::size_t Nd,
-            typename Index1dType = c_index_1d<Nd>,
+            typename Index1dCalculatorType = c_index_1d_calculator<Nd>,
             typename IndexType = tiny_plain<int, Nd> >
   class grid_accessor : public IndexType
   {
@@ -95,7 +96,7 @@ namespace cctbx { namespace af {
       }
 
       std::size_t operator()(const IndexType& i) const {
-        return Index1dType::get(*this, i);
+        return Index1dCalculatorType::get(*this, i);
       }
 
       bool is_valid_index(const IndexType& i) const {
