@@ -182,13 +182,13 @@ def exercise_bond():
   assert sorted_asu_proxies.asu_mappings().is_locked()
   sorted_asu_proxies.push_back(proxy=sym_proxies[0])
   assert sorted_asu_proxies.simple.size() == 0
-  assert sorted_asu_proxies.sym.size() == 1
+  assert sorted_asu_proxies.asu.size() == 1
   sorted_asu_proxies = restraints.bond_sorted_asu_proxies(
     asu_mappings=asu_mappings)
   assert not sorted_asu_proxies.process(proxy=proxies[0])
   assert not sorted_asu_proxies.process(proxy=sym_proxies[0])
   assert sorted_asu_proxies.simple.size() == 2
-  assert sorted_asu_proxies.sym.size() == 0
+  assert sorted_asu_proxies.asu.size() == 0
   assert sorted_asu_proxies.n_total() == 2
   residual_0 = restraints.bond(
     sites_cart=sites_cart,
@@ -208,10 +208,10 @@ def exercise_bond():
      (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
   sorted_asu_proxies.process(sorted_asu_proxies.simple.deep_copy())
   assert sorted_asu_proxies.simple.size() == 4
-  sorted_asu_proxies.process(sorted_asu_proxies.sym.deep_copy())
-  assert sorted_asu_proxies.sym.size() == 0
-  sorted_asu_proxies.push_back(sorted_asu_proxies.sym.deep_copy())
-  assert sorted_asu_proxies.sym.size() == 0
+  sorted_asu_proxies.process(sorted_asu_proxies.asu.deep_copy())
+  assert sorted_asu_proxies.asu.size() == 0
+  sorted_asu_proxies.push_back(sorted_asu_proxies.asu.deep_copy())
+  assert sorted_asu_proxies.asu.size() == 0
   #
   pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   assert pair_asu_table.table()[0].keys() == []
@@ -390,7 +390,7 @@ def exercise_repulsion():
   assert not sorted_asu_proxies.process(proxy=proxies[0])
   assert not sorted_asu_proxies.process(proxy=sym_proxies[0])
   assert sorted_asu_proxies.simple.size() == 2
-  assert sorted_asu_proxies.sym.size() == 0
+  assert sorted_asu_proxies.asu.size() == 0
   assert sorted_asu_proxies.n_total() == 2
   residual_0 = restraints.repulsion(
     sites_cart=sites_cart,
@@ -409,8 +409,8 @@ def exercise_repulsion():
      (-1290.2817767146657, -1290.2817767146657, -1290.2817767146657)])
   sorted_asu_proxies.process(sorted_asu_proxies.simple.deep_copy())
   assert sorted_asu_proxies.simple.size() == 4
-  sorted_asu_proxies.process(sorted_asu_proxies.sym.deep_copy())
-  assert sorted_asu_proxies.sym.size() == 0
+  sorted_asu_proxies.process(sorted_asu_proxies.asu.deep_copy())
+  assert sorted_asu_proxies.asu.size() == 0
 
 def exercise_angle():
   p = restraints.angle_proxy(

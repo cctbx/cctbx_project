@@ -276,7 +276,7 @@ namespace cctbx { namespace restraints {
   {
     af::shared<double> result = bond_deltas(
       sites_cart, sorted_asu_proxies.simple.const_ref());
-    af::const_ref<bond_asu_proxy> sym = sorted_asu_proxies.sym.const_ref();
+    af::const_ref<bond_asu_proxy> sym = sorted_asu_proxies.asu.const_ref();
     if (sym.size() > 0) {
       result.reserve(sorted_asu_proxies.simple.size() + sym.size());
       direct_space_asu::asu_mappings<> const&
@@ -297,7 +297,7 @@ namespace cctbx { namespace restraints {
   {
     af::shared<double> result = bond_residuals(
       sites_cart, sorted_asu_proxies.simple.const_ref());
-    af::const_ref<bond_asu_proxy> sym = sorted_asu_proxies.sym.const_ref();
+    af::const_ref<bond_asu_proxy> sym = sorted_asu_proxies.asu.const_ref();
     if (sym.size() > 0) {
       result.reserve(sorted_asu_proxies.simple.size() + sym.size());
       direct_space_asu::asu_mappings<> const&
@@ -368,12 +368,12 @@ namespace cctbx { namespace restraints {
       sites_cart,
       sorted_asu_proxies.simple.const_ref(),
       gradient_array);
-    if (sorted_asu_proxies.sym.size() > 0) {
+    if (sorted_asu_proxies.asu.size() > 0) {
       result += detail::bond_residual_sum(
         sites_cart,
         *sorted_asu_proxies.asu_mappings(),
-        sorted_asu_proxies.sym.const_ref(),
-        sorted_asu_proxies.sym_active_flags,
+        sorted_asu_proxies.asu.const_ref(),
+        sorted_asu_proxies.asu_active_flags,
         gradient_array,
         disable_cache);
     }

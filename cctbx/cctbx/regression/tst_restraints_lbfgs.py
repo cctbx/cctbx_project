@@ -62,7 +62,7 @@ def exercise(verbose=0):
     print >> f, "END"
     f.close()
   sites_cart = sites_cart_manual.deep_copy()
-  assert bond_proxies.sym.size() == 0
+  assert bond_proxies.asu.size() == 0
   bond_params_table = restraints.extract_bond_params(
     n_seq=sites_cart.size(),
     bond_simple_proxies=bond_proxies.simple)
@@ -148,11 +148,11 @@ def exercise(verbose=0):
     print "pair_proxies.bond_proxies.n_total():", \
            pair_proxies.bond_proxies.n_total(),
     print "simple:", pair_proxies.bond_proxies.simple.size(),
-    print "sym:", pair_proxies.bond_proxies.sym.size()
+    print "sym:", pair_proxies.bond_proxies.asu.size()
     print "pair_proxies.repulsion_proxies.n_total():", \
            pair_proxies.repulsion_proxies.n_total(),
     print "simple:", pair_proxies.repulsion_proxies.simple.size(),
-    print "sym:", pair_proxies.repulsion_proxies.sym.size()
+    print "sym:", pair_proxies.repulsion_proxies.asu.size()
     print "pair_proxies.n_nonbonded:", pair_proxies.n_nonbonded
     print "pair_proxies.n_1_4:      ", pair_proxies.n_1_4
     print "min_distance_nonbonded: %.2f" % flex.min(
@@ -171,7 +171,7 @@ def exercise(verbose=0):
         begin=sites_cart[proxy.i_seqs[0]],
         end=sites_cart[proxy.i_seqs[1]]))
   mps = asu_mappings.mappings()
-  for proxy in pair_proxies.repulsion_proxies.sym:
+  for proxy in pair_proxies.repulsion_proxies.asu:
     if (proxy.vdw_distance == default_vdw_distance):
       vdw_1_sticks.append(pml_stick(
         begin=mps[proxy.i_seq][0].mapped_site(),
