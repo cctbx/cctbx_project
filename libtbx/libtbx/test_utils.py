@@ -1,8 +1,9 @@
 from stdlib import math
+import sys
 
 def run_tests(build_dir, dist_dir, tst_list):
   import sys, os, os.path
-  python_exe = "libtbx.python"
+  python_exe = sys.executable
   for tst in tst_list:
     cmd_args = ""
     if (type(tst) == type([])):
@@ -26,6 +27,8 @@ def run_tests(build_dir, dist_dir, tst_list):
       cmd = tst_path
     if ("--valgrind" in sys.argv[1:]):
       cmd = "valgrind " + cmd
+    elif ("--memcheck" in sys.argv[1:]):
+      cmd = "valgrind --tool=memcheck " + cmd
     cmd += cmd_args
     print cmd
     sys.stdout.flush()
