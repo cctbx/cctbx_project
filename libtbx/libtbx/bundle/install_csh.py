@@ -219,11 +219,19 @@ endif
 cat << EOT
 
 ***
-*** To use this installation in a new shell or process run the command:
+*** csh and tcsh users:
+***     To use this installation in a new shell or process run the command:
 ***
-***     source "$LIBTBX_BUILD/setpaths.csh"
+***         source "$LIBTBX_BUILD/setpaths.csh"
 ***
-*** You may want to add this line to your .cshrc file.
+***     You may want to add this line to your .cshrc file.
+***
+*** sh and bash users:
+***     To use this installation in a new shell or process run the command:
+***
+***         . "$LIBTBX_BUILD/setpaths.sh"
+***
+***     You may want to add this line to your .profile or .bashrc file.
 ***
 EOT
 """ % vars()
