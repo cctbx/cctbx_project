@@ -636,6 +636,13 @@ def exercise_flex_vec3_double():
   assert approx_equal(tuple(a), ((1,4,7), (2,5,8), (3,6,9)))
   assert approx_equal(tuple(a.dot(a)), (66,93,126))
   assert approx_equal(tuple(a.dot()), (66,93,126))
+  b = flex.vec3_double(z,x,y)
+  assert approx_equal(a.rms_difference(b), math.sqrt(flex.mean((a-b).dot())))
+  assert approx_equal(a.rms_difference(b), b.rms_difference(a))
+  assert approx_equal(a.rms_difference(a), 0)
+  assert approx_equal(b.rms_difference(b), 0)
+  assert approx_equal(a.rms_length(), math.sqrt(flex.mean(a.dot())))
+  assert approx_equal((a-a).rms_length(), 0)
 
 def exercise_histogram():
   x = flex.double(xrange(20))
