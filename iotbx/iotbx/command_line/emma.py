@@ -136,7 +136,7 @@ def get_emma_model(file_name, crystal_symmetry):
 
 def run(args):
   command_line = (iotbx_option_parser(
-    usage="iotbx.emma [options] reference_coordinates"
+    usage="iotbx.emma [options]"
          +" reference_coordinates other_coordinates",
     description="Example: iotbx.emma model1.pdb model2.sdb")
     .enable_symmetry_comprehensive()
