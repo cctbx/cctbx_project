@@ -1,5 +1,5 @@
 from cctbx import uctbx
-from cctbx import matrix
+from scitbx import matrix
 
 class gruber_parameterization:
 

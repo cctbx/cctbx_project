@@ -4,7 +4,7 @@ from cctbx.uctbx import gruber_1973
 from cctbx.uctbx import gruber_1973_table_1
 from cctbx import uctbx
 from cctbx import sgtbx
-from cctbx import matrix
+from scitbx import matrix
 from scitbx.python_utils.misc import time_log, get_caller_name
 from libtbx.test_utils import approx_equal
 import math

@@ -1,14 +1,5 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Jul: Created from fragments of cctbx/miller.h (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/miller/index_span.h>
-#include <cctbx/math/utils.h>
+#include <scitbx/math/utils.h>
 #include <scitbx/array_family/misc_functions.h>
 
 namespace cctbx { namespace miller {
@@ -23,8 +14,8 @@ namespace cctbx { namespace miller {
     }
     for(std::size_t i=1;i<indices.size();i++) {
       for(std::size_t j=0;j<3;j++) {
-        math::update_min((*this)[j][0], indices[i][j]);
-        math::update_max((*this)[j][1], indices[i][j]);
+        scitbx::math::update_min((*this)[j][0], indices[i][j]);
+        scitbx::math::update_max((*this)[j][1], indices[i][j]);
       }
     }
     for(std::size_t j=0;j<3;j++) (*this)[j][1]++;
@@ -53,7 +44,8 @@ namespace cctbx { namespace miller {
     std::size_t j;
     for(j=0;j<3;j++) {
       result[j] = scitbx::fn::absolute((*this)[j][0]);
-      math::update_max(result[j], scitbx::fn::absolute((*this)[j][1]-1));
+      scitbx::math::update_max(
+        result[j], scitbx::fn::absolute((*this)[j][1]-1));
     }
     for(j=0;j<3;j++) result[j] += 1;
     return result;

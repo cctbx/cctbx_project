@@ -21,7 +21,6 @@ namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_hendrickson_lattman();
   void wrap_flex_miller_index(boost::python::object const& flex_root_scope);
-  void wrap_flex_vec3_double();
   void wrap_flex_sym_mat3_double();
   void wrap_flex_tiny_size_t_2();
   void wrap_flex_xray_scatterer();
@@ -70,7 +69,6 @@ namespace {
 
     wrap_flex_hendrickson_lattman();
     wrap_flex_miller_index(flex_root_scope);
-    wrap_flex_vec3_double();
     wrap_flex_sym_mat3_double();
     wrap_flex_tiny_size_t_2();
     wrap_flex_xray_scatterer();

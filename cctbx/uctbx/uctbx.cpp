@@ -258,7 +258,7 @@ namespace cctbx { namespace uctbx {
       for (corner[2] = 0; corner[2] <= 1; corner[2]++) {
         fractional<> xf;
         for(std::size_t i=0;i<3;i++) xf[i] = corner[i];
-        math::update_max(longest_vector_sq_, length_sq(xf));
+        scitbx::math::update_max(longest_vector_sq_, length_sq(xf));
       }
     }
     return longest_vector_sq_;

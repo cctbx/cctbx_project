@@ -106,7 +106,7 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
         }
       }
       CCTBX_ASSERT(min_delta != -1);
-      math::update_max(result, min_delta);
+      scitbx::math::update_max(result, min_delta);
     }
     return result/scitbx::constants::pi_180;
   }

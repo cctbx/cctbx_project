@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Nov: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 
@@ -16,6 +7,7 @@
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
+#include <scitbx/vec3.h>
 #include <complex>
 
 #if defined(__sgi) && !defined(__GNUC__)
@@ -71,6 +63,7 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_fwd<double>();
     flex_fwd<std::complex<double> >();
     flex_fwd<std::string>();
+    flex_fwd<vec3<double> >();
   }
 
 }}} // namespace scitbx::af::boost_python

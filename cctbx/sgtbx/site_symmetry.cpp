@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of sgtbx/coordinates.cpp (rwgk)
- */
-
 #include <cctbx/sgtbx/site_symmetry.h>
 
 namespace cctbx { namespace sgtbx {
@@ -145,7 +136,7 @@ namespace cctbx { namespace sgtbx {
         for (u_num[2] = -t_den; u_num[2] <= t_den; u_num[2] += t_den) {
           fractional<> delta = delta0 + u_shifts.as_double();
           double cart_delta_sq = unit_cell_.length_sq(delta);
-          math::update_max(new_shortest_distance_sq, cart_delta_sq);
+          scitbx::math::update_max(new_shortest_distance_sq, cart_delta_sq);
           if (cart_delta_sq <= min_distance_sym_equiv_sq_) {
             tr_vec stu = st + u_shifts;
             tr_vec intrinsic_part = cum_r * stu;
@@ -165,7 +156,8 @@ namespace cctbx { namespace sgtbx {
     point_group_.reset(close_mates[0].s_);
     for(std::size_t i=1;i<close_mates.size();i++) {
       if (!point_group_.try_expand(close_mates[i].s_)) {
-        math::update_min(shortest_distance_sq_, close_mates[i].cart_delta_sq_);
+        scitbx::math::update_min(
+          shortest_distance_sq_, close_mates[i].cart_delta_sq_);
       }
     }
     CCTBX_ASSERT(space_group_.order_z() % point_group_.matrices().size() == 0);

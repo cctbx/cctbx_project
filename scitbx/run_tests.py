@@ -16,6 +16,7 @@ def run():
   "$D/array_family/boost_python/regression_test.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$B/serialization/tst_base_256",
+  "$D/scitbx/matrix.py",
   "$D/scitbx/python_utils/math_utils.py",
   "$D/math/boost_python/tst_math.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],

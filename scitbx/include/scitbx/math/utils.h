@@ -5,6 +5,24 @@
 
 namespace scitbx { namespace math {
 
+  template <typename NumType1, typename NumType2>
+  inline
+  NumType1&
+  update_min(NumType1& m, NumType2 const& x)
+  {
+    if (m > x) m = x;
+    return m;
+  }
+
+  template <typename NumType1, typename NumType2>
+  inline
+  NumType1&
+  update_max(NumType1& m, NumType2 const& x)
+  {
+    if (m < x) m = x;
+    return m;
+  }
+
   template <typename FloatType,
             typename SignedIntType>
   struct float_int_conversions

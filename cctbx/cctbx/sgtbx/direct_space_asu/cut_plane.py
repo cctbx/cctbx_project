@@ -1,4 +1,4 @@
-from cctbx import matrix
+from scitbx import matrix
 from boost import rational
 import string
 

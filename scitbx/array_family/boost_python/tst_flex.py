@@ -1,6 +1,11 @@
-import math
 from scitbx.array_family import flex
+from scitbx.python_utils import command_line
 from libtbx.test_utils import approx_equal
+import pickle
+import cPickle
+import math
+import time
+import sys, os
 
 def exercise_flex_grid():
   g = flex.grid()
@@ -80,7 +85,6 @@ def exercise_flex_grid():
   assert not g.is_0_based()
   assert g.is_padded()
   assert not g.is_trivial_1d()
-  import pickle
   s = pickle.dumps(g)
   l = pickle.loads(s)
   assert g.origin() == l.origin()
@@ -524,6 +528,19 @@ def exercise_sort():
     assert tuple(p) == (0,2,1)
     assert approx_equal(x.select(p), (3,2,1))
 
+def exercise_flex_vec3_double():
+  flex.exercise_triple(flex.vec3_double, as_double=0001)
+  a = flex.vec3_double(((1,2,5), (-2,3,4), (3,4,3)))
+  assert approx_equal(a.min(), (-2.0,2.0,3.0))
+  assert approx_equal(a.max(), (3.0,4.0,5.0))
+  a += (10,20,30)
+  assert approx_equal(tuple(a), ((11,22,35), (8,23,34), (13,24,33)))
+  assert approx_equal(tuple(a+(20,30,10)), ((31,52,45),(28,53,44),(33,54,43)))
+  assert approx_equal(tuple(a*(-1,1,0,1,0,-1,1,-1,1)),
+    ((46,-24,13),(49,-26,11),(44,-20,9)))
+  assert approx_equal(tuple((-1,1,0,1,0,-1,1,-1,1)*a),
+    ((11,-24,24),(15,-26,19),(11,-20,22)))
+
 def exercise_histogram():
   x = flex.double(xrange(20))
   h = flex.histogram(x)
@@ -725,7 +742,6 @@ def exercise_exceptions():
     raise AssertionError, "No exception or wrong exception."
 
 def exercise_pickle_single_buffered():
-  import pickle
   a = flex.bool((1,0,1))
   p = pickle.dumps(a)
   b = pickle.loads(p)
@@ -745,11 +761,11 @@ def exercise_pickle_single_buffered():
   b = pickle.loads(p)
   assert b.size() == 3
   assert tuple(b) == (1,2,3)
-  #a = flex.float((1,2,3))
-  #p = pickle.dumps(a)
-  #b = pickle.loads(p)
-  #assert b.size() == 3
-  #assert tuple(b) == (1,2,3)
+  a = flex.float((1,2,3))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == (1,2,3)
   a = flex.complex_double((1+2j, 2+3j, 4+5j))
   p = pickle.dumps(a)
   b = pickle.loads(p)
@@ -767,7 +783,6 @@ def exercise_pickle_single_buffered():
   assert a.accessor() == b.accessor()
 
 def exercise_pickle_double_buffered():
-  import pickle
   a = flex.std_string()
   p = pickle.dumps(a)
   b = pickle.loads(p)
@@ -780,15 +795,13 @@ def exercise_pickle_double_buffered():
   assert tuple(b) == (("abc", "bcd", "cde"))
 
 def pickle_large_arrays(max_exp):
-  import os, time
-  import pickle, cPickle
   try:
     for array_type in (
         flex.bool,
         flex.size_t,
         flex.int,
         flex.long,
-        #flex.float,
+        flex.float,
         flex.double,
         flex.complex_double,
         flex.std_string):
@@ -806,8 +819,7 @@ def pickle_large_arrays(max_exp):
             val = -2147483647
         elif (array_type == flex.complex_double):
           val = complex(-1.234567809123456e+20, -1.234567809123456e+20)
-        elif (array_type in (flex.double,)):
-        #elif (array_type in (flex.float, flex.double)):
+        elif (array_type in (flex.float, flex.double)):
           val = -1.234567809123456e+20
         elif (array_type == flex.std_string):
           val = "x" * 10
@@ -858,6 +870,7 @@ def run(iterations):
     exercise_functions()
     exercise_complex_functions()
     exercise_sort()
+    exercise_flex_vec3_double()
     exercise_histogram()
     exercise_linear_regression()
     exercise_linear_correlation()
@@ -870,8 +883,6 @@ def run(iterations):
     i += 1
 
 if (__name__ == "__main__"):
-  import sys
-  from scitbx.python_utils import command_line
   Flags = command_line.parse_options(sys.argv[1:], (
     "large",
   ))

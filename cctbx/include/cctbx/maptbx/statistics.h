@@ -1,20 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: modified copy of cctbx/math/array_utils.h (rwgk)
-     2002 Mar: modified copy of cctbx/maps/utils.h (rwgk)
-     2002 Jan: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_MAPTBX_STATISTICS_H
 #define CCTBX_MAPTBX_STATISTICS_H
 
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/loops.h>
-#include <cctbx/math/utils.h>
+#include <scitbx/math/utils.h>
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 
@@ -48,8 +37,8 @@ namespace cctbx { namespace maptbx {
           std::size_t n = 0;
           for (index_type const& pt = loop(); !loop.over(); loop.incr()) {
             FloatType v = map[zero_based(pt)];
-            math::update_min(min_, v);
-            math::update_max(max_, v);
+            scitbx::math::update_min(min_, v);
+            scitbx::math::update_max(max_, v);
             mean_ += v;
             mean_sq_ += v * v;
             n++;
