@@ -16,6 +16,16 @@ namespace cctbx { namespace uctbx {
       {}
   };
 
+  //! Specific exception to indicate failure of reduction algorithm.
+  class error_degenerated_unit_cell_parameters : public error
+  {
+    public:
+      error_degenerated_unit_cell_parameters()
+      :
+        error("Degenerated unit cell parameters.")
+      {}
+  };
+
   //! Fast minimum-lengths cell reduction.
   /*! Based on the algorithm of Gruber (1973), Acta Cryst. A29, 433-440.
       Tests for equality are removed in order to make the algorithm
@@ -277,7 +287,7 @@ namespace cctbx { namespace uctbx {
         c_ += j*j*b_ - j*d_;
         d_ -= 2*j*b_;
         e_ -= j*f_;
-        CCTBX_ASSERT(0 < c_);
+        if (!(0 < c_)) throw error_degenerated_unit_cell_parameters();
         return true;
       }
 
@@ -291,7 +301,7 @@ namespace cctbx { namespace uctbx {
         c_ += j*j*a_ - j*e_;
         d_ -= j*f_;
         e_ -= 2*j*a_;
-        CCTBX_ASSERT(0 < c_);
+        if (!(0 < c_)) throw error_degenerated_unit_cell_parameters();
         return true;
       }
 
@@ -305,7 +315,7 @@ namespace cctbx { namespace uctbx {
         b_ += j*j*a_ - j*f_;
         d_ -= j*e_;
         f_ -= 2*j*a_;
-        CCTBX_ASSERT(0 < b_);
+        if (!(0 < b_)) throw error_degenerated_unit_cell_parameters();
         return true;
       }
 
@@ -323,7 +333,7 @@ namespace cctbx { namespace uctbx {
         c_ += j*j*fab-j*de;
         d_ -= j*(2*b_+f_);
         e_ -= j*(2*a_+f_);
-        CCTBX_ASSERT(0 < c_);
+        if (!(0 < c_)) throw error_degenerated_unit_cell_parameters();
         return true;
       }
 

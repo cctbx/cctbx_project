@@ -3,6 +3,7 @@ import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
 from scitbx.test_utils import approx_equal
+import sys
 
 def exercise_functions():
   d_star_sq = 1.2345
@@ -165,7 +166,6 @@ def exercise_pickle():
   assert u.parameters() == v.parameters()
 
 def exercise_exceptions():
-  import sys
   if ("--skip" in sys.argv[1:]):
     print "SKIPPING: exercise_exceptions"
     return
@@ -210,6 +210,16 @@ def exercise_fast_minimum_reduction():
     assert str(e) == "cctbx Error: Iteration limit exceeded."
   else:
     raise AssertionError, 'exception expected'
+  try:
+    u = uctbx.unit_cell((2,3,5,70,120,50))
+  except:
+    pass
+  else:
+    try:
+      uctbx.fast_minimum_reduction(u)
+    except RuntimeError, e:
+      if ("--Verbose" in sys.argv[1:]):
+        print e
 
 def run():
   exercise_functions()
