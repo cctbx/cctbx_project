@@ -81,7 +81,7 @@ def forever(n_terms, n=200):
     n_ratios += 1
     print "mean Python: %6.3f" % (sum_py/n_ratios)
     print "mean C++:    %6.3f" % (sum_cpp/n_ratios)
-    print "%d ratio %6.3f" % (n_ratios, sum_py/sum_cpp)
+    print "iteration %d: ratio %6.3f" % (n_ratios, sum_py/sum_cpp)
     print
 
 def end_points(n_terms):
