@@ -3,6 +3,7 @@ from scitbx import test_utils
 
 def run():
   tst_list = (
+  "$D/iotbx/kriber/tst_strudat.py",
   "$D/iotbx/pdb/tst_pdb.py",
   "$D/iotbx/cns/space_group_symbols.py",
   "$D/iotbx/cns/tst_cns.py",
