@@ -91,10 +91,10 @@ class MARImage:
 
       f.seek(offset+696)
       rawdata = f.read(4)
-      start_xtal_to_detector = struct.unpack(format+'i',rawdata)[0]/1000
+      start_xtal_to_detector = struct.unpack(format+'i',rawdata)[0]/1000.
       f.seek(offset+728)
       rawdata = f.read(4)
-      end_xtal_to_detector = struct.unpack(format+'i',rawdata)[0]/1000
+      end_xtal_to_detector = struct.unpack(format+'i',rawdata)[0]/1000.
       assert start_xtal_to_detector == end_xtal_to_detector
       parameters['DISTANCE'] = start_xtal_to_detector
 
@@ -107,24 +107,49 @@ class MARImage:
       f.seek(offset+644)
       rawdata = f.read(8)
       beam_center_x,beam_center_y = struct.unpack(format+'ii',rawdata)
-      parameters['BEAM_CENTER_X'] = beam_center_x/1000*parameters['PIXEL_SIZE']
-      parameters['BEAM_CENTER_Y'] = beam_center_y/1000*parameters['PIXEL_SIZE']
+      parameters['BEAM_CENTER_X'] = beam_center_x/1000.*parameters['PIXEL_SIZE']
+      parameters['BEAM_CENTER_Y'] = beam_center_y/1000.*parameters['PIXEL_SIZE']
 
+      # ----- phi analysis
       f.seek(offset+684)
       rawdata = f.read(4)
-      parameters['OSC_START'] = struct.unpack(format+'i',rawdata)[0]/1000
+      parameters['OSC_START'] = struct.unpack(format+'i',rawdata)[0]/1000.
 
       f.seek(offset+716)
       rawdata = f.read(4)
-      end_phi = struct.unpack(format+'i',rawdata)[0]/1000
-      parameters['OSC_RANGE'] = end_phi - parameters['OSC_START']
+      end_phi = struct.unpack(format+'i',rawdata)[0]/1000.
+
+      #parameters['OSC_RANGE'] = end_phi - parameters['OSC_START']
+      #would have thought this would work; but turns out unreliable because
+      # software doesn't always fill in the end_phi
+
+      # ----- rotation analysis
+      f.seek(offset+736)
+      rawdata = f.read(4)
+      rotation_range = struct.unpack(format+'i',rawdata)[0]/1000.
+      parameters['OSC_RANGE'] = rotation_range
+
+      f.seek(offset+732)
+      rawdata = f.read(4)
+      rotation_axis = struct.unpack(format+'i',rawdata)[0]
+      assert rotation_axis == 4 # if it isn't phi; go back and recode to cover all cases
+            
+      # ----- omega analysis
+      f.seek(offset+672)
+      rawdata = f.read(4)
+      parameters['OMEGA_START'] = struct.unpack(format+'i',rawdata)[0]/1000.
+
+      f.seek(offset+704)
+      rawdata = f.read(4)
+      parameters['OMEGA_END'] = struct.unpack(format+'i',rawdata)[0]/1000.
+      
 
       f.seek(offset+668)
       rawdata = f.read(4)
-      start_twotheta = struct.unpack(format+'i',rawdata)[0]/1000
+      start_twotheta = struct.unpack(format+'i',rawdata)[0]/1000.
       f.seek(offset+700)
       rawdata = f.read(4)
-      end_twotheta = struct.unpack(format+'i',rawdata)[0]/1000
+      end_twotheta = struct.unpack(format+'i',rawdata)[0]/1000.
       assert start_twotheta == end_twotheta
       parameters['TWOTHETA'] = start_twotheta
 
