@@ -58,6 +58,29 @@ namespace cctbx { namespace sgtbx {
         indices_const_ref_ = indices_.const_ref();
       }
 
+      /*! \brief Compute and process site symmetries for an array
+          of original_sites_frac.
+       */
+      /*! See also: constructor of class site_symmetry
+       */
+      void
+      process(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        af::const_ref<scitbx::vec3<double> > const& original_sites_frac,
+        double min_distance_sym_equiv=0.5,
+        bool assert_min_distance_sym_equiv=true)
+      {
+        for(std::size_t i_seq=0;i_seq<original_sites_frac.size();i_seq++) {
+          process(site_symmetry(
+            unit_cell,
+            space_group,
+            original_sites_frac[i_seq],
+            min_distance_sym_equiv,
+            assert_min_distance_sym_equiv));
+        }
+      }
+
       //! Shorthand for: indices()[i_seq] != 0.
       /*! An exception is thrown if i_seq is out of bounds.
        */

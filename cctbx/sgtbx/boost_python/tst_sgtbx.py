@@ -979,6 +979,28 @@ def exercise_site_symmetry():
     for unp,orig in zip(unpickled.matrices(), original.matrices()):
       assert unp == orig
   assert list(l.special_position_indices()) == [0,1,2,3,5]
+  t = sgtbx.site_symmetry_table()
+  t.process(
+    unit_cell=u,
+    space_group=g,
+    original_sites_frac=flex.vec3_double([
+      (0,0,0),
+      (0.25,0.66,0.0),
+      (0,0,0),
+      (0.5,0.5,0.5)]))
+  assert list(t.indices()) == [1,0,1,2]
+  t = sgtbx.site_symmetry_table()
+  t.process(
+    unit_cell=u,
+    space_group=g,
+    original_sites_frac=flex.vec3_double([
+      (0,0,0),
+      (0.25,0.66,0.0),
+      (0,0,0),
+      (0.5,0.5,0.5)]),
+    min_distance_sym_equiv=100,
+    assert_min_distance_sym_equiv=00000)
+  assert list(t.indices()) == [1,2,1,3]
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type

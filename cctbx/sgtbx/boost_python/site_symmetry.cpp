@@ -85,6 +85,9 @@ namespace {
   {
     typedef site_symmetry_table w_t;
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      process_overloads, process, 3, 5)
+
     static void
     wrap()
     {
@@ -97,7 +100,22 @@ namespace {
         .def(init<af::shared<std::size_t> const&,
                   af::shared<site_symmetry_ops> const&,
                   af::shared<std::size_t> const&>()) // for pickle
-        .def("process", &w_t::process, (arg_("site_symmetry_ops")))
+        .def("process",
+          (void(w_t::*)(site_symmetry_ops const&))
+            &w_t::process,
+          (arg_("site_symmetry_ops")))
+        .def("process",
+          (void(w_t::*)(
+            uctbx::unit_cell const&,
+            space_group const&,
+            af::const_ref<scitbx::vec3<double> > const&,
+            double,
+            bool))0, process_overloads((
+          arg_("unit_cell"),
+          arg_("space_group"),
+          arg_("original_sites_frac"),
+          arg_("min_distance_sym_equiv")=0.5,
+          arg_("assert_min_distance_sym_equiv")=true)))
         .def("is_special_position", &w_t::is_special_position, (arg_("i_seq")))
         .def("get", &w_t::get, (arg_("i_seq")), rir())
         .def("n_special_positions", &w_t::n_special_positions)
