@@ -116,11 +116,15 @@ namespace cctbx { namespace xray {
       }
     }
 
-    // ff(hc) =
-    //   a Exp[-hc.b_arg.hc]
+    static const double const_8_pi_pow_3_2
+      = 8 * std::sqrt( scitbx::constants::pi
+                      *scitbx::constants::pi
+                      *scitbx::constants::pi);
+    static const double const_minus_4_pi_sq = -4 * scitbx::constants::pi_sq;
+
+    // ff(hc) = a Exp[-hc.b_arg.hc]
     // rho_anisotropic(rc) =
-    //   a / (2 Sqrt[2] Sqrt[Det[b_arg]]) Exp[-1/4 rc.Inverse[b_arg].rc]
-    // XXX explanation for additional factors?
+    //   8 Pi^(3/2) a / Sqrt[Det[b_arg]] Exp[-4 Pi^2 rc.Inverse[b_arg].rc]
     template <typename FloatType>
     inline
     void
@@ -130,14 +134,11 @@ namespace cctbx { namespace xray {
       FloatType& as,
       scitbx::sym_mat3<FloatType>& bs)
     {
-      using scitbx::constants::pi;
-      using scitbx::constants::pi_sq;
       FloatType d = b_all.determinant();
       CCTBX_ASSERT(d != 0);
       scitbx::sym_mat3<FloatType> cfmt = b_all.co_factor_matrix_transposed();
-      as = a / ((2 * std::sqrt(2.)) * std::sqrt(d))
-         * (16 * std::sqrt(2.) * pi * std::sqrt(pi));
-      bs = cfmt / FloatType(-4 * d) * FloatType(16 * pi_sq);
+      as = const_8_pi_pow_3_2 * a / std::sqrt(d);
+      bs = cfmt / (d / const_minus_4_pi_sq);
     }
 
     template <typename FloatType>
@@ -149,13 +150,10 @@ namespace cctbx { namespace xray {
       FloatType& as,
       FloatType& bs)
     {
-      using scitbx::constants::pi;
-      using scitbx::constants::pi_sq;
       FloatType d = b_all * b_all * b_all;
       CCTBX_ASSERT(d != 0);
-      as = a / ((2 * std::sqrt(2.)) * std::sqrt(d))
-         * (16 * std::sqrt(2.) * pi * std::sqrt(pi));
-      bs = 1 / (-4 * b_all) * FloatType(16 * pi_sq);
+      as = const_8_pi_pow_3_2 * a / std::sqrt(d);
+      bs = 1 / b_all * const_minus_4_pi_sq;
     }
 
     template <typename FloatTypeCaasfB,
