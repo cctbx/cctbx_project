@@ -67,41 +67,41 @@ class reduction(reduction_base):
 
   def a5_action(s):
     if (s.d > 0):
+      s.cb_update((1,0,0,0,1,-1,0,0,1))
       s.c += s.b - s.d
       s.d -= s.b + s.b
       s.e -= s.f
-      s.cb_update((1,0,0,0,1,-1,0,0,1))
     else:
+      s.cb_update((1,0,0,0,1,1,0,0,1))
       s.c += s.b + s.d
       s.d += s.b + s.b
       s.e += s.f
-      s.cb_update((1,0,0,0,1,1,0,0,1))
     assert s.c > 0
 
   def a6_action(s):
     if (s.e > 0):
+      s.cb_update((1,0,-1,0,1,0,0,0,1))
       s.c += s.a - s.e
       s.d -= s.f
       s.e -= s.a + s.a
-      s.cb_update((1,0,-1,0,1,0,0,0,1))
     else:
+      s.cb_update((1,0,1,0,1,0,0,0,1))
       s.c += s.a + s.e
       s.d += s.f
       s.e += s.a + s.a
-      s.cb_update((1,0,1,0,1,0,0,0,1))
     assert s.c > 0
 
   def a7_action(s):
     if (s.f > 0):
+      s.cb_update((1,-1,0,0,1,0,0,0,1))
       s.b += s.a - s.f
       s.d -= s.e
       s.f -= s.a + s.a
-      s.cb_update((1,-1,0,0,1,0,0,0,1))
     else:
+      s.cb_update((1,1,0,0,1,0,0,0,1))
       s.b += s.a + s.f
       s.d += s.e
       s.f += s.a + s.a
-      s.cb_update((1,1,0,0,1,0,0,0,1))
     assert s.b > 0
 
   def a8_action(s):

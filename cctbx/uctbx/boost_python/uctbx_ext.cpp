@@ -21,6 +21,9 @@
 #include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace uctbx { namespace boost_python {
+
+  void wrap_fast_minimal_reduction();
+
 namespace {
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -164,6 +167,7 @@ namespace {
     def("d_star_sq_as_d", d_star_sq_as_d);
 
     unit_cell_wrappers::wrap();
+    wrap_fast_minimal_reduction();
   }
 
 } // namespace <anonymous>

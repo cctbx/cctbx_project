@@ -182,6 +182,35 @@ def exercise_exceptions():
   else:
     raise AssertionError, 'exception expected'
 
+def exercise_fast_minimal_reduction():
+  mr = uctbx.fast_minimal_reduction(uctbx.unit_cell((1,1,1,90,90,90)))
+  assert mr.expected_cycle_limit() == 2
+  assert mr.iteration_limit() == 100
+  mr = uctbx.fast_minimal_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 3)
+  assert mr.expected_cycle_limit() == 3
+  assert mr.iteration_limit() == 100
+  mr = uctbx.fast_minimal_reduction(uctbx.unit_cell((1,1,1,90,90,90)), 5, 10)
+  assert mr.expected_cycle_limit() == 5
+  assert mr.iteration_limit() == 10
+  mr = uctbx.fast_minimal_reduction(uctbx.unit_cell((2,3,5,80,90,100)))
+  assert approx_equal(mr.as_gruber_matrix(),(4,9,25,-5.209445,0,-2.083778))
+  assert approx_equal(mr.as_niggli_matrix(),(4,9,25,-5.209445/2,0,-2.083778/2))
+  assert approx_equal(mr.as_sym_mat3(),(4,9,25,-2.083778/2,0,-5.209445/2))
+  assert mr.as_unit_cell().is_similar_to(uctbx.unit_cell((2,3,5,100,90,100)))
+  assert approx_equal(mr.r_inv(), (-1,0,0,0,-1,0,0,0,1))
+  assert mr.n_iterations() == 1
+  assert not mr.had_expected_cycle()
+  assert mr.type() == 2
+  mr = uctbx.fast_minimal_reduction(uctbx.unit_cell((5,3,2,50,120,130)), 2, 8)
+  assert mr.n_iterations() == 8
+  assert not mr.had_expected_cycle()
+  try:
+    uctbx.fast_minimal_reduction(uctbx.unit_cell((5,3,2,50,120,130)), 2, 7)
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: Iteration limit exceeded."
+  else:
+    raise AssertionError, 'exception expected'
+
 def run():
   exercise_functions()
   exercise_basic()
@@ -190,6 +219,7 @@ def run():
   exercise_miller_index_methods()
   exercise_pickle()
   exercise_exceptions()
+  exercise_fast_minimal_reduction()
   print "OK"
 
 if (__name__ == "__main__"):
