@@ -32,6 +32,36 @@ if (not env_etc.no_boost_python):
     if (line == ":"): break
     if (line):
       bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
+
+  try:  #appropriate for Boost.Python snapshot on 2003-Feb-25
+    jamfile_all =   open(str(jamfile_path), "r").read()
+    jam_rhs = jamfile_all.split("local sources =")[1]
+    jam_middle = jam_rhs.split(";")[0]
+    jamfile_lines = jam_middle.split("\n")
+    jamfile_lines = [line.strip() for line in jamfile_lines]
+    while jamfile_lines.count("")>0:
+      jamfile_lines.remove("")
+    bpl_dll_sources = []
+    for line in jamfile_lines:
+      bpl_dll_sources.append(os.path.join("#boost/libs/python/build/../src", line))
+    assert len(bpl_dll_sources) > 0
+
+  except:  #appropriate for previous Boost release 1.29.0
+    jamfile_lines = [
+      line.strip() for line in open(str(jamfile_path), "r").readlines()]
+    for i in xrange(len(jamfile_lines)):
+      line = jamfile_lines[i]
+      if (line == "dll boost_python"):
+        assert jamfile_lines[i+1] == ":"
+        jamfile_lines = jamfile_lines[i+2:]
+        break
+    bpl_dll_sources = []
+    for i in xrange(len(jamfile_lines)):
+      line = jamfile_lines[i]
+      if (line == ":"): break
+      if (line):
+        bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
+
   assert len(bpl_dll_sources) > 0
 
   if (env_etc.static_bpl):
