@@ -109,7 +109,7 @@ else:
     if (not env_etc.debug_build):
       opts = ["-DNDEBUG", "-O2"]
     else:
-      opts = ["-g"]
+      opts = ["-O0"]
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
@@ -137,7 +137,7 @@ else:
     if (env_etc.release_build):
       opts = ["-DNDEBUG", "-O3"]
     else:
-      opts = ["-g", "-O0", "-fno-inline"]
+      opts = ["-O0", "-fno-inline"]
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -167,7 +167,7 @@ else:
     if (not env_etc.debug_build):
       opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
     else:
-      opts = ["-g"]
+      opts = ["-O0"]
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
@@ -195,7 +195,7 @@ else:
     if (env_etc.release_build):
       opts = ["-DNDEBUG", "-O3"]
     else:
-      opts = ["-g", "-O0", "-fno-inline"]
+      opts = ["-O0", "-fno-inline"]
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-dynamiclib"
