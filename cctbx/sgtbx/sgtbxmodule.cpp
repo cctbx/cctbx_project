@@ -779,6 +779,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroup.def(&SpaceGroup::ParseHallSymbol, "ParseHallSymbol");
     py_SpaceGroup.def(&SpaceGroup::ChangeBasis, "ChangeBasis");
     py_SpaceGroup.def(&SpaceGroup::expandSMx, "expandSMx");
+    py_SpaceGroup.def(&SpaceGroup::expandConventionalCentringType,
+                                  "expandConventionalCentringType");
     py_SpaceGroup.def(&SpaceGroup::RBF, "RBF");
     py_SpaceGroup.def(&SpaceGroup::TBF, "TBF");
     py_SpaceGroup.def(&SpaceGroup::nLTr, "nLTr");
