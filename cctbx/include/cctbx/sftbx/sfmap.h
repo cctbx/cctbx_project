@@ -513,7 +513,7 @@ namespace cctbx { namespace sftbx {
     bool friedel_flag,
     bool conjugate)
   {
-    // XXX assert that complex_map is big enough
+    cctbx_assert(complex_map.size() >= af::product(n_complex.const_ref()));
     sgtbx::ReciprocalSpaceASU asu(sginfo);
     const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
     af::shared<Miller::Index> miller_indices;
@@ -542,13 +542,10 @@ namespace cctbx { namespace sftbx {
         if (!friedel_flag) {
           cctbx_assert(loop_i[2] != n_complex[2]/2);
         }
-        // XXX asu_sign = asu.sign(h);
-        int asu_sign = 0;
-        if      (asu.isInASU( h)) asu_sign =  1;
-        else if (asu.isInASU(mh)) asu_sign = -1;
+        int asu_sign = asu.asu_sign(h, mh);
         if (asu_sign == 0) continue;
-        // XXX combined isSysAbsent, isCentric
-        if (sgops.isSysAbsent(h)) continue;
+        sgtbx::sys_absent_test sa_test(sgops, h);
+        if (sa_test.is_sys_absent()) continue;
         bool f_conj = false;
         if (friedel_flag) {
           if (asu_sign > 0) {
@@ -562,7 +559,7 @@ namespace cctbx { namespace sftbx {
           }
         }
         else {
-          if (((asu_sign < 0) != conjugate) && sgops.isCentric(h)) continue;
+          if (((asu_sign < 0) != conjugate) && sa_test.is_centric()) continue;
           if (conjugate) miller_indices.push_back(mh);
           else           miller_indices.push_back(h);
         }

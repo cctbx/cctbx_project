@@ -16,49 +16,50 @@
 
 namespace cctbx { namespace sgtbx {
 
-  bool SpaceGroup::isSysAbsent(const Miller::Index& H) const
+  sys_absent_test::sys_absent_test(
+    const SpaceGroup& sgops, const Miller::Index& h)
+    : ht_restriction_(-1)
   {
     // systematically absent reflection: if HR == H and HT != 0 mod 1
     // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
-
-    int HT_Restriction = -1; // no restriction
-
-    int iSMx;
-    for(iSMx=0;iSMx<m_nSMx;iSMx++)
-    {
-      const RotMx& R = m_SMx[iSMx].Rpart();
-      const TrVec& T = m_SMx[iSMx].Tpart();
+    for(int iSMx=0;iSMx<sgops.nSMx();iSMx++) {
+      const RotMx& R = sgops[iSMx].Rpart();
+      const TrVec& T = sgops[iSMx].Tpart();
       TrVec TS(0);
       TrVec TR(0);
-      Miller::Index HR = H * R;
-      if      (H == HR) {
+      Miller::Index HR = h * R;
+      if      (h == HR) {
         TS = T;
-        if (isCentric()) TR = m_InvT - T;
+        if (sgops.isCentric()) TR = sgops.InvT() - T;
       }
-      else if (H == HR.FriedelMate()) {
+      else if (h == HR.FriedelMate()) {
         TR = T;
-        if (isCentric()) TS = m_InvT - T;
+        if (sgops.isCentric()) TS = sgops.InvT() - T;
       }
       if (TS.isValid()) {
-        int iLTr;
-        for(iLTr=0;iLTr<nLTr();iLTr++) {
-          if ((H * (TS + m_LTr[iLTr])) % TS.BF() != 0) {
-            return true;
+        for(int iLTr=0;iLTr<sgops.nLTr();iLTr++) {
+          if ((h * (TS + sgops.LTr(iLTr))) % TS.BF() != 0) {
+            ht_restriction_ = -2;
+            return;
           }
         }
       }
       if (TR.isValid()) {
-        int iLTr;
-        for(iLTr=0;iLTr<nLTr();iLTr++) {
-          int HT = HT_mod_1(H, TR + m_LTr[iLTr]);
-          if      (HT_Restriction < 0) HT_Restriction = HT;
-          else if (HT_Restriction != HT) {
-            return true;
+        for(int iLTr=0;iLTr<sgops.nLTr();iLTr++) {
+          int HT = HT_mod_1(h, TR + sgops.LTr(iLTr));
+          if      (ht_restriction_ < 0) ht_restriction_ = HT;
+          else if (ht_restriction_ != HT) {
+            ht_restriction_ = -2;
+            return;
           }
         }
       }
     }
-    return false;
+  }
+
+  bool SpaceGroup::isSysAbsent(const Miller::Index& H) const
+  {
+    return sys_absent_test(*this, H).is_sys_absent();
   }
 
   af::shared<bool>
