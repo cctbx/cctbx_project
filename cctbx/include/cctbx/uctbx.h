@@ -141,6 +141,13 @@ namespace cctbx {
       double
       longest_vector_sq() const;
 
+      //! Length^2 of the shortest lattice translation vector.
+      /*! The fast_minimum_reduction is used to determine the shortest
+          vector.
+       */
+      double
+      shortest_vector_sq() const;
+
       //! Simple test for degenerated unit cell parameters.
       bool
       is_degenerate(double min_min_length_over_max_length=1.e-10,
@@ -497,6 +504,7 @@ namespace cctbx {
       uc_mat3 frac_;
       uc_mat3 orth_;
       mutable double longest_vector_sq_;
+      mutable double shortest_vector_sq_;
 
       // used by reciprocal()
       unit_cell(
