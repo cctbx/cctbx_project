@@ -43,10 +43,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
       scitbx::sym_mat3<f_t> dw_coeff;
       f0_fp_fdp = f0 + c_t(scatterer.fp, scatterer.fdp);
       f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
-      for(std::size_t s=0;s<space_group.n_smx();s++) {
-        miller::index<> hr = h * space_group.smx(s).r();
+      for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
+        sgtbx::rt_mx const& s = space_group.smx(i_smx);
+        miller::index<> hr = h * s.r();
         f_t hrx = hr * scatterer.site;
-        sgtbx::tr_vec t = space_group.smx(s).t();
+        sgtbx::tr_vec t = s.t();
         if (grad_flags_u_aniso) {
           dw_coeff = adptbx::debye_waller_factor_u_star_coefficients(
             hr, scitbx::type_holder<f_t>());
@@ -59,20 +60,17 @@ namespace cctbx { namespace xray { namespace structure_factors {
             hrx = -hrx;
             t = space_group.inv_t() - t;
           }
-          c_t sum_ltr(0,0);
-          for(std::size_t l=0;l<space_group.n_ltr();l++) {
-            f_t ht = f_t(h * (t + space_group.ltr(l))) / space_group.t_den();
-            sum_ltr += cos_sin.get(hrx + ht);
-          }
+          f_t ht = f_t(h * t) / space_group.t_den();
+          c_t term = cos_sin.get(hrx + ht);
           if (grad_flags_site) {
-            c_t f = f0_fp_fdp_w * sum_ltr;
+            c_t f = f0_fp_fdp_w * term;
             f_t c = d_target_d_f_calc.imag() * f.real()
                   - d_target_d_f_calc.real() * f.imag();
             for(std::size_t i=0;i<3;i++) {
               dtds_term[i] += hr[i] * c;
             }
           }
-          sum_inv += sum_ltr;
+          sum_inv += term;
         }
         if (scatterer.anisotropic_flag) {
           f_t dw = adptbx::debye_waller_factor_u_star(hr, scatterer.u_star);
@@ -209,23 +207,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
   };
 
   namespace detail {
-
-    template <typename ElementType>
-    af::shared<ElementType>
-    unscramble(
-      af::const_ref<ElementType> const& data,
-      af::const_ref<std::size_t> const& permutation)
-    {
-      CCTBX_ASSERT(data.size() == permutation.size());
-      af::shared<ElementType> result_mem;
-      if (data.size() > 0) result_mem.resize(data.size(), data[0]);
-      af::ref<ElementType> result = result_mem.ref();
-      for(std::size_t i=0;i<data.size();i++) {
-        CCTBX_ASSERT(permutation[i] < result.size());
-        result[permutation[i]] = data[i];
-      }
-      return result_mem;
-    }
 
     template <typename ElementType,
               typename FactorType>
@@ -380,32 +361,33 @@ namespace cctbx { namespace xray { namespace structure_factors {
         {
           af::shared<std::size_t>
             perm = scattering_dict.scatterer_permutation();
+          f_t n_ltr = static_cast<f_t>(space_group.n_ltr());
           if (grad_flags.site) {
             d_target_d_site_frac_ = detail::unscramble(
               gr_refs.site, perm.const_ref(),
-              static_cast<f_t>(scitbx::constants::two_pi));
+              n_ltr * static_cast<f_t>(scitbx::constants::two_pi));
           }
           if (grad_flags.u_iso) {
             d_target_d_u_iso_ = detail::unscramble(
               gr_refs.u_iso, perm.const_ref(),
-              static_cast<f_t>(-scitbx::constants::two_pi_sq));
+              n_ltr * static_cast<f_t>(-scitbx::constants::two_pi_sq));
           }
           if (grad_flags.u_aniso) {
             d_target_d_u_star_ = detail::unscramble(
               gr_refs.u_star, perm.const_ref(),
-              static_cast<f_t>(-scitbx::constants::two_pi_sq));
+              n_ltr * static_cast<f_t>(-scitbx::constants::two_pi_sq));
           }
           if (grad_flags.occupancy) {
             d_target_d_occupancy_ = detail::unscramble(
-              gr_refs.occupancy, perm.const_ref());
+              gr_refs.occupancy, perm.const_ref(), n_ltr);
           }
           if (grad_flags.fp) {
             d_target_d_fp_ = detail::unscramble(
-              gr_refs.fp, perm.const_ref());
+              gr_refs.fp, perm.const_ref(), n_ltr);
           }
           if (grad_flags.fdp) {
             d_target_d_fdp_ = detail::unscramble(
-              gr_refs.fdp, perm.const_ref());
+              gr_refs.fdp, perm.const_ref(), n_ltr);
           }
         }
         if (n_parameters != 0) {
