@@ -12,6 +12,13 @@ def run(distance_cutoff=3.5, nonbonded_distance_cutoff=5):
       type="string",
       dest="tag",
       help="tag as it appears in the strudat file")
+    .option(None, "--n_trials",
+      action="store",
+      type="int",
+      default=1,
+      dest="n_trials",
+      help="Number of trial per structure",
+      metavar="INT")
   ).process()
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
@@ -28,6 +35,7 @@ def run(distance_cutoff=3.5, nonbonded_distance_cutoff=5):
         si_structure=entry.as_xray_structure(),
         distance_cutoff=distance_cutoff,
         nonbonded_distance_cutoff=nonbonded_distance_cutoff,
+        n_trials=command_line.options.n_trials,
         connectivities=entry.connectivities(all_or_nothing=0001))
 
 if (__name__ == "__main__"):
