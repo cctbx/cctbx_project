@@ -15,7 +15,7 @@
   || (defined(__ICC))
 #  define SCITBX_LBFGSB_RAW_ASSERTION_FLAG 0
 # else
-#  define SCITBX_LBFGSB_RAW_ASSERTION_FLAG 1
+#  define SCITBX_LBFGSB_RAW_ASSERTION_FLAG 0
 # endif
 #endif
 
