@@ -80,6 +80,10 @@ namespace iotbx { namespace mtz {
       float const&
       float_datum(int i) const { return ptr()->ref[i]; }
 
+      //! Write access. Not available from Python.
+      float&
+      float_datum(int i)       { return ptr()->ref[i]; }
+
       //! Test. Not available from Python.
       bool
       is_ccp4_nan(int i) const { return mtz::is_ccp4_nan(float_datum(i)); }
@@ -138,6 +142,17 @@ namespace iotbx { namespace mtz {
           this->elems[0].int_datum(iref),
           this->elems[1].int_datum(iref),
           this->elems[2].int_datum(iref));
+      }
+
+      //! Not available from Python.
+      void
+      replace_miller_index(
+        int iref,
+        cctbx::miller::index<> const& miller_index)
+      {
+        for(int i=0;i<3;i++) {
+          this->elems[i].float_datum(iref)=static_cast<float>(miller_index[i]);
+        }
       }
   };
 

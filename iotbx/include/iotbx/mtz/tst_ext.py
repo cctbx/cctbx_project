@@ -857,6 +857,18 @@ Crystal 2:
       7 SigI 3/4=75.00%  Q: standard deviation
 """
   #
+  original_miller_indices = mtz_object.extract_miller_indices()
+  assert list(original_miller_indices) \
+      == [(1, 2, 3), (2, 3, 4), (3, 4, 5), (2, 3, 5)]
+  new_miller_indices = flex.miller_index(
+    [(3, -1, 2), (-4, 2, -3), (5, -3, 4), (-5, 2, -3)])
+  assert not mtz_object.extract_miller_indices().all_eq(new_miller_indices)
+  mtz_object.replace_miller_indices(miller_indices=new_miller_indices)
+  assert mtz_object.extract_miller_indices().all_eq(new_miller_indices)
+  mtz_object.replace_miller_indices(miller_indices=original_miller_indices)
+  assert not mtz_object.extract_miller_indices().all_eq(new_miller_indices)
+  assert mtz_object.extract_miller_indices().all_eq(original_miller_indices)
+  #
   values_in = count()
   values_out = count()
   for i_batch in xrange(10):
