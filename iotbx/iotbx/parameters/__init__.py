@@ -223,7 +223,10 @@ class definition: # FUTURE definition(object)
         flag = True
       else:
         value = word.value
-        flag = False
+        if (len(source.words) == 1):
+          flag = True
+        else:
+          flag = False
       if (flag and value not in flags):
         raise RuntimeError("Not a possible choice: %s%s" % (
           str(word), word.where_str()))
