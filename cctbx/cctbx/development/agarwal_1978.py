@@ -404,6 +404,26 @@ def occupancy(structure_ideal, d_min):
     print " m0[%d]:" % i_scatterer, gl
     print
 
+class two_p_shifted_u_cart:
+
+  def __init__(self, f_obs, structure, i_scatterer, ij, shift):
+    structure_shifted = structure.deep_copy_scatterers()
+    scatterer = structure_shifted.scatterers()[i_scatterer]
+    u_cart = list(
+      adptbx.u_star_as_u_cart(structure.unit_cell(), scatterer.u_star))
+    u_cart[ij] += shift
+    u_star = adptbx.u_cart_as_u_star(structure.unit_cell(), u_cart)
+    scatterer.u_star = u_star
+    f_calc = f_obs.structure_factors_from_scatterers(
+      xray_structure=structure_shifted).f_calc()
+    f_calc_abs = abs(f_calc)
+    e = f_calc_abs.data() - f_obs.data()
+    two_p = flex.sum(flex.pow2(e))
+    self.structure_shifted = structure_shifted
+    self.f_calc = f_calc
+    self.e = e
+    self.two_p = two_p
+
 class two_p_shifted_u_star:
 
   def __init__(self, f_obs, structure, i_scatterer, ij, shift):
@@ -474,6 +494,12 @@ def u_star(structure_ideal, d_min):
         f_obs, sh.structure_shifted, i_scatterer, ij, -delta)
       j = (pl.e - mi.e) / (2*delta)
       g = flex.sum(j * sh.e)
+      plc = two_p_shifted_u_cart(
+        f_obs, sh.structure_shifted, i_scatterer, ij, delta)
+      mic = two_p_shifted_u_cart(
+        f_obs, sh.structure_shifted, i_scatterer, ij, -delta)
+      jc = (plc.e - mic.e) / (2*delta)
+      gc = flex.sum(jc * sh.e)
       print "  g[%d][%d]: " % (i_scatterer, ij), g
       print "sfd[%d][%d]: " % (i_scatterer, ij), \
             sfd.d_target_d_u_star()[i_scatterer][ij] * sum_f_obs_sq/2
@@ -489,7 +515,8 @@ def u_star(structure_ideal, d_min):
       print "map[%d][%d]:" % (i_scatterer, ij), m
       gl = (map0.grad_u_00, map0.grad_u_11, map0.grad_u_22,
             map0.grad_u_01, map0.grad_u_02, map0.grad_u_12)[ij]()[i_scatterer]
-      print " m0[%d][%d]:" % (i_scatterer, ij), gl
+      print " m0[%d][%d]: " % (i_scatterer, ij), gl
+      print " gc[%d][%d]: " % (i_scatterer, ij), gc
       print
 
 def run(n_elements=3, volume_per_atom=1000, d_min=2):
@@ -504,6 +531,14 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
     random_u_iso=00000,
     u_iso=0.2,
     random_occupancy=00000)
+  if (0):
+    a = structure_ideal.unit_cell().volume()**(1/3.)
+    structure_ideal = xray.structure(
+      special_position_settings=crystal.special_position_settings(
+        crystal_symmetry=crystal.symmetry(
+          unit_cell=(1.3*a,a,0.7*a,90,90,90),
+          space_group_symbol="P 1")),
+      scatterers=structure_ideal.scatterers())
   structure_ideal.show_summary().show_scatterers()
   print
   if (1):
