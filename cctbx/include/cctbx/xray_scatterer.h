@@ -309,8 +309,7 @@ namespace cctbx {
       template <typename MillerIndexArrayType,
                 typename QArrayType,
                 typename DerivativesArrayType,
-                typename FcalcArrayType,
-                typename DerivativesXArrayType>
+                typename FcalcArrayType>
       void
       StructureFactorAndDerivativesArray(
         const cctbx::sgtbx::SpaceGroup& SgOps,
@@ -318,7 +317,7 @@ namespace cctbx {
         const QArrayType& Q,
         const DerivativesArrayType& dTarget_dFcalc,
         FcalcArrayType Fcalc,
-        DerivativesXArrayType dF_dX) const
+        af::tiny<FloatType, 3>& dF_dX) const
       {
         if (m_M == 0) {
           throw cctbx::error( // XXX centralize check
@@ -331,7 +330,7 @@ namespace cctbx {
           sfad = StructureFactorAndDerivatives(
             SgOps, H[i], Q[i], dTarget_dFcalc[i]);
           Fcalc[i] += sfad.F();
-          dF_dX[i] += sfad.dF_dX();
+          dF_dX += sfad.dF_dX();
         }
       }
     private:
@@ -431,9 +430,10 @@ namespace cctbx {
     FcalcArrayType Fcalc,
     DerivativesXArrayType dF_dX)
   {
+    cctbx_assert(Sites.size() == dF_dX.size());
     for (std::size_t i = 0; i < Sites.size(); i++) {
       Sites[i].StructureFactorAndDerivativesArray(
-        SgOps, H, Q, dTarget_dFcalc, Fcalc, dF_dX);
+        SgOps, H, Q, dTarget_dFcalc, Fcalc, dF_dX[i]);
     }
   }
 
@@ -458,7 +458,7 @@ namespace cctbx {
       Q[i] = UC.Q(H[i]);
     }
     StructureFactorAndDerivativesArray(
-      SgOps, H, Q, dTarget_dFcalc, Sites, Fcalc, dF_dX);
+      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, Fcalc, dF_dX);
   }
 
 }} // namespace cctbx::sftbx
