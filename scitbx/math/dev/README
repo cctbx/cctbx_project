@@ -1,0 +1,15 @@
+Date: 2003 Dec 03
+  erf -> http://www.netlib.org/specfun/erf
+  erftst -> http://www.netlib.org/specfun/erftst
+
+To extract the double precision version:
+
+grep -v '^CS' erf | sed 's/^CD/  /' > erf.f
+grep -v '^CS' erftst | sed 's/^CD/  /' > erftst.f
+
+To print commands for Python regression tests insert before
+return statements of erf, erfc and erfcx:
+
+erf.f:      write(6,*) 'erf_verify(erf,', x, ',', result, ')'
+erf.f:      write(6,*) 'erf_verify(erfc,', x, ',', result, ')'
+erf.f:      write(6,*) 'erf_verify(erfcx,', x, ',', result, ')'
