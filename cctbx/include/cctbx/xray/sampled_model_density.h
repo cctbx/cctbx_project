@@ -555,8 +555,11 @@ namespace cctbx { namespace xray {
       }
       else {
         u_cart = adptbx::u_star_as_u_cart(unit_cell_, scatterer->u_star);
-        u_iso = af::max(adptbx::eigenvalues(u_cart));
+        scitbx::vec3<FloatType> ev = adptbx::eigenvalues(u_cart);
+        CCTBX_ASSERT(adptbx::is_positive_definite(ev));
+        u_iso = af::max(ev);
       }
+      CCTBX_ASSERT(u_iso >= 0);
       detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
         scatterer->caasf, scatterer->fp_fdp, scatterer->weight(),
         u_iso, u_extra_);
