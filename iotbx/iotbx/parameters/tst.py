@@ -279,9 +279,98 @@ def exercise_syntax_errors():
   test_exception('a b\nc "abc',
     'Syntax error: missing closing quote (input line 2).')
 
+def check_get(parameters, path, expected_out=None):
+  out = StringIO()
+  parameters.get(path=path).show(out=out)
+  out = out.getvalue()
+  if (expected_out is None or out != expected_out):
+    sys.stdout.write(out)
+  if (expected_out is not None and out != expected_out):
+    raise RuntimeError("out != expected_out")
+
+def exercise_get():
+  parameters = iotbx.parameters.parse(input_string="""
+a b
+c d
+e {
+  a 1
+  b x
+}
+table name {
+  row_1 {
+    a 1
+    b x
+  }
+  row_2 {
+    a 2
+    b y
+  }
+  {
+    a 3
+    b z
+  }
+}
+e g""")
+  check_get(parameters, path="a", expected_out="""\
+a b
+""")
+  check_get(parameters, path="e", expected_out="""\
+e {
+  a 1
+  b x
+}
+
+e g
+""")
+  check_get(parameters, path="e.a", expected_out="""\
+a 1
+""")
+  check_get(parameters, path="e.b", expected_out="""\
+b x
+""")
+  check_get(parameters, path="name", expected_out="""\
+table name
+{
+  row_1 {
+    a 1
+    b x
+  }
+  row_2 {
+    a 2
+    b y
+  }
+  {
+    a 3
+    b z
+  }
+}
+""")
+  check_get(parameters, path="name.1", expected_out="""\
+a 1
+b x
+""")
+  check_get(parameters, path="name.row_1", expected_out="""\
+a 1
+b x
+""")
+  check_get(parameters, path="name.2", expected_out="""\
+a 2
+b y
+""")
+  check_get(parameters, path="name.row_2", expected_out="""\
+a 2
+b y
+""")
+  check_get(parameters, path="name.3", expected_out="""\
+a 3
+b z
+""")
+  check_get(parameters, path="name.row_3", expected_out="")
+
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
+  exercise_get()
   print "OK"
 
 if (__name__ == "__main__"):
