@@ -3,9 +3,6 @@
 
 from cctbx import sgtbx
 from cctbx.web import utils
-import sys
-
-in_table = False
 
 class empty: pass
 
@@ -74,7 +71,7 @@ def rt_mx_analysis(s):
        t_info.origin_shift().as_double())
   print "</tr>"
 
-def show_group_generic(sg_type):
+def show_group_generic(sg_type, status):
   sg = sg_type.group()
   print "Number of lattice translations:", sg.n_ltr()
   if (sg.is_centric()):
@@ -97,12 +94,11 @@ def show_group_generic(sg_type):
   print
   print "List of symmetry operations:"
   print "</pre><table border=2 cellpadding=2>"
-  global in_table
-  in_table = True
+  status.in_table = True
   rt_mx_analysis_header()
   for s in sg: rt_mx_analysis(s)
   print "</table><pre>"
-  in_table = False
+  status.in_table = False
   print
 
 def show_symbols(symbols):
@@ -160,154 +156,145 @@ def expand_shelx_latt(sg, n_fld):
   sg.expand_conventional_centring_type(z)
   print
 
-def run(cctbx_url, inp):
+def run(cctbx_url, inp, status):
   print "Content-type: text/html"
   print
 
   print "<pre>"
   utils.show_input_symbol(inp.sgsymbol, inp.convention)
 
-  global in_table
-  try:
-    symbols_inp = None
-    lookup_symbol = inp.sgsymbol
-    if (lookup_symbol == ""): lookup_symbol = "P 1"
-    if (inp.convention == "Hall"):
-      hall_symbol = lookup_symbol
+  symbols_inp = None
+  lookup_symbol = inp.sgsymbol
+  if (lookup_symbol == ""): lookup_symbol = "P 1"
+  if (inp.convention == "Hall"):
+    hall_symbol = lookup_symbol
+  else:
+    symbols_inp = sgtbx.space_group_symbols(lookup_symbol, inp.convention)
+    hall_symbol = symbols_inp.hall()
+    if (symbols_inp.number() == 0):
+      symbols_inp = None
+      inp.convention = "Hall"
     else:
-      symbols_inp = sgtbx.space_group_symbols(lookup_symbol, inp.convention)
-      hall_symbol = symbols_inp.hall()
-      if (symbols_inp.number() == 0):
-        symbols_inp = None
-        inp.convention = "Hall"
-      else:
-        print "Result of symbol lookup:"
-        show_symbols(symbols_inp)
-        print
-
-    try:
-      ps = sgtbx.parse_string(hall_symbol)
-      sg = sgtbx.space_group(ps)
-    except RuntimeError, e:
-      print "--&gt;" + ps.string() + "&lt;--"
-      print ("-" * (ps.where() + 3)) + "^"
-      raise
-
-    if (len(inp.shelx_latt) != 0):
-      for n_fld in inp.shelx_latt:
-        expand_shelx_latt(sg, n_fld)
-
-    if (len(inp.symxyz) != 0):
-      print "Addition of symmetry operations:"
-      print "</pre><table border=2 cellpadding=2>"
-      in_table = True
-      rt_mx_analysis_header()
-      for s in inp.symxyz:
-        ps = sgtbx.parse_string(s)
-        try:
-          s = sgtbx.rt_mx(ps)
-        except RuntimeError, e:
-          print "</table><pre>"
-          in_table = False
-          print "--&gt;" + ps.string() + "&lt;--"
-          print ("-" * (ps.where() + 3)) + "^"
-          raise
-        rt_mx_analysis(s)
-        sg.expand_smx(s)
-      print "</table><pre>"
-      in_table = False
+      print "Result of symbol lookup:"
+      show_symbols(symbols_inp)
       print
 
-    sg_type = sg.type()
-    show_group_generic(sg_type)
-
-    if (inp.convention == "Hall" or len(inp.symxyz) != 0):
-      symbols_match = sg.match_tabulated_settings()
-      if (symbols_match.number() != 0):
-        if (   symbols_inp == None
-            or    symbols_inp.extended_hermann_mauguin()
-               != symbols_match.extended_hermann_mauguin()):
-          print "Symmetry operations match:"
-          show_symbols(symbols_match)
-          print
-        else:
-          print "Additional symmetry operations are redundant."
-          print
-      else:
-        print "Space group number:", sg_type.number()
-        print "Conventional Hermann-Mauguin symbol:", \
-          sgtbx.space_group_symbols(sg_type.number()) \
-          .extended_hermann_mauguin()
-        print "Hall symbol:", sg_type.hall_symbol()
-        print "Change-of-basis matrix:", sg_type.cb_op().c()
-        print "               Inverse:", sg_type.cb_op().c_inv()
-        print
-
-    wyckoff_table = sgtbx.wyckoff_table(sg_type)
-    print "List of Wyckoff positions:"
-    print "</pre><table border=2 cellpadding=2>"
-    in_table = True
-    print "<tr>"
-    print "<th>Wyckoff letter"
-    print "<th>Multiplicity"
-    print "<th>Site symmetry<br>point group type"
-    print "<th>Representative special position operator"
-    print "</tr>"
-    for i_position in xrange(wyckoff_table.size()):
-      position = wyckoff_table.position(i_position)
-      print "<tr>"
-      print "<td>%s<td>%d<td>%s<td><tt>%s</tt>" % (
-        position.letter(),
-        position.multiplicity(),
-        position.point_group_type(),
-        str(position.special_op()))
-      print "</tr>"
-    print "</table><pre>"
-    in_table = False
-    print
-
-    print "Additional generators of Euclidean normalizer:"
-    ss = sgtbx.structure_seminvariant(sg)
-    ss_vm = ss.vectors_and_moduli()
-    print "  Number of structure-seminvariant vectors and moduli:", len(ss_vm)
-    if (len(ss_vm)):
-      print "    Vector    Modulus"
-      for vm in ss_vm: print "   ", vm.v, vm.m
-    k2l = sg_type.addl_generators_of_euclidean_normalizer(True, False)
-    l2n = sg_type.addl_generators_of_euclidean_normalizer(False, True)
-    if (len(k2l)):
-      print "  Inversion through a centre at:",
-      assert len(k2l) == 1
-      print sgtbx.translation_part_info(k2l[0]).origin_shift().as_double()
-    if (len(l2n)):
-      print "  Further generators:"
-      print "</pre><table border=2 cellpadding=2>"
-      in_table = True
-      rt_mx_analysis_header()
-      for s in l2n: rt_mx_analysis(s)
-      print "</table><pre>"
-      in_table = False
-    print
-
-    print "Grid factors implied by symmetries:"
-    grid_sg = sg.gridding()
-    grid_ss = ss.gridding()
-    eucl_sg = sg_type.expand_addl_generators_of_euclidean_normalizer(True,True)
-    grid_eucl = eucl_sg.refine_gridding(grid_ss)
-    print "  Space group:", grid_sg
-    print "  Structure-seminvariant vectors and moduli:", grid_ss
-    print "  Euclidean normalizer:", grid_eucl
-    print
-    print "  All points of a grid over the unit cell are mapped"
-    print "  exactly onto other grid points only if the factors"
-    print "  shown above are factors of the grid."
-    print
-
+  try:
+    ps = sgtbx.parse_string(hall_symbol)
+    sg = sgtbx.space_group(ps)
   except RuntimeError, e:
-    if (in_table): print "</table><pre>"
-    print e
-  except AssertionError:
-    ei = sys.exc_info()
-    print traceback.format_exception_only(ei[0], ei[1])[0]
+    print "--&gt;" + ps.string() + "&lt;--"
+    print ("-" * (ps.where() + 3)) + "^"
+    raise
+
+  if (len(inp.shelx_latt) != 0):
+    for n_fld in inp.shelx_latt:
+      expand_shelx_latt(sg, n_fld)
+
+  if (len(inp.symxyz) != 0):
+    print "Addition of symmetry operations:"
+    print "</pre><table border=2 cellpadding=2>"
+    status.in_table = True
+    rt_mx_analysis_header()
+    for s in inp.symxyz:
+      ps = sgtbx.parse_string(s)
+      try:
+        s = sgtbx.rt_mx(ps)
+      except RuntimeError, e:
+        print "</table><pre>"
+        status.in_table = False
+        print "--&gt;" + ps.string() + "&lt;--"
+        print ("-" * (ps.where() + 3)) + "^"
+        raise
+      rt_mx_analysis(s)
+      sg.expand_smx(s)
+    print "</table><pre>"
+    status.in_table = False
+    print
+
+  sg_type = sg.type()
+  show_group_generic(sg_type, status)
+
+  if (inp.convention == "Hall" or len(inp.symxyz) != 0):
+    symbols_match = sg.match_tabulated_settings()
+    if (symbols_match.number() != 0):
+      if (   symbols_inp == None
+          or    symbols_inp.extended_hermann_mauguin()
+             != symbols_match.extended_hermann_mauguin()):
+        print "Symmetry operations match:"
+        show_symbols(symbols_match)
+        print
+      else:
+        print "Additional symmetry operations are redundant."
+        print
+    else:
+      print "Space group number:", sg_type.number()
+      print "Conventional Hermann-Mauguin symbol:", \
+        sgtbx.space_group_symbols(sg_type.number()) \
+        .extended_hermann_mauguin()
+      print "Hall symbol:", sg_type.hall_symbol()
+      print "Change-of-basis matrix:", sg_type.cb_op().c()
+      print "               Inverse:", sg_type.cb_op().c_inv()
+      print
+
+  wyckoff_table = sgtbx.wyckoff_table(sg_type)
+  print "List of Wyckoff positions:"
+  print "</pre><table border=2 cellpadding=2>"
+  status.in_table = True
+  print "<tr>"
+  print "<th>Wyckoff letter"
+  print "<th>Multiplicity"
+  print "<th>Site symmetry<br>point group type"
+  print "<th>Representative special position operator"
+  print "</tr>"
+  for i_position in xrange(wyckoff_table.size()):
+    position = wyckoff_table.position(i_position)
+    print "<tr>"
+    print "<td>%s<td>%d<td>%s<td><tt>%s</tt>" % (
+      position.letter(),
+      position.multiplicity(),
+      position.point_group_type(),
+      str(position.special_op()))
+    print "</tr>"
+  print "</table><pre>"
+  status.in_table = False
+  print
+
+  print "Additional generators of Euclidean normalizer:"
+  ss = sgtbx.structure_seminvariant(sg)
+  ss_vm = ss.vectors_and_moduli()
+  print "  Number of structure-seminvariant vectors and moduli:", len(ss_vm)
+  if (len(ss_vm)):
+    print "    Vector    Modulus"
+    for vm in ss_vm: print "   ", vm.v, vm.m
+  k2l = sg_type.addl_generators_of_euclidean_normalizer(True, False)
+  l2n = sg_type.addl_generators_of_euclidean_normalizer(False, True)
+  if (len(k2l)):
+    print "  Inversion through a centre at:",
+    assert len(k2l) == 1
+    print sgtbx.translation_part_info(k2l[0]).origin_shift().as_double()
+  if (len(l2n)):
+    print "  Further generators:"
+    print "</pre><table border=2 cellpadding=2>"
+    status.in_table = True
+    rt_mx_analysis_header()
+    for s in l2n: rt_mx_analysis(s)
+    print "</table><pre>"
+    status.in_table = False
+  print
+
+  print "Grid factors implied by symmetries:"
+  grid_sg = sg.gridding()
+  grid_ss = ss.gridding()
+  eucl_sg = sg_type.expand_addl_generators_of_euclidean_normalizer(True,True)
+  grid_eucl = eucl_sg.refine_gridding(grid_ss)
+  print "  Space group:", grid_sg
+  print "  Structure-seminvariant vectors and moduli:", grid_ss
+  print "  Euclidean normalizer:", grid_eucl
+  print
+  print "  All points of a grid over the unit cell are mapped"
+  print "  exactly onto other grid points only if the factors"
+  print "  shown above are factors of the grid."
+  print
 
   print "</pre>"

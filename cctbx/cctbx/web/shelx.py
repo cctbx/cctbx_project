@@ -1,8 +1,5 @@
 # Generate SHELX LATT and SYMM cards for a given space group.
 
-import sys
-import traceback
-
 from cctbx import sgtbx
 
 class empty: pass
@@ -48,22 +45,16 @@ def LATT_SYMM(space_group):
     l("SYMM %s" % (space_group(i).as_xyz(0, 0, "XYZ", ","),))
   return lines
 
-def run(cctbx_url, inp):
+def run(cctbx_url, inp, status):
   print "Content-type: text/html"
   print
   print "<pre>"
-  try:
-    space_group_info = sgtbx.space_group_info(
-      symbol=inp.sgsymbol,
-      table_id=inp.convention)
-    space_group_info.show_summary()
-    print
-    cards = LATT_SYMM(space_group_info.group())
-    for card in cards:
-      print card
-  except RuntimeError, e:
-    print e
-  except AssertionError:
-    ei = sys.exc_info()
-    print traceback.format_exception_only(ei[0], ei[1])[0]
+  space_group_info = sgtbx.space_group_info(
+    symbol=inp.sgsymbol,
+    table_id=inp.convention)
+  space_group_info.show_summary()
+  print
+  cards = LATT_SYMM(space_group_info.group())
+  for card in cards:
+    print card
   print "</pre>"

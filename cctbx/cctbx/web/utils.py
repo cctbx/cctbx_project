@@ -1,3 +1,6 @@
+import exceptions
+class FormatError(exceptions.Exception): pass
+
 def show_input_symbol(sgsymbol, convention, label="Input"):
   if (sgsymbol != ""):
     print label, "space group symbol:", sgsymbol
@@ -11,6 +14,12 @@ def show_input_symbol(sgsymbol, convention, label="Input"):
     else:
       print "Default"
   print
+
+def interpret_skip_columns(skip_columns):
+  result = int(skip_columns)
+  if (result < 0):
+    raise ValueError, "Negative number for columns to skip."
+  return result
 
 def interpret_coordinate_line(line, skip_columns):
   flds = line.split()
