@@ -33,7 +33,7 @@ class scatterer(ext.scatterer):
     assert u is None or b is None
     if   (b is not None): u = adptbx.b_as_u(b)
     elif (u is None): u = 0
-    if (type(caasf) == type("")):
+    if (isinstance(caasf, str)):
       if (caasf == ""):
         caasf = wk1995(label, 0)
       else:
