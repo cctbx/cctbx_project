@@ -120,7 +120,7 @@ namespace {
       >::w, "w");
     py_XrayScatterer.def(
       &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::DetermineMultiplicity, "DetermineMultiplicity");
+      >::ApplySymmetry, "ApplySymmetry");
     py_XrayScatterer.def(
       &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::StructureFactor, "StructureFactor");
