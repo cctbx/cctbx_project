@@ -13,6 +13,7 @@
 #ifndef CCTBX_SGTBX_CHANGE_BASIS_H
 #define CCTBX_SGTBX_CHANGE_BASIS_H
 
+#include <cctbx/coordinates.h>
 #include <cctbx/sgtbx/matrix.h>
 
 namespace sgtbx {
@@ -123,8 +124,9 @@ namespace sgtbx {
       //! M() * (RotMx(SignI)|T) * InvM()
       TrVec operator()(const TrVec& T, int SignI) const;
       //! Transform fractional coordinates: M() * X
-      inline MatrixLite::dtype::Vec3
-      operator()(const MatrixLite::dtype::Vec3& X) const { return Mx * X; }
+      template <class T>
+      inline fractional<T>
+      operator()(const fractional<T>& X) const { return Mx * X; }
       //! M() = CBOp.M() * M(); InvM() = InvM() * CBOp.InvM();
       inline void update(const ChOfBasisOp& CBOp) {
         Mx = (CBOp.M() * Mx).newBaseFactors(CBOp.M());

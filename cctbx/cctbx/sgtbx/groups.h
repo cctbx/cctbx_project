@@ -71,6 +71,20 @@ namespace sgtbx {
       inline int SgNumber() const { return m_SgNumber; }
       //! Change-of-basis operator.
       inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
+      //! Get the additional generators of the Euclidean normalizer.
+      /*! See International Tables for Crystallography Volume A,
+          1983, Table 15.3.2. The generators are tabulated for
+          reference settings and transformed to the given setting
+          using CBOp().
+          <p>
+          getK2L = true requests the additional generator from
+          column "Inversion through a centre at" of Table 15.3.2.
+          <p>
+          getL2N = true requests the additional generators from
+          column "Further generators" of Table 15.3.2.
+       */
+      std::vector<RTMx>
+      getAddlGeneratorsOfEuclideanNormalizer(bool getK2L, bool getL2N) const;
     private:
       int m_SgNumber;
       ChOfBasisOp m_CBOp;
@@ -329,16 +343,33 @@ namespace sgtbx {
           See also: getEnantiomorphSgOps()
        */
       bool isEnantiomorphic() const;
-      //! Return the enantiomorph symmetry operations.
-      /*! If the given space group belongs to one of the 22
-          enantiomorphic space groups (11 pairs), the enantiomorph symmetry
-          operations are determined by using -x,-y,-z as a
-          change-of-basis matrix. Otherwise the symmetry operations
-          are copied unmodified.
+      //! Determine a change-of-hand matrix.
+      /*! If the space group is centro-symmetric, the change-of-hand
+          matrix is the identity matrix.
           <p>
-          See also: isEnantiomorphic()
+          If the space group belongs to one of the 22 enantiomorphic
+          space group types, the change-of-hand matrix is determined as
+          a centre of inversion that is located at the origin of the
+          reference setting.
+          <p>
+          If the space group is not enantiomorphic and not
+          centro-symmetric, the change-of-hand matrix is determined as
+          a centre of inversion of the Euclidean normalizer.
+          <p>
+          The change-of-hand matrix can be used to transform the
+          symmetry operations to obtain the enantiomorph symmetry
+          operations (use ChangeBasis()), and to transform fractional
+          coordinates. For example:<pre>
+          SgOps sgo = ...;
+          ChOfBasisOp CHOp = sgo.getChangeOfHandOp();
+          SgOps enantiomorph_sgo = sgo.ChangeBasis(CHOp);
+          fractional<double> X = ...;
+          fractional<double> enatiomorph_X = CHOp(X);</pre>
+          <p>
+          See also: isEnantiomorphic(), ChangeBasis(),
+                    SpaceGroupType::getAddlGeneratorsOfEuclideanNormalizer()
        */
-      SgOps getEnantiomorphSgOps() const;
+      ChOfBasisOp getChangeOfHandOp() const;
       //! Test for a centre of inversion.
       inline bool isCentric() const { return m_fInv == 2; }
 
