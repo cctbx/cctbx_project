@@ -284,10 +284,8 @@ def exercise_array_2(space_group_info):
       if (sigmas is not None):
         s = m.array().sigmas().shuffle(p)
         r = m.redundancies().shuffle(p)
-        assert approx_equal(s.select(r==1), sigmas.select(r==1))
-        s = s.select(r!=1)
-        assert flex.min(s) >= 0
-        assert flex.max(s) < 1.e-6
+        sr = s * flex.sqrt(r.as_double())
+        assert approx_equal(sr, sigmas)
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
