@@ -13,7 +13,7 @@ PYEXE=/usr/local/Python-1.5.2/bin/python
 PYINC=-I/usr/local/Python-1.5.2/include/python1.5
 PYLIB=
 
-STDFIXINC=-I/net/cci/xp/C++_C_headers
+STDFIXINC=$(BOOSTINC)/boost/compatibility/cpp_c_headers
 
 CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
 

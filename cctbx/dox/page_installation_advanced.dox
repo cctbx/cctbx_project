@@ -259,6 +259,49 @@ support for your platform.
 
 <hr>
 
+\section working_with_cvs Working with CVS
+
+\par
+An alternative to using the pre-packed boost and %cctbx releases is to
+work with the latested snapshots of the boost and the %cctbx CVS
+development trees at SourceForge. These can be accessed anonymously
+with the following commands:
+
+\verbatim
+mkdir sf
+cd sf
+cvs -z3 -d:pserver:anonymous@cvs.boost.sourceforge.net:/cvsroot/boost co boost
+cvs -z3 -d:pserver:anonymous@cvs.cctbx.sourceforge.net:/cvsroot/cctbx co cctbx
+\endverbatim
+
+It is easy to update the snapshots later:
+
+\verbatim
+cd sf/boost
+cvs -q update -d -P
+cd ../cctbx
+cvs -q update -d -P
+\endverbatim
+
+When a CVS tree is checked out anonymously, changes to the local copy
+cannot be commited back to the SourceForge repository. This is, the
+CVS tree is checked out in read-only mode. However, developers that are
+(1) registered users at SourceForge and (2) registered developers for a
+certain project (e.g. boost or %cctbx) can check out the tree in
+read-write mode and contribute enhancements in a very convenient
+way. See the
+<a href="http://sourceforge.net/docman/display_doc.php?docid=756&group_id=1"
+>SourceForge Frequently Asked Questions (FAQ)</a> for more information.
+
+The \c cvs command is pre-installed on most Linux machines. The CVS
+source code and pre-compiled binaries for various platforms are freely
+available under the GNU General Public License (GPL) at
+http://www.cvshome.org/ .
+A very interesting CVS client for Windows is available at
+http://www.wincvs.org/TortoiseCVS/ .
+
+<hr>
+
 \par
 R.W. Grosse-Kunstleve, April 2001
 

@@ -18,11 +18,11 @@ class write_makefiles:
       print "If the installation fails you might have to modify the file"
       print "cctbx/build/makefile_generator.py"
       print "If there are error messages, study them carefully."
-      print "The installation will proceed in 20 seconds."
+      print "The installation will proceed in 10 seconds."
       print "*" * 78
       sys.stdout = stdout
       import time
-      time.sleep(20)
+      time.sleep(10)
     self.macros = configuration[1:]
     # remove empty lines at beginning
     while (len(strip(self.macros[0])) == 0): del self.macros[0]

@@ -135,37 +135,16 @@ for Tru64 Unix 5.0. This is an excellent compiler
 that is based on a high-quality
 <a href="http://www.edg.com/">EDG</a>
 front-end.
-However, unfortunately the standard "C++ C headers" such as
-<tt>cstdio</tt> or <tt>cstdlib</tt> are missing.
+Unfortunately the standard "C++ C headers" such as
+<tt><cstdio></tt> or <tt><cstdlib></tt> are missing.
+However, a workaround is provided by the
+<a href="http://www.boost.org/libs/compatibility/index.html"
+>Boost.Compatibility library</a>.
 
-\par
-A Python script <tt>generate_c++_c_headers.py</tt> is provided in
-the <tt>%cctbx/build</tt> directory. This script can be used in
-the following way:
-
-\verbatim
-        mkdir C++_C_headers
-        cd C++_C_headers
-        python ../cctbx/build/generate_c++_c_headers.py
-\endverbatim
-
-The last command suggests that the <tt>C++_C_headers</tt> directory is
-created in the same directory where the %cctbx distribution is unpacked.
-This configuration facilitates the use of the
-<tt>fast_track_tru64_cxx</tt> script.
-See \ref installation_fast_track for more details.
-
-\par
-It is possible to install the surrogate C++ C header files in any other
-location. However, in that case the corresponding path name in the
-Boost.Python makefile and the <tt>configuration</tt> file for the
-%cctbx have to be adjusted. See section
-\ref installation_fast_track_adj for more information.
-
-Remark: gcc 2.95.2 has been used to successfully compile the %cctbx
-under Tru64 Unix. Use the Boost.Python <tt>linux_gcc.mak</tt> makefile
-and <tt>%cctbx/build/configuration_linux_gcc</tt> as a starting point.
-It should be sufficient to adjust the pathnames for Python.
+Remark: gcc 2.95.2 cannot be used to compile the %cctbx under Tru64
+Unix. The compiler reports "string too long" errors, apparently because
+of deeply nested templates in the Boost.Rational library. Preliminary
+attempts to install gcc 2.95.3 failed.
 
 <hr>
 
@@ -178,12 +157,11 @@ development of the %cctbx is
 This compiler is based on a high-quality
 <a href="http://www.edg.com/">EDG</a>
 front-end.
-However, unfortunately the standard "C++ C headers" such as
-<tt>cstdio</tt> or <tt>cstdlib</tt> are missing.
-
-\par
-Instructions for installing surrogate C++ C header files
-are given in the previous section (\ref compilers_compaq_tru64).
+Unfortunately the standard "C++ C headers" such as
+<tt><cstdio></tt> or <tt><cstdlib></tt> are missing.
+However, a workaround is provided by the
+<a href="http://www.boost.org/libs/compatibility/index.html"
+>Boost.Compatibility library</a>.
 
 \par
 Remark: Both gcc 2.95.2 and gcc 2.95.3 cannot be used to compile the
