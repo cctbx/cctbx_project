@@ -133,8 +133,11 @@ def exercise_array():
   assert approx_equal(no.data()[0], 3.231974)
   assert approx_equal(no.data()[47], 0.004956642)
   no = ma.normalize_structure_factors()
-  assert approx_equal(no.data()[0], 2.415594)
-  assert approx_equal(no.data()[47], 0.9276751)
+  assert approx_equal(no.data()[0], 1.723818)
+  assert approx_equal(no.data()[47], 0.6992564)
+  no = ma.normalize_structure_factors(quasi=0001)
+  assert approx_equal(no.data()[0], 2.4378468)
+  assert approx_equal(no.data()[47], 0.9888979)
   su = ma + 3
   assert approx_equal(tuple(su.data()), tuple(ma.data() + 3))
   su = ma + ma

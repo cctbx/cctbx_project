@@ -177,7 +177,6 @@ def build_set(crystal_symmetry, anomalous_flag, d_min):
     anomalous_flag)
 
 def _ftor_a_s_sub(lhs, rhs): return lhs - rhs
-def _ftor_a_s_div(lhs, rhs): return lhs / rhs
 
 def _array_info(array):
   if (array == None): return str(None)
@@ -402,7 +401,7 @@ class array(set):
       result = flex.double()
       for i_bin in self.binner().range_used():
         sel = self.binner().selection(i_bin)
-        if (sel.count(1) == 0):
+        if (sel.count(0001) == 0):
           result.append(0)
         else:
           sel_data = self.data().select(sel)
@@ -451,7 +450,7 @@ class array(set):
       result = flex.double()
       for i_bin in self.binner().range_used():
         sel = self.binner().selection(i_bin)
-        if (sel.count(1) == 0):
+        if (sel.count(0001) == 0):
           result.append(0)
         else:
           result.append(statistical_mean(
@@ -467,6 +466,7 @@ class array(set):
       result_data.append(
         ftor(self.data().select(self.binner().selection(i_bin)),
              binned_values[i_bin-1]))
+    assert self.indices().size() == result_data.size()
     return array(self, result_data.shuffle(result_perm))
 
   def remove_patterson_origin_peak(self):
@@ -474,10 +474,28 @@ class array(set):
     result_data = flex.double()
     return self._generic_binner_application(s_mean, _ftor_a_s_sub, result_data)
 
-  def normalize_structure_factors(self):
-    mean = self.mean(use_binning=1, use_multiplicities=1)
-    result_data = flex.double()
-    return self._generic_binner_application(mean, _ftor_a_s_div, result_data)
+  def normalize_structure_factors(self, quasi=00000):
+    assert quasi in (00000, 0001)
+    assert self.binner() != None
+    assert self.data().all_ge(0)
+    f_sq = flex.pow2(self.data())
+    epsilons = self.epsilons().data().as_double()
+    e = flex.double()
+    e_perm = flex.size_t()
+    for i_bin in self.binner().range_used():
+      sel = self.binner().selection(i_bin)
+      sel_f_sq = f_sq.select(sel)
+      if (sel_f_sq.size() > 0):
+        sel_epsilons = epsilons.select(sel)
+        sel_f_sq_over_epsilon = sel_f_sq / sel_epsilons
+        mean_f_sq_over_epsilon = flex.mean(sel_f_sq_over_epsilon)
+        if (quasi):
+          e.append(flex.sqrt(sel_f_sq / mean_f_sq_over_epsilon))
+        else:
+          e.append(flex.sqrt(sel_f_sq_over_epsilon / mean_f_sq_over_epsilon))
+        e_perm.append(self.binner().array_indices(i_bin))
+    assert self.indices().size() == e.size()
+    return array(self, e.shuffle(e_perm))
 
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
