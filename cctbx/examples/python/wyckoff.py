@@ -5,7 +5,7 @@ PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
 import sys
 sys.stderr = sys.stdout
 
-print "Content-type: text/plain"
+print "Content-type: text/html"
 print
 
 import traceback
@@ -19,8 +19,11 @@ import sgtbx
 import uctbx
 
 print "sgtbx version:", sgtbx.__version__
+print "<br>"
 print "uctbx version:", uctbx.__version__
-print
+print "<p>"
+print "<pre>"
+InTable = 0
 
 class Empty: pass
 
@@ -100,11 +103,20 @@ try:
     sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 1, MinMateDistance)
   WyckoffTable = sgtbx.WyckoffTable(SgOps, SgType)
 
-  print inp.coor_type, "coordinates:"
-  print
   skip_columns = string.atoi(inp.skip_columns)
   if (skip_columns < 0):
     raise FormatError, "Negative number for columns to skip."
+
+  print "</pre><table border=2 cellpadding=2>"
+  InTable = 1
+  print "<tr>"
+  if (skip_columns): print "<th>"
+  print "<th colspan=3>" + inp.coor_type + " coordinates"
+  print "<th>Multiplicity"
+  print "<th>Wyckoff letter"
+  print "<th>Site symmetry<br>point group type"
+  print "<th>Special position operator"
+  print "</tr>"
   for line in inp.coordinates:
     skipped, coordinates = InterpretCoordinateLine(line, skip_columns)
     if (inp.coor_type != "Fractional"):
@@ -115,13 +127,23 @@ try:
     WyckoffMapping = WyckoffTable.getWyckoffMapping(SP)
     if (inp.coor_type != "Fractional"):
       SnapPosition = UnitCell.orthogonalize(SnapPosition)
-    print skipped, "%.6g %.6g %.6g" % tuple(SnapPosition),
-    print "(%d %s %s %s)" % (
-       WyckoffMapping.WP().M(), WyckoffMapping.WP().Letter(),
-       SiteSymmetry, SP.SpecialOp())
+    print "<tr>"
+    if (skip_columns): print "<td>", skipped
+    for elem in SnapPosition: print "<td><tt>%.6g</tt>" % (elem,)
+    print "<td align=center>", WyckoffMapping.WP().M()
+    print "<td align=center>", WyckoffMapping.WP().Letter()
+    print "<td align=center>", SiteSymmetry
+    print "<td><tt>" + str(SP.SpecialOp()) + "</tt>"
+    print "</tr>"
+  print "</table><pre>"
+  InTable = 0
 
 except RuntimeError, e:
+  if (InTable): print "</table><pre>"
   print e
 except:
+  if (InTable): print "</table><pre>"
   ei = sys.exc_info()
   print traceback.format_exception_only(ei[0], ei[1])[0]
+
+print "</pre>"

@@ -229,7 +229,6 @@ if (__name__ == "__main__"):
     print e
   except:
     if (InTable): print "</table><pre>"
-    raise
     ei = sys.exc_info()
     print traceback.format_exception_only(ei[0], ei[1])[0]
 
