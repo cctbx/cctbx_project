@@ -132,6 +132,10 @@ def exercise_generate_r_free_flags():
         if (i_trial < 5):
           assert fp.data().count(True) \
                + flags.select_centric().data().count(True) == 15
+        flags_non_anomalous = flags.average_bijvoet_mates()
+        if (i_trial < 5):
+          assert flags_non_anomalous.indices().size() == 145
+          assert flags_non_anomalous.data().count(True) == 15
         flags = flags.select(~flex.bool(
           flags.indices().size(),
           flags.match_bijvoet_mates()[1].pairs_hemisphere_selection("-")))

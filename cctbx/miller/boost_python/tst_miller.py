@@ -419,17 +419,33 @@ def exercise_match_indices():
 def exercise_merge_equivalents():
   i = flex.miller_index(((1,2,3), (1,2,3), (3,0,3), (3,0,3), (3,0,3), (1,1,2)))
   d = flex.double((1,2,3,4,5,6))
+  m = miller.ext.merge_equivalents_real(i, d)
+  assert tuple(m.indices) == ((1,2,3), (3,0,3), (1,1,2))
+  assert approx_equal(m.data, (3/2., 4, 6))
+  assert tuple(m.redundancies) == (2,3,1)
+  #
   s = flex.double((1/3.,1/2.,1/4.,1/6.,1/3.,1/5.))
-  m = miller.ext.merge_equivalents(i, d)
-  assert tuple(m.indices()) == ((1,2,3), (3,0,3), (1,1,2))
-  assert approx_equal(m.data(), (3/2., 4, 6))
-  assert m.sigmas().size() == 0
-  assert tuple(m.redundancies()) == (2,3,1)
-  m = miller.ext.merge_equivalents(i, d, 1./(s*s))
-  assert tuple(m.indices()) == ((1,2,3), (3,0,3), (1,1,2))
-  assert approx_equal(m.data(), (17/13., (16*3+36*4+9*5)/(16+36+9.), 6))
-  assert approx_equal(m.sigmas(), (math.sqrt(1/2.), 0.84077140277, 1/5.))
-  assert tuple(m.redundancies()) == (2,3,1)
+  m = miller.ext.merge_equivalents_obs(i, d, 1./(s*s))
+  assert tuple(m.indices) == ((1,2,3), (3,0,3), (1,1,2))
+  assert approx_equal(m.data, (17/13., (16*3+36*4+9*5)/(16+36+9.), 6))
+  assert approx_equal(m.sigmas, (math.sqrt(1/2.), 0.84077140277, 1/5.))
+  assert tuple(m.redundancies) == (2,3,1)
+  #
+  d = flex.complex_double(
+    [complex(-1.706478,  0.248638),
+     complex( 1.097872, -0.983523),
+     complex( 0.147183,  2.625064),
+     complex(-0.933310,  2.496886),
+     complex( 1.745500, -0.686761),
+     complex(-0.620066,  2.097776)])
+  m = miller.ext.merge_equivalents_complex(i, d)
+  assert tuple(m.indices) == ((1,2,3), (3,0,3), (1,1,2))
+  assert approx_equal(m.data, [
+    complex(-0.304303,-0.367443),
+    complex( 0.319791, 1.478396),
+    complex(-0.620066, 2.097776)])
+  assert tuple(m.redundancies) == (2,3,1)
+  #
   d = flex.hendrickson_lattman(
     [(-1.706478,  0.248638,  1.653352, -2.411313),
      ( 1.097872, -0.983523, -2.756402,  0.294464),
@@ -438,12 +454,24 @@ def exercise_merge_equivalents():
      ( 1.745500, -0.686761, -2.291345, -2.386650),
      (-0.620066,  2.097776,  0.099784,  0.268107)])
   m = miller.ext.merge_equivalents_hl(i, d)
-  assert tuple(m.indices()) == ((1,2,3), (3,0,3), (1,1,2))
-  assert approx_equal(m.data(), [
+  assert tuple(m.indices) == ((1,2,3), (3,0,3), (1,1,2))
+  assert approx_equal(m.data, [
     (-0.3043030, -0.3674425, -0.5515250, -1.0584245),
     ( 0.3197910,  1.4783963,  0.2509030,  0.1829173),
     (-0.6200660,  2.0977760,  0.0997840,  0.2681070)])
-  assert tuple(m.redundancies()) == (2,3,1)
+  assert tuple(m.redundancies) == (2,3,1)
+  #
+  d = flex.bool((True,True,False,False,False,True))
+  m = miller.ext.merge_equivalents_bool(i, d)
+  assert tuple(m.indices) == ((1,2,3), (3,0,3), (1,1,2))
+  assert list(m.data) == [True, False, True]
+  assert tuple(m.redundancies) == (2,3,1)
+  d = flex.bool((True,True,False,True,False,True))
+  try: m = miller.ext.merge_equivalents_bool(i, d)
+  except RuntimeError, e:
+    assert str(e) == "cctbx Error: merge_equivalents_bool:"\
+      " incompatible flags for hkl = (3, 0, 3)"
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_phase_integral():
   sg = sgtbx.space_group_info("P 21 21 21").group()

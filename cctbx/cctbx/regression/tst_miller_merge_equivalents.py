@@ -5,13 +5,14 @@ from cctbx.array_family import flex
 import random
 import sys
 
-def exercise(space_group_info, anomalous_flags,
+def exercise(space_group_info, anomalous_flag,
              n_scatterers=8, d_min=2, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
     elements=["const"]*n_scatterers)
-  f = abs(structure.structure_factors(
-    d_min=d_min, anomalous_flag=anomalous_flags).f_calc())
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=anomalous_flag).f_calc()
+  f = abs(f_calc)
   fs = miller.array(miller_set=f, data=f.data(), sigmas=flex.sqrt(f.data()))
   assert fs.is_unique_set_under_symmetry()
   for a in (f, fs):
@@ -54,6 +55,15 @@ def exercise(space_group_info, anomalous_flags,
     fs.data()).coefficient() > 1-1.e-6
   fssr = fs.sigmas() / flex.sqrt(redundancies.as_double())
   assert flex.linear_correlation(j.sigmas(), fssr).coefficient() > 1-1.e-6
+  #
+  if (anomalous_flag):
+    f_calc_ave = f_calc.average_bijvoet_mates() # uses merge_equivalents
+    f_calc_com = f_calc.as_non_anomalous_array().common_set(f_calc_ave)
+    assert f_calc_com.indices().all_eq(f_calc_ave.indices())
+    for part in [flex.real, flex.imag]:
+      assert flex.linear_correlation(
+        part(f_calc_com.data()),
+        part(f_calc_ave.data())).coefficient() > 1-1.e-6
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):
