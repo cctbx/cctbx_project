@@ -1,7 +1,9 @@
+from __future__ import division
 from iotbx import simple_tokenizer
 from scitbx.python_utils.str_utils import line_breaker
 from libtbx.itertbx import count
 from libtbx import introspection
+import math
 import os
 
 standard_identifier_start_characters = {}
@@ -40,31 +42,48 @@ def bool_from_value_words(value_words):
     'One True of False value expected, "%s" found%s' % (
       value_string, value_words[0].where_str()))
 
-def number_from_value_words(value_words, number_type, number_type_name):
+def number_from_value_words(value_words):
   value_string = str_from_value_words(value_words)
   if (value_string is None): return None
-  try: return number_type(value_string)
-  except:
+  try: return eval(value_string, math.__dict__, {})
+  except Exception, e:
     raise RuntimeError(
-      '%s value expected, "%s" found%s' % (
-        number_type_name, value_string, value_words[0].where_str()))
+      'Error interpreting "%s" as a numeric expression: %s%s' % (
+        value_string, str(e), value_words[0].where_str()))
 
 def int_from_value_words(value_words):
-  return number_from_value_words(value_words, int, "Integer")
+  result = number_from_value_words(value_words)
+  if (result is not None):
+    if (isinstance(result, float)
+        and round(result) == result):
+      result = int(result)
+    elif (not isinstance(result, int)):
+      raise RuntimeError(
+        'Integer expression expected, "%s" found%s' % (
+          str_from_value_words(value_words), value_words[0].where_str()))
+  return result
 
 def float_from_value_words(value_words):
-  return number_from_value_words(value_words, float, "Floating-point")
+  result = number_from_value_words(value_words)
+  if (result is not None):
+    if (isinstance(result, int)):
+      result = float(result)
+    elif (not isinstance(result, float)):
+      raise RuntimeError(
+        'Floating-point expression expected, "%s" found%s' % (
+          str_from_value_words(value_words), value_words[0].where_str()))
+  return result
 
 def choice_from_value_words(value_words):
   result = None
   for word in value_words:
     if (word.value.startswith("*")):
       if (result is not None):
-        raise RuntimeError("Multiple choices where only one is possible%s." %
+        raise RuntimeError("Multiple choices where only one is possible%s" %
           value_words[0].where_str())
       result = word.value[1:]
   if (result is None):
-    raise RuntimeError("Unspecified choice%s." % value_words[0].where_str())
+    raise RuntimeError("Unspecified choice%s" % value_words[0].where_str())
   return result
 
 def multi_choice_from_value_words(value_words):
@@ -248,7 +267,7 @@ class definition:
       return str_from_value_words(self.values)
     raise RuntimeError(
        ('No converter for parameter definition type "%s"'
-      + ' required for converting values of "%s"%s.') % (
+      + ' required for converting values of "%s"%s') % (
         self.type, self.name, self.values[0].where_str()))
 
 class scope_class: pass

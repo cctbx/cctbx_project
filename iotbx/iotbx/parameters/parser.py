@@ -17,7 +17,11 @@ def collect_values(word_stack, last_word, stop_token):
     last_word = word
   return result
 
-def collect_objects(word_stack, definition_type_names, stop_token=None):
+def collect_objects(
+      word_stack,
+      definition_type_names,
+      stop_token=None,
+      start_word=None):
   objects = []
   while (len(word_stack) > 0):
     word = word_stack.pop_unquoted()
@@ -53,7 +57,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
           objects=collect_objects(
             word_stack=word_stack,
             definition_type_names=definition_type_names,
-            stop_token="}"))
+            stop_token="}",
+            start_word=word))
         word = word_stack.pop_unquoted()
       objects.append(table)
     else:
@@ -83,7 +88,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
         scope.objects = collect_objects(
           word_stack=word_stack,
           definition_type_names=definition_type_names,
-          stop_token="}")
+          stop_token="}",
+          start_word=word)
         objects.append(scope)
       else:
         word_stack.push_back(word)
@@ -104,5 +110,12 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
             value_words=collect_values(word_stack, lead_word, stop_token),
             type_names=definition_type_names)
   if (stop_token is not None):
-    raise RuntimeError('Syntax error: missing "%s".' % stop_token)
+    if (start_word is None):
+      where = ""
+    else:
+      where = start_word.where()
+    if (where == ""):
+      raise RuntimeError('Syntax error: missing "%s"' % stop_token)
+    raise RuntimeError('Syntax error: no matching "%s" for "%s" at %s' %
+      (stop_token, str(start_word), where))
   return objects
