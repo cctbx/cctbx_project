@@ -11,9 +11,10 @@ def run(args):
   if (len(args) == 1):
     d_min = float(args[0])
     assert d_min > 0
-  sampling_points = \
-    gaussian_fit.international_tables_sampling_points_and_value_sigmas_up_to(
-      d_min=d_min)
+  stol_max = 1/(2*d_min)
+  n_points = gaussian_fit.n_less_than(
+    sorted_array=gaussian_fit.international_tables_sampling_stols,
+    cutoff=stol_max)
   labels = flex.std_string()
   max_errors = flex.double()
   for wk in xray_scattering.wk1995_iterator():
@@ -21,12 +22,13 @@ def run(args):
     diff_gaussian = xray_scattering.difference_gaussian(wk.fetch(), it.fetch())
     labels.append(wk.label())
     max_errors.append(flex.max(gaussian_fit.get_significant_relative_errors(
-      diff_gaussian, sampling_points.d_star_sq, sampling_points.sigmas)))
+      diff_gaussian=diff_gaussian,
+      n_points=n_points)))
     gaussian_fit.write_plots(
       plots_dir="wk1995_it1992_plots",
       label=wk.label(),
       gaussians=[wk.fetch(), it.fetch()],
-      d_star_sq=sampling_points.d_star_sq)
+      n_points=n_points)
   perm = flex.sort_permutation(max_errors, 0001)
   labels = labels.select(perm)
   max_errors = max_errors.select(perm)

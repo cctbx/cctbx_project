@@ -61,14 +61,14 @@ class one_gaussian_agarwal_1978:
 
 class fitted_gaussian(gaussian):
 
-  def __init__(self, d_min, a, b, c=0):
+  def __init__(self, stol, a, b, c=0):
     gaussian.__init__(self, a, b, c)
-    self.d_min = d_min
+    self.stol = stol
 
   def __getinitargs__(self):
-    return (self.d_min, self.a(), self.b(), self.c())
+    return (self.stol, self.a(), self.b(), self.c())
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
-    print "d_min: %.8g" % self.d_min
+    print "stol: %.2f # d_min: %.2f" % (self.stol, 1/(2*self.stol))
     gaussian.show(self, f, format)
