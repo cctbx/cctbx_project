@@ -491,7 +491,7 @@ def exercise_problem_parameters():
   for parameters in problem_parameters:
     reduce(uctbx.unit_cell(parameters))
 
-def exercise():
+def exercise_one_pass(show_times=00000):
   quick = "--Quick" in sys.argv[1:]
   verbose = "--Verbose" in sys.argv[1:]
   global relative_epsilon
@@ -518,7 +518,7 @@ def exercise():
     return
   exercise_gruber_types(n_trials_per_type, verbose=verbose)
   exercise_real_world_examples()
-  if (0 or verbose):
+  if (0 or verbose or show_times):
     print time_krivy_gruber_1976.report()
     print time_gruber_1973.report()
     print time_krivy_gruber_1976_minimum.report()
@@ -532,6 +532,14 @@ def exercise():
     print "fast_minimum_reduction_max_n_iterations:", \
            fast_minimum_reduction_max_n_iterations
   print "OK"
+
+def exercise():
+  forever = "--Forever" in sys.argv[1:]
+  while 1:
+    exercise_one_pass(show_times=forever)
+    sys.stdout.flush()
+    if (not forever):
+      break
 
 if (__name__ == "__main__"):
   exercise()
