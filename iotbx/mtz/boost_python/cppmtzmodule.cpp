@@ -10,6 +10,7 @@ BOOST_PYTHON_MODULE(mtz)
     class_<iotbx::mtz::Mtz>("Mtz", init<std::string>())
       .def("title",      &iotbx::mtz::Mtz::title)
       .def("SpaceGroup", &iotbx::mtz::Mtz::SpaceGroup)
+      .def("getSgtbxSpaceGroup", &iotbx::mtz::Mtz::getSgtbxSpaceGroup)
       .def("size",       &iotbx::mtz::Mtz::size,
           return_value_policy<copy_non_const_reference>())
       .def("ncrystals",  &iotbx::mtz::Mtz::ncrystals,

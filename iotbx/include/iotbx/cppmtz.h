@@ -12,6 +12,7 @@
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/uctbx.h>
+#include <cctbx/sgtbx/space_group.h>
 
 /* Correction 1:  in mtzdata.h, changed CCP4File to CCP4:CCP4File*/
 
@@ -81,6 +82,7 @@ public:
   // Information identified with whole mtz
   std::string title();
   std::string SpaceGroup();
+  cctbx::sgtbx::space_group getSgtbxSpaceGroup();
   int& size();
   int& ncrystals() const;
   af::shared<std::string> columns() const;

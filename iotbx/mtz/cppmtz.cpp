@@ -1,5 +1,6 @@
 #include "iotbx/cppmtz.h"
 #include <scitbx/constants.h>
+#include <scitbx/mat3.h>
 
 namespace bpmtz = iotbx::mtz;
 
@@ -11,6 +12,24 @@ bpmtz::Mtz::~Mtz(){
 
 std::string bpmtz::Mtz::title(){return std::string(mtz->title);}
 std::string bpmtz::Mtz::SpaceGroup(){return mtz->mtzsymm.spcgrpname;}
+
+cctbx::sgtbx::space_group 
+bpmtz::Mtz::getSgtbxSpaceGroup(){
+  cctbx::sgtbx::space_group sg;
+  for  (int i = 0; i < mtz->mtzsymm.nsym; ++i) {
+    scitbx::mat3<double> r_double;
+    scitbx::vec3<double> t_double;
+    for (int p=0;p<3;p++) {
+      for (int q=0;q<3;q++) {
+        r_double(p,q) = mtz->mtzsymm.sym[i][p][q];
+      }
+      t_double[p] = mtz->mtzsymm.sym[i][p][3];
+    }
+    sg.expand_smx(cctbx::sgtbx::rt_mx(r_double,t_double));
+  }
+  return sg;
+}
+
 int& bpmtz::Mtz::size(){return mtz->nref;}
 int& bpmtz::Mtz::ncrystals() const {return mtz->nxtal;}
 int bpmtz::Mtz::ndatasets(const int& xtal) {return mtz->xtal[xtal]->nset;}
