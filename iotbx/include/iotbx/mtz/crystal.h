@@ -106,6 +106,8 @@ namespace iotbx { namespace mtz {
     const char* project_name,
     af::double6 const& unit_cell_parameters)
   {
+    CCTBX_ASSERT(name != 0);
+    CCTBX_ASSERT(project_name != 0);
     float uc_params[6];
     for(int i=0;i<6;i++) uc_params[i] = unit_cell_parameters[i];
     int i_crystal = n_crystals();

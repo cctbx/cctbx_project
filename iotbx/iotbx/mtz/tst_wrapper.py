@@ -31,6 +31,7 @@ def to_mtz(miller_array, root_label, column_types=None):
 
 def recycle(miller_array, root_label, column_types=None, verbose=0):
   original_dataset = to_mtz(miller_array, root_label, column_types)
+  label_decorator = mtz.wrapper.label_decorator()
   written = original_dataset.mtz_object()
   if (0 or verbose):
     written.show_summary()
@@ -70,14 +71,15 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
         assert restored_dataset.n_columns() == 3+2
         group = restored.extract_complex(
           column_label_ampl=root_label,
-          column_label_phi=original_dataset.label_phases(root_label))
+          column_label_phi=label_decorator.phases(root_label))
       elif (miller_array.is_hendrickson_lattman_array()):
         assert restored_dataset.n_columns() == 3+4
+        deco = label_decorator.hendrickson_lattman
         group = restored.extract_hendrickson_lattman(
-          column_label_a=root_label+"A",
-          column_label_b=root_label+"B",
-          column_label_c=root_label+"C",
-          column_label_d=root_label+"D")
+          column_label_a=deco(root_label, 0),
+          column_label_b=deco(root_label, 1),
+          column_label_c=deco(root_label, 2),
+          column_label_d=deco(root_label, 3))
       else:
         assert restored_dataset.n_columns() == 3+1
         group = restored.extract_reals(
@@ -92,7 +94,7 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
       assert restored_dataset.n_columns() == 3+2
       group = restored.extract_observations(
         column_label_data=root_label,
-        column_label_sigmas=original_dataset.label_sigmas(root_label))
+        column_label_sigmas=label_decorator.sigmas(root_label))
       r = miller.array(
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
@@ -105,28 +107,27 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
       if (miller_array.is_complex_array()):
         assert restored_dataset.n_columns() == 3+4
         group = restored.extract_complex_anomalous(
-          column_label_ampl_plus=original_dataset.label_plus(root_label),
-          column_label_phi_plus=original_dataset.label_plus(
-            original_dataset.label_phases(root_label)),
-          column_label_ampl_minus=original_dataset.label_minus(root_label),
-          column_label_phi_minus=original_dataset.label_minus(
-            original_dataset.label_phases(root_label)))
+          column_label_ampl_plus=label_decorator.anomalous(root_label, "+"),
+          column_label_phi_plus=label_decorator.phases(root_label, "+"),
+          column_label_ampl_minus=label_decorator.anomalous(root_label, "-"),
+          column_label_phi_minus=label_decorator.phases(root_label, "-"))
       elif (miller_array.is_hendrickson_lattman_array()):
         assert restored_dataset.n_columns() == 3+8
+        deco = label_decorator.hendrickson_lattman
         group = restored.extract_hendrickson_lattman_anomalous(
-          column_label_a_plus=root_label+"A(+)",
-          column_label_b_plus=root_label+"B(+)",
-          column_label_c_plus=root_label+"C(+)",
-          column_label_d_plus=root_label+"D(+)",
-          column_label_a_minus=root_label+"A(-)",
-          column_label_b_minus=root_label+"B(-)",
-          column_label_c_minus=root_label+"C(-)",
-          column_label_d_minus=root_label+"D(-)")
+          column_label_a_plus=deco(root_label, 0, "+"),
+          column_label_b_plus=deco(root_label, 1, "+"),
+          column_label_c_plus=deco(root_label, 2, "+"),
+          column_label_d_plus=deco(root_label, 3, "+"),
+          column_label_a_minus=deco(root_label, 0, "-"),
+          column_label_b_minus=deco(root_label, 1, "-"),
+          column_label_c_minus=deco(root_label, 2, "-"),
+          column_label_d_minus=deco(root_label, 3, "-"))
       else:
         assert restored_dataset.n_columns() == 3+2
         group = restored.extract_reals_anomalous(
-          column_label_plus=original_dataset.label_plus(root_label),
-          column_label_minus=original_dataset.label_minus(root_label))
+          column_label_plus=label_decorator.anomalous(root_label, "+"),
+          column_label_minus=label_decorator.anomalous(root_label, "-"))
       r = miller.array(
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
@@ -136,12 +137,10 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
     else:
       assert restored_dataset.n_columns() == 3+4
       group = restored.extract_observations_anomalous(
-        column_label_data_plus=original_dataset.label_plus(root_label),
-        column_label_sigmas_plus=original_dataset.label_plus(
-          original_dataset.label_sigmas(root_label)),
-        column_label_data_minus=original_dataset.label_minus(root_label),
-        column_label_sigmas_minus=original_dataset.label_minus(
-          original_dataset.label_sigmas(root_label)))
+        column_label_data_plus=label_decorator.anomalous(root_label, "+"),
+        column_label_sigmas_plus=label_decorator.sigmas(root_label, "+"),
+        column_label_data_minus=label_decorator.anomalous(root_label, "-"),
+        column_label_sigmas_minus=label_decorator.sigmas(root_label, "-"))
       r = miller.array(
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,

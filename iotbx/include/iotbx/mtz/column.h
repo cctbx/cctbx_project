@@ -141,6 +141,8 @@ namespace iotbx { namespace mtz {
     const char *label,
     const char *type)
   {
+    CCTBX_ASSERT(label != 0);
+    CCTBX_ASSERT(type != 0);
     CCTBX_ASSERT(!mtz_object().has_column(label));
     int i_column = n_columns();
     CMtz::MTZCOL* column_ptr = CMtz::MtzAddColumn(
@@ -156,6 +158,7 @@ namespace iotbx { namespace mtz {
   bool
   object::has_column(const char* label) const
   {
+    CCTBX_ASSERT(label != 0);
     for(int i_crystal=0;i_crystal<n_crystals();i_crystal++) {
       crystal x(*this, i_crystal);
       for(int i_dataset=0;i_dataset<x.n_datasets();i_dataset++) {
@@ -175,6 +178,7 @@ namespace iotbx { namespace mtz {
   column
   object::get_column(const char* label) const
   {
+    CCTBX_ASSERT(label != 0);
     for(int i_crystal=0;i_crystal<n_crystals();i_crystal++) {
       crystal x(*this, i_crystal);
       for(int i_dataset=0;i_dataset<x.n_datasets();i_dataset++) {

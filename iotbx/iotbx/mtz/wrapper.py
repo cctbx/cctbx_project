@@ -12,6 +12,7 @@ import cctbx.crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils.str_utils import overwrite_at, contains_one_of
+from scitbx.python_utils.misc import adopt_init_args
 import sys
 
 column_type_legend_source = \
@@ -87,6 +88,41 @@ def are_anomalous_labels(sign, labels):
   for label in labels:
     if (not is_anomalous_label(sign, label)): return False
   return True
+
+class label_decorator:
+
+  def __init__(self,
+        anomalous_plus_suffix="(+)",
+        anomalous_minus_suffix="(-)",
+        sigmas_prefix="SIG",
+        sigmas_suffix="",
+        phases_prefix="PHI",
+        phases_suffix="",
+        hendrickson_lattman_suffix_list=["A","B","C","D"]):
+    assert len(hendrickson_lattman_suffix_list) == 4
+    adopt_init_args(self, locals())
+
+  def anomalous(self, root_label, sign=None):
+    assert sign in (None, "+", "-")
+    if (sign is None): return root_label
+    if (sign == "+"): return root_label + self.anomalous_plus_suffix
+    return root_label + self.anomalous_minus_suffix
+
+  def sigmas(self, root_label, anomalous_sign=None):
+    return self.anomalous(
+      self.sigmas_prefix + root_label + self.sigmas_suffix,
+      anomalous_sign)
+
+  def phases(self, root_label, anomalous_sign=None):
+    return self.anomalous(
+      self.phases_prefix + root_label + self.phases_suffix,
+      anomalous_sign)
+
+  def hendrickson_lattman(self, root_label, i_coeff, anomalous_sign=None):
+    assert 0 <= i_coeff < 4
+    return self.anomalous(
+      root_label + self.hendrickson_lattman_suffix_list[i_coeff],
+      anomalous_sign)
 
 class _object(boost.python.injector, ext.object):
 
@@ -426,66 +462,6 @@ class _dataset(boost.python.injector, ext.dataset):
   def column_types(self):
     return [column.type() for column in self.columns()]
 
-  def label_phases(self, root_label):
-    return self.phases_prefix() + root_label + self.phases_suffix()
-
-  def label_sigmas(self, root_label):
-    return self.sigmas_prefix() + root_label + self.sigmas_suffix()
-
-  def label_plus(self, root_label):
-    return root_label + self.plus_suffix()
-
-  def label_minus(self, root_label):
-    return root_label + self.minus_suffix()
-
-  def set_phases_prefix(self, prefix):
-    self._phases_prefix = prefix
-
-  def phases_prefix(self):
-    if (not hasattr(self, "_phases_prefix")):
-      self._phases_prefix = "PHI"
-    return self._phases_prefix
-
-  def set_phases_suffix(self, suffix):
-    self._phases_suffix = suffix
-
-  def phases_suffix(self):
-    if (not hasattr(self, "_phases_suffix")):
-      self._phases_suffix = ""
-    return self._phases_suffix
-
-  def set_sigmas_prefix(self, prefix):
-    self._sigmas_prefix = prefix
-
-  def sigmas_prefix(self):
-    if (not hasattr(self, "_sigmas_prefix")):
-      self._sigmas_prefix = "SIG"
-    return self._sigmas_prefix
-
-  def set_sigmas_suffix(self, suffix):
-    self._sigmas_suffix = suffix
-
-  def sigmas_suffix(self):
-    if (not hasattr(self, "_sigmas_suffix")):
-      self._sigmas_suffix = ""
-    return self._sigmas_suffix
-
-  def set_plus_suffix(self, suffix):
-    self._plus_suffix = suffix
-
-  def plus_suffix(self):
-    if (not hasattr(self, "_plus_suffix")):
-      self._plus_suffix = "(+)"
-    return self._plus_suffix
-
-  def set_minus_suffix(self, suffix):
-    self._minus_suffix = suffix
-
-  def minus_suffix(self):
-    if (not hasattr(self, "_minus_suffix")):
-      self._minus_suffix = "(-)"
-    return self._minus_suffix
-
   def initialize_hkl_columns(self):
     if (self.mtz_object().n_columns() == 0):
       for label in "HKL":
@@ -505,19 +481,26 @@ class _dataset(boost.python.injector, ext.dataset):
           mtz_reflection_indices=mtz_reflection_indices,
           data=sigmas)
 
-  def _add_complex(self, amplitude_label, column_types, indices, data):
+  def _add_complex(self, amplitudes_label, phases_label, column_types,
+                         indices, data):
     mtz_reflection_indices = self.add_column(
-      label=amplitude_label,
+      label=amplitudes_label,
       type=column_types[0]).set_reals(
         miller_indices=indices,
         data=flex.abs(data))
     self.add_column(
-      label=self.label_phases(amplitude_label),
+      label=phases_label,
       type=column_types[1]).set_reals(
         mtz_reflection_indices=mtz_reflection_indices,
         data=flex.arg(data, True))
 
-  def add_miller_array(self, miller_array, root_label, column_types=None):
+  def add_miller_array(self,
+        miller_array,
+        root_label,
+        column_types=None,
+        label_decorator=None):
+    if (label_decorator is None):
+      label_decorator = globals()["label_decorator"]()
     default_col_types = default_column_types(miller_array=miller_array)
     if (default_col_types is None):
       raise RuntimeError(
@@ -533,14 +516,15 @@ class _dataset(boost.python.injector, ext.dataset):
       if (default_col_types in ["FQ", "JQ"]):
         self._add_observations(
           data_label=root_label,
-          sigmas_label=self.label_sigmas(root_label),
+          sigmas_label=label_decorator.sigmas(root_label),
           column_types=column_types,
           indices=miller_array.indices(),
           data=miller_array.data(),
           sigmas=miller_array.sigmas())
       elif (default_col_types == "FP"):
         self._add_complex(
-          amplitude_label=root_label,
+          amplitudes_label=root_label,
+          phases_label=label_decorator.phases(root_label),
           column_types=column_types,
           indices=miller_array.indices(),
           data=miller_array.data())
@@ -558,13 +542,13 @@ class _dataset(boost.python.injector, ext.dataset):
             data=miller_array.data().as_double())
       elif (default_col_types == "AAAA"):
         mtz_reflection_indices = self.add_column(
-          label=root_label+"A",
+          label=label_decorator.hendrickson_lattman(root_label, 0),
           type=column_types).set_reals(
             miller_indices=miller_array.indices(),
             data=miller_array.data().slice(0))
         for i in xrange(1,4):
           self.add_column(
-            label=root_label+"ABCD"[i],
+            label=label_decorator.hendrickson_lattman(root_label, i),
             type=column_types).set_reals(
               mtz_reflection_indices=mtz_reflection_indices,
               data=miller_array.data().slice(i))
@@ -572,51 +556,54 @@ class _dataset(boost.python.injector, ext.dataset):
         raise RuntimeError("Fatal programming error.")
     else:
       asu, matches = miller_array.match_bijvoet_mates()
-      for sign in ("+","-"):
-        sel = matches.pairs_hemisphere_selection(sign)
-        sel.extend(matches.singles_hemisphere_selection(sign))
-        if (sign == "+"):
-          label_sign = self.label_plus
+      for anomalous_sign in ("+","-"):
+        sel = matches.pairs_hemisphere_selection(anomalous_sign)
+        sel.extend(matches.singles_hemisphere_selection(anomalous_sign))
+        if (anomalous_sign == "+"):
           indices = asu.indices().select(sel)
         else:
-          label_sign = self.label_minus
           indices = -asu.indices().select(sel)
         data = asu.data().select(sel)
         if (default_col_types in ["GL", "KM"]):
           self._add_observations(
-            data_label=label_sign(root_label),
-            sigmas_label=label_sign(self.label_sigmas(root_label)),
+            data_label=label_decorator.anomalous(root_label, anomalous_sign),
+            sigmas_label=label_decorator.sigmas(root_label, anomalous_sign),
             column_types=column_types,
             indices=indices,
             data=data,
             sigmas=asu.sigmas().select(sel))
         elif (default_col_types == "GP"):
           self._add_complex(
-            amplitude_label=label_sign(root_label),
+            amplitudes_label=label_decorator.anomalous(
+              root_label, anomalous_sign),
+            phases_label=label_decorator.phases(
+              root_label, anomalous_sign),
             column_types=column_types,
             indices=indices,
             data=data)
         elif (default_col_types == "G"):
           self.add_column(
-            label=label_sign(root_label),
+            label=label_decorator.anomalous(root_label, anomalous_sign),
             type=column_types).set_reals(
               miller_indices=indices,
               data=data)
         elif (default_col_types == "I"):
           self.add_column(
-            label=label_sign(root_label),
+            label=label_decorator.anomalous(root_label, anomalous_sign),
             type=column_types).set_reals(
               miller_indices=indices,
               data=data.as_double())
         elif (default_col_types == "AAAA"):
           mtz_reflection_indices = self.add_column(
-            label=label_sign(root_label+"A"),
+            label=label_decorator.hendrickson_lattman(
+              root_label, 0, anomalous_sign),
             type=column_types[0]).set_reals(
               miller_indices=indices,
               data=data.slice(0))
           for i in xrange(1,4):
             self.add_column(
-              label=label_sign(root_label+"ABCD"[i]),
+              label=label_decorator.hendrickson_lattman(
+                root_label, i, anomalous_sign),
               type=column_types[i]).set_reals(
                 mtz_reflection_indices=mtz_reflection_indices,
                 data=data.slice(i))
