@@ -349,6 +349,7 @@ namespace direct_space_asu {
             asu.volume_vertices(true).const_ref())
           .expand(buffer_thickness+sym_equiv_tolerance_)),
         mappings_const_ref_(mappings_.const_ref()),
+        n_sites_in_asu_and_buffer_(0),
         mapped_sites_min_(0,0,0),
         mapped_sites_max_(0,0,0),
         is_locked_(false)
@@ -461,6 +462,7 @@ namespace direct_space_asu {
               else {
                 site_mappings.push_back(mapping);
               }
+              n_sites_in_asu_and_buffer_++;
               if (   site_mappings.size() == 1
                   && mappings_const_ref_.size() == 1) {
                 mapped_sites_min_ = mapping.mapped_site();
@@ -499,6 +501,12 @@ namespace direct_space_asu {
           process(frac * original_sites[i]);
         }
       }
+
+      /*! \brief Total number of sites in the asymmetric unit and the
+          surrounding buffer.
+       */
+      std::size_t
+      n_sites_in_asu_and_buffer() const { return n_sites_in_asu_and_buffer_; }
 
       //! Locks the array of mappings().
       /*! An exception is raised if process() is called subsequently.
@@ -658,6 +666,7 @@ namespace direct_space_asu {
       scitbx::math::sphere_3d<FloatType> buffer_covering_sphere_;
       array_of_array_of_mappings_for_one_site mappings_;
       af::const_ref<array_of_mappings_for_one_site> mappings_const_ref_;
+      std::size_t n_sites_in_asu_and_buffer_;
       cartesian<FloatType> mapped_sites_min_;
       cartesian<FloatType> mapped_sites_max_;
       bool is_locked_;
