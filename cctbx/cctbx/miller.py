@@ -157,8 +157,7 @@ class set(crystal.symmetry):
       print >> f, "Bijvoet pairs:", matches.pairs().size()
       print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
       if (isinstance(self, array) and self.is_real()):
-        obs = no_sys_abs.apply_selection(no_sys_abs.data() > 0)
-        print >> f, "Anomalous signal: %.4f" % obs.anomalous_signal()
+        print >> f, "Anomalous signal: %.4f" % no_sys_abs.anomalous_signal()
     return self
 
   def sys_absent_flags(self):
@@ -785,8 +784,10 @@ class array(set):
     "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
     assert not use_binning or self.binner() is not None
     if (not use_binning):
-      assert self.data().all_gt(0)
-      f_plus, f_minus = self.as_amplitude_array().hemispheres()
+      obs = self.apply_selection(self.data() > 0)
+      if (self.is_xray_intensity_array()):
+        obs = obs.f_sq_as_f()
+      f_plus, f_minus = obs.hemispheres()
       assert f_plus.data().size() == f_minus.data().size()
       if (f_plus.data().size() == 0): return 0
       mean_sq_diff = flex.mean(flex.pow2(f_plus.data() - f_minus.data()))
