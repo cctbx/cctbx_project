@@ -12,15 +12,15 @@ class wilson_plot:
   def __init__(self, f_obs, asu_contents):
     self.info = f_obs.info()
     # compute <fobs^2> in resolution shells
-    self.mean_fobs_sq = f_obs.mean_sq(
+    self.mean_fobs_sq = flex.double(f_obs.mean_sq(
       use_binning=True,
-      use_multiplicities=True)
+      use_multiplicities=True).data[1:-1])
     # compute <s^2> = <(sin(theta)/lambda)^2> in resolution shells
     stol_sq = f_obs.sin_theta_over_lambda_sq()
     stol_sq.use_binner_of(f_obs)
-    self.mean_stol_sq = stol_sq.mean(
+    self.mean_stol_sq = flex.double(stol_sq.mean(
       use_binning=True,
-      use_multiplicities=True)
+      use_multiplicities=True).data[1:-1])
     # cache scattering factor info
     gaussians = {}
     for chemical_type in asu_contents.keys():
