@@ -34,17 +34,19 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_TAKE_REF(this->begin(), this->size())
 
+      void auto_resize(const size_type& sz) {
+        this->handle().auto_resize(this->element_size() * sz);
+      }
+
       void push_back(const ElementType& value) {
-        this->resize(this->size()+1);
+        this->auto_resize(this->size()+1);
         this->operator[](this->size()-1)=value;
       }
 
-      //! swaps in the data from another handle but preserves reference count
       void swap(shared_base<ElementType>& other) {
         this->handle().swap(other.handle());
       }
 
-      // XXX tell Nick
       void assign(size_type n, const ElementType& x = ElementType()) {
         this->resize(n);
         std::fill(this->begin(), this->end(), x);

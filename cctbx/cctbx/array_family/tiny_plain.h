@@ -39,6 +39,10 @@ namespace cctbx { namespace af {
       static bool empty() { return false; }
       static size_type max_size() { return N; }
       static size_type capacity() { return N; }
+
+      void swap(ElementType* other) {
+        std::swap(begin(), end(), other);
+      }
   };
 
 }} // namespace cctbx::af

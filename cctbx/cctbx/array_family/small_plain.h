@@ -94,7 +94,7 @@ namespace cctbx { namespace af {
       }
 
       void swap(ElementType* other) {
-        std::swap(elems, other);
+        std::swap(begin(), end(), other);
       }
 
       void assign(size_type n, const ElementType& x = ElementType()) {

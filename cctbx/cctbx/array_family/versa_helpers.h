@@ -8,6 +8,10 @@ explicit \
 class_name(const accessor_type& ac) { \
   this->resize(ac); \
 } \
+class_name(const accessor_type& ac, const ElementType& x) { \
+  this->resize(ac); \
+  std::fill(this->begin(), this->end(), x); \
+} \
 explicit \
 class_name(int n0) { \
   this->resize(accessor_type(n0)); \
