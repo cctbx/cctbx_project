@@ -2,7 +2,9 @@ from iotbx.detectors import adsc
 import urllib
 
 def get_test_files():
-  urllib.urlretrieve('http://cci.lbl.gov/build/adsc.img','adsc.img')
+  urllib.urlretrieve(
+    'http://cci.lbl.gov/cctbx_downloads/regression/iotbx/adsc.img',
+    'adsc.img')
 
 def exercise_adscread():
   a = adsc.ADSCImage('adsc.img')
@@ -16,7 +18,7 @@ def exercise_adscread():
 def run():
   get_test_files()
   exercise_adscread()
+  print "OK"
 
 if __name__=="__main__":
   run()
-
