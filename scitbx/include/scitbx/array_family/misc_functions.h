@@ -43,7 +43,7 @@ namespace scitbx { namespace fn {
     return x * x * x;
   }
 
-  //! Test if abs(a-b) < scaled_tolerance.
+  //! Tests if abs(a-b) <= scaled_tolerance.
   template <class FloatType>
   bool
   approx_equal_scaled(FloatType const& a,
@@ -52,11 +52,11 @@ namespace scitbx { namespace fn {
   {
     FloatType diff = a - b;
     if (diff < 0.) diff = -diff;
-    if (diff < scaled_tolerance) return true;
+    if (diff <= scaled_tolerance) return true;
     return false;
   }
 
-  //! Test if 2*abs((a-b)/(a+b)) < tolerance.
+  //! Tests if 2*abs((a-b)/(a+b)) <= tolerance.
   template <class FloatType>
   bool
   approx_equal_unscaled(FloatType const& a,
@@ -68,7 +68,7 @@ namespace scitbx { namespace fn {
     FloatType diff = a - b;
     FloatType ratio = diff / sum;
     if (ratio < 0) ratio = -ratio;
-    if (FloatType(2) * ratio < tolerance) return true;
+    if (FloatType(2) * ratio <= tolerance) return true;
     return false;
   }
 
