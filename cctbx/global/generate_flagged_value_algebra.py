@@ -1,4 +1,4 @@
-import sys
+import sys, copy
 
 from generate_af_algebras import *
 
@@ -220,14 +220,17 @@ namespace cctbx { namespace af {
     generate_elementwise_binary_op("arithmetic", op_symbol)
   for op_symbol in logical_binary_ops:
     generate_elementwise_binary_op("logical", op_symbol)
-  for op_symbol in boolean_ops:
+  for op_symbol in boolean_binary_ops:
     generate_elementwise_binary_op("boolean", op_symbol)
   generate_1arg_element_wise(cmath_1arg + cstdlib_1arg + complex_1arg)
   generate_2arg_element_wise(cmath_2arg)
   for special_def in complex_special:
     generate_element_wise_special(special_def)
   for args in misc_functions_2arg:
-    apply(generate_2arg_element_wise, args)
+    a = copy.deepcopy(args)
+    a[2][0] = ",\n    " + a[2][0]
+    a[2][1] = ", " + a[2][1]
+    apply(generate_2arg_element_wise, a)
 
   print """}} // namespace cctbx::af
 

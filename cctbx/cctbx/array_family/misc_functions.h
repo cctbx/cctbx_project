@@ -41,6 +41,30 @@ namespace cctbx { namespace af {
     return false;
   }
 
+  //! Helper function object for array operations.
+  template <typename ResultType,
+            typename ArgumentType1,
+            typename ArgumentType2,
+            typename ArgumentType3>
+  struct functor_approx_equal_scaled {
+    ResultType operator()(const ArgumentType1& x,
+                          const ArgumentType2& y,
+                          const ArgumentType3& z) {
+    return approx_equal_scaled(x, y, z); }
+  };
+
+  //! Helper function object for array operations.
+  template <typename ResultType,
+            typename ArgumentType1,
+            typename ArgumentType2,
+            typename ArgumentType3>
+  struct functor_approx_equal_unscaled {
+    ResultType operator()(const ArgumentType1& x,
+                          const ArgumentType2& y,
+                          const ArgumentType3& z) {
+    return approx_equal_unscaled(x, y, z); }
+  };
+
 }} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_MISC_FUNCTIONS_H

@@ -1,6 +1,7 @@
 import sys
 
 from operator_functor_info import *
+from generate_af_functors import *
 
 def write_copyright():
   print \
@@ -20,14 +21,6 @@ def write_copyright():
      %s
  */""" % (sys.argv[0],)
 
-def generate_aipbinop_function_objects():
-  for op in arithmetic_in_place_binary_ops:
-    print """
-  template <typename T>
-  struct %s : std::binary_function<T, T, T> {
-    T& operator()(T& x, const T& y) const { x %s y; return x; }
-  };""" % (aipbinop_function_objects[op], op)
-
 def run():
   f = open("operator_functors.h", "w")
   sys.stdout = f
@@ -36,11 +29,17 @@ def run():
 #ifndef CCTBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 #define CCTBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 
-#include <functional>
-
 namespace cctbx { namespace af {"""
 
-  generate_aipbinop_function_objects()
+  for op in unary_functors.keys():
+    generate_unary_functor(
+      unary_functors[op], op + " x")
+  for op in binary_functors.keys():
+    generate_binary_functor(
+      binary_functors[op], "x " + op + " y")
+  for op in in_place_binary_functors.keys():
+    generate_in_place_binary_functor(
+      in_place_binary_functors[op], "x " + op + " y")
 
   print """
 }} // namespace cctbx::af
