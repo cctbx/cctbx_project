@@ -189,6 +189,8 @@ namespace {
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
         .def("is_direct_interaction", &w_t::is_direct_interaction,
           (arg_("pair")))
+        .def("interaction_type_id", &w_t::interaction_type_id,
+          (arg_("pair")))
         .def("make_pair", &w_t::make_pair,
           (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
         .def("find_i_sym", &w_t::find_i_sym, (arg_("i_seq"), arg_("rt_mx")))

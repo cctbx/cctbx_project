@@ -701,6 +701,21 @@ namespace direct_space_asu {
         return (rt_i == rt_j);
       }
 
+      //! Classification of interactions.
+      /*! The result is 0 if is_direct_interaction(pair) is false.
+          The result is 1 if pair.j_sym == 0 or pair.i_seq < pair.j_seq.
+          The result is -1 otherwise.
+       */
+      int
+      interaction_type_id(asu_mapping_index_pair const& pair) const
+      {
+        if (!is_direct_interaction(pair)) return 0;
+        if (pair.j_sym == 0 || pair.i_seq < pair.j_seq) {
+          return 1;
+        }
+        return -1;
+      }
+
       //! Returns a new pair after checking the indices.
       asu_mapping_index_pair
       make_pair(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
@@ -734,7 +749,7 @@ namespace direct_space_asu {
         if (i_special_op == 0) {
           sgtbx::rt_mx rt_mx_sp = rt_mx.cancel();
           for(int i_sym=0; i_sym<mappings_const_ref_[i_seq].size(); i_sym++) {
-            if (get_rt_mx(i_seq, i_sym).cancel() == rt_mx) {
+            if (get_rt_mx(i_seq, i_sym).cancel() == rt_mx_sp) {
               return i_sym;
             }
           }

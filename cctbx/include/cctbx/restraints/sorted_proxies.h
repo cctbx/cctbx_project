@@ -35,10 +35,10 @@ namespace cctbx { namespace restraints {
       bool
       process(SymProxyType const& proxy)
       {
-        if (asu_mappings_->is_direct_interaction(proxy.pair)) {
-          if (proxy.pair.j_sym == 0 || proxy.pair.i_seq < proxy.pair.j_seq) {
-            proxies.push_back(proxy.as_direct_proxy());
-          }
+        int type_id = asu_mappings_->interaction_type_id(proxy.pair);
+        if (type_id < 0) return false;
+        if (type_id > 0) {
+          proxies.push_back(proxy.as_direct_proxy());
           return false;
         }
         sym_proxies.push_back(proxy);

@@ -241,6 +241,7 @@ def exercise_direct_space_asu():
           matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm(),
           index_pair.dist_sq)
         assert not asu_mappings.is_direct_interaction(pair=index_pair)
+        assert asu_mappings.interaction_type_id(pair=index_pair) == 0
         dist_sq.append(index_pair.dist_sq)
       assert pair_generator.at_end()
       if (pair_generator_type is crystal.neighbors_simple_pair_generator):
