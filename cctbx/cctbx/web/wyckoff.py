@@ -43,6 +43,8 @@ def run(cctbx_url, inp, status):
         table_id=inp.convention)),
     min_distance_sym_equiv=float(inp.min_distance_sym_equiv))
   special_position_settings.show_summary()
+  print "Minimum distance between symmetrically equivalent sites:",
+  print special_position_settings.min_distance_sym_equiv()
   print
 
   skip_columns = utils.interpret_skip_columns(inp.skip_columns)
