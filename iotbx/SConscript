@@ -17,14 +17,14 @@ myccflags_base.extend(env_etc.ccp4io_defines)
 mycxxflags_base = env_etc.cxxflags_base[:]
 mycxxflags_base.extend(env_etc.ccp4io_defines)
 
-env = env_base.Copy(
+mtz_env = env_base.Copy(
   CXXFLAGS=mycxxflags_base,
   SHCXXFLAGS=mycxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
   CPPPATH=env_etc.iotbx_common_includes,
 )
 
-envlm = env.Copy(
+envlm = mtz_env.Copy(
   LIBS=env_etc.libm
 )
 
@@ -39,8 +39,9 @@ envlm.Append(LIBPATH=["#libtbx",])
 lib_iotbx_node = envlm.StaticLibrary(
     target="iotbx",
     source=lib_iotbx_sources)
-env.Install("#libtbx", lib_iotbx_node)
+envlm.Install("#libtbx", lib_iotbx_node)
 
+Export("mtz_env")
 SConscript("mtz/SConscript")
 
 if (not env_etc.no_boost_python):
