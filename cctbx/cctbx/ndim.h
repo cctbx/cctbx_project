@@ -83,8 +83,8 @@ namespace cctbx {
 
       template <typename IndexTupleType>
       bool is_valid_index(const IndexTupleType& I) const {
-        if (I.size() != size()) return false;
-        for(std::size_t j=0;j<size();j++) {
+        if (I.size() != this->size()) return false;
+        for(std::size_t j=0;j<this->size();j++) {
           std::size_t i = I[j];
           if (i >= this->elems[j]) return false;
         }
@@ -114,7 +114,7 @@ namespace cctbx {
 
       template <typename IndexObjectType>
       value_type& operator()(const IndexObjectType& I) const {
-        return m_begin[m_dim(I)];
+        return this->m_begin[this->m_dim(I)];
       }
 
       // Convenience constructors
@@ -141,16 +141,16 @@ namespace cctbx {
       // Convenience operator()
 
       value_type& operator()(std::size_t i0) const {
-        return m_begin[m_dim(carray<int, 1>(i0))];
+        return this->m_begin[this->m_dim(carray<int, 1>(i0))];
       }
       value_type& operator()(std::size_t i0,
                              std::size_t i1) const {
-        return m_begin[m_dim(carray<int, 2>(i0, i1))];
+        return this->m_begin[this->m_dim(carray<int, 2>(i0, i1))];
       }
       value_type& operator()(std::size_t i0,
                              std::size_t i1,
                              std::size_t i2) const {
-        return m_begin[m_dim(carray<int, 3>(i0, i1, i2))];
+        return this->m_begin[this->m_dim(carray<int, 3>(i0, i1, i2))];
       }
 
     protected:
@@ -176,10 +176,12 @@ namespace cctbx {
       const dimension_type& dim() const { return m_dim; }
 
       vecrefnd<      value_type, dimension_type> ref()       {
-        return vecrefnd<      value_type, dimension_type>(m_begin, m_dim);
+        return vecrefnd<      value_type, dimension_type>(
+          this->m_begin, this->m_dim);
       }
       vecrefnd<const value_type, dimension_type> ref() const {
-        return vecrefnd<const value_type, dimension_type>(m_begin, m_dim);
+        return vecrefnd<const value_type, dimension_type>(
+          this->m_begin, this->m_dim);
       }
 
             shared_storage<value_type>& as_1d()       { return *this; }
@@ -187,7 +189,7 @@ namespace cctbx {
 
       template <typename IndexObjectType>
       value_type& operator()(const IndexObjectType& I) const {
-        return m_begin[m_dim(I)];
+        return this->m_begin[this->m_dim(I)];
       }
 
       // Convenience constructors
@@ -208,16 +210,16 @@ namespace cctbx {
       // Convenience operator()
 
       value_type& operator()(std::size_t i0) const {
-        return m_begin[m_dim(carray<int, 1>(i0))];
+        return this->m_begin[this->m_dim(carray<int, 1>(i0))];
       }
       value_type& operator()(std::size_t i0,
                              std::size_t i1) const {
-        return m_begin[m_dim(carray<int, 2>(i0, i1))];
+        return this->m_begin[this->m_dim(carray<int, 2>(i0, i1))];
       }
       value_type& operator()(std::size_t i0,
                              std::size_t i1,
                              std::size_t i2) const {
-        return m_begin[m_dim(carray<int, 3>(i0, i1, i2))];
+        return this->m_begin[this->m_dim(carray<int, 3>(i0, i1, i2))];
       }
 
     protected:

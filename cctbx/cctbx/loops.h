@@ -46,10 +46,8 @@ namespace cctbx {
       }
       const ArrayType& begin() const { return m_begin; }
       const ArrayType& end() const { return m_end; }
-            ArrayType& operator()()       { return m_current; }
       const ArrayType& operator()() const { return m_current; }
       std::size_t over() const { return m_over; }
-      const ArrayType& next() { incr(); return m_current; }
     private:
       ArrayType m_begin;
       ArrayType m_end;
