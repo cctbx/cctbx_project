@@ -7,8 +7,8 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
-#include <boost/python/suite/indexing/map_indexing_suite.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/stl/map_wrapper.h>
 #include <cctbx/restraints/bond.h>
 
 namespace cctbx { namespace restraints {
@@ -37,14 +37,11 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<bond_params_dict>("bond_params_dict")
-        .def(map_indexing_suite<bond_params_dict>())
-      ;
-      {
-        typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
-          "bond_params_table");
-      }
+      typedef return_internal_reference<> rir;
+      scitbx::stl::boost_python::map_wrapper<bond_params_dict, rir>::wrap(
+        "bond_params_dict");
+      scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
+        "bond_params_table");
     }
   };
 

@@ -1,6 +1,7 @@
 from iotbx.kriber import strudat
 import iotbx.pdb
 from iotbx.option_parser import iotbx_option_parser
+from cctbx import restraints
 from cctbx import crystal
 from scitbx.python_utils.misc import adopt_init_args
 import libtbx.itertbx
@@ -16,7 +17,8 @@ class pair_asu_table:
 
   def __init__(self, asu_mappings):
     self.asu_mappings = asu_mappings
-    self.table = [{} for i_seq in xrange(self.asu_mappings.mappings().size())]
+    self.table = restraints.pair_asu_table(self.asu_mappings.mappings().size())
+    #self.table = [{} for i_seq in xrange(self.asu_mappings.mappings().size())]
 
   def add_all_pairs(self, distance_cutoff, verbose=0):
     pair_generator = crystal.neighbors_fast_pair_generator(
@@ -69,8 +71,8 @@ class pair_asu_table:
     for j_sym_group in j_sym_groups:
       if (j_sym in j_sym_group):
         return 00000
-    j_syms = [j_sym]
-    j_sym_groups.append(j_syms)
+    j_sym_groups.append([])
+    j_syms = j_sym_groups[-1]
     if (0 or verbose):
       print "primary:     i_seq, j_seq, j_sym", i_seq, j_seq, j_sym
     for mi in self.asu_mappings.site_symmetry_table().get(i_seq).matrices():

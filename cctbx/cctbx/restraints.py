@@ -12,5 +12,5 @@ import scitbx.stl.vector
 
 pair_sym_ops = cctbx.sgtbx.stl_vector_rt_mx
 
-pair_asu_dict = scitbx.stl.vector.set_unsigned
-pair_asu_j_sym_groups = scitbx.stl.set.unsigned
+pair_asu_j_sym_groups = scitbx.stl.vector.set_unsigned
+pair_asu_j_sym_group = scitbx.stl.set.unsigned
