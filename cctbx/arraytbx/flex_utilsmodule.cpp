@@ -18,7 +18,7 @@
 #include <cctbx/math/array_utils.h>
 #include <cctbx/maps/accessors.h>
 
-#include <cctbx/array_family/shared_bpl_.h>
+#include <cctbx/array_family/flex_bpl.h>
 
 namespace cctbx { namespace af { namespace bpl { namespace { namespace {
 
@@ -85,12 +85,16 @@ namespace {
     ex_statistics(
       cctbx::af::versa<FloatType, cctbx::af::flex_grid<> > x)
       : base_type(x.as_base_array().const_ref())
-    {}
+    {
+      cctbx_assert(!x.accessor().is_padded());
+    }
     ex_statistics(
       cctbx::af::versa<float, cctbx::af::flex_grid<> > x)
       : base_type(cctbx::af::shared_plain<FloatType>(
-          x.begin(), x.end()).const_ref())
-    {}
+          cctbx::af::adapt(x)).const_ref())
+    {
+      cctbx_assert(!x.accessor().is_padded());
+    }
     FloatType const& min() const { return base_type::min(); }
     FloatType const& max() const { return base_type::max(); }
     FloatType const& mean() const { return base_type::mean(); }

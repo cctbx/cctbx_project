@@ -1467,31 +1467,6 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     }
   };
 
-  versa<double, flex_grid<> >
-  py_reinterpret_complex_as_real(
-    versa<std::complex<double>, flex_grid<> > a)
-  {
-    flex_grid_default_index_type origin = a.accessor().origin();
-    flex_grid_default_index_type last = a.accessor().last();
-    origin.back() *= 2;
-    last.back() *= 2;
-    return versa<double, flex_grid<> >(a.handle(), flex_grid<>(origin, last));
-  }
-
-  versa<std::complex<double>, flex_grid<> >
-  py_reinterpret_real_as_complex(
-    versa<double, flex_grid<> > a)
-  {
-    flex_grid_default_index_type origin = a.accessor().origin();
-    flex_grid_default_index_type last = a.accessor().last();
-    cctbx_assert(origin.back() % 2 == 0);
-    cctbx_assert(last.back() % 2 == 0);
-    origin.back() /= 2;
-    last.back() /= 2;
-    return versa<std::complex<double>, flex_grid<> >(
-      a.handle(), flex_grid<>(origin, last));
-  }
-
   void init_module(python::module_builder& this_module)
   {
     const std::string Revision = "$Revision$";
@@ -1573,11 +1548,6 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
 
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
     WRAP_PLAIN("tiny_size_t_2", tiny_size_t_2);
-
-    this_module.def(py_reinterpret_complex_as_real,
-      "reinterpret_complex_as_real");
-    this_module.def(py_reinterpret_real_as_complex,
-      "reinterpret_real_as_complex");
 #endif
   }
 

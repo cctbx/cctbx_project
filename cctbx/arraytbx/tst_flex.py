@@ -112,18 +112,6 @@ def exercise_flex_constructors():
   assert f.size() == 5
   assert tuple(f) == (1,2,3,4,5)
 
-def exercise_reinterpret():
-  fc = flex.complex_double(flex.grid((2,3,5)))
-  assert fc.grid() == (2,3,5)
-  fcd = flex.reinterpret_complex_as_real(fc)
-  assert fc.id() == fcd.id()
-  assert fc.size() * 2 == fcd.size()
-  assert fcd.grid() == (2,3,10)
-  fcdc = flex.reinterpret_real_as_complex(fcd)
-  assert fc.id() == fcdc.id()
-  assert fc.size() == fcdc.size()
-  assert fcdc.grid() == (2,3,5)
-
 def exercise_misc():
   f = flex.double((1,2,3))
   assert f.front() == 1
@@ -502,7 +490,6 @@ def run(iterations):
   while (iterations == 0 or i < iterations):
     exercise_flex_grid()
     exercise_flex_constructors()
-    exercise_reinterpret()
     exercise_misc()
     exercise_push_back_etc()
     exercise_setitem()

@@ -20,7 +20,7 @@
 
 #include <cctbx/maps/peak_search.h>
 
-#include <cctbx/array_family/shared_bpl_.h>
+#include <cctbx/array_family/flex_bpl.h>
 
 namespace {
   typedef
@@ -42,7 +42,9 @@ namespace cctbx { namespace af { namespace bpl { namespace {
 
 }}}} // namespace cctbx::af::bpl<anonymous>
 
-// XXX which ones to we still need?
+CCTBX_ARRAY_FAMILY_IMPLICIT_VERSA_GRID_CONVERTERS(double, 3)
+CCTBX_ARRAY_FAMILY_IMPLICIT_VERSA_GRID_CONVERTERS(std::complex<double>, 3)
+
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::af::double3)
@@ -53,28 +55,6 @@ CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(ex_xray_scatterer)
 namespace {
 
   using namespace cctbx;
-
-  // XXX move to a new header file
-  template <typename ElementType>
-  af::const_ref<ElementType, af::grid<3> >
-  flex_as_const_ref_grid_3(
-    af::versa<ElementType, af::flex_grid<> > const& map)
-  {
-    cctbx_assert(map.accessor().nd() == 3);
-    cctbx_assert(map.accessor().is_0_based());
-    cctbx_assert(!map.accessor().is_padded());
-    return af::const_ref<ElementType, af::grid<3> >(
-      map.begin(), af::adapt(map.accessor().grid()));
-  }
-
-  // XXX move to a new header file
-  template <typename ElementType>
-  af::versa<ElementType, af::flex_grid<> >
-  flex_from_versa_grid_3(af::versa<ElementType, af::grid<3> > map)
-  {
-    return af::versa<ElementType, af::flex_grid<> >(
-      map, af::adapt(map.accessor()));
-  }
 
   void
   xray_scatterer_set_fpfdp(ex_xray_scatterer& site,
@@ -472,18 +452,18 @@ namespace {
   bool
   grid_tags_verify_1(
     maps::grid_tags<long> const& tags,
-    af::flex_double& data)
+    af::versa<double, af::grid<3> > data)
   {
-    return tags.verify(flex_as_const_ref_grid_3(data));
+    return tags.verify(data);
   }
 
   bool
   grid_tags_verify_2(
     maps::grid_tags<long> const& tags,
-    af::flex_double& data,
+    af::versa<double, af::grid<3> > data,
     double min_correlation)
   {
-    return tags.verify(flex_as_const_ref_grid_3(data), min_correlation);
+    return tags.verify(data, min_correlation);
   }
 
   void
@@ -526,7 +506,7 @@ namespace {
       miller_indices.const_ref(), structure_factors.ref());
   }
 
-  af::flex_complex_double
+  af::versa<std::complex<double>, af::grid<3> >
   py_structure_factor_map(
     sgtbx::SpaceGroup const& sgops,
     bool friedel_flag,
@@ -535,22 +515,22 @@ namespace {
     af::long3 const& n_complex,
     bool conjugate)
   {
-    return flex_from_versa_grid_3(sftbx::structure_factor_map(
+    return sftbx::structure_factor_map(
       sgops, friedel_flag, h.const_ref(), f.const_ref(), n_complex,
-      conjugate));
+      conjugate);
   }
 
   af::shared<std::complex<double> >
   py_collect_structure_factors_miller_indices(
     bool friedel_flag,
     af::shared<miller::Index> const& miller_indices,
-    af::flex_complex_double const& transformed_map,
+    af::versa<std::complex<double>, af::grid<3> > const& transformed_map,
     bool conjugate)
   {
     return sftbx::collect_structure_factors(
       friedel_flag,
       miller_indices.const_ref(),
-      flex_as_const_ref_grid_3(transformed_map),
+      transformed_map.const_ref(),
       conjugate);
   }
 
@@ -582,14 +562,14 @@ namespace {
     sgtbx::SpaceGroupInfo const& sginfo,
     bool friedel_flag,
     double max_q,
-    af::flex_complex_double const& transformed_map,
+    af::versa<std::complex<double>, af::grid<3> > const& transformed_map,
     bool conjugate)
   {
     std::pair<af::shared<miller::Index>,
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
       ucell, sginfo, friedel_flag, max_q,
-      flex_as_const_ref_grid_3(transformed_map),
+      transformed_map.const_ref(),
       conjugate);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
@@ -608,31 +588,17 @@ namespace {
     return res;
   }
 
+  // XXX move to new maptbx
   maps::peak_list<double>
   get_peak_list(
-    af::int3 const& n_real,
-    af::int3 const& m_real,
-    af::shared<double> data, // XXX use flex
+    af::versa<double, af::grid<3> > data,
     maps::grid_tags<long>& tags,
     int peak_search_level,
     std::size_t max_peaks)
   {
-    cctbx_assert(   af::product(n_real.const_ref())
-                 <= af::product(m_real.const_ref()));
-    cctbx_assert(af::product(n_real.const_ref()) == tags.size());
-    cctbx_assert(af::product(m_real.const_ref()) == data.size());
-    typedef af::grid<3> grid_type;
-    typedef grid_type::index_type grid_point_type;
-    af::ref<double, grid_type> data_3d(data.begin(), grid_type(m_real));
-    // XXX  make maps::peak_list smarter so we do not need to unpad
-    af::versa<double, grid_type> data_compact_3d; // XXX why do we need the
-    data_compact_3d.resize(grid_type(n_real));    // XXX separate resize()?
-    af::nested_loop<grid_point_type> loop(data_compact_3d.accessor());
-    for (grid_point_type const& pt = loop(); !loop.over(); loop.incr()) {
-      data_compact_3d(pt) = data_3d(pt);
-    }
+    cctbx_assert(af::product(data.accessor().const_ref()) == tags.size());
     return maps::peak_list<double>(
-      data_compact_3d, tags, peak_search_level, max_peaks);
+      data.const_ref(), tags, peak_search_level, max_peaks);
   }
 
   void init_module(python::module_builder& this_module)

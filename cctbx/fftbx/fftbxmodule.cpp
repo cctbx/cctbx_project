@@ -13,7 +13,7 @@
 #include <boost/python/cross_module.hpp>
 #include <cctbx/array_family/tiny_bpl.h>
 #include <cctbx/array_family/small_bpl.h>
-#include <cctbx/array_family/shared_bpl_.h>
+#include <cctbx/array_family/flex_bpl.h>
 #include <cctbx/array_family/flex_types.h>
 #include <cctbx/fftbx/gridding.h>
 #include <cctbx/fftbx/complex_to_complex_3d.h>

@@ -1,5 +1,6 @@
 import sys, os, math
 from cctbx_boost.arraytbx import flex
+from cctbx_boost.arraytbx import flex_utils
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
 from cctbx_boost import sftbx
@@ -91,14 +92,13 @@ def raise_emap(xtal, e000, p1_miller_indices,
     old_e_complex, n_complex, conjugate)
   if (use_e000):
     map[0] = e000
-  rfft.backward(map)
-  rmap = flex.reinterpret_complex_as_real(map)
+  rmap = rfft.backward(map)
   if (zero_out_negative):
     flex.set_if_less_than(rmap, 0, 0)
-  flex.in_place_pow(rmap, exponent)
-  rfft.forward(map)
+  flex_utils.in_place_pow(rmap, exponent)
+  sf_map = rfft.forward(map)
   new_e_complex = sftbx.collect_structure_factors(
-    friedel_flag, miller_indices, map, n_complex, conjugate)
+    friedel_flag, miller_indices, sf_map, conjugate)
   new_phases = flex.arg(new_e_complex)
   if (0 or verbose):
     for i in xrange(miller_indices.size()):
@@ -168,7 +168,7 @@ class simulated_data:
     miller_set.H.pop_back()
     e_values.pop_back()
     dmtbx.inplace_sort(miller_set.H, e_values, 1)
-    s = flex.statistics(e_values)
+    s = flex_utils.statistics(e_values)
     print "mean2:", s.mean2()
     print "number of structure factors:", e_values.size()
     erase_small(miller_set.H, e_values, e_min)
@@ -258,6 +258,7 @@ def exercise(SgInfo,
       print "squaring mean weighted phase error: %.2f" % (mwpe,)
   print
 
+# XXX consolidate with xutils.fft_map
 class map_from_ampl_phases:
 
   def __init__(self, xtal, d_min,
@@ -283,13 +284,11 @@ class map_from_ampl_phases:
     map = sftbx.structure_factor_map(
       self.xtal.SgOps, friedel_flag, miller_indices,
       f, n_complex, conjugate)
-    self.rfft.backward(map)
-    return flex.reinterpret_complex_as_real(map)
+    return self.rfft.backward(map)
 
   def get_peak_list(self, map, peak_search_level, max_peaks):
-    return sftbx.get_peak_list(
-      self.rfft.Nreal(), self.rfft.Mreal(), map,
-      self.tags, peak_search_level, max_peaks)
+    flex_utils.inplace_unpad(map)
+    return sftbx.get_peak_list(map, self.tags, peak_search_level, max_peaks)
 
 def peak_list_as_emma_model(xtal, n_real, peak_list):
   positions = []
