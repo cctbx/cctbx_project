@@ -561,7 +561,7 @@ namespace cctbx { namespace fftbx {
     }
     if (IDO == 1) return;
     for (std::size_t IK = 0; IK < IDL1; IK++) {
-      C2(IK,0) = CH2(IK,1);
+      C2(IK,0) = CH2(IK,0);
     }
     for (J = 1; J < IP; J++) {
       for (std::size_t K = 0; K < L1; K++) {
