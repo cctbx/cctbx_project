@@ -42,10 +42,6 @@ namespace scitbx { namespace af {
         : base_class(ac)
       {}
 
-      versa(AccessorType const& ac, reserve_flag)
-        : base_class(ac, reserve_flag())
-      {}
-
       explicit
       versa(index_value_type const& n0)
         : base_class(n0)

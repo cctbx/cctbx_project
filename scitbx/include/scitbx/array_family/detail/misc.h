@@ -15,7 +15,17 @@
 
 namespace scitbx { namespace af {
 
-  struct reserve_flag {};
+  class reserve
+  {
+    public:
+      reserve(std::size_t size) : size_(size) {}
+
+      std::size_t
+      operator()() const { return size_; }
+
+    private:
+      std::size_t size_;
+  };
 
   template <typename FunctorType>
   struct init_functor

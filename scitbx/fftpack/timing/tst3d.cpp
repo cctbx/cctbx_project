@@ -29,7 +29,7 @@ namespace {
 
   shared_complex_array init_cseq(const af::int3& n)
   {
-    shared_complex_array cseq(af::product(n), af::reserve_flag());
+    shared_complex_array cseq((af::reserve(af::product(n))));
     for(int i=0;i<cseq.capacity(); i++) {
       cseq.push_back(shared_complex_array::value_type(
         double(37-i)/(af::max(n)+11),
@@ -40,7 +40,7 @@ namespace {
 
   shared_real_array init_rseq(const af::int3& n)
   {
-    shared_real_array rseq(af::product(n), af::reserve_flag());
+    shared_real_array rseq((af::reserve(af::product(n))));
     for(int i=0;i<rseq.capacity(); i++) {
       rseq.push_back(double(37-i)/(af::max(n)+11));
     }

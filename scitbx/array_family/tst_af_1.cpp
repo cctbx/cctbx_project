@@ -202,7 +202,7 @@ namespace {
       check_true(__LINE__, a1.size() == 0);
       check_true(__LINE__, a1.capacity() == 0);
       check_true(__LINE__, a1.begin() == 0);
-      ArrayType a2(10, af::reserve_flag());
+      ArrayType a2((af::reserve(10)));
       check_true(__LINE__, a2.size() == 0);
       check_true(__LINE__, a2.capacity() == 10);
       ArrayType a4(10, element_type(123));

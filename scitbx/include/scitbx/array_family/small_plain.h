@@ -37,10 +37,10 @@ namespace scitbx { namespace af {
       }
 
       // non-std
-      small_plain(size_type const& sz, reserve_flag)
+      small_plain(af::reserve const& sz)
         : m_size(0)
       {
-        if (N < sz) throw_range_error();
+        if (N < sz()) throw_range_error();
       }
 
       small_plain(size_type const& sz, ElementType const& x)

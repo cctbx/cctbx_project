@@ -34,8 +34,8 @@ namespace scitbx { namespace af {
       {}
 
       // non-std
-      shared(size_type const& sz, reserve_flag)
-        : base_class(sz, reserve_flag())
+      shared(af::reserve const& sz)
+        : base_class(sz)
       {}
 
       shared(size_type const& sz, ElementType const& x)
