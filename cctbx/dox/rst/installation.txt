@@ -22,13 +22,16 @@ Python 2.2.1 or higher is pre-installed on the target platform (e.g.
 Redhat 8.0) the ``cctbx_bundle.selfx`` file is most useful. Otherwise it
 is best to download the ``cctbx_python_bundle.selfx`` file because
 the installation script will automatically install Python before
-proceeding with the installation of the cctbx modules.
+proceeding with the installation of the cctbx modules (but see the
+`Mac OS X notes <http://cci.lbl.gov/cctbx_build/mac_os_x_notes.html>`_).
 The Unix installation script is known to work with the following
 compilers:
 
-  - Linux: any gcc >= 2.96 (tested with gcc up to version 3.2.2)
+  - Linux: any gcc >= 2.96 (tested with gcc up to version 3.2.2;
+    gcc 3.3 works without optimization only)
   - Tru64 Unix: cxx 6.5.1
   - IRIX: CC 7.3.1.2
+  - Mac OS 10.2: gcc 3.3 (works without optimization only)
 
 Other Unix platforms will most likely require adjustments of the
 build scripts.
@@ -101,7 +104,7 @@ for problems.
 Manually building from sources under Windows 2000 or higher
 -----------------------------------------------------------
 
-The cctbx installation requires Visual C++ 7.0 (Visual Studio .NET 2002).
+The cctbx installation requires Visual C++ 7.1 (Visual Studio .NET 2003).
 
 To install Python under Windows 2000 it is best to use a binary
 installer from the `Python download page <http://www.python.org/download/>`_.
