@@ -118,6 +118,7 @@ class xray_structure(xray.structure):
                n_scatterers=None,
                volume_per_atom=50.,
                min_distance=1.5,
+               min_distance_sym_equiv=None,
                general_positions_only=00000,
                random_f_prime_d_min=0,
                random_f_prime_scale=0.6,
@@ -131,7 +132,8 @@ class xray_structure(xray.structure):
                random_occupancy=00000):
     assert elements is None or n_scatterers is None
     assert not (elements is None and n_scatterers is None)
-    adopt_init_args(self, locals(), exclude=("space_group_info",))
+    adopt_init_args(self, locals(),
+      exclude=("space_group_info", "min_distance_sym_equiv"))
     if (elements is not None):
       self.n_scatterers = len(elements)
     crystal_symmetry = crystal.symmetry(
@@ -140,9 +142,11 @@ class xray_structure(xray.structure):
         * volume_per_atom
         * space_group_info.group().order_z()),
       space_group_info=space_group_info)
+    if (min_distance_sym_equiv is None):
+      min_distance_sym_equiv = min_distance
     special_position_settings = crystal.special_position_settings(
       crystal_symmetry,
-      min_distance_sym_equiv=min_distance,
+      min_distance_sym_equiv=min_distance_sym_equiv,
       u_star_tolerance=0,
       assert_is_positive_definite=00000,
       assert_min_distance_sym_equiv=0001)
