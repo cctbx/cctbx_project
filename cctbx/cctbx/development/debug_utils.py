@@ -1,5 +1,6 @@
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
+from libtbx.utils import format_cpu_times
 import sys, os, time, random
 
 def get_test_space_group_symbols(flag_AllSpaceGroups,
@@ -28,15 +29,6 @@ def random_origin_shift(space_group_info, grid=12):
     xyz.append("%s+%d/%d" % ("xyz"[i], random.randrange(grid), grid))
   xyz = ",".join(xyz)
   return space_group_info.change_basis(sgtbx.change_of_basis_op(xyz))
-
-def report_cpu_times():
-  t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]),
-  try: python_ticker = sys.gettickeraccumulation()
-  except AttributeError: pass
-  else:
-    print "micro-seconds/tick: %.3f" % ((t[0] + t[1]) / python_ticker * 1.e6),
-  print
 
 def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
   chunk_size = 1
@@ -87,7 +79,7 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
       if (threading.activeCount() == 1): break
       time.sleep(1)
   sys.stdout.flush()
-  report_cpu_times()
+  print format_cpu_times()
 
 def parse_options_loop_space_groups(argv, call_back,
                                     keywords=(),
