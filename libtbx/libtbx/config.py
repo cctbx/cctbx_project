@@ -294,8 +294,11 @@ class env:
         dispatcher_exe_file_name="windows_dispatcher.exe"):
     if (os.name == "nt"
         and self.partially_customized_windows_dispatcher is None):
-      self.partially_customized_windows_dispatcher = open(join(
-        self.dist_path("libtbx"), dispatcher_exe_file_name), "rb").read()
+      try:
+        self.partially_customized_windows_dispatcher = open(join(
+          self.dist_path("libtbx"), dispatcher_exe_file_name), "rb").read()
+      except IOError, e:
+        raise RuntimeError(str(e))
       if (self.partially_customized_windows_dispatcher.find(unique_pattern)<0):
         raise RuntimeError('Unique pattern "%s" not found in file %s' % (
           unique_pattern, dispatcher_exe_file_name))
