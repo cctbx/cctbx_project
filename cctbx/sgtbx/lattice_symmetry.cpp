@@ -38,7 +38,7 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     af::const_ref<std::size_t> perm_cr = perm.const_ref();
     space_group group;
     for(std::size_t i=0;i<perm_cr.size();i++) {
-      uc_mat3 w_cart = two_fold_matrix_from_axis_direction(ts[i]);
+      uc_mat3 w_cart = two_fold_matrix_from_axis_direction(ts[perm_cr[i]]);
       sg_mat3 w_frac = as_integer_matrix(frac*w_cart*orth);
       rt_mx s(rot_mx(w_frac,1));
       space_group expanded_group(group);
