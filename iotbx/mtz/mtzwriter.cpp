@@ -91,20 +91,21 @@ void iotbx::mtz::MtzWriter::oneDataset(const std::string& dataset,
 void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup[], 
            const int ncol, const int iref)
 { int i,j,k;
-
   /* if this is extra reflection, check memory */
   if (mtz->refs_in_memory && iref > mtz->nref) {
-    if (iref > ccp4array_size(lookup[0]->ref)) {
-     /* Loop over crystals */
-      for (i = 0; i < mtz->nxtal; ++i) {
-     /* Loop over datasets for each crystal */
-       for (j = 0; j < mtz->xtal[i]->nset; ++j) {
-      /* Loop over columns for each dataset */
-        for (k = 0; k < mtz->xtal[i]->set[j]->ncol; ++k) {
-         ccp4array_resize(mtz->xtal[i]->set[j]->col[k]->ref, iref);
-        }
+   /* Loop over crystals */
+    for (i = 0; i < mtz->nxtal; ++i) {
+   /* Loop over datasets for each crystal */
+     for (j = 0; j < mtz->xtal[i]->nset; ++j) {
+    /* Loop over columns for each dataset */
+      for (k = 0; k < mtz->xtal[i]->set[j]->ncol; ++k) {
+       if (iref > ccp4array_size(mtz->xtal[i]->set[j]->col[k]->ref)){
+         //Always reallocate in increments of 8K
+         int newsize = 8192 * (1 + iref/8192);
+         ccp4array_resize(mtz->xtal[i]->set[j]->col[k]->ref, newsize);
        }
       }
+     }
     }
   }
 
