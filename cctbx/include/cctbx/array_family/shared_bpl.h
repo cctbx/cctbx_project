@@ -345,62 +345,6 @@ namespace cctbx { namespace af {
     }
 
     static
-    sh_class_builders
-    plain(
-      boost::python::module_builder& bpl_module,
-      std::string const& python_name)
-    {
-      using namespace boost::python;
-
-      class_builder<shared_items<ElementType> >
-      py_shared_items(bpl_module, (python_name+"_items").c_str());
-
-      class_builder<
-        sh_t,
-        shared_wrapper<e_t> >
-      py_shared(bpl_module, python_name.c_str());
-      export_converters(py_shared);
-
-      py_shared_items.def(constructor<>());
-      py_shared_items.def(constructor<sh_t const&>());
-      py_shared_items.def(&shared_items<ElementType>::size, "__len__");
-      py_shared_items.def(&shared_items<ElementType>::getitem, "__getitem__");
-
-      py_shared.def(constructor<>());
-      py_shared.def(constructor<std::size_t>());
-      py_shared.def(constructor<std::size_t, ElementType const&>());
-      py_shared.def(constructor<tuple>());
-      py_shared.def(size, "size");
-      py_shared.def(size, "__len__");
-      py_shared.def(capacity, "capacity");
-      py_shared.def(getitem, "__getitem__");
-      py_shared.def(setitem, "__setitem__");
-      py_shared.def(front, "front");
-      py_shared.def(back, "back");
-      py_shared.def(fill, "fill");
-      py_shared.def(deep_copy, "deep_copy");
-      py_shared.def(reserve, "reserve");
-      py_shared.def(assign, "assign");
-      py_shared.def(push_back, "push_back");
-      py_shared.def(push_back, "append");
-      py_shared.def(pop_back, "pop_back");
-      py_shared.def(insert_i_x, "insert");
-      py_shared.def(insert_i_n_x, "insert");
-      py_shared.def(erase_i, "erase");
-      py_shared.def(erase_i_j, "erase");
-      py_shared.def(resize, "resize");
-      py_shared.def(clear, "clear");
-      py_shared.def(append, "append");
-      py_shared.def(indices, "indices");
-      py_shared.def(items, "items");
-      py_shared.def(select, "select");
-
-      shared_pickle<e_t>::def(py_shared);
-
-      return std::make_pair(py_shared, py_shared_items);
-    }
-
-    static
     shared<bool>
     invert_a(shared<bool> const& a)
     {
@@ -473,24 +417,6 @@ namespace cctbx { namespace af {
       std::size_t result = 0;
       for(std::size_t i=0;i<a1.size();i++) if(a1[i] == a2) result++;
       return result;
-    }
-
-    static
-    sh_class_builders
-    logical(
-      boost::python::module_builder& bpl_module,
-      std::string const& python_name)
-    {
-      sh_class_builders class_blds = plain(bpl_module, python_name);
-      class_blds.first.def(invert_a, "__invert__");
-      class_blds.first.def(and_a_a, "__and__");
-      class_blds.first.def(or_a_a, "__or__");
-      class_blds.first.def(iand_a_a, "__iand__");
-      class_blds.first.def(ior_a_a, "__ior__");
-      class_blds.first.def(iand_a_s, "__iand__");
-      class_blds.first.def(ior_a_s, "__ior__");
-      class_blds.first.def(count, "count");
-      return class_blds;
     }
 
     static
@@ -818,85 +744,6 @@ namespace cctbx { namespace af {
     static f_e_t rms_a(sh_t const& a) { return af::rms(a.const_ref()); }
 
     static
-    sh_class_builders
-    numeric_common(
-      boost::python::module_builder& bpl_module,
-      std::string const& python_name)
-    {
-      sh_class_builders class_blds = plain(bpl_module, python_name);
-      class_blds.first.def(neg_a, "__neg__");
-      class_blds.first.def(add_a_a, "__add__");
-      class_blds.first.def(sub_a_a, "__sub__");
-      class_blds.first.def(mul_a_a, "__mul__");
-      class_blds.first.def(div_a_a, "__div__");
-      class_blds.first.def(add_a_s, "add");
-      class_blds.first.def(sub_a_s, "sub");
-      class_blds.first.def(mul_a_s, "mul");
-      class_blds.first.def(div_a_s, "div");
-      class_blds.first.def(iadd_a_s, "__iadd__");
-      class_blds.first.def(isub_a_s, "__isub__");
-      class_blds.first.def(imul_a_s, "__imul__");
-      class_blds.first.def(idiv_a_s, "__idiv__");
-      class_blds.first.def(eq_a_a, "__eq__");
-      class_blds.first.def(ne_a_a, "__ne__");
-      class_blds.first.def(eq_a_s, "__eq__");
-      class_blds.first.def(ne_a_s, "__ne__");
-      bpl_module.def(sum_a, "sum");
-      bpl_module.def(product_a, "product");
-      return class_blds;
-    }
-
-    static
-    sh_class_builders
-    numeric_no_pow(
-      boost::python::module_builder& bpl_module,
-      std::string const& python_name)
-    {
-      sh_class_builders class_blds = numeric_common(bpl_module, python_name);
-      class_blds.first.def(as_double, "as_double");
-      class_blds.first.def(lt_a_a, "__lt__");
-      class_blds.first.def(gt_a_a, "__gt__");
-      class_blds.first.def(le_a_a, "__le__");
-      class_blds.first.def(ge_a_a, "__ge__");
-      class_blds.first.def(lt_a_s, "__lt__");
-      class_blds.first.def(gt_a_s, "__gt__");
-      class_blds.first.def(le_a_s, "__le__");
-      class_blds.first.def(ge_a_s, "__ge__");
-      bpl_module.def(abs_a, "abs");
-      bpl_module.def(min_index_a, "min_index");
-      bpl_module.def(max_index_a, "max_index");
-      bpl_module.def(min_a, "min");
-      bpl_module.def(max_a, "max");
-      bpl_module.def(mean_a, "mean");
-      bpl_module.def(rms_a, "rms");
-      return class_blds;
-    }
-
-    static
-    sh_class_builders
-    numeric(
-      boost::python::module_builder& bpl_module,
-      std::string const& python_name)
-    {
-      sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
-      bpl_module.def(pow_a_s, "pow");
-      return class_blds;
-    }
-
-    static
-    sh_class_builders
-    integer(
-      boost::python::module_builder& bpl_module,
-      std::string const& python_name)
-    {
-      sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
-      class_blds.first.def(mod_a_a, "__mod__");
-      class_blds.first.def(mod_a_s, "mod");
-      class_blds.first.def(imod_a_s, "__imod__");
-      return class_blds;
-    }
-
-    static
     shared<double>
     abs_complex(shared<std::complex<double> > const& a)
     {
@@ -970,6 +817,169 @@ namespace cctbx { namespace af {
       shared<double> const& theta)
     {
       return polar_complex_3(rho, theta, false);
+    }
+
+    static
+    sh_class_builders
+    plain(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      using namespace boost::python;
+
+      class_builder<shared_items<ElementType> >
+      py_shared_items(bpl_module, (python_name+"_items").c_str());
+
+      class_builder<
+        sh_t,
+        shared_wrapper<e_t> >
+      py_shared(bpl_module, python_name.c_str());
+      export_converters(py_shared);
+
+      py_shared_items.def(constructor<>());
+      py_shared_items.def(constructor<sh_t const&>());
+      py_shared_items.def(&shared_items<ElementType>::size, "__len__");
+      py_shared_items.def(&shared_items<ElementType>::getitem, "__getitem__");
+
+      py_shared.def(constructor<>());
+      py_shared.def(constructor<std::size_t>());
+      py_shared.def(constructor<std::size_t, ElementType const&>());
+      py_shared.def(constructor<tuple>());
+      py_shared.def(size, "size");
+      py_shared.def(size, "__len__");
+      py_shared.def(capacity, "capacity");
+      py_shared.def(getitem, "__getitem__");
+      py_shared.def(setitem, "__setitem__");
+      py_shared.def(front, "front");
+      py_shared.def(back, "back");
+      py_shared.def(fill, "fill");
+      py_shared.def(deep_copy, "deep_copy");
+      py_shared.def(reserve, "reserve");
+      py_shared.def(assign, "assign");
+      py_shared.def(push_back, "push_back");
+      py_shared.def(push_back, "append");
+      py_shared.def(pop_back, "pop_back");
+      py_shared.def(insert_i_x, "insert");
+      py_shared.def(insert_i_n_x, "insert");
+      py_shared.def(erase_i, "erase");
+      py_shared.def(erase_i_j, "erase");
+      py_shared.def(resize, "resize");
+      py_shared.def(clear, "clear");
+      py_shared.def(append, "append");
+      py_shared.def(indices, "indices");
+      py_shared.def(items, "items");
+      py_shared.def(select, "select");
+
+      shared_pickle<e_t>::def(py_shared);
+
+      return std::make_pair(py_shared, py_shared_items);
+    }
+
+    static
+    sh_class_builders
+    eq_comparable(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = plain(bpl_module, python_name);
+      class_blds.first.def(eq_a_a, "__eq__");
+      class_blds.first.def(ne_a_a, "__ne__");
+      class_blds.first.def(eq_a_s, "__eq__");
+      class_blds.first.def(ne_a_s, "__ne__");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    logical(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = eq_comparable(bpl_module, python_name);
+      class_blds.first.def(invert_a, "__invert__");
+      class_blds.first.def(and_a_a, "__and__");
+      class_blds.first.def(or_a_a, "__or__");
+      class_blds.first.def(iand_a_a, "__iand__");
+      class_blds.first.def(ior_a_a, "__ior__");
+      class_blds.first.def(iand_a_s, "__iand__");
+      class_blds.first.def(ior_a_s, "__ior__");
+      class_blds.first.def(count, "count");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    numeric_common(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = eq_comparable(bpl_module, python_name);
+      class_blds.first.def(neg_a, "__neg__");
+      class_blds.first.def(add_a_a, "__add__");
+      class_blds.first.def(sub_a_a, "__sub__");
+      class_blds.first.def(mul_a_a, "__mul__");
+      class_blds.first.def(div_a_a, "__div__");
+      class_blds.first.def(add_a_s, "add");
+      class_blds.first.def(sub_a_s, "sub");
+      class_blds.first.def(mul_a_s, "mul");
+      class_blds.first.def(div_a_s, "div");
+      class_blds.first.def(iadd_a_s, "__iadd__");
+      class_blds.first.def(isub_a_s, "__isub__");
+      class_blds.first.def(imul_a_s, "__imul__");
+      class_blds.first.def(idiv_a_s, "__idiv__");
+      bpl_module.def(sum_a, "sum");
+      bpl_module.def(product_a, "product");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    numeric_no_pow(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = numeric_common(bpl_module, python_name);
+      class_blds.first.def(as_double, "as_double");
+      class_blds.first.def(lt_a_a, "__lt__");
+      class_blds.first.def(gt_a_a, "__gt__");
+      class_blds.first.def(le_a_a, "__le__");
+      class_blds.first.def(ge_a_a, "__ge__");
+      class_blds.first.def(lt_a_s, "__lt__");
+      class_blds.first.def(gt_a_s, "__gt__");
+      class_blds.first.def(le_a_s, "__le__");
+      class_blds.first.def(ge_a_s, "__ge__");
+      bpl_module.def(abs_a, "abs");
+      bpl_module.def(min_index_a, "min_index");
+      bpl_module.def(max_index_a, "max_index");
+      bpl_module.def(min_a, "min");
+      bpl_module.def(max_a, "max");
+      bpl_module.def(mean_a, "mean");
+      bpl_module.def(rms_a, "rms");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    numeric(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
+      bpl_module.def(pow_a_s, "pow");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    integer(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
+      class_blds.first.def(mod_a_a, "__mod__");
+      class_blds.first.def(mod_a_s, "mod");
+      class_blds.first.def(imod_a_s, "__imod__");
+      return class_blds;
     }
 
     static
