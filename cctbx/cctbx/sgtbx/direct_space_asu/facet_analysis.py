@@ -2,7 +2,7 @@ from cctbx.sgtbx.direct_space_asu import cut_plane
 from cctbx import sgtbx
 from cctbx import matrix
 from cctbx.array_family import flex
-from scitbx import rational
+from boost import rational
 from scitbx.python_utils import list_algebra
 
 def intersection(facets):

@@ -1,5 +1,5 @@
 from cctbx import matrix
-from scitbx import rational
+from boost import rational
 import string
 
 class cut_expr_ops:

@@ -10,7 +10,7 @@ from cctbx.array_family import flex
 from cctbx.regression.tst_xray_derivatives import linear_regression_test
 from cctbx.regression.tst_sampled_model_density import assign_custom_gaussians
 from scitbx.python_utils.misc import adopt_init_args
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 from scitbx import fftpack
 import random
 import sys

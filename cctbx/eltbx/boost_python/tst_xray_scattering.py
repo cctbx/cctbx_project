@@ -1,5 +1,5 @@
 from cctbx.eltbx import xray_scattering
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import pickle
 import math
 import string

@@ -1,6 +1,6 @@
 import math
 from scitbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise_flex_grid():
   g = flex.grid()

@@ -1,5 +1,5 @@
-from scitbx import rational
-from scitbx.test_utils import approx_equal
+from boost import rational
+from libtbx.test_utils import approx_equal
 
 def exercise_int():
   r = rational.int()

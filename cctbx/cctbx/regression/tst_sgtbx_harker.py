@@ -1,7 +1,7 @@
 from cctbx.sgtbx import harker
 from cctbx import crystal
 from cctbx import sgtbx
-from scitbx.test_utils import approx_equal as ae
+from libtbx.test_utils import approx_equal as ae
 
 def run():
   uc = (10,12,14,90,90,90)

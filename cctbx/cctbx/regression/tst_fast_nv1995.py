@@ -6,7 +6,7 @@ from cctbx import maptbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import random
 import sys
 

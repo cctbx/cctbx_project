@@ -1,7 +1,7 @@
 from cctbx import mintbx
 from cctbx import uctbx
 from cctbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise_k_b_scaling():
   uc = uctbx.unit_cell((11,13,17))

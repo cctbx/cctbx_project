@@ -1,5 +1,5 @@
 from cctbx.eltbx import wavelengths
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise():
   factor_kev_angstrom = 6.6260755 * 2.99792458 / 1.60217733

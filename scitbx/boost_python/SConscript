@@ -23,9 +23,3 @@ else:                          builder = env.SharedLibrary
 builder(
   target="#libtbx/scitbx_boost_python",
   source=lib_scitbx_boost_python_sources)
-
-Import("env_scitbx_boost_python_ext")
-env_scitbx_boost_python_ext.SharedLibrary(
-  target="#libtbx/scitbx_rational_ext",
-  source="rational_ext.cpp",
-)

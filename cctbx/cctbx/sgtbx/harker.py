@@ -1,6 +1,6 @@
 from cctbx import crystal
 from cctbx import sgtbx
-from scitbx import rational
+from boost import rational
 import math
 import sys
 

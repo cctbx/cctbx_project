@@ -1,6 +1,6 @@
 import pickle
 from cctbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise_flex_triple(flex_triple, ordered, as_double=00000):
   a = flex_triple()

@@ -1,5 +1,5 @@
 from cctbx.eltbx import tiny_pse
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise():
   t = tiny_pse.table("SI")

@@ -1,7 +1,7 @@
 from cctbx import dmtbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise_triplet_generator():
   sg = sgtbx.space_group_info("P 41").group()

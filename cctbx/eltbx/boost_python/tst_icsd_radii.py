@@ -1,5 +1,5 @@
 from cctbx.eltbx import icsd_radii
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise():
   t = icsd_radii.table("sI4+")

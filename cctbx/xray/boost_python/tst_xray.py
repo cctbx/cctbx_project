@@ -6,7 +6,7 @@ from cctbx import eltbx
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import pickle
 
 def exercise_conversions():

@@ -1,5 +1,5 @@
 from cctbx import sgtbx
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import pickle
 
 def exercise_space_group_info():

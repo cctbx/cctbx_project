@@ -1,5 +1,5 @@
 from cctbx.eltbx import neutron
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise():
   t = neutron.neutron_news_1992_table("eu")

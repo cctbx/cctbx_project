@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx import uctbx
 from scitbx.python_utils import complex_math
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise_symbols():
   s = sgtbx.space_group_symbols("p 2")
