@@ -2,6 +2,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import xray
 from cctbx import crystal
+from cctbx import sgtbx
 from cctbx import adptbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
@@ -28,6 +29,7 @@ def exercise_structure():
   ys = xs.deep_copy_scatterers()
   ys.add_scatterers(ys.scatterers())
   assert ys.scatterers().size() == 4
+  assert xs.scatterers().size() == 2
   assert tuple(ys.special_position_indices()) == (0, 1, 2, 3)
   ys.add_scatterer(ys.scatterers()[0])
   assert ys.scatterers().size() == 5
@@ -110,6 +112,55 @@ def exercise_structure():
     l = pickle.loads(p)
     assert l.scatterers().size() == s.scatterers().size()
     assert l.special_position_indices().all_eq(s.special_position_indices())
+  xs0 = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(10,10,10,90,90,90),
+      space_group_symbol="P 2 2 2"))
+  xs0.add_scatterer(xray.scatterer(label="C", site=(0.1,0.1,0.1)))
+  assert xs0.site_symmetry_table().get(0).is_point_group_1()
+  xs1 = xs0.apply_shift(shift=(-0.08,-0.1,0), recompute_site_symmetries=00000)
+  assert xs1.site_symmetry_table().get(0).is_point_group_1()
+  xs2 = xs0.apply_shift(shift=(-0.08,-0.1,0), recompute_site_symmetries=0001)
+  assert str(xs2.site_symmetry_table().get(0).special_op()) == "0,0,z"
+  assert approx_equal(xs1.scatterers()[0].site, (0.02, 0, 0.1))
+  assert approx_equal(xs2.scatterers()[0].site, (0, 0, 0.1))
+  assert list(xs1.deep_copy_scatterers().special_position_indices()) == []
+  assert list(xs2.deep_copy_scatterers().special_position_indices()) == [0]
+  assert list(xs1[:].special_position_indices()) == []
+  assert list(xs2[:].special_position_indices()) == [0]
+  xs1.add_scatterer(xs1.scatterers()[0])
+  assert list(xs1[:].special_position_indices()) == [1]
+  xs1.add_scatterer(xs1.scatterers()[0], xs1.site_symmetry_table().get(0))
+  assert list(xs1[:].special_position_indices()) == [1]
+  xs1.add_scatterers(xs1.scatterers())
+  assert list(xs1[:].special_position_indices()) == [1,3,4,5]
+  xs1.add_scatterers(xs1.scatterers(), xs1.site_symmetry_table())
+  assert list(xs1[:].special_position_indices()) == [1,3,4,5,7,9,10,11]
+  xs2 = xs1[2::2]
+  assert xs2.scatterers().size() == 5
+  assert list(xs2[:].special_position_indices()) == [1,4]
+  xs1.replace_scatterers(xs2.scatterers())
+  assert list(xs1[:].special_position_indices()) == [0,1,2,3,4]
+  xs1.replace_scatterers(xs2.scatterers(), xs2.site_symmetry_table())
+  assert list(xs1[:].special_position_indices()) == [1,4]
+  xs2 = xs1.asymmetric_unit_in_p1()
+  assert xs2.unit_cell().is_similar_to(xs1.unit_cell())
+  assert xs2.space_group().order_z() == 1
+  assert list(xs2[:].special_position_indices()) == [1,4]
+  for append_number_to_labels in [00000, 0001]:
+    xs2 = xs1.expand_to_p1(append_number_to_labels=append_number_to_labels)
+    assert xs2.scatterers().size() == 16
+    xs2 = xray.structure(xs1, xs1.scatterers())
+    xs2 = xs2.expand_to_p1(append_number_to_labels=append_number_to_labels)
+    assert xs2.scatterers().size() == 10
+  cb_op = sgtbx.change_of_basis_op("z,x,y")
+  xs2 = xs1.change_basis(cb_op).expand_to_p1()
+  assert xs2.scatterers().size() == 16
+  assert approx_equal(xs2.scatterers()[0].site, (0.1, 0.02, 0))
+  assert approx_equal(xs2.scatterers()[4].site, (0.1, 0, 0))
+  xs1.scatterers().set_occupancies(flex.random_double(size=5))
+  xs2 = xs1.sort(by_value="occupancy")
+  assert xs2.special_position_indices().size() == 2
 
 def exercise_u_base():
   d_min = 9
