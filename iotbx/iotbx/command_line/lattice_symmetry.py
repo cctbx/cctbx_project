@@ -63,7 +63,6 @@ def run():
     space_group_number = sgtbx.space_group_type(group, 00000).number()
     assert 1 <= space_group_number <= 230
     sort_values.append(order_z*1000+space_group_number)
-  print tuple(sort_values)
   perm = flex.sort_permutation(sort_values, 0001)
   for i_subgrs in perm:
     subsym = crystal.symmetry(
