@@ -9,6 +9,8 @@
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/vec3.h>
 #include <complex>
+#include <vector>
+#include <set>
 
 #if defined(__sgi) && !defined(__GNUC__)
 
@@ -64,6 +66,10 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_fwd<std::complex<double> >();
     flex_fwd<std::string>();
     flex_fwd<vec3<double> >();
+
+    // for shared_ext.cpp
+    flex_fwd<std::vector<std::size_t> >();
+    flex_fwd<std::set<std::size_t> >();
   }
 
 }}} // namespace scitbx::af::boost_python
