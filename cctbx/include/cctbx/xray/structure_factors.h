@@ -169,7 +169,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       }
       if (grad_flags.site) d_target_d_site *= scitbx::constants::two_pi;
       if (grad_flags.u_iso) d_target_d_u_iso *= -scitbx::constants::two_pi_sq;
-      if (grad_flags.u_aniso) d_target_d_u_star *= -scitbx::constants::two_pi_sq;
+      if (grad_flags.u_aniso) d_target_d_u_star*=-scitbx::constants::two_pi_sq;
     }
 
     fractional<float_type> d_target_d_site;
