@@ -90,8 +90,8 @@ class reader:
     self.standard_deviation = ext_reader.standard_deviation
 
 def writer(file_name, title_lines, unit_cell, gridding, data,
-           average=0,
-           standard_deviation=1):
+           average=-1,
+           standard_deviation=-1):
   assert gridding.is_compatible_flex_grid(data.accessor())
   f = open(file_name, "wb")
   f.write("\n")
