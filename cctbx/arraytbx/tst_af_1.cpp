@@ -6,9 +6,10 @@
 
 namespace {
 
+  bool verbose = false;
+
   static std::size_t ok_counter = 0;
   static std::size_t error_counter = 0;
-  bool verbose = true;
 
   template <typename VectorType1, typename VectorType2>
   void verify(long line, const VectorType1& v, const VectorType2& a)
@@ -356,14 +357,55 @@ namespace {
     }
   };
 
-  template <typename ArrayType>
+  template <typename ArrayType, typename AltArrayType>
   struct versa_excercise {
     typedef typename ArrayType::value_type element_type;
     static void run() {
+      shared_excercise<ArrayType>::run_2();
       run_1();
     }
     static void run_1() {
       ArrayType a1;
+      a1 = ArrayType(cctbx::af::grid<1>(3));
+      a1 = ArrayType(3);
+      a1 = ArrayType(cctbx::af::grid<1>(3), element_type(123));
+      a1 = ArrayType(3, element_type(123));
+      ArrayType w1(a1, cctbx::af::weak_ref_flag());
+      check_true(__LINE__, w1.use_count() == 1);
+      check_true(__LINE__, w1.weak_count() == 1);
+      {
+        AltArrayType a2(cctbx::af::grid<2>(3, 4));
+        ArrayType a3(a2, cctbx::af::grid<1>(12));
+        ArrayType a4(a2, 12);
+        ArrayType a5(a2, cctbx::af::grid<1>(14), element_type(1));
+        ArrayType a6(a2, 16, element_type(2));
+        check_true(__LINE__, a2.use_count() == 5);
+        check_true(__LINE__, a2.size() == 12);
+        check_true(__LINE__, a3.size() == 12);
+        check_true(__LINE__, a4.size() == 12);
+        check_true(__LINE__, a5.size() == 14);
+        check_true(__LINE__, a6.size() == 16);
+        check_true(__LINE__, a2.end() - a2.begin() == a2.size());
+        check_true(__LINE__, a3.end() - a3.begin() == a3.size());
+        check_true(__LINE__, a4.end() - a4.begin() == a4.size());
+        check_true(__LINE__, a5.end() - a5.begin() == a5.size());
+        check_true(__LINE__, a6.end() - a6.begin() == a6.size());
+        a2.resize(cctbx::af::grid<2>(4, 5), element_type(3));
+        ArrayType a2_1d = a2.as_1d();
+        check_true(__LINE__, a2.use_count() == 6);
+        cctbx::af::small<element_type, 20> v;
+        v.insert(v.end(), 12, element_type());
+        v.insert(v.end(), 2, element_type(1));
+        v.insert(v.end(), 2, element_type(2));
+        v.insert(v.end(), 4, element_type(3));
+        verify(__LINE__, a2_1d, v);
+        check_true(__LINE__, a2(0,0) == element_type(0));
+        check_true(__LINE__, a2(1,1) == element_type(0));
+        check_true(__LINE__, a2(3,4) == element_type(3));
+        w1 = ArrayType(a2_1d, cctbx::af::weak_ref_flag());
+        check_true(__LINE__, w1.use_count() == 6);
+      }
+      check_true(__LINE__, w1.use_count() == 0);
     }
   };
 
@@ -382,7 +424,8 @@ int main(void)
   array_excercise<af::small<int, 128> >::run();
 
   if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  shared_excercise<af::versa_plain<int> >::run_2();
+  versa_excercise<af::versa_plain<int>,
+                  af::versa_plain<int, af::grid<2> > >::run();
 
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {
