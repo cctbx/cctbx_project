@@ -170,7 +170,7 @@ class unix_setpaths(common_setpaths):
         print >> f, '  export %s' % var_name
       if (self.shell == "sh"):
         print >> f, \
-          '  if [ "$%s" == "L_I_B_T_B_X_E_M_P_T_Y" ]; then unset %s; fi' % (
+          '  if [ "$%s" = "L_I_B_T_B_X_E_M_P_T_Y" ]; then unset %s; fi' % (
           var_name, var_name)
       else:
         print >> f, '  if ("$%s" == "L_I_B_T_B_X_E_M_P_T_Y") unsetenv %s' % (
