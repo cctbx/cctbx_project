@@ -1,7 +1,7 @@
-cctbx/cctbx/basic/boost_array_bpl.h
+cctbx/cctbx/array_bpl.h
 cctbx/cctbx/vector/algebra.h
 cctbx/cctbx/vector/algebra_operators.h
 cctbx/cctbx/vector/algebra_traits.h
 cctbx/dev
 cctbx/doc
-cctbx/global/boost_array_bpl.cpp
+cctbx/global/array_bpl.cpp

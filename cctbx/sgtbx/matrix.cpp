@@ -252,9 +252,9 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  boost::array<int, 12> RTMx::as_int_array() const
+  array<int, 12> RTMx::as_int_array() const
   {
-    boost::array<int, 12> result;
+    array<int, 12> result;
     int i;
     for(i=0;i<9;i++) result[i    ] = Rpart()[i];
     for(i=0;i<3;i++) result[i + 9] = Tpart()[i];

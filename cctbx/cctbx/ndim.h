@@ -50,14 +50,14 @@ namespace cctbx {
   };
 
   template <std::size_t D, typename Index1dType = c_index_1d<D> >
-  class dimension : public boost::array<std::size_t, D>
+  class dimension : public array<std::size_t, D>
   {
     public:
       dimension() {};
-      dimension(const boost::array<int, D>& N) {
+      dimension(const array<int, D>& N) {
         for(std::size_t i=0;i<size();i++) this->elems[i] = N[i];
       }
-      dimension(const boost::array<std::size_t, D>& N) {
+      dimension(const array<std::size_t, D>& N) {
         std::copy(N.begin(), N.end(), begin());
       }
       dimension(std::size_t n0) {

@@ -12,12 +12,12 @@
 #define CCTBX_VECTOR_MIXED_TRAITS_H
 
 #include <cctbx/vector/std_vector_traits.h>
-#include <cctbx/vector/boost_array_traits.h>
+#include <cctbx/vector/array_traits.h>
 
 namespace cctbx { namespace vector {
 
 template <class T, class U, std::size_t N>
-struct algebra_traits<std::vector<T>, boost::array<U, N> >
+struct algebra_traits<std::vector<T>, array<U, N> >
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
   typedef std::vector<value_type> promotion_type;
@@ -28,7 +28,7 @@ struct algebra_traits<std::vector<T>, boost::array<U, N> >
 };
 
 template <class T, class U, std::size_t N>
-struct algebra_traits<boost::array<T, N>, std::vector<U> >
+struct algebra_traits<array<T, N>, std::vector<U> >
 {
   typedef typename algebra_traits<T, U>::promotion_type value_type;
   typedef std::vector<value_type> promotion_type;

@@ -14,34 +14,32 @@
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
 #include <cctbx/std_vector_bpl.h>
-#include <cctbx/basic/boost_array_bpl.h>
+#include <cctbx/array_bpl.h>
 
 using namespace cctbx;
 
 namespace {
 
-  std::size_t adjust_gridding_2(std::size_t min_grid,
-                                std::size_t max_prime) {
+  int adjust_gridding_2(int min_grid,
+                                int max_prime) {
     return fftbx::adjust_gridding(min_grid, max_prime);
   }
-  std::size_t adjust_gridding_3(std::size_t min_grid,
-                                std::size_t max_prime,
-                                std::size_t mandatory_factor) {
+  int adjust_gridding_3(int min_grid,
+                                int max_prime,
+                                int mandatory_factor) {
     return fftbx::adjust_gridding(min_grid, max_prime, mandatory_factor);
   }
 
-  boost::array<std::size_t, 3>
-  adjust_gridding_triple_2(
-    const boost::array<std::size_t, 3>& min_grid,
-    std::size_t max_prime) {
+  int3 adjust_gridding_triple_2(
+    const int3& min_grid,
+    int max_prime) {
     return fftbx::adjust_gridding_array(min_grid, max_prime);
   }
 
-  boost::array<std::size_t, 3>
-  adjust_gridding_triple_3(
-    const boost::array<std::size_t, 3>& min_grid,
-    std::size_t max_prime,
-    const boost::array<std::size_t, 3>& mandatory_factors) {
+  int3 adjust_gridding_triple_3(
+    const int3& min_grid,
+    int max_prime,
+    const int3& mandatory_factors) {
     return fftbx::adjust_gridding_array(min_grid, max_prime,
                                         mandatory_factors);
   }
@@ -60,7 +58,7 @@ namespace {
   struct v3d_accessor : public vecrefnd<ElementType, dimension<3> >
   {
     v3d_accessor() {}
-    v3d_accessor(const boost::array<std::size_t, 3>& dim,
+    v3d_accessor(const int3& dim,
                  std::vector<ElementType>& vec,
                  bool resize_vector)
       : vecrefnd<ElementType, dimension<3> >((void*) 0, dim)
@@ -68,7 +66,7 @@ namespace {
       if (resize_vector) vec.resize(this->dim().size1d());
       m_begin = &(*(vec.begin()));
     }
-    v3d_accessor(const boost::array<std::size_t, 3>& dim,
+    v3d_accessor(const int3& dim,
                  std::vector<CastElementType>& vec,
                  bool resize_vector
 #if (defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
@@ -94,11 +92,11 @@ namespace {
       m_begin = reinterpret_cast<ElementType*>(&(*(vec.begin())));
     }
     ElementType
-    getitem(const boost::array<std::size_t, 3>& I) const {
+    getitem(const int3& I) const {
       if (!dim().is_valid_index(I)) throw_index_error();
       return operator()(I);
     }
-    void setitem(const boost::array<std::size_t, 3>& I,
+    void setitem(const int3& I,
                  ElementType value) {
       if (!dim().is_valid_index(I)) throw_index_error();
       operator()(I) = value;
@@ -193,7 +191,7 @@ namespace {
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
     (void) python::wrap_std_vector(this_module,
-      "vector_of_std_size_t", std::size_t());
+      "vector_of_int", int());
     python::class_builder<
       std::vector<double>,
       python::std_vector_wrapper<double> >
@@ -239,11 +237,11 @@ namespace {
 
     py_vd3d_accessor.def(constructor<>());
     py_vd3d_accessor.def(constructor<
-      const boost::array<std::size_t, 3>&,
+      const int3&,
       std::vector<double>&,
       bool>());
     py_vd3d_accessor.def(constructor<
-      const boost::array<std::size_t, 3>&,
+      const int3&,
       std::vector<std::complex<double> >&,
       bool>());
     py_vd3d_accessor.def(&vd3d_accessor::getitem, "__getitem__");
@@ -251,11 +249,11 @@ namespace {
 
     py_vc3d_accessor.def(constructor<>());
     py_vc3d_accessor.def(constructor<
-      const boost::array<std::size_t, 3>&,
+      const int3&,
       std::vector<std::complex<double> >&,
       bool>());
     py_vc3d_accessor.def(constructor<
-      const boost::array<std::size_t, 3>&,
+      const int3&,
       std::vector<double>&,
       bool>());
     py_vc3d_accessor.def(&vc3d_accessor::getitem, "__getitem__");
@@ -291,7 +289,7 @@ namespace {
     py_complex_to_complex_3d.def(
       constructor<std::size_t, std::size_t, std::size_t>());
     py_complex_to_complex_3d.def(
-      constructor<const boost::array<std::size_t, 3>&>());
+      constructor<const int3&>());
     py_complex_to_complex_3d.def(
       &fftbx::complex_to_complex_3d<double>::N, "N");
     py_complex_to_complex_3d.def(cc_3d_forward_complex, "forward");
@@ -303,7 +301,7 @@ namespace {
     py_real_to_complex_3d.def(
       constructor<std::size_t, std::size_t, std::size_t>());
     py_real_to_complex_3d.def(
-      constructor<const boost::array<std::size_t, 3>&>());
+      constructor<const int3&>());
     py_real_to_complex_3d.def(
       &fftbx::real_to_complex_3d<double>::Nreal, "Nreal");
     py_real_to_complex_3d.def(

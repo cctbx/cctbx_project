@@ -33,7 +33,7 @@ namespace cctbx {
             return "l>0 or (l==0 and (h>0 or (h==0 and k>=0)))";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {-1, -1, 0};
+            static const Miller::Vec3 result(-1, -1, 0);
             return result;
           }
       };
@@ -50,7 +50,7 @@ namespace cctbx {
             return "k>=0 and (l>0 or (l=0 and h>=0))";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {-1, 0, 0};
+            static const Miller::Vec3 result(-1, 0, 0);
             return result;
           }
       };
@@ -67,7 +67,7 @@ namespace cctbx {
             return "h>=0 and k>=0 and l>=0";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, 0};
+            static const Miller::Vec3 result(0, 0, 0);
             return result;
           }
       };
@@ -84,7 +84,7 @@ namespace cctbx {
             return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, 0};
+            static const Miller::Vec3 result(0, 0, 0);
             return result;
           }
       };
@@ -101,7 +101,7 @@ namespace cctbx {
             return "h>=k and k>=0 and l>=0";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, 0};
+            static const Miller::Vec3 result(0, 0, 0);
             return result;
           }
       };
@@ -118,7 +118,7 @@ namespace cctbx {
             return "(h>=0 and k>0) or (h=0 and k=0 and l>=0)";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, -1};
+            static const Miller::Vec3 result(0, 0, -1);
             return result;
           }
       };
@@ -135,7 +135,7 @@ namespace cctbx {
             return "h>=k and k>=0 and (k>0 or l>=0)";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, -1};
+            static const Miller::Vec3 result(0, 0, -1);
             return result;
           }
       };
@@ -152,7 +152,7 @@ namespace cctbx {
             return "h>=k and k>=0 and (h>k or l>=0)";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, -1};
+            static const Miller::Vec3 result(0, 0, -1);
             return result;
           }
       };
@@ -169,7 +169,7 @@ namespace cctbx {
             return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, 0};
+            static const Miller::Vec3 result(0, 0, 0);
             return result;
           }
       };
@@ -186,7 +186,7 @@ namespace cctbx {
             return "h>=k and k>=0 and l>=0";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, 0};
+            static const Miller::Vec3 result(0, 0, 0);
             return result;
           }
       };
@@ -204,7 +204,7 @@ namespace cctbx {
             return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, 0};
+            static const Miller::Vec3 result(0, 0, 0);
             return result;
           }
       };
@@ -221,7 +221,7 @@ namespace cctbx {
             return "k>=l and l>=h and h>=0";
           }
           virtual const Miller::Vec3& getCutParameters() const {
-            static const Miller::Vec3 result = {0, 0, 0};
+            static const Miller::Vec3 result(0, 0, 0);
             return result;
           }
       };
@@ -323,7 +323,7 @@ namespace cctbx {
         m_ASU(ReciprocalSpaceASU(SgInfo)),
         m_Qhigh(-1.)
     {
-      InitializeLoop(Miller::Index(boost::array_abs(MaxIndex)));
+      InitializeLoop(Miller::Index(array_abs(MaxIndex)));
     }
 
     Miller::Index MillerIndexGenerator::next()

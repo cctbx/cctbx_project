@@ -10,7 +10,7 @@
 
 #include <boost/python/cross_module.hpp>
 #include <cctbx/bpl_utils.h>
-#include <cctbx/basic/boost_array_bpl.h>
+#include <cctbx/array_bpl.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/std_vector_bpl.h>
 #include <cctbx/coordinates_bpl.h>
@@ -114,7 +114,7 @@ namespace {
       const std::complex<double>&,
       const fractional<double>&,
       const double&,
-      const boost::array<double, 6>&>());
+      const array<double, 6>&>());
     py_XrayScatterer.def(
       &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Label, "Label");

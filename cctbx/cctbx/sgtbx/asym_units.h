@@ -108,7 +108,7 @@ namespace cctbx { namespace sgtbx {
        */
       std::string format() const;
       //! Test if a given point is inside the brick.
-      bool isInBrick(const boost::array<rational, 3>& P) const;
+      bool isInBrick(const array<rational, 3>& P) const;
     private:
       BrickPoint m_Points[3][2];
   };

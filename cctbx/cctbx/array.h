@@ -169,6 +169,13 @@ namespace cctbx {
       this->elems[9] = v9;
     }
   };
-}
+
+  typedef array<int, 3> int3;
+  typedef array<int, 9> int9;
+  typedef array<double, 3> double3;
+  typedef array<double, 6> double6;
+  typedef array<double, 9> double9;
+
+} // namespace cctbx
 
 #endif // CCTBX_ARRAY_H

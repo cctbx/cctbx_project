@@ -11,7 +11,7 @@
 
 #include <boost/python/cross_module.hpp>
 #include <cctbx/bpl_utils.h>
-#include <cctbx/basic/boost_array_bpl.h>
+#include <cctbx/array_bpl.h>
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/uctbx.h>
@@ -46,7 +46,7 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
   }
 
   PyObject* to_python(const uc_params& ucp) {
-    return to_python(static_cast<boost::array<double, 6> >(ucp));
+    return to_python(static_cast<cctbx::array<double, 6> >(ucp));
   }
 
 BOOST_PYTHON_END_CONVERSION_NAMESPACE

@@ -19,7 +19,7 @@
 #include <iostream>
 #include <cctbx/fixes/cmath>
 #include <cctbx/fixes/cstdlib>
-#include <boost/array.hpp>
+#include <cctbx/array.h>
 #include <cctbx/basic/matrixlite.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/constants.h>
@@ -48,7 +48,7 @@ namespace cctbx {
         explicit Index(const int* hkl) {
           for(std::size_t i=0;i<3;i++) elems[i] = hkl[i];
         }
-        Index(const int h, const int k, const int l) {
+        Index(int h, int k, int l) {
           elems[0] = h; elems[1] = k; elems[2] = l;
         }
         //@}
@@ -135,10 +135,10 @@ namespace cctbx {
 
     //! Determine max(abs(H[i])), i=1..3, for a vector of Miller indices.
     template <class MillerIndexVectorType>
-    boost::array<int, 3>
+    array<int, 3>
     IndexRange(const MillerIndexVectorType& Indices)
     {
-      boost::array<int, 3> result;
+      array<int, 3> result;
       result.assign(0);
       for(std::size_t i=0;i<Indices.size();i++) {
         for(std::size_t j=0;j<3;j++) {

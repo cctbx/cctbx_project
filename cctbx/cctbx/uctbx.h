@@ -18,7 +18,7 @@
 
 #include <iostream>
 #include <cctbx/fixes/cmath>
-#include <boost/array.hpp>
+#include <cctbx/array.h>
 #include <cctbx/error.h>
 #include <cctbx/basic/matrixlite.h>
 #include <cctbx/coordinates.h>
@@ -46,10 +46,10 @@ namespace cctbx {
 
   //! inline function for fast matrix * vector computation.
   template <class FloatType>
-  inline boost::array<FloatType, 3>
-  operator*(const Mx33& m, const boost::array<FloatType, 3>& v)
+  inline array<FloatType, 3>
+  operator*(const Mx33& m, const array<FloatType, 3>& v)
   {
-    boost::array<FloatType, 3> mv;
+    array<FloatType, 3> mv;
     mv[0] = m[0] * v[0] + m[1] * v[1] + m[2] * v[2];
     mv[1] = m[3] * v[0] + m[4] * v[1] + m[5] * v[2];
     mv[2] = m[6] * v[0] + m[7] * v[1] + m[8] * v[2];
@@ -76,7 +76,7 @@ namespace cctbx {
   //@}
 
   //! Helper class for passing unit cell parameters.
-  class uc_params : public boost::array<double, 6> {
+  class uc_params : public array<double, 6> {
     public:
       //! @name Constructors.
       //@{

@@ -10,7 +10,7 @@
 
 #include <boost/python/cross_module.hpp>
 #include <cctbx/bpl_utils.h>
-#include <cctbx/basic/boost_array_bpl.h>
+#include <cctbx/array_bpl.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/adptbx.h>
 
@@ -29,96 +29,96 @@ namespace {
   py_B_as_U_iso(double Biso) {
     return B_as_U(Biso);
   }
-  boost::array<double, 6>
-  py_U_as_B_ansio(const boost::array<double, 6>& Uaniso) {
+  array<double, 6>
+  py_U_as_B_ansio(const array<double, 6>& Uaniso) {
     return U_as_B(Uaniso);
   }
-  boost::array<double, 6>
-  py_B_as_U_ansio(const boost::array<double, 6>& Baniso) {
+  array<double, 6>
+  py_B_as_U_ansio(const array<double, 6>& Baniso) {
     return B_as_U(Baniso);
   }
 
-  boost::array<double, 6>
+  array<double, 6>
   py_Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
-                    const boost::array<double, 6>& Uuvrs) {
+                    const array<double, 6>& Uuvrs) {
     return Uuvrs_as_Ustar(uc, Uuvrs);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
-                    const boost::array<double, 6>& Ustar) {
+                    const array<double, 6>& Ustar) {
     return Ustar_as_Uuvrs(uc, Ustar);
   }
 
-  boost::array<double, 6>
+  array<double, 6>
   py_Ucart_as_Ustar(const uctbx::UnitCell& uc,
-                    const boost::array<double, 6>& Ucart) {
+                    const array<double, 6>& Ucart) {
     return Ucart_as_Ustar(uc, Ucart);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_Ustar_as_Ucart(const uctbx::UnitCell& uc,
-                    const boost::array<double, 6>& Ustar) {
+                    const array<double, 6>& Ustar) {
     return Ustar_as_Ucart(uc, Ustar);
   }
 
-  boost::array<double, 6>
+  array<double, 6>
   py_Ucart_as_Uuvrs(const uctbx::UnitCell& uc,
-                    const boost::array<double, 6>& Ucart) {
+                    const array<double, 6>& Ucart) {
     return Ucart_as_Uuvrs(uc, Ucart);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_Uuvrs_as_Ucart(const uctbx::UnitCell& uc,
-                    const boost::array<double, 6>& Uuvrs) {
+                    const array<double, 6>& Uuvrs) {
     return Uuvrs_as_Ucart(uc, Uuvrs);
   }
 
-  boost::array<double, 6>
+  array<double, 6>
   py_Ustar_as_beta(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& Ustar) {
+                   const array<double, 6>& Ustar) {
     return Ustar_as_beta(Ustar);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_beta_as_Ustar(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& beta) {
+                   const array<double, 6>& beta) {
     return beta_as_Ustar(beta);
   }
 
-  boost::array<double, 6>
+  array<double, 6>
   py_Ucart_as_beta(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& Ucart) {
+                   const array<double, 6>& Ucart) {
     return Ucart_as_beta(uc, Ucart);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_beta_as_Ucart(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& beta) {
+                   const array<double, 6>& beta) {
     return beta_as_Ucart(uc, beta);
   }
 
-  boost::array<double, 6>
+  array<double, 6>
   py_Uuvrs_as_beta(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& Uuvrs) {
+                   const array<double, 6>& Uuvrs) {
     return Uuvrs_as_beta(uc, Uuvrs);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_beta_as_Uuvrs(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& beta) {
+                   const array<double, 6>& beta) {
     return beta_as_Uuvrs(uc, beta);
   }
 
   double
-  py_Ucart_as_Uiso(const boost::array<double, 6>& Ucart) {
+  py_Ucart_as_Uiso(const array<double, 6>& Ucart) {
     return Ucart_as_Uiso(Ucart);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_Uiso_as_Ucart(const double& Uiso) {
     return Uiso_as_Ucart(Uiso);
   }
 
   double
   py_Ustar_as_Uiso(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& Ustar) {
+                   const array<double, 6>& Ustar) {
     return Ustar_as_Uiso(uc, Ustar);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_Uiso_as_Ustar(const uctbx::UnitCell& uc,
                    const double& Uiso) {
     return Uiso_as_Ustar(uc, Uiso);
@@ -126,10 +126,10 @@ namespace {
 
   double
   py_Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& Uuvrs) {
+                   const array<double, 6>& Uuvrs) {
     return Uuvrs_as_Uiso(uc, Uuvrs);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
                    const double& Uiso) {
     return Uiso_as_Uuvrs(uc, Uiso);
@@ -137,10 +137,10 @@ namespace {
 
   double
   py_beta_as_Uiso(const uctbx::UnitCell& uc,
-                   const boost::array<double, 6>& beta) {
+                   const array<double, 6>& beta) {
     return beta_as_Uiso(uc, beta);
   }
-  boost::array<double, 6>
+  array<double, 6>
   py_Uiso_as_beta(const uctbx::UnitCell& uc,
                    const double& Uiso) {
     return Uiso_as_beta(uc, Uiso);
@@ -169,58 +169,58 @@ namespace {
 
   double
   py_DebyeWallerFactorUstar(const Miller::Index& MIx,
-                            const boost::array<double, 6>& Ustar) {
+                            const array<double, 6>& Ustar) {
     return DebyeWallerFactorUstar(MIx, Ustar);
   }
   double
   py_DebyeWallerFactor_beta(const Miller::Index& MIx,
-                            const boost::array<double, 6>& beta) {
+                            const array<double, 6>& beta) {
     return DebyeWallerFactor_beta(MIx, beta);
   }
   double
   py_DebyeWallerFactorUuvrs(const uctbx::UnitCell& uc,
                             const Miller::Index& MIx,
-                            const boost::array<double, 6>& Uuvrs) {
+                            const array<double, 6>& Uuvrs) {
     return DebyeWallerFactorUuvrs(uc, MIx, Uuvrs);
   }
   double
   py_DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
                             const Miller::Index& MIx,
-                            const boost::array<double, 6>& Ucart) {
+                            const array<double, 6>& Ucart) {
     return DebyeWallerFactorUcart(uc, MIx, Ucart);
   }
 
-  boost::array<double, 3>
-  py_Eigenvalues(const boost::array<double, 6>& adp) {
+  array<double, 3>
+  py_Eigenvalues(const array<double, 6>& adp) {
     return Eigenvalues(adp);
   }
 
   bool
   py_isPositiveDefinite_adp_eigenvalues(
-    const boost::array<double, 3>& adp_eigenvalues) {
+    const array<double, 3>& adp_eigenvalues) {
     return isPositiveDefinite(adp_eigenvalues);
   }
 
   bool
   py_isPositiveDefinite_adp(
-    const boost::array<double, 6>& adp) {
+    const array<double, 6>& adp) {
     return isPositiveDefinite(adp);
   }
 
   void
   py_CheckPositiveDefinite_adp_eigenvalues(
-    const boost::array<double, 3>& adp_eigenvalues) {
+    const array<double, 3>& adp_eigenvalues) {
     CheckPositiveDefinite(adp_eigenvalues);
   }
 
   void
   py_CheckPositiveDefinite_adp(
-    const boost::array<double, 6>& adp) {
+    const array<double, 6>& adp) {
     CheckPositiveDefinite(adp);
   }
 
   // We need this wrapper only to make Visual C++ 6 happy.
-  boost::array<double, 3>
+  array<double, 3>
   py_Eigensystem_vectors(const Eigensystem<double>& ES, std::size_t i) {
     return ES.vectors(i);
   }
@@ -290,8 +290,8 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
                     "CheckPositiveDefinite");
 
   py_Eigensystem.def(constructor<>());
-  py_Eigensystem.def(constructor<const boost::array<double, 6>&>());
-  py_Eigensystem.def(constructor<const boost::array<double, 6>&, double>());
+  py_Eigensystem.def(constructor<const array<double, 6>&>());
+  py_Eigensystem.def(constructor<const array<double, 6>&, double>());
   py_Eigensystem.def(py_Eigensystem_vectors, "vectors");
   py_Eigensystem.def(&Eigensystem<double>::values, "values");
 }
