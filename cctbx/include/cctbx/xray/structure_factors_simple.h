@@ -78,6 +78,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           member_indices = di->second.member_indices.const_ref();
         for(std::size_t mi=0;mi<member_indices.size();mi++) {
           ScattererType const& scatterer = scatterers[member_indices[mi]];
+          //CCTBX_ASSERT(scatterer.scatting_type == di->first);
           simple_one_h_one_scatterer<ScattererType> sf(
             space_group,
             h,
