@@ -197,6 +197,34 @@ namespace sgtbx {
           The Miller index 0,0,0 indicates the end of the iteration.
        */
       Miller::Index next();
+      //! Add all Miller indices to a vector.
+      /*! The next() method is called in a loop until the list
+          of Miller indices is exhausted. The results are added
+          to VectorOfH.
+          <p>
+          Requirements for MillerVectorType:
+          <ul>
+          <li>Must contain objects of type Miller::Index.
+          <li>Must support the push_back() method.
+          </ul>
+          <p>
+          Example:<pre>
+          uctbx::UnitCell UC(...);
+          sgtbx::SpaceGroup SgOps(...);
+          std::vector<Miller::Index> VectorOfH;
+          MillerIndexGenerator(UC, SgOps, 1.0).AddToVector(VectorOfH);
+          </pre>
+       */
+      template <class MillerVectorType>
+      void
+      AddToVector(MillerVectorType& VectorOfH)
+      {
+        for (;;) {
+          Miller::Index H = next();
+          if (H.is000()) break;
+          VectorOfH.push_back(H);
+        }
+      }
     private:
       void InitializeLoop(const Miller::Index& ReferenceHmax);
       uctbx::UnitCell m_UnitCell;

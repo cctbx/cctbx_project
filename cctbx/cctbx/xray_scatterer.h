@@ -164,39 +164,6 @@ namespace cctbx {
     StructureFactorVector(SgOps, H, Q, Sites, Fcalc);
   }
 
-  inline
-  boost::shared_ptr<std::vector<Miller::Index> >
-  BuildMillerIndices(const uctbx::UnitCell& UC,
-                     const sgtbx::SpaceGroupInfo& SgInfo,
-                     double Resolution_d_min)
-  {
-    boost::shared_ptr<std::vector<Miller::Index> >
-    ListOfH(new std::vector<Miller::Index>);
-    sgtbx::MillerIndexGenerator MIG(UC, SgInfo, Resolution_d_min);
-    for (;;) {
-      Miller::Index H = MIG.next();
-      if (H.is000()) break;
-      ListOfH->push_back(H);
-    }
-    return ListOfH;
-  }
-
-  inline
-  boost::shared_ptr<std::vector<Miller::Index> >
-  BuildMillerIndices(const sgtbx::SpaceGroupInfo& SgInfo,
-                     const Miller::Index& MaxIndex)
-  {
-    boost::shared_ptr<std::vector<Miller::Index> >
-    ListOfH(new std::vector<Miller::Index>);
-    sgtbx::MillerIndexGenerator MIG(SgInfo, MaxIndex);
-    for (;;) {
-      Miller::Index H = MIG.next();
-      if (H.is000()) break;
-      ListOfH->push_back(H);
-    }
-    return ListOfH;
-  }
-
 } // namespace cctbx
 
 #endif // CCTBX_XRAY_SCATTERER_H
