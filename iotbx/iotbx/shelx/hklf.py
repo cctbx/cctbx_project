@@ -12,7 +12,7 @@ def miller_export_as_shelx_hklf(self, file_object=sys.stdout):
     print >> file_object, fmt % (h + (data[i],s))
   print >> file_object, fmt % (0,0,0,0,0)
 
-miller.miller_export_as_shelx_hklf = miller_export_as_shelx_hklf
+miller.array.export_as_shelx_hklf = miller_export_as_shelx_hklf
 
 class reader:
 
