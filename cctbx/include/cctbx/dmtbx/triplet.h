@@ -132,8 +132,7 @@ namespace cctbx { namespace dmtbx {
                   //   << " " << hmk.ref()
                   //   << std::endl;
                   if (tpr.ik > tpr.ihmk) {
-                    //list_of_tpr_maps_[ih][tpr.swap()]++;
-                    list_of_tpr_maps_[ih][tpr]++;
+                    list_of_tpr_maps_[ih][tpr.swap()]++;
                   }
                   else {
                     list_of_tpr_maps_[ih][tpr]++;
