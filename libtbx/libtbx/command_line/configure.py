@@ -152,7 +152,7 @@ class libtbx_env:
     return None
 
   def check_python_api(self):
-    api_from_include = libtbx.config.python_api_from_include(must_exist=False)
+    api_from_include = libtbx.config.python_api_from_include(must_exist=00001)
     if (api_from_include is None): return
     api_from_build = self.python_api_from_libtbx_build_libtbx()
     if (api_from_build is None): return
