@@ -338,7 +338,11 @@ def exercise_sampled_model_density():
   scattering_dict = xray.ext.scattering_dictionary(scatterers)
   scattering_dict.assign_from_table("WK1995")
   d = xray.sampled_model_density(
-    uc, scatterers, scattering_dict, (20,20,22), (20,20,23))
+    unit_cell=uc,
+    scatterers=scatterers,
+    scattering_dict=scattering_dict,
+    fft_n_real=(20,20,22),
+    fft_m_real=(20,20,23))
   assert d.unit_cell().is_similar_to(uc)
   assert approx_equal(d.u_base(), 0.25)
   assert approx_equal(d.u_extra(), 0.25)
