@@ -46,12 +46,12 @@ namespace {
 
   void throw_size_error() {
     PyErr_SetString(PyExc_RuntimeError, "Array is too small.");
-    throw boost::python::error_already_set();
+    boost::python::throw_error_already_set();
   }
 
   void throw_index_error() {
     PyErr_SetString(PyExc_IndexError, "Index is out of range.");
-    throw boost::python::error_already_set();
+    boost::python::throw_error_already_set();
   }
 
   typedef af::shared<double> shared_real_array;

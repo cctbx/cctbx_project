@@ -3,6 +3,7 @@ from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
 from cctbx_boost import adptbx
 from cctbx_boost import fftbx
+from cctbx_boost import miller
 from cctbx_boost import sftbx
 from cctbx import xutils
 from cctbx.development import debug_utils
@@ -32,7 +33,7 @@ def exercise_map_collect(xtal, friedel_flag, fcalc, conjugate):
   miller2, fcalc2 = sftbx.collect_structure_factors(
     xtal.UnitCell, xtal.SgInfo, friedel_flag,
     max_q, map, n_complex, conjugate)
-  js = shared.join_sets(fcalc.H, miller2)
+  js = miller.join_sets(fcalc.H, miller2)
   for i in xrange(2):
     if (i == 0): m = fcalc.H
     else: m = miller2
@@ -68,10 +69,10 @@ def print_structure_factors(SgInfo,
     anisotropic_displacement_parameters=adp)
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
-  MillerIndices = xutils.build_miller_indices(xtal, friedel_flag, d_min)
-  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
+  miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
+  Fcalc = xutils.calculate_structure_factors(miller_set, xtal)
   debug_utils.print_structure_factors(Fcalc)
-  fcalc_fft = xutils.calculate_structure_factors_fft(MillerIndices, xtal)
+  fcalc_fft = xutils.calculate_structure_factors_fft(miller_set, xtal)
   debug_utils.show_structure_factor_correlation(
     "direct/fft", Fcalc.H, 0, Fcalc.F, fcalc_fft.F,
     min_corr_ampl=0.99, max_mean_w_phase_error=3.)

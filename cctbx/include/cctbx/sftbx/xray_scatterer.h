@@ -30,9 +30,9 @@ namespace cctbx {
     template <typename FloatType>
     struct null_accumulator
     {
-      void inner_sum_reset(const Miller::Index&) {}
+      void inner_sum_reset(const miller::Index&) {}
       void inner_sum_add(const std::complex<FloatType>&,
-                         const Miller::Index&) {}
+                         const miller::Index&) {}
       void outer_sum_add() {}
       void finalize() {}
     };
@@ -48,7 +48,7 @@ namespace cctbx {
       static
       void
       run(const sgtbx::SpaceGroup& SgOps,
-          const Miller::Index& H,
+          const miller::Index& H,
           const fractional<FloatType>& X,
           AccumulatorType1* accu1,
           AccumulatorType2* accu2 = 0,
@@ -58,7 +58,7 @@ namespace cctbx {
       {
         using constants::pi;
         for (int s = 0; s < SgOps.nSMx(); s++) {
-          Miller::Index HR = H * SgOps[s].Rpart();
+          miller::Index HR = H * SgOps[s].Rpart();
           FloatType HRX = HR * X;
           sgtbx::TrVec T = SgOps[s].Tpart();
                      accu1->inner_sum_reset(HR);
@@ -105,7 +105,7 @@ namespace cctbx {
       : outer_sum(0)
       {}
       void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
-                         const Miller::Index&) {
+                         const miller::Index&) {
         outer_sum += e2piiHXs;
       }
       std::complex<FloatType> outer_sum;
@@ -118,19 +118,19 @@ namespace cctbx {
       : Ustar_(Ustar),
         outer_sum(0)
       {}
-      void inner_sum_reset(const Miller::Index& HR) {
+      void inner_sum_reset(const miller::Index& HR) {
         HR_ = HR;
         inner_sum = std::complex<FloatType>(0);
       }
       void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
-                         const Miller::Index&) {
+                         const miller::Index&) {
         inner_sum += e2piiHXs;
       }
       void outer_sum_add() {
         outer_sum += inner_sum * adptbx::DebyeWallerFactorUstar(HR_, Ustar_);
       }
       const af::tiny<FloatType, 6>& Ustar_;
-      Miller::Index HR_;
+      miller::Index HR_;
       std::complex<FloatType> inner_sum;
       std::complex<FloatType> outer_sum;
     };
@@ -147,7 +147,7 @@ namespace cctbx {
         outer_sum.fill(FloatType(0));
       }
       void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
-                         const Miller::Index& HR) {
+                         const miller::Index& HR) {
         std::complex<FloatType> f = pic_ * e2piiHXs;
         FloatType c =   f.real() * dT_dF_.imag()
                       - f.imag() * dT_dF_.real();
@@ -174,7 +174,7 @@ namespace cctbx {
         outer_sum(0)
       {}
       void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
-                         const Miller::Index& HR) {
+                         const miller::Index& HR) {
         std::complex<FloatType> f = pic_ * e2piiHXs;
         outer_sum +=   f.real() * dT_dF_.real()
                      + f.imag() * dT_dF_.imag();
@@ -193,7 +193,7 @@ namespace cctbx {
   template <typename FloatType>
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
-                  const Miller::Index& H,
+                  const miller::Index& H,
                   const fractional<FloatType>& X)
   {
     typedef detail::structure_factor_plain_accumulator<FloatType> accu_type;
@@ -216,7 +216,7 @@ namespace cctbx {
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
                   const uctbx::UnitCell& uc,
-                  const Miller::Index& H,
+                  const miller::Index& H,
                   const fractional<FloatType>& X,
                   double Uiso)
   {
@@ -237,7 +237,7 @@ namespace cctbx {
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
                   double stol2,
-                  const Miller::Index& H,
+                  const miller::Index& H,
                   const fractional<FloatType>& X,
                   double Uiso)
   {
@@ -253,7 +253,7 @@ namespace cctbx {
   template <typename FloatType>
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
-                  const Miller::Index& H,
+                  const miller::Index& H,
                   const fractional<FloatType>& X,
                   const af::tiny<FloatType, 6>& Ustar)
   {
@@ -487,7 +487,7 @@ namespace cctbx {
       std::complex<FloatType>
       StructureFactor(
         const sgtbx::SpaceGroup& SgOps,
-        const Miller::Index& H,
+        const miller::Index& H,
         double Q) const
       {
         if (!m_Anisotropic) {
@@ -504,7 +504,7 @@ namespace cctbx {
       af::tiny<FloatType, 3>
       StructureFactor_dT_dX(
         const sgtbx::SpaceGroup& SgOps,
-        const Miller::Index& H,
+        const miller::Index& H,
         double Q,
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
@@ -526,7 +526,7 @@ namespace cctbx {
       FloatType
       StructureFactor_dT_dOcc(
         const sgtbx::SpaceGroup& SgOps,
-        const Miller::Index& H,
+        const miller::Index& H,
         double Q,
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
@@ -548,7 +548,7 @@ namespace cctbx {
       FloatType
       StructureFactor_dT_dUiso(
         const sgtbx::SpaceGroup& SgOps,
-        const Miller::Index& H,
+        const miller::Index& H,
         double Q,
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
@@ -570,7 +570,7 @@ namespace cctbx {
       void
       StructureFactor_dT_dX_dUiso(
         const sgtbx::SpaceGroup& SgOps,
-        const Miller::Index& H,
+        const miller::Index& H,
         double Q,
         const std::complex<FloatType>& dTarget_dFcalc,
         af::tiny<FloatType, 3>& dT_dX,

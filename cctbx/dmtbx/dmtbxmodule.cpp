@@ -10,6 +10,7 @@
 
 #include <boost/python/cross_module.hpp>
 #include <cctbx/miller_bpl.h>
+#include <cctbx/miller/sort.h>
 #include <cctbx/dmtbx/triplet.h>
 
 namespace {
@@ -17,15 +18,15 @@ namespace {
   using namespace cctbx;
 
   void
-  inplace_sort(af::shared<Miller::Index> miller_indices,
+  inplace_sort(af::shared<miller::Index> miller_indices,
                af::shared<double> data,
                bool reverse)
   {
     if (reverse) {
-      Miller::inplace_sort(miller_indices, data, std::greater<double>());
+      miller::inplace_sort(miller_indices, data, std::greater<double>());
     }
     else {
-      Miller::inplace_sort(miller_indices, data, std::less<double>());
+      miller::inplace_sort(miller_indices, data, std::less<double>());
     }
   }
 
@@ -43,9 +44,9 @@ namespace {
     python::import_converters<af::shared<double> >
     py_shared_double("cctbx_boost.arraytbx.shared", "double");
 
-    python::import_converters<af::shared<Miller::Index> >
-    py_shared_Miller_Index(
-      "cctbx_boost.arraytbx.shared", "Miller_Index");
+    python::import_converters<af::shared<miller::Index> >
+    py_shared_miller_Index(
+      "cctbx_boost.arraytbx.shared", "miller_Index");
 
     class_builder<dmtbx::triplet_invariants<double> >
     py_triplet_invariants(this_module, "triplet_invariants");
@@ -53,7 +54,7 @@ namespace {
     py_triplet_invariants.def(constructor<>());
     py_triplet_invariants.def(constructor<
       sgtbx::SpaceGroupInfo const&,
-      af::shared<Miller::Index>,
+      af::shared<miller::Index>,
       bool,
       bool>());
     py_triplet_invariants.def(

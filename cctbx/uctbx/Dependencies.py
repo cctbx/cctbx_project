@@ -20,9 +20,9 @@ class write_makefiles(makefile_generator.write_makefiles):
     }
 
     self.executables = {
-      "uctbxdriver": (("uctbxdriver", "uctbx"), ("cctbx_misc",)),
+      "uctbxdriver": (("uctbxdriver",), ("uctbx", "cctbx_misc",)),
     }
 
     self.boost_python_modules = {
-      "uctbx": (("uctbxmodule", "uctbx"), ("cctbx_misc", "cctbx_bpl1")),
+      "uctbx": (("uctbxmodule",), ("uctbx", "cctbx_misc", "cctbx_bpl1")),
     }

@@ -854,7 +854,7 @@ namespace cctbx { namespace sgtbx {
       /*! This sum is a sub-expression in the structure factor
           calculation.
        */
-      std::complex<FloatType> StructureFactor(const Miller::Index& H) const
+      std::complex<FloatType> StructureFactor(const miller::Index& H) const
       {
         using cctbx::constants::pi;
         std::complex<FloatType> F(0., 0.);

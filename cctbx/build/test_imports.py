@@ -2,6 +2,7 @@ import sys,os
 sys.path.insert(0, os.path.normpath("../lib_python"))
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
+from cctbx_boost import miller
 import cctbx_boost.arraytbx.shared
 import cctbx_boost.eltbx.tinypse
 import cctbx_boost.eltbx.icsd_radii

@@ -1,5 +1,6 @@
 from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
+from cctbx_boost import miller
 from cctbx_boost import sftbx
 
 # XXX move to uctbx
@@ -34,21 +35,21 @@ class crystal_symmetry:
   def cell_equivalent_p1(self):
     return crystal_symmetry(self.UnitCell, sgtbx.SpaceGroupInfo())
 
-class miller_index_set(crystal_symmetry):
+class miller_set(crystal_symmetry):
 
   def __init__(self, xsym, H):
     crystal_symmetry.__init__(self, xsym.UnitCell, xsym.SgInfo)
     self.H = H
 
   def expand_to_p1(self, friedel_flag):
-    set_p1_H = shared.Miller_Index()
-    sgtbx.expand_to_p1(self.SgOps, friedel_flag, self.H, set_p1_H)
-    return miller_index_set(self.cell_equivalent_p1(), set_p1_H)
+    set_p1_H = shared.miller_Index()
+    miller.expand_to_p1(self.SgOps, friedel_flag, self.H, set_p1_H)
+    return miller_set(self.cell_equivalent_p1(), set_p1_H)
 
-class reciprocal_space_array(miller_index_set):
+class reciprocal_space_array(miller_set):
 
   def __init__(self, miller_indices, F):
-    miller_index_set.__init__(self, miller_indices, miller_indices.H)
+    miller_set.__init__(self, miller_indices, miller_indices.H)
     self.F = F
 
 class symmetrized_sites(crystal_symmetry):
@@ -104,9 +105,9 @@ class symmetrized_sites(crystal_symmetry):
   def __getitem__(self, key):
     return self.Sites[key]
 
-def build_miller_indices(xsym, friedel_flag, d_min):
-  result = miller_index_set(
-    xsym, sftbx.BuildMillerIndices(
+def build_miller_set(xsym, friedel_flag, d_min):
+  result = miller_set(
+    xsym, miller.BuildIndices(
       xsym.UnitCell, xsym.SgInfo, friedel_flag, d_min))
   result.friedel_flag = friedel_flag
   return result

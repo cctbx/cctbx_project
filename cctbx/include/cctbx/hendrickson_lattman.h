@@ -72,7 +72,7 @@ namespace cctbx {
        */
       /*! Formula used: a, -b, c, -d
           <p>
-          See also: class cctbx::Miller::SymEquivIndex
+          See also: class cctbx::miller::SymEquivIndex
        */
       hendrickson_lattman
       conj() const
@@ -83,7 +83,7 @@ namespace cctbx {
       //! Coefficients for symmetrically equivalent reflections.
       /*! The phase shift delta_phi must be given in radians.
           <p>
-          See also: class cctbx::Miller::SymEquivIndex
+          See also: class cctbx::miller::SymEquivIndex
        */
       hendrickson_lattman
       shift_phase(FloatType const& delta_phi) const

@@ -19,7 +19,7 @@
 #include <cctbx/hendrickson_lattman.h>
 
 namespace cctbx {
-  namespace Miller {
+  namespace miller {
 
     //! Class for symmetrically equivalent Miller indices.
     class SymEquivIndex {
@@ -170,27 +170,27 @@ namespace cctbx {
         bool  m_FriedelFlag;
     };
 
-  } // namespace Miller
+  } // namespace miller
 
   namespace sgtbx {
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
-    inline Miller::Index
-    operator*(const Miller::Index& lhs, const RotMx& rhs) {
-      return Miller::Index(
+    inline miller::Index
+    operator*(const miller::Index& lhs, const RotMx& rhs) {
+      return miller::Index(
         lhs[0] * rhs[0] + lhs[1] * rhs[3] + lhs[2] * rhs[6],
         lhs[0] * rhs[1] + lhs[1] * rhs[4] + lhs[2] * rhs[7],
         lhs[0] * rhs[2] + lhs[1] * rhs[5] + lhs[2] * rhs[8]);
     }
 
-    inline int operator*(const Miller::Index& lhs, const TrVec& rhs) {
+    inline int operator*(const miller::Index& lhs, const TrVec& rhs) {
       int result = 0;
       for(int i=0;i<3;i++) result += lhs[i] * rhs[i];
       return result;
     }
 
-    inline int HT_mod_1(const Miller::Index& H, const TrVec& T) {
+    inline int HT_mod_1(const miller::Index& H, const TrVec& T) {
       return sgtbx::modPositive(H * T, T.BF());
     }
 
@@ -224,7 +224,7 @@ namespace cctbx {
             latter case the isSysAbsent() member function must not
             be used (an exception is thrown otherwise).
          */
-        PhaseInfo(SpaceGroup const& sgops, Miller::Index const& h,
+        PhaseInfo(SpaceGroup const& sgops, miller::Index const& h,
                   bool no_test_sys_absent = false);
 
         //! Initialization with known product H*T and given base factor.
@@ -381,35 +381,35 @@ namespace cctbx {
          */
         /*! See also: operator()
          */
-        const Miller::SymEquivIndex& operator[](int iList) const {
+        const miller::SymEquivIndex& operator[](int iList) const {
           return m_List[iList];
         }
         //! Medium-level access to the symmetrically equivalent Miller indices.
         /*! Intended use:<pre>
             sgtbx::SpaceGroup SgOps = ... // define space group
-            Miller::Index H = ... // define input Miller index.
+            miller::Index H = ... // define input Miller index.
             bool FriedelFlag = ... // define Friedel symmetry.
             sgtbx::SymEquivMillerIndices SEMI = SgOps.getEquivMillerIndices(H);
             for (int iList = 0; iList < SEMI.N(); iList++)
               for (int iMate = 0; iMate < SEMI.fMates(FriedelFlag); iMate++)
-                Miller::Index EquivH = SEMI(iMate, iList);
+                miller::Index EquivH = SEMI(iMate, iList);
             </pre>
             Note that it is possible and often more convenient to have a
             one-deep loop with M() iterations.<br>
             See also: operator()(int iIL)
          */
-        Miller::SymEquivIndex operator()(int iMate, int iList) const;
+        miller::SymEquivIndex operator()(int iMate, int iList) const;
         //! High-level access to the symmetrically equivalent Miller indices.
         /*! Intended use:<pre>
             sgtbx::SpaceGroup SgOps = ... // define space group
-            Miller::Index H = ... // define input Miller index.
+            miller::Index H = ... // define input Miller index.
             bool FriedelFlag = ... // define Friedel symmetry.
             sgtbx::SymEquivMillerIndices SEMI = SgOps.getEquivMillerIndices(H);
             for (int iIL = 0; iIL < SEMI.M(FriedelFlag); iIL++)
-              Miller::Index EquivH = SEMI(iIL);
+              miller::Index EquivH = SEMI(iIL);
             </pre>
          */
-        Miller::SymEquivIndex operator()(int iIL) const;
+        miller::SymEquivIndex operator()(int iIL) const;
 
         //! Test if phase phi is compatible with restriction.
         /*! The tolerance compensates for rounding errors.<br>
@@ -427,16 +427,16 @@ namespace cctbx {
             N() for non-centric reflections and N()/2 for centric
             reflections.
          */
-        af::shared<Miller::SymEquivIndex>
+        af::shared<miller::SymEquivIndex>
         p1_listing(bool friedel_flag) const;
       private:
         int m_TBF;
         int m_OrderP;
         int m_HT_Restriction;
-        std::vector<Miller::SymEquivIndex> m_List;
+        std::vector<miller::SymEquivIndex> m_List;
         SymEquivMillerIndices(int TBF, int OrderP)
           : m_TBF(TBF), m_OrderP(OrderP), m_HT_Restriction(-1), m_List() {}
-        void add(const Miller::SymEquivIndex& SEI);
+        void add(const miller::SymEquivIndex& SEI);
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
         friend class SpaceGroup;
 #endif // DOXYGEN_SHOULD_SKIP_THIS

@@ -76,7 +76,7 @@ namespace cctbx { namespace sftbx {
   eliminate_u_extra(
     const uctbx::UnitCell& ucell,
     const FloatType& u_extra,
-    const af::const_ref<Miller::Index>& miller_indices,
+    const af::const_ref<miller::Index>& miller_indices,
     af::ref<std::complex<FloatType> > structure_factors,
     const FloatType& norm = 1)
   {
@@ -390,7 +390,7 @@ namespace cctbx { namespace sftbx {
 
     template <typename nType>
     sfmap::grid_point_type
-    h_as_ih_array(bool friedel_flag, const Miller::Index& h, const nType& n)
+    h_as_ih_array(bool friedel_flag, const miller::Index& h, const nType& n)
     {
       sfmap::grid_point_type ih;
       const bool positive_only[] = {false, false, friedel_flag};
@@ -611,7 +611,7 @@ namespace cctbx { namespace sftbx {
 
       void
       eliminate_u_extra_and_normalize(
-        const af::const_ref<Miller::Index>& miller_indices,
+        const af::const_ref<miller::Index>& miller_indices,
         af::ref<std::complex<FloatType> > structure_factors) const
       {
         FloatType norm = ucell_.getVolume()
@@ -638,7 +638,7 @@ namespace cctbx { namespace sftbx {
   template <typename FloatType,
             typename IndexType>
   std::pair<
-    af::shared<Miller::Index>,
+    af::shared<miller::Index>,
     af::shared<std::complex<FloatType> > >
   collect_structure_factors(
     const uctbx::UnitCell& ucell,
@@ -652,10 +652,10 @@ namespace cctbx { namespace sftbx {
     cctbx_assert(complex_map.size() >= af::product(n_complex.const_ref()));
     sgtbx::ReciprocalSpaceASU asu(sginfo);
     const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
-    af::shared<Miller::Index> miller_indices;
+    af::shared<miller::Index> miller_indices;
     af::shared<std::complex<FloatType> > structure_factors;
-    Miller::Index h;
-    Miller::Index mh;
+    miller::Index h;
+    miller::Index mh;
     uctbx::incremental_d_star_sq<FloatType> incr_d_star_sq(ucell);
     IndexType loop_i;
     std::size_t map_i = 0;
@@ -715,7 +715,7 @@ namespace cctbx { namespace sftbx {
   af::shared<std::complex<FloatType> >
   collect_structure_factors(
     bool friedel_flag,
-    const af::const_ref<Miller::Index>& miller_indices,
+    const af::const_ref<miller::Index>& miller_indices,
     const af::const_ref<std::complex<FloatType> >& complex_map,
     const IndexType& n_complex,
     bool conjugate)
@@ -726,7 +726,7 @@ namespace cctbx { namespace sftbx {
     af::shared<std::complex<FloatType> > structure_factors;
     structure_factors.reserve(miller_indices.size());
     for(std::size_t i=0;i<miller_indices.size();i++) {
-      Miller::Index h = miller_indices[i];
+      miller::Index h = miller_indices[i];
       bool f_conj = conjugate;
       if (friedel_flag) {
         if (h[2] < 0) {
@@ -755,7 +755,7 @@ namespace cctbx { namespace sftbx {
   structure_factor_map(
     const sgtbx::SpaceGroup& sgops,
     bool friedel_flag,
-    const af::const_ref<Miller::Index>& miller_indices,
+    const af::const_ref<miller::Index>& miller_indices,
     const af::const_ref<std::complex<FloatType> >& structure_factors,
     const IndexType& n_complex,
     bool conjugate)
@@ -765,8 +765,8 @@ namespace cctbx { namespace sftbx {
       sgtbx::SymEquivMillerIndices semi = sgops.getEquivMillerIndices(
         miller_indices[i]);
       for(int e=0;e<semi.M(friedel_flag);e++) {
-        Miller::SymEquivIndex h_seq = semi(e);
-        Miller::Index h = h_seq.H();
+        miller::SymEquivIndex h_seq = semi(e);
+        miller::Index h = h_seq.H();
         if (conjugate) h = -h;
         if (friedel_flag && h[2] < 0) continue;
         sfmap::grid_point_type ih = detail::h_as_ih_array(

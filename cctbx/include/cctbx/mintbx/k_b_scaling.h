@@ -24,7 +24,7 @@ namespace cctbx { namespace mintbx {
 
       k_b_scaling_target_and_gradients(
         uctbx::UnitCell const& ucell,
-        af::shared<Miller::Index> miller_indices,
+        af::shared<miller::Index> miller_indices,
         af::shared<int> multiplicities,
         af::shared<FloatType> data_reference,
         af::shared<FloatType> data_scaled,
@@ -43,7 +43,7 @@ namespace cctbx { namespace mintbx {
 
       k_b_scaling_target_and_gradients(
         uctbx::UnitCell const& ucell,
-        af::shared<Miller::Index> miller_indices,
+        af::shared<miller::Index> miller_indices,
         af::shared<int> multiplicities,
         af::shared<FloatType> data_reference,
         af::shared<FloatType> data_scaled,
@@ -81,7 +81,7 @@ namespace cctbx { namespace mintbx {
        */
       void calculate(
         uctbx::UnitCell const& ucell,
-        af::shared<Miller::Index> miller_indices,
+        af::shared<miller::Index> miller_indices,
         af::shared<int> multiplicities,
         af::shared<FloatType> data_reference,
         af::shared<FloatType> data_scaled,
@@ -106,7 +106,7 @@ namespace cctbx { namespace mintbx {
   template <typename FloatType>
   void k_b_scaling_target_and_gradients<FloatType>::calculate(
     uctbx::UnitCell const& ucell,
-    af::shared<Miller::Index> miller_indices,
+    af::shared<miller::Index> miller_indices,
     af::shared<int> multiplicities,
     af::shared<FloatType> data_reference,
     af::shared<FloatType> data_scaled,

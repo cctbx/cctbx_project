@@ -35,7 +35,7 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
       PyErr_SetString(PyExc_ValueError,
         "expecting up to six unit cell parameters"
         " or nine coefficients of the metrical matrix.");
-      throw python::error_already_set();
+      boost::python::throw_error_already_set();
     }
     uc_params ucp = uc_params();
     rangei(tup.size()) {
@@ -156,7 +156,7 @@ namespace {
   double
   UnitCell_two_theta_s_2(
     const UnitCell& uc,
-    const Miller::Index& MIx,
+    const miller::Index& MIx,
     double wavelength)
   {
     return uc.two_theta(MIx, wavelength);
@@ -165,7 +165,7 @@ namespace {
   af::shared<double>
   UnitCell_two_theta_a_2(
     const UnitCell& uc,
-    af::shared<Miller::Index> MIx,
+    af::shared<miller::Index> MIx,
     double wavelength)
   {
     return uc.two_theta(MIx, wavelength);
@@ -191,8 +191,8 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   python::import_converters<af::shared<double> >
   py_shared_double("cctbx_boost.arraytbx.shared", "double");
 
-  python::import_converters<af::shared<Miller::Index> >
-  py_shared_Miller_Index("cctbx_boost.arraytbx.shared", "Miller_Index");
+  python::import_converters<af::shared<miller::Index> >
+  py_shared_miller_Index("cctbx_boost.arraytbx.shared", "miller_Index");
 
   class_builder<UnitCell> UnitCell_class(this_module, "UnitCell");
   python::export_converters(UnitCell_class);
@@ -225,45 +225,45 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     (UnitCell (UnitCell::*)(const af::double9&, double) const)
     &UnitCell::ChangeBasis, "ChangeBasis");
   UnitCell_class.def(
-    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    (af::shared<double> (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::Q, "Q");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&) const)
+    (double (UnitCell::*)(const miller::Index&) const)
     &UnitCell::Q, "Q");
   UnitCell_class.def(
-    (double (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    (double (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::max_Q, "max_Q");
   UnitCell_class.def(
-    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    (af::shared<double> (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::stol2, "stol2");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&) const)
+    (double (UnitCell::*)(const miller::Index&) const)
     &UnitCell::stol2, "stol2");
   UnitCell_class.def(
-    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    (af::shared<double> (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::two_stol, "two_stol");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&) const)
+    (double (UnitCell::*)(const miller::Index&) const)
     &UnitCell::two_stol, "two_stol");
   UnitCell_class.def(
-    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    (af::shared<double> (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::stol, "stol");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&) const)
+    (double (UnitCell::*)(const miller::Index&) const)
     &UnitCell::stol, "stol");
   UnitCell_class.def(
-    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    (af::shared<double> (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::d, "d");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&) const)
+    (double (UnitCell::*)(const miller::Index&) const)
     &UnitCell::d, "d");
   UnitCell_class.def(
     (af::shared<double> (UnitCell::*)(
-      af::shared<Miller::Index>, double, bool) const)
+      af::shared<miller::Index>, double, bool) const)
     &UnitCell::two_theta, "two_theta");
   UnitCell_class.def(UnitCell_two_theta_s_2, "two_theta");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&, double, bool) const)
+    (double (UnitCell::*)(const miller::Index&, double, bool) const)
     &UnitCell::two_theta, "two_theta");
   UnitCell_class.def(UnitCell_two_theta_a_2, "two_theta");
   UnitCell_class.def(UnitCell_fractionalize, "fractionalize");

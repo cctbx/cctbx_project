@@ -5,6 +5,7 @@ __version__="$Revision$"[11:-2]
 
 import exceptions
 from cctbx_boost.arraytbx import shared
+from cctbx_boost import miller
 
 # <xray-reflection-statement> :==
 #   nreflection=<integer>
@@ -82,7 +83,7 @@ class cns_reciprocal_space_object:
   def __init__(self, name, type):
     self.name = name
     self.type = type
-    self.H = shared.Miller_Index()
+    self.H = shared.miller_Index()
     if   (type == "real"):
       self.data = shared.double()
     elif (type == "complex"):
@@ -133,7 +134,7 @@ class cns_reflection_file:
       assert rso.type == "real"
       rsos.append(rso)
       if (miller_indices == 0): miller_indices = rso.H
-      js = shared.join_sets(miller_indices, rso.H)
+      js = miller.join_sets(miller_indices, rso.H)
       assert not js.have_singles()
       joined_sets.append(js)
     hl = shared.hendrickson_lattman()
