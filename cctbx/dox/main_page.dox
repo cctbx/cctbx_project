@@ -40,17 +40,20 @@ objects and functions are quite similar. Therefore the web-based
 documentation can be used for both the compiled and the scripted
 layer of the Computational Crystallography Toolbox.
 
-\section main_links Links
-
-http://sourceforge.net/projects/cctbx/
+<h3>\ref page_fundamental</h3>
+<h3><a href="http://sourceforge.net/projects/cctbx/"
+    >The cctbx project page at SourceForge</a></h3>
+<h3><a
+href="http://cvs.sourceforge.net/cgi-bin/cvsweb.cgi/cctbx/?cvsroot=cctbx"
+>The public cctbx CVS repository</a></h3>
 
 \section getting_started Getting started
 
-The main classes of the cctbx are class uctbx::UnitCell and class
-sgtbx::SgOps. The following Python script shows how to define a
-unit cell, process a space group symbol to obtain symmetry matrices,
-verify that the unit cell is compatibe with the symmetry, and print
-a list of the symmetry operations:
+The main classes of the cctbx are class <tt>uctbx::UnitCell</tt> and
+class <tt>sgtbx::SgOps</tt>. The following Python script shows how to
+define a unit cell, process a space group symbol to obtain symmetry
+matrices, verify that the unit cell is compatibe with the symmetry,
+and print a list of the symmetry operations:
 
 <pre>
 import sgtbx
@@ -88,28 +91,40 @@ int main()
 }
 </pre>
 
-The examples can be found in the examples/cpp and examples/python
-directories.
+The examples can be found in the <tt>examples/cpp</tt> and
+<tt>examples/python</tt> directories.
+
+\section links Details
+
+<ul>
+<li>\ref page_installation
+<li>\ref page_installation_advanced
+<li>\ref page_installation_compilers
+<li>\ref page_installation_python
+<li>\ref page_documentation
+<li>\ref page_history
+</ul>
+
+\section contact Contact
+cctbx@cci.lbl.gov
 
 \section acknowledgments Acknowledgments
 
 This initial version of the cctbx was written by members of the
 Computational Crystallography Initiative (CCI, http://cci.lbl.gov/) at
 the Lawrence Berkeley National Laboratory (http://www.lbl.gov/). The
-CCI is headed by Paul Adams. We are indebted to David Abrahams,
+CCI is headed by Paul Adams. We are indebted to
+<a href="http://www.boost.org/people/dave_abrahams.htm">David Abrahams</a>,
 main author of the Boost.Python library, for his generous help.
-
-\section links Details
-  \ref page_fundamental
-
-  \ref page_installation
-
-\section contact Contact
-cctbx@cci.lbl.gov
 
 <hr>
 The cctbx CVS development tree is hosted by
 <A href="http://sourceforge.net">SourceForge</A>
 <IMG src="http://sourceforge.net/sflogo.php?group_id=24107" width="88" height="31" border="0" alt="SourceForge Logo">
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, April 2001
 
 */

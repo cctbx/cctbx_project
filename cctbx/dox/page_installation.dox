@@ -1,7 +1,5 @@
-/*! \page page_installation Computational Crystallography Toolbox
+/*! \page page_installation Installation
 
-<hr>
-<h2>Installation</h2>
 <hr>
 
 \section installation_overview Overview
@@ -20,7 +18,7 @@ The cctbx is being used on these platforms:
 
 \par
 The cctbx is written in ANSI C++ and should therefore compile on most
-platforms where a standards compliant C++ compiler is available. The
+platforms where a standard-compliant C++ compiler is available. The
 cctbx build system supports simultaneous compilation on multiple
 platforms and is designed to make it easy to add support for additional
 platforms.
@@ -93,7 +91,7 @@ instructions for other platforms are provided here:
 
   \ref installation_python_unix
 
-\section installing_boost Fast-track installation of the cctbx including Boost
+\section installing_fast_track Fast-track installation of the cctbx including Boost
 
 The cctbx distribution includes a set of "fast track" csh and Python
 installation scripts for all supported configurations. These scripts
@@ -131,10 +129,10 @@ can be used if the following assumptions are valid:
 </ul>
 
 If any of the assumptions is not valid, you have to adjust the
-pathnames in the Boost.Python <tt>makefile</tt> and the
+pathnames in the Boost.Python makefile and the
 <tt>configuration</tt> file for the cctbx, and execute the commands in
 the fast track scripts manually. This is explained in more detail in
-the \ref installation_advanced section.
+the \ref page_installation_advanced section.
 
 Both Boost.Python and the cctbx can now be installed with just one
 command by invoking the appropriate fast track script with the
@@ -200,5 +198,10 @@ used for the fast track script instead of csh. For example:<pre>
 \par
 The resulting directory structure in <tt>\\scratch\\build\\vc60</tt> is
 similar to the one for the Unix systems.
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, April 2001
 
 */

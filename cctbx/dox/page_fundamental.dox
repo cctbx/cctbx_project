@@ -1,5 +1,7 @@
 /*! \page page_fundamental Fundamental considerations
 
+<hr>
+
 \section fundamental_python Python
 
 Python is an interpreted, dynamically typed programming language for
@@ -59,5 +61,10 @@ implementation is similar and can quickly be derived from the Python
 implementation. Therefore the advantages of object-oriented design can
 be used throughout, in the Python layer and the compiled layer, and at
 all stages of development.
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, April 2001
 
 */
