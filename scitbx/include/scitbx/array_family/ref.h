@@ -26,6 +26,7 @@ namespace scitbx { namespace af {
 
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
+      typedef typename accessor_type::index_value_type index_value_type;
 
       const_ref() {}
 
@@ -36,19 +37,22 @@ namespace scitbx { namespace af {
       }
 
       // convenience constructors
-      const_ref(const ElementType* begin, long n0)
+      const_ref(const ElementType* begin, index_value_type const& n0)
       : begin_(begin), accessor_(n0)
       {
         init();
       }
 
-      const_ref(const ElementType* begin, long n0, long n1)
+      const_ref(const ElementType* begin, index_value_type const& n0,
+                                          index_value_type const& n1)
       : begin_(begin), accessor_(n0, n1)
       {
         init();
       }
 
-      const_ref(const ElementType* begin, long n0, long n1, long n2)
+      const_ref(const ElementType* begin, index_value_type const& n0,
+                                          index_value_type const& n1,
+                                          index_value_type const& n2)
       : begin_(begin), accessor_(n0, n1, n2)
       {
         init();
@@ -85,20 +89,20 @@ namespace scitbx { namespace af {
       }
 
       // Convenience operator()
-      value_type const& operator()(long i0) const
+      value_type const& operator()(index_value_type const& i0) const
       {
         return operator()(index_type(i0));
       }
 
-      value_type const& operator()(long i0,
-                                   long i1) const
+      value_type const& operator()(index_value_type const& i0,
+                                   index_value_type const& i1) const
       {
         return operator()(index_type(i0, i1));
       }
 
-      value_type const& operator()(long i0,
-                                   long i1,
-                                   long i2) const
+      value_type const& operator()(index_value_type const& i0,
+                                   index_value_type const& i1,
+                                   index_value_type const& i2) const
       {
         return operator()(index_type(i0, i1, i2));
       }
@@ -161,6 +165,7 @@ namespace scitbx { namespace af {
       typedef const_ref<ElementType, AccessorType> base_class;
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
+      typedef typename accessor_type::index_value_type index_value_type;
 
       ref() {}
 
@@ -169,15 +174,18 @@ namespace scitbx { namespace af {
       {}
 
       // convenience constructors
-      ref(ElementType* begin, long n0)
+      ref(ElementType* begin, index_value_type const& n0)
       : base_class(begin, n0)
       {}
 
-      ref(ElementType* begin, long n0, long n1)
+      ref(ElementType* begin, index_value_type const& n0,
+                              index_value_type const& n1)
       : base_class(begin, n0, n1)
       {}
 
-      ref(ElementType* begin, long n0, long n1, long n2)
+      ref(ElementType* begin, index_value_type const& n0,
+                              index_value_type const& n1,
+                              index_value_type const& n2)
       : base_class(begin, n0, n1, n2)
       {}
 
@@ -224,19 +232,22 @@ namespace scitbx { namespace af {
 
       // Convenience operator()
       value_type&
-      operator()(long i0) const
+      operator()(index_value_type const& i0) const
       {
         return operator()(index_type(i0));
       }
 
       value_type&
-      operator()(long i0, long i1) const
+      operator()(index_value_type const& i0,
+                 index_value_type const& i1) const
       {
         return operator()(index_type(i0, i1));
       }
 
       value_type&
-      operator()(long i0, long i1, long i2) const
+      operator()(index_value_type const& i0,
+                 index_value_type const& i1,
+                 index_value_type const& i2) const
       {
         return operator()(index_type(i0, i1, i2));
       }

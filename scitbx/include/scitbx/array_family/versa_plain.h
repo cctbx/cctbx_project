@@ -29,6 +29,7 @@ namespace scitbx { namespace af {
 
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
+      typedef typename accessor_type::index_value_type index_value_type;
       typedef versa_plain<ElementType> one_dim_type;
       typedef typename one_dim_type::accessor_type one_dim_accessor_type;
 
@@ -47,7 +48,7 @@ namespace scitbx { namespace af {
       {}
 
       explicit
-      versa_plain(long n0)
+      versa_plain(index_value_type const& n0)
         : base_class(AccessorType(n0).size_1d()),
           m_accessor(n0)
       {}
@@ -57,7 +58,7 @@ namespace scitbx { namespace af {
           m_accessor(ac)
       {}
 
-      versa_plain(long n0, ElementType const& x)
+      versa_plain(index_value_type const& n0, ElementType const& x)
         : base_class(AccessorType(n0).size_1d(), x),
           m_accessor(n0)
       {}
@@ -72,7 +73,8 @@ namespace scitbx { namespace af {
 
       // non-std
       template <typename FunctorType>
-      versa_plain(long n0, init_functor<FunctorType> const& ftor)
+      versa_plain(index_value_type const& n0,
+                  init_functor<FunctorType> const& ftor)
         : base_class(AccessorType(n0).size_1d(), ftor),
           m_accessor(n0)
       {}
@@ -92,7 +94,7 @@ namespace scitbx { namespace af {
       }
 
       versa_plain(base_class const& other,
-                  long n0)
+                  index_value_type const& n0)
         : base_class(other),
           m_accessor(n0)
       {
@@ -109,7 +111,7 @@ namespace scitbx { namespace af {
       }
 
       versa_plain(base_class const& other,
-                  long n0,
+                  index_value_type const& n0,
                   ElementType const& x)
         : base_class(other),
           m_accessor(n0)
@@ -126,7 +128,7 @@ namespace scitbx { namespace af {
         }
       }
 
-      versa_plain(sharing_handle* other_handle, long n0)
+      versa_plain(sharing_handle* other_handle, index_value_type const& n0)
         : base_class(other_handle),
           m_accessor(n0)
       {
@@ -143,7 +145,7 @@ namespace scitbx { namespace af {
         base_class::resize(m_accessor.size_1d(), x);
       }
 
-      versa_plain(sharing_handle* other_handle, long n0,
+      versa_plain(sharing_handle* other_handle, index_value_type const& n0,
                   ElementType const& x)
         : base_class(other_handle),
           m_accessor(n0)
@@ -216,28 +218,28 @@ namespace scitbx { namespace af {
 
       // Convenience operator()
 
-      value_type const& operator()(long i0) const {
+      value_type const& operator()(index_value_type const& i0) const {
         return operator()(index_type(i0));
       }
-            value_type& operator()(long i0)       {
+            value_type& operator()(index_value_type const& i0)       {
         return operator()(index_type(i0));
       }
-      value_type const& operator()(long i0,
-                                   long i1) const {
+      value_type const& operator()(index_value_type const& i0,
+                                   index_value_type const& i1) const {
         return operator()(index_type(i0, i1));
       }
-            value_type& operator()(long i0,
-                                   long i1)       {
+            value_type& operator()(index_value_type const& i0,
+                                   index_value_type const& i1)       {
         return operator()(index_type(i0, i1));
       }
-      value_type const& operator()(long i0,
-                                   long i1,
-                                   long i2) const {
+      value_type const& operator()(index_value_type const& i0,
+                                   index_value_type const& i1,
+                                   index_value_type const& i2) const {
         return operator()(index_type(i0, i1, i2));
       }
-            value_type& operator()(long i0,
-                                   long i1,
-                                   long i2)       {
+            value_type& operator()(index_value_type const& i0,
+                                   index_value_type const& i1,
+                                   index_value_type const& i2)       {
         return operator()(index_type(i0, i1, i2));
       }
 
