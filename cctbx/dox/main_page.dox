@@ -40,6 +40,10 @@ objects and functions are quite similar. Therefore the web-based
 documentation can be used for both the compiled and the scripted
 layer of the Computational Crystallography Toolbox.
 
+\section main_links Links
+
+http://sourceforge.net/projects/cctbx/
+
 \section getting_started Getting started
 
 The main classes of the cctbx are class uctbx::UnitCell and class
@@ -87,12 +91,25 @@ int main()
 The examples can be found in the examples/cpp and examples/python
 directories.
 
+\section acknowledgments Acknowledgments
+
+This initial version of the cctbx was written by members of the
+Computational Crystallography Initiative (CCI, http://cci.lbl.gov/) at
+the Lawrence Berkeley National Laboratory (http://www.lbl.gov/). The
+CCI is headed by Paul Adams. We are indebted to David Abrahams,
+main author of the Boost.Python library, for his generous help.
+
 \section links Details
   \ref page_fundamental
 
   \ref page_installation
 
 \section contact Contact
-RWGrosse-Kunstleve@lbl.gov
+cctbx@cci.lbl.gov
+
+<hr>
+The cctbx CVS development tree is hosted by
+<A href="http://sourceforge.net">SourceForge</A>
+<IMG src="http://sourceforge.net/sflogo.php?group_id=24107" width="88" height="31" border="0" alt="SourceForge Logo">
 
 */
