@@ -22,12 +22,12 @@ namespace cctbx { namespace af {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
+      typedef AccessorType accessor_type;
+
       typedef versa_plain<ElementType, AccessorType> base_class;
       typedef typename base_class::handle_type handle_type;
       typedef versa<ElementType> one_dim_type;
       typedef typename one_dim_type::accessor_type one_dim_accessor_type;
-
-      typedef AccessorType accessor_type;
 
       versa()
       {}
@@ -107,7 +107,7 @@ namespace cctbx { namespace af {
       {}
 
       one_dim_type as_1d() {
-        return one_dim_type(*this, one_dim_accessor_type(size()));
+        return one_dim_type(*this, one_dim_accessor_type(this->size()));
       }
 
       versa<ElementType, AccessorType>
