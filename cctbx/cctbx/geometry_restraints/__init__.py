@@ -8,7 +8,7 @@ from cctbx_geometry_restraints_ext import *
 
 import scitbx.stl.map
 
-repulsion_radius_table = scitbx.stl.map.stl_string_double
+nonbonded_radius_table = scitbx.stl.map.stl_string_double
 
-repulsion_distance_table = scitbx.stl.map.stl_string_stl_map_stl_string_double
-repulsion_distance_dict = scitbx.stl.map.stl_string_double
+nonbonded_distance_table = scitbx.stl.map.stl_string_stl_map_stl_string_double
+nonbonded_distance_dict = scitbx.stl.map.stl_string_double

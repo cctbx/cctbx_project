@@ -6,7 +6,7 @@ class energies:
 
   def __init__(self, sites_cart,
                      bond_proxies=None,
-                     repulsion_proxies=None,
+                     nonbonded_proxies=None,
                      angle_proxies=None,
                      dihedral_proxies=None,
                      chirality_proxies=None,
@@ -27,14 +27,14 @@ class energies:
         sorted_asu_proxies=bond_proxies,
         gradient_array=self.gradients,
         disable_cache=disable_asu_cache)
-    if (repulsion_proxies is None):
-      self.n_repulsion_proxies = None
-      self.repulsion_residual_sum = 0
+    if (nonbonded_proxies is None):
+      self.n_nonbonded_proxies = None
+      self.nonbonded_residual_sum = 0
     else:
-      self.n_repulsion_proxies = repulsion_proxies.n_total()
-      self.repulsion_residual_sum = geometry_restraints.repulsion_residual_sum(
+      self.n_nonbonded_proxies = nonbonded_proxies.n_total()
+      self.nonbonded_residual_sum = geometry_restraints.nonbonded_residual_sum(
         sites_cart=sites_cart,
-        sorted_asu_proxies=repulsion_proxies,
+        sorted_asu_proxies=nonbonded_proxies,
         gradient_array=self.gradients,
         function=geometry_restraints.repulsion_function(),
         disable_cache=00000)
@@ -77,7 +77,7 @@ class energies:
 
   def target(self):
     return(self.bond_residual_sum
-         + self.repulsion_residual_sum
+         + self.nonbonded_residual_sum
          + self.angle_residual_sum
          + self.dihedral_residual_sum
          + self.chirality_residual_sum
@@ -93,9 +93,9 @@ class energies:
     if (self.n_bond_proxies is not None):
       print >> f, "  bond_residual_sum (n=%d): %.6g" % (
         self.n_bond_proxies, self.bond_residual_sum)
-    if (self.n_repulsion_proxies is not None):
-      print >> f, "  repulsion_residual_sum (n=%d): %.6g" % (
-        self.n_repulsion_proxies, self.repulsion_residual_sum)
+    if (self.n_nonbonded_proxies is not None):
+      print >> f, "  nonbonded_residual_sum (n=%d): %.6g" % (
+        self.n_nonbonded_proxies, self.nonbonded_residual_sum)
     if (self.n_angle_proxies is not None):
       print >> f, "  angle_residual_sum (n=%d): %.6g" % (
         self.n_angle_proxies, self.angle_residual_sum)

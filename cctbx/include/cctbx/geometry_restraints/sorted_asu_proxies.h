@@ -17,7 +17,7 @@ namespace cctbx { namespace geometry_restraints {
 
       See also:
         bond_sorted_asu_proxies,
-        repulsion_sorted_asu_proxies
+        nonbonded_sorted_asu_proxies
    */
   template <typename SimpleProxyType,
             typename AsuProxyType>
@@ -76,7 +76,7 @@ namespace cctbx { namespace geometry_restraints {
           See also:
             asu_mappings::is_simple_interaction,
             bond_asu_proxy::as_simple_proxy,
-            repulsion_asu_proxy::as_simple_proxy
+            nonbonded_asu_proxy::as_simple_proxy
        */
       bool
       process(AsuProxyType const& proxy)
