@@ -35,12 +35,11 @@ namespace {
     {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
-      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("neighbors_simple_pair_generator", no_init)
         .def(init<boost::shared_ptr<direct_space_asu::asu_mappings<> >&,
                   optional<double const&, bool> >(
           (arg_("asu_mappings"), arg_("distance_cutoff"), arg_("minimal"))))
-        .def("asu_mappings", &w_t::asu_mappings, ccr())
+        .def("asu_mappings", &w_t::asu_mappings)
         .def("distance_cutoff_sq", &w_t::distance_cutoff_sq)
         .def("minimal", &w_t::minimal)
         .def("at_end", &w_t::at_end)
