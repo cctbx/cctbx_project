@@ -72,7 +72,7 @@ def exercise_direct_space_asu():
       sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
     asu=asu,
     buffer_thickness=0.1,
-    sym_equiv_epsilon=1.e-6)
+    min_distance_sym_equiv=0.01)
   asu_mappings.reserve(n_sites_final=10)
   assert asu_mappings.space_group().order_z() == 12
   assert len(asu_mappings.asu().facets()) == 4
@@ -80,9 +80,7 @@ def exercise_direct_space_asu():
   assert approx_equal(asu_mappings.buffer_thickness(), 0.1)
   assert approx_equal(asu_mappings.asu_buffer().box_min(),
     [0.0085786, -0.4914214, 0.4])
-  assert approx_equal(asu_mappings.sym_equiv_epsilon(), 1.e-6)
-  assert approx_equal(asu_mappings.sym_equiv_tolerance(), 1.e-6)
-  assert approx_equal(asu_mappings.sym_equiv_minimum_distance(), 1.e-5)
+  assert approx_equal(asu_mappings.min_distance_sym_equiv(), 0.01)
   assert approx_equal(asu_mappings.buffer_covering_sphere().radius(),0.8071081)
   sites_seq = [
     [3.1,-2.2,1.3],
@@ -108,7 +106,7 @@ def exercise_direct_space_asu():
   assert approx_equal(asu_mappings.mapped_sites_min(), [0.15,-0.4,0.4])
   assert approx_equal(asu_mappings.mapped_sites_max(), [1.05,0.6,0.65])
   assert approx_equal(asu_mappings.mapped_sites_span(), [0.9,1.0,0.25])
-  assert list(asu_mappings.special_position_flags()) == [0, 0]
+  assert list(asu_mappings.special_op_indices()) == [0, 0]
   for am in mappings:
     assert asu_mappings.asu_buffer().is_inside(am.mapped_site())
   o = matrix.sqr(asu_mappings.unit_cell().orthogonalization_matrix())
@@ -154,7 +152,7 @@ def exercise_direct_space_asu():
         sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
       asu=asu,
       buffer_thickness=buffer_thickness,
-      sym_equiv_epsilon=1.e-6)
+      min_distance_sym_equiv=0.01)
     asu_mappings.process_sites_frac(
       original_sites=flex.vec3_double([[3.1,-2.2,1.3]]))
     assert asu_mappings.mappings().size() == 1
@@ -261,19 +259,30 @@ def exercise_direct_space_asu():
   assert pair.i_seq == 0
   assert pair.j_seq == 1
   assert pair.j_sym == 1
+  from cctbx import xray
+  structure = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell="12.548 12.548 20.789 90.000 90.000 120.000",
+      space_group_symbol="P63/mmc"),
+    scatterers=flex.xray_scatterer(
+      [xray.scatterer(label="Si", site=site) for site in [
+        (0.2466,0.9965,0.2500),
+        (0.5817,0.6706,0.1254),
+        (0.2478,0.0000,0.0000)]]))
+  asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
+  assert list(asu_mappings.special_op_indices()) == [1,0,2]
   for i_seeq,m in zip(count(), asu_mappings.mappings()):
     for i_sym in xrange(len(m)):
       rt_mx = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=i_sym)
-      i_sym_found = asu_mappings.find_i_sym(
-        i_seq=i_seq,
-        rt_mx=rt_mx,
-        special_op=sgtbx.rt_mx())
+      i_sym_found = asu_mappings.find_i_sym(i_seq=i_seq, rt_mx=rt_mx)
       assert i_sym_found == i_sym
       i_sym_found = asu_mappings.find_i_sym(
         i_seq=i_seq,
-        rt_mx=sgtbx.rt_mx("0,0,0"),
-        special_op=sgtbx.rt_mx())
+        rt_mx=sgtbx.rt_mx("0,0,0"))
       assert i_sym_found == -1
+  assert str(asu_mappings.special_ops()[0]) == "x,y,z"
+  assert str(asu_mappings.special_ops()[1]) == "x,y,1/4"
+  assert str(asu_mappings.special_ops()[2]) == "x-1/2*y,0,0"
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(
