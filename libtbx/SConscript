@@ -298,7 +298,7 @@ else:
     env_base.Append(LIBSUFFIXES=[".dylib"])
     env_etc.cxxflags_base = Split("""
       -fPIC
-      -ftemplate-depth-120
+      -ftemplate-depth-130
       -w
     """)
     env_etc.ccflags_base = Split("""
@@ -333,7 +333,7 @@ else:
     env_etc.cxxflags_base = Split("""
       -fPIC
       -no-cpp-precomp
-      -ftemplate-depth-120
+      -ftemplate-depth-130
       -fcoalesce-templates
       -Wno-long-double
       -w
