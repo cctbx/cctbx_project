@@ -192,8 +192,8 @@ def get_significant_relative_errors(diff_gaussian, d_star_sq, sigmas):
     sigma = sigmas[i]
     result = max(0, abs(diff)-sigma)
     if (result > 0):
-      assert reference_values[i] > 0
-      result /= reference_values[i]
+      assert abs(reference_values[i]) != 0
+      result /= abs(reference_values[i])
     results.append(result)
   return results
 
