@@ -35,4 +35,27 @@ assert (s.max() - 3) < 1.e-6
 assert (s.mean() - 6./4.) < 1.e-6
 assert (s.mean2() - 14./4.) < 1.e-6
 assert (s.sigma() - math.sqrt(14./4. - 36./16.)) < 1.e-6
+c = 1+2j
+x = shared.complex_double((c,))
+a = shared.abs(x)
+assert abs(a[0] - abs(c)) < 1.e-6
+p = shared.arg(x)
+y = shared.polar(a, p)
+d = y[0]
+assert abs(d.real - c.real) < 1.e-6
+assert abs(d.imag - c.imag) < 1.e-6
+p = shared.arg(x, 0)
+y = shared.polar(a, p, 0)
+d = y[0]
+assert abs(d.real - c.real) < 1.e-6
+assert abs(d.imag - c.imag) < 1.e-6
+p = shared.arg(x, 1)
+y = shared.polar(a, p, 1)
+d = y[0]
+assert abs(d.real - c.real) < 1.e-6
+assert abs(d.imag - c.imag) < 1.e-6
+y = shared.polar(a, p, 0)
+d = y[0]
+assert abs(d.real - c.real) > 1.e-6
+assert abs(d.imag - c.imag) > 1.e-6
 print "OK"

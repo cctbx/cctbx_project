@@ -66,9 +66,9 @@ namespace {
     return result;
   }
   cctbx::af::shared<double>
-  py_arg_complex(
+  py_arg_complex_2(
     cctbx::af::shared<std::complex<double> > a,
-    bool deg = false)
+    bool deg)
   {
     cctbx::af::shared<double> result;
     result.reserve(a.size());
@@ -77,6 +77,12 @@ namespace {
       if (deg) result[i] /= cctbx::constants::pi_180;
     }
     return result;
+  }
+  cctbx::af::shared<double>
+  py_arg_complex_1(
+    cctbx::af::shared<std::complex<double> > a)
+  {
+    return py_arg_complex_2(a, false);
   }
   cctbx::af::shared<double>
   py_norm_complex(cctbx::af::shared<std::complex<double> > a)
@@ -89,10 +95,10 @@ namespace {
     return result;
   }
   cctbx::af::shared<std::complex<double> >
-  py_polar_complex(
+  py_polar_complex_3(
     cctbx::af::shared<double> rho,
     cctbx::af::shared<double> theta,
-    bool deg = false)
+    bool deg)
   {
     cctbx_assert(rho.size() == theta.size());
     cctbx::af::shared<std::complex<double> > result;
@@ -109,6 +115,13 @@ namespace {
       }
     }
     return result;
+  }
+  cctbx::af::shared<std::complex<double> >
+  py_polar_complex_2(
+    cctbx::af::shared<double> rho,
+    cctbx::af::shared<double> theta)
+  {
+    return py_polar_complex_3(rho, theta, false);
   }
 
   template <typename FloatType>
@@ -201,17 +214,11 @@ namespace {
     this_module.def(py_square, "square");
     this_module.def(py_set_if_less_than, "set_if_less_than");
     this_module.def(py_abs_complex, "abs");
-    this_module.def(py_arg_complex, "arg");
-    this_module.def(
-      (cctbx::af::shared<double>
-       (*)(cctbx::af::shared<std::complex<double> >))
-      py_arg_complex, "arg");
+    this_module.def(py_arg_complex_2, "arg");
+    this_module.def(py_arg_complex_1, "arg");
     this_module.def(py_norm_complex, "norm");
-    this_module.def(py_polar_complex, "polar");
-    this_module.def(
-      (cctbx::af::shared<std::complex<double> >
-       (*)(cctbx::af::shared<double>, cctbx::af::shared<double>))
-      py_polar_complex, "polar");
+    this_module.def(py_polar_complex_3, "polar");
+    this_module.def(py_polar_complex_2, "polar");
 
     class_builder<ex_linear_regression<double> >
     py_linear_regression(this_module, "linear_regression");
