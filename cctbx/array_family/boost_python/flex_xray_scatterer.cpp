@@ -12,7 +12,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_double_buffered.h>
 #include <scitbx/array_family/boost_python/ref_pickle_double_buffered.h>
-#include <cctbx/xray/scatterer.h>
 #include <boost/python/return_internal_reference.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {

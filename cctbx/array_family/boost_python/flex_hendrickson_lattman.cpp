@@ -11,7 +11,6 @@
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
-#include <cctbx/hendrickson_lattman.h>
 
 namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
