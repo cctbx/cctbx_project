@@ -537,6 +537,11 @@ namespace scitbx { namespace af { namespace boost_python {
     static f_t rdiv_a_s(f_t const& a2, e_t const& a1) { return a1 / a2; }
     static f_t mod_a_s(f_t const& a1, e_t const& a2) { return a1 % a2; }
     static f_t rmod_a_s(f_t const& a2, e_t const& a1) { return a1 % a2; }
+    static f_t iadd_a_a(f_t& a1, f_t const& a2) { return a1 += a2; }
+    static f_t isub_a_a(f_t& a1, f_t const& a2) { return a1 -= a2; }
+    static f_t imul_a_a(f_t& a1, f_t const& a2) { return a1 *= a2; }
+    static f_t idiv_a_a(f_t& a1, f_t const& a2) { return a1 /= a2; }
+    static f_t imod_a_a(f_t& a1, f_t const& a2) { return a1 %= a2; }
     static f_t iadd_a_s(f_t& a1, e_t const& a2) { return a1 += a2; }
     static f_t isub_a_s(f_t& a1, e_t const& a2) { return a1 -= a2; }
     static f_t imul_a_s(f_t& a1, e_t const& a2) { return a1 *= a2; }
@@ -794,6 +799,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__rmul__", mul_a_s)
         .def("__div__", div_a_s)
         .def("__rdiv__", rdiv_a_s)
+        .def("__iadd__", iadd_a_a)
+        .def("__isub__", isub_a_a)
+        .def("__imul__", imul_a_a)
+        .def("__idiv__", idiv_a_a)
         .def("__iadd__", iadd_a_s)
         .def("__isub__", isub_a_s)
         .def("__imul__", imul_a_s)
@@ -885,6 +894,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__mod__", mod_a_a)
         .def("__mod__", mod_a_s)
         .def("__rmod__", rmod_a_s)
+        .def("__imod__", imod_a_a)
         .def("__imod__", imod_a_s)
       ;
     }

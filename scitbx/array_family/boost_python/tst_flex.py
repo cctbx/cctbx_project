@@ -347,6 +347,13 @@ def exercise_select():
                      [3, 2, 1]):
       assert list(a) == expected
       assert a.next_permutation() == (expected != [3, 2, 1])
+  a = flex.bool((0,1,0,1,1))
+  assert tuple(a.iselection()) == (1,3,4)
+  assert tuple(a.iselection(test_value=0001)) == (1,3,4)
+  assert tuple(a.iselection(test_value=00000)) == (0,2)
+  a = flex.bool((0,0,0,0,0))
+  assert tuple(a.iselection(00000)) == (0,1,2,3,4)
+  assert tuple(a.iselection(0001)) == ()
 
 def exercise_operators():
   a = flex.bool((0, 1, 0, 1))
@@ -434,6 +441,20 @@ def exercise_arith_inplace_operators():
   assert tuple(a) == (4, 9)
   a %= 3
   assert tuple(a) == (1, 0)
+  a += 5
+  a += a
+  assert tuple(a) == (12, 10)
+  a -= flex.int((4, 3))
+  assert tuple(a) == (8, 7)
+  if ("".join([str(n) for n in sys.version_info[:3]]) > "221"):
+    a *= a
+  else:
+    a = flex.int((64, 49))
+  assert tuple(a) == (64, 49)
+  a /= flex.int((2, 1))
+  assert tuple(a) == (32, 49)
+  a %= flex.int((15, 14))
+  assert tuple(a) == (2, 7)
 
 def exercise_functions():
   a = flex.int((-1, 0, 1))
