@@ -25,11 +25,9 @@ private:
   std::string s;
 public:
   inline Error(std::string s):s(s){}
-  virtual const char* what() const throw();
-  virtual ~Error() throw();
+  virtual const char* what() const throw() {return s.c_str();}
+  virtual ~Error() throw() {}
 };
-inline const char* Error::what() const throw() {return s.c_str();}
-inline Error::~Error() throw() {}
 
 struct Column {
   CMtz::MTZCOL* p_col;
