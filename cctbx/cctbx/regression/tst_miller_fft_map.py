@@ -2,6 +2,8 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import sgtbx
+from cctbx import xray
+from cctbx import euclidean_model_matching as emma
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.development import structure_factor_utils
@@ -55,25 +57,40 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     fft_map.symmetry_flags())
   assert grid_tags.n_grid_misses() == 0
   assert grid_tags.verify(real_map)
-  peak_list = maptbx.peak_list(
-    data=real_map,
-    tags=grid_tags.tag_array(),
-    peak_search_level=1,
-    max_peaks=2*n_elements,
-    interpolate=00000)
-  assert peak_list.gridding() == real_map.focus()
-  check_peaks(structure, peak_list.sites(), d_min * grid_resolution_factor)
-  crystal_gridding_tags = fft_map.tags()
-  cluster_analysis = maptbx.peak_cluster_analysis(
-    peak_list=peak_list,
-    special_position_settings=structure,
-    general_positions_only=00000,
-    min_cross_distance=2,
-    max_clusters=n_elements).all()
-  check_peaks(
-    structure,
-    cluster_analysis.sites(),
-    cluster_analysis.min_cross_distance() + d_min * grid_resolution_factor)
+  rms = []
+  for interpolate in (00000,0001):
+    peak_list = maptbx.peak_list(
+      data=real_map,
+      tags=grid_tags.tag_array(),
+      peak_search_level=1,
+      max_peaks=2*n_elements,
+      interpolate=interpolate)
+    assert peak_list.gridding() == real_map.focus()
+    check_peaks(structure, peak_list.sites(), d_min * grid_resolution_factor)
+    crystal_gridding_tags = fft_map.tags()
+    cluster_analysis = maptbx.peak_cluster_analysis(
+      peak_list=peak_list,
+      special_position_settings=structure,
+      general_positions_only=00000,
+      min_cross_distance=2,
+      max_clusters=n_elements).all()
+    check_peaks(
+      structure,
+      cluster_analysis.sites(),
+      cluster_analysis.min_cross_distance() + d_min * grid_resolution_factor)
+    structure_from_peaks = xray.structure(structure)
+    for site in cluster_analysis.sites():
+      structure_from_peaks.add_scatterer(
+        xray.scatterer(label="const", site=site))
+    emma_matches = emma.model_matches(
+      structure.as_emma_model(),
+      structure_from_peaks.as_emma_model(),
+      tolerance=d_min*2)
+    rms.append(emma_matches.refined_matches[0].rms)
+    assert len(emma_matches.refined_matches[0].pairs) == n_elements
+  if (0 or verbose):
+    print "emma rms grid, interpolated: %.2f %.2f" % tuple(rms)
+  assert rms[0] >= rms[1]
 
 def run_call_back(flags, space_group_info):
   run_test(space_group_info, verbose=flags.Verbose)
