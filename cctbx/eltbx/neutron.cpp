@@ -26,6 +26,7 @@ namespace eltbx {
      */
     const detail::RawNeutronNews1992Record RawNeutronNews1992Records[] =
     {
+// BEGIN_COMPILED_IN_REFERENCE_DATA
       {"H", -3.7390, 0, 0.3326},
       {"D", 6.671, 0, 0.000519},
       {"He", 3.26, 0, 0.00747},
@@ -113,6 +114,7 @@ namespace eltbx {
       {"Th", 10.31, 0, 7.37},
       {"U", 8.417, 0, 7.57},
       {0, 0, 0, 0}
+// END_COMPILED_IN_REFERENCE_DATA
     };
 
   } // namespace tables

@@ -47,6 +47,7 @@ namespace sgtbx {
       };
 
       static const char* Schoenflies_List[] = {
+// BEGIN_COMPILED_IN_REFERENCE_DATA
         0,
         "C1^1", "Ci^1", "C2^1", "C2^2", "C2^3", "Cs^1", "Cs^2", "Cs^3",
         "Cs^4", "C2h^1", "C2h^2", "C2h^3", "C2h^4", "C2h^5", "C2h^6",
@@ -82,6 +83,7 @@ namespace sgtbx {
         "O^5", "O^6", "O^7", "O^8", "Td^1", "Td^2", "Td^3", "Td^4",
         "Td^5", "Td^6", "Oh^1", "Oh^2", "Oh^3", "Oh^4", "Oh^5", "Oh^6",
         "Oh^7", "Oh^8", "Oh^9", "Oh^10",
+// END_COMPILED_IN_REFERENCE_DATA
       };
 
       struct Short_Mono_HM_Dict_Entry {
@@ -182,6 +184,7 @@ namespace sgtbx {
          derived manually.
        */
       static const Main_Symbol_Dict_Entry Main_Symbol_Dict[] = {
+// BEGIN_COMPILED_IN_REFERENCE_DATA
         {   1, 0,        "P 1",         " P 1\0" },
         {   2, 0,        "P -1",        "-P 1\0" },
         {   3, Qf::b,    "P 1 2 1",     " P 2y\0" },
@@ -786,6 +789,7 @@ namespace sgtbx {
         { 229, 0,        "I m -3 m",    "-I 4 2 3\0" },
         { 230, 0,        "I a -3 d",    "-I 4bd 2c 3\0" },
         { 0, 0, 0, 0 },
+// END_COMPILED_IN_REFERENCE_DATA
       };
 
     } // namespace tables

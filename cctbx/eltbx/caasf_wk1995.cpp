@@ -26,6 +26,7 @@ namespace eltbx {
 
     static const eltbx::detail::CAASF_Raw<5> WK1995_CAASF_RawTable[] =
     {
+// BEGIN_COMPILED_IN_REFERENCE_DATA
       { "H",     { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
                  { 15.569946, 32.398468, 5.711404, 61.889874, 1.334118 },
                  0.000049 },
@@ -685,6 +686,7 @@ namespace eltbx {
       { 0,       { 0., 0., 0., 0., 0. },
                  { 0., 0., 0., 0., 0. },
                  0. }
+// END_COMPILED_IN_REFERENCE_DATA
     };
 
   } // namespace tables

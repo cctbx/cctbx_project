@@ -35,6 +35,7 @@ namespace sgtbx {
         const RawWyckoffPosition *RWO;
       };
 
+// BEGIN_COMPILED_IN_REFERENCE_DATA
       static const RawWyckoffPosition W2[] = {
       { 1, "1/2,1/2,1/2"},
       { 1, "0,1/2,1/2"},
@@ -1921,6 +1922,7 @@ namespace sgtbx {
       {16, "1/8,1/8,1/8"},
       {16, "0,0,0"}
       };
+// END_COMPILED_IN_REFERENCE_DATA
 
       static const RawWyckoffTable RawWyckoffTables[] = {
       {  0, 0    },

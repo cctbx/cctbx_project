@@ -23,6 +23,7 @@ namespace sgtbx {
     };
 
     static const RawBrick TabRawBricks[] = {
+// BEGIN_COMPILED_IN_REFERENCE_DATA
 {  1," P 1",{{0,49},{0,49},{0,49}}}, // P 1
 {  2,"-P 1",{{0,49},{0,24},{0,49}}}, // P -1
 {  3," P 2y",{{0,24},{0,49},{0,49}}}, // P 1 2 1
@@ -777,6 +778,7 @@ namespace sgtbx {
 {230,"-I 4bd 2c 3",{{0,6},{-6,0},{7,43}}}, // I a -3 d
 {230,"-I 4bd 2c 3 (y+z,x+z,x+y)",{{-12,0},{0,12},{1,24}}},
 {0, 0, {{0,0},{0,0},{0,0}}}
+// END_COMPILED_IN_REFERENCE_DATA
     };
 
   } // namespace tables

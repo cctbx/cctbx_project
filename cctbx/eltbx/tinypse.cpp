@@ -21,6 +21,7 @@ namespace eltbx {
      */
     const detail::TinyPSE_RawEntry TinyPSE_RawTable[] =
     {
+// END_COMPILED_IN_REFERENCE_DATA
       {   1, "H",  "hydrogen",       1.008 },
       {   1, "D",  "deuterium",      2.000 },
       {   2, "He", "helium",         4.003 },
@@ -126,6 +127,7 @@ namespace eltbx {
       { 102, "No", "nobelium",     259.000 },
       { 103, "Lr", "lawrencium",   260.000 },
       { 0, 0, 0, 0. }
+// BEGIN_COMPILED_IN_REFERENCE_DATA
     };
 
   } // namespace tables
