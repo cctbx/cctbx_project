@@ -99,11 +99,7 @@ class maximum_likelihood_criterion:
         compute_derivatives)
 
 def registry():
-  result = {}
-  for key,value in globals().items():
-    if (value == target_functor_base): continue
-    try: is_functor = issubclass(value, target_functor_base)
-    except: continue
-    if (is_functor):
-      result[key] = value
-  return result
+  return {
+    "least_squares_residual": least_squares_residual,
+    "intensity_correlation": intensity_correlation,
+  }
