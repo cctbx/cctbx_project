@@ -80,11 +80,11 @@ def show(input_symmetry, max_delta):
     space_group_number = sgtbx.space_group_type(group, 00000).number()
     assert 1 <= space_group_number <= 230
     sort_values.append(order_z*1000+space_group_number)
-    perm = flex.sort_permutation(sort_values, 0001)
+  perm = flex.sort_permutation(sort_values, 0001)
 
   # Loop sub-groups in sorted order
-  for i_subgrs in perm:
-    acentric_subgroup = subgrs[i_subgrs]
+  for i_subgr in perm:
+    acentric_subgroup = subgrs[i_subgr]
     # Add centre of inversion to acentric lattice symmetry
     centric_group = sgtbx.space_group(acentric_subgroup)
     centric_group.expand_inv(sgtbx.tr_vec((0,0,0)))
