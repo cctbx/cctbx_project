@@ -179,7 +179,7 @@ namespace cctbx { namespace xray {
         d_rho_real_d_b_iso(FloatType const& d_sq) const
         {
           FloatType drdb(0);
-          for(std::size_t i=0;i<b_.size();i++) {
+          for(std::size_t i=0;i<this->n_rho_real_terms;i++) {
             drdb += d_rho_d_b_iso_term(
               d_sq, this->rho_real_term(d_sq, i), b_[i]);
           }
