@@ -152,8 +152,12 @@ namespace sgtbx {
         cctbx_assert(m_MinimumDistance2 >= m_Tolerance2);
       }
     private:
-      friend class SymEquivCoordinates<float>; // XXX
-      friend class SymEquivCoordinates<double>; // XXX
+# if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // 1200 == VC++ 6.0
+      template <class T> friend class SymEquivCoordinates;
+# else
+      friend class SymEquivCoordinates<float>;
+      friend class SymEquivCoordinates<double>;
+# endif
       const uctbx::UnitCell& m_UnitCell;
       const SgOps& m_SgOps;
       double m_MinimumDistance2;
