@@ -11,6 +11,6 @@ class parse_options:
         self.regular_args.append(arg)
         continue
       if (not arg[2:] in keywords):
-        raise AssertionError, "Unknown option: " + arg
+        raise RuntimeError, "Unknown option: " + arg
       setattr(self, arg[2:], 1)
       self.n += 1
