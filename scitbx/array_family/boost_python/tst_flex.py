@@ -583,6 +583,7 @@ def exercise_flex_vec3_double():
   a = flex.vec3_double(((1,2,5), (-2,3,4), (3,4,3)))
   assert approx_equal(a.min(), (-2.0,2.0,3.0))
   assert approx_equal(a.max(), (3.0,4.0,5.0))
+  assert approx_equal(a.sum(), (2.0,9.0,12.0))
   a += (10,20,30)
   assert approx_equal(tuple(a), ((11,22,35), (8,23,34), (13,24,33)))
   assert approx_equal(tuple(a+(20,30,10)), ((31,52,45),(28,53,44),(33,54,43)))
@@ -594,6 +595,9 @@ def exercise_flex_vec3_double():
     ((-19,-28,-5),(-22,-27,-6),(-17,-26,-7)))
   assert tuple(a-a) == ((0,0,0),(0,0,0),(0,0,0))
   a += (10,20,30)
+  assert approx_equal(tuple(a*2), ((22,44,70), (16,46,68), (26,48,66)))
+  assert approx_equal(tuple(-3*a),
+    ((-33,-66,-105), (-24,-69,-102), (-39,-72,-99)))
   assert approx_equal(tuple(a*(-1,1,0,1,0,-1,1,-1,1)),
     ((46,-24,13),(49,-26,11),(44,-20,9)))
   assert approx_equal(tuple((-1,1,0,1,0,-1,1,-1,1)*a),

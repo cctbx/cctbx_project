@@ -92,7 +92,7 @@ namespace {
     af::const_ref<vec3<double>, af::flex_grid<> > a_ref = a.const_ref();
     if (a_ref.size() > 0) {
       result = a_ref[0];
-      for(std::size_t i=0;i<a_ref.size();i++) {
+      for(std::size_t i=1;i<a_ref.size();i++) {
         result.each_update_min(a_ref[i]);
       }
     }
@@ -107,9 +107,36 @@ namespace {
     af::const_ref<vec3<double>, af::flex_grid<> > a_ref = a.const_ref();
     if (a_ref.size() > 0) {
       result = a_ref[0];
-      for(std::size_t i=0;i<a_ref.size();i++) {
+      for(std::size_t i=1;i<a_ref.size();i++) {
         result.each_update_max(a_ref[i]);
       }
+    }
+    return result;
+  }
+
+  vec3<double>
+  vec3_sum(flex<vec3<double> >::type const& a)
+  {
+    SCITBX_ASSERT(!a.accessor().is_padded());
+    vec3<double> result(0,0,0);
+    af::const_ref<vec3<double>, af::flex_grid<> > a_ref = a.const_ref();
+    if (a_ref.size() > 0) {
+      result = a_ref[0];
+      for(std::size_t i=1;i<a_ref.size();i++) {
+        result += a_ref[i];
+      }
+    }
+    return result;
+  }
+
+  af::shared<vec3<double> >
+  mul_a_scalar(
+    af::const_ref<vec3<double> > const& a,
+    double f)
+  {
+    af::shared<vec3<double> > result((af::reserve(a.size())));
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(a[i] * f);
     }
     return result;
   }
@@ -177,12 +204,15 @@ namespace boost_python {
       .def("as_double", as_double)
       .def("min", vec3_min)
       .def("max", vec3_max)
+      .def("sum", vec3_sum)
       .def("__add__", flex_wrapper<vec3<double> >::add_a_s)
       .def("__add__", flex_wrapper<vec3<double> >::add_a_a)
       .def("__iadd__", flex_wrapper<vec3<double> >::iadd_a_s)
       .def("__sub__", flex_wrapper<vec3<double> >::sub_a_s)
       .def("__sub__", flex_wrapper<vec3<double> >::sub_a_a)
       .def("__isub__", flex_wrapper<vec3<double> >::isub_a_s)
+      .def("__mul__", mul_a_scalar)
+      .def("__rmul__", mul_a_scalar)
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)
       .def("dot", dot_a_a)
