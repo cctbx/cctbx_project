@@ -16,6 +16,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t, bases<w_t::base_t> >("sampled_model_density", no_init)
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scatterer<> > const&,
@@ -27,11 +28,23 @@ namespace {
                            double const&,
                            bool,
                            bool,
-                           double const&> >())
+                           double const&> >(
+          (arg_("unit_cell"),
+           arg_("scatterers"),
+           arg_("scattering_dict"),
+           arg_("fft_n_real"),
+           arg_("fft_m_real"),
+           arg_("u_base"),
+           arg_("wing_cutoff"),
+           arg_("exp_table_one_over_step_size"),
+           arg_("force_complex"),
+           arg_("electron_density_must_be_positive"),
+           arg_("tolerance_positive_definite"))))
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
         .def("eliminate_u_extra_and_normalize",
-          &w_t::eliminate_u_extra_and_normalize)
+          &w_t::eliminate_u_extra_and_normalize,
+          (arg_("miller_indices"), arg_("structure_factors")))
       ;
     }
   };
