@@ -83,7 +83,7 @@ class reader:
           if (i):
             h = [-e for e in h]
             self.anomalous = 1
-          if (i_obs != 0 or sigma != 0):
+          if (sigma != 0 or (i_obs != 0 and i_obs != 1)):
             self.miller_indices.append(h)
             self.i_obs.append(i_obs)
             self.sigmas.append(sigma)
