@@ -47,15 +47,15 @@ namespace stlp {
     new (p) T1(val);
   }
 
-  template <class _Value, class _Tp>
-  class alloc_proxy
+  template <class PtrElementType, class ElementType>
+  class alloc_proxy {
   public:
-    _Value m_data;
+    PtrElementType m_data;
 
-    inline _Tp* allocate(size_t __n) { 
+    inline ElementType* allocate(size_t n) { 
       return 0;
     }
-    inline void deallocate(_Tp* __p, size_t __n) { 
+    inline void deallocate(ElementType* p, size_t n) { 
     }
   };
 
@@ -66,22 +66,22 @@ namespace cctbx { namespace af {
 
     template <typename ElementType,
               std::size_t SmallestAutoCapacity = 8>
-    class basic_storage {
+    class basic_storage_v2 {
       public:
         typedef std::size_t size_type;
 
-        basic_storage()
+        basic_storage_v2()
           : m_capacity(0), m_size(0), m_use_count(1),
             m_data(0)
         {}
 
         explicit
-        basic_storage(const size_type& sz)
+        basic_storage_v2(const size_type& sz)
           : m_capacity(sz), m_size(sz), m_use_count(1),
             m_data(new ElementType[sz])
         {}
 
-        ~basic_storage() {
+        ~basic_storage_v2() {
           delete[] m_data;
         }
 
@@ -94,7 +94,7 @@ namespace cctbx { namespace af {
         // no const: data are not considered part of the type
         ElementType* begin() const { return m_data; }
 
-        void swap(basic_storage<ElementType>& other){
+        void swap(basic_storage_v2<ElementType>& other){
           std::swap(*this, other);
         }
 
@@ -136,12 +136,13 @@ namespace cctbx { namespace af {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
+      typedef detail::basic_storage_v2<char> basic_storage_type;
+
     protected:
       struct m_false_type {};
       struct m_true_type {};
 
-      typedef typename m_false_type m_has_trivial_assignment_operator;
-      typedef typename m_false_type m_is_pod_type;
+      typedef m_false_type m_is_pod_type;
 
     public:
             ElementType* begin()       { return this->m_start; }
@@ -178,27 +179,27 @@ namespace cctbx { namespace af {
       const ElementType& back() const { return *(end() - 1); }
 
             ElementType& at(const size_type& i) {
-        if (i >= sz) throw_range_error();
+        if (i >= size()) throw_range_error();
         return (*this)[i];
       }
       const ElementType& at(const size_type& i) const {
-        if (i >= sz) throw_range_error();
+        if (i >= size()) throw_range_error();
         return (*this)[i];
       }
 
       shared_base_v2()
-        : m_ptr_basic_storage(new basic_storage)
+        : m_ptr_basic_storage(new basic_storage_type)
       {}
 
       shared_base_v2(size_type sz, const ElementType& x)
-        : m_ptr_basic_storage(new basic_storage(sz * sizeof(ElementType)))
+        : m_ptr_basic_storage(new basic_storage_type(sz * sizeof(ElementType)))
       {
         this->m_finish = std::uninitialized_fill_n(this->m_start, sz, x);
       }
 
       explicit
       shared_base_v2(size_type sz)
-        : m_ptr_basic_storage(new basic_storage(sz * sizeof(ElementType)))
+        : m_ptr_basic_storage(new basic_storage_type(sz * sizeof(ElementType)))
       {
         this->m_finish = std::uninitialized_fill_n(
           this->m_start, sz, ElementType());
@@ -206,7 +207,7 @@ namespace cctbx { namespace af {
 
       shared_base_v2(const shared_base_v2<ElementType>& other)
         : m_ptr_basic_storage(
-            new basic_storage(other.size() * sizeof(ElementType)))
+            new basic_storage_type(other.size() * sizeof(ElementType)))
       {
         this->m_finish = std::uninitialized_copy(
           other.begin(), other.end(), this->m_start);
@@ -214,7 +215,7 @@ namespace cctbx { namespace af {
 
       shared_base_v2(const ElementType* first, const ElementType* last)
         : m_ptr_basic_storage(
-            new basic_storage((last - first) * sizeof(ElementType)))
+            new basic_storage_type((last - first) * sizeof(ElementType)))
       {
         size_type sz = last - first;
         this->m_start = this->m_end_of_storage.allocate(sz);
@@ -262,7 +263,7 @@ namespace cctbx { namespace af {
         std::swap(this->m_end_of_storage, other.m_end_of_storage);
       }
 
-      reserve(size_type sz) {
+      void reserve(size_type sz) {
         if (capacity() < sz) {
           const size_type old_size = size();
           ElementType* tmp;
@@ -510,6 +511,7 @@ namespace cctbx { namespace af {
         }
       }
 
+      void
       m_fill_insert(ElementType* position, size_type n, const ElementType& x) {
         if (n != 0) {
           if (size_type(this->m_end_of_storage.m_data - this->m_finish) >= n) {
@@ -538,9 +540,10 @@ namespace cctbx { namespace af {
         }
       }
 
+      void
       m_fill_assign(size_t n, const ElementType& val) {
         if (n > capacity()) {
-          shared_base_v2<ElementType> tmp(n, val, get_allocator());
+          shared_base_v2<ElementType> tmp(n, val);
           tmp.swap(*this);
         }
         else if (n > size()) {
@@ -553,10 +556,10 @@ namespace cctbx { namespace af {
         }
       }
 
-      detail::basic_storage* m_ptr_basic_storage;
+      basic_storage_type* m_ptr_basic_storage;
       ElementType* m_start;
       ElementType* m_finish;
-      stlp::alloc_proxy<_Tp*, _Tp> m_end_of_storage;
+      stlp::alloc_proxy<ElementType*, ElementType> m_end_of_storage;
   };
 
 }} // namespace cctbx::af
