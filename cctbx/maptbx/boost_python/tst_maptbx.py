@@ -13,11 +13,11 @@ def exercise_copy():
   for flex_type in flex_types():
     m = flex_type((1,2,3,4))
     m.resize(flex.grid(2,2))
-    c = maptbx.copy(m, m.accessor())
+    c = maptbx.copy(map=m, result_grid=m.accessor())
     assert tuple(m) == tuple(c)
-    c = maptbx.copy(m, flex.grid(2,3).set_focus(2,2))
+    c = maptbx.copy(map=m, result_grid=flex.grid(2,3).set_focus(2,2))
     assert approx_equal(tuple(c), (1,2,0,3,4,0))
-    n = maptbx.copy(c, m.accessor())
+    n = maptbx.copy(c, result_grid=m.accessor())
     assert approx_equal(tuple(m), tuple(n))
     c = maptbx.copy(m, flex.grid(3,2).set_focus(2,2))
     assert approx_equal(tuple(c), (1,2,3,4,0,0))
@@ -35,6 +35,22 @@ def exercise_copy():
     assert approx_equal(tuple(c), (1,2,3,4,5,6,0,0,0))
     n = maptbx.copy(c, m.accessor())
     assert approx_equal(tuple(m), tuple(n))
+    #
+    m = flex_type()
+    for i in xrange(2):
+     for j in xrange(3):
+       for k in xrange(5):
+         m.append(i*100+j*10+k)
+    m.resize(flex.grid(2,3,5).set_focus((2,3,4)))
+    for i in xrange(-5,5):
+     for j in xrange(-5,5):
+       for k in xrange(-5,5):
+         c = maptbx.copy(map_unit_cell=m, first=(i,j,k), last=(i,j,k))
+         assert c.size() == 1
+         assert c[(i,j,k)] == m[(i%2,j%3,k%4)]
+    c = maptbx.copy(map_unit_cell=m, first=(-1,1,-2), last=(1,2,0))
+    assert list(c) == [112, 113, 110, 122, 123, 120,  12,  13,  10,
+                        22,  23,  20, 112, 113, 110, 122, 123, 120]
 
 def exercise_statistics():
   for flex_type in flex_types():
