@@ -71,6 +71,28 @@ def decl_params(array_type_name, op_class, type_flags):
       v.return_type = ("small<ElementTypeRhs, NRhs>",)
       v.param_lhs = "ElementTypeRhs"
       v.param_rhs = "small<ElementTypeRhs, NRhs>"
+  elif (array_type_name == "versa"):
+    if (type_flags == (1,1)):
+      v.typelist = [
+        "typename ElementTypeLhs, typename AccessorTypeLhs,",
+        "          typename ElementTypeRhs, typename AccessorTypeRhs"]
+      v.return_type = (
+        "versa<",
+        "  typename binary_operator_traits<",
+        "    ElementTypeLhs, ElementTypeRhs>::%s, AccessorTypeLhs>" % (
+          op_class,))
+      v.param_lhs = "versa<ElementTypeLhs, AccessorTypeLhs>"
+      v.param_rhs = "versa<ElementTypeRhs, AccessorTypeRhs>"
+    elif (type_flags == (1,0)):
+      v.typelist = ["typename ElementTypeLhs, typename AccessorTypeLhs"]
+      v.return_type = ("versa<ElementTypeLhs, AccessorTypeLhs>",)
+      v.param_lhs = "versa<ElementTypeLhs, AccessorTypeLhs>"
+      v.param_rhs = "ElementTypeLhs"
+    elif (type_flags == (0,1)):
+      v.typelist = ["typename ElementTypeRhs, typename AccessorTypeRhs"]
+      v.return_type = ("versa<ElementTypeRhs, AccessorTypeRhs>",)
+      v.param_lhs = "ElementTypeRhs"
+      v.param_rhs = "versa<ElementTypeRhs, AccessorTypeRhs>"
   else:
     if (type_flags == (1,1)):
       v.typelist = ["typename ElementTypeLhs, typename ElementTypeRhs"]
@@ -100,16 +122,18 @@ def algo_params(array_type_name, type_flags):
   v.size_assert = ""
   v.loop_n = "N"
   if (array_type_name != "tiny"):
+    sizer = "size"
+    if (array_type_name == "versa"): sizer = "accessor"
     if (type_flags == (1,1)):
-      v.result_constructor_args = "(lhs.size())"
+      v.result_constructor_args = "(lhs.%s())" % (sizer,)
       v.size_assert = """if (lhs.size() != rhs.size()) throw_range_error();
     """
       v.loop_n = "lhs.size()"
     elif (type_flags == (1,0)):
-      v.result_constructor_args = "(lhs.size())"
+      v.result_constructor_args = "(lhs.%s())" % (sizer,)
       v.loop_n = "lhs.size()"
     else:
-      v.result_constructor_args = "(rhs.size())"
+      v.result_constructor_args = "(rhs.%s())" % (sizer,)
       v.loop_n = "rhs.size()"
   v.index_lhs = ""
   v.index_rhs = ""
@@ -245,13 +269,17 @@ def generate_reducing_boolean_op(array_type_name, op_symbol):
     reducing_boolean_op(array_type_name, op_symbol, type_flags)
 
 def generate_unary_ops(array_type_name):
-  Nresult = ""
   Ntemplate_head = ""
-  if (array_type_name in ("tiny", "small")):
-    Nresult = ", N"
-    Ntemplate_head = ", std::size_t N"
+  Nresult = ""
   result_constructor_args = ""
   if (array_type_name != "tiny"): result_constructor_args = "(a.size())"
+  if (array_type_name in ("tiny", "small")):
+    Ntemplate_head = ", std::size_t N"
+    Nresult = ", N"
+  elif (array_type_name == "versa"):
+    Ntemplate_head = ", typename AccessorType"
+    Nresult = ", AccessorType"
+    result_constructor_args = "(a.accessor())"
   for op_class, op_symbol in (("arithmetic", "-"),
                               ("logical", "!")):
     print """  template <typename ElementType%s>
