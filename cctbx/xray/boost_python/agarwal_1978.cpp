@@ -53,6 +53,7 @@ namespace {
         .def("grad_x", &w_t::grad_x)
         .def("grad_y", &w_t::grad_y)
         .def("grad_z", &w_t::grad_z)
+        .def("grad_u_iso", &w_t::grad_u_iso)
         .def("apply_symmetry",
           (void(w_t::*)(maptbx::grid_tags<> const&))
             &w_t::apply_symmetry)
