@@ -1,0 +1,330 @@
+from cctbx.sgtbx.direct_space_asu import reference_table
+from cctbx.web.asu_gallery import jv_asu
+from cctbx.web.asu_gallery import jv_index
+from cctbx import sgtbx
+from scitbx.python_utils import dicts
+from scitbx.python_utils import command_line
+from scitbx import rational
+from cctbx import matrix
+import sys, os
+
+class colored_grid_point:
+
+  def __init__(self, site, color):
+    self.site = tuple(site)
+    self.color = color
+
+def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
+  n_redundancies = 0
+  u_grid=[]
+  for i in xrange(n[0]):
+     b = []
+     for j in xrange(n[1]):
+        c = []
+        for k in xrange(n[2]):
+           c.append(0)
+        b.append(c)
+     u_grid.append(b)
+  r_grid = []
+  colored_grid_points = []
+  for i in xrange(-n[0]/2, n[0]+1):
+    b = []
+    for j in xrange(-n[1]/2, n[1]+1):
+      c = []
+      for k in xrange(-n[2]/2, n[2]+1):
+        frac = rational.vector((i,j,k), n)
+        f = asu.is_inside(frac)
+        fv = asu.is_inside(frac, volume_only=True)
+        if (len(asu.in_which_facets(frac)) != 0 and fv):
+          colored_grid_points.append(colored_grid_point(
+            frac,
+            jv_asu.select_color(f)))
+        if (volume):
+          if (not fv): assert not f
+        else:
+          fv = 0
+        if (f or fv):
+          i_pr = i % n[0]
+          j_pr = j % n[1]
+          k_pr = k % n[2]
+          if (u_grid[i_pr][j_pr][k_pr] != 0):
+            n_redundancies += 1
+            if (not is_stripped_asu):
+              print "Redundancy at" , (i,j,k), (i_pr,j_pr,k_pr)
+          if (f):
+            u_grid[i_pr][j_pr][k_pr] = 1
+            c.append(1)
+          else:
+            u_grid[i_pr][j_pr][k_pr] = 2
+            c.append(2)
+        else:
+          c.append(0)
+      b.append(c)
+    r_grid.append(b)
+  return u_grid, r_grid, colored_grid_points, n_redundancies
+
+def check_asu(space_group_number, asu, n=(12,12,12), is_stripped_asu=False):
+  sg_info = sgtbx.space_group_info("Hall: " + asu.hall_symbol)
+  sg_info.show_summary()
+  assert sg_info.type().number() == space_group_number
+  print "Gridding:", n
+  ops = sg_info.group()
+  sys.stdout.flush()
+  u_grid, r_grid, colored_grid_points, sampling_n_redundancies = sample_asu(
+    asu, n, is_stripped_asu=is_stripped_asu)
+  n_redundancies = [0]
+  redundancies = {}
+  for i in xrange(n[0]):
+    for j in xrange(n[1]):
+      for k in xrange(n[2]):
+        grid_asu(ops, n, u_grid, r_grid, i,j,k,
+                 sampling_n_redundancies, n_redundancies,
+                 redundancies)
+  print "number of redundancies: %d+%d," % (
+    sampling_n_redundancies, n_redundancies[0]),
+  sg_info.show_summary()
+  sys.stdout.flush()
+  redundancies = sort_redundancies(redundancies)
+  recolor_grid_points(
+    n, colored_grid_points, redundancies, not is_stripped_asu)
+  jv_asu.asu_as_jvx(
+    space_group_number, asu, colored_grid_points=colored_grid_points)
+  if (not is_stripped_asu):
+    analyze_redundancies(asu, n, redundancies)
+  sys.stdout.flush()
+
+class color_server:
+
+  def __init__(self):
+    self.color_pairs = (
+      ((0,0,255), (153,204,255)),
+      ((255,255,0), (255,153,0)),
+      ((255,0,255), (255,102,153)),
+      ((51,51,51), (178,178,178)))
+    self.i = -1
+
+  def next(self):
+    if (self.i < len(self.color_pairs)-1):
+      self.i += 1
+    return self.color_pairs[self.i]
+
+def recolor_grid_points(gridding, colored_grid_points, redundancies, verbose):
+  color_srv = color_server()
+  processed_points = {}
+  for symop,pairs in redundancies:
+    if (verbose):
+      print "Coloring %d redundancies:" % len(pairs), symop
+    sys.stdout.flush()
+    colored_point_dict = {}
+    for colored_point in colored_grid_points:
+      colored_point_dict[colored_point.site] = colored_point
+    colors = color_srv.next()
+    for pair in pairs:
+      for point,color in zip(pair, colors):
+        frac = tuple(rational.vector(point, gridding))
+        if (not frac in processed_points):
+          processed_points[frac] = 1
+          colored_point_dict[frac].color = color
+
+def iround(x):
+  if (x < 0):
+    return int(x-0.5)
+  return int(x+0.5)
+
+def rt_plus_unit_shifts(rt, unit_shifts):
+  return sgtbx.rt_mx(rt.r(), rt.t().plus(sgtbx.tr_vec(unit_shifts, 1)))
+
+def rt_times_grid_point(rt, i_grid, n):
+  grid_point = matrix.col([i_grid[i]/float(n[i]) for i in xrange(3)])
+  rotat = matrix.sqr(float(rt.r()))
+  trans = matrix.col(float(rt.t()))
+  eq_pt = rotat*grid_point+trans
+  eq_gpt = [0,0,0]
+  unit_shifts = [0,0,0]
+  for i in xrange(3):
+    eg = iround(eq_pt.elems[i]*n[i])
+    eq_gpt[i] = eg % n[i]
+    u = (eq_gpt[i] - eg) / n[i]
+    unit_shifts[i] = iround(u)
+    assert abs(u - unit_shifts[i]) < 1.e-5
+  return tuple(eq_gpt), rt_plus_unit_shifts(rt, unit_shifts)
+
+def u_index_as_r_index(n, u_index, r_grid, allow_ambiguity):
+  r_index = None
+  for ui in (0,-1,1):
+    ri = u_index[0] + ui * n[0]
+    qi = ri + n[0]/2
+    if (qi < 0 or qi >= n[0]/2+n[0]+1): continue
+    for uj in (0,-1,1):
+      rj = u_index[1] + uj * n[1]
+      qj = rj + n[1]/2
+      if (qj < 0 or qj >= n[1]/2+n[1]+1): continue
+      for uk in (0,-1,1):
+        rk = u_index[2] + uk * n[2]
+        qk = rk + n[2]/2
+        if (qk < 0 or qk >= n[2]/2+n[2]+1): continue
+        if (r_grid[qi][qj][qk] != 0):
+          if (r_index is None):
+            r_index, unit_shifts = (ri,rj,rk), (ui,uj,uk)
+          else:
+            assert allow_ambiguity, "Double redundancy."
+  assert r_index is not None
+  return r_index, unit_shifts
+
+def grid_asu(ops, n, u_grid, r_grid, i, j, k,
+             sampling_n_redundancies, n_redundancies,
+             redundancies):
+  marker = 0
+  for rt in ops:
+    eq_gpt, rtu = rt_times_grid_point(rt, (i,j,k), n)
+    #assert str(rt_times_grid_point(rtu, (i,j,k), n)[1]) == str(rtu)
+    if (u_grid[i][j][k] != 0):
+      marker = 1
+      if (eq_gpt[0] != i or eq_gpt[1] != j or eq_gpt[2] != k):
+        if (u_grid[eq_gpt[0]][eq_gpt[1]][eq_gpt[2]] != 0):
+          r_pivot, us_pivot = u_index_as_r_index(n, (i,j,k), r_grid,
+            allow_ambiguity=sampling_n_redundancies!=0)
+          u_eq, rtu = rt_times_grid_point(rt, r_pivot, n)
+          r_eq, us_eq = u_index_as_r_index(n, u_eq, r_grid,
+            allow_ambiguity=sampling_n_redundancies!=0)
+          rtuu = rt_plus_unit_shifts(rtu, us_eq)
+          s = str(rtuu)
+          v = r_pivot, r_eq
+          #print "Redundancy at", v, s
+          n_redundancies[0] += 1
+          try: redundancies[s].append(v)
+          except: redundancies[s] = [v]
+    else:
+      if (u_grid[eq_gpt[0]][eq_gpt[1]][eq_gpt[2]] != 0):
+        marker = 1
+        break
+  if (marker != 1):
+    print "Orbit does not intersect with asymmetric unit", (i,j,k)
+
+def compare_redundancies(a, b):
+  return cmp(len(b[1]), len(a[1]))
+
+def sort_redundancies(redundancies):
+  redundancies = redundancies.items()
+  redundancies.sort(compare_redundancies)
+  return redundancies
+
+def str_ev(ev):
+  return "[%d,%d,%d]" % ev
+
+def slice(pairs, i):
+  result = []
+  for pair in pairs:
+    result.append(pair[i])
+  return result
+
+def rt_mx_analysis(s):
+  r_info = sgtbx.rot_mx_info(s.r())
+  t_info = sgtbx.translation_part_info(s)
+  t_intrinsic = str(t_info.intrinsic_part().mod_positive())
+  t_shift = str(t_info.origin_shift().mod_positive())
+  if (r_info.type() == 1):
+    return ("1", "-", "-", "-")
+  if (r_info.type() == -1):
+    return (str(r_info.type()), "-", "-", "location=(%s)" % (t_shift,))
+  if (abs(r_info.type()) == 2):
+    return (str(r_info.type()),
+            "axis="+str_ev(r_info.ev()),
+            "(%s)" % (t_intrinsic,),
+            "location=(%s)" % (t_shift,))
+  sense = "+"
+  if (r_info.sense() < 0):
+    sense = "-"
+  return (str(r_info.type())+sense,
+          "axis="+str_ev(r_info.ev()),
+          "(%s)" % (t_intrinsic,),
+          "location=(%s)" % (t_shift,))
+
+def analyze_redundancies(asu, n, redundancies, verbose=1):
+  if (len(redundancies) == 0): return
+  print "Overview:"
+  for symop, pairs in redundancies:
+    print symop, ": number of redundancies:", len(pairs)
+    print "  ", rt_mx_analysis(sgtbx.rt_mx(symop))
+  print "Details:"
+  for symop, pairs in redundancies:
+    print symop, ": number of redundancies:", len(pairs)
+    print "  ", rt_mx_analysis(sgtbx.rt_mx(symop))
+    all_facets = dicts.with_default_factory(dict)
+    not_in_facets = {}
+    for pair in pairs:
+      for point in pair:
+        facets = asu.in_which_facets(rational.vector(point, n))
+        if (len(facets) == 0):
+          not_in_facets[point] = 1
+        all_facets[tuple(facets)][point] = 1
+    print "    In facets:"
+    for facets,points in all_facets.items():
+      print "     ",
+      show_amp = False
+      for facet in facets:
+        if (show_amp): print "&",
+        print facet,
+        show_amp = True
+      print "#points: %d:" % len(points),
+      print str(points.keys()[:4]).replace(" ", "")
+    if (verbose):
+      print "    Pairs:"
+      for pair in pairs:
+        print "      ", pair
+    if (len(not_in_facets) > 0):
+      print "    Not in facets:"
+      for point in not_in_facets.keys():
+        print "     ", point
+      raise AssertionError, "Some redundant points not in any facets."
+    print
+
+def test_all(n):
+  for space_group_number in xrange(1, 231):
+    cmd = "python %s" % sys.argv[0] + " %d,%d,%d " % n +str(space_group_number)
+    print cmd
+    sys.stdout.flush()
+    os.system(cmd)
+    print
+    sys.stdout.flush()
+
+if (__name__=="__main__"):
+  flags = command_line.parse_options(sys.argv[1:], [
+    "show_asu",
+    "strip",
+    "strip_grid",
+    "strip_polygons",
+    "enantiomorphic",
+  ])
+  assert len(flags.regular_args) > 0
+  gridding = flags.regular_args[0].split(",")
+  assert len(gridding) in (1,3)
+  gridding = tuple([int(n) for n in gridding])
+  if (len(gridding) == 1): gridding *= 3
+  if (len(flags.regular_args) == 1):
+    if (not flags.enantiomorphic):
+      test_all(gridding)
+    else:
+      flags.regular_args.extend([str(i) for i in
+       (76, 78, 91, 95, 92, 96,
+        144, 145, 151, 153, 152, 154,
+        169, 170, 171, 172, 178, 179, 180, 181,
+        212, 213)])
+  if (len(flags.regular_args) > 1):
+    for arg in flags.regular_args[1:]:
+      numbers = [int(n) for n in arg.split('-')]
+      assert len(numbers) in (1,2)
+      if (len(numbers) == 1): numbers *= 2
+      for space_group_number in xrange(numbers[0], numbers[1]+1):
+        asu_original = reference_table.get_asu(space_group_number)
+        asu = asu_original
+        if (flags.strip or flags.strip_polygons):
+          asu = asu_original.volume_only()
+        print "Writing asu_gallery files"
+        jv_asu.asu_as_jvx(space_group_number, asu)
+        if (flags.strip_grid):
+          asu = asu_original.volume_only()
+        if (flags.show_asu):
+          asu.show_comprehensive_summary()
+        check_asu(int(space_group_number), asu, gridding,
+          flags.strip or flags.strip_grid)
