@@ -266,7 +266,9 @@ def correct_special_position(
   site_special_frac = special_op * site_frac
   distance_moved = unit_cell.distance(site_special_frac, site_frac)
   if (distance_moved > tolerance):
-    raise AssertionError(error_message)
+    print special_op
+    raise AssertionError(
+      error_message + " (distance_moved: %.6g)" % distance_moved)
   if (site_cart is None):
     return site_special_frac
   return unit_cell.orthogonalize(site_special_frac)
