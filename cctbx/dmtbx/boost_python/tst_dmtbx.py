@@ -30,17 +30,17 @@ def exercise_triplet_generator():
   t = dmtbx.ext.triplet_generator(sg, i, None, 0, False, False)
   assert tuple(t.n_relations()) == (4,2,2)
   assert [r.format(i, 0) for r in t.relations_for(0)] \
-      == ["(4,6,0) (5,2,5) 1 (6,1,5) 0 3 2",
-          "(4,6,0) (5,2,5) 0 (6,1,5) 1 9 2"]
+      == ["(4,6,0) (5,2,5) %s (6,1,5) %s 3 2" % (True, False),
+          "(4,6,0) (5,2,5) %s (6,1,5) %s 9 2" % (False, True)]
   assert [r.format(i, 1) for r in t.relations_for(1)] \
-      == ["(5,2,5) (4,6,0) 0 (6,1,5) 0 3 2"]
+      == ["(5,2,5) (4,6,0) %s (6,1,5) %s 3 2" % (False, False)]
   assert [r.format(i, 2) for r in t.relations_for(2)] \
-      == ["(6,1,5) (4,6,0) 0 (5,2,5) 0 9 2"]
+      == ["(6,1,5) (4,6,0) %s (5,2,5) %s 9 2" % (False, False)]
   assert approx_equal(tuple(t.sums_of_amplitude_products(a)), (24,6,4))
   t = dmtbx.ext.triplet_generator(sg, i, None, 0, False, True)
   assert tuple(t.n_relations()) == (1,1,1)
   assert [r.format(i, 0) for r in t.relations_for(0)] \
-      == ["(4,6,0) (5,2,5) 1 (6,1,5) 0 3 1"]
+      == ["(4,6,0) (5,2,5) %s (6,1,5) %s 3 1" % (True, False)]
   assert approx_equal(tuple(t.sums_of_amplitude_products(a)), (6,3,2))
   t = dmtbx.ext.triplet_generator(sg, i, None, 0, False, False)
   r0 = t.relations_for(0)
@@ -51,15 +51,15 @@ def exercise_triplet_generator():
   i = flex.miller_index(((4,6,0),(5,1,2)))
   t = dmtbx.ext.triplet_generator(sg, i, None, 0, False, False)
   assert [r.format(i, 0) for r in t.relations_for(0)] \
-      == ["(4,6,0) (5,1,2) 0 (5,1,2) 1 6 4"]
+      == ["(4,6,0) (5,1,2) %s (5,1,2) %s 6 4" % (False, True)]
   assert [r.format(i, 1) for r in t.relations_for(1)] \
-      == ["(5,1,2) (4,6,0) 0 (5,1,2) 0 6 4"]
+      == ["(5,1,2) (4,6,0) %s (5,1,2) %s 6 4" % (False, False)]
   assert not t.relations_for(0)[0].is_sigma_2(0)
   t = dmtbx.ext.triplet_generator(sg, i, None, 0, False, True)
   assert [r.format(i, 0) for r in t.relations_for(0)] \
-      == ["(4,6,0) (5,1,2) 0 (5,1,2) 1 6 1"]
+      == ["(4,6,0) (5,1,2) %s (5,1,2) %s 6 1" % (False, True)]
   assert [r.format(i, 1) for r in t.relations_for(1)] \
-      == ["(5,1,2) (4,6,0) 0 (5,1,2) 0 6 1"]
+      == ["(5,1,2) (4,6,0) %s (5,1,2) %s 6 1" % (False, False)]
   t = dmtbx.ext.triplet_generator(sg, i, None, 0, True, False)
   assert tuple(t.n_relations()) == (0,0)
 
