@@ -693,8 +693,9 @@ class array(set):
     if (sys_absent_flags.all_eq(False)): return self
     return self.select(selection=~sys_absent_flags)
 
-  def adopt_set(self, other):
-    assert self.is_similar_symmetry(other)
+  def adopt_set(self, other, assert_is_similar_symmetry=True):
+    if (assert_is_similar_symmetry):
+      assert self.is_similar_symmetry(other)
     assert self.indices().size() == other.indices().size()
     assert self.anomalous_flag() == other.anomalous_flag()
     p = match_indices(other.indices(), self.indices()).permutation()
@@ -706,14 +707,16 @@ class array(set):
     return (array(miller_set=other, data=d, sigmas=s)
       .set_observation_type(self))
 
-  def common_set(self, other):
-    assert self.is_similar_symmetry(other)
+  def common_set(self, other, assert_is_similar_symmetry=True):
+    if (assert_is_similar_symmetry):
+      assert self.is_similar_symmetry(other)
     assert self.anomalous_flag() == other.anomalous_flag()
     match = match_indices(self.indices(), other.indices())
     return self.select(match.pair_selection(0))
 
-  def common_sets(self, other):
-    assert self.is_similar_symmetry(other)
+  def common_sets(self, other, assert_is_similar_symmetry=True):
+    if (assert_is_similar_symmetry):
+      assert self.is_similar_symmetry(other)
     assert self.anomalous_flag() == other.anomalous_flag()
     pairs = match_indices(self.indices(), other.indices()).pairs()
     return [self.select(pairs.column(0)),
@@ -1150,8 +1153,12 @@ class array(set):
       data=data,
       sigmas=sigmas)
 
-  def correlation(self, other, use_binning=False):
-    assert self.is_similar_symmetry(other)
+  def correlation(self,
+        other,
+        use_binning=False,
+        assert_is_similar_symmetry=True):
+    if (assert_is_similar_symmetry):
+      assert self.is_similar_symmetry(other)
     assert self.is_real_array()
     assert other.is_real_array()
     assert not use_binning or self.binner() is not None
@@ -1160,7 +1167,8 @@ class array(set):
       other = other.as_anomalous()
     elif (not lhs.anomalous_flag() and other.anomalous_flag()):
       lhs = lhs.as_anomalous()
-    lhs, other = lhs.common_sets(other)
+    lhs, other = lhs.common_sets(
+      other=other, assert_is_similar_symmetry=assert_is_similar_symmetry)
     if (not use_binning):
       return flex.linear_correlation(lhs.data(), other.data())
     lhs.use_binning_of(self)
