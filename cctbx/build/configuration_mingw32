@@ -22,7 +22,7 @@ STDFIXINC=
 
 CPP=g++
 LD=g++
-STDOPTS=-ftemplate-depth-21
+STDOPTS=-ftemplate-depth-50
 WARNOPTS=
 OPTOPTS=-g
 MAKEDEP=-M
