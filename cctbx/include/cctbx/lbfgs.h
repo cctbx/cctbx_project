@@ -1372,10 +1372,10 @@ namespace lbfgs {
           <p>
       <li>The exponential fit is used to compute idealized
           values for the objective function at the
-          last p() iterations. Let <code>slope2</code> be
-          the slope of this fitted line.
+          last p() iterations.
           <p>
       <li>A straight line is fitted to the idealized values.
+          Let <code>slope2</code> be the slope of this fitted line.
           Convergence is detected if the following is true:
           <pre>
           abs(slope2 - slope1) < slope_eps
