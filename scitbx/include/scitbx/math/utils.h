@@ -5,21 +5,41 @@
 
 namespace scitbx { namespace math {
 
-  inline
-  int
-  iround(double x)
+  template <typename FloatType,
+            typename SignedIntType>
+  struct float_int_conversions
   {
-    if (x < 0) return static_cast<int>(x-0.5);
-    return static_cast<int>(x+.5);
-  }
+    static
+    inline
+    SignedIntType
+    iround(FloatType const& x)
+    {
+      if (x < 0) return static_cast<SignedIntType>(x-0.5);
+      return static_cast<SignedIntType>(x+.5);
+    }
+
+    static
+    inline
+    SignedIntType
+    iceil(FloatType const& x) { return iround(std::ceil(x)); }
+
+    static
+    inline
+    SignedIntType
+    ifloor(FloatType const& x) { return iround(std::floor(x)); }
+  };
 
   inline
   int
-  iceil(double x) { return iround(std::ceil(x)); }
+  iround(double x) { return float_int_conversions<double,int>::iround(x); }
 
   inline
   int
-  ifloor(double x) { return iround(std::floor(x)); }
+  iceil(double x) { return float_int_conversions<double,int>::iceil(x); }
+
+  inline
+  int
+  ifloor(double x) { return float_int_conversions<double,int>::ifloor(x); }
 
 }} // namespace scitbx::math
 
