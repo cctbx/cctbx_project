@@ -31,6 +31,9 @@ namespace {
         .def("abs_range", &w_t::abs_range)
         .def("map_grid", &w_t::map_grid)
         .def("is_in_domain", &w_t::is_in_domain)
+        .def("pack",
+          (af::shared<std::size_t>(w_t::*)
+           (af::const_ref<index<> > const& miller_indices) const) &w_t::pack)
       ;
     }
   };
