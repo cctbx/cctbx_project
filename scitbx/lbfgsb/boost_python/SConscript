@@ -1,5 +1,14 @@
-Import("env_scitbx_boost_python_ext")
-env_scitbx_boost_python_ext.SharedLibrary(
+import os
+Import("env_scitbx_boost_python_ext", "env_etc")
+env = env_scitbx_boost_python_ext.Copy()
+if (os.path.isfile(os.path.join(env_etc.libtbx_lib, "liblbfgsb_fortran.a"))):
+  env.Prepend(LIBS=["lbfgsb_fortran"])
+  if (env_etc.compiler == "tru64_cxx"):
+    env.Append(LIBS=["Ufor", "for"])
+  elif (env_etc.compiler == "unix_gcc"):
+    env.Append(LIBS=["g2c"])
+  env.Prepend(CPPFLAGS=["-DSCITBX_LBFGSB_HAVE_FORTRAN_LIB"])
+env.SharedLibrary(
   target="#libtbx/scitbx_lbfgsb_ext",
   source=[
     "lbfgsb_ext.cpp",

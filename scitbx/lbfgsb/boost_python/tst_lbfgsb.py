@@ -28,7 +28,7 @@ def exercise_minimizer_interface():
   x = flex.double(n, 0)
   f = 1
   g = flex.double(n, -1)
-  assert minimizer.process(x, f, g)
+  assert minimizer.process(x, f, g, 0)
   assert minimizer.task() == "FG_START"
   assert minimizer.f() == 0
   assert minimizer.process(x, f, g)
@@ -50,7 +50,7 @@ def exercise_minimizer_interface():
   assert minimizer.nbd().size() == n
   assert minimizer.nbd().all_eq(0)
 
-def driver1():
+def driver1(use_fortran_library=00000):
   n = 25
   nbd = flex.int(n)
   x = flex.double(n)
@@ -82,7 +82,7 @@ def driver1():
     iprint=iprint)
   f = 0
   while 0001:
-    if (minimizer.process(x, f, g)):
+    if (minimizer.process(x, f, g, use_fortran_library)):
       f=.25e0*(x[0]-1.e0)**2
       for i in xrange(1,n):
         f=f+(x[i]-x[i-1]**2)**2
@@ -139,7 +139,7 @@ def driver1():
 
 def run():
   exercise_minimizer_interface()
-  driver1()
+  driver1(use_fortran_library=("--fortran" in sys.argv[1:]))
   print "OK"
 
 if (__name__ == "__main__"):

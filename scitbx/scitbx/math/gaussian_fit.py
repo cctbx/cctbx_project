@@ -6,6 +6,8 @@ from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import ifloor
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils import dicts
+from scitbx.python_utils import easy_pickle
+import time
 import math
 import sys
 
@@ -90,11 +92,21 @@ class minimize_lbfgsb(minimize_mixin):
                      shift_sqrt_b,
                      apply_lower_bounds_on_b,
                      lbfgsb_m=20,
-                     hard_b_min=-1):
+                     hard_b_min=-1,
+                     iprint=-1,
+                     use_fortran_library=00000):
     adopt_init_args(self, locals())
     assert target_power in [2,4]
     self.n = gaussian_fit.n_terms() * 2
-    self.run()
+    try:
+      self.run()
+    except LargeNegativeB:
+      raise
+    except:
+      easy_pickle.dump(
+        "lbfgsb_exception_%.0f.pickle" % time.time(),
+        gaussian_fit)
+      raise
     self.finalize()
 
   def __str__(self):
@@ -117,12 +129,14 @@ class minimize_lbfgsb(minimize_mixin):
       m=self.lbfgsb_m,
       l=l,
       u=u,
-      nbd=nbd)
+      nbd=nbd,
+      iprint=self.iprint)
     self.x = flex.double(self.n, 0)
     self.f = 0
     self.g = flex.double(self.n, 0)
     while 0001:
-      if (self.minimizer.process(self.x, self.f, self.g)):
+      if (self.minimizer.process(self.x, self.f, self.g,
+                                 self.use_fortran_library)):
         self.compute_fg()
       elif (self.minimizer.is_terminated()):
         break
@@ -469,7 +483,7 @@ def fit_with_golay_starts(label,
     if (good_min is None):
       print >> print_to, "Final: %s: No successful minimization." % label
     else:
-      print >> print_to, "Final:", label, "max_error fitted=%.4f, more=%.4f" % (
+      print >> print_to, "Final:", label, "max_error fitted=%.4f, more=%.4f" %(
         good_min.max_error,
         flex.max(fit_more.significant_relative_errors()))
     good_min.show_minimization_parameters(f=print_to)

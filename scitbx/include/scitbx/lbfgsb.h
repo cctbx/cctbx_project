@@ -1,3 +1,10 @@
+#ifndef SCITBX_LBFGSB_H
+#define SCITBX_LBFGSB_H
+
+#if defined(SCITBX_LBFGSB_HAVE_FORTRAN_LIB)
+# include <scitbx/lbfgsb/fortran_interface.h>
+#endif
+
 #include <scitbx/lbfgsb/raw.h>
 
 namespace scitbx {
@@ -117,7 +124,8 @@ namespace lbfgsb {
       process(
         af::ref<FloatType> const& x,
         FloatType const& f,
-        af::ref<FloatType> const& g)
+        af::ref<FloatType> const& g,
+        bool use_fortran_library=false)
       {
         SCITBX_ASSERT(!is_terminated_);
         if (task_[0] == 'F') {
@@ -126,25 +134,52 @@ namespace lbfgsb {
             f_list_.push_back(f_);
           }
         }
-        raw::setulb(
-          n_,
-          m_,
-          raw::ref1<FloatType>(x),
-          raw::ref1<FloatType>(l_.ref()),
-          raw::ref1<FloatType>(u_.ref()),
-          raw::ref1<int>(nbd_.ref()),
-          f_,
-          raw::ref1<FloatType>(g),
-          factr_,
-          pgtol_,
-          raw::ref1<FloatType>(wa_.ref()),
-          raw::ref1<int>(iwa_.ref()),
-          task_,
-          iprint_,
-          csave_,
-          raw::ref1<bool>(lsave_.ref()),
-          raw::ref1<int>(isave_.ref()),
-          raw::ref1<FloatType>(dsave_.ref()));
+        if (!use_fortran_library) {
+          raw::setulb(
+            n_,
+            m_,
+            raw::ref1<FloatType>(x),
+            raw::ref1<FloatType>(l_.ref()),
+            raw::ref1<FloatType>(u_.ref()),
+            raw::ref1<int>(nbd_.ref()),
+            f_,
+            raw::ref1<FloatType>(g),
+            factr_,
+            pgtol_,
+            raw::ref1<FloatType>(wa_.ref()),
+            raw::ref1<int>(iwa_.ref()),
+            task_,
+            iprint_,
+            csave_,
+            raw::ref1<bool>(lsave_.ref()),
+            raw::ref1<int>(isave_.ref()),
+            raw::ref1<FloatType>(dsave_.ref()));
+        }
+        else {
+#if !defined(SCITBX_LBFGSB_HAVE_FORTRAN_LIB)
+          throw error("L-BFGS-B FORTRAN library is not available.");
+#else
+          fortran_interface::setulb(
+            n_,
+            m_,
+            raw::ref1<FloatType>(x),
+            raw::ref1<FloatType>(l_.ref()),
+            raw::ref1<FloatType>(u_.ref()),
+            raw::ref1<int>(nbd_.ref()),
+            f_,
+            raw::ref1<FloatType>(g),
+            factr_,
+            pgtol_,
+            raw::ref1<FloatType>(wa_.ref()),
+            raw::ref1<int>(iwa_.ref()),
+            task_,
+            iprint_,
+            csave_,
+            raw::ref1<bool>(lsave_.ref()),
+            raw::ref1<int>(isave_.ref()),
+            raw::ref1<FloatType>(dsave_.ref()));
+#endif
+        }
         requests_f_and_g_ = false;
         int t0 = task_[0];
         if (t0 == 'N') { // "NEW_X"
@@ -503,3 +538,5 @@ namespace lbfgsb {
   };
 
 }} // namespace scitbx::lbfgsb
+
+#endif // SCITBX_LBFGSB_H
