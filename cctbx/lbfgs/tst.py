@@ -1,10 +1,10 @@
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import lbfgs
 
 def run(verbose = 1):
   n = 100
-  x = shared.double(n)
-  g = shared.double(n)
+  x = flex.double(n)
+  g = flex.double(n)
   for j in xrange(0, n, 2):
     x[j] = -1.2
     x[j+1] = 1.

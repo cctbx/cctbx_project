@@ -1,6 +1,6 @@
 import math
-from cctbx_boost.arraytbx import shared
-from cctbx_boost.arraytbx import shared_map
+from cctbx_boost.arraytbx import flex
+from cctbx_boost.arraytbx import flex_utils
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
 from cctbx_boost import sftbx
@@ -98,7 +98,7 @@ class miller_set(crystal_symmetry):
       self, self.UnitCell.stol2(self.H))
 
   def expand_to_p1(self):
-    set_p1_H = shared.miller_Index()
+    set_p1_H = flex.miller_Index()
     miller.expand_to_p1(self.SgOps, self.friedel_flag, self.H, set_p1_H)
     return miller_set(self.cell_equivalent_p1(), set_p1_H).set_friedel_flag(
       self.friedel_flag)
@@ -173,7 +173,7 @@ class reciprocal_space_array(miller_set):
       miller_set(self, h), f, s).set_friedel_flag(1)
 
   def all_selection(self):
-    return shared.bool(self.H.size(), 1)
+    return flex.bool(self.H.size(), 1)
 
   def apply_selection(self, flags, negate=0):
     if (negate): flags = ~flags
@@ -199,7 +199,7 @@ class reciprocal_space_array(miller_set):
     return self.apply_selection(keep, negate)
 
   def sigma_filter(self, cutoff_factor, negate=0):
-    flags = shared.abs(self.F) >= self.sigmas.mul(cutoff_factor)
+    flags = flex.abs(self.F) >= self.sigmas.mul(cutoff_factor)
     return self.apply_selection(flags, negate)
 
   def generic_binner_action(self, use_binning, use_multiplicities,
@@ -213,7 +213,7 @@ class reciprocal_space_array(miller_set):
       else:
         result = function_weighted(self.F, mult)
     else:
-      result = shared.double()
+      result = flex.double()
       for i_bin in self.binner.range_used():
         sel = self.binner(i_bin)
         if (sel.count(1) == 0):
@@ -229,25 +229,25 @@ class reciprocal_space_array(miller_set):
 
   def mean(self, use_binning=0, use_multiplicities=0):
     return self.generic_binner_action(use_binning, use_multiplicities,
-      shared.mean,
-      shared.mean_weighted)
+      flex.mean,
+      flex.mean_weighted)
 
   def mean_sq(self, use_binning=0, use_multiplicities=0):
     return self.generic_binner_action(use_binning, use_multiplicities,
-      shared.mean_sq,
-      shared.mean_sq_weighted)
+      flex.mean_sq,
+      flex.mean_sq_weighted)
 
   def rms(self, use_binning=0, use_multiplicities=0):
     ms = self.mean_sq(use_binning, use_multiplicities)
     if (not use_binning):
       return math.sqrt(ms)
     else:
-      return shared.sqrt(ms)
+      return flex.sqrt(ms)
 
   def rms_filter(self, cutoff_factor,
                  use_binning=0, use_multiplicities=0, negate=0):
     rms = self.rms(use_binning, use_multiplicities)
-    abs_f = shared.abs(self.F)
+    abs_f = flex.abs(self.F)
     if (not use_binning):
       keep = abs_f <= cutoff_factor * rms
     else:
@@ -261,7 +261,7 @@ class reciprocal_space_array(miller_set):
       result = miller.statistical_mean(
         self.SgOps, friedel_flag, self.H, self.F)
     else:
-      result = shared.double()
+      result = flex.double()
       for i_bin in self.binner.range_used():
         sel = self.binner(i_bin)
         if (sel.count(1) == 0):
@@ -274,7 +274,7 @@ class reciprocal_space_array(miller_set):
     return result
 
   def generic_binner_application(self, binned_values, ftor, result_f):
-    result_p = shared.size_t()
+    result_p = flex.size_t()
     for i_bin in self.binner.range_used():
       result_p.append(self.binner.array_indices(i_bin))
       result_f.append(
@@ -284,12 +284,12 @@ class reciprocal_space_array(miller_set):
 
   def remove_patterson_origin_peak(self):
     s_mean = self.statistical_mean(use_binning=1)
-    result_f = shared.double()
+    result_f = flex.double()
     return self.generic_binner_application(s_mean, ftor_a_s_sub, result_f)
 
   def normalize_structure_factors(self):
     mean = self.mean(use_binning=1, use_multiplicities=1)
-    result_f = shared.double()
+    result_f = flex.double()
     return self.generic_binner_application(mean, ftor_a_s_div, result_f)
 
   def __add__(self, other):
@@ -320,9 +320,9 @@ class symmetrized_sites(crystal_symmetry):
     self.MinMateDistance = MinMateDistance
     self.Ustar_tolerance = Ustar_tolerance
     self.TestPositiveDefiniteness = TestPositiveDefiniteness
-    self.Sites = shared.XrayScatterer()
+    self.Sites = flex.XrayScatterer()
     if (keep_special_position_operators):
-      self.SpecialPositionOps = shared.RTMx()
+      self.SpecialPositionOps = flex.RTMx()
     else:
       self.SpecialPositionOps = None
     self.SnapParameters = sgtbx.SpecialPositionSnapParameters(
@@ -389,7 +389,7 @@ def calculate_structure_factors_direct(miller_set_obj, xtal, abs_F=0):
   F = sftbx.StructureFactorArray(
     miller_set_obj.UnitCell, miller_set_obj.SgOps, miller_set_obj.H,
     xtal.Sites)
-  if (abs_F): F = shared.abs(F)
+  if (abs_F): F = flex.abs(F)
   result = reciprocal_space_array(miller_set_obj, F)
   result.symmetrized_sites = xtal
   return result
@@ -434,7 +434,7 @@ def calculate_structure_factors_fft(miller_set_obj, xtal, abs_F=0,
   fcalc = sftbx.collect_structure_factors(
     friedel_flag, miller_set_obj.H, map, n_complex, collect_conj)
   sampled_density.eliminate_u_extra_and_normalize(miller_set_obj.H, fcalc)
-  if (abs_F): fcalc = shared.abs(fcalc)
+  if (abs_F): fcalc = flex.abs(fcalc)
   result = reciprocal_space_array(miller_set_obj, fcalc)
   result.symmetrized_sites = xtal
   return result
@@ -481,10 +481,10 @@ class fft_map(crystal_symmetry):
     cf = coeff_set.F
     if (type(cf[0]) != type(0j)):
       if (cf.size() == 0):
-        cf = shared.complex_double() # XXX avoid large dummy array
+        cf = flex.complex_double() # XXX avoid large dummy array
       else:
-        ph = shared.double(cf.size(), 0)
-        cf = shared.polar(cf, ph)
+        ph = flex.double(cf.size(), 0)
+        cf = flex.polar(cf, ph)
         del ph
     max_q = self.UnitCell.max_Q(coeff_set.H)
     mandatory_grid_factors = self.SgOps.refine_gridding()
@@ -506,14 +506,14 @@ class fft_map(crystal_symmetry):
       self.n_complex, conjugate)
     if (self.friedel_flag):
       rfft.backward(cmap)
-      self.rmap = shared.reinterpret_complex_as_real(cmap)
+      self.rmap = flex.reinterpret_complex_as_real(cmap)
     else:
       cfft.backward(cmap)
       self.cmap = cmap
 
   def inplace_unpad(self):
     if (self.friedel_flag):
-      shared_map.inplace_unpad(self.rmap, self.n_real, self.m_real)
+      flex_utils.inplace_unpad(self.rmap, self.n_real, self.m_real)
       self.m_real = self.n_real
       del self.n_complex
 
@@ -522,4 +522,4 @@ class fft_map(crystal_symmetry):
       self.inplace_unpad()
       return self.rmap
     else:
-      return shared.real(self.cmap)
+      return flex.real(self.cmap)

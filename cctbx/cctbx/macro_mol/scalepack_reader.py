@@ -1,4 +1,4 @@
-""" Transfer of scalepack reflection files to shared arrays.
+""" Transfer of scalepack reflection files to flex arrays.
 """
 
 # Sample scalepack OUTPUT FILE
@@ -11,7 +11,7 @@
 # Format: (3I4, 4F8.1)
 
 import exceptions
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
 from cctbx import xutils
@@ -44,9 +44,9 @@ class scalepack_reader:
       self.space_group_info = xutils.space_group_info(self.space_group_symbol)
     except:
       self.space_group_info = 0
-    self.miller_indices = shared.miller_Index()
-    self.fobs = shared.double()
-    self.sigmas = shared.double()
+    self.miller_indices = flex.miller_Index()
+    self.fobs = flex.double()
+    self.sigmas = flex.double()
     self.anomalous = 0
     line_count = 3
     while 1:

@@ -12,6 +12,23 @@
 #include <cctbx/miller_bpl.h>
 #include <cctbx/mintbx/k_b_scaling.h>
 
+#include <cctbx/array_family/shared_bpl_.h>
+
+namespace cctbx { namespace af { namespace bpl {
+
+  void import_flex()
+  {
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(int, "int")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::miller::Index, "miller_Index")
+  }
+
+}}} // namespace cctbx::af::bpl
+
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(int)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
+
 using namespace cctbx;
 using namespace cctbx::mintbx;
 
@@ -31,15 +48,7 @@ namespace {
     python::import_converters<sgtbx::SpaceGroup>
     py_SpaceGroup("cctbx_boost.sgtbx", "SpaceGroup");
 
-    python::import_converters<af::shared<int> >
-    py_shared_int("cctbx_boost.arraytbx.shared", "int");
-
-    python::import_converters<af::shared<double> >
-    py_shared_double("cctbx_boost.arraytbx.shared", "double");
-
-    python::import_converters<af::shared<miller::Index> >
-    py_shared_miller_Index(
-      "cctbx_boost.arraytbx.shared", "miller_Index");
+    af::bpl::import_flex();
 
     typedef k_b_scaling_target_and_gradients<double> kbstg;
     class_builder<kbstg>

@@ -12,7 +12,19 @@
 
 #include <cctbx/error.h>
 #include <cctbx/lbfgs.h>
-#include <cctbx/array_family/shared.h>
+
+#include <cctbx/array_family/shared_bpl_.h>
+
+namespace cctbx { namespace af { namespace bpl {
+
+  void import_flex()
+  {
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
+  }
+
+}}} // namespace cctbx::af::bpl
+
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
 
 namespace {
 
@@ -68,9 +80,7 @@ namespace {
     this_module.add(ref(to_python(
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    python::import_converters<af::shared<double> >
-    py_shared_double(
-      "cctbx_boost.arraytbx.shared", "double");
+    af::bpl::import_flex();
 
     python::class_builder<lbfgs::minimizer<double> >
     py_minimizer(this_module, "minimizer");

@@ -1,10 +1,10 @@
-""" Transfer of CNS reflection files to shared arrays.
+""" Transfer of CNS reflection files to flex arrays.
 """
 
 __version__="$Revision$"[11:-2]
 
 import exceptions
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
@@ -86,13 +86,13 @@ class cns_reciprocal_space_object:
   def __init__(self, name, type):
     self.name = name
     self.type = type
-    self.H = shared.miller_Index()
+    self.H = flex.miller_Index()
     if   (type == "real"):
-      self.data = shared.double()
+      self.data = flex.double()
     elif (type == "complex"):
-      self.data = shared.complex_double()
+      self.data = flex.complex_double()
     elif (type == "integer"):
-      self.data = shared.int()
+      self.data = flex.int()
     else:
       raise RuntimeError, "Internal Error."
 
@@ -324,7 +324,7 @@ class cns_reflection_file:
       js = miller.join_sets(miller_indices, rso.H)
       assert not js.have_singles()
       joined_sets.append(js)
-    hl = shared.hendrickson_lattman()
+    hl = flex.hendrickson_lattman()
     for ih in xrange(miller_indices.size()):
       coeff = []
       for ic in xrange(4):

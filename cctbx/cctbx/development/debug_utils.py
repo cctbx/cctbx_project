@@ -1,6 +1,7 @@
 import math
 import random
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
+from cctbx_boost.arraytbx import flex_utils
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
 from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
@@ -298,7 +299,7 @@ def print_structure_factors(F, precision_ampl=3, precision_phase=0):
       F.F[i], precision_ampl, precision_phase)
 
 def show_regression(x, y, label, min_correlation = 0):
-  xy_regr = shared.linear_regression(x, y)
+  xy_regr = flex_utils.linear_regression(x, y)
   assert xy_regr.is_well_defined()
   print label, "cc: %.4f m: %.3f" % (xy_regr.cc(), xy_regr.m())
   assert min_correlation == 0 or xy_regr.cc() >= min_correlation
@@ -316,8 +317,8 @@ class structure_factor_comparison:
   def __init__(self, label, min_corr_ampl=0, max_mean_w_phase_error=0,
                verbose=0):
     python_utils.adopt_init_args(self, locals())
-    self.amp1 = shared.double()
-    self.amp2 = shared.double()
+    self.amp1 = flex.double()
+    self.amp2 = flex.double()
     self.sum_amp1_minus_amp2_sq = 0
     self.sum_amp1_sq = 0
     self.sum_w_phase_error = 0
@@ -368,7 +369,7 @@ def show_structure_factor_correlation(label, h1, joined_sets, f1, f2,
 
 def random_phases(sgops, miller_indices, amplitudes, deg=0):
   assert miller_indices.size() == amplitudes.size()
-  phases = shared.double()
+  phases = flex.double()
   for i,h in miller_indices.items():
     phi = random.random() - 0.5
     if (deg): phi *= 360

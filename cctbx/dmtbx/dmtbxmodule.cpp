@@ -13,6 +13,21 @@
 #include <cctbx/miller/sort.h>
 #include <cctbx/dmtbx/triplet.h>
 
+#include <cctbx/array_family/shared_bpl_.h>
+
+namespace cctbx { namespace af { namespace bpl {
+
+  void import_flex()
+  {
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::miller::Index, "miller_Index")
+  }
+
+}}} // namespace cctbx::af::bpl
+
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
+
 namespace {
 
   using namespace cctbx;
@@ -41,12 +56,7 @@ namespace {
     python::import_converters<sgtbx::SpaceGroupInfo>
     py_SpaceGroup("cctbx_boost.sgtbx", "SpaceGroupInfo");
 
-    python::import_converters<af::shared<double> >
-    py_shared_double("cctbx_boost.arraytbx.shared", "double");
-
-    python::import_converters<af::shared<miller::Index> >
-    py_shared_miller_Index(
-      "cctbx_boost.arraytbx.shared", "miller_Index");
+    af::bpl::import_flex();
 
     class_builder<dmtbx::triplet_invariants<double> >
     py_triplet_invariants(this_module, "triplet_invariants");

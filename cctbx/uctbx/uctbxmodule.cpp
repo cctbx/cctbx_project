@@ -15,6 +15,21 @@
 #include <cctbx/miller_bpl.h>
 #include <cctbx/uctbx.h>
 
+#include <cctbx/array_family/shared_bpl_.h>
+
+namespace cctbx { namespace af { namespace bpl {
+
+  void import_flex()
+  {
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::miller::Index, "miller_Index")
+  }
+
+}}} // namespace cctbx::af::bpl
+
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
+
 using namespace cctbx;
 using namespace cctbx::uctbx;
 
@@ -187,11 +202,7 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   this_module.add(ref(to_python(
       Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-  python::import_converters<af::shared<double> >
-  py_shared_double("cctbx_boost.arraytbx.shared", "double");
-
-  python::import_converters<af::shared<miller::Index> >
-  py_shared_miller_Index("cctbx_boost.arraytbx.shared", "miller_Index");
+  af::bpl::import_flex();
 
   class_builder<UnitCell> UnitCell_class(this_module, "UnitCell");
   python::export_converters(UnitCell_class);

@@ -20,7 +20,7 @@ class FormatError(exceptions.Exception): pass
 import math, string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import sgtbx
 from cctbx_boost import uctbx
 from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
@@ -171,7 +171,7 @@ if (__name__ == "__main__"):
     print "<th>Occupancy<br>factor"
     print "<th>Biso"
     print "<tr>"
-    Sites = shared.XrayScatterer()
+    Sites = flex.XrayScatterer()
     print
     for line in inp.coordinates:
       flds = string.split(line)

@@ -1283,6 +1283,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
 
       class_builder<f_t, flex_wrapper<ElementType> >
       py_flex(bpl_module, python_name.c_str());
+      boost::python::export_converters(py_flex);
 
       py_flex_items.def(constructor<>());
       py_flex_items.def(constructor<f_t const&>());

@@ -1,5 +1,5 @@
 import sys, os, math
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
 from cctbx_boost import sftbx
@@ -10,8 +10,8 @@ from cctbx_boost import dmtbx
 from cctbx import euclidean_model_matching as emma
 
 def ampl_phase(f, deg=0):
-  amplidutes = shared.double()
-  phases = shared.double()
+  amplidutes = flex.double()
+  phases = flex.double()
   for i in xrange(f.size()):
     a, p = xutils.f_as_ampl_phase(f[i], deg)
     amplidutes.append(a)
@@ -82,7 +82,7 @@ def raise_emap(xtal, e000, p1_miller_indices,
   if (0 or verbose): print "grid_logical:", grid_logical
   rfft = fftbx.real_to_complex_3d(grid_logical)
   friedel_flag = 1
-  old_e_complex = shared.polar(e_values, phases)
+  old_e_complex = flex.polar(e_values, phases)
   n_complex = rfft.Ncomplex()
   if (0 or verbose): print "n_complex:", n_complex
   conjugate = 0
@@ -92,14 +92,14 @@ def raise_emap(xtal, e000, p1_miller_indices,
   if (use_e000):
     map[0] = e000
   rfft.backward(map)
-  rmap = shared.reinterpret_complex_as_real(map)
+  rmap = flex.reinterpret_complex_as_real(map)
   if (zero_out_negative):
-    shared.set_if_less_than(rmap, 0, 0)
-  shared.in_place_pow(rmap, exponent)
+    flex.set_if_less_than(rmap, 0, 0)
+  flex.in_place_pow(rmap, exponent)
   rfft.forward(map)
   new_e_complex = sftbx.collect_structure_factors(
     friedel_flag, miller_indices, map, n_complex, conjugate)
-  new_phases = shared.arg(new_e_complex)
+  new_phases = flex.arg(new_e_complex)
   if (0 or verbose):
     for i in xrange(miller_indices.size()):
       print miller_indices[i], "%.2f %.2f" % (
@@ -153,7 +153,7 @@ class simulated_data:
     miller_set = xutils.build_miller_set(
       xtal, friedel_flag=1,d_min=d_min)
     if (0):
-      miller_set.H = shared.miller_Index()
+      miller_set.H = flex.miller_Index()
       miller_set.H.append((0,2,0))
       miller_set.H.append((1,1,15))
     miller_set.H.append((0,0,0))
@@ -168,7 +168,7 @@ class simulated_data:
     miller_set.H.pop_back()
     e_values.pop_back()
     dmtbx.inplace_sort(miller_set.H, e_values, 1)
-    s = shared.statistics(e_values)
+    s = flex.statistics(e_values)
     print "mean2:", s.mean2()
     print "number of structure factors:", e_values.size()
     erase_small(miller_set.H, e_values, e_min)
@@ -177,7 +177,7 @@ class simulated_data:
       normalize_quasi_normalized(xtal.SgOps, miller_set.H, e_values)
     Fcalc = xutils.calculate_structure_factors_direct(
       miller_set, xtal, abs_F=0)
-    dummy, phases = ampl_phase(Fcalc.F) # XXX use shared.arg()
+    dummy, phases = ampl_phase(Fcalc.F) # XXX use flex.arg()
     Fcalc.F = e_values
     if (0 or verbose):
       debug_utils.print_structure_factors(Fcalc)
@@ -200,9 +200,9 @@ def exercise(SgInfo,
              zero_out_negative=0,
              verbose=0):
   sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
-  p1_H = shared.miller_Index()
-  p1_e_values = shared.double()
-  p1_phases = shared.double()
+  p1_H = flex.miller_Index()
+  p1_e_values = flex.double()
+  p1_phases = flex.double()
   miller.expand_to_p1(
     sim.xtal.SgOps, 1,
     sim.miller_set.H, sim.e_values, sim.phases,
@@ -220,9 +220,9 @@ def exercise(SgInfo,
         sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, 1, verbose)
       sg_new_phases = tprs_sg.apply_tangent_formula(sim.e_values, sim.phases)
       p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
-      ref_p1_H = shared.miller_Index()
-      ref_p1_e_values = shared.double()
-      ref_p1_phases = shared.double()
+      ref_p1_H = flex.miller_Index()
+      ref_p1_e_values = flex.double()
+      ref_p1_phases = flex.double()
       miller.expand_to_p1(
         sim.xtal.SgOps, 1,
         sim.miller_set.H, sim.e_values, sg_new_phases,
@@ -276,7 +276,7 @@ class map_from_ampl_phases:
     print "tags.n_independent:", self.tags.n_independent()
 
   def __call__(self, miller_indices, ampl, phases, deg=0):
-    f = shared.polar(ampl, phases, deg)
+    f = flex.polar(ampl, phases, deg)
     friedel_flag = 1
     n_complex = self.rfft.Ncomplex()
     conjugate = 1
@@ -284,7 +284,7 @@ class map_from_ampl_phases:
       self.xtal.SgOps, friedel_flag, miller_indices,
       f, n_complex, conjugate)
     self.rfft.backward(map)
-    return shared.reinterpret_complex_as_real(map)
+    return flex.reinterpret_complex_as_real(map)
 
   def get_peak_list(self, map, peak_search_level, max_peaks):
     return sftbx.get_peak_list(
@@ -317,7 +317,7 @@ def recycle(SgInfo,
   sim_emma_model = sim.xtal.as_emma_model()
   if (0 or verbose):
     sim_emma_model.show("Random model")
-  p1_H = shared.miller_Index()
+  p1_H = flex.miller_Index()
   miller.expand_to_p1(sim.xtal.SgOps, 1, sim.miller_set.H, p1_H)
   map_calculator = map_from_ampl_phases(sim.xtal, d_min)
   print "Nreal:", map_calculator.rfft.Nreal()

@@ -23,6 +23,27 @@
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 
+#include <cctbx/array_family/shared_bpl_.h>
+
+namespace cctbx { namespace af { namespace bpl {
+
+  void import_flex()
+  {
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(bool, "bool")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(int, "int")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::miller::Index, "miller_Index")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::sgtbx::RTMx, "RTMx")
+  }
+
+}}} // namespace cctbx::af::bpl
+
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(bool)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(int)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::sgtbx::RTMx)
+
 using namespace cctbx;
 using namespace cctbx::sgtbx;
 
@@ -450,20 +471,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   python::import_converters<uctbx::UnitCell>
   py_UnitCell("cctbx_boost.uctbx", "UnitCell");
 
-  python::import_converters<af::shared<bool> >
-  py_shared_bool("cctbx_boost.arraytbx.shared", "bool");
-
-  python::import_converters<af::shared<int> >
-  py_shared_int("cctbx_boost.arraytbx.shared", "int");
-
-  python::import_converters<af::shared<double> >
-  py_shared_double("cctbx_boost.arraytbx.shared", "double");
-
-  python::import_converters<af::shared<miller::Index> >
-  py_shared_miller_Index("cctbx_boost.arraytbx.shared", "miller_Index");
-
-  python::import_converters<af::shared<RTMx> >
-  py_shared_RTMx("cctbx_boost.arraytbx.shared", "RTMx");
+  af::bpl::import_flex();
 
   this_module.add(ref(to_python(STBF)), "STBF");
   this_module.add(ref(to_python(CRBF)), "CRBF");
