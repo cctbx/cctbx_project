@@ -87,6 +87,7 @@ namespace {
         (arg_("centric_flags"),
          arg_("phase_integrals"),
          arg_("max_figure_of_merit"))))
+      .def("count", f_w::count)
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_a)
       .def("slice", slice, (arg_("self"), arg_("i_param")))

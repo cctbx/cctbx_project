@@ -1011,6 +1011,31 @@ class array(set):
     assert self.anomalous_flag() == other.anomalous_flag()
     return match_indices(self.indices(), other.indices())
 
+  def matching_set(self,
+        other,
+        data_substitute,
+        sigmas_substitute=None,
+        assert_is_similar_symmetry=True):
+    assert self.data().size() == self.indices().size()
+    if (self.sigmas() is not None):
+      assert self.sigmas().size() == self.indices().size()
+      assert sigmas_substitute is not None
+    pairs = other.match_indices(
+      other=self,
+      assert_is_similar_symmetry=assert_is_similar_symmetry).pairs()
+    data = self.data().__class__(
+      other.indices().size(), data_substitute)
+    data.set_selected(
+      pairs.column(0), self.data().select(pairs.column(1)))
+    if (self.sigmas() is None):
+      sigmas = None
+    else:
+      sigmas = self.sigmas().__class__(
+        other.indices().size(), sigmas_substitute)
+      sigmas.set_selected(
+        pairs.column(0), self.sigmas().select(pairs.column(1)))
+    return other.array(data=data, sigmas=sigmas)
+
   def common_set(self, other, assert_is_similar_symmetry=True):
     pairs = other.match_indices(
       other=self,
@@ -1439,6 +1464,23 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
             self.indices().select(sel),
             self.data().select(sel)))
     return result
+
+  def count_and_fraction_in_bins(self,
+        data_value_to_count,
+        count_not_equal=False):
+    assert self.binner() is not None
+    assert self.data().size() == self.indices().size()
+    max_n = 0
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      data_sel = self.data().select(sel)
+      n = data_sel.count(data_value_to_count)
+      if (count_not_equal): n = data_sel.size() - n
+      max_n = max(max_n, n)
+      results.append((n, n/(max(1,data_sel.size()))))
+    data_fmt = "%%%dd %%6.4f" % len("%d"%max_n)
+    return binned_data(binner=self.binner(), data=results, data_fmt=data_fmt)
 
   def remove_patterson_origin_peak(self):
     assert self.observation_type() is None or self.is_xray_intensity_array()
