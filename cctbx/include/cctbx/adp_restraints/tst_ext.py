@@ -69,6 +69,9 @@ def exercise_rigid_bond_test():
   System for Windows)
   """
   ins_file = os.path.expandvars('$LIBTBX_DIST_ROOT/regression/pdb/enk_11i.res')
+  if (not os.path.isfile(ins_file)):
+    print "Skipping exercise_rigid_bond_test(): input file not available"
+    return
   ins_xray_structure = from_ins.from_ins(file_name = ins_file)
   sites_frac = ins_xray_structure.sites_frac()
   sites_cart = ins_xray_structure.sites_cart()
