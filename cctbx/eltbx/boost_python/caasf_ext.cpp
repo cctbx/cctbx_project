@@ -9,26 +9,37 @@ namespace cctbx { namespace eltbx { namespace caasf { namespace boost_python {
 
 namespace {
 
+  struct custom_wrappers
+  {
+    typedef custom w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>("custom", no_init)
+        .def(init<float>())
+        .def(init<af::small<float, w_t::max_n_ab> const&,
+                  af::small<float, w_t::max_n_ab> const&,
+                  float>())
+        .def("n_ab", &w_t::n_ab)
+        .def("a", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
+          &w_t::a, ccr())
+        .def("b", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
+          &w_t::b, ccr())
+        .def("c", &w_t::c)
+        .def("at_stol_sq", &w_t::at_stol_sq)
+        .def("at_stol", &w_t::at_stol)
+        .def("at_d_star_sq", &w_t::at_d_star_sq)
+      ;
+    }
+  };
+
   template <std::size_t N>
   struct base_wrappers
   {
     typedef base<N> w_t;
-
-    static af::small<float, custom::max_n_ab>
-    a(w_t const& o)
-    {
-      af::small<float, custom::max_n_ab> result;
-      for(std::size_t i=0;i<N;i++) result.push_back(o.a(i));
-      return result;
-    }
-
-    static af::small<float, custom::max_n_ab>
-    b(w_t const& o)
-    {
-      af::small<float, custom::max_n_ab> result;
-      for(std::size_t i=0;i<N;i++) result.push_back(o.b(i));
-      return result;
-    }
 
     static void
     wrap(const char* python_name)
@@ -37,8 +48,10 @@ namespace {
       class_<w_t>(python_name, no_init)
         .def("table", &w_t::table)
         .def("label", &w_t::label)
-        .def("a", a)
-        .def("b", b)
+        .def("a", (af::small<float, custom::max_n_ab>(w_t::*)()const)
+          &w_t::a)
+        .def("b", (af::small<float, custom::max_n_ab>(w_t::*)()const)
+          &w_t::b)
         .def("c", &w_t::c)
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
@@ -77,37 +90,11 @@ namespace {
     }
   };
 
-  struct custom_wrappers
-  {
-    typedef custom w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("custom", no_init)
-        .def(init<std::string const&,
-                  af::small<float, w_t::max_n_ab> const&,
-                  af::small<float, w_t::max_n_ab> const&,
-                  float>())
-        .def("label", &w_t::label, ccr())
-        .def("n_ab", &w_t::n_ab)
-        .def("a", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
-          &w_t::a, ccr())
-        .def("b", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
-          &w_t::b, ccr())
-        .def("c", &w_t::c)
-        .def("at_stol_sq", &w_t::at_stol_sq)
-        .def("at_stol", &w_t::at_stol)
-        .def("at_d_star_sq", &w_t::at_d_star_sq)
-      ;
-    }
-  };
-
   void init_module()
   {
     using namespace boost::python;
+
+    custom_wrappers::wrap();
 
     it1992_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
@@ -116,8 +103,6 @@ namespace {
     wk1995_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
       wk1995, wk1995_iterator>::wrap("wk1995_iterator");
-
-    custom_wrappers::wrap();
   }
 
 } // namespace <anonymous>

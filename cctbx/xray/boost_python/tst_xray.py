@@ -2,7 +2,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import maptbx
-from cctbx.eltbx.caasf import wk1995
+from cctbx.eltbx import caasf
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
@@ -62,13 +62,13 @@ def exercise_gradient_flags():
   assert f.adjust(0001).u_aniso == 0001
 
 def exercise_xray_scatterer():
-  caasf = wk1995("const")
-  x = xray.scatterer("a", (0.1,0.2,0.3), 0.25, 0.9, caasf, 0, 0)
+  scf = caasf.wk1995("const")
+  x = xray.scatterer("a", (0.1,0.2,0.3), 0.25, 0.9, scf, 0, 0)
   assert x.label == "a"
   x.label = "b"
   assert x.label == "b"
   assert x.caasf.label() == "const"
-  x.caasf = wk1995("SI")
+  x.caasf = caasf.wk1995("SI")
   assert x.caasf.label() == "Si"
   assert x.fp == 0
   assert x.fdp == 0
@@ -86,7 +86,7 @@ def exercise_xray_scatterer():
   assert approx_equal(x.u_iso, 0.25)
   x.u_iso = 0.52
   assert approx_equal(x.u_iso, 0.52)
-  x = xray.scatterer("a", (0.1,0.2,0.3), (1,2,3,4,5,6), 0.9, caasf, 0, 0)
+  x = xray.scatterer("a", (0.1,0.2,0.3), (1,2,3,4,5,6), 0.9, scf, 0, 0)
   assert x.anisotropic_flag
   assert approx_equal(x.u_star, (1,2,3,4,5,6))
   x.u_star = (3,2,1,6,5,4)
@@ -128,6 +128,52 @@ def exercise_rotate():
   assert approx_equal(s[0].site, r[0].site)
   r = xray.rotate(uc, ((0,-1,0, -1,0,0, 0,0,-1)), s)
   assert approx_equal(r[0].site, (-0.02,-0.01,-0.3))
+
+def exercise_scattering_dictionary():
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("Si1"),
+    xray.scatterer("Si2"),
+    xray.scatterer("O1"),
+    xray.scatterer("O2"),
+    xray.scatterer("Al1"),
+    xray.scatterer("O3"),
+    xray.scatterer("Al2"),
+    xray.scatterer("const"),
+    xray.scatterer("custom")))
+  sd = xray.scattering_dictionary(scatterers)
+  assert sd.size() == 5
+  sd_dict = sd.dict()
+  assert len(sd_dict) == 5
+  k = sd_dict.keys()
+  k.sort()
+  assert k == ["Al", "O", "Si", "const", "custom"]
+  for k,v in sd_dict.items():
+    if   (k == "Si"): assert tuple(v.member_indices) == (0,1)
+    elif (k == "O"): assert tuple(v.member_indices) == (2,3,5)
+    elif (k == "Al"): assert tuple(v.member_indices) == (4,6)
+    elif (k == "const"): assert tuple(v.member_indices) == (7,)
+    elif (k == "custom"): assert tuple(v.member_indices) == (8,)
+    assert v.coefficients.n_ab() == 0
+    assert v.coefficients.c() == 0
+  for table,n_ab in (("IT1992",4), ("WK1995",5)):
+    sd.assign_from_table(table)
+    for k,v in sd.dict().items():
+      if (k in ("Al", "O", "Si")):
+        assert v.coefficients.n_ab() == n_ab
+      else:
+        assert v.coefficients.n_ab() == 0
+        if (k == "const"):
+          assert v.coefficients.c() == 1
+        else:
+          assert v.coefficients.c() == 0
+  sd.assign("custom", caasf.custom((1,2),(3,4),5))
+  g = sd.dict()["custom"]
+  c = g.coefficients
+  assert c.n_ab() == 2
+  assert approx_equal(c.a(), (1,2))
+  assert approx_equal(c.b(), (3,4))
+  assert approx_equal(c.c(), 5)
+  assert tuple(g.member_indices) == (8,)
 
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -381,6 +427,7 @@ def run():
   exercise_conversions()
   exercise_gradient_flags()
   exercise_xray_scatterer()
+  exercise_scattering_dictionary()
   exercise_rotate()
   exercise_structure_factors()
   exercise_targets()
