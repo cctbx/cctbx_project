@@ -78,6 +78,19 @@ def exercise_array():
   assert flex.order(ac.sigmas(), ma.sigmas()) == 0
   assert ac.info() == "Test"
   assert ac.is_xray_intensity_array()
+  aa = ac.as_amplitude_array()
+  assert aa.as_amplitude_array() is aa
+  assert aa.eliminate_sys_absent() is aa
+  aa = miller.array(
+    miller_set=miller.set(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=aa.unit_cell(),
+        space_group_symbol="F222"),
+      indices=aa.indices()),
+    data=aa.data())
+  ae = aa.eliminate_sys_absent()
+  assert ae is not aa
+  assert tuple(ae.indices()) == ((0,0,-4),)
   asu = ma.map_to_asu()
   assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
