@@ -77,8 +77,8 @@ def HallSymbol_to_SgOps(HallSymbol):
 
 class SiteInfo:
 
-  def __init__(self, flds, default_Uiso = 0.035):
-    # Label [ScatFact] x y z [Occ [Uiso]]
+  def __init__(self, flds, default_Biso = 3.0):
+    # Label [ScatFact] x y z [Occ [Biso]]
     try:
       self.Label = flds[0]
       try:
@@ -94,11 +94,11 @@ class SiteInfo:
         coordinates[i] = string.atof(coordinates[i])
       self.Coordinates = coordinates
       self.Occ = 1.
-      self.Uiso = default_Uiso
+      self.Biso = default_Biso
       if (len(flds) >= offs + 4):
         self.Occ = string.atof(flds[offs + 3])
         if (len(flds) == offs + 5):
-          self.Uiso = string.atof(flds[offs + 4])
+          self.Biso = string.atof(flds[offs + 4])
         elif (len(flds) > offs + 5):
           raise FormatError, flds
       self.WyckoffMapping = None
@@ -111,28 +111,27 @@ class SiteInfo:
       (self.Label, self.Sf.Label(),
        self.WyckoffMapping.WP().M(), self.WyckoffMapping.WP().Letter(),
        self.SiteSymmetry)
-      + tuple(self.Coordinates) + (self.Occ, self.Uiso))
+      + tuple(self.Coordinates) + (self.Occ, self.Biso))
 
 def BuildMillerIndices(UnitCell, SgOps, Resolution_d_min):
-  Indices = {}
   MIG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, Resolution_d_min)
-  for H in MIG: Indices[H] = UnitCell.Q(H) / 4. # (sin(theta)/lambda)^2 = Q/4
-  return Indices
+  MillerIndices = {}
+  for H in MIG:
+    # pre-compute (sin(theta)/lambda)^2 = Q/4
+    MillerIndices[H] = UnitCell.Q(H) / 4.
+  return MillerIndices
 
 def ComputeStructureFactors(Sites, MillerIndices):
-  EightPiSquared = 8. * math.pi * math.pi
   FcalcDict = {}
-  for H in MillerIndices.keys():
-    FcalcDict[H] = 0j
+  for H in MillerIndices.keys(): FcalcDict[H] = 0j
   for Site in Sites:
-    SymEquivCoordinates = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
-                                                    Site.Coordinates)
+    SEC = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
+                                    Site.Coordinates)
     for H in MillerIndices.keys():
       stol2 = MillerIndices[H]
       f0 = Site.Sf.stol2(stol2)
-      B = EightPiSquared * Site.Uiso
-      f = f0 * math.exp(-B * stol2) * Site.Occ
-      FcalcDict[H] += f * SymEquivCoordinates.StructureFactor(H)
+      f = f0 * math.exp(-Site.Biso * stol2) * Site.Occ
+      FcalcDict[H] += f * SEC.StructureFactor(H)
   return FcalcDict
 
 def polar(c):
@@ -183,7 +182,7 @@ if (__name__ == "__main__"):
     print "<th>Site<br>symmetry"
     print "<th colspan=3>Fractional coordinates"
     print "<th>Occupancy<br>factor"
-    print "<th>Uiso"
+    print "<th>Biso"
     print "<tr>"
     Sites = []
     print
@@ -205,7 +204,7 @@ if (__name__ == "__main__"):
       (site.Label, site.Sf.Label(),
        site.WyckoffMapping.WP().M(), site.WyckoffMapping.WP().Letter(),
        site.SiteSymmetry)
-      + tuple(site.Coordinates) + (site.Occ, site.Uiso))
+      + tuple(site.Coordinates) + (site.Occ, site.Biso))
     print "</table><pre>"
     InTable = 0
     print

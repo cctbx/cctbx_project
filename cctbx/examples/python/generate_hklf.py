@@ -27,8 +27,8 @@ from eltbx.caasf_wk1995 import CAASF_WK1995
 
 class SiteInfo:
 
-  def __init__(self, flds, default_Uiso = 0.035):
-    # Label [ScatFact] x y z [Occ [Uiso]]
+  def __init__(self, flds, default_Biso = 3.0):
+    # Label [ScatFact] x y z [Occ [Biso]]
     try:
       self.Label = flds[0]
       try:
@@ -44,11 +44,11 @@ class SiteInfo:
         coordinates[i] = string.atof(coordinates[i])
       self.Coordinates = coordinates
       self.Occ = 1.
-      self.Uiso = default_Uiso
+      self.Biso = default_Biso
       if (len(flds) >= offs + 4):
         self.Occ = string.atof(flds[offs + 3])
         if (len(flds) == offs + 5):
-          self.Uiso = string.atof(flds[offs + 4])
+          self.Biso = string.atof(flds[offs + 4])
         elif (len(flds) > offs + 5):
           raise FormatError, flds
       self.WyckoffMapping = None
@@ -61,7 +61,7 @@ class SiteInfo:
       (self.Label, self.Sf.Label(),
        self.WyckoffMapping.WP().M(), self.WyckoffMapping.WP().Letter(),
        self.SiteSymmetry)
-      + tuple(self.Coordinates) + (self.Occ, self.Uiso))
+      + tuple(self.Coordinates) + (self.Occ, self.Biso))
 
 def strip_comment(line):
   i = string.find(line, "#")
@@ -173,19 +173,16 @@ class MillerIndexSet:
                 self.IndexDict[key] = Q / 4.
 
 def ComputeStructureFactors(Sites, IndexSet):
-  EightPiSquared = 8. * math.pi * math.pi
   FcalcDict = {}
-  for H in IndexSet.IndexDict.keys():
-    FcalcDict[H] = 0j
+  for H in IndexSet.IndexDict.keys(): FcalcDict[H] = 0j
   for Site in Sites:
-    SymEquivCoordinates = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
-                                                    Site.Coordinates)
+    SEC = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
+                                    Site.Coordinates)
     for H in IndexSet.IndexDict.keys():
       stol2 = IndexSet.IndexDict[H]
       f0 = Site.Sf.stol2(stol2)
-      B = EightPiSquared * Site.Uiso
-      f = f0 * math.exp(-B * stol2) * Site.Occ
-      FcalcDict[H] = FcalcDict[H] + f * SymEquivCoordinates.StructureFactor(H)
+      f = f0 * math.exp(-Site.Biso * stol2) * Site.Occ
+      FcalcDict[H] = FcalcDict[H] + f * SEC.StructureFactor(H)
   return FcalcDict
 
 def polar(c):
@@ -212,7 +209,7 @@ if (__name__ == "__main__"):
   print
 
   print "Label ScatterLabel WyckoffPosition SiteSymmetry",
-  print "Coordinates Occupancy Uiso"
+  print "Coordinates Occupancy Biso"
   for S in Structure.Sites: print S
   print
 
