@@ -9,6 +9,7 @@
 
 #include <cctbx/sgtbx/tr_vec.h>
 #include <boost/python/class.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 
@@ -19,6 +20,12 @@ namespace {
   struct tr_vec_wrappers
   {
     typedef tr_vec w_t;
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      as_string_overloads, as_string, 0, 2)
+
+    static std::string
+    str(w_t const& o) { return o.as_string(); }
 
     static void
     wrap()
@@ -43,6 +50,8 @@ namespace {
         .def("__float__", &w_t::as_double)
         .def("plus", &w_t::plus)
         .def("minus", &w_t::minus)
+        .def("as_string", &w_t::as_string, as_string_overloads())
+        .def("__str__", str)
       ;
     }
   };

@@ -142,6 +142,9 @@ namespace cctbx { namespace sgtbx {
         return as_floating_point(scitbx::type_holder<double>());
       }
 
+      std::string
+      as_string(bool decimal=false, const char* separator=",") const;
+
     private:
       sg_vec3 num_;
       int den_;

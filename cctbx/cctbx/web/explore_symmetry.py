@@ -55,20 +55,20 @@ def rt_mx_analysis(s):
   elif (r_info.type() == -1):
     print "<td>%d<td>-<td>-<td>%s" % (
       r_info.type(),
-      t_info.origin_shift().as_double())
+      str(t_info.origin_shift()))
   elif (abs(r_info.type()) == 2):
     print "<td>%d<td>%s<td>%s<td>%s" % (
       r_info.type(),
       str_ev(r_info.ev()),
-      t_info.intrinsic_part().as_double(),
-      t_info.origin_shift().as_double())
+      str(t_info.intrinsic_part()),
+      str(t_info.origin_shift()))
   else:
     print "<td>%d^%d<td>%s<td>%s<td>%s" % (
        r_info.type(),
        r_info.sense(),
        str_ev(r_info.ev()),
-       t_info.intrinsic_part().as_double(),
-       t_info.origin_shift().as_double())
+       str(t_info.intrinsic_part()),
+       str(t_info.origin_shift()))
   print "</tr>"
 
 def show_group_generic(sg_type, status):
@@ -272,7 +272,7 @@ def run(cctbx_url, inp, status):
   if (len(k2l)):
     print "  Inversion through a centre at:",
     assert len(k2l) == 1
-    print sgtbx.translation_part_info(k2l[0]).origin_shift().as_double()
+    print sgtbx.translation_part_info(k2l[0]).origin_shift()
   if (len(l2n)):
     print "  Further generators:"
     print "</pre><table border=2 cellpadding=2>"
