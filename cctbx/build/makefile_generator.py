@@ -1,22 +1,37 @@
 # $Id$
 
 import sys, os
-from string import split, strip, maketrans, translate, join
+from string import split, strip, maketrans, translate, join, upper
 from make import expand_cf
 transl_table_slash_backslash = maketrans("/", "\\")
 
-def paths_relative(subdir_from, subdir_to = None):
-  p = ""
-  for up in split(subdir_from, "/"):
-    p = p + "/.."
-  p = p[1:]
-  if (subdir_to):
-    p = p + "/" + subdir_to
-  return p, translate(p, transl_table_slash_backslash)
+class file_emitter:
+
+  def __init__(self,obj):
+    self.obj = obj
+    self.emitter_tuples = []
+    if type(obj.prefix_macro) == type("string"):
+      for f in obj.files:
+        self.emitter_tuples.append((obj.prefix_macro,f))
+    elif type(obj.prefix_macro) == type([]):
+      for x in xrange(len(obj.prefix_macro)):
+        for f in obj.files[x]:
+          self.emitter_tuples.append((obj.prefix_macro[x],f))
+    self.length = len(self.emitter_tuples)
+
+  def __len__(self):
+    return self.length
+
+  def __getitem__(self, num):
+    try:
+      return self.emitter_tuples[num]
+    except:
+      raise IndexError
+
 
 class write_makefiles:
 
-  def __init__(self, subdir, configuration):
+  def __init__(self, subdir, configuration, package):
     self.platform = strip(configuration[0])
     if (not (self.platform in ("tru64_cxx", "unix_gcc", "irix_CC",
                                "macosx", "mingw32", "vc60", "win32_mwcc"))):
@@ -33,20 +48,21 @@ class write_makefiles:
       sys.stdout = stdout
       import time
       time.sleep(10)
+
     self.macros = configuration[1:]
+    self.package = package
     # remove empty lines at beginning
     while (len(strip(self.macros[0])) == 0): del self.macros[0]
-    paths_lib = paths_relative(subdir, "lib")
-    expand_cf(self.macros, "@(CCTBXLIBDIR_UNIX)", paths_lib[0])
-    expand_cf(self.macros, "@(CCTBXLIBDIR_WIN)", paths_lib[1])
     self.dependencies()
-    if (hasattr(self, "lib_python_subdir")):
-      paths_lib_python = paths_relative(
-        subdir, "lib_python/" + self.lib_python_subdir)
+
+    if (not hasattr(self, "prefix_macro")):
+      self.prefix_macro = upper(self.package.name)
+    self.file_dependency_emitter = file_emitter(self)
+
+    if subdir in self.package.tbx_subpkg:
+      expand_cf(self.macros, "@(SUBLEVEL1)", os.sep+subdir)
     else:
-      paths_lib_python = ("", "")
-    expand_cf(self.macros, "@(CCTBXLIB_PYTHONDIR_UNIX)", paths_lib_python[0])
-    expand_cf(self.macros, "@(CCTBXLIB_PYTHONDIR_WIN)", paths_lib_python[1])
+      expand_cf(self.macros, "@(SUBLEVEL1)", "")
 
   def head(self):
     print r"""# Usage:
@@ -97,9 +113,9 @@ class write_makefiles:
     s = ""
     if (len(libs)):
       if (self.platform in ("vc60", "win32_mwcc")):
-        s = s + " $(CCTBXLIBDIR_WIN)\\lib*.lib"
+        s = s + " $(SP_LIBDIR_WIN)\\lib*.lib"
       else:
-        s = s + " -L$(CCTBXLIBDIR_UNIX)"
+        s = s + " -L$(SP_LIBDIR_UNIX)"
         for l in libs: s = s + " -l" + l
     if (len(macros) > 0):
       s = s + " " + join(macros)
@@ -124,12 +140,19 @@ class write_makefiles:
 
     doto = self.format_objects(("",))
     print "CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \\"
-    print "        $(CCTBXINC) $(BOOSTINC) $(PYINC)"
+    print "        ",
+    for pk in [upper(x) for x in (self.package.name,)+self.package.supporting]:
+      print "$(%sINC) "%(pk),
+    print "\\"
+    print "        $(BOOSTINC) $(PYINC)"
     print
-    print ".SUFFIXES: %s .cpp" % (doto,)
+    print ".SUFFIXES: %s .cpp .c" % (doto,)
     print
     print ".cpp%s:" % (doto,)
     print "\t$(CPP) $(CPPOPTS) -c $*.cpp"
+    print
+    print ".c%s:" % (doto,)
+    print "\t$(CC) $(CPPOPTS) -c $*.c"
     print
 
     self.make_clean()
@@ -146,31 +169,31 @@ class write_makefiles:
 
   def file_management(self):
     print "softlinks:"
-    for srcf in self.files:
-      print "\t-ln -s $(%s_UNIX)/%s ." % (self.prefix_macro, srcf)
+    for srcf in self.file_dependency_emitter:
+      print "\t-ln -s $(%s_UNIX)/%s ." % srcf
     print
     print "cp:"
-    for srcf in self.files:
-      print "\t-cp $(%s_UNIX)/%s ." % (self.prefix_macro, srcf)
+    for srcf in self.file_dependency_emitter:
+      print "\t-cp $(%s_UNIX)/%s ." % srcf
     print
     print "unlink:"
-    for srcf in self.files:
-      f = split(srcf, "/")[-1]
+    for srcf in self.file_dependency_emitter:
+      f = split(srcf[1], "/")[-1]
       print "\t-test -L %s && rm %s" % (f, f)
     print
     print "rm:"
-    for srcf in self.files:
-      print "\t-rm " + split(srcf, "/")[-1]
+    for srcf in self.file_dependency_emitter:
+      print "\t-rm " + split(srcf[1], "/")[-1]
     print
     if (self.platform in ("mingw32", "vc60", "win32_mwcc")):
       print "copy:"
-      for srcf in self.files:
-        f = translate(srcf, transl_table_slash_backslash)
-        print "\t-copy $(%s_WIN)\\%s" % (self.prefix_macro, f)
+      for srcf in self.file_dependency_emitter:
+        f = translate(srcf[1], transl_table_slash_backslash)
+        print "\t-copy $(%s_WIN)\\%s" % (srcf[0], f)
       print
       print "del:"
-      for srcf in self.files:
-        print "\t-del " + split(srcf, "/")[-1]
+      for srcf in self.file_dependency_emitter:
+        print "\t-del " + split(srcf[1], "/")[-1]
       print
 
   def update_depend(self, objects):
@@ -210,11 +233,11 @@ class write_makefiles:
       else:
         print "\tar r %s %s" % (lib, objstr)
     if (self.platform  in ("vc60", "mingw32", "win32_mwcc")):
-      print "\t-mkdir $(CCTBXLIBDIR_WIN)"
-      print "\tcopy %s $(CCTBXLIBDIR_WIN)" % (lib,)
+      print "\t-mkdir $(SP_LIBDIR_WIN)"
+      print "\tcopy %s $(SP_LIBDIR_WIN)" % (lib,)
     else:
-      print "\t-mkdir $(CCTBXLIBDIR_UNIX)"
-      print "\tcp %s $(CCTBXLIBDIR_UNIX)" % (lib,)
+      print "\t-mkdir $(SP_LIBDIR_UNIX)"
+      print "\tcp %s $(SP_LIBDIR_UNIX)" % (lib,)
     print
     self.make_targets["libraries"].append(lib)
     self.update_depend(objects)
@@ -260,7 +283,7 @@ class write_makefiles:
     print "%s: %s" % (nameso, objstr)
     print "\t$(LD) $(LDDLL) -o %s %s %s" \
           % (nameso, objstr, libstr)
-    print "\tcp %s $(CCTBXLIB_PYTHONDIR_UNIX)" % (nameso,)
+    print "\tcp %s $(%sLIB_PYTHONDIR_UNIX)" % (nameso,upper(self.package.name))
     print
     self.make_targets["boost_python_modules"].append(nameso)
 
@@ -272,7 +295,7 @@ class write_makefiles:
     print (  "\tdllwrap -s --driver-name g++ --entry _DllMainCRTStartup@12"
            + " --target=i386-mingw32 --dllname %s --def %s"
            + " %s %s") % (namepyd, namedef, objstr, libstr)
-    print "\tcopy %s $(CCTBXLIB_PYTHONDIR_WIN)" % (namepyd,)
+    print "\tcopy %s $(%sLIB_PYTHONDIR_WIN)" % (namepyd,upper(self.package.name))
     print
     print "%s:" % (namedef,)
     print "\techo EXPORTS > %s" % (namedef,)
@@ -286,7 +309,7 @@ class write_makefiles:
     print "%s: %s" % (namepyd, objstr)
     print (  "\t$(LD) $(LDDLL) /out:%s /export:init%s %s"
            + " %s") % (namepyd, name, objstr, libstr)
-    print "\tcopy %s $(CCTBXLIB_PYTHONDIR_WIN)" % (namepyd,)
+    print "\tcopy %s $(%sLIB_PYTHONDIR_WIN)" % (namepyd,upper(self.package.name))
     self.make_targets["boost_python_modules"].append(namepyd)
 
   def win32_mwcc_pyd(self, name, objstr, libs):
@@ -295,7 +318,7 @@ class write_makefiles:
     print "%s: %s" % (namepyd, objstr)
     print (  "\t$(LD) $(LDDLL) -o %s %s %s") % (
       namepyd, objstr, libstr)
-    print "\tcopy %s $(CCTBXLIB_PYTHONDIR_WIN)" % (namepyd,)
+    print "\tcopy %s $(%sLIB_PYTHONDIR_WIN)" % (namepyd,upper(self.package.name))
     self.make_targets["boost_python_modules"].append(namepyd)
 
   def make_clean(self):
@@ -322,8 +345,6 @@ class write_makefiles:
   def write(self, file):
     old_sys_stdout = sys.stdout
     sys.stdout = file
-    if (not hasattr(self, "prefix_macro")):
-      self.prefix_macro = "CCTBX"
     try:
       self.head()
       if (hasattr(self, "libraries")):

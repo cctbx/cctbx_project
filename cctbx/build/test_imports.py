@@ -1,5 +1,5 @@
-import sys
-sys.path.insert(0, "lib_python")
+import sys,os
+sys.path.insert(0, os.path.normpath("../lib_python"))
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
 import cctbx_boost.arraytbx.shared
