@@ -8,14 +8,18 @@ class symmetry(object):
   def __init__(self, unit_cell=None,
                      space_group_symbol=None,
                      space_group_info=None,
+                     space_group=None,
                      assert_is_compatible_unit_cell=0001):
-    assert space_group_symbol == None or space_group_info == None
+    assert [space_group_symbol, space_group_info, space_group].count(None) >= 2
     if (type(unit_cell) in (type(()), type([]))):
       unit_cell = uctbx.unit_cell(unit_cell)
     self._unit_cell = unit_cell
     self._space_group_info = space_group_info
     if (self._space_group_info == None):
-      self._space_group_info = sgtbx.space_group_info(space_group_symbol)
+      if (space_group == None):
+        self._space_group_info = sgtbx.space_group_info(space_group_symbol)
+      else:
+        self._space_group_info = sgtbx.space_group_info(group=space_group)
     if (    assert_is_compatible_unit_cell
         and self.unit_cell() != None
         and self.space_group() != None):
@@ -48,6 +52,11 @@ class symmetry(object):
     return symmetry(
       unit_cell=cb_op.apply(self.unit_cell()),
       space_group_info=self.space_group_info().change_basis(cb_op))
+
+  def patterson_symmetry(self):
+    return symmetry(
+      unit_cell=self.unit_cell(),
+      space_group=self.space_group().build_derived_patterson_group())
 
 class special_position_settings(symmetry):
 
