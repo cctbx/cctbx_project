@@ -40,6 +40,7 @@ def exercise_direct_space_asu():
     n[i] = -1
     assert approx_equal(asu.facets()[i].n, n)
     assert approx_equal(asu.facets()[i].c, i+1)
+  assert approx_equal(asu.is_inside_epsilon(), 1.e-6)
   assert asu.is_inside([0.99,0.49,0.32])
   eps = 0.02
   assert not asu.is_inside([0.99+eps,0.49+eps,0.32+eps])

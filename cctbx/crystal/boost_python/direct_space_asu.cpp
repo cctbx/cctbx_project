@@ -66,6 +66,7 @@ namespace {
           (arg_("unit_cell"), arg_("facets"), arg_("is_inside_epsilon"))))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("facets", &w_t::facets, ccr())
+        .def("is_inside_epsilon", &w_t::is_inside_epsilon)
         .def("is_inside", &w_t::is_inside, (arg_("point")))
         .def("_add_buffer", &w_t::add_buffer)
         .def("volume_vertices", &w_t::volume_vertices,
