@@ -138,7 +138,7 @@ namespace cctbx { namespace sftbx {
     }
 
     // ff(hc) =
-    //   a Exp[hc.b_arg.hc]
+    //   a Exp[-hc.b_arg.hc]
     // rho_anisotropic(rc) =
     //   a / (2 Sqrt[2] Sqrt[Det[b_arg]]) Exp[-1/4 rc.Inverse[b_arg].rc]
     // XXX explanation for additional factors?
@@ -154,8 +154,8 @@ namespace cctbx { namespace sftbx {
       FloatType d = b_all.determinant();
       cctbx_assert(d != 0);
       sym_mat3<FloatType> cfmt = b_all.co_factor_matrix_transposed();
-      as = a / ((2 * std::sqrt(2)) * std::sqrt(d))
-        * (16 * std::sqrt(2) * constants::pi * std::sqrt(constants::pi));
+      as = a / ((2 * std::sqrt(2.)) * std::sqrt(d))
+        * (16 * std::sqrt(2.) * constants::pi * std::sqrt(constants::pi));
       bs = cfmt / FloatType(-4 * d)
         * FloatType(16 * constants::pi_sq);
     }
@@ -171,8 +171,8 @@ namespace cctbx { namespace sftbx {
     {
       FloatType d = b_all * b_all * b_all;
       cctbx_assert(d != 0);
-      as = a / ((2 * std::sqrt(2)) * std::sqrt(d))
-        * (16 * std::sqrt(2) * constants::pi * std::sqrt(constants::pi));
+      as = a / ((2 * std::sqrt(2.)) * std::sqrt(d))
+        * (16 * std::sqrt(2.) * constants::pi * std::sqrt(constants::pi));
       bs = 1 / (-4 * b_all)
         * FloatType(16 * constants::pi_sq);
     }
