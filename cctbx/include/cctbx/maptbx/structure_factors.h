@@ -186,7 +186,7 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             data_.push_back(0);
           }
           else {
-            throw error("Miller index not in structure factor map.");
+            throw_error_not_in_map();
           }
         }
       }
@@ -207,33 +207,36 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         typedef std::complex<FloatType> c_t;
         af::int3 map_grid_focus = complex_map.accessor().focus();
         data_.reserve(miller_indices.size());
-        std::size_t f_inv = 1;
-        if (anomalous_flag && space_group.is_centric()) {
-          f_inv = 2;
-        }
+        bool sum_bijvoet_pairs = (anomalous_flag && space_group.is_centric());
+        f_t two_pi_t_den = scitbx::constants::two_pi / space_group.t_den();
+        c_t shift_inv_t(0,0);
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> h = miller_indices[i];
+          if (space_group.is_centric()) {
+            f_t phi = two_pi_t_den * f_t(h * space_group.inv_t());
+            shift_inv_t = c_t(std::cos(phi), std::sin(phi));
+          }
           c_t f(0,0);
           for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
-            for(std::size_t i_inv=0;i_inv<f_inv;i_inv++) {
-              sgtbx::rt_mx const s = space_group(0,i_inv,i_smx);
-              miller::index<> hr = h * s.r();
-              f_t phi = scitbx::constants::two_pi * f_t(h * s.t())
-                      / space_group.t_den();
-              c_t shift(std::cos(phi), std::sin(phi));
-              array_access aa(
-                anomalous_flag, map_grid_focus, conjugate_flag, hr);
-              if (!aa.ih.all_ge(0)) {
-                throw error("Miller index not in structure factor map.");
-              }
-              if (!aa.f_conj) f += complex_map(aa.ih) * shift;
-              else            f += std::conj(complex_map(aa.ih)) * shift;
+            sgtbx::rt_mx const& s = space_group.smx(i_smx);
+            miller::index<> hr = h * s.r();
+            array_access aa(
+              anomalous_flag, map_grid_focus, conjugate_flag, hr);
+            if (!aa.ih.all_ge(0)) throw_error_not_in_map();
+            f_t phi = two_pi_t_den * f_t(h * s.t());
+            c_t shift(std::cos(phi), std::sin(phi));
+            if (!aa.f_conj) f += complex_map(aa.ih) * shift;
+            else            f += std::conj(complex_map(aa.ih)) * shift;
+            if (sum_bijvoet_pairs) {
+              aa = array_access(
+                anomalous_flag, map_grid_focus, conjugate_flag, -hr);
+              if (!aa.ih.all_ge(0)) throw_error_not_in_map();
+              CCTBX_ASSERT(!aa.f_conj);
+              f += complex_map(aa.ih) * std::conj(shift) * shift_inv_t;
             }
           }
           if (!anomalous_flag && space_group.is_centric()) {
-            f_t phi = scitbx::constants::two_pi * f_t(h * space_group.inv_t())
-                    / space_group.t_den();
-            f += std::conj(f) * c_t(std::cos(phi), std::sin(phi));
+            f += std::conj(f) * shift_inv_t;
           }
           f *= space_group.n_ltr();
           data_.push_back(f);
@@ -260,6 +263,13 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       af::shared<std::complex<FloatType> > data_;
       std::size_t n_indices_affected_by_aliasing_;
       af::shared<std::size_t> outside_map_;
+
+      static
+      void
+      throw_error_not_in_map()
+      {
+        throw error("Miller index not in structure factor map.");
+      }
 
       struct array_access
       {
