@@ -234,21 +234,22 @@ class structure_factors_fft:
   def __init__(self, xray_structure,
                      miller_set,
                      grid_resolution_factor=1./3,
+                     symmetry_flags=maptbx.use_space_group_symmetry,
                      quality_factor=100,
                      wing_cutoff=1.e-3,
                      exp_table_one_over_step_size=-100,
                      max_prime=5):
     assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
     assert xray_structure.space_group() == miller_set.space_group()
+    assert symmetry_flags.use_space_group_symmetry()
     self._xray_structure = xray_structure
     self._miller_set = miller_set
     d_min = miller_set.d_min()
-    n_real = maptbx.determine_grid(
-      unit_cell=miller_set.unit_cell(),
-      d_min=d_min,
+    n_real = miller_set.determine_grid(
       resolution_factor=grid_resolution_factor,
-      max_prime=max_prime,
-      mandatory_factors=miller_set.space_group().gridding())
+      d_min=d_min,
+      symmetry_flags=symmetry_flags,
+      max_prime=max_prime)
     rfft = fftpack.real_to_complex_3d(n_real)
     u_extra = calc_u_extra(d_min, grid_resolution_factor, quality_factor)
     force_complex = 00000

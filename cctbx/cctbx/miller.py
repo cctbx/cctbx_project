@@ -104,6 +104,22 @@ class set(crystal.symmetry):
       self.space_group(), self.anomalous_flag(), self.indices())
     return set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag())
 
+  def determine_grid(self, resolution_factor=1/3.,
+                           d_min=None,
+                           symmetry_flags=None,
+                           max_prime=5):
+    if (d_min == None): d_min = self.d_min()
+    if (symmetry_flags == None):
+      mandatory_factors=(1,1,1)
+    else:
+      mandatory_factors=self.space_group_info().grid_factors(symmetry_flags)
+    return maptbx.determine_grid(
+      unit_cell=self.unit_cell(),
+      d_min=d_min,
+      resolution_factor=resolution_factor,
+      max_prime=max_prime,
+      mandatory_factors=mandatory_factors)
+
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=0,
                    reflections_per_bin=0,
@@ -392,11 +408,14 @@ class array(set):
 class fft_map(crystal.symmetry):
 
   def __init__(self, coeff_array,
-                     grid_resolution_factor=1./3,
+                     resolution_factor=1./3,
+                     d_min=None,
+                     symmetry_flags=None,
                      max_prime=5):
     assert coeff_array.anomalous_flag() in (00000, 0001)
     crystal.symmetry._copy_constructor(self, coeff_array)
-    self._grid_resolution_factor = grid_resolution_factor
+    self._resolution_factor = resolution_factor
+    self._symmetry_flags = symmetry_flags
     self._max_prime = max_prime
     self._anomalous_flag = coeff_array.anomalous_flag()
     cf = coeff_array.data()
@@ -406,12 +425,11 @@ class fft_map(crystal.symmetry):
       ph = flex.double(cf.size(), 0)
       cf = flex.polar(cf, ph)
       del ph
-    n_real = maptbx.determine_grid(
-      unit_cell=coeff_array.unit_cell(),
-      d_min=coeff_array.d_min(),
-      resolution_factor=grid_resolution_factor,
-      max_prime=self.max_prime(),
-      mandatory_factors=coeff_array.space_group().gridding())
+    n_real = coeff_array.determine_grid(
+      resolution_factor=self.resolution_factor(),
+      d_min=d_min,
+      symmetry_flags=symmetry_flags,
+      max_prime=self.max_prime())
     if (not self.anomalous_flag()):
       rfft = fftpack.real_to_complex_3d(n_real)
       n_complex = rfft.n_complex()
@@ -432,8 +450,11 @@ class fft_map(crystal.symmetry):
     else:
       self._complex_map = cfft.backward(map.complex_map())
 
-  def grid_resolution_factor(self):
-    return self._grid_resolution_factor
+  def resolution_factor(self):
+    return self._resolution_factor
+
+  def symmetry_flags(self):
+    return self._symmetry_flags
 
   def max_prime(self):
     return self._max_prime

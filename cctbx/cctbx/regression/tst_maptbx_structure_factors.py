@@ -22,12 +22,10 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
         anomalous_flag=anomalous_flag,
         d_min=d_min)
   f_calc_array = structure_factors.f_calc_array()
-  n_real = maptbx.determine_grid(
-    unit_cell=f_calc_array.unit_cell(),
-    d_min=d_min,
+  n_real = f_calc_array.determine_grid(
     resolution_factor=resolution_factor,
-    max_prime=max_prime,
-    mandatory_factors=(1,1,1))
+    d_min=d_min,
+    max_prime=max_prime)
   if (not anomalous_flag):
     rfft = fftpack.real_to_complex_3d(n_real)
     n_complex = rfft.n_complex()
@@ -106,7 +104,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     d_min=d_min,
     resolution_factor=resolution_factor,
     max_prime=max_prime,
-    mandatory_factors=(under_sampling*1,)*3)
+    mandatory_factors=(under_sampling,)*3)
   if (not anomalous_flag):
     rfft = fftpack.real_to_complex_3d(n_real)
     n_complex = rfft.n_complex()

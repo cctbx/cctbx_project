@@ -26,6 +26,8 @@ def symmetry_flags(use_space_group_symmetry,
                             use_normalizer_k2l,
                             use_structure_seminvariants)
 
+use_space_group_symmetry = symmetry_flags(use_space_group_symmetry=0001)
+
 def determine_grid(unit_cell,
                    d_min,
                    resolution_factor=1./3,
