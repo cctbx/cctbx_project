@@ -297,6 +297,10 @@ def exercise_array():
     assert approx_equal(tuple(hm.data()), (2,3))
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
+  assert ma.measurability() == 1.0
+  sigma_test_meas = flex.double(5,0.3)
+  m_test_meas = miller.array(ms, data, sigma_test_meas )
+  assert m_test_meas.measurability() == 0.5
   ms = miller.set(crystal.symmetry(), mi, anomalous_flag=True)
   ma = miller.array(ms, data, sigmas)
   ad = ma.anomalous_differences()
