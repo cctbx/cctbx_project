@@ -27,7 +27,7 @@ namespace cctbx {
   //! XXX
   template <typename FloatType>
   class StructureFactorAndDerivatives
-  { 
+  {
     public:
       StructureFactorAndDerivatives() {}
       StructureFactorAndDerivatives(
