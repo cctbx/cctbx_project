@@ -1,12 +1,11 @@
 # $Id$
 
-import sys
-sys.path.insert(0, "../build")
 import MakeMakefilesMaster
 
 class write_makefiles(MakeMakefilesMaster.write_makefiles):
 
-  def __init__(self):
+  def dependencies(self):
+
     self.files = (
       "global/error.cpp",
       "global/bpl_utils.cpp",
@@ -31,6 +30,3 @@ class write_makefiles(MakeMakefilesMaster.write_makefiles):
                 "error",
                 "bpl_utils", "boost_array_bpl"),
     }
-
-if (__name__ == "__main__"):
-  write_makefiles().all_targets("uctbx")

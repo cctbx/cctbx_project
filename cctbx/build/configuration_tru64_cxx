@@ -1,0 +1,26 @@
+tru64_cxx
+
+CCTBX_UNIX=$(HOME)/cctbx
+CCTBX_WIN=
+CCTBXINC=-I$(CCTBX_UNIX)
+
+BOOSTINC=-I$(HOME)/boost
+BOOST_PYTHONLIB=@(CWD)/../boost/libboost_python.a
+
+PYEXE=/usr/local/Python-1.5.2/bin/python
+PYINC=-I/usr/local/Python-1.5.2/include/python1.5
+PYLIB=
+
+STDFIXINC=-I/net/cci/xp/C++_C_headers
+
+CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
+
+CPP=cxx
+LD=cxx
+STDOPTS=-std strict_ansi
+WARNOPTS=-msg_display_number -msg_disable 450
+OPTOPTS=-g
+MAKEDEP=-Em
+LDEXE=
+LDDLL=-shared -expect_unresolved 'Py*' -expect_unresolved '_Py*'
+LDMATH=-lm
