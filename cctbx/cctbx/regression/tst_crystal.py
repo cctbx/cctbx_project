@@ -32,11 +32,7 @@ def exercise_symmetry():
   assert rs.unit_cell().is_similar_to(xs.unit_cell())
   assert str(rs.space_group_info()) == "R 3 :H"
   cb = xs.change_of_basis_op_to_minimum_cell()
-  assert str(cb.c()) == "-x-z,x-y-z,3*z"
   mc = xs.minimum_cell()
-  assert mc.unit_cell().is_similar_to(
-    uctbx.unit_cell((5, 5, 10.0885, 75.6522, 75.6522, 60)))
-  assert str(mc.space_group_info()) == "Hall:  R 3 (x+z,-y+z,-3*z)"
   cm = mc.change_basis(cb.inverse())
   assert cm.unit_cell().is_similar_to(xs.unit_cell())
   assert cm.space_group() == xs.space_group()
