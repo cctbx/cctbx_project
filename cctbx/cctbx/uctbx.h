@@ -256,26 +256,99 @@ namespace uctbx {
           2nd edition, 1999, section 4.9 (pp. 89-92)
        */
       //@{
-      //! Isotropic temperature factor given (sin(theta)/lambda)^2 and Uiso.
-      inline double
-      TemperatureFactor(double stol2,
-                        double Uiso) const
+      //! Convert isotropic temperature factor coefficient Uiso -> Biso.
+      inline double Uiso_as_Biso(double Uiso) const
       {
         using cctbx::constants::pi;
-        return std::exp(-8. * pi * pi * Uiso * stol2);
+        return Uiso * (8. * pi * pi);
+      }
+      //! Convert isotropic temperature factor coefficient Biso -> Uiso.
+      inline double Biso_as_Uiso(double Biso) const
+      {
+        using cctbx::constants::pi;
+        return Biso / (8. * pi * pi);
+      }
+      //! Convert anisotropic temperature factor coefficients Uij -> Bij.
+      template <class FloatType>
+      boost::array<FloatType, 6>
+      Uij_as_Bij(const boost::array<FloatType, 6>& Uij) const
+      {
+        using cctbx::constants::pi;
+        const FloatType TpiS = 2. * pi * pi;
+        boost::array<FloatType, 6> Bij;
+        Bij[0] = Uij[0] * (TpiS * (R_Len[0] * R_Len[0]));
+        Bij[1] = Uij[1] * (TpiS * (R_Len[1] * R_Len[1]));
+        Bij[2] = Uij[2] * (TpiS * (R_Len[2] * R_Len[2]));
+        Bij[3] = Uij[3] * (TpiS * (R_Len[0] * R_Len[1]));
+        Bij[4] = Uij[4] * (TpiS * (R_Len[0] * R_Len[2]));
+        Bij[5] = Uij[5] * (TpiS * (R_Len[1] * R_Len[2]));
+        return Bij;
+      }
+      //! Convert anisotropic temperature factor coefficients Bij -> Uij.
+      template <class FloatType>
+      boost::array<FloatType, 6>
+      Bij_as_Uij(const boost::array<FloatType, 6>& Bij) const
+      {
+        using cctbx::constants::pi;
+        const FloatType TpiS = 2. * pi * pi;
+        boost::array<FloatType, 6> Uij;
+        Uij[0] = Bij[0] / (TpiS * (R_Len[0] * R_Len[0]));
+        Uij[1] = Bij[1] / (TpiS * (R_Len[1] * R_Len[1]));
+        Uij[2] = Bij[2] / (TpiS * (R_Len[2] * R_Len[2]));
+        Uij[3] = Bij[3] / (TpiS * (R_Len[0] * R_Len[1]));
+        Uij[4] = Bij[4] / (TpiS * (R_Len[0] * R_Len[2]));
+        Uij[5] = Bij[5] / (TpiS * (R_Len[1] * R_Len[2]));
+        return Uij;
+      }
+      //! Isotropic temperature factor given (sin(theta)/lambda)^2 and Biso.
+      inline double
+      TemperatureFactorB(double stol2,
+                         double Biso) const
+      {
+        using cctbx::constants::pi;
+        return std::exp(-Biso * stol2);
+      }
+      //! Isotropic temperature factor given (sin(theta)/lambda)^2 and Uiso.
+      inline double
+      TemperatureFactorU(double stol2,
+                         double Uiso) const
+      {
+        return TemperatureFactorB(stol2, Uiso_as_Biso(Uiso));
+      }
+      //! Isotropic temperature factor given Miller index and Biso.
+      inline double
+      TemperatureFactorB(const Miller::Index& MIx,
+                         double Biso) const
+      {
+        return TemperatureFactorB(Q(MIx) / 4., Biso);
       }
       //! Isotropic temperature factor given Miller index and Uiso.
       inline double
-      TemperatureFactor(const Miller::Index& MIx,
-                        double Uiso) const
+      TemperatureFactorU(const Miller::Index& MIx,
+                         double Uiso) const
       {
-        return TemperatureFactor(Q(MIx) / 4., Uiso);
+        return TemperatureFactorB(MIx, Uiso_as_Biso(Uiso));
+      }
+      //! Anisotropic temperature factor given coefficients Bij.
+      template <class FloatType>
+      inline FloatType
+      TemperatureFactorB(const Miller::Index& MIx,
+                         const boost::array<FloatType, 6>& Bij) const
+      {
+        using cctbx::constants::pi;
+        return std::exp(-(
+            (MIx[0] * MIx[0]) * Bij[0]
+          + (MIx[1] * MIx[1]) * Bij[1]
+          + (MIx[2] * MIx[2]) * Bij[2]
+          + (2 * MIx[0] * MIx[1]) * Bij[3]
+          + (2 * MIx[0] * MIx[2]) * Bij[4]
+          + (2 * MIx[1] * MIx[2]) * Bij[5]));
       }
       //! Anisotropic temperature factor given coefficients Uij.
       template <class FloatType>
       inline FloatType
-      TemperatureFactor(const Miller::Index& MIx,
-                        const boost::array<FloatType, 6>& Uij) const
+      TemperatureFactorU(const Miller::Index& MIx,
+                         const boost::array<FloatType, 6>& Uij) const
       {
         using cctbx::constants::pi;
         return std::exp(FloatType(-2. * pi * pi) * (
