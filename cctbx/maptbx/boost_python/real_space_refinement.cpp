@@ -14,10 +14,20 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      def("real_space_refinement_residual", real_space_refinement::residual<double>, (
-        arg_("map"), arg_("gridding_matrix"), arg_("sites_cart")));
-      def("real_space_refinement_gradients", real_space_refinement::gradients<double>, (
-        arg_("map"), arg_("gridding_matrix"), arg_("sites_cart")));
+      def("real_space_refinement_residual",
+        (double(*)(
+          af::const_ref<double, af::flex_grid<> > const&,
+          scitbx::mat3<double> const&,
+          af::const_ref<scitbx::vec3<double> > const&))
+        real_space_refinement::residual, (
+          arg_("map"), arg_("gridding_matrix"), arg_("sites_cart")));
+      def("real_space_refinement_gradients",
+        (af::shared<scitbx::vec3<double> >(*)(
+          af::const_ref<double, af::flex_grid<> > const&,
+          scitbx::mat3<double> const&,
+          af::const_ref<scitbx::vec3<double> > const&))
+        real_space_refinement::gradients, (
+          arg_("map"), arg_("gridding_matrix"), arg_("sites_cart")));
     }
   };
 
