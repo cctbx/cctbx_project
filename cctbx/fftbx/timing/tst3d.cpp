@@ -58,7 +58,7 @@ namespace {
     shared_complex_vector cseq = init_cseq(N);
     vecrefnd<
       shared_complex_vector::element_type::value_type,
-      dimension_end<3> >
+      dimension<3> >
     cmap(cseq->begin(), N);
     if (dir == 'f') {
       fft.forward(cmap);
@@ -75,7 +75,7 @@ namespace {
     shared_real_vector rseq = init_rseq(fft.Mreal());
     vecrefnd<
       shared_real_vector::element_type::value_type,
-      dimension_end<3> >
+      dimension<3> >
     rmap(rseq->begin(), fft.Mreal());
     if (dir == 'f') {
       fft.forward(rmap);
@@ -125,7 +125,7 @@ namespace {
     else {
       vecrefnd<
         shared_real_vector::element_type::value_type,
-        dimension_end<3> >
+        dimension<3> >
       rmap(rseq->begin(), fft.Mreal());
       fft.forward(rmap); // complex values have some symmetry
       Plan = rfftw3d_create_plan(
@@ -170,7 +170,7 @@ namespace {
     cseq->resize(cctbx::vector::product(N));
     vecrefnd<
       shared_complex_vector::element_type::value_type,
-      dimension_end<3> >
+      dimension<3> >
     cmap(cseq->begin(), N);
     fftbx::complex_to_complex_3d<double> fft(N);
     if (dir == 'f') {
@@ -196,7 +196,7 @@ namespace {
     rseq->resize(cctbx::vector::product(fft.Mreal()));
     vecrefnd<
       shared_real_vector::element_type::value_type,
-      dimension_end<3> >
+      dimension<3> >
     rmap(rseq->begin(), fft.Mreal());
     if (dir == 'f') {
       std::cout << "timing_real_to_complex_3d forward " << N << std::endl;

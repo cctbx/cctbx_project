@@ -70,12 +70,11 @@ namespace cctbx { namespace fftbx {
       // Cast map of real to map of complex.
       template <typename Tag, typename VecRefNdType>
       void transform(select_sign<Tag> tag, VecRefNdType Map, real_type) {
-        if (Map.dimension()[2] % 2 != 0) {
+        if (Map.dim()[2] % 2 != 0) {
           throw error("Number of elements in third dimension must be even.");
         }
         typedef typename VecRefNdType::dimension_type dim_type;
-        dim_type
-        dim(Map.dimension()[0], Map.dimension()[1], Map.dimension()[2] / 2);
+        dim_type dim(Map.dim()[0], Map.dim()[1], Map.dim()[2] / 2);
         vecrefnd<complex_type, dim_type> cmap(Map.cast(), dim);
         transform(tag, cmap, complex_type());
       }

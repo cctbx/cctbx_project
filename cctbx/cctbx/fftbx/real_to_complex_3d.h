@@ -139,8 +139,7 @@ namespace cctbx { namespace fftbx {
       template <typename VecRefNd>
       void forward(VecRefNd Map, complex_type) {
         typedef typename VecRefNd::dimension_type dim_type;
-        dim_type
-        dim(Map.dimension()[0], Map.dimension()[1], Map.dimension()[2] * 2);
+        dim_type dim(Map.dim()[0], Map.dim()[1], Map.dim()[2] * 2);
         vecrefnd<real_type, dim_type> rmap(Map.cast(), dim);
         forward(rmap, real_type());
       }
@@ -190,8 +189,7 @@ namespace cctbx { namespace fftbx {
       template <typename VecRefNd>
       void backward(VecRefNd Map, complex_type) {
         typedef typename VecRefNd::dimension_type dim_type;
-        dim_type
-        dim(Map.dimension()[0], Map.dimension()[1], Map.dimension()[2] * 2);
+        dim_type dim(Map.dim()[0], Map.dim()[1], Map.dim()[2] * 2);
         vecrefnd<real_type, dim_type> rmap(Map.cast(), dim);
         backward(rmap, real_type());
       }
