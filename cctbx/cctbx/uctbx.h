@@ -300,6 +300,34 @@ namespace uctbx {
         Uij[5] = Bij[5] / (TpiS * (R_Len[1] * R_Len[2]));
         return Uij;
       }
+      //! Convert Uij -> Uiso.
+      template <class FloatType>
+      inline FloatType
+      Uij_as_Uiso(const boost::array<FloatType, 6>& Uij) const
+      {
+        FloatType Uiso = 0.;
+        FloatType LRL[3];
+        for(std::size_t i=0;i<3;i++) {
+          LRL[i] = Len[i] * R_Len[i];
+          Uiso += Uij[i] * LRL[i] * LRL[i];
+        }
+        Uiso += Uij[3] * 2. * LRL[0] * LRL[1] * cosAng[2];
+        Uiso += Uij[4] * 2. * LRL[0] * LRL[2] * cosAng[1];
+        Uiso += Uij[5] * 2. * LRL[1] * LRL[2] * cosAng[0];
+        return Uiso / 3.;
+      }
+      //! Convert Uiso -> Uij.
+      template <class FloatType>
+      inline boost::array<FloatType, 6>
+      Uiso_as_Uij(const FloatType& Uiso) const
+      {
+        boost::array<FloatType, 6> Uij;
+        Uij.assign(Uiso);
+        Uij[3] *= R_cosAng[2];
+        Uij[4] *= R_cosAng[1];
+        Uij[5] *= R_cosAng[0];
+        return Uij;
+      }
       //! Isotropic temperature factor given (sin(theta)/lambda)^2 and Biso.
       inline double
       TemperatureFactorB(double stol2,
