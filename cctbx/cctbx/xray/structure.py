@@ -8,6 +8,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from scitbx import matrix
+from libtbx.itertbx import count
 from stdlib import math
 import types
 import sys
@@ -210,7 +211,7 @@ class structure(crystal.special_position_settings):
       self.special_position_indices().deep_copy()
     return new_structure
 
-  def expand_to_p1(self):
+  def expand_to_p1(self, append_number_to_labels=00000):
     new_structure = structure(
       crystal.special_position_settings(
         crystal.symmetry.cell_equivalent_p1(self)),
@@ -218,9 +219,18 @@ class structure(crystal.special_position_settings):
     for scatterer in self.scatterers():
       assert not scatterer.anisotropic_flag, "Not implemented." # XXX
       site_symmetry = self.site_symmetry(scatterer.site)
+      if (append_number_to_labels):
+        if (site_symmetry.multiplicity() >= 100):
+          fmt = "_%03d"
+        elif (site_symmetry.multiplicity() >= 10):
+          fmt = "_%02d"
+        else:
+          fmt = "_%d"
       equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
       new_scatterer = scatterer.copy()
-      for site in equiv_sites.coordinates():
+      for i,site in zip(count(), equiv_sites.coordinates()):
+        if (append_number_to_labels):
+          new_scatterer.label = scatterer.label + fmt % i
         new_scatterer.site = site
         new_structure.add_scatterer(new_scatterer)
     return new_structure
