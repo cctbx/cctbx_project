@@ -74,7 +74,7 @@ class time_log:
 
   def report(self):
     assert self.timer is None
-    return "time_log: %s: %d %.2f %.2f %.2f" % (
+    return "time_log: %s: %d %.2f %.3g %.3g" % (
       self.label, self.n, self.accumulation,
       self.delta, self.average())
 
