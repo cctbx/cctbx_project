@@ -214,6 +214,17 @@ class rec:
             (m[2]+m[6])/2.,
             (m[5]+m[7])/2.)
 
+  def extract_block(self, stop, start=(0,0), step=(1,1)):
+    assert 0 <= stop[0] <= self.n[0]
+    assert 0 <= stop[1] <= self.n[1]
+    i_rows = range(start[0], stop[0], step[0])
+    i_colums = range(start[1], stop[1], step[1])
+    result = []
+    for ir in i_rows:
+      for ic in i_colums:
+        result.append(self(ir,ic))
+    return rec(result, (len(i_rows),len(i_colums)))
+
 class row(rec):
 
   def __init__(self, elems):
@@ -341,6 +352,20 @@ if (__name__ == "__main__"):
   a = f.as_augmented_matrix()
   assert a.mathematica_form() == "{{-9, -12, -15, -4}, {-19, -26, -33, -7}," \
                                + " {-29, -40, -51, -9}, {0, 0, 0, 1}}"
+  assert a.extract_block(stop=(1,1)).mathematica_form() \
+      == "{{-9}}"
+  assert a.extract_block(stop=(2,2)).mathematica_form() \
+      == "{{-9, -12}, {-19, -26}}"
+  assert a.extract_block(stop=(3,3)).mathematica_form() \
+      == "{{-9, -12, -15}, {-19, -26, -33}, {-29, -40, -51}}"
+  assert a.extract_block(stop=(4,4)).mathematica_form() \
+      == a.mathematica_form()
+  assert a.extract_block(stop=(4,4),step=(2,2)).mathematica_form() \
+      == "{{-9, -15}, {-29, -51}}"
+  assert a.extract_block(start=(1,1),stop=(4,4),step=(2,2)).mathematica_form()\
+      == "{{-26, -7}, {0, 1}}"
+  assert a.extract_block(start=(1,0),stop=(4,3),step=(2,1)).mathematica_form()\
+      == "{{-19, -26, -33}, {0, 0, 0}}"
   ar = range(1,10)
   at = range(1,4)
   br = range(11,20)
