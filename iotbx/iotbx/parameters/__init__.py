@@ -1,8 +1,27 @@
-from __future__ import generators
 from iotbx import simple_tokenizer
 from scitbx.python_utils.str_utils import line_breaker
 from libtbx.itertbx import count
 from libtbx import introspection
+import os
+
+standard_identifier_start_characters = {}
+for c in "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
+  standard_identifier_start_characters[c] = None
+standard_identifier_continuation_characters = dict(
+  standard_identifier_start_characters)
+for c in ".0123456789":
+  standard_identifier_continuation_characters[c] = None
+
+def is_standard_identifier(string):
+  if (len(string) == 0): return False
+  if (string[0] not in standard_identifier_start_characters): return False
+  for c in string[1:]:
+    if (c not in standard_identifier_continuation_characters): return False
+  sub_strings = string.split(".")
+  if (len(sub_strings) > 1):
+    for sub in sub_strings:
+      if (not is_standard_identifier(sub)): return False
+  return True
 
 def str_from_value_words(value_words):
   if (len(value_words) == 1 and value_words[0].value.lower() == "none"):
@@ -92,6 +111,13 @@ class definition:
         expert_level=None):
     introspection.adopt_init_args()
     self.attribute_names = self.__init__varnames__[3:]
+
+  def copy(self, values):
+    keyword_args = {}
+    for keyword in self.__init__varnames__[1:]:
+      keyword_args[keyword] = getattr(self, keyword)
+    keyword_args["values"] = values
+    return definition(**keyword_args)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
@@ -282,6 +308,131 @@ class object_list:
     for object in self.objects:
       result.extend(object.get(path))
     return object_list(objects=result)
+
+  def get_with_variable_substitution(self, path, path_memory=None):
+    if (path_memory is None):
+      path_memory = {path: None}
+    elif (path not in path_memory):
+      path_memory[path] = None
+    else:
+      raise RuntimeError("Dependency cycle in variable substitution: $%s" % (
+        path))
+    result_raw = self.get(path=path)
+    result_sub = []
+    for object in result_raw.objects:
+      if (not isinstance(object, definition)):
+        result_sub.append(object)
+        continue
+      new_values = []
+      for word in object.values:
+        if (word.quote_token == "'"): continue
+        substitution_proxy = variable_substitution_proxy(word)
+        for fragment in substitution_proxy.fragments:
+          if (not fragment.is_variable):
+            fragment.result = simple_tokenizer.word(
+              value=fragment.value, quote_token='"')
+            continue
+          variable_values = None
+          for variable_object in self.get_with_variable_substitution(
+                                   path=fragment.value,
+                                   path_memory=path_memory).objects:
+            if (isinstance(variable_object, definition)):
+              variable_values = variable_object.values
+          if (variable_values is None):
+            env_var = os.environ.get(fragment.value, None)
+            if (env_var is not None):
+              variable_values = [simple_tokenizer.word(
+                value=env_var,
+                quote_token='"')]
+          if (variable_values is None):
+            raise RuntimeError("Undefined variable: $%s (input line %d)" % (
+              fragment.value, word.line_number))
+          if (not substitution_proxy.force_string):
+            fragment.result = variable_values
+          else:
+            fragment.result = simple_tokenizer.word(
+              value=" ".join([str(v) for v in variable_values]),
+              quote_token='"')
+        new_values.extend(substitution_proxy.get_new_values())
+      result_sub.append(object.copy(values=new_values))
+    del path_memory[path]
+    return object_list(objects=result_sub)
+
+class variable_substitution_fragment:
+
+  def __init__(self, is_variable, value):
+    introspection.adopt_init_args()
+
+class variable_substitution_proxy:
+
+  def __init__(self, word):
+    self.word = word
+    self.force_string = word.quote_token is not None
+    self.have_variables = False
+    self.fragments = []
+    fragment_value = ""
+    char_iter = simple_tokenizer.character_iterator(word.value)
+    c = char_iter.next()
+    while (c is not None):
+      if (c != "$"):
+        fragment_value += c
+        if (c == "\\" and char_iter.look_ahead() == "$"):
+          fragment_value += char_iter.next()
+        c = char_iter.next()
+      else:
+        self.have_variables = True
+        if (len(fragment_value) > 0):
+          self.fragments.append(variable_substitution_fragment(
+            is_variable=False,
+            value=fragment_value))
+          fragment_value = ""
+        c = char_iter.next()
+        if (c is None):
+          word.raise_syntax_error("$ must be followed by an identifier: ")
+        if (c == "{"):
+          self.force_string = True
+          while True:
+            c = char_iter.next()
+            if (c is None):
+              word.raise_syntax_error('missing "}": ')
+            if (c == "}"):
+              c = char_iter.next()
+              break
+            fragment_value += c
+          if (not is_standard_identifier(fragment_value)):
+            word.raise_syntax_error("improper variable name ")
+          self.fragments.append(variable_substitution_fragment(
+            is_variable=True,
+            value=fragment_value))
+        else:
+          if (c not in standard_identifier_start_characters):
+            word.raise_syntax_error("improper variable name ")
+          fragment_value = c
+          while True:
+            c = char_iter.next()
+            if (c is None): break
+            if (c == "."): break
+            if (c not in standard_identifier_continuation_characters): break
+            fragment_value += c
+          self.fragments.append(variable_substitution_fragment(
+            is_variable=True,
+            value=fragment_value))
+        fragment_value = ""
+    if (len(fragment_value) > 0):
+      self.fragments.append(variable_substitution_fragment(
+        is_variable=False,
+        value=fragment_value))
+    if (len(self.fragments) > 1):
+      self.force_string = True
+
+  def get_new_values(self):
+    if (not self.have_variables):
+      return [self.word]
+    if (not self.force_string):
+      return self.fragments[0].result
+    return [simple_tokenizer.word(
+      value="".join([fragment.result.value for fragment in self.fragments]),
+      quote_token='"')]
 
 def parse(input_string, definition_type_names=None):
   from iotbx.parameters import parser

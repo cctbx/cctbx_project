@@ -25,6 +25,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
       return objects
     if (word.value == "table"):
       word = word_stack.pop_unquoted()
+      if (not parameters.is_standard_identifier(word.value)):
+        word.raise_syntax_error("improper table name ")
       table = parameters.table(name=word.value, row_names=[], row_objects=[])
       while True:
         word = word_stack.pop_unquoted()
@@ -42,6 +44,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
         row_name = None
         if (word.value != "{"):
           row_name = word.value
+          if (not parameters.is_standard_identifier(row_name)):
+            word.raise_syntax_error("improper table row name ")
           word = word_stack.pop_unquoted()
           word.assert_expected("{")
         table.add_row(
@@ -60,6 +64,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
             lead_word.line_number))
       word = word_stack.pop()
       if (word.quote_token is None and word.value == "{"):
+        if (not parameters.is_standard_identifier(lead_word.value)):
+          lead_word.raise_syntax_error("improper scope name ")
         objects.append(parameters.scope(
           name=lead_word.value,
           objects=collect_objects(
@@ -69,6 +75,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
       else:
         word_stack.push_back(word)
         if (lead_word.value[0] != "."):
+          if (not parameters.is_standard_identifier(lead_word.value)):
+            lead_word.raise_syntax_error("improper definition name ")
           objects.append(parameters.definition(
             name=lead_word.value,
             values=collect_values(word_stack, lead_word, stop_token)))
