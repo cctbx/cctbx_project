@@ -65,9 +65,6 @@ namespace cctbx {
         Index operator-() const {
           return Index(-elems[0], -elems[1], -elems[2]);
         }
-        Index FriedelMate() const {
-          return operator-();
-        }
         //@}
 
         //! @name Definition of sort order for human-readable listings.

@@ -417,7 +417,7 @@ namespace cctbx {
       for(int iSMx=0;iSMx<SgOps.nSMx();iSMx++) {
         sgtbx::RTMx M = SgOps(0, 0, iSMx);
         m_HR = H * M.Rpart();
-        if (ASU.isInASU(m_HR.FriedelMate())) {
+        if (ASU.isInASU(-m_HR)) {
           m_HT = H * M.Tpart();
           m_FriedelFlag = true;
           return;
@@ -437,7 +437,7 @@ namespace cctbx {
         const SymEquivIndex& SEI = SEMI[iList];
         Index TrialH = SEI.HR();
         for(int iMate = 0; iMate < SEMI.fMates(true); iMate++) {
-          if (iMate) TrialH = TrialH.FriedelMate();
+          if (iMate) TrialH = -TrialH;
           if (TrialH < SelectedH) {
             iSelected = iList;
             SelectedH = TrialH;
