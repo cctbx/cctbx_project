@@ -177,6 +177,7 @@ class resampling(crystal.symmetry):
         print
     result.sampling(
       scatterers=xray_structure.scatterers(),
+      mean_displacements=None,
       scattering_dict=xray_structure.scattering_dict(),
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,
@@ -230,6 +231,7 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -278,6 +280,7 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -327,6 +330,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -382,6 +386,7 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -428,6 +433,7 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -474,6 +480,7 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -525,6 +532,7 @@ def exercise_packed(structure_ideal, f_obs,
   assert n_parameters > 0
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -557,6 +565,7 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     n_parameters = structure_ideal.n_parameters(gradient_flags)
   gd = grad_manager(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -564,6 +573,7 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     algorithm="direct")
   gf = grad_manager(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,

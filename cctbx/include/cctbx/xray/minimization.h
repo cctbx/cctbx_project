@@ -10,52 +10,70 @@ namespace cctbx { namespace xray { namespace minimization {
 
   template <typename XrayScattererType,
             typename FloatType>
-  af::shared<XrayScattererType>
-  apply_shifts(
-    uctbx::unit_cell const& unit_cell,
-    af::const_ref<XrayScattererType> const& scatterers,
-    xray::gradient_flags const& gradient_flags,
-    af::const_ref<FloatType> const& shifts)
+  struct apply_shifts
   {
-    BOOST_STATIC_ASSERT(packing_order_convention == 1);
-    typedef typename XrayScattererType::float_type sc_f_t;
-    af::shared<XrayScattererType> result((af::reserve(scatterers.size())));
-    scitbx::af::const_block_iterator<FloatType> next_shifts(
-      shifts, "Array of shifts is too small.");
-    for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
-      XrayScattererType sc = scatterers[i_sc];
-      if (gradient_flags.site) {
-        sc.site += unit_cell.fractionalize(cartesian<sc_f_t>(next_shifts(3)));
+    af::shared<XrayScattererType> shifted_scatterers;
+    af::shared<FloatType> mean_displacements;
+
+    apply_shifts(
+      uctbx::unit_cell const& unit_cell,
+      af::const_ref<XrayScattererType> const& scatterers,
+      xray::gradient_flags const& gradient_flags,
+      af::const_ref<FloatType> const& shifts)
+    {
+      BOOST_STATIC_ASSERT(packing_order_convention == 1);
+      typedef typename XrayScattererType::float_type sc_f_t;
+      shifted_scatterers.reserve(scatterers.size());
+      if (gradient_flags.u_iso && gradient_flags.sqrt_u_iso) {
+        mean_displacements.resize(scatterers.size(), 0);
       }
-      if (!sc.anisotropic_flag) {
-        if (gradient_flags.u_iso) {
-          sc.u_iso += next_shifts();
+      FloatType* mean_displacements_ptr = mean_displacements.begin();
+      scitbx::af::const_block_iterator<FloatType> next_shifts(
+        shifts, "Array of shifts is too small.");
+      for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
+        XrayScattererType sc = scatterers[i_sc];
+        if (gradient_flags.site) {
+          sc.site += unit_cell.fractionalize(cartesian<sc_f_t>(next_shifts(3)));
         }
-      }
-      else {
-        if (gradient_flags.u_aniso) {
-          scitbx::sym_mat3<sc_f_t> u_cart = adptbx::u_star_as_u_cart(
-            unit_cell, sc.u_star);
-          u_cart += scitbx::sym_mat3<sc_f_t>(next_shifts(6));
-          sc.u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
+        if (!sc.anisotropic_flag) {
+          if (gradient_flags.u_iso) {
+            if (gradient_flags.sqrt_u_iso) {
+              if (sc.u_iso < 0) {
+                throw error(sc.report_negative_u_iso(__FILE__, __LINE__));
+              }
+              FloatType mean_displacement = std::sqrt(sc.u_iso)+next_shifts();
+              sc.u_iso = scitbx::fn::pow2(mean_displacement);
+              mean_displacements_ptr[i_sc] = mean_displacement;
+            }
+            else {
+              sc.u_iso += next_shifts();
+            }
+          }
         }
+        else {
+          if (gradient_flags.u_aniso) {
+            scitbx::sym_mat3<sc_f_t> u_cart = adptbx::u_star_as_u_cart(
+              unit_cell, sc.u_star);
+            u_cart += scitbx::sym_mat3<sc_f_t>(next_shifts(6));
+            sc.u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
+          }
+        }
+        if (gradient_flags.occupancy) {
+          sc.occupancy += next_shifts();
+        }
+        if (gradient_flags.fp) {
+          sc.fp += next_shifts();
+        }
+        if (gradient_flags.fdp) {
+          sc.fdp += next_shifts();
+        }
+        shifted_scatterers.push_back(sc);
       }
-      if (gradient_flags.occupancy) {
-        sc.occupancy += next_shifts();
+      if (!next_shifts.is_at_end()) {
+        throw error("Array of shifts is too large.");
       }
-      if (gradient_flags.fp) {
-        sc.fp += next_shifts();
-      }
-      if (gradient_flags.fdp) {
-        sc.fdp += next_shifts();
-      }
-      result.push_back(sc);
     }
-    if (!next_shifts.is_at_end()) {
-      throw error("Array of shifts is too large.");
-    }
-    return result;
-  }
+  };
 
   template <typename XrayScattererType,
             typename FloatType>

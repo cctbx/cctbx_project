@@ -8,6 +8,7 @@ from scitbx.python_utils.misc import user_plus_sys_time
 class gradients_direct(gradients_base):
 
   def __init__(self, xray_structure,
+                     mean_displacements,
                      miller_set,
                      d_target_d_f_calc,
                      gradient_flags,
@@ -29,6 +30,7 @@ class gradients_direct(gradients_base):
         self._miller_set.space_group(),
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
+        mean_displacements,
         self._xray_structure.scattering_dict(),
         d_target_d_f_calc,
         gradient_flags,
@@ -40,6 +42,7 @@ class gradients_direct(gradients_base):
         self._miller_set.space_group(),
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
+        mean_displacements,
         self._xray_structure.scattering_dict(),
         d_target_d_f_calc,
         gradient_flags,

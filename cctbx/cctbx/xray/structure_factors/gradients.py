@@ -8,6 +8,7 @@ from cctbx import maptbx
 class gradients(manager):
 
   def __call__(self, xray_structure,
+                     mean_displacements,
                      miller_set,
                      d_target_d_f_calc,
                      gradient_flags,
@@ -31,6 +32,7 @@ class gradients(manager):
     return f(
       manager=self,
       xray_structure=xray_structure,
+      mean_displacements=mean_displacements,
       miller_set=miller_set,
       d_target_d_f_calc=d_target_d_f_calc,
       gradient_flags=gradient_flags,

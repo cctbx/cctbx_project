@@ -4,6 +4,7 @@ from cctbx.xray.structure import structure as cctbx_xray_structure
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
+import scitbx.math
 from scitbx.python_utils.misc import adopt_init_args
 from libtbx import introspection
 from stdlib import math
@@ -14,8 +15,10 @@ class u_penalty_singular_at_zero:
         penalty_factor=1,
         penalty_scale=8*math.pi**2,
         u_min=1.e-6,
-        u_max=1.0):
+        min_functional=1.e-10):
     introspection.adopt_init_args()
+    self.u_max = scitbx.math.lambertw(penalty_factor/min_functional) \
+               / (penalty_factor * penalty_scale)
 
   def functional(self, u):
     if (u > self.u_max): return 0
@@ -32,14 +35,20 @@ class u_penalty_singular_at_zero:
 
 class u_penalty_exp:
 
-  def __init__(self, penalty_factor=1, penalty_scale=10*8*math.pi**2):
+  def __init__(self,
+        penalty_factor=1,
+        penalty_scale=10*8*math.pi**2,
+        min_functional=1.e-10):
     introspection.adopt_init_args()
+    self.u_max = -math.log(min_functional) / (penalty_factor * penalty_scale)
 
   def functional(self, u):
+    if (u > self.u_max): return 0
     s = self.penalty_scale
     return math.exp(-s*u*self.penalty_factor)
 
   def gradient(self, u):
+    if (u > self.u_max): return 0
     s = self.penalty_scale
     return -s*self.penalty_factor*math.exp(-s*u*self.penalty_factor)
 
@@ -81,18 +90,20 @@ class lbfgs:
 
   def apply_shifts(self):
     unit_cell = self.xray_structure.unit_cell()
-    scatterers_shifted = ext.minimization_apply_shifts(
+    apply_shifts_result = ext.minimization_apply_shifts(
       unit_cell=unit_cell,
       scatterers=self._scatterers_start,
       gradient_flags=self.gradient_flags,
       shifts=self.x)
+    shifted_scatterers = apply_shifts_result.shifted_scatterers
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices():
-      scatterers_shifted[i_seq].site = crystal.correct_special_position(
+      shifted_scatterers[i_seq].site = crystal.correct_special_position(
         unit_cell=unit_cell,
         special_op=site_symmetry_table.get(i_seq).special_op(),
-        site_frac=scatterers_shifted[i_seq].site)
-    self.xray_structure.replace_scatterers(scatterers=scatterers_shifted)
+        site_frac=shifted_scatterers[i_seq].site)
+    self.xray_structure.replace_scatterers(scatterers=shifted_scatterers)
+    return apply_shifts_result.mean_displacements
 
   def compute_target(self, compute_gradients):
     self.f_calc = self.structure_factors_from_scatterers(
@@ -104,10 +115,7 @@ class lbfgs:
       compute_gradients)
 
   def __call__(self):
-    if (self.first_target_value is None):
-      assert self.x.all_eq(0)
-    else:
-      self.apply_shifts()
+    mean_displacements = self.apply_shifts()
     self.compute_target(compute_gradients=True)
     self.f = self.target_result.target()
     if (self.first_target_value is None):
@@ -117,18 +125,23 @@ class lbfgs:
         unit_cell=self.xray_structure.unit_cell())
       for u_iso in u_isos:
         self.f += self.u_penalty.functional(u=u_iso)
-    sf = self.structure_factor_gradients(
+    self.g = self.structure_factor_gradients(
       xray_structure=self.xray_structure,
+      mean_displacements=mean_displacements,
       miller_set=self.target_functor.f_obs(),
       d_target_d_f_calc=self.target_result.derivatives(),
       gradient_flags=self.gradient_flags,
       n_parameters=self.x.size(),
-      algorithm=self.structure_factor_algorithm)
-    self.g = sf.packed()
+      algorithm=self.structure_factor_algorithm).packed()
     if (self.u_penalty is not None and self.gradient_flags.u_iso):
       g = flex.double()
-      for u_iso in u_isos:
-        g.append(self.u_penalty.gradient(u=u_iso))
+      if (self.gradient_flags.sqrt_u_iso):
+        for mean_displacement in mean_displacements:
+          g.append(2*mean_displacement
+                  *self.u_penalty.gradient(u=mean_displacement**2))
+      else:
+        for u_iso in u_isos:
+          g.append(self.u_penalty.gradient(u=u_iso))
       del u_isos
       ext.minimization_add_u_iso_gradients(
         scatterers=self.xray_structure.scatterers(),

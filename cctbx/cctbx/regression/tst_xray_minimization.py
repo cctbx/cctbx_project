@@ -64,7 +64,12 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   c = flex.linear_correlation(f_obs.data(), f_final.data())
   assert c.is_well_defined()
   if (0 or verbose):
-    print "correlation:", c.coefficient()
+    label = gradient_flags.string_of_true()
+    if (u_penalty is not None):
+      label += ","+u_penalty.__class__.__name__
+    if (anomalous_flag):
+      label += ",anomalous"
+    print "correlation: %10.8f" % c.coefficient(), label
     print
   assert c.coefficient() > 0.99
 
@@ -77,14 +82,18 @@ def run_call_back(flags, space_group_info):
         occupancy=(i_options/4 % 2))
       for anomalous_flag in (False, True)[:]: #SWITCH
         u_penalty_types = [None]
+        sqrt_u_isos = [False]
         if (gradient_flags.u_iso):
           u_penalty_types.extend([
             xray.minimization.u_penalty_exp(),
             xray.minimization.u_penalty_singular_at_zero()])
-        for u_penalty in u_penalty_types:
-          exercise(target_functor, space_group_info, anomalous_flag,
-                   gradient_flags, u_penalty=u_penalty,
-                   verbose=flags.Verbose)
+          sqrt_u_isos.append(True)
+        for sqrt_u_iso in sqrt_u_isos:
+          for u_penalty in u_penalty_types:
+            gradient_flags.sqrt_u_iso = sqrt_u_iso
+            exercise(target_functor, space_group_info, anomalous_flag,
+                     gradient_flags, u_penalty=u_penalty,
+                     verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)

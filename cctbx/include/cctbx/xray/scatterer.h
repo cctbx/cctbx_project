@@ -298,6 +298,19 @@ namespace xray {
         weight_without_occupancy_ = weight_without_occupancy;
       }
 
+      //! Exception message. Not available in Python.
+      std::string
+      report_negative_u_iso(
+        const char* where_file_name,
+        long where_line_number) const
+      {
+        char buf[512];
+        std::sprintf(buf,
+          "Negative u_iso: scatterer label=%s, u_iso=%.6g (%s, line %ld)",
+          label.c_str(), u_iso, where_file_name, where_line_number);
+        return std::string(buf);
+      }
+
     protected:
       int multiplicity_;
       FloatType weight_without_occupancy_;

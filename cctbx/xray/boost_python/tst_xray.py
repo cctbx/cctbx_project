@@ -29,7 +29,7 @@ def exercise_conversions():
   assert r.sigma_f_sq.size() == 0
 
 def exercise_gradient_flags():
-  f = xray.ext.gradient_flags(False, True, False, True, False, True)
+  f = xray.ext.gradient_flags(False, True, False, True, False, True, False)
   assert not f.site
   assert f.u_iso
   assert not f.u_aniso
@@ -57,7 +57,7 @@ def exercise_gradient_flags():
   assert not c.fdp
   assert not f.all_false()
   assert xray.ext.gradient_flags(
-    False, False, False, False, False, False).all_false()
+    False, False, False, False, False, False, False).all_false()
   f.u_iso = True
   assert f.adjust(False).u_iso == True
   assert f.adjust(True).u_iso == False
@@ -342,15 +342,15 @@ def exercise_structure_factors():
     math_module.cos_sin_table(12),
     uc, sg.group(), mi, scatterers, scattering_dict).f_calc()
   xray.ext.structure_factors_gradients_direct(
-    uc, sg.group(), mi, scatterers, scattering_dict,
+    uc, sg.group(), mi, scatterers, None, scattering_dict,
     flex.complex_double(mi.size()),
-    xray.ext.gradient_flags(True, True, True, True, True, True),
+    xray.ext.gradient_flags(True, True, True, True, True, True, False),
     0)
   xray.ext.structure_factors_gradients_direct(
     math_module.cos_sin_table(12),
-    uc, sg.group(), mi, scatterers, scattering_dict,
+    uc, sg.group(), mi, scatterers, None, scattering_dict,
     flex.complex_double(mi.size()),
-    xray.ext.gradient_flags(True, True, True, True, True, True),
+    xray.ext.gradient_flags(True, True, True, True, True, True, False),
     0)
 
 def exercise_targets():
@@ -483,10 +483,10 @@ def exercise_minimization_apply_shifts():
     xray.scatterer("O1", site=(0.3,0.4,0.5),
                    u=adptbx.u_cart_as_u_star(uc,
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
-  f = xray.ext.gradient_flags(True, True, True, True, True, True)
+  f = xray.ext.gradient_flags(True, True, True, True, True, True, False)
   shifts = flex.double(19, 0.001)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, f, shifts)
+    uc, scatterers, f, shifts).shifted_scatterers
   for a,b in zip(scatterers, shifted_scatterers):
     assert a.scattering_type == b.scattering_type
     assert a.site != b.site
@@ -504,7 +504,7 @@ def exercise_minimization_apply_shifts():
     unit_cell=uc,
     scatterers=shifted_scatterers,
     gradient_flags=f,
-    shifts=shifts)
+    shifts=shifts).shifted_scatterers
   for a,b in zip(scatterers, shifted_scatterers):
     assert a.scattering_type == b.scattering_type
     assert approx_equal(a.site, b.site)
@@ -513,45 +513,45 @@ def exercise_minimization_apply_shifts():
     assert approx_equal(a.occupancy, b.occupancy)
     assert approx_equal(a.fp, b.fp)
     assert approx_equal(a.fdp, b.fdp)
-  f = xray.ext.gradient_flags(True, False, False, False, False, False)
+  f = xray.ext.gradient_flags(True, False, False, False, False, False, False)
   shifts = flex.double((-1,2,-3,4,-5,-6))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, f, shifts)
+    uc, scatterers, f, shifts).shifted_scatterers
   assert approx_equal(
     shifted_scatterers[0].site,
     (0.01-1/20.,0.02+2/20.,0.3-3/23.))
   assert approx_equal(
     shifted_scatterers[1].site,
     (0.3+4/20.,0.4-5/20.,0.5-6/23.))
-  f = xray.ext.gradient_flags(False, True, False, False, False, False)
+  f = xray.ext.gradient_flags(False, True, False, False, False, False, False)
   shifts = flex.double(1, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, f, shifts)
+    uc, scatterers, f, shifts).shifted_scatterers
   assert approx_equal(shifted_scatterers[0].u_iso, -10)
-  f = xray.ext.gradient_flags(False, False, True, False, False, False)
+  f = xray.ext.gradient_flags(False, False, True, False, False, False, False)
   shifts = flex.double(6, -100)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, f, shifts)
+    uc, scatterers, f, shifts).shifted_scatterers
   assert not approx_equal(shifted_scatterers[1].u_star,
     [u_ij-100 for u_ij in scatterers[1].u_star])
-  f = xray.ext.gradient_flags(False, False, False, True, False, False)
+  f = xray.ext.gradient_flags(False, False, False, True, False, False, False)
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, f, shifts)
+    uc, scatterers, f, shifts).shifted_scatterers
   for i in xrange(2):
     assert approx_equal(shifted_scatterers[i].occupancy, -9)
-  f = xray.ext.gradient_flags(False, False, False, False, True, False)
+  f = xray.ext.gradient_flags(False, False, False, False, True, False, False)
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, f, shifts)
+    uc, scatterers, f, shifts).shifted_scatterers
   assert approx_equal(shifted_scatterers[0].fp, -11)
   assert shifted_scatterers[1].fp == -10
   for i in xrange(2):
     assert shifted_scatterers[i].fdp == scatterers[i].fdp
-  f = xray.ext.gradient_flags(False, False, False, False, False, True)
+  f = xray.ext.gradient_flags(False, False, False, False, False, True, False)
   shifts = flex.double((2,3))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, scatterers, f, shifts)
+    uc, scatterers, f, shifts).shifted_scatterers
   assert shifted_scatterers[0].fp == -1
   assert approx_equal(shifted_scatterers[0].fdp, 4)
   assert shifted_scatterers[1].fp == 0
@@ -579,7 +579,7 @@ def exercise_minimization_add_site_gradients():
                    u=adptbx.u_cart_as_u_star(uc,
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
   gradient_flags = xray.ext.gradient_flags(
-    True, False, False, False, False, False)
+    True, False, False, False, False, False, False)
   xray_gradients = flex.double(xrange(6))
   geometry_restraints_site_gradients = flex.vec3_double([(1,-2,3),(-4,-5,6)])
   xray.ext.minimization_add_site_gradients(
@@ -590,7 +590,7 @@ def exercise_minimization_add_site_gradients():
   assert approx_equal(xray_gradients,
     [1,-1,5,-1,-1,11])
   gradient_flags = xray.ext.gradient_flags(
-    True, True, True, True, True, True)
+    True, True, True, True, True, True, False)
   xray_gradients = flex.double(xrange(19))
   xray.ext.minimization_add_site_gradients(
     scatterers=scatterers,
@@ -600,7 +600,7 @@ def exercise_minimization_add_site_gradients():
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12,13,14,15,16,17,18])
   gradient_flags = xray.ext.gradient_flags(
-    True, True, False, True, True, True)
+    True, True, False, True, True, True, False)
   xray_gradients = flex.double(xrange(13))
   xray.ext.minimization_add_site_gradients(
     scatterers=scatterers,
@@ -610,7 +610,7 @@ def exercise_minimization_add_site_gradients():
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12])
   gradient_flags = xray.ext.gradient_flags(
-    True, False, True, True, False, True)
+    True, False, True, True, False, True, False)
   xray_gradients = flex.double(xrange(16))
   xray.ext.minimization_add_site_gradients(
     scatterers=scatterers,
@@ -633,7 +633,7 @@ def exercise_minimization_add_u_iso_gradients():
                    u=adptbx.u_cart_as_u_star(uc,
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
   gradient_flags = xray.ext.gradient_flags(
-    False, True, False, False, False, False)
+    False, True, False, False, False, False, False)
   xray_gradients = flex.double([1])
   u_iso_gradients = flex.double([3,0])
   xray.ext.minimization_add_u_iso_gradients(
@@ -643,7 +643,7 @@ def exercise_minimization_add_u_iso_gradients():
     u_iso_gradients=u_iso_gradients)
   assert approx_equal(xray_gradients, [4])
   gradient_flags = xray.ext.gradient_flags(
-    True, True, True, True, True, True)
+    True, True, True, True, True, True, False)
   xray_gradients = flex.double(xrange(19))
   xray.ext.minimization_add_u_iso_gradients(
     scatterers=scatterers,
@@ -653,7 +653,7 @@ def exercise_minimization_add_u_iso_gradients():
   assert approx_equal(xray_gradients,
     [0,1,2,6,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18])
   gradient_flags = xray.ext.gradient_flags(
-    True, True, False, True, True, True)
+    True, True, False, True, True, True, False)
   xray_gradients = flex.double(xrange(13))
   xray.ext.minimization_add_u_iso_gradients(
     scatterers=scatterers,
@@ -663,7 +663,7 @@ def exercise_minimization_add_u_iso_gradients():
   assert approx_equal(xray_gradients,
     [0,1,2,6,4,5,6,7,8,9,10,11,12])
   gradient_flags = xray.ext.gradient_flags(
-    False, True, True, True, False, True)
+    False, True, True, True, False, True, False)
   xray_gradients = flex.double(xrange(11))
   xray.ext.minimization_add_u_iso_gradients(
     scatterers=scatterers,

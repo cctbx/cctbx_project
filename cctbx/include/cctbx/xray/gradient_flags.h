@@ -11,14 +11,16 @@ namespace cctbx { namespace xray {
       bool u_aniso_,
       bool occupancy_,
       bool fp_,
-      bool fdp_)
+      bool fdp_,
+      bool sqrt_u_iso_)
     :
       site(site_),
       u_iso(u_iso_),
       u_aniso(u_aniso_),
       occupancy(occupancy_),
       fp(fp_),
-      fdp(fdp_)
+      fdp(fdp_),
+      sqrt_u_iso(sqrt_u_iso_)
     {}
 
     bool site;
@@ -27,6 +29,7 @@ namespace cctbx { namespace xray {
     bool occupancy;
     bool fp;
     bool fdp;
+    bool sqrt_u_iso;
 
     bool
     all_false() const
