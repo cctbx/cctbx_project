@@ -11,6 +11,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_VERSA_PLAIN_H
 #define SCITBX_ARRAY_FAMILY_VERSA_PLAIN_H
 
+#include <scitbx/error.h>
 #include <scitbx/array_family/shared_plain.h>
 
 namespace scitbx { namespace af {
@@ -150,7 +151,13 @@ namespace scitbx { namespace af {
       }
 
       AccessorType const& accessor() const { return m_accessor; }
-      size_type size() const { return m_accessor.size1d(); }
+
+      size_type size() const
+      {
+        size_type sz = m_accessor.size1d();
+        SCITBX_ASSERT(base_class::size() >= sz);
+        return sz;
+      }
 
       // since size() is not a virtual function end() needs to be redefined.
       SCITBX_ARRAY_FAMILY_BEGIN_END_ETC(versa_plain,
