@@ -1,8 +1,13 @@
 from iotbx.kriber import strudat
+from cctbx.regression import tst_direct_space_asu
+from cctbx import crystal
 from cctbx import uctbx
+from cctbx.array_family import flex
+from libtbx.itertbx import count
 from cStringIO import StringIO
+import sys, os
 
-def exercise():
+def exercise_basic():
   test_file = StringIO("""
 *tric
 Title
@@ -92,7 +97,35 @@ O  0.0 0.0 0.0
   assert all_entries.get("orth").atoms[0].connectivity is None
   assert all_entries.get("tetr").atoms[0].connectivity == 4
   assert all_entries.get("cubi").as_xray_structure().scatterers().size() == 2
+
+def exercise_zeolite_atlas(distance_cutoff=3.5):
+  atlas_file = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
+    "regression", "misc", "strudat_zeolite_atlas")
+  if (not os.path.isfile(atlas_file)): return
+  all_entries = strudat.read_all_entries(open(atlas_file))
+  for i,entry in zip(count(), all_entries.entries):
+    structure = entry.as_xray_structure()
+    if ("--Full" in sys.argv[1:] or i % 20 == 0):
+      tst_direct_space_asu.exercise_neighbors_pair_generators(
+        structure=structure,
+        verbose="--Verbose" in sys.argv[1:])
+    asu_mappings = structure.asu_mappings(buffer_thickness=distance_cutoff)
+    pair_generator = crystal.neighbors_fast_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=distance_cutoff)
+    bond_counts = flex.size_t(structure.scatterers().size(), 0)
+    for pair in pair_generator:
+      bond_counts[pair.i_seq] += 1
+      if (pair.j_sym == 0):
+        bond_counts[pair.j_seq] += 1
+    for atom,bond_count in zip(entry.atoms, bond_counts):
+      assert atom.connectivity is not None
+      assert atom.connectivity == bond_count
+
+def run():
+  exercise_basic()
+  exercise_zeolite_atlas()
   print "OK"
 
 if (__name__ == "__main__"):
-  exercise()
+  run()
