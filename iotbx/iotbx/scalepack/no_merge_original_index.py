@@ -88,10 +88,10 @@ def run():
 /net/redbelly/lbnl1/share/structure-lib/vmp/data/infl.sca
 /net/redbelly/lbnl1/share/structure-lib/vmp/data/peak.sca
 /net/redbelly/lbnl1/share/structure-lib/vmp/data/high.sca
-/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/p123-unmerged.sca
-/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/pk1-unmerged.sca
-/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/pk12-unmerged.sca
-/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/pk1234-unmerged.sca""".split()
+/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/p123-unmerged.sca
+/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/pk1-unmerged.sca
+/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/pk12-unmerged.sca
+/net/redbelly/scratch1/rwgk/bnl_2003/karen/shelxd/pk1234-unmerged.sca""".split()
   for file_name in file_names:
     print "File name:", file_name
     quick_test(file_name)
