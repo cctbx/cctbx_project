@@ -63,3 +63,4 @@ if (not env_etc.no_boost_python):
   SConscript("mtz/boost_python/SConscript")
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
+  SConscript("include/iotbx/mtz/SConscript")

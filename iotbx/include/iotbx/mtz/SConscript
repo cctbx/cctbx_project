@@ -1,0 +1,12 @@
+Import("env_etc")
+
+if (not env_etc.no_boost_python):
+  Import("env_iotbx_boost_python_ext")
+  env = env_iotbx_boost_python_ext.Copy()
+  env.Prepend(LIBS=["iotbx", "cmtz", "cctbx"])
+  env.SharedLibrary(
+    target="#libtbx/iotbx_mtz_wrapper_ext",
+    source=[
+      "wrapper_ext.cpp",
+      "object_bpl.cpp",
+      "crystal_bpl.cpp"])
