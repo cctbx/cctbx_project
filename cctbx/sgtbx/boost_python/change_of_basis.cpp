@@ -7,6 +7,8 @@
      2002 Sep: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/sgtbx/change_of_basis_op.h>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -65,6 +67,10 @@ namespace {
         .def("apply",
           (uctbx::unit_cell(w_t::*)(uctbx::unit_cell const&) const)
           &w_t::apply)
+        .def("apply",
+          (af::shared<miller::index<> >(w_t::*)
+            (af::const_ref<miller::index<> > const&) const)
+              &w_t::apply)
         .def("__call__",
           (fractional<>(w_t::*)(fractional<> const&) const)
           &w_t::operator())

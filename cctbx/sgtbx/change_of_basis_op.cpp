@@ -11,6 +11,7 @@
  */
 
 #include <cctbx/sgtbx/change_of_basis_op.h>
+#include <cctbx/sgtbx/utils.h>
 #include <cctbx/uctbx.h>
 
 namespace cctbx { namespace sgtbx {
@@ -46,6 +47,23 @@ namespace cctbx { namespace sgtbx {
   rt_mx change_of_basis_op::apply(rt_mx const& s) const
   {
     return c_.multiply(s.multiply(c_inv_));
+  }
+
+  af::shared<miller::index<> >
+  change_of_basis_op::apply(
+    af::const_ref<miller::index<> > const& miller_indices) const
+  {
+    sg_mat3 r = c_inv_.r().num();
+    int d = c_inv_.r().den();
+    af::shared<miller::index<> > result((af::reserve(miller_indices.size())));
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      miller::index<> hr = miller_indices[i] * r;
+      if (utils::change_denominator(hr.begin(), d, hr.begin(), 1, 3) != 0) {
+        throw error("Change of basis yields non-integral Miller index.");
+      }
+      result.push_back(hr);
+    }
+    return result;
   }
 
 }} // namespace cctbx::sgtbx

@@ -90,6 +90,12 @@ class set(crystal.symmetry):
     r = self.unit_cell().min_max_d_star_sq(self.indices())
     return tuple([uctbx.d_star_sq_as_d(x) for x in r])
 
+  def change_basis(self, cb_op):
+    return set(
+      crystal_symmetry=crystal.symmetry.change_basis(self, cb_op),
+      indices=cb_op.apply(self.indices()),
+      anomalous_flag=self.anomalous_flag())
+
   def expand_to_p1(self):
     assert self.space_group() != None
     assert self.indices() != None
@@ -199,6 +205,20 @@ class array(set):
       self.anomalous_flag(),
       i, d)
     return array(set(self, i, self.anomalous_flag()), d, self.sigmas())
+
+  def change_basis(self, cb_op):
+    new_data = None
+    new_sigmas = None
+    if (self.data() != None):
+      assert type(self.data()) == type(flex.double())
+      new_data = self.data().deep_copy()
+    if (self.sigmas() != None):
+      assert type(self.sigmas()) == type(flex.double())
+      new_sigmas = self.sigmas().deep_copy()
+    return array(
+      miller_set=set.change_basis(self, cb_op),
+      data=new_data,
+      sigmas=new_sigmas)
 
   def anomalous_differences(self):
     assert self.anomalous_flag() == True

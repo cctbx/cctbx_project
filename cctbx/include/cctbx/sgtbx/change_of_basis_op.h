@@ -205,6 +205,12 @@ namespace cctbx { namespace sgtbx {
         return ucell.change_basis(c_inv().r());
       }
 
+      //! Transforms an array of Miller indices.
+      /*! result = miller_indices * c_inv()
+       */
+      af::shared<miller::index<> >
+      apply(af::const_ref<miller::index<> > const& miller_indices) const;
+
       //! c() * (rt_mx(rot_mx(sign_identity), t)) * c_inv()
       /*! Not available in Python.
        */
