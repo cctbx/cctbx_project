@@ -264,6 +264,7 @@ def run(args):
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
+  n_f_sq_as_f = 0
   array_caches = []
   for file_name in command_line.args:
     reflection_file = reflection_file_reader.any_reflection_file(
@@ -287,6 +288,7 @@ def run(args):
         if (miller_array.indices().size() == 0): continue
         if (miller_array.is_xray_intensity_array()):
           miller_array = miller_array.f_sq_as_f()
+          n_f_sq_as_f += 1
         elif (miller_array.is_complex_array()):
           miller_array = abs(miller_array)
         if (miller_array.is_real_array()):
@@ -318,7 +320,13 @@ def run(args):
           array_caches.append(array_cache(
             input=miller_array,
             lattice_symmetry_max_delta=0.1))
-  if (len(array_caches) > 2):
+  if (n_f_sq_as_f > 0):
+    if (n_f_sq_as_f == 1):
+      print "Note: Intensity array has been converted to an amplitude array."
+    else:
+      print "Note: Intensity arrays have been converted to amplitude arrays."
+    print
+  if (len(array_caches) > 2 and not command_line.options.quick):
     print "Array indices (for quick searching):"
     for i_0,cache_0 in enumerate(array_caches):
       print "  %2d:" % (i_0+1), cache_0.input.info()
