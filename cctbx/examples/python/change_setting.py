@@ -59,12 +59,7 @@ def ShowInputSymbol(sgsymbol, convention, label):
     else:
       print "Default"
 
-def Symbol_to_SgOps(sgsymbol, convention):
-  if (convention == "Hall"):
-    HallSymbol = sgsymbol
-  else:
-    Symbols_Inp = sgtbx.SpaceGroupSymbols(sgsymbol, convention)
-    HallSymbol = Symbols_Inp.Hall()
+def HallSymbol_to_SgOps(HallSymbol):
   try:
     ps = sgtbx.parse_string(HallSymbol)
     SgOps = sgtbx.SgOps(ps)
@@ -92,7 +87,8 @@ try:
   print "Old unit cell parameters:", UnitCell_old
   print
   ShowInputSymbol(inp.sgsymbol_old, inp.convention_old, "Old")
-  SgOps_old = Symbol_to_SgOps(inp.sgsymbol_old, inp.convention_old)
+  Syms = sgtbx.SpaceGroupSymbols(inp.sgsymbol_old, inp.convention_old)
+  SgOps_old = HallSymbol_to_SgOps(Syms.Hall())
   SgType_old = SgOps_old.getSpaceGroupType()
   print
 
@@ -102,7 +98,8 @@ try:
     inp.convention_new = ""
 
   ShowInputSymbol(inp.sgsymbol_new, inp.convention_new, "New")
-  SgOps_new = Symbol_to_SgOps(inp.sgsymbol_new, inp.convention_new)
+  Syms = sgtbx.SpaceGroupSymbols(inp.sgsymbol_new, inp.convention_new)
+  SgOps_new = HallSymbol_to_SgOps(Syms.Hall())
   SgType_new = SgOps_new.getSpaceGroupType()
   print
 
