@@ -2,8 +2,9 @@ from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-import sys
 import random
+import math
+import sys
 
 def finite_differences_site(cartesian_flag, target_ftor, structure,
                             delta=0.00001):
@@ -69,6 +70,9 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
       ms = modified_structure.scatterers()[i_scatterer]
       if   (parameter_name == "u_iso"):
         ms.u_iso += d_sign * delta
+      elif (parameter_name == "sqrt_u_iso"):
+        assert ms.u_iso >= 0
+        ms.u_iso = (math.sqrt(ms.u_iso) + d_sign * delta)**2
       elif (parameter_name == "occupancy"):
         ms.occupancy += d_sign * delta
       elif (parameter_name == "fp"):
@@ -161,19 +165,20 @@ def exercise(target_functor, parameter_name, space_group_info,
     try: print "correlation = %.6g" % (target_result.correlation(),)
     except: pass
     print "target = %.6g" % (target_result.target(),)
+  gradient_flags=xray.structure_factors.gradient_flags(
+    site=(parameter_name=="site" or random.choice((0,1))),
+    u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
+    u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
+    occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
+    fp=(parameter_name=="fp" or random.choice((0,1))),
+    fdp=(parameter_name=="fdp"
+         or (anomalous_flag and random.choice((0,1)))))
   sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
     mean_displacements=None,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
-    gradient_flags=xray.structure_factors.gradient_flags(
-      site=(parameter_name=="site" or random.choice((0,1))),
-      u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
-      u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
-      occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
-      fp=(parameter_name=="fp" or random.choice((0,1))),
-      fdp=(parameter_name=="fdp"
-           or (anomalous_flag and random.choice((0,1))))),
+    gradient_flags=gradient_flags,
     n_parameters=0)
   if (parameter_name == "site"):
     d_analytical = sf.d_target_d_site_frac()
@@ -203,6 +208,20 @@ def exercise(target_functor, parameter_name, space_group_info,
       parameter_name, target_ftor, structure)
   linear_regression_test(d_analytical, d_numerical, test_hard,
                          verbose=verbose)
+  if (parameter_name == "u_iso"):
+    gradient_flags.sqrt_u_iso = True
+    sf = xray.structure_factors.gradients_direct(
+      xray_structure=structure,
+      mean_displacements=flex.sqrt(structure.scatterers().extract_u_iso()),
+      miller_set=f_obs,
+      d_target_d_f_calc=target_result.derivatives(),
+      gradient_flags=gradient_flags,
+      n_parameters=0)
+    d_analytical = sf.d_target_d_u_iso()
+    d_numerical = finite_differences_scalar(
+      "sqrt_u_iso", target_ftor, structure)
+    linear_regression_test(d_analytical, d_numerical, test_hard,
+                           verbose=verbose)
 
 def run_call_back(flags, space_group_info):
   coordinate_systems = []
