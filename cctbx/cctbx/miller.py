@@ -1193,12 +1193,13 @@ class array(set):
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  def measurability(self, use_binning=False):
+  def measurability(self, use_binning=False, cut_off=3.0):
     ## Peter Zwart 3/4/2005
-    """% of reflections for which (|delta I|/sigma_dI) > 3
-       AND min(I_plus/sigma_plus,I_min/sigma_min) > 3 """
+    """% of reflections for which (|delta I|/sigma_dI) > cut_off
+       AND min(I_plus/sigma_plus,I_min/sigma_min) > cut_off """
     assert not use_binning or self.binner() is not None
     assert self.sigmas() is not None
+    cut_off = float(cut_off)
     if (not use_binning):
       obs = self.select(self.data() > 0 )
       if (self.is_xray_amplitude_array()):
@@ -1215,7 +1216,7 @@ class array(set):
       i_minus_sigma = i_minus.data()/i_minus.sigmas()
 
 
-      meas = ( (ratio > 3.0) &  (i_plus_sigma > 3.0) & (i_minus_sigma > 3.0) ).count(True)
+      meas = ( (ratio > cut_off) &  (i_plus_sigma > cut_off) & (i_minus_sigma > cut_off) ).count(True)
       return float(meas)/float(ratio.size())
     results = []
     for i_bin in self.binner().range_all():
