@@ -177,6 +177,7 @@ namespace sgtbx {
                            const SgOps& sgo,
                            double Resolution_d_min);
       Miller::Index next();
+      inline const ReciprocalSpaceASU& ASU() const { return m_ASU; }
     private:
       uctbx::UnitCell m_UnitCell;
       SgOps m_SgOps;
