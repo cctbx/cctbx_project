@@ -231,7 +231,7 @@ def exercise_array():
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
   assert tuple(ma.all_selection()) == (1,1,1,1,1)
-  for sa in (ma.apply_selection(flex.bool((1,0,0,1,0))),
+  for sa in (ma.select(flex.bool((1,0,0,1,0))),
              ma.select(flex.size_t((0,3)))):
     assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
     assert approx_equal(tuple(sa.data()), (1,3))
@@ -520,7 +520,7 @@ def exercise_array_correlation(space_group_info,
       space_group_info,
       elements=["const"]*n_scatterers)
     arrays.append(abs(structure.structure_factors(d_min=d_min-i*0.5).f_calc()))
-  arrays[1] = arrays[1].apply_selection(flex.random_permutation(
+  arrays[1] = arrays[1].select(flex.random_permutation(
     size=arrays[1].indices().size()))
   a,b = arrays[0].common_sets(arrays[1])
   assert a.indices().all_eq(b.indices())

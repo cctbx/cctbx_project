@@ -150,7 +150,7 @@ class set(crystal.symmetry):
       n_sys_abs = sys_absent_flags.count(True)
       print >> f, "Systematic absences:", n_sys_abs
       if (n_sys_abs != 0):
-        no_sys_abs = self.apply_selection(flags=~sys_absent_flags)
+        no_sys_abs = self.select(selection=~sys_absent_flags)
         print >> f, "Systematic absences not included in following:"
       n_centric = no_sys_abs.centric_flags().data().count(True)
       print >> f, "Centric reflections:", n_centric
@@ -282,17 +282,17 @@ class set(crystal.symmetry):
   def all_selection(self):
     return flex.bool(self.indices().size(), True)
 
-  def apply_selection(self, flags, negate=False, anomalous_flag=None):
+  def select(self, selection, negate=False, anomalous_flag=None):
     assert self.indices() is not None
     if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
-    if (negate): flags = ~flags
-    i = self.indices().select(flags)
+    if (negate): selection = ~selection
+    i = self.indices().select(selection)
     return set(self, i, anomalous_flag)
 
   def remove_systematic_absences(self, negate=False):
-    return self.apply_selection(
-      flags=self.sys_absent_flags().data(),
+    return self.select(
+      selection=self.sys_absent_flags().data(),
       negate=not negate)
 
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
@@ -300,7 +300,7 @@ class set(crystal.symmetry):
     keep = self.all_selection()
     if (d_max): keep &= d <= d_max
     if (d_min): keep &= d >= d_min
-    return self.apply_selection(keep, negate)
+    return self.select(keep, negate)
 
   def apply_scaling(self, target_max=None, factor=None):
     assert [target_max, factor].count(None) == 1
@@ -636,7 +636,7 @@ class array(set):
   def eliminate_sys_absent(self):
     sys_absent_flags = self.sys_absent_flags().data()
     if (sys_absent_flags.all_eq(False)): return self
-    return self.apply_selection(flags=~sys_absent_flags)
+    return self.select(selection=~sys_absent_flags)
 
   def adopt_set(self, other):
     assert self.is_similar_symmetry(other)
@@ -655,14 +655,14 @@ class array(set):
     assert self.is_similar_symmetry(other)
     assert self.anomalous_flag() == other.anomalous_flag()
     match = match_indices(self.indices(), other.indices())
-    return self.apply_selection(match.pair_selection(0))
+    return self.select(match.pair_selection(0))
 
   def common_sets(self, other):
     assert self.is_similar_symmetry(other)
     assert self.anomalous_flag() == other.anomalous_flag()
     pairs = match_indices(self.indices(), other.indices()).pairs()
-    return [self.apply_selection(pairs.column(0)),
-            other.apply_selection(pairs.column(1))]
+    return [self.select(pairs.column(0)),
+            other.select(pairs.column(1))]
 
   def sort(self, by_value="resolution", reverse=False):
     return self.apply_sort_permutation(self.sort_permutation(
@@ -849,7 +849,7 @@ class array(set):
     asu, matches = self.match_bijvoet_mates()
     i_column = "+-".index(plus_or_minus)
     return asu.select(
-      permutation=matches.pairs().column(i_column),
+      selection=matches.pairs().column(i_column),
       anomalous_flag=False)
 
   def hemispheres(self):
@@ -857,7 +857,7 @@ class array(set):
     asu, matches = self.match_bijvoet_mates()
     return tuple(
       [asu.select(
-        permutation=matches.pairs().column(i_column),
+        selection=matches.pairs().column(i_column),
         anomalous_flag=False)
        for i_column in (0,1)])
 
@@ -865,7 +865,7 @@ class array(set):
     "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
     assert not use_binning or self.binner() is not None
     if (not use_binning):
-      obs = self.apply_selection(self.data() > 0)
+      obs = self.select(self.data() > 0)
       if (self.is_xray_intensity_array()):
         obs = obs.f_sq_as_f()
       f_plus, f_minus = obs.hemispheres()
@@ -880,37 +880,26 @@ class array(set):
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
-      results.append(self.apply_selection(sel).anomalous_signal())
+      results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results)
 
-  def apply_selection(self, flags, negate=False, anomalous_flag=None):
+  def select(self, selection, negate=False, anomalous_flag=None):
     assert self.indices() is not None
     if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
-    if (negate): flags = ~flags
-    i = self.indices().select(flags)
+    if (negate): selection = ~selection
+    i = self.indices().select(selection)
     d = None
-    if (self.data() is not None): d = self.data().select(flags)
+    if (self.data() is not None): d = self.data().select(selection)
     s = None
-    if (self.sigmas() is not None): s = self.sigmas().select(flags)
-    return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
-
-  def select(self, permutation, anomalous_flag=None):
-    assert self.indices() is not None
-    if (anomalous_flag is None):
-      anomalous_flag = self.anomalous_flag()
-    i = self.indices().select(permutation)
-    d = None
-    if (self.data() is not None): d = self.data().select(permutation)
-    s = None
-    if (self.sigmas() is not None): s = self.sigmas().select(permutation)
+    if (self.sigmas() is not None): s = self.sigmas().select(selection)
     return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
   def sigma_filter(self, cutoff_factor, negate=0):
     assert self.data() is not None
     assert self.sigmas() is not None
     flags = flex.abs(self.data()) >= self.sigmas() * cutoff_factor
-    return self.apply_selection(flags, negate)
+    return self.select(flags, negate)
 
   def _generic_binner_action(self, use_binning, use_multiplicities,
                              function,
@@ -967,7 +956,7 @@ class array(set):
       for i_bin in self.binner().range_used():
         keep &= ~self.binner().selection(i_bin) \
              | (abs_data <= cutoff_factor * rms[i_bin-1])
-    return self.apply_selection(keep, negate)
+    return self.select(keep, negate)
 
   def statistical_mean(self, use_binning=0):
     if (not use_binning):

@@ -19,8 +19,8 @@ def direct_space_squaring(start, selection_fixed):
     fixed = start
     var = start
   else:
-    fixed = start.apply_selection(selection_fixed)
-    var = start.apply_selection(~selection_fixed)
+    fixed = start.select(selection_fixed)
+    var = start.select(~selection_fixed)
   rfft = fftpack.real_to_complex_3d([n*3//2 for n in map_gridding])
   conjugate_flag = True
   structure_factor_map = maptbx.structure_factors.to_map(
@@ -136,7 +136,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   assert r.is_well_defined()
   assert abs(r.y_intercept()) < 0.1
   assert abs(r.slope() - 1) < 0.2
-  q_large = q_obs.apply_selection(
+  q_large = q_obs.select(
     q_obs.quasi_normalized_as_normalized().data() > e_min)
   if (0 or verbose):
     print "Number of e-values > %.6g: %d" % (e_min, q_large.size())
