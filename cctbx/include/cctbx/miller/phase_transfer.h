@@ -14,6 +14,16 @@
 
 namespace cctbx { namespace miller {
 
+#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
+  namespace {
+    inline double
+    abs_wrapper(double const& x) { return scitbx::fn::absolute(x); }
+
+    inline double
+    abs_wrapper(std::complex<double> const& x) { return std::abs(x); }
+  }
+#endif
+
   template <typename AmplitudeType,
             typename FloatType>
   af::shared<std::complex<FloatType> >
@@ -36,7 +46,11 @@ namespace cctbx { namespace miller {
       }
       else {
         result.push_back(std::polar(
+#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
+          FloatType(abs_wrapper(amplitude_source[i])),
+#else
           FloatType(std::abs(amplitude_source[i])),
+#endif
           space_group.phase_restriction(miller_indices[i])
             .nearest_valid_phase(std::arg(p))));
       }
