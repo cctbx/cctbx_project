@@ -587,9 +587,9 @@ namespace sgtbx {
       /*! See previous overload for this function.
        */
       std::string BuildHallSymbol(bool TidyCBOp = true) const;
-      //! Match given symmetry operations with the 530 tabulated settings.
+      //! Match given symmetry operations with the 656 tabulated settings.
       /*! This is a light-weight alternative to getSpaceGroupType(),
-          but will only work for the 530 tabulated settings.<br>
+          but will only work for the 656 tabulated settings.<br>
           This algorithm is not particularly optimized. Therefore
           the run-times for MatchTabulatedSettings() and
           getSpaceGroupType() are in general comparable.
@@ -599,7 +599,7 @@ namespace sgtbx {
       SpaceGroupSymbols MatchTabulatedSettings() const;
       //! Determine conventional Hermann-Mauguin symbol or Hall symbol.
       /*! First, MatchTabulatedSettings() is called. If the given
-          symmetry operations correspond to one of the 530 tabulated
+          symmetry operations correspond to one of the 656 tabulated
           settings, the extended Hermann-Mauguin symbol is returned
           (e.g. "P n n n :2").  Otherwise the string "Hall: " + the
           result of BuildHallSymbol() is returned (e.g. "Hall:  P 2 2

@@ -22,8 +22,9 @@ for i in sgtbx.SpaceGroupSymbolIterator():
       SgType = SgOps.getSpaceGroupType()
       settings[SgType.SgNumber()][SgOps.BuildLookupSymbol(SgType)] = 0
       nBuilt = nBuilt + 1
-
 print "# nBuilt =", nBuilt
+
+nNonRedundant = 0
 print "settings = ("
 for i in xrange(1, 231):
   print "#", i
@@ -31,4 +32,6 @@ for i in xrange(1, 231):
   symbols.sort()
   for s in symbols:
     print "'" + s + "',"
+    nNonRedundant = nNonRedundant + 1
 print ")"
+print "# nNonRedundant =", nNonRedundant
