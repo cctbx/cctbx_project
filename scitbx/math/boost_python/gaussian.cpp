@@ -57,7 +57,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("gaussian_sum", no_init)
-        .def(init<double const&>())
+        .def(init<double const&, optional<bool> >())
         .def(init<af::small<double, w_t::max_n_terms> const&,
                   af::small<double, w_t::max_n_terms> const&,
                   optional<double const&, bool> >())

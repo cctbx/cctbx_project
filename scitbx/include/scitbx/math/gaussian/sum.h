@@ -8,6 +8,7 @@
 #include <scitbx/math/gaussian/term.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/error.h>
 
 namespace scitbx { namespace math { namespace gaussian {
 
@@ -24,11 +25,14 @@ namespace scitbx { namespace math { namespace gaussian {
       sum() {}
 
       //! Initialization of the constant.
-      sum(FloatType const& c)
+      explicit
+      sum(FloatType const& c, bool use_c=true)
       :
         c_(c),
-        use_c_(true)
-      {}
+        use_c_(use_c)
+      {
+        SCITBX_ASSERT(use_c || c == 0);
+      }
 
       //! Initialization of the terms and optionally the constant.
       /*! If c is different from zero use_c will automatically be

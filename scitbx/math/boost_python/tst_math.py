@@ -234,6 +234,10 @@ def exercise_gaussian_sum():
   assert approx_equal(g.c(), 0)
   assert g.use_c()
   assert g.n_parameters() == 1
+  g = gaussian.sum(0, 0001)
+  assert g.use_c()
+  g = gaussian.sum(0, 00000)
+  assert not g.use_c()
   g = gaussian.sum(1)
   assert g.n_terms() == 0
   assert g.array_of_a() == ()
