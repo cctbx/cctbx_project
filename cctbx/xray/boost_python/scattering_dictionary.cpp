@@ -80,6 +80,9 @@ namespace {
       return result;
     }
 
+    static std::size_t
+    dict_size(w_t const& o) { return o.dict().size(); }
+
     static
     boost::python::tuple
     getstate(boost::python::object w_obj)
@@ -125,8 +128,10 @@ namespace {
       using namespace boost::python;
       class_<w_t>("scattering_dictionary")
         .def(init<af::const_ref<scatterer<> > const&>())
-        .def("size", &w_t::size)
+        .def("n_scatterers", &w_t::n_scatterers)
         .def("dict", as_python_dict)
+        .def("dict_size", dict_size)
+        .def("scatterer_permutation", &w_t::scatterer_permutation)
         .def("assign", &w_t::assign)
         .def("assign_from_table", &w_t::assign_from_table)
         .def_pickle(scattering_dictionary_wrappers())

@@ -19,11 +19,16 @@ namespace cctbx { namespace xray {
     public:
       typedef std::map<std::string, scatterer_group> dict_type;
 
-      scattering_dictionary() {}
+      scattering_dictionary()
+      :
+        n_scatterers_(0)
+      {}
 
       template <typename XrayScattererType>
       scattering_dictionary(
         af::const_ref<XrayScattererType> const& xray_scatterers)
+      :
+        n_scatterers_(xray_scatterers.size())
       {
         for(std::size_t i=0;i<xray_scatterers.size();i++) {
           dict_[xray_scatterers[i].caasf.label()].member_indices.push_back(i);
@@ -31,13 +36,27 @@ namespace cctbx { namespace xray {
       }
 
       std::size_t
-      size() const { return dict_.size(); }
+      n_scatterers() const { return n_scatterers_; }
 
       dict_type const&
       dict() const { return dict_; }
 
       dict_type&
       dict() { return dict_; }
+
+      af::shared<std::size_t>
+      scatterer_permutation() const
+      {
+        af::shared<std::size_t> result((af::reserve(n_scatterers_)));
+        for(dict_type::const_iterator e=dict_.begin();e!=dict_.end();e++) {
+          af::const_ref<std::size_t>
+            member_indices = e->second.member_indices.const_ref();
+          for(std::size_t mi=0;mi<member_indices.size();mi++) {
+            result.push_back(member_indices[mi]);
+          }
+        }
+        return result;
+      }
 
       void
       assign(
@@ -73,6 +92,7 @@ namespace cctbx { namespace xray {
       }
 
     protected:
+      std::size_t n_scatterers_;
       dict_type dict_;
 
       bool

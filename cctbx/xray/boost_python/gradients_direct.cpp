@@ -23,6 +23,7 @@ namespace {
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
+                  scattering_dictionary const&,
                   af::const_ref<std::complex<float_type> > const&,
                   gradient_flags const&,
                   std::size_t>())
@@ -31,6 +32,7 @@ namespace {
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
+                  scattering_dictionary const&,
                   af::const_ref<std::complex<float_type> > const&,
                   gradient_flags const&,
                   std::size_t>())
