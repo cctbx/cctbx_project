@@ -33,7 +33,11 @@ def exercise_map_collect(xtal, friedel_flag, fcalc, conjugate):
     xtal.UnitCell, xtal.SgInfo, friedel_flag,
     max_q, map, n_complex, conjugate)
   js = shared.join_sets(fcalc.H, miller2)
-  assert js.pairs().size() == fcalc.H.size()
+  for i in xrange(2):
+    if (i == 0): m = fcalc.H
+    else: m = miller2
+    for j in js.singles(i):
+      assert abs(xtal.UnitCell.Q(m[j]) - max_q) < 1.e-5
   debug_utils.show_structure_factor_correlation(
     "map/collect1", fcalc.H, js, fcalc.F, fcalc2,
     min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
