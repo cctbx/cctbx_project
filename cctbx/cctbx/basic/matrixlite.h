@@ -102,6 +102,12 @@ namespace boost {
 
     template <class T, std::size_t N>
     std::size_t
+    array_min_index(const boost::array<T, N>& a) {
+      return std::min_element(a.begin(), a.end()) - a.begin();
+    }
+
+    template <class T, std::size_t N>
+    std::size_t
     array_max_index(const boost::array<T, N>& a) {
       return std::max_element(a.begin(), a.end()) - a.begin();
     }

@@ -9,7 +9,7 @@
  */
 
 /*! \file
-    Toolbox for the handling of anisotropic displacement parameters (adp).
+    Toolbox for the handling of anisotropic displacement parameters (ADPs).
  */
 
 #ifndef CCTBX_ADPTBX_H
@@ -336,13 +336,11 @@ namespace adptbx {
       <p>
           |(adp - lambda * I)| = 0
       <p>
-      where I is the identity matrix. The solution is
+      where I is the identity matrix. The solutions are
       obtained analytically using Cardan's formula.
       Detailed comments are embedded in the source code.
       <p>
-      An exception is thrown if the cubic equation has
-      roots that are negative or zero. This indicates that
-      the anisotropic displacement tensor is not positive definite.
+      See also: Eigenvectors().
    */
   template <class FloatType>
   boost::array<FloatType, 3>
@@ -393,13 +391,64 @@ namespace adptbx {
     result[0] = (u + v).real();
     result[1] = (epsilon1 * u + epsilon2 * v).real();
     result[2] = (epsilon2 * u + epsilon1 * v).real();
-    for(std::size_t i = 0;i<3;i++) {
-      // convert the solutions y of the reduced form to the
-      // solutions x of the normal form.
-      result[i] -= r / 3.;
-      if (result[i] <= 0.) throw not_positive_definite;
-    }
+    // convert the solutions y of the reduced form to the
+    // solutions x of the normal form.
+    for(std::size_t i = 0;i<3;i++) result[i] -= r / 3.;
     return result;
+  }
+
+  /*! \brief Test if the anisotropic displacement tensor is
+      positive definite, given eigenvalues.
+   */
+  /*! Test if all eigenvalues are > 0.
+      <p>
+      See also: CheckPositiveDefinite(), Eigenvalues().
+   */
+  template <class FloatType>
+  bool
+  isPositiveDefinite(const boost::array<FloatType, 3>& adp_eigenvalues) {
+    return adp_eigenvalues[boost::array_min_index(adp_eigenvalues)] > 0.;
+  }
+
+  /*! \brief Test if the anisotropic displacement tensor is
+      positive definite.
+   */
+  /*! Test if all eigenvalues are > 0.
+      <p>
+      See also: CheckPositiveDefinite(), Eigenvalues().
+   */
+  template <class FloatType>
+  bool
+  isPositiveDefinite(const boost::array<FloatType, 6>& adp) {
+    return isPositiveDefinite(Eigenvalues(adp));
+  }
+
+  /*! \brief Assert that the anisotropic displacement tensor is
+      positive definite, given eigenvalues.
+   */
+  /*! An exception is thrown if the assertion fails.
+      <p>
+      See also: isPositiveDefinite(), Eigenvalues().
+   */
+  template <class FloatType>
+  void
+  CheckPositiveDefinite(const boost::array<FloatType, 3>& adp_eigenvalues) {
+    if (!(isPositiveDefinite(adp_eigenvalues))) {
+     throw not_positive_definite;
+    }
+  }
+
+  /*! \brief Assert that the anisotropic displacement tensor is
+      positive definite.
+   */
+  /*! An exception is thrown if the assertion fails.
+      <p>
+      See also: isPositiveDefinite(), Eigenvalues().
+   */
+  template <class FloatType>
+  void
+  CheckPositiveDefinite(const boost::array<FloatType, 6>& adp) {
+    CheckPositiveDefinite(Eigenvalues(adp));
   }
 
   namespace detail {
