@@ -13,6 +13,7 @@
 
 #include <cctbx/translation_search/fast_nv1995/intermediates.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
 
 namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
 
