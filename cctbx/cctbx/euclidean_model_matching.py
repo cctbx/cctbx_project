@@ -294,7 +294,8 @@ def weed_refined_matches(space_group_number, refined_matches,
         trivial_matches_only = 00000
         break
     if (trivial_matches_only):
-      while (refined_matches[0].pairs[0] != (0,0)): del refined_matches[0]
+      while (    len(refined_matches) > 1
+             and refined_matches[0].pairs[0] != (0,0)): del refined_matches[0]
       while (len(refined_matches) > 1): del refined_matches[-1]
     else:
       while (len(refined_matches[-1].pairs) == 1): del refined_matches[-1]
