@@ -82,35 +82,48 @@ class structure(crystal.special_position_settings):
   def special_position_indices(self):
     return self._site_symmetry_table.special_position_indices()
 
-  def scattering_dict(self, custom_dict=None, d_min=None, table=None):
+  def scattering_dict(self,
+        custom_dict=None,
+        d_min=None,
+        table=None,
+        types_without_a_scattering_contribution=None):
     assert table in [None, "n_gaussian", "it1992", "wk1995"]
     if (table == "it1992"): assert d_min in [0,None] or d_min >= 1/4.
     if (table == "wk1995"): assert d_min in [0,None] or d_min >= 1/12.
     if (   self._scattering_dict_is_out_of_date
         or custom_dict is not None
         or d_min is not None
-        or table is not None):
+        or table is not None
+        or types_without_a_scattering_contribution is not None):
       new_dict = {"const": eltbx.xray_scattering.gaussian(1) }
-      if (    self._scattering_dict is not None
-          and d_min is None
-          and table is None):
+      old_dict = {}
+      if (self._scattering_dict is not None):
         for k,v in self._scattering_dict.dict().items():
-          new_dict[k] = v.gaussian
+          old_dict[k] = v.gaussian
+        if (d_min is None and table is None):
+          new_dict.update(old_dict)
+      if (types_without_a_scattering_contribution is not None):
+        for k in types_without_a_scattering_contribution:
+          new_dict[k] = eltbx.xray_scattering.gaussian(0)
       if (custom_dict is not None):
         new_dict.update(custom_dict)
       if (d_min is None): d_min = 0
       self._scattering_dict = ext.scattering_dictionary(self.scatterers())
       for key_undef in self._scattering_dict.find_undefined():
-        if (new_dict.has_key(key_undef)):
-          val = new_dict[key_undef]
-        else:
-          if (table == "it1992"):
-            val = eltbx.xray_scattering.it1992(key_undef, 1).fetch()
-          elif (table == "wk1995"):
-            val = eltbx.xray_scattering.wk1995(key_undef, 1).fetch()
-          else:
-            val = eltbx.xray_scattering.n_gaussian_table_entry(
-              key_undef, d_min, 0).gaussian()
+        val = new_dict.get(key_undef, None)
+        if (val is None):
+          try:
+            if (table == "it1992"):
+              val = eltbx.xray_scattering.it1992(key_undef, True).fetch()
+            elif (table == "wk1995"):
+              val = eltbx.xray_scattering.wk1995(key_undef, True).fetch()
+            else:
+              val = eltbx.xray_scattering.n_gaussian_table_entry(
+                key_undef, d_min, 0).gaussian()
+          except RuntimeError:
+            raise
+            val = old_dict.get(key_undef, None)
+            if (val is None): raise
         self._scattering_dict.assign(key_undef, val)
       self._scattering_dict_is_out_of_date = False
     return self._scattering_dict
@@ -358,6 +371,38 @@ class structure(crystal.special_position_settings):
       site_symmetry_table=self._site_symmetry_table)
     return result
 
+  def pair_asu_table(self,
+        distance_cutoff=None,
+        asu_mappings_buffer_thickness=None,
+        asu_mappings_is_inside_epsilon=None):
+    assert distance_cutoff is not None or asu_mappings_buffer_thickness is not None
+    if (asu_mappings_buffer_thickness is None):
+      asu_mappings_buffer_thickness = distance_cutoff
+    asu_mappings = self.asu_mappings(
+      buffer_thickness=asu_mappings_buffer_thickness)
+    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    if (distance_cutoff is not None):
+      pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+    return pair_asu_table
+
+  def show_pairs(self,
+        distance_cutoff,
+        asu_mappings_buffer_thickness=None,
+        asu_mappings_is_inside_epsilon=None,
+        show_cartesian=False,
+        keep_pair_asu_table=False,
+        out=None):
+    assert distance_cutoff is not None
+    return show_pairs(
+      xray_structure=self,
+      pair_asu_table=self.pair_asu_table(
+        distance_cutoff=distance_cutoff,
+        asu_mappings_buffer_thickness=asu_mappings_buffer_thickness,
+        asu_mappings_is_inside_epsilon=asu_mappings_is_inside_epsilon),
+      show_cartesian=show_cartesian,
+      keep_pair_asu_table=keep_pair_asu_table,
+      out=out)
+
   def difference_vectors_cart(self, other):
     return other.sites_cart() - self.sites_cart()
 
@@ -366,9 +411,23 @@ class structure(crystal.special_position_settings):
 
 class show_pairs:
 
-  def __init__(self, xray_structure, pair_asu_table):
+  def __init__(self,
+        xray_structure,
+        pair_asu_table,
+        show_cartesian=False,
+        keep_pair_asu_table=False,
+        out=None):
+    if (out is None): out = sys.stdout
+    if (keep_pair_asu_table):
+      self.pair_asu_table = pair_asu_table
+    else:
+      self.pair_asu_table = None
     self.distances = flex.double()
     self.pair_counts = flex.size_t()
+    label_len = 1
+    for scatterer in xray_structure.scatterers():
+      label_len = max(label_len, len(scatterer.label))
+    label_fmt = "%%-%ds" % (label_len+1)
     unit_cell = xray_structure.unit_cell()
     scatterers = xray_structure.scatterers()
     sites_frac = xray_structure.sites_frac()
@@ -388,9 +447,15 @@ class show_pairs:
           distance = unit_cell.distance(site_frac_i, rt_mx_ji * site_frac_j)
           dists.append(distance)
           j_seq_i_group.append((j_seq,i_group))
-      s = "%s(%d):" % (scatterers[i_seq].label, i_seq+1)
-      s = "%-15s pair count: %3d" % (s, pair_count)
-      print "%-32s"%s, "<<"+",".join([" %7.4f" % x for x in site_frac_i])+">>"
+      s = label_fmt % scatterers[i_seq].label \
+        + " pair count: %3d" % pair_count
+      if (show_cartesian):
+        formatted_site = [" %7.2f" % x
+          for x in unit_cell.orthogonalize(site_frac_i)]
+      else:
+        formatted_site = [" %7.4f" % x for x in site_frac_i]
+      print >> out, ("%%-%ds" % (label_len+23)) % s, \
+        "<<"+",".join(formatted_site)+">>"
       permutation = flex.sort_permutation(data=dists)
       for j_seq,i_group in flex.select(j_seq_i_group, permutation):
         site_frac_j = sites_frac[j_seq]
@@ -402,14 +467,19 @@ class show_pairs:
           site_frac_ji = rt_mx_ji * site_frac_j
           distance = unit_cell.distance(site_frac_i, site_frac_ji)
           self.distances.append(distance)
-          print "  %-10s" % ("%s(%d):" % (scatterers[j_seq].label, j_seq+1)),
-          print "%8.4f" % distance,
+          print >> out, " ", label_fmt % (scatterers[j_seq].label + ":"),
+          print >> out, "%8.4f" % distance,
           if (i_j_sym != 0):
             s = "sym. equiv."
           else:
             s = "           "
-          s += " (" + ",".join([" %7.4f" % x for x in site_frac_ji]) +")"
-          print s
+          if (show_cartesian):
+            formatted_site = [" %7.2f" % x
+              for x in unit_cell.orthogonalize(site_frac_ji)]
+          else:
+            formatted_site = [" %7.4f" % x for x in site_frac_ji]
+          s += " (" + ",".join(formatted_site) +")"
+          print >> out, s
       if (pair_count == 0):
-        print "  no neighbors"
+        print >> out, "  no neighbors"
       self.pair_counts.append(pair_count)
