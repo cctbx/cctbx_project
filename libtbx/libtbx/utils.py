@@ -1,6 +1,6 @@
 from __future__ import division
 import time
-import sys
+import sys, os
 
 class Keep: pass
 
@@ -38,3 +38,13 @@ def date_and_time():
     offs = -time.timezone
   return time.strftime("Date %Y-%m-%d Time %H:%M:%S", localtime) \
        + " %s %+03d%02d" % (tzname, offs//3600, offs//60%60)
+
+def format_cpu_times(show_micro_seconds_per_tick=True):
+  t = os.times()
+  result = "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  if (show_micro_seconds_per_tick):
+    try: python_ticker = sys.gettickeraccumulation()
+    except AttributeError: pass
+    else:
+      result += " micro-seconds/tick: %.3f" % ((t[0]+t[1])/python_ticker*1.e6)
+  return result
