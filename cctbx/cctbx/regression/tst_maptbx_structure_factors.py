@@ -176,16 +176,14 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     for j in xrange(0, n[1], under_sampling):
       for k in xrange(0, n[2], under_sampling):
         x.append(x_source[(i,j,k)])
-  y = maptbx.copy(y_source, flex.grid(y_source.focus()))
-  y.resize(flex.grid(y.size()))
+  y = maptbx.copy(y_source, flex.grid(y_source.focus())).as_1d()
   if (0 or verbose):
     print "x:", tuple(x)
     print "y:", tuple(y)
   assert flex.max(flex.abs(x-y)) \
       < (flex.max(flex.abs(x))+flex.max(flex.abs(y)))/2*1.e-6
   if (under_sampling == 1):
-    x = maptbx.copy(x_source, flex.grid(x_source.focus()))
-    x.resize(flex.grid(x.size()))
+    x = maptbx.copy(x_source, flex.grid(x_source.focus())).as_1d()
     r = flex.linear_regression(x, y)
     assert r.correlation() >= 0.9999
 
