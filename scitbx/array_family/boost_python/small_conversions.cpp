@@ -8,24 +8,10 @@
      2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <scitbx/array_family/small.h>
-#include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/small_conversions.h>
 #include <scitbx/array_family/flex_grid_accessor.h>
 
 namespace scitbx { namespace af { namespace boost_python {
-
-  namespace {
-
-    template <typename ElementType, std::size_t N>
-    struct tuple_mapping_small {
-      tuple_mapping_small() {
-        scitbx::boost_python::tuple_mapping_fixed_capacity<
-          small<ElementType, N> >();
-      }
-    };
-
-  } // namespace
 
   void register_small_conversions()
   {
@@ -33,7 +19,7 @@ namespace scitbx { namespace af { namespace boost_python {
     if (already_registered) return;
     already_registered = true;
 
-    scitbx::boost_python::tuple_mapping_fixed_capacity<
+    scitbx::boost_python::container_conversions::tuple_mapping_fixed_capacity<
       flex_grid_default_index_type>();
   }
 

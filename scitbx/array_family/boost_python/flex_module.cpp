@@ -10,7 +10,6 @@
 
 #include <scitbx/array_family/flex_grid_accessor.h>
 #include <scitbx/boost_python/utils.h>
-#include <scitbx/boost_python/container_conversions.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <scitbx/array_family/boost_python/small_conversions.h>

@@ -586,9 +586,9 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       using namespace boost::python;
 
-      scitbx::boost_python::register_container_from_python_sequence<
+      scitbx::boost_python::container_conversions::from_python_sequence<
         shared_plain<ElementType>,
-        scitbx::boost_python::variable_size_container_registration_adaptor>();
+        scitbx::boost_python::container_conversions::variable_size_policy>();
 
       m.add(
         class_<flex_items<ElementType> >((python_name+"_items").c_str(),
