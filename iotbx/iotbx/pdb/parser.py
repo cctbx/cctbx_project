@@ -182,11 +182,16 @@ class pdb_record:
     # 31 - 40       Real(10.6)     s[n][3]        Sn3
     # 46 - 55       Real(10.5)     u[n]           Un
     self.n = int(self.record_name[5])
-    try:
-      self.Sn1, self.Sn2, self.Sn3, self.Un = [float(self.raw[i:i+10])
-        for i in [10,20,30,45]]
-    except ValueError:
-      raise self.raise_FormatError()
+    values = []
+    for i in [10,20,30,45]:
+      fld = self.raw[i:i+10]
+      if (len(fld.strip()) == 0):
+        value = 0
+      else:
+        try: value = float(fld)
+        except ValueError: raise self.raise_FormatError()
+      values.append(value)
+    self.Sn1, self.Sn2, self.Sn3, self.Un = values
 
   def read_SCALE1(self):
     self.read_SCALEn()
