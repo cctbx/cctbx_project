@@ -13,11 +13,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION >= 103000
-#include <boost/python/return_by_value.hpp>
-#endif
-#include <scitbx/boost_python/container_conversions.h>
+#include <scitbx/boost_python/utils.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -27,6 +23,14 @@ namespace {
   {
     typedef peak_list<> w_t;
 
+    static af::tiny<long, 3>
+    grid_indices(w_t const& self, long i)
+    {
+      using scitbx::boost_python::positive_getitem_index;
+      std::size_t j = positive_getitem_index(i, self.grid_indices().size());
+      return self.grid_indices()[j];
+    }
+
     static void
     wrap()
     {
@@ -35,45 +39,23 @@ namespace {
       class_<w_t>("peak_list", no_init)
         .def(init<af::const_ref<float, af::c_grid_padded<3> > const&,
                   af::ref<long, af::c_grid<3> > const&,
-                  optional<int, std::size_t> >())
+                  int, std::size_t, bool>())
         .def(init<af::const_ref<float, af::c_grid_padded<3> > const&,
                   af::ref<long, af::c_grid<3> > const&,
-                  int, float, std::size_t>())
+                  int, float, std::size_t, bool>())
         .def(init<af::const_ref<double, af::c_grid_padded<3> > const&,
                   af::ref<long, af::c_grid<3> > const&,
-                  optional<int, std::size_t> >())
+                  int, std::size_t, bool>())
         .def(init<af::const_ref<double, af::c_grid_padded<3> > const&,
                   af::ref<long, af::c_grid<3> > const&,
-                  int, double, std::size_t>())
+                  int, double, std::size_t, bool>())
         .def("gridding", &w_t::gridding, ccr())
-        .def("entries", &w_t::entries, ccr())
+        .def("size", &w_t::size)
+        .def("grid_indices", grid_indices)
+        .def("grid_heights", &w_t::grid_heights)
+        .def("sites", &w_t::sites)
+        .def("heights", &w_t::heights)
       ;
-    }
-  };
-
-  struct peak_list_indexed_value_wrappers
-  {
-    typedef peak_list<>::indexed_value_type w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-#if BOOST_VERSION >= 103000
-      typedef return_value_policy<return_by_value> rbv;
-#endif
-      class_<w_t>("peak_list_indexed_value", no_init)
-#if BOOST_VERSION >= 103000
-        .add_property("index", make_getter(&w_t::index, rbv()))
-#else
-        .def_readonly("index", &w_t::index)
-#endif
-        .def_readonly("value", &w_t::value)
-      ;
-
-      using namespace scitbx::boost_python::container_conversions;
-      to_python_converter<af::shared<w_t>,
-                 to_tuple<af::shared<w_t> > >();
     }
   };
 
@@ -82,7 +64,6 @@ namespace {
   void wrap_peak_list()
   {
     peak_list_wrappers::wrap();
-    peak_list_indexed_value_wrappers::wrap();
   }
 
 }}} // namespace cctbx::maptbx::boost_python

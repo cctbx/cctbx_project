@@ -35,12 +35,13 @@ def run_fast_nv1995(f_obs, f_calc_fixed, f_calc_p1,
     data=fast_nv1995.target_map(),
     tags=grid_tags.tag_array(),
     peak_search_level=1,
-    max_peaks=10)
+    max_peaks=10,
+    interpolate=00000)
   if (0 or verbose):
     print "gridding:", gridding
-    for entry in peak_list.entries():
-      print "(%d,%d,%d)" % entry.index, "%.6g" % (entry.value,)
-  assert approx_equal(map_stats.max(), peak_list.entries()[0].value)
+    for i,site in peak_list.sites().items():
+      print "(%.4f,%.4f,%.4f)" % site, "%.6g" % peak_list.heights()[i]
+  assert approx_equal(map_stats.max(), peak_list.heights()[0])
   return peak_list
 
 def test_atom(space_group_info, use_primitive_setting,
@@ -114,10 +115,10 @@ def test_atom(space_group_info, use_primitive_setting,
       f_obs, f_calc_fixed, f_calc_p1,
       symmetry_flags, gridding, grid_tags, verbose)
     if (structure_fixed.scatterers().size() < n_elements):
-      assert peak_list.entries()[0].value < 1
+      assert peak_list.heights()[0] < 1
     else:
-      assert peak_list.entries()[0].value > 0.99
-  assert peak_list.entries()[0].value > 0.99
+      assert peak_list.heights()[0] > 0.99
+  assert peak_list.heights()[0] > 0.99
 
 def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
                   d_min=3., grid_resolution_factor=0.48, max_prime=5,
@@ -183,7 +184,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
   peak_list = run_fast_nv1995(
     f_obs, f_calc_fixed, f_calc_p1,
     symmetry_flags, gridding, grid_tags, verbose)
-  assert peak_list.entries()[0].value > 0.99
+  assert peak_list.heights()[0] > 0.99
 
 def run_call_back(flags, space_group_info):
   if (space_group_info.group().order_p() > 8 and not flags.HighSymmetry):

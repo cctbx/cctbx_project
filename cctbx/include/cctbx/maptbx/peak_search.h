@@ -15,6 +15,8 @@
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/loops.h>
+#include <scitbx/array_family/sort.h>
+#include <scitbx/array_family/tiny_algebra.h>
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 
@@ -223,24 +225,22 @@ namespace cctbx { namespace maptbx {
     af::shared<CountType> slots;
   };
 
-
-  template <typename IndexType = af::tiny<long, 3>,
+  template <typename GridIndexType = af::tiny<long, 3>,
+            typename SiteType = scitbx::vec3<double>,
             typename ValueType = double>
   class peak_list
   {
     public:
-      typedef
-        scitbx::indexed_value<IndexType, ValueType, std::greater<ValueType> >
-          indexed_value_type;
-
       peak_list() {}
 
       template <typename DataType,
                 typename TagType>
-      peak_list(af::const_ref<DataType, af::c_grid_padded<3> > const& data,
-                af::ref<TagType, af::c_grid<3> > const& tags,
-                int peak_search_level=1,
-                std::size_t max_peaks=0)
+      peak_list(
+        af::const_ref<DataType, af::c_grid_padded<3> > const& data,
+        af::ref<TagType, af::c_grid<3> > const& tags,
+        int peak_search_level=1,
+        std::size_t max_peaks=0,
+        bool interpolate=true)
       :
         gridding_(data.accessor().focus())
       {
@@ -252,17 +252,18 @@ namespace cctbx { namespace maptbx {
           peak_cutoff = hist.get_cutoff(max_peaks);
           use_cutoff = true;
         }
-        collect_peaks(data, tags, peak_cutoff, use_cutoff);
-        std::sort(entries_.begin(), entries_.end());
+        process_peaks(data, tags, peak_cutoff, use_cutoff, interpolate);
       }
 
       template <typename DataType,
                 typename TagType>
-      peak_list(af::const_ref<DataType, af::c_grid_padded<3> > const& data,
-                af::ref<TagType, af::c_grid<3> > const& tags,
-                int peak_search_level,
-                ValueType peak_cutoff,
-                std::size_t max_peaks)
+      peak_list(
+        af::const_ref<DataType, af::c_grid_padded<3> > const& data,
+        af::ref<TagType, af::c_grid<3> > const& tags,
+        int peak_search_level,
+        ValueType peak_cutoff,
+        std::size_t max_peaks,
+        bool interpolate=true)
       :
         gridding_(data.accessor().focus())
       {
@@ -271,19 +272,57 @@ namespace cctbx { namespace maptbx {
           peak_histogram<ValueType> hist(data, tags);
           peak_cutoff = std::max(peak_cutoff, hist.get_cutoff(max_peaks));
         }
-        collect_peaks(data, tags, peak_cutoff, true);
-        std::sort(entries_.begin(), entries_.end());
+        process_peaks(data, tags, peak_cutoff, true, interpolate);
       }
 
-      IndexType const&
+      GridIndexType const&
       gridding() const { return gridding_; }
 
-      af::shared<indexed_value_type> const&
-      entries() const { return entries_; }
+      std::size_t
+      size() const
+      {
+        CCTBX_ASSERT(grid_heights().size() == grid_indices().size());
+        CCTBX_ASSERT(sites().size() == grid_indices().size());
+        CCTBX_ASSERT(heights().size() == grid_indices().size());
+        return grid_indices().size();
+      }
+
+      /*! Python: grid_indices(i)
+       */
+      af::shared<GridIndexType>
+      grid_indices() const { return grid_indices_; }
+
+      af::shared<ValueType>
+      grid_heights() const { return grid_heights_; }
+
+      af::shared<SiteType>
+      sites() const { return sites_; }
+
+      af::shared<ValueType>
+      heights() const { return heights_; }
 
     protected:
-      IndexType gridding_;
-      af::shared<indexed_value_type> entries_;
+      GridIndexType gridding_;
+      af::shared<GridIndexType> grid_indices_;
+      af::shared<ValueType> grid_heights_;
+      af::shared<SiteType> sites_;
+      af::shared<ValueType> heights_;
+
+      template <typename DataType,
+                typename TagType>
+      void
+      process_peaks(
+        af::const_ref<DataType, af::c_grid_padded<3> > const& data,
+        af::const_ref<TagType, af::c_grid<3> > const& tags,
+        ValueType const& cutoff,
+        bool use_cutoff,
+        bool interpolate)
+      {
+        collect_peaks(data, tags, cutoff, use_cutoff);
+        if (interpolate) interpolate_sites_and_heights();
+        else copy_sites_and_heights();
+        sort();
+      }
 
       template <typename DataType,
                 typename TagType>
@@ -298,9 +337,40 @@ namespace cctbx { namespace maptbx {
         af::nested_loop<index_type> loop(data.accessor().focus());
         for (index_type const& pivot = loop(); !loop.over(); loop.incr()) {
           if (tags(pivot) == -2 && (!use_cutoff || data(pivot) >= cutoff)) {
-            entries_.push_back(indexed_value_type(pivot, data(pivot)));
+            grid_indices_.push_back(pivot);
+            grid_heights_.push_back(data(pivot));
           }
         }
+      }
+
+      void
+      copy_sites_and_heights()
+      {
+        af::const_ref<GridIndexType> gi = grid_indices_.const_ref();
+        af::tiny<ValueType, 3> gr(gridding());
+        sites_.reserve(gi.size());
+        for(std::size_t i=0;i<gi.size();i++) {
+          sites_.push_back(af::tiny<ValueType, 3>(gi[i]) / gr);
+        }
+        heights_.assign(grid_heights_);
+      }
+
+      void
+      interpolate_sites_and_heights()
+      {
+        throw CCTBX_NOT_IMPLEMENTED();
+      }
+
+      void
+      sort()
+      {
+        af::shared<std::size_t>
+          perm = af::sort_permutation(heights_.const_ref(), true);
+        af::const_ref<std::size_t> p = perm.const_ref();
+        grid_indices_ = af::shuffle(grid_indices_.const_ref(), p);
+        grid_heights_ = af::shuffle(grid_heights_.const_ref(), p);
+        sites_ = af::shuffle(sites_.const_ref(), p);
+        heights_ = af::shuffle(heights_.const_ref(),p);
       }
   };
 

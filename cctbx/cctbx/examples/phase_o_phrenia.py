@@ -11,13 +11,11 @@ def peak_cluster_reduction(crystal_symmetry, peak_list,
   special_position_settings = crystal.special_position_settings(
     crystal_symmetry=crystal_symmetry,
     min_distance_sym_equiv=min_peak_distance)
-  gridding = peak_list.gridding()
   peaks = []
-  for entry in peak_list.entries():
-    site = [float(entry.index[i]) / gridding[i] for i in xrange(3)]
+  for i,site in peak_list.sites().items():
     peaks.append(dicts.easy(
       site=special_position_settings.site_symmetry(site).exact_site(),
-      height=entry.value))
+      height=peak_list.heights()[i]))
   reduced_peaks = []
   for peak in peaks:
     site_symmetry = special_position_settings.site_symmetry(peak.site)
@@ -57,7 +55,8 @@ def calculate_exp_i_two_phi_peaks(xray_structure, d_min,
   peak_list = maptbx.peak_list(
     data=real_map,
     tags=grid_tags.tag_array(),
-    max_peaks=10*max_reduced_peaks)
+    max_peaks=10*max_reduced_peaks,
+    interpolate=00000)
   reduced_peaks = peak_cluster_reduction(
     crystal_symmetry=xray_structure,
     peak_list=peak_list,
