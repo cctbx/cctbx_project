@@ -7,7 +7,6 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
-import libtbx.itertbx
 from cStringIO import StringIO
 import sys, os
 

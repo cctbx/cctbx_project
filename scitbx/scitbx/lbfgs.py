@@ -135,7 +135,6 @@ def run_fortran(target_evaluator,
   "For debugging only!"
   from scitbx.python_utils.misc import store
   from fortran_lbfgs import lbfgs as fortran_lbfgs
-  from libtbx.itertbx import count
   import Numeric
   if (termination_params is None):
     termination_params = termination_parameters()
@@ -161,10 +160,10 @@ def run_fortran(target_evaluator,
   minimizer = store(error=None)
   while 1:
     x_, f, g_ = target_evaluator()
-    for i,xi in zip(count(),x_): x[i] = xi
-    for i,gi in zip(count(),g_): g[i] = gi
+    for i,xi in enumerate(x_): x[i] = xi
+    for i,gi in enumerate(g_): g[i] = gi
     fortran_lbfgs(n, m, x, f, g, diagco, diag, iprint, eps, xtol, w, iflag)
-    for i,xi in zip(count(),x): x_[i] = xi
+    for i,xi in enumerate(x): x_[i] = xi
     if (iflag[0] == 0):
       break
     if (iflag[0] < 0):

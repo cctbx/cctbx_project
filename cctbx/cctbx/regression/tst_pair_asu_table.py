@@ -1,7 +1,6 @@
 from iotbx.kriber import strudat
 from cctbx import crystal
 from scitbx.python_utils.misc import adopt_init_args
-import libtbx.itertbx
 import math
 import sys, os
 
