@@ -15,7 +15,10 @@ def import_ext(name):
     sys.setdlopenflags(previous_dlopenflags)
   return mod
 
-meta_class = import_ext("boost_python_meta_ext").empty.__class__
+ext = import_ext("boost_python_meta_ext")
+meta_class = ext.empty.__class__
+platform_info = ext.platform_info()
+assert len(platform_info) > 0 # please disable this assertion and send email to cctbx@cci.lbl.gov
 
 class injector(object):
   "see boost/libs/python/doc/tutorial/doc/quickstart.txt"
