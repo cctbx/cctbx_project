@@ -501,523 +501,516 @@ BOOST_PYTHON_END_CONVERSION_NAMESPACE
 
 BOOST_PYTHON_MODULE_INIT(sgtbx)
 {
-  try
-  {
-#   include <cctbx/basic/from_bpl_import.h>
+# include <cctbx/basic/from_bpl_import.h>
 
-    python::module_builder this_module("sgtbx");
+  python::module_builder this_module("sgtbx");
 
-    const std::string Revision = "$Revision$";
-    this_module.add(ref(to_python(
-        Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
+  const std::string Revision = "$Revision$";
+  this_module.add(ref(to_python(
+      Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    this_module.add(ref(to_python(STBF)), "STBF");
-    this_module.add(ref(to_python(CRBF)), "CRBF");
-    this_module.add(ref(to_python(CTBF)), "CTBF");
+  this_module.add(ref(to_python(STBF)), "STBF");
+  this_module.add(ref(to_python(CRBF)), "CRBF");
+  this_module.add(ref(to_python(CTBF)), "CTBF");
 
-    class_builder<rational>
-    py_rational(this_module, "rational");
-    class_builder<SpaceGroupSymbols>
-    py_SpaceGroupSymbols(this_module, "SpaceGroupSymbols");
-    class_builder<SpaceGroupSymbolIterator>
-    py_SpaceGroupSymbolIterator(this_module, "SpaceGroupSymbolIterator");
-    class_builder<parse_string>
-    py_parse_string(this_module, "parse_string");
-    class_builder<RotMxInfo>
-    py_RotMxInfo(this_module, "RotMxInfo");
-    class_builder<TranslationComponents>
-    py_TranslationComponents(this_module, "TranslationComponents");
-    class_builder<RTMx>
-    py_RTMx(this_module, "RTMx");
-    class_builder<ChOfBasisOp>
-    py_ChOfBasisOp(this_module, "ChOfBasisOp");
-    class_builder<Miller::SymEquivIndex>
-    py_Miller_SymEquivIndex(this_module, "Miller_SymEquivIndex");
-    class_builder<PhaseRestriction>
-    py_PhaseRestriction(this_module, "PhaseRestriction");
-    class_builder<SymEquivMillerIndices>
-    py_SymEquivMillerIndices(this_module, "SymEquivMillerIndices");
-    class_builder<SpaceGroup>
-    py_SpaceGroup(this_module, "SpaceGroup");
-    python::export_converters(py_SpaceGroup);
-    class_builder<std::vector<RTMx> >
-    py_std_vector_RTMx(this_module, "std_vector_RTMx");
-    class_builder<SpaceGroupInfo>
-    py_SpaceGroupInfo(this_module, "SpaceGroupInfo");
-    python::export_converters(py_SpaceGroupInfo);
-    class_builder<WyckoffPosition>
-    py_WyckoffPosition(this_module, "WyckoffPosition");
-    class_builder<WyckoffMapping>
-    py_WyckoffMapping(this_module, "WyckoffMapping");
-    class_builder<WyckoffTable>
-    py_WyckoffTable(this_module, "WyckoffTable");
-    class_builder<SpecialPositionSnapParameters>
-    py_SpecialPositionSnapParameters(this_module,
-      "SpecialPositionSnapParameters");
-    class_builder<SpecialPositionTolerances>
-    py_SpecialPositionTolerances(this_module, "SpecialPositionTolerances");
-    class_builder<SiteSymmetry>
-    py_SiteSymmetry(this_module, "SiteSymmetry");
-    class_builder<SymEquivCoordinates<double> >
-    py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
-    class_builder<BrickPoint>
-    py_BrickPoint(this_module, "BrickPoint");
-    class_builder<Brick>
-    py_Brick(this_module, "Brick");
-    class_builder<ReferenceReciprocalSpaceASU>
-    py_ReferenceReciprocalSpaceASU(this_module, "ReferenceReciprocalSpaceASU");
-    class_builder<ReciprocalSpaceASU>
-    py_ReciprocalSpaceASU(this_module, "ReciprocalSpaceASU");
-    class_builder<MillerIndexGenerator>
-    py_MillerIndexGenerator(this_module, "MillerIndexGenerator");
-    class_builder<Miller::IndexTableLayoutAdaptor>
-    py_Miller_IndexTableLayoutAdaptor(this_module,
-      "Miller_IndexTableLayoutAdaptor");
-    class_builder<Miller::AsymIndex>
-    py_Miller_AsymIndex(this_module, "Miller_AsymIndex");
-    class_builder<StructureSeminvariant>
-    py_StructureSeminvariant(this_module, "StructureSeminvariant");
+  class_builder<rational>
+  py_rational(this_module, "rational");
+  class_builder<SpaceGroupSymbols>
+  py_SpaceGroupSymbols(this_module, "SpaceGroupSymbols");
+  class_builder<SpaceGroupSymbolIterator>
+  py_SpaceGroupSymbolIterator(this_module, "SpaceGroupSymbolIterator");
+  class_builder<parse_string>
+  py_parse_string(this_module, "parse_string");
+  class_builder<RotMxInfo>
+  py_RotMxInfo(this_module, "RotMxInfo");
+  class_builder<TranslationComponents>
+  py_TranslationComponents(this_module, "TranslationComponents");
+  class_builder<RTMx>
+  py_RTMx(this_module, "RTMx");
+  class_builder<ChOfBasisOp>
+  py_ChOfBasisOp(this_module, "ChOfBasisOp");
+  class_builder<Miller::SymEquivIndex>
+  py_Miller_SymEquivIndex(this_module, "Miller_SymEquivIndex");
+  class_builder<PhaseRestriction>
+  py_PhaseRestriction(this_module, "PhaseRestriction");
+  class_builder<SymEquivMillerIndices>
+  py_SymEquivMillerIndices(this_module, "SymEquivMillerIndices");
+  class_builder<SpaceGroup>
+  py_SpaceGroup(this_module, "SpaceGroup");
+  python::export_converters(py_SpaceGroup);
+  class_builder<std::vector<RTMx> >
+  py_std_vector_RTMx(this_module, "std_vector_RTMx");
+  class_builder<SpaceGroupInfo>
+  py_SpaceGroupInfo(this_module, "SpaceGroupInfo");
+  python::export_converters(py_SpaceGroupInfo);
+  class_builder<WyckoffPosition>
+  py_WyckoffPosition(this_module, "WyckoffPosition");
+  class_builder<WyckoffMapping>
+  py_WyckoffMapping(this_module, "WyckoffMapping");
+  class_builder<WyckoffTable>
+  py_WyckoffTable(this_module, "WyckoffTable");
+  class_builder<SpecialPositionSnapParameters>
+  py_SpecialPositionSnapParameters(this_module,
+    "SpecialPositionSnapParameters");
+  class_builder<SpecialPositionTolerances>
+  py_SpecialPositionTolerances(this_module, "SpecialPositionTolerances");
+  class_builder<SiteSymmetry>
+  py_SiteSymmetry(this_module, "SiteSymmetry");
+  class_builder<SymEquivCoordinates<double> >
+  py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
+  class_builder<BrickPoint>
+  py_BrickPoint(this_module, "BrickPoint");
+  class_builder<Brick>
+  py_Brick(this_module, "Brick");
+  class_builder<ReferenceReciprocalSpaceASU>
+  py_ReferenceReciprocalSpaceASU(this_module, "ReferenceReciprocalSpaceASU");
+  class_builder<ReciprocalSpaceASU>
+  py_ReciprocalSpaceASU(this_module, "ReciprocalSpaceASU");
+  class_builder<MillerIndexGenerator>
+  py_MillerIndexGenerator(this_module, "MillerIndexGenerator");
+  class_builder<Miller::IndexTableLayoutAdaptor>
+  py_Miller_IndexTableLayoutAdaptor(this_module,
+    "Miller_IndexTableLayoutAdaptor");
+  class_builder<Miller::AsymIndex>
+  py_Miller_AsymIndex(this_module, "Miller_AsymIndex");
+  class_builder<StructureSeminvariant>
+  py_StructureSeminvariant(this_module, "StructureSeminvariant");
 
-    python::import_converters<uctbx::UnitCell>
-    UnitCell_converters("cctbx.uctbx", "UnitCell");
+  python::import_converters<uctbx::UnitCell>
+  UnitCell_converters("cctbx.uctbx", "UnitCell");
 
-    py_Miller_AsymIndex.declare_base(
-      py_Miller_SymEquivIndex, python::without_downcast);
+  py_Miller_AsymIndex.declare_base(
+    py_Miller_SymEquivIndex, python::without_downcast);
 
-    py_rational.def(constructor<>());
-    py_rational.def(constructor<int>());
-    py_rational.def(constructor<int, int>());
-    py_rational.def(rational_numerator, "numerator");
-    py_rational.def(rational_denominator, "denominator");
-    py_rational.def(rational_format_0, "format");
-    py_rational.def(rational_format_0, "__repr__");
-    py_rational.def(rational_format_1, "format");
+  py_rational.def(constructor<>());
+  py_rational.def(constructor<int>());
+  py_rational.def(constructor<int, int>());
+  py_rational.def(rational_numerator, "numerator");
+  py_rational.def(rational_denominator, "denominator");
+  py_rational.def(rational_format_0, "format");
+  py_rational.def(rational_format_0, "__repr__");
+  py_rational.def(rational_format_1, "format");
 
-    py_SpaceGroupSymbols.def(constructor<>());
-    py_SpaceGroupSymbols.def(constructor<const std::string&>());
-    py_SpaceGroupSymbols.def(constructor<const std::string&,
-                                         const std::string&>());
-    py_SpaceGroupSymbols.def(constructor<int>());
-    py_SpaceGroupSymbols.def(constructor<int,
-                                         const std::string&>());
-    py_SpaceGroupSymbols.def(constructor<int,
-                                         const std::string&,
-                                         const std::string&>());
-    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::SgNumber, "SgNumber");
-    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Schoenflies, "Schoenflies");
-    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Qualifier, "Qualifier");
-    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Hermann_Mauguin,
-                                                "Hermann_Mauguin");
-    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Extension, "Extension");
-    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::ExtendedHermann_Mauguin,
-                                                "ExtendedHermann_Mauguin");
-    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Hall, "Hall");
+  py_SpaceGroupSymbols.def(constructor<>());
+  py_SpaceGroupSymbols.def(constructor<const std::string&>());
+  py_SpaceGroupSymbols.def(constructor<const std::string&,
+                                       const std::string&>());
+  py_SpaceGroupSymbols.def(constructor<int>());
+  py_SpaceGroupSymbols.def(constructor<int,
+                                       const std::string&>());
+  py_SpaceGroupSymbols.def(constructor<int,
+                                       const std::string&,
+                                       const std::string&>());
+  py_SpaceGroupSymbols.def(&SpaceGroupSymbols::SgNumber, "SgNumber");
+  py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Schoenflies, "Schoenflies");
+  py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Qualifier, "Qualifier");
+  py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Hermann_Mauguin,
+                                              "Hermann_Mauguin");
+  py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Extension, "Extension");
+  py_SpaceGroupSymbols.def(&SpaceGroupSymbols::ExtendedHermann_Mauguin,
+                                              "ExtendedHermann_Mauguin");
+  py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Hall, "Hall");
 
-    py_SpaceGroupSymbolIterator.def(constructor<>());
-    py_SpaceGroupSymbolIterator.def(&SpaceGroupSymbolIterator::next, "next");
-    py_SpaceGroupSymbolIterator.def(SpaceGroupSymbolIterator_getitem,
-      "__getitem__");
+  py_SpaceGroupSymbolIterator.def(constructor<>());
+  py_SpaceGroupSymbolIterator.def(&SpaceGroupSymbolIterator::next, "next");
+  py_SpaceGroupSymbolIterator.def(SpaceGroupSymbolIterator_getitem,
+    "__getitem__");
 
-    py_parse_string.def(constructor<>());
-    py_parse_string.def(constructor<const std::string&>());
-    py_parse_string.def(&parse_string::string, "string");
-    py_parse_string.def(&parse_string::where, "where");
+  py_parse_string.def(constructor<>());
+  py_parse_string.def(constructor<const std::string&>());
+  py_parse_string.def(&parse_string::string, "string");
+  py_parse_string.def(&parse_string::where, "where");
 
-    py_RotMxInfo.def(constructor<>());
-    py_RotMxInfo.def(&RotMxInfo::Rtype, "Rtype");
-    py_RotMxInfo.def(&RotMxInfo::EV, "EV");
-    py_RotMxInfo.def(&RotMxInfo::SenseOfRotation, "SenseOfRotation");
+  py_RotMxInfo.def(constructor<>());
+  py_RotMxInfo.def(&RotMxInfo::Rtype, "Rtype");
+  py_RotMxInfo.def(&RotMxInfo::EV, "EV");
+  py_RotMxInfo.def(&RotMxInfo::SenseOfRotation, "SenseOfRotation");
 
-    py_TranslationComponents.def(constructor<>());
-    py_TranslationComponents.def(
-       TranslationComponents_IntrinsicPart, "IntrinsicPart");
-    py_TranslationComponents.def(
-       TranslationComponents_LocationPart, "LocationPart");
-    py_TranslationComponents.def(
-       TranslationComponents_OriginShift, "OriginShift");
+  py_TranslationComponents.def(constructor<>());
+  py_TranslationComponents.def(
+     TranslationComponents_IntrinsicPart, "IntrinsicPart");
+  py_TranslationComponents.def(
+     TranslationComponents_LocationPart, "LocationPart");
+  py_TranslationComponents.def(
+     TranslationComponents_OriginShift, "OriginShift");
 
-    this_module.def(RTMx_from_tuple, "RTMx_from_tuple");
-    py_RTMx.def(constructor<>());
-    py_RTMx.def(constructor<parse_string&>());
-    py_RTMx.def(constructor<parse_string&, const char*>());
-    py_RTMx.def(constructor<parse_string&, const char*, int>());
-    py_RTMx.def(constructor<parse_string&, const char*, int, int>());
-    py_RTMx.def(constructor<const std::string&>());
-    py_RTMx.def(constructor<const std::string&, const char*>());
-    py_RTMx.def(constructor<const std::string&, const char*, int>());
-    py_RTMx.def(constructor<const std::string&, const char*, int, int>());
-    py_RTMx.def(&RTMx::isValid, "isValid");
-    py_RTMx.def(&RTMx::RBF, "RBF");
-    py_RTMx.def(&RTMx::TBF, "TBF");
-    py_RTMx.def(&RTMx::Unit, "Unit");
-    py_RTMx.def(&RTMx::isUnit, "isUnit");
-    py_RTMx.def(RTMx_newBaseFactors, "newBaseFactors");
-    py_RTMx.def(&RTMx::cancel, "cancel");
-    py_RTMx.def(&RTMx::modPositiveInPlace, "modPositiveInPlace");
-    py_RTMx.def(&RTMx::modPositive, "modPositive");
-    py_RTMx.def(&RTMx::modShortInPlace, "modShortInPlace");
-    py_RTMx.def(&RTMx::modShort, "modShort");
-    py_RTMx.def(&RTMx::inverse, "inverse");
-    py_RTMx.def(&RTMx::inverse_with_cancel, "inverse_with_cancel");
-    py_RTMx.def(RTMx_as_xyz_0, "__repr__");
-    py_RTMx.def(RTMx_as_xyz_0, "as_xyz");
-    py_RTMx.def(&RTMx::as_xyz, "as_xyz");
-    py_RTMx.def(RTMx_as_tuple_0, "as_tuple");
-    py_RTMx.def(RTMx_as_tuple_2, "as_tuple");
-    py_RTMx.def(&RTMx::getRotMxInfo, "getRotMxInfo");
-    py_RTMx.def(&RTMx::isPerpendicular, "isPerpendicular");
-    py_RTMx.def(&RTMx::analyzeTpart, "analyzeTpart");
-    py_RTMx.def(RTMx_mul_RTMx, "__mul__");
-    py_RTMx.def(RTMx_multiply_RTMx, "multiply");
-    py_RTMx.def(RTMx_multiply_Vec3, "multiply");
+  this_module.def(RTMx_from_tuple, "RTMx_from_tuple");
+  py_RTMx.def(constructor<>());
+  py_RTMx.def(constructor<parse_string&>());
+  py_RTMx.def(constructor<parse_string&, const char*>());
+  py_RTMx.def(constructor<parse_string&, const char*, int>());
+  py_RTMx.def(constructor<parse_string&, const char*, int, int>());
+  py_RTMx.def(constructor<const std::string&>());
+  py_RTMx.def(constructor<const std::string&, const char*>());
+  py_RTMx.def(constructor<const std::string&, const char*, int>());
+  py_RTMx.def(constructor<const std::string&, const char*, int, int>());
+  py_RTMx.def(&RTMx::isValid, "isValid");
+  py_RTMx.def(&RTMx::RBF, "RBF");
+  py_RTMx.def(&RTMx::TBF, "TBF");
+  py_RTMx.def(&RTMx::Unit, "Unit");
+  py_RTMx.def(&RTMx::isUnit, "isUnit");
+  py_RTMx.def(RTMx_newBaseFactors, "newBaseFactors");
+  py_RTMx.def(&RTMx::cancel, "cancel");
+  py_RTMx.def(&RTMx::modPositiveInPlace, "modPositiveInPlace");
+  py_RTMx.def(&RTMx::modPositive, "modPositive");
+  py_RTMx.def(&RTMx::modShortInPlace, "modShortInPlace");
+  py_RTMx.def(&RTMx::modShort, "modShort");
+  py_RTMx.def(&RTMx::inverse, "inverse");
+  py_RTMx.def(&RTMx::inverse_with_cancel, "inverse_with_cancel");
+  py_RTMx.def(RTMx_as_xyz_0, "__repr__");
+  py_RTMx.def(RTMx_as_xyz_0, "as_xyz");
+  py_RTMx.def(&RTMx::as_xyz, "as_xyz");
+  py_RTMx.def(RTMx_as_tuple_0, "as_tuple");
+  py_RTMx.def(RTMx_as_tuple_2, "as_tuple");
+  py_RTMx.def(&RTMx::getRotMxInfo, "getRotMxInfo");
+  py_RTMx.def(&RTMx::isPerpendicular, "isPerpendicular");
+  py_RTMx.def(&RTMx::analyzeTpart, "analyzeTpart");
+  py_RTMx.def(RTMx_mul_RTMx, "__mul__");
+  py_RTMx.def(RTMx_multiply_RTMx, "multiply");
+  py_RTMx.def(RTMx_multiply_Vec3, "multiply");
 
-    py_ChOfBasisOp.def(constructor<const RTMx&, const RTMx&>());
-    py_ChOfBasisOp.def(constructor<const RTMx&>());
-    py_ChOfBasisOp.def(constructor<>());
-    py_ChOfBasisOp.def(constructor<int>());
-    py_ChOfBasisOp.def(constructor<int, int>());
-    py_ChOfBasisOp.def(constructor<const std::string&>());
-    py_ChOfBasisOp.def(constructor<const std::string&, const char*>());
-    py_ChOfBasisOp.def(constructor<const std::string&, const char*,int>());
-    py_ChOfBasisOp.def(constructor<const std::string&, const char*,int,int>());
-    py_ChOfBasisOp.def(&ChOfBasisOp::isValid, "isValid");
-    py_ChOfBasisOp.def(&ChOfBasisOp::M, "M");
-    py_ChOfBasisOp.def(&ChOfBasisOp::InvM, "InvM");
-    py_ChOfBasisOp.def(&ChOfBasisOp::swap, "swap");
-    py_ChOfBasisOp.def(ChOfBasisOp_call, "__call__");
-    py_ChOfBasisOp.def(ChOfBasisOp_apply_RTMx, "apply");
-    py_ChOfBasisOp.def(ChOfBasisOp_apply_UnitCell, "apply");
+  py_ChOfBasisOp.def(constructor<const RTMx&, const RTMx&>());
+  py_ChOfBasisOp.def(constructor<const RTMx&>());
+  py_ChOfBasisOp.def(constructor<>());
+  py_ChOfBasisOp.def(constructor<int>());
+  py_ChOfBasisOp.def(constructor<int, int>());
+  py_ChOfBasisOp.def(constructor<const std::string&>());
+  py_ChOfBasisOp.def(constructor<const std::string&, const char*>());
+  py_ChOfBasisOp.def(constructor<const std::string&, const char*,int>());
+  py_ChOfBasisOp.def(constructor<const std::string&, const char*,int,int>());
+  py_ChOfBasisOp.def(&ChOfBasisOp::isValid, "isValid");
+  py_ChOfBasisOp.def(&ChOfBasisOp::M, "M");
+  py_ChOfBasisOp.def(&ChOfBasisOp::InvM, "InvM");
+  py_ChOfBasisOp.def(&ChOfBasisOp::swap, "swap");
+  py_ChOfBasisOp.def(ChOfBasisOp_call, "__call__");
+  py_ChOfBasisOp.def(ChOfBasisOp_apply_RTMx, "apply");
+  py_ChOfBasisOp.def(ChOfBasisOp_apply_UnitCell, "apply");
 
-    py_Miller_SymEquivIndex.def(constructor<>());
-    py_Miller_SymEquivIndex.def(constructor<const Miller::Index&, int, int>());
-    py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
-    py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
-    py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::TBF, "TBF");
-    py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_rad, "Phase_rad");
-    py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_deg, "Phase_deg");
-    py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_ShiftPhase, "ShiftPhase");
+  py_Miller_SymEquivIndex.def(constructor<>());
+  py_Miller_SymEquivIndex.def(constructor<const Miller::Index&, int, int>());
+  py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
+  py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
+  py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::TBF, "TBF");
+  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_rad, "Phase_rad");
+  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_deg, "Phase_deg");
+  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_ShiftPhase, "ShiftPhase");
 
-    py_PhaseRestriction.def(constructor<>());
-    py_PhaseRestriction.def(&PhaseRestriction::isCentric, "isCentric");
-    py_PhaseRestriction.def(PhaseRestriction_HT_0, "HT");
-    py_PhaseRestriction.def(&PhaseRestriction::TBF, "TBF");
-    py_PhaseRestriction.def(PhaseRestriction_HT_1, "HT");
-    py_PhaseRestriction.def(&PhaseRestriction::HT_rad, "HT_rad");
-    py_PhaseRestriction.def(&PhaseRestriction::HT_deg, "HT_deg");
-    py_PhaseRestriction.def(
-      PhaseRestriction_isValidPhase_rad_1, "isValidPhase_rad");
-    py_PhaseRestriction.def(
-      PhaseRestriction_isValidPhase_rad_2, "isValidPhase_rad");
-    py_PhaseRestriction.def(
-      PhaseRestriction_isValidPhase_deg_1, "isValidPhase_deg");
-    py_PhaseRestriction.def(
-      PhaseRestriction_isValidPhase_deg_2, "isValidPhase_deg");
+  py_PhaseRestriction.def(constructor<>());
+  py_PhaseRestriction.def(&PhaseRestriction::isCentric, "isCentric");
+  py_PhaseRestriction.def(PhaseRestriction_HT_0, "HT");
+  py_PhaseRestriction.def(&PhaseRestriction::TBF, "TBF");
+  py_PhaseRestriction.def(PhaseRestriction_HT_1, "HT");
+  py_PhaseRestriction.def(&PhaseRestriction::HT_rad, "HT_rad");
+  py_PhaseRestriction.def(&PhaseRestriction::HT_deg, "HT_deg");
+  py_PhaseRestriction.def(
+    PhaseRestriction_isValidPhase_rad_1, "isValidPhase_rad");
+  py_PhaseRestriction.def(
+    PhaseRestriction_isValidPhase_rad_2, "isValidPhase_rad");
+  py_PhaseRestriction.def(
+    PhaseRestriction_isValidPhase_deg_1, "isValidPhase_deg");
+  py_PhaseRestriction.def(
+    PhaseRestriction_isValidPhase_deg_2, "isValidPhase_deg");
 
-    py_SymEquivMillerIndices.def(constructor<>());
-    py_SymEquivMillerIndices.def(
-      &SymEquivMillerIndices::getPhaseRestriction, "getPhaseRestriction");
-    py_SymEquivMillerIndices.def(
-      &SymEquivMillerIndices::isCentric, "isCentric");
-    py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "N");
-    py_SymEquivMillerIndices.def(&SymEquivMillerIndices::M, "M");
-    py_SymEquivMillerIndices.def(&SymEquivMillerIndices::fMates, "fMates");
-    py_SymEquivMillerIndices.def(&SymEquivMillerIndices::epsilon, "epsilon");
-    py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "__len__");
-    py_SymEquivMillerIndices.def(SymEquivMillerIndices_getitem, "__getitem__");
-    py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_1, "__call__");
-    py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_2, "__call__");
-    py_SymEquivMillerIndices.def(
-      SymEquivMillerIndices_isValidPhase_rad_1, "isValidPhase_rad");
-    py_SymEquivMillerIndices.def(
-      SymEquivMillerIndices_isValidPhase_rad_2, "isValidPhase_rad");
-    py_SymEquivMillerIndices.def(
-      SymEquivMillerIndices_isValidPhase_deg_1, "isValidPhase_deg");
-    py_SymEquivMillerIndices.def(
-      SymEquivMillerIndices_isValidPhase_deg_2, "isValidPhase_deg");
+  py_SymEquivMillerIndices.def(constructor<>());
+  py_SymEquivMillerIndices.def(
+    &SymEquivMillerIndices::getPhaseRestriction, "getPhaseRestriction");
+  py_SymEquivMillerIndices.def(
+    &SymEquivMillerIndices::isCentric, "isCentric");
+  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "N");
+  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::M, "M");
+  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::fMates, "fMates");
+  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::epsilon, "epsilon");
+  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "__len__");
+  py_SymEquivMillerIndices.def(SymEquivMillerIndices_getitem, "__getitem__");
+  py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_1, "__call__");
+  py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_2, "__call__");
+  py_SymEquivMillerIndices.def(
+    SymEquivMillerIndices_isValidPhase_rad_1, "isValidPhase_rad");
+  py_SymEquivMillerIndices.def(
+    SymEquivMillerIndices_isValidPhase_rad_2, "isValidPhase_rad");
+  py_SymEquivMillerIndices.def(
+    SymEquivMillerIndices_isValidPhase_deg_1, "isValidPhase_deg");
+  py_SymEquivMillerIndices.def(
+    SymEquivMillerIndices_isValidPhase_deg_2, "isValidPhase_deg");
 
-    py_SpaceGroup.def(constructor<>());
-    py_SpaceGroup.def(constructor<parse_string&>());
-    py_SpaceGroup.def(constructor<parse_string&, bool>());
-    py_SpaceGroup.def(constructor<parse_string&, bool, bool>());
-    py_SpaceGroup.def(constructor<const std::string&>());
-    py_SpaceGroup.def(constructor<const std::string&, bool>());
-    py_SpaceGroup.def(constructor<const std::string&, bool, bool>());
-    py_SpaceGroup.def(constructor<const SpaceGroupSymbols&>());
-    py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_parse_string,
-                                "ParseHallSymbol");
-    py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_std_string,
-                                "ParseHallSymbol");
-    py_SpaceGroup.def(&SpaceGroup::ParseHallSymbol, "ParseHallSymbol");
-    py_SpaceGroup.def(&SpaceGroup::ChangeBasis, "ChangeBasis");
-    py_SpaceGroup.def(&SpaceGroup::expandSMx, "expandSMx");
-    py_SpaceGroup.def(&SpaceGroup::expandConventionalCentringType,
-                                  "expandConventionalCentringType");
-    py_SpaceGroup.def(&SpaceGroup::RBF, "RBF");
-    py_SpaceGroup.def(&SpaceGroup::TBF, "TBF");
-    py_SpaceGroup.def(&SpaceGroup::nLTr, "nLTr");
-    py_SpaceGroup.def(&SpaceGroup::fInv, "fInv");
-    py_SpaceGroup.def(&SpaceGroup::nSMx, "nSMx");
-    py_SpaceGroup.def(&SpaceGroup::OrderP, "OrderP");
-    py_SpaceGroup.def(&SpaceGroup::OrderZ, "OrderZ");
-    py_SpaceGroup.def(SpaceGroup_call_1, "__call__");
-    py_SpaceGroup.def(SpaceGroup_call_3, "__call__");
-    py_SpaceGroup.def(&SpaceGroup::OrderZ, "__len__");
-    py_SpaceGroup.def(SpaceGroup_getitem, "__getitem__");
-    py_SpaceGroup.def(&SpaceGroup::getConventionalCentringTypeSymbol,
-                                  "getConventionalCentringTypeSymbol");
-    py_SpaceGroup.def(&SpaceGroup::isChiral, "isChiral");
-    py_SpaceGroup.def(&SpaceGroup::isSysAbsent, "isSysAbsent");
-    py_SpaceGroup.def(SpaceGroup_isCentric_0, "isCentric");
-    py_SpaceGroup.def(SpaceGroup_isCentric_1, "isCentric");
-    py_SpaceGroup.def(&SpaceGroup::isOriginCentric, "isOriginCentric");
-    py_SpaceGroup.def(&SpaceGroup::getPhaseRestriction, "getPhaseRestriction");
-    py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_2, "isValidPhase_rad");
-    py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_3, "isValidPhase_rad");
-    py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_2, "isValidPhase_deg");
-    py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_3, "isValidPhase_deg");
-    py_SpaceGroup.def(&SpaceGroup::epsilon, "epsilon");
-    py_SpaceGroup.def(&SpaceGroup::multiplicity, "multiplicity");
-    py_SpaceGroup.def(&SpaceGroup::getEquivMillerIndices,
-                                  "getEquivMillerIndices");
-    py_SpaceGroup.def(SpaceGroup_StructureFactor, "StructureFactor");
-    py_SpaceGroup.def(SpaceGroup_StructureFactor_iso, "StructureFactor");
-    py_SpaceGroup.def(SpaceGroup_StructureFactor_aniso, "StructureFactor");
-    py_SpaceGroup.def(SpaceGroup_CheckMetricalMatrix_1, "CheckMetricalMatrix");
-    py_SpaceGroup.def(&SpaceGroup::CheckMetricalMatrix, "CheckMetricalMatrix");
-    py_SpaceGroup.def(SpaceGroup_CheckUnitCell_1, "CheckUnitCell");
-    py_SpaceGroup.def(&SpaceGroup::CheckUnitCell, "CheckUnitCell");
-    py_SpaceGroup.def(SpaceGroup_getZ2POp_0, "getZ2POp");
-    py_SpaceGroup.def(&SpaceGroup::getZ2POp, "getZ2POp");
-    py_SpaceGroup.def(&SpaceGroup::makeTidy, "makeTidy");
-    py_SpaceGroup.def(SpaceGroup_cmp_equal, "__cmp__");
-    py_SpaceGroup.def(&SpaceGroup::MatchTabulatedSettings,
-                                  "MatchTabulatedSettings");
-    py_SpaceGroup.def(&SpaceGroup::Info, "Info");
-    py_SpaceGroup.def(SpaceGroup_repr, "__repr__");
-    py_SpaceGroup.def(SpaceGroup_getinitargs, "__getinitargs__");
+  py_SpaceGroup.def(constructor<>());
+  py_SpaceGroup.def(constructor<parse_string&>());
+  py_SpaceGroup.def(constructor<parse_string&, bool>());
+  py_SpaceGroup.def(constructor<parse_string&, bool, bool>());
+  py_SpaceGroup.def(constructor<const std::string&>());
+  py_SpaceGroup.def(constructor<const std::string&, bool>());
+  py_SpaceGroup.def(constructor<const std::string&, bool, bool>());
+  py_SpaceGroup.def(constructor<const SpaceGroupSymbols&>());
+  py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_parse_string,
+                              "ParseHallSymbol");
+  py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_std_string,
+                              "ParseHallSymbol");
+  py_SpaceGroup.def(&SpaceGroup::ParseHallSymbol, "ParseHallSymbol");
+  py_SpaceGroup.def(&SpaceGroup::ChangeBasis, "ChangeBasis");
+  py_SpaceGroup.def(&SpaceGroup::expandSMx, "expandSMx");
+  py_SpaceGroup.def(&SpaceGroup::expandConventionalCentringType,
+                                "expandConventionalCentringType");
+  py_SpaceGroup.def(&SpaceGroup::RBF, "RBF");
+  py_SpaceGroup.def(&SpaceGroup::TBF, "TBF");
+  py_SpaceGroup.def(&SpaceGroup::nLTr, "nLTr");
+  py_SpaceGroup.def(&SpaceGroup::fInv, "fInv");
+  py_SpaceGroup.def(&SpaceGroup::nSMx, "nSMx");
+  py_SpaceGroup.def(&SpaceGroup::OrderP, "OrderP");
+  py_SpaceGroup.def(&SpaceGroup::OrderZ, "OrderZ");
+  py_SpaceGroup.def(SpaceGroup_call_1, "__call__");
+  py_SpaceGroup.def(SpaceGroup_call_3, "__call__");
+  py_SpaceGroup.def(&SpaceGroup::OrderZ, "__len__");
+  py_SpaceGroup.def(SpaceGroup_getitem, "__getitem__");
+  py_SpaceGroup.def(&SpaceGroup::getConventionalCentringTypeSymbol,
+                                "getConventionalCentringTypeSymbol");
+  py_SpaceGroup.def(&SpaceGroup::isChiral, "isChiral");
+  py_SpaceGroup.def(&SpaceGroup::isSysAbsent, "isSysAbsent");
+  py_SpaceGroup.def(SpaceGroup_isCentric_0, "isCentric");
+  py_SpaceGroup.def(SpaceGroup_isCentric_1, "isCentric");
+  py_SpaceGroup.def(&SpaceGroup::isOriginCentric, "isOriginCentric");
+  py_SpaceGroup.def(&SpaceGroup::getPhaseRestriction, "getPhaseRestriction");
+  py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_2, "isValidPhase_rad");
+  py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_3, "isValidPhase_rad");
+  py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_2, "isValidPhase_deg");
+  py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_3, "isValidPhase_deg");
+  py_SpaceGroup.def(&SpaceGroup::epsilon, "epsilon");
+  py_SpaceGroup.def(&SpaceGroup::multiplicity, "multiplicity");
+  py_SpaceGroup.def(&SpaceGroup::getEquivMillerIndices,
+                                "getEquivMillerIndices");
+  py_SpaceGroup.def(SpaceGroup_StructureFactor, "StructureFactor");
+  py_SpaceGroup.def(SpaceGroup_StructureFactor_iso, "StructureFactor");
+  py_SpaceGroup.def(SpaceGroup_StructureFactor_aniso, "StructureFactor");
+  py_SpaceGroup.def(SpaceGroup_CheckMetricalMatrix_1, "CheckMetricalMatrix");
+  py_SpaceGroup.def(&SpaceGroup::CheckMetricalMatrix, "CheckMetricalMatrix");
+  py_SpaceGroup.def(SpaceGroup_CheckUnitCell_1, "CheckUnitCell");
+  py_SpaceGroup.def(&SpaceGroup::CheckUnitCell, "CheckUnitCell");
+  py_SpaceGroup.def(SpaceGroup_getZ2POp_0, "getZ2POp");
+  py_SpaceGroup.def(&SpaceGroup::getZ2POp, "getZ2POp");
+  py_SpaceGroup.def(&SpaceGroup::makeTidy, "makeTidy");
+  py_SpaceGroup.def(SpaceGroup_cmp_equal, "__cmp__");
+  py_SpaceGroup.def(&SpaceGroup::MatchTabulatedSettings,
+                                "MatchTabulatedSettings");
+  py_SpaceGroup.def(&SpaceGroup::Info, "Info");
+  py_SpaceGroup.def(SpaceGroup_repr, "__repr__");
+  py_SpaceGroup.def(SpaceGroup_getinitargs, "__getinitargs__");
 
-    py_SpaceGroupInfo.def(constructor<>());
-    py_SpaceGroupInfo.def(constructor<const SpaceGroup&>());
-    py_SpaceGroupInfo.def(constructor<const SpaceGroup&, bool>());
-    py_SpaceGroupInfo.def(constructor<const SpaceGroup&, bool, int>());
-    py_SpaceGroupInfo.def(constructor<const SpaceGroup&, bool, int, int>());
-    py_SpaceGroupInfo.def(&SpaceGroupInfo::SgOps, "SgOps");
-    py_SpaceGroupInfo.def(&SpaceGroupInfo::SgNumber, "SgNumber");
-    py_SpaceGroupInfo.def(&SpaceGroupInfo::CBOp, "CBOp");
-    py_SpaceGroupInfo.def(
-      &SpaceGroupInfo::getAddlGeneratorsOfEuclideanNormalizer,
-                      "getAddlGeneratorsOfEuclideanNormalizer");
-    py_SpaceGroupInfo.def(&SpaceGroupInfo::isEnantiomorphic,
-                                          "isEnantiomorphic");
-    py_SpaceGroupInfo.def(&SpaceGroupInfo::getChangeOfHandOp,
-                                          "getChangeOfHandOp");
-    py_SpaceGroupInfo.def(SpaceGroupInfo_BuildHallSymbol_0, "BuildHallSymbol");
-    py_SpaceGroupInfo.def(SpaceGroupInfo_BuildHallSymbol_1, "BuildHallSymbol");
-    py_SpaceGroupInfo.def(&SpaceGroupInfo::BuildLookupSymbol,
-                                          "BuildLookupSymbol");
+  py_SpaceGroupInfo.def(constructor<>());
+  py_SpaceGroupInfo.def(constructor<const SpaceGroup&>());
+  py_SpaceGroupInfo.def(constructor<const SpaceGroup&, bool>());
+  py_SpaceGroupInfo.def(constructor<const SpaceGroup&, bool, int>());
+  py_SpaceGroupInfo.def(constructor<const SpaceGroup&, bool, int, int>());
+  py_SpaceGroupInfo.def(&SpaceGroupInfo::SgOps, "SgOps");
+  py_SpaceGroupInfo.def(&SpaceGroupInfo::SgNumber, "SgNumber");
+  py_SpaceGroupInfo.def(&SpaceGroupInfo::CBOp, "CBOp");
+  py_SpaceGroupInfo.def(
+    &SpaceGroupInfo::getAddlGeneratorsOfEuclideanNormalizer,
+                    "getAddlGeneratorsOfEuclideanNormalizer");
+  py_SpaceGroupInfo.def(&SpaceGroupInfo::isEnantiomorphic,
+                                        "isEnantiomorphic");
+  py_SpaceGroupInfo.def(&SpaceGroupInfo::getChangeOfHandOp,
+                                        "getChangeOfHandOp");
+  py_SpaceGroupInfo.def(SpaceGroupInfo_BuildHallSymbol_0, "BuildHallSymbol");
+  py_SpaceGroupInfo.def(SpaceGroupInfo_BuildHallSymbol_1, "BuildHallSymbol");
+  py_SpaceGroupInfo.def(&SpaceGroupInfo::BuildLookupSymbol,
+                                        "BuildLookupSymbol");
 
-    py_std_vector_RTMx.def(constructor<>());
-    py_std_vector_RTMx.def(&std::vector<RTMx>::size, "size");
-    py_std_vector_RTMx.def(&std::vector<RTMx>::size, "__len__");
-    py_std_vector_RTMx.def(std_vector_RTMx_getitem, "__getitem__");
+  py_std_vector_RTMx.def(constructor<>());
+  py_std_vector_RTMx.def(&std::vector<RTMx>::size, "size");
+  py_std_vector_RTMx.def(&std::vector<RTMx>::size, "__len__");
+  py_std_vector_RTMx.def(std_vector_RTMx_getitem, "__getitem__");
 
-    py_WyckoffPosition.def(constructor<>());
-    py_WyckoffPosition.def(&WyckoffPosition::M, "M");
-    py_WyckoffPosition.def(&WyckoffPosition::Letter, "Letter");
-    py_WyckoffPosition.def(&WyckoffPosition::SpecialOp, "SpecialOp");
-    py_WyckoffPosition.def(&WyckoffPosition::isExpanded, "isExpanded");
-    py_WyckoffPosition.def(&WyckoffPosition::CheckExpanded,"CheckExpanded");
-    py_WyckoffPosition.def(&WyckoffPosition::operator(), "__call__");
-    py_WyckoffPosition.def(&WyckoffPosition::M, "__len__");
-    py_WyckoffPosition.def(WyckoffPosition_getitem, "__getitem__");
+  py_WyckoffPosition.def(constructor<>());
+  py_WyckoffPosition.def(&WyckoffPosition::M, "M");
+  py_WyckoffPosition.def(&WyckoffPosition::Letter, "Letter");
+  py_WyckoffPosition.def(&WyckoffPosition::SpecialOp, "SpecialOp");
+  py_WyckoffPosition.def(&WyckoffPosition::isExpanded, "isExpanded");
+  py_WyckoffPosition.def(&WyckoffPosition::CheckExpanded,"CheckExpanded");
+  py_WyckoffPosition.def(&WyckoffPosition::operator(), "__call__");
+  py_WyckoffPosition.def(&WyckoffPosition::M, "__len__");
+  py_WyckoffPosition.def(WyckoffPosition_getitem, "__getitem__");
 
-    py_WyckoffMapping.def(constructor<>());
-    py_WyckoffMapping.def(&WyckoffMapping::WP, "WP");
-    py_WyckoffMapping.def(&WyckoffMapping::Mapping, "Mapping");
-    py_WyckoffMapping.def(&WyckoffMapping::snap_to_representative,
-                                          "snap_to_representative");
-    py_WyckoffMapping.def(&WyckoffMapping::snap, "snap");
+  py_WyckoffMapping.def(constructor<>());
+  py_WyckoffMapping.def(&WyckoffMapping::WP, "WP");
+  py_WyckoffMapping.def(&WyckoffMapping::Mapping, "Mapping");
+  py_WyckoffMapping.def(&WyckoffMapping::snap_to_representative,
+                                        "snap_to_representative");
+  py_WyckoffMapping.def(&WyckoffMapping::snap, "snap");
 
-    py_WyckoffTable.def(constructor<>());
-    py_WyckoffTable.def(constructor<const SpaceGroupInfo&>());
-    py_WyckoffTable.def(constructor<const SpaceGroupInfo&, bool>());
-    py_WyckoffTable.def(&WyckoffTable::expand, "expand");
-    py_WyckoffTable.def(&WyckoffTable::N, "N");
-    py_WyckoffTable.def(WyckoffTable_call_size_t, "__call__");
-    py_WyckoffTable.def(WyckoffTable_call_char, "__call__");
-    py_WyckoffTable.def(&WyckoffTable::N, "__len__");
-    py_WyckoffTable.def(WyckoffTable_getitem, "__getitem__");
-    py_WyckoffTable.def(&WyckoffTable::LookupIndex, "LookupIndex");
-    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_SS,"getWyckoffMapping");
-    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_3, "getWyckoffMapping");
-    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_4, "getWyckoffMapping");
+  py_WyckoffTable.def(constructor<>());
+  py_WyckoffTable.def(constructor<const SpaceGroupInfo&>());
+  py_WyckoffTable.def(constructor<const SpaceGroupInfo&, bool>());
+  py_WyckoffTable.def(&WyckoffTable::expand, "expand");
+  py_WyckoffTable.def(&WyckoffTable::N, "N");
+  py_WyckoffTable.def(WyckoffTable_call_size_t, "__call__");
+  py_WyckoffTable.def(WyckoffTable_call_char, "__call__");
+  py_WyckoffTable.def(&WyckoffTable::N, "__len__");
+  py_WyckoffTable.def(WyckoffTable_getitem, "__getitem__");
+  py_WyckoffTable.def(&WyckoffTable::LookupIndex, "LookupIndex");
+  py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_SS,"getWyckoffMapping");
+  py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_3, "getWyckoffMapping");
+  py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_4, "getWyckoffMapping");
 
-    py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
-                                                     const SpaceGroup&>());
-    py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
-                                                     const SpaceGroup&,
-                                                     bool>());
-    py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
-                                                     const SpaceGroup&,
-                                                     bool,
-                                                     double>());
+  py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
+                                                   const SpaceGroup&>());
+  py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
+                                                   const SpaceGroup&,
+                                                   bool>());
+  py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
+                                                   const SpaceGroup&,
+                                                   bool,
+                                                   double>());
 
-    py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
-                                                 const SpaceGroup&>());
-    py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
-                                                 const SpaceGroup&,
-                                                 double>());
-    py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
-                                                 const SpaceGroup&,
-                                                 double,
-                                                 double>());
+  py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
+                                               const SpaceGroup&>());
+  py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
+                                               const SpaceGroup&,
+                                               double>());
+  py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
+                                               const SpaceGroup&,
+                                               double,
+                                               double>());
 
-    py_SiteSymmetry.def(constructor<>());
-    py_SiteSymmetry.def(
-      constructor<const SpecialPositionSnapParameters&,
-                  const fractional<double>&>());
-    py_SiteSymmetry.def(
-      constructor<const SpecialPositionSnapParameters&,
-                  const fractional<double>&,
-                  bool>());
-    py_SiteSymmetry.def(&SiteSymmetry::OriginalPosition, "OriginalPosition");
-    py_SiteSymmetry.def(&SiteSymmetry::SnapPosition, "SnapPosition");
-    py_SiteSymmetry.def(&SiteSymmetry::DistanceMoved2, "DistanceMoved2");
-    py_SiteSymmetry.def(&SiteSymmetry::DistanceMoved, "DistanceMoved");
-    py_SiteSymmetry.def(&SiteSymmetry::ShortestDistance2, "ShortestDistance2");
-    py_SiteSymmetry.def(&SiteSymmetry::ShortestDistance, "ShortestDistance");
-    py_SiteSymmetry.def(&SiteSymmetry::isWellBehaved, "isWellBehaved");
-    py_SiteSymmetry.def(&SiteSymmetry::M, "M");
-    py_SiteSymmetry.def(&SiteSymmetry::SpecialOp, "SpecialOp");
-    py_SiteSymmetry.def(SiteSymmetry_PointGroupType, "PointGroupType");
-    py_SiteSymmetry.def(SiteSymmetry_isCompatibleUstar_1, "isCompatibleUstar");
-    py_SiteSymmetry.def(SiteSymmetry_isCompatibleUstar_2, "isCompatibleUstar");
-    py_SiteSymmetry.def(SiteSymmetry_CheckUstar_1, "CheckUstar");
-    py_SiteSymmetry.def(SiteSymmetry_CheckUstar_2, "CheckUstar");
-    py_SiteSymmetry.def(SiteSymmetry_AverageUstar, "AverageUstar");
-    py_SiteSymmetry.def(&SiteSymmetry::expand, "expand");
-    py_SiteSymmetry.def(&SiteSymmetry::isExpanded, "isExpanded");
-    py_SiteSymmetry.def(&SiteSymmetry::CheckExpanded, "CheckExpanded");
-    py_SiteSymmetry.def(&SiteSymmetry::operator(), "__call__");
-    py_SiteSymmetry.def(&SiteSymmetry::M, "__len__");
-    py_SiteSymmetry.def(SiteSymmetry_getitem, "__getitem__");
+  py_SiteSymmetry.def(constructor<>());
+  py_SiteSymmetry.def(
+    constructor<const SpecialPositionSnapParameters&,
+                const fractional<double>&>());
+  py_SiteSymmetry.def(
+    constructor<const SpecialPositionSnapParameters&,
+                const fractional<double>&,
+                bool>());
+  py_SiteSymmetry.def(&SiteSymmetry::OriginalPosition, "OriginalPosition");
+  py_SiteSymmetry.def(&SiteSymmetry::SnapPosition, "SnapPosition");
+  py_SiteSymmetry.def(&SiteSymmetry::DistanceMoved2, "DistanceMoved2");
+  py_SiteSymmetry.def(&SiteSymmetry::DistanceMoved, "DistanceMoved");
+  py_SiteSymmetry.def(&SiteSymmetry::ShortestDistance2, "ShortestDistance2");
+  py_SiteSymmetry.def(&SiteSymmetry::ShortestDistance, "ShortestDistance");
+  py_SiteSymmetry.def(&SiteSymmetry::isWellBehaved, "isWellBehaved");
+  py_SiteSymmetry.def(&SiteSymmetry::M, "M");
+  py_SiteSymmetry.def(&SiteSymmetry::SpecialOp, "SpecialOp");
+  py_SiteSymmetry.def(SiteSymmetry_PointGroupType, "PointGroupType");
+  py_SiteSymmetry.def(SiteSymmetry_isCompatibleUstar_1, "isCompatibleUstar");
+  py_SiteSymmetry.def(SiteSymmetry_isCompatibleUstar_2, "isCompatibleUstar");
+  py_SiteSymmetry.def(SiteSymmetry_CheckUstar_1, "CheckUstar");
+  py_SiteSymmetry.def(SiteSymmetry_CheckUstar_2, "CheckUstar");
+  py_SiteSymmetry.def(SiteSymmetry_AverageUstar, "AverageUstar");
+  py_SiteSymmetry.def(&SiteSymmetry::expand, "expand");
+  py_SiteSymmetry.def(&SiteSymmetry::isExpanded, "isExpanded");
+  py_SiteSymmetry.def(&SiteSymmetry::CheckExpanded, "CheckExpanded");
+  py_SiteSymmetry.def(&SiteSymmetry::operator(), "__call__");
+  py_SiteSymmetry.def(&SiteSymmetry::M, "__len__");
+  py_SiteSymmetry.def(SiteSymmetry_getitem, "__getitem__");
 
-    py_SymEquivCoordinates.def(constructor<>());
-    py_SymEquivCoordinates.def(
-      constructor<const SpecialPositionSnapParameters&,
-                  const fractional<double>&>());
-    py_SymEquivCoordinates.def(constructor<const SiteSymmetry&>());
-    py_SymEquivCoordinates.def(
-      constructor<const WyckoffMapping&,
-      const fractional<double>&>());
-    py_SymEquivCoordinates.def(
-      constructor<const WyckoffPosition&,
-      const fractional<double>&>());
-    py_SymEquivCoordinates.def(
-      constructor<const SpecialPositionTolerances&,
-      const fractional<double>&>());
-    py_SymEquivCoordinates.def(
-      constructor<const SpaceGroup&,
-      const fractional<double>&>());
-    py_SymEquivCoordinates.def(&SymEquivCoordinates<double>::M, "M");
-    py_SymEquivCoordinates.def(
-      &SymEquivCoordinates<double>::operator(), "__call__");
-    py_SymEquivCoordinates.def(&SymEquivCoordinates<double>::M, "__len__");
-    py_SymEquivCoordinates.def(SymEquivCoordinates_getitem, "__getitem__");
-    py_SymEquivCoordinates.def(
-      &SymEquivCoordinates<double>::getShortestDistance2,
-                                   "getShortestDistance2");
-    py_SymEquivCoordinates.def(
-      &SymEquivCoordinates<double>::getShortestDistance,
-                                   "getShortestDistance");
-    py_SymEquivCoordinates.def(
-      &SymEquivCoordinates<double>::StructureFactor,
-                                   "StructureFactor");
+  py_SymEquivCoordinates.def(constructor<>());
+  py_SymEquivCoordinates.def(
+    constructor<const SpecialPositionSnapParameters&,
+                const fractional<double>&>());
+  py_SymEquivCoordinates.def(constructor<const SiteSymmetry&>());
+  py_SymEquivCoordinates.def(
+    constructor<const WyckoffMapping&,
+    const fractional<double>&>());
+  py_SymEquivCoordinates.def(
+    constructor<const WyckoffPosition&,
+    const fractional<double>&>());
+  py_SymEquivCoordinates.def(
+    constructor<const SpecialPositionTolerances&,
+    const fractional<double>&>());
+  py_SymEquivCoordinates.def(
+    constructor<const SpaceGroup&,
+    const fractional<double>&>());
+  py_SymEquivCoordinates.def(&SymEquivCoordinates<double>::M, "M");
+  py_SymEquivCoordinates.def(
+    &SymEquivCoordinates<double>::operator(), "__call__");
+  py_SymEquivCoordinates.def(&SymEquivCoordinates<double>::M, "__len__");
+  py_SymEquivCoordinates.def(SymEquivCoordinates_getitem, "__getitem__");
+  py_SymEquivCoordinates.def(
+    &SymEquivCoordinates<double>::getShortestDistance2,
+                                 "getShortestDistance2");
+  py_SymEquivCoordinates.def(
+    &SymEquivCoordinates<double>::getShortestDistance,
+                                 "getShortestDistance");
+  py_SymEquivCoordinates.def(
+    &SymEquivCoordinates<double>::StructureFactor,
+                                 "StructureFactor");
 
-    py_BrickPoint.def(constructor<>());
-    py_BrickPoint.def(&BrickPoint::Point, "Point");
-    py_BrickPoint.def(&BrickPoint::Off, "Off");
+  py_BrickPoint.def(constructor<>());
+  py_BrickPoint.def(&BrickPoint::Point, "Point");
+  py_BrickPoint.def(&BrickPoint::Off, "Off");
 
-    py_Brick.def(constructor<>());
-    py_Brick.def(constructor<const SpaceGroupInfo&>());
-    py_Brick.def(&Brick::operator(), "__call__");
-    py_Brick.def(&Brick::format, "format");
-    py_Brick.def(&Brick::format, "__repr__");
+  py_Brick.def(constructor<>());
+  py_Brick.def(constructor<const SpaceGroupInfo&>());
+  py_Brick.def(&Brick::operator(), "__call__");
+  py_Brick.def(&Brick::format, "format");
+  py_Brick.def(&Brick::format, "__repr__");
 
-    py_ReferenceReciprocalSpaceASU.def(constructor<>());
-    py_ReferenceReciprocalSpaceASU.def(
-       ReferenceReciprocalSpaceASU_LaueGroupCode, "LaueGroupCode");
-    py_ReferenceReciprocalSpaceASU.def(
-      &ReferenceReciprocalSpaceASU::isInASU, "isInASU");
-    py_ReferenceReciprocalSpaceASU.def(
-      &ReferenceReciprocalSpaceASU::representation, "representation");
-    py_ReferenceReciprocalSpaceASU.def(
-      &ReferenceReciprocalSpaceASU::getCutParameters, "getCutParameters");
+  py_ReferenceReciprocalSpaceASU.def(constructor<>());
+  py_ReferenceReciprocalSpaceASU.def(
+     ReferenceReciprocalSpaceASU_LaueGroupCode, "LaueGroupCode");
+  py_ReferenceReciprocalSpaceASU.def(
+    &ReferenceReciprocalSpaceASU::isInASU, "isInASU");
+  py_ReferenceReciprocalSpaceASU.def(
+    &ReferenceReciprocalSpaceASU::representation, "representation");
+  py_ReferenceReciprocalSpaceASU.def(
+    &ReferenceReciprocalSpaceASU::getCutParameters, "getCutParameters");
 
-    py_ReciprocalSpaceASU.def(constructor<>());
-    py_ReciprocalSpaceASU.def(constructor<const SpaceGroupInfo&>());
-    py_ReciprocalSpaceASU.def(
-      &ReciprocalSpaceASU::ReferenceASU, "ReferenceASU");
-    py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::CBOp, "CBOp");
-    py_ReciprocalSpaceASU.def(
-      &ReciprocalSpaceASU::isReferenceASU, "isReferenceASU");
-    py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::isInASU, "isInASU");
+  py_ReciprocalSpaceASU.def(constructor<>());
+  py_ReciprocalSpaceASU.def(constructor<const SpaceGroupInfo&>());
+  py_ReciprocalSpaceASU.def(
+    &ReciprocalSpaceASU::ReferenceASU, "ReferenceASU");
+  py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::CBOp, "CBOp");
+  py_ReciprocalSpaceASU.def(
+    &ReciprocalSpaceASU::isReferenceASU, "isReferenceASU");
+  py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::isInASU, "isInASU");
 
-    py_MillerIndexGenerator.def(constructor<>());
-    py_MillerIndexGenerator.def(constructor<const uctbx::UnitCell&,
-                                            const SpaceGroupInfo&,
-                                            double>());
-    py_MillerIndexGenerator.def(constructor<const SpaceGroupInfo&,
-                                            const Miller::Index&>());
-    py_MillerIndexGenerator.def(&MillerIndexGenerator::next, "next");
-    py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");
-    py_MillerIndexGenerator.def(&MillerIndexGenerator::ASU, "ASU");
+  py_MillerIndexGenerator.def(constructor<>());
+  py_MillerIndexGenerator.def(constructor<const uctbx::UnitCell&,
+                                          const SpaceGroupInfo&,
+                                          double>());
+  py_MillerIndexGenerator.def(constructor<const SpaceGroupInfo&,
+                                          const Miller::Index&>());
+  py_MillerIndexGenerator.def(&MillerIndexGenerator::next, "next");
+  py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");
+  py_MillerIndexGenerator.def(&MillerIndexGenerator::ASU, "ASU");
 
-    py_Miller_IndexTableLayoutAdaptor.def(constructor<>());
-    py_Miller_IndexTableLayoutAdaptor.def(
-      &Miller::IndexTableLayoutAdaptor::H, "H");
-    py_Miller_IndexTableLayoutAdaptor.def(
-      &Miller::IndexTableLayoutAdaptor::iColumn, "iColumn");
-    py_Miller_IndexTableLayoutAdaptor.def(
-      Miller_IndexTableLayoutAdaptor_Phase_rad, "Phase_rad");
-    py_Miller_IndexTableLayoutAdaptor.def(
-      Miller_IndexTableLayoutAdaptor_Phase_deg, "Phase_deg");
-    py_Miller_IndexTableLayoutAdaptor.def(
-      Miller_IndexTableLayoutAdaptor_ShiftPhase, "ShiftPhase");
+  py_Miller_IndexTableLayoutAdaptor.def(constructor<>());
+  py_Miller_IndexTableLayoutAdaptor.def(
+    &Miller::IndexTableLayoutAdaptor::H, "H");
+  py_Miller_IndexTableLayoutAdaptor.def(
+    &Miller::IndexTableLayoutAdaptor::iColumn, "iColumn");
+  py_Miller_IndexTableLayoutAdaptor.def(
+    Miller_IndexTableLayoutAdaptor_Phase_rad, "Phase_rad");
+  py_Miller_IndexTableLayoutAdaptor.def(
+    Miller_IndexTableLayoutAdaptor_Phase_deg, "Phase_deg");
+  py_Miller_IndexTableLayoutAdaptor.def(
+    Miller_IndexTableLayoutAdaptor_ShiftPhase, "ShiftPhase");
 
-    py_Miller_AsymIndex.def(constructor<>());
-    py_Miller_AsymIndex.def(constructor<
-      const SpaceGroup&,
-      const ReciprocalSpaceASU&,
-      const Miller::Index&>());
-    py_Miller_AsymIndex.def(constructor<
-      const SpaceGroup&,
-      const Miller::Index&>());
-    py_Miller_AsymIndex.def(constructor<
-      const SymEquivMillerIndices&>());
-    py_Miller_AsymIndex.def(
-      &Miller::AsymIndex::FriedelFlag, "FriedelFlag");
-    py_Miller_AsymIndex.def(
-      &Miller::AsymIndex::AnomalousLayout, "AnomalousLayout");
-    py_Miller_AsymIndex.def(
-      &Miller::AsymIndex::HermitianLayout, "HermitianLayout");
-    py_Miller_AsymIndex.def(
-      &Miller::AsymIndex::FplusFminusLayout, "FplusFminusLayout");
+  py_Miller_AsymIndex.def(constructor<>());
+  py_Miller_AsymIndex.def(constructor<
+    const SpaceGroup&,
+    const ReciprocalSpaceASU&,
+    const Miller::Index&>());
+  py_Miller_AsymIndex.def(constructor<
+    const SpaceGroup&,
+    const Miller::Index&>());
+  py_Miller_AsymIndex.def(constructor<
+    const SymEquivMillerIndices&>());
+  py_Miller_AsymIndex.def(
+    &Miller::AsymIndex::FriedelFlag, "FriedelFlag");
+  py_Miller_AsymIndex.def(
+    &Miller::AsymIndex::AnomalousLayout, "AnomalousLayout");
+  py_Miller_AsymIndex.def(
+    &Miller::AsymIndex::HermitianLayout, "HermitianLayout");
+  py_Miller_AsymIndex.def(
+    &Miller::AsymIndex::FplusFminusLayout, "FplusFminusLayout");
 
-    py_StructureSeminvariant.def(constructor<>());
-    py_StructureSeminvariant.def(constructor<const SpaceGroup&>());
-    py_StructureSeminvariant.def(&StructureSeminvariant::size, "size");
-    py_StructureSeminvariant.def(&StructureSeminvariant::size, "__len__");
-    py_StructureSeminvariant.def(&StructureSeminvariant::V, "V");
-    py_StructureSeminvariant.def(&StructureSeminvariant::M, "M");
-    py_StructureSeminvariant.def(&StructureSeminvariant::is_ss, "is_ss");
-    //XXX: expose fixcap_vector<int, 3>
-    //py_StructureSeminvariant.def(&StructureSeminvariant::apply_mod,
-    //                                                    "apply_mod");
-    sgtbx::sanity_check();
-  }
-  catch(...)
-  {
-    boost::python::handle_exception(); // Deal with the exception for Python
-  }
+  py_StructureSeminvariant.def(constructor<>());
+  py_StructureSeminvariant.def(constructor<const SpaceGroup&>());
+  py_StructureSeminvariant.def(&StructureSeminvariant::size, "size");
+  py_StructureSeminvariant.def(&StructureSeminvariant::size, "__len__");
+  py_StructureSeminvariant.def(&StructureSeminvariant::V, "V");
+  py_StructureSeminvariant.def(&StructureSeminvariant::M, "M");
+  py_StructureSeminvariant.def(&StructureSeminvariant::is_ss, "is_ss");
+  //XXX: expose fixcap_vector<int, 3>
+  //py_StructureSeminvariant.def(&StructureSeminvariant::apply_mod,
+  //                                                    "apply_mod");
+  sgtbx::sanity_check();
 }

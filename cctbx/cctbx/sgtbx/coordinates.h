@@ -153,11 +153,12 @@ namespace cctbx { namespace sgtbx {
       }
     private:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-# if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // 1200 == VC++ 6.0
-      template <class FloatType> friend class SymEquivCoordinates;
-# else
+# if (defined(BOOST_MSVC) && BOOST_MSVC <= 1200) || defined(__MWERKS__)
+                                        // 1200 == VC++ 6.0
       friend class SymEquivCoordinates<float>;
       friend class SymEquivCoordinates<double>;
+# else
+      template <class FloatType> friend class SymEquivCoordinates;
 # endif
 #endif // DOXYGEN_SHOULD_SKIP_THIS
       const uctbx::UnitCell& m_UnitCell;

@@ -27,31 +27,24 @@ namespace {
 
 BOOST_PYTHON_MODULE_INIT(wavelengths)
 {
-  try
-  {
-#   include <cctbx/basic/from_bpl_import.h>
+# include <cctbx/basic/from_bpl_import.h>
 
-    python::module_builder this_module("wavelengths");
+  python::module_builder this_module("wavelengths");
 
-    const std::string Revision = "$Revision$";
-    this_module.add(ref(to_python(
-        Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
+  const std::string Revision = "$Revision$";
+  this_module.add(ref(to_python(
+      Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    class_builder<WaveLength>
-    py_WaveLength(this_module, "WaveLength");
+  class_builder<WaveLength>
+  py_WaveLength(this_module, "WaveLength");
 
-    this_module.def(keV_as_Angstrom, "keV_as_Angstrom");
-    this_module.def(Angstrom_as_keV, "Angstrom_as_keV");
+  this_module.def(keV_as_Angstrom, "keV_as_Angstrom");
+  this_module.def(Angstrom_as_keV, "Angstrom_as_keV");
 
-    py_WaveLength.def(constructor<>());
-    py_WaveLength.def(constructor<int>());
-    py_WaveLength.def(constructor<const std::string&>());
-    py_WaveLength.def(&WaveLength::Label, "Label");
-    py_WaveLength.def(&WaveLength::operator(), "__call__");
-    py_WaveLength.def(&WaveLength::Energy, "Energy");
-  }
-  catch(...)
-  {
-    boost::python::handle_exception(); // Deal with the exception for Python
-  }
+  py_WaveLength.def(constructor<>());
+  py_WaveLength.def(constructor<int>());
+  py_WaveLength.def(constructor<const std::string&>());
+  py_WaveLength.def(&WaveLength::Label, "Label");
+  py_WaveLength.def(&WaveLength::operator(), "__call__");
+  py_WaveLength.def(&WaveLength::Energy, "Energy");
 }

@@ -229,76 +229,69 @@ namespace {
 
 BOOST_PYTHON_MODULE_INIT(adptbx)
 {
-  try
-  {
-#   include <cctbx/basic/from_bpl_import.h>
+# include <cctbx/basic/from_bpl_import.h>
 
-    python::module_builder this_module("adptbx");
+  python::module_builder this_module("adptbx");
 
-    const std::string Revision = "$Revision$";
-    this_module.add(ref(to_python(
-        Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
+  const std::string Revision = "$Revision$";
+  this_module.add(ref(to_python(
+      Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    python::import_converters<uctbx::UnitCell>
-    UnitCell_converters("cctbx.uctbx", "UnitCell");
+  python::import_converters<uctbx::UnitCell>
+  UnitCell_converters("cctbx.uctbx", "UnitCell");
 
-    class_builder<Eigensystem<double> >
-    py_Eigensystem(this_module, "Eigensystem");
+  class_builder<Eigensystem<double> >
+  py_Eigensystem(this_module, "Eigensystem");
 
-    this_module.def(py_U_as_B_iso, "U_as_B");
-    this_module.def(py_B_as_U_iso, "B_as_U");
-    this_module.def(py_U_as_B_ansio, "U_as_B");
-    this_module.def(py_B_as_U_ansio, "B_as_U");
+  this_module.def(py_U_as_B_iso, "U_as_B");
+  this_module.def(py_B_as_U_iso, "B_as_U");
+  this_module.def(py_U_as_B_ansio, "U_as_B");
+  this_module.def(py_B_as_U_ansio, "B_as_U");
 
-    this_module.def(py_Uuvrs_as_Ustar, "Uuvrs_as_Ustar");
-    this_module.def(py_Ustar_as_Uuvrs, "Ustar_as_Uuvrs");
-    this_module.def(py_Ucart_as_Ustar, "Ucart_as_Ustar");
-    this_module.def(py_Ustar_as_Ucart, "Ustar_as_Ucart");
-    this_module.def(py_Ucart_as_Uuvrs, "Ucart_as_Uuvrs");
-    this_module.def(py_Uuvrs_as_Ucart, "Uuvrs_as_Ucart");
-    this_module.def(py_Ustar_as_beta, "Ustar_as_beta");
-    this_module.def(py_beta_as_Ustar, "beta_as_Ustar");
-    this_module.def(py_Ucart_as_beta, "Ucart_as_beta");
-    this_module.def(py_beta_as_Ucart, "beta_as_Ucart");
-    this_module.def(py_Uuvrs_as_beta, "Uuvrs_as_beta");
-    this_module.def(py_beta_as_Uuvrs, "beta_as_Uuvrs");
+  this_module.def(py_Uuvrs_as_Ustar, "Uuvrs_as_Ustar");
+  this_module.def(py_Ustar_as_Uuvrs, "Ustar_as_Uuvrs");
+  this_module.def(py_Ucart_as_Ustar, "Ucart_as_Ustar");
+  this_module.def(py_Ustar_as_Ucart, "Ustar_as_Ucart");
+  this_module.def(py_Ucart_as_Uuvrs, "Ucart_as_Uuvrs");
+  this_module.def(py_Uuvrs_as_Ucart, "Uuvrs_as_Ucart");
+  this_module.def(py_Ustar_as_beta, "Ustar_as_beta");
+  this_module.def(py_beta_as_Ustar, "beta_as_Ustar");
+  this_module.def(py_Ucart_as_beta, "Ucart_as_beta");
+  this_module.def(py_beta_as_Ucart, "beta_as_Ucart");
+  this_module.def(py_Uuvrs_as_beta, "Uuvrs_as_beta");
+  this_module.def(py_beta_as_Uuvrs, "beta_as_Uuvrs");
 
-    this_module.def(py_Ucart_as_Uiso, "Ucart_as_Uiso");
-    this_module.def(py_Uiso_as_Ucart, "Uiso_as_Ucart");
-    this_module.def(py_Ustar_as_Uiso, "Ustar_as_Uiso");
-    this_module.def(py_Uiso_as_Ustar, "Uiso_as_Ustar");
-    this_module.def(py_Uuvrs_as_Uiso, "Uuvrs_as_Uiso");
-    this_module.def(py_Uiso_as_Uuvrs, "Uiso_as_Uuvrs");
-    this_module.def(py_beta_as_Uiso, "beta_as_Uiso");
-    this_module.def(py_Uiso_as_beta, "Uiso_as_beta");
+  this_module.def(py_Ucart_as_Uiso, "Ucart_as_Uiso");
+  this_module.def(py_Uiso_as_Ucart, "Uiso_as_Ucart");
+  this_module.def(py_Ustar_as_Uiso, "Ustar_as_Uiso");
+  this_module.def(py_Uiso_as_Ustar, "Uiso_as_Ustar");
+  this_module.def(py_Uuvrs_as_Uiso, "Uuvrs_as_Uiso");
+  this_module.def(py_Uiso_as_Uuvrs, "Uiso_as_Uuvrs");
+  this_module.def(py_beta_as_Uiso, "beta_as_Uiso");
+  this_module.def(py_Uiso_as_beta, "Uiso_as_beta");
 
-    this_module.def(py_DebyeWallerFactorBiso_2, "DebyeWallerFactorBiso");
-    this_module.def(py_DebyeWallerFactorUiso_2, "DebyeWallerFactorUiso");
-    this_module.def(py_DebyeWallerFactorBiso_3, "DebyeWallerFactorBiso");
-    this_module.def(py_DebyeWallerFactorUiso_3, "DebyeWallerFactorUiso");
-    this_module.def(py_DebyeWallerFactorUstar, "DebyeWallerFactorUstar");
-    this_module.def(py_DebyeWallerFactor_beta, "DebyeWallerFactor_beta");
-    this_module.def(py_DebyeWallerFactorUuvrs, "DebyeWallerFactorUuvrs");
-    this_module.def(py_DebyeWallerFactorUcart, "DebyeWallerFactorUcart");
+  this_module.def(py_DebyeWallerFactorBiso_2, "DebyeWallerFactorBiso");
+  this_module.def(py_DebyeWallerFactorUiso_2, "DebyeWallerFactorUiso");
+  this_module.def(py_DebyeWallerFactorBiso_3, "DebyeWallerFactorBiso");
+  this_module.def(py_DebyeWallerFactorUiso_3, "DebyeWallerFactorUiso");
+  this_module.def(py_DebyeWallerFactorUstar, "DebyeWallerFactorUstar");
+  this_module.def(py_DebyeWallerFactor_beta, "DebyeWallerFactor_beta");
+  this_module.def(py_DebyeWallerFactorUuvrs, "DebyeWallerFactorUuvrs");
+  this_module.def(py_DebyeWallerFactorUcart, "DebyeWallerFactorUcart");
 
-    this_module.def(py_Eigenvalues, "Eigenvalues");
-    this_module.def(py_isPositiveDefinite_adp_eigenvalues,
-                      "isPositiveDefinite");
-    this_module.def(py_isPositiveDefinite_adp,
-                      "isPositiveDefinite");
-    this_module.def(py_CheckPositiveDefinite_adp_eigenvalues,
-                      "CheckPositiveDefinite");
-    this_module.def(py_CheckPositiveDefinite_adp,
-                      "CheckPositiveDefinite");
+  this_module.def(py_Eigenvalues, "Eigenvalues");
+  this_module.def(py_isPositiveDefinite_adp_eigenvalues,
+                    "isPositiveDefinite");
+  this_module.def(py_isPositiveDefinite_adp,
+                    "isPositiveDefinite");
+  this_module.def(py_CheckPositiveDefinite_adp_eigenvalues,
+                    "CheckPositiveDefinite");
+  this_module.def(py_CheckPositiveDefinite_adp,
+                    "CheckPositiveDefinite");
 
-    py_Eigensystem.def(constructor<>());
-    py_Eigensystem.def(constructor<const boost::array<double, 6>&>());
-    py_Eigensystem.def(constructor<const boost::array<double, 6>&, double>());
-    py_Eigensystem.def(py_Eigensystem_vectors, "vectors");
-    py_Eigensystem.def(&Eigensystem<double>::values, "values");
-  }
-  catch(...)
-  {
-    boost::python::handle_exception(); // Deal with the exception for Python
-  }
+  py_Eigensystem.def(constructor<>());
+  py_Eigensystem.def(constructor<const boost::array<double, 6>&>());
+  py_Eigensystem.def(constructor<const boost::array<double, 6>&, double>());
+  py_Eigensystem.def(py_Eigensystem_vectors, "vectors");
+  py_Eigensystem.def(&Eigensystem<double>::values, "values");
 }

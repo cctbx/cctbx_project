@@ -21,7 +21,8 @@ if (__name__ == "__main__"):
   from make import read_configuration
   cf = read_configuration(path_root = os.path.dirname(path_cctbx))
   platform = cf[0]
-  if (platform in ("vc60", "mingw32") and hasattr(os, "symlink")):
+  if (    platform in ("vc60", "mingw32", "win32_mwcc")
+      and hasattr(os, "symlink")):
     print "Error: Must run under Windows!"
     sys.exit(1)
   if (len(sys.argv) == 1):

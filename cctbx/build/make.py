@@ -30,7 +30,7 @@ def read_configuration(config_file = "configuration", path_root = None):
     expand_cf(cf, "@(ROOT)", path_root, normpath = 1)
   expand_cf(cf, "@(CWD)", os.getcwd(), normpath = 1)
   python_executable = sys.executable
-  if (cf[0] == "vc60"):
+  if (cf[0] in ("vc60", "win32_mwcc")):
     python_include = sys.prefix + r"\include"
     python_lib = sys.prefix + r"\libs\python%s%s.lib" % (
       sys.version[0], sys.version[2])
@@ -68,7 +68,7 @@ def make_lib_python_dir(platform):
   except OSError: pass
   open("lib_python/cctbx/__init__.py", "a+").close()
   open("lib_python/cctbx/eltbx/__init__.py", "a+").close()
-  if (platform in ("vc60", "mingw32")):
+  if (platform in ("vc60", "mingw32", "win32_mwcc")):
     libpyd = ".pyd"
   else:
     libpyd = ".so"
@@ -90,7 +90,7 @@ def make_lib_python_dir(platform):
 if (__name__ == "__main__"):
   cf = read_configuration()
   platform = cf[0]
-  if (platform == "vc60" and not hasattr(os, "symlink")):
+  if (platform in ("vc60", "win32_mwcc") and not hasattr(os, "symlink")):
     make = "nmake"
   else:
     make = "make"
