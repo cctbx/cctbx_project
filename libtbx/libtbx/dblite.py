@@ -7,6 +7,7 @@ import __builtin__
 _open = __builtin__.open # avoid name clash
 
 keep_all_files = 00000
+ignore_corrupt_dbfiles = 0
 
 class dblite:
 
@@ -28,7 +29,14 @@ class dblite:
           raise IOError("Database does not exist: %s" % self._file_name)
         _open(self._file_name, "wb", self._mode)
       else:
-        self._dict = cPickle.load(f)
+        p = f.read()
+        if (len(p) > 0):
+          try:
+            self._dict = cPickle.loads(p)
+          except:
+            if (ignore_corrupt_dbfiles == 0): raise
+            if (ignore_corrupt_dbfiles == 1):
+              print "Warning: Discarding corrupt database:", self._file_name
 
   def __del__(self):
     if (self._needs_sync):
@@ -110,6 +118,19 @@ def _exercise():
   db = open("tmp", "r")
   assert len(db) == 3
   db = open("tmp", "n")
+  assert len(db) == 0
+  _open("tmp.dblite", "w")
+  db = open("tmp", "r")
+  _open("tmp.dblite", "w").write("x")
+  try:
+    db = open("tmp", "r")
+  except cPickle.UnpicklingError:
+    pass
+  else:
+    raise RuntimeError, "cPickle exception expected."
+  global ignore_corrupt_dbfiles
+  ignore_corrupt_dbfiles = 2
+  db = open("tmp", "r")
   assert len(db) == 0
   os.unlink("tmp.dblite")
   try:
