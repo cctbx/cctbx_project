@@ -2,7 +2,6 @@
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
-#include <scitbx/math/utils.h>
 #include <scitbx/mat3.h>
 #include <scitbx/error.h>
 #include <boost/python/make_constructor.hpp>
@@ -94,9 +93,7 @@ namespace {
     if (a_ref.size() > 0) {
       result = a_ref[0];
       for(std::size_t i=0;i<a_ref.size();i++) {
-        for(std::size_t j=0;j<3;j++) {
-          math::update_min(result[j], a_ref[i][j]);
-        }
+        result.each_update_min(a_ref[i]);
       }
     }
     return result;
@@ -111,9 +108,7 @@ namespace {
     if (a_ref.size() > 0) {
       result = a_ref[0];
       for(std::size_t i=0;i<a_ref.size();i++) {
-        for(std::size_t j=0;j<3;j++) {
-          math::update_max(result[j], a_ref[i][j]);
-        }
+        result.each_update_max(a_ref[i]);
       }
     }
     return result;
