@@ -26,7 +26,9 @@ class least_squares_residual:
     adopt_init_args(self, locals(), hide=0001)
     assert self._weights is None or self._use_sigmas_as_weights == 00000
     if (self._use_sigmas_as_weights):
-      self._weights = self._f_obs.sigmas().data()
+      sigmas_squared = flex.pow2(self._f_obs.sigmas().data())
+      assert sigmas_squared.all_gt(0)
+      self._weights = 1 / sigmas_squared
 
   def f_obs(self):
     return self._f_obs
