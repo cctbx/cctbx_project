@@ -201,12 +201,10 @@ class match_refine:
       self.adjusted_shift, mean_diff_frac)
 
   def calculate_rms(self):
-    sum_diff_cart = [0,0,0]
-    for diff in self.calculate_shortest_diffs():
-      diff_cart = self.unit_cell.orthogonalize(diff)
-      sum_diff_cart = python_utils.list_plus(sum_diff_cart, diff_cart)
-    mean_diff_cart = [s / len(self.pairs) for s in sum_diff_cart]
-    self.rms = math.sqrt(python_utils.list_dot_product(mean_diff_cart))
+    sum_dist2 = 0
+    for pair in self.pairs:
+      sum_dist2 += self.unit_cell.Length2(self.calculate_shortest_diff(pair))
+    self.rms = math.sqrt(sum_dist2 / len(self.pairs))
 
   def show(self):
     print "Match summary:"
