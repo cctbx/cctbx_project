@@ -141,6 +141,12 @@ class resampling(crystal.symmetry):
         force_complex,
         electron_density_must_be_positive)
       print "sampled_model_density OK"
+    cmap = self.ft_dp(dp).complex_map()
+    print "ft_dt_map real: %.4g %.4g" % (
+      flex.min(flex.real(cmap)), flex.max(flex.real(cmap)))
+    print "ft_dt_map imag: %.4g %.4g" % (
+      flex.min(flex.imag(cmap)), flex.max(flex.imag(cmap)))
+    print
     time_sampling = user_plus_sys_time()
     result = xray.fast_gradients(
       xray_structure.unit_cell(),
@@ -195,9 +201,7 @@ class two_p_shifted_site:
     self.e = e
     self.two_p = two_p
 
-def site(structure_ideal, d_min):
-  f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+def site(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
   sh = two_p_shifted_site(f_obs, structure_ideal, 0, 0, 0.05)
   sh.structure_shifted.show_summary().show_scatterers()
@@ -265,9 +269,7 @@ class two_p_shifted_u_iso:
     self.e = e
     self.two_p = two_p
 
-def u_iso(structure_ideal, d_min):
-  f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+def u_iso(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
   sh = two_p_shifted_u_iso(f_obs, structure_ideal, 0, 0.05)
   sh.structure_shifted.show_summary().show_scatterers()
@@ -334,9 +336,7 @@ class two_p_shifted_occupancy:
     self.e = e
     self.two_p = two_p
 
-def occupancy(structure_ideal, d_min):
-  f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+def occupancy(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
   sh = two_p_shifted_occupancy(f_obs, structure_ideal, 0, 0.2)
   sh.structure_shifted.show_summary().show_scatterers()
@@ -432,9 +432,7 @@ def ij_product(hkl, ij):
   if (ij == 5): return 2*hkl[1]*hkl[2]
   raise RuntimeError
 
-def u_star(structure_ideal, d_min):
-  f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+def u_star(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
   sh = two_p_shifted_u_star(f_obs, structure_ideal, 0, 0, 0.0001)
   sh.structure_shifted.show_summary().show_scatterers()
@@ -517,9 +515,7 @@ class two_p_shifted_fp:
     self.e = e
     self.two_p = two_p
 
-def fp(structure_ideal, d_min):
-  f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+def fp(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
   sh = two_p_shifted_fp(f_obs, structure_ideal, 0, -0.2)
   sh.structure_shifted.show_summary().show_scatterers()
@@ -587,9 +583,7 @@ class two_p_shifted_fdp:
     self.e = e
     self.two_p = two_p
 
-def fdp(structure_ideal, d_min):
-  f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+def fdp(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
   sh = two_p_shifted_fdp(f_obs, structure_ideal, 0, 2)
   sh.structure_shifted.show_summary().show_scatterers()
@@ -670,25 +664,27 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
     for scatterer in structure_ideal.scatterers():
       print "u_iso:", adptbx.u_star_as_u_iso(uc, scatterer.u_star)
   print
+  f_obs = abs(structure_ideal.structure_factors(
+    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
   if (1):
     print "site"
-    site(structure_ideal, d_min)
+    site(structure_ideal, f_obs)
   if (1):
     if (not anisotropic_flag):
       print "u_iso"
-      u_iso(structure_ideal, d_min)
+      u_iso(structure_ideal, f_obs)
     else:
       print "u_star"
-      u_star(structure_ideal, d_min)
+      u_star(structure_ideal, f_obs)
   if (1):
     print "occupancy"
-    occupancy(structure_ideal, d_min)
+    occupancy(structure_ideal, f_obs)
   if (1):
     print "fp"
-    fp(structure_ideal, d_min)
+    fp(structure_ideal, f_obs)
   if (1):
     print "fdp"
-    fdp(structure_ideal, d_min)
+    fdp(structure_ideal, f_obs)
 
 if (__name__ == "__main__"):
   run()
