@@ -113,6 +113,9 @@ def exercise(space_group_info, n_scatterers=8, d_min=5,
     structure.show_summary().show_scatterers()
   f_calc = structure.structure_factors(
     d_min=d_min, anomalous_flag=anomalous_flag).f_calc()
+  f_calc = miller.array(
+    miller_set=f_calc,
+    data=f_calc.data()/flex.mean(flex.abs(f_calc.data())))
   if (f_calc.anomalous_flag()):
     selection = flex.bool(f_calc.indices().size(), True)
     for i in xrange(f_calc.indices().size()/10):
