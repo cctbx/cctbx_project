@@ -25,6 +25,7 @@
 
 #include <cctbx/dmtbx/triplet_phase_relation.h>
 #include <cctbx/miller/sym_equiv.h>
+#include <scitbx/array_family/sort.h>
 
 namespace cctbx {
 
@@ -81,6 +82,11 @@ namespace dmtbx {
           only if the three Miller indices involved are not related
           by symmetry.
 
+          If amplitudes are given and max_relations_per_reflection > 0
+          only the triplets with the max_relations_per_reflection largest
+          values of the product amplitudes[k]*amplitudes[h-k]
+          are retained.
+
           By default this class keeps track of the number of times
           each triplet is found. This can be disabled with
           discard_weights=true.
@@ -92,27 +98,52 @@ namespace dmtbx {
       triplet_generator(
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<FloatType> const&
+          amplitudes=af::const_ref<FloatType>(0,0),
+        std::size_t max_relations_per_reflection=0,
         bool sigma_2_only=false,
         bool discard_weights=false)
       :
         t_den_(space_group.t_den()),
+        max_relations_per_reflection_(max_relations_per_reflection),
         sigma_2_only_(sigma_2_only),
         discard_weights_(discard_weights),
         array_of_wtprs_((af::reserve(miller_indices.size())))
       {
+        CCTBX_ASSERT(   amplitudes.size() == 0
+                     || amplitudes.size() == miller_indices.size());
+        CCTBX_ASSERT(   max_relations_per_reflection == 0
+                     || amplitudes.size() > 0);
         std::vector<detail::expanded_index> expanded_indices;
         setup_expanded_indices(space_group, miller_indices, expanded_indices);
         for(std::size_t ih=0;ih<miller_indices.size();ih++) {
-          array_of_wtprs_.push_back(find_triplets(
+          af::shared<wtpr_t> tprs = find_triplets(
             ih,
             miller_indices[ih],
-            expanded_indices));
+            expanded_indices);
+          if (   max_relations_per_reflection == 0
+              || max_relations_per_reflection >= tprs.size()) {
+            array_of_wtprs_.push_back(tprs);
+          }
+          else {
+            array_of_wtprs_.push_back(truncate(
+              tprs.const_ref(),
+              amplitudes,
+              max_relations_per_reflection));
+          }
         }
       }
 
       //! Translation part denominator of the space_group constructor argument.
       int
       t_den() const { return t_den_; }
+
+      //! Value of max_relations_per_reflection_ passed to the constructor.
+      std::size_t
+      max_relations_per_reflection() const
+      {
+        return max_relations_per_reflection_;
+      }
 
       //! Value of sigma_2_only flag passed to the constructor.
       bool
@@ -397,7 +428,34 @@ namespace dmtbx {
         return wtpr_array;
       }
 
+      af::shared<weighted_triplet_phase_relation>
+      truncate(
+        af::const_ref<weighted_triplet_phase_relation> const& tprs,
+        af::const_ref<FloatType> const& amplitudes,
+        std::size_t max_relations_per_reflection)
+      {
+        CCTBX_ASSERT(tprs.size() > max_relations_per_reflection);
+        af::shared<weighted_triplet_phase_relation>
+          result((af::reserve(max_relations_per_reflection)));
+        std::vector<FloatType> values_to_sort;
+        values_to_sort.reserve(tprs.size());
+        for(const wtpr_t* tpr=tprs.begin();tpr!=tprs.end();tpr++) {
+          values_to_sort.push_back(
+             amplitudes[tpr->ik()]
+           * amplitudes[tpr->ihmk()]
+           * tpr->weight());
+        }
+        af::shared<std::size_t> perm = af::sort_permutation(
+          af::const_ref<FloatType>(
+            &*values_to_sort.begin(),
+            values_to_sort.size()),
+          true);
+        perm.resize(max_relations_per_reflection);
+        return af::select(tprs, perm.const_ref());
+      }
+
       int t_den_;
+      std::size_t max_relations_per_reflection_;
       bool sigma_2_only_;
       bool discard_weights_;
       array_of_wtprs_t array_of_wtprs_;
