@@ -105,7 +105,7 @@ namespace iotbx { namespace mtz {
     public:
       object()
       :
-        ptr_(CMtz::MtzMalloc(0, 0), ptr_deleter())
+        ptr_(CMtz::MtzMalloc(0, 0), ptr_deleter)
       {
         if (ptr_.get() == 0) throw cctbx::error("MtzMalloc failed.");
         ptr_->refs_in_memory = true;
@@ -116,7 +116,7 @@ namespace iotbx { namespace mtz {
         ptr_(CMtz::MtzMalloc(
             n_datasets_for_each_crystal.size(),
             const_cast<int*>(&*n_datasets_for_each_crystal.begin())),
-          ptr_deleter())
+          ptr_deleter)
       {
         if (ptr_.get() == 0) throw cctbx::error("MtzMalloc failed.");
         ptr_->refs_in_memory = true;
@@ -124,7 +124,7 @@ namespace iotbx { namespace mtz {
 
       object(const char* file_name)
       :
-        ptr_(CMtz::MtzGet(file_name, true), ptr_deleter())
+        ptr_(CMtz::MtzGet(file_name, true), ptr_deleter)
       {
         if (ptr_.get() == 0) {
           throw cctbx::error(std::string("MTZ file read error: ") + file_name);
@@ -230,6 +230,19 @@ namespace iotbx { namespace mtz {
         return *this;
       }
 
+      char
+      lattice_centring_type() const
+      {
+        return ptr()->mtzsymm.symtyp;
+      }
+
+      object&
+      set_lattice_centring_type(char symbol)
+      {
+        ptr()->mtzsymm.symtyp = symbol;
+        return *this;
+      }
+
       cctbx::sgtbx::space_group
       space_group() const
       {
@@ -255,6 +268,7 @@ namespace iotbx { namespace mtz {
         CMtz::MTZ* p = ptr();
         CCTBX_ASSERT(sizeof(p->mtzsymm.sym) / sizeof(*p->mtzsymm.sym)
                   >= space_group.order_z());
+        p->mtzsymm.nsymp = static_cast<int>(space_group.order_p());
         p->mtzsymm.nsym = static_cast<int>(space_group.order_z());
         for (int im=0;im<p->mtzsymm.nsym;im++) {
           cctbx::sgtbx::rt_mx sm = space_group(im).mod_positive();
@@ -361,17 +375,27 @@ namespace iotbx { namespace mtz {
         cctbx::uctbx::unit_cell const& unit_cell);
 
       inline
+      bool
+      has_column(const char* label) const;
+
+      inline
       column
-      lookup_column(const char* label) const;
+      get_column(const char* label) const;
 
       inline
       hkl_columns
-      lookup_hkl_columns() const;
+      get_hkl_columns() const;
 
       inline
       integer_group
       extract_integers(
         const char* column_label);
+
+      inline
+      integer_group
+      extract_integers_anomalous(
+        const char* column_label_plus,
+        const char* column_label_minus);
 
       inline
       real_group
@@ -391,6 +415,18 @@ namespace iotbx { namespace mtz {
         const char* column_label_b,
         const char* column_label_c,
         const char* column_label_d);
+
+      inline
+      hl_group
+      extract_hls_anomalous(
+        const char* column_label_a_plus,
+        const char* column_label_b_plus,
+        const char* column_label_c_plus,
+        const char* column_label_d_plus,
+        const char* column_label_a_minus,
+        const char* column_label_b_minus,
+        const char* column_label_c_minus,
+        const char* column_label_d_minus);
 
       inline
       observations_group
@@ -428,17 +464,22 @@ namespace iotbx { namespace mtz {
         const char* column_label_ampl_minus,
         const char* column_label_phi_minus);
 
+      void
+      write(const char* file_name)
+      {
+        if (!CMtz::MtzPut(ptr(), file_name)) {
+          throw cctbx::error("MTZ write failed.");
+        }
+      }
+
     protected:
       boost::shared_ptr<CMtz::MTZ> ptr_;
 
-      struct ptr_deleter
+      static void
+      ptr_deleter(CMtz::MTZ* ptr)
       {
-        void
-        operator()(CMtz::MTZ* ptr) const
-        {
-          CCTBX_ASSERT(CMtz::MtzFree(ptr));
-        }
-      };
+        if (ptr != 0) CCTBX_ASSERT(CMtz::MtzFree(ptr));
+      }
   };
 
 }} // namespace iotbx::mtz
