@@ -26,13 +26,13 @@ namespace cctbx { namespace math {
     const FloatType& sum_y, const FloatType& sum_y2,
     const FloatType& sum_xy)
   {
-    FloatType d =   (sum_x2 - sum_x * sum_x / sum_weights)
-                  * (sum_y2 - sum_y * sum_y / sum_weights);
-    FloatType result(1);
-    if (d > FloatType(0)) {
-      result = (sum_xy - sum_x * sum_y / sum_weights) / std::sqrt(d);
+    FloatType cc_denom2 =   (sum_x2 - sum_x * sum_x / sum_weights)
+                          * (sum_y2 - sum_y * sum_y / sum_weights);
+    FloatType cc(1);
+    if (cc_denom2 > FloatType(0)) {
+      cc = (sum_xy - sum_x * sum_y / sum_weights) / std::sqrt(cc_denom2);
     }
-    return result;
+    return cc;
   }
 
   template <class IntegerType, class FloatType>
