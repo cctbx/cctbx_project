@@ -3,8 +3,7 @@
 
 #include <cmtzlib.h>
 #include <ccp4_errno.h>
-#include <cctbx/error.h>
-#include <scitbx/array_family/shared.h>
+#include <cctbx/sgtbx/space_group.h>
 
 namespace iotbx { namespace mtz {
 
@@ -65,6 +64,30 @@ namespace iotbx { namespace mtz {
         for(int i=0;i<p->histlines;i++) {
           result.push_back(
             std::string(p->hist+MTZRECORDLENGTH*i, MTZRECORDLENGTH));
+        }
+        return result;
+      }
+
+      std::string
+      space_group_name() const { return ptr()->mtzsymm.spcgrpname; }
+
+      std::string
+      point_group_name() const { return ptr()->mtzsymm.pgname; }
+
+      cctbx::sgtbx::space_group
+      space_group() const
+      {
+        cctbx::sgtbx::space_group result;
+        scitbx::mat3<double> r;
+        scitbx::vec3<double> t;
+        for(int i=0;i<ptr()->mtzsymm.nsym;i++) {
+          for (int p=0;p<3;p++) {
+            for (int q=0;q<3;q++) {
+              r(p,q) = ptr()->mtzsymm.sym[i][p][q];
+            }
+            t[p] = ptr()->mtzsymm.sym[i][p][3];
+          }
+          result.expand_smx(cctbx::sgtbx::rt_mx(r, t));
         }
         return result;
       }

@@ -8,6 +8,9 @@ def exercise_basic():
   mtz_object = mtz.wrapper.object()
   assert mtz_object.title() == ""
   assert mtz_object.history().size() == 0
+  assert mtz_object.space_group_name() == ""
+  assert mtz_object.point_group_name() == ""
+  assert mtz_object.space_group().order_z() == 1
   assert mtz_object.n_batches() == 0
   assert mtz_object.n_reflections() == 0
   assert mtz_object.space_group_number() == 0
@@ -23,6 +26,9 @@ def exercise_basic():
     mtz_object = mtz.wrapper.object(file_name=file_name)
     assert mtz_object.title() == "......"
     assert mtz_object.history().size() == 17
+    assert mtz_object.space_group_name() == "P212121"
+    assert mtz_object.point_group_name() == "PG222"
+    assert mtz_object.space_group().type().lookup_symbol() == "P 21 21 21"
     assert mtz_object.n_batches() == 0
     assert mtz_object.n_reflections() == 165
     assert mtz_object.space_group_number() == 19
