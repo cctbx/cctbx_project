@@ -3,6 +3,7 @@
 
 from cctbx import sgtbx
 from cctbx.web import utils
+import sys
 
 in_table = False
 

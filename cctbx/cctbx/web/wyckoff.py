@@ -6,10 +6,8 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.web import utils
-
+import sys
 import traceback
-import exceptions
-class FormatError(exceptions.Exception): pass
 
 in_table = False
 
@@ -35,15 +33,6 @@ def interpret_form_data(form):
       if (len(s) != 0): inp.coordinates.append(s)
   return inp
 
-def interpret_coordinate_line(line, skip_columns):
-  flds = line.split()
-  if (len(flds) < skip_columns + 3): raise FormatError, line
-  coordinates = [0,0,0]
-  for i in xrange(3):
-    try: coordinates[i] = float(flds[skip_columns + i])
-    except: raise FormatError, line
-  return " ".join(flds[:skip_columns]), coordinates
-
 def run(cctbx_url, inp):
   print "Content-type: text/html"
   print
@@ -65,7 +54,7 @@ def run(cctbx_url, inp):
 
     skip_columns = int(inp.skip_columns)
     if (skip_columns < 0):
-      raise FormatError, "Negative number for columns to skip."
+      raise ValueError, "Negative number for columns to skip."
 
     wyckoff_table=special_position_settings.space_group_info().wyckoff_table()
     print "</pre><table border=2 cellpadding=2>"
@@ -79,7 +68,7 @@ def run(cctbx_url, inp):
     print "<th>Special position operator"
     print "</tr>"
     for line in inp.coordinates:
-      skipped, coordinates = interpret_coordinate_line(line, skip_columns)
+      skipped, coordinates = utils.interpret_coordinate_line(line,skip_columns)
       if (inp.coor_type != "Fractional"):
         coordinates = unit_cell.fractionalize(coordinates)
       site_symmetry = special_position_settings.site_symmetry(coordinates)
@@ -101,7 +90,7 @@ def run(cctbx_url, inp):
   except RuntimeError, e:
     if (in_table): print "</table><pre>"
     print e
-  except AssertionError:
+  except (AssertionError, ValueError):
     if (in_table): print "</table><pre>"
     ei = sys.exc_info()
     print traceback.format_exception_only(ei[0], ei[1])[0]
