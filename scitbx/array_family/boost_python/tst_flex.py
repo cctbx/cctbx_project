@@ -1,5 +1,5 @@
 import math
-from scitbx_boost.array_family import flex
+from scitbx.array_family import flex
 
 def exercise_flex_grid():
   g = flex.grid()
