@@ -1,0 +1,35 @@
+<html>
+<head>
+<title>cctbx - SHELX LATT &amp; SYMM records</title>
+</head>
+<body bgcolor=#ffffff>
+
+<h1>cctbx - SHELX LATT &amp; SYMM records</h1>
+<hr>
+
+<FORM METHOD=POST ACTION="shelx.py">
+
+<strong>Space group symbol: </strong><input
+name="sgsymbol" size=40
+value="">
+Convention:
+<select name="convention">
+  <option value="" selected
+    >Default</option>
+  <option value="A1983"
+    >International Tables for Crystallography, Volume A 1983</option>
+  <option value="I1952"
+    >International Tables for Crystallography, Volume I 1952</option>
+  <option value="Hall"
+    >Hall symbol</option>
+</select>
+
+<p>
+<input type="submit" value="Generate LATT &amp; SYMM records">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+
+<hr>
+</body>
+</html>

@@ -693,12 +693,15 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(SgOps_call_3, "__call__");
     py_SgOps.def(&SgOps::OrderZ, "__len__");
     py_SgOps.def(SgOps_getitem, "__getitem__");
+    py_SgOps.def(&SgOps::getConventionalCentringTypeSymbol,
+                        "getConventionalCentringTypeSymbol");
     py_SgOps.def(&SgOps::isChiral, "isChiral");
     py_SgOps.def(&SgOps::isEnantiomorphic, "isEnantiomorphic");
     py_SgOps.def(&SgOps::getChangeOfHandOp, "getChangeOfHandOp");
     py_SgOps.def(&SgOps::isSysAbsent, "isSysAbsent");
     py_SgOps.def(SgOps_isCentric_0, "isCentric");
     py_SgOps.def(SgOps_isCentric_1, "isCentric");
+    py_SgOps.def(&SgOps::isOriginCentric, "isOriginCentric");
     py_SgOps.def(&SgOps::getPhaseRestriction, "getPhaseRestriction");
     py_SgOps.def(SgOps_isValidPhase_rad_2, "isValidPhase_rad");
     py_SgOps.def(SgOps_isValidPhase_rad_3, "isValidPhase_rad");
