@@ -4,8 +4,8 @@
 #include <scitbx/math/erf.h>
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/eigensystem.h>
-#include <scitbx/math/matrix_inversion.h>
 #include <scitbx/math/phase_error.h>
+#include <scitbx/matrix/inversion.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -69,7 +69,7 @@ namespace {
       throw error(
         "matrix_inversion_in_place: if a is a (n*n) matrix b must be (m*n");
     }
-    if (matrix_inversion_in_place(
+    if (matrix::inversion_in_place(
           a.begin(),
           static_cast<std::size_t>(a.accessor()[0]),
           b.begin(),

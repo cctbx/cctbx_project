@@ -70,6 +70,18 @@ namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<double>())
       .def("__init__", make_constructor(
         from_stl_vector_double, default_call_policies()))
+      .def("matrix_diagonal",
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&)) matrix_diagonal)
+      .def("matrix_diagonal_sum",
+        (double(*)(
+          const_ref<double, c_grid<2> > const&)) matrix_diagonal_sum)
+      .def("matrix_trace",
+        (double(*)(
+          const_ref<double, c_grid<2> > const&)) matrix_diagonal_sum)
+      .def("matrix_diagonal_product",
+        (double(*)(
+          const_ref<double, c_grid<2> > const&)) matrix_diagonal_product)
       .def("matrix_multiply",
         (versa<double, c_grid<2> >(*)(
           const_ref<double, c_grid<2> > const&,
@@ -91,7 +103,16 @@ namespace boost_python {
           const_ref<double> const&,
           const_ref<double> const&)) matrix_multiply)
       .def("transpose_in_place",
-        (void(*)(versa<double, flex_grid<> >&)) transpose_in_place);
+        (void(*)(versa<double, flex_grid<> >&)) transpose_in_place)
+      .def("matrix_lu_decomposition_in_place",
+        (shared<std::size_t>(*)(
+          ref<double, c_grid<2> > const&)) matrix_lu_decomposition_in_place)
+      .def("matrix_lu_back_substitution",
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&,
+          const_ref<std::size_t> const&,
+          const_ref<double> const&)) matrix_lu_back_substitution, (
+        arg_("pivot_indices"), arg_("b")))
     ;
 
     def("extract_double_attributes", extract_double_attributes,

@@ -1,16 +1,7 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Fragment from cctbx/basic/matrix_lite.h (rwgk)
- */
-
 #ifndef SCITBX_MATRIX_MULTIPLY_H
 #define SCITBX_MATRIX_MULTIPLY_H
 
-namespace scitbx {
+namespace scitbx { namespace matrix {
 
   //! Generic matrix multiplication function.
   /*! AB[ma, nb] = A[ma, na] * B[na, nb]
@@ -20,7 +11,7 @@ namespace scitbx {
             typename NumTypeAB>
   inline
   void
-  matrix_multiply(
+  multiply(
     const NumTypeA *A,
     const NumTypeB *B,
     std::size_t ma,
@@ -39,6 +30,6 @@ namespace scitbx {
     }
   }
 
-} // namespace scitbx
+}} // namespace scitbx::matrix
 
 #endif // SCITBX_MATRIX_MULTIPLY_H

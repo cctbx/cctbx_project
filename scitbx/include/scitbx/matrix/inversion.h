@@ -4,7 +4,7 @@
 #include <vector>
 #include <algorithm>
 
-namespace scitbx {
+namespace scitbx { namespace matrix {
 
   //! Generic in-place matrix inversion with pivoting.
   /*! On input a is a pointer to the values of a matrix with n rows and
@@ -17,7 +17,7 @@ namespace scitbx {
    */
   template <typename FloatType>
   int
-  matrix_inversion_in_place(
+  inversion_in_place(
     FloatType *a,
     std::size_t n,
     FloatType *b,
@@ -94,6 +94,6 @@ namespace scitbx {
     return 0;
   }
 
-} // namespace scitbx
+}} // namespace scitbx::matrix
 
 #endif // SCITBX_MATRIX_INVERSION_H
