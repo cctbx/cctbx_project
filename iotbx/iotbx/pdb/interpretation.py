@@ -306,9 +306,13 @@ class stage_1:
       if (self.atom_attributes_list[i_seq].altLoc != " "): return False
     return True
 
-  def show_atom_labels(self, i_seqs, f=None, prefix=""):
+  def show_atom_labels(self, i_seqs, f=None, prefix="", max_lines=10):
     if (f is None): f = sys.stdout
-    for i_seq in i_seqs:
+    for i_line,i_seq in enumerate(i_seqs):
+      if (i_line == max_lines and len(i_seqs) > max_lines+1):
+        print >> f, prefix + "... (following %d not shown)" % (
+          len(i_seqs)-max_lines)
+        break
       print >> f, prefix + str(self.atom_attributes_list[i_seq])
 
 class altLoc_grouping:
