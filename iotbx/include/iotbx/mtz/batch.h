@@ -262,7 +262,9 @@ namespace iotbx { namespace mtz {
       p_tail = p;
       p = p->next;
     }
-    std::vector<float> buf(NBATCHINTEGERS + NBATCHREALS, 0);
+    std::vector<float> buf(
+      static_cast<std::size_t>(NBATCHINTEGERS + NBATCHREALS),
+      static_cast<float>(0));
     CCTBX_ASSERT(sizeof(float) == sizeof(int));
     CCTBX_ASSERT(CMtz::ccp4_lwbat(
       ptr(), 0, max_batch_number+1, &*buf.begin(), "") == 1);
