@@ -28,6 +28,8 @@ def norm_join(head, tail):
 
 env_etc = empty()
 env_etc.compiler = ARGUMENTS.get("compiler", 0)
+env_etc.release_build = ARGUMENTS.get("release_build", 0)
+env_etc.debug_build = ARGUMENTS.get("debug_build", 0)
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
@@ -100,15 +102,17 @@ else:
     env_etc.cxxflags_base = Split("""
         -std strict_ansi
         -msg_display_number -msg_disable 186,450,1115
-        -O2
-        -DNDEBUG
     """)
     env_etc.ccflags_base = Split("""
         -std strict_ansi
         -msg_display_number -msg_disable 186,450,1115
-        -O2
-        -DNDEBUG
     """)
+    if (not env_etc.debug_build):
+      opts = ["-DNDEBUG", "-O2"]
+    else:
+      opts = ["-g"]
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
                         + " -expect_unresolved '_Py*'"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
@@ -127,12 +131,16 @@ else:
       -fPIC
       -ftemplate-depth-50
       -w
-      -g
     """)
     env_etc.ccflags_base = Split("""
       -w
-      -g
     """)
+    if (env_etc.release_build):
+      opts = ["-DNDEBUG", "-O3"]
+    else:
+      opts = ["-g -O0 -fno-inline"]
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "irix_CC"):
@@ -149,12 +157,15 @@ else:
     env_etc.cxxflags_base = Split("""
         -I%s/boost/compatibility/cpp_c_headers
         -woff 1001,1234,1311,1682,3439
-        -O2 -OPT:Olimit=0
-        -DNDEBUG
     """ % (os.environ["LIBTBX_BOOST"],))
     env_etc.ccflags_base = Split("""
-        -O2
     """)
+    if (not env_etc.debug_build):
+      opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
+    else:
+      opts = ["-g"]
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "darwin_c++"):
@@ -174,12 +185,15 @@ else:
         -no-cpp-precomp
         -ftemplate-depth-50
         -Wno-long-double
-        -g -O0 -fno-inline
-        -DNDEBUG
     """)
     env_etc.cxxflags_base = Split("""
-        -g
     """)
+    if (env_etc.release_build):
+      opts = ["-DNDEBUG", "-O3"]
+    else:
+      opts = ["-g -O0 -fno-inline"]
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-dynamiclib"
     env_etc.shlinkflags_bpl = "-bundle -flat_namespace -undefined warning"
   else:
