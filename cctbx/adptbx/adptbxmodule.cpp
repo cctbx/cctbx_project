@@ -172,6 +172,30 @@ namespace {
     return Eigenvalues(adp);
   }
 
+  bool
+  py_isPositiveDefinite_adp_eigenvalues(
+    const boost::array<double, 3>& adp_eigenvalues) {
+    return isPositiveDefinite(adp_eigenvalues);
+  }
+
+  bool
+  py_isPositiveDefinite_adp(
+    const boost::array<double, 6>& adp) {
+    return isPositiveDefinite(adp);
+  }
+
+  void
+  py_CheckPositiveDefinite_adp_eigenvalues(
+    const boost::array<double, 3>& adp_eigenvalues) {
+    CheckPositiveDefinite(adp_eigenvalues);
+  }
+
+  void
+  py_CheckPositiveDefinite_adp(
+    const boost::array<double, 6>& adp) {
+    CheckPositiveDefinite(adp);
+  }
+
   tuple
   py_Eigenvectors(const boost::array<double, 6>& adp) {
     boost::array<boost::array<double, 3>, 3>
@@ -233,6 +257,14 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
     this_module.def(py_DebyeWallerFactorUcart, "DebyeWallerFactorUcart");
 
     this_module.def(py_Eigenvalues, "Eigenvalues");
+    this_module.def(py_isPositiveDefinite_adp_eigenvalues,
+                      "isPositiveDefinite");
+    this_module.def(py_isPositiveDefinite_adp,
+                      "isPositiveDefinite");
+    this_module.def(py_CheckPositiveDefinite_adp_eigenvalues,
+                      "CheckPositiveDefinite");
+    this_module.def(py_CheckPositiveDefinite_adp,
+                      "CheckPositiveDefinite");
     this_module.def(py_Eigenvectors, "Eigenvectors");
   }
   catch(...)
