@@ -10,8 +10,9 @@ import sys
 
 class _gaussian(injector, ext.gaussian):
 
-  def show(self, f=None, format="%.8g"):
+  def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
+    if (format is None): format = "%.8g"
     for l,v in (("a:", self.a()), ("b:", self.b())):
       print >> f, l, ", ".join([format % x for x in v])
     print >> f, "c:", format % self.c()
@@ -57,3 +58,17 @@ class one_gaussian_agarwal_1978:
     "O": gaussian([8.1561], [-0.8941]),
     "S": gaussian([15.8448], [-2.1392]),
   }
+
+class fitted_gaussian(gaussian):
+
+  def __init__(self, d_min, a, b, c=0):
+    gaussian.__init__(self, a, b, c)
+    self.d_min = d_min
+
+  def __getinitargs__(self):
+    return (self.d_min, self.a(), self.b(), self.c())
+
+  def show(self, f=None, format=None):
+    if (f is None): f = sys.stdout
+    print "d_min: %.2f" % self.d_min
+    gaussian.show(self, f, format)
