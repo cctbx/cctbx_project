@@ -358,7 +358,14 @@ def exercise_select():
   c = flex.size_t((0,2))
   d = stl.vector.unsigned((1,3))
   assert tuple(a.select(b)) == (2,4,5)
-  assert tuple(a.select(c)) == (1,3)
+  assert tuple(a.select(indices=c)) == (1,3)
+  assert tuple(a.select(indices=c, reverse=False)) == (1,3)
+  p = flex.size_t([0,3,1,2,4])
+  assert list(a.select(p)) == [1,4,2,3,5]
+  assert list(a.select(p).select(p, reverse=True)) == list(a)
+  for i_trial in xrange(10):
+    p = flex.random_permutation(size=a.size())
+    assert list(a.select(p).select(p, reverse=True)) == list(a)
   assert tuple(a.set_selected(b, flex.double((7,8,9)))) == (1,7,3,8,9)
   assert tuple(a.set_selected(c, flex.double((-1,-2)))) == (-1,7,-2,8,9)
   assert tuple(a.set_selected(d, flex.double((-1,-2)))) == (-1,-1,-2,-2,9)
