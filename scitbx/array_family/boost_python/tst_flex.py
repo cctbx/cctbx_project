@@ -316,19 +316,27 @@ def exercise_setitem():
   assert list(a) == range(6)
 
 def exercise_select():
+  from scitbx import stl
+  import scitbx.stl.vector
   a = flex.double((1,2,3,4,5))
   b = flex.bool((0,1,0,1,1))
   c = flex.size_t((0,2))
+  d = stl.vector.unsigned((1,3))
   assert tuple(a.select(b)) == (2,4,5)
   assert tuple(a.select(c)) == (1,3)
   assert tuple(a.set_selected(b, flex.double((7,8,9)))) == (1,7,3,8,9)
   assert tuple(a.set_selected(c, flex.double((-1,-2)))) == (-1,7,-2,8,9)
-  assert tuple(a.set_selected(flex.bool(5,0), flex.double()))==(-1,7,-2,8,9)
-  assert tuple(a.set_selected(flex.size_t(), flex.double()))==(-1,7,-2,8,9)
+  assert tuple(a.set_selected(d, flex.double((-1,-2)))) == (-1,-1,-2,-2,9)
+  assert tuple(a.set_selected(flex.bool(5,0), flex.double()))==(-1,-1,-2,-2,9)
+  assert tuple(a.set_selected(flex.size_t(), flex.double()))==(-1,-1,-2,-2,9)
+  assert tuple(a.set_selected(stl.vector.unsigned(), flex.double())) \
+      == (-1,-1,-2,-2,9)
   assert tuple(a.set_selected(b, -4)) == (-1,-4,-2,-4,-4)
   assert tuple(a.set_selected(c, -3)) == (-3,-4,-3,-4,-4)
-  assert tuple(a.set_selected(flex.bool(5, 0), -9)) == (-3,-4,-3,-4,-4)
-  assert tuple(a.set_selected(flex.size_t(), -9)) == (-3,-4,-3,-4,-4)
+  assert tuple(a.set_selected(d, -2)) == (-3,-2,-3,-2,-4)
+  assert tuple(a.set_selected(flex.bool(5, 0), -9)) == (-3,-2,-3,-2,-4)
+  assert tuple(a.set_selected(flex.size_t(), -9)) == (-3,-2,-3,-2,-4)
+  assert tuple(a.set_selected(stl.vector.unsigned(), -9)) == (-3,-2,-3,-2,-4)
   a = flex.double((1,2,3,4,5))
   b = flex.size_t((3,1,0,4,2))
   assert tuple(a.select(b)) == (4,2,1,5,3)
@@ -353,8 +361,6 @@ def exercise_select():
   a = flex.bool((0,0,0,0,0))
   assert tuple(a.iselection(False)) == (0,1,2,3,4)
   assert tuple(a.iselection(True)) == ()
-  from scitbx import stl
-  import scitbx.stl.vector
   isel = stl.vector.unsigned([1,3])
   a = flex.bool(size=5, iselection=isel)
   assert tuple(a) == (False, True, False, True, False)
