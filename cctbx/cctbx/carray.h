@@ -12,6 +12,7 @@
 #define CCTBX_CARRAY_H
 
 #include <boost/array.hpp>
+#include <cctbx/vector/simple_io.h>
 
 namespace cctbx {
 
@@ -175,6 +176,11 @@ namespace cctbx {
   typedef carray<double, 3> double3;
   typedef carray<double, 6> double6;
   typedef carray<double, 9> double9;
+
+  template<class T, std::size_t N>
+  std::ostream& operator<<(std::ostream& os, const carray<T, N>& v) {
+    return vector::simple_output(os, v);
+  }
 
 } // namespace cctbx
 

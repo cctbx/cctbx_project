@@ -132,8 +132,26 @@ namespace cctbx { namespace sgtbx {
         return refine_gridding(int3(1, 1, 1));
       }
 
+      //! XXX
+      template <typename DimensionTupleType>
+      fixcap_vector<ssVM, 3>
+      grid_adapted_moduli(const DimensionTupleType& dim) const {
+        fixcap_vector<ssVM, 3> result = m_VM;
+        for(ssVM* r = result.begin(); r != result.end(); r++) {
+          if (r->M == 0) {
+            r->M = 1;
+            for(int i=0;i<3;i++) {
+              if (r->V[i] != 0) {
+                r->M = lcm(r->M, norm_denominator(r->V[i], dim[i]));
+              }
+            }
+          }
+        }
+        return result;
+      }
+
     private:
-      cctbx::fixcap_vector<ssVM, 3> m_VM;
+      fixcap_vector<ssVM, 3> m_VM;
   };
 
 }} // namespace cctbx::sgtbx

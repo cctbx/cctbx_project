@@ -90,21 +90,6 @@ namespace cctbx {
         return result;
     }
 
-    template<class AnyType, std::size_t N>
-    std::ostream& operator<<(std::ostream& os, const carray<AnyType,N>& x) {
-        os << "(";
-        if (x.size() > 0) {
-            for (std::size_t i = 0;;) {
-                os << x[i];
-                i++;
-                if (i == x.size()) break;
-                os << ",";
-            }
-        }
-        os << ")";
-        return os;
-    }
-
     template <class AnyType, std::size_t N>
     std::size_t
     carray_min_index(const carray<AnyType, N>& a) {

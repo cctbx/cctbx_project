@@ -15,38 +15,126 @@
 
 namespace cctbx { namespace maps {
 
+  template <typename ValueType, typename TagType = bool>
+  struct tagged_value
+  {
+    tagged_value() {}
+    tagged_value(const ValueType& v)
+      : value(v)
+    {}
+    tagged_value(const ValueType& v, const TagType& t)
+      : value(v), tag(t)
+    {}
+    ValueType value;
+    TagType tag;
+  };
+
   template <typename DimTupleType,
             typename IndexTupleType>
-  int3
+  inline tagged_value<IndexTupleType>
   multiply(const DimTupleType& N,
            const sgtbx::RTMx& M,
            const IndexTupleType& X)
   {
-    int3 result = M.Rpart() * X;
+    IndexTupleType result = M.Rpart() * X;
     for(int i=0;i<3;i++) {
       result[i] = result[i] * M.TBF() + M.Tpart()[i] * M.RBF() * N[i];
       if (result[i] % (M.RBF() * M.TBF())) {
-        throw error("Grid is not compatible with symmetry.");
+        return tagged_value<IndexTupleType>(result, false);
       }
       result[i] /= (M.RBF() * M.TBF());
     }
-    return result;
+    return tagged_value<IndexTupleType>(result, true);
+  }
+
+  template <typename DimensionType,
+            typename GridSsType,
+            typename IndexTupleType,
+            typename FactorTupleType>
+  inline tagged_value<IndexTupleType>
+  add(const DimensionType& dim,
+      const GridSsType& grid_ss,
+      const IndexTupleType& pivot,
+      const FactorTupleType& f)
+  {
+    IndexTupleType result = pivot;
+    for(int i_ss=0;i_ss<grid_ss.size();i_ss++) {
+      for(int i=0;i<3;i++) {
+        int s = dim[i] * grid_ss[i_ss].V[i] * f[i_ss];
+        if (s % grid_ss[i_ss].M) {
+          return tagged_value<IndexTupleType>(result, false);
+        }
+        result[i] += s / grid_ss[i_ss].M;
+      }
+    }
+    return tagged_value<IndexTupleType>(result, true);
   }
 
   template <typename VecRefNdType,
             typename IndexTupleType>
-  void
-  mark_orbit(const sgtbx::SpaceGroup& SgOps,
-             const VecRefNdType& p1_flags,
+  std::size_t
+  mark_orbit(const VecRefNdType& p1_flags,
+             const sgtbx::SpaceGroup& SgOps,
              const IndexTupleType& pivot)
   {
+    std::size_t grid_misses = 0;
     std::size_t i1d_pivot = p1_flags.dim()(pivot);
     for(int iSMx=1;iSMx<SgOps.OrderZ();iSMx++) {
       sgtbx::RTMx M = SgOps(iSMx);
-      int3 sym_equiv_point = multiply(p1_flags.dim(), M, pivot);
-      std::size_t i1d_sep = p1_flags.dim()(sym_equiv_point);
-      if (i1d_sep != i1d_pivot) p1_flags[i1d_sep] = i1d_pivot;
+      tagged_value<IndexTupleType>
+      sym_equiv_point = multiply(p1_flags.dim(), M, pivot);
+      if (sym_equiv_point.tag) {
+        std::size_t i1d_sep = p1_flags.dim()(sym_equiv_point.value);
+        if (i1d_sep != i1d_pivot) p1_flags[i1d_sep] = i1d_pivot;
+      }
+      else {
+        grid_misses++;
+      }
     }
+    return grid_misses;
+  }
+
+  template <typename VecRefNdType,
+            typename GridSsType,
+            typename IndexTupleType>
+  std::size_t
+  mark_orbit(const VecRefNdType& p1_flags,
+             const GridSsType& grid_ss,
+             const IndexTupleType& pivot)
+  {
+    std::size_t grid_misses = 0;
+    std::size_t i1d_pivot = p1_flags.dim()(pivot);
+    fixcap_vector<int, 3> moduli(grid_ss.size());
+    for(int i=0;i<grid_ss.size();i++) moduli[i] = grid_ss[i].M;
+    nested_loop<fixcap_vector<int, 3> > loop(moduli);
+    for (fixcap_vector<int, 3> f = loop(); !loop.over(); f = loop.next()) {
+      tagged_value<IndexTupleType>
+      sym_equiv_point = add(p1_flags.dim(), grid_ss, pivot, f);
+      if (sym_equiv_point.tag) {
+        std::size_t i1d_sep = p1_flags.dim()(sym_equiv_point.value);
+        if (i1d_sep != i1d_pivot) p1_flags[i1d_sep] = i1d_pivot;
+      }
+      else {
+        grid_misses++;
+      }
+    }
+    return grid_misses;
+  }
+
+  template <typename VecRefNdType,
+            typename SymmetryType>
+  std::size_t
+  mark_orbits(const VecRefNdType& p1_flags,
+              const SymmetryType& symmetry)
+  {
+    std::size_t grid_misses = 0;
+    nested_loop<int3> loop(p1_flags.dim());
+    for (int3 pivot = loop(); !loop.over(); pivot = loop.next()) {
+      if (p1_flags(pivot) == -1) {
+        grid_misses += mark_orbit(p1_flags, symmetry, pivot);
+      }
+    }
+    return grid_misses;
   }
 
 }} // namespace cctbx::maps
