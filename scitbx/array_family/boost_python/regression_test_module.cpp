@@ -98,7 +98,7 @@ namespace scitbx { namespace {
     return result;
   }
 
-  BOOST_PYTHON_FUNCTION_GENERATOR(
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
     make_boost_int_2_stubs, make_boost_int_2, 0, 2)
 
   void init_module()
