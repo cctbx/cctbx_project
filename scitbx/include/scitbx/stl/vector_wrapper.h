@@ -70,6 +70,9 @@ namespace scitbx { namespace stl { namespace boost_python {
     }
 
     static void
+    append(w_t& self, e_t const& x) { self.push_back(x); }
+
+    static void
     extend(w_t& self, w_t const& other)
     {
       self.insert(self.end(), other.begin(), other.end());
@@ -97,7 +100,7 @@ namespace scitbx { namespace stl { namespace boost_python {
         .def("__delitem__", delitem_1d_slice)
         .def("clear", &w_t::clear)
         .def("insert", insert)
-        .def("append", &w_t::push_back)
+        .def("append", append)
         .def("extend", extend)
         .enable_pickling()
         .def("__getinitargs__", getinitargs)
