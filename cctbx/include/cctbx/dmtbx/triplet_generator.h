@@ -26,7 +26,10 @@
 #include <cctbx/dmtbx/triplet_phase_relation.h>
 #include <cctbx/miller/sym_equiv.h>
 
-namespace cctbx { namespace dmtbx {
+namespace cctbx {
+
+//! Direct methods toolbox.
+namespace dmtbx {
 
   namespace detail {
 
@@ -60,6 +63,7 @@ namespace cctbx { namespace dmtbx {
 
   } // namespace detail
 
+  //! Triplets for direct methods (reciprocal-space squaring).
   template <typename FloatType = double>
   class triplet_generator
   {
@@ -69,8 +73,22 @@ namespace cctbx { namespace dmtbx {
       typedef af::const_ref<wtpr_t> cr_wtprs_t;
 
     public:
+      //! Default constructor. Some data members are not initialized!
       triplet_generator() {}
 
+      //! Searches for all triplets h = k + h-k.
+      /*! A triplet phase relation h = k + h-k is a "sigma-2" relation
+          only if the three Miller indices involved are not related
+          by symmetry.
+
+          By default this class keeps track of the number of times
+          each triplet is found. This can be disabled with
+          discard_weights=true.
+
+          With sigmas_2_only=false and discard_weights=false application
+          of the tangent formula is exactly equivalent to squaring
+          in direct space.
+       */
       triplet_generator(
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
@@ -92,15 +110,21 @@ namespace cctbx { namespace dmtbx {
         }
       }
 
+      //! Translation part denominator of the space_group constructor argument.
       int
       t_den() const { return t_den_; }
 
+      //! Value of sigma_2_only flag passed to the constructor.
       bool
       sigma_2_only() const { return sigma_2_only_; }
 
+      //! Value of discard_weights flag passed to the constructor.
       bool
       discard_weights() const { return discard_weights_; }
 
+      //! Number of triplet phase relations for each unique Miller index.
+      /*! The Miller indices are implied by the position in the array.
+       */
       af::shared<std::size_t>
       n_relations() const
       {
@@ -117,6 +141,9 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
+      //! Array of triplet phase relations for a selected Miller index.
+      /*! The Miller indices are implied by the position in the array.
+       */
       af::shared<weighted_triplet_phase_relation>
       relations_for(std::size_t ih)
       {
@@ -125,6 +152,9 @@ namespace cctbx { namespace dmtbx {
         return array_of_wtprs_[ih];
       }
 
+      //! Sum of amplitude products for each unique Miller index.
+      /*! The Miller indices are implied by the position in the array.
+       */
       af::shared<FloatType>
       sums_of_amplitude_products(
         af::const_ref<FloatType> const& amplitudes) const
@@ -145,12 +175,28 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
+      //! Computation of new phase estimates.
+      /*! The Miller indices are implied by the position in the array.
+
+          Phases for which selection_fixed is true are not changed.
+
+          If use_fixed_only is true only the fixed phases are
+          used in the computation of the new phases. Otherwise
+          all phases are used.
+
+          If reuse_results is true newly computed phases are
+          used subsequently in the computation of other phases.
+
+          If both use_fixed_only and reuse_results are true,
+          both fixed phases and newly computed phases are
+          used in the computation of the new phases.
+       */
       af::shared<FloatType>
       apply_tangent_formula(
         af::const_ref<FloatType> const& amplitudes,
         af::const_ref<FloatType> const& phases,
         af::const_ref<bool> const& selection_fixed,
-        af::const_ref<std::size_t> const& extrapolation_order,
+        bool use_fixed_only=false,
         bool reuse_results=false,
         FloatType const& sum_epsilon=1.e-10) const
       {
@@ -158,8 +204,7 @@ namespace cctbx { namespace dmtbx {
         CCTBX_ASSERT(phases.size() == amplitudes.size());
         CCTBX_ASSERT(   selection_fixed.size() == 0
                      || selection_fixed.size() == amplitudes.size());
-        CCTBX_ASSERT(   extrapolation_order.size() == 0
-                     || extrapolation_order.size() == amplitudes.size());
+        CCTBX_ASSERT(!use_fixed_only || selection_fixed.size() > 0);
         af::shared<FloatType> result(phases.begin(), phases.end());
         const FloatType* phase_source = (
           reuse_results ? result.begin() : phases.begin());
@@ -171,15 +216,7 @@ namespace cctbx { namespace dmtbx {
           fixed_or_extrapolated.assign(
             selection_fixed.begin(), selection_fixed.end());
         }
-        std::size_t ih;
-        for(std::size_t ip=0;ip<phases.size();ip++) {
-          if (extrapolation_order.size() == 0) {
-            ih = ip;
-          }
-          else {
-            ih = extrapolation_order[ip];
-            CCTBX_ASSERT(ih < amplitudes.size());
-          }
+        for(std::size_t ih=0;ih<phases.size();ih++) {
           if (selection_fixed.size() != 0 && selection_fixed[ih]) continue;
           CCTBX_ASSERT(!fixed_or_extrapolated[ih]);
           cr_wtprs_t tprs = array_of_wtprs_[ih].const_ref();
@@ -188,9 +225,15 @@ namespace cctbx { namespace dmtbx {
           for(const wtpr_t* tpr=tprs.begin();tpr!=tprs.end();tpr++) {
             CCTBX_ASSERT(tpr->ik() < amplitudes.size());
             CCTBX_ASSERT(tpr->ihmk() < amplitudes.size());
-            if (reuse_results) {
-              if (!fixed_or_extrapolated[tpr->ik()]) continue;
-              if (!fixed_or_extrapolated[tpr->ihmk()]) continue;
+            if (use_fixed_only) {
+              if (reuse_results) {
+                if (!fixed_or_extrapolated[tpr->ik()]) continue;
+                if (!fixed_or_extrapolated[tpr->ihmk()]) continue;
+              }
+              else {
+                if (!selection_fixed[tpr->ik()]) continue;
+                if (!selection_fixed[tpr->ihmk()]) continue;
+              }
             }
             FloatType a_k_a_hmk = amplitudes[tpr->ik()]
                                 * amplitudes[tpr->ihmk()]
