@@ -65,6 +65,11 @@ int main(int argc, char* argv[])
       72,72,74,78,92,86,86,92,112));
     check_true(__LINE__, b * a == mat3<int>(
       72,78,86,72,92,92,74,86,112));
+    {
+      mat3<int> f(1,2,3, 3,-4,5, 4,5,6);
+      check_true(__LINE__, f * a == f * mat3<int>(a));
+      check_true(__LINE__, a * f == mat3<int>(a) * f);
+    }
     check_true(__LINE__, a * vec3<int>(1,2,3) == vec3<int>(
       24,26,26));
     check_true(__LINE__, std::fabs(af::max(
@@ -134,6 +139,14 @@ int main(int argc, char* argv[])
     t[1] = 2.005;
     t[3] = 2.005;
     check_true(__LINE__, std::fabs(s.determinant() - t.determinant()) < 1.e-6);
+  }
+  {
+    sym_mat3<int> a(3,4,9, 2,1,7);
+    mat3<int> c(1,2,3, 3,-4,5, 4,5,6);
+    verify(__LINE__, a.tensor_transform(c),
+                     sym_mat3<int>(198,18,1020,116,447,269));
+    verify(__LINE__, a.tensor_transpose_transform(c),
+                     sym_mat3<int>(371,9,967,148,597,238));
   }
 
   std::cout << "Total OK: " << ok_counter << std::endl;
