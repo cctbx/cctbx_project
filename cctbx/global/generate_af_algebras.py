@@ -392,43 +392,6 @@ def generate_elementwise_inplace_binary_op(
     elementwise_inplace_binary_op(
       array_type_name, op_class, op_symbol, type_flags)
 
-def reducing_boolean_op(array_type_name, op_symbol, type_flags):
-  d = operator_decl_params(array_type_name, "binary", "boolean", type_flags)
-  a = binary_operator_algo_params(array_type_name, type_flags)
-  op_group_tags = {
-    "==": "",
-    "!=": "_not_equal_to",
-    ">":  "_greater_less",
-    "<":  "_greater_less",
-    ">=": "",
-    "<=": "",
-  }
-  print """%s
-  inline
-%s
-  operator%s(
-    const %s& a1,
-    const %s& a2) {
-    %sreturn array_operation_reducing_boolean%s(functor_%s<
-%s,
-        %s,
-        %s>(),
-      a1%s, a2%s, %s);
-  }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_element_type),
-       op_symbol, d.params[0], d.params[1],
-       a.size_assert,
-       op_group_tags[op_symbol],
-       binary_functors[op_symbol],
-       format_list("        ", d.return_element_type),
-       d.element_types[0], d.element_types[1],
-       a.begin[0], a.begin[1], a.loop_n)
-
-def generate_reducing_boolean_op(array_type_name, op_symbol):
-  for type_flags in ((1,1), (1,0), (0,1)):
-    reducing_boolean_op(array_type_name, op_symbol, type_flags)
-
 def generate_1arg_element_wise(array_type_name, function_names):
   result_constructor_args = get_result_constructor_args(array_type_name)
   d = operator_decl_params(array_type_name, "unary", "arithmetic", (1,0))
@@ -690,8 +653,6 @@ namespace cctbx { namespace af {
     ("<=", "less_equal")):
     generate_elementwise_binary_op(
       array_type_name, "boolean", op_symbol, function_name)
-  for op_symbol in boolean_binary_ops:
-    generate_reducing_boolean_op(array_type_name, op_symbol)
   generate_1arg_element_wise(
     array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
   generate_2arg_element_wise(array_type_name, cmath_2arg)

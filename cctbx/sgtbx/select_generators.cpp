@@ -69,7 +69,7 @@ namespace cctbx { namespace sgtbx {
               if (i == iPrincipal) continue;
               RotMxInfo RI = SgOps[i].Rpart().getInfo();
               if (math::abs(RI.Rtype()) == 2) {
-                if (PrincipalRI.EV() != RI.EV()) {
+                if (cmp_tiny(PrincipalRI.EV(), RI.EV()) != 0) {
                   ZGen[1] = SgOps[i];
                   nGen++;
                   break;
@@ -154,8 +154,12 @@ namespace cctbx { namespace sgtbx {
         case Orthorhombic:
           for(i = 1; i < WorkSgOps.nSMx(); i++) {
             RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if      (RI.EV() == EV_001) { ZGen[0] = WorkSgOps[i]; nGen++; }
-            else if (RI.EV() == EV_100) { ZGen[1] = WorkSgOps[i]; nGen++; }
+            if      (cmp_tiny(RI.EV(), EV_001) == 0) {
+              ZGen[0] = WorkSgOps[i]; nGen++;
+            }
+            else if (cmp_tiny(RI.EV(), EV_100) == 0) {
+              ZGen[1] = WorkSgOps[i]; nGen++;
+            }
           }
           cctbx_assert(nGen == 2);
           break;
@@ -175,14 +179,22 @@ namespace cctbx { namespace sgtbx {
               }
             }
             else if (PrincipalProperOrder == 4) {
-              if (RI.EV() == EV_100) { ZGen[1] = WorkSgOps[i]; nGen++; }
+              if (cmp_tiny(RI.EV(), EV_100) == 0) {
+                ZGen[1] = WorkSgOps[i]; nGen++;
+              }
             }
             else if (PrincipalProperOrder == 3) {
-              if      (RI.EV() == EV_m10) { ZGen[1] = WorkSgOps[i]; nGen++; }
-              else if (RI.EV() == EV_110) { ZGen[1] = WorkSgOps[i]; nGen++; }
+              if      (cmp_tiny(RI.EV(), EV_m10) == 0) {
+                ZGen[1] = WorkSgOps[i]; nGen++;
+              }
+              else if (cmp_tiny(RI.EV(), EV_110) == 0) {
+                ZGen[1] = WorkSgOps[i]; nGen++;
+              }
             }
             else { // PrinicipalProperOrder == 6
-              if (RI.EV() == EV_m10) { ZGen[1] = WorkSgOps[i]; nGen++; }
+              if (cmp_tiny(RI.EV(), EV_m10) == 0) {
+                ZGen[1] = WorkSgOps[i]; nGen++;
+              }
             }
           }
           cctbx_assert(nGen == 1 || nGen == 2);
@@ -193,18 +205,18 @@ namespace cctbx { namespace sgtbx {
           for(i = 1; i < WorkSgOps.nSMx(); i++) {
             RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
             if      (math::abs(RI.Rtype()) == 4) {
-              if (RI.SenseOfRotation() > 0 && RI.EV() == EV_001) {
+              if (RI.SenseOfRotation() > 0 && cmp_tiny(RI.EV(), EV_001) == 0) {
                 if (!ZGen[0].isValid()) nGen++;
                 ZGen[0] = WorkSgOps[i];
               }
             }
             else if (math::abs(RI.Rtype()) == 2) {
-              if (!ZGen[0].isValid() && RI.EV() == EV_001) {
+              if (!ZGen[0].isValid() && cmp_tiny(RI.EV(), EV_001) == 0) {
                 ZGen[0] = WorkSgOps[i]; nGen++;
               }
             }
             else if (math::abs(RI.Rtype()) == 3) {
-              if (RI.SenseOfRotation() > 0 && RI.EV() == EV_111) {
+              if (RI.SenseOfRotation() > 0 && cmp_tiny(RI.EV(), EV_111) == 0) {
                 cctbx_assert(!ZGen[1].isValid());
                 ZGen[1] = WorkSgOps[i]; nGen++;
               }

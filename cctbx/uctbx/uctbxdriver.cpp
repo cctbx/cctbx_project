@@ -20,11 +20,5 @@ int main(void)
   for (int i = 0; i < 3; i++) {
     std::cout << ucp.Len(i) << "  " << ucp.Ang(i) << std::endl;
   }
-  miller::Index m1(2,3,4);
-  miller::Index m2(3,4,2);
-  std::cout << (m1 < m1) << (m1 > m1) << std::endl;
-  std::cout << (m1 < m1) << (m1 > m1) << std::endl;
-  std::cout << (m1 == m2) << (m1 != m2) << std::endl;
-  std::cout << (m1 == m1) << (m1 != m1) << std::endl;
   return 0;
 }
