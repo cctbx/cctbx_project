@@ -9,6 +9,7 @@ class empty: pass
 from cctbx.array_family import flex
 from scitbx import matrix
 from boost import rational
+import random
 import sys
 
 class _space_group(boost.python.injector, ext.space_group):
@@ -175,3 +176,19 @@ class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
     print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
     print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
     print >> f, "use_seminvariants:", self.use_seminvariants()
+
+class _wyckoff_table(boost.python.injector, wyckoff_table):
+
+  def random_site_symmetry(self,
+        special_position_settings,
+        i_position,
+        tolerance=1.e-8):
+    position = self.position(i_position)
+    run_away_counter = 0
+    while 1:
+      run_away_counter += 1
+      assert run_away_counter < 1000
+      site = position.special_op() * [random.random() for i in xrange(3)]
+      site_symmetry = special_position_settings.site_symmetry(site)
+      if (site_symmetry.distance_moved() < tolerance):
+        return site_symmetry
