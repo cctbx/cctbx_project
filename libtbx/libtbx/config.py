@@ -44,16 +44,17 @@ def python_api_from_include(must_exist=0001):
 def python_api_version_file_name(libtbx_build):
   return norm_join(libtbx_build, "libtbx", "PYTHON_API_VERSION")
 
+adaptor_toolbox_suffix = "_adaptbx"
+
 class package_pair:
 
   def __init__(self, name):
-    suffix = "_adaptbx"
-    if (name.lower().endswith(suffix)):
-      self.primary = name[:-len(suffix)]
+    if (name.lower().endswith(adaptor_toolbox_suffix)):
+      self.primary = name[:-len(adaptor_toolbox_suffix)]
       self.adaptbx = name
     else:
       self.primary = name
-      self.adaptbx = name + suffix
+      self.adaptbx = name + adaptor_toolbox_suffix
 
   def primary_first(self):
     return (self.primary, self.adaptbx)
