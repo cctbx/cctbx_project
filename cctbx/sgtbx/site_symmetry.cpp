@@ -4,6 +4,8 @@ namespace cctbx { namespace sgtbx {
 
   rt_point_group::rt_point_group(sgtbx::space_group const& sg,
                                  rt_mx const& projection)
+  :
+    is_valid_(true)
   {
     reset(sg(0));
     if (projection.is_unit_mx()) return;
