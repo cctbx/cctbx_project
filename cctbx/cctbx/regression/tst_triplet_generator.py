@@ -7,6 +7,7 @@ from cctbx.utils import phase_error
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
+from scitbx.test_utils import approx_equal
 import random
 import math
 import sys
@@ -71,6 +72,43 @@ def reciprocal_space_squaring(start, selection_fixed, verbose):
       input_phases.select(selection_fixed))
   return result
 
+def exercise_truncate(q_large):
+  tprs_full = dmtbx.triplet_generator(
+    miller_set=q_large,
+    discard_weights=1)
+  tprs = dmtbx.triplet_generator(
+    miller_set=q_large,
+    amplitudes=q_large.data(),
+    max_relations_per_reflection=0,
+    discard_weights=1)
+  assert tprs.n_relations().all_eq(tprs_full.n_relations())
+  for n in (1,10,100,1000):
+    tprs = dmtbx.triplet_generator(
+      miller_set=q_large,
+      amplitudes=q_large.data(),
+      max_relations_per_reflection=n,
+      discard_weights=1)
+    assert (tprs.n_relations() >= n).all_eq(tprs.n_relations() == n)
+  n = 3
+  tprs = dmtbx.triplet_generator(
+    miller_set=q_large,
+    amplitudes=q_large.data(),
+    max_relations_per_reflection=n,
+    discard_weights=1)
+  n_rel_full = tprs_full.n_relations()
+  n_rel = tprs.n_relations()
+  amp = q_large.data()
+  for ih in q_large.indices().indices():
+    if (n_rel[ih] == n_rel_full[ih]): continue
+    aa_full = flex.double()
+    for relation in tprs_full.relations_for(ih):
+      aa_full.append(amp[relation.ik()] * amp[relation.ihmk()])
+    aa = flex.double()
+    for relation in tprs.relations_for(ih):
+      aa.append(amp[relation.ik()] * amp[relation.ihmk()])
+    aa_full = aa_full.select(flex.sort_permutation(aa_full, 0001))
+    assert approx_equal(aa_full[:n], aa)
+
 def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
              e_min=1.5):
   structure = random_structure.xray_structure(
@@ -133,6 +171,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
         reciprocal_space_result.data()[i],deg=1)
       phase_err = phase_error(phi_d, phi_r, deg=1)
       assert phase_err < 1.0 or abs(from_map_data[i]) < 1.e-6
+  exercise_truncate(q_large)
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info, verbose=flags.Verbose)
