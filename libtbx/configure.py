@@ -125,10 +125,15 @@ def emit_setpaths_bat(libtbx_build, libtbx_info):
   print >> f, 'set PATHEXT=.PY;%PATHEXT%'
   f.close()
 
+def find_scons_engine(env):
+  env.libtbx_scons = norm(join(env.dist_root, "scons/src/engine"))
+  if (not os.path.isdir(env.libtbx_scons)):
+    env.libtbx_scons = norm(join(env.dist_root, "scons/engine"))
+
 def find_scons(env):
   from_env = 0
   try: env.libtbx_scons = os.environ["LIBTBX_SCONS"]
-  except: env.libtbx_scons = norm(join(env.dist_root, "scons/src/engine"))
+  except: find_scons_engine(env)
   else: from_env = 1
   sys.path.insert(0, env.libtbx_scons)
   try: import SCons
