@@ -24,13 +24,23 @@ namespace scitbx { namespace fn {
     return x;
   }
 
-  //! Square.
+  //! Square of x.
   template <typename NumType>
   inline
   NumType
   pow2(NumType const& x)
   {
     return x * x;
+  }
+
+  //! Cube of x.
+  // Not available as array function.
+  template <typename NumType>
+  inline
+  NumType
+  pow3(NumType const& x)
+  {
+    return x * x * x;
   }
 
   //! Test if abs(a-b) < scaled_tolerance.
