@@ -118,6 +118,7 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   sg_fcalc = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O"),
+    random_f_double_prime=anomalous_flag,
     random_u_iso=True,
     random_occupancy=True
     ).structure_factors(
@@ -134,12 +135,29 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   verify(sg_fcalc, sg_hl.data(), sg_cns, p1_cns)
   if (anomalous_flag):
     hl_merged = sg_hl.average_bijvoet_mates()
+    fc_merged = sg_fcalc.average_bijvoet_mates()
     write_cns_input(sg_fcalc, sg_hl.data(), test_merge=True)
     try: os.unlink("tmp_merged.hkl")
     except OSError: pass
     os.system("cns < tmp.cns > tmp.out")
     reflection_file = reflection_reader.cns_reflection_file(
       open("tmp_merged.hkl"))
+    if (not sg_fcalc.space_group().is_centric()):
+      fc_merged_cns = reflection_file.reciprocal_space_objects["FCALC"]
+      fc_merged_cns = fc_merged.customized_copy(
+        indices=fc_merged_cns.indices,
+        data=fc_merged_cns.data).map_to_asu().common_set(fc_merged)
+      assert fc_merged_cns.indices().all_eq(fc_merged.indices())
+      fc_merged_a = fc_merged.select_acentric()
+      fc_merged_cns_a = fc_merged_cns.select_acentric()
+      for part in [flex.real, flex.imag]:
+        cc = flex.linear_correlation(
+          part(fc_merged_a.data()),
+          part(fc_merged_cns_a.data())).coefficient()
+        if (cc < 1-1.e-6):
+          print "FAILURE acentrics", sg_fcalc.space_group_info()
+          if (0): return
+          raise AssertionError
     names, miller_indices, hl = reflection_file.join_hl_group()
     assert names == ["PA", "PB", "PC", "PD"]
     hl_merged_cns = hl_merged.customized_copy(indices=miller_indices, data=hl)\

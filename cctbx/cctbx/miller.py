@@ -13,6 +13,7 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 import scitbx.math
 from scitbx.python_utils.math_utils import iround
+from scitbx.python_utils import complex_math
 from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
 from libtbx.utils import Keep
@@ -1507,7 +1508,17 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
 
   def average_bijvoet_mates(self):
     assert self.observation_type() is None or self.is_xray_amplitude_array()
-    return self.as_non_anomalous_array().merge_equivalents().array()
+    if (self.is_complex_array() or self.is_hendrickson_lattman_array()):
+      # centrics need special attention
+      # very inefficient but simple implementation
+      return self \
+        .expand_to_p1() \
+        .as_non_anomalous_array() \
+        .merge_equivalents().array() \
+        .customized_copy(crystal_symmetry=self) \
+        .merge_equivalents().array()
+    else:
+      return self.as_non_anomalous_array().merge_equivalents().array()
 
   def __add__(self, other):
     assert self.indices() is not None
@@ -1579,11 +1590,14 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       else: data.append(correlation.coefficient())
     return binned_data(binner=lhs.binner(), data=data, data_fmt="%6.3f")
 
-  def show_array(self, f=None, prefix=""):
+  def show_array(self, f=None, prefix="", deg=None):
     "Listing of Miller indices and data"
     if (f is None): f = sys.stdout
     assert self.data().size() == self.indices().size()
-    if (self.sigmas() is None):
+    if (self.is_complex_array() and deg is not None):
+      for h,d in zip(self.indices(), self.data()):
+        print >> f, prefix + str(h), d, complex_math.abs_arg(d, deg=deg)
+    elif (self.sigmas() is None):
       for h,d in zip(self.indices(), self.data()):
         print >> f, prefix + str(h), d
     else:
