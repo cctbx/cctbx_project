@@ -160,8 +160,8 @@ namespace cctbx { namespace sgtbx {
       cctbx_assert(ContinuousVM.size() < 3);
       cctbx::fixcap_vector<int, 2> loop_min, loop_max;
       for (iVM = 0; iVM < ContinuousVM.size(); iVM++) {
-        loop_min.push_back(0);
-        loop_max.push_back(LTBF);
+        loop_min.push_back(0); // XXX eliminate
+        loop_max.push_back(LTBF); // XXX loop_end
       }
       TrVec LTr[3];
       for (iLTr = 0; iLTr < SgOps.nLTr(); iLTr++) {
