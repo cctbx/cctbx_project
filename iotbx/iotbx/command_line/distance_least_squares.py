@@ -3,7 +3,7 @@ from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 import sys
 
-def run(distance_cutoff=3.5, nonbonded_distance_cutoff=5):
+def run(args, distance_cutoff=3.5, nonbonded_distance_cutoff=5):
   command_line = (iotbx_option_parser(
     usage="iotbx.distance_least_squares [options] studat_file [...]",
     description="Example: iotbx.distance_least_squares strudat --tag=SOD")
@@ -19,7 +19,7 @@ def run(distance_cutoff=3.5, nonbonded_distance_cutoff=5):
       dest="n_trials",
       help="Number of trial per structure",
       metavar="INT")
-  ).process()
+  ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
@@ -39,4 +39,4 @@ def run(distance_cutoff=3.5, nonbonded_distance_cutoff=5):
         connectivities=entry.connectivities(all_or_nothing=0001))
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])

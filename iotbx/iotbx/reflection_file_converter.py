@@ -6,7 +6,7 @@ from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx.option_parser import iotbx_option_parser
 
-def run(args):
+def run(args, simply_return_all_miller_arrays=00000):
   command_line = (iotbx_option_parser(
     usage="iotbx.reflection_file_converter [options] reflection_file ...",
     description="Example: iotbx.reflection_file_converter w1.sca --mtz .")
@@ -63,7 +63,7 @@ def run(args):
       dest="shelx",
       help="write data to SHELX FILE ('--shelx .' copies name of input file)",
       metavar="FILE")
-  ).process()
+  ).process(args=args)
   if (    command_line.options.scale_max is not None
       and command_line.options.scale_factor is not None):
     print
@@ -79,6 +79,8 @@ def run(args):
     force_symmetry=not command_line.options.weak_symmetry,
     discard_arrays=00000,
     verbose=1)
+  if (simply_return_all_miller_arrays):
+    return all_miller_arrays
   label_table = reflection_file_utils.label_table(
     miller_arrays=all_miller_arrays)
   if (len(all_miller_arrays) == 1):

@@ -9,10 +9,9 @@ from cctbx.sgtbx import lattice_symmetry
 from cctbx.sgtbx import bravais_types
 from iotbx.option_parser import iotbx_option_parser
 from scitbx.array_family import flex
-import math
 import sys
 
-def run():
+def run(args):
   command_line = (iotbx_option_parser(
     usage="iotbx.lattice_symmetry [options] [centring_type_symbol]",
     description="Example: iotbx.lattice_symmetry"
@@ -24,7 +23,7 @@ def run():
       default=3.,
       dest="delta",
       help="angular tolerance in degrees")
-  ).process(max_nargs=1)
+  ).process(args=args, max_nargs=1)
   # Pick up symmetry object
   input_symmetry = command_line.symmetry
   # Check that we have what we need
@@ -154,4 +153,4 @@ class metric_subgroups:
     self.show_groups()
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])
