@@ -126,9 +126,29 @@ def print_henke_cpp(tables):
 
 }} // namespace cctbx::eltbx"""
 
+def collect_points(lines):
+  points = []
+  for line in lines:
+    points.append(line.split()[0])
+  return points
+
+def collect_tab_points(tables):
+  tab_points = []
+  for tab in tables[1:]:
+    tab_points.append(collect_points(tab[1]))
+  return tab_points
+
+def compare_points(tables):
+  tab_points = collect_tab_points(tables)
+  for i in xrange(len(tab_points)-1):
+    for j in xrange(i+1, len(tab_points)):
+      if (tab_points[i] == tab_points[j]):
+        print "points %d==%d" % (i+1,j+1)
+
 def run():
   import sys
   tables = collect_tables()
+  compare_points(tables) # establish that each list of data points is unique
   f = open("henke.cpp", "w")
   sys.stdout = f
   print_header()
