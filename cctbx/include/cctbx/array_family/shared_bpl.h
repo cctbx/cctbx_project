@@ -61,6 +61,11 @@ namespace cctbx { namespace af {
   void shared_float_setstate(shared<float>& a, boost::python::ref state);
   boost::python::ref shared_double_getstate(shared<double> const& a);
   void shared_double_setstate(shared<double>& a, boost::python::ref state);
+  boost::python::ref shared_complex_double_getstate(
+    shared<std::complex<double> > const& a);
+  void shared_complex_double_setstate(
+    shared<std::complex<double> >& a,
+    boost::python::ref state);
 
   template <typename ElementType>
   struct shared_pickle
@@ -110,6 +115,17 @@ namespace cctbx { namespace af {
     {
       class_bldr.def(shared_double_getstate, "__getstate__");
       class_bldr.def(shared_double_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct shared_pickle<std::complex<double> >
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(shared_complex_double_getstate, "__getstate__");
+      class_bldr.def(shared_complex_double_setstate, "__setstate__");
     }
   };
 
