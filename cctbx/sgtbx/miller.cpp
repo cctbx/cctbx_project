@@ -19,11 +19,30 @@ namespace cctbx { namespace sgtbx {
 
   PhaseInfo::PhaseInfo(
     SpaceGroup const& sgops,
-    Miller::Index const& h)
-    : m_HT(-1), m_SysAbsChecked(true)
+    Miller::Index const& h,
+    bool no_test_sys_absent)
+    : m_HT(-1), m_TBF(sgops.TBF()), m_SysAbsWasTested(!no_test_sys_absent)
   {
     // systematically absent reflection: if HR == H and HT != 0 mod 1
     // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
+    if (no_test_sys_absent) {
+      // Fast determination of phase restriction without considering
+      // conditions for systematically absent reflections.
+      if (sgops.isCentric()) {
+        m_HT = HT_mod_1(h, sgops.InvT());
+      }
+      else {
+        for(int i=0;i<sgops.nSMx();i++) {
+          if (h * sgops[i].Rpart() == -h) {
+            m_HT = HT_mod_1(h, sgops[i].Tpart());
+            break;
+          }
+        }
+      }
+      return;
+    }
+    // Simulatenous determination of phase restriction and evaluation
+    // conditions for systematically absent reflections.
     for(int iSMx=0;iSMx<sgops.nSMx();iSMx++) {
       const RotMx& R = sgops[iSMx].Rpart();
       const TrVec& T = sgops[iSMx].Tpart();
@@ -88,21 +107,6 @@ namespace cctbx { namespace sgtbx {
       result.push_back(isCentric(H[i]));
     }
     return result;
-  }
-
-  PhaseInfo
-  SpaceGroup::getPhaseRestriction(const Miller::Index& H) const
-  {
-    // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
-    if (isCentric()) {
-      return PhaseInfo(HT_mod_1(H, m_InvT), TBF(), false);
-    }
-    rangei(m_nSMx) {
-      if (H * m_SMx[i].Rpart() == -H) {
-        return PhaseInfo(HT_mod_1(H, m_SMx[i].Tpart()), TBF(), false);
-      }
-    }
-    return PhaseInfo(-1, TBF(), false); // no restriction
   }
 
   int SpaceGroup::epsilon(const Miller::Index& H) const

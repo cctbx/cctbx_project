@@ -27,7 +27,7 @@ def OneCycle(settings):
         h_seq = SgOps.getEquivMillerIndices(h_asym)
         # exercise class PhaseInfo
         restr = h_seq.getPhaseRestriction()
-        assert not restr.SysAbsChecked()
+        assert not restr.SysAbsWasTested()
         if (h_seq.isCentric()):
           phi_asym = restr.HT_angle() + random.choice((0,1)) * math.pi
         else:

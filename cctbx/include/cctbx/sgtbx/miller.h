@@ -169,12 +169,17 @@ namespace cctbx {
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
-    //! class for the high-level handling of centric reflections.
+    /*! \brief Handling of phase restrictions and optional evaluation
+        of conditions for systematically absent reflections.
+     */
     /*! A reflection with the Miller index H is "centric" if
-        there is a symmetry operation with rotation part R such
-        that H*R = -H.<br>
-        The phase of a centric reflection is restricted to two phase
-        angels (modulo pi).
+	there is a symmetry operation with rotation part R such that
+	H*R = -H. The phase of a centric reflection is restricted to
+	two phase angels (modulo pi).
+        <p>
+        A reflection with the Miller index H is "systematically absent"
+        if there is a symmetry operation with the rotation part R and
+        the translation part T such that H*R == H and H*T != 0 mod 1.
      */
     class PhaseInfo
     {
@@ -182,21 +187,39 @@ namespace cctbx {
         //! Default constructor. Some data members are not initialized!
         PhaseInfo() {}
 
-        //! Determination of the restriction for a given Miller index.
-        PhaseInfo(SpaceGroup const& sgops, Miller::Index const& h);
+        //! Determination of the phase restriction for a given Miller index.
+        /*! If no_test_sys_absent == false, it is also tested if a
+            reflection with the given Miller index is systematically
+            absent. If no_test_sys_absent == true, a faster algorithm
+            is used that only determines the phase restriction. In the
+            latter case the isSysAbsent() member function must not
+            be used (an exception is thrown otherwise).
+         */
+        PhaseInfo(SpaceGroup const& sgops, Miller::Index const& h,
+                  bool no_test_sys_absent = false);
 
         //! Initialization with known product H*T and given base factor.
-        PhaseInfo(int HT, int TBF, bool SysAbsChecked)
-          : m_HT(HT), m_TBF(TBF), m_SysAbsChecked(SysAbsChecked)
+        /*! sys_abs_was_tested indicates if it is known if a reflection
+            with the given Miller index is systematically absent.
+            The isSysAbsent() member function must not be used
+            if sys_abs_was_tested == false (an exception is thrown
+            otherwise).
+         */
+        PhaseInfo(int HT, int TBF, bool sys_abs_was_tested)
+          : m_HT(HT), m_TBF(TBF), m_SysAbsWasTested(sys_abs_was_tested)
         {}
 
         //! Test if isSysAbsent() can be used.
-        bool SysAbsChecked() const { return m_SysAbsChecked; }
+        bool SysAbsWasTested() const { return m_SysAbsWasTested; }
 
         //! Test for systematically absent reflection.
+        /*! Use SysAbsWasTested() to determine if this test can be used.
+            If the result of SysAbsWasTested() == false, an exception
+            is thrown if this test is used.
+         */
         bool isSysAbsent() const
         {
-          cctbx_assert(m_SysAbsChecked);
+          cctbx_assert(m_SysAbsWasTested);
           return m_HT == -2;
         }
 
@@ -251,14 +274,18 @@ namespace cctbx {
 
         int m_HT;
         int m_TBF;
-        bool m_SysAbsChecked;
+        bool m_SysAbsWasTested;
     };
 
     //! class for the handling of symmetrically equivalent Miller indices.
     /*! This class is exclusively used to represent the results
-        of SpaceGroup::getEquivMillerIndices().<br>
+        of SpaceGroup::getEquivMillerIndices().
+        <p>
         The Miller index used in the call to getEquivMillerIndices
         is referred to as the "input Miller index."
+        <p>
+	The conditions for systematically absent reflections are
+	NOT tested.
      */
     class SymEquivMillerIndices
     {
@@ -298,7 +325,14 @@ namespace cctbx {
           if (FriedelFlag && !isCentric()) return 2 * N();
           return N();
         }
-        //! XXX
+        //! Number of equivalent indices that will appear in a P1 listing.
+        /*! If FriedelFlag == false (anomalous listing) the result is
+            always equal to N(). If FriedelFlag == true the result is
+            N() for non-centric reflections and N()/2 for centric
+            reflections. In the latter case the N()/2 indices
+            for the listing can be obtained with operator[]() or
+            operator()() by looping from 0 to N()/2-1.
+         */
         int n_p1_listing(bool FriedelFlag) const {
           if (FriedelFlag && isCentric()) return N() / 2;
           return N();
