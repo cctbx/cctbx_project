@@ -127,6 +127,15 @@ class structure(crystal.special_position_settings):
       site_symmetry_table=self._site_symmetry_table.select(sel),
       scattering_dict=self._scattering_dict)
 
+  def select(self, selection, negate=False):
+    assert self.scatterers() is not None
+    if (negate): selection = ~selection
+    return structure(
+      special_position_settings=self,
+      scatterers=self._scatterers.select(selection),
+      site_symmetry_table=self._site_symmetry_table.select(selection),
+      scattering_dict=self._scattering_dict)
+
   def add_scatterer(self, scatterer, site_symmetry_ops=None):
     self._scatterers.append(scatterer)
     if (site_symmetry_ops is None):

@@ -180,12 +180,26 @@ namespace cctbx { namespace sgtbx {
 
       //! Apply selection.
       site_symmetry_table
-      select(af::const_ref<std::size_t> const& indices) const
+      select(af::const_ref<std::size_t> const& selection) const
       {
         site_symmetry_table result;
-        result.reserve(indices.size());
-        for(std::size_t i=0;i<indices.size();i++) {
-          result.process(get(indices[i]));
+        result.reserve(selection.size());
+        for(std::size_t i=0;i<selection.size();i++) {
+          result.process(get(selection[i]));
+        }
+        return result;
+      }
+
+      //! Apply selection.
+      site_symmetry_table
+      select(af::const_ref<bool> const& selection) const
+      {
+        CCTBX_ASSERT(selection.size() == indices_.size());
+        site_symmetry_table result;
+        for(std::size_t i_seq=0;i_seq<selection.size();i_seq++) {
+          if (selection[i_seq]) {
+            result.process(table_const_ref_[indices_const_ref_[i_seq]]);
+          }
         }
         return result;
       }
