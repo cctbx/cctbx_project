@@ -16,7 +16,7 @@ def write_bundle_info(src_root, target_root):
   if (os.path.isdir(target_root)):
     dest = libtbx.path.norm_join(target_root, "bundle_info")
     f = open(dest, "w")
-    print >> f, "%04d_%02d_%02d_%02d%02d" % time.localtime()[:5]
+    print >> f, "%04d/%02d/%02d %02d:%02d:%02d" % time.localtime()[:6]
     print >> f, "time zone:", time.tzname
     print >> f, "hostname:", libtbx.config.get_hostname()
     print >> f, "os.name:", os.name
