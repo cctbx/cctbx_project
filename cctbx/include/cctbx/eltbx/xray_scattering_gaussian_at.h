@@ -73,22 +73,6 @@
         return result;
       }
 
-      //! Analytical gradients w.r.t. a,b,c at the point d_star.
-      gaussian
-      gradients_at_d_star_sq(double d_star_sq) const
-      {
-        double stol_sq = d_star_sq / 4.;
-        af::small<float, gaussian::max_n_ab> gr_a;
-        af::small<float, gaussian::max_n_ab> gr_b;
-        for(std::size_t i=0;i<n_ab();i++) {
-          gr_a.push_back(std::exp(-b(i) * stol_sq));
-        }
-        for(std::size_t i=0;i<n_ab();i++) {
-          gr_b.push_back(-stol_sq * a(i) * gr_a[i]);
-        }
-        return gaussian(gr_a, gr_b, 1);
-      }
-
       //! Analytical gradients w.r.t. a,b,c at the point stol.
       gaussian
       gradients_at_stol(double stol) const

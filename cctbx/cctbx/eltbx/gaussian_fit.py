@@ -51,7 +51,6 @@ class minimize:
     assert target_power in [2,4]
     self.n = fit_object.n_ab() * 2
     self.x = flex.double(self.n, 0)
-    self.weights = 1/flex.pow2(fit_object.sigmas())
     self.first_target_value = None
     self.minimizer = lbfgs.run(
       target_evaluator=self,
@@ -82,12 +81,9 @@ class minimize:
 
   def compute_target(self, compute_gradients):
     differences = self.fit_object_shifted.differences()
-    self.f = flex.pow2(differences)
-    if (self.target_power == 4):
-      self.f = flex.pow2(self.f)
-    self.f = flex.sum(self.weights * self.f)
+    self.f = self.fit_object.target_function(self.target_power, differences)
     if (compute_gradients):
-      self.g = self.fit_object_shifted.sum_of_gradients(
+      self.g = self.fit_object_shifted.gradients(
         self.target_power, differences, 00000)
       if (self.enforce_positive_b):
         n_ab = self.fit_object.n_ab()

@@ -49,29 +49,8 @@ namespace {
           &w_t::at_d_star_sq)
         .def("gradient_at_d_star", &w_t::gradient_at_d_star)
         .def("integral_at_d_star", &w_t::integral_at_d_star)
-        .def("gradients_at_d_star_sq", &w_t::gradients_at_d_star_sq)
+        .def("gradients_at_stol", &w_t::gradients_at_stol)
         .def_pickle(gaussian_wrappers())
-      ;
-    }
-  };
-
-  struct difference_gaussian_wrappers
-  {
-    typedef difference_gaussian w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t, bases<gaussian> >("difference_gaussian", no_init)
-        .def(init<gaussian const&, gaussian const&>())
-        .def("reference_gaussian", &w_t::reference_gaussian, ccr())
-        .def("apply_shifts", &w_t::apply_shifts)
-        .def("target_term_at_d_star_sq", &w_t::target_term_at_d_star_sq)
-        .def("target_at_d_star_sq", &w_t::target_at_d_star_sq)
-        .def("target_terms_at_points", &w_t::target_terms_at_points)
-        .def("sum_of_gradients_at_points", &w_t::sum_of_gradients_at_points)
       ;
     }
   };
@@ -99,7 +78,8 @@ namespace {
         .def("fitted_values", &w_t::fitted_values)
         .def("differences", &w_t::differences)
         .def("apply_shifts", &w_t::apply_shifts)
-        .def("sum_of_gradients", &w_t::sum_of_gradients)
+        .def("target_function", &w_t::target_function)
+        .def("gradients", &w_t::gradients)
       ;
     }
   };
@@ -130,7 +110,7 @@ namespace {
           &w_t::at_d_star_sq)
         .def("gradient_at_d_star", &w_t::gradient_at_d_star)
         .def("integral_at_d_star", &w_t::integral_at_d_star)
-        .def("gradients_at_d_star_sq", &w_t::gradients_at_d_star_sq)
+        .def("gradients_at_stol", &w_t::gradients_at_stol)
       ;
     }
   };
@@ -170,7 +150,6 @@ namespace {
     using namespace boost::python;
 
     gaussian_wrappers::wrap();
-    difference_gaussian_wrappers::wrap();
     gaussian_fit_wrappers::wrap();
 
     it1992_wrappers::wrap();
