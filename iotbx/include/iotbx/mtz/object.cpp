@@ -28,7 +28,7 @@ namespace iotbx { namespace mtz {
   {
     CCTBX_ASSERT(file_name != 0);
     ptr_ = boost::shared_ptr<CMtz::MTZ>(
-      CMtz::MtzGet(file_name, true), ptr_deleter);
+      CMtz::MtzGetUserCellTolerance(file_name, true, 0), ptr_deleter);
     if (ptr_.get() == 0) {
       throw cctbx::error(std::string("MTZ file read error: ") + file_name);
     }

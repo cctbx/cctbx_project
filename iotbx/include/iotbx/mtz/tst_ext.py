@@ -4,7 +4,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.itertbx import count
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -436,7 +436,7 @@ def exercise_modifiers(verbose=0):
   if (not verbose): out = StringIO()
   mtz_object.show_summary(out=out)
   if (not verbose):
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 Title: exercise
 Space group symbol from file: sg
 Space group number from file: 123
@@ -465,7 +465,7 @@ Crystal 3:
   Id: 3
   Unit cell: (12, 20, 20, 90, 90, 120)
   Number of datasets: 0
-"""
+""")
   mtz_object.crystals()[1].set_unit_cell_parameters([13,21,23,81,82,83])
   assert approx_equal(mtz_object.crystals()[1].unit_cell_parameters(),
     [13,21,23,81,82,83])
@@ -485,7 +485,7 @@ Crystal 3:
   if (not verbose): out = StringIO()
   mtz_object.show_summary(out=out)
   if (not verbose):
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 Title: exercise
 Space group symbol from file: sg
 Space group number from file: 123
@@ -504,27 +504,27 @@ Crystal 1:
   Number of datasets: 5
   Dataset 1:
     Name: dataset_0
-    Id: 0
+    Id: 1
     Wavelength: 10
     Number of columns: 0
   Dataset 2:
     Name: dataset_1
-    Id: 1
+    Id: 2
     Wavelength: 9
     Number of columns: 0
   Dataset 3:
     Name: dataset_2
-    Id: 2
+    Id: 3
     Wavelength: 8
     Number of columns: 0
   Dataset 4:
     Name: dataset_3
-    Id: 3
+    Id: 4
     Wavelength: 7
     Number of columns: 0
   Dataset 5:
     Name: dataset_4
-    Id: 4
+    Id: 5
     Wavelength: 6
     Number of columns: 0
 Crystal 2:
@@ -535,22 +535,22 @@ Crystal 2:
   Number of datasets: 4
   Dataset 1:
     Name: dataset_0
-    Id: 5
+    Id: 6
     Wavelength: 10
     Number of columns: 0
   Dataset 2:
     Name: dataset_1
-    Id: 6
+    Id: 7
     Wavelength: 9
     Number of columns: 0
   Dataset 3:
     Name: dataset_2
-    Id: 7
+    Id: 8
     Wavelength: 8
     Number of columns: 0
   Dataset 4:
     Name: dataset_3
-    Id: 8
+    Id: 9
     Wavelength: 7
     Number of columns: 0
 Crystal 3:
@@ -561,20 +561,20 @@ Crystal 3:
   Number of datasets: 3
   Dataset 1:
     Name: dataset_0
-    Id: 9
+    Id: 10
     Wavelength: 10
     Number of columns: 0
   Dataset 2:
     Name: dataset_1
-    Id: 10
+    Id: 11
     Wavelength: 9
     Number of columns: 0
   Dataset 3:
     Name: dataset_2
-    Id: 11
+    Id: 12
     Wavelength: 8
     Number of columns: 0
-"""
+""")
   for stage in [0,1]:
     i_seq_iter = count()
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
@@ -592,7 +592,7 @@ Crystal 3:
   if (not verbose): out = StringIO()
   mtz_object.show_summary(out=out)
   if (not verbose):
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 Title: exercise
 Space group symbol from file: sg
 Space group number from file: 123
@@ -611,14 +611,14 @@ Crystal 1:
   Number of datasets: 5
   Dataset 1:
     Name: dataset_0
-    Id: 0
+    Id: 1
     Wavelength: 10
     Number of columns: 1
     Column number, label, number of valid values, type:
       1 column_0 0/0=0.00% F: amplitude
   Dataset 2:
     Name: dataset_1
-    Id: 1
+    Id: 2
     Wavelength: 9
     Number of columns: 2
     Column number, label, number of valid values, type:
@@ -626,7 +626,7 @@ Crystal 1:
       2 column_2 0/0=0.00% F: amplitude
   Dataset 3:
     Name: dataset_2
-    Id: 2
+    Id: 3
     Wavelength: 8
     Number of columns: 3
     Column number, label, number of valid values, type:
@@ -635,14 +635,14 @@ Crystal 1:
       3 column_5 0/0=0.00% F: amplitude
   Dataset 4:
     Name: dataset_3
-    Id: 3
+    Id: 4
     Wavelength: 7
     Number of columns: 1
     Column number, label, number of valid values, type:
       1 column_6 0/0=0.00% F: amplitude
   Dataset 5:
     Name: dataset_4
-    Id: 4
+    Id: 5
     Wavelength: 6
     Number of columns: 2
     Column number, label, number of valid values, type:
@@ -656,7 +656,7 @@ Crystal 2:
   Number of datasets: 4
   Dataset 1:
     Name: dataset_0
-    Id: 5
+    Id: 6
     Wavelength: 10
     Number of columns: 2
     Column number, label, number of valid values, type:
@@ -664,7 +664,7 @@ Crystal 2:
       2 column_10 0/0=0.00% ?: *** UNDEFINED column type ***
   Dataset 2:
     Name: dataset_1
-    Id: 6
+    Id: 7
     Wavelength: 9
     Number of columns: 3
     Column number, label, number of valid values, type:
@@ -673,14 +673,14 @@ Crystal 2:
       3 column_13 0/0=0.00% ?: *** UNDEFINED column type ***
   Dataset 3:
     Name: dataset_2
-    Id: 7
+    Id: 8
     Wavelength: 8
     Number of columns: 1
     Column number, label, number of valid values, type:
       1 column_14 0/0=0.00% ?: *** UNDEFINED column type ***
   Dataset 4:
     Name: dataset_3
-    Id: 8
+    Id: 9
     Wavelength: 7
     Number of columns: 2
     Column number, label, number of valid values, type:
@@ -694,7 +694,7 @@ Crystal 3:
   Number of datasets: 3
   Dataset 1:
     Name: dataset_0
-    Id: 9
+    Id: 10
     Wavelength: 10
     Number of columns: 3
     Column number, label, number of valid values, type:
@@ -703,20 +703,20 @@ Crystal 3:
       3 column_19 0/0=0.00% B: BATCH number
   Dataset 2:
     Name: dataset_1
-    Id: 10
+    Id: 11
     Wavelength: 9
     Number of columns: 1
     Column number, label, number of valid values, type:
       1 column_20 0/0=0.00% B: BATCH number
   Dataset 3:
     Name: dataset_2
-    Id: 11
+    Id: 12
     Wavelength: 8
     Number of columns: 2
     Column number, label, number of valid values, type:
       1 column_21 0/0=0.00% F: amplitude
       2 column_22 0/0=0.00% B: BATCH number
-"""
+""")
   for column in mtz_object.columns():
     assert column.array_size() == 2000
     assert column.array_capacity() == 2402
@@ -779,7 +779,7 @@ Crystal 3:
   if (not verbose): out = StringIO()
   mtz_object.show_summary(out=out)
   if (not verbose):
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 Title: exercise
 Space group symbol from file: sg
 Space group number from file: 123
@@ -819,12 +819,12 @@ Crystal 2:
       5 SigF 3/4=75.00%  Q: standard deviation
       6 I    3/4=75.00%  F: amplitude
       7 SigI 3/4=75.00%  Q: standard deviation
-"""
+""")
   mtz_object.write(file_name="tmp.mtz")
   if (not verbose): out = StringIO()
   mtz.object(file_name="tmp.mtz").show_summary(out=out)
   if (not verbose):
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 Title: exercise
 Space group symbol from file: sg
 Space group number from file: 123
@@ -864,7 +864,7 @@ Crystal 2:
       5 SigF 3/4=75.00%  Q: standard deviation
       6 I    3/4=75.00%  F: amplitude
       7 SigI 3/4=75.00%  Q: standard deviation
-"""
+""")
   #
   original_miller_indices = mtz_object.extract_miller_indices()
   assert list(original_miller_indices) \
@@ -1022,7 +1022,7 @@ Crystal 2:
     batch.show(out=out)
     if (not verbose and i_batch == 3):
       batch_3_show = out
-      assert out.getvalue() == """\
+      assert not show_diff(out.getvalue(), """\
 batch number: 4
 batch title: Hello MTZHello MTZHello MTZHello MTZHello MTZHello MTZHello MTZHello M
 names of the three axes: ['what', 'ever', 'this_is']
@@ -1070,7 +1070,7 @@ vertical beam divergence: 107.0
 xtal to detector distance: [84.0, 85.0]
 detector tilt angle: [85.0, 86.0]
 min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.0, 92.0, 93.0]
-"""
+""")
   mtz_object.write(file_name="tmp.mtz")
   restored = mtz.object(file_name="tmp.mtz")
   assert restored.n_batches() == 10
