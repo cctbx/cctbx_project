@@ -29,11 +29,12 @@ namespace cctbx { namespace crystal { namespace neighbors {
       bool
       at_end() const { return at_end_; }
 
-      direct_space_asu::asu_mapping_index_pair<FloatType>
+      direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
       next()
       {
         CCTBX_ASSERT(!at_end_);
-        direct_space_asu::asu_mapping_index_pair<FloatType> result = pair_;
+        direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
+          result = pair_;
         incr();
         while (!at_end_ && pair_.dist_sq > distance_cutoff_sq_) {
           incr();
@@ -54,7 +55,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
     protected:
       direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
       FloatType distance_cutoff_sq_;
-      direct_space_asu::asu_mapping_index_pair<FloatType> pair_;
+      direct_space_asu::asu_mapping_index_pair_and_diff<FloatType> pair_;
       std::size_t j_seq_n_sym_;
       bool at_end_;
 
@@ -66,6 +67,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
       incr_to_first()
       {
         pair_.dist_sq  = -1;
+        pair_.diff_vec = cartesian<FloatType>(0,0,0);
         mappings_ref_t mappings = asu_mappings_->mappings().const_ref();
         for(pair_.i_seq=0;
             pair_.i_seq<mappings.size();
@@ -125,8 +127,9 @@ namespace cctbx { namespace crystal { namespace neighbors {
       set_pair_dist_sq(mappings_ref_t const& mappings)
       {
         if (distance_cutoff_sq_ == 0) return;
-        pair_.dist_sq = (  mappings[pair_.j_seq][pair_.j_sym].mapped_site()
-                         - mappings[pair_.i_seq][0].mapped_site()).length_sq();
+        pair_.diff_vec = (  mappings[pair_.j_seq][pair_.j_sym].mapped_site()
+                          - mappings[pair_.i_seq][0].mapped_site());
+        pair_.dist_sq = pair_.diff_vec.length_sq();
       }
   };
 

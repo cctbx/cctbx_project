@@ -5,6 +5,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+from libtbx.itertbx import count
 
 def exercise_direct_space_asu():
   cp = crystal.direct_space_asu.float_cut_plane(n=[-1,0,0], c=1)
@@ -74,10 +75,13 @@ def exercise_direct_space_asu():
     [0.0085786, -0.4914214, 0.4])
   assert approx_equal(asu_mappings.sym_equiv_epsilon(), 1.e-6)
   assert approx_equal(asu_mappings.buffer_covering_sphere().radius(),0.8071081)
+  sites_seq = [
+    [3.1,-2.2,1.3],
+    [-4.3,1.7,0.4]]
   assert asu_mappings.mappings().size() == 0
-  asu_mappings.process(original_site=[3.1,-2.2,1.3])
+  asu_mappings.process(original_site=sites_seq[0])
   assert asu_mappings.mappings().size() == 1
-  asu_mappings.process(original_site=[-4.3,1.7,0.4])
+  asu_mappings.process(original_site=sites_seq[1])
   assert asu_mappings.mappings().size() == 2
   assert not asu_mappings.is_locked()
   asu_mappings.lock()
@@ -93,6 +97,18 @@ def exercise_direct_space_asu():
   assert asu.is_inside(am.mapped_site())
   for am in mappings:
     assert asu_mappings.asu_buffer().is_inside(am.mapped_site())
+  o = matrix.sqr(asu_mappings.unit_cell().orthogonalization_matrix())
+  f = matrix.sqr(asu_mappings.unit_cell().fractionalization_matrix())
+  for i_seq,m_i_seq in asu_mappings.mappings().items():
+    for i_sym in xrange(len(m_i_seq)):
+      rt_mx = asu_mappings.get_rt_mx(i_seq, i_sym)
+      site_frac = rt_mx * sites_seq[i_seq]
+      site_cart = asu_mappings.unit_cell().orthogonalize(site_frac)
+      assert approx_equal(m_i_seq[i_sym].mapped_site(), site_cart)
+      r = matrix.sqr(float(rt_mx.r().inverse()))
+      assert approx_equal(
+        asu_mappings.r_inv_cart(i_seq=i_seq, i_sym=i_sym),
+        (o*r*f).elems)
   pair_generator = crystal.neighbors_simple_pair_generator(asu_mappings)
   assert not pair_generator.at_end()
   assert len(asu_mappings.mappings()[1]) == 6
@@ -147,7 +163,10 @@ def exercise_direct_space_asu():
       index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
       assert index_pair.dist_sq > 0
       assert approx_equal(
-        matrix.col(asu_mappings.difference(index_pair)).norm(),
+        asu_mappings.diff_vec(pair=index_pair),
+        index_pair.diff_vec)
+      assert approx_equal(
+        matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm(),
         index_pair.dist_sq)
       dist_sq.append(index_pair.dist_sq)
     assert pair_generator.at_end()
@@ -167,7 +186,10 @@ def exercise_direct_space_asu():
       index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
       assert index_pair.dist_sq > 0
       assert approx_equal(
-        matrix.col(asu_mappings.difference(index_pair)).norm(),
+        asu_mappings.diff_vec(pair=index_pair),
+        index_pair.diff_vec)
+      assert approx_equal(
+        matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm(),
         index_pair.dist_sq)
       dist_sq.append(index_pair.dist_sq)
     assert pair_generator.at_end()

@@ -278,6 +278,14 @@ namespace direct_space_asu {
     std::size_t j_seq;
     //! Symmetry index of second site.
     std::size_t j_sym;
+  };
+
+  //! asu_mapping_index_pair plus difference vector and distance squared.
+  template <typename FloatType=double>
+  struct asu_mapping_index_pair_and_diff : asu_mapping_index_pair<FloatType>
+  {
+    //! Difference vector.
+    cartesian<FloatType> diff_vec;
     //! Distance squared.
     FloatType dist_sq;
   };
@@ -320,12 +328,17 @@ namespace direct_space_asu {
           scitbx::math::minimum_covering_sphere_3d<FloatType>(
             asu.volume_vertices(true).const_ref())
           .expand(buffer_thickness+sym_equiv_tolerance_)),
+        mappings_const_ref_(mappings_.const_ref()),
         is_locked_(false)
       {}
 
       //! Pre-allocates memory for mappings(); for efficiency.
       void
-      reserve(std::size_t n_sites_final) { mappings_.reserve(n_sites_final); }
+      reserve(std::size_t n_sites_final)
+      {
+        mappings_.reserve(n_sites_final);
+        mappings_const_ref_ = mappings_.const_ref();
+      }
 
       //! Space group as passed to the constructor.
       sgtbx::space_group const&
@@ -367,7 +380,9 @@ namespace direct_space_asu {
       process(fractional<FloatType> const& original_site)
       {
         CCTBX_ASSERT(!is_locked_);
+        CCTBX_ASSERT(mappings_.begin() == mappings_const_ref_.begin());
         mappings_.push_back(array_of_mappings_for_one_site());
+        mappings_const_ref_ = mappings_.const_ref();
         array_of_mappings_for_one_site& site_mappings = mappings_.back();
         sgtbx::sym_equiv_sites<FloatType> equiv_sites(
           asu_.unit_cell(),
@@ -428,19 +443,63 @@ namespace direct_space_asu {
       array_of_array_of_mappings_for_one_site const&
       mappings() const { return mappings_; }
 
+      //! mappings()[i_seq][i_sym] with range checking of i_seq and i_sym.
+      /*! Not available in Python.
+       */
+      asu_mapping<FloatType, IntShiftType> const&
+      get_asu_mapping(std::size_t i_seq, std::size_t i_sym) const
+      {
+        CCTBX_ASSERT(mappings_const_ref_.begin() == mappings_.begin());
+        CCTBX_ASSERT(i_seq < mappings_const_ref_.size());
+        CCTBX_ASSERT(i_sym < mappings_const_ref_[i_seq].size());
+        return mappings_const_ref_[i_seq][i_sym];
+      }
+
+      //! Symmetry operation original_site -> site in asu.
+      sgtbx::rt_mx
+      get_rt_mx(std::size_t i_seq, std::size_t i_sym) const
+      {
+        asu_mapping<FloatType, IntShiftType> const&
+          am = get_asu_mapping(i_seq, i_sym);
+        sgtbx::rt_mx rt = space_group_(am.i_sym_op());
+        int t_den = rt.t().den();
+        return rt + sgtbx::tr_vec(am.unit_shifts()*t_den, t_den);
+      }
+
       //! Difference vector for the given pair.
       /*! result = site(j_seq,j_sym) - site(i_seq,0).
        */
       cartesian<FloatType>
-      difference(asu_mapping_index_pair<FloatType> const& pair) const
+      diff_vec(asu_mapping_index_pair<FloatType> const& pair) const
       {
-        af::const_ref<array_of_mappings_for_one_site>
-          mappings = mappings_.const_ref();
-        CCTBX_ASSERT(pair.i_seq < mappings.size());
-        CCTBX_ASSERT(pair.j_seq < mappings.size());
-        CCTBX_ASSERT(pair.j_sym < mappings[pair.j_seq].size());
-        return mappings[pair.i_seq][0].mapped_site()
-             - mappings[pair.j_seq][pair.j_sym].mapped_site();
+        return get_asu_mapping(pair.j_seq, pair.j_sym).mapped_site()
+             - get_asu_mapping(pair.i_seq, 0).mapped_site();
+      }
+
+      /*! \brief Rotation part of
+          space_group(mappings()[i_seq][i_sym].i_sym_op()).inverse()
+          in the cartesian system.
+       */
+      /*! Useful for mapping difference vectors in cartesian space
+          from the asymmetric unit to the original sites.
+
+          The rotation matrices are cached for maximum performance.
+       */
+      scitbx::mat3<FloatType>
+      r_inv_cart(std::size_t i_seq, std::size_t i_sym) const
+      {
+        if (r_inv_cart_.size() == 0) {
+          scitbx::mat3<FloatType> o(unit_cell().orthogonalization_matrix());
+          scitbx::mat3<FloatType> f(unit_cell().fractionalization_matrix());
+          for(std::size_t i_sym_op=0;
+              i_sym_op<space_group_.order_z();
+              i_sym_op++) {
+            scitbx::mat3<FloatType> r = space_group_(i_sym_op).r().inverse()
+              .as_floating_point(scitbx::type_holder<FloatType>());
+            r_inv_cart_.push_back(o*r*f);
+          }
+        }
+        return r_inv_cart_[get_asu_mapping(i_seq, i_sym).i_sym_op()];
       }
 
     protected:
@@ -453,7 +512,9 @@ namespace direct_space_asu {
       FloatType sym_equiv_minimum_distance_;
       scitbx::math::sphere_3d<FloatType> buffer_covering_sphere_;
       array_of_array_of_mappings_for_one_site mappings_;
+      af::const_ref<array_of_mappings_for_one_site> mappings_const_ref_;
       bool is_locked_;
+      mutable std::vector<scitbx::mat3<FloatType> > r_inv_cart_;
   };
 
 }}} // namespace cctbx::crystal::direct_space_asu

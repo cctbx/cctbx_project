@@ -173,6 +173,16 @@ def exercise_neighbors_simple_pair_generator(space_group_info, n_elements=10,
       assert approx_equal(uc.orthogonalize(site_i), mp_i.mapped_site())
       assert approx_equal(uc.orthogonalize(site_j), mp_j.mapped_site())
       assert approx_equal(uc.distance(site_i, site_j)**2, pair.dist_sq)
+      site_i = asu_mappings.get_rt_mx(pair.i_seq, 0) \
+             * sc[pair.i_seq].site
+      site_j = asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym) \
+             * sc[pair.j_seq].site
+      assert approx_equal(uc.orthogonalize(site_i), mp_i.mapped_site())
+      assert approx_equal(uc.orthogonalize(site_j), mp_j.mapped_site())
+      j_frac = uc.fractionalize(mp_j.mapped_site())
+      assert approx_equal(
+        asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym).inverse() * j_frac,
+        sc[pair.j_seq].site)
 
 def exercise_all(flags, space_group_info):
   exercise_float_asu(space_group_info)
