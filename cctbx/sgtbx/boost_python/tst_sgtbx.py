@@ -601,10 +601,15 @@ def exercise_space_group():
   assert g.epsilon((1,2,3)) == 1
   assert tuple(g.epsilon(m)) == (4,4,1)
   u = uctbx.unit_cell((3, 3, 4, 90, 90, 120))
+  assert u.is_similar_to(space_group("P 6").average_unit_cell(u))
   assert space_group("P 6").is_compatible_unit_cell(u)
-  assert space_group("P 6").is_compatible_unit_cell(u, 1.e-4)
+  assert space_group("P 6").is_compatible_unit_cell(u, 0.01)
+  assert space_group("P 6").is_compatible_unit_cell(u, 0.01, 1)
   assert not space_group("P 3*").is_compatible_unit_cell(u)
-  assert space_group("P 3*").is_compatible_unit_cell(u, 1.e6)
+  assert space_group("P 3*").average_unit_cell(u).is_similar_to(
+    uctbx.unit_cell((3.3665, 3.3665, 3.3665, 97.6056, 97.6056, 97.6056)),
+    1.e-5, 1.e-3)
+  assert space_group("P 3*").is_compatible_unit_cell(u, 1, 30)
   u = uctbx.unit_cell((95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822))
   g = space_group("C 2y (x+y,-x+y+z,z)")
   assert g.is_compatible_unit_cell(u)

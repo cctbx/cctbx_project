@@ -436,34 +436,48 @@ namespace cctbx { namespace sgtbx {
       af::shared<int>
       epsilon(af::const_ref<miller::index<> > const& h) const;
 
-      /*! \brief Tests if a metrical matrix is compatible with the
-           symmetry operations.
-       */
+      //! Computes a metrical matrix compatible with the space group symmetry.
       /*! A metrical matrix g is compatible with a given space group
           representation if the following relation holds for all
           rotation matrices r of the space group:
           <p>
           r.transposed() * g * r == g
           <p>
-          tolerance compensates for rounding errors.
+          This function returns the average of r.transposed() * g * r.
+          The result is guaranteed to be compatible with the space
+          group symmetry.
           <p>
-          See also: is_compatible_unit_cell(),
+          See also: average_unit_cell(),
                     uctbx::unit_cell::metrical_matrix()
           <p>
           Not available in Python.
        */
-      bool is_compatible_metrical_matrix(uc_sym_mat3 const& g,
-                                         double tolerance=1.e-5) const;
+      uc_sym_mat3
+      average_metrical_matrix(uc_sym_mat3 const& g) const;
+
+      //! Computes a unit cell compatible with the space group symmetry.
+      /*! Shorthand for:
+          uctbx::unit_cell(average_metrical_matrix(ucell.metrical_matrix()));
+       */
+      uctbx::unit_cell
+      average_unit_cell(uctbx::unit_cell const& ucell) const
+      {
+        return uctbx::unit_cell(
+          average_metrical_matrix(ucell.metrical_matrix()));
+      }
 
       //! Tests if a unit cell is compatible with the symmetry operations.
       /*! Shorthand for:
           is_compatible_metrical_matrix(ucell.metrical_matrix(), tolerance);
        */
       bool is_compatible_unit_cell(uctbx::unit_cell const& ucell,
-                                   double tolerance=1.e-5) const
+                                   double relative_length_tolerance=0.01,
+                                   double absolute_angle_tolerance=1.) const
       {
-        return is_compatible_metrical_matrix(
-          ucell.metrical_matrix(), tolerance);
+        return ucell.is_similar_to(
+          average_unit_cell(ucell),
+          relative_length_tolerance,
+          absolute_angle_tolerance);
       }
 
       //! The translation parts of the symmetry operations are set to 0.

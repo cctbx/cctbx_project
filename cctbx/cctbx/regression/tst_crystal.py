@@ -17,8 +17,12 @@ def exercise_symmetry():
   except: pass
   else: raise AssertionError, "Exception expected."
   xs = crystal.symmetry(
-    (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=00000)
+    (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=00000,
+    force_compatible_unit_cell=00000)
   assert not xs.is_compatible_unit_cell()
+  xs = crystal.symmetry(
+    (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=00000)
+  assert xs.is_compatible_unit_cell()
   xs = crystal.symmetry((5,5,29,90,90,120), "R 3")
   ps = xs.primitive_setting()
   assert ps.unit_cell().is_similar_to(
