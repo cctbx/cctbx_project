@@ -3,13 +3,13 @@ from cctbx.uctbx.reduction_base import reduction_base
 from cctbx.uctbx.reduction_base import minimal_reduction_mixin
 from cctbx import uctbx
 from cctbx import matrix
-from scitbx.python_utils.math_utils import ifloor
 import math
 
 def entier(x):
-  result = ifloor(x)
-  if (x-result >= 1): return result + 1 # work around rounding errors
-  assert 0 <= x-result < 1, "entier error"
+  "greatest integer which is not greater than x"
+  result = int(x)
+  if (x-result < 0): result -= 1
+  if (not (x-result < 1)): result += 1 # work around rounding errors
   return result
 
 class reduction(reduction_base):
@@ -46,10 +46,10 @@ class reduction(reduction_base):
     if (not s.eps_gt(abs(s.d), s.b)): return 00000
     j = entier((s.d+s.b)/(2*s.b))
     if (j == 0): return 00000
+    s.cb_update((1,0,0,0,1,-j,0,0,1))
     s.c += j*j*s.b - j*s.d
     s.d -= 2*j*s.b
     s.e -= j*s.f
-    s.cb_update((1,0,0,0,1,-j,0,0,1))
     assert s.c > 0
     return 0001
 
@@ -57,10 +57,10 @@ class reduction(reduction_base):
     if (not s.eps_gt(abs(s.e), s.a)): return 00000
     j = entier((s.e+s.a)/(2*s.a))
     if (j == 0): return 00000
+    s.cb_update((1,0,-j,0,1,0,0,0,1))
     s.c += j*j*s.a - j*s.e
     s.d -= j*s.f
     s.e -= 2*j*s.a
-    s.cb_update((1,0,-j,0,1,0,0,0,1))
     assert s.c > 0
     return 0001
 
@@ -68,10 +68,10 @@ class reduction(reduction_base):
     if (not s.eps_gt(abs(s.f), s.a)): return 00000
     j = entier((s.f+s.a)/(2*s.a))
     if (j == 0): return 00000
+    s.cb_update((1,-j,0,0,1,0,0,0,1))
     s.b += j*j*s.a - j*s.f
     s.d -= j*s.e
     s.f -= 2*j*s.a
-    s.cb_update((1,-j,0,0,1,0,0,0,1))
     assert s.b > 0
     return 0001
 
@@ -215,27 +215,26 @@ class fast_minimal_reduction:
     self._n_iterations += 1
 
   def n1_action(self):
+    self.cb_update((0,-1,0, -1,0,0, 0,0,-1))
     self.a, self.b = self.b, self.a
     self.d, self.e = self.e, self.d
-    self.cb_update((0,-1,0, -1,0,0, 0,0,-1))
 
   def n2_action(self):
+    self.cb_update((-1,0,0, 0,0,-1, 0,-1,0))
     self.b, self.c = self.c, self.b
     self.e, self.f = self.f, self.e
-    self.cb_update((-1,0,0, 0,0,-1, 0,-1,0))
 
   def n3_true_action(s):
     i,j,k = 1,1,1
     if (s.d < 0): i = -1
     if (s.e < 0): j = -1
     if (s.f < 0): k = -1
+    s.cb_update((i,0,0, 0,j,0, 0,0,k))
     s.d = abs(s.d)
     s.e = abs(s.e)
     s.f = abs(s.f)
-    s.cb_update((i,0,0, 0,j,0, 0,0,k))
 
   def n3_false_action(s):
-    s.current_cycle_id = 1
     f = [1,1,1]
     z = -1
     if (0 < s.d): f[0] = -1
@@ -247,19 +246,20 @@ class fast_minimal_reduction:
     if (f[0]*f[1]*f[2] < 0):
       assert z != -1
       f[z] = -1
+    s.current_cycle_id = 1
+    s.cb_update((f[0],0,0, 0,f[1],0, 0,0,f[2]))
     s.d = -abs(s.d)
     s.e = -abs(s.e)
     s.f = -abs(s.f)
-    s.cb_update((f[0],0,0, 0,f[1],0, 0,0,f[2]))
 
   def b2_action(s):
     if (not s.b < abs(s.d)): return 00000
     j = entier((s.d+s.b)/(2*s.b))
     if (j == 0): return 00000
+    s.cb_update((1,0,0,0,1,-j,0,0,1))
     s.c += j*j*s.b - j*s.d
     s.d -= 2*j*s.b
     s.e -= j*s.f
-    s.cb_update((1,0,0,0,1,-j,0,0,1))
     assert 0 < s.c
     return 0001
 
@@ -267,10 +267,10 @@ class fast_minimal_reduction:
     if (not s.a < abs(s.e)): return 00000
     j = entier((s.e+s.a)/(2*s.a))
     if (j == 0): return 00000
+    s.cb_update((1,0,-j,0,1,0,0,0,1))
     s.c += j*j*s.a - j*s.e
     s.d -= j*s.f
     s.e -= 2*j*s.a
-    s.cb_update((1,0,-j,0,1,0,0,0,1))
     assert 0 < s.c
     return 0001
 
@@ -278,20 +278,20 @@ class fast_minimal_reduction:
     if (not s.a < abs(s.f)): return 00000
     j = entier((s.f+s.a)/(2*s.a))
     if (j == 0): return 00000
+    s.cb_update((1,-j,0,0,1,0,0,0,1))
     s.b += j*j*s.a - j*s.f
     s.d -= j*s.e
     s.f -= 2*j*s.a
-    s.cb_update((1,-j,0,0,1,0,0,0,1))
     assert 0 < s.b
     return 0001
 
   def b5_action(s):
-    s.current_cycle_id = 2
     de = s.d + s.e
     fab = s.f + s.a + s.b
     if (not de+fab < 0): return 00000
     j = entier((de+fab)/(2*fab))
     if (j == 0): return 00000
+    s.current_cycle_id = 2
     s.cb_update((1,0,-j,0,1,-j,0,0,1))
     if (s.had_expected_cycle): return 00000
     s.c += j*j*fab-j*de

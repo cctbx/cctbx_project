@@ -141,14 +141,14 @@ class reduction_base(gruber_parameterization):
     self._n_iterations += 1
 
   def n1_action(self):
+    self.cb_update((0,-1,0, -1,0,0, 0,0,-1))
     self.a, self.b = self.b, self.a
     self.d, self.e = self.e, self.d
-    self.cb_update((0,-1,0, -1,0,0, 0,0,-1))
 
   def n2_action(self):
+    self.cb_update((-1,0,0, 0,0,-1, 0,-1,0))
     self.b, self.c = self.c, self.b
     self.e, self.f = self.f, self.e
-    self.cb_update((-1,0,0, 0,0,-1, 0,-1,0))
 
   def n3_true_action(self):
     lt = self.eps_lt
@@ -156,10 +156,10 @@ class reduction_base(gruber_parameterization):
     if (lt(self.d, 0)): i = -1
     if (lt(self.e, 0)): j = -1
     if (lt(self.f, 0)): k = -1
+    self.cb_update((i,0,0, 0,j,0, 0,0,k))
     self.d = abs(self.d)
     self.e = abs(self.e)
     self.f = abs(self.f)
-    self.cb_update((i,0,0, 0,j,0, 0,0,k))
 
   def n3_false_action(self):
     lt = self.eps_lt
@@ -175,10 +175,10 @@ class reduction_base(gruber_parameterization):
     if (f[0]*f[1]*f[2] < 0):
       assert z != -1
       f[z] = -1
+    self.cb_update((f[0],0,0, 0,f[1],0, 0,0,f[2]))
     self.d = -abs(self.d)
     self.e = -abs(self.e)
     self.f = -abs(self.f)
-    self.cb_update((f[0],0,0, 0,f[1],0, 0,0,f[2]))
 
 class minimal_reduction_mixin:
 

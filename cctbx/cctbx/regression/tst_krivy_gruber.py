@@ -99,6 +99,7 @@ time_gruber_1973 = time_log("gruber_1973.reduction")
 time_krivy_gruber_1976_minimal=time_log("krivy_gruber_1976.minimal_reduction")
 time_gruber_1973_minimal = time_log("gruber_1973.minimal_reduction")
 time_gruber_1973_fast_minimal = time_log("gruber_1973.fast_minimal_reduction")
+time_uctbx_fast_minimal = time_log("uctbx.fast_minimal_reduction")
 fast_minimal_reduction_max_n_iterations = 0
 
 def reduce(inp):
@@ -140,6 +141,13 @@ def reduce(inp):
   min_cell = min_reduction.as_unit_cell()
   assert approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])
   assert inp.change_basis(min_reduction.r_inv().elems).is_similar_to(min_cell)
+  time_uctbx_fast_minimal.start()
+  min_reduction = uctbx.fast_minimal_reduction(inp)
+  time_uctbx_fast_minimal.stop()
+  assert min_reduction.type() in (1,2)
+  min_cell = min_reduction.as_unit_cell()
+  assert approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])
+  assert inp.change_basis(min_reduction.r_inv()).is_similar_to(min_cell)
   global fast_minimal_reduction_max_n_iterations
   fast_minimal_reduction_max_n_iterations = max(
     fast_minimal_reduction_max_n_iterations, min_reduction.n_iterations())
@@ -467,6 +475,10 @@ def exercise():
     print time_krivy_gruber_1976_minimal.report()
     print time_gruber_1973_minimal.report()
     print time_gruber_1973_fast_minimal.report()
+    print time_uctbx_fast_minimal.report()
+    print "fast_minimal Python/C++: %.3g" % (
+        time_gruber_1973_fast_minimal.accumulation
+      / time_uctbx_fast_minimal.accumulation)
     print "fast_minimal_reduction_max_n_iterations:", \
            fast_minimal_reduction_max_n_iterations
   print "OK"
