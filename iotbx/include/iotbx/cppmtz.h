@@ -83,6 +83,7 @@ public:
   std::string title();
   std::string SpaceGroup();
   cctbx::sgtbx::space_group getSgtbxSpaceGroup();
+  int nsym() const;
   int& size();
   int& ncrystals() const;
   af::shared<std::string> columns() const;
