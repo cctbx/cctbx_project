@@ -17,6 +17,7 @@
 namespace cctbx { namespace dmtbx { namespace boost_python {
 
   void wrap_triplet();
+  void wrap_fast_triplets();
 
 namespace {
 
@@ -28,6 +29,7 @@ namespace {
       "$Revision$");
 
     wrap_triplet();
+    wrap_fast_triplets();
   }
 
 } // namespace <anonymous>

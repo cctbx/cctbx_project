@@ -4,30 +4,28 @@
    See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2002 Nov: Created (Ralf W. Grosse-Kunstleve)
+     2003 Jun: Created (Ralf W. Grosse-Kunstleve)
  */
 
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <cctbx/dmtbx/triplet.h>
+#include <cctbx/dmtbx/fast_triplets.h>
 #include <boost/python/class.hpp>
 
 namespace cctbx { namespace dmtbx { namespace boost_python {
 namespace {
 
-  struct triplet_invariants_wrappers
+  struct fast_triplets_wrappers
   {
-    typedef triplet_invariants<> w_t;
+    typedef fast_triplets<> w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("triplet_invariants", no_init)
+      class_<w_t>("fast_triplets", no_init)
         .def(init<sgtbx::space_group_type const&,
-                  af::const_ref<miller::index<> > const&,
-                  bool,
-                  bool>())
+                  af::const_ref<miller::index<> > const&>())
         .def("number_of_weighted_triplets", &w_t::number_of_weighted_triplets)
         .def("total_number_of_triplets", &w_t::total_number_of_triplets)
         .def("average_number_of_triplets_per_reflection",
@@ -43,9 +41,9 @@ namespace {
 
 } // namespace <anonymous>
 
-  void wrap_triplet()
+  void wrap_fast_triplets()
   {
-    triplet_invariants_wrappers::wrap();
+    fast_triplets_wrappers::wrap();
   }
 
 }}} // namespace cctbx::dmtbx::boost_python

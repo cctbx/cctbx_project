@@ -4,4 +4,5 @@ env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(target="#libtbx/cctbx_boost/dmtbx_ext", source=[
   "dmtbx_ext.cpp",
   "triplet.cpp",
+  "fast_triplets.cpp",
 ])
