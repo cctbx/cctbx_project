@@ -32,5 +32,3 @@ if (not env_etc.no_boost_python):
   SConscript("array_family/boost_python/SConscript")
   SConscript("fftpack/boost_python/SConscript")
   SConscript("lbfgs/boost_python/SConscript")
-"""
-"""
