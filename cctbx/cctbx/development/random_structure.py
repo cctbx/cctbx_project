@@ -118,11 +118,14 @@ class xray_structure(xray.structure):
                min_distance=1.5,
                general_positions_only=00000,
                random_f_prime_d_min=0,
+               random_f_prime_scale=0.6,
                random_f_double_prime=0,
+               random_f_double_prime_scale=0.6,
                random_u_iso=00000,
+               random_u_iso_scale=0.3,
                u_iso=0,
                anisotropic_flag=00000,
-               random_u_cart_scale=0.1,
+               random_u_cart_scale=0.3,
                random_occupancy=00000):
     assert elements is None or n_scatterers is None
     assert not (elements is None and n_scatterers is None)
@@ -169,15 +172,16 @@ class xray_structure(xray.structure):
       if (self.random_f_prime_d_min):
         f0 = scatterer.caasf.at_d_star_sq(1./self.random_f_prime_d_min**2)
         assert f0 > 0
-        fp = -min(f0*0.9, abs(random.gauss(f0, f0/3)))
+        fp = -f0 * random.random() * self.random_f_prime_scale
       if (self.random_f_double_prime):
-        fdp = max(0.1, random.gauss(10, 3))
+        f0 = scatterer.caasf.at_d_star_sq(0)
+        fdp = f0 * random.random() * self.random_f_double_prime_scale
       scatterer.fp_fdp = complex(fp, fdp)
       if (not self.anisotropic_flag):
         scatterer.anisotropic_flag = 00000
         u_iso = self.u_iso
         if (not u_iso and self.random_u_iso):
-          u_iso = random.random()
+          u_iso = random.random() * self.random_u_iso_scale
         scatterer.u_iso = u_iso
       else:
         scatterer.anisotropic_flag = 0001
