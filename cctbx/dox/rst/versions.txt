@@ -25,6 +25,8 @@ cctbx links
 
   - `No. 4, 2004/08 <http://cci.lbl.gov/publications/download/iucrcompcomm_aug2004.pdf>`_
 
+  - `No. 5, 2005/01 <http://iucrcomputing.ccp14.ac.uk/iucr-top/comm/ccom/newsletters/2005jan/>`_
+
 - Python interfaces:
   `libtbx <current_cvs/python/libtbx/>`_
   `scitbx <current_cvs/python/scitbx/>`_
