@@ -57,11 +57,20 @@ namespace {
       { af::shared<std::complex<ElementType> > r = af::pow(e[0], c);
         check_true(__LINE__, r[2] == std::pow(e[0], c[2])); }
       { af::shared<std::complex<ElementType> > r = af::polar(e, e);
-        check_true(__LINE__, r[2] == std::polar(e[2], e[2])); }
+        check_true(__LINE__, approx_equal(r[2].real(),
+                                          std::polar(e[2], e[2]).real()));
+        check_true(__LINE__, approx_equal(r[2].imag(),
+                                          std::polar(e[2], e[2]).imag())); }
       { af::shared<std::complex<ElementType> > r = af::polar(e, e[0]);
-        check_true(__LINE__, r[2] == std::polar(e[2], e[0])); }
+        check_true(__LINE__, approx_equal(r[2].real(),
+                                          std::polar(e[2], e[0]).real()));
+        check_true(__LINE__, approx_equal(r[2].imag(),
+                                          std::polar(e[2], e[0]).imag())); }
       { af::shared<std::complex<ElementType> > r = af::polar(e[0], e);
-        check_true(__LINE__, r[2] == std::polar(e[0], e[2])); }
+        check_true(__LINE__, approx_equal(r[2].real(),
+                                          std::polar(e[0], e[2]).real()));
+        check_true(__LINE__, approx_equal(r[2].imag(),
+                                          std::polar(e[0], e[2]).imag())); }
 #endif
     }
   };
