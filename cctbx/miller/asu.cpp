@@ -1,13 +1,5 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored parts of miller/miller_lib.cpp (rwgk)
- */
-
 #include <cctbx/miller/asu.h>
+#include <set>
 
 namespace cctbx { namespace miller {
 
@@ -73,7 +65,7 @@ namespace cctbx { namespace miller {
   map_to_asu(
     sgtbx::space_group_type const& sg_type,
     bool anomalous_flag,
-    af::ref<miller::index<> > const& miller_indices)
+    af::ref<index<> > const& miller_indices)
   {
     sgtbx::reciprocal_space::asu asu(sg_type);
     sgtbx::space_group const& sg = sg_type.group();
@@ -82,6 +74,24 @@ namespace cctbx { namespace miller {
       index_table_layout_adaptor ila = ai.one_column(anomalous_flag);
       miller_indices[i] = ila.h();
     }
+  }
+
+  bool
+  is_unique_set_under_symmetry(
+    sgtbx::space_group_type const& space_group_type,
+    bool anomalous_flag,
+    af::const_ref<index<> > const& miller_indices)
+  {
+    std::set<index<>, fast_less_than<> > unique_set;
+    sgtbx::reciprocal_space::asu asu(space_group_type);
+    sgtbx::space_group const& sg = space_group_type.group();
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      asym_index ai(sg, asu, miller_indices[i]);
+      index_table_layout_adaptor ila = ai.one_column(anomalous_flag);
+      if (unique_set.find(ila.h()) != unique_set.end()) return false;
+      unique_set.insert(ila.h());
+    }
+    return true;
   }
 
 }} // namespace cctbx::miller

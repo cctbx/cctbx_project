@@ -174,6 +174,17 @@ def exercise_asu():
   miller.map_to_asu(sg_type, 0, miller_indices, data)
   for sg_symbol in ("P 41", "P 31 1 2"):
     exercise_map_to_asu(sg_symbol)
+  #
+  sg_type = sgtbx.space_group_type("P 2")
+  miller_indices = flex.miller_index(((1,2,3), (-1,-2,-3)))
+  assert not miller.is_unique_set_under_symmetry(
+    space_group_type=sg_type,
+    anomalous_flag=False,
+    miller_indices=miller_indices)
+  assert miller.is_unique_set_under_symmetry(
+    space_group_type=sg_type,
+    anomalous_flag=True,
+    miller_indices=miller_indices)
 
 def exercise_bins():
   uc = uctbx.unit_cell((11,11,13,90,90,120))
