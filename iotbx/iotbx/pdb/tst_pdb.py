@@ -15,7 +15,7 @@ def exercise_format_records():
     unit_cell=(10,10,13,90,90,120),
     space_group_symbol="R 3").primitive_setting()
   assert iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry) \
-    == "CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R3:R           "
+    == "CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R3:R"
   assert iotbx.pdb.format_scale_records(
     unit_cell=crystal_symmetry.unit_cell()).splitlines() \
       == ["SCALE1      0.138527 -0.005617 -0.005402        0.00000",
@@ -29,8 +29,9 @@ def exercise_format_records():
           "SCALE2      0.000000  0.138641 -0.005402        2.00000",
           "SCALE3      0.000000  0.000000  0.138746       -3.00000"]
   assert iotbx.pdb.format_atom_record() \
-      == "ATOM      0  C   DUM     1       0.000   0.000   0.000" \
-        +"  1.00  0.00              "
+      == "ATOM      0  C   DUM     1       0.000   0.000   0.000  1.00  0.00"
+  assert iotbx.pdb.format_ter_record() \
+      == "TER       0      DUM     1"
 
 def exercise_parser():
   for i,raw_record in enumerate("""\
@@ -91,6 +92,7 @@ SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
   s = StringIO()
   attr.show(f=s, prefix="  ")
   assert s.getvalue() == """\
+  record name: ATOM
   name:        " N  "
   altLoc:      "A"
   resName:     "CYS"
