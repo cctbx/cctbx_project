@@ -43,10 +43,7 @@ class from_scatterers(crystal.symmetry):
     self._crystal_gridding_tags = None
     self._rfft = None
     from cctbx import xray
-    self._u_extra = xray.calc_u_extra(
-      self.d_min(),
-      self.grid_resolution_factor(),
-      self.quality_factor())
+    self._u_extra = None
     self.estimate_time_direct = _estimate_time_direct(
       self.space_group().order_z())
     self.estimate_time_fft = _estimate_time_fft()
@@ -100,11 +97,17 @@ class from_scatterers(crystal.symmetry):
     return self._rfft
 
   def u_extra(self):
+    if (self._u_extra == None):
+      self._u_extra = xray.calc_u_extra(
+        self.d_min(),
+        self.grid_resolution_factor(),
+        self.quality_factor())
     return self._u_extra
 
   def setup_fft(self):
     self.crystal_gridding_tags()
     self.rfft()
+    self.u_extra()
     return self
 
   def __call__(self, xray_structure,
@@ -118,6 +121,7 @@ class from_scatterers(crystal.symmetry):
       n_scatterers = xray_structure.scatterers().size()
       n_miller_indices = miller_set.indices().size()
       if (not self.have_good_timing_estimates()):
+        # rough estimate
         if (  n_scatterers * self.space_group().order_z() * n_miller_indices
             < self.crystal_gridding().n_grid_points()):
           direct = 0001
@@ -157,7 +161,7 @@ class _estimate_time_direct:
   def __call__(self, product):
     return self.time * product / self.product
 
-def linear_estimate(x1, x2, y1, y2, x):
+def _linear_estimate(x1, x2, y1, y2, x):
   if (y1 == y2): return y1
   if (x1 == x2): return max(y1,y2) * x1 / x
   slope = (y2 - y1) / (x2 - x1)
@@ -201,12 +205,12 @@ class _estimate_time_fft:
     self.time_fft = time_fft
 
   def __call__(self, n_scatterers, n_miller_indices):
-    return linear_estimate(
+    return _linear_estimate(
              self.min_n_scatterers, self.max_n_scatterers,
              self.min_time_sampling, self.max_time_sampling,
              n_scatterers) \
          + self.time_fft \
-         + linear_estimate(
+         + _linear_estimate(
              self.min_n_miller_indices, self.max_n_miller_indices,
              self.min_time_collect, self.max_time_collect,
              n_miller_indices)
@@ -215,10 +219,12 @@ class _from_scatterers_base:
 
   def __init__(self, manager, xray_structure, miller_set):
     adopt_init_args(self, locals(), hide=0001)
+    assert xray_structure != None and miller_set != None
     assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
-    assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
     assert xray_structure.space_group() == miller_set.space_group()
-    assert xray_structure.space_group() == manager.space_group()
+    if (manager != None):
+      assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
+      assert xray_structure.space_group() == manager.space_group()
 
   def manager(self):
     return self._manager
@@ -231,11 +237,11 @@ class _from_scatterers_base:
 
 class from_scatterers_direct(_from_scatterers_base):
 
-  def __init__(self, manager,
-                     xray_structure,
-                     miller_set,
-                     d_target_d_f_calc,
-                     derivative_flags):
+  def __init__(self, manager=None,
+                     xray_structure=None,
+                     miller_set=None,
+                     d_target_d_f_calc=None,
+                     derivative_flags=None):
     _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
     self._d_target_d_f_calc = d_target_d_f_calc
     if (d_target_d_f_calc == None):
@@ -256,9 +262,10 @@ class from_scatterers_direct(_from_scatterers_base):
       derivative_flags.occupancy,
       derivative_flags.fp,
       derivative_flags.fdp)
-    manager.estimate_time_direct.register(
-      xray_structure.scatterers().size() * miller_set.indices().size(),
-      timer.elapsed())
+    if (manager != None):
+      manager.estimate_time_direct.register(
+        xray_structure.scatterers().size() * miller_set.indices().size(),
+        timer.elapsed())
 
   def f_calc(self):
     return miller.array(self._miller_set, self._results.f_calc())
@@ -312,8 +319,8 @@ class from_scatterers_fft(_from_scatterers_base):
   def __init__(self, manager,
                      xray_structure,
                      miller_set,
-                     d_target_d_f_calc,
-                     derivative_flags,
+                     d_target_d_f_calc=None,
+                     derivative_flags=None,
                      force_complex=00000,
                      electron_density_must_be_positive=0001):
     _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
