@@ -14,29 +14,19 @@
 
 from cctbx import sgtbx
 from cctbx import uctbx
-from cctbx.web import utils
-
-class empty: pass
+from cctbx.web import io_utils
+from cctbx.web import cgi_utils
 
 def interpret_form_data(form):
-  inp = empty()
-  for key in (("ucparams_old", "1 1 1 90 90 90"),
-              ("sgsymbol_old", "P1"),
-              ("convention_old", ""),
-              ("sgsymbol_new", ""),
-              ("convention_new", ""),
-              ("coor_type", None),
-              ("skip_columns", "0")):
-    if (form.has_key(key[0])):
-      inp.__dict__[key[0]] = form[key[0]].value.strip()
-    else:
-      inp.__dict__[key[0]] = key[1]
-  inp.coordinates = []
-  if (form.has_key("coordinates")):
-    lines = form["coordinates"].value.split("\015\012")
-    for l in lines:
-      s = l.strip()
-      if (len(s) != 0): inp.coordinates.append(s)
+  inp = cgi_utils.inp_from_form(form,
+    (("ucparams_old", "1 1 1 90 90 90"),
+     ("sgsymbol_old", "P1"),
+     ("convention_old", ""),
+     ("sgsymbol_new", ""),
+     ("convention_new", ""),
+     ("coor_type", None),
+     ("skip_columns", "0")))
+  inp.coordinates = cgi_utils.coordinates_from_form(form)
   return inp
 
 def run(server_info, inp, status):
@@ -88,10 +78,10 @@ def run(server_info, inp, status):
     print inp.coor_type, "coordinates:"
     print
 
-    skip_columns = utils.interpret_skip_columns(inp.skip_columns)
+    skip_columns = io_utils.interpret_skip_columns(inp.skip_columns)
 
     for line in inp.coordinates:
-      skipped, coordinates = utils.interpret_coordinate_line(line,skip_columns)
+      skipped, coordinates = io_utils.interpret_coordinate_line(line,skip_columns)
       if (inp.coor_type != "Fractional"):
         coordinates = unit_cell_old.fractionalize(coordinates)
       new_coordinates = cb_op(coordinates)

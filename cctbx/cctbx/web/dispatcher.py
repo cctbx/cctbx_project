@@ -4,7 +4,7 @@ sys.stderr = sys.stdout
 import cgitb
 cgitb.enable()
 
-from cctbx.web import utils
+from cctbx.web import cgi_utils
 import os, cgi, urlparse
 
 if (0):
@@ -14,7 +14,7 @@ if (0):
 print "Content-type: text/html"
 print
 
-server_info = utils.server_info()
+server_info = cgi_utils.server_info()
 
 form = cgi.FieldStorage()
 target_module = form["target_module"].value

@@ -8,17 +8,12 @@
 
 from cctbx import sgtbx
 import urllib
-
-class empty: pass
+from cctbx.web import cgi_utils
 
 def interpret_form_data(form):
-  inp = empty()
-  for key in (("sgsymbol", ""),
-              ("convention", "")):
-    if (form.has_key(key[0])):
-      inp.__dict__[key[0]] = form[key[0]].value.strip()
-    else:
-      inp.__dict__[key[0]] = key[1]
+  inp = cgi_utils.inp_from_form(form,
+    (("sgsymbol", ""),
+     ("convention", "")))
   return inp
 
 def run(server_info, inp, status):

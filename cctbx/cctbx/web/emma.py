@@ -2,41 +2,28 @@ from cctbx import euclidean_model_matching as emma
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-from cctbx.web import utils
-
-class empty: pass
+from cctbx.web import io_utils
+from cctbx.web import cgi_utils
 
 def interpret_form_data(form):
-  inp = empty()
-  for key in (("ucparams_1", ""),
-              ("sgsymbol_1", ""),
-              ("convention_1", ""),
-              ("format_1", None),
-              ("coor_type_1", None),
-              ("skip_columns_1", 0),
-              ("ucparams_2", ""),
-              ("sgsymbol_2", ""),
-              ("convention_2", ""),
-              ("format_2", None),
-              ("coor_type_2", None),
-              ("skip_columns_2", 0),
-              ("tolerance", "1.0"),
-              ("diffraction_index_equivalent", None)):
-    if (form.has_key(key[0])):
-      inp.__dict__[key[0]] = form[key[0]].value.strip()
-    else:
-      inp.__dict__[key[0]] = key[1]
+  inp = cgi_utils.inp_from_form(form,
+    (("ucparams_1", ""),
+     ("sgsymbol_1", ""),
+     ("convention_1", ""),
+     ("format_1", None),
+     ("coor_type_1", None),
+     ("skip_columns_1", 0),
+     ("ucparams_2", ""),
+     ("sgsymbol_2", ""),
+     ("convention_2", ""),
+     ("format_2", None),
+     ("coor_type_2", None),
+     ("skip_columns_2", 0),
+     ("tolerance", "1.0"),
+     ("diffraction_index_equivalent", None)))
   inp.coordinates = []
-  for i in xrange(2):
-    coordinates = []
-    for key_root in ("coordinates", "coor_file"):
-      key = key_root + "_" + str(i+1)
-      if (form.has_key(key)):
-        lines = form[key].value.replace("\015", "\012").split("\012")
-        for l in lines:
-          s = l.strip()
-          if (len(s) != 0): coordinates.append(s)
-    inp.coordinates.append(coordinates)
+  for suffix in ("1", "2"):
+    inp.coordinates.append(cgi_utils.coordinates_from_form(form, suffix))
   return inp
 
 def interpret_generic_coordinate_line(line, skip_columns):
@@ -67,7 +54,7 @@ class web_to_models:
     self.sgsymbol = sgsymbol
     self.convention = convention
     if (format == "generic"):
-      skip_columns = utils.interpret_skip_columns(skip_columns)
+      skip_columns = io_utils.interpret_skip_columns(skip_columns)
       self.positions = []
       for line in coordinates:
         label, site = interpret_generic_coordinate_line(line, skip_columns)

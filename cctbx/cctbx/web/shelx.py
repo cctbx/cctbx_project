@@ -1,17 +1,12 @@
 # Generate SHELX LATT and SYMM cards for a given space group.
 
 from cctbx import sgtbx
-
-class empty: pass
+from cctbx.web import cgi_utils
 
 def interpret_form_data(form):
-  inp = empty()
-  for key in (("sgsymbol", "P1"),
-              ("convention", "")):
-    if (form.has_key(key[0])):
-      inp.__dict__[key[0]] = form[key[0]].value.strip()
-    else:
-      inp.__dict__[key[0]] = key[1]
+  inp = cgi_utils.inp_from_form(form,
+    (("sgsymbol", "P1"),
+     ("convention", "")))
   return inp
 
 def LATT_SYMM(space_group):

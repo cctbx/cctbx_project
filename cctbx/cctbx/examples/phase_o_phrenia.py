@@ -42,18 +42,20 @@ def calculate_exp_i_two_phi_peaks(xray_structure, d_min, min_peak_distance, max_
     data=flex.polar(1, flex.arg(f_h_array.data())*2))
   fft_map = miller.fft_map(
     coeff_array=two_i_phi_h_array,
+    d_min=d_min,
     symmetry_flags=maptbx.use_space_group_symmetry)
   real_map = fft_map.real_map()
   real_map = maptbx.copy(real_map, flex.grid(real_map.focus()))
   stats = maptbx.statistics(real_map)
-  stats.show_summary()
-  real_map /= stats.sigma()
+  if (stats.max() != 0):
+    real_map /= abs(stats.max())
   grid_tags = maptbx.grid_tags(real_map.focus())
   grid_tags.build(fft_map.space_group_info().type(), fft_map.symmetry_flags())
   grid_tags.verify(real_map)
   peak_list = maptbx.peak_list(
     data=real_map,
-    tags=grid_tags.tag_array())
+    tags=grid_tags.tag_array(),
+    max_peaks=10*max_reduced_peaks)
   reduced_peaks = peak_cluster_reduction(
     crystal_symmetry=xray_structure,
     peak_list=peak_list,
