@@ -31,13 +31,14 @@ namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
 
-  BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(flex_grid_last_overloads, last, 0, 1)
-
   struct flex_grid_wrappers : boost::python::pickle_suite
   {
     typedef flex_grid_default_index_type df_i_t;
     typedef flex_grid<> w_t;
     typedef boost::python::class_<w_t> c_w_t;
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      last_overloads, last, 0, 1)
 
     static boost::python::tuple
     getinitargs(w_t const& fg)
@@ -76,7 +77,7 @@ namespace {
         .def("size_1d", &w_t::size_1d)
         .def("origin", &w_t::origin, copy_const_reference())
         .def("grid", &w_t::grid, copy_const_reference())
-        .def("last", (df_i_t(w_t::*)(bool)) 0, flex_grid_last_overloads())
+        .def("last", (df_i_t(w_t::*)(bool)) 0, last_overloads())
         .def("layout", &w_t::layout, copy_const_reference())
         .def("is_0_based", &w_t::is_0_based)
         .def("is_padded", &w_t::is_padded)
