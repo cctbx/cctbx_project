@@ -364,6 +364,14 @@ def exercise_match_indices():
   assert approx_equal(tuple(mi.divides(d0, d1)), (1/30.,2/10.,3/40.,4/20.))
   assert approx_equal(tuple(mi.additive_sigmas(d0, d1)), [
     math.sqrt(x*x+y*y) for x,y in ((1,30), (2,10), (3,40), (4,20))])
+  q = flex.size_t((3,2,0,4,1))
+  h1 = h0.shuffle(q)
+  assert tuple(miller.match_indices(h1, h0).permutation()) == tuple(q)
+  p = miller.match_indices(h0, h1).permutation()
+  assert tuple(p) == (2,4,1,0,3)
+  assert tuple(h1.shuffle(p)) == tuple(h0)
+  assert tuple(h1.unshuffle(q)) == tuple(h0)
+  assert tuple(h0.unshuffle(p)) == tuple(h1)
 
 def exercise_phase_transfer():
   sg = sgtbx.space_group_info("P 21 21 21").group()

@@ -33,6 +33,7 @@ namespace {
         .def("pair_selection", &w_t::pair_selection)
         .def("single_selection", &w_t::single_selection)
         .def("paired_miller_indices", &w_t::paired_miller_indices)
+        .def("permutation", &w_t::permutation)
 #define CCTBX_DEF(function_name) \
         .def(# function_name, \
           (af::shared<double>(w_t::*)(af::const_ref<double> const&, \

@@ -310,6 +310,19 @@ class array(set):
       i, d)
     return array(set(self, i, self.anomalous_flag()), d, self.sigmas())
 
+  def adopt_set(self, other):
+    assert self.unit_cell().is_similar_to(other.unit_cell())
+    assert self.space_group() == other.space_group()
+    assert self.indices().size() == other.indices().size()
+    assert self.anomalous_flag() == other.anomalous_flag()
+    p = match_indices(other.indices(), self.indices()).permutation()
+    assert flex.order(self.indices().shuffle(p), other.indices()) == 0
+    d = self.data()
+    s = self.sigmas()
+    if (d != None): d = d.shuffle(p)
+    if (s != None): s = s.shuffle(p)
+    return array(miller_set=other, data=d, sigmas=s)
+
   def sort(self, by_value="resolution", reverse=00000):
     assert reverse in (00000, 0001)
     if (by_value == "resolution"):
@@ -733,6 +746,13 @@ class fft_map(maptbx.crystal_gridding):
   def complex_map(self):
     assert self.anomalous_flag()
     return self._complex_map
+
+  def apply_sigma_scaling(self):
+    assert not self.anomalous_flag()
+    statistics = maptbx.statistics(self._real_map)
+    if (statistics.sigma() != 0):
+      self._real_map /= statistics.sigma()
+    return self
 
 def patterson_map(crystal_gridding, coeff_array, f_000=None,
                   sharpening=00000,
