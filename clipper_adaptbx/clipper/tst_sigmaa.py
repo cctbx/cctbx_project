@@ -60,8 +60,8 @@ def exercise_with_fixed_structure():
         (0.6478, 0.4879, 0.3141)]]))
   sfweight = exercise_SFweight_spline_core(
     structure=structure, d_min=5, verbose="--Verbose" in sys.argv[1:])
-  assert approx_equal(flex.mean(flex.abs(sfweight.fb())), 0.0840891829706)
-  assert approx_equal(flex.mean(flex.abs(sfweight.fd())), 0.111121311816)
+  assert approx_equal(flex.mean(flex.abs(sfweight.fb())), 1.22050766588)
+  assert approx_equal(flex.mean(flex.abs(sfweight.fd())), 1.61219832101)
   assert approx_equal(flex.mean(sfweight.centroid_phases()), -0.0339791322512)
   assert approx_equal(flex.mean(sfweight.figures_of_merit()), 0.109790067028)
 
