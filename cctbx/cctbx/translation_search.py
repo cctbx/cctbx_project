@@ -9,15 +9,6 @@ def symmetry_flags(is_isotropic_search_model,
                    have_f_part):
   return ext.symmetry_flags(is_isotropic_search_model, have_f_part)
 
-def map_gridding(unit_cell,
-                 space_group_type,
-                 symmetry_flags,
-                 resolution_factor,
-                 miller_indices_f_obs,
-                 max_prime=5):
-  return ext.map_gridding(unit_cell, space_group_type, symmetry_flags,
-                          resolution_factor, miller_indices_f_obs, max_prime)
-
 def fast_nv1995(gridding,
                 space_group,
                 anomalous_flag,

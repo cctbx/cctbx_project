@@ -111,3 +111,6 @@ class space_group_info:
     params = list(unit_cell.parameters())
     for i in xrange(3): params[i] *= f
     return uctbx.unit_cell(params)
+
+  def grid_factors(self, symmetry_flags):
+    return symmetry_flags.grid_factors(self.type())

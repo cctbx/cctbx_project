@@ -25,12 +25,11 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
   f_direct_array = structure.structure_factors_direct(
     anomalous_flag=anomalous_flag,
     d_min=d_min).f_calc_array()
-  n_real = maptbx.determine_grid(
-    unit_cell=f_direct_array.unit_cell(),
-    d_min=d_min,
+  n_real = f_direct_array.determine_grid(
     resolution_factor=resolution_factor,
-    max_prime=max_prime,
-    mandatory_factors=f_direct_array.space_group().gridding())
+    d_min=d_min,
+    symmetry_flags=maptbx.use_space_group_symmetry,
+    max_prime=max_prime)
   rfft = fftpack.real_to_complex_3d(n_real)
   u_extra = xray.calc_u_extra(d_min, resolution_factor, quality_factor)
   electron_density_must_be_positive = 1

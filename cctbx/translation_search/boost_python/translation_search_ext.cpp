@@ -17,7 +17,6 @@
 namespace cctbx { namespace translation_search { namespace boost_python {
 
   void wrap_fast_nv1995();
-  void wrap_map_gridding();
   void wrap_symmetry_flags();
 
 namespace {
@@ -30,7 +29,6 @@ namespace {
       "$Revision$");
 
     wrap_fast_nv1995();
-    wrap_map_gridding();
     wrap_symmetry_flags();
   }
 

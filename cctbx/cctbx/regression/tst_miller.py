@@ -142,7 +142,8 @@ def exercise_fft_map():
       ms = miller.set(xs, mi, anomalous_flag=anomalous_flag)
       ma = miller.array(ms, data)
       fft_map = miller.fft_map(ma)
-      assert approx_equal(fft_map.grid_resolution_factor(), 1./3)
+      assert approx_equal(fft_map.resolution_factor(), 1./3)
+      assert fft_map.symmetry_flags() == None
       assert approx_equal(fft_map.max_prime(), 5)
       assert fft_map.anomalous_flag() == anomalous_flag
       assert fft_map.real_map().size() > 0

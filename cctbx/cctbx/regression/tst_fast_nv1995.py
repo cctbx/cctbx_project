@@ -16,7 +16,7 @@ def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
   else:
     f_part = f_calc_fixed_array.data()
   fast_nv1995 = translation_search.fast_nv1995(
-    gridding=gridding.target(),
+    gridding=gridding,
     space_group=f_obs_array.space_group(),
     anomalous_flag=00000,
     miller_indices_f_obs=f_obs_array.indices(),
@@ -24,7 +24,7 @@ def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
     f_part=f_part,
     miller_indices_p1_f_calc=f_calc_p1_array.indices(),
     p1_f_calc=f_calc_p1_array.data())
-  assert fast_nv1995.target_map().all() == gridding.target()
+  assert fast_nv1995.target_map().all() == gridding
   map_stats = maptbx.statistics(fast_nv1995.target_map())
   if (0 or verbose):
     map_stats.show_summary()
@@ -43,7 +43,7 @@ def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
   return peak_list
 
 def test_atom(space_group_info, n_elements=3, d_min=3.,
-              map_resolution_factor=0.48, max_prime=5, verbose=0):
+              grid_resolution_factor=0.48, max_prime=5, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
     n_scatterers=n_elements,
@@ -57,16 +57,13 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=0001,
     have_f_part=(n_elements>=2))
-  gridding = translation_search.map_gridding(
-    unit_cell=miller_set_f_obs.unit_cell(),
-    space_group_type=miller_set_f_obs.space_group_info().type(),
+  gridding = miller_set_f_obs.determine_grid(
     symmetry_flags=symmetry_flags,
-    resolution_factor=map_resolution_factor,
-    miller_indices_f_obs=miller_set_f_obs.indices(),
+    resolution_factor=grid_resolution_factor,
     max_prime=max_prime)
   structure.build_scatterers(
     elements=["Se"]*n_elements,
-    grid=gridding.target())
+    grid=gridding)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_obs_array = abs(xray.structure_factors_direct(
@@ -102,14 +99,11 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
       is_isotropic_search_model=0001,
       have_f_part=(f_calc_fixed_array != None))
     if (structure_fixed.scatterers().size() <= 1):
-      gridding = translation_search.map_gridding(
-        unit_cell=miller_set_f_obs.unit_cell(),
-        space_group_type=miller_set_f_obs.space_group_info().type(),
+      gridding = miller_set_f_obs.determine_grid(
         symmetry_flags=symmetry_flags,
-        resolution_factor=map_resolution_factor,
-        miller_indices_f_obs=miller_set_f_obs.indices(),
+        resolution_factor=grid_resolution_factor,
         max_prime=max_prime)
-      grid_tags = maptbx.grid_tags(gridding.target())
+      grid_tags = maptbx.grid_tags(gridding)
     structure_fixed.add_scatterer(scatterer)
     if (0 or verbose):
       structure_fixed.show_summary().show_scatterers()
@@ -123,7 +117,7 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
   assert peak_list.entries()[0].value > 0.99
 
 def test_molecule(space_group_info, flag_f_part, d_min=3.,
-                  map_resolution_factor=0.48, max_prime=5, verbose=0):
+                  grid_resolution_factor=0.48, max_prime=5, verbose=0):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   structure = random_structure.xray_structure(
     space_group_info,
@@ -175,14 +169,11 @@ def test_molecule(space_group_info, flag_f_part, d_min=3.,
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=00000,
     have_f_part=flag_f_part)
-  gridding = translation_search.map_gridding(
-    unit_cell=miller_set_f_obs.unit_cell(),
-    space_group_type=miller_set_f_obs.space_group_info().type(),
+  gridding = miller_set_f_obs.determine_grid(
     symmetry_flags=symmetry_flags,
-    resolution_factor=map_resolution_factor,
-    miller_indices_f_obs=miller_set_f_obs.indices(),
+    resolution_factor=grid_resolution_factor,
     max_prime=max_prime)
-  grid_tags = maptbx.grid_tags(gridding.target())
+  grid_tags = maptbx.grid_tags(gridding)
   peak_list = run_fast_nv1995(
     f_obs_array, f_calc_fixed_array, f_calc_p1_array,
     symmetry_flags, gridding, grid_tags, verbose)
