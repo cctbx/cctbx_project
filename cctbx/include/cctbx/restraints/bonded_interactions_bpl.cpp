@@ -21,8 +21,8 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("bonded_interactions", no_init)
-        .def(init<af::const_ref<std::set<std::size_t> > const&,
-                  std::size_t,
+        .def(init<af::const_ref<std::set<unsigned> > const&,
+                  unsigned,
                   optional<bool> >(
           (arg_("bond_sets"),
            arg_("i_seq_0"),

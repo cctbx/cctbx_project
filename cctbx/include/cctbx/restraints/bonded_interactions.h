@@ -10,14 +10,14 @@ namespace cctbx { namespace restraints {
   class bonded_interactions
   {
     protected:
-      typedef std::set<std::size_t>::const_iterator set_const_iter;
+      typedef std::set<unsigned>::const_iterator set_const_iter;
 
     public:
       bonded_interactions() {}
 
       bonded_interactions(
-        af::const_ref<std::set<std::size_t> > const& bond_sets,
-        std::size_t i_seq_0,
+        af::const_ref<std::set<unsigned> > const& bond_sets,
+        unsigned i_seq_0,
         bool eliminate_redundant_interactions=false)
       :
         i_seq_0_(i_seq_0),
@@ -39,7 +39,7 @@ namespace cctbx { namespace restraints {
         }
       }
 
-      std::size_t
+      unsigned
       i_seq_0() const { return i_seq_0_; }
 
       bool
@@ -48,17 +48,17 @@ namespace cctbx { namespace restraints {
         return eliminate_redundant_interactions_;
       }
 
-      std::set<std::size_t> const&
+      std::set<unsigned> const&
       interactions_1_2() const { return interactions_1_2_; }
 
-      std::set<std::size_t> const&
+      std::set<unsigned> const&
       interactions_1_3() const { return interactions_1_3_; }
 
-      std::set<std::size_t> const&
+      std::set<unsigned> const&
       interactions_1_4() const { return interactions_1_4_; }
 
       int
-      interaction_type_of(std::size_t j_seq)
+      interaction_type_of(unsigned j_seq)
       {
         if (interactions_1_2_.find(j_seq) != interactions_1_2_.end()) return 2;
         if (interactions_1_3_.find(j_seq) != interactions_1_3_.end()) return 3;
@@ -68,13 +68,13 @@ namespace cctbx { namespace restraints {
 
     protected:
       bool eliminate_redundant_interactions_;
-      std::size_t i_seq_0_;
-      std::set<std::size_t> interactions_1_2_;
-      std::set<std::size_t> interactions_1_3_;
-      std::set<std::size_t> interactions_1_4_;
+      unsigned i_seq_0_;
+      std::set<unsigned> interactions_1_2_;
+      std::set<unsigned> interactions_1_3_;
+      std::set<unsigned> interactions_1_4_;
 
       void
-      do_eliminate_redundant_interactions(std::set<std::size_t>& interactions)
+      do_eliminate_redundant_interactions(std::set<unsigned>& interactions)
       {
         interactions.erase(
           interactions.begin(),
@@ -83,11 +83,11 @@ namespace cctbx { namespace restraints {
 
       void
       find_0_1(
-        af::const_ref<std::set<std::size_t> > const& bond_sets)
+        af::const_ref<std::set<unsigned> > const& bond_sets)
       {
-        std::set<std::size_t> const& bonds = bond_sets[i_seq_0_];
+        std::set<unsigned> const& bonds = bond_sets[i_seq_0_];
         for(set_const_iter p=bonds.begin(); p!=bonds.end(); p++) {
-          std::size_t i_seq_1 = *p;
+          unsigned i_seq_1 = *p;
           if (i_seq_1 != i_seq_0_) {
             interactions_1_2_.insert(i_seq_1);
           }
@@ -96,12 +96,12 @@ namespace cctbx { namespace restraints {
 
       void
       find_1_2(
-        af::const_ref<std::set<std::size_t> > const& bond_sets,
-        std::size_t i_seq_1)
+        af::const_ref<std::set<unsigned> > const& bond_sets,
+        unsigned i_seq_1)
       {
-        std::set<std::size_t> const& bonds = bond_sets[i_seq_1];
+        std::set<unsigned> const& bonds = bond_sets[i_seq_1];
         for(set_const_iter p=bonds.begin(); p!=bonds.end(); p++) {
-          std::size_t i_seq_2 = *p;
+          unsigned i_seq_2 = *p;
           if (   i_seq_2 != i_seq_0_
               && interactions_1_2_.find(i_seq_2) == interactions_1_2_.end()) {
             interactions_1_3_.insert(i_seq_2);
@@ -111,12 +111,12 @@ namespace cctbx { namespace restraints {
 
       void
       find_2_3(
-        af::const_ref<std::set<std::size_t> > const& bond_sets,
-        std::size_t i_seq_2)
+        af::const_ref<std::set<unsigned> > const& bond_sets,
+        unsigned i_seq_2)
       {
-        std::set<std::size_t> const& bonds = bond_sets[i_seq_2];
+        std::set<unsigned> const& bonds = bond_sets[i_seq_2];
         for(set_const_iter p=bonds.begin(); p!=bonds.end(); p++) {
-          std::size_t i_seq_3 = *p;
+          unsigned i_seq_3 = *p;
           if (   i_seq_3 != i_seq_0_
               && interactions_1_2_.find(i_seq_3) == interactions_1_2_.end()
               && interactions_1_3_.find(i_seq_3) == interactions_1_3_.end()) {

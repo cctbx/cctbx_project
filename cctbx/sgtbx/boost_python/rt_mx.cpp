@@ -1,18 +1,10 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/make_constructor.hpp>
+#include <scitbx/stl/vector_wrapper.h>
 #include <cctbx/sgtbx/rt_mx.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
@@ -93,6 +85,9 @@ namespace {
         .def("__mul__", mul)
         .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
       ;
+
+      scitbx::stl::boost_python::vector_wrapper<rt_mx>::wrap(
+        "stl_vector_rt_mx");
     }
   };
 
