@@ -1,7 +1,7 @@
 from __future__ import generators
 
-__builtins__.setdefault("False", 0)
-__builtins__.setdefault("True", 1)
+__builtins__.setdefault("False", bool(0))
+__builtins__.setdefault("True", bool(1))
 
 def _enumerate(iterable):
   """enumerate(iterable) -> iterator for index, value of iterable
