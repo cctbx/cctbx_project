@@ -549,6 +549,25 @@ namespace direct_space_asu {
         return r_inv_cart_[get_asu_mapping(i_seq, i_sym).i_sym_op()];
       }
 
+      bool
+      is_symmetry_interaction(asu_mapping_index_pair const& pair) const
+      {
+        sgtbx::rt_mx rt_i = get_rt_mx(pair.i_seq, 0);
+        sgtbx::rt_mx rt_j = get_rt_mx(pair.j_seq, pair.j_sym);
+        if (rt_i == rt_j) return false;
+        sgtbx::rt_mx rt_ij = rt_i * rt_j.inverse();
+        if (rt_ij.is_unit_mx()) return false;
+        uc_vec3 mapped_site_j = mappings_const_ref_[pair.j_seq][pair.j_sym]
+          .mapped_site();
+        uc_vec3 remapped_site_j = unit_cell().orthogonalization_matrix()
+          * (rt_ij * (unit_cell().fractionalization_matrix() * mapped_site_j));
+        if (  (remapped_site_j - mapped_site_j).length_sq()
+            < sym_equiv_minimum_distance_*sym_equiv_minimum_distance_) {
+          return false;
+        }
+        return true;
+      }
+
     protected:
       sgtbx::space_group space_group_;
       float_asu<FloatType> asu_;
