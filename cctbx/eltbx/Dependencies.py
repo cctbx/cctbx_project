@@ -24,8 +24,23 @@ class write_makefiles(makefile_generator.write_makefiles):
       "eltbx/efpfdp.cpp",
       "eltbx/fpfdpmodule.cpp",
       "eltbx/henke.cpp",
+      "eltbx/henke_tables_01_12.cpp",
+      "eltbx/henke_tables_13_24.cpp",
+      "eltbx/henke_tables_25_36.cpp",
+      "eltbx/henke_tables_37_48.cpp",
+      "eltbx/henke_tables_49_60.cpp",
+      "eltbx/henke_tables_61_72.cpp",
+      "eltbx/henke_tables_73_84.cpp",
+      "eltbx/henke_tables_85_92.cpp",
       "eltbx/henkemodule.cpp",
       "eltbx/sasaki.cpp",
+      "eltbx/sasaki_tables_01_12.cpp",
+      "eltbx/sasaki_tables_13_24.cpp",
+      "eltbx/sasaki_tables_25_36.cpp",
+      "eltbx/sasaki_tables_37_48.cpp",
+      "eltbx/sasaki_tables_49_60.cpp",
+      "eltbx/sasaki_tables_61_72.cpp",
+      "eltbx/sasaki_tables_73_82.cpp",
       "eltbx/sasakimodule.cpp",
       "eltbx/neutron.cpp",
       "eltbx/neutronmodule.cpp",
@@ -48,11 +63,25 @@ class write_makefiles(makefile_generator.write_makefiles):
       "caasf_it1992",
       "caasf_wk1995",
       "efpfdp",
+      "henke",
+      "henke_tables_01_12",
+      "henke_tables_13_24",
+      "henke_tables_25_36",
+      "henke_tables_37_48",
+      "henke_tables_49_60",
+      "henke_tables_61_72",
+      "henke_tables_73_84",
+      "henke_tables_85_92",
+      "sasaki",
+      "sasaki_tables_01_12",
+      "sasaki_tables_13_24",
+      "sasaki_tables_25_36",
+      "sasaki_tables_37_48",
+      "sasaki_tables_49_60",
+      "sasaki_tables_61_72",
+      "sasaki_tables_73_82",
       "neutron",
     ]
-    if (self.platform != "vc60"): # XXX vc70
-      lib.append("henke")
-      lib.append("sasaki")
 
     self.libraries = {
       "eltbx": tuple(lib),
@@ -71,14 +100,32 @@ class write_makefiles(makefile_generator.write_makefiles):
         (("caasf_wk1995module", "caasf_wk1995", "basic", "error"), ()),
       "fpfdp":
         (("fpfdpmodule", "efpfdp", "basic", "error"), ()),
+      "henke":
+        (("henkemodule",
+          "henke",
+          "henke_tables_01_12",
+          "henke_tables_13_24",
+          "henke_tables_25_36",
+          "henke_tables_37_48",
+          "henke_tables_49_60",
+          "henke_tables_61_72",
+          "henke_tables_73_84",
+          "henke_tables_85_92",
+          "efpfdp", "basic", "error"), ()),
+      "sasaki":
+        (("sasakimodule",
+          "sasaki",
+          "sasaki_tables_01_12",
+          "sasaki_tables_13_24",
+          "sasaki_tables_25_36",
+          "sasaki_tables_37_48",
+          "sasaki_tables_49_60",
+          "sasaki_tables_61_72",
+          "sasaki_tables_73_82",
+          "efpfdp", "basic", "error"), ()),
       "neutron":
         (("neutronmodule", "neutron", "basic", "error"), ()),
     }
-    if (self.platform != "vc60"): # XXX vc70
-      self.boost_python_modules["henke"] = (
-        ("henkemodule", "henke", "efpfdp", "basic", "error"), ())
-      self.boost_python_modules["sasaki"] = (
-        ("sasakimodule", "sasaki", "efpfdp", "basic", "error"), ())
 
   def make_test(self):
     print "tst:"
@@ -88,6 +135,5 @@ class write_makefiles(makefile_generator.write_makefiles):
     print "\tpython tst_caasf_it1992.py"
     print "\tpython tst_caasf_wk1995.py"
     print "\tpython tst_neutron.py"
-    if (self.platform != "vc60"): # XXX vc70
-      print "\tpython tst_henke.py"
-      print "\tpython tst_sasaki.py"
+    print "\tpython tst_henke.py"
+    print "\tpython tst_sasaki.py"

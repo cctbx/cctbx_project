@@ -17,6 +17,34 @@
 
 namespace cctbx { namespace eltbx {
 
+  namespace detail { namespace sasaki {
+
+    const long n_raw = 280; // All tables have exactly 280 data points.
+    const double first_wide = 0.1; // All tables in fpwide.tbl start at 0.1.
+    const double wide_incr = 0.01;
+    const double edge_incr = 0.0001;
+
+    struct raw {
+      float fp;
+      float fdp;
+    };
+
+    struct info {
+      char* Label;
+      int Z;
+      raw* wide;
+      double first_k;
+      raw* k;
+      double first_l1;
+      raw* l1;
+      double first_l2;
+      raw* l2;
+      double first_l3;
+      raw* l3;
+    };
+
+  }} // namespace detail::sasaki
+
   //! Access to Sasaki tables.
   /*! Sasaki tables are available for elements with Z=4-83 and Z=92.
       They are valid in the energy range 4-124 keV and they have a fine
@@ -33,7 +61,7 @@ namespace cctbx { namespace eltbx {
   class Sasaki {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
-      Sasaki() : m_Label_Z_Efpfdp(0) {}
+      Sasaki() : m_info(0) {}
       //! Search Sasaki table for the given scattering factor label.
       /*! If Exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not
@@ -43,17 +71,17 @@ namespace cctbx { namespace eltbx {
       explicit
       Sasaki(const std::string& Label, bool Exact = false);
       //! Return scattering factor label.
-      const char* Label() const { return m_Label_Z_Efpfdp->Label; }
+      const char* Label() const { return m_info->Label; }
       //! Return atomic number.
-      int Z() const { return m_Label_Z_Efpfdp->Z; }
-      //! Compute f-prime (f') and f-double-prime (f") for given energy.
+      int Z() const { return m_info->Z; }
+      //! Compute f-prime (f') and f-double-prime (f") for given energy [eV].
       /*! f-prime and f-double-prime are determined by linear
           interpolation.<br>
           See also: cctbx::constants::factor_keV_Angstrom
        */
       fpfdp operator()(double Energy);
     private:
-      const eltbx::detail::Label_Z_Efpfdp* m_Label_Z_Efpfdp;
+      const detail::sasaki::info* m_info;
   };
 
 }} // cctbx::eltbx

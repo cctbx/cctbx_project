@@ -10,37 +10,11 @@
                Based on C code contributed by Vincent Favre-Nicolin.
  */
 
-#include <string>
-#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/efpfdp.h>
 
 namespace cctbx { namespace eltbx {
   namespace detail {
-
-    const Label_Z_Efpfdp* FindEntry(const Label_Z_Efpfdp* Tables,
-                                    const std::string& WorkLabel,
-                                    bool Exact)
-    {
-      // map D to H
-      std::string WL = WorkLabel;
-      if (WL == "D") WL = "H";
-      int m = 0;
-      const Label_Z_Efpfdp* mEntry = 0;
-      for (const Label_Z_Efpfdp* Entry = Tables; Entry->Label; Entry++)
-      {
-        int i = MatchLabels(WL, Entry->Label);
-        if (i < 0) return Entry;
-        if (i > m && !isdigit(Entry->Label[i - 1])) {
-          m = i;
-          mEntry = Entry;
-        }
-      }
-      if (Exact || !mEntry) {
-        throw error("Unknown scattering factor label.");
-      }
-      return mEntry;
-    }
 
     fpfdp interpolate(const Label_Z_Efpfdp* m_Label_Z_Efpfdp, double Energy)
     {
