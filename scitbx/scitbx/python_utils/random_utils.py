@@ -17,16 +17,25 @@ def random_subset(set, n):
     del set[random.randrange(len(set))]
   return set
 
-def random_selection(size, n):
-  assert n >= 0 and n <= size
-  result = flex.bool(size, 00000)
-  if (n > 0):
-    set = range(size)
-    while (len(set) > n):
-      del set[random.randrange(len(set))]
-    for i in set:
-      result[i] = 0001
-  return result
+def random_selection(n_candidates, n_keep):
+  assert n_keep >= 0 and n_keep <= n_candidates
+  n_discard = n_candidates - n_keep
+  if (n_keep > n_discard):
+    selection = flex.bool(n_candidates, 0001)
+    if (n_discard > 0):
+      _random_selection_core(selection, n_keep, 00000)
+  else:
+    selection = flex.bool(n_candidates, 00000)
+    if (n_keep > 0):
+      _random_selection_core(selection, n_discard, 0001)
+  return selection
+
+def _random_selection_core(selection, target_set_size, flag):
+   set = range(len(selection))
+   while (len(set) > target_set_size):
+     i = random.randrange(len(set))
+     selection[set[i]] = flag
+     del set[i]
 
 class weighted_choice:
 
@@ -50,10 +59,16 @@ if (__name__ == "__main__"):
   print random_subset(range(5), 5)
   print random_subset(range(5), 2)
   print random_subset(range(5), 3)
-  print tuple(random_selection(5, 0))
-  print tuple(random_selection(5, 5))
-  print tuple(random_selection(5, 2))
-  print tuple(random_selection(5, 3))
+  for i in xrange(10):
+    assert random_selection(0, 0).size() == 0
+    assert random_selection(5, 0).size() == 5
+    assert random_selection(3, 0).count(0001) == 0
+    assert random_selection(3, 3).size() == 3
+    assert random_selection(5, 5).count(0001) == 5
+    assert random_selection(6, 2).size() == 6
+    assert random_selection(6, 2).count(0001) == 2
+    assert random_selection(4, 3).size() == 4
+    assert random_selection(4, 3).count(0001) == 3
   for weights in ([5,5], [4,3,2,1]):
     r = weighted_choice(weights)
     hist = [0 for i in xrange(len(weights))]
