@@ -21,8 +21,14 @@ class UnknownRecordName(FormatError): pass
 
 class pdb_record:
 
-  def __init__(self, raw_record, line_number=None, strict=00000):
-    self.raw = (raw_record.rstrip() + " " * 80)[:80]
+  def __init__(self, raw_record,
+        line_number=None,
+        strict=00000,
+        ignore_columns_73_and_following=00000):
+    if (ignore_columns_73_and_following):
+      self.raw = (raw_record.rstrip()[:73] + " "*80)[:80]
+    else:
+      self.raw = (raw_record.rstrip() + " "*80)[:80]
     self.line_number = line_number
     self.strict = strict
     self.record_name = (self.raw)[:6].upper().strip()
@@ -338,17 +344,98 @@ class pdb_record:
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]
 
+class columns_73_76_evaluator:
+
+  def __init__(self, raw_records,
+        is_frequent_threshold_atom_records=1000,
+        is_frequent_threshold_other_records=100):
+    self.raw_records = list(raw_records)
+    atom_columns_73_76_dict = {}
+    other_columns_73_76_dict = {}
+    for raw_record in self.raw_records:
+      if (raw_record[:6] in ("ATOM  ", "HETATM")):
+        columns_73_76_dict = atom_columns_73_76_dict
+      else:
+        columns_73_76_dict = other_columns_73_76_dict
+      if (    raw_record[:6] not in ("ANISOU", "TER   ")
+          and len(raw_record.rstrip()) >= 80):
+        field = raw_record[72:76]
+        if (field != "    "):
+          try: columns_73_76_dict[field] += 1
+          except KeyError: columns_73_76_dict[field] = 1
+    if (len(atom_columns_73_76_dict) == 0):
+      self.finding = "Blank columns 73-76 on ATOM and HETATM records."
+      self.is_old = 00000
+      return
+    if (    len(other_columns_73_76_dict) == 1
+        and len(atom_columns_73_76_dict) == 1
+        and len(other_columns_73_76_dict.keys()[0].strip()) == 4
+        and other_columns_73_76_dict.keys() == atom_columns_73_76_dict.keys()):
+      self.finding = "Exactly one common label in columns 73-76."
+      self.is_old = 0001
+      return
+    common_four_character_field = None
+    sum_counts_common_four_character_field = 0
+    for field in atom_columns_73_76_dict.keys():
+      if (len(field.strip()) != 4): continue
+      if (field in other_columns_73_76_dict):
+        if (    atom_columns_73_76_dict[field]
+                > is_frequent_threshold_atom_records
+            and other_columns_73_76_dict[field]
+                > is_frequent_threshold_other_records):
+          self.finding = "Frequent common labels in columns 73-76."
+          self.is_old = 0001
+          return
+        sum_counts = atom_columns_73_76_dict[field] \
+                   + other_columns_73_76_dict[field]
+        if (sum_counts_common_four_character_field < sum_counts):
+          common_four_character_field = field
+          sum_counts_common_four_character_field = sum_counts
+    if (sum_counts_common_four_character_field == 0):
+      self.finding =  "No common label in columns 73-76."
+      self.is_old = 00000
+      return
+    three_char_dicts = []
+    for columns_73_76_dict in [atom_columns_73_76_dict,
+                               other_columns_73_76_dict]:
+      three_char_dict = {}
+      for field,n in columns_73_76_dict.items():
+        field = field[:3]
+        try: three_char_dict[field] += n
+        except KeyError: three_char_dict[field] = n
+      three_char_dicts.append(three_char_dict)
+    if (    len(three_char_dicts[0]) == 1
+        and len(three_char_dicts[1]) == 1
+        and len(three_char_dicts[0].keys()[0].strip()) == 3
+        and three_char_dicts[0].keys() == three_char_dicts[1].keys()):
+      self.finding = "Exactly one common label in columns 73-76" \
+                   + " comparing only the first three characters."
+      self.is_old = 0001
+      return
+    self.finding = "Undecided."
+    self.is_old = 00000
+
 def collect_records(raw_records,
                     ignore_unknown=0001,
                     ignore_coordinate_section=00000,
-                    ignore_master=00000):
-  line_number = 0
+                    ignore_master=00000,
+                    evaluate_columns_73_76=0001):
+  ignore_columns_73_and_following = 00000
+  if (evaluate_columns_73_76):
+    evaluation = columns_73_76_evaluator(
+      raw_records=raw_records)
+    raw_records = evaluation.raw_records
+    ignore_columns_73_and_following = evaluation.is_old
   records = []
+  line_number = 0
   for raw_record in raw_records:
     line_number += 1
     if (ignore_master and raw_record.startswith("MASTER")):
       continue
-    r = pdb_record(raw_record, line_number)
+    r = pdb_record(
+      raw_record=raw_record,
+      line_number=line_number,
+      ignore_columns_73_and_following=ignore_columns_73_and_following)
     if (ignore_unknown and not r.is_interpreted):
       continue
     if (ignore_coordinate_section and r.record_name in coordinate_section):
