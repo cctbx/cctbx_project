@@ -32,6 +32,20 @@ namespace {
     return Fcalc;
   }
 
+  boost::shared_ptr<std::vector<cctbx::Miller::Index> >
+  py_BuildMillerIndices_Resolution_d_min(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    double Resolution_d_min) {
+    return cctbx::BuildMillerIndices(UC, SgOps, Resolution_d_min);
+  }
+  boost::shared_ptr<std::vector<cctbx::Miller::Index> >
+  py_BuildMillerIndices_MaxIndex(
+    const sgtbx::SpaceGroup& SgOps,
+    const cctbx::Miller::Index& MaxIndex) {
+    return cctbx::BuildMillerIndices(SgOps, MaxIndex);
+  }
+
 #   include <cctbx/basic/from_bpl_import.h>
 
   void init_module(boost::python::module_builder& this_module)
@@ -110,7 +124,10 @@ namespace {
       >::StructureFactor, "StructureFactor");
 
     this_module.def(py_StructureFactorVector, "StructureFactorVector");
-    this_module.def(cctbx::BuildMillerIndices, "BuildMillerIndices");
+    this_module.def(py_BuildMillerIndices_Resolution_d_min,
+                      "BuildMillerIndices");
+    this_module.def(py_BuildMillerIndices_MaxIndex,
+                      "BuildMillerIndices");
   }
 
 }
