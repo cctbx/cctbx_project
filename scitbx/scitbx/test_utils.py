@@ -43,6 +43,7 @@ def approx_equal(a1, a2, eps=1.e-6, multiplier=1.e10):
   else:
     d = a1 - a2
     if (abs(d) > eps):
+      if (multiplier is None): return 00000
       am = max(a1,a2) * multiplier
       d = (am - d) - am
       if (d != 0): return 00000
