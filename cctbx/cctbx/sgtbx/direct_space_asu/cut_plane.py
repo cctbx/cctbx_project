@@ -247,6 +247,6 @@ class cut(cut_expr_ops):
     raise RuntimeError("cut_plane normal vector is the null vector.")
 
   def as_float_cut_plane(self):
-    from cctbx.sgtbx.direct_space_asu import float_cut_plane
+    from cctbx.crystal.direct_space_asu import float_cut_plane
     result = float_cut_plane(n=[float(e) for e in self.n], c=float(self.c))
     return result

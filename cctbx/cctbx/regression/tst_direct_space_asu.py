@@ -1,3 +1,5 @@
+from cctbx import crystal
+import cctbx.crystal.direct_space_asu
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
@@ -103,7 +105,7 @@ def exercise_asu_mappings(space_group_info, n_elements=10):
     volume_per_atom=1000,
     min_distance=3.,
     general_positions_only=00000)
-  asu_mappings = sgtbx.direct_space_asu.asu_mappings(
+  asu_mappings = crystal.direct_space_asu.asu_mappings(
     space_group=structure.space_group(),
     asu=structure.direct_space_asu().as_float_asu(),
     buffer_thickness=4)

@@ -9,9 +9,9 @@
 #include <boost/python/overloads.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
-#include <cctbx/sgtbx/direct_space_asu.h>
+#include <cctbx/crystal/direct_space_asu.h>
 
-namespace cctbx { namespace sgtbx { namespace direct_space_asu {
+namespace cctbx { namespace crystal { namespace direct_space_asu {
 
 namespace {
 
@@ -109,7 +109,7 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("direct_space_asu_asu_mappings", no_init)
-        .def(init<space_group const&,
+        .def(init<sgtbx::space_group const&,
                   float_asu<> const&,
                   double const&,
                   optional<double const&> >(
@@ -154,4 +154,4 @@ namespace boost_python {
     direct_space_asu::asu_mappings_wrappers::wrap();
   }
 
-}}} // namespace cctbx::sgtbx::boost_python
+}}} // namespace cctbx::crystal::boost_python
