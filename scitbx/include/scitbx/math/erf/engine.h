@@ -52,9 +52,7 @@ selection of the machine-dependent constants.
             typename AintIntType=long>
   struct erf_engine : erf_constants::machine_dependent<FloatType>
   {
-    typedef erf_constants::machine_dependent<FloatType> mach_dep;
-
-    static FloatType
+    FloatType
     compute(FloatType const& arg, int jint)
     {
       FloatType sixten = 16.;
@@ -97,7 +95,7 @@ selection of the machine-dependent constants.
       if (y < 0) y = -y;
       if (y <= thresh) {
             FloatType ysq = zero;
-            if (y > mach_dep::xsmall) ysq = y * y;
+            if (y > this->xsmall) ysq = y * y;
             FloatType xnum = a[5-1]*ysq;
             FloatType xden = ysq;
             for(std::size_t i=1;i<=3;i++) {
@@ -125,9 +123,9 @@ selection of the machine-dependent constants.
          }
          else {
             result = zero;
-            if (y >= mach_dep::xbig) {
-               if ((jint != 2) || (y >= mach_dep::xmax)) goto label_300;
-               if (y >= mach_dep::xhuge) {
+            if (y >= this->xbig) {
+               if ((jint != 2) || (y >= this->xmax)) goto label_300;
+               if (y >= this->xhuge) {
                   result = sqrpi / y;
                   goto label_300;
                }
@@ -157,8 +155,8 @@ selection of the machine-dependent constants.
          }
          else {
             if (x < zero) {
-               if (x < mach_dep::xneg) {
-                     result = mach_dep::xinf;
+               if (x < this->xneg) {
+                     result = this->xinf;
                   }
                   else {
                      FloatType ysq = aint_(x*sixten)/sixten;
