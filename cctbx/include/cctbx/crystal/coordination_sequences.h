@@ -38,8 +38,7 @@ namespace coordination_sequences {
           list_node=node_list.begin();
           list_node!=node_list.end();
           list_node++) {
-      if (   list_node->i_seq == test_node.i_seq
-          && list_node->rt_mx_unique == test_node.rt_mx_unique) {
+      if (list_node->rt_mx_unique == test_node.rt_mx_unique) {
         return true;
       }
     }
@@ -48,34 +47,52 @@ namespace coordination_sequences {
 
   struct three_shells
   {
+    typedef std::vector<std::vector<node> > container;
+
     three_shells() {}
 
     three_shells(
       direct_space_asu::asu_mappings<> const& asu_mappings,
       unsigned i_seq_pivot)
+    :
+      a(asu_mappings.mappings().size()),
+      b(asu_mappings.mappings().size()),
+      c(asu_mappings.mappings().size())
     {
       prev = &a;
       middle = &b;
       next = &c;
-      next->push_back(node(asu_mappings, i_seq_pivot, sgtbx::rt_mx(1,1)));
+      (*next)[i_seq_pivot].push_back(
+        node(asu_mappings, i_seq_pivot, sgtbx::rt_mx(1,1)));
     }
 
     void
     shift()
     {
-      std::vector<node>* tmp = prev;
+      container* tmp = prev;
       prev = middle;
       middle = next;
       next = tmp;
       next->clear();
+      next->resize(middle->size());
     }
 
-    std::vector<node> a;
-    std::vector<node> b;
-    std::vector<node> c;
-    std::vector<node>* prev;
-    std::vector<node>* middle;
-    std::vector<node>* next;
+    unsigned
+    count_next() const
+    {
+      unsigned result = 0;
+      for(container::const_iterator i=next->begin(); i!=next->end(); i++) {
+        result += i->size();
+      }
+      return result;
+    }
+
+    container a;
+    container b;
+    container c;
+    container* prev;
+    container* middle;
+    container* next;
   };
 
   af::shared<std::vector<unsigned> >
@@ -84,6 +101,8 @@ namespace coordination_sequences {
     pair_asu_table_table const& pair_asu_table_table_,
     unsigned n_shells)
   {
+    CCTBX_ASSERT(pair_asu_table_table_.size()
+              == asu_mappings.mappings().size());
     af::shared<std::vector<unsigned> > term_table;
     for(unsigned i_seq_pivot=0;
                  i_seq_pivot<pair_asu_table_table_.size();
@@ -100,8 +119,10 @@ namespace coordination_sequences {
                    i_shell_minus_1<n_shells;
                    i_shell_minus_1++) {
         shells.shift();
-        for(unsigned i_node_m=0;i_node_m<shells.middle->size();i_node_m++) {
-          node node_m = (*shells.middle)[i_node_m];
+        for(unsigned i_seq_m=0;i_seq_m<shells.middle->size();i_seq_m++) {
+          std::vector<node>& nodes_middle = (*shells.middle)[i_seq_m];
+        for(unsigned i_node_m=0;i_node_m<nodes_middle.size();i_node_m++) {
+          node node_m = nodes_middle[i_node_m];
           sgtbx::rt_mx rt_mx_i = asu_mappings.get_rt_mx(node_m.i_seq, 0);
           sgtbx::rt_mx rt_mx_ni = node_m.rt_mx.multiply(rt_mx_i.inverse());
           pair_asu_dict::const_iterator
@@ -123,16 +144,16 @@ namespace coordination_sequences {
                 unsigned j_sym = *j_sym_group_i;
                 sgtbx::rt_mx rt_mx_j = asu_mappings.get_rt_mx(j_seq, j_sym);
                 node new_node(asu_mappings, j_seq, rt_mx_ni.multiply(rt_mx_j));
-                if (   !find_node(new_node, *shells.prev)
-                    && !find_node(new_node, *shells.middle)
-                    && !find_node(new_node, *shells.next)) {
-                  shells.next->push_back(new_node);
+                if (   !find_node(new_node, (*shells.prev)[j_seq])
+                    && !find_node(new_node, (*shells.middle)[j_seq])
+                    && !find_node(new_node, (*shells.next)[j_seq])) {
+                  (*shells.next)[j_seq].push_back(new_node);
                 }
               }
             }
           }
-        }
-        terms.push_back(shells.next->size());
+        }}
+        terms.push_back(shells.count_next());
       }
       term_table.push_back(terms);
     }
