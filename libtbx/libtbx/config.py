@@ -208,6 +208,14 @@ def open_info(path, mode="w", info="Creating:"):
   except IOError, e:
     raise UserError(str(e))
 
+def remove_or_rename(path):
+  try: os.remove(path)
+  except OSError:
+    try: os.remove(path+".old")
+    except OSError: pass
+    try: os.rename(path, path+".old")
+    except OSError: pass
+
 class environment:
 
   def __init__(self, build_path=None):
@@ -224,6 +232,7 @@ class environment:
     else:
       self.python_exe = self.abs_path_clean(os.path.join(
         sys.prefix, "bin/python"))
+    self.read_command_version_suffix()
     self.build_options = None
     self.repository_paths = []
     self.reset_module_registry()
@@ -313,6 +322,31 @@ class environment:
     for module in self.module_list:
       for dist_path in module.dist_paths_active():
         yield dist_path
+
+  def clear_bin_directory(self):
+    if (not os.path.isdir(self.bin_path)): return
+    for file_name in os.listdir(self.bin_path):
+      path = os.path.join(self.bin_path, file_name)
+      if (os.path.isfile(path)):
+        remove_or_rename(path)
+
+  def write_command_version_suffix(self):
+    assert self.command_version_suffix is not None
+    path = self.under_build("command_version_suffix")
+    try: f = open(path, "w")
+    except IOError:
+      raise UserError("Cannot write command_version_suffix file: " + path)
+    print >> f, self.command_version_suffix
+
+  def read_command_version_suffix(self):
+    path = self.under_build("command_version_suffix")
+    if (not os.path.isfile(path)):
+        self.command_version_suffix = None
+    else:
+      try:
+        self.command_version_suffix = open(path).read().strip()
+      except IOError:
+        raise UserError("Cannot read command_version_suffix file: " + path)
 
   def register_module(self, dependent_module, module):
     if (dependent_module is None):
@@ -405,6 +439,12 @@ class environment:
         action="store_true",
         default=False,
         help="enable implicit dependency scan")
+      parser.option(None, "--command_version_suffix",
+        action="store",
+        type="string",
+        default=None,
+        help="version suffix for commands in bin directory",
+        metavar="STRING")
     command_line = parser.process(args=args)
     if (default_repository is not None):
       self.add_repository(default_repository)
@@ -415,6 +455,10 @@ class environment:
         static_libraries=command_line.options.static_libraries,
         static_exe=command_line.options.static_exe,
         scan_boost=command_line.options.scan_boost)
+      if (command_line.options.command_version_suffix is not None):
+        self.command_version_suffix = \
+          command_line.options.command_version_suffix
+        self.write_command_version_suffix()
     module_names = list(command_line.args)
     module_names.append("libtbx")
     module_names.reverse()
@@ -605,12 +649,7 @@ class environment:
       try: os.chmod(source_file, 0755)
       except OSError: pass
     target_file_ext = target_file + ext
-    try: os.remove(target_file_ext)
-    except OSError:
-      try: os.remove(target_file_ext+".old")
-      except OSError: pass
-      try: os.rename(target_file_ext, target_file_ext+".old")
-      except OSError: pass
+    remove_or_rename(target_file_ext)
     try: action(source_file, target_file)
     except IOError, e: print "  Ignored:", e
 
@@ -731,6 +770,7 @@ class environment:
     print "Python:", sys.version.split()[0], sys.executable
     if (len(self.missing_for_build) == 0):
       self.build_options.report()
+    print "command_version_suffix:", self.command_version_suffix
     print "Top-down list of all packages involved:"
     top_down_module_list = list(self.module_list)
     top_down_module_list.reverse()
@@ -775,6 +815,20 @@ class environment:
           source_file=source_file,
           target_file=module_name+"."+command)
 
+  def write_command_version_duplicates(self):
+    if (self.command_version_suffix is None): return
+    suffix = "_" + self.command_version_suffix
+    for file_name in os.listdir(self.bin_path):
+      if (file_name.startswith(".")): continue
+      source_file = os.path.join(self.bin_path, file_name)
+      if (os.name == "nt" and file_name.lower().endswith(".exe")):
+        target_file = source_file[:-4] + suffix + source_file[-4:]
+      else:
+        target_file = source_file + suffix
+      remove_or_rename(target_file)
+      try: open(target_file, "wb").write(open(source_file, "rb").read())
+      except IOError: pass
+
   def assemble_pythonpath(self):
     pythonpath = [self.lib_path]
     for module in self.module_list:
@@ -795,12 +849,13 @@ class environment:
       self.write_SConstruct()
     if (os.name != "nt"):
       self.write_run_tests_csh()
+    self.clear_bin_directory()
     if (not os.path.isdir(self.bin_path)):
       os.makedirs(self.bin_path)
     for file_name in ("libtbx.python", "python"):
-      self.write_dispatcher(
+      self.write_dispatcher_in_bin(
         source_file=self.python_exe,
-        target_file=libtbx.path.norm_join(self.bin_path, file_name))
+        target_file=file_name)
     for module in self.module_list:
       module.process_command_line_directories()
     if (os.path.isdir(self.exe_path)):
@@ -811,6 +866,7 @@ class environment:
           source_file=libtbx.path.norm_join(self.exe_path, file_name),
           target_file=file_name)
     self.write_python_and_show_path_duplicates()
+    self.write_command_version_duplicates()
 
 class module:
 
