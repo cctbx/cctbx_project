@@ -1,3 +1,4 @@
+from __future__ import generators
 from cctbx.array_family import flex
 from cctbx import sgtbx
 
@@ -12,6 +13,7 @@ from scitbx.array_family import shared
 from scitbx import stl
 import scitbx.stl.set
 import scitbx.stl.vector
+from scitbx.python_utils.misc import adopt_init_args
 import sys
 
 pair_sym_ops = sgtbx.stl_vector_rt_mx
@@ -326,7 +328,21 @@ class _pair_asu_table(boost.python.injector, pair_asu_table):
           for j_syms in j_sym_group:
             print >> f, "    j_syms:", list(j_syms)
 
+class sym_pair:
+
+  def __init__(self, i_seq, j_seq, rt_mx_ji):
+    adopt_init_args(self, locals())
+
+  def i_seqs(self):
+    return (self.i_seq, self.j_seq)
+
 class _pair_sym_table(boost.python.injector, pair_sym_table):
+
+  def iterator(self):
+    for i_seq,pair_sym_dict in enumerate(self):
+      for j_seq,sym_ops in pair_sym_dict.items():
+        for rt_mx_ji in sym_ops:
+          yield sym_pair(i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
 
   def show(self, f=None, site_labels=None):
     if (f is None): f = sys.stdout
