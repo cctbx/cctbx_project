@@ -197,7 +197,6 @@ namespace cctbx { namespace sgtbx {
     }
     cctbx_assert((m_nSMx * m_fInv) % SEMI.N() == 0);
     cctbx_assert(!SEMI.isCentric() || SEMI.N() % 2 == 0);
-    SEMI.sort_in_hemispheres();
     return SEMI;
   }
 
@@ -210,24 +209,6 @@ namespace cctbx { namespace sgtbx {
         m_HT_Restriction = SEI.HT();
       }
     }
-  }
-
-  void SymEquivMillerIndices::sort_in_hemispheres()
-  {
-    if (!isCentric()) return;
-    std::vector<Miller::SymEquivIndex> plus;
-    std::vector<Miller::SymEquivIndex> minus;
-    for(std::size_t i=0;i<m_List.size();i++) {
-      if (isInReferenceReciprocalSpaceASU_1b(m_List[i].HR())) {
-        plus.push_back(m_List[i]);
-      }
-      else {
-        minus.push_back(m_List[i]);
-      }
-    }
-    m_List.clear();
-    m_List.insert(m_List.end(), plus.begin(), plus.end());
-    m_List.insert(m_List.end(), minus.begin(), minus.end());
   }
 
   Miller::SymEquivIndex
@@ -255,6 +236,28 @@ namespace cctbx { namespace sgtbx {
   {
     iIL_decomposition d = decompose_iIL(iIL);
     return operator()(d.iMate, d.iList);
+  }
+
+  af::shared<Miller::SymEquivIndex>
+  SymEquivMillerIndices::p1_listing(bool friedel_flag) const
+  {
+    af::shared<Miller::SymEquivIndex> result;
+    if (!friedel_flag) {
+      result.reserve(N());
+      for(std::size_t i=0;i<N();i++) result.push_back(m_List[i]);
+    }
+    else {
+      if (isCentric()) result.reserve(N() / 2);
+      else             result.reserve(N());
+      for(std::size_t i=0;i<M(true);i++) {
+        Miller::SymEquivIndex h_eq = operator()(i);
+        if (isInReferenceReciprocalSpaceASU_1b(h_eq.H())) {
+          result.push_back(h_eq);
+        }
+      }
+    }
+    cctbx_assert(result.size() == result.capacity());
+    return result;
   }
 
 }} // namespace cctbx::sgtbx

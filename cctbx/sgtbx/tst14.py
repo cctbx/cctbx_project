@@ -59,6 +59,9 @@ def OneCycle(settings):
           for i in xrange(4):
             assert abs(hlc_in[i] - hlc_asym[i]) < 1.e-5
       # exercise expand_to_p1, AsymIndex, IndexTableLayoutAdapter
+      p1_sgops = sgtbx.SpaceGroup()
+      p1_sginfo = p1_sgops.Info()
+      p1_asu = sgtbx.ReciprocalSpaceASU(p1_sginfo)
       p1_miller_indices = shared.Miller_Index()
       sgtbx.expand_to_p1(
         SgOps, friedel_flag, miller_indices, p1_miller_indices)
@@ -66,6 +69,8 @@ def OneCycle(settings):
       for i in xrange(miller_indices.size()):
         h_dict[miller_indices[i]] = 0
       for p1_h in p1_miller_indices:
+        h_asu = sgtbx.Miller_AsymIndex(p1_sgops, p1_asu, p1_h)
+        assert h_asu.one_column(friedel_flag).H() == p1_h
         h_asu = sgtbx.Miller_AsymIndex(SgOps, asu, p1_h)
         h_dict[h_asu.one_column(friedel_flag).H()] += 1
       f = 1
@@ -73,7 +78,6 @@ def OneCycle(settings):
       for h, c in h_dict.items():
         h_seq = SgOps.getEquivMillerIndices(h)
         assert f * c == h_seq.M(friedel_flag)
-        assert c == h_seq.n_p1_listing(friedel_flag)
 
 def run(timing=1):
   from tst import run_other
