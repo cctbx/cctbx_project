@@ -240,8 +240,6 @@ namespace cctbx { namespace af {
     flagged_value<ValueTypeRhs> > {
     typedef binary_operator_traits<ValueTypeLhs, ValueTypeRhs> val_traits;
     typedef flagged_value<typename val_traits::arithmetic> arithmetic;
-    typedef flagged_value<typename val_traits::logical> logical;
-    typedef flagged_value<typename val_traits::boolean> boolean;
   };
 
 }} // namespace cctbx::af
