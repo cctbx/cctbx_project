@@ -349,6 +349,37 @@ def exercise_bases_rmsd():
       if (cell_a is cell_b):
         assert approx_equal(v_cpp, 0)
 
+def exercise_box_frac_around_sites():
+  unit_cells = [uctbx.unit_cell(params) for params in [
+    (79, 85.6519, 97.0483, 68.3049, 65.9826, 62.5374),
+    (110, 58.4, 69.2, 90, 127, 90)]]
+  sites_cart = flex.vec3_double([
+    (2.23474, 8.72834, 4.70562),
+    (3.72656, 3.28621, 9.19121),
+    (-6.83519, -7.5707, 4.62386)])
+  for unit_cell in unit_cells:
+    sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+    min0, max0 = unit_cell.box_frac_around_sites(
+      sites_cart=sites_cart)
+    for x,y in zip(min0, max0): assert x < y
+    for buffer in [None, 0.]:
+      min_, max_ = unit_cell.box_frac_around_sites(
+        sites_cart=sites_cart, buffer=buffer)
+      assert approx_equal(min_, min0)
+      assert approx_equal(max_, max0)
+      min_, max_ = unit_cell.box_frac_around_sites(
+        sites_frac=sites_frac, buffer=buffer)
+      assert approx_equal(min_, min0)
+      assert approx_equal(max_, max0)
+    for buffer in [3.,5.,7.]:
+      min0, max0 = unit_cell.box_frac_around_sites(
+        sites_cart=sites_cart, buffer=buffer)
+      for x,y in zip(min0, max0): assert x < y
+      min_, max_ = unit_cell.box_frac_around_sites(
+        sites_frac=sites_frac, buffer=buffer)
+      assert approx_equal(min_, min0)
+      assert approx_equal(max_, max0)
+
 def run():
   exercise_functions()
   exercise_basic()
@@ -361,6 +392,7 @@ def run():
   exercise_fast_minimum_reduction()
   exercise_similarity_transformations()
   exercise_bases_rmsd()
+  exercise_box_frac_around_sites()
   e = exercise_is_degenerate()
   if (e.n_iterations > 100):
     e.report()
