@@ -815,11 +815,11 @@ class scope:
               result.append(object.format(sub_python_object_i))
     return self.customized_copy(objects=result)
 
-  def clone(self, python_object):
+  def clone(self, python_object, converter_registry=None):
     return parse(
-      input_string=self.format(
-        python_object=python_object).as_str(
-          attributes_level=3)).extract()
+      input_string=self.format(python_object=python_object)
+        .as_str(attributes_level=3),
+      converter_registry=converter_registry).extract()
 
   def fetch(self, source=None, sources=None):
     assert [source, sources].count(None) == 1
