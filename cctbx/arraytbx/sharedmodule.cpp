@@ -18,7 +18,7 @@
 #include <cctbx/miller_bpl.h>
 
 #include <cctbx/sgtbx/matrix.h>
-#include <cctbx/xray_scatterer.h>
+#include <cctbx/sftbx/xray_scatterer.h>
 
 namespace {
 

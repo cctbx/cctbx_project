@@ -30,32 +30,27 @@ namespace cctbx {
     not_positive_definite(
       "anisotropic displacement tensor is not positive definite.");
 
-  //! Constant: 2pi^2
-  const double   TwoPiSquared = 2. * constants::pi * constants::pi;
-  //! Constant: 8pi^2
-  const double EightPiSquared = 8. * constants::pi * constants::pi;
-
   //! Convert isotropic displacement parameter U -> B.
   inline double
   U_as_B(double Uiso) {
-    return Uiso * EightPiSquared;
+    return Uiso * constants::eight_pi_sq;
   }
   //! Convert isotropic displacement parameter B -> U.
   inline double
   B_as_U(double Biso) {
-    return Biso / EightPiSquared;
+    return Biso / constants::eight_pi_sq;
   }
   //! Convert anisotropic displacement parameters U -> B.
   template <typename FloatType>
   af::tiny<FloatType, 6>
   U_as_B(const af::tiny<FloatType, 6>& Uaniso) {
-    return EightPiSquared * Uaniso;
+    return constants::eight_pi_sq * Uaniso;
   }
   //! Convert anisotropic displacement parameters B -> U.
   template <typename FloatType>
   af::tiny<FloatType, 6>
   B_as_U(const af::tiny<FloatType, 6>& Baniso) {
-    return (1. / EightPiSquared) * Baniso;
+    return (1. / constants::eight_pi_sq) * Baniso;
   }
 
   //! Convert anisotropic displacement parameters Uuvrs -> Ustar.
@@ -160,7 +155,7 @@ namespace cctbx {
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
   Ustar_as_beta(const af::tiny<FloatType, 6>& Ustar) {
-    return TwoPiSquared * Ustar;
+    return constants::two_pi_sq * Ustar;
   }
   //! Convert anisotropic displacement parameters beta -> Ustar.
   /*! The elements of beta are divided by 2pi^2.
@@ -168,7 +163,7 @@ namespace cctbx {
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
   beta_as_Ustar(const af::tiny<FloatType, 6>& beta) {
-    return beta / TwoPiSquared;
+    return beta / constants::two_pi_sq;
   }
 
   //! Convert anisotropic displacement parameters Ucart -> beta.
@@ -333,7 +328,7 @@ namespace cctbx {
   DebyeWallerFactorUstar(const Miller::Index& MIx,
                          const af::tiny<FloatType, 6>& Ustar)
   {
-    return std::exp(-TwoPiSquared * (
+    return std::exp(-constants::two_pi_sq * (
         (MIx[0] * MIx[0]) * Ustar[0]
       + (MIx[1] * MIx[1]) * Ustar[1]
       + (MIx[2] * MIx[2]) * Ustar[2]
@@ -380,7 +375,7 @@ namespace cctbx {
       T rho = std::abs(a);
       if (rho == T(0)) return std::complex<T>(0, 0);
       const T one_pi(constants::pi);
-      const T two_pi(2. * constants::pi);
+      const T two_pi(constants::two_pi);
       T theta0 = std::fmod(std::arg(a), two_pi);
       if (theta0 > one_pi) theta0 -= two_pi;
       if (theta0 <= one_pi) theta0 += two_pi;

@@ -22,9 +22,21 @@ namespace cctbx {
   //! General purpose mathematical or physical %constants.
   namespace constants {
     //! mathematical constant pi
-    static const double pi     = 4. * std::atan(1.);
+    static const double pi = 4. * std::atan(1.);
+    //! mathematical constant pi*pi
+    static const double pi_sq = pi * pi;
+    //! mathematical constant 2*pi
+    static const double two_pi = 8. * std::atan(1.);
+    //! mathematical constant 2*pi*pi
+    static const double two_pi_sq = 2. * pi_sq;
+    //! mathematical constant 4*pi
+    static const double four_pi = 16. * std::atan(1.);
+    //! mathematical constant 4*pi*pi
+    static const double four_pi_sq = two_pi * two_pi;
+    //! mathematical constant 8*pi*pi
+    static const double eight_pi_sq = 2. * four_pi_sq;
     //! mathematical constant pi/2
-    static const double pi_2   = 2. * std::atan(1.);
+    static const double pi_2 = 2. * std::atan(1.);
     //! mathematical constant pi/180
     static const double pi_180 = std::atan(1.) / 45.;
 

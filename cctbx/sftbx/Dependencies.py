@@ -12,6 +12,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sftbx/sftbxmodule.cpp",
       "sftbx/tst.py",
       "sftbx/tst_basic.py",
+      "sftbx/dbg.py",
     )
 
     self.boost_python_modules = {
