@@ -2,7 +2,7 @@ Import("env_etc", "env_cctbx_boost_python_ext")
 
 env_cctbx_boost_python_ext.Command(
   "#libtbx/cctbx_boost/eltbx/__init__.py",
-  "#libtbx/build/SConscript", env_etc.touch_init)
+  "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
 
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])

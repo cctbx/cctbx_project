@@ -28,7 +28,7 @@ SConscript("lbfgs/SConscript")
 if (not env_etc.no_boost_python):
   env_scitbx_boost_python_ext.Command(
     "#libtbx/scitbx_boost/__init__.py",
-    "#libtbx/build/SConscript", env_etc.touch_init)
+    "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
 
   SConscript("boost_python/SConscript")
   SConscript("array_family/boost_python/SConscript")

@@ -6,7 +6,7 @@ env_scitbx_boost_python_ext.SharedLibrary(target="regression_test_ext", source=[
 
 env_scitbx_boost_python_ext.Command(
   "#libtbx/scitbx_boost/array_family/__init__.py",
-  "#libtbx/build/SConscript", env_etc.touch_init)
+  "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
 
 flex_scitbx_pyd = env_scitbx_boost_python_ext.SharedLibrary(
   target="flex_scitbx_ext",
