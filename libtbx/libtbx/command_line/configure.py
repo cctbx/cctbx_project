@@ -39,8 +39,24 @@ class package:
 
   def __init__(self, dist_root, name, must_exist=1):
     self.dist_root = dist_root
+    self.effective_root = dist_root
     self.name = name
-    self.dist_path = norm(join(dist_root, name))
+    self.dist_path = norm(join(self.effective_root, name))
+    if (isfile(self.dist_path)):
+      try:
+        self.effective_root = norm(open(self.dist_path).readlines()[0][:-1])
+        assert len(self.effective_root) > 0
+      except:
+        raise UserError("Error reading redirection file: %s" % self.dist_path)
+      # first attempt: interpret the redirection as absolute path
+      self.dist_path = norm(join(self.effective_root, name))
+      if (not isdir(self.dist_path)):
+        # second attempt: interpret the redirection as relative path
+        self.effective_root = norm(join(self.dist_root, self.effective_root))
+        self.dist_path = norm(join(self.effective_root, name))
+        if (not isdir(self.dist_path)):
+          raise UserError('Redirection to non-existing directory: "%s"'
+            % self.effective_root)
     self.config = None
     self.SConscript_path = None
     self.needs_adaptbx = False
@@ -132,6 +148,7 @@ class libtbx_env:
     self.PYTHONPATH = [norm(join(self.LIBTBX_BUILD, "libtbx")), libtbx_dist]
     self.PATH = [norm(join(self.LIBTBX_BUILD, "libtbx/bin"))]
     self.package_list = []
+    self.effective_roots = []
     self.dist_paths = {"LIBTBX_DIST": libtbx_dist}
     self.scons_in_dist_root = False
     if (os.path.isdir(join(self.LIBTBX_DIST_ROOT, "scons"))):
@@ -139,6 +156,8 @@ class libtbx_env:
 
   def add_package(self, package, explicit_adaptbx):
     self.package_list.insert(0, package.name)
+    if (package.effective_root not in self.effective_roots):
+      self.effective_roots.append(package.effective_root)
     self.dist_paths[package.name.upper() + "_DIST"] = package.dist_path
     if (not explicit_adaptbx):
       pp = libtbx.config.package_pair(package.name)
@@ -316,7 +335,8 @@ def emit_SConstruct(env, build_options, packages_dict):
   print >> f, '  scan_boost=%d)' % int(build_options.scan_boost)
   print >> f
   print >> f, 'SConsignFile()'
-  print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
+  for effective_root in env.effective_roots:
+    print >> f, 'Repository(r"%s")' % effective_root
   print >> f, 'SConscript("libtbx/SConscript")'
   done = {}
   for package_name in env.package_list:
