@@ -2,6 +2,7 @@
 # group symbol or symmetry matrices, or a combination of the two.
 
 from cctbx import sgtbx
+from cctbx.web import utils
 
 in_table = False
 
@@ -33,20 +34,6 @@ def interpret_form_data(form):
           s = s.strip()
           if (s != ""): inp.symxyz.append(s)
   return inp
-
-def show_input_symbol(sgsymbol, convention):
-  if (sgsymbol != ""):
-    print "Input space group symbol:", sgsymbol
-    print "Convention:",
-    if   (convention == "A1983"):
-      print "International Tables for Crystallography, Volume A 1983"
-    elif (convention == "I1952"):
-      print "International Tables for Crystallography, Volume I 1952"
-    elif (convention == "Hall"):
-      print "Hall symbol"
-    else:
-      print "Default"
-  print
 
 def str_ev(ev):
   return "[%d,%d,%d]" % ev
@@ -177,7 +164,7 @@ def run(cctbx_url, inp):
   print
 
   print "<pre>"
-  show_input_symbol(inp.sgsymbol, inp.convention)
+  utils.show_input_symbol(inp.sgsymbol, inp.convention)
 
   global in_table
   try:

@@ -1,0 +1,56 @@
+<html>
+<head>
+<title>cctbx - Wyckoff positions</title>
+</head>
+<body bgcolor=#ffffff>
+
+<h1>cctbx - Wyckoff positions</h1>
+<hr>
+
+<FORM METHOD=POST ACTION="cctbx_web.cgi">
+<input type="HIDDEN" name="target_module" value="wyckoff">
+
+<strong>Unit cell parameters: </strong><input
+name="ucparams" size=40
+value="">
+
+<p>
+<strong>Space group symbol: </strong><input
+name="sgsymbol" size=40
+value=""><br>
+Convention:
+<select name="convention">
+  <option value="" selected
+    >Default</option>
+  <option value="A1983"
+    >International Tables for Crystallography, Volume A 1983</option>
+  <option value="I1952"
+    >International Tables for Crystallography, Volume I 1952</option>
+  <option value="Hall"
+    >Hall symbol</option>
+</select>
+
+<p>
+<strong>Minimum distance between symmetrically equivalent sites:</strong>
+ <input name="min_distance_sym_equiv" size=8 value="0.5"><br>
+Atoms that have symmetrically equivalent sites within the given radius will<br>
+be moved to the exact site of the nearest special position.
+
+<p>
+<strong>Coordinates:</strong>
+<p>
+<input type=radio name="coor_type" value="Fractional" checked>Fractional
+<br>
+<input type=radio name="coor_type" value="Cartesian">Cartesian
+<p>
+Skip the left <input name="skip_columns" size=4 value="0"> columns.
+<p>
+<textarea name="coordinates" rows=16 cols=60></textarea>
+<p>
+<input type="submit" value="Compute Wyckoff positions">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+<hr>
+</body>
+</html>
