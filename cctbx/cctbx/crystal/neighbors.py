@@ -22,39 +22,7 @@ class contact:
       result += " eq %2d" % self.i_sym_equiv
     return result
 
-class contacts:
-
-  def __init__(self):
-    self.table = []
-    self.unique = {}
-    self._sort_keys = flex.double()
-
-  def append(self, c):
-    self.table.append(c)
-    if (c.i_sym_equiv is None):
-      i = len(self.unique)
-      self.unique[c.i] = i
-      key = 1000 * i
-    else:
-      assert c.i_sym_equiv < 1000
-      key = self.unique[c.i_sym_equiv]*1000 + c.i_sym_equiv + 1
-    self._sort_keys.append(key)
-
-  def sort_in_place(self):
-    perm = flex.sort_permutation(self._sort_keys)
-    self.table = flex.select(self.table, perm)
-    self._sort_keys = self._sort_keys.select(perm)
-    rev_perm = flex.sort_permutation(perm.as_double())
-    for i,c in zip(count(), self.table):
-      c.i = i
-      if (c.i_sym_equiv is not None):
-        c.i_sym_equiv = rev_perm[c.i_sym_equiv]
-    new_unique = {}
-    for k,v in self.unique.items():
-      new_unique[rev_perm[k]] = v
-    self.unique = new_unique
-
-def show_distances(structure, distance_cutoff=5, max_show_neighbors=15):
+def show_distances(structure, distance_cutoff=5):
   asu_mappings = structure.asu_mappings(
     buffer_thickness=distance_cutoff)
   pair_generator = crystal.neighbors_fast_pair_generator(
@@ -77,59 +45,49 @@ def show_distances(structure, distance_cutoff=5, max_show_neighbors=15):
   scatterers = structure.scatterers()
   for pairs in pairs_list:
     if (len(pairs) > 0):
-      site_i_orig = scatterers[pairs[0].i_seq].site
-      site_symmetry_i = site_symmetries[pairs[0].i_seq]
-      rt_mx_i_inverse = asu_mappings.get_rt_mx(
-        i_seq=pairs[0].i_seq, i_sym=0).inverse()
+      i_seq = pairs[0].i_seq
+      scatterer_i = scatterers[i_seq]
+      site_i = scatterer_i.site
+      site_symmetry_i = site_symmetries[i_seq]
+      rt_mx_i_inverse = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0).inverse()
       print "%s: site symmetry: %s, multiplicity: %d" % (
-        scatterers[pairs[0].i_seq].label,
+        scatterer_i.label,
         site_symmetry_i.point_group_type(),
         site_symmetry_i.multiplicity())
-    contacts_ = contacts()
-    all_neighbors = []
-    for i_pair,pair in zip(count(), pairs[:max_show_neighbors]):
+    contacts = []
+    covered_already = {}
+    for pair in pairs:
+      assert pair.i_seq == i_seq
+      scatterer_j = scatterers[pair.j_seq]
+      if (pair.j_seq not in covered_already):
+        covered_already[pair.j_seq] = {}
       rt_mx_j = asu_mappings.get_rt_mx(i_seq=pair.j_seq, i_sym=pair.j_sym)
-      rt_mx_j_contact_i_orig = rt_mx_i_inverse.multiply(rt_mx_j)
-      site_j_contact_i_orig = rt_mx_j_contact_i_orig \
-                            * scatterers[pair.j_seq].site
-      special_op_j = rt_mx_j_contact_i_orig.multiply(
-        site_symmetries[pair.j_seq].special_op())
-      mismatch = abs(
-        structure.unit_cell().distance(site_i_orig, site_j_contact_i_orig)**2
-        -pair.dist_sq)
-      assert mismatch < asu_mappings.sym_equiv_tolerance()**2, mismatch**.5
-      i_sym_equiv = None
-      prev_len_all_neighbors = len(all_neighbors)
-      for m in site_symmetry_i.matrices():
-        ms = m * site_j_contact_i_orig
-        for i_neighbor,neighbor in zip(count(), all_neighbors):
-          i,j,r,s = neighbor
-          if (j == pair.j_seq):
-            d = structure.unit_cell().distance(s, ms)
-            if (d < asu_mappings.sym_equiv_minimum_distance()):
-              x1 = r * scatterers[pair.j_seq].site
-              x2 = m.multiply(special_op_j) * scatterers[pair.j_seq].site
-              assert eps_eq(x1, x2)
-              assert r == m.multiply(special_op_j)
-              if (i_neighbor < prev_len_all_neighbors):
-                i_sym_equiv = i
-                break
-            else:
-              assert r != m.multiply(special_op_j)
-        if (i_sym_equiv is not None):
-          break
-        else:
-          all_neighbors.append(
-            (i_pair,pair.j_seq,m.multiply(special_op_j),ms))
-      contacts_.append(contact(
-        i=i_pair,
-        label=scatterers[pair.j_seq].label,
-        site=site_j_contact_i_orig,
-        rt_mx=rt_mx_j_contact_i_orig,
-        dist=pair.dist_sq**.5,
-        i_sym_equiv=i_sym_equiv))
-    contacts_.sort_in_place()
-    for c in contacts_.table:
+      rt_mx_ji = rt_mx_i_inverse.multiply(rt_mx_j)
+      rt_mx_jis = rt_mx_ji.multiply(site_symmetries[pair.j_seq].special_op())
+      if (str(rt_mx_jis) not in covered_already[pair.j_seq]):
+        ms_dict = {}
+        i_sym_equiv = None
+        for m in site_symmetry_i.matrices():
+          ms = m.multiply(rt_mx_jis)
+          ms_str = str(ms)
+          if (not ms_str in ms_dict):
+            ms_dict[ms_str] = 0
+            covered_already[pair.j_seq][ms_str] = 0
+            contact_site = ms * scatterer_j.site
+            contacts.append(contact(
+              i=len(contacts),
+              label=scatterer_j.label,
+              site=contact_site,
+              rt_mx=m.multiply(rt_mx_ji),
+              dist=pair.dist_sq**.5,
+              i_sym_equiv=i_sym_equiv))
+            if (i_sym_equiv is None):
+              i_sym_equiv = contacts[-1].i
+            mismatch = abs(
+              structure.unit_cell().distance(site_i, contact_site)**2
+              -pair.dist_sq)
+            assert mismatch < asu_mappings.sym_equiv_tolerance()**2
+    for c in contacts:
       print c
 
 def test_hcp():
@@ -145,9 +103,12 @@ def test_hcp():
     structure.add_scatterer(
       xray.scatterer(label="S%d" % i, site=site))
   structure.show_summary().show_scatterers()
-  show_distances(structure)
+  show_distances(structure, distance_cutoff=2)
 
 def run():
+  if (0):
+    test_hcp()
+    return
   for file_name in sys.argv[1:]:
     strudat_entries = strudat.read_all_entries(open(file_name))
     for entry in strudat_entries.entries:
