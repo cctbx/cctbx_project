@@ -222,6 +222,31 @@ class symmetry(object):
   def average_b_cart(self, b_cart):
     return self.average_u_cart(u_cart=b_cart)
 
+  def special_position_settings(self,
+        min_distance_sym_equiv=0.5,
+        u_star_tolerance=0,
+        assert_min_distance_sym_equiv=True):
+    return special_position_settings(
+      crystal_symmetry=self,
+      min_distance_sym_equiv=min_distance_sym_equiv,
+      u_star_tolerance=u_star_tolerance,
+      assert_min_distance_sym_equiv=assert_min_distance_sym_equiv)
+
+def non_crystallographic_symmetry(
+      sites_cart=None,
+      sites_cart_min=None,
+      sites_cart_max=None,
+      default_buffer_layer=0.5,
+      min_unit_cell_length=0):
+  return symmetry(
+    unit_cell=uctbx.non_crystallographic_unit_cell(
+      sites_cart=sites_cart,
+      sites_cart_min=sites_cart_min,
+      sites_cart_max=sites_cart_max,
+      default_buffer_layer=default_buffer_layer,
+      min_unit_cell_length=min_unit_cell_length),
+    space_group=sgtbx.space_group())
+
 class special_position_settings(symmetry):
 
   def __init__(self, crystal_symmetry,
