@@ -2241,7 +2241,7 @@ namespace cctbx { namespace sgtbx {
                                   double SnapRadius) const
   {
     fractional<double> NormX = X.modShort();
-    TrVec NormU = detail::getUnitShifts(NormX - X);
+    TrVec NormU(cctbx::detail::getUnitShifts(NormX - X), 1);
     for (std::size_t iWP = N() - 1; iWP > 0; iWP--) {
       WyckoffMapping result;
       double ShortestDistance2 = uc.getLongestVector2();

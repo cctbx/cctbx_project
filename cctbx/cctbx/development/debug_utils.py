@@ -55,16 +55,18 @@ def get_compatible_unit_cell(SgInfo, Volume):
   SgInfo.SgOps().CheckUnitCell(uc)
   return xutils.crystal_symmetry(uc, SgInfo)
 
-def generate_positions(xtal, N,
-                       min_mate_distance = 1.5,
+def generate_positions(N,
+                       xsym, special_position_snap_parameters,
                        min_hetero_distance = 1.5,
                        general_positions_only = 0,
                        grid = None,
-                       N_on_grid = 0):
+                       N_on_grid = 0,
+                       existing_positions = []):
+  existing_positions = list(existing_positions)
   max_back_track = 100
   max_placement_trials = 100
   for back_track in xrange(max_back_track):
-    Positions = []
+    new_positions = []
     for i in xrange(N):
       have_position = 0
       for t in xrange(max_placement_trials):
@@ -72,22 +74,23 @@ def generate_positions(xtal, N,
           X = (random.random(), random.random(), random.random())
         else:
           X = [random.randrange(g) / float(g) for g in grid]
-        SS = xtal.get_site_symmetry(X)
-        if (general_positions_only and SS.M() != xtal.SgOps.OrderZ()):
+        SS = sgtbx.SiteSymmetry(special_position_snap_parameters, X)
+        if (general_positions_only and SS.M() != xsym.SgOps.OrderZ()):
           continue
         SS.expand()
         sec = sgtbx.SymEquivCoordinates(SS)
-        min_d2 = xtal.UnitCell.getLongestVector2()
-        for p in Positions:
-          min_d2 = min(min_d2, sec.getShortestDistance2(xtal.UnitCell, p))
+        min_d2 = xsym.UnitCell.getLongestVector2()
+        for p in new_positions + existing_positions:
+          min_d2 = min(min_d2, sec.getShortestDistance2(xsym.UnitCell, p))
         if (min_d2 >= min_hetero_distance**2):
           have_position = 1
           break
       if (not have_position): break
-      Positions.append(SS.SnapPosition())
-    if (len(Positions) == N): break
-  assert len(Positions) == N, "Cannot find position matching all constraints."
-  return Positions
+      new_positions.append(SS.SnapPosition())
+    if (len(new_positions) == N): break
+  assert len(new_positions) == N, \
+    "Cannot find position matching all constraints."
+  return new_positions
 
 def random_rotate_ellipsoid(Ucart):
   C = rotation_parameters.amore_alpha_beta_gamma_as_matrix(
@@ -116,8 +119,8 @@ class random_structure(xutils.symmetrized_sites):
 
   def build_sites(self, grid = None, N_on_grid = 0):
     assert self.Sites.size() == 0
-    positions = generate_positions(self, len(self.elements),
-      min_mate_distance = self.MinMateDistance,
+    positions = generate_positions(len(self.elements),
+      self, self.SnapParameters,
       min_hetero_distance = self.MinMateDistance,
       general_positions_only = self.general_positions_only,
       grid = grid,
