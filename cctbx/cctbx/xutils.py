@@ -43,6 +43,10 @@ class crystal_symmetry:
     if (auto_check):
       self.check_unit_cell()
 
+  def show_summary(self):
+    print "Unit cell:", self.UnitCell
+    print "Space group symbol:", self.SgInfo.BuildLookupSymbol()
+
   def check_unit_cell(self):
     self.SgOps.CheckUnitCell(self.UnitCell)
 
@@ -56,6 +60,15 @@ class miller_set(crystal_symmetry):
     self.H = H
     if (hasattr(xsym, "friedel_flag")):
       self.friedel_flag = xsym.friedel_flag
+
+  def friedel_info(self):
+    if (not hasattr(self, "friedel_flag")): return "undefined"
+    return friedel_flag
+
+  def show_summary(self):
+    crystal_symmetry.show_summary(self)
+    print "Friedel flag:", self.friedel_info()
+    print "Number of Miller indices:", self.H.size()
 
   def set_friedel_flag(self, flag):
     self.friedel_flag = flag
@@ -81,10 +94,32 @@ class miller_set(crystal_symmetry):
 
 class reciprocal_space_array(miller_set):
 
-  def __init__(self, miller_set_obj, F, sigmas=0):
+  def __init__(self, miller_set_obj, F, sigmas=0, info=0):
     miller_set.__init__(self, miller_set_obj, miller_set_obj.H)
     self.F = F
     self.sigmas = sigmas
+    self.info = info
+
+  def type_of_data(self):
+    if (not hasattr(self, "F")): return "none"
+    try:
+      return self.F.__class__.__name__ + ", size=%d" % (self.F.size())
+    except:
+      return "unknown"
+
+  def type_of_sigmas(self):
+    if (not hasattr(self, "sigmas")): return "none"
+    try:
+      return self.sigmas.__class__.__name__ + ", size=%d" % (
+        self.sigmas.size())
+    except:
+      return "unknown"
+
+  def show_summary(self):
+    miller_set.show_summary(self)
+    if (self.info != 0): print "Info:", self.info
+    print "Type of data:", self.type_of_data()
+    print "Type of sigmas:", self.type_of_sigmas()
 
   def anomalous_differences(self):
     if (hasattr(self, "SgInfo")):
