@@ -324,7 +324,6 @@ else:
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
-      "-w", # for some odd reason -bundle cannot be the first option
       "-bundle",
       "-bundle_loader", env_etc.python_framework, env_etc.python_framework,]
   else:
