@@ -4,6 +4,7 @@ from cctbx import adptbx
 from cctbx import maptbx
 from cctbx.eltbx.caasf import wk1995
 from cctbx import xray
+from cctbx import math_module
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
 
@@ -177,14 +178,24 @@ def exercise_structure_factors():
   for s in scatterers:
     assert s.multiplicity() != 0
   mi = flex.miller_index(((1,2,3), (2,3,4)))
-  fc = xray.structure_factors_direct_with_first_derivatives(
-    uc, sg.group(), mi, scatterers,
-    flex.complex_double(),
-    xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 00000)).f_calc()
+  fc = xray.ext.structure_factors_direct(
+    uc, sg.group(), mi, scatterers).f_calc()
   a = flex.abs(fc)
   p = flex.arg(fc, 1)
   assert approx_equal(tuple(a), (10.50871, 9.049631))
   assert approx_equal(tuple(p), (-36, 72))
+  xray.ext.structure_factors_direct(
+    math_module.cos_sin_table(12),
+    uc, sg.group(), mi, scatterers).f_calc()
+  xray.ext.structure_factors_gradients_direct(
+    uc, sg.group(), mi, scatterers,
+    flex.complex_double(),
+    xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 00000))
+  xray.ext.structure_factors_gradients_direct(
+    math_module.cos_sin_table(12),
+    uc, sg.group(), mi, scatterers,
+    flex.complex_double(),
+    xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 00000))
 
 def exercise_targets():
   f_obs = flex.double((1,2,3,4,5))
@@ -268,7 +279,7 @@ def exercise_sampled_model_density():
   d = xray.sampled_model_density(uc, scatterers, (20,20,22), (20,20,23))
   assert d.unit_cell().is_similar_to(uc)
   assert approx_equal(d.u_extra(), 0.25)
-  assert approx_equal(d.wing_cutoff(), 1.e-3)
+  assert approx_equal(d.wing_cutoff(), 1.e-6)
   assert approx_equal(d.exp_table_one_over_step_size(), -100)
   assert d.n_scatterers_passed() == 2
   assert d.n_contributing_scatterers() == 2
@@ -276,9 +287,9 @@ def exercise_sampled_model_density():
   assert d.anomalous_flag()
   assert d.real_map().size() == 0
   assert d.complex_map().size() == (20*20*22)
-  assert d.exp_table_size() == 1968
-  assert d.max_shell_radii() == (2,2,2)
-  assert approx_equal(d.max_shell_radii_frac(), (1/10.,1/10.,1/11.))
+  assert d.exp_table_size() == 7201
+  assert d.max_shell_radii() == (5,5,4)
+  assert approx_equal(d.max_shell_radii_frac(), (5/20.,5/20.,4/22.))
   t = maptbx.grid_tags((20,20,22))
   f = maptbx.symmetry_flags(0001)
   t.build(sg.type(), f)

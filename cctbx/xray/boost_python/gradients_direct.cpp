@@ -1,7 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <cctbx/xray/structure_factors.h>
-#include <boost/python/def.hpp>
+#include <cctbx/xray/gradients_direct.h>
 #include <boost/python/class.hpp>
 
 namespace cctbx { namespace xray { namespace structure_factors {
@@ -9,9 +8,9 @@ namespace boost_python {
 
 namespace {
 
-  struct direct_with_first_derivatives_wrappers
+  struct gradients_direct_wrappers
   {
-    typedef direct_with_first_derivatives<> w_t;
+    typedef gradients_direct<> w_t;
     typedef w_t::scatterer_type scatterer_type;
     typedef w_t::float_type float_type;
 
@@ -19,14 +18,20 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("structure_factors_direct_with_first_derivatives", no_init)
+      class_<w_t>("structure_factors_gradients_direct", no_init)
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
                   af::const_ref<std::complex<float_type> > const&,
                   gradient_flags const&>())
-        .def("f_calc", &w_t::f_calc)
+        .def(init<math::cos_sin_table<double> const&,
+                  uctbx::unit_cell const&,
+                  sgtbx::space_group const&,
+                  af::const_ref<miller::index<> > const&,
+                  af::const_ref<scatterer_type> const&,
+                  af::const_ref<std::complex<float_type> > const&,
+                  gradient_flags const&>())
         .def("d_target_d_site", &w_t::d_target_d_site)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)
         .def("d_target_d_u_star", &w_t::d_target_d_u_star)
@@ -43,10 +48,9 @@ namespace {
 
 namespace boost_python {
 
-  void wrap_structure_factors()
+  void wrap_gradients_direct()
   {
-    structure_factors::boost_python
-    ::direct_with_first_derivatives_wrappers::wrap();
+    structure_factors::boost_python::gradients_direct_wrappers::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python

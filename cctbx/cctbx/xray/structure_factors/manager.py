@@ -2,19 +2,23 @@ from cctbx.xray.structure_factors.misc import quality_factor_from_any
 from cctbx.xray import ext
 from cctbx import maptbx
 from cctbx import crystal
+from cctbx import math_module
 from scitbx import fftpack
 from scitbx.python_utils.misc import adopt_init_args
+
+default_cos_sin_table = math_module.cos_sin_table(2**10)
 
 class manager(crystal.symmetry):
 
   def __init__(self, miller_set=None,
                      crystal_symmetry=None,
                      d_min=None,
+                     cos_sin_table=00000,
                      grid_resolution_factor=1/3.,
                      symmetry_flags=maptbx.use_space_group_symmetry,
                      mandatory_grid_factors=None,
                      quality_factor=None, u_extra=None, b_extra=None,
-                     wing_cutoff=1.e-3,
+                     wing_cutoff=1.e-6,
                      exp_table_one_over_step_size=-100,
                      max_prime=5,
                      force_complex=00000,
@@ -43,6 +47,9 @@ class manager(crystal.symmetry):
 
   def d_min(self):
     return self._d_min
+
+  def cos_sin_table(self):
+    return self._cos_sin_table
 
   def grid_resolution_factor(self):
     return self._grid_resolution_factor

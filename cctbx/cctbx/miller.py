@@ -316,6 +316,7 @@ class set(crystal.symmetry):
 
   def structure_factors_from_scatterers(self, xray_structure,
                                               direct=00000, fft=00000,
+                                              cos_sin_table=00000,
                                               quality_factor=None,
                                               u_extra=None,
                                               b_extra=None):
@@ -324,9 +325,11 @@ class set(crystal.symmetry):
     if (direct):
       return xray.structure_factors.from_scatterers_direct(
         xray_structure=xray_structure,
-        miller_set=self)
+        miller_set=self,
+        cos_sin_table=cos_sin_table)
     return xray.structure_factors.from_scatterers(
       miller_set=self,
+      cos_sin_table=cos_sin_table,
       quality_factor=quality_factor,
       u_extra=u_extra,
       b_extra=b_extra)(

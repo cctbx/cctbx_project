@@ -15,7 +15,10 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     random_u_iso=0001,
     random_occupancy=0001)
   f_obs = abs(structure_ideal.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
+    anomalous_flag=anomalous_flag,
+    d_min=d_min,
+    direct=0001,
+    cos_sin_table=0001).f_calc())
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -39,14 +42,16 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   minimizer = xray.minimization.lbfgs(
     target_functor(f_obs),
     minimization_options,
-    structure_shake)
+    structure_shake,
+    direct=0001)
   if (0 or verbose):
     print "first:", minimizer.first_target_value
     print "final:", minimizer.final_target_value
   assert minimizer.final_target_value < minimizer.first_target_value
   f_final = abs(f_obs.structure_factors_from_scatterers(
     xray_structure=structure_shake,
-    direct=0001).f_calc())
+    direct=0001,
+    cos_sin_table=0001).f_calc())
   c = flex.linear_correlation(f_obs.data(), f_final.data())
   assert c.is_well_defined()
   if (0 or verbose):
