@@ -481,7 +481,7 @@ namespace adptbx {
         V = MV;
         if (converged) break;
         RunAwayCounter++;
-        if (RunAwayCounter > 1000) throw cctbx_internal_error();
+        if (RunAwayCounter > 10000000) throw cctbx_internal_error();
       }
       return V;
     }
