@@ -22,6 +22,13 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
       boost::python::type<const cctbx::Miller::Vec3&>()));
   }
 
+  cctbx::Miller::Index from_python(PyObject* p,
+    boost::python::type<cctbx::Miller::Index>)
+  {
+    return cctbx::Miller::Index(from_python(p,
+      boost::python::type<const cctbx::Miller::Vec3&>()));
+  }
+
   PyObject* to_python(const cctbx::Miller::Index& MIx) {
     return to_python(static_cast<const cctbx::Miller::Vec3&>(MIx));
   }
