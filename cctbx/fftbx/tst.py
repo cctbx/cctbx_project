@@ -63,8 +63,19 @@ def test_real_to_complex_3d():
   fft.backward(map)
   show_rseq_3d(map, fft.Nreal())
 
+def test_cast():
+  vd = fftbx.vector_of_double()
+  for i in xrange(10): vd.append(i)
+  dim = (1, 1, vd.size())
+  map = fftbx.vd3d_accessor(dim, vd, 0)
+  show_rseq_3d(map, dim)
+  map = fftbx.vc3d_accessor(dim, vd)
+  for i in xrange(vd.size() / 2):
+    print map[(0,0,i)]
+
 if (__name__ == "__main__"):
   test_complex_to_complex()
   test_real_to_complex()
   test_complex_to_complex_3d()
   test_real_to_complex_3d()
+  test_cast()

@@ -20,7 +20,7 @@ using namespace cctbx;
 namespace {
 
   void throw_size_error() {
-    PyErr_SetString(PyExc_IndexError, "Vector is too small.");
+    PyErr_SetString(PyExc_RuntimeError, "Vector is too small.");
     throw boost::python::error_already_set();
   }
 
@@ -35,11 +35,21 @@ namespace {
     vd3d_accessor() {}
     vd3d_accessor(const boost::array<std::size_t, 3>& dim,
                   std::vector<double>& vec,
-                  bool resize_vector = true)
+                  bool resize_vector = true) // XXX default false
       : ndim_vector_accessor<
           dimension_end<3>,
           std::vector<double> >(dim, vec, resize_vector)
     {}
+    vd3d_accessor(const boost::array<std::size_t, 3>& dim,
+                  std::vector<std::complex<double> >& cvec)
+    {
+      elems[0] = dim[0];
+      elems[1] = dim[1];
+      elems[2] = 2 * dim[2];
+      // XXX this cast is not kosher
+      m_start = reinterpret_cast<std::vector<double>::iterator>(
+        cvec.begin());
+    }
     double
     getitem(const boost::array<std::size_t, 3>& I) const {
       if (!is_valid_index(I)) throw_index_error();
@@ -63,6 +73,22 @@ namespace {
           dimension_end<3>,
           std::vector<std::complex<double> > >(dim, vec, resize_vector)
     {}
+    vc3d_accessor(const boost::array<std::size_t, 3>& dim,
+                  std::vector<double>& dvec)
+    {
+      if (dim[2] % 2) {
+        PyErr_SetString(PyExc_RuntimeError,
+          "Vector not properly dimensioned:"
+          " number of elements in third dimension must be even.");
+        throw boost::python::error_already_set();
+      }
+      elems[0] = dim[0];
+      elems[1] = dim[1];
+      elems[2] = dim[2] / 2;
+      // XXX this cast is not kosher
+      m_start = reinterpret_cast<std::vector<std::complex<double> >::iterator>(
+        dvec.begin());
+    }
     std::complex<double>
     getitem(const boost::array<std::size_t, 3>& I) const {
       if (!is_valid_index(I)) throw_index_error();
@@ -134,12 +160,20 @@ namespace {
     fft.backward(map);
   }
 
-  void rc_3d_forward(fftbx::real_to_complex_3d<double>& fft,
-                     vd3d_accessor map) {
+  void rc_3d_forward_complex(fftbx::real_to_complex_3d<double>& fft,
+                             vc3d_accessor map) {
     fft.forward(map);
   }
-  void rc_3d_backward(fftbx::real_to_complex_3d<double>& fft,
-                      vd3d_accessor map) {
+  void rc_3d_backward_complex(fftbx::real_to_complex_3d<double>& fft,
+                              vc3d_accessor map) {
+    fft.backward(map);
+  }
+  void rc_3d_forward_real(fftbx::real_to_complex_3d<double>& fft,
+                          vd3d_accessor map) {
+    fft.forward(map);
+  }
+  void rc_3d_backward_real(fftbx::real_to_complex_3d<double>& fft,
+                           vd3d_accessor map) {
     fft.backward(map);
   }
 
@@ -187,6 +221,9 @@ namespace {
       const boost::array<std::size_t, 3>&,
       std::vector<double>&,
       bool>());
+    py_vd3d_accessor.def(constructor<
+      const boost::array<std::size_t, 3>&,
+      std::vector<std::complex<double> >&>());
     py_vd3d_accessor.def(&vd3d_accessor::getitem, "__getitem__");
     py_vd3d_accessor.def(&vd3d_accessor::setitem, "__setitem__");
 
@@ -198,6 +235,9 @@ namespace {
       const boost::array<std::size_t, 3>&,
       std::vector<std::complex<double> >&,
       bool>());
+    py_vc3d_accessor.def(constructor<
+      const boost::array<std::size_t, 3>&,
+      std::vector<double>&>());
     py_vc3d_accessor.def(&vc3d_accessor::getitem, "__getitem__");
     py_vc3d_accessor.def(&vc3d_accessor::setitem, "__setitem__");
 
@@ -250,8 +290,10 @@ namespace {
       &fftbx::real_to_complex_3d<double>::Mreal, "Mreal");
     py_real_to_complex_3d.def(
       &fftbx::real_to_complex_3d<double>::Ncomplex, "Ncomplex");
-    py_real_to_complex_3d.def(rc_3d_forward, "forward");
-    py_real_to_complex_3d.def(rc_3d_backward, "backward");
+    py_real_to_complex_3d.def(rc_3d_forward_complex, "forward");
+    py_real_to_complex_3d.def(rc_3d_backward_complex, "backward");
+    py_real_to_complex_3d.def(rc_3d_forward_real, "forward");
+    py_real_to_complex_3d.def(rc_3d_backward_real, "backward");
   }
 
 }
