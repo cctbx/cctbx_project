@@ -7,22 +7,21 @@
 #
 # usage: convert_ccp4_symop_lib < symop.lib
 
+from cctbx import sgtbx
 import sys
-import string
-from cctbx_boost import sgtbx
 
 while 1:
   line = sys.stdin.readline()[:-1]
-  flds = string.split(line, None, 2)
+  flds = line.split(None, 2)
   if (len(flds) == 0): break
-  nspgrp = string.atoi(flds[0]) # read spacegroup number
-  nsym = string.atoi(flds[1]) # read nsym
+  nspgrp = int(flds[0]) # read spacegroup number
+  nsym = int(flds[1]) # read nsym
   print nspgrp, nsym, flds[2] # print it all
-  SgOps = sgtbx.SpaceGroup() # now interpret the symops
+  group = sgtbx.space_group() # now interpret the symops
   for i in xrange(nsym):
     line = sys.stdin.readline()[:-1] # get the i'th symop
     # print line
-    SgOps.expandSMx( sgtbx.RTMx(line) ) # and interpret
-  SgInfo = SgOps.Info()
-  print SgInfo.BuildHallSymbol() # now produce the sg symbol
-  print SgInfo.BuildLookupSymbol()
+    group.expand_smx(sgtbx.rt_mx(line)) # and interpret
+  info = sgtbx.space_group_info(group=group)
+  print info.type().hall_symbol() # now produce the sg symbol
+  print info
