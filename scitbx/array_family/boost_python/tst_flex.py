@@ -259,6 +259,12 @@ def exercise_1d_slicing():
     print "Testing compatibility with Numeric slicing...",
     exercise_1d_slicing_core(Numeric.array((1,2,3,4,5)))
     print "OK"
+  assert list(flex.slice_indices(5, slice(10))) == [0,1,2,3,4]
+  assert list(flex.slice_indices(5, slice(0))) == []
+  assert list(flex.slice_indices(5, slice(0,10,2))) == [0,2,4]
+  assert list(flex.slice_indices(5, slice(1,10,2))) == [1,3]
+  assert list(flex.slice_indices(5, slice(1,3,2))) == [1]
+  assert list(flex.slice_indices(5, slice(4,0,-2))) == [4,2]
 
 def exercise_push_back_etc():
   a = flex.double(3)
