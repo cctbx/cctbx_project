@@ -28,7 +28,7 @@ namespace scitbx { namespace fftpack {
    */
   template <typename IntegerType, std::size_t D>
   inline af::tiny<IntegerType, D>
-  n_complex_from_n_real_(const af::tiny<IntegerType, D>& n_real)
+  n_complex_from_n_real(const af::tiny<IntegerType, D>& n_real)
   {
     af::tiny<IntegerType, D> result = n_real;
     result[D-1] = n_complex_from_n_real(result[D-1]);
@@ -41,7 +41,7 @@ namespace scitbx { namespace fftpack {
   /*! The real-to-complex array contains product(n_complex) complex
       values, i.e. product(2*n_complex) real values.
       <p>
-      See also: n_complex_from_n_real_()
+      See also: n_complex_from_n_real()
    */
   template <typename IntegerType, std::size_t D>
   inline af::tiny<IntegerType, D>
@@ -58,7 +58,7 @@ namespace scitbx { namespace fftpack {
   /*! The real-to-complex array contains product(n_complex) complex
       values, i.e. product(2*n_complex) real values.
       <p>
-      See also: n_complex_from_n_real_()
+      See also: n_complex_from_n_real()
    */
   template <typename IntegerType, std::size_t D>
   inline af::tiny<IntegerType, D>
@@ -119,11 +119,11 @@ namespace scitbx { namespace fftpack {
       //! Generic dimensions of real array.
       af::int3 n_real() const { return n_real_; }
       //! Physical dimensions of real-to-complex array as complex array.
-      /*! See also: m_real(), n_complex_from_n_real_()
+      /*! See also: m_real(), n_complex_from_n_real()
        */
       af::int3 n_complex() const
       {
-        return n_complex_from_n_real_(n_real_);
+        return n_complex_from_n_real(n_real_);
       }
       //! Physical dimensions of real-to-complex array as real array.
       /*! See also: n_complex(), m_real_from_n_real()
@@ -275,7 +275,7 @@ namespace scitbx { namespace fftpack {
     fft1d_x_ = complex_to_complex<real_type, complex_type>(n_real_[0]);
     fft1d_y_ = complex_to_complex<real_type, complex_type>(n_real_[1]);
     fft1d_z_ = real_to_complex<real_type, complex_type>(n_real_[2]);
-    seq_.resize(2 * af::max(n_complex_from_n_real_(n_real_)));
+    seq_.resize(2 * af::max(n_complex_from_n_real(n_real_)));
   }
 
 }} // namespace scitbx::fftpack
