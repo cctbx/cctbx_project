@@ -31,6 +31,9 @@ namespace cctbx {
         typedef std::ptrdiff_t difference_type;
 
         fixcap_vector() : m_size(0) {}
+        fixcap_vector(std::size_t n) : m_size(n) {
+          std::fill_n(begin(),n,value_type());
+        }
         fixcap_vector(const T& value) : m_size(0) { assign(value); }
 
         // iterator support

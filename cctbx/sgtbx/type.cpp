@@ -286,23 +286,19 @@ namespace sgtbx {
       Vec3 Sol[4];
       SolveHomRE1(CumMx.elems, IxIndep, Sol);
       int nIx = 1; if (Ord[0] == 2) nIx++;
-      int Ix[2];
-      int i;
-      for(i=0;i<nIx;i++) Ix[i] = i;
       RotMx TrialBasis;
       TrialBasis.setColumn(2, RI[0].EV());
       int MinDet = 0;
       RotMx result;
-      do {
-        for(i=0;i<nIx;i++) TrialBasis.setColumn(i, Sol[Ix[i]]);
-        if (nIx == 1) TrialBasis.setColumn(1, RMx[0] * Sol[Ix[0]]);
+      for (loop_n_from_m<2> Ix(4, nIx); !Ix.over(); Ix.incr()) {
+        for(std::size_t i=0;i<Ix.n();i++) TrialBasis.setColumn(i, Sol[Ix[i]]);
+        if (Ix.n() == 1) TrialBasis.setColumn(1, RMx[0] * Sol[Ix[0]]);
         int Det = TrialBasis.det();
         if (Det != 0 && (MinDet == 0 || std::abs(MinDet) > std::abs(Det))) {
           MinDet = Det;
           result = TrialBasis;
         }
       }
-      while (NextOf_n_from_m(4, nIx, Ix) != 0);
       cctbx_assert(MinDet != 0);
       if (MinDet < 0) result.swapColumns(0, 1);
       return result;

@@ -187,20 +187,22 @@ namespace sgtbx {
                              const DiscrList& DiscrZ)
     {
       if (DiscrP.size() == 1) return cctbx::fixcap_vector<TrVec, 3>();
-      for (int nIx = 1; nIx <= DiscrP.size() - 1 && nIx <= 3; nIx++) {
-        int Ix[3], iIx;
-        for (iIx = 0; iIx < nIx; iIx++) Ix[iIx] = iIx;
-        do {
-          cctbx::fixcap_vector<TrVec, 3> result;
+      for (int nDVM = 1; nDVM <= DiscrP.size() - 1 && nDVM <= 3; nDVM++) {
+        for (loop_n_from_m<3>
+             Ix(DiscrP.size() - 1, nDVM); !Ix.over(); Ix.incr()) {
           TrOps DiscrGrp(DiscrP[0].BF());
-          for (iIx = 0; iIx < nIx; iIx++) {
+          for (std::size_t iIx = 0; iIx < Ix.n(); iIx++) {
             DiscrGrp.expand(DiscrP[Ix[iIx] + 1]);
-            result.push_back(DiscrZ[Ix[iIx] + 1]);
           }
-          if (DiscrGrp.nVects() == DiscrP.size()) return result;
+          if (DiscrGrp.nVects() == DiscrP.size()) {
+            cctbx::fixcap_vector<TrVec, 3> result;
+            for (std::size_t iIx = 0; iIx < Ix.n(); iIx++) {
+              result.push_back(DiscrZ[Ix[iIx] + 1]);
+            }
+            return result;
+          }
           cctbx_assert(DiscrGrp.nVects() < DiscrP.size());
         }
-        while (NextOf_n_from_m(DiscrP.size() - 1, nIx, Ix) != 0);
       }
       throw cctbx_internal_error();
     }
