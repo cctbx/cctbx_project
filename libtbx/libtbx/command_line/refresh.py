@@ -35,11 +35,29 @@ def create_drivers(target_dir, package_name, source_dir):
   for file_name in os.listdir(source_dir):
     create_driver(target_dir, package_name, source_dir, file_name)
 
+def create_python_dispatchers(target_dir, python_exe):
+  for file_name in ("libtbx.python", "python"):
+    target_file = norm(join(target_dir, file_name))
+    if (os.name == "nt"):
+      target_file += ".bat"
+      f = open(target_file, "w")
+      print >> f, "@echo off"
+      print >> f, python_exe, "%1 %2 %3 %4 %5 %6 %7 %8 %9"
+      f.close()
+    else:
+      f = open(target_file, "w")
+      print >> f, "#! /bin/csh -f"
+      print >> f, "set noglob"
+      print >> f, "exec", python_exe, "$*"
+      f.close()
+      os.chmod(target_file, 0755)
+
 def run():
   libtbx_env = libtbx.config.env()
   target_dir = norm(join(libtbx_env.LIBTBX_BUILD, "libtbx/bin"))
   if (not isdir(target_dir)):
     os.makedirs(target_dir)
+  create_python_dispatchers(target_dir, libtbx_env.LIBTBX_PYTHON_EXE)
   for dist_path in libtbx_env.dist_paths.values():
     package_name = split(dist_path)[1]
     create_drivers(
