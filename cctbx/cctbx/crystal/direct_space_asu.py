@@ -50,13 +50,11 @@ class _float_asu(boost.python.injector, float_asu):
       thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
     return self._add_buffer(thickness)
 
-def non_crystallographic_asu_mappings(sites_cart,
-                                      relative_buffer_layer=0.01,
-                                      default_buffer_layer=0.5):
+def non_crystallographic_asu_mappings(sites_cart, default_buffer_layer=0.5):
   sites_min = sites_cart.min()
   sites_max = sites_cart.max()
   sites_span = matrix.col(sites_max) - matrix.col(sites_min)
-  buffer_layer = max(list(sites_span))*relative_buffer_layer
+  buffer_layer = max(list(sites_span))
   if (buffer_layer == 0):
     buffer_layer = default_buffer_layer
   unit_cell_lengths = list(sites_span + matrix.col([buffer_layer]*3)*2)
