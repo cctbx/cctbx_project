@@ -21,7 +21,7 @@ STDFIXINC=
 
 CPP=c++
 LD=c++
-STDOPTS=-fno-common -no-cpp-precomp -ftemplate-depth-21
+STDOPTS=-fno-common -no-cpp-precomp -ftemplate-depth-50
 WARNOPTS=-Wno-long-double
 OPTOPTS=-g
 MAKEDEP=-M
