@@ -235,49 +235,122 @@ namespace {
     return result;
   }
 
-  void pack_coordinates_frac(
+  std::size_t
+  pack_parameters_generic(
+    const uctbx::UnitCell* UCell,
     const af::shared<ex_xray_scatterer>& sites,
-    af::shared<double> x)
+    af::shared<double> x,
+    bool coordinates, bool occ, bool uiso)
   {
-    for(std::size_t i=0;i<sites.size();i++) {
-      const af::double3& c = sites[i].Coordinates();
-      x.insert(x.end(), c.begin(), c.end());
+    if (coordinates) {
+      if (!UCell) {
+        for(std::size_t i=0;i<sites.size();i++) {
+          const af::double3& c = sites[i].Coordinates();
+          x.insert(x.end(), c.begin(), c.end());
+        }
+      }
+      else {
+        for(std::size_t i=0;i<sites.size();i++) {
+          const af::double3 c = UCell->orthogonalize(sites[i].Coordinates());
+          x.insert(x.end(), c.begin(), c.end());
+        }
+      }
     }
+    if (occ) {
+      for(std::size_t i=0;i<sites.size();i++) {
+        x.push_back(sites[i].Occ());
+      }
+    }
+    if (uiso) {
+      for(std::size_t i=0;i<sites.size();i++) {
+        x.push_back(sites[i].Uiso());
+      }
+    }
+    return x.size();
   }
 
-  void unpack_coordinates_frac(
+  std::size_t
+  unpack_parameters_generic(
+    const uctbx::UnitCell* UCell,
     af::shared<double> x,
     std::size_t start,
-    af::shared<ex_xray_scatterer> sites)
+    af::shared<ex_xray_scatterer> sites,
+    bool coordinates, bool occ, bool uiso)
   {
-    cctbx_assert(x.size() >= start + sites.size() * 3);
-    for(std::size_t i=0;i<sites.size();i++) {
-      sites[i].set_Coordinates(fractional<double>(&x[i * 3]));
+    if (coordinates) {
+      cctbx_assert(x.size() >= start + sites.size() * 3);
+      if (!UCell) {
+        for(std::size_t i=0;i<sites.size();i++) {
+          sites[i].set_Coordinates(fractional<double>(&x[i * 3]));
+        }
+      }
+      else {
+        for(std::size_t i=0;i<sites.size();i++) {
+          sites[i].set_Coordinates(
+            UCell->fractionalize(cartesian<double>(&x[i * 3])));
+        }
+      }
+      start += sites.size() * 3;
     }
+    if (occ) {
+      cctbx_assert(x.size() >= start + sites.size());
+      for(std::size_t i=0;i<sites.size();i++) {
+        sites[i].set_Occ(x[i]);
+      }
+      start += sites.size();
+    }
+    if (uiso) {
+      cctbx_assert(x.size() >= start + sites.size());
+      for(std::size_t i=0;i<sites.size();i++) {
+        sites[i].set_Uiso(x[i]);
+      }
+      start += sites.size();
+    }
+    return start;
   }
 
-  void pack_coordinates_cart(
+  std::size_t
+  pack_parameters_frac(
+    const af::shared<ex_xray_scatterer>& sites,
+    af::shared<double> x,
+    bool coordinates, bool occ, bool uiso)
+  {
+    return pack_parameters_generic(
+      0, sites, x, coordinates, occ, uiso);
+  }
+
+  std::size_t
+  unpack_parameters_frac(
+    af::shared<double> x,
+    std::size_t start,
+    af::shared<ex_xray_scatterer> sites,
+    bool coordinates, bool occ, bool uiso)
+  {
+    return unpack_parameters_generic(
+      0, x, start, sites, coordinates, occ, uiso);
+  }
+
+  std::size_t
+  pack_parameters_cart(
     const uctbx::UnitCell& UCell,
     const af::shared<ex_xray_scatterer>& sites,
-    af::shared<double> x)
+    af::shared<double> x,
+    bool coordinates, bool occ, bool uiso)
   {
-    for(std::size_t i=0;i<sites.size();i++) {
-      const af::double3& c = UCell.orthogonalize(sites[i].Coordinates());
-      x.insert(x.end(), c.begin(), c.end());
-    }
+    return pack_parameters_generic(
+      &UCell, sites, x, coordinates, occ, uiso);
   }
 
-  void unpack_coordinates_cart(
+  std::size_t
+  unpack_parameters_cart(
     const uctbx::UnitCell& UCell,
     af::shared<double> x,
     std::size_t start,
-    af::shared<ex_xray_scatterer> sites)
+    af::shared<ex_xray_scatterer> sites,
+    bool coordinates, bool occ, bool uiso)
   {
-    cctbx_assert(x.size() >= start + sites.size() * 3);
-    for(std::size_t i=0;i<sites.size();i++) {
-      sites[i].set_Coordinates(
-        UCell.fractionalize(cartesian<double>(&x[i * 3])));
-    }
+    return unpack_parameters_generic(
+      &UCell, x, start, sites, coordinates, occ, uiso);
   }
 
   af::shared<double>
@@ -451,10 +524,10 @@ namespace {
     this_module.def(py_BuildMillerIndices_MaxIndex,
                       "BuildMillerIndices");
 
-    this_module.def(pack_coordinates_frac, "pack_coordinates");
-    this_module.def(unpack_coordinates_frac, "unpack_coordinates");
-    this_module.def(pack_coordinates_cart, "pack_coordinates");
-    this_module.def(unpack_coordinates_cart, "unpack_coordinates");
+    this_module.def(pack_parameters_frac, "pack_parameters");
+    this_module.def(unpack_parameters_frac, "unpack_parameters");
+    this_module.def(pack_parameters_cart, "pack_parameters");
+    this_module.def(unpack_parameters_cart, "unpack_parameters");
     this_module.def(flatten, "flatten");
     this_module.def(dT_dX_inplace_frac_as_cart, "dT_dX_inplace_frac_as_cart");
   }

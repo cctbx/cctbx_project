@@ -172,6 +172,12 @@ namespace cctbx { namespace af {
     void
     clear(shared<ElementType>& v) { v.clear(); }
 
+    static
+    void
+    append(shared<ElementType>& v, shared<ElementType>& other) {
+      v.insert(v.end(), other.begin(), other.end());
+    }
+
     // Convert to a regular Python tuple.
     static
     boost::python::tuple
@@ -226,6 +232,7 @@ namespace cctbx { namespace af {
       py_shared.def(&shared_access<ElementType>::erase_i_j, "erase");
       py_shared.def(&shared_access<ElementType>::resize, "resize");
       py_shared.def(&shared_access<ElementType>::clear, "clear");
+      py_shared.def(&shared_access<ElementType>::append, "append");
       py_shared.def(&shared_access<ElementType>::as_tuple, "as_tuple");
 
       return py_shared;
