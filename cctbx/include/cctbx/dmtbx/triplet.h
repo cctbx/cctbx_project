@@ -115,7 +115,7 @@ namespace cctbx { namespace dmtbx {
             if (ih == tpr.ik) continue;
             Miller::Index h = miller_indices[ih];
             for (std::size_t ik_eq=0;ik_eq<sym_eq_k.M(false);ik_eq++) {
-              Miller::Index k_eq = sym_eq_k(ik_eq);
+              Miller::Index k_eq = sym_eq_k(ik_eq).HR();
               Miller::Index hmk = h - k_eq;
               tpr.asym_hmk = Miller::AsymIndex(SgInfo.SgOps(), asu, hmk);
               Miller::Index asym_hmk = tpr.asym_hmk.HermitianLayout().H();
@@ -235,9 +235,9 @@ namespace cctbx { namespace dmtbx {
             cctbx_assert(tpr.ik < miller_indices.size());
             cctbx_assert(tpr.ihmk < miller_indices.size());
             FloatType e_k = e_values[tpr.ik];
-            FloatType phi_k = tpr.asym_k.phase_in_rad(phases[tpr.ik]);
+            FloatType phi_k = tpr.asym_k.phase_in(phases[tpr.ik]);
             FloatType e_hmk = e_values[tpr.ihmk];
-            FloatType phi_hmk = tpr.asym_hmk.phase_in_rad(phases[tpr.ihmk]);
+            FloatType phi_hmk = tpr.asym_hmk.phase_in(phases[tpr.ihmk]);
             FloatType e_k_e_hmk = e_k * e_hmk;
             if (!ignore_weights) e_k_e_hmk *= lij->second;
             FloatType phi_k_phi_hmk = phi_k + phi_hmk;
