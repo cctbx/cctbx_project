@@ -99,6 +99,19 @@ namespace cctbx { namespace sgtbx {
       scitbx::sym_mat3<FloatType>
       average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const;
 
+      /*! \brief Construct a new site_symmetry_ops instance with the
+          denominators (special_op().den(), matrices()[0].den()) of this.
+       */
+      //! Not available in Python.
+      site_symmetry_ops
+      make_point_group_1() const
+      {
+        site_symmetry_ops result;
+        result.special_op_ = special_op_.unit_mx();
+        result.matrices_.push_back(matrices_[0]);
+        return result;
+      }
+
     protected:
       rt_mx special_op_;
       af::shared<rt_mx> matrices_;
@@ -283,4 +296,4 @@ namespace cctbx { namespace sgtbx {
 
 }} // namespace cctbx::sgtbx
 
-#endif // SITE_SYMMETRY_H
+#endif // CCTBX_SGTBX_SITE_SYMMETRY_H
