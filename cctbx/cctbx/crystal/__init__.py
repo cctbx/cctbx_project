@@ -237,6 +237,19 @@ class special_position_settings(symmetry):
       self.min_distance_sym_equiv(),
       self.assert_min_distance_sym_equiv())
 
+  def site_symmetry_table(self, sites_frac=None, sites_cart=None):
+    assert [sites_frac, sites_cart].count(None) == 1
+    if (sites_frac is None):
+      sites_frac = self.unit_cell().fractionalization_matrix() * sites_cart
+    result = sgtbx.site_symmetry_table()
+    result.process(
+      unit_cell=self.unit_cell(),
+      space_group=self.space_group(),
+      original_sites_frac=sites_frac,
+      min_distance_sym_equiv=self.min_distance_sym_equiv(),
+      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+    return result
+
   def sym_equiv_sites(self, site):
     return sgtbx.sym_equiv_sites(self.site_symmetry(site))
 
