@@ -7,29 +7,19 @@
      2002 Nov: Created (Ralf W. Grosse-Kunstleve)
  */
 
-#include <cctbx/boost_python/flex_fwd.h>
-
-#include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
-#include <boost/python/class.hpp>
 
 namespace cctbx { namespace dmtbx { namespace boost_python {
 
-  void wrap_triplet();
-  void wrap_fast_triplets();
+  void wrap_triplet_generator();
+  void wrap_triplet_phase_relation();
 
 namespace {
 
   void init_module()
   {
-    using namespace boost::python;
-
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
-    wrap_triplet();
-    wrap_fast_triplets();
+    wrap_triplet_generator();
+    wrap_triplet_phase_relation();
   }
 
 } // namespace <anonymous>

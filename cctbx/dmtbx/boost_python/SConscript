@@ -3,6 +3,6 @@ env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(target="#libtbx/cctbx_boost/dmtbx_ext", source=[
   "dmtbx_ext.cpp",
-  "triplet.cpp",
-  "fast_triplets.cpp",
+  "triplet_phase_relation.cpp",
+  "triplet_generator.cpp",
 ])

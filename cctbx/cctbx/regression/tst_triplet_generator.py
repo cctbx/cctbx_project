@@ -35,22 +35,15 @@ def direct_space_squaring(start):
     allow_miller_indices_outside_map)
   return from_map.data()
 
-def reciprocal_space_squaring(start):
-  tprs = dmtbx.fast_triplets(start.space_group_info().type(), start.indices())
-  selection_fixed = flex.bool(start.size())
-  extrapolation_order = flex.size_t()
-  reuse_results = False
-  discard_weights = False
-  first_only = False
-  new_phases = tprs.apply_tangent_formula(
-    abs(start).data(),
-    flex.arg(start.data()),
-    selection_fixed,
-    extrapolation_order,
-    reuse_results,
-    discard_weights,
-    first_only)
-  return new_phases
+def reciprocal_space_squaring(start, verbose):
+  tprs = dmtbx.triplet_generator(start.space_group(), start.indices())
+  if (0 or verbose):
+    for ih in start.indices()[:1].indices():
+      for relation in tprs.relations_for(0, 00000):
+        print relation.format(start.indices(), 0)
+  return tprs.apply_tangent_formula(
+    amplitudes=abs(start).data(),
+    phases=flex.arg(start.data()))
 
 def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
              e_min=1.5):
@@ -97,7 +90,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   start = q_large.phase_transfer(q_calc.data())
   from_map_data = direct_space_squaring(start)
   direct_space_result = start.phase_transfer(phase_source=from_map_data)
-  new_phases = reciprocal_space_squaring(start)
+  new_phases = reciprocal_space_squaring(start, verbose)
   reciprocal_space_result = start.phase_transfer(
     phase_source=flex.polar(1,new_phases))
   mwpe = direct_space_result.mean_weighted_phase_error(reciprocal_space_result)
