@@ -50,7 +50,7 @@ namespace cctbx {
   //! Default change_of_basis rotation matrix denominator.
   const int cb_r_den = 12;
   //! Default change_of_basis translation vector denominator.
-  const int cb_t_den = 72;
+  const int cb_t_den = 144;
 
   //! Checks default rotation and translation denominators for consistency.
   inline void sanity_check()

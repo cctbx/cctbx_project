@@ -13,13 +13,15 @@
 
 namespace cctbx { namespace sgtbx { namespace select_generators {
 
-  any::any(space_group const& sg)
+  any::any(space_group const& sg,
+           int z2p_r_den,
+           int z2p_t_den)
   : n_gen(0)
   {
     using namespace crystal_system;
     using scitbx::fn::absolute;
 
-    z2p_op = sg.z2p_op();
+    z2p_op = sg.z2p_op(z2p_r_den, z2p_t_den);
 
     z_inv_t = sg.inv_t(true);
     p_inv_t = tr_vec(0);
@@ -121,6 +123,8 @@ namespace cctbx { namespace sgtbx { namespace select_generators {
   }
 
   standard::standard(space_group const& work_sg,
+                     int z2p_r_den,
+                     int z2p_t_den,
                      matrix_group::code const& point_group_mx_group_code)
   {
     using namespace crystal_system;
@@ -132,7 +136,7 @@ namespace cctbx { namespace sgtbx { namespace select_generators {
     const sg_vec3 ev_m10(-1, 1, 0);
     const sg_vec3 ev_111( 1, 1, 1);
 
-    z2p_op = work_sg.z2p_op();
+    z2p_op = work_sg.z2p_op(z2p_r_den, z2p_t_den);
 
     z_inv_t = work_sg.inv_t(true);
     p_inv_t = tr_vec(0);

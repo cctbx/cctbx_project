@@ -484,10 +484,16 @@ def exercise_space_group():
   g = space_group(p, 0, 0)
   p = sgtbx.parse_string("P 1")
   g = space_group(p, 0, 0, 0)
+  assert g.t_den() == sgtbx.sg_t_den
+  p = sgtbx.parse_string("P 1")
+  g = space_group(p, 0, 0, 0, 2*sgtbx.sg_t_den)
+  assert g.t_den() == 2*sgtbx.sg_t_den
   g = space_group("P 1")
   g = space_group("P 1", 1)
   g = space_group("1", 0, 1)
   g = space_group("1", 0, 1, 1)
+  g = space_group("1", 0, 1, 1, 3*sgtbx.sg_t_den)
+  assert g.t_den() == 3*sgtbx.sg_t_den
   g = space_group(sgtbx.space_group_symbols(1))
   g = space_group(g)
   g.reset()

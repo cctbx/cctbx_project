@@ -158,7 +158,7 @@ namespace cctbx { namespace sgtbx {
       throw error("Illegal symbol for centring type of cell.");
     }
     for(std::size_t i=0;i<e->n_translations;i++) {
-      expand_ltr(e->t[i]);
+      expand_ltr(e->t[i].new_denominator(t_den()));
     }
     return e->n_translations;
   }
@@ -210,7 +210,7 @@ namespace cctbx { namespace sgtbx {
   space_group
   space_group::build_derived_group(bool discard_z, bool add_inv) const
   {
-    space_group result;
+    space_group result(false, t_den());
     if (!discard_z) {
       for(std::size_t i=0;i<n_ltr();i++) {
         result.expand_ltr(ltr_[i]);
@@ -228,6 +228,7 @@ namespace cctbx { namespace sgtbx {
   space_group_symbols
   space_group::match_tabulated_settings() const
   {
+    CCTBX_ASSERT(cb_t_den % t_den() == 0);
     matrix_group::code point_group = point_group_type();
     space_group tidy_sg = *this;
     tidy_sg.make_tidy();
@@ -240,7 +241,7 @@ namespace cctbx { namespace sgtbx {
                .point_group_type())
         continue;
       try {
-        space_group tab_sg(symbols.hall(), true);
+        space_group tab_sg(symbols.hall(), true, false, false, t_den());
         if (tab_sg == tidy_sg) return symbols;
       }
       catch (error const&) {
@@ -319,7 +320,7 @@ namespace cctbx { namespace sgtbx {
   space_group::construct_z2p_op(int r_den, int t_den) const
   {
     change_of_basis_op result;
-    space_group primitive_sg;
+    space_group primitive_sg(false, this->t_den());
     const int r_den_3 = r_den * r_den * r_den;
     af::shared<tr_vec> tlt = build_list_tot_tr(ltr_, r_den);
     std::size_t i_tlt[3];
@@ -535,7 +536,7 @@ namespace cctbx { namespace sgtbx {
   space_group
   space_group::change_basis(const change_of_basis_op& cb_op) const
   {
-    space_group result(no_expand_);
+    space_group result(no_expand_, t_den());
     result.ltr_ = ltr_.change_basis(cb_op);
     if (is_centric()) {
       result.expand_inv(cb_op(inv_t_, -1));

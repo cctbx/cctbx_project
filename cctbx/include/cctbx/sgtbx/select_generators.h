@@ -18,7 +18,7 @@ namespace cctbx { namespace sgtbx { namespace select_generators {
   {
     any() : n_gen(0) {}
 
-    any(space_group const& sg);
+    any(space_group const& sg, int z2p_r_den, int z2p_t_den);
 
     std::size_t n_all() const
     {
@@ -39,6 +39,8 @@ namespace cctbx { namespace sgtbx { namespace select_generators {
   struct standard : any
   {
     standard(space_group const& work_sg,
+             int z2p_r_den,
+             int z2p_t_den,
              matrix_group::code const& point_group_mx_group_code);
   };
 

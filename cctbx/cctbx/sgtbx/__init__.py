@@ -47,10 +47,12 @@ class space_group_info:
   def group(self):
     return self._group
 
-  def type(self):
+  def type(self, tidy_cb_op=0001, r_den=cb_r_den, t_den=cb_t_den):
     cache = self._space_group_info_cache
-    if (not hasattr(cache, "_type")):
-      cache._type = self._group.type()
+    if (not hasattr(cache, "_type")
+        or cache._type_parameters != (tidy_cb_op, r_den, t_den)):
+      cache._type_parameters = (tidy_cb_op, r_den, t_den)
+      cache._type = space_group_type(self._group, tidy_cb_op, r_den, t_den)
     return cache._type
 
   def reciprocal_space_asu(self):

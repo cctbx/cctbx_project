@@ -85,7 +85,7 @@ namespace cctbx { namespace sgtbx {
 
   sgtbx::space_group rt_point_group::space_group() const
   {
-    sgtbx::space_group sg;
+    sgtbx::space_group sg(false, matrices_[0].t().den());
     sg.expand_smx(matrices_.const_ref());
     CCTBX_ASSERT(sg.n_ltr() == 1);
     return sg;
