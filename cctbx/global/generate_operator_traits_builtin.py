@@ -58,12 +58,12 @@ def run():
     for i in xrange(len(op_types)):
       print "%s + %s = %s" % (op_types[i].lhs, op_types[i].rhs, result_type[i])
   else:
-    f = open("operator_traits.h", "w")
+    f = open("operator_traits_builtin.h", "w")
     sys.stdout = f
     write_copyright()
     print """
-#ifndef CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_H
-#define CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_H
+#ifndef CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
+#define CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 
 #include <complex>
 
@@ -99,7 +99,7 @@ namespace cctbx { namespace af {
 
     print "}} // namespace cctbx::af"
     print ""
-    print "#endif // CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_H"
+    print "#endif // CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H"
     sys.stdout = sys.__stdout__
     f.close()
 
