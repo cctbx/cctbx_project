@@ -1,3 +1,4 @@
+cctbx/cctbx/array_family/operator_traits.h
 cctbx/cctbx/carray_bpl.h
 cctbx/cctbx/vector/algebra.h
 cctbx/cctbx/vector/algebra_operators.h
