@@ -5,6 +5,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -52,6 +53,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("unit_cell", no_init)
         .def(init<af::small<double, 6> const&, optional<bool> >())
@@ -143,6 +145,10 @@ namespace {
         .def("two_theta",
           (sh_dbl_t(w_t::*)(cr_mix_t const&, double, bool) const) 0,
           two_theta_overloads())
+        .def("compare_orthorhombic", &w_t::compare_orthorhombic,
+          (arg_("other")))
+        .def("compare_monoclinic", &w_t::compare_monoclinic,
+          (arg_("other"), arg_("unique_axis"), arg_("angular_tolerance")))
         .def_pickle(unit_cell_wrappers())
       ;
     }

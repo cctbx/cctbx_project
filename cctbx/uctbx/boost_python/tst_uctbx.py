@@ -167,6 +167,22 @@ def exercise_miller_index_methods():
   assert u.min_max_d_star_sq(miller_indices) == (
     u.d_star_sq((1,2,3)), u.d_star_sq((-3,4,-5)))
 
+def exercise_compare():
+  u1 = uctbx.unit_cell((3,2,5,90,100,90))
+  u2 = uctbx.unit_cell((2,3,5,90,80,90))
+  assert u1.compare_orthorhombic(other=u1) == 0
+  assert u2.compare_orthorhombic(other=u2) == 0
+  assert u1.compare_orthorhombic(other=u2) == 1
+  assert u2.compare_orthorhombic(other=u1) == -1
+  assert u1.compare_monoclinic(
+    other=u1, unique_axis=1, angular_tolerance=3) == 0
+  assert u2.compare_monoclinic(
+    other=u2, unique_axis=1, angular_tolerance=3) == 0
+  assert u1.compare_monoclinic(
+    other=u2, unique_axis=1, angular_tolerance=3) == -1
+  assert u2.compare_monoclinic(
+    other=u1, unique_axis=1, angular_tolerance=3) == 1
+
 def exercise_pickle():
   u = uctbx.unit_cell((2,3,5,80,100,110))
   p = pickle.dumps(u)
@@ -288,6 +304,7 @@ def run():
   exercise_frac_orth()
   exercise_change_basis()
   exercise_miller_index_methods()
+  exercise_compare()
   exercise_pickle()
   exercise_exceptions()
   exercise_fast_minimum_reduction()
