@@ -123,8 +123,8 @@ namespace cctbx { namespace sgtbx {
         fractional<double> Mate = Mate0 + SgOps.LTr(iLTr);
         fractional<double> Delta0 = Mate - m_SnapPosition;
         Delta0 = Delta0.modShort();
-        TrVec
-        UShifts = detail::getUnitShifts((m_SnapPosition + Delta0) - Mate);
+        TrVec UShifts(
+          cctbx::detail::getUnitShifts((m_SnapPosition + Delta0) - Mate), 1);
         UShifts = UShifts.scale(TBF);
         TrVec MT = M.Tpart() + SgOps.LTr(iLTr) + UShifts;
         bool special = false;

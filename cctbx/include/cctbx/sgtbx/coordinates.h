@@ -25,18 +25,6 @@ namespace cctbx { namespace sgtbx {
 
   namespace detail {
 
-    template <class FloatType>
-    TrVec
-    getUnitShifts(const af::tiny<FloatType, 3>& Delta)
-    {
-      TrVec result(1);
-      for(std::size_t i=0;i<3;i++) {
-        if (Delta[i] >= 0.) result[i] = int(Delta[i] + 0.5);
-        else                result[i] = int(Delta[i] - 0.5);
-      }
-      return result;
-    }
-
     void SetUniqueOps(const SpaceGroup& SgOps,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps);
@@ -778,6 +766,28 @@ namespace cctbx { namespace sgtbx {
       operator()(std::size_t i) const {
         if (i >= M()) throw error_index();
         return m_Coordinates[i];
+      }
+      //! Shortest difference vector between the symmetry mates of X and Y.
+      /*! Determine the shortest difference vector between Y and the symmetry
+          mates in the internal table. The result is the shortest difference
+          vector Y - symmetry mate of X under application of unit shifts.
+       */
+      fractional<FloatType>
+      getShortestDifference(const uctbx::UnitCell& uc,
+                            const fractional<FloatType>& Y) const
+      {
+        FloatType shortest_dist2(0);
+        fractional<FloatType> shortest_diff;
+        for(std::size_t i=0;i<m_Coordinates.size();i++) {
+          fractional<FloatType> diff = Y - m_Coordinates[i];
+          diff = diff.modShort();
+          FloatType dist2 = uc.Length2(diff);
+          if (shortest_dist2 > dist2 || i == 0) {
+              shortest_dist2 = dist2;
+              shortest_diff = diff;
+          }
+        }
+        return shortest_diff;
       }
       //! Shortest distance squared between the symmetry mates of X and Y.
       /*! Determine the shortest distance between Y and the symmetry

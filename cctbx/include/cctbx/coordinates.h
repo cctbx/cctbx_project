@@ -11,7 +11,7 @@
 #ifndef CCTBX_COORDINATES_H
 #define CCTBX_COORDINATES_H
 
-#include <cctbx/array_family/tiny.h>
+#include <cctbx/array_family/tiny_types.h>
 #include <cctbx/array_family/tiny_algebra.h>
 
 namespace cctbx {
@@ -48,6 +48,22 @@ namespace cctbx {
         return af::sum((*this) * (*this));
       }
   };
+
+  namespace detail {
+
+    template <class FloatType>
+    af::int3
+    getUnitShifts(const af::tiny<FloatType, 3>& Delta)
+    {
+      af::int3 result;
+      for(std::size_t i=0;i<3;i++) {
+        if (Delta[i] >= 0.) result[i] = int(Delta[i] + 0.5);
+        else                result[i] = int(Delta[i] - 0.5);
+      }
+      return result;
+    }
+
+  } // namespace detail
 
   //! Class for fractional coordinates.
   /*! The template parameter FloatType should be a floating point type

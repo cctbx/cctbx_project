@@ -153,6 +153,11 @@ namespace {
     return uc.isEqual(other);
   }
 
+  af::double3
+  modShortDifference(const af::double3& Xf, const af::double3& Yf) {
+    return fractional<double>(Xf - Yf).modShort();
+  }
+
 }
 
 BOOST_PYTHON_MODULE_INIT(uctbx)
@@ -224,4 +229,6 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
   UnitCell_class.def(UnitCell_isEqual_1, "isEqual");
   UnitCell_class.def(&UnitCell::isEqual, "isEqual");
+
+  this_module.def(modShortDifference, "modShortDifference");
 }
