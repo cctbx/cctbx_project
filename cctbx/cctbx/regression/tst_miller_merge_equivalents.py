@@ -51,9 +51,12 @@ def exercise(space_group_info, anomalous_flags,
   assert flex.linear_correlation(
     j.data(),
     fs.data()).coefficient() > 1-1.e-6
-  assert flex.linear_correlation(
-    j.sigmas()*flex.sqrt(redundancies.as_double()),
-    fs.sigmas()).coefficient() > 1-1.e-6
+  js = j.sigmas().select(redundancies == 1)
+  fss = fs.sigmas().select(redundancies == 1)
+  assert flex.linear_correlation(js, fss).coefficient() > 1-1.e-6
+  js = j.sigmas().select(~(redundancies == 1))
+  assert flex.min(js) >= 0
+  assert flex.max(js) < 1.e-6
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001):

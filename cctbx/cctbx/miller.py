@@ -846,10 +846,12 @@ class merge_equivalents:
     packed_indices = span.pack(asu_set.indices())
     p = flex.sort_permutation(packed_indices)
     if (miller_array.sigmas() is not None):
+      s_sq = flex.pow2(miller_array.sigmas().shuffle(p))
+      assert flex.min(s_sq) > 0
       merge_ext = ext.merge_equivalents(
         asu_set.indices().shuffle(p),
         miller_array.data().shuffle(p),
-        miller_array.sigmas().shuffle(p))
+        1./s_sq)
       sigmas = merge_ext.sigmas()
     else:
       merge_ext = ext.merge_equivalents(
