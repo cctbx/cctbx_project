@@ -133,7 +133,7 @@ class resampling(crystal.symmetry):
     assert not gradient_flags is None
     r = random.random()
     if (r > 2/3.):
-      gradient_flags = xray.gradient_flags(default=0001)
+      gradient_flags = xray.structure_factors.gradient_flags(default=0001)
     elif (r > 1/3.):
       gradient_flags = gradient_flags.copy()
       if (random.random() > 0.5): gradient_flags.site = 0001
@@ -210,13 +210,13 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.gradient_flags(site=0001))
+    gradient_flags=xray.structure_factors.gradient_flags(site=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=dp0,
-    gradient_flags=xray.gradient_flags(site=0001),
+    gradient_flags=xray.structure_factors.gradient_flags(site=0001),
     verbose=verbose)
   sfd.d_target_d_site_inplace_frac_as_cart(sfd.d_target_d_site())
   sfd.d_target_d_site_inplace_frac_as_cart(map0.d_target_d_site())
@@ -256,13 +256,13 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.gradient_flags(u_iso=0001))
+    gradient_flags=xray.structure_factors.gradient_flags(u_iso=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=dp0,
-    gradient_flags=xray.gradient_flags(u_iso=0001),
+    gradient_flags=xray.structure_factors.gradient_flags(u_iso=0001),
     verbose=verbose)
   top_gradient = None
   for i_scatterer in (0,1,2):
@@ -309,13 +309,13 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.gradient_flags(u_aniso=0001))
+    gradient_flags=xray.structure_factors.gradient_flags(u_aniso=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=dp0,
-    gradient_flags=xray.gradient_flags(u_aniso=0001),
+    gradient_flags=xray.structure_factors.gradient_flags(u_aniso=0001),
     verbose=verbose)
   top_gradient = None
   for i_scatterer in (0,1,2):
@@ -359,13 +359,13 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.gradient_flags(occupancy=0001))
+    gradient_flags=xray.structure_factors.gradient_flags(occupancy=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=dp0,
-    gradient_flags=xray.gradient_flags(occupancy=0001),
+    gradient_flags=xray.structure_factors.gradient_flags(occupancy=0001),
     verbose=verbose)
   top_gradient = None
   for i_scatterer in (0,1,2):
@@ -402,13 +402,13 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.gradient_flags(fp=0001))
+    gradient_flags=xray.structure_factors.gradient_flags(fp=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=dp0,
-    gradient_flags=xray.gradient_flags(fp=0001),
+    gradient_flags=xray.structure_factors.gradient_flags(fp=0001),
     verbose=verbose)
   top_gradient = None
   for i_scatterer in (0,1,2):
@@ -445,13 +445,13 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    gradient_flags=xray.gradient_flags(fdp=0001))
+    gradient_flags=xray.structure_factors.gradient_flags(fdp=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(
     xray_structure=sh.structure_shifted,
     dp=dp0,
-    gradient_flags=xray.gradient_flags(fdp=0001),
+    gradient_flags=xray.structure_factors.gradient_flags(fdp=0001),
     verbose=verbose)
   top_gradient = None
   for i_scatterer in (0,1,2):
