@@ -13,6 +13,7 @@ namespace {
   {
     typedef boost::python::return_internal_reference<> rir;
     shared_wrapper<std::vector<unsigned>, rir>::wrap("stl_vector_unsigned");
+    shared_wrapper<std::vector<double>, rir>::wrap("stl_vector_double");
     shared_wrapper<std::set<unsigned>, rir>::wrap("stl_set_unsigned");
   }
 
