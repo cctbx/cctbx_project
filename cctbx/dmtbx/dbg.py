@@ -56,10 +56,11 @@ def compute_mean_weighted_phase_error(tprs, sgops, h, f, phi1, phi2, verbose=0):
 
 def square_emap(xtal, e000, p1_miller_indices,
                 miller_indices, e_values, phases,
-                zero_out_negative):
+                use_e000, zero_out_negative,
+                verbose = 0):
   index_span = sftbx.index_span(p1_miller_indices)
   # XXX index_span = xtal.SgOps.get_index_span(miller_indices)
-  if (1):
+  if (0 or verbose):
     print "index_span:"
     print "  min:", index_span.min()
     print "  max:", index_span.max()
@@ -67,26 +68,27 @@ def square_emap(xtal, e000, p1_miller_indices,
     print "  map_grid:", index_span.map_grid()
   grid_logical_min = list(index_span.map_grid())
   if (grid_logical_min[2] % 2): grid_logical_min[2] -= 1
-  print "grid_logical_min:", grid_logical_min
+  if (0 or verbose): print "grid_logical_min:", grid_logical_min
   grid_logical_n = [n * 2 + 0 for n in grid_logical_min]
-  print "grid_logical_n:", grid_logical_n
+  if (0 or verbose): print "grid_logical_n:", grid_logical_n
   if (0):
     mandatory_gridding_factors = xtal.SgOps.refine_gridding()
   else:
     mandatory_gridding_factors = (1,1,1)
   grid_logical = fftbx.adjust_gridding_triple(
     grid_logical_n, 1, mandatory_gridding_factors)
-  print "grid_logical:", grid_logical
+  if (0 or verbose): print "grid_logical:", grid_logical
   rfft = fftbx.real_to_complex_3d(grid_logical)
   friedel_flag = 1
   old_e_complex = shared.polar(e_values, phases)
   n_complex = rfft.Ncomplex()
-  print "n_complex:", n_complex
+  if (0 or verbose): print "n_complex:", n_complex
   conjugate = 0
   map = sftbx.structure_factor_map(
     xtal.SgOps, friedel_flag, miller_indices,
     old_e_complex, n_complex, conjugate)
-  # XXX map[0] = e000
+  if (use_e000):
+    map[0] = e000
   rfft.backward(map)
   rmap = shared.reinterpret_complex_as_real(map)
   if (zero_out_negative):
@@ -96,7 +98,7 @@ def square_emap(xtal, e000, p1_miller_indices,
   new_e_complex = sftbx.collect_structure_factors(
     friedel_flag, miller_indices, map, n_complex, conjugate)
   new_phases = shared.arg(new_e_complex)
-  if (0):
+  if (0 or verbose):
     for i in xrange(miller_indices.size()):
       print miller_indices[i], "%.2f %.2f" % (
         phases[i]*180/math.pi,
@@ -187,6 +189,7 @@ def exercise(SgInfo,
              exercise_triplets=0,
              other_than_sigma_2=0,
              exercise_squaring=0,
+             use_e000=0,
              zero_out_negative=0,
              verbose=0):
   sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
@@ -236,7 +239,7 @@ def exercise(SgInfo,
   if (exercise_squaring):
     new_phases = square_emap(
       sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, sim.phases,
-      zero_out_negative)
+      use_e000, zero_out_negative)
     tprs_plus = [tprs_sg]
     if (tprs_sg != None): tprs_plus.append(None)
     for t in tprs_plus:
@@ -304,34 +307,37 @@ def recycle(SgInfo,
             use_triplets=0,
             other_than_sigma_2=0,
             use_squaring=0,
+            use_e000=0,
             zero_out_negative=0,
             n_trials=10,
             n_cycles_per_trial=10,
             verbose=0):
   sim = simulated_data(SgInfo, number_of_point_atoms, d_min, e_min, verbose)
   sim_emma_model = xtal_as_emma_model(sim.xtal)
-  sim_emma_model.show("Random model")
+  if (0 or verbose):
+    sim_emma_model.show("Random model")
   p1_H = shared.Miller_Index()
   sgtbx.expand_to_p1(sim.xtal.SgOps, 1, sim.miller_indices.H, p1_H)
-  random_phi = debug_utils.random_phases(
-    sim.xtal.SgOps, sim.miller_indices.H, sim.e_values)
-  if (0 or verbose):
-    show_ampl_phases(sim.miller_indices.H, sim.e_values, random_phi)
   map_calculator = map_from_ampl_phases(sim.xtal, d_min)
   print "Nreal:", map_calculator.rfft.Nreal()
   print "Mreal:", map_calculator.rfft.Mreal()
-  new_phases = random_phi
-  if (0): # XXX
-    new_phases = sim.phases
+  LookupSymbol = SgInfo.BuildLookupSymbol()
   for i_trial in xrange(n_trials):
+    random_phi = debug_utils.random_phases(
+      sim.xtal.SgOps, sim.miller_indices.H, sim.e_values)
+    if (0 or verbose):
+      show_ampl_phases(sim.miller_indices.H, sim.e_values, random_phi)
+    new_phases = random_phi
+    if (0): # XXX
+      new_phases = sim.phases
     n_matches = []
     for cycle in xrange(n_cycles_per_trial):
-      print "i_trial:", i_trial, "cycle:", cycle
+      print LookupSymbol, "i_trial:", i_trial, "cycle:", cycle
       sys.stdout.flush()
       new_phases = square_emap(
         sim.xtal, sim.e000,
         p1_H, sim.miller_indices.H, sim.e_values, new_phases,
-        zero_out_negative)
+        use_e000, zero_out_negative)
       if (0): # XXX
         new_phases = sim.phases
       map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
@@ -341,12 +347,17 @@ def recycle(SgInfo,
           print "peak (%d,%d,%d)" % peak["index"], "%.6g" % (peak["value"],)
       peaks_emma_model = peak_list_as_emma_model(
         sim.xtal, map_calculator.rfft.Nreal(), peak_list)
-      peaks_emma_model.show("Peak list")
+      if (0 or verbose):
+        peaks_emma_model.show("Peak list")
       refined_matches = emma.match_models(sim_emma_model, peaks_emma_model)
-      refined_matches[0].show()
-      n_matches.append(len(refined_matches[0].pairs))
+      if (len(refined_matches)):
+        refined_matches[0].show()
+        n_matches.append(len(refined_matches[0].pairs))
+      else:
+        print "No matches"
+        n_matches.append(0)
       sys.stdout.flush()
-    print "i_trial:", i_trial, "n_matches:", n_matches
+    print  LookupSymbol, "i_trial:", i_trial, "n_matches:", n_matches
     print
     sys.stdout.flush()
 
@@ -359,6 +370,7 @@ def run():
     "triplets",
     "sigma_2",
     "squaring",
+    "use_e000",
     "zero_out_negative",
     "recycle",
   ))
@@ -398,6 +410,7 @@ def run():
         use_triplets=Flags.triplets,
         other_than_sigma_2=not Flags.sigma_2,
         use_squaring=Flags.squaring,
+        use_e000=Flags.use_e000,
         zero_out_negative=Flags.zero_out_negative)
     else:
       exercise(
@@ -405,6 +418,7 @@ def run():
         exercise_triplets=Flags.triplets,
         other_than_sigma_2=not Flags.sigma_2,
         exercise_squaring=Flags.squaring,
+        use_e000=Flags.use_e000,
         zero_out_negative=Flags.zero_out_negative)
     sys.stdout.flush()
 
