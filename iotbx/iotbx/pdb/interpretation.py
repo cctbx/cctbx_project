@@ -5,6 +5,7 @@ import iotbx.pdb.atom
 from cctbx.array_family import flex
 from libtbx.itertbx import count
 import string
+import sys
 
 class empty: pass
 
@@ -301,6 +302,11 @@ class stage_1:
     for i_seq in i_seqs:
       if (self.atom_attributes_list[i_seq].altLoc != " "): return 00000
     return 0001
+
+  def show_atom_labels(self, i_seqs, f=None, prefix=""):
+    if (f is None): f = sys.stdout
+    for i_seq in i_seqs:
+      print >> f, prefix + str(self.atom_attributes_list[i_seq])
 
 class altLoc_grouping:
 
