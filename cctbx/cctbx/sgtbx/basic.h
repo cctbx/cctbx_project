@@ -16,7 +16,7 @@
 #include <exception>
 #include <string>
 #include <cctbx/error.h>
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 #include <cctbx/basic/matrixlite.h>
 
 namespace cctbx {

@@ -22,10 +22,10 @@ namespace cctbx { namespace sgtbx {
       for(std::size_t i=0;i<n;i++) target[i] = source[i];
     }
 
-    array<int, 3 * 3*3>
+    carray<int, 3 * 3*3>
     ConstructGenRmI(const detail::AnyGenerators& Gen, bool Primitive)
     {
-      array<int, 3 * 3*3> result;
+      carray<int, 3 * 3*3> result;
       for(std::size_t i=0;i<Gen.nGen;i++) {
         const RotMx R = Gen.ZGen[i].Rpart();
         if (!Primitive) {
@@ -61,7 +61,7 @@ namespace cctbx { namespace sgtbx {
     GetContNullSpace(const detail::AnyGenerators& Gen)
     {
       cctbx::fixcap_vector<ssVM, 3> result;
-      array<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
+      carray<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
       int RankGenRmI = iRowEchelonFormT(GenRmI.elems, Gen.nAll() * 3, 3, 0, 0);
       cctbx_assert(RankGenRmI >= 0 && RankGenRmI <= 3);
       int IxIndep[3];
@@ -79,7 +79,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
       else {
-        array<Vec3, 4> Sol;
+        carray<Vec3, 4> Sol;
         SolveHomRE1(GenRmI.elems, IxIndep, Sol.elems);
         std::sort(Sol.begin(), Sol.end(), CmpOLen2());
         for (int iIndep = 0; iIndep < 2; iIndep++) {
@@ -236,7 +236,7 @@ namespace cctbx { namespace sgtbx {
     detail::AnyGenerators Gen(SgOps);
     m_VM = GetContNullSpace(Gen);
     if (m_VM.size() == 3) return; // space group P1
-    array<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
+    carray<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
     int Q[3 * 3];
     int nd = SmithNormalForm(SNF.elems, Gen.nAll() * 3, 3, 0, Q);
     cctbx_assert(nd >=0 && nd <= 3);

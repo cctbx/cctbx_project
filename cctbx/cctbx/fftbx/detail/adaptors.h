@@ -12,7 +12,7 @@
 #ifndef CCTBX_FFTBX_DETAIL_ADAPTORS_H
 #define CCTBX_FFTBX_DETAIL_ADAPTORS_H
 
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 #include <cctbx/ndim.h>
 
 namespace cctbx { namespace fftbx {
@@ -42,17 +42,17 @@ namespace cctbx { namespace fftbx {
         value_type&
         operator()(const std::size_t& i0,
                    const std::size_t& i1) {
-          return m_Start[fortran_index_1d<D>()(m_N, array<int, D>(i0,i1))];
+          return m_Start[fortran_index_1d<D>()(m_N, carray<int, D>(i0,i1))];
         }
         value_type&
         operator()(const std::size_t& i0,
                    const std::size_t& i1,
                    const std::size_t& i2) {
-          return m_Start[fortran_index_1d<D>()(m_N, array<int, D>(i0,i1,i2))];
+          return m_Start[fortran_index_1d<D>()(m_N, carray<int, D>(i0,i1,i2))];
         }
       private:
         iterator_type m_Start;
-        array<int, D> m_N;
+        carray<int, D> m_N;
     };
 
   } // namespace detail

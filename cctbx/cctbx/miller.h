@@ -19,7 +19,7 @@
 #include <iostream>
 #include <cctbx/fixes/cmath>
 #include <cctbx/fixes/cstdlib>
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 #include <cctbx/basic/matrixlite.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/constants.h>
@@ -135,10 +135,10 @@ namespace cctbx {
 
     //! Determine max(abs(H[i])), i=1..3, for a vector of Miller indices.
     template <class MillerIndexVectorType>
-    array<int, 3>
+    carray<int, 3>
     IndexRange(const MillerIndexVectorType& Indices)
     {
-      array<int, 3> result;
+      carray<int, 3> result;
       result.assign(0);
       for(std::size_t i=0;i<Indices.size();i++) {
         for(std::size_t j=0;j<3;j++) {

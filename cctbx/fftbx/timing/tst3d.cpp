@@ -30,9 +30,7 @@ namespace {
   typedef boost::shared_ptr<std::vector<std::complex<double> > >
   shared_complex_vector;
 
-  typedef cctbx::array<std::size_t, 3> triple;
-
-  shared_complex_vector init_cseq(const triple& N)
+  shared_complex_vector init_cseq(const int3& N)
   {
     shared_complex_vector cseq(new shared_complex_vector::element_type);
     for(int i=0;i<cctbx::vector::product(N); i++) {
@@ -43,7 +41,7 @@ namespace {
     return cseq;
   }
 
-  shared_real_vector init_rseq(const triple& N)
+  shared_real_vector init_rseq(const int3& N)
   {
     shared_real_vector rseq(new shared_real_vector::element_type);
     for(int i=0;i<cctbx::vector::product(N); i++) {
@@ -52,7 +50,7 @@ namespace {
     return rseq;
   }
 
-  shared_complex_vector tst_complex_to_complex(char dir, const triple& N)
+  shared_complex_vector tst_complex_to_complex(char dir, const int3& N)
   {
     fftbx::complex_to_complex_3d<double> fft(N);
     shared_complex_vector cseq = init_cseq(N);
@@ -69,7 +67,7 @@ namespace {
     return cseq;
   }
 
-  shared_real_vector tst_real_to_complex(char dir, const triple& N)
+  shared_real_vector tst_real_to_complex(char dir, const int3& N)
   {
     fftbx::real_to_complex_3d<double> fft(N);
     shared_real_vector rseq = init_rseq(fft.Mreal());
@@ -95,7 +93,7 @@ namespace {
     }
   }
 
-  shared_complex_vector tst_fftw(char dir, const triple& N)
+  shared_complex_vector tst_fftw(char dir, const int3& N)
   {
     shared_complex_vector cseq = init_cseq(N);
     fftwnd_plan Plan;
@@ -112,7 +110,7 @@ namespace {
     return cseq;
   }
 
-  shared_real_vector tst_rfftw(char dir, const triple& N)
+  shared_real_vector tst_rfftw(char dir, const int3& N)
   {
     fftbx::real_to_complex_3d<double> fft(N);
     shared_real_vector rseq = init_rseq(fft.Mreal());
@@ -144,12 +142,12 @@ namespace {
     }
   }
 
-  void show_rseq(const shared_real_vector& rseq, const triple& N)
+  void show_rseq(const shared_real_vector& rseq, const int3& N)
   {
-    triple M = fftbx::Mreal_from_Nreal(N);
+    int3 M = fftbx::Mreal_from_Nreal(N);
     assert(rseq->size() == cctbx::vector::product(M));
     c_index_1d<3> i1d;
-    triple I;
+    int3 I;
     for(I[0]=0;I[0]<N[0];I[0]++)
     for(I[1]=0;I[1]<N[1];I[1]++)
     for(I[2]=0;I[2]<N[2];I[2]++) {
@@ -157,13 +155,13 @@ namespace {
     }
   }
 
-  std::ostream& operator<<(std::ostream& os, const triple& t) {
+  std::ostream& operator<<(std::ostream& os, const int3& t) {
     std::cout << t[0] << " " << t[1] << " " << t[2];
     return os;
   }
 
   void timing_complex_to_complex_3d(char dir,
-                                    const triple& N,
+                                    const int3& N,
                                     std::size_t loop_iterations)
   {
     shared_complex_vector cseq(new shared_complex_vector::element_type);
@@ -188,7 +186,7 @@ namespace {
   }
 
   void timing_real_to_complex_3d(char dir,
-                                 const triple& N,
+                                 const int3& N,
                                  std::size_t loop_iterations)
   {
     fftbx::real_to_complex_3d<double> fft(N);
@@ -213,7 +211,7 @@ namespace {
   }
 
   void timing_fftw_3d(char dir,
-                      const triple& N,
+                      const int3& N,
                       std::size_t loop_iterations)
   {
     std::vector<std::complex<double> > cseq(cctbx::vector::product(N));
@@ -238,10 +236,10 @@ namespace {
   }
 
   void timing_rfftw_3d(char dir,
-                       const triple& N,
+                       const int3& N,
                        std::size_t loop_iterations)
   {
-    triple M = fftbx::Mreal_from_Nreal(N);
+    int3 M = fftbx::Mreal_from_Nreal(N);
     std::vector<double> rseq(cctbx::vector::product(M));
     if (dir == 'f') {
       std::cout << "timing_rfftw_3d forward " << N << std::endl;
@@ -281,7 +279,7 @@ int main(int argc, const char* argv[])
   if (type_and_dir.size() != 2) usage();
   if (type_and_dir[0] != 'c' && type_and_dir[0] != 'r') usage();
   if (type_and_dir[1] != 'f' && type_and_dir[1] != 'b') usage();
-  triple N(atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  int3 N(atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   int iter = atoi(argv[6]);
   if (iter < 0) {
     if (package == "fftbx") {

@@ -128,8 +128,8 @@ namespace cctbx { namespace sgtbx {
       //! Refine gridding starting with grid 1,1,1.
       /*! See also: other overload.
        */
-      array<int, 3> refine_gridding() const {
-        return refine_gridding(array<int, 3>(1, 1, 1));
+      carray<int, 3> refine_gridding() const {
+        return refine_gridding(carray<int, 3>(1, 1, 1));
       }
 
     private:

@@ -85,7 +85,7 @@ namespace cctbx { namespace sgtbx {
       TrOps m_LTr;
       TrVec m_InvT;
       bool  m_isTidy;
-      array<RTMx, nMaxReprRotMx> m_SMx;
+      carray<RTMx, nMaxReprRotMx> m_SMx;
       void addInv(const TrVec& NewInvT);
       void addSMx(const RTMx& NewSMx);
     public:
@@ -453,7 +453,7 @@ namespace cctbx { namespace sgtbx {
       std::complex<FloatType>
       StructureFactor(const Miller::Index& H,
                       const cctbx::fractional<FloatType> X,
-                      const array<FloatType, 6>& Ustar) const
+                      const carray<FloatType, 6>& Ustar) const
       {
         using cctbx::constants::pi;
         std::complex<FloatType> F(0., 0.);
@@ -609,8 +609,8 @@ namespace cctbx { namespace sgtbx {
       //! Refine gridding starting with grid 1,1,1.
       /*! See also: other overload.
        */
-      array<int, 3> refine_gridding() const {
-        return refine_gridding(array<int, 3>(1, 1, 1));
+      carray<int, 3> refine_gridding() const {
+        return refine_gridding(carray<int, 3>(1, 1, 1));
       }
   };
 

@@ -12,7 +12,7 @@
 #ifndef CCTBX_FFTBX_REAL_TO_COMPLEX_3D_H
 #define CCTBX_FFTBX_REAL_TO_COMPLEX_3D_H
 
-#include <cctbx/array.h>
+#include <cctbx/carray.h>
 #include <cctbx/fftbx/complex_to_complex.h>
 #include <cctbx/fftbx/real_to_complex.h>
 
@@ -27,9 +27,9 @@ namespace cctbx { namespace fftbx {
       See also: Mreal_from_Nreal()
    */
   template <typename IntegerType, std::size_t D>
-  inline array<IntegerType, D>
-  Ncomplex_from_Nreal(const array<IntegerType, D>& Nreal) {
-    array<IntegerType, D> result = Nreal;
+  inline carray<IntegerType, D>
+  Ncomplex_from_Nreal(const carray<IntegerType, D>& Nreal) {
+    carray<IntegerType, D> result = Nreal;
     result[D-1] = Ncomplex_from_Nreal(result[D-1]);
     return result;
   }
@@ -43,9 +43,9 @@ namespace cctbx { namespace fftbx {
       See also: Ncomplex_from_Nreal()
    */
   template <typename IntegerType, std::size_t D>
-  inline array<IntegerType, D>
-  Mreal_from_Nreal(const array<IntegerType, D>& Nreal) {
-    array<IntegerType, D> result = Nreal;
+  inline carray<IntegerType, D>
+  Mreal_from_Nreal(const carray<IntegerType, D>& Nreal) {
+    carray<IntegerType, D> result = Nreal;
     result[D-1] = Mreal_from_Nreal(result[D-1]);
     return result;
   }
