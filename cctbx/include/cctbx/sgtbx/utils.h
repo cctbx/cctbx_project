@@ -12,6 +12,7 @@
 #ifndef CCTBX_SGTBX_UTILS_H
 #define CCTBX_SGTBX_UTILS_H
 
+#include <cstddef>
 #include <string>
 #include <cctbx/sgtbx/basic.h>
 
@@ -19,8 +20,8 @@ namespace cctbx { namespace sgtbx {
 
   //! class for communicating string parsing errors.
   /*! This class is used by functions such as
-      sgtbx::SpaceGroup::ParseHallSymbol()
-      or a constructor of class sgtbx::RTMx to communitcate errors
+      cctbx::sgtbx::SpaceGroup::ParseHallSymbol()
+      or a constructor of class cctbx::sgtbx::RTMx to communitcate errors
       that are detected during the interpretation of an input string.<br>
       Intended use:<pre>
       using namespace cctbx::sgtbx;
@@ -29,10 +30,10 @@ namespace cctbx { namespace sgtbx {
       try {
         SgOps.ParseHallSymbol(HSym);
       }
-      catch (const error& e) {
+      catch (const cctbx::error& e) {
         std::cout << e.what() << std::endl;
         std::cout << HSym.string() << std::endl;
-        for (int i = 0; i < HSym.where(); i++) std::cout << "_";
+        for (std::size_t i = 0; i < HSym.where(); i++) std::cout << "_";
         std::cout << "^" << std::endl;
       }
       </pre>
@@ -51,7 +52,7 @@ namespace cctbx { namespace sgtbx {
       //! Get back the input string.
       const char* string() const { return s.c_str(); }
       //! Index of last character accessed by the parsing algorithm.
-      int where() const { return pos; }
+      std::size_t where() const { return pos; }
       //! For internal use only.
       char operator()() const { return s[pos]; }
       //! For internal use only.
@@ -62,24 +63,24 @@ namespace cctbx { namespace sgtbx {
         return s[pos++];
       }
       //! For internal use only.
-      void skip(int n = 1) { pos += n; }
+      void skip(std::size_t n = 1) { pos += n; }
       //! For internal use only.
       void set_mark() { marked_pos = pos; }
       //! For internal use only.
       void go_to_mark() { pos = marked_pos; }
     private:
       std::string s;
-      int pos;
-      int marked_pos;
+      std::size_t pos;
+      std::size_t marked_pos;
   };
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
   template <class AnyType>
   inline void
-  swap(AnyType* a, AnyType* b, int n)
+  swap(AnyType* a, AnyType* b, std::size_t n)
   {
-    for(int i=0;i<n;i++) {
+    for(std::size_t i=0;i<n;i++) {
       AnyType tmp = a[i];
       a[i] = b[i];
       b[i] = tmp;
