@@ -6,11 +6,11 @@
 
 namespace cctbx { namespace restraints {
 
-  struct repulsion_proxy
+  struct repulsion_simple_proxy
   {
-    repulsion_proxy() {}
+    repulsion_simple_proxy() {}
 
-    repulsion_proxy(
+    repulsion_simple_proxy(
       af::tiny<std::size_t, 2> const& i_seqs_,
       double vdw_radius_)
     :
@@ -35,10 +35,10 @@ namespace cctbx { namespace restraints {
     {}
 
     // Not available in Python.
-    repulsion_proxy
-    as_direct_proxy() const
+    repulsion_simple_proxy
+    as_simple_proxy() const
     {
-      return repulsion_proxy(
+      return repulsion_simple_proxy(
         af::tiny<std::size_t, 2>(pair.i_seq, pair.j_seq),
         vdw_radius);
     }
@@ -124,7 +124,7 @@ namespace cctbx { namespace restraints {
 
       repulsion(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        repulsion_proxy const& proxy,
+        repulsion_simple_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
         vdw_radius(proxy.vdw_radius),
@@ -248,7 +248,7 @@ namespace cctbx { namespace restraints {
   af::shared<double>
   repulsion_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<repulsion_proxy> const& proxies,
+    af::const_ref<repulsion_simple_proxy> const& proxies,
     repulsion_function const& function=repulsion_function())
   {
     af::shared<double> result((af::reserve(sites_cart.size())));
@@ -263,7 +263,7 @@ namespace cctbx { namespace restraints {
   af::shared<double>
   repulsion_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<repulsion_proxy> const& proxies,
+    af::const_ref<repulsion_simple_proxy> const& proxies,
     repulsion_function const& function=repulsion_function())
   {
     af::shared<double> result((af::reserve(sites_cart.size())));
@@ -278,7 +278,7 @@ namespace cctbx { namespace restraints {
   double
   repulsion_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<repulsion_proxy> const& proxies,
+    af::const_ref<repulsion_simple_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     repulsion_function const& function=repulsion_function())
   {
@@ -393,7 +393,7 @@ namespace cctbx { namespace restraints {
       disable_cache);
   }
 
-  typedef sorted_proxies<repulsion_proxy, repulsion_asu_proxy>
+  typedef sorted_proxies<repulsion_simple_proxy, repulsion_asu_proxy>
     repulsion_sorted_proxies;
 
   inline

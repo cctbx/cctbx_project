@@ -8,11 +8,11 @@
 
 namespace cctbx { namespace restraints {
 
-  struct bond_proxy
+  struct bond_simple_proxy
   {
-    bond_proxy() {}
+    bond_simple_proxy() {}
 
-    bond_proxy(
+    bond_simple_proxy(
       af::tiny<std::size_t, 2> const& i_seqs_,
       double distance_ideal_,
       double weight_)
@@ -41,10 +41,10 @@ namespace cctbx { namespace restraints {
       weight(weight_)
     {}
 
-    bond_proxy
-    as_direct_proxy() const
+    bond_simple_proxy
+    as_simple_proxy() const
     {
-      return bond_proxy(
+      return bond_simple_proxy(
         af::tiny<std::size_t, 2>(pair.i_seq, pair.j_seq),
         distance_ideal,
         weight);
@@ -76,7 +76,7 @@ namespace cctbx { namespace restraints {
 
       bond(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
-        bond_proxy const& proxy)
+        bond_simple_proxy const& proxy)
       :
         distance_ideal(proxy.distance_ideal),
         weight(proxy.weight)
@@ -195,9 +195,9 @@ namespace cctbx { namespace restraints {
   af::shared<double>
   bond_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<bond_proxy> const& proxies)
+    af::const_ref<bond_simple_proxy> const& proxies)
   {
-    return detail::generic_deltas<bond_proxy, bond>::get(
+    return detail::generic_deltas<bond_simple_proxy, bond>::get(
       sites_cart, proxies);
   }
 
@@ -205,9 +205,9 @@ namespace cctbx { namespace restraints {
   af::shared<double>
   bond_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<bond_proxy> const& proxies)
+    af::const_ref<bond_simple_proxy> const& proxies)
   {
-    return detail::generic_residuals<bond_proxy, bond>::get(
+    return detail::generic_residuals<bond_simple_proxy, bond>::get(
       sites_cart, proxies);
   }
 
@@ -215,10 +215,10 @@ namespace cctbx { namespace restraints {
   double
   bond_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<bond_proxy> const& proxies,
+    af::const_ref<bond_simple_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array)
   {
-    return detail::generic_residual_sum<bond_proxy, bond>::get(
+    return detail::generic_residual_sum<bond_simple_proxy, bond>::get(
       sites_cart, proxies, gradient_array);
   }
 
@@ -318,7 +318,7 @@ namespace cctbx { namespace restraints {
       disable_cache);
   }
 
-  typedef sorted_proxies<bond_proxy, bond_asu_proxy>
+  typedef sorted_proxies<bond_simple_proxy, bond_asu_proxy>
     bond_sorted_proxies;
 
   inline
@@ -347,12 +347,12 @@ namespace cctbx { namespace restraints {
   af::shared<std::set<std::size_t> >
   bond_sets(
     std::size_t n_sites,
-    af::const_ref<restraints::bond_proxy> const& proxies)
+    af::const_ref<restraints::bond_simple_proxy> const& proxies)
   {
     af::shared<std::set<std::size_t> > result;
     result.resize(n_sites);
     for(std::size_t i=0;i<proxies.size();i++) {
-      restraints::bond_proxy const& proxy = proxies[i];
+      restraints::bond_simple_proxy const& proxy = proxies[i];
       CCTBX_ASSERT(proxy.i_seqs[0] < n_sites);
       CCTBX_ASSERT(proxy.i_seqs[1] < n_sites);
       result[proxy.i_seqs[0]].insert(proxy.i_seqs[1]);

@@ -14,9 +14,9 @@
 namespace cctbx { namespace restraints {
 namespace {
 
-  struct repulsion_proxy_wrappers
+  struct repulsion_simple_proxy_wrappers
   {
-    typedef repulsion_proxy w_t;
+    typedef repulsion_simple_proxy w_t;
 
     static void
     wrap()
@@ -24,7 +24,7 @@ namespace {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("repulsion_proxy", no_init)
+      class_<w_t>("repulsion_simple_proxy", no_init)
         .def(init<af::tiny<std::size_t, 2> const&, double>(
             (arg_("i_seqs"), arg_("vdw_radius"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
@@ -33,7 +33,7 @@ namespace {
       {
         typedef return_internal_reference<> rir;
         scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
-          "shared_repulsion_proxy");
+          "shared_repulsion_simple_proxy");
       }
     }
   };
@@ -99,7 +99,7 @@ namespace {
                   optional<repulsion_function const& > >(
           (arg_("sites"), arg_("vdw_radius"), arg_("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
-                  repulsion_proxy const&,
+                  repulsion_simple_proxy const&,
                   optional<repulsion_function const& > >(
           (arg_("sites_cart"), arg_("proxy"), arg_("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
@@ -135,7 +135,7 @@ namespace {
             (arg_("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("process",
-          (bool(w_t::*)(repulsion_proxy const&)) &w_t::process,
+          (bool(w_t::*)(repulsion_simple_proxy const&)) &w_t::process,
             (arg_("proxy")))
         .def("process",
           (bool(w_t::*)(repulsion_asu_proxy const&)) &w_t::process,
@@ -169,7 +169,7 @@ namespace {
   {
     using namespace boost::python;
     typedef boost::python::arg arg_; // gcc 2.96 workaround
-    repulsion_proxy_wrappers::wrap();
+    repulsion_simple_proxy_wrappers::wrap();
     repulsion_asu_proxy_wrappers::wrap();
     repulsion_function_wrappers::wrap();
     repulsion_wrappers::wrap();
@@ -177,21 +177,21 @@ namespace {
     def("repulsion_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<repulsion_proxy> const&,
+        af::const_ref<repulsion_simple_proxy> const&,
         repulsion_function const& function)) repulsion_deltas,
       repulsion_deltas_overloads_1(
         (arg_("sites_cart"), arg_("proxies"), arg_("function"))));
     def("repulsion_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<repulsion_proxy> const&,
+        af::const_ref<repulsion_simple_proxy> const&,
         repulsion_function const& function)) repulsion_residuals,
       repulsion_residuals_overloads_1(
         (arg_("sites_cart"), arg_("proxies"), arg_("function"))));
     def("repulsion_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<repulsion_proxy> const&,
+        af::const_ref<repulsion_simple_proxy> const&,
         af::ref<scitbx::vec3<double> > const&,
         repulsion_function const& function)) repulsion_residual_sum,
       repulsion_residual_sum_overloads_1(
