@@ -12,6 +12,7 @@
 """
 
 # Revision history:
+#   2001-04-20 Using new sgtbx::SymEquivCoordinates (Ralf W. Grosse-Kunstleve)
 #   Created April 2001 (Ralf W. Grosse-Kunstleve)
 
 import sys, exceptions, string, fileinput, math
@@ -19,61 +20,6 @@ import sys, exceptions, string, fileinput, math
 import uctbx
 import sgtbx
 from eltbx.caasf_wk1995 import CAASF_WK1995
-
-class Vector:
-
-  def __init__(self, Coordinates = (0., 0., 0.)):
-    self.Coordinates = list(Coordinates)
-  def __str__(self):
-    return "%.6g %.6g %.6g" % tuple(self.Coordinates)
-  def __add__(self, other):
-    Sum = list(self.Coordinates)
-    for i in xrange(3): Sum[i] = Sum[i] + other.Coordinates[i]
-    return Vector(Sum)
-  def __sub__(self, other):
-    Diff = list(self.Coordinates)
-    for i in xrange(3): Diff[i] = Diff[i] - other.Coordinates[i]
-    return Vector(Diff)
-  def __rmul__(self, other):
-    if (hasattr(other, "as_tuple")):
-      S = other.as_tuple()
-      R = Matrix(S[0]) # rotation part
-      T = Vector(S[1]) # translation part
-      return R * self + T
-    assert(len(other) == len(self.Coordinates))
-    result = 0.
-    for i in xrange(3): result = result + other[i] * self.Coordinates[i]
-    return result
-  def ModShort(self):
-    Short = list(self.Coordinates)
-    for i in xrange(3):
-      Short[i] = math.fmod(Short[i], 1.)
-      if (Short[i] < -.5):
-        Short[i] = Short[i] + 1.
-      elif (Short[i] > .5):
-        Short[i] = Short[i] - 1.
-    return Vector(Short)
-  def Length2(self):
-    L2 = 0.
-    for i in xrange(3):
-      L2 = L2 + float(self.Coordinates[i]) ** 2
-    return L2
-
-class Matrix:
-
-  def __init__(self, M = (1, 0, 0, 0, 1, 0, 0, 0, 1)):
-    self.M = list(M)
-  def __str__(self):
-    return "((%.6g,%.6g,%.6g), (%.6g,%.6g,%.6g), (%.6g,%.6g,%.6g))" % tuple(self.M)
-  def __mul__(self, other):
-    assert (type(other) == type(Vector()))
-    result = Vector()
-    for i in xrange(3):
-      s = 0.
-      for j in xrange(3):
-        s = s + self.M[i * 3 + j] * other.Coordinates[j]
-      result.Coordinates[i] = s
-    return result
 
 class SiteInfo:
 
@@ -88,17 +34,11 @@ class SiteInfo:
         self.Sf = CAASF_WK1995(flds[1], 1)
       else:
         offs = 1
-        try: self.Sf = CAASF_WK1995(flds[0], 0)
-        except: # special case for T (my zeolite past shows through)
-          if (    flds[0][0] == "T"
-              and (len(flds[0]) == 1 or flds[0][1] in string.digits)):
-            self.Sf = CAASF_WK1995("Si", 1)
-          else:
-            raise
+        self.Sf = CAASF_WK1995(flds[0], 0)
       coordinates = flds[offs : offs + 3]
       for i in xrange(3):
         coordinates[i] = string.atof(coordinates[i])
-      self.Coordinates = Vector(coordinates)
+      self.Coordinates = coordinates
       self.Occ = 1.
       self.Uiso = default_Uiso
       if (len(flds) >= offs + 4):
@@ -111,10 +51,10 @@ class SiteInfo:
     except:
       raise FormatError
 
-  def __repr__(self):
-    return "%s %s (%d) (%s) %.6g %.6g" % (
-      self.Label, self.Sf.Label(), self.Multiplicity,
-      self.Coordinates, self.Occ, self.Uiso)
+  def __str__(self):
+    return "%s %s (%d) (%.6g %.6g %.6g) %.6g %.6g" % (
+      (self.Label, self.Sf.Label(), self.Multiplicity)
+      + tuple(self.Coordinates) + (self.Occ, self.Uiso))
 
 class FormatError(exceptions.Exception):
   pass
@@ -217,76 +157,28 @@ class MillerIndexSet:
               if (key == Master.H()):
                 self.IndexDict[key] = Q
 
-def getMinDelta2(UnitCell, SymEquivCoordinates, SX):
-  MinDelta2 = None
-  for C in SymEquivCoordinates:
-    Delta = (SX - C).ModShort()
-    CartDelta = Vector(UnitCell.orthogonalize(Delta.Coordinates))
-    CartDelta2 = CartDelta.Length2()
-    if (MinDelta2 == None or MinDelta2 > CartDelta2):
-      MinDelta2 = CartDelta2
-  return MinDelta2
-
-def getEquivCoordinates(UnitCell, SgOps, X, MinimumDistance = 0.05):
-  SymEquivCoordinates = []
-  for i in xrange(SgOps.OrderZ()):
-    SX = SgOps(i) * X
-    MinDelta2 = getMinDelta2(UnitCell, SymEquivCoordinates, SX)
-    if (MinDelta2 == None or MinDelta2 >= MinimumDistance ** 2):
-      SymEquivCoordinates.append(SX)
-  assert(SgOps.OrderZ() % len(SymEquivCoordinates) == 0)
-  return SymEquivCoordinates
-
 def ComputeStructureFactors(Sites, IndexSet):
   EightPiSquared = 8. * math.pi * math.pi
-  TwoPi = 2. * math.pi
   SgOps = sgtbx.SgOps(IndexSet.SpaceGroupSymbols.Hall())
   FcalcDict = {}
   for H in IndexSet.IndexDict.keys():
     FcalcDict[H] = 0j
   for Site in Sites:
-    SymEquivCoordinates = getEquivCoordinates(
+    SymEquivCoordinates = sgtbx.SymEquivCoordinates(
       IndexSet.UnitCell, SgOps, Site.Coordinates)
-    Site.Multiplicity = len(SymEquivCoordinates)
+    Site.Multiplicity = SymEquivCoordinates.M()
     for H in IndexSet.IndexDict.keys():
       Q = IndexSet.IndexDict[H]
       stol2 = Q / 4.
       f0 = Site.Sf(stol2)
       B = EightPiSquared * Site.Uiso
-      fs = f0 * math.exp(-B * stol2) * Site.Occ
-      F = FcalcDict[H]
-      for X in SymEquivCoordinates:
-        phase = TwoPi * (H * X)
-        F = F + complex(fs * math.cos(phase), fs * math.sin(phase))
-      FcalcDict[H] = F
+      f = f0 * math.exp(-B * stol2) * Site.Occ
+      FcalcDict[H] = FcalcDict[H] + f * SymEquivCoordinates.StructureFactor(H)
   return FcalcDict
 
-# http://www.python.org/topics/scicomp/recipes_in_python.html
-"""
-Convert from polar (r,w) to rectangular (x,y)
-    x = r cos(w)
-    y = r sin(w)
-"""
-def rect(r, w, deg=0):          # radian if deg=0; degree if deg=1
-    from math import cos, sin, pi
-    if deg:
-        w = pi * w / 180.0
-    return r * cos(w), r * sin(w)
-
-"""
-Convert from rectangular (x,y) to polar (r,w)
-    r = sqrt(x^2 + y^2)
-    w = arctan(y/x) = [-\pi,\pi] = [-180,180]
-"""
-def polar(x, y, deg=0):         # radian if deg=0; degree if deg=1
-    from math import hypot, atan2, pi
-    if deg:
-        return hypot(x, y), 180.0 * atan2(y, x) / pi
-    else:
-        return hypot(x, y), atan2(y, x)
-
-def cpolar(c, deg = 0):
-  return polar(c.real, c.imag, deg)
+def polar(c):
+  from math import hypot, atan2, pi
+  return hypot(c.real, c.imag), 180.0 * atan2(c.imag, c.real) / pi
 
 if (__name__ == "__main__"):
 
@@ -316,6 +208,7 @@ if (__name__ == "__main__"):
   for S in Structure.Sites: print S
   print
 
+  print "Number of Miller indicies:", len(FcalcDict)
   print "H K L Fcalc"
-  for H in FcalcDict.keys(): print H, "(%.6g, %.3f)" % cpolar(FcalcDict[H], 1)
+  for H in FcalcDict.keys(): print H, "(%.6g, %.3f)" % polar(FcalcDict[H])
   print

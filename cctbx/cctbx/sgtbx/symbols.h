@@ -191,7 +191,7 @@ namespace sgtbx {
           Extension "2": Origin choice 2.<br>
           Extension "H": Hexagonal axes.<br>
           Extension "R": Rhombohedral axes.<br>
-          The extension is '\0' (the null character) otherwise.
+          The extension is '\0' (the null character) otherwise.<br>
           See also: Hermann_Mauguin()
        */
       inline char Extension() const { return m_Extension; }
