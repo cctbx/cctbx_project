@@ -579,12 +579,13 @@ class environment:
     if (not hasattr(self, "_dispatcher_include")):
       self._dispatcher_include = []
       for file_name in os.listdir(self.build_path):
-        if (not os.path.isfile(file_name)): continue
+        path = self.under_build(file_name)
+        if (not os.path.isfile(path)): continue
         if (    file_name.startswith("dispatcher_include")
             and file_name.endswith(".sh")):
-          try: lines = open(file_name).read().splitlines()
+          try: lines = open(path).read().splitlines()
           except IOError, e: raise Sorry(str(e))
-          lines.insert(0, "# included from %s" % file_name)
+          lines.insert(0, "# included from %s" % path)
           highlight_dispatcher_include_lines(lines)
           self._dispatcher_include.extend(lines)
     return self._dispatcher_include
