@@ -178,7 +178,7 @@ namespace cctbx { namespace sgtbx {
 
       //! Rotation part denominator of the Seitz matrices.
       int r_den() const { return smx_[0].r().den(); }
-      //! Translation part denominator the of Seitz matrices.
+      //! Translation part denominator of the Seitz matrices.
       int t_den() const { return smx_[0].t().den(); }
 
       //! Order of the point group = f_inv() * n_smx().
