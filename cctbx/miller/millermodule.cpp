@@ -19,6 +19,7 @@
 #include <cctbx/miller/span.h>
 #include <cctbx/miller/join.h>
 #include <cctbx/miller/expand.h>
+#include <cctbx/miller/bins.h>
 
 namespace {
 
@@ -213,6 +214,33 @@ namespace {
     return jbm.average(sigmas);
   }
 
+  struct binning_
+  {
+    static std::size_t
+    get_j_bin_d_2(binning const& bng, double d_star_sq, double tolerance)
+    {
+      return bng.get_j_bin(d_star_sq, tolerance);
+    }
+
+    static std::size_t
+    get_j_bin_d_1(binning const& bng, double d_star_sq)
+    {
+      return bng.get_j_bin(d_star_sq);
+    }
+
+    static std::size_t
+    get_j_bin_i_2(binning const& bng, Index const& h, double tolerance)
+    {
+      return bng.get_j_bin(h, tolerance);
+    }
+
+    static std::size_t
+    get_j_bin_i_1(binning const& bng, Index const& h)
+    {
+      return bng.get_j_bin(h);
+    }
+  };
+
   void
   py_expand_to_p1_4(
     sgtbx::SpaceGroup const& SgOps,
@@ -325,6 +353,9 @@ namespace {
 
     class_builder<join_bijvoet_mates>
     py_join_bijvoet_mates(this_module, "join_bijvoet_mates");
+
+    class_builder<binning>
+    py_binning(this_module, "binning");
 
     py_IndexTableLayoutAdaptor.declare_base(
       py_SymEquivIndex, python::without_downcast);
@@ -489,6 +520,26 @@ namespace {
     py_join_bijvoet_mates.def(join_bijvoet_mates_additive_sigmas,
                                                 "additive_sigmas");
     py_join_bijvoet_mates.def(join_bijvoet_mates_average, "average");
+
+    py_binning.def(constructor<>());
+    py_binning.def(constructor<
+      uctbx::UnitCell const&, af::shared<Index>,
+      std::size_t, double, double>());
+    py_binning.def(constructor<
+      uctbx::UnitCell const&, af::shared<Index>, std::size_t, double>());
+    py_binning.def(constructor<
+      uctbx::UnitCell const&, af::shared<Index>, std::size_t>());
+    py_binning.def(constructor<
+      uctbx::UnitCell const&, std::size_t, double, double>());
+    py_binning.def(&binning::unit_cell, "unit_cell");
+    py_binning.def(&binning::n_bins, "n_bins");
+    py_binning.def(&binning::d, "d");
+    py_binning.def(&binning::d_min, "d_min");
+    py_binning.def(&binning::limits, "limits");
+    py_binning.def(binning_::get_j_bin_d_2, "get_j_bin");
+    py_binning.def(binning_::get_j_bin_d_2, "get_j_bin");
+    py_binning.def(binning_::get_j_bin_i_2, "get_j_bin");
+    py_binning.def(binning_::get_j_bin_i_2, "get_j_bin");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");

@@ -264,15 +264,32 @@ namespace cctbx { namespace uctbx {
     }
     return result;
   }
+
   double
   UnitCell::max_Q(const af::shared<miller::Index>& MIx) const
   {
     double result = 0;
     for(std::size_t i=0;i<MIx.size();i++) {
-      result = std::max(result, Q(MIx[i]));
+      math::update_max(result, Q(MIx[i]));
     }
     return result;
   }
+
+  af::tiny<double, 2>
+  UnitCell::min_max_Q(const af::shared<miller::Index>& MIx) const
+  {
+    af::tiny<double, 2> result(0, 0);
+    if (MIx.size()) {
+      result.fill(Q(MIx[0]));
+      for(std::size_t i=1;i<MIx.size();i++) {
+        double q = Q(MIx[i]);
+        math::update_min(result[0], q);
+        math::update_max(result[1], q);
+      }
+    }
+    return result;
+  }
+
   af::shared<double>
   UnitCell::stol2(const af::shared<miller::Index>& MIx) const
   {
@@ -283,6 +300,7 @@ namespace cctbx { namespace uctbx {
     }
     return result;
   }
+
   af::shared<double>
   UnitCell::two_stol(const af::shared<miller::Index>& MIx) const
   {
@@ -293,6 +311,7 @@ namespace cctbx { namespace uctbx {
     }
     return result;
   }
+
   af::shared<double>
   UnitCell::stol(const af::shared<miller::Index>& MIx) const
   {
@@ -303,6 +322,7 @@ namespace cctbx { namespace uctbx {
     }
     return result;
   }
+
   af::shared<double>
   UnitCell::d(const af::shared<miller::Index>& MIx) const
   {
@@ -313,6 +333,7 @@ namespace cctbx { namespace uctbx {
     }
     return result;
   }
+
   af::shared<double>
   UnitCell::two_theta(
     af::shared<miller::Index> MIx, double wavelength, bool deg) const

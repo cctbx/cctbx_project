@@ -103,6 +103,7 @@ def run():
     T_N("int", 3),
     T_N("int", 9),
     T_N("long", 3),
+    T_N("double", 2),
     T_N("double", 3),
     T_N("double", 4),
     T_N("double", 6),

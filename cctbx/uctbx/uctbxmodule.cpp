@@ -232,6 +232,7 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   UnitCell_class.def(
     (double (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::max_Q, "max_Q");
+  UnitCell_class.def(&UnitCell::min_max_Q, "min_max_Q");
   UnitCell_class.def(
     (af::shared<double> (UnitCell::*)(const af::shared<miller::Index>&) const)
     &UnitCell::stol2, "stol2");

@@ -12,6 +12,7 @@
 #include <cctbx/miller/asu.h>
 #include <cctbx/miller/build.h>
 #include <cctbx/miller/join.h>
+#include <cctbx/miller/bins.h>
 
 namespace cctbx { namespace miller {
 
@@ -374,6 +375,61 @@ namespace cctbx { namespace miller {
       result.push_back(miller_indices_[pairs_[i][j]]);
     }
     return result;
+  }
+
+  binning::binning(
+    uctbx::UnitCell const& unit_cell,
+    af::shared<Index> miller_indices,
+    std::size_t n_bins,
+    double d_max,
+    double d_min)
+  : unit_cell_(unit_cell)
+  {
+    cctbx_assert(d_max >= 0);
+    cctbx_assert(d_min >= 0);
+    af::tiny<double, 2> min_max_q(0, 0);
+    if (!(d_max || d_min)) {
+      min_max_q = unit_cell.min_max_Q(miller_indices);
+    }
+    if (d_max) min_max_q[0] = 1 / (d_max * d_max);
+    if (d_min) min_max_q[1] = 1 / (d_min * d_min);
+    init_limits(min_max_q[0], min_max_q[1], n_bins);
+  }
+
+  binning::binning(
+    uctbx::UnitCell const& unit_cell,
+    std::size_t n_bins,
+    double d_max,
+    double d_min)
+  : unit_cell_(unit_cell)
+  {
+    cctbx_assert(d_max >= 0);
+    cctbx_assert(d_min >= 0);
+    af::tiny<double, 2> min_max_q(0, 0);
+    if (d_max) min_max_q[0] = 1 / (d_max * d_max);
+    if (d_min) min_max_q[1] = 1 / (d_min * d_min);
+    init_limits(min_max_q[0], min_max_q[1], n_bins);
+  }
+
+  void binning::init_limits(
+    double d_star_sq_min, double d_star_sq_max, std::size_t n_bins)
+  {
+    cctbx_assert(n_bins > 0);
+    cctbx_assert(d_star_sq_max > 0);
+    cctbx_assert(d_star_sq_max > d_star_sq_min);
+    double r_low = std::sqrt(d_star_sq_min);
+    double r_high = std::sqrt(d_star_sq_max);
+    double volume_low = sphere_volume(r_low);
+    double volume_per_bin = (sphere_volume(r_high) - volume_low) / n_bins;
+    limits_.push_back(d_star_sq_min);
+    for(std::size_t i_bin=1;i_bin<n_bins;i_bin++) {
+      double r_sq_i = std::pow(
+        (volume_low + i_bin * volume_per_bin) * 3 / constants::four_pi,
+        2/3.);
+      limits_.push_back(r_sq_i);
+    }
+    limits_.push_back(d_star_sq_max);
+    span_ = d_star_sq_max - d_star_sq_min;
   }
 
 }} // namespace cctbx::miller
