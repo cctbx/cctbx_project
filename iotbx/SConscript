@@ -36,10 +36,9 @@ lib_iotbx_sources = [
 envlm.Prepend(LIBS=["cmtz"])
 envlm.Append(LIBPATH=["#libtbx",])
 
-lib_iotbx_node = envlm.StaticLibrary(
-    target="iotbx",
-    source=lib_iotbx_sources)
-envlm.Install("#libtbx", lib_iotbx_node)
+envlm.StaticLibrary(
+  target="#libtbx/iotbx",
+  source=lib_iotbx_sources)
 
 Export("mtz_env")
 SConscript("mtz/SConscript")

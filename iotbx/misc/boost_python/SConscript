@@ -2,5 +2,6 @@ Import("env_iotbx_boost_python_ext")
 env = env_iotbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
 for ext in ("dtrek_ext", "scalepack_ext"):
-  pyd = env.SharedLibrary(target=ext, source=ext+".cpp")
-  env.Install("#libtbx/iotbx_boost", pyd)
+  env.SharedLibrary(
+    target="#libtbx/iotbx_boost/"+ext,
+    source=ext+".cpp")

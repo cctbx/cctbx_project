@@ -1,7 +1,7 @@
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-pyd = env.SharedLibrary(target="sgtbx_ext", source=[
+env.SharedLibrary(target="#libtbx/cctbx_boost/sgtbx_ext", source=[
   "sgtbx_ext.cpp",
   "brick.cpp",
   "change_of_basis.cpp",
@@ -20,4 +20,3 @@ pyd = env.SharedLibrary(target="sgtbx_ext", source=[
   "tr_vec.cpp",
   "wyckoff.cpp",
 ])
-env.Install("#libtbx/cctbx_boost", pyd)

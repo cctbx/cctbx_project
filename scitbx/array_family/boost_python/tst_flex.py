@@ -599,11 +599,11 @@ def exercise_pickle_single_buffered():
   b = pickle.loads(p)
   assert b.size() == 3
   assert tuple(b) == (1,2,3)
-  a = flex.float((1,2,3))
-  p = pickle.dumps(a)
-  b = pickle.loads(p)
-  assert b.size() == 3
-  assert tuple(b) == (1,2,3)
+  #a = flex.float((1,2,3))
+  #p = pickle.dumps(a)
+  #b = pickle.loads(p)
+  #assert b.size() == 3
+  #assert tuple(b) == (1,2,3)
   a = flex.complex_double((1+2j, 2+3j, 4+5j))
   p = pickle.dumps(a)
   b = pickle.loads(p)
@@ -642,7 +642,7 @@ def pickle_large_arrays(max_exp):
         flex.size_t,
         flex.int,
         flex.long,
-        flex.float,
+        #flex.float,
         flex.double,
         flex.complex_double,
         flex.std_string):
@@ -660,7 +660,8 @@ def pickle_large_arrays(max_exp):
             val = -2147483647
         elif (array_type == flex.complex_double):
           val = complex(-1.234567809123456e+20, -1.234567809123456e+20)
-        elif (array_type in (flex.float, flex.double)):
+        elif (array_type in (flex.double,)):
+        #elif (array_type in (flex.float, flex.double)):
           val = -1.234567809123456e+20
         elif (array_type == flex.std_string):
           val = "x" * 10

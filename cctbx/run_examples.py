@@ -3,7 +3,7 @@ from scitbx import test_utils
 
 def run():
   tst_list = (
-  "$B/examples/getting_started.exe",
+  "$B/examples/getting_started",
   "$D/cctbx/examples/getting_started.py",
   "$D/cctbx/examples/analyze_adp.py",
   ["$D/cctbx/examples/all_axes.py", "P31"],

@@ -8,8 +8,8 @@ env_scitbx_boost_python_ext.Command(
   "#libtbx/scitbx_boost/array_family/__init__.py",
   "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
 
-flex_scitbx_pyd = env_scitbx_boost_python_ext.SharedLibrary(
-  target="flex_scitbx_ext",
+env_scitbx_boost_python_ext.SharedLibrary(
+  target="#libtbx/scitbx_boost/array_family/flex_scitbx_ext",
   source=[
   "flex_scitbx_ext.cpp",
   "flex_grid.cpp",
@@ -29,5 +29,3 @@ flex_scitbx_pyd = env_scitbx_boost_python_ext.SharedLibrary(
   "flex_sort.cpp",
   "flex_histogram.cpp",
 ])
-env_scitbx_boost_python_ext.Install(
-  "#libtbx/scitbx_boost/array_family", flex_scitbx_pyd)
