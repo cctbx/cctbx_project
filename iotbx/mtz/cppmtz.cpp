@@ -55,7 +55,7 @@ bpmtz::Crystal bpmtz::Mtz::getCrystal(const int& xtalid) const{
   return bpmtz::Crystal(CMtz::MtzIxtal(mtz, xtalid));
 }
 
-bpmtz::Crystal bpmtz::Mtz::lookupCrystal(std::string s) const{
+bpmtz::Crystal bpmtz::Mtz::columnToCrystal(std::string s) const{
   af::shared<std::string> cols = this->columns();
   bool foundlabel=false;
   for (int i = 0; i<cols.size(); ++i) {
