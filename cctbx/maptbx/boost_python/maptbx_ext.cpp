@@ -38,14 +38,32 @@ namespace {
 
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)
-        (af::const_ref<float, af::flex_grid<> > const& map,
-         af::flex_grid<> const& result_grid))
-           maptbx::copy);
+        (af::const_ref<float, af::flex_grid<> > const&,
+         af::flex_grid<> const&)) maptbx::copy, (
+      arg_("map"),
+      arg_("result_grid")));
     def("copy",
       (af::versa<double, af::flex_grid<> >(*)
-        (af::const_ref<double, af::flex_grid<> > const& map,
-         af::flex_grid<> const& result_grid))
-           maptbx::copy);
+        (af::const_ref<double, af::flex_grid<> > const&,
+         af::flex_grid<> const&)) maptbx::copy, (
+      arg_("map"),
+      arg_("result_grid")));
+    def("copy",
+      (af::versa<float, af::flex_grid<> >(*)
+        (af::const_ref<float, c_grid_padded_p1<3> > const&,
+         af::int3 const&,
+         af::int3 const&)) maptbx::copy, (
+      arg_("map_unit_cell"),
+      arg_("first"),
+      arg_("last")));
+    def("copy",
+      (af::versa<double, af::flex_grid<> >(*)
+        (af::const_ref<double, c_grid_padded_p1<3> > const&,
+         af::int3 const&,
+         af::int3 const&)) maptbx::copy, (
+      arg_("map_unit_cell"),
+      arg_("first"),
+      arg_("last")));
 
     def("eight_point_interpolation",
       (double(*)
