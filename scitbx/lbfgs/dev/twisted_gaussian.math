@@ -1,0 +1,20 @@
+gauss2D0[x_, y_, s11_, s12_, s22_] :=
+  -Log[(1/Sqrt[4Pi^2(s11 s22 - s12^2)]
+   * Exp[-(s22*x^2 - 2*s12*x*y + s11*y^2)/(2*(s11*s22 - s12^2))])]
+TwistedGauss2D[x_, y_, s11_, s12_, s22_, twist_] :=
+  (a = twist Sqrt[x^2 + y^2];
+    xt = x Cos[a] - y Sin[a];
+    yt = y Cos[a] + x Sin[a];
+    gauss2D0[xt, yt, s11, s12, s22])
+gradx = D[TwistedGauss2D[x, y, s11, s12, s22, twist], x]
+FortranForm[gradx]
+grady = D[TwistedGauss2D[x, y, s11, s12, s22, twist], y]
+FortranForm[grady]
+curvxx = D[gradx,x]
+FortranForm[curvxx]
+curvyy = D[grady,y]
+FortranForm[curvyy]
+curvxy = D[gradx,y]
+FortranForm[curvxy]
+(* Simplify[D[gradx,y]-D[grady,x]] *)
+(* Simplify[curvxy, {x==0,y==0}] *)
