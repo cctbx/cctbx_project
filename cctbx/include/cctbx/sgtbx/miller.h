@@ -291,18 +291,41 @@ namespace cctbx {
             input Miller index to structure factor corresponding to
             operator()(iMate, iList).
          */
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
         template <class FloatType>
         std::complex<FloatType>
+#else
+        inline
+        std::complex<double>
+#endif
         ShiftPhase(
-          int iMate, int iList, const std::complex<FloatType>& F) const;
+          int iMate, int iList,
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
+          const std::complex<FloatType>& F
+#else
+          const std::complex<double>& F
+#endif
+          ) const;
 
         /*! \brief Shift phase of structure factor F corresponding to
             input Miller index to structure factor corresponding to
             operator()(iIL).
          */
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
         template <class FloatType>
         std::complex<FloatType>
-        ShiftPhase(int iIL, const std::complex<FloatType>& F) const;
+#else
+        inline
+        std::complex<double>
+#endif
+        ShiftPhase(
+          int iIL,
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
+          const std::complex<FloatType>& F
+#else
+          const std::complex<double>& F
+#endif
+          ) const;
 
         //! Test if phase phi (in radians) is compatible with restriction.
         /*! The tolerance compensates for rounding errors.<br>
@@ -341,10 +364,21 @@ namespace cctbx {
         iIL_decomposition decompose_iIL(int iIL) const;
     };
 
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
     template <class FloatType>
     std::complex<FloatType>
+#else
+    inline
+    std::complex<double>
+#endif
     SymEquivMillerIndices::ShiftPhase(
-      int iMate, int iList, const std::complex<FloatType>& F) const
+      int iMate, int iList,
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
+      const std::complex<FloatType>& F
+#else
+      const std::complex<double>& F
+#endif
+      ) const
     {
       if (iMate == 0) {
         return m_List[iList].ShiftPhase(F);
@@ -352,10 +386,21 @@ namespace cctbx {
       return std::conj(m_List[iList].ShiftPhase(F));
     }
 
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
     template <class FloatType>
     std::complex<FloatType>
+#else
+    inline
+    std::complex<double>
+#endif
     SymEquivMillerIndices::ShiftPhase(
-      int iIL, const std::complex<FloatType>& F) const
+      int iIL,
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
+      const std::complex<FloatType>& F
+#else
+      const std::complex<double>& F
+#endif
+      ) const
     {
       iIL_decomposition d = decompose_iIL(iIL);
       return ShiftPhase(d.iMate, d.iList, F);
