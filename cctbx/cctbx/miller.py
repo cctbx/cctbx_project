@@ -1091,17 +1091,20 @@ class merge_equivalents:
     assert isinstance(miller_array.data(), flex.double)
     if (miller_array.sigmas() is not None):
       assert isinstance(miller_array.sigmas(), flex.double)
+      sel = (miller_array.sigmas() <= 0) & (miller_array.data() == 0)
+      if (sel.count(0001) > 0):
+        miller_array = miller_array.select(~sel)
     asu_set = set.map_to_asu(miller_array)
     span = index_span(asu_set.indices())
     packed_indices = span.pack(asu_set.indices())
     p = flex.sort_permutation(packed_indices)
     if (miller_array.sigmas() is not None):
-      s_sq = flex.pow2(miller_array.sigmas().select(p))
-      assert flex.min(s_sq) > 0
+      sigmas_squared = flex.pow2(miller_array.sigmas().select(p))
+      assert flex.min(sigmas_squared) > 0
       merge_ext = ext.merge_equivalents(
         asu_set.indices().select(p),
         miller_array.data().select(p),
-        1./s_sq)
+        1./sigmas_squared)
       sigmas = merge_ext.sigmas()
     else:
       merge_ext = ext.merge_equivalents(
