@@ -55,8 +55,35 @@ def int_from_value_words(value_words):
 def float_from_value_words(value_words):
   return number_from_value_words(value_words, float, "Floating-point")
 
+def choice_from_value_words(value_words):
+  result = None
+  for word in value_words:
+    if (word.value.startswith("*")):
+      if (result is not None):
+        raise RuntimeError("Multiple choices where only one is possible%s." %
+          value_words[0].where_str())
+      result = word.value[1:]
+  if (result is None):
+    raise RuntimeError("Unspecified choice%s." % value_words[0].where_str())
+  return result
+
+def multi_choice_from_value_words(value_words):
+  result = []
+  for word in value_words:
+    if (word.value.startswith("*")):
+      result.append(word.value[1:])
+  return result
+
+def unit_cell_from_value_words(value_words):
+  from cctbx import uctbx
+  return uctbx.unit_cell(str_from_value_words(value_words))
+
+def space_group_info_from_value_words(value_words):
+  from cctbx import sgtbx
+  return sgtbx.space_group_info(symbol=str_from_value_words(value_words))
+
 default_definition_type_names = [
-  "bool", "int", "float", "str",
+  "str", "bool", "int", "float",
   "choice", "multi_choice",
   "path", "key",
   "unit_cell", "space_group"]
@@ -65,10 +92,7 @@ def definition_type_from_value_words(value_words, type_names):
   if (len(value_words) == 1):
     word_lower = value_words[0].value.lower()
     if (word_lower == "none"): return None
-    if (word_lower in ["bool", "int", "float", "str",
-                       "choice", "multi_choice",
-                       "path", "key"]):
-      return word_lower
+    if (word_lower in type_names): return word_lower
   assert len(value_words) > 0
   raise RuntimeError(
     'Unexpected definition type: "%s"%s' % (
@@ -199,6 +223,38 @@ class definition:
       if (self.type is None):
         self.type = assignment_if_unknown
 
+  def extract(self, custom_converters=None):
+    if (self.type in ["str", "path", "key"]):
+      return str_from_value_words(self.values)
+    if (self.type == "bool"):
+      return bool_from_value_words(self.values)
+    if (self.type == "int"):
+      return int_from_value_words(self.values)
+    if (self.type == "float"):
+      return float_from_value_words(self.values)
+    if (self.type == "choice"):
+      return choice_from_value_words(self.values)
+    if (self.type == "multi_choice"):
+      return multi_choice_from_value_words(self.values)
+    if (self.type == "unit_cell"):
+      return unit_cell_from_value_words(self.values)
+    if (self.type == "space_group"):
+      return space_group_info_from_value_words(self.values)
+    if (custom_converters is not None):
+      converter = custom_converters.get(self.type, None)
+      if (converter is not None):
+        return converter.process_value_words(self.values)
+    if (self.type is None):
+      raise RuntimeError(
+        'Undefined parameter definition type for values of "%s"%s.' % (
+          self.name, self.values[0].where_str()))
+    raise RuntimeError(
+       ('No converter for parameter definition type "%s"'
+      + ' required for converting values of "%s"%s.') % (
+        self.type, self.name, self.values[0].where_str()))
+
+class scope_class: pass
+
 class scope:
 
   def __init__(self,
@@ -258,6 +314,13 @@ class scope:
     result = []
     for object in self.objects:
       result.extend(object.get(path=path))
+    return result
+
+  def extract(self, custom_converters=None):
+    result = scope_class()
+    for object in self.objects:
+      setattr(result, object.name, object.extract(
+        custom_converters=custom_converters))
     return result
 
 class table:
