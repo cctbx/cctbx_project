@@ -28,6 +28,12 @@ class UserError(Exception):
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
 
+def format_exception():
+  type_, value = sys.exc_info()[:2]
+  type_ = str(type_)
+  if (type_.startswith("exceptions.")): type_ = type_[11:]
+  return "%s: %s" % (type_, str(value))
+
 def date_and_time():
   localtime = time.localtime()
   if (time.daylight and localtime[8] != 0):
@@ -48,3 +54,13 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
     else:
       result += " micro-seconds/tick: %.3f" % ((t[0]+t[1])/python_ticker*1.e6)
   return result
+
+def exercise():
+  try:
+    raise RuntimeError("Trial")
+  except:
+    assert format_exception() == "RuntimeError: Trial"
+  print "OK"
+
+if (__name__ == "__main__"):
+  exercise()
