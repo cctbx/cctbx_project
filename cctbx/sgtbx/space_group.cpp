@@ -219,8 +219,9 @@ namespace cctbx { namespace sgtbx {
     space_group tidy_sg = *this;
     tidy_sg.make_tidy();
     space_group_symbol_iterator symbol_iter;
+    space_group_symbols symbols;
     for (;;) {
-      space_group_symbols symbols = symbol_iter.next();
+      symbols = symbol_iter.next();
       if (symbols.number() == 0) return symbols;
       if (point_group
           != reference_settings::matrix_group_code_table(symbols.number())
