@@ -277,7 +277,7 @@ def generate_unary_apply(array_type_name):
   print """%s
   inline
   %s
-  apply(UnaryOperation op,
+  apply(UnaryOperation const& op,
         %s const& a,
         type_holder<ReturnElementType> result_type_holder) {
     typedef %s return_array_type;""" % (
@@ -301,7 +301,7 @@ def generate_unary_apply(array_type_name):
 %s
   inline
   %s
-  apply(UnaryOperation op,
+  apply(UnaryOperation const& op,
         %s const& a) {
     return apply(op, a, type_holder<typename UnaryOperation::result_type>());
   }
