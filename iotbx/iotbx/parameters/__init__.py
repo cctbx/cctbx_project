@@ -969,9 +969,7 @@ def read_default(
       definition_type_names=None,
       process_includes=True):
   caller_file_name = introspection.caller_location(frames_back=1).file_name
-  assert os.path.isfile(caller_file_name)
-  assert caller_file_name.endswith(".py")
-  params_file_name = caller_file_name[:-3] + params_extension
+  params_file_name = os.path.splitext(caller_file_name)[0] + params_extension
   if (not os.path.isfile(params_file_name)):
     raise RuntimeError("Missing parameter file: %s" % params_file_name)
   return parse(
