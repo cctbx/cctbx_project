@@ -39,14 +39,14 @@ Python wrapper for C++ constructor.
       caasf = wk1995(caasf, 1)
   return ext.scatterer(label, site, u, occupancy, caasf, fp_fdp)
 
-def copy_scatterer(self,
-                   label=None,
-                   site=None,
-                   u=None,
-                   occupancy=None,
-                   caasf=None,
-                   fp_fdp=None):
-  result = self._copy()
+def _scatterer_copy(self,
+                    label=None,
+                    site=None,
+                    u=None,
+                    occupancy=None,
+                    caasf=None,
+                    fp_fdp=None):
+  result = self.raw_copy()
   if (label != None): result.label = label
   if (site != None): result.site = site
   if (u != None): result.u = u
@@ -55,8 +55,7 @@ def copy_scatterer(self,
   if (fp_fdp != None): result.fp_fdp = fp_fdp
   return result
 
-ext.scatterer._copy = ext.scatterer.copy # XXX define as raw_copy to begin with
-ext.scatterer.copy = copy_scatterer
+ext.scatterer.copy = _scatterer_copy
 
 class structure(crystal.special_position_settings):
 
@@ -184,9 +183,7 @@ class structure(crystal.special_position_settings):
       crystal.special_position_settings.change_basis(self, cb_op))
     for scatterer in self.scatterers():
       assert not scatterer.anisotropic_flag, "Not implemented." # XXX
-      new_scatterer = scatterer.copy()
-      new_scatterer.site = cb_op(new_scatterer.site)
-      new_structure.add_scatterer(new_scatterer)
+      new_structure.add_scatterer(scatterer.copy(site=cb_op(scatterer.site)))
     return new_structure
 
   def change_hand(self):
