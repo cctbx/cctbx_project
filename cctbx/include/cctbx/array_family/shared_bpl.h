@@ -53,6 +53,8 @@ namespace cctbx { namespace af {
     shared<ElementType> data_;
   };
 
+  boost::python::ref shared_bool_getstate(shared<bool> const& a);
+  void shared_bool_setstate(shared<bool>& a, boost::python::ref state);
   boost::python::ref shared_int_getstate(shared<int> const& a);
   void shared_int_setstate(shared<int>& a, boost::python::ref state);
   boost::python::ref shared_long_getstate(shared<long> const& a);
@@ -72,6 +74,17 @@ namespace cctbx { namespace af {
   {
     template <typename ClassBuilderType>
     static void def(ClassBuilderType& class_bldr) {}
+  };
+
+  template <>
+  struct shared_pickle<bool>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(shared_bool_getstate, "__getstate__");
+      class_bldr.def(shared_bool_setstate, "__setstate__");
+    }
   };
 
   template <>

@@ -78,6 +78,34 @@ namespace cctbx { namespace af {
       std::size_t a_capacity;
     };
 
+    struct bool_picklers
+    {
+      static
+      boost::python::ref
+      getstate(shared<bool> const& a)
+      {
+        getstate_manager mgr(a.size(), 1);
+        for(std::size_t i=0;i<a.size();i++) {
+          if (a[i]) *mgr.str_end++ = '1';
+          else      *mgr.str_end++ = '0';
+        }
+        return boost::python::ref(mgr.finalize());
+      }
+
+      static
+      void
+      setstate(shared<bool>& a, boost::python::ref state)
+      {
+        setstate_manager mgr(a.size(), state.get());
+        a.reserve(mgr.a_capacity);
+        for(std::size_t i=0;i<mgr.a_capacity;i++) {
+          if (*mgr.str_ptr++ == '1') a.push_back(true);
+          else                       a.push_back(false);
+        }
+        mgr.finalize();
+      }
+    };
+
     template <typename ElementType>
     struct num_picklers
     {
@@ -154,6 +182,16 @@ namespace cctbx { namespace af {
     };
 
   } // namespace <anonymous>
+
+  boost::python::ref shared_bool_getstate(shared<bool> const& a)
+  {
+    return bool_picklers::getstate(a);
+  }
+
+  void shared_bool_setstate(shared<bool>& a, boost::python::ref state)
+  {
+    bool_picklers::setstate(a, state);
+  }
 
   boost::python::ref shared_int_getstate(shared<int> const& a)
   {

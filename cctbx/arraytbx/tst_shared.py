@@ -139,6 +139,12 @@ d = y[0]
 assert abs(d.real - c.real) > 1.e-6
 assert abs(d.imag - c.imag) > 1.e-6
 import pickle
+a = shared.bool((1,0,1))
+p = pickle.dumps(a)
+b = pickle.loads(p)
+assert b.size() == 3
+assert tuple(b) == (1,0,1)
+a = shared.double((1,2,3))
 a = shared.double(())
 p = pickle.dumps(a)
 b = pickle.loads(p)
