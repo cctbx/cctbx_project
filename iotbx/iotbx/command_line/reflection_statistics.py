@@ -119,6 +119,8 @@ class array_cache:
       acentric.setup_binner(n_bins=n_bins)
     else:
       acentric.setup_binner(auto_binning=True)
+      if (acentric.binner().n_bins_used() > 30):
+        acentric.setup_binner(n_bins=30)
     acentric.binner().counts_complete(include_centric=False)
     sm = acentric.second_moment_of_intensities(use_binning=True)
     wr = acentric.wilson_ratio(use_binning=True)
@@ -142,6 +144,8 @@ class array_cache:
       f.setup_binner(n_bins=n_bins)
     else:
       f.setup_binner(auto_binning=True)
+      if (f.binner().n_bins_used() > 30):
+        f.setup_binner(n_bins=30)
     print f.second_moment_of_intensities.__doc__.split()[0]
     f.second_moment_of_intensities(use_binning=True).show()
     print
