@@ -7,6 +7,8 @@
      2003 Apr: Created (R.W. Grosse-Kunstleve)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
