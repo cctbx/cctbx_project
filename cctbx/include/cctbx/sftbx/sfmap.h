@@ -23,6 +23,8 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/miller_asu.h>
 
+#include <cctbx/array_family/simple_io.h> // XXX
+
 #if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
 #include <cctbx/sftbx/xray_scatterer.h>
 #endif
@@ -208,8 +210,11 @@ namespace cctbx { namespace sftbx {
           //Calculate limits of shell search
           cartesian<FloatType> max_d_cart;
           max_d_cart.fill(std::sqrt(max_d_sq));
+          std::cout << "max_d_cart: " << max_d_cart.const_ref() << std::endl;
           fractional<FloatType> max_d_frac = ucell.fractionalize(max_d_cart);
+          std::cout << "max_d_frac: " << max_d_frac.const_ref() << std::endl;
           const grid_point_type& grid_logical = map_.accessor().n_logical();
+          std::cout << "grid_logical: " << grid_logical.const_ref() << std::endl;
           af::int3 shell_limit;
           for(i=0;i<3;i++) {
             //Round number down to nearest integer as you will never "make it"
@@ -217,8 +222,10 @@ namespace cctbx { namespace sftbx {
             shell_limit[i] = int(
               std::floor(max_d_frac[i] * grid_logical[i]) + .5);
           }
+          std::cout << "shell_limit: " << shell_limit.const_ref() << std::endl;
           grid_point_type pivot = detail::calc_nearest_grid_point(
             coor_frac, grid_logical);
+          std::cout << "pivot: " << pivot.const_ref() << std::endl;
           grid_point_type ip;
           fractional<FloatType> d_frac;
           for(ip[0] = -shell_limit[0]; ip[0] <= shell_limit[0]; ip[0]++) {
@@ -228,12 +235,15 @@ namespace cctbx { namespace sftbx {
           for(ip[2] = -shell_limit[2]; ip[2] <= shell_limit[2]; ip[2]++) {
             d_frac[2] = FloatType(ip[2]) / grid_logical[2];
             FloatType d_sq = ucell.Length2(d_frac);
+            std::cout << "d_sq: " << d_sq << std::endl;
             if (d_sq > max_d_sq) continue;
             FloatType rho_d(0);
             for (std::size_t i=0;i<ae.size();i++) {
-              rho_d += ae[i] * exp_table_(-be[i] * d_sq);
+              //rho_d += ae[i] * exp_table_(-be[i] * d_sq);
+              rho_d += ae[i] * std::exp(-be[i] * d_sq);
             }
-            map_(pivot + ip) += rho_d;
+            std::cout << "rho_d: " << rho_d << std::endl;
+            map_(-pivot - ip) += rho_d;
           }}}
         }
       }
@@ -277,17 +287,6 @@ namespace cctbx { namespace sftbx {
       }
   };
 
-  // XXX consolidate this and code from phenix/fast_translation/summations.h
-  // XXX in cctbx/map
-  template <typename IntegerType>
-  inline
-  IntegerType
-  ih_as_h(IntegerType ih, std::size_t n)
-  {
-    if (ih <= n/2) return ih;
-    return ih - n;
-  }
-
   template <typename FloatType,
             typename IndexType>
   std::pair<
@@ -314,15 +313,17 @@ namespace cctbx { namespace sftbx {
     IndexType loop_i;
     std::size_t map_i = 0;
     for(loop_i[0] = 0; loop_i[0] < n_complex[0]; loop_i[0]++) {
-      h[0] = ih_as_h(loop_i[0], n_complex[0]);
+      h[0] = maps::ih_as_h(loop_i[0], n_complex[0]);
       mh[0] = -h[0];
     for(loop_i[1] = 0; loop_i[1] < n_complex[1]; loop_i[1]++) {
-      h[1] = ih_as_h(loop_i[1], n_complex[1]);
+      h[1] = maps::ih_as_h(loop_i[1], n_complex[1]);
       mh[1] = -h[1];
     for(loop_i[2] = 0; loop_i[2] < n_complex[2]; loop_i[2]++, map_i++) {
       h[2] = loop_i[2];
       mh[2] = -h[2];
       if (ucell.Q(h) <= max_q && map_i) {
+        cctbx_assert(loop_i[0] != n_complex[0]/2);
+        cctbx_assert(loop_i[1] != n_complex[1]/2);
         if (asu.isInASU(h)) {
           if (!sginfo.SgOps().isSysAbsent(h)) {
             miller_indices.push_back(h);
@@ -338,6 +339,50 @@ namespace cctbx { namespace sftbx {
       }
     }}}
     return std::make_pair(miller_indices, structure_factors);
+  }
+
+  typedef af::grid<3>::index_type grid_point_type;
+  typedef grid_point_type::value_type grid_point_element_type;
+
+  template <typename nType>
+  grid_point_type
+  h_as_ih_array(const Miller::Index& h, const nType& n)
+  {
+    grid_point_type ih;
+    const bool positive_only[] = {false, false, true};
+    for(std::size_t i=0;i<3;i++) {
+      ih[i] = maps::h_as_ih(h[i], n[i], positive_only[i]);
+    }
+    return ih;
+  }
+
+  template <typename FloatType,
+            typename IndexType>
+  af::versa<std::complex<FloatType>, af::grid<3> >
+  structure_factor_map(
+    const sgtbx::SpaceGroup& sgops,
+    const af::const_ref<Miller::Index>& miller_indices,
+    const af::const_ref<std::complex<FloatType> >& structure_factors,
+    const IndexType& n_complex)
+  {
+    af::versa<std::complex<FloatType>, af::grid<3> > map(n_complex);
+    for(std::size_t i=0;i<miller_indices.size();i++) {
+      sgtbx::SymEquivMillerIndices semi = sgops.getEquivMillerIndices(
+        miller_indices[i]);
+      for(int e=0;e<semi.M(true);e++) {
+        Miller::Index h = semi(e);
+        if (h[2] < 0) continue;
+        grid_point_type ih = h_as_ih_array(h, n_complex);
+        cctbx_assert(ih >= grid_point_element_type(0));
+        map(ih) = semi.ShiftPhase(e, structure_factors(i));
+        if (h[2] == 0 && !semi.isCentric()) {
+          grid_point_type ih = h_as_ih_array(-h, n_complex);
+          cctbx_assert(ih >= grid_point_element_type(0));
+          map(ih) = std::conj(semi.ShiftPhase(e, structure_factors(i)));
+        }
+      }
+    }
+    return map;
   }
 
 }} // namespace cctbx::sftbx

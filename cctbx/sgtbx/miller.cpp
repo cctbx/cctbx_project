@@ -213,15 +213,20 @@ namespace cctbx { namespace sgtbx {
     return m_List[iList].HR().FriedelMate();
   }
 
-  Miller::Index SymEquivMillerIndices::operator()(int iIL) const
+  SymEquivMillerIndices::iIL_decomposition
+  SymEquivMillerIndices::decompose_iIL(int iIL) const
   {
     // iIL = iMate * N + iList
     if (iIL < 0 || iIL >= M(true)) {
       throw error_index();
     }
-    int iList = iIL % N();
-    int iMate = iIL / N();
-    return operator()(iMate, iList);
+    return iIL_decomposition(iIL / N(), iIL % N());
+  }
+
+  Miller::Index SymEquivMillerIndices::operator()(int iIL) const
+  {
+    iIL_decomposition d = decompose_iIL(iIL);
+    return operator()(d.iMate, d.iList);
   }
 
 }} // namespace cctbx::sgtbx

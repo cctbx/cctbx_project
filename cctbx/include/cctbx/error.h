@@ -22,12 +22,10 @@
 
 #if 0
 #include <iostream>
-#define CheckPoint std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
-#if 0
 using std::cout;
 using std::endl;
 #endif
-#endif
+#define CheckPoint std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
 
 //! Common cctbx namespace.
 namespace cctbx {
