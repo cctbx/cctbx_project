@@ -25,7 +25,9 @@ namespace {
       using namespace boost::python;
       class_<w_t>("fast_triplets", no_init)
         .def(init<sgtbx::space_group_type const&,
-                  af::const_ref<miller::index<> > const&>())
+                  af::const_ref<miller::index<> > const&,
+                  optional<bool> >())
+        .def("sigma_2_only", &w_t::sigma_2_only)
         .def("number_of_weighted_triplets", &w_t::number_of_weighted_triplets)
         .def("total_number_of_triplets", &w_t::total_number_of_triplets)
         .def("average_number_of_triplets_per_reflection",
