@@ -512,6 +512,11 @@ double mlhl_target_one_h(double fo,
   double B = abcd.b();
   double C = abcd.c();
   double D = abcd.d();
+  ////////////////////
+  //if(A < small && B < small && C < small & D < small) {
+  //   return maximum_likelihood_target_one_h(fo,fc,alpha,beta,k,epsilon,cf);
+  //}
+  ////////////////////
 
   // acentric reflection
   if(cf == 0) {
@@ -521,6 +526,9 @@ double mlhl_target_one_h(double fo,
      // calculate target analytically
      if((std::abs(C) < small) && (std::abs(D) < small)) {
         double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
+        if(std::abs(A) < small && std::abs(B) < small) {
+           val = arg;
+        }
         target = scitbx::math::bessel::ln_of_i0(val);
      }
      // calculate target numerically
@@ -543,14 +551,22 @@ double mlhl_target_one_h(double fo,
        target = std::log(target) + maxv;
      }
      target = (fo*fo+alpha*alpha*fc*fc)/(beta*epsilon) - target;
+     double t1 = -std::log( 2. * fo / (beta*epsilon) );
+     target = target + t1;
   }
   // centric reflection
   if(cf == 1) {
      double var = beta*epsilon;
-     double arg = A*std::cos(pc) + B*std::sin(pc) + fo*alpha*fc/var;
+     double arg = fo*alpha*fc/var;
+     if((std::abs(A) > small) && (std::abs(B) > small)) {
+        arg += A*std::cos(pc) + B*std::sin(pc);
+     }
      double mabsarg = -std::abs(arg);
      target = (fo*fo + alpha*alpha*fc*fc)/(2.0*var) + mabsarg -
               std::log((1.0 + std::exp(2.0*mabsarg))/2.0);
+     double Pi = scitbx::constants::pi;
+     double t1 = -0.5 * std::log(2. / (Pi * var));
+     target = target + t1;
   }
   return target;
 }
@@ -570,10 +586,11 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
                                   cctbx::hendrickson_lattman<double> abcd,
                                   std::vector<af::tiny<double, 4> > cos_sin_table,
                                   int n_steps,
-                                  double step_for_integration)
+                                  double step_for_integration,
+                                  std::complex<double> fc_complex)
 {
   double small = 1.e-9;
-  CCTBX_ASSERT( (cf == 1 || cf == 0) && (beta > 0.) && (epsilon > 0) );
+  CCTBX_ASSERT( (cf == 1 || cf == 0) && (epsilon > 0) );
   CCTBX_ASSERT( fo >= 0 && fc >= 0 );
   //CCTBX_ASSERT( alpha >= 0. );
   //CCTBX_ASSERT( beta > 0. );
@@ -590,6 +607,14 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
   double D = abcd.d();
   double derfc = 0.0;
   double derpc = 0.0;
+
+  ////////////////////
+  //if(A < small && B < small && C < small & D < small) {
+  //   return d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
+  //}
+  ////////////////////
+
+
   // acentric reflection
   if(cf == 0) {
      double arg = 2.0*alpha*fo/(beta*epsilon);
@@ -658,6 +683,14 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
      double d2 = derfc*bc + derpc*ac/fc;
      d_target_over_fc = std::complex<double> (d1,d2)/fc;
   }
+  //std::cout<<A<<" "<<B<<" "<<C<<" "<<D<<" "<<alpha<<" "<<beta<<" "<<std::conj(d_target_over_fc)<<std::endl;
+
+  ////////////////////
+  //if(A < small && B < small && C < small & D < small) {
+  //   std::cout<<d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf)<<" "<<std::conj(d_target_over_fc)<<std::endl;
+  //}
+  ////////////////////
+
   return std::conj(d_target_over_fc);
 }
 
@@ -775,7 +808,8 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
                                   abcd[i_h],
                                   cos_sin_table,
                                   n_steps,
-                                  step_for_integration);
+                                  step_for_integration,
+                                  fcalc[i_h]);
       }
     } // end loop over reflections
   }
