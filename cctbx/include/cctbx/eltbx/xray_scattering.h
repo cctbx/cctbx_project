@@ -87,7 +87,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       gaussian(
         af::small<float, max_n_ab> const& a,
         af::small<float, max_n_ab> const& b,
-        float c)
+        float c=0)
       :
         a_(a),
         b_(b),

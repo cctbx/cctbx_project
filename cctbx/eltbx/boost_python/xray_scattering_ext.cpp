@@ -31,7 +31,7 @@ namespace {
         .def(init<float>())
         .def(init<af::small<float, w_t::max_n_ab> const&,
                   af::small<float, w_t::max_n_ab> const&,
-                  float>())
+                  optional<float> >())
         .def("n_ab", &w_t::n_ab)
         .def("a", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
           &w_t::a, ccr())
@@ -44,6 +44,7 @@ namespace {
         .def("at_d_star_sq", &w_t::at_d_star_sq)
         .def("gradient_at_d_star", &w_t::gradient_at_d_star)
         .def("integral_at_d_star", &w_t::integral_at_d_star)
+        .def("gradients_at_d_star_sq", &w_t::gradients_at_d_star_sq)
         .def_pickle(gaussian_wrappers())
       ;
     }
@@ -72,6 +73,7 @@ namespace {
         .def("at_d_star_sq", &w_t::at_d_star_sq)
         .def("gradient_at_d_star", &w_t::gradient_at_d_star)
         .def("integral_at_d_star", &w_t::integral_at_d_star)
+        .def("gradients_at_d_star_sq", &w_t::gradients_at_d_star_sq)
       ;
     }
   };
