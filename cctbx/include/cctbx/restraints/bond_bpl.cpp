@@ -97,9 +97,9 @@ namespace {
     }
   };
 
-  struct bond_sorted_proxies_wrappers
+  struct bond_sorted_asu_proxies_wrappers
   {
-    typedef bond_sorted_proxies w_t;
+    typedef bond_sorted_asu_proxies w_t;
 
     static void
     wrap()
@@ -107,7 +107,7 @@ namespace {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("bond_sorted_proxies", no_init)
+      class_<w_t>("bond_sorted_asu_proxies", no_init)
         .def(init<
           boost::shared_ptr<direct_space_asu::asu_mappings<> > const&>(
             (arg_("asu_mappings"))))
@@ -121,8 +121,8 @@ namespace {
           (void(w_t::*)(bond_asu_proxy const&)) &w_t::push_back,
             (arg_("proxy")))
         .def("n_total", &w_t::n_total)
-        .def_readonly("proxies", &w_t::proxies)
-        .def_readonly("sym_proxies", &w_t::sym_proxies)
+        .def_readonly("simple", &w_t::simple)
+        .def_readonly("sym", &w_t::sym)
       ;
     }
   };
@@ -140,7 +140,7 @@ namespace {
     bond_simple_proxy_wrappers::wrap();
     bond_asu_proxy_wrappers::wrap();
     bond_wrappers::wrap();
-    bond_sorted_proxies_wrappers::wrap();
+    bond_sorted_asu_proxies_wrappers::wrap();
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -190,12 +190,12 @@ namespace {
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        bond_sorted_proxies const&,
+        bond_sorted_asu_proxies const&,
         af::ref<scitbx::vec3<double> > const&,
         bool)) bond_residual_sum,
       bond_residual_sum_overloads_2((
         arg_("sites_cart"),
-        arg_("sorted_proxies"),
+        arg_("sorted_asu_proxies"),
         arg_("gradient_array"),
         arg_("disable_cache")=false)));
     def("bond_sets", bond_sets,

@@ -2,7 +2,7 @@
 #define CCTBX_RESTRAINTS_REPULSION_H
 
 #include <cctbx/restraints/asu_cache.h>
-#include <cctbx/restraints/sorted_proxies.h>
+#include <cctbx/restraints/sorted_asu_proxies.h>
 
 namespace cctbx { namespace restraints {
 
@@ -393,28 +393,28 @@ namespace cctbx { namespace restraints {
       disable_cache);
   }
 
-  typedef sorted_proxies<repulsion_simple_proxy, repulsion_asu_proxy>
-    repulsion_sorted_proxies;
+  typedef sorted_asu_proxies<repulsion_simple_proxy, repulsion_asu_proxy>
+    repulsion_sorted_asu_proxies;
 
   inline
   double
   repulsion_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    repulsion_sorted_proxies const& sorted_proxies,
+    repulsion_sorted_asu_proxies const& sorted_asu_proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     repulsion_function const& function=repulsion_function(),
     bool disable_cache=false)
   {
     double result = repulsion_residual_sum(
       sites_cart,
-      sorted_proxies.proxies.const_ref(),
+      sorted_asu_proxies.simple.const_ref(),
       gradient_array,
       function);
     result += repulsion_residual_sum(
       sites_cart,
-      *sorted_proxies.asu_mappings(),
-      sorted_proxies.sym_proxies.const_ref(),
-      sorted_proxies.sym_active_flags,
+      *sorted_asu_proxies.asu_mappings(),
+      sorted_asu_proxies.sym.const_ref(),
+      sorted_asu_proxies.sym_active_flags,
       gradient_array,
       function,
       disable_cache);
