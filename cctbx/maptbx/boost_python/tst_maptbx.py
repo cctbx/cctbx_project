@@ -165,12 +165,21 @@ def exercise_gridding():
   assert maptbx.ext.determine_gridding(u, 2, 1/3., f, t, 5, 0001) \
       == (12, 12, 12)
 
+def exercise_misc():
+  for flex_type in flex_types():
+    m = flex_type([1,2,-3,4,-5,6])
+    maptbx.set_if_less_than(m, 0, 0)
+    assert approx_equal(tuple(m), (1,2,0,4,0,6))
+    maptbx.set_if_less_than(m, 2, 9)
+    assert approx_equal(tuple(m), (9,2,9,4,9,6))
+
 def run():
   exercise_copy()
   exercise_statistics()
   exercise_symmetry_flags()
   exercise_grid_tags()
   exercise_gridding()
+  exercise_misc()
   exercise_peak_search()
   exercise_pymol_interface()
   exercise_structure_factors()
