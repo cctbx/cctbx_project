@@ -395,7 +395,7 @@ namespace cctbx {
   }
 
   //! Coefficients used in anisotropic Debye-Waller factor calculation.
-  /*! Useful for computing partial derivatives w.r.t. u_star.
+  /*! Useful for computing partial gradients w.r.t. u_star.
       <p>
       Not available in Python.
    */
@@ -444,6 +444,92 @@ namespace cctbx {
     sym_mat3<FloatType> const& u_cart)
   {
     return debye_waller_factor_u_star(h, u_cart_as_u_star(unit_cell, u_cart));
+  }
+
+  namespace detail {
+
+    /* Mathematica script used to determine the transformation law:
+         SetOptions["stdout", PageWidth -> 50]
+         us={{s00,s01,s02},{s01,s11,s12},{s02,s12,s22}}
+         hs={hs0,hs1,hs2}
+         fs=Exp[cb hs.us.hs]
+         gs={{D[fs,s00],D[fs,s01],D[fs,s02]},
+             {D[fs,s01],D[fs,s11],D[fs,s12]},
+             {D[fs,s02],D[fs,s12],D[fs,s22]}}/fs
+         uc={{c00,c01,c02},{c01,c11,c12},{c02,c12,c22}}
+         hc={hc0,hc1,hc2}
+         fc=Exp[cb hc.uc.hc]
+         gc={{D[fc,c00],D[fc,c01],D[fc,c02]},
+             {D[fc,c01],D[fc,c11],D[fc,c12]},
+             {D[fc,c02],D[fc,c12],D[fc,c22]}}/fc
+         a={{a00,a01,a02},
+            {a10,a11,a12},
+            {a20,a21,a22}}
+         hc=Transpose[a].hs
+         hc0=hc[[1]]
+         hc1=hc[[2]]
+         hc2=hc[[3]]
+         FullSimplify[gs]
+         gcs=Expand[Expand[FullSimplify[gc]]
+           /. cb hs0^2 -> g00
+           /. cb hs1^2 -> g11
+           /. cb hs2^2 -> g22
+           /. cb hs0 hs1 -> g01/2
+           /. cb hs0 hs2 -> g02/2
+           /. cb hs1 hs2 -> g12/2]
+         InputForm[gcs[[1,1]]]
+         InputForm[gcs[[2,2]]]
+         InputForm[gcs[[3,3]]]
+         InputForm[gcs[[1,2]]]
+         InputForm[gcs[[1,3]]]
+         InputForm[gcs[[2,3]]]
+     */
+    template <typename FloatType>
+    inline sym_mat3<FloatType>
+    grad_u_transform(
+      mat3<FloatType> const& a,
+      sym_mat3<FloatType> const& g)
+    {
+      return sym_mat3<FloatType>(
+          a[0]*a[0]*g[0] + a[0]*a[3]*g[3] + a[0]*a[6]*g[4]
+        + a[3]*a[3]*g[1] + a[3]*a[6]*g[5] + a[6]*a[6]*g[2],
+          a[1]*a[1]*g[0] + a[1]*a[4]*g[3] + a[1]*a[7]*g[4]
+        + a[4]*a[4]*g[1] + a[4]*a[7]*g[5] + a[7]*a[7]*g[2],
+          a[2]*a[2]*g[0] + a[2]*a[5]*g[3] + a[2]*a[8]*g[4]
+        + a[5]*a[5]*g[1] + a[5]*a[8]*g[5] + a[8]*a[8]*g[2],
+          2*a[0]*a[1]*g[0] + a[1]*a[3]*g[3] +   a[0]*a[4]*g[3]
+        +   a[1]*a[6]*g[4] + a[0]*a[7]*g[4] + 2*a[3]*a[4]*g[1]
+        +   a[4]*a[6]*g[5] + a[3]*a[7]*g[5] + 2*a[6]*a[7]*g[2],
+          2*a[0]*a[2]*g[0] + a[2]*a[3]*g[3] +   a[0]*a[5]*g[3]
+        +   a[2]*a[6]*g[4] + a[0]*a[8]*g[4] + 2*a[3]*a[5]*g[1]
+        +   a[5]*a[6]*g[5] + a[3]*a[8]*g[5] + 2*a[6]*a[8]*g[2],
+          2*a[1]*a[2]*g[0] + a[2]*a[4]*g[3] +   a[1]*a[5]*g[3]
+        +   a[2]*a[7]*g[4] + a[1]*a[8]*g[4] + 2*a[4]*a[5]*g[1]
+        +   a[5]*a[7]*g[5] + a[4]*a[8]*g[5] + 2*a[7]*a[8]*g[2]);
+    }
+
+  } // namespace detail
+
+  //! Transformation of gradients w.r.t. u_star to gradients w.r.t. u_cart.
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  grad_u_star_as_u_cart(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& grad_u_star)
+  {
+    return detail::grad_u_transform(
+      unit_cell.fractionalization_matrix(), grad_u_star);
+  }
+
+  //! Transformation of gradients w.r.t. u_cart to gradients w.r.t. u_star.
+  template <typename FloatType>
+  inline sym_mat3<FloatType>
+  grad_u_cart_as_u_star(
+    uctbx::unit_cell const& unit_cell,
+    sym_mat3<FloatType> const& grad_u_cart)
+  {
+    return detail::grad_u_transform(
+      unit_cell.orthogonalization_matrix(), grad_u_cart);
   }
 
   namespace detail {

@@ -486,6 +486,12 @@ def u_star(structure_ideal, d_min):
              dp=dps[ij], lifchitz=00000)
     maps.append(map)
   for i_scatterer in (0,1,2):
+    sfd_star = [x*sum_f_obs_sq/2 for x in sfd.d_target_d_u_star()[i_scatterer]]
+    sfd_cart = adptbx.grad_u_star_as_u_cart(
+      structure_ideal.unit_cell(), sfd_star)
+    assert approx_equal(
+      sfd_star,
+      adptbx.grad_u_cart_as_u_star(structure_ideal.unit_cell(), sfd_cart))
     for ij in xrange(6):
       delta = 1.e-6
       pl = two_p_shifted_u_star(
@@ -517,6 +523,7 @@ def u_star(structure_ideal, d_min):
             map0.grad_u_01, map0.grad_u_02, map0.grad_u_12)[ij]()[i_scatterer]
       print " m0[%d][%d]: " % (i_scatterer, ij), gl
       print " gc[%d][%d]: " % (i_scatterer, ij), gc
+      print "s2c[%d][%d]: " % (i_scatterer, ij), sfd_cart[ij]
       print
 
 def run(n_elements=3, volume_per_atom=1000, d_min=2):
@@ -528,18 +535,25 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
     random_f_prime_d_min=0,
     random_f_double_prime=00000,
     anisotropic_flag=anisotropic_flag,
-    random_u_iso=00000,
+    random_u_iso=0000,
     u_iso=0.2,
+    random_u_cart_scale=.1,
     random_occupancy=00000)
   if (0):
     a = structure_ideal.unit_cell().volume()**(1/3.)
     structure_ideal = xray.structure(
       special_position_settings=crystal.special_position_settings(
         crystal_symmetry=crystal.symmetry(
-          unit_cell=(1.3*a,a,0.7*a,90,90,90),
+          unit_cell=(1.3*a,a,a/1.3,90,90,90),
           space_group_symbol="P 1")),
       scatterers=structure_ideal.scatterers())
   structure_ideal.show_summary().show_scatterers()
+  uc = structure_ideal.unit_cell()
+  print "volume:", uc.volume()
+  if (anisotropic_flag):
+    for scatterer in structure_ideal.scatterers():
+      print "u_iso:", adptbx.u_star_as_u_iso(
+        structure_ideal.unit_cell(), scatterer.u_star)
   print
   if (1):
     print "site"

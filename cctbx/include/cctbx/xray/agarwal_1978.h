@@ -536,15 +536,14 @@ namespace cctbx { namespace xray {
           grad_u_iso_.push_back(gr_u_iso);
         }
         else {
-          //scitbx::sym_mat3<FloatType>
-          //  gr_u_star = gr_u_cart.tensor_transform(
-          //    unit_cell_.orthogonalization_matrix());
-          grad_u_00_.push_back(gr_u_cart[0]);
-          grad_u_11_.push_back(gr_u_cart[1]);
-          grad_u_22_.push_back(gr_u_cart[2]);
-          grad_u_01_.push_back(gr_u_cart[3]);
-          grad_u_02_.push_back(gr_u_cart[4]);
-          grad_u_12_.push_back(gr_u_cart[5]);
+          scitbx::sym_mat3<FloatType>
+            gr_u_star = adptbx::grad_u_cart_as_u_star(unit_cell_, gr_u_cart);
+          grad_u_00_.push_back(gr_u_star[0]);
+          grad_u_11_.push_back(gr_u_star[1]);
+          grad_u_22_.push_back(gr_u_star[2]);
+          grad_u_01_.push_back(gr_u_star[3]);
+          grad_u_02_.push_back(gr_u_star[4]);
+          grad_u_12_.push_back(gr_u_star[5]);
         }
         grad_occupancy_.push_back(gr_occupancy);
       }
