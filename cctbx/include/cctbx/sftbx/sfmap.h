@@ -15,7 +15,6 @@
 
 #include <vector>
 #include <cctbx/error.h>
-#include <cctbx/array_family/small.h>
 #include <cctbx/array_family/versa.h>
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/maps/accessors.h>
@@ -23,8 +22,6 @@
 #include <cctbx/maps/sym_tags.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/miller_asu.h>
-
-#include <cctbx/array_family/simple_io.h> // XXX
 
 #if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
 #include <cctbx/sftbx/xray_scatterer.h>
@@ -38,7 +35,7 @@ namespace cctbx { namespace sftbx {
     typedef accessor_type::index_type grid_point_type;
     typedef grid_point_type::value_type grid_point_element_type;
 
-  } // namespace detail
+  }
 
   //! Artificial temperature factor for the treatment of aliasing problems.
   /*! Reference:
@@ -131,34 +128,76 @@ namespace cctbx { namespace sftbx {
       }
     }
 
+    template <typename FloatType,
+              typename CaasfType>
+    class caasf_fourier_transformed
+    {
+      public:
+        caasf_fourier_transformed(
+          const CaasfType& caasf,
+          const FloatType& w,
+          const FloatType& u_incl_extra)
+        {
+          using constants::four_pi;
+          using constants::four_pi_sq;
+          FloatType b_incl_extra = adptbx::U_as_B(u_incl_extra);
+          std::size_t i = 0;
+          for(;i<caasf.n_ab();i++) {
+            FloatType b_i_b_incl_extra = caasf.b(i) + b_incl_extra;
+            FloatType f = std::pow(four_pi / b_i_b_incl_extra, 1.5);
+            a_[i] = w * caasf.a(i) * f;
+            b_[i] = -four_pi_sq / b_i_b_incl_extra;
+          }
+          FloatType f = std::pow(four_pi / b_incl_extra, 1.5);
+          a_[i] = w * caasf.c() * f;
+          b_[i] = -four_pi_sq / b_incl_extra;
+        }
+
+        FloatType rho0() const
+        {
+          return af::sum(a_.const_ref());
+        }
+
+        FloatType
+        rho(exponent_table<FloatType>& exp_table,
+            const FloatType& d_sq) const
+        {
+          FloatType r(0);
+          for (std::size_t i=0;i<a_.size();i++) {
+            r += a_[i] * exp_table(b_[i] * d_sq);
+          }
+          return r;
+        }
+
+      private:
+        af::tiny<FloatType, CaasfType::n_plus_1> a_;
+        af::tiny<FloatType, CaasfType::n_plus_1> b_;
+    };
+
     template <typename FloatType>
     struct calc_shell
     {
       sfmap::grid_point_type radii;
       FloatType max_d_sq;
 
+      template <typename CaasfType>
       calc_shell(
         const uctbx::UnitCell& ucell,
         const FloatType& wing_cutoff,
         const sfmap::grid_point_type& grid_n,
-        const af::small<FloatType, 6>& ae,
-        const af::small<FloatType, 6>& be,
+        const caasf_fourier_transformed<FloatType, CaasfType>& caasf_ft,
         exponent_table<FloatType>& exp_table)
         : max_d_sq(0)
       {
         af::tiny<FloatType, 3> grid_n_f = grid_n;
-        FloatType rho_cutoff = af::sum(ae.const_ref()) * wing_cutoff;
+        FloatType rho_cutoff = caasf_ft.rho0() * wing_cutoff;
         for(std::size_t i_basis_vec=0;i_basis_vec<3;i_basis_vec++) {
           sfmap::grid_point_element_type ig;
           for (ig = 1; ig < grid_n[i_basis_vec]; ig++) {
             fractional<FloatType> d_frac(0,0,0);
             d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
             FloatType d_sq = ucell.Length2(d_frac);
-            FloatType rho_g = 0;
-            for (std::size_t i=0;i<ae.size();i++) {
-              rho_g += ae[i] * exp_table(be[i] * d_sq);
-            }
-            if (rho_g < rho_cutoff) {
+            if (caasf_ft.rho(exp_table, d_sq) < rho_cutoff) {
               break;
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;
@@ -257,9 +296,10 @@ namespace cctbx { namespace sftbx {
         if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
           throw error(
             "Fatal Programming Error:"
-            " Function is hand-optimized for orthogonalization matrix according"
-            " to the PDB convention. The orthogonalization matrix passed is"
-            " not compatible with this convention.");
+            " Real-space sampling of model electron density"
+            " is hand-optimized for orthogonalization matrix"
+            " according to the PDB convention. The orthogonalization"
+            " matrix passed is not compatible with this convention.");
         }
         for(
 #if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
@@ -269,30 +309,22 @@ namespace cctbx { namespace sftbx {
 #endif
             site=sites.begin();site!=sites.end();site++)
         {
-          using constants::four_pi;
-          using constants::four_pi_sq;
+#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
+          typedef typename XrayScattererType::caasf_type::base_type caasf_type;
+#else
+          typedef typename sftbx::XrayScatterer<
+            double, eltbx::CAASF_WK1995>::caasf_type::base_type caasf_type;
+#endif
           if (site->w() == 0) continue;
           cctbx_assert(site->fpfdp().imag() == 0);
           cctbx_assert(!site->isAnisotropic());
           const fractional<FloatType>& coor_frac = site->Coordinates();
-          FloatType b_incl_extra = adptbx::U_as_B(site->Uiso() + u_extra_);
-          // Calculate reciprocal space "form factors"
-          af::small<FloatType, 6> ae;
-          af::small<FloatType, 6> be;
-          std::size_t i;
-          for(i=0;i<site->CAASF().n_ab();i++) {
-            FloatType b_i_b_incl_extra = site->CAASF().b(i) + b_incl_extra;
-            FloatType f = std::pow(four_pi / b_i_b_incl_extra, 1.5);
-            ae.push_back(site->w() * site->CAASF().a(i) * f);
-            be.push_back(-four_pi_sq / b_i_b_incl_extra);
-          }
-          FloatType f = std::pow(four_pi / b_incl_extra, 1.5);
-          ae.push_back(site->w() * site->CAASF().c() * f);
-          be.push_back(-four_pi_sq / b_incl_extra);
+          detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
+            site->CAASF(), site->w(), site->Uiso() + u_extra_);
           const sfmap::grid_point_type& grid_nl = map_.accessor().n_logical();
           const sfmap::grid_point_type& grid_np = map_.accessor().n_physical();
           detail::calc_shell<FloatType> shell(
-            ucell_, wing_cutoff_, grid_nl, ae, be, exp_table);
+            ucell_, wing_cutoff_, grid_nl, caasf_ft, exp_table);
           detail::array_update_max(max_shell_radii_, shell.radii);
           sfmap::grid_point_type pivot = detail::calc_nearest_grid_point(
             coor_frac, grid_nl);
@@ -320,11 +352,8 @@ namespace cctbx { namespace sftbx {
             c22 = orth_mx[8] * f2;
             FloatType d_sq = c02*c02 + c12*c12 + c22*c22;
             if (d_sq > shell.max_d_sq) continue;
-            FloatType rho_g(0);
-            for (std::size_t i=0;i<ae.size();i++) {
-              rho_g += ae[i] * exp_table(be[i] * d_sq);
-            }
-            map_begin[g0112 + detail::mod_positive(gp[2],grid_nl[2])] += rho_g;
+            map_begin[g0112 + detail::mod_positive(gp[2],grid_nl[2])]
+             += caasf_ft.rho(exp_table, d_sq);
           }}}
         }
         exp_table_size_ = exp_table.table().size();
@@ -490,4 +519,4 @@ namespace cctbx { namespace sftbx {
 
 }} // namespace cctbx::sftbx
 
-#endif // CCTBX_XRAY_SCATTERER_H
+#endif // CCTBX_SFMAP_H

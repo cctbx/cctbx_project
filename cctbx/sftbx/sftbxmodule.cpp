@@ -676,6 +676,9 @@ namespace {
       &sftbx::sampled_model_density<double>::exp_table_size,
                                             "exp_table_size");
     py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::max_shell_radii,
+                                            "max_shell_radii");
+    py_sampled_model_density.def(
       sampled_model_density_map_as_shared,
                            "map_as_shared");
     py_sampled_model_density.def(
