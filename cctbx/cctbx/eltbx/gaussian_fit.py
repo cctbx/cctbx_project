@@ -44,7 +44,6 @@ class minimize:
 
   def __init__(self, fit_object, target_power,
                      use_sigmas=00000,
-                     b_min=-1,
                      enforce_positive_b=0001,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=lbfgs.core_parameters(m=7)):
@@ -63,40 +62,18 @@ class minimize:
     self.final_fit_object = self.fit_object_shifted
 
   def apply_shifts(self):
-    if (not self.enforce_positive_b):
-      shifts = self.x
-    else:
-      n_ab = self.fit_object.n_ab()
-      b = flex.double(self.fit_object.b())
-      assert flex.min(b) >= 0
-      sqrt_b = flex.sqrt(b)
-      shifts_sqrt_b = self.x[n_ab:]
-      sqrt_b_shifted = sqrt_b + shifts_sqrt_b
-      b_shifted = flex.pow2(sqrt_b_shifted)
-      shifts_b = b_shifted - b
-      shifts = self.x[:n_ab]
-      shifts.append(shifts_b)
-      assert min(self.fit_object.b()) >= 0
     self.fit_object_shifted = self.fit_object.apply_shifts(
-      shifts, self.b_min)
+      self.x, self.enforce_positive_b)
 
   def compute_target(self, compute_gradients):
     differences = self.fit_object_shifted.differences()
-    self.f = self.fit_object.target_function(
+    self.f = self.fit_object_shifted.target_function(
       self.target_power, self.use_sigmas, differences)
     if (compute_gradients):
-      self.g = self.fit_object_shifted.gradients(
+      self.g = self.fit_object_shifted.gradients_w_r_t_abc(
         self.target_power, self.use_sigmas, differences, 00000)
       if (self.enforce_positive_b):
-        n_ab = self.fit_object.n_ab()
-        b = flex.double(self.fit_object.b())
-        assert flex.min(b) >= 0
-        sqrt_b = flex.sqrt(b)
-        shifts_sqrt_b = self.x[n_ab:]
-        d_b_d_shift = (sqrt_b + shifts_sqrt_b) * 2
-        g_shifts_sqrt_b = self.g[n_ab:] * d_b_d_shift
-        self.g = self.g[:n_ab]
-        self.g.append(g_shifts_sqrt_b)
+        self.g = self.fit_object.gradients_w_r_t_shifts(self.x, self.g)
     else:
       self.g = None
 
@@ -164,7 +141,8 @@ def get_significant_relative_errors(fit_object):
 class find_max_stol:
 
   def __init__(self, fit_object, target_power, n_repeats_minimization,
-                     max_max_error):
+                     max_max_error,
+                     b_min=-1):
     self.min = None
     self.max_error = None
     stols = fit_object.stols()
@@ -193,13 +171,13 @@ class find_max_stol:
         minimized = minimize(
           fit_object=min_fit_object,
           target_power=target_power)
-        if (min(minimized.final_fit_object.b()) <= minimized.b_min):
+        if (min(minimized.final_fit_object.b()) < b_min):
           break
         min_fit_object = minimized.final_fit_object
       max_error = flex.max(get_significant_relative_errors(
         fit_object=minimized.final_fit_object))
       if (    max_error > max_max_error
-          or min(minimized.final_fit_object.b()) <= minimized.b_min):
+          or min(minimized.final_fit_object.b()) < b_min):
         if (good_n_points != 0):
           break
         i_stol_high = n_points - 1

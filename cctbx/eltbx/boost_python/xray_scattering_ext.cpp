@@ -79,7 +79,8 @@ namespace {
         .def("differences", &w_t::differences)
         .def("apply_shifts", &w_t::apply_shifts)
         .def("target_function", &w_t::target_function)
-        .def("gradients", &w_t::gradients)
+        .def("gradients_w_r_t_abc", &w_t::gradients_w_r_t_abc)
+        .def("gradients_w_r_t_shifts", &w_t::gradients_w_r_t_shifts)
       ;
     }
   };
