@@ -119,21 +119,6 @@ namespace cctbx { namespace miller {
     previous_ = next_under_friedel_symmetry();
     if (previous_.is_zero()) return previous_;
     next_is_minus_previous_ = !phase_info_.is_centric();
-    if (next_is_minus_previous_ && 143 <= sg_type_.number()
-                                       && sg_type_.number() <= 167) {
-      // For trigonal space groups it has to be checked if a symmetrically
-      // equivalent index of the Friedel opposite is in the ASU.
-      sgtbx::space_group const& sg = sg_type_.group();
-      CCTBX_ASSERT(!sg.is_centric());
-      index<> minus_h = -previous_;
-      for(std::size_t i=0;i<sg.n_smx();i++) {
-        index<> minus_h_eq = minus_h * sg.smx(i).r();
-        if (asu_.is_inside(minus_h_eq)) {
-          next_is_minus_previous_ = false;
-          break;
-        }
-      }
-    }
     return previous_;
   }
 
