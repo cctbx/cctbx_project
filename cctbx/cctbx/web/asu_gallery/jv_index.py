@@ -1,3 +1,4 @@
+from cctbx.web.asu_gallery import web_links
 from cctbx import sgtbx
 import sys
 
@@ -70,6 +71,7 @@ class crystal_system_table:
   def format_html(self, f=None, n_columns=6):
     if (f is None): f = sys.stdout
     title = "Gallery of direct-space asymmetric units"
+    iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
     print >> f, """\
 <html>
 <head>
@@ -78,6 +80,10 @@ class crystal_system_table:
 <body>
 <hr>
 <h2>%(title)s</h2>
+<hr>
+Reference:
+<a href="%(iucrcompcomm_jul2003)s"
+>IUCr Computing Commission Newsletter No. 2, July 2003</a>
 <hr>""" % vars()
     for point_group in self.point_group_tables:
       point_group.format_html(f, n_columns)

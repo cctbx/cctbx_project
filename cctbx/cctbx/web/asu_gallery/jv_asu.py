@@ -1,10 +1,12 @@
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
 from cctbx.web.asu_gallery import facet_notation
+from cctbx.web.asu_gallery import web_links
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx import sgtbx
 from scitbx import matrix
+from libtbx.optparse_wrapper import OptionParser
 import urllib
 import math
 import sys, os
@@ -142,11 +144,14 @@ def vertex_geometry(ortho, all_vertices):
   return g
 
 def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
+               http_server_name=None,
                html_subdir="asu_gallery",
-               jars_url="http://cci.lbl.gov/jars",
+               jars_url="http://%s/jars",
                explore_symmetry_url=
-                 "http://cci.lbl.gov/servers/cctbx/cctbx_web.cgi" \
+                 "http://%s/cctbx/cctbx_web.cgi" \
                 +"?target_module=explore_symmetry&sgsymbol="):
+  if (http_server_name is None):
+    http_server_name = web_links.default_http_server_name
   space_group_info = sgtbx.space_group_info("Hall: "+asu.hall_symbol)
   assert space_group_info.type().number() == space_group_number
   list_of_polygons = facet_analysis.asu_polygons(asu)
@@ -242,7 +247,8 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
     jvx_in_html,
     title="ASU "+str(space_group_info),
     header='Space group: <a href="%s">%s</a> (No. %d)' % (
-      explore_symmetry_url+urllib.quote_plus(str(space_group_info)),
+      explore_symmetry_url%http_server_name
+        +urllib.quote_plus(str(space_group_info)),
       str(space_group_info),
       space_group_number),
     index_html="index.html",
@@ -251,11 +257,21 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
     alternative_label=alternative_label,
     alternative_html=alternative_html,
     legend=legend,
-    jars_url=jars_url,
+    jars_url=jars_url%http_server_name,
     f=f)
   f.close()
 
-def run(args, html_subdir="asu_gallery"):
+def run(http_server_name=None, html_subdir="asu_gallery"):
+  parser = OptionParser(usage="usage: python jv_asu.py [options] [numbers...]")
+  parser.add_option("-s", "--server",
+    action="store",
+    type="string",
+    dest="server",
+    help="network name of http server",
+    metavar="NAME")
+  options, args = parser.parse_args()
+  if (options.server is not None):
+    http_server_name = options.server
   if (not os.path.isdir(html_subdir)):
     os.makedirs(html_subdir)
   jv_index.write_html(open("%s/index.html" % html_subdir, "w"))
@@ -269,9 +285,17 @@ def run(args, html_subdir="asu_gallery"):
     for space_group_number in xrange(numbers[0], numbers[1]+1):
       print "Space group number:", space_group_number
       asu = reference_table.get_asu(space_group_number)
-      asu_as_jvx(space_group_number, asu, html_subdir=html_subdir)
-      asu_as_jvx(space_group_number, asu, colored_grid_points=[],
+      asu_as_jvx(
+        space_group_number=space_group_number,
+        asu=asu,
+        http_server_name=http_server_name,
+        html_subdir=html_subdir)
+      asu_as_jvx(
+        space_group_number=space_group_number,
+        http_server_name=http_server_name,
+        asu=asu,
+        colored_grid_points=[],
         html_subdir=html_subdir)
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  run()
