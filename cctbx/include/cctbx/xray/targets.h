@@ -437,18 +437,18 @@ namespace cctbx { namespace xray { namespace targets {
                                                   std::sin(angle+angle)));
     }
 
-    for(std::size_t i=0;i<fobs.size();i++) {
-      double fo = fobs[i];
-      double fc = std::abs(fcalc[i]);
-      double pc = std::arg(fcalc[i]);
-      double ac = std::real(fcalc[i]);
-      double bc = std::imag(fcalc[i]);
-      CCTBX_ASSERT(std::abs(pc-std::atan2(std::imag(fcalc[i]), std::real(fcalc[i]))) < 0.001);
-      double a  = alpha[i];
-      double b  = beta[i];
-      int    e  = eps[i];
+    for(std::size_t i_h=0;i_h<fobs.size();i_h++) {
+      double fo = fobs[i_h];
+      double fc = std::abs(fcalc[i_h]);
+      double pc = std::arg(fcalc[i_h]);
+      double ac = std::real(fcalc[i_h]);
+      double bc = std::imag(fcalc[i_h]);
+      CCTBX_ASSERT(std::abs(pc-std::atan2(std::imag(fcalc[i_h]), std::real(fcalc[i_h]))) < 0.001);
+      double a  = alpha[i_h];
+      double b  = beta[i_h];
+      int    e  = eps[i_h];
       // acentric: c = 0, centric: c = 1
-      int    c  = cs[i];
+      int    c  = cs[i_h];
       double X  = fo * fc * a / (e * b);
       double L1 = (fo * fo - a * a * fc * fc) / (2. * e * b);
       if(c == 0) {
@@ -456,10 +456,10 @@ namespace cctbx { namespace xray { namespace targets {
         L1 *= 2.;
       }
       double small = 1.e-6;
-      double A = abcd[i].a();
-      double B = abcd[i].b();
-      double C = abcd[i].c();
-      double D = abcd[i].d();
+      double A = abcd[i_h].a();
+      double B = abcd[i_h].b();
+      double C = abcd[i_h].c();
+      double D = abcd[i_h].d();
       double A_prime = X*std::cos(pc) + A;
       double B_prime = X*std::sin(pc) + B;
       // if C = D = 0: calculate ML target explicitly by formulas:
@@ -480,7 +480,7 @@ namespace cctbx { namespace xray { namespace targets {
             double derpc = 0.;
             double d1 = derfc*ac - derpc*bc/fc;
             double d2 = derfc*bc + derpc*ac/fc;
-            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+            derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
           }
           else {
             double sim = scitbx::math::bessel::i1_over_i0(arg_d);
@@ -491,7 +491,7 @@ namespace cctbx { namespace xray { namespace targets {
 //std::cout<<" "<<std::endl;
 //std::cout<<sim<<" "<<X_d<<" "<<arg_d<<" "<<derfc<<" "<<derpc<<std::endl;
 //std::cout<<d1<<" "<<d2<<" "<<A_prime_d<<" "<<B_prime_d<<" "<<C<<" "<<D<<" "<<c<<std::endl;
-            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+            derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
           }
         }
       }
@@ -557,7 +557,7 @@ namespace cctbx { namespace xray { namespace targets {
             derfc = 2.*a*a*fc/(e * b) - derfc;
             double d1 = derfc*ac - derpc*bc/fc;
             double d2 = derfc*bc + derpc*ac/fc;
-            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+            derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
 
           }
         }
@@ -572,7 +572,7 @@ namespace cctbx { namespace xray { namespace targets {
             double derpc = 2.*std::tanh(arg)*(A*std::sin(pc) - B*std::cos(pc));
             double d1 = derfc*ac - derpc*bc/fc;
             double d2 = derfc*bc + derpc*ac/fc;
-            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+            derivatives_[i_h] = std::complex<double> (d1,d2)/fc;
           }
         }
       }
