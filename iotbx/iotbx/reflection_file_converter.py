@@ -95,7 +95,8 @@ def run(args, simply_return_all_miller_arrays=False):
     return None
   else:
     selected_array = label_table.match_data_label(
-      label=command_line.options.label)
+      label=command_line.options.label,
+      command_line_switch="--label")
     if (selected_array is None):
       return None
   if (selected_array.unit_cell() is None):
