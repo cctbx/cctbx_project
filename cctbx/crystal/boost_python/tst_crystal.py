@@ -95,6 +95,8 @@ def exercise_direct_space_asu():
   assert am.i_sym_op() == 3
   assert am.unit_shifts() == (1,3,2)
   assert asu.is_inside(am.mapped_site())
+  assert approx_equal(asu_mappings.mapped_sites_min(), [0.15,-0.4,0.4])
+  assert approx_equal(asu_mappings.mapped_sites_max(), [1.05,0.6,0.65])
   for am in mappings:
     assert asu_mappings.asu_buffer().is_inside(am.mapped_site())
   o = matrix.sqr(asu_mappings.unit_cell().orthogonalization_matrix())
