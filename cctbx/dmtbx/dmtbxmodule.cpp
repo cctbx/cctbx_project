@@ -29,22 +29,6 @@ namespace {
     }
   }
 
-  af::shared<double>
-  apply_tangent_formula_3(dmtbx::triplet_invariants<double> const& ti,
-                          af::shared<double> e_values,
-                          af::shared<double> phases)
-  {
-    return ti.apply_tangent_formula(e_values, phases);
-  }
-
-  af::shared<double>
-  estimate_phases_3(dmtbx::triplet_invariants<double> const& ti,
-                    af::shared<double> e_values,
-                    af::shared<double> phases)
-  {
-    return ti.estimate_phases(e_values, phases);
-  }
-
 # include <cctbx/basic/from_bpl_import.h>
 
   void init_module(python::module_builder& this_module)
@@ -91,13 +75,7 @@ namespace {
       &dmtbx::triplet_invariants<double>::apply_tangent_formula,
                                          "apply_tangent_formula");
     py_triplet_invariants.def(
-                                         &apply_tangent_formula_3,
-                                         "apply_tangent_formula");
-    py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::estimate_phases,
-                                         "estimate_phases");
-    py_triplet_invariants.def(
-                                         &estimate_phases_3,
                                          "estimate_phases");
 
     this_module.def(inplace_sort, "inplace_sort");

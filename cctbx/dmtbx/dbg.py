@@ -102,24 +102,15 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
        tprs.total_number_of_triplets()
   print "average_number_of_triplets_per_reflection: %.2f" % (
        tprs.average_number_of_triplets_per_reflection(),)
-  means = []
-  for t in (tprs,):
-    mean_weighted_phase_error = []
-    for ignore_weights in (0, 1):
-      if (use_tangent_formula):
-        new_phases = t.apply_tangent_formula(e_values, phases, ignore_weights)
-      else:
-        new_phases = t.estimate_phases(e_values, phases, ignore_weights)
-      mean_weighted_phase_error.append(
-        compute_mean_weighted_phase_error(
-          t,
-          sginfo.SgOps(), miller_indices_h, e_values, phases, new_phases,
-          verbose))
-    print "mean weighted phase error: %.2f %.2f delta: %.2f" % (
-      mean_weighted_phase_error[0],
-      mean_weighted_phase_error[1],
-      mean_weighted_phase_error[1] - mean_weighted_phase_error[0])
-    means.append(mean_weighted_phase_error)
+  if (use_tangent_formula):
+    new_phases = tprs.apply_tangent_formula(e_values, phases)
+  else:
+    new_phases = tprs.estimate_phases(e_values, phases)
+  mean_weighted_phase_error = compute_mean_weighted_phase_error(
+    tprs,
+    sginfo.SgOps(), miller_indices_h, e_values, phases, new_phases,
+    verbose)
+  print "mean weighted phase error: %.2f" % (mean_weighted_phase_error,)
   if (0 or verbose):
     tprs.dump_triplets(miller_indices_h)
   return tprs

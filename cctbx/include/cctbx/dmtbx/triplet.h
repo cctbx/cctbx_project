@@ -206,8 +206,7 @@ namespace cctbx { namespace dmtbx {
 
       af::shared<FloatType>
       apply_tangent_formula(af::shared<FloatType> e_values,
-                            af::shared<FloatType> phases,
-                            bool ignore_weights = false) const
+                            af::shared<FloatType> phases) const
       {
         FloatType sum_cutoff(1.e-10); // XXX
         cctbx_assert(e_values.size() == list_of_tpr_maps_.size());
@@ -228,8 +227,7 @@ namespace cctbx { namespace dmtbx {
             FloatType phi_k = tpr.asym_k.phase_in(phases[tpr.ik]);
             FloatType e_hmk = e_values[tpr.ihmk];
             FloatType phi_hmk = tpr.asym_hmk.phase_in(phases[tpr.ihmk]);
-            FloatType e_k_e_hmk = e_k * e_hmk;
-            if (!ignore_weights) e_k_e_hmk *= lij->second;
+            FloatType e_k_e_hmk = lij->second * e_k * e_hmk;
             FloatType phi_k_phi_hmk = phi_k + phi_hmk;
             sum_sin += e_k_e_hmk * std::sin(phi_k_phi_hmk);
             sum_cos += e_k_e_hmk * std::cos(phi_k_phi_hmk);
@@ -247,8 +245,7 @@ namespace cctbx { namespace dmtbx {
 
       af::shared<FloatType>
       estimate_phases(af::shared<FloatType> e_values,
-                      af::shared<FloatType> phases,
-                      bool ignore_weights = false) const
+                      af::shared<FloatType> phases) const
       {
         FloatType estimated_e_h_cutoff(1.e-10); // XXX
         cctbx_assert(e_values.size() == list_of_tpr_maps_.size());
@@ -270,14 +267,8 @@ namespace cctbx { namespace dmtbx {
             FloatType phi_hmk = tpr.asym_hmk.phase_in(phases[tpr.ihmk]);
             std::complex<FloatType> e_k_complex = std::polar(e_k, phi_k);
             std::complex<FloatType> e_hmk_complex = std::polar(e_hmk, phi_hmk);
-            if (!ignore_weights) {
-              estimated_e_h
-                += FloatType(lij->second) * (e_k_complex * e_hmk_complex);
-            }
-            else {
-              estimated_e_h
-                +=                          (e_k_complex * e_hmk_complex);
-            }
+            estimated_e_h
+              += FloatType(lij->second) * (e_k_complex * e_hmk_complex);
           }
           if (std::abs(estimated_e_h) < estimated_e_h_cutoff) {
             result.push_back(phases[i]);
