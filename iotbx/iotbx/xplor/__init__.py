@@ -11,8 +11,8 @@ from cctbx import uctbx
 __doc__='''Example format for Xplor Maps:
 
        2 !NTITLE
- REMARKS FILENAME=""                                                                                                                                                                                                                                                    
- REMARKS CCTBX af::shared to Xplor map format                                                                                                                                                                                                                                
+ REMARKS FILENAME=""
+ REMARKS scitbx.flex.double to Xplor map format
       24       0      24     120       0     120      54       0      54
  3.20420E+01 1.75362E+02 7.96630E+01 9.00000E+01 9.00000E+01 9.00000E+01
 ZYX
@@ -52,14 +52,14 @@ class XplorMap(ext.XplorMap):
   def read(self,arg):
     f = open(arg,"r")
     f.readline()
-    
+
     # title
     ntitle = int(f.readline().strip().split("!")[0])
     self.title=[]
     for x in xrange(ntitle):
       line = f.readline().rstrip()
       self.title.append(line)
-    
+
     # sections
     line = f.readline()
     self.sections=[]
@@ -67,13 +67,13 @@ class XplorMap(ext.XplorMap):
       literal = line[x:x+8]
       self.sections.append(int(literal))
     sec = self.sections
-    
+
     #These assertions imply that the map covers the whole unit
     #cell.  So: get rid of the assertions in short order.
     assert (sec[2]-sec[1] == sec[0] or sec[2]-sec[1] == sec[0]-1)
     assert (sec[5]-sec[4] == sec[3] or sec[5]-sec[4] == sec[3]-1)
     assert (sec[8]-sec[7] == sec[6] or sec[8]-sec[7] == sec[6]-1)
-    
+
     # unit cell
     line = f.readline()
     ucparams=[]
@@ -81,11 +81,11 @@ class XplorMap(ext.XplorMap):
       literal = line[x:x+12]
       ucparams.append(float(literal))
     self.unitcell = uctbx.unit_cell(tuple(ucparams))
-    
+
     # ordering information ZYX
     self.order = f.readline().strip()
     f.close()
-    
+
     self.data = self.ReadXplorMap(arg,len(self.title)+5,self.sections)
 
     # average and standard deviation
@@ -94,13 +94,13 @@ class XplorMap(ext.XplorMap):
       pass
     (self.average,self.stddev)=tuple([float(z) for z in f.readline().strip().split()])
     return self
-    
+
   def write(self,arg):
     assert self.order=='ZYX'
     #but the sections and the data are given as XYZ:
     for x in xrange(3):
       assert self.data.focus()[x] == self.sections[3*x+2] - self.sections[3*x+1] + 1
-      
+
     f = open(arg,'wb')
     f.write("\n")
     f.write("%8d !NTITLE\n"%len(self.title))
@@ -109,5 +109,3 @@ class XplorMap(ext.XplorMap):
     f.write("%8d%8d%8d%8d%8d%8d%8d%8d%8d\n"%tuple(self.sections))
     f.close()
     self.WriteXplorMap(self.unitcell,self.data,self.average,self.stddev,arg)
-    
-    
