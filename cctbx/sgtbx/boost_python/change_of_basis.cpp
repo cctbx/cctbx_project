@@ -10,6 +10,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/change_of_basis_op.h>
+#include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -18,7 +19,7 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
 
 namespace {
 
-  struct change_of_basis_op_wrappers
+  struct change_of_basis_op_wrappers : boost::python::pickle_suite
   {
     typedef change_of_basis_op w_t;
 
@@ -38,6 +39,12 @@ namespace {
     update_w_t(w_t& o, w_t const& other)
     {
       o.update(other);
+    }
+
+    static boost::python::tuple
+    getinitargs(w_t const& o)
+    {
+      return boost::python::make_tuple(o.c().as_xyz());
     }
 
     static void
@@ -76,6 +83,7 @@ namespace {
           &w_t::operator())
         .def("update", update_w_t)
         .def("__mul__", &w_t::operator*)
+        .def_pickle(change_of_basis_op_wrappers())
       ;
     }
   };

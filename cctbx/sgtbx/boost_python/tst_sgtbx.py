@@ -460,6 +460,9 @@ def exercise_change_of_basis_op():
   assert approx_equal(c.apply(u).parameters(), (5,2,3,90,90,90))
   i = flex.miller_index(((1,2,3),(2,3,4)))
   assert tuple(c.apply(i)) == ((3,1,2),(4,2,3))
+  s = pickle.dumps(c)
+  l = pickle.loads(s)
+  assert str(c.c()) == str(l.c())
 
 def exercise_space_group():
   tr_vec = sgtbx.tr_vec
