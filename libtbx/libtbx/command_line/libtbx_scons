@@ -1,3 +1,0 @@
-#! /bin/csh -f
-set noglob
-exec $LIBTBX_PYTHON_EXE $LIBTBX_DIST/libtbx/command_line/libtbx_scons.py $*

@@ -86,7 +86,7 @@ class any_reflection_file:
       info_prefix=info_prefix)
 
 def usage():
-  return (  "usage: iotbx.any_reflection_file_reader.py"
+  return (  "usage: iotbx.any_reflection_file_reader"
           + " [--unit_cell=1,1,1,90,90,90]"
           + " [--space_group=P212121]"
           + " [--extract_symmetry=any_file_format]"
