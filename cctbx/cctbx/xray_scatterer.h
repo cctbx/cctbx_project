@@ -151,12 +151,12 @@ namespace cctbx {
   inline
   boost::shared_ptr<std::vector<Miller::Index> >
   BuildMillerIndices(const uctbx::UnitCell& UC,
-                     const sgtbx::SpaceGroup& SgOps,
+                     const sgtbx::SpaceGroupInfo& SgInfo,
                      double Resolution_d_min)
   {
     boost::shared_ptr<std::vector<Miller::Index> >
     ListOfH(new std::vector<Miller::Index>);
-    sgtbx::MillerIndexGenerator MIG(UC, SgOps, Resolution_d_min);
+    sgtbx::MillerIndexGenerator MIG(UC, SgInfo, Resolution_d_min);
     for (;;) {
       Miller::Index H = MIG.next();
       if (H.is000()) break;
@@ -167,12 +167,12 @@ namespace cctbx {
 
   inline
   boost::shared_ptr<std::vector<Miller::Index> >
-  BuildMillerIndices(const sgtbx::SpaceGroup& SgOps,
+  BuildMillerIndices(const sgtbx::SpaceGroupInfo& SgInfo,
                      const Miller::Index& MaxIndex)
   {
     boost::shared_ptr<std::vector<Miller::Index> >
     ListOfH(new std::vector<Miller::Index>);
-    sgtbx::MillerIndexGenerator MIG(SgOps, MaxIndex);
+    sgtbx::MillerIndexGenerator MIG(SgInfo, MaxIndex);
     for (;;) {
       Miller::Index H = MIG.next();
       if (H.is000()) break;

@@ -576,6 +576,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_std_vector_RTMx(this_module, "std_vector_RTMx");
     class_builder<SpaceGroupInfo>
     py_SpaceGroupInfo(this_module, "SpaceGroupInfo");
+    python::export_converters(py_SpaceGroupInfo);
     class_builder<WyckoffPosition>
     py_WyckoffPosition(this_module, "WyckoffPosition");
     class_builder<WyckoffMapping>
