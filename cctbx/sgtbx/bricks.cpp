@@ -848,20 +848,20 @@ namespace sgtbx {
     return result;
   }
 
-  bool Brick::isInBrick(const boost::array<rational, 3>& Ix) const
+  bool Brick::isInBrick(const boost::array<rational, 3>& P) const
   {
     for(std::size_t i=0;i<3;i++) {
       if (!m_Points[i][0].Off()) {
-        if (!(m_Points[i][0].Point() <= Ix[i])) return false;
+        if (!(m_Points[i][0].Point() <= P[i])) return false;
       }
       else {
-        if (!(m_Points[i][0].Point() <  Ix[i])) return false;
+        if (!(m_Points[i][0].Point() <  P[i])) return false;
       }
       if (!m_Points[i][1].Off()) {
-        if (!(Ix[i] <= m_Points[i][1].Point())) return false;
+        if (!(P[i] <= m_Points[i][1].Point())) return false;
       }
       else {
-        if (!(Ix[i] <  m_Points[i][1].Point())) return false;
+        if (!(P[i] <  m_Points[i][1].Point())) return false;
       }
     }
     return true;
