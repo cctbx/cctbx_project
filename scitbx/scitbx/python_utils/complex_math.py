@@ -1,5 +1,8 @@
 from math import pi, atan2, cos, sin
 
+def norm(c):
+  return c.real**2 + c.imag**2
+
 def abs_arg(c, deg=00000):
   "conversion of complex number: real, imag -> absolute value, polar angle"
   a = abs(c)
