@@ -51,6 +51,12 @@ class structure(crystal.special_position_settings):
   def scatterers(self):
     return self._scatterers
 
+  def sites_frac(self):
+    return self.scatterers().extract_sites()
+
+  def sites_cart(self):
+    return self.unit_cell().orthogonalization_matrix() * self.sites_frac()
+
   def special_position_indices(self):
     return self._special_position_indices
 
@@ -273,8 +279,7 @@ class structure(crystal.special_position_settings):
   def center_of_mass(self, atomic_weights=None):
     if (atomic_weights is None):
       atomic_weights = self.atomic_weights()
-    sites_cart = (self.unit_cell().orthogonalization_matrix()
-                  * self.scatterers().extract_sites())
+    sites_cart = self.sites_cart()
     sum_w = 0
     sum_wc = matrix.col((0,0,0))
     for i,site_cart in sites_cart.items():
