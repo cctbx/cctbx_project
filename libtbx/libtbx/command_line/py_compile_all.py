@@ -1,11 +1,11 @@
 import compileall
 import cStringIO
-import sys
+import sys, os
 
 def run():
   dirs = sys.argv[1:]
   if (len(dirs) == 0):
-    dirs = ["."]
+    dirs = [os.getcwd()]
   sys.stdout = cStringIO.StringIO()
   sys.stderr = cStringIO.StringIO()
   for dir in dirs:
