@@ -880,7 +880,6 @@ def parse(
 
 def read_default(
       params_extension=".params",
-      prefix=None,
       definition_type_names=None,
       process_includes=True):
   caller_file_name = introspection.caller_location(frames_back=1).file_name
@@ -889,11 +888,7 @@ def read_default(
   params_file_name = caller_file_name[:-3] + params_extension
   if (not os.path.isfile(params_file_name)):
     raise RuntimeError("Missing parameter file: %s" % params_file_name)
-  result = parse(
+  return parse(
     file_name=params_file_name,
     definition_type_names=definition_type_names,
     process_includes=process_includes)
-  if (prefix is not None):
-    for object in result.objects:
-      object.name = prefix + "." + object.name
-  return result
