@@ -132,7 +132,7 @@ namespace sgtbx
 
 namespace sgtbx {
 
-  class StdReciprocalSpaceASU {
+  class ReferenceReciprocalSpaceASU {
     public:
       virtual tables::MatrixGroup::Code LaueGroupCode() const {
         throw cctbx_internal_error();
@@ -152,19 +152,21 @@ namespace sgtbx {
   {
     public:
       inline ReciprocalSpaceASU()
-        : m_CBOp(), m_isStdASU(true), m_StdASU() {}
+        : m_CBOp(), m_isReferenceASU(true), m_ReferenceASU() {}
       ReciprocalSpaceASU(const SpaceGroupType& SgType);
-      inline const StdReciprocalSpaceASU* StdASU() const { return m_StdASU; }
+      inline const ReferenceReciprocalSpaceASU* ReferenceASU() const {
+        return m_ReferenceASU;
+      }
       inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
-      inline bool isStdASU() const { return m_isStdASU; }
+      inline bool isReferenceASU() const { return m_isReferenceASU; }
       inline bool isInASU(const Miller::Index& H) const {
-        if (m_isStdASU) return m_StdASU->isInASU(H);
-        return m_StdASU->isInASU(H * m_CBOp.InvM().Rpart());
+        if (m_isReferenceASU) return m_ReferenceASU->isInASU(H);
+        return m_ReferenceASU->isInASU(H * m_CBOp.InvM().Rpart());
       }
     private:
       ChOfBasisOp m_CBOp;
-      bool m_isStdASU;
-      const StdReciprocalSpaceASU* m_StdASU;
+      bool m_isReferenceASU;
+      const ReferenceReciprocalSpaceASU* m_ReferenceASU;
   };
 
   class MillerIndexGenerator

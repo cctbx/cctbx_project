@@ -235,11 +235,11 @@ namespace uctbx {
     return ucp;
   }
 
-  bool 
+  bool
   UnitCell::isEqual(const UnitCell& uc, const double& epsilon=0.000001) const
   {
     //This is a kludge--no good way to define whether or not two unit cell
-    //dimensions are the same.  Isomorphism is a subjective judgement.  
+    //dimensions are the same.  Isomorphism is a subjective judgement.
     bool result(true);
     for (int i  = 0; i<3; i++) {
       result = result && ((Len[i] - uc.Len[i])/Len[i])<epsilon;

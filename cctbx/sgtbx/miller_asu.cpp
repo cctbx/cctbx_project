@@ -140,7 +140,8 @@ namespace sgtbx {
 
   namespace detail {
 
-    class StdReciprocalSpaceASU_1b : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_1b
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_1b;
@@ -156,7 +157,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_2_m : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_2_m
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_2_m;
@@ -172,7 +174,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_mmm : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_mmm
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_mmm;
@@ -188,7 +191,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_4_m : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_4_m
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_4_m;
@@ -204,7 +208,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_4_mmm : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_4_mmm
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_4_mmm;
@@ -220,7 +225,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_3b : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_3b
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_3b;
@@ -236,7 +242,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_3b1m : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_3b1m
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_3b1m;
@@ -252,7 +259,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_3bm1 : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_3bm1
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_3bm1;
@@ -268,7 +276,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_6_m : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_6_m
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_6_m;
@@ -284,7 +293,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_6_mmm : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_6_mmm
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_6_mmm;
@@ -300,7 +310,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_m3b : public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_m3b
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_m3b;
@@ -317,7 +328,8 @@ namespace sgtbx {
           return result;
         }
     };
-    class StdReciprocalSpaceASU_m3bm: public StdReciprocalSpaceASU {
+    class ReferenceReciprocalSpaceASU_m3bm
+      : public ReferenceReciprocalSpaceASU {
       public:
         virtual tables::MatrixGroup::Code LaueGroupCode() const {
           return tables::MatrixGroup::MGC_m3bm;
@@ -334,49 +346,50 @@ namespace sgtbx {
         }
     };
 
-    static const StdReciprocalSpaceASU_1b    StdASU_1b =
-                 StdReciprocalSpaceASU_1b();
-    static const StdReciprocalSpaceASU_2_m   StdASU_2_m =
-                 StdReciprocalSpaceASU_2_m();
-    static const StdReciprocalSpaceASU_mmm   StdASU_mmm =
-                 StdReciprocalSpaceASU_mmm();
-    static const StdReciprocalSpaceASU_4_m   StdASU_4_m =
-                 StdReciprocalSpaceASU_4_m();
-    static const StdReciprocalSpaceASU_4_mmm StdASU_4_mmm =
-                 StdReciprocalSpaceASU_4_mmm();
-    static const StdReciprocalSpaceASU_3b    StdASU_3b =
-                 StdReciprocalSpaceASU_3b();
-    static const StdReciprocalSpaceASU_3b1m  StdASU_3b1m =
-                 StdReciprocalSpaceASU_3b1m();
-    static const StdReciprocalSpaceASU_3bm1  StdASU_3bm1 =
-                 StdReciprocalSpaceASU_3bm1();
-    static const StdReciprocalSpaceASU_6_m   StdASU_6_m =
-                 StdReciprocalSpaceASU_6_m();
-    static const StdReciprocalSpaceASU_6_mmm StdASU_6_mmm =
-                 StdReciprocalSpaceASU_6_mmm();
-    static const StdReciprocalSpaceASU_m3b   StdASU_m3b =
-                 StdReciprocalSpaceASU_m3b();
-    static const StdReciprocalSpaceASU_m3bm  StdASU_m3bm =
-                 StdReciprocalSpaceASU_m3bm();
+    static const ReferenceReciprocalSpaceASU_1b    ReferenceASU_1b =
+                 ReferenceReciprocalSpaceASU_1b();
+    static const ReferenceReciprocalSpaceASU_2_m   ReferenceASU_2_m =
+                 ReferenceReciprocalSpaceASU_2_m();
+    static const ReferenceReciprocalSpaceASU_mmm   ReferenceASU_mmm =
+                 ReferenceReciprocalSpaceASU_mmm();
+    static const ReferenceReciprocalSpaceASU_4_m   ReferenceASU_4_m =
+                 ReferenceReciprocalSpaceASU_4_m();
+    static const ReferenceReciprocalSpaceASU_4_mmm ReferenceASU_4_mmm =
+                 ReferenceReciprocalSpaceASU_4_mmm();
+    static const ReferenceReciprocalSpaceASU_3b    ReferenceASU_3b =
+                 ReferenceReciprocalSpaceASU_3b();
+    static const ReferenceReciprocalSpaceASU_3b1m  ReferenceASU_3b1m =
+                 ReferenceReciprocalSpaceASU_3b1m();
+    static const ReferenceReciprocalSpaceASU_3bm1  ReferenceASU_3bm1 =
+                 ReferenceReciprocalSpaceASU_3bm1();
+    static const ReferenceReciprocalSpaceASU_6_m   ReferenceASU_6_m =
+                 ReferenceReciprocalSpaceASU_6_m();
+    static const ReferenceReciprocalSpaceASU_6_mmm ReferenceASU_6_mmm =
+                 ReferenceReciprocalSpaceASU_6_mmm();
+    static const ReferenceReciprocalSpaceASU_m3b   ReferenceASU_m3b =
+                 ReferenceReciprocalSpaceASU_m3b();
+    static const ReferenceReciprocalSpaceASU_m3bm  ReferenceASU_m3bm =
+                 ReferenceReciprocalSpaceASU_m3bm();
 
-    static const StdReciprocalSpaceASU* TableStdReciprocalSpaceASU[] = {
-      &StdASU_1b,
-      &StdASU_2_m,
-      &StdASU_mmm,
-      &StdASU_4_m, &StdASU_4_mmm,
-      &StdASU_3b, &StdASU_3b1m, &StdASU_3bm1,
-      &StdASU_6_m, &StdASU_6_mmm,
-      &StdASU_m3b, &StdASU_m3bm,
+    static const ReferenceReciprocalSpaceASU*
+    TableReferenceReciprocalSpaceASU[] = {
+      &ReferenceASU_1b,
+      &ReferenceASU_2_m,
+      &ReferenceASU_mmm,
+      &ReferenceASU_4_m, &ReferenceASU_4_mmm,
+      &ReferenceASU_3b, &ReferenceASU_3b1m, &ReferenceASU_3bm1,
+      &ReferenceASU_6_m, &ReferenceASU_6_mmm,
+      &ReferenceASU_m3b, &ReferenceASU_m3bm,
       0,
     };
 
   } // namespace detail
 
   ReciprocalSpaceASU::ReciprocalSpaceASU(const SpaceGroupType& SgType)
-    : m_CBOp(), m_isStdASU(true), m_StdASU()
+    : m_CBOp(), m_isReferenceASU(true), m_ReferenceASU()
   {
     m_CBOp = SgType.CBOp();
-    m_isStdASU = m_CBOp.M().isUnit();
+    m_isReferenceASU = m_CBOp.M().isUnit();
     using namespace tables::MatrixGroup;
     Code MGC = tables::ReferenceSettings::MatrixGroupCodes[SgType.SgNumber()];
     Code LG_MGC = MGC.LaueGroupType();
@@ -387,9 +400,9 @@ namespace sgtbx {
      else                    LG_MGC = MGC_3bm1;
     }
     for(std::size_t i=0;; i++) {
-      m_StdASU = detail::TableStdReciprocalSpaceASU[i];
-      if (m_StdASU == 0) throw cctbx_internal_error();
-      if (m_StdASU->LaueGroupCode() == LG_MGC) break;
+      m_ReferenceASU = detail::TableReferenceReciprocalSpaceASU[i];
+      if (m_ReferenceASU == 0) throw cctbx_internal_error();
+      if (m_ReferenceASU->LaueGroupCode() == LG_MGC) break;
     }
   }
 
@@ -405,24 +418,25 @@ namespace sgtbx {
 
     SpaceGroupType SgType = m_SgOps.getSpaceGroupType();
     uctbx::UnitCell
-    StdUnitCell = m_UnitCell.ChangeBasis(SgType.CBOp().InvM().Rpart());
-    SgOps StdSgOps = SgOps(SpaceGroupSymbols(SgType.SgNumber()).Hall());
+    ReferenceUnitCell = m_UnitCell.ChangeBasis(SgType.CBOp().InvM().Rpart());
+    SgOps ReferenceSgOps = SgOps(SpaceGroupSymbols(SgType.SgNumber()).Hall());
     m_ASU = ReciprocalSpaceASU(SgType);
-    Miller::Vec3 CutP = m_ASU.StdASU()->getCutParameters();
-    Miller::Index StdHmax = StdUnitCell.MaxMillerIndices(Resolution_d_min);
-    Miller::Index StdHmin;
-    for(std::size_t i=0;i<3;i++) StdHmin[i] = StdHmax[i] * CutP[i];
-    m_loop = NestedLoop<Miller::Index>(StdHmin, StdHmax);
+    Miller::Vec3 CutP = m_ASU.ReferenceASU()->getCutParameters();
+    Miller::Index
+    ReferenceHmax = ReferenceUnitCell.MaxMillerIndices(Resolution_d_min);
+    Miller::Index ReferenceHmin;
+    for(std::size_t i=0;i<3;i++) ReferenceHmin[i] = ReferenceHmax[i] * CutP[i];
+    m_loop = NestedLoop<Miller::Index>(ReferenceHmin, ReferenceHmax);
   }
 
   Miller::Index MillerIndexGenerator::next()
   {
     const int RBF = m_ASU.CBOp().M().RBF();
     for (; m_loop.over() == 0;) {
-      Miller::Index StdH = m_loop();
+      Miller::Index ReferenceH = m_loop();
       m_loop.incr();
-      if (m_ASU.StdASU()->isInASU(StdH)) {
-        TrVec HR(StdH * m_ASU.CBOp().M().Rpart(), RBF);
+      if (m_ASU.ReferenceASU()->isInASU(ReferenceH)) {
+        TrVec HR(ReferenceH * m_ASU.CBOp().M().Rpart(), RBF);
         HR = HR.cancel();
         if (HR.BF() == 1) {
           Miller::Index H(HR.elems);
