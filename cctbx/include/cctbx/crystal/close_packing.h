@@ -29,12 +29,14 @@ namespace cctbx { namespace crystal { namespace close_packing {
       hexagonal_sampling() {}
 
       hexagonal_sampling(
+        sgtbx::change_of_basis_op const& cb_op_original_to_sampling,
         direct_space_asu::float_asu<FloatType> const& float_asu,
         af::tiny<bool, 3> const& continuous_shift_flags,
         FloatType const& point_distance,
         FloatType const& buffer_thickness=-1,
         bool all_twelve_neighbors=false)
       :
+        cb_op_original_to_sampling_(cb_op_original_to_sampling),
         float_asu_(float_asu),
         continuous_shift_flags_(continuous_shift_flags),
         point_distance_(point_distance),
@@ -54,8 +56,15 @@ namespace cctbx { namespace crystal { namespace close_packing {
         sampling_box_determination();
         hex_to_frac_matrix_ = float_asu_.unit_cell().fractionalization_matrix()
                             * sampling_cell_.orthogonalization_matrix();
+        cb_op_r_inv_ = cb_op_original_to_sampling_.c_inv().r()
+          .as_floating_point(scitbx::type_holder<FloatType>());
+        cb_op_t_inv_ = cb_op_original_to_sampling_.c_inv().t()
+          .as_floating_point(scitbx::type_holder<FloatType>());
         incr();
       }
+
+      sgtbx::change_of_basis_op const&
+      cb_op_original_to_sampling() const {return cb_op_original_to_sampling_;}
 
       direct_space_asu::float_asu<FloatType> const&
       float_asu() const { return float_asu_; }
@@ -88,7 +97,7 @@ namespace cctbx { namespace crystal { namespace close_packing {
       next_site_frac()
       {
         CCTBX_ASSERT(!at_end());
-        fractional<FloatType> result = site_frac_;
+        fractional<FloatType> result = get_site_frac_original();
         incr();
         return result;
       }
@@ -99,7 +108,7 @@ namespace cctbx { namespace crystal { namespace close_packing {
         CCTBX_ASSERT(!at_end());
         af::shared<scitbx::vec3<FloatType> > result;
         while (!at_end()) {
-          result.push_back(site_frac_);
+          result.push_back(get_site_frac_original());
           incr();
         }
         return result;
@@ -126,6 +135,7 @@ namespace cctbx { namespace crystal { namespace close_packing {
       }
 
     protected:
+      sgtbx::change_of_basis_op cb_op_original_to_sampling_;
       direct_space_asu::float_asu<FloatType> float_asu_;
       af::tiny<bool, 3> continuous_shift_flags_;
       FloatType point_distance_;
@@ -137,10 +147,12 @@ namespace cctbx { namespace crystal { namespace close_packing {
       scitbx::vec3<int> box_lower_;
       scitbx::vec3<int> box_upper_;
       scitbx::mat3<FloatType> hex_to_frac_matrix_;
+      scitbx::mat3<FloatType> cb_op_r_inv_;
+      scitbx::vec3<FloatType> cb_op_t_inv_;
       // loop state
       int loop_status_;
       scitbx::vec3<int> point_;
-      fractional<FloatType> site_frac_;
+      fractional<FloatType> site_frac_sampling_;
       std::size_t i12_;
 
       void
@@ -211,17 +223,17 @@ namespace cctbx { namespace crystal { namespace close_packing {
         for(point_[0]=box_lower_[0];point_[0]<=box_upper_[0];point_[0]++)
         for(point_[1]=box_lower_[1];point_[1]<=box_upper_[1];point_[1]++)
         for(point_[2]=box_lower_[2];point_[2]<=box_upper_[2];point_[2]++) {
-          site_frac_ = hex_to_frac_matrix_
-                     * (box_pivot_ + indices_as_site(point_));
-          if (float_asu_buffer_.is_inside(site_frac_)) {
+          site_frac_sampling_ = hex_to_frac_matrix_
+                              * (box_pivot_ + indices_as_site(point_));
+          if (float_asu_buffer_.is_inside(site_frac_sampling_)) {
             loop_status_ = 1;
             return;
             continue_after_return_1:;
           }
           else if (all_twelve_neighbors_) {
             for(i12_=0;i12_<12;i12_++) {
-              if (float_asu_.is_inside(site_frac_ + hex_to_frac_matrix_
-                    * indices_as_site(
+              if (float_asu_.is_inside(site_frac_sampling_
+                    + hex_to_frac_matrix_ * indices_as_site(
                         detail::twelve_neighbor_offsets(i12_),
                         point_[2]))) {
                 loop_status_ = 2;
@@ -233,6 +245,12 @@ namespace cctbx { namespace crystal { namespace close_packing {
           }
         }
         loop_status_ = -1;
+      }
+
+      fractional<FloatType>
+      get_site_frac_original() const
+      {
+        return cb_op_r_inv_ * site_frac_sampling_ + cb_op_t_inv_;
       }
   };
 

@@ -39,11 +39,13 @@ def hex_indices_as_site(point, layer=0):
     else:
       return [-point[0]-1/3.,-point[1]-2/3.,point[2]*.5]
 
-def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
+def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
+                 point_distance,
                  buffer_thickness=-1, all_twelve_neighbors=00000,
                  exercise_cpp=0001):
   if (exercise_cpp):
     cpp = crystal.close_packing_hexagonal_sampling(
+      cb_op_original_to_sampling=cb_op_original_to_sampling,
       float_asu=float_asu,
       continuous_shift_flags=continuous_shift_flags,
       point_distance=point_distance,
@@ -53,6 +55,7 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
   if (buffer_thickness < 0):
     buffer_thickness = point_distance * (2/3. * (.5 * math.sqrt(3)))
   if (exercise_cpp):
+    assert cpp.cb_op_original_to_sampling().c()==cb_op_original_to_sampling.c()
     assert cpp.float_asu().unit_cell().is_similar_to(float_asu.unit_cell())
     assert cpp.continuous_shift_flags() == continuous_shift_flags
     assert approx_equal(cpp.point_distance(), point_distance)
@@ -102,6 +105,9 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
           sites_frac.append(site_frac)
           break
   assert sites_frac.size() > 0
+  rt = cb_op_original_to_sampling.c_inv().as_double_array()
+  sites_frac = rt[:9] * sites_frac
+  sites_frac += rt[9:]
   if (exercise_cpp):
     assert not cpp.at_end()
     cpp_sites_frac = cpp.all_sites_frac()
@@ -124,13 +130,15 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
                                      point_distance,
                                      buffer_thickness,
                                      all_twelve_neighbors):
-  cb_op_work = crystal_symmetry.change_of_basis_op_to_reference_setting()
+  cb_op_original_to_sampling = crystal_symmetry \
+    .change_of_basis_op_to_reference_setting()
   point_group_type = crystal_symmetry.space_group().point_group_type()
   add_cb_op = {"2": "z,x,y",
                "m": "y,z,x"}.get(point_group_type, None)
   if (add_cb_op is not None):
-    cb_op_work = sgtbx.change_of_basis_op(add_cb_op) * cb_op_work
-  work_symmetry = crystal_symmetry.change_basis(cb_op_work)
+    cb_op_original_to_sampling = sgtbx.change_of_basis_op(add_cb_op) \
+                               * cb_op_original_to_sampling
+  work_symmetry = crystal_symmetry.change_basis(cb_op_original_to_sampling)
   search_symmetry = sgtbx.search_symmetry(
     flags=symmetry_flags,
     space_group_type=work_symmetry.space_group_info().type(),
@@ -142,16 +150,14 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
   rational_asu.add_planes(
     normal_directions=search_symmetry.continuous_shifts(),
     both_directions=0001)
-  work_sites_frac = hcp_fill_box(
+  sites_frac = hcp_fill_box(
+    cb_op_original_to_sampling=cb_op_original_to_sampling,
     float_asu=rational_asu.define_metric(
       unit_cell=expanded_symmetry.unit_cell()).as_float_asu(),
     continuous_shift_flags=search_symmetry.continuous_shift_flags(),
     point_distance=point_distance,
     buffer_thickness=buffer_thickness,
     all_twelve_neighbors=all_twelve_neighbors)
-  rt = cb_op_work.c_inv().as_double_array()
-  sites_frac = rt[:9] * work_sites_frac
-  sites_frac += rt[9:]
   return crystal_symmetry.unit_cell().orthogonalization_matrix() * sites_frac
 
 def check_distances(sites_cart, point_distance):
