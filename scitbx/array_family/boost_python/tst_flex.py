@@ -492,16 +492,17 @@ def exercise_complex_functions():
   assert approx_equal(d.imag, a[0])
 
 def exercise_sort():
-  x = flex.double((3,1,2))
-  p = flex.sort_permutation(x)
-  assert tuple(p) == (1,2,0)
-  assert approx_equal(x.shuffle(p), (1,2,3))
-  p = flex.sort_permutation(x, 00000)
-  assert tuple(p) == (1,2,0)
-  assert approx_equal(x.shuffle(p), (1,2,3))
-  p = flex.sort_permutation(x, 0001)
-  assert tuple(p) == (0,2,1)
-  assert approx_equal(x.shuffle(p), (3,2,1))
+  for flex_type in (flex.int, flex.size_t, flex.double):
+    x = flex_type((3,1,2))
+    p = flex.sort_permutation(x)
+    assert tuple(p) == (1,2,0)
+    assert approx_equal(x.shuffle(p), (1,2,3))
+    p = flex.sort_permutation(x, 00000)
+    assert tuple(p) == (1,2,0)
+    assert approx_equal(x.shuffle(p), (1,2,3))
+    p = flex.sort_permutation(x, 0001)
+    assert tuple(p) == (0,2,1)
+    assert approx_equal(x.shuffle(p), (3,2,1))
 
 def exercise_histogram():
   x = flex.double(xrange(20))

@@ -27,7 +27,13 @@ namespace {
     using namespace boost::python;
 
     def("sort_permutation",
-      (shared<std::size_t>(*)(shared<double> const&, bool)) 0,
+      (shared<std::size_t>(*)(const_ref<int> const&, bool)) 0,
+      sort_permutation_overloads());
+    def("sort_permutation",
+      (shared<std::size_t>(*)(const_ref<std::size_t> const&, bool)) 0,
+      sort_permutation_overloads());
+    def("sort_permutation",
+      (shared<std::size_t>(*)(const_ref<double> const&, bool)) 0,
       sort_permutation_overloads());
   }
 

@@ -21,7 +21,7 @@ namespace scitbx { namespace af {
               typename SortCmpFunctor>
     shared<std::size_t>
     sort_permutation(
-      shared<DataType> const& data,
+      const_ref<DataType> const& data,
       SortCmpFunctor sort_op)
     {
       typedef indexed_value<
@@ -43,7 +43,7 @@ namespace scitbx { namespace af {
   template <typename DataType>
   af::shared<std::size_t>
   sort_permutation(
-    af::shared<DataType> const& data,
+    af::const_ref<DataType> const& data,
     bool reverse=false)
   {
     if (reverse) {
