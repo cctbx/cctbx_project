@@ -16,35 +16,97 @@
 namespace cctbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = grid_accessor<1> >
+            typename AccessorType = grid<1> >
   class versa : public versa_plain<ElementType, AccessorType>
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef typename shared_base<ElementType>::handle_type handle_type;
+      typedef versa_plain<ElementType, AccessorType> base_class;
+      typedef typename base_class::handle_type handle_type;
+      typedef versa<ElementType> one_dim_type;
 
       typedef AccessorType accessor_type;
-      typedef typename accessor_type::index_type index_type;
 
-      CCTBX_ARRAY_FAMILY_VERSA_CONSTRUCTORS(versa)
+      versa()
+      {}
 
-      versa(const handle_type& handle, const accessor_type& ac)
-        : versa_plain<ElementType, AccessorType>(handle, ac)
-      {
-        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+      explicit
+      versa(const AccessorType& ac)
+        : base_class(ac)
+      {}
+
+      explicit
+      versa(long n0)
+        : base_class(n0)
+      {}
+
+      versa(const AccessorType& ac, const ElementType& x)
+        : base_class(ac, x)
+      {}
+
+      versa(long n0, const ElementType& x)
+        : base_class(n0, x)
+      {}
+
+      versa(const versa<ElementType, AccessorType>& other, weak_ref_flag)
+        : base_class(other, weak_ref_flag())
+      {}
+
+      template <typename OtherAccessorType>
+      versa(versa<ElementType, OtherAccessorType>& other,
+            const AccessorType& ac)
+        : base_class(other, ac)
+      {}
+
+      template <typename OtherAccessorType>
+      versa(versa<ElementType, OtherAccessorType>& other,
+                  long n0)
+        : base_class(other, n0)
+      {}
+
+      template <typename OtherAccessorType>
+      versa(versa<ElementType, OtherAccessorType>& other,
+                  const AccessorType& ac,
+                  const ElementType& x)
+        : base_class(other, ac, x)
+      {}
+
+      template <typename OtherAccessorType>
+      versa(versa<ElementType, OtherAccessorType>& other,
+                  long n0,
+                  const ElementType& x)
+        : base_class(other, n0, x)
+      {}
+
+      versa(handle_type* other_handle, const AccessorType& ac)
+        : base_class(other_handle, ac)
+      {}
+
+      versa(handle_type* other_handle, long n0)
+        : base_class(other_handle, n0)
+      {}
+
+      versa(const handle_type& other_handle, const AccessorType& ac,
+                  const ElementType& x)
+        : base_class(other_handle, ac)
+      {}
+
+      versa(const handle_type& other_handle, long n0,
+                  const ElementType& x)
+        : base_class(other_handle, n0)
+      {}
+
+      one_dim_type as_1d() {
+        return one_dim_type(*this,
+          typename one_dim_type::accessor_type(this->size()));
       }
-      versa(const handle_type& handle, const size_type& sz)
-        : versa_plain<ElementType, AccessorType>(handle, AccessorType(sz))
-      {
-        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
-      }
 
-      versa<ElementType> as_1d() {
-        return versa<ElementType>(this->handle(), this->size());
+      versa<ElementType, AccessorType>
+      deep_copy() const {
+        shared_plain<ElementType> c(this->begin(), this->end());
+        return versa<ElementType, AccessorType>(c.handle(), this->m_accessor);
       }
-
-      CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(this->begin(), this->accessor())
   };
 
 }} // namespace cctbx::af

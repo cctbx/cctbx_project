@@ -426,6 +426,8 @@ int main(void)
   if (verbose) std::cout << __LINE__ << ":" << std::endl;
   versa_excercise<af::versa_plain<int>,
                   af::versa_plain<int, af::grid<2> > >::run();
+  versa_excercise<af::versa<int>,
+                  af::versa<int, af::grid<2> > >::run();
 
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {
