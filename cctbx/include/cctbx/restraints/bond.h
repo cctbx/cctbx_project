@@ -367,13 +367,15 @@ namespace cctbx { namespace restraints {
       sites_cart,
       sorted_asu_proxies.simple.const_ref(),
       gradient_array);
-    result += bond_residual_sum(
-      sites_cart,
-      *sorted_asu_proxies.asu_mappings(),
-      sorted_asu_proxies.sym.const_ref(),
-      sorted_asu_proxies.sym_active_flags,
-      gradient_array,
-      disable_cache);
+    if (sorted_asu_proxies.sym.size() > 0) {
+      result += bond_residual_sum(
+        sites_cart,
+        *sorted_asu_proxies.asu_mappings(),
+        sorted_asu_proxies.sym.const_ref(),
+        sorted_asu_proxies.sym_active_flags,
+        gradient_array,
+        disable_cache);
+    }
     return result;
   }
 

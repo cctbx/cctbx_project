@@ -21,9 +21,13 @@ namespace cctbx { namespace restraints {
           direct_space_asu::asu_mappings<> > const& asu_mappings)
       :
         asu_mappings_owner_(asu_mappings),
-        asu_mappings_(asu_mappings.get()),
-        sym_active_flags(asu_mappings->mappings_const_ref().size(), false)
-      {}
+        asu_mappings_(asu_mappings.get())
+      {
+        if (asu_mappings_ != 0) {
+          sym_active_flags.resize(
+            asu_mappings_->mappings_const_ref().size(), false);
+        }
+      }
 
       //! Instance as passed to the constructor.
       boost::shared_ptr<direct_space_asu::asu_mappings<> > const&
@@ -45,6 +49,7 @@ namespace cctbx { namespace restraints {
       bool
       process(SymProxyType const& proxy)
       {
+        CCTBX_ASSERT(asu_mappings_ != 0);
         if (asu_mappings_->is_simple_interaction(proxy)) {
           simple.push_back(proxy.as_simple_proxy());
           return false;
@@ -62,6 +67,9 @@ namespace cctbx { namespace restraints {
       void
       push_back(SymProxyType const& proxy)
       {
+        CCTBX_ASSERT(asu_mappings_ != 0);
+        CCTBX_ASSERT(proxy.i_seq < sym_active_flags.size());
+        CCTBX_ASSERT(proxy.j_seq < sym_active_flags.size());
         sym.push_back(proxy);
         sym_active_flags[proxy.i_seq] = true;
         sym_active_flags[proxy.j_seq] = true;

@@ -29,7 +29,7 @@ namespace cctbx { namespace restraints {
         restraints::repulsion_radius_table const& repulsion_radius_table,
         double repulsion_distance_default,
         std::vector<crystal::pair_asu_table<> > const& shell_asu_tables,
-        af::const_ref<double> const& shell_distance_cutoffs,
+        double bonded_distance_cutoff,
         double nonbonded_distance_cutoff,
         double nonbonded_buffer,
         double vdw_1_4_factor)
@@ -42,17 +42,20 @@ namespace cctbx { namespace restraints {
       {
         CCTBX_ASSERT(repulsion_types.size() == bond_params_table.size());
         CCTBX_ASSERT(shell_asu_tables.size() > 0);
-        CCTBX_ASSERT(shell_distance_cutoffs.size() == shell_asu_tables.size());
         for(unsigned i=0; i<shell_asu_tables.size(); i++) {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
                     == bond_params_table.size());
+        }
+        for(unsigned i=1; i<shell_asu_tables.size(); i++) {
+          CCTBX_ASSERT(shell_asu_tables[i].asu_mappings().get()
+                    == shell_asu_tables[0].asu_mappings().get());
         }
         bond_proxies = bond_sorted_asu_proxies(
           shell_asu_tables[0].asu_mappings());
         repulsion_proxies = repulsion_sorted_asu_proxies(
           shell_asu_tables[0].asu_mappings());
         double distance_cutoff = std::max(
-          af::max(shell_distance_cutoffs),
+          bonded_distance_cutoff,
           nonbonded_distance_cutoff+nonbonded_buffer);
         bool minimal = false;
         crystal::neighbors::fast_pair_generator<> pair_generator(
