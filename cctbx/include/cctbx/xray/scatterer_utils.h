@@ -57,6 +57,27 @@ namespace cctbx { namespace xray {
 
   template <typename ScattererType>
   void
+  shift_us(
+    af::ref<ScattererType> const& scatterers,
+    uctbx::unit_cell const& unit_cell,
+    double u_shift)
+  {
+    typedef typename ScattererType::float_type float_type;
+    scitbx::sym_mat3<float_type>
+      u_star_shift = adptbx::u_iso_as_u_star(unit_cell, u_shift);
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      ScattererType& sc = scatterers[i_seq];
+      if (!sc.anisotropic_flag) {
+        sc.u_iso += u_shift;
+      }
+      else{
+        sc.u_star += u_star_shift;
+      }
+    }
+  }
+
+  template <typename ScattererType>
+  void
   apply_symmetry_sites(
     sgtbx::site_symmetry_table const& site_symmetry_table,
     af::ref<ScattererType> const& scatterers)

@@ -92,13 +92,19 @@ namespace {
           arg_("unit_cell"),
           arg_("u_cart_tolerance")))
         .def("tidy_u",
-          (bool(w_t::*)(
+          (void(w_t::*)(
             uctbx::unit_cell const&,
             sgtbx::site_symmetry_ops const&,
             double const&)) &w_t::tidy_u, (
           arg_("unit_cell"),
           arg_("site_symmetry_ops"),
           arg_("u_min")))
+        .def("shift_u",
+          (void(w_t::*)(
+            uctbx::unit_cell const&,
+            double const&)) &w_t::shift_u, (
+          arg_("unit_cell"),
+          arg_("u_shift")))
         .def("apply_symmetry",
           (sgtbx::site_symmetry(w_t::*)(
              uctbx::unit_cell const&,
@@ -174,6 +180,15 @@ namespace {
           arg_("unit_cell"),
           arg_("site_symmetry_table"),
           arg_("u_min")));
+
+    def("shift_us",
+      (void(*)(
+        af::ref<scatterer<> > const&,
+        uctbx::unit_cell const&,
+        double u_min)) shift_us, (
+          arg_("scatterers"),
+          arg_("unit_cell"),
+          arg_("u_shift")));
 
     def("apply_symmetry_sites",
       (void(*)(

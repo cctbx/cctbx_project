@@ -182,6 +182,23 @@ namespace xray {
         }
       }
 
+      //! Changes u_iso or u_star in place by adding u_shift.
+      /*! If u_shift is negative tidy_u() should be called
+          after shift_u().
+       */
+      void
+      shift_u(
+        uctbx::unit_cell const& unit_cell,
+        FloatType const& u_shift)
+      {
+        if (!anisotropic_flag) {
+          u_iso += u_shift;
+        }
+        else {
+          u_star += adptbx::u_iso_as_u_star(unit_cell, u_shift);
+        }
+      }
+
       /*! \brief Computes multiplicity(), weight_without_occupancy(),
           weight() and symmetry-averaged anisotropic displacement parameters.
        */

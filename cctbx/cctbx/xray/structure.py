@@ -302,6 +302,15 @@ class structure(crystal.special_position_settings):
       site_symmetry_table=self._site_symmetry_table,
       u_min=u_min)
 
+  def shift_us(self, u_shift=None, b_shift=None):
+    assert [u_shift, b_shift].count(None) == 1
+    if (u_shift is None):
+      u_shift = adptbx.b_as_u(b_shift)
+    ext.shift_us(
+      scatterers=self._scatterers,
+      unit_cell=self.unit_cell(),
+      u_shift=u_shift)
+
   def apply_symmetry_sites(self):
     ext.apply_symmetry_sites(
       site_symmetry_table=self._site_symmetry_table,
