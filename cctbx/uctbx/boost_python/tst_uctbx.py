@@ -350,35 +350,71 @@ def exercise_bases_rmsd():
         assert approx_equal(v_cpp, 0)
 
 def exercise_box_frac_around_sites():
+  unit_cell = uctbx.unit_cell((10,10,10,90,90,120))
+  buffer = 2
+  sites_frac = flex.vec3_double([
+    (1/2., 2/3., 0.),
+    (1/2., 1/3., 0.)])
+  min_, max_ = unit_cell.box_frac_around_sites(
+    sites_frac=sites_frac, buffer=buffer)
+  assert approx_equal(min_, (0.26905989232414967, 0.10239322565748302, -0.2))
+  assert approx_equal(max_, (0.73094010767585038, 0.8976067743425169, 0.2))
+  sites_cart = unit_cell.orthogonalization_matrix() * sites_frac
+  min_, max_ = sites_cart.min(), sites_cart.max()
+  min_ = unit_cell.fractionalize([m-buffer for m in min_])
+  max_ = unit_cell.fractionalize([m+buffer for m in max_])
+  assert approx_equal(min_, (0.017863279495408259, 0.10239322565748302, -0.2))
+  assert approx_equal(max_, (0.98213672050459189, 0.8976067743425169, 0.2))
   unit_cells = [uctbx.unit_cell(params) for params in [
-    (79, 85.6519, 97.0483, 68.3049, 65.9826, 62.5374),
-    (110, 58.4, 69.2, 90, 127, 90)]]
+    (10, 15, 20, 90,  90,  90),
+    (10, 10, 20, 90,  90, 120),
+    (10, 10, 10, 60,  60,  60)]]
   sites_cart = flex.vec3_double([
     (2.23474, 8.72834, 4.70562),
     (3.72656, 3.28621, 9.19121),
     (-6.83519, -7.5707, 4.62386)])
-  for unit_cell in unit_cells:
-    sites_frac = unit_cell.fractionalization_matrix() * sites_cart
-    min0, max0 = unit_cell.box_frac_around_sites(
-      sites_cart=sites_cart)
-    for x,y in zip(min0, max0): assert x < y
-    for buffer in [None, 0.]:
-      min_, max_ = unit_cell.box_frac_around_sites(
-        sites_cart=sites_cart, buffer=buffer)
-      assert approx_equal(min_, min0)
-      assert approx_equal(max_, max0)
-      min_, max_ = unit_cell.box_frac_around_sites(
-        sites_frac=sites_frac, buffer=buffer)
-      assert approx_equal(min_, min0)
-      assert approx_equal(max_, max0)
-    for buffer in [3.,5.,7.]:
+  c_inv_rs = [(1,0,0, 0,1,0, 0,0,1),
+              (0,1,0, 0,0,1, 1,0,0),
+              (0,0,1, 1,0,0, 0,1,0)]
+  for unit_cell_0 in unit_cells:
+    for c_inv_r in c_inv_rs:
+      unit_cell = unit_cell_0.change_basis(c_inv_r)
+      sites_frac = unit_cell.fractionalization_matrix() * sites_cart
       min0, max0 = unit_cell.box_frac_around_sites(
-        sites_cart=sites_cart, buffer=buffer)
+        sites_cart=sites_cart)
       for x,y in zip(min0, max0): assert x < y
-      min_, max_ = unit_cell.box_frac_around_sites(
-        sites_frac=sites_frac, buffer=buffer)
-      assert approx_equal(min_, min0)
-      assert approx_equal(max_, max0)
+      for buffer in [None, 0]:
+        min_, max_ = unit_cell.box_frac_around_sites(
+          sites_cart=sites_cart, buffer=buffer)
+        assert approx_equal(min_, min0)
+        assert approx_equal(max_, max0)
+        min_, max_ = unit_cell.box_frac_around_sites(
+          sites_frac=sites_frac, buffer=buffer)
+        assert approx_equal(min_, min0)
+        assert approx_equal(max_, max0)
+      for buffer in [0,3,5,7]:
+        min0, max0 = unit_cell.box_frac_around_sites(
+          sites_cart=sites_cart, buffer=buffer)
+        for x,y in zip(min0, max0): assert x < y
+        min_, max_ = unit_cell.box_frac_around_sites(
+          sites_frac=sites_frac, buffer=buffer)
+        assert approx_equal(min_, min0)
+        assert approx_equal(max_, max0)
+        min_, max_ = sites_cart.min(), sites_cart.max()
+        min_ = unit_cell.fractionalize([m-buffer for m in min_])
+        max_ = unit_cell.fractionalize([m+buffer for m in max_])
+        if (unit_cell_0 is unit_cells[0]):
+          assert approx_equal(min_, min0)
+          assert approx_equal(max_, max0)
+        elif (buffer == 0 and unit_cell_0 is unit_cells[1]):
+          assert approx_equal(min_, min0)
+          if (c_inv_r is c_inv_rs[2]):
+            assert approx_equal(max_, max0)
+          else:
+            assert not approx_equal(max_, max0)
+        else:
+          assert not approx_equal(min_, min0)
+          assert not approx_equal(max_, max0)
 
 def run():
   exercise_functions()

@@ -75,29 +75,30 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
     return self.niggli_reduction(
       relative_epsilon, iteration_limit).as_unit_cell()
 
+  def buffer_shifts_frac(self, buffer):
+    from cctbx.crystal import direct_space_asu
+    return direct_space_asu.float_asu(
+      unit_cell=self,
+      facets=[direct_space_asu.float_cut_plane(n=n, c=0)
+        for n in [(-1,0,0),(0,-1,0),(0,0,-1)]]) \
+      .add_buffer(thickness=float(buffer)) \
+      .volume_vertices().max()
+
   def box_frac_around_sites(self,
         sites_cart=None,
         sites_frac=None,
         buffer=None):
     assert [sites_cart, sites_frac].count(None) == 1
-    if (buffer is None):
-      if (sites_frac is None):
-        assert sites_cart.size() > 0
-        sites_frac = self.fractionalization_matrix() * sites_cart
-      else:
-        assert sites_frac.size() > 0
-      del sites_cart
-      return sites_frac.min(), sites_frac.max()
-    assert isinstance(buffer, float)
-    if (sites_cart is None):
-      assert sites_frac.size() > 0
-      sites_cart = self.orthogonalization_matrix() * sites_frac
-    else:
+    if (sites_frac is None):
       assert sites_cart.size() > 0
+      sites_frac = self.fractionalization_matrix() * sites_cart
+    else:
+      assert sites_frac.size() > 0
+    del sites_cart
+    if (buffer is None or buffer == 0):
+      return sites_frac.min(), sites_frac.max()
+    s_min, s_max = sites_frac.min(), sites_frac.max()
     del sites_frac
-    min_max = []
-    for b in [-buffer, buffer]:
-      sites_frac = self.fractionalization_matrix() * (sites_cart + [b]*3)
-      min_max.append([sites_frac.min(), sites_frac.max()])
-    return tuple([min(x,y) for x,y in zip(min_max[0][0], min_max[1][0])]), \
-           tuple([max(x,y) for x,y in zip(min_max[0][1], min_max[1][1])])
+    shifts_frac = self.buffer_shifts_frac(buffer=buffer)
+    return tuple([s-b for s,b in zip(s_min, shifts_frac)]), \
+           tuple([s+b for s,b in zip(s_max, shifts_frac)])
