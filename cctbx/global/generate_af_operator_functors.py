@@ -29,7 +29,7 @@ def run():
 #ifndef CCTBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 #define CCTBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 
-namespace cctbx { namespace af {"""
+namespace cctbx { namespace fn {"""
 
   for op in unary_functors.keys():
     generate_unary_functor(
@@ -46,7 +46,7 @@ namespace cctbx { namespace af {"""
       in_place_binary_functors[op], "x " + op + " y")
 
   print """
-}} // namespace cctbx::af
+}} // namespace cctbx::fn
 
 #endif // CCTBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H"""
   sys.stdout = sys.__stdout__

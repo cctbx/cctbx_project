@@ -131,7 +131,7 @@ namespace cctbx { namespace mintbx {
     std::size_t i;
     for(i=0;i<miller_indices.size();i++) {
       if (multiplicities.size()) mult = multiplicities[i];
-      sum_mult_data_scaled_sq += mult * math::pow2(data_scaled[i]);
+      sum_mult_data_scaled_sq += mult * fn::pow2(data_scaled[i]);
     }
     if (sum_mult_data_scaled_sq < 1.) sum_mult_data_scaled_sq = 1.;
     af::tiny<FloatType, 6> u_star;
@@ -150,7 +150,7 @@ namespace cctbx { namespace mintbx {
       }
       FloatType drkdw = data_reference[i] * k * dw;
       FloatType diff = data_scaled[i] - drkdw;
-      target_ += mult * math::pow2(
+      target_ += mult * fn::pow2(
         diff / std::sqrt(sum_mult_data_scaled_sq));
       if (calc_gradient_k || calc_gradient_b) {
         FloatType gk = -2 * mult * drkdw * diff / sum_mult_data_scaled_sq;

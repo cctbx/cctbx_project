@@ -1,4 +1,5 @@
 #include <cctbx/array_family/simple_io.h>
+#include <cctbx/array_family/misc_functions.h>
 #include <cctbx/array_family/tiny.h>
 #include <cctbx/array_family/tiny_reductions.h>
 #include <cctbx/array_family/small.h>
@@ -7,7 +8,6 @@
 #include <cctbx/array_family/shared_reductions.h>
 #include <cctbx/array_family/versa.h>
 #include <cctbx/array_family/versa_reductions.h>
-#include <cctbx/math/utils.h>
 
 using namespace cctbx;
 
@@ -42,13 +42,13 @@ namespace {
     check_true(__LINE__, af::sum(a1) == a1[0] + a1[1] + a1[2]);
     check_true(__LINE__, af::product(a1) == a1[0] * a1[1] * a1[2]);
     check_true(__LINE__, af::mean(a1) == (a1[0] + a1[1] + a1[2]) / 3);
-    check_true(__LINE__, math::abs(
+    check_true(__LINE__, fn::absolute(
       af::mean_sq(a3)
       - (a3[0]*a3[0] + a3[1]*a3[1] + a3[2]*a3[2]) / 3) < 1.e-6);
-    check_true(__LINE__, math::abs(
+    check_true(__LINE__, fn::absolute(
       af::mean_weighted(a3, a4)
       - ((a3[0]*a4[0] + a3[1]*a4[1] + a3[2]*a4[2]) / af::sum(a4))) < 1.e-6);
-    check_true(__LINE__, math::abs(
+    check_true(__LINE__, fn::absolute(
       af::mean_sq_weighted(a3, a4)
       - ((  a3[0]*a3[0]*a4[0]
           + a3[1]*a3[1]*a4[1]

@@ -12,7 +12,7 @@
  */
 
 #include <cctbx/fixes/cstdlib>
-#include <cctbx/math/utils.h>
+#include <cctbx/array_family/misc_functions.h>
 #include <cctbx/array_family/ref.h>
 #include <cctbx/array_family/tiny.h>
 #include <cctbx/sgtbx/math.h>
@@ -41,8 +41,8 @@ namespace cctbx { namespace sgtbx {
           if (T) swap(&T2D(i, 0), &T2D(k, 0), tc);
         }
         for (k++; k < mr; k++) {
-          int a = math::abs(M2D(k, j));
-          if (a != 0 && a < math::abs(M2D(i, j))) {
+          int a = fn::absolute(M2D(k, j));
+          if (a != 0 && a < fn::absolute(M2D(i, j))) {
                    swap(&M2D(i, 0), &M2D(k, 0), mc);
             if (T) swap(&T2D(i, 0), &T2D(k, 0), tc);
           }

@@ -21,7 +21,11 @@ def write_copyright():
      %s
  */""" % (sys.argv[0],)
 
-misc_functions_2arg = (
+misc_functions_a = (
+  "absolute", "pow2",
+)
+
+misc_functions_x_x_s = (
   (["approx_equal_scaled"], 1,
    ["ElementType const& scaled_tolerance", "scaled_tolerance"]),
   (["approx_equal_unscaled"], 1,
@@ -245,7 +249,7 @@ def generate_unary_ops(array_type_name):
       format_list("    ", d.typedef_return_array_type))
     if (base_array_type_name(array_type_name) == "tiny"):
       print """    return_array_type result;
-    array_operation_a(functor_%s<
+    array_operation_a(fn::functor_%s<
         return_element_type,
         ElementType>(),
       a.begin(), result.begin(), a.size(), true_type());
@@ -255,7 +259,7 @@ def generate_unary_ops(array_type_name):
     else:
       print """    return return_array_type(%s,
       make_init_functor(make_array_functor_a(
-        functor_%s<
+        fn::functor_%s<
           return_element_type,
           ElementType>(), a.begin())));
   }
@@ -329,7 +333,7 @@ def elementwise_binary_op(
       format_list("    ", d.typedef_return_array_type))
   if (base_array_type_name(array_type_name) == "tiny"):
     print """    return_array_type result;
-    array_operation_%s(functor_%s<
+    array_operation_%s(fn::functor_%s<
         return_element_type,
         %s,
         %s>(),
@@ -342,7 +346,7 @@ def elementwise_binary_op(
   else:
     print """    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s(
-        functor_%s<
+        fn::functor_%s<
           return_element_type,
           %s,
           %s>(), a1%s, a2%s)));
@@ -364,7 +368,7 @@ def elementwise_inplace_binary_op(
   operator%s(
     %s& a1,
     %s const& a2) {
-    %sarray_operation_in_place_%s(functor_%s<
+    %sarray_operation_in_place_%s(fn::functor_%s<
         %s,
         %s>(),
       a1.begin(), a2%s, %s);
@@ -409,7 +413,7 @@ def generate_1arg_element_wise(array_type_name, function_names):
       format_list("    ", d.typedef_return_array_type))
     if (base_array_type_name(array_type_name) == "tiny"):
       print """    return_array_type result;
-    array_operation_a(functor_%s<return_element_type, ElementType>(),
+    array_operation_a(fn::functor_%s<return_element_type, ElementType>(),
       a.begin(), result.begin(), a.size(), true_type());
     return result;
   }
@@ -417,7 +421,7 @@ def generate_1arg_element_wise(array_type_name, function_names):
     else:
       print """    return return_array_type(%s,
       make_init_functor(make_array_functor_a(
-        functor_%s<return_element_type, ElementType>(), a.begin())));
+        fn::functor_%s<return_element_type, ElementType>(), a.begin())));
   }
 """ % (result_constructor_args, function_name)
 
@@ -446,7 +450,7 @@ def generate_2arg_element_wise(
       if (base_array_type_name(array_type_name) == "tiny"):
         print """
     return_array_type result;
-    array_operation_%s(functor_%s<
+    array_operation_%s(fn::functor_%s<
         return_element_type, %s, %s>(),
       a1%s, a2%s, result.begin(), %s, true_type());
     return result;
@@ -457,7 +461,7 @@ def generate_2arg_element_wise(
       else:
         print """    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s(
-        functor_%s<return_element_type,
+        fn::functor_%s<return_element_type,
           %s, %s>(),
         a1%s, a2%s)));
   }
@@ -467,7 +471,7 @@ def generate_2arg_element_wise(
        function_name, d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1])
 
-def generate_2arg_addl_element_wise(
+def generate_x_x_s_element_wise(
   array_type_name, function_names,
   equal_element_type,
   addl_args
@@ -495,7 +499,7 @@ def generate_2arg_addl_element_wise(
       if (base_array_type_name(array_type_name) == "tiny"):
         print """
     return_array_type result;
-    array_operation_%s_s(functor_%s<
+    array_operation_%s_s(fn::functor_%s<
         return_element_type, %s, %s, %s>(),
       a1%s, a2%s, %s,
       result.begin(), %s, true_type());
@@ -507,7 +511,7 @@ def generate_2arg_addl_element_wise(
       else:
         print """    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s_s(
-        functor_%s<return_element_type,
+        fn::functor_%s<return_element_type,
           %s, %s, %s>(),
         a1%s, a2%s, %s)));
   }
@@ -533,7 +537,7 @@ def generate_element_wise_special(
       p.return_array_type)
     if (base_array_type_name(array_type_name) == "tiny"):
       print """    return_array_type result;
-    array_operation_a(functor_%s<
+    array_operation_a(fn::functor_%s<
       %s,
       %s >(),
       a.begin(), result.begin(), a.size(), true_type());
@@ -546,7 +550,7 @@ def generate_element_wise_special(
         array_type_name)
       print """    return return_array_type(%s,
       make_init_functor(make_array_functor_a(
-        functor_%s<
+        fn::functor_%s<
           %s,
           %s >(), a.begin())));
   }
@@ -574,7 +578,7 @@ def generate_element_wise_special(
       p.return_array_type)
       if (base_array_type_name(array_type_name) == "tiny"):
         print """    return_array_type result;
-    array_operation_%s(functor_%s<
+    array_operation_%s(fn::functor_%s<
         %s,
         %s,
         %s >(),
@@ -588,7 +592,7 @@ def generate_element_wise_special(
       else:
         print """    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s(
-        functor_%s<
+        fn::functor_%s<
           %s,
           %s,
           %s >(), a1%s, a2%s)));
@@ -648,12 +652,13 @@ namespace cctbx { namespace af {
     generate_elementwise_binary_op(
       array_type_name, "boolean", op_symbol)
   generate_1arg_element_wise(
-    array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
+    array_type_name,
+    misc_functions_a + cmath_1arg + cstdlib_1arg + complex_1arg)
   generate_2arg_element_wise(array_type_name, cmath_2arg)
   for special_def in complex_special:
     generate_element_wise_special(array_type_name, special_def)
-  for args in misc_functions_2arg:
-    apply(generate_2arg_addl_element_wise, (array_type_name,) + args)
+  for args in misc_functions_x_x_s:
+    apply(generate_x_x_s_element_wise, (array_type_name,) + args)
 
   print "}} // namespace cctbx::af"
   print

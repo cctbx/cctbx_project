@@ -26,7 +26,6 @@
 #include <cctbx/coordinates.h>
 #include <cctbx/array_family/tiny_types.h>
 #include <cctbx/array_family/tiny_reductions.h>
-#include <cctbx/math/utils.h>
 
 namespace cctbx {
   //! Miller index namespace.
@@ -78,8 +77,10 @@ namespace cctbx {
             if (elems[P[i]] <  0 && m2[P[i]] >= 0) return false;
           }
           for(i=0;i<3;i++) {
-            if (math::abs(elems[P[i]]) < math::abs(m2[P[i]])) return true;
-            if (math::abs(elems[P[i]]) > math::abs(m2[P[i]])) return false;
+            if (  fn::absolute(elems[P[i]])
+                < fn::absolute(m2[P[i]])) return true;
+            if (  fn::absolute(elems[P[i]])
+                > fn::absolute(m2[P[i]])) return false;
           }
           return false;
         }

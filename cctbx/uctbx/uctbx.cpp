@@ -11,6 +11,7 @@
  */
 
 #include <cctbx/uctbx.h>
+#include <cctbx/math/utils.h>
 
 namespace { // Helper functions in anonymous namespace.
 
@@ -63,9 +64,9 @@ namespace { // Helper functions in anonymous namespace.
   {
     double maxelem = M[0];
     for(int i=1;i<9;i++) if (maxelem < M[i]) maxelem = M[i];
-    return    af::approx_equal_scaled(M[1], M[3], maxelem * tolerance)
-           && af::approx_equal_scaled(M[2], M[6], maxelem * tolerance)
-           && af::approx_equal_scaled(M[5], M[7], maxelem * tolerance);
+    return    fn::approx_equal_scaled(M[1], M[3], maxelem * tolerance)
+           && fn::approx_equal_scaled(M[2], M[6], maxelem * tolerance)
+           && fn::approx_equal_scaled(M[5], M[7], maxelem * tolerance);
   }
 }
 
@@ -229,9 +230,9 @@ namespace cctbx { namespace uctbx {
   UnitCell::isEqual(const UnitCell& other, double tolerance) const
   {
     for(int i=0;i<3;i++) {
-      if (!af::approx_equal_unscaled(Len[i],other.Len[i], tolerance))
+      if (!fn::approx_equal_unscaled(Len[i],other.Len[i], tolerance))
         return false;
-      if (!af::approx_equal_unscaled(Ang[i],other.Ang[i], tolerance))
+      if (!fn::approx_equal_unscaled(Ang[i],other.Ang[i], tolerance))
         return false;
     }
     return true;

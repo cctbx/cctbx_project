@@ -15,7 +15,6 @@
 
 #include <string>
 #include <algorithm>
-#include <cctbx/math/utils.h>
 #include <cctbx/math/loops.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
@@ -247,7 +246,7 @@ namespace cctbx { namespace sgtbx {
                 for (int jWtd = 0; jWtd < nWtd; jWtd++) {
                   if (   RMx[jWtd].isValid()
                       && !af::cmp(RI[iWtd].EV(), RI[jWtd].EV())) {
-                    if (math::abs(Ord[jWtd]) >= math::abs(RMxO)) {
+                    if (fn::absolute(Ord[jWtd]) >= fn::absolute(RMxO)) {
                       UseThisSMx = 0;
                     }
                     else {
@@ -297,7 +296,8 @@ namespace cctbx { namespace sgtbx {
         for(std::size_t i=0;i<Ix.n();i++) TrialBasis.setColumn(i, Sol[Ix[i]]);
         if (Ix.n() == 1) TrialBasis.setColumn(1, RMx[0] * Sol[Ix[0]]);
         int Det = TrialBasis.det();
-        if (Det != 0 && (MinDet == 0 || math::abs(MinDet) > math::abs(Det))) {
+        if (Det != 0
+            && (MinDet == 0 || fn::absolute(MinDet) > fn::absolute(Det))) {
           MinDet = Det;
           result = TrialBasis;
         }
@@ -352,7 +352,7 @@ namespace cctbx { namespace sgtbx {
         const RotMx& R = WorkSgOps[iSMx].Rpart();
         int Rtype = R.getRtype();
         cctbx_assert(Rtype != 0);
-        if (math::abs(Rtype) == 2) {
+        if (fn::absolute(Rtype) == 2) {
           RotMxInfo RI = R.getInfo();
           const af::int3 EV_100(1, 0, 0);
           if (!af::cmp(RI.EV(), EV_100)) {
@@ -618,8 +618,8 @@ namespace cctbx { namespace sgtbx {
           if (na > nb) return true;
           if (na < nb) return false;
 
-          na = 0; for(i=0;i<9;i++) if (math::abs(aR[i]) == aR.BF()) na++;
-          nb = 0; for(i=0;i<9;i++) if (math::abs(bR[i]) == bR.BF()) nb++;
+          na = 0; for(i=0;i<9;i++) if (fn::absolute(aR[i]) == aR.BF()) na++;
+          nb = 0; for(i=0;i<9;i++) if (fn::absolute(bR[i]) == bR.BF()) nb++;
           if (na > nb) return true;
           if (na < nb) return false;
 

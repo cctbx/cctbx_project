@@ -14,7 +14,6 @@
 #include <memory>
 #include <algorithm>
 #include <ctype.h> // cannot use cctype b/o non-conforming compilers
-#include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/groups.h>
 
 namespace cctbx { namespace sgtbx {
@@ -103,7 +102,7 @@ namespace cctbx { namespace sgtbx {
     bool FirstIsShorter(const af::int3& a, const af::int3& b) {
       for(std::size_t i=0;i<3;i++) {
         if (a[i]) {
-          if (math::abs(a[i]) > math::abs(b[i])) return false;
+          if (fn::absolute(a[i]) > fn::absolute(b[i])) return false;
           return true;
         }
       }

@@ -1024,7 +1024,7 @@ namespace cctbx { namespace af {
     {
       base_array_type result;
       result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) result.append(math::abs(a[i]));
+      for(std::size_t i=0;i<a.size();i++) result.append(fn::absolute(a[i]));
       return f_t(result, a.accessor());
     }
 

@@ -408,10 +408,10 @@ namespace cctbx {
       {
         u = detail::root(c1, 3);
         v = detail::root(c2, 3);
-        FloatType diff = math::abs(u.imag() + v.imag());
+        FloatType diff = fn::absolute(u.imag() + v.imag());
         for(unsigned int k=1;k<3;k++) {
           std::complex<FloatType> trial_v = detail::root(c2, 3, k);
-          FloatType trial_diff = math::abs(u.imag() + trial_v.imag());
+          FloatType trial_diff = fn::absolute(u.imag() + trial_v.imag());
           if (diff > trial_diff) {
             diff = trial_diff;
             v = trial_v;
