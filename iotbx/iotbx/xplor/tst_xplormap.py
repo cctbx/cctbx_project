@@ -1,4 +1,4 @@
-from iotbx.xplor import map_gridding, map_reader, map_writer
+import iotbx.xplor.map
 from cctbx import uctbx
 from libtbx.test_utils import approx_equal
 import urllib
@@ -6,11 +6,11 @@ import filecmp
 
 def exercise_map_gridding():
   try:
-    g = map_gridding(n=(0,20,30), first=(-3,-4,-5), last=(5,4,3))
+    g = iotbx.xplor.map.gridding(n=(0,20,30), first=(-3,-4,-5), last=(5,4,3))
   except RuntimeError, e:
     assert str(e) == "Illegal xplor map gridding for dimension X: " \
                    + "gridding=0, first=-3, last=5"
-  g = map_gridding(n=(10,20,30), first=(-3,-4,-5), last=(5,4,3))
+  g = iotbx.xplor.map.gridding(n=(10,20,30), first=(-3,-4,-5), last=(5,4,3))
   fg = g.as_flex_grid()
   assert fg.origin() == g.first
   assert fg.last(0) == g.last
@@ -24,7 +24,7 @@ def get_test_files():
     'NSFN_C2221.xplor')
 
 def read_xplor(file_name):
-  a = map_reader(file_name=file_name)
+  a = iotbx.xplor.map.reader(file_name=file_name)
   assert a.title == [' REMARKS FILENAME=""',
                      ' REMARKS Phenix Xarray to CNS map format']
   assert a.gridding.n == (24,120,54)
@@ -43,7 +43,7 @@ def read_xplor(file_name):
   return a
 
 def write_xplor(map, file_name):
-  map_writer(
+  iotbx.xplor.map.writer(
     file_name=file_name,
     title=map.title,
     unit_cell=map.unit_cell,
