@@ -268,11 +268,14 @@ def format_round_scaled_list(l, precision=4, fmt="f"):
     s += (" %%.%d%s" % (precision, fmt)) % (x,)
   return s[1:]
 
+def format_structure_factor(f, precision_ampl=3, precision_phase=0):
+  a, p = xutils.f_as_ampl_phase(f)
+  a = round_scaled(a, 10**precision_ampl)
+  p = round_scaled(p, 10**precision_phase) % 360
+  if (p <= round_scaled(-180., 10**precision_phase)): p += 360
+  return ("%%.%dg %%.%df" % (precision_ampl, precision_phase)) % (a, p)
+
 def print_structure_factors(F, precision_ampl=3, precision_phase=0):
   for i in xrange(len(F.H)):
-    a, p = xutils.f_as_ampl_phase(F.F[i])
-    a = round_scaled(a, 10**precision_ampl)
-    p = round_scaled(p, 10**precision_phase) % 360
-    if (p <= round_scaled(-180., 10**precision_phase)): p += 360
-    print F.H[i], (
-      "%%.%dg %%.%df" % (precision_ampl, precision_phase)) % (a, p)
+    print F.H[i], format_structure_factor(
+      F.F[i], precision_ampl, precision_phase)
