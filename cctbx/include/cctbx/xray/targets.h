@@ -588,9 +588,8 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
   // acentric reflection
   if(cf == 0) {
      double arg = 2.0*alpha*fo/(beta*epsilon);
-     double A_prime = arg * std::cos(pc) + A;
-     double B_prime = arg * std::sin(pc) + B;
-     // calculate derivative analytically
+     double A_prime = arg * fc * std::cos(pc) + A;
+     double B_prime = arg * fc * std::sin(pc) + B;
      if((std::abs(C) < small) && (std::abs(D) < small)) {
         double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
         if(val < small) {
