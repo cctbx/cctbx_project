@@ -40,7 +40,7 @@ def compute_mean_weighted_phase_error(h, f, phi1, phi2, verbose=0):
     sum_w += f[i]
   return sum_w_phase_error / sum_w
 
-def square_emap(xtal, p1_miller_indices, miller_indices, e_values, phases):
+def square_emap(xtal, e000, p1_miller_indices, miller_indices, e_values, phases):
   index_span = sftbx.index_span(p1_miller_indices)
   if (1):
     print "index_span:"
@@ -57,13 +57,15 @@ def square_emap(xtal, p1_miller_indices, miller_indices, e_values, phases):
   old_e_complex = shared.polar_rad(e_values, phases)
   n_complex = rfft.Ncomplex()
   print "n_complex:", n_complex
-  print
   conjugate = 0
   map = sftbx.structure_factor_map(
     xtal.SgOps, friedel_flag, miller_indices,
     old_e_complex, n_complex, conjugate)
+  map[0] = e000
   rfft.backward(map)
-  shared.square(shared.reinterpret_complex_as_real(map))
+  rmap = shared.reinterpret_complex_as_real(map)
+  shared.set_if_less_than(rmap, 0, 0)
+  shared.square(rmap)
   rfft.forward(map)
   new_e_complex = sftbx.collect_structure_factors(
     friedel_flag, miller_indices, map, n_complex, conjugate)
@@ -107,7 +109,6 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
     means[1][1] - means[0][1])
   if (0 or verbose):
     tprs.dump_triplets(miller_indices_h)
-  print
   return tprs
 
 def exercise(SgInfo,
@@ -127,10 +128,16 @@ def exercise(SgInfo,
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
   MillerIndices = xutils.build_miller_indices(xtal, friedel_flag=1,d_min=d_min)
+  MillerIndices.H.append((0,0,0))
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=1)
+  print "F000:", Fcalc.F[MillerIndices.H.size()-1]
   e_values = Fcalc.F
   inplace_divide(
     e_values, math.sqrt(xtal.SgOps.OrderZ() * number_of_point_atoms))
+  e000 = e_values[MillerIndices.H.size()-1]
+  print "E000:", e000
+  MillerIndices.H.pop_back()
+  e_values.pop_back()
   dmtbx.inplace_sort(MillerIndices.H, e_values, 1)
   s = shared.statistics(e_values)
   print "mean2:", s.mean2()
@@ -151,7 +158,6 @@ def exercise(SgInfo,
     p1_H, p1_e_values, p1_phases,
     0, 0)
   print "number of structure factors p1:", p1_H.size()
-  print
   if (exercise_triplets):
     tprs_sg = test_triplet_invariants(
       xtal.SgInfo, MillerIndices.H, e_values, phases, verbose)
@@ -170,11 +176,11 @@ def exercise(SgInfo,
           "", p1_phases[j]*180/math.pi, p1_new_phases[j]*180/math.pi)
       print
   if (exercise_squaring):
-    new_phases = square_emap(xtal, p1_H, MillerIndices.H, e_values, phases)
+    new_phases = square_emap(xtal, e000, p1_H, MillerIndices.H, e_values, phases)
     mwpe = compute_mean_weighted_phase_error(
       MillerIndices.H, e_values, phases, new_phases, verbose)
     print "squaring mean weighted phase error: %.2f" % (mwpe,)
-    print
+  print
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
