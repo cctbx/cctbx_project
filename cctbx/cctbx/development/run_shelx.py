@@ -97,7 +97,7 @@ def atoms(xtal, short_sfac):
       l("%-4s %d %s %s %s" % (lbl, sfac, coor, dot6gdot(sof),
         dot6gdot(NOFIX(site.Uiso()))))
     else:
-      U = adptbx.Ustar_as_Uuvrs(xtal.UnitCell, site.Uaniso())
+      U = adptbx.Ustar_as_Ucif(xtal.UnitCell, site.Uaniso())
       Ufix = []
       for c in U: Ufix.append(NOFIX(c))
       U = Ufix

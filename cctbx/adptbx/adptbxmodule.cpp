@@ -37,14 +37,14 @@ namespace {
   }
 
   af::double6
-  py_Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
-                    const af::double6& Uuvrs) {
-    return Uuvrs_as_Ustar(uc, Uuvrs);
+  py_Ucif_as_Ustar(const uctbx::UnitCell& uc,
+                    const af::double6& Ucif) {
+    return Ucif_as_Ustar(uc, Ucif);
   }
   af::double6
-  py_Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
+  py_Ustar_as_Ucif(const uctbx::UnitCell& uc,
                     const af::double6& Ustar) {
-    return Ustar_as_Uuvrs(uc, Ustar);
+    return Ustar_as_Ucif(uc, Ustar);
   }
 
   af::double6
@@ -59,14 +59,14 @@ namespace {
   }
 
   af::double6
-  py_Ucart_as_Uuvrs(const uctbx::UnitCell& uc,
+  py_Ucart_as_Ucif(const uctbx::UnitCell& uc,
                     const af::double6& Ucart) {
-    return Ucart_as_Uuvrs(uc, Ucart);
+    return Ucart_as_Ucif(uc, Ucart);
   }
   af::double6
-  py_Uuvrs_as_Ucart(const uctbx::UnitCell& uc,
-                    const af::double6& Uuvrs) {
-    return Uuvrs_as_Ucart(uc, Uuvrs);
+  py_Ucif_as_Ucart(const uctbx::UnitCell& uc,
+                    const af::double6& Ucif) {
+    return Ucif_as_Ucart(uc, Ucif);
   }
 
   af::double6
@@ -92,14 +92,14 @@ namespace {
   }
 
   af::double6
-  py_Uuvrs_as_beta(const uctbx::UnitCell& uc,
-                   const af::double6& Uuvrs) {
-    return Uuvrs_as_beta(uc, Uuvrs);
+  py_Ucif_as_beta(const uctbx::UnitCell& uc,
+                   const af::double6& Ucif) {
+    return Ucif_as_beta(uc, Ucif);
   }
   af::double6
-  py_beta_as_Uuvrs(const uctbx::UnitCell& uc,
+  py_beta_as_Ucif(const uctbx::UnitCell& uc,
                    const af::double6& beta) {
-    return beta_as_Uuvrs(uc, beta);
+    return beta_as_Ucif(uc, beta);
   }
 
   double
@@ -123,14 +123,14 @@ namespace {
   }
 
   double
-  py_Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
-                   const af::double6& Uuvrs) {
-    return Uuvrs_as_Uiso(uc, Uuvrs);
+  py_Ucif_as_Uiso(const uctbx::UnitCell& uc,
+                   const af::double6& Ucif) {
+    return Ucif_as_Uiso(uc, Ucif);
   }
   af::double6
-  py_Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
+  py_Uiso_as_Ucif(const uctbx::UnitCell& uc,
                    const double& Uiso) {
-    return Uiso_as_Uuvrs(uc, Uiso);
+    return Uiso_as_Ucif(uc, Uiso);
   }
 
   double
@@ -176,10 +176,10 @@ namespace {
     return DebyeWallerFactor_beta(MIx, beta);
   }
   double
-  py_DebyeWallerFactorUuvrs(const uctbx::UnitCell& uc,
-                            const Miller::Index& MIx,
-                            const af::double6& Uuvrs) {
-    return DebyeWallerFactorUuvrs(uc, MIx, Uuvrs);
+  py_DebyeWallerFactorUcif(const uctbx::UnitCell& uc,
+                           const Miller::Index& MIx,
+                           const af::double6& Ucif) {
+    return DebyeWallerFactorUcif(uc, MIx, Ucif);
   }
   double
   py_DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
@@ -255,25 +255,25 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
   this_module.def(py_U_as_B_ansio, "U_as_B");
   this_module.def(py_B_as_U_ansio, "B_as_U");
 
-  this_module.def(py_Uuvrs_as_Ustar, "Uuvrs_as_Ustar");
-  this_module.def(py_Ustar_as_Uuvrs, "Ustar_as_Uuvrs");
+  this_module.def(py_Ucif_as_Ustar, "Ucif_as_Ustar");
+  this_module.def(py_Ustar_as_Ucif, "Ustar_as_Ucif");
   this_module.def(py_Ucart_as_Ustar, "Ucart_as_Ustar");
   this_module.def(py_Ustar_as_Ucart, "Ustar_as_Ucart");
-  this_module.def(py_Ucart_as_Uuvrs, "Ucart_as_Uuvrs");
-  this_module.def(py_Uuvrs_as_Ucart, "Uuvrs_as_Ucart");
+  this_module.def(py_Ucart_as_Ucif, "Ucart_as_Ucif");
+  this_module.def(py_Ucif_as_Ucart, "Ucif_as_Ucart");
   this_module.def(py_Ustar_as_beta, "Ustar_as_beta");
   this_module.def(py_beta_as_Ustar, "beta_as_Ustar");
   this_module.def(py_Ucart_as_beta, "Ucart_as_beta");
   this_module.def(py_beta_as_Ucart, "beta_as_Ucart");
-  this_module.def(py_Uuvrs_as_beta, "Uuvrs_as_beta");
-  this_module.def(py_beta_as_Uuvrs, "beta_as_Uuvrs");
+  this_module.def(py_Ucif_as_beta, "Ucif_as_beta");
+  this_module.def(py_beta_as_Ucif, "beta_as_Ucif");
 
   this_module.def(py_Ucart_as_Uiso, "Ucart_as_Uiso");
   this_module.def(py_Uiso_as_Ucart, "Uiso_as_Ucart");
   this_module.def(py_Ustar_as_Uiso, "Ustar_as_Uiso");
   this_module.def(py_Uiso_as_Ustar, "Uiso_as_Ustar");
-  this_module.def(py_Uuvrs_as_Uiso, "Uuvrs_as_Uiso");
-  this_module.def(py_Uiso_as_Uuvrs, "Uiso_as_Uuvrs");
+  this_module.def(py_Ucif_as_Uiso, "Ucif_as_Uiso");
+  this_module.def(py_Uiso_as_Ucif, "Uiso_as_Ucif");
   this_module.def(py_beta_as_Uiso, "beta_as_Uiso");
   this_module.def(py_Uiso_as_beta, "Uiso_as_beta");
 
@@ -283,7 +283,7 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
   this_module.def(py_DebyeWallerFactorUiso_3, "DebyeWallerFactorUiso");
   this_module.def(py_DebyeWallerFactorUstar, "DebyeWallerFactorUstar");
   this_module.def(py_DebyeWallerFactor_beta, "DebyeWallerFactor_beta");
-  this_module.def(py_DebyeWallerFactorUuvrs, "DebyeWallerFactorUuvrs");
+  this_module.def(py_DebyeWallerFactorUcif, "DebyeWallerFactorUcif");
   this_module.def(py_DebyeWallerFactorUcart, "DebyeWallerFactorUcart");
 
   this_module.def(py_Eigenvalues, "Eigenvalues");

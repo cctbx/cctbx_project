@@ -7,18 +7,18 @@ from cctbx_boost import adptbx # anisotropic displacement parameter toolbox
 UnitCell = uctbx.UnitCell((10.67, 10.67, 4.68, 90, 90, 120))
 SpaceGroup = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols("P 3"))
 Coordinates = ((0, 0, 0.236))
-Uuvrs = ((0.17, 0.17, 0.19, 0.09, 0, 0))
+Ucif = ((0.17, 0.17, 0.19, 0.09, 0, 0))
 
 spsp = sgtbx.SpecialPositionSnapParameters(UnitCell, SpaceGroup)
 SiteSymmetry = sgtbx.SiteSymmetry(spsp, Coordinates)
 
-print "Input Uuvrs:", Uuvrs
-Ustar = adptbx.Uuvrs_as_Ustar(UnitCell, Uuvrs)
+print "Input Ucif:", Ucif
+Ustar = adptbx.Ucif_as_Ustar(UnitCell, Ucif)
 if (not SiteSymmetry.isCompatibleUstar(Ustar)):
   print "Warning: ADP tensor is incompatible with site symmetry."
 Ustar = SiteSymmetry.AverageUstar(Ustar)
-Uuvrs = adptbx.Ustar_as_Uuvrs(UnitCell, Ustar)
-print "Averaged Uuvrs:", Uuvrs
+Ucif = adptbx.Ustar_as_Ucif(UnitCell, Ustar)
+print "Averaged Ucif:", Ucif
 
 Ucart = adptbx.Ustar_as_Ucart(UnitCell, Ustar)
 Eigenvalues = adptbx.Eigenvalues(Ucart)
