@@ -248,6 +248,16 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     }
   };
 
+  template <typename ContainerType>
+  struct tuple_mapping_variable_capacity
+  {
+    tuple_mapping_variable_capacity() {
+      tuple_mapping<
+        ContainerType,
+        variable_capacity_policy>();
+    }
+  };
+
 }}} // namespace scitbx::boost_python::container_conversions
 
 #endif // SCITBX_BOOST_PYTHON_CONTAINER_CONVERSIONS_H
