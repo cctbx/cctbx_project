@@ -46,3 +46,14 @@ def list_dot_product(lhs, rhs=0):
   result = 0
   for l, r in zip(lhs, rhs): result += l * r
   return result
+
+def arg(a):
+  "conversion of complex number from real, imag to polar angle"
+  import math
+  if (abs(a) == 0): return 0.
+  return math.atan2(a.imag, a.real)
+
+def polar(rho, theta):
+  "conversion of complex number from polar representation to real, imag"
+  import math
+  return complex(rho*math.cos(theta), rho*math.sin(theta))
