@@ -27,6 +27,8 @@ namespace {
         .def("project_name", &w_t::project_name)
         .def("unit_cell_parameters", &w_t::unit_cell_parameters)
         .def("unit_cell", &w_t::unit_cell)
+        .def("set_unit_cell_parameters", &w_t::set_unit_cell_parameters, (
+          arg_("parameters")), return_self<>())
         .def("n_datasets", &w_t::n_datasets)
         .def("datasets", &w_t::datasets)
         .def("add_dataset", &w_t::add_dataset, (
