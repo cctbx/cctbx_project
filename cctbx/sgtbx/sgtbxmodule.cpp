@@ -120,6 +120,16 @@ namespace {
     return CBOp(X);
   }
 
+  RTMx
+  ChOfBasisOp_apply_RTMx(const ChOfBasisOp& CBOp, const RTMx& RT) {
+    return CBOp.apply(RT);
+  }
+  uctbx::UnitCell
+  ChOfBasisOp_apply_UnitCell(const ChOfBasisOp& CBOp,
+                             const uctbx::UnitCell& uc) {
+    return CBOp.apply(uc);
+  }
+
   int SpaceGroup_ParseHallSymbol_parse_string(SpaceGroup& SgOps,
                                               parse_string& HSym) {
     return SgOps.ParseHallSymbol(HSym);
@@ -675,7 +685,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ChOfBasisOp.def(&ChOfBasisOp::InvM, "InvM");
     py_ChOfBasisOp.def(&ChOfBasisOp::swap, "swap");
     py_ChOfBasisOp.def(ChOfBasisOp_call, "__call__");
-    py_ChOfBasisOp.def(&ChOfBasisOp::apply, "apply");
+    py_ChOfBasisOp.def(ChOfBasisOp_apply_RTMx, "apply");
+    py_ChOfBasisOp.def(ChOfBasisOp_apply_UnitCell, "apply");
 
     py_Miller_SymEquivIndex.def(constructor<>());
     py_Miller_SymEquivIndex.def(constructor<const Miller::Index&, int, int>());

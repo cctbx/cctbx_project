@@ -14,6 +14,7 @@
 #define CCTBX_SGTBX_CHANGE_BASIS_H
 
 #include <cctbx/coordinates.h>
+#include <cctbx/uctbx.h>
 #include <cctbx/sgtbx/matrix.h>
 
 namespace cctbx { namespace sgtbx {
@@ -122,7 +123,7 @@ namespace cctbx { namespace sgtbx {
        */
       RotMx operator()(const RotMx& R) const;
       //! M() * RT * InvM(), for RT with rotation base factor 1.
-      /*! Similar to apply(), but faster. The translation base factor
+      /*! Similar to apply(R), but faster. The translation base factor
           of the result is equal to the translation base factor of RT.
        */
       RTMx operator()(const RTMx& RT) const;
@@ -133,7 +134,17 @@ namespace cctbx { namespace sgtbx {
           <p>
           See also: RTMx::multiply, RTMx::cancel()
        */
-      RTMx apply(const RTMx& RT);
+      RTMx apply(const RTMx& RT) const;
+      //! Transform unit cell parameters.
+      /*! Equivalent to uc.ChangeBasis(InvM().Rpart()).
+          See cctbx::uctbx::UnitCell::ChangeBasis.
+          <p>
+          To transform in the other direction, use swap() followed by
+          apply().
+       */
+      uctbx::UnitCell apply(const uctbx::UnitCell& uc) const {
+        return uc.ChangeBasis(InvM().Rpart());
+      }
       //! M() * (RotMx(SignI)|T) * InvM()
       TrVec operator()(const TrVec& T, int SignI) const;
       //! Transform fractional coordinates: M() * X
