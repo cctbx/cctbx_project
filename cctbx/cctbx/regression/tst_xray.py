@@ -21,12 +21,29 @@ def exercise_structure():
   cs = crystal.symmetry((5.01, 5.01, 5.47, 90, 90, 120), "P 62 2 2")
   sp = crystal.special_position_settings(cs)
   scatterers = flex.xray_scatterer((
-    xray.scatterer("Si1", (1./2, 1./2, 1./3)),
-    xray.scatterer("O1", (0.19700, -0.19700, 0.83333))))
+    xray.scatterer("Si1", (1./2, 1./2, 0.3)),
+    xray.scatterer("O1", (0.18700, -0.20700, 0.83333))))
   xs = xray.structure(sp, scatterers)
   assert xs.scatterers().size() == 2
   assert xs.n_undefined_multiplicities() == 0
   assert tuple(xs.special_position_indices()) == (0, 1)
+  s = StringIO()
+  xs.show_special_position_shifts(
+    sites_cart_original=cs.unit_cell().orthogonalization_matrix()
+                       *scatterers.extract_sites(),
+    out=s,
+    prefix="%^")
+  assert s.getvalue() == """\
+%^Number of sites in special positions: 2
+%^  Minimum distance between symmetrically equivalent sites: 0.5
+%^  Label   Mult   Shift    Fractional coordinates
+%^  Si1       3    0.182 (  0.5000   0.5000   0.3000) original
+%^        site sym 222   (  0.5000   0.5000   0.3333) exact
+%^                               1/2,1/2,1/3
+%^  O1        6    0.050 (  0.1870  -0.2070   0.8333) original
+%^        site sym 2     (  0.1970  -0.1970   0.8333) exact
+%^                        1/2*x-1/2*y,-1/2*x+1/2*y,5/6
+"""
   ys = xs.deep_copy_scatterers()
   ys.add_scatterers(ys.scatterers())
   assert ys.scatterers().size() == 4
