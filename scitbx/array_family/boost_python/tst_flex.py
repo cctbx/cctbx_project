@@ -335,9 +335,12 @@ def exercise_operators():
   assert tuple(a % b) == (0, 0)
   assert tuple(a + 3) == (7, 12)
   assert tuple(a - 4) == (0, 5)
+  assert tuple(4 - a) == (0, -5)
   assert tuple(a * 5) == (20, 45)
   assert tuple(a / 2) == (2, 4)
+  assert tuple(9 / a) == (2, 1)
   assert tuple(a % 2) == (0, 1)
+  assert tuple(13 % a) == (1, 4)
   assert flex.sum(a) == 13
   a = flex.int((4, 9))
   b = flex.int((2, 12))
