@@ -12,3 +12,5 @@ env.Program(target="getting_started",
             source="getting_started.cpp")
 env.Program(target="convert_ccp4_symop_lib",
             source="convert_ccp4_symop_lib.cpp")
+env.Program(target="lattice_symmetry",
+            source="lattice_symmetry.cpp")

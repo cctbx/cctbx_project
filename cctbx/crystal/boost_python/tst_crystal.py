@@ -253,8 +253,23 @@ def exercise_direct_space_asu():
       pair_generator.restart()
       assert pair_generator.count_pairs() == len(index_pairs)
 
+def exercise_symmetry():
+  symmetry = crystal.ext.symmetry(
+    unit_cell=uctbx.unit_cell([1,2,3,80,90,100]),
+    space_group=sgtbx.space_group("P 2"))
+  assert symmetry.unit_cell().is_similar_to(
+    uctbx.unit_cell([1,2,3,80,90,100]))
+  assert symmetry.space_group().order_z() == 2
+  symmetry_cb = symmetry.change_basis(
+    change_of_basis_op=sgtbx.change_of_basis_op("z,x,y"))
+  assert symmetry_cb.unit_cell().is_similar_to(
+    uctbx.unit_cell([3,1,2,100,80,90]))
+  assert str(sgtbx.space_group_info(
+    group=symmetry_cb.space_group())) == "P 2 1 1"
+
 def run():
   exercise_direct_space_asu()
+  exercise_symmetry()
   print "OK"
 
 if (__name__ == "__main__"):
