@@ -293,6 +293,7 @@ class stage_1:
         force_symmetry=False,
         sites_cart=None,
         sites_frac=None,
+        site_symmetry_table=None,
         scattering_types=None,
         infer_scattering_types_from_names=False,
         unknown_scattering_type_substitute=None):
@@ -320,9 +321,13 @@ class stage_1:
       sites_cart = self.get_sites_cart()
     if (sites_frac is None):
       sites_frac = result.unit_cell().fractionalization_matrix() * sites_cart
+    if (site_symmetry_table is not None):
+      assert site_symmetry_table.indices().size() == sites_frac.size()
     if (scattering_types is None):
       scattering_types = self.get_element_symbols(strip_symbols=True)
-    for atom,site_frac,scattering_type in zip(
+    site_symmetry_ops = None
+    for i_seq,atom,site_frac,scattering_type in zip(
+          count(),
           self.atom_attributes_list,
           sites_frac,
           scattering_types):
@@ -344,13 +349,16 @@ class stage_1:
         u = adptbx.b_as_u(atom.tempFactor)
       else:
         u = adptbx.u_cart_as_u_star(result.unit_cell(), atom.Ucart)
+      if (site_symmetry_table is not None):
+        site_symmetry_ops = site_symmetry_table.get(i_seq=i_seq)
       result.add_scatterer(
         scatterer=xray.scatterer(
           label=atom.pdb_format(),
           site=site_frac,
           u=u,
           occupancy=atom.occupancy,
-          scattering_type=scattering_type))
+          scattering_type=scattering_type),
+        site_symmetry_ops=site_symmetry_ops)
     return result
 
   def get_block_identifiers(self, block_indices):
