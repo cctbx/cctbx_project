@@ -15,8 +15,8 @@ rigid_bond_pair::rigid_bond_pair(vec3<double> const& site1,
                                  cctbx::uctbx::unit_cell const& uc)
 {
     sym_mat3<double> g = uc.metrical_matrix();
-    vec3<double> l_12 = site1-site2;
-    vec3<double> l_21 = site2-site1;
+    vec3<double> l_12 = site1 - site2;
+    vec3<double> l_21 = site2 - site1;
     double bond_length_sq = l_12 * g * l_12;
     z_12_ = (g * l_12) * ustar1 * (g * l_12);
     z_21_ = (g * l_21) * ustar2 * (g * l_21);

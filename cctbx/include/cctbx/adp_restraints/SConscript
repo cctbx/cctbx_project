@@ -1,7 +1,21 @@
+Import("env_etc")
+
+env_etc.mmtbx_dist = env_etc.libtbx_env.dist_path("cctbx")
+env_etc.mmtbx_include = env_etc.libtbx_env.LIBTBX_DIST_ROOT
+
+env_etc.mmtbx_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.cctbx_include,
+  env_etc.scitbx_include,
+  env_etc.boost_include,
+]
+
+
 Import("env_cctbx_boost_python_ext")
 env_bpl = env_cctbx_boost_python_ext.Copy()
 env_bpl.Prepend(LIBS=["cctbx"])
 env_bpl.SharedLibrary(
   target="#libtbx/cctbx_adp_restraints_ext",
   source=[
-    "adp_restraints_ext.cpp"])
+    "adp_restraints_ext.cpp",
+    "rigid_bond_bpl.cpp"])
