@@ -93,68 +93,13 @@ class cns_reciprocal_space_object:
     else:
       raise RuntimeError, "Internal Error."
 
-  def __repr__(self):
-    return "name=%s type=%s len(data)=%d" % (
+  def show_summary(self):
+    print "name=%s type=%s len(data)=%d" % (
       self.name, self.type, self.data.size())
 
   def append(self, H, value):
     self.H.append(H)
     self.data.append(value)
-
-
-class cns_reflection_file:
-
-  def __init__(self, nreflections, anomalous,
-                     reciprocal_space_objects, groups):
-    self.nreflections = nreflections
-    self.anomalous = anomalous
-    self.reciprocal_space_objects = reciprocal_space_objects
-    self.groups = groups
-
-  def __repr__(self):
-    result =  "nreflections=%d\n" % (self.nreflections,)
-    result += "anomalous=%d\n" % (self.anomalous,)
-    for rso in self.reciprocal_space_objects.values():
-      result += str(rso) + "\n"
-    for g in self.groups:
-      result += "group: " + str(g) + "\n"
-    return result[:-1]
-
-  def optimize(self):
-    rsos = self.reciprocal_space_objects.values()
-    for i in xrange(len(rsos)-1):
-      h_i = rsos[i].H
-      for j in xrange(i+1, len(rsos)):
-        h_j = rsos[j].H
-        if (cmp(h_i, h_j) == 0):
-          rsos[j].H = h_i
-
-  def join_hl_group(self, group_index=None):
-    if (group_index == None):
-      assert len(self.groups) == 1
-      group_index = 0
-    selected_group = self.groups[group_index]
-    assert len(selected_group) == 4
-    miller_indices = 0
-    rsos = []
-    joined_sets = []
-    for name in selected_group:
-      rso = self.reciprocal_space_objects[name]
-      assert rso.type == "real"
-      rsos.append(rso)
-      if (miller_indices == 0): miller_indices = rso.H
-      js = miller.join_sets(miller_indices, rso.H)
-      assert not js.have_singles()
-      joined_sets.append(js)
-    hl = shared.hendrickson_lattman()
-    for ih in xrange(miller_indices.size()):
-      coeff = []
-      for ic in xrange(4):
-        ih0, ih1 = joined_sets[ic].pairs()[ih]
-        assert ih0 == ih
-        coeff.append(rsos[ic].data[ih1])
-      hl.append(coeff)
-    return miller_indices, hl
 
 class CNS_xray_reflection_Reader(CNS_input):
 
@@ -263,18 +208,15 @@ class CNS_xray_reflection_Reader(CNS_input):
         self.raiseError("unrecognized keyword")
     self.level = self.level - 1
 
-  def load(self):
+  def load(self, to_obj):
     gNW = self.getNextWord
     gLW = self.getLastWord
-
-    nreflections = None
-    anomalous = None
-    reciprocal_space_objects = {}
-    groups = []
-
+    to_obj.nreflections = None
+    to_obj.anomalous = None
+    to_obj.reciprocal_space_objects = {}
+    to_obj.groups = []
     current_hkl = None
     reuse_word = 0
-
     try:
       while 1:
         if (not reuse_word): word = gNW(4)
@@ -291,17 +233,17 @@ class CNS_xray_reflection_Reader(CNS_input):
           current_hkl = tuple(H)
           self.level = self.level - 1
         elif (word == "NREF"):
-          nreflections = self._read_nreflections()
+          to_obj.nreflections = self._read_nreflections()
         elif (word == "ANOM"):
-          anomalous = self._read_anomalous()
+          to_obj.anomalous = self._read_anomalous()
         elif (word == "DECL"):
-          self._read_declare(reciprocal_space_objects)
+          self._read_declare(to_obj.reciprocal_space_objects)
         elif (word == "GROU"):
-          self._read_group(reciprocal_space_objects, groups)
+          self._read_group(to_obj.reciprocal_space_objects, to_obj.groups)
         else:
           word = gLW()
           try:
-            type = reciprocal_space_objects[word].type
+            type = to_obj.reciprocal_space_objects[word].type
           except KeyError:
             self.raiseError("unrecognized keyword")
           self.level = self.level + 1
@@ -325,34 +267,95 @@ class CNS_xray_reflection_Reader(CNS_input):
                                   + name)
                 # declared complex but only real part given
                 reuse_word = 1
-          reciprocal_space_objects[name].append(current_hkl, value)
+          to_obj.reciprocal_space_objects[name].append(current_hkl, value)
           self.level = self.level - 1
-
     except EOFError:
       if (self.level != 0): raise CNS_input_Error, "premature end-of-file"
 
-    return cns_reflection_file(nreflections, anomalous,
-                               reciprocal_space_objects, groups)
+class cns_reflection_file:
 
+  def __init__(self, file_handle):
+    reader = CNS_xray_reflection_Reader(file_handle)
+    reader.load(self)
 
-def summary(cns_reflection_file):
-  reader = CNS_xray_reflection_Reader(cns_reflection_file)
-  reflection_file = reader.load()
-  print reflection_file
+  def show_summary(self):
+    print "nreflections=%d" % (self.nreflections,)
+    print "anomalous=%d" % (self.anomalous,)
+    for rso in self.reciprocal_space_objects.values():
+      rso.show_summary()
+    for g in self.groups:
+      print "group: " + str(g)
+
+  def optimize(self):
+    rsos = self.reciprocal_space_objects.values()
+    for i in xrange(len(rsos)-1):
+      h_i = rsos[i].H
+      for j in xrange(i+1, len(rsos)):
+        h_j = rsos[j].H
+        if (cmp(h_i, h_j) == 0):
+          rsos[j].H = h_i
+
+  def join_hl_group(self, group_index=None):
+    if (group_index == None):
+      assert len(self.groups) == 1
+      group_index = 0
+    selected_group = self.groups[group_index]
+    assert len(selected_group) == 4
+    miller_indices = 0
+    rsos = []
+    joined_sets = []
+    for name in selected_group:
+      rso = self.reciprocal_space_objects[name]
+      assert rso.type == "real"
+      rsos.append(rso)
+      if (miller_indices == 0): miller_indices = rso.H
+      js = miller.join_sets(miller_indices, rso.H)
+      assert not js.have_singles()
+      joined_sets.append(js)
+    hl = shared.hendrickson_lattman()
+    for ih in xrange(miller_indices.size()):
+      coeff = []
+      for ic in xrange(4):
+        ih0, ih1 = joined_sets[ic].pairs()[ih]
+        assert ih0 == ih
+        coeff.append(rsos[ic].data[ih1])
+      hl.append(coeff)
+    return miller_indices, hl
 
 def run():
   import sys, os
-  if (len(sys.argv) == 1):
-    summary(sys.stdin)
-  else:
-    for file in sys.argv[1:]:
-      print file + ":"
-      f = open(file, "r")
-      summary(f)
+  import cPickle
+  binary_pickle = 1
+  to_pickle = "--pickle" in sys.argv[1:]
+  for file_name in sys.argv[1:]:
+    if (file_name.startswith("--")): continue
+    print file_name + ":"
+    f = open(file_name, "r")
+    t0 = os.times()
+    reflection_file = cns_reflection_file(f)
+    tn = os.times()
+    t_parse = tn[0]+tn[1]-t0[0]-t0[1]
+    f.close()
+    reflection_file.optimize()
+    reflection_file.show_summary()
+    if (to_pickle):
+      pickle_file_name = file_name + ".pickle"
+      f = open(pickle_file_name, "wb")
+      t0 = os.times()
+      cPickle.dump(reflection_file, f, binary_pickle)
+      tn = os.times()
+      t_dump = tn[0]+tn[1]-t0[0]-t0[1]
       f.close()
-      print
+      f = open(pickle_file_name, "rb")
+      t0 = os.times()
+      cPickle.load(f)
+      tn = os.times()
+      t_load = tn[0]+tn[1]-t0[0]-t0[1]
+      f.close()
+      print "parse: %.2f, dump: %.2f, load: %.2f" % (t_parse, t_dump, t_load)
+    print
   t = os.times()
-  print "u+s,u,s:", t[0] + t[1], t[0], t[1]
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
 
 if (__name__ == "__main__"):
   run()
