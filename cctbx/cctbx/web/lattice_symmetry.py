@@ -24,7 +24,8 @@ def run(server_info, inp, status):
       symbol=inp.sgsymbol,
       table_id=inp.convention))
   max_delta = float(inp.max_delta)
-  iotbx.command_line.lattice_symmetry.show(
+  Groups = iotbx.command_line.lattice_symmetry.metric_subgroups(
     input_symmetry=input_symmetry,
     max_delta=max_delta)
+  Groups.show()
   sys.stdout.write("</pre>")
