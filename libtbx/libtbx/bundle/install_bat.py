@@ -14,13 +14,13 @@ echo.
 echo Trying to find Python:
 cd %(bundle)s_build
 set python=python\python
-call %%python%% -V
+call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
 set python=python
-call %%python%% -V
+call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
 set python=C:\python%(py_major)d%(py_minor)d\python
-call %%python%% -V
+call "%%python%%" -V
 if %%errorlevel%% == 0 goto have_python
 echo.
 echo Cannot find Python. Stop.
@@ -30,7 +30,7 @@ goto end
 :have_python
 echo.
 echo Configuring %(bundle)s build directory
-call %%python%% ..\%(bundle)s_sources\libtbx\configure.py %(top_modules)s
+call "%%python%%" ..\%(bundle)s_sources\libtbx\configure.py %(top_modules)s
 set el=%%errorlevel%%
 cd ..
 if not %%el%% == 0 goto end

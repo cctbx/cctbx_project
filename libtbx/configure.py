@@ -1,4 +1,4 @@
-import sys
+import sys, os
 
 def run():
   if (not hasattr(sys, "version_info")
@@ -11,6 +11,8 @@ def run():
     print "*" * 78
     print
     return
+  if (os.name == "nt"):
+    open("shortpath.bat", "w").write("@echo off\necho %~s1\n")
   from os.path import normpath, join, dirname
   libtbx_libtbx = normpath(join(dirname(sys.argv[0]), "libtbx"))
   sys.path.insert(0, libtbx_libtbx)

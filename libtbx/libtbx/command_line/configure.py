@@ -5,6 +5,7 @@ from os.path import normpath, join, abspath, dirname, isdir, isfile
 norm = normpath
 
 import libtbx.config
+import libtbx.path
 from libtbx.config import UserError
 
 class registry:
@@ -232,7 +233,7 @@ def emit_setpaths_csh(env):
   u.close()
 
 def join_path_ld_library_path(env):
-  joined_path = env.PATH
+  joined_path = list(env.PATH)
   for path in env.LD_LIBRARY_PATH:
     if (not path in joined_path):
       joined_path.append(path)
@@ -248,11 +249,11 @@ def emit_setpaths_bat(env):
       if (var_name == "LD_LIBRARY_PATH"): continue
       if (var_name == "PATH"):
         values = join_path_ld_library_path(env)
-      val = os.pathsep.join(values)
+      val = os.pathsep.join([libtbx.path.abs_path_clean(v) for v in values])
       print >> f, 'if not defined %s set %s=' % (var_name, var_name)
       print >> f, 'set %s=%s%s%%%s%%' % (var_name, val, os.pathsep, var_name)
     else:
-      print >> f, 'set %s=%s' % (var_name, values)
+      print >> f, 'set %s=%s' % (var_name, libtbx.path.abs_path_clean(values))
   f.close()
 
 class build_options_t:
