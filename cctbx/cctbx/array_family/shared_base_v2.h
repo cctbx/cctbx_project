@@ -40,29 +40,13 @@
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
 
-namespace stlp {
-
-  template <class T1, class T2>
-  inline void construct(T1* p, const T2& val) {
-    new (p) T1(val);
-  }
-
-  template <class PtrElementType, class ElementType>
-  class alloc_proxy {
-  public:
-    PtrElementType m_data;
-
-    inline ElementType* allocate(size_t n) { 
-      return 0;
-    }
-    inline void deallocate(ElementType* p, size_t n) { 
-    }
-  };
-
-}
-
 namespace cctbx { namespace af {
+
+  struct reserve_flag {};
+
   namespace detail {
+
+    const std::size_t global_max_size(std::size_t(-1));
 
     template <typename ElementType,
               std::size_t SmallestAutoCapacity = 8>
@@ -71,61 +55,34 @@ namespace cctbx { namespace af {
         typedef std::size_t size_type;
 
         basic_storage_v2()
-          : m_capacity(0), m_size(0), m_use_count(1),
-            m_data(0)
+          : use_count(1), size(0), capacity(0),
+            data(0)
         {}
 
         explicit
         basic_storage_v2(const size_type& sz)
-          : m_capacity(sz), m_size(sz), m_use_count(1),
-            m_data(new ElementType[sz])
+          : use_count(1), size(sz), capacity(sz),
+            data(new ElementType[sz])
+        {}
+
+        basic_storage_v2(const size_type& cap, reserve_flag)
+          : use_count(1), size(0), capacity(cap),
+            data(new ElementType[cap])
         {}
 
         ~basic_storage_v2() {
-          delete[] m_data;
+          delete[] data;
         }
 
-        size_type size() const { return m_size; }
-        size_type capacity() const { return m_capacity; }
-
-              long& use_count()       { return m_use_count; }
-        const long& use_count() const { return m_use_count; }
-
-        // no const: data are not considered part of the type
-        ElementType* begin() const { return m_data; }
-
-        void swap(basic_storage_v2<ElementType>& other){
-          std::swap(*this, other);
-        }
-
-        void reserve(const size_type& new_capacity) {
-          if (new_capacity > m_capacity) {
-            m_capacity = new_capacity;
-            ElementType* new_data = new ElementType[m_capacity];
-            std::copy(m_data, m_data + m_size, new_data);
-            delete [] m_data;
-            m_data = new_data;
-          }
-        }
-
-        void resize(const size_type& new_size) {
-          reserve(new_size);
-          m_size = new_size;
-        }
-
-        void auto_resize(const size_type& new_size) {
-          if (new_size > 0) {
-            reserve(std::max(std::max(
-              new_size, SmallestAutoCapacity), m_capacity * 2));
-          }
-          m_size = new_size;
-        }
+        long use_count;
+        size_type size;
+        size_type capacity;
+        ElementType* data;
 
       private:
-        size_type m_capacity;
-        size_type m_size;
-        long m_use_count;
-        ElementType* m_data;
+        basic_storage_v2(const basic_storage_v2<ElementType>&);
+        basic_storage_v2<ElementType>&
+        operator=(const basic_storage_v2<ElementType>&);
     };
 
   } // namespace detail
@@ -138,276 +95,238 @@ namespace cctbx { namespace af {
 
       typedef detail::basic_storage_v2<char> basic_storage_type;
 
-    protected:
-      struct m_false_type {};
-      struct m_true_type {};
-
-      typedef m_false_type m_is_pod_type;
-
-    public:
-            ElementType* begin()       { return this->m_start; }
-      const ElementType* begin() const { return this->m_start; }
-            ElementType* end()        { return this->m_finish; }
-      const ElementType* end() const  { return this->m_finish; }
-
-      size_type size() const {
-        return size_type(this->m_finish - this->m_start);
-      }
-
-      size_type max_size() const {
-        return size_type(-1) / sizeof(ElementType);
-      }
-
-      size_type capacity() const {
-        return size_type(this->m_end_of_storage.m_data - this->m_start);
-      }
-
-      bool empty() const {
-        return this->m_start == this->m_finish;
-      }
-
-            ElementType& operator[](size_type i) {
-        return *(begin() + i);
-      }
-      const ElementType& operator[](size_type i) const {
-        return *(begin() + i);
-      }
-
-            ElementType& front()       { return *begin(); }
-      const ElementType& front() const { return *begin(); }
-            ElementType& back()       { return *(end() - 1); }
-      const ElementType& back() const { return *(end() - 1); }
-
-            ElementType& at(const size_type& i) {
-        if (i >= size()) throw_range_error();
-        return (*this)[i];
-      }
-      const ElementType& at(const size_type& i) const {
-        if (i >= size()) throw_range_error();
-        return (*this)[i];
-      }
+      static size_type element_size() { return sizeof(ElementType); }
 
       shared_base_v2()
-        : m_ptr_basic_storage(new basic_storage_type)
+        : m_handle(new basic_storage_type)
       {}
-
-      shared_base_v2(size_type sz, const ElementType& x)
-        : m_ptr_basic_storage(new basic_storage_type(sz * sizeof(ElementType)))
-      {
-        this->m_finish = std::uninitialized_fill_n(this->m_start, sz, x);
-      }
 
       explicit
       shared_base_v2(size_type sz)
-        : m_ptr_basic_storage(new basic_storage_type(sz * sizeof(ElementType)))
+        : m_handle(new basic_storage_type(sz * sizeof(ElementType)))
       {
-        this->m_finish = std::uninitialized_fill_n(
-          this->m_start, sz, ElementType());
+        std::uninitialized_fill(begin(), end(), ElementType());
       }
 
-      shared_base_v2(const shared_base_v2<ElementType>& other)
-        : m_ptr_basic_storage(
-            new basic_storage_type(other.size() * sizeof(ElementType)))
+      shared_base_v2(size_type sz, reserve_flag)
+        : m_handle(
+            new basic_storage_type(sz * sizeof(ElementType), reserve_flag()))
       {
-        this->m_finish = std::uninitialized_copy(
-          other.begin(), other.end(), this->m_start);
+        std::uninitialized_fill(begin(), end(), ElementType());
+      }
+
+      shared_base_v2(size_type sz, const ElementType& x)
+        : m_handle(new basic_storage_type(sz * sizeof(ElementType)))
+      {
+        std::uninitialized_fill(begin(), end(), x);
       }
 
       shared_base_v2(const ElementType* first, const ElementType* last)
-        : m_ptr_basic_storage(
-            new basic_storage_type((last - first) * sizeof(ElementType)))
+        : m_handle(new basic_storage_type((last-first) * sizeof(ElementType)))
       {
-        size_type sz = last - first;
-        this->m_start = this->m_end_of_storage.allocate(sz);
-        this->m_end_of_storage.m_data = this->m_start + sz;
-        this->m_finish = std::uninitialized_copy(
-          first, last, this->m_start);
+        std::uninitialized_copy(first, last, begin());
+      }
+
+      shared_base_v2(const shared_base_v2<ElementType>& other)
+        : m_handle(other.m_handle)
+      {
+        m_handle->use_count++;
       }
 
       ~shared_base_v2() {
-        detail::destroy_array_elements(begin(), end());
+        m_dispose();
       }
 
       shared_base_v2<ElementType>&
       operator=(const shared_base_v2<ElementType>& other)
       {
-        if (&other != this) {
-          const size_type other_size = other.size();
-          if (other_size > capacity()) {
-            ElementType* tmp = m_allocate_and_copy(other_size,
-              (const ElementType*)other.m_start+0,
-              (const ElementType*)other.m_finish+0);
-            m_clear();
-            this->m_start = tmp;
-            this->m_end_of_storage.m_data = this->m_start + other_size;
-          }
-          else if (size() >= other_size) {
-            ElementType* i = std::copy(
-              other.m_start, other.m_finish, this->m_start);
-            detail::destroy_array_elements(i, this->m_finish);
-          }
-          else {
-            std::copy(
-              other.m_start, other.m_start + size(), this->m_start);
-            std::uninitialized_copy(
-              other.m_start + size(), other.m_finish, this->m_finish);
-          }
-          this->m_finish = this->m_start + other_size;
+        if (m_handle != other.m_handle) {
+          m_dispose();
+          m_handle = other.m_handle;
+          m_handle->use_count++;
         }
         return *this;
       }
 
+      size_type size() const { return m_handle->size / element_size(); }
+
+      bool empty() const { if (size() == 0) return true; return false; }
+
+      size_type capacity() const {
+        return m_handle->capacity / element_size();
+      }
+
+      static size_type max_size() {
+        return detail::global_max_size / sizeof(ElementType);
+      }
+
+      long use_count() const { return m_handle->use_count; }
+
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
+        reinterpret_cast<ElementType*>(m_handle->data), size())
+
+      CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())
+
       void swap(shared_base_v2<ElementType>& other) {
-        std::swap(this->m_start, other.m_start);
-        std::swap(this->m_finish, other.m_finish);
-        std::swap(this->m_end_of_storage, other.m_end_of_storage);
+        std::swap(m_handle, other.m_handle);
+        std::swap(m_handle->use_count, other.m_handle->use_count);
       }
 
       void reserve(size_type sz) {
         if (capacity() < sz) {
-          const size_type old_size = size();
-          ElementType* tmp;
-          if (this->m_start) {
-            tmp = m_allocate_and_copy(sz, this->m_start, this->m_finish);
-            m_clear();
-          }
-          else {
-            tmp = this->m_end_of_storage.allocate(sz);
-          }
-          m_set(tmp, tmp + old_size, tmp + sz);
+          shared_base_v2<ElementType> new_this(begin(), end());
+          new_this.swap(*this);
         }
       }
 
       void assign(size_type sz, const ElementType& x) {
-        m_fill_assign(sz, x);
+        if (sz > capacity()) {
+          shared_base_v2<ElementType> new_this(sz, x);
+          new_this.swap(*this);
+        }
+        else if (sz > size()) {
+          std::fill(begin(), end(), x);
+          std::uninitialized_fill(end(), begin() + sz, x);
+          m_set_size(sz);
+        }
+        else {
+          std::fill_n(begin(), sz, x);
+          erase(begin() + sz, end());
+        }
       }
 
       void assign(const ElementType* first, const ElementType* last)
       {
-        size_type n = last - first;
-        if (n > capacity()) {
-          ElementType* tmp = m_allocate_and_copy(n, first, last);
-          m_clear();
-          m_set(tmp, tmp + n, tmp + n);
+        size_type sz = last - first;
+        if (sz > capacity()) {
+          shared_base_v2<ElementType> new_this(first, last);
+          new_this.swap(*this);
         }
-        else if (size() >= n) {
-          ElementType* new_finish = std::copy(
-            first, last, this->m_start);
-          detail::destroy_array_elements(new_finish, this->m_finish);
-          this->m_finish = new_finish;
+        else if (sz > size()) {
+          const ElementType* mid = first + size() ;
+          std::copy(first, mid, begin());
+          std::uninitialized_copy(mid, last, end());
+          m_set_size(sz);
         }
         else {
-          const ElementType* mid = first + size() ;
-          std::copy(first, mid, this->m_start);
-          this->m_finish = std::uninitialized_copy(
-            mid, last, this->m_finish);
+          std::copy(first, last, begin());
+          erase(begin() + sz, end());
         }
       }
 
       void push_back(const ElementType& x) {
-        if (this->m_finish != this->m_end_of_storage.m_data) {
-          stlp::construct(this->m_finish, x);
-          ++this->m_finish;
+        if (size() < capacity()) {
+          new (end()) ElementType(x);
+          m_incr_size(1);
         }
         else {
-          m_insert_overflow(this->m_finish, x, m_is_pod_type(), 1UL, true);
+          m_insert_overflow(end(), x, size_type(1), true);
         }
       }
 
-      ElementType* insert(ElementType* position, const ElementType& x) {
-        size_type n = position - begin();
-        if (this->m_finish != this->m_end_of_storage.m_data) {
-          if (position == end()) {
-            stlp::construct(this->m_finish, x);
-            ++this->m_finish;
-          }
-          else {
-            stlp::construct(this->m_finish, *(this->m_finish - 1));
-            ++this->m_finish;
-            ElementType x_copy = x;
-            std::copy_backward(
-              position, this->m_finish - 2, this->m_finish - 1);
-            *position = x_copy;
-          }
+      void pop_back() {
+        m_decr_size(1);
+        detail::destroy_array_element(end());
+      }
+
+      ElementType* insert(ElementType* pos, const ElementType& x) {
+        size_type n = pos - begin();
+        if (size() == capacity()) {
+          m_insert_overflow(pos, x, size_type(1), false);
         }
         else {
-          m_insert_overflow(position, x, m_is_pod_type(), 1UL);
+          if (pos == end()) {
+            new (end()) ElementType(x);
+            m_handle->size = (size() + 1) * element_size();
+          }
+          else {
+            new (end()) ElementType(*(end() - 1));
+            m_incr_size(1);
+            ElementType x_copy = x;
+            std::copy_backward(pos, end() - 2, end() - 1);
+            *pos = x_copy;
+          }
         }
         return begin() + n;
       }
 
-      void insert(ElementType* position,
+      void insert(ElementType* pos,
                   const ElementType* first, const ElementType* last)
       {
-        if (first != last) {
-          size_type n = last - first;
-          if (this->m_end_of_storage.m_data - this->m_finish >= n) {
-            const size_type elems_after = this->m_finish - position;
-            ElementType* old_finish = this->m_finish;
-            if (elems_after > n) {
-              std::uninitialized_copy(
-                this->m_finish - n, this->m_finish, this->m_finish);
-              this->m_finish += n;
-              std::copy_backward(position, old_finish - n, old_finish);
-              std::copy(first, last, position);
-            }
-            else {
-              const ElementType* mid = first + elems_after;
-              std::uninitialized_copy(
-                mid, last, this->m_finish);
-              this->m_finish += n - elems_after;
-              std::uninitialized_copy(
-                position, old_finish, this->m_finish);
-              this->m_finish += elems_after;
-              std::copy(first, mid, position);
-            }
+        size_type n = last - first;
+        if (n == 0) return;
+        size_type new_size = size() + n;
+        if (new_size <= capacity()) {
+          size_type n_move_up = end() - pos;
+          ElementType* old_end = end();
+          if (n_move_up > n) {
+            std::uninitialized_copy(end() - n, end(), end());
+            m_incr_size(n);
+            std::copy_backward(pos, old_end - n, old_end);
+            std::copy(first, last, pos);
           }
           else {
-            const size_type old_size = size();
-            const size_type len = old_size + std::max(old_size, n);
-            ElementType* new_start = this->m_end_of_storage.allocate(len);
-            ElementType* new_finish = new_start;
-            try {
-              new_finish = std::uninitialized_copy(
-                this->m_start, position, new_start);
-              new_finish = std::uninitialized_copy(
-                first, last, new_finish);
-              new_finish = std::uninitialized_copy(
-                position, this->m_finish, new_finish);
-            }
-            catch (...) {
-              detail::destroy_array_elements(new_start, new_finish);
-              this->m_end_of_storage.deallocate(new_start, len);
-              throw;
-            }
-            m_clear();
-            m_set(new_start, new_finish, new_start + len);
+            const ElementType* mid = first + n_move_up;
+            std::uninitialized_copy(mid, last, end());
+            m_incr_size(n - n_move_up);
+            std::uninitialized_copy(pos, old_end, end());
+            m_incr_size(n_move_up);
+            std::copy(first, mid, pos);
           }
+        }
+        else {
+          size_type old_size = size();
+          size_type new_capacity = old_size + std::max(old_size, n);
+          shared_base_v2<ElementType>
+          new_this(new_capacity, reserve_flag());
+          std::uninitialized_copy(begin(), pos, new_this.begin());
+          new_this.m_set_size(pos - begin());
+          std::uninitialized_copy(first, last, new_this.end());
+          new_this.m_incr_size(n);
+          std::uninitialized_copy(pos, end(), new_this.end());
+          new_this.m_set_size(new_size);
+          new_this.swap(*this);
         }
       }
 
       void insert(ElementType* pos, size_type n, const ElementType& x) {
-        m_fill_insert(pos, n, x);
-      }
-
-      void pop_back() {
-        --this->m_finish;
-        detail::destroy_array_element(this->m_finish);
-      }
-
-      ElementType* erase(ElementType* position) {
-        if (position + 1 != end()) {
-          std::copy(position + 1, this->m_finish, position);
+        if (n == 0) return;
+        if (size() + n > capacity()) {
+          m_insert_overflow(pos, x, n, false);
         }
-        --this->m_finish;
-        detail::destroy_array_element(this->m_finish);
-        return position;
+        else {
+          ElementType x_copy = x;
+          size_type n_move_up = end() - pos;
+          ElementType* old_end = end();
+          if (n_move_up > n) {
+            std::uninitialized_copy(end() - n, end(), end());
+            m_incr_size(n);
+            std::copy_backward(pos, old_end - n, old_end);
+            std::fill_n(pos, n, x_copy);
+          }
+          else {
+            std::uninitialized_fill_n(end(), n - n_move_up, x_copy);
+            m_incr_size(n - n_move_up);
+            std::uninitialized_copy(pos, old_end, end());
+            m_incr_size(n_move_up);
+            std::fill(pos, old_end, x_copy);
+          }
+        }
+      }
+
+      ElementType* erase(ElementType* pos) {
+        if (pos + 1 != end()) {
+          std::copy(pos + 1, end(), pos);
+        }
+        m_decr_size(1);
+        detail::destroy_array_element(end());
+        return pos;
       }
 
       ElementType* erase(ElementType* first, ElementType* last) {
-        ElementType* i = std::copy(last, this->m_finish, first);
-        detail::destroy_array_elements(i, this->m_finish);
-        this->m_finish = i;
+        ElementType* i = std::copy(last, end(), first);
+        detail::destroy_array_elements(i, end());
+        m_decr_size(last - first);
         return first;
       }
 
@@ -430,136 +349,52 @@ namespace cctbx { namespace af {
 
     protected:
 
-      // for non-POD types
-      void m_insert_overflow(ElementType* position, const ElementType& x,
-                             const m_false_type&,
-                             size_type fill_len, bool at_end = false) {
-        const size_type old_size = size();
-        const size_type len = old_size + std::max(old_size, fill_len);
-
-        ElementType* new_start = this->m_end_of_storage.allocate(len);
-        ElementType* new_finish = new_start;
-        try {
-          new_finish = std::uninitialized_copy(
-            this->m_start, position, new_start);
-          // handle insertion
-          if (fill_len == 1) {
-            stlp::construct(new_finish, x);
-            ++new_finish;
-          }
-          else {
-            new_finish = std::uninitialized_fill_n(
-              new_finish, fill_len, x);
-          }
-          if (!at_end)
-            // copy remainder
-            new_finish = std::uninitialized_copy(
-              position, this->m_finish, new_finish);
-        }
-        catch (...) {
-          detail::destroy_array_elements(new_start, new_finish);
-          this->m_end_of_storage.deallocate(new_start, len);
-          throw;
-        }
-        m_clear();
-        m_set(new_start, new_finish, new_start + len);
-      }
-
-      // for POD types
-      void m_insert_overflow(ElementType* position, const ElementType& x,
-                             const m_true_type&,
-                             size_type fill_len, bool at_end = false) {
-        const size_type old_size = size();
-        const size_type len = old_size + std::max(old_size, fill_len);
-
-        ElementType* new_start = this->m_end_of_storage.allocate(len);
-        ElementType* new_finish = (ElementType*) std::copy(
-          this->m_start, position, new_start);
-          // handle insertion
-        new_finish = fill_n(new_finish, fill_len, x);
-        if (!at_end)
-          // copy remainder
-          new_finish = (ElementType*) std::copy(
-            position, this->m_finish, new_finish);
-        m_clear();
-        m_set(new_start, new_finish, new_start + len);
-      }
-
-      void m_clear() {
-        detail::destroy_array_elements(this->m_start, this->m_finish);
-        this->m_end_of_storage.deallocate(
-          this->m_start, this->m_end_of_storage.m_data - this->m_start);
-      }
-
-      void m_set(ElementType* s, ElementType* f, ElementType* e) {
-        this->m_start = s;
-        this->m_finish = f;
-        this->m_end_of_storage.m_data = e;
-      }
-
-      ElementType* m_allocate_and_copy(
-        size_type n, const ElementType* first, const ElementType* last)
-      {
-        ElementType* result = this->m_end_of_storage.allocate(n);
-        try {
-          std::uninitialized_copy(first, last, result);
-          return result;
-        }
-        catch (...) {
-          this->m_end_of_storage.deallocate(result, n);
-          throw;
-        }
-      }
-
-      void
-      m_fill_insert(ElementType* position, size_type n, const ElementType& x) {
-        if (n != 0) {
-          if (size_type(this->m_end_of_storage.m_data - this->m_finish) >= n) {
-            ElementType x_copy = x;
-            const size_type elems_after = this->m_finish - position;
-            ElementType* old_finish = this->m_finish;
-            if (elems_after > n) {
-              std::uninitialized_copy(
-                this->m_finish - n, this->m_finish, this->m_finish);
-              this->m_finish += n;
-              std::copy_backward(position, old_finish - n, old_finish);
-              std::fill(position, position + n, x_copy);
-            }
-            else {
-              std::uninitialized_fill_n(
-                this->m_finish, n - elems_after, x_copy);
-              this->m_finish += n - elems_after;
-              std::uninitialized_copy(position, old_finish, this->m_finish);
-              this->m_finish += elems_after;
-              std::fill(position, old_finish, x_copy);
-            }
-          }
-          else {
-            m_insert_overflow(position, x, m_is_pod_type(), n);
-          }
-        }
-      }
-
-      void
-      m_fill_assign(size_t n, const ElementType& val) {
-        if (n > capacity()) {
-          shared_base_v2<ElementType> tmp(n, val);
-          tmp.swap(*this);
-        }
-        else if (n > size()) {
-          fill(begin(), end(), val);
-          this->m_finish = std::uninitialized_fill_n(
-            this->m_finish, n - size(), val);
+      void m_insert_overflow(ElementType* pos, const ElementType& x,
+                             size_type n, bool at_end) {
+        size_type old_size = size();
+        size_type new_capacity = old_size + std::max(old_size, n);
+        shared_base_v2<ElementType>
+        new_this(new_capacity, reserve_flag());
+        std::uninitialized_copy(begin(), pos, new_this.begin());
+        new_this.m_set_size(pos - begin());
+        if (n == 1) {
+          new (new_this.end()) ElementType(x);
+          new_this.m_incr_size(1);
         }
         else {
-          erase(std::fill_n(begin(), n, val), end());
+          std::uninitialized_fill_n(new_this.end(), n, x);
+          new_this.m_incr_size(n);
+        }
+        if (!at_end) {
+          std::uninitialized_copy(pos, end(), new_this.end());
+          new_this.m_set_size(old_size + n);
+        }
+        new_this.swap(*this);
+      }
+
+      void m_dispose() {
+        if (m_handle->use_count > 1) {
+          m_handle->use_count--;
+        }
+        else {
+          erase(begin(), end());
+          delete m_handle;
         }
       }
 
-      basic_storage_type* m_ptr_basic_storage;
-      ElementType* m_start;
-      ElementType* m_finish;
-      stlp::alloc_proxy<ElementType*, ElementType> m_end_of_storage;
+      void m_set_size(size_type sz) {
+        m_handle->size = sz * element_size();
+      }
+
+      void m_incr_size(size_type n) {
+        m_handle->size = (size() + n) * element_size();
+      }
+
+      void m_decr_size(size_type n) {
+        m_handle->size = (size() - n) * element_size();
+      }
+
+      basic_storage_type* m_handle;
   };
 
 }} // namespace cctbx::af
