@@ -2,6 +2,7 @@ from iotbx import mtz
 from iotbx.scalepack import merge as scalepack_merge
 from iotbx.scalepack import no_merge_original_index as scalepack_no_merge
 from iotbx.cns import reflection_reader as cns_reflection_reader
+from iotbx.cns import index_fobs_sigma_reader as cns_index_fobs_sigma_reader
 from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
 from iotbx.shelx import hklf as shelx_hklf
 from iotbx.xds.read_ascii import reader as xds_ascii_reader
@@ -29,6 +30,11 @@ class any_reflection_file:
         open(file_name))
       except cns_reflection_reader.CNS_input_Error: pass
       else: self._file_type = "cns_reflection_file"
+    if (self._file_type is None):
+      try: self._file_content = cns_index_fobs_sigma_reader.reader(
+        file_name=file_name)
+      except RuntimeError: pass
+      else: self._file_type = "cns_index_fobs_sigma"
     if (self._file_type is None):
       try: self._file_content = scalepack_merge.reader(
         open(file_name))
