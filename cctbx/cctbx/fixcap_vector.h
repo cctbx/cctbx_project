@@ -88,7 +88,7 @@ namespace cctbx {
 
         size_type size() const { return m_size; }
         bool empty() const { if (size() == 0) return true; return false; }
-        static size_type max_size() { return size(); }
+        static size_type max_size() { return N; }
         enum { fixcap_size = N };
 
         // swap (note: linear complexity)

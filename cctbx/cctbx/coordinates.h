@@ -27,21 +27,21 @@ namespace cctbx {
     public:
       //! The elements of the coordinate vector are initialized with 0.
       cartesian() {
-        for(std::size_t i=0;i<3;i++) elems[i] = 0;
+        for(std::size_t i=0;i<3;i++) this->elems[i] = 0;
       }
       //! The elements of the coordinate vector are copied from v.
       template <class U>
       cartesian(const boost::array<U, 3> v) {
-        for(std::size_t i=0;i<3;i++) elems[i] = v[i];
+        for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
       }
       //! The elements of the coordinate vector are copied from xyz.
       template <class U>
       cartesian(const U* xyz) {
-        for(std::size_t i=0;i<3;i++) elems[i] = xyz[i];
+        for(std::size_t i=0;i<3;i++) this->elems[i] = xyz[i];
       }
       //! The elements of the coordinate vector are initialized with x,y,z.
       cartesian(const FloatType& x, const FloatType& y, const FloatType& z) {
-        elems[0] = x; elems[1] = y; elems[2] = z;
+        this->elems[0] = x; this->elems[1] = y; this->elems[2] = z;
       }
       //! Length squared (scalar product) of the coordinate vector.
       FloatType Length2() const {
@@ -60,21 +60,21 @@ namespace cctbx {
     public:
       //! The elements of the coordinate vector are initialized with 0.
       fractional() {
-        for(std::size_t i=0;i<3;i++) elems[i] = 0;
+        for(std::size_t i=0;i<3;i++) this->elems[i] = 0;
       }
       //! The elements of the coordinate vector are copied from v.
       template <class U>
       fractional(const boost::array<U, 3> v) {
-        for(std::size_t i=0;i<3;i++) elems[i] = v[i];
+        for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
       }
       //! The elements of the coordinate vector are copied from xyz.
       template <class U>
       fractional(const U* xyz) {
-        for(std::size_t i=0;i<3;i++) elems[i] = xyz[i];
+        for(std::size_t i=0;i<3;i++) this->elems[i] = xyz[i];
       }
       //! The elements of the coordinate vector are initialized with x,y,z.
       fractional(const FloatType& x, const FloatType& y, const FloatType& z) {
-        elems[0] = x; elems[1] = y; elems[2] = z;
+        this->elems[0] = x; this->elems[1] = y; this->elems[2] = z;
       }
       /*! \brief Apply modulus operation such that 0.0 <= x < 1.0
           for all elements of the coordinate vector.
@@ -82,7 +82,7 @@ namespace cctbx {
       fractional modPositive() const {
         fractional result;
         for(std::size_t i=0;i<3;i++) {
-          result[i] = std::fmod(elems[i], 1.);
+          result[i] = std::fmod(this->elems[i], 1.);
           while (result[i] <  0.) result[i] += 1.;
           while (result[i] >= 1.) result[i] -= 1.;
         }
@@ -94,7 +94,7 @@ namespace cctbx {
       fractional modShort() const {
         fractional result;
         for(std::size_t i=0;i<3;i++) {
-          result[i] = std::fmod(elems[i], 1.);
+          result[i] = std::fmod(this->elems[i], 1.);
           if      (result[i] <= -.5) result[i] += 1.;
           else if (result[i] >   .5) result[i] -= 1.;
         }

@@ -25,29 +25,29 @@ namespace cctbx {
     //! Copy boost::array with type conversion.
     template <typename U>
     array(const boost::array<U, N>& a) {
-      for(std::size_t i=0;i<size();i++) elems[i] = a[i];
+      for(std::size_t i=0;i<this->size();i++) this->elems[i] = a[i];
     }
 
     //! Convenience constructor.
     array(const T& v0
          ) {
-      elems[0] = v0;
+      this->elems[0] = v0;
     }
     //! Convenience constructor.
     array(const T& v0,
           const T& v1
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
     }
     //! Convenience constructor.
     array(const T& v0,
           const T& v1,
           const T& v2
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
     }
     //! Convenience constructor.
     array(const T& v0,
@@ -55,10 +55,10 @@ namespace cctbx {
           const T& v2,
           const T& v3
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
-      elems[3] = v3;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
+      this->elems[3] = v3;
     }
     //! Convenience constructor.
     array(const T& v0,
@@ -67,11 +67,11 @@ namespace cctbx {
           const T& v3,
           const T& v4
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
-      elems[3] = v3;
-      elems[4] = v4;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
+      this->elems[3] = v3;
+      this->elems[4] = v4;
     }
     //! Convenience constructor.
     array(const T& v0,
@@ -81,12 +81,12 @@ namespace cctbx {
           const T& v4,
           const T& v5
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
-      elems[3] = v3;
-      elems[4] = v4;
-      elems[5] = v5;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
+      this->elems[3] = v3;
+      this->elems[4] = v4;
+      this->elems[5] = v5;
     }
     //! Convenience constructor.
     array(const T& v0,
@@ -97,13 +97,13 @@ namespace cctbx {
           const T& v5,
           const T& v6
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
-      elems[3] = v3;
-      elems[4] = v4;
-      elems[5] = v5;
-      elems[6] = v6;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
+      this->elems[3] = v3;
+      this->elems[4] = v4;
+      this->elems[5] = v5;
+      this->elems[6] = v6;
     }
     //! Convenience constructor.
     array(const T& v0,
@@ -115,14 +115,14 @@ namespace cctbx {
           const T& v6,
           const T& v7
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
-      elems[3] = v3;
-      elems[4] = v4;
-      elems[5] = v5;
-      elems[6] = v6;
-      elems[7] = v7;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
+      this->elems[3] = v3;
+      this->elems[4] = v4;
+      this->elems[5] = v5;
+      this->elems[6] = v6;
+      this->elems[7] = v7;
     }
     //! Convenience constructor.
     array(const T& v0,
@@ -135,15 +135,15 @@ namespace cctbx {
           const T& v7,
           const T& v8
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
-      elems[3] = v3;
-      elems[4] = v4;
-      elems[5] = v5;
-      elems[6] = v6;
-      elems[7] = v7;
-      elems[8] = v8;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
+      this->elems[3] = v3;
+      this->elems[4] = v4;
+      this->elems[5] = v5;
+      this->elems[6] = v6;
+      this->elems[7] = v7;
+      this->elems[8] = v8;
     }
     //! Convenience constructor.
     array(const T& v0,
@@ -157,16 +157,16 @@ namespace cctbx {
           const T& v8,
           const T& v9
          ) {
-      elems[0] = v0;
-      elems[1] = v1;
-      elems[2] = v2;
-      elems[3] = v3;
-      elems[4] = v4;
-      elems[5] = v5;
-      elems[6] = v6;
-      elems[7] = v7;
-      elems[8] = v8;
-      elems[9] = v9;
+      this->elems[0] = v0;
+      this->elems[1] = v1;
+      this->elems[2] = v2;
+      this->elems[3] = v3;
+      this->elems[4] = v4;
+      this->elems[5] = v5;
+      this->elems[6] = v6;
+      this->elems[7] = v7;
+      this->elems[8] = v8;
+      this->elems[9] = v9;
     }
   };
 }
