@@ -3,6 +3,7 @@ from cctbx.development import debug_utils
 from cctbx import xray
 from cctbx import crystal
 from cctbx import adptbx
+from cctbx import eltbx
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
 import sys
@@ -82,6 +83,12 @@ def exercise_structure():
   xs.replace_scatterers(xs.scatterers()[:1])
   assert xs.scatterers().size() == 1
   assert tuple(xs.special_position_indices()) == (0,)
+  sd = ys.scattering_dict()
+  assert sd.lookup("Si").coefficients.n_ab() == 5
+  sd = ys.scattering_dict(d_min=3)
+  assert sd.lookup("Si").coefficients.n_ab() == 4
+  sd = ys.scattering_dict(custom_dict={"Si": eltbx.caasf.custom(1)})
+  assert sd.lookup("Si").coefficients.n_ab() == 0
 
 def exercise_u_extra():
   d_min = 9
@@ -132,15 +139,12 @@ def exercise_from_scatterers_direct(space_group_info,
   f_obs_exact = structure.structure_factors(
     d_min=d_min, anomalous_flag=anomalous_flag, algorithm="direct",
     cos_sin_table=00000).f_calc()
-  scattering_dict = xray.scattering_dictionary(structure.scatterers())
-  scattering_dict.assign_from_table("WK1995")
-  assert scattering_dict.find_all_zero().size() == 0
   f_obs_simple = xray.ext.structure_factors_simple(
     f_obs_exact.unit_cell(),
     f_obs_exact.space_group(),
     f_obs_exact.indices(),
     structure.scatterers(),
-    scattering_dict).f_calc()
+    structure.scattering_dict()).f_calc()
   if (0 or verbose):
     for i,h in f_obs_exact.indices().items():
       print h

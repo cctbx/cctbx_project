@@ -106,8 +106,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        scattering_dictionary const& scatter_dict)
+        scattering_dictionary const& scattering_dict)
       {
+        CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
         f_calc_.reserve(miller_indices.size());
         for(std::size_t i=0;i<miller_indices.size();i++) {
           f_calc_.push_back(simple_one_h<ScattererType>(
@@ -115,7 +116,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             space_group,
             miller_indices[i],
             scatterers,
-            scatter_dict).f_calc);
+            scattering_dict).f_calc);
         }
       }
 

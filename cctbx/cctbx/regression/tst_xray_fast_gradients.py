@@ -167,13 +167,10 @@ class resampling(crystal.symmetry):
           flex.min(flex.imag(gradient_map_complex)),
           flex.max(flex.imag(gradient_map_complex)))
         print
-    scattering_dict = xray.scattering_dictionary(xray_structure.scatterers())
-    scattering_dict.assign_from_table("WK1995")
-    assert scattering_dict.find_all_zero().size() == 0
     result = xray.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
-      scattering_dict,
+      xray_structure.scattering_dict(),
       gradient_map_real,
       gradient_map_complex,
       gradient_flags,

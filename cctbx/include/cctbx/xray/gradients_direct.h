@@ -311,6 +311,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         gradient_flags const& grad_flags,
         std::size_t n_parameters)
       {
+        CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
         CCTBX_ASSERT(d_target_d_f_calc.size() == miller_indices.size());
         CCTBX_ASSERT(!grad_flags.all_false());
         typedef float_type f_t;

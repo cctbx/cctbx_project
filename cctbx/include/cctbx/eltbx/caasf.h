@@ -177,6 +177,12 @@ namespace cctbx { namespace eltbx { namespace caasf {
       //! Coefficient c.
       float c() const { return entry_->c; }
 
+      custom
+      as_custom() const
+      {
+        return custom(a(), b(), c());
+      }
+
 #     include <cctbx/eltbx/caasf_at_d_star_sq.h>
 
     protected:
@@ -194,17 +200,14 @@ namespace cctbx { namespace eltbx { namespace caasf {
   :
     entry_(0), table_(table)
   {
+    if (label == "const") {
+      throw error("Reserved scattering type label: const");
+    }
     std::string work_label = basic::strip_label(label, exact);
     int m = 0;
     for (const detail::raw_table_entry<N>* entry = table_raw;
          entry->label;
          entry++) {
-      if (std::string(entry->label) == "const" && work_label != "CONST") {
-        continue;
-      }
-      if (std::string(entry->label) == "custom" && work_label != "CUSTOM") {
-        continue;
-      }
       int i = basic::match_labels(work_label, entry->label);
       if (i < 0) {
         if (entry->c == detail::undefined) {

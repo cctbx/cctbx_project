@@ -161,27 +161,29 @@ def exercise_scattering_dictionary():
     assert v.coefficients.n_ab() == 0
     assert v.coefficients.c() == 0
     assert tuple(sd.lookup(k).member_indices) == tuple(v.member_indices)
-  z = list(sd.find_all_zero())
+  z = list(sd.find_undefined())
   z.sort()
   assert z == all_keys
   p = list(sd.scatterer_permutation())
   p.sort()
   assert p == range(9)
   for table,n_ab in (("IT1992",4), ("WK1995",5)):
+    sd = xray.scattering_dictionary(scatterers)
+    sd.assign("const", caasf.custom(10))
+    sd.assign("custom", caasf.custom((1,2),(3,4),5))
     sd.assign_from_table(table)
     for k,v in sd.dict().items():
       if (k in ("Al", "O", "Si")):
         assert v.coefficients.n_ab() == n_ab
-      else:
+      elif (k == "const"):
         assert v.coefficients.n_ab() == 0
-        if (k == "const"):
-          assert v.coefficients.c() == 1
-        else:
-          assert v.coefficients.c() == 0
-  z = list(sd.find_all_zero())
-  assert z == ["custom"]
-  sd.assign("custom", caasf.custom((1,2),(3,4),5))
-  assert sd.find_all_zero().size() == 0
+        assert approx_equal(v.coefficients.c(), 10)
+      else:
+        assert v.coefficients.n_ab() == 2
+        assert approx_equal(v.coefficients.c(), 5)
+    sd.assign("Al", caasf.custom(20))
+    assert approx_equal(sd.lookup("Al").coefficients.c(), 20)
+  assert sd.find_undefined().size() == 0
   g = sd.dict()["custom"]
   c = g.coefficients
   assert c.n_ab() == 2

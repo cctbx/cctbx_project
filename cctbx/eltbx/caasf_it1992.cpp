@@ -25,8 +25,6 @@ namespace cctbx { namespace eltbx { namespace caasf {
 
     static const detail::raw_table_entry<4> it1992_raw_table[] =
     {
-      { "const", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 1. },
-      { "custom", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 0. },
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       { "H",     { 0.493002, 0.322912, 0.140191, 0.040810 },
                  { 10.5109, 26.1257, 3.14236, 57.7997 },
@@ -709,7 +707,7 @@ namespace cctbx { namespace eltbx { namespace caasf {
 
   it1992_iterator::it1992_iterator()
   :
-    current_("const", true)
+    current_("H", true)
   {}
 
   it1992

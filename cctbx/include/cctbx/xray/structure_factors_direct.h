@@ -159,6 +159,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::const_ref<ScattererType> const& scatterers,
         scattering_dictionary const& scattering_dict)
       {
+        CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
         typedef float_type f_t;
         typedef std::complex<float_type> c_t;
         f_t n_ltr = static_cast<f_t>(space_group.n_ltr());

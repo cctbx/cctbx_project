@@ -47,7 +47,7 @@ namespace cctbx { namespace xray {
       dict() { return dict_; }
 
       af::shared<std::string>
-      find_all_zero() const
+      find_undefined() const
       {
         af::shared<std::string> result;
         for(dict_type::const_iterator e=dict_.begin();e!=dict_.end();e++) {
@@ -97,20 +97,16 @@ namespace cctbx { namespace xray {
         CCTBX_ASSERT(table == "IT1992" || table == "WK1995");
         if (table == "IT1992") {
           for(dict_type::iterator e=dict_.begin();e!=dict_.end();e++) {
-            if (!process_const_and_custom(e)) {
-              eltbx::caasf::it1992 entry(e->first, 1);
-              e->second.coefficients = eltbx::caasf::custom(
-                entry.a(), entry.b(), entry.c());
-            }
+            if (!e->second.coefficients.all_zero()) continue;
+            e->second.coefficients
+              = eltbx::caasf::it1992(e->first, 1).as_custom();
           }
         }
         else {
           for(dict_type::iterator e=dict_.begin();e!=dict_.end();e++) {
-            if (!process_const_and_custom(e)) {
-              eltbx::caasf::wk1995 entry(e->first, 1);
-              e->second.coefficients = eltbx::caasf::custom(
-                entry.a(), entry.b(), entry.c());
-            }
+            if (!e->second.coefficients.all_zero()) continue;
+            e->second.coefficients
+              = eltbx::caasf::wk1995(e->first, 1).as_custom();
           }
         }
       }
@@ -118,19 +114,6 @@ namespace cctbx { namespace xray {
     protected:
       std::size_t n_scatterers_;
       dict_type dict_;
-
-      bool
-      process_const_and_custom(dict_type::iterator e)
-      {
-        if (e->first == "const") {
-          e->second.coefficients = eltbx::caasf::custom(1);
-          return true;
-        }
-        if (e->first == "custom") {
-          return true;
-        }
-        return false;
-      }
   };
 
 }} // namespace cctbx::xray

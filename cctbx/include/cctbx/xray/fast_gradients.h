@@ -387,6 +387,7 @@ namespace cctbx { namespace xray {
     base_t(unit_cell, scatterers, u_extra, wing_cutoff,
            exp_table_one_over_step_size, tolerance_positive_definite)
   {
+    CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     CCTBX_ASSERT(   (ft_d_target_d_f_calc_real.size() == 0)
                  != (ft_d_target_d_f_calc_complex.size() == 0));
     if (this->n_anomalous_scatterers_ != 0) {
