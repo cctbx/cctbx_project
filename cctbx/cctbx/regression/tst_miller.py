@@ -50,6 +50,7 @@ def exercise_set():
   assert flex.order(ms.indices(), ma.indices()) == 0
   ma = ms.remove_systematic_absences()
   assert flex.order(ms.indices(), ma.indices()) == 0
+  assert miller.set(xs, mi).auto_anomalous().anomalous_flag() == 00000
 
 def exercise_array():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
