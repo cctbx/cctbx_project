@@ -30,7 +30,7 @@ public:
   ~MtzWriter();
 
   void setTitle(const std::string&);
-  void setSpaceGroup(const cctbx::sgtbx::space_group&);
+  void setSpaceGroup(const cctbx::sgtbx::space_group&, const std::string&);
   void oneCrystal(const std::string&,const std::string&,
                   const cctbx::uctbx::unit_cell&);
   void oneDataset(const std::string&,const double&);
