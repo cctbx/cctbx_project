@@ -45,7 +45,7 @@ namespace {
            arg_("ft_d_target_d_f_calc"),
            arg_("grad_flags"),
            arg_("n_parameters"),
-           arg_("electron_density_must_be_positive")))
+           arg_("sampled_density_must_be_positive")))
         .def("sampling",
           (void(w_t::*)(
             af::const_ref<scatterer<> > const&,
@@ -59,7 +59,7 @@ namespace {
            arg_("ft_d_target_d_f_calc"),
            arg_("grad_flags"),
            arg_("n_parameters"),
-           arg_("electron_density_must_be_positive")))
+           arg_("sampled_density_must_be_positive")))
         .def("packed", &w_t::packed)
         .def("d_target_d_site_cart", &w_t::d_target_d_site_cart)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)

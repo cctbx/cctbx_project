@@ -36,7 +36,7 @@ namespace cctbx { namespace xray {
         FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
         bool force_complex=false,
-        bool electron_density_must_be_positive=true,
+        bool sampled_density_must_be_positive=false,
         FloatType const& tolerance_positive_definite=1.e-5);
 
       real_map_type
@@ -75,7 +75,7 @@ namespace cctbx { namespace xray {
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
     bool force_complex,
-    bool electron_density_must_be_positive,
+    bool sampled_density_must_be_positive,
     FloatType const& tolerance_positive_definite)
   :
     base_t(unit_cell, scatterers, scattering_dict,
@@ -132,7 +132,7 @@ namespace cctbx { namespace xray {
           grid_f, coor_frac, gaussian_ft);
         this->update_sampling_box_statistics(
           sampling_box.n_points, sampling_box.box_edges);
-        if (electron_density_must_be_positive) {
+        if (sampled_density_must_be_positive) {
           if (   gaussian_ft.rho_real_0() < 0
               || gaussian_ft.rho_real(sampling_box.max_d_sq) < 0) {
 

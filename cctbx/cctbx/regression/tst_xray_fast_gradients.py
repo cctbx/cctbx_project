@@ -181,7 +181,7 @@ class resampling(crystal.symmetry):
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,
       n_parameters=n_parameters,
-      electron_density_must_be_positive=0001)
+      sampled_density_must_be_positive=00000)
     if (0 or verbose):
       print "max_sampling_box_edges:", result.max_sampling_box_edges()
       print "exp_table_size:", result.exp_table_size()
@@ -624,7 +624,7 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     random_u_cart_scale=.3,
     random_occupancy=0001)
   if (random.random() < 0.5):
-    assign_custom_gaussians(structure_ideal)
+    assign_custom_gaussians(structure_ideal, negative_a=random.random()<0.5)
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
     if (anisotropic_flag):

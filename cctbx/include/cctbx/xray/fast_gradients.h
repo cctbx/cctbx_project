@@ -352,12 +352,12 @@ namespace cctbx { namespace xray {
           ft_d_target_d_f_calc,
         gradient_flags const& grad_flags,
         std::size_t n_parameters=0,
-        bool electron_density_must_be_positive=true)
+        bool sampled_density_must_be_positive=false)
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
           scatterers, scattering_dict, &*ft_d_target_d_f_calc.begin(), 0,
-          grad_flags, n_parameters, electron_density_must_be_positive);
+          grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
       void
@@ -368,12 +368,12 @@ namespace cctbx { namespace xray {
           ft_d_target_d_f_calc,
         gradient_flags const& grad_flags,
         std::size_t n_parameters=0,
-        bool electron_density_must_be_positive=true)
+        bool sampled_density_must_be_positive=false)
       {
         this->map_accessor_ = ft_d_target_d_f_calc.accessor();
         sampling_(
           scatterers, scattering_dict, 0, &*ft_d_target_d_f_calc.begin(),
-          grad_flags, n_parameters, electron_density_must_be_positive);
+          grad_flags, n_parameters, sampled_density_must_be_positive);
       }
 
       af::shared<FloatType>
@@ -415,7 +415,7 @@ namespace cctbx { namespace xray {
         const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
         gradient_flags const& grad_flags,
         std::size_t n_parameters,
-        bool electron_density_must_be_positive);
+        bool sampled_density_must_be_positive);
   };
 
   template <typename FloatType,
@@ -429,7 +429,7 @@ namespace cctbx { namespace xray {
     const std::complex<FloatType>* ft_d_target_d_f_calc_complex,
     gradient_flags const& grad_flags,
     std::size_t n_parameters,
-    bool electron_density_must_be_positive)
+    bool sampled_density_must_be_positive)
   {
     CCTBX_ASSERT(sampling_may_only_be_called_once);
     sampling_may_only_be_called_once = false;
@@ -497,7 +497,7 @@ namespace cctbx { namespace xray {
             grid_f, coor_frac, gaussian_ft);
           this->update_sampling_box_statistics(
             sampling_box.n_points, sampling_box.box_edges);
-          if (electron_density_must_be_positive) {
+          if (sampled_density_must_be_positive) {
             if (   gaussian_ft.rho_real_0() < 0
                 || gaussian_ft.rho_real(sampling_box.max_d_sq) < 0) {
 

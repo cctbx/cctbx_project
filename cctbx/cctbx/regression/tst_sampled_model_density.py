@@ -10,13 +10,17 @@ from scitbx import fftpack
 import random
 import sys
 
-def assign_custom_gaussians(structure):
+def assign_custom_gaussians(structure, negative_a=00000):
+  if (negative_a):
+    f = -1
+  else:
+    f = 1
   custom_gaussians = {
     "N": eltbx.xray_scattering.gaussian(
-      (11.893779754638672, 3.2774789333343506),
+      (f*11.893779754638672, f*3.2774789333343506),
       (0.00015799999528098851, 10.232723236083984), 0),
     "C": eltbx.xray_scattering.gaussian(
-      (2.657505989074707, 1.0780789852142334, 1.4909089803695679),
+      (f*2.657505989074707, f*1.0780789852142334, f*1.4909089803695679),
       (14.780757904052734, 0.77677500247955322, 42.086841583251953), 0),
   }
   d = structure.scattering_dict(
@@ -31,7 +35,7 @@ def assign_custom_gaussians(structure):
   d = structure.scattering_dict().dict()
   assert d["N"].gaussian.n_terms() == 2
 
-def exercise(space_group_info, const_gaussian,
+def exercise(space_group_info, const_gaussian, negative_gaussian,
              anomalous_flag, anisotropic_flag,
              d_min=1., resolution_factor=1./3, max_prime=5,
              quality_factor=100, wing_cutoff=1.e-6,
@@ -40,6 +44,8 @@ def exercise(space_group_info, const_gaussian,
              verbose=0):
   if (const_gaussian):
     elements=["const"]*8
+  elif (negative_gaussian):
+    elements=["H"]*8
   else:
     elements=["N", "C", "C", "O", "N", "C", "C", "O"]
   if (random.random() < 0.5):
@@ -55,8 +61,19 @@ def exercise(space_group_info, const_gaussian,
     anisotropic_flag=anisotropic_flag,
     random_u_iso=0001,
     random_occupancy=0001)
-  if (not const_gaussian and random.random() < 0.5):
-    assign_custom_gaussians(structure)
+  sampled_density_must_be_positive = 0001
+  if (negative_gaussian):
+    d = structure.scattering_dict(
+      custom_dict={"H": eltbx.xray_scattering.gaussian(-1)}).dict()
+    assert d["H"].gaussian.n_terms() == 0
+    assert d["H"].gaussian.c() == -1
+    sampled_density_must_be_positive = 00000
+  elif (not const_gaussian and random.random() < 0.5):
+    if (random.random() < 0.5):
+      sampled_density_must_be_positive = 00000
+    assign_custom_gaussians(
+      structure,
+      negative_a=not sampled_density_must_be_positive)
   f_direct = structure.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
@@ -78,10 +95,12 @@ def exercise(space_group_info, const_gaussian,
     wing_cutoff=wing_cutoff,
     exp_table_one_over_step_size=exp_table_one_over_step_size,
     force_complex=force_complex,
-    electron_density_must_be_positive=0001,
+    sampled_density_must_be_positive=sampled_density_must_be_positive,
     tolerance_positive_definite=1.e-5)
   assert sampled_density.anomalous_flag() == (anomalous_flag or force_complex)
   if (0 or verbose):
+    print "const_gaussian:", const_gaussian
+    print "negative_gaussian:", negative_gaussian
     print "number of scatterers passed:", \
       sampled_density.n_scatterers_passed()
     print "number of contributing scatterers:", \
@@ -94,6 +113,17 @@ def exercise(space_group_info, const_gaussian,
     print "exp_table_size:", sampled_density.exp_table_size()
     print "max_sampling_box_edges:", sampled_density.max_sampling_box_edges(),
     print "(%.4f, %.4f, %.4f)" % sampled_density.max_sampling_box_edges_frac()
+    if (not sampled_density.anomalous_flag()):
+      print "map min:", flex.min(sampled_density.real_map())
+      print "map max:", flex.max(sampled_density.real_map())
+    else:
+      print "map min:", flex.min(flex.real(sampled_density.complex_map())),
+      print             flex.min(flex.imag(sampled_density.complex_map()))
+      print "map max:", flex.max(flex.real(sampled_density.complex_map())),
+      print             flex.max(flex.imag(sampled_density.complex_map()))
+  if (not sampled_density.anomalous_flag() and negative_gaussian):
+    assert flex.min(sampled_density.real_map()) < 0
+    assert flex.max(sampled_density.real_map()) == 0
   if (not sampled_density.anomalous_flag()):
     map = sampled_density.real_map()
     assert map.all() == rfft.m_real()
@@ -131,6 +161,7 @@ def exercise(space_group_info, const_gaussian,
     quality_factor=quality_factor,
     wing_cutoff=wing_cutoff,
     exp_table_one_over_step_size=exp_table_one_over_step_size,
+    sampled_density_must_be_positive=sampled_density_must_be_positive,
     max_prime=max_prime)(
       xray_structure=structure,
       miller_set=f_direct,
@@ -144,9 +175,11 @@ def exercise(space_group_info, const_gaussian,
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
     for anisotropic_flag in (00000, 0001)[:]: #SWITCH
+      r = random.random()
       exercise(
         space_group_info,
-        const_gaussian=random.random()<0.5,
+        const_gaussian=r<1/3.,
+        negative_gaussian=r>2/3.,
         anomalous_flag=anomalous_flag,
         anisotropic_flag=anisotropic_flag,
         verbose=flags.Verbose)
