@@ -614,8 +614,14 @@ namespace sgtbx {
           general several plausible choices for a Hall symbol.
           The Hall symbol returned by this algorithm is derived
           from the Hall symbol for the reference setting. A change-of-basis
-          operator is attached, if necessary (i.e. "P 2 (y,z,x)").<br>
-          See getSpaceGroupType() for a discussion of TidyCBOp.<br>
+          operator is attached if necessary (i.e. "P 2 (y,z,x)").
+          <p>
+          See getSpaceGroupType() for a discussion of
+          TidyCBOp. If TidyCBOp == true, the returned Hall
+          symbol is a reproducible representation of a
+          given setting that is independent of the order of
+          the symmetry operations.
+          <p>
           This algorithm involves the determination of the space group
           type. If the space group type has been determined already,
           the result can be re-used to avoid run-time overhead.
