@@ -86,10 +86,11 @@ class scalepack_reader:
   def redefine_space_group(self, space_group_info):
     self.space_group_info = space_group_info
 
-  def as_miller_array(self, info=0):
-    assert self.space_group_info != None
-    crystal_symmetry = crystal.symmetry(
-      self.unit_cell, space_group_info=self.space_group_info)
+  def as_miller_array(self, info=0, crystal_symmetry=None):
+    if (crystal_symmetry == None):
+      assert self.space_group_info != None
+      crystal_symmetry = crystal.symmetry(
+        self.unit_cell, space_group_info=self.space_group_info)
     miller_set = miller.set(
       crystal_symmetry, self.miller_indices, self.anomalous)
     return miller.array(miller_set, self.fobs, self.sigmas, info=info)
