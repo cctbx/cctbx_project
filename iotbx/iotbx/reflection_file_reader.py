@@ -96,14 +96,18 @@ class any_reflection_file:
   def file_content(self):
     return self._file_content
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False):
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        info_prefix=None):
     if (self.file_type() is None):
       return []
     if (self.file_type() == "cctbx.miller.array"):
       return self.file_content()
-    info_prefix = self.file_name() + ":"
-    if (info_prefix.startswith("./") or info_prefix.startswith(".\\")):
-      info_prefix = info_prefix[2:]
+    if (info_prefix is None):
+      info_prefix = self.file_name() + ":"
+      if (info_prefix.startswith("./") or info_prefix.startswith(".\\")):
+        info_prefix = info_prefix[2:]
     return self._file_content.as_miller_arrays(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
