@@ -39,7 +39,7 @@ namespace {
     typedef af::shared<double> sh_dbl_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      is_degenerated_overloads, is_degenerated, 0, 2)
+      is_degenerate_overloads, is_degenerate, 0, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       is_similar_to_overloads, is_similar_to, 1, 3)
@@ -74,9 +74,9 @@ namespace {
         .def("volume", &w_t::volume)
         .def("reciprocal", &w_t::reciprocal)
         .def("longest_vector_sq", &w_t::longest_vector_sq)
-        .def("is_degenerated",
-          &w_t::is_degenerated,
-          is_degenerated_overloads())
+        .def("is_degenerate",
+          &w_t::is_degenerate,
+          is_degenerate_overloads())
         .def("is_similar_to",
           &w_t::is_similar_to,
           is_similar_to_overloads())

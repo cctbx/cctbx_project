@@ -260,8 +260,8 @@ namespace cctbx { namespace uctbx {
   }
 
   bool
-  unit_cell::is_degenerated(double min_min_length_over_max_length,
-                            double min_volume_over_min_length)
+  unit_cell::is_degenerate(double min_min_length_over_max_length,
+                           double min_volume_over_min_length)
   {
     if (volume_ == 0) return true;
     double min_length = std::min(std::min(params_[0], params_[1]), params_[2]);
