@@ -234,6 +234,9 @@ class set(crystal.symmetry):
       indices=indices,
       anomalous_flag=anomalous_flag)
 
+  def array(self, data=None, sigmas=None):
+    return array(miller_set=self, data=data, sigmas=sigmas)
+
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
     assert self.indices() is not None
