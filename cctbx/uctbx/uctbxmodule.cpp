@@ -143,6 +143,12 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   this_module.add(ref(to_python(
       Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
+  python::import_converters<af::shared<double> >
+  py_shared_double("cctbx_boost.arraytbx.shared", "double");
+
+  python::import_converters<af::shared<Miller::Index> >
+  py_shared_Miller_Index("cctbx_boost.arraytbx.shared", "Miller_Index");
+
   class_builder<UnitCell> UnitCell_class(this_module, "UnitCell");
   python::export_converters(UnitCell_class);
 
@@ -169,9 +175,24 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
   UnitCell_class.def(
     (UnitCell (UnitCell::*)(const af::double9&, double) const)
     &UnitCell::ChangeBasis, "ChangeBasis");
-  UnitCell_class.def(&UnitCell::Q, "Q");
-  UnitCell_class.def(&UnitCell::s, "s");
-  UnitCell_class.def(&UnitCell::d, "d");
+  UnitCell_class.def(
+    (double (UnitCell::*)(const Miller::Index&) const)
+    &UnitCell::Q, "Q");
+  UnitCell_class.def(
+    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    &UnitCell::Q, "Q");
+  UnitCell_class.def(
+    (double (UnitCell::*)(const Miller::Index&) const)
+    &UnitCell::s, "s");
+  UnitCell_class.def(
+    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    &UnitCell::s, "s");
+  UnitCell_class.def(
+    (double (UnitCell::*)(const Miller::Index&) const)
+    &UnitCell::d, "d");
+  UnitCell_class.def(
+    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    &UnitCell::d, "d");
   UnitCell_class.def(UnitCell_fractionalize, "fractionalize");
   UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
   UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");

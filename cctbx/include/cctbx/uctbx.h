@@ -28,6 +28,7 @@
 #include <cctbx/miller.h>
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/constants.h>
+#include <cctbx/array_family/shared.h>
 
 namespace cctbx {
   //! Unit Cell Toolbox namespace.
@@ -254,7 +255,8 @@ namespace cctbx {
       //! Compute the maximum Miller indices for a given minimum d-spacing.
       Miller::Index MaxMillerIndices(double dmin) const;
       //! d-spacing measure Q = 1 / d^2 = s^2 = (2*sin(theta)/lambda)^2.
-      double Q(const Miller::Index& MIx) const
+      double
+      Q(const Miller::Index& MIx) const
       {
         return
             (MIx[0] * MIx[0]) * (R_Len[0] * R_Len[0])
@@ -264,10 +266,21 @@ namespace cctbx {
           + (2 * MIx[0] * MIx[2]) * (R_Len[0] * R_Len[2] * R_cosAng[1])
           + (2 * MIx[1] * MIx[2]) * (R_Len[1] * R_Len[2] * R_cosAng[0]);
       }
+      //! d-spacing measure Q = 1 / d^2 = s^2 = (2*sin(theta)/lambda)^2.
+      af::shared<double>
+      Q(const af::shared<Miller::Index>& MIx) const;
       //! d-spacing measure s = 1 / d = 2*sin(theta)/lambda.
-      double s(const Miller::Index& MIx) const { return Q_as_s(Q(MIx));}
+      double
+      s(const Miller::Index& MIx) const { return Q_as_s(Q(MIx));}
+      //! d-spacing measure s = 1 / d = 2*sin(theta)/lambda.
+      af::shared<double>
+      s(const af::shared<Miller::Index>& MIx) const;
       //! d-spacing measure d = 1 / s = lamda/(2*sin(theta))
-      double d(const Miller::Index& MIx) const { return Q_as_d(Q(MIx));}
+      double
+      d(const Miller::Index& MIx) const { return Q_as_d(Q(MIx));}
+      //! d-spacing measure d = 1 / s = lamda/(2*sin(theta))
+      af::shared<double>
+      d(const af::shared<Miller::Index>& MIx) const;
       //@}
 
       //! @name Stream I/O.

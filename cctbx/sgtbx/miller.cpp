@@ -61,6 +61,16 @@ namespace cctbx { namespace sgtbx {
     return false;
   }
 
+  af::shared<bool>
+  SpaceGroup::isSysAbsent(const af::shared<Miller::Index>& H) const
+  {
+    af::shared<bool> result(H.size()); // FUTURE: avoid initialization
+    for(std::size_t i=0;i<H.size();i++) {
+      result[i] = isSysAbsent(H[i]);
+    }
+    return result;
+  }
+
   bool SpaceGroup::isCentric(const Miller::Index& H) const
   {
     if (isCentric()) return true;
@@ -68,6 +78,16 @@ namespace cctbx { namespace sgtbx {
       if (H * m_SMx[i].Rpart() == H.FriedelMate()) return true;
     }
     return false;
+  }
+
+  af::shared<bool>
+  SpaceGroup::isCentric(const af::shared<Miller::Index>& H) const
+  {
+    af::shared<bool> result(H.size()); // FUTURE: avoid initialization
+    for(std::size_t i=0;i<H.size();i++) {
+      result[i] = isCentric(H[i]);
+    }
+    return result;
   }
 
   PhaseRestriction
@@ -97,6 +117,16 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
+  af::shared<int>
+  SpaceGroup::epsilon(const af::shared<Miller::Index>& H) const
+  {
+    af::shared<int> result(H.size()); // FUTURE: avoid initialization
+    for(std::size_t i=0;i<H.size();i++) {
+      result[i] = epsilon(H[i]);
+    }
+    return result;
+  }
+
   int SpaceGroup::multiplicity(const Miller::Index& H, bool FriedelFlag) const
   {
     if (H.is000()) return 1;
@@ -112,6 +142,17 @@ namespace cctbx { namespace sgtbx {
     M = m_nSMx / M;
     if (Centro && R == 0) M *= 2;
     return M;
+  }
+
+  af::shared<int>
+  SpaceGroup::multiplicity(const af::shared<Miller::Index>& H,
+                           bool FriedelFlag) const
+  {
+    af::shared<int> result(H.size()); // FUTURE: avoid initialization
+    for(std::size_t i=0;i<H.size();i++) {
+      result[i] = multiplicity(H[i], FriedelFlag);
+    }
+    return result;
   }
 
   bool PhaseRestriction::isValidPhase(double Period,

@@ -329,7 +329,13 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! Test if reflection with given Miller index is systematically absent.
-      bool isSysAbsent(const Miller::Index& H) const;
+      bool
+      isSysAbsent(const Miller::Index& H) const;
+      //! Test if reflection with given Miller index is systematically absent.
+      /*! Overload for arrays.
+       */
+      af::shared<bool>
+      isSysAbsent(const af::shared<Miller::Index>& H) const;
       //! Test if reflection with given Miller index is centric.
       /*! A reflection with the Miller index H is "centric" if
           there is a symmetry operation with rotation part R such
@@ -340,19 +346,25 @@ namespace cctbx { namespace sgtbx {
           calculation, do not use isCentric(), but use
           getPhaseRestriction() instead.
        */
-      bool isCentric(const Miller::Index& H) const;
+      bool
+      isCentric(const Miller::Index& H) const;
+      //! Test if reflection with given Miller index is centric.
+      /*! Overload for arrays.
+       */
+      af::shared<bool>
+      isCentric(const af::shared<Miller::Index>& H) const;
       //! Determine the phase restriction for the given Miller index.
       /*! See class PhaseRestriction.
        */
       PhaseRestriction getPhaseRestriction(const Miller::Index& H) const;
       //! See class PhaseRestriction::isValidPhase_rad().
       bool isValidPhase_rad(const Miller::Index& H, double phi,
-                                   double tolerance = 1.e-5) const {
+                            double tolerance = 1.e-5) const {
         return getPhaseRestriction(H).isValidPhase_rad(phi, tolerance);
       }
       //! See class PhaseRestriction::isValidPhase_deg().
       bool isValidPhase_deg(const Miller::Index& H, double phi,
-                                   double tolerance = 1.e-5) const {
+                            double tolerance = 1.e-5) const {
         return getPhaseRestriction(H).isValidPhase_deg(phi, tolerance);
       }
       //! Determine the reflection multiplicity for the given Miller index.
@@ -362,7 +374,15 @@ namespace cctbx { namespace sgtbx {
           list of symmetry matrices considered in the determination of
           the multiplicity.
        */
-      int multiplicity(const Miller::Index& H, bool FriedelFlag) const;
+      int
+      multiplicity(const Miller::Index& H,
+                   bool FriedelFlag) const;
+      //! Determine the reflection multiplicity for the given Miller index.
+      /*! Overload for arrays.
+       */
+      af::shared<int>
+      multiplicity(const af::shared<Miller::Index>& H,
+                   bool FriedelFlag) const;
       //! Determine "epsilon" for the given Miller index.
       /*! The factor epsilon counts the number of times a Miller
           index H is mapped onto itself by symmetry. This factor
@@ -370,7 +390,13 @@ namespace cctbx { namespace sgtbx {
           formulae.<br>
           See also: sgtbx::SymEquivIndices::epsilon()
        */
-      int epsilon(const Miller::Index& H) const;
+      int
+      epsilon(const Miller::Index& H) const;
+      //! Determine "epsilon" for the given Miller index.
+      /*! Overload for arrays.
+       */
+      af::shared<int>
+      epsilon(const af::shared<Miller::Index>& H) const;
       //! Generate list of symmetrically equivalent reflections.
       /*! See class SymEquivMillerIndices
        */
