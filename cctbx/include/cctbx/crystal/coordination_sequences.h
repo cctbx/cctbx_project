@@ -101,9 +101,9 @@ namespace coordination_sequences {
   {
     core(
       crystal::pair_asu_table<> const& pair_asu_table,
-      unsigned n_shells)
+      unsigned max_shell)
     :
-      Actions(pair_asu_table, n_shells)
+      Actions(pair_asu_table, max_shell)
     {
       direct_space_asu::asu_mappings<> const&
         asu_mappings = *pair_asu_table.asu_mappings().get();
@@ -117,7 +117,7 @@ namespace coordination_sequences {
         sgtbx::rt_mx rt_mx_pivot = asu_mappings.get_rt_mx(this->i_seq_pivot,0);
         shells.clear(asu_mappings, this->i_seq_pivot);
         for(this->i_shell_minus_1=0;
-            this->i_shell_minus_1<n_shells;
+            this->i_shell_minus_1<max_shell;
             this->i_shell_minus_1++) {
           shells.shift();
           for(std::map<unsigned, std::vector<node> >::const_iterator
@@ -174,7 +174,7 @@ namespace coordination_sequences {
   {
     term_table_actions(
       crystal::pair_asu_table<> const& pair_asu_table,
-      unsigned n_shells)
+      unsigned max_shell)
     :
       terms(0)
     {
@@ -204,22 +204,22 @@ namespace coordination_sequences {
   af::shared<std::vector<unsigned> >
   simple(
     crystal::pair_asu_table<> const& pair_asu_table,
-    unsigned n_shells)
+    unsigned max_shell)
   {
-    return core<term_table_actions>(pair_asu_table, n_shells).term_table;
+    return core<term_table_actions>(pair_asu_table, max_shell).term_table;
   }
 
   struct shell_asu_tables_actions
   {
     shell_asu_tables_actions(
       crystal::pair_asu_table<> const& pair_asu_table,
-      unsigned n_shells)
+      unsigned max_shell)
     {
-      shell_asu_tables.reserve(n_shells);
-      if (n_shells > 0) {
+      shell_asu_tables.reserve(max_shell);
+      if (max_shell > 0) {
         shell_asu_tables.push_back(pair_asu_table);
         for(i_shell_minus_1=1;
-            i_shell_minus_1<n_shells;
+            i_shell_minus_1<max_shell;
             i_shell_minus_1++) {
           shell_asu_tables.push_back(
             crystal::pair_asu_table<>(pair_asu_table.asu_mappings()));
@@ -267,9 +267,9 @@ namespace coordination_sequences {
   std::vector<pair_asu_table<> >
   shell_asu_tables(
     crystal::pair_asu_table<> const& pair_asu_table,
-    unsigned n_shells)
+    unsigned max_shell)
   {
-    return core<shell_asu_tables_actions>(pair_asu_table, n_shells)
+    return core<shell_asu_tables_actions>(pair_asu_table, max_shell)
       .shell_asu_tables;
   }
 

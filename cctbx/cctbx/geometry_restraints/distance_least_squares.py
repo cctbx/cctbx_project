@@ -4,6 +4,7 @@ import cctbx.geometry_restraints.manager
 import cctbx.geometry_restraints.lbfgs
 from cctbx import xray
 from cctbx import crystal
+import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx import matrix as mx
@@ -163,9 +164,9 @@ def distance_and_repulsion_least_squares(
   if (si_pairs.pair_counts.count(4) == n_si):
     assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
   print
-  shell_asu_tables = crystal.coordination_sequences_shell_asu_tables(
+  shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
     pair_asu_table=si_o_bond_asu_table,
-    n_shells=3)
+    max_shell=3)
   if (1):
     si_o_bond_asu_table.add_pair_sym_table(
       sym_table=si_pair_asu_table.extract_pair_sym_table())

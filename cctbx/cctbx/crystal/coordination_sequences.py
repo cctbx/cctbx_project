@@ -1,5 +1,9 @@
+from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
+
+simple = crystal.coordination_sequences_simple
+shell_asu_tables = crystal.coordination_sequences_shell_asu_tables
 
 class node:
 
@@ -15,7 +19,7 @@ def find_node(test_node, node_list):
       return 0001
   return 00000
 
-def simple_and_slow(pair_asu_table, n_shells=10):
+def simple_and_slow(pair_asu_table, max_shell=10):
   asu_mappings = pair_asu_table.asu_mappings()
   term_table = []
   for i_seq_pivot,pair_asu_dict_pivot in enumerate(pair_asu_table.table()):
@@ -29,7 +33,7 @@ def simple_and_slow(pair_asu_table, n_shells=10):
       i_seq=i_seq_pivot,
       rt_mx=sgtbx.rt_mx())]
     terms = [1]
-    for i_shell_minus_1 in xrange(n_shells):
+    for i_shell_minus_1 in xrange(max_shell):
       nodes_prev = nodes_middle
       nodes_middle = nodes_next
       nodes_next = []

@@ -5,6 +5,7 @@ from cctbx.geometry_restraints.manager import manager as restraints_manager
 from cctbx.geometry_restraints.lbfgs import lbfgs as restraints_lbfgs
 from cctbx import xray
 from cctbx import crystal
+import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
@@ -121,9 +122,9 @@ def exercise(verbose=0):
     buffer_thickness=nonbonded_cutoff)
   bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   geometry_restraints.add_pairs(bond_asu_table, bond_proxies.simple)
-  shell_asu_tables = crystal.coordination_sequences_shell_asu_tables(
+  shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
     pair_asu_table=bond_asu_table,
-    n_shells=3)
+    max_shell=3)
   shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
     for shell_asu_table in shell_asu_tables]
   bond_params_table = geometry_restraints.extract_bond_params(
