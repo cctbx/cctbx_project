@@ -58,6 +58,9 @@ namespace cctbx { namespace restraints {
         distance_ideal,
         weight);
     }
+#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1640
+      bool dummy_;
+#endif
   };
 
   class bond : public bond_params
