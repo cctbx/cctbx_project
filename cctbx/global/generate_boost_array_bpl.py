@@ -96,7 +96,7 @@ class T_N:
     self.T = T
     self.N = N
 
-if (__name__ == "__main__"):
+def run():
   T_N_List = (
     T_N("int", 3),
     T_N("int", 9),
@@ -116,3 +116,6 @@ if (__name__ == "__main__"):
   write_definitions(T_N_List)
   sys.stdout = sys.__stdout__
   f.close()
+
+if (__name__ == "__main__"):
+  run()
