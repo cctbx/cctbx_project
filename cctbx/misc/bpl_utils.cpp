@@ -18,11 +18,28 @@ namespace cctbx { namespace bpl_utils {
     boost::python::throw_error_already_set();
   }
 
-  void raise_must_be_1d()
+  void raise_must_be_0_based_1d()
   {
     PyErr_SetString(PyExc_RuntimeError,
       "Array must be 0-based 1-dimensional.");
     boost::python::throw_error_already_set();
+  }
+
+  void raise_must_be_0_based_3d()
+  {
+    PyErr_SetString(PyExc_RuntimeError,
+      "Array must be 0-based 3-dimensional.");
+    boost::python::throw_error_already_set();
+  }
+
+  void assert_0_based_1d(af::flex_grid<> const& grid)
+  {
+    if (grid.nd() != 1 || !grid.is_0_based()) raise_must_be_0_based_1d();
+  }
+
+  void assert_0_based_3d(af::flex_grid<> const& grid)
+  {
+    if (grid.nd() != 3 || !grid.is_0_based()) raise_must_be_0_based_3d();
   }
 
   void raise_shared_size_mismatch()
@@ -43,12 +60,6 @@ namespace cctbx { namespace bpl_utils {
       return tuple(ref(PyList_AsTuple(p)));
     else
       return tuple(ref(p, ref::increment_count));
-  }
-
-  void assert_1d(af::flex_grid<> const& grid)
-  {
-    if (grid.nd() != 1) raise_must_be_1d();
-    if (grid.origin()[0] != 0) raise_must_be_1d();
   }
 
 }}

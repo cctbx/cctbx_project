@@ -636,29 +636,29 @@ namespace cctbx { namespace sftbx {
       sfmap::grid_point_type max_shell_radii_;
   };
 
-  template <typename FloatType,
-            typename IndexType>
+  // XXX struct collect_structure_factors with two constructors
+  template <typename FloatType>
   std::pair<
     af::shared<miller::Index>,
     af::shared<std::complex<FloatType> > >
   collect_structure_factors(
-    const uctbx::UnitCell& ucell,
-    const sgtbx::SpaceGroupInfo& sginfo,
+    uctbx::UnitCell const& ucell,
+    sgtbx::SpaceGroupInfo const& sginfo,
     bool friedel_flag,
-    const FloatType& max_q,
-    const af::const_ref<std::complex<FloatType> >& complex_map,
-    const IndexType& n_complex,
+    FloatType const& max_q,
+    af::const_ref<std::complex<FloatType>, af::grid<3> > const& complex_map,
     bool conjugate)
   {
-    cctbx_assert(complex_map.size() >= af::product(n_complex.const_ref()));
+    typedef typename af::grid<3>::index_type index_type;
+    index_type n_complex = complex_map.accessor();
     sgtbx::ReciprocalSpaceASU asu(sginfo);
-    const sgtbx::SpaceGroup& sgops = sginfo.SgOps();
+    sgtbx::SpaceGroup const& sgops = sginfo.SgOps();
     af::shared<miller::Index> miller_indices;
     af::shared<std::complex<FloatType> > structure_factors;
     miller::Index h;
     miller::Index mh;
     uctbx::incremental_d_star_sq<FloatType> incr_d_star_sq(ucell);
-    IndexType loop_i;
+    index_type loop_i;
     std::size_t map_i = 0;
     for(loop_i[0] = 0; loop_i[0] < n_complex[0]; loop_i[0]++) {
       h[0] = maps::ih_as_h(loop_i[0], n_complex[0]);
@@ -711,19 +711,15 @@ namespace cctbx { namespace sftbx {
     return std::make_pair(miller_indices, structure_factors);
   }
 
-  template <typename FloatType,
-            typename IndexType>
+  template <typename FloatType>
   af::shared<std::complex<FloatType> >
   collect_structure_factors(
     bool friedel_flag,
-    const af::const_ref<miller::Index>& miller_indices,
-    const af::const_ref<std::complex<FloatType> >& complex_map,
-    const IndexType& n_complex,
+    af::const_ref<miller::Index> const& miller_indices,
+    af::const_ref<std::complex<FloatType>, af::grid<3> > const& complex_map,
     bool conjugate)
   {
-    cctbx_assert(complex_map.size() >= af::product(n_complex.const_ref()));
-    af::const_ref<std::complex<FloatType>, af::grid<3> > map(
-      complex_map.begin(), n_complex);
+    typename af::grid<3>::index_type n_complex = complex_map.accessor();
     af::shared<std::complex<FloatType> > structure_factors;
     structure_factors.reserve(miller_indices.size());
     for(std::size_t i=0;i<miller_indices.size();i++) {
@@ -744,8 +740,8 @@ namespace cctbx { namespace sftbx {
       sfmap::grid_point_type ih = detail::h_as_ih_array(
         friedel_flag, h, n_complex);
       cctbx_assert(ih >= sfmap::grid_point_element_type(0));
-      if (!f_conj) structure_factors.push_back(map(ih));
-      else         structure_factors.push_back(std::conj(map(ih)));
+      if (!f_conj) structure_factors.push_back(complex_map(ih));
+      else         structure_factors.push_back(std::conj(complex_map(ih)));
     }
     return structure_factors;
   }

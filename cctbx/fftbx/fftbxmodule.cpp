@@ -11,12 +11,13 @@
  */
 
 #include <boost/python/cross_module.hpp>
+#include <cctbx/array_family/tiny_bpl.h>
+#include <cctbx/array_family/small_bpl.h>
+#include <cctbx/array_family/shared_bpl_.h>
+#include <cctbx/array_family/flex_types.h>
 #include <cctbx/fftbx/gridding.h>
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
-#include <cctbx/array_family/tiny_bpl.h>
-
-#include <cctbx/array_family/shared_bpl_.h>
 
 namespace cctbx { namespace af { namespace bpl { namespace {
 
@@ -31,143 +32,239 @@ namespace cctbx { namespace af { namespace bpl { namespace {
 
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(int)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
-CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(std::complex<double>)
 
 using namespace cctbx;
 
 namespace {
 
-  int adjust_gridding_2(int min_grid,
-                                int max_prime) {
-    return fftbx::adjust_gridding(min_grid, max_prime);
-  }
-  int adjust_gridding_3(int min_grid,
-                                int max_prime,
-                                int mandatory_factor) {
-    return fftbx::adjust_gridding(min_grid, max_prime, mandatory_factor);
-  }
-
-  af::int3 adjust_gridding_triple_2(
-    const af::int3& min_grid,
-    int max_prime) {
-    return fftbx::adjust_gridding_array(min_grid, max_prime);
-  }
-
-  af::int3 adjust_gridding_triple_3(
-    const af::int3& min_grid,
-    int max_prime,
-    const af::int3& mandatory_factors) {
-    return fftbx::adjust_gridding_array(min_grid, max_prime,
-                                        mandatory_factors);
-  }
-
-  void throw_size_error() {
+  void raise_size_error()
+  {
     PyErr_SetString(PyExc_RuntimeError, "Array is too small.");
     boost::python::throw_error_already_set();
   }
 
-  void throw_index_error() {
-    PyErr_SetString(PyExc_IndexError, "Index is out of range.");
-    boost::python::throw_error_already_set();
+  void assert_0_based_1d_size(
+    af::flex_grid<> const& grid,
+    std::size_t sz)
+  {
+    bpl_utils::assert_0_based_1d(grid);
+    if (grid.size1d() < sz) raise_size_error();
   }
 
-  typedef af::shared<double> shared_real_array;
+  void assert_0_based_3d_size(
+    af::flex_grid<> const& grid,
+    af::int3 const& fft_n)
+  {
+    bpl_utils::assert_0_based_3d(grid);
+    for(std::size_t i=0;i<3;i++) {
+      if (grid.grid()[i] != fft_n[i]) raise_size_error();
+    }
+  }
+
+  int adjust_gridding_2(int min_grid,
+                        int max_prime)
+  {
+    return fftbx::adjust_gridding(min_grid, max_prime);
+  }
+
+  int adjust_gridding_3(int min_grid,
+                        int max_prime,
+                        int mandatory_factor)
+  {
+    return fftbx::adjust_gridding(min_grid, max_prime, mandatory_factor);
+  }
+
+  af::flex_grid_default_index_type
+  adjust_gridding_triple_2(
+    af::flex_grid_default_index_type const& min_grid,
+    int max_prime)
+  {
+    return fftbx::adjust_gridding_array_flex(min_grid, max_prime);
+  }
+
+  af::flex_grid_default_index_type
+  adjust_gridding_triple_3(
+    af::flex_grid_default_index_type const& min_grid,
+    int max_prime,
+    af::flex_grid_default_index_type const& mandatory_factors)
+  {
+    return fftbx::adjust_gridding_array_flex(min_grid, max_prime,
+                                             mandatory_factors);
+  }
+
+  typedef af::flex_double flex_real_array;
   typedef af::ref<double, af::grid<3> > ref_3d_real_array;
-  typedef af::shared<std::complex<double> > shared_complex_array;
+  typedef af::flex_complex_double flex_complex_array;
   typedef af::ref<std::complex<double>, af::grid<3> > ref_3d_complex_array;
 
-  void cc_forward_complex(fftbx::complex_to_complex<double>& fft,
-                          shared_complex_array a) {
-    if (a.size() < fft.N()) throw_size_error();
+  flex_complex_array
+  cc_forward_complex(fftbx::complex_to_complex<double>& fft,
+                     flex_complex_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), fft.N());
     fft.forward(a.begin());
-  }
-  void cc_backward_complex(fftbx::complex_to_complex<double>& fft,
-                           shared_complex_array a) {
-    if (a.size() < fft.N()) throw_size_error();
-    fft.backward(a.begin());
-  }
-  void cc_forward_real(fftbx::complex_to_complex<double>& fft,
-                       shared_real_array a) {
-    if (a.size() < 2 * fft.N()) throw_size_error();
-    fft.forward(a.begin());
-  }
-  void cc_backward_real(fftbx::complex_to_complex<double>& fft,
-                        shared_real_array a) {
-    if (a.size() < 2 * fft.N()) throw_size_error();
-    fft.backward(a.begin());
+    return flex_complex_array(a, af::make_flex_grid_1d(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
   }
 
-  void rc_forward_complex(fftbx::real_to_complex<double>& fft,
-                          shared_complex_array a) {
-    if (a.size() < fft.Ncomplex()) throw_size_error();
-    fft.forward(a.begin());
-  }
-  void rc_backward_complex(fftbx::real_to_complex<double>& fft,
-                           shared_complex_array a) {
-    if (a.size() < fft.Ncomplex()) throw_size_error();
+  flex_complex_array
+  cc_backward_complex(fftbx::complex_to_complex<double>& fft,
+                      flex_complex_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), fft.N());
     fft.backward(a.begin());
-  }
-  void rc_forward_real(fftbx::real_to_complex<double>& fft,
-                       shared_real_array a) {
-    if (a.size() < fft.Mreal()) throw_size_error();
-    fft.forward(a.begin());
-  }
-  void rc_backward_real(fftbx::real_to_complex<double>& fft,
-                        shared_real_array a) {
-    if (a.size() < fft.Mreal()) throw_size_error();
-    fft.backward(a.begin());
+    return flex_complex_array(a, af::make_flex_grid_1d(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
   }
 
-  void cc_3d_forward_complex(fftbx::complex_to_complex_3d<double>& fft,
-                             shared_complex_array a) {
+  flex_complex_array
+  cc_forward_real(fftbx::complex_to_complex<double>& fft,
+                  flex_real_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), 2 * fft.N());
+    fft.forward(a.begin());
+    return flex_complex_array(a.handle(), af::make_flex_grid_1d(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
+  }
+
+  flex_complex_array
+  cc_backward_real(fftbx::complex_to_complex<double>& fft,
+                   flex_real_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), 2 * fft.N());
+    fft.backward(a.begin());
+    return flex_complex_array(a.handle(), af::make_flex_grid_1d(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
+  }
+
+  flex_complex_array
+  rc_forward_complex(fftbx::real_to_complex<double>& fft,
+                     flex_complex_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), fft.Ncomplex());
+    fft.forward(a.begin());
+    return flex_complex_array(a, af::make_flex_grid_1d(fft.Ncomplex())
+      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
+  }
+
+  flex_real_array
+  rc_backward_complex(fftbx::real_to_complex<double>& fft,
+                      flex_complex_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), fft.Ncomplex());
+    fft.backward(a.begin());
+    return flex_real_array(a.handle(), af::make_flex_grid_1d(fft.Mreal())
+      .set_layout(af::make_flex_grid_index(fft.Nreal())));
+  }
+
+  flex_complex_array
+  rc_forward_real(fftbx::real_to_complex<double>& fft,
+                  flex_real_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), fft.Mreal());
+    fft.forward(a.begin());
+    return flex_complex_array(a.handle(), af::make_flex_grid_1d(fft.Ncomplex())
+      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
+  }
+
+  flex_real_array
+  rc_backward_real(fftbx::real_to_complex<double>& fft,
+                   flex_real_array a)
+  {
+    assert_0_based_1d_size(a.accessor(), fft.Mreal());
+    fft.backward(a.begin());
+    return flex_real_array(a, af::make_flex_grid_1d(fft.Mreal())
+      .set_layout(af::make_flex_grid_index(fft.Nreal())));
+  }
+
+  flex_complex_array
+  cc_3d_forward_complex(fftbx::complex_to_complex_3d<double>& fft,
+                        flex_complex_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fft.N());
     ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
-    if (a.size() < map.size()) throw_size_error();
     fft.forward(map);
+    return flex_complex_array(a, af::make_flex_grid(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
   }
-  void cc_3d_backward_complex(fftbx::complex_to_complex_3d<double>& fft,
-                              shared_complex_array a) {
+
+  flex_complex_array
+  cc_3d_backward_complex(fftbx::complex_to_complex_3d<double>& fft,
+                         flex_complex_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fft.N());
     ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
-    if (a.size() < map.size()) throw_size_error();
     fft.backward(map);
+    return flex_complex_array(a, af::make_flex_grid(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
   }
-  void cc_3d_forward_real(fftbx::complex_to_complex_3d<double>& fft,
-                          shared_real_array a) {
+
+  flex_complex_array
+  cc_3d_forward_real(fftbx::complex_to_complex_3d<double>& fft,
+                     flex_real_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fftbx::Nreal_from_Ncomplex(fft.N()));
     ref_3d_real_array map(
       a.begin(), af::grid<3>(fftbx::Nreal_from_Ncomplex(fft.N())));
-    if (a.size() < map.size()) throw_size_error();
     fft.forward(map);
-  }
-  void cc_3d_backward_real(fftbx::complex_to_complex_3d<double>& fft,
-                           shared_real_array a) {
-    ref_3d_real_array map(
-      a.begin(), af::grid<3>(fftbx::Nreal_from_Ncomplex(fft.N())));
-    if (a.size() < map.size()) throw_size_error();
-    fft.backward(map);
+    return flex_complex_array(a.handle(), af::make_flex_grid(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
   }
 
-  void rc_3d_forward_complex(fftbx::real_to_complex_3d<double>& fft,
-                             shared_complex_array a) {
-    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
-    if (a.size() < map.size()) throw_size_error();
-    fft.forward(map);
-  }
-  void rc_3d_backward_complex(fftbx::real_to_complex_3d<double>& fft,
-                              shared_complex_array a) {
-    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
-    if (a.size() < map.size()) throw_size_error();
+  flex_complex_array
+  cc_3d_backward_real(fftbx::complex_to_complex_3d<double>& fft,
+                      flex_real_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fftbx::Nreal_from_Ncomplex(fft.N()));
+    ref_3d_real_array map(
+      a.begin(), af::grid<3>(fftbx::Nreal_from_Ncomplex(fft.N())));
     fft.backward(map);
+    return flex_complex_array(a.handle(), af::make_flex_grid(fft.N())
+      .set_layout(af::make_flex_grid_index(fft.N())));
   }
-  void rc_3d_forward_real(fftbx::real_to_complex_3d<double>& fft,
-                          shared_real_array a) {
-    ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
-    if (a.size() < map.size()) throw_size_error();
+
+  flex_complex_array
+  rc_3d_forward_complex(fftbx::real_to_complex_3d<double>& fft,
+                        flex_complex_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fft.Ncomplex());
+    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
     fft.forward(map);
+    return flex_complex_array(a, af::make_flex_grid(fft.Ncomplex())
+      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
   }
-  void rc_3d_backward_real(fftbx::real_to_complex_3d<double>& fft,
-                           shared_real_array a) {
-    ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
-    if (a.size() < map.size()) throw_size_error();
+
+  flex_real_array
+  rc_3d_backward_complex(fftbx::real_to_complex_3d<double>& fft,
+                         flex_complex_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fft.Ncomplex());
+    ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
     fft.backward(map);
+    return flex_real_array(a.handle(), af::make_flex_grid(fft.Mreal())
+      .set_layout(af::make_flex_grid_index(fft.Nreal())));
+  }
+
+  flex_complex_array
+  rc_3d_forward_real(fftbx::real_to_complex_3d<double>& fft,
+                     flex_real_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fft.Mreal());
+    ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
+    fft.forward(map);
+    return flex_complex_array(a.handle(), af::make_flex_grid(fft.Ncomplex())
+      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
+  }
+
+  flex_real_array
+  rc_3d_backward_real(fftbx::real_to_complex_3d<double>& fft,
+                      flex_real_array a)
+  {
+    assert_0_based_3d_size(a.accessor(), fft.Mreal());
+    ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
+    fft.backward(map);
+    return flex_real_array(a, af::make_flex_grid(fft.Mreal())
+      .set_layout(af::make_flex_grid_index(fft.Nreal())));
   }
 
 #   include <cctbx/basic/from_bpl_import.h>

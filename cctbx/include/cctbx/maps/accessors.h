@@ -12,6 +12,7 @@
 #define CCTBX_MAPS_ACCESSORS_H
 
 #include <cctbx/array_family/grid_accessor.h>
+#include <cctbx/array_family/flex_grid_accessor.h>
 
 namespace cctbx {
 
@@ -103,6 +104,17 @@ namespace maps {
 
       const IndexType& n_logical() const { return n_logical_; }
       const IndexType& n_physical() const { return n_physical_; }
+
+      af::flex_grid<> as_flex_grid() const // XXX move out
+      {
+        af::flex_grid_default_index_type grid;
+        af::flex_grid_default_index_type layout;
+        for(std::size_t i=0;i<n_logical_.size();i++) {
+          grid.push_back(n_physical_[i]);
+          layout.push_back(n_logical_[i]);
+        }
+        return af::flex_grid<>(grid).set_layout(layout);
+      }
 
     protected:
       IndexType n_logical_;

@@ -18,13 +18,13 @@
 namespace cctbx { namespace bpl_utils {
 
   void raise_index_error();
-  void raise_must_be_1d();
+  void raise_must_be_0_based_1d();
+  void raise_must_be_0_based_3d();
+  void assert_0_based_1d(af::flex_grid<> const& grid);
+  void assert_0_based_3d(af::flex_grid<> const& grid);
   void raise_shared_size_mismatch();
   void raise_incompatible_arrays();
-
   boost::python::tuple tuple_from_python_list_or_tuple(PyObject* p);
-
-  void assert_1d(af::flex_grid<> const& grid);
 
   template <typename ElementType>
   af::shared_plain<ElementType>

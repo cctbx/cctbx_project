@@ -13,7 +13,7 @@ namespace {
 
   double waiting_loop(std::size_t n1, std::size_t n2)
   {
-    double result;
+    double result = 0;
     for(std::size_t i=0;i<n1;i++) {
       double sum = 0;
       for(std::size_t j=0;j<n2;j++) {

@@ -13,8 +13,7 @@
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/sftbx/xray_scatterer.h>
-#include <cctbx/array_family/flex_grid_accessor.h>
-#include <cctbx/array_family/versa.h>
+#include <cctbx/array_family/flex_types.h>
 #include <cctbx/basic/meta.h>
 
 #if defined(__GNUC__) || defined(__DECCXX_VER)
@@ -623,71 +622,70 @@ namespace cctbx { namespace af {
 
   } // picklers
 
-  boost::python::tuple flex_bool_getstate(versa<bool, flex_grid<> > const& a)
+  boost::python::tuple flex_bool_getstate(flex_bool const& a)
   {
     return picklers::array_fast<bool>::getstate(a, 1);
   }
 
   void flex_bool_setstate(
-    versa<bool, flex_grid<> >& a, boost::python::tuple state)
+    flex_bool& a, boost::python::tuple state)
   {
     picklers::array_fast<bool>::setstate(a, state);
   }
 
-  boost::python::tuple flex_int_getstate(versa<int, flex_grid<> > const& a)
+  boost::python::tuple flex_int_getstate(flex_int const& a)
   {
     return picklers::array_fast<int>::getstate(a, 12);
   }
 
   void flex_int_setstate(
-    versa<int, flex_grid<> >& a, boost::python::tuple state)
+    flex_int& a, boost::python::tuple state)
   {
     picklers::array_fast<int>::setstate(a, state);
   }
 
-  boost::python::tuple flex_long_getstate(versa<long, flex_grid<> > const& a)
+  boost::python::tuple flex_long_getstate(flex_long const& a)
   {
     return picklers::array_fast<long>::getstate(a, 21);
   }
 
   void flex_long_setstate(
-    versa<long, flex_grid<> >& a, boost::python::tuple state)
+    flex_long& a, boost::python::tuple state)
   {
     picklers::array_fast<long>::setstate(a, state);
   }
 
-  boost::python::tuple flex_float_getstate(versa<float, flex_grid<> > const& a)
+  boost::python::tuple flex_float_getstate(flex_float const& a)
   {
     return picklers::array_fast<float>::getstate(a, 14);
   }
 
   void flex_float_setstate(
-    versa<float, flex_grid<> >& a, boost::python::tuple state)
+    flex_float& a, boost::python::tuple state)
   {
     picklers::array_fast<float>::setstate(a, state);
   }
 
   boost::python::tuple flex_double_getstate(
-    versa<double, flex_grid<> > const& a)
+    flex_double const& a)
   {
     return picklers::array_fast<double>::getstate(a, 20);
   }
 
   void flex_double_setstate(
-    versa<double, flex_grid<> >& a, boost::python::tuple state)
+    flex_double& a, boost::python::tuple state)
   {
     picklers::array_fast<double>::setstate(a, state);
   }
 
   boost::python::tuple flex_complex_double_getstate(
-    versa<std::complex<double>, flex_grid<> > const& a)
+    flex_complex_double const& a)
   {
     return picklers::array_fast<std::complex<double> >::getstate(a, 2*20);
   }
 
   void flex_complex_double_setstate(
-    versa<std::complex<double>, flex_grid<> >& a,
-    boost::python::tuple state)
+    flex_complex_double& a, boost::python::tuple state)
   {
     picklers::array_fast<std::complex<double> >::setstate(a, state);
   }

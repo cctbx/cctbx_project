@@ -12,13 +12,14 @@ class write_makefiles(makefile_generator.write_makefiles):
       "misc/error.cpp",
       "misc/bpl_utils.cpp",
       "misc/tiny_bpl.cpp",
+      "misc/small_bpl.cpp",
       "misc/devmodule.cpp",
       "misc/tst.py",
     )
 
     self.libraries = {
       "cctbx_misc": ("error",),
-      "cctbx_bpl1": ("bpl_utils", "tiny_bpl"),
+      "cctbx_bpl1": ("bpl_utils", "tiny_bpl", "small_bpl"),
     }
 
     self.boost_python_modules = {

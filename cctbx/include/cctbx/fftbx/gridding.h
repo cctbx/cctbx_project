@@ -50,6 +50,7 @@ namespace cctbx { namespace fftbx {
     return grid;
   }
 
+  // XXX this function should eventually be obsolete
   template <typename IntegerArrayType>
   IntegerArrayType
   adjust_gridding_array(
@@ -63,6 +64,7 @@ namespace cctbx { namespace fftbx {
     return result;
   }
 
+  // XXX this function should eventually be obsolete
   template <typename IntegerArrayType>
   IntegerArrayType
   adjust_gridding_array(
@@ -74,6 +76,38 @@ namespace cctbx { namespace fftbx {
     for(std::size_t i=0;i<min_grid.size();i++) {
       result[i] = adjust_gridding(min_grid[i], max_prime,
                                   mandatory_factors[i]);
+    }
+    return result;
+  }
+
+  template <typename IntegerArrayType>
+  IntegerArrayType
+  adjust_gridding_array_flex(
+    IntegerArrayType const& min_grid,
+    typename IntegerArrayType::value_type const& max_prime)
+  {
+    IntegerArrayType result;
+    for(std::size_t i=0;i<min_grid.size();i++) {
+      result.push_back(adjust_gridding(min_grid[i], max_prime));
+    }
+    return result;
+  }
+
+  template <typename IntegerArrayType>
+  IntegerArrayType
+  adjust_gridding_array_flex(
+    IntegerArrayType const& min_grid,
+    typename IntegerArrayType::value_type const& max_prime,
+    IntegerArrayType const& mandatory_factors)
+  {
+    if (min_grid.size() != mandatory_factors.size()) {
+      throw error(
+        "adjust_gridding_array: min_grid.size() != mandatory_factors.size()");
+    }
+    IntegerArrayType result;
+    for(std::size_t i=0;i<min_grid.size();i++) {
+      result.push_back(adjust_gridding(min_grid[i], max_prime,
+                                       mandatory_factors[i]));
     }
     return result;
   }
