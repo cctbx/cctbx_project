@@ -39,15 +39,6 @@ namespace cctbx { namespace uctbx {
       return params;
     }
 
-    af::double6
-    parameters_from_orthogonalization_matrix(
-      uc_mat3 const& orthogonalization_matrix)
-    {
-      uc_mat3 g = orthogonalization_matrix.transpose()
-                * orthogonalization_matrix;
-      return parameters_from_metrical_matrix(uc_sym_mat3(g).begin());
-    }
-
     uc_sym_mat3
     construct_metrical_matrix(
       af::double6 const& params, uc_vec3 const& cos_ang)
@@ -197,7 +188,8 @@ namespace cctbx { namespace uctbx {
   }
 
   unit_cell::unit_cell(uc_mat3 const& orthogonalization_matrix)
-  : params_(parameters_from_orthogonalization_matrix(orthogonalization_matrix))
+  : params_(parameters_from_metrical_matrix(
+      orthogonalization_matrix.self_transpose_times_self().begin()))
   {
     try {
       initialize();
