@@ -8,18 +8,31 @@ namespace cctbx { namespace geometry_restraints {
   //! Grouping of indices into array of sites (i_seqs) and parameters.
   struct angle_proxy
   {
+    //! Support for shared_proxy_select.
+    typedef af::tiny<unsigned, 3> i_seqs_type;
+
     //! Default constructor. Some data members are not initialized!
     angle_proxy() {}
 
     //! Constructor.
     angle_proxy(
-      af::tiny<unsigned, 3> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double angle_ideal_,
       double weight_)
     :
       i_seqs(i_seqs_),
       angle_ideal(angle_ideal_),
       weight(weight_)
+    {}
+
+    //! Constructor.
+    angle_proxy(
+      i_seqs_type const& i_seqs_,
+      angle_proxy const& other)
+    :
+      i_seqs(i_seqs_),
+      angle_ideal(other.angle_ideal),
+      weight(other.weight)
     {}
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
@@ -34,7 +47,7 @@ namespace cctbx { namespace geometry_restraints {
     }
 
     //! Indices into array of sites.
-    af::tiny<unsigned, 3> i_seqs;
+    i_seqs_type i_seqs;
     //! Parameter.
     double angle_ideal;
     //! Parameter.
@@ -128,7 +141,7 @@ namespace cctbx { namespace geometry_restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<unsigned, 3> const& i_seqs) const
+        angle_proxy::i_seqs_type const& i_seqs) const
       {
         af::tiny<scitbx::vec3<double>, 3> grads = gradients();
         for(int i=0;i<3;i++) {

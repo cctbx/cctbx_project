@@ -8,12 +8,15 @@ namespace cctbx { namespace geometry_restraints {
   //! Grouping of indices into array of sites (i_seqs) and parameters.
   struct chirality_proxy
   {
+    //! Support for shared_proxy_select.
+    typedef af::tiny<unsigned, 4> i_seqs_type;
+
     //! Default constructor. Some data members are not initialized!
     chirality_proxy() {}
 
     //! Constructor.
     chirality_proxy(
-      af::tiny<unsigned, 4> const& i_seqs_,
+      i_seqs_type const& i_seqs_,
       double volume_ideal_,
       bool both_signs_,
       double weight_)
@@ -22,6 +25,17 @@ namespace cctbx { namespace geometry_restraints {
       volume_ideal(volume_ideal_),
       both_signs(both_signs_),
       weight(weight_)
+    {}
+
+    //! Constructor.
+    chirality_proxy(
+      i_seqs_type const& i_seqs_,
+      chirality_proxy const& other)
+    :
+      i_seqs(i_seqs_),
+      volume_ideal(other.volume_ideal),
+      both_signs(other.both_signs),
+      weight(other.weight)
     {}
 
     //! Sorts i_seqs such that i_seq[1] < i_seq[2] < i_seq[3].
@@ -41,7 +55,7 @@ namespace cctbx { namespace geometry_restraints {
     }
 
     //! Indices into array of sites.
-    af::tiny<unsigned, 4> i_seqs;
+    i_seqs_type i_seqs;
     //! Parameter.
     double volume_ideal;
     //! Parameter.
@@ -120,7 +134,7 @@ namespace cctbx { namespace geometry_restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<unsigned, 4> const& i_seqs) const
+        chirality_proxy::i_seqs_type const& i_seqs) const
       {
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
