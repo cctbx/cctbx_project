@@ -9,8 +9,6 @@ def write_copyright():
      Jan 2002: Created, based on generate_af_operators.py (rwgk)
  */"""
 
-# XXX unary ops still missing
-
 arithmetic_unary_ops = ("-")
 arithmetic_binary_ops = ("+", "-", "*", "/", "%")
 arithmetic_in_place_binary_ops = ("+=", "-=", "*=", "/=", "%=")
@@ -94,6 +92,27 @@ def generate_elementwise_binary_op(op_class, op_symbol):
     for type_flags in ((1,1), (1,0)):
       elementwise_inplace_binary_op(op_symbol + "=", type_flags)
 
+def generate_unary_ops():
+  for op_class, op_symbol in (("arithmetic", "-"),
+                              ("logical", "!")):
+    print """  template <typename ValueType>
+  inline
+  flagged_value<
+    typename unary_operator_traits<
+      ValueType>::%s>
+  operator%s(
+    const flagged_value<ValueType>& fv) {
+    flagged_value<
+      typename unary_operator_traits<
+        ValueType>::%s> result;
+    if (fv.f) {
+      result.v = %sfv.v;
+      result.f = true;
+    }
+    return result;
+  }
+""" % (op_class, op_symbol, op_class, op_symbol)
+
 def run():
   import sys
   f = open("flagged_value_operators.h", "w")
@@ -108,7 +127,7 @@ def run():
 namespace cctbx { namespace af {
 """
 
-  #generate_unary_ops(array_type_name)
+  generate_unary_ops()
   for op_symbol in arithmetic_binary_ops:
     generate_elementwise_binary_op("arithmetic", op_symbol)
   for op_symbol in logical_binary_ops:
