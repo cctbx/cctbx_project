@@ -126,3 +126,4 @@ if (not env_etc.no_boost_python):
   SConscript("mintbx/boost_python/SConscript")
   SConscript("dmtbx/boost_python/SConscript")
   SConscript("boost_python/SConscript")
+  SConscript("include/cctbx/restraints/SConscript")
