@@ -262,22 +262,30 @@ namespace cctbx { namespace crystal {
         }
         table_[i_seq][j_seq].push_back(pair_asu_j_sym_group());
         pair_asu_j_sym_group& j_syms = table_[i_seq][j_seq].back();
-        af::const_ref<sgtbx::rt_mx> const&
-          site_symmetry_matrices = asu_mappings_->site_symmetry_table()
-            .get(i_seq).matrices().const_ref();
-        for(unsigned i_mi=0;i_mi<site_symmetry_matrices.size();i_mi++) {
-          sgtbx::rt_mx const& mi = site_symmetry_matrices[i_mi];
-          if (i_seq == j_seq) {
-            sgtbx::rt_mx rt_mx_j_eq
-              = rt_mx_i.multiply(rt_mx_ji.multiply(mi).inverse_cancel());
+        sgtbx::site_symmetry_table const&
+          site_symmetry_table = asu_mappings_->site_symmetry_table();
+        if (   i_seq != j_seq
+            && !site_symmetry_table.is_special_position(i_seq)) {
+          j_syms.insert(j_sym);
+        }
+        else {
+          af::const_ref<sgtbx::rt_mx> const&
+            site_symmetry_matrices = site_symmetry_table
+              .get(i_seq).matrices().const_ref();
+          for(unsigned i_mi=0;i_mi<site_symmetry_matrices.size();i_mi++) {
+            sgtbx::rt_mx const& mi = site_symmetry_matrices[i_mi];
+            if (i_seq == j_seq) {
+              sgtbx::rt_mx rt_mx_j_eq
+                = rt_mx_i.multiply(rt_mx_ji.multiply(mi).inverse_cancel());
+              int j_sym_eq = asu_mappings_->find_i_sym(j_seq, rt_mx_j_eq);
+              CCTBX_ASSERT(j_sym_eq >= 0);
+              j_syms.insert(j_sym_eq);
+            }
+            sgtbx::rt_mx rt_mx_j_eq = rt_mx_i.multiply(mi.multiply(rt_mx_ji));
             int j_sym_eq = asu_mappings_->find_i_sym(j_seq, rt_mx_j_eq);
             CCTBX_ASSERT(j_sym_eq >= 0);
             j_syms.insert(j_sym_eq);
           }
-          sgtbx::rt_mx rt_mx_j_eq = rt_mx_i.multiply(mi.multiply(rt_mx_ji));
-          int j_sym_eq = asu_mappings_->find_i_sym(j_seq, rt_mx_j_eq);
-          CCTBX_ASSERT(j_sym_eq >= 0);
-          j_syms.insert(j_sym_eq);
         }
         return true;
       };

@@ -58,6 +58,16 @@ namespace cctbx { namespace sgtbx {
         indices_const_ref_ = indices_.const_ref();
       }
 
+      //! Shorthand for: indices()[i_seq] != 0.
+      /*! An exception is thrown if i_seq is out of bounds.
+       */
+      bool
+      is_special_position(std::size_t i_seq) const
+      {
+        CCTBX_ASSERT(i_seq < indices_const_ref_.size());
+        return indices_const_ref_[i_seq] != 0;
+      }
+
       //! Shorthand for: table()[indices()[i_seq]]
       /*! An exception is thrown if i_seq is out of bounds.
        */
@@ -124,6 +134,22 @@ namespace cctbx { namespace sgtbx {
         result.indices_ = indices_.deep_copy();
         result.indices_const_ref_ = result.indices_.const_ref();
         result.table_ = table_.deep_copy();
+        result.table_const_ref_ = result.table_.const_ref();
+        result.special_position_indices_=special_position_indices_.deep_copy();
+        return result;
+      }
+
+      //! Apply change-of-basis operator.
+      site_symmetry_table
+      change_basis(change_of_basis_op const& cb_op) const
+      {
+        site_symmetry_table result;
+        result.indices_ = indices_.deep_copy();
+        result.indices_const_ref_ = result.indices_.const_ref();
+        result.table_.reserve(table_const_ref_.size());
+        for(std::size_t i_seq=0;i_seq<table_const_ref_.size();i_seq++) {
+          result.table_.push_back(table_const_ref_[i_seq].change_basis(cb_op));
+        }
         result.table_const_ref_ = result.table_.const_ref();
         result.special_position_indices_=special_position_indices_.deep_copy();
         return result;

@@ -904,6 +904,8 @@ def exercise_site_symmetry():
   assert list(t.indices()) == [1,1,2,1,0]
   assert t.n_special_positions() == 4
   assert list(t.special_position_indices()) == [0,1,2,3]
+  assert t.is_special_position(i_seq=0)
+  assert not t.is_special_position(i_seq=4)
   assert t.get(0).multiplicity() == s.multiplicity()
   assert t.get(1).multiplicity() == s.multiplicity()
   assert t.get(2).multiplicity() == s2.multiplicity()
@@ -930,6 +932,14 @@ def exercise_site_symmetry():
   tc.process(site_symmetry_ops=s2)
   assert list(tc.indices()) == [1,1,2,1,0,2]
   assert list(t.indices()) == [1,1,2,1,0]
+  cb_op = sgtbx.change_of_basis_op("y,z,x")
+  tcb = t.change_basis(cb_op=cb_op)
+  assert list(tcb.indices()) == list(t.indices())
+  assert list(tcb.special_position_indices()) \
+      == list(t.special_position_indices())
+  for tcbt,tt in zip(tcb.table(), t.table()):
+    for a,b in zip(tcbt.matrices(), tt.matrices()):
+      assert str(a) == str(cb_op.apply(b))
   t.process(site_symmetry_ops=s3)
   assert list(t.indices()) == [1,1,2,1,0,0]
   assert list(tc.indices()) == [1,1,2,1,0,2]
