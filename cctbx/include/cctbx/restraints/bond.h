@@ -37,29 +37,27 @@ namespace cctbx { namespace restraints {
     af::tiny<std::size_t, 2> i_seqs;
   };
 
-  struct bond_asu_proxy : bond_params
+  struct bond_asu_proxy : bond_params, asu_mapping_index_pair
   {
     bond_asu_proxy() {}
 
     bond_asu_proxy(
-      direct_space_asu::asu_mapping_index_pair const& pair_,
+      asu_mapping_index_pair const& pair_,
       double distance_ideal_,
       double weight_)
     :
       bond_params(distance_ideal_, weight_),
-      pair(pair_)
+      asu_mapping_index_pair(pair_)
     {}
 
     bond_simple_proxy
     as_simple_proxy() const
     {
       return bond_simple_proxy(
-        af::tiny<std::size_t, 2>(pair.i_seq, pair.j_seq),
+        af::tiny<std::size_t, 2>(i_seq, j_seq),
         distance_ideal,
         weight);
     }
-
-    direct_space_asu::asu_mapping_index_pair pair;
   };
 
   class bond : public bond_params
@@ -102,9 +100,9 @@ namespace cctbx { namespace restraints {
         bond_params(proxy.distance_ideal, proxy.weight)
       {
         sites[0] = asu_mappings.map_moved_site_to_asu(
-          sites_cart[proxy.pair.i_seq], proxy.pair.i_seq, 0);
+          sites_cart[proxy.i_seq], proxy.i_seq, 0);
         sites[1] = asu_mappings.map_moved_site_to_asu(
-          sites_cart[proxy.pair.j_seq], proxy.pair.j_seq, proxy.pair.j_sym);
+          sites_cart[proxy.j_seq], proxy.j_seq, proxy.j_sym);
         init_distance_model();
       }
 
@@ -115,8 +113,8 @@ namespace cctbx { namespace restraints {
       :
         bond_params(proxy.distance_ideal, proxy.weight)
       {
-        sites[0] = cache.sites[proxy.pair.i_seq][0];
-        sites[1] = cache.sites[proxy.pair.j_seq][proxy.pair.j_sym];
+        sites[0] = cache.sites[proxy.i_seq][0];
+        sites[1] = cache.sites[proxy.j_seq][proxy.j_sym];
         init_distance_model();
       }
 
@@ -155,7 +153,7 @@ namespace cctbx { namespace restraints {
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
         direct_space_asu::asu_mappings<> const& asu_mappings,
-        direct_space_asu::asu_mapping_index_pair const& pair) const
+        asu_mapping_index_pair const& pair) const
       {
         vec3 grad_asu = gradient_0();
         vec3 grad_i_seq = asu_mappings.r_inv_cart(pair.i_seq, 0) * grad_asu;
@@ -170,7 +168,7 @@ namespace cctbx { namespace restraints {
       void
       add_gradients(
         asu_cache<>& cache,
-        direct_space_asu::asu_mapping_index_pair const& pair) const
+        asu_mapping_index_pair const& pair) const
       {
         vec3 grad_asu = gradient_0();
         cache.gradients[pair.i_seq] += grad_asu;
@@ -273,10 +271,10 @@ namespace cctbx { namespace restraints {
         gradient_array.size() != 0);
       for(std::size_t i=0;i<proxies.size();i++) {
         bond restraint(cache, proxies[i]);
-        if (proxies[i].pair.j_sym == 0) result += restraint.residual();
-        else                            result += restraint.residual()*.5;
+        if (proxies[i].j_sym == 0) result += restraint.residual();
+        else                       result += restraint.residual()*.5;
         if (gradient_array.size() != 0) {
-          restraint.add_gradients(cache, proxies[i].pair);
+          restraint.add_gradients(cache, proxies[i]);
         }
       }
       if (gradient_array.size() != 0) {
@@ -286,11 +284,10 @@ namespace cctbx { namespace restraints {
     else {
       for(std::size_t i=0;i<proxies.size();i++) {
         bond restraint(sites_cart, asu_mappings, proxies[i]);
-        if (proxies[i].pair.j_sym == 0) result += restraint.residual();
-        else                            result += restraint.residual()*.5;
+        if (proxies[i].j_sym == 0) result += restraint.residual();
+        else                       result += restraint.residual()*.5;
         if (gradient_array.size() != 0) {
-          restraint.add_gradients(
-            gradient_array, asu_mappings, proxies[i].pair);
+          restraint.add_gradients(gradient_array, asu_mappings, proxies[i]);
         }
       }
     }
@@ -363,21 +360,20 @@ namespace cctbx { namespace restraints {
   }
 
   inline
-  af::shared<std::set<direct_space_asu::asu_mapping_index> >
+  af::shared<std::set<asu_mapping_index> >
   bond_asu_sets(
     std::size_t n_sites,
     af::const_ref<restraints::bond_asu_proxy> const& proxies)
   {
-    typedef direct_space_asu::asu_mapping_index ami;
-    af::shared<std::set<ami> > result;
+    af::shared<std::set<asu_mapping_index> > result;
     result.resize(n_sites);
     for(std::size_t i=0;i<proxies.size();i++) {
-      direct_space_asu::asu_mapping_index_pair const& pair = proxies[i].pair;
+      asu_mapping_index_pair const& pair = proxies[i];
       CCTBX_ASSERT(pair.i_seq < n_sites);
       CCTBX_ASSERT(pair.j_seq < n_sites);
-      result[pair.i_seq].insert(ami(pair.j_seq, pair.j_sym));
+      result[pair.i_seq].insert(asu_mapping_index(pair.j_seq, pair.j_sym));
       if (pair.j_sym == 0) {
-        result[pair.j_seq].insert(ami(pair.i_seq, 0));
+        result[pair.j_seq].insert(asu_mapping_index(pair.i_seq, 0));
       }
     }
     return result;

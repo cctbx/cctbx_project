@@ -86,9 +86,9 @@ def exercise_bond():
     distance_ideal=2,
     weight=10)
   assert pair_generator.at_end()
-  assert p.pair.i_seq == 0
-  assert p.pair.j_seq == 1
-  assert p.pair.j_sym == 0
+  assert p.i_seq == 0
+  assert p.j_seq == 1
+  assert p.j_sym == 0
   assert approx_equal(p.distance_ideal, 2)
   assert approx_equal(p.weight, 10)
   p.distance_ideal = 35
@@ -233,9 +233,9 @@ def exercise_repulsion():
     pair=pair_generator.next(),
     vdw_radius=2)
   assert pair_generator.at_end()
-  assert p.pair.i_seq == 0
-  assert p.pair.j_seq == 1
-  assert p.pair.j_sym == 0
+  assert p.i_seq == 0
+  assert p.j_seq == 1
+  assert p.j_sym == 0
   assert approx_equal(p.vdw_radius, 2)
   p.vdw_radius = 3
   assert approx_equal(p.vdw_radius, 3)

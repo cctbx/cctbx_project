@@ -103,7 +103,7 @@ def edit_bond_asu_proxies(structure, asu_mappings, bond_asu_proxies):
   for proxy in bond_asu_proxies:
     edit_bond_proxy(
       scatterers=scatterers,
-      i_seqs=(proxy.pair.i_seq, proxy.pair.j_seq),
+      i_seqs=(proxy.i_seq, proxy.j_seq),
       proxy=proxy)
 
 def edit_bond_sym_proxies(structure, bond_sym_proxies):
@@ -132,7 +132,7 @@ def edit_bond_proxy(scatterers, i_seqs, proxy):
 def edit_repulsion_asu_proxies(structure, asu_mappings, repulsion_asu_proxies):
   scatterers = structure.scatterers()
   for proxy in repulsion_asu_proxies:
-    i_seqs = proxy.pair.i_seq, proxy.pair.j_seq
+    i_seqs = proxy.i_seq, proxy.j_seq
     scattering_types = [scatterers[i].scattering_type for i in i_seqs]
     scattering_types.sort()
     if (scattering_types == ["Si", "Si"]):
@@ -193,8 +193,7 @@ def show_nonbonded_interactions(structure, asu_mappings, nonbonded_proxies):
   scatterers = structure.scatterers()
   sites_frac = structure.sites_frac()
   for proxy in nonbonded_proxies:
-    pair = proxy.pair
-    i_seq, j_seq, j_sym = pair.i_seq, pair.j_seq, pair.j_sym
+    i_seq, j_seq, j_sym = proxy.i_seq, proxy.j_seq, proxy.j_sym
     rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
     rt_mx_ji = rt_mx_i_inv.multiply(asu_mappings.get_rt_mx(j_seq, j_sym))
     pair_labels = "%s(%d) - %s(%d):" % (

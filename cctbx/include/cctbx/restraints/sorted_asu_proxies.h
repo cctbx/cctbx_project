@@ -5,6 +5,10 @@
 
 namespace cctbx { namespace restraints {
 
+  typedef direct_space_asu::asu_mapping_index      asu_mapping_index;
+  typedef direct_space_asu::asu_mapping_index_pair asu_mapping_index_pair;
+  typedef direct_space_asu::asu_mappings<>         asu_mappings;
+
   template <typename SimpleProxyType,
             typename SymProxyType>
   class sorted_asu_proxies
@@ -35,7 +39,7 @@ namespace cctbx { namespace restraints {
       bool
       process(SymProxyType const& proxy)
       {
-        if (asu_mappings_->is_simple_interaction(proxy.pair)) {
+        if (asu_mappings_->is_simple_interaction(proxy)) {
           simple.push_back(proxy.as_simple_proxy());
           return false;
         }
@@ -47,8 +51,8 @@ namespace cctbx { namespace restraints {
       push_back(SymProxyType const& proxy)
       {
         sym.push_back(proxy);
-        sym_active_flags[proxy.pair.i_seq] = true;
-        sym_active_flags[proxy.pair.j_seq] = true;
+        sym_active_flags[proxy.i_seq] = true;
+        sym_active_flags[proxy.j_seq] = true;
       }
 
       std::size_t

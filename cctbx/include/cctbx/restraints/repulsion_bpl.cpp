@@ -47,12 +47,10 @@ namespace {
     {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
-      class_<w_t>("repulsion_asu_proxy", no_init)
-        .def(init<
-          cctbx::crystal::direct_space_asu::asu_mapping_index_pair const&,
-          double>(
-            (arg_("pair"), arg_("vdw_radius"))))
-        .def_readonly("pair", &w_t::pair)
+      class_<w_t, bases<asu_mapping_index_pair> >(
+            "repulsion_asu_proxy", no_init)
+        .def(init<asu_mapping_index_pair const&, double>(
+          (arg_("pair"), arg_("vdw_radius"))))
         .def_readwrite("vdw_radius", &w_t::vdw_radius)
       ;
       {
@@ -103,7 +101,7 @@ namespace {
                   optional<repulsion_function const& > >(
           (arg_("sites_cart"), arg_("proxy"), arg_("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
-                  direct_space_asu::asu_mappings<> const&,
+                  asu_mappings const&,
                   repulsion_asu_proxy const&,
                   optional<repulsion_function const& > >(
           (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxy"),
@@ -131,7 +129,7 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("repulsion_sorted_asu_proxies", no_init)
         .def(init<
-          boost::shared_ptr<direct_space_asu::asu_mappings<> > const&>(
+          boost::shared_ptr<asu_mappings> const&>(
             (arg_("asu_mappings"))))
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("process",
@@ -200,7 +198,7 @@ namespace {
     def("repulsion_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        direct_space_asu::asu_mappings<> const&,
+        asu_mappings const&,
         af::const_ref<repulsion_asu_proxy> const&,
         repulsion_function const& function)) repulsion_deltas,
       repulsion_deltas_overloads_2(
@@ -209,7 +207,7 @@ namespace {
     def("repulsion_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        direct_space_asu::asu_mappings<> const&,
+        asu_mappings const&,
         af::const_ref<repulsion_asu_proxy> const&,
         repulsion_function const& function)) repulsion_residuals,
       repulsion_residuals_overloads_2(
@@ -218,7 +216,7 @@ namespace {
     def("repulsion_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        direct_space_asu::asu_mappings<> const&,
+        asu_mappings const&,
         af::const_ref<repulsion_asu_proxy> const&,
         af::ref<scitbx::vec3<double> > const&,
         repulsion_function const&,

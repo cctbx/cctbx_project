@@ -22,15 +22,15 @@ namespace cctbx { namespace restraints {
     double vdw_radius;
   };
 
-  struct repulsion_asu_proxy
+  struct repulsion_asu_proxy : asu_mapping_index_pair
   {
     repulsion_asu_proxy() {}
 
     repulsion_asu_proxy(
-      direct_space_asu::asu_mapping_index_pair const& pair_,
+      asu_mapping_index_pair const& pair_,
       double vdw_radius_)
     :
-      pair(pair_),
+      asu_mapping_index_pair(pair_),
       vdw_radius(vdw_radius_)
     {}
 
@@ -39,11 +39,10 @@ namespace cctbx { namespace restraints {
     as_simple_proxy() const
     {
       return repulsion_simple_proxy(
-        af::tiny<std::size_t, 2>(pair.i_seq, pair.j_seq),
+        af::tiny<std::size_t, 2>(i_seq, j_seq),
         vdw_radius);
     }
 
-    direct_space_asu::asu_mapping_index_pair pair;
     double vdw_radius;
   };
 
@@ -148,9 +147,9 @@ namespace cctbx { namespace restraints {
         function(function_)
       {
         sites[0] = asu_mappings.map_moved_site_to_asu(
-          sites_cart[proxy.pair.i_seq], proxy.pair.i_seq, 0);
+          sites_cart[proxy.i_seq], proxy.i_seq, 0);
         sites[1] = asu_mappings.map_moved_site_to_asu(
-          sites_cart[proxy.pair.j_seq], proxy.pair.j_seq, proxy.pair.j_sym);
+          sites_cart[proxy.j_seq], proxy.j_seq, proxy.j_sym);
         init_term();
       }
 
@@ -163,8 +162,8 @@ namespace cctbx { namespace restraints {
         vdw_radius(proxy.vdw_radius),
         function(function_)
       {
-        sites[0] = cache.sites[proxy.pair.i_seq][0];
-        sites[1] = cache.sites[proxy.pair.j_seq][proxy.pair.j_sym];
+        sites[0] = cache.sites[proxy.i_seq][0];
+        sites[1] = cache.sites[proxy.j_seq][proxy.j_sym];
         init_term();
       }
 
@@ -203,7 +202,7 @@ namespace cctbx { namespace restraints {
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
         direct_space_asu::asu_mappings<> const& asu_mappings,
-        direct_space_asu::asu_mapping_index_pair const& pair) const
+        asu_mapping_index_pair const& pair) const
       {
         vec3 grad_asu = gradient_0();
         vec3 grad_i_seq = asu_mappings.r_inv_cart(pair.i_seq, 0) * grad_asu;
@@ -218,7 +217,7 @@ namespace cctbx { namespace restraints {
       void
       add_gradients(
         asu_cache<>& cache,
-        direct_space_asu::asu_mapping_index_pair const& pair) const
+        asu_mapping_index_pair const& pair) const
       {
         vec3 grad_asu = gradient_0();
         cache.gradients[pair.i_seq] += grad_asu;
@@ -346,10 +345,10 @@ namespace cctbx { namespace restraints {
         gradient_array.size() != 0);
       for(std::size_t i=0;i<proxies.size();i++) {
         repulsion restraint(cache, proxies[i], function);
-        if (proxies[i].pair.j_sym == 0) result += restraint.residual();
-        else                            result += restraint.residual()*.5;
+        if (proxies[i].j_sym == 0) result += restraint.residual();
+        else                       result += restraint.residual()*.5;
         if (gradient_array.size() != 0) {
-          restraint.add_gradients(cache, proxies[i].pair);
+          restraint.add_gradients(cache, proxies[i]);
         }
       }
       if (gradient_array.size() != 0) {
@@ -359,10 +358,10 @@ namespace cctbx { namespace restraints {
     else {
       for(std::size_t i=0;i<proxies.size();i++) {
         repulsion restraint(sites_cart, asu_mappings, proxies[i], function);
-        if (proxies[i].pair.j_sym == 0) result += restraint.residual();
-        else                            result += restraint.residual()*.5;
+        if (proxies[i].j_sym == 0) result += restraint.residual();
+        else                       result += restraint.residual()*.5;
         if (gradient_array.size() != 0) {
-          restraint.add_gradients(gradient_array,asu_mappings,proxies[i].pair);
+          restraint.add_gradients(gradient_array, asu_mappings, proxies[i]);
         }
       }
     }
