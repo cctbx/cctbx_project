@@ -16,6 +16,7 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_sampled_model_density();
   void wrap_scatterer();
   void wrap_structure_factors_direct();
+  void wrap_structure_factors_simple();
   void wrap_targets();
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -39,6 +40,7 @@ namespace {
     wrap_sampled_model_density();
     wrap_scatterer();
     wrap_structure_factors_direct();
+    wrap_structure_factors_simple();
     wrap_targets();
 
     def("apply_symmetry",

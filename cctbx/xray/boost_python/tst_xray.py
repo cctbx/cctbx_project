@@ -178,12 +178,13 @@ def exercise_structure_factors():
   for s in scatterers:
     assert s.multiplicity() != 0
   mi = flex.miller_index(((1,2,3), (2,3,4)))
-  fc = xray.ext.structure_factors_direct(
-    uc, sg.group(), mi, scatterers).f_calc()
-  a = flex.abs(fc)
-  p = flex.arg(fc, 1)
-  assert approx_equal(tuple(a), (10.50871, 9.049631))
-  assert approx_equal(tuple(p), (-36, 72))
+  for sf in (xray.ext.structure_factors_simple,
+             xray.ext.structure_factors_direct):
+    fc = sf(uc, sg.group(), mi, scatterers).f_calc()
+    a = flex.abs(fc)
+    p = flex.arg(fc, 1)
+    assert approx_equal(tuple(a), (10.50871, 9.049631))
+    assert approx_equal(tuple(p), (-36, 72))
   xray.ext.structure_factors_direct(
     math_module.cos_sin_table(12),
     uc, sg.group(), mi, scatterers).f_calc()

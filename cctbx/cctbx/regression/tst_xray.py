@@ -113,15 +113,30 @@ def exercise_from_scatterers_direct(space_group_info,
     random_occupancy=0001)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
-  f_obs_exact = abs(structure.structure_factors(
+  f_obs_exact = structure.structure_factors(
     d_min=d_min, anomalous_flag=fdp_flag, direct=0001,
-    cos_sin_table=00000).f_calc())
+    cos_sin_table=00000).f_calc()
+  f_obs_simple = xray.ext.structure_factors_simple(
+    f_obs_exact.unit_cell(),
+    f_obs_exact.space_group(),
+    f_obs_exact.indices(),
+    structure.scatterers()).f_calc()
+  if (0 or verbose):
+    for i,h in f_obs_exact.indices().items():
+      print h
+      print f_obs_simple[i]
+      print f_obs_exact.data()[i]
+      if (abs(f_obs_simple[i]-f_obs_exact.data()[i]) >= 1.e-10):
+        print "MISMATCH"
+      print
+  mismatch = flex.max(flex.abs(f_obs_exact.data() - f_obs_simple))
+  assert mismatch < 1.e-10, mismatch
   f_obs_table = f_obs_exact.structure_factors_from_scatterers(
     xray_structure=structure,
     direct=0001,
     cos_sin_table=0001).f_calc()
   ls = xray.targets_least_squares_residual(
-    f_obs_exact.data(), f_obs_table.data(), 00000, 1)
+    abs(f_obs_exact).data(), f_obs_table.data(), 00000, 1)
   if (0 or verbose):
     print "r-factor:", ls.target()
   assert ls.target() < 1.e-4
