@@ -141,6 +141,16 @@ namespace {
     return uc.Bij_as_Uij(Bij);
   }
   double
+  UnitCell_Uij_as_Uiso(const UnitCell& uc,
+                       const boost::array<double, 6>& Uij) {
+    return uc.Uij_as_Uiso(Uij);
+  }
+  boost::array<double, 6>
+  UnitCell_Uiso_as_Uij(const UnitCell& uc,
+                       double Uiso) {
+    return uc.Uiso_as_Uij(Uiso);
+  }
+  double
   UnitCell_TemperatureFactor_Biso_stol2(const UnitCell& uc,
                                         double stol2,
                                         double Uiso) {
@@ -225,6 +235,8 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     UnitCell_class.def(&UnitCell::Biso_as_Uiso, "Biso_as_Uiso");
     UnitCell_class.def(UnitCell_Uij_as_Bij, "Uij_as_Bij");
     UnitCell_class.def(UnitCell_Bij_as_Uij, "Bij_as_Uij");
+    UnitCell_class.def(UnitCell_Uij_as_Uiso, "Uij_as_Uiso");
+    UnitCell_class.def(UnitCell_Uiso_as_Uij, "Uiso_as_Uij");
     UnitCell_class.def(UnitCell_TemperatureFactor_Biso_stol2,
                                "TemperatureFactorB");
     UnitCell_class.def(UnitCell_TemperatureFactor_Biso_MIx,
