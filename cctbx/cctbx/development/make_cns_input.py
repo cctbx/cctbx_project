@@ -22,7 +22,7 @@ def topology(scatterers):
   a = cns_input.append
   a("topology")
   for scatterer in scatterers:
-    name = scatterer.label
+    name = scatterer.label.replace(" ","")
     a("  residue %s" % name)
     a("    atom %s mass=1 charge=0 {chemical}type=%s end" % (name, name))
     a("  end")
@@ -31,7 +31,7 @@ def topology(scatterers):
   a("segment")
   a("  name=A")
   for scatterer in scatterers:
-    name = scatterer.label
+    name = scatterer.label.replace(" ","")
     a("  molecule {res}name=%s number=1 end" % name)
   a("end")
   a("")
@@ -55,7 +55,7 @@ def coordinates(scatterers, xyz_only=00000):
       a("do (q=%.12g) (resid=%d)" % (q, resid))
       a("do (b=%.12g) (resid=%d)" % (b, resid))
       a("xray")
-      a("  scatter (chemical=%s)" % (scatterer.label,))
+      a("  scatter (chemical=%s)" % scatterer.label.replace(" ",""))
       for i in xrange(4):
         a("    %.6g %.6g" %
           (gaussian.array_of_a()[i], gaussian.array_of_b()[i]))
