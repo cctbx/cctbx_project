@@ -2,7 +2,7 @@
 
 # Euclidean model matching.
 
-PATH_cctbx_lib_python = "/net/ringneck/scratch1/rwgk/py221/lib_python"
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 PATH_cctbx            = "/net/cci/rwgk/cctbx"
 
 import sys

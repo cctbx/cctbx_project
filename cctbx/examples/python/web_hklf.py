@@ -1,4 +1,4 @@
-#! /usr/local_cci/Python-2.1.1/bin/python
+#! /usr/local_cci/Python-2.2.1/bin/python
 
 # Revision history:
 #   2001 Nov 26: Use sftbx (rwgk).

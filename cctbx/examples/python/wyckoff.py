@@ -1,4 +1,4 @@
-#! /usr/local_cci/Python-2.1.1/bin/python
+#! /usr/local_cci/Python-2.2.1/bin/python
 
 # When studying a crystal structure it can be helpful to know the Wyckoff
 # positions of the atoms in the structure. This script can be used to
