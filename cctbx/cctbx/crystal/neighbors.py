@@ -1,4 +1,6 @@
 from iotbx.kriber import strudat
+import iotbx.pdb
+from iotbx.option_parser import iotbx_option_parser
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -243,17 +245,41 @@ def test_hcp():
   show_distances(structure, distance_cutoff=1.9999999999999992)
 
 def run():
+  command_line = (iotbx_option_parser(
+    usage="python neighbors.py [options] studat_file [...]",
+    description="Example: python neighbors.py strudat --tag=SOD")
+    .enable_symmetry_comprehensive()
+    .option(None, "--tag",
+      action="store",
+      type="string",
+      dest="tag",
+      help="tag as it appears in the strudat file")
+  ).process()
   if (len(sys.argv) == 1):
     test_hcp()
     return
   for file_name in sys.argv[1:]:
-    strudat_entries = strudat.read_all_entries(open(file_name))
-    for entry in strudat_entries.entries:
-      print "strudat tag:", entry.tag
-      structure = entry.as_xray_structure()
-      structure.show_summary().show_scatterers()
-      show_distances(structure=structure)
-      print
+    try:
+      strudat_entries = strudat.read_all_entries(open(file_name))
+    except:
+      strudat_entries = None
+    if (strudat_entries is not None and len(strudat_entries.entries) > 0):
+      for entry in strudat_entries.entries:
+        print "strudat tag:", entry.tag
+        structure = entry.as_xray_structure()
+        structure.show_summary().show_scatterers()
+        show_distances(structure=structure)
+        print
+    else:
+      try:
+        structure = iotbx.pdb.as_xray_structure(
+          file_name=file_name,
+          crystal_symmetry=command_line.symmetry)
+      except:
+        raise RuntimeError("Coordinate file %s: unknown format." % file_name)
+      else:
+        structure.show_summary().show_scatterers()
+        show_distances(structure=structure)
 
 if (__name__ == "__main__"):
   run()
