@@ -32,9 +32,12 @@ class wilson_plot:
     # fit to straight line
     self.x = self.mean_stol_sq
     self.y = shared.log(self.mean_fobs_sq / self.expected_f_sq)
-    self.fit = shared.linear_regression(self.x, self.y)
-    self.wilson_k = math.exp(self.fit.b())
-    self.wilson_b = -self.fit.m() / 2
+    fit = shared.linear_regression(self.x, self.y)
+    self.fit_y_intercept = fit.b()
+    self.fit_slope = fit.m()
+    self.fit_correlation = fit.cc()
+    self.wilson_k = math.exp(self.fit_y_intercept)
+    self.wilson_b = -self.fit_slope / 2
 
   def get_xy_plot_info(self):
     r = empty()
@@ -45,11 +48,11 @@ class wilson_plot:
     r.y = self.y
     r.xLegend = "(sin(theta)/lambda)^2"
     r.yLegend = "ln(<Fobs^2>/<Fcalc^2>)"
-    r.b = self.fit.b()
-    r.m = self.fit.m()
-    r.cc = self.fit.cc()
+    r.b = self.fit_y_intercept
+    r.m = self.fit_slope
+    r.cc = self.fit_correlation
     r.overlayLegend = ("k=%f, b=%f, corr=%f" % (
-      self.wilson_k, self.wilson_b, self.fit.cc()))
+      self.wilson_k, self.wilson_b, self.fit_correlation))
     return r
 
   def dump_raw_xy(self):
