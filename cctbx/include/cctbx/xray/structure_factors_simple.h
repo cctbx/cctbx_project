@@ -9,7 +9,7 @@
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
-#include <cctbx/xray/scatterer.h>
+#include <cctbx/xray/scattering_dictionary.h>
 #include <cctbx/sgtbx/miller_ops.h>
 
 namespace cctbx { namespace xray { namespace structure_factors {
@@ -92,7 +92,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
-        af::const_ref<ScattererType> const& scatterers)
+        af::const_ref<ScattererType> const& scatterers,
+        scattering_dictionary const& scatter_dict)
       {
         f_calc_.resize(miller_indices.size());
         for(std::size_t i=0;i<scatterers.size();i++) {

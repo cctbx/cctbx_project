@@ -21,7 +21,8 @@ namespace {
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
                   af::const_ref<miller::index<> > const&,
-                  af::const_ref<scatterer_type> const&>())
+                  af::const_ref<scatterer_type> const&,
+                  scattering_dictionary const&>())
         .def("f_calc", &w_t::f_calc)
       ;
     }
