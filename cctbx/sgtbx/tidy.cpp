@@ -21,12 +21,12 @@ namespace sgtbx {
     int lcmBF = lcm(m_Vects[0].BF(), T.BF());
     int fBF = lcmBF / m_Vects[0].BF();
     TrVec Tlcm = T.scale(lcmBF / T.BF());
-    TrVec Tbest = Tlcm.ModShort();
+    TrVec Tbest = Tlcm.modShort();
     for (int i = 1; i < nVects(); i++) {
-      TrVec Ttrial = (Tlcm + m_Vects[i].scale(fBF)).ModShort();
+      TrVec Ttrial = (Tlcm + m_Vects[i].scale(fBF)).modShort();
       if (CmpiVect(3)(Ttrial.elems, Tbest.elems)) Tbest = Ttrial;
     }
-    return Tbest.newBaseFactor(T.BF()).ModPositive();
+    return Tbest.newBaseFactor(T.BF()).modPositive();
   }
 
   class CmpLTr {

@@ -534,8 +534,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RTMx.def(&RTMx::Unit, "Unit");
     py_RTMx.def(&RTMx::isUnit, "isUnit");
     py_RTMx.def(&RTMx::cancel, "cancel");
-    py_RTMx.def(&RTMx::ModPositive, "ModPositive");
-    py_RTMx.def(&RTMx::ModShort, "ModShort");
+    py_RTMx.def(&RTMx::modPositiveInPlace, "modPositiveInPlace");
+    py_RTMx.def(&RTMx::modPositive, "modPositive");
+    py_RTMx.def(&RTMx::modShortInPlace, "modShortInPlace");
+    py_RTMx.def(&RTMx::modShort, "modShort");
     py_RTMx.def(&RTMx::inverse, "inverse");
     py_RTMx.def(&RTMx::inverse_with_cancel, "inverse_with_cancel");
     py_RTMx.def(RTMx_as_xyz_0, "__repr__");

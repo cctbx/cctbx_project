@@ -548,18 +548,16 @@ namespace sgtbx {
           }
         }
       }
-      for (i = 0; i < nGen; i++) ZGen[i].ModPositive();
+      for (i = 0; i < nGen; i++) ZGen[i].modPositiveInPlace();
     }
 
     void Generators::setPrimitive()
     {
       for (int i = 0; i < nGen; i++) {
-        PGen[i] = Z2POp(ZGen[i]);
-        PGen[i].ModPositive();
+        PGen[i] = Z2POp(ZGen[i]).modPositive();
       }
       if (ZInvT.isValid()) {
-        PInvT = Z2POp(ZInvT, -1);
-        PInvT.ModPositive();
+        PInvT = Z2POp(ZInvT, -1).modPositive();
       }
     }
 
@@ -746,7 +744,7 @@ namespace sgtbx {
       CBT = FindOriginShift(TargetGenerators, TransformedGenerators,
                             TrialCBOp.M().TBF());
       cctbx_assert(CBT.isValid());
-      TrialCBOp.update(CBT.ModShort());
+      TrialCBOp.update(CBT.modShort());
     }
 
     class CmpChOfBasisMx {
@@ -1016,7 +1014,7 @@ namespace sgtbx {
         SgType.SgNumber(), RefCBOp, TargetSgOps, TargetGenerators, CBOp);
     }
     else {
-      CBOp.ModShort();
+      CBOp.modShortInPlace();
     }
 
     std::string::size_type par = HallSymbol.find(" (");

@@ -12,6 +12,7 @@ print m.as_xyz(0, 0, "xyz", ",")
 print m.as_xyz(0, 1, "xyz", ",")
 print m.as_tuple()
 print m.as_tuple(12, 72)
+print m.modPositive()
 mm = m * m
 print mm.as_xyz()
 mi = m.inverse()

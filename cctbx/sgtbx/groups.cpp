@@ -24,7 +24,7 @@ namespace sgtbx {
   bool TrOps::add(const TrVec& NewTr)
   {
     if (!NewTr.isValid()) return false;
-    TrVec NTr(NewTr.ModPositive());
+    TrVec NTr(NewTr.modPositive());
     if (std::find(m_Vects.begin(), m_Vects.end(), NTr) != m_Vects.end()) {
       return false;
     }
@@ -71,7 +71,7 @@ namespace sgtbx {
       if (m_LTr.add(m_InvT - NewInvT)) m_isTidy = false;
       return;
     }
-    m_InvT = NewInvT.ModPositive();
+    m_InvT = NewInvT.modPositive();
     m_fInv = 2;
     if (!m_NoExpand) {
       for (int i = 1; i < m_nSMx; i++) {
@@ -99,8 +99,7 @@ namespace sgtbx {
     int d = NewSMx.Rpart().det();
     if (m_nSMx >= m_SMx.max_size() || (d != -1 && d != 1))
       throw error("Non-crystallographic rotation matrix encountered.");
-    m_SMx[m_nSMx] = NewSMx;
-    m_SMx[m_nSMx].ModPositive();
+    m_SMx[m_nSMx] = NewSMx.modPositive();
     m_nSMx++;
     if (!m_NoExpand && isCentric()) {
       m_LTr.add(      m_SMx[m_nSMx - 1].Rpart() * m_InvT

@@ -33,8 +33,7 @@ namespace sgtbx {
                       std::vector<RTMx>& UniqueOps)
     {
       rangei(sgo.OrderZ()) {
-        RTMx SS = sgo(i).multiply(SpecialOp);
-        SS.ModPositive();
+        RTMx SS = sgo(i).multiply(SpecialOp).modPositive();
         if (std::find(UniqueOps.begin(),
                       UniqueOps.end(), SS) == UniqueOps.end()) {
           UniqueOps.push_back(SS);
@@ -139,7 +138,7 @@ namespace sgtbx {
       for (int iLTr = 0; iLTr < sgo.nLTr(); iLTr++) {
         fractional<double> Mate = Mate0 + sgo.LTr(iLTr);
         fractional<double> Delta0 = Mate - m_SnapPosition;
-        Delta0 = Delta0.ModShort();
+        Delta0 = Delta0.modShort();
         TrVec
         UShifts = detail::getUnitShifts((m_SnapPosition + Delta0) - Mate);
         UShifts = UShifts.scale(TBF);
@@ -283,9 +282,9 @@ namespace sgtbx {
   }
 
   namespace detail {
-    double ModLength2(const uctbx::UnitCell& uc,
-                      const fractional<double>& Diff) {
-      return uc.Length2(Diff.ModShort());
+    double modShortLength2(const uctbx::UnitCell& uc,
+                           const fractional<double>& Diff) {
+      return uc.Length2(Diff.modShort());
     }
   }
 
@@ -294,9 +293,9 @@ namespace sgtbx {
     const uctbx::UnitCell& uc,
     const fractional<double>& Y) const
   {
-    double result = detail::ModLength2(uc, Y - m_Coordinates[0]);
+    double result = detail::modShortLength2(uc, Y - m_Coordinates[0]);
     for(std::size_t i=1;i<m_Coordinates.size();i++) {
-      double Delta2 = detail::ModLength2(uc, Y - m_Coordinates[i]);
+      double Delta2 = detail::modShortLength2(uc, Y - m_Coordinates[i]);
       if (result > Delta2)
           result = Delta2;
     }

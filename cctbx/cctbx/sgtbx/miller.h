@@ -238,7 +238,7 @@ namespace sgtbx {
   }
 
   inline int HT_mod_1(const Miller::Index& H, const TrVec& T) {
-    return iModPositive(H * T, T.BF());
+    return sgtbx::modPositive(H * T, T.BF());
   }
 
   //! class for the high-level handling of centric reflections.
