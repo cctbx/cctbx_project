@@ -8,6 +8,7 @@ def exercise_int():
   assert r.as_tuple() == (0,1)
   assert int(r) == 0
   assert float(r) == 0
+  assert rational.int(rational.int(3)).as_tuple() == (3,1)
   assert rational.int(2).as_tuple() == (2,1)
   assert rational.int(2,3).as_tuple() == (2,3)
   assert str(rational.int()) == "0"

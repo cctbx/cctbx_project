@@ -90,6 +90,7 @@ namespace scitbx { namespace boost_python { namespace {
     {
       using namespace boost::python;
       class_<w_t>("int")
+        .def(init<w_t>())
         .def(init<int, optional<int> >())
         .def("numerator", &w_t::numerator)
         .def("denominator", &w_t::denominator)
