@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/bpl_utils.h (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_BOOST_PYTHON_CONTAINER_CONVERSIONS_H
 #define SCITBX_BOOST_PYTHON_CONTAINER_CONVERSIONS_H
 
@@ -24,8 +14,9 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     static PyObject* convert(ContainerType const& a)
     {
       boost::python::list result;
-      for(std::size_t i=0;i<a.size();i++) {
-        result.append(boost::python::object(a[i]));
+      typedef typename ContainerType::const_iterator const_iter;
+      for(const_iter p=a.begin();p!=a.end();p++) {
+        result.append(boost::python::object(*p));
       }
       return boost::python::incref(boost::python::tuple(result).ptr());
     }
@@ -117,6 +108,16 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     static void set_value(ContainerType& a, std::size_t i, ValueType const& v)
     {
       a.push_back(v);
+    }
+  };
+
+  struct set_policy : default_policy
+  {
+    template <typename ContainerType, typename ValueType>
+    static void set_value(ContainerType& a, std::size_t i, ValueType const& v)
+    {
+      assert(a.size() == i);
+      a.insert(v);
     }
   };
 
@@ -255,6 +256,16 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
       tuple_mapping<
         ContainerType,
         variable_capacity_policy>();
+    }
+  };
+
+  template <typename ContainerType>
+  struct tuple_mapping_set
+  {
+    tuple_mapping_set() {
+      tuple_mapping<
+        ContainerType,
+        set_policy>();
     }
   };
 
