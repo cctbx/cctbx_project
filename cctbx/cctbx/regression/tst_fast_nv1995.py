@@ -18,7 +18,7 @@ def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
   fast_nv1995 = translation_search.fast_nv1995(
     gridding=gridding,
     space_group=f_obs_array.space_group(),
-    anomalous_flag=False,
+    anomalous_flag=00000,
     miller_indices_f_obs=f_obs_array.indices(),
     f_obs=f_obs_array.data(),
     f_part=f_part,
@@ -52,13 +52,13 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
     n_scatterers=n_elements,
     volume_per_atom=150,
     min_distance=2.,
-    general_positions_only=True)
+    general_positions_only=0001)
   miller_set_f_obs = miller.build_set(
     crystal_symmetry=structure,
-    anomalous_flag=False,
+    anomalous_flag=00000,
     d_min=d_min)
   symmetry_flags = translation_search.symmetry_flags(
-    is_isotropic_search_model=True,
+    is_isotropic_search_model=0001,
     have_f_part=(n_elements>=2))
   gridding = translation_search.map_gridding(
     unit_cell=miller_set_f_obs.unit_cell(),
@@ -102,7 +102,7 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
         xray_structure=structure_fixed,
         miller_set=f_obs_array).f_calc_array()
     symmetry_flags = translation_search.symmetry_flags(
-      is_isotropic_search_model=True,
+      is_isotropic_search_model=0001,
       have_f_part=(f_calc_fixed_array != None))
     if (structure_fixed.scatterers().size() <= 1):
       gridding = translation_search.map_gridding(
@@ -133,14 +133,14 @@ def test_molecule(space_group_info, flag_f_part, d_min=3.,
     elements=elements,
     volume_per_atom=50,
     min_distance=2.,
-    general_positions_only=True,
-    random_u_iso=True,
-    random_occupancy=True)
+    general_positions_only=0001,
+    random_u_iso=0001,
+    random_occupancy=0001)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   miller_set_f_obs = miller.build_set(
     crystal_symmetry=structure,
-    anomalous_flag=False,
+    anomalous_flag=00000,
     d_min=d_min)
   f_obs_array = abs(xray.structure_factors_direct(
     xray_structure=structure,
@@ -176,7 +176,7 @@ def test_molecule(space_group_info, flag_f_part, d_min=3.,
     xray_structure=structure_p1,
     miller_set=miller_set_p1).f_calc_array()
   symmetry_flags = translation_search.symmetry_flags(
-    is_isotropic_search_model=False,
+    is_isotropic_search_model=00000,
     have_f_part=flag_f_part)
   gridding = translation_search.map_gridding(
     unit_cell=miller_set_f_obs.unit_cell(),
@@ -196,12 +196,12 @@ def run_call_back(flags, space_group_info):
     print "High symmetry space group skipped."
     return
   if (not (flags.Atom or flags.Molecule)):
-    flags.Atom = True
-    flags.Molecule = True
+    flags.Atom = 0001
+    flags.Molecule = 0001
   if (flags.Atom):
     test_atom(space_group_info, verbose=flags.Verbose)
   if (flags.Molecule):
-    for flag_f_part in (False, True)[:]: #SWITCH
+    for flag_f_part in (00000, 0001)[:]: #SWITCH
       test_molecule(space_group_info, flag_f_part, verbose=flags.Verbose)
 
 def run():

@@ -260,7 +260,7 @@ class CNS_xray_reflection_Reader(CNS_input):
                 if (i == 0):
                   value = float(word)
                 else:
-                  value = complex_math.polar((value, float(word)), deg=True)
+                  value = complex_math.polar((value, float(word)), deg=0001)
               except ValueError:
                 if (i == 0):
                   self.raiseError("floating-point value expected for array "

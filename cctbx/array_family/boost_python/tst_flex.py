@@ -2,7 +2,7 @@ import pickle
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
 
-def exercise_flex_triple(flex_triple, ordered, as_double=False):
+def exercise_flex_triple(flex_triple, ordered, as_double=00000):
   a = flex_triple()
   a = flex_triple(((1,2,3), (2,3,4), (3,4,5)))
   assert a.size() == 3
@@ -75,8 +75,8 @@ def exercise_flex_xray_scatterer():
     assert approx_equal(ai.weight(), bi.weight())
 
 def run():
-  exercise_flex_triple(flex.miller_index, ordered=True)
-  exercise_flex_triple(flex.vec3_double, ordered=False, as_double=True)
+  exercise_flex_triple(flex.miller_index, ordered=0001)
+  exercise_flex_triple(flex.vec3_double, ordered=00000, as_double=0001)
   exercise_flex_sym_mat3_double()
   exercise_flex_hendrickson_lattman()
   exercise_flex_tiny_size_t_2()

@@ -10,7 +10,7 @@ def run(file_names):
     f.close()
     exec "import " + target_module + " as target"
     status = empty()
-    status.in_table = False
+    status.in_table = 00000
     target.run(server_info, inp, status)
     print
 

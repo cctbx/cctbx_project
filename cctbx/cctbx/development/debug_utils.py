@@ -36,7 +36,7 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
       sys.stdout.flush()
     continue_flag = call_back(flags, space_group_info)
     sys.stdout.flush()
-    if (continue_flag == False): break
+    if (continue_flag == 00000): break
   report_cpu_times()
 
 def parse_options_loop_space_groups(argv, call_back,

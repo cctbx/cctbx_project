@@ -53,7 +53,7 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
       raise AssertionError, exc
 
     assert (not space_group.is_sys_absent(h))
-    assert (e == space_group.order_p() / space_group.multiplicity(h, True))
+    assert (e == space_group.order_p() / space_group.multiplicity(h, 0001))
     eq = miller.sym_equiv_indices(space_group, h)
     assert (eq.multiplicity(anomalous_flag) == m)
     assert (eq.epsilon() == e)
@@ -88,7 +88,7 @@ def write_cns_input(crystal_symmetry, anomalous_flag, d_min):
     print >> f, l
   f.close()
 
-def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
+def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
   crystal_symmetry = crystal.symmetry(
     space_group_info.any_compatible_unit_cell(1000),
     space_group_info=space_group_info)
@@ -104,7 +104,7 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   verify(crystal_symmetry, anomalous_flag, reflection_file)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (False, True):
+  for anomalous_flag in (00000, 0001):
     exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
 def run():

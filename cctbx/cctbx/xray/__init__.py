@@ -151,12 +151,12 @@ class structure_factors_direct:
   def __init__(self, xray_structure,
                      miller_set,
                      d_target_d_f_calc=None,
-                     d_site_flag=False,
-                     d_u_iso_flag=False,
-                     d_u_star_flag=False,
-                     d_occupancy_flag=False,
-                     d_fp_flag=False,
-                     d_fdp_flag=False):
+                     d_site_flag=00000,
+                     d_u_iso_flag=00000,
+                     d_u_star_flag=00000,
+                     d_occupancy_flag=00000,
+                     d_fp_flag=00000,
+                     d_fdp_flag=00000):
     assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
     assert xray_structure.space_group() == miller_set.space_group()
     self._xray_structure = xray_structure
@@ -251,7 +251,7 @@ class structure_factors_fft:
       mandatory_factors=miller_set.space_group().gridding())
     rfft = fftpack.real_to_complex_3d(n_real)
     u_extra = calc_u_extra(d_min, grid_resolution_factor, quality_factor)
-    force_complex = False
+    force_complex = 00000
     electron_density_must_be_positive = 1
     sampled_density = sampled_model_density(
       xray_structure.unit_cell(),
@@ -264,7 +264,7 @@ class structure_factors_fft:
       force_complex,
       electron_density_must_be_positive)
     tags = maptbx.grid_tags(rfft.n_real())
-    symmetry_flags = maptbx.symmetry_flags(use_space_group_symmetry=True)
+    symmetry_flags = maptbx.symmetry_flags(use_space_group_symmetry=0001)
     tags.build(xray_structure.space_group_info().type(), symmetry_flags)
     sampled_density.apply_symmetry(tags)
     if (not sampled_density.anomalous_flag()):
@@ -329,9 +329,9 @@ class _target_functor_base:
 class _least_squares_residual(_target_functor_base):
 
   def __init__(self, f_obs_array, weights=None,
-               use_sigmas_as_weights=False):
-    adopt_init_args(self, locals(), hide=True)
-    assert self._weights == None or self._use_sigmas_as_weights == False
+               use_sigmas_as_weights=00000):
+    adopt_init_args(self, locals(), hide=0001)
+    assert self._weights == None or self._use_sigmas_as_weights == 00000
     self._target_calculator = targets_least_squares_residual
     if (self._use_sigmas_as_weights):
       self._weights = self._f_obs_array.sigmas().data()
@@ -348,9 +348,9 @@ class _least_squares_residual(_target_functor_base):
 class _intensity_correlation(_target_functor_base):
 
   def __init__(self, f_obs_array, weights=None,
-               use_multiplicities_as_weights=False):
-    adopt_init_args(self, locals(), hide=True)
-    assert self._weights==None or self._use_multiplicities_as_weights==False
+               use_multiplicities_as_weights=00000):
+    adopt_init_args(self, locals(), hide=0001)
+    assert self._weights==None or self._use_multiplicities_as_weights==00000
     self._target_calculator = targets_intensity_correlation
     if (self._use_multiplicities_as_weights):
       self._weights = self._f_obs_array.multiplicities().data()

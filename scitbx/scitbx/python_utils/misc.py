@@ -1,10 +1,10 @@
 import sys
 
-def adopt_init_args(obj, args, exclude=(), hide=False):
+def adopt_init_args(obj, args, exclude=(), hide=00000):
   del args["self"]
   for param in exclude:
     del args[param]
-  if (hide == False):
+  if (hide == 00000):
     for key in args.keys():
       assert not hasattr(obj.__dict__, key)
     obj.__dict__.update(args)

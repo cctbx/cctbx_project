@@ -4,7 +4,7 @@ import scitbx.lbfgs
 from scitbx.python_utils.misc import adopt_init_args
 
 class options:
-  def __init__(self, site=False, u_iso=False, occupancy=False):
+  def __init__(self, site=00000, u_iso=00000, occupancy=00000):
     adopt_init_args(self, locals())
 
 class lbfgs:
@@ -15,7 +15,7 @@ class lbfgs:
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(self)
     self.unpack_parameters()
-    self.compute_target(compute_derivatives=False)
+    self.compute_target(compute_derivatives=00000)
     self.final_target_value = self.target_result.target()
 
   def pack_parameters(self):
@@ -49,7 +49,7 @@ class lbfgs:
   def __call__(self):
     if (self.first_target_value != None):
       self.unpack_parameters()
-    self.compute_target(compute_derivatives=True)
+    self.compute_target(compute_derivatives=0001)
     sf = xray.structure_factors_direct(
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs_array(),

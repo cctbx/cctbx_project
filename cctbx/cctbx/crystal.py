@@ -8,7 +8,7 @@ class symmetry:
   def __init__(self, unit_cell=None,
                      space_group_symbol=None,
                      space_group_info=None,
-                     assert_is_compatible_unit_cell=True):
+                     assert_is_compatible_unit_cell=0001):
     assert space_group_symbol == None or space_group_info == None
     if (type(unit_cell) in (type(()), type([]))):
       unit_cell = uctbx.unit_cell(unit_cell)
@@ -54,8 +54,8 @@ class special_position_settings(symmetry):
   def __init__(self, crystal_symmetry,
                min_distance_sym_equiv=0.5,
                u_star_tolerance=0.1,
-               assert_is_positive_definite=True,
-               assert_min_distance_sym_equiv=True):
+               assert_is_positive_definite=0001,
+               assert_min_distance_sym_equiv=0001):
     symmetry._copy_constructor(self, crystal_symmetry)
     self._min_distance_sym_equiv = min_distance_sym_equiv
     self._u_star_tolerance = u_star_tolerance

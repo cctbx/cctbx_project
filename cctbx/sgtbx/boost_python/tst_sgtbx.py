@@ -105,8 +105,8 @@ def exercise_tr_vec():
   a = tr_vec((-1,0,2), 4)
   assert str(a) == "-1/4,0,1/2"
   assert a.as_string() == "-1/4,0,1/2"
-  assert a.as_string(True) == "-.25,0,.5"
-  assert a.as_string(False, ";") == "-1/4;0;1/2"
+  assert a.as_string(0001) == "-.25,0,.5"
+  assert a.as_string(00000, ";") == "-1/4;0;1/2"
 
 def exercise_rot_mx():
   tr_vec = sgtbx.tr_vec
@@ -572,10 +572,10 @@ def exercise_space_group():
   m = flex.miller_index(((0,0,1), (0,0,4), (1,0,0)))
   assert g.is_sys_absent((0,0,1))
   assert not g.is_sys_absent((0,0,4))
-  assert tuple(g.is_sys_absent(m)) == (True,False,False)
+  assert tuple(g.is_sys_absent(m)) == (0001,00000,00000)
   assert g.is_centric((1,0,0))
   assert not g.is_centric((0,0,4))
-  assert tuple(g.is_centric(m)) == (False,False,True)
+  assert tuple(g.is_centric(m)) == (00000,00000,0001)
   p = g.phase_restriction((1,0,0))
   assert not p.sys_abs_was_tested()
   assert p.ht() == 2
@@ -618,10 +618,10 @@ def exercise_space_group():
   assert [str(s) for s in g.all_ops(0)] == mod_p
   assert [str(s) for s in g.all_ops(1)] == mod_p
   assert [str(s) for s in g.all_ops(-1)] == mod_s
-  assert [str(s) for s in g.all_ops(-1, False)] == mod_s
-  assert [str(s) for s in g.all_ops(-1, True)] == mod_s
-  assert g.all_ops(0, False)[1].t().den() == sgtbx.sg_t_den
-  assert g.all_ops(0, True)[1].t().den() == 3
+  assert [str(s) for s in g.all_ops(-1, 00000)] == mod_s
+  assert [str(s) for s in g.all_ops(-1, 0001)] == mod_s
+  assert g.all_ops(0, 00000)[1].t().den() == sgtbx.sg_t_den
+  assert g.all_ops(0, 0001)[1].t().den() == 3
   g = space_group("-P 4 2")
   g = space_group("P 31")
   assert g.type().number() == 144

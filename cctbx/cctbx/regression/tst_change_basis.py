@@ -13,8 +13,8 @@ def exercise(space_group_info, anomalous_flag,
     volume_per_atom=200,
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
-    random_u_iso=True,
-    random_occupancy=True)
+    random_u_iso=0001,
+    random_occupancy=0001)
   f_abs_z_array = abs(structure_z.structure_factors_direct(
     anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array())
   if (0 or verbose):
@@ -58,7 +58,7 @@ def exercise(space_group_info, anomalous_flag,
   assert r.correlation() > 0.999
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (False, True)[:]: #SWITCH
+  for anomalous_flag in (00000, 0001)[:]: #SWITCH
     exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
 def run():

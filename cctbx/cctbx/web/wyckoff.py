@@ -49,7 +49,7 @@ def run(server_info, inp, status):
   wyckoff_table=special_position_settings.space_group_info().wyckoff_table()
   unit_cell = special_position_settings.unit_cell()
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = True
+  status.in_table = 0001
   print "<tr>"
   if (skip_columns): print "<th>"
   print "<th colspan=3>" + inp.coor_type + " coordinates"
@@ -76,6 +76,6 @@ def run(server_info, inp, status):
     print "<td><tt>" + str(site_symmetry.special_op()) + "</tt>"
     print "</tr>"
   print "</table><pre>"
-  status.in_table = False
+  status.in_table = 00000
 
   print "</pre>"

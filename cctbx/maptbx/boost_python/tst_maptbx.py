@@ -73,8 +73,8 @@ def exercise_statistics():
     assert approx_equal(s.sigma(), t.sigma())
 
 def exercise_symmetry_flags():
-  f = maptbx.symmetry_flags(True)
-  f = maptbx.symmetry_flags(True, True, True)
+  f = maptbx.symmetry_flags(0001)
+  f = maptbx.symmetry_flags(0001, 0001, 0001)
   assert f.use_space_group_symmetry()
   assert f.use_normalizer_k2l()
   assert f.use_structure_seminvariants()
@@ -84,10 +84,10 @@ def exercise_symmetry_flags():
   assert f.grid_factors(sg_info.type()) == (3,3,2)
   assert f == f
   assert not f != f
-  assert f == maptbx.symmetry_flags(True, True, True)
-  assert not f != maptbx.symmetry_flags(True, True, True)
-  assert f != maptbx.symmetry_flags(True)
-  assert not f == maptbx.symmetry_flags(True)
+  assert f == maptbx.symmetry_flags(0001, 0001, 0001)
+  assert not f != maptbx.symmetry_flags(0001, 0001, 0001)
+  assert f != maptbx.symmetry_flags(0001)
+  assert not f == maptbx.symmetry_flags(0001)
 
 def exercise_grid_tags():
   t = maptbx.grid_tags((8,10,12))
@@ -144,8 +144,8 @@ def exercise_structure_factors():
   sg = sgtbx.space_group_info("P 31")
   mi = flex.miller_index(((1,2,3),(2,3,4)))
   d = flex.complex_double((1+2j, 2+3j))
-  for anomalous_flag in (False, True):
-    for conjugate_flag in (False, True):
+  for anomalous_flag in (00000, 0001):
+    for conjugate_flag in (00000, 0001):
       t = maptbx.structure_factors.to_map(
         sg.group(), anomalous_flag, mi, d, flex.grid(11,11,9), conjugate_flag)
       assert t.complex_map().focus() == (11,11,9)

@@ -7,7 +7,7 @@ del misc
 
 import sys
 
-def unit_cell(parameters, is_metrical_matrix=False):
+def unit_cell(parameters, is_metrical_matrix=00000):
   if (type(parameters) == type("")):
     parameters = [float(p) for p in parameters.replace(",", " ").split()]
   return ext.unit_cell(parameters, is_metrical_matrix)

@@ -65,7 +65,7 @@ def write_cns_input(fcalc_array, hl):
   l("  reflection")
   for i,h in fcalc_array.indices().items():
     l(  ("    index %d %d %d" % h)
-      + (" fcalc=%.6g %.6g\n" % abs_arg(fcalc_array.data()[i], deg=True))
+      + (" fcalc=%.6g %.6g\n" % abs_arg(fcalc_array.data()[i], deg=0001))
       + (" pa=%.6g pb=%.6g pc=%.6g pd=%.6g" % hl[i]))
   l("  end")
   l("  expand")
@@ -77,12 +77,12 @@ def write_cns_input(fcalc_array, hl):
     print >> f, l
   f.close()
 
-def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
+def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
   sg_fcalc_array = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O"),
-    random_u_iso=True,
-    random_occupancy=True
+    random_u_iso=0001,
+    random_occupancy=0001
     ).structure_factors_direct(
       anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array()
   sg_hl = generate_random_hl(sg_fcalc_array)
@@ -103,7 +103,7 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   verify(sg_fcalc_array, sg_hl, p1_miller_indices, p1_fcalc_rso.data, p1_hl)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (False, True):
+  for anomalous_flag in (00000, 0001):
     exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
 def run():

@@ -8,8 +8,8 @@ del misc
 from scitbx.python_utils import dicts
 
 def symmetry_flags(use_space_group_symmetry,
-                   use_normalizer_k2l=False,
-                   use_structure_seminvariants=False):
+                   use_normalizer_k2l=00000,
+                   use_structure_seminvariants=00000):
   return ext.symmetry_flags(use_space_group_symmetry,
                             use_normalizer_k2l,
                             use_structure_seminvariants)
@@ -28,7 +28,7 @@ def peak_list(data,
               max_peaks=0):
   return ext.peak_list(data, tags, peak_search_level, max_peaks)
 
-def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=True):
+def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
   return ext.as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling)
 
 structure_factors = dicts.easy()
