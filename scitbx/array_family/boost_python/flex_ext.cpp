@@ -61,6 +61,10 @@ namespace {
     tuple_mapping_fixed_size<mat3<double> >();
     tuple_mapping_fixed_size<sym_mat3<double> >();
 
+    tuple_mapping_fixed_size<tiny<vec3<double>, 2> >();
+    tuple_mapping_fixed_size<tiny<vec3<double>, 3> >();
+    tuple_mapping_fixed_size<tiny<vec3<double>, 4> >();
+
     tuple_mapping_fixed_capacity<flex_grid_default_index_type>();
     tuple_mapping_fixed_capacity<
       small<double, math::gaussian::sum<double>::max_n_terms> >();
