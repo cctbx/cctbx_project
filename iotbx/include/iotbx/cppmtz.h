@@ -32,7 +32,7 @@ public:
 struct Column {
   CMtz::MTZCOL* p_col;
   Column(CMtz::MTZCOL* c);
-  bool isnan(int i)
+  bool ccp4_isnan(int i)
   {
     return CCP4::ccp4_utils_isnan((union float_uint_uchar *)&p_col->ref[i]);
   }
