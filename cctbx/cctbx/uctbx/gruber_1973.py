@@ -93,44 +93,28 @@ class minimum_reduction(minimum_reduction_mixin, reduction):
      Use uctbx.fast_minimum_reduction instead.
   """
 
-  def __init__(self, unit_cell, expected_cycle_limit=None,
-                                iteration_limit=None):
-    minimum_reduction_mixin.__init__(self,
-      unit_cell, expected_cycle_limit, iteration_limit)
+  def __init__(self, unit_cell, iteration_limit=None):
+    minimum_reduction_mixin.__init__(self, unit_cell, iteration_limit)
 
   def n3_false_action(self):
-    self.current_cycle_id = 1
-    result = reduction.n3_false_action(self)
-    abc = (self.a,self.b,self.c)
-    if (abc == self._last_after_all_obtuse_action):
+    reduction.n3_false_action(self)
+    if (not self.significant_change_test()):
       raise StopIteration
-    self._last_after_all_obtuse_action = abc
-    print abc
-    return result
-
-  def b3_action(self):
-    self.current_cycle_id = 2
-    return reduction.b3_action(self)
-
-  def b5_action(self):
-    self.current_cycle_id = 2
-    return reduction.b5_action(self)
 
 class fast_minimum_reduction:
   """Development and regression test code. Do not use for applications.
      Use uctbx.fast_minimum_reduction instead.
   """
 
-  def __init__(self, unit_cell, expected_cycle_limit=None,
-                                iteration_limit=None):
-    if (expected_cycle_limit is None):
-      self.expected_cycle_limit = 2
-    else:
-      self.expected_cycle_limit = expected_cycle_limit
+  def __init__(self, unit_cell, iteration_limit=None,
+                                multiplier_significant_change_test=10,
+                                min_n_no_significant_change=2):
     if (iteration_limit is None):
       self._iteration_limit = 100
     else:
       self._iteration_limit = iteration_limit
+    self.multiplier_significant_change_test=multiplier_significant_change_test
+    self.min_n_no_significant_change=min_n_no_significant_change
     sym_mat3 = unit_cell.metrical_matrix()
     self.a = sym_mat3[0]
     self.b = sym_mat3[1]
@@ -140,10 +124,8 @@ class fast_minimum_reduction:
     self.f = 2*sym_mat3[3]
     self._r_inv = matrix.sqr((1,0,0,0,1,0,0,0,1))
     self._n_iterations = 0
-    self.current_cycle_id = 0
-    self.last_cycle_id = 0
-    self.n_expected_cycles = 0
-    self.had_expected_cycle = 00000
+    self._n_no_significant_change = 0
+    self._last_abc_significant_change_test = (-self.a,-self.b,-self.c)
     while (self.step()): pass
 
   def as_gruber_matrix(self):
@@ -201,28 +183,29 @@ class fast_minimum_reduction:
       s.n3_true_action()
     else:
       s.n3_false_action()
+      if (not s.significant_change_test()):
+        return 00000
     if (s.b2_action()): return 0001
     if (s.b3_action()): return 0001
     if (s.b4_action()): return 0001
     if (s.b5_action()): return 0001
     return 00000
 
-  def cb_update(self, m_elems):
-    if (self.current_cycle_id == 1):
-      if (self.last_cycle_id != 2):
-        self.n_expected_cycles = 0
-    elif (self.current_cycle_id == 2):
-      if (self.last_cycle_id != 1):
-        self.n_expected_cycles = 0
-      else:
-        self.n_expected_cycles += 1
-        if (self.n_expected_cycles == self.expected_cycle_limit):
-          self.had_expected_cycle = 0001
-          return
+  def significant_change_test(self):
+    abc = (self.a,self.b,self.c)
+    m = self.multiplier_significant_change_test
+    change = tuple([(new*m+(new-last))-new*m
+      for new,last in zip(abc, self._last_abc_significant_change_test)])
+    if (change == (0,0,0)):
+      self._n_no_significant_change += 1
+      if (self._n_no_significant_change >= self.min_n_no_significant_change):
+        return 00000
     else:
-      self.n_expected_cycles = 0
-    self.last_cycle_id = self.current_cycle_id
-    self.current_cycle_id = 0
+      self._n_no_significant_change = 0
+    self._last_abc_significant_change_test = abc
+    return 0001
+
+  def cb_update(self, m_elems):
     if (self._n_iterations == self._iteration_limit):
       raise iteration_limit_exceeded(
         "Gruber iteration limit exceeded (limit=%d)."
@@ -262,7 +245,6 @@ class fast_minimum_reduction:
     if (f[0]*f[1]*f[2] < 0):
       assert z != -1
       f[z] = -1
-    s.current_cycle_id = 1
     s.cb_update((f[0],0,0, 0,f[1],0, 0,0,f[2]))
     s.d = -abs(s.d)
     s.e = -abs(s.e)
@@ -283,7 +265,6 @@ class fast_minimum_reduction:
     if (not s.a < abs(s.e)): return 00000
     j = entier((s.e+s.a)/(2*s.a))
     if (j == 0): return 00000
-    s.current_cycle_id = 2
     s.cb_update((1,0,-j,0,1,0,0,0,1))
     s.c += j*j*s.a - j*s.e
     s.d -= j*s.f
@@ -308,9 +289,7 @@ class fast_minimum_reduction:
     if (not de+fab < 0): return 00000
     j = entier((de+fab)/(2*fab))
     if (j == 0): return 00000
-    s.current_cycle_id = 2
     s.cb_update((1,0,-j,0,1,-j,0,0,1))
-    if (s.had_expected_cycle): return 00000
     s.c += j*j*fab-j*de
     s.d -= j*(2*s.b+s.f)
     s.e -= j*(2*s.a+s.f)
