@@ -95,8 +95,48 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     print "emma rms grid, interpolated: %.2f %.2f" % tuple(rms)
   assert rms[0] >= rms[1]
 
+def exercise_average_bijvoet_mates(
+      space_group_info,
+      n_elements=6,
+      d_min=5,
+      verbose=0):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=(("O","N","C")*(n_elements/3+1))[:n_elements],
+    volume_per_atom=1000,
+    min_distance=5,
+    general_positions_only=True,
+    random_f_double_prime=True)
+  if (0 or verbose):
+    structure.show_summary().show_scatterers()
+  f_calc = structure.structure_factors(
+    d_min=d_min, algorithm="direct").f_calc()
+  if (0 or verbose):
+    f_calc.show_summary()
+  assert f_calc.anomalous_flag()
+  assert abs(f_calc).anomalous_signal() > 0
+  #
+  fc_merged = f_calc.average_bijvoet_mates()
+  fc_merged_naive = f_calc \
+    .as_non_anomalous_array() \
+    .merge_equivalents().array().common_set(fc_merged)
+  assert fc_merged_naive.indices().all_eq(fc_merged.indices())
+  assert flex.max(flex.abs(fc_merged_naive.select_acentric().data()
+                          -fc_merged.select_acentric().data())) < 1.e-6
+  #
+  map_c = f_calc.fft_map().real_map_unpadded()
+  map_r = fc_merged.fft_map().real_map_unpadded()
+  assert map_c.focus() == map_r.focus()
+  lc = flex.linear_correlation(map_c.as_1d(), map_r.as_1d())
+  if (0 or verbose):
+    print lc.coefficient()
+  assert lc.coefficient() > 1-1.e-6
+  assert flex.max(flex.abs(map_c.as_1d() - map_r.as_1d())) < 1.e-6
+
 def run_call_back(flags, space_group_info):
   run_test(space_group_info, verbose=flags.Verbose)
+  if (not space_group_info.group().is_centric()):
+    exercise_average_bijvoet_mates(space_group_info, verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
