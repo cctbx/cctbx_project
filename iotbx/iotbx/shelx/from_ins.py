@@ -1,11 +1,11 @@
-# Shelx ins file processing.
+#
+# Shelx .ins file processing
 #
 # PAVEL AFONINE
 #
-# !! Must be optimized in some points...
-#
 from cctbx import xray
 import math
+import sys
 from cctbx import crystal
 from cctbx import adptbx
 from cctbx.eltbx import caasf
@@ -39,6 +39,7 @@ def from_ins(file_name=None,
         k += 1
         dict_allowed_atoms[k] = x
 
+  u_iso_negative = 0
   scatterer = None
   for i in xrange(len(pdb_records)):
     record = pdb_records[i]
@@ -49,18 +50,43 @@ def from_ins(file_name=None,
                                  site      = record.coordinates,
                                  b         = record.tempFactor + record_next.tempFactor,
                                  occupancy = record.occupancy)
-      scatterer = scatterer.copy( u=adptbx.u_cif_as_u_star(structure.unit_cell(), b) )
+      scatterer = scatterer.copy(u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
       structure.add_scatterer(scatterer)
     elif(record.record_iden == "ATOM" and record.rec_part == 0):
       u_cif_iso_diag = record.tempFactor
       u_star=adptbx.u_cif_as_u_star(structure.unit_cell(), u_cif_iso_diag)
       u_iso = adptbx.u_star_as_u_iso(structure.unit_cell(), u_star)
+      if(u_iso <0.0): u_iso_negative = 1
       scatterer = xray.scatterer(label     = dict_allowed_atoms[record.name_id],
                                  site      = record.coordinates,
                                  u         = u_iso,
                                  occupancy = record.occupancy)
       structure.add_scatterer(scatterer)
+
+  if(u_iso_negative == 1): if_u_iso_negative(structure)
+
   return structure
+
+def if_u_iso_negative(structure):
+  for j in xrange(structure.scatterers().size()):
+    atom_chem_type = caasf.wk1995(structure.scatterers()[j].label).label()
+    if(atom_chem_type == "H" and structure.scatterers()[j].u_iso < 0.0):
+      check_bond_number = 0
+      for i in xrange(structure.scatterers().size()):
+        site_i = structure.unit_cell().orthogonalize(structure.scatterers()[i].site)
+        site_j = structure.unit_cell().orthogonalize(structure.scatterers()[j].site)
+        atom_chem_type = caasf.wk1995(structure.scatterers()[i].label).label()
+        if(atom_chem_type != "H"):
+          dist = math.sqrt((site_i[0]-site_j[0])**2 +
+                           (site_i[1]-site_j[1])**2 +
+                           (site_i[2]-site_j[2])**2)
+          if(dist < 1.2 and dist > 0.6):
+            check_bond_number += 1
+            assert check_bond_number == 1, "multiple choice of bond possible"
+            u_iso = adptbx.u_star_as_u_iso(structure.unit_cell(), structure.scatterers()[i].u_star)
+            u_iso_new = u_iso * abs(structure.scatterers()[j].u_iso)
+            structure.scatterers()[j].u_iso = u_iso_new
+      assert structure.scatterers()[j].u_iso > 0.0
 
 class ins_record:
 
@@ -172,7 +198,6 @@ class ins_record:
                               float(atom_rec_items[6]),
                               float(atom_rec_items[6]),0.0,0.0,0.0]
       except: self.Error("ERROR: b-factors must be floating point numbers.")
-      self.if_b_negative()
     self.if_10_added()
 
   def if_10_added(self):
@@ -185,10 +210,6 @@ class ins_record:
     elif(self.rec_part == 2):
       for i in xrange(len(self.tempFactor)):
         if(abs(self.tempFactor[i]) > 5.0): self.tempFactor[i] -= 10.0
-
-  def if_b_negative(self):
-    if(self.tempFactor[0] < 0.0):
-      self.Error("ERROR: negative isotropic b-factor cannot be processed correctly.")
 
   def read_SFAC(self):
     atom_rec        = self.raw
