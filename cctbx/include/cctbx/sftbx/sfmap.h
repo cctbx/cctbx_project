@@ -527,7 +527,7 @@ namespace cctbx { namespace sftbx {
           sfmap::grid_point_type gp;
           sfmap::grid_point_element_type g01, g0112;
           FloatType f0, f1, f2;
-          FloatType c00, c01, c11, c02, c12, c22;
+          FloatType c00, c01, c11;
           for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
             g01 = detail::mod_positive(gp[0],grid_nl[0]) * grid_np[1];
             f0 = FloatType(gp[0]) / grid_nl[0] - coor_frac[0];
