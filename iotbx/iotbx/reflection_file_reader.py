@@ -2,9 +2,11 @@ from iotbx import mtz
 from iotbx.scalepack import reader as scalepack_reader
 from iotbx.cns import reflection_reader as cns_reflection_reader
 from iotbx import crystal_symmetry_from_any
+from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
+from scitbx.python_utils import easy_pickle
 import sys
 
 class any_reflection_file:
@@ -27,6 +29,27 @@ class any_reflection_file:
         open(file_name))
       except scalepack_reader.ScalepackFormatError: pass
       else: self._file_type = "scalepack_merged"
+    if (self._file_type == None):
+      try: self._file_content = easy_pickle.load(file_name)
+      except: pass
+      else:
+        if (isinstance(self._file_content, miller.array)):
+          self._file_content = [self._file_content]
+        else:
+          miller_arrays = []
+          try:
+            for miller_array in self._file_content:
+              if (isinstance(miller_array, miller.array)):
+                miller_arrays.append(miller_array)
+          except:
+            pass
+          else:
+            if (len(miller_arrays) == 0):
+              self._file_content = None
+            else:
+              self._file_content = miller_arrays
+        if (self._file_content != None):
+          self._file_type = "cctbx.miller.array"
 
   def file_name(self):
     return self._file_name
@@ -40,6 +63,8 @@ class any_reflection_file:
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000):
     if (self.file_type() == None):
       return []
+    if (self.file_type() == "cctbx.miller.array"):
+      return self.file_content()
     info_prefix = self.file_name() + ":"
     if (info_prefix.startswith("./") or info_prefix.startswith(".\\")):
       info_prefix = info_prefix[2:]
@@ -54,12 +79,14 @@ def usage():
           + " [--space_group=P212121]"
           + " [--extract_symmetry=any_file_format]"
           + " [--force_symmetry]"
+          + " [--pickle=file_name]"
           + " any_reflection_file_format ...")
 
 def run(args):
   unit_cell = None
   space_group_info = None
   force_symmetry = 00000
+  pickle_file_name = None
   remaining_args = []
   for arg in args:
     if (arg.startswith("--unit_cell=")):
@@ -75,12 +102,15 @@ def run(args):
       space_group_info = crystal_symmetry.space_group_info()
     elif (arg == "--force_symmetry"):
       force_symmetry = 0001
+    elif (arg.startswith("--pickle=")):
+      pickle_file_name = arg.split("=", 1)[1]
     elif (arg.startswith("--")):
       print usage()
       raise RuntimeError, "Unknown option: " + arg
     else:
       remaining_args.append(arg)
   args = remaining_args
+  all_miller_arrays = []
   for file_name in args:
     print "file_name:", file_name
     sys.stdout.flush()
@@ -94,4 +124,11 @@ def run(args):
     for miller_array in miller_arrays:
       miller_array.show_comprehensive_summary()
       print
+    all_miller_arrays.extend(miller_arrays)
+    print
+  if (pickle_file_name != None):
+    if (not pickle_file_name.lower().endswith(".pickle")):
+      pickle_file_name += ".pickle"
+    print "Writing all Miller arrays to file:", pickle_file_name
+    easy_pickle.dump(pickle_file_name, all_miller_arrays)
     print
