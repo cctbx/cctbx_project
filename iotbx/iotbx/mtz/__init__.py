@@ -108,7 +108,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
-          anomalous_flag=False,
+          anomalous_flag=00000,
           data=self.valid_integers(l0)))
       elif (t0 in "R"): # general real column
         groups.append(column_group(
@@ -116,7 +116,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
-          anomalous_flag=False,
+          anomalous_flag=00000,
           data=self.valid_values(l0)))
       elif (t0 in "A"): # Hendrickson-Lattman coefficients
         assert all_column_types[i_column:i_column+4] == "AAAA"
@@ -127,7 +127,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=labels,
           indices=self.valid_indices(l0),
-          anomalous_flag=False,
+          anomalous_flag=00000,
           data=self.valid_hl(labels[0], labels[1], labels[2], labels[3])))
       elif (t0 in "JFD"):
         # "J": "intensity"
@@ -155,7 +155,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=labels,
           indices=self.valid_indices(l0),
-          anomalous_flag=False,
+          anomalous_flag=00000,
           data=data,
           sigmas=sigmas))
       elif (t0 in "GK"):
@@ -182,7 +182,7 @@ class Mtz (ext.Mtz):
             primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices(labels[0], labels[1]),
-            anomalous_flag=True,
+            anomalous_flag=0001,
             data=self.valid_values(labels[0], labels[1])))
         elif ("P" in remaining_types[:4]):
           groups.append(column_group(
@@ -190,7 +190,7 @@ class Mtz (ext.Mtz):
             primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices(labels[0], labels[2]),
-            anomalous_flag=True,
+            anomalous_flag=0001,
             data=self.valid_complex(labels[0],labels[1],labels[2],labels[3])))
         else:
           groups.append(column_group(
@@ -198,7 +198,7 @@ class Mtz (ext.Mtz):
             primary_column_type=t0,
             labels=labels,
             indices=self.valid_indices(labels[0], labels[2]),
-            anomalous_flag=True,
+            anomalous_flag=0001,
             data=self.valid_values(labels[0],labels[2]),
             sigmas=self.valid_values(labels[1],labels[3])))
       else:
@@ -207,7 +207,7 @@ class Mtz (ext.Mtz):
           primary_column_type=t0,
           labels=[l0],
           indices=self.valid_indices(l0),
-          anomalous_flag=False,
+          anomalous_flag=00000,
           data=self.valid_values(l0)))
     return groups
 

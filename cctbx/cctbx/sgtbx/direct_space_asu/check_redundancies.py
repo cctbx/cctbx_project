@@ -14,7 +14,7 @@ class colored_grid_point:
     self.site = tuple(site)
     self.color = color
 
-def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
+def sample_asu(asu, n=(12,12,12), volume=00000, is_stripped_asu=00000):
   n_redundancies = 0
   u_grid=[]
   for i in xrange(n[0]):
@@ -34,7 +34,7 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
       for k in xrange(-n[2]/2, n[2]+1):
         frac = rational.vector((i,j,k), n)
         f = asu.is_inside(frac)
-        fv = asu.is_inside(frac, volume_only=True)
+        fv = asu.is_inside(frac, volume_only=0001)
         if (len(asu.in_which_facets(frac)) != 0 and fv):
           colored_grid_points.append(colored_grid_point(
             frac,
@@ -63,7 +63,7 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
     r_grid.append(b)
   return u_grid, r_grid, colored_grid_points, n_redundancies
 
-def check_asu(space_group_number, asu, n=(12,12,12), is_stripped_asu=False):
+def check_asu(space_group_number, asu, n=(12,12,12), is_stripped_asu=00000):
   sg_info = sgtbx.space_group_info("Hall: " + asu.hall_symbol)
   sg_info.show_summary()
   assert sg_info.type().number() == space_group_number
@@ -261,11 +261,11 @@ def analyze_redundancies(asu, n, redundancies, verbose=1):
     print "    In facets:"
     for facets,points in all_facets.items():
       print "     ",
-      show_amp = False
+      show_amp = 00000
       for facet in facets:
         if (show_amp): print "&",
         print facet,
-        show_amp = True
+        show_amp = 0001
       print "#points: %d:" % len(points),
       print str(points.keys()[:4]).replace(" ", "")
     if (verbose):

@@ -34,7 +34,7 @@ def show_map(unit_cell, map_covering_unit_cell, label):
     map_unit_cell=map_covering_unit_cell,
     first=first,
     last=last,
-    apply_sigma_scaling=True)
+    apply_sigma_scaling=0001)
   map=Map()
   map.from_c_object(c_obj_map,'CObjectZYXfloat',
                     ucell_params[0:3], ucell_params[3:6],

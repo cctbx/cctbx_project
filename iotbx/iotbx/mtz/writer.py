@@ -77,7 +77,7 @@ def _DoubleOrComplex(self,label,datatype,item_miller,item_data):
     assert datatype in ("F", "G")
     self.addColumn(label,datatype,item_miller,flex.abs(item_data))
     self.addColumn(
-      self.label_phases(label),"P",item_miller,flex.arg(item_data, True))
+      self.label_phases(label),"P",item_miller,flex.arg(item_data, 0001))
   else:
     raise RuntimeError, "Not implemented." # XXX
 

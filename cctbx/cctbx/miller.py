@@ -110,7 +110,7 @@ class set(crystal.symmetry):
       if (n_sys_abs != 0):
         no_sys_abs = self.apply_selection(flags=~sys_absent_flags)
         print >> f, "Systematic absences not included in following:"
-      n_centric = no_sys_abs.centric_flags().data().count(True)
+      n_centric = no_sys_abs.centric_flags().data().count(0001)
       print >> f, "Centric reflections:", n_centric
     if (self.unit_cell() is not None):
       print >> f, "Resolution range: %.6g %.6g" % no_sys_abs.resolution_range()
@@ -512,7 +512,7 @@ class array(set):
 
   def eliminate_sys_absent(self):
     sys_absent_flags = self.sys_absent_flags().data()
-    if (sys_absent_flags.all_eq(False)): return self
+    if (sys_absent_flags.all_eq(00000)): return self
     return self.apply_selection(flags=~sys_absent_flags)
 
   def adopt_set(self, other):

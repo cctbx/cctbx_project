@@ -116,7 +116,7 @@ class reflnlist:
       miller_set=miller.set(
         crystal_symmetry=crystal_symmetry,
         indices=self.miller_indices,
-        anomalous_flag=False),
+        anomalous_flag=00000),
       data=self.column_dict["fIntensity"],
       sigmas=sigmas)
       .apply_selection(sigmas > 0)
@@ -138,7 +138,7 @@ class reflnlist:
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
           indices=ac.miller_indices(),
-          anomalous_flag=True),
+          anomalous_flag=0001),
         data=ac.data(),
         sigmas=ac.sigmas())
         .set_info(info_prefix+"Intensity+-,SigmaI+-")
@@ -153,7 +153,7 @@ class reflnlist:
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
           indices=self.miller_indices,
-          anomalous_flag=False),
+          anomalous_flag=00000),
         data=self.column_dict[column_name])
         .set_info(info_prefix+column_name[1:]))
     return miller_arrays
