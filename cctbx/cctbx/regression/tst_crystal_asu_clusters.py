@@ -19,6 +19,7 @@ def exercise_non_crystallographic():
     (5.875, 6.461, 6.183),
     (5.216, 5.927, 6.782),
     (7.000, 7.000, 7.000)])
+  have_one_unsorted = False
   for i_trial in xrange(10):
     if (i_trial > 0):
       sites_cart = sites_cart.select(
@@ -32,8 +33,22 @@ def exercise_non_crystallographic():
           (1.6, [15])]:
       pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
       pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
-      clusters = crystal.asu_clusters(pair_asu_table).sort().clusters
-      assert [cluster.size() for cluster in clusters] == expected_cluster_sizes
+      clusters = crystal.asu_clusters(
+        pair_asu_table=pair_asu_table).sort_index_groups_by_size()
+      assert [cluster.size() for cluster in clusters.index_groups] \
+          == expected_cluster_sizes
+      if (distance_cutoff == 1.5):
+        for cluster in clusters.index_groups:
+          sorted_indices = list(cluster)
+          sorted_indices.sort()
+          if (list(cluster) != sorted_indices):
+            have_one_unsorted = True
+        clusters.sort_indices_in_each_group()
+        for cluster in clusters.index_groups:
+          sorted_indices = list(cluster)
+          sorted_indices.sort()
+          assert list(cluster) == sorted_indices
+  assert have_one_unsorted
 
 def exercise_crystallographic():
   crystal_symmetry = crystal.symmetry(
@@ -49,10 +64,10 @@ def exercise_crystallographic():
     pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     pair_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
     for strictly_in_asu in [True, False]:
-      clusters = crystal.asu_clusters(
+      cluster = crystal.asu_clusters(
         pair_asu_table=pair_asu_table,
-        strictly_in_asu=strictly_in_asu).sort().clusters
-      cluster_sizes = [cluster.size() for cluster in clusters]
+        strictly_in_asu=strictly_in_asu).sort_index_groups_by_size()
+      cluster_sizes = [cluster.size() for cluster in cluster.index_groups]
       if (distance_cutoff == 1 or strictly_in_asu):
         assert cluster_sizes == [1, 1]
       else:
@@ -75,10 +90,10 @@ def exercise_crystallographic():
         asu_mappings=asu_mappings).add_all_pairs(
           distance_cutoff=distance_cutoff)
       for strictly_in_asu in [True, False]:
-        clusters = crystal.asu_clusters(
+        cluster = crystal.asu_clusters(
           pair_asu_table=pair_asu_table,
-          strictly_in_asu=strictly_in_asu).sort().clusters
-        cluster_sizes = [cluster.size() for cluster in clusters]
+          strictly_in_asu=strictly_in_asu).sort_index_groups_by_size()
+        cluster_sizes = [cluster.size() for cluster in cluster.index_groups]
         if (distance_cutoff == 1.5 or strictly_in_asu):
           assert cluster_sizes == [3, 2]
         else:
