@@ -3,6 +3,7 @@ env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(target="#libtbx/cctbx_crystal_ext", source=[
   "crystal_ext.cpp",
+  "asu_clusters_bpl.cpp",
   "close_packing_bpl.cpp",
   "coordination_sequences_bpl.cpp",
   "direct_space_asu_bpl.cpp",
