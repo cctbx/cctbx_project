@@ -6,6 +6,8 @@ from libtbx.itertbx import count
 from libtbx.utils import UserError
 import sys, os
 
+class UserError_No_array_of_the_required_type(UserError): pass
+
 def find_labels(search_labels, candidate_labels):
   for search_label in search_labels:
     for candidate_label in candidate_labels:
@@ -248,10 +250,10 @@ def select_array(
     raise UserError(error)
   if (max(data_scores) == 0):
     if (label_scores is None):
-      error = error_message_no_array
-    else:
-      error = "%s%s=%s" % (
-        error_message_not_a_suitable_array, parameter_name, " ".join(labels))
+      print >> err, "\n" + error_message_no_array + "\n"
+      raise UserError_No_array_of_the_required_type(error_message_no_array)
+    error = "%s%s=%s" % (
+      error_message_not_a_suitable_array, parameter_name, " ".join(labels))
     print >> err, "\n" + error + "\n"
     raise UserError(error)
   if (label_scores is None):
