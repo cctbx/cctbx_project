@@ -11,6 +11,26 @@
 #ifndef SCITBX_ARRAY_FAMILY_AUTO_ALLOCATOR_H
 #define SCITBX_ARRAY_FAMILY_AUTO_ALLOCATOR_H
 
+#if !(defined(SCITBX_ARRAY_FAMILY_USE_CUSTOM_ALIGNMENT_CALCULATOR))
+
+#include <boost/type_traits/alignment_traits.hpp>
+
+namespace scitbx { namespace af { namespace detail {
+
+  template <typename T, std::size_t N>
+  union auto_allocator
+  {
+    typedef typename boost::type_with_alignment<
+      (boost::alignment_of<T>::value)>::type
+        align_t;
+    align_t dummy_;
+    char buffer[N * sizeof(T)];
+  };
+
+}}} // namespace scitbx::af::detail
+
+#else
+
 #include <cstddef>
 #include <boost/config.hpp>
 
@@ -71,5 +91,7 @@ template <> struct SimpleAlignmentCalculator<T> { typedef T Result; };
 }}} // namespace scitbx::af::detail
 
 #endif // !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+
+#endif // !(defined(SCITBX_ARRAY_FAMILY_USE_CUSTOM_ALIGNMENT_CALCULATOR))
 
 #endif // SCITBX_ARRAY_FAMILY_AUTO_ALLOCATOR_H
