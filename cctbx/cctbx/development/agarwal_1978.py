@@ -161,14 +161,14 @@ def get_gms(xray_structure, f_obs):
   uc = xray_structure.unit_cell()
   gms = []
   for m in xray_structure.scatterers():
-    gm = flex.double()
+    gm = flex.complex_double()
     for i,hkl in f_obs.indices().items():
       if (not m.anisotropic_flag):
         d = adptbx.debye_waller_factor_u_iso(uc, hkl, m.u_iso)
       else:
         d = adptbx.debye_waller_factor_u_star(hkl, m.u_star)
       f = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))
-      gm.append(m.weight()*d*f)
+      gm.append(m.weight()*d*(f+m.fp_fdp))
     gms.append(gm)
   return gms
 
@@ -226,11 +226,6 @@ def site(structure_ideal, d_min):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted,
             dp=dp0, lifchitz=0001)
-  maps = []
-  for i_xyz in (0,1,2):
-    map = re(xray_structure=sh.structure_shifted,
-             dp=dps[i_xyz], lifchitz=00000)
-    maps.append(map)
   for i_scatterer in (0,1,2):
     for i_xyz in (0,1,2):
       delta = 1.e-6
@@ -248,11 +243,9 @@ def site(structure_ideal, d_min):
       for i,hkl in f_obs.indices().items():
         p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
         gxm += (dps[i_xyz].data()[i]
-                * gms[i_scatterer][i]
+                * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d][%d]:" % (i_scatterer, i_xyz), gxm
-      m = maps[i_xyz].grad()[i_scatterer]
-      print "map[%d][%d]:" % (i_scatterer, i_xyz), m
       gl = (map0.grad_x, map0.grad_y, map0.grad_z)[i_xyz]()[i_scatterer]
       print " m0[%d][%d]:" % (i_scatterer, i_xyz), gl
       print
@@ -303,8 +296,6 @@ def u_iso(structure_ideal, d_min):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted,
             dp=dp0, lifchitz=0001)
-  maps = re(xray_structure=sh.structure_shifted,
-            dp=dps, lifchitz=00000)
   for i_scatterer in (0,1,2):
     delta = 1.e-6
     pl = two_p_shifted_u_iso(
@@ -321,11 +312,9 @@ def u_iso(structure_ideal, d_min):
     for i,hkl in f_obs.indices().items():
       p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
       gxm += (dps.data()[i]
-              * gms[i_scatterer][i]
+              * gms[i_scatterer][i].conjugate()
               * complex_math.polar((1, p)))
     print "gxm[%d]:" % i_scatterer, gxm
-    m = maps.grad()[i_scatterer]
-    print "map[%d]:" % i_scatterer, m
     gl = map0.grad_u_iso()[i_scatterer]
     print " m0[%d]:" % i_scatterer, gl
     print
@@ -346,12 +335,10 @@ class two_p_shifted_occupancy:
     self.two_p = two_p
 
 def occupancy(structure_ideal, d_min):
-  structure_ideal.set_occupancy(1, 0.5)
-  structure_ideal.set_occupancy(2, 0.7)
   f_obs = abs(structure_ideal.structure_factors(
     d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
-  sh = two_p_shifted_occupancy(f_obs, structure_ideal, 0, -0.2)
+  sh = two_p_shifted_occupancy(f_obs, structure_ideal, 0, 0.2)
   sh.structure_shifted.show_summary().show_scatterers()
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
@@ -376,8 +363,6 @@ def occupancy(structure_ideal, d_min):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted,
             dp=dp0, lifchitz=0001)
-  maps = re(xray_structure=sh.structure_shifted,
-            dp=dps, lifchitz=00000)
   for i_scatterer in (0,1,2):
     delta = 1.e-6
     pl = two_p_shifted_occupancy(
@@ -395,11 +380,9 @@ def occupancy(structure_ideal, d_min):
     for i,hkl in f_obs.indices().items():
       p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
       gxm += (dps.data()[i]
-              * gms[i_scatterer][i]
+              * gms[i_scatterer][i].conjugate()
               * complex_math.polar((1, p)))
     print "gxm[%d]:" % i_scatterer, gxm/m.occupancy
-    m = maps.grad()[i_scatterer]/m.occupancy
-    print "map[%d]:" % i_scatterer, m
     gl = map0.grad_occupancy()[i_scatterer]
     print " m0[%d]:" % i_scatterer, gl
     print
@@ -480,11 +463,6 @@ def u_star(structure_ideal, d_min):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted,
             dp=dp0, lifchitz=0001)
-  maps = []
-  for ij in xrange(6):
-    map = re(xray_structure=sh.structure_shifted,
-             dp=dps[ij], lifchitz=00000)
-    maps.append(map)
   for i_scatterer in (0,1,2):
     sfd_star = [x*sum_f_obs_sq/2 for x in sfd.d_target_d_u_star()[i_scatterer]]
     sfd_cart = adptbx.grad_u_star_as_u_cart(
@@ -514,11 +492,9 @@ def u_star(structure_ideal, d_min):
       for i,hkl in f_obs.indices().items():
         p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
         gxm += (dps[ij].data()[i]
-                * gms[i_scatterer][i]
+                * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d][%d]:" % (i_scatterer, ij), gxm
-      m = maps[ij].grad()[i_scatterer]
-      print "map[%d][%d]:" % (i_scatterer, ij), m
       gl = (map0.grad_u_00, map0.grad_u_11, map0.grad_u_22,
             map0.grad_u_01, map0.grad_u_02, map0.grad_u_12)[ij]()[i_scatterer]
       print " m0[%d][%d]: " % (i_scatterer, ij), gl
@@ -542,9 +518,6 @@ class two_p_shifted_fp:
     self.two_p = two_p
 
 def fp(structure_ideal, d_min):
-  structure_ideal.scatterers()[0].fp_fdp = complex(-1)
-  structure_ideal.scatterers()[1].fp_fdp = complex(-1.5)
-  structure_ideal.scatterers()[2].fp_fdp = complex(-2)
   f_obs = abs(structure_ideal.structure_factors(
     d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
@@ -590,28 +563,98 @@ def fp(structure_ideal, d_min):
     gxm = 0
     for i,hkl in f_obs.indices().items():
       p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+      f0_fp_fdp = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))+m.fp_fdp
       gxm += (dps.data()[i]
-              * gms[i_scatterer][i]
-              /(m.caasf.at_d_star_sq(uc.d_star_sq(hkl))+m.fp_fdp.real)
+              * (gms[i_scatterer][i]/f0_fp_fdp).conjugate()
               * complex_math.polar((1, p)))
     print "gxm[%d]:" % i_scatterer, gxm
     gl = map0.grad_fp()[i_scatterer]
     print " m0[%d]:" % i_scatterer, gl
     print
 
+class two_p_shifted_fdp:
+
+  def __init__(self, f_obs, structure, i_scatterer, shift):
+    structure_shifted = structure.deep_copy_scatterers()
+    structure_shifted.scatterers()[i_scatterer].fp_fdp += complex(0,shift)
+    f_calc = f_obs.structure_factors_from_scatterers(
+      xray_structure=structure_shifted).f_calc()
+    f_calc_abs = abs(f_calc)
+    e = f_calc_abs.data() - f_obs.data()
+    two_p = flex.sum(flex.pow2(e))
+    self.structure_shifted = structure_shifted
+    self.f_calc = f_calc
+    self.e = e
+    self.two_p = two_p
+
+def fdp(structure_ideal, d_min):
+  f_obs = abs(structure_ideal.structure_factors(
+    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+  sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
+  sh = two_p_shifted_fdp(f_obs, structure_ideal, 0, 2)
+  sh.structure_shifted.show_summary().show_scatterers()
+  ls = xray.targets_least_squares_residual(
+    f_obs.data(), sh.f_calc.data(), 0001, 1)
+  sfd = xray.structure_factors.from_scatterers_direct(
+    xray_structure=sh.structure_shifted,
+    miller_set=f_obs,
+    d_target_d_f_calc=ls.derivatives(),
+    derivative_flags=xray.structure_factors.derivative_flags(
+      fdp=0001))
+  gms = get_gms(sh.structure_shifted, f_obs)
+  phi = flex.arg(sh.f_calc.data())
+  dp0 = get_dp0(f_obs, phi, sh.e)
+  dps = flex.complex_double()
+  for i,hkl in f_obs.indices().items():
+    dps.append(sh.e[i]
+               *complex_math.polar((1, phi[i])))
+  uc = sh.structure_shifted.unit_cell()
+  dps = miller.array(miller_set=f_obs, data=dps)
+  print "two_p:", sh.two_p
+  print "ls.target():", ls.target() * sum_f_obs_sq
+  assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
+  print
+  re = resampling(miller_set=f_obs)
+  map0 = re(xray_structure=sh.structure_shifted,
+            dp=dp0, lifchitz=0001)
+  for i_scatterer in (0,1,2):
+    delta = 1.e-6
+    pl = two_p_shifted_fdp(
+      f_obs, sh.structure_shifted, i_scatterer, delta)
+    mi = two_p_shifted_fdp(
+      f_obs, sh.structure_shifted, i_scatterer, -delta)
+    j = (pl.e - mi.e) / (2*delta)
+    g = flex.sum(j * sh.e)
+    print "  g[%d]: " % i_scatterer, g
+    print "sfd[%d]: " % i_scatterer, \
+          sfd.d_target_d_fdp()[i_scatterer] * sum_f_obs_sq/2
+    m = sh.structure_shifted.scatterers()[i_scatterer]
+    rm = matrix.col(m.site)
+    gxm = 0
+    for i,hkl in f_obs.indices().items():
+      p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+      f0_fp_fdp = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))+m.fp_fdp
+      gxm += (dps.data()[i]
+              * (gms[i_scatterer][i]/(-1j*f0_fp_fdp)).conjugate()
+              * complex_math.polar((1, p)))
+    print "gxm[%d]:" % i_scatterer, gxm
+    gl = map0.grad_fdp()[i_scatterer]
+    print " m0[%d]:" % i_scatterer, gl
+    print
+
 def run(n_elements=3, volume_per_atom=1000, d_min=2):
-  anisotropic_flag = 0001
+  fdp_flag = 1
+  anisotropic_flag = 1
   structure_ideal = random_structure.xray_structure(
     sgtbx.space_group_info("P 1"),
     elements=("Se",)*n_elements,
     volume_per_atom=volume_per_atom,
-    random_f_prime_d_min=0,
-    random_f_double_prime=00000,
+    random_f_prime_d_min=d_min,
+    random_f_double_prime=fdp_flag,
     anisotropic_flag=anisotropic_flag,
-    random_u_iso=0000,
-    u_iso=0.2,
+    random_u_iso=1,
     random_u_cart_scale=.1,
-    random_occupancy=00000)
+    random_occupancy=1)
   if (0):
     a = structure_ideal.unit_cell().volume()**(1/3.)
     structure_ideal = xray.structure(
@@ -643,6 +686,9 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
   if (1):
     print "fp"
     fp(structure_ideal, d_min)
+  if (1):
+    print "fdp"
+    fdp(structure_ideal, d_min)
 
 if (__name__ == "__main__"):
   run()
