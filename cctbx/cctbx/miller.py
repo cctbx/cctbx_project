@@ -65,6 +65,14 @@ class set(crystal.symmetry):
   def anomalous_flag(self):
     return self._anomalous_flag
 
+  def deep_copy(self):
+    return set(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=uctbx.unit_cell(self.unit_cell().parameters()),
+        space_group_symbol=str(self.space_group_info())),
+      indices=self.indices().deep_copy(),
+      anomalous_flag=self.anomalous_flag())
+
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
     assert self.indices() != None
@@ -219,6 +227,16 @@ class array(set):
 
   def info(self):
     return self._info
+
+  def deep_copy(self):
+    d = None
+    s = None
+    if (self.data() != None): d = self.data().deep_copy()
+    if (self.sigmas() != None): s = self.sigmas().deep_copy()
+    return array(
+      miller_set = set.deep_copy(self),
+      data=d,
+      sigmas=s)
 
   def __getitem__(self, slice_object):
     return array(
