@@ -613,6 +613,9 @@ namespace direct_space_asu {
         return r_inv_cart_[get_asu_mapping(i_seq, i_sym).i_sym_op()];
       }
 
+      //! True if the interaction is due to a symmetry operation.
+      /*! This test is relatively expensive.
+       */
       bool
       is_symmetry_interaction(asu_mapping_index_pair const& pair) const
       {
