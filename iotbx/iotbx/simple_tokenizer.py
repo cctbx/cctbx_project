@@ -43,7 +43,7 @@ class word:
 
   def assert_expected(self, value):
     if (self.value != value):
-      self.raise_syntax_error('expected "{", found ')
+      self.raise_syntax_error('expected "%s", found ' % value)
 
 default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                    + "abcdefghijklmnopqrstuvwxyz" \

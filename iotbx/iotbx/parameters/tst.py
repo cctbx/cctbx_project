@@ -1,6 +1,6 @@
 import iotbx.parameters
 from cStringIO import StringIO
-import sys
+import sys, os
 
 class recycle:
 
@@ -252,11 +252,13 @@ table name
  prefix f g
 """)
 
-def test_exception(input_string, exception_string):
+def test_exception(input_string, exception_string=None):
   try: iotbx.parameters.parse(input_string=input_string)
   except Exception, e:
     if (exception_string is None or str(e) != exception_string):
-      print (e)
+      print str(e)
+      if (exception_string is not None):
+        print exception_string
     if (exception_string is not None):
       assert str(e) == exception_string
   else: raise RuntimeError("Exception expected.")
@@ -278,18 +280,32 @@ def exercise_syntax_errors():
     'Unexpected attribute: .foo (input line 2)')
   test_exception('a b\nc "abc',
     'Syntax error: missing closing quote (input line 2).')
+  test_exception('table 1',
+    'Syntax error: improper table name "1" (input line 1)')
+  test_exception('table name { 1',
+    'Syntax error: improper table row name "1" (input line 1)')
+  test_exception('1 {',
+    'Syntax error: improper scope name "1" (input line 1)')
+  test_exception('a. 2',
+    'Syntax error: improper definition name "a." (input line 1)')
 
-def check_get(parameters, path, expected_out=None):
+def check_get(parameters, path, expected_out=None, with_substitution=False):
   out = StringIO()
-  parameters.get(path=path).show(out=out)
+  if (not with_substitution):
+    parameters.get(path=path).show(out=out)
+  else:
+    parameters.get_with_variable_substitution(path=path).show(out=out)
   out = out.getvalue()
   if (expected_out is None or out != expected_out):
     sys.stdout.write(out)
   if (expected_out is not None and out != expected_out):
     raise RuntimeError("out != expected_out")
 
+def check_get_sub(parameters, path, expected_out=None):
+  check_get(parameters, path, expected_out, with_substitution=True)
+
 def exercise_get():
-  parameters = iotbx.parameters.parse(input_string="""
+  parameters = iotbx.parameters.parse(input_string="""\
 a b
 c d
 e {
@@ -367,10 +383,93 @@ b z
 """)
   check_get(parameters, path="name.row_3", expected_out="")
 
+def exercise_get_with_variable_substitution():
+  parameters = iotbx.parameters.parse(input_string="""\
+a b
+c   d   e   2
+""")
+  check_get_sub(parameters, path="a", expected_out="a b\n")
+  check_get_sub(parameters, path="c", expected_out="c d e 2\n")
+  parameters = iotbx.parameters.parse(input_string="""\
+a $a
+b $c
+c $b
+d $e
+e $f
+f $d
+g $d
+h $_X_Y_Z_
+""")
+  assert len(parameters.get(path="a").objects) == 1
+  for path in "abcdefg":
+    if (path == "g"):
+      diag = "d"
+    else:
+      diag = path
+  try: parameters.get_with_variable_substitution(path=path)
+  except RuntimeError, e:
+    assert str(e) == "Dependency cycle in variable substitution: $%s" % diag
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get_with_variable_substitution(path="h")
+  except RuntimeError, e:
+    assert str(e) == "Undefined variable: $_X_Y_Z_ (input line 8)"
+  else: raise RuntimeError("Exception expected.")
+  os.environ["_X_Y_Z_"] = "xyz"
+  check_get_sub(parameters, path="h", expected_out='h "xyz"\n')
+  parameters = iotbx.parameters.parse(input_string="""\
+a x
+b $a
+c $a $b.d
+d $a \$b
+answer yes no
+e "$a"
+f ${a}
+g abc${answer}bc
+h abc${answer}bc 12$answer${a}56
+i $
+j ${abc
+k ${1bc}
+l ${}
+m $@
+""")
+  check_get_sub(parameters, path="a", expected_out="a x\n")
+  check_get_sub(parameters, path="b", expected_out="b x\n")
+  check_get_sub(parameters, path="c", expected_out='c x "x.d"\n')
+  check_get_sub(parameters, path="d", expected_out="d x \\$b\n")
+  check_get_sub(parameters, path="answer", expected_out="answer yes no\n")
+  check_get_sub(parameters, path="e", expected_out='e "x"\n')
+  check_get_sub(parameters, path="f", expected_out='f "x"\n')
+  check_get_sub(parameters, path="g", expected_out='g "abcyes nobc"\n')
+  check_get_sub(parameters, path="h",
+    expected_out='h "abcyes nobc" "12yes nox56"\n')
+  try: parameters.get_with_variable_substitution(path="i")
+  except RuntimeError, e:
+    assert str(e) == 'Syntax error: $ must be followed by an identifier:' \
+                   + ' "$" (input line 10)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get_with_variable_substitution(path="j")
+  except RuntimeError, e:
+    assert str(e) == 'Syntax error: missing "}": "${abc" (input line 11)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get_with_variable_substitution(path="k")
+  except RuntimeError, e:
+    assert str(e) == 'Syntax error: improper variable name "${1bc}"' \
+                   + ' (input line 12)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get_with_variable_substitution(path="l")
+  except RuntimeError, e:
+    assert str(e)=='Syntax error: improper variable name "${}" (input line 13)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get_with_variable_substitution(path="m")
+  except RuntimeError, e:
+    assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
+  else: raise RuntimeError("Exception expected.")
+
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
   exercise_get()
+  exercise_get_with_variable_substitution()
   print "OK"
 
 if (__name__ == "__main__"):
