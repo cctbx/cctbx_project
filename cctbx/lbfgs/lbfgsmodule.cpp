@@ -18,20 +18,15 @@ namespace {
 
   using namespace cctbx;
 
-  double py_minimizer_gnorm_0(
-    const lbfgs::minimizer<double>& minimizer)
-  {
-    return minimizer.gnorm();
-  }
-  double py_minimizer_gnorm_1(
+  double py_minimizer_euclidean_norm(
     const lbfgs::minimizer<double>& minimizer,
-    const af::shared<double>& g)
+    const af::shared<double>& a)
   {
-    cctbx_assert(g.size() == minimizer.n());
-    return minimizer.gnorm(g.begin());
+    cctbx_assert(a.size() == minimizer.n());
+    return minimizer.euclidean_norm(a.begin());
   }
 
-  void py_minimizer_run_3(
+  bool py_minimizer_run_3(
     lbfgs::minimizer<double>& minimizer,
     af::shared<double> x,
     double f,
@@ -39,10 +34,10 @@ namespace {
   {
     cctbx_assert(x.size() == minimizer.n());
     cctbx_assert(g.size() == minimizer.n());
-    minimizer.run(x.begin(), f, g.begin());
+    return minimizer.run(x.begin(), f, g.begin());
   }
 
-  void py_minimizer_run_4(
+  bool py_minimizer_run_4(
     lbfgs::minimizer<double>& minimizer,
     af::shared<double> x,
     double f,
@@ -52,7 +47,18 @@ namespace {
     cctbx_assert(x.size() == minimizer.n());
     cctbx_assert(g.size() == minimizer.n());
     cctbx_assert(diag.size() == minimizer.n());
-    minimizer.run(x.begin(), f, g.begin(), diag.begin());
+    return minimizer.run(x.begin(), f, g.begin(), diag.begin());
+  }
+
+  bool py_traditional_convergence_test_call(
+    const lbfgs::traditional_convergence_test<double>& is_converged,
+    af::shared<double> x,
+    double f,
+    const af::shared<double>& g)
+  {
+    cctbx_assert(x.size() == is_converged.n());
+    cctbx_assert(g.size() == is_converged.n());
+    return is_converged(x.begin(), f, g.begin());
   }
 
 # include <cctbx/basic/from_bpl_import.h>
@@ -70,6 +76,10 @@ namespace {
     python::class_builder<lbfgs::minimizer<double> >
     py_minimizer(this_module, "minimizer");
 
+    python::class_builder<lbfgs::traditional_convergence_test<double> >
+    py_traditional_convergence_test(
+      this_module, "traditional_convergence_test");
+
     py_minimizer.def(constructor<>());
     py_minimizer.def(constructor<std::size_t>());
     py_minimizer.def(constructor<std::size_t, std::size_t>());
@@ -81,29 +91,33 @@ namespace {
       double, double, double>());
     py_minimizer.def(constructor<std::size_t, std::size_t, std::size_t,
       double, double, double, double>());
-    py_minimizer.def(constructor<std::size_t, std::size_t, std::size_t,
-      double, double, double, double, double>());
     py_minimizer.def(py_minimizer_run_3, "run");
     py_minimizer.def(py_minimizer_run_4, "run");
     py_minimizer.def(&lbfgs::minimizer<double>::n, "n");
     py_minimizer.def(&lbfgs::minimizer<double>::m, "m");
     py_minimizer.def(&lbfgs::minimizer<double>::maxfev, "maxfev");
-    py_minimizer.def(&lbfgs::minimizer<double>::eps, "eps");
     py_minimizer.def(&lbfgs::minimizer<double>::gtol, "gtol");
     py_minimizer.def(&lbfgs::minimizer<double>::xtol, "xtol");
     py_minimizer.def(&lbfgs::minimizer<double>::stpmin, "stpmin");
     py_minimizer.def(&lbfgs::minimizer<double>::stpmax, "stpmax");
-    py_minimizer.def(
-      &lbfgs::minimizer<double>::is_converged, "is_converged");
     py_minimizer.def(
       &lbfgs::minimizer<double>::requests_f_and_g, "requests_f_and_g");
     py_minimizer.def(
       &lbfgs::minimizer<double>::requests_diag, "requests_diag");
     py_minimizer.def(&lbfgs::minimizer<double>::iter, "iter");
     py_minimizer.def(&lbfgs::minimizer<double>::nfun, "nfun");
-    py_minimizer.def(py_minimizer_gnorm_0, "gnorm");
-    py_minimizer.def(py_minimizer_gnorm_1, "gnorm");
+    py_minimizer.def(py_minimizer_euclidean_norm, "euclidean_norm");
     py_minimizer.def(&lbfgs::minimizer<double>::stp, "stp");
+
+    py_traditional_convergence_test.def(constructor<>());
+    py_traditional_convergence_test.def(constructor<std::size_t>());
+    py_traditional_convergence_test.def(constructor<std::size_t, double>());
+    py_traditional_convergence_test.def(
+      &lbfgs::traditional_convergence_test<double>::n, "n");
+    py_traditional_convergence_test.def(
+      &lbfgs::traditional_convergence_test<double>::eps, "eps");
+    py_traditional_convergence_test.def(
+      py_traditional_convergence_test_call, "__call__");
   }
 
 }

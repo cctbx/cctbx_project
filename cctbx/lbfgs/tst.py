@@ -9,8 +9,12 @@ def run(verbose = 1):
     x[j] = -1.2
     x[j+1] = 1.
   minimizer = lbfgs.minimizer(n)
-  # We allow at most 2000 evaluations of f and g
-  while (not minimizer.is_converged() and minimizer.nfun() < 2000):
+  is_converged = lbfgs.traditional_convergence_test(n)
+  if (verbose):
+    print "n: ", minimizer.n()
+    print "m: ", minimizer.m()
+    print "xtol: ", minimizer.xtol()
+  while 1:
     f = 0.
     for j in xrange(0, n, 2):
       t1 = 1.e0 - x[j]
@@ -18,16 +22,13 @@ def run(verbose = 1):
       g[j+1] = 2.e1 * t2
       g[j] = -2.e0 * (x[j] * g[j+1] + t1)
       f = f + t1 * t1 + t2 * t2
+    if (minimizer.run(x, f, g)): continue
     if (verbose):
-      if (minimizer.nfun() == 0):
-        print "n: ", minimizer.n()
-        print "m: ", minimizer.m()
-        print "eps: ", minimizer.eps()
-        print "xtol: ", minimizer.xtol()
-      print "f:", f, "gnorm:", minimizer.gnorm(g)
-    minimizer.run(x, f, g)
-    if (verbose):
+      print "f:", f, "gnorm:", minimizer.euclidean_norm(g)
       print minimizer.iter(), minimizer.nfun(), minimizer.stp()
+    if (is_converged(x, f, g)): break
+    if (minimizer.nfun() > 2000): break
+    assert minimizer.run(x, f, g)
 
 if (__name__ == "__main__"):
   import os, sys
