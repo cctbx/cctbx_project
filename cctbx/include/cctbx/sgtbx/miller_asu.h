@@ -52,6 +52,17 @@ namespace cctbx {
         virtual bool isInASU(const Miller::Index& H) const {
           throw cctbx_internal_error();
         }
+        //! XXX
+        int asu_sign(const Miller::Index& h,
+                     const Miller::Index& minus_h) const {
+          if      (isInASU(      h)) return  1;
+          else if (isInASU(minus_h)) return -1;
+          return 0;
+        }
+        //! XXX
+        int asu_sign(const Miller::Index& h) const {
+          return asu_sign(h, -h);
+        }
         //! String representation of the tabluated asymmetric unit.
         /*! Example: "h>=k and k>=0 and (k>0 or l>=0)"
          */
@@ -135,6 +146,17 @@ namespace cctbx {
         bool isInASU(const Miller::Index& H) const {
           if (m_isReferenceASU) return m_ReferenceASU->isInASU(H);
           return m_ReferenceASU->isInASU(H * m_CBOp.InvM().Rpart());
+        }
+        int asu_sign(const Miller::Index& h,
+                     const Miller::Index& minus_h) const {
+          if (m_isReferenceASU) return m_ReferenceASU->asu_sign(h, minus_h);
+          Miller::Index h_ref = h * m_CBOp.InvM().Rpart();
+          return m_ReferenceASU->asu_sign(h_ref);
+        }
+        int asu_sign(const Miller::Index& h) const {
+          if (m_isReferenceASU) return m_ReferenceASU->asu_sign(h);
+          Miller::Index h_ref = h * m_CBOp.InvM().Rpart();
+          return m_ReferenceASU->asu_sign(h_ref);
         }
       private:
         ChOfBasisOp m_CBOp;

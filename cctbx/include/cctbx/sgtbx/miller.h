@@ -106,7 +106,27 @@ namespace cctbx {
       return sgtbx::modPositive(H * T, T.BF());
     }
 
+    class SpaceGroup; // forward declaration
+
 #endif // DOXYGEN_SHOULD_SKIP_THIS
+
+    //! XXX
+    class sys_absent_test
+    {
+      public:
+        //! XXX
+        sys_absent_test() {}
+        //! XXX
+        sys_absent_test(const SpaceGroup& sgops, const Miller::Index& h);
+        //! XXX
+        int ht_restriction() const { return ht_restriction_; }
+        //! XXX
+        bool is_sys_absent() const { return ht_restriction_ == -2; }
+        //! XXX
+        bool is_centric() const { return ht_restriction_ >= 0; }
+      protected:
+        int ht_restriction_;
+    };
 
     //! class for the high-level handling of centric reflections.
     /*! A reflection with the Miller index H is "centric" if
