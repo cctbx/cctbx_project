@@ -296,7 +296,7 @@ class target_functor_base:
   def __call__(self, f_calc_array, compute_derivatives):
     assert f_calc_array.unit_cell().is_similar_to(self.f_obs_array.unit_cell())
     assert f_calc_array.space_group() == self.f_obs_array.space_group()
-    if (self.weights):
+    if (self.weights != None):
       return self.target_calculator(self.f_obs_array.data(),
                                     self.weights,
                                     f_calc_array.data(),
@@ -314,7 +314,7 @@ class least_squares_residual(target_functor_base):
     assert self.weights == None or self.use_sigmas_as_weights == False
     self.target_calculator = targets_least_squares_residual
     if (self.use_sigmas_as_weights):
-      self.weights = self.sigmas()
+      self.weights = f_obs_array.sigmas().data()
 
 class intensity_correlation(target_functor_base):
 
@@ -324,7 +324,7 @@ class intensity_correlation(target_functor_base):
     assert self.weights == None or self.use_multiplicities_as_weights == False
     self.target_calculator = targets_intensity_correlation
     if (self.use_multiplicities_as_weights):
-      self.weights = self.multiplicities()
+      self.weights = f_obs_array.multiplicities().data()
 
 target_functors = dicts.easy()
 target_functors.least_squares_residual = least_squares_residual
