@@ -234,6 +234,7 @@ def site(structure_ideal, d_min):
       print "map[%d][%d]:" % (i_scatterer, i_xyz), m
       gl = (map0.grad_x, map0.grad_y, map0.grad_z)[i_xyz]()[i_scatterer]
       print " m0[%d][%d]:" % (i_scatterer, i_xyz), gl
+      print
 
 class two_p_shifted_u_iso:
 
@@ -317,6 +318,94 @@ def u_iso(structure_ideal, d_min):
     print "map[%d]:" % i_scatterer, m
     gl = map0.grad_u_iso()[i_scatterer]
     print " m0[%d]:" % i_scatterer, gl
+    print
+
+class two_p_shifted_occupancy:
+
+  def __init__(self, f_obs, structure, i_scatterer, shift):
+    structure_shifted = structure.deep_copy_scatterers()
+    structure_shifted.shift_occupancy(i_scatterer, shift)
+    f_calc = f_obs.structure_factors_from_scatterers(
+      xray_structure=structure_shifted).f_calc()
+    f_calc_abs = abs(f_calc)
+    e = f_calc_abs.data() - f_obs.data()
+    two_p = flex.sum(flex.pow2(e))
+    self.structure_shifted = structure_shifted
+    self.f_calc = f_calc
+    self.e = e
+    self.two_p = two_p
+
+def occupancy(structure_ideal, d_min):
+  structure_ideal.set_occupancy(1, 0.5)
+  structure_ideal.set_occupancy(2, 0.7)
+  structure_ideal.all_apply_symmetry()
+  f_obs = abs(structure_ideal.structure_factors(
+    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+  sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
+  sh = two_p_shifted_occupancy(f_obs, structure_ideal, 0, -0.2)
+  sh.structure_shifted.show_summary().show_scatterers()
+  ls = xray.targets_least_squares_residual(
+    f_obs.data(), sh.f_calc.data(), 0001, 1)
+  sfd = xray.structure_factors.from_scatterers_direct(
+    xray_structure=sh.structure_shifted,
+    miller_set=f_obs,
+    d_target_d_f_calc=ls.derivatives(),
+    derivative_flags=xray.structure_factors.derivative_flags(
+      occupancy=0001))
+  phi = flex.arg(sh.f_calc.data())
+  uc = sh.structure_shifted.unit_cell()
+  gms = []
+  for m in sh.structure_shifted.scatterers():
+    gm = flex.double()
+    for i,hkl in f_obs.indices().items():
+      d = adptbx.debye_waller_factor_u_iso(uc, hkl, m.u_iso)
+      f = m.caasf.at_d_star_sq(uc.d_star_sq(hkl))
+      gm.append(m.occupancy*d*f)
+    gms.append(gm)
+  dp0 = flex.complex_double()
+  for i,hkl in f_obs.indices().items():
+    dp0.append(-sh.e[i]
+               *complex_math.polar((1, phi[i])))
+  dp0 = miller.array(miller_set=f_obs, data=dp0)
+  dps = flex.complex_double()
+  for i,hkl in f_obs.indices().items():
+    dps.append(sh.e[i]
+               *complex_math.polar((1, phi[i])))
+  dps = miller.array(miller_set=f_obs, data=dps)
+  print "two_p:", sh.two_p
+  print "ls.target():", ls.target() * sum_f_obs_sq
+  assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
+  print
+  re = resampling(miller_set=f_obs)
+  map0 = re(xray_structure=sh.structure_shifted,
+            dp=dp0, lifchitz=0001)
+  maps = re(xray_structure=sh.structure_shifted,
+            dp=dps, lifchitz=00000)
+  for i_scatterer in (0,1,2):
+    delta = 1.e-6
+    pl = two_p_shifted_occupancy(
+      f_obs, sh.structure_shifted, i_scatterer, delta)
+    mi = two_p_shifted_occupancy(
+      f_obs, sh.structure_shifted, i_scatterer, -delta)
+    j = (pl.e - mi.e) / (2*delta)
+    g = flex.sum(j * sh.e)
+    print "  g[%d]: " % i_scatterer, g
+    m = sh.structure_shifted.scatterers()[i_scatterer]
+    rm = matrix.col(m.site)
+    gxm = 0
+    for i,hkl in f_obs.indices().items():
+      p = -2*math.pi * (matrix.row(hkl) * rm).elems[0]
+      gxm += (dps.data()[i]
+              * gms[i_scatterer][i]
+              * complex_math.polar((1, p)))
+    print "gxm[%d]:" % i_scatterer, gxm/m.occupancy
+    print "sfd[%d]: " % i_scatterer, \
+          sfd.d_target_d_occupancy()[i_scatterer] * sum_f_obs_sq/2
+    m = maps.grad()[i_scatterer]/m.occupancy
+    print "map[%d]:" % i_scatterer, m
+    gl = map0.grad_occupancy()[i_scatterer]
+    print " m0[%d]:" % i_scatterer, gl
+    print
 
 def run(n_elements=3, volume_per_atom=1000, d_min=2):
   structure_ideal = random_structure.xray_structure(
@@ -331,10 +420,15 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
     random_occupancy=00000)
   structure_ideal.show_summary().show_scatterers()
   print
-  print "site"
-  site(structure_ideal, d_min)
-  print "u_iso"
-  u_iso(structure_ideal, d_min)
+  if (1):
+    print "site"
+    site(structure_ideal, d_min)
+  if (1):
+    print "u_iso"
+    u_iso(structure_ideal, d_min)
+  if (1):
+    print "occupancy"
+    occupancy(structure_ideal, d_min)
 
 if (__name__ == "__main__"):
   run()
