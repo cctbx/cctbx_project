@@ -540,7 +540,7 @@ namespace cctbx { namespace xray {
         }}}
       }
       if (n_parameters != 0) {
-        packing_order_convention<1>::check_version_at_compile_time();
+        BOOST_STATIC_ASSERT(packing_order_convention == 1);
         if (grad_flags.site) {
           for(std::size_t i=0;i<3;i++) {
             packed_.push_back(gr_site[i]);

@@ -286,7 +286,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             d_target_d_f_calc,
             grad_flags.adjust(scatterer.anisotropic_flag));
           if (n_parameters != 0) {
-            packing_order_convention<1>::check_version_at_compile_time();
+            BOOST_STATIC_ASSERT(packing_order_convention == 1);
             if (grad_flags.site) {
               scitbx::vec3<float_type> d_target_d_site_cart =
                 sf.d_target_d_site_frac * unit_cell.fractionalization_matrix();
