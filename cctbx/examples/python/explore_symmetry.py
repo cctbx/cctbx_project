@@ -12,10 +12,11 @@ import exceptions
 class InternalError(exceptions.Exception):
   pass
 
-import string, re, cgi
+import string, re, cgi, math
 
 sys.path.insert(0, PATH_cctbx_lib_python)
 import sgtbx
+import uctbx
 
 print "sgtbx version:", sgtbx.__version__
 print "<p>"
@@ -92,9 +93,9 @@ def RTMxAnalysis(M):
 def ShowSgOpsGeneric(SgOps):
   print "Number of lattice translations:", SgOps.nLTr()
   if (SgOps.isCentric()):
-    print "Space group is acentric."
-  else:
     print "Space group is centric."
+  else:
+    print "Space group is acentric."
   if (SgOps.isChiral()):
     print "Space group is chiral."
   if (SgOps.isEnantiomorphic()):
@@ -150,6 +151,12 @@ def ShowSymbols(Symbols):
       print "  Relation to standard setting:", Q
   print "  Hall symbol:", string.strip(Symbols.Hall())
 
+def get_unitcell(SgType):
+  if (143 <= SgType.SgNumber() < 195):
+    RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 120))
+  else:
+    RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
+  return RefUnitCell.ChangeBasis(SgType.CBOp().M().as_tuple()[0])
 
 inp = GetFormData()
 
@@ -225,6 +232,35 @@ try:
       print "Change-of-basis matrix:", SgType.CBOp().M().as_xyz()
       print "               Inverse:", SgType.CBOp().InvM().as_xyz()
       print
+
+  SgType = SgOps.getSpaceGroupType(1)
+  UnitCell = get_unitcell(SgType)
+  SnapParameters = sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps)
+  WyckoffTable = sgtbx.WyckoffTable(SgType)
+  print "List of Wyckoff positions:"
+  print "</pre><table border=2 cellpadding=2>"
+  InTable = 1
+  print "<tr>"
+  print "<th>Wyckoff letter"
+  print "<th>Multiplicity"
+  print "<th>Site symmetry<br>point group type"
+  print "<th>Representative special position operator"
+  print "</tr>"
+  for WP in WyckoffTable:
+    # The site symmetry point group type is not tabulated.
+    # Generate dummy coordinates to obtain it the indirectly using
+    # the SpecialPosition class.
+    X = WP.SpecialOp().multiply((math.sqrt(2),math.sqrt(3),math.sqrt(5)))
+    SP = sgtbx.SpecialPosition(SnapParameters, X, 0, 1)
+    assert SP.DistanceMoved2() < 1.e-5
+    WMap = WyckoffTable.getWyckoffMapping(SP)
+    assert WMap.WP().Letter() == WP.Letter()
+    print "<tr>"
+    print "<td>%s<td>%d<td>%s<td><tt>%s</tt>" % (
+      WP.Letter(), WP.M(), SP.getPointGroupType(), str(WP.SpecialOp()))
+    print "</tr>"
+  print "</table><pre>"
+  InTable = 0
 
 # Not implemented.
 #  print "Additional generators of Euclidean normalizer:"
