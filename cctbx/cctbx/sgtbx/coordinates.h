@@ -23,7 +23,7 @@ namespace sgtbx {
 
   namespace detail {
 
-    TrVec getUnitShifts(const coordinates::fractional<double>& Delta);
+    TrVec getUnitShifts(const fractional<double>& Delta);
     void SetUniqueOps(const SgOps& sgo,
                       const RTMx& SpecialOp,
                       std::vector<RTMx>& UniqueOps);
@@ -160,14 +160,14 @@ namespace sgtbx {
                     examples/python/generate_hklf.py
        */
       SpecialPosition(const SpecialPositionSnapParameters& params,
-                      const coordinates::fractional<double>& X,
+                      const fractional<double>& X,
                       bool auto_expand = false);
       //! Retrieve the original coordinates (X in the constructor).
-      inline const coordinates::fractional<double>& OriginalPosition() const {
+      inline const fractional<double>& OriginalPosition() const {
         return m_OriginalPosition;
       }
       //! Exact location of the special position.
-      inline const coordinates::fractional<double>& SnapPosition() const {
+      inline const fractional<double>& SnapPosition() const {
         return m_SnapPosition;
       }
       //! Distance squared between OriginalPosition() and SnapPosition().
@@ -252,8 +252,8 @@ namespace sgtbx {
       friend class WyckoffTable;
       void BuildSpecialOp();
       const SpecialPositionSnapParameters& m_Parameters;
-      const coordinates::fractional<double> m_OriginalPosition;
-      coordinates::fractional<double> m_SnapPosition;
+      const fractional<double> m_OriginalPosition;
+      fractional<double> m_SnapPosition;
       double m_ShortestDistance2;
       int m_M;
       RTMx m_SpecialOp;
@@ -371,8 +371,8 @@ namespace sgtbx {
           is useful for repeated, efficient computation of
           symmetry mates.
        */
-      inline coordinates::fractional<double>
-      snap_to_representative(const coordinates::fractional<double>& X) const {
+      inline fractional<double>
+      snap_to_representative(const fractional<double>& X) const {
         return (*m_WP).SpecialOp() * (m_Mapping * X);
       }
       //! Exact location of the special position.
@@ -380,8 +380,8 @@ namespace sgtbx {
           <p>
           Formula used: Mapping().inverse() * WP().SpecialOp() * Mapping() * X
        */
-      inline coordinates::fractional<double>
-      snap(const coordinates::fractional<double>& X) const {
+      inline fractional<double>
+      snap(const fractional<double>& X) const {
         return    m_Mapping.inverse_with_cancel()
                * ((*m_WP).SpecialOp() * (m_Mapping * X));
       }
@@ -478,7 +478,7 @@ namespace sgtbx {
           Usage:<pre>
           uctbx::UnitCell uc = ...;
           sgtbx::SgOps sgo = ...;
-          coordinates::fractional<double> X = ...;
+          fractional<double> X = ...;
           SpecialPositionSnapParameters SnapParameters(uc, sgo);
           SpecialPosition SP = SpecialPosition(SnapParameters, X);
           WyckoffMapping WM = getWyckoffMapping(SP);</pre>
@@ -492,7 +492,7 @@ namespace sgtbx {
       const WyckoffMapping
       getWyckoffMapping(const uctbx::UnitCell& uc,
                         const SgOps& sgo,
-                        const coordinates::fractional<double>& X,
+                        const fractional<double>& X,
                         double SnapRadius = 0.5) const;
     private:
       void InitializeOperations(const SpaceGroupType& SgType);
@@ -506,7 +506,7 @@ namespace sgtbx {
       /*! See class SpecialPositionSnapParameters for details.
        */
       SymEquivCoordinates(const SpecialPositionSnapParameters& params,
-                          const coordinates::fractional<double>& X);
+                          const fractional<double>& X);
       //! Compute symmetry equivalent coordinates using a robust algorithm.
       /*! See class SpecialPosition for details.
           <p>
@@ -522,7 +522,7 @@ namespace sgtbx {
           by calling WyckoffTable::expand().
        */
       SymEquivCoordinates(const WyckoffMapping& WM,
-                          const coordinates::fractional<double>& X);
+                          const fractional<double>& X);
       //! Compute symmetry equivalent coordinates using a WyckoffPosition.
       /*! See class WyckoffMapping for details. If X is known to be
           close to the representative Wyckoff position, the
@@ -538,7 +538,7 @@ namespace sgtbx {
           when calling getSpaceGroupType().
        */
       SymEquivCoordinates(const WyckoffPosition& WP,
-                          const coordinates::fractional<double>& X);
+                          const fractional<double>& X);
       //! Compute symmetry equivalent coordinates using simple distance calculations.
       /*! See class SpecialPositionTolerances for details.
           <p>
@@ -550,7 +550,7 @@ namespace sgtbx {
           is only marginally slower.
        */
       SymEquivCoordinates(const SpecialPositionTolerances& params,
-                          const coordinates::fractional<double>& X);
+                          const fractional<double>& X);
       //! Compute symmetry equivalent coordinates without treatment of special positions.
       /*! The symmetry operations are applied to X. Duplicates on
           special positions are not removed. The multiplicty M() will
@@ -561,21 +561,21 @@ namespace sgtbx {
           as a weight in structure factor calculations.
        */
       SymEquivCoordinates(const SgOps& sgo,
-                          const coordinates::fractional<double>& X);
+                          const fractional<double>& X);
       //! Number of symmetry equivalent coordinates (multiplicity).
       inline int M() const { return m_Coordinates.size(); }
       //! Return the i'th symmetry equivalent coordinate.
       /*! i must be in the range [0,M()[. No range checking is
           performed for maximal performance.
        */
-      inline const coordinates::fractional<double>&
+      inline const fractional<double>&
       operator[](std::size_t i) const {
         return m_Coordinates[i];
       }
       //! Return the i'th symmetry equivalent coordinate.
       /*! An exception is thrown if i is out of range.
        */
-      inline const coordinates::fractional<double>&
+      inline const fractional<double>&
       operator()(std::size_t i) const {
         if (i >= M()) throw error_index();
         return m_Coordinates[i];
@@ -586,14 +586,14 @@ namespace sgtbx {
        */
       double
       getShortestDistance2(const uctbx::UnitCell& uc,
-                           const coordinates::fractional<double>& Y) const;
+                           const fractional<double>& Y) const;
       //! Shortest distance between the symmetry mates of X and Y.
       /*! Determine the shortest distance between Y and the symmetry
           mates in the internal table.
        */
       inline double
       getShortestDistance(const uctbx::UnitCell& uc,
-                          const coordinates::fractional<double>& Y) const {
+                          const fractional<double>& Y) const {
         return std::sqrt(getShortestDistance2(uc, Y));
       }
       //! Compute Sum(exp(2 pi i H X)) for all symmetry equivalent X.
@@ -603,7 +603,7 @@ namespace sgtbx {
       std::complex<double> StructureFactor(const Miller::Index& H) const;
 
     private:
-      std::vector<coordinates::fractional<double> > m_Coordinates;
+      std::vector<fractional<double> > m_Coordinates;
   };
 
 } // namespace sgtbx

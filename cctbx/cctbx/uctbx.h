@@ -168,14 +168,14 @@ namespace uctbx {
       inline const Mx33& getOrthogonalizationMatrix() const { return Orth; }
       //! Converts cartesian coordinates Xc to fractional coordinates.
       template <class T>
-      inline coordinates::fractional<T>
-      fractionalize(const coordinates::cartesian<T>& Xc) const {
+      inline fractional<T>
+      fractionalize(const cartesian<T>& Xc) const {
         return Frac * Xc;
       }
       //! Converts fractional coordinates Xf to cartesian coordinates.
       template <class T>
-      inline coordinates::cartesian<T>
-      orthogonalize(const coordinates::fractional<T>& Xf) const {
+      inline cartesian<T>
+      orthogonalize(const fractional<T>& Xf) const {
         return Orth * Xf;
       }
       //@}
@@ -184,25 +184,25 @@ namespace uctbx {
       //@{
       //! Length squared of vector.
       template <class T>
-      inline T Length2(const coordinates::fractional<T>& Xf) const {
+      inline T Length2(const fractional<T>& Xf) const {
         return orthogonalize(Xf).Length2();
       }
       //! Length of vector.
       template <class T>
-      inline T Length(const coordinates::fractional<T>& Xf) const {
+      inline T Length(const fractional<T>& Xf) const {
         return std::sqrt(Length2(Xf));
       }
       //! Distance squared.
       template <class T>
-      inline T Distance2(const coordinates::fractional<T>& Xf,
-                         const coordinates::fractional<T>& Yf) const {
-        return Length2(coordinates::fractional<T>(Xf - Yf));
+      inline T Distance2(const fractional<T>& Xf,
+                         const fractional<T>& Yf) const {
+        return Length2(fractional<T>(Xf - Yf));
       }
       //! Distance.
       template <class T>
-      inline T Distance(const coordinates::fractional<T>& Xf,
-                        const coordinates::fractional<T>& Yf) const {
-        return Length(coordinates::fractional<T>(Xf - Yf));
+      inline T Distance(const fractional<T>& Xf,
+                        const fractional<T>& Yf) const {
+        return Length(fractional<T>(Xf - Yf));
       }
       //@}
 

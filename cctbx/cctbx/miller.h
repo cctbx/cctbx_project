@@ -104,7 +104,7 @@ namespace cctbx {
     //! Multiplication of Miller indices and fractional coordiantes.
     template <class T>
     inline T
-    operator*(const Index& lhs, const coordinates::fractional<T>& rhs) {
+    operator*(const Index& lhs, const fractional<T>& rhs) {
       double result = 0.;
       for(std::size_t i=0;i<3;i++) result += lhs[i] * rhs[i];
       return result;

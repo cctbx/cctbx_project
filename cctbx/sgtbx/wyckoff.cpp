@@ -2237,10 +2237,10 @@ namespace sgtbx {
   const WyckoffMapping
   WyckoffTable::getWyckoffMapping(const uctbx::UnitCell& uc,
                                   const SgOps& sgo,
-                                  const coordinates::fractional<double>& X,
+                                  const fractional<double>& X,
                                   double SnapRadius) const
   {
-    coordinates::fractional<double> NormX = X.ModShort();
+    fractional<double> NormX = X.ModShort();
     TrVec NormU = detail::getUnitShifts(NormX - X);
     for (std::size_t iWP = N() - 1; iWP > 0; iWP--) {
       WyckoffMapping result;
@@ -2248,15 +2248,13 @@ namespace sgtbx {
       for (int iOp = 0; iOp < sgo.OrderZ(); iOp++) {
         RTMx SymOp = sgo(iOp);
         SymOp.ModShort();
-        coordinates::fractional<double> SX = SymOp * NormX;
+        fractional<double> SX = SymOp * NormX;
         TrVec U(1);
         for (U[0] = -1; U[0] <= 1; U[0]++)
         for (U[1] = -1; U[1] <= 1; U[1]++)
         for (U[2] = -1; U[2] <= 1; U[2]++) {
-          coordinates::fractional<double>
-          USX = SX + U;
-          coordinates::fractional<double>
-          SnappedUSX = m_Operations[iWP].SpecialOp() * USX;
+          fractional<double> USX = SX + U;
+          fractional<double> SnappedUSX = m_Operations[iWP].SpecialOp() * USX;
           double Dist2 = uc.Distance2(SnappedUSX, USX);
           if (ShortestDistance2 > Dist2) {
             ShortestDistance2 = Dist2;

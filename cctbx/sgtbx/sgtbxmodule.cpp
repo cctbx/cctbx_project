@@ -380,14 +380,14 @@ namespace {
   WyckoffTable_getWyckoffMapping_3(const WyckoffTable& WTab,
                                    const uctbx::UnitCell& uc,
                                    const SgOps& sgo,
-                                   const coordinates::fractional<double>& X) {
+                                   const fractional<double>& X) {
     return WTab.getWyckoffMapping(uc, sgo, X);
   }
   WyckoffMapping
   WyckoffTable_getWyckoffMapping_4(const WyckoffTable& WTab,
                                    const uctbx::UnitCell& uc,
                                    const SgOps& sgo,
-                                   const coordinates::fractional<double>& X,
+                                   const fractional<double>& X,
                                    double SnapRadius) {
     return WTab.getWyckoffMapping(uc, sgo, X, SnapRadius);
   }
@@ -403,7 +403,7 @@ namespace {
     }
   }
 
-  coordinates::fractional<double>
+  fractional<double>
   SymEquivCoordinates_getitem(const SymEquivCoordinates& SEC,
                               std::size_t key) {
     try {
@@ -733,10 +733,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
     py_SpecialPosition.def(
       constructor<const SpecialPositionSnapParameters&,
-      const coordinates::fractional<double>&>());
+      const fractional<double>&>());
     py_SpecialPosition.def(
       constructor<const SpecialPositionSnapParameters&,
-      const coordinates::fractional<double>&,
+      const fractional<double>&,
                                        bool>());
     py_SpecialPosition.def(&SpecialPosition::OriginalPosition,
                                             "OriginalPosition");
@@ -761,20 +761,20 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
     py_SymEquivCoordinates.def(
       constructor<const SpecialPositionSnapParameters&,
-                  const coordinates::fractional<double>&>());
+                  const fractional<double>&>());
     py_SymEquivCoordinates.def(constructor<const SpecialPosition&>());
     py_SymEquivCoordinates.def(
       constructor<const WyckoffMapping&,
-      const coordinates::fractional<double>&>());
+      const fractional<double>&>());
     py_SymEquivCoordinates.def(
       constructor<const WyckoffPosition&,
-      const coordinates::fractional<double>&>());
+      const fractional<double>&>());
     py_SymEquivCoordinates.def(
       constructor<const SpecialPositionTolerances&,
-      const coordinates::fractional<double>&>());
+      const fractional<double>&>());
     py_SymEquivCoordinates.def(
       constructor<const SgOps&,
-      const coordinates::fractional<double>&>());
+      const fractional<double>&>());
     py_SymEquivCoordinates.def(&SymEquivCoordinates::M, "M");
     py_SymEquivCoordinates.def(&SymEquivCoordinates::operator(), "__call__");
     py_SymEquivCoordinates.def(&SymEquivCoordinates::M, "__len__");

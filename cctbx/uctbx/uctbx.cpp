@@ -166,7 +166,7 @@ namespace uctbx {
     for (Corner[0] = 0; Corner[0] <= 1; Corner[0]++)
     for (Corner[1] = 0; Corner[1] <= 1; Corner[1]++)
     for (Corner[2] = 0; Corner[2] <= 1; Corner[2]++) {
-      coordinates::fractional<double> Frac;
+      fractional<double> Frac;
       for(std::size_t i=0;i<3;i++) Frac[i] = Corner[i];
       double Cart2 = orthogonalize(Frac).Length2();
       if (LongestVector2 < Cart2) LongestVector2 = Cart2;
