@@ -1,39 +1,40 @@
 SConscript("build/SConscript")
-import os, os.path
 Import("env_base", "env_etc")
-env = env_base.Copy(
-  CPPPATH=[env_etc.boost_include, env_etc.python_include],
-  LIBS=env_etc.libs_python,
-  LIBPATH=env_etc.libpath_python,
-)
-env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
-env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
-env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
-env.Replace(CXXFLAGS=env_etc.cxxflags_base)
-env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
-env.Replace(LINKFLAGS=env_etc.shlinkflags)
+if (not env_etc.no_boost_python):
+  import os, os.path
+  env = env_base.Copy(
+    CPPPATH=[env_etc.boost_include, env_etc.python_include],
+    LIBS=env_etc.libs_python,
+    LIBPATH=env_etc.libpath_python,
+  )
+  env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
+  env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+  env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
+  env.Replace(CXXFLAGS=env_etc.cxxflags_base)
+  env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+  env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  env.Replace(LINKFLAGS=env_etc.shlinkflags)
 
-jamfile_path = os.path.normpath(os.path.join(
-  os.environ["LIBTBX_BOOST"], "libs/python/build/Jamfile"))
-jamfile_lines = [
-  line.strip() for line in open(str(jamfile_path), "r").readlines()]
-for i in xrange(len(jamfile_lines)):
-  line = jamfile_lines[i]
-  if (line == "dll boost_python"):
-    assert jamfile_lines[i+1] == ":"
-    jamfile_lines = jamfile_lines[i+2:]
-    break
-bpl_dll_sources = []
-for i in xrange(len(jamfile_lines)):
-  line = jamfile_lines[i]
-  if (line == ":"): break
-  if (line):
-    bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
-assert len(bpl_dll_sources) > 0
+  jamfile_path = os.path.normpath(os.path.join(
+    os.environ["LIBTBX_BOOST"], "libs/python/build/Jamfile"))
+  jamfile_lines = [
+    line.strip() for line in open(str(jamfile_path), "r").readlines()]
+  for i in xrange(len(jamfile_lines)):
+    line = jamfile_lines[i]
+    if (line == "dll boost_python"):
+      assert jamfile_lines[i+1] == ":"
+      jamfile_lines = jamfile_lines[i+2:]
+      break
+  bpl_dll_sources = []
+  for i in xrange(len(jamfile_lines)):
+    line = jamfile_lines[i]
+    if (line == ":"): break
+    if (line):
+      bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
+  assert len(bpl_dll_sources) > 0
 
-if (env_etc.static_bpl):
-  env.StaticLibrary(target="boost_python", source=bpl_dll_sources)
-else:
-  env.SharedLibrary(target="boost_python", source=bpl_dll_sources)
+  if (env_etc.static_bpl):
+    env.StaticLibrary(target="boost_python", source=bpl_dll_sources)
+  else:
+    env.SharedLibrary(target="boost_python", source=bpl_dll_sources)

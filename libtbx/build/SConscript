@@ -28,6 +28,7 @@ def norm_join(head, tail):
 
 env_etc = empty()
 env_etc.compiler = ARGUMENTS.get("compiler", 0)
+env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
 
@@ -147,8 +148,8 @@ else:
         -fno-common
         -no-cpp-precomp
         -ftemplate-depth-50
-        -w
-        -g
+        -Wno-long-double
+        -g -O0 -fno-inline
         -DNDEBUG
     """)
     env_etc.shlinkflags = "-dynamiclib"
