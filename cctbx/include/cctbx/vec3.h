@@ -42,6 +42,7 @@ namespace cctbx {
         : base_type(a)
       {}
       //! Constructor.
+      explicit
       vec3(const NumType* a)
       {
         for(std::size_t i=0;i<3;i++) this->elems[i] = a[i];
