@@ -181,7 +181,7 @@ else:
       CC="cc",
       SHCC="cc",
       CXX=cxx,
-      LINK=[cxx, "-LD_MSG:off=15,84"],
+      LINK=cxx+" -LD_MSG:off=15,84",
       SHCXX=cxx,
       SHLINK=cxx,
     )
