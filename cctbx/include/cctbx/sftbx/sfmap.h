@@ -511,7 +511,7 @@ namespace cctbx { namespace sftbx {
     const af::const_ref<std::complex<FloatType> >& complex_map,
     const IndexType& n_complex,
     bool friedel_flag,
-    bool conjugate = true)
+    bool conjugate)
   {
     // XXX assert that complex_map is big enough
     sgtbx::ReciprocalSpaceASU asu(sginfo);
