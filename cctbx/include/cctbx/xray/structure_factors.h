@@ -44,6 +44,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       f_t two_pi(scitbx::constants::two_pi);
       if (d_site_flag) d_target_d_site.fill(0);
       if (d_u_star_flag) d_target_d_u_star.fill(0);
+      fractional<float_type> dtds_term;
       scitbx::sym_mat3<f_t> dw_coeff;
       f_t f0 = scatterer.caasf.at_d_star_sq(d_star_sq);
       f0_fp_fdp = f0 + scatterer.fp_fdp;
@@ -57,6 +58,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             hr, scitbx::type_holder<f_t>());
         }
         c_t sum_inv(0,0);
+        if (d_site_flag) dtds_term.fill(0);
         for(std::size_t i=0;i<space_group.f_inv();i++) {
           if (i) {
             hr = -hr;
@@ -75,7 +77,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             f_t c = d_target_d_f_calc->imag() * f.real()
                   - d_target_d_f_calc->real() * f.imag();
             for(std::size_t i=0;i<3;i++) {
-              d_target_d_site[i] += hr[i] * c;
+              dtds_term[i] += hr[i] * c;
             }
           }
           sum_inv += sum_ltr;
@@ -83,8 +85,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
         if (scatterer.anisotropic_flag) {
           f_t dw = adptbx::debye_waller_factor_u_star(hr, scatterer.u_star);
           sum_inv *= dw;
-          if (d_site_flag) d_target_d_site *= dw;
+          if (d_site_flag) dtds_term *= dw;
         }
+        if (d_site_flag) d_target_d_site += dtds_term;
         if (d_u_star_flag) {
           c_t f = f0_fp_fdp_w * sum_inv;
           f_t c = d_target_d_f_calc->real() * f.real()
