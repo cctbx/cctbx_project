@@ -287,13 +287,23 @@ class stage_1:
         special_position_settings=None,
         crystal_symmetry=None,
         force_symmetry=False,
-        discard_atoms_with_unknown_scattering_type=False,
         sites_cart=None,
         sites_frac=None,
         scattering_types=None,
-        infer_scattering_types_from_names=False):
+        infer_scattering_types_from_names=False,
+        unknown_scattering_type_substitute=None):
     assert sites_cart is None or sites_frac is None
     if (infer_scattering_types_from_names): assert scattering_types is None
+    if (    unknown_scattering_type_substitute is not None
+        and unknown_scattering_type_substitute not in ["", "?"]):
+      try:
+        unknown_scattering_type_substitute = eltbx.xray_scattering.it1992(
+          unknown_scattering_type_substitute, True).label()
+      except:
+        raise RuntimeError(
+            'unknown_scattering_type_substitute="%s"'
+           % unknown_scattering_type_substitute
+          + ' is not a valid scattering type label.')
     special_position_settings = self.get_special_position_settings(
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
@@ -308,30 +318,31 @@ class stage_1:
       sites_frac = result.unit_cell().fractionalization_matrix() * sites_cart
     if (scattering_types is None):
       scattering_types = self.get_element_symbols(strip_symbols=True)
-    for i_seq,atom,site_frac,scattering_type in zip(
-          count(),
+    for atom,site_frac,scattering_type in zip(
           self.atom_attributes_list,
           sites_frac,
           scattering_types):
+      exact_scattering_type = True
       if (scattering_type == ""
           and infer_scattering_types_from_names):
         scattering_type = atom.name
         if (scattering_type[0] in "0123456789"):
           scattering_type = scattering_type[1:]
+        exact_scattering_type = False
       try:
         scattering_type = eltbx.xray_scattering.it1992(
-          scattering_type, False).label()
+          scattering_type, exact_scattering_type).label()
       except RuntimeError:
-        if (discard_atoms_with_unknown_scattering_type):
-          continue
-        raise RuntimeError("Unknown scattering type: %s" % str(atom))
+        if (unknown_scattering_type_substitute is None):
+          raise RuntimeError("Unknown scattering type: %s" % str(atom))
+        scattering_type = unknown_scattering_type_substitute
       if (atom.Ucart is None):
         u = adptbx.b_as_u(atom.tempFactor)
       else:
         u = adptbx.u_cart_as_u_star(result.unit_cell(), atom.Ucart)
       result.add_scatterer(
         scatterer=xray.scatterer(
-          label=str(i_seq),
+          label=atom.pdb_format(),
           site=site_frac,
           u=u,
           occupancy=atom.occupancy,
