@@ -67,6 +67,7 @@ def Write_SHELX_LATT_SYMM(SgOps):
       print "SHELX manual: If the structure is centrosymmetric, the"
       print "              origin MUST lie on a center of symmetry."
       return
+  else:
     LATT_N = -LATT_N;
 
   print "LATT", LATT_N
