@@ -611,13 +611,13 @@ class variable_substitution_proxy(object):
         c = char_iter.next()
         if (c is None):
           word.raise_syntax_error("$ must be followed by an identifier: ")
-        if (c == "("):
+        if (c == "{"):
           self.force_string = True
           while True:
             c = char_iter.next()
             if (c is None):
-              word.raise_syntax_error('missing ")": ')
-            if (c == ")"):
+              word.raise_syntax_error('missing "}": ')
+            if (c == "}"):
               c = char_iter.next()
               break
             fragment_value += c

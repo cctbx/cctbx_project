@@ -538,13 +538,13 @@ c $a $b.d
 d $a \$b
 answer yes no
 e "$a"
-f $(a)
-g abc$(answer)bc
-h abc$(answer)bc 12$answer$(a)56
+f ${a}
+g abc${answer}bc
+h abc${answer}bc 12$answer${a}56
 i $
-j $(abc
-k $(1bc)
-l $()
+j ${abc
+k ${1bc}
+l ${}
 m $@
 n '$a'
 """)
@@ -565,16 +565,16 @@ n '$a'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="j")
   except RuntimeError, e:
-    assert str(e) == 'Syntax error: missing ")": "$(abc" (input line 11)'
+    assert str(e) == 'Syntax error: missing "}": "${abc" (input line 11)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="k")
   except RuntimeError, e:
-    assert str(e) == 'Syntax error: improper variable name "$(1bc)"' \
+    assert str(e) == 'Syntax error: improper variable name "${1bc}"' \
                    + ' (input line 12)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="l")
   except RuntimeError, e:
-    assert str(e)=='Syntax error: improper variable name "$()" (input line 13)'
+    assert str(e)=='Syntax error: improper variable name "${}" (input line 13)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="m")
   except RuntimeError, e:
