@@ -191,7 +191,7 @@ namespace cctbx { namespace sgtbx {
        */
       /*! \brief Union of continuous_shifts() != 0. Intended to
           be used only if continuous_shifts_are_principal(), but
-          this is not enforced.
+          this is enforced only if assert_principal == true.
        */
       af::tiny<bool, 3>
       continuous_shift_flags(bool assert_principal=true) const
