@@ -116,6 +116,7 @@ class xray_structure(xray.structure):
 
   def __init__(self,
                space_group_info,
+               unit_cell=None,
                elements=None,
                n_scatterers=None,
                volume_per_atom=50.,
@@ -135,14 +136,16 @@ class xray_structure(xray.structure):
     assert elements is None or n_scatterers is None
     assert not (elements is None and n_scatterers is None)
     adopt_init_args(self, locals(),
-      exclude=("space_group_info", "min_distance_sym_equiv"))
+      exclude=("space_group_info", "unit_cell", "min_distance_sym_equiv"))
     if (elements is not None):
       self.n_scatterers = len(elements)
-    crystal_symmetry = crystal.symmetry(
-      space_group_info.any_compatible_unit_cell(
+    if (unit_cell is None):
+      unit_cell = space_group_info.any_compatible_unit_cell(
         self.n_scatterers
         * volume_per_atom
-        * space_group_info.group().order_z()),
+        * space_group_info.group().order_z())
+    crystal_symmetry = crystal.symmetry(
+      unit_cell=unit_cell,
       space_group_info=space_group_info)
     if (min_distance_sym_equiv is None):
       min_distance_sym_equiv = min_distance
