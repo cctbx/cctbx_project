@@ -375,6 +375,7 @@ class set(crystal.symmetry):
 
   def crystal_gridding(self, resolution_factor=1/3.,
                              d_min=None,
+                             grid_step=None,
                              symmetry_flags=None,
                              mandatory_factors=None,
                              max_prime=5,
@@ -384,6 +385,7 @@ class set(crystal.symmetry):
       unit_cell=self.unit_cell(),
       d_min=d_min,
       resolution_factor=resolution_factor,
+      step=grid_step,
       symmetry_flags=symmetry_flags,
       space_group_info=self.space_group_info(),
       mandatory_factors=mandatory_factors,
@@ -1145,6 +1147,7 @@ class array(set):
 
   def fft_map(self, resolution_factor=1/3.,
                     d_min=None,
+                    grid_step=None,
                     symmetry_flags=None,
                     mandatory_factors=None,
                     max_prime=5,
@@ -1152,8 +1155,9 @@ class array(set):
                     f_000=None):
     return fft_map(
       crystal_gridding=self.crystal_gridding(
-        resolution_factor=resolution_factor,
         d_min=d_min,
+        resolution_factor=resolution_factor,
+        grid_step=grid_step,
         symmetry_flags=symmetry_flags,
         mandatory_factors=mandatory_factors,
         max_prime=max_prime,
