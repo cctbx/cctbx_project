@@ -236,7 +236,7 @@ namespace cctbx { namespace xray {
         :
           exp_table_(&exp_table),
           anisotropic_flag_(false),
-          n_rho_real_terms(gaussian.n_ab()+1)
+          n_rho_real_terms(gaussian.n_ab())
         {
           FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
           std::size_t i = 0;
@@ -248,6 +248,7 @@ namespace cctbx { namespace xray {
           isotropic_3d_gaussian_fourier_transform(
             w * (gaussian.c() + fp), b_incl_extra,
             as_real_[i], bs_real_[i]);
+          if (as_real_[i] != 0) n_rho_real_terms++;
           isotropic_3d_gaussian_fourier_transform(
             w * fdp, b_incl_extra,
             as_imag_, bs_imag_);
@@ -264,7 +265,7 @@ namespace cctbx { namespace xray {
         :
           exp_table_(&exp_table),
           anisotropic_flag_(true),
-          n_rho_real_terms(gaussian.n_ab()+1)
+          n_rho_real_terms(gaussian.n_ab())
         {
           std::size_t i = 0;
           for(;i<gaussian.n_ab();i++) {
@@ -277,6 +278,7 @@ namespace cctbx { namespace xray {
             w * (gaussian.c() + fp),
             compose_anisotropic_b_all(0, u_extra, u_cart),
             as_real_[i], aniso_bs_real_[i]);
+          if (as_real_[i] != 0) n_rho_real_terms++;
           anisotropic_3d_gaussian_fourier_transform(
             w * fdp,
             compose_anisotropic_b_all(0, u_extra, u_cart),

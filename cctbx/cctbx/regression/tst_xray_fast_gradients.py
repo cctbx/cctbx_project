@@ -8,6 +8,7 @@ from cctbx import adptbx
 from cctbx import matrix
 from cctbx.array_family import flex
 from cctbx.regression.tst_xray_derivatives import linear_regression_test
+from cctbx.regression.tst_sampled_model_density import assign_custom_gaussians
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.test_utils import approx_equal
 from scitbx import fftpack
@@ -603,6 +604,10 @@ def exercise_gradient_manager(structure_ideal, f_obs,
 
 def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
             anomalous_flag=0, anisotropic_flag=0, verbose=0):
+  if (random.random() < 0.5):
+    random_f_prime_scale=0.6
+  else:
+    random_f_prime_scale=0
   structure_ideal = random_structure.xray_structure(
     space_group_info,
     elements=(("C","N","O")*(n_elements/3+1))[:n_elements],
@@ -610,13 +615,15 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     min_distance=5,
     general_positions_only=1,
     random_f_prime_d_min=d_min-1,
-    random_f_prime_scale=0.6,
+    random_f_prime_scale=random_f_prime_scale,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
     random_u_iso=0001,
     random_u_iso_scale=.3,
     random_u_cart_scale=.3,
     random_occupancy=0001)
+  if (random.random() < 0.5):
+    assign_custom_gaussians(structure_ideal)
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
     if (anisotropic_flag):

@@ -1,5 +1,7 @@
 from cctbx import xray
 from cctbx import maptbx
+import cctbx.eltbx.xray_scattering
+from cctbx import eltbx
 from cctbx.development import random_structure
 from cctbx.development import structure_factor_utils
 from cctbx.development import debug_utils
@@ -7,6 +9,25 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 import random
 import sys
+
+def assign_custom_gaussians(structure):
+  custom_gaussians = {
+    "N": eltbx.xray_scattering.gaussian(
+      (11.893779754638672, 3.2774789333343506),
+      (0.00015799999528098851, 10.232723236083984), 0),
+    "C": eltbx.xray_scattering.gaussian(
+      (2.657505989074707, 1.0780789852142334, 1.4909089803695679),
+      (14.780757904052734, 0.77677500247955322, 42.086841583251953), 0),
+  }
+  d = structure.scattering_dict(custom_dict=custom_gaussians).dict()
+  assert d["N"].gaussian.n_ab() == 2
+  assert d["N"].gaussian.c() == 0
+  assert d["C"].gaussian.n_ab() == 3
+  assert d["C"].gaussian.c() == 0
+  assert d["O"].gaussian.n_ab() == 5
+  assert d["O"].gaussian.c() != 0
+  d = structure.scattering_dict().dict()
+  assert d["N"].gaussian.n_ab() == 2
 
 def exercise(space_group_info, const_gaussian,
              anomalous_flag, anisotropic_flag,
@@ -19,15 +40,21 @@ def exercise(space_group_info, const_gaussian,
     elements=["const"]*8
   else:
     elements=["N", "C", "C", "O", "N", "C", "C", "O"]
+  if (random.random() < 0.5):
+    random_f_prime_scale=0.6
+  else:
+    random_f_prime_scale=0
   structure = random_structure.xray_structure(
     space_group_info,
     elements=elements,
     random_f_prime_d_min=1,
+    random_f_prime_scale=random_f_prime_scale,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
     random_u_iso=0001,
-    random_occupancy=0001
-    )
+    random_occupancy=0001)
+  if (not const_gaussian and random.random() < 0.5):
+    assign_custom_gaussians(structure)
   f_direct = structure.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
