@@ -44,6 +44,7 @@ namespace cctbx {
                                                bool FriedelFlag,
                                                double Resolution_d_min)
       : m_UnitCell(uc),
+        m_SgNumber(SgInfo.SgNumber()),
         m_SgOps(SgInfo.SgOps()),
         m_FriedelFlag(FriedelFlag),
         m_ASU(SgInfo)
@@ -61,6 +62,7 @@ namespace cctbx {
                                                bool FriedelFlag,
                                                const Miller::Index& MaxIndex)
       : m_UnitCell(),
+        m_SgNumber(SgInfo.SgNumber()),
         m_SgOps(SgInfo.SgOps()),
         m_FriedelFlag(FriedelFlag),
         m_ASU(SgInfo),
@@ -69,7 +71,7 @@ namespace cctbx {
       InitializeLoop(Miller::Index(af::abs(MaxIndex)));
     }
 
-    bool MillerIndexGenerator::set_sys_abs_test(const Miller::Index& h)
+    bool MillerIndexGenerator::set_phase_info(const Miller::Index& h)
     {
       m_phase_info = PhaseInfo(m_SgOps, h, false);
       return m_phase_info.isSysAbsent();
@@ -84,13 +86,13 @@ namespace cctbx {
         if (m_ASU.ReferenceASU()->isInASU(ReferenceH)) {
           if (m_ASU.isReferenceASU()) {
             if (m_Qhigh < 0.) {
-              if (!ReferenceH.is000() && !set_sys_abs_test(ReferenceH)) {
+              if (!ReferenceH.is000() && !set_phase_info(ReferenceH)) {
                 return ReferenceH;
               }
             }
             else {
               double Q = m_UnitCell.Q(ReferenceH);
-              if (Q != 0 && Q <= m_Qhigh && !set_sys_abs_test(ReferenceH)) {
+              if (Q != 0 && Q <= m_Qhigh && !set_phase_info(ReferenceH)) {
                 return ReferenceH;
               }
             }
@@ -101,13 +103,13 @@ namespace cctbx {
             if (HR.BF() == 1) {
               Miller::Index H(HR.vec());
               if (m_Qhigh < 0.) {
-                if (!H.is000() && !set_sys_abs_test(H)) {
+                if (!H.is000() && !set_phase_info(H)) {
                   return H;
                 }
               }
               else {
                 double Q = m_UnitCell.Q(H);
-                if (Q != 0 && Q <= m_Qhigh && !set_sys_abs_test(H)) {
+                if (Q != 0 && Q <= m_Qhigh && !set_phase_info(H)) {
                   return H;
                 }
               }
@@ -126,7 +128,21 @@ namespace cctbx {
         return -m_previous;
       }
       m_previous = next_under_friedel_symmetry();
+      if (m_previous.is000()) return m_previous;
       m_next_is_minus_previous = !m_phase_info.isCentric();
+      if (m_next_is_minus_previous && 143 <= m_SgNumber && m_SgNumber <= 167) {
+        // For trigonal space groups it has to be checked if a symmetrically
+        // equivalent index of the Friedel opposite is in the ASU.
+        cctbx_assert(!m_SgOps.isCentric());
+        Miller::Index minus_h = -m_previous;
+        for(int i=0;i<m_SgOps.nSMx();i++) {
+          Miller::Index minus_h_eq = minus_h * m_SgOps[i].Rpart();
+          if (m_ASU.isInASU(minus_h_eq)) {
+            m_next_is_minus_previous = false;
+            break;
+          }
+        }
+      }
       return m_previous;
     }
 
