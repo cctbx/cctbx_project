@@ -59,7 +59,7 @@ namespace {
           (std::complex<double>(w_t::*)(std::complex<double> const&) const)
           &w_t::complex_eq)
         .def("complex_in",
-          (std::complex<double>(w_t::*)(std::complex<double>) const)
+          (std::complex<double>(w_t::*)(std::complex<double> const&) const)
           &w_t::complex_in)
         .def("hendrickson_lattman_eq",
           (h_l(w_t::*) (h_l const&) const) &w_t::hendrickson_lattman_eq)
