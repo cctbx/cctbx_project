@@ -29,16 +29,23 @@ namespace scitbx { namespace af {
 
       flex_grid() {}
 
+      flex_grid(index_type const& grid)
+      : grid_(grid)
+      {}
+
+      template <typename OtherArrayType>
+      flex_grid(array_adaptor<OtherArrayType> const& a_a)
+      : grid_(a_a)
+      {}
+
       flex_grid(index_value_type const& grid_0)
       :
-        origin_(1, index_value_type(0)),
         grid_(1, grid_0)
       {}
 
       flex_grid(index_value_type const& grid_0,
                 index_value_type const& grid_1)
       :
-        origin_(2, index_value_type(0)),
         grid_(1, grid_0)
       {
         grid_.push_back(grid_1);
@@ -48,7 +55,6 @@ namespace scitbx { namespace af {
                 index_value_type const& grid_1,
                 index_value_type const& grid_2)
       :
-        origin_(3, index_value_type(0)),
         grid_(1, grid_0)
       {
         grid_.push_back(grid_1);
@@ -60,7 +66,6 @@ namespace scitbx { namespace af {
                 index_value_type const& grid_2,
                 index_value_type const& grid_3)
       :
-        origin_(4, index_value_type(0)),
         grid_(1, grid_0)
       {
         grid_.push_back(grid_1);
@@ -74,7 +79,6 @@ namespace scitbx { namespace af {
                 index_value_type const& grid_3,
                 index_value_type const& grid_4)
       :
-        origin_(5, index_value_type(0)),
         grid_(1, grid_0)
       {
         grid_.push_back(grid_1);
@@ -90,7 +94,6 @@ namespace scitbx { namespace af {
                 index_value_type const& grid_4,
                 index_value_type const& grid_5)
       :
-        origin_(6, index_value_type(0)),
         grid_(1, grid_0)
       {
         grid_.push_back(grid_1);
@@ -100,30 +103,22 @@ namespace scitbx { namespace af {
         grid_.push_back(grid_5);
       }
 
-      flex_grid(index_type const& grid)
-      : origin_(grid.size(), index_value_type(0)),
-        grid_(grid)
-      {}
-
-      template <typename OtherArrayType>
-      flex_grid(array_adaptor<OtherArrayType> const& a_a)
-      : origin_((a_a.pointee)->size(), index_value_type(0)),
-        grid_(a_a)
-      {}
-
       flex_grid(index_type const& origin,
                 index_type const& last,
-                bool open_range = true)
-      : origin_(origin)
+                bool open_range=true)
+      :
+        grid_(last),
+        origin_(origin)
       {
-        SCITBX_ASSERT(origin_.size() == last.size());
-        set_grid_(origin.size(), origin.begin(), last.begin(), open_range);
+        grid_ -= origin_;
+        if (!open_range) grid_ += index_value_type(1);
       }
 
       flex_grid
-      set_layout(index_type const& layout)
+      set_layout(index_type const& layout, bool open_range=true)
       {
         layout_ = layout;
+        if (!open_range && layout_.size() > 0) layout_ += index_value_type(1);
         return *this;
       }
 
@@ -205,44 +200,70 @@ namespace scitbx { namespace af {
         return *this;
       }
 
-      std::size_t nd() const { return grid_.size(); }
+      std::size_t
+      nd() const { return grid_.size(); }
 
-      std::size_t size_1d() const
+      std::size_t
+      size_1d() const
       {
         return af::product(grid_);
       }
 
-      index_type const& origin() const { return origin_; }
+      index_type const&
+      grid() const { return grid_; }
 
-      index_type const& grid() const { return grid_; }
+      bool
+      has_origin() const { return origin_.size() != 0; }
 
-      index_type last(bool open_range = true) const
+      index_type
+      origin() const
       {
-        index_value_type incl = 1;
-        if (open_range) incl = 0;
-        index_type result = origin_;
-        for(std::size_t i=0;i<result.size();i++) {
-          result[i] += grid_[i] - incl;
-        }
+        if (has_origin()) return origin_;
+        return index_type(grid_.size(), index_value_type(0));
+      }
+
+      index_type
+      last(bool open_range=true) const
+      {
+        index_type result = origin();
+        result += grid_;
+        if (!open_range) result -= index_value_type(1);
         return result;
       }
 
-      index_type const& layout() const { return layout_; }
+      bool
+      has_layout() const { return layout_.size() != 0; }
 
-      std::size_t layout_size_1d() const
+      index_type
+      layout(bool open_range=true) const
+      {
+        if (has_layout()) {
+          index_type result = layout_;
+          if (!open_range) result -= index_value_type(1);
+          return result;
+        }
+        return last(open_range);
+      }
+
+      std::size_t
+      layout_size_1d() const
       {
         if (layout_.size() == 0) return size_1d();
-        return af::product(shift_origin().layout());
+        index_type n = layout();
+        n -= origin();
+        return af::product(n);
       }
 
-      bool is_0_based() const
+      bool
+      is_0_based() const
       {
-        return origin_.all_eq(0);
+        return !has_origin() || origin_.all_eq(0);
       }
 
-      bool is_padded() const
+      bool
+      is_padded() const
       {
-        if (layout_.size() == 0) return false;
+        if (!has_layout()) return false;
         SCITBX_ASSERT(grid_.size() == layout_.size());
         SCITBX_ASSERT(last().all_ge(layout_));
         return !last().all_eq(layout_);
@@ -252,69 +273,79 @@ namespace scitbx { namespace af {
       shift_origin() const
       {
         if (is_0_based()) return *this;
-        if (layout_.size() == 0) return flex_grid(grid_);
-        SCITBX_ASSERT(layout_.size() == origin_.size());
-        index_type result_layout = layout_; // three steps to avoid
-        result_layout -= origin_;           // gcc 2.96 internal error
+        if (!has_layout()) return flex_grid(grid_);
+        SCITBX_ASSERT(layout_.size() == grid_.size());
+        index_type result_layout = layout_; // step-wise to avoid
+        result_layout -= origin();          // gcc 2.96 internal error
         return flex_grid(grid_).set_layout(result_layout);
       }
 
-      std::size_t operator()(index_type const& i) const
-      {
-        std::size_t n = nd();
-        std::size_t result = 0;
-        if (n) {
-          for(std::size_t j=0;;) {
-            result += i[j] - origin_[j];
-            j++;
-            if (j == n) break;
-            result *= grid_[j];
-          }
-        }
-        return result;
-      }
-
-      bool is_valid_index(index_type const& i) const
+      bool
+      is_valid_index(index_type const& i) const
       {
         std::size_t n = nd();
         if (i.size() != n) return false;
-        for(std::size_t j=0;j<n;j++) {
-          if (i[j] < origin_[j] || i[j] >= (origin_[j] + grid_[j])) {
-            return false;
+        if (has_origin()) {
+          for(std::size_t j=0;j<n;j++) {
+            if (i[j] < origin_[j] || i[j] >= (origin_[j] + grid_[j])) {
+              return false;
+            }
+          }
+        }
+        else {
+          for(std::size_t j=0;j<n;j++) {
+            if (i[j] < 0 || i[j] >= grid_[j]) {
+              return false;
+            }
           }
         }
         return true;
       }
 
-      bool operator==(flex_grid<index_type> const& other) const
+      std::size_t
+      operator()(index_type const& i) const
       {
-        if (!origin_.all_eq(other.origin_)) return false;
+        std::size_t n = nd();
+        std::size_t result = 0;
+        if (n) {
+          if (has_origin()) {
+            for(std::size_t j=0;;) {
+              result += i[j] - origin_[j];
+              j++;
+              if (j == n) break;
+              result *= grid_[j];
+            }
+          }
+          else {
+            for(std::size_t j=0;;) {
+              result += i[j];
+              j++;
+              if (j == n) break;
+              result *= grid_[j];
+            }
+          }
+        }
+        return result;
+      }
+
+      bool
+      operator==(flex_grid<index_type> const& other) const
+      {
         if (!grid_.all_eq(other.grid_)) return false;
+        if (!origin_.all_eq(other.origin_)) return false;
         return layout_.all_eq(other.layout_);
       }
 
-      bool operator!=(flex_grid<index_type> const& other) const
+      bool
+      operator!=(flex_grid<index_type> const& other) const
       {
         return !(*this == other);
       }
 
     protected:
-      index_type origin_;
       index_type grid_;
+      index_type origin_;
       index_type layout_;
-
-      void set_grid_(
-        std::size_t sz,
-        const index_value_type* origin,
-        const index_value_type* last,
-        bool open_range)
-      {
-        index_value_type incl = 1;
-        if (open_range) incl = 0;
-        for(std::size_t i=0;i<sz;i++) {
-          grid_.push_back(last[i] - origin[i] + incl);
-        }
-      }
   };
 
 }} // namespace scitbx::af

@@ -12,6 +12,7 @@ flex_scitbx_pyd = env_scitbx_boost_python_ext.SharedLibrary(
   target="flex_scitbx_ext",
   source=[
   "flex_scitbx_module.cpp",
+  "flex_grid.cpp",
   "flex_bool.cpp",
   "flex_size_t.cpp",
   "flex_int.cpp",
