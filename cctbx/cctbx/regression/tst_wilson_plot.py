@@ -36,7 +36,7 @@ def exercise(space_group_info, anomalous_flag,
     print "wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b
   assert 0.6 < wp.wilson_k < 1.4
   assert 9 < wp.wilson_b < 11
-  assert wp.xy_plot_info().fit_cc == wp.fit_cc
+  assert wp.xy_plot_info().fit_correlation == wp.fit_correlation
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True):

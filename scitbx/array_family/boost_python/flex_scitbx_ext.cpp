@@ -62,7 +62,7 @@ namespace {
         .def("is_well_defined", &w_t::is_well_defined)
         .def("y_intercept", &w_t::y_intercept)
         .def("slope", &w_t::slope)
-        .def("cc", &w_t::cc)
+        .def("correlation", &w_t::correlation)
       ;
     }
   };

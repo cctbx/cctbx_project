@@ -7,8 +7,9 @@ def check_regression(x, y, label, min_correlation=0, verbose=0):
   xy_regr = flex.linear_regression(x, y)
   assert xy_regr.is_well_defined()
   if (0 or verbose):
-    print label, "cc: %.4f slope: %.3f" % (xy_regr.cc(), xy_regr.slope())
-  assert min_correlation == 0 or xy_regr.cc() >= min_correlation
+    print label, "correlation: %.4f slope: %.3f" % (
+      xy_regr.correlation(), xy_regr.slope())
+  assert min_correlation == 0 or xy_regr.correlation() >= min_correlation
 
 class collector:
 

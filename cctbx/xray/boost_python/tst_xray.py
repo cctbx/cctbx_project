@@ -184,27 +184,27 @@ def exercise_targets():
   w = flex.int((1,1,1,1,1))
   f_calc = flex.complex_double((1,2,3,4,5))
   ic = xray.targets_intensity_correlation(f_obs, w, f_calc)
-  assert approx_equal(ic.cc(), 1)
+  assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert ic.derivatives().size() == 0
   ic = xray.targets_intensity_correlation(f_obs, w, f_calc, True)
-  assert approx_equal(ic.cc(), 1)
+  assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert approx_equal(tuple(ic.derivatives()), (0j,0j,0j,0j,0j))
   ic = xray.targets_intensity_correlation(f_obs, f_calc)
-  assert approx_equal(ic.cc(), 1)
+  assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert ic.derivatives().size() == 0
   f_calc = flex.complex_double((10,20,30,40,50))
   ic = xray.targets_intensity_correlation(f_obs, f_calc, True)
-  assert approx_equal(ic.cc(), 1)
+  assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert approx_equal(tuple(ic.derivatives()), (0j,0j,0j,0j,0j))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j,5-4j,-5+6j))
   w = flex.int((1,2,3,2,4))
   ic = xray.targets_intensity_correlation(f_obs, w, f_calc, True)
-  assert approx_equal(ic.cc(), 0.8932460)
-  assert approx_equal(ic.target(), 1-ic.cc())
+  assert approx_equal(ic.correlation(), 0.8932460)
+  assert approx_equal(ic.target(), 1-ic.correlation())
   assert approx_equal(tuple(ic.derivatives()), (
     (0.002855645+0.005711291j), (0.035410006+0.047213342j),
     (0.010851453+0.021702907j), (0.005711291-0.004569033j),

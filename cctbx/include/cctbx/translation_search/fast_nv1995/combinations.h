@@ -53,14 +53,14 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       result_eq14_with_i_obs,
     af::ref<FloatTypeTarget, af::c_grid<3> > const&
       target_accu, // on input result of equation 13
-    FloatTypeTarget const& big_cc=1.e6)
+    FloatTypeTarget const& big_correlation=1.e6)
   {
     CCTBX_ASSERT(        result_eq14_with_i_obs.accessor()
                  .all_eq(target_accu.accessor()));
     typedef FloatTypeTarget f_t;
     for (std::size_t i=0;i<target_accu.size();i++) {
       f_t r14ip = result_eq14_with_i_obs[i] + interm.sum_mh_f_sq_d_i_obs;
-      if (scitbx::fn::absolute(r14ip / big_cc) < target_accu[i]) {
+      if (scitbx::fn::absolute(r14ip / big_correlation) < target_accu[i]) {
         target_accu[i] = r14ip / target_accu[i];
       }
       else {

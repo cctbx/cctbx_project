@@ -26,13 +26,14 @@ namespace scitbx { namespace math {
     FloatType const& sum_y, FloatType const& sum_y2,
     FloatType const& sum_xy)
   {
-    FloatType cc_denom2 =   (sum_x2 - sum_x * sum_x / sum_weights)
-                          * (sum_y2 - sum_y * sum_y / sum_weights);
-    FloatType cc(1);
-    if (cc_denom2 > FloatType(0)) {
-      cc = (sum_xy - sum_x * sum_y / sum_weights) / std::sqrt(cc_denom2);
+    FloatType correlation_denom2 = (sum_x2 - sum_x * sum_x / sum_weights)
+                                 * (sum_y2 - sum_y * sum_y / sum_weights);
+    FloatType correlation(1);
+    if (correlation_denom2 > FloatType(0)) {
+      correlation = (sum_xy - sum_x * sum_y / sum_weights)
+                  / std::sqrt(correlation_denom2);
     }
-    return cc;
+    return correlation;
   }
 
   template <typename FloatType = double,
@@ -47,7 +48,7 @@ namespace scitbx { namespace math {
       reset()
       {
         is_well_defined_ = false;
-        y_intercept_ = slope_ = cc_ = FloatType(0);
+        y_intercept_ = slope_ = correlation_ = FloatType(0);
       }
 
       void
@@ -80,13 +81,13 @@ namespace scitbx { namespace math {
 
       //! Standard linear correlation coefficient.
       FloatType
-      cc() const { return cc_; }
+      correlation() const { return correlation_; }
 
     protected:
       bool is_well_defined_;
       FloatType y_intercept_;
       FloatType slope_;
-      FloatType cc_;
+      FloatType correlation_;
   };
 
   template <typename FloatType,
@@ -106,7 +107,7 @@ namespace scitbx { namespace math {
     if (min_x == max_x) return;
     if (min_y == max_y) {
       y_intercept_ = min_y;
-      cc_ = FloatType(0);
+      correlation_ = FloatType(0);
       is_well_defined_ = true;
       return;
     }
@@ -118,7 +119,7 @@ namespace scitbx { namespace math {
     if (dx == 0) return;
     if (dy == 0) {
       y_intercept_ = sum_y / fn;
-      cc_ = FloatType(1);
+      correlation_ = FloatType(0);
       is_well_defined_ = true;
       return;
     }
@@ -128,7 +129,7 @@ namespace scitbx { namespace math {
       y_intercept_ = (sum_x2 * sum_y - sum_x * sum_xy) / d;
       slope_ = (fn * sum_xy - sum_x * sum_y) / d;
     }
-    cc_ = std_linear_correlation(fn, sum_x, sum_x2, sum_y, sum_y2, sum_xy);
+    correlation_ = std_linear_correlation(fn,sum_x,sum_x2,sum_y,sum_y2,sum_xy);
     is_well_defined_ = true;
   }
 

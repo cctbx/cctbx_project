@@ -53,7 +53,7 @@ namespace {
         .def(init<af::const_ref<double> const&,
                   af::const_ref<std::complex<double> > const&,
                   optional<bool> >())
-        .def("cc", &w_t::cc)
+        .def("correlation", &w_t::correlation)
         .def("target", &w_t::target)
         .def("derivatives", &w_t::derivatives)
       ;
