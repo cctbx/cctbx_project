@@ -22,7 +22,7 @@ class manager(crystal.symmetry):
                      exp_table_one_over_step_size=None,
                      max_prime=5,
                      force_complex=00000,
-                     electron_density_must_be_positive=0001,
+                     sampled_density_must_be_positive=00000,
                      tolerance_positive_definite=1.e-5):
     assert miller_set is None or crystal_symmetry is None
     if (miller_set is None):
@@ -80,8 +80,8 @@ class manager(crystal.symmetry):
   def force_complex(self):
     return self._force_complex
 
-  def electron_density_must_be_positive(self):
-    return self._electron_density_must_be_positive
+  def sampled_density_must_be_positive(self):
+    return self._sampled_density_must_be_positive
 
   def tolerance_positive_definite(self):
     return self._tolerance_positive_definite

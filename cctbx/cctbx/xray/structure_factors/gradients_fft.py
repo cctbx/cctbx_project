@@ -46,8 +46,8 @@ class gradients_fft(gradients_base):
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,
       n_parameters=n_parameters,
-      electron_density_must_be_positive=
-        manager.electron_density_must_be_positive())
+      sampled_density_must_be_positive=
+        manager.sampled_density_must_be_positive())
     time_sampling = time_sampling.elapsed()
     manager.estimate_time_fft.register(
       n_scatterers=xray_structure.scatterers().size(),

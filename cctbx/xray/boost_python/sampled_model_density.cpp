@@ -38,7 +38,7 @@ namespace {
            arg_("wing_cutoff"),
            arg_("exp_table_one_over_step_size"),
            arg_("force_complex"),
-           arg_("electron_density_must_be_positive"),
+           arg_("sampled_density_must_be_positive"),
            arg_("tolerance_positive_definite"))))
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
