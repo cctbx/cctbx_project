@@ -59,6 +59,9 @@ clean:
 	cd fftbx; make clean
 	cd examples/cpp; make clean
 
+all_clean: clean
+	find . -name \*.o -o -name \*.so -o -name \*tbx.a -exec rm {} \;
+
 depend:
 	cd external/boost_python; make -f Makefile.nodepend depend > Makefile
 	cd uctbx; make -f Makefile.nodepend depend > Makefile
@@ -74,6 +77,12 @@ libraries:
 	cd uctbx; make libraries
 	cd sgtbx; make libraries
 	cd eltbx; make libraries
+
+executables:
+	cd uctbx; make executables
+	cd sgtbx; make executables
+	cd arraytbx; make executables
+	cd examples/cpp; make executables
 
 compile:
 	cd external/boost_python; make

@@ -19,6 +19,7 @@
 #include <cctbx/adptbx.h>
 #include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/tiny_algebra.h>
+#include <cctbx/array_family/reductions.h>
 
 namespace cctbx {
   //! Structure Factor Toolbox namespace.
@@ -192,6 +193,7 @@ namespace cctbx {
   class XrayScatterer
   {
     public:
+      typedef FloatType float_type;
       //! Default constructor. Data members are not initialized!
       XrayScatterer() {}
       //! Constructor with isotropic Debye-Waller factor.
@@ -229,8 +231,7 @@ namespace cctbx {
           m_U(Uaniso),
           m_M(0),
           m_w(0)
-      {
-      }
+      {}
       //! Access the Label.
       const std::string& Label() const { return m_Label; }
       //! Access the analytical approximation to the scattering factor.
@@ -438,6 +439,29 @@ namespace cctbx {
       int m_M;
       FloatType m_w;
   };
+
+  //! XXX
+  template <typename SiteArray>
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+  typename SiteArray::value_type::float_type
+#else
+  double
+#endif
+  rms_coordinates(const uctbx::UnitCell& ucell,
+                  const SiteArray& sites1,
+                  const SiteArray& sites2)
+  {
+    typedef typename SiteArray::value_type::float_type float_type;
+    cctbx_assert(sites1.size() == sites2.size());
+    std::vector<float_type> len2;
+    len2.reserve(sites1.size());
+    for(std::size_t i=0;i<sites1.size();i++) {
+      fractional<float_type> delta =   sites1[i].Coordinates()
+                                     - sites2[i].Coordinates();
+      len2.push_back(ucell.orthogonalize(delta).Length2());
+    }
+    return std::sqrt(af::mean(af::make_ref(len2)));
+  }
 
   /*! \brief Compute structure factors for an array of
        Miller indices and an array of sites.

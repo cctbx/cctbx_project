@@ -388,14 +388,13 @@ namespace cctbx {
           if (brackt[0] && stmax - stmin <= xtol * stmax) {
             info[0] = 2;
           }
-          if (f <= ftest1 && std::abs(dg) <= lbfgs_params.gtol * (-dginit)) {
+          if (f <= ftest1 && std::fabs(dg) <= lbfgs_params.gtol * (-dginit)) {
             info[0] = 1;
           }
           // Check for termination.
           if (info[0] != 0) break;
           // In the first stage we seek a step for which the modified
           // function has a nonpositive value and nonnegative derivative.
-
           if (   stage1 && f <= ftest1
               && dg >= std::min(ftol, lbfgs_params.gtol) * dginit) {
             stage1 = false;
@@ -432,11 +431,11 @@ namespace cctbx {
           // Force a sufficient decrease in the size of the
           // interval of uncertainty.
           if (brackt[0]) {
-            if (std::abs(sty[0] - stx[0]) >= p66 * width1) {
+            if (std::fabs(sty[0] - stx[0]) >= p66 * width1) {
               stp[0] = stx[0] + p5 * (sty[0] - stx[0]);
             }
             width1 = width;
-            width = std::abs(sty[0] - stx[0]);
+            width = std::fabs(sty[0] - stx[0]);
           }
         }
         return true;
@@ -526,7 +525,7 @@ namespace cctbx {
           return;
         }
         // Determine if the derivatives have opposite sign.
-        sgnd = dp * (dx[0] / std::abs(dx[0]));
+        sgnd = dp * (dx[0] / std::fabs(dx[0]));
         if (fp > fx[0]) {
           // First case. A higher function value.
           // The minimum is bracketed. If the cubic step is closer
@@ -535,7 +534,7 @@ namespace cctbx {
           info[0] = 1;
           bound = true;
           theta = 3 * (fx[0] - fp) / (stp[0] - stx[0]) + dx[0] + dp;
-          s = max3(std::abs(theta), std::abs(dx[0]), std::abs(dp));
+          s = max3(std::fabs(theta), std::fabs(dx[0]), std::fabs(dp));
           gamma = s * std::sqrt(sqr(theta / s) - (dx[0] / s) * (dp / s));
           if (stp[0] < stx[0]) gamma = - gamma;
           p = (gamma - dx[0]) + theta;
@@ -545,7 +544,7 @@ namespace cctbx {
           stpq = stx[0]
             + ((dx[0] / ((fx[0] - fp) / (stp[0] - stx[0]) + dx[0])) / 2)
               * (stp[0] - stx[0]);
-          if (std::abs(stpc - stx[0]) < std::abs(stpq - stx[0])) {
+          if (std::fabs(stpc - stx[0]) < std::fabs(stpq - stx[0])) {
             stpf = stpc;
           }
           else {
@@ -561,7 +560,7 @@ namespace cctbx {
           info[0] = 2;
           bound = false;
           theta = 3 * (fx[0] - fp) / (stp[0] - stx[0]) + dx[0] + dp;
-          s = max3(std::abs(theta), std::abs(dx[0]), std::abs(dp));
+          s = max3(std::fabs(theta), std::fabs(dx[0]), std::fabs(dp));
           gamma = s * std::sqrt(sqr(theta / s) - (dx[0] / s) * (dp / s));
           if (stp[0] > stx[0]) gamma = - gamma;
           p = (gamma - dp) + theta;
@@ -569,7 +568,7 @@ namespace cctbx {
           r = p/q;
           stpc = stp[0] + r * (stx[0] - stp[0]);
           stpq = stp[0] + (dp / (dp - dx[0])) * (stx[0] - stp[0]);
-          if (std::abs(stpc - stp[0]) > std::abs(stpq - stp[0])) {
+          if (std::fabs(stpc - stp[0]) > std::fabs(stpq - stp[0])) {
             stpf = stpc;
           }
           else {
@@ -577,7 +576,7 @@ namespace cctbx {
           }
           brackt[0] = true;
         }
-        else if (std::abs(dp) < std::abs(dx[0])) {
+        else if (std::fabs(dp) < std::fabs(dx[0])) {
           // Third case. A lower function value, derivatives of the
           // same sign, and the magnitude of the derivative decreases.
           // The cubic step is only used if the cubic tends to infinity
@@ -589,7 +588,7 @@ namespace cctbx {
           info[0] = 3;
           bound = true;
           theta = 3 * (fx[0] - fp) / (stp[0] - stx[0]) + dx[0] + dp;
-          s = max3(std::abs(theta), std::abs(dx[0]), std::abs(dp));
+          s = max3(std::fabs(theta), std::fabs(dx[0]), std::fabs(dp));
           gamma = s * std::sqrt(
             std::max(double(0), sqr(theta / s) - (dx[0] / s) * (dp / s)));
           if (stp[0] > stx[0]) gamma = -gamma;
@@ -607,7 +606,7 @@ namespace cctbx {
           }
           stpq = stp[0] + (dp / (dp - dx[0])) * (stx[0] - stp[0]);
           if (brackt[0]) {
-            if (std::abs(stp[0] - stpc) < std::abs(stp[0] - stpq)) {
+            if (std::fabs(stp[0] - stpc) < std::fabs(stp[0] - stpq)) {
               stpf = stpc;
             }
             else {
@@ -615,7 +614,7 @@ namespace cctbx {
             }
           }
           else {
-            if (std::abs(stp[0] - stpc) > std::abs(stp[0] - stpq)) {
+            if (std::fabs(stp[0] - stpc) > std::fabs(stp[0] - stpq)) {
               stpf = stpc;
             }
             else {
@@ -632,7 +631,7 @@ namespace cctbx {
           bound = false;
           if (brackt[0]) {
             theta = 3 * (fp - fy[0]) / (sty[0] - stp[0]) + dy[0] + dp;
-            s = max3(std::abs(theta), std::abs(dy[0]), std::abs(dp));
+            s = max3(std::fabs(theta), std::fabs(dy[0]), std::fabs(dp));
             gamma = s * std::sqrt(sqr(theta / s) - (dy[0] / s) * (dp / s));
             if (stp[0] > sty[0]) gamma = -gamma;
             p = (gamma - dp) + theta;

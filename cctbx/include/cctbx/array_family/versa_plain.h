@@ -25,7 +25,6 @@ namespace cctbx { namespace af {
 
       typedef BaseArrayType base_array_type;
       typedef BaseArrayType base_class;
-      typedef typename base_class::handle_type handle_type;
 
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
@@ -118,7 +117,7 @@ namespace cctbx { namespace af {
         base_class::resize(m_accessor.size1d(), x);
       }
 
-      versa_plain(handle_type* other_handle, const AccessorType& ac)
+      versa_plain(sharing_handle* other_handle, const AccessorType& ac)
         : base_class(other_handle),
           m_accessor(ac)
       {
@@ -127,7 +126,7 @@ namespace cctbx { namespace af {
         }
       }
 
-      versa_plain(handle_type* other_handle, long n0)
+      versa_plain(sharing_handle* other_handle, long n0)
         : base_class(other_handle),
           m_accessor(n0)
       {
@@ -136,7 +135,7 @@ namespace cctbx { namespace af {
         }
       }
 
-      versa_plain(handle_type* other_handle, const AccessorType& ac,
+      versa_plain(sharing_handle* other_handle, const AccessorType& ac,
                   const ElementType& x)
         : base_class(other_handle),
           m_accessor(ac)
@@ -144,7 +143,7 @@ namespace cctbx { namespace af {
         base_class::resize(m_accessor.size1d(), x);
       }
 
-      versa_plain(handle_type* other_handle, long n0,
+      versa_plain(sharing_handle* other_handle, long n0,
                   const ElementType& x)
         : base_class(other_handle),
           m_accessor(n0)
