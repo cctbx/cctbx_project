@@ -28,6 +28,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
   class to_map
   {
     public:
+      to_map() {}
+
       template <typename OtherFloatType>
       to_map(
         sgtbx::space_group const& space_group,
@@ -77,6 +79,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
   class from_map
   {
     public:
+      from_map() {}
+
       template <typename OtherFloatType>
       from_map(
         uctbx::unit_cell const& unit_cell,
