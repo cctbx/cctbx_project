@@ -22,10 +22,14 @@
 # include <ostream>
 #endif
 #include <map>
+#include <algorithm>
 #include <cctbx/fixes/cstdlib>
+#include <cctbx/error.h>
 #include <cctbx/coordinates.h>
+#include <cctbx/indexed_value.h>
 #include <cctbx/array_family/tiny_types.h>
 #include <cctbx/array_family/shared.h>
+#include <cctbx/math/min_max.h>
 
 namespace cctbx {
   //! %Miller index namespace.
@@ -42,7 +46,7 @@ namespace cctbx {
         Index() {
           for(std::size_t i=0;i<3;i++) elems[i] = 0;
         }
-        explicit Index(const af::int3& v) {
+        Index(const af::int3& v) {
           for(std::size_t i=0;i<3;i++) elems[i] = v[i];
         }
         explicit Index(const int* hkl) {
@@ -122,7 +126,7 @@ namespace cctbx {
       return os;
     }
 
-    //! Determine max(abs(H[i])), i=1..3, for a array of Miller indices.
+    //! Determine max(abs(H[i]))+1, i=1..3, for an array of Miller indices.
     template <class MillerIndexArrayType>
     af::int3
     IndexRange(const MillerIndexArrayType& Indices)
@@ -139,6 +143,55 @@ namespace cctbx {
       for(std::size_t j=0;j<3;j++) result[j]++;
       return result;
     }
+
+    /*! \brief Determine min(H[i]) and max(H[i])+1, i=1..3,
+         for an array of Miller indices.
+     */
+    struct index_span : af::tiny<af::tiny<int, 2>, 3>
+    {
+      typedef af::tiny<int, 2> min_end;
+      typedef af::tiny<min_end, 3> base_class;
+
+      index_span() {}
+
+      template <class MillerIndexArrayType>
+      index_span(MillerIndexArrayType const& Indices)
+      {
+        this->fill(min_end(0, 0));
+        if (Indices.size()) {
+          for(std::size_t j=0;j<3;j++) {
+            (*this)[j] = min_end().fill(Indices[0][j]);
+          }
+        }
+        for(std::size_t i=1;i<Indices.size();i++) {
+          for(std::size_t j=0;j<3;j++) {
+            math::update_min((*this)[j][0], Indices[i][j]);
+            math::update_max((*this)[j][1], Indices[i][j]);
+          }
+        }
+        for(std::size_t j=0;j<3;j++) (*this)[j][1]++;
+      }
+
+      static int range(min_end const& span)
+      {
+        return span[1] - span[0];
+      }
+
+      bool is_in_domain(Index const& h) const
+      {
+        for(std::size_t j=0;j<3;j++) {
+          if (!((*this)[j][0] <= h[j] && h[j] < (*this)[j][1])) return false;
+        }
+        return true;
+      }
+
+      std::size_t pack(Index const& h) const
+      {
+        return ((h[0] - (*this)[0][0]) * range((*this)[1])
+              + (h[1] - (*this)[1][0])) * range((*this)[2])
+              + (h[2] - (*this)[2][0]);
+      }
+    };
 
     class join_sets
     {
@@ -180,6 +233,28 @@ namespace cctbx {
         af::shared<af::tiny<std::size_t, 2> > pairs_;
         af::shared<std::size_t> singles_[2];
     };
+
+    template <typename DataType,
+              typename SortCmpFunctor>
+    void
+    inplace_sort(
+      af::shared<Index> miller_indices,
+      af::shared<DataType> data,
+      SortCmpFunctor sort_op)
+    {
+      cctbx_assert(miller_indices.size() == data.size());
+      typedef indexed_value<Index, DataType, SortCmpFunctor> ivalue_type;
+      af::shared<ivalue_type> ivalues;
+      ivalues.reserve(miller_indices.size());
+      for(std::size_t i=0;i<miller_indices.size();i++) {
+        ivalues.push_back(ivalue_type(miller_indices[i], data[i]));
+      }
+      std::sort(ivalues.begin(), ivalues.end());
+      for(std::size_t i=0;i<miller_indices.size();i++) {
+        miller_indices[i] = ivalues[i].index;
+        data[i] = ivalues[i].value;
+      }
+    }
 
   } // namespace Miller
 } // namespace cctbx

@@ -11,10 +11,10 @@
 #ifndef CCTBX_MAPS_PEAK_SEARCH_H
 #define CCTBX_MAPS_PEAK_SEARCH_H
 
-#include <functional>
 #include <cctbx/array_family/tiny.h>
 #include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/loops.h>
+#include <cctbx/indexed_value.h>
 
 namespace cctbx { namespace maps {
 
@@ -153,30 +153,6 @@ namespace cctbx { namespace maps {
       if (ip == ni_nj_nk) { ip = 0; ibreak = nj_nk; }
     }
   }
-
-  template <typename IndexType,
-            typename ValueType,
-            typename SortCmpFunctor = std::less<ValueType> >
-  struct indexed_value
-  {
-    typedef IndexType index_type;
-    typedef ValueType value_type;
-
-    indexed_value() {}
-    indexed_value(const index_type& i, const value_type& v)
-      : index(i), value(v)
-    {}
-
-    bool
-    operator<(
-      const indexed_value<IndexType, ValueType, SortCmpFunctor>& rhs) const
-    {
-      return SortCmpFunctor()(this->value, rhs.value);
-    }
-
-    index_type index;
-    value_type value;
-  };
 
   template <typename DataVersaType,
             typename TagsArrayType>
