@@ -15,14 +15,14 @@
 
 #include <cctbx/array_family/shared_bpl_.h>
 
-namespace cctbx { namespace af { namespace bpl {
+namespace cctbx { namespace af { namespace bpl { namespace {
 
   void import_flex()
   {
     CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
   }
 
-}}} // namespace cctbx::af::bpl
+}}}} // namespace cctbx::af::bpl<anonymous>
 
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
 

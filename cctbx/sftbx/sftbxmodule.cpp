@@ -26,7 +26,7 @@ namespace {
       ex_xray_scatterer;
 }
 
-namespace cctbx { namespace af { namespace bpl {
+namespace cctbx { namespace af { namespace bpl { namespace {
 
   void import_flex()
   {
@@ -38,7 +38,7 @@ namespace cctbx { namespace af { namespace bpl {
     CCTBX_ARRAY_FAMILY_FLEX_IMPORT(ex_xray_scatterer, "XrayScatterer");
   }
 
-}}} // namespace cctbx::af::bpl
+}}}} // namespace cctbx::af::bpl<anonymous>
 
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)

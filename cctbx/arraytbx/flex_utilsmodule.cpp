@@ -20,7 +20,7 @@
 
 #include <cctbx/array_family/shared_bpl_.h>
 
-namespace cctbx { namespace af { namespace bpl {
+namespace cctbx { namespace af { namespace bpl { namespace { namespace {
 
   void import_flex()
   {
@@ -28,7 +28,7 @@ namespace cctbx { namespace af { namespace bpl {
     CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
   }
 
-}}} // namespace cctbx::af::bpl
+}}}}} // namespace cctbx::af::bpl<anonymous><anonymous>
 
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(float)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
