@@ -29,8 +29,6 @@ def run(file_name, args, cutoff, params,
   stols_more = cctbx.eltbx.gaussian_fit.international_tables_stols
   sel = stols_more <= cutoff + 1.e-6
   stols = stols_more.select(sel)
-  results = {}
-  results["fit_parameters"] = params
   i_chunk = 0
   for element in tab.elements + ["O2-"]:
     if (len(args) > 0 and element not in args): continue
@@ -38,6 +36,8 @@ def run(file_name, args, cutoff, params,
     i_chunk += 1
     if (not flag):
       continue
+    results = {}
+    results["fit_parameters"] = params
     wk = xray_scattering.wk1995(element, 1)
     if (element != "O2-"):
       entry = tab.entries[element]
