@@ -211,6 +211,14 @@ def exercise_array():
   assert ma.info() == "test"
   assert ma.observation_type() is None
   assert ma.size() == 2
+  ma.set_info(miller.array_info(
+    source="file", labels=["a", "b", "c"]))
+  assert str(ma.info()) == "file:a,b,c"
+  assert ma.info().label_string() == "a,b,c"
+  ma.set_info(miller.array_info(
+    source="file", labels=["a", "b", "c"], merged=True))
+  assert str(ma.info()) == "file:a,b,c,merged"
+  assert ma.info().label_string() == "a,b,c,merged"
   ma.set_info("Test")
   assert ma.info() == "Test"
   ma.set_observation_type_xray_amplitude()

@@ -647,17 +647,26 @@ class array_info:
       labels=labels,
       merged=merged)
 
+  def as_string_part_2(self):
+    part_2 = []
+    if (self.labels is not None):
+      part_2.extend(self.labels)
+    if (self.merged):
+      part_2.append("merged")
+    return part_2
+
+  def label_string(self):
+    part_2 = self.as_string_part_2()
+    if (len(part_2) > 0): return ",".join(part_2)
+    return None
+
   def __str__(self):
     result = []
     if (self.source is not None):
       result.append(str(self.source))
     elif (self.source_type is not None):
       result.append(str(self.source_type))
-    part_2 = []
-    if (self.labels is not None):
-      part_2.extend(self.labels)
-    if (self.merged):
-      part_2.append("merged")
+    part_2 = self.as_string_part_2()
     if (len(part_2) > 0):
       result.append(",".join(part_2))
     if (len(result) == 0):
