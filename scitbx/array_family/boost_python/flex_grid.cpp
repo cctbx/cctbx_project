@@ -89,7 +89,8 @@ namespace {
         .def("is_trivial_1d", &w_t::is_trivial_1d)
         .def("shift_origin", &w_t::shift_origin)
         .def("is_valid_index", &w_t::is_valid_index)
-        .def("__call__", &w_t::operator())
+        .def("__call__",
+          (std::size_t(w_t::*)(df_i_t const&) const) &w_t::operator())
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def_pickle(flex_grid_wrappers())
