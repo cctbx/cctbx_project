@@ -59,6 +59,8 @@ def exercise_set():
   c = mc.completeness()
   assert c >= 1-1.e5
   assert c <= 1
+  c = mc.select(~mc.all_selection()).completeness()
+  assert c == 0
   ma = ms.map_to_asu()
   assert flex.order(ms.indices(), ma.indices()) == 0
   ma = ms.remove_systematic_absences()
