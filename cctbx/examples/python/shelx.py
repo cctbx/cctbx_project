@@ -33,12 +33,7 @@ def GetFormData():
       inp.__dict__[key[0]] = key[1]
   return inp
 
-def Symbol_to_SgOps(sgsymbol, convention):
-  if (convention == "Hall"):
-    HallSymbol = sgsymbol
-  else:
-    Symbols_Inp = sgtbx.SpaceGroupSymbols(sgsymbol, convention)
-    HallSymbol = Symbols_Inp.Hall()
+def HallSymbol_to_SgOps(HallSymbol):
   try:
     ps = sgtbx.parse_string(HallSymbol)
     SgOps = sgtbx.SgOps(ps)
@@ -83,7 +78,8 @@ def Write_SHELX_LATT_SYMM(SgOps):
 inp = GetFormData()
 
 try:
-  SgOps = Symbol_to_SgOps(inp.sgsymbol, inp.convention)
+  Symbols_Inp = sgtbx.SpaceGroupSymbols(inp.sgsymbol, inp.convention)
+  SgOps = HallSymbol_to_SgOps(Symbols_Inp.Hall())
   SgType = SgOps.getSpaceGroupType()
   print "Space group: (%d) %s" % (
     SgType.SgNumber(), SgOps.BuildLookupSymbol(SgType))

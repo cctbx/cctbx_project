@@ -1065,10 +1065,35 @@ namespace sgtbx {
     m_Hall = "";
   }
 
+  namespace detail {
+
+    bool isHall(const string& TableId)
+    {
+      string::const_iterator s;
+      for (s = TableId.begin(); s != TableId.end(); s++) {
+        if (!isspace(*s)) break;
+      }
+      for (std::size_t i = 0; i < 4; i++, s++) {
+        if (s == TableId.end()) return false;
+        if (tolower(*s) != "hall"[i]) return false;
+      }
+      for (;; s++) {
+        if (s == TableId.end()) return true;
+        if (!isspace(*s)) break;
+      }
+      return false;
+    }
+
+  }
+
   SpaceGroupSymbols::SpaceGroupSymbols(const string& Symbol,
                                        const string& TableId)
   {
     Clear();
+    if (detail::isHall(TableId)) {
+      m_Hall = Symbol;
+      return;
+    }
     string StdTableId = GetStdTableId(TableId);
     if (StdTableId.size() == 0) {
       if (HallPassThrough(Symbol) != 0) return;
