@@ -315,7 +315,10 @@ class set(crystal.symmetry):
     return array(miller_set=self, data=from_map.data())
 
   def structure_factors_from_scatterers(self, xray_structure,
-                                              direct=00000, fft=00000):
+                                              direct=00000, fft=00000,
+                                              quality_factor=None,
+                                              u_extra=None,
+                                              b_extra=None):
     from cctbx import xray
     assert direct == 00000 or fft == 00000
     if (direct):
@@ -323,7 +326,10 @@ class set(crystal.symmetry):
         xray_structure=xray_structure,
         miller_set=self)
     return xray.structure_factors.from_scatterers(
-      miller_set=self)(
+      miller_set=self,
+      quality_factor=quality_factor,
+      u_extra=u_extra,
+      b_extra=b_extra)(
         xray_structure=xray_structure,
         miller_set=self,
         direct=direct,

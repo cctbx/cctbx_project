@@ -1,5 +1,6 @@
 from cctbx import xray
 from cctbx import crystal
+from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
 
@@ -65,12 +66,25 @@ def exercise_structure():
 
 def exercise_u_extra():
   d_min = 9
-  grid_resolution = 1/3.
+  grid_resolution_factor = 1/3.
   for quality_factor in (1,2,4,8,10,100,200,1000):
-    u_extra = xray.calc_u_extra(d_min, grid_resolution, quality_factor)
+    u_extra = xray.calc_u_extra(d_min, grid_resolution_factor, quality_factor)
     assert approx_equal(
       quality_factor,
-      xray.u_extra_as_quality_factor(d_min, grid_resolution, u_extra))
+      xray.structure_factors.quality_factor_from_any(
+        d_min=d_min,
+        grid_resolution_factor=grid_resolution_factor,
+        u_extra=u_extra))
+    assert approx_equal(
+      quality_factor,
+      xray.structure_factors.quality_factor_from_any(
+        d_min=d_min,
+        grid_resolution_factor=grid_resolution_factor,
+        b_extra=adptbx.u_as_b(u_extra)))
+    assert approx_equal(
+      quality_factor,
+      xray.structure_factors.quality_factor_from_any(
+        quality_factor=quality_factor))
 
 def run():
   exercise_structure()

@@ -1,9 +1,28 @@
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import crystal
+from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx import fftpack
 from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
+
+def quality_factor_from_any(d_min=None,
+                            grid_resolution_factor=None,
+                            quality_factor=None,
+                            u_extra=None,
+                            b_extra=None):
+  assert [quality_factor, u_extra, b_extra].count(None) >= 2
+  if (u_extra is not None):
+    b_extra = adptbx.u_as_b(u_extra)
+  if (b_extra is not None):
+    assert [d_min, grid_resolution_factor].count(None) == 0
+    assert d_min > 0
+    sigma = 1 / (2 * grid_resolution_factor)
+    log_quality_factor = b_extra * sigma * (sigma - 1) / (d_min * d_min)
+    quality_factor = 10**log_quality_factor
+  elif (quality_factor is None):
+    quality_factor = 100
+  return quality_factor
 
 class derivative_flags:
 
@@ -23,7 +42,7 @@ class from_scatterers(crystal.symmetry):
                      grid_resolution_factor=1/3.,
                      symmetry_flags=maptbx.use_space_group_symmetry,
                      mandatory_grid_factors=None,
-                     quality_factor=100,
+                     quality_factor=None, u_extra=None, b_extra=None,
                      wing_cutoff=1.e-3,
                      exp_table_one_over_step_size=-100,
                      max_prime=5):
@@ -37,6 +56,8 @@ class from_scatterers(crystal.symmetry):
       else:
         assert d_min <= miller_set.d_min()
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
+    quality_factor = quality_factor_from_any(
+      d_min, grid_resolution_factor, quality_factor, u_extra, b_extra)
     del miller_set
     adopt_init_args(self, locals(), hide=0001)
     self._crystal_gridding = None
