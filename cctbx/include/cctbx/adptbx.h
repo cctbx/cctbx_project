@@ -387,17 +387,41 @@ namespace cctbx {
     template <class T>
     inline
     std::complex<T>
-    main_root(const std::complex<T>& a, unsigned int m)
+    root(const std::complex<T>& c, unsigned int m, unsigned int k=0)
     {
-      T rho = std::abs(a);
+      T rho = std::abs(c);
       if (rho == T(0)) return std::complex<T>(0, 0);
-      const T one_pi(constants::pi);
-      const T two_pi(constants::two_pi);
-      T theta0 = std::fmod(std::arg(a), two_pi);
-      if (theta0 > one_pi) theta0 -= two_pi;
-      if (theta0 <= one_pi) theta0 += two_pi;
-      return std::polar(std::pow(rho, T(1./m)), theta0 / T(m));
+      return std::polar(
+        std::pow(rho, T(1./m)),
+        (std::arg(c) + T(k * constants::two_pi)) / T(m));
     }
+
+    // To ensure numerical stability we have to try all 3 roots
+    // of one of the complex numbers. The goal is to find the root
+    // which minimizes the sum of the imaginary parts of u and v.
+    template <typename FloatType>
+    struct third_roots
+    {
+      third_roots(
+        std::complex<FloatType> const& c1,
+        std::complex<FloatType> const& c2)
+      {
+        u = detail::root(c1, 3);
+        v = detail::root(c2, 3);
+        FloatType diff = math::abs(u.imag() + v.imag());
+        for(unsigned int k=1;k<3;k++) {
+          std::complex<FloatType> trial_v = detail::root(c2, 3, k);
+          FloatType trial_diff = math::abs(u.imag() + trial_v.imag());
+          if (diff > trial_diff) {
+            diff = trial_diff;
+            v = trial_v;
+          }
+        }
+      }
+
+      std::complex<FloatType> u;
+      std::complex<FloatType> v;
+    };
 
   } // namespace detail
 
@@ -451,19 +475,24 @@ namespace cctbx {
                   - r * s / FloatType(3) + t;
     // to circumvent instabilities due to rounding errors the
     // roots are determined as complex numbers.
-    std::complex<FloatType> D(p*p*p / FloatType(27) + q*q / FloatType(4));
-    std::complex<FloatType> sqrtD = std::sqrt(D);
+    FloatType D(p*p*p / FloatType(27) + q*q / FloatType(4));
+    std::complex<FloatType> sqrtD;
+    if (D < FloatType(0)) {
+      sqrtD = std::complex<FloatType>(0, std::sqrt(-D));
+    }
+    else {
+      sqrtD = std::complex<FloatType>(std::sqrt(D), 0);
+    }
     FloatType mq2 = -q / FloatType(2);
-    std::complex<FloatType> u = detail::main_root(mq2 + sqrtD, 3);
-    std::complex<FloatType> v = detail::main_root(mq2 - sqrtD, 3);
+    detail::third_roots<FloatType> roots(mq2 + sqrtD, mq2 - sqrtD);
     std::complex<FloatType> epsilon1(-0.5, std::sqrt(3.) * 0.5);
     std::complex<FloatType> epsilon2 = std::conj(epsilon1);
     // since the anisotropic displacement tensor is a symmetric matrix,
     // all the imaginary components of the roots must be zero.
     af::tiny<FloatType, 3> result;
-    result[0] = (u + v).real();
-    result[1] = (epsilon1 * u + epsilon2 * v).real();
-    result[2] = (epsilon2 * u + epsilon1 * v).real();
+    result[0] = (roots.u + roots.v).real();
+    result[1] = (epsilon1 * roots.u + epsilon2 * roots.v).real();
+    result[2] = (epsilon2 * roots.u + epsilon1 * roots.v).real();
     // convert the solutions y of the reduced form to the
     // solutions x of the normal form.
     for(std::size_t i = 0;i<3;i++) result[i] -= r / FloatType(3);
