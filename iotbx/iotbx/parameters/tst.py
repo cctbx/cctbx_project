@@ -357,6 +357,160 @@ a0
     .type = "UNKNOWN"
 }
 """
+  parameters = iotbx.parameters.parse(input_string="""\
+s {
+  a=0
+}
+t.a=0
+""")
+  check_get(parameters, path="s", expected_out="""\
+s
+{
+  a = 0
+}
+""")
+  check_get(parameters, path="s.a", expected_out="""\
+a = 0
+""")
+  check_get(parameters, path="t", expected_out="""\
+t.a = 0
+""")
+  check_get(parameters, path="t.a", expected_out="""\
+a = 0
+""")
+  parameters = iotbx.parameters.parse(input_string="""\
+s {
+  a {
+    b=0
+    c.d=1
+  }
+}
+t.a.b=0
+t.a.c.d=1
+""")
+  check_get(parameters, path="s", expected_out="""\
+s
+{
+  a
+  {
+    b = 0
+    c.d = 1
+  }
+}
+""")
+  check_get(parameters, path="s.a", expected_out="""\
+a
+{
+  b = 0
+  c.d = 1
+}
+""")
+  check_get(parameters, path="s.a.b", expected_out="""\
+b = 0
+""")
+  check_get(parameters, path="s.a.c", expected_out="""\
+c.d = 1
+""")
+  check_get(parameters, path="t", expected_out="""\
+t.a.b = 0
+t.a.c.d = 1
+""")
+  check_get(parameters, path="t.a", expected_out="""\
+a.b = 0
+a.c.d = 1
+""")
+  check_get(parameters, path="t.a.b", expected_out="""\
+b = 0
+""")
+  check_get(parameters, path="t.a.c", expected_out="""\
+c.d = 1
+""")
+  parameters = iotbx.parameters.parse(input_string="""\
+a { b { } c { } }
+x.y { }
+x.z { }
+""")
+  check_get(parameters, path="a", expected_out="""\
+a
+{
+  b
+  {
+  }
+
+  c
+  {
+  }
+}
+""")
+  check_get(parameters, path="a.b", expected_out="""\
+b
+{
+}
+""")
+  check_get(parameters, path="a.c", expected_out="""\
+c
+{
+}
+""")
+  check_get(parameters, path="x", expected_out="""\
+x.y
+{
+}
+
+x.z
+{
+}
+""")
+  check_get(parameters, path="x.y", expected_out="""\
+y
+{
+}
+""")
+  check_get(parameters, path="x.z", expected_out="""\
+z
+{
+}
+""")
+  parameters = iotbx.parameters.parse(input_string="""\
+x.y { a.b { d.e=0
+} }
+""")
+  check_get(parameters, path="x", expected_out="""\
+x.y
+{
+  a.b
+  {
+    d.e = 0
+  }
+}
+""")
+  check_get(parameters, path="x.y", expected_out="""\
+y
+{
+  a.b
+  {
+    d.e = 0
+  }
+}
+""")
+  check_get(parameters, path="x.y.a", expected_out="""\
+a.b
+{
+  d.e = 0
+}
+""")
+  check_get(parameters, path="x.y.a.b", expected_out="""\
+b
+{
+  d.e = 0
+}
+""")
+  check_get(parameters, path="x.y.a.b.d", expected_out="""\
+d.e = 0
+""")
+  check_get(parameters, path="x.y.a.b.d.e", expected_out="""\
+e = 0
+""")
 
 def exercise_get_with_substitution():
   parameters = iotbx.parameters.parse(input_string="""\

@@ -144,6 +144,12 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
             else:
               print >> out, indent+'"'+block+'"'
 
+def partial_name(path, name):
+  if (name == path): return name.split(".")[-1]
+  if (name.startswith(path+".")):
+    return name[len(".".join(("."+path).split(".")[:-1])):]
+  return None
+
 class get_stopper:
 
   def __init__(self, object):
@@ -187,11 +193,14 @@ class definition: # FUTURE definition(object)
     self.input_size = input_size
     self.expert_level = expert_level
 
-  def copy(self, words):
+  def copy(self, name=None, words=None):
     keyword_args = {}
     for keyword in self.__slots__:
       keyword_args[keyword] = getattr(self, keyword)
-    keyword_args["words"] = words
+    if (name is not None):
+      keyword_args["name"] = name
+    if (words is not None):
+      keyword_args["words"] = words
     return definition(**keyword_args)
 
   def fetch(self, source, substitution_scope=None):
@@ -199,7 +208,7 @@ class definition: # FUTURE definition(object)
       source = substitution_scope.variable_substitution(
         object=source, path_memory={})
     if (self.type not in ["choice", "multi_choice"]):
-      return self.copy(source.words)
+      return self.copy(words=source.words)
     flags = {}
     for word in self.words:
       if (word.value.startswith("*")): value = word.value[1:]
@@ -279,11 +288,13 @@ class definition: # FUTURE definition(object)
       parent=parent, path=parent_path+self.name, object=self))
 
   def get_without_substitution(self, path, stopper):
-    if (stopper is not None and self is stopper.object):
+    if (stopper is not None and self.words is stopper.object.words):
       stopper.stop = True
       return []
-    if (self.is_disabled or self.name != path): return []
-    return [self]
+    if (self.is_disabled): return []
+    name = partial_name(path=path, name=self.name)
+    if (name is not None): return [self.copy(name=name)]
+    return []
 
   def substitute_all(self, substitution_scope, path_memory):
     return substitution_scope.variable_substitution(
@@ -458,11 +469,14 @@ class scope:
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
 
-  def copy(self, objects):
+  def copy(self, name=None, objects=None):
     keyword_args = {}
     for keyword in self.__init__varnames__[1:]:
       keyword_args[keyword] = getattr(self, keyword)
-    keyword_args["objects"] = objects
+    if (name is not None):
+      keyword_args["name"] = name
+    if (objects is not None):
+      keyword_args["objects"] = objects
     return scope(**keyword_args)
 
   def has_attribute_with_name(self, name):
@@ -553,17 +567,10 @@ class scope:
             stopper=stopper))
           if (stopper is not None and stopper.stop): break
     else:
-      if (self.name == path):
-        result = [self]
-      elif (not path.startswith(self.name+".")):
-        result = []
-        if (stopper is not None):
-          for object in self.objects:
-            object.get_without_substitution(
-              path="",
-              stopper=stopper)
-            if (stopper.stop): break
-      else:
+      name = partial_name(path=path, name=self.name)
+      if (name is not None):
+        result = [self.copy(name=name)]
+      elif (path.startswith(self.name+".")):
         path = path[len(self.name)+1:]
         result = []
         for object in self.objects:
@@ -571,6 +578,14 @@ class scope:
             path=path,
             stopper=stopper))
           if (stopper is not None and stopper.stop): break
+      else:
+        result = []
+        if (stopper is not None):
+          for object in self.objects:
+            object.get_without_substitution(
+              path="",
+              stopper=stopper)
+            if (stopper.stop): break
     return result
 
   def substitute_all(self, substitution_scope, path_memory):
