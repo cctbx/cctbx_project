@@ -357,7 +357,7 @@ class columns_73_76_evaluator:
         columns_73_76_dict = atom_columns_73_76_dict
       else:
         columns_73_76_dict = other_columns_73_76_dict
-      if (    raw_record[:6] not in ("ANISOU", "TER   ")
+      if (    raw_record[:6] not in ("SIGATM", "ANISOU", "SIGUIJ", "TER   ")
           and len(raw_record.rstrip()) >= 80):
         field = raw_record[72:76]
         if (field != "    "):
