@@ -92,7 +92,7 @@ def hcp_fill_box(unit_cell, point_distance, rational_asu,
       box_grid[i] = 0
       box_origin[i] = 0
   print "box_grid:", box_grid
-  if (options.no_buffer):
+  if (options.no_buffer or options.strictly_inside):
     buffer_thickness = 0
   else:
     buffer_thickness = point_distance * (2/3. * (.5 * math.sqrt(3)))
@@ -114,7 +114,7 @@ def hcp_fill_box(unit_cell, point_distance, rational_asu,
     site_frac = hex_to_frac_matrix * site_hex
     if (1 and float_asu_buffer.is_inside(site_frac)):
       sites_frac.append(str(point), site_frac)
-    elif (not options.strictly_inside and options.no_buffer):
+    elif (options.no_buffer and not options.strictly_inside):
       if (0):
         sites_around = labeled_sites()
       else:
@@ -153,9 +153,23 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
     space_group_type=work_symmetry.space_group_info().type(),
     seminvariant=work_symmetry.space_group_info().structure_seminvariant())
   assert search_symmetry.continuous_shifts_are_principal()
+  group = search_symmetry.group()
+  for continuous_shift in search_symmetry.continuous_shifts():
+    i = list(continuous_shift).index(1)
+    proj_group = sgtbx.space_group()
+    for s in group:
+      r, t = list(s.r().num()), list(s.t().num())
+      for j in xrange(3):
+        if (j != i):
+          r[i*3+j] = 0
+      t[i] = 0
+      proj_s = sgtbx.rt_mx(sgtbx.rot_mx(r, s.r().den()),
+                           sgtbx.tr_vec(t, s.t().den()))
+      proj_group.expand_smx(proj_s)
+    group = proj_group
   expanded_symmetry = crystal.symmetry(
     unit_cell=work_symmetry.unit_cell(),
-    space_group=search_symmetry.group())
+    space_group=group)
   rational_asu = expanded_symmetry.space_group_info().direct_space_asu()
   rational_asu.add_planes(
     normal_directions=search_symmetry.continuous_shifts(),
@@ -201,9 +215,18 @@ def check_distances(sites_cart, point_distance):
   if (len(neighbors) > 0):
     assert max(neighbors.values()) <= 12
 
+def dump_pdb(file_name, crystal_symmetry, sites_cart):
+  f = open(file_name, "w")
+  print >> f, iotbx.pdb.format_cryst1_record(
+    crystal_symmetry=crystal_symmetry)
+  for serial,site in zip(count(1), sites_cart):
+    print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
+  print >> f, "END"
+  f.close()
+
 def check_with_grid_tags(inp_symmetry, symmetry_flags,
                          sites_cart, point_distance,
-                         options):
+                         options, flag_write_pdb):
   cb_op_inp_ref = inp_symmetry.change_of_basis_op_to_reference_setting()
   print "cb_op_inp_ref.c():", cb_op_inp_ref.c()
   ref_symmetry = inp_symmetry.change_basis(cb_op_inp_ref)
@@ -213,34 +236,61 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
     seminvariant=ref_symmetry.space_group_info().structure_seminvariant())
   assert search_symmetry.continuous_shifts_are_principal()
   continuous_shift_flags = search_symmetry.continuous_shift_flags()
-  sites_frac_inp = inp_symmetry.unit_cell().fractionalization_matrix() \
-                 * sites_cart.sites
-  rt = cb_op_inp_ref.c().as_double_array()
-  sites_frac_ref = rt[:9] * sites_frac_inp
-  sites_frac_ref += rt[9:]
-  inp_tags = inp_symmetry.gridding(
-    step=point_distance/2.,
-    symmetry_flags=symmetry_flags).tags()
-  max_distance = 2 * ((.5 * math.sqrt(3) * point_distance) * 2/3.)
-  print "max_distance:", max_distance
-  for point in flex.nested_loop(inp_tags.n_real()):
-    if (inp_tags.tags().tag_array()[point] < 0):
-      point_frac_inp = [float(n)/d for n,d in zip(point, inp_tags.n_real())]
-      point_frac_ref = cb_op_inp_ref.c() * point_frac_inp
-      equiv_points = sgtbx.sym_equiv_sites(
-        unit_cell=ref_symmetry.unit_cell(),
-        space_group=search_symmetry.group(),
-        original_site=point_frac_ref,
-        minimum_distance=2.e-6,
-        tolerance=1.e-6)
-      min_dist = sgtbx.min_sym_equiv_distance_info(
-        reference_sites=equiv_points,
-        others=sites_frac_ref,
-        principal_continuous_allowed_origin_shift_flags
-          =continuous_shift_flags).dist()
-      if (min_dist > max_distance):
-        print "FAIL:", inp_symmetry.space_group_info(),point_frac_ref,min_dist
-        raise AssertionError
+  if (flag_write_pdb):
+    tag_sites_frac = flex.vec3_double()
+  else:
+    tag_sites_frac = None
+  if (options.strictly_inside):
+    inp_tags = inp_symmetry.gridding(
+      step=point_distance*.7,
+      symmetry_flags=symmetry_flags).tags()
+    for point in flex.nested_loop(inp_tags.n_real()):
+      if (inp_tags.tags().tag_array()[point] < 0):
+        point_frac_inp = [float(n)/d for n,d in zip(point, inp_tags.n_real())]
+        if (tag_sites_frac is not None):
+          tag_sites_frac.append(point_frac_inp)
+    if (inp_tags.tags().n_independent() < sites_cart.sites.size()):
+      print "FAIL:", inp_symmetry.space_group_info(), \
+                     inp_tags.tags().n_independent(), sites_cart.sites.size()
+      raise AssertionError
+  else:
+    inp_tags = inp_symmetry.gridding(
+      step=point_distance/2.,
+      symmetry_flags=symmetry_flags).tags()
+    sites_frac_inp = inp_symmetry.unit_cell().fractionalization_matrix() \
+                   * sites_cart.sites
+    rt = cb_op_inp_ref.c().as_double_array()
+    sites_frac_ref = rt[:9] * sites_frac_inp
+    sites_frac_ref += rt[9:]
+    max_distance = 2 * ((.5 * math.sqrt(3) * point_distance) * 2/3.)
+    print "max_distance:", max_distance
+    for point in flex.nested_loop(inp_tags.n_real()):
+      if (inp_tags.tags().tag_array()[point] < 0):
+        point_frac_inp = [float(n)/d for n,d in zip(point, inp_tags.n_real())]
+        if (tag_sites_frac is not None):
+          tag_sites_frac.append(point_frac_inp)
+        point_frac_ref = cb_op_inp_ref.c() * point_frac_inp
+        equiv_points = sgtbx.sym_equiv_sites(
+          unit_cell=ref_symmetry.unit_cell(),
+          space_group=search_symmetry.group(),
+          original_site=point_frac_ref,
+          minimum_distance=2.e-6,
+          tolerance=1.e-6)
+        min_dist = sgtbx.min_sym_equiv_distance_info(
+          reference_sites=equiv_points,
+          others=sites_frac_ref,
+          principal_continuous_allowed_origin_shift_flags
+            =continuous_shift_flags).dist()
+        if (min_dist > max_distance):
+          print "FAIL:", inp_symmetry.space_group_info(), \
+                         point_frac_ref, min_dist
+          raise AssertionError
+  if (tag_sites_frac is not None):
+    dump_pdb(
+      file_name="tag_sites.pdb",
+      crystal_symmetry=inp_symmetry,
+      sites_cart=inp_symmetry.unit_cell().orthogonalization_matrix()
+                *tag_sites_frac)
 
 def run_call_back(flags, space_group_info):
   crystal_symmetry = crystal.symmetry(
@@ -266,21 +316,16 @@ def run_call_back(flags, space_group_info):
     options=options)
   if (1):
     check_distances(sites_cart, point_distance)
-  if (not options.strictly_inside):
+  if (1):
     check_with_grid_tags(
       inp_symmetry=crystal_symmetry,
       symmetry_flags=symmetry_flags,
       sites_cart=sites_cart,
       point_distance=point_distance,
-      options=options)
+      options=options,
+      flag_write_pdb=flags.write_pdb)
   if (flags.write_pdb):
-    f = open("sites_cart.pdb", "w")
-    print >> f, iotbx.pdb.format_cryst1_record(
-      crystal_symmetry=crystal_symmetry)
-    for serial,site in zip(count(1), sites_cart.sites):
-      print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
-    print >> f, "END"
-    f.close()
+    dump_pdb("hex_sites.pdb", crystal_symmetry, sites_cart.sites)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
