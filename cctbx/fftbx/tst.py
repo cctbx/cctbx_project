@@ -120,6 +120,10 @@ def test_real_to_complex_3d(test_map_cast, verbose):
 if (__name__ == "__main__"):
   import sys
   verbose = not "--quiet" in sys.argv[1:]
+  assert fftbx.adjust_gridding(13, 5) == 15
+  assert fftbx.adjust_gridding(13, 5, 6) == 18
+  assert fftbx.adjust_gridding_triple((13,22,34), 5) == (15,24,36)
+  assert fftbx.adjust_gridding_triple((13,22,34), 5, (6,10,8)) == (18,30,40)
   test_complex_to_complex(verbose)
   test_real_to_complex(verbose)
   test_complex_to_complex_3d(0, verbose)

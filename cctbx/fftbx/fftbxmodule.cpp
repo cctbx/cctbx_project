@@ -10,6 +10,7 @@
  */
 
 #include <boost/python/cross_module.hpp>
+#include <cctbx/fftbx/gridding.h>
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
 #include <cctbx/std_vector_bpl.h>
@@ -18,6 +19,32 @@
 using namespace cctbx;
 
 namespace {
+
+  std::size_t adjust_gridding_2(std::size_t min_grid,
+                                std::size_t max_prime) {
+    return fftbx::adjust_gridding(min_grid, max_prime);
+  }
+  std::size_t adjust_gridding_3(std::size_t min_grid,
+                                std::size_t max_prime,
+                                std::size_t mandatory_factor) {
+    return fftbx::adjust_gridding(min_grid, max_prime, mandatory_factor);
+  }
+
+  boost::array<std::size_t, 3>
+  adjust_gridding_triple_2(
+    const boost::array<std::size_t, 3>& min_grid,
+    std::size_t max_prime) {
+    return fftbx::adjust_gridding_array(min_grid, max_prime);
+  }
+
+  boost::array<std::size_t, 3>
+  adjust_gridding_triple_3(
+    const boost::array<std::size_t, 3>& min_grid,
+    std::size_t max_prime,
+    const boost::array<std::size_t, 3>& mandatory_factors) {
+    return fftbx::adjust_gridding_array(min_grid, max_prime,
+                                        mandatory_factors);
+  }
 
   void throw_size_error() {
     PyErr_SetString(PyExc_RuntimeError, "Vector is too small.");
@@ -204,6 +231,11 @@ namespace {
       py_factorization, boost::python::without_downcast);
     py_real_to_complex.declare_base(
       py_factorization, boost::python::without_downcast);
+
+    this_module.def(adjust_gridding_2, "adjust_gridding");
+    this_module.def(adjust_gridding_3, "adjust_gridding");
+    this_module.def(adjust_gridding_triple_2, "adjust_gridding_triple");
+    this_module.def(adjust_gridding_triple_3, "adjust_gridding_triple");
 
     py_vd3d_accessor.def(constructor<>());
     py_vd3d_accessor.def(constructor<
