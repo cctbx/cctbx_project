@@ -1,3 +1,4 @@
+"""
 scalepack manual, edition 5, page 141
 The space group may be entered as a name (e.g. P212121) or as a number (e.g. 19, for the same space group). Most of the numbers correspond to those of the International Tables. The numbers above 230 are non-standard definitions of space groups.
 
@@ -87,3 +88,4 @@ Notes to particular space groups:
 403 P21C P21, C axis unique
 305 B2 like C2, B face centered, c axis unique
 503 I2 Non-standard, but useful to make beta angle close to 90.
+"""
