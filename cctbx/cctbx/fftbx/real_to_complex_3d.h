@@ -5,8 +5,8 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Dec 21: iterator-based interface (rwgk)
      2001 Nov 03: fftbx started, based on fftpack41 (rwgk)
-     XXX avoid z, z+1 by casting to complex
  */
 
 #ifndef CCTBX_FFTBX_REAL_TO_COMPLEX_3D_H
@@ -18,11 +18,13 @@
 
 namespace cctbx { namespace fftbx {
 
-  /*! \brief Dimensions of 3-dimensional real-to-complex array
-      given dimensions of real array.
+  /*! \brief Physical dimensions of 3-dimensional real-to-complex array
+      as complex array, given generic dimensions of real array.
    */
-  /*! The complex array contains product(Ncomplex) complex
+  /*! The real-to-complex array contains product(Ncomplex) complex
       values, i.e. product(2*Ncomplex) real values.
+      <p>
+      See also: Mreal_from_Nreal()
    */
   template <typename IntegerType, std::size_t D>
   inline boost::array<std::size_t, D>
@@ -32,7 +34,14 @@ namespace cctbx { namespace fftbx {
     return result;
   }
 
-  //! XXX
+  /*! \brief Physical dimensions of 3-dimensional real-to-complex array
+      as real array, given generic dimensions of real array.
+   */
+  /*! The real-to-complex array contains product(Ncomplex) complex
+      values, i.e. product(2*Ncomplex) real values.
+      <p>
+      See also: Ncomplex_from_Nreal()
+   */
   template <typename IntegerType, std::size_t D>
   inline boost::array<std::size_t, D>
   Mreal_from_Nreal(const boost::array<IntegerType, D>& Nreal) {
@@ -89,15 +98,19 @@ namespace cctbx { namespace fftbx {
         : m_Nreal(N0, N1, N2) {
         init();
       }
-      //! XXX
+      //! Generic dimensions of real array.
       boost::array<std::size_t, 3> Nreal() const { return m_Nreal; }
-      //! XXX
-      boost::array<std::size_t, 3> Mreal() const {
-        return Mreal_from_Nreal(m_Nreal);
-      }
-      //! XXX
+      //! Physical dimensions of real-to-complex array as complex array.
+      /*! See also: Mreal(), Ncomplex_from_Nreal()
+       */
       boost::array<std::size_t, 3> Ncomplex() const {
         return Ncomplex_from_Nreal(m_Nreal);
+      }
+      //! Physical dimensions of real-to-complex array as real array.
+      /*! See also: Ncomplex(), Mreal_from_Nreal()
+       */
+      boost::array<std::size_t, 3> Mreal() const {
+        return Mreal_from_Nreal(m_Nreal);
       }
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex, real_to_complex
@@ -126,8 +139,9 @@ namespace cctbx { namespace fftbx {
       template <typename NdimAccessor>
       void forward(NdimAccessor Map, complex_type) {
         typedef typename NdimAccessor::dimension_type dim_type;
+        dim_type dim(Map.elems[0], Map.elems[1], Map.elems[2] * 2);
         ndim_accessor<dim_type, real_type*, real_type>
-        rmap(Map, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
+        rmap(dim, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
         forward(rmap, real_type());
       }
       // Core routine always works on real maps.
@@ -135,6 +149,7 @@ namespace cctbx { namespace fftbx {
       void forward(NdimAccessor Map, real_type)
   // FUTURE: move out of class body
   {
+    // TODO: avoid i, i+1 by casting to complex
     real_type* Seq = &(*(m_Seq.begin()));
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
@@ -175,8 +190,9 @@ namespace cctbx { namespace fftbx {
       template <typename NdimAccessor>
       void backward(NdimAccessor Map, complex_type) {
         typedef typename NdimAccessor::dimension_type dim_type;
+        dim_type dim(Map.elems[0], Map.elems[1], Map.elems[2] * 2);
         ndim_accessor<dim_type, real_type*, real_type>
-        rmap(Map, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
+        rmap(dim, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
         backward(rmap, real_type());
       }
       // Core routine always works on real maps.
@@ -184,6 +200,7 @@ namespace cctbx { namespace fftbx {
       void backward(NdimAccessor Map, real_type)
   // FUTURE: move out of class body
   {
+    // TODO: avoid i, i+1 by casting to complex
     real_type* Seq = &(*(m_Seq.begin()));
     for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {

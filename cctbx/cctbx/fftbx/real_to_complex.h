@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Dec 21: iterator-based interface (rwgk)
      2001 Nov 03: fftbx started, based on fftpack41 (rwgk)
  */
 
@@ -32,7 +33,11 @@ namespace cctbx { namespace fftbx {
   inline std::size_t Ncomplex_from_Nreal(std::size_t Nreal) {
     return Nreal/2+1;
   }
-  //! XXX
+  /*! \brief Minimum array dimension for a real-to-complex sequence
+      as number of real values, given length of the real sequence.
+   */
+  /*! Equivalent to 2 * Ncomplex_from_Nreal(Nreal).
+   */
   inline std::size_t Mreal_from_Nreal(std::size_t Nreal) {
     return 2 * Ncomplex_from_Nreal(Nreal);
   }
@@ -68,7 +73,11 @@ namespace cctbx { namespace fftbx {
       /*! See also: Ncomplex_from_Nreal()
        */
       std::size_t Ncomplex() { return m_Ncomplex; }
-      //! XXX
+      /*! \brief Minimum array dimension for a real-to-complex sequence
+          as number of real values.
+       */
+      /*! See also: Mreal_from_Nreal()
+       */
       std::size_t Mreal() { return 2 * m_Ncomplex; }
       //! Access to the Nreal() pre-computed "twiddle factors."
       const std::vector<real_type>& WA() const {
