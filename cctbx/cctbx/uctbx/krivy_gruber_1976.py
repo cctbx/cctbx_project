@@ -112,6 +112,9 @@ class reduction(reduction_base):
     assert s.c > 0
 
 class minimum_reduction(minimum_reduction_mixin, reduction):
+  """Development and regression test code. Do not use for applications.
+     Use uctbx.fast_minimum_reduction instead.
+  """
 
   def __init__(self, unit_cell, expected_cycle_limit=None,
                                 iteration_limit=None):

@@ -181,6 +181,9 @@ class reduction_base(gruber_parameterization):
     self.f = -abs(self.f)
 
 class minimum_reduction_mixin:
+  """Development and regression test code. Do not use for applications.
+     Use uctbx.fast_minimum_reduction instead.
+  """
 
   def __init__(self, unit_cell, expected_cycle_limit, iteration_limit):
     if (expected_cycle_limit is None):
