@@ -302,7 +302,7 @@ namespace cctbx {
             bool FriedelFlag = ... // define Friedel symmetry.
             sgtbx::SymEquivMillerIndices SEMI = SgOps.getEquivMillerIndices(H);
             for (int iList = 0; iList < SEMI.N(); iList++)
-              for (int iMate = 0; iMate < SEMI.fMate(FriedelFlag); iMate++)
+              for (int iMate = 0; iMate < SEMI.fMates(FriedelFlag); iMate++)
                 Miller::Index EquivH = SEMI(iMate, iList);
             </pre>
             Note that it is possible and often more convenient to have a
