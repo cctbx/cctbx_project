@@ -443,7 +443,7 @@ namespace sgtbx {
                       const cctbx::fractional<FloatType> X,
                       double Uiso) const
       {
-        return StructureFactor(H, X) * uc.TemperatureFactor(H, Uiso);
+        return StructureFactor(H, X) * uc.TemperatureFactorU(H, Uiso);
       }
       //! Structure factor with anisotropic temperature factor.
       /*! XXX
@@ -473,7 +473,7 @@ namespace sgtbx {
               Fs += std::complex<FloatType>(std::cos(phase), std::sin(phase));
             }
           }
-          F += Fs * uc.TemperatureFactor(HR, uij);
+          F += Fs * uc.TemperatureFactorU(HR, uij);
         }
         return F;
       }
