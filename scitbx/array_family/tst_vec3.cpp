@@ -14,6 +14,7 @@ int main(int argc, char* argv[])
 {
   {
     vec3<int> a;
+    vec3<double> i = 0;
     vec3<int> b(0,0,0);
     vec3<int> c(af::tiny_plain<int,3>(0,0,0));
     int id[] = {1,1,1};
@@ -51,6 +52,7 @@ int main(int argc, char* argv[])
     check_true(__LINE__, a * 2 == d);
     check_true(__LINE__, 2 * a == d);
     check_true(__LINE__, d / 2 == a);
+    check_true(__LINE__, d / static_cast<std::size_t>(2) == a);
     check_true(__LINE__, 12 / d == vec3<int>(6,3,2));
     check_true(__LINE__, a % 2 == vec3<int>(1,0,1));
     check_true(__LINE__, 4 % d == vec3<int>(0,0,4));

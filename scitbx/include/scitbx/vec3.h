@@ -23,6 +23,10 @@ namespace scitbx {
 
       //! Default constructor. Elements are not initialized.
       vec3() {}
+      //! All elements are initialized with e.
+      vec3(NumType const& e)
+        : base_type(e, e, e)
+      {}
       //! Constructor.
       vec3(NumType const& e0, NumType const& e1, NumType const& e2)
         : base_type(e0, e1, e2)
@@ -400,6 +404,21 @@ namespace scitbx {
   operator/(
     vec3<NumType> const& lhs,
     NumType const& rhs)
+  {
+    vec3<NumType> result;
+    for(std::size_t i=0;i<3;i++) {
+      result[i] = lhs[i] / rhs   ;
+    }
+    return result;
+  }
+
+  //! Element-wise division.
+  template <typename NumType>
+  inline
+  vec3<NumType>
+  operator/(
+    vec3<NumType> const& lhs,
+    std::size_t const& rhs)
   {
     vec3<NumType> result;
     for(std::size_t i=0;i<3;i++) {
