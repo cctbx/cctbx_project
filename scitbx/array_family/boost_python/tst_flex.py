@@ -751,6 +751,15 @@ def exercise_flex_vec3_double():
   assert approx_equal(b.rms_difference(b), 0)
   assert approx_equal(a.rms_length(), math.sqrt(flex.mean(a.dot())))
   assert approx_equal((a-a).rms_length(), 0)
+  for i_trial in xrange(10):
+    for n in [7,10,13]:
+      sites_1 = flex.vec3_double(flex.random_double(n*3)*5)
+      sites_2 = flex.vec3_double(flex.random_double(n*3)*7)
+      m1 = matrix.rec(sites_1.as_double(), (sites_1.size(), 3))
+      m2 = matrix.rec(sites_2.as_double(), (sites_2.size(), 3))
+      assert approx_equal(
+        sites_1.transpose_multiply(sites_2),
+        m1.transpose()*m2)
 
 def exercise_histogram():
   x = flex.double(xrange(20))

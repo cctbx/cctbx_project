@@ -2,9 +2,8 @@
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
-#include <scitbx/mat3.h>
+#include <scitbx/matrix/transpose_multiply.h>
 #include <scitbx/math/utils.h>
-#include <scitbx/error.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
 
@@ -256,6 +255,10 @@ namespace boost_python {
       .def("__rmul__", rmul_a_mat3)
       .def("dot", dot_a_a)
       .def("dot", dot_a)
+      .def("transpose_multiply",
+        (mat3<double>(*)(
+          af::const_ref<vec3<double> > const&,
+          af::const_ref<vec3<double> > const&)) matrix::transpose_multiply)
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
