@@ -12,6 +12,8 @@
 #include <cctbx/miller_bpl.h>
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/array_family/grid_accessor_bpl.h>
+#include <cctbx/array_family/tiny_types.h>
+#include <cctbx/array_family/flex_types.h>
 #include <cctbx/miller/span.h>
 #include <cctbx/sftbx/xray_scatterer.h>
 #include <cctbx/sftbx/sfmap.h>
@@ -19,6 +21,26 @@
 #include <cctbx/maps/peak_search.h>
 
 #include <cctbx/array_family/shared_bpl_.h>
+
+// XXX move to a new header file
+namespace cctbx { namespace af {
+
+  template <std::size_t N_tiny>
+  struct as_tiny
+  {
+    template <typename ElementType, std::size_t N_small>
+    static
+    tiny<ElementType, N_tiny>
+    convert(small_plain<ElementType, N_small> const& a)
+    {
+      tiny<ElementType, N_tiny> result;
+      cctbx_assert(a.size() == result.size());
+      for(std::size_t i=0;i<result.size();i++) result[i] = a[i];
+      return result;
+    }
+  };
+
+}}
 
 namespace {
   typedef
@@ -40,6 +62,7 @@ namespace cctbx { namespace af { namespace bpl { namespace {
 
 }}}} // namespace cctbx::af::bpl<anonymous>
 
+// XXX which ones to we still need?
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::af::double3)
@@ -51,9 +74,32 @@ namespace {
 
   using namespace cctbx;
 
+  // XXX move to a new header file
+  template <typename ElementType>
+  af::const_ref<ElementType, af::grid<3> >
+  flex_as_const_ref_grid_3(
+    af::versa<ElementType, af::flex_grid<> > const& map)
+  {
+    cctbx_assert(map.accessor().nd() == 3);
+    cctbx_assert(map.accessor().is_0_based());
+    cctbx_assert(!map.accessor().is_padded());
+    return af::const_ref<ElementType, af::grid<3> >(
+      map.begin(),
+      af::grid<3>(af::as_tiny<3>::convert(map.accessor().grid())));
+  }
+
+  // XXX move to a new header file
+  template <typename ElementType>
+  af::versa<ElementType, af::flex_grid<> >
+  flex_from_versa_grid_3(af::versa<ElementType, af::grid<3> >& map)
+  {
+    return af::versa<ElementType, af::flex_grid<> >(
+      map, af::make_flex_grid(map.accessor()));
+  }
+
   void
   xray_scatterer_set_fpfdp(ex_xray_scatterer& site,
-                           const std::complex<double>& fpfdp) {
+                           std::complex<double> const& fpfdp) {
     site.set_fpfdp(fpfdp);
   }
 
@@ -65,20 +111,20 @@ namespace {
   void
   xray_scatterer_set_Occ_2(ex_xray_scatterer& site,
                            double Occ,
-                           const sgtbx::SpaceGroup& SgOps) {
+                           sgtbx::SpaceGroup const& SgOps) {
     site.set_Occ(Occ, SgOps);
   }
 
   ex_xray_scatterer
-  xray_scatterer_copy(const ex_xray_scatterer& site) {
+  xray_scatterer_copy(ex_xray_scatterer const& site) {
     return site;
   }
 
   fractional<double>
   py_least_squares_shift(
-    const uctbx::UnitCell& ucell,
-    const af::shared<ex_xray_scatterer>& sites1,
-    const af::shared<ex_xray_scatterer>& sites2)
+    uctbx::UnitCell const& ucell,
+    af::shared<ex_xray_scatterer> const& sites1,
+    af::shared<ex_xray_scatterer> const& sites2)
   {
     return sftbx::least_squares_shift(
       ucell, sites1.const_ref(), sites2.const_ref());
@@ -86,52 +132,52 @@ namespace {
 
   double
   py_rms_coordinates_plain(
-    const uctbx::UnitCell& ucell,
-    const af::shared<ex_xray_scatterer>& sites1,
-    const af::shared<ex_xray_scatterer>& sites2)
+    uctbx::UnitCell const& ucell,
+    af::shared<ex_xray_scatterer> const& sites1,
+    af::shared<ex_xray_scatterer> const& sites2)
   {
     return sftbx::rms_coordinates(
       ucell, sites1.const_ref(), sites2.const_ref());
   }
   double
   py_rms_coordinates_shift(
-    const uctbx::UnitCell& ucell,
-    const af::shared<ex_xray_scatterer>& sites1,
-    const af::shared<ex_xray_scatterer>& sites2,
-    const fractional<double>& shift)
+    uctbx::UnitCell const& ucell,
+    af::shared<ex_xray_scatterer> const& sites1,
+    af::shared<ex_xray_scatterer> const& sites2,
+    fractional<double> const& shift)
   {
     return sftbx::rms_coordinates(
       ucell, sites1.const_ref(), sites2.const_ref(), shift);
   }
 
   std::complex<double>
-  py_StructureFactor_plain(const sgtbx::SpaceGroup& SgOps,
-                           const miller::Index& H,
-                           const fractional<double>& X) {
+  py_StructureFactor_plain(sgtbx::SpaceGroup const& SgOps,
+                           miller::Index const& H,
+                           fractional<double> const& X) {
     return sftbx::StructureFactor(SgOps, H, X);
   }
   std::complex<double>
-  py_StructureFactor_iso(const sgtbx::SpaceGroup& SgOps,
-                         const uctbx::UnitCell& UCell,
-                         const miller::Index& H,
-                         const fractional<double>& X,
+  py_StructureFactor_iso(sgtbx::SpaceGroup const& SgOps,
+                         uctbx::UnitCell const& UCell,
+                         miller::Index const& H,
+                         fractional<double> const& X,
                          double Uiso) {
     return sftbx::StructureFactor(SgOps, UCell, H, X, Uiso);
   }
   std::complex<double>
-  py_StructureFactor_aniso(const sgtbx::SpaceGroup& SgOps,
-                           const miller::Index& H,
-                           const fractional<double>& X,
-                           const af::double6& Ustar) {
+  py_StructureFactor_aniso(sgtbx::SpaceGroup const& SgOps,
+                           miller::Index const& H,
+                           fractional<double> const& X,
+                           af::double6 const& Ustar) {
     return sftbx::StructureFactor(SgOps, H, X, Ustar);
   }
 
   void
   py_StructureFactorArray_add(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<ex_xray_scatterer>& Sites,
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<ex_xray_scatterer> const& Sites,
     af::shared<std::complex<double> > Fcalc)
   {
     sftbx::StructureFactorArray(
@@ -141,10 +187,10 @@ namespace {
 
   af::shared<std::complex<double> >
   py_StructureFactorArray_new(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<ex_xray_scatterer>& Sites)
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<ex_xray_scatterer> const& Sites)
   {
     af::shared<std::complex<double> > fcalc(H.size());
     sftbx::StructureFactorArray(
@@ -154,11 +200,11 @@ namespace {
 
   void
   py_StructureFactor_dT_dX_Array_add(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<std::complex<double> >& dTarget_dFcalc,
-    const af::shared<ex_xray_scatterer>& Sites,
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<std::complex<double> > const& dTarget_dFcalc,
+    af::shared<ex_xray_scatterer> const& Sites,
     af::shared<af::double3> dT_dX)
   {
     sftbx::StructureFactor_dT_dX_Array(
@@ -168,11 +214,11 @@ namespace {
 
   af::shared<af::double3>
   py_StructureFactor_dT_dX_Array_new(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<std::complex<double> >& dTarget_dFcalc,
-    const af::shared<ex_xray_scatterer>& Sites)
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<std::complex<double> > const& dTarget_dFcalc,
+    af::shared<ex_xray_scatterer> const& Sites)
   {
     af::shared<af::double3> dT_dX(Sites.size());
     dT_dX.fill(af::double3(0.,0.,0.));
@@ -184,11 +230,11 @@ namespace {
 
   void
   py_StructureFactor_dT_dOcc_Array_add(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<std::complex<double> >& dTarget_dFcalc,
-    const af::shared<ex_xray_scatterer>& Sites,
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<std::complex<double> > const& dTarget_dFcalc,
+    af::shared<ex_xray_scatterer> const& Sites,
     af::shared<double> dT_dOcc)
   {
     sftbx::StructureFactor_dT_dOcc_Array(
@@ -198,11 +244,11 @@ namespace {
 
   af::shared<double>
   py_StructureFactor_dT_dOcc_Array_new(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<std::complex<double> >& dTarget_dFcalc,
-    const af::shared<ex_xray_scatterer>& Sites)
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<std::complex<double> > const& dTarget_dFcalc,
+    af::shared<ex_xray_scatterer> const& Sites)
   {
     af::shared<double> dT_dOcc(Sites.size());
     sftbx::StructureFactor_dT_dOcc_Array(
@@ -213,11 +259,11 @@ namespace {
 
   void
   py_StructureFactor_dT_dUiso_Array_add(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<std::complex<double> >& dTarget_dFcalc,
-    const af::shared<ex_xray_scatterer>& Sites,
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<std::complex<double> > const& dTarget_dFcalc,
+    af::shared<ex_xray_scatterer> const& Sites,
     af::shared<double> dT_dUiso)
   {
     sftbx::StructureFactor_dT_dUiso_Array(
@@ -227,11 +273,11 @@ namespace {
 
   af::shared<double>
   py_StructureFactor_dT_dUiso_Array_new(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<std::complex<double> >& dTarget_dFcalc,
-    const af::shared<ex_xray_scatterer>& Sites)
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<std::complex<double> > const& dTarget_dFcalc,
+    af::shared<ex_xray_scatterer> const& Sites)
   {
     af::shared<double> dT_dUiso(Sites.size());
     sftbx::StructureFactor_dT_dUiso_Array(
@@ -255,14 +301,14 @@ namespace {
   pack_parameters_generic(
     const uctbx::UnitCell* UCell,
     af::shared<ex_xray_scatterer> const& sites,
-    af::versa<double, af::flex_grid<> >& x,
+    af::flex_double& x,
     bool coordinates, bool occ, bool uiso)
   {
     af::shared_plain<double> xb = x.as_base_array();
     if (coordinates) {
       if (!UCell) {
         for(std::size_t i=0;i<sites.size();i++) {
-          const af::double3& c = sites[i].Coordinates();
+          af::double3 const& c = sites[i].Coordinates();
           xb.insert(xb.end(), c.begin(), c.end());
         }
       }
@@ -283,7 +329,7 @@ namespace {
         xb.push_back(sites[i].Uiso());
       }
     }
-    af::flex_grid_default_index_type grid; // XXX use make_flex_grid_1d()
+    af::flex_grid_default_index_type grid; // XXX use af::make_flex_grid_1d()
     grid.push_back(xb.size());
     x.resize(af::flex_grid<>(grid));
     return x.size();
@@ -331,8 +377,8 @@ namespace {
 
   std::size_t
   pack_parameters_frac(
-    const af::shared<ex_xray_scatterer>& sites,
-    af::versa<double, af::flex_grid<> >& x,
+    af::shared<ex_xray_scatterer> const& sites,
+    af::flex_double& x,
     bool coordinates, bool occ, bool uiso)
   {
     return pack_parameters_generic(
@@ -352,9 +398,9 @@ namespace {
 
   std::size_t
   pack_parameters_cart(
-    const uctbx::UnitCell& UCell,
-    const af::shared<ex_xray_scatterer>& sites,
-    af::versa<double, af::flex_grid<> >& x,
+    uctbx::UnitCell const& UCell,
+    af::shared<ex_xray_scatterer> const& sites,
+    af::flex_double& x,
     bool coordinates, bool occ, bool uiso)
   {
     return pack_parameters_generic(
@@ -363,7 +409,7 @@ namespace {
 
   std::size_t
   unpack_parameters_cart(
-    const uctbx::UnitCell& UCell,
+    uctbx::UnitCell const& UCell,
     af::shared<double> x,
     std::size_t start,
     af::shared<ex_xray_scatterer> sites,
@@ -380,7 +426,7 @@ namespace {
 
   void
   dT_dX_inplace_frac_as_cart(
-    const uctbx::UnitCell& UCell,
+    uctbx::UnitCell const& UCell,
     af::shared<af::double3> dT_dX)
   {
     for(std::size_t i=0;i<dT_dX.size();i++) {
@@ -418,54 +464,56 @@ namespace {
 
   af::int3
   py_determine_grid(
-    const uctbx::UnitCell& ucell,
+    uctbx::UnitCell const& ucell,
     double max_q,
     double resolution_factor,
     int max_prime,
-    const af::int3& mandatory_factors)
+    af::int3 const& mandatory_factors)
   {
     return maps::determine_grid<af::int3>(
       ucell, max_q, resolution_factor, max_prime, mandatory_factors);
   }
 
-  af::shared<double>
-  sampled_model_density_map_real_as_shared(
+  af::flex_double
+  sampled_model_density_map_real(
     sftbx::sampled_model_density<double>& smd)
   {
-    return smd.map_real().as_base_array();
+    sftbx::sampled_model_density<double>::map_real_type
+    map = smd.map_real();
+    return af::flex_double(map, map.accessor().as_flex_grid());
   }
 
-  af::shared<std::complex<double> >
-  sampled_model_density_map_complex_as_shared(
+  af::flex_complex_double
+  sampled_model_density_map_complex(
     sftbx::sampled_model_density<double>& smd)
   {
-    return smd.map_complex().as_base_array();
-  }
-
-  af::shared<double>
-  as_shared(const af::versa<double, af::grid<3> >& a) {
-    return af::shared<double>(a.as_base_array());
+    sftbx::sampled_model_density<double>::map_complex_type
+    map = smd.map_complex();
+    return af::flex_complex_double(map, map.accessor().as_flex_grid());
   }
 
   bool
   grid_tags_verify_1(
-    const maps::grid_tags<long>& tags,
-    af::versa<double, af::grid<3> >& data) {
-    return tags.verify(data);
+    maps::grid_tags<long> const& tags,
+    af::flex_double& data)
+  {
+    return tags.verify(flex_as_const_ref_grid_3(data));
   }
+
   bool
   grid_tags_verify_2(
-    const maps::grid_tags<long>& tags,
-    af::versa<double, af::grid<3> >& data,
-    double min_correlation) {
-    return tags.verify(data, min_correlation);
+    maps::grid_tags<long> const& tags,
+    af::flex_double& data,
+    double min_correlation)
+  {
+    return tags.verify(flex_as_const_ref_grid_3(data), min_correlation);
   }
 
   void
   py_eliminate_u_extra_5(
-    const uctbx::UnitCell& ucell,
+    uctbx::UnitCell const& ucell,
     double u_extra,
-    const af::shared<miller::Index>& miller_indices,
+    af::shared<miller::Index> const& miller_indices,
     af::shared<std::complex<double> > structure_factors,
     double norm)
   {
@@ -476,9 +524,9 @@ namespace {
 
   void
   py_eliminate_u_extra_4(
-    const uctbx::UnitCell& ucell,
+    uctbx::UnitCell const& ucell,
     double u_extra,
-    const af::shared<miller::Index>& miller_indices,
+    af::shared<miller::Index> const& miller_indices,
     af::shared<std::complex<double> > structure_factors)
   {
     sftbx::eliminate_u_extra(
@@ -487,69 +535,45 @@ namespace {
 
   void sampled_model_density_apply_symmetry(
     sftbx::sampled_model_density<double>& dens,
-    const maps::grid_tags<long>& tags)
+    maps::grid_tags<long> const& tags)
   {
     dens.apply_symmetry(tags);
   }
 
   void sampled_model_density_eliminate_u_extra_and_normalize(
-    const sftbx::sampled_model_density<double>& dens,
-    const af::shared<miller::Index>& miller_indices,
+    sftbx::sampled_model_density<double> const& dens,
+    af::shared<miller::Index> const& miller_indices,
     af::shared<std::complex<double> > structure_factors)
   {
     dens.eliminate_u_extra_and_normalize(
       miller_indices.const_ref(), structure_factors.ref());
   }
 
-  af::shared<std::complex<double> >
+  af::flex_complex_double
   py_structure_factor_map(
-    const sgtbx::SpaceGroup& sgops,
+    sgtbx::SpaceGroup const& sgops,
     bool friedel_flag,
-    const af::shared<miller::Index>& h,
-    const af::shared<std::complex<double> >& f,
-    const af::tiny<long, 3>& n_complex,
+    af::shared<miller::Index> const& h,
+    af::shared<std::complex<double> > const& f,
+    af::long3 const& n_complex,
     bool conjugate)
   {
-    return sftbx::structure_factor_map(
+    return flex_from_versa_grid_3(sftbx::structure_factor_map(
       sgops, friedel_flag, h.const_ref(), f.const_ref(), n_complex,
-      conjugate).as_base_array();
+      conjugate));
   }
 
   af::shared<std::complex<double> >
-  py_collect_structure_factors_miller_indices_real(
+  py_collect_structure_factors_miller_indices(
     bool friedel_flag,
-    const af::shared<miller::Index>& miller_indices,
-    const af::shared<double>& transformed_real_map,
-    const af::tiny<long, 3>& n_complex,
-    bool conjugate)
-  {
-    cctbx_assert(
-         transformed_real_map.size()
-      >= 2 * af::compile_time_product<3>::get(n_complex));
-    af::const_ref<std::complex<double> > transformed_complex_map(
-      reinterpret_cast<const std::complex<double>*>(
-        transformed_real_map.begin()), transformed_real_map.size()/2);
-    return sftbx::collect_structure_factors(
-      friedel_flag,
-      miller_indices.const_ref(),
-      transformed_complex_map,
-      n_complex,
-      conjugate);
-  }
-
-  af::shared<std::complex<double> >
-  py_collect_structure_factors_miller_indices_complex(
-    bool friedel_flag,
-    const af::shared<miller::Index>& miller_indices,
-    const af::shared<std::complex<double> >& transformed_complex_map,
-    const af::tiny<long, 3>& n_complex,
+    af::shared<miller::Index> const& miller_indices,
+    af::flex_complex_double const& transformed_map,
     bool conjugate)
   {
     return sftbx::collect_structure_factors(
       friedel_flag,
       miller_indices.const_ref(),
-      transformed_complex_map.const_ref(),
-      n_complex,
+      flex_as_const_ref_grid_3(transformed_map),
       conjugate);
   }
 
@@ -557,11 +581,11 @@ namespace {
 
   tuple
   py_StructureFactor_dT_dX_dUiso_Array_new(
-    const uctbx::UnitCell& UC,
-    const sgtbx::SpaceGroup& SgOps,
-    const af::shared<miller::Index>& H,
-    const af::shared<std::complex<double> >& dTarget_dFcalc,
-    const af::shared<ex_xray_scatterer>& Sites)
+    uctbx::UnitCell const& UC,
+    sgtbx::SpaceGroup const& SgOps,
+    af::shared<miller::Index> const& H,
+    af::shared<std::complex<double> > const& dTarget_dFcalc,
+    af::shared<ex_xray_scatterer> const& Sites)
   {
     af::shared<af::double3> dT_dX(Sites.size());
     dT_dX.fill(af::double3(0.,0.,0.));
@@ -576,58 +600,31 @@ namespace {
   }
 
   tuple
-  py_collect_structure_factors_max_q_real(
-    const uctbx::UnitCell& ucell,
-    const sgtbx::SpaceGroupInfo& sginfo,
+  py_collect_structure_factors_max_q(
+    uctbx::UnitCell const& ucell,
+    sgtbx::SpaceGroupInfo const& sginfo,
     bool friedel_flag,
     double max_q,
-    const af::shared<double>& transformed_real_map,
-    const af::tiny<long, 3>& n_complex,
+    af::flex_complex_double const& transformed_map,
     bool conjugate)
   {
-    cctbx_assert(
-         transformed_real_map.size()
-      >= 2 * af::compile_time_product<3>::get(n_complex));
-    af::const_ref<std::complex<double> > transformed_complex_map(
-      reinterpret_cast<const std::complex<double>*>(
-        transformed_real_map.begin()), transformed_real_map.size()/2);
     std::pair<af::shared<miller::Index>,
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
-      ucell, sginfo, friedel_flag,
-      max_q, transformed_complex_map, n_complex, conjugate);
+      ucell, sginfo, friedel_flag, max_q,
+      flex_as_const_ref_grid_3(transformed_map),
+      conjugate);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);
     return result;
   }
 
-  tuple
-  py_collect_structure_factors_max_q_complex(
-    const uctbx::UnitCell& ucell,
-    const sgtbx::SpaceGroupInfo& sginfo,
-    bool friedel_flag,
-    double max_q,
-    const af::shared<std::complex<double> >& transformed_complex_map,
-    const af::tiny<long, 3>& n_complex,
-    bool conjugate)
-  {
-    std::pair<af::shared<miller::Index>,
-              af::shared<std::complex<double> > >
-    indexed_structure_factors = sftbx::collect_structure_factors(
-      ucell, sginfo, friedel_flag,
-      max_q, transformed_complex_map.const_ref(), n_complex, conjugate);
-    tuple result(2);
-    result.set_item(0, indexed_structure_factors.first);
-    result.set_item(1, indexed_structure_factors.second);
-    return result;
-  }
-
-  std::size_t peak_list_size(const maps::peak_list<double>& pl) {
+  std::size_t peak_list_size(maps::peak_list<double> const& pl) {
     return pl.size();
   }
   boost::python::dictionary
-  peak_list_getitem(const maps::peak_list<double>& pl, std::size_t i) {
+  peak_list_getitem(maps::peak_list<double> const& pl, std::size_t i) {
     boost::python::dictionary res;
     res.set_item("index", boost::python::ref(to_python(pl[i].index)));
     res.set_item("value", boost::python::ref(to_python(pl[i].value)));
@@ -638,7 +635,7 @@ namespace {
   get_peak_list(
     af::int3 const& n_real,
     af::int3 const& m_real,
-    af::shared<double> data,
+    af::shared<double> data, // XXX use flex
     maps::grid_tags<long>& tags,
     int peak_search_level,
     std::size_t max_peaks)
@@ -650,10 +647,11 @@ namespace {
     typedef af::grid<3> grid_type;
     typedef grid_type::index_type grid_point_type;
     af::ref<double, grid_type> data_3d(data.begin(), grid_type(m_real));
+    // XXX  make maps::peak_list smarter so we do not need to unpad
     af::versa<double, grid_type> data_compact_3d; // XXX why do we need the
     data_compact_3d.resize(grid_type(n_real));    // XXX separate resize()?
     af::nested_loop<grid_point_type> loop(data_compact_3d.accessor());
-    for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
+    for (grid_point_type const& pt = loop(); !loop.over(); loop.incr()) {
       data_compact_3d(pt) = data_3d(pt);
     }
     return maps::peak_list<double>(
@@ -686,9 +684,6 @@ namespace {
     class_builder<sftbx::sampled_model_density<double> >
     py_sampled_model_density(this_module, "sampled_model_density");
 
-    class_builder<af::versa<double, af::grid<3> > >
-    py_versa_double_grid_3(this_module, "versa_double_grid_3");
-
     class_builder<maps::map_symmetry_flags>
     py_map_symmetry_flags(this_module, "map_symmetry_flags");
 
@@ -700,19 +695,19 @@ namespace {
 
     py_XrayScatterer.def(constructor<>());
     py_XrayScatterer.def(constructor<
-      const std::string&,
-      const eltbx::CAASF_WK1995&,
-      const std::complex<double>&,
-      const fractional<double>&,
-      const double&,
-      const double&>());
+      std::string const&,
+      eltbx::CAASF_WK1995 const&,
+      std::complex<double> const&,
+      fractional<double> const&,
+      double const&,
+      double const&>());
     py_XrayScatterer.def(constructor<
-      const std::string&,
-      const eltbx::CAASF_WK1995&,
-      const std::complex<double>&,
-      const fractional<double>&,
-      const double&,
-      const af::double6&>());
+      std::string const&,
+      eltbx::CAASF_WK1995 const&,
+      std::complex<double> const&,
+      fractional<double> const&,
+      double const&,
+      af::double6 const&>());
     py_XrayScatterer.def(
       &ex_xray_scatterer::Label, "Label");
     py_XrayScatterer.def(
@@ -762,38 +757,38 @@ namespace {
 
     py_sampled_model_density.def(constructor<>());
     py_sampled_model_density.def(constructor<
-      const uctbx::UnitCell&,
-      const af::shared<ex_xray_scatterer>&,
-      const af::tiny<long, 3>&,
-      const af::tiny<long, 3>&>());
+      uctbx::UnitCell const&,
+      af::shared<ex_xray_scatterer> const&,
+      af::long3 const&,
+      af::long3 const&>());
     py_sampled_model_density.def(constructor<
-      const uctbx::UnitCell&,
-      const af::shared<ex_xray_scatterer>&,
-      const af::tiny<long, 3>&,
-      const af::tiny<long, 3>&,
+      uctbx::UnitCell const&,
+      af::shared<ex_xray_scatterer> const&,
+      af::long3 const&,
+      af::long3 const&,
       double>());
     py_sampled_model_density.def(constructor<
-      const uctbx::UnitCell&,
-      const af::shared<ex_xray_scatterer>&,
-      const af::tiny<long, 3>&,
-      const af::tiny<long, 3>&,
+      uctbx::UnitCell const&,
+      af::shared<ex_xray_scatterer> const&,
+      af::long3 const&,
+      af::long3 const&,
       double,
       double,
       double>());
     py_sampled_model_density.def(constructor<
-      const uctbx::UnitCell&,
-      const af::shared<ex_xray_scatterer>&,
-      const af::tiny<long, 3>&,
-      const af::tiny<long, 3>&,
+      uctbx::UnitCell const&,
+      af::shared<ex_xray_scatterer> const&,
+      af::long3 const&,
+      af::long3 const&,
       double,
       double,
       double,
       bool>());
     py_sampled_model_density.def(constructor<
-      const uctbx::UnitCell&,
-      const af::shared<ex_xray_scatterer>&,
-      const af::tiny<long, 3>&,
-      const af::tiny<long, 3>&,
+      uctbx::UnitCell const&,
+      af::shared<ex_xray_scatterer> const&,
+      af::long3 const&,
+      af::long3 const&,
       double,
       double,
       double,
@@ -833,11 +828,11 @@ namespace {
       &sftbx::sampled_model_density<double>::friedel_flag,
                                             "friedel_flag");
     py_sampled_model_density.def(
-      sampled_model_density_map_real_as_shared,
-                           "map_real_as_shared");
+      sampled_model_density_map_real,
+                           "map_real");
     py_sampled_model_density.def(
-      sampled_model_density_map_complex_as_shared,
-                           "map_complex_as_shared");
+      sampled_model_density_map_complex,
+                           "map_complex");
     py_sampled_model_density.def(
       sampled_model_density_apply_symmetry,
                            "apply_symmetry");
@@ -885,18 +880,11 @@ namespace {
     this_module.def(py_calc_u_extra_2, "calc_u_extra");
     this_module.def(py_eliminate_u_extra_5, "eliminate_u_extra");
     this_module.def(py_eliminate_u_extra_4, "eliminate_u_extra");
-    this_module.def(py_collect_structure_factors_max_q_real,
+    this_module.def(py_collect_structure_factors_max_q,
       "collect_structure_factors");
-    this_module.def(py_collect_structure_factors_max_q_complex,
-      "collect_structure_factors");
-    this_module.def(py_collect_structure_factors_miller_indices_real,
-      "collect_structure_factors");
-    this_module.def(py_collect_structure_factors_miller_indices_complex,
+    this_module.def(py_collect_structure_factors_miller_indices,
       "collect_structure_factors");
     this_module.def(py_structure_factor_map, "structure_factor_map");
-
-    py_versa_double_grid_3.def(constructor<>());
-    py_versa_double_grid_3.def(as_shared, "as_shared");
 
     py_map_symmetry_flags.def(constructor<>());
     py_map_symmetry_flags.def(constructor<bool>());
@@ -919,7 +907,7 @@ namespace {
                                 "get_grid_factors");
 
     py_grid_tags.def(constructor<>());
-    py_grid_tags.def(constructor<const cctbx::af::grid<3>&>());
+    py_grid_tags.def(constructor<cctbx::af::grid<3> const&>());
     py_grid_tags.def(&maps::grid_tags<long>::build, "build");
     py_grid_tags.def(&maps::grid_tags<long>::is_valid, "is_valid");
     py_grid_tags.def(&maps::grid_tags<long>::SgInfo, "SgInfo");

@@ -11,17 +11,8 @@
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_BPL__H
 #define CCTBX_ARRAY_FAMILY_SHARED_BPL__H
 
-#include <cctbx/error.h>
-#include <cctbx/array_family/flex_grid_accessor.h>
-#include <cctbx/array_family/versa.h>
+#include <cctbx/array_family/flex_bpl.h>
 #include <cctbx/array_family/shared.h>
-
-#define CCTBX_ARRAY_FAMILY_FLEX_IMPORT(ElementType, flex_name) \
-    { \
-      boost::python::import_converters< \
-        cctbx::af::versa<ElementType, cctbx::af::flex_grid<> > > \
-      py_flex("cctbx_boost.arraytbx.flex", flex_name); \
-    }
 
 #define CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(ElementType) \
 \

@@ -61,8 +61,6 @@ namespace cctbx { namespace af {
 
       index_type const& grid() const { return grid_; }
 
-      index_type const& layout() const { return layout_; }
-
       index_type last(bool open_range = true) const
       {
         index_value_type incl = 1;
@@ -72,6 +70,24 @@ namespace cctbx { namespace af {
           result[i] += grid_[i] - incl;
         }
         return result;
+      }
+
+      index_type const& layout() const { return layout_; }
+
+      bool is_0_based() const
+      {
+        // XXX use af::cmp(origin_, 0)
+        for(std::size_t i=0;i<origin_.size();i++) {
+          if (origin_[i] != 0) return false;
+        }
+        return true;
+      }
+
+      bool is_padded() const
+      {
+        if (layout_.size() == 0) return false;
+        cctbx_assert(grid_.size() == layout_.size());
+        return !index_cmp_(grid_, layout_);
       }
 
       std::size_t operator()(index_type const& i) const
@@ -145,12 +161,37 @@ namespace cctbx { namespace af {
   };
 
   inline
-  flex_grid<>
-  make_flex_grid_1d(flex_grid<>::index_value_type const& n)
+  flex_grid_default_index_type
+  make_flex_grid_index(flex_grid<>::index_value_type const& n)
   {
     flex_grid_default_index_type grid;
     grid.push_back(n);
-    return flex_grid<>(grid);
+    return grid;
+  }
+
+  template <typename ElementType, std::size_t N>
+  flex_grid_default_index_type
+  make_flex_grid_index(tiny_plain<ElementType, N> const& index)
+  {
+    flex_grid_default_index_type grid;
+    for(std::size_t i=0;i<index.size();i++) {
+      grid.push_back(index[i]);
+    }
+    return grid;
+  }
+
+  inline
+  flex_grid<>
+  make_flex_grid_1d(flex_grid<>::index_value_type const& n)
+  {
+    return flex_grid<>(make_flex_grid_index(n));
+  }
+
+  template <typename ElementType, std::size_t N>
+  flex_grid<>
+  make_flex_grid(tiny_plain<ElementType, N> const& index)
+  {
+    return flex_grid<>(make_flex_grid_index(index));
   }
 
 }} // namespace cctbx::af

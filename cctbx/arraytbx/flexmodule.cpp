@@ -10,10 +10,9 @@
 
 #include <boost/python/cross_module.hpp>
 #include <cctbx/array_family/tiny_bpl.h>
+#include <cctbx/array_family/small_bpl.h>
+#include <cctbx/array_family/flex_types.h>
 #include <cctbx/math/array_utils.h>
-#include <cctbx/bpl_utils.h>
-#include <cctbx/array_family/flex_grid_accessor.h>
-#include <cctbx/array_family/versa.h>
 
 #include <cctbx/miller_bpl.h>
 #include <cctbx/hendrickson_lattman_bpl.h>
@@ -23,69 +22,32 @@
 
 # include <cctbx/basic/from_bpl_import.h>
 
-BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
-
-  cctbx::af::flex_grid_default_index_type
-  from_python(PyObject* p,
-    boost::python::type<cctbx::af::flex_grid_default_index_type const&>)
-
-  {
-    typedef
-      cctbx::af::flex_grid_default_index_type::value_type
-        index_value_type;
-    boost::python::tuple
-    tup = cctbx::bpl_utils::tuple_from_python_list_or_tuple(p);
-    cctbx::af::flex_grid_default_index_type result;
-    if (tup.size() >= result.capacity()) {
-      PyErr_SetString(PyExc_ValueError, "too many values in tuple.");
-      boost::python::throw_error_already_set();
-    }
-    for(int i=0;i<tup.size();i++) {
-      result.push_back(
-        from_python(tup[i].get(), boost::python::type<index_value_type>()));
-    }
-    return result;
-  }
-
-  PyObject* to_python(cctbx::af::flex_grid_default_index_type const& tobj)
-  {
-    boost::python::tuple result(tobj.size());
-    for(int i=0;i<tobj.size();i++) {
-      result.set_item(i, boost::python::ref(to_python(tobj[i])));
-    }
-    return result.reference().release();
-  }
-
-BOOST_PYTHON_END_CONVERSION_NAMESPACE
-
 namespace cctbx { namespace af {
 
-  typedef versa<bool, flex_grid<> > flex_bool;
-
   boost::python::tuple flex_bool_getstate(
-    versa<bool, flex_grid<> > const& a);
+    flex_bool const& a);
   void flex_bool_setstate(
-    versa<bool, flex_grid<> >& a, boost::python::tuple state);
+    flex_bool& a, boost::python::tuple state);
   boost::python::tuple flex_int_getstate(
-    versa<int, flex_grid<> > const& a);
+    flex_int const& a);
   void flex_int_setstate(
-    versa<int, flex_grid<> >& a, boost::python::tuple state);
+    flex_int& a, boost::python::tuple state);
   boost::python::tuple flex_long_getstate(
-    versa<long, flex_grid<> > const& a);
+    flex_long const& a);
   void flex_long_setstate(
-    versa<long, flex_grid<> >& a, boost::python::tuple state);
+    flex_long& a, boost::python::tuple state);
   boost::python::tuple flex_float_getstate(
-    versa<float, flex_grid<> > const& a);
+    flex_float const& a);
   void flex_float_setstate(
-    versa<float, flex_grid<> >& a, boost::python::tuple state);
+    flex_float& a, boost::python::tuple state);
   boost::python::tuple flex_double_getstate(
-    versa<double, flex_grid<> > const& a);
+    flex_double const& a);
   void flex_double_setstate(
-    versa<double, flex_grid<> >& a, boost::python::tuple state);
+    flex_double& a, boost::python::tuple state);
   boost::python::tuple flex_complex_double_getstate(
-    versa<std::complex<double>, flex_grid<> > const& a);
+    flex_complex_double const& a);
   void flex_complex_double_setstate(
-    versa<std::complex<double>, flex_grid<> >& a,
+    flex_complex_double& a,
     boost::python::tuple state);
   boost::python::tuple flex_miller_index_getstate(
     versa<miller::Index, flex_grid<> > const& a);
@@ -362,6 +324,14 @@ namespace cctbx { namespace af {
     layout(f_t const& a) { return a.accessor().layout(); }
 
     static
+    bool
+    is_0_based(f_t const& a) { return a.accessor().is_0_based(); }
+
+    static
+    bool
+    is_padded(f_t const& a) { return a.accessor().is_padded(); }
+
+    static
     std::size_t
     id(f_t const& a) { return a.id(); }
 
@@ -609,7 +579,7 @@ namespace cctbx { namespace af {
 
     static
     f_t
-    shuffle(f_t const& a, versa<std::size_t, flex_grid<> > const& permutation)
+    shuffle(f_t const& a, flex_size_t const& permutation)
     {
       bpl_utils::assert_1d(a.accessor());
       bpl_utils::assert_1d(permutation.accessor());
@@ -712,13 +682,13 @@ namespace cctbx { namespace af {
     }
 
     static
-    versa<double, flex_grid<> >
+    flex_double
     as_double(f_t const& a)
     {
       shared_plain<double> result;
       result.reserve(a.size());
       for(std::size_t i=0;i<a.size();i++) result.push_back(a[i]);
-      return versa<double, flex_grid<> >(result, a.accessor());
+      return flex_double(result, a.accessor());
     }
 
     static
@@ -1287,6 +1257,8 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       py_flex.def(last_0, "last");
       py_flex.def(last_1, "last");
       py_flex.def(layout, "layout");
+      py_flex.def(is_0_based, "is_0_based");
+      py_flex.def(is_padded, "is_padded");
       py_flex.def(id, "id");
       py_flex.def(size, "size");
       py_flex.def(size, "__len__");
@@ -1545,6 +1517,8 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     py_flex_grid.def(flex_grid_wrappers::last_0, "last");
     py_flex_grid.def(flex_grid_wrappers::last_1, "last");
     py_flex_grid.def(&flex_grid<>::layout, "layout");
+    py_flex_grid.def(&flex_grid<>::is_0_based, "is_0_based");
+    py_flex_grid.def(&flex_grid<>::is_padded, "is_padded");
     py_flex_grid.def(&flex_grid<>::operator(), "__call__");
     py_flex_grid.def(&flex_grid<>::is_valid_index, "is_valid_index");
     py_flex_grid.def(&flex_grid<>::operator==, "__eq__");

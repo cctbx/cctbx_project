@@ -141,19 +141,25 @@ def exercise(SgInfo,
   tags.build(xtal.SgInfo, sym_flags)
   sampled_density.apply_symmetry(tags)
   if (friedel_flag):
-    map = sampled_density.map_real_as_shared()
-    rfft.forward(map)
+    map = sampled_density.map_real()
+    assert map.grid() == rfft.Mreal()
+    assert map.layout() == rfft.Nreal()
+    sf_map = rfft.forward(map)
+    assert sf_map.grid() == rfft.Ncomplex()
+    assert sf_map.layout() == rfft.Ncomplex()
     collect_conj = 1
-    n_complex = rfft.Ncomplex()
   else:
-    map = sampled_density.map_complex_as_shared()
     cfft = fftbx.complex_to_complex_3d(rfft.Nreal())
-    cfft.backward(map)
+    map = sampled_density.map_complex()
+    assert map.grid() == cfft.N()
+    assert map.layout() == cfft.N()
+    sf_map = cfft.backward(map)
+    assert sf_map.grid() == cfft.N()
+    assert sf_map.layout() == cfft.N()
     collect_conj = 0
-    n_complex = cfft.N()
   miller_indices, fcal = sftbx.collect_structure_factors(
     xtal.UnitCell, xtal.SgInfo, friedel_flag,
-    max_q, map, n_complex, collect_conj)
+    max_q, sf_map, collect_conj)
   sampled_density.eliminate_u_extra_and_normalize(miller_indices, fcal)
   if (0):
     u_extra = sampled_density.u_extra()

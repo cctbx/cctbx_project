@@ -421,18 +421,16 @@ def calculate_structure_factors_fft(miller_set_obj, xtal, abs_F=0,
   tags.build(xtal.SgInfo, sym_flags)
   sampled_density.apply_symmetry(tags)
   if (friedel_flag):
-    map = sampled_density.map_real_as_shared()
-    rfft.forward(map)
+    map = sampled_density.map_real()
+    sf_map = rfft.forward(map)
     collect_conj = 1
-    n_complex = rfft.Ncomplex()
   else:
-    map = sampled_density.map_complex_as_shared()
+    map = sampled_density.map_complex()
     cfft = fftbx.complex_to_complex_3d(rfft.Nreal())
-    cfft.backward(map)
+    sf_map = cfft.backward(map)
     collect_conj = 0
-    n_complex = cfft.N()
   fcalc = sftbx.collect_structure_factors(
-    friedel_flag, miller_set_obj.H, map, n_complex, collect_conj)
+    friedel_flag, miller_set_obj.H, sf_map, collect_conj)
   sampled_density.eliminate_u_extra_and_normalize(miller_set_obj.H, fcalc)
   if (abs_F): fcalc = flex.abs(fcalc)
   result = reciprocal_space_array(miller_set_obj, fcalc)

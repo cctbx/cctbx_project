@@ -25,13 +25,13 @@ def exercise_map_collect(xtal, friedel_flag, fcalc, conjugate):
     xtal.SgOps, friedel_flag, fcalc.H, fcalc.F, n_complex, conjugate)
   if (friedel_flag):
     rfft.backward(map)
-    rfft.forward(map)
+    sf_map = rfft.forward(map)
   else:
     cfft.backward(map)
-    cfft.forward(map)
+    sf_map = cfft.forward(map)
   miller2, fcalc2 = sftbx.collect_structure_factors(
-    xtal.UnitCell, xtal.SgInfo, friedel_flag,
-    max_q, map, n_complex, conjugate)
+    xtal.UnitCell, xtal.SgInfo, friedel_flag, max_q,
+    sf_map, conjugate)
   js = miller.join_sets(fcalc.H, miller2)
   for i in xrange(2):
     if (i == 0): m = fcalc.H
@@ -43,7 +43,7 @@ def exercise_map_collect(xtal, friedel_flag, fcalc, conjugate):
     min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
     verbose=0)
   fcalc2 = sftbx.collect_structure_factors(
-    friedel_flag, fcalc.H, map, n_complex, conjugate)
+    friedel_flag, fcalc.H, sf_map, conjugate)
   debug_utils.show_structure_factor_correlation(
     "map/collect2", fcalc.H, 0, fcalc.F, fcalc2,
     min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
