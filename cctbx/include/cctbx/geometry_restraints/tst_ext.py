@@ -469,6 +469,18 @@ def exercise_dihedral():
   assert approx_equal(p.angle_ideal, -40)
   assert approx_equal(p.weight, 1)
   assert p.periodicity == 2
+  p.angle_ideal = 50
+  p.weight = 2
+  p.periodicity = 3
+  assert approx_equal(p.angle_ideal, 50)
+  assert approx_equal(p.weight, 2)
+  assert p.periodicity == 3
+  p.angle_ideal = -40
+  p.weight = 1
+  p.periodicity = 2
+  assert approx_equal(p.angle_ideal, -40)
+  assert approx_equal(p.weight, 1)
+  assert p.periodicity == 2
   d = geometry_restraints.dihedral(
     sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)],
     angle_ideal=-40,
@@ -499,6 +511,11 @@ def exercise_dihedral():
   proxies = geometry_restraints.shared_dihedral_proxy([p,p])
   for proxy in proxies:
     assert proxy.periodicity == 2
+  proxies[1].periodicity = 3
+  assert proxies[1].periodicity == 3
+  assert proxies[0].periodicity == 2
+  proxies[1].periodicity = 2
+  assert proxies[1].periodicity == 2
   assert approx_equal(geometry_restraints.dihedral_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [5]*2)
