@@ -90,6 +90,7 @@ def exercise_u_extra():
         quality_factor=quality_factor))
 
 def exercise_from_scatterers_direct(space_group_info,
+                                    element_type,
                                     n_elements=3,
                                     volume_per_atom=1000,
                                     d_min=2,
@@ -98,7 +99,7 @@ def exercise_from_scatterers_direct(space_group_info,
                                     verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
-    elements=("Se",)*n_elements,
+    elements=[element_type]*n_elements,
     volume_per_atom=volume_per_atom,
     min_distance=5,
     general_positions_only=1,
@@ -126,13 +127,15 @@ def exercise_from_scatterers_direct(space_group_info,
   assert ls.target() < 1.e-4
 
 def run_call_back(flags, space_group_info):
-  for fdp_flag in [0,1]:
-    for anisotropic_flag in [0,1]:
-      exercise_from_scatterers_direct(
-        space_group_info=space_group_info,
-        fdp_flag=fdp_flag,
-        anisotropic_flag=anisotropic_flag,
-        verbose=flags.Verbose)
+  for element_type in ("Se", "const"):
+    for fdp_flag in [0,1]:
+      for anisotropic_flag in [0,1]:
+        exercise_from_scatterers_direct(
+          space_group_info=space_group_info,
+          element_type=element_type,
+          fdp_flag=fdp_flag,
+          anisotropic_flag=anisotropic_flag,
+          verbose=flags.Verbose)
 
 def run():
   exercise_structure()

@@ -49,8 +49,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
         f_t dw=adptbx::debye_waller_factor_u_iso(d_star_sq/4, scatterer.u_iso);
         f_calc *= dw;
       }
-      f_t f0 = scatterer.caasf.at_d_star_sq(d_star_sq);
-      f_calc *= (f0 + scatterer.fp_fdp) * scatterer.weight();
     }
 
     std::complex<float_type> f_calc;
@@ -71,6 +69,14 @@ namespace cctbx { namespace xray { namespace structure_factors {
     {
       typedef float_type f_t;
       typedef std::complex<float_type> c_t;
+      f_t w = scatterer.weight();
+      f_t fp_w = scatterer.fp_fdp.real();
+      f_t fdp_w = scatterer.fp_fdp.imag();
+      bool have_fdp = fdp_w != 0;
+      bool caasf_is_const = std::strcmp(scatterer.caasf.label(), "const") == 0;
+      if (caasf_is_const) fp_w += scatterer.caasf.c();
+      fp_w *= w;
+      if (have_fdp) fdp_w *= w;
       for(std::size_t i=0;i<miller_indices.size();i++) {
         miller::index<> const& h = miller_indices[i];
         f_t d_star_sq = unit_cell.d_star_sq(h);
@@ -80,6 +86,15 @@ namespace cctbx { namespace xray { namespace structure_factors {
           h,
           d_star_sq,
           scatterer);
+        if (caasf_is_const) {
+          if (have_fdp) sf.f_calc *= c_t(fp_w, fdp_w);
+          else sf.f_calc *= fp_w;
+        }
+        else {
+          f_t f0_w = scatterer.caasf.at_d_star_sq(d_star_sq) * w;
+          if (have_fdp) sf.f_calc *= c_t(f0_w + fp_w, fdp_w);
+          else sf.f_calc *= f0_w + fp_w;
+        }
         f_calc[i] += sf.f_calc;
       }
     }

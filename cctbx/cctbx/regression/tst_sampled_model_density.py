@@ -5,17 +5,23 @@ from cctbx.development import structure_factor_utils
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
+import random
 import sys
 
-def exercise(space_group_info, anomalous_flag, anisotropic_flag,
+def exercise(space_group_info, caasf_const,
+             anomalous_flag, anisotropic_flag,
              d_min=1., resolution_factor=1./3, max_prime=5,
-             quality_factor=100, wing_cutoff=1.e-3,
+             quality_factor=100, wing_cutoff=1.e-6,
              exp_table_one_over_step_size=-100,
              force_complex=00000,
              verbose=0):
+  if (caasf_const):
+    elements=["const"]*8
+  else:
+    elements=["N", "C", "C", "O", "N", "C", "C", "O"]
   structure = random_structure.xray_structure(
     space_group_info,
-    elements=("N", "C", "C", "O", "N", "C", "C", "O"),
+    elements=elements,
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
@@ -111,8 +117,12 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
     for anisotropic_flag in (00000, 0001)[:]: #SWITCH
-      exercise(space_group_info, anomalous_flag, anisotropic_flag,
-               verbose=flags.Verbose)
+      exercise(
+        space_group_info,
+        caasf_const=random.random()<0.5,
+        anomalous_flag=anomalous_flag,
+        anisotropic_flag=anisotropic_flag,
+        verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
