@@ -74,8 +74,8 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
   def LockFile(self, file, id):
     rc = self._LockFile(file, id)
     while not rc:
-      rc = self._LockFile(file, id)
       time.sleep(.01)
+      rc = self._LockFile(file, id)
 
   def ReadPickleFile(self, file):
     try:
@@ -131,8 +131,8 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
   def UnlockFile(self, file, id):
     rc = self._UnlockFile(file, id)
     while not rc:
-      rc = self._UnlockFile(file, id)
       time.sleep(.01)
+      rc = self._UnlockFile(file, id)
 
   def FileExists(self, file):
     return os.path.exists(file)
