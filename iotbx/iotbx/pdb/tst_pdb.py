@@ -123,28 +123,49 @@ def exercise_interpretation(verbose=0, quick=0001):
     stage_1 = pdb.interpretation.stage_1(
       file_name=os.path.join(pdb_dir, file_name))
     sel_cache = stage_1.selection_cache()
-    sel_name = sel_cache.get_name(" CA ")
-    sel_altLoc = sel_cache.get_altLoc("A")
-    sel_resName = sel_cache.get_resName("?L?")
-    sel_chainID = sel_cache.get_chainID("A")
-    sel_resSeq = sel_cache.get_resSeq(1)
-    sel_iCode = sel_cache.get_iCode("A")
-    sel_segID = sel_cache.get_segID("    ")
-    sel_MODELserial = sel_cache.get_MODELserial(1)
-    sel_element = sel_cache.get_element(" C")
-    sel_charge = sel_cache.get_charge("2+")
+    isel_name = sel_cache.get_name(" CA ")
+    isel_altLoc = sel_cache.get_altLoc("A")
+    isel_resName = sel_cache.get_resName("?L?")
+    isel_chainID = sel_cache.get_chainID("A")
+    isel_resSeq = sel_cache.get_resSeq(1)
+    isel_iCode = sel_cache.get_iCode("A")
+    isel_segID = sel_cache.get_segID("    ")
+    isel_MODELserial = sel_cache.get_MODELserial(1)
+    isel_element = sel_cache.get_element(" C")
+    isel_charge = sel_cache.get_charge("2+")
     if (0 or verbose):
       print "  n_seq:", len(stage_1.atom_attributes_list)
-      print "  sel_name:", [sel.size() for sel in sel_name]
-      print "  sel_altLoc:", [sel.size() for sel in sel_altLoc]
-      print "  sel_resName:", [sel.size() for sel in sel_resName]
-      print "  sel_chainID:", [sel.size() for sel in sel_chainID]
-      print "  sel_resSeq:", [sel.size() for sel in sel_resSeq]
-      print "  sel_iCode:", [sel.size() for sel in sel_iCode]
-      print "  sel_segID:", [sel.size() for sel in sel_segID]
-      print "  sel_MODELserial:", [sel.size() for sel in sel_MODELserial]
-      print "  sel_element:", [sel.size() for sel in sel_element]
-      print "  sel_charge:", [sel.size() for sel in sel_charge]
+      print "  isel_name:", [isel.size() for isel in isel_name]
+      print "  isel_altLoc:", [isel.size() for isel in isel_altLoc]
+      print "  isel_resName:", [isel.size() for isel in isel_resName]
+      print "  isel_chainID:", [isel.size() for isel in isel_chainID]
+      print "  isel_resSeq:", [isel.size() for isel in isel_resSeq]
+      print "  isel_iCode:", [isel.size() for isel in isel_iCode]
+      print "  isel_segID:", [isel.size() for isel in isel_segID]
+      print "  isel_MODELserial:", [isel.size() for isel in isel_MODELserial]
+      print "  isel_element:", [isel.size() for isel in isel_element]
+      print "  isel_charge:", [isel.size() for isel in isel_charge]
+    sel_name = sel_cache.sel_name(" CA ")
+    sel_altLoc = sel_cache.sel_altLoc("A")
+    sel_resName = sel_cache.sel_resName("?L?")
+    sel_chainID = sel_cache.sel_chainID("A")
+    sel_resSeq = sel_cache.sel_resSeq(1)
+    sel_iCode = sel_cache.sel_iCode("A")
+    sel_segID = sel_cache.sel_segID("    ")
+    sel_MODELserial = sel_cache.sel_MODELserial(1)
+    sel_element = sel_cache.sel_element(" C")
+    sel_charge = sel_cache.sel_charge("2+")
+    if (0 or verbose):
+      print "  sel_name:", sel_name.count(0001)
+      print "  sel_altLoc:", sel_altLoc.count(0001)
+      print "  sel_resName:", sel_resName.count(0001)
+      print "  sel_chainID:", sel_chainID.count(0001)
+      print "  sel_resSeq:", sel_resSeq.count(0001)
+      print "  sel_iCode:", sel_iCode.count(0001)
+      print "  sel_segID:", sel_segID.count(0001)
+      print "  sel_MODELserial:", sel_MODELserial.count(0001)
+      print "  sel_element:", sel_element.count(0001)
+      print "  sel_charge:", sel_charge.count(0001)
     if (quick): break
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):

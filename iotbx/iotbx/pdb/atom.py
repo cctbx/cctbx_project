@@ -1,4 +1,5 @@
 from iotbx import wildcard
+from scitbx.array_family import flex
 from scitbx import stl
 import scitbx.stl.map
 from scitbx.python_utils.misc import adopt_init_args
@@ -21,6 +22,11 @@ class labels:
     return ",".join([str(id) for id in [
       self.name, self.altLoc, self.resName, self.chainID,
       self.resSeq, self.iCode, self.segID, self.MODELserial]])
+
+  def residue_labels(self):
+    return ",".join([str(id) for id in [
+      self.resName, self.chainID,
+      self.resSeq, self.iCode, self.segID]])
 
 def labels_from_string(s):
   fields = []
@@ -110,6 +116,7 @@ def _get_map_string(map, pattern):
 class selection_cache:
 
   def __init__(self, atom_attributes_list):
+    self.n_seq = len(atom_attributes_list)
     self.name = stl.map.stl_string_stl_vector_unsigned()
     self.altLoc = stl.map.stl_string_stl_vector_unsigned()
     self.resName = stl.map.stl_string_stl_vector_unsigned()
@@ -165,3 +172,66 @@ class selection_cache:
 
   def get_charge(self, pattern):
     return _get_map_string(map=self.charge, pattern=pattern)
+
+  def union(self, iselections):
+    return flex.union(
+      size=self.n_seq,
+      iselections=iselections)
+
+  def intersection(self, iselections):
+    return flex.intersection(
+      size=self.n_seq,
+      iselections=iselections)
+
+  def sel_name(self, pattern):
+    return self.union(iselections=self.get_name(pattern=pattern))
+
+  def sel_altLoc(self, pattern):
+    return self.union(iselections=self.get_altLoc(pattern=pattern))
+
+  def sel_resName(self, pattern):
+    return self.union(iselections=self.get_resName(pattern=pattern))
+
+  def sel_chainID(self, pattern):
+    return self.union(iselections=self.get_chainID(pattern=pattern))
+
+  def sel_resSeq(self, i):
+    return self.union(iselections=self.get_resSeq(i=i))
+
+  def sel_iCode(self, pattern):
+    return self.union(iselections=self.get_iCode(pattern=pattern))
+
+  def sel_segID(self, pattern):
+    return self.union(iselections=self.get_segID(pattern=pattern))
+
+  def sel_MODELserial(self, i):
+    return self.union(iselections=self.get_MODELserial(i=i))
+
+  def sel_element(self, pattern):
+    return self.union(iselections=self.get_element(pattern=pattern))
+
+  def sel_charge(self, pattern):
+    return self.union(iselections=self.get_charge(pattern=pattern))
+
+  def get_labels(self,
+        name=None,
+        altLoc=None,
+        resName=None,
+        chainID=None,
+        resSeq=None,
+        iCode=None,
+        segID=None,
+        MODELserial=None):
+    result = []
+    for arg,attr in [(name, self.name),
+                     (altLoc, self.altLoc),
+                     (resName, self.resName),
+                     (chainID, self.chainID),
+                     (resSeq, self.resSeq),
+                     (iCode, self.iCode),
+                     (segID, self.segID),
+                     (MODELserial, self.MODELserial)]:
+      if (arg is not None):
+        isel = attr.get(arg, None)
+        if (isel is not None): result.append(isel)
+    return result
