@@ -12,8 +12,24 @@ def check_weight_without_occupancy(structure):
       sc.weight_without_occupancy(),
       float(sc.multiplicity()) / order_z)
 
-def exercise(space_group_info, anomalous_flag,
-             n_elements=3, d_min=3., verbose=0):
+def check_site_symmetry_table(structure_a, cb_op, structure_b):
+  tab_a = structure_a.site_symmetry_table()
+  tab_b = structure_b.site_symmetry_table()
+  assert tab_a.indices().all_eq(tab_b.indices())
+  assert tab_a.special_position_indices().all_eq(
+         tab_b.special_position_indices())
+  for oa,ob in zip(tab_a.table(),tab_b.table()):
+    assert str(cb_op.apply(oa.special_op())) == str(ob.special_op())
+    for ma,mb in zip(oa.matrices(),ob.matrices()):
+      assert str(cb_op.apply(ma)) == str(mb)
+
+def exercise(
+      space_group_info,
+      anomalous_flag,
+      anisotropic_flag,
+      n_elements=3,
+      d_min=3.,
+      verbose=0):
   structure_z = random_structure.xray_structure(
     space_group_info,
     elements=("Se",)*n_elements,
@@ -21,6 +37,7 @@ def exercise(space_group_info, anomalous_flag,
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
     random_u_iso=0001,
+    anisotropic_flag=anisotropic_flag,
     random_occupancy=0001)
   check_weight_without_occupancy(structure_z)
   f_abs_z = abs(structure_z.structure_factors(
@@ -32,6 +49,7 @@ def exercise(space_group_info, anomalous_flag,
   z2p_op = structure_z.space_group().z2p_op()
   structure_p = structure_z.change_basis(z2p_op)
   check_weight_without_occupancy(structure_p)
+  check_site_symmetry_table(structure_z, z2p_op, structure_p)
   if (0 or verbose):
     structure_p.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -40,6 +58,7 @@ def exercise(space_group_info, anomalous_flag,
       == tuple(structure_z.special_position_indices())
   structure_pz = structure_p.change_basis(z2p_op.inverse())
   check_weight_without_occupancy(structure_pz)
+  check_site_symmetry_table(structure_p, z2p_op.inverse(), structure_pz)
   assert structure_pz.unit_cell().is_similar_to(structure_z.unit_cell())
   assert structure_pz.space_group() == structure_z.space_group()
   f_abs_pz = abs(f_abs_z.structure_factors_from_scatterers(
@@ -69,7 +88,12 @@ def exercise(space_group_info, anomalous_flag,
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
-    exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
+    for anisotropic_flag in (00000, 0001)[:]: #SWITCH
+      exercise(
+        space_group_info=space_group_info,
+        anomalous_flag=anomalous_flag,
+        anisotropic_flag=anisotropic_flag,
+        verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
