@@ -171,11 +171,17 @@ class set(crystal.symmetry):
     assert map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based()
     assert type(map[0]) in (type(float()), type(complex()))
     assert in_place_fft in (00000, 0001)
-    if (not in_place_fft):
-      map = map.deep_copy()
     if (type(map[0]) == type(float())):
       fft = fftpack.real_to_complex_3d(map.focus())
+      if (not map.is_padded()):
+        assert not in_place_fft
+        assert map.focus() == fft.n_real()
+        map = maptbx.copy(map, flex.grid(fft.m_real()).set_focus(fft.n_real()))
+      elif (not in_place_fft):
+        map = map.deep_copy()
     else:
+      if (not in_place_fft):
+        map = map.deep_copy()
       fft = fftpack.complex_to_complex_3d(map.focus())
     map = fft.forward(map)
     conjugate_flag = 0001
@@ -734,15 +740,23 @@ def patterson_map(coeff_array,
                   mandatory_factors=None,
                   max_prime=5,
                   gridding=None,
-                  f_000=None):
+                  f_000=None,
+                  sharpening=00000,
+                  origin_peak_removal=00000):
+  coeff_array=coeff_array.patterson_symmetry()
+  if (sharpening):
+    coeff_array.setup_binner(auto_binning=1)
+    coeff_array = coeff_array.normalize_structure_factors(quasi=0001)
+  coeff_array = coeff_array.f_as_f_sq()
+  if (origin_peak_removal):
+    coeff_array.setup_binner(auto_binning=1)
+    coeff_array = coeff_array.remove_patterson_origin_peak()
   return fft_map(
-    coeff_array=array(
-      miller_set=coeff_array.patterson_symmetry(),
-      data=coeff_array.f_as_f_sq().data()),
+    coeff_array=coeff_array,
     resolution_factor=resolution_factor,
     d_min=d_min,
     symmetry_flags=symmetry_flags,
     mandatory_factors=mandatory_factors,
     max_prime=max_prime,
     gridding=gridding,
-    f_000=f_000)
+    f_000=f_000*f_000)
