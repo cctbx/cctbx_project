@@ -1,7 +1,9 @@
+from cctbx.web.asu_gallery import web_links
 import sys
 
 def write_html(f=None):
   if (f is None): f = sys.stdout
+  iucrcompcomm_jul2003 = web_links.iucrcompcomm_jul2003
   print >> f, """\
 <html>
 <head>
@@ -11,6 +13,10 @@ def write_html(f=None):
 
 <hr>
 <h1>ASU Gallery - Facet notation</h1>
+<hr>
+Reference:
+<a href="%(iucrcompcomm_jul2003)s"
+>IUCr Computing Commission Newsletter No. 2, July 2003</a>
 <hr>
 
 Each facet of an asymmetric unit is defined by a condition of
@@ -37,8 +43,8 @@ facet condition changes from <tt>h*x+k*y+l*z+c>=0</tt> to
 
 <p>
 
-To enhance readability the facet conditions shown under the pictures in
-the gallery are simplified by omitting terms with zeros (e.g.
+To enhance readability the facet conditions (shown under the pictures
+in the gallery) are simplified by omitting terms with zeros (e.g.
 <tt>0*x</tt>) and unit factors (e.g. <tt>x</tt> instead of
 <tt>1*x</tt>). The constant term <tt>c</tt> is moved to the right-hand
 side. For example:
@@ -103,7 +109,7 @@ I&nbsp;41/a&nbsp;(No.&nbsp;88)</a>.
 
 <hr>
 </body>
-</html>"""
+</html>""" % vars()
 
 if (__name__ == "__main__"):
   write_html()
