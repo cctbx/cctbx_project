@@ -35,15 +35,13 @@ if (env_etc.compiler == 0):
   elif (sys.platform.startswith("irix")):
     env_etc.compiler = "irix_CC"
   elif (sys.platform.startswith("darwin")):
-    env_etc.compiler = "darwin_c++"
+    env_etc.compiler = "darwin_g++"
 assert env_etc.compiler in (
   "win32_cl",
-  #"win32_mwcc",
   "unix_gcc",
   "unix_ecc",
   "tru64_cxx",
   "irix_CC",
-  "darwin_c++",
   "darwin_g++",
 )
 
@@ -213,8 +211,8 @@ else:
       SHLIBSUFFIX=".dylib",
     )
     env_etc.cxxflags_base = Split("""
-        -ftemplate-depth-100
-        -fPIC
+      -fPIC
+      -ftemplate-depth-100
     """)
     env_etc.ccflags_base = Split("""
     """)
