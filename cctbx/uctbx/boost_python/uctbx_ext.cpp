@@ -164,6 +164,9 @@ namespace {
         .def("two_theta",
           (sh_dbl_t(w_t::*)(cr_mix_t const&, double, bool) const) 0,
           two_theta_overloads())
+        .def("bases_mean_square_difference",
+          &w_t::bases_mean_square_difference,
+            (arg_("other")))
         .def("compare_orthorhombic", &w_t::compare_orthorhombic,
           (arg_("other")))
         .def("compare_monoclinic", &w_t::compare_monoclinic,
