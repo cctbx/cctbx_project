@@ -15,13 +15,7 @@ def set_python_include_and_libs(env_etc):
 def touch_init(env, target, source):
   assert len(target) == 1
   print "Creating:", str(target[0])
-  f = open(str(target[0]), "w")
-  print >> f, """import sys
-if (sys.platform == "linux2"):
-  if (hasattr(sys, "setdlopenflags")):
-    sys.setdlopenflags(0x100|0x2)
-"""
-  f.close()
+  open(str(target[0]), "w").close()
 
 def norm_join(head, tail):
   return os.path.normpath(os.path.join(head, tail))
