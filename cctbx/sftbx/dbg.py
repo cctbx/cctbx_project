@@ -141,37 +141,11 @@ def exercise(SgInfo,
   sampled_density.apply_symmetry(tags)
   if (friedel_flag):
     map = sampled_density.map_real_as_shared()
-    map_stats = shared.statistics(map)
-    if (0):
-      print "Electron density"
-      print "max %.6g" % (map_stats.max())
-      print "min %.6g" % (map_stats.min())
-      print "mean %.6g" % (map_stats.mean())
-      print "sigma %.6g" % (map_stats.sigma())
-  else:
-    map = sampled_density.map_complex_as_shared()
-  if (0):
-    map = sftbx.structure_factor_map(
-      xtal.SgOps, Fcalc.H, Fcalc.F, rfft.Ncomplex())
-    rfft.backward(map)
-    map_stats = shared.statistics(map)
-    print "True electron density"
-    print "max %.6g" % (map_stats.max())
-    print "min %.6g" % (map_stats.min())
-    print "mean %.6g" % (map_stats.mean())
-    print "sigma %.6g" % (map_stats.sigma())
-  if (friedel_flag):
     rfft.forward(map)
     collect_conj = 1
-    map_stats = shared.statistics(map)
-    if (0):
-      print "Transformed electron density"
-      print "max %.6g" % (map_stats.max())
-      print "min %.6g" % (map_stats.min())
-      print "mean %.6g" % (map_stats.mean())
-      print "sigma %.6g" % (map_stats.sigma())
-      print "Ncomplex", rfft.Ncomplex()
+    n_complex = rfft.Ncomplex()
   else:
+    map = sampled_density.map_complex_as_shared()
     cfft = fftbx.complex_to_complex_3d(rfft.Nreal())
     if (0):
       cfft.forward(map)
@@ -179,17 +153,33 @@ def exercise(SgInfo,
     else:
       cfft.backward(map)
       collect_conj = 0
-  if (0):
-    map = sftbx.structure_factor_map(
-      xtal.SgOps, Fcalc.H, Fcalc.F, rfft.Ncomplex())
-  if (friedel_flag):
-    miller_indices, fcal = sftbx.collect_structure_factors(
-      xtal.UnitCell, xtal.SgInfo,
-      max_q, map, rfft.Ncomplex(), collect_conj)
-  else:
-    miller_indices, fcal = sftbx.collect_structure_factors(
-      xtal.UnitCell, xtal.SgInfo,
-      max_q, map, cfft.N(), collect_conj)
+    n_complex = cfft.N()
+  miller_indices, fcal = sftbx.collect_structure_factors(
+    xtal.UnitCell, xtal.SgInfo, friedel_flag,
+    max_q, map, n_complex, collect_conj)
+  if (1):
+    sf_map = sftbx.structure_factor_map(
+      xtal.SgOps, friedel_flag, miller_indices, fcal, n_complex, collect_conj)
+    if (1):
+      if (friedel_flag):
+        rfft.backward(sf_map)
+        rfft.forward(sf_map)
+      else:
+        if (collect_conj):
+          cfft.backward(map)
+          cfft.forward(map)
+        else:
+          cfft.forward(map)
+          cfft.backward(map)
+    m, f = sftbx.collect_structure_factors(
+      xtal.UnitCell, xtal.SgInfo, friedel_flag,
+      max_q, sf_map, n_complex, collect_conj)
+    js = shared.join_sets(miller_indices, m)
+    assert js.pairs().size() == miller_indices.size()
+    show_structure_factor_correlation(
+      "collect/store", miller_indices, js, fcal, f,
+      min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
+      verbose=1)
   sampled_density.eliminate_u_extra_and_normalize(miller_indices, fcal)
   if (0):
     u_extra = sampled_density.u_extra()
@@ -289,7 +279,7 @@ class structure_factor_comparison:
   def report(self):
     if (self.sum_amp1_sq):
       r = self.sum_amp1_minus_amp2_sq / self.sum_amp1_sq
-      print "R-factor:", r
+      print self.label, "R-factor:", r
     if (self.sum_w):
       self.mean_w_phase_error = self.sum_w_phase_error / self.sum_w
     show_regression(
@@ -358,9 +348,6 @@ def run():
     "shelx",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
-  if (not (Flags.Isotropic or Flags.Anisotropic)):
-    Flags.Isotropic = 1
-    # XXX Flags.Anisotropic = 1
   symbols_to_stdout = 0
   if (len(sys.argv) > 1 + Flags.n):
     symbols = sys.argv[1:]

@@ -491,16 +491,18 @@ namespace {
       miller_indices.const_ref(), structure_factors.ref());
   }
 
-  af::shared<double>
+  af::shared<std::complex<double> >
   py_structure_factor_map(
     const sgtbx::SpaceGroup& sgops,
+    bool friedel_flag,
     const af::shared<Miller::Index>& h,
     const af::shared<std::complex<double> >& f,
-    const af::tiny<long, 3>& n_complex)
+    const af::tiny<long, 3>& n_complex,
+    bool conjugate)
   {
-    return af::shared<double>(
-      sftbx::structure_factor_map(
-        sgops, h.const_ref(), f.const_ref(), n_complex).handle());
+    return sftbx::structure_factor_map(
+      sgops, friedel_flag, h.const_ref(), f.const_ref(), n_complex,
+      conjugate).as_base_array();
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
@@ -529,6 +531,7 @@ namespace {
   py_collect_structure_factors_real(
     const uctbx::UnitCell& ucell,
     const sgtbx::SpaceGroupInfo& sginfo,
+    bool friedel_flag,
     double max_q,
     const af::shared<double>& transformed_real_map,
     const af::tiny<long, 3>& n_complex,
@@ -543,8 +546,8 @@ namespace {
     std::pair<af::shared<Miller::Index>,
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
-      ucell, sginfo, max_q, transformed_complex_map, n_complex,
-      true, conjugate);
+      ucell, sginfo, friedel_flag,
+      max_q, transformed_complex_map, n_complex, conjugate);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);
@@ -555,6 +558,7 @@ namespace {
   py_collect_structure_factors_complex(
     const uctbx::UnitCell& ucell,
     const sgtbx::SpaceGroupInfo& sginfo,
+    bool friedel_flag,
     double max_q,
     const af::shared<std::complex<double> >& transformed_complex_map,
     const af::tiny<long, 3>& n_complex,
@@ -563,8 +567,8 @@ namespace {
     std::pair<af::shared<Miller::Index>,
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
-      ucell, sginfo, max_q, transformed_complex_map.const_ref(), n_complex,
-      false, conjugate);
+      ucell, sginfo, friedel_flag,
+      max_q, transformed_complex_map.const_ref(), n_complex, conjugate);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);

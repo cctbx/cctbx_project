@@ -497,7 +497,7 @@ namespace cctbx { namespace sftbx {
           detail::array_update_max(max_shell_radii_, shell.radii);
           if (electron_density_must_be_positive) {
             if (   caasf_ft.rho_real_0() < 0
-                || caasf_ft.rho_real(exp_table, shell.max_d_sq) < 0) { 
+                || caasf_ft.rho_real(exp_table, shell.max_d_sq) < 0) {
 
               throw error("Negative electron density at sampling point.");
             }
@@ -631,10 +631,10 @@ namespace cctbx { namespace sftbx {
   collect_structure_factors(
     const uctbx::UnitCell& ucell,
     const sgtbx::SpaceGroupInfo& sginfo,
+    bool friedel_flag,
     const FloatType& max_q,
     const af::const_ref<std::complex<FloatType> >& complex_map,
     const IndexType& n_complex,
-    bool friedel_flag,
     bool conjugate)
   {
     cctbx_assert(complex_map.size() >= af::product(n_complex.const_ref()));
@@ -700,52 +700,38 @@ namespace cctbx { namespace sftbx {
 
   template <typename nType>
   sfmap::grid_point_type
-  h_as_ih_array(const Miller::Index& h, const nType& n)
+  h_as_ih_array(bool friedel_flag, const Miller::Index& h, const nType& n)
   {
     sfmap::grid_point_type ih;
-    const bool positive_only[] = {false, false, true};
+    const bool positive_only[] = {false, false, friedel_flag};
     for(std::size_t i=0;i<3;i++) {
       ih[i] = maps::h_as_ih(h[i], n[i], positive_only[i]);
     }
     return ih;
   }
 
-  // XXX needs to be updated to cope with anomalous data
   template <typename FloatType,
             typename IndexType>
   af::versa<std::complex<FloatType>, af::grid<3> >
   structure_factor_map(
     const sgtbx::SpaceGroup& sgops,
+    bool friedel_flag,
     const af::const_ref<Miller::Index>& miller_indices,
     const af::const_ref<std::complex<FloatType> >& structure_factors,
     const IndexType& n_complex,
-    bool conjugate = true)
+    bool conjugate)
   {
     af::versa<std::complex<FloatType>, af::grid<3> > map(n_complex);
     for(std::size_t i=0;i<miller_indices.size();i++) {
       sgtbx::SymEquivMillerIndices semi = sgops.getEquivMillerIndices(
         miller_indices[i]);
-      for(int e=0;e<semi.M(true);e++) {
+      for(int e=0;e<semi.M(friedel_flag);e++) {
         Miller::Index h = semi(e);
-        if (h[2] < 0) continue;
-        sfmap::grid_point_type ih = h_as_ih_array(h, n_complex);
+        if (conjugate) h = -h;
+        if (friedel_flag && h[2] < 0) continue;
+        sfmap::grid_point_type ih = h_as_ih_array(friedel_flag, h, n_complex);
         cctbx_assert(ih >= sfmap::grid_point_element_type(0));
-        if (!conjugate) {
-          map(ih) = semi.ShiftPhase(e, structure_factors(i));
-        }
-        else {
-          map(ih) = std::conj(semi.ShiftPhase(e, structure_factors(i)));
-        }
-        if (h[2] == 0 && !semi.isCentric()) {
-          sfmap::grid_point_type ih = h_as_ih_array(-h, n_complex);
-          cctbx_assert(ih >= sfmap::grid_point_element_type(0));
-          if (!conjugate) {
-            map(ih) = std::conj(semi.ShiftPhase(e, structure_factors(i)));
-          }
-          else {
-            map(ih) = semi.ShiftPhase(e, structure_factors(i));
-          }
-        }
+        map(ih) = semi.ShiftPhase(e, structure_factors(i));
       }
     }
     return map;
