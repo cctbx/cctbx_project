@@ -3,6 +3,7 @@ from libtbx import test_utils
 
 def run():
   tst_list = (
+  "$D/iotbx/tst_wildcard.py",
   "$D/iotbx/kriber/tst_strudat.py",
   "$D/iotbx/pdb/tst_pdb.py",
   "$D/iotbx/cns/space_group_symbols.py",

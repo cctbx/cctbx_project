@@ -4,6 +4,14 @@
 
 import sys
 
+connectivity_annotation_section = (
+  "SSBOND",
+  "LINK",
+  "HYDBND",
+  "SLTBRG",
+  "CISPEP",
+)
+
 coordinate_section = (
   "MODEL",
   "ATOM",
@@ -13,6 +21,9 @@ coordinate_section = (
   "TER",
   "HETATM",
   "ENDMDL",
+)
+
+connectivity_section = (
   "CONECT",
 )
 
@@ -26,7 +37,7 @@ class pdb_record:
         strict=00000,
         ignore_columns_73_and_following=00000):
     if (ignore_columns_73_and_following):
-      self.raw = (raw_record.rstrip()[:73] + " "*80)[:80]
+      self.raw = (raw_record.rstrip()[:72] + " "*80)[:80]
     else:
       self.raw = (raw_record.rstrip() + " "*80)[:80]
     self.line_number = line_number
@@ -220,7 +231,7 @@ class pdb_record:
 
   def read_SIGATM(self):
     self.read_ATOM()
-    self.sigCoordinates = self.coordinates
+    self.sigCoor = self.coordinates
     self.sigOcc = self.occupancy
     self.sigTemp = self.tempFactor
     del self.coordinates, self.occupancy, self.tempFactor
@@ -333,14 +344,46 @@ class pdb_record:
     self.altLoc1 = self.raw[16]
     self.resName1 = self.raw[17:20]
     self.chainID1 = self.raw[21]
-    self.resSeq1 = int(self.raw[22:26])
+    try: self.resSeq1 = int(self.raw[22:26])
+    except ValueError: self.raise_FormatError("Serial number be an integer.")
     self.iCode1 = self.raw[26]
     self.name2 = self.raw[42:46]
     self.altLoc2 = self.raw[46]
     self.resName2 = self.raw[47:50]
     self.chainID2 = self.raw[51]
-    self.resSeq2 = int(self.raw[52:56])
+    try: self.resSeq2 = int(self.raw[52:56])
+    except ValueError: self.raise_FormatError("Serial number be an integer.")
     self.iCode2 = self.raw[56]
+    self.sym1 = self.raw[59:65]
+    self.sym2 = self.raw[66:72]
+
+  def read_SLTBRG(self):
+    self.read_LINK()
+
+  def read_SSBOND(self):
+    #  8 - 10    Integer         serNum      Serial number.
+    # 12 - 14    LString(3)      "CYS"       Residue name.
+    # 16         Character       chainID1    Chain identifier.
+    # 18 - 21    Integer         seqNum1     Residue sequence number.
+    # 22         AChar           icode1      Insertion code.
+    # 26 - 28    LString(3)      "CYS"       Residue name.
+    # 30         Character       chainID2    Chain identifier.
+    # 32 - 35    Integer         seqNum2     Residue sequence number.
+    # 36         AChar           icode2      Insertion code.
+    # 60 - 65    SymOP           sym1        Symmetry operator for 1st residue.
+    # 67 - 72    SymOP           sym2        Symmetry operator for 2nd residue.
+    try: self.serNum = int(self.raw[7:10])
+    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    self.resName1 = self.raw[11:14]
+    self.chainID1 = self.raw[15]
+    try: self.resSeq1 = int(self.raw[17:21])
+    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    self.iCode1 = self.raw[21]
+    self.resName2 = self.raw[25:28]
+    self.chainID2 = self.raw[29]
+    try: self.resSeq2 = int(self.raw[31:35])
+    except ValueError: self.raise_FormatError("Serial number be an integer.")
+    self.iCode2 = self.raw[35]
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]
 
