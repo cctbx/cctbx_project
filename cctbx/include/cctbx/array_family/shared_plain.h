@@ -132,6 +132,7 @@ namespace cctbx { namespace af {
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
       // non-std
+      // XXX problem: shared_plain(sz, 0) uses this overload
       template <typename InitFunctorType>
       shared_plain(const size_type& sz, InitFunctorType ftor)
         : m_is_weak_ref(false),
