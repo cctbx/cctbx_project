@@ -17,6 +17,7 @@ def run():
   "$D/array_family/boost_python/tst_flex.py",
   "$D/boost_python/tst_rational.py",
   "$B/serialization/tst_base_256.exe",
+  #"$D/math/boost_python/tst_eigensystem.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   ["$D/fftpack/boost_python/tst_fftpack.py"],
   )
