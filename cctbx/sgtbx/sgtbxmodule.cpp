@@ -47,12 +47,22 @@ namespace {
     return M.as_xyz();
   }
 
-  tuple RTMx_as_tuple(const RTMx& M) {
+  tuple RTMx_as_tuple_0(const RTMx& M) {
     tuple result(2);
     result.set_item(0,
       ref(to_python(M.Rpart().as_array(static_cast<double>(0)))));
     result.set_item(1,
       ref(to_python(M.Tpart().as_array(static_cast<double>(0)))));
+    return result;
+  }
+
+  tuple RTMx_as_tuple_2(const RTMx& M, int RBF, int TBF) {
+    RTMx N = M.newBaseFactors(RBF, TBF);
+    tuple result(2);
+    result.set_item(0,
+      ref(to_python(static_cast<boost::array<int, 9> >(N.Rpart()))));
+    result.set_item(1,
+      ref(to_python(static_cast<boost::array<int, 3> >(N.Tpart()))));
     return result;
   }
 
@@ -415,7 +425,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RTMx.def(RTMx_as_xyz_0, "__repr__");
     py_RTMx.def(RTMx_as_xyz_0, "as_xyz");
     py_RTMx.def(&RTMx::as_xyz, "as_xyz");
-    py_RTMx.def(RTMx_as_tuple, "as_tuple");
+    py_RTMx.def(RTMx_as_tuple_0, "as_tuple");
+    py_RTMx.def(RTMx_as_tuple_2, "as_tuple");
     py_RTMx.def(&RTMx::getRotMxInfo, "getRotMxInfo");
     py_RTMx.def(&RTMx::analyzeTpart, "analyzeTpart");
     py_RTMx.def(operators<python::op_mul>());
