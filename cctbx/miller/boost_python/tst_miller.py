@@ -222,7 +222,7 @@ def exercise_bins():
   assert perm_array_indices1.size() == m.size()
   assert perm_array_indices2.size() == m.size()
   assert tuple(perm_array_indices1) == tuple(perm_array_indices2)
-  assert tuple(perm_array_indices1.shuffle(perm_array_indices2)) \
+  assert tuple(perm_array_indices1.unshuffle(perm_array_indices2)) \
       == tuple(array_indices)
 
 def exercise_expand():
@@ -262,16 +262,6 @@ def exercise_expand():
   assert approx_equal(tuple(flex.arg(p1.structure_factors())), v)
   assert approx_equal(miller.statistical_mean(sg, 0, h, a), 4/3.)
   assert approx_equal(miller.statistical_mean(sg, 1, h, a), 3/2.)
-  a = flex.double((3,2))
-  miller.sort_in_place(h, a)
-  assert tuple(h) == ((1,-2,0), (3,1,-2))
-  assert tuple(a) == (2,3)
-  miller.sort_in_place(h, a, 1)
-  assert tuple(h) == ((3,1,-2), (1,-2,0))
-  assert tuple(a) == (3,2)
-  miller.sort_in_place(h, a, 0)
-  assert tuple(h) == ((1,-2,0), (3,1,-2))
-  assert tuple(a) == (2,3)
 
 def exercise_index_generator():
   uc = uctbx.unit_cell((11,11,13,90,90,120))

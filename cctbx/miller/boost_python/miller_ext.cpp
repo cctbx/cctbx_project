@@ -11,13 +11,11 @@
 
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/miller/math.h>
-#include <cctbx/miller/sort.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
-#include <boost/python/overloads.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 
 namespace cctbx { namespace miller { namespace boost_python {
@@ -40,9 +38,6 @@ namespace {
 
     tuple_mapping<af::shared<sym_equiv_index>, variable_capacity_policy>();
   }
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    sort_in_place_overloads, sort_in_place, 2, 3)
 
   void init_module()
   {
@@ -68,10 +63,6 @@ namespace {
                  bool,
                  af::const_ref<index<> > const&,
                  af::const_ref<double> const&)) statistical_mean);
-
-    def("sort_in_place",
-      (void(*)(af::shared<index<> >, af::shared<double>, bool)) 0,
-      sort_in_place_overloads());
   }
 
 } // namespace <anonymous>

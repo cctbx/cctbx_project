@@ -10,7 +10,7 @@
 #ifndef CCTBX_MAPTBX_PEAK_SEARCH_H
 #define CCTBX_MAPTBX_PEAK_SEARCH_H
 
-#include <cctbx/indexed_value.h>
+#include <scitbx/indexed_value.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
@@ -230,7 +230,7 @@ namespace cctbx { namespace maptbx {
   {
     public:
       typedef
-        indexed_value<IndexType, ValueType, std::greater<ValueType> >
+        scitbx::indexed_value<IndexType, ValueType, std::greater<ValueType> >
           indexed_value_type;
 
       peak_list() {}

@@ -109,6 +109,17 @@ class set(crystal.symmetry):
     r = self.unit_cell().min_max_d_star_sq(self.indices())
     return tuple([uctbx.d_star_sq_as_d(x) for x in r])
 
+  def sort(self, by_value="resolution", reverse=00000):
+    assert by_value in ("resolution",)
+    assert reverse in (00000, 0001)
+    p = flex.sort_permutation(
+      self.unit_cell().d_star_sq(self.indices()),
+      reverse)
+    return set(
+      crystal_symmetry=self,
+      indices=self.indices().shuffle(p),
+      anomalous_flag=self.anomalous_flag())
+
   def change_basis(self, cb_op):
     return set(
       crystal_symmetry=crystal.symmetry.change_basis(self, cb_op),
@@ -177,6 +188,7 @@ def build_set(crystal_symmetry, anomalous_flag, d_min):
     anomalous_flag)
 
 def _ftor_a_s_sub(lhs, rhs): return lhs - rhs
+def _ftor_a_s_div(lhs, rhs): return lhs / rhs
 
 def _array_info(array):
   if (array == None): return str(None)
@@ -246,6 +258,28 @@ class array(set):
       self.anomalous_flag(),
       i, d)
     return array(set(self, i, self.anomalous_flag()), d, self.sigmas())
+
+  def sort(self, by_value="resolution", reverse=00000):
+    assert reverse in (00000, 0001)
+    if (by_value == "resolution"):
+      p = flex.sort_permutation(
+        self.unit_cell().d_star_sq(self.indices()),
+        reverse)
+    elif (by_value == "data"):
+      p = flex.sort_permutation(self.data(), not reverse)
+    elif (by_value == "abs"):
+      p = flex.sort_permutation(flex.abs(self.data()), not reverse)
+    else:
+      p = flex.sort_permutation(by_value, not reverse)
+    new_set = set(
+      crystal_symmetry=self,
+      indices=self.indices().shuffle(p),
+      anomalous_flag=self.anomalous_flag())
+    d = None
+    s = None
+    if (self.data() != None): d = self.data().shuffle(p)
+    if (self.sigmas() != None): s = self.sigmas().shuffle(p)
+    return array(new_set, d, s)
 
   def expand_to_p1(self, phase_deg=None):
     assert self.space_group() != None
@@ -467,17 +501,23 @@ class array(set):
         ftor(self.data().select(self.binner().selection(i_bin)),
              binned_values[i_bin-1]))
     assert self.indices().size() == result_data.size()
-    return array(self, result_data.shuffle(result_perm))
+    return array(self, result_data.unshuffle(result_perm))
 
   def remove_patterson_origin_peak(self):
     s_mean = self.statistical_mean(use_binning=1)
     result_data = flex.double()
     return self._generic_binner_application(s_mean, _ftor_a_s_sub, result_data)
 
-  def normalize_structure_factors(self, quasi=00000):
+  def normalize_structure_factors(self, quasi=00000, first_moment=00000):
     assert quasi in (00000, 0001)
+    assert first_moment in (00000, 0001)
     assert self.binner() != None
     assert self.data().all_ge(0)
+    if (first_moment):
+      assert quasi == 00000
+      mean = self.mean(use_binning=1, use_multiplicities=1)
+      result_data = flex.double()
+      return self._generic_binner_application(mean, _ftor_a_s_div, result_data)
     f_sq = flex.pow2(self.data())
     epsilons = self.epsilons().data().as_double()
     e = flex.double()
@@ -495,7 +535,7 @@ class array(set):
           e.append(flex.sqrt(sel_f_sq_over_epsilon / mean_f_sq_over_epsilon))
         e_perm.append(self.binner().array_indices(i_bin))
     assert self.indices().size() == e.size()
-    return array(self, e.shuffle(e_perm))
+    return array(self, e.unshuffle(e_perm))
 
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
