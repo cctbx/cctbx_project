@@ -81,7 +81,7 @@ if (sys.platform == "win32"):
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 else:
-  env_base = Environment(ENV=os.environ)
+  env_base = Environment(ENV=os.environ,tools=['gcc','g++','gnulink','ar'])
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
