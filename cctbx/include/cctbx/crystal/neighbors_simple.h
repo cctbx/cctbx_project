@@ -20,14 +20,10 @@ namespace cctbx { namespace crystal { namespace neighbors {
         FloatType const& distance_cutoff=0)
       :
         asu_mappings_(asu_mappings),
-        distance_cutoff_sq_(distance_cutoff*distance_cutoff),
-        at_end_(false)
+        distance_cutoff_sq_(distance_cutoff*distance_cutoff)
       {
         asu_mappings->lock();
-        incr_to_first();
-        while (!at_end_ && pair_.dist_sq > distance_cutoff_sq_) {
-          incr();
-        }
+        restart();
       }
 
       bool
@@ -43,6 +39,16 @@ namespace cctbx { namespace crystal { namespace neighbors {
           incr();
         }
         return result;
+      }
+
+      void
+      restart()
+      {
+        at_end_ = false;
+        incr_to_first();
+        while (!at_end_ && pair_.dist_sq > distance_cutoff_sq_) {
+          incr();
+        }
       }
 
     protected:
