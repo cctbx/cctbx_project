@@ -60,7 +60,7 @@ def exercise_interface():
   up = (0.534, 0.812, 0.613, 0.0166, 0.134, -0.0124)
   s = adptbx.eigensystem(up)
   s = adptbx.eigensystem(up, 1.e-7)
-  assert approx_equal(s.values(), (0.813132, 0.432668, 0.713201))
+  assert approx_equal(s.values(), (0.813132, 0.713201, 0.432668))
   for i in xrange(3):
     check_eigenvector(up, s.values()[i], s.vectors(i))
   c = (1,2,3, 3,-4,5, 4,5,6)

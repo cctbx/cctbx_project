@@ -698,13 +698,13 @@ namespace cctbx {
       vec3<FloatType> v(0,0,0);
       v[i_large[i_m]] = 1.;
       detail::recursively_multiply<FloatType> v_lambda(m[i_m], v);
-      vectors_[i_m] = v_lambda.v;
-      values_[i_m] = v_lambda.abs_lambda;
+      vectors_[i_m*2] = v_lambda.v;
+      values_[i_m*2] = v_lambda.abs_lambda;
     }
-    vectors_[2] = vectors_[0].cross(vectors_[1]);
-    CCTBX_ASSERT(vectors_[2].length() != 0);
-    values_[1] = 1. / values_[1];
-    values_[2] = (adp[0] + adp[1] + adp[2]) - (values_[0] + values_[1]);
+    vectors_[1] = vectors_[0].cross(vectors_[2]);
+    CCTBX_ASSERT(vectors_[1].length() != 0);
+    values_[2] = 1. / values_[2];
+    values_[1] = (adp[0] + adp[1] + adp[2]) - (values_[0] + values_[2]);
   }
 
   //! Tensor transformation: c * u * c.transpose().
