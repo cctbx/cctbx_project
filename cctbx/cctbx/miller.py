@@ -1673,10 +1673,26 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
 class merge_equivalents:
 
   def __init__(self, miller_array):
-    if (isinstance(miller_array.data(), flex.hendrickson_lattman)):
+    if (isinstance(miller_array.data(), flex.complex_double)):
+      asu_array = miller_array.map_to_asu()
+      perm = asu_array.sort_permutation(by_value="packed_indices")
+      merge_ext = ext.merge_equivalents_complex(
+        asu_array.indices().select(perm),
+        asu_array.data().select(perm))
+      sigmas = None
+      del asu_array
+    elif (isinstance(miller_array.data(), flex.hendrickson_lattman)):
       asu_array = miller_array.map_to_asu()
       perm = asu_array.sort_permutation(by_value="packed_indices")
       merge_ext = ext.merge_equivalents_hl(
+        asu_array.indices().select(perm),
+        asu_array.data().select(perm))
+      sigmas = None
+      del asu_array
+    elif (isinstance(miller_array.data(), flex.bool)):
+      asu_array = miller_array.map_to_asu()
+      perm = asu_array.sort_permutation(by_value="packed_indices")
+      merge_ext = ext.merge_equivalents_bool(
         asu_array.indices().select(perm),
         asu_array.data().select(perm))
       sigmas = None
@@ -1693,13 +1709,13 @@ class merge_equivalents:
       if (miller_array.sigmas() is not None):
         sigmas_squared = flex.pow2(miller_array.sigmas().select(perm))
         assert flex.min(sigmas_squared) > 0
-        merge_ext = ext.merge_equivalents(
+        merge_ext = ext.merge_equivalents_obs(
           asu_set.indices().select(perm),
           miller_array.data().select(perm),
           1/sigmas_squared)
-        sigmas = merge_ext.sigmas()
+        sigmas = merge_ext.sigmas
       else:
-        merge_ext = ext.merge_equivalents(
+        merge_ext = ext.merge_equivalents_real(
           asu_set.indices().select(perm),
           miller_array.data().select(perm))
         sigmas = None
@@ -1707,11 +1723,11 @@ class merge_equivalents:
     self._array = array(
       miller_set=set(
         crystal_symmetry=miller_array,
-        indices=merge_ext.indices(),
+        indices=merge_ext.indices,
         anomalous_flag=miller_array.anomalous_flag()),
-      data=merge_ext.data(),
+      data=merge_ext.data,
       sigmas=sigmas).set_observation_type(miller_array)
-    self._redundancies = merge_ext.redundancies()
+    self._redundancies = merge_ext.redundancies
 
   def array(self):
     return self._array
