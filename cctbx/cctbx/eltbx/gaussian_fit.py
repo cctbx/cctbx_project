@@ -6,13 +6,45 @@ from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
 import math
 import sys, os
 
-def d_star_sq_points(d_min, n_points):
-  d_star_max = 1. / d_min
-  d_step = d_star_max / n_points
-  result = flex.double()
-  for i in xrange(n_points):
-    result.append((i * d_step)**2)
-  return result
+international_tables_sampling_points_stol = flex.double(
+  [0.00, 0.01, 0.02, 0.03, 0.04, 0.05,
+   0.06, 0.07, 0.08, 0.09, 0.10,
+   0.11, 0.12, 0.13, 0.14, 0.15,
+   0.16, 0.17, 0.18, 0.19, 0.20,
+   0.22, 0.24, 0.25, 0.26, 0.28, 0.30,
+   0.32, 0.34, 0.35, 0.36, 0.38, 0.40,
+   0.42, 0.44, 0.45, 0.46, 0.48, 0.50,
+   0.55, 0.60, 0.65, 0.70, 0.80, 0.90, 1.00,
+   1.10, 1.20, 1.30, 1.40, 1.50,
+   1.60, 1.70, 1.80, 1.90, 2.00,
+   2.50, 3.00, 3.50, 4.00, 5.00, 6.00])
+
+international_tables_sampling_points_d_star_sq = \
+  flex.pow2(international_tables_sampling_points_stol * 2)
+
+international_tables_sampled_value_sigmas = flex.double(
+  [0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
+   0.0008, 0.0008, 0.0008, 0.0008, 0.0008, 0.0008])
+
+class international_tables_sampling_points_and_value_sigmas_up_to:
+
+  def __init__(self, d_min, eps=1.e-6):
+    assert d_min > 0
+    self.selection = international_tables_sampling_points_d_star_sq \
+                     < (1/d_min)**2 + eps
+    self.d_star_sq = international_tables_sampling_points_d_star_sq.select(
+      self.selection)
+    self.sigmas = international_tables_sampled_value_sigmas.select(
+      self.selection)
 
 class minimize:
 
@@ -151,23 +183,24 @@ def make_start_gaussian(reference_gaussian,
     assert abs(result.at_stol_sq(stol_sq) - fs_reference) < 1.e-4
   return result
 
-def get_errors(diff_gaussian, d_min, n_points):
-  assert d_min > 0
-  d_star_max = 1. / d_min
-  errors = flex.double()
-  for i in xrange(1,n_points+1):
-    d_star = d_star_max * i / n_points
-    fr = diff_gaussian.reference_gaussian().at_d_star_sq(d_star**2)
-    f = diff_gaussian.at_d_star_sq(d_star**2)
-    assert fr > 0
-    errors.append((f - fr) / fr)
-  return errors
+def get_significant_relative_errors(diff_gaussian, d_star_sq, sigmas):
+  assert d_star_sq.size() == sigmas.size()
+  reference_values = diff_gaussian.reference_gaussian().at_d_star_sq(d_star_sq)
+  diffs = diff_gaussian.target_terms_at_points(d_star_sq)
+  results = flex.double()
+  for i,diff in diffs.items():
+    sigma = sigmas[i]
+    result = max(0, abs(diff)-sigma)
+    if (result > 0):
+      assert reference_values[i] > 0
+      result /= reference_values[i]
+    results.append(result)
+  return results
 
 class find_d_min:
 
   def __init__(self, diff_gaussian,
                      target_power,
-                     n_points,
                      max_max_error,
                      start_interval,
                      min_interval):
@@ -175,15 +208,16 @@ class find_d_min:
     good_d_min = None
     while 1:
       self.d_min = (interval[0] + interval[1]) / 2.
-      d_star_sq = d_star_sq_points(d_min=self.d_min, n_points=n_points)
+      points = international_tables_sampling_points_and_value_sigmas_up_to(
+        d_min=self.d_min)
       self.min = minimize(
         diff_gaussian=diff_gaussian,
         target_power=target_power,
-        d_star_sq=d_star_sq)
-      self.max_error = flex.max(flex.abs(get_errors(
+        d_star_sq=points.d_star_sq)
+      self.max_error = flex.max(get_significant_relative_errors(
         diff_gaussian=self.min.final_diff_gaussian,
-        d_min=self.d_min,
-        n_points=n_points*2)))
+        d_star_sq=points.d_star_sq,
+        sigmas=points.sigmas))
       if (    self.max_error <= max_max_error
           and min(self.min.final_diff_gaussian.b()) > self.min.b_min):
         if (interval[0] == start_interval.d_min):
@@ -221,7 +255,6 @@ class find_d_min_multi:
                      start_interval,
                      n_trial_points_factor,
                      n_start_fractions,
-                     n_points,
                      max_max_error,
                      min_interval):
     n_terms = existing_gaussian.n_ab() + 1
@@ -230,7 +263,6 @@ class find_d_min_multi:
     for i_trial_point in xrange(n_trial_points+1):
       f_range = i_trial_point / float(n_trial_points)
       d_min = start_interval.d(f_range)
-      d_star_sq = d_star_sq_points(d_min=d_min, n_points=n_points)
       for i_start_fraction in xrange(min(n_start_fractions,n_terms)):
         diff_gaussian = make_start_gaussian(
           reference_gaussian=reference_gaussian,
@@ -242,7 +274,6 @@ class find_d_min_multi:
           fit = find_d_min(
             diff_gaussian=diff_gaussian,
             target_power=target_power,
-            n_points=n_points,
             max_max_error=max_max_error,
             start_interval=start_interval,
             min_interval=min_interval)
@@ -271,8 +302,8 @@ def show_fit_summary(source, label, gaussian, d_min, e, e_other=None):
     print "Better",
   print
 
-def show_literature_fits(label, d_min, reference_gaussian, n_terms, n_points,
-                         e_other=None):
+def show_literature_fits(label, n_terms, reference_gaussian,
+                         sampling_points, d_min, e_other=None):
   for lib in [xray_scattering.it1992,
               xray_scattering.two_gaussian_agarwal_isaacs,
               xray_scattering.two_gaussian_agarwal_1978,
@@ -288,34 +319,30 @@ def show_literature_fits(label, d_min, reference_gaussian, n_terms, n_points,
     if (lib_gaussian is not None and lib_gaussian.n_ab() == n_terms):
       diff_gaussian = xray_scattering.difference_gaussian(
         reference_gaussian, lib_gaussian)
-      e = flex.max(flex.abs(get_errors(
+      e = flex.max(get_significant_relative_errors(
         diff_gaussian=diff_gaussian,
-        d_min=d_min,
-        n_points=n_points*2)))
+        d_star_sq=sampling_points.d_star_sq,
+        sigmas=sampling_points.sigmas))
       show_fit_summary(lib_source, label, lib_gaussian, d_min, e, e_other)
 
-def write_plot(f, gaussian, d_min, n_points):
-  assert d_min > 0
-  d_star_max = 1. / d_min
-  for i in xrange(n_points+1):
-    d_star = d_star_max * i / n_points
-    print >> f, d_star, gaussian.at_d_star_sq(d_star**2)
+def write_plot(f, gaussian, d_star_sq):
+  for dss in d_star_sq:
+    d_star = math.sqrt(dss)
+    print >> f, d_star, gaussian.at_d_star_sq(dss)
   print >> f, "&"
 
-def write_plots(plots_dir, label, reference_gaussian, gaussian,
-                d_min, n_points):
-  label = label.replace("'", "prime") + "_" + str(gaussian.n_ab())
+def write_plots(plots_dir, label, gaussians, d_star_sq):
+  label = label.replace("'", "prime")
   file_name = os.path.join(plots_dir, label+".xy")
   f = open(file_name, "w")
-  write_plot(f, reference_gaussian, d_min, n_points)
-  write_plot(f, gaussian, d_min, n_points)
+  for gaussian in gaussians:
+    write_plot(f, gaussian, d_star_sq)
   f.close()
 
 class fit_parameters:
 
   def __init__(self, max_n_terms=5,
                      target_powers=[2,4],
-                     n_points=50,
                      max_max_error=0.01,
                      start_interval=d_interval(d_max=15, d_min=1/12.),
                      find_d_min_min_interval=0.01,
@@ -344,7 +371,6 @@ def incremental_fits(label, reference_gaussian, params=None, plots_dir=None,
       start_interval=params.start_interval,
       n_trial_points_factor=params.n_trial_points_factor,
       n_start_fractions=params.n_start_fractions,
-      n_points=params.n_points,
       max_max_error=params.max_max_error,
       min_interval=params.find_d_min_min_interval)
     if (fit.d_min is None):
@@ -357,12 +383,15 @@ def incremental_fits(label, reference_gaussian, params=None, plots_dir=None,
     show_fit_summary(
       "Best fit", label, fit.min.final_diff_gaussian, fit.d_min,
       fit.max_error)
+    sampling_points = \
+      international_tables_sampling_points_and_value_sigmas_up_to(
+        d_min=fit.d_min)
     show_literature_fits(
       label=label,
-      reference_gaussian=reference_gaussian,
       n_terms=n_terms,
+      reference_gaussian=reference_gaussian,
+      sampling_points=sampling_points,
       d_min=fit.d_min,
-      n_points=params.n_points,
       e_other=fit.max_error)
     fit.min.final_diff_gaussian.show()
     existing_gaussian = fit.min.final_diff_gaussian
@@ -371,11 +400,9 @@ def incremental_fits(label, reference_gaussian, params=None, plots_dir=None,
     if (plots_dir):
       write_plots(
         plots_dir=plots_dir,
-        label=label,
-        reference_gaussian=reference_gaussian,
-        gaussian=fit.min.final_diff_gaussian,
-        d_min=fit.d_min,
-        n_points=params.n_points*2)
+        label=label+"_%d"%n_terms,
+        gaussians=[reference_gaussian, fit.min.final_diff_gaussian],
+        d_star_sq=sampling_points.d_star_sq)
     g = fit.min.final_diff_gaussian
     results.append(xray_scattering.fitted_gaussian(
       d_min=fit.d_min, a=g.a(),b=g.b()))
