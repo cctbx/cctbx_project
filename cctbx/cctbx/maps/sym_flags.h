@@ -158,24 +158,24 @@ namespace cctbx { namespace maps {
   }
 
   template <class VectorTypeData>
-  struct verify_symmetry_flags
+  struct verify_grid_tags
     : vector::linear_regression_core<typename VectorTypeData::size_type,
                                      typename VectorTypeData::value_type>
   {
     typedef typename VectorTypeData::size_type size_type;
     typedef typename VectorTypeData::value_type value_type;
 
-    verify_symmetry_flags() {}
-    template <typename VectorTypeFlags>
-    verify_symmetry_flags(const VectorTypeData& data,
-                          const VectorTypeFlags& flags,
-                          const value_type& epsilon = 1.e-6)
+    verify_grid_tags() {}
+    template <typename VectorTypeTags>
+    verify_grid_tags(const VectorTypeData& data,
+                     const VectorTypeTags& tags,
+                     const value_type& epsilon = 1.e-6)
     {
-      cctbx_assert(data.size() <= flags.size());
+      cctbx_assert(data.size() <= tags.size());
       n_dependent = 0;
       size_type i;
       for(i=0;i<data.size();i++) {
-        if (flags[i] >= 0) break;
+        if (tags[i] >= 0) break;
       }
       if (i == data.size()) {
         reset();
@@ -183,7 +183,7 @@ namespace cctbx { namespace maps {
       }
       n_dependent = 1;
       value_type x = data[i];
-      value_type y = data[flags[i]];
+      value_type y = data[tags[i]];
       value_type min_x = x;
       value_type max_x = x;
       value_type min_y = y;
@@ -194,10 +194,10 @@ namespace cctbx { namespace maps {
       value_type sum_y2 = y * y;
       value_type sum_xy = x * y;
       for(i++;i<data.size();i++) {
-        if (flags[i] < 0) continue;
+        if (tags[i] < 0) continue;
         n_dependent++;
         x = data[i];
-        y = data[flags[i]];
+        y = data[tags[i]];
         if (min_x > x) min_x = x;
         if (max_x < x) max_x = x;
         if (min_y > y) min_y = y;
