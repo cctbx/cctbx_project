@@ -459,3 +459,41 @@ namespace sgtbx {
   }
 
 } // namespace sgtbx
+
+namespace cctbx {
+  namespace Miller {
+
+    SymUniqueIndex::SymUniqueIndex(const sgtbx::SgOps& sgo,
+                                   const sgtbx::ReciprocalSpaceASU& ASU,
+                                   const Index& H)
+    {
+      m_TBF = sgo.TBF();
+      for(int iInv=0;iInv<sgo.fInv();iInv++) {
+        for(int iSMx=0;iSMx<sgo.nSMx();iSMx++) {
+          sgtbx::RTMx M = sgo(0, iInv, iSMx);
+          m_HR = H * M.Rpart();
+          if (ASU.isInASU(m_HR)) {
+            m_HT = H * M.Tpart();
+            m_iMate = 0;
+            m_H = m_HR;
+            return;
+          }
+        }
+      }
+      cctbx_assert(!sgo.isCentric());
+      for(int iSMx=0;iSMx<sgo.nSMx();iSMx++) {
+        sgtbx::RTMx M = sgo(0, 0, iSMx);
+        m_HR = H * M.Rpart();
+        Miller::Index HRF = m_HR.FriedelMate();
+        if (ASU.isInASU(HRF)) {
+          m_HT = H * M.Tpart();
+          m_iMate = 1;
+          m_H = HRF;
+          return;
+        }
+      }
+      throw cctbx_internal_error();
+    }
+
+  } // namespace Miller
+} // namespace cctbx

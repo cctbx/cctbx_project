@@ -462,6 +462,21 @@ namespace {
     return result;
   }
 
+  double Miller_SymUniqueIndex_Phase_rad(const Miller::SymUniqueIndex& SUMI,
+                                         double phi, bool FriedelSym) {
+    return SUMI.Phase_rad(phi, FriedelSym);
+  }
+  double Miller_SymUniqueIndex_Phase_deg(const Miller::SymUniqueIndex& SUMI,
+                                         double phi, bool FriedelSym) {
+    return SUMI.Phase_deg(phi, FriedelSym);
+  }
+  std::complex<double>
+  Miller_SymUniqueIndex_ShiftPhase(const Miller::SymUniqueIndex& SUMI,
+                                   const std::complex<double>& F,
+                                   bool FriedelSym) {
+    return SUMI.ShiftPhase(F, FriedelSym);
+  }
+
 } // namespace <anonymous>
 
 namespace boost { namespace python {
@@ -551,6 +566,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ReciprocalSpaceASU(this_module, "ReciprocalSpaceASU");
     class_builder<MillerIndexGenerator>
     py_MillerIndexGenerator(this_module, "MillerIndexGenerator");
+    class_builder<Miller::SymUniqueIndex>
+    py_Miller_SymUniqueIndex(this_module, "Miller_SymUniqueIndex");
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
@@ -929,6 +946,19 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");
     py_MillerIndexGenerator.def(&MillerIndexGenerator::ASU, "ASU");
 
+    py_Miller_SymUniqueIndex.def(constructor<>());
+    py_Miller_SymUniqueIndex.def(constructor<const SgOps&,
+                                             const ReciprocalSpaceASU&,
+                                             const Miller::Index&>());
+    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::H, "H");
+    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::iMate, "iMate");
+    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::HR, "HR");
+    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::HT, "HT");
+    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::TBF, "TBF");
+    py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_Phase_rad, "Phase_rad");
+    py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_Phase_deg, "Phase_deg");
+    py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_ShiftPhase,
+                                                      "ShiftPhase");
     sgtbx::sanity_check();
   }
   catch(...)
