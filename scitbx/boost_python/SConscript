@@ -18,15 +18,12 @@ lib_scitbx_boost_python_sources = [
 ]
 if (env_etc.static_libraries): builder = env.StaticLibrary
 else:                          builder = env.SharedLibrary
-lib_scitbx_boost_python_node = builder(
-    target="scitbx_boost_python",
-    source=lib_scitbx_boost_python_sources)
-env.Install("#libtbx", lib_scitbx_boost_python_node)
+builder(
+  target="#libtbx/scitbx_boost_python",
+  source=lib_scitbx_boost_python_sources)
 
 Import("env_scitbx_boost_python_ext")
-pyd = env_scitbx_boost_python_ext.SharedLibrary(
-  target="rational_ext",
+env_scitbx_boost_python_ext.SharedLibrary(
+  target="#libtbx/scitbx_boost/rational_ext",
   source="rational_ext.cpp",
 )
-env_scitbx_boost_python_ext.Install(
-  "#libtbx/scitbx_boost", pyd)

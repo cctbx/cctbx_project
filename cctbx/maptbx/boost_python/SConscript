@@ -1,7 +1,7 @@
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-pyd = env.SharedLibrary(target="maptbx_ext", source=[
+env.SharedLibrary(target="#libtbx/cctbx_boost/maptbx_ext", source=[
   "maptbx_ext.cpp",
   "grid_tags.cpp",
   "gridding.cpp",
@@ -12,4 +12,3 @@ pyd = env.SharedLibrary(target="maptbx_ext", source=[
   "structure_factors.cpp",
   "symmetry_flags.cpp",
 ])
-env.Install("#libtbx/cctbx_boost", pyd)

@@ -6,8 +6,8 @@ env_cctbx_boost_python_ext.Command(
 
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-flex_pyd = env.SharedLibrary(
-  target="flex_cctbx_ext",
+env.SharedLibrary(
+  target="#libtbx/cctbx_boost/array_family/flex_cctbx_ext",
   source=[
   "flex_cctbx_ext.cpp",
   "flex_hendrickson_lattman.cpp",
@@ -18,5 +18,3 @@ flex_pyd = env.SharedLibrary(
   "flex_tiny_size_t_2.cpp",
   "flex_xray_scatterer.cpp",
 ])
-env.Install(
-  "#libtbx/cctbx_boost/array_family", flex_pyd)

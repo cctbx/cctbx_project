@@ -1,7 +1,7 @@
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-pyd = env.SharedLibrary(target="miller_ext", source=[
+env.SharedLibrary(target="#libtbx/cctbx_boost/miller_ext", source=[
   "miller_ext.cpp",
   "asu.cpp",
   "bins.cpp",
@@ -14,4 +14,3 @@ pyd = env.SharedLibrary(target="miller_ext", source=[
   "phase_transfer.cpp",
   "sym_equiv.cpp",
 ])
-env.Install("#libtbx/cctbx_boost", pyd)

@@ -17,8 +17,10 @@ namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_float()
   {
+#ifdef JUNK
     wrap_flex_float_2(
       flex_wrapper<float>::numeric("float", boost::python::scope()));
+#endif
   }
 
 }}} // namespace scitbx::af::boost_python

@@ -1,7 +1,7 @@
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-pyd = env.SharedLibrary(target="xray_ext", source=[
+env.SharedLibrary(target="#libtbx/cctbx_boost/xray_ext", source=[
   "xray_ext.cpp",
   "conversions.cpp",
   "scatterer.cpp",
@@ -9,4 +9,3 @@ pyd = env.SharedLibrary(target="xray_ext", source=[
   "structure_factors.cpp",
   "targets.cpp",
 ])
-env.Install("#libtbx/cctbx_boost", pyd)

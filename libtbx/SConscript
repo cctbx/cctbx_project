@@ -76,8 +76,7 @@ if (sys.platform == "win32"):
 else:
   env_base = Environment(
     ENV=os.environ,
-    tools=['gcc','g++','gnulink','ar'],
-    PROGSUFFIX=".exe")
+    tools=['gcc','g++','gnulink','ar'])
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]

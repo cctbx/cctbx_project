@@ -91,9 +91,8 @@ lib_cctbx_sources = [
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
 else:                          builder = envlm.SharedLibrary
 lib_cctbx_node = builder(
-    target="cctbx",
+    target="#libtbx/cctbx",
     source=lib_cctbx_sources)
-env.Install("#libtbx", lib_cctbx_node)
 
 SConscript("cctbx/source_generators/eltbx/SConscript")
 SConscript("examples/SConscript")
