@@ -120,6 +120,13 @@ namespace scitbx { namespace af {
       }
 
       flex_grid
+      set_layout(index_type const& layout)
+      {
+        layout_ = layout;
+        return *this;
+      }
+
+      flex_grid
       set_layout(index_value_type const& layout_0)
       {
         layout_.clear();
@@ -128,9 +135,72 @@ namespace scitbx { namespace af {
       }
 
       flex_grid
-      set_layout(index_type const& layout)
+      set_layout(index_value_type const& layout_0,
+                 index_value_type const& layout_1)
       {
-        layout_ = layout;
+        layout_.clear();
+        layout_.push_back(layout_0);
+        layout_.push_back(layout_1);
+        return *this;
+      }
+
+      flex_grid
+      set_layout(index_value_type const& layout_0,
+                 index_value_type const& layout_1,
+                 index_value_type const& layout_2)
+      {
+        layout_.clear();
+        layout_.push_back(layout_0);
+        layout_.push_back(layout_1);
+        layout_.push_back(layout_2);
+        return *this;
+      }
+
+      flex_grid
+      set_layout(index_value_type const& layout_0,
+                 index_value_type const& layout_1,
+                 index_value_type const& layout_2,
+                 index_value_type const& layout_3)
+      {
+        layout_.clear();
+        layout_.push_back(layout_0);
+        layout_.push_back(layout_1);
+        layout_.push_back(layout_2);
+        layout_.push_back(layout_3);
+        return *this;
+      }
+
+      flex_grid
+      set_layout(index_value_type const& layout_0,
+                 index_value_type const& layout_1,
+                 index_value_type const& layout_2,
+                 index_value_type const& layout_3,
+                 index_value_type const& layout_4)
+      {
+        layout_.clear();
+        layout_.push_back(layout_0);
+        layout_.push_back(layout_1);
+        layout_.push_back(layout_2);
+        layout_.push_back(layout_3);
+        layout_.push_back(layout_4);
+        return *this;
+      }
+
+      flex_grid
+      set_layout(index_value_type const& layout_0,
+                 index_value_type const& layout_1,
+                 index_value_type const& layout_2,
+                 index_value_type const& layout_3,
+                 index_value_type const& layout_4,
+                 index_value_type const& layout_5)
+      {
+        layout_.clear();
+        layout_.push_back(layout_0);
+        layout_.push_back(layout_1);
+        layout_.push_back(layout_2);
+        layout_.push_back(layout_3);
+        layout_.push_back(layout_4);
+        layout_.push_back(layout_5);
         return *this;
       }
 

@@ -10,7 +10,8 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_REF_C_GRID_FLEX_CONVERSIONS_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_REF_C_GRID_FLEX_CONVERSIONS_H
 
-#include <scitbx/array_family/accessors/flex_grid.h>
+#include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/object.hpp>
@@ -72,6 +73,18 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       ref_c_grid_from_flex<const_ref<ElementType, CGridType> >();
       ref_c_grid_from_flex<ref<ElementType, CGridType> >();
+    }
+  };
+
+  template <typename ElementType>
+  struct default_ref_c_grid_flex_conversions
+  {
+    default_ref_c_grid_flex_conversions()
+    {
+      ref_c_grid_flex_conversions<ElementType, c_grid<2> >();
+      ref_c_grid_flex_conversions<ElementType, c_grid<3> >();
+      ref_c_grid_flex_conversions<ElementType, c_grid_padded<2> >();
+      ref_c_grid_flex_conversions<ElementType, c_grid_padded<3> >();
     }
   };
 

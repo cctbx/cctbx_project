@@ -87,9 +87,13 @@ def exercise_c_grid_conversions(verbose=0):
   a = flex.double(flex.grid((2, 3)))
   assert a.accessor() == rt.use_const_ref_c_grid_2(a)
   assert a.grid() == rt.use_const_ref_c_grid_2(a).grid()
+  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_2(a).grid()
+  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_2(a).layout()
   a = flex.double(flex.grid((2, 3, 4)))
   assert a.accessor() == rt.use_const_ref_c_grid_3(a)
   assert a.grid() == rt.use_const_ref_c_grid_3(a).grid()
+  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_3(a).grid()
+  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_3(a).layout()
   if (verbose): print 'OK'
 
 def exercise_to_tuple(verbose=0):
