@@ -23,7 +23,7 @@ class ScalepackFormatError(exceptions.Exception): pass
 
 class scalepack_file:
 
-  def __init__(self, file_handle):
+  def __init__(self, file_handle, header_only=00000):
     self.file_handle = file_handle
     line = self.file_handle.readline()
     if (line.rstrip() != "    1"):
@@ -47,6 +47,7 @@ class scalepack_file:
       self.space_group_info = sgtbx.space_group_info(self.space_group_symbol)
     except:
       self.space_group_info = None
+    if (header_only): return
     self.miller_indices = flex.miller_index()
     self.fobs = flex.double()
     self.sigmas = flex.double()
