@@ -171,6 +171,31 @@ def exercise(verbose=0):
         sites_cart=sites_cart,
         sorted_asu_proxies=pair_proxies.nonbonded_proxies,
         function=geometry_restraints.prolsq_repulsion_function()))
+  s = StringIO()
+  pair_proxies.bond_proxies.show_histogram_of_model_distances(
+    sites_cart=sites_cart,
+    f=s,
+    prefix="[]")
+  assert s.getvalue().splitlines()[0] == "[]Histogram of bond lengths:"
+  assert s.getvalue().splitlines()[5].startswith("[]      1.80 -     1.80:")
+  s = StringIO()
+  pair_proxies.bond_proxies.show_histogram_of_deltas(
+    sites_cart=sites_cart,
+    f=s,
+    prefix="][")
+  assert s.getvalue().splitlines()[0] == "][Histogram of bond deltas:"
+  assert s.getvalue().splitlines()[5].startswith("][     0.000 -    0.000:")
+  s = StringIO()
+  pair_proxies.bond_proxies.show_sorted_by_residual(
+    sites_cart=sites_cart,
+    max_lines=3,
+    f=s,
+    prefix=":;")
+  l = s.getvalue().splitlines()
+  assert l[:2] == [":;Bond restraints sorted by residual:",
+                   ":;ideal  model  delta   weight residual"]
+  assert l[-2].startswith(":;1.800  1.800")
+  assert l[-1] == ":;... (remaining 15 not shown)"
   vdw_1_sticks = []
   vdw_2_sticks = []
   for proxy in pair_proxies.nonbonded_proxies.simple:
