@@ -12,7 +12,8 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/icsd_radii.h>
 
-using namespace eltbx;
+using namespace cctbx;
+using namespace cctbx::eltbx;
 
 BOOST_PYTHON_MODULE_INIT(icsd_radii)
 {
@@ -28,6 +29,7 @@ BOOST_PYTHON_MODULE_INIT(icsd_radii)
 
     class_builder<ICSD_Radius> py_ICSD_Radius(this_module, "ICSD_Radius");
 
+    py_ICSD_Radius.def(constructor<>());
     py_ICSD_Radius.def(constructor<const std::string&>());
     py_ICSD_Radius.def(constructor<const std::string&, bool>());
     py_ICSD_Radius.def(&ICSD_Radius::Label, "Label");

@@ -18,8 +18,9 @@
 #include <cctbx/eltbx/caasf.h>
 #include <cctbx/adptbx.h>
 
-//! Structure Factor Toolbox namespace.
-namespace sftbx {
+namespace cctbx {
+  //! Structure Factor Toolbox namespace.
+  namespace sftbx {
 
   /*! \brief This class groups the information about an atom that
       is needed for a structure factor calculation.
@@ -30,7 +31,7 @@ namespace sftbx {
       The anisotropic displacement parameters have to be
       "Ustar." Converters between different conventions for
       the representation of anisotropic displacement
-      parameters are provided by the adptbx.
+      parameters are provided by the cctbx::adptbx.
       <p>
       The ApplySymmetry() function has to be called before
       the scatterer can be used in a structure factor
@@ -80,50 +81,50 @@ namespace sftbx {
       {
       }
       //! Access the Label.
-      inline const std::string& Label() const { return m_Label; }
+      const std::string& Label() const { return m_Label; }
       //! Access the analytical approximation to the scattering factor.
       /*! See eltbx::CAASF_IT1992 and eltbx::CAASF_WK1995.
        */
-      inline const CAASF_Type& CAASF() const { return m_CAASF; }
+      const CAASF_Type& CAASF() const { return m_CAASF; }
       //! Access f-prime and f-double-prime.
       /*! f-prime is the dispersive contribution to the scattering
           factor. f-double-prime is the anomalous contribution.
        */
-      inline const std::complex<FloatType>& fpfdp() const { return m_fpfdp; }
+      const std::complex<FloatType>& fpfdp() const { return m_fpfdp; }
       //! Access the fractional coordinates.
-      inline const cctbx::fractional<FloatType>& Coordinates() const {
+      const cctbx::fractional<FloatType>& Coordinates() const {
         return m_Coordinates;
       }
       //! Access the occupancy factor.
-      inline const FloatType& Occ() const { return m_Occ; }
+      const FloatType& Occ() const { return m_Occ; }
       //! Test if the scatterer is anisotropic.
-      inline bool isAnisotropic() const { return m_Anisotropic; }
+      bool isAnisotropic() const { return m_Anisotropic; }
       //! Access to the isotropic displacement parameter.
       /*! It is the responsibility of the caller to ensure
           that the scatterer is isotropic.
           <p>
           Conversions between isotropic and anisotropic displacement
-          parameters are provided by the adptbx.
+          parameters are provided by the cctbx::adptbx.
        */
-      inline const FloatType& Uiso() const { return m_U[0]; }
+      const FloatType& Uiso() const { return m_U[0]; }
       //! Access to the anisotropic displacement parameters.
       /*! It is the responsibility of the caller to ensure
           that the scatterer is anisotropic.
           <p>
           Conversions between isotropic and anisotropic displacement
-          parameters are provided by the adptbx.
+          parameters are provided by the cctbx::adptbx.
        */
-      inline const boost::array<FloatType, 6>& Uaniso() { return m_U; }
+      const boost::array<FloatType, 6>& Uaniso() { return m_U; }
       //! Compute multiplicity and average anisotropic displacement parameters.
       /*! The given unit cell and space group are used to determine
           the site symmetry of the scatterer see
-          sgtbx::SpecialPositionSnapParameters and
-          sgtbx::SiteSymmetry for information on the
+          cctbx::sgtbx::SpecialPositionSnapParameters and
+          cctbx::sgtbx::SiteSymmetry for information on the
           MinMateDistance parameter.
           <p>
           For scatterers with anisotropic displacement
           parameters, the average Ustar is determined using
-          sgtbx::SiteSymmetry::AverageUstar. If
+          cctbx::sgtbx::SiteSymmetry::AverageUstar. If
           Ustar_tolerance is greater than zero, an
           exception is thrown if the discrepancy between
           components of Ustar before and after the
@@ -137,19 +138,19 @@ namespace sftbx {
           is thrown if this is not the case.
           <p>
           See also:
-            sgtbx::SpecialPositionSnapParameters,
-            sgtbx::SiteSymmetry,
-            adptbx::CheckPositiveDefinite
+            cctbx::sgtbx::SpecialPositionSnapParameters,
+            cctbx::sgtbx::SiteSymmetry,
+            cctbx::adptbx::CheckPositiveDefinite
        */
-      void ApplySymmetry(const uctbx::UnitCell& UC,
-                         const sgtbx::SpaceGroup& SgOps,
+      void ApplySymmetry(const cctbx::uctbx::UnitCell& UC,
+                         const cctbx::sgtbx::SpaceGroup& SgOps,
                          double MinMateDistance = 0.5,
                          double Ustar_tolerance = 0.1,
                          bool TestPositiveDefiniteness = true)
       {
-        sgtbx::SpecialPositionSnapParameters
+        cctbx::sgtbx::SpecialPositionSnapParameters
         SnapParameters(UC, SgOps, true, MinMateDistance);
-        sgtbx::SiteSymmetry
+        cctbx::sgtbx::SiteSymmetry
         SS(SnapParameters, m_Coordinates);
         m_Coordinates = SS.SnapPosition();
         m_M = SS.M();
@@ -160,25 +161,25 @@ namespace sftbx {
           }
           m_U = SS.AverageUstar(m_U);
           if (TestPositiveDefiniteness) {
-            adptbx::CheckPositiveDefinite(m_U);
+            cctbx::adptbx::CheckPositiveDefinite(m_U);
           }
         }
       }
       //! Access the multiplicity computed by ApplySymmetry().
-      inline int M() const { return m_M; }
+      int M() const { return m_M; }
       //! Access the "weight" computed by ApplySymmetry().
       /*! The weight is defined as Occ() * (M() / SgOps.OrderZ()),
           with the SgOps passed to ApplySymmetry(). This weight
           is used in the structure factor calculation.
        */
-      inline const FloatType& w() const { return m_w; }
+      const FloatType& w() const { return m_w; }
       /*! \brief Contribution of the (one) scatterer to the
           structure factor with the Miller index H.
        */
-      /*! Q is a d-spacing measure (uctbx::UnitCell::Q()).
+      /*! Q is a d-spacing measure (cctbx::uctbx::UnitCell::Q()).
        */
-      inline std::complex<FloatType>
-      StructureFactor(const sgtbx::SpaceGroup& SgOps,
+      std::complex<FloatType>
+      StructureFactor(const cctbx::sgtbx::SpaceGroup& SgOps,
                       const cctbx::Miller::Index& H,
                       double Q) const
       {
@@ -195,7 +196,7 @@ namespace sftbx {
           structure factors.
        */
       /*! The Miller indices H and d-spacing measures Q
-          (uctbx::UnitCell::Q())
+          (cctbx::uctbx::UnitCell::Q())
           are passed as vectors. The contribution of the scatterer
           to each of the structure factors is added to the complex
           valued vector Fcalc.
@@ -211,8 +212,8 @@ namespace sftbx {
       template <class MillerVectorType,
                 class doubleVectorType,
                 class StdComplexVectorType>
-      inline void
-      StructureFactorVector(const sgtbx::SpaceGroup& SgOps,
+      void
+      StructureFactorVector(const cctbx::sgtbx::SpaceGroup& SgOps,
                             const MillerVectorType& H,
                             const doubleVectorType& Q,
                             StdComplexVectorType& Fcalc) const
@@ -261,7 +262,7 @@ namespace sftbx {
             class XrayScattererVectorType,
             class StdComplexVectorType>
   inline void
-  StructureFactorVector(const sgtbx::SpaceGroup& SgOps,
+  StructureFactorVector(const cctbx::sgtbx::SpaceGroup& SgOps,
                         const MillerVectorType& H,
                         const doubleVectorType& Q,
                         const XrayScattererVectorType& Sites,
@@ -294,8 +295,8 @@ namespace sftbx {
             class XrayScattererVectorType,
             class StdComplexVectorType>
   inline void
-  StructureFactorVector(const uctbx::UnitCell& UC,
-                        const sgtbx::SpaceGroup& SgOps,
+  StructureFactorVector(const cctbx::uctbx::UnitCell& UC,
+                        const cctbx::sgtbx::SpaceGroup& SgOps,
                         const MillerVectorType& H,
                         const XrayScattererVectorType& Sites,
                         StdComplexVectorType& Fcalc)
@@ -307,6 +308,6 @@ namespace sftbx {
     StructureFactorVector(SgOps, H, Q, Sites, Fcalc);
   }
 
-} // namespace sftbx
+}} // namespace cctbx::sftbx
 
 #endif // CCTBX_XRAY_SCATTERER_H

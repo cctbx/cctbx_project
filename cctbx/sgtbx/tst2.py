@@ -1,7 +1,7 @@
 # $Id$
 
 import sys
-import sgtbx
+from cctbx import sgtbx
 
 def parse(hall_symbol):
   s = sgtbx.parse_string(hall_symbol)
@@ -34,18 +34,9 @@ def hkl(SgOps):
     print semi(iList)
   for iList in xrange(semi.N()):
     print semi[iList].HR(), semi[iList].HT()
-  CutP = SgOps.getCutParameters()
-  print 'CutParameters =', CutP
-  Master = SgOps.getMasterIndex(H, CutP, 1)
-  print Master.H()
-  print Master.iMate()
-  for Pretty in xrange(2):
-    Master = SgOps.getMasterIndex(H, CutP, Pretty)
-    for iList in xrange(semi.M(0)):
-      assert(Master.H() == SgOps.getMasterIndex(semi(iList), CutP, Pretty).H())
 
 def BuildIndices(SgOps):
-  import uctbx
+  from cctbx import uctbx
   UnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
   SgInfo = SgOps.Info()
   MIG = sgtbx.MillerIndexGenerator(UnitCell, SgInfo, 3)

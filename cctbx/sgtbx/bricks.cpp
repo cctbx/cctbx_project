@@ -12,7 +12,7 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/asym_units.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace tables {
 
     struct RawBrick
@@ -863,4 +863,4 @@ namespace sgtbx {
     return true;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

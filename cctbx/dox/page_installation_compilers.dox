@@ -2,34 +2,32 @@
 
 <hr>
 
-After a long gestation period that lasted more than a decade, the
+After a long development period that lasted more than a decade, the
 international standard for the C++ programming language was finally
 approved in November 1997 (see
 <a href="http://www.research.att.com/~bs/iso_release.html">Bjarne
 Stroustrup's page</a>).
-Even in the computing world this is not a long time ago and a fully
-standard-compliant compiler is still not available. This is reflected
-by the necessity for the sections below.  Fortunately, most of the
+Even in the computing world this is not a long time ago, and many
+compilers are still not fully standard compliant. This is reflected by
+the necessity for the sections below. Fortunately, most of the
 deficiencies are not too difficult to fix.
 
 <hr>
 
-\section compilers_vc60 Microsoft Visual C++ 6.0 Service Pack 4
+\section compilers_vc60 Microsoft Visual C++ 6.0 Service Pack 4 & 5
 
 \par
 The %cctbx has only been tested with
-<a href="http://msdn.microsoft.com/vstudio/sp/vs6sp4/">Service Pack 4</a>.
+<a href="http://msdn.microsoft.com/vstudio/sp/vs6sp4/">Service Pack 4</a>
+and
+<a href="http://msdn.microsoft.com/vstudio/sp/vs6sp5/">Service Pack 5</a>.
 The service packs are freely available.
 It is not known if the %cctbx installation works with the original
 Visual C++ 6.0 CD distribution.
-There is a more recent
-<a href="http://msdn.microsoft.com/vstudio/sp/vs6sp5/">Service Pack 5</a>
-that has not yet been tested for installing the %cctbx but that should
-be preferred.
 
 <hr>
 
-\section compilers_mingw32 mingw32 (a free compiler for Windows)
+\section compilers_mingw32 Mingw32 (a free compiler for Windows)
 
 \par
 Mingw32 (Minimal GNU Win32) is a gcc 2.95.2 based compiler for Windows.
@@ -60,66 +58,101 @@ effect, reboot your system. To test the installation, enter
 <tt>gcc --version</tt> at a DOS command prompt.
 You should see the output <tt>2.95.2</tt>.
 
+If the third archive is unpacked in a location other than
+<tt>C:\usr</tt>, the \c MINGW32_USR macro definition in the
+<tt>configuration_mingw32</tt> file in the \c cctbx/build directory has
+to be adjusted accordingly.
+
 <strong>Warning: mingw32 C++ exception handling is known to fail if
 optimization is turned on. The error messages (if any) are misleading.
 Therefore the mingw32 compiler should only be used with the debug
 option (<tt>-g</tt>).</strong>
 
+The default mingw32 installation includes custom include files
+and a custom runtime library for Python 1.5.2. To build the include
+files and the library for other versions of Python, follow these
+instructions:
+
+<ol>
+
+<li>Install mingw32 and put the bin directory in your path.
+<li>Install Python 2.1.1 (or another version).
+<li>Download and unzip the file at
+    http://starship.python.net/crew/kernr/mingw32/pexports-0.42h.zip .
+    A newer version is available at
+    http://www.is.lg.ua/~paul/devel/binutils.html .
+<li><tt>cd <i>pexports_src_directory</i></tt>
+<li>\c make
+<li><tt>pexports.exe C:\WINNT\system32\python21.dll > python_temp</tt>
+<li><tt>dlltool -d python_temp -l libpython21.a</tt>
+<li>Move this library to an appropriate path, e.g. <tt>C:\usr\lib</tt>.
+<li>For consistency with the mingw32 directory structure
+    for Python 1.5.2, copy the Python 2.1 include files in
+    <tt>C:\Python21\include</tt> to an appropriate path, e.g.
+    <tt>C:\usr\include\python2.1</tt>.
+
+</ol>
+
 <hr>
 
-\section compilers_linux Linux (gcc 2.95.2, gcc 2.95.3, and gcc 2.96)
+\section compilers_linux Linux (gcc 2.95.2, gcc 2.95.3, gcc 2.96, gcc 3.0.x)
 
 \par
-First, log on to your Linux system and enter <tt>gcc --version</tt>.
-If the output is <tt>2.95.2</tt> or <tt>2.95.3</tt> you may skip the
-rest of this section. Otherwise, take a deep breath and read on.
-
-\subsection redhat_6x RedHat 6.x
-
-\par
-The compiler that ships with RedHat 6.1 and RedHat 6.2 (egcs-2.91.66)
-is out of date and cannot be used to install the %cctbx.
-You have to upgrade to
-<a href="http://gcc.gnu.org/gcc-2.95/gcc-2.95.2.html">gcc 2.95.2</a>
-or
-<a href="http://gcc.gnu.org/gcc-2.95/gcc-2.95.3.html">gcc 2.95.3</a>.
-The latter version has not yet been tested for installing the %cctbx
-but should be preferred.
+Log on to your Linux system and enter <tt>gcc --version</tt>.  If the
+output is <tt>2.95.2</tt> or higher, chances are that the compiler will
+work for you, at least in debug mode (<tt>-g</tt> option). However,
+there are known problems with some versions of gcc 2.96 (see
+below). With all gcc versions prior to gcc 3.0, exception
+handling is notoriously unreliable. Therefore the general
+recommendation is to use the latest gcc version (3.0.2 at
+the point of this writing).
 
 \par
-Unfortunately, we experienced problems with a minimally intrusive
-approach that installs gcc 2.95.2 into a non-system location. Unless
-you know better, you have to have <strong>root permissions</strong>
-in order to install a version of gcc that will work for compiling
-the %cctbx.
-
-This is what we used to install gcc 2.95.2 on our x86 RedHat 6.1
-system:
+The general procedure for installing gcc is:
 
 \verbatim
         cd /scratch
-        gunzip -c gcc-2.95.2.tar.gz | tar xf -
+        gunzip -c gcc-3.0.2.tar.gz | tar xf -
         mkdir gccbuild
         cd gccbuild
-        ../gcc-2.95.2/configure --enable-shared --prefix=/usr
+        ../gcc-3.0.2/configure
         make bootstrap
-        su root # aquire root permissions!
         make install
 \endverbatim
 
-Please note:
-<ul>
-<li>Use the commands above at <strong>your own risk</strong>!
-<li>This will replace the system compiler!
-<li>Installing gcc takes a long time, even on a fast machine.
-<li>You may remove <tt>/scratch/gcc-2.95.2</tt> and
-    <tt>/scratch/gccbuild</tt> after the installation is completed.
-</ul>
+This will install gcc in <tt>/usr/local</tt>. To install
+in a different location, use, e.g.:
+
+\verbatim
+        ../gcc-3.0.2/configure --prefix=/usr/local/gcc-3.0.2
+\endverbatim
+
+To use this installation, it is important to define both the command
+line search path and the \c LD_LIBRARY_PATH. An example setup script
+for \c csh is:
+
+\verbatim
+set path=(/usr/local/gcc-3.0.2/bin $path)
+if ( $?LD_LIBRARY_PATH ) then
+  setenv LD_LIBRARY_PATH "/usr/local/gcc-3.0.2/lib:${LD_LIBRARY_PATH}"
+else
+  setenv LD_LIBRARY_PATH "/usr/local/gcc-3.0.2/lib"
+endif
+\endverbatim
+
+Installing in a special location such as <tt>/usr/local/gcc-3.0.2</tt>
+has the advantage that several compiler versions can be kept and used
+simultaneously without generating conflicts. The desired compiler is
+easily activated by <tt>source</tt>-ing the corresponding setup
+script.
 
 \par
-We have no experience with installing gcc on Linux systems other
-than RedHat 6.1. However, the installation procedure should be very
-similar for other Linux based systems.
+Finally, the time required for building gcc (often hours) can be
+significantly reduced if only the C and the C++ compilers are built:
+
+\verbatim
+        ../gcc-3.0.2/configure --prefix=/usr/local/gcc-3.0.2 --enable-languages=c,c++
+\endverbatim
 
 \subsection redhat_70 RedHat 7.0
 
@@ -153,7 +186,7 @@ Please refer to the
 The Compaq C++ compiler that is being used for the development of
 the %cctbx is
 <tt>Compaq C++ V6.2-024</tt>
-for Tru64 Unix 5.0. This is an excellent compiler
+for Tru64 Unix 5.x. This is an excellent compiler
 that is based on a high-quality
 <a href="http://www.edg.com/">EDG</a>
 front-end.
@@ -163,10 +196,11 @@ However, a workaround is provided by the
 <a href="http://www.boost.org/libs/compatibility/index.html"
 >Boost.Compatibility library</a>.
 
-Remark: gcc 2.95.2 cannot be used to compile the %cctbx under Tru64
-Unix. The compiler reports "string too long" errors, apparently because
-of deeply nested templates in the Boost.Rational library. Preliminary
-attempts to install gcc 2.95.3 failed.
+Unfortunately, the latest Compaq C++ compiler (V6.3) cannot
+be used to install the %cctbx. This issue is being resolved.
+
+gcc 3.0.2 (we used the --enable-languages=c,c++ configure
+option) can be used for installing the %cctbx.
 
 <hr>
 
@@ -175,7 +209,7 @@ attempts to install gcc 2.95.3 failed.
 \par
 The Silicon Graphics C++ compiler that is being used for the
 development of the %cctbx is
-<tt>MIPSpro Compilers: Version 7.3.1.1m</tt>.
+<tt>MIPSpro Compilers: Version 7.3.1.2m</tt>.
 This compiler is based on a high-quality
 <a href="http://www.edg.com/">EDG</a>
 front-end.
@@ -186,15 +220,13 @@ However, a workaround is provided by the
 >Boost.Compatibility library</a>.
 
 \par
-Remark: Both gcc 2.95.2 and gcc 2.95.3 cannot be used to compile the
+Both gcc 2.95.2 and gcc 2.95.3 cannot be used to compile the
 %cctbx under IRIX. Both versions of gcc issue an "Internal compiler
-error." A full bug report for gcc 2.95.3 has been submitted
-(go to http://gcc.gnu.org/cgi-bin/gnatsweb.pl and paste in the
-number 2367 in the "view" field).
+error." Attempts to install gcc 3.0.2 have not been successful.
 
 <hr>
 
 \par
-R.W. Grosse-Kunstleve, April 2001
+R.W. Grosse-Kunstleve, November 2001
 
 */

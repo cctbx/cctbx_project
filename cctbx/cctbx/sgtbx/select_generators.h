@@ -13,13 +13,13 @@
 
 #include <cctbx/sgtbx/groups.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace detail {
 
     struct AnyGenerators {
       AnyGenerators() : nGen(0) {}
       AnyGenerators(const SpaceGroup& SgOps);
-      inline int nAll() const {
+      int nAll() const {
         if (ZInvT.isValid()) return nGen + 1;
         return nGen;
       }
@@ -38,6 +38,6 @@ namespace sgtbx {
     };
 
   } // namespace detail
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_SELECT_GENERATORS_H

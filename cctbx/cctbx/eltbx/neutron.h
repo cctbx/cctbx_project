@@ -15,7 +15,7 @@
 #include <string>
 #include <complex>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   namespace detail {
     struct RawNeutronNews1992Record {
@@ -34,42 +34,45 @@ namespace eltbx {
    */
   class NeutronNews1992Record {
     public:
+      //! Default constructor. Calling certain methods may cause crashes!
+      NeutronNews1992Record() : m_RawEntry(0) {}
       //! Search internal table for the given element label.
       /*! If Exact == true, the element label must exactly
           match the tabulated label. However, the lookup is not
           case-sensitive.<br>
           See also: eltbx::StripLabel()
        */
+      explicit
       NeutronNews1992Record(const std::string& Label, bool Exact = false);
       //! Return element label from internal table.
-      inline const char* Symbol() const {
+      const char* Symbol() const {
         return m_RawEntry->Symbol; }
       //! Return bound coherent scattering length (fm) as a complex number.
       /*! 1 fm = 1e-15 m
        */
-      inline std::complex<float> BoundCohScattLength() const {
+      std::complex<float> BoundCohScattLength() const {
         return std::complex<float>(m_RawEntry->BoundCohScattLengthReal,
                                    m_RawEntry->BoundCohScattLengthImag);
       }
       //! Return real part of bound coherent scattering length (fm).
       /*! 1 fm = 1e-15 m
        */
-      inline float BoundCohScattLengthReal() const {
+      float BoundCohScattLengthReal() const {
         return m_RawEntry->BoundCohScattLengthReal; }
       //! Return imaginary part of bound coherent scattering length (fm).
       /*! 1 fm = 1e-15 m
        */
-      inline float BoundCohScattLengthImag() const {
+      float BoundCohScattLengthImag() const {
         return m_RawEntry->BoundCohScattLengthImag; }
       //! Return absorption cross section (barn) for 2200 m/s neutrons.
       /*! 1 barn = 1e-24 cm^2
        */
-      inline float AbsCrossSect() const {
+      float AbsCrossSect() const {
         return m_RawEntry->AbsCrossSect; }
     private:
       const detail::RawNeutronNews1992Record* m_RawEntry;
   };
 
-} // eltbx
+}} // cctbx::eltbx
 
 #endif // CCTBX_ELTBX_NEUTRON_H

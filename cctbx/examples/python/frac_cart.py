@@ -1,6 +1,8 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
+# Convert coordinates from/to Fractional or Orthogonal.
+
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 
 import sys
 sys.stderr = sys.stdout
@@ -15,7 +17,7 @@ class FormatError(exceptions.Exception): pass
 import string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-import uctbx
+from cctbx import uctbx
 
 print "uctbx version:", uctbx.__version__
 print

@@ -1,6 +1,9 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
+# This script reports a number of space group properties given a space
+# group symbol or symmetry matrices, or a combination of the two.
+
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 
 import sys
 sys.stderr = sys.stdout
@@ -15,8 +18,8 @@ class InternalError(exceptions.Exception):
 import string, re, cgi, math
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-import sgtbx
-import uctbx
+from cctbx import sgtbx
+from cctbx import uctbx
 
 print "sgtbx version:", sgtbx.__version__
 print "<p>"

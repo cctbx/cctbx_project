@@ -14,7 +14,7 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   TrVec TrOps::TidyT(const TrVec& T) const
   {
@@ -89,4 +89,4 @@ namespace sgtbx {
     m_isTidy = true;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

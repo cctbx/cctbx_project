@@ -17,7 +17,8 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/basic/define_range.h>
 
-using namespace uctbx;
+using namespace cctbx;
+using namespace cctbx::uctbx;
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 
@@ -115,10 +116,6 @@ namespace {
   UnitCell UnitCell_ChangeBasis_1(const UnitCell& uc, const Mx33& InvCBMxR) {
     return uc.ChangeBasis(InvCBMxR);
   }
-  UnitCell UnitCell_ChangeBasis_2(const UnitCell& uc,
-                                  const Mx33& InvCBMxR, double RBF) {
-    return uc.ChangeBasis(InvCBMxR, RBF);
-  }
   fractional<double>
   UnitCell_fractionalize(const UnitCell& uc,
                          const cartesian<double>& Xc) {
@@ -166,9 +163,10 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     UnitCell_class.def(UnitCell_Distance2, "Distance2");
     UnitCell_class.def(UnitCell_Distance, "Distance");
     UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
-    UnitCell_class.def(&UnitCell::MaxResolution, "MaxResolution");
     UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
-    UnitCell_class.def(UnitCell_ChangeBasis_2, "ChangeBasis");
+    UnitCell_class.def(
+      (UnitCell (UnitCell::*)(const Mx33&, double) const)
+      &UnitCell::ChangeBasis, "ChangeBasis");
     UnitCell_class.def(&UnitCell::Q, "Q");
     UnitCell_class.def(&UnitCell::s, "s");
     UnitCell_class.def(&UnitCell::d, "d");

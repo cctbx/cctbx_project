@@ -10,7 +10,7 @@
 
 #include <cctbx/sgtbx/select_generators.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace detail {
 
     AnyGenerators::AnyGenerators(const SpaceGroup& SgOps) : nGen(0)
@@ -229,4 +229,4 @@ namespace sgtbx {
     }
 
   } // namespace detail
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

@@ -2,8 +2,8 @@
 
 import sys
 import random
-import uctbx
-import sgtbx
+from cctbx import uctbx
+from cctbx import sgtbx
 
 ShortCut = "--ShortCut" in sys.argv
 StandardOnly = "--StandardOnly" in sys.argv

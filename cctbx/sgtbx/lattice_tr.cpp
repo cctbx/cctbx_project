@@ -17,7 +17,7 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace lattice {
 
     const CentringTypeMap* getConventionalCentringType(char Symbol)
@@ -94,8 +94,8 @@ namespace sgtbx {
       private:
         CmpiVect m_CmpiVect;
       public:
-        inline CmpTrVec() : m_CmpiVect(3) {}
-        inline bool operator()(const TrVec& a, const TrVec& b) {
+        CmpTrVec() : m_CmpiVect(3) {}
+        bool operator()(const TrVec& a, const TrVec& b) {
           return m_CmpiVect(a.elems, b.elems);
         }
     };
@@ -194,4 +194,4 @@ namespace sgtbx {
     return ConstructZ2POp(RBF, TBF);
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

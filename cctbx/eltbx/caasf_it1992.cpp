@@ -12,7 +12,7 @@
 #include <cctbx/fixes/cmath>
 #include <cctbx/eltbx/caasf.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace tables {
 
     /*
@@ -715,4 +715,4 @@ namespace eltbx {
   CAASF_IT1992::CAASF_IT1992(const std::string& Label, bool Exact)
     : CAASF<4>(tables::IT1992_CAASF_RawTable, "IT1992", Label, Exact) {}
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

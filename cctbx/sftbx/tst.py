@@ -1,7 +1,7 @@
-import uctbx
-import sgtbx
-from eltbx.caasf_wk1995 import CAASF_WK1995
-import sftbx
+form cctbx import uctbx
+form cctbx import sgtbx
+from cctbx.eltbx.caasf_wk1995 import CAASF_WK1995
+form cctbx import sftbx
 def OneCycle():
   UnitCell = uctbx.UnitCell((10.002,10.002,34.141,90.0,90.0,90.0))
   SgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols("P42/NCM:2"))

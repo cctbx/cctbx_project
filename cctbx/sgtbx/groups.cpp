@@ -20,7 +20,7 @@
 #include <cctbx/sgtbx/reference.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   bool TrOps::add(const TrVec& NewTr)
   {
@@ -279,4 +279,4 @@ namespace sgtbx {
     return os;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

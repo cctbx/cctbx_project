@@ -12,7 +12,8 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/tinypse.h>
 
-using namespace eltbx;
+using namespace cctbx;
+using namespace cctbx::eltbx;
 
 BOOST_PYTHON_MODULE_INIT(tinypse)
 {
@@ -28,6 +29,7 @@ BOOST_PYTHON_MODULE_INIT(tinypse)
 
     class_builder<TinyPSE> py_TinyPSE(this_module, "TinyPSE");
 
+    py_TinyPSE.def(constructor<>());
     py_TinyPSE.def(constructor<const std::string&>());
     py_TinyPSE.def(constructor<const std::string&, bool>());
     py_TinyPSE.def(constructor<int>());

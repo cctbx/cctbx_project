@@ -16,7 +16,7 @@
 #include <cctbx/sgtbx/tables.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace hall {
 
     bool IsHSymSpace(char c)
@@ -78,7 +78,7 @@ namespace sgtbx {
       struct TrMap {
         char  Sym;
         TrVec Vec;
-        inline TrMap(const char S, const TrVec& V) : Sym(S), Vec(V) {}
+        TrMap(const char S, const TrVec& V) : Sym(S), Vec(V) {}
       };
       static const TrMap HallTrs[] =
       {
@@ -426,4 +426,4 @@ namespace sgtbx {
     ParseHallSymbol(HSymPS, true);
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

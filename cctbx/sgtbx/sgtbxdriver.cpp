@@ -13,13 +13,13 @@
 
 int main(void)
 {
-  using namespace sgtbx;
+  using namespace cctbx::sgtbx;
   parse_string HSym("P 31");
   SpaceGroup SgOps;
   try {
     SgOps.ParseHallSymbol(HSym);
   }
-  catch (const error& e) {
+  catch (const cctbx::error& e) {
     std::cout << e.what() << std::endl;
     std::cout << HSym.string() << std::endl;
     for (int i = 0; i < HSym.where(); i++) std::cout << "_";

@@ -12,7 +12,7 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/sasaki.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace tables {
 
 /*
@@ -72460,4 +72460,4 @@ static const eltbx::detail::Label_Z_Efpfdp SasakiTables[] = {
     return detail::interpolate(m_Label_Z_Efpfdp, Energy);
   }
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

@@ -17,13 +17,13 @@
 namespace cctbx {
 
   //! Class for cartesian (orthogonal, real) coordinates.
-  /*! The template parameter T should be a floating point type
+  /*! The template parameter FloatType should be a floating point type
       (e.g. float or double).
       <p>
       See also: class fractional
    */
-  template <class T>
-  class cartesian : public boost::array<T, 3> {
+  template <class FloatType>
+  class cartesian : public boost::array<FloatType, 3> {
     public:
       //! The elements of the coordinate vector are initialized with 0.
       cartesian() {
@@ -40,23 +40,23 @@ namespace cctbx {
         for(std::size_t i=0;i<3;i++) elems[i] = xyz[i];
       }
       //! The elements of the coordinate vector are initialized with x,y,z.
-      cartesian(const T& x, const T& y, const T& z) {
+      cartesian(const FloatType& x, const FloatType& y, const FloatType& z) {
         elems[0] = x; elems[1] = y; elems[2] = z;
       }
       //! Length squared (scalar product) of the coordinate vector.
-      inline T Length2() const {
+      FloatType Length2() const {
         return (*this) * (*this);
       }
   };
 
   //! Class for fractional coordinates.
-  /*! The template parameter T should be a floating point type
+  /*! The template parameter FloatType should be a floating point type
       (e.g. float or double).
       <p>
       See also: class cartesian
    */
-  template <class T>
-  class fractional : public boost::array<T, 3> {
+  template <class FloatType>
+  class fractional : public boost::array<FloatType, 3> {
     public:
       //! The elements of the coordinate vector are initialized with 0.
       fractional() {
@@ -73,7 +73,7 @@ namespace cctbx {
         for(std::size_t i=0;i<3;i++) elems[i] = xyz[i];
       }
       //! The elements of the coordinate vector are initialized with x,y,z.
-      fractional(const T& x, const T& y, const T& z) {
+      fractional(const FloatType& x, const FloatType& y, const FloatType& z) {
         elems[0] = x; elems[1] = y; elems[2] = z;
       }
       /*! \brief Apply modulus operation such that 0.0 <= x < 1.0

@@ -14,7 +14,7 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace ReferenceSettings {
 
     std::vector<RTMx>
@@ -132,4 +132,4 @@ namespace sgtbx {
     return result;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

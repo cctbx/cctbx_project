@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Oct 31: Redesign: AsymIndex (rwgk)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
@@ -13,7 +14,7 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   bool SpaceGroup::isSysAbsent(const Miller::Index& H) const
   {
@@ -96,10 +97,10 @@ namespace sgtbx {
     return result;
   }
 
-  int SpaceGroup::multiplicity(const Miller::Index& H, bool FriedelSym) const
+  int SpaceGroup::multiplicity(const Miller::Index& H, bool FriedelFlag) const
   {
     if (H.is000()) return 1;
-    int Centro = (isCentric() || FriedelSym);
+    int Centro = (isCentric() || FriedelFlag);
     int M = 0;
     int R = 0;
     rangei(m_nSMx) {
@@ -182,143 +183,4 @@ namespace sgtbx {
     return operator()(iMate, iList);
   }
 
-  namespace {
-
-    int OneMxCutPRange(const RotMx& R)
-    {
-      int m = 0;
-      int ic;
-      for(ic=0;ic<3;ic++) {
-        int s = 0;
-        int ir;
-        for(ir=0;ir<3;ir++) s += std::abs(R(ir, ic));
-        if (m < s)
-            m = s;
-      }
-      return m + 1;
-    }
-
-    int SetCheckCutPRange(const SpaceGroup& SgOps)
-    {
-      int Range = 0;
-      int iSMx;
-      for(iSMx=0;iSMx<SgOps.nSMx();iSMx++) {
-                int m = OneMxCutPRange(SgOps[iSMx].Rpart());
-        if (Range < m)
-            Range = m;
-      }
-      return Range;
-    }
-
-    int CheckCutParam(const SpaceGroup& SgOps, Miller::Vec3 CutP,
-                      int Range, int FullBlock)
-    {
-      Miller::Vec3 AdjRange;
-      rangei(3) AdjRange[i] = Range;
-      int iBV;
-      for(iBV=0;iBV<3;iBV++) {
-        Miller::Vec3 Step;
-        rangei(3) Step[i] = 1;
-        if (FullBlock == 0) Step[iBV] = 2 * Range;
-        Miller::Index H;
-        for (H[0] = -AdjRange[0]; H[0] <= AdjRange[0]; H[0] += Step[0])
-        for (H[1] = -AdjRange[1]; H[1] <= AdjRange[1]; H[1] += Step[1])
-        for (H[2] = -AdjRange[2]; H[2] <= AdjRange[2]; H[2] += Step[2])
-        {
-          // search for equivalent hkl in an active octant
-          SymEquivMillerIndices
-          SEMI = SgOps.getEquivMillerIndices(H);
-          int iEq;
-          for (iEq = 0; iEq < SEMI.N(); iEq++) {
-            int i;
-            for (i = 0; i < 3; i++)
-              if (CutP[i] == 0 && SEMI[iEq].HR()[i] < 0) break;
-            if (i == 3) break;
-            if (SEMI.fMates(true) != 2) continue;
-            for (i = 0; i < 3; i++)
-              if (CutP[i] == 0 && SEMI[iEq].HR()[i] > 0) break;
-            if (i == 3) break;
-          }
-          if (iEq == SEMI.N()) return 0; // CutParam does not work
-        }
-        if (FullBlock != 0) break;
-        AdjRange[iBV]--;
-      }
-      return 1; /* CutParam works fine */
-    }
-
-  } // namespace <anonymous>
-
-  Miller::Vec3 SpaceGroup::getCutParameters() const
-  {
-    const int nTrials = 8;
-    static const Miller::Vec3 ListTrialCutP[nTrials] = {
-      { 0,  0,  0},
-      { 0, -1,  0},
-      {-1,  0,  0},
-      { 0,  0, -1},
-      {-1, -1,  0},
-      { 0, -1, -1},
-      {-1,  0, -1},
-    };
-    int Range = SetCheckCutPRange(*this);
-    for (int iTrial = 0; iTrial < nTrials; iTrial++) {
-      if (CheckCutParam(*this, ListTrialCutP[iTrial], Range, 0) != 0) {
-        return ListTrialCutP[iTrial];
-      }
-    }
-    throw cctbx_internal_error();
-  }
-
-  void SymEquivMillerIndices::setMasterIndex(Miller::MasterIndex& Master) const
-  {
-    int iList;
-    for(iList=0;iList<N();iList++) {
-      const Miller::SymEquivIndex& HS = m_List[iList];
-      Miller::Index TrialH = HS.HR();
-      int iMate;
-      for(iMate = 0; iMate < fMates(true); iMate++) {
-        if (iMate) TrialH = TrialH.FriedelMate();
-        Master.Update(TrialH, iMate, HS);
-      }
-    }
-  }
-
-  Miller::MasterIndex
-  SymEquivMillerIndices::getMasterIndex(bool Pretty) const
-  {
-    Miller::MasterIndex Master(Pretty);
-    setMasterIndex(Master);
-    cctbx_assert(Master.TBF() != 0);
-    return Master;
-  }
-
-  Miller::MasterIndex
-  SymEquivMillerIndices::getMasterIndex(const Miller::Vec3& CutP,
-                                        bool Pretty) const
-  {
-    Miller::MasterIndex Master(CutP, Pretty);
-    setMasterIndex(Master);
-    if (Master.TBF() == 0) {
-      throw error("No MasterIndex found due to improper CutParameters.");
-    }
-    return Master;
-  }
-
-  Miller::MasterIndex
-  SpaceGroup::getMasterIndex(const Miller::Index& H,
-                        bool Pretty) const
-  {
-    SymEquivMillerIndices SEMI = getEquivMillerIndices(H);
-    return SEMI.getMasterIndex(Pretty);
-  }
-
-  Miller::MasterIndex
-  SpaceGroup::getMasterIndex(const Miller::Index& H, const Miller::Vec3& CutP,
-                        bool Pretty) const
-  {
-    SymEquivMillerIndices SEMI = getEquivMillerIndices(H);
-    return SEMI.getMasterIndex(CutP, Pretty);
-  }
-
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

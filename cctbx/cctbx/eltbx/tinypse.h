@@ -13,7 +13,7 @@
 
 #include <string>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   namespace detail {
     struct TinyPSE_RawEntry {
@@ -31,27 +31,30 @@ namespace eltbx {
    */
   class TinyPSE {
     public:
+      //! Default constructor. Calling certain methods may cause crashes!
+      TinyPSE() : m_RawEntry(0) {}
       //! Lookup table entry by element symbol.
       /*! If Exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not
           case-sensitive.<br>
           See also: eltbx::StripLabel()
        */
+      explicit
       TinyPSE(const std::string& Label, bool Exact = false);
       //! Lookup table entry by atomic number.
       TinyPSE(int Z);
       //! Return atomic number.
-      inline int Z() const { return m_RawEntry->Z; }
+      int Z() const { return m_RawEntry->Z; }
       //! Return element symbol.
-      inline const char* Symbol() const { return m_RawEntry->Symbol; }
+      const char* Symbol() const { return m_RawEntry->Symbol; }
       //! Return element name.
-      inline const char* Name() const { return m_RawEntry->Name; }
+      const char* Name() const { return m_RawEntry->Name; }
       //! Return atomic weight.
-      inline float Weight() const { return m_RawEntry->Weight; }
+      float Weight() const { return m_RawEntry->Weight; }
     private:
       const detail::TinyPSE_RawEntry* m_RawEntry;
   };
 
-} // eltbx
+}} // cctbx::eltbx
 
 #endif // CCTBX_ELTBX_TINYPSE_H

@@ -16,14 +16,15 @@
 #include <string>
 #include <cctbx/error.h>
 
-//! Element Toolbox namespace.
-/*! The eltbx is a collection of tables of various x-ray and
-    neutron scattering factors, element names, atomic numbers,
-    atomic weights, ionic radii, and characteristic x-ray
-    wavelenghts. Associated with each table are procedures for
-    accessing the tabluated data, e.g. by using interpolation.
- */
-namespace eltbx {
+namespace cctbx {
+  //! Element Toolbox namespace.
+  /*! The eltbx is a collection of tables of various x-ray and
+      neutron scattering factors, element names, atomic numbers,
+      atomic weights, ionic radii, and characteristic x-ray
+      wavelengths. Associated with each table are procedures for
+      accessing the tabluated data, e.g. by using interpolation.
+   */
+  namespace eltbx {
 
   using cctbx::error;
   using cctbx::error_index;
@@ -57,6 +58,6 @@ namespace eltbx {
    */
   int MatchLabels(const std::string& WorkLabel, const char* TabLabel);
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx
 
 #endif // CCTBX_ELTBX_BASIC_H

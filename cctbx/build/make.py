@@ -11,11 +11,11 @@ def expand_cf(cf, pattern, substitute, normpath = 0):
           e = e + 1
           cf[i] = cf[i][:e] + os.path.normpath(cf[i][e:])
 
-def read_configuration(path_root = None):
+def read_configuration(config_file = "configuration", path_root = None):
   try:
-    f = open("configuration", "r")
+    f = open(config_file, "r")
   except:
-    print "Cannot open configuration file."
+    print "Cannot open configuration file:", config_file
     sys.exit(1)
   cf = f.readlines()
   f.close()
@@ -29,6 +29,21 @@ def read_configuration(path_root = None):
     while (path_root[-1] == os.sep): path_root = path_root[:-1]
     expand_cf(cf, "@(ROOT)", path_root, normpath = 1)
   expand_cf(cf, "@(CWD)", os.getcwd(), normpath = 1)
+  python_executable = sys.executable
+  if (cf[0] == "vc60"):
+    python_include = sys.prefix + r"\include"
+    python_lib = sys.prefix + r"\libs\python%s%s.lib" % (
+      sys.version[0], sys.version[2])
+  elif (cf[0] == "mingw32"):
+    python_include = r"$(MINGW32_USR)\include\python" + sys.version[0:3]
+    python_lib = r"$(MINGW32_USR)\lib\libpython%s%s.a" % (
+      sys.version[0], sys.version[2])
+  else:
+    python_include = sys.prefix + "/include/python" + sys.version[0:3]
+    python_lib = ""
+  expand_cf(cf, "@(python_executable)", python_executable, normpath = 1)
+  expand_cf(cf, "@(python_include)", python_include, normpath = 1)
+  expand_cf(cf, "@(python_lib)", python_lib, normpath = 1)
   return cf
 
 def system_verbose(command):
@@ -47,26 +62,29 @@ def run_in_subdirs(subdirs, command_line, verbose = 0):
     os.system(command_line)
     os.chdir(cwd)
 
-def make_libpythondir(platform):
-  try: os.makedirs("lib/python/eltbx")
+def make_lib_python_dir(platform):
+  try: os.makedirs("lib_python/cctbx/eltbx")
   except OSError: pass
-  open("lib/python/eltbx/__init__.py", "a+").close()
+  open("lib_python/cctbx/__init__.py", "a+").close()
+  open("lib_python/cctbx/eltbx/__init__.py", "a+").close()
   if (platform in ("vc60", "mingw32")):
     libpyd = ".pyd"
   else:
     libpyd = ".so"
   if (hasattr(os, "symlink")):
-    system_verbose("cp eltbx/*%s lib/python/eltbx" % (libpyd,))
-    system_verbose("cp uctbx/*%s lib/python" % (libpyd,))
-    system_verbose("cp sgtbx/*%s lib/python" % (libpyd,))
-    system_verbose("cp adptbx/*%s lib/python" % (libpyd,))
-    system_verbose("cp sftbx/*%s lib/python" % (libpyd,))
+    system_verbose("cp eltbx/*%s lib_python/cctbx/eltbx" % (libpyd,))
+    system_verbose("cp uctbx/*%s lib_python/cctbx" % (libpyd,))
+    system_verbose("cp sgtbx/*%s lib_python/cctbx" % (libpyd,))
+    system_verbose("cp adptbx/*%s lib_python/cctbx" % (libpyd,))
+    system_verbose("cp sftbx/*%s lib_python/cctbx" % (libpyd,))
+    system_verbose("cp fftbx/*%s lib_python/cctbx" % (libpyd,))
   else:
-    system_verbose(r"copy eltbx\*.pyd lib\python\eltbx")
-    system_verbose(r"copy uctbx\*.pyd lib\python")
-    system_verbose(r"copy sgtbx\*.pyd lib\python")
-    system_verbose(r"copy adptbx\*.pyd lib\python")
-    system_verbose(r"copy sftbx\*.pyd lib\python")
+    system_verbose(r"copy eltbx\*.pyd lib_python\cctbx\eltbx")
+    system_verbose(r"copy uctbx\*.pyd lib_python\cctbx")
+    system_verbose(r"copy sgtbx\*.pyd lib_python\cctbx")
+    system_verbose(r"copy adptbx\*.pyd lib_python\cctbx")
+    system_verbose(r"copy sftbx\*.pyd lib_python\cctbx")
+    system_verbose(r"copy fftbx\*.pyd lib_python\cctbx")
 
 if (__name__ == "__main__"):
   cf = read_configuration()
@@ -75,38 +93,36 @@ if (__name__ == "__main__"):
     make = "nmake"
   else:
     make = "make"
-  compile_dev = "compile_dev" in sys.argv
-  compile_all = "compile_all" in sys.argv or compile_dev
+  make_all = "all" in sys.argv
 
-  toolboxes = ("eltbx", "uctbx", "sgtbx", "adptbx", "sftbx")
+  externals = ("external/boost_python",)
+  toolboxes = ("eltbx", "uctbx", "sgtbx", "adptbx", "sftbx", "fftbx")
   examples = ("examples/cpp",)
+  all_targets = externals + toolboxes + examples
 
   if (hasattr(os, "symlink")):
     if ("softlinks" in sys.argv):
-      run_in_subdirs(toolboxes + examples, make + " softlinks")
+      run_in_subdirs(all_targets, make + " softlinks")
     if ("unlink" in sys.argv):
-      run_in_subdirs(toolboxes + examples, make + " unlink")
+      run_in_subdirs(all_targets, make + " unlink")
     if ("rm" in sys.argv):
-      run_in_subdirs(toolboxes + examples, make + " rm")
+      run_in_subdirs(all_targets, make + " rm")
   else:
     if ("copy" in sys.argv):
-      run_in_subdirs(toolboxes + examples, make + " copy")
+      run_in_subdirs(all_targets, make + " copy")
     if ("del" in sys.argv):
-      run_in_subdirs(toolboxes + examples, make + " del")
+      run_in_subdirs(all_targets, make + " del")
 
   if ("clean" in sys.argv):
-    run_in_subdirs(toolboxes, make + " clean")
+    run_in_subdirs(all_targets, make + " clean")
 
   if (platform != "vc60"):
-    if ("depend" in sys.argv or compile_dev):
-      run_in_subdirs(toolboxes + examples,
+    if ("depend" in sys.argv):
+      run_in_subdirs(all_targets,
         make + " -f Makefile.nodepend depend > Makefile", verbose = 1)
 
-  if ("compile" in sys.argv or compile_all):
-    run_in_subdirs(toolboxes, make + " compile")
+  if ("compile" in sys.argv or make_all):
+    run_in_subdirs(all_targets, make + " compile")
 
-  if ("libpythondir" in sys.argv or compile_all):
-    make_libpythondir(platform)
-
-  if ("compile_examples" in sys.argv or compile_all):
-    run_in_subdirs(examples, make + " compile")
+  if ("lib_python_dir" in sys.argv or make_all):
+    make_lib_python_dir(platform)

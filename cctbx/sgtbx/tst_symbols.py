@@ -1,6 +1,6 @@
 # $Id$
 
-from sgtbx import SpaceGroupSymbols
+from cctbx.sgtbx import SpaceGroupSymbols
 
 def show(sgsymbols):
   print sgsymbols.SgNumber()

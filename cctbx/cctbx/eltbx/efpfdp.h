@@ -14,7 +14,7 @@
 
 #include <complex>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   namespace detail {
 
@@ -32,25 +32,28 @@ namespace eltbx {
 
   } // namespace detail
 
+  //! Indicator for undefined values.
   static const float Efpfdp_undefined = -9999.00;
 
   //! Helper class for passing f' (f-prime) and f" (f-double-prime).
   class fpfdp {
     public:
-      //! Constructor. For internal use only.
-      inline fpfdp(float fp, float fdp) : m_fp(fp), m_fdp(fdp) {}
+      //! Constructor.
+      explicit
+      fpfdp(float fp  = Efpfdp_undefined,
+                   float fdp = Efpfdp_undefined) : m_fp(fp), m_fdp(fdp) {}
       //! Test if f-prime is defined.
-      inline bool isValid_fp() const { return m_fp != Efpfdp_undefined; }
+      bool isValid_fp() const { return m_fp != Efpfdp_undefined; }
       //! Test if f-double-prime is defined.
-      inline bool isValid_fdp() const { return m_fdp != Efpfdp_undefined; }
+      bool isValid_fdp() const { return m_fdp != Efpfdp_undefined; }
       //! Test if f-prime and f-double-prime are defined.
-      inline bool isValid() const { return isValid_fp() && isValid_fdp(); }
+      bool isValid() const { return isValid_fp() && isValid_fdp(); }
       //! Return f-prime (f').
-      inline float fp() const { return m_fp; }
+      float fp() const { return m_fp; }
       //! Return f-double-prime (f").
-      inline float fdp() const { return m_fdp; }
+      float fdp() const { return m_fdp; }
       //! Return complex(f-prime, f-double-prime).
-      inline std::complex<float> operator()() const {
+      std::complex<float> operator()() const {
         return std::complex<float>(m_fp, m_fdp);
       }
     private:
@@ -65,6 +68,6 @@ namespace eltbx {
     fpfdp interpolate(const Label_Z_Efpfdp* m_Label_Z_Efpfdp, double Energy);
   }
 
-} // eltbx
+}} // cctbx::eltbx
 
 #endif // CCTBX_ELTBX_EFPFDP_H

@@ -9,7 +9,7 @@
  */
 
 /*! \file
-    General purpose mathematical or physical constants.
+    General purpose mathematical or physical %constants.
  */
 
 #ifndef CCTBX_CONSTANTS_H
@@ -19,10 +19,13 @@
 
 namespace cctbx {
 
-  //! General purpose mathematical or physical constants.
+  //! General purpose mathematical or physical %constants.
   namespace constants {
+    //! mathematical constant pi
     static const double pi     = 4. * std::atan(1.);
+    //! mathematical constant pi/2
     static const double pi_2   = 2. * std::atan(1.);
+    //! mathematical constant pi/180
     static const double pi_180 = std::atan(1.) / 45.;
 
     //! Factor for keV <-> Angstrom conversion.

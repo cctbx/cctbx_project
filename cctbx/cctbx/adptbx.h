@@ -19,8 +19,9 @@
 #include <utility>
 #include <cctbx/uctbx.h>
 
-//! ADP Toolbox namespace.
-namespace adptbx {
+namespace cctbx {
+  //! ADP (anisotropic displacement parameters) Toolbox namespace.
+  namespace adptbx {
 
   using namespace cctbx;
 
@@ -28,7 +29,9 @@ namespace adptbx {
     not_positive_definite(
       "anisotropic displacement tensor is not positive definite.");
 
+  //! Constant: 2pi^2
   const double   TwoPiSquared = 2. * constants::pi * constants::pi;
+  //! Constant: 8pi^2
   const double EightPiSquared = 8. * constants::pi * constants::pi;
 
   //! Convert isotropic displacement parameter U -> B.
@@ -524,9 +527,7 @@ namespace adptbx {
   class Eigensystem
   {
     public:
-      //! Default constructor.
-      /*! The eigenvectors and eigenvalues are not initialized!
-       */
+      //! Default constructor. Some data members are not initialized!
       Eigensystem() {}
       /*! \brief Determine the eigenvectors and eigenvalues of the
           anisotropic displacement tensor.
@@ -584,7 +585,6 @@ namespace adptbx {
       //! Access the i'th eigenvector.
       /*! An exception is thrown if i >= 3.
        */
-      inline
       const boost::array<FloatType, 3>&
       vectors(std::size_t i) const {
         if (i >= m_vectors.size()) throw error_index();
@@ -593,7 +593,6 @@ namespace adptbx {
       //! Access the i'th eigenvalue.
       /*! An exception is thrown if i >= 3.
        */
-      inline
       FloatType
       values(std::size_t i) const {
         if (i >= m_values.size()) throw error_index();
@@ -604,6 +603,6 @@ namespace adptbx {
       boost::array<FloatType, 3> m_values;
   };
 
-} // namespace adptbx
+}} // namespace cctbx::adptbx
 
 #endif // CCTBX_ADPTBX_H

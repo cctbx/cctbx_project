@@ -26,10 +26,9 @@
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/constants.h>
 
-//! Unit Cell Toolbox namespace.
-namespace uctbx {
-
-  using namespace cctbx;
+namespace cctbx {
+  //! Unit Cell Toolbox namespace.
+  namespace uctbx {
 
   static const error
     corrupt_unit_cell_parameters("Corrupt unit cell parameters.");
@@ -46,11 +45,11 @@ namespace uctbx {
   //@}
 
   //! inline function for fast matrix * vector computation.
-  template <class T>
-  inline boost::array<T, 3>
-  operator*(const Mx33& m, const boost::array<T, 3>& v)
+  template <class FloatType>
+  inline boost::array<FloatType, 3>
+  operator*(const Mx33& m, const boost::array<FloatType, 3>& v)
   {
-    boost::array<T, 3> mv;
+    boost::array<FloatType, 3> mv;
     mv[0] = m[0] * v[0] + m[1] * v[1] + m[2] * v[2];
     mv[1] = m[3] * v[0] + m[4] * v[1] + m[5] * v[2];
     mv[2] = m[6] * v[0] + m[7] * v[1] + m[8] * v[2];
@@ -82,6 +81,7 @@ namespace uctbx {
       //! @name Constructors.
       //@{
       //! Constructor using parameters (a, b, c, alpha, beta, gamma).
+      explicit
       uc_params(double a = 1.,
                 double b = 1.,
                 double c = 1.,
@@ -101,15 +101,15 @@ namespace uctbx {
       //! @name Access to arrays of lengths and angles.
       //@{
       //!
-      inline double* Len() { return &elems[0]; }
-      inline double* Ang() { return &elems[3]; }
-      inline const double* Len() const { return &elems[0]; }
-      inline const double* Ang() const { return &elems[3]; }
+      double* Len() { return &elems[0]; }
+      double* Ang() { return &elems[3]; }
+      const double* Len() const { return &elems[0]; }
+      const double* Ang() const { return &elems[3]; }
       //@}
       //! @name Access to individual lengths and angles.
       //@{
-      inline double Len(int i) const { return elems[i]; }
-      inline double Ang(int i) const { return elems[3 + i]; }
+      double Len(int i) const { return elems[i]; }
+      double Ang(int i) const { return elems[3 + i]; }
       //@}
   };
 
@@ -135,6 +135,7 @@ namespace uctbx {
       //! Default (1, 1, 1, 90, 90, 90).
       UnitCell();
       //! Constructor using parameters (a, b, c, alpha, beta, gamma).
+      explicit
       UnitCell(const uc_params& ucp);
       //! Constructor using parameters derived from a metrical matrix.
       /*! The metrical matrix is defined as:
@@ -144,38 +145,39 @@ namespace uctbx {
          ( a*c*cos(beta),  b*c*cos(alpha), c*c            )
          </pre>
        */
+      explicit
       UnitCell(const Mx33& MetricalMatrix);
       //@}
 
       //! @name Query parameters and volume.
       //@{
       uc_params getParameters(bool reciprocal = false) const;
-      inline const Vec3& getLen(bool reciprocal = false) const {
+      const Vec3& getLen(bool reciprocal = false) const {
         if (reciprocal == false) return Len;
         /* else */               return R_Len;
       }
-      inline const Vec3& getAng(bool reciprocal = false) const {
+      const Vec3& getAng(bool reciprocal = false) const {
         if (reciprocal == false) return Ang;
         /* else */               return R_Ang;
       }
-      inline const Vec3& get_sinAng(bool reciprocal = false) const {
+      const Vec3& get_sinAng(bool reciprocal = false) const {
         if (reciprocal == false) return sinAng;
         /* else */               return R_sinAng;
       }
-      inline const Vec3& get_cosAng(bool reciprocal = false) const {
+      const Vec3& get_cosAng(bool reciprocal = false) const {
         if (reciprocal == false) return cosAng;
         /* else */               return R_cosAng;
       }
-      inline const Mx33& getMetricalMatrix(bool reciprocal = false) const {
+      const Mx33& getMetricalMatrix(bool reciprocal = false) const {
         if (reciprocal == false) return G;
         /* else */               return R_G;
       }
-      inline double getVolume() const { return Vol; }
+      double getVolume() const { return Vol; }
       //@}
 
       //! @name Length^2 of the longest lattice vector in the unit cell.
       //@{
-      inline double getLongestVector2() const { return LongestVector2; }
+      double getLongestVector2() const { return LongestVector2; }
       //@}
 
       //! @name Test equality.
@@ -191,20 +193,20 @@ namespace uctbx {
       //@{
       //! This matrix converts cartesian to fractional coordinates.<br>
       //! x(fractional) = matrix * x(cartesian).
-      inline const Mx33& getFractionalizationMatrix() const { return Frac; }
+      const Mx33& getFractionalizationMatrix() const { return Frac; }
       //! This matrix converts fractional to cartesian coordinates.<br>
       //! x(cartesian) = matrix * x(fractional).
-      inline const Mx33& getOrthogonalizationMatrix() const { return Orth; }
+      const Mx33& getOrthogonalizationMatrix() const { return Orth; }
       //! Converts cartesian coordinates Xc to fractional coordinates.
-      template <class T>
-      inline fractional<T>
-      fractionalize(const cartesian<T>& Xc) const {
+      template <class FloatType>
+      fractional<FloatType>
+      fractionalize(const cartesian<FloatType>& Xc) const {
         return Frac * Xc;
       }
       //! Converts fractional coordinates Xf to cartesian coordinates.
-      template <class T>
-      inline cartesian<T>
-      orthogonalize(const fractional<T>& Xf) const {
+      template <class FloatType>
+      cartesian<FloatType>
+      orthogonalize(const fractional<FloatType>& Xf) const {
         return Orth * Xf;
       }
       //@}
@@ -212,26 +214,26 @@ namespace uctbx {
       //! @name Measurements, given fractional coordinates.
       //@{
       //! Length squared of vector.
-      template <class T>
-      inline T Length2(const fractional<T>& Xf) const {
+      template <class FloatType>
+      FloatType Length2(const fractional<FloatType>& Xf) const {
         return orthogonalize(Xf).Length2();
       }
       //! Length of vector.
-      template <class T>
-      inline T Length(const fractional<T>& Xf) const {
+      template <class FloatType>
+      FloatType Length(const fractional<FloatType>& Xf) const {
         return std::sqrt(Length2(Xf));
       }
       //! Distance squared.
-      template <class T>
-      inline T Distance2(const fractional<T>& Xf,
-                         const fractional<T>& Yf) const {
-        return Length2(fractional<T>(Xf - Yf));
+      template <class FloatType>
+      FloatType Distance2(const fractional<FloatType>& Xf,
+                         const fractional<FloatType>& Yf) const {
+        return Length2(fractional<FloatType>(Xf - Yf));
       }
       //! Distance.
-      template <class T>
-      inline T Distance(const fractional<T>& Xf,
-                        const fractional<T>& Yf) const {
-        return Length(fractional<T>(Xf - Yf));
+      template <class FloatType>
+      FloatType Distance(const fractional<FloatType>& Xf,
+                        const fractional<FloatType>& Yf) const {
+        return Length(fractional<FloatType>(Xf - Yf));
       }
       //@}
 
@@ -248,10 +250,8 @@ namespace uctbx {
       //@{
       //! Compute the maximum Miller indices for a given minimum d-spacing.
       Miller::Index MaxMillerIndices(double dmin) const;
-      //! Inverse operation of MaxMiller indices.
-      double MaxResolution(const Miller::Index& MIx) const;
       //! d-spacing measure Q = 1 / d^2 = s^2 = (2*sin(theta)/lambda)^2.
-      inline double Q(const Miller::Index& MIx) const
+      double Q(const Miller::Index& MIx) const
       {
         return
             (MIx[0] * MIx[0]) * (R_Len[0] * R_Len[0])
@@ -262,9 +262,9 @@ namespace uctbx {
           + (2 * MIx[1] * MIx[2]) * (R_Len[1] * R_Len[2] * R_cosAng[0]);
       }
       //! d-spacing measure s = 1 / d = 2*sin(theta)/lambda.
-      inline double s(const Miller::Index& MIx) const { return Q_as_s(Q(MIx));}
+      double s(const Miller::Index& MIx) const { return Q_as_s(Q(MIx));}
       //! d-spacing measure d = 1 / s = lamda/(2*sin(theta))
-      inline double d(const Miller::Index& MIx) const { return Q_as_d(Q(MIx));}
+      double d(const Miller::Index& MIx) const { return Q_as_d(Q(MIx));}
       //@}
 
       //! @name Stream I/O.
@@ -300,6 +300,6 @@ namespace uctbx {
   //! iostream output operator for class UnitCell.
   std::ostream& operator<<(std::ostream& os, const UnitCell& uc);
 
-} // namespace uctbx
+}} // namespace cctbx::uctbx
 
 #endif // CCTBX_UCTBX_H

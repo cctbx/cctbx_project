@@ -17,7 +17,7 @@
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   TrVec TrVec::newBaseFactor(int NewBF) const
   {
@@ -498,4 +498,4 @@ namespace sgtbx {
     }
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

@@ -2,6 +2,10 @@ mingw32
 
 ROOT=@(ROOT)
 
+BOOST_UNIX="$(HOME)/boost"
+BOOST_WIN="$(ROOT)\boost"
+BOOSTINC=-I"$(ROOT)\boost"
+
 CCTBX_UNIX="$(HOME)/cctbx"
 CCTBX_WIN="$(ROOT)\cctbx"
 CCTBXINC=-I"$(ROOT)\cctbx"
@@ -9,12 +13,10 @@ CCTBXINC=-I"$(ROOT)\cctbx"
 CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
 CCTBXLIBDIR_WIN=@(CCTBXLIBDIR_WIN)
 
-BOOSTINC=-I"$(ROOT)\boost"
-BOOST_PYTHONLIB="@(CWD)\..\boost\libboost_python.a"
-
-PYEXE="C:\Program files\Python\python.exe"
-PYINC=-I"C:\usr\include\python1.5"
-PYLIB="C:\usr\lib\libpython15.a"
+MINGW32_USR=C:\usr
+PYEXE="@(python_executable)"
+PYINC=-I"@(python_include)"
+PYLIB="@(python_lib)"
 
 STDFIXINC=
 

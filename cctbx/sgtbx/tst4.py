@@ -2,7 +2,7 @@
 
 from symbols import table_hall_std530
 from tst2 import parse
-import sgtbx
+from cctbx import sgtbx
 
 def parse_xyz(xyz):
   s = sgtbx.parse_string(xyz)

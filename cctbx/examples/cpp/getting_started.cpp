@@ -5,10 +5,10 @@
 
 int main()
 {
-  uctbx::UnitCell UnitCell(uctbx::uc_params(11, 12, 13, 90, 100, 90));
+  cctbx::uctbx::UnitCell UnitCell(cctbx::uctbx::uc_params(11,12,13,90,100,90));
   std::cout << UnitCell << std::endl;
-  sgtbx::SpaceGroupSymbols Symbols("C 2");
-  sgtbx::SpaceGroup SgOps(Symbols.Hall());
+  cctbx::sgtbx::SpaceGroupSymbols Symbols("C 2");
+  cctbx::sgtbx::SpaceGroup SgOps(Symbols);
   SgOps.CheckUnitCell(UnitCell);
   for (int i = 0; i < SgOps.OrderZ(); i++) {
     std::cout << SgOps(i).as_xyz() << std::endl;

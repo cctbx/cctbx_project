@@ -12,7 +12,7 @@
 #include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/eltbx/basic.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   std::string StripLabel(const std::string& Label, bool Exact)
   {
@@ -60,4 +60,4 @@ namespace eltbx {
     return i;
   }
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

@@ -23,7 +23,8 @@
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 
-using namespace sgtbx;
+using namespace cctbx;
+using namespace cctbx::sgtbx;
 
 namespace {
 
@@ -75,9 +76,9 @@ namespace {
   tuple RTMx_as_tuple_0(const RTMx& M) {
     tuple result(2);
     result.set_item(0,
-      ref(to_python(M.Rpart().as_array(static_cast<double>(0)))));
+      ref(to_python(M.Rpart().as_array(double()))));
     result.set_item(1,
-      ref(to_python(M.Tpart().as_array(static_cast<double>(0)))));
+      ref(to_python(M.Tpart().as_array(double()))));
     return result;
   }
 
@@ -180,20 +181,6 @@ namespace {
   void SpaceGroup_CheckUnitCell_1(const SpaceGroup& SgOps,
                                   const uctbx::UnitCell& uc) {
     SgOps.CheckUnitCell(uc);
-  }
-
-  Miller::MasterIndex
-  SpaceGroup_getMasterIndex_2(const SpaceGroup& SgOps,
-                              const Miller::Index& H,
-                              bool Pretty) {
-    return SgOps.getMasterIndex(H, Pretty);
-  }
-  Miller::MasterIndex
-  SpaceGroup_getMasterIndex_3(const SpaceGroup& SgOps,
-                              const Miller::Index& H,
-                              const Miller::Vec3& CutP,
-                              bool Pretty) {
-    return SgOps.getMasterIndex(H, CutP, Pretty);
   }
 
   std::complex<double>
@@ -350,32 +337,6 @@ namespace {
                                            double phi, double tolerance) {
     return SEMI.isValidPhase_deg(phi, tolerance);
   }
-  Miller::MasterIndex
-  SymEquivMillerIndices_getMasterIndex_1(const SymEquivMillerIndices& SEMI,
-                                         bool Pretty) {
-    return SEMI.getMasterIndex(Pretty);
-  }
-  Miller::MasterIndex
-  SymEquivMillerIndices_getMasterIndex_2(const SymEquivMillerIndices& SEMI,
-                                         const Miller::Vec3& CutP,
-                                         bool Pretty) {
-    return SEMI.getMasterIndex(CutP, Pretty);
-  }
-
-  double Miller_MasterIndex_Phase_rad(const Miller::MasterIndex& Master,
-                                      double phi, bool FriedelSym) {
-    return Master.Phase_rad(phi, FriedelSym);
-  }
-  double Miller_MasterIndex_Phase_deg(const Miller::MasterIndex& Master,
-                                      double phi, bool FriedelSym) {
-    return Master.Phase_deg(phi, FriedelSym);
-  }
-  std::complex<double>
-  Miller_MasterIndex_ShiftPhase(const Miller::MasterIndex& Master,
-                                const std::complex<double>& F,
-                                bool FriedelSym) {
-    return Master.ShiftPhase(F, FriedelSym);
-  }
 
   RTMx WyckoffPosition_getitem(const WyckoffPosition& WP,
                                std::size_t key) {
@@ -497,19 +458,18 @@ namespace {
     return result;
   }
 
-  double Miller_SymUniqueIndex_Phase_rad(const Miller::SymUniqueIndex& SUMI,
-                                         double phi, bool FriedelSym) {
-    return SUMI.Phase_rad(phi, FriedelSym);
+  double Miller_IndexTableLayoutAdaptor_Phase_rad(
+    const Miller::IndexTableLayoutAdaptor& TLA, double phi) {
+    return TLA.Phase_rad(phi);
   }
-  double Miller_SymUniqueIndex_Phase_deg(const Miller::SymUniqueIndex& SUMI,
-                                         double phi, bool FriedelSym) {
-    return SUMI.Phase_deg(phi, FriedelSym);
+  double Miller_IndexTableLayoutAdaptor_Phase_deg(
+    const Miller::IndexTableLayoutAdaptor& TLA, double phi) {
+    return TLA.Phase_deg(phi);
   }
   std::complex<double>
-  Miller_SymUniqueIndex_ShiftPhase(const Miller::SymUniqueIndex& SUMI,
-                                   const std::complex<double>& F,
-                                   bool FriedelSym) {
-    return SUMI.ShiftPhase(F, FriedelSym);
+  Miller_IndexTableLayoutAdaptor_ShiftPhase(
+    const Miller::IndexTableLayoutAdaptor& TLA, const std::complex<double>& F){
+    return TLA.ShiftPhase(F);
   }
 
 } // namespace <anonymous>
@@ -563,8 +523,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ChOfBasisOp(this_module, "ChOfBasisOp");
     class_builder<Miller::SymEquivIndex>
     py_Miller_SymEquivIndex(this_module, "Miller_SymEquivIndex");
-    class_builder<Miller::MasterIndex>
-    py_Miller_MasterIndex(this_module, "Miller_MasterIndex");
     class_builder<PhaseRestriction>
     py_PhaseRestriction(this_module, "PhaseRestriction");
     class_builder<SymEquivMillerIndices>
@@ -602,14 +560,21 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ReciprocalSpaceASU(this_module, "ReciprocalSpaceASU");
     class_builder<MillerIndexGenerator>
     py_MillerIndexGenerator(this_module, "MillerIndexGenerator");
-    class_builder<Miller::SymUniqueIndex>
-    py_Miller_SymUniqueIndex(this_module, "Miller_SymUniqueIndex");
+    class_builder<Miller::IndexTableLayoutAdaptor>
+    py_Miller_IndexTableLayoutAdaptor(this_module,
+      "Miller_IndexTableLayoutAdaptor");
+    class_builder<Miller::AsymIndex>
+    py_Miller_AsymIndex(this_module, "Miller_AsymIndex");
     class_builder<StructureSeminvariant>
     py_StructureSeminvariant(this_module, "StructureSeminvariant");
 
     python::import_converters<uctbx::UnitCell>
-    UnitCell_converters("uctbx", "UnitCell");
+    UnitCell_converters("cctbx.uctbx", "UnitCell");
 
+    py_Miller_AsymIndex.declare_base(
+      py_Miller_SymEquivIndex, python::without_downcast);
+
+    py_rational.def(constructor<>());
     py_rational.def(constructor<int>());
     py_rational.def(constructor<int, int>());
     py_rational.def(rational_numerator, "numerator");
@@ -618,6 +583,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_rational.def(rational_format_0, "__repr__");
     py_rational.def(rational_format_1, "format");
 
+    py_SpaceGroupSymbols.def(constructor<>());
     py_SpaceGroupSymbols.def(constructor<const std::string&>());
     py_SpaceGroupSymbols.def(constructor<const std::string&,
                                          const std::string&>());
@@ -642,14 +608,17 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroupSymbolIterator.def(SpaceGroupSymbolIterator_getitem,
       "__getitem__");
 
+    py_parse_string.def(constructor<>());
     py_parse_string.def(constructor<const std::string&>());
     py_parse_string.def(&parse_string::string, "string");
     py_parse_string.def(&parse_string::where, "where");
 
+    py_RotMxInfo.def(constructor<>());
     py_RotMxInfo.def(&RotMxInfo::Rtype, "Rtype");
     py_RotMxInfo.def(&RotMxInfo::EV, "EV");
     py_RotMxInfo.def(&RotMxInfo::SenseOfRotation, "SenseOfRotation");
 
+    py_TranslationComponents.def(constructor<>());
     py_TranslationComponents.def(
        TranslationComponents_IntrinsicPart, "IntrinsicPart");
     py_TranslationComponents.def(
@@ -708,24 +677,16 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ChOfBasisOp.def(ChOfBasisOp_call, "__call__");
     py_ChOfBasisOp.def(&ChOfBasisOp::apply, "apply");
 
+    py_Miller_SymEquivIndex.def(constructor<>());
+    py_Miller_SymEquivIndex.def(constructor<const Miller::Index&, int, int>());
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
+    py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::TBF, "TBF");
     py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_rad, "Phase_rad");
     py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_deg, "Phase_deg");
     py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_ShiftPhase, "ShiftPhase");
 
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::TBF, "TBF");
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::haveCutP, "haveCutP");
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::CutP, "CutP");
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::Pretty, "Pretty");
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::H, "H");
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::iMate, "iMate");
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::HR, "HR");
-    py_Miller_MasterIndex.def(&Miller::MasterIndex::HT, "HT");
-    py_Miller_MasterIndex.def(Miller_MasterIndex_Phase_rad, "Phase_rad");
-    py_Miller_MasterIndex.def(Miller_MasterIndex_Phase_deg, "Phase_deg");
-    py_Miller_MasterIndex.def(Miller_MasterIndex_ShiftPhase, "ShiftPhase");
-
+    py_PhaseRestriction.def(constructor<>());
     py_PhaseRestriction.def(&PhaseRestriction::isCentric, "isCentric");
     py_PhaseRestriction.def(PhaseRestriction_HT_0, "HT");
     py_PhaseRestriction.def(&PhaseRestriction::TBF, "TBF");
@@ -741,6 +702,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_PhaseRestriction.def(
       PhaseRestriction_isValidPhase_deg_2, "isValidPhase_deg");
 
+    py_SymEquivMillerIndices.def(constructor<>());
     py_SymEquivMillerIndices.def(
       &SymEquivMillerIndices::getPhaseRestriction, "getPhaseRestriction");
     py_SymEquivMillerIndices.def(
@@ -761,10 +723,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
       SymEquivMillerIndices_isValidPhase_deg_1, "isValidPhase_deg");
     py_SymEquivMillerIndices.def(
       SymEquivMillerIndices_isValidPhase_deg_2, "isValidPhase_deg");
-    py_SymEquivMillerIndices.def(
-      SymEquivMillerIndices_getMasterIndex_1, "getMasterIndex");
-    py_SymEquivMillerIndices.def(
-      SymEquivMillerIndices_getMasterIndex_2, "getMasterIndex");
 
     py_SpaceGroup.def(constructor<>());
     py_SpaceGroup.def(constructor<parse_string&>());
@@ -810,9 +768,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroup.def(&SpaceGroup::multiplicity, "multiplicity");
     py_SpaceGroup.def(&SpaceGroup::getEquivMillerIndices,
                                   "getEquivMillerIndices");
-    py_SpaceGroup.def(&SpaceGroup::getCutParameters, "getCutParameters");
-    py_SpaceGroup.def(SpaceGroup_getMasterIndex_2, "getMasterIndex");
-    py_SpaceGroup.def(SpaceGroup_getMasterIndex_3, "getMasterIndex");
     py_SpaceGroup.def(SpaceGroup_StructureFactor, "StructureFactor");
     py_SpaceGroup.def(SpaceGroup_StructureFactor_iso, "StructureFactor");
     py_SpaceGroup.def(SpaceGroup_StructureFactor_aniso, "StructureFactor");
@@ -855,6 +810,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_std_vector_RTMx.def(&std::vector<RTMx>::size, "__len__");
     py_std_vector_RTMx.def(std_vector_RTMx_getitem, "__getitem__");
 
+    py_WyckoffPosition.def(constructor<>());
     py_WyckoffPosition.def(&WyckoffPosition::M, "M");
     py_WyckoffPosition.def(&WyckoffPosition::Letter, "Letter");
     py_WyckoffPosition.def(&WyckoffPosition::SpecialOp, "SpecialOp");
@@ -864,12 +820,14 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_WyckoffPosition.def(&WyckoffPosition::M, "__len__");
     py_WyckoffPosition.def(WyckoffPosition_getitem, "__getitem__");
 
+    py_WyckoffMapping.def(constructor<>());
     py_WyckoffMapping.def(&WyckoffMapping::WP, "WP");
     py_WyckoffMapping.def(&WyckoffMapping::Mapping, "Mapping");
     py_WyckoffMapping.def(&WyckoffMapping::snap_to_representative,
                                           "snap_to_representative");
     py_WyckoffMapping.def(&WyckoffMapping::snap, "snap");
 
+    py_WyckoffTable.def(constructor<>());
     py_WyckoffTable.def(constructor<const SpaceGroupInfo&>());
     py_WyckoffTable.def(constructor<const SpaceGroupInfo&, bool>());
     py_WyckoffTable.def(&WyckoffTable::expand, "expand");
@@ -903,6 +861,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
                                                  double,
                                                  double>());
 
+    py_SiteSymmetry.def(constructor<>());
     py_SiteSymmetry.def(
       constructor<const SpecialPositionSnapParameters&,
                   const fractional<double>&>());
@@ -932,6 +891,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SiteSymmetry.def(&SiteSymmetry::M, "__len__");
     py_SiteSymmetry.def(SiteSymmetry_getitem, "__getitem__");
 
+    py_SymEquivCoordinates.def(constructor<>());
     py_SymEquivCoordinates.def(
       constructor<const SpecialPositionSnapParameters&,
                   const fractional<double>&>());
@@ -963,14 +923,17 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
       &SymEquivCoordinates<double>::StructureFactor,
                                    "StructureFactor");
 
+    py_BrickPoint.def(constructor<>());
     py_BrickPoint.def(&BrickPoint::Point, "Point");
     py_BrickPoint.def(&BrickPoint::Off, "Off");
 
+    py_Brick.def(constructor<>());
     py_Brick.def(constructor<const SpaceGroupInfo&>());
     py_Brick.def(&Brick::operator(), "__call__");
     py_Brick.def(&Brick::format, "format");
     py_Brick.def(&Brick::format, "__repr__");
 
+    py_ReferenceReciprocalSpaceASU.def(constructor<>());
     py_ReferenceReciprocalSpaceASU.def(
        ReferenceReciprocalSpaceASU_LaueGroupCode, "LaueGroupCode");
     py_ReferenceReciprocalSpaceASU.def(
@@ -999,19 +962,36 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_MillerIndexGenerator.def(MillerIndexGenerator_getitem, "__getitem__");
     py_MillerIndexGenerator.def(&MillerIndexGenerator::ASU, "ASU");
 
-    py_Miller_SymUniqueIndex.def(constructor<>());
-    py_Miller_SymUniqueIndex.def(constructor<const SpaceGroup&,
-                                             const ReciprocalSpaceASU&,
-                                             const Miller::Index&>());
-    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::H, "H");
-    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::iMate, "iMate");
-    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::HR, "HR");
-    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::HT, "HT");
-    py_Miller_SymUniqueIndex.def(&Miller::SymUniqueIndex::TBF, "TBF");
-    py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_Phase_rad, "Phase_rad");
-    py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_Phase_deg, "Phase_deg");
-    py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_ShiftPhase,
-                                                      "ShiftPhase");
+    py_Miller_IndexTableLayoutAdaptor.def(constructor<>());
+    py_Miller_IndexTableLayoutAdaptor.def(
+      &Miller::IndexTableLayoutAdaptor::H, "H");
+    py_Miller_IndexTableLayoutAdaptor.def(
+      &Miller::IndexTableLayoutAdaptor::iColumn, "iColumn");
+    py_Miller_IndexTableLayoutAdaptor.def(
+      Miller_IndexTableLayoutAdaptor_Phase_rad, "Phase_rad");
+    py_Miller_IndexTableLayoutAdaptor.def(
+      Miller_IndexTableLayoutAdaptor_Phase_deg, "Phase_deg");
+    py_Miller_IndexTableLayoutAdaptor.def(
+      Miller_IndexTableLayoutAdaptor_ShiftPhase, "ShiftPhase");
+
+    py_Miller_AsymIndex.def(constructor<>());
+    py_Miller_AsymIndex.def(constructor<
+      const SpaceGroup&,
+      const ReciprocalSpaceASU&,
+      const Miller::Index&>());
+    py_Miller_AsymIndex.def(constructor<
+      const SpaceGroup&,
+      const Miller::Index&>());
+    py_Miller_AsymIndex.def(constructor<
+      const SymEquivMillerIndices&>());
+    py_Miller_AsymIndex.def(
+      &Miller::AsymIndex::FriedelFlag, "FriedelFlag");
+    py_Miller_AsymIndex.def(
+      &Miller::AsymIndex::AnomalousLayout, "AnomalousLayout");
+    py_Miller_AsymIndex.def(
+      &Miller::AsymIndex::HermitianLayout, "HermitianLayout");
+    py_Miller_AsymIndex.def(
+      &Miller::AsymIndex::FplusFminusLayout, "FplusFminusLayout");
 
     py_StructureSeminvariant.def(constructor<>());
     py_StructureSeminvariant.def(constructor<const SpaceGroup&>());

@@ -13,7 +13,7 @@
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/reference.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   namespace seminvariant_cpp { // anonymous namespace causes
                                // warnings with some compilers
@@ -210,8 +210,7 @@ namespace sgtbx {
     class CmpDiscrZ {
       public:
         CmpDiscrZ() : CmpT(3) {}
-        inline bool operator()(const TrVec& a,
-                               const TrVec& b) const {
+        bool operator()(const TrVec& a, const TrVec& b) const {
           return CmpT(a.elems, b.elems);
         }
       private:
@@ -221,7 +220,7 @@ namespace sgtbx {
     class Cmp_ssVM {
       public:
         Cmp_ssVM() : CmpT(3) {}
-        inline bool operator()(const ssVM& a, const ssVM& b) const {
+        bool operator()(const ssVM& a, const ssVM& b) const {
           return CmpT(a.V.elems, b.V.elems);
         }
       private:
@@ -307,4 +306,4 @@ namespace sgtbx {
     return result;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

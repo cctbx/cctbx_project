@@ -1,7 +1,7 @@
 # $Id$
 
 import math
-from sasaki import *
+from cctbx.eltbx.sasaki import *
 sasaki = Sasaki("SI")
 print sasaki.Label(), sasaki.Z()
 for i in xrange(16):

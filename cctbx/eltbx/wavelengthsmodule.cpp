@@ -12,7 +12,8 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/wavelengths.h>
 
-using namespace eltbx;
+using namespace cctbx;
+using namespace cctbx::eltbx;
 
 namespace {
 
@@ -42,6 +43,7 @@ BOOST_PYTHON_MODULE_INIT(wavelengths)
     this_module.def(keV_as_Angstrom, "keV_as_Angstrom");
     this_module.def(Angstrom_as_keV, "Angstrom_as_keV");
 
+    py_WaveLength.def(constructor<>());
     py_WaveLength.def(constructor<int>());
     py_WaveLength.def(constructor<const std::string&>());
     py_WaveLength.def(&WaveLength::Label, "Label");

@@ -14,7 +14,7 @@
 #include <cctbx/sgtbx/reference.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   int RotMx::getRtype() const
   {
@@ -152,4 +152,4 @@ namespace sgtbx {
     return ChOfBasisOp(CBOp().swap()(RTMx(RotMx(1, -1), STBF)));
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

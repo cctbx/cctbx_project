@@ -1,63 +1,58 @@
 import sys, os, shutil
 norm = os.path.normpath
-PACKAGES = os.path.abspath(sys.argv[0])
-if (len(sys.argv) != 4):
-  print "usage: " + os.path.basename(PACKAGES) \
-        + " <platform> <boost-makefile> <cctbx-configuration-file>"
+
+this_script = norm(os.path.abspath(sys.argv[0]))
+build_dir = norm(os.path.dirname(this_script))
+cctbx_dir = norm(os.path.dirname(build_dir))
+
+if (len(sys.argv) != 2):
+  print "usages:"
+  print " ", os.path.basename(this_script), "<platform-identifier>"
+  print " ", os.path.basename(this_script), "<cctbx-configuration-file>"
   sys.exit(1)
-for i in xrange(2):
-  if (not os.path.exists(sys.argv[i + 2])):
-    print "File not found: " + sys.argv[i + 2]
+
+config_file = sys.argv[1]
+if (os.path.isdir(config_file) or not os.path.exists(config_file)):
+  config_file = norm(build_dir + "/configuration_" + sys.argv[1])
+  if (not os.path.exists(config_file)):
+    print "Files not found:"
+    print " ", sys.argv[1]
+    print " ", config_file
     sys.exit(1)
-PACKAGES = norm(PACKAGES)
-for i in xrange(3): PACKAGES = os.path.dirname(PACKAGES)
-while (PACKAGES[-1] == os.sep): PACKAGES = PACKAGES[:-1]
-platform = sys.argv[1]
-boost_mak = os.path.abspath(sys.argv[2])
-cctbx_cf = os.path.abspath(sys.argv[3])
-if (hasattr(os, "symlink")):
-  link_cmd = "softlinks"
-else:
-  link_cmd = "copy"
+config_file = norm(os.path.abspath(config_file))
+
+sys.path.insert(0, build_dir)
+from make import read_configuration
+cf = read_configuration(config_file)
+platform = cf[0]
+
 if (platform == "vc60"):
   make = "nmake"
 else:
   make = "make"
-if (os.path.isdir(platform)):
-  print "directory " + platform + " already exists"
+
+if (hasattr(os, "symlink")):
+  link_cmd = "softlinks"
 else:
-  os.mkdir(platform)
-os.chdir(platform)
-# Run the cctbx boot command before installing Boost.Python.
-# The boost script will issue a warning if the platform identifier
-# is unsupported.
+  link_cmd = "copy"
+
 if (os.path.isdir("cctbx")):
-  print "directory cctbx already exists"
+  print "Warning: directory cctbx already exists"
 else:
   os.mkdir("cctbx")
 os.chdir("cctbx")
-shutil.copy(cctbx_cf, "configuration")
-if (os.system("python " + norm(PACKAGES + "/cctbx/build/boot.py")) != 0):
-  sys.exit(1)
-os.chdir("..")
-# Now install Boost.Python.
-if (os.path.isdir("boost")):
-  print "directory boost already exists"
-else:
-  os.mkdir("boost")
-os.chdir("boost")
-shutil.copy(boost_mak, "Makefile")
-os.system(make + ' ROOT="%s" %s' % (PACKAGES, link_cmd))
-os.system(make + ' ROOT="%s"' % (PACKAGES,))
-os.system(make + " test")
-os.chdir("..")
-# Continue the installation of the cctbx.
-os.chdir("cctbx")
-os.system("python make.py " + link_cmd)
-os.system("python make.py compile_all")
-os.system("python test.py")
-os.system(norm("examples/cpp/getting_started"))
-os.environ["PYTHONPATH"] = norm(os.getcwd() + "/lib/python")
-os.system("python "
-          + norm(PACKAGES + "/cctbx/examples/python/getting_started.py"))
+shutil.copy(config_file, "configuration")
+
+def system_checked(cmd):
+  if (os.system(cmd) != 0):
+    sys.exit(1)
+
+system_checked("python " + norm(build_dir + "/boot.py"))
+system_checked("python make.py " + link_cmd)
+system_checked("python make.py all")
+system_checked("python test_imports.py")
+system_checked(norm("examples/cpp/getting_started"))
+os.environ["PYTHONPATH"] = norm(os.getcwd() + "/lib_python")
+system_checked(
+  "python " + norm(cctbx_dir + "/examples/python/getting_started.py"))
 print "Done."

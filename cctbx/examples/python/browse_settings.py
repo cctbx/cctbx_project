@@ -1,6 +1,14 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
+# This example uses an internal table, with 530 space group settings,
+# that is based on Table 4.3.1 in the International Tables for
+# Crystallography, Volume A (1983). Via the web interface the user
+# specifies a space group symbol. This script determines the space
+# group number corresponding to the given symbol, and then lists all
+# tabulated settings for that space group number. If no space group
+# symbol is given, all 530 entries in the internal table are listed.
+
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 URL_explore_symmetry = "http://cci.lbl.gov/cctbx/explore_symmetry.py"
 
 import sys
@@ -16,7 +24,7 @@ class FormatError(exceptions.Exception): pass
 import string, cgi, urllib
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-import sgtbx
+from cctbx import sgtbx
 
 print "sgtbx version:", sgtbx.__version__
 print "<p>"

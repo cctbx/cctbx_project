@@ -12,10 +12,12 @@
 #ifndef CCTBX_SGTBX_MATH_H
 #define CCTBX_SGTBX_MATH_H
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
 #include <boost/rational.hpp>
 #include <cctbx/sgtbx/basic.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   inline int modPositive(int ix, int iy) {
     if (iy > 0) {
@@ -59,6 +61,8 @@ namespace sgtbx {
 
   int SmithNormalForm(int *M, int mr, int mc, int *P, int *Q);
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
+
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // CCTBX_SGTBX_MATH_H

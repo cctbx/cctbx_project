@@ -1,7 +1,7 @@
 # $Id$
 
-import uctbx
-import sgtbx
+from cctbx import uctbx
+from cctbx import sgtbx
 
 uc = uctbx.UnitCell((1, 1, 1, 90, 90, 120))
 G = uc.getMetricalMatrix()

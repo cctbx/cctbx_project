@@ -21,13 +21,13 @@ int main()
     if ( cin.eof() ) break;
     getline( cin, line );           // and the rest of the line
     cout << nspgrp << " " << nsym << line << "\n";         // print it all
-    sgtbx::SpaceGroup SgOps;             // now interpret the symops
+    cctbx::sgtbx::SpaceGroup SgOps;             // now interpret the symops
     for (int i = 0; i < nsym; i++) {
       getline( cin, line );                     // get the i'th symop
       // cout << line << "\n";
-      SgOps.expandSMx( sgtbx::RTMx(line) );     // and interpret
+      SgOps.expandSMx( cctbx::sgtbx::RTMx(line) );     // and interpret
     }
-    sgtbx::SpaceGroupInfo SgInfo(SgOps);
+    cctbx::sgtbx::SpaceGroupInfo SgInfo(SgOps);
     cout << SgInfo.BuildHallSymbol() << "\n";    // now produce the sg symbol
     cout << SgInfo.BuildLookupSymbol() << "\n";
   }

@@ -14,11 +14,13 @@
 
 #include <cctbx/sgtbx/groups.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   //! A "point" of a Brick.
   class BrickPoint {
     public:
+      //! Default constructor. Some data members are not initialized.
+      BrickPoint() {};
       //! The point as a rational number.
       rational Point() const { return m_Point; }
       //! Flag to indicate if the point is inside the brick or just outside.
@@ -32,9 +34,10 @@ namespace sgtbx {
        */
       int Off() const { return m_Off; }
     private:
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
       friend class Brick;
-      BrickPoint() {};
-      BrickPoint(int RawPoint);
+#endif // DOXYGEN_SHOULD_SKIP_THIS
+      explicit BrickPoint(int RawPoint);
       rational m_Point;
       bool m_Off;
   };
@@ -84,7 +87,10 @@ namespace sgtbx {
    */
   class Brick {
     public:
+      //! Default constructor. Some data members are not initialized.
+      Brick() {}
       //! Constructor.
+      explicit
       Brick(const SpaceGroupInfo& SgInfo);
       //! Access to the six points of the brick.
       /*! iBasisVector refers to the basis vectors a,b,c.
@@ -107,6 +113,6 @@ namespace sgtbx {
       BrickPoint m_Points[3][2];
   };
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_ASYM_UNITS_H

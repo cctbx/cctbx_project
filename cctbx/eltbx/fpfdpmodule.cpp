@@ -12,7 +12,8 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/efpfdp.h>
 
-using namespace eltbx;
+using namespace cctbx;
+using namespace cctbx::eltbx;
 
 BOOST_PYTHON_MODULE_INIT(fpfdp)
 {
@@ -29,6 +30,7 @@ BOOST_PYTHON_MODULE_INIT(fpfdp)
     class_builder<fpfdp> py_fpfdp(this_module, "fpfdp");
     python::export_converters(py_fpfdp);
 
+    py_fpfdp.def(constructor<>());
     py_fpfdp.def(constructor<float, float>());
     py_fpfdp.def(&fpfdp::isValid_fp, "isValid_fp");
     py_fpfdp.def(&fpfdp::isValid_fdp, "isValid_fdp");

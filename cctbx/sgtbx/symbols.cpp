@@ -23,11 +23,11 @@
 using std::string;
 
 namespace {
-  static const sgtbx::error
+  static const cctbx::error
   symbol_not_recognized("Space group symbol not recognized.");
 }
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace symbols {
     namespace tables {
 
@@ -1064,7 +1064,7 @@ namespace sgtbx {
     return SpaceGroupSymbols(CurrentEntry, Extension);
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 /*
 http://www.iucr.org/iucr-top/comm/cnom/symsym/node7.html
