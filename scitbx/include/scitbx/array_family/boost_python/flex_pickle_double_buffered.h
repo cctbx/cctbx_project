@@ -17,14 +17,18 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  template <typename ElementType>
+  template <typename ElementType,
+            typename DoubleBufferedToString
+              = scitbx::boost_python::pickle_double_buffered::to_string,
+            typename DoubleBufferedFromString
+              = scitbx::boost_python::pickle_double_buffered::from_string>
   struct flex_pickle_double_buffered : boost::python::pickle_suite
   {
     static
     boost::python::tuple
     getstate(versa<ElementType, flex_grid<> > const& a)
     {
-      scitbx::boost_python::pickle_double_buffered::to_string accu;
+      DoubleBufferedToString accu;
       accu << a.size();
       for(std::size_t i=0;i<a.size();i++) accu << a[i];
       return boost::python::make_tuple(a.accessor(), accu.buffer);
@@ -39,16 +43,15 @@ namespace scitbx { namespace af { namespace boost_python {
       flex_grid<> a_accessor = boost::python::extract<flex_grid<> >(
         state[0])();
       PyObject* py_str = boost::python::object(state[1]).ptr();
-      scitbx::boost_python::pickle_double_buffered::from_string inp(py_str);
+      DoubleBufferedFromString inp(py_str);
       std::size_t a_capacity;
       inp >> a_capacity;
       shared_plain<ElementType> b = a.as_base_array();
       b.reserve(a_capacity);
+      ElementType val;
       for(std::size_t i=0;i<a_capacity;i++) {
-        scitbx::boost_python::pickle_single_buffered::from_string<ElementType>
-          proxy(inp.str_ptr);
-        inp.str_ptr = proxy.end;
-        b.push_back(proxy.value);
+        inp >> val;
+        b.push_back(val);
       }
       inp.assert_end();
       SCITBX_ASSERT(b.size() == a_accessor.size_1d());

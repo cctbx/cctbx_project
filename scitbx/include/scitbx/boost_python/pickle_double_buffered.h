@@ -93,6 +93,12 @@ namespace scitbx { namespace boost_python { namespace pickle_double_buffered {
       return *this;
     }
 
+    to_string& operator<<(const char* val)
+    {
+      *this << std::string(val);
+      return *this;
+    }
+
   };
 
   struct from_string
