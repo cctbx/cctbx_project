@@ -3,6 +3,7 @@ from iotbx import simple_tokenizer
 from scitbx.python_utils.str_utils import line_breaker
 from libtbx.itertbx import count
 from libtbx import introspection
+import copy
 import math
 import sys, os
 
@@ -186,6 +187,9 @@ class definition(object):
     keyword_args["values"] = values
     return definition(**keyword_args)
 
+  def merge(self, source):
+    return self.copy(source.values)
+
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
@@ -296,6 +300,27 @@ class definition(object):
       + ' required for converting values of "%s"%s') % (
         self.type, self.name, self.values[0].where_str()))
 
+def scope_merge(master, source):
+  result_objects = []
+  master_lookup_dict = {}
+  for master_object in master.objects:
+    master_lookup_dict[master_object.name] = master_object
+  master_use_flags = {}
+  for master_object in master.objects:
+    master_use_flags[master_object.name] = False
+  for source_object in source.objects:
+    master_object = master_lookup_dict.get(source_object.name, None)
+    if (master_object is None):
+      result_objects.append(source_object)
+    else:
+      result_objects.append(master_object.merge(source=source_object))
+      master_use_flags[source_object.name] = True
+  for master_object in master.objects:
+    if (not master_use_flags[master_object.name]
+        and master_object.required is not False):
+      result_objects.append(copy.copy(master_object))
+  return result_objects
+
 class scope_class: pass
 
 class scope:
@@ -303,22 +328,49 @@ class scope:
   def __init__(self,
         name,
         objects,
+        style=None,
         help=None,
         caption=None,
         short_caption=None,
+        required=None,
+        sequential_format=None,
+        disable_add=None,
+        disable_delete=None,
         expert_level=None):
     introspection.adopt_init_args()
     self.attribute_names = self.__init__varnames__[3:]
+    assert style in [None, "row", "column", "block", "page"]
+    if (sequential_format is not None):
+      assert isinstance(sequential_format % 0, str)
+
+  def copy(self, objects):
+    keyword_args = {}
+    for keyword in self.__init__varnames__[1:]:
+      keyword_args[keyword] = getattr(self, keyword)
+    keyword_args["objects"] = objects
+    return scope(**keyword_args)
+
+  def merge(self, source):
+    return self.copy(objects=scope_merge(self, source=source))
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
   def assign_attribute(self, name, value_words):
     assert self.has_attribute_with_name(name)
-    if (name in ["expert_level"]):
+    if (name in ["required", "disable_add", "disable_delete"]):
+      value = bool_from_value_words(value_words)
+    elif (name in ["expert_level"]):
       value = int_from_value_words(value_words)
     else:
       value = str_from_value_words(value_words)
+      if (name == "style"):
+        style = value
+        assert style in [None, "row", "column", "block", "page"]
+      elif (name == "sequential_format"):
+        sequential_format = value
+        if (sequential_format is not None):
+          assert isinstance(sequential_format % 0, str)
     setattr(self, name, value)
 
   def show(self, out, prefix="", attributes_level=0, print_width=79,
@@ -366,106 +418,13 @@ class scope:
         custom_converters=custom_converters))
     return result
 
-class table:
-
-  def __init__(self,
-        name,
-        row_objects,
-        style=None,
-        help=None,
-        caption=None,
-        short_caption=None,
-        sequential_format=None,
-        disable_add=None,
-        disable_delete=None,
-        expert_level=None):
-    introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[3:]
-    assert style in [None, "row", "column", "block", "page"]
-    if (sequential_format is not None):
-      assert isinstance(sequential_format % 0, str)
-
-  def has_attribute_with_name(self, name):
-    return name in self.attribute_names
-
-  def assign_attribute(self, name, value_words):
-    assert self.has_attribute_with_name(name)
-    if (name in ["disable_add", "disable_delete"]):
-      value = bool_from_value_words(value_words)
-    elif (name in ["expert_level"]):
-      value = int_from_value_words(value_words)
-    else:
-      value = str_from_value_words(value_words)
-      if (name == "style"):
-        style = value
-        assert style in [None, "row", "column", "block", "page"]
-      elif (name == "sequential_format"):
-        sequential_format = value
-        if (sequential_format is not None):
-          assert isinstance(sequential_format % 0, str)
-    setattr(self, name, value)
-
-  def replace_with(self, other):
-    for attribute_name in self.__init__varnames__[1:]:
-      setattr(self, attribute_name, getattr(other, attribute_name))
-
-  def add_row(self, objects):
-    self.row_objects.append(objects)
-
-  def show(self, out, prefix="", attributes_level=0, print_width=79,
-                 previous_object=None):
-    if (previous_object is not None):
-      print >> out, prefix.rstrip()
-    print >> out, "%stable %s" % (prefix, self.name)
-    show_attributes(
-      self=self,
-      out=out,
-      prefix=prefix,
-      attributes_level=attributes_level,
-      print_width=print_width)
-    print >> out, prefix+"{"
-    for objects in self.row_objects:
-      print >> out, prefix+"  {"
-      previous_object = None
-      for object in objects:
-        object.show(
-          out=out,
-          prefix=prefix+"    ",
-          attributes_level=attributes_level,
-          print_width=print_width,
-          previous_object=previous_object)
-        previous_object = object
-      print >> out, prefix+"  }"
-    print >> out, prefix+"}"
-
-  def all_definitions(self, parent, parent_path, result):
-    parent_path += self.name + "."
-    for n_row,row_objects in zip(count(1), self.row_objects):
-      row_path = parent_path + str(n_row) + "."
-      for object in row_objects:
-        object.all_definitions(
-          parent=self, parent_path=row_path, result=result)
-
-  def get_without_substitution(self, path):
-    if (self.name == path): return [self]
-    if (not path.startswith(self.name+".")): return []
-    path = path[len(self.name)+1:]
-    result = []
-    for n_row,row_objects in zip(count(1), self.row_objects):
-      row_name = str(n_row)
-      if (row_name is None): continue
-      if (row_name == path):
-        result.extend(row_objects)
-      elif (path.startswith(row_name+".")):
-        for row_object in row_objects:
-          result.extend(row_object.get_without_substitution(
-            path=path[len(row_name)+1:]))
-    return result
-
 class object_list:
 
   def __init__(self, objects):
     self.objects = objects
+
+  def merge(self, source):
+    return object_list(objects=scope_merge(self, source=source))
 
   def show(self, out=None, prefix="", attributes_level=0, print_width=None):
     if (out is None): out = sys.stdout
@@ -587,39 +546,6 @@ class object_list:
     for item in self.all_definitions():
       item.object.automatic_type_assignment(
         assignment_if_unknown=assignment_if_unknown)
-
-  def update_from(self, source):
-    table_memory = {}
-    for source_item in source.all_definitions():
-      if (isinstance(source_item.parent, table)):
-        n_strip = 2
-      else:
-        n_strip = 1
-      parent_path = ".".join(source_item.path.split(".")[:-n_strip])
-      if (n_strip == 2 and parent_path in table_memory):
-        continue
-      target_parents = self.get(path=parent_path, with_substitution=False)
-      if (len(target_parents.objects) > 1):
-        raise RuntimeError("Multiple targets: %s" % source_item.path)
-      if (len(target_parents.objects) == 1):
-        target_parent = target_parents.objects[0]
-        if (n_strip == 2):
-          target_parent.replace_with(source_item.parent)
-        else:
-          target_objects = []
-          for target_object in target_parent.objects:
-            if (target_object.name == source_item.object.name):
-              if (not isinstance(target_object, definition)):
-                raise RuntimeError(
-                  "Not a target definition: %s" % source_item.path)
-              target_objects.append(target_object)
-          if (len(target_objects) > 1):
-            raise RuntimeError("Multiple targets: %s" % source_item.path)
-          if (len(target_objects) == 1):
-            target_object = target_objects[0]
-            source_object_sub = source.variable_substitution(
-              object=source_item.object, path_memory={source_item.path: None})
-            target_object.values = source_object_sub.values
 
 class variable_substitution_fragment(object):
 

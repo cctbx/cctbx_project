@@ -111,9 +111,14 @@ name
     attributes_level=3,
     expected_out="""\
 name
+  .style = None
   .help = "message"
   .caption = None
   .short_caption = None
+  .required = None
+  .sequential_format = None
+  .disable_add = None
+  .disable_delete = None
   .expert_level = 3
 {
 }
@@ -127,99 +132,8 @@ name
 }
 """)
   recycle(
-    input_string="table name{}", expected_out="""\
-table name
-{
-}
-""")
-  recycle(
-    input_string="table name { }", attributes_level=3, expected_out="""\
-table name
-  .style = None
-  .help = None
-  .caption = None
-  .short_caption = None
-  .sequential_format = None
-  .disable_add = None
-  .disable_delete = None
-  .expert_level = None
-{
-}
-""")
-  input_string = """\
-table name
-  .style=column
-  .help="help message with detailed information"
-  .caption=None
-  .short_caption=None
-  .sequential_format=None
-  .disable_add=None
-  .disable_delete=None
-  .expert_level=2
-{}
-"""
-  recycle(input_string=input_string, attributes_level=3,
-    expected_out="""\
-table name
-  .style = "column"
-  .help = "help message with detailed information"
-  .caption = None
-  .short_caption = None
-  .sequential_format = None
-  .disable_add = None
-  .disable_delete = None
-  .expert_level = 2
-{
-}
-""")
-  recycle(input_string=input_string, attributes_level=2,
-    expected_out="""\
-table name
-  .style = "column"
-  .help = "help message with detailed information"
-  .expert_level = 2
-{
-}
-""")
-  recycle(input_string=input_string, attributes_level=1,
-    expected_out="""\
-table name
-  .help = "help message with detailed information"
-{
-}
-""")
-  recycle(input_string=input_string, attributes_level=0,
-    expected_out="""\
-table name
-{
-}
-""")
-  recycle(
-    input_string="table name { }", expected_out="""\
-table name
-{
-}
-""")
-  recycle(
-    input_string="table name{{}}", expected_out="""\
-table name
-{
-  {
-  }
-}
-""")
-  recycle(
-    input_string="table name { {} {} }", expected_out="""\
-table name
-{
-  {
-  }
-  {
-  }
-}
-""")
-  recycle(
-    input_string="a=b\nc=d\n e {} table name { {} {} } f=g",
+    input_string=\
+      "a=b\nc=d\n e {} name { var1=None\nvar2=None\n} f=g",
     prefix=" prefix ",
     expected_out="""\
  prefix a = b
@@ -229,12 +143,10 @@ table name
  prefix {
  prefix }
  prefix
- prefix table name
+ prefix name
  prefix {
- prefix   {
- prefix   }
- prefix   {
- prefix   }
+ prefix   var1 = None
+ prefix   var2 = None
  prefix }
  prefix
  prefix f = g
@@ -256,24 +168,18 @@ def exercise_syntax_errors():
     """Unquoted word expected, found 'a' (input line 1)""")
   test_exception("a",
     'Unexpected end of input.')
+  test_exception("a=\nb",
+    'Missing value for a (input line 1)')
   test_exception("a b",
     'Syntax error: expected "=", found "b" (input line 1)')
   test_exception("{}",
     'Syntax error: unexpected "{" (input line 1)')
   test_exception("a {",
     'Syntax error: no matching "}" for "{" at input line 1')
-  test_exception("table name\n.foo none\n{}",
-    'Unexpected table attribute: .foo (input line 2)')
-  test_exception("table name foo {",
-    'Syntax error: expected "{", found "foo" (input line 1)')
-  test_exception("table name { bar",
-    'Syntax error: expected "{", found "bar" (input line 1)')
   test_exception("a=b\n.foo none",
     'Unexpected definition attribute: .foo (input line 2)')
   test_exception('a=b\nc "abc',
     'Syntax error: missing closing quote (input line 2)')
-  test_exception('table 1',
-    'Syntax error: improper table name "1" (input line 1)')
   test_exception('1 {',
     'Syntax error: improper scope name "1" (input line 1)')
   test_exception('scope\n.junk',
@@ -303,20 +209,6 @@ e {
   a=1
   b=x
 }
-table name {
-  {
-    a=1
-    b=x
-  }
-  {
-    a=2
-    b=y
-  }
-  {
-    a=3
-    b=z
-  }
-}
 e=g""")
   check_get(parameters, path="a", expected_out="""\
 a = b
@@ -336,36 +228,7 @@ a = 1
   check_get(parameters, path="e.b", expected_out="""\
 b = x
 """)
-  check_get(parameters, path="name", expected_out="""\
-table name
-{
-  {
-    a = 1
-    b = x
-  }
-  {
-    a = 2
-    b = y
-  }
-  {
-    a = 3
-    b = z
-  }
-}
-""")
-  check_get(parameters, path="name.1", expected_out="""\
-a = 1
-b = x
-""")
-  check_get(parameters, path="name.2", expected_out="""\
-a = 2
-b = y
-""")
-  check_get(parameters, path="name.3", expected_out="""\
-a = 3
-b = z
-""")
-  check_get(parameters, path="name.row_3", expected_out="")
+  check_get(parameters, path="e.c", expected_out="")
 
 def exercise_nested():
   parameters = recycle(
@@ -374,15 +237,11 @@ d0=0
 a0 {
   d1=a b c
   a1 {
-    table t0 {
-      {
-        c=yes
-        table t1 {
-          {
-            x=0
-            y=1.
-          }
-        }
+    t0 {
+      c=yes
+      t1 {
+        x=0
+        y=1.
       }
     }
   }
@@ -398,18 +257,14 @@ a0
 
   a1
   {
-    table t0
+    t0
     {
-      {
-        c = yes
+      c = yes
 
-        table t1
-        {
-          {
-            x = 0
-            y = 1.
-          }
-        }
+      t1
+      {
+        x = 0
+        y = 1.
       }
     }
   }
@@ -418,12 +273,11 @@ a0
 }
 """).parameters
   check_get(parameters, path="a0.d1", expected_out="d1 = a b c\n")
-  check_get(parameters, path="a0.a1.t0.1.c", expected_out="c = yes\n")
-  check_get(parameters, path="a0.a1.t0.1.t1.1.x", expected_out="x = 0\n")
-  check_get(parameters, path="a0.a1.t0.1.t1.1.y", expected_out="y = 1.\n")
+  check_get(parameters, path="a0.a1.t0.c", expected_out="c = yes\n")
+  check_get(parameters, path="a0.a1.t0.t1.x", expected_out="x = 0\n")
+  check_get(parameters, path="a0.a1.t0.t1.y", expected_out="y = 1.\n")
   assert [item.path for item in parameters.all_definitions()] == [
-    "d0", "a0.d1", "a0.a1.t0.1.c", "a0.a1.t0.1.t1.1.x",
-    "a0.a1.t0.1.t1.1.y", "a0.d2"]
+    "d0", "a0.d1", "a0.a1.t0.c", "a0.a1.t0.t1.x", "a0.a1.t0.t1.y", "a0.d2"]
   parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
   out = StringIO()
   parameters.show(out=out, attributes_level=2)
@@ -438,21 +292,17 @@ a0
 
   a1
   {
-    table t0
+    t0
     {
-      {
-        c = yes
-          .type = "bool"
+      c = yes
+        .type = "bool"
 
-        table t1
-        {
-          {
-            x = 0
-              .type = "int"
-            y = 1.
-              .type = "float"
-          }
-        }
+      t1
+      {
+        x = 0
+          .type = "int"
+        y = 1.
+          .type = "float"
       }
     }
   }
@@ -757,37 +607,48 @@ def exercise_deepcopy():
   b {
     a=1
   }
-  table c { {
-      a=1
-    }
-  }
 """)
   copy.deepcopy(parameters)
 
-def exercise_update_from():
-  target = iotbx.parameters.parse(input_string="""\
+def exercise_merge():
+  master = iotbx.parameters.parse(input_string="""\
 a=None
+  .expert_level=1
 b=None
+  .expert_level=2
 c
 {
   a=None
+    .expert_level=3
   b=None
+    .expert_level=4
   c
+    .expert_level=5
   {
     x=1
+      .expert_level=6
     y=2
-    table t
+      .type="int"
+      .expert_level=7
+    t
+      .expert_level=8
     {
+      r=3
+        .help="help"
     }
   }
 }
-table t
+t
+  .expert_level=9
 {
+  a=4
+    .expert_level=10
+  b=5
+    .expert_level=11
 }
 """)
   source = iotbx.parameters.parse(input_string="""\
-a=0
-b=x
+a=7
 c
 {
   a=${v.x}
@@ -795,11 +656,9 @@ c
   c
   {
     y=${v.y}
-    table t
+    t
     {
-      {
-        r=x
-      }
+      r=x
     }
   }
 }
@@ -808,56 +667,83 @@ v
   x=y
   y=3
 }
-table t
+t
 {
-  {
-    a=1
-    b=2
-  }
-  {
-    a=2
-    b=3
-  }
+  a=1
+    .expert_level=-1
+  b=2
+}
+a=9
+t
+{
+  b=3
+    .expert_level=-2
 }
 """)
-  target.update_from(source=source)
+  merged = master.merge(source=source)
   out = StringIO()
-  target.show(out=out)
+  merged.show(out=out, attributes_level=2)
   assert out.getvalue() == """\
-a = 0
-b = x
+a = 7
+  .expert_level = 1
 
 c
 {
-  a = y
+  a = ${v.x}
+    .expert_level = 3
   b = 1
+    .expert_level = 4
 
   c
+    .expert_level = 5
   {
-    x = 1
-    y = 3
+    y = ${v.y}
+      .type = "int"
+      .expert_level = 7
 
-    table t
+    t
+      .expert_level = 8
     {
-      {
-        r = x
-      }
+      r = x
+        .help = "help"
     }
+
+    x = 1
+      .expert_level = 6
   }
 }
 
-table t
+v
 {
-  {
-    a = 1
-    b = 2
-  }
-  {
-    a = 2
-    b = 3
-  }
+  x = y
+  y = 3
 }
+
+t
+  .expert_level = 9
+{
+  a = 1
+    .expert_level = 10
+  b = 2
+    .expert_level = 11
+}
+
+a = 9
+  .expert_level = 1
+
+t
+  .expert_level = 9
+{
+  b = 3
+    .expert_level = 11
+  a = 4
+    .expert_level = 10
+}
+
+b = None
+  .expert_level = 2
 """
+  assert merged.get(path="c.c.y").objects[0].extract() == 3
 
 def exercise():
   exercise_parse_and_show()
@@ -868,7 +754,7 @@ def exercise():
   exercise_include()
   exercise_extract()
   exercise_deepcopy()
-  exercise_update_from()
+  exercise_merge()
   print "OK"
 
 if (__name__ == "__main__"):
