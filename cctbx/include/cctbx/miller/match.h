@@ -10,17 +10,14 @@
 #ifndef CCTBX_MILLER_MATCH_H
 #define CCTBX_MILLER_MATCH_H
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 #include <functional>
 #include <cmath>
 
 namespace cctbx { namespace miller {
-
-#if defined(__sgi) && defined(_COMPILER_VERSION) && _COMPILER_VERSION <= 730
-  // This works around an odd bug/feature of the MIPSpro RTTI system.
-  typedef af::shared<af::tiny<std::size_t, 2> > ignore_me_pair_type_;
-#endif
 
   typedef af::tiny<std::size_t, 2> pair_type;
 

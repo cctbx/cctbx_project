@@ -14,16 +14,12 @@
 #ifndef CCTBX_SGTBX_SYM_EQUIV_SITES_H
 #define CCTBX_SGTBX_SYM_EQUIV_SITES_H
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/uctbx.h>
 #include <cctbx/sgtbx/wyckoff.h>
 
 namespace cctbx { namespace sgtbx {
-
-#if defined(__sgi) && defined(_COMPILER_VERSION) && _COMPILER_VERSION <= 730
-  // This works around an odd bug/feature of the MIPSpro RTTI system.
-  typedef af::shared<scitbx::vec3<double> > ignore_me_1_;
-  typedef af::const_ref<scitbx::vec3<double> > ignore_me_2_;
-#endif
 
   template <typename FloatType=double>
   class sym_equiv_sites

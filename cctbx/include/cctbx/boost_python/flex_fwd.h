@@ -14,6 +14,7 @@
 
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
+#include <cctbx/miller.h>
 
 namespace cctbx { namespace boost_python {
 
@@ -32,6 +33,10 @@ namespace cctbx { namespace boost_python {
     flex_fwd<float>();
     flex_fwd<double>();
     flex_fwd<std::complex<double> >();
+
+    scitbx::af::boost_python::flex_fwd<scitbx::vec3<double> >();
+    scitbx::af::boost_python::flex_fwd<miller::index<> >();
+    scitbx::af::boost_python::flex_fwd<scitbx::af::tiny<std::size_t, 2> >();
   }
 
 }} // namespace cctbx::boost_python
