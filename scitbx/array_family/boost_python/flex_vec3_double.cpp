@@ -157,6 +157,17 @@ namespace {
     return result;
   }
 
+  af::shared<double>
+  dot_a(
+    af::const_ref<vec3<double> > const& lhs)
+  {
+    af::shared<double> result((af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result.push_back(lhs[i] * lhs[i]);
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -180,6 +191,7 @@ namespace boost_python {
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)
       .def("dot", dot_a_a)
+      .def("dot", dot_a)
     ;
   }
 
