@@ -10,11 +10,34 @@ namespace iotbx { namespace mtz {
   namespace af = scitbx::af;
 
   inline
+  int
+  ccp4_liberr_verbosity(int level)
+  {
+    return CCP4::ccp4_liberr_verbosity(level);
+  }
+
+  inline
   bool
   is_ccp4_nan(float const& datum)
   {
     return CCP4::ccp4_utils_isnan((union float_uint_uchar *) &datum);
   }
+
+  struct observation_arrays
+  {
+    observation_arrays() {}
+
+    observation_arrays(std::size_t size)
+    {
+      indices.reserve(size);
+      data.reserve(size);
+      sigmas.reserve(size);
+    }
+
+    af::shared<cctbx::miller::index<> > indices;
+    af::shared<double> data;
+    af::shared<double> sigmas;
+  };
 
   class column;
   class dataset;
@@ -131,6 +154,56 @@ namespace iotbx { namespace mtz {
       inline
       column
       lookup_column(const char* label) const;
+
+      inline
+      af::shared<cctbx::miller::index<> >
+      valid_indices(const char* column_label) const;
+
+      inline
+      af::shared<double>
+      valid_values(const char* column_label) const;
+
+      inline
+      af::shared<int>
+      valid_integers(const char* column_label) const;
+
+      inline
+      af::shared<cctbx::miller::index<> >
+      valid_indices_anomalous(
+        const char* column_label_plus,
+        const char* column_label_minus) const;
+
+      inline
+      af::shared<double>
+      valid_values_anomalous(
+        const char* column_label_plus,
+        const char* column_label_minus) const;
+
+      af::shared<std::complex<double> >
+      valid_complex(
+        const char* column_label_ampl,
+        const char* column_label_phi);
+
+      af::shared<std::complex<double> >
+      valid_complex_anomalous(
+        const char* column_label_ampl_plus,
+        const char* column_label_phi_plus,
+        const char* column_label_ampl_minus,
+        const char* column_label_phi_minus);
+
+      observation_arrays
+      valid_delta_anomalous(
+        const char* column_label_f_data,
+        const char* column_label_f_sigmas,
+        const char* column_label_d_data,
+        const char* column_label_d_sigmas);
+
+      af::shared<cctbx::hendrickson_lattman<> >
+      valid_hl(
+        const char* column_label_a,
+        const char* column_label_b,
+        const char* column_label_c,
+        const char* column_label_d);
 
     protected:
       boost::shared_ptr<CMtz::MTZ> ptr_;
