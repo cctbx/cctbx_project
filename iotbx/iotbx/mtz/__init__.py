@@ -71,8 +71,9 @@ class Mtz (ext.Mtz):
       for i_dataset in xrange(cryst.ndatasets()):
         dataset = cryst.getDataset(i_dataset)
         column_groups = self.group_columns(crystal_symmetry, dataset)
-        for colum_group in column_groups:
-          result.append(colum_group)
+        for column_group in column_groups:
+          info = info_prefix + column_group.info()
+          result.append(column_group.set_info(info))
     return result
 
   def group_columns(self, crystal_symmetry, dataset):
