@@ -91,6 +91,14 @@ namespace cctbx { namespace sftbx {
 
   namespace detail {
 
+    template <typename NumType>
+    inline
+    NumType
+    abs(const NumType& x) {
+      if (x < NumType(0)) return -x;
+      return x;
+    }
+
     // self-expanding exponent table
     template <typename FloatType>
     class exponent_table
@@ -135,6 +143,7 @@ namespace cctbx { namespace sftbx {
       public:
         caasf_fourier_transformed(
           const CaasfType& caasf,
+          const std::complex<FloatType>& fpfdp,
           const FloatType& w,
           const FloatType& u_incl_extra)
         {
@@ -145,33 +154,44 @@ namespace cctbx { namespace sftbx {
           for(;i<caasf.n_ab();i++) {
             FloatType b_i_b_incl_extra = caasf.b(i) + b_incl_extra;
             FloatType f = std::pow(four_pi / b_i_b_incl_extra, 1.5);
-            a_[i] = w * caasf.a(i) * f;
-            b_[i] = -four_pi_sq / b_i_b_incl_extra;
+            a_real_[i] = w * caasf.a(i) * f;
+            b_real_[i] = -four_pi_sq / b_i_b_incl_extra;
           }
           FloatType f = std::pow(four_pi / b_incl_extra, 1.5);
-          a_[i] = w * caasf.c() * f;
-          b_[i] = -four_pi_sq / b_incl_extra;
+          a_real_[i] = w * (caasf.c() + fpfdp.real()) * f;
+          b_real_[i] = -four_pi_sq / b_incl_extra;
+          a_imag_ = w * fpfdp.imag() * f;
+          b_imag_ = b_real_[i];
         }
 
-        FloatType rho0() const
+        FloatType rho_real_0() const
         {
-          return af::sum(a_.const_ref());
+          return af::sum(a_real_.const_ref());
         }
 
         FloatType
-        rho(exponent_table<FloatType>& exp_table,
-            const FloatType& d_sq) const
+        rho_real(exponent_table<FloatType>& exp_table,
+                 const FloatType& d_sq) const
         {
           FloatType r(0);
-          for (std::size_t i=0;i<a_.size();i++) {
-            r += a_[i] * exp_table(b_[i] * d_sq);
+          for (std::size_t i=0;i<a_real_.size();i++) {
+            r += a_real_[i] * exp_table(b_real_[i] * d_sq);
           }
           return r;
         }
 
+        FloatType
+        rho_imag(exponent_table<FloatType>& exp_table,
+                 const FloatType& d_sq) const
+        {
+          return a_imag_ * exp_table(b_imag_ * d_sq);
+        }
+
       private:
-        af::tiny<FloatType, CaasfType::n_plus_1> a_;
-        af::tiny<FloatType, CaasfType::n_plus_1> b_;
+        af::tiny<FloatType, CaasfType::n_plus_1> a_real_;
+        af::tiny<FloatType, CaasfType::n_plus_1> b_real_;
+        FloatType a_imag_;
+        FloatType b_imag_;
     };
 
     template <typename FloatType>
@@ -190,14 +210,15 @@ namespace cctbx { namespace sftbx {
         : max_d_sq(0)
       {
         af::tiny<FloatType, 3> grid_n_f = grid_n;
-        FloatType rho_cutoff = caasf_ft.rho0() * wing_cutoff;
+        FloatType rho_cutoff = detail::abs(
+          caasf_ft.rho_real_0() * wing_cutoff);
         for(std::size_t i_basis_vec=0;i_basis_vec<3;i_basis_vec++) {
           sfmap::grid_point_element_type ig;
           for (ig = 1; ig < grid_n[i_basis_vec]; ig++) {
             fractional<FloatType> d_frac(0,0,0);
             d_frac[i_basis_vec] = ig / grid_n_f[i_basis_vec];
             FloatType d_sq = ucell.Length2(d_frac);
-            if (caasf_ft.rho(exp_table, d_sq) < rho_cutoff) {
+            if (detail::abs(caasf_ft.rho_real(exp_table, d_sq)) < rho_cutoff) {
               break;
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;
@@ -281,7 +302,8 @@ namespace cctbx { namespace sftbx {
         const sfmap::grid_point_type& grid_physical,
         const FloatType& u_extra = 0.25,
         const FloatType& wing_cutoff = 1.e-3,
-        const FloatType& exp_table_one_over_step_size = -100)
+        const FloatType& exp_table_one_over_step_size = -100,
+        bool electron_density_must_be_positive = true)
         : ucell_(ucell),
           map_(sfmap::accessor_type(grid_logical, grid_physical)),
           u_extra_(u_extra),
@@ -320,11 +342,17 @@ namespace cctbx { namespace sftbx {
           cctbx_assert(!site->isAnisotropic());
           const fractional<FloatType>& coor_frac = site->Coordinates();
           detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
-            site->CAASF(), site->w(), site->Uiso() + u_extra_);
+            site->CAASF(), site->fpfdp(), site->w(), site->Uiso() + u_extra_);
           const sfmap::grid_point_type& grid_nl = map_.accessor().n_logical();
           const sfmap::grid_point_type& grid_np = map_.accessor().n_physical();
           detail::calc_shell<FloatType> shell(
             ucell_, wing_cutoff_, grid_nl, caasf_ft, exp_table);
+          if (electron_density_must_be_positive) {
+            if (   caasf_ft.rho_real_0() < 0
+                || caasf_ft.rho_real(exp_table, shell.max_d_sq) < 0) {
+              throw error("Negative electron density at sampling point.");
+            }
+          }
           detail::array_update_max(max_shell_radii_, shell.radii);
           sfmap::grid_point_type pivot = detail::calc_nearest_grid_point(
             coor_frac, grid_nl);
@@ -353,7 +381,7 @@ namespace cctbx { namespace sftbx {
             FloatType d_sq = c02*c02 + c12*c12 + c22*c22;
             if (d_sq > shell.max_d_sq) continue;
             map_begin[g0112 + detail::mod_positive(gp[2],grid_nl[2])]
-             += caasf_ft.rho(exp_table, d_sq);
+             += caasf_ft.rho_real(exp_table, d_sq);
           }}}
         }
         exp_table_size_ = exp_table.table().size();
@@ -385,7 +413,7 @@ namespace cctbx { namespace sftbx {
         af::ref<std::complex<FloatType> > structure_factors) const
       {
         FloatType norm = ucell_.getVolume()
-                       / af::product(map_.accessor().n_logical().const_ref());
+          / af::product(map_.accessor().n_logical().const_ref());
         eliminate_u_extra(
           ucell_, u_extra_, miller_indices, structure_factors, norm);
       }

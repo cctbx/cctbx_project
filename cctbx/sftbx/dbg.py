@@ -26,6 +26,7 @@ def print_structure_factors(SgInfo,
     volume_per_atom=50.,
     min_distance=1.5,
     general_positions_only=0,
+    random_f_prime_d_min=grid_resolution_factor*d_min,
     anisotropic_displacement_parameters=adp)
   if (0):
     i_select = 3
@@ -45,6 +46,13 @@ def print_structure_factors(SgInfo,
   debug_utils.print_sites(xtal)
   MillerIndices = xutils.build_miller_indices(xtal, d_min)
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
+  if (0):
+    # reset fpfdp to verify that correlation is significantly different from 1.
+    new_sites = shared.XrayScatterer()
+    for site in xtal.Sites:
+      site.set_fpfdp(0j)
+      new_sites.append(site)
+    xtal.Sites = new_sites
   if (use_cns):
     run_cns(elements, xtal, d_min, grid_resolution_factor)
     return
@@ -61,10 +69,12 @@ def print_structure_factors(SgInfo,
     u_extra = adptbx.B_as_U(20)
   wing_cutoff = 1.e-3
   exp_table_one_over_step_size = -100
+  electron_density_must_be_positive = 1
   sampled_density = sftbx.sampled_model_density(
     xtal.UnitCell, xtal.Sites,
     fft.Nreal(), fft.Mreal(),
-    u_extra, wing_cutoff, exp_table_one_over_step_size)
+    u_extra, wing_cutoff, exp_table_one_over_step_size,
+    electron_density_must_be_positive)
   print "u_extra:", sampled_density.u_extra(),
   print "b_extra:", adptbx.U_as_B(sampled_density.u_extra())
   if (1):

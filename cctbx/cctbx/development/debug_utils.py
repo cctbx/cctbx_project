@@ -107,6 +107,8 @@ class random_structure(xutils.symmetrized_sites):
                volume_per_atom = 1000.,
                min_distance = 3.0,
                general_positions_only = 0,
+               random_f_prime_d_min = 0,
+               random_f_double_prime = 0,
                uiso = 0,
                anisotropic_displacement_parameters = 0,
                defer_build = 0):
@@ -129,10 +131,19 @@ class random_structure(xutils.symmetrized_sites):
       general_positions_only = self.general_positions_only,
       grid = grid,
       N_on_grid = N_on_grid)
+    fp = 0
+    fdp = 0
     n = 0
     for Elem, Pos in zip(self.elements, positions):
       n += 1
       SF = CAASF_WK1995(Elem)
+      if (self.random_f_prime_d_min):
+        f0 = SF.stol(1./(2*self.random_f_prime_d_min))
+        assert f0 > 0
+        fp = -min(f0*0.9, random.gauss(f0, f0/3))
+      if (self.random_f_double_prime):
+        fdp = random.gauss(10, 3)
+      fpfdp = complex(fp, fdp)
       U = self.uiso
       if (not U):
         U = 0.01 + abs(random.gauss(0, 0.05))
@@ -146,7 +157,7 @@ class random_structure(xutils.symmetrized_sites):
             for i in xrange(3)] + [0.,0.,0.]
           U = random_rotate_ellipsoid(U)
           U = adptbx.Ucart_as_Ustar(self.UnitCell, U)
-          Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
+          Site = sftbx.XrayScatterer(Elem + str(n), SF, fpfdp, Pos, 1., U)
           Site.ApplySymmetry(
             self.UnitCell, self.SgOps, self.MinMateDistance, 0, 0)
           U = adptbx.Ustar_as_Ucart(self.UnitCell, Site.Uaniso())
@@ -158,7 +169,7 @@ class random_structure(xutils.symmetrized_sites):
             if (min(Ev) > 0.001):
               break
         U = Site.Uaniso()
-      Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
+      Site = sftbx.XrayScatterer(Elem + str(n), SF, fpfdp, Pos, 1., U)
       self.add_site(Site)
 
 def shake_position(xsym, special_position_snap_parameters,
