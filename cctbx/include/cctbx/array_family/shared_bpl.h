@@ -16,6 +16,33 @@
 
 namespace cctbx { namespace af {
 
+  inline void raise_IndexError() {
+    PyErr_SetString(PyExc_IndexError, "index out of range");
+    boost::python::throw_error_already_set();
+  }
+
+  template <typename ElementType>
+  struct shared_items
+  {
+    shared_items() {}
+
+    shared_items(shared<ElementType> const& data)
+    : data_(data)
+    {}
+
+    std::size_t size() { return data_.size(); }
+
+    boost::python::tuple
+    getitem(std::size_t i)
+    {
+      if (i >= data_.size()) raise_IndexError();
+      return boost::python::tuple(
+        boost::python::make_ref(i), boost::python::make_ref(data_[i]));
+    }
+
+    shared<ElementType> data_;
+  };
+
   // A wrapper is used to define additional constructors.
   template <typename ElementType>
   struct shared_wrapper : shared<ElementType>
@@ -44,11 +71,6 @@ namespace cctbx { namespace af {
     }
 
   };
-
-  void raise_IndexError() {
-    PyErr_SetString(PyExc_IndexError, "index out of range");
-    throw boost::python::error_already_set();
-  }
 
   template <typename ElementType>
   struct shared_access
@@ -178,17 +200,16 @@ namespace cctbx { namespace af {
       v.insert(v.end(), other.begin(), other.end());
     }
 
-    // Convert to a regular Python tuple.
     static
-    boost::python::tuple
-    as_tuple(const shared<ElementType>& v)
-    {
-      boost::python::tuple t(v.size());
-      for (std::size_t i = 0; i < v.size(); i++) {
-        t.set_item(i,
-          boost::python::ref(BOOST_PYTHON_CONVERSION::to_python(v[i])));
-      }
-      return t;
+    boost::python::ref
+    indices(shared<ElementType> const& v) {
+      return boost::python::ref(PyRange_New(0, v.size(), 1, 1));
+    }
+
+    static
+    shared_items<ElementType>
+    items(shared<ElementType> const& v) {
+      return shared_items<ElementType>(v);
     }
 
   };
@@ -203,15 +224,25 @@ namespace cctbx { namespace af {
       boost::python::module_builder& module,
       const std::string& python_name)
     {
-      boost::python::class_builder<
+      using namespace boost::python;
+
+      class_builder<shared_items<ElementType> >
+      py_shared_items(module, (python_name+"_items").c_str());
+
+      class_builder<
         shared<ElementType>,
         shared_wrapper<ElementType> >
       py_shared(module, python_name.c_str());
-      boost::python::export_converters(py_shared);
+      export_converters(py_shared);
 
-      py_shared.def(boost::python::constructor<>());
-      py_shared.def(boost::python::constructor<std::size_t>());
-      py_shared.def(boost::python::constructor<boost::python::tuple>());
+      py_shared_items.def(constructor<>());
+      py_shared_items.def(constructor<shared<ElementType> const&>());
+      py_shared_items.def(&shared_items<ElementType>::size, "__len__");
+      py_shared_items.def(&shared_items<ElementType>::getitem, "__getitem__");
+
+      py_shared.def(constructor<>());
+      py_shared.def(constructor<std::size_t>());
+      py_shared.def(constructor<tuple>());
       py_shared.def(&shared_access<ElementType>::size, "size");
       py_shared.def(&shared_access<ElementType>::size, "__len__");
       py_shared.def(&shared_access<ElementType>::capacity, "capacity");
@@ -233,7 +264,8 @@ namespace cctbx { namespace af {
       py_shared.def(&shared_access<ElementType>::resize, "resize");
       py_shared.def(&shared_access<ElementType>::clear, "clear");
       py_shared.def(&shared_access<ElementType>::append, "append");
-      py_shared.def(&shared_access<ElementType>::as_tuple, "as_tuple");
+      py_shared.def(&shared_access<ElementType>::indices, "indices");
+      py_shared.def(&shared_access<ElementType>::items, "items");
 
       return py_shared;
     }
