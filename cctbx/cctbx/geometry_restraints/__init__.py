@@ -256,6 +256,39 @@ class planarity_proxy_registry(proxy_registry_base):
 
 class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
 
+  def show_histogram_of_model_distances(self,
+        sites_cart,
+        n_slots=5,
+        cutoff_warn_small=0.5,
+        cutoff_warn_large=5,
+        cutoff_warn_extreme=20,
+        f=None,
+        prefix=""):
+    if (self.n_total() == 0): return
+    if (f is None): f = sys.stdout
+    print >> f, "%sHistogram of bond lengths:" % prefix
+    histogram = flex.histogram(
+      data=bond_distances_model(
+        sites_cart=sites_cart,
+        sorted_asu_proxies=self),
+      n_slots=n_slots)
+    low_cutoff = histogram.data_min()
+    for i,n in enumerate(histogram.slots()):
+      high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
+      print >> f, "%s  %8.2f - %8.2f: %d" % (
+        prefix, low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+    if (cutoff_warn_small is not None
+        and histogram.data_min() < cutoff_warn_small):
+      print >> f, "%sWarning: very small bond lengths." % prefix
+    if (cutoff_warn_extreme is not None
+        and histogram.data_max() > cutoff_warn_extreme):
+      print >> f, "%sWarning: extremely large bond lengths." % prefix
+    elif (cutoff_warn_large is not None
+          and histogram.data_max() > cutoff_warn_large):
+      print >> f, "%sWarning: very large bond lengths." % prefix
+    return histogram
+
   def show_sorted_by_residual(self,
         sites_cart,
         labels=None,
@@ -321,7 +354,7 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
             atom_i_atom_j = atom_i_atom_j_format % ("atom i", "atom j")
           elif (min(max_label_lengths) >= 1):
             atom_i_atom_j = atom_i_atom_j_format % ("i", "j")
-        print >> f, "%sBonded interactions sorted by residual:" % prefix
+        print >> f, "%sBond restraints sorted by residual:" % prefix
         print >> f, "%s%sideal  model  delta   weight residual" % (
           prefix, atom_i_atom_j),
         if (n_asu > 0):
@@ -342,6 +375,27 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
 
 class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
 
+  def show_histogram_of_deltas(self,
+        sites_cart,
+        n_slots=5,
+        f=None,
+        prefix=""):
+    if (self.size() == 0): return
+    if (f is None): f = sys.stdout
+    print >> f, "%sHistogram of dihedral angle deviations from ideal:" % prefix
+    histogram = flex.histogram(
+      data=flex.abs(dihedral_deltas(
+        sites_cart=sites_cart,
+        proxies=self)),
+      n_slots=n_slots)
+    low_cutoff = histogram.data_min()
+    for i,n in enumerate(histogram.slots()):
+      high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
+      print >> f, "%s  %8.2f - %8.2f: %d" % (
+        prefix, low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+    return histogram
+
   def show_sorted_by_residual(self,
         sites_cart,
         labels=None,
@@ -357,7 +411,7 @@ class _shared_dihedral_proxy(boost.python.injector, shared_dihedral_proxy):
     i_proxies_sorted = flex.sort_permutation(data=residuals, reverse=True)
     if (max_lines is not None and i_proxies_sorted.size() > max_lines+1):
       i_proxies_sorted = i_proxies_sorted[:max_lines]
-    print >> f, "%sDihedral angles sorted by residual:" % prefix
+    print >> f, "%sDihedral angle restraints sorted by residual:" % prefix
     for i_proxy in i_proxies_sorted:
       proxy = self[i_proxy]
       restraint = dihedral(
