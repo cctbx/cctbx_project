@@ -159,7 +159,7 @@ namespace {
           (arg_("proxies")))
         .def("n_total", &w_t::n_total)
         .def_readonly("simple", &w_t::simple)
-        .def_readonly("sym", &w_t::sym)
+        .def_readonly("asu", &w_t::asu)
       ;
     }
   };

@@ -10,7 +10,7 @@ namespace cctbx { namespace restraints {
   typedef direct_space_asu::asu_mappings<>         asu_mappings;
 
   template <typename SimpleProxyType,
-            typename SymProxyType>
+            typename AsuProxyType>
   class sorted_asu_proxies
   {
     public:
@@ -27,7 +27,7 @@ namespace cctbx { namespace restraints {
         asu_mappings_(asu_mappings.get())
       {
         if (asu_mappings_ != 0) {
-          sym_active_flags.resize(
+          asu_active_flags.resize(
             asu_mappings_->mappings_const_ref().size(), false);
         }
       }
@@ -54,7 +54,7 @@ namespace cctbx { namespace restraints {
       }
 
       bool
-      process(SymProxyType const& proxy)
+      process(AsuProxyType const& proxy)
       {
         CCTBX_ASSERT(asu_mappings_ != 0 && proxy.is_active());
         if (asu_mappings_->is_simple_interaction(proxy)) {
@@ -68,30 +68,30 @@ namespace cctbx { namespace restraints {
       }
 
       void
-      process(af::const_ref<SymProxyType> const& proxies)
+      process(af::const_ref<AsuProxyType> const& proxies)
       {
         for(std::size_t i=0;i<proxies.size();i++) process(proxies[i]);
       }
 
       void
-      push_back(SymProxyType const& proxy)
+      push_back(AsuProxyType const& proxy)
       {
         CCTBX_ASSERT(asu_mappings_ != 0);
-        CCTBX_ASSERT(proxy.i_seq < sym_active_flags.size());
-        CCTBX_ASSERT(proxy.j_seq < sym_active_flags.size());
-        sym.push_back(proxy);
-        sym_active_flags[proxy.i_seq] = true;
-        sym_active_flags[proxy.j_seq] = true;
+        CCTBX_ASSERT(proxy.i_seq < asu_active_flags.size());
+        CCTBX_ASSERT(proxy.j_seq < asu_active_flags.size());
+        asu.push_back(proxy);
+        asu_active_flags[proxy.i_seq] = true;
+        asu_active_flags[proxy.j_seq] = true;
       }
 
       void
-      push_back(af::const_ref<SymProxyType> const& proxies)
+      push_back(af::const_ref<AsuProxyType> const& proxies)
       {
         for(std::size_t i=0;i<proxies.size();i++) push_back(proxies[i]);
       }
 
       std::size_t
-      n_total() const { return simple.size() + sym.size(); }
+      n_total() const { return simple.size() + asu.size(); }
 
     protected:
       boost::shared_ptr<direct_space_asu::asu_mappings<> > asu_mappings_owner_;
@@ -99,8 +99,8 @@ namespace cctbx { namespace restraints {
 
     public:
       af::shared<SimpleProxyType> simple;
-      af::shared<SymProxyType> sym;
-      std::vector<bool> sym_active_flags;
+      af::shared<AsuProxyType> asu;
+      std::vector<bool> asu_active_flags;
   };
 
 }} // namespace cctbx::restraints
