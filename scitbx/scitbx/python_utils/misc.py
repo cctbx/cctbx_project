@@ -48,3 +48,20 @@ def import_ext(name):
   if (previous_dlopenflags != None):
     sys.setdlopenflags(previous_dlopenflags)
   return mod
+
+class line_feeder:
+
+  def __init__(self, f):
+    self.f = iter(f)
+    self.eof = False
+
+  def __iter__(self):
+    return self
+
+  def next(self):
+    if (not self.eof):
+      try:
+        return self.f.next()[:-1]
+      except StopIteration:
+        self.eof = True
+    return ""
