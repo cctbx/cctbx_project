@@ -13,25 +13,33 @@ from libtbx.itertbx import count
 import math
 import sys
 
+def hexagonal_sampling_cell(point_distance):
+  return uctbx.unit_cell((
+    point_distance, point_distance, point_distance*math.sqrt(8/3.),
+    90, 90, 120))
+
+def compare_points(a, b):
+  for x,y in zip(a,b):
+    if (x < y): return -1
+    if (x > y): return 1
+  return 0
+
 class hexagonal_box:
 
-  def __init__(self, vertices_cart, point_distance):
-    self.hexagonal_cell = uctbx.unit_cell((
-      point_distance, point_distance, point_distance*math.sqrt(8/3.),
-      90, 90, 120))
-    hex_matrix = matrix.sqr(self.hexagonal_cell.fractionalization_matrix())
-    if (len(vertices_cart) == 0):
-      self.min = None
-      self.max = None
-    else:
-      vertex_hex = hex_matrix * matrix.col(vertices_cart[0])
-      self.min = list(vertex_hex)
-      self.max = list(vertex_hex)
-      for vertex_frac in vertices_cart[1:]:
-        vertex_hex = hex_matrix * matrix.col(vertex_frac)
-        for i in xrange(3):
-          self.min[i] = min(self.min[i], vertex_hex[i])
-          self.max[i] = max(self.max[i], vertex_hex[i])
+  def __init__(self, hex_cell, vertices_cart):
+    assert len(vertices_cart) > 0
+    hex_matrix = matrix.sqr(hex_cell.fractionalization_matrix())
+    vertex_hex = hex_matrix * matrix.col(vertices_cart[0])
+    self.min = list(vertex_hex)
+    self.max = list(vertex_hex)
+    self.lower = list(vertex_hex)
+    for vertex_frac in vertices_cart[1:]:
+      vertex_hex = hex_matrix * matrix.col(vertex_frac)
+      for i in xrange(3):
+        self.min[i] = min(self.min[i], vertex_hex[i])
+        self.max[i] = max(self.max[i], vertex_hex[i])
+      if (compare_points(self.lower, vertex_hex) > 0):
+        self.lower = vertex_hex
 
 def hex_indices_as_site(point, layer=0):
   if (layer % 2 == 0):
@@ -67,12 +75,13 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
   if (buffer_thickness < 0):
     buffer_thickness = point_distance * (2/3. * (.5 * math.sqrt(3)))
   float_asu_buffer = float_asu.add_buffer(thickness=buffer_thickness)
+  hex_cell = hexagonal_sampling_cell(point_distance=point_distance)
   hex_box = hexagonal_box(
-    vertices_cart=float_asu.volume_vertices(cartesian=0001),
-    point_distance=point_distance)
+    hex_cell=hex_cell,
+    vertices_cart=float_asu.volume_vertices(cartesian=0001))
   hex_box_buffer = hexagonal_box(
-    vertices_cart=float_asu_buffer.volume_vertices(cartesian=0001),
-    point_distance=point_distance)
+    hex_cell=hex_cell,
+    vertices_cart=float_asu_buffer.volume_vertices(cartesian=0001))
   box_lower = []
   box_upper = []
   for i in xrange(3):
@@ -80,17 +89,17 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
       box_lower.append(0)
       box_upper.append(0)
     else:
-      n = iceil(abs(hex_box.max[i]-hex_box.min[i]))
-      box_lower.append(min(-2,ifloor(hex_box_buffer.min[i]-hex_box.min[i])))
+      n = iceil(abs(hex_box.max[i]-hex_box.lower[i]))
+      box_lower.append(min(-2,ifloor(hex_box_buffer.min[i]-hex_box.lower[i])))
       box_upper.append(n+max(2,iceil(hex_box_buffer.max[i]-hex_box.max[i])))
   hex_to_frac_matrix = (
       matrix.sqr(float_asu.unit_cell().fractionalization_matrix())
-    * matrix.sqr(hex_box.hexagonal_cell.orthogonalization_matrix()))
+    * matrix.sqr(hex_cell.orthogonalization_matrix()))
   sites_frac = labeled_sites()
   for point in flex.nested_loop(begin=box_lower,
                                 end=box_upper,
                                 open_range=00000):
-    site_hex = matrix.col(hex_box.min) \
+    site_hex = matrix.col(hex_box.lower) \
              + matrix.col(hex_indices_as_site(point))
     site_frac = hex_to_frac_matrix * site_hex
     if (float_asu_buffer.is_inside(site_frac)):
@@ -292,7 +301,8 @@ def run_call_back(flags, space_group_info):
       flag_write_pdb=flags.write_pdb)
   if (flags.write_pdb):
     dump_pdb("hex_sites.pdb", crystal_symmetry, sites_cart.sites)
-  # exercise all_twelve_neighbors
+
+def exercise_all_twelve_neighbors():
   sites_cart = hexagonal_close_packing_sampling(
     crystal_symmetry=crystal.symmetry(
       unit_cell=(14.4225, 14.4225, 14.4225, 90, 90, 90),
@@ -313,6 +323,7 @@ def run():
     "strictly_inside",
     "all_twelve_neighbors",
     "write_pdb"))
+  exercise_all_twelve_neighbors()
   print "OK"
 
 if (__name__ == "__main__"):
