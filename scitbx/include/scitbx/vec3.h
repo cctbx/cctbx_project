@@ -48,6 +48,12 @@ namespace scitbx {
         for(std::size_t i=0;i<3;i++) this->elems[i] = a[i];
       }
 
+      //! Test if all elements are 0.
+      bool is_zero() const
+      {
+        return !(this->elems[0] || this->elems[1] || this->elems[2]);
+      }
+
       //! Cross product.
       vec3 cross(vec3 const& other) const
       {

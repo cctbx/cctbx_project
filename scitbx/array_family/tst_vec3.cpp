@@ -82,6 +82,8 @@ int main(int argc, char* argv[])
       vec3<int> t(a);
       check_true(__LINE__, (t %= 2) == vec3<int>(1,0,1));
     }
+    check_true(__LINE__, vec3<int>(0,0,0).is_zero());
+    check_false(__LINE__, vec3<int>(0,1,0).is_zero());
     check_true(__LINE__, -a == vec3<int>(-1,-2,-3));
     check_true(__LINE__, +a == a);
     check_true(__LINE__, a.cross(b) == vec3<int>(-3,6,-3));
