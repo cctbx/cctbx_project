@@ -58,6 +58,19 @@ namespace {
       result, result.size());
   }
 
+  af::shared<double>
+  slice(
+    af::const_ref<cctbx::hendrickson_lattman<> > const& self,
+    unsigned i_param)
+  {
+    CCTBX_ASSERT(i_param < 4);
+    af::shared<double> result((af::reserve(self.size())));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i][i_param]);
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
   void wrap_flex_hendrickson_lattman()
@@ -76,6 +89,7 @@ namespace {
          arg_("max_figure_of_merit"))))
       .def("__add__", f_w::add_a_a)
       .def("__iadd__", f_w::iadd_a_a)
+      .def("slice", slice, (arg_("self"), arg_("i_param")))
     ;
   }
 

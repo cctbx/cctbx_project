@@ -40,6 +40,12 @@ def exercise_flex_hendrickson_lattman():
     max_figure_of_merit=1-1.e-6)
   assert approx_equal(a, [(2.2684820912654264, -3.1758749277715967, 0, 0),
                           (-0.3295836866004328, 0.43944491546724396, 0, 0)])
+  assert approx_equal(
+    [a.slice(i) for i in xrange(4)],
+    [[2.2684820912654264, -0.3295836866004328],
+     [-3.1758749277715967, 0.43944491546724396],
+     [0.0, 0.0],
+     [0.0, 0.0]])
 
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()
