@@ -1,7 +1,8 @@
+import os
 Import("env_etc")
 
-env_etc.mmtbx_dist = env_etc.libtbx_env.dist_path("cctbx")
-env_etc.mmtbx_include = env_etc.libtbx_env.LIBTBX_DIST_ROOT
+env_etc.mmtbx_dist = env_etc.libtbx_env.dist_path("mmtbx")
+env_etc.mmtbx_include = os.path.dirname(env_etc.mmtbx_dist)
 
 env_etc.mmtbx_common_includes = [
   env_etc.libtbx_include,

@@ -37,7 +37,7 @@ xray
   end
 end
   """
-  return libtbx.env.under_dist_root("regression/misc/cns.map")
+  return libtbx.env.under_dist("libtbx", "../regression/misc/cns.map")
 
 def read_xplor(file_name):
   a = iotbx.xplor.map.reader(file_name=file_name)
