@@ -32,9 +32,6 @@ env = env_base.Copy(
   CPPPATH=env_etc.iotbx_common_includes,
 )
 
-if (sys.platform == "tru64_cxx"):
-  env.Append(SHLINKFLAGS=["pthread",])
-
 envlm = env.Copy(
   LIBS=env_etc.libm
 )
@@ -63,6 +60,9 @@ if (not env_etc.no_boost_python):
   
   env_iotbx_boost_python_ext.Replace(
     CPPPATH=env_etc.iotbx_common_includes + [env_etc.python_include])
+
+  if (env_etc.compiler == "tru64_cxx"):
+    env_iotbx_boost_python_ext.Append(LIBS=["pthread",])
 
   Export("env_iotbx_boost_python_ext")
 
