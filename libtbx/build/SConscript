@@ -35,10 +35,11 @@ assert env_etc.compiler in (
   #"win32_mwcc",
   "unix_gcc",
   "tru64_cxx",
-  #"irix_CC",
+  "irix_CC",
 )
 
 if (sys.platform == "win32"):
+  env_etc.is_win32 = 1
   env_base = Environment(ENV=os.environ)
   env_etc.python_include = r"c:\Python22\include"
   env_etc.libs_python = ["python22"]
@@ -55,15 +56,20 @@ if (sys.platform == "win32"):
         /GR /GX
         /Zm800
     """)
-    env_etc.shlinkflags_bpl="/nologo /incremental:no /dll"
+    env_etc.shlinkflags = "/nologo /incremental:no /dll"
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 else:
+  env_etc.is_win32 = 0
   env_base = Environment(ENV=os.environ,
     # XXX hack to create a default configuration that we can customize
     tools=['g++', 'gnulink', 'ar'])
-  env_etc.python_include = "/usr/local_cci/Python-2.2.1/include/python2.2"
+  if (env_etc.compiler == "irix_CC"): # XXX
+    env_etc.python_include = "/yusr/pom1/rwgrosse/tools/irix/include/python2.2"
+  else:
+    env_etc.python_include = "/usr/local_cci/Python-2.2.1/include/python2.2"
   env_etc.libs_python = []
   env_etc.libpath_python = []
   env_etc.extension_module_suffix = ".so"
@@ -97,6 +103,21 @@ else:
       -g
     """)
     env_etc.shlinkflags_bpl="-shared"
+  elif (env_etc.compiler == "irix_CC"):
+    env_base.Replace(
+      CXX="CC -LANG:std -n32 -mips4",
+      LINK="CC -LANG:std -n32 -mips4 -LD_MSG:off=15,84",
+      SHCXX="CC -LANG:std -n32 -mips4",
+      SHLINK="CC -LANG:std -n32 -mips4",
+    )
+    env_etc.cxxflags_base = Split("""
+        -I/yusr/pom1/rwgrosse/bpl2/boost/boost/compatibility/cpp_c_headers
+        -woff 1001,1234,1311,1682,3439
+        -O2 -OPT:Olimit=0
+        -DNDEBUG
+    """)
+    env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 env_etc.cxxflags_bpl_defines_base = Split("""

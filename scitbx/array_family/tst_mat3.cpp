@@ -1,3 +1,4 @@
+#include <cmath>
 #include <scitbx/mat3.h>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/simple_io.h>
