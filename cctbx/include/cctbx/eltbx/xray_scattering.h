@@ -137,7 +137,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
 
 #     include <cctbx/eltbx/xray_scattering_gaussian_at.h>
 
-    private:
+    protected:
       af::small<float, max_n_ab> a_;
       af::small<float, max_n_ab> b_;
       float c_;
