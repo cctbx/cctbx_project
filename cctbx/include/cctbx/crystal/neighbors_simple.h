@@ -32,12 +32,10 @@ namespace neighbors {
        */
       simple_pair_generator(
         asu_mappings_t* asu_mappings,
-        FloatType const& distance_cutoff=0,
-        bool full_matrix=false)
+        FloatType const& distance_cutoff=0)
       :
         asu_mappings_(asu_mappings),
-        distance_cutoff_sq_(distance_cutoff*distance_cutoff),
-        full_matrix_(full_matrix)
+        distance_cutoff_sq_(distance_cutoff*distance_cutoff)
       {
         CCTBX_ASSERT(distance_cutoff >= 0);
         asu_mappings->lock();
@@ -47,10 +45,6 @@ namespace neighbors {
       //! Square of value as passed to the constructor.
       FloatType
       distance_cutoff_sq() const { return distance_cutoff_sq_; }
-
-      //! Value as passed to the constructor.
-      bool
-      full_matrix() const { return full_matrix_; }
 
       /*! \brief True if the last pair returned by next() was the last
           one to be generated.
@@ -79,6 +73,7 @@ namespace neighbors {
       restart()
       {
         at_end_ = false;
+        is_swapped_ = false;
         incr(true);
         while (!at_end_ && pair_.dist_sq > distance_cutoff_sq_) {
           incr(false);
@@ -108,8 +103,8 @@ namespace neighbors {
     protected:
       direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
       FloatType distance_cutoff_sq_;
-      bool full_matrix_;
       bool at_end_;
+      bool is_swapped_;
       direct_space_asu::asu_mapping_index_pair_and_diff<FloatType> pair_;
 
       void
@@ -123,13 +118,16 @@ namespace neighbors {
   {
     af::const_ref<typename asu_mappings_t::array_of_mappings_for_one_site>
       const& mappings = asu_mappings_->mappings_const_ref();
-    if (!start) goto continue_after_return;
+    if (!start) {
+      if (!is_swapped_) goto continue_after_return;
+      goto continue_after_return_swapped;
+    }
     pair_.dist_sq  = -1;
     pair_.diff_vec = cartesian<FloatType>(0,0,0);
     for(pair_.i_seq=0;
         pair_.i_seq<mappings.size();
         pair_.i_seq++) {
-      for(pair_.j_seq=(full_matrix_ ? 0 : pair_.i_seq);
+      for(pair_.j_seq=pair_.i_seq;
           pair_.j_seq<mappings.size();
           pair_.j_seq++) {
         for(pair_.j_sym=(pair_.i_seq == pair_.j_seq ? 1 : 0);
@@ -143,6 +141,24 @@ namespace neighbors {
           }
           return;
           continue_after_return:;
+        }
+        if (pair_.j_seq != pair_.i_seq) {
+          std::swap(pair_.i_seq, pair_.j_seq);
+          is_swapped_ = true;
+          for(pair_.j_sym=1;
+              pair_.j_sym<mappings[pair_.j_seq].size();
+              pair_.j_sym++) {
+            if (distance_cutoff_sq_ != 0) {
+              pair_.diff_vec =
+                  mappings[pair_.j_seq][pair_.j_sym].mapped_site()
+                - mappings[pair_.i_seq][0].mapped_site();
+              pair_.dist_sq = pair_.diff_vec.length_sq();
+            }
+            return;
+            continue_after_return_swapped:;
+          }
+          std::swap(pair_.i_seq, pair_.j_seq);
+          is_swapped_ = false;
         }
       }
     }

@@ -125,10 +125,17 @@ def show_distances(structure, distance_cutoff=3.5):
   asu_mappings = structure.asu_mappings(
     buffer_thickness=distance_cutoff_plus)
   cb_op_to_niggli_cell = structure.change_of_basis_op_to_niggli_cell()
-  pair_generator = crystal.neighbors_fast_pair_generator(
+  pair_generator_simple = crystal.neighbors_simple_pair_generator(
     asu_mappings=asu_mappings,
-    distance_cutoff=distance_cutoff_plus,
-    full_matrix=0001)
+    distance_cutoff=distance_cutoff_plus)
+  pair_generator_fast = crystal.neighbors_fast_pair_generator(
+    asu_mappings=asu_mappings,
+    distance_cutoff=distance_cutoff_plus)
+  n_simple = pair_generator_simple.count_pairs()
+  n_fast = pair_generator_fast.count_pairs()
+  assert n_fast == n_simple, (n_fast, n_simple)
+  pair_generator = pair_generator_fast
+  pair_generator.restart()
   distances_list = [flex.double()
     for i in xrange(structure.scatterers().size())]
   pairs_list = [[]

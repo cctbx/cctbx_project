@@ -130,7 +130,6 @@ def exercise_direct_space_asu():
         asu_mappings.r_inv_cart(i_seq=i_seq, i_sym=i_sym),
         (o*r*f).elems)
   pair_generator = crystal.neighbors_simple_pair_generator(asu_mappings)
-  assert not pair_generator.full_matrix()
   assert not pair_generator.at_end()
   assert len(asu_mappings.mappings()[1]) == 6
   index_pairs = []
@@ -141,6 +140,7 @@ def exercise_direct_space_asu():
   assert index_pairs == [
     (0,0,1),(0,0,2),(0,0,3),(0,0,4),
     (0,1,0),(0,1,1),(0,1,2),(0,1,3),(0,1,4),(0,1,5),
+    (1,0,1),(1,0,2),(1,0,3),(1,0,4),
     (1,1,1),(1,1,2),(1,1,3),(1,1,4),(1,1,5)]
   for two_flag,buffer_thickness,expected_index_pairs,expected_n_boxes in [
     (00000, 0.04, [], (1,1,1)),
@@ -182,13 +182,11 @@ def exercise_direct_space_asu():
     assert index_pairs == expected_index_pairs
     simple_pair_generator = crystal.neighbors_simple_pair_generator(
       asu_mappings=asu_mappings,
-      distance_cutoff=100,
-      full_matrix=00000)
+      distance_cutoff=100)
     assert approx_equal(simple_pair_generator.distance_cutoff_sq(), 100*100)
     fast_pair_generator = crystal.neighbors_fast_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100,
-      full_matrix=00000,
       epsilon=1.e-6)
     assert approx_equal(fast_pair_generator.distance_cutoff_sq(), 100*100)
     assert approx_equal(fast_pair_generator.epsilon()/1.e-6, 1)
