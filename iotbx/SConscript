@@ -22,7 +22,7 @@ mycxxflags_base = env_etc.cxxflags_base[:]
 
 if (sys.platform == "win32"):
   myccflags_base.extend(['-D_MVS','-Di386'])
-  mycxxflags_base.extend(['-D_MVS','-Di386'])  
+  mycxxflags_base.extend(['-D_MVS','-Di386'])
 
 
 env = env_base.Copy(
@@ -55,9 +55,9 @@ if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
 
   env_iotbx_boost_python_ext = env_boost_python_ext.Copy()
-  env_iotbx_boost_python_ext.Replace(                                           
-    SHCXXFLAGS=mycxxflags_base,)                                                
-  
+  env_iotbx_boost_python_ext.Replace(
+    SHCXXFLAGS=mycxxflags_base,)
+
   env_iotbx_boost_python_ext.Replace(
     CPPPATH=env_etc.iotbx_common_includes + [env_etc.python_include])
 
@@ -74,3 +74,4 @@ if (not env_etc.no_boost_python):
   SConscript("detectors/SConscript")
   SConscript("mtz/boost_python/SConscript")
   SConscript("xplor/boost_python/SConscript")
+  SConscript("misc/boost_python/SConscript")
