@@ -109,6 +109,12 @@ def write_incomplete_libtbx_environment(f):
     for line in message: print >> f, '  echo %s' % line
     print >> f, '  echo.'
 
+def open_info(path, mode="w", info=" "):
+  print info, os.path.basename(path)
+  try: return open(path, mode)
+  except IOError, e:
+    raise UserError(str(e))
+
 class common_setpaths:
 
   def __init__(self, env, shell, suffix):
@@ -203,12 +209,6 @@ def _windows_pathext():
 
 if (os.name == "nt"):
   windows_pathext = _windows_pathext()
-
-def open_info(path, mode="w", info="Creating:"):
-  print info, '"%s"'%path
-  try: return open(path, mode)
-  except IOError, e:
-    raise UserError(str(e))
 
 def remove_or_rename(path):
   if (os.path.isfile(path)):
@@ -769,8 +769,7 @@ class environment:
       print >> f, ':end_of_script'
 
   def write_SConstruct(self):
-    SConstruct_path = self.under_build("SConstruct")
-    f = open_info(SConstruct_path)
+    f = open_info(self.under_build("SConstruct"))
     print >> f, 'SConsignFile()'
     for path in self.repository_paths:
       print >> f, 'Repository(r"%s")' % path
@@ -825,6 +824,7 @@ class environment:
           print " ", module_name
         print "***********************************"
       remove_or_rename(self.under_build("SConstruct"))
+    print 'Creating files in build directory "%s":' % self.build_path
     for suffix in ["", "_all", "_debug"]:
       if (hasattr(os, "symlink")):
         self.write_setpaths_sh(suffix)
