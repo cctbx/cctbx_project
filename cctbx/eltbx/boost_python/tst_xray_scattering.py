@@ -1,4 +1,5 @@
 from cctbx.eltbx import xray_scattering
+from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import pickle
 import math
@@ -31,6 +32,17 @@ def exercise_gaussian():
   assert g.array_of_a() == ()
   assert g.array_of_b() == ()
   assert approx_equal(g.c(), -2)
+  g = xray_scattering.gaussian(flex.double((1,2,3,4)))
+  assert approx_equal(g.array_of_a(), (1,3))
+  assert approx_equal(g.array_of_b(), (2,4))
+  assert approx_equal(g.c(), 0)
+  assert not g.use_c()
+  g = xray_scattering.gaussian(flex.double((1,2,3,4)), 0, 0001)
+  assert approx_equal(g.c(), 0)
+  assert g.use_c()
+  g = xray_scattering.gaussian(flex.double((1,2,3,4)), 5)
+  assert approx_equal(g.c(), 5)
+  assert g.use_c()
   g = xray_scattering.gaussian((1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5), 6)
   assert g.n_terms() == 5
   assert approx_equal(g.array_of_a(),(1,-2,3,-4,5))
@@ -55,6 +67,59 @@ def exercise_gaussian():
   assert approx_equal(l.array_of_b(), g.array_of_b())
   assert approx_equal(l.c(), g.c())
   assert not l.use_c()
+
+def exercise_n_gaussian():
+  assert xray_scattering.n_gaussian_table_size() == 212
+  assert xray_scattering.n_gaussian_table_index("H") == 0
+  assert xray_scattering.n_gaussian_table_index("Pu6+") == 211
+  for n_terms in [6,5,4,3,2,1]:
+    e = xray_scattering.n_gaussian_table_entry(0, n_terms)
+    assert e.label() == "H"
+    g = e.gaussian()
+    assert g.n_terms() == n_terms
+    assert approx_equal(g.at_x(0), 1, eps=0.01+1.e-6)
+    assert e.max_stol() > 0
+    assert e.d_min() > 0
+    assert e.max_relative_error() > 0
+  for i_entry in xrange(xray_scattering.n_gaussian_table_size()):
+    for n_terms in [6,5,4,3,2,1]:
+      e = xray_scattering.n_gaussian_table_entry(i_entry, n_terms)
+      assert e.gaussian().n_terms() == n_terms
+      f = xray_scattering.n_gaussian_table_entry(e.label(), n_terms)
+      assert f.label() == e.label()
+      assert f.gaussian().n_terms() == n_terms
+    for d_min in [0,10]:
+      for max_relative_error in [0,0.5]:
+        e = xray_scattering.n_gaussian_table_entry(
+          i_entry, d_min, max_relative_error)
+        f = xray_scattering.n_gaussian_table_entry(
+          e.label(), d_min, max_relative_error)
+        assert f.label() == e.label()
+        if (d_min == 0):
+          n_terms = 6
+        else:
+          n_terms = 1
+        assert e.gaussian().n_terms() == n_terms
+        assert f.gaussian().n_terms() == n_terms
+  label = "Be"
+  be_max_stols = []
+  be_max_relative_errors = []
+  for n_terms in [6,5,4,3,2,1]:
+    e = xray_scattering.n_gaussian_table_entry(label, n_terms)
+    be_max_stols.append(e.max_stol())
+    be_max_relative_errors.append(e.max_relative_error())
+  for n_terms,stol,max_relative_error in zip([6,5,4,3,2,1],
+                                             be_max_stols,
+                                             be_max_relative_errors):
+    e = xray_scattering.n_gaussian_table_entry(
+      "Be", 1/(2*stol)+1.e-6, max_relative_error+1.e-6)
+    assert e.gaussian().n_terms() == n_terms
+    assert approx_equal(e.max_stol(), stol)
+    if (n_terms < 6):
+      e = xray_scattering.n_gaussian_table_entry(
+        "Be", 1/(2*stol)-1.e-6, max(be_max_relative_errors)+1.e-6)
+      assert e.gaussian().n_terms() == min(n_terms+1, 6)
+  assert be_max_relative_errors[1] > be_max_relative_errors[2]
 
 def exercise_it1992():
   e = xray_scattering.it1992("c1")
@@ -153,6 +218,7 @@ def ensure_correct_element_symbol():
 
 def run():
   exercise_gaussian()
+  exercise_n_gaussian()
   exercise_it1992()
   exercise_wk1995()
   ensure_common_symbols()

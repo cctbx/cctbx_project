@@ -6,8 +6,8 @@ namespace n_gaussian { namespace raw {
 
   struct entry
   {
-    const double* stols;
-    const double* max_errors;
+    const double* max_stols;
+    const double* max_relative_errors;
     const double** coeff;
   };
 
@@ -16,6 +16,9 @@ namespace n_gaussian { namespace raw {
 
   const char**
   get_labels();
+
+  unsigned int
+  get_table_size();
 
   const entry*
   get_table();

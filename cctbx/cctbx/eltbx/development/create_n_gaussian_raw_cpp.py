@@ -41,7 +41,7 @@ def write_fit_group(f, label, group):
   s = "D %s_s[] = {" % id
   for fit in group:
     s += " " + str(fit.stol) + ","
-  s += " 0 };"
+  s = s[:-1] + " };"
   print >> f, s
   print >> f, "D %s_e[] = {" % id
   for fit in group:
@@ -50,7 +50,8 @@ def write_fit_group(f, label, group):
     print >> f, s
   print >> f, "};"
   labels = []
-  for fit in group:
+  for fit_unsorted in group:
+    fit = fit_unsorted.sort()
     lbl = "%s_%d" % (id, fit.n_terms())
     if (fit.use_c()): lbl += "c"
     print >> f, "D %s[] = {" % lbl
@@ -74,27 +75,27 @@ def write_labels(f, labels):
   print >> f, """\
 static const char*
 labels[] = {"""
+  last_label = labels[-1]
   for label in labels:
     assert not '"' in label
-    print >> f, '"%s",' % label
-  print >> f, """\
-0
-};
-"""
+    c = ","
+    if (label == last_label): c = ""
+    print >> f, '"%s"%s' % (label, c)
+  print >> f, "};"
 
 def write_table(f, labels):
   print >> f, """\
 static const cctbx::eltbx::xray_scattering::n_gaussian::raw::entry
 table[] = {"""
+  last_label = labels[-1]
   for label in labels:
     id = identifier(label)
-    print >> f, '%s_s, %s_e, %s_c,' % (id, id, id)
-  print >> f, """\
-0, 0, 0
-};
-"""
+    c = ","
+    if (label == last_label): c = ""
+    print >> f, '%s_s, %s_e, %s_c%s' % (id, id, id, c)
+  print >> f, "};"
 
-def write_tail(f, localtime):
+def write_tail(f, localtime, table_size):
   print >> f, """\
 } // namespace <anonymous>
 
@@ -107,11 +108,14 @@ namespace n_gaussian { namespace raw {
   const char**
   get_labels() { return labels; }
 
+  unsigned int
+  get_table_size() { return %dU; }
+
   const entry*
   get_table() { return table; }
 
 }}}}} // namespace cctbx::eltbx::xray_scattering::n_gaussian::raw""" % (
-  "%04d_%02d_%02d_%02d%02d" % localtime[:5])
+  "%04d_%02d_%02d_%02d%02d" % localtime[:5], table_size)
 
 def run(gaussian_fit_pickle_file_names):
   localtime = time.localtime()
@@ -148,7 +152,7 @@ def run(gaussian_fit_pickle_file_names):
     write_fit_group(f, label, fits.all[label])
   write_labels(f, present)
   write_table(f, present)
-  write_tail(f, localtime)
+  write_tail(f, localtime, len(present))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
