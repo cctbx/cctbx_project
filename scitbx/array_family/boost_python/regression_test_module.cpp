@@ -108,7 +108,8 @@ namespace scitbx { namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module("scitbx_boost.array_family.flex");
+    scitbx::boost_python::import_module(
+      "scitbx_boost.array_family.flex_scitbx");
 
     def("std_vector", std_vector);
     def("std_list", std_list);

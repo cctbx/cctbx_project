@@ -156,6 +156,17 @@ int main(int argc, char* argv[])
     check_true(__LINE__, r3.inverse() == r3i);
   }
   {
+    mat3<double> t;
+    t.set_row(0, vec3<int>(1,2,3));
+    t.set_row(1, vec3<int>(2,5,6));
+    t.set_row(2, vec3<int>(3,6,9));
+    check_true(__LINE__, t.is_symmetric());
+    t[1] = 2.01;
+    check_false(__LINE__, t.is_symmetric());
+    check_true(__LINE__, t.is_symmetric(0.1));
+    check_false(__LINE__, t.is_symmetric(0.001));
+  }
+  {
     mat3<double> r3_111(120. * constants::pi_180, vec3<double>(1.,1.,1.));
     mat3<double> r3_111i(-120. * constants::pi_180, vec3<double>(1.,1.,1.));
     {

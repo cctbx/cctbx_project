@@ -120,6 +120,11 @@ namespace scitbx { namespace af {
         : base_class(other_handle, n0)
       {}
 
+      template <typename OtherArrayType>
+      versa(array_adaptor<OtherArrayType> const& a_a)
+        : base_class(a_a)
+      {}
+
       one_dim_type as_1d() {
         return one_dim_type(*this, one_dim_accessor_type(this->size()));
       }

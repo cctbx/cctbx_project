@@ -491,8 +491,10 @@ namespace {
   {
     af::tiny<int, 3> a1(0,1,2);
     af::tiny<int, 3> a2(3,4,5);
+    af::tiny<int, 3> a5(3,-5,3);
     af::const_ref<int> r1 = a1.const_ref();
     af::const_ref<int> r2 = a2.const_ref();
+    af::const_ref<int> r5 = a5.const_ref();
     check_true(__LINE__, af::order(r1, r2) == -1);
     check_true(__LINE__, af::order(r1, r1) == 0);
     check_true(__LINE__, af::order(r2, r2) == 0);
@@ -505,6 +507,7 @@ namespace {
     check_true(__LINE__, af::min_index(r1) == 0);
     check_true(__LINE__, af::max(r1) == r1[2]);
     check_true(__LINE__, af::min(r1) == r1[0]);
+    check_true(__LINE__, af::max_absolute(r5) == -r5[1]);
     check_true(__LINE__, af::sum(r1) == r1[0] + r1[1] + r1[2]);
     check_true(__LINE__, af::product(r1) == r1[0] * r1[1] * r1[2]);
     check_true(__LINE__, af::mean(r1) == (r1[0] + r1[1] + r1[2]) / 3);

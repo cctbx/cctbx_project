@@ -11,7 +11,7 @@ env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(LIBPATH=["#libtbx"])
 env.Append(LIBS=["bpl"])
 
-scitbx_boost_python_sources = [
+lib_scitbx_boost_python_sources = [
   "#scitbx/boost_python/utils.cpp",
   "#scitbx/array_family/boost_python/utils.cpp",
   "#scitbx/array_family/boost_python/tiny_conversions.cpp",
@@ -19,7 +19,7 @@ scitbx_boost_python_sources = [
 ]
 if (env_etc.is_win32): builder = env.StaticLibrary
 else:                  builder = env.SharedLibrary
-lib_scitbx_boost_python = builder(
+lib_scitbx_boost_python_node = builder(
     target="scitbx_boost_python",
-    source=scitbx_boost_python_sources)
-env.Install("#libtbx", lib_scitbx_boost_python)
+    source=lib_scitbx_boost_python_sources)
+env.Install("#libtbx", lib_scitbx_boost_python_node)

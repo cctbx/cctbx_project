@@ -38,7 +38,8 @@ namespace scitbx { namespace fn {
   bool
   approx_equal_scaled(FloatType const& a,
                       FloatType const& b,
-                      FloatType const& scaled_tolerance) {
+                      FloatType const& scaled_tolerance)
+  {
     FloatType diff = a - b;
     if (diff < 0.) diff = -diff;
     if (diff < scaled_tolerance) return true;
@@ -50,7 +51,8 @@ namespace scitbx { namespace fn {
   bool
   approx_equal_unscaled(FloatType const& a,
                         FloatType const& b,
-                        FloatType const& tolerance) {
+                        FloatType const& tolerance)
+  {
     FloatType sum = a + b;
     scitbx_assert(sum != 0);
     FloatType diff = a - b;
@@ -63,7 +65,8 @@ namespace scitbx { namespace fn {
   //! Helper function object for array operations.
   template <typename ResultType,
             typename ArgumentType>
-  struct functor_absolute {
+  struct functor_absolute
+  {
     typedef ResultType result_type;
     ResultType operator()(ArgumentType const& x) const {
       return ResultType(absolute(x));
@@ -73,7 +76,8 @@ namespace scitbx { namespace fn {
   //! Helper function object for array operations.
   template <typename ResultType,
             typename ArgumentType>
-  struct functor_pow2 {
+  struct functor_pow2
+  {
     typedef ResultType result_type;
     ResultType operator()(ArgumentType const& x) const {
       return ResultType(pow2(x));
@@ -85,7 +89,8 @@ namespace scitbx { namespace fn {
             typename ArgumentType1,
             typename ArgumentType2,
             typename ArgumentType3>
-  struct functor_approx_equal_scaled {
+  struct functor_approx_equal_scaled
+  {
     typedef ResultType result_type;
     ResultType operator()(ArgumentType1 const& x,
                           ArgumentType2 const& y,
@@ -98,7 +103,8 @@ namespace scitbx { namespace fn {
             typename ArgumentType1,
             typename ArgumentType2,
             typename ArgumentType3>
-  struct functor_approx_equal_unscaled {
+  struct functor_approx_equal_unscaled
+  {
     typedef ResultType result_type;
     ResultType operator()(ArgumentType1 const& x,
                           ArgumentType2 const& y,

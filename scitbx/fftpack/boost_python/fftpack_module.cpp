@@ -358,7 +358,8 @@ namespace scitbx { namespace fftpack { namespace {
       "$Revision$");
 
     scitbx::af::boost_python::register_tiny_types_conversions();
-    scitbx::boost_python::import_module("scitbx_boost.array_family.flex");
+    scitbx::boost_python::import_module(
+      "scitbx_boost.array_family.flex_scitbx");
 
     def("adjust_gridding", adjust_gridding_2);
     def("adjust_gridding", adjust_gridding_3);

@@ -59,6 +59,11 @@ namespace scitbx {
     factor_eV_Angstrom  = 6626.0755 * 2.99792458 / 1.60217733;
   }
 
+  //! Conversions from degrees to radians.
+  inline double deg_as_rad(double deg) { return deg * constants::pi_180;}
+  //! Conversions from radians to degrees.
+  inline double rad_as_deg(double rad) { return rad / constants::pi_180;}
+
 } // namespace scitbx
 
 #endif // SCITBX_CONSTANTS_H

@@ -14,7 +14,7 @@ namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_long()
   {
-    flex_wrapper<long>::integer("long")
+    flex_wrapper<long>::integer("long", boost::python::scope())
       .def_pickle(flex_pickle_single_buffered<long, 21>());
   }
 

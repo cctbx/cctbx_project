@@ -192,7 +192,7 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
     }
 
     std::complex<double> value;
-    char* end;
+    const char* end;
   };
 
   inline
@@ -216,7 +216,7 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
     }
 
     std::string value;
-    char* end;
+    const char* end;
   };
 
 }}} // namespace scitbx::boost_python::pickle_single_buffered

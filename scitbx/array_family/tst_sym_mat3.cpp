@@ -18,6 +18,8 @@ int main(int argc, char* argv[])
     sym_mat3<int> vc(af::tiny_plain<int,6>(0,0,0,0,0,0));
     int id[] = {1,1,1,1,1,1};
     sym_mat3<int> vd(id);
+    mat3<int> ve(sym_mat3<int>(1,2,3,4,5,6));
+    check_true(__LINE__, ve == mat3<int>(1,4,5, 4,2,6, 5,6,3));
   }
   {
     sym_mat3<int> a; a.fill(0);
@@ -120,6 +122,18 @@ int main(int argc, char* argv[])
     sym_mat3<double> fai = fa.inverse();
     check_true(__LINE__, std::fabs(af::max(
       ((fai * fa) - mat3<double>(1)).ref())) < 1.e-6);
+  }
+  {
+    mat3<double> t;
+    t.set_row(0, vec3<int>(1,2,3));
+    t.set_row(1, vec3<int>(2,5,6));
+    t.set_row(2, vec3<int>(3,6,9));
+    check_true(__LINE__, sym_mat3<double>(t).determinant() == t.determinant());
+    t[1] = 2.01;
+    sym_mat3<double> s(t, 0.1);
+    t[1] = 2.005;
+    t[3] = 2.005;
+    check_true(__LINE__, std::fabs(s.determinant() - t.determinant()) < 1.e-6);
   }
 
   std::cout << "Total OK: " << ok_counter << std::endl;

@@ -79,7 +79,8 @@ def generate_max_index_etc(f, subs):
 """)
 
 def generate_max_etc(f, subs):
-  for func_name in ("max", "min", "sum", "sum_sq",
+  for func_name in ("max", "min", "max_absolute",
+                    "sum", "sum_sq",
                     "product", "mean", "mean_sq"):
     subs["func_name"] = func_name
     print >> f, substitute(subs, """
