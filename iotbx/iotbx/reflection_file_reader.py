@@ -4,6 +4,7 @@ from iotbx.scalepack import no_merge_original_index as scalepack_no_merge
 from iotbx.cns import reflection_reader as cns_reflection_reader
 from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
 from iotbx.shelx import hklf as shelx_hklf
+from iotbx.xds.read_ascii import reader as xds_ascii_reader
 from iotbx import crystal_symmetry_from_any
 from cctbx import miller
 from cctbx import crystal
@@ -46,6 +47,11 @@ class any_reflection_file:
         open(file_name))
       except: pass
       else: self._file_type = "shelx_hklf"
+    if (self._file_type is None):
+      try: self._file_content = xds_ascii_reader(
+        open(file_name))
+      except: pass
+      else: self._file_type = "xds_ascii"
     if (self._file_type is None):
       try: self._file_content = easy_pickle.load(file_name)
       except: pass
