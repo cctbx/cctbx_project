@@ -17,19 +17,22 @@ class ADSCImage:
       parameters={}
       for item in ['HEADER_BYTES','SIZE1','SIZE2','CCD_IMAGE_SATURATION',
                    'DETECTOR_SN']:
-        pattern = re.compile(item+'='+r'(.*);')
-        matches = pattern.findall(header)
-        parameters[item] = int(matches[-1])
+          pattern = re.compile(item+'='+r'(.*);')
+          matches = pattern.findall(header)
+          if len(matches)>0:
+            parameters[item] = int(matches[-1])
       for item in ['PIXEL_SIZE','OSC_START','DISTANCE','WAVELENGTH',
                    'BEAM_CENTER_X','BEAM_CENTER_Y','OSC_RANGE',
                    'TWOTHETA']:
         pattern = re.compile(item+'='+r'(.*);')
         matches = pattern.findall(header)
-        parameters[item] = float(matches[-1])
+        if len(matches)>0:
+          parameters[item] = float(matches[-1])
       for item in ['BYTE_ORDER']:
         pattern = re.compile(item+'='+r'(.*);')
         matches = pattern.findall(header)
-        parameters[item] = matches[-1]
+        if len(matches)>0:
+          parameters[item] = matches[-1]
       self.parameters=parameters
 
   def fileLength(self):
