@@ -220,7 +220,7 @@ namespace cctbx { namespace maptbx {
     ValueType data_min;
     ValueType data_max;
     ValueType slot_width;
-    af::shared<ValueType> slots;
+    af::shared<CountType> slots;
   };
 
 
