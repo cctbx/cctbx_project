@@ -207,7 +207,7 @@ def exercise_bins():
   assert binning1.n_bins_used() == n_bins
   assert binning1.limits().size() == n_bins + 1
   assert binning1.n_bins_all() == n_bins + 2
-  binner1 = miller.binner(binning1, m)
+  binner1 = miller.ext.binner(binning1, m)
   assert binner1.miller_indices().id() == m.id()
   assert binner1.count(binner1.i_bin_d_too_large()) == 0
   assert binner1.count(binner1.i_bin_d_too_small()) == 0
@@ -220,7 +220,7 @@ def exercise_bins():
   binning2 = miller.binning(uc, n_bins - 2,
     binning1.bin_d_min(2),
     binning1.bin_d_min(n_bins))
-  binner2 = miller.binner(binning2, m)
+  binner2 = miller.ext.binner(binning2, m)
   assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
   array_indices = flex.size_t(range(m.size()))
   perm_array_indices1 = flex.size_t()
@@ -231,7 +231,7 @@ def exercise_bins():
   assert perm_array_indices1.size() == m.size()
   assert perm_array_indices2.size() == m.size()
   assert tuple(perm_array_indices1) == tuple(perm_array_indices2)
-  b = miller.binner(miller.binning(uc, n_bins, m, 0, d_min), m)
+  b = miller.ext.binner(miller.binning(uc, n_bins, m, 0, d_min), m)
   assert approx_equal(b.bin_centers(1),
     (0.23207956, 0.52448148, 0.62711856, 0.70311998, 0.7652538,
      0.818567, 0.86566877, 0.90811134, 0.94690405, 0.98274518))
