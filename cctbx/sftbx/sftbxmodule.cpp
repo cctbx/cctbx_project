@@ -17,16 +17,45 @@ namespace {
 
   using namespace cctbx;
 
+  typedef sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> ex_xray_scatterer;
+
+  std::complex<double>
+  py_StructureFactorAndDerivatives_F(
+    const sftbx::StructureFactorAndDerivatives<double>& sfad) {
+    return sfad.F();
+  }
+  af::double3
+  py_StructureFactorAndDerivatives_dF_dX(
+    const sftbx::StructureFactorAndDerivatives<double>& sfad) {
+    return sfad.dF_dX();
+  }
+
   void
   py_StructureFactorArray(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const af::shared<Miller::Index>& H,
-    const af::shared<
-      sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >& Sites,
+    const af::shared<ex_xray_scatterer>& Sites,
     af::shared<std::complex<double> > Fcalc)
   {
-    sftbx::StructureFactorArray(UC, SgOps, H, Sites, Fcalc.ref());
+    sftbx::StructureFactorArray(
+      UC, SgOps, H.const_ref(), Sites.const_ref(),
+      Fcalc.ref());
+  }
+
+  void
+  py_StructureFactorAndDerivativesArray(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<std::complex<double> >& dTarget_dFcalc,
+    const af::shared<ex_xray_scatterer>& Sites,
+    af::shared<std::complex<double> > Fcalc,
+    af::shared<af::double3> dF_dX)
+  {
+    sftbx::StructureFactorAndDerivativesArray(
+      UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
+      Fcalc.ref(), dF_dX.ref());
   }
 
   af::shared<Miller::Index>
@@ -76,13 +105,25 @@ namespace {
     py_shared_Miller_Index(
       "cctbx_boost.arraytbx.shared", "Miller_Index");
 
-    python::import_converters<
-      af::shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > >
+    python::import_converters<af::shared<ex_xray_scatterer> >
     py_shared_XrayScatterer("cctbx_boost.arraytbx.shared", "XrayScatterer");
 
-    class_builder<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
+    python::import_converters<af::shared<af::double3> >
+    py_shared_double3("cctbx_boost.arraytbx.shared", "double3");
+
+    class_builder<sftbx::StructureFactorAndDerivatives<double> >
+    py_StructureFactorAndDerivatives(
+      this_module, "StructureFactorAndDerivatives");
+
+    class_builder<ex_xray_scatterer>
     py_XrayScatterer(this_module, "XrayScatterer");
     python::export_converters(py_XrayScatterer);
+
+    py_StructureFactorAndDerivatives.def(constructor<>());
+    py_StructureFactorAndDerivatives.def(
+      py_StructureFactorAndDerivatives_F, "F");
+    py_StructureFactorAndDerivatives.def(
+      py_StructureFactorAndDerivatives_dF_dX, "dF_dX");
 
     py_XrayScatterer.def(constructor<>());
     py_XrayScatterer.def(constructor<
@@ -100,46 +141,39 @@ namespace {
       const double&,
       const af::double6&>());
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::Label, "Label");
+      &ex_xray_scatterer::Label, "Label");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::CAASF, "CAASF");
+      &ex_xray_scatterer::CAASF, "CAASF");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::fpfdp, "fpfdp");
+      &ex_xray_scatterer::fpfdp, "fpfdp");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::Coordinates, "Coordinates");
+      &ex_xray_scatterer::Coordinates, "Coordinates");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::Occ, "Occ");
+      &ex_xray_scatterer::Occ, "Occ");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::isAnisotropic, "isAnisotropic");
+      &ex_xray_scatterer::isAnisotropic, "isAnisotropic");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::Uiso, "Uiso");
+      &ex_xray_scatterer::Uiso, "Uiso");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::Uaniso, "Uaniso");
+      &ex_xray_scatterer::Uaniso, "Uaniso");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::M, "M");
+      &ex_xray_scatterer::M, "M");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::w, "w");
+      &ex_xray_scatterer::w, "w");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::ApplySymmetry, "ApplySymmetry");
+      &ex_xray_scatterer::ApplySymmetry, "ApplySymmetry");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::StructureFactor, "StructureFactor");
+      &ex_xray_scatterer::set_Coordinates, "set_Coordinates");
     py_XrayScatterer.def(
-      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
-      >::StructureFactorAndDerivatives, "StructureFactorAndDerivatives");
+      &ex_xray_scatterer::StructureFactor, "StructureFactor");
+    py_XrayScatterer.def(
+      &ex_xray_scatterer::StructureFactorAndDerivatives,
+                         "StructureFactorAndDerivatives");
 
     this_module.def(py_StructureFactorArray, "StructureFactorArray");
+    this_module.def(py_StructureFactorAndDerivativesArray,
+      "StructureFactorAndDerivativesArray");
+
     this_module.def(py_BuildMillerIndices_Resolution_d_min,
                       "BuildMillerIndices");
     this_module.def(py_BuildMillerIndices_MaxIndex,

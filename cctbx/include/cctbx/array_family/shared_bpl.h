@@ -40,7 +40,7 @@ namespace cctbx { namespace af {
       shared<ElementType>::iterator v = this->begin();
       for (std::size_t i = 0; i < tuple.size(); i++)
         v[i] = BOOST_PYTHON_CONVERSION::from_python(
-          tuple[i].get(), boost::python::type<ElementType>());
+          tuple[i].get(), boost::python::type<const ElementType&>());
     }
 
   };

@@ -18,6 +18,7 @@
 #include <cctbx/eltbx/caasf.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/array_family/shared.h>
+#include <cctbx/array_family/tiny_algebra.h>
 
 namespace cctbx {
   //! Structure Factor Toolbox namespace.
@@ -28,10 +29,12 @@ namespace cctbx {
   class StructureFactorAndDerivatives
   { 
     public:
+      StructureFactorAndDerivatives() {}
       StructureFactorAndDerivatives(
         const cctbx::sgtbx::SpaceGroup& SgOps,
         const cctbx::Miller::Index& H,
         const cctbx::fractional<FloatType> X,
+        const std::complex<FloatType>& phase_indep_coeff,
         const std::complex<FloatType>& dTarget_dFcal)
       {
         using constants::pi;
@@ -52,6 +55,7 @@ namespace cctbx {
               FloatType phase = 2. * pi * (HRX + HT);
               std::complex<FloatType> fX = std::complex<FloatType>(
                 std::cos(phase), std::sin(phase));
+              fX *= phase_indep_coeff;
               m_F += fX;
               for (int j=0;j<3;j++) {
                 m_dF_dX[j] += HR[j] * (  fX.real() * dTarget_dFcal.imag()
@@ -63,7 +67,7 @@ namespace cctbx {
         m_dF_dX *= 2. * pi;
       }
       const std::complex<FloatType>& F() const { return m_F; }
-            std::complex<FloatType>& F()       { return m_F; }
+            std::complex<FloatType>& F()       { return m_F; }//XXX const only?
       const cctbx::af::tiny<FloatType, 3>& dF_dX() const { return m_dF_dX; }
             cctbx::af::tiny<FloatType, 3>& dF_dX()       { return m_dF_dX; }
     protected:
@@ -264,12 +268,12 @@ namespace cctbx {
        */
       template <typename MillerIndexArrayType,
                 typename doubleArrayType,
-                typename StdComplexArrayType>
+                typename FcalcArrayType>
       void
       StructureFactorArray(const cctbx::sgtbx::SpaceGroup& SgOps,
                            const MillerIndexArrayType& H,
                            const doubleArrayType& Q,
-                           StdComplexArrayType Fcalc) const
+                           FcalcArrayType Fcalc) const
       {
         if (m_M == 0) {
           throw cctbx::error(
@@ -282,7 +286,7 @@ namespace cctbx {
         }
       }
       //! XXX
-      std::complex<FloatType>
+      sftbx::StructureFactorAndDerivatives<FloatType>
       StructureFactorAndDerivatives(
         const cctbx::sgtbx::SpaceGroup& SgOps,
         const cctbx::Miller::Index& H,
@@ -290,14 +294,45 @@ namespace cctbx {
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
         if (!m_Anisotropic) {
-          return
-              m_w
-            * cctbx::adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
-            * (m_CAASF.Q(Q) + m_fpfdp)
-            * cctbx::sftbx::StructureFactorAndDerivatives<FloatType>(
-                SgOps, H, m_Coordinates, dTarget_dFcalc).F();
+          cctbx::sftbx::StructureFactorAndDerivatives<FloatType>
+          result = cctbx::sftbx::StructureFactorAndDerivatives<FloatType>(
+            SgOps, H, m_Coordinates,
+            m_w
+              * cctbx::adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
+              * (m_CAASF.Q(Q) + m_fpfdp),
+            dTarget_dFcalc);
+          return result;
         }
         throw cctbx_not_implemented();
+      }
+      //! XXX
+      template <typename MillerIndexArrayType,
+                typename QArrayType,
+                typename DerivativesArrayType,
+                typename FcalcArrayType,
+                typename DerivativesXArrayType>
+      void
+      StructureFactorAndDerivativesArray(
+        const cctbx::sgtbx::SpaceGroup& SgOps,
+        const MillerIndexArrayType& H,
+        const QArrayType& Q,
+        const DerivativesArrayType& dTarget_dFcalc,
+        FcalcArrayType Fcalc,
+        DerivativesXArrayType dF_dX) const
+      {
+        if (m_M == 0) {
+          throw cctbx::error( // XXX centralize check
+            "ApplySymmetry() has not been called for this scatterer.");
+        }
+        cctbx_assert(Q.size() == H.size());
+        cctbx_assert(Fcalc.size() == H.size());
+        for (std::size_t i = 0; i < H.size(); i++) {
+          sftbx::StructureFactorAndDerivatives<FloatType>
+          sfad = StructureFactorAndDerivatives(
+            SgOps, H[i], Q[i], dTarget_dFcalc[i]);
+          Fcalc[i] += sfad.F();
+          dF_dX[i] += sfad.dF_dX();
+        }
       }
     private:
       std::string m_Label;
@@ -329,15 +364,15 @@ namespace cctbx {
       See also: XrayScatterer::StructureFactorArray()
    */
   template <typename MillerIndexArrayType,
-            typename doubleArrayType,
-            typename XrayScattererArrayType,
-            typename StdComplexArrayType>
+            typename QArrayType,
+            typename SitesArrayType,
+            typename FcalcArrayType>
   void
   StructureFactorArray(const cctbx::sgtbx::SpaceGroup& SgOps,
                        const MillerIndexArrayType& H,
-                       const doubleArrayType& Q,
-                       const XrayScattererArrayType& Sites,
-                       StdComplexArrayType Fcalc)
+                       const QArrayType& Q,
+                       const SitesArrayType& Sites,
+                       FcalcArrayType Fcalc)
   {
     for (std::size_t i = 0; i < Sites.size(); i++) {
       Sites[i].StructureFactorArray(SgOps, H, Q, Fcalc);
@@ -363,20 +398,67 @@ namespace cctbx {
       See also: XrayScatterer::StructureFactorArray()
    */
   template <typename MillerIndexArrayType,
-            typename XrayScattererArrayType,
-            typename StdComplexArrayType>
+            typename SitesArrayType,
+            typename FcalcArrayType>
   void
   StructureFactorArray(const cctbx::uctbx::UnitCell& UC,
                        const cctbx::sgtbx::SpaceGroup& SgOps,
                        const MillerIndexArrayType& H,
-                       const XrayScattererArrayType& Sites,
-                       StdComplexArrayType Fcalc)
+                       const SitesArrayType& Sites,
+                       FcalcArrayType Fcalc)
   {
     af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
     for (std::size_t i = 0; i < H.size(); i++) {
       Q[i] = UC.Q(H[i]);
     }
     StructureFactorArray(SgOps, H, Q, Sites, Fcalc);
+  }
+
+  //! XXX
+  template <typename MillerIndexArrayType,
+            typename QArrayType,
+            typename DerivativesArrayType,
+            typename SitesArrayType,
+            typename FcalcArrayType,
+            typename DerivativesXArrayType>
+  void
+  StructureFactorAndDerivativesArray(
+    const cctbx::sgtbx::SpaceGroup& SgOps,
+    const MillerIndexArrayType& H,
+    const QArrayType& Q,
+    const DerivativesArrayType& dTarget_dFcalc,
+    const SitesArrayType& Sites,
+    FcalcArrayType Fcalc,
+    DerivativesXArrayType dF_dX)
+  {
+    for (std::size_t i = 0; i < Sites.size(); i++) {
+      Sites[i].StructureFactorAndDerivativesArray(
+        SgOps, H, Q, dTarget_dFcalc, Fcalc, dF_dX);
+    }
+  }
+
+  //! XXX
+  template <typename MillerIndexArrayType,
+            typename DerivativesArrayType,
+            typename SitesArrayType,
+            typename FcalcArrayType,
+            typename DerivativesXArrayType>
+  void
+  StructureFactorAndDerivativesArray(
+    const cctbx::uctbx::UnitCell& UC,
+    const cctbx::sgtbx::SpaceGroup& SgOps,
+    const MillerIndexArrayType& H,
+    const DerivativesArrayType& dTarget_dFcalc,
+    const SitesArrayType& Sites,
+    FcalcArrayType Fcalc,
+    DerivativesXArrayType dF_dX)
+  {
+    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
+    for (std::size_t i = 0; i < H.size(); i++) {
+      Q[i] = UC.Q(H[i]);
+    }
+    StructureFactorAndDerivativesArray(
+      SgOps, H, Q, dTarget_dFcalc, Sites, Fcalc, dF_dX);
   }
 
 }} // namespace cctbx::sftbx
