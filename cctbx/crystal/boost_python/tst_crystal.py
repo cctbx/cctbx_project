@@ -124,7 +124,7 @@ def exercise_direct_space_asu():
     (0,0,1),(0,0,2),(0,0,3),(0,0,4),
     (0,1,0),(0,1,1),(0,1,2),(0,1,3),(0,1,4),(0,1,5),
     (1,1,1),(1,1,2),(1,1,3),(1,1,4),(1,1,5)]
-  for two_flag,buffer_thickness,expected_index_pairs,expected_n_box in [
+  for two_flag,buffer_thickness,expected_index_pairs,expected_n_boxes in [
     (00000, 0.04, [], (1,1,1)),
     (00000, 0.1, [(0,0,1),(0,0,2),(0,0,3),(0,0,4)], (2,3,1)),
     (00001, 0, [(0, 1, 0)], (1,1,1)),
@@ -167,7 +167,7 @@ def exercise_direct_space_asu():
       epsilon=1.e-6)
     assert approx_equal(fast_pair_generator.distance_cutoff_sq(), 100*100)
     assert approx_equal(fast_pair_generator.epsilon()/1.e-6, 1)
-    assert fast_pair_generator.n_box() == (1,1,1)
+    assert fast_pair_generator.n_boxes() == (1,1,1)
     index_pairs = []
     dist_sq = flex.double()
     for index_pair in simple_pair_generator:
@@ -220,7 +220,7 @@ def exercise_direct_space_asu():
       if (pair_generator_type is crystal.neighbors_simple_pair_generator):
         assert approx_equal(dist_sq, short_dist_sq)
       else:
-        assert pair_generator.n_box() == expected_n_box
+        assert pair_generator.n_boxes() == expected_n_boxes
         short_dist_sq_sorted = short_dist_sq.select(
           flex.sort_permutation(short_dist_sq))
         dist_sq_sorted = dist_sq.select(

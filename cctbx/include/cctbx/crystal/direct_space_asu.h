@@ -239,7 +239,7 @@ namespace direct_space_asu {
       /*! Not available in Python.
        */
       asu_mapping(
-        std::size_t i_sym_op,
+        unsigned i_sym_op,
         scitbx::vec3<IntShiftType> const& unit_shifts,
         cartesian<FloatType> const& mapped_site)
       :
@@ -249,7 +249,7 @@ namespace direct_space_asu {
       {}
 
       //! Index of symmetry operation.
-      std::size_t
+      unsigned
       i_sym_op() const { return i_sym_op_; }
 
       //! Additional unit shifts.
@@ -263,7 +263,7 @@ namespace direct_space_asu {
       mapped_site() const { return mapped_site_; }
 
     private:
-      std::size_t i_sym_op_;
+      unsigned i_sym_op_;
       scitbx::vec3<IntShiftType> unit_shifts_;
       cartesian<FloatType> mapped_site_;
   };
@@ -273,19 +273,19 @@ namespace direct_space_asu {
    */
   struct asu_mapping_index
   {
-    std::size_t i_seq;
-    std::size_t i_sym;
+    unsigned i_seq;
+    unsigned i_sym;
   };
 
   //! Grouping of indices for pair of sites in asu_mappings container.
   struct asu_mapping_index_pair
   {
     //! Main index of first site.
-    std::size_t i_seq;
+    unsigned i_seq;
     //! Main index of second site.
-    std::size_t j_seq;
+    unsigned j_seq;
     //! Symmetry index of second site.
-    std::size_t j_sym;
+    unsigned j_sym;
   };
 
   //! asu_mapping_index_pair plus difference vector and distance squared.
@@ -455,9 +455,13 @@ namespace direct_space_asu {
         CCTBX_ASSERT(have_site_in_asu);
       }
 
+      //! Locks the array of mappings().
+      /*! An exception is raised if process() is called subsequently.
+       */
       void
       lock() { is_locked_ = true; }
 
+      //! True after lock() was called.
       bool
       is_locked() const { return is_locked_; }
 
