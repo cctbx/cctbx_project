@@ -11,6 +11,7 @@ BOOST_PYTHON_MODULE(mtz)
       .def("title",      &iotbx::mtz::Mtz::title)
       .def("SpaceGroup", &iotbx::mtz::Mtz::SpaceGroup)
       .def("getSgtbxSpaceGroup", &iotbx::mtz::Mtz::getSgtbxSpaceGroup)
+      .def("nsym",       &iotbx::mtz::Mtz::nsym)
       .def("size",       &iotbx::mtz::Mtz::size,
           return_value_policy<copy_non_const_reference>())
       .def("ncrystals",  &iotbx::mtz::Mtz::ncrystals,
