@@ -127,12 +127,12 @@ def get_bond_site_symmetry(structure, site_i, site_ji):
   assert result.distance_moved() < 1.e-6
   return result
 
-def add_oxygen(framework_structure, bond_proxies):
-  asu_mappings = bond_proxies.asu_mappings
+def add_oxygen(si_structure, si_proxies):
+  asu_mappings = si_proxies.asu_mappings
   bonds_processed = [{}
-    for i in xrange(framework_structure.scatterers().size())]
+    for i in xrange(si_structure.scatterers().size())]
   bond_centers = []
-  for proxy in bond_proxies.proxies:
+  for proxy in si_proxies.proxies:
     pair = proxy.pair
     if (pair.i_seq > pair.j_seq): continue
     rt_mx_i_inverse=asu_mappings.get_rt_mx(i_seq=pair.i_seq,i_sym=0).inverse()
@@ -142,29 +142,29 @@ def add_oxygen(framework_structure, bond_proxies):
     is_sym_equiv = 00000
     for rt_mx_ji_prev in ij_rt_mx:
       if (is_sym_equiv_interaction(
-            unit_cell=framework_structure.unit_cell(),
+            unit_cell=si_structure.unit_cell(),
             i_seq=pair.i_seq,
-            site_i=framework_structure.scatterers()[pair.i_seq].site,
+            site_i=si_structure.scatterers()[pair.i_seq].site,
             j_seq=pair.j_seq,
-            site_j=framework_structure.scatterers()[pair.j_seq].site,
-            special_op_j=bond_proxies.site_symmetries[pair.j_seq].special_op(),
+            site_j=si_structure.scatterers()[pair.j_seq].site,
+            special_op_j=si_proxies.site_symmetries[pair.j_seq].special_op(),
             rt_mx_ji_1=rt_mx_ji,
             rt_mx_ji_2=rt_mx_ji_prev)):
         is_sym_equiv = 0001
         break
     if (not is_sym_equiv):
       bond_site_symmetry = get_bond_site_symmetry(
-        structure=framework_structure,
-        site_i=framework_structure.scatterers()[pair.i_seq].site,
-        site_ji=rt_mx_ji*framework_structure.scatterers()[pair.j_seq].site)
+        structure=si_structure,
+        site_i=si_structure.scatterers()[pair.i_seq].site,
+        site_ji=rt_mx_ji*si_structure.scatterers()[pair.j_seq].site)
       bond_centers.append(bond_site_symmetry.exact_site())
       ij_rt_mx.append(rt_mx_ji)
-  complete_structure = framework_structure.deep_copy_scatterers()
+  si_o_structure = si_structure.deep_copy_scatterers()
   for i,bond_center in zip(count(1), bond_centers):
-    complete_structure.add_scatterer(xray.scatterer(
+    si_o_structure.add_scatterer(xray.scatterer(
       label="O%d"%i,
       site=bond_center))
-  return complete_structure
+  return si_o_structure
 
 def add_o_si_o_proxies(structure, proxies, distance_ideal, weight):
   scatterers = structure.scatterers()
@@ -315,57 +315,57 @@ def run(distance_cutoff=3.5):
           and command_line.options.tag != entry.tag):
         continue
       print "strudat tag:", entry.tag
-      structure = entry.as_xray_structure()
-      structure.show_summary().show_scatterers()
-      show_distances(structure, distance_cutoff=distance_cutoff)
-      proxies = create_bond_proxies(
-        structure=structure, distance_cutoff=distance_cutoff)
-      print "number of bond proxies:", proxies.proxies.size()
-      print "proxies.bond_counts:", list(proxies.bond_counts)
-      if (proxies.bond_counts.count(4) != proxies.bond_counts.size()):
+      si_structure = entry.as_xray_structure()
+      si_structure.show_summary().show_scatterers()
+      show_distances(si_structure, distance_cutoff=distance_cutoff)
+      si_proxies = create_bond_proxies(
+        structure=si_structure, distance_cutoff=distance_cutoff)
+      print "number of bond proxies:", si_proxies.proxies.size()
+      print "proxies.bond_counts:", list(si_proxies.bond_counts)
+      if (si_proxies.bond_counts.count(4) != si_proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
       if (1):
         if (0):
-          complete_structure = structure
-          complete_proxies = proxies
+          si_o_structure = si_structure
+          si_o_proxies = si_proxies
         else:
-          complete_structure = add_oxygen(structure, proxies)
-          complete_structure.show_summary().show_scatterers()
+          si_o_structure = add_oxygen(si_structure, si_proxies)
+          si_o_structure.show_summary().show_scatterers()
           show_distances(
-            complete_structure,
+            si_o_structure,
             distance_cutoff=distance_cutoff/2.)
-          complete_proxies = create_bond_proxies(
-            structure=complete_structure,
+          si_o_proxies = create_bond_proxies(
+            structure=si_o_structure,
             distance_cutoff=distance_cutoff/2.,
             distance_ideal=restraint_parameters_si_o.distance_ideal,
             weight=restraint_parameters_si_o.weight,
             heterogeneous_bonds_only=0001,
             asu_mappings_distance_cutoff=distance_cutoff)
           print "complete: number of bond proxies:", \
-            complete_proxies.proxies.size()
+            si_o_proxies.proxies.size()
           print "complete: proxies.bond_counts:", \
-            list(complete_proxies.bond_counts)
-          n_nodes = len(proxies.bond_counts)
-          assert list(complete_proxies.bond_counts[:n_nodes]) \
-              == list(proxies.bond_counts)
-          assert list(complete_proxies.bond_counts[n_nodes:]) \
-              == [2] * (len(complete_proxies.bond_counts) - n_nodes)
+            list(si_o_proxies.bond_counts)
+          n_nodes = len(si_proxies.bond_counts)
+          assert list(si_o_proxies.bond_counts[:n_nodes]) \
+              == list(si_proxies.bond_counts)
+          assert list(si_o_proxies.bond_counts[n_nodes:]) \
+              == [2] * (len(si_o_proxies.bond_counts) - n_nodes)
           if (1):
             add_o_si_o_proxies(
-              structure=complete_structure,
-              proxies=complete_proxies,
+              structure=si_o_structure,
+              proxies=si_o_proxies,
               distance_ideal=restraint_parameters_o_si_o.distance_ideal,
               weight=restraint_parameters_o_si_o.weight)
           if (1):
             add_si_o_si_proxies(
-              si_proxies=proxies,
-              si_o_proxies=complete_proxies,
+              si_proxies=si_proxies,
+              si_o_proxies=si_o_proxies,
               distance_ideal=restraint_parameters_si_o_si.distance_ideal,
               weight=restraint_parameters_si_o_si.weight)
-          sites_cart = complete_structure.sites_cart()
-          for proxy in complete_proxies.proxies:
+          sites_cart = si_o_structure.sites_cart()
+          for proxy in si_o_proxies.proxies:
             print "proxy:",
-            scatterers = complete_structure.scatterers()
+            scatterers = si_o_structure.scatterers()
             pair = proxy.pair
             print "%s(%d)" % (scatterers[pair.i_seq].label, pair.i_seq),
             print "%s(%d)" % (scatterers[pair.j_seq].label, pair.j_seq),
@@ -373,23 +373,23 @@ def run(distance_cutoff=3.5):
             print proxy.distance_ideal, proxy.weight,
             print stereochemistry.restraints_bond(
               sites_cart=sites_cart,
-              asu_mappings=complete_proxies.asu_mappings,
+              asu_mappings=si_o_proxies.asu_mappings,
               proxy=proxy).distance_model
         if (1):
-          sites_cart = complete_structure.sites_cart()
+          sites_cart = si_o_structure.sites_cart()
           gradients_cart = flex.vec3_double(sites_cart.size(), [0,0,0])
           residual_sum = stereochemistry.restraints_bond_residual_sum(
             sites_cart=sites_cart,
-            asu_mappings=complete_proxies.asu_mappings,
-            proxies=complete_proxies.proxies,
+            asu_mappings=si_o_proxies.asu_mappings,
+            proxies=si_o_proxies.proxies,
             gradient_array=gradients_cart)
           gradients_frac = gradients_cart \
-            * complete_structure.unit_cell().orthogonalization_matrix()
+            * si_o_structure.unit_cell().orthogonalization_matrix()
           print "initial residual sum:", residual_sum
         if (1):
-          for i_site,scatterer in zip(count(),complete_structure.scatterers()):
+          for i_site,scatterer in zip(count(),si_o_structure.scatterers()):
             site = scatterer.site
-            site_symmetry = complete_proxies.site_symmetries[i_site]
+            site_symmetry = si_o_proxies.site_symmetries[i_site]
             special_op = sgtbx.rt_mx(site_symmetry.special_op().r())
             special_op_tp = float(special_op.r().as_rational()).transpose()
             grad_special = (  special_op_tp
@@ -398,31 +398,31 @@ def run(distance_cutoff=3.5):
             if (not approx_equal(gradients_frac[i_site], grad_special)):
               print scatterer.label, gradients_frac[i_site]
               print blanks, grad_special, special_op
-              print "MISMATCH GRAD", complete_structure.space_group_info(),
+              print "MISMATCH GRAD", si_o_structure.space_group_info(),
               print special_op
               raise AssertionError
             elif (0):
               print scatterer.label, gradients_frac[i_site]
               print blanks, grad_special, special_op
-              print "    GOOD GRAD", complete_structure.space_group_info(),
+              print "    GOOD GRAD", si_o_structure.space_group_info(),
               print special_op
         if (1):
           if (1):
-            sites_cart = complete_structure.sites_cart()
+            sites_cart = si_o_structure.sites_cart()
           else:
             sites_frac = flex.vec3_double(flex.random_double(
-              size=complete_structure.scatterers().size()*3))
+              size=si_o_structure.scatterers().size()*3))
             sites_special = flex.vec3_double()
             for site_frac,site_symmetry in zip(sites_frac,
-                                             complete_proxies.site_symmetries):
+                                               si_o_proxies.site_symmetries):
               sites_special.append(site_symmetry.special_op()*site_frac)
-            sites_cart = complete_structure.unit_cell() \
+            sites_cart = si_o_structure.unit_cell() \
               .orthogonalization_matrix() * sites_special
           minimized = minimization.lbfgs(
             sites_cart=sites_cart,
-            site_symmetries=complete_proxies.site_symmetries,
-            asu_mappings=complete_proxies.asu_mappings,
-            bond_sym_proxies=complete_proxies.proxies,
+            site_symmetries=si_o_proxies.site_symmetries,
+            asu_mappings=si_o_proxies.asu_mappings,
+            bond_sym_proxies=si_o_proxies.proxies,
             lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
               max_iterations=1000))
           print minimized.minimizer.error
@@ -430,9 +430,9 @@ def run(distance_cutoff=3.5):
             entry.tag
           print "final_target_value: %12.6f" % minimized.final_target_value, \
             entry.tag
-          sites_frac=complete_structure.unit_cell().fractionalization_matrix()\
+          sites_frac=si_o_structure.unit_cell().fractionalization_matrix() \
                     *sites_cart
-          minimized_structure = complete_structure.deep_copy_scatterers()
+          minimized_structure = si_o_structure.deep_copy_scatterers()
           for scatterer,site in zip(minimized_structure.scatterers(),
                                     sites_frac):
             scatterer.site = site
