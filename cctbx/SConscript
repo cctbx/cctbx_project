@@ -3,8 +3,6 @@ Import("env_base", "env_etc")
 
 env_etc.cctbx_dist = os.environ["CCTBX_DIST"]
 env_etc.cctbx_include = env_etc.norm_join(env_etc.cctbx_dist, "include")
-try: CScanRegisterFlags(cctbx=env_etc.cctbx_include)
-except: pass
 env_etc.cctbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.cctbx_include,
