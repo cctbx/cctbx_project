@@ -7,6 +7,8 @@
      2002 Oct: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/xray/structure_factors.h>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>

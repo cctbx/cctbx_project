@@ -7,6 +7,8 @@
      2002 Oct: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/miller/match_bijvoet_mates.h>
 #include <boost/python/class.hpp>
 

@@ -7,6 +7,8 @@
      2002 Sep: Ported from cctbx/uxtbx/uctbxmodule.cpp (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/uctbx.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/tuple.hpp>

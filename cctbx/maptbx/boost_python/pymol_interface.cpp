@@ -7,6 +7,8 @@
      2002 Oct: Modified fragment of cctbx/arraytbx/flex_utilsmodule.cpp (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/maptbx/statistics.h>
 #include <boost/python/def.hpp>

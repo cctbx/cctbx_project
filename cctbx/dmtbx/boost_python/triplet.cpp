@@ -7,6 +7,8 @@
      2002 Nov: Created (Ralf W. Grosse-Kunstleve)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/dmtbx/triplet.h>
 #include <boost/python/class.hpp>
 

@@ -7,6 +7,8 @@
      2002 Sep: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/sgtbx/seminvariant.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/boost_python/utils.h>

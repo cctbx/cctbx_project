@@ -7,6 +7,8 @@
      2002 Nov: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/xray/sampled_model_density.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>

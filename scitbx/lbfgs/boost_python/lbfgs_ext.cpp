@@ -8,6 +8,8 @@
      2002 Mar: Created (R.W. Grosse-Kunstleve)
  */
 
+#include <scitbx/array_family/boost_python/flex_fwd.h>
+
 #include <scitbx/error.h>
 #include <scitbx/lbfgs.h>
 #include <scitbx/lbfgs/drop_convergence_test.h>

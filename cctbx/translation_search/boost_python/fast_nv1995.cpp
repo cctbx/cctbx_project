@@ -7,6 +7,8 @@
      2002 Oct: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/translation_search/fast_nv1995.h>
 #include <boost/python/class.hpp>
 

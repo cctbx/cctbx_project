@@ -7,6 +7,8 @@
      2002 Sep: Created, based on scitbx/flex_module.cpp, shared_bpl.h (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/vec3.h>

@@ -7,6 +7,8 @@
      2002 Oct: Created (rwgk)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/miller/math.h>
 #include <cctbx/miller/sort.h>

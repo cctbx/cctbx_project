@@ -8,6 +8,8 @@
      2001 Oct: Created (R.W. Grosse-Kunstleve)
  */
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 #include <cctbx/adptbx.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
