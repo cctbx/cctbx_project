@@ -26,22 +26,30 @@ class time_log:
     self.label = label
     self.accumulation = 0
     self.n = 0
+    self.delta = 0
     self.timer = None
 
   def start(self):
     self.timer = user_plus_sys_time()
     return self
 
-  def legend(self):
-    return "time_log: label: n accumulation delta average"
+  def stop(self):
+    self.delta = self.timer.delta()
+    self.timer = None
+    self.accumulation += self.delta
+    self.n += 1
 
   def log(self):
-    delta = self.timer.delta()
-    self.timer = None
-    self.accumulation += delta
-    self.n += 1
+    self.stop()
+    return self.report()
+
+  legend = "time_log: label: n accumulation delta average"
+
+  def report(self):
+    assert self.timer == None
     return "time_log: %s: %d %.2f %.2f %.2f" % (
-      self.label, self.n, self.accumulation, delta, self.accumulation/self.n)
+      self.label, self.n, self.accumulation,
+      self.delta, self.accumulation/self.n)
 
 def adopt_init_args(obj, args, exclude=(), hide=00000):
   del args["self"]
