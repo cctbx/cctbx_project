@@ -28,9 +28,7 @@ class reader:
     line = file_handle.readline()
     if (line.rstrip() != "    1"):
       raise FormatError, "line 1: expecting '    1'"
-    line = file_handle.readline()
-    if (line.rstrip()[:2] != " -"):
-      raise FormatError, "line 2: expecting ' -###'"
+    file_handle.readline() # ignore line 2
     line_error = "line 3: expecting unit cell parameters and space group label"
     line = file_handle.readline()
     if (len(line) < 63 or line[60] != ' '):
