@@ -43,6 +43,8 @@ class reader:
         self._data.append(ifs.fobs)
         self._sigmas.append(ifs.sigma)
         have_data = 0001
+    if (not have_data):
+      raise RuntimeError, "No data found in file."
 
   def indices(self):
     return self._indices
