@@ -49,6 +49,45 @@ af::flex_int ReadMAR(const std::string& filename,
   return ReadADSC(filename,ptr,size1,size2,big_endian);
 }
 
+af::flex_int ReadRAXIS(const std::string& characters,
+                       const int& width, const long& size1,
+                       const long& size2,
+                       const int& big_endian ) {
+  af::flex_int z(af::flex_grid<>(size1,size2));
+
+  int* begin = z.begin();
+  std::size_t sz = z.size();
+
+  std::string::const_iterator ptr = characters.begin();
+  char* raw = new char[2];
+  
+  if (big_endian) {
+    for (std::size_t i = 0; i < sz; i++) {
+      raw[0] = *(ptr++); raw[1] = *(ptr++);
+      unsigned short int* usi_raw = reinterpret_cast<unsigned short int*>(raw);
+      if (*usi_raw <= 32767) {
+        begin[i] = *usi_raw;
+      } else {
+        begin[i] = ((signed short int)(*usi_raw) + 32768) * 32;
+      }
+    }
+    
+  } else {
+    for (std::size_t i = 0; i < sz; i++) {
+      raw[1] = *(ptr++); raw[0] = *(ptr++);
+      unsigned short int* usi_raw = reinterpret_cast<unsigned short int*>(raw);
+      if (*usi_raw <= 32767) {
+        begin[i] = *usi_raw;
+      } else {
+        begin[i] = ((signed short int)(*usi_raw) + 32768) * 32;
+      }
+    }
+  }
+  
+  delete[] raw;
+  return z;
+}
+
 af::flex_int Bin2_by_2(const af::flex_int& olddata) {
   int oldsize = olddata.size();
   int olddim = std::sqrt((double)oldsize);
@@ -84,5 +123,6 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 #endif
    def("ReadADSC", ReadADSC);
    def("ReadMAR", ReadMAR);
+   def("ReadRAXIS", ReadRAXIS);
    def("Bin2_by_2", Bin2_by_2);
 }
