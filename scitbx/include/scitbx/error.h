@@ -23,6 +23,37 @@
 //! Common scitbx namespace.
 namespace scitbx {
 
+  namespace detail {
+
+    inline
+    std::string
+    compose_error_message(
+      std::string const& prefix,
+      std::string const& msg)
+    {
+      return prefix + " Error: " + msg;
+    }
+
+    inline
+    std::string
+    compose_error_message(
+      std::string const& prefix,
+      const char* file,
+      long line,
+      std::string const& msg,
+      bool internal)
+    {
+      const char *s = "";
+      if (internal) s = " Internal";
+      char buf[64];
+      sprintf(buf, "%ld", line);
+      std::string result = prefix + s + " Error: " + file + "(" + buf + ")";
+      if (msg.size()) result += std::string(": ") + msg;
+      return result;
+    }
+
+  }
+
   //! All scitbx exceptions are derived from this class.
   class error : public std::exception
   {
@@ -30,24 +61,17 @@ namespace scitbx {
       //! General scitbx error message.
       explicit
       error(std::string const& msg) throw()
-      {
-        msg_ = prefix() + " Error: " + msg;
-      }
+      : msg_(detail::compose_error_message("scitbx", msg))
+      {}
 
       //! Error message with file name and line number.
       /*! Used by the macros below.
        */
       error(const char* file, long line, std::string const& msg = "",
             bool internal = true) throw()
-      {
-        const char *s = "";
-        if (internal) s = " Internal";
-        char buf[64];
-        sprintf(buf, "%ld", line);
-        msg_ =   prefix() + s + " Error: "
-                  + file + "(" + buf + ")";
-        if (msg.size()) msg_ += std::string(": ") + msg;
-      }
+      : msg_(detail::compose_error_message(
+          "scitbx", file, line, msg, internal))
+      {}
 
       //! Virtual destructor.
       virtual ~error() throw() {}
@@ -58,13 +82,13 @@ namespace scitbx {
         return msg_.c_str();
       }
 
-      //! Prefix for error messages.
-      virtual std::string prefix() const throw()
-      {
-        return std::string("scitbx");
-      }
-
     protected:
+      struct complete_msg_tag {};
+
+      error(std::string const& msg, complete_msg_tag)
+      : msg_(msg)
+      {}
+
       std::string msg_;
   };
 
