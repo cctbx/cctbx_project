@@ -36,6 +36,16 @@ namespace {
     return result;
   }
 
+  af::shared<double>
+  as_double(af::const_ref<bool> const& self)
+  {
+    af::shared<double> result((af::reserve(self.size())));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i] ? 1 : 0);
+    }
+    return result;
+  }
+
   af::shared<std::size_t>
   iselection(
     af::const_ref<bool, flex_grid<> > const& a,
@@ -162,6 +172,7 @@ namespace {
         default_call_policies(),
         (arg_("size"), arg_("iselection"))))
       .def("as_int", as_int)
+      .def("as_double", as_double)
       .def("iselection", iselection,
         iselection_overloads((arg_("self"), arg_("test_value")=true)))
     ;
