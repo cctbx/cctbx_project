@@ -108,23 +108,27 @@ class symmetry_callback:
       unit_cell = None
       try: unit_cell = uctbx.unit_cell(value)
       except: pass
-      if (unit_cell is None):
+      if (unit_cell is not None):
+        self.unit_cell = unit_cell
+      else:
         crystal_symmetry = crystal_symmetry_from_any.extract_from(value)
         if (   crystal_symmetry is None
             or crystal_symmetry.unit_cell() is None):
           raise OptionError("cannot read parameters: " + value, opt)
-      self.unit_cell = unit_cell
+        self.unit_cell = crystal_symmetry.unit_cell()
     elif (opt == "--space_group"):
       space_group_info = None
       space_group_info = sgtbx.space_group_info(symbol=value)
       try: space_group_info = sgtbx.space_group_info(symbol=value)
       except: pass
-      if (space_group_info is None):
+      if (space_group_info is not None):
+        self.space_group_info = space_group_info
+      else:
         crystal_symmetry = crystal_symmetry_from_any.extract_from(value)
         if (   crystal_symmetry is None
             or crystal_symmetry.space_group_info() is None):
           raise OptionError("unknown space group: " + value, opt)
-      self.space_group_info = space_group_info
+        self.space_group_info = crystal_symmetry.space_group_info()
     elif (opt == "--symmetry"):
       crystal_symmetry = crystal_symmetry_from_any.extract_from(value)
       if (   crystal_symmetry is None
