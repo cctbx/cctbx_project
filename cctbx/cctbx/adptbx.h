@@ -22,6 +22,9 @@ namespace adptbx {
 
   using namespace cctbx;
 
+  static const error
+    not_positive_definite("adp tensor is not positive definite.");
+
   const double   TwoPiSquared = 2. * constants::pi * constants::pi;
   const double EightPiSquared = 8. * constants::pi * constants::pi;
 
@@ -309,7 +312,7 @@ namespace adptbx {
     FloatType p3 = p * p * p;
     FloatType q2 = q * q;
     FloatType D = p3 / 27. + q2 / 4.;
-    if (D >= 0.) throw error("adp tensor is not positive definite.");
+    if (D >= 0.) throw not_positive_definite;
     /* At this point it is clear that there are three real eigenvaues.
        They can now be determined without involving complex numbers.
      */
@@ -322,6 +325,64 @@ namespace adptbx {
                   - r / 3.; // the term on this line converts the
     }                       // solutions y of the reduced form to
     return result;          // the solutions x of the normal form.
+  }
+
+  namespace detail {
+
+    template <class FloatType>
+    boost::array<FloatType, 3>
+    recursively_multiply(const boost::array<FloatType, 9>& M,
+                         boost::array<FloatType, 3> V,
+                         FloatType tolerance = 1.e-6)
+    {
+      for (;;) {
+        boost::array<FloatType, 3> MV;
+        MatrixLite::multiply<FloatType>(M.elems, V.elems, 3, 3, 1, MV.elems);
+        FloatType LenMV = std::sqrt(MV * MV);
+        if (LenMV == 0.) return MV;
+        MV = MV / LenMV;
+        boost::array<FloatType, 3> absMV = boost::array_abs(MV);
+        std::size_t iMax = boost::array_max_index(absMV);
+        FloatType scaled_tolerance = absMV[iMax] * tolerance;
+        bool converged = MatrixLite::approx_equal(MV, V, scaled_tolerance);
+        V = MV;
+        if (converged) break;
+      }
+      return V;
+    }
+
+  } // namespace detail
+
+  //! Determine the eigenvalues of the adp tensor.
+  /*! XXX
+   */
+  template <class FloatType>
+  boost::array<boost::array<FloatType, 3>, 3>
+  EigenVectors(const boost::array<FloatType, 6>& adp, double tolerance = 1.e-6)
+  {
+    boost::array<FloatType, 9> M[2];
+    M[0] = Xaniso_as_SymMx33(adp, return_type<FloatType>());
+    FloatType d = MatrixLite::Determinant(M[0]);
+    if (d == 0.) {
+      throw not_positive_definite;
+    }
+    M[1] = MatrixLite::CoFactorMxTp(M[0]) / d;
+    boost::array<boost::array<FloatType, 3>, 3> result;
+    for(std::size_t iM=0;iM<2;iM++) {
+      boost::array<FloatType, 3>
+      Diag = MatrixLite::DiagonalElements(M[iM]);
+      std::size_t iLarge = boost::array_max_index(boost::array_abs(Diag));
+      boost::array<FloatType, 3> V;
+      V.assign(0.);
+      V[iLarge] = 1.;
+      result[iM] = detail::recursively_multiply(M[iM], V);
+      if (result[iM] * result[iM] == 0.) {
+        throw not_positive_definite;
+      }
+    }
+    result[2] = MatrixLite::cross_product(result[0], result[1]);
+    cctbx_assert(result[2] * result[2] != 0.);
+    return result;
   }
 
 } // namespace adptbx

@@ -116,6 +116,17 @@ namespace {
     return EigenValues(adp);
   }
 
+  tuple
+  py_EigenVectors(const boost::array<double, 6>& adp) {
+    boost::array<boost::array<double, 3>, 3>
+    EVs = EigenVectors(adp);
+    tuple result(3);
+    for(std::size_t i=0;i<result.size();i++) {
+      result.set_item(i, boost::python::ref(to_python(EVs[i])));
+    }
+    return result;
+  }
+
 }
 
 BOOST_PYTHON_MODULE_INIT(adptbx)
@@ -155,6 +166,7 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
     this_module.def(py_DebyeWallerFactorUcart, "DebyeWallerFactorUcart");
 
     this_module.def(py_EigenValues, "EigenValues");
+    this_module.def(py_EigenVectors, "EigenVectors");
   }
   catch(...)
   {

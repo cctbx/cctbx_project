@@ -97,17 +97,7 @@ namespace sgtbx {
 
   RotMx RotMx::CoFactorMxTp() const
   {
-    RotMx result(BF() * BF());
-    result[0] =  elems[4] * elems[8] - elems[5] * elems[7];
-    result[1] = -elems[1] * elems[8] + elems[2] * elems[7];
-    result[2] =  elems[1] * elems[5] - elems[2] * elems[4];
-    result[3] = -elems[3] * elems[8] + elems[5] * elems[6];
-    result[4] =  elems[0] * elems[8] - elems[2] * elems[6];
-    result[5] = -elems[0] * elems[5] + elems[2] * elems[3];
-    result[6] =  elems[3] * elems[7] - elems[4] * elems[6];
-    result[7] = -elems[0] * elems[7] + elems[1] * elems[6];
-    result[8] =  elems[0] * elems[4] - elems[1] * elems[3];
-    return result;
+    return RotMx(MatrixLite::CoFactorMxTp(*this), BF() * BF());
   }
 
   RotMx RotMx::inverse() const
