@@ -20,13 +20,17 @@ import sys
 
 def scatterer(label="",
               site=(0,0,0),
-              u=0,
+              u=None,
               occupancy=1,
               caasf="",
-              fp_fdp=0j):
+              fp_fdp=0j,
+              b=None):
   """\
 Python wrapper for C++ constructor.
 """
+  assert u == None or b == None
+  if   (b != None): u = adptbx.b_as_u(b)
+  elif (u == None): u = 0
   if (type(caasf) == type("")):
     if (caasf == ""):
       caasf = wk1995(label, 0)
