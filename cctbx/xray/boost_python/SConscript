@@ -6,6 +6,7 @@ env.SharedLibrary(target="#libtbx/cctbx_boost/xray_ext", source=[
   "conversions.cpp",
   "fast_gradients.cpp",
   "scatterer.cpp",
+  "sampling_base.cpp",
   "sampled_model_density.cpp",
   "structure_factors.cpp",
   "targets.cpp",

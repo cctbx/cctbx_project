@@ -1,7 +1,7 @@
 #ifndef CCTBX_XRAY_FAST_GRADIENTS_H
 #define CCTBX_XRAY_FAST_GRADIENTS_H
 
-#include <cctbx/xray/sampled_model_density.h>
+#include <cctbx/xray/sampling_base.h>
 
 namespace cctbx { namespace xray {
 
@@ -58,7 +58,7 @@ namespace cctbx { namespace xray {
             // if (d_rho_d_fp||d_rho_d_fdp)
             {
               FloatType d = b_incl_extra * b_incl_extra * b_incl_extra;
-              eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 * w / std::sqrt(d);
+              eight_pi_pow_3_2_w_d_ = eight_pi_pow_3_2 * w / std::sqrt(d);
             }
           }
         }
@@ -98,7 +98,7 @@ namespace cctbx { namespace xray {
             }
             // for d_rho_d_fp, d_rho_d_fdp
             {
-              eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 * w / std::sqrt(d);
+              eight_pi_pow_3_2_w_d_ = eight_pi_pow_3_2 * w / std::sqrt(d);
             }
           }
           // if (d_rho_d_occupancy)
@@ -229,7 +229,7 @@ namespace cctbx { namespace xray {
         {
           scitbx::sym_mat3<FloatType> drdb;
           scitbx::vec3<FloatType> bd = bcfmt * d;
-          FloatType cbd = const_minus_4_pi_sq / detb;
+          FloatType cbd = -four_pi_sq / detb;
           FloatType rd = rho_term / detb;
           for(std::size_t i=0;i<3;i++) {
             drdb[i] = rd * (cbd*bd[i]*bd[i] + bcfmt[i]*.5);
@@ -305,17 +305,21 @@ namespace cctbx { namespace xray {
 
   } // namespace detail
 
-  template <typename FloatType = double,
-            typename XrayScattererType = scatterer<> >
+  template <typename FloatType=double,
+            typename XrayScattererType=scatterer<> >
   class fast_gradients
+  :
+    public sampling_base<FloatType, XrayScattererType>
   {
     public:
-      typedef XrayScattererType xray_scatterer_type;
-      typedef typename xray_scatterer_type::caasf_type::base_type caasf_type;
-
-      typedef typename maptbx::c_grid_padded_p1<3> accessor_type;
-      typedef typename accessor_type::index_type grid_point_type;
-      typedef typename grid_point_type::value_type grid_point_element_type;
+      typedef sampling_base<FloatType, XrayScattererType> base_t;
+      typedef typename base_t::xray_scatterer_type xray_scatterer_type;
+      typedef typename base_t::caasf_type caasf_type;
+      typedef typename base_t::accessor_type accessor_type;
+      typedef typename base_t::grid_point_type grid_point_type;
+      typedef typename base_t::grid_point_element_type grid_point_element_type;
+      typedef typename base_t::real_map_type real_map_type;
+      typedef typename base_t::complex_map_type complex_map_type;
 
       fast_gradients() {}
 
@@ -324,56 +328,10 @@ namespace cctbx { namespace xray {
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
           ft_d_target_d_f_calc,
-        grid_point_type const& fft_n_real,
-        grid_point_type const& fft_m_real,
         FloatType const& u_extra=0.25,
         FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
-        bool force_complex=false,
         bool electron_density_must_be_positive=true);
-
-      uctbx::unit_cell const&
-      unit_cell() { return unit_cell_; }
-
-      FloatType
-      u_extra() const { return u_extra_; }
-
-      FloatType
-      wing_cutoff() const { return wing_cutoff_; }
-
-      FloatType
-      exp_table_one_over_step_size() const
-      {
-        return exp_table_one_over_step_size_;
-      }
-
-      std::size_t
-      n_scatterers_passed() const { return n_scatterers_passed_; }
-
-      std::size_t
-      n_contributing_scatterers() const { return n_contributing_scatterers_; }
-
-      std::size_t
-      n_anomalous_scatterers() const { return n_anomalous_scatterers_; }
-
-      bool
-      anomalous_flag() const { return anomalous_flag_; }
-
-      std::size_t
-      exp_table_size() const { return exp_table_size_; }
-
-      grid_point_type const&
-      max_shell_radii() const { return max_shell_radii_; }
-
-      fractional<FloatType>
-      max_shell_radii_frac() const
-      {
-        fractional<FloatType> r;
-        for(std::size_t i=0;i<3;i++) {
-          r[i] = FloatType(max_shell_radii_[i]) / map_accessor_.focus()[i];
-        }
-        return r;
-      }
 
       af::shared<scitbx::vec3<FloatType> >
       d_target_d_site() const { return d_target_d_site_; }
@@ -394,17 +352,6 @@ namespace cctbx { namespace xray {
       d_target_d_fdp() const { return d_target_d_fdp_; }
 
     private:
-      uctbx::unit_cell unit_cell_;
-      std::size_t n_scatterers_passed_;
-      FloatType u_extra_;
-      FloatType wing_cutoff_;
-      FloatType exp_table_one_over_step_size_;
-      std::size_t n_anomalous_scatterers_;
-      bool anomalous_flag_;
-      std::size_t n_contributing_scatterers_;
-      accessor_type map_accessor_;
-      std::size_t exp_table_size_;
-      grid_point_type max_shell_radii_;
       af::shared<scitbx::vec3<FloatType> > d_target_d_site_;
       af::shared<FloatType> d_target_d_u_iso_;
       af::shared<scitbx::sym_mat3<FloatType> > d_target_d_u_star_;
@@ -421,52 +368,23 @@ namespace cctbx { namespace xray {
     af::const_ref<XrayScattererType> const& scatterers,
     af::const_ref<std::complex<FloatType>, accessor_type> const&
       ft_d_target_d_f_calc,
-    grid_point_type const& fft_n_real,
-    grid_point_type const& fft_m_real,
     FloatType const& u_extra,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
-    bool force_complex,
     bool electron_density_must_be_positive)
   :
-    unit_cell_(unit_cell),
-    n_scatterers_passed_(scatterers.size()),
-    u_extra_(u_extra),
-    wing_cutoff_(wing_cutoff),
-    exp_table_one_over_step_size_(exp_table_one_over_step_size),
-    n_contributing_scatterers_(0),
-    n_anomalous_scatterers_(0),
-    anomalous_flag_(false),
-    exp_table_size_(0),
-    max_shell_radii_(0,0,0)
+    base_t(unit_cell, scatterers, u_extra, wing_cutoff,
+           exp_table_one_over_step_size)
   {
-    scitbx::mat3<FloatType> orth_mx = unit_cell_.orthogonalization_matrix();
-    if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
-      throw error(
-        "Fatal Programming Error:"
-        " Real-space sampling of model electron density"
-        " is optimized for orthogonalization matrix"
-        " according to the PDB convention. The orthogonalization"
-        " matrix passed is not compatible with this convention.");
+    if (this->n_anomalous_scatterers_ != 0) {
+      this->anomalous_flag_ = true;
     }
-    const xray_scatterer_type* scatterer;
-    for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++) {
-      if (scatterer->weight() == 0) continue;
-      n_contributing_scatterers_++;
-      if (scatterer->fp_fdp.imag() != 0) {
-        n_anomalous_scatterers_++;
-      }
-    }
-    if (n_anomalous_scatterers_ == 0 && !force_complex) {
-      map_accessor_ = accessor_type(fft_m_real, fft_n_real);
-    }
-    else {
-      anomalous_flag_ = true;
-      map_accessor_ = accessor_type(fft_n_real, fft_n_real);
-    }
-    grid_point_type const& grid_f = map_accessor_.focus();
-    grid_point_type const& grid_a = map_accessor_.all();
+    this->map_accessor_ = ft_d_target_d_f_calc.accessor();
+    grid_point_type const& grid_f = this->map_accessor_.focus();
     detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
+    scitbx::mat3<FloatType>
+      orth_mx = this->unit_cell_.orthogonalization_matrix();
+    const xray_scatterer_type* scatterer;
     for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++)
     {
       if (scatterer->weight() == 0) continue;
@@ -478,7 +396,7 @@ namespace cctbx { namespace xray {
         u_iso = scatterer->u_iso;
       }
       else {
-        u_cart = adptbx::u_star_as_u_cart(unit_cell_, scatterer->u_star);
+        u_cart = adptbx::u_star_as_u_cart(this->unit_cell_, scatterer->u_star);
         scitbx::vec3<FloatType> ev = adptbx::eigenvalues(u_cart);
         CCTBX_ASSERT(adptbx::is_positive_definite(ev));
         u_iso = af::max(ev);
@@ -488,10 +406,10 @@ namespace cctbx { namespace xray {
         exp_table,
         scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
         scatterer->weight_without_occupancy(), scatterer->weight(),
-        u_iso, u_extra_);
+        u_iso, this->u_extra_);
       detail::calc_shell<FloatType, grid_point_type> shell(
-        unit_cell_, wing_cutoff_, grid_f, caasf_ft);
-      detail::array_update_max(max_shell_radii_, shell.radii);
+        this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
+      detail::array_update_max(this->max_shell_radii_, shell.radii);
       if (electron_density_must_be_positive) {
         if (   caasf_ft.rho_real_0() < 0
             || caasf_ft.rho_real(shell.max_d_sq) < 0) {
@@ -504,7 +422,7 @@ namespace cctbx { namespace xray {
           exp_table,
           scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
           scatterer->weight_without_occupancy(), scatterer->weight(),
-          u_cart, u_extra_);
+          u_cart, this->u_extra_);
       }
       scitbx::vec3<FloatType> gr_site(0,0,0);
       FloatType gr_b_iso(0);
@@ -588,19 +506,19 @@ namespace cctbx { namespace xray {
         }
       }}}
       d_target_d_site_.push_back(
-        gr_site * unit_cell_.orthogonalization_matrix());
+        gr_site * this->unit_cell_.orthogonalization_matrix());
       if (!scatterer->anisotropic_flag) {
         d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
       }
       else {
         d_target_d_u_star_.push_back(adptbx::grad_u_cart_as_u_star(
-          unit_cell_, adptbx::u_as_b(gr_b_cart)));
+          this->unit_cell_, adptbx::u_as_b(gr_b_cart)));
       }
       d_target_d_occupancy_.push_back(gr_occupancy);
       d_target_d_fp_.push_back(gr_fp);
       d_target_d_fdp_.push_back(gr_fdp);
     }
-    exp_table_size_ = exp_table.table().size();
+    this->exp_table_size_ = exp_table.table().size();
   }
 
 }} // namespace cctbx::xray
