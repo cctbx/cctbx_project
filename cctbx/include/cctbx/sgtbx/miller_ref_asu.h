@@ -99,7 +99,8 @@ namespace cctbx { namespace sgtbx {
   bool isInReferenceReciprocalSpaceASU_1b(Miller::Index const& h);
 
   const ReferenceReciprocalSpaceASU*
-  LookupReferenceReciprocalSpaceASU(tables::MatrixGroup::Code group_code);
+  LookupReferenceReciprocalSpaceASU(
+    tables::MatrixGroup::Code const& group_code);
 
 }} // namespace cctbx::sgtbx
 

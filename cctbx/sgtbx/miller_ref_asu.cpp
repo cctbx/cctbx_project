@@ -270,21 +270,22 @@ namespace cctbx { namespace sgtbx {
   }
 
   const ReferenceReciprocalSpaceASU*
-  LookupReferenceReciprocalSpaceASU(tables::MatrixGroup::Code group_code)
+  LookupReferenceReciprocalSpaceASU(
+    tables::MatrixGroup::Code const& group_code)
   {
     using namespace tables::MatrixGroup;
-    group_code = group_code.LaueGroupType();
-    if (group_code == MGC_3bm) {
+    Code laue_group_code = group_code.LaueGroupType();
+    if (laue_group_code == MGC_3bm) {
       if (   group_code == MGC_312
           || group_code == MGC_31m
-          || group_code == MGC_3b1m) group_code = MGC_3b1m;
-      else                           group_code = MGC_3bm1;
+          || group_code == MGC_3b1m) laue_group_code = MGC_3b1m;
+      else                           laue_group_code = MGC_3bm1;
     }
     for(std::size_t i=0;; i++) {
       const ReferenceReciprocalSpaceASU*
       ref_asu = detail::TableReferenceReciprocalSpaceASU[i];
       if (ref_asu == 0) throw cctbx_internal_error();
-      if (ref_asu->LaueGroupCode() == group_code) return ref_asu;
+      if (ref_asu->LaueGroupCode() == laue_group_code) return ref_asu;
     }
   }
 

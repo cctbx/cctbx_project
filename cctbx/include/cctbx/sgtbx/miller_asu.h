@@ -162,9 +162,9 @@ namespace cctbx {
             <p>
             Example:<pre>
             cctbx::uctbx::UnitCell UC(...);
-            cctbx::sgtbx::SpaceGroup SgOps(...);
+            cctbx::sgtbx::SpaceGroupInfo SgInfo(...);
             cctbx::af::shared<Miller::Index> ArrayOfH;
-            MillerIndexGenerator(UC, SgOps, true, 1.0).AddtoArray(ArrayOfH);
+            MillerIndexGenerator(UC, SgInfo, true, 1.0).AddtoArray(ArrayOfH);
             </pre>
          */
         template <class MillerArrayType>
@@ -179,9 +179,10 @@ namespace cctbx {
         }
       private:
         void InitializeLoop(const Miller::Index& ReferenceHmax);
-        bool set_sys_abs_test(const Miller::Index& h);
+        bool set_phase_info(const Miller::Index& h);
         Miller::Index next_under_friedel_symmetry();
         uctbx::UnitCell m_UnitCell;
+        int m_SgNumber;
         SpaceGroup m_SgOps;
         bool m_FriedelFlag;
         ReciprocalSpaceASU m_ASU;

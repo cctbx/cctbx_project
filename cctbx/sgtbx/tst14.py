@@ -26,6 +26,11 @@ def OneCycle(settings):
         UnitCell, SgInfo, friedel_flag, 2.)
       for h_asym in miller_indices:
         h_seq = SgOps.getEquivMillerIndices(h_asym)
+        h_asu = sgtbx.Miller_AsymIndex(SgOps, asu, h_asym)
+        if (friedel_flag):
+          assert h_asym == h_asu.HermitianLayout().H()
+        else:
+          assert h_asym == h_asu.AnomalousLayout().H()
         # exercise class PhaseInfo
         restr = h_seq.getPhaseRestriction()
         assert not restr.SysAbsWasTested()
