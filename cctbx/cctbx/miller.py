@@ -1590,9 +1590,20 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       dataset_name=dataset_name,
       wavelength=wavelength)
 
-  def as_phases_phs(self, out):
+  def as_phases_phs(self,
+        out,
+        scale_amplitudes=True,
+        phases=None,
+        phases_deg=None,
+        figures_of_merit=None):
     import iotbx.phases
-    iotbx.phases.miller_array_as_phases_phs(self=self, out=out)
+    iotbx.phases.miller_array_as_phases_phs(
+      self=self,
+      out=out,
+      scale_amplitudes=scale_amplitudes,
+      phases=phases,
+      phases_deg=phases_deg,
+      figures_of_merit=figures_of_merit)
 
 class merge_equivalents:
 
