@@ -278,7 +278,6 @@ namespace uctbx {
                                    //   sqrt(det(G)) is set to 1
       double uxv2 = DotG(uxv, R_G, uxv);
       double dmin = ((double)uxv[i]/(double)MaxMIx[i]/std::sqrt(uxv2)) -1.e-4;
-      std::cout<<"component "<<i<<" dmin="<<dmin<<std::endl;
       maxres = i?((dmin<maxres)?dmin:maxres):dmin;
     }
     return maxres;
