@@ -69,7 +69,7 @@ random_size_t = random_generator.random_size_t
 random_double = random_generator.random_double
 
 def random_permutation(size):
-  return sort_permutation(random_double(size=size))
+  return sort_permutation(data=random_double(size=size))
 
 class py_object:
 

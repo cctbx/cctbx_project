@@ -571,10 +571,10 @@ def exercise_complex_functions():
 def exercise_sort():
   for flex_type in (flex.int, flex.size_t, flex.double):
     x = flex_type((3,1,2))
-    p = flex.sort_permutation(x)
+    p = flex.sort_permutation(data=x)
     assert tuple(p) == (1,2,0)
     assert approx_equal(x.select(p), (1,2,3))
-    p = flex.sort_permutation(x, 00000)
+    p = flex.sort_permutation(data=x, reverse=00000)
     assert tuple(p) == (1,2,0)
     assert approx_equal(x.select(p), (1,2,3))
     p = flex.sort_permutation(x, 0001)

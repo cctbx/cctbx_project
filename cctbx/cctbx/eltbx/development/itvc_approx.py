@@ -41,7 +41,8 @@ def run(file_name, table_of_gaussians, cutoff,
     entry = tab.entries[element]
     wk = table_of_gaussians(element, 1)
     assert entry.table_y.size() == 62
-    if (not flex.sort_permutation(entry.table_y, 0001).all_eq(range_62)):
+    if (not flex.sort_permutation(data=entry.table_y, reverse=0001)
+            .all_eq(range_62)):
       print "Increasing: %s (%d)" % (element, entry.atomic_number)
       prev_y = entry.table_y[0]
       for y in entry.table_y:
@@ -93,7 +94,7 @@ def run(file_name, table_of_gaussians, cutoff,
           plots_dir=plots_dir,
           label=element,
           gaussian_fit=gaussian_fit))
-  perm = flex.sort_permutation(max_errors, 0001)
+  perm = flex.sort_permutation(data=max_errors, reverse=0001)
   labels = labels.select(perm)
   errors = flex.select(errors, perm)
   correlations = correlations.select(perm)
@@ -104,7 +105,7 @@ def run(file_name, table_of_gaussians, cutoff,
   for l,e,cc,p in zip(labels, errors, correlations, cmp_plots):
     entry = tab.entries[l]
     y = entry.table_y
-    perm = flex.sort_permutation(e, 0001)[:3]
+    perm = flex.sort_permutation(data=e, reverse=0001)[:3]
     high = []
     for i in perm:
       if (significant_errors_only and e[i] < 0.01): break

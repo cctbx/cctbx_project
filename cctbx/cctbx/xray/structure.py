@@ -284,8 +284,8 @@ class structure(crystal.special_position_settings):
     assert by_value in ("occupancy",)
     assert reverse in (00000, 0001)
     p = flex.sort_permutation(
-      self.scatterers().extract_occupancies(),
-      reverse)
+      data=self.scatterers().extract_occupancies(),
+      reverse=reverse)
     return structure(
       special_position_settings=self,
       scatterers=self._scatterers.select(p),
@@ -380,7 +380,7 @@ class show_pairs:
       s = "%s(%d):" % (scatterers[i_seq].label, i_seq+1)
       s = "%-15s pair count: %3d" % (s, pair_count)
       print "%-32s"%s, "<<"+",".join([" %7.4f" % x for x in site_frac_i])+">>"
-      permutation = flex.sort_permutation(dists)
+      permutation = flex.sort_permutation(data=dists)
       for j_seq,i_group in flex.select(j_seq_i_group, permutation):
         site_frac_j = sites_frac[j_seq]
         j_sym_groups = asu_dict[j_seq]

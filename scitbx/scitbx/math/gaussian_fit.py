@@ -241,7 +241,7 @@ def show_minimize_multi_histogram(f=None, reset=0001):
   global minimize_multi_histogram
   minimizer_types = minimize_multi_histogram.keys()
   counts = flex.double(minimize_multi_histogram.values())
-  perm = flex.sort_permutation(counts, 0001)
+  perm = flex.sort_permutation(data=counts, reverse=0001)
   minimizer_types = flex.select(minimizer_types, perm)
   counts = counts.select(perm)
   n_total = flex.sum(counts)
