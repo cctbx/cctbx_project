@@ -93,48 +93,32 @@ class package:
       return
     registry.append(self.name, self)
     if (self.config is not None):
-      try:
-        required_packages = self.config["packages_required_for_use"]
-      except KeyError:
-        pass
-      else:
-        for required_package_name in required_packages:
-          package(self.dist_root, required_package_name)._resolve_dependencies(
-            registry)
-      try:
-        required_packages = self.config["packages_required_for_build"]
-      except KeyError:
-        pass
-      else:
-        for required_package_name in required_packages:
-          p = package(self.dist_root, required_package_name, must_exist=0)
-          if (p.dist_path is None):
-            registry.missing_for_build.append(required_package_name)
-          else:
-            p._resolve_dependencies(registry)
-      try:
-        optional_packages = self.config["optional_packages"]
-      except KeyError:
-        pass
-      else:
-        for optional_package_name in optional_packages:
-          try:
-            # look ahead stage 1
-            p = package(self.dist_root, optional_package_name)
-          except UserError:
-            pass
-          else:
-            if (p.dist_path is not None):
-              registry_copy = copy.deepcopy(registry)
-              try:
-                # look ahead stage 2
-                p._resolve_dependencies(registry_copy)
-              except UserError:
-                pass
-              else:
-                # repeat and keep results
-                p = package(self.dist_root, optional_package_name)
-                p._resolve_dependencies(registry)
+      for package_name in self.config.get("packages_required_for_use", []):
+        package(self.dist_root, package_name)._resolve_dependencies(registry)
+      for package_name in self.config.get("packages_required_for_build", []):
+        p = package(self.dist_root, package_name, must_exist=0)
+        if (p.dist_path is None):
+          registry.missing_for_build.append(package_name)
+        else:
+          p._resolve_dependencies(registry)
+      for package_name in self.config.get("optional_packages", []):
+        try:
+          # look ahead stage 1
+          p = package(self.dist_root, package_name)
+        except UserError:
+          pass
+        else:
+          if (p.dist_path is not None):
+            registry_copy = copy.deepcopy(registry)
+            try:
+              # look ahead stage 2
+              p._resolve_dependencies(registry_copy)
+            except UserError:
+              pass
+            else:
+              # repeat and keep results
+              p = package(self.dist_root, package_name)
+              p._resolve_dependencies(registry)
 
 def insert_normed_path(path_list, addl_path):
   addl_path = norm(addl_path)
