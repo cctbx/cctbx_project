@@ -82,7 +82,7 @@ namespace {
 
     python::import_converters<
       std::vector<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > >
-    py_vector_XrayScatterer("cctbx.arraytbx.std_vector", "XrayScatterer");
+    py_std_vector_XrayScatterer("cctbx.arraytbx.std_vector", "XrayScatterer");
 
     class_builder<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
     py_XrayScatterer(this_module, "XrayScatterer");
