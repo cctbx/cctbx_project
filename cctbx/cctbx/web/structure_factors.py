@@ -39,16 +39,16 @@ def read_scatterer(flds, default_b_iso=3.0):
       float(flds[1])
     except:
       offs = 2
-      scatterer.caasf = wk1995(flds[1], True)
+      scatterer.caasf = wk1995(flds[1], 0001)
     else:
       offs = 1
-      scatterer.caasf = wk1995(flds[0], False)
+      scatterer.caasf = wk1995(flds[0], 00000)
     site = flds[offs : offs + 3]
     for i in xrange(3):
       site[i] = float(site[i])
     scatterer.site = site
     scatterer.occupancy = 1.
-    scatterer.anisotropic_flag = False
+    scatterer.anisotropic_flag = 00000
     scatterer.u_iso = adptbx.b_as_u(default_b_iso)
     if (len(flds) >= offs + 4):
       scatterer.occupancy = float(flds[offs + 3])
@@ -83,7 +83,7 @@ def run(server_info, inp, status):
   wyckoff_table=special_position_settings.space_group_info().wyckoff_table()
 
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = True
+  status.in_table = 0001
   print "<tr>"
   print "<th>Label"
   print "<th>Scattering<br>factor<br>label"
@@ -116,27 +116,27 @@ def run(server_info, inp, status):
      + scatterer.site
      + (scatterer.occupancy, adptbx.u_as_b(scatterer.u_iso)))
   print "</table><pre>"
-  status.in_table = False
+  status.in_table = 00000
   print
 
   f_calc_array = xray.structure_factors(
     xray_structure=structure,
     miller_set=miller.build_set(
       crystal_symmetry=structure,
-      anomalous_flag=False,
+      anomalous_flag=00000,
       d_min=d_min)).f_calc_array()
   print "Number of Miller indices:", f_calc_array.indices().size()
   print
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = True
+  status.in_table = 0001
   print "<tr>"
   print "<th>hkl<th>Amplitude<th>Phase"
   for i,h in f_calc_array.indices().items():
     print "<tr>"
     print "<td>%3d %3d %3d<td>%.6g<td align=right>%.3f" % (
-      h + complex_math.abs_arg(f_calc_array.data()[i], deg=True))
+      h + complex_math.abs_arg(f_calc_array.data()[i], deg=0001))
   print "</table><pre>"
-  status.in_table = False
+  status.in_table = 00000
   print
 
   print "</pre>"

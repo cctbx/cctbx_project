@@ -11,7 +11,7 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
              d_min=1., resolution_factor=1./3, max_prime=5,
              quality_factor=100, wing_cutoff=1.e-3,
              exp_table_one_over_step_size=-100,
-             force_complex=False,
+             force_complex=00000,
              verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
@@ -19,8 +19,8 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
-    random_u_iso=True,
-    random_occupancy=True
+    random_u_iso=0001,
+    random_occupancy=0001
     )
   f_direct_array = structure.structure_factors_direct(
     anomalous_flag=anomalous_flag,
@@ -59,7 +59,7 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     print "max_shell_radii:", sampled_density.max_shell_radii(),
     print "(%.4f, %.4f, %.4f)" % sampled_density.max_shell_radii_frac()
   tags = maptbx.grid_tags(rfft.n_real())
-  symmetry_flags = maptbx.symmetry_flags(use_space_group_symmetry=True)
+  symmetry_flags = maptbx.symmetry_flags(use_space_group_symmetry=0001)
   tags.build(structure.space_group_info().type(), symmetry_flags)
   sampled_density.apply_symmetry(tags)
   if (not sampled_density.anomalous_flag()):
@@ -107,8 +107,8 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     verbose=verbose)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (False, True)[:]: #SWITCH
-    for anisotropic_flag in (False, True)[:]: #SWITCH
+  for anomalous_flag in (00000, 0001)[:]: #SWITCH
+    for anisotropic_flag in (00000, 0001)[:]: #SWITCH
       exercise(space_group_info, anomalous_flag, anisotropic_flag,
                verbose=flags.Verbose)
 

@@ -37,7 +37,7 @@ print "<hr>"
 import traceback
 class empty: pass
 status = empty()
-status.in_table = False
+status.in_table = 00000
 try:
   target.run(server_info, inp, status)
 except:

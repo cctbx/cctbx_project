@@ -15,9 +15,9 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
     elements=("N", "C", "C", "O"),
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
-    anisotropic_flag=True,
-    random_u_iso=True,
-    random_occupancy=True
+    anisotropic_flag=0001,
+    random_u_iso=0001,
+    random_occupancy=0001
     ).structure_factors_direct(
         anomalous_flag=anomalous_flag,
         d_min=d_min)
@@ -85,8 +85,8 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
     verbose=verbose)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (False, True)[:]: #SWITCH
-    for conjugate_flag in (False, True)[:]: #SWITCH
+  for anomalous_flag in (00000, 0001)[:]: #SWITCH
+    for conjugate_flag in (00000, 0001)[:]: #SWITCH
       exercise(space_group_info, anomalous_flag, conjugate_flag,
                verbose=flags.Verbose)
 

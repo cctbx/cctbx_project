@@ -24,18 +24,18 @@ class collector:
     self.sum_w = 0
 
   def add(self, h, f1, f2):
-    a1, p1 = abs_arg(f1, deg=True)
-    a2, p2 = abs_arg(f2, deg=True)
+    a1, p1 = abs_arg(f1, deg=0001)
+    a2, p2 = abs_arg(f2, deg=0001)
     if (0 or self.verbose):
       print h
       print " ", a1, p1
       print " ", a2, p2
-      print " " * 20, "%.2f" % (phase_error(p1, p2, deg=True),)
+      print " " * 20, "%.2f" % (phase_error(p1, p2, deg=0001),)
     self.amp1.append(a1)
     self.amp2.append(a2)
     self.sum_amp1_minus_amp2_sq += (a1 - a2)**2
     self.sum_amp1_sq += a1**2
-    self.sum_w_phase_error += (a1 + a2) * phase_error(p1, p2, deg=True)
+    self.sum_w_phase_error += (a1 + a2) * phase_error(p1, p2, deg=0001)
     self.sum_w += (a1 + a2)
 
   def report(self):

@@ -27,7 +27,7 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
         ms.site = site
         f_calc_array = xray.structure_factors_direct(
           modified_structure, target_ftor.f_obs_array()).f_calc_array()
-        target_result = target_ftor(f_calc_array, compute_derivatives=False)
+        target_result = target_ftor(f_calc_array, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       if (not cartesian_flag): derivative *= abc[ix]
@@ -50,7 +50,7 @@ def finite_differences_u_star(target_ftor, structure,
         ms.u_star = u_star
         f_calc_array = xray.structure_factors_direct(
           modified_structure, target_ftor.f_obs_array()).f_calc_array()
-        target_result = target_ftor(f_calc_array, compute_derivatives=False)
+        target_result = target_ftor(f_calc_array, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       d_target_d_u_star[iu] = derivative
@@ -78,7 +78,7 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
         raise RuntimeError
       f_calc_array = xray.structure_factors_direct(
         modified_structure, target_ftor.f_obs_array()).f_calc_array()
-      target_result = target_ftor(f_calc_array, compute_derivatives=False)
+      target_result = target_ftor(f_calc_array, compute_derivatives=00000)
       target_values.append(target_result.target())
     derivative = (target_values[1] - target_values[0]) / (2 * delta)
     derivatives.append(derivative)
@@ -116,17 +116,17 @@ def linear_regression_test(d_analytical, d_numerical, test_hard,
 def exercise(target_functor, parameter_name, space_group_info,
              anomalous_flag, cartesian_flag,
              n_elements=3, d_min=3., shake_sigma=0.25,
-             test_hard=True, verbose=0):
-  if (parameter_name != "site" and cartesian_flag == True): return
+             test_hard=0001, verbose=0):
+  if (parameter_name != "site" and cartesian_flag == 0001): return
   structure_ideal = random_structure.xray_structure(
     space_group_info,
     elements=("Se",)*n_elements,
     volume_per_atom=100,
     random_f_prime_d_min=d_min,
-    random_f_double_prime=True,
+    random_f_double_prime=0001,
     anisotropic_flag=(parameter_name == "u_star"),
-    random_u_iso=True,
-    random_occupancy=True)
+    random_u_iso=0001,
+    random_occupancy=0001)
   f_obs_array = abs(structure_ideal.structure_factors_direct(
     anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array())
   if (0 or verbose):
@@ -136,7 +136,7 @@ def exercise(target_functor, parameter_name, space_group_info,
   if (0 or verbose):
     f_obs_array.show_summary()
   structure_shake = structure_ideal.random_modify_parmeters(
-    parameter_name, shake_sigma, vary_z_only=False)
+    parameter_name, shake_sigma, vary_z_only=00000)
   assert tuple(structure_ideal.special_position_indices()) \
       == tuple(structure_shake.special_position_indices())
   if (0 or verbose):
@@ -145,7 +145,7 @@ def exercise(target_functor, parameter_name, space_group_info,
   for structure in (structure_ideal, structure_shake)[:]: #SWITCH
     f_calc_array = xray.structure_factors_direct(
       structure, miller_set=f_obs_array).f_calc_array()
-    target_result = target_ftor(f_calc_array, compute_derivatives=True)
+    target_result = target_ftor(f_calc_array, compute_derivatives=0001)
     if (structure == structure_ideal):
       assert abs(target_result.target()) < 1.e-5
   if (0 or verbose):
@@ -195,14 +195,14 @@ def exercise(target_functor, parameter_name, space_group_info,
 
 def run_call_back(flags, space_group_info):
   coordinate_systems = []
-  if (flags.Frac): coordinate_systems.append(False)
-  if (flags.Cart): coordinate_systems.append(True)
+  if (flags.Frac): coordinate_systems.append(00000)
+  if (flags.Cart): coordinate_systems.append(0001)
   if (len(coordinate_systems) == 0):
-    coordinate_systems = [False, True]
+    coordinate_systems = [00000, 0001]
   for target_functor in xray.target_functors.values():
     for parameter_name in ("site", "u_iso", "u_star", "occupancy",
                            "fp", "fdp")[:]: #SWITCH
-      for anomalous_flag in (False, True)[:]: #SWITCH
+      for anomalous_flag in (00000, 0001)[:]: #SWITCH
         for cartesian_flag in coordinate_systems:
           exercise(target_functor, parameter_name, space_group_info,
                    anomalous_flag, cartesian_flag,

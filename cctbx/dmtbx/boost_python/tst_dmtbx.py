@@ -7,7 +7,7 @@ def exercise_triplet():
   sg = sgtbx.space_group_info("P 31")
   i = flex.miller_index(((1,2,3),(2,3,4)))
   e = flex.double((1,2))
-  t = dmtbx.triplet_invariants(sg.type(), i, False, False)
+  t = dmtbx.triplet_invariants(sg.type(), i, 00000, 00000)
   assert t.number_of_weighted_triplets() == 0
   assert t.total_number_of_triplets() == 0
   assert approx_equal(t.average_number_of_triplets_per_reflection(), 0)

@@ -8,10 +8,10 @@ def exercise_set():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,2,3), (0,0,4)))
   ms = miller.set(xs, mi)
-  ms = miller.set(xs, mi, False)
-  ms = miller.set(xs, mi, True)
+  ms = miller.set(xs, mi, 00000)
+  ms = miller.set(xs, mi, 0001)
   assert ms.indices() == mi
-  assert ms.anomalous_flag() == True
+  assert ms.anomalous_flag() == 0001
   assert tuple(ms.multiplicities().data()) == (4, 2)
   assert tuple(ms.epsilons().data()) == (1, 2)
   assert approx_equal(tuple(ms.d_spacings().data()), (1.177603, 1.25))
@@ -21,7 +21,7 @@ def exercise_set():
   assert approx_equal(ms.resolution_range(), (1.25, 1.177603))
   p1 = ms.expand_to_p1()
   assert p1.indices().size() == 6
-  b = p1.setup_binner(auto_binning=True)
+  b = p1.setup_binner(auto_binning=0001)
   b = p1.setup_binner(reflections_per_bin=1)
   b = p1.setup_binner(n_bins=8)
   assert id(p1.binner()) == id(b)
@@ -48,13 +48,13 @@ def exercise_array():
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
   data = flex.double((1,2,5,3,6))
   sigmas = flex.double((0.1,0.2,0.3,0.4,0.5))
-  ms = miller.set(xs, mi, anomalous_flag=True)
+  ms = miller.set(xs, mi, anomalous_flag=0001)
   ma = miller.array(ms, data, sigmas)
   ad = ma.anomalous_differences()
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
   assert approx_equal(tuple(ad.data()), (-1.0, 2.0))
   assert approx_equal(tuple(ad.sigmas()), (math.sqrt(0.05), 0.5))
-  ms = miller.set(crystal.symmetry(), mi, anomalous_flag=True)
+  ms = miller.set(crystal.symmetry(), mi, anomalous_flag=0001)
   ma = miller.array(ms, data, sigmas)
   ad = ma.anomalous_differences()
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
@@ -63,7 +63,7 @@ def exercise_array():
   assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
   assert approx_equal(tuple(sa.data()), (1,3))
   assert approx_equal(tuple(sa.sigmas()), (0.1,0.4))
-  ms = miller.build_set(xs, anomalous_flag=False, d_min=1)
+  ms = miller.build_set(xs, anomalous_flag=00000, d_min=1)
   ma = miller.array(ms)
   sa = ma.resolution_filter()
   assert ma.indices().size() == sa.indices().size()
@@ -71,7 +71,7 @@ def exercise_array():
   assert sa.indices().size() == 0
   sa = ma.resolution_filter(d_min=2)
   assert sa.indices().size() == 10
-  sa = ma.resolution_filter(d_min=2, negate=True)
+  sa = ma.resolution_filter(d_min=2, negate=0001)
   assert sa.indices().size() == 38
   ma = ma.d_spacings()
   ma = miller.array(ma, ma.data(), ma.data().deep_copy())
@@ -101,17 +101,17 @@ def exercise_array():
     for use_multiplicities in (0,1):
       sa = ma.rms_filter(-1, use_binning, use_multiplicities)
       assert sa.indices().size() == 0
-      sa = ma.rms_filter(100, use_binning, use_multiplicities, False)
+      sa = ma.rms_filter(100, use_binning, use_multiplicities, 00000)
       assert sa.indices().size() == ma.indices().size()
-      sa = ma.rms_filter(-1, use_binning, use_multiplicities, negate=True)
+      sa = ma.rms_filter(-1, use_binning, use_multiplicities, negate=0001)
       assert sa.indices().size() == ma.indices().size()
-      sa = ma.rms_filter(100, use_binning, use_multiplicities, negate=True)
+      sa = ma.rms_filter(100, use_binning, use_multiplicities, negate=0001)
       assert sa.indices().size() == 0
       sa = ma.rms_filter(1.0, use_binning, use_multiplicities)
       assert sa.indices().size() \
           == ((36, 33), (29, 29))[use_binning][use_multiplicities]
   assert approx_equal(ma.statistical_mean(), 1.380312)
-  assert approx_equal(tuple(ma.statistical_mean(True)),
+  assert approx_equal(tuple(ma.statistical_mean(0001)),
                       (1.768026, 1.208446, 0.9950434))
   no = ma.remove_patterson_origin_peak()
   assert approx_equal(no.data()[0], 3.231974)
@@ -137,7 +137,7 @@ def exercise_array():
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,-2,3), (0,0,-4)))
-  for anomalous_flag in (False, True):
+  for anomalous_flag in (00000, 0001):
     for data in (flex.double((1,2)), flex.complex_double((1,2))):
       ms = miller.set(xs, mi, anomalous_flag=anomalous_flag)
       ma = miller.array(ms, data)

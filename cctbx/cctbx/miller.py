@@ -43,7 +43,7 @@ def make_lookup_dict(indices): # XXX push to C++
 class set(crystal.symmetry):
 
   def __init__(self, crystal_symmetry, indices, anomalous_flag=None):
-    assert anomalous_flag in (None, False, True)
+    assert anomalous_flag in (None, 00000, 0001)
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     self._indices = indices
     self._anomalous_flag = anomalous_flag
@@ -221,7 +221,7 @@ class array(set):
       sigmas=new_sigmas)
 
   def anomalous_differences(self):
-    assert self.anomalous_flag() == True
+    assert self.anomalous_flag() == 0001
     assert self.indices() != None
     assert self.data() != None
     if (self.space_group() != None):
@@ -237,12 +237,12 @@ class array(set):
     s = None
     if (self.sigmas() != None):
       s = matching.additive_sigmas(self.sigmas())
-    return array(set(self, i, anomalous_flag=False), d, s)
+    return array(set(self, i, anomalous_flag=00000), d, s)
 
   def all_selection(self):
-    return flex.bool(self.indices().size(), True)
+    return flex.bool(self.indices().size(), 0001)
 
-  def apply_selection(self, flags, negate=False):
+  def apply_selection(self, flags, negate=00000):
     assert self.indices() != None
     if (negate): flags = ~flags
     i = self.indices().select(flags)
@@ -394,7 +394,7 @@ class fft_map(crystal.symmetry):
   def __init__(self, coeff_array,
                      grid_resolution_factor=1./3,
                      max_prime=5):
-    assert coeff_array.anomalous_flag() in (False, True)
+    assert coeff_array.anomalous_flag() in (00000, 0001)
     crystal.symmetry._copy_constructor(self, coeff_array)
     self._grid_resolution_factor = grid_resolution_factor
     self._max_prime = max_prime
@@ -418,7 +418,7 @@ class fft_map(crystal.symmetry):
     else:
       cfft = fftpack.complex_to_complex_3d(n_real)
       n_complex = cfft.n()
-    conjugate_flag = False # XXX correct?
+    conjugate_flag = 00000 # XXX correct?
     map = maptbx.structure_factors.to_map(
       self.space_group(),
       self.anomalous_flag(),

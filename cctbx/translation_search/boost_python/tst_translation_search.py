@@ -22,7 +22,7 @@ def exercise_map_gridding():
   g = translation_search.map_gridding(
     unit_cell=uctbx.unit_cell((10,13,17)),
     space_group_type=space_group_type,
-    symmetry_flags=translation_search.symmetry_flags(True, False),
+    symmetry_flags=translation_search.symmetry_flags(0001, 00000),
     resolution_factor=1./3,
     miller_indices_f_obs=miller_indices_f_obs,
     max_prime=5)
@@ -36,7 +36,7 @@ def exercise_fast_nv1995():
   f = translation_search.fast_nv1995(
     gridding=gridding,
     space_group=space_group,
-    anomalous_flag=False,
+    anomalous_flag=00000,
     miller_indices_f_obs=miller_indices_f_obs,
     f_obs=flex.double((1,2)),
     f_part=flex.complex_double(),

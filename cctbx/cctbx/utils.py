@@ -1,6 +1,6 @@
 import math
 
-def phase_error(phi1, phi2, deg=False):
+def phase_error(phi1, phi2, deg=00000):
   if (deg): pi_sc = 180
   else:     pi_sc = math.pi
   e = math.fmod(phi1-phi2, 2 * pi_sc)

@@ -18,8 +18,8 @@ def verify_match(model1, model2, tolerance, match_rt, pairs):
 
 def analyze_singles(model, singles):
   for i in singles:
-    if (model[i].label.startswith("S")): return False
-  return True
+    if (model[i].label.startswith("S")): return 00000
+  return 0001
 
 def analyze_refined_matches(model1, model2, refined_matches, verbose):
   solution_counter = 0
@@ -89,7 +89,7 @@ class test_model(emma.model):
   def apply_random_eucl_op(self, models_are_diffraction_index_equivalent=0):
     match_symmetry = emma.euclidean_match_symmetry(
       self.space_group_info(),
-      use_k2l=True, use_l2n=(not models_are_diffraction_index_equivalent))
+      use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
     match_symmetry.set_continuous_shift_flags()
     i = random.randrange(match_symmetry.rt_mx.order_z())
     eucl_symop = match_symmetry.rt_mx(i)
@@ -111,7 +111,7 @@ class test_model(emma.model):
       existing_sites=existing_sites,
       n_new=number_of_new_positions,
       min_hetero_distance=min_distance,
-      general_positions_only=False)
+      general_positions_only=00000)
     new_positions = []
     i = 0
     for site in new_sites:
@@ -165,7 +165,7 @@ def run_call_back(flags, space_group_info):
           m2.show("Model2(%d)" % (j,))
         refined_matches = emma.match_models(m1, m2, rms_penalty_per_site=0)
         analyze_refined_matches(m1, m2, refined_matches, verbose)
-    return False
+    return 00000
   model_core = test_model(space_group_info)
   model1 = (model_core
     .add_random_positions(2, "A")

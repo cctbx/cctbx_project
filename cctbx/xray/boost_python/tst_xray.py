@@ -101,28 +101,28 @@ def exercise_pack_parameters():
     scatterer.apply_symmetry(unit_cell, sg.group())
   for uc in (unit_cell, None):
     x = flex.double()
-    assert xray.pack_parameters(uc, scatterers, x, False, False, False) == 0
+    assert xray.pack_parameters(uc, scatterers, x, 00000, 00000, 00000) == 0
   x = flex.double()
-  assert xray.pack_parameters(unit_cell, scatterers, x, True, False, False)==6
+  assert xray.pack_parameters(unit_cell, scatterers, x, 0001, 00000, 00000)==6
   assert approx_equal(tuple(x), (0.1, 0.2, 3, 3, 4, 5))
   x = flex.double()
-  assert xray.pack_parameters(None, scatterers, x, True, False, False)==6
+  assert xray.pack_parameters(None, scatterers, x, 0001, 00000, 00000)==6
   assert approx_equal(tuple(x), (0.01, 0.02, 0.3, 0.3, 0.4, 0.5))
   x = flex.double()
-  assert xray.pack_parameters(None, scatterers, x, False, True, False)==1
+  assert xray.pack_parameters(None, scatterers, x, 00000, 0001, 00000)==1
   assert approx_equal(tuple(x), (0.2,))
   x = flex.double()
-  assert xray.pack_parameters(None, scatterers, x, False, False, True)==2
+  assert xray.pack_parameters(None, scatterers, x, 00000, 00000, 0001)==2
   assert approx_equal(tuple(x), (1,1))
   for start in (0, 10):
     x = flex.double(start)
-    assert xray.pack_parameters(None, scatterers, x, True, True, True)==9+start
+    assert xray.pack_parameters(None, scatterers, x, 0001, 0001, 0001)==9+start
     x *= 2
     sc = scatterers.deep_copy()
     assert xray.unpack_parameters(
-      None, 0, x, start, sc, False, False, False)==0+start
+      None, 0, x, start, sc, 00000, 00000, 00000)==0+start
     assert xray.unpack_parameters(
-      None, sg.group().order_z(), x, start, sc, True, True, True)==9+start
+      None, sg.group().order_z(), x, start, sc, 0001, 0001, 0001)==9+start
     assert approx_equal(sc[0].site, (0.02, 0.04, 0.6))
     assert approx_equal(sc[0].u_iso, 0.4)
     assert approx_equal(sc[0].occupancy, 2)
@@ -158,7 +158,7 @@ def exercise_targets():
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert ls.derivatives().size() == 0
-  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, True)
+  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, 0001)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
@@ -167,13 +167,13 @@ def exercise_targets():
   assert approx_equal(ls.target(), 0)
   assert ls.derivatives().size() == 0
   f_calc = flex.complex_double((10,20,30,40,50))
-  ls = xray.targets_least_squares_residual(f_obs, f_calc, True)
+  ls = xray.targets_least_squares_residual(f_obs, f_calc, 0001)
   assert approx_equal(ls.scale_factor(), 1/10.)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j,5-4j,-5+6j))
   w = flex.double((1,2,3,2,4))
-  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, True)
+  ls = xray.targets_least_squares_residual(f_obs, w, f_calc, 0001)
   assert approx_equal(ls.scale_factor(), 0.6307845)
   assert approx_equal(ls.target(), 0.06211855)
   assert approx_equal(tuple(ls.derivatives()), (
@@ -187,7 +187,7 @@ def exercise_targets():
   assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert ic.derivatives().size() == 0
-  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, True)
+  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, 0001)
   assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert approx_equal(tuple(ic.derivatives()), (0j,0j,0j,0j,0j))
@@ -196,13 +196,13 @@ def exercise_targets():
   assert approx_equal(ic.target(), 0)
   assert ic.derivatives().size() == 0
   f_calc = flex.complex_double((10,20,30,40,50))
-  ic = xray.targets_intensity_correlation(f_obs, f_calc, True)
+  ic = xray.targets_intensity_correlation(f_obs, f_calc, 0001)
   assert approx_equal(ic.correlation(), 1)
   assert approx_equal(ic.target(), 0)
   assert approx_equal(tuple(ic.derivatives()), (0j,0j,0j,0j,0j))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j,5-4j,-5+6j))
   w = flex.int((1,2,3,2,4))
-  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, True)
+  ic = xray.targets_intensity_correlation(f_obs, w, f_calc, 0001)
   assert approx_equal(ic.correlation(), 0.8932460)
   assert approx_equal(ic.target(), 1-ic.correlation())
   assert approx_equal(tuple(ic.derivatives()), (
@@ -236,7 +236,7 @@ def exercise_sampled_model_density():
   assert d.max_shell_radii() == (2,2,2)
   assert approx_equal(d.max_shell_radii_frac(), (1/10.,1/10.,1/11.))
   t = maptbx.grid_tags((20,20,22))
-  f = maptbx.symmetry_flags(True)
+  f = maptbx.symmetry_flags(0001)
   t.build(sg.type(), f)
   d.apply_symmetry(t)
   i = flex.miller_index(((1,2,3), (2,3,4)))

@@ -65,18 +65,18 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
     elements=("N", "C", "C", "O", "N", "C", "C", "O"),
     volume_per_atom=50.,
     min_distance=1.5,
-    anisotropic_flag=True,
+    anisotropic_flag=0001,
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
-    random_u_iso=True,
-    random_occupancy=True
+    random_u_iso=0001,
+    random_occupancy=0001
     ).structure_factors_direct(
         anomalous_flag=anomalous_flag, d_min=d_min)
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
   f_ref_array = abs(structure_factors.f_calc_array())
   multiplicity_array = f_ref_array.multiplicities()
-  for anisotropic_flag in (False, True):
+  for anisotropic_flag in (00000, 0001):
     f_sca_array = miller.array(miller_set=f_ref_array, data=flex.double())
     k_sim = 1000
     b_iso = 13
@@ -125,7 +125,7 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
     print
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (False, True):
+  for anomalous_flag in (00000, 0001):
     exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
 def run():

@@ -11,7 +11,7 @@ import sys
 
 class space_group_info:
 
-  __safe_for_unpickling__ = True
+  __safe_for_unpickling__ = 0001
 
   def __init__(self, symbol=None, table_id=None, group=None):
     if (symbol == None):

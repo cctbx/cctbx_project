@@ -111,8 +111,8 @@ class euclidean_match_symmetry:
 
   def continuous_shifts_are_principal(self):
     for pa in self.continuous_shifts:
-      if (not pa in ((1,0,0),(0,1,0),(0,0,1))): return False
-    return True
+      if (not pa in ((1,0,0),(0,1,0),(0,0,1))): return 00000
+    return 0001
 
   def filter_shift(self, shift, selector=1):
     return filter_shift(self.continuous_shift_flags, shift, selector)
@@ -288,10 +288,10 @@ def weed_refined_matches(space_group_number, refined_matches,
     if (is_redundant[i]):
       del refined_matches[i]
   if (space_group_number == 1 and n_matches > 0):
-    trivial_matches_only = True
+    trivial_matches_only = 0001
     for match in refined_matches:
       if (len(match.pairs) > 1):
-        trivial_matches_only = False
+        trivial_matches_only = 00000
         break
     if (trivial_matches_only):
       while (refined_matches[0].pairs[0] != (0,0)): del refined_matches[0]
@@ -309,7 +309,7 @@ def match_rt_from_ref_eucl_rt(model1_cb_op, model2_cb_op, ref_eucl_rt):
 
 def match_models(model1, model2,
                  tolerance=1.,
-                 models_are_diffraction_index_equivalent=False,
+                 models_are_diffraction_index_equivalent=00000,
                  rms_penalty_per_site=0.05):
   assert model1.cb_op().is_identity_op()
   assert model2.cb_op().is_identity_op()
@@ -323,7 +323,7 @@ def match_models(model1, model2,
   unit_cell = ref_model1.unit_cell()
   match_symmetry = euclidean_match_symmetry(
     ref_model1.space_group_info(),
-    use_k2l=True, use_l2n=(not models_are_diffraction_index_equivalent))
+    use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
   match_symmetry.set_continuous_shift_flags()
   equiv1 = []
   for pos in ref_model1:
