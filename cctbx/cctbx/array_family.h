@@ -13,5 +13,6 @@
 
 #include <cctbx/array_family/tiny.h>
 #include <cctbx/array_family/small.h>
+#include <cctbx/array_family/shared.h>
 
 #endif // CCTBX_ARRAY_FAMILY_H

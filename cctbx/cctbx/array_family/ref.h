@@ -124,6 +124,6 @@ namespace cctbx { namespace af {
       size_type m_size;
   };
 
-}} // namespace cctbx::array_family
+}} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_REF_H
