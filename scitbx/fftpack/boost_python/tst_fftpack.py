@@ -1,6 +1,6 @@
 import sys, os, random
 from scitbx.array_family import flex
-from scitbx_boost import fftpack
+from scitbx import fftpack
 
 def fmtfloat(f):
   s = "%.1f" % (f,)
