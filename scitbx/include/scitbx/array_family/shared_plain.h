@@ -117,9 +117,9 @@ namespace scitbx { namespace af {
       }
 
       // non-std
-      shared_plain(size_type const& sz, reserve_flag)
+      shared_plain(af::reserve const& sz)
         : m_is_weak_ref(false),
-          m_handle(new sharing_handle(sz * element_size()))
+          m_handle(new sharing_handle(sz() * element_size()))
       {}
 
       shared_plain(size_type const& sz, ElementType const& x)
@@ -268,7 +268,7 @@ namespace scitbx { namespace af {
 
       void reserve(size_type const& sz) {
         if (capacity() < sz) {
-          shared_plain<ElementType> new_this(sz, reserve_flag());
+          shared_plain<ElementType> new_this(((af::reserve(sz))));
           std::uninitialized_copy(begin(), end(), new_this.begin());
           new_this.m_set_size(size());
           new_this.swap(*this);
@@ -300,7 +300,7 @@ namespace scitbx { namespace af {
                              size_type const& n, ElementType const& x,
                              bool at_end) {
         shared_plain<ElementType>
-        new_this(m_compute_new_capacity(size(), n), reserve_flag());
+          new_this((af::reserve(m_compute_new_capacity(size(), n))));
         std::uninitialized_copy(begin(), pos, new_this.begin());
         new_this.m_set_size(pos - begin());
         if (n == 1) {
@@ -323,7 +323,7 @@ namespace scitbx { namespace af {
                              const ElementType* last) {
         size_type n = last - first;
         shared_plain<ElementType>
-        new_this(m_compute_new_capacity(size(), n), reserve_flag());
+          new_this((af::reserve(m_compute_new_capacity(size(), n))));
         std::uninitialized_copy(begin(), pos, new_this.begin());
         new_this.m_set_size(pos - begin());
         std::uninitialized_copy(first, last, new_this.end());

@@ -42,11 +42,6 @@ namespace scitbx { namespace af {
           m_accessor(ac)
       {}
 
-      versa_plain(AccessorType const& ac, reserve_flag)
-        : base_class(ac.size_1d(), reserve_flag()),
-          m_accessor(ac)
-      {}
-
       explicit
       versa_plain(index_value_type const& n0)
         : base_class(AccessorType(n0).size_1d()),
