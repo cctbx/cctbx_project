@@ -219,7 +219,7 @@ else:
       SHCXX=cxx,
       SHLINK=cxx,
     )
-    env_etc.cxxflags_base = ["-woff", "1001,1234,1311,1682,3439"]
+    env_etc.cxxflags_base = ["-woff", "1001,1188,1234,1311,1682,3439"]
     if (env_etc.libtbx_env.has_dist("boost")):
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
