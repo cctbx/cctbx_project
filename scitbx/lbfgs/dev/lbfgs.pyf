@@ -1,0 +1,15 @@
+       subroutine lbfgs(n,m,x,f,g,diagco,diag,iprint,eps,xtol,w,iflag)
+           ! lbfgs minimizer
+           integer n
+           integer m
+           doubleprecision x(n)
+           doubleprecision f
+           doubleprecision g(n)
+           integer diagco
+           doubleprecision diag(n)
+           integer iprint(2)
+           doubleprecision eps
+           doubleprecision xtol
+           doubleprecision w(n*(2*m+1)+2*m)
+           integer iflag(1)
+       end subroutine lbfgs
