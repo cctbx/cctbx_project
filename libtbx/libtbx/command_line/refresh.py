@@ -65,24 +65,41 @@ def create_drivers(target_dir, package_name, source_dir):
   for file_name in os.listdir(source_dir):
     create_driver(target_dir, package_name, source_dir, file_name)
 
-def create_posix_icc_ld_preload():
+def create_posix_icc_ld_preload(libtbx_env):
   path_icc = libtbx.config.full_path("icc")
   if (path_icc is None): return None
   path_lib = os.sep.join(path_icc.split(os.sep)[:-2] + ["lib"])
   if (not os.path.isdir(path_lib)): return None
-  best_libunwind_so = None
+  ld_preload = []
+  path_libirc_a = os.path.join(path_lib, "libirc.a")
+  path_libirc_so = os.path.join(path_lib, "libirc.so")
+  if (os.path.isfile(path_libirc_so)):
+    ld_preload.append(path_libirc_so)
+  else:
+    if (os.path.isfile(path_libirc_a)):
+      path_libirc_so = os.path.join(
+        libtbx_env.LIBTBX_BUILD, "libtbx", "libirc.so")
+      cmd = "%(path_icc)s -shared -o %(path_libirc_so)s %(path_libirc_a)s" \
+        % vars()
+      print cmd
+      sys.stdout.flush()
+      os.system(cmd)
+      ld_preload.append(path_libirc_so)
+  path_libunwind_so = None
   best_version = None
   for file_name in os.listdir(path_lib):
     if (file_name.startswith("libunwind.so.")):
       try: version = int(file_name.split(".")[2])
       except: version = None
       if (version is not None):
-        if (best_libunwind_so is None or version > best_version):
-          best_libunwind_so = file_name
+        if (best_version is None or version > best_version):
+          path_libunwind_so = os.path.join(path_lib, file_name)
           best_version = version
-  if (best_libunwind_so is None): return None
+  if (path_libunwind_so is not None):
+    ld_preload.append(path_libunwind_so)
+  if (len(ld_preload) == 0): return None
   return [
-    'LD_PRELOAD="%s%s%s"' % (path_lib, os.sep, best_libunwind_so),
+    'LD_PRELOAD="%s"' % os.pathsep.join(ld_preload),
     'export LD_PRELOAD']
 
 def assemble_dispatcher_precall_commands(libtbx_env):
@@ -101,7 +118,7 @@ def assemble_dispatcher_precall_commands(libtbx_env):
           '  export LD_ASSUME_KERNEL',
           'fi'])
   if (os.name == "posix" and libtbx_env.compiler == "icc"):
-    addl_lines = create_posix_icc_ld_preload()
+    addl_lines = create_posix_icc_ld_preload(libtbx_env)
     if (addl_lines is None):
       raise libtbx.config.UserError("Cannot determine LD_PRELOAD for icc.")
     lines.extend(addl_lines)
