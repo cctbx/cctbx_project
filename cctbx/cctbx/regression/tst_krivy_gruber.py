@@ -96,7 +96,7 @@ def exercise_gruber_1973_example():
   assert red.n_iterations() == 1
   try:
     red = krivy_gruber_1976.reduction(buerger, iteration_limit=1)
-  except RuntimeError, e:
+  except krivy_gruber_1976.iteration_limit_exceeded, e:
     pass
   else:
     raise RuntimeError, "Exception expected."
@@ -299,7 +299,23 @@ def exercise_gruber_types(n_trials_per_type, verbose=0):
       have_errors = 0001
   assert not have_errors
 
+def exercise_extreme():
+  uc = uctbx.unit_cell((
+    69.059014477286041, 48.674386086971339, 0.0048194797114296736,
+    89.995145576185806, 89.999840576946085, 99.484656090034875))
+  try:
+    uc.niggli_reduction()
+  except krivy_gruber_1976.extreme_unit_cell:
+    pass
+  else:
+    raise RuntimeError, "Exception expected."
+  uc = uctbx.unit_cell((
+    80.816186392181365, 81.021289502648813, 140.6784408482614,
+    29.932540128999769, 89.92047105556459, 119.85301114570319))
+  uc.niggli_reduction(iteration_limit=10000)
+
 def exercise():
+  exercise_extreme()
   quick = "--Quick" in sys.argv[1:]
   verbose = "--Verbose" in sys.argv[1:]
   exercise_gruber_1973_example()
