@@ -43,18 +43,6 @@ namespace cctbx { namespace xray {
       complex_map_type
       complex_map() { return complex_map_; }
 
-      template <typename TagType>
-      void
-      apply_symmetry(maptbx::grid_tags<TagType> const& tags)
-      {
-        if (real_map_.size()) {
-          tags.sum_sym_equiv_points(real_map_.ref());
-        }
-        else {
-          tags.sum_sym_equiv_points(complex_map_.ref());
-        }
-      }
-
       void
       eliminate_u_extra_and_normalize(
         af::const_ref<miller::index<> > const& miller_indices,

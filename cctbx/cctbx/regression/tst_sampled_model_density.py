@@ -32,12 +32,12 @@ def exercise(space_group_info, caasf_const,
     anomalous_flag=anomalous_flag,
     d_min=d_min,
     direct=0001).f_calc()
-  n_real = f_direct.crystal_gridding(
+  crystal_gridding = f_direct.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
-    symmetry_flags=maptbx.use_space_group_symmetry,
-    max_prime=max_prime).n_real()
-  rfft = fftpack.real_to_complex_3d(n_real)
+    max_prime=max_prime)
+  assert crystal_gridding.symmetry_flags() is None
+  rfft = fftpack.real_to_complex_3d(crystal_gridding.n_real())
   u_extra = xray.calc_u_extra(d_min, resolution_factor, quality_factor)
   electron_density_must_be_positive = 1
   sampled_density = xray.sampled_model_density(
@@ -64,10 +64,6 @@ def exercise(space_group_info, caasf_const,
     print "exp_table_size:", sampled_density.exp_table_size()
     print "max_shell_radii:", sampled_density.max_shell_radii(),
     print "(%.4f, %.4f, %.4f)" % sampled_density.max_shell_radii_frac()
-  tags = maptbx.grid_tags(rfft.n_real())
-  symmetry_flags = maptbx.symmetry_flags(use_space_group_symmetry=0001)
-  tags.build(structure.space_group_info().type(), symmetry_flags)
-  sampled_density.apply_symmetry(tags)
   if (not sampled_density.anomalous_flag()):
     map = sampled_density.real_map()
     assert map.all() == rfft.m_real()
@@ -86,6 +82,7 @@ def exercise(space_group_info, caasf_const,
     assert sf_map.focus() == cfft.n()
     collect_conj = 0
   f_fft_data = maptbx.structure_factors.from_map(
+    f_direct.space_group(),
     sampled_density.anomalous_flag(),
     f_direct.indices(),
     sf_map,

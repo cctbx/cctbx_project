@@ -19,7 +19,7 @@ class gradients(manager):
       n_miller_indices = miller_set.indices().size()
       if (not self.have_good_timing_estimates()):
         # rough estimate
-        if (  n_scatterers * self.space_group().order_z() * n_miller_indices
+        if (  4 * n_scatterers * self.space_group().order_p() * n_miller_indices
             < self.crystal_gridding().n_grid_points()):
           direct = 0001
       else:
