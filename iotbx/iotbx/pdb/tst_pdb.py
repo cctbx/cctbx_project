@@ -16,6 +16,7 @@ def exercise_xray_structure_as_pdb_file():
 
 def run():
   exercise_xray_structure_as_pdb_file()
+  print "OK"
 
 if (__name__ == "__main__"):
   run()

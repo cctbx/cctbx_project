@@ -2,7 +2,9 @@ from iotbx.xplor import XplorMap
 import urllib,filecmp
 
 def get_test_files():
-  urllib.urlretrieve('http://cci.lbl.gov/build/NSFN_C2221.xplor','NSFN_C2221.xplor')
+  urllib.urlretrieve(
+    'http://cci.lbl.gov/cctbx_downloads/regression/iotbx/NSFN_C2221.xplor',
+    'NSFN_C2221.xplor')
 
 def read_xplor(f):
   print "Test of Xplor map read:"
@@ -17,7 +19,7 @@ def read_xplor(f):
   print tuple(d[0:5])
   print a.data.focus()
   return a
-  
+
 def write_xplor(map,f):
   print "Test of Xplor map write:"
   a = XplorMap()
@@ -27,15 +29,13 @@ def write_xplor(map,f):
   a.order=map.order
   a.data=map.data
   a.write(f)
-  
-  
+
 def run():
   get_test_files()
   map = read_xplor('NSFN_C2221.xplor')
   write_xplor(map,'comparison.xplor')
   assert filecmp.cmp('NSFN_C2221.xplor','comparison.xplor')
   print "OK"
-  
+
 if __name__=="__main__":
   run()
-
