@@ -9,9 +9,9 @@
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/stl/map_wrapper.h>
-#include <cctbx/restraints/bond.h>
+#include <cctbx/geometry_restraints/bond.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 namespace {
 
   struct bond_params_wrappers
@@ -231,4 +231,4 @@ namespace boost_python {
   void
   wrap_bond() { wrap_all(); }
 
-}}} // namespace cctbx::restraints::boost_python
+}}} // namespace cctbx::geometry_restraints::boost_python

@@ -1,6 +1,6 @@
-from cctbx import restraints
-import cctbx.restraints.flags
-import cctbx.restraints.energies
+from cctbx import geometry_restraints
+import cctbx.geometry_restraints.flags
+import cctbx.geometry_restraints.energies
 from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
@@ -43,7 +43,7 @@ class manager:
     if (self.repulsion_types is None):
       if (self._pair_proxies is None):
         self.n_updates_pair_proxies += 1
-        self._pair_proxies = restraints.pair_proxies(
+        self._pair_proxies = geometry_restraints.pair_proxies(
           bond_params_table=self.bond_params_table)
     elif (sites_cart is not None
           and (self._sites_cart_used_for_pair_proxies is None
@@ -80,7 +80,7 @@ class manager:
         crystal.pair_asu_table(asu_mappings=asu_mappings)
           .add_pair_sym_table(sym_table=shell_sym_table)
             for shell_sym_table in self.shell_sym_tables]
-      self._pair_proxies = restraints.pair_proxies(
+      self._pair_proxies = geometry_restraints.pair_proxies(
         repulsion_params=self.repulsion_params,
         repulsion_types=self.repulsion_types,
         bond_params_table=self.bond_params_table,
@@ -99,7 +99,7 @@ class manager:
         disable_asu_cache=00000,
         lock_pair_proxies=00000):
     if (flags is None):
-      flags = restraints.flags.flags(default=0001)
+      flags = geometry_restraints.flags.flags(default=0001)
     pair_proxies = self.pair_proxies(
       sites_cart=sites_cart,
       lock=lock_pair_proxies)
@@ -115,7 +115,7 @@ class manager:
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies
     if (flags.planarity): planarity_proxies = self.planarity_proxies
-    return restraints.energies.energies(
+    return geometry_restraints.energies.energies(
       sites_cart=sites_cart,
       bond_proxies=bond_proxies,
       repulsion_proxies=repulsion_proxies,

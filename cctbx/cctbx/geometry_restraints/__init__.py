@@ -3,8 +3,8 @@ import cctbx.array_family.flex
 import scitbx.array_family.shared
 
 import boost.python
-ext = boost.python.import_ext("cctbx_restraints_ext")
-from cctbx_restraints_ext import *
+ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
+from cctbx_geometry_restraints_ext import *
 
 import scitbx.stl.map
 

@@ -3,9 +3,9 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
-#include <cctbx/restraints/pair_proxies.h>
+#include <cctbx/geometry_restraints/pair_proxies.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 namespace {
 
   struct pair_proxies_wrappers
@@ -65,4 +65,4 @@ namespace boost_python {
   void
   wrap_pair_proxies() { wrap_all(); }
 
-}}} // namespace cctbx::restraints::boost_python
+}}} // namespace cctbx::geometry_restraints::boost_python

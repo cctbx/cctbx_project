@@ -2,9 +2,9 @@ Import("env_cctbx_boost_python_ext")
 env_bpl = env_cctbx_boost_python_ext.Copy()
 env_bpl.Prepend(LIBS=["cctbx"])
 env_bpl.SharedLibrary(
-  target="#libtbx/cctbx_restraints_ext",
+  target="#libtbx/cctbx_geometry_restraints_ext",
   source=[
-    "restraints_ext.cpp",
+    "geometry_restraints_ext.cpp",
     "bond_bpl.cpp",
     "repulsion_bpl.cpp",
     "pair_proxies_bpl.cpp",

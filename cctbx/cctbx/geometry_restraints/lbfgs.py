@@ -8,8 +8,8 @@ class lbfgs:
 
   def __init__(self,
       sites_cart,
-      restraints_manager,
-      restraints_flags=None,
+      geometry_restraints_manager,
+      geometry_restraints_flags=None,
       lbfgs_termination_params=None,
       lbfgs_core_params=None,
       disable_asu_cache=00000):
@@ -19,8 +19,8 @@ class lbfgs:
     self.n = sites_cart.size()*3
     self.x = flex.double(self.n, 0)
     self.tmp = empty()
-    self.tmp.restraints_manager = restraints_manager
-    self.tmp.restraints_flags = restraints_flags
+    self.tmp.geometry_restraints_manager = geometry_restraints_manager
+    self.tmp.geometry_restraints_flags = geometry_restraints_flags
     self.tmp.disable_asu_cache = disable_asu_cache
     self.tmp.sites_cart = sites_cart
     self.tmp.sites_shifted = sites_cart
@@ -41,9 +41,11 @@ class lbfgs:
 
   def apply_shifts(self):
     self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
-    if (self.tmp.restraints_manager.crystal_symmetry is not None):
-      unit_cell = self.tmp.restraints_manager.crystal_symmetry.unit_cell()
-      site_symmetry_table = self.tmp.restraints_manager.site_symmetry_table
+    if (self.tmp.geometry_restraints_manager.crystal_symmetry is not None):
+      unit_cell \
+        = self.tmp.geometry_restraints_manager.crystal_symmetry.unit_cell()
+      site_symmetry_table \
+        = self.tmp.geometry_restraints_manager.site_symmetry_table
       assert site_symmetry_table is not None
       for i_seq in site_symmetry_table.special_position_indices():
         self.tmp.sites_shifted[i_seq] = crystal.correct_special_position(
@@ -52,9 +54,9 @@ class lbfgs:
           site_cart=self.tmp.sites_shifted[i_seq])
 
   def compute_target(self, compute_gradients):
-    self.tmp.target_result = self.tmp.restraints_manager.energies(
+    self.tmp.target_result = self.tmp.geometry_restraints_manager.energies(
       sites_cart=self.tmp.sites_shifted,
-      flags=self.tmp.restraints_flags,
+      flags=self.tmp.geometry_restraints_flags,
       compute_gradients=compute_gradients,
       disable_asu_cache=self.tmp.disable_asu_cache,
       lock_pair_proxies=self.tmp.lock_pair_proxies)

@@ -1,7 +1,7 @@
-from cctbx import restraints
-import cctbx.restraints.flags
-import cctbx.restraints.manager
-import cctbx.restraints.lbfgs
+from cctbx import geometry_restraints
+import cctbx.geometry_restraints.flags
+import cctbx.geometry_restraints.manager
+import cctbx.geometry_restraints.lbfgs
 from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
@@ -25,7 +25,7 @@ restraint_parameters_si_o_si = restraint_parameters(3.070969, 0.2308)
 
 def setup_bond_params_table(structure, bond_sym_table):
   scatterers = structure.scatterers()
-  t = restraints.bond_params_table(scatterers.size())
+  t = geometry_restraints.bond_params_table(scatterers.size())
   for i_seq,bond_sym_dict in enumerate(bond_sym_table):
     for j_seq in bond_sym_dict.keys():
       i_seqs = [i_seq, j_seq]
@@ -41,7 +41,7 @@ def setup_bond_params_table(structure, bond_sym_table):
       else:
         raise AssertionError("Unknown scattering type pair.")
       if (not t[i_seq].has_key(j_seq)):
-        t[i_seq][j_seq] = restraints.bond_params(
+        t[i_seq][j_seq] = geometry_restraints.bond_params(
           distance_ideal=params.distance_ideal,
           weight=params.weight)
       else:
@@ -51,7 +51,7 @@ def setup_bond_params_table(structure, bond_sym_table):
   return t
 
 def setup_repulsion_params():
-  p = restraints.repulsion_params()
+  p = geometry_restraints.repulsion_params()
   d = p.distance_table
   d.setdefault("Si")["Si"] = 3.1
   d.setdefault("Si")["O"] = 1.5
@@ -182,7 +182,7 @@ def distance_and_repulsion_least_squares(
   repulsion_types = flex.std_string()
   for scatterer in si_o.structure.scatterers():
     repulsion_types.append(scatterer.scattering_type)
-  restraints_manager = restraints.manager.manager(
+  geometry_restraints_manager = geometry_restraints.manager.manager(
     crystal_symmetry=si_o.structure,
     site_symmetry_table=si_o.structure.site_symmetry_table(),
     bond_params_table=bond_params_table,
@@ -204,10 +204,10 @@ def distance_and_repulsion_least_squares(
       trial_minimized = []
       for enable_repulsions in [00000, 0001]:
         if (not enable_repulsions):
-          restraints_flags = restraints.flags.flags(
+          geometry_restraints_flags = geometry_restraints.flags.flags(
             bond=0001)
         else:
-          restraints_flags = restraints.flags.flags(
+          geometry_restraints_flags = geometry_restraints.flags.flags(
             bond=0001,
             repulsion=0001)
           trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
@@ -216,10 +216,10 @@ def distance_and_repulsion_least_squares(
           trial_structure.apply_symmetry_sites()
         trial_sites_cart = trial_structure.sites_cart()
         try:
-          trial_minimized.append(restraints.lbfgs.lbfgs(
+          trial_minimized.append(geometry_restraints.lbfgs.lbfgs(
             sites_cart=trial_sites_cart,
-            restraints_manager=restraints_manager,
-            restraints_flags=restraints_flags,
+            geometry_restraints_manager=geometry_restraints_manager,
+            geometry_restraints_flags=geometry_restraints_flags,
             lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
               max_iterations=100)))
         except RuntimeError, e:

@@ -1,9 +1,9 @@
-#ifndef CCTBX_RESTRAINTS_SORTED_ASU_PROXIES_H
-#define CCTBX_RESTRAINTS_SORTED_ASU_PROXIES_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_SORTED_ASU_PROXIES_H
+#define CCTBX_GEOMETRY_RESTRAINTS_SORTED_ASU_PROXIES_H
 
 #include <cctbx/crystal/direct_space_asu.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 
   typedef direct_space_asu::asu_mapping_index      asu_mapping_index;
   typedef direct_space_asu::asu_mapping_index_pair asu_mapping_index_pair;
@@ -103,6 +103,6 @@ namespace cctbx { namespace restraints {
       std::vector<bool> asu_active_flags;
   };
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_RESTRAINTS_SORTED_ASU_PROXIES_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_SORTED_ASU_PROXIES_H

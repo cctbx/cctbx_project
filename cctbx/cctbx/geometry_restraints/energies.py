@@ -1,4 +1,4 @@
-from cctbx import restraints
+from cctbx import geometry_restraints
 from cctbx.array_family import flex
 import sys
 
@@ -22,7 +22,7 @@ class energies:
       self.bond_residual_sum = 0
     else:
       self.n_bond_proxies = bond_proxies.n_total()
-      self.bond_residual_sum = restraints.bond_residual_sum(
+      self.bond_residual_sum = geometry_restraints.bond_residual_sum(
         sites_cart=sites_cart,
         sorted_asu_proxies=bond_proxies,
         gradient_array=self.gradients,
@@ -32,18 +32,18 @@ class energies:
       self.repulsion_residual_sum = 0
     else:
       self.n_repulsion_proxies = repulsion_proxies.n_total()
-      self.repulsion_residual_sum = restraints.repulsion_residual_sum(
+      self.repulsion_residual_sum = geometry_restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
         sorted_asu_proxies=repulsion_proxies,
         gradient_array=self.gradients,
-        function=restraints.repulsion_function(),
+        function=geometry_restraints.repulsion_function(),
         disable_cache=00000)
     if (angle_proxies is None):
       self.n_angle_proxies = None
       self.angle_residual_sum = 0
     else:
       self.n_angle_proxies = len(angle_proxies)
-      self.angle_residual_sum = restraints.angle_residual_sum(
+      self.angle_residual_sum = geometry_restraints.angle_residual_sum(
         sites_cart=sites_cart,
         proxies=angle_proxies,
         gradient_array=self.gradients)
@@ -52,7 +52,7 @@ class energies:
       self.dihedral_residual_sum = 0
     else:
       self.n_dihedral_proxies = len(dihedral_proxies)
-      self.dihedral_residual_sum = restraints.dihedral_residual_sum(
+      self.dihedral_residual_sum = geometry_restraints.dihedral_residual_sum(
           sites_cart=sites_cart,
           proxies=dihedral_proxies,
           gradient_array=self.gradients)
@@ -61,7 +61,7 @@ class energies:
       self.chirality_residual_sum = 0
     else:
       self.n_chirality_proxies = len(chirality_proxies)
-      self.chirality_residual_sum = restraints.chirality_residual_sum(
+      self.chirality_residual_sum = geometry_restraints.chirality_residual_sum(
           sites_cart=sites_cart,
           proxies=chirality_proxies,
           gradient_array=self.gradients)
@@ -70,7 +70,7 @@ class energies:
       self.planarity_residual_sum = 0
     else:
       self.n_planarity_proxies = len(planarity_proxies)
-      self.planarity_residual_sum = restraints.planarity_residual_sum(
+      self.planarity_residual_sum = geometry_restraints.planarity_residual_sum(
           sites_cart=sites_cart,
           proxies=planarity_proxies,
           gradient_array=self.gradients)

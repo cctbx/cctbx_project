@@ -1,12 +1,12 @@
-#ifndef CCTBX_RESTRAINTS_UTILS_H
-#define CCTBX_RESTRAINTS_UTILS_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_UTILS_H
+#define CCTBX_GEOMETRY_RESTRAINTS_UTILS_H
 
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/shared.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 
   inline
   double
@@ -102,6 +102,6 @@ namespace cctbx { namespace restraints {
 
   } // namespace detail
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_RESTRAINTS_UTILS_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_UTILS_H

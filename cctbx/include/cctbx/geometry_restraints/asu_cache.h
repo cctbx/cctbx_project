@@ -1,9 +1,9 @@
-#ifndef CCTBX_RESTRAINTS_ASU_CACHE_H
-#define CCTBX_RESTRAINTS_ASU_CACHE_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_ASU_CACHE_H
+#define CCTBX_GEOMETRY_RESTRAINTS_ASU_CACHE_H
 
 #include <cctbx/crystal/direct_space_asu.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 
   namespace direct_space_asu = crystal::direct_space_asu;
 
@@ -67,6 +67,6 @@ namespace cctbx { namespace restraints {
         mappings_;
   };
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_RESTRAINTS_ASU_CACHE_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_ASU_CACHE_H

@@ -1,9 +1,9 @@
-#ifndef CCTBX_RESTRAINTS_PLANARITY_H
-#define CCTBX_RESTRAINTS_PLANARITY_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
+#define CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
 
-#include <cctbx/restraints/utils.h>
+#include <cctbx/geometry_restraints/utils.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 
   struct planarity_proxy
   {
@@ -201,6 +201,6 @@ namespace cctbx { namespace restraints {
       sites_cart, proxies, gradient_array);
   }
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_RESTRAINTS_PLANARITY_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
