@@ -18,6 +18,23 @@
 
 namespace cctbx { namespace math {
 
+  template <typename FloatType>
+  FloatType
+  std_linear_correlation(
+    const FloatType& sum_weights,
+    const FloatType& sum_x, const FloatType& sum_x2,
+    const FloatType& sum_y, const FloatType& sum_y2,
+    const FloatType& sum_xy)
+  {
+    FloatType d =   (sum_x2 - sum_x * sum_x / sum_weights)
+                  * (sum_y2 - sum_y * sum_y / sum_weights);
+    FloatType result(1);
+    if (d > FloatType(0)) {
+      result = (sum_xy - sum_x * sum_y / sum_weights) / std::sqrt(d);
+    }
+    return result;
+  }
+
   template <class IntegerType, class FloatType>
   class linear_regression_core
   {
@@ -61,10 +78,8 @@ namespace cctbx { namespace math {
           m_b = (sum_x2 * sum_y - sum_x * sum_xy) / d;
           m_m = (fn * sum_xy - sum_x * sum_y) / d;
         }
-        d =   (sum_x2 - sum_x * sum_x / fn)
-            * (sum_y2 - sum_y * sum_y / fn);
-        if (d > 0.)
-          m_cc = (sum_xy - sum_x * sum_y / fn) / std::sqrt(d);
+        m_cc = std_linear_correlation(
+          fn, sum_x, sum_x2, sum_y, sum_y2, sum_xy);
         m_is_well_defined = true;
       }
       //! Work-around for broken compilers.
