@@ -196,12 +196,12 @@ def run():
     emit_setpaths_bat(build_root_dir, paths_raw_dict)
 
   if (hasattr(os, "symlink")):
-    for file in ("Makefile", "test_imports.py"):
+    for file in ("Makefile", "test_imports.py", "tst_all.py"):
       print "Linking:", file
       try: os.symlink(structured_package_dir + "/build/" + file, file)
       except: pass
   else:
-    for file in ( "test_imports.py",):
+    for file in ("test_imports.py", "tst_all.py"):
       print "Copying:", file
       shutil.copy(structured_package_dir + "/build/" + file, file)
 

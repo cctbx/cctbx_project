@@ -15,6 +15,12 @@
 using namespace cctbx;
 using namespace cctbx::eltbx;
 
+namespace {
+
+  std::size_t CAASF_WK1995_n_ab(CAASF_WK1995 const& cf) { return cf.n_ab(); }
+
+}
+
 BOOST_PYTHON_MODULE_INIT(caasf_wk1995)
 {
 # include <cctbx/basic/from_bpl_import.h>
@@ -36,7 +42,7 @@ BOOST_PYTHON_MODULE_INIT(caasf_wk1995)
   py_CAASF_WK1995.def(constructor<const std::string&, bool>());
   py_CAASF_WK1995.def(&CAASF_WK1995::Table, "Table");
   py_CAASF_WK1995.def(&CAASF_WK1995::Label, "Label");
-  py_CAASF_WK1995.def(&CAASF_WK1995::n_ab, "n_ab");
+  py_CAASF_WK1995.def(CAASF_WK1995_n_ab, "n_ab");
   py_CAASF_WK1995.def(&CAASF_WK1995::a, "a");
   py_CAASF_WK1995.def(&CAASF_WK1995::b, "b");
   py_CAASF_WK1995.def(&CAASF_WK1995::c, "c");

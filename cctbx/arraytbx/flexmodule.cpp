@@ -62,40 +62,6 @@ namespace cctbx { namespace af {
 
   typedef versa<bool, flex_grid<> > flex_bool;
 
-  void raise_index_error()
-  {
-    PyErr_SetString(PyExc_IndexError, "Index out of range.");
-    boost::python::throw_error_already_set();
-  }
-
-  void raise_must_be_1d()
-  {
-    PyErr_SetString(PyExc_RuntimeError,
-      "Array must be 0-based 1-dimensional.");
-    boost::python::throw_error_already_set();
-  }
-
-  void raise_shared_size_mismatch()
-  {
-    PyErr_SetString(PyExc_RuntimeError, "Shared size mismatch.");
-    boost::python::throw_error_already_set();
-  }
-
-  void raise_incompatible_arrays()
-  {
-    PyErr_SetString(PyExc_RuntimeError, "Incompatible arrays.");
-    boost::python::throw_error_already_set();
-  }
-
-  inline
-  flex_grid<>
-  make_flex_grid_1d(flex_grid<>::index_value_type const& n)
-  {
-    flex_grid_default_index_type grid;
-    grid.push_back(n);
-    return flex_grid<>(grid);
-  }
-
   boost::python::tuple flex_bool_getstate(
     versa<bool, flex_grid<> > const& a);
   void flex_bool_setstate(
@@ -307,7 +273,7 @@ namespace cctbx { namespace af {
     boost::python::tuple
     getitem(std::size_t i) const
     {
-      if (i >= data_.size()) raise_index_error();
+      if (i >= data_.size()) bpl_utils::raise_index_error();
       return boost::python::tuple(
         boost::python::make_ref(i), boost::python::make_ref(data_[i]));
     }
@@ -411,7 +377,7 @@ namespace cctbx { namespace af {
     e_t
     getitem_1d(f_t const& a, std::size_t i)
     {
-      if (i >= a.size()) raise_index_error();
+      if (i >= a.size()) bpl_utils::raise_index_error();
       return a[i];
     }
 
@@ -419,7 +385,7 @@ namespace cctbx { namespace af {
     e_t
     getitem_flex_grid(f_t const& a, flex_grid_default_index_type const& i)
     {
-      if (!a.accessor().is_valid_index(i)) raise_index_error();
+      if (!a.accessor().is_valid_index(i)) bpl_utils::raise_index_error();
       return a(i);
     }
 
@@ -427,7 +393,7 @@ namespace cctbx { namespace af {
     void
     setitem_1d(f_t& a, std::size_t i, e_t const& x)
     {
-      if (i >= a.size()) raise_index_error();
+      if (i >= a.size()) bpl_utils::raise_index_error();
       a[i] = x;
     }
 
@@ -436,7 +402,7 @@ namespace cctbx { namespace af {
     setitem_flex_grid(
       f_t& a, flex_grid_default_index_type const& i, e_t const& x)
     {
-      if (!a.accessor().is_valid_index(i)) raise_index_error();
+      if (!a.accessor().is_valid_index(i)) bpl_utils::raise_index_error();
       a(i) = x;
     }
 
@@ -444,7 +410,7 @@ namespace cctbx { namespace af {
     e_t
     front(f_t const& a)
     {
-      if (a.size() == 0) raise_index_error();
+      if (a.size() == 0) bpl_utils::raise_index_error();
       return a.front();
     }
 
@@ -452,7 +418,7 @@ namespace cctbx { namespace af {
     e_t
     back(f_t const& a)
     {
-      if (a.size() == 0) raise_index_error();
+      if (a.size() == 0) bpl_utils::raise_index_error();
       return a.back();
     }
 
@@ -495,27 +461,9 @@ namespace cctbx { namespace af {
 
     static
     void
-    assert_1d(flex_grid<> const& grid)
-    {
-      if (grid.nd() != 1) raise_must_be_1d();
-      if (grid.origin()[0] != 0) raise_must_be_1d();
-    }
-
-    static
-    base_array_type
-    as_base_array(f_t const& a)
-    {
-      assert_1d(a.accessor());
-      base_array_type b = a.as_base_array();
-      if (a.size() != b.size()) raise_shared_size_mismatch();
-      return b;
-    }
-
-    static
-    void
     assign(f_t& a, std::size_t sz, e_t const& x)
     {
-      base_array_type b = as_base_array(a);
+      base_array_type b = bpl_utils::as_base_array(a);
       b.assign(sz, x);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -523,7 +471,7 @@ namespace cctbx { namespace af {
     static
     void push_back(f_t& a, e_t const& x)
     {
-      base_array_type b = as_base_array(a);
+      base_array_type b = bpl_utils::as_base_array(a);
       b.push_back(x);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -532,8 +480,8 @@ namespace cctbx { namespace af {
     void
     pop_back(f_t& a)
     {
-      base_array_type b = as_base_array(a);
-      if (b.size() == 0) raise_index_error();
+      base_array_type b = bpl_utils::as_base_array(a);
+      if (b.size() == 0) bpl_utils::raise_index_error();
       b.pop_back();
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -542,8 +490,8 @@ namespace cctbx { namespace af {
     void
     insert_i_x(f_t& a, std::size_t i, e_t const& x)
     {
-      base_array_type b = as_base_array(a);
-      if (i >= b.size()) raise_index_error();
+      base_array_type b = bpl_utils::as_base_array(a);
+      if (i >= b.size()) bpl_utils::raise_index_error();
       b.insert(&b[i], x);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -552,8 +500,8 @@ namespace cctbx { namespace af {
     void
     insert_i_n_x(f_t& a, std::size_t i, std::size_t n, e_t const& x)
     {
-      base_array_type b = as_base_array(a);
-      if (i >= b.size()) raise_index_error();
+      base_array_type b = bpl_utils::as_base_array(a);
+      if (i >= b.size()) bpl_utils::raise_index_error();
       b.insert(&b[i], n, x);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -562,8 +510,8 @@ namespace cctbx { namespace af {
     void
     erase_i(f_t& a, std::size_t i)
     {
-      base_array_type b = as_base_array(a);
-      if (i >= b.size()) raise_index_error();
+      base_array_type b = bpl_utils::as_base_array(a);
+      if (i >= b.size()) bpl_utils::raise_index_error();
       b.erase(&b[i]);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -571,9 +519,9 @@ namespace cctbx { namespace af {
     static
     void erase_i_j(f_t& a, std::size_t i, std::size_t j)
     {
-      base_array_type b = as_base_array(a);
-      if (i >= b.size()) raise_index_error();
-      if (j >= b.size()) raise_index_error();
+      base_array_type b = bpl_utils::as_base_array(a);
+      if (i >= b.size()) bpl_utils::raise_index_error();
+      if (j >= b.size()) bpl_utils::raise_index_error();
       b.erase(&b[i], &b[j]);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -582,7 +530,7 @@ namespace cctbx { namespace af {
     void
     resize_1d_1(f_t& a, std::size_t sz)
     {
-      base_array_type b = as_base_array(a);
+      base_array_type b = bpl_utils::as_base_array(a);
       b.resize(sz);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -591,7 +539,7 @@ namespace cctbx { namespace af {
     void
     resize_1d_2(f_t& a, std::size_t sz, e_t const& x)
     {
-      base_array_type b = as_base_array(a);
+      base_array_type b = bpl_utils::as_base_array(a);
       b.resize(sz, x);
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -614,7 +562,7 @@ namespace cctbx { namespace af {
     void
     clear(f_t& a)
     {
-      base_array_type b = as_base_array(a);
+      base_array_type b = bpl_utils::as_base_array(a);
       b.clear();
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -623,8 +571,8 @@ namespace cctbx { namespace af {
     void
     append(f_t& a, f_t const& other)
     {
-      base_array_type b = as_base_array(a);
-      assert_1d(other.accessor());
+      base_array_type b = bpl_utils::as_base_array(a);
+      bpl_utils::assert_1d(other.accessor());
       b.insert(b.end(), other.begin(), other.end());
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -647,9 +595,9 @@ namespace cctbx { namespace af {
     f_t
     select(f_t const& a, flex_bool const& flags)
     {
-      assert_1d(a.accessor());
-      assert_1d(flags.accessor());
-      if (a.size() != flags.size()) raise_incompatible_arrays();
+      bpl_utils::assert_1d(a.accessor());
+      bpl_utils::assert_1d(flags.accessor());
+      if (a.size() != flags.size()) bpl_utils::raise_incompatible_arrays();
       std::size_t n = 0;
       std::size_t i;
       for(i=0;i<flags.size();i++) if (flags[i]) n++;
@@ -663,9 +611,11 @@ namespace cctbx { namespace af {
     f_t
     shuffle(f_t const& a, versa<std::size_t, flex_grid<> > const& permutation)
     {
-      assert_1d(a.accessor());
-      assert_1d(permutation.accessor());
-      if (a.size() != permutation.size()) raise_incompatible_arrays();
+      bpl_utils::assert_1d(a.accessor());
+      bpl_utils::assert_1d(permutation.accessor());
+      if (a.size() != permutation.size()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       base_array_type result;
       if (a.size()) {
         result.resize(a.size(), a[0]); // avoid requirement that e_t is
@@ -692,7 +642,9 @@ namespace cctbx { namespace af {
     flex_bool
     and_a_a(flex_bool const& a1, flex_bool const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] && a2[i]);
@@ -703,7 +655,9 @@ namespace cctbx { namespace af {
     flex_bool
     or_a_a(flex_bool const& a1, flex_bool const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] || a2[i]);
@@ -714,7 +668,9 @@ namespace cctbx { namespace af {
     flex_bool
     iand_a_a(flex_bool a1, flex_bool const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       for(std::size_t i=0;i<a1.size();i++) if(!a2[i]) a1[i] = false;
       return a1;
     }
@@ -723,7 +679,9 @@ namespace cctbx { namespace af {
     flex_bool
     ior_a_a(flex_bool a1, flex_bool const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       for(std::size_t i=0;i<a1.size();i++) if(a2[i]) a1[i] = true;
       return a1;
     }
@@ -777,7 +735,9 @@ namespace cctbx { namespace af {
     f_t
     add_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] + a2[i]);
@@ -788,7 +748,9 @@ namespace cctbx { namespace af {
     f_t
     sub_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] - a2[i]);
@@ -799,7 +761,9 @@ namespace cctbx { namespace af {
     f_t
     mul_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] * a2[i]);
@@ -810,7 +774,9 @@ namespace cctbx { namespace af {
     f_t
     div_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] / a2[i]);
@@ -821,7 +787,9 @@ namespace cctbx { namespace af {
     f_t
     mod_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] % a2[i]);
@@ -947,7 +915,9 @@ namespace cctbx { namespace af {
     flex_bool
     eq_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] == a2[i]);
@@ -958,7 +928,9 @@ namespace cctbx { namespace af {
     flex_bool
     ne_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] != a2[i]);
@@ -969,7 +941,9 @@ namespace cctbx { namespace af {
     flex_bool
     lt_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] < a2[i]);
@@ -980,7 +954,9 @@ namespace cctbx { namespace af {
     flex_bool
     gt_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] > a2[i]);
@@ -991,7 +967,9 @@ namespace cctbx { namespace af {
     flex_bool
     le_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] <= a2[i]);
@@ -1002,7 +980,9 @@ namespace cctbx { namespace af {
     flex_bool
     ge_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] >= a2[i]);
@@ -1107,7 +1087,9 @@ namespace cctbx { namespace af {
     f_t
     atan2_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
+      if (a1.accessor() != a2.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) {
@@ -1247,7 +1229,9 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       versa<double, flex_grid<> > const& theta,
       bool deg)
     {
-      if (rho.accessor() != theta.accessor()) raise_incompatible_arrays();
+      if (rho.accessor() != theta.accessor()) {
+        bpl_utils::raise_incompatible_arrays();
+      }
       shared_plain<std::complex<double> > result;
       result.reserve(rho.size());
       if (deg) {
@@ -1584,6 +1568,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     flex_wrapper<bool>::logical(this_module, "bool");
 
     // size_t is wrapped here to enable .shuffle() for the other types
+    typedef std::size_t size_t;
     WRAP_CMP_COMPARABLE("size_t", size_t);
 
     // double is wrapped here to enable .as_double() for the other types
@@ -1603,8 +1588,6 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     WRAP_PLAIN("XrayScatterer", XrayScatterer);
     WRAP_PLAIN("double3", cctbx::af::double3);
 
-    typedef std::size_t size_t;
-    WRAP_CMP_COMPARABLE("size_t", size_t);
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
     WRAP_PLAIN("tiny_size_t_2", tiny_size_t_2);
 

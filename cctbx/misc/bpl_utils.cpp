@@ -8,13 +8,32 @@
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <boost/python/class_builder.hpp>
+#include <cctbx/bpl_utils.h>
 
 namespace cctbx { namespace bpl_utils {
 
-  void throw_index_out_of_range()
+  void raise_index_error()
   {
     PyErr_SetString(PyExc_IndexError, "Index out of range.");
+    boost::python::throw_error_already_set();
+  }
+
+  void raise_must_be_1d()
+  {
+    PyErr_SetString(PyExc_RuntimeError,
+      "Array must be 0-based 1-dimensional.");
+    boost::python::throw_error_already_set();
+  }
+
+  void raise_shared_size_mismatch()
+  {
+    PyErr_SetString(PyExc_RuntimeError, "Shared size mismatch.");
+    boost::python::throw_error_already_set();
+  }
+
+  void raise_incompatible_arrays()
+  {
+    PyErr_SetString(PyExc_RuntimeError, "Incompatible arrays.");
     boost::python::throw_error_already_set();
   }
 
@@ -25,4 +44,11 @@ namespace cctbx { namespace bpl_utils {
     else
       return tuple(ref(p, ref::increment_count));
   }
+
+  void assert_1d(af::flex_grid<> const& grid)
+  {
+    if (grid.nd() != 1) raise_must_be_1d();
+    if (grid.origin()[0] != 0) raise_must_be_1d();
+  }
+
 }}

@@ -1,4 +1,4 @@
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
 from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
@@ -8,7 +8,7 @@ def OneCycle():
   UnitCell = uctbx.UnitCell((10.002,10.002,34.141,90.0,90.0,90.0))
   SgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols("P42/NCM:2"))
   MillerIndices = miller.BuildIndices(UnitCell, SgOps.Info(), 1, 5.0)
-  Sites = shared.XrayScatterer()
+  Sites = flex.XrayScatterer()
   for Label, Coordinates in (
   ("SI1",       (0.09714,   0.70886,   0.90221)),
   ("SI2",       (0.04299,   0.04299,   0.45595)),
@@ -37,11 +37,11 @@ def OneCycle():
   for Site in Sites:
     print Site.Label(), Site.Coordinates()
   Fcalc = sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites)
-  dT_dFc = shared.complex_double(MillerIndices.size())
+  dT_dFc = flex.complex_double(MillerIndices.size())
   dT_dX = sftbx.StructureFactor_dT_dX_Array(
     UnitCell, SgOps, MillerIndices, dT_dFc, Sites)
-  abs_F = shared.abs(Fcalc)
-  phase = shared.arg(Fcalc)
+  abs_F = flex.abs(Fcalc)
+  phase = flex.arg(Fcalc)
   for i in xrange(len(MillerIndices)):
     print MillerIndices[i], Fcalc[i], abs_F[i], phase[i]
 
