@@ -370,18 +370,16 @@ namespace {
     }
   }
 
-  sftbx::sampled_model_density<double>
-  py_sample_model_density(
+  af::int3
+  py_determine_grid(
     const uctbx::UnitCell& ucell,
-    const af::shared<ex_xray_scatterer>& sites,
     double max_q,
     double resolution_factor,
     int max_prime,
     const af::int3& mandatory_factors)
   {
-    return sftbx::sample_model_density<double>(
-      ucell, sites.const_ref(),
-      max_q, resolution_factor, max_prime, mandatory_factors);
+    return maps::determine_grid<af::int3>(
+      ucell, max_q, resolution_factor, max_prime, mandatory_factors);
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
@@ -404,6 +402,13 @@ namespace {
     result.set_item(0, ref(to_python(dT_dX)));
     result.set_item(1, ref(to_python(dT_dUiso)));
     return result;
+  }
+
+  af::shared<double>
+  sampled_model_density_map_as_shared(
+    sftbx::sampled_model_density<double>& smd)
+  {
+    return smd.map().as_base_array();
   }
 
   void init_module(python::module_builder& this_module)
@@ -450,8 +455,6 @@ namespace {
 
     class_builder<sftbx::sampled_model_density<double> >
     py_sampled_model_density(this_module, "sampled_model_density");
-
-    this_module.def(py_sample_model_density, "sample_model_density");
 
     this_module.def(py_StructureFactor_plain, "StructureFactor");
     this_module.def(py_StructureFactor_iso,   "StructureFactor");
@@ -516,6 +519,13 @@ namespace {
       xray_scatterer_copy, "copy");
 
     py_sampled_model_density.def(constructor<>());
+    py_sampled_model_density.def(constructor<
+      const uctbx::UnitCell&,
+      const af::shared<ex_xray_scatterer>&,
+      const double&,
+      const double&,
+      const af::tiny<long, 3>&,
+      const af::tiny<long, 3>&>());
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::max_q,
                                             "max_q");
@@ -531,6 +541,9 @@ namespace {
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::u_extra,
                                             "u_extra");
+    py_sampled_model_density.def(
+      sampled_model_density_map_as_shared,
+                           "map_as_shared");
 
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
@@ -567,6 +580,8 @@ namespace {
     this_module.def(unpack_parameters_cart, "unpack_parameters");
     this_module.def(flatten, "flatten");
     this_module.def(dT_dX_inplace_frac_as_cart, "dT_dX_inplace_frac_as_cart");
+
+    this_module.def(py_determine_grid, "determine_grid");
   }
 
 }
