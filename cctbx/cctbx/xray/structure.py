@@ -321,14 +321,13 @@ class structure(crystal.special_position_settings):
     return result
 
   def asu_mappings(self, buffer_thickness,
-                         is_inside_epsilon=None,
-                         sym_equiv_epsilon=1.e-6):
+                         is_inside_epsilon=None):
     result = crystal.direct_space_asu.asu_mappings(
       space_group=self.space_group(),
       asu=self.direct_space_asu().as_float_asu(
         is_inside_epsilon=is_inside_epsilon),
       buffer_thickness=buffer_thickness,
-      sym_equiv_epsilon=sym_equiv_epsilon)
+      min_distance_sym_equiv=self.min_distance_sym_equiv())
     ext.asu_mappings_process(
       asu_mappings=result,
       scatterers=self.scatterers())

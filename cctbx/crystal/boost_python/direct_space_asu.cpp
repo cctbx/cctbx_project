@@ -159,16 +159,14 @@ namespace {
           (arg_("space_group"),
            arg_("asu"),
            arg_("buffer_thickness"),
-           arg_("sym_equiv_epsilon"))))
+           arg_("min_distance_sym_equiv"))))
         .def("reserve", &w_t::reserve, (arg_("n_sites_final")))
         .def("space_group", &w_t::space_group, rir())
         .def("asu", &w_t::asu, rir())
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("buffer_thickness", &w_t::buffer_thickness)
         .def("asu_buffer", &w_t::asu_buffer, rir())
-        .def("sym_equiv_epsilon", &w_t::sym_equiv_epsilon)
-        .def("sym_equiv_tolerance", &w_t::sym_equiv_tolerance)
-        .def("sym_equiv_minimum_distance", &w_t::sym_equiv_minimum_distance)
+        .def("min_distance_sym_equiv", &w_t::min_distance_sym_equiv)
         .def("buffer_covering_sphere", &w_t::buffer_covering_sphere, rir())
         .def("process", &w_t::process, (arg_("original_site")))
         .def("process_sites_frac", &w_t::process_sites_frac,
@@ -182,7 +180,8 @@ namespace {
         .def("mapped_sites_min", &w_t::mapped_sites_min, ccr())
         .def("mapped_sites_max", &w_t::mapped_sites_max, ccr())
         .def("mapped_sites_span", &w_t::mapped_sites_span)
-        .def("special_position_flags", &w_t::special_position_flags, ccr())
+        .def("special_ops", &w_t::special_ops, ccr())
+        .def("special_op_indices", &w_t::special_op_indices, ccr())
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
         .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu,
@@ -192,8 +191,7 @@ namespace {
           (arg_("pair")))
         .def("make_pair", &w_t::make_pair,
           (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
-        .def("find_i_sym", &w_t::find_i_sym,
-          (arg_("i_seq"), arg_("rt_mx"), arg_("special_op")))
+        .def("find_i_sym", &w_t::find_i_sym, (arg_("i_seq"), arg_("rt_mx")))
       ;
       {
         using namespace scitbx::boost_python::container_conversions;

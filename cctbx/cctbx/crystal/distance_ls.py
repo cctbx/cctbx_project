@@ -371,10 +371,7 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
       if (1):
         # XXX currently for testing only
         for n in nodes_next:
-          i_sym = asu_mappings.find_i_sym(
-            i_seq=n.i_seq,
-            rt_mx=n.rt_mx,
-            special_op=n.special_op)
+          i_sym = asu_mappings.find_i_sym(i_seq=n.i_seq, rt_mx=n.rt_mx)
       nodes_previous = nodes_middle
       nodes_middle = nodes_next
       nodes_next = []
