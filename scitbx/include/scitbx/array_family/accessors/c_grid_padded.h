@@ -78,6 +78,12 @@ namespace scitbx { namespace af {
       index_type const&
       layout() const { return layout_; }
 
+      std::size_t
+      layout_size_1d() const
+      {
+        return math::compile_time::product<Nd>::get(layout_);
+      }
+
       bool is_padded() const
       {
         SCITBX_ASSERT(grid_.all_ge(layout_));
@@ -165,6 +171,12 @@ namespace scitbx { namespace af {
 
       index_type const&
       layout() const { return layout_; }
+
+      std::size_t
+      layout_size_1d() const
+      {
+        return layout_[0] * layout_[1];
+      }
 
       bool is_padded() const
       {
@@ -263,6 +275,12 @@ namespace scitbx { namespace af {
 
       index_type const&
       layout() const { return layout_; }
+
+      std::size_t
+      layout_size_1d() const
+      {
+        return layout_[0] * layout_[1] * layout_[2];
+      }
 
       bool is_padded() const
       {

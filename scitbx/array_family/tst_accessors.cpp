@@ -153,15 +153,18 @@ int main(int argc, char* argv[])
     af::c_grid_padded<1> a;
     check_true(__LINE__, a.grid().size() == 1);
     check_true(__LINE__, a.size_1d() == 0);
+    check_true(__LINE__, a.layout_size_1d() == 0);
     check_false(__LINE__, a.is_padded());
     a = af::c_grid_padded<1>(af::tiny<std::size_t, 1>(3));
     check_true(__LINE__, a.size_1d() == 3);
+    check_true(__LINE__, a.layout_size_1d() == 3);
     check_false(__LINE__, a.is_padded());
     verify(__LINE__, a.grid(), af::tiny<std::size_t, 1>(3));
     verify(__LINE__, a.layout(), af::tiny<std::size_t, 1>(3));
     a = af::c_grid_padded<1>(af::tiny<std::size_t, 1>(4),
                              af::tiny<std::size_t, 1>(3));
     check_true(__LINE__, a.size_1d() == 4);
+    check_true(__LINE__, a.layout_size_1d() == 3);
     check_true(__LINE__, a.is_padded());
     verify(__LINE__, a.grid(), af::tiny<std::size_t, 1>(4));
     verify(__LINE__, a.layout(), af::tiny<std::size_t, 1>(3));
@@ -182,9 +185,11 @@ int main(int argc, char* argv[])
     af::c_grid_padded<4> a;
     check_true(__LINE__, a.grid().size() == 4);
     check_true(__LINE__, a.size_1d() == 0);
+    check_true(__LINE__, a.layout_size_1d() == 0);
     check_false(__LINE__, a.is_padded());
     a = af::c_grid_padded<4>(af::tiny<std::size_t, 4>(3,2,7,5));
     check_true(__LINE__, a.size_1d() == 3*2*7*5);
+    check_true(__LINE__, a.layout_size_1d() == 3*2*7*5);
     check_false(__LINE__, a.is_padded());
     verify(__LINE__, a.grid(), af::tiny<std::size_t, 4>(3,2,7,5));
     verify(__LINE__, a.layout(), af::tiny<std::size_t, 4>(3,2,7,5));
@@ -199,6 +204,7 @@ int main(int argc, char* argv[])
     check_false(__LINE__, a.is_padded());
     a = af::c_grid_padded<4>(af::flex_grid<>(3,2,7,5).set_layout(3,2,6,5));
     check_true(__LINE__, a.size_1d() == 3*2*7*5);
+    check_true(__LINE__, a.layout_size_1d() == 3*2*6*5);
     check_true(__LINE__, a.is_padded());
     a = af::c_grid_padded<4>(af::adapt(af::tiny<std::size_t, 4>(3,2,7,5)));
     verify(__LINE__, a.as_flex_grid().grid(), a.grid());
@@ -216,9 +222,11 @@ int main(int argc, char* argv[])
     af::c_grid_padded<2> a;
     check_true(__LINE__, a.grid().size() == 2);
     check_true(__LINE__, a.size_1d() == 0);
+    check_true(__LINE__, a.layout_size_1d() == 0);
     check_false(__LINE__, a.is_padded());
     a = af::c_grid_padded<2>(af::tiny<std::size_t, 2>(3,5));
     check_true(__LINE__, a.size_1d() == 3*5);
+    check_true(__LINE__, a.layout_size_1d() == 3*5);
     check_false(__LINE__, a.is_padded());
     a = af::c_grid_padded<2>(3,5);
     check_true(__LINE__, a.size_1d() == 3*5);
@@ -228,6 +236,7 @@ int main(int argc, char* argv[])
     a = af::c_grid_padded<2>(af::tiny<std::size_t, 2>(3,5),
                              af::tiny<std::size_t, 2>(3,4));
     check_true(__LINE__, a.size_1d() == 3*5);
+    check_true(__LINE__, a.layout_size_1d() == 3*4);
     check_true(__LINE__, a.is_padded());
     verify(__LINE__, a.grid(), af::tiny<std::size_t, 2>(3,5));
     verify(__LINE__, a.layout(), af::tiny<std::size_t, 2>(3,4));
@@ -258,9 +267,11 @@ int main(int argc, char* argv[])
     af::c_grid_padded<3> a;
     check_true(__LINE__, a.grid().size() == 3);
     check_true(__LINE__, a.size_1d() == 0);
+    check_true(__LINE__, a.layout_size_1d() == 0);
     check_false(__LINE__, a.is_padded());
     a = af::c_grid_padded<3>(af::tiny<std::size_t, 3>(3,7,5));
     check_true(__LINE__, a.size_1d() == 3*7*5);
+    check_true(__LINE__, a.layout_size_1d() == 3*7*5);
     check_false(__LINE__, a.is_padded());
     a = af::c_grid_padded<3>(3,7,5);
     check_true(__LINE__, a.size_1d() == 3*7*5);
@@ -270,6 +281,7 @@ int main(int argc, char* argv[])
     a = af::c_grid_padded<3>(af::tiny<std::size_t, 3>(3,7,5),
                              af::tiny<std::size_t, 3>(3,4,5));
     check_true(__LINE__, a.size_1d() == 3*7*5);
+    check_true(__LINE__, a.layout_size_1d() == 3*4*5);
     check_true(__LINE__, a.is_padded());
     verify(__LINE__, a.grid(), af::tiny<std::size_t, 3>(3,7,5));
     verify(__LINE__, a.layout(), af::tiny<std::size_t, 3>(3,4,5));
