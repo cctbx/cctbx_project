@@ -428,6 +428,21 @@ namespace direct_space_asu {
       array_of_array_of_mappings_for_one_site const&
       mappings() const { return mappings_; }
 
+      //! Difference vector for the given pair.
+      /*! result = site(j_seq,j_sym) - site(i_seq,0).
+       */
+      cartesian<FloatType>
+      difference(asu_mapping_index_pair<FloatType> const& pair) const
+      {
+        af::const_ref<array_of_mappings_for_one_site>
+          mappings = mappings_.const_ref();
+        CCTBX_ASSERT(pair.i_seq < mappings.size());
+        CCTBX_ASSERT(pair.j_seq < mappings.size());
+        CCTBX_ASSERT(pair.j_sym < mappings[pair.j_seq].size());
+        return mappings[pair.i_seq][0].mapped_site()
+             - mappings[pair.j_seq][pair.j_sym].mapped_site();
+      }
+
     protected:
       sgtbx::space_group space_group_;
       float_asu<FloatType> asu_;
