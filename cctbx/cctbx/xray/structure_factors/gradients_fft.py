@@ -4,6 +4,7 @@ from cctbx.xray import ext
 from cctbx import miller
 from cctbx import adptbx
 from cctbx import matrix
+from cctbx.array_family import flex
 from scitbx.python_utils.misc import user_plus_sys_time
 
 class gradients_fft(gradients_base):
@@ -20,10 +21,17 @@ class gradients_fft(gradients_base):
     # XXX timing
     gradient_map = self.fft_d_target_d_f_calc(
       d_target_d_f_calc=d_target_d_f_calc)
+    if (not gradient_map.anomalous_flag()):
+      gradient_map_real = gradient_map.real_map()
+      gradient_map_complex = flex.complex_double(flex.grid(0,0,0))
+    else:
+      gradient_map_real = flex.double(flex.grid(0,0,0))
+      gradient_map_complex = gradient_map.complex_map()
     self._results = ext.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
-      gradient_map.complex_map(),
+      gradient_map_real,
+      gradient_map_complex,
       gradient_flags,
       manager.u_extra(),
       manager.wing_cutoff(),
@@ -33,10 +41,10 @@ class gradients_fft(gradients_base):
     self.d_target_d_u_star_was_used = 00000
 
   def fft_d_target_d_f_calc(self, d_target_d_f_calc):
-    multiplier = self.miller_set().epsilons().data().as_double() * (
-                   self.manager().unit_cell().volume()
-                 / matrix.row(self.manager().rfft().n_real()).product()
-                 * self.manager().space_group().n_ltr())
+    multiplier = (  self.manager().unit_cell().volume()
+                  / matrix.row(self.manager().rfft().n_real()).product()
+                  * self.manager().space_group().order_z()
+                  / self.miller_set().multiplicities().data().as_double())
     coeff = d_target_d_f_calc.deep_copy()
     ext.apply_u_extra(
       self.manager().unit_cell(),

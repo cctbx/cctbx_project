@@ -18,6 +18,8 @@ namespace {
       class_<w_t, bases<w_t::base_t> >("fast_gradients", no_init)
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scatterer<> > const&,
+                  af::const_ref<double,
+                                maptbx::c_grid_padded_p1<3> > const&,
                   af::const_ref<std::complex<double>,
                                 maptbx::c_grid_padded_p1<3> > const&,
                   gradient_flags const&,

@@ -8,7 +8,7 @@ from cctbx import adptbx
 from cctbx import matrix
 from cctbx.array_family import flex
 from cctbx.regression.tst_xray_derivatives import linear_regression_test
-from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
+from scitbx.python_utils.misc import adopt_init_args
 from scitbx.test_utils import approx_equal
 from scitbx import fftpack
 import random
@@ -111,10 +111,10 @@ class resampling(crystal.symmetry):
     return self
 
   def ft_dp(self, dp):
-    multiplier = dp.epsilons().data().as_double() * (
-                   self.unit_cell().volume()
-                 / matrix.row(self.rfft().n_real()).product()
-                 * self.space_group().n_ltr())
+    multiplier = (  self.unit_cell().volume()
+                  / matrix.row(self.rfft().n_real()).product()
+                  * self.space_group().order_z()
+                  / dp.multiplicities().data().as_double())
     coeff = dp.deep_copy()
     xray.apply_u_extra(
       self.unit_cell(),
@@ -145,27 +145,34 @@ class resampling(crystal.symmetry):
       if (random.random() > 0.5): gradient_flags.fp = 0001
       if (random.random() > 0.5): gradient_flags.fdp = 0001
     self.setup_fft()
-    cmap = self.ft_dp(dp).complex_map()
-    assert not cmap.is_padded()
-    if (0 or verbose):
-      gradient_flags.show_summary()
-      print "grid:", cmap.focus()
-      print "ft_dt_map real: %.4g %.4g" % (
-        flex.min(flex.real(cmap)), flex.max(flex.real(cmap)))
-      print "ft_dt_map imag: %.4g %.4g" % (
-        flex.min(flex.imag(cmap)), flex.max(flex.imag(cmap)))
-      print
-    time_sampling = user_plus_sys_time()
+    gradient_map = self.ft_dp(dp)
+    if (not gradient_map.anomalous_flag()):
+      gradient_map_real = gradient_map.real_map()
+      gradient_map_complex = flex.complex_double(flex.grid(0,0,0))
+    else:
+      gradient_map_real = flex.double(flex.grid(0,0,0))
+      gradient_map_complex = gradient_map.complex_map()
+      assert not gradient_map_complex.is_padded()
+      if (0 or verbose):
+        gradient_flags.show_summary()
+        print "grid:", gradient_map_complex.focus()
+        print "ft_dt_map real: %.4g %.4g" % (
+          flex.min(flex.real(gradient_map_complex)),
+          flex.max(flex.real(gradient_map_complex)))
+        print "ft_dt_map imag: %.4g %.4g" % (
+          flex.min(flex.imag(gradient_map_complex)),
+          flex.max(flex.imag(gradient_map_complex)))
+        print
     result = xray.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
-      cmap,
+      gradient_map_real,
+      gradient_map_complex,
       gradient_flags,
       self.u_extra(),
       self.wing_cutoff(),
       self.exp_table_one_over_step_size(),
       electron_density_must_be_positive)
-    time_sampling = time_sampling.elapsed()
     if (0 or verbose):
       print "max_shell_radii:", result.max_shell_radii()
       print "exp_table_size:", result.exp_table_size()
@@ -535,7 +542,7 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
         print "u_iso:", adptbx.u_star_as_u_iso(uc, scatterer.u_star)
     print
   f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=0001, direct=0001).f_calc())
+    d_min=d_min, anomalous_flag=fdp_flag, direct=0001).f_calc())
   if (1):
     site(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
@@ -547,10 +554,11 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     occupancy(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
     fp(structure_ideal, d_min, f_obs, verbose=verbose)
-  if (1):
+  if (1 and fdp_flag):
     fdp(structure_ideal, d_min, f_obs, verbose=verbose)
-  exercise_gradient_manager(
-    structure_ideal, d_min, f_obs, fdp_flag, anisotropic_flag)
+  if (1):
+    exercise_gradient_manager(
+      structure_ideal, d_min, f_obs, fdp_flag, anisotropic_flag)
 
 def run_call_back(flags, space_group_info):
   for fdp_flag in [0,1]:
