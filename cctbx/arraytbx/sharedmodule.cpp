@@ -22,6 +22,40 @@
 
 namespace {
 
+  // to preserve VC6 compatibility we are not using shared_algebra.h
+  cctbx::af::shared<double>
+  py_abs_complex(const cctbx::af::shared<std::complex<double> >& a) {
+    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<a.size();i++) {
+      result[i] = std::abs(a[i]);
+    }
+    return result;
+  }
+  cctbx::af::shared<double>
+  py_arg_complex_rad(const cctbx::af::shared<std::complex<double> >& a) {
+    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<a.size();i++) {
+      result[i] = std::arg(a[i]);
+    }
+    return result;
+  }
+  cctbx::af::shared<double>
+  py_arg_complex_deg(const cctbx::af::shared<std::complex<double> >& a) {
+    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<a.size();i++) {
+      result[i] = std::arg(a[i]) * (180. / cctbx::constants::pi);
+    }
+    return result;
+  }
+  cctbx::af::shared<double>
+  py_norm_complex(const cctbx::af::shared<std::complex<double> >& a) {
+    cctbx::af::shared<double> result(a.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<a.size();i++) {
+      result[i] = std::norm(a[i]);
+    }
+    return result;
+  }
+
   template <typename FloatType>
   struct ex_linear_regression : cctbx::math::linear_regression<FloatType>
   {
@@ -96,6 +130,11 @@ namespace {
     WRAP_TYPE("XrayScatterer", XrayScatterer);
 
     WRAP_TYPE("double3", cctbx::af::double3);
+
+    this_module.def(py_abs_complex, "abs");
+    this_module.def(py_arg_complex_rad, "arg_rad");
+    this_module.def(py_arg_complex_deg, "arg_deg");
+    this_module.def(py_norm_complex, "norm");
 
     class_builder<ex_linear_regression<double> >
     py_linear_regression(this_module, "linear_regression");
