@@ -47,17 +47,17 @@ namespace cctbx { namespace af {
         : m_begin(begin), m_accessor(n0, n1, n2)
       {}
 
-      const accessor_type& accessor() const { return m_accessor; }
+      accessor_type const& accessor() const { return m_accessor; }
       size_type size() const { return m_accessor.size1d(); }
 
       const ElementType* begin() const { return m_begin; }
       const ElementType* end() const { return m_begin + size(); }
-      const ElementType& front() const { return m_begin[0]; }
-      const ElementType& back() const { return m_begin[size()-1]; }
+      ElementType const& front() const { return m_begin[0]; }
+      ElementType const& back() const { return m_begin[size()-1]; }
 
-      const ElementType& operator[](size_type i) const { return m_begin[i]; }
+      ElementType const& operator[](size_type i) const { return m_begin[i]; }
 
-      const ElementType& at(size_type i) const {
+      ElementType const& at(size_type i) const {
         if (i >= size()) throw_range_error();
         return m_begin[i];
       }
@@ -66,20 +66,20 @@ namespace cctbx { namespace af {
         return const_ref<ElementType>(m_begin, size());
       }
 
-      const value_type& operator()(const index_type& i) const {
+      value_type const& operator()(index_type const& i) const {
         return this->begin()[m_accessor(i)];
       }
 
       // Convenience operator()
 
-      const value_type& operator()(long i0) const {
+      value_type const& operator()(long i0) const {
         return operator()(index_type(i0));
       }
-      const value_type& operator()(long i0,
+      value_type const& operator()(long i0,
                                    long i1) const {
         return operator()(index_type(i0, i1));
       }
-      const value_type& operator()(long i0,
+      value_type const& operator()(long i0,
                                    long i1,
                                    long i2) const {
         return operator()(index_type(i0, i1, i2));
@@ -127,22 +127,22 @@ namespace cctbx { namespace af {
         return ref<ElementType>(this->begin(), this->size());
       }
 
-      const value_type& operator()(const index_type& i) const {
+      value_type const& operator()(index_type const& i) const {
         return this->begin()[this->m_accessor(i)];
       }
-            value_type& operator()(const index_type& i) {
+            value_type& operator()(index_type const& i) {
         return this->begin()[this->m_accessor(i)];
       }
 
       // Convenience operator()
 
-      const value_type& operator()(long i0) const {
+      value_type const& operator()(long i0) const {
         return operator()(index_type(i0));
       }
             value_type& operator()(long i0) {
         return operator()(index_type(i0));
       }
-      const value_type& operator()(long i0,
+      value_type const& operator()(long i0,
                                    long i1) const {
         return operator()(index_type(i0, i1));
       }
@@ -150,7 +150,7 @@ namespace cctbx { namespace af {
                                    long i1) {
         return operator()(index_type(i0, i1));
       }
-      const value_type& operator()(long i0,
+      value_type const& operator()(long i0,
                                    long i1,
                                    long i2) const {
         return operator()(index_type(i0, i1, i2));

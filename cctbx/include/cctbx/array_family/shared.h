@@ -28,23 +28,23 @@ namespace cctbx { namespace af {
       {}
 
       explicit
-      shared(const size_type& sz)
+      shared(size_type const& sz)
         : base_class(sz)
       {}
 
       // non-std
-      shared(const size_type& sz, reserve_flag)
+      shared(size_type const& sz, reserve_flag)
         : base_class(sz, reserve_flag())
       {}
 
-      shared(const size_type& sz, const ElementType& x)
+      shared(size_type const& sz, ElementType const& x)
         : base_class(sz, x)
       {}
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
-      template <typename InitFunctorType>
-      shared(const size_type& sz, InitFunctorType ftor)
+      template <typename FunctorType>
+      shared(size_type const& sz, init_functor<FunctorType> const& ftor)
         : base_class(sz, ftor)
       {}
 #endif
@@ -61,12 +61,12 @@ namespace cctbx { namespace af {
 #endif
 
       // non-std
-      shared(const base_class& other)
+      shared(base_class const& other)
         : base_class(other)
       {}
 
       // non-std
-      shared(const base_class& other, weak_ref_flag)
+      shared(base_class const& other, weak_ref_flag)
         : base_class(other, weak_ref_flag())
       {}
 

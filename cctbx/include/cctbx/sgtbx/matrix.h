@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <string>
+#include <cctbx/array_family/reductions.h>
 #include <cctbx/array_family/tiny_algebra.h>
 #include <cctbx/sgtbx/basic.h>
 #include <cctbx/sgtbx/utils.h>

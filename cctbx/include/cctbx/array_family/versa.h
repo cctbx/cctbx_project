@@ -37,11 +37,11 @@ namespace cctbx { namespace af {
       {}
 
       explicit
-      versa(const AccessorType& ac)
+      versa(AccessorType const& ac)
         : base_class(ac)
       {}
 
-      versa(const AccessorType& ac, reserve_flag)
+      versa(AccessorType const& ac, reserve_flag)
         : base_class(ac, reserve_flag())
       {}
 
@@ -50,59 +50,59 @@ namespace cctbx { namespace af {
         : base_class(n0)
       {}
 
-      versa(const AccessorType& ac, const ElementType& x)
+      versa(AccessorType const& ac, ElementType const& x)
         : base_class(ac, x)
       {}
 
-      versa(long n0, const ElementType& x)
+      versa(long n0, ElementType const& x)
         : base_class(n0, x)
       {}
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
-      template <typename InitFunctorType>
-      versa(const AccessorType& ac, InitFunctorType ftor)
+      template <typename FunctorType>
+      versa(AccessorType const& ac, init_functor<FunctorType> const& ftor)
         : base_class(ac, ftor)
       {}
 
       // non-std
-      template <typename InitFunctorType>
-      versa(long n0, InitFunctorType ftor)
+      template <typename FunctorType>
+      versa(long n0, init_functor<FunctorType> const& ftor)
         : base_class(n0, ftor)
       {}
 #endif
 
-      versa(const base_class& other)
+      versa(base_class const& other)
         : base_class(other)
       {}
 
-      versa(const base_class& other, weak_ref_flag)
+      versa(base_class const& other, weak_ref_flag)
         : base_class(other, weak_ref_flag())
       {}
 
-      versa(const base_array_type& other,
-            const AccessorType& ac)
+      versa(base_array_type const& other,
+            AccessorType const& ac)
         : base_class(other, ac)
       {}
 
-      versa(const base_array_type& other,
+      versa(base_array_type const& other,
             long n0)
         : base_class(other, n0)
       {}
 
-      versa(const base_array_type& other,
-            const AccessorType& ac,
-            const ElementType& x)
+      versa(base_array_type const& other,
+            AccessorType const& ac,
+            ElementType const& x)
         : base_class(other, ac, x)
       {}
 
-      versa(const base_array_type& other,
+      versa(base_array_type const& other,
             long n0,
-            const ElementType& x)
+            ElementType const& x)
         : base_class(other, n0, x)
       {}
 
-      versa(sharing_handle* other_handle, const AccessorType& ac)
+      versa(sharing_handle* other_handle, AccessorType const& ac)
         : base_class(other_handle, ac)
       {}
 
@@ -110,13 +110,13 @@ namespace cctbx { namespace af {
         : base_class(other_handle, n0)
       {}
 
-      versa(sharing_handle* other_handle, const AccessorType& ac,
-            const ElementType& x)
+      versa(sharing_handle* other_handle, AccessorType const& ac,
+            ElementType const& x)
         : base_class(other_handle, ac)
       {}
 
       versa(sharing_handle* other_handle, long n0,
-            const ElementType& x)
+            ElementType const& x)
         : base_class(other_handle, n0)
       {}
 

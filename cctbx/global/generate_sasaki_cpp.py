@@ -192,7 +192,7 @@ def print_sasaki_cpp(tables_combined):
   }} // namespace detail::sasaki
   // END_COMPILED_IN_REFERENCE_DATA
 
-  Sasaki::Sasaki(const std::string& Label, bool Exact)
+  Sasaki::Sasaki(std::string const& Label, bool Exact)
   {
     std::string WorkLabel = StripLabel(Label, Exact);
     m_info = detail::FindEntry(detail::sasaki::tables, WorkLabel, Exact);

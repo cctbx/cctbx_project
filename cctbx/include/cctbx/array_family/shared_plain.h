@@ -61,7 +61,7 @@ namespace cctbx { namespace af {
       {}
 
       explicit
-      sharing_handle(const std::size_t& sz)
+      sharing_handle(std::size_t const& sz)
         : use_count(1), weak_count(0), size(0), capacity(sz),
           data(new char[sz])
       {}
@@ -89,8 +89,8 @@ namespace cctbx { namespace af {
       char* data;
 
     private:
-      sharing_handle(const sharing_handle&);
-      sharing_handle& operator=(const sharing_handle&);
+      sharing_handle(sharing_handle const&);
+      sharing_handle& operator=(sharing_handle const&);
   };
 
   template <typename ElementType>
@@ -108,7 +108,7 @@ namespace cctbx { namespace af {
       {}
 
       explicit
-      shared_plain(const size_type& sz)
+      shared_plain(size_type const& sz)
         : m_is_weak_ref(false),
           m_handle(new sharing_handle(sz * element_size()))
       {
@@ -117,12 +117,12 @@ namespace cctbx { namespace af {
       }
 
       // non-std
-      shared_plain(const size_type& sz, reserve_flag)
+      shared_plain(size_type const& sz, reserve_flag)
         : m_is_weak_ref(false),
           m_handle(new sharing_handle(sz * element_size()))
       {}
 
-      shared_plain(const size_type& sz, const ElementType& x)
+      shared_plain(size_type const& sz, ElementType const& x)
         : m_is_weak_ref(false),
           m_handle(new sharing_handle(sz * element_size()))
       {
@@ -130,18 +130,15 @@ namespace cctbx { namespace af {
         m_handle->size = m_handle->capacity;
       }
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
       // non-std
-      // XXX problem: shared_plain(sz, 0) uses this overload
-      template <typename InitFunctorType>
-      shared_plain(const size_type& sz, InitFunctorType ftor)
+      template <typename FunctorType>
+      shared_plain(size_type const& sz, init_functor<FunctorType> const& ftor)
         : m_is_weak_ref(false),
           m_handle(new sharing_handle(sz * element_size()))
       {
-        ftor(begin(), sz);
+        ftor.held(begin(), sz);
         m_handle->size = m_handle->capacity;
       }
-#endif
 
       shared_plain(const ElementType* first, const ElementType* last)
         : m_is_weak_ref(false),
@@ -163,7 +160,7 @@ namespace cctbx { namespace af {
 #endif
 
       // non-std: shallow copy semantics
-      shared_plain(const shared_plain<ElementType>& other)
+      shared_plain(shared_plain<ElementType> const& other)
         : m_is_weak_ref(other.m_is_weak_ref),
           m_handle(other.m_handle)
       {
@@ -172,7 +169,7 @@ namespace cctbx { namespace af {
       }
 
       // non-std: shallow copy semantics, weak reference
-      shared_plain(const shared_plain<ElementType>& other, weak_ref_flag)
+      shared_plain(shared_plain<ElementType> const& other, weak_ref_flag)
         : m_is_weak_ref(true),
           m_handle(other.m_handle)
       {
@@ -215,7 +212,7 @@ namespace cctbx { namespace af {
 
       // non-std: shallow copy semantics
       shared_plain<ElementType>&
-      operator=(const shared_plain<ElementType>& other)
+      operator=(shared_plain<ElementType> const& other)
       {
         if (m_handle != other.m_handle) {
           m_dispose();
@@ -269,7 +266,7 @@ namespace cctbx { namespace af {
         m_handle->swap(*(other.m_handle));
       }
 
-      void reserve(const size_type& sz) {
+      void reserve(size_type const& sz) {
         if (capacity() < sz) {
           shared_plain<ElementType> new_this(sz, reserve_flag());
           std::uninitialized_copy(begin(), end(), new_this.begin());
@@ -294,13 +291,13 @@ namespace cctbx { namespace af {
 
     protected:
 
-      size_type m_compute_new_capacity(const size_type& old_size,
-                                       const size_type& n) {
+      size_type m_compute_new_capacity(size_type const& old_size,
+                                       size_type const& n) {
         return old_size + std::max(old_size, n);
       }
 
       void m_insert_overflow(ElementType* pos,
-                             const size_type& n, const ElementType& x,
+                             size_type const& n, ElementType const& x,
                              bool at_end) {
         shared_plain<ElementType>
         new_this(m_compute_new_capacity(size(), n), reserve_flag());
@@ -336,15 +333,15 @@ namespace cctbx { namespace af {
         new_this.swap(*this);
       }
 
-      void m_set_size(const size_type& sz) {
+      void m_set_size(size_type const& sz) {
         m_handle->size = sz * element_size();
       }
 
-      void m_incr_size(const size_type& n) {
+      void m_incr_size(size_type const& n) {
         m_handle->size = (size() + n) * element_size();
       }
 
-      void m_decr_size(const size_type& n) {
+      void m_decr_size(size_type const& n) {
         m_handle->size = (size() - n) * element_size();
       }
 

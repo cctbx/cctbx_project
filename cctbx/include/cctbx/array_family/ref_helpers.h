@@ -7,7 +7,7 @@ typedef ElementType        value_type; \
 typedef ElementType*       iterator; \
 typedef const ElementType* const_iterator; \
 typedef ElementType&       reference; \
-typedef const ElementType& const_reference; \
+typedef ElementType const& const_reference; \
 typedef std::size_t        size_type; \
 typedef std::ptrdiff_t     difference_type;
 
@@ -17,20 +17,20 @@ const ElementType* begin() const { return beg; } \
 ElementType* end() { return beg+sz; } \
 const ElementType* end() const { return beg+sz; } \
 ElementType& front() { return beg[0]; } \
-const ElementType& front() const { return beg[0]; } \
+ElementType const& front() const { return beg[0]; } \
 ElementType& back() { return beg[sz-1]; } \
-const ElementType& back() const { return beg[sz-1]; } \
+ElementType const& back() const { return beg[sz-1]; } \
  \
 ElementType& operator[](size_type i) { return beg[i]; } \
-const ElementType& operator[](size_type i) const { return beg[i]; } \
+ElementType const& operator[](size_type i) const { return beg[i]; } \
  \
 ElementType& at(size_type i) { \
   if (i >= sz) throw_range_error(); return beg[i]; \
 } \
-const ElementType& at(size_type i) const { \
+ElementType const& at(size_type i) const { \
   if (i >= sz) throw_range_error(); return beg[i]; \
 } \
-this_type& fill(const ElementType& x) { \
+this_type& fill(ElementType const& x) { \
   std::fill(this->begin(), this->end(), x); \
   return *this; \
 }

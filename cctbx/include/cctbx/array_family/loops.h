@@ -25,7 +25,7 @@ namespace cctbx { namespace af {
     public:
       nested_loop() : m_over(1) {}
       explicit
-      nested_loop(const ArrayType& end,
+      nested_loop(ArrayType const& end,
                   bool open_range = true)
         : m_begin(end), m_end(end), m_current(end), m_over(0)
       {
@@ -33,7 +33,7 @@ namespace cctbx { namespace af {
         m_current = m_begin;
         adjust_end(open_range);
       }
-      nested_loop(const ArrayType& begin, const ArrayType& end,
+      nested_loop(ArrayType const& begin, ArrayType const& end,
                   bool open_range = true)
         : m_begin(begin), m_end(end), m_current(begin), m_over(0)
       {
@@ -51,9 +51,9 @@ namespace cctbx { namespace af {
         m_over++;
         return false;
       }
-      const ArrayType& begin() const { return m_begin; }
-      const ArrayType& end() const { return m_end; }
-      const ArrayType& operator()() const { return m_current; }
+      ArrayType const& begin() const { return m_begin; }
+      ArrayType const& end() const { return m_end; }
+      ArrayType const& operator()() const { return m_current; }
       std::size_t over() const { return m_over; }
     private:
       ArrayType m_begin;

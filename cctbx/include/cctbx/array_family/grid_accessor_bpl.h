@@ -19,10 +19,10 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 
   inline
   cctbx::af::grid<3> from_python(PyObject* p,
-    boost::python::type<const cctbx::af::grid<3>&>)
+    boost::python::type<cctbx::af::grid<3> const&>)
   {
     return cctbx::af::grid<3>(from_python(p,
-      boost::python::type<const cctbx::af::grid<3>::index_type&>()));
+      boost::python::type<cctbx::af::grid<3>::index_type const&>()));
   }
 
   inline
@@ -30,12 +30,12 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
     boost::python::type<cctbx::af::grid<3> >)
   {
     return cctbx::af::grid<3>(from_python(p,
-      boost::python::type<const cctbx::af::grid<3>::index_type&>()));
+      boost::python::type<cctbx::af::grid<3>::index_type const&>()));
   }
 
   inline
-  PyObject* to_python(const cctbx::af::grid<3>& g) {
-    return to_python(static_cast<const cctbx::af::grid<3>::index_type&>(g));
+  PyObject* to_python(cctbx::af::grid<3> const& g) {
+    return to_python(static_cast<cctbx::af::grid<3>::index_type const&>(g));
   }
 
 BOOST_PYTHON_END_CONVERSION_NAMESPACE

@@ -27,7 +27,7 @@ namespace cctbx { namespace af {
   template <std::size_t N>
   struct c_index_1d_calculator {
     template <typename ExtendArrayType, typename IndexType>
-    static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
+    static std::size_t get(ExtendArrayType const& e, IndexType const& i) {
       return c_index_1d_calculator<N-1>::get(e, i) * e[N-1] + i[N-1];
     }
   };
@@ -35,7 +35,7 @@ namespace cctbx { namespace af {
   template<>
   struct c_index_1d_calculator<1> {
     template <typename ExtendArrayType, typename IndexType>
-    static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
+    static std::size_t get(ExtendArrayType const& e, IndexType const& i) {
       return i[0];
     }
   };
@@ -43,7 +43,7 @@ namespace cctbx { namespace af {
   template <std::size_t N>
   struct fortran_index_1d_calculator {
     template <typename ExtendArrayType, typename IndexType>
-    static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
+    static std::size_t get(ExtendArrayType const& e, IndexType const& i) {
       return fortran_index_1d_calculator<N-1>::get(e, i)
         * e[e.size()-N] + i[e.size()-N];
     }
@@ -52,7 +52,7 @@ namespace cctbx { namespace af {
   template<>
   struct fortran_index_1d_calculator<1> {
     template <typename ExtendArrayType, typename IndexType>
-    static std::size_t get(const ExtendArrayType& e, const IndexType& i) {
+    static std::size_t get(ExtendArrayType const& e, IndexType const& i) {
       return i[e.size()-1];
     }
   };
@@ -60,7 +60,7 @@ namespace cctbx { namespace af {
   template <std::size_t N>
   struct compile_time_product {
     template <typename IndexType>
-    static std::size_t get(const IndexType& i) {
+    static std::size_t get(IndexType const& i) {
       return i[N-1] * compile_time_product<N-1>::get(i);
     }
   };
@@ -68,7 +68,7 @@ namespace cctbx { namespace af {
   template <>
   struct compile_time_product<1> {
     template <typename IndexType>
-    static std::size_t get(const IndexType& i) {
+    static std::size_t get(IndexType const& i) {
       return i[0];
     }
   };
@@ -84,7 +84,7 @@ namespace cctbx { namespace af {
 
       grid() { std::fill(this->begin(), this->end(), value_type(0)); }
 
-      grid(const IndexType& n) : IndexType(n) {}
+      grid(IndexType const& n) : IndexType(n) {}
 
       template <typename OtherArrayType>
       grid(af::array_adaptor<OtherArrayType> const& a_a) : IndexType(a_a) {}
@@ -97,11 +97,11 @@ namespace cctbx { namespace af {
         return compile_time_product<Nd>::get(IndexType(*this));
       }
 
-      std::size_t operator()(const IndexType& i) const {
+      std::size_t operator()(IndexType const& i) const {
         return Index1dCalculatorType::get(*this, i);
       }
 
-      bool is_valid_index(const IndexType& i) const {
+      bool is_valid_index(IndexType const& i) const {
         for(std::size_t j=0;j<nd();j++) {
           if (i[j] < 0 || i[j] >= this->elems[j]) return false;
         }
@@ -113,7 +113,7 @@ namespace cctbx { namespace af {
             typename Index1dType>
   inline
   IndexNdType
-  index_1d_as_c_index_nd(const IndexNdType& n, Index1dType i_1d)
+  index_1d_as_c_index_nd(IndexNdType const& n, Index1dType i_1d)
   {
     IndexNdType i_nd;
     for(std::size_t j=n.size()-1;j;j--) {

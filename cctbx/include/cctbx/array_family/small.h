@@ -28,23 +28,23 @@ namespace cctbx { namespace af {
       {}
 
       explicit
-      small(const size_type& sz)
+      small(size_type const& sz)
         : base_class(sz)
       {}
 
       // non-std
-      small(const size_type& sz, reserve_flag)
+      small(size_type const& sz, reserve_flag)
         : base_class(sz, reserve_flag())
       {}
 
-      small(const size_type& sz, const ElementType& x)
+      small(size_type const& sz, ElementType const& x)
         : base_class(sz, x)
       {}
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
-      template <typename InitFunctorType>
-      small(const size_type& sz, InitFunctorType ftor)
+      template <typename FunctorType>
+      small(size_type const& sz, init_functor<FunctorType> const& ftor)
         : base_class(sz, ftor)
       {}
 #endif

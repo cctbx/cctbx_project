@@ -5,31 +5,31 @@
 #define CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(class_name) \
 explicit \
 class_name( \
-  const value_type& v0 \
+  value_type const& v0 \
 ) { \
   this->elems[0] = v0; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1 \
+  value_type const& v0, \
+  value_type const& v1 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
   this->elems[2] = v2; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2, \
-  const value_type& v3 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2, \
+  value_type const& v3 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -37,11 +37,11 @@ class_name( \
   this->elems[3] = v3; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2, \
-  const value_type& v3, \
-  const value_type& v4 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2, \
+  value_type const& v3, \
+  value_type const& v4 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -50,12 +50,12 @@ class_name( \
   this->elems[4] = v4; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2, \
-  const value_type& v3, \
-  const value_type& v4, \
-  const value_type& v5 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2, \
+  value_type const& v3, \
+  value_type const& v4, \
+  value_type const& v5 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -65,13 +65,13 @@ class_name( \
   this->elems[5] = v5; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2, \
-  const value_type& v3, \
-  const value_type& v4, \
-  const value_type& v5, \
-  const value_type& v6 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2, \
+  value_type const& v3, \
+  value_type const& v4, \
+  value_type const& v5, \
+  value_type const& v6 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -82,14 +82,14 @@ class_name( \
   this->elems[6] = v6; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2, \
-  const value_type& v3, \
-  const value_type& v4, \
-  const value_type& v5, \
-  const value_type& v6, \
-  const value_type& v7 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2, \
+  value_type const& v3, \
+  value_type const& v4, \
+  value_type const& v5, \
+  value_type const& v6, \
+  value_type const& v7 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -101,15 +101,15 @@ class_name( \
   this->elems[7] = v7; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2, \
-  const value_type& v3, \
-  const value_type& v4, \
-  const value_type& v5, \
-  const value_type& v6, \
-  const value_type& v7, \
-  const value_type& v8 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2, \
+  value_type const& v3, \
+  value_type const& v4, \
+  value_type const& v5, \
+  value_type const& v6, \
+  value_type const& v7, \
+  value_type const& v8 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -122,16 +122,16 @@ class_name( \
   this->elems[8] = v8; \
 } \
 class_name( \
-  const value_type& v0, \
-  const value_type& v1, \
-  const value_type& v2, \
-  const value_type& v3, \
-  const value_type& v4, \
-  const value_type& v5, \
-  const value_type& v6, \
-  const value_type& v7, \
-  const value_type& v8, \
-  const value_type& v9 \
+  value_type const& v0, \
+  value_type const& v1, \
+  value_type const& v2, \
+  value_type const& v3, \
+  value_type const& v4, \
+  value_type const& v5, \
+  value_type const& v6, \
+  value_type const& v7, \
+  value_type const& v8, \
+  value_type const& v9 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -152,12 +152,12 @@ class_name(const OtherElementType* first, const OtherElementType* last) { \
 
 #define CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(class_name) \
 template <typename OtherElementType> \
-class_name(const tiny_plain<OtherElementType,N>& rhs) { \
+class_name(tiny_plain<OtherElementType,N> const& rhs) { \
   copy_typeconv(rhs.begin(), rhs.end(), this->begin()); \
 } \
 template <typename OtherElementType> \
 class_name<ElementType,N>& \
-operator=(const tiny_plain<OtherElementType,N>& rhs) { \
+operator=(tiny_plain<OtherElementType,N> const& rhs) { \
   copy_typeconv(rhs.begin(), rhs.end(), this->begin()); \
   return *this; \
 }

@@ -4,7 +4,7 @@
   static std::size_t error_counter = 0;
 
   template <typename VectorType1, typename VectorType2>
-  void verify(long line, const VectorType1& v, const VectorType2& a)
+  void verify(long line, VectorType1 const& v, VectorType2 const& a)
   {
     if (v.size() != a.size()) {
       std::cout << line << ": size mismatch: "
