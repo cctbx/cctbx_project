@@ -1368,6 +1368,15 @@ def exercise_search_symmetry():
   assert s.group() == sgtbx.space_group("P 1")
   assert s.continuous_shifts() == ((1, 1, 1),)
   assert not s.continuous_shifts_are_principal()
+  sg144 = sgtbx.space_group_info("P 31")
+  ss144 = sg144.structure_seminvariant()
+  s = sgtbx.search_symmetry(
+    flags=sgtbx.search_symmetry_flags(0001, 0, 0001, 00000, 00000),
+    space_group_type=sg144.type(),
+    seminvariant=ss144)
+  assert s.group() == sgtbx.space_group("P 31 (1/3*x+1/3*y,-1/3*x+2/3*y,z)")
+  assert s.projected_group() \
+      == sgtbx.space_group("P 3 (1/3*x+1/3*y,-1/3*x+2/3*y,z)")
 
 def run():
   exercise_symbols()

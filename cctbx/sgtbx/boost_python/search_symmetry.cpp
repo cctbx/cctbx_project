@@ -64,6 +64,7 @@ namespace {
         .def("continuous_shifts_are_principal",
           &w_t::continuous_shifts_are_principal)
         .def("continuous_shift_flags", &w_t::continuous_shift_flags)
+        .def("projected_group", &w_t::projected_group)
       ;
     }
   };

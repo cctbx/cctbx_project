@@ -152,24 +152,9 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
     flags=symmetry_flags,
     space_group_type=work_symmetry.space_group_info().type(),
     seminvariant=work_symmetry.space_group_info().structure_seminvariant())
-  assert search_symmetry.continuous_shifts_are_principal()
-  group = search_symmetry.group()
-  for continuous_shift in search_symmetry.continuous_shifts():
-    i = list(continuous_shift).index(1)
-    proj_group = sgtbx.space_group()
-    for s in group:
-      r, t = list(s.r().num()), list(s.t().num())
-      for j in xrange(3):
-        if (j != i):
-          r[i*3+j] = 0
-      t[i] = 0
-      proj_s = sgtbx.rt_mx(sgtbx.rot_mx(r, s.r().den()),
-                           sgtbx.tr_vec(t, s.t().den()))
-      proj_group.expand_smx(proj_s)
-    group = proj_group
   expanded_symmetry = crystal.symmetry(
     unit_cell=work_symmetry.unit_cell(),
-    space_group=group)
+    space_group=search_symmetry.projected_group())
   rational_asu = expanded_symmetry.space_group_info().direct_space_asu()
   rational_asu.add_planes(
     normal_directions=search_symmetry.continuous_shifts(),
@@ -244,10 +229,10 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
     inp_tags = inp_symmetry.gridding(
       step=point_distance*.7,
       symmetry_flags=symmetry_flags).tags()
-    for point in flex.nested_loop(inp_tags.n_real()):
-      if (inp_tags.tags().tag_array()[point] < 0):
-        point_frac_inp = [float(n)/d for n,d in zip(point, inp_tags.n_real())]
-        if (tag_sites_frac is not None):
+    if (tag_sites_frac is not None):
+      for point in flex.nested_loop(inp_tags.n_real()):
+        if (inp_tags.tags().tag_array()[point] < 0):
+          point_frac_inp=[float(n)/d for n,d in zip(point, inp_tags.n_real())]
           tag_sites_frac.append(point_frac_inp)
     if (inp_tags.tags().n_independent() < sites_cart.sites.size()):
       print "FAIL:", inp_symmetry.space_group_info(), \
@@ -285,6 +270,10 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
           print "FAIL:", inp_symmetry.space_group_info(), \
                          point_frac_ref, min_dist
           raise AssertionError
+    if (inp_tags.tags().n_independent()+10 < sites_cart.sites.size()):
+      print "FAIL:", inp_symmetry.space_group_info(), \
+                     inp_tags.tags().n_independent(), sites_cart.sites.size()
+      raise AssertionError
   if (tag_sites_frac is not None):
     dump_pdb(
       file_name="tag_sites.pdb",

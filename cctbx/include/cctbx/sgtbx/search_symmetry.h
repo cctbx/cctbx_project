@@ -128,6 +128,29 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
 
+      //! Projection of symmetry operations along continuous shifts.
+      space_group
+      projected_group() const
+      {
+        CCTBX_ASSERT(continuous_shifts_are_principal());
+        space_group result;
+        for(std::size_t i_smx=1;i_smx<group_.order_z();i_smx++) {
+          rt_mx s = group_(i_smx);
+          for(std::size_t i_sh=0;i_sh<continuous_shifts_.size();i_sh++) {
+            std::size_t i=0;
+            for(;i<3;i++) {
+              if (continuous_shifts_[i_sh][i] != 0) break;
+            }
+            for(std::size_t j=0;j<3;j++) {
+              if (j != i) s.r().num()(i,j) = 0;
+            }
+            s.t().num()[i] = 0;
+          }
+          result.expand_smx(s);
+        }
+        return result;
+      }
+
     protected:
       search_symmetry_flags flags_;
       space_group group_;
