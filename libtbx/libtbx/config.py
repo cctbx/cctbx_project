@@ -236,6 +236,7 @@ class environment:
     self.read_command_version_suffix()
     self.build_options = None
     self.repository_paths = []
+    self.command_line_redirections = {}
     self.reset_module_registry()
     self.scons_dist_path = None
     self.pythonpath = []
@@ -336,7 +337,7 @@ class environment:
     path = self.under_build("command_version_suffix")
     try: f = open(path, "w")
     except IOError:
-      raise UserError("Cannot write command_version_suffix file: " + path)
+      raise UserError("Cannot write command_version_suffix file: "+repr(path))
     print >> f, self.command_version_suffix
 
   def read_command_version_suffix(self):
@@ -347,7 +348,7 @@ class environment:
       try:
         self.command_version_suffix = open(path).read().strip()
       except IOError:
-        raise UserError("Cannot read command_version_suffix file: " + path)
+        raise UserError("Cannot read command_version_suffix file: "+repr(path))
 
   def register_module(self, dependent_module, module):
     if (dependent_module is None):
@@ -363,6 +364,9 @@ class environment:
       self.module_dist_paths[name] = path
 
   def find_dist_path(self, module_name, optional=False):
+    dist_path = self.command_line_redirections.get(module_name, None)
+    if (dist_path is not None):
+      return dist_path
     for path in self.repository_paths:
       dist_path = self.abs_path_clean(libtbx.path.norm_join(path, module_name))
       if (os.path.isdir(dist_path)):
@@ -371,7 +375,7 @@ class environment:
       msg = ["Module not found: %s" % module_name,
              "  Repository directories searched:"]
       for path in self.repository_paths:
-        msg.append("    " + path)
+        msg.append("    " + repr(path))
       raise UserError("\n".join(msg))
     return None
 
@@ -404,7 +408,8 @@ class environment:
       command_name = "libtbx.configure"
     else:
       command_name = "libtbx/configure.py"
-    parser = option_parser(usage="%s [options] module_name ..." % command_name)
+    parser = option_parser(
+      usage="%s [options] module_name[=redirection_path] ..." % command_name)
     if (not cold_start):
       parser.option(None, "--only",
         action="store_true",
@@ -449,7 +454,23 @@ class environment:
     command_line = parser.process(args=args)
     if (default_repository is not None):
       self.add_repository(default_repository)
-    module_names = list(command_line.args)
+    module_names = []
+    for module_name in command_line.args:
+      if (module_name in self.command_line_redirections):
+        del self.command_line_redirections[module_name]
+      elif (module_name.count("=") == 1
+            and self.find_dist_path(module_name, optional=True) is None):
+        module_name, redirection = module_name.split("=")
+        dist_path = self.abs_path_clean(os.path.expandvars(redirection))
+        if (not os.path.isdir(dist_path)):
+          raise UserError(
+            "Invalid command line redirection:\n"
+            "  module name = %s\n"
+            "  redirection = %s\n"
+            "  resulting target = %s" % (
+              repr(module_name), repr(redirection), repr(dist_path)))
+        self.command_line_redirections[module_name] = dist_path
+      module_names.append(module_name)
     if (not cold_start):
       if (not command_line.options.only):
         for module in self.module_list:
@@ -474,10 +495,11 @@ class environment:
     self.scons_dist_path = self.find_dist_path("scons", optional=True)
     self.path_utility = self.under_dist(
       "libtbx", "libtbx/command_line/path_utility.py")
+    assert os.path.isfile(self.path_utility)
 
   def option_repository(self, option, opt, value, parser):
     if (not os.path.isdir(value)):
-      raise UserError("Not a directory: --repository %s" % value)
+      raise UserError("Not a directory: --repository %s" % repr(value))
     self.add_repository(value)
 
   def dispatcher_precall_commands(self):
@@ -925,10 +947,10 @@ class module:
             break
           try: f = open(path)
           except IOError: raise UserError(
-            "Cannot open configuration file: " + path)
+            "Cannot open configuration file: " + repr(path))
           try: config = eval(" ".join(f.readlines()), {}, {})
           except KeyboardInterrupt: raise
-          except: raise UserError("Corrupt configuration file: " + path)
+          except: raise UserError("Corrupt configuration file: " + repr(path))
           f.close()
           redirection = config.get("redirection", None)
           if (redirection is None):
@@ -937,7 +959,7 @@ class module:
             raise UserError(
               "Corrupt configuration file:\n"
               "  file = %s\n"
-              "  redirection must be a Python string" % path)
+              "  redirection must be a Python string" % repr(path))
           new_dist_path = os.path.expandvars(redirection)
           if (not os.path.isabs(new_dist_path)):
             new_dist_path = libtbx.path.norm_join(dist_path, new_dist_path)
@@ -947,7 +969,8 @@ class module:
               "Invalid redirection:\n"
               "  file = %s\n"
               "  redirection = %s\n"
-              "  resulting target = %s" % (path, redirection, new_dist_path))
+              "  resulting target = %s" % (
+                repr(path), repr(redirection), repr(new_dist_path)))
           dist_path = new_dist_path
         if (config is not None):
           self.required_for_build.extend(config.get(
@@ -1082,15 +1105,15 @@ class include_registry:
         env.Prepend(SHCXXFLAGS=[ipath])
 
 def cold_start(args):
-  env = environment(build_path=os.path.normpath(os.path.abspath(os.getcwd())))
+  env = environment(build_path=os.getcwd())
   env.process_args(
     args=args[1:],
     default_repository=os.path.dirname(os.path.dirname(args[0])))
   env.refresh()
 
 def unpickle():
-  file_name = libtbx.path.norm_join(os.environ["LIBTBX_BUILD"], "libtbx_env")
-  env = pickle.load(open(file_name, "rb"))
+  libtbx_env = open(os.path.expandvars("$LIBTBX_BUILD/libtbx_env"), "rb")
+  env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     raise UserError("Python version incompatible with this build.\n"
      + "  Version used to configure: %d.%d\n" % env.python_version_major_minor
