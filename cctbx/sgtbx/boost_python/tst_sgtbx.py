@@ -667,6 +667,8 @@ def exercise_space_group():
   u = uctbx.unit_cell((95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822))
   g = space_group("C 2y (x+y,-x+y+z,z)")
   assert g.is_compatible_unit_cell(u)
+  assert approx_equal(g.average_u_star(u_star=range(6,0,-1)),
+    (6.5, 5.5, 4.0, 3.5, 2.5, 1.5))
   g = space_group("C 2 -2c")
   h = g.build_derived_reflection_intensity_group(anomalous_flag=True)
   assert h == space_group("C 2 -2")

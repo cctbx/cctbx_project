@@ -65,16 +65,21 @@ def test_enantiomorphic_pairs():
 def exercise_tensor_constraints_core(crystal_symmetry):
   from cctbx import crystal
   from cctbx import adptbx
+  from scitbx import matrix
   site_symmetry = crystal.special_position_settings(
     crystal_symmetry).site_symmetry(site=(0,0,0))
   unit_cell = crystal_symmetry.unit_cell()
   group = crystal_symmetry.space_group()
   assert site_symmetry.n_matrices() == group.order_p()
   adp_constraints = group.adp_constraints()
-  u_cart = adptbx.random_rotate_ellipsoid(
+  u_cart_p1 = adptbx.random_rotate_ellipsoid(
     u_cart=[random.random() for i in xrange(3)] + [0,0,0])
-  u_star = adptbx.u_cart_as_u_star(unit_cell, u_cart)
-  u_star = site_symmetry.average_u_star(u_star)
+  u_star_p1 = adptbx.u_cart_as_u_star(unit_cell, u_cart_p1)
+  u_star = site_symmetry.average_u_star(u_star_p1)
+  f = unit_cell.volume()**(2/3.)
+  assert approx_equal(
+    list(matrix.col(group.average_u_star(u_star=u_star_p1))*f),
+    list(matrix.col(u_star)*f))
   independent_params = adp_constraints.independent_params(u_star)
   assert adp_constraints.n_independent_params() == independent_params.size()
   assert adp_constraints.n_independent_params() \

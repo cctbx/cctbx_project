@@ -564,19 +564,6 @@ namespace cctbx { namespace sgtbx {
     return true;
   }
 
-  uc_sym_mat3
-  space_group::
-  average_metrical_matrix(uc_sym_mat3 const& g) const
-  {
-    typedef uc_sym_mat3::value_type float_type;
-    uc_sym_mat3 sum_r_g_rt(0,0,0,0,0,0);
-    for(std::size_t i_smx=0;i_smx<n_smx();i_smx++) {
-      uc_mat3 r(smx_[i_smx].r().as_double());
-      sum_r_g_rt += g.tensor_transpose_transform(r);
-    }
-    return sum_r_g_rt / float_type(n_smx());
-  }
-
   af::shared<rt_mx>
   space_group::all_ops(int mod, bool cancel) const
   {

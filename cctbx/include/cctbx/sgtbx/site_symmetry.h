@@ -105,7 +105,10 @@ namespace cctbx { namespace sgtbx {
        */
       template <class FloatType>
       scitbx::sym_mat3<FloatType>
-      average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const;
+      average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const
+      {
+        return average_tensor(matrices_.const_ref(), u_star, true);
+      }
 
       /*! \brief Construct a new site_symmetry_ops instance with the
           denominators (special_op().den(), matrices()[0].den()) of this.
@@ -179,21 +182,6 @@ namespace cctbx { namespace sgtbx {
       }
     }
     return true;
-  }
-
-  template <class FloatType>
-  scitbx::sym_mat3<FloatType>
-  site_symmetry_ops::
-  average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const
-  {
-    scitbx::sym_mat3<FloatType> sum_r_u_rt(0,0,0,0,0,0);
-    for (std::size_t i=0;i<matrices_.size();i++) {
-      scitbx::mat3<FloatType>
-        r = matrices_[i].r()
-              .as_floating_point(scitbx::type_holder<FloatType>());
-      sum_r_u_rt += u_star.tensor_transform(r);
-    }
-    return sum_r_u_rt / static_cast<FloatType>(matrices_.size());
   }
 
   //! Numerically robust algorithm for the determination of site-symmetries.

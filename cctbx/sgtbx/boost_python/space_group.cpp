@@ -143,6 +143,10 @@ namespace {
         .def("is_compatible_unit_cell",
           &w_t::is_compatible_unit_cell,
           is_compatible_unit_cell_overloads())
+        .def("average_u_star",
+          (scitbx::sym_mat3<double>(w_t::*)(
+            scitbx::sym_mat3<double> const&) const) &w_t::average_u_star, (
+          arg_("u_star")))
         .def("build_derived_acentric_group",
           &w_t::build_derived_acentric_group)
         .def("build_derived_reflection_intensity_group",
