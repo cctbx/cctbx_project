@@ -33,6 +33,7 @@ def exercise_special_position_settings():
   assert sp.assert_is_positive_definite() == 0001
   assert sp.assert_min_distance_sym_equiv() == 00000
   assert sp.site_symmetry((0,0,0)).multiplicity() == 1
+  assert str(sp.sym_equiv_sites((0,0,0)).special_op()) == "0,0,0"
 
 def run():
   exercise_symmetry()
