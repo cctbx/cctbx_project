@@ -22,3 +22,11 @@ lib_scitbx_boost_python_node = builder(
     target="scitbx_boost_python",
     source=lib_scitbx_boost_python_sources)
 env.Install("#libtbx", lib_scitbx_boost_python_node)
+
+Import("env_scitbx_boost_python_ext")
+pyd = env_scitbx_boost_python_ext.SharedLibrary(
+  target="rational_ext",
+  source="rational_ext.cpp",
+)
+env_scitbx_boost_python_ext.Install(
+  "#libtbx/scitbx_boost", pyd)
