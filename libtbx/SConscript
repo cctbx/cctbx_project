@@ -9,7 +9,7 @@ env = env_base.Copy(
 env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
-env.Replace(SHLINKFLAGS=env_etc.shlinkflags_bpl)
+env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
 bpl_dll_sources = Split("""
   src/list.cpp
   src/long.cpp

@@ -88,6 +88,8 @@ def emit_setpaths_csh(libtbx_build, libtbx_info):
   f = open_info(setpaths_csh_path)
   for var_name, values in libtbx_info.items():
     if (var_name.upper() != var_name): continue
+    if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
+      var_name = "DYLD_LIBRARY_PATH"
     if (type(values) == type([])):
       val = os.pathsep.join(values)
       print >> f, 'if (! $?%s) then' % (var_name,)
