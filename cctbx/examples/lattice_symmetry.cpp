@@ -4,8 +4,7 @@
 #include <cctbx/sgtbx/find_affine.h>
 #include <cctbx/sgtbx/rot_mx_info.h>
 #include <scitbx/array_family/sort.h>
-#include <boost/format.hpp>
-#include <iostream>
+#include <cstdio>
 
 namespace cctbx { namespace {
 
@@ -121,17 +120,19 @@ namespace cctbx { namespace {
   void
   show_space_group_type(sgtbx::space_group_type const& space_group_type)
   {
-    std::cout << space_group_type.lookup_symbol()
-              << " (No. " << space_group_type.number() << ")";
+    std::printf("%s (No. %d)",
+      space_group_type.lookup_symbol().c_str(),
+      space_group_type.number());
   }
 
   void
   show_unit_cell(uctbx::unit_cell const& unit_cell)
   {
     for(std::size_t i=0;i<6;i++) {
-      std::cout << (i < 1 ? "(" : " ")
-                << boost::format("%.6g") % unit_cell.parameters()[i]
-                << (i < 5 ? "," : ")");
+      std::printf("%s%.6g%s",
+        (i < 1 ? "(" : " "),
+        unit_cell.parameters()[i],
+        (i < 5 ? "," : ")"));
     }
   }
 
@@ -139,26 +140,23 @@ namespace cctbx { namespace {
   void
   example(crystal::symmetry const& input_symmetry, double max_delta)
   {
-    using std::cout;
-    using std::endl;
-    cout << endl;
-    cout << "Input" << endl;
-    cout << "=====" << endl;
-    cout << endl;
-    cout << "Unit cell: ";
+    std::printf("\n");
+    std::printf("Input\n");
+    std::printf("=====\n");
+    std::printf("\n");
+    std::printf("Unit cell: ");
     show_unit_cell(input_symmetry.unit_cell());
-    cout << endl;
-    cout << "Space group: ";
+    std::printf("\n");
+    std::printf("Space group: ");
     show_space_group_type(
       sgtbx::space_group_type(input_symmetry.space_group()));
-    cout << endl;
-    cout << endl;
-    cout << boost::format("Angular tolerance: %.3f degrees") % max_delta;
-    cout << endl;
-    cout << endl;
-    cout << "Similar symmetries" << endl;
-    cout << "==================" << endl;
-    cout << endl;
+    std::printf("\n");
+    std::printf("\n");
+    std::printf("Angular tolerance: %.3f degrees\n", max_delta);
+    std::printf("\n");
+    std::printf("Similar symmetries\n");
+    std::printf("==================\n");
+    std::printf("\n");
 
     // Get cell reduction operator
     sgtbx::change_of_basis_op cb_op_inp_minimum = get_cb_op_inp_minimum(
@@ -224,33 +222,30 @@ namespace cctbx { namespace {
                                                * cb_op_minimum_ref
                                                * cb_op_inp_minimum;
 
-      cout << "Symmetry in minimum-lengths cell: ";
+      std::printf("Symmetry in minimum-lengths cell: ");
       show_space_group_type(subsym_type);
-      cout << endl;
-      cout << "      Input minimum-lengths cell: ";
+      std::printf("\n");
+      std::printf("      Input minimum-lengths cell: ");
       show_unit_cell(minimum_symmetry.unit_cell());
-      cout << endl;
-      cout << "           Symmetry-adapted cell: ";
+      std::printf("\n");
+      std::printf("           Symmetry-adapted cell: ");
       show_unit_cell(subsym.unit_cell());
-      cout << endl;
+      std::printf("\n");
       sgtbx::space_group_type best_subsym_type(best_subsym.space_group());
-      cout << "            Conventional setting: ";
+      std::printf("            Conventional setting: ");
       show_space_group_type(best_subsym_type);
-      cout << endl;
-      cout << "                       Unit cell: ";
+      std::printf("\n");
+      std::printf("                       Unit cell: ");
       show_unit_cell(best_subsym.unit_cell());
-      cout << endl;
-      cout << "                 Change of basis: "
-           << cb_op_inp_best.c().as_xyz()
-           << endl;
-      cout << "                         Inverse: "
-           << cb_op_inp_best.c_inv().as_xyz()
-           << endl;
-      cout << boost::format("      Maximal angular difference: %.3f degrees")
-              % sgtbx::lattice_symmetry::find_max_delta(
-                  minimum_symmetry.unit_cell(), acentric_subgroup)
-           << endl;
-      cout << endl;
+      std::printf("\n");
+      std::printf("                 Change of basis: %s\n",
+        cb_op_inp_best.c().as_xyz().c_str());
+      std::printf("                         Inverse: %s\n",
+        cb_op_inp_best.c_inv().as_xyz().c_str());
+      std::printf("      Maximal angular difference: %.3f degrees\n",
+        sgtbx::lattice_symmetry::find_max_delta(
+          minimum_symmetry.unit_cell(), acentric_subgroup));
+      std::printf("\n");
     }
   }
 
