@@ -557,7 +557,7 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
       // acentric: c = 0, centric: c = 1
       int    c  = cs[i_h];
       double X  = fo * fc * a / (e * b);
-      double L1 = (fo * fo - a * a * fc * fc) / (2. * e * b);
+      double L1 = (fo * fo + a * a * fc * fc) / (2. * e * b);
       if(c == 0) {
         X  *= 2.;
         L1 *= 2.;
@@ -622,7 +622,7 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
           }
           integral = integral*step_for_integration;
           integral = std::log(integral) + maxv;
-          target_ =+ L1 - integral;
+          target_ =+ (L1 - integral);
           if(compute_derivatives) {
             double X_d = 2. * fo * a / (e * b);
             double A_prime_d = X_d * fc * std::cos(pc) + A;
