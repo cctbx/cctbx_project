@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/groups.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -35,7 +34,7 @@ namespace cctbx { namespace sgtbx {
   class CmpLTr {
     public:
       bool operator()(const TrVec& a, const TrVec& b) {
-        rangei(3) {
+        for(std::size_t i=0;i<3;i++) {
           if (a[i] < b[i]) return true;
           if (a[i] > b[i]) return false;
         }

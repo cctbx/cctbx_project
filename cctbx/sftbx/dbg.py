@@ -235,7 +235,7 @@ def run_cns(elements, xtal, d_min, grid_resolution_factor,
     assert fcalc.H.size() == f_dir_h.size()
     asym_f_dir = miller.map_to_asu(
       xtal.SgInfo, friedel_flag, f_dir_h, f_dir_f)
-    cns_h = asym_f_dir.asym_miller_indices()
+    cns_h = asym_f_dir.asym_indices()
     js = miller.join_sets(fcalc.H, cns_h)
     if (0):
       show_joined_sets(fcalc.H, cns_h, js)

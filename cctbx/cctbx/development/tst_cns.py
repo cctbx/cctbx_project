@@ -35,7 +35,7 @@ def verify(sg_miller_set, sg_fcalc_set, sg_hl,
   asu = sgtbx.ReciprocalSpaceASU(sg_miller_set.SgInfo)
   lookup_dict = make_miller_lookup_dict(sg_miller_set.H)
   for p1_i in xrange(p1_miller_indices.size()):
-    h_asu = sgtbx.miller_AsymIndex(sgops, asu, p1_miller_indices[p1_i])
+    h_asu = miller.AsymIndex(sgops, asu, p1_miller_indices[p1_i])
     h_eq = h_asu.one_column(sg_miller_set.friedel_flag)
     fcalc_asu = h_eq.complex_eq(p1_fcalc[p1_i])
     hl_asu = h_eq.hl_eq(p1_hl[p1_i])

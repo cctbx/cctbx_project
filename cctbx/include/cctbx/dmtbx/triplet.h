@@ -23,7 +23,7 @@
 #include <cctbx/error.h>
 #include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/simple_io.h>
-#include <cctbx/sgtbx/miller_asu.h>
+#include <cctbx/miller/asu.h>
 #include <cctbx/miller/span.h>
 
 namespace cctbx { namespace dmtbx {
@@ -129,8 +129,7 @@ namespace cctbx { namespace dmtbx {
             if (ik == ih) { if (!other_than_sigma_2) continue; }
             else          { if (!sigma_2) continue; }
             miller::Index k = miller_indices[ik];
-            sgtbx::SymEquivMillerIndices
-            sym_eq_k = SgInfo.SgOps().getEquivMillerIndices(k);
+            miller::SymEquivIndices sym_eq_k(SgInfo.SgOps(), k);
             for (std::size_t ik_eq=0;ik_eq<sym_eq_k.M(true);ik_eq++) {
               miller::SymEquivIndex k_seq = sym_eq_k(ik_eq);
               miller::Index k_eq = k_seq.H();

@@ -23,6 +23,7 @@
 #include <cctbx/maps/sym_tags.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/miller_asu.h>
+#include <cctbx/miller/sym_equiv.h>
 
 #if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
 #include <cctbx/sftbx/xray_scatterer.h>
@@ -762,8 +763,7 @@ namespace cctbx { namespace sftbx {
   {
     af::versa<std::complex<FloatType>, af::grid<3> > map(n_complex);
     for(std::size_t i=0;i<miller_indices.size();i++) {
-      sgtbx::SymEquivMillerIndices semi = sgops.getEquivMillerIndices(
-        miller_indices[i]);
+      miller::SymEquivIndices semi(sgops, miller_indices[i]);
       for(int e=0;e<semi.M(friedel_flag);e++) {
         miller::SymEquivIndex h_seq = semi(e);
         miller::Index h = h_seq.H();

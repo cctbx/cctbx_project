@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <cctbx/sgtbx/basic.h>
 #include <cctbx/sgtbx/symbols.h>
-#include <cctbx/basic/define_range.h>
 
 using std::string;
 
@@ -675,7 +674,7 @@ namespace cctbx { namespace sgtbx {
     string PreProcessSymbol(const string& RawSymbol)
     {
       string result;
-      rangei(RawSymbol.size()) {
+      for(std::size_t i=0;i<RawSymbol.size();i++) {
         const char r = RawSymbol[i];
         if (!isspace(r) && r != '_') result += tolower(r);
       }
@@ -764,7 +763,9 @@ namespace cctbx { namespace sgtbx {
     string RemoveSpaces(const string& inp)
     {
       string result;
-      rangei(inp.size()) if (inp[i] != ' ') result += inp[i];
+      for(std::size_t i=0;i<inp.size();i++) {
+        if (inp[i] != ' ') result += inp[i];
+      }
       return result;
     }
 
@@ -772,7 +773,7 @@ namespace cctbx { namespace sgtbx {
                               const string& WorkSymbol)
     {
       if (FromTable.size() != WorkSymbol.size()) return -1;
-      rangei(FromTable.size()) {
+      for(std::size_t i=0;i<FromTable.size();i++) {
           if (    FromTable[i] != WorkSymbol[i]
               && (FromTable[i] != '^' || isalpha(WorkSymbol[i])
                                       || isdigit(WorkSymbol[i])))

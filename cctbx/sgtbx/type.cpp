@@ -20,14 +20,13 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
 #include <cctbx/sgtbx/select_generators.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 
   std::map<int, int> SpaceGroup::CountRtypes() const
   {
     std::map<int, int> result;
-    rangei(nSMx()) {
+    for(std::size_t i=0;i<nSMx();i++) {
       result[m_SMx[i].Rpart().getRtype()]++;
     }
     return result;

@@ -1,5 +1,6 @@
 import sys
 from cctbx_boost import sgtbx
+from cctbx_boost import miller
 
 def OneCycle(settings):
   print "Testing ReciprocalSpaceASU"
@@ -23,7 +24,7 @@ def OneCycle(settings):
     for H[0] in range(-2, 3):
       for H[1] in range(-2, 3):
         for H[2] in range(-2, 3):
-          SEMI = SgOps.getEquivMillerIndices(H)
+          SEMI = miller.SymEquivIndices(SgOps, H)
           K = None
           for S in SEMI:
             HR = S.HR()

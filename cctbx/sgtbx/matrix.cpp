@@ -16,7 +16,6 @@
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/array_family/tiny_algebra.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -92,7 +91,7 @@ namespace cctbx { namespace sgtbx {
   std::ostream& operator<<(std::ostream& os, const TrVec& T)
   {
     os << "(";
-    rangei(3) {
+    for(std::size_t i=0;i<3;i++) {
       if (i) os << ",";
       os << T[i];
     }
@@ -142,7 +141,7 @@ namespace cctbx { namespace sgtbx {
   RotMx operator*(const RotMx& lhs, int rhs)
   {
     RotMx result(lhs);
-    rangei(9) result[i] *= rhs;
+    for(std::size_t i=0;i<9;i++) result[i] *= rhs;
     return result;
   }
 
@@ -174,7 +173,7 @@ namespace cctbx { namespace sgtbx {
   std::ostream& operator<<(std::ostream& os, const RotMx& R)
   {
     os << "(";
-    rangei(9) {
+    for(std::size_t i=0;i<9;i++) {
       if (i) os << ",";
       if (i == 3 || i == 6) os << " ";
       os << R[i];

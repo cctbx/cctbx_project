@@ -12,7 +12,6 @@
 
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -63,11 +62,11 @@ namespace cctbx { namespace sgtbx {
     int IxIndep[1];
     cctbx_assert(iRESetIxIndep(REMx.begin(), 2, 3, IxIndep, 1) == 1);
     af::int3 EV;
-    rangei(3) EV[i] = 0;
+    EV.fill(0);
     EV[IxIndep[0]] = 1;
     cctbx_assert(iREBacksubst(REMx.begin(), 0, 2, 3, EV.begin(), 0) >= 1);
     if (SignHemisphere(EV) < 0) {
-      rangei(3) EV[i] *= -1;
+      for(std::size_t i=0;i<3;i++) EV[i] *= -1;
     }
     return EV;
   }

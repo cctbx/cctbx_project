@@ -26,8 +26,8 @@ def OneCycle(settings):
       miller_indices = miller.BuildIndices(
         UnitCell, SgInfo, friedel_flag, 2.)
       for h_asym in miller_indices:
-        h_seq = SgOps.getEquivMillerIndices(h_asym)
-        h_asu = sgtbx.miller_AsymIndex(SgOps, asu, h_asym)
+        h_seq = miller.SymEquivIndices(SgOps, h_asym)
+        h_asu = miller.AsymIndex(SgOps, asu, h_asym)
         assert h_asym == h_asu.one_column(friedel_flag).H()
         assert h_asu.H() == h_asu.one_column(1).H()
         # exercise class PhaseInfo
@@ -71,15 +71,15 @@ def OneCycle(settings):
       for i in xrange(miller_indices.size()):
         h_dict[miller_indices[i]] = 0
       for p1_h in p1_miller_indices:
-        h_asu = sgtbx.miller_AsymIndex(p1_sgops, p1_asu, p1_h)
+        h_asu = miller.AsymIndex(p1_sgops, p1_asu, p1_h)
         assert h_asu.one_column(friedel_flag).H() == p1_h
         assert h_asu.H() == h_asu.one_column(1).H()
-        h_asu = sgtbx.miller_AsymIndex(SgOps, asu, p1_h)
+        h_asu = miller.AsymIndex(SgOps, asu, p1_h)
         h_dict[h_asu.one_column(friedel_flag).H()] += 1
       f = 1
       if (friedel_flag): f = 2
       for h, c in h_dict.items():
-        h_seq = SgOps.getEquivMillerIndices(h)
+        h_seq = miller.SymEquivIndices(SgOps, h)
         assert f * c == h_seq.M(friedel_flag)
 
 def run(timing=1):

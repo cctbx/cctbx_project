@@ -12,6 +12,12 @@
 
 namespace cctbx { namespace bpl_utils {
 
+  void throw_index_out_of_range()
+  {
+    PyErr_SetString(PyExc_IndexError, "Index out of range.");
+    boost::python::throw_error_already_set();
+  }
+
   boost::python::tuple tuple_from_python_list_or_tuple(PyObject* p) {
     using namespace boost::python;
     if (PyList_Check(p))

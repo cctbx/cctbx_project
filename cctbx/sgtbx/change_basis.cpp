@@ -11,7 +11,6 @@
  */
 
 #include <cctbx/sgtbx/groups.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 

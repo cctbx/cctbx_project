@@ -12,7 +12,6 @@
  */
 
 #include <cctbx/sgtbx/coordinates.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
   namespace tables {
