@@ -173,7 +173,8 @@ class structure(crystal.special_position_settings):
         miller_set=miller_set,
         algorithm=algorithm)
 
-  def show_summary(self, f=sys.stdout):
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "Number of scatterers:", self.scatterers().size()
     print >> f, "At special positions:", self.special_position_indices().size()
     crystal.symmetry.show_summary(self, f)

@@ -93,7 +93,8 @@ class cns_reciprocal_space_object:
     else:
       raise RuntimeError, "Internal Error."
 
-  def show_summary(self, f=sys.stdout):
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "name=%s type=%s len(data)=%d" % (
       self.name, self.type, self.data.size())
 
@@ -294,7 +295,8 @@ class cns_reflection_file:
     reader.load(self)
     self.optimize()
 
-  def show_summary(self, f=sys.stdout):
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "nreflections=%d" % (self.nreflections,)
     print >> f, "anomalous=%d" % (self.anomalous,)
     for rso in self.reciprocal_space_objects.values():

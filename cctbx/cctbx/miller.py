@@ -126,13 +126,15 @@ class set(crystal.symmetry):
       indices=self.indices().__getitem__(slice_object),
       anomalous_flag=self.anomalous_flag())
 
-  def show_summary(self, f=sys.stdout):
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "Number of Miller indices:", len(self.indices())
     print >> f, "Anomalous flag:", self.anomalous_flag()
     crystal.symmetry.show_summary(self, f)
     return self
 
-  def show_comprehensive_summary(self, f=sys.stdout):
+  def show_comprehensive_summary(self, f=None):
+    if (f is None): f = sys.stdout
     self.show_summary(f=f)
     no_sys_abs = self
     if (self.space_group_info() is not None):
@@ -530,7 +532,8 @@ class array(set):
       data=_slice_or_none(self.data(), slice_object),
       sigmas=_slice_or_none(self.sigmas(), slice_object))
 
-  def show_summary(self, f=sys.stdout):
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "Miller %s info:" % self.__class__.__name__, self.info()
     print >> f, "Observation type:", self.observation_type()
     print >> f, "Type of data:", _array_info(self.data())
@@ -961,7 +964,8 @@ class array(set):
       s = match.additive_sigmas(self.sigmas(), other.sigmas())
     return array(set(self, i), d, s)
 
-  def show_array(self, f=sys.stdout):
+  def show_array(self, f=None):
+    if (f is None): f = sys.stdout
     assert self.data().size() == self.indices().size()
     if (self.sigmas() is None):
       for i,h in self.indices().items():
