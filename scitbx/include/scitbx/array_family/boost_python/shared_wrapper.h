@@ -73,11 +73,13 @@ namespace scitbx { namespace af { namespace boost_python {
       self.insert(self.end(), other.begin(), other.end());
     }
 
-    static void
+    static
+    boost::python::class_<w_t>
     wrap(std::string const& python_name)
     {
       using namespace boost::python;
-      class_<w_t>(python_name.c_str())
+      class_<w_t> result(python_name.c_str());
+      result
         .def(init<w_t const&>())
         .def(init<std::size_t const&, optional<e_t const&> >())
         .def("size", &w_t::size)
@@ -102,6 +104,8 @@ namespace scitbx { namespace af { namespace boost_python {
       using scitbx::array_family::boost_python::ref_from_array;
       ref_from_array<w_t, const_ref<ElementType> >();
       ref_from_array<w_t, ref<ElementType> >();
+
+      return result;
     }
   };
 
