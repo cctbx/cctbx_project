@@ -386,10 +386,10 @@ namespace cctbx { namespace xray {
       af::shared<FloatType>
       grad_occupancy() const { return grad_occupancy_; }
 
-      af::shared<std::complex<FloatType> >
+      af::shared<FloatType>
       grad_fp() const { return grad_fp_; }
 
-      af::shared<std::complex<FloatType> >
+      af::shared<FloatType>
       grad_fdp() const { return grad_fdp_; }
 
     private:
@@ -408,8 +408,8 @@ namespace cctbx { namespace xray {
       af::shared<FloatType> grad_u_iso_;
       af::shared<scitbx::sym_mat3<FloatType> > grad_u_star_;
       af::shared<FloatType> grad_occupancy_;
-      af::shared<std::complex<FloatType> > grad_fp_;
-      af::shared<std::complex<FloatType> > grad_fdp_;
+      af::shared<FloatType> grad_fp_;
+      af::shared<FloatType> grad_fdp_;
   };
 
   template <typename FloatType,
@@ -508,8 +508,8 @@ namespace cctbx { namespace xray {
       FloatType gr_b_iso(0);
       scitbx::sym_mat3<FloatType> gr_b_cart(0,0,0,0,0,0);
       FloatType gr_occupancy(0);
-      std::complex<FloatType> gr_fp(0);
-      std::complex<FloatType> gr_fdp(0);
+      FloatType gr_fp(0);
+      FloatType gr_fdp(0);
       grid_point_type pivot = detail::calc_nearest_grid_point(
         coor_frac, grid_f);
       // highly hand-optimized loop over points in shell
@@ -533,56 +533,56 @@ namespace cctbx { namespace xray {
           orth_mx[8] * f2);
         FloatType d_sq = d.length_sq();
         if (d_sq > shell.max_d_sq) continue;
-        std::complex<FloatType> f = ft_dt(gp);
+        std::complex<FloatType> ft_dt_gp = ft_dt(gp);
+        FloatType f_real = ft_dt_gp.real();
+        FloatType f_imag = ft_dt_gp.imag();
         if (!scatterer->anisotropic_flag) {
-          gr_site += f.real() * caasf_ft.d_rho_real_d_site(d, d_sq);
+          gr_site += f_real * caasf_ft.d_rho_real_d_site(d, d_sq);
           if (fdp) {
-            gr_site += f.imag() * caasf_ft.d_rho_imag_d_site(d, d_sq);
+            gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d, d_sq);
           }
         }
         else {
-          gr_site += f.real() * caasf_ft.d_rho_real_d_site(d);
+          gr_site += f_real * caasf_ft.d_rho_real_d_site(d);
           if (fdp) {
-            gr_site += f.imag() * caasf_ft.d_rho_imag_d_site(d);
+            gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d);
           }
         }
         if (!scatterer->anisotropic_flag) {
-          gr_b_iso += f.real() * caasf_ft.d_rho_real_d_b_iso(d_sq);
+          gr_b_iso += f_real * caasf_ft.d_rho_real_d_b_iso(d_sq);
           if (fdp) {
-            gr_b_iso += f.imag() * caasf_ft.d_rho_imag_d_b_iso(d_sq);
+            gr_b_iso += f_imag * caasf_ft.d_rho_imag_d_b_iso(d_sq);
           }
         }
         else {
-          gr_b_cart += f.real() * caasf_ft.d_rho_real_d_b_cart(d);
+          gr_b_cart += f_real * caasf_ft.d_rho_real_d_b_cart(d);
           if (fdp) {
-            gr_b_cart += f.imag() * caasf_ft.d_rho_imag_d_b_cart(d);
-          }
-        }
-        if (!scatterer->anisotropic_flag) {
-          gr_occupancy += f.real() * caasf_ft.d_rho_real_d_occupancy(d_sq);
-          if (fdp) {
-            gr_occupancy += f.imag() * caasf_ft.d_rho_imag_d_occupancy(d_sq);
-          }
-        }
-        else {
-          gr_occupancy += f.real() * caasf_ft.d_rho_real_d_occupancy(d);
-          if (fdp) {
-            gr_occupancy += f.imag() * caasf_ft.d_rho_imag_d_occupancy(d);
+            gr_b_cart += f_imag * caasf_ft.d_rho_imag_d_b_cart(d);
           }
         }
         if (!scatterer->anisotropic_flag) {
-          gr_fp += f * caasf_ft.d_rho_real_d_fp(d_sq);
+          gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d_sq);
+          if (fdp) {
+            gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d_sq);
+          }
         }
         else {
-          gr_fp += f * caasf_ft.d_rho_real_d_fp(d);
+          gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d);
+          if (fdp) {
+            gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d);
+          }
         }
         if (!scatterer->anisotropic_flag) {
-          gr_fdp += f * std::complex<FloatType>(
-            0, -caasf_ft.d_rho_imag_d_fdp(d_sq));
+          gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d_sq);
         }
         else {
-          gr_fdp += f * std::complex<FloatType>(
-            0, -caasf_ft.d_rho_imag_d_fdp(d));
+          gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d);
+        }
+        if (!scatterer->anisotropic_flag) {
+          gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d_sq);
+        }
+        else {
+          gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d);
         }
       }}}
       grad_site_.push_back(gr_site * unit_cell_.orthogonalization_matrix());
