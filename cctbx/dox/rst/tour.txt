@@ -138,7 +138,7 @@ Answer::
 Sometimes questions alone are not enough. We actually want to do
 something.  For example select only low-resolution intensities::
 
-  low_resolution_only = f_calc.apply_selection(f_calc.d_spacings().data() > 2.5)
+  low_resolution_only = f_calc.select(f_calc.d_spacings().data() > 2.5)
   low_resolution_only.show_array()
 
 Answer::
