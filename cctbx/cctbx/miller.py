@@ -10,6 +10,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import fftpack
 import scitbx.math
+from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
 import sys
 import math
@@ -809,17 +810,43 @@ class array(set):
       data=new_data,
       sigmas=new_sigmas).set_observation_type(self)
 
-  def change_basis(self, cb_op):
-    assert self.is_bool_array() or self.is_integer_array() or self.is_real_array()
-    new_data = self.data().deep_copy()
-    new_sigmas = None
+  def change_basis(self, cb_op, deg=None):
+    if (deg is False or deg is True):
+      assert self.is_real_array()
+      result = change_basis_phases_double(
+        cb_op=cb_op,
+        indices_in=self.indices(),
+        data_in=self.data(),
+        deg=deg)
+    elif (self.is_complex_array()):
+      result = change_basis_complex_double(
+        cb_op=cb_op,
+        indices_in=self.indices(),
+        data_in=self.data())
+    elif (   self.is_bool_array()
+          or self.is_integer_array()
+          or self.is_real_array()):
+      result = store(
+        indices=cb_op.apply(self.indices()),
+        data=self.data().deep_copy())
+    elif (self.is_hendrickson_lattman_array()):
+      result = change_basis_hendrickson_lattman(
+        cb_op=cb_op,
+        indices_in=self.indices(),
+        data_in=self.data())
+    else:
+      raise RuntimeError("Unsupported miller.array data type.")
+    result_sigmas = None
     if (self.sigmas() is not None):
       assert isinstance(self.sigmas(), flex.double)
-      new_sigmas = self.sigmas().deep_copy()
+      result_sigmas = self.sigmas().deep_copy()
     return array(
-      miller_set=set.change_basis(self, cb_op),
-      data=new_data,
-      sigmas=new_sigmas).set_observation_type(self)
+      miller_set=set(
+        crystal_symmetry=crystal.symmetry.change_basis(self, cb_op),
+        indices=result.indices,
+        anomalous_flag=self.anomalous_flag()),
+      data=result.data,
+      sigmas=result_sigmas)
 
   def f_obs_minus_f_calc(self, f_obs_factor, f_calc):
     assert self.is_real_array()
