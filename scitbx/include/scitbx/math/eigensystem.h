@@ -19,59 +19,22 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/sym_mat3.h>
 #include <vector>
 
 namespace scitbx { namespace math { namespace eigensystem {
 
   namespace detail {
 
-    /* Based on code from BTL3: btl/btl_matrix_algorithms.h
-       Original comments:
-
-       [Description="Eigenvalues and eigenvectors of a symmetric matrix"]
-       [Restrictions="the input matrix must be real, square and
-        symmetric, the output vector of eigen values will be nrows in size
-        and the output matrix of eigenvectors will be nrows*nrows in size."]
-
-       Routine originally from IBM SSP manual (see p165) Ian Tickle April 1992,
-       (modified by  David Moss February 1993 and Mark Williams November 1998).
-
-       n - number of rows in input matrix
-       a - an array of size n*(n+1)/2 containing lower triangle of the original
-           n*n matrix in the order:
-
-                  1      2      3    ...
-           1    a[0]
-           2    a[1]   a[2]
-           3    a[3]   a[4]   a[5]   ...
-
-           NOTE a is used as working space and is overwritten.
-           Eigenvalues are written into the diagonal elements of a
-           i.e.  a[0]  a[2]  a[5]  for a 3*3 matrix.
-
-       r - Resultant matrix of eigenvectors stored columnwise in the same
-           order as eigenvalues, initially set equal to identity matrix.
-    */
     template<typename FloatType>
     void
-    real_symmetric(
-      const FloatType* first,
-      const FloatType* last,
+    real_symmetric_given_lower_triangle(
+      FloatType* a, // size of memory pointed to by a must be n*(n+1)/2
       std::size_t n,
       FloatType* eigenvectors,
       FloatType* eigenvalues,
       FloatType epsilon)
     {
-      std::vector<FloatType> a(n * (n+1) / 2);
-      FloatType* trng = &*a.begin();
-      // Copy lower triangle of the input matrix to a numeric vector.
-      for (std::size_t row = 1; row <= n; row++) {
-        for (const FloatType* in=(first+(n*(row-1)));
-             in!=(first+(n*(row-1)+row));
-             in++, trng++) {
-          *trng = *in;
-        }
-      }
       // The matrix that will hold the results is initially = I.
       std::size_t i;
       for (i=0; i< (n*n); i++) {
@@ -194,6 +157,57 @@ namespace scitbx { namespace math { namespace eigensystem {
       }
     }
 
+    /* Based on code from BTL3: btl/btl_matrix_algorithms.h
+       Original comments:
+
+       [Description="Eigenvalues and eigenvectors of a symmetric matrix"]
+       [Restrictions="the input matrix must be real, square and
+        symmetric, the output vector of eigen values will be nrows in size
+        and the output matrix of eigenvectors will be nrows*nrows in size."]
+
+       Routine originally from IBM SSP manual (see p165) Ian Tickle April 1992,
+       (modified by  David Moss February 1993 and Mark Williams November 1998).
+
+       n - number of rows in input matrix
+       a - an array of size n*(n+1)/2 containing lower triangle of the original
+           n*n matrix in the order:
+
+                  1      2      3    ...
+           1    a[0]
+           2    a[1]   a[2]
+           3    a[3]   a[4]   a[5]   ...
+
+           NOTE a is used as working space and is overwritten.
+           Eigenvalues are written into the diagonal elements of a
+           i.e.  a[0]  a[2]  a[5]  for a 3*3 matrix.
+
+       r - Resultant matrix of eigenvectors stored columnwise in the same
+           order as eigenvalues, initially set equal to identity matrix.
+    */
+    template<typename FloatType>
+    void
+    real_symmetric_given_full_matrix(
+      const FloatType* first,
+      const FloatType* last,
+      std::size_t n,
+      FloatType* eigenvectors,
+      FloatType* eigenvalues,
+      FloatType epsilon)
+    {
+      std::vector<FloatType> a(n * (n+1) / 2);
+      FloatType* trng = &*a.begin();
+      // Copy lower triangle of the input matrix to a numeric vector.
+      for (std::size_t row = 1; row <= n; row++) {
+        for (const FloatType* in=(first+(n*(row-1)));
+             in!=(first+(n*(row-1)+row));
+             in++, trng++) {
+          *trng = *in;
+        }
+      }
+      real_symmetric_given_lower_triangle(
+        &*a.begin(), n, eigenvectors, eigenvalues, epsilon);
+    }
+
   } // namespace detail
 
   //! Group of associated eigenvectors and eigenvalues.
@@ -216,6 +230,13 @@ namespace scitbx { namespace math { namespace eigensystem {
        */
       real_symmetric(
         af::const_ref<FloatType, af::c_grid<2> > const& m,
+        FloatType epsilon=1.e-10);
+
+      /*! \brief Determines the eigenvectors and eigenvalues of the
+          real-symmetric square matrix.
+       */
+      real_symmetric(
+        scitbx::sym_mat3<FloatType> const& m,
         FloatType epsilon=1.e-10);
 
       //! The list of eigenvectors.
@@ -263,10 +284,32 @@ namespace scitbx { namespace math { namespace eigensystem {
     SCITBX_ASSERT(m.is_square());
     vectors_.resize(af::c_grid<2>(m.n_rows(), m.n_rows()));
     values_.resize(m.n_rows());
-    detail::real_symmetric(
+    detail::real_symmetric_given_full_matrix(
       m.begin(),
       m.end(),
       m.n_rows(),
+      vectors_.begin(),
+      values_.begin(),
+      epsilon);
+  }
+
+  template <typename FloatType>
+  real_symmetric<FloatType>::real_symmetric(
+    scitbx::sym_mat3<FloatType> const& m,
+    FloatType epsilon)
+  {
+    FloatType a[6];
+    a[0] = m(0,0);
+    a[1] = m(1,0);
+    a[2] = m(1,1);
+    a[3] = m(2,0);
+    a[4] = m(2,1);
+    a[5] = m(2,2);
+    vectors_.resize(af::c_grid<2>(3, 3));
+    values_.resize(3);
+    detail::real_symmetric_given_lower_triangle(
+      a,
+      std::size_t(3),
       vectors_.begin(),
       values_.begin(),
       epsilon);

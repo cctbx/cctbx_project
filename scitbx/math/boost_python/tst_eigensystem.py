@@ -31,6 +31,10 @@ def run():
       v.append(j)
       m[i*(n+1)] = j
     s = eigensystem.real_symmetric(m)
+    if (n == 3):
+      ss = eigensystem.real_symmetric((m[0],m[4],m[8],m[1],m[2],m[5]))
+      assert approx_equal(s.values(), ss.values())
+      assert approx_equal(s.vectors(), ss.vectors())
     v.sort()
     v.reverse()
     assert approx_equal(s.values(), v)
@@ -45,6 +49,10 @@ def run():
           if (i != j):
             m[j*n+i] = m[i*n+j]
       s = eigensystem.real_symmetric(m)
+      if (n == 3):
+        ss = eigensystem.real_symmetric((m[0],m[4],m[8],m[1],m[2],m[5]))
+        assert approx_equal(s.values(), ss.values())
+        assert approx_equal(s.vectors(), ss.vectors())
       v = list(s.values())
       v.sort()
       v.reverse()
