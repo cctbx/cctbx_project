@@ -1,16 +1,8 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/translation_search/fast_nv1995.h>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 
 namespace cctbx { namespace translation_search { namespace boost_python {
 
@@ -24,6 +16,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("fast_nv1995", no_init)
         .def(init<af::int3 const&,
                   sgtbx::space_group const&,
@@ -32,7 +25,15 @@ namespace {
                   af::const_ref<double> const&,
                   af::const_ref<std::complex<double> > const&,
                   af::const_ref<miller::index<> > const&,
-                  af::const_ref<std::complex<double> > >())
+                  af::const_ref<std::complex<double> > >(
+          (arg_("gridding"),
+           arg_("space_group"),
+           arg_("anomalous_flag"),
+           arg_("miller_indices_f_obs"),
+           arg_("f_obs"),
+           arg_("f_part"),
+           arg_("miller_indices_p1_f_calc"),
+           arg_("p1_f_calc"))))
         .def("target_map", &w_t::target_map)
       ;
     }

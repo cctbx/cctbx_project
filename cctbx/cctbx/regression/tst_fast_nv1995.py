@@ -55,6 +55,7 @@ def run_fast_terms(structure_fixed, structure_p1,
           grid_point = [random.randrange(g) for g in gridding]
         grid_site = [float(x)/g for x,g in zip(grid_point,gridding)]
         structure_shifted = structure_fixed.deep_copy_scatterers()
+        assert structure_shifted.special_position_indices().size() == 0
         structure_shifted.add_scatterers(
           scatterers=structure_p1.apply_shift(grid_site).scatterers())
         if (structure_shifted.special_position_indices().size() == 0):
@@ -116,7 +117,7 @@ def test_atom(space_group_info, use_primitive_setting,
     space_group_info,
     n_scatterers=n_elements,
     volume_per_atom=150,
-    min_distance=2.,
+    min_distance=1.,
     general_positions_only=0001)
   miller_set_f_obs = miller.build_set(
     crystal_symmetry=structure,
@@ -198,7 +199,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     space_group_info,
     elements=elements,
     volume_per_atom=50,
-    min_distance=2.,
+    min_distance=1.,
     general_positions_only=0001,
     random_u_iso=0001,
     random_occupancy=0001)

@@ -1,7 +1,7 @@
 #ifndef CCTBX_MAPTBX_GRIDDING_H
 #define CCTBX_MAPTBX_GRIDDING_H
 
-#include <cctbx/maptbx/symmetry_flags.h>
+#include <cctbx/sgtbx/search_symmetry.h>
 #include <scitbx/fftpack/gridding.h>
 #include <scitbx/array_family/tiny_algebra.h>
 
@@ -39,20 +39,26 @@ namespace cctbx { namespace maptbx {
     uctbx::unit_cell const& unit_cell,
     double d_min,
     double resolution_factor,
-    maptbx::symmetry_flags const& symmetry_flags,
+    sgtbx::search_symmetry_flags const& symmetry_flags,
     sgtbx::space_group_type const& space_group_type,
     af::tiny<IndexValueType, 3> const& mandatory_factors=detail::one_one_one,
     IndexValueType max_prime=5,
     bool assert_shannon_sampling=true)
   {
     typedef IndexValueType i_v_t;
-    sgtbx::structure_seminvariant ss(space_group_type.group());
+    sgtbx::structure_seminvariant ss;
+    sgtbx::space_group sub_space_group;
     af::tiny<i_v_t, 3> mandatory_factors_ = mandatory_factors;
-    if (symmetry_flags.use_structure_seminvariants()) {
+    if (symmetry_flags.use_seminvariant()) {
+      ss = sgtbx::structure_seminvariant(space_group_type.group());
       mandatory_factors_ = ss.refine_gridding(mandatory_factors_);
+      sub_space_group = sgtbx::search_symmetry(
+        symmetry_flags, space_group_type, ss).group();
     }
-    sgtbx::space_group sub_space_group = symmetry_flags.select_sub_space_group(
-      space_group_type);
+    else {
+      sub_space_group = sgtbx::search_symmetry(
+        symmetry_flags, space_group_type).group();
+    }
     mandatory_factors_ = sub_space_group.refine_gridding(mandatory_factors_);
     af::tiny<i_v_t, 3>
       grid = determine_gridding(
@@ -67,7 +73,7 @@ namespace cctbx { namespace maptbx {
     for(loop[2]=grid[2];loop[2]<g_limit;loop[2]+=mandatory_factors_[2]) {
       af::tiny<i_v_t, 3> trial_grid = scitbx::fftpack::adjust_gridding_array(
         loop, max_prime, mandatory_factors_);
-      if (symmetry_flags.use_structure_seminvariants()) {
+      if (symmetry_flags.use_seminvariant()) {
         trial_grid = ss.refine_gridding(trial_grid);
       }
       trial_grid = sub_space_group.refine_gridding(trial_grid);

@@ -10,5 +10,4 @@ env.SharedLibrary(target="#libtbx/cctbx_maptbx_ext", source=[
   "pymol_interface.cpp",
   "statistics.cpp",
   "structure_factors.cpp",
-  "symmetry_flags.cpp",
 ])

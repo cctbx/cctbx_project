@@ -165,3 +165,13 @@ class _rt_mx(boost.python.injector, rt_mx):
 
   def as_rational(self):
     return matrix.rt((self.r().as_rational(), self.t().as_rational()))
+
+class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
+
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "use_space_group_symmetry:", self.use_space_group_symmetry()
+    print >> f, "use_space_group_ltr:", self.use_space_group_ltr()
+    print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
+    print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
+    print >> f, "use_seminvariant:", self.use_seminvariant()

@@ -15,7 +15,6 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_pymol_interface();
   void wrap_statistics();
   void wrap_structure_factors();
-  void wrap_symmetry_flags();
 
 namespace {
 
@@ -30,7 +29,6 @@ namespace {
     wrap_pymol_interface();
     wrap_statistics();
     wrap_structure_factors();
-    wrap_symmetry_flags();
 
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)

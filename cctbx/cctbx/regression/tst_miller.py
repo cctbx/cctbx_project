@@ -2,6 +2,7 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx import xray
 from cctbx import maptbx
+from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
@@ -123,10 +124,12 @@ def exercise_crystal_gridding():
     unit_cell=(95.2939, 95.2939, 98.4232, 94.3158, 115.226, 118.822),
     space_group_symbol="Hall: C 2y (x+y,-x+y+z,z)")
   f_obs = miller.build_set(crystal_symmetry, anomalous_flag=00000, d_min=3.5)
-  symmetry_flags = maptbx.symmetry_flags(
+  symmetry_flags = sgtbx.search_symmetry_flags(
     use_space_group_symmetry=00000,
+    use_space_group_ltr=0,
+    use_seminvariant=0001,
     use_normalizer_k2l=00000,
-    use_structure_seminvariants=0001)
+    use_normalizer_l2n=00000)
   crystal_gridding_tags = f_obs.crystal_gridding(
     symmetry_flags=symmetry_flags,
     resolution_factor=1/3.,

@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored (rwgk)
-     2001 Sep: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_SEMINVARIANT_H
 #define CCTBX_SGTBX_SEMINVARIANT_H
 
@@ -95,6 +85,20 @@ namespace cctbx { namespace sgtbx {
        */
       af::small<int, 3>
       apply_mod(miller::index<> const& h) const;
+
+      //! Selects discrete or continuous shifts only.
+      structure_seminvariant
+      select(bool discrete)
+      {
+        structure_seminvariant result;
+        for(std::size_t i_ss=0;i_ss<size();i_ss++) {
+          ss_vec_mod const& ss = vec_mod_[i_ss];
+          if ((ss.m != 0) == discrete) {
+            result.vec_mod_.push_back(ss);
+          }
+        }
+        return result;
+      }
 
       //! Refines gridding starting with grid (1,1,1).
       /*! See also: refine_gridding()
