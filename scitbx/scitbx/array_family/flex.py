@@ -18,6 +18,7 @@ def export_to(target_module_name):
     "set_random_seed",
     "random_size_t",
     "random_double",
+    "random_permutation",
     "py_object",
     "linear_regression"]
   target_module = sys.modules[target_module_name]
@@ -54,6 +55,9 @@ def set_random_seed(value):
 
 random_size_t = random_generator.random_size_t
 random_double = random_generator.random_double
+
+def random_permutation(size):
+  return sort_permutation(random_double(size=size))
 
 class py_object:
 
