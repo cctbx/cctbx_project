@@ -281,7 +281,7 @@ def exercise_get_experimental_phases():
     anomalous_flag=False,
     d_min=3)
   input_array = miller_set.array(
-    data=flex.hendrickson_lattman(miller_set.indices().size()))
+    data=flex.hendrickson_lattman(miller_set.indices().size(), (0,0,0,0)))
   mtz_dataset = input_array.as_mtz_dataset(column_root_label="P")
   mtz_dataset.mtz_object().write("tmp.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
