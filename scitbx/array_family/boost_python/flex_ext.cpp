@@ -43,6 +43,7 @@ namespace {
   {
     using namespace scitbx::boost_python::container_conversions;
 
+    tuple_mapping_fixed_size<tiny<int, 2> >();
     tuple_mapping_fixed_size<int3>();
     tuple_mapping_fixed_size<int9>();
     tuple_mapping_fixed_size<long3>();
