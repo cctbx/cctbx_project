@@ -1,6 +1,7 @@
 #ifndef CCTBX_MAPTBX_COPY_H
 #define CCTBX_MAPTBX_COPY_H
 
+#include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/versa.h>
