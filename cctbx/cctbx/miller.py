@@ -589,8 +589,7 @@ class array(set):
     return self.apply_selection(flags=~sys_absent_flags)
 
   def adopt_set(self, other):
-    assert self.unit_cell().is_similar_to(other.unit_cell())
-    assert self.space_group() == other.space_group()
+    assert self.is_similar_symmetry(other)
     assert self.indices().size() == other.indices().size()
     assert self.anomalous_flag() == other.anomalous_flag()
     p = match_indices(other.indices(), self.indices()).permutation()
@@ -603,11 +602,17 @@ class array(set):
       .set_observation_type(self))
 
   def common_set(self, other):
-    assert self.unit_cell().is_similar_to(other.unit_cell())
-    assert self.space_group() == other.space_group()
+    assert self.is_similar_symmetry(other)
     assert self.anomalous_flag() == other.anomalous_flag()
     match = match_indices(self.indices(), other.indices())
     return self.apply_selection(match.pair_selection(0))
+
+  def common_sets(self, other):
+    assert self.is_similar_symmetry(other)
+    assert self.anomalous_flag() == other.anomalous_flag()
+    pairs = match_indices(self.indices(), other.indices()).pairs()
+    return [self.apply_selection(pairs.column(0)),
+            other.apply_selection(pairs.column(1))]
 
   def sort(self, by_value="resolution", reverse=00000):
     return self.apply_sort_permutation(self.sort_permutation(
@@ -966,6 +971,52 @@ class array(set):
     if (self.sigmas() is not None and other.sigmas() is not None):
       s = match.additive_sigmas(self.sigmas(), other.sigmas())
     return array(set(self, i), d, s)
+
+  def as_anomalous(self):
+    if (self.anomalous_flag()): return self
+    sel = ~self.centric_flags().data()
+    indices = self.indices().deep_copy()
+    indices.extend(-indices.select(sel))
+    data = None
+    sigmas = None
+    if (self.data() is not None):
+      data = self.data().deep_copy()
+      if (self.is_complex()):
+        data.extend(flex.conj(data.select(sel)))
+      else:
+        data.extend(data.select(sel))
+    if (self.sigmas() is not None):
+      sigmas = self.sigmas().deep_copy()
+      sigmas.extend(sigmas.select(sel))
+    return array(
+      miller_set=set(
+        crystal_symmetry=self,
+        indices=indices,
+        anomalous_flag=0001),
+      data=data,
+      sigmas=sigmas)
+
+  def correlation(self, other, use_binning=00000):
+    assert self.is_similar_symmetry(other)
+    assert self.is_real()
+    assert other.is_real()
+    assert not use_binning or self.binner() is not None
+    lhs = self
+    if (lhs.anomalous_flag() and not other.anomalous_flag()):
+      other = other.as_anomalous()
+    elif (not lhs.anomalous_flag() and other.anomalous_flag()):
+      lhs = lhs.as_anomalous()
+    lhs, other = lhs.common_sets(other)
+    if (not use_binning):
+      return flex.linear_correlation(lhs.data(), other.data())
+    lhs.use_binning_of(self)
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = lhs.binner().selection(i_bin)
+      results.append(flex.linear_correlation(
+        lhs.data().select(sel),
+        other.data().select(sel)))
+    return binned_data(binner=lhs.binner(), data=results)
 
   def show_array(self, f=None):
     if (f is None): f = sys.stdout

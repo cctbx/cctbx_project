@@ -64,6 +64,12 @@ class symmetry(object):
     else:
       self.space_group_info().show_summary(f)
 
+  def is_similar_symmetry(self, other, relative_length_tolerance=0.01,
+                                       absolute_angle_tolerance=1.):
+    if (not self.unit_cell().is_similar_to(other.unit_cell(),
+      relative_length_tolerance, absolute_angle_tolerance)): return 00000
+    return self.space_group() == other.space_group()
+
   def is_compatible_unit_cell(self):
     return self.space_group().is_compatible_unit_cell(self.unit_cell())
 
