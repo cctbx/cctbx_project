@@ -26,6 +26,8 @@ def exercise_set():
   b = p1.setup_binner(n_bins=8)
   assert id(p1.binner()) == id(b)
   assert b.limits().size() == 9
+  assert tuple(ms.sort().indices()) == ((0,0,4), (1,2,3))
+  assert tuple(ms.sort(reverse=0001).indices()) == ((1,2,3), (0,0,4))
 
 def exercise_array():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
@@ -160,7 +162,7 @@ def exercise_array():
   s = ma[:]
   assert s.data().all_eq(ma.data())
   assert s.sigmas() == None
-  ma = miller.array(ms, flex.double((1,2)), flex.double(3,4))
+  ma = miller.array(ms, flex.double((1,2)), flex.double((3,4)))
   s = ma[:]
   assert s.data().all_eq(ma.data())
   assert s.sigmas().all_eq(ma.sigmas())
@@ -171,6 +173,27 @@ def exercise_array():
   assert tuple(ma.indices()) == ((0,0,2), (0,0,-4))
   ma = miller.array(ms).remove_systematic_absences(negate=0001)
   assert tuple(ma.indices()) == ((0,0,1), (0,0,-3))
+  ma = miller.array(ms, flex.double((3,4,1,-2)), flex.double((.3,.4,.1,.2)))
+  sa = ma.sort(by_value="resolution")
+  assert tuple(sa.indices()) == ((0,0,1), (0,0,2), (0,0,-3), (0,0,-4))
+  assert approx_equal(sa.data(), (3,4,1,-2))
+  assert approx_equal(sa.sigmas(), (.3,.4,.1,.2))
+  sa = ma.sort(by_value="resolution", reverse=0001)
+  assert tuple(sa.indices()) == ((0,0,-4), (0,0,-3), (0,0,2), (0,0,1))
+  assert approx_equal(sa.data(), (-2,1,4,3))
+  assert approx_equal(sa.sigmas(), (.2,.1,.4,.3))
+  sa = ma.sort(by_value="data")
+  assert approx_equal(sa.data(), (4,3,1,-2))
+  sa = ma.sort(by_value="data", reverse=0001)
+  assert approx_equal(sa.data(), (-2,1,3,4))
+  sa = ma.sort(by_value="abs")
+  assert approx_equal(sa.data(), (4,3,-2,1))
+  sa = ma.sort(by_value="abs", reverse=0001)
+  assert approx_equal(sa.data(), (1,-2,3,4))
+  sa = ma.sort(by_value=flex.double((3,1,4,2)))
+  assert tuple(sa.indices()) == ((0,0,-3), (0,0,1), (0,0,-4), (0,0,2))
+  sa = ma.sort(by_value=flex.double((3,1,4,2)), reverse=0001)
+  assert tuple(sa.indices()) == ((0,0,2), (0,0,-4), (0,0,1), (0,0,-3))
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
