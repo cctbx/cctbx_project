@@ -33,6 +33,22 @@ namespace scitbx { namespace math { namespace gaussian {
       //! Initialization of the terms and optionally the constant.
       /*! If c is different from zero use_c will automatically be
           set to true.
+          <p>
+          Not available in Python.
+       */
+      sum(
+        af::small<term<FloatType>, max_n_terms> const& terms,
+        FloatType const& c=0,
+        bool use_c=false)
+      :
+        terms_(terms),
+        c_(c),
+        use_c_(use_c || c != 0)
+      {}
+
+      //! Initialization of the terms and optionally the constant.
+      /*! If c is different from zero use_c will automatically be
+          set to true.
        */
       sum(
         af::const_ref<FloatType> const& a,
@@ -41,7 +57,7 @@ namespace scitbx { namespace math { namespace gaussian {
         bool use_c=false)
       :
         c_(c),
-        use_c_(use_c)
+        use_c_(use_c || c != 0)
       {
         SCITBX_ASSERT(a.size() == b.size());
         SCITBX_ASSERT(a.size() <= max_n_terms);
@@ -90,11 +106,13 @@ namespace scitbx { namespace math { namespace gaussian {
       bool
       use_c() const { return use_c_; }
 
-      //! Test if n_terms() == 0 and c() == 0.
-      bool
-      all_zero() const
+      //! Total number of parameters.
+      std::size_t
+      n_parameters() const
       {
-        return n_terms() == 0 && c() == 0;
+        std::size_t result = n_terms() * 2;
+        if (use_c()) result++;
+        return result;
       }
 
       //! Sum of Gaussian terms at the point x, given x^2.

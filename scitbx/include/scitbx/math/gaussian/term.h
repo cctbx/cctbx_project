@@ -35,14 +35,14 @@ namespace scitbx { namespace math { namespace gaussian {
       return at_x_sq(x * x);
     }
 
-    //! Gradient w.r.t. x at the point x.
+    //! Analytical gradient w.r.t. x at the point x.
     FloatType
     gradient_dx_at_x(FloatType const& x) const
     {
       return -2*a*b*x/std::exp(b*x*x);
     }
 
-    //! Integral dx from 0 to the point x.
+    //! Analytical integral dx from 0 to the point x.
     FloatType
     integral_dx_at_x(
       FloatType const& x,
@@ -86,6 +86,14 @@ namespace scitbx { namespace math { namespace gaussian {
         prev_result = result;
       }
       return a * x * result;
+    }
+
+    //! Analytical gradients w.r.t. a and b at the point x, given x^2.
+    term
+    gradients_d_ab_at_x_sq(FloatType const& x_sq) const
+    {
+      FloatType gr_a = std::exp(-b * x_sq);
+      return term(gr_a, -a * x_sq * gr_a);
     }
 
     FloatType a;
