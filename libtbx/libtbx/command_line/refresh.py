@@ -46,7 +46,7 @@ def create_driver(target_dir, package_name, source_dir, file_name):
     target_file += "." + splitext(file_name)[0]
   if (os.name == "nt"):
     if (not file_name.lower().endswith(".py")): return
-    target_file += ".py"
+    target_file += ".px"
     action = create_python_execfile_dispatcher
   else:
     action = create_bin_sh_dispatcher()
