@@ -26,7 +26,7 @@ namespace cctbx { namespace restraints {
     bond_simple_proxy() {}
 
     bond_simple_proxy(
-      af::tiny<std::size_t, 2> const& i_seqs_,
+      af::tiny<unsigned, 2> const& i_seqs_,
       double distance_ideal_,
       double weight_)
     :
@@ -34,7 +34,7 @@ namespace cctbx { namespace restraints {
       i_seqs(i_seqs_)
     {}
 
-    af::tiny<std::size_t, 2> i_seqs;
+    af::tiny<unsigned, 2> i_seqs;
   };
 
   struct bond_asu_proxy : bond_params, asu_mapping_index_pair
@@ -54,7 +54,7 @@ namespace cctbx { namespace restraints {
     as_simple_proxy() const
     {
       return bond_simple_proxy(
-        af::tiny<std::size_t, 2>(i_seq, j_seq),
+        af::tiny<unsigned, 2>(i_seq, j_seq),
         distance_ideal,
         weight);
     }
@@ -144,7 +144,7 @@ namespace cctbx { namespace restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<std::size_t, 2> const& i_seqs) const
+        af::tiny<unsigned, 2> const& i_seqs) const
       {
         vec3 g0 = gradient_0();
         gradient_array[i_seqs[0]] += g0;
@@ -345,12 +345,12 @@ namespace cctbx { namespace restraints {
   }
 
   inline
-  af::shared<std::set<std::size_t> >
+  af::shared<std::set<unsigned> >
   bond_sets(
     std::size_t n_sites,
     af::const_ref<restraints::bond_simple_proxy> const& proxies)
   {
-    af::shared<std::set<std::size_t> > result;
+    af::shared<std::set<unsigned> > result;
     result.resize(n_sites);
     for(std::size_t i=0;i<proxies.size();i++) {
       restraints::bond_simple_proxy const& proxy = proxies[i];

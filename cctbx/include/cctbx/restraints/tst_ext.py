@@ -4,6 +4,7 @@ from cctbx import sgtbx
 from cctbx.crystal import direct_space_asu
 from cctbx.array_family import flex
 from scitbx import matrix
+from scitbx import stl
 from libtbx.test_utils import approx_equal, eps_eq
 from libtbx.itertbx import count
 
@@ -187,6 +188,7 @@ def exercise_bond():
 def exercise_bond_tables():
   assert "map_indexing_suite_bond_params_dict_entry" in restraints.__dict__
   assert "map_indexing_suite_bond_sym_dict_entry" in restraints.__dict__
+  assert "map_indexing_suite_bond_asu_dict_entry" in restraints.__dict__
   t = restraints.bond_params_table()
   assert t.size() == 0
   d = restraints.bond_params_dict()
@@ -199,18 +201,28 @@ def exercise_bond_tables():
   assert approx_equal(t[1][10].distance_ideal, 3)
   t[0][13] = p
   assert approx_equal(t[0][13].distance_ideal, 3)
-  sym_ops = sgtbx.space_group("P 41").all_ops()
   t[0][13].distance_ideal = 5
   assert approx_equal(t[0][13].distance_ideal, 5)
   assert approx_equal(t[1][10].distance_ideal, 3)
+  #
   d = restraints.bond_sym_dict()
   assert len(d) == 0
+  sym_ops = sgtbx.space_group("P 41").all_ops()
   for i,j_sym in enumerate([10,18,13]):
-    d[j_sym] = sym_ops[:i]
+    d[j_sym] = restraints.bond_sym_ops(sym_ops[:i])
     assert len(d) == i+1
     assert len(d[j_sym]) == i
     assert [str(s) for s in sym_ops[:i]] == [str(s) for s in d[j_sym]]
+    d[j_sym] = sym_ops[:i]
+    assert [str(s) for s in sym_ops[:i]] == [str(s) for s in d[j_sym]]
   assert [item.key() for item in d] == [10,13,18]
+  assert d[13].size() == 2
+  d[13].append(sym_ops[-1])
+  assert d[13].size() == 3
+  del d[13][0]
+  assert d[13].size() == 2
+  d[13].clear()
+  assert d[13].size() == 0
   t = restraints.bond_sym_table()
   t.append(d)
   assert t.size() == 1
@@ -224,6 +236,21 @@ def exercise_bond_tables():
   t[1][10] = sym_ops[:2]
   assert len(t[1]) == 1
   assert len(t[1][10]) == 2
+  #
+  t = restraints.bond_asu_table(3)
+  for d in t:
+    assert len(d) == 0
+  t[1][10] = restraints.bond_asu_dict()
+  assert t[1][10].size() == 0
+  t[1][10].append(restraints.bond_asu_j_sym_groups())
+  assert t[1][10].size() == 1
+  assert t[1][10][0].size() == 0
+  t[1][10][0].insert(3)
+  assert t[1][10][0].size() == 1
+  t[1][10].append(restraints.bond_asu_j_sym_groups())
+  assert t[1][10][1].size() == 0
+  t[1][10][1].insert([4,5,4])
+  assert t[1][10][1].size() == 2
 
 def exercise_repulsion():
   p = restraints.repulsion_simple_proxy(
@@ -634,7 +661,7 @@ def exercise_bonded_interactions():
     (3, 4, 10, 11),
     (8, 9, 11),
     (9, 10)]
-  assert list(bond_sets) == expected_1_2_all
+  assert [tuple(s) for s in bond_sets] == expected_1_2_all
   expected_1_2_elim = [
     (1,),
     (2,),
@@ -706,9 +733,12 @@ def exercise_bonded_interactions():
       i_seq_0=i_seq_0)
     assert bonded_interactions.i_seq_0() == i_seq_0
     assert not bonded_interactions.eliminate_redundant_interactions()
-    assert bonded_interactions.interactions_1_2() == expected_1_2_all[i_seq_0]
-    assert bonded_interactions.interactions_1_3() == expected_1_3_all[i_seq_0]
-    assert bonded_interactions.interactions_1_4() == expected_1_4_all[i_seq_0]
+    assert tuple(bonded_interactions.interactions_1_2()) \
+        == expected_1_2_all[i_seq_0]
+    assert tuple(bonded_interactions.interactions_1_3()) \
+        == expected_1_3_all[i_seq_0]
+    assert tuple(bonded_interactions.interactions_1_4()) \
+        == expected_1_4_all[i_seq_0]
     assert bonded_interactions.interaction_type_of(j_seq=20) == 0
     assert bonded_interactions.interaction_type_of(
       j_seq=expected_1_2_all[i_seq_0][0]) == 2
@@ -731,9 +761,12 @@ def exercise_bonded_interactions():
       eliminate_redundant_interactions=0001)
     assert bonded_interactions.i_seq_0() == i_seq_0
     assert bonded_interactions.eliminate_redundant_interactions()
-    assert bonded_interactions.interactions_1_2() == expected_1_2_elim[i_seq_0]
-    assert bonded_interactions.interactions_1_3() == expected_1_3_elim[i_seq_0]
-    assert bonded_interactions.interactions_1_4() == expected_1_4_elim[i_seq_0]
+    assert tuple(bonded_interactions.interactions_1_2()) \
+        == expected_1_2_elim[i_seq_0]
+    assert tuple(bonded_interactions.interactions_1_3()) \
+        == expected_1_3_elim[i_seq_0]
+    assert tuple(bonded_interactions.interactions_1_4()) \
+        == expected_1_4_elim[i_seq_0]
 
 def exercise():
   exercise_bond()

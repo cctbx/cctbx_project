@@ -3,22 +3,20 @@
 #include <boost/python/class.hpp>
 #include <boost/python/suite/indexing/map_indexing_suite.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/stl/vector_wrapper.h>
 #include <cctbx/restraints/bond_tables.h>
 
 namespace cctbx { namespace restraints {
 namespace {
 
-  struct bond_params_dict_wrappers
+  struct bond_params_table_wrappers
   {
-    typedef bond_params_dict w_t;
-
     static void
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
-      class_<w_t>("bond_params_dict")
-        .def(map_indexing_suite<w_t>())
+      class_<bond_params_dict>("bond_params_dict")
+        .def(map_indexing_suite<bond_params_dict>())
       ;
       {
         typedef return_internal_reference<> rir;
@@ -28,17 +26,14 @@ namespace {
     }
   };
 
-  struct bond_sym_dict_wrappers
+  struct bond_sym_table_wrappers
   {
-    typedef bond_sym_dict w_t;
-
     static void
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
-      class_<w_t>("bond_sym_dict")
-        .def(map_indexing_suite<w_t, true>())
+      class_<bond_sym_dict>("bond_sym_dict")
+        .def(map_indexing_suite<bond_sym_dict>())
       ;
       {
         typedef return_internal_reference<> rir;
@@ -48,11 +43,29 @@ namespace {
     }
   };
 
+  struct bond_asu_table_wrappers
+  {
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<bond_asu_dict>("bond_asu_dict")
+        .def(map_indexing_suite<bond_asu_dict>())
+      ;
+      {
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<bond_asu_dict, rir>::wrap(
+          "bond_asu_table");
+      }
+    }
+  };
+
   void
   wrap_all()
   {
-    bond_params_dict_wrappers::wrap();
-    bond_sym_dict_wrappers::wrap();
+    bond_params_table_wrappers::wrap();
+    bond_sym_table_wrappers::wrap();
+    bond_asu_table_wrappers::wrap();
   }
 
 } // namespace <anonymous>

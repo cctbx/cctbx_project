@@ -415,6 +415,17 @@ def exercise_rt_mx():
     p = pickle.dumps(m)
     l = pickle.loads(p)
     assert l == m
+  v = sgtbx.stl_vector_rt_mx()
+  v.append(rt_mx("-x+y+2,-x-3/4,z+11/3"))
+  v.append(rt_mx("x,y,z"))
+  assert [str(elem) for elem in v] == ["-x+y+2,-x-3/4,z+11/3", "x,y,z"]
+  p = pickle.dumps(v)
+  l = pickle.loads(p)
+  assert [str(elem) for elem in l] == ["-x+y+2,-x-3/4,z+11/3", "x,y,z"]
+  l.extend(v)
+  assert l.size() == 4
+  l.clear()
+  assert l.size() == 0
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx

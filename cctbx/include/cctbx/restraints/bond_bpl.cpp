@@ -41,7 +41,7 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t, bases<bond_params> >("bond_simple_proxy", no_init)
-        .def(init<af::tiny<std::size_t, 2> const&, double, double>(
+        .def(init<af::tiny<unsigned, 2> const&, double, double>(
           (arg_("i_seqs"), arg_("distance_ideal"), arg_("weight"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       ;

@@ -11,14 +11,14 @@ namespace cctbx { namespace restraints {
     repulsion_simple_proxy() {}
 
     repulsion_simple_proxy(
-      af::tiny<std::size_t, 2> const& i_seqs_,
+      af::tiny<unsigned, 2> const& i_seqs_,
       double vdw_radius_)
     :
       i_seqs(i_seqs_),
       vdw_radius(vdw_radius_)
     {}
 
-    af::tiny<std::size_t, 2> i_seqs;
+    af::tiny<unsigned, 2> i_seqs;
     double vdw_radius;
   };
 
@@ -39,7 +39,7 @@ namespace cctbx { namespace restraints {
     as_simple_proxy() const
     {
       return repulsion_simple_proxy(
-        af::tiny<std::size_t, 2>(i_seq, j_seq),
+        af::tiny<unsigned, 2>(i_seq, j_seq),
         vdw_radius);
     }
 
@@ -190,7 +190,7 @@ namespace cctbx { namespace restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<std::size_t, 2> const& i_seqs) const
+        af::tiny<unsigned, 2> const& i_seqs) const
       {
         vec3 g0 = gradient_0();
         gradient_array[i_seqs[0]] += g0;

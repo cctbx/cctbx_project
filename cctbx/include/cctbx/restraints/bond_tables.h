@@ -14,6 +14,11 @@ namespace cctbx { namespace restraints {
   typedef std::map<unsigned, bond_sym_ops> bond_sym_dict;
   typedef af::shared<bond_sym_dict> bond_sym_table;
 
+  typedef std::set<unsigned> bond_asu_j_sym_group;
+  typedef std::vector<bond_asu_j_sym_group> bond_asu_j_sym_groups;
+  typedef std::map<unsigned, bond_asu_j_sym_groups> bond_asu_dict;
+  typedef af::shared<bond_asu_dict> bond_asu_table;
+
 }} // namespace cctbx::restraints
 
 #endif // CCTBX_RESTRAINTS_BOND_TABLES_H

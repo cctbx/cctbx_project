@@ -25,7 +25,7 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("repulsion_simple_proxy", no_init)
-        .def(init<af::tiny<std::size_t, 2> const&, double>(
+        .def(init<af::tiny<unsigned, 2> const&, double>(
             (arg_("i_seqs"), arg_("vdw_radius"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readwrite("vdw_radius", &w_t::vdw_radius)
