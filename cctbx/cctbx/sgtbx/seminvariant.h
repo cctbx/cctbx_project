@@ -19,7 +19,7 @@ namespace cctbx { namespace sgtbx {
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
   //! Helper struct for class StructureSeminvariant.
   struct ssVM {
-    Vec3 V;
+    int3 V;
     int M;
   };
 #endif // DOXYGEN_SHOULD_SKIP_THIS
@@ -80,7 +80,7 @@ namespace cctbx { namespace sgtbx {
           <p>
           See also: VM(), M()
        */
-      const Vec3& V(std::size_t i) const { return VM(i).V; }
+      const int3& V(std::size_t i) const { return VM(i).V; }
       //! The i'th structure-seminvariant modulus.
       /*! An exception is thrown if i is out of range.
           <p>

@@ -76,7 +76,7 @@ namespace cctbx {
   carray<FloatType, 6>
   Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
                  const carray<FloatType, 6>& Uuvrs) {
-    const uctbx::Vec3& R_Len = uc.getLen(true);
+    const double3& R_Len = uc.getLen(true);
     carray<FloatType, 6> Ustar;
     Ustar[0] = Uuvrs[0] * (R_Len[0] * R_Len[0]);
     Ustar[1] = Uuvrs[1] * (R_Len[1] * R_Len[1]);
@@ -93,7 +93,7 @@ namespace cctbx {
   carray<FloatType, 6>
   Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
                  const carray<FloatType, 6>& Ustar) {
-    const uctbx::Vec3& R_Len = uc.getLen(true);
+    const double3& R_Len = uc.getLen(true);
     carray<FloatType, 6> Uuvrs;
     Uuvrs[0] = Ustar[0] / (R_Len[0] * R_Len[0]);
     Uuvrs[1] = Ustar[1] / (R_Len[1] * R_Len[1]);

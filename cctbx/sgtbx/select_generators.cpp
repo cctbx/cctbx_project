@@ -124,11 +124,11 @@ namespace cctbx { namespace sgtbx {
     {
       using namespace tables::CrystalSystem;
 
-      const Vec3 EV_001( 0, 0, 1);
-      const Vec3 EV_100( 1, 0, 0);
-      const Vec3 EV_110( 1, 1, 0);
-      const Vec3 EV_m10(-1, 1, 0);
-      const Vec3 EV_111( 1, 1, 1);
+      const int3 EV_001( 0, 0, 1);
+      const int3 EV_100( 1, 0, 0);
+      const int3 EV_110( 1, 1, 0);
+      const int3 EV_m10(-1, 1, 0);
+      const int3 EV_111( 1, 1, 1);
 
       Z2POp = WorkSgOps.getZ2POp();
 

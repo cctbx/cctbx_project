@@ -99,7 +99,7 @@ namespace cctbx { namespace sgtbx {
 
   int ChangeBaseFactor(const int *Old, int OldBF, int *New, int NewBF, int n);
 
-  int SignHemisphere(const Vec3& v);
+  int SignHemisphere(const int3& v);
 
   class CmpiVect {
     private:

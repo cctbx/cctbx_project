@@ -79,7 +79,7 @@ namespace cctbx {
             !SpaceGroup::isCentric(H) to determine which reflections
             are acentric).
          */
-        virtual const Miller::Vec3& getCutParameters() const {
+        virtual const int3& getCutParameters() const {
           throw cctbx_internal_error();
         }
     };

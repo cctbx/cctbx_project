@@ -44,7 +44,7 @@ namespace cctbx { namespace sgtbx {
     class CmpOLen2 {
       public:
         CmpOLen2() : CmpT(3) {}
-        bool operator()(const Vec3& a, const Vec3& b) const
+        bool operator()(const int3& a, const int3& b) const
         {
           int i;
           int OLen2a = 0; for(i=0;i<3;i++) OLen2a += a[i] * a[i];
@@ -79,7 +79,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
       else {
-        carray<Vec3, 4> Sol;
+        carray<int3, 4> Sol;
         SolveHomRE1(GenRmI.elems, IxIndep, Sol.elems);
         std::sort(Sol.begin(), Sol.end(), CmpOLen2());
         for (int iIndep = 0; iIndep < 2; iIndep++) {
@@ -105,7 +105,7 @@ namespace cctbx { namespace sgtbx {
         for(int i=0;i<3;i++) {
           if (Zf[i]) {
             if (   CmpOLen2()(Zc, BestZc[iDL])
-                || (   static_cast<Vec3>(Zc) == static_cast<Vec3>(BestZc[iDL])
+                || (   static_cast<int3>(Zc) == static_cast<int3>(BestZc[iDL])
                     && Zc.BF() < BestZc[iDL].BF())) {
               BestZf[iDL] = Zf;
               BestZc[iDL] = Zc;
@@ -247,7 +247,7 @@ namespace cctbx { namespace sgtbx {
     for (id = 0; id < nd; id++) {
       int d = SNF[(nd + 1) * id];
       for (int f = 1; f < d; f++) {
-        Vec3 xp;
+        int3 xp;
         xp.assign(0);
         xp[id] = f * DTBF / d;
         TrVec x(DTBF);
@@ -274,7 +274,7 @@ namespace cctbx { namespace sgtbx {
       cctbx_assert(m_VM.size() < 3);
       TrVec G = DiscrGen[iG].cancel();
       ssVM VM;
-      VM.V = static_cast<Vec3>(G);
+      VM.V = static_cast<int3>(G);
       VM.M = G.BF();
       m_VM.push_back(VM);
     }

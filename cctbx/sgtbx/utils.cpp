@@ -62,7 +62,7 @@ namespace cctbx { namespace sgtbx {
     return std::string(buf);
   }
 
-  int SignHemisphere(const Vec3& v)
+  int SignHemisphere(const int3& v)
   {
     if (v[2] >  0) return  1;
     if (v[2] == 0) {

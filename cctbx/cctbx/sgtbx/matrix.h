@@ -22,14 +22,14 @@
 namespace cctbx { namespace sgtbx {
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-  class TrVec : public Vec3 {
+  class TrVec : public int3 {
     private:
       int m_BF;
     public:
       explicit TrVec(int TranslationBaseFactor = STBF)
         : m_BF(TranslationBaseFactor) { for(int i=0;i<3;i++) elems[i] = 0; }
-      explicit TrVec(const Vec3& v, int TranslationBaseFactor = STBF)
-        : Vec3(v), m_BF(TranslationBaseFactor) {}
+      explicit TrVec(const int3& v, int TranslationBaseFactor = STBF)
+        : int3(v), m_BF(TranslationBaseFactor) {}
       TrVec(const int& v0, const int& v1, const int& v2,
                    int TranslationBaseFactor = STBF)
         : m_BF(TranslationBaseFactor) {
@@ -138,7 +138,7 @@ namespace cctbx { namespace sgtbx {
           For Rtype > 0, the proper rotation is defined as R.<br>
           For Rtype < 0, the proper rotation is defined as -R.
        */
-      const Vec3& EV() const { return m_EV; }
+      const int3& EV() const { return m_EV; }
       //! Sense of rotation with respect to the axis direction.
       /*! Only defined if abs(Rtype) > 1.
        */
@@ -148,12 +148,12 @@ namespace cctbx { namespace sgtbx {
       friend class RotMx;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
       int  m_Rtype;
-      Vec3 m_EV;
+      int3 m_EV;
       int  m_SenseOfRotation;
   };
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-  class RotMx : public Mx33 {
+  class RotMx : public int9 {
     private:
       int m_BF;
     public:
@@ -164,8 +164,8 @@ namespace cctbx { namespace sgtbx {
           for(int i=0;i<3;i++) elems[i * 4] = Diagonal * m_BF;
         }
       }
-      explicit RotMx(const Mx33& m, int RotationBaseFactor = 1)
-        : Mx33(m), m_BF(RotationBaseFactor) {}
+      explicit RotMx(const int9& m, int RotationBaseFactor = 1)
+        : int9(m), m_BF(RotationBaseFactor) {}
       RotMx(int m00, int m01, int m02,
                    int m10, int m11, int m12,
                    int m20, int m21, int m22,
@@ -197,11 +197,11 @@ namespace cctbx { namespace sgtbx {
         return result;
       }
       RotMx cancel() const;
-      void setColumn(int c, const Vec3& v) {
+      void setColumn(int c, const int3& v) {
         for(int i=0;i<3;i++) elems[i * 3 + c] = v[i];
       }
-      Vec3 getColumn(int c) const {
-        Vec3 result;
+      int3 getColumn(int c) const {
+        int3 result;
         for(int i=0;i<3;i++) result[i] = elems[i * 3 + c];
         return result;
       }
@@ -265,7 +265,7 @@ namespace cctbx { namespace sgtbx {
       }
       friend RotMx operator*(const RotMx& lhs, const RotMx& rhs);
       friend RotMx operator/(const RotMx& lhs, int rhs);
-      friend Vec3 operator*(const RotMx& lhs, const Vec3& rhs);
+      friend int3 operator*(const RotMx& lhs, const int3& rhs);
       friend TrVec operator*(const RotMx& lhs, const TrVec& rhs);
       friend TrVec operator*(const TrVec& lhs, const RotMx& rhs);
       RotMx multiply(const RotMx& rhs) const {
@@ -523,7 +523,7 @@ namespace cctbx { namespace sgtbx {
       /*! \brief Test if the vector v is perpendicular to the axis
           direction of the rotation part.
        */
-      bool isPerpendicular(const Vec3& v) const;
+      bool isPerpendicular(const int3& v) const;
       //! Compute the intrinsic (screw or glide) part of the translation part.
       /*! Let N be the rotation-part type of Rpart().
           Following the procedure given by Fischer & Koch
@@ -656,20 +656,20 @@ namespace cctbx { namespace sgtbx {
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
-  inline MatrixLite::dtype::Vec3
-  operator+(const MatrixLite::dtype::Vec3& lhs, const TrVec& rhs) {
-    MatrixLite::dtype::Vec3 result;
+  inline double3
+  operator+(const double3& lhs, const TrVec& rhs) {
+    double3 result;
     for(int i=0;i<3;i++) result[i] = lhs[i] + double(rhs[i]) / rhs.BF();
     return result;
   }
 
-  inline MatrixLite::dtype::Vec3
-  operator*(const RTMx& lhs, const MatrixLite::dtype::Vec3& rhs) {
+  inline double3
+  operator*(const RTMx& lhs, const double3& rhs) {
     const RotMx& R = lhs.Rpart();
     const TrVec& T = lhs.Tpart();
     const double RBF = R.BF();
     const double TBF = T.BF();
-    MatrixLite::dtype::Vec3 result;
+    double3 result;
     for(int i=0;i<3;i++) {
       result[i] = (  R[i * 3 + 0] * rhs[0]
                    + R[i * 3 + 1] * rhs[1]

@@ -36,7 +36,7 @@ namespace cctbx { namespace sgtbx {
     return 0;
   }
 
-  int SenseOfRotation(const RotMx& R, int Rtype, const Vec3& EV)
+  int SenseOfRotation(const RotMx& R, int Rtype, const int3& EV)
   {
     // M.B. Boisen, Jr. & G.V. Gibbs
     // Mathematical Crystallography, Revised Edition 1990
@@ -56,13 +56,13 @@ namespace cctbx { namespace sgtbx {
     return -1;
   }
 
-  Vec3 SolveHomRE2(const Mx33& REMx)
+  int3 SolveHomRE2(const int9& REMx)
   {
     // REMx must be in row echelon form with Rank 2.
 
     int IxIndep[1];
     cctbx_assert(iRESetIxIndep(REMx.elems, 2, 3, IxIndep, 1) == 1);
-    Vec3 EV;
+    int3 EV;
     rangei(3) EV[i] = 0;
     EV[IxIndep[0]] = 1;
     cctbx_assert(iREBacksubst(REMx.elems, 0, 2, 3, EV.elems, 0) >= 1);

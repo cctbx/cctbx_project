@@ -18,8 +18,6 @@
 namespace { // Helper functions in anonymous namespace.
 
   using namespace cctbx;
-  using uctbx::Vec3;
-  using uctbx::Mx33;
 
   const double EpsPI = 1.e-6; // ARBITRARY
 
@@ -37,23 +35,23 @@ namespace { // Helper functions in anonymous namespace.
     return std::cos(arg);
   }
 
-  inline double DotG(const Vec3& u, const Mx33& G, const Vec3& v) {
+  inline double DotG(const double3& u, const double9& G, const double3& v) {
     return   u[0] * (G[0] * v[0] + G[1] * v[1] + G[2] * v[2])
            + u[1] * (G[3] * v[0] + G[4] * v[1] + G[5] * v[2])
            + u[2] * (G[6] * v[0] + G[7] * v[1] + G[8] * v[2]);
   }
 
-  Vec3 CrossG(const double sqrtdetG, const Mx33& G,
-              const Vec3& r, const Vec3& s) {
-    Vec3 Gr, Gs;
+  double3 CrossG(const double sqrtdetG, const double9& G,
+                 const double3& r, const double3& s) {
+    double3 Gr, Gs;
     MatrixLite::multiply<double>(G.elems, r.elems, 3, 3, 1, Gr.elems);
     MatrixLite::multiply<double>(G.elems, s.elems, 3, 3, 1, Gs.elems);
     return sqrtdetG * MatrixLite::cross_product(Gr, Gs);
   }
 
-  Mx33 ConstructMetricalMatrix(const Vec3& Len, const Vec3& cosAng)
+  double9 ConstructMetricalMatrix(const double3& Len, const double3& cosAng)
   {
-    Mx33 G;
+    double9 G;
     rangei(3) G[i * 4] = Len[i] * Len[i];
     G[1] = G[3] = Len[0] * Len[1] * cosAng[2];
     G[2] = G[6] = Len[0] * Len[2] * cosAng[1];
@@ -61,7 +59,7 @@ namespace { // Helper functions in anonymous namespace.
     return G;
   }
 
-  bool isSymmetric(const Mx33& M, double tolerance = 1.e-6)
+  bool isSymmetric(const double9& M, double tolerance = 1.e-6)
   {
     double maxelem = M[0];
     for(int i=1;i<9;i++) if (maxelem < M[i]) maxelem = M[i];
@@ -197,7 +195,7 @@ namespace cctbx { namespace uctbx {
     Initialize();
   }
 
-  UnitCell::UnitCell(const Mx33& MetricalMatrix)
+  UnitCell::UnitCell(const double9& MetricalMatrix)
   {
     for (int i = 0; i < 9; i += 4) {
       if (MetricalMatrix[i] <= 0.) throw corrupt_metrical_matrix;
@@ -241,7 +239,7 @@ namespace cctbx { namespace uctbx {
     Miller::Index MaxMIx;
     int i, j;
     for(i=0;i<3;i++) {
-      Vec3 u, v, uxv;
+      double3 u, v, uxv;
       for(j=0;j<3;j++) u[j] = 0.; u[(i + 1) % 3] = 1.;
       for(j=0;j<3;j++) v[j] = 0.; v[(i + 2) % 3] = 1.;
       uxv = CrossG(1., R_G, u, v); // Since length of uxv is not used
@@ -253,11 +251,11 @@ namespace cctbx { namespace uctbx {
     return MaxMIx;
   }
 
-  UnitCell UnitCell::ChangeBasis(const Mx33& InvCBMxR, double RBF) const
+  UnitCell UnitCell::ChangeBasis(const double9& InvCBMxR, double RBF) const
   {
-    Mx33 R = InvCBMxR;
+    double9 R = InvCBMxR;
     if (RBF != 0.) rangei(9) R[i] /= RBF;
-    Mx33 RtGR = getRtGR(G, R);
+    double9 RtGR = getRtGR(G, R);
     return UnitCell(RtGR);
   }
 
