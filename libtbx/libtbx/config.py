@@ -3,6 +3,7 @@ import libtbx.path
 from libtbx.optparse_wrapper import option_parser
 from libtbx import introspection
 from libtbx.utils import UserError
+import shutil
 import pickle
 from cStringIO import StringIO
 import sys, os
@@ -856,7 +857,7 @@ class environment:
       else:
         target_file = source_file + suffix
       remove_or_rename(target_file)
-      try: open(target_file, "wb").write(open(source_file, "rb").read())
+      try: shutil.copy(source_file, target_file)
       except IOError: pass
 
   def assemble_pythonpath(self):
