@@ -28,6 +28,16 @@ class labels:
       self.resName, self.chainID,
       self.resSeq, self.iCode, self.segID]])
 
+  def pdb_format(self):
+    result = ""
+    if (self.MODELserial is not None and self.MODELserial != 0):
+      result += "MODEL     %4d: " % self.MODELserial
+    result = '"%-4.4s%1.1s%-3.3s %1.1s%4d%1.1s"' % (
+      self.name,self.altLoc,self.resName,self.chainID,self.resSeq,self.iCode)
+    if (self.segID is not None and len(self.segID.strip()) != 0):
+      result += ' ... segID="%s"' % self.segID
+    return result
+
   def is_in_same_chain(self, other):
     if (self.chainID != other.chainID): return False
     if (self.chainID == " " and self.segID != other.segID): return False

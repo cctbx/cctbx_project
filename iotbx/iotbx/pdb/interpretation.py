@@ -350,7 +350,7 @@ class stage_1:
         print >> f, prefix + "... (following %d not shown)" % (
           len(i_seqs)-max_lines)
         break
-      print >> f, prefix + str(self.atom_attributes_list[i_seq])
+      print >> f, prefix + self.atom_attributes_list[i_seq].pdb_format()
 
 class altLoc_grouping:
 
