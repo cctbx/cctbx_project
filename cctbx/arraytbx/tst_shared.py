@@ -158,4 +158,9 @@ p = pickle.dumps(a)
 b = pickle.loads(p)
 assert b.size() == 3
 assert tuple(b) == (1,2,3)
+a = shared.complex_double((1+2j, 2+3j, 4+5j))
+p = pickle.dumps(a)
+b = pickle.loads(p)
+assert tuple(b) == (1+2j, 2+3j, 4+5j)
+assert b.size() == 3
 print "OK"

@@ -115,6 +115,44 @@ namespace cctbx { namespace af {
       }
     };
 
+    template <typename ElementType>
+    struct complex_picklers
+    {
+      static
+      boost::python::ref
+      getstate(
+        shared<std::complex<ElementType> > const& a,
+        std::size_t size_per_element,
+        const char* fmt)
+      {
+        getstate_manager mgr(a.size(), 2 * size_per_element);
+        for(std::size_t i=0;i<a.size();i++) {
+          sprintf(mgr.str_end, fmt, a[i].real(), a[i].imag());
+          mgr.advance();
+        }
+        return boost::python::ref(mgr.finalize());
+      }
+
+      static
+      void
+      setstate(
+        shared<std::complex<ElementType> >& a,
+        boost::python::ref state,
+        const char* fmt)
+      {
+        setstate_manager mgr(a.size(), state.get());
+        a.reserve(mgr.a_capacity);
+        for(std::size_t i=0;i<mgr.a_capacity;i++) {
+          ElementType val_real;
+          ElementType val_imag;
+          cctbx_assert(sscanf(mgr.str_ptr, fmt, &val_real, &val_imag) == 2);
+          mgr.advance();
+          a.push_back(std::complex<ElementType>(val_real, val_imag));
+        }
+        mgr.finalize();
+      }
+    };
+
   } // namespace <anonymous>
 
   boost::python::ref shared_int_getstate(shared<int> const& a)
@@ -155,6 +193,19 @@ namespace cctbx { namespace af {
   void shared_double_setstate(shared<double>& a, boost::python::ref state)
   {
     num_picklers<double>::setstate(a, state, "%lg");
+  }
+
+  boost::python::ref shared_complex_double_getstate(
+    shared<std::complex<double> > const& a)
+  {
+    return complex_picklers<double>::getstate(a, 18, "%.12g,%.12g");
+  }
+
+  void shared_complex_double_setstate(
+    shared<std::complex<double> >& a,
+    boost::python::ref state)
+  {
+    complex_picklers<double>::setstate(a, state, "%lg,%lg");
   }
 
 }} // namespace cctbx::af
