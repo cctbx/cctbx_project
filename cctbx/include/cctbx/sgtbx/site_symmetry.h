@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of cctbx/sgtbx/coordinates.h (rwgk)
- */
-
 #ifndef CCTBX_SGTBX_SITE_SYMMETRY_H
 #define CCTBX_SGTBX_SITE_SYMMETRY_H
 
@@ -54,11 +45,105 @@ namespace cctbx { namespace sgtbx {
       af::shared<rt_mx> matrices_;
   };
 
-  //! Numerically robust algorithm for the determination of site-symmetries.
-  class site_symmetry
+  class site_symmetry_ops
   {
     public:
-      //! Default constructor. Calling certain methods may cause crashes!
+      //! Default constructor.
+      site_symmetry_ops() : special_op_(0, 0) {}
+
+      //! Special position operation.
+      /*! This operation is used to compute site_symmetry::exact_site() from
+          site_symmetry::original_site(). It satisfies the following two
+          conditions:
+          <ul>
+          <li>special_op() * original_site() = exact_site()
+          <li>special_op() * exact_site() = exact_site()
+          </ul>
+       */
+      rt_mx const&
+      special_op() const { return special_op_; }
+
+      //! Symmetry matrices of site symmetry point group.
+      af::shared<rt_mx> const&
+      matrices() const { return matrices_; }
+
+      //! Tests if the site symmetry is point group 1.
+      bool
+      is_point_group_1() const
+      {
+        return matrices_.size() == 1;
+      }
+
+      /*! \brief Tests if the given anisotropic displacement parameters
+          u_star are compatible with the site symmetry.
+       */
+      /*! The condition
+          <p>
+          r * u_star * r.transposed() = u_star
+          <p>
+          is evaluated for all rotation parts r of the site symmetry.
+       */
+      template <class FloatType>
+      bool
+      is_compatible_u_star(scitbx::sym_mat3<FloatType> const& u_star,
+                           FloatType tolerance=1.e-6) const;
+
+      /*! \brief Averages symmetrically equivalent u_star tensors to
+          obtain a tensor that satisfies the symmetry constraints.
+       */
+      /*! The averaged tensor is equivalent to beta_inv
+          of Giacovazzo, Fundamentals of Crystallography 1992,
+          p. 189.
+       */
+      template <class FloatType>
+      scitbx::sym_mat3<FloatType>
+      average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const;
+
+    protected:
+      rt_mx special_op_;
+      af::shared<rt_mx> matrices_;
+  };
+
+  template <class FloatType>
+  bool
+  site_symmetry_ops::
+  is_compatible_u_star(
+    scitbx::sym_mat3<FloatType> const& u_star,
+    FloatType tolerance) const
+  {
+    FloatType scaled_tolerance = af::max_absolute(u_star) * tolerance;
+    for (std::size_t i=0;i<matrices_.size();i++) {
+      scitbx::mat3<FloatType>
+        r = matrices_[i].r()
+              .as_floating_point(scitbx::type_holder<FloatType>());
+      if (!u_star.const_ref().all_approx_equal(
+           u_star.tensor_transform(r).const_ref(), scaled_tolerance)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  template <class FloatType>
+  scitbx::sym_mat3<FloatType>
+  site_symmetry_ops::
+  average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const
+  {
+    scitbx::sym_mat3<FloatType> sum_r_u_rt(0,0,0,0,0,0);
+    for (std::size_t i=0;i<matrices_.size();i++) {
+      scitbx::mat3<FloatType>
+        r = matrices_[i].r()
+              .as_floating_point(scitbx::type_holder<FloatType>());
+      sum_r_u_rt += u_star.tensor_transform(r);
+    }
+    return sum_r_u_rt / static_cast<FloatType>(matrices_.size());
+  }
+
+  //! Numerically robust algorithm for the determination of site-symmetries.
+  class site_symmetry : public site_symmetry_ops
+  {
+    public:
+      //! Default constructor. Some data members are not initialized!
       site_symmetry() {}
 
       //! Determines the site symmetry of original_postion.
@@ -163,25 +248,6 @@ namespace cctbx { namespace sgtbx {
       int
       multiplicity() const { return multiplicity_; }
 
-      //! Special position operation.
-      /*! This operation is used to compute exact_site() from
-          original_site(). It satisfies the following two
-          conditions:
-          <ul>
-          <li>special_op() * original_site() = exact_site()
-          <li>special_op() * exact_site() = exact_site()
-          </ul>
-       */
-      rt_mx const&
-      special_op() const { return special_op_; }
-
-      //! Tests if the site symmetry is point group 1.
-      bool
-      is_point_group_1() const
-      {
-        return multiplicity_ == space_group_.order_z();
-      }
-
       //! Oriented and translated site-symmetry point group.
       /*! Not available in Python.
        */
@@ -201,39 +267,7 @@ namespace cctbx { namespace sgtbx {
       af::shared<rt_mx>
       unique_ops();
 
-      /*! \brief Tests if the given anisotropic displacement parameters
-          u_star are compatible with the site symmetry.
-       */
-      /*! The condition
-          <p>
-          r * u_star * r.transposed() = u_star
-          <p>
-          is evaluated for all rotation parts r of the site symmetry.
-       */
-      template <class FloatType>
-      bool
-      is_compatible_u_star(scitbx::sym_mat3<FloatType> const& u_star,
-                           FloatType tolerance=1.e-6) const;
-
-      /*! \brief Averages symmetrically equivalent u_star tensors to
-          obtain a tensor that satisfies the symmetry constraints.
-       */
-      /*! The averaged tensor is equivalent to beta_inv
-          of Giacovazzo, Fundamentals of Crystallography 1992,
-          p. 189.
-       */
-      template <class FloatType>
-      scitbx::sym_mat3<FloatType>
-      average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const;
-
-      //! Symmetry matrices of site symmetry point group.
-      af::shared<rt_mx> const&
-      matrices() const { return point_group_.matrices(); }
-
-    private:
-#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1495
-      bool dummy_;
-#endif
+    protected:
       uctbx::unit_cell unit_cell_;
       sgtbx::space_group space_group_;
       fractional<> original_site_;
@@ -242,45 +276,10 @@ namespace cctbx { namespace sgtbx {
       double shortest_distance_sq_;
       rt_point_group point_group_;
       int multiplicity_;
-      rt_mx special_op_;
       fractional<> exact_site_;
 
       void build_special_op();
   };
-
-  template <class FloatType>
-  bool
-  site_symmetry::
-  is_compatible_u_star(scitbx::sym_mat3<FloatType> const& u_star,
-                       FloatType tolerance) const
-  {
-    FloatType scaled_tolerance = af::max_absolute(u_star) * tolerance;
-    for (std::size_t i=0;i<point_group_.matrices().size();i++) {
-      scitbx::mat3<FloatType>
-        r = point_group_.matrices()[i].r()
-              .as_floating_point(scitbx::type_holder<FloatType>());
-      if (!u_star.const_ref().all_approx_equal(
-           u_star.tensor_transform(r).const_ref(), scaled_tolerance)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  template <class FloatType>
-  scitbx::sym_mat3<FloatType>
-  site_symmetry::
-  average_u_star(scitbx::sym_mat3<FloatType> const& u_star) const
-  {
-    scitbx::sym_mat3<FloatType> sum_r_u_rt(0,0,0,0,0,0);
-    for (std::size_t i=0;i<point_group_.matrices().size();i++) {
-      scitbx::mat3<FloatType>
-        r = point_group_.matrices()[i].r()
-              .as_floating_point(scitbx::type_holder<FloatType>());
-      sum_r_u_rt += u_star.tensor_transform(r);
-    }
-    return sum_r_u_rt / FloatType(point_group_.matrices().size());
-  }
 
 }} // namespace cctbx::sgtbx
 
