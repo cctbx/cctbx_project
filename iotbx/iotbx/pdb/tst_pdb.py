@@ -1,12 +1,15 @@
+from iotbx import pdb
+import iotbx.pdb.remark_290_interpretation
+import iotbx.pdb.atom
+import iotbx.pdb.interpretation
 import iotbx.pdb.xray_structure
-from iotbx.pdb import remark_290_interpretation
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 import libtbx.itertbx
 from cStringIO import StringIO
-import sys
+import sys, os
 
 def exercise_format_records():
   crystal_symmetry = crystal.symmetry(
@@ -46,8 +49,8 @@ LINK        MN    MN   391                 OE2 GLU   217            2565
       assert _2 == [' OE2', ' ', 'GLU', ' ', 217, ' ', '  2565']
 
 def exercise_remark_290_interpretation():
-  symmetry_operators = remark_290_interpretation.extract_symmetry_operators(
-    remark_290_records=remark_290_interpretation.example.splitlines())
+  symmetry_operators=pdb.remark_290_interpretation.extract_symmetry_operators(
+    remark_290_records=pdb.remark_290_interpretation.example.splitlines())
   assert symmetry_operators is not None
   assert len(symmetry_operators) == 4
   assert symmetry_operators[0] == sgtbx.rt_mx("X,Y,Z")
@@ -61,13 +64,88 @@ def exercise_remark_290_interpretation():
                                    (" 3 729 ", "-x+2,1/2+y-3,1/2-z+4"),
                                    ("_3729", None),
                                    ("37_29", None)]:
-    sym_op = remark_290_interpretation.get_link_symmetry_operator(
+    sym_op = pdb.remark_290_interpretation.get_link_symmetry_operator(
       symmetry_operators=symmetry_operators,
       link_sym=link_sym)
     if (sym_op is None):
       assert expected_sym_op is None
     else:
       assert sym_op == sgtbx.rt_mx(expected_sym_op)
+
+def exercise_atom():
+  for lbls in [pdb.atom.labels(),
+               pdb.atom.labels_from_string(" C  ,,,,,,,"),
+               pdb.atom.labels_from_string(" C  ,A,GLY,C,1,I,S,4")]:
+    assert str(lbls) == str(pdb.atom.labels_from_string(str(lbls)))
+  atom_etc_records = """\
+ATOM     10  N  ACYS "   6       4.535   4.190  -0.757  1.00  0.05      1ETN N1+
+SIGATM   10  N  ACYS "   6       0.010   0.210   0.310  0.02  0.03      1ETN N1+
+ANISOU   10  N  ACYS "   6      441    580    402     48    -72    -88  1ETN N1+
+SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
+""".splitlines()
+  attr = pdb.atom.attributes()
+  attr.set_from_ATOM_record(pdb.parser.pdb_record(atom_etc_records[0]))
+  attr.set_from_SIGATM_record(pdb.parser.pdb_record(atom_etc_records[1]))
+  attr.set_from_ANISOU_record(pdb.parser.pdb_record(atom_etc_records[2]))
+  attr.set_from_SIGUIJ_record(pdb.parser.pdb_record(atom_etc_records[3]))
+  assert str(attr) == " N  ,A,CYS,\",6, ,1ETN,None"
+  s = StringIO()
+  attr.show(f=s, prefix="  ")
+  assert s.getvalue() == """\
+  name:        " N  "
+  altLoc:      "A"
+  resName:     "CYS"
+  chainID:     "\\""
+  resSeq:      6
+  iCode:       " "
+  segID:       "1ETN"
+  element:     " N"
+  charge:      "1+"
+  coordinates: (4.535, 4.19, -0.757)
+  sigCoor:     (0.01, 0.21, 0.31)
+  occupancy:   1
+  sigOcc:      0.02
+  tempFactor:  0.05
+  sigTemp:     0.03
+  Ucart:       (0.0441, 0.058, 0.0402, 0.0048, -0.0072, -0.0088)
+  sigUcart:    (0.0003, 0.0002, 0.0008, 0.0003, 0.0008, 0.0006)
+"""
+
+def exercise_interpretation(verbose=0, quick=0001):
+  pdb_dir = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
+    "regression", "pdb")
+  if (not os.path.isdir(pdb_dir)): return
+  for file_name in os.listdir(pdb_dir):
+    if (    not file_name.endswith(".pdb")
+        and not file_name.endswith(".ent")): continue
+    if (0 or verbose):
+      print file_name
+    stage_1 = pdb.interpretation.stage_1(
+      file_name=os.path.join(pdb_dir, file_name))
+    sel_cache = stage_1.selection_cache()
+    sel_name = sel_cache.get_name(" CA ")
+    sel_altLoc = sel_cache.get_altLoc("A")
+    sel_resName = sel_cache.get_resName("?L?")
+    sel_chainID = sel_cache.get_chainID("A")
+    sel_resSeq = sel_cache.get_resSeq(1)
+    sel_iCode = sel_cache.get_iCode("A")
+    sel_segID = sel_cache.get_segID("    ")
+    sel_MODELserial = sel_cache.get_MODELserial(1)
+    sel_element = sel_cache.get_element(" C")
+    sel_charge = sel_cache.get_charge("2+")
+    if (0 or verbose):
+      print "  n_seq:", len(stage_1.atom_attributes_list)
+      print "  sel_name:", [sel.size() for sel in sel_name]
+      print "  sel_altLoc:", [sel.size() for sel in sel_altLoc]
+      print "  sel_resName:", [sel.size() for sel in sel_resName]
+      print "  sel_chainID:", [sel.size() for sel in sel_chainID]
+      print "  sel_resSeq:", [sel.size() for sel in sel_resSeq]
+      print "  sel_iCode:", [sel.size() for sel in sel_iCode]
+      print "  sel_segID:", [sel.size() for sel in sel_segID]
+      print "  sel_MODELserial:", [sel.size() for sel in sel_MODELserial]
+      print "  sel_element:", [sel.size() for sel in sel_element]
+      print "  sel_charge:", [sel.size() for sel in sel_charge]
+    if (quick): break
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(
@@ -101,10 +179,12 @@ def exercise_xray_structure(anisotropic_flag, verbose=0):
       assert abs(regression.y_intercept()) < 0.1
 
 def run():
-  verbose = "--Verbose" in sys.argv[1:]
+  verbose = "--verbose" in sys.argv[1:]
   exercise_format_records()
   exercise_remark_290_interpretation()
   exercise_parser()
+  exercise_atom()
+  exercise_interpretation(verbose=verbose)
   for anisotropic_flag in (00000, 0001):
     exercise_xray_structure(anisotropic_flag, verbose=verbose)
   print "OK"

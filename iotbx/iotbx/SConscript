@@ -1,0 +1,12 @@
+Import("env_etc")
+if (not env_etc.no_boost_python):
+  Import("env_no_includes_boost_python_ext")
+  env = env_no_includes_boost_python_ext.Copy()
+  env_etc.include_registry.append(
+    env=env,
+    paths=[env_etc.libtbx_include,
+           env_etc.boost_include,
+           env_etc.python_include])
+  env.SharedLibrary(
+    target="#libtbx/iotbx_wildcard_ext",
+    source=["wildcard_ext.cpp"])

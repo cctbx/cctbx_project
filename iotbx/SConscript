@@ -58,6 +58,7 @@ if (not env_etc.no_boost_python):
 
   Export("env_iotbx_boost_python_ext")
 
+  SConscript("iotbx/SConscript")
   SConscript("detectors/SConscript")
   SConscript("mtz/boost_python/SConscript")
   SConscript("xplor/boost_python/SConscript")
