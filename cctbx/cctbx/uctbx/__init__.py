@@ -18,9 +18,9 @@ class _unit_cell(boost.python.injector, ext.unit_cell):
   def __str__(self):
     return "(%.6g, %.6g, %.6g, %.6g, %.6g, %.6g)" % self.parameters()
 
-  def show_parameters(self, f=None):
+  def show_parameters(self, f=None, prefix="Unit cell: "):
     if (f is None): f = sys.stdout
-    print >> f, "Unit cell:", str(self)
+    print >> f, prefix + str(self)
 
   def minimum_reduction(self, iteration_limit=None,
                               multiplier_significant_change_test=None,
