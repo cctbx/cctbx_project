@@ -90,8 +90,7 @@ class package:
 
   def _resolve_dependencies(self, registry):
     if (self.name in registry.dict):
-      raise UserError("Dependency cycle detected: "
-        + str(registry.list) + " + " + self.name)
+      return
     registry.append(self.name, self)
     if (self.config is not None):
       try:
