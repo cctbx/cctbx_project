@@ -38,11 +38,13 @@ class wilson_plot:
 
   def get_xy_plot_info(self):
     r = empty()
-    r.title = "Wilson Plot: " + self.info
-    r.xList = list(self.x)
-    r.yList = list(self.y)
+    r.title = "Wilson Plot"
+    if (self.info != 0):
+      r.title += ": " + str(self.info)
+    r.x = self.x
+    r.y = self.y
     r.xLegend = "(sin(theta)/lambda)^2"
-    r.Legend = "ln(<Fobs^2>/<Fcalc^2>)"
+    r.yLegend = "ln(<Fobs^2>/<Fcalc^2>)"
     r.b = self.fit.b()
     r.m = self.fit.m()
     r.cc = self.fit.cc()
