@@ -370,20 +370,18 @@ namespace {
     }
   }
 
-  // XXX
-  void
-  debug_sfmap(
+  sftbx::sampled_model_density<double>
+  py_sample_model_density(
     const uctbx::UnitCell& ucell,
-    af::shared<ex_xray_scatterer> sites)
+    const af::shared<ex_xray_scatterer>& sites,
+    double max_q,
+    double resolution_factor,
+    int max_prime,
+    const af::int3& mandatory_factors)
   {
-    sftbx::exponent_table<double> et1(-10);
-    et1(-2.);
-    double max_q = ucell.Q(Miller::Index(11,13,17));
-    double resolution_factor = 1/3.;
-    sftbx::sampled_density<double> sd1;
-    sftbx::sampled_density<double> sd2(
+    return sftbx::sample_model_density<double>(
       ucell, sites.const_ref(),
-      max_q, resolution_factor, af::grid<3>(33,39,51));
+      max_q, resolution_factor, max_prime, mandatory_factors);
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
@@ -450,6 +448,11 @@ namespace {
     py_XrayScatterer(this_module, "XrayScatterer");
     python::export_converters(py_XrayScatterer);
 
+    class_builder<sftbx::sampled_model_density<double> >
+    py_sampled_model_density(this_module, "sampled_model_density");
+
+    this_module.def(py_sample_model_density, "sample_model_density");
+
     this_module.def(py_StructureFactor_plain, "StructureFactor");
     this_module.def(py_StructureFactor_iso,   "StructureFactor");
     this_module.def(py_StructureFactor_aniso, "StructureFactor");
@@ -512,6 +515,23 @@ namespace {
     py_XrayScatterer.def(
       xray_scatterer_copy, "copy");
 
+    py_sampled_model_density.def(constructor<>());
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::max_q,
+                                            "max_q");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::resolution_factor,
+                                            "resolution_factor");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::quality_factor,
+                                            "quality_factor");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::wing_cutoff,
+                                            "wing_cutoff");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::u_extra,
+                                            "u_extra");
+
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
     this_module.def(py_rms_coordinates_shift, "rms_coordinates");
@@ -547,8 +567,6 @@ namespace {
     this_module.def(unpack_parameters_cart, "unpack_parameters");
     this_module.def(flatten, "flatten");
     this_module.def(dT_dX_inplace_frac_as_cart, "dT_dX_inplace_frac_as_cart");
-
-    this_module.def(debug_sfmap, "debug_sfmap");
   }
 
 }

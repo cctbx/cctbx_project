@@ -15,7 +15,19 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
     anisotropic_displacement_parameters=adp)
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
-  sftbx.debug_sfmap(xtal.UnitCell, xtal.Sites)
+  d_min = 1.
+  max_q = 1. / (d_min**2)
+  resolution_factor = 1./3
+  max_prime = 5
+  mandatory_grid_factors = xtal.SgOps.refine_gridding()
+  sampled_density = sftbx.sample_model_density(
+    xtal.UnitCell, xtal.Sites,
+    max_q, resolution_factor, max_prime, mandatory_grid_factors)
+  print "max_q:", sampled_density.max_q()
+  print "resolution_factor:", sampled_density.resolution_factor()
+  print "quality_factor:", sampled_density.quality_factor()
+  print "wing_cutoff:", sampled_density.wing_cutoff()
+  print "u_extra:", sampled_density.u_extra()
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
