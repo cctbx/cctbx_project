@@ -1,5 +1,6 @@
 from boost import rational
 from libtbx.test_utils import approx_equal
+import pickle
 
 def exercise_int():
   r = rational.int()
@@ -73,6 +74,13 @@ def exercise_int():
   try: int(r)
   except: pass
   else: raise AssertionError, "Exception expected"
+  for n in xrange(-5,6):
+    for d in xrange(1,10):
+      r = rational.int(n, d)
+      p = pickle.dumps(r)
+      l = pickle.loads(p)
+      assert l == r
+      assert str(l) == str(r)
 
 def exercise_functions():
   assert rational.gcd(8,6) == 2

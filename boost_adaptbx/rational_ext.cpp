@@ -137,6 +137,8 @@ namespace {
         .def("__gt__", gt_ri)
         .def("__le__", le_ri)
         .def("__ge__", ge_ri)
+        .enable_pickling()
+        .def("__getinitargs__", as_tuple)
       ;
     }
   };
