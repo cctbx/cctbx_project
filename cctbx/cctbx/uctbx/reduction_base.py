@@ -3,7 +3,7 @@ from cctbx import matrix
 
 class gruber_parameterization:
 
-  def __init__(self, unit_cell, relative_epsilon=1.e-5):
+  def __init__(self, unit_cell, relative_epsilon=None):
     if (relative_epsilon is None): relative_epsilon = 1.e-5
     sym_mat3 = unit_cell.metrical_matrix()
     self.a = sym_mat3[0]
@@ -90,11 +90,11 @@ class gruber_parameterization:
     gt = self.eps_gt
     a,b,c,d,e,f = (self.a,self.b,self.c,self.d,self.e,self.f)
     if (eq(d, b)):
-      if (gt(f, 2*e)): return 00000
+      if (gt(f, e+e)): return 00000
     if (eq(e, a)):
-      if (gt(f, 2*d)): return 00000
+      if (gt(f, d+d)): return 00000
     if (eq(f, a)):
-      if (gt(e, 2*d)): return 00000
+      if (gt(e, d+d)): return 00000
     if (eq(d, -b)):
       if (not eq(f, 0)): return 00000
     if (eq(e, -a)):
@@ -102,5 +102,5 @@ class gruber_parameterization:
     if (eq(f, -a)):
       if (not eq(e, 0)): return 00000
     if (eq(d+e+f+a+b, 0)):
-      if (gt(2*(a+e)+f, 0)): return 00000
+      if (gt(a+a+e+e+f, 0)): return 00000
     return 0001
