@@ -9,14 +9,15 @@
  */
 
 #include <scitbx/math/linear_regression.h>
+#include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
+#include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
-#include <scitbx/array_family/boost_python/small_conversions.h>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 
@@ -33,6 +34,21 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_std_string();
 
 namespace {
+
+  void register_scitbx_tuple_mappings()
+  {
+    using namespace scitbx::boost_python::container_conversions;
+
+    tuple_mapping_fixed_size<int3>();
+    tuple_mapping_fixed_size<int9>();
+    tuple_mapping_fixed_size<long3>();
+    tuple_mapping_fixed_size<double2>();
+    tuple_mapping_fixed_size<double3>();
+    tuple_mapping_fixed_size<double6>();
+    tuple_mapping_fixed_size<double9>();
+
+    tuple_mapping_fixed_capacity<flex_grid_default_index_type>();
+  }
 
   struct linear_regression_core_wrappers
   {
@@ -76,11 +92,9 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    wrap_flex_grid();
-    register_flex_grid_default_index_type_conversions();
+    register_scitbx_tuple_mappings();
 
-    linear_regression_core_wrappers::wrap();
-    linear_regression_wrappers::wrap();
+    wrap_flex_grid();
 
     wrap_flex_bool();
     wrap_flex_size_t();
@@ -96,6 +110,9 @@ namespace {
     default_c_grid_flex_conversions<float>();
     default_c_grid_flex_conversions<double>();
     default_c_grid_flex_conversions<std::complex<double> >();
+
+    linear_regression_core_wrappers::wrap();
+    linear_regression_wrappers::wrap();
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
