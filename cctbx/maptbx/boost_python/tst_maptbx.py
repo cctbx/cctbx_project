@@ -222,6 +222,67 @@ def exercise_eight_point_interpolation():
             [int(i+offs+.5)%n for i,n in zip(index,map.focus())])
         v = 1-v
 
+def exercise_non_crystallographic_eight_point_interpolation():
+  unit_cell=130.45,130.245,288.405,90,90,120
+  unit_cell_gridding_n=144,144,360
+  grid_cell=uctbx.unit_cell((130.45/144,130.245/144,388.405/360,90,90,120))
+  grid_mat = grid_cell.fractionalization_matrix()
+  map=flex.double([
+    -0.069785, -0.109740, -0.172220, -0.209010, -0.255220, -0.285670,
+    -0.303130, -0.221400, -0.136640, -0.121530, -0.215260, -0.292640,
+    -0.498500, -0.371540, -0.180660, -0.093766, -0.200360, -0.334720,
+    -0.356690, -0.330580, -0.249670, -0.204200, -0.264490, -0.320590,
+    -0.190610, -0.302730, -0.375040, -0.377540, -0.327030, -0.219010,
+    0.060113, -0.023043, -0.185520, -0.311580, -0.395500, -0.435890,
+    -0.181560, -0.157460, -0.223360, -0.318560, -0.405230, -0.414470,
+    -0.479920, -0.355250, -0.260400, -0.264970, -0.357940, -0.414640,
+    -0.362330, -0.292680, -0.244540, -0.294960, -0.416090, -0.486070,
+    -0.111790, -0.173040, -0.295180, -0.440520, -0.506410, -0.444720,
+    0.077020, 0.038778, -0.054072, -0.178180, -0.323440, -0.434550,
+    -0.015310, -0.030401, -0.141110, -0.275890, -0.399010, -0.461390,
+    -0.241520, -0.209370, -0.248690, -0.322660, -0.384480, -0.383160,
+    -0.209260, -0.185350, -0.221370, -0.317920, -0.396670, -0.400010,
+    -0.001700, -0.066179, -0.224020, -0.427730, -0.515120, -0.456980,
+    0.015884, 0.042340, 0.061897, -0.020660, -0.193310, -0.338580,
+    0.034724, 0.063173, 0.054727, -0.019280, -0.169690, -0.341410,
+    0.026087, -0.022744, -0.092896, -0.141160, -0.186520, -0.249360,
+    0.052272, -0.015214, -0.111030, -0.175570, -0.180900, -0.163140,
+    0.093106, 0.010392, -0.141450, -0.299110, -0.328730, -0.249500])
+  map.resize(flex.grid((-1,-2,-1),(3,3,5)))
+  for site_cart,expected_result in ([(0.468661,-1.549268,3.352108),-0.333095],
+                                    [(0.624992,1.553980,1.205578),-0.187556],
+                                    [(0.278175,0.968454,2.578265),-0.375068],
+                                    [(0.265198,-1.476055,0.704381),-0.147061],
+                                    [(1.296042,0.002101,3.459270),-0.304401],
+                                    [(0.296189,-1.346603,2.935777),-0.296395],
+                                    [(0.551586,-1.284371,3.202145),-0.363263],
+                                    [(0.856542,-0.782700,-0.985020),-0.106925],
+                                    [(0.154407,1.078936,-0.917551),-0.151128]):
+    assert approx_equal(maptbx.non_crystallographic_eight_point_interpolation(
+      map=map,
+      gridding_matrix=grid_mat,
+      site_cart=site_cart,
+      allow_out_of_bounds=False,
+      out_of_bounds_substitute_value=0), expected_result)
+  for x in range(0,2):
+    for y in range(-1,2):
+      for z in range(0,4):
+        assert approx_equal(
+          maptbx.non_crystallographic_eight_point_interpolation(
+            map,
+            grid_mat,
+            grid_cell.orthogonalize((x,y,z))), map[x,y,z])
+  try:
+    val = maptbx.non_crystallographic_eight_point_interpolation(
+      map, grid_mat, (5,5,5))
+  except RuntimeError, e:
+    assert str(e) == \
+      "cctbx Error: non_crystallographic_eight_point_interpolation:" \
+      " point required for interpolation is out of bounds."
+  else: raise RuntimeError("Exception expected.")
+  assert approx_equal(maptbx.non_crystallographic_eight_point_interpolation(
+    map, grid_mat, (5,5,5), True, -123), -123)
+
 def run():
   exercise_copy()
   exercise_statistics()
@@ -232,6 +293,7 @@ def run():
   exercise_pymol_interface()
   exercise_structure_factors()
   exercise_eight_point_interpolation()
+  exercise_non_crystallographic_eight_point_interpolation()
   print "OK"
 
 if (__name__ == "__main__"):

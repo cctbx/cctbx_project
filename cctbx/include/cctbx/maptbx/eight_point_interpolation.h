@@ -33,6 +33,20 @@ namespace cctbx { namespace maptbx {
         }
       }
 
+      get_corner(
+        scitbx::mat3<FloatType> const& gridding_matrix,
+        scitbx::vec3<FloatType> const& site_cart)
+      {
+        scitbx::vec3<FloatType> grid_float = gridding_matrix * site_cart;
+        for(std::size_t i=0;i<3;i++) {
+          SignedIntType ixn = scitbx::math::float_int_conversions<
+            FloatType, SignedIntType>::ifloor(grid_float[i]);
+          i_grid[i] = ixn;
+          weights_[i][1] = grid_float[i] - static_cast<FloatType>(ixn);
+          weights_[i][0] = 1 - weights_[i][1];
+        }
+      }
+
       FloatType
       weight(iv_t s0, iv_t s1, iv_t s2) const
       {
@@ -91,25 +105,39 @@ namespace cctbx { namespace maptbx {
       .closest_grid_point(grid_n);
   }
 
-  // XXX unfinished
   template <typename FloatType>
   FloatType
   non_crystallographic_eight_point_interpolation(
     af::const_ref<FloatType, af::flex_grid<> > const& map,
-    scitbx::vec3<int> const& unit_cell_gridding_n,
-    fractional<FloatType> const& x_frac)
+    scitbx::mat3<FloatType> const& gridding_matrix,
+    scitbx::vec3<FloatType> const& site_cart,
+    bool allow_out_of_bounds=false,
+    FloatType const& out_of_bounds_substitute_value=0)
   {
     CCTBX_ASSERT(map.accessor().nd() == 3);
     typedef typename af::flex_grid<>::index_type index_t;
-    index_t map_index(3, 0); // variable-size array, constructor like std::vector<>
-    // example
+    typedef typename index_t::value_type iv_t;
+    index_t map_index(3, 0);
+    get_corner<index_t, FloatType> corner(gridding_matrix, site_cart);
     for(unsigned i=0;i<3;i++) {
-      map_index[i] = map.accessor().origin()[i];
+      if(corner.i_grid[i] < map.accessor().origin()[i] ||
+         corner.i_grid[i] >= map.accessor().focus()[i]-1) {
+        if(!allow_out_of_bounds) {
+          throw error("non_crystallographic_eight_point_interpolation:"
+                      " point required for interpolation is out of bounds.");
+        }
+        else {
+          return out_of_bounds_substitute_value;
+        }
+      }
     }
-    // map.accessor().focus() == last+1 in each dimension
-    // x_frac[i], i=0..2, fractional coordinates
-    // unit_cell_gridding_n[i], i=0..2, number of grid points per unit cell in each dimension
-    return map(map_index); // no bounds checking!
+    FloatType result = 0;
+    for(iv_t s0=0;s0<2;s0++) { map_index[0] = (corner.i_grid[0] + s0);
+    for(iv_t s1=0;s1<2;s1++) { map_index[1] = (corner.i_grid[1] + s1);
+    for(iv_t s2=0;s2<2;s2++) { map_index[2] = (corner.i_grid[2] + s2);
+      result += map(map_index) * corner.weight(s0,s1,s2);
+    }}}
+    return result;
   }
 
 }} // namespace cctbx::maptbx
