@@ -6,6 +6,8 @@ import sys
 
 float_cut_plane = sgtbx.direct_space_asu_float_cut_plane
 float_asu = sgtbx.direct_space_asu_float_asu
+asu_mapping = sgtbx.direct_space_asu_asu_mapping
+asu_mappings = sgtbx.direct_space_asu_asu_mappings
 
 class direct_space_asu:
 
@@ -91,13 +93,17 @@ class direct_space_asu_with_metric(direct_space_asu):
       points.append(orth([float(e) for e in vertex]))
     return minimum_covering_sphere(points=points, epsilon=epsilon)
 
-  def as_float_asu(self):
+  def as_float_asu(self, is_inside_epsilon=None):
+    if (is_inside_epsilon is None):
+      is_inside_epsilon = 1.e-6
     return float_asu(
       unit_cell=self.unit_cell,
-      facets=[facet.as_float_cut_plane() for facet in self.facets])
+      facets=[facet.as_float_cut_plane() for facet in self.facets],
+      is_inside_epsilon=is_inside_epsilon)
 
-  def add_buffer(self, thickness=None, relative_thickness=None):
-    return self.as_float_asu().add_buffer(
+  def add_buffer(self, thickness=None, relative_thickness=None,
+                       is_inside_epsilon=None):
+    return self.as_float_asu(is_inside_epsilon=is_inside_epsilon).add_buffer(
       thickness=thickness,
       relative_thickness=relative_thickness)
 
