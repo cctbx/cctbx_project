@@ -15,7 +15,6 @@
 #include <scitbx/error.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/tiny_reductions.h>
-#include <scitbx/matrix_multiply.h>
 
 namespace scitbx {
 
@@ -497,11 +496,18 @@ namespace scitbx {
     mat3<NumTypeLhs> const& lhs,
     mat3<NumTypeRhs> const& rhs)
   {
-    mat3<
+    return mat3<
       typename af::binary_operator_traits<
-        NumTypeLhs, NumTypeRhs>::arithmetic> result;
-    matrix_multiply(lhs.begin(), rhs.begin(), 3, 3, 3, result.begin());
-    return result;
+        NumTypeLhs, NumTypeRhs>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[1]*rhs[3]+lhs[2]*rhs[6],
+          lhs[0]*rhs[1]+lhs[1]*rhs[4]+lhs[2]*rhs[7],
+          lhs[0]*rhs[2]+lhs[1]*rhs[5]+lhs[2]*rhs[8],
+          lhs[3]*rhs[0]+lhs[4]*rhs[3]+lhs[5]*rhs[6],
+          lhs[3]*rhs[1]+lhs[4]*rhs[4]+lhs[5]*rhs[7],
+          lhs[3]*rhs[2]+lhs[4]*rhs[5]+lhs[5]*rhs[8],
+          lhs[6]*rhs[0]+lhs[7]*rhs[3]+lhs[8]*rhs[6],
+          lhs[6]*rhs[1]+lhs[7]*rhs[4]+lhs[8]*rhs[7],
+          lhs[6]*rhs[2]+lhs[7]*rhs[5]+lhs[8]*rhs[8]);
   }
 
   //! Matrix * vector product.
@@ -515,11 +521,12 @@ namespace scitbx {
     mat3<NumTypeMatrix> const& lhs,
     af::tiny_plain<NumTypeVector,3> const& rhs)
   {
-    vec3<
+    return vec3<
       typename af::binary_operator_traits<
-        NumTypeMatrix, NumTypeVector>::arithmetic> result;
-    matrix_multiply(lhs.begin(), rhs.begin(), 3, 3, 1, result.begin());
-    return result;
+        NumTypeMatrix, NumTypeVector>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[1]*rhs[1]+lhs[2]*rhs[2],
+          lhs[3]*rhs[0]+lhs[4]*rhs[1]+lhs[5]*rhs[2],
+          lhs[6]*rhs[0]+lhs[7]*rhs[1]+lhs[8]*rhs[2]);
   }
 
   //! Vector * matrix product.
@@ -533,11 +540,12 @@ namespace scitbx {
     af::tiny_plain<NumTypeVector,3> const& lhs,
     mat3<NumTypeMatrix> const& rhs)
   {
-    vec3<
+    return vec3<
       typename af::binary_operator_traits<
-        NumTypeMatrix, NumTypeVector>::arithmetic> result;
-    matrix_multiply(lhs.begin(), rhs.begin(), 1, 3, 3, result.begin());
-    return result;
+        NumTypeMatrix, NumTypeVector>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[1]*rhs[3]+lhs[2]*rhs[6],
+          lhs[0]*rhs[1]+lhs[1]*rhs[4]+lhs[2]*rhs[7],
+          lhs[0]*rhs[2]+lhs[1]*rhs[5]+lhs[2]*rhs[8]);
   }
 
   //! Element-wise multiplication.

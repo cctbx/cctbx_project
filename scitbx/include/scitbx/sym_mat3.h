@@ -168,6 +168,14 @@ namespace scitbx {
         if (d == NumType(0)) throw error("Matrix is not invertible.");
         return co_factor_matrix_transposed() / d;
       }
+
+      //! Tensor transform: c * (*this) * c.transpose()
+      sym_mat3
+      tensor_transform(mat3<NumType> const& c) const;
+
+      //! Tensor transform: c.transpose() * (*this) * c
+      sym_mat3
+      tensor_transpose_transform(mat3<NumType> const& c) const;
   };
 
   // Constructor for mat3.
@@ -178,6 +186,50 @@ namespace scitbx {
               m[3], m[1], m[5],
               m[4], m[5], m[2])
   {}
+
+  // non-inline member function
+  template <typename NumType>
+  sym_mat3<NumType>
+  sym_mat3<NumType>
+  ::tensor_transform(mat3<NumType> const& c) const
+  {
+    mat3<NumType> ct = c * (*this);
+    // The result is guaranteed to be a symmetric matrix.
+    return sym_mat3<NumType>(
+      ct[0]*c[0]+ct[1]*c[1]+ct[2]*c[2],
+      ct[3]*c[3]+ct[4]*c[4]+ct[5]*c[5],
+      ct[6]*c[6]+ct[7]*c[7]+ct[8]*c[8],
+      ct[0]*c[3]+ct[1]*c[4]+ct[2]*c[5],
+      ct[0]*c[6]+ct[1]*c[7]+ct[2]*c[8],
+      ct[3]*c[6]+ct[4]*c[7]+ct[5]*c[8]);
+  }
+
+  // non-inline member function
+  template <typename NumType>
+  sym_mat3<NumType>
+  sym_mat3<NumType>
+  ::tensor_transpose_transform(mat3<NumType> const& c) const
+  {
+    sym_mat3<NumType> const& t = *this;
+    mat3<NumType> ctt( // c.transpose() * (*this)
+      c[0]*t[0]+c[3]*t[3]+c[6]*t[4],
+      c[3]*t[1]+c[0]*t[3]+c[6]*t[5],
+      c[6]*t[2]+c[0]*t[4]+c[3]*t[5],
+      c[1]*t[0]+c[4]*t[3]+c[7]*t[4],
+      c[4]*t[1]+c[1]*t[3]+c[7]*t[5],
+      c[7]*t[2]+c[1]*t[4]+c[4]*t[5],
+      c[2]*t[0]+c[5]*t[3]+c[8]*t[4],
+      c[5]*t[1]+c[2]*t[3]+c[8]*t[5],
+      c[8]*t[2]+c[2]*t[4]+c[5]*t[5]);
+    // The result is guaranteed to be a symmetric matrix.
+    return sym_mat3<NumType>(
+      ctt[0]*c[0]+ctt[1]*c[3]+ctt[2]*c[6],
+      ctt[3]*c[1]+ctt[4]*c[4]+ctt[5]*c[7],
+      ctt[6]*c[2]+ctt[7]*c[5]+ctt[8]*c[8],
+      ctt[0]*c[1]+ctt[1]*c[4]+ctt[2]*c[7],
+      ctt[0]*c[2]+ctt[1]*c[5]+ctt[2]*c[8],
+      ctt[3]*c[2]+ctt[4]*c[5]+ctt[5]*c[8]);
+  }
 
   //! Test equality.
   template <typename NumType>
@@ -344,7 +396,7 @@ namespace scitbx {
     return result;
   }
 
-  //! Matrix * matrix product.
+  //! Symmetric * symmetric matrix product.
   template <typename NumTypeLhs, typename NumTypeRhs>
   inline
   mat3<
@@ -354,16 +406,71 @@ namespace scitbx {
     sym_mat3<NumTypeLhs> const& lhs,
     sym_mat3<NumTypeRhs> const& rhs)
   {
-    mat3<
+    typedef
       typename af::binary_operator_traits<
-        NumTypeLhs, NumTypeRhs>::arithmetic> result;
-    result.fill(0);
-    for(std::size_t i=0;i<3;i++) {
-    for(std::size_t j=0;j<3;j++) {
-    for(std::size_t k=0;k<3;k++) {
-      result(i,j) += lhs(i,k) * rhs(k,j);
-    }}}
-    return result;
+        NumTypeLhs, NumTypeRhs>::arithmetic
+          result_element_type;
+    result_element_type lhs_3__rhs_3_ = lhs[3]*rhs[3];
+    result_element_type lhs_4__rhs_4_ = lhs[4]*rhs[4];
+    result_element_type lhs_5__rhs_5_ = lhs[5]*rhs[5];
+    return mat3<result_element_type>(
+      lhs[0]*rhs[0]+lhs_3__rhs_3_+lhs_4__rhs_4_,
+      lhs[3]*rhs[1]+lhs[0]*rhs[3]+lhs[4]*rhs[5],
+      lhs[4]*rhs[2]+lhs[0]*rhs[4]+lhs[3]*rhs[5],
+      lhs[3]*rhs[0]+lhs[1]*rhs[3]+lhs[5]*rhs[4],
+      lhs[1]*rhs[1]+lhs_3__rhs_3_+lhs_5__rhs_5_,
+      lhs[5]*rhs[2]+lhs[3]*rhs[4]+lhs[1]*rhs[5],
+      lhs[4]*rhs[0]+lhs[5]*rhs[3]+lhs[2]*rhs[4],
+      lhs[5]*rhs[1]+lhs[4]*rhs[3]+lhs[2]*rhs[5],
+      lhs[2]*rhs[2]+lhs_4__rhs_4_+lhs_5__rhs_5_);
+  }
+
+  //! Square * symmetric matrix product.
+  template <typename NumTypeLhs, typename NumTypeRhs>
+  inline
+  mat3<
+    typename af::binary_operator_traits<
+      NumTypeLhs, NumTypeRhs>::arithmetic>
+  operator*(
+    mat3<NumTypeLhs> const& lhs,
+    sym_mat3<NumTypeRhs> const& rhs)
+  {
+    return mat3<
+      typename af::binary_operator_traits<
+        NumTypeLhs, NumTypeRhs>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[1]*rhs[3]+lhs[2]*rhs[4],
+          lhs[1]*rhs[1]+lhs[0]*rhs[3]+lhs[2]*rhs[5],
+          lhs[2]*rhs[2]+lhs[0]*rhs[4]+lhs[1]*rhs[5],
+          lhs[3]*rhs[0]+lhs[4]*rhs[3]+lhs[5]*rhs[4],
+          lhs[4]*rhs[1]+lhs[3]*rhs[3]+lhs[5]*rhs[5],
+          lhs[5]*rhs[2]+lhs[3]*rhs[4]+lhs[4]*rhs[5],
+          lhs[6]*rhs[0]+lhs[7]*rhs[3]+lhs[8]*rhs[4],
+          lhs[7]*rhs[1]+lhs[6]*rhs[3]+lhs[8]*rhs[5],
+          lhs[8]*rhs[2]+lhs[6]*rhs[4]+lhs[7]*rhs[5]);
+  }
+
+  //! Symmetric * square matrix product.
+  template <typename NumTypeLhs, typename NumTypeRhs>
+  inline
+  mat3<
+    typename af::binary_operator_traits<
+      NumTypeLhs, NumTypeRhs>::arithmetic>
+  operator*(
+    sym_mat3<NumTypeLhs> const& lhs,
+    mat3<NumTypeRhs> const& rhs)
+  {
+    return mat3<
+      typename af::binary_operator_traits<
+        NumTypeLhs, NumTypeRhs>::arithmetic>(
+          rhs[0]*lhs[0]+rhs[3]*lhs[3]+rhs[6]*lhs[4],
+          rhs[1]*lhs[0]+rhs[4]*lhs[3]+rhs[7]*lhs[4],
+          rhs[2]*lhs[0]+rhs[5]*lhs[3]+rhs[8]*lhs[4],
+          rhs[3]*lhs[1]+rhs[0]*lhs[3]+rhs[6]*lhs[5],
+          rhs[4]*lhs[1]+rhs[1]*lhs[3]+rhs[7]*lhs[5],
+          rhs[5]*lhs[1]+rhs[2]*lhs[3]+rhs[8]*lhs[5],
+          rhs[6]*lhs[2]+rhs[0]*lhs[4]+rhs[3]*lhs[5],
+          rhs[7]*lhs[2]+rhs[1]*lhs[4]+rhs[4]*lhs[5],
+          rhs[8]*lhs[2]+rhs[2]*lhs[4]+rhs[5]*lhs[5]);
   }
 
   //! Matrix * vector product.
@@ -377,14 +484,12 @@ namespace scitbx {
     sym_mat3<NumTypeMatrix> const& lhs,
     af::tiny_plain<NumTypeVector,3> const& rhs)
   {
-    vec3<
+    return vec3<
       typename af::binary_operator_traits<
-        NumTypeMatrix, NumTypeVector>::arithmetic> result(0,0,0);
-    for(std::size_t r=0;r<3;r++) {
-    for(std::size_t c=0;c<3;c++) {
-      result[r] += lhs(r,c) * rhs[c];
-    }}
-    return result;
+        NumTypeMatrix, NumTypeVector>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[3]*rhs[1]+lhs[4]*rhs[2],
+          lhs[3]*rhs[0]+lhs[1]*rhs[1]+lhs[5]*rhs[2],
+          lhs[4]*rhs[0]+lhs[5]*rhs[1]+lhs[2]*rhs[2]);
   }
 
   //! Vector * matrix product.
@@ -398,14 +503,12 @@ namespace scitbx {
     af::tiny_plain<NumTypeVector,3> const& lhs,
     sym_mat3<NumTypeMatrix> const& rhs)
   {
-    vec3<
+    return vec3<
       typename af::binary_operator_traits<
-        NumTypeMatrix, NumTypeVector>::arithmetic> result(0,0,0);
-    for(std::size_t c=0;c<3;c++) {
-    for(std::size_t r=0;r<3;r++) {
-      result[c] += lhs[r] * rhs(r,c);
-    }}
-    return result;
+        NumTypeMatrix, NumTypeVector>::arithmetic>(
+          lhs[0]*rhs[0]+lhs[1]*rhs[3]+lhs[2]*rhs[4],
+          lhs[1]*rhs[1]+lhs[0]*rhs[3]+lhs[2]*rhs[5],
+          lhs[2]*rhs[2]+lhs[0]*rhs[4]+lhs[1]*rhs[5]);
   }
 
   //! Element-wise multiplication.
