@@ -284,29 +284,94 @@ class manager:
       gradients[j] -= term
     return store(residual_sum=residual_sum, gradients=gradients)
 
-  def show_interactions(self, flags=None, sites_cart=None, i_seq=None, f=None):
+  def show_interactions(self,
+        flags=None,
+        sites_cart=None,
+        site_labels=None,
+        i_seq=None,
+        f=None):
     if (f is None): f = sys.stdout
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
+    if (sites_cart is None):
+      sites_cart = self._sites_cart_used_for_pair_proxies
     if (pair_proxies.bond_proxies is not None):
       for proxy in pair_proxies.bond_proxies.simple:
         if (i_seq is None or i_seq in proxy.i_seqs):
           print >> f, "bond simple:", proxy.i_seqs
-      for proxy in pair_proxies.bond_proxies.asu:
-        if (i_seq is None or i_seq in [proxy.i_seq, proxy.j_seq]):
-          print >> f, "bond asu:", (proxy.i_seq, proxy.j_seq, proxy.j_sym)
+          if (site_labels is not None):
+            for i in proxy.i_seqs:
+              print >> f, " ", site_labels[i]
+          if (sites_cart is not None):
+            print >> f, "  distance_model: %.6g" % geometry_restraints.bond(
+              sites_cart=sites_cart, proxy=proxy).distance_model
+          print >> f, "  distance_ideal: %.6g" % proxy.distance_ideal
+          print >> f, "  weight: %.6g" % proxy.weight
+      if (pair_proxies.bond_proxies.asu.size() > 0):
+        asu_mappings = pair_proxies.bond_proxies.asu_mappings()
+        for proxy in pair_proxies.bond_proxies.asu:
+          if (i_seq is None or i_seq in [proxy.i_seq, proxy.j_seq]):
+            print >> f, "bond asu:", (proxy.i_seq, proxy.j_seq, proxy.j_sym)
+            if (site_labels is not None):
+              for i in (proxy.i_seq, proxy.j_seq):
+                print >> f, " ", site_labels[i]
+              if (sites_cart is not None):
+                print >> f, "  distance_model: %.6g"%geometry_restraints.bond(
+                  sites_cart=sites_cart,
+                  asu_mappings=asu_mappings,
+                  proxy=proxy).distance_model
+            print >> f, "  distance_ideal: %.6g" % proxy.distance_ideal
+            print >> f, "  weight: %.6g" % proxy.weight
     if (self.angle_proxies is not None):
       for proxy in self.angle_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):
           print >> f, "angle:", proxy.i_seqs
+          if (site_labels is not None):
+            for i in proxy.i_seqs:
+              print >> f, " ", site_labels[i]
+          if (sites_cart is not None):
+            print >> f, "  angle_model: %.6g" % geometry_restraints.angle(
+              sites_cart=sites_cart, proxy=proxy).angle_model
+          print >> f, "  angle_ideal: %.6g" % proxy.angle_ideal
+          print >> f, "  weight: %.6g" % proxy.weight
     if (self.dihedral_proxies is not None):
       for proxy in self.dihedral_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):
           print >> f, "dihedral:", proxy.i_seqs
+          if (site_labels is not None):
+            for i in proxy.i_seqs:
+              print >> f, " ", site_labels[i]
+          if (sites_cart is not None):
+            print >> f, "  angle_model: %.6g" % geometry_restraints.dihedral(
+              sites_cart=sites_cart, proxy=proxy).angle_model
+          print >> f, "  angle_ideal: %.6g" % proxy.angle_ideal
+          print >> f, "  weight: %.6g" % proxy.weight
+          print >> f, "  periodicity: %.6g" % proxy.periodicity
     if (self.chirality_proxies is not None):
       for proxy in self.chirality_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):
           print >> f, "chirality:", proxy.i_seqs
+          if (site_labels is not None):
+            for i in proxy.i_seqs:
+              print >> f, " ", site_labels[i]
+          if (sites_cart is not None):
+            print >> f, "  volume_model: %.6g" % geometry_restraints.chirality(
+              sites_cart=sites_cart, proxy=proxy).volume_model
+          print >> f, "  volume_ideal: %.6g" % proxy.volume_ideal
+          print >> f, "  both_signs: %.6g" % proxy.both_signs
+          print >> f, "  weight: %.6g" % proxy.weight
     if (self.planarity_proxies is not None):
       for proxy in self.planarity_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):
           print >> f, "planarity:", tuple(proxy.i_seqs)
+          if (sites_cart is not None):
+            deltas = geometry_restraints.planarity(
+              sites_cart=sites_cart, proxy=proxy).deltas()
+          else:
+            deltas = [None]*proxy.i_seqs.size()
+          for i,weight,delta in zip(proxy.i_seqs, proxy.weights, deltas):
+            print >> f, " ",
+            if (site_labels is not None):
+              print >> f, site_labels[i],
+            if (delta is not None):
+              print >> f, "delta: %8.5f," % delta,
+            print >> f, "weight: %.6g" % weight
