@@ -6,7 +6,7 @@ from cctbx import adptbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import sys
 
 def exercise_scatterer():

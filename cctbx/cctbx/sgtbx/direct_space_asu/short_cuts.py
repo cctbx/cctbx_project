@@ -1,5 +1,5 @@
 from cctbx.sgtbx.direct_space_asu.cut_plane import cut
-from scitbx import rational
+from boost import rational
 
 r1 = rational.int(1)
 

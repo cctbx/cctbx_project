@@ -1,5 +1,5 @@
 from cctbx import math_module
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import math
 
 def exercise():

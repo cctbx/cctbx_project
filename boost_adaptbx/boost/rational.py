@@ -1,6 +1,6 @@
 import boost.python
-ext = boost.python.import_ext("scitbx_rational_ext")
-from scitbx_rational_ext import *
+ext = boost.python.import_ext("boost_rational_ext")
+from boost_rational_ext import *
 
 builtin_int = __builtins__["int"]
 

@@ -1,5 +1,5 @@
 from cctbx.eltbx import henke
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def verify(table, energy, fp, fdp):
   fp_fdp = table.at_ev(energy)

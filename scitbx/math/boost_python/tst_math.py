@@ -2,7 +2,7 @@ from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import eigensystem
 from scitbx.math import gaussian
 from scitbx.array_family import flex
-from scitbx.test_utils import approx_equal, eps_eq
+from libtbx.test_utils import approx_equal, eps_eq
 import pickle
 import StringIO
 import random

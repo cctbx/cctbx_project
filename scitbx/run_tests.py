@@ -1,5 +1,5 @@
 import os, os.path
-from scitbx import test_utils
+from libtbx import test_utils
 
 def run():
   tst_list = (
@@ -15,7 +15,6 @@ def run():
   "$B/array_family/tst_accessors",
   "$D/array_family/boost_python/regression_test.py",
   "$D/array_family/boost_python/tst_flex.py",
-  "$D/boost_python/tst_rational.py",
   "$B/serialization/tst_base_256",
   "$D/scitbx/python_utils/math_utils.py",
   "$D/math/boost_python/tst_math.py",

@@ -9,7 +9,7 @@ from cctbx.development import debug_utils
 from cctbx.development import structure_factor_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import sys
 
 def check_peaks(structure, peak_sites, max_min_dist):

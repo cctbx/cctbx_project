@@ -2,7 +2,7 @@ from math import pi, cos, asin, sqrt
 import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import random
 import sys
 

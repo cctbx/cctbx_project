@@ -1,5 +1,5 @@
 from cctbx.eltbx import sasaki
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def verify(table, wave_length, fp, fdp):
   fp_fdp = table.at_angstrom(wave_length)

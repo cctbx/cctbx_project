@@ -1,5 +1,5 @@
 from iotbx.xplor import XplorMap
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import urllib
 import filecmp
 

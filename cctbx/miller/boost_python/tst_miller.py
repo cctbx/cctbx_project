@@ -6,7 +6,7 @@ from cctbx import miller
 from cctbx.array_family import flex
 from cctbx import utils
 from scitbx.python_utils.complex_math import polar
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 
 def exercise_sym_equiv():
   s = sgtbx.space_group("P 31")

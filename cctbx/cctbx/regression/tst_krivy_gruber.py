@@ -6,7 +6,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import matrix
 from scitbx.python_utils.misc import time_log, get_caller_name
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import math
 import random
 import sys

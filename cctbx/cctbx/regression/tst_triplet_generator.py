@@ -7,7 +7,7 @@ from cctbx.utils import phase_error
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import random
 import math
 import sys

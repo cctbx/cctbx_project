@@ -1,5 +1,5 @@
 import os, os.path
-from scitbx import test_utils
+from libtbx import test_utils
 
 def run():
   tst_list = (

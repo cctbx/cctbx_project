@@ -2,7 +2,7 @@ from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal
 import sys
 import random
 

@@ -7,10 +7,25 @@
 #include <boost/python/str.hpp>
 #include <boost/python/operators.hpp>
 #include <boost/rational.hpp>
-#include <scitbx/array_family/misc_functions.h>
-#include <scitbx/error.h>
 
-namespace scitbx { namespace boost_python { namespace {
+namespace {
+
+  class error : public std::exception
+  {
+    public:
+      explicit
+      error(std::string const& msg) throw() : msg_(msg) {}
+
+      virtual
+      ~error() throw() {}
+
+      virtual
+      const char*
+      what() const throw() { return msg_.c_str(); }
+
+    protected:
+      std::string msg_;
+  };
 
   struct rational_int_wrappers
   {
@@ -19,7 +34,11 @@ namespace scitbx { namespace boost_python { namespace {
     static int
     as_int(w_t const& o)
     {
-      SCITBX_ASSERT(o.denominator() == 1);
+      if (o.denominator() != 1) {
+        throw error(
+          "boost.rational: as_int() conversion error:"
+          " denominator is different from one.");
+      }
       return o.numerator();
     }
 
@@ -48,8 +67,11 @@ namespace scitbx { namespace boost_python { namespace {
     static long
     hash(w_t const& o) // XXX there must be a better way
     {
-      SCITBX_ASSERT(scitbx::fn::absolute(o.numerator()) < 32768);
-      SCITBX_ASSERT(o.denominator() < 32768);
+      int abs_num = o.numerator();
+      if (abs_num < 0) abs_num *= -1;
+      if (abs_num >= 32768 || o.denominator() > 32768) {
+        throw error("boost.rational: internal error in hash() function.");
+      }
       return o.numerator() * 32768L + o.denominator();
     }
 
@@ -128,9 +150,9 @@ namespace scitbx { namespace boost_python { namespace {
     def("lcm", (int(*)(int,int))boost::lcm);
   }
 
-}}} // namespace scitbx::boost_python::<anonymous>
+} // namespace <anonymous>
 
-BOOST_PYTHON_MODULE(scitbx_rational_ext)
+BOOST_PYTHON_MODULE(boost_rational_ext)
 {
-  scitbx::boost_python::init_module();
+  init_module();
 }

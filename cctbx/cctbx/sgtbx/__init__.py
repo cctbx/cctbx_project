@@ -8,7 +8,7 @@ class empty: pass
 
 from cctbx.array_family import flex
 from cctbx import matrix
-from scitbx import rational
+from boost import rational
 import sys
 
 class space_group_info:
