@@ -134,33 +134,46 @@ def exercise_basic():
     group = mtz_object.extract_integers(
       column_label="ISYMabs")
     assert not group.anomalous_flag
-    assert group.indices.size() == 165
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 165
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
+    data = mtz_object.extract_integers(
+      mtz_reflection_indices=group.mtz_reflection_indices,
+      column_label="ISYMabs")
+    assert data.all_eq(group.data)
     group = mtz_object.extract_integers_anomalous(
       column_label_plus="ISYMabs",
       column_label_minus="ISYMabs")
     assert group.anomalous_flag
-    assert group.indices.size() == 330
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 330
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     group = mtz_object.extract_reals(
       column_label="Frem")
     assert not group.anomalous_flag
-    assert group.indices.size() == 163
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 163
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
+    data = mtz_object.extract_reals(
+      mtz_reflection_indices=group.mtz_reflection_indices,
+      column_label="Frem")
+    assert data.all_eq(group.data)
     group = mtz_object.extract_reals_anomalous(
       column_label_plus="Frem",
       column_label_minus="DANOrem")
     assert group.anomalous_flag
-    assert group.indices.size() == 326
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 326
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     group = mtz_object.extract_hendrickson_lattman(
       column_label_a="Frem",
       column_label_b="DANOrem",
       column_label_c="Frem",
       column_label_d="DANOrem")
     assert not group.anomalous_flag
-    assert group.indices.size() == 163
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 163
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     group = mtz_object.extract_hendrickson_lattman_anomalous(
       column_label_a_plus="Frem",
       column_label_b_plus="DANOrem",
@@ -171,14 +184,16 @@ def exercise_basic():
       column_label_c_minus="Frem",
       column_label_d_minus="DANOrem")
     assert group.anomalous_flag
-    assert group.indices.size() == 326
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 326
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     group = mtz_object.extract_observations(
       column_label_data="Frem",
       column_label_sigmas="SIGFrem")
     assert not group.anomalous_flag
-    assert group.indices.size() == 163
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 163
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     assert group.sigmas.size() == group.indices.size()
     group = mtz_object.extract_observations_anomalous(
       column_label_data_plus="Frem",
@@ -186,8 +201,9 @@ def exercise_basic():
       column_label_data_minus="DANOrem",
       column_label_sigmas_minus="SIGDANOrem")
     assert group.anomalous_flag
-    assert group.indices.size() == 326
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 326
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     assert group.sigmas.size() == group.indices.size()
     group = mtz_object.extract_delta_anomalous(
       column_label_f_data="Frem",
@@ -195,23 +211,26 @@ def exercise_basic():
       column_label_d_data="DANOrem",
       column_label_d_sigmas="SIGDANOrem")
     assert group.anomalous_flag
-    assert group.indices.size() == 326
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 326
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     assert group.sigmas.size() == group.indices.size()
     group = mtz_object.extract_complex(
       column_label_ampl="Frem",
       column_label_phi="SIGFrem")
     assert not group.anomalous_flag
-    assert group.indices.size() == 163
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 163
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     group = mtz_object.extract_complex_anomalous(
       column_label_ampl_plus="Frem",
       column_label_phi_plus="SIGFrem",
       column_label_ampl_minus="DANOrem",
       column_label_phi_minus="SIGDANOrem")
     assert group.anomalous_flag
-    assert group.indices.size() == 326
-    assert group.data.size() == group.indices.size()
+    assert group.mtz_reflection_indices.size() == 326
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
 
 class QuickStop(Exception): pass
 

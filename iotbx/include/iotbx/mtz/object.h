@@ -71,11 +71,13 @@ namespace iotbx { namespace mtz {
     :
       anomalous_flag(anomalous_flag_)
     {
+      mtz_reflection_indices.reserve(size);
       indices.reserve(size);
       data.reserve(size);
     }
 
     bool anomalous_flag;
+    af::shared<int> mtz_reflection_indices;
     af::shared<cctbx::miller::index<> > indices;
     af::shared<DataType> data;
   };
@@ -106,11 +108,13 @@ namespace iotbx { namespace mtz {
     :
       anomalous_flag(anomalous_flag_)
     {
+      mtz_reflection_indices.reserve(size);
       indices.reserve(size);
       data.reserve(size);
     }
 
     bool anomalous_flag;
+    af::shared<int> mtz_reflection_indices;
     af::shared<cctbx::miller::index<> > indices;
     af::shared<std::complex<double> > data;
   };
@@ -434,6 +438,12 @@ namespace iotbx { namespace mtz {
         const char* column_label);
 
       inline
+      af::shared<int>
+      extract_integers(
+        af::const_ref<int> const& mtz_reflection_indices,
+        const char* column_label);
+
+      inline
       integer_group
       extract_integers_anomalous(
         const char* column_label_plus,
@@ -442,6 +452,12 @@ namespace iotbx { namespace mtz {
       inline
       real_group
       extract_reals(
+        const char* column_label);
+
+      inline
+      af::shared<double>
+      extract_reals(
+        af::const_ref<int> const& mtz_reflection_indices,
         const char* column_label);
 
       inline
