@@ -123,7 +123,7 @@ else:
     )
     env_etc.cxxflags_base = Split("""
       -fPIC
-      -ftemplate-depth-50
+      -ftemplate-depth-100
       -w
     """)
     env_etc.ccflags_base = Split("""
@@ -177,7 +177,7 @@ else:
     env_etc.cxxflags_base = Split("""
         -fno-common
         -no-cpp-precomp
-        -ftemplate-depth-50
+        -ftemplate-depth-100
         -Wno-long-double
     """)
     env_etc.cxxflags_base = Split("""
