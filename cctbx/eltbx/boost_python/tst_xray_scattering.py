@@ -1,6 +1,7 @@
 from cctbx.eltbx import xray_scattering
 from scitbx.test_utils import approx_equal
 import pickle
+import string
 
 def exercise_gaussian():
   c = xray_scattering.gaussian(0)
@@ -113,11 +114,26 @@ def ensure_common_symbols():
   lbl_wk.sort()
   assert lbl_it == lbl_wk
 
+def ensure_correct_element_symbol():
+  from cctbx.eltbx import tiny_pse
+  for g in xray_scattering.it1992_iterator():
+    s = g.label()
+    if (s == "Cval"):
+      e = "C"
+    else:
+      e = s[:2]
+      if (len(e) > 1 and e[1] not in string.letters):
+        e = e[:1]
+    assert tiny_pse.table(s).symbol() == e
+    assert tiny_pse.table(s.lower()).symbol() == e
+    assert tiny_pse.table(s.upper()).symbol() == e
+
 def run():
   exercise_gaussian()
   exercise_it1992()
   exercise_wk1995()
   ensure_common_symbols()
+  ensure_correct_element_symbol()
   print "OK"
 
 if (__name__ == "__main__"):

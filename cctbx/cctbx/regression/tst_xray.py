@@ -9,6 +9,11 @@ from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
 import sys
 
+def exercise_scatterer():
+  assert xray.scatterer(scattering_type="Cval").element_symbol() == "C"
+  assert xray.scatterer(scattering_type="si+4").element_symbol() == "Si"
+  assert xray.scatterer(scattering_type="x").element_symbol() is None
+
 def exercise_structure():
   cs = crystal.symmetry((5.01, 5.01, 5.47, 90, 90, 120), "P 62 2 2")
   sp = crystal.special_position_settings(cs)
@@ -184,6 +189,7 @@ def run_call_back(flags, space_group_info):
             verbose=flags.Verbose)
 
 def run():
+  exercise_scatterer()
   exercise_structure()
   exercise_u_extra()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
