@@ -1,3 +1,4 @@
 SConscript("array_family/SConscript")
 SConscript("array_family/boost_python/SConscript")
 SConscript("lbfgs/SConscript")
+SConscript("fftpack/timing/SConscript")

@@ -1,0 +1,20 @@
+import os, os.path
+Import("env_base", "env_etc")
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  CPPPATH=[env_etc.scitbx_include, env_etc.boost_include],
+)
+envlm = env.Copy(LIBS=env_etc.libm)
+envlm.Program(target="test0", source="test0.cpp")
+envlm.Program(target="fftpack_timer", source="fftpack_timer.cpp")
+try: fftw_build = os.environ["FFTW_BUILD"]
+except: pass
+else:
+  for fftw_lib in ("rfftw", "fftw"):
+    env.Append(CPPPATH=[os.path.join(fftw_build, fftw_lib)])
+    env.Append(LIBS=[fftw_lib])
+    env.Append(LIBPATH=[os.path.join(fftw_build, fftw_lib, ".libs")])
+  envlm = env.Copy()
+  envlm.Append(LIBS=env_etc.libm)
+  envlm.Program(target="tst3d", source="tst3d.cpp")
+  envlm.Program(target="fftw_timer", source="fftw_timer.cpp")
