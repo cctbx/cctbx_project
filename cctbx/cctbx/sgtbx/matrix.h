@@ -214,10 +214,7 @@ namespace sgtbx {
         return elems[r * 3 + c];
       }
       inline int det() const {
-        int det =  elems[0] * (elems[4] * elems[8] - elems[5] * elems[7]);
-            det -= elems[1] * (elems[3] * elems[8] - elems[5] * elems[6]);
-            det += elems[2] * (elems[3] * elems[7] - elems[4] * elems[6]);
-        return det;
+        return MatrixLite::Determinant(*this);
       }
       inline int trace() const {
         return elems[0] + elems[4] + elems[8];

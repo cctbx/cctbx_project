@@ -48,10 +48,7 @@ namespace { // Helper functions in anonymous namespace.
     Vec3 Gr, Gs, rxs;
     MatrixLite::multiply<double>(G.elems, r.elems, 3, 3, 1, Gr.elems);
     MatrixLite::multiply<double>(G.elems, s.elems, 3, 3, 1, Gs.elems);
-    rxs[0] = sqrtdetG * (Gr[1] * Gs[2] - Gs[1] * Gr[2]);
-    rxs[1] = sqrtdetG * (Gr[2] * Gs[0] - Gs[2] * Gr[0]);
-    rxs[2] = sqrtdetG * (Gr[0] * Gs[1] - Gs[0] * Gr[1]);
-    return rxs;
+    return sqrtdetG * MatrixLite::cross_product(Gr, Gs);
   }
 
   Mx33 ConstructMetricalMatrix(const Vec3& Len, const Vec3& cosAng)

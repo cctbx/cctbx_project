@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <iostream>
 #include <boost/array.hpp>
+#include <cctbx/utils.h>
 
 namespace boost {
 
@@ -98,6 +99,24 @@ namespace boost {
         return os;
     }
 
+    template <class T, std::size_t N>
+    std::size_t
+    array_max_index(const boost::array<T, N>& a) {
+      return std::max_element(a.begin(), a.end()) - a.begin();
+    }
+
+    template <class NumType, std::size_t N>
+    boost::array<NumType, N>
+    array_abs(const boost::array<NumType, N>& a)
+    {
+      boost::array<NumType, N> result;
+      for (std::size_t i = 0; i < N; i++) {
+        if (a[i] < 0) result[i] = -a[i];
+        else          result[i] =  a[i];
+      }
+      return result;
+    }
+
 } // namespace boost
 
 namespace cctbx {
@@ -171,6 +190,64 @@ namespace cctbx {
           AB++;
         }
       }
+    }
+
+    template <class NumType>
+    boost::array<NumType, 3>
+    DiagonalElements(const boost::array<NumType, 9>& M)
+    {
+      boost::array<NumType, 3> result;
+      for(std::size_t i=0;i<3;i++) {
+        result[i] = M[i * (3 + 1)];
+      }
+      return result;
+    }
+
+    template <class NumType>
+    inline NumType Determinant(const boost::array<NumType, 9>& M) {
+      return   M[0] * (M[4] * M[8] - M[5] * M[7])
+             - M[1] * (M[3] * M[8] - M[5] * M[6])
+             + M[2] * (M[3] * M[7] - M[4] * M[6]);
+    }
+
+    template <class NumType>
+    boost::array<NumType, 9>
+    CoFactorMxTp(const boost::array<NumType, 9>& M)
+    {
+      boost::array<NumType, 9> result;
+      result[0] =  M[4] * M[8] - M[5] * M[7];
+      result[1] = -M[1] * M[8] + M[2] * M[7];
+      result[2] =  M[1] * M[5] - M[2] * M[4];
+      result[3] = -M[3] * M[8] + M[5] * M[6];
+      result[4] =  M[0] * M[8] - M[2] * M[6];
+      result[5] = -M[0] * M[5] + M[2] * M[3];
+      result[6] =  M[3] * M[7] - M[4] * M[6];
+      result[7] = -M[0] * M[7] + M[1] * M[6];
+      result[8] =  M[0] * M[4] - M[1] * M[3];
+      return result;
+    }
+
+    template <class NumType>
+    boost::array<NumType, 3>
+    cross_product(const boost::array<NumType, 3>& a,
+                  const boost::array<NumType, 3>& b)
+    {
+      boost::array<NumType, 3> result;
+      result[0] = a[1] * b[2] - b[1] * a[2];
+      result[1] = a[2] * b[0] - b[2] * a[0];
+      result[2] = a[0] * b[1] - b[0] * a[1];
+      return result;
+    }
+
+    template <class FloatType, std::size_t N>
+    bool
+    approx_equal(const boost::array<FloatType, N>& a,
+                 const boost::array<FloatType, N>& b,
+                 FloatType scaled_tolerance) {
+      for (std::size_t i = 0; i < N; i++) {
+        if (!cctbx::approx_equal(a[i], b[i], scaled_tolerance)) return false;
+      }
+      return true;
     }
 
   } // namespace MatrixLite
