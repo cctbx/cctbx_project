@@ -55,3 +55,7 @@ sgo = sgtbx.SgOps("P 2")
 sgo.ParseHallSymbol("P 2x")
 print sgo.OrderZ()
 assert sgo == sgtbx.SgOps("P 2 2")
+
+sgo = sgtbx.SgOps("P 4c -2ab -1b -1ac -1a -1bc")
+Z2POp = sgo.getZ2POp()
+print Z2POp.M().as_xyz(), Z2POp.InvM().as_xyz()

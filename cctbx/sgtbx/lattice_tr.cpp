@@ -9,6 +9,7 @@
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
+#include <memory>
 #include <algorithm>
 #include <cctype>
 #include <cctbx/sgtbx/groups.h>
@@ -103,7 +104,7 @@ namespace sgtbx {
     return ChOfBasisOp(RTMx(Z2PMatrix.newBaseFactor(RBF), TrVec(TBF)));
   }
 
-  namespace {
+  namespace detail {
 
     class CmpTrVec {
       private:
@@ -114,7 +115,7 @@ namespace sgtbx {
           return m_CmpiVect(a.elems, b.elems);
         }
     };
-    
+
     bool FirstIsShorter(const Vec3& a, const Vec3& b) {
       rangei(3) {
         if (a[i]) {
@@ -146,7 +147,7 @@ namespace sgtbx {
           V = V.newBaseFactor(TBF);
           int iTLT;
           for (iTLT = 0; iTLT < TLT->size(); iTLT++) {
-            if (CrossProduct((*TLT)[iTLT], V) != 0) {
+            if (CrossProduct((*TLT)[iTLT], V) == 0) {
               if (! FirstIsShorter((*TLT)[iTLT], V)) (*TLT)[iTLT] = V;
               break;
             }
@@ -158,21 +159,22 @@ namespace sgtbx {
       std::sort(TLT->begin(), TLT->end(), CmpTrVec());
 
       rangei(3) {
-        TrVec V(Vec3(), TBF);
-        V.assign(0);
-        V[i] = CRBF;
+        TrVec V(TBF);
+        V[i] = TBF;
         TLT->push_back(V);
       }
 
       return TLT;
     }
 
-  } // namespace <anonymous>
+  } // namespace detail
 
   ChOfBasisOp SgOps::ConstructZ2POp(int RBF, int TBF) const
   {
     ChOfBasisOp result;
-    std::auto_ptr<std::vector<TrVec> > TLT = BuildListTotLTr(m_LTr, RBF);
+    SgOps PrimitiveSgOps;
+    std::auto_ptr<std::vector<TrVec> >
+    TLT = detail::BuildListTotLTr(m_LTr, RBF);
     int iTLT[3], i;
     Mx33 Basis;
     for (iTLT[0] =           0; iTLT[0] < TLT->size() - 2; iTLT[0]++) {
@@ -181,19 +183,21 @@ namespace sgtbx {
       for (i=0;i<3;i++) Basis[i * 3 + 1] = (*TLT)[iTLT[1]][i];
     for (iTLT[2] = iTLT[1] + 1; iTLT[2] < TLT->size();     iTLT[2]++) {
       for (i=0;i<3;i++) Basis[i * 3 + 2] = (*TLT)[iTLT[2]][i];
-      try {
-        int det = RotMx(Basis, RBF).det();
-        if (det != 0) {
-          if (det < 0) for(i=0;i<3;i++) Basis[i * 3] *= -1;
-          result = ChOfBasisOp(RTMx(RotMx(Basis, RBF), TBF));
-          ChangeBasis(result);
+      int det = RotMx(Basis, RBF).det();
+      if (det != 0) {
+        if (det < 0) for(i=0;i<3;i++) Basis[i * 3] *= -1;
+        try {
+          result = ChOfBasisOp(RTMx(RotMx(Basis, RBF), TBF)).swap();
+          PrimitiveSgOps = ChangeBasis(result);
+        }
+        catch (error) {
+          continue;
+        }
+        if (PrimitiveSgOps.nLTr() == 1) {
+          cctbx_assert(result.M().Rpart().det() > 0);
+          return result;
         }
       }
-      catch (error) {
-        continue;
-      }
-      cctbx_assert(result.M().Rpart().det() > 0);
-      return result;
     }}}
     throw cctbx_internal_error();
   }
