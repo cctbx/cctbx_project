@@ -535,6 +535,20 @@ def exercise_functions():
   assert a.count("a") == 3
   assert a.count("b") == 4
   assert a.count("c") == 0
+  #
+  a = flex.int(range(-2,2) + range(2,4) + range(1,3))
+  assert a.counts().items() == [(-2,1),(-1,1),(0,1),(1,2),(2,2),(3,1)]
+  assert a.counts(max_keys=6).items() == a.counts().items()
+  a = flex.long(range(-2,2) + range(-1,3) + range(1,3))
+  assert a.counts().items() == [(-2,1),(-1,2),(0,2),(1,3),(2,2)]
+  assert a.counts(max_keys=5).items() == a.counts().items()
+  a = flex.size_t(range(1,2) + range(1,3) + range(1,4))
+  assert a.counts().items() == [(1, 3), (2, 2), (3, 1)]
+  assert a.counts(max_keys=3).items() == a.counts().items()
+  try: a.counts(max_keys=2)
+  except RuntimeError, e:
+    assert str(e) == "scitbx::af::counts::limited: max_keys exceeded."
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_complex_functions():
   c = 1+2j

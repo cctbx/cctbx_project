@@ -1,6 +1,9 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/counts.h>
 #include <boost/python/make_constructor.hpp>
+#include <boost/python/args.hpp>
+#include <map>
 
 namespace scitbx { namespace af { namespace boost_python {
 namespace {
@@ -38,10 +41,13 @@ namespace {
   void wrap_flex_size_t()
   {
     using namespace boost::python;
-    flex_wrapper<std::size_t>::integer("size_t", boost::python::scope())
+    flex_wrapper<std::size_t>::integer("size_t", scope())
       .def_pickle(flex_pickle_single_buffered<std::size_t>())
       .def("__init__", make_constructor(
         from_stl_vector_unsigned, default_call_policies()))
+      .def("counts", counts<std::size_t, std::map<long, long> >::unlimited)
+      .def("counts", counts<std::size_t, std::map<long, long> >::limited, (
+        arg_("max_keys")))
       .def("next_permutation", next_permutation)
       .def("inverse_permutation", inverse_permutation)
     ;
