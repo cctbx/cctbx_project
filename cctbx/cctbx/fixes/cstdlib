@@ -1,0 +1,21 @@
+// $Id$
+
+#ifndef CCTBX_FIXES_CSTDLIB
+#define CCTBX_FIXES_CSTDLIB
+
+#if !(defined(_MSC_VER) && _MSC_VER <= 1200) // 1200 == VC++ 6.0
+
+#include <cstdlib>
+
+#else
+
+#include <stdlib.h>
+
+namespace std {
+  using ::abs;
+  using ::labs;
+}
+
+#endif
+
+#endif // CCTBX_FIXES_CSTDLIB

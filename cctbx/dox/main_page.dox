@@ -1,0 +1,98 @@
+/*! \mainpage Computational Crystallography Toolbox
+
+\section intro Introduction
+
+\par
+This Open Source package is a collection of fundamental procedures for
+Computational Crystallography and currently includes a unit cell
+toolbox (uctbx), a space group toolbox (sgtbx) and an element toolbox
+(eltbx) for the handling of scattering factors and other element
+properties.
+
+\par
+The Computational Crystallography Toolbox is designed with an open and
+flexible architecture to promote extendability and easy incorporation
+into other software environments.  The package is organized as a set of
+ANSI C++ classes with Python (http://www.python.org/) bindings. This
+organization combines the computational efficiency of a strongly typed
+compiled language with the flexibility of a dynamically typed scripting
+language in a strikingly uniform and very maintainable way.
+
+\par
+Use of the Python bindings is highly recommended, but optional.  The
+Computational Crystallography Toolbox can also be used purely as a C++
+class library. In that case the only external dependency is the Boost
+library (http://www.boost.org/).
+
+\par
+All the components of the Computational Crystallography Toolbox,
+Python, and the Boost library are available as Open Source. All of
+these packages are covered by licenses that permit installation, use,
+modification, preparation of derivative works, incorporation into other
+computer software, and distribution of the original software or any
+derivative work in binary and source code format.
+
+\par
+The bulk of the documentation is directly embedded in the C++ source
+code and automatically processed into a web-based format for ease
+of navigation. Syntactic differences put aside, Python and C++
+objects and functions are quite similar. Therefore the web-based
+documentation can be used for both the compiled and the scripted
+layer of the Computational Crystallography Toolbox.
+
+\section getting_started Getting started
+
+The main classes of the cctbx are class uctbx::UnitCell and class
+sgtbx::SgOps. The following Python script shows how to define a
+unit cell, process a space group symbol to obtain symmetry matrices,
+verify that the unit cell is compatibe with the symmetry, and print
+a list of the symmetry operations:
+
+<pre>
+import sgtbx
+import uctbx
+
+UnitCell = uctbx.UnitCell((10, 10, 15, 90, 90, 120))
+print UnitCell
+Symbols = sgtbx.SpaceGroupSymbols("P 62 2 2")
+SgOps = sgtbx.SgOps(Symbols.Hall())
+SgOps.CheckUnitCell(UnitCell)
+for i in xrange(SgOps.OrderZ()):
+  print SgOps(i).as_xyz()
+</pre>
+
+Apart from syntactical differences, the corresponding C++
+implementation is very similar:
+
+<pre>
+\#include <iostream>
+\#include <cctbx/sgtbx/symbols.h>
+\#include <cctbx/sgtbx/groups.h>
+\#include <cctbx/uctbx.h>
+
+int main()
+{
+  uctbx::UnitCell UnitCell(uctbx::uc_params(10, 10, 15, 90, 90, 120));
+  std::cout << UnitCell << std::endl;
+  sgtbx::SpaceGroupSymbols Symbols("P 62 2 2");
+  sgtbx::SgOps SgOps(Symbols.Hall());
+  SgOps.CheckUnitCell(UnitCell);
+  for (int i = 0; i < SgOps.OrderZ(); i++) {
+    std::cout << SgOps(i).as_xyz() << std::endl;
+  }
+  return 0;
+}
+</pre>
+
+The examples can be found in the examples/cpp and examples/python
+directories.
+
+\section links Details
+  \ref page_fundamental
+
+  \ref page_installation
+
+\section contact Contact
+RWGrosse-Kunstleve@lbl.gov
+
+*/

@@ -1,0 +1,63 @@
+/*! \page page_fundamental Fundamental considerations
+
+\section fundamental_python Python
+
+Python is an interpreted, dynamically typed programming language for
+the rapid development of maintainable applications. This is facilitated
+by a clear and elegant syntax, support for object-oriented design
+including polymorphism, and rich support for a modular program
+architecture. Unfortunately, these important high-level features are
+not easily combined with execution time efficiency and memory
+efficiency. Python implementations of algorithms that are of a complex
+nature or that operate on large amounts of data are in general two to
+three orders of magnitude slower than implementations in a compiled
+language.
+
+\section fundamental_efficiency Runtime efficiency
+
+To address the problem of runtime efficiency, Python has strong support
+for Extension Modules written in C. Extension Modules integrate almost
+seamlessly into Python programs. A programmer who only looks at the
+interface of a module cannot, in general, tell the difference between
+a pure Python implementation and a compiled extension.
+
+\section fundamental_productivity Programming productivity
+
+Writing an Extension Module in C is straightforward, but requires quite
+cumbersome and therefore error-prone manual management of function
+pointers and complex C structures that define the properties of
+Extension Types (the C equivalent of a Python class). Another very
+important disadvantage of regular Python Extension Modules arises from
+the fact that C has no support for object-oriented program design.
+Consequently, the Python programming interface and the C programming
+interface for a given module are very different. To alleviate some of
+these problems, a number of systems have been developed. In
+November 2000, a very powerful new system has become available, the
+Boost Python Library (BPL). The main purpose of the BPL is to quickly
+and easily export a C++ library to Python such that the Python
+interface is very similar to the C++ interface. Unlike other systems,
+the BPL does not introduce an additional "little language" for the
+definition of Python/C++ bindings, but relies exclusively on standard
+C++ template techniques. Therefore the definition of the bindings is
+concise, compact, intuitive and highly portable. Since C++ is a
+superset of C, the BPL can also conveniently be used to define Python
+bindings for existing C libraries. The source code for an Extension
+Module that is based on the BPL is typically almost a factor two
+smaller than an equivalent conventional Extension Module.
+
+\section fundamental_uniformity Uniformity
+
+Syntactic differences put aside, Python and C++ objects and functions
+are very similar. The BPL can be viewed as a two-way link between
+Python and C++. As discussed already, the BPL can be used to directly
+reflect C++ classes and functions into Python without obscuring the C++
+interface. In a slightly more abstract way, the BPL links Python to
+C++: objects implemented in Python can be relatively easily converted
+to C++, and the BPL re-establishes the Python interface. That is, the
+time spent to prototype a module in Python is not lost since the C++
+implementation is similar and can quickly be derived from the Python
+implementation. Therefore the advantages of object-oriented design can
+be used throughout, in the Python layer and the compiled layer, and at
+all stages of development.
+
+*/

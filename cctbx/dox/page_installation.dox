@@ -1,0 +1,26 @@
+/*! \page page_installation Installing the cctbx
+
+\section prerequisites Prerequisites
+
+Python and Boost must be installed before the cctbx can be installed.
+
+\section installing_python Installing Python
+
+Simple enough!
+
+\section installing_boost Installing Boost
+
+Simple enough!
+
+\section installing_cctbx Installing the cctbx
+
+<pre>
+cd cctbx
+clone /your/target/directory linux_gcc
+</pre>
+
+\section compiler_notes Ever changing notes on compilers
+
+This is where you pay your dues for high-level programming.
+
+*/
