@@ -37,7 +37,9 @@ value="1.0">
 <p>
 <strong>Minimum distance between symmetry mates: </strong><input
 name="MinMateDistance" size=8
-value="0.5">
+value="0.5"><br>
+Atoms that have symmetry mates within the given radius will be<br>
+moved to the exact location of the nearest special position.
 
 <p>
 <strong>Coordinates:</strong>
@@ -46,7 +48,10 @@ value="0.5">
 <br>
 <input type=radio name="coor_type" value="Cartesian">Cartesian
 <p>
-Format: Label [ScatFact] x y z [Occ [Uiso]]
+Format: Label [ScatFact] x y z [Occ [Uiso]]<br>
+Examples:<br>
+<tt>Si 0.123 0.456 0.789 1.0 0.035</tt><br>
+<tt>Si Si4+ 0.123 0.456 0.789 1.0 0.035</tt>
 <p>
 <textarea name="coordinates" rows=16 cols=60></textarea>
 <p>
