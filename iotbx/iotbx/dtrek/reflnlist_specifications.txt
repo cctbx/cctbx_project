@@ -1,0 +1,100 @@
+The d*TREK reflnlist format is extensible much like the MTZ format.
+There are binary and ASCII versions.  I think that for a start, I'll
+describe just the file that is output at the end by our scaling and
+averaging program.  This file is the one most users will use for
+subsequent steps.
+
+The file is ASCII free-format and consists of the following lines:
+
+Line 1: 3 or 4 integer numbers
+        The first 3 numbers represents the number of fields or columns per
+        reflection.
+        1st number: Number of integer fields: NumInts
+        2nd number: Number of float fields:   NumFloats
+        3rd number: Number of string fields:  NumStrings
+        The fourth number, NumInfoLines, may not be present.  It
+        represents the number of lines of additional header text that
+        follows the first line.  If absent, this number should be set to 0.
+
+If NumInfoLines is not 0, then NumInfoLines containing d*TREK header
+       keyword=value(s); information follows.  If NumInfoLines is 0, then
+there are no such lines. Presently, these lines contain information about
+the crystal unit cell and spacegroup.  In the future, these lines could
+contain an entire standard d*TREK header which could fully describe the
+experiments and processing to yield the reflns in the file.
+
+Lines 2+NumInfoLines ....
+These contain left-justified the names of the refln fields or columns.
+Field names have no white space; one field name per line.  Integer
+field names begin with the letter n; float field names with the letter f;
+string field names with the letter s.  There will be
+NumInts + NumFloats + NumStrings fieldnames.  The first 3 integer
+field names MUST be nH, nK, nL.  The first 2 float field names MUST be
+fIntensity and fSigmaI.  All integer fields come before any float fields.
+All string field follow any float fields.
+
+Lines 2+NumInfoLines + NumInts + NumFloats + NumStrings ...
+These are the actual reflns.  Reflns MUST contain h, k, l as integers and
+Intensity and SigmaI as floats.  All other fields are optional.  Any
+strings cannot have whitespace.  The reflns MUST have a value for
+every field.  The values -1.0 and -999.0 are often used as fillers.
+All values are in free format and NOT RESTRICTED NOR ALIGNED IN ANY
+COLUMNS.
+
+Next is a short example of a reflnlist file produced by dtscaleaverage:
+
+=====this is an example reflnlist file====(do not include this line)===
+3 6 0 5
+CRYSTAL_DESCRIPTION=unknown;
+CRYSTAL_MOSAICITY=0.7807 0.0000 0.0000;
+CRYSTAL_ORIENT_ANGLES= 7.3764  -13.6663  -11.2194;
+CRYSTAL_SPACEGROUP=89;
+CRYSTAL_UNIT_CELL= 78.6619  78.6619  36.9993  90.0000  90.0000  90.0000;
+nH
+nK
+nL
+fIntensity
+fSigmaI
+fIntensity+
+fSigmaI+
+fIntensity-
+fSigmaI-
+    0    0    2 14.9526 51.0419 14.9526 51.0419 -1.00000 -1.00000
+    0    0    3 112.983 44.0395 99.7694 71.9012 119.599 50.8736
+    0    0    4 45164.7 2055.19 45164.7 2055.19 -1.00000 -1.00000
+    0    0    5 100.449 52.7485 100.449 52.7485 -1.00000 -1.00000
+    0    0    6 45.1334 57.8072 45.1334 57.8072 -1.00000 -1.00000
+    0    0    7 104.904 75.1638 104.904 75.1638 -1.00000 -1.00000
+    0    0    8 46159.0 1567.61 46159.0 1567.61 -1.00000 -1.00000
+    2    1   16 3622.38 130.607 3380.38 172.233 3935.93 196.389
+    2    1   17 3799.84 133.226 4082.16 193.255 3543.54 183.439
+    2    2    1 39556.5 871.160 40230.6 1249.37 38917.1 1214.40
+    2    2    2 43025.1 1156.39 43240.7 2109.55 42863.4 948.015
+======================do not include this line either ==============
+
+The fields fIntensity+, fSigmaI+, fIntensity-, fSigmaI- hold values for
+the anomalous intensity information.  The values fIntensity and fSigmaI
+hold the properly weighted average for Intensity and sigmaIntensity.  The
+fields fIntensity+, fSigmaI+, fIntensity-, fSigmaI- MAY NOT ALWAYS BE
+PRESENT in the file since this is under user control.  A zero or negative
+value for any Sigma means the intensity:sigma pair is not valid and should
+be considered absent or rejected.  Negatives values for Intensity are
+allowed and valid if the corresponding sigma is positive.  Values of (-1,
+-1) for (Intensity, Sigma) mean the measurement is absent.  Centric
+reflections will still have I+ and I- measurements even though this should
+be equivalent.
+
+Here is another example file:
+
+=====this is an example reflnlist file====(do not include this line)===
+3 6 0
+nH
+nK
+nL
+fIntensity
+fSigmaI
+    0    0    2 14.9526 51.0419
+    0    0    3 112.983 44.0395
+    0    0    4 45164.7 2055.19
+======================do not include this line either ==============
+
