@@ -69,7 +69,7 @@ is to use the pre-compiled Python modules for Windows. See the
 \ref page_installation section for more details.
 
 \par
-Two major classes of the %cctbx are <tt>cctbx::uctbx::UnitCell</tt> and
+Two classes of the %cctbx are <tt>cctbx::uctbx::UnitCell</tt> and
 <tt>cctbx::sgtbx::SpaceGroup</tt>. The following Python script shows
 how to define a unit cell, process a space group symbol to obtain
 symmetry matrices, verify that the unit cell is compatible with the

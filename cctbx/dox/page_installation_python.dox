@@ -5,10 +5,14 @@
 \section installation_python_windows Python Windows
 
 \par
-One-click Windows installers for Python are available at
-http://sourceforge.net/project/showfiles.php?group_id=5470 .
-The Windows installer for Python 2.1.1 is mirrored at
-http://prdownloads.sourceforge.net/cctbx/Python-2.1.1.exe .
+One-click Windows installers for Python are available at:
+
+http://sourceforge.net/project/showfiles.php?group_id=5470
+
+The Windows installer for Python 2.1.1 is mirrored at:
+
+http://prdownloads.sourceforge.net/cctbx/Python-2.1.1.exe
+
 Save this installer to your local disk, double click the
 Python-2.1.1.exe icon and accept all default choices (this will also
 install Tcl/Tk). Python will be installed in the location
@@ -49,10 +53,13 @@ that the %cctbx can be used with the final Python 2.2 release.
 \section installation_python_unix Python Unix
 
 \par
-The Python source code is also available at
-http://sourceforge.net/project/showfiles.php?group_id=5470 .
-The source code for Python 2.2.1 is mirrored at
-http://prdownloads.sourceforge.net/cctbx/Python-2.1.1.tgz  .
+The Python source code is also available at:
+
+http://sourceforge.net/project/showfiles.php?group_id=5470
+
+The source code for Python 2.2.1 is mirrored at:
+
+http://prdownloads.sourceforge.net/cctbx/Python-2.1.1.tgz
 
 By default, Python is installed in <tt>/usr/local</tt>. However,
 when using this default it is very difficult to maintain a smooth
