@@ -58,22 +58,24 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
 
   def _LockFile(self, file, id):
     DICT = self.server.FileLockDictionary
-    if id in DICT.keys():
-      return 0
-    if file in DICT.values():
-      return 0
+    rc = 1
     self.server.ServerLock.acquire()
     try:
-      DICT[id] = file
+      if id in DICT.keys():
+        rc = 0
+      if file in DICT.values():
+        rc = 0
+      if rc:
+        DICT[id] = file
     finally:
       self.server.ServerLock.release()
-    return 1
+    return rc
 
   def LockFile(self, file, id):
     rc = self._LockFile(file, id)
     while not rc:
       rc = self._LockFile(file, id)
-      time.sleep(.1)
+      time.sleep(.01)
 
   def ReadPickleFile(self, file):
     try:
@@ -113,22 +115,24 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
 
   def _UnlockFile(self, file, id):
     DICT = self.server.FileLockDictionary
-    if not id in DICT.keys():
-      return 0
-    if not file in DICT.values():
-      return 0
+    rc = 1
     self.server.ServerLock.acquire()
     try:
-      del DICT[id]
+      if not id in DICT.keys():
+        rc = 0
+      if not file in DICT.values():
+        rc = 0
+      if rc:
+        del DICT[id]
     finally:
       self.server.ServerLock.release()
-    return 1
+    return rc
 
   def UnlockFile(self, file, id):
     rc = self._UnlockFile(file, id)
     while not rc:
       rc = self._UnlockFile(file, id)
-      time.sleep(.1)
+      time.sleep(.01)
 
   def FileExists(self, file):
     return os.path.exists(file)
