@@ -86,6 +86,9 @@ namespace close_packing {
         sampling_box_determination();
         hex_to_frac_matrix_ = float_asu_.unit_cell().fractionalization_matrix()
                             * sampling_cell_.orthogonalization_matrix();
+        if (all_twelve_neighbors_) {
+          precompute_twelve_neighbor_offsets_frac();
+        }
         cb_op_r_inv_ = cb_op_original_to_sampling_.c_inv().r()
           .as_floating_point(scitbx::type_holder<FloatType>());
         cb_op_t_inv_ = cb_op_original_to_sampling_.c_inv().t()
@@ -211,12 +214,15 @@ namespace close_packing {
       scitbx::vec3<int> box_lower_;
       scitbx::vec3<int> box_upper_;
       scitbx::mat3<FloatType> hex_to_frac_matrix_;
+      af::tiny<af::tiny<scitbx::vec3<FloatType>, 12>, 2>
+        twelve_neighbor_offsets_frac_;
       scitbx::mat3<FloatType> cb_op_r_inv_;
       scitbx::vec3<FloatType> cb_op_t_inv_;
       // loop state
       int loop_status_;
       scitbx::vec3<int> point_;
       fractional<FloatType> site_frac_sampling_;
+      int point_2_mod_2_;
       std::size_t i12_;
 
       void
@@ -280,6 +286,18 @@ namespace close_packing {
       }
 
       void
+      precompute_twelve_neighbor_offsets_frac()
+      {
+        for(int layer=0;layer<=1;layer++) {
+          for(std::size_t i12=0;i12<12;i12++) {
+            twelve_neighbor_offsets_frac_[layer][i12] =
+              hex_to_frac_matrix_ * indices_as_site(
+                detail::twelve_neighbor_offsets(i12), layer);
+          }
+        }
+      }
+
+      void
       incr()
       {
         if (loop_status_ == 1) goto continue_after_return_1;
@@ -295,14 +313,14 @@ namespace close_packing {
             continue_after_return_1:;
           }
           else if (all_twelve_neighbors_) {
+            point_2_mod_2_ = math::mod_positive(point_[2], 2);
             for(i12_=0;i12_<12;i12_++) {
-              if (float_asu_.is_inside(site_frac_sampling_
-                    + hex_to_frac_matrix_ * indices_as_site(
-                        detail::twelve_neighbor_offsets(i12_),
-                        point_[2]))) {
+              if (float_asu_.is_inside(
+                      site_frac_sampling_
+                    + twelve_neighbor_offsets_frac_[point_2_mod_2_][i12_])) {
                 loop_status_ = 2;
                 return;
-                continue_after_return_2:;
+                continue_after_return_2:
                 break;
               }
             }
