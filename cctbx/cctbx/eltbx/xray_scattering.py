@@ -59,14 +59,19 @@ class one_gaussian_agarwal_1978:
 
 class fitted_gaussian(gaussian):
 
-  def __init__(self, stol, gaussian_sum):
+  def __init__(self, stol, gaussian_sum, max_error=None):
     gaussian.__init__(self, gaussian_sum)
     self.stol = stol
+    self.max_error = max_error
 
   def __getinitargs__(self):
-    return (self.stol, gaussian(self))
+    return (self.stol, gaussian(self), self.max_error)
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
-    print "stol: %.2f # d_min: %.2f" % (self.stol, 1/(2*self.stol))
-    gaussian.show(self, f, format)
+    if (self.max_error is None):
+      e = ""
+    else:
+      e = ", max_error: %.4f" % self.max_error
+    print >> f, "stol: %.2f # d_min: %.2f%s" % (self.stol, 1/(2*self.stol), e)
+    return gaussian.show(self, f, format)
