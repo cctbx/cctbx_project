@@ -8,41 +8,38 @@ import sys
 class energies:
 
   def __init__(self, sites_cart,
-                     asu_mappings,
-                     bond_asu_proxies=None,
-                     repulsion_asu_proxies=None,
-                     compute_gradients=0001):
+                     bond_proxies=None,
+                     repulsion_proxies=None,
+                     compute_gradients=0001,
+                     disable_asu_cache=00000):
     if (compute_gradients):
       self.gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
     else:
       self.gradients = None
-    if (bond_asu_proxies is None):
-      self.n_bond_asu_proxies = 0
-      self.bond_asu_residual_sum = 0
+    if (bond_proxies is None):
+      self.n_bond_proxies = 0
+      self.bond_residual_sum = 0
     else:
-      assert asu_mappings is not None
-      self.n_bond_asu_proxies = len(bond_asu_proxies)
-      self.bond_asu_residual_sum = restraints.bond_residual_sum(
+      self.n_bond_proxies = bond_proxies.n_total()
+      self.bond_residual_sum = restraints.bond_residual_sum(
         sites_cart=sites_cart,
-        asu_mappings=asu_mappings,
-        proxies=bond_asu_proxies,
+        sorted_asu_proxies=bond_proxies,
         gradient_array=self.gradients,
-        disable_cache=0001)
-    if (repulsion_asu_proxies is None):
-      self.n_repulsion_asu_proxies = 0
+        disable_cache=disable_asu_cache)
+    if (repulsion_proxies is None):
+      self.n_repulsion_proxies = 0
       self.repulsion_residual_sum = 0
     else:
-      self.n_repulsion_asu_proxies = repulsion_asu_proxies.size()
+      self.n_repulsion_proxies = repulsion_proxies.n_total()
       self.repulsion_residual_sum = restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
-        asu_mappings=asu_mappings,
-        proxies=repulsion_asu_proxies,
+        sorted_asu_proxies=repulsion_proxies,
         gradient_array=self.gradients,
         function=restraints.repulsion_function(),
-        disable_cache=0001)
+        disable_cache=disable_asu_cache)
 
   def target(self):
-    return(self.bond_asu_residual_sum
+    return(self.bond_residual_sum
          + self.repulsion_residual_sum)
 
   def gradient_norm(self):
@@ -54,10 +51,10 @@ class energies:
     print >> f, "target: %.6g" % self.target()
     if (self.gradients is not None):
       print >> f, "  norm of gradients: %.6g" % self.gradient_norm()
-    print >> f, "  bond_asu_residual_sum (n=%d): %.6g" % (
-      self.n_bond_asu_proxies, self.bond_asu_residual_sum)
+    print >> f, "  bond_residual_sum (n=%d): %.6g" % (
+      self.n_bond_proxies, self.bond_residual_sum)
     print >> f, "  repulsion_residual_sum (n=%d): %.6g" % (
-      self.n_repulsion_asu_proxies, self.repulsion_residual_sum)
+      self.n_repulsion_proxies, self.repulsion_residual_sum)
 
 class lbfgs:
 
@@ -107,9 +104,8 @@ class lbfgs:
     del self.f
     del self.g
     if (self._sites_cart_proxy_calculation is not None):
-      del self._asu_mappings
-      del self._bond_asu_proxies
-      del self._repulsion_asu_proxies
+      del self._bond_proxies
+      del self._repulsion_proxies
     del self._sites_cart_proxy_calculation
     del self.activate_repulsion
     del self.minimizer
@@ -166,18 +162,16 @@ class lbfgs:
         nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
         nonbonded_buffer=self.nonbonded_buffer,
         vdw_1_4_factor=2/3.)
-      self._asu_mappings = asu_mappings
-      self._bond_asu_proxies = pair_proxies.bond_asu_proxies
+      self._bond_proxies = pair_proxies.bond_proxies
       if (not self.activate_repulsion):
-        self._repulsion_asu_proxies = None
+        self._repulsion_proxies = None
       else:
-        self._repulsion_asu_proxies = pair_proxies.repulsion_asu_proxies
+        self._repulsion_proxies = pair_proxies.repulsion_proxies
       self._sites_cart_proxy_calculation = self._sites_shifted
     self._target_result = energies(
       sites_cart=self._sites_shifted,
-      asu_mappings=self._asu_mappings,
-      bond_asu_proxies=self._bond_asu_proxies,
-      repulsion_asu_proxies=self._repulsion_asu_proxies,
+      bond_proxies=self._bond_proxies,
+      repulsion_proxies=self._repulsion_proxies,
       compute_gradients=compute_gradients)
 
   def __call__(self):
