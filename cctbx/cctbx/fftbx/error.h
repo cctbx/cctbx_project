@@ -65,7 +65,7 @@ namespace cctbx {
     that are a multiple of 2, 3 and 5. This is no surprise,
     since FFTW is a very sophisticated library that adjusts
     itself to a particular hardware, and was developed
-    specifically for modern, chached-based architectures.
+    specifically for modern, cache-based architectures.
     In particular, the performance on Athlon Linux machines is
     very impressive. Unfortunately, the FFTW license does
     not permit the inclusion in an Open Source project
