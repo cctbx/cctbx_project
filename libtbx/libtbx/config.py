@@ -1043,7 +1043,7 @@ class module:
           break
     return result
 
-  def write_dispatcher(self, source_dir, file_name):
+  def write_dispatcher(self, source_dir, file_name, suppress_warning):
     source_file = libtbx.path.norm_join(source_dir, file_name)
     if (not os.path.isfile(source_file)): return
     file_name_lower = file_name.lower()
@@ -1059,7 +1059,7 @@ class module:
       except IOError:
         raise Sorry('Cannot read file: "%s"' % source_file)
       if (hash_bang != "#!"):
-        if (ext != ".bat"):
+        if (ext != ".bat" and not suppress_warning):
           msg = 'WARNING: Ignoring file "%s" due to missing "#!"' % (
             source_file)
           print "*"*len(msg)
@@ -1075,13 +1075,18 @@ class module:
 
   def process_command_line_directories(self):
     for dist_path in self.dist_paths_active():
-      for source_dir in [
-            libtbx.path.norm_join(dist_path, "command_line"),
-            libtbx.path.norm_join(dist_path, self.name, "command_line")]:
+      for source_dir,suppress_warning in ([
+            ("command_line", False),
+            (self.name+"/command_line", False),
+            ("tools", True)]):
+        source_dir = libtbx.path.norm_join(dist_path, source_dir)
         if (not os.path.isdir(source_dir)): continue
         print 'Processing: "%s"' % source_dir
         for file_name in os.listdir(source_dir):
-          self.write_dispatcher(source_dir=source_dir, file_name=file_name)
+          self.write_dispatcher(
+            source_dir=source_dir,
+            file_name=file_name,
+            suppress_warning=suppress_warning)
 
   def process_libtbx_refresh_py(self):
     for dist_path in self.dist_paths_active():
