@@ -74,6 +74,8 @@ def run():
 #ifndef CCTBX_ARRAY_FAMILY_STD_IMPORTS_H
 #define CCTBX_ARRAY_FAMILY_STD_IMPORTS_H
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
 #include <cmath>
 #include <cstdlib>
 #include <complex>
@@ -95,6 +97,8 @@ namespace cctbx { namespace af {
 
   print """
 }} // namespace cctbx::af
+
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // CCTBX_ARRAY_FAMILY_STD_IMPORTS_H"""
   sys.stdout = sys.__stdout__

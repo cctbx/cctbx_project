@@ -40,6 +40,27 @@
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
 
+namespace stlp {
+
+  template <class T1, class T2>
+  inline void construct(T1* p, const T2& val) {
+    new (p) T1(val);
+  }
+
+  template <class _Value, class _Tp>
+  class alloc_proxy
+  public:
+    _Value m_data;
+
+    inline _Tp* allocate(size_t __n) { 
+      return 0;
+    }
+    inline void deallocate(_Tp* __p, size_t __n) { 
+    }
+  };
+
+}
+
 namespace cctbx { namespace af {
   namespace detail {
 
@@ -172,24 +193,23 @@ namespace cctbx { namespace af {
       shared_base_v2(size_type sz, const ElementType& x)
         : m_ptr_basic_storage(new basic_storage(sz * sizeof(ElementType)))
       {
-        this->m_finish = uninitialized_fill_n(this->m_start, sz, x);
+        this->m_finish = std::uninitialized_fill_n(this->m_start, sz, x);
       }
 
       explicit
       shared_base_v2(size_type sz)
         : m_ptr_basic_storage(new basic_storage(sz * sizeof(ElementType)))
       {
-        this->m_finish = uninitialized_fill_n(this->m_start, sz, ElementType());
+        this->m_finish = std::uninitialized_fill_n(
+          this->m_start, sz, ElementType());
       }
 
       shared_base_v2(const shared_base_v2<ElementType>& other)
         : m_ptr_basic_storage(
             new basic_storage(other.size() * sizeof(ElementType)))
       {
-        this->m_finish = stlp::uninitialized_copy(
-          (const ElementType*)other.m_start,
-          (const ElementType*)other.m_finish,
-          this->m_start, m_is_pod_type());
+        this->m_finish = std::uninitialized_copy(
+          other.begin(), other.end(), this->m_start);
       }
 
       shared_base_v2(const ElementType* first, const ElementType* last)
@@ -199,14 +219,14 @@ namespace cctbx { namespace af {
         size_type sz = last - first;
         this->m_start = this->m_end_of_storage.allocate(sz);
         this->m_end_of_storage.m_data = this->m_start + sz;
-        this->m_finish = stlp::uninitialized_copy(
-          first, last, this->m_start, m_is_pod_type());
+        this->m_finish = std::uninitialized_copy(
+          first, last, this->m_start);
       }
 
       ~shared_base_v2() {
-        destroy_array_elements(begin(), end());
+        detail::destroy_array_elements(begin(), end());
       }
-      
+
       shared_base_v2<ElementType>&
       operator=(const shared_base_v2<ElementType>& other)
       {
@@ -221,24 +241,15 @@ namespace cctbx { namespace af {
             this->m_end_of_storage.m_data = this->m_start + other_size;
           }
           else if (size() >= other_size) {
-            ElementType* i = stlp::copy_ptrs(
-              (const ElementType*)other.m_start+0,
-              (const ElementType*)other.m_finish+0,
-              (ElementType*)this->m_start,
-              m_has_trivial_assignment_operator());
-            _Destroy(i, this->m_finish);
+            ElementType* i = std::copy(
+              other.m_start, other.m_finish, this->m_start);
+            detail::destroy_array_elements(i, this->m_finish);
           }
           else {
-            stlp::copy_ptrs(
-              (const ElementType*)other.m_start,
-              (const ElementType*)other.m_start + size(),
-              (ElementType*)this->m_start,
-              m_has_trivial_assignment_operator());
-            stlp::uninitialized_copy(
-              (const ElementType*)other.m_start + size(),
-              (const ElementType*)other.m_finish+0,
-              this->m_finish,
-              m_is_pod_type());
+            std::copy(
+              other.m_start, other.m_start + size(), this->m_start);
+            std::uninitialized_copy(
+              other.m_start + size(), other.m_finish, this->m_finish);
           }
           this->m_finish = this->m_start + other_size;
         }
@@ -258,17 +269,18 @@ namespace cctbx { namespace af {
           if (this->m_start) {
             tmp = m_allocate_and_copy(sz, this->m_start, this->m_finish);
             m_clear();
-          } else {
+          }
+          else {
             tmp = this->m_end_of_storage.allocate(sz);
           }
           m_set(tmp, tmp + old_size, tmp + sz);
         }
       }
-    
+
       void assign(size_type sz, const ElementType& x) {
         m_fill_assign(sz, x);
       }
-      
+
       void assign(const ElementType* first, const ElementType* last)
       {
         size_type n = last - first;
@@ -278,49 +290,51 @@ namespace cctbx { namespace af {
           m_set(tmp, tmp + n, tmp + n);
         }
         else if (size() >= n) {
-          ElementType* new_finish = copy(first, last, this->m_start);
-          _Destroy(new_finish, this->m_finish);
+          ElementType* new_finish = std::copy(
+            first, last, this->m_start);
+          detail::destroy_array_elements(new_finish, this->m_finish);
           this->m_finish = new_finish;
         }
         else {
           const ElementType* mid = first + size() ;
-          copy(first, mid, this->m_start);
-          this->m_finish = stlp::uninitialized_copy(
-            mid, last, this->m_finish, m_is_pod_type());
+          std::copy(first, mid, this->m_start);
+          this->m_finish = std::uninitialized_copy(
+            mid, last, this->m_finish);
         }
       }
-    
+
       void push_back(const ElementType& x) {
         if (this->m_finish != this->m_end_of_storage.m_data) {
-          _Construct(this->m_finish, x);
+          stlp::construct(this->m_finish, x);
           ++this->m_finish;
         }
-        else
+        else {
           m_insert_overflow(this->m_finish, x, m_is_pod_type(), 1UL, true);
+        }
       }
-    
+
       ElementType* insert(ElementType* position, const ElementType& x) {
         size_type n = position - begin();
         if (this->m_finish != this->m_end_of_storage.m_data) {
           if (position == end()) {
-            _Construct(this->m_finish, x);
+            stlp::construct(this->m_finish, x);
             ++this->m_finish;
-          } else {
-            _Construct(this->m_finish, *(this->m_finish - 1));
+          }
+          else {
+            stlp::construct(this->m_finish, *(this->m_finish - 1));
             ++this->m_finish;
             ElementType x_copy = x;
-            stlp::copy_backward_ptrs(position,
-              this->m_finish - 2,
-              this->m_finish - 1,
-              m_has_trivial_assignment_operator());
+            std::copy_backward(
+              position, this->m_finish - 2, this->m_finish - 1);
             *position = x_copy;
           }
         }
-        else
+        else {
           m_insert_overflow(position, x, m_is_pod_type(), 1UL);
+        }
         return begin() + n;
       }
-    
+
       void insert(ElementType* position,
                   const ElementType* first, const ElementType* last)
       {
@@ -330,24 +344,21 @@ namespace cctbx { namespace af {
             const size_type elems_after = this->m_finish - position;
             ElementType* old_finish = this->m_finish;
             if (elems_after > n) {
-              stlp::uninitialized_copy(
-                this->m_finish - n, this->m_finish, this->m_finish,
-                m_is_pod_type());
+              std::uninitialized_copy(
+                this->m_finish - n, this->m_finish, this->m_finish);
               this->m_finish += n;
-              stlp::copy_backward_ptrs(position,
-                old_finish - n, old_finish,
-                m_has_trivial_assignment_operator());
-              stlp::copy(first, last, position);
+              std::copy_backward(position, old_finish - n, old_finish);
+              std::copy(first, last, position);
             }
             else {
               const ElementType* mid = first + elems_after;
-              stlp::uninitialized_copy(
-                mid, last, this->m_finish, m_is_pod_type());
+              std::uninitialized_copy(
+                mid, last, this->m_finish);
               this->m_finish += n - elems_after;
-              stlp::uninitialized_copy(
-                position, old_finish, this->m_finish, m_is_pod_type());
+              std::uninitialized_copy(
+                position, old_finish, this->m_finish);
               this->m_finish += elems_after;
-              copy(first, mid, position);
+              std::copy(first, mid, position);
             }
           }
           else {
@@ -356,15 +367,15 @@ namespace cctbx { namespace af {
             ElementType* new_start = this->m_end_of_storage.allocate(len);
             ElementType* new_finish = new_start;
             try {
-              new_finish = stlp::uninitialized_copy(
-                this->m_start, position, new_start, m_is_pod_type());
-              new_finish = stlp::uninitialized_copy(
-                first, last, new_finish, m_is_pod_type());
-              new_finish = stlp::uninitialized_copy(
-                position, this->m_finish, new_finish, m_is_pod_type());
+              new_finish = std::uninitialized_copy(
+                this->m_start, position, new_start);
+              new_finish = std::uninitialized_copy(
+                first, last, new_finish);
+              new_finish = std::uninitialized_copy(
+                position, this->m_finish, new_finish);
             }
             catch (...) {
-              _Destroy(new_start, new_finish); 
+              detail::destroy_array_elements(new_start, new_finish);
               this->m_end_of_storage.deallocate(new_start, len);
               throw;
             }
@@ -377,29 +388,28 @@ namespace cctbx { namespace af {
       void insert(ElementType* pos, size_type n, const ElementType& x) {
         m_fill_insert(pos, n, x);
       }
-      
+
       void pop_back() {
         --this->m_finish;
-        _Destroy(this->m_finish);
+        detail::destroy_array_element(this->m_finish);
       }
 
       ElementType* erase(ElementType* position) {
-        if (position + 1 != end())
-          stlp::copy_ptrs(position + 1, this->m_finish, position,
-            m_has_trivial_assignment_operator());
+        if (position + 1 != end()) {
+          std::copy(position + 1, this->m_finish, position);
+        }
         --this->m_finish;
-        _Destroy(this->m_finish);
+        detail::destroy_array_element(this->m_finish);
         return position;
       }
 
       ElementType* erase(ElementType* first, ElementType* last) {
-        ElementType* i = stlp::copy_ptrs(last, this->m_finish, first,
-          m_has_trivial_assignment_operator());
-        _Destroy(i, this->m_finish);
+        ElementType* i = std::copy(last, this->m_finish, first);
+        detail::destroy_array_elements(i, this->m_finish);
         this->m_finish = i;
         return first;
       }
-    
+
       void resize(size_type new_size, const ElementType& x) {
         if (new_size < size())  {
           erase(begin() + new_size, end());
@@ -413,83 +423,85 @@ namespace cctbx { namespace af {
         resize(new_size, ElementType());
       }
 
-      void clear() { 
+      void clear() {
         erase(begin(), end());
       }
-    
+
     protected:
 
       // for non-POD types
       void m_insert_overflow(ElementType* position, const ElementType& x,
-                             const m_false_type&, 
-    			     size_type fill_len, bool at_end = false) {
+                             const m_false_type&,
+                             size_type fill_len, bool at_end = false) {
         const size_type old_size = size();
         const size_type len = old_size + std::max(old_size, fill_len);
-        
+
         ElementType* new_start = this->m_end_of_storage.allocate(len);
         ElementType* new_finish = new_start;
         try {
-          new_finish = stlp::uninitialized_copy(
-            this->m_start, position, new_start, m_false_type());
+          new_finish = std::uninitialized_copy(
+            this->m_start, position, new_start);
           // handle insertion
           if (fill_len == 1) {
-            _Construct(new_finish, x);
+            stlp::construct(new_finish, x);
             ++new_finish;
-          } else
-            new_finish = stlp::uninitialized_fill_n(
-              new_finish, fill_len, x, m_false_type());
+          }
+          else {
+            new_finish = std::uninitialized_fill_n(
+              new_finish, fill_len, x);
+          }
           if (!at_end)
             // copy remainder
-            new_finish = stlp::uninitialized_copy(
-              position, this->m_finish, new_finish, m_false_type());
+            new_finish = std::uninitialized_copy(
+              position, this->m_finish, new_finish);
         }
         catch (...) {
-          _Destroy(new_start,new_finish); 
-          this->m_end_of_storage.deallocate(new_start,len);
+          detail::destroy_array_elements(new_start, new_finish);
+          this->m_end_of_storage.deallocate(new_start, len);
           throw;
         }
         m_clear();
         m_set(new_start, new_finish, new_start + len);
       }
-    
+
       // for POD types
       void m_insert_overflow(ElementType* position, const ElementType& x,
-                             const m_true_type&, 
-    			     size_type fill_len, bool at_end = false) {
+                             const m_true_type&,
+                             size_type fill_len, bool at_end = false) {
         const size_type old_size = size();
         const size_type len = old_size + std::max(old_size, fill_len);
-        
+
         ElementType* new_start = this->m_end_of_storage.allocate(len);
-        ElementType* new_finish = (ElementType*)stlp::copy_trivial(
+        ElementType* new_finish = (ElementType*) std::copy(
           this->m_start, position, new_start);
           // handle insertion
         new_finish = fill_n(new_finish, fill_len, x);
         if (!at_end)
           // copy remainder
-          new_finish = (ElementType*)stlp::copy_trivial(
+          new_finish = (ElementType*) std::copy(
             position, this->m_finish, new_finish);
         m_clear();
         m_set(new_start, new_finish, new_start + len);
       }
-    
+
       void m_clear() {
-        _Destroy(this->m_start, this->m_finish);
+        detail::destroy_array_elements(this->m_start, this->m_finish);
         this->m_end_of_storage.deallocate(
           this->m_start, this->m_end_of_storage.m_data - this->m_start);
       }
-    
+
       void m_set(ElementType* s, ElementType* f, ElementType* e) {
         this->m_start = s;
         this->m_finish = f;
         this->m_end_of_storage.m_data = e;
       }
-    
+
       ElementType* m_allocate_and_copy(
         size_type n, const ElementType* first, const ElementType* last)
       {
         ElementType* result = this->m_end_of_storage.allocate(n);
         try {
-          stlp::uninitialized_copy(first, last, result, m_is_pod_type());
+          std::uninitialized_copy(first, last, result);
           return result;
         }
         catch (...) {
@@ -497,7 +509,7 @@ namespace cctbx { namespace af {
           throw;
         }
       }
-      
+
       m_fill_insert(ElementType* position, size_type n, const ElementType& x) {
         if (n != 0) {
           if (size_type(this->m_end_of_storage.m_data - this->m_finish) >= n) {
@@ -505,28 +517,27 @@ namespace cctbx { namespace af {
             const size_type elems_after = this->m_finish - position;
             ElementType* old_finish = this->m_finish;
             if (elems_after > n) {
-              stlp::uninitialized_copy(this->m_finish - n, this->m_finish,
-                this->m_finish, m_is_pod_type());
+              std::uninitialized_copy(
+                this->m_finish - n, this->m_finish, this->m_finish);
               this->m_finish += n;
-              stlp::copy_backward_ptrs(
-                position, old_finish - n, old_finish,
-                m_has_trivial_assignment_operator());
+              std::copy_backward(position, old_finish - n, old_finish);
               std::fill(position, position + n, x_copy);
             }
             else {
-              uninitialized_fill_n(this->m_finish, n - elems_after, x_copy);
+              std::uninitialized_fill_n(
+                this->m_finish, n - elems_after, x_copy);
               this->m_finish += n - elems_after;
-              stlp::uninitialized_copy(position, old_finish, this->m_finish,
-                m_is_pod_type());
+              std::uninitialized_copy(position, old_finish, this->m_finish);
               this->m_finish += elems_after;
               std::fill(position, old_finish, x_copy);
             }
           }
-          else 
+          else {
             m_insert_overflow(position, x, m_is_pod_type(), n);
+          }
         }
       }
-      
+
       m_fill_assign(size_t n, const ElementType& val) {
         if (n > capacity()) {
           shared_base_v2<ElementType> tmp(n, val, get_allocator());
@@ -541,8 +552,11 @@ namespace cctbx { namespace af {
           erase(std::fill_n(begin(), n, val), end());
         }
       }
-    
+
       detail::basic_storage* m_ptr_basic_storage;
+      ElementType* m_start;
+      ElementType* m_finish;
+      stlp::alloc_proxy<_Tp*, _Tp> m_end_of_storage;
   };
 
 }} // namespace cctbx::af

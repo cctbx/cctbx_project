@@ -7,6 +7,7 @@
       void push_back(const ElementType& x) {
         this->auto_resize(this->size()+1, x);
       }
+      void append(const ElementType& x) { push_back(x); }
       void pop_back() { this->resize(this->size()-1); }
 
       ElementType*

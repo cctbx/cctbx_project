@@ -65,6 +65,8 @@ def run():
 #ifndef CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 #define CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
 #include <complex>
 
 namespace cctbx { namespace af {
@@ -98,6 +100,8 @@ namespace cctbx { namespace af {
 """ % (op_types[i].lhs, op_types[i].rhs, result_type[i])
 
     print "}} // namespace cctbx::af"
+    print ""
+    print "#endif // DOXYGEN_SHOULD_SKIP_THIS"
     print ""
     print "#endif // CCTBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H"
     sys.stdout = sys.__stdout__

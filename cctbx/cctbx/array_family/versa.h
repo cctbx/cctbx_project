@@ -35,7 +35,7 @@ namespace cctbx { namespace af {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
       }
       versa(const handle_type& handle, const size_type& sz)
-        : versa_plain<ElementType, AccessorType>(handle, sz)
+        : versa_plain<ElementType, AccessorType>(handle, AccessorType(sz))
       {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
       }

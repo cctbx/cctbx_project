@@ -45,6 +45,12 @@ namespace cctbx { namespace af {
 
     template <class ElementType>
     inline
+    void destroy_array_element(ElementType* elem) {
+      elem->~ElementType();
+    }
+
+    template <class ElementType>
+    inline
     void destroy_array_elements(ElementType* first, ElementType* last) {
       while (first != last) {
         first->~ElementType();
