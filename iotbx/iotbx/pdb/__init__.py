@@ -74,6 +74,7 @@ def format_atom_record(record_name="ATOM",
   return (
       "%-6.6s%5d %-4.4s%1.1s%-3.3s %1.1s%4d%1.1s   %8.3f%8.3f%8.3f"
     + "%6.2f%6.2f      %-4.4s%2.2s%2.2s") % (
-    record_name, serial, name, altLoc, resName, chainID, resSeq,
-    iCode, site[0], site[1], site[2], occupancy, tempFactor,
+    record_name, serial,
+    name, altLoc, resName, chainID, resSeq, iCode,
+    site[0], site[1], site[2], occupancy, tempFactor,
     segID, element, charge)
