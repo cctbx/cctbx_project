@@ -38,7 +38,7 @@ def run(args):
       if (file_name.lower().endswith(".mtz")):
         print "Writing MTZ file:", file_name
         miller_array.export_as_mtz(file_name, file_name[:-4])
-      if (file_name.lower().endswith(".cns")):
+      elif (file_name.lower().endswith(".cns")):
         print "Writing CNS reflection file:", file_name
         miller_array.export_as_cns_hkl(open(file_name, "w"), file_name)
       elif (file_name.lower().endswith(".pickle")):
