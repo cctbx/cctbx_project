@@ -406,6 +406,9 @@ namespace cctbx { namespace xray {
       af::shared<FloatType> d_target_d_occupancy_;
       af::shared<FloatType> d_target_d_fp_;
       af::shared<FloatType> d_target_d_fdp_;
+#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1495
+      bool dummy_;
+#endif
 
       void
       sampling_(
