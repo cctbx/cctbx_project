@@ -1,4 +1,3 @@
-import iotbx.pdb
 from cctbx.crystal import close_packing
 from cctbx import crystal
 from cctbx.crystal.direct_space_asu import non_crystallographic_asu_mappings
@@ -8,6 +7,7 @@ from cctbx.array_family import flex
 from cctbx.development import debug_utils
 from scitbx import matrix
 from scitbx.python_utils.math_utils import ifloor, iceil
+import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
 import time
