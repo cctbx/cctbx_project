@@ -162,7 +162,7 @@ namespace cctbx {
           sgtbx::RTMx M = SgOps(0, iInv, iSMx);
           m_HR = H * M.Rpart();
           if (ASU.isInASU(m_HR)) {
-            m_HT = H * M.Tpart();
+            m_HT = sgtbx::HT_mod_1(H, M.Tpart());
             return;
           }
         }
@@ -172,7 +172,7 @@ namespace cctbx {
         sgtbx::RTMx M = SgOps(0, 0, iSMx);
         m_HR = H * M.Rpart();
         if (ASU.isInASU(-m_HR)) {
-          m_HT = H * M.Tpart();
+          m_HT = sgtbx::HT_mod_1(H, M.Tpart());
           m_FriedelFlag = true;
           return;
         }
