@@ -31,9 +31,9 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg){
     cctbx::sgtbx::rot_mx r = s.r();
     cctbx::sgtbx::tr_vec t = s.t();
     scitbx::mat3<int> r_num = r.num();
-    int r_den = r.den();
+    float r_den = r.den();
     scitbx::vec3<int> t_num = t.num();
-    int t_den = t.den();
+    float t_den = t.den();
     for (std::size_t p=0;p<3;p++) {
       for (std::size_t q=0;q<3;q++) {
         mtz->mtzsymm.sym[i][p][q] = r_num(p,q)/r_den; }
@@ -71,6 +71,37 @@ void iotbx::mtz::MtzWriter::oneDataset(const std::string& dataset,
     strip_dataset.erase(ind,1);
   }
   oneset = MtzAddDataset(mtz, onextal, strip_dataset.c_str(), wavelength);
+}
+
+void
+MtzWriter::addColumn(
+  const std::string& name,
+  char type_code,
+  af::const_ref<cctbx::miller::index<> > const& miller_indices,
+  af::const_ref<double> const& data)
+{
+  using namespace cctbx;
+  CREATE THE COLUMN name
+  CCTBX_ASSERT(miller_indices.size() == data.size());
+  typedef std::map<miller::index<>, std::size_t> lookup_dict_type;
+  lookup_dict_type lookup_dict;
+  for(i=0;i<NUMBER_OF_EXISTING_INDICES;i++) {
+    lookup_dict[EXISTING_MILLER_INDEX] = i;
+  }
+  for(i=0;i<miller_indices.size();i++) {
+    std::size_t i_mtz;
+    lookup_dict_type::const_iterator
+      ld_pos = lookup_dict.find(miller_indices[i]);
+    if (ld_pos != lookup_dict.end()) {
+      i_mtz = ld_pos->second;
+    }
+    else {
+      i_mtz = lookup_dict.size();
+      ADD miller_indices[i] TO THE MTZ OBJECT
+      FILL IN MISSING VALUES FOR ALL OTHER COLUMNS
+    }
+    ASSIGN data[i] to mtz_column[i_mtz]
+  }
 }
 
 void iotbx::mtz::MtzWriter::write(const std::string& filename){
