@@ -38,12 +38,12 @@ def OneCycle():
   Fcalc = shared.complex_double(MillerIndices.size())
   sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites, Fcalc)
   dT_dFc = shared.complex_double(MillerIndices.size())
-  Fcalc2 = shared.complex_double(MillerIndices.size())
-  dF_dX = shared.double3(MillerIndices.size())
-  sftbx.StructureFactorAndDerivativesArray(
-    UnitCell, SgOps, MillerIndices, dT_dFc, Sites, Fcalc2, dF_dX)
+  dF_dX = shared.double3(Sites.size())
+  dF_dX.fill((0,0,0))
+  sftbx.StructureFactor_dX_Array(
+    UnitCell, SgOps, MillerIndices, dT_dFc, Sites, dF_dX)
   for i in xrange(len(MillerIndices)):
-    print MillerIndices[i], Fcalc[i], Fcalc2[i]
+    print MillerIndices[i], Fcalc[i]
 
 if (__name__ == "__main__"):
   import sys

@@ -805,7 +805,7 @@ namespace cctbx { namespace sgtbx {
       }
       //! Compute Sum(exp(2 pi i H X)) for all symmetrically equivalent X.
       /*! This sum is a sub-expression in the structure factor
-          calculation. See file examples/python/generate_hklf.py.
+          calculation.
        */
       std::complex<FloatType> StructureFactor(const Miller::Index& H) const
       {
