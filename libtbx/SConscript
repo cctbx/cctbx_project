@@ -1,6 +1,5 @@
 import libtbx.config
 from libtbx.path import norm_join
-from libtbx.touch_init import touch_init
 import sys, os
 
 def SCons_Action_FunctionAction_get_contents(self, target, source, env,
@@ -35,7 +34,6 @@ env_etc = empty()
 env_etc.libtbx_env = libtbx.config.env()
 env_etc.libtbx_env.write_api_file()
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
-env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
 
 env_etc.include_registry = libtbx.config.include_registry() \
