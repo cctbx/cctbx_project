@@ -407,7 +407,7 @@ namespace scitbx {
     return result;
   }
 
-  //! Element-wise inplace addition.
+  //! Element-wise in-place addition.
   template <typename NumType>
   inline
   vec3<NumType>&
@@ -421,7 +421,7 @@ namespace scitbx {
     return lhs;
   }
 
-  //! Element-wise inplace addition.
+  //! Element-wise in-place addition.
   template <typename NumType>
   inline
   vec3<NumType>&
@@ -435,7 +435,7 @@ namespace scitbx {
     return lhs;
   }
 
-  //! Element-wise inplace difference.
+  //! Element-wise in-place difference.
   template <typename NumType>
   inline
   vec3<NumType>&
@@ -449,7 +449,7 @@ namespace scitbx {
     return lhs;
   }
 
-  //! Element-wise inplace difference.
+  //! Element-wise in-place difference.
   template <typename NumType>
   inline
   vec3<NumType>&
@@ -463,7 +463,7 @@ namespace scitbx {
     return lhs;
   }
 
-  //! Element-wise inplace multiplication.
+  //! Element-wise in-place multiplication.
   template <typename NumType>
   inline
   vec3<NumType>&
@@ -477,7 +477,7 @@ namespace scitbx {
     return lhs;
   }
 
-  //! Element-wise inplace division.
+  //! Element-wise in-place division.
   template <typename NumType>
   inline
   vec3<NumType>&
@@ -491,7 +491,7 @@ namespace scitbx {
     return lhs;
   }
 
-  //! Element-wise inplace modulus operation.
+  //! Element-wise in-place modulus operation.
   template <typename NumType>
   inline
   vec3<NumType>&
