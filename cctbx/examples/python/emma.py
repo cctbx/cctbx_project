@@ -94,7 +94,7 @@ class web_to_models:
       self.positions = []
       for line in coordinates:
         label, coor = interpret_generic_coordinate_line(line, skip_columns)
-        if (label == ""): label = "Site" + str(len(positions)+1)
+        if (label == ""): label = "Site" + str(len(self.positions)+1)
         if (coor_type != "Fractional"):
           coor = xsym.UnitCell.fractionalize(coor)
         self.positions.append(emma.labeled_position(label, coor))
