@@ -52,7 +52,8 @@ namespace {
                   double,
                   af::const_ref<std::complex<double>,
                                 af::c_grid_padded<3> > const&,
-                  bool>())
+                  bool,
+                  optional<bool> >())
         .def(init<bool,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<std::complex<double>,
@@ -61,6 +62,8 @@ namespace {
                   optional<bool> >())
         .def("miller_indices", &w_t::miller_indices)
         .def("data", &w_t::data)
+        .def("n_indices_affected_by_aliasing",
+             &w_t::n_indices_affected_by_aliasing)
         .def("outside_map", &w_t::outside_map)
       ;
     }
