@@ -70,10 +70,19 @@ def exercise_stl_set_unsigned():
   a = shared.stl_set_unsigned([(2,1),(3,5,2)])
   assert [tuple(s) for s in a] == [(1, 2), (2, 3, 5)]
 
+def exercise_mat3_int():
+  from scitbx.array_family import flex
+  a = shared.mat3_int()
+  assert a.size() == 0
+  a = shared.mat3_int([range(9)])
+  assert a.size() == 1
+  assert list(a[0]) == range(9)
+
 def exercise():
   exercise_stl_vector_unsigned()
   exercise_stl_vector_double()
   exercise_stl_set_unsigned()
+  exercise_mat3_int()
   print "OK"
 
 if (__name__ == "__main__"):
