@@ -127,17 +127,6 @@ def make_start_gaussian(null_fit_object,
     assert abs(result.at_stol_sq(stol_sq) - fs_reference) < 1.e-4
   return result
 
-def get_significant_relative_errors(fit_object):
-  results = flex.double()
-  for i,diff in fit_object.differences().items():
-    sigma = fit_object.sigmas()[i]
-    result = max(0, abs(diff)-sigma)
-    if (result > 0):
-      assert abs(fit_object.target_values()[i]) != 0
-      result /= abs(fit_object.target_values()[i])
-    results.append(result)
-  return results
-
 class find_max_stol:
 
   def __init__(self, fit_object, target_power, n_repeats_minimization,
@@ -174,8 +163,8 @@ class find_max_stol:
         if (min(minimized.final_fit_object.b()) < b_min):
           break
         min_fit_object = minimized.final_fit_object
-      max_error = flex.max(get_significant_relative_errors(
-        fit_object=minimized.final_fit_object))
+      max_error = flex.max(
+        minimized.final_fit_object.significant_relative_errors())
       if (    max_error > max_max_error
           or min(minimized.final_fit_object.b()) < b_min):
         if (good_n_points != 0):
@@ -275,7 +264,7 @@ def show_literature_fits(label, n_terms, null_fit_object, n_points,
         null_fit_object.target_values()[:n_points],
         null_fit_object.sigmas()[:n_points],
         lib_gaussian)
-      e = flex.max(get_significant_relative_errors(fit_object=fit_object))
+      e = flex.max(fit_object.significant_relative_errors())
       show_fit_summary(lib_source, label, fit_object, e, e_other)
 
 def write_plot(f, xs, ys):
