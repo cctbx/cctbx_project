@@ -5,7 +5,6 @@ from scitbx.python_utils.str_utils import line_breaker
 from libtbx.itertbx import count
 from libtbx import introspection
 from cStringIO import StringIO
-import copy
 import math
 import sys, os
 
@@ -202,15 +201,17 @@ class definition: # FUTURE definition(object)
     self.input_size = input_size
     self.expert_level = expert_level
 
-  def customized_copy(self, name=None, words=None):
+  def copy(self):
     keyword_args = {}
     for keyword in self.__slots__:
       keyword_args[keyword] = getattr(self, keyword)
-    if (name is not None):
-      keyword_args["name"] = name
-    if (words is not None):
-      keyword_args["words"] = words
     return definition(**keyword_args)
+
+  def customized_copy(self, name=None, words=None):
+    result = self.copy()
+    if (name is not None): result.name = name
+    if (words is not None): result.words = words
+    return result
 
   def fetch(self, source):
     if (not isinstance(source, definition)):
@@ -550,15 +551,17 @@ class scope:
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
 
-  def customized_copy(self, name=None, objects=None):
+  def copy(self):
     keyword_args = {}
     for keyword in self.__init__varnames__[1:]:
       keyword_args[keyword] = getattr(self, keyword)
-    if (name is not None):
-      keyword_args["name"] = name
-    if (objects is not None):
-      keyword_args["objects"] = objects
     return scope(**keyword_args)
+
+  def customized_copy(self, name=None, objects=None):
+    result = self.copy()
+    if (name is not None): result.name = name
+    if (objects is not None): result.objects = objects
+    return result
 
   def adopt(self, object):
     assert len(object.name) > 0
@@ -776,7 +779,7 @@ class scope:
           fetch_count += 1
           result_objects.append(master_object.fetch(source=matching_source))
         if (fetch_count == 0):
-          result_objects.append(copy.deepcopy(master_object))
+          result_objects.append(master_object.copy())
           if (master_object.optional):
             result_objects[-1].is_disabled = True
         elif (fetch_count == 1
@@ -789,7 +792,7 @@ class scope:
           fetch_count += 1
           result_object = result_object.fetch(source=matching_source)
         if (fetch_count == 0):
-          result_objects.append(copy.deepcopy(master_object))
+          result_objects.append(master_object.copy())
         else:
           result_objects.append(result_object)
     return result_objects
