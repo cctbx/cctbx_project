@@ -8,11 +8,19 @@ ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
 from cctbx_geometry_restraints_ext import *
 
 import scitbx.stl.map
+from stdlib import math
 
 nonbonded_radius_table = scitbx.stl.map.stl_string_double
 
 nonbonded_distance_table = scitbx.stl.map.stl_string_stl_map_stl_string_double
 nonbonded_distance_dict = scitbx.stl.map.stl_string_double
+
+def angle_delta_deg(angle_1, angle_2, periodicity=1):
+  half_period = 180./max(1,periodicity)
+  d = math.fmod(angle_2-angle_1, 2*half_period)
+  if   (d < -half_period): d += 2*half_period
+  elif (d >  half_period): d -= 2*half_period
+  return d
 
 class proxy_registry_add_result:
 
@@ -40,8 +48,8 @@ class angle_proxy_registry:
     else:
       i_list = tab_i_seq_1[i_seqs_0_2]
       result.tabulated_proxy = self.proxies[i_list]
-      if (   abs(result.tabulated_proxy.angle_ideal - proxy.angle_ideal)
-               > tolerance
+      if (   abs(angle_delta_deg(result.tabulated_proxy.angle_ideal,
+                                 proxy.angle_ideal)) > tolerance
           or abs(result.tabulated_proxy.weight - proxy.weight)
                > tolerance):
         result.is_conflicting = 0001
@@ -70,8 +78,9 @@ class dihedral_proxy_registry:
     else:
       i_list = tab_i_seq_0[i_seqs_1_2_3]
       result.tabulated_proxy = self.proxies[i_list]
-      if (   abs(result.tabulated_proxy.angle_ideal - proxy.angle_ideal)
-               > tolerance
+      if (   abs(angle_delta_deg(result.tabulated_proxy.angle_ideal,
+                                 proxy.angle_ideal,
+                                 proxy.periodicity)) > tolerance
           or abs(result.tabulated_proxy.weight - proxy.weight)
                > tolerance
           or result.tabulated_proxy.periodicity != proxy.periodicity):
