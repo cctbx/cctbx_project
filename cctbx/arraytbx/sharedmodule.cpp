@@ -14,6 +14,7 @@
 #include <cctbx/array_family/shared_bpl.h>
 #include <cctbx/math/linear_regression.h>
 #include <cctbx/math/array_utils.h>
+#include <cctbx/maps/accessors.h>
 
 #include <cctbx/miller_bpl.h>
 #include <cctbx/hendrickson_lattman_bpl.h>
@@ -73,6 +74,51 @@ namespace cctbx { namespace af {
         shared_xray_scatterer_double_wk1995_getstate, "__getstate__");
       class_bldr.def(
         shared_xray_scatterer_double_wk1995_setstate, "__setstate__");
+    }
+  };
+
+  // PyMol support, based on code by N.K. Sauter
+  template <typename InpFloatType,
+            typename OutFloatType>
+  struct as_CObjectZYX
+  {
+    static std::size_t out_size(long3 const& first, long3 const& last)
+    {
+      std::size_t result = 1;
+      for(std::size_t i=0;i<3;i++) {
+        cctbx_assert(last[i] >= first[i]);
+        result *= (last[i] - first[i] + 1);
+      }
+      return result;
+    }
+
+    static
+    boost::python::ref
+    convert(
+      shared<InpFloatType> a,
+      long3 const& gridding,
+      long3 const& first,
+      long3 const& last,
+      bool apply_sigma_scaling)
+    {
+      cctbx_assert(product(gridding.const_ref()) == a.size());
+      math::array_statistics<InpFloatType> map_statistics(a.const_ref());
+      InpFloatType mean = map_statistics.mean();
+      InpFloatType sigma = map_statistics.sigma();
+      if (sigma == 0) sigma = 1;
+      OutFloatType* out_mem = reinterpret_cast<OutFloatType*>(
+        malloc(out_size(first, last) * sizeof(OutFloatType)));
+      OutFloatType* out_ptr = out_mem;
+      ref<InpFloatType, maps::grid_p1<3> > a3d(a.begin(), gridding);
+      long3 out_pt;
+      for (out_pt[2] = first[2]; out_pt[2] <= last[2]; out_pt[2]++) {
+      for (out_pt[1] = first[1]; out_pt[1] <= last[1]; out_pt[1]++) {
+      for (out_pt[0] = first[0]; out_pt[0] <= last[0]; out_pt[0]++) {
+        InpFloatType val = a3d(out_pt);
+        if (apply_sigma_scaling) val = (val - mean) / sigma;
+        *out_ptr++ = static_cast<OutFloatType>(val);
+      }}}
+      return boost::python::ref(PyCObject_FromVoidPtr(out_mem, free));
     }
   };
 
@@ -211,6 +257,11 @@ namespace {
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
     WRAP_PLAIN("tiny_size_t_2", tiny_size_t_2);
 #endif
+
+    this_module.def(
+      cctbx::af::as_CObjectZYX<float, float>::convert, "as_CObjectZYXfloat");
+    this_module.def(
+      cctbx::af::as_CObjectZYX<double, float>::convert, "as_CObjectZYXfloat");
 
     this_module.def(py_reinterpret_complex_as_real,
       "reinterpret_complex_as_real");
