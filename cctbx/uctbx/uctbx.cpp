@@ -11,6 +11,7 @@
  */
 
 #include <cctbx/uctbx.h>
+#include <cctbx/utils.h>
 #include <cctbx/basic/matrixlite.h>
 #include <cctbx/basic/define_range.h>
 
@@ -61,13 +62,6 @@ namespace { // Helper functions in anonymous namespace.
     G[2] = G[6] = Len[0] * Len[2] * cosAng[1];
     G[5] = G[7] = Len[1] * Len[2] * cosAng[0];
     return G;
-  }
-
-  bool approx_equal(double a, double b, double scaled_tolerance) {
-    double diff = a - b;
-    if (diff < 0.) diff = -diff;
-    if (diff < scaled_tolerance) return true;
-    return false;
   }
 
   bool isSymmetric(const Mx33& M, double tolerance = 1.e-6)
