@@ -215,13 +215,21 @@ def exercise_1d_slicing_core(a):
   assert tuple(a[1:]) == (2,3,4,5)
   assert tuple(a[-2:]) == (4,5)
   assert tuple(a[-1:]) == (5,)
+  assert tuple(a[-6::]) == (1,2,3,4,5) # Numeric-21.0 a[-6:] is different
+  assert tuple(a[-7::]) == (1,2,3,4,5) # Numeric-21.0 a[-7:] is different
   assert tuple(a[:-1]) == (1,2,3,4)
   assert tuple(a[:-2]) == (1,2,3)
   assert tuple(a[:-4]) == (1,)
   assert tuple(a[:-5]) == ()
+  assert tuple(a[:-6:]) == () # Numeric-21.0 a[:-6] is different
+  assert tuple(a[:-7:]) == () # Numeric-21.0 a[:-7] is different
   assert tuple(a[:0]) == ()
   assert tuple(a[:1]) == (1,)
   assert tuple(a[:2]) == (1,2)
+  assert tuple(a[:3]) == (1,2,3)
+  assert tuple(a[:4]) == (1,2,3,4)
+  assert tuple(a[:5]) == (1,2,3,4,5)
+  assert tuple(a[:6]) == (1,2,3,4,5)
   assert tuple(a[::1]) == (1,2,3,4,5)
   assert tuple(a[::2]) == (1,3,5)
   assert tuple(a[1::2]) == (2,4)
@@ -235,6 +243,7 @@ def exercise_1d_slicing_core(a):
   assert tuple(a[-1::-2]) == (5,3,1)
   assert tuple(a[-1:1:-2]) == (5,3)
   assert tuple(a[-1:2:-2]) == (5,)
+  assert tuple(a[3:3:0]) == ()
 
 def exercise_1d_slicing():
   exercise_1d_slicing_core(flex.int((1,2,3,4,5)))
