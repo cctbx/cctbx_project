@@ -19,7 +19,7 @@
 
 namespace cctbx { namespace xray { namespace boost_python {
 
-  void wrap_agarwal_1978();
+  void wrap_fast_gradients();
   void wrap_conversions();
   void wrap_sampled_model_density();
   void wrap_scatterer();
@@ -42,7 +42,7 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    wrap_agarwal_1978();
+    wrap_fast_gradients();
     wrap_conversions();
     wrap_sampled_model_density();
     wrap_scatterer();

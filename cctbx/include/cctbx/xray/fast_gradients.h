@@ -1,5 +1,5 @@
-#ifndef CCTBX_XRAY_AGARWAL_1978_H
-#define CCTBX_XRAY_AGARWAL_1978_H
+#ifndef CCTBX_XRAY_FAST_GRADIENTS_H
+#define CCTBX_XRAY_FAST_GRADIENTS_H
 
 #include <cctbx/xray/sampled_model_density.h>
 
@@ -220,7 +220,7 @@ namespace cctbx { namespace xray {
 
   template <typename FloatType = double,
             typename XrayScattererType = scatterer<> >
-  class agarwal_1978
+  class fast_gradients
   {
     public:
       typedef XrayScattererType xray_scatterer_type;
@@ -230,9 +230,9 @@ namespace cctbx { namespace xray {
       typedef typename accessor_type::index_type grid_point_type;
       typedef typename grid_point_type::value_type grid_point_element_type;
 
-      agarwal_1978() {}
+      fast_gradients() {}
 
-      agarwal_1978(
+      fast_gradients(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
@@ -360,8 +360,8 @@ namespace cctbx { namespace xray {
 
   template <typename FloatType,
             typename XrayScattererType>
-  agarwal_1978<FloatType, XrayScattererType>
-  ::agarwal_1978(
+  fast_gradients<FloatType, XrayScattererType>
+  ::fast_gradients(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
     af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
@@ -603,4 +603,4 @@ namespace cctbx { namespace xray {
 
 }} // namespace cctbx::xray
 
-#endif // CCTBX_XRAY_AGARWAL_1978_H
+#endif // CCTBX_XRAY_FAST_GRADIENTS_H

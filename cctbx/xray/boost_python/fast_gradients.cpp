@@ -1,6 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <cctbx/xray/agarwal_1978.h>
+#include <cctbx/xray/fast_gradients.h>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -11,9 +11,9 @@ namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
 
-  struct agarwal_1978_wrappers
+  struct fast_gradients_wrappers
   {
-    typedef agarwal_1978<> w_t;
+    typedef fast_gradients<> w_t;
     typedef w_t::grid_point_type grid_point_type;
 
     static void
@@ -22,7 +22,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
-      class_<w_t>("agarwal_1978", no_init)
+      class_<w_t>("fast_gradients", no_init)
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scatterer<> > const&,
                   af::const_ref<std::complex<double>,
@@ -70,10 +70,10 @@ namespace {
 
 } // namespace <anoymous>
 
-  void wrap_agarwal_1978()
+  void wrap_fast_gradients()
   {
     using namespace boost::python;
-    agarwal_1978_wrappers::wrap();
+    fast_gradients_wrappers::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python
