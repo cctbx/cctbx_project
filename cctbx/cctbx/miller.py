@@ -381,7 +381,7 @@ class array(set):
     assert self.indices() != None
     assert self.anomalous_flag() != None
     assert self.data() != None
-    assert self.sigmas() == None, "Not implemented." # XXX
+    new_sigmas = None
     if (type(self.data()) == type(flex.complex_double())):
       assert phase_deg == None
       p1 = expand_to_p1(
@@ -396,14 +396,22 @@ class array(set):
           self.space_group(), self.anomalous_flag(), self.indices(),
           self.data())
         new_data = p1.amplitudes()
+        if (self.sigmas() != None):
+          assert type(self.sigmas()) == type(flex.double())
+          p1 = expand_to_p1(
+            self.space_group(), self.anomalous_flag(), self.indices(),
+            self.sigmas())
+          new_sigmas = p1.amplitudes()
       else:
         p1 = expand_to_p1(
           self.space_group(), self.anomalous_flag(), self.indices(),
           self.data(), phase_deg)
         new_data = p1.phases()
+    assert self.sigmas() == None or new_sigmas != None
     return array(
       set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag()),
-      data=new_data)
+      data=new_data,
+      sigmas=new_sigmas)
 
   def change_basis(self, cb_op):
     new_data = None
