@@ -34,12 +34,20 @@ namespace {
     static scitbx::vec3<double>
     mul(w_t const& o, scitbx::vec3<double> const& rhs) { return o * rhs; }
 
+    static void // workaround for Mac OS 10.2 gcc 3.3 internal compiler error
+    wrap_2(boost::python::class_<w_t>& w)
+    {
+      w.def("refine_gridding", (sg_vec3(w_t::*)(sg_vec3 const&) const)
+        &w_t::refine_gridding);
+    }
+
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_internal_reference<> rir;
-      class_<w_t>("rt_mx", no_init)
+      class_<w_t> w("rt_mx", no_init);
+      w
         .def(init<optional<int, int> >())
         .def(init<rot_mx const&, tr_vec const&>())
         .def(init<rot_mx const&, optional<int> >())
@@ -68,8 +76,9 @@ namespace {
         .def("mod_positive", &w_t::mod_positive)
         .def("mod_short", &w_t::mod_short)
         .def("inverse", &w_t::inverse)
-        .def("refine_gridding", (sg_vec3(w_t::*)(sg_vec3 const&) const)
-          &w_t::refine_gridding)
+      ;
+      wrap_2(w);
+      w
         .def("cancel", &w_t::cancel)
         .def("inverse_cancel", &w_t::inverse_cancel)
         .def("multiply", &w_t::multiply)
