@@ -6,7 +6,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from cctbx.development import debug_utils
 from scitbx import matrix
-from scitbx.python_utils.math_utils import iceil
+from scitbx.python_utils.math_utils import ifloor, iceil
 from scitbx.python_utils.misc import adopt_init_args
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
@@ -61,80 +61,58 @@ class labeled_sites:
     self.labels.extend(other.labels)
     self.sites.append(other.sites)
 
-class hcp_options:
-
-  def __init__(self, no_buffer=00000, strictly_inside=00000):
-    adopt_init_args(self, locals())
-
-def hcp_fill_box(float_asu, point_distance, continuous_shift_flags, options):
+def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
+                 buffer_thickness=-1, all_twelve_neighbors=00000):
   assert point_distance > 0
-  if (0):
-    sites_frac = labeled_sites()
-    for i,vertex in zip(count(), float_asu.volume_vertices(cartesian=00000)):
-      sites_frac.append("vertex%2.2d" % i, vertex)
-    return sites_frac
+  if (buffer_thickness < 0):
+    buffer_thickness = point_distance * (2/3. * (.5 * math.sqrt(3)))
+  float_asu_buffer = float_asu.add_buffer(thickness=buffer_thickness)
   hex_box = hexagonal_box(
     vertices_cart=float_asu.volume_vertices(cartesian=0001),
     point_distance=point_distance)
-  if (options.no_buffer):
-    extra_steps = 1
-  else:
-    extra_steps = 2
-  box_grid = [iceil(abs(e-b))+extra_steps
-              for b,e in zip(hex_box.min, hex_box.max)]
-  box_origin = [-extra_steps]*3
-  for i,f in zip(count(), continuous_shift_flags):
-    if (f):
-      box_grid[i] = 0
-      box_origin[i] = 0
-  print "box_grid:", box_grid
-  if (options.no_buffer or options.strictly_inside):
-    buffer_thickness = 0
-  else:
-    buffer_thickness = point_distance * (2/3. * (.5 * math.sqrt(3)))
-  float_asu_buffer = float_asu.add_buffer(thickness=buffer_thickness)
-  if (0):
-    for facet in float_asu_buffer.facets():
-      print facet.n, facet.c
+  hex_box_buffer = hexagonal_box(
+    vertices_cart=float_asu_buffer.volume_vertices(cartesian=0001),
+    point_distance=point_distance)
+  box_lower = []
+  box_upper = []
+  for i in xrange(3):
+    if (continuous_shift_flags[i]):
+      box_lower.append(0)
+      box_upper.append(0)
+    else:
+      n = iceil(abs(hex_box.max[i]-hex_box.min[i]))
+      box_lower.append(min(-2,ifloor(hex_box_buffer.min[i]-hex_box.min[i])))
+      box_upper.append(n+max(2,iceil(hex_box_buffer.max[i]-hex_box.max[i])))
   hex_to_frac_matrix = (
       matrix.sqr(float_asu.unit_cell().fractionalization_matrix())
     * matrix.sqr(hex_box.hexagonal_cell.orthogonalization_matrix()))
   sites_frac = labeled_sites()
-  for point in flex.nested_loop(begin=box_origin,
-                                end=box_grid,
+  for point in flex.nested_loop(begin=box_lower,
+                                end=box_upper,
                                 open_range=00000):
     site_hex = matrix.col(hex_box.min) \
              + matrix.col(hex_indices_as_site(point))
     site_frac = hex_to_frac_matrix * site_hex
-    if (1 and float_asu_buffer.is_inside(site_frac)):
+    if (float_asu_buffer.is_inside(site_frac)):
       sites_frac.append(str(point), site_frac)
-    elif (options.no_buffer and not options.strictly_inside):
-      if (0):
-        sites_around = labeled_sites()
-      else:
-        sites_around = None
+    elif (all_twelve_neighbors):
       for offset in [(1,0,0),(1,1,0),(0,1,0),(-1,0,0),(-1,-1,0),(0,-1,0),
                      (0,0,1),(-1,-1,1),(0,-1,1),
                      (0,0,-1),(-1,-1,-1),(0,-1,-1)]:
         offset_hex = hex_indices_as_site(offset, layer=point[2])
         offset_frac = hex_to_frac_matrix * matrix.col(offset_hex)
         other_site_frac = site_frac + offset_frac
-        if (sites_around is not None):
-          sites_around.append(str(offset), other_site_frac)
-        elif (0 or float_asu_buffer.is_inside(other_site_frac)):
+        if (float_asu.is_inside(other_site_frac)):
           sites_frac.append(str(point), site_frac)
           break
-      if (sites_around is not None):
-        if (0):
-          return sites_around
-        else:
-          sites_frac.extend(sites_around)
+  assert sites_frac.sites.size() > 0
   return sites_frac
 
 def hexagonal_close_packing_sampling(crystal_symmetry,
                                      symmetry_flags,
                                      point_distance,
-                                     options):
+                                     buffer_thickness,
+                                     all_twelve_neighbors):
   cb_op_work = crystal_symmetry.change_of_basis_op_to_reference_setting()
   point_group_type = crystal_symmetry.space_group().point_group_type()
   add_cb_op = {"2": "z,x,y",
@@ -156,9 +134,10 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
   work_sites_frac = hcp_fill_box(
     float_asu=rational_asu.define_metric(
       unit_cell=expanded_symmetry.unit_cell()).as_float_asu(),
-    point_distance=point_distance,
     continuous_shift_flags=search_symmetry.continuous_shift_flags(),
-    options=options)
+    point_distance=point_distance,
+    buffer_thickness=buffer_thickness,
+    all_twelve_neighbors=all_twelve_neighbors)
   rt = cb_op_work.c_inv().as_double_array()
   sites_frac = rt[:9] * work_sites_frac.sites
   sites_frac += rt[9:]
@@ -205,7 +184,7 @@ def dump_pdb(file_name, crystal_symmetry, sites_cart):
 
 def check_with_grid_tags(inp_symmetry, symmetry_flags,
                          sites_cart, point_distance,
-                         options, flag_write_pdb):
+                         strictly_inside, flag_write_pdb):
   cb_op_inp_ref = inp_symmetry.change_of_basis_op_to_reference_setting()
   print "cb_op_inp_ref.c():", cb_op_inp_ref.c()
   ref_symmetry = inp_symmetry.change_basis(cb_op_inp_ref)
@@ -219,7 +198,7 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
     tag_sites_frac = flex.vec3_double()
   else:
     tag_sites_frac = None
-  if (options.strictly_inside):
+  if (strictly_inside):
     inp_tags = inp_symmetry.gridding(
       step=point_distance*.7,
       symmetry_flags=symmetry_flags).tags()
@@ -287,16 +266,20 @@ def run_call_back(flags, space_group_info):
       use_normalizer_k2l=00000,
       use_normalizer_l2n=00000)
   point_distance = 2
-  options = hcp_options(
-    no_buffer=flags.no_buffer,
-    strictly_inside=flags.strictly_inside)
-  print "no_buffer:", options.no_buffer
-  print "strictly_inside:", options.strictly_inside
+  buffer_thickness = -1
+  all_twelve_neighbors = 00000
+  if (flags.strictly_inside):
+    buffer_thickness = 0
+  if (flags.all_twelve_neighbors):
+    all_twelve_neighbors = 0001
+  print "buffer_thickness:", buffer_thickness
+  print "all_twelve_neighbors:", all_twelve_neighbors
   sites_cart = hexagonal_close_packing_sampling(
     crystal_symmetry=crystal_symmetry,
     symmetry_flags=symmetry_flags,
     point_distance=point_distance,
-    options=options)
+    buffer_thickness=buffer_thickness,
+    all_twelve_neighbors=all_twelve_neighbors)
   if (1):
     check_distances(sites_cart, point_distance)
   if (1):
@@ -305,15 +288,30 @@ def run_call_back(flags, space_group_info):
       symmetry_flags=symmetry_flags,
       sites_cart=sites_cart,
       point_distance=point_distance,
-      options=options,
+      strictly_inside=flags.strictly_inside,
       flag_write_pdb=flags.write_pdb)
   if (flags.write_pdb):
     dump_pdb("hex_sites.pdb", crystal_symmetry, sites_cart.sites)
+  # exercise all_twelve_neighbors
+  sites_cart = hexagonal_close_packing_sampling(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(14.4225, 14.4225, 14.4225, 90, 90, 90),
+      space_group_symbol="F m -3 m"),
+    symmetry_flags=sgtbx.search_symmetry_flags(
+      use_space_group_symmetry=0001,
+      use_space_group_ltr=0,
+      use_seminvariant=0001,
+      use_normalizer_k2l=00000,
+      use_normalizer_l2n=00000),
+    point_distance=2,
+    buffer_thickness=-1,
+    all_twelve_neighbors=0001)
+  assert len(sites_cart.sites) == 37
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
-    "no_buffer",
     "strictly_inside",
+    "all_twelve_neighbors",
     "write_pdb"))
   print "OK"
 
