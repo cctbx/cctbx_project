@@ -163,3 +163,13 @@ class input_with_prompt:
 def plural_s(n):
   if (n == 1): return n, ""
   return n, "s"
+
+def get_caller_name(n_back=2):
+  try: raise Exception
+  except:
+    t = sys.exc_info()[2]
+    f = t.tb_frame
+    for i in xrange(n_back):
+      if (f.f_back is None): return None
+      f = f.f_back
+    return f.f_code.co_name
