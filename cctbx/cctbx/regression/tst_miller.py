@@ -478,9 +478,42 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
+def exercise_array_correlation(space_group_info,
+                               n_scatterers=8,
+                               d_min=2,
+                               verbose=0):
+  arrays = []
+  for i in xrange(2):
+    structure = random_structure.xray_structure(
+      space_group_info,
+      elements=["const"]*n_scatterers)
+    arrays.append(abs(structure.structure_factors(d_min=d_min-i*0.5).f_calc()))
+  arrays[1] = arrays[1].apply_selection(flex.random_permutation(
+    size=arrays[1].indices().size()))
+  a,b = arrays[0].common_sets(arrays[1])
+  assert a.indices().all_eq(b.indices())
+  for anomalous_flag in [00000, 0001]:
+    if (anomalous_flag):
+      arrays[0] = arrays[0].as_anomalous()
+    assert approx_equal(arrays[0].correlation(arrays[0]).coefficient(), 1)
+    assert approx_equal(arrays[0].correlation(arrays[1]).coefficient(),
+                        arrays[1].correlation(arrays[0]).coefficient())
+    arrays[0].setup_binner(auto_binning=0001)
+    arrays[1].use_binning_of(arrays[0])
+    for corr in arrays[0].correlation(arrays[0], use_binning=0001).data():
+      if (corr.n() > 0):
+        assert approx_equal(corr.coefficient(), 1)
+    corr0 = arrays[0].correlation(arrays[1], use_binning=0001).data()
+    corr1 = arrays[1].correlation(arrays[0], use_binning=0001).data()
+    for c0,c1 in zip(corr0,corr1):
+      assert c0.n() == c1.n()
+      if (c0.n() > 0):
+        assert approx_equal(c0.coefficient(), c1.coefficient())
+
 def run_call_back(flags, space_group_info):
   exercise_array_2(space_group_info)
   exercise_squaring_and_patterson_map(space_group_info, verbose=flags.Verbose)
+  exercise_array_correlation(space_group_info)
 
 def run():
   exercise_set()
