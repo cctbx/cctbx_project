@@ -11,14 +11,39 @@
 #define CCTBX_VECTOR_UNARY_H
 
 #include <complex>
+#include <cctbx/shared_storage.h>
+#include <cctbx/basic/meta.h>
 
 namespace cctbx { namespace vector {
 
-  template <typename T> struct return_type {};
+  template <typename UnaryOperation,
+            typename ArgumentVectorType,
+            typename ResultValueType>
+  shared_storage<ResultValueType>
+  apply(UnaryOperation op,
+        const ArgumentVectorType& arguments,
+        type_holder<ResultValueType> result_type_holder)
+  {
+    shared_storage<ResultValueType> result(arguments.size());
+    for (std::size_t i=0;i<arguments.size();i++) {
+      result[i] = op(arguments[i]);
+    }
+    return result;
+  }
+
+  template <typename UnaryOperation,
+            typename ArgumentVectorType>
+  shared_storage<typename UnaryOperation::result_type>
+  apply(UnaryOperation op,
+        const ArgumentVectorType& arguments)
+  {
+    return apply(op, arguments,
+                 type_holder<typename UnaryOperation::result_type>());
+  }
 
   template <typename ComplexVectorType, typename ResultVectorType>
   ResultVectorType complex_abs(const ComplexVectorType& v,
-                               return_type<ResultVectorType>)
+                               type_holder<ResultVectorType>)
   {
     ResultVectorType result(v.size());
     for(std::size_t i=0;i<v.size();i++)

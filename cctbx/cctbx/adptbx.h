@@ -555,7 +555,7 @@ namespace cctbx {
       {
         carray<FloatType, 9> M[2];
         M[0] = MatrixLite::CondensedSymMx33_as_FullSymMx33(adp,
-               MatrixLite::return_type<FloatType>());
+               type_holder<FloatType>());
         FloatType d = MatrixLite::Determinant(M[0]);
         if (d == 0.) {
           throw not_positive_definite;
