@@ -13,20 +13,23 @@ class gradients_fft(gradients_base):
                      xray_structure,
                      miller_set,
                      d_target_d_f_calc,
-                     gradient_flags,
-                     electron_density_must_be_positive=0001):
+                     gradient_flags):
     gradients_base.__init__(self, manager, xray_structure, miller_set)
     self._d_target_d_f_calc = d_target_d_f_calc
-    manager.setup_fft()
-    # XXX timing
-    gradient_map = self.fft_d_target_d_f_calc(
-      d_target_d_f_calc=d_target_d_f_calc)
+    manager.setup_fft() # before timing
+    time_process_coefficients = user_plus_sys_time()
+    coeff = self.gradient_map_coeff()
+    time_process_coefficients = time_process_coefficients.elapsed()
+    time_fft = user_plus_sys_time()
+    gradient_map = self.fft_gradient_map_coeff(coeff)
     if (not gradient_map.anomalous_flag()):
       gradient_map_real = gradient_map.real_map()
       gradient_map_complex = flex.complex_double(flex.grid(0,0,0))
     else:
       gradient_map_real = flex.double(flex.grid(0,0,0))
       gradient_map_complex = gradient_map.complex_map()
+    time_fft = time_fft.elapsed()
+    time_sampling = user_plus_sys_time()
     self._results = ext.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
@@ -36,22 +39,33 @@ class gradients_fft(gradients_base):
       manager.u_extra(),
       manager.wing_cutoff(),
       manager.exp_table_one_over_step_size(),
-      electron_density_must_be_positive)
+      manager.electron_density_must_be_positive())
+    time_sampling = time_sampling.elapsed()
+    manager.estimate_time_fft.register(
+      n_scatterers=xray_structure.scatterers().size(),
+      n_miller_indices=miller_set.indices().size(),
+      time_sampling=time_sampling,
+      time_symmetry_mapping=0,
+      time_fft=time_fft,
+      time_process_coefficients=time_process_coefficients)
     self.d_target_d_site_frac_was_used = 00000
     self.d_target_d_u_star_was_used = 00000
 
-  def fft_d_target_d_f_calc(self, d_target_d_f_calc):
+  def gradient_map_coeff(self):
     multiplier = (  self.manager().unit_cell().volume()
                   / matrix.row(self.manager().rfft().n_real()).product()
                   * self.manager().space_group().order_z()
                   / self.miller_set().multiplicities().data().as_double())
-    coeff = d_target_d_f_calc.deep_copy()
+    coeff = self.d_target_d_f_calc().deep_copy()
     ext.apply_u_extra(
       self.manager().unit_cell(),
       self.manager().u_extra(),
       self.miller_set().indices(),
       coeff,
       multiplier)
+    return coeff
+
+  def fft_gradient_map_coeff(self, coeff):
     return miller.fft_map(
       crystal_gridding=self.manager().crystal_gridding(),
       fourier_coefficients=miller.array(

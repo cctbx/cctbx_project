@@ -16,7 +16,9 @@ class manager(crystal.symmetry):
                      quality_factor=None, u_extra=None, b_extra=None,
                      wing_cutoff=1.e-3,
                      exp_table_one_over_step_size=-100,
-                     max_prime=5):
+                     max_prime=5,
+                     force_complex=00000,
+                     electron_density_must_be_positive=0001):
     assert miller_set is None or crystal_symmetry is None
     if (miller_set is None):
       assert crystal_symmetry is not None and d_min is not None
@@ -62,6 +64,12 @@ class manager(crystal.symmetry):
 
   def max_prime(self):
     return self._max_prime
+
+  def force_complex(self):
+    return self._force_complex
+
+  def electron_density_must_be_positive(self):
+    return self._electron_density_must_be_positive
 
   def crystal_gridding(self, assert_shannon_sampling=0001):
     if (self._crystal_gridding is None):
@@ -141,20 +149,20 @@ class _estimate_time_fft:
     self.max_n_scatterers = 0
     self.max_time_sampling = 0
     self.min_n_miller_indices = 0
-    self.min_time_collect = 0
+    self.min_time_process_coefficients = 0
     self.max_n_miller_indices = 0
-    self.max_time_collect = 0
+    self.max_time_process_coefficients = 0
     self.time_sampling = 0
     self.time_symmetry_mapping = 0
     self.time_fft = 0
-    self.time_collect = 0
+    self.time_process_coefficients = 0
 
   def have_good_estimate(self):
     return self.time_fft > 0
 
   def register(self, n_scatterers, n_miller_indices,
                      time_sampling, time_symmetry_mapping,
-                     time_fft, time_collect):
+                     time_fft, time_process_coefficients):
     if (   self.min_n_scatterers == 0
         or self.min_n_scatterers >= n_scatterers):
       self.min_n_scatterers = n_scatterers
@@ -165,14 +173,14 @@ class _estimate_time_fft:
     if (   self.min_n_miller_indices == 0
         or self.min_n_miller_indices >= n_miller_indices):
       self.min_n_miller_indices = n_miller_indices
-      self.min_time_collect = time_collect
+      self.min_time_process_coefficients = time_process_coefficients
     if (self.max_n_miller_indices <= n_miller_indices):
       self.max_n_miller_indices = n_miller_indices
-      self.max_time_collect = time_collect
+      self.max_time_process_coefficients = time_process_coefficients
     self.time_sampling = time_sampling
     self.time_symmetry_mapping = time_symmetry_mapping
     self.time_fft = time_fft
-    self.time_collect = time_collect
+    self.time_process_coefficients = time_process_coefficients
 
   def __call__(self, n_scatterers, n_miller_indices):
     return _linear_estimate(
@@ -182,8 +190,10 @@ class _estimate_time_fft:
          + self.time_symmetry_mapping \
          + self.time_fft \
          + _linear_estimate(
-             self.min_n_miller_indices, self.max_n_miller_indices,
-             self.min_time_collect, self.max_time_collect,
+             self.min_n_miller_indices,
+             self.max_n_miller_indices,
+             self.min_time_process_coefficients,
+             self.max_time_process_coefficients,
              n_miller_indices)
 
 class managed_calculation_base:
