@@ -1,3 +1,6 @@
+#ifndef SCITBX_MATH_GOLAY_H
+#define SCITBX_MATH_GOLAY_H
+
 #include <scitbx/array_family/loops.h>
 #include <scitbx/array_family/tiny.h>
 
@@ -77,3 +80,5 @@ namespace scitbx { namespace math {
   };
 
 }} // namespace scitbx::math
+
+#endif // SCITBX_MATH_GOLAY_H

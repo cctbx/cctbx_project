@@ -1,3 +1,6 @@
+#ifndef SCITBX_MATH_ICOSAHEDRON_H
+#define SCITBX_MATH_ICOSAHEDRON_H
+
 #include <scitbx/array_family/shared.h>
 #include <math.h>
 
@@ -118,3 +121,5 @@ namespace scitbx { namespace math {
       }
     };
 }}
+
+#endif // SCITBX_MATH_ICOSAHEDRON_H

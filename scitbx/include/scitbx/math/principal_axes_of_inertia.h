@@ -1,3 +1,6 @@
+#ifndef SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
+#define SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
+
 #include <scitbx/math/eigensystem.h>
 
 namespace scitbx { namespace math {
@@ -98,3 +101,5 @@ namespace scitbx { namespace math {
   };
 
 }} // namespace scitbx::math
+
+#endif // SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H

@@ -1,3 +1,6 @@
+#ifndef SCITBX_MATH_FLOATING_POINT_EPSILON_H
+#define SCITBX_MATH_FLOATING_POINT_EPSILON_H
+
 #include <scitbx/serialization/base_256.h>
 
 namespace scitbx { namespace math {
@@ -116,3 +119,5 @@ namespace scitbx { namespace math {
   };
 
 }} // namespace scitbx::math
+
+#endif // SCITBX_MATH_FLOATING_POINT_EPSILON_H
