@@ -195,6 +195,29 @@ namespace {
     return SgOps.getMasterIndex(H, CutP, Pretty);
   }
 
+  std::complex<double>
+  SpaceGroup_StructureFactor(const SpaceGroup& SgOps,
+                             const Miller::Index& H,
+                             const cctbx::fractional<double>& X) {
+    return SgOps.StructureFactor(H, X);
+  }
+  std::complex<double>
+  SpaceGroup_StructureFactor_iso(const SpaceGroup& SgOps,
+                                 const uctbx::UnitCell& uc,
+                                 const Miller::Index& H,
+                                 const cctbx::fractional<double>& X,
+                                 double Uiso) {
+    return SgOps.StructureFactor(uc, H, X, Uiso);
+  }
+  std::complex<double>
+  SpaceGroup_StructureFactor_aniso(const SpaceGroup& SgOps,
+                                   const uctbx::UnitCell& uc,
+                                   const Miller::Index& H,
+                                   const cctbx::fractional<double>& X,
+                                   const boost::array<double, 6>& Uij) {
+    return SgOps.StructureFactor(uc, H, X, Uij);
+  }
+
   int SpaceGroup_cmp_equal(const SpaceGroup& lhs, const SpaceGroup& rhs) {
     if (lhs == rhs) return 0;
     return 1;
@@ -762,6 +785,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroup.def(&SpaceGroup::getCutParameters, "getCutParameters");
     py_SpaceGroup.def(SpaceGroup_getMasterIndex_2, "getMasterIndex");
     py_SpaceGroup.def(SpaceGroup_getMasterIndex_3, "getMasterIndex");
+    py_SpaceGroup.def(SpaceGroup_StructureFactor, "StructureFactor");
+    py_SpaceGroup.def(SpaceGroup_StructureFactor_iso, "StructureFactor");
+    py_SpaceGroup.def(SpaceGroup_StructureFactor_aniso, "StructureFactor");
     py_SpaceGroup.def(SpaceGroup_CheckMetricalMatrix_1, "CheckMetricalMatrix");
     py_SpaceGroup.def(&SpaceGroup::CheckMetricalMatrix, "CheckMetricalMatrix");
     py_SpaceGroup.def(SpaceGroup_CheckUnitCell_1, "CheckUnitCell");

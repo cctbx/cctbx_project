@@ -17,6 +17,8 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <complex>
+#include <cctbx/coordinates.h>
 #include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/sgtbx/change_basis.h>
@@ -402,6 +404,79 @@ namespace sgtbx {
       Miller::MasterIndex
       getMasterIndex(const Miller::Index& H, const Miller::Vec3& CutP,
                      bool Pretty = false) const;
+
+      //! Structure factor without temperature factor.
+      /*! XXX
+       */
+      template <class FloatType>
+      std::complex<FloatType>
+      StructureFactor(const Miller::Index& H,
+                      const cctbx::fractional<FloatType> X) const
+      {
+        using cctbx::constants::pi;
+        std::complex<FloatType> F(0., 0.);
+        for (int s = 0; s < nSMx(); s++) {
+          Miller::Index HR = H * m_SMx[s].Rpart();
+          FloatType HRX = HR * X;
+          TrVec T = m_SMx[s].Tpart();
+          for (int i = 0; i < fInv(); i++) {
+            if (i) {
+              HRX = -HRX;
+              T = m_InvT - T;
+            }
+            for (int l = 0; l < nLTr(); l++) {
+              FloatType HT = FloatType(H * (T + LTr(l))) / TBF();
+              FloatType phase = 2. * pi * (HRX + HT);
+              F += std::complex<FloatType>(std::cos(phase), std::sin(phase));
+            }
+          }
+        }
+        return F;
+      }
+      //! Structure factor with isotropic temperature factor.
+      /*! XXX
+       */
+      template <class FloatType>
+      std::complex<FloatType>
+      StructureFactor(const uctbx::UnitCell& uc,
+                      const Miller::Index& H,
+                      const cctbx::fractional<FloatType> X,
+                      double Uiso) const
+      {
+        return StructureFactor(H, X) * uc.TemperatureFactor(H, Uiso);
+      }
+      //! Structure factor with anisotropic temperature factor.
+      /*! XXX
+       */
+      template <class FloatType>
+      std::complex<FloatType>
+      StructureFactor(const uctbx::UnitCell& uc,
+                      const Miller::Index& H,
+                      const cctbx::fractional<FloatType> X,
+                      const boost::array<FloatType, 6>& uij) const
+      {
+        using cctbx::constants::pi;
+        std::complex<FloatType> F(0., 0.);
+        for (int s = 0; s < nSMx(); s++) {
+          Miller::Index HR = H * m_SMx[s].Rpart();
+          FloatType HRX = HR * X;
+          TrVec T = m_SMx[s].Tpart();
+          std::complex<FloatType> Fs(0., 0.);
+          for (int i = 0; i < fInv(); i++) {
+            if (i) {
+              HRX = -HRX;
+              T = m_InvT - T;
+            }
+            for (int l = 0; l < nLTr(); l++) {
+              FloatType HT = FloatType(H * (T + LTr(l))) / TBF();
+              FloatType phase = 2. * pi * (HRX + HT);
+              Fs += std::complex<FloatType>(std::cos(phase), std::sin(phase));
+            }
+          }
+          F += Fs * uc.TemperatureFactor(HR, uij);
+        }
+        return F;
+      }
 
       //! Check if a unit cell is compatible with the symmetry operations.
       /*! This function is designed to work together with the UnitCell
