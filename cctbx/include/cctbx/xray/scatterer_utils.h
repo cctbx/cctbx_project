@@ -1,4 +1,4 @@
-/* Copyright (c) 200f_calc-2002 The Regents of the University of California
+/* Copyright (c) 2001-2002 The Regents of the University of California
    through E.O. Lawrence Berkeley National Laboratory, subject to
    approval by the U.S. Department of Energy.
    See files COPYRIGHT.txt and LICENSE.txt for further details.
