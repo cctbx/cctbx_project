@@ -4,27 +4,28 @@ from scitbx import lbfgs
 
 def exercise_drop_convergence_test():
   c = lbfgs.drop_convergence_test()
-  assert c.p() > 0
+  assert c.n_test_points() > 0
   assert c.max_drop_eps() > 0
   assert c.iteration_coefficient() > 0
   assert c.objective_function_values().size() == 0
   assert c.max_drop() == 0
-  c = lbfgs.drop_convergence_test(6)
-  c = lbfgs.drop_convergence_test(6, 1.e-3)
-  c = lbfgs.drop_convergence_test(6, 1.e-3, 3)
-  assert c.p() == 6
+  c = lbfgs.drop_convergence_test(n_test_points=6)
+  c = lbfgs.drop_convergence_test(n_test_points=6, max_drop_eps=1.e-3)
+  c = lbfgs.drop_convergence_test(
+    n_test_points=6, max_drop_eps=1.e-3, iteration_coefficient=3)
+  assert c.n_test_points() == 6
   assert c.max_drop_eps() == 1.e-3
   assert c.iteration_coefficient() == 3
   assert c.objective_function_values().size() == 0
   assert c.max_drop() == 0
-  for p in (2, 7):
-    c = lbfgs.drop_convergence_test(p, 1.e-3)
-    assert c.p() == p
+  for n_test_points in (2, 7):
+    c = lbfgs.drop_convergence_test(n_test_points, 1.e-3)
+    assert c.n_test_points() == n_test_points
     converged = []
     for x in xrange(10):
       converged.append(c(math.exp(-x)))
     c.objective_function_values().size() == 10
-    if (p == 2):
+    if (n_test_points == 2):
       assert converged == [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     else:
       assert converged == [0, 0, 0, 0, 0, 0, 0, 0, 1, 1]

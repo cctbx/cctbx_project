@@ -8,6 +8,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 
 namespace scitbx { namespace lbfgs { namespace {
 
@@ -117,12 +118,16 @@ namespace scitbx { namespace lbfgs { namespace {
     {
       using namespace boost::python;
       class_<w_t>("drop_convergence_test", no_init)
-        .def(init<optional<std::size_t, double, double> >())
-        .def("p", &w_t::p)
+        .def(init<optional<std::size_t, double, double> >((
+          arg_("n_test_points")=5,
+          arg_("max_drop_eps")=1.e-5,
+          arg_("iteration_coefficient")=2)))
+        .def("n_test_points", &w_t::n_test_points)
         .def("max_drop_eps", &w_t::max_drop_eps)
         .def("iteration_coefficient", &w_t::iteration_coefficient)
         .def("__call__", &w_t::operator())
-        .def("objective_function_values", &w_t::objective_function_values)
+        .def("objective_function_values", &w_t::objective_function_values, (
+          arg_("f")))
         .def("max_drop", &w_t::max_drop)
       ;
     }

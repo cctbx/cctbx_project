@@ -20,9 +20,15 @@ class termination_parameters:
 
   def __init__(self, traditional_convergence_test=True,
                      traditional_convergence_test_eps=1.e-5,
+                     drop_convergence_test_n_test_points=5,
+                     drop_convergence_test_max_drop_eps=1.e-5,
+                     drop_convergence_test_iteration_coefficient=2,
                      min_iterations=0,
                      max_iterations=None,
                      max_calls=None):
+    drop_convergence_test_n_test_points = max(
+      drop_convergence_test_n_test_points,
+      min_iterations)
     adopt_init_args(self, locals())
 
 class exception_handling_parameters:
@@ -89,13 +95,22 @@ def run_c_plus_plus(target_evaluator,
       target_evaluator.n,
       termination_params.traditional_convergence_test_eps)
   else:
-    is_converged = ext.drop_convergence_test(termination_params.min_iterations)
+    is_converged = ext.drop_convergence_test(
+      n_test_points=termination_params.drop_convergence_test_n_test_points,
+      max_drop_eps=termination_params.drop_convergence_test_max_drop_eps,
+      iteration_coefficient
+        =termination_params.drop_convergence_test_iteration_coefficient)
   callback_after_step = getattr(target_evaluator, "callback_after_step", None)
+  first_f = None
   x_after_step = None
   x, f, g = None, None, None
   try:
     while 1:
       x, f, g = target_evaluator()
+      if (first_f is None):
+        first_f = f
+        if (not termination_params.traditional_convergence_test):
+          is_converged(f)
       if (minimizer.run(x, f, g)): continue
       x_after_step = x.deep_copy()
       if (callback_after_step is not None):
