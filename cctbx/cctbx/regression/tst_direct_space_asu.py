@@ -22,6 +22,11 @@ def exercise_cut_planes(cut_planes):
 def exercise_volume_vertices(asu, unit_cell):
   volume_asu = asu.volume_only()
   asu_volume_vertices = asu.volume_vertices()
+  facet_analysis_volume_vertices = facet_analysis.volume_vertices(asu)
+  assert len(asu_volume_vertices) == len(facet_analysis_volume_vertices)
+  asu_volume_vertices.sort()
+  facet_analysis_volume_vertices.sort()
+  assert asu_volume_vertices == facet_analysis_volume_vertices
   for box_min,box_max in zip(asu.box_min(volume_vertices=asu_volume_vertices),
                              asu.box_max(volume_vertices=asu_volume_vertices)):
     assert box_min < box_max

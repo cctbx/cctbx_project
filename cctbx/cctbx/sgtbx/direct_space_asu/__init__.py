@@ -54,8 +54,21 @@ class direct_space_asu:
     return result
 
   def volume_vertices(self):
-    from cctbx.sgtbx.direct_space_asu import facet_analysis
-    return facet_analysis.volume_vertices(self)
+    result = {}
+    facets = self.facets
+    n_facets = len(facets)
+    for i0 in xrange(0,n_facets-2):
+      for i1 in xrange(i0+1,n_facets-1):
+        for i2 in xrange(i1+1,n_facets):
+          m = matrix.rec(facets[i0].n+facets[i1].n+facets[i2].n,(3,3))
+          d = m.determinant()
+          if (d != 0):
+            c = m.co_factor_matrix_transposed() / d
+            b = matrix.col([-facets[i0].c,-facets[i1].c,-facets[i2].c])
+            vertex = c * b
+            if (self.is_inside(vertex, volume_only=0001)):
+              result[vertex.elems] = 0
+    return result.keys()
 
   def _box_corner(self, volume_vertices, min_or_max):
     if (volume_vertices is None):
