@@ -92,7 +92,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
         / f_obs.space_group().n_ltr())
   q_obs = q_obs.sort(by_value="abs")
   q_obs.setup_binner(auto_binning=0001)
-  n_obs = q_obs.normalize_structure_factors(quasi=0001)
+  n_obs = q_obs.quasi_normalize_structure_factors()
   r = flex.linear_regression(q_obs.data(), n_obs.data())
   if (0 or verbose):
     r.show_summary()
