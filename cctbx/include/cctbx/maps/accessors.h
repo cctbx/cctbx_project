@@ -28,17 +28,13 @@ namespace maps {
       typedef IndexType index_type;
       typedef typename IndexType::value_type value_type;
 
-      grid_p1() { init_default(); }
+      grid_p1() { std::fill(this->begin(), this->end(), value_type(0)); }
 
       grid_p1(const IndexType& n) : IndexType(n) {}
 
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(grid_p1)
 
       static std::size_t nd() { return Nd; }
-
-      void init_default() {
-        std::fill(this->begin(), this->end(), 0);
-      }
 
       std::size_t size1d() const {
         return af::compile_time_product<Nd>::get(IndexType(*this));

@@ -6,7 +6,6 @@
 #include <iostream>
 #include <boost/timer.hpp>
 #include <cctbx/array_family/shared_algebra.h>
-#include <cctbx/array_family/tiny.h> // XXX
 #include <cctbx/array_family/ref_algebra.h>
 #include <cctbx/array_family/simple_io.h>
 

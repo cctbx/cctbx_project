@@ -11,8 +11,8 @@
 #ifndef CCTBX_ARRAY_FAMILY_TINY_PLAIN_H
 #define CCTBX_ARRAY_FAMILY_TINY_PLAIN_H
 
-#include <algorithm>
 #include <cctbx/array_family/ref.h>
+#include <cctbx/array_family/misc.h>
 #include <cctbx/array_family/tiny_helpers.h>
 
 namespace cctbx { namespace af {
@@ -46,7 +46,5 @@ namespace cctbx { namespace af {
   };
 
 }} // namespace cctbx::af
-
-#include <cctbx/array_family/tiny_plain_apply.h>
 
 #endif // CCTBX_ARRAY_FAMILY_TINY_PLAIN_H

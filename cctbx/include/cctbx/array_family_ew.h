@@ -11,6 +11,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_EW_H
 #define CCTBX_ARRAY_FAMILY_EW_H
 
+#include <cctbx/array_family.h>
 #include <cctbx/array_family/tiny_algebra.h>
 #include <cctbx/array_family/small_algebra.h>
 #include <cctbx/array_family/shared_algebra.h>

@@ -11,11 +11,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_REF_H
 #define CCTBX_ARRAY_FAMILY_REF_H
 
-#include <stdexcept>
-
-// FIXES for broken compilers
-#include <boost/config.hpp>
-
+#include <cctbx/array_family/error.h>
 #include <cctbx/array_family/grid_accessor.h>
 #include <cctbx/array_family/ref_helpers.h>
 
@@ -32,9 +28,8 @@ namespace cctbx { namespace af {
       typedef typename accessor_type::index_type index_type;
 
       const_ref()
-        : m_begin(0) {
-        m_accessor.init_default();
-      }
+        : m_begin(0)
+      {}
       const_ref(const ElementType* begin, accessor_type ac)
         : m_begin(begin), m_accessor(ac)
       {}
@@ -114,9 +109,8 @@ namespace cctbx { namespace af {
       typedef typename accessor_type::index_type index_type;
 
       ref()
-        : m_begin(0) {
-        m_accessor.init_default();
-      }
+        : m_begin(0)
+      {}
       ref(ElementType* begin, accessor_type ac)
         : m_begin(begin), m_accessor(ac)
       {}

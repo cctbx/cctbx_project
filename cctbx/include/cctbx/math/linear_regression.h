@@ -14,8 +14,7 @@
 
 #include <cctbx/error.h>
 #include <cctbx/fixes/cmath>
-#include <cctbx/array_family/tiny.h> // XXX
-#include <cctbx/array_family/ref.h>
+#include <cctbx/array_family/tiny.h>
 
 namespace cctbx { namespace math {
 

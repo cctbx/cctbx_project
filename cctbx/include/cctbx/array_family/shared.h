@@ -98,6 +98,4 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/shared_apply.h>
-
 #endif // CCTBX_ARRAY_FAMILY_SHARED_H

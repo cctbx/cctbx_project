@@ -242,6 +242,4 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/versa_plain_apply.h>
-
 #endif // CCTBX_ARRAY_FAMILY_VERSA_PLAIN_H

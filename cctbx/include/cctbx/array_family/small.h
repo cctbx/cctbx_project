@@ -63,6 +63,4 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/small_apply.h>
-
 #endif // CCTBX_ARRAY_FAMILY_SMALL_H
