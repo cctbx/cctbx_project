@@ -275,6 +275,8 @@ def exercise_syntax_errors():
     'Reserved identifier: "include" (input line 1)')
   test_exception('a.include.b.c {}',
     'Reserved identifier: "include" (input line 1)')
+  test_exception('a=None\n.type=foo',
+    'Unexpected definition type: "foo" (input line 2)')
 
 def exercise_deepcopy():
   parameters = phil.parse(input_string="""\
@@ -383,34 +385,6 @@ a0 {
   assert [item.path for item in parameters.all_definitions(
     suppress_multiple=True)] == [
     "d0", "a0.d1", "a0.a1.t0.c", "a0.a1.t0.t1.x", "a0.d2"]
-  parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
-  out = StringIO()
-  parameters.show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
-d0 = 0
-  .type = int
-a0 {
-  d1 = a b c
-    .type = str
-  include file
-  a1 {
-    t0 {
-      c = yes
-        .type = bool
-      t1 {
-        x = 0
-          .type = int
-        y = 1.
-          .type = float
-          .multiple = True
-      }
-    }
-  }
-  d2 = e f 0g
-    .type = UNKNOWN
-  #d3 = x
-}
-"""
   parameters = phil.parse(input_string="""\
 s {
   a=0
@@ -1553,11 +1527,11 @@ group {
     .type=choice
     .optional=no
   f=a *b c
-    .type=multi_choice
+    .type=choice(multi=True)
   f=a *b *c
-    .type=multi_choice
+    .type=choice(multi=True)
   f=a b c
-    .type=multi_choice
+    .type=choice(multi=True)
   g="/var/tmp/foo"
     .type=path
   h="var.tmp.foo"
@@ -1654,12 +1628,6 @@ group {
     with_substitution=False).objects[0].extract()] == ["plain", "% ^&*"]
   definition = parameters.get(path="group.a",
     with_substitution=False).objects[0]
-  definition.type = "foo"
-  try: definition.extract()
-  except RuntimeError, e:
-    assert str(e) == 'No converter for parameter definition type "foo"' \
-      + ' required for converting words assigned to "a" (input line 2)'
-  else: raise RuntimeError("Exception expected.")
   parameters = phil.parse(input_string="""\
 group {
   a=yes
@@ -1770,7 +1738,7 @@ group {
   e=a *b c
     .type=choice
   f=a *b *c
-    .type=multi_choice
+    .type=choice(multi=True)
   g="/var/tmp/foo"
     .type=path
   h="var.tmp.foo"
@@ -1805,13 +1773,6 @@ group {
   w = plain "% ^&*"
 }
 """
-  definition = parameters.get(path="group.a").objects[0]
-  definition.type = "foo"
-  try: definition.format(python_object=0)
-  except RuntimeError, e:
-    assert str(e) == 'No converter for parameter definition type "foo"' \
-      + ' required for converting values for "a" (input line 4)'
-  else: raise RuntimeError("Exception expected.")
   #
   master = phil.parse(input_string="""\
 a=None
@@ -2232,6 +2193,92 @@ s {
   assert orig.a == 1
   assert orig.s.b == 2
 
+class foo1_converters:
+
+  def __init__(self, bar=None):
+    if (bar is None):
+      raise RuntimeError("foo1 problem")
+
+class foo2_converters:
+
+  def __str__(self): return "foo2"
+
+  def __init__(self, bar=None):
+    if (bar is not None):
+      raise RuntimeError("foo2 problem")
+
+foo_converter_registry = dict(phil.default_converter_registry)
+foo_converter_registry["foo1"] = foo1_converters
+foo_converter_registry["foo2"] = foo2_converters
+
+def exercise_type_constructors():
+  params = phil.parse(
+    input_string="""\
+a=None
+  .type=foo2
+b=None
+  .type=foo2(bar=None)
+c=None
+  .type=foo1(bar=0)
+""",
+    converter_registry=foo_converter_registry)
+  try: params.get(path="a").objects[0].extract()
+  except RuntimeError, e:
+    assert str(e) == \
+      '.type=foo2 does not have a from_words method (input line 1):' \
+      " foo2_converters instance has no attribute 'from_words'"
+  else: raise RuntimeError("Exception expected.")
+  try: params.get(path="a").objects[0].format(python_object=0)
+  except RuntimeError, e:
+    assert str(e) == \
+      '.type=foo2 does not have an as_words method (input line 1):' \
+      " foo2_converters instance has no attribute 'as_words'"
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(
+    input_string="""\
+a=None
+  .type=foo1
+""",
+    converter_registry=foo_converter_registry)
+  except RuntimeError, e:
+    assert str(e) == \
+      'Error constructing definition type "foo1":' \
+      ' foo1 problem (input line 2)'
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(
+    input_string="""\
+a=None
+  .type=foo2(bar=1)
+""",
+    converter_registry=foo_converter_registry)
+  except RuntimeError, e:
+    assert str(e) == \
+      'Error constructing definition type "foo2(bar=1)":' \
+      ' foo2 problem (input line 2)'
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(
+    input_string="""\
+a=None
+  .type=foo2(foo=1)
+""",
+    converter_registry=foo_converter_registry)
+  except RuntimeError, e:
+    assert str(e) == \
+      'Error constructing definition type "foo2(foo=1)":' \
+      " __init__() got an unexpected keyword argument 'foo' (input line 2)"
+  else: raise RuntimeError("Exception expected.")
+  try: phil.parse(
+    input_string="""\
+a=None
+  .type=foo2(foo=1
+""",
+    converter_registry=foo_converter_registry)
+  except RuntimeError, e:
+    assert str(e) == \
+      'Error constructing definition type "foo2(foo=1":' \
+      " unexpected EOF while parsing (line 1) (input line 2)"
+  else: raise RuntimeError("Exception expected.")
+
 def exercise_command_line():
   master_params = phil.parse(input_string="""\
 foo {
@@ -2305,6 +2352,7 @@ def exercise():
   exercise_fetch()
   exercise_extract()
   exercise_format()
+  exercise_type_constructors()
   exercise_command_line()
   print "OK"
 
