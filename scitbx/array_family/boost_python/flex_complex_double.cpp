@@ -9,6 +9,8 @@
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
+#include <scitbx/array_family/boost_python/ref_c_grid_flex_conversions.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -17,6 +19,9 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_wrapper<std::complex<double> >::complex(
       "complex_double", boost::python::scope())
       .def_pickle(flex_pickle_single_buffered<std::complex<double>, 2*20>());
+
+    ref_c_grid_flex_conversions<std::complex<double>, c_grid<2> >();
+    ref_c_grid_flex_conversions<std::complex<double>, c_grid<3> >();
   }
 
 }}} // namespace scitbx::af::boost_python

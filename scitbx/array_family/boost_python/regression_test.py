@@ -1,3 +1,5 @@
+from scitbx.array_family import flex
+
 def extend_sys_path():
   import sys, os.path
   libtbx_build = os.environ["LIBTBX_BUILD"]
@@ -73,6 +75,23 @@ def exercise_ref_flex_conversions(verbose=0):
   assert tuple(s) == (6,2,4)
   if (verbose): print 'OK'
 
+def exercise_ref_flex_grid_flex_conversions(verbose=0):
+  if (verbose): print 'Checking flex->ref_flex_grid conversions'
+  a = flex.double(flex.grid((2, 3)))
+  assert a.accessor() == rt.use_const_ref_flex_grid(a)
+  assert a.grid() == rt.use_const_ref_flex_grid(a).grid()
+  if (verbose): print 'OK'
+
+def exercise_c_grid_conversions(verbose=0):
+  if (verbose): print 'Checking flex->ref_c_grid conversions'
+  a = flex.double(flex.grid((2, 3)))
+  assert a.accessor() == rt.use_const_ref_c_grid_2(a)
+  assert a.grid() == rt.use_const_ref_c_grid_2(a).grid()
+  a = flex.double(flex.grid((2, 3, 4)))
+  assert a.accessor() == rt.use_const_ref_c_grid_3(a)
+  assert a.grid() == rt.use_const_ref_c_grid_3(a).grid()
+  if (verbose): print 'OK'
+
 def exercise_to_tuple(verbose=0):
   if (verbose): print 'Checking to_tuple conversions'
   assert rt.make_boost_int_2(3, 5) == (3, 5)
@@ -94,6 +113,8 @@ def run(args):
     exercise_small_conversions(verbose)
     exercise_shared_flex_conversions(verbose)
     exercise_ref_flex_conversions(verbose)
+    exercise_ref_flex_grid_flex_conversions(verbose)
+    exercise_c_grid_conversions(verbose)
     exercise_to_tuple(verbose)
     i += 1
   if (not verbose): print 'OK'
