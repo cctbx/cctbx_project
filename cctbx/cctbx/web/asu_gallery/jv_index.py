@@ -68,7 +68,7 @@ class crystal_system_table:
       previous_crystal_system = crystal_system
 
   def format_html(self, f=None, n_columns=6):
-    if (f == None): f = sys.stdout
+    if (f is None): f = sys.stdout
     title = "Gallery of direct-space asymmetric units"
     print >> f, """\
 <html>
