@@ -16,6 +16,7 @@
 #define CCTBX_ADPTBX_H
 
 #include <cctbx/uctbx.h>
+#include <scitbx/math/eigensystem.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/type_holder.h>
 #include <cctbx/error.h>
@@ -705,6 +706,19 @@ namespace cctbx {
     CCTBX_ASSERT(vectors_[1].length() != 0);
     values_[2] = 1. / values_[2];
     values_[1] = (adp[0] + adp[1] + adp[2]) - (values_[0] + values_[2]);
+  }
+
+  //! Modifies u_cart such that all eigenvalues are >= 0.
+  template <typename FloatType>
+  sym_mat3<FloatType>
+  eigenvalue_filtering(sym_mat3<FloatType> const& u_cart)
+  {
+    scitbx::math::eigensystem::real_symmetric<FloatType> es(u_cart);
+    scitbx::vec3<FloatType> es_val(es.values().begin());
+    for(std::size_t i=0;i<3;i++) if (es_val[i] < 0) es_val[i] = 0;
+    scitbx::mat3<FloatType> es_vec(es.vectors().begin());
+    scitbx::mat3<FloatType> es_vec_inv = es_vec.inverse();
+    return sym_mat3<FloatType>(es_val).tensor_transform(es_vec_inv);
   }
 
   //! Tensor transformation: c * u * c.transpose().

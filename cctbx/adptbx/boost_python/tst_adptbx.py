@@ -1,6 +1,7 @@
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import matrix
+import scitbx.math.eigensystem
 from scitbx.test_utils import approx_equal
 import math
 import random
@@ -73,6 +74,15 @@ def exercise_interface():
   try: s.vectors(4)
   except: pass
   else: raise AssertionError, "Exception expected."
+  uf = adptbx.eigenvalue_filtering(u)
+  assert approx_equal(uf, (3.0810418, 4.7950710, 9.3400030,
+                           1.7461615, 1.1659954, 6.4800706))
+  assert approx_equal(scitbx.math.eigensystem.real_symmetric(u).values(),
+                      (14.2792015, 2.9369144, -1.2161159))
+  assert approx_equal(scitbx.math.eigensystem.real_symmetric(uf).values(),
+                      (14.2792015, 2.9369144, 0))
+  uf = adptbx.eigenvalue_filtering(up)
+  assert approx_equal(uf, up)
 
 def exercise_debye_waller():
   ucell = uctbx.unit_cell((5,7,9,80,100,130))

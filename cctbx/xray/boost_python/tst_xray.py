@@ -69,7 +69,7 @@ def exercise_xray_scatterer():
   u_cart = (0.3354, 0.3771, 0.4874, -0.05161, 0.026763, -0.02116)
   x.u_star = adptbx.u_cart_as_u_star(uc, u_cart)
   x.anisotropic_flag = 1
-  try: x.apply_symmetry(uc, sg.group())
+  try: x.apply_symmetry(uc, sg.group(), u_star_tolerance=0.1)
   except: pass
   else: raise AssertionError, "Exception expected."
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0)

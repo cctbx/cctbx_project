@@ -161,13 +161,17 @@ namespace xray {
           parameters it is tested if the symmetry-averaged
           u_star tensor is positive definite. An exception
           is thrown if this is not the case.
+          adptbx::eigenvalue_filtering is used to reset
+          negative eigenvalues of u_star to zero.
+          cctbx::sgtbx::site_symmetry::average_u_star
+          is applied again to compute the final u_star.
        */
       sgtbx::site_symmetry
       apply_symmetry(uctbx::unit_cell const& unit_cell,
                      sgtbx::space_group const& space_group,
                      double min_distance_sym_equiv=0.5,
-                     double u_star_tolerance=0.1,
-                     bool assert_is_positive_definite=true,
+                     double u_star_tolerance=0,
+                     bool assert_is_positive_definite=false,
                      bool assert_min_distance_sym_equiv=true);
 
       //! Updates the weight().
@@ -240,9 +244,14 @@ namespace xray {
           site_symmetry.is_compatible_u_star(u_star, u_star_tolerance));
       }
       u_star = site_symmetry.average_u_star(u_star);
+      scitbx::sym_mat3<FloatType>
+        u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
       if (assert_is_positive_definite) {
-        CCTBX_ASSERT(adptbx::is_positive_definite(u_star));
+        CCTBX_ASSERT(adptbx::is_positive_definite(u_cart));
       }
+      u_cart = adptbx::eigenvalue_filtering(u_cart);
+      u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
+      u_star = site_symmetry.average_u_star(u_star);
     }
     return site_symmetry;
   }

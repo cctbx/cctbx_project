@@ -137,8 +137,8 @@ class xray_structure(xray.structure):
     special_position_settings = crystal.special_position_settings(
       crystal_symmetry,
       min_distance_sym_equiv=min_distance,
-      u_star_tolerance=0.1,
-      assert_is_positive_definite=0001,
+      u_star_tolerance=0,
+      assert_is_positive_definite=00000,
       assert_min_distance_sym_equiv=0001)
     xray.structure.__init__(self, special_position_settings)
     if (elements is not None):
