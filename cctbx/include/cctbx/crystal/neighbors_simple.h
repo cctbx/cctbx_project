@@ -26,6 +26,9 @@ namespace cctbx { namespace crystal { namespace neighbors {
         restart();
       }
 
+      FloatType
+      distance_cutoff_sq() const { return distance_cutoff_sq_; }
+
       bool
       at_end() const { return at_end_; }
 
@@ -55,9 +58,8 @@ namespace cctbx { namespace crystal { namespace neighbors {
     protected:
       direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
       FloatType distance_cutoff_sq_;
-      direct_space_asu::asu_mapping_index_pair_and_diff<FloatType> pair_;
-      std::size_t j_seq_n_sym_;
       bool at_end_;
+      direct_space_asu::asu_mapping_index_pair_and_diff<FloatType> pair_;
 
       void
       incr(bool start)

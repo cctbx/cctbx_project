@@ -99,7 +99,7 @@ namespace {
 
   struct asu_mapping_index_pair_wrappers
   {
-    typedef asu_mapping_index_pair<> w_t;
+    typedef asu_mapping_index_pair w_t;
 
     static void
     wrap()
@@ -122,7 +122,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t, bases<asu_mapping_index_pair<> > >(
+      class_<w_t, bases<asu_mapping_index_pair> >(
         "direct_space_asu_asu_mapping_index_pair_and_diff", no_init)
         .add_property("diff_vec", make_getter(&w_t::diff_vec, rbv()))
         .def_readonly("dist_sq", &w_t::dist_sq)
@@ -164,6 +164,7 @@ namespace {
         .def("mappings", &w_t::mappings, ccr())
         .def("mapped_sites_min", &w_t::mapped_sites_min, ccr())
         .def("mapped_sites_max", &w_t::mapped_sites_max, ccr())
+        .def("mapped_sites_span", &w_t::mapped_sites_span)
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
