@@ -37,6 +37,9 @@ namespace cctbx { namespace eltbx {
 
     static const eltbx::detail::CAASF_Raw<4> IT1992_CAASF_RawTable[] =
     {
+      { "const", { 0., 0., 0., 0. },
+                 { 0., 0., 0., 0. },
+                 1. },
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       { "H",     { 0.493002, 0.322912, 0.140191, 0.040810 },
                  { 10.5109, 26.1257, 3.14236, 57.7997 },
