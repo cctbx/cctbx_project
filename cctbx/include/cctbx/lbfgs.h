@@ -1411,7 +1411,8 @@ namespace lbfgs {
       : p_(p),
         max_drop_eps_(max_drop_eps),
         iteration_coefficient_(iteration_coefficient),
-        max_drop_(0)
+        max_drop_(0),
+        max_f_(0)
       {
         if (p_ < 2) {
           throw error_improper_input_parameter("p < 2.");
@@ -1463,6 +1464,7 @@ namespace lbfgs {
       af::shared<FloatType> x_;
       af::shared<FloatType> y_;
       FloatType max_drop_;
+      FloatType max_f_;
   };
 
   template <typename FloatType, typename SizeType>
@@ -1472,19 +1474,26 @@ namespace lbfgs {
     if (x_.size()) {
       max_drop_ = std::max(max_drop_, y_.back() - f);
     }
+    max_f_ = std::max(max_f_, detail::abs(f));
     x_.push_back(x_.size() + 1);
     y_.push_back(f);
     if (x_.size() < p_) return false;
+    if (!max_f_) return true; // y_ must be all 0
+    af::shared<FloatType> y_scaled;
+    y_scaled.reserve(p_);
+    for(std::size_t i=y_.size()-p_;i<y_.size();i++) {
+      y_scaled.push_back(y_[i] / max_f_);
+    }
     // fit last p_ points to straight line: y = m*x + b
     math::linear_regression<FloatType> linreg_y(
       af::const_ref<FloatType>(x_.end() - p_, p_),
-      af::const_ref<FloatType>(y_.end() - p_, p_));
+      af::const_ref<FloatType>(y_scaled.begin(), p_));
     cctbx_assert(linreg_y.is_well_defined());
     // check absolute value of slope
     FloatType sliding_tolerance =
       max_drop_ * max_drop_eps_ * std::pow(
         FloatType(x_.size()), iteration_coefficient_);
-    if (-linreg_y.m() <= sliding_tolerance) {
+    if (-linreg_y.m() * max_f_ <= sliding_tolerance) {
       return true;
     }
     return false;
