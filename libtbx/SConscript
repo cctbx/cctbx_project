@@ -153,7 +153,7 @@ else:
         -std1
     """)
     if (libtbx.config.build_options.optimization):
-      opts = ["-DNDEBUG", "-O2"]
+      opts = ["-DNDEBUG", "-O2", "-fast"]
     else:
       opts = ["-O0"]
     if (libtbx.config.build_options.debug_symbols):
@@ -184,7 +184,7 @@ else:
       -w
     """)
     if (libtbx.config.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3"]
+      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.config.build_options.debug_symbols):
@@ -305,7 +305,7 @@ else:
       -w
     """)
     if (libtbx.config.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3"]
+      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.config.build_options.debug_symbols):
@@ -345,7 +345,7 @@ else:
       -w
     """)
     if (libtbx.config.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3"]
+      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.config.build_options.debug_symbols):
