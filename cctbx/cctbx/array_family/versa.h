@@ -37,6 +37,10 @@ namespace cctbx { namespace af {
         : base_class(ac)
       {}
 
+      versa(const AccessorType& ac, reserve_flag)
+        : base_class(ac, reserve_flag())
+      {}
+
       explicit
       versa(long n0)
         : base_class(n0)

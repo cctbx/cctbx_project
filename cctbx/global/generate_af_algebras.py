@@ -207,7 +207,7 @@ def binary_operator_algo_params(array_type_name, type_flags):
   r.size_assert = ""
   r.loop_n = "N"
   r.result_constructor_args = ""
-  r.set_size_from_capacity = ""
+  r.set_size_back_door = ""
   if (array_type_name != "tiny"):
     if (type_flags == (1,1)):
       r.size_assert = """if (a1.size() != a2.size()) throw_range_error();
@@ -215,8 +215,8 @@ def binary_operator_algo_params(array_type_name, type_flags):
     r.loop_n = "a%d.size()" % ((type_flags[0] + 1) % 2 + 1,)
     r.result_constructor_args = get_result_constructor_args(
       array_type_name, type_flags)
-    r.set_size_from_capacity = """result.set_size_from_capacity();
-    """
+    r.set_size_back_door = """result.set_size_back_door(%s);
+    """ % (r.loop_n,)
   r.opsqbr = ["", ""] # XXX can go
   for i in xrange(2):
     if (type_flags[i]): r.opsqbr[i] = "[i]"
@@ -252,7 +252,7 @@ def elementwise_binary_op(
        a.result_constructor_args, a.size_assert,
        std_all_function_objects[op_symbol],
        a.begin[0], a.begin[1], a.loop_n,
-       a.set_size_from_capacity)
+       a.set_size_back_door)
 
 def elementwise_inplace_binary_op(
       array_type_name, op_class, op_symbol, type_flags):

@@ -117,6 +117,11 @@ namespace cctbx { namespace af {
         if (N < sz) throw_range_error();
       }
 
+      // non-std
+      void set_size_back_door(const size_type& sz) {
+        m_set_size(sz);
+      }
+
 #     include <cctbx/array_family/push_back_etc.h>
 
     protected:
