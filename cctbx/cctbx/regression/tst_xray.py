@@ -19,6 +19,11 @@ def exercise_structure():
   assert str(sx.space_group_info()) == "P 64 2 2"
   assert approx_equal(sx.scatterers()[0].site, (-1./2, -1./2, -1./3))
   assert approx_equal(sx.scatterers()[1].site, (-0.19700, 0.19700, -0.833333))
+  p1 = xs.expand_to_p1()
+  assert p1.scatterers().size() == 9
+  sh = p1.apply_shift((0.2,0.3,-1/6.))
+  assert approx_equal(sh.scatterers()[0].site, (0.7,0.8,1/6.))
+  assert approx_equal(sh.scatterers()[3].site, (0.3970,0.1030,2/3.))
 
 def run():
   exercise_structure()
