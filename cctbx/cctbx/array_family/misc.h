@@ -15,10 +15,6 @@
 
 #include <cctbx/array_family/type_traits.h>
 
-// XXX
-#include <iostream>
-#define CheckPoint std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
-
 namespace cctbx { namespace af {
 
   inline
@@ -60,29 +56,43 @@ namespace cctbx { namespace af {
 
   } // namespace detail
 
-  // XXX use std::copy if compiler permits
+#if !defined(__GNUC__) \
+    || ((__GNUC__ > 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ > 0)))
+#define CCTBX_ARRAY_FAMILY_STD_COPY_PERMITS_TYPECONV
+#endif
+
   template <typename InputElementType,
             typename OutputElementType>
+  inline
   OutputElementType*
   copy_typeconv(
     const InputElementType* first,
     const InputElementType* last,
     OutputElementType* result)
   {
+#ifdef CCTBX_ARRAY_FAMILY_STD_COPY_PERMITS_TYPECONV
+    return std::copy(first, last, result);
+#else
     OutputElementType* p = result;
     while (first != last) *p++ = OutputElementType(*first++);
     return result;
+#endif
   }
 
-  // XXX use std::uninitialized_copy if compiler permits
   template <typename InputElementType,
             typename OutputElementType>
+#ifdef CCTBX_ARRAY_FAMILY_STD_COPY_PERMITS_TYPECONV
+  inline
+#endif
   OutputElementType*
   uninitialized_copy_typeconv(
     const InputElementType* first,
     const InputElementType* last,
     OutputElementType* result)
   {
+#ifdef CCTBX_ARRAY_FAMILY_STD_COPY_PERMITS_TYPECONV
+    return std::uninitialized_copy(first, last, result);
+#else
     OutputElementType* p = result;
     try {
       for (; first != last; p++, first++) {
@@ -94,6 +104,7 @@ namespace cctbx { namespace af {
       throw;
     }
     return result;
+#endif
   }
 
 }} // namespace cctbx::af
