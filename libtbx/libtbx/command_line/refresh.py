@@ -44,7 +44,7 @@ def create_python_dispatchers(target_dir, python_exe):
       action = shutil.copyfile
     else:
       action = os.symlink
-    if (isfile(target_file)):
+    if (isfile(target_file) or islink(target_file)):
       try: os.remove(target_file)
       except OSError: pass
       else: action(python_exe, target_file)
