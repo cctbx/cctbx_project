@@ -551,21 +551,21 @@ double mlhl_target_one_h(double fo,
        target = std::log(target) + maxv;
      }
      target = (fo*fo+alpha*alpha*fc*fc)/(beta*epsilon) - target;
-     double t1 = -std::log( 2. * fo / (beta*epsilon) );
+     double t1 = 0.0;//-std::log( 2. * fo / (beta*epsilon) );
      target = target + t1;
   }
   // centric reflection
   if(cf == 1) {
      double var = beta*epsilon;
      double arg = fo*alpha*fc/var;
-     if((std::abs(A) > small) && (std::abs(B) > small)) {
+     //if((std::abs(A) > small) && (std::abs(B) > small)) {
         arg += A*std::cos(pc) + B*std::sin(pc);
-     }
+     //}
      double mabsarg = -std::abs(arg);
      target = (fo*fo + alpha*alpha*fc*fc)/(2.0*var) + mabsarg -
               std::log((1.0 + std::exp(2.0*mabsarg))/2.0);
      double Pi = scitbx::constants::pi;
-     double t1 = -0.5 * std::log(2. / (Pi * var));
+     double t1 = 0.0;//-0.5 * std::log(2. / (Pi * var));
      target = target + t1;
   }
   return target;
@@ -609,17 +609,20 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
   double derpc = 0.0;
 
   ////////////////////
-  if(std::abs(A) < small && std::abs(B) < small && std::abs(C) < small & std::abs(D) < small) {
-     return d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
-  }
+  //if(std::abs(A) < small && std::abs(B) < small && std::abs(C) < small & std::abs(D) < small) {
+     //std::complex<double> grad = d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
+     //printf("%8.3f%8.3f%8.3f%8.3f%10.4f%9.6f%12.5f%10.4f%10.4f%10.4f%10.4f %3i%3i %12.4e %12.4e \n",A,B,C,D,fo,alpha,std::sqrt(beta),fc,pc,ac,bc,epsilon,cf, grad.real(),grad.imag());
+     //std::cout<<A<<" "<<B<<" "<<C<<" "<<D<<" "<<alpha<<" "<<beta<<" "<<d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf)<<std::endl;
+  //   return d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
+  //}
   ////////////////////
-
 
   // acentric reflection
   if(cf == 0) {
      double arg = 2.0*alpha*fo/(beta*epsilon);
      double A_prime = arg * fc * std::cos(pc) + A;
      double B_prime = arg * fc * std::sin(pc) + B;
+     //printf("%3i %15.6f %15.6f %15.6f \n", cf,arg,A_prime,B_prime);
      if((std::abs(C) < small) && (std::abs(D) < small)) {
         double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
         if(val < small) {
@@ -667,29 +670,31 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
        derpc = arg*(deranot*std::sin(pc) - derbnot*std::cos(pc))*fc;
      }
      derfc = 2.0*alpha*alpha*fc/(beta*epsilon) - derfc;
+     //printf("%15.6e %15.6e \n", derfc,derpc);
   }
   // centric reflection
   if(cf == 1) {
      double var = beta*epsilon;
      double arg = A*std::cos(pc) + B*std::sin(pc) + fo*alpha*fc/var;
+     //printf("%3i %15.6f %15.6f \n", cf,arg,var);
      derfc = alpha*alpha*fc/var - std::tanh(arg)*fo*alpha/var;
      derpc = 2.0*std::tanh(arg)*(A*std::sin(pc) - B*std::cos(pc));
+     //printf("%15.6e %15.6e \n", derfc,derpc);
   }
   if(fc < small) {
      d_target_over_fc = std::complex<double> (0.0,0.0);
+     //printf("%15.6e %15.6e \n", 0.0,0.0);
   }
   else {
      double d1 = derfc*ac - derpc*bc/fc;
      double d2 = derfc*bc + derpc*ac/fc;
+     //printf("%15.6e %15.6e \n", d1,d2);
      d_target_over_fc = std::complex<double> (d1,d2)/fc;
   }
   //std::cout<<A<<" "<<B<<" "<<C<<" "<<D<<" "<<alpha<<" "<<beta<<" "<<std::conj(d_target_over_fc)<<std::endl;
-
-  ////////////////////
-  //if(A < small && B < small && C < small & D < small) {
-  //   std::cout<<d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf)<<" "<<std::conj(d_target_over_fc)<<std::endl;
-  //}
-  ////////////////////
+  std::complex<double> grad = std::conj(d_target_over_fc);
+  //printf("%12.4e %12.4e \n",grad.real(),grad.imag());
+  //printf("%8.3f%8.3f%8.3f%8.3f%10.4f%9.6f%12.5f%10.4f%10.4f%10.4f%10.4f %3i%3i %12.4e %12.4e \n",A,B,C,D,fo,alpha,std::sqrt(beta),fc,pc,ac,bc,epsilon,cf, grad.real(),grad.imag());
 
   return std::conj(d_target_over_fc);
 }
@@ -781,7 +786,7 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
       int    e  = eps[i_h];
       // acentric: c = 0, centric: c = 1
       int    c  = cs[i_h];
-      target_ += mlhl_target_one_h(fo,
+      double tmp1 = mlhl_target_one_h(fo,
                                    fc,
                                    pc,
                                    a,
@@ -793,6 +798,8 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
                                    cos_sin_table,
                                    n_steps,
                                    step_for_integration);
+      target_ += tmp1;
+      //printf("%20.6f \n", tmp1);
       if(compute_derivatives) {
          derivatives_[i_h] = mlhl_d_target_dfcalc_one_h(
                                   fo,
