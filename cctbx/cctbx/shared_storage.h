@@ -19,6 +19,8 @@
 
 namespace cctbx {
 
+  typedef boost::shared_array<char> shared_storage_handle_type;
+
   template <typename ValueType>
   class shared_storage
   {
@@ -31,7 +33,7 @@ namespace cctbx {
       typedef std::size_t      size_type;
       typedef std::ptrdiff_t   difference_type;
 
-      typedef boost::shared_array<char> handle_type;
+      typedef shared_storage_handle_type handle_type;
 
       explicit shared_storage(const size_type& sz = 0)
         : m_handle(new char[sizeof(value_type) * sz]),
@@ -77,7 +79,7 @@ namespace cctbx {
       deepcopy() const
       {
         shared_storage<value_type> result(m_size);
-        std::copy(this->begin(), this->end(), result->begin());
+        std::copy(this->begin(), this->end(), result.begin());
         return result;
       }
 
