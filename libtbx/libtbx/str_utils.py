@@ -1,5 +1,11 @@
 from __future__ import generators
 
+def show_string(s):
+  if (s is None): return None
+  if (s.find('"') < 0): return '"'+s+'"'
+  if (s.find("'") < 0): return "'"+s+"'"
+  return '"'+s.replace('"','\\"')+'"'
+
 def overwrite_at(s, offset, replacement):
   return s[:offset] + replacement + s[offset+len(replacement):]
 
@@ -27,6 +33,10 @@ def line_breaker(string, width):
 
 def exercise():
   import libtbx.forward_compatibility
+  assert show_string("abc") == '"abc"'
+  assert show_string("a'c") == '"a\'c"'
+  assert show_string('a"c') == "'a\"c'"
+  assert show_string('\'"c') == '"\'\\"c"'
   for string, expected_result in [
     ("", [""]),
     ("this is", ["this is"]),
