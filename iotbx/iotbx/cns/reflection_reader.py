@@ -73,6 +73,8 @@ class CNS_input:
     raise CNS_input_Error, \
       "line %d, word \"%s\": " % (self._LineNo,
                                   self._LastWord) + message
+  def raiseError_floating_point(self, name):
+    self.raiseError("floating-point value expected for array " + name)
 
 class cns_reciprocal_space_object:
 
@@ -80,10 +82,12 @@ class cns_reciprocal_space_object:
     self.name = name
     self.type = type
     self.indices = flex.miller_index()
+    self.has_non_zero_phases = None
     if   (type == "real"):
       self.data = flex.double()
     elif (type == "complex"):
       self.data = flex.complex_double()
+      self.has_non_zero_phases = False
     elif (type == "integer"):
       self.data = flex.int()
     else:
@@ -96,6 +100,15 @@ class cns_reciprocal_space_object:
   def append(self, h, value):
     self.indices.append(h)
     self.data.append(value)
+
+  def is_real(self):
+    return self.type == "real" \
+        or (self.type == "complex" and not self.has_non_zero_phases)
+
+  def real_data(self):
+    assert self.is_real()
+    if (self.type == "real"): return self.data
+    return flex.real(self.data)
 
 class CNS_xray_reflection_Reader(CNS_input):
 
@@ -239,9 +252,10 @@ class CNS_xray_reflection_Reader(CNS_input):
         else:
           word = gLW()
           try:
-            type = to_obj.reciprocal_space_objects[word].type
+            rso = to_obj.reciprocal_space_objects[word]
           except KeyError:
             self.raiseError("unrecognized keyword")
+          type = rso.type
           self.level = self.level + 1
           name = word
           n = 1
@@ -254,35 +268,24 @@ class CNS_xray_reflection_Reader(CNS_input):
               except ValueError:
                 self.raiseError("integer value expected for array " + name)
             else:
-              try:
-                if (i == 0):
+              if (i == 0):
+                try:
                   value = float(word)
+                except ValueError:
+                  self.raiseError_floating_point(name)
+              else:
+                try:
+                  phase = float(word)
+                except ValueError:
+                  reuse_word = 1 # declared complex but only real part given
                 else:
-                  value = complex_math.polar((value, float(word)), deg=0001)
-              except ValueError:
-                if (i == 0):
-                  self.raiseError("floating-point value expected for array "
-                                  + name)
-                # declared complex but only real part given
-                reuse_word = 1
-          to_obj.reciprocal_space_objects[name].append(current_hkl, value)
+                  value = complex_math.polar((value, phase), deg=0001)
+                  if (phase != 0):
+                    rso.has_non_zero_phases = 0001
+          rso.append(current_hkl, value)
           self.level = self.level - 1
     except EOFError:
       if (self.level != 0): raise CNS_input_Error, "premature end-of-file"
-
-def as_miller_array(crystal_symmetry, anomalous_flag,
-                    miller_indices, data, info):
-  if (crystal_symmetry is None):
-    crystal_symmetry = crystal.symmetry(
-      unit_cell=None,
-      space_group_info=None)
-  return (miller.array(
-    miller_set=miller.set(
-      crystal_symmetry=crystal_symmetry,
-      indices=miller_indices,
-      anomalous_flag=anomalous_flag),
-    data=data)
-    .set_info(info))
 
 class cns_reflection_file:
 
@@ -335,24 +338,86 @@ class cns_reflection_file:
       hl.append(coeff)
     return miller_indices, hl
 
-  def as_miller_arrays(self, crystal_symmetry, force_symmetry=00000,
+  def _as_miller_array(self, crystal_symmetry, miller_indices,
+                             data, sigmas=None, obs_type=None):
+    result = miller.array(
+      miller_set=miller.set(
+        crystal_symmetry=crystal_symmetry,
+        indices=miller_indices,
+        anomalous_flag=self.anomalous),
+      data=data,
+      sigmas=sigmas)
+    if (obs_type is not None):
+      assert obs_type in ("f", "i")
+      if (obs_type == "f"):
+        result.set_observation_type_xray_amplitude()
+      else:
+        result.set_observation_type_xray_intensity()
+    return result
+
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
                              info_prefix=""):
+    if (crystal_symmetry is None):
+      crystal_symmetry = crystal.symmetry(
+        unit_cell=None,
+        space_group_info=None)
     result = []
     done = {}
     for group_index in xrange(len(self.groups)):
       miller_indices, hl = self.join_hl_group(group_index)
       info = info_prefix + "hl_group_%d" % (group_index+1,)
-      result.append(as_miller_array(
-        crystal_symmetry, self.anomalous, miller_indices, hl, info))
+      result.append(self._as_miller_array(
+        crystal_symmetry, miller_indices, hl).set_info(info))
       for name in self.groups[group_index]:
         done[name] = 1
+    real_arrays = {}
     for rso in self.reciprocal_space_objects.values():
-      if rso.name in done: continue
+      if (rso.name in done): continue
+      if (not rso.is_real()): continue
+      real_arrays[rso.name.lower()] = rso
+    for obs,sigma,obs_type in group_obs_sigma(real_arrays):
+      info = info_prefix + obs.name.lower() + "," + sigma.name.lower()
+      result.append(self._as_miller_array(
+        crystal_symmetry, obs.indices,
+        obs.real_data(), sigma.real_data(), obs_type).set_info(info))
+      done[obs.name] = 1
+      done[sigma.name] = 1
+    for rso in self.reciprocal_space_objects.values():
+      if (rso.name in done): continue
       info = info_prefix + rso.name.lower()
-      result.append(as_miller_array(
-        crystal_symmetry, self.anomalous, rso.indices, rso.data, info))
+      result.append(self._as_miller_array(
+        crystal_symmetry, rso.indices, rso.data).set_info(info))
       done[rso.name] = 1
     return result
+
+def group_obs_sigma(real_arrays):
+  result = []
+  done = {}
+  i = real_arrays.get("iobs")
+  if (i is not None):
+    s = real_arrays.get("sigi")
+    if (s is not None and i.indices.all_eq(s.indices)):
+      result.append((i,s,"i"))
+      done[i.name] = 1
+      done[s.name] = 1
+  for name,f in real_arrays.items():
+    if (f.name in done): continue
+    rest = None
+    for prefix in ("fobs", "f_obs", "f", ""):
+      if (name.startswith(prefix)):
+        rest = name[len(prefix):]
+        break
+    if (rest is None):
+      continue
+    for prefix in ("sigma", "sig", "s"):
+      s = real_arrays.get(prefix+rest)
+      if (s is not None):
+        break
+    if (s is not None and f.indices.all_eq(s.indices)):
+      result.append((f,s,"f"))
+      done[f.name] = 1
+      done[s.name] = 1
+  return result
 
 def run(args):
   import os
