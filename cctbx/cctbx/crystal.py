@@ -76,6 +76,9 @@ class symmetry(object):
       sgtbx.rt_mx(sgtbx.rot_mx(red.r_inv().elems, 1))).inverse()
     return p2n_op.new_denominators(z2p_op) * z2p_op
 
+  def as_reference_setting(self):
+    return self.change_basis(self.space_group_info().type().cb_op())
+
   def niggli_cell(self):
     return self.change_basis(self.change_of_basis_op_to_niggli_cell())
 
