@@ -120,6 +120,17 @@ class cns_reflection_file:
       result += "group: " + str(g) + "\n"
     return result[:-1]
 
+  def optimize(self):
+    rsos = self.reciprocal_space_objects.values()
+    for i in xrange(len(rsos)-1):
+      h_i = rsos[i].H
+      for j in xrange(i+1, len(rsos)):
+        h_j = rsos[j].H
+        if (h_i is h_j): continue # already optimized
+        if (h_i.size() != h_j.size()): continue
+        if ((h_i == h_j).count(0) == 0):
+          rsos[j].H = h_i
+
   def join_hl_group(self, group_index=None):
     if (group_index == None):
       assert len(self.groups) == 1
@@ -331,7 +342,7 @@ def summary(cns_reflection_file):
   reflection_file = reader.load()
   print reflection_file
 
-if (__name__ == "__main__"):
+def run():
   import sys, os
   if (len(sys.argv) == 1):
     summary(sys.stdin)
@@ -344,3 +355,6 @@ if (__name__ == "__main__"):
       print
   t = os.times()
   print "u+s,u,s:", t[0] + t[1], t[0], t[1]
+
+if (__name__ == "__main__"):
+  run()
