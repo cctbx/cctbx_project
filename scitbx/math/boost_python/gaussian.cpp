@@ -61,6 +61,7 @@ namespace {
         .def(init<af::small<double, w_t::max_n_terms> const&,
                   af::small<double, w_t::max_n_terms> const&,
                   optional<double const&, bool> >())
+        .def(init<sum<> const&>())
         .def("n_terms", &w_t::n_terms)
         .def("array_of_a", &w_t::array_of_a)
         .def("array_of_b", &w_t::array_of_b)
@@ -91,7 +92,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t, bases<sum<double> > >("gaussian_fit", no_init)
+      class_<w_t, bases<sum<> > >("gaussian_fit", no_init)
         .def(init<af::shared<double> const&,
                   af::shared<double> const&,
                   af::shared<double> const&,
