@@ -419,7 +419,7 @@ def exercise_linear_regression():
   assert r.is_well_defined()
   assert approx_equal(r.y_intercept(), 0)
   assert approx_equal(r.slope(), 0)
-  assert approx_equal(r.cc(), 1)
+  assert approx_equal(r.cc(), 0)
   r = flex.linear_regression(y, y)
   assert not r.is_well_defined()
 

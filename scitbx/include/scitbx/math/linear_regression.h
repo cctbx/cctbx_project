@@ -106,7 +106,7 @@ namespace scitbx { namespace math {
     if (min_x == max_x) return;
     if (min_y == max_y) {
       y_intercept_ = min_y;
-      cc_ = FloatType(1);
+      cc_ = FloatType(0);
       is_well_defined_ = true;
       return;
     }
