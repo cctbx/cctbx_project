@@ -28,6 +28,9 @@ def exercise_symmetry():
   assert ps.unit_cell().is_similar_to(
     uctbx.unit_cell((10.0885, 10.0885, 10.0885, 28.6956, 28.6956, 28.6956)))
   assert str(ps.space_group_info()) == "R 3 :R"
+  rs = ps.as_reference_setting()
+  assert rs.unit_cell().is_similar_to(xs.unit_cell())
+  assert str(rs.space_group_info()) == "R 3 :H"
   cb = xs.change_of_basis_op_to_niggli_cell()
   assert str(cb.c()) == "y-z,-x-z,3*z"
   nc = xs.niggli_cell()
