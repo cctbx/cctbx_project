@@ -1,13 +1,16 @@
 from iotbx.pdb import parser
+from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb import residue_info
 from cctbx import xray
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
+from cctbx.eltbx.caasf import wk1995
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import iround
 from cStringIO import StringIO
+import string
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
                                      fractional_coordinates=00000,
@@ -95,22 +98,21 @@ def from_pdb(file_name=None, file_iterator=None,
   if (file_iterator is None):
     file_iterator = open(file_name)
   pdb_records = parser.collect_records(raw_records=file_iterator)
-  unit_cell = None
-  space_group_info = None
+  cryst1_symmetry = None
   for record in pdb_records:
     if (record.record_name.startswith("CRYST1")):
-      try: unit_cell = uctbx.unit_cell(record.ucparams)
-      except: pass
-      try: space_group_info = sgtbx.space_group_info(symbol=record.sGroup)
+      try:
+        cryst1_symmetry = cryst1_interpretation.crystal_symmetry(
+          cryst1_record=record)
       except: pass
       break
-  crystal_symmetry=crystal.symmetry(
-    unit_cell=unit_cell,
-    space_group_info=space_group_info).join_symmetry(
-    other_symmetry=crystal_symmetry,
-    force=force_symmetry)
-  assert crystal_symmetry.unit_cell() is not None
-  assert crystal_symmetry.space_group_info() is not None
+  if (cryst1_symmetry is not None):
+    crystal_symmetry = cryst1_symmetry.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=force_symmetry)
+  assert crystal_symmetry is not None, "Unknown crystal symmetry."
+  assert crystal_symmetry.unit_cell() is not None, "Unknown unit cell."
+  assert crystal_symmetry.space_group_info() is not None,"Unknown space group."
   structure = xray.structure(
     special_position_settings=crystal.special_position_settings(
       crystal_symmetry=crystal_symmetry,
@@ -128,7 +130,15 @@ def from_pdb(file_name=None, file_iterator=None,
           residue_name=record.resName,
           atom_name=record.name).scattering_label
       except KeyError:
-        caasf = ""
+        try:
+          caasf = wk1995(record.name, 0)
+        except:
+          if (record.name[0] in string.digits and record.name[1] == "H"):
+            caasf = wk1995("H", 1)
+          else:
+            raise RuntimeError(
+              '%sUnknown scattering coefficients for "%s" "%s"' % (
+                record.error_prefix(), record.name, record.resName))
       scatterer = xray.scatterer(
         label="%s%03d" % (record.name, record.serial),
         site=site,
