@@ -23,7 +23,7 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
-#include <boost/python.hpp> // XXX go back later and find the necessary subset
+//#include <boost/python.hpp>  XXX go back later and find the necessary subset
 
 namespace scitbx { namespace fftpack { namespace {
 
