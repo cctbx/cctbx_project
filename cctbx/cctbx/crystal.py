@@ -37,9 +37,7 @@ class symmetry:
   def show_summary(self, f=sys.stdout):
     print >> f, "Unit cell: (%.6g, %.6g, %.6g, %.6g, %.6g, %.6g)" \
                 % self.unit_cell().parameters()
-    print >> f, "Space group: %s (No. %d)" % (
-      str(self.space_group_info()),
-      self.space_group_info().type().number())
+    self.space_group_info().show_summary(f)
 
   def is_compatible_unit_cell(self):
     return self.space_group().is_compatible_unit_cell(self.unit_cell())

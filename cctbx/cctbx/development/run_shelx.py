@@ -1,3 +1,4 @@
+from cctbx.web.shelx import LATT_SYMM
 from cctbx import adptbx
 from cctbx.eltbx.caasf import it1992
 from cctbx.development import random_structure
@@ -17,37 +18,6 @@ def check_shelx_availability():
   if (len(shelxl_out) == 0):
     print "SHELX not available."
     sys.exit(1)
-
-def LATT_SYMM(space_group):
-  lines = []
-  l = lines.append
-  Z = space_group.conventional_centring_type_symbol()
-  Z_dict = {
-    "P": 1,
-    "I": 2,
-    "R": 3,
-    "F": 4,
-    "A": 5,
-    "B": 6,
-    "C": 7,
-  }
-  try:
-    LATT_N = Z_dict[Z]
-  except:
-    raise RuntimeError, "Error: Lattice type not supported by SHELX."
-  # N must be made negative if the structure is non-centrosymmetric.
-  if (space_group.is_centric()):
-    if (not space_group.is_origin_centric()):
-      raise RuntimeError, "Error: " \
-        + " SHELX manual: If the structure is centrosymmetric, the" \
-        + " origin MUST lie on a center of symmetry."
-  else:
-    LATT_N = -LATT_N;
-  l("LATT %d" % (LATT_N,))
-  # The operator x,y,z is always assumed, so MUST NOT be input.
-  for i in xrange(1, space_group.n_smx()):
-    l("SYMM %s" % (space_group(i).as_xyz(0, 0, "XYZ", ","),))
-  return lines
 
 def calculate_cell_content(xray_structure):
   result = dicts.with_default_value(0)

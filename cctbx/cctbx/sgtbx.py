@@ -6,6 +6,7 @@ del import_regular_symbols
 class empty: pass
 
 from cctbx import uctbx
+import sys
 
 class space_group_info:
 
@@ -69,6 +70,10 @@ class space_group_info:
     if (not hasattr(cache, "_lookup_symbol")):
       cache._lookup_symbol = self.type().lookup_symbol()
     return cache._lookup_symbol
+
+  def show_summary(self, f=sys.stdout):
+    print >> f, "Space group: %s (No. %d)" % (
+      str(self), self.type().number())
 
   def any_compatible_unit_cell(self, volume):
     sg_number = self.type().number()
