@@ -29,7 +29,12 @@ class proxy_registry_add_result:
   def __init__(self, tabulated_proxy=None, is_new=False, is_conflicting=False):
     adopt_init_args(self, locals())
 
-class bond_simple_proxy_registry:
+class proxy_registry_mixin:
+
+  def discard_table(self):
+    self.table = None
+
+class bond_simple_proxy_registry(proxy_registry_mixin):
 
   def __init__(self, n_seq):
     self.table = [{} for i in xrange(n_seq)]
@@ -57,7 +62,7 @@ class bond_simple_proxy_registry:
         self.counts[i_list] += 1
     return result
 
-class angle_proxy_registry:
+class angle_proxy_registry(proxy_registry_mixin):
 
   def __init__(self):
     self.table = {}
@@ -87,7 +92,7 @@ class angle_proxy_registry:
         self.counts[i_list] += 1
     return result
 
-class dihedral_proxy_registry:
+class dihedral_proxy_registry(proxy_registry_mixin):
 
   def __init__(self):
     self.table = {}
@@ -119,7 +124,7 @@ class dihedral_proxy_registry:
         self.counts[i_list] += 1
     return result
 
-class chirality_proxy_registry:
+class chirality_proxy_registry(proxy_registry_mixin):
 
   def __init__(self):
     self.table = {}
@@ -149,7 +154,7 @@ class chirality_proxy_registry:
         self.counts[i_list] += 1
     return result
 
-class planarity_proxy_registry:
+class planarity_proxy_registry(proxy_registry_mixin):
 
   def __init__(self):
     self.table = {}
