@@ -22,6 +22,13 @@ def get_test_space_group_symbols(flag_AllSpaceGroups,
   return [sgtbx.space_group_symbols(n).extended_hermann_mauguin()
           for n in sg_numbers] + ["Hall: -F 4 21 (1,5,3)"]
 
+def random_origin_shift(space_group_info, grid=12):
+  xyz = []
+  for i in xrange(3):
+    xyz.append("%s+%d/%d" % ("xyz"[i], random.randrange(grid), grid))
+  xyz = ",".join(xyz)
+  return space_group_info.change_basis(sgtbx.change_of_basis_op(xyz))
+
 def report_cpu_times():
   t = os.times()
   print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])

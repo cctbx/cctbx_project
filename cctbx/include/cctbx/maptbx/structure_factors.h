@@ -1,15 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Copyright (c) 2002 Airlie McCoy.
-
-   Revision history:
-     2002 Nov: Modified fragments of cctbx/sftbx/sfmap.h (rwgk)
-     2002 May: Created based on phaser/src/MapFFT.cc by Airlie McCoy (rwgk)
- */
-
 #ifndef CCTBX_MAPTBX_STRUCTURE_FACTORS_H
 #define CCTBX_MAPTBX_STRUCTURE_FACTORS_H
 
@@ -24,7 +12,7 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
   //! Copies a structure factor array to a 3-dimensional complex map.
   /*! Reference: David A. Langs (2002), J. Appl. Cryst. 35, 505.
    */
-  template <typename FloatType = double>
+  template <typename FloatType=double>
   class to_map
   {
     public:
@@ -75,12 +63,14 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       af::versa<std::complex<FloatType>, af::c_grid_padded<3> > complex_map_;
   };
 
-  template <typename FloatType = double>
+  //! Extracts structure factors from a 3-dimensional complex map.
+  template <typename FloatType=double>
   class from_map
   {
     public:
       from_map() {}
 
+      //! Extracts Miller indices and data up to a given resolution.
       template <typename OtherFloatType>
       from_map(
         uctbx::unit_cell const& unit_cell,
@@ -170,6 +160,7 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         }}}
       }
 
+      //! Extracts data for given Miller indices.
       template <typename OtherFloatType>
       from_map(
         bool anomalous_flag,
@@ -184,24 +175,11 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         af::int3 map_grid_focus = complex_map.accessor().focus();
         data_.reserve(miller_indices.size());
         for(std::size_t i=0;i<miller_indices.size();i++) {
-          miller::index<> h = miller_indices[i];
-          bool f_conj = conjugate_flag;
-          if (!anomalous_flag) {
-            if (h[2] < 0) {
-              h = -h;
-              f_conj = !f_conj;
-            }
-          }
-          else {
-            if (f_conj) {
-              h = -h;
-              f_conj = false;
-            }
-          }
-          af::int3 ih = h_as_ih_exact_array(anomalous_flag, h, map_grid_focus);
-          if (ih.all_ge(0)) {
-            if (!f_conj) data_.push_back(complex_map(ih));
-            else         data_.push_back(std::conj(complex_map(ih)));
+          array_access aa(
+            anomalous_flag, map_grid_focus, conjugate_flag, miller_indices[i]);
+          if (aa.ih.all_ge(0)) {
+            if (!aa.f_conj) data_.push_back(complex_map(aa.ih));
+            else            data_.push_back(std::conj(complex_map(aa.ih)));
           }
           else if (allow_miller_indices_outside_map) {
             outside_map_.push_back(data_.size());
@@ -210,6 +188,55 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
           else {
             throw error("Miller index not in structure factor map.");
           }
+        }
+      }
+
+      //! Symmetry sum of data for given Miller indices.
+      template <typename OtherFloatType>
+      from_map(
+        sgtbx::space_group const& space_group,
+        bool anomalous_flag,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<std::complex<OtherFloatType>,
+                      af::c_grid_padded<3> > const& complex_map,
+        bool conjugate_flag)
+      :
+        n_indices_affected_by_aliasing_(0)
+      {
+        typedef FloatType f_t;
+        typedef std::complex<FloatType> c_t;
+        af::int3 map_grid_focus = complex_map.accessor().focus();
+        data_.reserve(miller_indices.size());
+        std::size_t f_inv = 1;
+        if (anomalous_flag && space_group.is_centric()) {
+          f_inv = 2;
+        }
+        for(std::size_t i=0;i<miller_indices.size();i++) {
+          miller::index<> h = miller_indices[i];
+          c_t f(0,0);
+          for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
+            for(std::size_t i_inv=0;i_inv<f_inv;i_inv++) {
+              sgtbx::rt_mx const s = space_group(0,i_inv,i_smx);
+              miller::index<> hr = h * s.r();
+              f_t phi = scitbx::constants::two_pi * f_t(h * s.t())
+                      / space_group.t_den();
+              c_t shift(std::cos(phi), std::sin(phi));
+              array_access aa(
+                anomalous_flag, map_grid_focus, conjugate_flag, hr);
+              if (!aa.ih.all_ge(0)) {
+                throw error("Miller index not in structure factor map.");
+              }
+              if (!aa.f_conj) f += complex_map(aa.ih) * shift;
+              else            f += std::conj(complex_map(aa.ih)) * shift;
+            }
+          }
+          if (!anomalous_flag && space_group.is_centric()) {
+            f_t phi = scitbx::constants::two_pi * f_t(h * space_group.inv_t())
+                    / space_group.t_den();
+            f += std::conj(f) * c_t(std::cos(phi), std::sin(phi));
+          }
+          f *= space_group.n_ltr();
+          data_.push_back(f);
         }
       }
 
@@ -233,6 +260,34 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       af::shared<std::complex<FloatType> > data_;
       std::size_t n_indices_affected_by_aliasing_;
       af::shared<std::size_t> outside_map_;
+
+      struct array_access
+      {
+        array_access(
+          bool anomalous_flag,
+          af::int3 const& map_grid_focus,
+          bool conjugate_flag,
+          miller::index<> h)
+        {
+          f_conj = conjugate_flag;
+          if (!anomalous_flag) {
+            if (h[2] < 0) {
+              h = -h;
+              f_conj = !f_conj;
+            }
+          }
+          else {
+            if (f_conj) {
+              h = -h;
+              f_conj = false;
+            }
+          }
+          ih = h_as_ih_exact_array(anomalous_flag, h, map_grid_focus);
+        }
+
+        bool f_conj;
+        af::int3 ih;
+      };
   };
 
 }}} // namespace cctbx::maptbx::structure_factors

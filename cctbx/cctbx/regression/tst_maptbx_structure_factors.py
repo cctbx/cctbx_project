@@ -28,17 +28,18 @@ def exercise_crystal_gridding():
 def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
                              d_min=3., resolution_factor=0.5, max_prime=5,
                              verbose=0):
-  structure_factors = random_structure.xray_structure(
+  structure = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O"),
     random_f_prime_d_min=1,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=0001,
     random_u_iso=0001,
-    random_occupancy=0001
-    ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
-  f_calc = structure_factors.f_calc()
+    random_occupancy=0001)
+  f_calc = structure.structure_factors(
+    anomalous_flag=anomalous_flag,
+    d_min=d_min,
+    direct=0001).f_calc()
   n_real = f_calc.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
@@ -99,6 +100,27 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
     f_calc.data(), from_map.data(),
     min_corr_ampl=0.9999, max_mean_w_phase_error=.01,
     verbose=verbose)
+  structure_p1 = structure.asymmetric_unit_in_p1()
+  miller_p1 = miller.set.expand_to_p1(f_calc)
+  f_calc_p1 = miller_p1.structure_factors_from_scatterers(
+    xray_structure=structure_p1,
+    direct=0001).f_calc()
+  map = maptbx.structure_factors.to_map(
+    f_calc_p1.space_group(),
+    anomalous_flag,
+    f_calc_p1.indices(),
+    f_calc_p1.data(),
+    n_real,
+    flex.grid(n_complex),
+    conjugate_flag)
+  from_map = maptbx.structure_factors.from_map(
+    f_calc.space_group(),
+    anomalous_flag,
+    f_calc.indices(),
+    map.complex_map(),
+    conjugate_flag)
+  assert from_map.miller_indices().size() == 0
+  assert flex.max(flex.abs(f_calc.data()-from_map.data())) < 1.e-10
 
 def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
                            under_sampling,
@@ -206,8 +228,15 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
     for conjugate_flag in (00000, 0001)[:]: #SWITCH
+      for with_shift in [0,1]:
+        if (with_shift):
+          sgi = debug_utils.random_origin_shift(space_group_info)
+        else:
+          sgi = space_group_info
       exercise_shannon_sampled(
-        space_group_info, anomalous_flag, conjugate_flag,
+        space_group_info=sgi,
+        anomalous_flag=anomalous_flag,
+        conjugate_flag=conjugate_flag,
         verbose=flags.Verbose)
   for anomalous_flag in (00000, 0001)[:]: #SWITCH
     for conjugate_flag in (00000, 0001)[:]: #SWITCH

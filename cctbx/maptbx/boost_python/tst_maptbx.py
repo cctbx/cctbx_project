@@ -172,6 +172,12 @@ def exercise_structure_factors():
       assert f.data().size() == mi.size()
       assert f.n_indices_affected_by_aliasing() == 0
       assert f.outside_map().size() == 0
+      f = maptbx.structure_factors.from_map(
+        sg.group(), anomalous_flag, mi, t.complex_map(), conjugate_flag)
+      assert f.miller_indices().size() == 0
+      assert f.data().size() == mi.size()
+      assert f.n_indices_affected_by_aliasing() == 0
+      assert f.outside_map().size() == 0
 
 def exercise_gridding():
   u = uctbx.unit_cell((4,6,7))
