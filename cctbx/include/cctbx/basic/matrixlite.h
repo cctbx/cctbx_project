@@ -47,8 +47,8 @@ namespace cctbx {
     transpose(const NumType *M, const std::size_t nr, const std::size_t nc,
               NumType *Mt)
     {
-      for (int ir = 0; ir < nr; ir++)
-        for (int ic = 0; ic < nc; ic++)
+      for (unsigned ir = 0; ir < nr; ir++)
+        for (unsigned ic = 0; ic < nc; ic++)
           Mt[ic * nr + ir] = M[ir * nc + ic];
     }
 
@@ -72,10 +72,10 @@ namespace cctbx {
              const std::size_t na, const std::size_t nb,
              NumTypeAB *AB) {
       // AB[ma, nb] = A[ma, na] * B[na, nb]
-      for (int i = 0; i < ma; i++) {
-        for (int k = 0; k < nb; k++) {
+      for (unsigned i = 0; i < ma; i++) {
+        for (unsigned k = 0; k < nb; k++) {
           *AB = NumTypeAB(0);
-          for (int j = 0; j < na; j++) {
+          for (unsigned j = 0; j < na; j++) {
             *AB += NumTypeAB(A[i * na + j] * B[j * nb + k]);
           }
           AB++;
