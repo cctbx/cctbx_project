@@ -16,7 +16,7 @@
 #include <complex>
 #include <cctbx/fixes/cmath>
 #include <cctbx/fftbx/factorization.h>
-#include <cctbx/fftbx/detail/adaptors.h>
+#include <cctbx/ndim.h>
 
 namespace cctbx { namespace fftbx {
 
@@ -51,8 +51,8 @@ namespace cctbx { namespace fftbx {
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
       typedef RealType real_type;
       typedef ComplexType complex_type;
-      typedef detail::access_tp<2, real_type*, real_type> dim2;
-      typedef detail::access_tp<3, real_type*, real_type> dim3;
+      typedef vecrefnd<real_type, dimension<2, fortran_index_1d<2> > > dim2;
+      typedef vecrefnd<real_type, dimension<3, fortran_index_1d<3> > > dim3;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
       //! Default constructor.

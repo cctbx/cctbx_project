@@ -111,6 +111,42 @@ namespace cctbx {
         return m_begin[m_dim(I)];
       }
 
+      // Convenience constructors
+
+      template <typename IteratorOrPointerType>
+      vecrefnd(IteratorOrPointerType begin,
+               std::size_t n0)
+        : vecref<ValueType>(begin, n0), m_dim(n0)
+      {}
+      template <typename IteratorOrPointerType>
+      vecrefnd(IteratorOrPointerType begin,
+               std::size_t n0,
+               std::size_t n1)
+        : vecref<ValueType>(begin, n0*n1), m_dim(n0, n1)
+      {}
+      template <typename IteratorOrPointerType>
+      vecrefnd(IteratorOrPointerType begin,
+               std::size_t n0,
+               std::size_t n1,
+               std::size_t n2)
+        : vecref<ValueType>(begin, n0*n1*n2), m_dim(n0, n1, n2)
+      {}
+
+      // Convenience operator()
+
+      value_type& operator()(std::size_t i0) const {
+        return m_begin[m_dim(carray<int, 1>(i0))];
+      }
+      value_type& operator()(std::size_t i0,
+                             std::size_t i1) const {
+        return m_begin[m_dim(carray<int, 2>(i0, i1))];
+      }
+      value_type& operator()(std::size_t i0,
+                             std::size_t i1,
+                             std::size_t i2) const {
+        return m_begin[m_dim(carray<int, 3>(i0, i1, i2))];
+      }
+
     protected:
       dimension_type m_dim;
   };
