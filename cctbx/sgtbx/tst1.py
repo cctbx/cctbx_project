@@ -11,6 +11,7 @@ m = sgtbx.RTMx(s)
 print m.as_xyz(0, 0, "xyz", ",")
 print m.as_xyz(0, 1, "xyz", ",")
 print m.as_tuple()
+print m.as_tuple(12, 72)
 mm = m * m
 print mm.as_xyz()
 mi = m.inverse()
