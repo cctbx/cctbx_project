@@ -1388,11 +1388,11 @@ namespace lbfgs {
           -slope &lt;=   max_drop() * max_drop_eps()
                        * number_of_iterations^iteration_coefficient()
           </pre>
-	  Note that with iteration_coefficient() > 1 this
-	  test becomes increasingly tolerant with the
-	  number of iterations. The rationale is that the
-	  slope will not change very much for parameters
-	  that are already close to the optimum.
+          Note that with iteration_coefficient() > 1 this
+          test becomes increasingly tolerant with the
+          number of iterations. The rationale is that the
+          slope will not change very much for parameters
+          that are already close to the optimum.
       </ul>
    */
   template <typename FloatType, typename SizeType = std::size_t>
