@@ -1,23 +1,13 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of cctbx/sgtbx/coordinates.h (rwgk)
-     2001 Oct: SpecialPosition -> SiteSymmetry (R.W. Grosse-Kunstleve)
-     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_WYCKOFF_H
 #define CCTBX_SGTBX_WYCKOFF_H
 
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <cctbx/sgtbx/space_group_type.h>
 
-namespace cctbx { namespace sgtbx { namespace wyckoff {
+namespace cctbx { namespace sgtbx {
+
+//! Wyckoff tables.
+namespace wyckoff {
 
   class table; // forward declaration
 
