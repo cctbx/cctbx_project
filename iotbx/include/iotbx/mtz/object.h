@@ -332,16 +332,9 @@ namespace iotbx { namespace mtz {
       int
       n_reflections() const { return ptr()->nref; }
 
+      inline
       af::tiny<double, 2>
-      max_min_resolution() const
-      {
-        if (ptr()->nxtal == 0) return af::tiny<double, 2>(-1., -1.);
-        float max_resolution;
-        float min_resolution;
-        CCTBX_ASSERT(
-          CMtz::MtzResLimits(ptr(), &min_resolution, &max_resolution));
-        return af::tiny<double, 2>(max_resolution, min_resolution);
-      }
+      max_min_resolution() const;
 
       int
       n_crystals() const { return CMtz::MtzNxtal(ptr()); }
