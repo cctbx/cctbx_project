@@ -21,6 +21,10 @@ def run(args):
       action="store_true",
       dest="process_includes",
       help="Inline include files.")
+    .option(None, "--automatic_type_assignment",
+      action="store_true",
+      dest="automatic_type_assignment",
+      help="Infer definition types from given values.")
     .option(None, "--print_width",
       action="store",
       type="int",
@@ -48,6 +52,8 @@ def run(args):
     parameters = iotbx.parameters.parse(
       file_name=file_name,
       process_includes=command_line.options.process_includes)
+    if (command_line.options.automatic_type_assignment):
+      parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
     parameters.show(
       out=sys.stdout,
       prefix=prefix,
