@@ -1,7 +1,9 @@
 import iotbx.xplor.map
 from cctbx import maptbx
+from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
+from cctbx.development import random_structure
 from libtbx.test_utils import approx_equal, eps_eq
 import sys, os
 
@@ -115,6 +117,24 @@ def recycle():
     assert read.data.focus() == data.focus()
     assert eps_eq(read.data, data, eps=1.e-4)
 
+def exercise_fft_map_as_xplor_map(space_group_info, n_elements=10, d_min=3):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=["Si"]*n_elements,
+    volume_per_atom=1000,
+    min_distance=3.,
+    general_positions_only=00000)
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=00000).f_calc()
+  fft_map = f_calc.fft_map()
+  fft_map.as_xplor_map(file_name="tmp.map")
+  read = iotbx.xplor.map.reader(file_name="tmp.map")
+  assert read.title_lines == ["cctbx.miller.fft_map"]
+  assert read.gridding.n == fft_map.n_real()
+  assert approx_equal(flex.linear_correlation(
+    read.data.as_1d(),
+    fft_map.real_map_unpadded().as_1d()).coefficient(), 1)
+
 def run():
   exercise_map_gridding()
   recycle()
@@ -124,6 +144,8 @@ def run():
     write_xplor(map1, "tmp.map")
     map2 = read_xplor("tmp.map")
     assert flex.max(flex.abs(map2.data-map1.data)) < 2.e-5
+  exercise_fft_map_as_xplor_map(
+    space_group_info=sgtbx.space_group_info("P 31"))
   print "OK"
 
 if (__name__=="__main__"):
