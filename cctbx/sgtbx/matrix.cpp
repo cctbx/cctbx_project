@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/matrix.h>
+#include <cctbx/array_family/tiny_reductions.h>
 #include <cctbx/array_family/tiny_algebra.h>
 
 namespace cctbx { namespace sgtbx {
@@ -400,7 +401,7 @@ namespace cctbx { namespace sgtbx {
 
   bool RTMx::isPerpendicular(const af::int3& v) const
   {
-    return cmp_tiny(Rpart().accumulate() * v, 0) == 0;
+    return !af::cmp(Rpart().accumulate() * v, 0);
   }
 
   TrVec RTMx::getIntrinsicPart() const

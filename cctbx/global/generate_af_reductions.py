@@ -35,8 +35,8 @@ def generate_cmp(subs):
   int
   inline
   cmp(
-    ${array_type}<ElementType1${templ_inst_2_1}> const& a1,
-    ${array_type}<ElementType2${templ_inst_2_2}> const& a2)
+    ${array_type_plain}<ElementType1${templ_inst_2_1}> const& a1,
+    ${array_type_plain}<ElementType2${templ_inst_2_2}> const& a2)
   {
     return cmp(a1.const_ref(), a2.const_ref());
   }
@@ -45,7 +45,7 @@ def generate_cmp(subs):
   int
   inline
   cmp(
-    ${array_type}<ElementType${templ_inst_2}> const& a1,
+    ${array_type_plain}<ElementType${templ_inst_2}> const& a1,
     ElementType const& a2)
   {
     return cmp(a1.const_ref(), a2);
@@ -56,7 +56,7 @@ def generate_cmp(subs):
   inline
   cmp(
     ElementType const& a1,
-    ${array_type}<ElementType${templ_inst_2}> const& a2)
+    ${array_type_plain}<ElementType${templ_inst_2}> const& a2)
   {
     return cmp(a1, a2.const_ref());
   }
@@ -69,7 +69,7 @@ def generate_max_index_etc(subs):
   template <typename ElementType${templ_decl_2}>
   inline
   std::size_t
-  ${func_name}(${array_type}<ElementType${templ_inst_2}> const& a)
+  ${func_name}(${array_type_plain}<ElementType${templ_inst_2}> const& a)
   {
     return ${func_name}(a.const_ref());
   }
@@ -83,7 +83,7 @@ def generate_max_etc(subs):
   template <typename ElementType${templ_decl_2}>
   inline
   ElementType
-  ${func_name}(${array_type}<ElementType${templ_inst_2}> const& a)
+  ${func_name}(${array_type_plain}<ElementType${templ_inst_2}> const& a)
   {
     return ${func_name}(a.const_ref());
   }
@@ -98,8 +98,8 @@ def generate_mean_weighted_etc(subs):
   inline
   ElementTypeValues
   ${func_name}(
-    ${array_type}<ElementTypeValues${templ_inst_2_1eq}> const& values,
-    ${array_type}<ElementTypeWeights${templ_inst_2_2eq}> const& weights)
+    ${array_type_plain}<ElementTypeValues${templ_inst_2_1eq}> const& values,
+    ${array_type_plain}<ElementTypeWeights${templ_inst_2_2eq}> const& weights)
   {
     return ${func_name}(values.const_ref(), weights.const_ref());
   }
@@ -107,6 +107,7 @@ def generate_mean_weighted_etc(subs):
 
 def one_type(subs):
   array_type = subs["array_type"]
+  subs["array_type_plain"] = array_type + "_plain"
   subs["ARRAY_TYPE"] = array_type.upper()
   f = open("%s_reductions.h" % (array_type,), "w")
   sys.stdout = f
@@ -118,7 +119,7 @@ def one_type(subs):
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 #include <cctbx/array_family/reductions.h>
-#include <cctbx/array_family/${array_type}.h>
+#include <cctbx/array_family/${array_type_plain}.h>
 
 namespace cctbx { namespace af {
 """)

@@ -618,14 +618,7 @@ def one_type(array_type_name):
 
 #include <cctbx/array_family/%s.h>
 """ % ((array_type_name.upper(),) * 2 + (include_array_type_name,))
-  if (array_type_name == "tiny"):
-    print """#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
-
-#include <cctbx/array_family/tiny_trivial_algebra.h>
-
-#else
-"""
-  elif (array_type_name == "small"):
+  if (array_type_name == "small"):
     print """#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
 #define CCTBX_ARRAY_FAMILY_SMALL_ALGEBRA_MIN_N1_N2 N1
 #else
@@ -664,9 +657,6 @@ namespace cctbx { namespace af {
 
   print "}} // namespace cctbx::af"
   print
-  if (array_type_name == "tiny"):
-    print "#endif // (defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0"
-    print
   print "#endif // DOXYGEN_SHOULD_SKIP_THIS"
   print
   print "#endif // CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H" % (

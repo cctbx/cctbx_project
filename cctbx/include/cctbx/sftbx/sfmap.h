@@ -250,7 +250,7 @@ namespace cctbx { namespace sftbx {
 
         FloatType rho_real_0() const
         {
-          return af::sum(as_real_.const_ref());
+          return af::sum(as_real_);
         }
 
         FloatType
@@ -500,7 +500,7 @@ namespace cctbx { namespace sftbx {
           }
           else {
             u_cart = adptbx::Ustar_as_Ucart(ucell_, site->Uaniso());
-            u_iso = af::max(adptbx::Eigenvalues(u_cart).const_ref());
+            u_iso = af::max(adptbx::Eigenvalues(u_cart));
           }
           detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
             site->CAASF(), site->fpfdp(), site->w(),
@@ -616,7 +616,7 @@ namespace cctbx { namespace sftbx {
         af::ref<std::complex<FloatType> > structure_factors) const
       {
         FloatType norm = ucell_.getVolume()
-          / af::product(map_accessor_.n_logical().const_ref());
+          / af::product(map_accessor_.n_logical());
         eliminate_u_extra(
           ucell_, u_extra_, miller_indices, structure_factors, norm);
       }
@@ -739,7 +739,7 @@ namespace cctbx { namespace sftbx {
       }
       sfmap::grid_point_type ih = detail::h_as_ih_array(
         friedel_flag, h, n_complex);
-      cctbx_assert(sgtbx::cmp_tiny(ih, sfmap::grid_point_element_type(0)) >= 0);
+      cctbx_assert(af::cmp(ih, sfmap::grid_point_element_type(0)) >= 0);
       if (!f_conj) structure_factors.push_back(complex_map(ih));
       else         structure_factors.push_back(std::conj(complex_map(ih)));
     }
@@ -767,8 +767,7 @@ namespace cctbx { namespace sftbx {
         if (friedel_flag && h[2] < 0) continue;
         sfmap::grid_point_type ih = detail::h_as_ih_array(
           friedel_flag, h, n_complex);
-        cctbx_assert(
-          sgtbx::cmp_tiny(ih, sfmap::grid_point_element_type(0)) >= 0);
+        cctbx_assert(af::cmp(ih, sfmap::grid_point_element_type(0)) >= 0);
         map(ih) = h_seq.complex_eq(structure_factors[i]);
       }
     }

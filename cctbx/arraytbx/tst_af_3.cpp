@@ -1,7 +1,11 @@
 #include <cctbx/array_family/simple_io.h>
+#include <cctbx/array_family/tiny.h>
 #include <cctbx/array_family/tiny_reductions.h>
+#include <cctbx/array_family/small.h>
 #include <cctbx/array_family/small_reductions.h>
+#include <cctbx/array_family/shared.h>
 #include <cctbx/array_family/shared_reductions.h>
+#include <cctbx/array_family/versa.h>
 #include <cctbx/array_family/versa_reductions.h>
 #include <cctbx/math/utils.h>
 

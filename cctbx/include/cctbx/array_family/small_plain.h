@@ -57,7 +57,7 @@ namespace cctbx { namespace af {
         : m_size(0)
       {
         if (N < sz) throw_range_error();
-        ftor.held(begin(), sz);
+        (*ftor.held)(begin(), sz);
         m_size = sz;
       }
 

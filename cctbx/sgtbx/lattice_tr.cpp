@@ -130,7 +130,7 @@ namespace cctbx { namespace sgtbx {
           V = V.newBaseFactor(TBF);
           int iTLT;
           for (iTLT = 0; iTLT < TLT->size(); iTLT++) {
-            if (cmp_tiny(CrossProduct((*TLT)[iTLT].vec(), V.vec()), 0) == 0) {
+            if (!af::cmp(CrossProduct((*TLT)[iTLT].vec(), V.vec()), 0)) {
               if (!FirstIsShorter((*TLT)[iTLT].vec(), V.vec())) {
                 (*TLT)[iTLT] = V;
               }

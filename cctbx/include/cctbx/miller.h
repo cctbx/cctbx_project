@@ -25,6 +25,7 @@
 #include <cctbx/error.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/array_family/tiny_types.h>
+#include <cctbx/array_family/tiny_reductions.h>
 #include <cctbx/math/utils.h>
 
 namespace cctbx {
@@ -93,13 +94,13 @@ namespace cctbx {
         //! Test for equality.
         bool operator==(const Index& m2) const
         {
-          return af::cmp(this->const_ref(), m2.const_ref()) == 0;
+          return !af::cmp(*this, m2);
         }
 
         //! Test for inequality.
         bool operator!=(const Index& m2) const
         {
-          return af::cmp(this->const_ref(), m2.const_ref()) != 0;
+          return af::cmp(*this, m2);
         }
     };
 

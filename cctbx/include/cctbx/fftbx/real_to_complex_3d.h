@@ -12,7 +12,7 @@
 #ifndef CCTBX_FFTBX_REAL_TO_COMPLEX_3D_H
 #define CCTBX_FFTBX_REAL_TO_COMPLEX_3D_H
 
-#include <cctbx/array_family/reductions.h>
+#include <cctbx/array_family/tiny_reductions.h>
 #include <cctbx/fftbx/complex_to_complex.h>
 #include <cctbx/fftbx/real_to_complex.h>
 
@@ -264,7 +264,7 @@ namespace cctbx { namespace fftbx {
     m_fft1d_x = complex_to_complex<real_type, complex_type>(m_Nreal[0]);
     m_fft1d_y = complex_to_complex<real_type, complex_type>(m_Nreal[1]);
     m_fft1d_z = real_to_complex<real_type, complex_type>(m_Nreal[2]);
-    m_Seq.resize(2 * af::max(Ncomplex_from_Nreal(m_Nreal).const_ref()));
+    m_Seq.resize(2 * af::max(Ncomplex_from_Nreal(m_Nreal)));
   }
 
 }} // namespace cctbx::fftbx

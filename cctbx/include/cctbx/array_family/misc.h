@@ -20,8 +20,9 @@ namespace cctbx { namespace af {
   template <typename FunctorType>
   struct init_functor
   {
-    explicit init_functor(FunctorType const& ftor) : held(ftor) {}
-    FunctorType const& held;
+    init_functor() : held(0) {}
+    explicit init_functor(FunctorType const& ftor) : held(&ftor) {}
+    const FunctorType* held;
   };
 
   template <typename FunctorType>
@@ -31,6 +32,17 @@ namespace cctbx { namespace af {
   {
     return init_functor<FunctorType>(ftor);
   }
+
+  template <typename ElementType>
+  struct init_functor_null : init_functor<init_functor_null<ElementType> >
+  {
+    init_functor_null() { this->held = this; }
+
+    void operator()(ElementType*, std::size_t const&) const
+    {
+      CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+    }
+  };
 
   namespace detail {
 
