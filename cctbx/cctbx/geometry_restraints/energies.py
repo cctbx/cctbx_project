@@ -89,26 +89,26 @@ class energies:
     if (self.gradients is not None):
       return flex.sum_sq(self.gradients.as_double())
 
-  def show(self, f=None):
+  def show(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "target: %.6g" % self.target()
+    print >> f, prefix+"target: %.6g" % self.target()
     if (self.n_bond_proxies is not None):
-      print >> f, "  bond_residual_sum (n=%d): %.6g" % (
+      print >> f, prefix+"  bond_residual_sum (n=%d): %.6g" % (
         self.n_bond_proxies, self.bond_residual_sum)
     if (self.n_nonbonded_proxies is not None):
-      print >> f, "  nonbonded_residual_sum (n=%d): %.6g" % (
+      print >> f, prefix+"  nonbonded_residual_sum (n=%d): %.6g" % (
         self.n_nonbonded_proxies, self.nonbonded_residual_sum)
     if (self.n_angle_proxies is not None):
-      print >> f, "  angle_residual_sum (n=%d): %.6g" % (
+      print >> f, prefix+"  angle_residual_sum (n=%d): %.6g" % (
         self.n_angle_proxies, self.angle_residual_sum)
     if (self.n_dihedral_proxies is not None):
-      print >> f, "  dihedral_residual_sum (n=%d): %.6g" % (
+      print >> f, prefix+"  dihedral_residual_sum (n=%d): %.6g" % (
         self.n_dihedral_proxies, self.dihedral_residual_sum)
     if (self.n_chirality_proxies is not None):
-      print >> f, "  chirality_residual_sum (n=%d): %.6g" % (
+      print >> f, prefix+"  chirality_residual_sum (n=%d): %.6g" % (
         self.n_chirality_proxies, self.chirality_residual_sum)
     if (self.n_planarity_proxies is not None):
-      print >> f, "  planarity_residual_sum (n=%d): %.6g" % (
+      print >> f, prefix+"  planarity_residual_sum (n=%d): %.6g" % (
         self.n_planarity_proxies, self.planarity_residual_sum)
     if (self.gradients is not None):
-      print >> f, "  norm of gradients: %.6g" % self.gradient_norm()
+      print >> f, prefix+"  norm of gradients: %.6g" % self.gradient_norm()
