@@ -45,7 +45,7 @@ elif (sys.platform.startswith("irix")):
   env_etc.compiler = "irix_CC"
 elif (sys.platform.startswith("darwin")):
   if (compiler == "default"):
-    env_etc.compiler = "darwin_gcc"
+    env_etc.compiler = "darwin_c++"
   else:
     env_etc.compiler = "darwin_"+compiler
     compiler = None
