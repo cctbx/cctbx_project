@@ -308,7 +308,7 @@ namespace cctbx {
       : m_UnitCell(uc),
         m_SgOps(SgInfo.SgOps()),
         m_FriedelFlag(FriedelFlag),
-        m_ASU(ReciprocalSpaceASU(SgInfo))
+        m_ASU(SgInfo)
     {
       if (Resolution_d_min <= 0.) {
         throw error("Resolution limit must be greater than zero.");
@@ -325,7 +325,7 @@ namespace cctbx {
       : m_UnitCell(),
         m_SgOps(SgInfo.SgOps()),
         m_FriedelFlag(FriedelFlag),
-        m_ASU(ReciprocalSpaceASU(SgInfo)),
+        m_ASU(SgInfo),
         m_Qhigh(-1.)
     {
       InitializeLoop(Miller::Index(af::abs(MaxIndex)));

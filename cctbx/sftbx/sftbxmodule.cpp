@@ -526,19 +526,43 @@ namespace {
   }
 
   tuple
-  py_collect_structure_factors(
+  py_collect_structure_factors_real(
     const uctbx::UnitCell& ucell,
     const sgtbx::SpaceGroupInfo& sginfo,
     double max_q,
     const af::shared<double>& transformed_real_map,
-    const af::tiny<long, 3>& n_complex,
-    bool friedel_flag)
+    const af::tiny<long, 3>& n_complex)
+  {
+    cctbx_assert(
+         transformed_real_map.size()
+      >= 2 * af::compile_time_product<3>::get(n_complex));
+    af::const_ref<std::complex<double> > transformed_complex_map(
+      reinterpret_cast<const std::complex<double>*>(
+        transformed_real_map.begin()), transformed_real_map.size()/2);
+    std::pair<af::shared<Miller::Index>,
+              af::shared<std::complex<double> > >
+    indexed_structure_factors = sftbx::collect_structure_factors(
+      ucell, sginfo, max_q, transformed_complex_map, n_complex,
+      true);
+    tuple result(2);
+    result.set_item(0, indexed_structure_factors.first);
+    result.set_item(1, indexed_structure_factors.second);
+    return result;
+  }
+
+  tuple
+  py_collect_structure_factors_complex(
+    const uctbx::UnitCell& ucell,
+    const sgtbx::SpaceGroupInfo& sginfo,
+    double max_q,
+    const af::shared<std::complex<double> >& transformed_complex_map,
+    const af::tiny<long, 3>& n_complex)
   {
     std::pair<af::shared<Miller::Index>,
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
-      ucell, sginfo, max_q, transformed_real_map.const_ref(), n_complex,
-      friedel_flag);
+      ucell, sginfo, max_q, transformed_complex_map.const_ref(), n_complex,
+      false);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);
@@ -583,6 +607,10 @@ namespace {
     py_shared_RTMx(
       "cctbx_boost.arraytbx.shared", "RTMx");
 
+    // XXX move to sgtbx
+    class_builder<Miller::map_to_asym_index<std::complex<double> > >
+    py_map_to_asym_index(this_module, "map_to_asym_index");
+
     class_builder<ex_xray_scatterer>
     py_XrayScatterer(this_module, "XrayScatterer");
     python::export_converters(py_XrayScatterer);
@@ -598,6 +626,31 @@ namespace {
 
     class_builder<maps::grid_tags<long> >
     py_grid_tags(this_module, "grid_tags");
+
+    py_map_to_asym_index.def(constructor<>());
+    py_map_to_asym_index.def(constructor<
+      const sgtbx::SpaceGroupInfo&,
+      bool,
+      af::shared<Miller::Index>,
+      af::shared<std::complex<double> >,
+      bool>());
+    py_map_to_asym_index.def(constructor<
+      const sgtbx::SpaceGroupInfo&,
+      bool,
+      af::shared<Miller::Index>,
+      af::shared<std::complex<double> > >());
+    py_map_to_asym_index.def(
+      &Miller::map_to_asym_index<std::complex<double> >::friedel_flag,
+                                                        "friedel_flag");
+    //py_map_to_asym_index.def(
+    //  &Miller::map_to_asym_index<std::complex<double> >::asu,
+    //                                                    "asu");
+    py_map_to_asym_index.def(
+      &Miller::map_to_asym_index<std::complex<double> >::asym_miller_indices,
+                                                        "asym_miller_indices");
+    py_map_to_asym_index.def(
+      &Miller::map_to_asym_index<std::complex<double> >::asym_data_array,
+                                                        "asym_data_array");
 
     py_XrayScatterer.def(constructor<>());
     py_XrayScatterer.def(constructor<
@@ -690,6 +743,16 @@ namespace {
       double,
       double,
       bool>());
+    py_sampled_model_density.def(constructor<
+      const uctbx::UnitCell&,
+      const af::shared<ex_xray_scatterer>&,
+      const af::tiny<long, 3>&,
+      const af::tiny<long, 3>&,
+      double,
+      double,
+      double,
+      bool,
+      bool>());
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::ucell,
                                             "ucell");
@@ -718,8 +781,17 @@ namespace {
       &sftbx::sampled_model_density<double>::max_shell_radii,
                                             "max_shell_radii");
     py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::max_shell_radii_frac,
+                                            "max_shell_radii_frac");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::friedel_flag,
+                                            "friedel_flag");
+    py_sampled_model_density.def(
       sampled_model_density_map_real_as_shared,
                            "map_real_as_shared");
+    py_sampled_model_density.def(
+      sampled_model_density_map_complex_as_shared,
+                           "map_complex_as_shared");
     py_sampled_model_density.def(
       sampled_model_density_apply_symmetry,
                            "apply_symmetry");
@@ -755,6 +827,7 @@ namespace {
 
     this_module.def(py_apply_special_position_ops, "apply");
 
+    // XXX move to sgtbx
     this_module.def(py_BuildMillerIndices_Resolution_d_min,
                       "BuildMillerIndices");
     this_module.def(py_BuildMillerIndices_MaxIndex,
@@ -772,7 +845,10 @@ namespace {
     this_module.def(py_calc_u_extra_2, "calc_u_extra");
     this_module.def(py_eliminate_u_extra_5, "eliminate_u_extra");
     this_module.def(py_eliminate_u_extra_4, "eliminate_u_extra");
-    this_module.def(py_collect_structure_factors, "collect_structure_factors");
+    this_module.def(py_collect_structure_factors_real,
+      "collect_structure_factors");
+    this_module.def(py_collect_structure_factors_complex,
+      "collect_structure_factors");
     this_module.def(py_structure_factor_map, "structure_factor_map");
 
     py_versa_double_grid_3.def(constructor<>());

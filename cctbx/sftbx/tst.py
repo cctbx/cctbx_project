@@ -14,7 +14,7 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
     anisotropic_displacement_parameters=adp)
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
-  MillerIndices = xutils.build_miller_indices(xtal, d_min)
+  MillerIndices = xutils.build_miller_indices(xtal, 1, d_min)
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
   debug_utils.print_structure_factors(Fcalc)
 
