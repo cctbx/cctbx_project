@@ -11,6 +11,7 @@
 
 #include <cctbx/sgtbx/row_echelon.h>
 #include <boost/python/def.hpp>
+#include <boost/python/class.hpp> // work around gcc-3.3-darwin bug
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
@@ -78,11 +79,17 @@ namespace {
       re_mx_ref, v_ptr, sol_ptr, indep_ptr);
   }
 
+  struct dummy {}; // work around gcc-3.3-darwin bug
+
 } // namespace <anoymous>
 
   void wrap_row_echelon()
   {
     using namespace boost::python;
+#if defined(__APPLE__) && defined(__MACH__) \
+ && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
+    class_<dummy>("_dummy", no_init);
+#endif
     def("row_echelon_form_t", row_echelon_form_t);
     def("row_echelon_form", row_echelon_form);
     def("row_echelon_back_substitution", row_echelon_back_substitution);
