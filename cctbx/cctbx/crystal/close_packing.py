@@ -103,8 +103,20 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
           break
   assert sites_frac.size() > 0
   if (exercise_cpp):
-    assert cpp.all_sites_frac().size() == sites_frac.size()
-    assert approx_equal(cpp.all_sites_frac(), sites_frac)
+    assert not cpp.at_end()
+    cpp_sites_frac = cpp.all_sites_frac()
+    assert cpp.at_end()
+    assert cpp_sites_frac.size() == sites_frac.size()
+    assert approx_equal(cpp_sites_frac, sites_frac)
+    cpp.restart()
+    assert not cpp.at_end()
+    assert approx_equal(cpp.next_site_frac(), sites_frac[0])
+    assert cpp.count_sites() == sites_frac.size()-1
+    assert cpp.at_end()
+    cpp.restart()
+    n = 0
+    for site in cpp: n += 1
+    assert n == sites_frac.size()
   return sites_frac
 
 def hexagonal_close_packing_sampling(crystal_symmetry,

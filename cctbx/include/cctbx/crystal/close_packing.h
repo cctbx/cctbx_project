@@ -9,7 +9,7 @@ namespace cctbx { namespace crystal { namespace close_packing {
 
     inline
     scitbx::vec3<int> const&
-    twelve_neighbor_offset(std::size_t i)
+    twelve_neighbor_offsets(std::size_t i)
     {
       typedef scitbx::vec3<int> v;
       static const v offsets[] = {
@@ -44,7 +44,8 @@ namespace cctbx { namespace crystal { namespace close_packing {
           point_distance, point_distance, point_distance*std::sqrt(8/3.),
           90, 90, 120)),
         box_lower_(0,0,0),
-        box_upper_(0,0,0)
+        box_upper_(0,0,0),
+        loop_status_(0)
       {
         if (buffer_thickness_ < 0) {
           buffer_thickness_ = point_distance * (2/3. * (1/2. * std::sqrt(3.)));
@@ -53,7 +54,7 @@ namespace cctbx { namespace crystal { namespace close_packing {
         sampling_box_determination();
         hex_to_frac_matrix_ = float_asu_.unit_cell().fractionalization_matrix()
                             * sampling_cell_.orthogonalization_matrix();
-        sampling_loop();
+        incr();
       }
 
       direct_space_asu::float_asu<FloatType> const&
@@ -77,10 +78,51 @@ namespace cctbx { namespace crystal { namespace close_packing {
       scitbx::vec3<int> const&
       box_upper() const { return box_upper_; }
 
+      /*! \brief True if the last site returned by next_site_frac()
+          was the last one to be generated.
+       */
+      bool
+      at_end() const { return loop_status_ < 0; }
+
+      fractional<FloatType>
+      next_site_frac()
+      {
+        CCTBX_ASSERT(!at_end());
+        fractional<FloatType> result = site_frac_;
+        incr();
+        return result;
+      }
+
       af::shared<scitbx::vec3<FloatType> >
       all_sites_frac()
       {
-        return sites_frac_;
+        CCTBX_ASSERT(!at_end());
+        af::shared<scitbx::vec3<FloatType> > result;
+        while (!at_end()) {
+          result.push_back(site_frac_);
+          incr();
+        }
+        return result;
+      }
+
+      //! Restarts the generator.
+      void
+      restart()
+      {
+        loop_status_ = 0;
+        incr();
+      }
+
+      //! Counts the number of sites.
+      std::size_t
+      count_sites()
+      {
+        std::size_t result = 0;
+        while (!at_end()) {
+          incr();
+          result++;
+        }
+        return result;
       }
 
     protected:
@@ -95,7 +137,11 @@ namespace cctbx { namespace crystal { namespace close_packing {
       scitbx::vec3<int> box_lower_;
       scitbx::vec3<int> box_upper_;
       scitbx::mat3<FloatType> hex_to_frac_matrix_;
-      af::shared<scitbx::vec3<FloatType> > sites_frac_;
+      // loop state
+      int loop_status_;
+      scitbx::vec3<int> point_;
+      fractional<FloatType> site_frac_;
+      std::size_t i12_;
 
       void
       sampling_box_determination()
@@ -157,32 +203,36 @@ namespace cctbx { namespace crystal { namespace close_packing {
         }
       }
 
-      void sampling_loop()
+      void
+      incr()
       {
-        typedef scitbx::vec3<FloatType> v;
-        typedef fractional<FloatType> f;
-        scitbx::vec3<int> point;
-        for(point[0]=box_lower_[0];point[0]<=box_upper_[0];point[0]++)
-        for(point[1]=box_lower_[1];point[1]<=box_upper_[1];point[1]++)
-        for(point[2]=box_lower_[2];point[2]<=box_upper_[2];point[2]++) {
-          v site_hex = box_pivot_ + indices_as_site(point);
-          f site_frac = hex_to_frac_matrix_ * site_hex;
-          if (float_asu_buffer_.is_inside(site_frac)) {
-            sites_frac_.push_back(site_frac);
+        if (loop_status_ == 1) goto continue_after_return_1;
+        if (loop_status_ == 2) goto continue_after_return_2;
+        for(point_[0]=box_lower_[0];point_[0]<=box_upper_[0];point_[0]++)
+        for(point_[1]=box_lower_[1];point_[1]<=box_upper_[1];point_[1]++)
+        for(point_[2]=box_lower_[2];point_[2]<=box_upper_[2];point_[2]++) {
+          site_frac_ = hex_to_frac_matrix_
+                     * (box_pivot_ + indices_as_site(point_));
+          if (float_asu_buffer_.is_inside(site_frac_)) {
+            loop_status_ = 1;
+            return;
+            continue_after_return_1:;
           }
           else if (all_twelve_neighbors_) {
-            for(std::size_t i=0;i<12;i++) {
-              v offset_hex = indices_as_site(
-                detail::twelve_neighbor_offset(i), point[2]);
-              f offset_frac = hex_to_frac_matrix_ * offset_hex;
-              f other_site_frac = site_frac + offset_frac;
-              if (float_asu_.is_inside(other_site_frac)) {
-                sites_frac_.push_back(site_frac);
+            for(i12_=0;i12_<12;i12_++) {
+              if (float_asu_.is_inside(site_frac_ + hex_to_frac_matrix_
+                    * indices_as_site(
+                        detail::twelve_neighbor_offsets(i12_),
+                        point_[2]))) {
+                loop_status_ = 2;
+                return;
+                continue_after_return_2:;
                 break;
               }
             }
           }
         }
+        loop_status_ = -1;
       }
   };
 
