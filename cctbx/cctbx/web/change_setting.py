@@ -35,7 +35,7 @@ def run(server_info, inp, status):
   unit_cell_old = uctbx.unit_cell(inp.ucparams_old)
   print "Old symmetry:"
   print " ",
-  uctbx.show_parameters(unit_cell_old)
+  unit_cell_old.show_parameters()
   space_group_info_old = sgtbx.space_group_info(
     symbol=inp.sgsymbol_old,
     table_id=inp.convention_old)
@@ -71,7 +71,7 @@ def run(server_info, inp, status):
     unit_cell_new = cb_op.apply(unit_cell_old)
     print "New unit cell parameters:"
     print " ",
-    uctbx.show_parameters(unit_cell_new)
+    unit_cell_new.show_parameters()
     assert space_group_info_new.group().is_compatible_unit_cell(unit_cell_new)
     print
 

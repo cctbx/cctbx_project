@@ -15,7 +15,7 @@ def interpret_form_data(form):
 def run(server_info, inp, status):
   print "<pre>"
   unit_cell = uctbx.unit_cell(inp.ucparams)
-  uctbx.show_parameters(unit_cell)
+  unit_cell.show_parameters()
   print
 
   if (inp.coor_type == "Fractional"):

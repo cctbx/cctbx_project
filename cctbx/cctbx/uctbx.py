@@ -12,6 +12,8 @@ def unit_cell(parameters, is_metrical_matrix=00000):
     parameters = [float(p) for p in parameters.replace(",", " ").split()]
   return ext.unit_cell(parameters, is_metrical_matrix)
 
-def show_parameters(unit_cell, f=sys.stdout):
+def unit_cell_show_parameters(unit_cell, f=sys.stdout):
   print >> f, "Unit cell: (%.6g, %.6g, %.6g, %.6g, %.6g, %.6g)" \
               % unit_cell.parameters()
+
+ext.unit_cell.show_parameters = unit_cell_show_parameters
