@@ -8,7 +8,7 @@ import shutil
 
 class create_bin_sh_dispatcher:
 
-  def __init__(self, python_exe, precall_commands=None):
+  def __init__(self, python_exe, precall_commands):
     self.python_exe = python_exe
     self.precall_commands = precall_commands
 
@@ -37,7 +37,8 @@ def create_python_execfile_dispatcher(source_file, target_file):
   print >> f, 'execfile(r"%s")' % source_file
   f.close()
 
-def create_driver(python_exe, target_dir, package_name, source_dir, file_name):
+def create_driver(python_exe, precall_commands,
+                  target_dir, package_name, source_dir, file_name):
   source_file = norm(join(source_dir, file_name))
   if (not isfile(source_file)): return
   if (file_name.lower().startswith("__init__.py")): return
@@ -51,7 +52,9 @@ def create_driver(python_exe, target_dir, package_name, source_dir, file_name):
     target_file += ".px"
     action = create_python_execfile_dispatcher
   else:
-    action = create_bin_sh_dispatcher(python_exe=python_exe)
+    action = create_bin_sh_dispatcher(
+      python_exe=python_exe,
+      precall_commands=precall_commands)
     try: os.chmod(source_file, 0755)
     except: pass
   if (isfile(target_file) or islink(target_file)):
@@ -61,12 +64,14 @@ def create_driver(python_exe, target_dir, package_name, source_dir, file_name):
   else:
     action(source_file, target_file)
 
-def create_drivers(python_exe, target_dir, package_name, source_dir):
+def create_drivers(python_exe, precall_commands,
+                   target_dir, package_name, source_dir):
   if (not isdir(source_dir)): return
   print "Processing:", source_dir
   for file_name in os.listdir(source_dir):
     create_driver(
       python_exe=python_exe,
+      precall_commands=precall_commands,
       target_dir=target_dir,
       package_name=package_name,
       source_dir=source_dir,
@@ -131,8 +136,8 @@ def assemble_dispatcher_precall_commands(libtbx_env):
     lines.extend(addl_lines)
   return lines
 
-def create_python_dispatchers(libtbx_env, target_dir, python_exe):
-  precall_commands = assemble_dispatcher_precall_commands(libtbx_env)
+def create_python_dispatchers(libtbx_env, target_dir,
+                              python_exe, precall_commands):
   for file_name in ("libtbx.python", "python"):
     target_file = norm(join(target_dir, file_name))
     if (os.name == "nt"):
@@ -156,13 +161,18 @@ def run():
   target_dir = norm(join(libtbx_env.LIBTBX_BUILD, "libtbx/bin"))
   if (not isdir(target_dir)):
     os.makedirs(target_dir)
+  precall_commands = assemble_dispatcher_precall_commands(libtbx_env)
   create_python_dispatchers(
-    libtbx_env, target_dir, libtbx_env.LIBTBX_PYTHON_EXE)
+    libtbx_env=libtbx_env,
+    target_dir=target_dir,
+    python_exe=libtbx_env.LIBTBX_PYTHON_EXE,
+    precall_commands=precall_commands)
   for dist_path in libtbx_env.dist_paths.values():
     package_name = os.path.basename(dist_path)
     for dist_path_suf in libtbx.config.package_pair(dist_path).primary_first():
       create_drivers(
         python_exe=libtbx_env.LIBTBX_PYTHON_EXE,
+        precall_commands=precall_commands,
         target_dir=target_dir,
         package_name=package_name,
         source_dir=norm(join(dist_path_suf, package_name, "command_line")))
