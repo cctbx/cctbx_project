@@ -414,9 +414,11 @@ def exercise_nonbonded():
 
 def exercise_angle():
   p = geometry_restraints.angle_proxy(
-    i_seqs=[0,1,2],
+    i_seqs=[2,1,0],
     angle_ideal=95,
     weight=1)
+  assert p.i_seqs == (2,1,0)
+  p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2)
   assert approx_equal(p.angle_ideal, 95)
   assert approx_equal(p.weight, 1)
