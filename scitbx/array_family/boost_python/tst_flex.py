@@ -951,6 +951,12 @@ def exercise_matrix():
         d = matrix.rec(a, a.focus()) * matrix.rec(b, b.focus())
         assert c.focus() == d.n
         assert approx_equal(c, d)
+        c.transpose_in_place()
+        assert c.focus() == (d.n[1], d.n[0])
+        assert approx_equal(c, d.transpose())
+        c.transpose_in_place()
+        assert c.focus() == d.n
+        assert approx_equal(c, d)
 
 def exercise_pickle_single_buffered():
   a = flex.bool((1,0,1))

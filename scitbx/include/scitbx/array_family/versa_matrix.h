@@ -2,6 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_VERSA_MATRIX_H
 
 #include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/mat_ref.h>
 
 namespace scitbx { namespace af {
@@ -14,12 +15,27 @@ namespace scitbx { namespace af {
   {
     versa<FloatType, c_grid<2> > ab(
       c_grid<2>(a.accessor()[0], b.accessor()[1]),
-      af::init_functor_null<FloatType>());
+      init_functor_null<FloatType>());
     mat_const_ref<FloatType> a_(a.begin(), a.accessor()[0], a.accessor()[1]);
     mat_const_ref<FloatType> b_(b.begin(), b.accessor()[0], b.accessor()[1]);
     mat_ref<FloatType> ab_(ab.begin(), ab.accessor()[0], ab.accessor()[1]);
     multiply(a_, b_, ab_);
     return ab;
+  }
+
+  template <typename FloatType, typename FlexGridIndexType>
+  void
+  transpose_in_place(versa<FloatType, flex_grid<FlexGridIndexType> >& a)
+  {
+    SCITBX_ASSERT(a.accessor().nd() == 2);
+    SCITBX_ASSERT(a.accessor().is_0_based());
+    SCITBX_ASSERT(!a.accessor().is_padded());
+    typedef typename FlexGridIndexType::value_type index_value_type;
+    index_value_type n_rows = a.accessor().all()[0];
+    index_value_type n_columns = a.accessor().all()[1];
+    mat_ref<FloatType> a_(a.begin(), n_rows, n_columns);
+    a_.transpose_in_place();
+    a.resize(flex_grid<FlexGridIndexType>(n_columns, n_rows));
   }
 
 }} // namespace scitbx::af
