@@ -5,9 +5,23 @@ buf_size = 1000000
 def perl_header(selfx, command):
   print >> selfx, """\
 #! /usr/bin/env perl
+#
+# This is a self-extracting tar.gz file.
+# Usage:
+#   perl name_of_this_file
+#
+# The perl header of this file is
+#
 # Copyright (c) 2003 The Regents of the University of California
 # through E.O. Lawrence Berkeley National Laboratory, subject to
 # approval by the U.S. Department of Energy.
+#
+# and was written in May 2003 by Ralf W. Grosse-Kunstleve.
+# See also:
+#   http://cvs.sourceforge.net/viewcvs.py/cctbx/libtbx/LICENSE.txt?view=markup
+#
+# The above copyright notice does *not* apply to the attached tar.gz file.
+#
 print "Unpacking self-extracting archive\\n";
 $my_size = -s $0;
 open(SELF,"<$0") or die "ERROR: Cannot read self-extracting archive!\\n";
