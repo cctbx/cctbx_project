@@ -1,4 +1,5 @@
 #include <boost/python/module.hpp>
+#include <scitbx/stl/map_fwd.h>
 #include <scitbx/stl/map_wrapper.h>
 #include <map>
 #include <vector>
