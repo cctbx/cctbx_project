@@ -1,16 +1,8 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_MAPTBX_COPY_H
 #define CCTBX_MAPTBX_COPY_H
 
 #include <scitbx/array_family/accessors/c_grid_padded.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/loops.h>
 #include <cctbx/error.h>

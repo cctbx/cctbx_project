@@ -196,6 +196,40 @@ def exercise_misc():
     maptbx.set_if_less_than(m, 2, 9)
     assert approx_equal(tuple(m), (9,2,9,4,9,6))
 
+def exercise_eight_point_interpolation():
+  map = flex.double(flex.grid(2,3,5), 10)
+  for shift in [0,1,-1]:
+    for index in flex.nested_loop(map.focus()):
+      x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
+      assert approx_equal(maptbx.eight_point_interpolation(map, x_frac), 10)
+      assert maptbx.closest_grid_point(map, x_frac) == index
+  for i in xrange(100):
+    x_frac = [3*random.random()-1 for i in xrange(3)]
+    assert approx_equal(map.eight_point_interpolation(x_frac), 10)
+  map = flex.double(range(30))
+  map.resize(flex.grid(2,3,5))
+  for shift in [0,1,-1]:
+    v = 0
+    for index in flex.nested_loop(map.focus()):
+      x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
+      assert approx_equal(map.eight_point_interpolation(x_frac), v)
+      assert approx_equal(map[map.closest_grid_point(x_frac)], v)
+      assert approx_equal(map.value_at_closest_grid_point(x_frac), v)
+      v += 1
+  map = flex.double()
+  for i in xrange(48): map.append(i%2)
+  map.resize(flex.grid(2,4,6))
+  for shift in [0,1,-1]:
+    for offs in [.0,.5,.25,.75]:
+      v = offs
+      for index in flex.nested_loop(map.focus()):
+        x_frac = [(i+offs)/n+shift for i,n in zip(index, map.focus())]
+        assert approx_equal(map.eight_point_interpolation(x_frac), v)
+        if (offs != .5):
+          assert map.closest_grid_point(x_frac) == tuple(
+            [int(i+offs+.5)%n for i,n in zip(index,map.focus())])
+        v = 1-v
+
 def run():
   exercise_copy()
   exercise_statistics()
@@ -206,6 +240,7 @@ def run():
   exercise_peak_search()
   exercise_pymol_interface()
   exercise_structure_factors()
+  exercise_eight_point_interpolation()
   print "OK"
 
 if (__name__ == "__main__"):
