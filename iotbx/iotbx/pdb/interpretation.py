@@ -1,6 +1,7 @@
 from iotbx import pdb
 import iotbx.pdb.parser
 import iotbx.pdb.cryst1_interpretation
+from iotbx.cns import pdb_remarks as cns_pdb_remarks
 import iotbx.pdb.atom
 from cctbx import xray
 from cctbx import crystal
@@ -13,6 +14,20 @@ from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 import string
 import sys
+
+def is_pdb_file(file_name):
+  for raw_record in open(file_name):
+    if (   raw_record.startswith("CRYST1")
+        or raw_record.startswith("ATOM  ")
+        or raw_record.startswith("HETATM")):
+      try:
+        pdb.parser.pdb_record(
+          raw_record=raw_record,
+          line_number=None,
+          ignore_columns_73_and_following=True)
+      except: pass
+      else: return True
+  return False
 
 class empty: pass
 
@@ -124,10 +139,12 @@ class stage_1:
     for state.line_number,state.raw_record in zip(count(1), raw_records):
       record_name = state.raw_record[:6]
       if (record_name == "CRYST1"):
-        self.cryst1_record = state.raw_record
-        self.crystal_symmetry = pdb.cryst1_interpretation.crystal_symmetry(
-          cryst1_record=state.raw_record,
-          line_number=state.line_number)
+        if (self.cryst1_record is None):
+          self.cryst1_record = state.raw_record
+        if (self.crystal_symmetry is None):
+          self.crystal_symmetry = pdb.cryst1_interpretation.crystal_symmetry(
+            cryst1_record=state.raw_record,
+            line_number=state.line_number)
       elif (state.raw_record.startswith("SCALE")):
         scale_record = self.parse_record()
         for i_col,v in enumerate([scale_record.Sn1,
@@ -135,6 +152,11 @@ class stage_1:
                                   scale_record.Sn3]):
           self.scale_matrix[0][(scale_record.n-1)*3+i_col] = v
         self.scale_matrix[1][scale_record.n-1] = scale_record.Un
+      elif (state.raw_record.startswith("REMARK sg=")):
+        crystal_symmetry = cns_pdb_remarks.extract_symmetry(
+          pdb_record=state.raw_record)
+        if (crystal_symmetry is not None):
+          self.crystal_symmetry = crystal_symmetry
       elif (state.raw_record.startswith("REMARK   3 ")):
         self.remark_3_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK 290 ")):
@@ -199,7 +221,10 @@ class stage_1:
         crystal_symmetry=None,
         force_symmetry=False):
     assert special_position_settings is None or crystal_symmetry is None
-    assert self.crystal_symmetry is not None or crystal_symmetry is not None or special_position_settings is not None
+    if (    self.crystal_symmetry is None
+        and crystal_symmetry is None
+        and special_position_settings is None):
+      return None
     if (crystal_symmetry is None):
       crystal_symmetry = special_position_settings
     if (self.crystal_symmetry is not None):
@@ -209,8 +234,8 @@ class stage_1:
         crystal_symmetry = self.crystal_symmetry.join_symmetry(
           other_symmetry=crystal_symmetry,
           force=force_symmetry)
-    assert crystal_symmetry.unit_cell() is not None
-    assert crystal_symmetry.space_group_info() is not None
+    if (crystal_symmetry.unit_cell() is None): return None
+    if (crystal_symmetry.space_group_info() is None): return None
     if (special_position_settings is None):
       special_position_settings = crystal.special_position_settings(
         crystal_symmetry=crystal_symmetry)
@@ -218,11 +243,11 @@ class stage_1:
       special_position_settings = crystal.special_position_settings(
         crystal_symmetry=crystal_symmetry,
         min_distance_sym_equiv
-          =special_position_settings.min_distance_sym_equiv,
+          =special_position_settings.min_distance_sym_equiv(),
         u_star_tolerance
-          =special_position_settings.u_star_tolerance,
+          =special_position_settings.u_star_tolerance(),
         assert_is_positive_definite
-          =special_position_settings.assert_is_positive_definite)
+          =special_position_settings.assert_is_positive_definite())
     return special_position_settings
 
   def get_sites_cart(self):
@@ -266,15 +291,18 @@ class stage_1:
         sites_frac=None,
         scattering_types=None):
     assert sites_cart is None or sites_frac is None
+    special_position_settings = self.get_special_position_settings(
+      special_position_settings=special_position_settings,
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry)
+    if (special_position_settings is None):
+      raise RuntimeError("Crystal symmetry not defined.")
     result = xray.structure(
-      special_position_settings=self.get_special_position_settings(
-        special_position_settings=special_position_settings,
-        crystal_symmetry=crystal_symmetry,
-        force_symmetry=force_symmetry))
+      special_position_settings=special_position_settings)
     if (sites_cart is None):
       sites_cart = self.get_sites_cart()
     if (sites_frac is None):
-      sites_frac = result.unit_cell().orthogonalization_matrix() * sites_cart
+      sites_frac = result.unit_cell().fractionalization_matrix() * sites_cart
     if (scattering_types is None):
       scattering_types = self.get_element_symbols(strip_symbols=True)
     for i_seq,atom,site_frac,scattering_type in zip(
@@ -440,7 +468,9 @@ class stage_1:
     if (crystal_symmetry is None):
       if (self.cryst1_record is not None):
         print >> out, self.cryst1_record.rstrip()
-    else:
+      elif (self.crystal_symmetry is not None):
+        crystal_symmetry = self.crystal_symmetry
+    if (crystal_symmetry is not None):
       print >> out, pdb.format_cryst1_record(
         crystal_symmetry=crystal_symmetry)
     ter_flags = flex.bool(len(self.atom_attributes_list)+1, False)
