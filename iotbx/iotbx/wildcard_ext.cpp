@@ -1,6 +1,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 
 namespace {
 
@@ -22,9 +23,10 @@ namespace {
    *      *estr will point to the end of the longest exact or substring match.
    */
   int
-  t_pmatch(const char *string, const char *pattern, const char **estr)
+  t_pmatch(const char *string, const char *pattern, const char **estr,
+           char escape_char='\0')
   {
-      char    stringc, patternc;
+      char    stringc, patternc, patternc_esc;
       int     match, negate_range;
       char    rangec;
       const char *oestr, *pestr;
@@ -34,9 +36,13 @@ namespace {
           /*
            * apollo compiler bug: switch (patternc = *pattern++) dies
            */
-          patternc = *pattern++;
-          switch (patternc) {
-          case 0:
+          patternc = patternc_esc = *pattern++;
+          if (   escape_char != '\0'
+              && patternc == escape_char) {
+            patternc = *pattern++;
+          }
+          switch (patternc_esc) {
+          case '\0':
               *estr = string;
               return (stringc == 0 ? 2 : 1);
           case '?':
@@ -54,7 +60,7 @@ namespace {
               pestr = 0;
 
               do {
-                  switch(t_pmatch(string, pattern, estr)) {
+                  switch(t_pmatch(string, pattern, estr, escape_char)) {
                   case 0:
                       break;
                   case 1:
@@ -113,16 +119,23 @@ namespace {
   }
 
   bool
-  is_match(std::string const& string, std::string const& pattern)
+  is_match(
+    std::string const& string,
+    std::string const& pattern,
+    char escape_char='\0')
   {
     const char* estr;
-    return (t_pmatch(string.c_str(), pattern.c_str(), &estr) == 2);
+    return (t_pmatch(string.c_str(), pattern.c_str(), &estr, escape_char)
+            == 2);
   }
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(is_match_overloads, is_match, 2, 3)
 
   void init_module()
   {
     using namespace boost::python;
-    def("is_match", is_match, (arg_("string"), arg_("pattern")));
+    def("is_match", is_match, is_match_overloads(
+      (arg_("string"), arg_("pattern"), arg_("escape_char")='\0')));
   }
 
 } // namespace <anonymous>
