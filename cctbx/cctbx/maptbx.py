@@ -68,7 +68,6 @@ class crystal_gridding:
                      mandatory_factors=None,
                      max_prime=5,
                      assert_shannon_sampling=0001):
-    adopt_init_args(self, locals(), hide=0001)
     assert [d_min, step].count(None) == 1
     if (step is not None):
       d_min = step*2
@@ -78,6 +77,7 @@ class crystal_gridding:
     if (symmetry_flags is not None): assert space_group_info is not None
     if (mandatory_factors is None): mandatory_factors = (1,1,1)
     assert len(mandatory_factors) == 3
+    adopt_init_args(self, locals(), hide=0001)
     if (symmetry_flags is not None):
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
@@ -236,9 +236,10 @@ class peak_cluster_analysis:
                      general_positions_only=00000,
                      min_cross_distance=None,
                      max_clusters=None):
-    adopt_init_args(self, locals(), hide=0001)
     if (min_cross_distance is None):
       min_cross_distance = special_position_settings.min_distance_sym_equiv()
+    adopt_init_args(self, locals(), hide=0001)
+    assert self._min_cross_distance is not None
     self._gridding = peak_list.gridding()
     self._peak_list_indices = flex.size_t()
     self._peak_list_index = 0
