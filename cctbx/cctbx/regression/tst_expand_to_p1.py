@@ -1,5 +1,5 @@
-from cctbx.array_family import flex
 from cctbx import miller
+from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import utils
