@@ -137,7 +137,7 @@ namespace cctbx { namespace sftbx {
   class sampled_model_density
   {
     public:
-      typedef af::versa<FloatType, maps::grid_p1<3> > map_type;
+      typedef af::versa<FloatType, maps::padded_grid_p1<3> > map_type;
       typedef typename map_type::accessor_type map_accessor_type;
       typedef typename map_accessor_type::index_type grid_point_type;
 
@@ -146,14 +146,15 @@ namespace cctbx { namespace sftbx {
       template <typename XrayScattererType>
       sampled_model_density(
         const uctbx::UnitCell& ucell,
-        const af::const_ref<XrayScattererType>& sites,
+        const af::shared<XrayScattererType>& sites,
         const FloatType& max_q,
         const FloatType& resolution_factor,
-        const grid_point_type& sampling_grid,
+        const grid_point_type& grid_logical,
+        const grid_point_type& grid_physical,
         const FloatType& quality_factor = 100,
         const FloatType& wing_cutoff = 0.01,
         const FloatType& exp_table_one_over_step_size = -1000)
-        : map_(sampling_grid),
+        : map_(map_accessor_type(grid_logical, grid_physical)),
           max_q_(max_q),
           resolution_factor_(resolution_factor),
           quality_factor_(quality_factor),
@@ -190,23 +191,24 @@ namespace cctbx { namespace sftbx {
           cartesian<FloatType> max_d_cart;
           max_d_cart.fill(std::sqrt(max_d_sq));
           fractional<FloatType> max_d_frac = ucell.fractionalize(max_d_cart);
+          const grid_point_type& grid_logical = map_.accessor().n_logical();
           af::int3 shell_limit;
           for(i=0;i<3;i++) {
             //Round number down to nearest integer as you will never "make it"
             //to the grid + 1 point
             shell_limit[i] = int(
-              std::floor(max_d_frac[i] * map_.accessor()[i]) + .5);
+              std::floor(max_d_frac[i] * grid_logical[i]) + .5);
           }
           grid_point_type pivot = detail::calc_nearest_grid_point(
-            coor_frac, map_.accessor());
+            coor_frac, grid_logical);
           grid_point_type ip;
           fractional<FloatType> d_frac;
           for(ip[0] = -shell_limit[0]; ip[0] <= shell_limit[0]; ip[0]++) {
-            d_frac[0] = FloatType(ip[0]) / map_.accessor()[0];
+            d_frac[0] = FloatType(ip[0]) / grid_logical[0];
           for(ip[1] = -shell_limit[1]; ip[1] <= shell_limit[1]; ip[1]++) {
-            d_frac[1] = FloatType(ip[1]) / map_.accessor()[1];
+            d_frac[1] = FloatType(ip[1]) / grid_logical[1];
           for(ip[2] = -shell_limit[2]; ip[2] <= shell_limit[2]; ip[2]++) {
-            d_frac[2] = FloatType(ip[2]) / map_.accessor()[2];
+            d_frac[2] = FloatType(ip[2]) / grid_logical[2];
             FloatType d_sq = ucell.Length2(d_frac);
             if (d_sq > max_d_sq) continue;
             FloatType rho_d(0);
@@ -223,6 +225,8 @@ namespace cctbx { namespace sftbx {
       const FloatType& quality_factor() const { return quality_factor_; }
       const FloatType& wing_cutoff() const { return wing_cutoff_; }
       const FloatType& u_extra() const { return u_extra_; }
+      const map_type& map() const { return map_; }
+            map_type& map()       { return map_; }
 
     private:
       map_type map_;
@@ -249,29 +253,11 @@ namespace cctbx { namespace sftbx {
           if (rho_d < rho_origin * wing_cutoff_) {
             return d_sq;
           }
-          cctbx_assert(radius_step < af::max(map_.accessor().const_ref()));
+          cctbx_assert(
+            radius_step < af::max(map_.accessor().n_logical().const_ref()));
         }
       }
   };
-
-  template <typename FloatType,
-            typename XrayScattererType>
-  sampled_model_density<FloatType>
-  sample_model_density(
-    const uctbx::UnitCell& ucell,
-    const af::const_ref<XrayScattererType>& sites,
-    FloatType max_q,
-    FloatType resolution_factor,
-    int max_prime,
-    const af::int3& mandatory_factors)
-  {
-    cctbx::af::int3 grid = maps::determine_grid(
-      ucell,
-      max_q, resolution_factor, max_prime, mandatory_factors);
-    return sampled_model_density<double>(
-      ucell, sites,
-      max_q, resolution_factor, grid);
-  }
 
 }} // namespace cctbx::sftbx
 

@@ -1,7 +1,9 @@
 import sys, os
+from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
 from cctbx_boost import adptbx
-from cctbx_boost import sftbx # XXX
+from cctbx_boost import sftbx
+from cctbx_boost import fftbx
 from cctbx import xutils
 from cctbx.development import debug_utils
 
@@ -20,14 +22,33 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
   resolution_factor = 1./3
   max_prime = 5
   mandatory_grid_factors = xtal.SgOps.refine_gridding()
-  sampled_density = sftbx.sample_model_density(
-    xtal.UnitCell, xtal.Sites,
+  grid_logical = sftbx.determine_grid(
+    xtal.UnitCell,
     max_q, resolution_factor, max_prime, mandatory_grid_factors)
+  fft = fftbx.real_to_complex_3d(grid_logical)
+  sampled_density = sftbx.sampled_model_density(
+    xtal.UnitCell, xtal.Sites,
+    max_q, resolution_factor,
+    fft.Nreal(), fft.Mreal())
   print "max_q:", sampled_density.max_q()
   print "resolution_factor:", sampled_density.resolution_factor()
   print "quality_factor:", sampled_density.quality_factor()
   print "wing_cutoff:", sampled_density.wing_cutoff()
   print "u_extra:", sampled_density.u_extra()
+  map = sampled_density.map_as_shared()
+  map_stats = shared.statistics(map)
+  print "Electron density"
+  print "max %.6g" % (map_stats.max())
+  print "min %.6g" % (map_stats.min())
+  print "mean %.6g" % (map_stats.mean())
+  print "sigma %.6g" % (map_stats.sigma())
+  fft.forward(map)
+  map_stats = shared.statistics(map)
+  print "Structure factors"
+  print "max %.6g" % (map_stats.max())
+  print "min %.6g" % (map_stats.min())
+  print "mean %.6g" % (map_stats.mean())
+  print "sigma %.6g" % (map_stats.sigma())
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (

@@ -11,17 +11,18 @@
 #ifndef CCTBX_MAPS_GRIDDING_H
 #define CCTBX_MAPS_GRIDDING_H
 
+#include <cctbx/uctbx.h>
 #include <cctbx/fftbx/gridding.h>
 
 namespace cctbx { namespace maps {
 
-  template <typename UnitCellType>
-  cctbx::af::int3
-  determine_grid(const UnitCellType& UCell,
+  template <typename IndexType>
+  IndexType
+  determine_grid(const uctbx::UnitCell& UCell,
                  double max_Q,
                  double resolution_factor,
                  int max_prime,
-                 const cctbx::af::int3& mandatory_factors)
+                 const IndexType& mandatory_factors)
   {
     cctbx_assert(resolution_factor <= 0.5);
     double min_d = cctbx::uctbx::Q_as_d(max_Q);
