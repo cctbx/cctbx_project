@@ -115,6 +115,10 @@ namespace cctbx {
           parameters are provided by the cctbx::adptbx.
        */
       const carray<FloatType, 6>& Uaniso() { return m_U; }
+      //! Redefine the coordinates.
+      void set_Coordinates(const fractional<FloatType>& Coordinates) {
+        m_Coordinates = Coordinates;
+      }
       //! Compute multiplicity and average anisotropic displacement parameters.
       /*! The given unit cell and space group are used to determine
           the site symmetry of the scatterer see
