@@ -83,15 +83,15 @@ private:
   ScientificFormatter pretty4;
 public:
   XplorMap();
-  af::flex_double ReadXplorMap(const std::string&,int,boost::python::list);
-  void WriteXplorMap(cctbx::uctbx::unit_cell, af::flex_double, 
-                     double,double,std::string);
+  af::versa<double,af::c_grid<3> > ReadXplorMap(const std::string&,int,boost::python::list);
+  void WriteXplorMap(cctbx::uctbx::unit_cell,
+                     af::const_ref<double,af::c_grid<3> > const&,
+                     double, double, std::string);
 };
-
 
 XplorMap::XplorMap():pretty("%12.5E"),pretty4("%12.4E"){}
 
-af::flex_double XplorMap::ReadXplorMap(const std::string& filename,
+af::versa<double,af::c_grid<3> > XplorMap::ReadXplorMap(const std::string& filename,
                              int headers,
                              boost::python::list sec
                              ) {
@@ -106,15 +106,18 @@ af::flex_double XplorMap::ReadXplorMap(const std::string& filename,
   nY = boost::python::extract<int>(sec[5]) - boost::python::extract<int>(sec[4]) + 1;
   nZ = boost::python::extract<int>(sec[8]) - boost::python::extract<int>(sec[7]) + 1;
 
-  af::flex_double m(af::flex_grid<>(nZ,nY,nX)); //arrays have first dimension slow
-  double* e = m.begin();
+  af::versa<double,af::c_grid<3> > m(af::c_grid<3>(nX,nY,nZ)); 
+  af::ref<double, af::c_grid<3> > mref=m.ref();
   for (int section = 0; section < nZ; section++) {
     std::getline(cin,line); //reads section number
+    int x=0;
+    int y=0;
     for (int rect = 0, fast = 0; rect < (nX*nY); rect++,fast++) {
       if (fast%6==0) 
         {    std::getline(cin,line); fast=0;      }
-      *e = std::atof(line.substr(fast*12,12).c_str());
-      ++e;      
+      mref(x,y,section) = std::atof(line.substr(fast*12,12).c_str());
+      ++x;
+      if (x==nX) {x=0; ++y;}      
     }
   }
     
@@ -123,10 +126,12 @@ af::flex_double XplorMap::ReadXplorMap(const std::string& filename,
 }
 
 void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell uc,
-                             af::flex_double data,
+                             af::const_ref<double,af::c_grid<3> > const& data,
                              double average, 
                              double stddev,
                              std::string outputfile) {
+                             
+  //af::const_ref<double,af::c_grid<3> > data_h(data.c_grid());
   FILE* fh = fopen(outputfile.c_str(),"ab");
   //Unit Cell
   fprintf(fh,"%s%s%s%s%s%s\n", pretty(uc.parameters()[0]).get(), 
@@ -137,13 +142,17 @@ void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell uc,
                                pretty(uc.parameters()[5]).get() );
   //Data
   fprintf(fh,"ZYX\n");
-  double* e = data.begin();
-  for (int z = 0; z< data.accessor().focus()[0]; z++){
+  int xsize = data.accessor()[0];
+  int ysize = data.accessor()[1];
+  for (int z = 0; z< data.accessor()[2]; z++){
     int eol=0;
+    int x=0;
+    int y=0;
     fprintf(fh,"%8d\n",z);
-    for (int xy = 0; xy < data.accessor().focus()[1]*data.accessor().focus()[2]; ++xy){
-        fprintf(fh,"%s",pretty(*e).get());
-        ++e;
+    for (int xy = 0; xy < xsize*ysize; ++xy){    
+        fprintf(fh,"%s",pretty(data(x,y,z)).get());
+        ++x;
+        if (x==xsize) {x = 0;++y;}
         ++eol;
         if (eol % 6 == 0) {fprintf(fh,"\n");}
     }
