@@ -1,3 +1,4 @@
+from libtbx.test_utils import approx_equal
 from cctbx import dmtbx
 from cctbx import maptbx
 from cctbx import miller
@@ -7,7 +8,6 @@ import scitbx.math
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from libtbx.test_utils import approx_equal
 import random
 import math
 import sys
