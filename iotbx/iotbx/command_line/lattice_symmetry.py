@@ -40,13 +40,16 @@ def run():
     input_symmetry = crystal.symmetry(
       unit_cell=input_symmetry.unit_cell(),
       space_group_symbol="P 1")
+  show(input_symmetry, command_line.options.delta)
+
+def show(input_symmetry, max_delta):
   print
   print "Input"
   print "====="
   print
   input_symmetry.show_summary()
   print
-  print "Angular tolerance: %.3f degrees" % command_line.options.delta
+  print "Angular tolerance: %.3f degrees" % max_delta
   print
   print "Similar symmetries"
   print "=================="
@@ -54,7 +57,7 @@ def run():
   cb_op_inp_niggli = input_symmetry.change_of_basis_op_to_niggli_cell()
   niggli_symmetry = input_symmetry.change_basis(cb_op_inp_niggli)
   lattice_group = lattice_symmetry.group(
-    niggli_symmetry.unit_cell(), max_delta=command_line.options.delta)
+    niggli_symmetry.unit_cell(), max_delta=max_delta)
   lattice_group_info = sgtbx.space_group_info(group=lattice_group)
   subgrs = subgroups.subgroups(lattice_group_info).groups_parent_setting()
   sort_values = flex.double()
