@@ -216,6 +216,20 @@ namespace {
 
   struct binning_
   {
+    static
+    boost::python::ref
+    range_used(binning const& bng)
+    {
+      return boost::python::ref(PyRange_New(1, bng.n_bins_used(), 1, 1));
+    }
+
+    static
+    boost::python::ref
+    range_all(binning const& bng)
+    {
+      return boost::python::ref(PyRange_New(0, bng.n_bins_all(), 1, 1));
+    }
+
     static std::size_t
     get_i_bin_d(binning const& bng, double d_star_sq)
     {
@@ -547,6 +561,8 @@ namespace {
     py_binning.def(&binning::unit_cell, "unit_cell");
     py_binning.def(&binning::n_bins_used, "n_bins_used");
     py_binning.def(&binning::n_bins_all, "n_bins_all");
+    py_binning.def(binning_::range_used, "range_used");
+    py_binning.def(binning_::range_all, "range_all");
     py_binning.def(&binning::i_bin_d_too_large, "i_bin_d_too_large");
     py_binning.def(&binning::i_bin_d_too_small, "i_bin_d_too_small");
     py_binning.def(&binning::d_max, "d_max");
@@ -560,6 +576,8 @@ namespace {
     py_binner.def(constructor<>());
     py_binner.def(constructor<binning const&, af::shared<Index> >());
     py_binner.def(&binner::bin_indices, "bin_indices");
+    py_binner.def(&binner::count, "count");
+    py_binner.def(&binner::counts, "counts");
     py_binner.def(&binner::bin_selection, "bin_selection");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");

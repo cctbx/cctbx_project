@@ -96,6 +96,10 @@ namespace cctbx { namespace miller {
 
       af::shared<std::size_t> bin_indices() const { return bin_indices_; }
 
+      std::size_t count(std::size_t i_bin) const;
+
+      af::shared<std::size_t> counts() const;
+
       af::shared<bool> bin_selection(std::size_t i_bin) const;
 
     private:
