@@ -71,6 +71,14 @@ if (sys.platform == "win32"):
         /MD
         /Zm800
     """)
+    if (libtbx.config.build_options.optimization):
+      opts = ["/DNDEBUG", "/Ox"]
+    else:
+      opts = ["/Od"]
+    if (libtbx.config.build_options.debug_symbols):
+      raise RuntimeError, "Debug build not supported."
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "/nologo /incremental:no /dll"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
