@@ -58,12 +58,18 @@ namespace {
       bool,
       bool>());
     py_triplet_invariants.def(
+      &dmtbx::triplet_invariants<double>::number_of_weighted_triplets,
+                                         "number_of_weighted_triplets");
+    py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::total_number_of_triplets,
                                          "total_number_of_triplets");
     py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double
         >::average_number_of_triplets_per_reflection,
           "average_number_of_triplets_per_reflection");
+    py_triplet_invariants.def(
+      &dmtbx::triplet_invariants<double>::dump_triplets,
+                                         "dump_triplets");
     py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::refine_phases,
                                          "refine_phases");
