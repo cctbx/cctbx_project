@@ -898,8 +898,11 @@ def exercise_wyckoff():
   assert str(m.special_op()) == "-5/2,1,-5"
   m = w.mapping(u, x, 0.2)
   assert m.position().letter() == "o"
-  assert str(m.sym_op()) == "x+3,y-2,z+5"
-  assert approx_equal(m.representative_site(), (0.5,1.123-2,0))
+  assert str(m.sym_op()) in ("x+3,y-2,z+5", "x+3,-y+2,z+5")
+  if (str(m.sym_op()) == "x+3,y-2,z+5"):
+    assert approx_equal(m.representative_site(), (0.5,1.123-2,0))
+  else:
+    assert approx_equal(m.representative_site(), (0.5,-1.123+2,0))
   assert approx_equal(m.exact_site(), (-2.5,1.123,-5))
   assert approx_equal(m.distance_moved(), u.length((-0.02,0,-0.03)))
   assert str(m.special_op()) == "-5/2,y,-5"
