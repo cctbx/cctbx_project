@@ -227,11 +227,11 @@ def exercise_operators():
   assert tuple(a * b) == (8, 27)
   assert tuple(a / b) == (2, 3)
   assert tuple(a % b) == (0, 0)
-  assert tuple(a.add(3)) == (7, 12)
-  assert tuple(a.sub(4)) == (0, 5)
-  assert tuple(a.mul(5)) == (20, 45)
-  assert tuple(a.div(2)) == (2, 4)
-  assert tuple(a.mod(2)) == (0, 1)
+  assert tuple(a + 3) == (7, 12)
+  assert tuple(a - 4) == (0, 5)
+  assert tuple(a * 5) == (20, 45)
+  assert tuple(a / 2) == (2, 4)
+  assert tuple(a % 2) == (0, 1)
   assert flex.sum(a) == 13
   a = flex.int((4, 9))
   b = flex.int((2, 12))
@@ -243,15 +243,15 @@ def exercise_operators():
   assert tuple(a >= b) == (1, 0)
   assert tuple(a == 9) == (0, 1)
   assert tuple(a.as_double()) == (4, 9)
-  assert cmp(a, b) > 0
-  assert cmp(b, a) < 0
-  assert cmp(a, a) == 0
+  assert flex.order(a, b) == cmp(tuple(a), tuple(b))
+  assert flex.order(b, a) == cmp(tuple(b), tuple(a))
+  assert flex.order(a, a) == 0
   b = a.deep_copy()
-  assert cmp(a, b) == 0
-  assert a.cmp(4) > 0
-  assert a.cmp(5) < 0
+  assert flex.order(a, b) == 0
+  assert flex.order(a, 4) == cmp(list(a), [4] * a.size())
+  assert flex.order(a, 5) == cmp(list(a), [5] * a.size())
   a = flex.int((1, 1))
-  assert a.cmp(1) == 0
+  assert flex.order(a, 1) == 0
 
 def exercise_bool_inplace_operators():
   a = flex.bool((0, 1, 0, 1))
@@ -262,13 +262,13 @@ def exercise_bool_inplace_operators():
   assert tuple(a) == (1, 1, 1, 0)
   assert a.count(0) == 1
   assert a.count(1) == 3
-  a &= 1 # XXX memory leak with Linux gcc 3.0.4, but not Tru64 cxx
+  a &= 1
   assert tuple(a) == (1, 1, 1, 0)
-  a &= 0 # XXX memory leak
+  a &= 0
   assert tuple(a) == (0, 0, 0, 0)
-  a |= 1 # XXX memory leak
+  a |= 1
   assert tuple(a) == (1, 1, 1, 1)
-  a |= 0 # XXX memory leak
+  a |= 0
   assert tuple(a) == (1, 1, 1, 1)
 
 def exercise_arith_inplace_operators():
@@ -478,7 +478,7 @@ def run(iterations):
     exercise_setitem()
     exercise_select_shuffle()
     exercise_operators()
-    #exercise_bool_inplace_operators() # XXX FAILURE
+    exercise_bool_inplace_operators()
     exercise_arith_inplace_operators()
     exercise_functions()
     exercise_complex_functions()

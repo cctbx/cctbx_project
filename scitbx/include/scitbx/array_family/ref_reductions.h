@@ -19,7 +19,7 @@ namespace scitbx { namespace af {
   template <typename ElementType1, typename AccessorType1,
             typename ElementType2, typename AccessorType2>
   int
-  cmp(
+  order(
     const_ref<ElementType1, AccessorType1> const& a1,
     const_ref<ElementType2, AccessorType2> const& a2)
   {
@@ -35,7 +35,7 @@ namespace scitbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   int
-  cmp(
+  order(
     const_ref<ElementType, AccessorType> const& a1,
     ElementType const& a2)
   {
@@ -48,7 +48,7 @@ namespace scitbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   int
-  cmp(
+  order(
     ElementType const& a1,
     const_ref<ElementType, AccessorType> const& a2)
   {

@@ -31,37 +31,37 @@ def substitute(subs, template):
   assert template.find("${") < 0, "Incomplete substitutions."
   return template[1:]
 
-def generate_cmp(f, subs):
+def generate_order(f, subs):
   print >> f, substitute(subs, """
   template <typename ElementType1${templ_decl_2_1},
             typename ElementType2${templ_decl_2_2}>
   int
   inline
-  cmp(
+  order(
     ${array_type_plain}<ElementType1${templ_inst_2_1}> const& a1,
     ${array_type_plain}<ElementType2${templ_inst_2_2}> const& a2)
   {
-    return cmp(a1.const_ref(), a2.const_ref());
+    return order(a1.const_ref(), a2.const_ref());
   }
 
   template <typename ElementType${templ_decl_2}>
   int
   inline
-  cmp(
+  order(
     ${array_type_plain}<ElementType${templ_inst_2}> const& a1,
     ElementType const& a2)
   {
-    return cmp(a1.const_ref(), a2);
+    return order(a1.const_ref(), a2);
   }
 
   template <typename ElementType${templ_decl_2}>
   int
   inline
-  cmp(
+  order(
     ElementType const& a1,
     ${array_type_plain}<ElementType${templ_inst_2}> const& a2)
   {
-    return cmp(a1, a2.const_ref());
+    return order(a1, a2.const_ref());
   }
 """)
 
@@ -129,7 +129,7 @@ def one_type(target_dir, subs):
 namespace scitbx { namespace af {
 """)
 
-  generate_cmp(f, subs)
+  generate_order(f, subs)
   generate_max_index_etc(f, subs)
   generate_max_etc(f, subs)
   generate_mean_weighted_etc(f, subs)

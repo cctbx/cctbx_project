@@ -433,10 +433,10 @@ namespace scitbx { namespace af { namespace boost_python {
     static f_t imod_a_s(f_t& a1, e_t const& a2) { return a1 %= a2; }
 
     static int
-    cmp_a_a(f_t const& a1, f_t const& a2) { return cmp(a1, a2); }
+    order_a_a(f_t const& a1, f_t const& a2) { return order(a1, a2); }
 
     static int
-    cmp_a_s(f_t const& a1, e_t const& a2) { return cmp(a1, a2); }
+    order_a_s(f_t const& a1, e_t const& a2) { return order(a1, a2); }
 
     static flex_bool eq_a_a(f_t const& a1, f_t const& a2) { return a1 == a2; }
     static flex_bool ne_a_a(f_t const& a1, f_t const& a2) { return a1 != a2; }
@@ -663,14 +663,15 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    cmp_comparable(
+    ordered(
       boost::python::module& m,
       std::string const& python_name)
     {
-      return plain(m, python_name)
-        .def("__cmp__", cmp_a_a)
-        .def("__cmp__", cmp_a_s)
+      m
+        .def("order", order_a_a)
+        .def("order", order_a_s)
       ;
+      return plain(m, python_name);
     }
 
     static class_f_t
@@ -678,7 +679,7 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::module& m,
       std::string const& python_name)
     {
-      return cmp_comparable(m, python_name)
+      return ordered(m, python_name)
         .def("__invert__", invert_a)
         .def("__and__", and_a_a)
         .def("__or__", or_a_a)
@@ -706,10 +707,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__sub__", sub_a_a)
         .def("__mul__", mul_a_a)
         .def("__div__", div_a_a)
-        .def("add", add_a_s) // XXX __add__ did not work
-        .def("sub", sub_a_s) // XXX __sub__ did not work
-        .def("mul", mul_a_s) // XXX __mul__ did not work
-        .def("div", div_a_s) // XXX __div__ did not work
+        .def("__add__", add_a_s)
+        .def("__sub__", sub_a_s)
+        .def("__mul__", mul_a_s)
+        .def("__div__", div_a_s)
         .def("__iadd__", iadd_a_s)
         .def("__isub__", isub_a_s)
         .def("__imul__", imul_a_s)
@@ -727,6 +728,8 @@ namespace scitbx { namespace af { namespace boost_python {
       std::string const& python_name)
     {
       m
+        .def("order", order_a_a)
+        .def("order", order_a_s)
         .def("abs", abs_a)
         .def("pow2", pow2_a)
         .def("min_index", min_index_a)
@@ -736,8 +739,6 @@ namespace scitbx { namespace af { namespace boost_python {
       ;
       return numeric_common(m, python_name)
         .def("as_double", as_double)
-        .def("__cmp__", cmp_a_a)
-        .def("cmp", cmp_a_s) // XXX __cmp__ did not work
         .def("__lt__", lt_a_a)
         .def("__gt__", gt_a_a)
         .def("__le__", le_a_a)
@@ -789,7 +790,7 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       return numeric_no_pow(m, python_name)
         .def("__mod__", mod_a_a)
-        .def("mod", mod_a_s)
+        .def("__mod__", mod_a_s)
         .def("__imod__", imod_a_s)
       ;
     }
