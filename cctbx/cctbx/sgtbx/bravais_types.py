@@ -34,10 +34,15 @@ centric = (
 
 def exercise():
   from cctbx import sgtbx
+  import sys
   for symbol in acentric + centric:
     space_group_info = sgtbx.space_group_info(symbol=symbol)
     assert str(space_group_info) == symbol
     assert space_group_info.is_reference_setting()
+  if ("--Verbose" in sys.argv[1:]):
+    for symbol in centric:
+      print "/* %s */ %d," % (
+        symbol, sgtbx.space_group_info(symbol=symbol).type().number())
   print "OK"
 
 if (__name__ == "__main__"):
