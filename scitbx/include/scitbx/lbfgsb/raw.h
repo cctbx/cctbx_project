@@ -58,7 +58,8 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 
       ref2(ElementType* begin, int n, int m)
       :
-        af::ref<ElementType, af::c_grid<2> >(begin, af::c_grid<2>(m, n))
+        af::ref<ElementType, af::c_grid<2> >(begin, af::c_grid<2>(m, n)),
+        hard_size_(n*m)
       {}
 
       ElementType&
@@ -68,7 +69,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
         SCITBX_ASSERT(j > 0);
         SCITBX_ASSERT(i <= this->accessor()[1]);
         SCITBX_ASSERT(j <= this->accessor()[0]);
-        return base_t::operator()(j-1,i-1);
+        std::size_t offs = this->accessor()(j-1,i-1);
+        SCITBX_ASSERT(offs < hard_size_);
+        return base_t::operator[](offs);
       }
 
       ref1<ElementType>
@@ -83,22 +86,25 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       get2(int i, int j, int n, int m) const
       {
         ElementType* ref2_begin = &(this->operator()(i,j));
-        SCITBX_ASSERT(ref2_begin - this->begin() + n*m <= this->size());
+        std::size_t begin_shift = ref2_begin - this->begin();
+        SCITBX_ASSERT(begin_shift + n*m <= this->size());
+        SCITBX_ASSERT(begin_shift <= hard_size_);
         return ref2(ref2_begin, n, m);
       }
 
       ref2
-      get2FAIL(int i, int j, int n, int m) const
+      get2soft(int i, int j, int n, int m) const
       {
         ElementType* ref2_begin = &(this->operator()(i,j));
-#ifdef JUNK
-        if (!(ref2_begin - this->begin() + n*m <= this->size())) {
-          int* p=0;
-          *p = 0;
-        }
-#endif
-        return ref2(ref2_begin, n, m);
+        std::size_t begin_shift = ref2_begin - this->begin();
+        SCITBX_ASSERT(begin_shift <= hard_size_);
+        ref2 result(ref2_begin, n, m);
+        result.hard_size_ = hard_size_ - begin_shift;
+        return result;
       }
+
+    protected:
+      std::size_t hard_size_;
   };
 
   template <typename T>
@@ -2063,7 +2069,7 @@ namespace scitbx { namespace lbfgsb { namespace raw {
         }
       }
 //    Cholesky factorization of (2,2) block of wn.
-      dpofa(wn.get2FAIL(col+1,col+1,m2,col),m2,col,info);
+      dpofa(wn.get2soft(col+1,col+1,m2,col),m2,col,info);
       if (info != 0) {
          info = -2;
          return;
