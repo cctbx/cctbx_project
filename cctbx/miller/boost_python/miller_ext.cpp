@@ -26,7 +26,7 @@ namespace {
   {
     using namespace scitbx::boost_python::container_conversions;
 
-    tuple_mapping<af::shared<sym_equiv_index>, variable_capacity_policy>();
+    tuple_mapping_variable_capacity<af::shared<sym_equiv_index> >();
   }
 
   void init_module()

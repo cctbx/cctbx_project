@@ -8,7 +8,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/overloads.hpp>
 #include <scitbx/boost_python/container_conversions.h>
-#include <scitbx/array_family/boost_python/flex_wrapper.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/crystal/direct_space_asu.h>
 
 namespace cctbx { namespace crystal { namespace direct_space_asu {
@@ -171,13 +171,12 @@ namespace {
       ;
       {
         using namespace scitbx::boost_python::container_conversions;
-        tuple_mapping<
-          w_t::array_of_mappings_for_one_site,
-          variable_capacity_policy>();
+        tuple_mapping_variable_capacity<
+          w_t::array_of_mappings_for_one_site>();
       }
       {
-        scitbx::af::boost_python::flex_wrapper<
-          w_t::array_of_mappings_for_one_site>::plain(
+        scitbx::af::boost_python::shared_wrapper<
+          w_t::array_of_mappings_for_one_site>::wrap(
             "direct_space_asu_array_of_array_of_mappings_for_one_site");
       }
     }
