@@ -297,7 +297,7 @@ namespace cctbx {
         ReferenceHbegin[i] = ReferenceHmax[i] * CutP[i];
         ReferenceHend[i] = ReferenceHmax[i] + 1;
       }
-      m_loop = NestedLoop<Miller::Index>(ReferenceHbegin, ReferenceHend);
+      m_loop = nested_loop<Miller::Index>(ReferenceHbegin, ReferenceHend);
     }
 
     MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
