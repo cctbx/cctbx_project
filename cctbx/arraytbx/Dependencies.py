@@ -17,8 +17,6 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/tst_af_helpers.cpp",
       "arraytbx/tst_af_1.cpp",
       "arraytbx/tst_af_2.cpp",
-      "arraytbx/debug_overloadmodule.cpp",
-      "arraytbx/tst_debug_overload.py",
     )
 
     self.executables = {
@@ -30,7 +28,5 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.boost_python_modules = {
       "shared":
         (("sharedmodule", "error", "bpl_utils", "tiny_bpl"), ()),
-      "debug_overload":
-        (("debug_overloadmodule",), ()),
     }
 
