@@ -91,7 +91,9 @@ def exercise_flex_grid():
   assert s.origin() == (0,0,0)
   assert s.grid() == g.grid()
   assert s.layout() == ()
+  assert s.layout_size_1d() == g.size_1d()
   g = flex.grid((1,2,3), (4,6,8)).set_layout((3,5,7))
+  assert g.layout_size_1d() == 2*3*4
   s = g.shift_origin()
   assert s.origin() == (0,0,0)
   assert s.grid() == g.grid()
@@ -117,6 +119,7 @@ def exercise_flex_constructors():
   assert tuple(f.last(1)) == (0,)
   assert tuple(f.last(0)) == (-1,)
   assert tuple(f.layout()) == ()
+  assert f.layout_size_1d() == 0
   assert f.is_0_based()
   assert not f.is_padded()
   assert tuple(f) == ()
@@ -180,6 +183,7 @@ def exercise_misc():
   assert list(f.items()) == zip(range(6), [12] * 6)
   g = flex.grid((1,2,3), (4,6,8)).set_layout((3,5,7))
   f = flex.double(g)
+  assert f.layout_size_1d() == 2*3*4
   assert f.shift_origin().accessor() == g.shift_origin()
 
 def exercise_push_back_etc():

@@ -90,6 +90,7 @@ namespace {
         .def("grid", &w_t::grid, copy_const_reference())
         .def("last", (df_i_t(w_t::*)(bool)) 0, last_overloads())
         .def("layout", &w_t::layout, copy_const_reference())
+        .def("layout_size_1d", &w_t::layout_size_1d)
         .def("is_0_based", &w_t::is_0_based)
         .def("is_padded", &w_t::is_padded)
         .def("shift_origin", &w_t::shift_origin)
