@@ -1,6 +1,21 @@
 from scitbx.stl import map
 import pickle
 
+def exercise_long_long():
+  m = map.long_long()
+  assert m.size() == 0
+  assert len(m) == 0
+  m[3] = 0
+  assert m.size() == 1
+  assert len(m) == 1
+  assert m.items() == [(3, 0)]
+  m[3] += 1
+  assert m[3] == 1
+  m[3] += 3
+  assert m[3] == 4
+  m[-5] = -8
+  assert m.items() == [(-5, -8), (3, 4)]
+
 def exercise_stl_string_double():
   m = map.stl_string_double()
   assert m.size() == 0
@@ -109,6 +124,7 @@ def exercise_int_stl_vector_unsigned():
   assert list(l[-1]) == [10,20]
 
 def exercise():
+  exercise_long_long()
   exercise_stl_string_double()
   exercise_stl_string_stl_map_stl_string_double()
   exercise_stl_string_stl_vector_unsigned()

@@ -5,6 +5,7 @@ boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
+import scitbx.stl.map
 import time
 import sys, os
 

@@ -10,6 +10,9 @@ namespace {
   {
     typedef boost::python::return_internal_reference<> rir;
 
+    map_wrapper<std::map<long,
+                         long> >::wrap("long_long");
+
     map_wrapper<std::map<std::string,
                          double> >::wrap(
       "stl_string_double");
