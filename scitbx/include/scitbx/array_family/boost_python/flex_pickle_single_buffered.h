@@ -83,7 +83,68 @@ namespace scitbx { namespace af { namespace boost_python {
 
   } // namespace detail
 
-  template <typename ElementType, std::size_t SizePerElement>
+  template <typename T>
+  struct pickle_size_per_element;
+
+  template <>
+  struct pickle_size_per_element<bool>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = 1);
+  };
+
+  template <>
+  struct pickle_size_per_element<int>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(int)+1));
+  };
+
+  template <>
+  struct pickle_size_per_element<unsigned int>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(unsigned int)+1));
+  };
+
+  template <>
+  struct pickle_size_per_element<long>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(long)+1));
+  };
+
+  template <>
+  struct pickle_size_per_element<unsigned long>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(unsigned long)+1));
+  };
+
+  template <>
+  struct pickle_size_per_element<float>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(float)+3));
+  };
+
+  template <>
+  struct pickle_size_per_element<double>
+  {
+    BOOST_STATIC_CONSTANT(std::size_t, value = (sizeof(double)+3));
+  };
+
+  template <>
+  struct pickle_size_per_element<std::complex<float> >
+  {
+    BOOST_STATIC_CONSTANT(std::size_t,
+      value = (2*pickle_size_per_element<float>::value));
+  };
+
+  template <>
+  struct pickle_size_per_element<std::complex<double> >
+  {
+    BOOST_STATIC_CONSTANT(std::size_t,
+      value = (2*pickle_size_per_element<double>::value));
+  };
+
+  template <typename ElementType,
+            std::size_t SizePerElement
+              = pickle_size_per_element<ElementType>::value>
   struct flex_pickle_single_buffered : boost::python::pickle_suite
   {
     static

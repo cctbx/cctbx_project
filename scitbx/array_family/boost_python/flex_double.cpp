@@ -17,7 +17,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_double()
   {
     flex_wrapper<double>::numeric("double", boost::python::scope())
-      .def_pickle(flex_pickle_single_buffered<double, 20>());
+      .def_pickle(flex_pickle_single_buffered<double>());
   }
 
 }}} // namespace scitbx::af::boost_python
