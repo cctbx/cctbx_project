@@ -9,7 +9,7 @@ class write_makefiles:
   def __init__(self, configuration):
     self.platform = strip(configuration[0])
     if (not (self.platform in ("tru64_cxx", "linux_gcc", "irix_CC",
-                               "mingw32", "vc60"))):
+                               "macosx", "mingw32", "vc60"))):
       stdout = sys.stdout
       sys.stdout = sys.__stdout__
       print "*" * 78
@@ -157,6 +157,8 @@ class write_makefiles:
         print "\tar r %s %s cxx_repository/*.o" % (lib, objstr)
       elif (self.platform == "irix_CC"):
         print "\t$(CPP) -ar -o %s %s" % (lib, objstr)
+      elif (self.platform == "macosx"):
+        print "\tlibtool -static -o %s %s\n\tranlib %s" % (lib, objstr,objstr)
       else:
         print "\tar r %s %s" % (lib, objstr)
     else:
