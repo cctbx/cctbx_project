@@ -1,4 +1,19 @@
-import sys
+import sys, os
+
+class user_plus_sys_time:
+
+  def __init__(self):
+    self.t = self.get()
+
+  def get(self):
+    t = os.times()
+    return t[0] + t[1]
+
+  def delta(self):
+    t = self.get()
+    d = t - self.t
+    self.t = t
+    return d
 
 def adopt_init_args(obj, args, exclude=(), hide=00000):
   del args["self"]
