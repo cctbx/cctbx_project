@@ -226,6 +226,32 @@ namespace cctbx { namespace dmtbx {
       }
 
       af::shared<FloatType>
+      sum_of_e_products(
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<FloatType> const& e_values)
+      {
+        CCTBX_ASSERT(miller_indices.size() == list_of_tpr_maps_.size());
+        CCTBX_ASSERT(miller_indices.size() == e_values.size());
+        af::shared<FloatType> result;
+        result.reserve(e_values.size());
+        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
+        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
+          FloatType e_h = e_values[i];
+          FloatType sum = 0;
+          for(tpr_map_type::const_iterator
+              lij=li->begin();lij!=li->end();lij++) {
+            triplet_phase_relation const& tpr = lij->first;
+            FloatType e_k = e_values[tpr.ik_];
+            FloatType e_hmk = e_values[tpr.ihmk_];
+            sum += e_k * e_hmk;
+          }
+          sum *= e_h;
+          result.push_back(sum);
+        }
+        return result;
+      }
+
+      af::shared<FloatType>
       apply_tangent_formula(af::const_ref<FloatType> const& e_values,
                             af::const_ref<FloatType> const& phases) const
       {
