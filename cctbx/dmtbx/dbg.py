@@ -29,7 +29,8 @@ def exercise(SgInfo,
              number_of_point_atoms = 10,
              d_min=1.,
              e_min=1.2,
-             unique_triplet_phase_relations_only=0,
+             loop_k_equiv=0,
+             use_weights=0,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
   xtal = debug_utils.random_structure(
@@ -57,7 +58,8 @@ def exercise(SgInfo,
   if (0 or verbose):
     debug_utils.print_structure_factors(Fcalc)
   t = dmtbx.triplet_invariants(
-   xtal.SgInfo, MillerIndices.H, e_values, unique_triplet_phase_relations_only)
+   xtal.SgInfo, MillerIndices.H, e_values,
+     loop_k_equiv, use_weights)
   print "total_number_of_triplets:", \
        t.total_number_of_triplets()
   print "average_number_of_triplets_per_reflection:", \
@@ -80,7 +82,8 @@ def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
     "RandomSeed",
     "AllSpaceGroups",
-    "Unique",
+    "loop_k_equiv",
+    "use_weights",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   symbols_to_stdout = 0
@@ -100,7 +103,9 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
-    exercise(SgInfo, unique_triplet_phase_relations_only=Flags.Unique)
+    exercise(SgInfo,
+      loop_k_equiv=Flags.loop_k_equiv,
+      use_weights=Flags.use_weights)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):
