@@ -2,6 +2,7 @@ import scitbx.math
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
+from scitbx.math import bessel_inverse_i1_over_i0
 from scitbx.math import matrix_inversion_in_place
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
@@ -149,6 +150,10 @@ def exercise_bessel():
   x=0.0
   while x <= 100.0:
     assert approx_equal(-bessel_i1_over_i0(-x),bessel_i1_over_i0(x))
+    x+=0.01
+  x=0.0
+  while x <= 10.0:
+    assert eps_eq(x,bessel_inverse_i1_over_i0(bessel_i1_over_i0(x)),eps=5.e-2)
     x+=0.01
   assert approx_equal(bessel_i0(0.0), 1.0)
   assert approx_equal(bessel_i1(0.0), 0.0)

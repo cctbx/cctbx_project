@@ -50,6 +50,32 @@ namespace bessel {
     return result;
   }
 
+  //! Calculates the inverse function of the ratio I1(x)/I0(x).
+  /*! Implementation based on clipper::Util::invsim() by Kevin Cowtan.
+      Warning: for x > 10 the results are not very accurate.
+   */
+  template <typename FloatType>
+  FloatType
+  inverse_i1_over_i0(const FloatType& x)
+  {
+    typedef FloatType f_t;
+    f_t x0 = std::fabs(x);
+    f_t a0 = -7.107935*x0;
+    f_t a1 = 3.553967-3.524142*x0;
+    f_t a2 = 1.639294-2.228716*x0;
+    f_t a3 = 1.0-x0;
+    f_t w = a2/(3.0*a3);
+    f_t p = a1/(3.0*a3)-w*w;
+    f_t q = -w*w*w+0.5*(a1*w-a0)/a3;
+    f_t d = std::sqrt(q*q+p*p*p);
+    f_t q1 = q + d;
+    f_t q2 = q - d;
+    f_t r1 = std::pow(std::fabs(q1), 1.0/3.0);
+    f_t r2 = std::pow(std::fabs(q2), 1.0/3.0);
+    if (x >= 0.0) return  (((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);
+                  return -(((q1>0.0)? r1 : -r1) + ((q2>0.0)? r2 : -r2) - w);
+  }
+
   //! Calculates I0(x).
   template <typename FloatType>
   FloatType
