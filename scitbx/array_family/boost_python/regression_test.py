@@ -55,6 +55,14 @@ def exercise_small_conversions(verbose=0):
   else: raise RuntimeError, "TypeError expected."
   if (verbose): print 'OK'
 
+def exercise_shared_flex_conversions(verbose=0):
+  if (verbose): print 'Checking shared<->flex conversions'
+  assert tuple(rt.return_shared()) == (3,1,2)
+  s = rt.return_shared()
+  assert rt.use_shared(s) == 6
+  # rt.modify_shared(s) # XXX needs lvalue converter
+  assert rt.use_shared((8,9,10)) == 27
+
 def run(args):
   iterations = 100
   if (len(args) > 0):
@@ -67,6 +75,7 @@ def run(args):
     exercise_std_list_conversions(verbose)
     exercise_boost_array_conversions(verbose)
     exercise_small_conversions(verbose)
+    exercise_shared_flex_conversions(verbose)
     i += 1
   if (not verbose): print 'OK'
 

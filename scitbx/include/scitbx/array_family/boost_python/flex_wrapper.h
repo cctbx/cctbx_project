@@ -591,6 +591,10 @@ namespace scitbx { namespace af { namespace boost_python {
         shared_plain<ElementType>,
         scitbx::boost_python::container_conversions
           ::variable_capacity_policy>();
+      scitbx::boost_python::container_conversions::from_python_sequence<
+        shared<ElementType>,
+        scitbx::boost_python::container_conversions
+          ::variable_capacity_policy>();
       shared_flex_conversions<ElementType>();
 
       m.add(

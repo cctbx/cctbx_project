@@ -80,8 +80,12 @@ namespace scitbx { namespace af { namespace boost_python {
     shared_flex_conversions()
     {
       boost::python::to_python_converter<
+        shared_plain<ElementType>,
+        shared_to_flex<ElementType> >();
+      boost::python::to_python_converter<
         shared<ElementType>,
         shared_to_flex<ElementType> >();
+      shared_from_flex<shared_plain<ElementType> >();
       shared_from_flex<shared<ElementType> >();
     }
   };
