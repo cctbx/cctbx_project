@@ -15,14 +15,14 @@ class symmetry(object):
       unit_cell = uctbx.unit_cell(unit_cell)
     self._unit_cell = unit_cell
     self._space_group_info = space_group_info
-    if (self._space_group_info == None):
-      if (space_group_symbol != None):
+    if (self._space_group_info is None):
+      if (space_group_symbol is not None):
         self._space_group_info = sgtbx.space_group_info(space_group_symbol)
-      elif (space_group != None):
+      elif (space_group is not None):
         self._space_group_info = sgtbx.space_group_info(group=space_group)
     if (    assert_is_compatible_unit_cell
-        and self.unit_cell() != None
-        and self.space_group_info() != None):
+        and self.unit_cell() is not None
+        and self.space_group_info() is not None):
       assert self.is_compatible_unit_cell()
 
   def _copy_constructor(self, other):
@@ -39,11 +39,11 @@ class symmetry(object):
     return self.space_group_info().group()
 
   def show_summary(self, f=sys.stdout):
-    if (self.unit_cell() == None):
+    if (self.unit_cell() is None):
       print >> f, "Unit cell:", None
     else:
       self.unit_cell().show_parameters(f)
-    if (self.space_group_info() == None):
+    if (self.space_group_info() is None):
       print >> f, "Space group:", None
     else:
       self.space_group_info().show_summary(f)
@@ -69,7 +69,7 @@ class symmetry(object):
         == self.space_group()
 
   def join_symmetry(self, other_symmetry, force=00000):
-    if (other_symmetry == None):
+    if (other_symmetry is None):
       return self
     if (force == 00000):
       strong = self
@@ -79,9 +79,9 @@ class symmetry(object):
       weak = self
     unit_cell = strong.unit_cell()
     space_group_info = strong.space_group_info()
-    if (unit_cell == None):
+    if (unit_cell is None):
       unit_cell = weak.unit_cell()
-    if (space_group_info == None):
+    if (space_group_info is None):
       space_group_info = weak.space_group_info()
     return symmetry(
        unit_cell=unit_cell,

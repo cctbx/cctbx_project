@@ -24,7 +24,7 @@ def python_api_from_include(must_exist=True):
       if (len(flds) == 3 and flds[1] == "PYTHON_API_VERSION"):
         python_api_version = flds[2]
         break
-  assert python_api_version != None
+  assert python_api_version is not None
   return python_api_version
 
 def python_api_version_file_name(libtbx_build):

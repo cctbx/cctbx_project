@@ -8,7 +8,7 @@ from cStringIO import StringIO
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
                                      fractional_coordinates=00000):
-  if (remark != None):
+  if (remark is not None):
     remarks.insert(0, remark)
   i = 0
   s = StringIO()
@@ -83,7 +83,7 @@ def from_pdb(file_name, crystal_symmetry=None, force_symmetry=00000):
   except:
     space_group_info = None
   else:
-    if (space_group_info.group() == None):
+    if (space_group_info.group() is None):
       space_group_info = None
   crystal_symmetry=crystal.symmetry(
     unit_cell=unit_cell,
@@ -99,7 +99,7 @@ def from_pdb(file_name, crystal_symmetry=None, force_symmetry=00000):
       site=structure.unit_cell().fractionalize(atom.coordinates),
       b=atom.tempFactor,
       occupancy=atom.occupancy)
-    assert structure.unit_cell() != None
-    assert structure.space_group_info() != None
+    assert structure.unit_cell() is not None
+    assert structure.space_group_info() is not None
     structure.add_scatterer(scatterer)
   return structure

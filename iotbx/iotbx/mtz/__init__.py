@@ -134,7 +134,7 @@ class Mtz (ext.Mtz):
             if (t0 == "J"):
               raise AssertionError, "Invalid column combination."
             data=self.valid_complex(l0, labels[-1])
-        if (data == None):
+        if (data is None):
           data=self.valid_values(l0)
         groups.append(column_group(
           crystal_symmetry=crystal_symmetry,
@@ -224,8 +224,8 @@ Dataset.all_column_labels = _Dataset_all_column_labels
 def column_group(crystal_symmetry, primary_column_type, labels,
                  indices, anomalous_flag,
                  data, sigmas=None):
-  assert data != None
-  if (sigmas != None): assert sigmas.size() == data.size()
+  assert data is not None
+  if (sigmas is not None): assert sigmas.size() == data.size()
   result = miller.array(
     miller_set=miller.set(
       crystal_symmetry=crystal_symmetry,

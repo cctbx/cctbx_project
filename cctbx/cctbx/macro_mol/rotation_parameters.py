@@ -33,7 +33,7 @@ class matrix33:
   "Minimal class for the handling of (3x3) matrices."
 
   def __init__(self, elems = None):
-    if (elems != None):
+    if (elems is not None):
       self.elems = elems[:]
     else:
       self.elems = [1,0,0,
@@ -99,9 +99,9 @@ class converter_base:
     (z')   (m(2,0),m(2,1),m(2,2)) (z)"""
 
   def __init__(self, params = None, matrix = None, tolerance = 1.e-6):
-    if ((params == None) == (matrix == None)):
+    if ((params is None) == (matrix is None)):
       raise ArgumentError, "Either parameters or matrix required."
-    if (params != None):
+    if (params is not None):
       self.params = params
       self.matrix = self.params_to_matrix(params, tolerance)
     else:
@@ -214,10 +214,10 @@ def amore_kappa_l_m_n_from_matrix(matrix, tolerance = 1.e-6):
             ok = 0
             break
           sum_d2 += dij*dij + dji*dji
-        if (ok and (best_sum_d2 == None or best_sum_d2 > sum_d2)):
+        if (ok and (best_sum_d2 is None or best_sum_d2 > sum_d2)):
           best_fc = fc
           best_sum_d2 = sum_d2
-  if (best_fc == None):
+  if (best_fc is None):
     raise ValueError, "Corrupt matrix."
   return [degree_from_radians(kappa)] + best_fc
 

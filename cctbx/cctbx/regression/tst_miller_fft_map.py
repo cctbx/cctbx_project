@@ -17,7 +17,7 @@ def check_peaks(structure, peak_sites, max_min_dist):
     min_dist = None
     for peak_site in peak_sites:
       dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites, peak_site)
-      if (min_dist == None):
+      if (min_dist is None):
         min_dist = dist_info.dist()
       else:
         min_dist = min(min_dist, dist_info.dist())

@@ -23,7 +23,7 @@ def random_site(special_position_settings,
                 t_centre_of_inversion=None,
                 max_trials=100):
   for trial in xrange(max_trials):
-    if (grid == None):
+    if (grid is None):
       site = (random.random(), random.random(), random.random())
     else:
       site = [random.randrange(g) / float(g) for g in grid]
@@ -35,7 +35,7 @@ def random_site(special_position_settings,
               existing_sites, sym_equiv_sites, min_hetero_distance)):
       continue
     site = site_symmetry.exact_site()
-    if (t_centre_of_inversion == None):
+    if (t_centre_of_inversion is None):
       return site
     site_inv = [-x+t for x,t in zip(site, t_centre_of_inversion)]
     site_symmetry_inv = special_position_settings.site_symmetry(site_inv)
@@ -59,7 +59,7 @@ def random_sites(special_position_settings,
                  max_trials=100,
                  max_back_track=100):
   n_loop = n_new
-  if (t_centre_of_inversion != None):
+  if (t_centre_of_inversion is not None):
     assert n_new % 2 == 0
     n_loop /= 2
   for i_back_track in xrange(max_back_track):
@@ -72,9 +72,9 @@ def random_sites(special_position_settings,
                          grid,
                          t_centre_of_inversion,
                          max_trials)
-      if (site == None):
+      if (site is None):
         break
-      if (t_centre_of_inversion == None):
+      if (t_centre_of_inversion is None):
         all_sites.append(site)
       else:
         all_sites.extend(site)
@@ -123,10 +123,10 @@ class xray_structure(xray.structure):
                u_iso=0,
                anisotropic_flag=00000,
                random_occupancy=00000):
-    assert elements == None or n_scatterers == None
-    assert not (elements == None and n_scatterers == None)
+    assert elements is None or n_scatterers is None
+    assert not (elements is None and n_scatterers is None)
     adopt_init_args(self, locals(), exclude=("space_group_info",))
-    if (elements != None):
+    if (elements is not None):
       self.n_scatterers = len(elements)
     crystal_symmetry = crystal.symmetry(
       space_group_info.any_compatible_unit_cell(
@@ -141,7 +141,7 @@ class xray_structure(xray.structure):
       assert_is_positive_definite=0001,
       assert_min_distance_sym_equiv=0001)
     xray.structure.__init__(self, special_position_settings)
-    if (elements != None):
+    if (elements is not None):
       self.build_scatterers(elements)
 
   def build_scatterers(self, elements, grid=None, t_centre_of_inversion=None):

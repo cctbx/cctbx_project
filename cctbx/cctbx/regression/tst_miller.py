@@ -71,7 +71,7 @@ def exercise_array():
   ac = ma.deep_copy()
   assert flex.order(ac.data(), ma.data()) == 0
   assert flex.order(ac.sigmas(), ma.sigmas()) == 0
-  assert ac.info() == None
+  assert ac.info() is None
   asu = ma.map_to_asu()
   assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
@@ -179,16 +179,16 @@ def exercise_array():
   s = miller.array(ma, ma.data()).f_as_f_sq()
   v = s.f_sq_as_f()
   assert approx_equal(tuple(ma.data()), tuple(v.data()))
-  assert s.sigmas() == None
-  assert v.sigmas() == None
+  assert s.sigmas() is None
+  assert v.sigmas() is None
   ma = miller.array(ms)
   s = ma[:]
-  assert s.data() == None
-  assert s.sigmas() == None
+  assert s.data() is None
+  assert s.sigmas() is None
   ma = miller.array(ms, flex.double((1,2)))
   s = ma[:]
   assert s.data().all_eq(ma.data())
-  assert s.sigmas() == None
+  assert s.sigmas() is None
   ma = miller.array(ms, flex.double((1,2)), flex.double((3,4)))
   s = ma[:]
   assert s.data().all_eq(ma.data())
@@ -251,7 +251,7 @@ def exercise_array():
   p1 = sg.expand_to_p1()
   assert p1.indices().size() == 3
   assert approx_equal(tuple(p1.data()), (3,4,4))
-  assert p1.sigmas() == None
+  assert p1.sigmas() is None
   sg = miller.array(
     miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), 00000),
     flex.double((3,4)),
@@ -281,7 +281,7 @@ def exercise_array_2(space_group_info):
       p = m.array().sort_permutation(by_value="data", reverse=0001)
       assert flex.order(sg.indices(), m.array().indices().shuffle(p)) == 0
       assert approx_equal(sg.data(), m.array().data().shuffle(p))
-      if (sigmas != None):
+      if (sigmas is not None):
         s = m.array().sigmas().shuffle(p)
         r = m.redundancies().shuffle(p)
         sr = s * flex.sqrt(r.as_double())
@@ -295,7 +295,7 @@ def exercise_fft_map():
     ma = miller.array(ms, flex.complex_double((1,2)))
     fft_map = ma.fft_map()
     assert approx_equal(fft_map.resolution_factor(), 1./3)
-    assert fft_map.symmetry_flags() == None
+    assert fft_map.symmetry_flags() is None
     assert approx_equal(fft_map.max_prime(), 5)
     assert fft_map.anomalous_flag() == anomalous_flag
     assert fft_map.real_map().size() > 0

@@ -15,9 +15,9 @@ class scatterer:
                      occupancy=1,
                      scattering_info="",
                      b=None):
-    assert u == None or b == None
-    if   (b != None): u = adptbx.b_as_u(b)
-    elif (u == None): u = 0
+    assert u is None or b is None
+    if   (b is not None): u = adptbx.b_as_u(b)
+    elif (u is None): u = 0
     if (type(scattering_info) == type("")):
       if (scattering_info == ""):
         scattering_info = neutron_news_1992_table(label, 0)
@@ -77,7 +77,7 @@ class structure(crystal.special_position_settings):
       self, special_position_settings)
     self._scatterers = []
     self._special_position_indices = []
-    if (scatterers != None):
+    if (scatterers is not None):
       self.add_scatterers(scatterers)
 
   def _copy_constructor(self, other):

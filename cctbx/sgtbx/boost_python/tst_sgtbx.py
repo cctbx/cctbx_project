@@ -852,7 +852,7 @@ def exercise_wyckoff():
   del m
   assert ww().size() == 27
   del p
-  assert ww() == None
+  assert ww() is None
   w = wyckoff_table(sg_type)
   x = (-2.52, 1.123, -4.97)
   ss = sgtbx.site_symmetry(u, g, x)

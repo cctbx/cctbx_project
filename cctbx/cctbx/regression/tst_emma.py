@@ -42,7 +42,7 @@ def analyze_refined_matches(model1, model2, refined_matches, verbose):
 class test_model(emma.model):
 
   def __init__(self, model_id="SBT", n_elements=4):
-    if (model_id == None): return
+    if (model_id is None): return
     self.model_id = model_id
     pos = emma.position
     if (type(model_id) == type("")):

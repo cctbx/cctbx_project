@@ -11,7 +11,7 @@ import sys
 
 def run_fast_nv1995(f_obs, f_calc_fixed, f_calc_p1,
                     symmetry_flags, gridding, grid_tags, verbose):
-  if (f_calc_fixed == None):
+  if (f_calc_fixed is None):
     f_part = flex.complex_double()
   else:
     f_part = f_calc_fixed.data()
@@ -100,7 +100,7 @@ def test_atom(space_group_info, use_primitive_setting,
         direct=0001).f_calc()
     symmetry_flags = translation_search.symmetry_flags(
       is_isotropic_search_model=0001,
-      have_f_part=(f_calc_fixed != None))
+      have_f_part=(f_calc_fixed is not None))
     if (structure_fixed.scatterers().size() <= 1):
       gridding = miller_set_f_obs.crystal_gridding(
         symmetry_flags=symmetry_flags,

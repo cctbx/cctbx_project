@@ -54,7 +54,7 @@ class reflnlist:
       self.column_dict[self.column_names[i]] = column_list[-1]
     while 1:
       line = self.next_line()
-      if (line == None):
+      if (line is None):
         break
       data_values = line.split()
       assert len(data_values) == num_columns, "Line no. %d" % self.line_no
@@ -121,7 +121,7 @@ class reflnlist:
       assert "fSigmaI+" in self.column_dict
       assert "fIntensity-" in self.column_dict
       assert "fSigmaI-" in self.column_dict
-      assert crystal_symmetry.space_group_info() != None
+      assert crystal_symmetry.space_group_info() is not None
       ac = dtrek_ext.anomalous_combined(
         crystal_symmetry.space_group(),
         self.miller_indices,

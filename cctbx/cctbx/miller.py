@@ -17,7 +17,7 @@ import types
 
 def _slice_or_none(array, slice_object):
   assert type(slice_object) == types.SliceType
-  if (array == None): return None
+  if (array is None): return None
   return array.__getitem__(slice_object)
 
 class binner(ext.binner):
@@ -76,7 +76,7 @@ class set(crystal.symmetry):
 
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
-    assert self.indices() != None
+    assert self.indices() is not None
     return set(
       crystal_symmetry=self,
       indices=self.indices().__getitem__(slice_object),
@@ -91,7 +91,7 @@ class set(crystal.symmetry):
   def show_comprehensive_summary(self, f=sys.stdout):
     self.show_summary(f=f)
     no_sys_abs = self
-    if (self.space_group_info() != None):
+    if (self.space_group_info() is not None):
       sys_absent_flags = self.sys_absent_flags().data()
       n_sys_abs = sys_absent_flags.count(0001)
       print >> f, "Systematic absences:", n_sys_abs
@@ -100,11 +100,11 @@ class set(crystal.symmetry):
         print >> f, "Systematic absences not included in following:"
       n_centric = no_sys_abs.centric_flags().data().count(True)
       print >> f, "Centric reflections:", n_centric
-    if (self.unit_cell() != None):
+    if (self.unit_cell() is not None):
       print >> f, "Resolution range: %.6g %.6g" % no_sys_abs.resolution_range()
-      if (self.space_group_info() != None and self.indices().size() > 0):
+      if (self.space_group_info() is not None and self.indices().size() > 0):
         print >> f, "Completeness: %.6g" % no_sys_abs.completeness()
-    if (self.space_group_info() != None and no_sys_abs.anomalous_flag()):
+    if (self.space_group_info() is not None and no_sys_abs.anomalous_flag()):
       asu, matches = no_sys_abs.match_bijvoet_mates()
       print >> f, "Bijvoet pairs:", matches.pairs().size()
       print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
@@ -179,8 +179,8 @@ class set(crystal.symmetry):
     return flex.bool(self.indices().size(), 0001)
 
   def apply_selection(self, flags, negate=00000, anomalous_flag=None):
-    assert self.indices() != None
-    if (anomalous_flag == None):
+    assert self.indices() is not None
+    if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
     if (negate): flags = ~flags
     i = self.indices().select(flags)
@@ -200,8 +200,8 @@ class set(crystal.symmetry):
 
   def match_bijvoet_mates(self):
     assert self.anomalous_flag() in (None, 0001)
-    assert self.indices() != None
-    if (self.space_group_info() != None):
+    assert self.indices() is not None
+    if (self.space_group_info() is not None):
       asu = self.map_to_asu()
       matches = match_bijvoet_mates(
         asu.space_group_info().type(), asu.indices())
@@ -232,9 +232,9 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
 
   def expand_to_p1(self):
-    assert self.space_group_info() != None
-    assert self.indices() != None
-    assert self.anomalous_flag() != None
+    assert self.space_group_info() is not None
+    assert self.indices() is not None
+    assert self.anomalous_flag() is not None
     p1 = expand_to_p1(
       self.space_group(), self.anomalous_flag(), self.indices())
     return set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag())
@@ -252,7 +252,7 @@ class set(crystal.symmetry):
                              mandatory_factors=None,
                              max_prime=5,
                              assert_shannon_sampling=0001):
-    if (d_min == None): d_min = self.d_min()
+    if (d_min is None): d_min = self.d_min()
     return maptbx.crystal_gridding(
       unit_cell=self.unit_cell(),
       d_min=d_min,
@@ -318,7 +318,7 @@ class set(crystal.symmetry):
     elif (reflections_per_bin):
       n_bins = int(len(self.indices()) / reflections_per_bin + .5)
     assert n_bins > 0
-    assert self.unit_cell() != None
+    assert self.unit_cell() is not None
     bng = binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min)
     self._binner = binner(bng, self.indices())
     return self.binner()
@@ -343,7 +343,7 @@ def _ftor_a_s_sub(lhs, rhs): return lhs - rhs
 def _ftor_a_s_div(lhs, rhs): return lhs / rhs
 
 def _array_info(array):
-  if (array == None): return str(None)
+  if (array is None): return str(None)
   try:
     return array.__class__.__name__ + ", size=%d" % (len(array),)
   except:
@@ -378,8 +378,8 @@ class array(set):
   def deep_copy(self):
     d = None
     s = None
-    if (self.data() != None): d = self.data().deep_copy()
-    if (self.sigmas() != None): s = self.sigmas().deep_copy()
+    if (self.data() is not None): d = self.data().deep_copy()
+    if (self.sigmas() is not None): s = self.sigmas().deep_copy()
     return array(
       miller_set = set.deep_copy(self),
       data=d,
@@ -406,14 +406,14 @@ class array(set):
 
   def f_sq_as_f(self, tolerance=1.e-6):
     from cctbx import xray
-    if (self.sigmas() != None):
+    if (self.sigmas() is not None):
       r = xray.array_f_sq_as_f(self.data(), self.sigmas(), tolerance)
       return array(self, r.f, r.sigma_f)
     return array(self, xray.array_f_sq_as_f(self.data()).f)
 
   def f_as_f_sq(self):
     from cctbx import xray
-    if (self.sigmas() != None):
+    if (self.sigmas() is not None):
       r = xray.array_f_as_f_sq(self.data(), self.sigmas())
       return array(self, r.f_sq, r.sigma_f_sq)
     return array(self, xray.array_f_as_f_sq(self.data()).f_sq)
@@ -436,8 +436,8 @@ class array(set):
     assert flex.order(self.indices().shuffle(p), other.indices()) == 0
     d = self.data()
     s = self.sigmas()
-    if (d != None): d = d.shuffle(p)
-    if (s != None): s = s.shuffle(p)
+    if (d is not None): d = d.shuffle(p)
+    if (s is not None): s = s.shuffle(p)
     return array(miller_set=other, data=d, sigmas=s)
 
   def common_set(self, other):
@@ -473,8 +473,8 @@ class array(set):
       anomalous_flag=self.anomalous_flag())
     d = None
     s = None
-    if (self.data() != None): d = self.data().shuffle(permutation)
-    if (self.sigmas() != None): s = self.sigmas().shuffle(permutation)
+    if (self.data() is not None): d = self.data().shuffle(permutation)
+    if (self.sigmas() is not None): s = self.sigmas().shuffle(permutation)
     return array(new_set, d, s)
 
   def patterson_symmetry(self):
@@ -487,13 +487,13 @@ class array(set):
       self.sigmas())
 
   def expand_to_p1(self, phase_deg=None):
-    assert self.space_group_info() != None
-    assert self.indices() != None
-    assert self.anomalous_flag() != None
-    assert self.data() != None
+    assert self.space_group_info() is not None
+    assert self.indices() is not None
+    assert self.anomalous_flag() is not None
+    assert self.data() is not None
     new_sigmas = None
     if (self.is_complex()):
-      assert phase_deg == None
+      assert phase_deg is None
       p1 = expand_to_p1(
         self.space_group(), self.anomalous_flag(), self.indices(),
         self.data())
@@ -501,12 +501,12 @@ class array(set):
     else:
       assert isinstance(self.data(), flex.double)
       assert phase_deg in (None, 00000, 0001)
-      if (phase_deg == None):
+      if (phase_deg is None):
         p1 = expand_to_p1(
           self.space_group(), self.anomalous_flag(), self.indices(),
           self.data())
         new_data = p1.amplitudes()
-        if (self.sigmas() != None):
+        if (self.sigmas() is not None):
           assert isinstance(self.sigmas(), flex.double)
           p1 = expand_to_p1(
             self.space_group(), self.anomalous_flag(), self.indices(),
@@ -517,7 +517,7 @@ class array(set):
           self.space_group(), self.anomalous_flag(), self.indices(),
           self.data(), phase_deg)
         new_data = p1.phases()
-    assert self.sigmas() == None or new_sigmas != None
+    assert self.sigmas() is None or new_sigmas is not None
     return array(
       set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag()),
       data=new_data,
@@ -526,10 +526,10 @@ class array(set):
   def change_basis(self, cb_op):
     new_data = None
     new_sigmas = None
-    if (self.data() != None):
+    if (self.data() is not None):
       assert isinstance(self.data(), flex.double)
       new_data = self.data().deep_copy()
-    if (self.sigmas() != None):
+    if (self.sigmas() is not None):
       assert isinstance(self.sigmas(), flex.double)
       new_sigmas = self.sigmas().deep_copy()
     return array(
@@ -538,7 +538,7 @@ class array(set):
       sigmas=new_sigmas)
 
   def phase_transfer(self, phase_source, epsilon=1.e-10):
-    assert self.data() != None
+    assert self.data() is not None
     if (hasattr(phase_source, "data")):
       phase_source = phase_source.data()
     return array(
@@ -551,7 +551,7 @@ class array(set):
         epsilon))
 
   def mean_weighted_phase_error(self, phase_source):
-    assert self.data() != None
+    assert self.data() is not None
     if (hasattr(phase_source, "data")):
       assert flex.order(phase_source.indices(), self.indices()) == 0
       phase_source = phase_source.data()
@@ -572,25 +572,25 @@ class array(set):
     return sum_we / sum_w * 180/math.pi
 
   def anomalous_differences(self):
-    assert self.data() != None
+    assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     i = matches.miller_indices_in_hemisphere("+")
     d = matches.minus(asu.data())
     s = None
-    if (asu.sigmas() != None):
+    if (asu.sigmas() is not None):
       s = matches.additive_sigmas(asu.sigmas())
     return array(set(asu, i, anomalous_flag=00000), d, s)
 
   def hemisphere(self, plus_or_minus):
     assert plus_or_minus in ("+", "-")
-    assert self.data() != None
+    assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     return asu.apply_selection(
       flags=matches.pairs_hemisphere_selection(plus_or_minus),
       anomalous_flag=00000)
 
   def hemispheres(self):
-    assert self.data() != None
+    assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     return tuple(
       [asu.apply_selection(
@@ -612,28 +612,28 @@ class array(set):
     return math.sqrt(2 * mean_sq_diff / mean_sum_sq)
 
   def apply_selection(self, flags, negate=00000, anomalous_flag=None):
-    assert self.indices() != None
-    if (anomalous_flag == None):
+    assert self.indices() is not None
+    if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
     if (negate): flags = ~flags
     i = self.indices().select(flags)
     d = None
-    if (self.data() != None): d = self.data().select(flags)
+    if (self.data() is not None): d = self.data().select(flags)
     s = None
-    if (self.sigmas() != None): s = self.sigmas().select(flags)
+    if (self.sigmas() is not None): s = self.sigmas().select(flags)
     return array(set(self, i, anomalous_flag), d, s)
 
   def sigma_filter(self, cutoff_factor, negate=0):
-    assert self.data() != None
-    assert self.sigmas() != None
+    assert self.data() is not None
+    assert self.sigmas() is not None
     flags = flex.abs(self.data()) >= self.sigmas() * cutoff_factor
     return self.apply_selection(flags, negate)
 
   def _generic_binner_action(self, use_binning, use_multiplicities,
                              function,
                              function_weighted):
-    assert self.indices() != None
-    assert self.data() != None
+    assert self.indices() is not None
+    assert self.data() is not None
     if (use_multiplicities):
       mult = self.multiplicities().data().as_double()
     if (not use_binning):
@@ -721,7 +721,7 @@ class array(set):
   def normalize_structure_factors(self, quasi=00000, first_moment=00000):
     assert quasi in (00000, 0001)
     assert first_moment in (00000, 0001)
-    assert self.binner() != None
+    assert self.binner() is not None
     assert self.data().all_ge(0)
     if (first_moment):
       assert quasi == 00000
@@ -762,25 +762,25 @@ class array(set):
     return merge_equivalents(self)
 
   def __add__(self, other):
-    assert self.indices() != None
-    assert self.data() != None
+    assert self.indices() is not None
+    assert self.data() is not None
     if (type(other) != type(self)):
       # add a scalar
       return array(self, self.data() + other)
     # add arrays
-    assert other.indices() != None
-    assert other.data() != None
+    assert other.indices() is not None
+    assert other.data() is not None
     match = match_indices(self.indices(), other.indices())
     i = match.paired_miller_indices(0)
     d = match.plus(self.data(), other.data())
     s = None
-    if (self.sigmas() != None and other.sigmas() != None):
+    if (self.sigmas() is not None and other.sigmas() is not None):
       s = match.additive_sigmas(self.sigmas(), other.sigmas())
     return array(set(self, i), d, s)
 
   def show_array(self, f=sys.stdout):
     assert self.data().size() == self.indices().size()
-    if (self.sigmas() == None):
+    if (self.sigmas() is None):
       for i,h in self.indices().items():
         print >> f, h, self.data()[i]
     else:
@@ -839,13 +839,13 @@ class merge_equivalents:
 
   def __init__(self, miller_array):
     assert isinstance(miller_array.data(), flex.double)
-    if (miller_array.sigmas() != None):
+    if (miller_array.sigmas() is not None):
       assert isinstance(miller_array.sigmas(), flex.double)
     asu_set = set.map_to_asu(miller_array)
     span = index_span(asu_set.indices())
     packed_indices = span.pack(asu_set.indices())
     p = flex.sort_permutation(packed_indices)
-    if (miller_array.sigmas() != None):
+    if (miller_array.sigmas() is not None):
       merge_ext = ext.merge_equivalents(
         asu_set.indices().shuffle(p),
         miller_array.data().shuffle(p),
@@ -895,7 +895,7 @@ class fft_map(maptbx.crystal_gridding):
       self.n_real(),
       flex.grid(n_complex),
       conjugate_flag)
-    if (f_000 != None):
+    if (f_000 is not None):
       assert map.complex_map()[0] == 0j
       map.complex_map()[0] = complex(f_000)
     if (not self.anomalous_flag()):
@@ -935,6 +935,6 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
     i_patt.setup_binner(auto_binning=1)
     i_patt = i_patt.remove_patterson_origin_peak()
   i_patt = array(i_patt, data=flex.polar(i_patt.data(), 0))
-  if (f_000 != None):
+  if (f_000 is not None):
     f_000 = f_000 * f_000
   return fft_map(crystal_gridding, i_patt, f_000)

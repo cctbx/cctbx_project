@@ -17,31 +17,31 @@ class any_reflection_file:
     self._file_name = file_name
     open(file_name) # test read access
     self._file_type = None
-    if (self._file_type == None):
+    if (self._file_type is None):
       try: self._file_content = mtz.Mtz(file_name)
       except RuntimeError: pass
       else: self._file_type = "ccp4_mtz"
-    if (self._file_type == None):
+    if (self._file_type is None):
       try: self._file_content = cns_reflection_reader.cns_reflection_file(
         open(file_name))
       except cns_reflection_reader.CNS_input_Error: pass
       else: self._file_type = "cns_reflection_file"
-    if (self._file_type == None):
+    if (self._file_type is None):
       try: self._file_content = scalepack_reader.scalepack_file(
         open(file_name))
       except scalepack_reader.ScalepackFormatError: pass
       else: self._file_type = "scalepack_merged"
-    if (self._file_type == None):
+    if (self._file_type is None):
       try: self._file_content = dtrek_reflnlist_reader.reflnlist(
         open(file_name))
       except: pass
       else: self._file_type = "dtrek_reflnlist"
-    if (self._file_type == None):
+    if (self._file_type is None):
       try: self._file_content = shelx_hklf.reader(
         open(file_name))
       except: pass
       else: self._file_type = "shelx_hklf"
-    if (self._file_type == None):
+    if (self._file_type is None):
       try: self._file_content = easy_pickle.load(file_name)
       except: pass
       else:
@@ -60,7 +60,7 @@ class any_reflection_file:
               self._file_content = None
             else:
               self._file_content = miller_arrays
-        if (self._file_content != None):
+        if (self._file_content is not None):
           self._file_type = "cctbx.miller.array"
 
   def file_name(self):
@@ -73,7 +73,7 @@ class any_reflection_file:
     return self._file_content
 
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000):
-    if (self.file_type() == None):
+    if (self.file_type() is None):
       return []
     if (self.file_type() == "cctbx.miller.array"):
       return self.file_content()
@@ -138,7 +138,7 @@ def run(args):
       print
     all_miller_arrays.extend(miller_arrays)
     print
-  if (pickle_file_name != None):
+  if (pickle_file_name is not None):
     if (len(all_miller_arrays) == 1):
       all_miller_arrays = all_miller_arrays[0]
     if (not pickle_file_name.lower().endswith(".pickle")):

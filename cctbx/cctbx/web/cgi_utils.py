@@ -50,7 +50,7 @@ def inp_from_form(form, keys):
 def coordinates_from_form(form, suffix=None):
   coordinates = []
   for key_root in ("coordinates", "coor_file"):
-    if (suffix == None): key = key_root
+    if (suffix is None): key = key_root
     else:                key = key_root + "_" + suffix
     if (form.has_key(key)):
       lines = form[key].value.replace("\015", "\012").split("\012")

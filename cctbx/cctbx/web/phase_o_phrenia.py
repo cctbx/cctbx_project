@@ -26,17 +26,17 @@ def sdb_files_as_xray_structures(lines, unit_cell, space_group_info, min_distanc
   sdb_files = sdb_reader.multi_sdb_parser(lines)
   xray_structures = []
   for sdb in sdb_files:
-    if (unit_cell != None): sdb.unit_cell = unit_cell
-    if (space_group_info != None): sdb.space_group_info = space_group_info
+    if (unit_cell is not None): sdb.unit_cell = unit_cell
+    if (space_group_info is not None): sdb.space_group_info = space_group_info
     xray_structure = sdb.as_xray_structure(min_distance_sym_equiv=min_distance_sym_equiv)
     xray_structures.append(xray_structure)
   return xray_structures
 
 def inp_as_xray_structures(inp):
   unit_cell = inp.ucparams
-  if (unit_cell != None): unit_cell = uctbx.unit_cell(unit_cell)
+  if (unit_cell is not None): unit_cell = uctbx.unit_cell(unit_cell)
   space_group_info = inp.sgsymbol
-  if (space_group_info != None):
+  if (space_group_info is not None):
     space_group_info = sgtbx.space_group_info(symbol=space_group_info, table_id=inp.convention)
   min_distance_sym_equiv=float(inp.min_distance_sym_equiv)
   return sdb_files_as_xray_structures(
@@ -60,8 +60,8 @@ def run(server_info, inp, status):
       print "in order to be recognized."
       print
   else:
-    if (inp.ucparams == None): inp.ucparams = ""
-    if (inp.sgsymbol == None): inp.sgsymbol = "P1"
+    if (inp.ucparams is None): inp.ucparams = ""
+    if (inp.sgsymbol is None): inp.sgsymbol = "P1"
     special_position_settings = io_utils.special_position_settings_from_inp(inp)
     special_position_settings.show_summary()
     print "Minimum distance between symmetrically equivalent sites:",

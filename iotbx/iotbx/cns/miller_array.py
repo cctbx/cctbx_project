@@ -4,7 +4,7 @@ from cctbx.array_family import flex
 def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
   f = file_object
   if (file_name): print >> f, "{ file:", file_name, "}"
-  if (self.info() != None):
+  if (self.info() is not None):
     print >> f, "{", self.info(), "}"
   for line in info: print >> f, "{", line, "}"
   print >> f, "NREFlections=%d" % self.indices().size()
@@ -12,7 +12,7 @@ def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
     print >> f, "ANOMalous=TRUE"
   else:
     print >> f, "ANOMalous=FALSe"
-  if (self.sigmas() != None):
+  if (self.sigmas() is not None):
     assert isinstance(self.data(), flex.double)
     assert isinstance(self.sigmas(), flex.double)
     if (isinstance(self, miller.intensity_array)):

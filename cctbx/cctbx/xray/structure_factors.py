@@ -27,12 +27,12 @@ class from_scatterers(crystal.symmetry):
                      wing_cutoff=1.e-3,
                      exp_table_one_over_step_size=-100,
                      max_prime=5):
-    assert miller_set == None or crystal_symmetry == None
-    if (miller_set == None):
-      assert crystal_symmetry != None and d_min != None
+    assert miller_set is None or crystal_symmetry is None
+    if (miller_set is None):
+      assert crystal_symmetry is not None and d_min is not None
     else:
       crystal_symmetry = miller_set
-      if (d_min == None):
+      if (d_min is None):
         d_min = miller_set.d_min()
       else:
         assert d_min <= miller_set.d_min()
@@ -72,7 +72,7 @@ class from_scatterers(crystal.symmetry):
     return self._max_prime
 
   def crystal_gridding(self, assert_shannon_sampling=0001):
-    if (self._crystal_gridding == None):
+    if (self._crystal_gridding is None):
       self._crystal_gridding = maptbx.crystal_gridding(
         unit_cell=self.unit_cell(),
         d_min=self.d_min(),
@@ -85,18 +85,18 @@ class from_scatterers(crystal.symmetry):
     return self._crystal_gridding
 
   def crystal_gridding_tags(self, assert_shannon_sampling=0001):
-    if (self._crystal_gridding_tags == None):
+    if (self._crystal_gridding_tags is None):
       self._crystal_gridding_tags = self.crystal_gridding(
         assert_shannon_sampling).tags()
     return self._crystal_gridding_tags
 
   def rfft(self):
-    if (self._rfft == None):
+    if (self._rfft is None):
       self._rfft = fftpack.real_to_complex_3d(self.crystal_gridding().n_real())
     return self._rfft
 
   def u_extra(self):
-    if (self._u_extra == None):
+    if (self._u_extra is None):
       from cctbx import xray
       self._u_extra = xray.calc_u_extra(
         self.d_min(),
@@ -227,10 +227,10 @@ class _from_scatterers_base:
 
   def __init__(self, manager, xray_structure, miller_set):
     adopt_init_args(self, locals(), hide=0001)
-    assert xray_structure != None and miller_set != None
+    assert xray_structure is not None and miller_set is not None
     assert xray_structure.unit_cell().is_similar_to(miller_set.unit_cell())
     assert xray_structure.space_group() == miller_set.space_group()
-    if (manager != None):
+    if (manager is not None):
       assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
       assert xray_structure.space_group() == manager.space_group()
 
@@ -252,9 +252,9 @@ class from_scatterers_direct(_from_scatterers_base):
                      derivative_flags=None):
     _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
     self._d_target_d_f_calc = d_target_d_f_calc
-    if (d_target_d_f_calc == None):
+    if (d_target_d_f_calc is None):
       d_target_d_f_calc = flex.complex_double()
-    if (derivative_flags == None):
+    if (derivative_flags is None):
       derivative_flags = globals()["derivative_flags"]()
     timer = user_plus_sys_time()
     from cctbx import xray
@@ -270,7 +270,7 @@ class from_scatterers_direct(_from_scatterers_base):
       derivative_flags.occupancy,
       derivative_flags.fp,
       derivative_flags.fdp)
-    if (manager != None):
+    if (manager is not None):
       manager.estimate_time_direct.register(
         xray_structure.scatterers().size() * miller_set.indices().size(),
         timer.elapsed())
@@ -334,8 +334,8 @@ class from_scatterers_fft(_from_scatterers_base):
     _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
     assert manager.symmetry_flags().use_space_group_symmetry()
     assert miller_set.d_min() >= manager.d_min()
-    assert d_target_d_f_calc == None, "FFT derivatives not implemented."
-    assert derivative_flags == None, "FFT derivatives not implemented."
+    assert d_target_d_f_calc is None, "FFT derivatives not implemented."
+    assert derivative_flags is None, "FFT derivatives not implemented."
     manager.setup_fft() # before timing
     time_sampling = user_plus_sys_time()
     from cctbx import xray

@@ -59,7 +59,7 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
     if (symbols_to_stdout):
       print space_group_info
       sys.stdout.flush()
-    if (threading == None):
+    if (threading is None):
       continue_flag = call_back(flags, space_group_info)
       sys.stdout.flush()
       if (continue_flag == 00000): break
@@ -70,7 +70,7 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
       t = threading.Thread(target=call_back, args=(flags, space_group_info))
       t.setDaemon(0001)
       t.start()
-  if (threading != None):
+  if (threading is not None):
     while 1:
       if (threading.activeCount() == 1): break
       time.sleep(1)

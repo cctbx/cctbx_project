@@ -12,11 +12,11 @@ def ccp4_symbol(space_group_info):
   for symop_lib_path in (
         environ_based_path(["CCP4_LIB", "data", "symop.lib"]),
         environ_based_path(["CCTBX_DIST", "reference", "ccp4", "symop.lib"])):
-    if (symop_lib_path != None):
+    if (symop_lib_path is not None):
       found_at_least_one_symop_lib = True
       file_iter = iter(open(symop_lib_path, "r"))
       symbol = search_for_ccp4_symbol(space_group_info, file_iter)
-      if (symbol != None):
+      if (symbol is not None):
         return symbol
   assert found_at_least_one_symop_lib
   return None

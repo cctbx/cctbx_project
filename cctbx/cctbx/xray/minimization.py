@@ -50,7 +50,7 @@ class lbfgs:
       compute_derivatives)
 
   def __call__(self):
-    if (self.first_target_value != None):
+    if (self.first_target_value is not None):
       self.unpack_parameters()
     self.compute_target(compute_derivatives=0001)
     sf = self.structure_factors_from_scatterers(
@@ -72,9 +72,9 @@ class lbfgs:
       self.g.append(sf.d_target_d_u_iso())
     if (self.options.occupancy):
       self.g.append(sf.d_target_d_occupancy())
-    if (self.first_target_value == None):
+    if (self.first_target_value is None):
       self.pack_parameters()
     self.f = self.target_result.target()
-    if (self.first_target_value == None):
+    if (self.first_target_value is None):
       self.first_target_value = self.f
     return self.x, self.f, self.g

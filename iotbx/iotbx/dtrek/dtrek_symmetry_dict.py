@@ -84,7 +84,7 @@ def run():
   lookup_dict = {}
   while 1:
     entry = dtrek_symmetry_entry(lf)
-    if (entry.symbol == None):
+    if (entry.symbol is None):
       break
     cctbx_lookup_symbol = str(entry.space_group_info).replace(" ", "")
     if (cctbx_lookup_symbol != entry.symbol):
