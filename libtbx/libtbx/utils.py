@@ -4,9 +4,9 @@ import sys, os
 
 class Keep: pass
 
-class UserError(Exception):
+class Sorry(Exception):
 
-  # trick to get just "UserError" instead of "libtbx.utils.UserError"
+  # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __module__ = "exceptions"
 
   def __init__(self, *args, **keyword_args):
@@ -27,6 +27,8 @@ class UserError(Exception):
         del sys.tracebacklimit
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
+
+UserError = Sorry # XXX backward compatibility
 
 def format_exception():
   type_, value = sys.exc_info()[:2]

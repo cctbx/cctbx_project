@@ -3,11 +3,11 @@ from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.path
 from libtbx.itertbx import count
-from libtbx.utils import UserError
+from libtbx.utils import Sorry
 import sys, os
 
-class UserError_No_array_of_the_required_type(UserError): pass
-class UserError_Not_a_suitable_array(UserError): pass
+class Sorry_No_array_of_the_required_type(Sorry): pass
+class Sorry_Not_a_suitable_array(Sorry): pass
 
 def find_labels(search_labels, info_string):
   for search_label in search_labels:
@@ -238,7 +238,7 @@ def select_array(
       error_message_multiple_equally_suitable):
   if (labels is not None): assert parameter_name is not None
   if (len(miller_arrays) == 0):
-    raise UserError_No_array_of_the_required_type(
+    raise Sorry_No_array_of_the_required_type(
       "No reflection arrays available.")
   if (data_scores is not None):
     assert max(data_scores) >= 0
@@ -257,15 +257,15 @@ def select_array(
         scores=data_scores,
         minimum_score=1,
         parameter_name=parameter_name)
-    raise UserError(error)
+    raise Sorry(error)
   if (max(data_scores) == 0):
     if (label_scores is None):
       print >> err, "\n" + error_message_no_array + "\n"
-      raise UserError_No_array_of_the_required_type(error_message_no_array)
+      raise Sorry_No_array_of_the_required_type(error_message_no_array)
     error = "%s%s=%s" % (
       error_message_not_a_suitable_array, parameter_name, " ".join(labels))
     print >> err, "\n" + error + "\n"
-    raise UserError_Not_a_suitable_array(error)
+    raise Sorry_Not_a_suitable_array(error)
   if (label_scores is None):
     combined_scores = data_scores
   else:
@@ -281,7 +281,7 @@ def select_array(
       scores=combined_scores,
       minimum_score=max(combined_scores),
       parameter_name=parameter_name)
-    raise UserError(error)
+    raise Sorry(error)
   return i
 
 class reflection_file_server:
@@ -327,7 +327,7 @@ class reflection_file_server:
                    crystal_symmetry=self.crystal_symmetry,
                    force_symmetry=self.force_symmetry)
     if (result is None):
-      raise UserError("No reflection data in file: %s" % file_name)
+      raise Sorry("No reflection data in file: %s" % file_name)
     return result
 
   def get_xray_data(self,
@@ -362,7 +362,7 @@ class reflection_file_server:
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     if (disable_suitability_test):
       if (label is None or test_flag_value is None):
-        raise UserError((
+        raise Sorry((
           "%s=True: Suitability test for R-free flags can only be disabled"
           " if both %s and %s are defined.") % (
             parameter_scope+".disable_suitability_test",
@@ -394,8 +394,8 @@ class reflection_file_server:
           ="Not a suitable array of R-free flags: ",
         error_message_multiple_equally_suitable
           ="Multiple equally suitable arrays of R-free flags found.")
-    except UserError_Not_a_suitable_array, e:
-      raise UserError_Not_a_suitable_array(
+    except Sorry_Not_a_suitable_array, e:
+      raise Sorry_Not_a_suitable_array(
         str(e) + "\nTo override the suitability test define:"
                + " %s.disable_suitability_test=True" % parameter_scope)
     if (data_scores is None):
@@ -432,7 +432,7 @@ def construct_output_file_name(input_file_names,
                                extension_seperator="."):
   if (user_file_name == "."):
     if (len(input_file_names) > 1):
-      raise UserError(
+      raise Sorry(
         "Ambiguous name for output %s file (more than one input file)."
           % file_type_label)
     user_file_name = os.path.basename(input_file_names[0])

@@ -14,7 +14,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from scitbx.python_utils import easy_pickle
-from libtbx.utils import UserError
+from libtbx.utils import Sorry
 import sys, os
 
 class any_reflection_file:
@@ -49,7 +49,7 @@ class any_reflection_file:
         open(file_name))
       except KeyboardInterrupt: raise
       except:
-        raise UserError("Not a SHELX reflection file: %s\n"
+        raise Sorry("Not a SHELX reflection file: %s\n"
           "  =%s can only be used for SHELX reflection files."
           % (file_name, self._observation_type))
       else: self._file_type = "shelx_hklf"
@@ -167,7 +167,7 @@ class any_reflection_file:
           labels=["Fobs", "SigFobs"]))
         result[0].set_observation_type_xray_amplitude()
       else:
-        raise UserError("Unresolved amplitude/intensity ambiguity: %s\n"
+        raise Sorry("Unresolved amplitude/intensity ambiguity: %s\n"
           "  SHELX reflection files may contain amplitudes or intensities.\n"
           "  Please append   =amplitudes\n"
           "             or   =hklf3\n"
@@ -256,11 +256,11 @@ def run(args):
     pickle_file_name = command_line.options.pickle
     if (pickle_file_name == "."):
       if (len(command_line.args) > 1):
-        raise UserError(
+        raise Sorry(
           "Ambiguous name for pickle file (more than one input file).")
       pickle_file_name = os.path.basename(command_line.args[0])
       if (pickle_file_name.lower().endswith(".pickle")):
-        raise UserError("Input file is already a pickle file.")
+        raise Sorry("Input file is already a pickle file.")
     if (not pickle_file_name.lower().endswith(".pickle")):
       pickle_file_name += ".pickle"
     print

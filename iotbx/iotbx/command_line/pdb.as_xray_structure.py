@@ -46,7 +46,7 @@ def run(args):
   if (pickle_file_name is not None and len(all_structures) > 0):
     if (pickle_file_name == "."):
       if (len(command_line.args) > 1):
-        raise UserError(
+        raise Sorry(
           "Ambiguous name for pickle file (more than one input file).")
       pickle_file_name = os.path.basename(command_line.args[0])
     if (not pickle_file_name.lower().endswith(".pickle")):

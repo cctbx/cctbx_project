@@ -1,6 +1,6 @@
 from libtbx import phil
 import libtbx.phil.command_line
-from libtbx.utils import UserError
+from libtbx.utils import Sorry
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
 import copy
@@ -2441,7 +2441,7 @@ bar.max = 2
 """
   assert itpr_bar.process(arg="max=5").as_str() == "bar.max = 5\n"
   try: assert itpr_neutral.process(arg="max=5")
-  except UserError, e:
+  except Sorry, e:
     assert str(e) == """\
 Ambiguous parameter definition: max = 5
 Best matches:
@@ -2454,25 +2454,25 @@ Best matches:
     assert itpr.process(arg="index=0").as_str() == "foo.index = 0\n"
     assert itpr.process(arg="ndex=0").as_str() == "foo.index = 0\n"
   try: itpr_bar.process(arg="xyz=")
-  except UserError, e:
+  except Sorry, e:
     assert str(e) == """\
 Error interpreting command line argument as parameter definition:
   "xyz="
   Missing value for xyz (command line argument, line 1)"""
   else: raise RuntimeError("Exception expected.")
   try: itpr_bar.process(arg="xyz=8")
-  except UserError, e:
+  except Sorry, e:
     assert str(e) == "Unknown command line parameter definition: xyz = 8"
   else: raise RuntimeError("Exception expected.")
   try: itpr_bar.process(arg="  ")
-  except UserError, e:
+  except Sorry, e:
     assert str(e) == 'Command line parameter definition has no effect: "  "'
   else: raise RuntimeError("Exception expected.")
   itpr = phil.command_line.argument_interpreter(
     master_params=master_params,
     argument_description="")
   try: itpr.process(arg="bar {}")
-  except UserError, e:
+  except Sorry, e:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
   else: raise RuntimeError("Exception expected.")
 
