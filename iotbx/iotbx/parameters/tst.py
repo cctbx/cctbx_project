@@ -78,18 +78,18 @@ name = value
   .help = "help message with detailed information"
   .caption = None
   .short_caption = None
-  .optional = %s
+  .optional = True
   .type = path
   .multiple = None
   .input_size = None
   .expert_level = None
-""" % str(True))
+""")
   recycle(input_string=input_string, attributes_level=2, expected_out="""\
 name = value
   .help = "help message with detailed information"
-  .optional = %s
+  .optional = True
   .type = path
-""" % str(True))
+""")
   recycle(input_string=input_string, attributes_level=1, expected_out="""\
 name = value
   .help = "help message with detailed information"
