@@ -209,14 +209,6 @@ table name
 }
 """)
   recycle(
-    input_string="table name { row_1 {} }", expected_out="""\
-table name
-{
-  row_1 {
-  }
-}
-""")
-  recycle(
     input_string="table name { {} {} }", expected_out="""\
 table name
 {
@@ -227,27 +219,7 @@ table name
 }
 """)
   recycle(
-    input_string="table name { {} row_2 {} }", expected_out="""\
-table name
-{
-  {
-  }
-  row_2 {
-  }
-}
-""")
-  recycle(
-    input_string="table name { row_1 {} row_2 {} }", expected_out="""\
-table name
-{
-  row_1 {
-  }
-  row_2 {
-  }
-}
-""")
-  recycle(
-    input_string="a=b\nc=d\n e {} table name { row_1 {} row_2 {} } f=g",
+    input_string="a=b\nc=d\n e {} table name { {} {} } f=g",
     prefix=" prefix ",
     expected_out="""\
  prefix a = b
@@ -259,9 +231,9 @@ table name
  prefix
  prefix table name
  prefix {
- prefix   row_1 {
+ prefix   {
  prefix   }
- prefix   row_2 {
+ prefix   {
  prefix   }
  prefix }
  prefix
@@ -294,7 +266,7 @@ def exercise_syntax_errors():
     'Unexpected table attribute: .foo (input line 2)')
   test_exception("table name foo {",
     'Syntax error: expected "{", found "foo" (input line 1)')
-  test_exception("table name { row_1 bar",
+  test_exception("table name { bar",
     'Syntax error: expected "{", found "bar" (input line 1)')
   test_exception("a=b\n.foo none",
     'Unexpected definition attribute: .foo (input line 2)')
@@ -302,8 +274,6 @@ def exercise_syntax_errors():
     'Syntax error: missing closing quote (input line 2)')
   test_exception('table 1',
     'Syntax error: improper table name "1" (input line 1)')
-  test_exception('table name { 1',
-    'Syntax error: improper table row name "1" (input line 1)')
   test_exception('1 {',
     'Syntax error: improper scope name "1" (input line 1)')
   test_exception('scope\n.junk',
@@ -334,11 +304,11 @@ e {
   b=x
 }
 table name {
-  row_1 {
+  {
     a=1
     b=x
   }
-  row_2 {
+  {
     a=2
     b=y
   }
@@ -369,11 +339,11 @@ b = x
   check_get(parameters, path="name", expected_out="""\
 table name
 {
-  row_1 {
+  {
     a = 1
     b = x
   }
-  row_2 {
+  {
     a = 2
     b = y
   }
@@ -387,15 +357,7 @@ table name
 a = 1
 b = x
 """)
-  check_get(parameters, path="name.row_1", expected_out="""\
-a = 1
-b = x
-""")
   check_get(parameters, path="name.2", expected_out="""\
-a = 2
-b = y
-""")
-  check_get(parameters, path="name.row_2", expected_out="""\
 a = 2
 b = y
 """)
@@ -413,7 +375,6 @@ a0 {
   d1=a b c
   a1 {
     table t0 {
-      row0
       {
         c=yes
         table t1 {
@@ -439,7 +400,7 @@ a0
   {
     table t0
     {
-      row0 {
+      {
         c = yes
 
         table t1
@@ -457,12 +418,12 @@ a0
 }
 """).parameters
   check_get(parameters, path="a0.d1", expected_out="d1 = a b c\n")
-  check_get(parameters, path="a0.a1.t0.row0.c", expected_out="c = yes\n")
-  check_get(parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x = 0\n")
-  check_get(parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y = 1.\n")
+  check_get(parameters, path="a0.a1.t0.1.c", expected_out="c = yes\n")
+  check_get(parameters, path="a0.a1.t0.1.t1.1.x", expected_out="x = 0\n")
+  check_get(parameters, path="a0.a1.t0.1.t1.1.y", expected_out="y = 1.\n")
   assert [item.path for item in parameters.all_definitions()] == [
-    "d0", "a0.d1", "a0.a1.t0.row0.c", "a0.a1.t0.row0.t1.1.x",
-    "a0.a1.t0.row0.t1.1.y", "a0.d2"]
+    "d0", "a0.d1", "a0.a1.t0.1.c", "a0.a1.t0.1.t1.1.x",
+    "a0.a1.t0.1.t1.1.y", "a0.d2"]
   parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
   out = StringIO()
   parameters.show(out=out, attributes_level=2)
@@ -479,7 +440,7 @@ a0
   {
     table t0
     {
-      row0 {
+      {
         c = yes
           .type = "bool"
 
