@@ -84,6 +84,30 @@ namespace {
     }
   };
 
+  struct maximum_likelihood_criterion_hl_wrappers
+  {
+    typedef maximum_likelihood_criterion_hl<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("targets_maximum_likelihood_criterion_hl",
+             init<af::const_ref<double> const&,
+                  af::const_ref<std::complex<double> > const&,
+                  af::const_ref<double> const&,
+                  af::const_ref<double> const&,
+                  af::const_ref<int> const&,
+                  af::const_ref<int> const&,
+                  bool const&,
+                  af::const_ref<cctbx::hendrickson_lattman<double> > const&,
+                  double const& >())
+        .def("target", &w_t::target)
+        .def("derivatives", &w_t::derivatives)
+      ;
+    }
+  };
+
 } // namespace <anoymous>
 
 }} // namespace targets::boost_python
@@ -95,6 +119,7 @@ namespace boost_python {
     targets::boost_python::least_squares_residual_wrappers::wrap();
     targets::boost_python::intensity_correlation_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_wrappers::wrap();
+    targets::boost_python::maximum_likelihood_criterion_hl_wrappers::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python
