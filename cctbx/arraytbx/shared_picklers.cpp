@@ -23,28 +23,27 @@ namespace cctbx { namespace af {
     {
       getstate_manager(std::size_t a_size, std::size_t size_per_element)
       {
-        str_capacity = a_size * size_per_element;
+        str_capacity = a_size * size_per_element + 50; // extra space for a_size
         str_obj = PyString_FromStringAndSize(
-          0, static_cast<int>(str_capacity + 100));
+          0, static_cast<int>(str_capacity + 100)); // extra space for safety
         str_begin = PyString_AS_STRING(str_obj);
         str_end = str_begin;
         sprintf(str_end, "%lu", static_cast<unsigned long>(a_size));
         while (*str_end) str_end++;
-        *str_end++ = ' ';
+        *str_end++ = ',';
       };
 
       void advance()
       {
         while (*str_end) str_end++;
-        *str_end++ = ' ';
+        *str_end++ = ',';
         cctbx_assert(str_end - str_begin <= str_capacity);
       }
 
       PyObject* finalize()
       {
-        str_capacity = str_end - str_begin;
-        cctbx_assert(
-          _PyString_Resize(&str_obj, static_cast<int>(str_capacity)) == 0);
+        cctbx_assert(_PyString_Resize(&str_obj,
+          static_cast<int>(str_end - str_begin)) == 0);
         return str_obj;
       }
 
@@ -62,13 +61,13 @@ namespace cctbx { namespace af {
         str_ptr = PyString_AsString(state);
         cctbx_assert(str_ptr != 0);
         cctbx_assert(sscanf(str_ptr, "%lu", &a_capacity) == 1);
-        while (*str_ptr != ' ') str_ptr++;
+        while (*str_ptr != ',') str_ptr++;
         str_ptr++;
       };
 
       void advance()
       {
-        while (*str_ptr != ' ') str_ptr++;
+        while (*str_ptr != ',') str_ptr++;
         str_ptr++;
       }
 
@@ -158,7 +157,9 @@ namespace cctbx { namespace af {
       {
         getstate_manager mgr(a.size(), 2 * size_per_element);
         for(std::size_t i=0;i<a.size();i++) {
-          sprintf(mgr.str_end, fmt, a[i].real(), a[i].imag());
+          sprintf(mgr.str_end, fmt, a[i].real());
+          mgr.advance();
+          sprintf(mgr.str_end, fmt, a[i].imag());
           mgr.advance();
         }
         return boost::python::ref(mgr.finalize());
@@ -174,11 +175,12 @@ namespace cctbx { namespace af {
         setstate_manager mgr(a.size(), state.get());
         a.reserve(mgr.a_capacity);
         for(std::size_t i=0;i<mgr.a_capacity;i++) {
-          ElementType val_real;
-          ElementType val_imag;
-          cctbx_assert(sscanf(mgr.str_ptr, fmt, &val_real, &val_imag) == 2);
-          mgr.advance();
-          a.push_back(std::complex<ElementType>(val_real, val_imag));
+          ElementType val[2];
+          for(std::size_t j=0;j<2;j++) {
+            cctbx_assert(sscanf(mgr.str_ptr, fmt, val+j) == 1);
+            mgr.advance();
+          }
+          a.push_back(std::complex<ElementType>(val[0], val[1]));
         }
         mgr.finalize();
       }
@@ -193,8 +195,10 @@ namespace cctbx { namespace af {
         getstate_manager mgr(a.size(), 3 * 6);
         for(std::size_t i=0;i<a.size();i++) {
           miller::Index const& h = a[i];
-          sprintf(mgr.str_end, "%d,%d,%d", h[0], h[1], h[2]);
-          mgr.advance();
+          for(std::size_t j=0;j<3;j++) {
+            sprintf(mgr.str_end, "%d", h[j]);
+            mgr.advance();
+          }
         }
         return boost::python::ref(mgr.finalize());
       }
@@ -207,8 +211,10 @@ namespace cctbx { namespace af {
         a.reserve(mgr.a_capacity);
         for(std::size_t i=0;i<mgr.a_capacity;i++) {
           int h[3];
-          cctbx_assert(sscanf(mgr.str_ptr, "%d,%d,%d", h+0, h+1, h+2) == 3);
-          mgr.advance();
+          for(std::size_t j=0;j<3;j++) {
+            cctbx_assert(sscanf(mgr.str_ptr, "%d", h+j) == 1);
+            mgr.advance();
+          }
           a.push_back(miller::Index(h));
         }
         mgr.finalize();
@@ -230,8 +236,10 @@ namespace cctbx { namespace af {
         getstate_manager mgr(a.size(), 4 * size_per_element);
         for(std::size_t i=0;i<a.size();i++) {
           af::tiny<FloatType, 4> const& c = a[i].array();
-          sprintf(mgr.str_end, fmt, c[0], c[1], c[2], c[3]);
-          mgr.advance();
+          for(std::size_t j=0;j<4;j++) {
+            sprintf(mgr.str_end, fmt, c[j]);
+            mgr.advance();
+          }
         }
         return boost::python::ref(mgr.finalize());
       }
@@ -247,8 +255,10 @@ namespace cctbx { namespace af {
         a.reserve(mgr.a_capacity);
         for(std::size_t i=0;i<mgr.a_capacity;i++) {
           FloatType c[4];
-          cctbx_assert(sscanf(mgr.str_ptr, fmt, c+0, c+1, c+2, c+3) == 4);
-          mgr.advance();
+          for(std::size_t j=0;j<4;j++) {
+            cctbx_assert(sscanf(mgr.str_ptr, fmt, c+j) == 1);
+            mgr.advance();
+          }
           a.push_back(hl_type(c));
         }
         mgr.finalize();
@@ -525,7 +535,7 @@ namespace cctbx { namespace af {
 
   boost::python::ref shared_float_getstate(shared<float> const& a)
   {
-    return num_picklers<float>::getstate(a, 12, "%.6g");
+    return num_picklers<float>::getstate(a, 13, "%.6g");
   }
 
   void shared_float_setstate(shared<float>& a, boost::python::ref state)
@@ -535,7 +545,7 @@ namespace cctbx { namespace af {
 
   boost::python::ref shared_double_getstate(shared<double> const& a)
   {
-    return num_picklers<double>::getstate(a, 18, "%.12g");
+    return num_picklers<double>::getstate(a, 19, "%.12g");
   }
 
   void shared_double_setstate(shared<double>& a, boost::python::ref state)
@@ -546,14 +556,14 @@ namespace cctbx { namespace af {
   boost::python::ref shared_complex_double_getstate(
     shared<std::complex<double> > const& a)
   {
-    return complex_picklers<double>::getstate(a, 18, "%.12g,%.12g");
+    return complex_picklers<double>::getstate(a, 19, "%.12g");
   }
 
   void shared_complex_double_setstate(
     shared<std::complex<double> >& a,
     boost::python::ref state)
   {
-    complex_picklers<double>::setstate(a, state, "%lg,%lg");
+    complex_picklers<double>::setstate(a, state, "%lg");
   }
 
   boost::python::ref shared_miller_index_getstate(
@@ -572,16 +582,14 @@ namespace cctbx { namespace af {
   boost::python::ref shared_hendrickson_lattman_double_getstate(
     shared<hendrickson_lattman<double> > const& a)
   {
-    return hendrickson_lattman_picklers<double>::getstate(
-      a, 18, "%.12g,%.12g,%.12g,%.12g");
+    return hendrickson_lattman_picklers<double>::getstate(a, 19, "%.12g");
   }
 
   void shared_hendrickson_lattman_double_setstate(
     shared<hendrickson_lattman<double> >& a,
     boost::python::ref state)
   {
-    hendrickson_lattman_picklers<double>::setstate(
-      a, state, "%lg,%lg,%lg,%lg");
+    hendrickson_lattman_picklers<double>::setstate(a, state, "%lg");
   }
 
   boost::python::ref shared_xray_scatterer_double_wk1995_getstate(
