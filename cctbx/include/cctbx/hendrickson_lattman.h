@@ -57,6 +57,13 @@ namespace cctbx {
 
       //! Coefficients a,b,c,d as array.
       af::tiny<FloatType, 4> const& array() const { return coeff_; }
+      //! Coefficients a,b,c,d as array.
+      af::tiny<FloatType, 4>&       array()       { return coeff_; }
+
+      //! Direct array access to coefficients a,b,c,d.
+      FloatType const& operator[](std::size_t i) const { return coeff_[i]; }
+      //! Direct array access to coefficients a,b,c,d.
+      FloatType&       operator[](std::size_t i)       { return coeff_[i]; }
 
       //! Individual coefficient a.
       FloatType const& a() const { return coeff_[0]; }
