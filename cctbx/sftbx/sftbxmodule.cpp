@@ -372,6 +372,33 @@ namespace {
     }
   }
 
+  double
+  py_calc_u_extra_4(
+    double max_q, double grid_resolution_factor,
+    double quality_factor,
+    double max_u_extra)
+  {
+    return sftbx::calc_u_extra(
+      max_q, grid_resolution_factor, quality_factor, max_u_extra);
+  }
+
+  double
+  py_calc_u_extra_3(
+    double max_q, double grid_resolution_factor,
+    double quality_factor)
+  {
+    return sftbx::calc_u_extra(
+      max_q, grid_resolution_factor, quality_factor);
+  }
+
+  double
+  py_calc_u_extra_2(
+    double max_q, double grid_resolution_factor)
+  {
+    return sftbx::calc_u_extra(
+      max_q, grid_resolution_factor);
+  }
+
   af::int3
   py_determine_grid(
     const uctbx::UnitCell& ucell,
@@ -411,7 +438,20 @@ namespace {
   }
 
   void
-  py_eliminate_u_extra(
+  py_eliminate_u_extra_5(
+    const uctbx::UnitCell& ucell,
+    double u_extra,
+    const af::shared<Miller::Index>& miller_indices,
+    af::shared<std::complex<double> > structure_factors,
+    double norm)
+  {
+    sftbx::eliminate_u_extra(
+      ucell, u_extra, miller_indices.const_ref(), structure_factors.ref(),
+      norm);
+  }
+
+  void
+  py_eliminate_u_extra_4(
     const uctbx::UnitCell& ucell,
     double u_extra,
     const af::shared<Miller::Index>& miller_indices,
@@ -419,6 +459,34 @@ namespace {
   {
     sftbx::eliminate_u_extra(
       ucell, u_extra, miller_indices.const_ref(), structure_factors.ref());
+  }
+
+  void sampled_model_density_apply_symmetry(
+    sftbx::sampled_model_density<double>& dens,
+    const maps::grid_tags<long>& tags)
+  {
+    dens.apply_symmetry(tags);
+  }
+
+  void sampled_model_density_eliminate_u_extra_and_normalize(
+    const sftbx::sampled_model_density<double>& dens,
+    const af::shared<Miller::Index>& miller_indices,
+    af::shared<std::complex<double> > structure_factors)
+  {
+    dens.eliminate_u_extra_and_normalize(
+      miller_indices.const_ref(), structure_factors.ref());
+  }
+
+  af::shared<double>
+  py_structure_factor_map(
+    const sgtbx::SpaceGroup& sgops,
+    const af::shared<Miller::Index>& h,
+    const af::shared<std::complex<double> >& f,
+    const af::tiny<long, 3>& n_complex)
+  {
+    return af::shared<double>(
+      sftbx::structure_factor_map(
+        sgops, h.const_ref(), f.const_ref(), n_complex).handle());
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
@@ -443,22 +511,6 @@ namespace {
     return result;
   }
 
-  void sampled_model_density_apply_symmetry(
-    sftbx::sampled_model_density<double>& dens,
-    const maps::grid_tags<long>& tags)
-  {
-    dens.apply_symmetry(tags);
-  }
-
-  void sampled_model_density_eliminate_u_extra_and_normalize(
-    const sftbx::sampled_model_density<double>& dens,
-    const af::shared<Miller::Index>& miller_indices,
-    af::shared<std::complex<double> > structure_factors)
-  {
-    dens.eliminate_u_extra_and_normalize(
-      miller_indices.const_ref(), structure_factors.ref());
-  }
-
   tuple
   py_collect_structure_factors(
     const uctbx::UnitCell& ucell,
@@ -475,18 +527,6 @@ namespace {
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);
     return result;
-  }
-
-  af::shared<double>
-  py_structure_factor_map(
-    const sgtbx::SpaceGroup& sgops,
-    const af::shared<Miller::Index>& h,
-    const af::shared<std::complex<double> >& f,
-    const af::tiny<long, 3>& n_complex)
-  {
-    return af::shared<double>(
-      sftbx::structure_factor_map(
-        sgops, h.const_ref(), f.const_ref(), n_complex).handle());
   }
 
   void init_module(python::module_builder& this_module)
@@ -611,8 +651,28 @@ namespace {
       const af::shared<ex_xray_scatterer>&,
       const double&,
       const double&,
+      const double&,
       const af::tiny<long, 3>&,
       const af::tiny<long, 3>&>());
+    py_sampled_model_density.def(constructor<
+      const uctbx::UnitCell&,
+      const af::shared<ex_xray_scatterer>&,
+      const double&,
+      const double&,
+      const double&,
+      const af::tiny<long, 3>&,
+      const af::tiny<long, 3>&,
+      double>());
+    py_sampled_model_density.def(constructor<
+      const uctbx::UnitCell&,
+      const af::shared<ex_xray_scatterer>&,
+      const double&,
+      const double&,
+      const double&,
+      const af::tiny<long, 3>&,
+      const af::tiny<long, 3>&,
+      double,
+      double>());
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::ucell,
                                             "ucell");
@@ -620,17 +680,14 @@ namespace {
       &sftbx::sampled_model_density<double>::max_q,
                                             "max_q");
     py_sampled_model_density.def(
-      &sftbx::sampled_model_density<double>::resolution_factor,
-                                            "resolution_factor");
-    py_sampled_model_density.def(
-      &sftbx::sampled_model_density<double>::quality_factor,
-                                            "quality_factor");
-    py_sampled_model_density.def(
-      &sftbx::sampled_model_density<double>::wing_cutoff,
-                                            "wing_cutoff");
+      &sftbx::sampled_model_density<double>::grid_resolution_factor,
+                                            "grid_resolution_factor");
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::u_extra,
                                             "u_extra");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::wing_cutoff,
+                                            "wing_cutoff");
     py_sampled_model_density.def(
       sampled_model_density_map_as_shared,
                            "map_as_shared");
@@ -677,6 +734,9 @@ namespace {
     this_module.def(flatten, "flatten");
     this_module.def(dT_dX_inplace_frac_as_cart, "dT_dX_inplace_frac_as_cart");
 
+    this_module.def(py_calc_u_extra_4, "calc_u_extra");
+    this_module.def(py_calc_u_extra_3, "calc_u_extra");
+    this_module.def(py_calc_u_extra_2, "calc_u_extra");
     this_module.def(py_determine_grid, "determine_grid");
     this_module.def(py_collect_structure_factors, "collect_structure_factors");
     this_module.def(py_structure_factor_map, "structure_factor_map");
@@ -715,7 +775,8 @@ namespace {
     py_grid_tags.def(grid_tags_verify_1, "verify");
     py_grid_tags.def(grid_tags_verify_2, "verify");
 
-    this_module.def(py_eliminate_u_extra, "eliminate_u_extra");
+    this_module.def(py_eliminate_u_extra_5, "eliminate_u_extra");
+    this_module.def(py_eliminate_u_extra_4, "eliminate_u_extra");
   }
 
 }

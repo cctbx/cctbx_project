@@ -72,7 +72,7 @@ namespace cctbx { namespace sftbx {
         (end of section 1.3.4.4.5).
 
       @param max_q = 1/(d*max)^2
-      @param resolution_factor = 1/(2*sigma)
+      @param grid_resolution_factor = 1/(2*sigma)
       @param quality_factor = Q
       @param max_u_extra is a user-defined upper limit.
 
@@ -84,12 +84,12 @@ namespace cctbx { namespace sftbx {
   FloatType
   calc_u_extra(
     const FloatType& max_q,
-    const FloatType& resolution_factor,
+    const FloatType& grid_resolution_factor,
     const FloatType& quality_factor = 100,
-    const FloatType& max_u_extra = adptbx::B_as_U(100))
+    const FloatType& max_u_extra = adptbx::B_as_U(1000))
   {
     FloatType numerator = adptbx::B_as_U(std::log10(quality_factor));
-    FloatType sigma = 1 / (2 * resolution_factor);
+    FloatType sigma = 1 / (2 * grid_resolution_factor);
     FloatType denominator = sigma * (sigma - 1) * max_q;
     if (max_u_extra * denominator > numerator) {
       return numerator / denominator;
@@ -128,7 +128,7 @@ namespace cctbx { namespace sftbx {
       {}
       FloatType operator()(const FloatType& x)
       {
-        //return std::exp(x); // XXX
+        if (one_over_step_size_ == 0) return std::exp(x);
         FloatType xs = x * one_over_step_size_;
         cctbx_assert(xs >= 0); // Use NDEBUG
         std::size_t i(xs + FloatType(.5));
@@ -174,21 +174,20 @@ namespace cctbx { namespace sftbx {
           sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >& sites,
 #endif
         const FloatType& max_q,
-        const FloatType& resolution_factor,
+        const FloatType& grid_resolution_factor,
+        const FloatType& u_extra,
         const grid_point_type& grid_logical,
         const grid_point_type& grid_physical,
-        const FloatType& quality_factor = 100,
-        const FloatType& wing_cutoff = 0.0001,
+        const FloatType& wing_cutoff = 0.01,
         const FloatType& exp_table_one_over_step_size = -1000)
         : ucell_(ucell),
+          u_extra_(u_extra),
           map_(map_accessor_type(grid_logical, grid_physical)),
           max_q_(max_q),
-          resolution_factor_(resolution_factor),
-          quality_factor_(quality_factor),
+          grid_resolution_factor_(grid_resolution_factor),
           wing_cutoff_(wing_cutoff),
           exp_table_(exp_table_one_over_step_size)
       {
-        u_extra_ = calc_u_extra(max_q, resolution_factor, quality_factor_);
         for(
 #if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
             const XrayScattererType*
@@ -218,15 +217,15 @@ namespace cctbx { namespace sftbx {
           ae.push_back(site->w() * site->CAASF().c() * f);
           be.push_back(-four_pi_sq / b_incl_extra);
           FloatType max_d_sq = calc_max_sampling_distance_sq(ae, be);
-          //XXXstd::cout << "max_d_sq: " << max_d_sq << std::endl;
+          std::cout << "max_d_sq: " << max_d_sq << std::endl;
           //Calculate limits of shell search
           cartesian<FloatType> max_d_cart;
           max_d_cart.fill(std::sqrt(max_d_sq));
-          //XXXstd::cout << "max_d_cart: " << max_d_cart.const_ref() << std::endl;
+          std::cout << "max_d_cart: " << max_d_cart.const_ref() << std::endl;
           fractional<FloatType> max_d_frac = ucell.fractionalize(max_d_cart);
-          //XXXstd::cout << "max_d_frac: " << max_d_frac.const_ref() << std::endl;
+          std::cout << "max_d_frac: " << max_d_frac.const_ref() << std::endl;
           const grid_point_type& grid_logical = map_.accessor().n_logical();
-          //XXXstd::cout << "grid_logical: " << grid_logical.const_ref() << std::endl;
+          std::cout << "grid_logical: " << grid_logical.const_ref() << std::endl;
           af::int3 shell_limit;
           for(i=0;i<3;i++) {
             //Round number down to nearest integer as you will never "make it"
@@ -234,10 +233,10 @@ namespace cctbx { namespace sftbx {
             shell_limit[i] = int(
               std::floor(max_d_frac[i] * grid_logical[i]) + .5);
           }
-          //XXXstd::cout << "shell_limit: " << shell_limit.const_ref() << std::endl;
+          std::cout << "shell_limit: " << shell_limit.const_ref() << std::endl;
           grid_point_type pivot = detail::calc_nearest_grid_point(
             coor_frac, grid_logical);
-          //XXXstd::cout << "pivot: " << pivot.const_ref() << std::endl;
+          std::cout << "pivot: " << pivot.const_ref() << std::endl;
           grid_point_type ip;
           fractional<FloatType> g_frac;
           for(ip[0] = -shell_limit[0]; ip[0] <= shell_limit[0]; ip[0]++) {
@@ -257,17 +256,18 @@ namespace cctbx { namespace sftbx {
               rho_g += ae[i] * exp_table_(be[i] * d_sq);
             }
             //std::cout << "rho_g: " << rho_g << std::endl;
-            map_(-pivot - ip) += rho_g;
+            map_(pivot + ip) += rho_g;
           }}}
         }
       }
 
       const uctbx::UnitCell& ucell() { return ucell_; }
       const FloatType& max_q() const { return max_q_; }
-      const FloatType& resolution_factor() const { return resolution_factor_; }
-      const FloatType& quality_factor() const { return quality_factor_; }
-      const FloatType& wing_cutoff() const { return wing_cutoff_; }
+      const FloatType& grid_resolution_factor() const {
+        return grid_resolution_factor_;
+      }
       const FloatType& u_extra() const { return u_extra_; }
+      const FloatType& wing_cutoff() const { return wing_cutoff_; }
       const map_type& map() const { return map_; }
             map_type& map()       { return map_; }
 
@@ -312,8 +312,7 @@ namespace cctbx { namespace sftbx {
       uctbx::UnitCell ucell_;
       map_type map_;
       FloatType max_q_;
-      FloatType resolution_factor_;
-      FloatType quality_factor_;
+      FloatType grid_resolution_factor_;
       FloatType wing_cutoff_;
       FloatType u_extra_;
       exponent_table<FloatType> exp_table_;
@@ -324,7 +323,7 @@ namespace cctbx { namespace sftbx {
         const af::small<FloatType, 6>& be)
       {
         FloatType rho_origin = af::sum(ae.const_ref());
-        FloatType sampling_unit = resolution_factor_ / std::sqrt(max_q_);
+        FloatType sampling_unit = grid_resolution_factor_ / std::sqrt(max_q_);
         for (std::size_t radius_step = 1;; radius_step++) {
           FloatType d_sq = detail::pow2(radius_step * sampling_unit);
           FloatType rho_g = 0;
@@ -350,7 +349,8 @@ namespace cctbx { namespace sftbx {
     const sgtbx::SpaceGroupInfo& sginfo,
     const FloatType& max_q,
     const af::const_ref<FloatType>& transformed_real_map,
-    const IndexType& n_complex)
+    const IndexType& n_complex,
+    bool conjugate = true)
   {
     cctbx_assert(
          transformed_real_map.size()
@@ -380,13 +380,23 @@ namespace cctbx { namespace sftbx {
         if (asu.isInASU(h)) {
           if (!sginfo.SgOps().isSysAbsent(h)) {
             miller_indices.push_back(h);
-            structure_factors.push_back(complex_map[map_i]);
+            if (!conjugate) {
+              structure_factors.push_back(complex_map[map_i]);
+            }
+            else {
+              structure_factors.push_back(std::conj(complex_map[map_i]));
+            }
           }
         }
         else if (h[2] && asu.isInASU(mh)) {
           if (!sginfo.SgOps().isSysAbsent(h)) {
             miller_indices.push_back(mh);
-            structure_factors.push_back(std::conj(complex_map[map_i]));
+            if (!conjugate) {
+              structure_factors.push_back(std::conj(complex_map[map_i]));
+            }
+            else {
+              structure_factors.push_back(complex_map[map_i]);
+            }
           }
         }
       }
@@ -416,7 +426,8 @@ namespace cctbx { namespace sftbx {
     const sgtbx::SpaceGroup& sgops,
     const af::const_ref<Miller::Index>& miller_indices,
     const af::const_ref<std::complex<FloatType> >& structure_factors,
-    const IndexType& n_complex)
+    const IndexType& n_complex,
+    bool conjugate = true)
   {
     af::versa<std::complex<FloatType>, af::grid<3> > map(n_complex);
     for(std::size_t i=0;i<miller_indices.size();i++) {
@@ -427,11 +438,21 @@ namespace cctbx { namespace sftbx {
         if (h[2] < 0) continue;
         grid_point_type ih = h_as_ih_array(h, n_complex);
         cctbx_assert(ih >= grid_point_element_type(0));
-        map(ih) = semi.ShiftPhase(e, structure_factors(i));
+        if (!conjugate) {
+          map(ih) = semi.ShiftPhase(e, structure_factors(i));
+        }
+        else {
+          map(ih) = std::conj(semi.ShiftPhase(e, structure_factors(i)));
+        }
         if (h[2] == 0 && !semi.isCentric()) {
           grid_point_type ih = h_as_ih_array(-h, n_complex);
           cctbx_assert(ih >= grid_point_element_type(0));
-          map(ih) = std::conj(semi.ShiftPhase(e, structure_factors(i)));
+          if (!conjugate) {
+            map(ih) = std::conj(semi.ShiftPhase(e, structure_factors(i)));
+          }
+          else {
+            map(ih) = semi.ShiftPhase(e, structure_factors(i));
+          }
         }
       }
     }
