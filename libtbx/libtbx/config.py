@@ -67,6 +67,13 @@ class env:
   def current_working_directory_is_libtbx_build(self):
     return os.path.normpath(os.getcwd()) == self.LIBTBX_BUILD
 
+def select_sconsign_dbm_module():
+  if (sys.version_info[0] > 2
+      or (sys.version_info[0] == 2 and sys.version_info[1] > 2)):
+    import dumbdbm
+    return dumbdbm
+  return None # use default
+
 class _build_options:
 
   def set(self, **kw):
