@@ -56,6 +56,7 @@ namespace {
           (scitbx::sym_mat3<double>
             (w_t::*)(scitbx::sym_mat3<double> const&) const)
           &w_t::average_u_star)
+        .def("matrices", &w_t::matrices, ccr())
       ;
     }
   };
