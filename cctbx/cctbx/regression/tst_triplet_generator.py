@@ -64,7 +64,8 @@ def reciprocal_space_squaring(start, selection_fixed, verbose):
   result = tprs.apply_tangent_formula(
     amplitudes=amplitudes,
     phases=input_phases,
-    selection_fixed=selection_fixed)
+    selection_fixed=selection_fixed,
+    use_fixed_only=selection_fixed is not None)
   if (selection_fixed is not None):
     assert result.select(selection_fixed).all_eq(
       input_phases.select(selection_fixed))

@@ -16,9 +16,11 @@
 
 namespace cctbx { namespace dmtbx {
 
+  //! Triplet phase relation h = k + h-k.
   class triplet_phase_relation
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       triplet_phase_relation() {}
 
       //! Not available in Python.
@@ -50,27 +52,40 @@ namespace cctbx { namespace dmtbx {
         ht_sum_ = math::mod_positive(ht_k + ht_hmk, t_den);
       }
 
+      //! Pointer to unique Miller index for k.
       std::size_t
       ik() const { return ik_; }
 
+      //! Friedel flag for k.
       bool
       friedel_flag_k() const { return friedel_flag_k_; }
 
+      //! Pointer to unique Miller index for h-k.
       std::size_t
       ihmk() const { return ihmk_; }
 
+      //! Friedel flag for h-k.
       bool
       friedel_flag_hmk() const { return friedel_flag_hmk_; }
 
+      //! Sum of the phase shifts due non-zero translation parts.
       int
       ht_sum() const { return ht_sum_; }
 
+      //! True if sigma-2 relation.
+      /*! A triplet phase relation h = k + h-k is a "sigma-2" relation
+          only if the three Miller indices involved are not related
+          by symmetry.
+
+          ih is a pointer to the unique Miller index for h.
+       */
       bool
       is_sigma_2(std::size_t ih) const
       {
         return ik_ != ih && ihmk_ != ih && ik_ != ihmk_;
       }
 
+      //! True if ik()==other.ik() and ihmk()==other.ihmk().
       bool is_similar_to(triplet_phase_relation const& other) const
       {
         return ik_ == other.ik_ && ihmk_ == other.ihmk_;
@@ -111,11 +126,14 @@ namespace cctbx { namespace dmtbx {
       int ht_sum_;
   };
 
+  //! Weighted triplet phase relation.
   class weighted_triplet_phase_relation : public triplet_phase_relation
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       weighted_triplet_phase_relation() {}
 
+      //! Not available in Python.
       weighted_triplet_phase_relation(
         triplet_phase_relation const& tpr,
         std::size_t weight)
@@ -124,6 +142,7 @@ namespace cctbx { namespace dmtbx {
         weight_(weight)
       {}
 
+      //! Number of times the triplet occurs.
       std::size_t
       weight() const { return weight_; }
 

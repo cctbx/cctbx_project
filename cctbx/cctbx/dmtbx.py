@@ -25,14 +25,12 @@ class _weighted_triplet_phase_relation(
 
 class _triplet_generator(injector, triplet_generator):
 
-  def apply_tangent_formula(self, amplitudes,
-                                  phases,
+  def apply_tangent_formula(self, amplitudes, phases,
                                   selection_fixed=None,
-                                  extrapolation_order=None,
+                                  use_fixed_only=00000,
                                   reuse_results=00000,
                                   sum_epsilon=1.e-10):
     if (selection_fixed is None): selection_fixed = flex.bool()
-    if (extrapolation_order is None): extrapolation_order = flex.size_t()
-    return triplet_generator.raw_apply_tangent_formula(self,
-      amplitudes, phases, selection_fixed, extrapolation_order, reuse_results,
-      sum_epsilon)
+    return triplet_generator.raw_apply_tangent_formula(
+      self, amplitudes, phases,
+      selection_fixed, use_fixed_only, reuse_results, sum_epsilon)
