@@ -161,7 +161,7 @@ namespace scitbx {
     mat_ref<NumType, AccessorType> const& rhs)
   {
     if (!lhs.is_same_grid(rhs)) return false;
-    return !af::order(lhs, rhs);
+    return lhs.all_eq(rhs);
   }
 
   //! Test equality. True if all elements of lhs == rhs.
@@ -172,7 +172,7 @@ namespace scitbx {
     mat_ref<NumType, AccessorType> const& lhs,
     NumType const& rhs)
   {
-    return !af::order(lhs, rhs);
+    return lhs.all_eq(rhs);
   }
 
   //! Test equality. True if all elements of rhs == lhs.
@@ -183,7 +183,7 @@ namespace scitbx {
     NumType const& lhs,
     mat_ref<NumType, AccessorType> const& rhs)
   {
-    return !af::order(lhs, rhs);
+    return rhs.all_eq(lhs);
   }
 
   //! Test inequality.

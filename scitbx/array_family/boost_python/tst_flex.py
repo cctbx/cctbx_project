@@ -243,15 +243,26 @@ def exercise_operators():
   assert tuple(a >= b) == (1, 0)
   assert tuple(a == 9) == (0, 1)
   assert tuple(a.as_double()) == (4, 9)
+  assert a.all_eq(a)
+  assert not a.all_eq(b)
+  assert not a.all_eq(4)
+  assert a.all_ne(b)
+  assert not a.all_ne(a)
+  assert not a.all_ne(4)
+  assert a.all_ne(5)
+  assert not a.all_lt(b)
+  assert a.all_lt(10)
+  assert not a.all_gt(b)
+  assert a.all_gt(3)
+  assert not a.all_le(b)
+  assert a.all_le(9)
+  assert not a.all_ge(b)
+  assert a.all_ge(2)
   assert flex.order(a, b) == cmp(tuple(a), tuple(b))
   assert flex.order(b, a) == cmp(tuple(b), tuple(a))
   assert flex.order(a, a) == 0
   b = a.deep_copy()
   assert flex.order(a, b) == 0
-  assert flex.order(a, 4) == cmp(list(a), [4] * a.size())
-  assert flex.order(a, 5) == cmp(list(a), [5] * a.size())
-  a = flex.int((1, 1))
-  assert flex.order(a, 1) == 0
 
 def exercise_bool_inplace_operators():
   a = flex.bool((0, 1, 0, 1))

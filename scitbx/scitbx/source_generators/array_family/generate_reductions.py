@@ -43,26 +43,6 @@ def generate_order(f, subs):
   {
     return order(a1.const_ref(), a2.const_ref());
   }
-
-  template <typename ElementType${templ_decl_2}>
-  int
-  inline
-  order(
-    ${array_type_plain}<ElementType${templ_inst_2}> const& a1,
-    ElementType const& a2)
-  {
-    return order(a1.const_ref(), a2);
-  }
-
-  template <typename ElementType${templ_decl_2}>
-  int
-  inline
-  order(
-    ElementType const& a1,
-    ${array_type_plain}<ElementType${templ_inst_2}> const& a2)
-  {
-    return order(a1, a2.const_ref());
-  }
 """)
 
 def generate_max_index_etc(f, subs):

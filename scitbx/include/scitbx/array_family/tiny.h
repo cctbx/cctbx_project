@@ -22,15 +22,19 @@ namespace scitbx { namespace af {
     public:
       SCITBX_ARRAY_FAMILY_TYPEDEFS
 
+      typedef tiny_plain<ElementType, N> base_class;
+
       tiny() {}
 
       template <typename OtherArrayType>
       tiny(array_adaptor<OtherArrayType> const& a_a)
-      : tiny_plain<ElementType, N>(a_a)
+      : base_class(a_a)
       {}
 
       SCITBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny)
       SCITBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny)
+
+#     include <scitbx/array_family/detail/reducing_boolean_mem_fun.h>
   };
 
 }} // namespace scitbx::af

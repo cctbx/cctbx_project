@@ -35,32 +35,6 @@ namespace scitbx { namespace af {
   }
 
   template <typename ElementType, typename AccessorType>
-  int
-  order(
-    const_ref<ElementType, AccessorType> const& a1,
-    ElementType const& a2)
-  {
-    for(std::size_t i=0;i<a1.size();i++) {
-      if (a1[i] < a2) return -1;
-      if (a2 < a1[i]) return 1;
-    }
-    return 0;
-  }
-
-  template <typename ElementType, typename AccessorType>
-  int
-  order(
-    ElementType const& a1,
-    const_ref<ElementType, AccessorType> const& a2)
-  {
-    for(std::size_t i=0;i<a2.size();i++) {
-      if (a1 < a2[i]) return -1;
-      if (a2[i] < a1) return 1;
-    }
-    return 0;
-  }
-
-  template <typename ElementType, typename AccessorType>
   std::size_t
   max_index(const_ref<ElementType, AccessorType> const& a)
   {

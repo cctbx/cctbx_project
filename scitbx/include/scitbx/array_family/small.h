@@ -64,6 +64,8 @@ namespace scitbx { namespace af {
       small(array_adaptor<OtherArrayType> const& a_a)
         : base_class(a_a)
       {}
+
+#     include <scitbx/array_family/detail/reducing_boolean_mem_fun.h>
   };
 
 }} // namespace scitbx::af
