@@ -32,10 +32,23 @@ def collect_objects(
       start_word=None,
       converter_cache=None):
   if (converter_cache is None): converter_cache = {}
+  prev_line_number = 0
   active_definition = None
   while True:
     lead_word = word_iterator.try_pop_unquoted()
     if (lead_word is None): break
+    if (lead_word.value == "#phil"
+        and lead_word.line_number != prev_line_number):
+      word = word_iterator.pop_unquoted()
+      if (word.value == "__END__"): break
+      if (word.value == "__ON__"): continue
+      if (word.value != "__OFF__"):
+        raise RuntimeError("Unknown: %s %s%s" % (
+          lead_word.value, word.value, word.where_str()))
+      if (word_iterator.scan_for_start(
+            intro=lead_word.value, followups=["__END__", "__ON__"]) == 0):
+        break
+      continue
     if (stop_token is not None and lead_word.value == stop_token):
       return
     if (lead_word.value == "{"):
@@ -46,6 +59,7 @@ def collect_objects(
       is_disabled = True
     else:
       is_disabled = False
+    prev_line_number = lead_word.line_number
     word = word_iterator.pop()
     if (word.quote_token is None
         and (word.value == "{"

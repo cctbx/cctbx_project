@@ -33,6 +33,45 @@ class character_iterator:
       if (result == "\n"): self.line_number += 1
     return result
 
+  def scan_for_start(self, intro, followups):
+    while True:
+      if (self.i_char == len(self.input_string)): return 0
+      if (self.input_string[self.i_char] != "\n"):
+        self.i_char += 1
+      else:
+        self.line_number += 1
+        self.i_char += 1
+        if (self.i_char == len(self.input_string)): return 0
+        if (self.input_string.find(
+              intro, self.i_char, self.i_char+len(intro)) != self.i_char):
+          self.i_char += 1
+        else:
+          self.i_char += len(intro)
+          while True:
+            if (self.i_char == len(self.input_string)): return 0
+            if (self.input_string[self.i_char].isspace()): break
+            self.i_char += 1
+          while True:
+            if (self.i_char == len(self.input_string)): return 0
+            if (not self.input_string[self.i_char].isspace()): break
+            self.i_char += 1
+          for i_followup,followup in enumerate(followups):
+            if (self.input_string.find(
+                  followup,
+                  self.i_char,
+                  self.i_char+len(followup)) == self.i_char):
+              self.i_char += len(followup)
+              while True:
+                if (self.i_char == len(self.input_string)): return i_followup
+                c = self.input_string[self.i_char]
+                self.i_char += 1
+                if (c == "\n"):
+                  self.line_number += 1
+                  return i_followup
+                if (not c.isspace()): break
+              break
+    return 0
+
 def where(source_info, line_number):
   result = []
   if (source_info is not None):
@@ -224,3 +263,6 @@ class word_iterator:
 
   def backup(self):
     self.char_iter.restore_backup()
+
+  def scan_for_start(self, intro, followups):
+    self.char_iter.scan_for_start(intro, followups)
