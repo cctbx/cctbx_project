@@ -25,11 +25,11 @@ class check_is_niggli_cell(reduction_base.gruber_parameterization):
       if (eq(b, c)):
         if (gt(e, f)): return 00000
       if (eq(d, b)):
-        if (gt(f, 2*e)): return 00000
+        if (gt(f, e+e)): return 00000
       if (eq(e, a)):
-        if (gt(f, 2*d)): return 00000
+        if (gt(f, d+d)): return 00000
       if (eq(f, a)):
-        if (gt(e, 2*d)): return 00000
+        if (gt(e, d+d)): return 00000
     else:
       if (eq(a, b)):
         if (gt(abs(d), abs(e))): return 00000
@@ -54,6 +54,7 @@ def reduce(inp):
   red = krivy_gruber_1976.reduction(inp, relative_epsilon=relative_epsilon)
   time_reduce.stop()
   assert red.is_niggli_cell()
+  assert inp.change_basis(red.r_inv().elems).is_similar_to(red.as_unit_cell())
   if (relative_epsilon is None):
     assert check_is_niggli_cell(red.as_unit_cell()).itva_is_niggli_cell()
   return red
@@ -85,18 +86,18 @@ def exercise_gruber_1973_example():
   red = reduce(start)
   assert red.as_unit_cell().is_similar_to(niggli)
   assert red.r_inv().elems == (-1, 5, 9, 0, -1, -1, 0, 0, 1)
-  assert red.n_iterations() == 19
+  assert red.n_iterations() == 29
   red = reduce(buerger)
   assert red.as_unit_cell().is_similar_to(niggli)
   assert red.r_inv().elems == (-1, 0, 0, 0, 1, 1, 0, 1, 0)
-  assert red.n_iterations() == 3
+  assert red.n_iterations() == 4
   red = reduce(niggli)
   assert red.as_unit_cell().is_similar_to(niggli)
   assert red.r_inv().elems == (1, 0, 0, 0, 1, 0, 0, 0, 1)
   assert red.n_iterations() == 1
   try:
     red = krivy_gruber_1976.reduction(buerger, iteration_limit=1)
-  except krivy_gruber_1976.iteration_limit_exceeded, e:
+  except krivy_gruber_1976.iteration_limit_exceeded:
     pass
   else:
     raise RuntimeError, "Exception expected."
@@ -107,7 +108,7 @@ def exercise_gruber_1973_example():
   assert niggli.is_buerger_cell()
   assert niggli.is_niggli_cell()
   red = start.niggli_reduction()
-  assert red.n_iterations() == 19
+  assert red.n_iterations() == 29
   assert start.niggli_cell().is_similar_to(niggli)
 
 def exercise_krivy_gruber_1976_example():
@@ -127,7 +128,7 @@ def exercise_krivy_gruber_1976_example():
   red = reduce(start)
   assert red.as_unit_cell().is_similar_to(niggli)
   assert red.r_inv().elems == (0, 1, 2, 0, 0, 1, 1, 1, 2)
-  assert red.n_iterations() == 6
+  assert red.n_iterations() == 11
 
 def exercise_bravais_plus():
   for pg in ("1", "2", "2 2", "4", "3*", "6", "2 2 3"):
@@ -307,12 +308,10 @@ def exercise_extreme():
   uc = uctbx.unit_cell((
     69.059014477286041, 48.674386086971339, 0.0048194797114296736,
     89.995145576185806, 89.999840576946085, 99.484656090034875))
-  try:
-    uc.niggli_reduction()
-  except krivy_gruber_1976.extreme_unit_cell:
-    pass
-  else:
-    raise RuntimeError, "Exception expected."
+  red = uc.niggli_reduction()
+  assert red.as_unit_cell().is_similar_to(uctbx.unit_cell((
+    0.00481948, 48.6744, 69.059,
+    80.5153, 89.9962, 89.9951)))
   uc = uctbx.unit_cell((
     80.816186392181365, 81.021289502648813, 140.6784408482614,
     29.932540128999769, 89.92047105556459, 119.85301114570319))
