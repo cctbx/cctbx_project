@@ -3,7 +3,7 @@ from cctbx import xray
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-import sys, os
+import sys
 
 def exercise(target_functor, space_group_info, anomalous_flag,
              minimization_options,
@@ -69,5 +69,3 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])

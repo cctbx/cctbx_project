@@ -6,7 +6,7 @@ from cctbx.array_family import flex
 from cctbx.development import debug_utils
 from cctbx.development import random_structure
 from scitbx.python_utils.misc import adopt_init_args
-import sys, os
+import sys
 
 class k_b_scaling_minimizer:
 
@@ -133,5 +133,3 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])

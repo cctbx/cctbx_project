@@ -7,7 +7,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
-import sys, os
+import sys
 
 def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
                     symmetry_flags, gridding, grid_tags, verbose):
@@ -212,5 +212,3 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
