@@ -76,15 +76,14 @@ class write_makefiles:
       self.make_test()
 
     doto = self.format_objects(("",))
-    print r"""
-CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \
-        $(CCTBXINC) $(BOOSTINC) $(PYINC)
-
-.SUFFIXES: %s .cpp
-
-.cpp%s:
-	$(CPP) $(CPPOPTS) -c $*.cpp
-""" % (doto, doto)
+    print "CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \\"
+    print "        $(CCTBXINC) $(BOOSTINC) $(PYINC)"
+    print
+    print ".SUFFIXES: %s .cpp" % (doto,)
+    print
+    print ".cpp%s:" % (doto,)
+    print "\t$(CPP) $(CPPOPTS) -c $*.cpp"
+    print
 
     self.make_clean()
 

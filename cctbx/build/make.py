@@ -25,6 +25,8 @@ def read_configuration(path_root = None):
     if (len(cf[0]) != 0 and cf[0][0] != "#"): break
     del cf[0] # remove leading comment lines
   if (path_root):
+    path_root = os.path.normpath(path_root)
+    while (path_root[-1] == os.sep): path_root = path_root[:-1]
     expand_cf(cf, "@(ROOT)", path_root, normpath = 1)
   expand_cf(cf, "@(CWD)", os.getcwd(), normpath = 1)
   return cf
