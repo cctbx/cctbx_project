@@ -63,8 +63,8 @@ class web_to_models:
           site = self.get_unit_cell().fractionalize(site)
         self.positions.append(emma.position(label, site))
     else:
-      from cctbx.macro_mol import cns_sdb_reader
-      self.sdb_files = cns_sdb_reader.multi_sdb_parser(coordinates)
+      from iotbx.cns import sdb_reader
+      self.sdb_files = sdb_reader.multi_sdb_parser(coordinates)
     self.i_next_model = 0
 
   def get_unit_cell(self, other_unit_cell=None):

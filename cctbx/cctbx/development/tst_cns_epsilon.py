@@ -3,7 +3,7 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx.development import debug_utils
 from cctbx.development import make_cns_input
-from cctbx.macro_mol import cns_input
+from iotbx.cns import reflection_reader
 
 def verify(crystal_symmetry, anomalous_flag, reflection_file):
   assert reflection_file.anomalous == anomalous_flag
@@ -97,7 +97,7 @@ def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
   except: pass
   os.system("cns < tmp.cns > tmp.out")
   f = open("tmp.hkl", "r")
-  reflection_file = cns_input.cns_reflection_file(f)
+  reflection_file = reflection_reader.cns_reflection_file(f)
   f.close()
   if (0 or verbose):
     print reflection_file.show_summary()

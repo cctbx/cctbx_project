@@ -5,7 +5,7 @@ from cctbx import miller
 from cctbx.development import debug_utils
 from cctbx.development import make_cns_input
 from cctbx.development import random_structure
-from cctbx.macro_mol import cns_input
+from iotbx.cns import reflection_reader
 from scitbx.python_utils.complex_math import abs_arg
 
 def generate_random_hl(miller_set, coeff_range=100):
@@ -91,7 +91,7 @@ def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
   except: pass
   os.system("cns < tmp.cns > tmp.out")
   f = open("tmp.hkl", "r")
-  reflection_file = cns_input.cns_reflection_file(f)
+  reflection_file = reflection_reader.cns_reflection_file(f)
   f.close()
   if (0 or verbose):
     print reflection_file.show_summary()

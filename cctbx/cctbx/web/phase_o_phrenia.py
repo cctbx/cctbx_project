@@ -1,5 +1,5 @@
 from cctbx.examples import phase_o_phrenia
-from cctbx.macro_mol import cns_sdb_reader
+from iotbx.cns import sdb_reader
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -23,7 +23,7 @@ def interpret_form_data(form):
   return inp
 
 def sdb_files_as_xray_structures(lines, unit_cell, space_group_info, min_distance_sym_equiv):
-  sdb_files = cns_sdb_reader.multi_sdb_parser(lines)
+  sdb_files = sdb_reader.multi_sdb_parser(lines)
   xray_structures = []
   for sdb in sdb_files:
     if (unit_cell != None): sdb.unit_cell = unit_cell
