@@ -155,6 +155,64 @@ namespace {
     return result;
   }
 
+  af::shared<double>
+  join_sets_plus(
+    join_sets const& js, af::shared<double> data0, af::shared<double> data1)
+  {
+    return js.plus(data0, data1);
+  }
+  af::shared<double>
+  join_sets_minus(
+    join_sets const& js, af::shared<double> data0, af::shared<double> data1)
+  {
+    return js.minus(data0, data1);
+  }
+  af::shared<double>
+  join_sets_multiplies(
+    join_sets const& js, af::shared<double> data0, af::shared<double> data1)
+  {
+    return js.multiplies(data0, data1);
+  }
+  af::shared<double>
+  join_sets_divides(
+    join_sets const& js, af::shared<double> data0, af::shared<double> data1)
+  {
+    return js.divides(data0, data1);
+  }
+
+  af::shared<double>
+  join_sets_additive_sigmas(
+    join_sets const& js,
+    af::shared<double> sigmas0,
+    af::shared<double> sigmas1)
+  {
+    return js.additive_sigmas(sigmas0, sigmas1);
+  }
+
+  af::shared<double>
+  join_bijvoet_mates_minus(
+    join_bijvoet_mates const& jbm,
+    af::shared<double> data)
+  {
+    return jbm.minus(data);
+  }
+
+  af::shared<double>
+  join_bijvoet_mates_additive_sigmas(
+    join_bijvoet_mates const& jbm,
+    af::shared<double> sigmas)
+  {
+    return jbm.additive_sigmas(sigmas);
+  }
+
+  af::shared<double>
+  join_bijvoet_mates_average(
+    join_bijvoet_mates const& jbm,
+    af::shared<double> sigmas)
+  {
+    return jbm.average(sigmas);
+  }
+
   void
   py_expand_to_p1_4(
     sgtbx::SpaceGroup const& SgOps,
@@ -399,6 +457,12 @@ namespace {
     py_join_sets.def(&join_sets::pairs, "pairs");
     py_join_sets.def(&join_sets::singles, "singles");
     py_join_sets.def(&join_sets::have_singles, "have_singles");
+    py_join_sets.def(&join_sets::select, "select");
+    py_join_sets.def(join_sets_plus, "plus");
+    py_join_sets.def(join_sets_minus, "minus");
+    py_join_sets.def(join_sets_multiplies, "multiplies");
+    py_join_sets.def(join_sets_divides, "divides");
+    py_join_sets.def(join_sets_additive_sigmas, "additive_sigmas");
 
     py_join_bijvoet_mates.def(constructor<>());
     py_join_bijvoet_mates.def(constructor<
@@ -412,6 +476,10 @@ namespace {
     py_join_bijvoet_mates.def(
       &join_bijvoet_mates::have_singles, "have_singles");
     py_join_bijvoet_mates.def(&join_bijvoet_mates::select, "select");
+    py_join_bijvoet_mates.def(join_bijvoet_mates_minus, "minus");
+    py_join_bijvoet_mates.def(
+       join_bijvoet_mates_additive_sigmas, "additive_sigmas");
+    py_join_bijvoet_mates.def(join_bijvoet_mates_average, "average");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");
