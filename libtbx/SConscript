@@ -30,6 +30,9 @@ def set_python_include_and_libs(env_etc):
     env_etc.python_framework = "/".join(
       env_etc.python_include.split("/")[:-2] + ["Python"])
 
+def darwin_framework_path():
+  return os.sep.join(os.path.realpath(sys.executable).split(os.sep)[:-5])
+
 env_etc = empty()
 env_etc.libtbx_env = libtbx.config.env()
 env_etc.libtbx_env.write_api_file()
@@ -328,6 +331,7 @@ else:
     env_etc.shlinkflags_bpl = [
       "-w", # for some odd reason -bundle cannot be the first option
       "-bundle",
+      "-F"+darwin_framework_path(),
       "-framework", "Python"]
   elif (env_etc.compiler == "darwin_c++"):
     env_etc.static_libraries = 1
@@ -368,6 +372,7 @@ else:
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
       "-bundle",
+      "-F"+darwin_framework_path(),
       "-framework", "Python"]
   else:
     sys.tracebacklimit = 0
