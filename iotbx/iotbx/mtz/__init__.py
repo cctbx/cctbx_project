@@ -256,7 +256,7 @@ class _object(boost.python.injector, ext.object):
           for fields in fields_list:
             print >> out, format % tuple(fields)
 
-  def change_basis_in_place(self, cb_op):
+  def change_basis_in_place(self, cb_op, new_space_group_info=None):
     # force update if column_type_legend is changed
     assert len(column_type_legend) == 16 # programmer alert
     for column_type in self.column_types():
@@ -268,12 +268,13 @@ class _object(boost.python.injector, ext.object):
           "In-place transformation of Hendrickson-Lattman coefficients"
           " not implemented.")
     self.replace_miller_indices(cb_op.apply(self.extract_miller_indices()))
-    space_group_info = self.space_group_info().change_basis(cb_op)
+    if (new_space_group_info is None):
+      new_space_group_info = self.space_group_info().change_basis(cb_op)
     self.set_space_group_info(space_group_info=space_group_info)
     for crystal in self.crystals():
       crystal_symmetry = cctbx.crystal.symmetry(
         unit_cell=cb_op.apply(crystal.unit_cell()),
-        space_group_info=space_group_info)
+        space_group_info=new_space_group_info)
       crystal.set_unit_cell_parameters(
         crystal_symmetry.unit_cell().parameters())
 
