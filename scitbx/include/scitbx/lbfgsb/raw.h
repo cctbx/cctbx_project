@@ -127,11 +127,12 @@ namespace raw {
   }
 
   //! Current user time for the process.
+  template <typename FloatType>
   void
-  timer(double& ttime)
+  timer(FloatType& ttime)
   {
     static boost::timer timer_;
-    ttime = timer_.elapsed();
+    ttime = static_cast<FloatType>(timer_.elapsed());
   }
 
   //! Emulation of write statement with implicit loop.
@@ -163,12 +164,13 @@ namespace raw {
   /*! uses unrolled loops for increments equal to one.
       jack dongarra, linpack, 3/11/78.
    */
+  template <typename FloatType>
   void
   dcopy(
     int const& n,
-    ref1<double> const& dx,
+    ref1<FloatType> const& dx,
     int const& incx,
-    ref1<double> const& dy,
+    ref1<FloatType> const& dy,
     int const& incy)
   {
     if(n<=0)return;
@@ -214,11 +216,12 @@ namespace raw {
       jack dongarra, linpack, 3/11/78.
       modified 3/93 to return if incx .le. 0.
    */
+  template <typename FloatType>
   void
   dscal(
     int const& n,
-    double const& da,
-    ref1<double> const& dx,
+    FloatType const& da,
+    ref1<FloatType> const& dx,
     int const& incx)
   {
     if (n<=0 || incx<=0) return;
@@ -273,20 +276,21 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   projgr(
     int const& n,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
-    ref1<double> const& x,
-    ref1<double> const& g,
-    double& sbgnrm)
+    ref1<FloatType> const& x,
+    ref1<FloatType> const& g,
+    FloatType& sbgnrm)
   {
-    double zero = 0;
+    FloatType zero = 0;
     sbgnrm = zero;
     for(int i=1;i<=n;i++) {
-      double gi = g(i);
+      FloatType gi = g(i);
       if (nbd(i) != 0) {
         if (gi < zero) {
           if (nbd(i) >= 2) gi = std::max((x(i)-u(i)),gi);
@@ -354,18 +358,19 @@ namespace raw {
       blas daxpy,ddot
       fortran mod
    */
+  template <typename FloatType>
   void
   dtrsl(
-    ref2<double> const& t,
+    ref2<FloatType> const& t,
     int const& ldt,
     int const& n,
-    ref1<double> const& b,
+    ref1<FloatType> const& b,
     int const& job,
     int& info)
   {
     SCITBX_ASSERT(t.size() == ldt*n);
     SCITBX_ASSERT(b.size() == n);
-    double zero = 0;
+    FloatType zero = 0;
     // check for zero diagonal elements.
     for(info=1;info<=n;info++) {
       if (t(info,info) == zero) return;
@@ -380,7 +385,7 @@ namespace raw {
       b(1) = b(1)/t(1,1);
       if (n < 2) return;
       for(int j=2;j<=n;j++) {
-        double temp = -b(j-1);
+        FloatType temp = -b(j-1);
         daxpy(n-j+1,temp,&t(j,j-1),&b(j));
         b(j) = b(j)/t(j,j);
       }
@@ -391,7 +396,7 @@ namespace raw {
       if (n < 2) return;
       for(int jj=2;jj<=n;jj++) {
         int j = n - jj + 1;
-        double temp = -b(j+1);
+        FloatType temp = -b(j+1);
         daxpy(j,temp,&t(1,j+1),&b(1));
         b(j) = b(j)/t(j,j);
       }
@@ -470,14 +475,15 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   bmv(
     int const& m,
-    ref2<double> const& sy,
-    ref2<double> const& wt,
+    ref2<FloatType> const& sy,
+    ref2<FloatType> const& wt,
     int const& col,
-    ref1<double> const& v,
-    ref1<double> const& p,
+    ref1<FloatType> const& v,
+    ref1<FloatType> const& p,
     int& info)
   {
     SCITBX_ASSERT(sy.size() == m*m);
@@ -491,7 +497,7 @@ namespace raw {
     p(col + 1) = v(col + 1);
     for(int i=2;i<=col;i++) {
       int i2 = col + i;
-      double sum = 0;
+      FloatType sum = 0;
       for(int k=1;k<=i-1;k++) {
         sum = sum + sy(i,k)*v(k)/sy(k,k);
       }
@@ -515,7 +521,7 @@ namespace raw {
       p(i) = -p(i)/std::sqrt(sy(i,i));
     }
     for(int i=1;i<=col;i++) {
-      double sum = 0;
+      FloatType sum = 0;
       for(int k=i+1;k<=col;k++) {
         sum = sum + sy(k,i)*p(col+k)/sy(i,i);
       }
@@ -560,10 +566,11 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   hpsolb(
     int const& n,
-    ref1<double> const& t,
+    ref1<FloatType> const& t,
     ref1<int> const& iorder,
     int const& iheap)
   {
@@ -572,7 +579,7 @@ namespace raw {
     if (iheap == 0) {
       // Rearrange the elements t(1) to t(n) to form a heap.
       for(int k=2;k<=n;k++) {
-        double ddum  = t(k);
+        FloatType ddum  = t(k);
         int indxin = iorder(k);
         // Add ddum to the heap.
         int i = k;
@@ -595,9 +602,9 @@ namespace raw {
     // elements 1 to n-1 of t.
     if (n > 1) {
       int i = 1;
-      double out = t(1);
+      FloatType out = t(1);
       int indxou = iorder(1);
-      double ddum = t(n);
+      FloatType ddum = t(n);
       int indxin = iorder(n);
       // Restore the heap
       lbl_30:
@@ -632,13 +639,14 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   errclb(
     int const& n,
     int const& m,
-    double const& factr,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    FloatType const& factr,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
     std::string& task,
     int& info,
@@ -647,7 +655,7 @@ namespace raw {
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
     SCITBX_ASSERT(nbd.size() == n);
-    double zero = 0;
+    FloatType zero = 0;
     // Check the input arguments for errors.
     if (n <= 0) task = "ERROR: N .LE. 0";
     if (m <= 0) task = "ERROR: M .LE. 0";
@@ -686,16 +694,17 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   prn1lb(
     int const& n,
     int const& m,
-    ref1<double> const& l,
-    ref1<double> const& u,
-    ref1<double> const& x,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
+    ref1<FloatType> const& x,
     int const& iprint,
     int const& itfile,
-    double const& epsmch)
+    FloatType const& epsmch)
   {
     if (iprint >= 0) {
       printf("RUNNING THE L-BFGS-B CODE\n");
@@ -753,24 +762,25 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   prn2lb(
     int const& n,
-    ref1<double> const& x,
-    double const& f,
-    ref1<double> const& g,
+    ref1<FloatType> const& x,
+    FloatType const& f,
+    ref1<FloatType> const& g,
     int const& iprint,
     int const& itfile,
     int const& iter,
     int const& nfgv,
     int const& nact,
-    double const& sbgnrm,
+    FloatType const& sbgnrm,
     int const& nint,
     std::string& word,
     int const& iword,
     int const& iback,
-    double const& stp,
-    double const& xstep)
+    FloatType const& stp,
+    FloatType const& xstep)
   {
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(g.size() == n);
@@ -829,11 +839,12 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   prn3lb(
     int const& n,
-    ref1<double> const& x,
-    double const& f,
+    ref1<FloatType> const& x,
+    FloatType const& f,
     std::string const& task,
     int const& iprint,
     int const& info,
@@ -843,17 +854,17 @@ namespace raw {
     int const& nintol,
     int const& nskip,
     int const& nact,
-    double const& sbgnrm,
-    double const& time,
+    FloatType const& sbgnrm,
+    FloatType const& time,
     int const& nint,
     std::string const& word,
     int const& iback,
-    double const& stp,
-    double const& xstep,
+    FloatType const& stp,
+    FloatType const& xstep,
     int const& k,
-    double const& cachyt,
-    double const& sbtime,
-    double const& lnscht)
+    FloatType const& cachyt,
+    FloatType const& sbtime,
+    FloatType const& lnscht)
   {
     static const char* fmt_3002 =
       " %4d %4d %5d %5d  %-3.3s %4d  %7.1E  %7.1E      -          -\n";
@@ -978,20 +989,21 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   active(
     int const& n,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
-    ref1<double> const& x,
+    ref1<FloatType> const& x,
     ref1<int> const& iwhere,
     int const& iprint,
     bool& prjctd,
     bool& cnstnd,
     bool& boxed)
   {
-    double zero = 0;
+    FloatType zero = 0;
     // Initialize nbdd, prjctd, cnstnd and boxed.
     int nbdd = 0;
     prjctd = false;
@@ -1221,38 +1233,39 @@ namespace raw {
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
 
    */
+  template <typename FloatType>
   void
   cauchy(
     int const& n,
-    ref1<double> const& x,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    ref1<FloatType> const& x,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
-    ref1<double> const& g,
+    ref1<FloatType> const& g,
     ref1<int> const& iorder,
     ref1<int> const& iwhere,
-    ref1<double> const& t,
-    ref1<double> const& d,
-    ref1<double> const& xcp,
+    ref1<FloatType> const& t,
+    ref1<FloatType> const& d,
+    ref1<FloatType> const& xcp,
     int const& m,
-    ref2<double> const& wy,
-    ref2<double> const& ws,
-    ref2<double> const& sy,
-    ref2<double> const& wt,
-    double const& theta,
+    ref2<FloatType> const& wy,
+    ref2<FloatType> const& ws,
+    ref2<FloatType> const& sy,
+    ref2<FloatType> const& wt,
+    FloatType const& theta,
     int const& col,
     int const& head,
-    ref1<double> const& p,
-    ref1<double> const& c,
-    ref1<double> const& wbp,
-    ref1<double> const& v,
+    ref1<FloatType> const& p,
+    ref1<FloatType> const& c,
+    ref1<FloatType> const& wbp,
+    ref1<FloatType> const& v,
     int& nint,
-    ref1<double> const& sg,
-    ref1<double> const& yg,
+    ref1<FloatType> const& sg,
+    ref1<FloatType> const& yg,
     int const& iprint,
-    double const& sbgnrm,
+    FloatType const& sbgnrm,
     int& info,
-    double const& epsmch)
+    FloatType const& epsmch)
   {
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
@@ -1274,8 +1287,8 @@ namespace raw {
     SCITBX_ASSERT(v.size() == 2*m);
     SCITBX_ASSERT(sg.size() == m);
     SCITBX_ASSERT(yg.size() == m);
-    double one = 1;
-    double zero = 0;
+    FloatType one = 1;
+    FloatType zero = 0;
     // Check the status of the variables, reset iwhere(i) if necessary;
     // the Cauchy direction d and the breakpoints t; initialize
     // derivative f1 and the vector p = W'd (for theta = 1).
@@ -1290,9 +1303,9 @@ namespace raw {
     int nfree = n + 1;
     int nbreak = 0;
     int ibkmin = 0;
-    double bkmin = zero;
+    FloatType bkmin = zero;
     int col2 = 2*col;
-    double f1 = zero;
+    FloatType f1 = zero;
     if (iprint >= 99) {
       printf("\n---------------- CAUCHY entered-------------------\n");
     }
@@ -1304,9 +1317,9 @@ namespace raw {
     // status and its breakpoint, and update p accordingly.
     // Smallest breakpoint is identified.
     for(int i=1;i<=n;i++) {
-      double neggi = -g(i);
-      double tl; // uninitialized
-      double tu; // uninitialized
+      FloatType neggi = -g(i);
+      FloatType tl; // uninitialized
+      FloatType tu; // uninitialized
       if (iwhere(i) != 3 && iwhere(i) != -1) {
         // if x(i) is not a constant and has bounds,
         // compute the difference between x(i) and its bounds.
@@ -1393,15 +1406,15 @@ namespace raw {
       c(j) = zero;
     }
     // Initialize derivative f2.
-    double f2 = -theta*f1;
-    double f2_org = f2;
+    FloatType f2 = -theta*f1;
+    FloatType f2_org = f2;
     if (col > 0) {
       bmv(m,sy,wt,col,p.get1(1,2*col),v.get1(1,2*col),info);
       if (info != 0) return;
       f2 = f2 - lbfgs::detail::ddot(col2,v.begin(),p.begin());
     }
-    double dtm = -f1/f2;
-    double tsum = zero;
+    FloatType dtm = -f1/f2;
+    FloatType tsum = zero;
     nint = 1;
     if (iprint >= 99) {
       printf(" There are %12d  breakpoints \n", nbreak);
@@ -1411,12 +1424,12 @@ namespace raw {
     { // scope for variables
       int nleft = nbreak;
       int iter = 1;
-      double tj = zero;
+      FloatType tj = zero;
       //------------------ the beginning of the loop -------------------------
       lbl_777:
       // Find the next smallest breakpoint;
       // compute dt = t(nleft) - t(nleft + 1).
-      double tj0 = tj;
+      FloatType tj0 = tj;
       int ibp; // uninitialized
       if (iter == 1) {
         // Since we already have the smallest breakpoint we need not do
@@ -1440,7 +1453,7 @@ namespace raw {
         tj = t(nleft);
         ibp = iorder(nleft);
       }
-      double dt = tj - tj0;
+      FloatType dt = tj - tj0;
       if (dt != zero && iprint >= 100) {
         printf("\nPiece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
                nint,f1,f2);
@@ -1454,9 +1467,9 @@ namespace raw {
       tsum = tsum + dt;
       nleft = nleft - 1;
       iter = iter + 1;
-      double dibp = d(ibp);
+      FloatType dibp = d(ibp);
       d(ibp) = zero;
-      double zibp; // uninitialized
+      FloatType zibp; // uninitialized
       if (dibp > zero) {
         zibp = u(ibp) - x(ibp);
         xcp(ibp) = u(ibp);
@@ -1478,7 +1491,7 @@ namespace raw {
       }
       // Update the derivative information.
       nint = nint + 1;
-      double dibp2 = dibp*dibp;
+      FloatType dibp2 = dibp*dibp;
       // Update f1 and f2.
       // temporarily set f1 and f2 for col=0.
       f1 = f1 + dt*f2 + dibp2 - theta*dibp*zibp;
@@ -1497,9 +1510,9 @@ namespace raw {
         // compute (wbp)Mc, (wbp)Mp, and (wbp)M(wbp)'.
         bmv(m,sy,wt,col,wbp.get1(1,2*col),v.get1(1,2*col),info);
         if (info != 0) return;
-        double wmc = lbfgs::detail::ddot(col2,c.begin(),v.begin());
-        double wmp = lbfgs::detail::ddot(col2,p.begin(),v.begin());
-        double wmw = lbfgs::detail::ddot(col2,wbp.begin(),v.begin());
+        FloatType wmc = lbfgs::detail::ddot(col2,c.begin(),v.begin());
+        FloatType wmp = lbfgs::detail::ddot(col2,p.begin(),v.begin());
+        FloatType wmw = lbfgs::detail::ddot(col2,wbp.begin(),v.begin());
         // update p = p - dibp*wbp.
         daxpy(col2,-dibp,wbp.begin(),p.begin());
         // complete updating f1 and f2 while col > 0.
@@ -1689,9 +1702,10 @@ namespace raw {
       blas ddot
       fortran sqrt
    */
+  template <typename FloatType>
   void
   dpofa(
-    ref2<double> const& a,
+    ref2<FloatType> const& a,
     int const& lda,
     int const& n,
     int& info)
@@ -1699,11 +1713,11 @@ namespace raw {
     SCITBX_ASSERT(a.size() == lda*n);
     for(int j=1;j<=n;j++) {
       info = j;
-      double s = 0;
+      FloatType s = 0;
       int jm1 = j - 1;
       if (jm1 < 1) goto lbl_20;
       for(int k=1;k<=jm1;k++) {
-        double t = a(k,j) - lbfgs::detail::ddot(k-1,&a(1,k),&a(1,j));
+        FloatType t = a(k,j) - lbfgs::detail::ddot(k-1,&a(1,k),&a(1,j));
         t = t/a(k,k);
         a(k,j) = t;
         s = s + t*t;
@@ -1833,6 +1847,7 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   formk(
     int const& n,
@@ -1843,13 +1858,13 @@ namespace raw {
     ref1<int> const& indx2,
     int const& iupdat,
     bool const& updatd,
-    ref2<double> const& wn,
-    ref2<double> const& wn1,
+    ref2<FloatType> const& wn,
+    ref2<FloatType> const& wn1,
     int const& m,
-    ref2<double> const& ws,
-    ref2<double> const& wy,
-    ref2<double> const& sy,
-    double const& theta,
+    ref2<FloatType> const& ws,
+    ref2<FloatType> const& wy,
+    ref2<FloatType> const& sy,
+    FloatType const& theta,
     int const& col,
     int const& head,
     int& info)
@@ -1889,9 +1904,9 @@ namespace raw {
       int jpntr = head;
       for(int jy=1;jy<=col;jy++) {
         int js = m + jy;
-        double temp1 = 0;
-        double temp2 = 0;
-        double temp3 = 0;
+        FloatType temp1 = 0;
+        FloatType temp2 = 0;
+        FloatType temp3 = 0;
         // compute element jy of row 'col' of Y'ZZ'Y
         for(int k=pbegin;k<=pend;k++) {
           int k1 = ind(k);
@@ -1915,7 +1930,7 @@ namespace raw {
       ipntr = head;
       for(int i=1;i<=col;i++) {
         is = m + i;
-        double temp3 = 0;
+        FloatType temp3 = 0;
         // compute element i of column 'col' of R_z
         for(int k=pbegin;k<=pend;k++) {
           int k1 = ind(k);
@@ -1937,10 +1952,10 @@ namespace raw {
       int jpntr = head;
       for(int jy=1;jy<=iy;jy++) {
         int js = m + jy;
-        double temp1 = 0;
-        double temp2 = 0;
-        double temp3 = 0;
-        double temp4 = 0;
+        FloatType temp1 = 0;
+        FloatType temp2 = 0;
+        FloatType temp3 = 0;
+        FloatType temp4 = 0;
         for(int k=1;k<=nenter;k++) {
           int k1 = indx2(k);
           temp1 = temp1 + wy(k1,ipntr)*wy(k1,jpntr);
@@ -1962,8 +1977,8 @@ namespace raw {
     for(int is=m+1;is<=m+upcl;is++) {
       int jpntr = head;
       for(int jy=1;jy<=upcl;jy++) {
-        double temp1 = 0;
-        double temp3 = 0;
+        FloatType temp1 = 0;
+        FloatType temp3 = 0;
         for(int k=1;k<=nenter;k++) {
           int k1 = indx2(k);
           temp1 = temp1 + ws(k1,ipntr)*wy(k1,jpntr);
@@ -2049,21 +2064,22 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   cmprlb(
     int const& n,
     int const& m,
-    ref1<double> const& x,
-    ref1<double> const& g,
-    ref2<double> const& ws,
-    ref2<double> const& wy,
-    ref2<double> const& sy,
-    ref2<double> const& wt,
-    ref1<double> const& z,
-    ref1<double> const& r,
-    ref1<double> const& wa,
+    ref1<FloatType> const& x,
+    ref1<FloatType> const& g,
+    ref2<FloatType> const& ws,
+    ref2<FloatType> const& wy,
+    ref2<FloatType> const& sy,
+    ref2<FloatType> const& wt,
+    ref1<FloatType> const& z,
+    ref1<FloatType> const& r,
+    ref1<FloatType> const& wa,
     ref1<int> const& index,
-    double const& theta,
+    FloatType const& theta,
     int const& col,
     int const& head,
     int const& nfree,
@@ -2097,8 +2113,8 @@ namespace raw {
       }
       int pointr = head;
       for(int j=1;j<=col;j++) {
-        double a1 = wa(j);
-        double a2 = theta*wa(col + j);
+        FloatType a1 = wa(j);
+        FloatType a2 = theta*wa(col + j);
         for(int i=1;i<=nfree;i++) {
           int k = index(i);
           r(i) = r(i) + wy(k,pointr)*a1 + ws(k,pointr)*a2;
@@ -2248,25 +2264,26 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   subsm(
     int const& n,
     int const& m,
     int const& nsub,
     ref1<int> const& ind,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
-    ref1<double> const& x,
-    ref1<double> const& d,
-    ref2<double> const& ws,
-    ref2<double> const& wy,
-    double const& theta,
+    ref1<FloatType> const& x,
+    ref1<FloatType> const& d,
+    ref2<FloatType> const& ws,
+    ref2<FloatType> const& wy,
+    FloatType const& theta,
     int const& col,
     int const& head,
     int& iword,
-    ref1<double> const& wv,
-    ref2<double> const& wn,
+    ref1<FloatType> const& wv,
+    ref2<FloatType> const& wn,
     int const& iprint,
     int& info)
   {
@@ -2285,12 +2302,12 @@ namespace raw {
       printf("\n----------------SUBSM entered-----------------\n\n");
     }
     // Compute wv = W'Zd.
-    double zero = 0;
-    double one = 1;
+    FloatType zero = 0;
+    FloatType one = 1;
     int pointr = head;
     for(int i=1;i<=col;i++) {
-      double temp1 = 0;
-      double temp2 = 0;
+      FloatType temp1 = 0;
+      FloatType temp2 = 0;
       for(int j=1;j<=nsub;j++) {
         int k = ind(j);
         temp1 = temp1 + wy(k,pointr)*d(j);
@@ -2325,16 +2342,16 @@ namespace raw {
       d(i) = d(i)/theta;
     }
     // Backtrack to the feasible region.
-    double alpha = 1;
-    double temp1 = alpha;
+    FloatType alpha = 1;
+    FloatType temp1 = alpha;
     int ibd; // uninitialized
     bool ibd_is_defined = false;
     for(int i=1;i<=nsub;i++) {
       int k = ind(i);
-      double dk = d(i);
+      FloatType dk = d(i);
       if (nbd(k) != 0) {
         if (dk < zero && nbd(k) <= 2) {
-          double temp2 = l(k) - x(k);
+          FloatType temp2 = l(k) - x(k);
           if (temp2 >= zero) {
             temp1 = zero;
           }
@@ -2343,7 +2360,7 @@ namespace raw {
           }
         }
         else if (dk > zero && nbd(k) >= 2) {
-          double temp2 = u(k) - x(k);
+          FloatType temp2 = u(k) - x(k);
           if (temp2 <= zero) {
             temp1 = zero;
           }
@@ -2360,7 +2377,7 @@ namespace raw {
     }
     if (alpha < one) {
       SCITBX_ASSERT(ibd_is_defined);
-      double dk = d(ibd);
+      FloatType dk = d(ibd);
       int k = ind(ibd);
       if (dk > zero) {
         x(k) = u(k);
@@ -2487,42 +2504,43 @@ namespace raw {
       Argonne National Laboratory and University of Minnesota.
          Brett M. Averick and Jorge J. More'.
    */
+  template <typename FloatType>
   void
   dcstep(
-    double& stx,
-    double& fx,
-    double& dx,
-    double& sty,
-    double& fy,
-    double& dy,
-    double& stp,
-    double const& fp,
-    double const& dp,
+    FloatType& stx,
+    FloatType& fx,
+    FloatType& dx,
+    FloatType& sty,
+    FloatType& fy,
+    FloatType& dy,
+    FloatType& stp,
+    FloatType const& fp,
+    FloatType const& dp,
     bool& brackt,
-    double const& stpmin,
-    double const& stpmax)
+    FloatType const& stpmin,
+    FloatType const& stpmax)
   {
-    double zero=0.0e0;
-    double p66=0.66e0;
-    double two=2.0e0;
-    double three=3.0e0;
-    double sgnd = dp*(dx/fn::absolute(dx));
-    double stpf;
+    FloatType zero=0.0e0;
+    FloatType p66=0.66e0;
+    FloatType two=2.0e0;
+    FloatType three=3.0e0;
+    FloatType sgnd = dp*(dx/fn::absolute(dx));
+    FloatType stpf;
     if (fp > fx) {
       // First case: A higher function value. The minimum is bracketed.
       // If the cubic step is closer to stx than the quadratic step, the
       // cubic step is taken, otherwise the average of the cubic and
       // quadratic steps is taken.
-      double theta = three*(fx - fp)/(stp - stx) + dx + dp;
-      double s = max3(fn::absolute(theta),fn::absolute(dx),fn::absolute(dp));
-      double theta_s = theta/s;
-      double gamma = s*std::sqrt(theta_s*theta_s - (dx/s)*(dp/s));
+      FloatType theta = three*(fx - fp)/(stp - stx) + dx + dp;
+      FloatType s=max3(fn::absolute(theta),fn::absolute(dx),fn::absolute(dp));
+      FloatType theta_s = theta/s;
+      FloatType gamma = s*std::sqrt(theta_s*theta_s - (dx/s)*(dp/s));
       if (stp < stx) gamma = -gamma;
-      double p = (gamma - dx) + theta;
-      double q = ((gamma - dx) + gamma) + dp;
-      double r = p/q;
-      double stpc = stx + r*(stp - stx);
-      double stpq = stx + ((dx/((fx - fp)/(stp - stx) + dx))/two)*(stp - stx);
+      FloatType p = (gamma - dx) + theta;
+      FloatType q = ((gamma - dx) + gamma) + dp;
+      FloatType r = p/q;
+      FloatType stpc = stx + r*(stp - stx);
+      FloatType stpq = stx + ((dx/((fx-fp)/(stp-stx) + dx))/two)*(stp - stx);
       if (fn::absolute(stpc-stx) < fn::absolute(stpq-stx)) {
         stpf = stpc;
       }
@@ -2536,16 +2554,16 @@ namespace raw {
       // sign. The minimum is bracketed. If the cubic step is farther from
       // stp than the secant step, the cubic step is taken, otherwise the
       // secant step is taken.
-      double theta = three*(fx - fp)/(stp - stx) + dx + dp;
-      double s = max3(fn::absolute(theta),fn::absolute(dx),fn::absolute(dp));
-      double theta_s = theta/s;
-      double gamma = s*std::sqrt(theta_s*theta_s - (dx/s)*(dp/s));
+      FloatType theta = three*(fx - fp)/(stp - stx) + dx + dp;
+      FloatType s=max3(fn::absolute(theta),fn::absolute(dx),fn::absolute(dp));
+      FloatType theta_s = theta/s;
+      FloatType gamma = s*std::sqrt(theta_s*theta_s - (dx/s)*(dp/s));
       if (stp > stx) gamma = -gamma;
-      double p = (gamma - dp) + theta;
-      double q = ((gamma - dp) + gamma) + dx;
-      double r = p/q;
-      double stpc = stp + r*(stx - stp);
-      double stpq = stp + (dp/(dp - dx))*(stx - stp);
+      FloatType p = (gamma - dp) + theta;
+      FloatType q = ((gamma - dp) + gamma) + dx;
+      FloatType r = p/q;
+      FloatType stpc = stp + r*(stx - stp);
+      FloatType stpq = stp + (dp/(dp - dx))*(stx - stp);
       if (fn::absolute(stpc-stp) > fn::absolute(stpq-stp)) {
         stpf = stpc;
       }
@@ -2561,17 +2579,18 @@ namespace raw {
       // in the direction of the step or if the minimum of the cubic
       // is beyond stp. Otherwise the cubic step is defined to be the
       // secant step.
-      double theta = three*(fx - fp)/(stp - stx) + dx + dp;
-      double s = max3(fn::absolute(theta),fn::absolute(dx),fn::absolute(dp));
+      FloatType theta = three*(fx - fp)/(stp - stx) + dx + dp;
+      FloatType s=max3(fn::absolute(theta),fn::absolute(dx),fn::absolute(dp));
       // The case gamma = 0 only arises if the cubic does not tend
       // to infinity in the direction of the step.
-      double theta_s = theta/s;
-      double gamma = s*std::sqrt(std::max(zero,theta_s*theta_s-(dx/s)*(dp/s)));
+      FloatType theta_s = theta/s;
+      FloatType
+        gamma = s*std::sqrt(std::max(zero,theta_s*theta_s-(dx/s)*(dp/s)));
       if (stp > stx) gamma = -gamma;
-      double p = (gamma - dp) + theta;
-      double q = (gamma + (dx - dp)) + gamma;
-      double r = p/q;
-      double stpc;
+      FloatType p = (gamma - dp) + theta;
+      FloatType q = (gamma + (dx - dp)) + gamma;
+      FloatType r = p/q;
+      FloatType stpc;
       if (r < zero && gamma != zero) {
         stpc = stp + r*(stx - stp);
       }
@@ -2581,7 +2600,7 @@ namespace raw {
       else {
         stpc = stpmin;
       }
-      double stpq = stp + (dp/(dp - dx))*(stx - stp);
+      FloatType stpq = stp + (dp/(dp - dx))*(stx - stp);
       if (brackt) {
         // A minimizer has been bracketed. If the cubic step is
         // closer to stp than the secant step, the cubic step is
@@ -2619,15 +2638,16 @@ namespace raw {
       // minimum is not bracketed, the step is either stpmin or stpmax,
       // otherwise the cubic step is taken.
       if (brackt) {
-        double theta = three*(fp - fy)/(sty - stp) + dy + dp;
-        double s = max3(fn::absolute(theta),fn::absolute(dy),fn::absolute(dp));
-        double theta_s = theta/s;
-        double gamma = s*std::sqrt(theta_s*theta_s - (dy/s)*(dp/s));
+        FloatType theta = three*(fp - fy)/(sty - stp) + dy + dp;
+        FloatType
+          s = max3(fn::absolute(theta),fn::absolute(dy),fn::absolute(dp));
+        FloatType theta_s = theta/s;
+        FloatType gamma = s*std::sqrt(theta_s*theta_s - (dy/s)*(dp/s));
         if (stp > sty) gamma = -gamma;
-        double p = (gamma - dp) + theta;
-        double q = ((gamma - dp) + gamma) + dy;
-        double r = p/q;
-        double stpc = stp + r*(sty - stp);
+        FloatType p = (gamma - dp) + theta;
+        FloatType q = ((gamma - dp) + gamma) + dy;
+        FloatType r = p/q;
+        FloatType stpc = stp + r*(sty - stp);
         stpf = stpc;
       }
       else if (stp > stx) {
@@ -2787,43 +2807,44 @@ namespace raw {
       Argonne National Laboratory and University of Minnesota.
       Brett M. Averick, Richard G. Carter, and Jorge J. More'.
    */
+  template <typename FloatType>
   void
   dcsrch(
-    double const& f,
-    double const& g,
-    double& stp,
-    double const& ftol,
-    double const& gtol,
-    double const& xtol,
-    double const& stpmin,
-    double const& stpmax,
+    FloatType const& f,
+    FloatType const& g,
+    FloatType& stp,
+    FloatType const& ftol,
+    FloatType const& gtol,
+    FloatType const& xtol,
+    FloatType const& stpmin,
+    FloatType const& stpmax,
     std::string& task,
     ref1<int> const& isave,
-    ref1<double> const& dsave)
+    ref1<FloatType> const& dsave)
   {
     SCITBX_ASSERT(isave.size() == 2);
     SCITBX_ASSERT(dsave.size() == 13);
-    double zero=0.0e0;
-    double p5=0.5e0;
-    double p66=0.66e0;
-    double xtrapl=1.1e0;
-    double xtrapu=4.0e0;
+    FloatType zero=0.0e0;
+    FloatType p5=0.5e0;
+    FloatType p66=0.66e0;
+    FloatType xtrapl=1.1e0;
+    FloatType xtrapu=4.0e0;
     // Initialization block.
     bool brackt;
     int stage;
-    double finit;
-    double ginit;
-    double gtest;
-    double width;
-    double width1;
-    double stx;
-    double fx;
-    double gx;
-    double sty;
-    double fy;
-    double gy;
-    double stmin;
-    double stmax;
+    FloatType finit;
+    FloatType ginit;
+    FloatType gtest;
+    FloatType width;
+    FloatType width1;
+    FloatType stx;
+    FloatType fx;
+    FloatType gx;
+    FloatType sty;
+    FloatType fy;
+    FloatType gy;
+    FloatType stmin;
+    FloatType stmax;
     if (task.substr(0,5) == "START") {
       // Check the input arguments for errors.
       if (stp < stpmin) task = "ERROR: STP .LT. STPMIN";
@@ -2887,7 +2908,7 @@ namespace raw {
     { // scope for variables
       // If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
       // algorithm enters the second stage.
-      double ftest = finit + stp*gtest;
+      FloatType ftest = finit + stp*gtest;
       if (stage == 1 && f <= ftest && g >= zero) {
         stage = 2;
       }
@@ -2916,12 +2937,12 @@ namespace raw {
       // the decrease is not sufficient.
       if (stage == 1 && f <= fx && f > ftest) {
         // Define the modified function and derivative values.
-        double fm = f - stp*gtest;
-        double fxm = fx - stx*gtest;
-        double fym = fy - sty*gtest;
-        double gm = g - gtest;
-        double gxm = gx - gtest;
-        double gym = gy - gtest;
+        FloatType fm = f - stp*gtest;
+        FloatType fxm = fx - stx*gtest;
+        FloatType fym = fy - sty*gtest;
+        FloatType gm = g - gtest;
+        FloatType gxm = gx - gtest;
+        FloatType gym = gy - gtest;
         // Call dcstep to update stx, sty, and to compute the new step.
         dcstep(stx,fxm,gxm,sty,fym,gym,stp,fm,gm,brackt,stmin,stmax);
         // Reset the function and derivative values for f.
@@ -3004,27 +3025,28 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   lnsrlb(
     int const& n,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
-    ref1<double> const& x,
-    double const& f,
-    double& fold,
-    double& gd,
-    double& gdold,
-    ref1<double> const& g,
-    ref1<double> const& d,
-    ref1<double> const& r,
-    ref1<double> const& t,
-    ref1<double> const& z,
-    double& stp,
-    double& dnorm,
-    double& dtd,
-    double& xstep,
-    double& stpmx,
+    ref1<FloatType> const& x,
+    FloatType const& f,
+    FloatType& fold,
+    FloatType& gd,
+    FloatType& gdold,
+    ref1<FloatType> const& g,
+    ref1<FloatType> const& d,
+    ref1<FloatType> const& r,
+    ref1<FloatType> const& t,
+    ref1<FloatType> const& z,
+    FloatType& stp,
+    FloatType& dnorm,
+    FloatType& dtd,
+    FloatType& xstep,
+    FloatType& stpmx,
     int const& iter,
     int& ifun,
     int& iback,
@@ -3035,7 +3057,7 @@ namespace raw {
     bool const& cnstnd,
     std::string& csave,
     ref1<int> const& isave,
-    ref1<double> const& dsave)
+    ref1<FloatType> const& dsave)
   {
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
@@ -3048,12 +3070,12 @@ namespace raw {
     SCITBX_ASSERT(z.size() == n);
     SCITBX_ASSERT(isave.size() == 2);
     SCITBX_ASSERT(dsave.size() == 13);
-    double one=1.0e0;
-    double zero=0.0e0;
-    double big=1.0e+10;
-    double ftol=1.0e-3;
-    double gtol=0.9e0;
-    double xtol=0.1e0;
+    FloatType one=1.0e0;
+    FloatType zero=0.0e0;
+    FloatType big=1.0e+10;
+    FloatType ftol=1.0e-3;
+    FloatType gtol=0.9e0;
+    FloatType xtol=0.1e0;
     if (task.substr(0,5) == "FG_LN") goto lbl_556;
     dtd = lbfgs::detail::ddot(n,d.begin(),d.begin());
     dnorm = std::sqrt(dtd);
@@ -3065,10 +3087,10 @@ namespace raw {
       }
       else {
         for(int i=1;i<=n;i++) {
-          double a1 = d(i);
+          FloatType a1 = d(i);
           if (nbd(i) != 0) {
             if (a1 < zero && nbd(i) <= 2) {
-              double a2 = l(i) - x(i);
+              FloatType a2 = l(i) - x(i);
               if (a2 >= zero) {
                 stpmx = zero;
               }
@@ -3077,7 +3099,7 @@ namespace raw {
               }
             }
             else if (a1 > zero && nbd(i) >= 2) {
-              double a2 = u(i) - x(i);
+              FloatType a2 = u(i) - x(i);
               if (a2 <= zero) {
                 stpmx = zero;
               }
@@ -3151,25 +3173,26 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   matupd(
     int const& n,
     int const& m,
-    ref2<double> const& ws,
-    ref2<double> const& wy,
-    ref2<double> const& sy,
-    ref2<double> const& ss,
-    ref1<double> const& d,
-    ref1<double> const& r,
+    ref2<FloatType> const& ws,
+    ref2<FloatType> const& wy,
+    ref2<FloatType> const& sy,
+    ref2<FloatType> const& ss,
+    ref1<FloatType> const& d,
+    ref1<FloatType> const& r,
     int& itail,
     int const& iupdat,
     int& col,
     int& head,
-    double& theta,
-    double const& rr,
-    double const& dr,
-    double const& stp,
-    double const& dtd)
+    FloatType& theta,
+    FloatType const& rr,
+    FloatType const& dr,
+    FloatType const& stp,
+    FloatType const& dtd)
   {
     SCITBX_ASSERT(d.size() == n);
     SCITBX_ASSERT(r.size() == n);
@@ -3177,7 +3200,7 @@ namespace raw {
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(sy.size() == m*m);
     SCITBX_ASSERT(ss.size() == m*m);
-    double one=1;
+    FloatType one=1;
     // Set pointers for matrices WS and WY.
     if (iupdat <= m) {
       col = iupdat;
@@ -3239,14 +3262,15 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   formt(
     int const& m,
-    ref2<double> const& wt,
-    ref2<double> const& sy,
-    ref2<double> const& ss,
+    ref2<FloatType> const& wt,
+    ref2<FloatType> const& sy,
+    ref2<FloatType> const& ss,
     int const& col,
-    double const& theta,
+    FloatType const& theta,
     int& info)
   {
     SCITBX_ASSERT(wt.size() == m*m);
@@ -3260,7 +3284,7 @@ namespace raw {
     for(int i=2;i<=col;i++) {
       for(int j=i;j<=col;j++) {
         int k1 = std::min(i,j) - 1;
-        double ddum = 0;
+        FloatType ddum = 0;
         for(int k=1;k<=k1;k++) {
           ddum = ddum + sy(i,k)*sy(j,k)/sy(k,k);
         }
@@ -3448,35 +3472,36 @@ namespace raw {
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
 
    */
+  template <typename FloatType>
   void
   mainlb(
     int const& n,
     int const& m,
-    ref1<double> const& x,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    ref1<FloatType> const& x,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
-    double& f,
-    ref1<double> const& g,
-    double const& factr,
-    double const& pgtol,
-    ref2<double> const& ws,
-    ref2<double> const& wy,
-    ref2<double> const& sy,
-    ref2<double> const& ss,
-    ref2<double> const& yy,
-    ref2<double> const& wt,
-    ref2<double> const& wn,
-    ref2<double> const& snd,
-    ref1<double> const& z,
-    ref1<double> const& r,
-    ref1<double> const& d,
-    ref1<double> const& t,
-    ref1<double> const& wa,
-    ref1<double> const& sg,
-    ref1<double> const& sgo,
-    ref1<double> const& yg,
-    ref1<double> const& ygo,
+    FloatType& f,
+    ref1<FloatType> const& g,
+    FloatType const& factr,
+    FloatType const& pgtol,
+    ref2<FloatType> const& ws,
+    ref2<FloatType> const& wy,
+    ref2<FloatType> const& sy,
+    ref2<FloatType> const& ss,
+    ref2<FloatType> const& yy,
+    ref2<FloatType> const& wt,
+    ref2<FloatType> const& wn,
+    ref2<FloatType> const& snd,
+    ref1<FloatType> const& z,
+    ref1<FloatType> const& r,
+    ref1<FloatType> const& d,
+    ref1<FloatType> const& t,
+    ref1<FloatType> const& wa,
+    ref1<FloatType> const& sg,
+    ref1<FloatType> const& sgo,
+    ref1<FloatType> const& yg,
+    ref1<FloatType> const& ygo,
     ref1<int> const& index,
     ref1<int> const& iwhere,
     ref1<int> const& indx2,
@@ -3485,7 +3510,7 @@ namespace raw {
     std::string& csave,
     ref1<bool> const& lsave,
     ref1<int> const& isave,
-    ref1<double> const& dsave)
+    ref1<FloatType> const& dsave)
   {
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
@@ -3515,8 +3540,8 @@ namespace raw {
     SCITBX_ASSERT(lsave.size() == 4);
     SCITBX_ASSERT(isave.size() == 23);
     SCITBX_ASSERT(dsave.size() == 29);
-    double zero = 0;
-    double one = 1;
+    FloatType zero = 0;
+    FloatType one = 1;
     // begin variables in [lid]save arrays
     bool prjctd;
     bool cnstnd;
@@ -3540,34 +3565,34 @@ namespace raw {
     int nact;
     int ileave;
     int nenter;
-    double theta;
-    double fold;
-    double tol;
-    double dnorm;
-    double epsmch;
-    double cpu1 = 0; // work around gcc 3.2 or valgrind bug
-    double cachyt;
-    double sbtime;
-    double lnscht;
-    double time1;
-    double gd;
-    double stpmx;
-    double sbgnrm;
-    double stp;
-    double gdold;
-    double dtd;
+    FloatType theta;
+    FloatType fold;
+    FloatType tol;
+    FloatType dnorm;
+    FloatType epsmch;
+    FloatType cpu1 = 0; // work around gcc 3.2 or valgrind bug
+    FloatType cachyt;
+    FloatType sbtime;
+    FloatType lnscht;
+    FloatType time1;
+    FloatType gd;
+    FloatType stpmx;
+    FloatType sbgnrm;
+    FloatType stp;
+    FloatType gdold;
+    FloatType dtd;
     // end variables in [lid]save arrays
     bool wrk; // uninitialized
     int k; // uninitialized
-    double cpu2; // uninitialized
-    double dr; // uninitialized
-    double rr; // uninitialized
-    double xstep; // uninitialized
+    FloatType cpu2; // uninitialized
+    FloatType dr; // uninitialized
+    FloatType rr; // uninitialized
+    FloatType xstep; // uninitialized
     std::string word; // uninitialized
     if (task.substr(0,5) == "START") {
       timer(time1);
       // Generate the current machine precision.
-      epsmch = scitbx::math::floating_point_epsilon<double>::get();
+      epsmch = scitbx::math::floating_point_epsilon<FloatType>::get();
       // Initialize counters and scalars when task='START'.
       // for the limited memory BFGS matrices:
       col    = 0;
@@ -3876,7 +3901,7 @@ namespace raw {
         task = "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL";
         goto lbl_999;
       }
-      double ddum = max3(fn::absolute(fold), fn::absolute(f), one);
+      FloatType ddum = max3(fn::absolute(fold), fn::absolute(f), one);
       if ((fold - f) <= tol*ddum) {
         // terminate the algorithm.
         task = "CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH";
@@ -3948,9 +3973,9 @@ namespace raw {
     goto lbl_222;
     lbl_999:
     { // scope for variables
-      double time2;
+      FloatType time2;
       timer(time2);
-      double time = time2 - time1;
+      FloatType time = time2 - time1;
       prn3lb(n,x,f,task,iprint,info,itfile,
              iter,nfgv,nintol,nskip,nact,sbgnrm,
              time,nint,word,iback,stp,xstep,k,
@@ -4172,26 +4197,27 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  template <typename FloatType>
   void
   setulb(
     int const& n,
     int const& m,
-    ref1<double> const& x,
-    ref1<double> const& l,
-    ref1<double> const& u,
+    ref1<FloatType> const& x,
+    ref1<FloatType> const& l,
+    ref1<FloatType> const& u,
     ref1<int> const& nbd,
-    double& f,
-    ref1<double> const& g,
-    double const& factr,
-    double const& pgtol,
-    ref1<double> const& wa,
+    FloatType& f,
+    ref1<FloatType> const& g,
+    FloatType const& factr,
+    FloatType const& pgtol,
+    ref1<FloatType> const& wa,
     ref1<int> const& iwa,
     std::string& task,
     int const& iprint,
     std::string& csave,
     ref1<bool> const& lsave,
     ref1<int> const& isave,
-    ref1<double> const& dsave)
+    ref1<FloatType> const& dsave)
   {
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
