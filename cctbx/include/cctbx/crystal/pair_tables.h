@@ -246,6 +246,7 @@ namespace cctbx { namespace crystal {
           pair.i_seq,
           pair.j_seq,
           rt_mx_i.inverse().multiply(rt_mx_j));
+        return *this;
       }
 
       //! Adds the pair defined by i_seq, j_seq and rt_mx_ji.
