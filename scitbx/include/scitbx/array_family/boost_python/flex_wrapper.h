@@ -28,6 +28,8 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
+  using scitbx::boost_python::positive_getitem_index;
+
   template <typename ElementType>
   struct flex_items
   {
@@ -40,10 +42,10 @@ namespace scitbx { namespace af { namespace boost_python {
     std::size_t size() const { return data_.size(); }
 
     boost::python::tuple
-    getitem(std::size_t i) const
+    getitem(long i) const
     {
-      if (i >= data_.size()) scitbx::boost_python::raise_index_error();
-      return boost::python::make_tuple(i, data_[i]);
+      std::size_t j = positive_getitem_index(i, data_.size());
+      return boost::python::make_tuple(j, data_[j]);
     }
 
     versa<ElementType, flex_grid<> > data_;
@@ -129,11 +131,11 @@ namespace scitbx { namespace af { namespace boost_python {
     capacity(f_t const& a) { return a.capacity(); }
 
     static e_t&
-    getitem_1d(f_t& a, std::size_t i)
+    getitem_1d(f_t& a, long i)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
-      if (i >= a.size()) scitbx::boost_python::raise_index_error();
-      return a[i];
+      std::size_t j = positive_getitem_index(i, a.size());
+      return a[j];
     }
 
     static e_t&
@@ -147,11 +149,11 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
-    setitem_1d(f_t& a, std::size_t i, e_t const& x)
+    setitem_1d(f_t& a, long i, e_t const& x)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
-      if (i >= a.size()) scitbx::boost_python::raise_index_error();
-      a[i] = x;
+      std::size_t j = positive_getitem_index(i, a.size());
+      a[j] = x;
     }
 
     static void
@@ -165,16 +167,16 @@ namespace scitbx { namespace af { namespace boost_python {
       a(i) = x;
     }
 
-    static e_t
-    front(f_t const& a)
+    static e_t&
+    front(f_t& a)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (a.size() == 0) scitbx::boost_python::raise_index_error();
       return a.front();
     }
 
-    static e_t
-    back(f_t const& a)
+    static e_t&
+    back(f_t& a)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       if (a.size() == 0) scitbx::boost_python::raise_index_error();
@@ -679,8 +681,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__getitem__", getitem_flex_grid, GetitemReturnValuePolicy())
         .def("__setitem__", setitem_1d)
         .def("__setitem__", setitem_flex_grid)
-        .def("front", front)
-        .def("back", back)
+        .def("front", front, GetitemReturnValuePolicy())
+        .def("back", back, GetitemReturnValuePolicy())
         .def("fill", fill)
         .def("deep_copy", deep_copy)
         .def("shallow_copy", shallow_copy)

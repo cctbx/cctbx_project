@@ -121,6 +121,10 @@ def exercise_flex_constructors():
 
 def exercise_misc():
   f = flex.double((1,2,3))
+  assert f[0] == 1
+  assert f[2] == 3
+  assert f[-1] == 3
+  assert f[-3] == 1
   assert f.front() == 1
   assert f.back() == 3
   f.fill(42)
