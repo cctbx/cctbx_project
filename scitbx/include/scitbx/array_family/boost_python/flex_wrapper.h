@@ -750,7 +750,16 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::scope local_scope(flex_root_scope);
         boost::python::def("order", order_a_a);
       }
-      return plain(python_name);
+      return plain(python_name)
+        .def("__eq__", eq_a_a)
+        .def("__ne__", ne_a_a)
+        .def("__eq__", eq_a_s)
+        .def("__ne__", ne_a_s)
+        .def("all_eq", all_eq_a_a)
+        .def("all_ne", all_ne_a_a)
+        .def("all_eq", all_eq_a_s)
+        .def("all_ne", all_ne_a_s)
+      ;
     }
 
     static class_f_t
@@ -812,13 +821,12 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       {
         boost::python::scope local_scope(flex_root_scope);
-        boost::python::def("order", order_a_a);
-        boost::python::def("abs", abs_a);
-        boost::python::def("pow2", pow2_a);
         boost::python::def("min_index", min_index_a);
         boost::python::def("max_index", max_index_a);
         boost::python::def("min", min_a);
         boost::python::def("max", max_a);
+        boost::python::def("pow2", pow2_a);
+        boost::python::def("order", order_a_a);
       }
       return numeric_common(python_name, flex_root_scope)
         .def("as_double", as_double)
@@ -847,6 +855,7 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       {
         boost::python::scope local_scope(flex_root_scope);
+        boost::python::def("abs", abs_a);
         boost::python::def("pow", pow_a_s);
         boost::python::def("fmod", fmod_a_s);
         boost::python::def("atan2", atan2_a_a);
@@ -884,6 +893,17 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__rmod__", rmod_a_s)
         .def("__imod__", imod_a_s)
       ;
+    }
+
+    static class_f_t
+    signed_integer(std::string const& python_name,
+                   boost::python::object const& flex_root_scope)
+    {
+      {
+        boost::python::scope local_scope(flex_root_scope);
+        boost::python::def("abs", abs_a);
+      }
+      return integer(python_name, flex_root_scope);
     }
   };
 
