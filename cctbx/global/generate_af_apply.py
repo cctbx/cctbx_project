@@ -34,9 +34,9 @@ def one_type(array_type_name):
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
+#include <cctbx/array_family/type_holder.h>
 #include <cctbx/array_family/%s.h>
 #include <cctbx/array_family/generic_array_%s.h>
-#include <cctbx/basic/meta.h>
 
 namespace cctbx { namespace af {
 """ % ((array_type_name.upper(),) * 2 + (

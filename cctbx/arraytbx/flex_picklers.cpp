@@ -14,7 +14,7 @@
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/sftbx/xray_scatterer.h>
 #include <cctbx/array_family/flex_types.h>
-#include <cctbx/basic/meta.h>
+#include <cctbx/array_family/type_holder.h>
 
 #if defined(__GNUC__) || defined(__DECCXX_VER)
 #  if !(defined(sun) || defined(__sun))

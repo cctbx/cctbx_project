@@ -5,16 +5,17 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2002 Aug: Renamed: cctbx/basic/meta.h -> cctbx/array_family/type_holder.h
      Jan 2002: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef CCTBX_BASIC_META_H
-#define CCTBX_BASIC_META_H
+#ifndef CCTBX_ARRAY_FAMILY_TYPE_HOLDER_H
+#define CCTBX_ARRAY_FAMILY_TYPE_HOLDER_H
 
-namespace cctbx {
+namespace cctbx { namespace af {
 
     template <class T> struct type_holder { typedef T type; };
 
-} // namespace cctbx
+}} // namespace cctbx::af
 
-#endif // CCTBX_BASIC_META_H
+#endif // CCTBX_ARRAY_FAMILY_TYPE_HOLDER_H

@@ -343,7 +343,7 @@ namespace cctbx {
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
   DebyeWallerFactorUstarCoefficients(miller::Index const& MIx,
-                                     type_holder<FloatType>)
+                                     af::type_holder<FloatType>)
   {
     return -constants::two_pi_sq * af::tiny<FloatType, 6>(
         (MIx[0] * MIx[0]),
@@ -618,7 +618,7 @@ namespace cctbx {
       {
         af::tiny<FloatType, 9> M[2];
         M[0] = MatrixLite::CondensedSymMx33_as_FullSymMx33(adp,
-               type_holder<FloatType>());
+               af::type_holder<FloatType>());
         FloatType d = MatrixLite::Determinant(M[0]);
         if (d == 0.) {
           throw not_positive_definite;

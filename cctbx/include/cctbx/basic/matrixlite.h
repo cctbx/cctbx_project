@@ -16,7 +16,7 @@
 #define CCTBX_BASIC_MATRIXLITE_H
 
 #include <vector>
-#include <cctbx/basic/meta.h>
+#include <cctbx/array_family/type_holder.h>
 #include <cctbx/array_family/tiny.h>
 
 namespace cctbx {
@@ -135,7 +135,7 @@ namespace cctbx {
     af::tiny<FloatType33, 3*3>
     CondensedSymMx33_as_FullSymMx33(
       const af::tiny<FloatType6, 6>& Mcond,
-      type_holder<FloatType33>)
+      af::type_holder<FloatType33>)
     {
       af::tiny<FloatType33, 3*3> Mfull;
       Mfull[0] = Mcond[0];
@@ -154,7 +154,7 @@ namespace cctbx {
     inline af::tiny<FloatType6, 6>
     FullSymMx33_as_CondensedSymMx33(
       const af::tiny<FloatType33, 3*3>& Mfull,
-      type_holder<FloatType6>)
+      af::type_holder<FloatType6>)
     {
       af::tiny<FloatType6, 6> Mcond;
       Mcond[0] = Mfull[0];
@@ -188,8 +188,9 @@ namespace cctbx {
       return
         FullSymMx33_as_CondensedSymMx33(
           FullTensorTransformation(C,
-            CondensedSymMx33_as_FullSymMx33(Tcond, type_holder<FloatTypeT>())),
-            type_holder<FloatTypeT>());
+            CondensedSymMx33_as_FullSymMx33(Tcond,
+              af::type_holder<FloatTypeT>())),
+              af::type_holder<FloatTypeT>());
     }
 
     template <typename NumTypeM,
