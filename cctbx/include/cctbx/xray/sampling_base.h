@@ -378,7 +378,6 @@ namespace cctbx { namespace xray {
         FloatType
         max_d_sq_estimate(
           FloatType const& rho_cutoff,
-          FloatType const& d_sq_upper_bound,
           FloatType const& epsilon=1.e-3) const
         {
           /* Solution of rho_cutoff = a * exp(b*max_d_sq)
@@ -437,7 +436,7 @@ namespace cctbx { namespace xray {
         CCTBX_ASSERT(!gaussian_ft.anisotropic_flag());
         af::tiny<FloatType, 3> grid_n_f = grid_n;
         FloatType max_d_sq_estimate = gaussian_ft.max_d_sq_estimate(
-          rho_cutoff, max_d_sq_upper_bound);
+          rho_cutoff);
         for(std::size_t i_bv=0;i_bv<3;i_bv++) {
           fractional<FloatType> d_frac(0,0,0);
           d_frac[i_bv] = 1 / grid_n_f[i_bv];
@@ -672,7 +671,7 @@ namespace cctbx { namespace xray {
     ave_u_iso_or_equiv_(-1),
     u_extra_(-1),
     rho_cutoff_(1),
-    max_d_sq_upper_bound_(unit_cell.shortest_vector_sq() * 0.25),
+    max_d_sq_upper_bound_(unit_cell.shortest_vector_sq()),
     exp_table_size_(0),
     max_sampling_box_n_points_(0),
     sum_sampling_box_n_points_(0),
