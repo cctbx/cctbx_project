@@ -7,15 +7,21 @@ namespace cctbx { namespace geometry_restraints {
 
   namespace direct_space_asu = crystal::direct_space_asu;
 
+  //! Asymmetric unit cache to facilitate speed optimizations.
+  /*! Not available in Python.
+   */
   template <typename FloatType=double, typename IntShiftType=int>
   class asu_cache
   {
     public:
+      //! Convenience typedef.
       typedef direct_space_asu::asu_mappings<FloatType, IntShiftType>
         asu_mappings_t;
 
+      //! Default constructor. Some data members are not initialized!
       asu_cache() {}
 
+      //! Support for bond_residual_sum and repulsion_residual_sum functions.
       asu_cache(
         af::const_ref<scitbx::vec3<FloatType> > const& moved_sites_cart,
         asu_mappings_t const& asu_mappings,
@@ -47,6 +53,7 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! Support for bond_residual_sum and repulsion_residual_sum functions.
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -58,7 +65,11 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      /*! \brief Array of cartesian coordinates inside the asymmetric unit
+          and the buffer region.
+       */
       std::vector<scitbx::vec3<FloatType>*> sites;
+      //! Array of gradients.
       std::vector<scitbx::vec3<FloatType> > gradients;
 
     protected:

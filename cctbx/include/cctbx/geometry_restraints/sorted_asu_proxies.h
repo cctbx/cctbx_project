@@ -5,20 +5,32 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Convenience typedef.
   typedef direct_space_asu::asu_mapping_index      asu_mapping_index;
+  //! Convenience typedef.
   typedef direct_space_asu::asu_mapping_index_pair asu_mapping_index_pair;
+  //! Convenience typedef.
   typedef direct_space_asu::asu_mappings<>         asu_mappings;
 
+  //! Managed group of simple proxies and asu proxies.
+  /*! Sorting of the proxies enables optimizations for speed.
+
+      See also:
+        bond_sorted_asu_proxies,
+        repulsion_sorted_asu_proxies
+   */
   template <typename SimpleProxyType,
             typename AsuProxyType>
   class sorted_asu_proxies
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       sorted_asu_proxies()
       :
         asu_mappings_(0)
       {}
 
+      //! Initialization with asu_mappings.
       sorted_asu_proxies(
         boost::shared_ptr<
           direct_space_asu::asu_mappings<> > const& asu_mappings)
@@ -40,6 +52,7 @@ namespace cctbx { namespace geometry_restraints {
         return asu_mappings_owner_;
       }
 
+      //! Appends proxy to simple array. Always returns false.
       bool
       process(SimpleProxyType const& proxy)
       {
@@ -47,12 +60,24 @@ namespace cctbx { namespace geometry_restraints {
         return false;
       }
 
+      //! Appends all proxies to simple array.
       void
       process(af::const_ref<SimpleProxyType> const& proxies)
       {
         for(std::size_t i=0;i<proxies.size();i++) process(proxies[i]);
       }
 
+      /*! \brief Appends proxy to the simple array if possible, the
+          asu array otherwise.
+       */
+      /*! Returns false if the proxy was added to the simple array,
+          true if the proxy was added to the asu array.
+
+          See also:
+            asu_mappings::is_simple_interaction,
+            bond_asu_proxy::as_simple_proxy,
+            repulsion_asu_proxy::as_simple_proxy
+       */
       bool
       process(AsuProxyType const& proxy)
       {
@@ -67,12 +92,14 @@ namespace cctbx { namespace geometry_restraints {
         return true;
       }
 
+      //! Calls process() for each proxy in the proxies array.
       void
       process(af::const_ref<AsuProxyType> const& proxies)
       {
         for(std::size_t i=0;i<proxies.size();i++) process(proxies[i]);
       }
 
+      //! Unconditionally appends proxy to the asu array (for debugging).
       void
       push_back(AsuProxyType const& proxy)
       {
@@ -84,12 +111,14 @@ namespace cctbx { namespace geometry_restraints {
         asu_active_flags[proxy.j_seq] = true;
       }
 
+      //! Unconditionally appends all proxies to the asu array (for debugging).
       void
       push_back(af::const_ref<AsuProxyType> const& proxies)
       {
         for(std::size_t i=0;i<proxies.size();i++) push_back(proxies[i]);
       }
 
+      //! Shorthand for: simple.size() + asu.size()
       std::size_t
       n_total() const { return simple.size() + asu.size(); }
 
@@ -98,8 +127,13 @@ namespace cctbx { namespace geometry_restraints {
       const direct_space_asu::asu_mappings<>* asu_mappings_;
 
     public:
+      //! Array of simple proxies.
       af::shared<SimpleProxyType> simple;
+      //! Array of asu proxies.
       af::shared<AsuProxyType> asu;
+      /*! \brief Array of size asu_mappings().mappings().size() indicating
+          if a site is involved in one or more asu proxies.
+       */
       std::vector<bool> asu_active_flags;
   };
 

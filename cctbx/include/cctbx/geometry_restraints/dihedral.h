@@ -5,10 +5,13 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Grouping of indices into array of sites (i_seqs) and parameters.
   struct dihedral_proxy
   {
+    //! Default constructor. Some data members are not initialized!
     dihedral_proxy() {}
 
+    //! Constructor.
     dihedral_proxy(
       af::tiny<unsigned, 4> const& i_seqs_,
       double angle_ideal_,
@@ -21,25 +24,37 @@ namespace cctbx { namespace geometry_restraints {
       periodicity(periodicity_)
     {}
 
+    //! Indices into array of sites.
     af::tiny<unsigned, 4> i_seqs;
+    //! Parameter.
     double angle_ideal;
+    //! Parameter.
     double weight;
+    //! Parameter.
     int periodicity;
   };
 
-  /*! CCP4 mon_lib torsion angles and XPLOR/CNS dihedrals
-      are identical to MODELLER dihedrals:
+  //! Residual and gradient calculations for dihedral %angle restraint.
+  /*! angle_model is defined as the %angle between the plane through
+      the three points sites[0],sites[1],sites[2] and the plane through
+      the three points sites[1],sites[2],sites[3]. This definition is
+      compatible with CCP4 Monomer library torsion %angles, XPLOR/CNS
+      dihedrals and MODELLER dihedrals.
 
-      http://salilab.org/modeller/modeller.html
+      See also:
+        http://salilab.org/modeller/manual/manual.html,
+        "Features and their derivatives",
 
-      van Schaik, R. C., Berendsen, H. J., & Torda, A. E. (1993).
-      J.Mol.Biol. 234, 751-762.
+        van Schaik, R. C., Berendsen, H. J., & Torda, A. E. (1993).
+        J.Mol.Biol. 234, 751-762.
    */
   class dihedral
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       dihedral() {}
 
+      //! Constructor.
       dihedral(
         af::tiny<scitbx::vec3<double>, 4> const& sites_,
         double angle_ideal_,
@@ -54,6 +69,9 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
       dihedral(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         dihedral_proxy const& proxy)
@@ -70,9 +88,23 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
+      //! weight * delta**2.
+      /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
+       */
       double
       residual() const { return weight * scitbx::fn::pow2(delta); }
 
+      //! Gradients with respect to the four sites.
+      /*! The formula for the gradients is singular if certain vectors
+          are collinear. However, the gradients converge to zero near
+          these singularities. To avoid numerical problems, the
+          gradients are set to zero exactly if the norms of certain
+          vectors are smaller than epsilon.
+
+          See also:
+            http://salilab.org/modeller/manual/manual.html,
+            "Features and their derivatives"
+       */
       af::tiny<scitbx::vec3<double>, 4>
       gradients(double epsilon=1.e-100) const
       {
@@ -99,7 +131,9 @@ namespace cctbx { namespace geometry_restraints {
         return result;
       }
 
-      // Not available in Python.
+      //! Support for dihedral_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -111,10 +145,15 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! Cartesian coordinates of the sites defining the dihedral %angle.
       af::tiny<scitbx::vec3<double>, 4> sites;
+      //! Parameter (usually as passed to the constructor).
       double angle_ideal;
+      //! Parameter (usually as passed to the constructor).
       double weight;
+      //! Parameter (usually as passed to the constructor).
       int periodicity;
+      //! false in singular situations.
       bool have_angle_model;
     protected:
       scitbx::vec3<double> d_01;
@@ -125,7 +164,13 @@ namespace cctbx { namespace geometry_restraints {
       scitbx::vec3<double> n_2123;
       double n_2123_norm;
     public:
+      //! Value of the dihedral %angle formed by the sites.
       double angle_model;
+      /*! \brief Smallest difference between angle_model and angle_ideal
+          taking the periodicity into account.
+       */
+      /*! See also: angle_delta_deg
+       */
       double delta;
 
     protected:
@@ -156,6 +201,7 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
+  //! Fast computation of dihedral::delta given an array of dihedral proxies.
   inline
   af::shared<double>
   dihedral_deltas(
@@ -166,6 +212,9 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  /*! Fast computation of dihedral::residual() given an array of
+      dihedral proxies.
+   */
   inline
   af::shared<double>
   dihedral_residuals(
@@ -176,6 +225,15 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  /*! Fast computation of sum of dihedral::residual() and gradients
+      given an array of dihedral proxies.
+   */
+  /*! The dihedral::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
   inline
   double
   dihedral_residual_sum(

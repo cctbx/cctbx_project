@@ -5,10 +5,13 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Grouping of indices into array of sites (i_seqs) and parameters.
   struct chirality_proxy
   {
+    //! Default constructor. Some data members are not initialized!
     chirality_proxy() {}
 
+    //! Constructor.
     chirality_proxy(
       af::tiny<unsigned, 4> const& i_seqs_,
       double volume_ideal_,
@@ -21,17 +24,24 @@ namespace cctbx { namespace geometry_restraints {
       weight(weight_)
     {}
 
+    //! Indices into array of sites.
     af::tiny<unsigned, 4> i_seqs;
+    //! Parameter.
     double volume_ideal;
+    //! Parameter.
     bool both_signs;
+    //! Parameter.
     double weight;
   };
 
+  //! Residual and gradient calculations for chirality restraint.
   class chirality
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       chirality() {}
 
+      //! Constructor.
       chirality(
         af::tiny<scitbx::vec3<double>, 4> const& sites_,
         double volume_ideal_,
@@ -46,6 +56,9 @@ namespace cctbx { namespace geometry_restraints {
         init_volume_model();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
       chirality(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         chirality_proxy const& proxy)
@@ -62,9 +75,17 @@ namespace cctbx { namespace geometry_restraints {
         init_volume_model();
       }
 
+      //! weight * delta**2.
+      /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
+       */
       double
       residual() const { return weight * scitbx::fn::pow2(delta); }
 
+      //! Gradients with respect to the four sites.
+      /*! See also:
+            Spiegel, M. R. & Liu, J. (1998). Mathematical Handbook of
+            Formulas and Tables. New York: McGraw-Hill.
+       */
       af::tiny<scitbx::vec3<double>, 4>
       gradients() const
       {
@@ -77,7 +98,9 @@ namespace cctbx { namespace geometry_restraints {
         return result;
       }
 
-      // Not available in Python.
+      //! Support for chirality_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -92,9 +115,13 @@ namespace cctbx { namespace geometry_restraints {
 #if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1640
       bool dummy_;
 #endif
+      //! Cartesian coordinates of the sites defining the chiral center.
       af::tiny<scitbx::vec3<double>, 4> sites;
+      //! Parameter (usually as passed to the constructor).
       double volume_ideal;
+      //! Parameter (usually as passed to the constructor).
       bool both_signs;
+      //! Parameter (usually as passed to the constructor).
       double weight;
     protected:
       scitbx::vec3<double> d_01;
@@ -102,8 +129,11 @@ namespace cctbx { namespace geometry_restraints {
       scitbx::vec3<double> d_03;
       scitbx::vec3<double> d_02_cross_d_03;
     public:
+      //! Value of the chiral volume defined by the sites.
       double volume_model;
+      //! See implementation of init_volume_model().
       double delta_sign;
+      //! volume_ideal + delta_sign * volume_model
       double delta;
 
     protected:
@@ -121,6 +151,7 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
+  //! Fast computation of chirality::delta given an array of chirality proxies.
   inline
   af::shared<double>
   chirality_deltas(
@@ -131,6 +162,9 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  /*! Fast computation of chirality::residual() given an array of
+      chirality proxies.
+   */
   inline
   af::shared<double>
   chirality_residuals(
@@ -141,6 +175,15 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  /*! Fast computation of sum of chirality::residual() and gradients
+      given an array of chirality proxies.
+   */
+  /*! The chirality::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
   inline
   double
   chirality_residual_sum(

@@ -596,6 +596,7 @@ def exercise_planarity():
     assert approx_equal(l.weights, weights)
     assert eps_eq(l.deltas(), (0.014233272168667327, 0.007241647943016986,
                                -0.0048894168534149443, -0.0035120793736139956))
+    assert eps_eq(l.rms_deltas(), 0.00853329655308)
     assert eps_eq(l.residual(), expected_residual)
     assert eps_eq(l.gradients(), expected_gradients)
     assert eps_eq(l.normal(),

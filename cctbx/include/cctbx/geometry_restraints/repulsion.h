@@ -6,16 +6,23 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Dictionary of VdW distances (element of repulsion_distance_table).
   typedef std::map<std::string, double>
     repulsion_distance_dict;
+  //! Table of VdW distances (given two energy types).
   typedef std::map<std::string, std::map<std::string, double> >
     repulsion_distance_table;
 
+  //! Table of VdW radii (given one energy type).
   typedef std::map<std::string, double>
     repulsion_radius_table;
 
+  /*! \brief Grouping of parameters for the generation of nonbonded
+      pair interactions.
+   */
   struct repulsion_params
   {
+    //! Initialization.
     repulsion_params(
       double factor_1_4_interactions_=2/3.,
       double const_shrink_1_4_interactions_=0,
@@ -28,18 +35,30 @@ namespace cctbx { namespace geometry_restraints {
       minimum_distance(minimum_distance_)
     {}
 
+    //! Table of VdW distances (given two energy types).
     repulsion_distance_table distance_table;
+    //! Table of VdW radii (given one energy type).
     repulsion_radius_table radius_table;
+    //! Multiplicative attenuation factor for 1-4 interactions.
     double factor_1_4_interactions;
+    //! Constant reduction of VdW distances for 1-4 interactions.
     double const_shrink_1_4_interactions;
+    //! Default VdW distances if table lookup fails.
+    /*! An exception is raised if the table lookup fails and
+        default_distance == 0.
+     */
     double default_distance;
+    //! Global minimum VdW distance. May be zero.
     double minimum_distance;
   };
 
+  //! Grouping of indices into array of sites (i_seqs) and vdw_distance.
   struct repulsion_simple_proxy
   {
+    //! Default constructor. Some data members are not initialized!
     repulsion_simple_proxy() {}
 
+    //! Constructor.
     repulsion_simple_proxy(
       af::tiny<unsigned, 2> const& i_seqs_,
       double vdw_distance_)
@@ -48,14 +67,19 @@ namespace cctbx { namespace geometry_restraints {
       vdw_distance(vdw_distance_)
     {}
 
+    //! Indices into array of sites.
     af::tiny<unsigned, 2> i_seqs;
+    //! VDW distance.
     double vdw_distance;
   };
 
+  //! Grouping of asu_mapping_index_pair and vdw_distance.
   struct repulsion_asu_proxy : asu_mapping_index_pair
   {
+    //! Default constructor. Some data members are not initialized!
     repulsion_asu_proxy() {}
 
+    //! Constructor.
     repulsion_asu_proxy(
       asu_mapping_index_pair const& pair_,
       double vdw_distance_)
@@ -64,7 +88,9 @@ namespace cctbx { namespace geometry_restraints {
       vdw_distance(vdw_distance_)
     {}
 
-    // Not available in Python.
+    //! Constructor.
+    /*! Not available in Python.
+     */
     repulsion_simple_proxy
     as_simple_proxy() const
     {
@@ -73,11 +99,17 @@ namespace cctbx { namespace geometry_restraints {
         vdw_distance);
     }
 
+    //! VDW distance.
     double vdw_distance;
   };
 
+  //! General repulsive function (see PROLSQ and CNS).
+  /*! energy(delta) = c_rep*(max(0,(k_rep*vdw_distance)**irexp
+                             -delta**irexp))**rexp
+   */
   struct repulsion_function
   {
+    //! Definition of coefficients.
     repulsion_function(
       double c_rep_=16,
       double k_rep_=1,
@@ -92,7 +124,9 @@ namespace cctbx { namespace geometry_restraints {
       CCTBX_ASSERT(rexp > 0);
     }
 
-    // Not available in Python.
+    //! Support for respulsion class.
+    /*! Not available in Python.
+     */
     double
     term(double vdw_distance, double delta) const
     {
@@ -100,7 +134,9 @@ namespace cctbx { namespace geometry_restraints {
       return std::pow(k_rep*vdw_distance, irexp) - std::pow(delta, irexp);
     }
 
-    // Not available in Python.
+    //! Support for respulsion class.
+    /*! Not available in Python.
+     */
     double
     residual(double term) const
     {
@@ -112,7 +148,9 @@ namespace cctbx { namespace geometry_restraints {
       return c_rep * std::pow(term, rexp);
     }
 
-    // Not available in Python.
+    //! Support for respulsion class.
+    /*! Not available in Python.
+     */
     double
     gradient_factor(double delta, double term) const
     {
@@ -132,13 +170,17 @@ namespace cctbx { namespace geometry_restraints {
     double rexp;
   };
 
+  //! Residual and gradient calculations for nonbonded repulsive interactions.
   class repulsion
   {
     public:
+      //! Convenience typedef.
       typedef scitbx::vec3<double> vec3;
 
+      //! Default constructor. Some data members are not initialized!
       repulsion() {}
 
+      //! Constructor.
       repulsion(
         af::tiny<scitbx::vec3<double>, 2> const& sites_,
         double vdw_distance_,
@@ -151,6 +193,9 @@ namespace cctbx { namespace geometry_restraints {
         init_term();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
       repulsion(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         repulsion_simple_proxy const& proxy,
@@ -167,6 +212,9 @@ namespace cctbx { namespace geometry_restraints {
         init_term();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seq, proxy.j_seq, parameters are copied from proxy.
+       */
       repulsion(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         direct_space_asu::asu_mappings<> const& asu_mappings,
@@ -183,7 +231,7 @@ namespace cctbx { namespace geometry_restraints {
         init_term();
       }
 
-      // Not available in Python.
+      //! For fast processing. Not available in Python.
       repulsion(
         asu_cache<> const& cache,
         repulsion_asu_proxy const& proxy,
@@ -197,16 +245,20 @@ namespace cctbx { namespace geometry_restraints {
         init_term();
       }
 
+      //! Uses function.residual(function.ter(...)).
       double
       residual() const { return function.residual(term_); }
 
-      // Not available in Python.
+      //! Gradient with respect to sites[0].
+      /*! Not available in Python.
+       */
       scitbx::vec3<double>
       gradient_0() const
       {
         return diff_vec * function.gradient_factor(delta, term_);
       }
 
+      //! Gradients with respect to both sites.
       af::tiny<scitbx::vec3<double>, 2>
       gradients() const
       {
@@ -227,7 +279,9 @@ namespace cctbx { namespace geometry_restraints {
         gradient_array[i_seqs[1]] += -g0;
       }
 
-      // Not available in Python.
+      //! Support for repulsion_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -243,7 +297,9 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
-      // Not available in Python.
+      //! Support for repulsion_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         asu_cache<>& cache,
@@ -256,10 +312,15 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! Cartesian coordinates of nonbonded sites.
       af::tiny<scitbx::vec3<double>, 2> sites;
+      //! Parameter (usually as passed to the constructor).
       double vdw_distance;
+      //! Function (usually as passed to the constructor).
       repulsion_function function;
+      //! Difference vector sites[0] - sites[1].
       scitbx::vec3<double> diff_vec;
+      //! Length of diff_vec.
       double delta;
     protected:
       double term_;
@@ -273,6 +334,7 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
+  //! Fast computation of repulsion::delta given an array of repulsion proxies.
   inline
   af::shared<double>
   repulsion_deltas(
@@ -288,6 +350,9 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  /*! \brief Fast computation of repulsion::residual() given an array of
+      repulsion proxies.
+   */
   inline
   af::shared<double>
   repulsion_residuals(
@@ -303,6 +368,15 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  /*! Fast computation of sum of repulsion::residual() and gradients
+      given an array of repulsion proxies.
+   */
+  /*! The repulsion::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
   inline
   double
   repulsion_residual_sum(
@@ -322,9 +396,11 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  //! Managed group of repulsion_simple_proxy and repulsion_asu_proxy arrays.
   typedef sorted_asu_proxies<repulsion_simple_proxy, repulsion_asu_proxy>
     repulsion_sorted_asu_proxies;
 
+  //! Fast computation of repulsion::delta given managed proxies.
   inline
   af::shared<double>
   repulsion_deltas(
@@ -347,6 +423,7 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  //! Fast computation of repulsion::residual() given managed proxies.
   inline
   af::shared<double>
   repulsion_residuals(
@@ -416,6 +493,20 @@ namespace cctbx { namespace geometry_restraints {
 
   } // namespace detail
 
+  /*! Fast computation of sum of repulsion::residual() and gradients
+      given managed proxies.
+   */
+  /*! The repulsion::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+
+      Intermediate results are accumulated in an asu cache until
+      disable_cache=true. The accumulated results are mapped back
+      to the original sites at the end of the calculation. This is
+      faster but requires more memory.
+   */
   inline
   double
   repulsion_residual_sum(

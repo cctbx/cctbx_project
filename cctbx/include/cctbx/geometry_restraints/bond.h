@@ -7,26 +7,36 @@
 
 namespace cctbx { namespace geometry_restraints {
 
+  //! Grouping of bond parameters distance_ideal and weight.
   struct bond_params
   {
+    //! Default constructor. Some data members are not initialized!
     bond_params() {}
 
+    //! Constructor.
     bond_params(double distance_ideal_, double weight_)
     :
       distance_ideal(distance_ideal_), weight(weight_)
     {}
 
+    //! Parameter.
     double distance_ideal;
+    //! Parameter.
     double weight;
   };
 
+  //! Dictionary of bond parameters for a given index i_seq.
   typedef std::map<unsigned, bond_params> bond_params_dict;
+  //! Array of dictionary of bond parameters. The index i_seq is implied.
   typedef af::shared<bond_params_dict> bond_params_table;
 
+  //! Grouping of indices into array of sites (i_seqs) and bond_params.
   struct bond_simple_proxy : bond_params
   {
+    //! Default constructor. Some data members are not initialized!
     bond_simple_proxy() {}
 
+    //! Constructor.
     bond_simple_proxy(
       af::tiny<unsigned, 2> const& i_seqs_,
       double distance_ideal_,
@@ -36,7 +46,9 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs(i_seqs_)
     {}
 
-    //! Not available in Python.
+    //! Constructor.
+    /*! Not available in Python.
+     */
     bond_simple_proxy(
       af::tiny<unsigned, 2> const& i_seqs_,
       bond_params const& params)
@@ -45,13 +57,17 @@ namespace cctbx { namespace geometry_restraints {
       i_seqs(i_seqs_)
     {}
 
+    //! Indices into array of sites.
     af::tiny<unsigned, 2> i_seqs;
   };
 
+  //! Grouping of asu_mapping_index_pair and bond_params.
   struct bond_asu_proxy : bond_params, asu_mapping_index_pair
   {
+    //! Default constructor. Some data members are not initialized!
     bond_asu_proxy() {}
 
+    //! Constructor.
     bond_asu_proxy(
       asu_mapping_index_pair const& pair_,
       double distance_ideal_,
@@ -61,6 +77,7 @@ namespace cctbx { namespace geometry_restraints {
       asu_mapping_index_pair(pair_)
     {}
 
+    //! Constructor.
     bond_asu_proxy(
       asu_mapping_index_pair const& pair_,
       bond_params const& params)
@@ -69,6 +86,7 @@ namespace cctbx { namespace geometry_restraints {
       asu_mapping_index_pair(pair_)
     {}
 
+    //! Conversion to bond_simple_proxy.
     bond_simple_proxy
     as_simple_proxy() const
     {
@@ -82,13 +100,17 @@ namespace cctbx { namespace geometry_restraints {
 #endif
   };
 
+  //! Residual and gradient calculations for harmonically restraint bonds.
   class bond : public bond_params
   {
     public:
+      //! Convenience typedef.
       typedef scitbx::vec3<double> vec3;
 
+      //! Default constructor. Some data members are not initialized!
       bond() {}
 
+      //! Constructor.
       bond(
         af::tiny<scitbx::vec3<double>, 2> const& sites_,
         double distance_ideal_,
@@ -100,6 +122,9 @@ namespace cctbx { namespace geometry_restraints {
         init_distance_model();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
       bond(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         bond_simple_proxy const& proxy)
@@ -114,6 +139,9 @@ namespace cctbx { namespace geometry_restraints {
         init_distance_model();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seq, proxy.j_seq, parameters are copied from proxy.
+       */
       bond(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         direct_space_asu::asu_mappings<> const& asu_mappings,
@@ -128,7 +156,7 @@ namespace cctbx { namespace geometry_restraints {
         init_distance_model();
       }
 
-      // Not available in Python.
+      //! For fast processing. Not available in Python.
       bond(
         asu_cache<> const& cache,
         bond_asu_proxy const& proxy)
@@ -140,16 +168,22 @@ namespace cctbx { namespace geometry_restraints {
         init_distance_model();
       }
 
+      //! weight * delta**2.
+      /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
+       */
       double
       residual() const { return weight * scitbx::fn::pow2(delta); }
 
-      // Not available in Python.
+      //! Gradient with respect to sites[0].
+      /*! Not available in Python.
+       */
       scitbx::vec3<double>
       gradient_0() const
       {
         return -weight * 2 * delta / distance_model * (sites[0] - sites[1]);
       }
 
+      //! Gradients with respect to both sites.
       af::tiny<scitbx::vec3<double>, 2>
       gradients() const
       {
@@ -159,7 +193,9 @@ namespace cctbx { namespace geometry_restraints {
         return result;
       }
 
-      // Not available in Python.
+      //! Support for bond_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -170,7 +206,9 @@ namespace cctbx { namespace geometry_restraints {
         gradient_array[i_seqs[1]] += -g0;
       }
 
-      // Not available in Python.
+      //! Support for bond_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
@@ -186,7 +224,9 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
-      // Not available in Python.
+      //! Support for bond_residual_sum.
+      /*! Not available in Python.
+       */
       void
       add_gradients(
         asu_cache<>& cache,
@@ -199,8 +239,11 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
+      //! Cartesian coordinates of bonded sites.
       af::tiny<scitbx::vec3<double>, 2> sites;
+      //! Distance between sites.
       double distance_model;
+      //! Difference distance_ideal - distance_model.
       double delta;
 
     protected:
@@ -212,6 +255,7 @@ namespace cctbx { namespace geometry_restraints {
       }
   };
 
+  //! Extracts bond parameters from array of simple proxies.
   inline
   bond_params_table
   extract_bond_params(
@@ -234,6 +278,7 @@ namespace cctbx { namespace geometry_restraints {
     return tab;
   }
 
+  //! Fast computation of bond::delta given an array of bond proxies.
   inline
   af::shared<double>
   bond_deltas(
@@ -244,6 +289,7 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  //! Fast computation of bond::residual() given an array of bond proxies.
   inline
   af::shared<double>
   bond_residuals(
@@ -254,6 +300,15 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  /*! Fast computation of sum of bond::residual() and gradients
+      given an array of bond proxies.
+   */
+  /*! The bond::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
   inline
   double
   bond_residual_sum(
@@ -265,9 +320,11 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies, gradient_array);
   }
 
+  //! Managed group of bond_simple_proxy and bond_asu_proxy arrays.
   typedef sorted_asu_proxies<bond_simple_proxy, bond_asu_proxy>
     bond_sorted_asu_proxies;
 
+  //! Fast computation of bond::delta given managed proxies.
   inline
   af::shared<double>
   bond_deltas(
@@ -289,6 +346,7 @@ namespace cctbx { namespace geometry_restraints {
     return result;
   }
 
+  //! Fast computation of bond::residual() given managed proxies.
   inline
   af::shared<double>
   bond_residuals(
@@ -356,6 +414,20 @@ namespace cctbx { namespace geometry_restraints {
 
   } // namespace detail
 
+  /*! Fast computation of sum of bond::residual() and gradients
+      given managed proxies.
+   */
+  /*! The bond::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+
+      Intermediate results are accumulated in an asu cache until
+      disable_cache=true. The accumulated results are mapped back
+      to the original sites at the end of the calculation. This is
+      faster but requires more memory.
+   */
   inline
   double
   bond_residual_sum(
