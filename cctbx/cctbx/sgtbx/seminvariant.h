@@ -8,22 +8,18 @@
      2001 Sep 02: start port of sglite/sgss.c (R.W. Grosse-Kunstleve)
  */
 
+#ifndef CCTBX_SGTBX_SEMINVARIANT_H
+#define CCTBX_SGTBX_SEMINVARIANT_H
+
 #include <cctbx/static_vector.h>
 #include <cctbx/sgtbx/groups.h>
 
 namespace sgtbx {
 
-  class ssVM {
-    public:
-      Vec3 V;
-      int M;
+  struct ssVM {
+    Vec3 V;
+    int M;
   };
-
-  namespace detail {
-    class AnyGenerators;
-    class DiscrList;
-    const int mDiscrList = 8;
-  }
 
   class StructureSeminvariant {
     public:
@@ -40,11 +36,8 @@ namespace sgtbx {
       Vec3 get_uvw(const Miller::Index& H) const;
     private:
       cctbx::static_vector<ssVM, 3> m_VM;
-      void GetContNullSpace(const detail::AnyGenerators& Gen);
-      void BestVectors(
-        const SgOps& sgo,
-        cctbx::static_vector<detail::DiscrList,
-                             detail::mDiscrList>& DiscrLst) const;
   };
 
 } // namespace sgtbx
+
+#endif // CCTBX_SGTBX_SEMINVARIANT_H
