@@ -41,11 +41,18 @@ namespace {
         "bond_params_dict");
       scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
         "bond_params_table")
-        .def("select",
+        .def("proxy_select",
           (bond_params_table(*)(
             af::const_ref<bond_params_dict> const&,
             af::const_ref<std::size_t> const&))
-              scitbx::af::array_of_map_select)
+              scitbx::af::array_of_map_proxy_select, (
+          arg_("iselection")))
+        .def("proxy_remove",
+          (bond_params_table(*)(
+            af::const_ref<bond_params_dict> const&,
+            af::const_ref<bool> const&))
+              scitbx::af::array_of_map_proxy_remove, (
+          arg_("selection")))
       ;
     }
   };

@@ -10,7 +10,7 @@
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <cctbx/geometry_restraints/angle.h>
-#include <cctbx/geometry_restraints/select.h>
+#include <cctbx/geometry_restraints/proxy_select.h>
 
 namespace cctbx { namespace geometry_restraints {
 namespace {
@@ -35,13 +35,19 @@ namespace {
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
           "shared_angle_proxy")
-          .def("select",
+          .def("proxy_select",
             (af::shared<w_t>(*)(
               af::const_ref<w_t> const&,
               std::size_t,
               af::const_ref<std::size_t> const&))
                 shared_proxy_select, (
             arg_("n_seq"), arg_("iselection")))
+          .def("proxy_remove",
+            (af::shared<w_t>(*)(
+              af::const_ref<w_t> const&,
+              af::const_ref<bool> const&))
+                shared_proxy_remove, (
+            arg_("selection")))
         ;
       }
     }

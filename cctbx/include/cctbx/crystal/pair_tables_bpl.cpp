@@ -26,11 +26,11 @@ namespace {
         "pair_sym_dict");
       scitbx::af::boost_python::shared_wrapper<pair_sym_dict, rir>::wrap(
         "pair_sym_table")
-        .def("select",
+        .def("proxy_select",
           (pair_sym_table(*)(
             af::const_ref<pair_sym_dict> const&,
             af::const_ref<std::size_t> const&))
-              scitbx::af::array_of_map_select)
+              scitbx::af::array_of_map_proxy_select)
       ;
     }
   };
