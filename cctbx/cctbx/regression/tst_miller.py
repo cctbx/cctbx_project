@@ -236,6 +236,21 @@ def exercise_array():
   assert tuple(c2.data()) == (4,)
   assert tuple(c2.sigmas()) == (6,)
   assert tuple(c1.adopt_set(c2).indices()) == ((1,-2,3),)
+  sg = miller.array(
+    miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), 00000),
+    flex.double((3,4)))
+  p1 = sg.expand_to_p1()
+  assert p1.indices().size() == 3
+  assert approx_equal(tuple(p1.data()), (3,4,4))
+  assert p1.sigmas() == None
+  sg = miller.array(
+    miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), 00000),
+    flex.double((3,4)),
+    flex.double((5,6)))
+  p1 = sg.expand_to_p1()
+  assert p1.indices().size() == 3
+  assert approx_equal(tuple(p1.data()), (3,4,4))
+  assert approx_equal(tuple(p1.sigmas()), (5,6,6))
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
