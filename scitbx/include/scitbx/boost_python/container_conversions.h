@@ -86,7 +86,7 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     }
   };
 
-  struct variable_size_policy : default_policy
+  struct variable_capacity_policy : default_policy
   {
     template <typename ContainerType>
     static void reserve(ContainerType& a, std::size_t sz)
@@ -102,7 +102,7 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     }
   };
 
-  struct fixed_capacity_policy : variable_size_policy
+  struct fixed_capacity_policy : variable_capacity_policy
   {
     template <typename ContainerType>
     static bool check_size(boost::type<ContainerType>, std::size_t sz)
