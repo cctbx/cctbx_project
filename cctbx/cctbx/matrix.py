@@ -57,6 +57,26 @@ class rec:
   def __call__(self, ir, ic):
     return self.elems[ir * self.n_columns() + ic]
 
+  def __float__(self):
+    return rec([float(e) for e in self.elems], self.n)
+
+  def each_abs(self):
+    return rec([abs(e) for e in self.elems], self.n)
+
+  def min(self):
+    result = None
+    for e in self.elems:
+      if (result is None or result > e):
+        result = e
+    return result
+
+  def max(self):
+    result = None
+    for e in self.elems:
+      if (result is None or result < e):
+        result = e
+    return result
+
   def min_index(self):
     result = None
     for i in xrange(len(self.elems)):
@@ -238,6 +258,8 @@ class rt:
     return self.r * col(other) + self.t
 
 if (__name__ == "__main__"):
+  from libtbx.test_utils import approx_equal
+  from boost import rational
   a = rec(range(1,7), (3,2))
   b = rec(range(1,7), (2,3))
   c = a * b
@@ -274,6 +296,10 @@ if (__name__ == "__main__"):
   assert mi.mathematica_form() == "{{7, -1, -3}, {12, -3, -5}, {33, -7, -14}}"
   assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  assert approx_equal(float(col((rational.int(3,4),2,1.5))).elems,(0.75,2,1.5))
+  assert col((-1,2,-3)).each_abs().elems == (1,2,3)
+  assert col((5,3,4)).min() == 3
+  assert col((4,5,3)).max() == 5
   assert col((5,3,4)).min_index() == 1
   assert col((4,5,3)).max_index() == 1
   assert col((4,5,3)).sum() == 12
