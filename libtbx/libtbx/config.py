@@ -3,6 +3,13 @@ from libtbx.path import norm_join
 
 class UserError(Exception): pass
 
+def full_path(command):
+  for path in os.environ["PATH"].split(os.pathsep):
+    path_command = os.path.join(path, command)
+    if (os.path.exists(path_command)):
+      return os.path.normpath(os.path.abspath(path_command))
+  return None
+
 def python_include_path(must_exist=0001):
   if (sys.platform == "win32"):
     include_path = sys.prefix + r"\include"
