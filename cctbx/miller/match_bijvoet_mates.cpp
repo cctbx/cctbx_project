@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored parts of miller/miller_lib.cpp (rwgk)
- */
-
 #include <cctbx/miller/match_bijvoet_mates.h>
 #include <cctbx/error.h>
 #include <map>
@@ -16,7 +7,7 @@ namespace cctbx { namespace miller {
   void
   match_bijvoet_mates::match_(sgtbx::reciprocal_space::asu const& asu)
   {
-    typedef std::map<index<>, std::size_t> lookup_map_type;
+    typedef std::map<index<>, std::size_t, fast_less_than<> > lookup_map_type;
     lookup_map_type lookup_map;
     for(std::size_t i=0;i<miller_indices_.size();i++) {
       lookup_map[miller_indices_[i]] = i;
