@@ -44,6 +44,9 @@ def run():
         space_group=group,
         assert_is_compatible_unit_cell=00000)
       assert subsym.unit_cell().is_similar_to(niggli_symmetry.unit_cell())
+      assert lattice_symmetry.find_max_delta(
+        niggli_cell=niggli_symmetry.unit_cell(),
+        group=group) < 0.6
   print "OK"
 
 if (__name__ == "__main__"):
