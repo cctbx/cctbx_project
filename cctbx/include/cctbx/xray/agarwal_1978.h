@@ -17,10 +17,36 @@ namespace cctbx { namespace xray {
         d_caasf_fourier_transformed() {}
 
         d_caasf_fourier_transformed(
-          caasf_fourier_transformed<FloatType, CaasfType> const& base)
+          CaasfType const& caasf,
+          std::complex<FloatType> const& fp_fdp,
+          FloatType const& w,
+          FloatType const& u_iso,
+          FloatType const& u_extra)
         :
-          caasf_fourier_transformed<FloatType, CaasfType>(base)
-        {}
+          caasf_fourier_transformed<FloatType, CaasfType>(
+            caasf, fp_fdp, w, u_iso, u_extra)
+        {
+          using scitbx::constants::pi_sq;
+          FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
+          std::size_t i = 0;
+          for(;i<caasf.n_ab();i++) {
+            b_[i] = caasf.b(i) + b_incl_extra;
+          }
+          b_[i] = b_incl_extra;
+        }
+
+        d_caasf_fourier_transformed(
+          CaasfType const& caasf,
+          std::complex<FloatType> const& fp_fdp,
+          FloatType const& w,
+          scitbx::sym_mat3<FloatType> const& u_cart,
+          FloatType const& u_extra)
+        :
+          caasf_fourier_transformed<FloatType, CaasfType>(
+            caasf, fp_fdp, w, u_cart, u_extra)
+        {
+          throw CCTBX_NOT_IMPLEMENTED();
+        }
 
         scitbx::vec3<FloatType>
         d_rho_real_d_site(exponent_table<FloatType>& exp_table,
@@ -35,6 +61,23 @@ namespace cctbx { namespace xray {
           }
           return drds;
         }
+
+        FloatType
+        d_rho_real_d_u_iso(exponent_table<FloatType>& exp_table,
+                           FloatType const& d_sq) const
+        {
+          using scitbx::constants::pi_sq;
+          FloatType drdb(0);
+          for(std::size_t i=0;i<b_.size();i++) {
+            drdb += (3*b_[i] - 8*pi_sq*d_sq) / (2*b_[i]*b_[i])
+                    * this->as_real_[i]
+                    * exp_table(this->bs_real_[i] * d_sq);
+          }
+          return adptbx::u_as_b(drdb);
+        }
+
+      protected:
+        af::tiny<FloatType, CaasfType::n_plus_1> b_;
     };
 
   } // namespace detail
@@ -132,6 +175,9 @@ namespace cctbx { namespace xray {
       af::shared<std::complex<double> >
       grad_z() const { return grad_z_; }
 
+      af::shared<std::complex<double> >
+      grad_u_iso() const { return grad_u_iso_; }
+
       template <typename TagType>
       void
       apply_symmetry(maptbx::grid_tags<TagType> const& tags)
@@ -171,6 +217,7 @@ namespace cctbx { namespace xray {
       af::shared<std::complex<double> > grad_x_;
       af::shared<std::complex<double> > grad_y_;
       af::shared<std::complex<double> > grad_z_;
+      af::shared<std::complex<double> > grad_u_iso_;
   };
 
   template <typename FloatType,
@@ -253,7 +300,7 @@ namespace cctbx { namespace xray {
         u_iso = af::max(ev);
       }
       CCTBX_ASSERT(u_iso >= 0);
-      detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
+      detail::d_caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
         scatterer->caasf, scatterer->fp_fdp, scatterer->weight(),
         u_iso, u_extra_);
       detail::calc_shell<FloatType, grid_point_type> shell(
@@ -267,7 +314,7 @@ namespace cctbx { namespace xray {
         }
       }
       if (scatterer->anisotropic_flag) {
-        caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
+        caasf_ft = detail::d_caasf_fourier_transformed<FloatType,caasf_type>(
           scatterer->caasf, scatterer->fp_fdp, scatterer->weight(),
           u_cart, u_extra_);
       }
@@ -282,6 +329,7 @@ namespace cctbx { namespace xray {
       FloatType c00, c01, c11;
       std::complex<FloatType> gr(0);
       scitbx::vec3<std::complex<FloatType> > grs(0,0,0);
+      std::complex<FloatType> grui(0);
       for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
         g01 = math::mod_positive(gp[0],grid_f[0]) * grid_a[1];
         f0 = FloatType(gp[0]) / grid_f[0] - coor_frac[0];
@@ -318,12 +366,12 @@ namespace cctbx { namespace xray {
         }
         else {
           scitbx::vec3<FloatType>
-            drds = detail::d_caasf_fourier_transformed<FloatType,caasf_type>(
-              caasf_ft).d_rho_real_d_site(exp_table, d, d_sq)
-            * unit_cell_.orthogonalization_matrix();
+            drds = caasf_ft.d_rho_real_d_site(exp_table, d, d_sq)
+                 * unit_cell_.orthogonalization_matrix();
           for(std::size_t i=0;i<3;i++) {
             grs[i] += ft_dt(gp) * drds[i];
           }
+          grui += ft_dt(gp) * caasf_ft.d_rho_real_d_u_iso(exp_table, d_sq);
         }
       }}}
       if (!lifchitz) {
@@ -333,6 +381,7 @@ namespace cctbx { namespace xray {
         grad_x_.push_back(grs[0]);
         grad_y_.push_back(grs[1]);
         grad_z_.push_back(grs[2]);
+        grad_u_iso_.push_back(grui);
       }
     }
     exp_table_size_ = exp_table.table().size();
