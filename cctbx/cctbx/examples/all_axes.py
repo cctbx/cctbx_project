@@ -11,6 +11,7 @@
 # XXX See also: comment regarding shift_range below.
 
 from cctbx import sgtbx
+import sys
 
 def str_ev(ev):
   return "[%d,%d,%d]" % ev
@@ -34,11 +35,15 @@ def rt_mx_analysis(s):
           "(%s)" % (t_intrinsic,),
           "(%s)" % (t_shift,))
 
-def list_all_axes(space_group_symbol):
+def list_all_axes(space_group_symbol=None, space_group_info=None):
+  assert space_group_symbol == None or space_group_info == None
   shift_range = 1 # XXX Works for the 230 reference settings; it is not
                   # XXX clear to me (rwgk) what value is needed in general.
-  space_group_info = sgtbx.space_group_info(symbol=space_group_symbol)
-  print space_group_info
+  if (space_group_symbol != None):
+    space_group_info = sgtbx.space_group_info(symbol=space_group_symbol)
+  space_group_info.show_summary()
+  print
+  print "Rotation type, Axis direction, Intrinsic part, Origin shift"
   axes_dict = {}
   for s in space_group_info.group():
     r = s.r()
@@ -57,7 +62,6 @@ def list_all_axes(space_group_symbol):
   print
 
 if (__name__ == "__main__"):
-  import sys
   if (len(sys.argv) == 1):
     for i in xrange(230):
       list_all_axes(i + 1)
