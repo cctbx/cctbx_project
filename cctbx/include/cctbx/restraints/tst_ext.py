@@ -223,14 +223,14 @@ def exercise_bond():
 def exercise_repulsion():
   p = restraints.repulsion_simple_proxy(
     i_seqs=[0,1],
-    vdw_radius=5)
+    vdw_distance=5)
   assert p.i_seqs == (0,1)
-  assert approx_equal(p.vdw_radius, 5)
+  assert approx_equal(p.vdw_distance, 5)
   r = restraints.repulsion(
     sites=[(1,2,3),(2,4,6)],
-    vdw_radius=5)
+    vdw_distance=5)
   assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
-  assert approx_equal(r.vdw_radius, 5)
+  assert approx_equal(r.vdw_distance, 5)
   assert approx_equal(r.function.c_rep, 16)
   assert approx_equal(r.delta, 3.74165738677)
   assert approx_equal(r.residual(), 40.1158130612)
@@ -242,12 +242,12 @@ def exercise_repulsion():
     sites_cart=sites_cart,
     proxy=p)
   assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
-  assert approx_equal(r.vdw_radius, 5)
+  assert approx_equal(r.vdw_distance, 5)
   assert approx_equal(r.function.c_rep, 16)
   assert approx_equal(r.delta, 3.74165738677)
   proxies = restraints.shared_repulsion_simple_proxy([p,p])
   for proxy in proxies:
-    assert approx_equal(proxy.vdw_radius, 5)
+    assert approx_equal(proxy.vdw_distance, 5)
   assert approx_equal(restraints.repulsion_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [3.74165738677]*2)
@@ -268,22 +268,22 @@ def exercise_repulsion():
     distance_cutoff=5)
   p = restraints.repulsion_asu_proxy(
     pair=pair_generator.next(),
-    vdw_radius=2)
+    vdw_distance=2)
   assert pair_generator.at_end()
   assert p.i_seq == 0
   assert p.j_seq == 1
   assert p.j_sym == 0
-  assert approx_equal(p.vdw_radius, 2)
-  p.vdw_radius = 3
-  assert approx_equal(p.vdw_radius, 3)
-  p.vdw_radius = 2
+  assert approx_equal(p.vdw_distance, 2)
+  p.vdw_distance = 3
+  assert approx_equal(p.vdw_distance, 3)
+  p.vdw_distance = 2
   sym_proxies = restraints.shared_repulsion_asu_proxy([p,p])
   for proxy in sym_proxies:
-    assert approx_equal(proxy.vdw_radius, 2)
-    proxy.vdw_radius = 3
+    assert approx_equal(proxy.vdw_distance, 2)
+    proxy.vdw_distance = 3
   for proxy in sym_proxies:
-    assert approx_equal(proxy.vdw_radius, 3)
-    proxy.vdw_radius = 2
+    assert approx_equal(proxy.vdw_distance, 3)
+    proxy.vdw_distance = 2
   f = restraints.repulsion_function(
     c_rep=1, k_rep=4, irexp=2, rexp=3)
   assert approx_equal(f.c_rep, 1)
@@ -292,7 +292,7 @@ def exercise_repulsion():
   assert approx_equal(f.rexp, 3)
   r = restraints.repulsion(
     sites=list(sites_cart),
-    vdw_radius=p.vdw_radius,
+    vdw_distance=p.vdw_distance,
     function=f)
   assert approx_equal(r.function.c_rep, 1)
   assert approx_equal(r.diff_vec, [-1,-1,-1])
@@ -302,7 +302,7 @@ def exercise_repulsion():
     [(22326.0, 22326.0, 22326.0), (-22326.0, -22326.0, -22326.0)])
   r = restraints.repulsion(
     sites=list(sites_cart),
-    vdw_radius=p.vdw_radius,
+    vdw_distance=p.vdw_distance,
     function=restraints.repulsion_function())
   assert approx_equal(r.function.c_rep, 16)
   assert approx_equal(r.function.k_rep, 1)
