@@ -16,8 +16,7 @@ class subgroups:
         subgroup = sgtbx.space_group(group_i)
         subgroup.expand_smx(p_parent_group(j_smx))
         subgroup.make_tidy()
-        if (subgroup != p_parent_group):
-          self._add(subgroup)
+        self._add(subgroup)
 
   def _add(self, group):
     for g in self._p_groups:
