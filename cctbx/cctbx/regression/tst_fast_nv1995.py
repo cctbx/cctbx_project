@@ -36,12 +36,12 @@ def run_fast_nv1995(f_obs, f_calc_fixed, f_calc_p1,
     tags=grid_tags.tag_array(),
     peak_search_level=1,
     max_peaks=10,
-    interpolate=00000)
+    interpolate=0001)
   if (0 or verbose):
     print "gridding:", gridding
     for i,site in peak_list.sites().items():
       print "(%.4f,%.4f,%.4f)" % site, "%.6g" % peak_list.heights()[i]
-  assert approx_equal(map_stats.max(), peak_list.heights()[0])
+  assert approx_equal(map_stats.max(), flex.max(peak_list.grid_heights()))
   return peak_list
 
 def test_atom(space_group_info, use_primitive_setting,

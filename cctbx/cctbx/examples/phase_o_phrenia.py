@@ -56,7 +56,7 @@ def calculate_exp_i_two_phi_peaks(xray_structure, d_min,
     data=real_map,
     tags=grid_tags.tag_array(),
     max_peaks=10*max_reduced_peaks,
-    interpolate=00000)
+    interpolate=0001)
   reduced_peaks = peak_cluster_reduction(
     crystal_symmetry=xray_structure,
     peak_list=peak_list,
