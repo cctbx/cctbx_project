@@ -457,6 +457,27 @@ namespace cctbx { namespace miller {
     }
   }
 
+  std::size_t binner::count(std::size_t i_bin) const
+  {
+    cctbx_assert(i_bin < this->n_bins_all());
+    std::size_t result = 0;
+    for(std::size_t i=0;i<bin_indices_.size();i++) {
+      if (bin_indices_[i] == i_bin) result++;
+    }
+    return result;
+  }
+
+  af::shared<std::size_t> binner::counts() const
+  {
+    af::shared<std::size_t> result(this->n_bins_all());
+    for(std::size_t i=0;i<bin_indices_.size();i++) {
+      std::size_t i_bin = bin_indices_[i];
+      cctbx_assert(i_bin < result.size());
+      result[i_bin]++;
+    }
+    return result;
+  }
+
   af::shared<bool> binner::bin_selection(std::size_t i_bin) const
   {
     cctbx_assert(i_bin < this->n_bins_all());

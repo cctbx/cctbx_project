@@ -79,10 +79,9 @@ def exercise_join_sets():
   assert tuple(selected_data_set.F) == (0,)
 
 def show_binner_info(binner):
-  for i_bin in xrange(binner.n_bins_all()):
+  for i_bin in binner.range_all():
     bin_d_range = binner.bin_d_range(i_bin)
-    bin_sel = binner.bin_selection(i_bin)
-    count = bin_sel.count(1)
+    count = binner.count(i_bin)
     if (i_bin == binner.i_bin_d_too_large()):
       assert bin_d_range[0] == 0
       print "unused:              d > %8.4f: %5d" % (bin_d_range[1], count)
@@ -104,21 +103,28 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1):
   print "Unit cell:", xtal.UnitCell
   print "Space group:", xtal.SgInfo.BuildLookupSymbol()
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
-  binning = miller.binning(xtal.UnitCell, n_bins, miller_set.H)
-  assert binning.n_bins_used() == n_bins
-  assert binning.limits().size() == n_bins + 1
-  assert binning.n_bins_all() == n_bins + 2
-  print "binning.d_max():", binning.d_max()
-  print "binning.d_min():", binning.d_min()
-  binner = miller.binner(binning, miller_set.H)
-  assert binner.bin_selection(binner.i_bin_d_too_large()).count(1) == 0
-  assert binner.bin_selection(binner.i_bin_d_too_small()).count(1) == 0
-  show_binner_info(binner)
-  binning = miller.binning(xtal.UnitCell, n_bins - 2,
-    binning.bin_d_min(2),
-    binning.bin_d_min(n_bins))
-  binner = miller.binner(binning, miller_set.H)
-  show_binner_info(binner)
+  binning1 = miller.binning(xtal.UnitCell, n_bins, miller_set.H)
+  assert binning1.n_bins_used() == n_bins
+  assert binning1.limits().size() == n_bins + 1
+  assert binning1.n_bins_all() == n_bins + 2
+  print "binning1.d_max():", binning1.d_max()
+  print "binning1.d_min():", binning1.d_min()
+  binner1 = miller.binner(binning1, miller_set.H)
+  show_binner_info(binner1)
+  assert binner1.count(binner1.i_bin_d_too_large()) == 0
+  assert binner1.count(binner1.i_bin_d_too_small()) == 0
+  counts = binner1.counts()
+  for i_bin in binner1.range_all():
+    assert binner1.count(i_bin) == counts[i_bin]
+    assert binner1.bin_selection(i_bin).count(1) == counts[i_bin]
+  assert list(binner1.range_all()) == range(binner1.n_bins_all())
+  assert list(binner1.range_used()) == range(1, binner1.n_bins_used()+1)
+  binning2 = miller.binning(xtal.UnitCell, n_bins - 2,
+    binning1.bin_d_min(2),
+    binning1.bin_d_min(n_bins))
+  binner2 = miller.binner(binning2, miller_set.H)
+  show_binner_info(binner2)
+  assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
 
 def run():
   exercise_join_sets()
