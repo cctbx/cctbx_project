@@ -303,6 +303,95 @@ def add_si_o_si_proxies(si_proxies, si_o_proxies, distance_ideal, weight):
         weight=weight))
     si_o_proxies.sorted_proxies.process(si_o_proxies.proxies[-1])
 
+def write_nodes_as_pdb(label, structure, node_list):
+  import iotbx.pdb
+  from cctbx import uctbx
+  unit_cell = uctbx.unit_cell(
+      [p*1.8/3.1 for p in structure.unit_cell().parameters()[:3]]
+    + list(structure.unit_cell().parameters()[3:]))
+  f = open(label+".pdb", "w")
+  for serial,list_node in zip(count(1), node_list):
+    site_frac = list_node.rt_mx * structure.scatterers()[list_node.i_seq].site
+    site_cart = unit_cell.orthogonalize(site_frac)
+    print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site_cart)
+  print >> f, "END"
+  f.close()
+
+class node:
+
+  def __init__(self, i_seq, rt_mx, special_ops):
+    adopt_init_args(self, locals())
+    self.rt_mx_unique = str(rt_mx.multiply(special_ops[i_seq]))
+
+def find_node(test_node, node_list):
+  for list_node in node_list:
+    if (    list_node.i_seq == test_node.i_seq
+        and list_node.rt_mx_unique == test_node.rt_mx_unique):
+      return 0001
+  return 00000
+
+def coordination_sequences(structure, proxies):
+  scatterers = structure.scatterers()
+  pair_lists = [[] for i in xrange(scatterers.size())]
+  for proxy in proxies.proxies:
+    pair = proxy.pair
+    pair_lists[pair.i_seq].append(pair)
+    if (pair.j_sym == 0):
+      pair_lists[pair.j_seq].append(pair)
+  assert list(proxies.bond_counts) \
+      == [len(pair_list) for pair_list in pair_lists]
+  print "site symmetries:", [site_symmetry.point_group_type()
+    for site_symmetry in proxies.site_symmetries]
+  asu_mappings = proxies.asu_mappings
+  special_ops = [site_symmetry.special_op()
+    for site_symmetry in proxies.site_symmetries]
+  sums_terms = flex.double()
+  multiplicities = flex.double()
+  for i_seq_pivot in xrange(len(pair_lists)):
+    if (len(pair_lists[i_seq_pivot]) == 0): continue
+    nodes_middle = []
+    nodes_next = [node(
+      i_seq=i_seq_pivot, rt_mx=sgtbx.rt_mx(), special_ops=special_ops)]
+    if (0):
+      nodes_for_pdb = nodes_next[:]
+    terms = flex.size_t([1])
+    for i_shell in xrange(1,11):
+      nodes_previous = nodes_middle
+      nodes_middle = nodes_next
+      nodes_next = []
+      for node_m in nodes_middle:
+        for pair in pair_lists[node_m.i_seq]:
+          rt_mx_n = node_m.rt_mx
+          rt_mx_i = asu_mappings.get_rt_mx(i_seq=pair.i_seq, i_sym=0)
+          rt_mx_j = asu_mappings.get_rt_mx(i_seq=pair.j_seq, i_sym=pair.j_sym)
+          if (pair.i_seq == node_m.i_seq):
+            new_node = node(
+              i_seq=pair.j_seq,
+              rt_mx=rt_mx_n.multiply(rt_mx_i.inverse().multiply(rt_mx_j)),
+              special_ops=special_ops)
+          else:
+            assert pair.j_seq == node_m.i_seq
+            new_node = node(
+              i_seq=pair.i_seq,
+              rt_mx=rt_mx_n.multiply(rt_mx_j.inverse().multiply(rt_mx_i)),
+              special_ops=special_ops)
+          if (    not find_node(test_node=new_node, node_list=nodes_previous)
+              and not find_node(test_node=new_node, node_list=nodes_middle)
+              and not find_node(test_node=new_node, node_list=nodes_next)):
+            nodes_next.append(new_node)
+      terms.append(len(nodes_next))
+      if (0):
+        nodes_for_pdb.extend(nodes_next)
+        write_nodes_as_pdb(
+          label="shell_%02d_%02d" % (i_seq_pivot, i_shell),
+          structure=structure,
+          node_list=nodes_for_pdb)
+    sums_terms.append(flex.sum(terms))
+    multiplicities.append(scatterers[i_seq_pivot].multiplicity())
+    print scatterers[i_seq_pivot].label, list(terms)
+  print "TD%d:" % (terms.size()-1), \
+        flex.mean_weighted(sums_terms, multiplicities)
+
 def run(distance_cutoff=3.5):
   command_line = (iotbx_option_parser(
     usage="python distance_ls.py [options] studat_file [...]",
@@ -332,6 +421,8 @@ def run(distance_cutoff=3.5):
       print "proxies.bond_counts:", list(si_proxies.bond_counts)
       if (si_proxies.bond_counts.count(4) != si_proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
+      if (1):
+        coordination_sequences(structure=si_structure, proxies=si_proxies)
       if (1):
         if (0):
           si_o_structure = si_structure
