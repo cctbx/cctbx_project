@@ -266,6 +266,26 @@ namespace cctbx { namespace sgtbx {
     *this = rt_mx(parse_str_xyz, stop_chars, r_den, t_den);
   }
 
+  rt_mx::rt_mx(scitbx::mat3<double> const& r,
+               scitbx::vec3<double> const& t,
+               int r_den, int t_den)
+    : r_(0), t_(0)
+  {
+    rt_mx result(r_den, t_den);
+    for(std::size_t i=0;i<9;i++) {
+      if (rationalize(r[i], result.r_[i], r_den) != 0) {
+        throw_unsuitable_rot_mx(__FILE__, __LINE__);
+      }
+    }
+    for(std::size_t i=0;i<3;i++) {
+      if (rationalize(t[i], result.t_[i], t_den) != 0) {
+        throw_unsuitable_tr_vec(__FILE__, __LINE__);
+      }
+    }
+    r_ = result.r_;
+    t_ = result.t_;
+  }
+
   af::tiny<int, 12> rt_mx::as_int_array() const
   {
     af::tiny<int, 12> result;
