@@ -2249,10 +2249,11 @@ namespace cctbx { namespace sgtbx {
         RTMx SymOp = SgOps(iOp).modShort();
         fractional<double> SX = SymOp * NormX;
         TrVec U(1);
-        for (U[0] = -1; U[0] <= 1; U[0]++)
-        for (U[1] = -1; U[1] <= 1; U[1]++)
-        for (U[2] = -1; U[2] <= 1; U[2]++) {
-          fractional<double> USX = SX + U;
+        af::int3& Uv = U.vec();
+        for (Uv[0] = -1; Uv[0] <= 1; Uv[0]++)
+        for (Uv[1] = -1; Uv[1] <= 1; Uv[1]++)
+        for (Uv[2] = -1; Uv[2] <= 1; Uv[2]++) {
+          fractional<double> USX = double3_plus_TrVec(SX, U);
           fractional<double> SnappedUSX = m_Operations[iWP].SpecialOp() * USX;
           double Dist2 = uc.Distance2(SnappedUSX, USX);
           if (ShortestDistance2 > Dist2) {
@@ -2284,13 +2285,13 @@ namespace cctbx { namespace sgtbx {
       TrVec Pb = P * b;
       int i;
       for (i = nd; i < 3; i++) {
-        if (Pb[i] != 0) return TrVec(0);
+        if (Pb.vec()[i] != 0) return TrVec(0);
       }
       TrVec xp(1);
       for (i = 0; i < nd; i++) {
         int d = M[i * nd + i];
-        if (Pb[i] % d != 0) return TrVec(0);
-        xp[i] = Pb[i] / d;
+        if (Pb.vec()[i] % d != 0) return TrVec(0);
+        xp.vec()[i] = Pb.vec()[i] / d;
       }
       return Q * xp;
     }

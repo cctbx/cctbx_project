@@ -147,11 +147,11 @@ namespace cctbx { namespace sgtbx {
         if (strchr(StopChars, HSym()))
           return TrVec(0);
         int i = 1;
-        int n = sscanf(HSym.peek(), "%d%n", &result[Row], &i);
+        int n = sscanf(HSym.peek(), "%d%n", &result.vec()[Row], &i);
         HSym.skip(i - 1);
         if (n != 1) return TrVec(0);
         HSym.skip();
-        result[Row] *= (TBF / 12);
+        result.vec()[Row] *= (TBF / 12);
       }
       return result;
     }
@@ -329,7 +329,7 @@ namespace cctbx { namespace sgtbx {
           default:  i = 2; break;
         }
         cctbx_assert(SMx_T.BF() * Screw % AbsOrder == 0);
-        SMx_T[i] += SMx_T.BF() * Screw / AbsOrder;
+        SMx_T.vec()[i] += SMx_T.BF() * Screw / AbsOrder;
       }
 
       expandSMx(RTMx(SMx_R, SMx_T));

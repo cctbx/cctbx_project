@@ -86,8 +86,7 @@ namespace {
     tuple result(2);
     result.set_item(0,
       ref(to_python(static_cast<af::int9>(N.Rpart()))));
-    result.set_item(1,
-      ref(to_python(static_cast<af::int3>(N.Tpart()))));
+    result.set_item(1, ref(to_python(N.Tpart().vec())));
     return result;
   }
 

@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <string>
+#include <cctbx/array_family/tiny_algebra.h>
 #include <cctbx/sgtbx/basic.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/math.h>
@@ -22,22 +23,25 @@
 namespace cctbx { namespace sgtbx {
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-  class TrVec : public af::int3 {
+  class TrVec {
     private:
+      af::int3 m_vec;
       int m_BF;
     public:
-      typedef af::int3 base_type;
       explicit TrVec(int TranslationBaseFactor = STBF)
-        : m_BF(TranslationBaseFactor) { for(int i=0;i<3;i++) elems[i] = 0; }
+        : m_vec(0,0,0), m_BF(TranslationBaseFactor)
+      {}
       explicit TrVec(const af::int3& v, int TranslationBaseFactor = STBF)
-        : base_type(v), m_BF(TranslationBaseFactor) {}
+        : m_vec(v), m_BF(TranslationBaseFactor)
+      {}
       TrVec(const int& v0, const int& v1, const int& v2,
-                   int TranslationBaseFactor = STBF)
-        : m_BF(TranslationBaseFactor) {
-        elems[0] = v0; elems[1] = v1; elems[2] = v2;
-      }
+            int TranslationBaseFactor = STBF)
+        : m_vec(v0,v1,v2), m_BF(TranslationBaseFactor)
+      {}
+      const af::int3& vec() const { return m_vec; }
+            af::int3& vec()       { return m_vec; }
       const int& BF() const { return m_BF; }
-      int& BF() { return m_BF; }
+            int& BF()       { return m_BF; }
       bool isValid() const { return m_BF != 0; }
       TrVec Null() const {
         return TrVec(BF());
@@ -48,54 +52,53 @@ namespace cctbx { namespace sgtbx {
       TrVec newBaseFactor(int NewBF) const;
       TrVec scale(int factor) const {
         if (factor == 1) return *this;
-        TrVec result(m_BF * factor);
-        for(int i=0;i<3;i++) result[i] = elems[i] * factor;
-        return result;
+        return TrVec(m_vec * factor, m_BF * factor);
       }
       TrVec cancel() const;
       TrVec modPositive() const {
-        TrVec result(m_BF);
-        for(int i=0;i<3;i++) result[i] = sgtbx::modPositive(elems[i], m_BF);
+        TrVec result(m_vec, m_BF);
+        for(int i=0;i<3;i++) {
+          result.m_vec[i] = sgtbx::modPositive(result.m_vec[i], m_BF);
+        }
         return result;
       }
       TrVec modShort() const {
-        TrVec result(m_BF);
-        for(int i=0;i<3;i++) result[i] = sgtbx::modShort(elems[i], m_BF);
+        TrVec result(m_vec, m_BF);
+        for(int i=0;i<3;i++) {
+          result.m_vec[i] = sgtbx::modShort(result.m_vec[i], m_BF);
+        }
         return result;
       }
       friend bool operator==(const TrVec& lhs, const TrVec& rhs) {
         if (lhs.m_BF != rhs.m_BF) return false;
-        for(int i=0;i<3;i++) if (lhs.elems[i] != rhs.elems[i]) return false;
+        for(int i=0;i<3;i++) if (lhs.m_vec[i] != rhs.m_vec[i]) return false;
         return true;
       }
+      friend bool operator!=(const TrVec& lhs, const TrVec& rhs) {
+        return !(lhs == rhs);
+      }
       TrVec operator-() const {
-        TrVec result(m_BF);
-        for(int i=0;i<3;i++) result[i] = -elems[i];
+        TrVec result(m_vec, m_BF);
+        for(int i=0;i<3;i++) result.m_vec[i] = -result.m_vec[i];
         return result;
       }
       friend TrVec operator+(const TrVec& lhs, const TrVec& rhs) {
         cctbx_assert(lhs.m_BF == rhs.m_BF);
-        TrVec result(lhs.m_BF);
-        for(int i=0;i<3;i++) result[i] = lhs[i] + rhs[i];
-        return result;
+        return TrVec(lhs.m_vec + rhs.m_vec, lhs.m_BF);
       }
       TrVec plus(const TrVec& rhs) const;
       TrVec minus(const TrVec& rhs) const;
       TrVec& operator+=(const TrVec& rhs) {
         cctbx_assert(m_BF == rhs.m_BF);
-        for(int i=0;i<3;i++) elems[i] += rhs.elems[i];
+        for(int i=0;i<3;i++) m_vec[i] += rhs.m_vec[i];
         return *this;
       }
       friend TrVec operator-(const TrVec& lhs, const TrVec& rhs) {
         cctbx_assert(lhs.m_BF == rhs.m_BF);
-        TrVec result(lhs.m_BF);
-        for(int i=0;i<3;i++) result[i] = lhs[i] - rhs[i];
-        return result;
+        return TrVec(lhs.m_vec - rhs.m_vec, lhs.m_BF);
       }
       friend TrVec operator*(const TrVec& lhs, const int& rhs) {
-        TrVec result(lhs.m_BF);
-        for(int i=0;i<3;i++) result[i] = lhs[i] * rhs;
-        return result;
+        return TrVec(lhs.m_vec * rhs, lhs.m_BF);
       }
       friend TrVec operator/(const TrVec& lhs, int rhs);
       friend TrVec operator*(const int& lhs, const TrVec& rhs) {
@@ -106,7 +109,7 @@ namespace cctbx { namespace sgtbx {
       af::tiny<FloatType, 3> as_array(const FloatType&) const {
         af::tiny<FloatType, 3> result;
         for(int i=0;i<3;i++) {
-          result[i] = FloatType(elems[i]) / FloatType(m_BF);
+          result[i] = FloatType(m_vec[i]) / FloatType(m_BF);
         }
         return result;
       }
@@ -443,7 +446,7 @@ namespace cctbx { namespace sgtbx {
           result[i    ] = FloatType(Rpart()[i]) / FloatType(RBF());
         }
         for(i=0;i<3;i++) {
-          result[i + 9] = FloatType(Tpart()[i]) / FloatType(TBF());
+          result[i + 9] = FloatType(Tpart().vec()[i]) / FloatType(TBF());
         }
         return result;
       }
@@ -639,7 +642,8 @@ namespace cctbx { namespace sgtbx {
       GridTupleType refine_gridding(const GridTupleType& grid) {
         GridTupleType result;
         for(int ir=0;ir<3;ir++) {
-          result[ir] = lcm(grid[ir], norm_denominator(m_T[ir], m_T.BF()));
+          result[ir] = lcm(
+            grid[ir], norm_denominator(m_T.vec()[ir], m_T.BF()));
           for(int ic=0;ic<3;ic++) {
             result[ir] = lcm(
               result[ir], norm_denominator(m_R(ir, ic), grid[ic]));
@@ -663,7 +667,7 @@ namespace cctbx { namespace sgtbx {
   inline af::double3
   double3_plus_TrVec(const af::double3& lhs, const TrVec& rhs) {
     af::double3 result;
-    for(int i=0;i<3;i++) result[i] = lhs[i] + double(rhs[i]) / rhs.BF();
+    for(int i=0;i<3;i++) result[i] = lhs[i] + double(rhs.vec()[i]) / rhs.BF();
     return result;
   }
 
@@ -677,7 +681,7 @@ namespace cctbx { namespace sgtbx {
     for(int i=0;i<3;i++) {
       result[i] = (  R[i * 3 + 0] * rhs[0]
                    + R[i * 3 + 1] * rhs[1]
-                   + R[i * 3 + 2] * rhs[2]) / RBF + T[i] / TBF;
+                   + R[i * 3 + 2] * rhs[2]) / RBF + T.vec()[i] / TBF;
     }
     return result;
   }

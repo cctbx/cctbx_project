@@ -104,10 +104,9 @@ namespace cctbx { namespace sgtbx {
         TrVec Zf = (OrigZf[iDL] + Shift).modPositive();
         TrVec Zc = Zf.cancel();
         for(int i=0;i<3;i++) {
-          if (Zf[i]) {
-            if (   CmpOLen2()(Zc, BestZc[iDL])
-                || (   static_cast<af::int3>(Zc)
-                    == static_cast<af::int3>(BestZc[iDL])
+          if (Zf.vec()[i]) {
+            if (   CmpOLen2()(Zc.vec(), BestZc[iDL].vec())
+                || (Zc.vec() == BestZc[iDL].vec()
                     && Zc.BF() < BestZc[iDL].BF())) {
               BestZf[iDL] = Zf;
               BestZc[iDL] = Zc;
@@ -128,7 +127,7 @@ namespace cctbx { namespace sgtbx {
       for (iDL = 1; iDL < DiscrZ.size(); iDL++) {
         int BF = DiscrZ[iDL].BF();
         for(int i=0;i<3;i++) {
-          int g = gcd(DiscrZ[iDL][i], BF);
+          int g = gcd(DiscrZ[iDL].vec()[i], BF);
           LTBF = lcm(LTBF, BF / g);
         }
       }
@@ -136,7 +135,7 @@ namespace cctbx { namespace sgtbx {
       for (iLTr = 1; iLTr < SgOps.nLTr(); iLTr++) {
         int BF = SgOps.LTr(iLTr).BF();
         for(int i=0;i<3;i++) {
-          int g = gcd(SgOps.LTr(iLTr)[i], BF);
+          int g = gcd(SgOps.LTr(iLTr).vec()[i], BF);
           LTBF = lcm(LTBF, BF / g);
         }
       }
@@ -209,7 +208,7 @@ namespace cctbx { namespace sgtbx {
       public:
         CmpDiscrZ() : CmpT(3) {}
         bool operator()(const TrVec& a, const TrVec& b) const {
-          return CmpT(a.elems, b.elems);
+          return CmpT(a.vec().begin(), b.vec().begin());
         }
       private:
         const CmpiVect CmpT;
@@ -249,7 +248,7 @@ namespace cctbx { namespace sgtbx {
         xp.fill(0);
         xp[id] = f * DTBF / d;
         TrVec x(DTBF);
-        MatrixLite::multiply<int>(Q, xp.elems, 3, 3, 1, x.elems);
+        MatrixLite::multiply<int>(Q, xp.elems, 3, 3, 1, x.vec().begin());
         DiscrGrpP.expand(x);
       }
     }
@@ -272,7 +271,7 @@ namespace cctbx { namespace sgtbx {
       cctbx_assert(m_VM.size() < 3);
       TrVec G = DiscrGen[iG].cancel();
       ssVM VM;
-      VM.V = static_cast<af::int3>(G);
+      VM.V = G.vec();
       VM.M = G.BF();
       m_VM.push_back(VM);
     }

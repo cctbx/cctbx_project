@@ -23,7 +23,8 @@ namespace cctbx { namespace sgtbx {
   TrVec TrVec::newBaseFactor(int NewBF) const
   {
     TrVec result(NewBF);
-    if (ChangeBaseFactor(elems, BF(), result.elems, NewBF, 3) != 0) {
+    if (ChangeBaseFactor(
+          m_vec.begin(), BF(), result.m_vec.begin(), NewBF, 3) != 0) {
       throw error_base_factor(
         __FILE__, __LINE__, "out of translation-base-factor range");
     }
@@ -33,8 +34,8 @@ namespace cctbx { namespace sgtbx {
   TrVec operator/(const TrVec& lhs, int rhs) {
     TrVec result(lhs.BF());
     for(int i=0;i<3;i++) {
-      if (lhs[i] % rhs) throw cctbx_internal_error();
-      result[i] = lhs[i] / rhs;
+      if (lhs.m_vec[i] % rhs) throw cctbx_internal_error();
+      result.m_vec[i] = lhs.m_vec[i] / rhs;
     }
     return result;
   }
@@ -73,14 +74,16 @@ namespace cctbx { namespace sgtbx {
   TrVec operator*(const RotMx& lhs, const TrVec& rhs)
   {
     TrVec result(lhs.BF() * rhs.BF());
-    MatrixLite::multiply(lhs.elems, rhs.elems, 3, 3, 1, result.elems);
+    MatrixLite::multiply(
+      lhs.elems, rhs.vec().begin(), 3, 3, 1, result.vec().begin());
     return result;
   }
 
   TrVec operator*(const TrVec& lhs, const RotMx& rhs)
   {
     TrVec result(lhs.BF() * rhs.BF());
-    MatrixLite::multiply(lhs.elems, rhs.elems, 1, 3, 3, result.elems);
+    MatrixLite::multiply(
+      lhs.vec().begin(), rhs.elems, 1, 3, 3, result.vec().begin());
     return result;
   }
 
@@ -89,7 +92,7 @@ namespace cctbx { namespace sgtbx {
     os << "(";
     rangei(3) {
       if (i) os << ",";
-      os << T[i];
+      os << T.vec()[i];
     }
     os << ")/";
     os << T.BF();
@@ -231,7 +234,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
       if (i != 0) result += Separator;
-      rational T_frac(m_T[i], m_T.BF());
+      rational T_frac(m_T.vec()[i], m_T.BF());
       if (T_frac == 0) {
         if (R_term.empty()) result += "0";
         else                result += R_term;
@@ -258,7 +261,7 @@ namespace cctbx { namespace sgtbx {
     af::tiny<int, 12> result;
     int i;
     for(i=0;i<9;i++) result[i    ] = Rpart()[i];
-    for(i=0;i<3;i++) result[i + 9] = Tpart()[i];
+    for(i=0;i<3;i++) result[i + 9] = Tpart().vec()[i];
     return result;
   }
 
@@ -365,7 +368,7 @@ namespace cctbx { namespace sgtbx {
                 throw error_base_factor(
                   __FILE__, __LINE__, "out of rotation-base-factor range");
             }
-            if (rationalize(ValT, result.m_T[Row], TBF) != 0)
+            if (rationalize(ValT, result.m_T.vec()[Row], TBF) != 0)
               throw error_base_factor(
                 __FILE__, __LINE__, "out of translation-base-factor range");
             Row++;
@@ -423,7 +426,8 @@ namespace cctbx { namespace sgtbx {
     (void) iRowEchelonFormT(RmI.elems, 3, 3, P.elems, 3);
     TrVec Pwl = P * wl;
     TrVec sh(0);
-    sh.BF() = iREBacksubst(RmI.elems, Pwl.elems, 3, 3, sh.elems, 0);
+    sh.BF() = iREBacksubst(
+      RmI.elems, Pwl.vec().begin(), 3, 3, sh.vec().begin(), 0);
     cctbx_assert(sh.BF() > 0);
     sh.BF() *= Pwl.BF();
     return sh;
@@ -441,10 +445,10 @@ namespace cctbx { namespace sgtbx {
   {
     int g = BF();
     int i;
-    for(i=0;i<3;i++) g = gcd(g, elems[i]);
+    for(i=0;i<3;i++) g = gcd(g, vec()[i]);
     if (g == 0) g = 1;
     af::int3 result;
-    for(i=0;i<3;i++) result[i] = elems[i] / g;
+    for(i=0;i<3;i++) result[i] = vec()[i] / g;
     return TrVec(result, BF() / g);
   }
 
@@ -469,7 +473,7 @@ namespace cctbx { namespace sgtbx {
     TrVec result(lcm(BF(), rhs.BF()));
     int l = result.BF() / BF();
     int r = result.BF() / rhs.BF();
-    for(int i=0;i<3;i++) result[i] = elems[i] * l + rhs[i] * r;
+    for(int i=0;i<3;i++) result.vec()[i] = vec()[i] * l + rhs.vec()[i] * r;
     return result.cancel();
   }
 
@@ -478,7 +482,7 @@ namespace cctbx { namespace sgtbx {
     TrVec result(lcm(BF(), rhs.BF()));
     int l = result.BF() / BF();
     int r = result.BF() / rhs.BF();
-    for(int i=0;i<3;i++) result[i] = elems[i] * l - rhs[i] * r;
+    for(int i=0;i<3;i++) result.vec()[i] = vec()[i] * l - rhs.vec()[i] * r;
     return result.cancel();
   }
 

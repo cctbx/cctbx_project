@@ -350,7 +350,7 @@ namespace cctbx {
             TrVec HR(ReferenceH * m_ASU.CBOp().M().Rpart(), RBF);
             HR = HR.cancel();
             if (HR.BF() == 1) {
-              Miller::Index H(HR.elems);
+              Miller::Index H(HR.vec());
               if (m_Qhigh < 0.) {
                 if (!H.is000() && !m_SgOps.isSysAbsent(H)) {
                   return H;

@@ -129,16 +129,17 @@ namespace cctbx { namespace sgtbx {
         TrVec MT = M.Tpart() + SgOps.LTr(iLTr) + UShifts;
         bool special = false;
         double SD2 = m_ShortestDistance2;
-        for (UShifts[0] = -TBF; UShifts[0] <= TBF; UShifts[0] += TBF)
-        for (UShifts[1] = -TBF; UShifts[1] <= TBF; UShifts[1] += TBF)
-        for (UShifts[2] = -TBF; UShifts[2] <= TBF; UShifts[2] += TBF) {
+        af::int3& USh_vec = UShifts.vec();
+        for (USh_vec[0] = -TBF; USh_vec[0] <= TBF; USh_vec[0] += TBF)
+        for (USh_vec[1] = -TBF; USh_vec[1] <= TBF; USh_vec[1] += TBF)
+        for (USh_vec[2] = -TBF; USh_vec[2] <= TBF; USh_vec[2] += TBF) {
           fractional<double> Delta = double3_plus_TrVec(Delta0, UShifts);
           double CartDelta2 = uc.Length2(Delta);
           if (SD2 > CartDelta2) SD2 = CartDelta2;
           if (CartDelta2 <= m_Parameters->m_MinMateDistance2) {
             TrVec MTU = MT + UShifts;
             TrVec IntrinsicPart = CumR * MTU;
-            if (static_cast<af::int3>(IntrinsicPart) == 0) {
+            if (IntrinsicPart.vec() == 0) {
               CloseMates.push_back(
                 detail::CloseMate(RTMx(M.Rpart(), MTU), CartDelta2));
               special = true;
