@@ -18,7 +18,6 @@
 #include <cctbx/miller/build.h>
 #include <cctbx/miller/span.h>
 #include <cctbx/miller/join.h>
-#include <cctbx/miller/selection.h>
 #include <cctbx/miller/expand.h>
 
 namespace {
@@ -214,14 +213,6 @@ namespace {
     return jbm.average(sigmas);
   }
 
-  af::shared<double>
-  selection_selected_data_double(
-    selection const& sel,
-    af::shared<double> data)
-  {
-    return sel.selected_data(data);
-  }
-
   void
   py_expand_to_p1_4(
     sgtbx::SpaceGroup const& SgOps,
@@ -334,9 +325,6 @@ namespace {
 
     class_builder<join_bijvoet_mates>
     py_join_bijvoet_mates(this_module, "join_bijvoet_mates");
-
-    class_builder<selection>
-    py_selection(this_module, "selection");
 
     py_IndexTableLayoutAdaptor.declare_base(
       py_SymEquivIndex, python::without_downcast);
@@ -501,18 +489,6 @@ namespace {
     py_join_bijvoet_mates.def(join_bijvoet_mates_additive_sigmas,
                                                 "additive_sigmas");
     py_join_bijvoet_mates.def(join_bijvoet_mates_average, "average");
-
-    py_selection.def(constructor<>());
-    py_selection.def(constructor<af::shared<Index> >());
-    py_selection.def(constructor<af::shared<Index>, bool>());
-    py_selection.def(constructor<af::shared<Index>, af::shared<bool> >());
-    py_selection.def(&selection::size_processed, "size_processed");
-    py_selection.def(&selection::n_selected, "n_selected");
-    py_selection.def(&selection::selected_miller_indices,
-                                "selected_miller_indices");
-    py_selection.def(selection_selected_data_double, "selected_data");
-    py_selection.def(&selection::negate, "negate");
-    py_selection.def(&selection::operator(), "__call__");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");

@@ -32,6 +32,20 @@ b = shared.bool((0, 1, 1, 0))
 assert tuple(~a) == (1, 0, 1, 0)
 assert tuple(a & b) == (0, 1, 0, 0)
 assert tuple(a | b) == (0, 1, 1, 1)
+a &= b
+assert tuple(a) == (0, 1, 0, 0)
+a |= shared.bool((1, 0, 1, 0))
+assert tuple(a) == (1, 1, 1, 0)
+assert a.count(0) == 1
+assert a.count(1) == 3
+a &= 1
+assert tuple(a) == (1, 1, 1, 0)
+a &= 0
+assert tuple(a) == (0, 0, 0, 0)
+a |= 1
+assert tuple(a) == (1, 1, 1, 1)
+a |= 0
+assert tuple(a) == (1, 1, 1, 1)
 a = shared.int((4, 9))
 b = shared.int((2, 3))
 assert tuple(-a) == (-4, -9)

@@ -40,11 +40,21 @@ class miller_set(crystal_symmetry):
   def __init__(self, xsym, H):
     crystal_symmetry.__init__(self, xsym.UnitCell, xsym.SgInfo)
     self.H = H
+    if (hasattr(xsym, "friedel_flag")):
+      self.friedel_flag = xsym.friedel_flag
 
-  def expand_to_p1(self, friedel_flag):
+  def set_friedel_flag(self, flag):
+    self.friedel_flag = flag
+    return self
+
+  def multiplicities(self):
+    return self.SgOps.multiplicity(self.H, self.friedel_flag)
+
+  def expand_to_p1(self):
     set_p1_H = shared.miller_Index()
-    miller.expand_to_p1(self.SgOps, friedel_flag, self.H, set_p1_H)
-    return miller_set(self.cell_equivalent_p1(), set_p1_H)
+    miller.expand_to_p1(self.SgOps, self.friedel_flag, self.H, set_p1_H)
+    return miller_set(self.cell_equivalent_p1(), set_p1_H).set_friedel_flag(
+      self.friedel_flag)
 
 class reciprocal_space_array(miller_set):
 
@@ -65,26 +75,26 @@ class reciprocal_space_array(miller_set):
       s = jbm.additive_sigmas(self.sigmas)
     return reciprocal_space_array(miller_set(self, h), f, s)
 
-  def apply_selection(self, sel):
-    h = sel.selected_miller_indices()
+  def apply_selection(self, flags, negate=0):
+    if (negate): flags = ~flags
+    h = self.H.select(flags)
     f = 0
-    if (self.F): f = sel.selected_data(self.F)
+    if (self.F): f = self.F.select(flags)
     s = 0
-    if (self.sigmas): s = sel.selected_data(self.sigmas)
+    if (self.sigmas): s = self.sigmas.select(flags)
     return reciprocal_space_array(miller_set(self, h), f, s)
 
   def sigma_filter(self, cutoff_factor, negate=0):
-    sel = miller.selection(self.H)
-    sel(shared.abs(self.F) >= self.sigmas.mul(cutoff_factor))
-    if (negate): sel.negate()
-    return self.apply_selection(sel)
+    flags = shared.abs(self.F) >= self.sigmas.mul(cutoff_factor)
+    return self.apply_selection(flags, negate)
 
-  def rms_filter(self, cutoff_factor, negate=0):
-    sel = miller.selection(self.H)
-    rms = shared.rms(self.F)
-    sel(shared.abs(self.F) <= cutoff_factor * rms)
-    if (negate): sel.negate()
-    return self.apply_selection(sel)
+  def rms_filter(self, cutoff_factor, use_multiplicities=0, negate=0):
+    if (use_multiplicities):
+      rms = shared.rms(self.F * self.multiplicities().as_double())
+    else:
+      rms = shared.rms(self.F)
+    flags = shared.abs(self.F) <= cutoff_factor * rms
+    return self.apply_selection(flags, negate)
 
   def __add__(self, other):
     if (type(other) != type(self)):
@@ -157,24 +167,23 @@ class symmetrized_sites(crystal_symmetry):
     return self.Sites[key]
 
 def build_miller_set(xsym, friedel_flag, d_min):
-  result = miller_set(
+  return miller_set(
     xsym, miller.BuildIndices(
-      xsym.UnitCell, xsym.SgInfo, friedel_flag, d_min))
-  result.friedel_flag = friedel_flag
-  return result
+      xsym.UnitCell, xsym.SgInfo, friedel_flag, d_min)).set_friedel_flag(
+        friedel_flag)
 
-def calculate_structure_factors(miller_indices, xtal, abs_F = 0):
+def calculate_structure_factors(miller_set_obj, xtal, abs_F = 0):
   F = sftbx.StructureFactorArray(
-    miller_indices.UnitCell, miller_indices.SgOps, miller_indices.H,
+    miller_set_obj.UnitCell, miller_set_obj.SgOps, miller_set_obj.H,
     xtal.Sites)
   if (abs_F): F = shared.abs(F)
-  result = reciprocal_space_array(miller_indices, F)
+  result = reciprocal_space_array(miller_set_obj, F)
   result.symmetrized_sites = xtal
   return result
 
-def calculate_structure_factors_fft(miller_indices, xtal, abs_F = 0):
+def calculate_structure_factors_fft(miller_set_obj, xtal, abs_F = 0):
   from cctbx_boost import fftbx
-  max_q = xtal.UnitCell.max_Q(miller_indices.H)
+  max_q = xtal.UnitCell.max_Q(miller_set_obj.H)
   grid_resolution_factor = 1/3.
   max_prime = 5
   mandatory_grid_factors = xtal.SgOps.refine_gridding()
@@ -210,10 +219,10 @@ def calculate_structure_factors_fft(miller_indices, xtal, abs_F = 0):
     collect_conj = 0
     n_complex = cfft.N()
   fcalc = sftbx.collect_structure_factors(
-    friedel_flag, miller_indices.H, map, n_complex, collect_conj)
-  sampled_density.eliminate_u_extra_and_normalize(miller_indices.H, fcalc)
+    friedel_flag, miller_set_obj.H, map, n_complex, collect_conj)
+  sampled_density.eliminate_u_extra_and_normalize(miller_set_obj.H, fcalc)
   if (abs_F): fcalc = shared.abs(fcalc)
-  result = reciprocal_space_array(miller_indices, fcalc)
+  result = reciprocal_space_array(miller_set_obj, fcalc)
   result.symmetrized_sites = xtal
   return result
 
