@@ -125,7 +125,6 @@ class match_refine:
     self.pairs.sort(pair_sort_function)
     self.calculate_rms()
     # clean up
-    del self.equiv1
     del self.unallowed_shift
     del self.initial_shift
 
@@ -158,14 +157,13 @@ class match_refine:
       weak_pair = 0
       max_dist = 0
       for pair in self.pairs[1:]:
-        dist = self.unit_cell.Length(self.calculate_shortest_diff(pair))
+        dist = self.calculate_shortest_dist(pair)
         if (dist > max_dist):
           weak_pair = pair
           max_dist = dist
       if (weak_pair == 0): break
       if (max_dist < self.tolerance):
-        dist = self.unit_cell.Length(
-          self.calculate_shortest_diff(self.pairs[0]))
+        dist = self.calculate_shortest_dist(self.pairs[0])
         if (dist < self.tolerance):
           break
       assert len(self.pairs) > 1
@@ -181,6 +179,9 @@ class match_refine:
   def calculate_shortest_diff(self, pair):
     c2 = self.apply_eucl_ops(pair[1])
     return self.equiv1[pair[0]].getShortestDifference(self.unit_cell, c2)
+
+  def calculate_shortest_dist(self, pair):
+    return self.unit_cell.Length(self.calculate_shortest_diff(pair))
 
   def calculate_shortest_diffs(self):
     shortest_diffs = []
@@ -216,7 +217,8 @@ class match_refine:
     print "  Pairs:", len(self.pairs)
     for pair in self.pairs:
       print "   ", self.ref_model1[pair[0]].label,
-      print self.ref_model2[pair[1]].label
+      print self.ref_model2[pair[1]].label,
+      print "%.3f" % (self.calculate_shortest_dist(pair),)
     print "Singles model 1:", len(self.singles1)
     for s in self.singles1:
       print " ", self.ref_model1[s].label,

@@ -360,7 +360,7 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
-    if (SgInfo.SgOps().isCentric()):
+    if (SgInfo.SgOps().isCentric() and Flags.triplets):
       print "Centric space group skipped."
       print
       sys.stdout.flush()
