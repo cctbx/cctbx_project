@@ -685,8 +685,8 @@ namespace cctbx { namespace sftbx {
       mh[2] = -h[2];
       int asu_sign = asu.asu_sign(h, mh);
       if (asu_sign == 0) continue;
-      sgtbx::sys_absent_test sa_test(sgops, h);
-      if (sa_test.is_sys_absent()) continue;
+      sgtbx::PhaseInfo phase_info(sgops, h);
+      if (phase_info.isSysAbsent()) continue;
       bool f_conj = false;
       if (friedel_flag) {
         if (asu_sign > 0) {
@@ -700,7 +700,7 @@ namespace cctbx { namespace sftbx {
         }
       }
       else {
-        if (((asu_sign < 0) != conjugate) && sa_test.is_centric()) continue;
+        if (((asu_sign < 0) != conjugate) && phase_info.isCentric()) continue;
         if (conjugate) miller_indices.push_back(mh);
         else           miller_indices.push_back(h);
       }

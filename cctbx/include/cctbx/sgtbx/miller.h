@@ -169,24 +169,6 @@ namespace cctbx {
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
-    //! XXX merge with PhaseRestriction
-    class sys_absent_test
-    {
-      public:
-        //! XXX
-        sys_absent_test() {}
-        //! XXX
-        sys_absent_test(const SpaceGroup& sgops, const Miller::Index& h);
-        //! XXX
-        int ht_restriction() const { return ht_restriction_; }
-        //! XXX
-        bool is_sys_absent() const { return ht_restriction_ == -2; }
-        //! XXX
-        bool is_centric() const { return ht_restriction_ >= 0; }
-      protected:
-        int ht_restriction_;
-    };
-
     //! class for the high-level handling of centric reflections.
     /*! A reflection with the Miller index H is "centric" if
         there is a symmetry operation with rotation part R such
@@ -194,12 +176,29 @@ namespace cctbx {
         The phase of a centric reflection is restricted to two phase
         angels (modulo pi).
      */
-    class PhaseRestriction {
+    class PhaseInfo
+    {
       public:
         //! Default constructor. Some data members are not initialized!
-        PhaseRestriction() {}
-        //! For internal use only.
-        PhaseRestriction(int HT, int TBF) : m_HT(HT), m_TBF(TBF) {}
+        PhaseInfo() {}
+
+        //! Determination of the restriction for a given Miller index.
+        PhaseInfo(SpaceGroup const& sgops, Miller::Index const& h);
+
+        //! Initialization with known product H*T and given base factor.
+        PhaseInfo(int HT, int TBF, bool SysAbsChecked)
+          : m_HT(HT), m_TBF(TBF), m_SysAbsChecked(SysAbsChecked)
+        {}
+
+        //! Test if isSysAbsent() can be used.
+        bool SysAbsChecked() const { return m_SysAbsChecked; }
+
+        //! Test for systematically absent reflection.
+        bool isSysAbsent() const
+        {
+          cctbx_assert(m_SysAbsChecked);
+          return m_HT == -2;
+        }
 
         //! Test if there actually is a phase restriction.
         /*! See class details.
@@ -252,6 +251,7 @@ namespace cctbx {
 
         int m_HT;
         int m_TBF;
+        bool m_SysAbsChecked;
     };
 
     //! class for the handling of symmetrically equivalent Miller indices.
@@ -266,15 +266,17 @@ namespace cctbx {
         //! Default constructor. Some data members are not initialized!
         SymEquivMillerIndices() {}
         //! The phase restriction (if any) for the input Miller index.
-        /*! See class PhaseRestriction.
+        /*! See class PhaseInfo.
          */
-        PhaseRestriction getPhaseRestriction() const {
-          return PhaseRestriction(m_HT_Restriction, m_TBF); }
+        PhaseInfo getPhaseRestriction() const
+        {
+          return PhaseInfo(m_HT_Restriction, m_TBF, false);
+        }
         //! Test if reflection with input Miller index is centric.
         /*! A reflection with the Miller index H is "centric" if
             there is a symmetry operation with rotation part R such
             that H*R = -H.<br>
-            See also: class PhaseRestriction
+            See also: class PhaseInfo
          */
         bool isCentric() const { return m_HT_Restriction >= 0; }
         //! Number of symmetrically equivalent Miller indices.
@@ -358,7 +360,7 @@ namespace cctbx {
 
         //! Test if phase phi is compatible with restriction.
         /*! The tolerance compensates for rounding errors.<br>
-            See also: class PhaseRestriction
+            See also: class PhaseInfo
          */
         bool isValidPhase(double phi,
                           bool deg = false,

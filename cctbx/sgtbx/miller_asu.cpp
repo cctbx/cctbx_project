@@ -333,8 +333,8 @@ namespace cctbx {
 
     bool MillerIndexGenerator::set_sys_abs_test(const Miller::Index& h)
     {
-      m_sys_abs_test = sys_absent_test(m_SgOps, h);
-      return m_sys_abs_test.is_sys_absent();
+      m_phase_info = PhaseInfo(m_SgOps, h);
+      return m_phase_info.isSysAbsent();
     }
 
     Miller::Index MillerIndexGenerator::next_under_friedel_symmetry()
@@ -388,7 +388,7 @@ namespace cctbx {
         return -m_previous;
       }
       m_previous = next_under_friedel_symmetry();
-      m_next_is_minus_previous = !m_sys_abs_test.is_centric();
+      m_next_is_minus_previous = !m_phase_info.isCentric();
       return m_previous;
     }
 

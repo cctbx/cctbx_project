@@ -330,12 +330,15 @@ namespace cctbx { namespace sgtbx {
 
       //! Test if reflection with given Miller index is systematically absent.
       bool
-      isSysAbsent(const Miller::Index& H) const;
+      isSysAbsent(const Miller::Index& H) const
+      {
+        return PhaseInfo(*this, H).isSysAbsent();
+      }
       //! Test if reflection with given Miller index is systematically absent.
       /*! Overload for arrays.
        */
       af::shared<bool>
-      isSysAbsent(const af::shared<Miller::Index>& H) const;
+      isSysAbsent(af::shared<Miller::Index> H) const;
       //! Test if reflection with given Miller index is centric.
       /*! A reflection with the Miller index H is "centric" if
           there is a symmetry operation with rotation part R such
@@ -354,10 +357,10 @@ namespace cctbx { namespace sgtbx {
       af::shared<bool>
       isCentric(const af::shared<Miller::Index>& H) const;
       //! Determine the phase restriction for the given Miller index.
-      /*! See class PhaseRestriction.
+      /*! See class PhaseInfo.
        */
-      PhaseRestriction getPhaseRestriction(const Miller::Index& H) const;
-      //! See class PhaseRestriction::isValidPhase().
+      PhaseInfo getPhaseRestriction(const Miller::Index& H) const;
+      //! See class PhaseInfo::isValidPhase().
       bool isValidPhase(const Miller::Index& H, double phi,
                         bool deg = false,
                         double tolerance = 1.e-5) const {
