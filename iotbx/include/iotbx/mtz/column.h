@@ -29,7 +29,7 @@ namespace iotbx { namespace mtz {
       ptr() const
       {
         CCTBX_ASSERT(mtz_dataset_.n_columns() > i_column_);
-        return MtzIcolInSet(mtz_dataset_.ptr(), i_column_);
+        return CMtz::MtzIcolInSet(mtz_dataset_.ptr(), i_column_);
       }
 
       const char*

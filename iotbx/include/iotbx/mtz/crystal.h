@@ -29,7 +29,7 @@ namespace iotbx { namespace mtz {
       ptr() const
       {
         CCTBX_ASSERT(mtz_object_.n_crystals() > i_crystal_);
-        return MtzIxtal(mtz_object_.ptr(), i_crystal_);
+        return CMtz::MtzIxtal(mtz_object_.ptr(), i_crystal_);
       }
 
       int
