@@ -234,6 +234,8 @@ namespace {
     py_SpaceGroup("cctbx_boost.sgtbx", "SpaceGroup");
     python::import_converters<sgtbx::SpaceGroupInfo>
     py_SpaceGroupInfo("cctbx_boost.sgtbx", "SpaceGroupInfo");
+    python::import_converters<sgtbx::SiteSymmetry>
+    py_SiteSymmetry("cctbx_boost.sgtbx", "SiteSymmetry");
     python::import_converters<eltbx::CAASF_WK1995>
     py_CAASF_WK1995("cctbx_boost.eltbx.caasf_wk1995", "CAASF_WK1995");
 
