@@ -453,14 +453,14 @@ namespace cctbx { namespace sgtbx {
           Not available in Python.
        */
       bool is_compatible_metrical_matrix(uc_sym_mat3 const& g,
-                                         double tolerance=1.e-4) const;
+                                         double tolerance=1.e-5) const;
 
       //! Tests if a unit cell is compatible with the symmetry operations.
       /*! Shorthand for:
           is_compatible_metrical_matrix(ucell.metrical_matrix(), tolerance);
        */
       bool is_compatible_unit_cell(uctbx::unit_cell const& ucell,
-                                   double tolerance=1.e-4) const
+                                   double tolerance=1.e-5) const
       {
         return is_compatible_metrical_matrix(
           ucell.metrical_matrix(), tolerance);

@@ -563,6 +563,7 @@ namespace cctbx { namespace sgtbx {
   {
     // for all r in the representative set of rotation matrices,
     // assert Transpose[r].g.r == g
+    tolerance *= af::max_absolute(g);
     for (std::size_t i_smx=1;i_smx<n_smx();i_smx++) {
       uc_mat3 r(smx_[i_smx].r().as_double());
       uc_sym_mat3 rt_g_r = g.tensor_transpose_transform(r);
