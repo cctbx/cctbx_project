@@ -11,6 +11,19 @@ from scitbx import fftpack
 from scitbx.test_utils import approx_equal
 import sys
 
+def check_peaks(structure, peak_sites, max_min_dist):
+  for scatterer in structure.scatterers():
+    site_symmetry = structure.site_symmetry(scatterer.site)
+    equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
+    min_dist = None
+    for peak_site in peak_sites:
+      dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites, peak_site)
+      if (min_dist == None):
+        min_dist = dist_info.dist()
+      else:
+        min_dist = min(min_dist, dist_info.dist())
+    assert min_dist <= max_min_dist, (min_dist, max_min_dist)
+
 def run_test(space_group_info, n_elements=5, d_min=1.5,
              grid_resolution_factor=1./3, max_prime=5, verbose=0):
   structure = random_structure.xray_structure(
@@ -56,17 +69,18 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     peak_sites.append(
       [float(entry.index[i]) / peak_list.gridding()[i] for i in xrange(3)])
     peak_heights.append(entry.value)
-  for scatterer in structure.scatterers():
-    site_symmetry = structure.site_symmetry(scatterer.site)
-    equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
-    min_dist = None
-    for peak_site in peak_sites:
-      dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites, peak_site)
-      if (min_dist == None):
-        min_dist = dist_info.dist()
-      else:
-        min_dist = min(min_dist, dist_info.dist())
-    assert min_dist <= d_min * grid_resolution_factor, min_dist
+  check_peaks(structure, peak_sites, d_min * grid_resolution_factor)
+  crystal_gridding_tags = fft_map.tags()
+  cluster_analysis = maptbx.peak_cluster_analysis(
+    peak_list=peak_list,
+    special_position_settings=structure,
+    general_positions_only=00000,
+    min_cross_distance=2,
+    max_clusters=n_elements).all()
+  check_peaks(
+    structure,
+    cluster_analysis.sites(),
+    cluster_analysis.min_cross_distance() + d_min * grid_resolution_factor)
 
 def run_call_back(flags, space_group_info):
   run_test(space_group_info, verbose=flags.Verbose)
