@@ -112,8 +112,8 @@ namespace cctbx {
 
       const vecref<ValueType>& as_1d() const { return *this; }
 
-      template <typename IndexTupleType>
-      value_type& operator()(const IndexTupleType& I) const {
+      template <typename IndexObjectType>
+      value_type& operator()(const IndexObjectType& I) const {
         return m_begin[m_dim(I)];
       }
 
@@ -185,8 +185,8 @@ namespace cctbx {
             shared_storage<value_type>& as_1d()       { return *this; }
       const shared_storage<value_type>& as_1d() const { return *this; }
 
-      template <typename IndexTupleType>
-      value_type& operator()(const IndexTupleType& I) const {
+      template <typename IndexObjectType>
+      value_type& operator()(const IndexObjectType& I) const {
         return m_begin[m_dim(I)];
       }
 

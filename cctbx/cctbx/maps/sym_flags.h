@@ -109,7 +109,7 @@ namespace cctbx { namespace maps {
     fixcap_vector<int, 3> moduli(grid_ss.size());
     for(int i=0;i<grid_ss.size();i++) moduli[i] = grid_ss[i].M;
     nested_loop<fixcap_vector<int, 3> > loop(moduli);
-    for (fixcap_vector<int, 3> f = loop(); !loop.over(); f = loop.next()) {
+    for (fixcap_vector<int, 3>& f = loop(); !loop.over(); f = loop.next()) {
       tagged_value<IndexTupleType>
       sym_equiv_point = add(p1_flags.dim(), grid_ss, pivot, f);
       if (sym_equiv_point.tag) {
@@ -131,7 +131,7 @@ namespace cctbx { namespace maps {
   {
     std::size_t grid_misses = 0;
     nested_loop<int3> loop(p1_flags.dim());
-    for (int3 pivot = loop(); !loop.over(); pivot = loop.next()) {
+    for (int3& pivot = loop(); !loop.over(); pivot = loop.next()) {
       if (p1_flags(pivot) == -1) {
         grid_misses += mark_orbit(p1_flags, symmetry, pivot);
       }

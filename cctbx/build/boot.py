@@ -30,6 +30,7 @@ if (__name__ == "__main__"):
                    "eltbx",
                    "uctbx",
                    "sgtbx",
+                   "arraytbx",
                    "adptbx",
                    "sftbx",
                    "fftbx",

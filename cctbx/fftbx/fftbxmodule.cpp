@@ -61,7 +61,7 @@ namespace {
     v3d_accessor(const int3& dim,
                  std::vector<ElementType>& vec,
                  bool resize_vector)
-      : vecrefnd<ElementType, dimension<3> >((void*) 0, dim)
+      : vecrefnd<ElementType, dimension<3> >((char*) 0, dim)
     {
       if (resize_vector) vec.resize(this->dim().size1d());
       m_begin = &(*(vec.begin()));
@@ -73,7 +73,7 @@ namespace {
                  , bool MSVC_DUMMY = false
 #endif
                 )
-      : vecrefnd<ElementType, dimension<3> >((void*) 0, dim)
+      : vecrefnd<ElementType, dimension<3> >((char*) 0, dim)
     {
       std::size_t se = sizeof(ElementType);
       std::size_t sc = sizeof(CastElementType);

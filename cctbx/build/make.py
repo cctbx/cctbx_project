@@ -64,9 +64,12 @@ def run_in_subdirs(subdirs, command_line, verbose = 0):
     os.chdir(cwd)
 
 def make_lib_python_dir(platform):
+  try: os.makedirs("lib_python/cctbx/arraytbx")
+  except OSError: pass
   try: os.makedirs("lib_python/cctbx/eltbx")
   except OSError: pass
   open("lib_python/cctbx/__init__.py", "a+").close()
+  open("lib_python/cctbx/arraytbx/__init__.py", "a+").close()
   open("lib_python/cctbx/eltbx/__init__.py", "a+").close()
   if (platform in ("vc60", "mingw32", "win32_mwcc")):
     libpyd = ".pyd"
@@ -75,6 +78,7 @@ def make_lib_python_dir(platform):
   if (hasattr(os, "symlink")):
     system_verbose("cp uctbx/*%s lib_python/cctbx" % (libpyd,))
     system_verbose("cp sgtbx/*%s lib_python/cctbx" % (libpyd,))
+    system_verbose("cp arraytbx/*%s lib_python/cctbx/arraytbx" % (libpyd,))
     system_verbose("cp adptbx/*%s lib_python/cctbx" % (libpyd,))
     system_verbose("cp eltbx/*%s lib_python/cctbx/eltbx" % (libpyd,))
     system_verbose("cp sftbx/*%s lib_python/cctbx" % (libpyd,))
@@ -82,6 +86,7 @@ def make_lib_python_dir(platform):
   else:
     system_verbose(r"copy uctbx\*.pyd lib_python\cctbx")
     system_verbose(r"copy sgtbx\*.pyd lib_python\cctbx")
+    system_verbose(r"copy arraytbx\*.pyd lib_python\cctbx\arraytbx")
     system_verbose(r"copy adptbx\*.pyd lib_python\cctbx")
     system_verbose(r"copy eltbx\*.pyd lib_python\cctbx\eltbx")
     system_verbose(r"copy sftbx\*.pyd lib_python\cctbx")
@@ -97,7 +102,8 @@ if (__name__ == "__main__"):
   make_all = "all" in sys.argv
 
   externals = ("external/boost_python",)
-  toolboxes = ("uctbx", "sgtbx", "adptbx", "eltbx", "sftbx", "fftbx")
+  toolboxes = ("uctbx", "sgtbx", "arraytbx",
+               "adptbx", "eltbx", "sftbx", "fftbx")
   examples = ("examples/cpp",)
   all_targets = externals + toolboxes + examples
 

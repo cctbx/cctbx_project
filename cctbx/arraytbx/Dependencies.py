@@ -13,7 +13,8 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/tst.py",
     )
 
-    self.boost_python_modules = {
-      "shared_storage": (("shared_storagemodule", "bpl_utils", "carray_bpl"),
-                         ()),
-    }
+    if (self.platform != "vc60"):
+      self.boost_python_modules = {
+        "shared_storage": (("shared_storagemodule", "bpl_utils", "carray_bpl"),
+                           ()),
+      }
