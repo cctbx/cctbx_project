@@ -33,21 +33,25 @@ namespace cctbx { namespace dmtbx {
     triplet_phase_relation(
       std::size_t ik,
       std::size_t ihmk,
-      Miller::AsymIndex asym_k,
-      Miller::AsymIndex asym_hmk)
+      Miller::AsymIndex const& asym_k,
+      Miller::AsymIndex const& asym_hmk)
     {
       if (ik <= ihmk) {
         ik_ = ik;
         ihmk_ = ihmk;
-        asym_k_ = asym_k;
-        asym_hmk_ = asym_hmk;
+        friedel_flag_k_ = asym_k.FriedelFlag();
+        friedel_flag_hmk_ = asym_hmk.FriedelFlag();
       }
       else {
         ik_ = ihmk;
         ihmk_ = ik;
-        asym_k_ = asym_hmk;
-        asym_hmk_ = asym_k;
+        friedel_flag_k_ = asym_hmk.FriedelFlag();
+        friedel_flag_hmk_ = asym_k.FriedelFlag();
       }
+      cctbx_assert(asym_k.TBF() == asym_hmk.TBF());
+      cctbx_assert(asym_k.HT() >= 0);
+      cctbx_assert(asym_hmk.HT() >= 0);
+      ht_sum_ = (asym_k.HT() + asym_hmk.HT()) % asym_k.TBF();
     }
 
     bool operator<(triplet_phase_relation const& other) const
@@ -56,20 +60,30 @@ namespace cctbx { namespace dmtbx {
       if (ik_ > other.ik_) return false;
       if (ihmk_ < other.ihmk_) return true;
       if (ihmk_ > other.ihmk_) return false;
-      if (asym_k_.HT() < other.asym_k_.HT()) return true;
-      if (asym_k_.HT() > other.asym_k_.HT()) return false;
-      if (!asym_k_.FriedelFlag() && other.asym_k_.FriedelFlag()) return true;
-      if (asym_k_.FriedelFlag() && !other.asym_k_.FriedelFlag()) return false;
-      if (asym_hmk_.HT() < other.asym_hmk_.HT()) return true;
-      if (asym_hmk_.HT() > other.asym_hmk_.HT()) return false;
-      if (!asym_hmk_.FriedelFlag() && other.asym_hmk_.FriedelFlag())return true;
+      if (ht_sum_ < other.ht_sum_) return true;
+      if (ht_sum_ > other.ht_sum_) return false;
+      if (!friedel_flag_k_ && other.friedel_flag_k_) return true;
+      if (friedel_flag_k_ && !other.friedel_flag_k_) return false;
+      if (!friedel_flag_hmk_ && other.friedel_flag_hmk_) return true;
       return false;
+    }
+
+    template <typename FloatType>
+    FloatType
+    phi_k_phi_hmk(const FloatType* phases, int TBF) const
+    {
+      FloatType phi_k = phases[ik_];
+      if (friedel_flag_k_) phi_k = -phi_k;
+      FloatType phi_hmk = phases[ihmk_];
+      if (friedel_flag_hmk_) phi_hmk = -phi_hmk;
+      return phi_k + phi_hmk + (constants::two_pi * ht_sum_) / TBF;
     }
 
     std::size_t ik_;
     std::size_t ihmk_;
-    Miller::AsymIndex asym_k_;
-    Miller::AsymIndex asym_hmk_;
+    bool friedel_flag_k_;
+    bool friedel_flag_hmk_;
+    int ht_sum_;
   };
 
   template <typename FloatType>
@@ -216,11 +230,9 @@ namespace cctbx { namespace dmtbx {
             cctbx_assert(tpr.ik_ < e_values.size());
             cctbx_assert(tpr.ihmk_ < e_values.size());
             FloatType e_k = e_values[tpr.ik_];
-            FloatType phi_k = tpr.asym_k_.phase_in(phases[tpr.ik_]);
             FloatType e_hmk = e_values[tpr.ihmk_];
-            FloatType phi_hmk = tpr.asym_hmk_.phase_in(phases[tpr.ihmk_]);
             FloatType e_k_e_hmk = lij->second * e_k * e_hmk;
-            FloatType phi_k_phi_hmk = phi_k + phi_hmk;
+            FloatType phi_k_phi_hmk = tpr.phi_k_phi_hmk(phases.begin(), TBF_);
             sum_sin += e_k_e_hmk * std::sin(phi_k_phi_hmk);
             sum_cos += e_k_e_hmk * std::cos(phi_k_phi_hmk);
           }
@@ -230,43 +242,6 @@ namespace cctbx { namespace dmtbx {
           }
           else {
             result.push_back(std::atan2(sum_sin, sum_cos));
-          }
-        }
-        return result;
-      }
-
-      af::shared<FloatType>
-      estimate_phases(af::shared<FloatType> e_values,
-                      af::shared<FloatType> phases) const
-      {
-        FloatType estimated_e_h_cutoff(1.e-10); // XXX
-        cctbx_assert(e_values.size() == list_of_tpr_maps_.size());
-        cctbx_assert(e_values.size() == phases.size());
-        af::shared<FloatType> result;
-        result.reserve(e_values.size());
-        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
-        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
-          std::complex<FloatType> estimated_e_h(0);
-          for(tpr_map_type::const_iterator
-              lij=li->begin();lij!=li->end();lij++) {
-            triplet_phase_relation const&
-            tpr = lij->first;
-            cctbx_assert(tpr.ik_ < e_values.size());
-            cctbx_assert(tpr.ihmk_ < e_values.size());
-            FloatType e_k = e_values[tpr.ik_];
-            FloatType phi_k = tpr.asym_k_.phase_in(phases[tpr.ik_]);
-            FloatType e_hmk = e_values[tpr.ihmk_];
-            FloatType phi_hmk = tpr.asym_hmk_.phase_in(phases[tpr.ihmk_]);
-            std::complex<FloatType> e_k_complex = std::polar(e_k, phi_k);
-            std::complex<FloatType> e_hmk_complex = std::polar(e_hmk, phi_hmk);
-            estimated_e_h
-              += FloatType(lij->second) * (e_k_complex * e_hmk_complex);
-          }
-          if (std::abs(estimated_e_h) < estimated_e_h_cutoff) {
-            result.push_back(phases[i]);
-          }
-          else {
-            result.push_back(std::arg(estimated_e_h));
           }
         }
         return result;

@@ -94,7 +94,7 @@ def square_emap(xtal, e000, p1_miller_indices,
   return new_phases
 
 def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
-                            use_tangent_formula, verbose):
+                            verbose):
   tprs = dmtbx.triplet_invariants(sginfo, miller_indices_h, e_values)
   print "number_of_weighted_triplets:", \
        tprs.number_of_weighted_triplets()
@@ -102,10 +102,7 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
        tprs.total_number_of_triplets()
   print "average_number_of_triplets_per_reflection: %.2f" % (
        tprs.average_number_of_triplets_per_reflection(),)
-  if (use_tangent_formula):
-    new_phases = tprs.apply_tangent_formula(e_values, phases)
-  else:
-    new_phases = tprs.estimate_phases(e_values, phases)
+  new_phases = tprs.apply_tangent_formula(e_values, phases)
   mean_weighted_phase_error = compute_mean_weighted_phase_error(
     tprs,
     sginfo.SgOps(), miller_indices_h, e_values, phases, new_phases,
@@ -121,7 +118,6 @@ def exercise(SgInfo,
              e_min=1.8,
              exercise_triplets=0,
              exercise_squaring=0,
-             use_tangent_formula=1,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
   print "random.getstate():", debug_utils.random.getstate()
@@ -180,17 +176,11 @@ def exercise(SgInfo,
   tprs_sg = None
   if (exercise_triplets):
     tprs_sg = test_triplet_invariants(
-      xtal.SgInfo, MillerIndices.H, e_values, phases,
-      use_tangent_formula, verbose)
+      xtal.SgInfo, MillerIndices.H, e_values, phases, verbose)
     tprs_p1 = test_triplet_invariants(
-      sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases,
-      use_tangent_formula, verbose)
-    if (use_tangent_formula):
-      sg_new_phases = tprs_sg.apply_tangent_formula(e_values, phases)
-      p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
-    else:
-      sg_new_phases = tprs_sg.estimate_phases(e_values, phases)
-      p1_new_phases = tprs_p1.estimate_phases(p1_e_values, p1_phases)
+      sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, verbose)
+    sg_new_phases = tprs_sg.apply_tangent_formula(e_values, phases)
+    p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
     ref_p1_H = shared.Miller_Index()
     ref_p1_e_values = shared.double()
     ref_p1_phases = shared.double()
