@@ -648,18 +648,19 @@ class array(set):
     assert plus_or_minus in ("+", "-")
     assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
-    return asu.apply_selection(
-      flags=matches.pairs_hemisphere_selection(plus_or_minus),
+    i_column = "+-".index(plus_or_minus)
+    return asu.shuffle(
+      permutation=matches.pairs().column(i_column),
       anomalous_flag=00000)
 
   def hemispheres(self):
     assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     return tuple(
-      [asu.apply_selection(
-        flags=matches.pairs_hemisphere_selection(plus_or_minus),
+      [asu.shuffle(
+        permutation=matches.pairs().column(i_column),
         anomalous_flag=00000)
-       for plus_or_minus in ("+", "-")])
+       for i_column in (0,1)])
 
   def anomalous_signal(self, use_binning=00000):
     "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
@@ -684,6 +685,17 @@ class array(set):
     if (self.data() is not None): d = self.data().select(flags)
     s = None
     if (self.sigmas() is not None): s = self.sigmas().select(flags)
+    return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
+
+  def shuffle(self, permutation, anomalous_flag=None):
+    assert self.indices() is not None
+    if (anomalous_flag is None):
+      anomalous_flag = self.anomalous_flag()
+    i = self.indices().shuffle(permutation)
+    d = None
+    if (self.data() is not None): d = self.data().shuffle(permutation)
+    s = None
+    if (self.sigmas() is not None): s = self.sigmas().shuffle(permutation)
     return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
   def sigma_filter(self, cutoff_factor, negate=0):

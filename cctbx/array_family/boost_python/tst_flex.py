@@ -52,6 +52,8 @@ def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2(((1,2), (2,3), (3,4)))
   assert a.size() == 3
   assert tuple(a) == ((1,2), (2,3), (3,4))
+  assert tuple(a.column(0)) == (1,2,3)
+  assert tuple(a.column(1)) == (2,3,4)
 
 def exercise_flex_xray_scatterer():
   from cctbx import uctbx, sgtbx, xray
