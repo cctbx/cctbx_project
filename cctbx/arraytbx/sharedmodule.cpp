@@ -147,7 +147,7 @@ namespace {
     class_builder<ex_statistics<double> >
     py_statistics(this_module, "statistics");
 
-    class_builder<Miller::join_sets>
+    class_builder<cctbx::Miller::join_sets>
     py_join_sets(this_module, "join_sets");
 
     py_linear_regression.def(constructor<>());
@@ -177,10 +177,10 @@ namespace {
 
     py_join_sets.def(constructor<>());
     py_join_sets.def(constructor<
-      const cctbx::af::shared<Miller::Index>&,
-      const cctbx::af::shared<Miller::Index>&>());
-    py_join_sets.def(&Miller::join_sets::pairs, "pairs");
-    py_join_sets.def(&Miller::join_sets::singles, "singles");
+      const cctbx::af::shared<cctbx::Miller::Index>&,
+      const cctbx::af::shared<cctbx::Miller::Index>&>());
+    py_join_sets.def(&cctbx::Miller::join_sets::pairs, "pairs");
+    py_join_sets.def(&cctbx::Miller::join_sets::singles, "singles");
   }
 
 }
