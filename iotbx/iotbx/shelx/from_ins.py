@@ -59,10 +59,11 @@ def from_ins(file_name=None,
         u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
       structure.add_scatterer(scatterer)
     elif(record.record_iden == "ATOM" and record.rec_part == 0):
-      u_cif_iso_diag = record.tempFactor
-      u_star=adptbx.u_cif_as_u_star(structure.unit_cell(), u_cif_iso_diag)
-      u_iso = adptbx.u_star_as_u_iso(structure.unit_cell(), u_star)
-      if(u_iso < 0.0): u_iso_negative = 1
+      if(record.tempFactor[0] < 0.0): 
+        u_iso_negative = 1
+        u_iso = record.tempFactor[0]
+      else:
+        u_iso = adptbx.u_iso_as_u_star(structure.unit_cell(),record.tempFactor[0])
       scatterer = xray.scatterer(
         label     = " %s" % record.name,
         site      = record.coordinates,
@@ -76,7 +77,7 @@ def from_ins(file_name=None,
 
 def if_u_iso_negative(structure):
   for j in xrange(structure.scatterers().size()):
-    atom_chem_type = wk1995(structure.scatterers()[j].label).label()
+    atom_chem_type = structure.scatterers()[j].element_symbol() 
     if(atom_chem_type == "H" and structure.scatterers()[j].u_iso < 0.0):
       check_bond_number = 0
       for i in xrange(structure.scatterers().size()):
@@ -84,7 +85,7 @@ def if_u_iso_negative(structure):
           structure.scatterers()[i].site)
         site_j = structure.unit_cell().orthogonalize(
           structure.scatterers()[j].site)
-        atom_chem_type = wk1995(structure.scatterers()[i].label).label()
+        atom_chem_type = structure.scatterers()[i].element_symbol() 
         if(atom_chem_type != "H"):
           dist = math.sqrt((site_i[0]-site_j[0])**2 +
                            (site_i[1]-site_j[1])**2 +
@@ -204,9 +205,7 @@ class ins_record:
       except: self.Error("ERROR: coordinates must be floating point numbers.")
       try: self.occupancy  = float(atom_rec_items[5])
       except: self.Error("ERROR: occupancies must be floating point numbers.")
-      try: self.tempFactor = [float(atom_rec_items[6]),
-                              float(atom_rec_items[6]),
-                              float(atom_rec_items[6]),0.0,0.0,0.0]
+      try: self.tempFactor = [float(atom_rec_items[6])]
       except: self.Error("ERROR: b-factors must be floating point numbers.")
     self.if_10_added()
 
