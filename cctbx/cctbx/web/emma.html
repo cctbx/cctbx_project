@@ -8,6 +8,27 @@
 <hr>
 <h1>cctbx - Emma: Euclidean Model Matching</h1>
 
+Keywords:
+  substructure comparison,
+  isomorphous replacement,
+  anomalous diffraction,
+  heavy atom,
+  SAD, MAD, SIR, MIR
+<p>
+Related programs:
+<a href="http://www.xtal.sci.kun.nl/documents/software/crunch.html">Crunch</a>,
+<a href="http://www.phenix-online.org/download/documentation/hyss/">HySS</a>,
+<a href="http://shelx.uni-ac.gwdg.de/">SHELXD</a>,
+<a href="http://www.hwi.buffalo.edu/SnB/">SnB</a>,
+<a href="http://www.solve.lanl.gov/">Solve</a>
+<p>
+Note: It may be much more convenient to use the comamnd-line interface.
+Look for <strong><tt>iotbx.emma</tt></strong> in this document:
+
+<a
+href="http://www.phenix-online.org/download/documentation/hyss/examples.html"
+>HySS examples</a>
+
 <hr>
 
 <h2>Superposition of atomic models:</h2>
@@ -126,8 +147,10 @@ value="3.0">
 <strong>Are the models derived from the same diffraction data?</strong>
 <br>
 <input type=radio name="diffraction_index_equivalent" value="1">Yes
+  (May reduce the search time.)
 <br>
 <input type=radio name="diffraction_index_equivalent" value="0" checked>No
+  (Preferred for completeness.)
 
 <p>
 <input type="submit" value="Compute matches">
