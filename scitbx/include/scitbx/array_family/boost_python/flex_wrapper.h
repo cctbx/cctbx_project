@@ -455,7 +455,17 @@ namespace scitbx { namespace af { namespace boost_python {
     order_a_s(f_t const& a1, e_t const& a2) { return order(a1, a2); }
 
     static flex_bool eq_a_a(f_t const& a1, f_t const& a2) { return a1 == a2; }
+#if defined(__GNUC__) && __GNUC__ == 2 && __GNUC_MINOR__ == 96
+    static flex_bool ne_a_a(f_t const& a1, f_t const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared_plain<bool> result(a1.size(), init_functor_null<bool>());
+      for(std::size_t i=0;i<a1.size();i++) result[i] = a1[i] != a2[1];
+      return versa<bool, flex_grid<> >(result, a1.accessor());
+    }
+#else
     static flex_bool ne_a_a(f_t const& a1, f_t const& a2) { return a1 != a2; }
+#endif
     static flex_bool lt_a_a(f_t const& a1, f_t const& a2) { return a1 < a2; }
     static flex_bool gt_a_a(f_t const& a1, f_t const& a2) { return a1 > a2; }
     static flex_bool le_a_a(f_t const& a1, f_t const& a2) { return a1 <= a2; }
@@ -673,7 +683,8 @@ namespace scitbx { namespace af { namespace boost_python {
     ordered(std::string const& python_name,
             boost::python::object const& flex_root_scope)
     {
-      using namespace  boost::python;
+      using namespace boost::python;
+      using boost::python::def; // works around gcc 2.96 bug
       {
         scope local_scope(flex_root_scope);
         def("order", order_a_a);
@@ -702,7 +713,8 @@ namespace scitbx { namespace af { namespace boost_python {
     numeric_common(std::string const& python_name,
                    boost::python::object const& flex_root_scope)
     {
-      using namespace  boost::python;
+      using namespace boost::python;
+      using boost::python::def; // works around gcc 2.96 bug
       {
         scope local_scope(flex_root_scope);
         def("sum", sum_a);
@@ -734,7 +746,8 @@ namespace scitbx { namespace af { namespace boost_python {
     numeric_no_pow(std::string const& python_name,
                    boost::python::object const& flex_root_scope)
     {
-      using namespace  boost::python;
+      using namespace boost::python;
+      using boost::python::def; // works around gcc 2.96 bug
       {
         scope local_scope(flex_root_scope);
         def("order", order_a_a);
@@ -763,7 +776,8 @@ namespace scitbx { namespace af { namespace boost_python {
     numeric(std::string const& python_name,
             boost::python::object const& flex_root_scope)
     {
-      using namespace  boost::python;
+      using namespace boost::python;
+      using boost::python::def; // works around gcc 2.96 bug
       {
         scope local_scope(flex_root_scope);
         def("pow", pow_a_s);
@@ -797,7 +811,6 @@ namespace scitbx { namespace af { namespace boost_python {
     integer(std::string const& python_name,
             boost::python::object const& flex_root_scope)
     {
-      using namespace  boost::python;
       return numeric_no_pow(python_name, flex_root_scope)
         .def("__mod__", mod_a_a)
         .def("__mod__", mod_a_s)
@@ -809,7 +822,8 @@ namespace scitbx { namespace af { namespace boost_python {
     complex(std::string const& python_name,
             boost::python::object const& flex_root_scope)
     {
-      using namespace  boost::python;
+      using namespace boost::python;
+      using boost::python::def; // works around gcc 2.96 bug
       {
         scope local_scope(flex_root_scope);
         def("real", real_complex);

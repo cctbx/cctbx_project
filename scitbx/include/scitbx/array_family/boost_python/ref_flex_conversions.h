@@ -35,6 +35,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static void* convertible(PyObject* obj_ptr)
     {
       using namespace boost::python;
+      using boost::python::borrowed; // works around gcc 2.96 bug
       object obj(borrowed(obj_ptr));
       extract<flex_type&> flex_proxy(obj);
       if (!flex_proxy.check()) return 0;
@@ -50,6 +51,7 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
       using namespace boost::python;
+      using boost::python::borrowed;
       object obj(borrowed(obj_ptr));
       flex_type& a = extract<flex_type&>(obj)();
       if (!a.check_shared_size()) raise_shared_size_mismatch();

@@ -23,6 +23,8 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     static PyObject* convert(ContainerType const& a)
     {
       using namespace boost::python;
+      using boost::python::incref; // works around gcc 2.96 bug
+      using boost::python::list; // dito
       list result;
       for(std::size_t i=0;i<a.size();i++) {
         result.append(object(a[i]));
@@ -136,6 +138,7 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     static void* convertible(PyObject* obj_ptr)
     {
       using namespace boost::python;
+      using boost::python::allow_null; // works around gcc 2.96 bug
       {
         // Restriction to list, tuple, iter, xrange until
         // Boost.Python overload resolution is enhanced.
@@ -181,9 +184,12 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
       boost::python::converter::rvalue_from_python_stage1_data* data)
     {
       using namespace boost::python;
+      using boost::python::allow_null; // works around gcc 2.96 bug
+      using boost::python::converter::rvalue_from_python_storage; // dito
+      using boost::python::throw_error_already_set; // dito
       handle<> obj_iter(PyObject_GetIter(obj_ptr));
       void* storage = (
-        (converter::rvalue_from_python_storage<ContainerType>*)
+        (rvalue_from_python_storage<ContainerType>*)
           data)->storage.bytes;
       new (storage) ContainerType();
       data->convertible = storage;
