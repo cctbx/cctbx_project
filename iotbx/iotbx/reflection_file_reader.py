@@ -127,7 +127,10 @@ def run(args):
     else:
       remaining_args.append(arg)
   args = remaining_args
-  all_miller_arrays = []
+  if (pickle_file_name is None):
+    all_miller_arrays = None
+  else:
+    all_miller_arrays = []
   for file_name in args:
     print "file_name:", file_name
     sys.stdout.flush()
@@ -141,9 +144,10 @@ def run(args):
     for miller_array in miller_arrays:
       miller_array.show_comprehensive_summary()
       print
-    all_miller_arrays.extend(miller_arrays)
+    if (all_miller_arrays is not None):
+      all_miller_arrays.extend(miller_arrays)
     print
-  if (pickle_file_name is not None):
+  if (all_miller_arrays is not None):
     if (len(all_miller_arrays) == 1):
       all_miller_arrays = all_miller_arrays[0]
     if (not pickle_file_name.lower().endswith(".pickle")):
