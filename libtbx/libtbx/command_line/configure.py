@@ -144,9 +144,14 @@ class libtbx_env:
     if (os.path.isdir(join(self.LIBTBX_DIST_ROOT, "scons"))):
       self.scons_in_dist_root = 0001
 
-  def add_package(self, package):
+  def add_package(self, package, explicit_adaptbx):
     self.package_list.insert(0, package.name)
     self.dist_paths[package.name.upper() + "_DIST"] = package.dist_path
+    if (not explicit_adaptbx):
+      pp = libtbx.config.package_pair(package.name)
+      if (package.name == pp.primary):
+        self.dist_paths[pp.adaptbx.upper() + "_DIST"] = \
+          package.dist_path + libtbx.config.adaptor_toolbox_suffix
     if (package.python_path is not None):
       insert_normed_path(self.PYTHONPATH, package.python_path)
 
@@ -338,10 +343,12 @@ def run(libtbx_dist, args):
     p = packages.dict[package_name]
     pp = libtbx.config.package_pair(package_name)
     if (p.needs_adaptbx and pp.adaptbx not in packages.dict):
+      explicit_adaptbx = 00000
       print "  %s+%s" % pp.primary_first()
     else:
+      explicit_adaptbx = 0001
       print " ", package_name
-    env.add_package(packages.dict[package_name])
+    env.add_package(packages.dict[package_name], explicit_adaptbx)
   if (len(packages.missing_for_build) != 0):
     if (env.scons_in_dist_root):
       print "************************************"
