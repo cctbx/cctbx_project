@@ -17,56 +17,73 @@ from cctbx import matrix
 from scitbx import fftpack
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
+from scitbx.boost_python_utils import injector
 import types
 import sys
 
-def scatterer(label="",
-              site=(0,0,0),
-              u=None,
-              occupancy=1,
-              caasf="",
-              fp_fdp=0j,
-              b=None):
-  """\
-Python wrapper for C++ constructor.
-"""
-  assert u is None or b is None
-  if   (b is not None): u = adptbx.b_as_u(b)
-  elif (u is None): u = 0
-  if (type(caasf) == type("")):
-    if (caasf == ""):
-      caasf = wk1995(label, 0)
+class scatterer(ext.scatterer):
+
+  def __init__(self, label="",
+                     site=(0,0,0),
+                     u=None,
+                     occupancy=1,
+                     caasf="",
+                     fp_fdp=0j,
+                     b=None):
+    assert u is None or b is None
+    if   (b is not None): u = adptbx.b_as_u(b)
+    elif (u is None): u = 0
+    if (type(caasf) == type("")):
+      if (caasf == ""):
+        caasf = wk1995(label, 0)
+      else:
+        caasf = wk1995(caasf, 1)
+    ext.scatterer.__init__(self, label, site, u, occupancy, caasf, fp_fdp)
+
+class _scatterer(injector, ext.scatterer):
+
+  def copy(self, label=None,
+                 site=None,
+                 u=None,
+                 b=None,
+                 occupancy=None,
+                 caasf=None,
+                 fp_fdp=None):
+    assert u is None or b is None
+    if (b is not None): u = adptbx.b_as_u(b)
+    if (label is None): label = self.label
+    if (site is None): site = self.site
+    if (u is None):
+      if (self.anisotropic_flag): u = self.u_star
+      else: u = self.u_iso
+    if (occupancy is None): occupancy = self.occupancy
+    if (caasf is None): caasf = self.caasf
+    if (fp_fdp is None): fp_fdp = self.fp_fdp
+    return scatterer(
+      label=label,
+      site=site,
+      u=u,
+      occupancy=occupancy,
+      caasf=caasf,
+      fp_fdp=fp_fdp)
+
+  def show(self, f=None, unit_cell=None):
+    if (f is None): f = sys.stdout
+    print >> f, "%-4s" % self.label,
+    print >> f, "%3d" % self.multiplicity(),
+    print >> f, "%7.4f %7.4f %7.4f" % self.site,
+    print >> f, "%4.2f" % self.occupancy,
+    if (not self.anisotropic_flag):
+      print >> f, "%6.4f" % self.u_iso,
     else:
-      caasf = wk1995(caasf, 1)
-  return ext.scatterer(label, site, u, occupancy, caasf, fp_fdp)
-
-def _scatterer_copy(self,
-                    label=None,
-                    site=None,
-                    u=None,
-                    b=None,
-                    occupancy=None,
-                    caasf=None,
-                    fp_fdp=None):
-  assert u is None or b is None
-  if (b is not None): u = adptbx.b_as_u(b)
-  if (label is None): label = self.label
-  if (site is None): site = self.site
-  if (u is None):
-    if (self.anisotropic_flag): u = self.u_star
-    else: u = self.u_iso
-  if (occupancy is None): occupancy = self.occupancy
-  if (caasf is None): caasf = self.caasf
-  if (fp_fdp is None): fp_fdp = self.fp_fdp
-  return scatterer(
-    label=label,
-    site=site,
-    u=u,
-    occupancy=occupancy,
-    caasf=caasf,
-    fp_fdp=fp_fdp)
-
-ext.scatterer.copy = _scatterer_copy
+      assert unit_cell is not None
+      print >> f, ("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
+        unit_cell, self.u_star),
+    print >> f
+    if (abs(self.fp_fdp) != 0):
+      print >> f, "     fp,fdp = %6.4f,%6.4f" % (
+        self.fp_fdp.real,
+        self.fp_fdp.imag)
 
 class structure(crystal.special_position_settings):
 
@@ -157,23 +174,11 @@ class structure(crystal.special_position_settings):
     crystal.symmetry.show_summary(self, f)
     return self
 
-  def show_scatterers(self, f=sys.stdout):
+  def show_scatterers(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "Label  M  Coordinates            Occ  Uiso or Ucart"
     for scatterer in self.scatterers():
-      print >> f, "%-4s" % (scatterer.label,),
-      print >> f, "%3d" % (scatterer.multiplicity(),),
-      print >> f, "%7.4f %7.4f %7.4f" % scatterer.site,
-      print >> f, "%4.2f" % (scatterer.occupancy,),
-      if (not scatterer.anisotropic_flag):
-        print >> f, "%6.4f" % (scatterer.u_iso,),
-      else:
-        print >> f, ("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
-          self.unit_cell(), scatterer.u_star),
-      print >> f
-      if (abs(scatterer.fp_fdp) != 0):
-        print >> f, "     fp,fdp = %6.4f,%6.4f" % (
-          scatterer.fp_fdp.real,
-          scatterer.fp_fdp.imag)
+      scatterer.show(f=f, unit_cell=self.unit_cell())
     return self
 
   def apply_special_position_ops_d_target_d_site(self, d_target_d_site):
