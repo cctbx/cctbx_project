@@ -525,7 +525,7 @@ namespace cctbx { namespace sgtbx {
           for(int i=0;i<OrderZ();i++) {
             ref_grid = operator()(i).refine_gridding(ref_grid);
           }
-          if (cmp_tiny(prev_grid, ref_grid) == 0) break;
+          if (!af::cmp(prev_grid, ref_grid)) break;
           prev_grid = ref_grid;
         }
         return ref_grid;

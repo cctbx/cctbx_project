@@ -86,7 +86,7 @@ namespace cctbx {
       NumType
       trace() const
       {
-        return af::sum(diagonal().const_ref());
+        return af::sum(diagonal());
       }
 
       //! Return determinant.

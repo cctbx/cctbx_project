@@ -13,7 +13,7 @@
 
 #include <cctbx/error.h>
 #include <cctbx/array_family/small_plain.h>
-#include <cctbx/array_family/reductions.h>
+#include <cctbx/array_family/small_reductions.h>
 
 namespace cctbx { namespace af {
 
@@ -72,7 +72,7 @@ namespace cctbx { namespace af {
 
       std::size_t size1d() const
       {
-        return af::product(grid_.const_ref());
+        return af::product(grid_);
       }
 
       index_type const& origin() const { return origin_; }
@@ -94,18 +94,17 @@ namespace cctbx { namespace af {
 
       bool is_0_based() const
       {
-        // XXX use af::cmp(origin_, 0)
-        for(std::size_t i=0;i<origin_.size();i++) {
-          if (origin_[i] != 0) return false;
-        }
-        return true;
+        return !af::cmp(origin_, index_value_type(0));
       }
 
       bool is_padded() const
       {
         if (layout_.size() == 0) return false;
         cctbx_assert(grid_.size() == layout_.size());
-        return !index_cmp_(grid_, layout_);
+        int c = af::cmp(grid_, layout_);
+        if (c == 0) return false;
+        cctbx_assert(c > 0);
+        return true;
       }
 
       std::size_t operator()(index_type const& i) const
@@ -137,9 +136,9 @@ namespace cctbx { namespace af {
 
       bool operator==(flex_grid<index_type> const& other) const
       {
-        if (!index_cmp_(origin_, other.origin_)) return false;
-        if (!index_cmp_(grid_, other.grid_)) return false;
-        return index_cmp_(layout_, other.layout_);
+        if (af::cmp(origin_, other.origin_)) return false;
+        if (af::cmp(grid_, other.grid_)) return false;
+        return !af::cmp(layout_, other.layout_);
       }
 
       bool operator!=(flex_grid<index_type> const& other) const
@@ -163,18 +162,6 @@ namespace cctbx { namespace af {
         for(std::size_t i=0;i<sz;i++) {
           grid_.push_back(last[i] - origin[i] + incl);
         }
-      }
-
-      // XXX use generic cmp after reorganization
-      static
-      bool
-      index_cmp_(index_type const& lhs, index_type const& rhs)
-      {
-        if (lhs.size() != rhs.size()) return false;
-        for(std::size_t i=0;i<lhs.size();i++) {
-          if (lhs[i] != rhs[i]) return false;
-        }
-        return true;
       }
   };
 

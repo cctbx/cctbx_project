@@ -28,20 +28,20 @@ namespace {
 
   shared_complex_array init_cseq(const af::int3& N)
   {
-    shared_complex_array cseq(af::product(N.const_ref()), af::reserve_flag());
+    shared_complex_array cseq(af::product(N), af::reserve_flag());
     for(int i=0;i<cseq.capacity(); i++) {
       cseq.push_back(shared_complex_array::value_type(
-        double(37-i)/(af::max(N.const_ref())+11),
-        double(i-73)/(af::max(N.const_ref())+13)));
+        double(37-i)/(af::max(N)+11),
+        double(i-73)/(af::max(N)+13)));
     }
     return cseq;
   }
 
   shared_real_array init_rseq(const af::int3& N)
   {
-    shared_real_array rseq(af::product(N.const_ref()), af::reserve_flag());
+    shared_real_array rseq(af::product(N), af::reserve_flag());
     for(int i=0;i<rseq.capacity(); i++) {
-      rseq.push_back(double(37-i)/(af::max(N.const_ref())+11));
+      rseq.push_back(double(37-i)/(af::max(N)+11));
     }
     return rseq;
   }
@@ -135,7 +135,7 @@ namespace {
   void show_rseq(const shared_real_array& rseq, const af::int3& N)
   {
     af::int3 M = fftbx::Mreal_from_Nreal(N);
-    assert(rseq.size() == af::product(M.const_ref()));
+    assert(rseq.size() == af::product(M));
     af::c_index_1d_calculator<3> i1d;
     af::int3 I;
     for(I[0]=0;I[0]<N[0];I[0]++)
@@ -154,7 +154,7 @@ namespace {
                                     const af::int3& N,
                                     std::size_t loop_iterations)
   {
-    shared_complex_array cseq(af::product(N.const_ref()));
+    shared_complex_array cseq(af::product(N));
     af::ref<shared_complex_array::value_type, af::grid<3> >
     cmap(cseq.begin(), af::grid<3>(N));
     fftbx::complex_to_complex_3d<double> fft(N);
@@ -177,7 +177,7 @@ namespace {
                                  std::size_t loop_iterations)
   {
     fftbx::real_to_complex_3d<double> fft(N);
-    shared_real_array rseq(af::product(fft.Mreal().const_ref()));
+    shared_real_array rseq(af::product(fft.Mreal()));
     af::ref<shared_real_array::value_type, af::grid<3> >
     rmap(rseq.begin(), af::grid<3>(fft.Mreal()));
     if (dir == 'f') {
@@ -198,7 +198,7 @@ namespace {
                       const af::int3& N,
                       std::size_t loop_iterations)
   {
-    shared_complex_array cseq(af::product(N.const_ref()));
+    shared_complex_array cseq(af::product(N));
     if (dir == 'f') {
       std::cout << "timing_fftw_3d forward " << N << std::endl;
       fftwnd_plan Plan = fftw3d_create_plan(
@@ -224,7 +224,7 @@ namespace {
                        std::size_t loop_iterations)
   {
     af::int3 M = fftbx::Mreal_from_Nreal(N);
-    shared_real_array rseq(af::product(M.const_ref()));
+    shared_real_array rseq(af::product(M));
     if (dir == 'f') {
       std::cout << "timing_rfftw_3d forward " << N << std::endl;
       rfftwnd_plan Plan = rfftw3d_create_plan(

@@ -202,6 +202,9 @@ namespace {
       check_true(__LINE__, a5.capacity() == 0);
       ArrayType a6(a4.begin(), a4.begin() + 3);
       check_true(__LINE__, a6.capacity() == 3);
+      ArrayType a7(10, af::init_functor_null<element_type>());
+      check_true(__LINE__, a7.size() == 10);
+      check_true(__LINE__, a7.capacity() == 10);
     }
     static void run_2() {
       ArrayType a1;

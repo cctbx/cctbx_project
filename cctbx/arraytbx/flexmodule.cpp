@@ -12,6 +12,7 @@
 #include <cctbx/array_family/tiny_bpl.h>
 #include <cctbx/array_family/small_bpl.h>
 #include <cctbx/array_family/flex_types.h>
+#include <cctbx/array_family/versa_reductions.h>
 #include <cctbx/math/array_utils.h>
 
 #include <cctbx/miller_bpl.h>
@@ -869,14 +870,14 @@ namespace cctbx { namespace af {
     int
     cmp_a_a(f_t const& a1, f_t const& a2)
     {
-      return af::cmp(a1.const_ref(), a2.const_ref());
+      return af::cmp(a1, a2);
     }
 
     static
     int
     cmp_a_s(f_t const& a1, e_t const& a2)
     {
-      return af::cmp(a1.const_ref(), a2);
+      return af::cmp(a1, a2);
     }
 
     static
@@ -1097,29 +1098,29 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(log10)
 CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
 
     static std::size_t
-    max_index_a(f_t const& a) { return af::max_index(a.const_ref()); }
+    max_index_a(f_t const& a) { return af::max_index(a); }
     static std::size_t
-    min_index_a(f_t const& a) { return af::min_index(a.const_ref()); }
-    static e_t max_a(f_t const& a) { return af::max(a.const_ref()); }
-    static e_t min_a(f_t const& a) { return af::min(a.const_ref()); }
-    static e_t sum_a(f_t const& a) { return af::sum(a.const_ref()); }
-    static e_t sum_sq_a(f_t const& a) { return af::sum_sq(a.const_ref()); }
-    static e_t product_a(f_t const& a) { return af::product(a.const_ref()); }
-    static e_t mean_a(f_t const& a) { return af::mean(a.const_ref()); }
-    static e_t mean_sq_a(f_t const& a) { return af::mean_sq(a.const_ref()); }
+    min_index_a(f_t const& a) { return af::min_index(a); }
+    static e_t max_a(f_t const& a) { return af::max(a); }
+    static e_t min_a(f_t const& a) { return af::min(a); }
+    static e_t sum_a(f_t const& a) { return af::sum(a); }
+    static e_t sum_sq_a(f_t const& a) { return af::sum_sq(a); }
+    static e_t product_a(f_t const& a) { return af::product(a); }
+    static e_t mean_a(f_t const& a) { return af::mean(a); }
+    static e_t mean_sq_a(f_t const& a) { return af::mean_sq(a); }
 
     static
     e_t
     mean_weighted_a_a(f_t const& a1, f_t const& a2)
     {
-      return af::mean_weighted(a1.const_ref(), a2.const_ref());
+      return af::mean_weighted(a1, a2);
     }
 
     static
     e_t
     mean_sq_weighted_a_a(f_t const& a1, f_t const& a2)
     {
-      return af::mean_sq_weighted(a1.const_ref(), a2.const_ref());
+      return af::mean_sq_weighted(a1, a2);
     }
 
     static

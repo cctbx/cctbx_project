@@ -572,10 +572,10 @@ namespace cctbx {
         af::tiny<FloatType, 3> absMV = af::fabs(MV);
         std::size_t iMax = af::max_index(absMV);
         FloatType scaled_tolerance = absMV[iMax] * tolerance;
-        bool converged = (af::cmp(af::approx_equal_scaled(
-          MV, V, scaled_tolerance).const_ref(), true) == 0);
-        if (!converged && (af::cmp(af::approx_equal_scaled(
-          MV, -V, scaled_tolerance).const_ref(), true) == 0)) {
+        bool converged = !af::cmp(af::approx_equal_scaled(
+          MV, V, scaled_tolerance), true);
+        if (!converged && !af::cmp(af::approx_equal_scaled(
+          MV, -V, scaled_tolerance), true)) {
           throw not_positive_definite; // lambda < 0
         }
         V = MV;
@@ -643,8 +643,7 @@ namespace cctbx {
           m_values[iM] = V_lambda.second;
         }
         m_vectors[2] = MatrixLite::cross_product(m_vectors[0], m_vectors[1]);
-        cctbx_assert(
-          af::cmp((m_vectors[2] * m_vectors[2]).const_ref(), 0.) != 0);
+        cctbx_assert(af::cmp((m_vectors[2] * m_vectors[2]), 0.));
         m_values[1] = 1. / m_values[1];
         m_values[2] = (adp[0] + adp[1] + adp[2]) - (m_values[0] + m_values[1]);
       }

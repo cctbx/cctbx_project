@@ -136,7 +136,7 @@ namespace cctbx { namespace af {
         : m_is_weak_ref(false),
           m_handle(new sharing_handle(sz * element_size()))
       {
-        ftor.held(begin(), sz);
+        (*ftor.held)(begin(), sz);
         m_handle->size = m_handle->capacity;
       }
 

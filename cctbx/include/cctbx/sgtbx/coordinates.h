@@ -270,8 +270,8 @@ namespace cctbx { namespace sgtbx {
           af::tiny<FloatType, 6>
           Up = MatrixLite::FullSymMx33_as_CondensedSymMx33(
             RURt, type_holder<FloatType>());
-          if (cmp_tiny(af::approx_equal_scaled(Ustar, Up, scaled_tolerance),
-                       true) != 0) {
+          if (af::cmp(af::approx_equal_scaled(Ustar, Up, scaled_tolerance),
+                      true)) {
             return false;
           }
         }

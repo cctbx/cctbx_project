@@ -154,7 +154,7 @@ namespace cctbx { namespace sgtbx {
             || (Rtype == -2 && Mirror)) {
           RotMxInfo RI = StdSgOps[iSMx].Rpart().getInfo();
           const af::int3 EV_100(1, 0, 0);
-          if (cmp_tiny(RI.EV(), EV_100) == 0) {
+          if (!af::cmp(RI.EV(), EV_100)) {
             if (PointGroupType == MGC_4bm2) return MGC_4b2m;
             if (PointGroupType == MGC_32)   return MGC_321;
             if (PointGroupType == MGC_3m)   return MGC_3m1;
@@ -246,7 +246,7 @@ namespace cctbx { namespace sgtbx {
                 int UseThisSMx = 1;
                 for (int jWtd = 0; jWtd < nWtd; jWtd++) {
                   if (   RMx[jWtd].isValid()
-                      && cmp_tiny(RI[iWtd].EV(), RI[jWtd].EV()) == 0) {
+                      && !af::cmp(RI[iWtd].EV(), RI[jWtd].EV())) {
                     if (math::abs(Ord[jWtd]) >= math::abs(RMxO)) {
                       UseThisSMx = 0;
                     }
@@ -355,7 +355,7 @@ namespace cctbx { namespace sgtbx {
         if (math::abs(Rtype) == 2) {
           RotMxInfo RI = R.getInfo();
           const af::int3 EV_100(1, 0, 0);
-          if (cmp_tiny(RI.EV(), EV_100) == 0) {
+          if (!af::cmp(RI.EV(), EV_100)) {
             int iInv = 0; if (Rtype == 2) iInv = 1;
             RTMx SMx = WorkSgOps(0, iInv, iSMx);
             TrVec wi = SMx.getIntrinsicPart();

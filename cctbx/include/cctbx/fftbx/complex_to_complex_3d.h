@@ -12,7 +12,7 @@
 #ifndef CCTBX_FFTBX_COMPLEX_TO_COMPLEX_3D_H
 #define CCTBX_FFTBX_COMPLEX_TO_COMPLEX_3D_H
 
-#include <cctbx/array_family/reductions.h>
+#include <cctbx/array_family/tiny_reductions.h>
 #include <cctbx/fftbx/error.h>
 #include <cctbx/fftbx/complex_to_complex.h>
 
@@ -123,7 +123,7 @@ namespace cctbx { namespace fftbx {
   template <typename RealType, typename ComplexType>
   complex_to_complex_3d<RealType, ComplexType
     >::complex_to_complex_3d(const af::int3& N)
-    : m_Seq(af::max(N.const_ref()))
+    : m_Seq(af::max(N))
   {
     for(std::size_t i=0;i<3;i++) {
       m_fft1d[i] = complex_to_complex<real_type, complex_type>(N[i]);
@@ -133,7 +133,7 @@ namespace cctbx { namespace fftbx {
   template <typename RealType, typename ComplexType>
   complex_to_complex_3d<RealType, ComplexType
     >::complex_to_complex_3d(std::size_t N0, std::size_t N1, std::size_t N2)
-    : m_Seq(af::max(af::tiny<std::size_t, 3>(N0, N1, N2).const_ref()))
+    : m_Seq(af::max(af::tiny<std::size_t, 3>(N0, N1, N2)))
   {
     m_fft1d[0] = complex_to_complex<real_type, complex_type>(N0);
     m_fft1d[1] = complex_to_complex<real_type, complex_type>(N1);
