@@ -111,13 +111,13 @@ namespace scitbx {
 } // namespace scitbx
 
 //! For throwing an "Internal Error" exception.
-#define SCITBX_INTERNAL_ERROR() scitbx::error(__FILE__, __LINE__)
+#define SCITBX_INTERNAL_ERROR() ::scitbx::error(__FILE__, __LINE__)
 //! For throwing a "Not implemented" exception.
-#define SCITBX_NOT_IMPLEMENTED() scitbx::error(__FILE__, __LINE__, \
+#define SCITBX_NOT_IMPLEMENTED() ::scitbx::error(__FILE__, __LINE__, \
              "Not implemented.")
 //! Custom scitbx assertion.
 #define SCITBX_ASSERT(bool) \
-  if (!(bool)) throw scitbx::error(__FILE__, __LINE__,\
-    "scitbx_assert(" # bool ") failure.")
+  if (!(bool)) throw ::scitbx::error(__FILE__, __LINE__,\
+    "SCITBX_ASSERT(" # bool ") failure.")
 
 #endif // SCITBX_ERROR_H
