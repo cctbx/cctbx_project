@@ -1,5 +1,6 @@
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import reference_table
+from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from cctbx import matrix
@@ -45,6 +46,22 @@ def exercise_direct_space_asu(space_group_info, n_grid=6):
           assert f_inside
     # check correctness of float_asu.add_buffer()
     assert float_asu.is_inside(inp_f) == inp_asu.volume_only().is_inside(inp_r)
+  asu_with_metric = inp_asu.define_metric(unit_cell)
+  assert asu_with_metric.hall_symbol is inp_asu.hall_symbol
+  assert len(asu_with_metric.facets) == len(inp_asu.facets)
+  assert asu_with_metric.unit_cell is unit_cell
+  asu_tight = asu_with_metric.add_buffer()
+  asu_buffer = asu_with_metric.add_buffer(thickness=2)
+  asu_shrunk = asu_with_metric.add_buffer(relative_thickness=-1.e-6)
+  vertices = facet_analysis.volume_vertices(inp_asu)
+  for vertex in vertices:
+    assert inp_asu.volume_only().is_inside(vertex)
+  for vertex in vertices:
+    assert asu_tight.is_inside(float(matrix.col(vertex)).elems)
+  for vertex in vertices:
+    assert asu_buffer.is_inside(float(matrix.col(vertex)).elems)
+  for vertex in vertices:
+    assert not asu_shrunk.is_inside(float(matrix.col(vertex)).elems)
 
 def run_call_back(flags, space_group_info):
   exercise_direct_space_asu(space_group_info)
