@@ -34,6 +34,12 @@ namespace scitbx { namespace af { namespace boost_python {
       return imag(a);
     }
 
+    static versa<std::complex<FloatType>, flex_grid<> >
+    conj_complex(versa<std::complex<FloatType>, flex_grid<> > const& a)
+    {
+      return conj(a);
+    }
+
     static versa<FloatType, flex_grid<> >
     abs_complex(versa<std::complex<FloatType>, flex_grid<> > const& a)
     {
@@ -200,6 +206,7 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::scope local_scope(flex_root_scope);
       boost::python::def("real", real_complex);
       boost::python::def("imag", imag_complex);
+      boost::python::def("conj", conj_complex);
       boost::python::def("abs", abs_complex);
       boost::python::def("arg", arg_complex_2);
       boost::python::def("arg", arg_complex_1);

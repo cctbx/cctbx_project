@@ -446,6 +446,14 @@ def exercise_functions():
 def exercise_complex_functions():
   c = 1+2j
   x = flex.complex_double((c,))
+  y = flex.real(x)
+  assert approx_equal(y[0], 1)
+  y = flex.imag(x)
+  assert approx_equal(y[0], 2)
+  y = flex.conj(x)
+  d = y[0]
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, -c.imag)
   a = flex.abs(x)
   assert approx_equal(a[0], abs(c))
   p = flex.arg(x)
