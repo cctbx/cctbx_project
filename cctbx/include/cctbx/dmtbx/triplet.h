@@ -38,7 +38,7 @@ namespace cctbx { namespace dmtbx {
       CCTBX_ASSERT(k_seq.t_den() == asym_hmk.t_den());
       CCTBX_ASSERT(k_seq.ht() >= 0);
       CCTBX_ASSERT(asym_hmk.ht() >= 0);
-      if (ik <= ihmk) {
+      if (ik < ihmk || (ik == ihmk && k_seq.friedel_flag() == false)) {
         ik_ = ik;
         ihmk_ = ihmk;
         friedel_flag_k_ = k_seq.friedel_flag();
@@ -53,6 +53,34 @@ namespace cctbx { namespace dmtbx {
       int k_ht = k_seq.ht();
       if (k_seq.friedel_flag()) k_ht *= -1;
       ht_sum_ = math::mod_positive(-k_ht + asym_hmk.ht(), k_seq.t_den());
+    }
+
+    triplet_phase_relation(
+      std::size_t ik,
+      miller::sym_equiv_index const& k_seq,
+      std::size_t ihmk,
+      miller::sym_equiv_index const& hmk_seq)
+    {
+      CCTBX_ASSERT(k_seq.t_den() == hmk_seq.t_den());
+      CCTBX_ASSERT(k_seq.ht() >= 0);
+      CCTBX_ASSERT(hmk_seq.ht() >= 0);
+      if (ik < ihmk || (ik == ihmk && k_seq.friedel_flag() == false)) {
+        ik_ = ik;
+        ihmk_ = ihmk;
+        friedel_flag_k_ = k_seq.friedel_flag();
+        friedel_flag_hmk_ = hmk_seq.friedel_flag();
+      }
+      else {
+        ik_ = ihmk;
+        ihmk_ = ik;
+        friedel_flag_k_ = hmk_seq.friedel_flag();
+        friedel_flag_hmk_ = k_seq.friedel_flag();
+      }
+      int k_ht = k_seq.ht();
+      if (k_seq.friedel_flag()) k_ht *= -1;
+      int hmk_ht = hmk_seq.ht();
+      if (hmk_seq.friedel_flag()) hmk_ht *= -1;
+      ht_sum_ = math::mod_positive(-k_ht - hmk_ht, k_seq.t_den());
     }
 
     bool operator<(triplet_phase_relation const& other) const
@@ -88,76 +116,13 @@ namespace cctbx { namespace dmtbx {
   };
 
   template <typename FloatType = double>
-  class triplet_invariants
+  class triplets_base
   {
-    private:
+    protected:
       typedef std::map<triplet_phase_relation, std::size_t> tpr_map_type;
       typedef af::shared<tpr_map_type> list_of_tpr_maps_type;
 
     public:
-      triplet_invariants() {}
-
-      triplet_invariants(
-        sgtbx::space_group_type const& sg_type,
-        af::const_ref<miller::index<> > const& miller_indices,
-        bool sigma_2,
-        bool other_than_sigma_2)
-      :
-        t_den_(sg_type.group().t_den())
-      {
-        sgtbx::reciprocal_space::asu asu(sg_type);
-        std::size_t i=0;
-        // Assert that all Miller indices are in the standard asymmetric unit.
-        for(i=0;i<miller_indices.size();i++) {
-          CCTBX_ASSERT(
-               miller::asym_index(sg_type.group(), asu, miller_indices[i]).h()
-            == miller_indices[i]);
-        }
-        miller::index_span miller_index_span(miller_indices);
-        typedef std::map<std::size_t, std::size_t> lookup_dict_type;
-        lookup_dict_type lookup_dict;
-        for(i=0;i<miller_indices.size();i++) {
-          lookup_dict[miller_index_span.pack(miller_indices[i])] = i;
-        }
-        CCTBX_ASSERT(lookup_dict.size() == miller_indices.size());
-        list_of_tpr_maps_.reserve(miller_indices.size());
-        for(i=0;i<miller_indices.size();i++) {
-          list_of_tpr_maps_.push_back(tpr_map_type());
-        }
-        for(std::size_t ih=0;ih<miller_indices.size();ih++) {
-          miller::index<> h = miller_indices[ih];
-          for(std::size_t ik=0;ik<miller_indices.size();ik++) {
-            if (ik == ih) { if (!other_than_sigma_2) continue; }
-            else          { if (!sigma_2) continue; }
-            miller::index<> k = miller_indices[ik];
-            miller::sym_equiv_indices sym_eq_k(sg_type.group(), k);
-            int mult = sym_eq_k.multiplicity(false);
-            for(std::size_t ik_eq=0;ik_eq<mult;ik_eq++) {
-              miller::sym_equiv_index k_seq = sym_eq_k(ik_eq);
-              miller::index<> k_eq = k_seq.h();
-              miller::index<> hmk = h - k_eq;
-              miller::asym_index asym_hmk(sg_type.group(), asu, hmk);
-              miller::index<> asym_hmk_h = asym_hmk.h();
-              if (miller_index_span.is_in_domain(asym_hmk_h)) {
-                typename lookup_dict_type::const_iterator
-                ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk_h));
-                if (ld_pos != lookup_dict.end()) {
-                  std::size_t ihmk = ld_pos->second;
-                  CCTBX_ASSERT(miller_indices[ihmk] == asym_hmk_h);
-                  if (ihmk == ih || ihmk == ik) {
-                    if (!other_than_sigma_2) continue;
-                  }
-                  else {
-                    if (!sigma_2) continue;
-                  }
-                  triplet_phase_relation tpr(ik, ihmk, k_seq, asym_hmk);
-                  list_of_tpr_maps_[ih][tpr]++;
-                }
-              }
-            }
-          }
-        }
-      }
 
       std::size_t
       number_of_weighted_triplets() const
@@ -209,6 +174,27 @@ namespace cctbx { namespace dmtbx {
                << std::endl;
           }
         }
+      }
+
+      af::shared<long>
+      pack_triplets()
+      {
+        af::shared<long> result;
+        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
+        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
+          for(tpr_map_type::const_iterator
+              lij=li->begin();lij!=li->end();lij++) {
+            triplet_phase_relation const& tpr = lij->first;
+            result.push_back(i);
+            result.push_back(tpr.ik_);
+            result.push_back(tpr.friedel_flag_k_);
+            result.push_back(tpr.ihmk_);
+            result.push_back(tpr.friedel_flag_hmk_);
+            result.push_back(tpr.ht_sum_);
+            result.push_back(lij->second);
+          }
+        }
+        return result;
       }
 
       af::shared<std::size_t>
@@ -347,9 +333,81 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
-    private:
+    protected:
       int t_den_;
       list_of_tpr_maps_type list_of_tpr_maps_;
+  };
+
+  template <typename FloatType = double>
+  class triplet_invariants : public triplets_base<FloatType>
+  {
+    protected:
+      typedef typename triplets_base<FloatType>::tpr_map_type tpr_map_type;
+      typedef typename triplets_base<FloatType>::list_of_tpr_maps_type
+                list_of_tpr_maps_type;
+    public:
+      triplet_invariants() {}
+
+      triplet_invariants(
+        sgtbx::space_group_type const& sg_type,
+        af::const_ref<miller::index<> > const& miller_indices,
+        bool sigma_2,
+        bool other_than_sigma_2)
+      {
+        this->t_den_ = sg_type.group().t_den();
+        sgtbx::reciprocal_space::asu asu(sg_type);
+        std::size_t i=0;
+        // Assert that all Miller indices are in the standard asymmetric unit.
+        for(i=0;i<miller_indices.size();i++) {
+          CCTBX_ASSERT(
+               miller::asym_index(sg_type.group(), asu, miller_indices[i]).h()
+            == miller_indices[i]);
+        }
+        miller::index_span miller_index_span(miller_indices);
+        typedef std::map<std::size_t, std::size_t> lookup_dict_type;
+        lookup_dict_type lookup_dict;
+        for(i=0;i<miller_indices.size();i++) {
+          lookup_dict[miller_index_span.pack(miller_indices[i])] = i;
+        }
+        CCTBX_ASSERT(lookup_dict.size() == miller_indices.size());
+        this->list_of_tpr_maps_.reserve(miller_indices.size());
+        for(i=0;i<miller_indices.size();i++) {
+          this->list_of_tpr_maps_.push_back(tpr_map_type());
+        }
+        for(std::size_t ih=0;ih<miller_indices.size();ih++) {
+          miller::index<> h = miller_indices[ih];
+          for(std::size_t ik=0;ik<miller_indices.size();ik++) {
+            if (ik == ih) { if (!other_than_sigma_2) continue; }
+            else          { if (!sigma_2) continue; }
+            miller::index<> k = miller_indices[ik];
+            miller::sym_equiv_indices sym_eq_k(sg_type.group(), k);
+            int mult = sym_eq_k.multiplicity(false);
+            for(std::size_t ik_eq=0;ik_eq<mult;ik_eq++) {
+              miller::sym_equiv_index k_seq = sym_eq_k(ik_eq);
+              miller::index<> k_eq = k_seq.h();
+              miller::index<> hmk = h - k_eq;
+              miller::asym_index asym_hmk(sg_type.group(), asu, hmk);
+              miller::index<> asym_hmk_h = asym_hmk.h();
+              if (miller_index_span.is_in_domain(asym_hmk_h)) {
+                typename lookup_dict_type::const_iterator
+                ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk_h));
+                if (ld_pos != lookup_dict.end()) {
+                  std::size_t ihmk = ld_pos->second;
+                  CCTBX_ASSERT(miller_indices[ihmk] == asym_hmk_h);
+                  if (ihmk == ih || ihmk == ik) {
+                    if (!other_than_sigma_2) continue;
+                  }
+                  else {
+                    if (!sigma_2) continue;
+                  }
+                  triplet_phase_relation tpr(ik, ihmk, k_seq, asym_hmk);
+                  this->list_of_tpr_maps_[ih][tpr]++;
+                }
+              }
+            }
+          }
+        }
+      }
   };
 
 }} // namespace cctbx::dmtbx
