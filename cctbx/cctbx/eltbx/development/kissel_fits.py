@@ -37,13 +37,12 @@ def run(args, cutoff, params=None,
     sel = tab.x <= cutoff
     tab_x = tab.x.select(sel)
     tab_y = tab.y.select(sel)
-    wk = xray_scattering.wk1995(tab.element, 1)
     null_fit = scitbx.math.gaussian.fit(
       tab_x,
       tab_y,
       flex.double(tab_x.size(), 1.e-5),
       xray_scattering.gaussian(0, 00000))
-    results[wk.label()] = cctbx.eltbx.gaussian_fit.incremental_fits(
+    results[tab.element] = cctbx.eltbx.gaussian_fit.incremental_fits(
       label=tab.element,
       null_fit=null_fit,
       params=params,

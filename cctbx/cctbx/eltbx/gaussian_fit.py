@@ -55,11 +55,17 @@ def show_literature_fits(label, n_terms, null_fit, n_points,
               xray_scattering.two_gaussian_agarwal_1978,
               xray_scattering.one_gaussian_agarwal_1978]:
     if (lib == xray_scattering.wk1995):
-      lib_gaussian = xray_scattering.wk1995(label, 1).fetch()
-      lib_source = "WK1995"
+      try:
+        lib_gaussian = xray_scattering.wk1995(label, 1).fetch()
+        lib_source = "WK1995"
+      except:
+        lib_gaussian = None
     elif (lib == xray_scattering.it1992):
-      lib_gaussian = xray_scattering.it1992(label, 1).fetch()
-      lib_source = "IT1992"
+      try:
+        lib_gaussian = xray_scattering.it1992(label, 1).fetch()
+        lib_source = "IT1992"
+      except:
+        lib_gaussian = None
     elif (lib.table.has_key(label)):
       lib_gaussian = lib.table[label]
       lib_source = lib.source_short
