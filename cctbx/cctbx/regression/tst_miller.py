@@ -172,6 +172,17 @@ unused: 10.0715 -         1.000
  1.000
  1.000
 """
+  set2 = set2.customized_copy(indices=flex.miller_index())
+  set2.use_binning_of(set1)
+  s = StringIO()
+  set2.completeness(use_binning=True).show(f=s)
+  assert s.getvalue() == """\
+unused:         - 28.7186 [0/0]
+bin  1: 28.7186 - 14.1305 [0/3] 0.000
+bin  2: 14.1305 - 11.4473 [0/3] 0.000
+bin  3: 11.4473 - 10.0715 [0/2] 0.000
+unused: 10.0715 -         [0/0]
+"""
   try:
     pickle.dumps(set1.binner())
   except RuntimeError, e:

@@ -39,7 +39,10 @@ class binner(ext.binner):
     ext.binner.__init__(self, binning, miller_set.indices())
     self.space_group_info = miller_set.space_group_info()
     self.anomalous_flag = miller_set.anomalous_flag()
-    self.given_indices_d_min = miller_set.d_min()
+    if (miller_set.indices().size() == 0):
+      self._completeness_d_min = binning.d_min()
+    else:
+      self._completeness_d_min = miller_set.d_min()
     self._counts_given = None
     self._counts_complete = None
     self._have_format_strings = False
@@ -69,7 +72,7 @@ class binner(ext.binner):
           unit_cell=self.unit_cell(),
           space_group_info=self.space_group_info),
         anomalous_flag=self.anomalous_flag,
-        d_min=self.given_indices_d_min*(1-d_min_tolerance))
+        d_min=self._completeness_d_min*(1-d_min_tolerance))
       if (not include_centric):
         complete_set = complete_set.select_acentric()
       if (not include_acentric):
