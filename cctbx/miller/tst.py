@@ -8,6 +8,26 @@ from cctbx import xutils
 from cctbx.development import debug_utils
 random = debug_utils.random
 
+def exercise_build_indices(SgInfo, index_abs_range = (6,6,6)):
+  for friedel_flag in (1,0):
+    miller_indices = miller.BuildIndices(SgInfo, friedel_flag, index_abs_range)
+    miller_dict = {}
+    for h in miller_indices: miller_dict[h] = 0
+    sgops = SgInfo.SgOps()
+    h = [0,0,0]
+    for h[0] in range(-index_abs_range[0], index_abs_range[0]+1):
+      for h[1] in range(-index_abs_range[1], index_abs_range[1]+1):
+        for h[2] in range(-index_abs_range[2], index_abs_range[2]+1):
+          if (sgops.isSysAbsent(h) or h == [0,0,0]): continue
+          h_seq = miller.SymEquivIndices(sgops, h)
+          found_h_asu = 0
+          for i_eq in xrange(h_seq.M(friedel_flag)):
+            h_eq = h_seq(i_eq).H()
+            if (h_eq in miller_dict):
+              assert found_h_asu == 0
+              found_h_asu = 1
+          assert found_h_asu != 0
+
 def exercise_join_sets():
   h0 = shared.miller_Index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
   d0 = shared.double((1,2,3,4,5))
@@ -258,6 +278,7 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
+    exercise_build_indices(SgInfo)
     exercise_bins(SgInfo)
     exercise_map_to_asu(SgInfo)
     exercise_map_fft(SgInfo)
