@@ -188,7 +188,7 @@ namespace cctbx { namespace sgtbx { namespace wyckoff {
       }
 
     private:
-#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ == 1493
+#if defined(__MACH__) && defined(__APPLE_CC__) && __APPLE_CC__ <= 1495
       bool dummy_;
 #endif
       uctbx::unit_cell unit_cell_;
