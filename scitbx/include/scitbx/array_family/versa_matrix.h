@@ -4,9 +4,10 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
-#include <scitbx/mat_ref.h>
 #include <scitbx/matrix/lu_decomposition.h>
+#include <scitbx/matrix/inversion.h>
 #include <scitbx/matrix/diagonal.h>
+#include <scitbx/mat_ref.h>
 
 namespace scitbx { namespace af {
 
@@ -100,7 +101,7 @@ namespace scitbx { namespace af {
 
   template <typename NumType, typename FlexGridIndexType>
   void
-  transpose_in_place(versa<NumType, flex_grid<FlexGridIndexType> >& a)
+  matrix_transpose_in_place(versa<NumType, flex_grid<FlexGridIndexType> >& a)
   {
     SCITBX_ASSERT(a.accessor().nd() == 2);
     SCITBX_ASSERT(a.accessor().is_0_based());
@@ -140,6 +141,76 @@ namespace scitbx { namespace af {
     matrix::lu_back_substitution(
       a.begin(), a.accessor()[0], pivot_indices.begin(), x.begin());
     return x;
+  }
+
+  template <typename FloatType>
+  FloatType
+  matrix_determinant_via_lu(
+    const_ref<FloatType, c_grid<2> > const& a,
+    const_ref<std::size_t> const& pivot_indices)
+  {
+    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(pivot_indices.size() == a.accessor()[0]+1);
+    FloatType result = matrix_diagonal_product(a);
+    if (pivot_indices[a.accessor()[0]] % 2) result = -result;
+    return result;
+  }
+
+  template <typename FloatType>
+  FloatType
+  matrix_determinant_via_lu(
+    const_ref<FloatType, c_grid<2> > const& a)
+  {
+    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    std::vector<FloatType> a_;
+    a_.reserve(a.accessor().size_1d());
+    std::copy(a.begin(), a.end(), a_.begin());
+    FloatType result;
+    try {
+      shared<std::size_t>
+        pivot_indices = matrix_lu_decomposition_in_place(
+          ref<FloatType, c_grid<2> >(&*a_.begin(), a.accessor()));
+      result = matrix_diagonal_product(
+        const_ref<FloatType, c_grid<2> >(&*a_.begin(), a.accessor()));
+      if (pivot_indices[a.accessor()[0]] % 2) result = -result;
+    }
+    catch (std::runtime_error const& e) {
+      if (std::string(e.what())
+          != "lu_decomposition_in_place: singular matrix") throw;
+      result = 0;
+    }
+    return result;
+  }
+
+  template <typename FloatType>
+  void
+  matrix_inversion_in_place(
+    af::ref<FloatType, af::c_grid<2> > const& a,
+    af::ref<FloatType, af::c_grid<2> > const& b)
+  {
+    if (a.accessor()[1] != a.accessor()[0]) {
+      throw std::runtime_error(
+        "matrix_inversion_in_place: a square matrix is required");
+    }
+    if (   b.accessor()[0] != 0
+        && b.accessor()[1] != a.accessor()[0]) {
+      throw std::runtime_error(
+        "matrix_inversion_in_place: if a is a (n*n) matrix b must be (m*n)");
+    }
+    matrix::inversion_in_place(
+      a.begin(),
+      static_cast<std::size_t>(a.accessor()[0]),
+      b.begin(),
+      static_cast<std::size_t>(b.accessor()[0]));
+  }
+
+  template <typename FloatType>
+  void
+  matrix_inversion_in_place(
+    af::ref<FloatType, af::c_grid<2> > const& a)
+  {
+    matrix_inversion_in_place(
+      a, af::ref<FloatType, af::c_grid<2> >(0, af::c_grid<2>(0,0)));
   }
 
 }} // namespace scitbx::af
