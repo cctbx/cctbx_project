@@ -250,6 +250,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Hermann_Mauguin,
                                                 "Hermann_Mauguin");
     py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Extension, "Extension");
+    py_SpaceGroupSymbols.def(&SpaceGroupSymbols::ExtendedHermann_Mauguin,
+                                                "ExtendedHermann_Mauguin");
     py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Hall, "Hall");
 
     py_parse_string.def(constructor<const std::string&>());
