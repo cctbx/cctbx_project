@@ -156,6 +156,7 @@ namespace lbfgsb {
         return task_;
       }
 
+      //! Status of minimization process.
       /*! Possible values:
 
          Errors detected at start (after first call of process()):
