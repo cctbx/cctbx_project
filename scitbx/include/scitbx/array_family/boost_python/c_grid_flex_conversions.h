@@ -16,7 +16,7 @@
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/object.hpp>
 #include <boost/python/extract.hpp>
-/* #include <boost/python.hpp>  XXX go back later and find the necessary subset*/
+#include <boost/python/to_python_converter.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 
