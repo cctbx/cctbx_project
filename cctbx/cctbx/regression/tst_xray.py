@@ -183,7 +183,7 @@ def exercise_n_gaussian(space_group_info, verbose=0):
   structure_5g.scattering_dict()
   structure_4g.scattering_dict(d_min=1, d_min_it1992=1)
   structure_2g.scattering_dict(
-    custom_dict=eltbx.xray_scattering.two_gaussian_agarwal_isaacs)
+    custom_dict=eltbx.xray_scattering.two_gaussian_agarwal_isaacs.table)
   for scatterer_group in structure_5g.scattering_dict().dict().values():
     assert scatterer_group.gaussian.n_ab() == 5
   for scatterer_group in structure_4g.scattering_dict().dict().values():
