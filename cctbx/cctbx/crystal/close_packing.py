@@ -39,22 +39,6 @@ def hex_indices_as_site(point, layer=0):
     else:
       return [-point[0]-1/3.,-point[1]-2/3.,point[2]*.5]
 
-class labeled_sites:
-
-  def __init__(self, labels=None, sites=None):
-    if (labels is None): labels = []
-    if (sites is None): sites = flex.vec3_double()
-    self.labels = labels
-    self.sites = sites
-
-  def append(self, label, site):
-    self.labels.append(label)
-    self.sites.append(site)
-
-  def extend(self, other):
-    self.labels.extend(other.labels)
-    self.sites.append(other.sites)
-
 def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
                  buffer_thickness=-1, all_twelve_neighbors=00000):
   assert point_distance > 0
@@ -81,7 +65,7 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
   hex_to_frac_matrix = (
       matrix.sqr(float_asu.unit_cell().fractionalization_matrix())
     * matrix.sqr(hex_cell.orthogonalization_matrix()))
-  sites_frac = labeled_sites()
+  sites_frac = flex.vec3_double()
   for point in flex.nested_loop(begin=box_lower,
                                 end=box_upper,
                                 open_range=00000):
@@ -89,7 +73,7 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
              + matrix.col(hex_indices_as_site(point))
     site_frac = hex_to_frac_matrix * site_hex
     if (float_asu_buffer.is_inside(site_frac)):
-      sites_frac.append(str(point), site_frac)
+      sites_frac.append(site_frac)
     elif (all_twelve_neighbors):
       for offset in [(1,0,0),(1,1,0),(0,1,0),(-1,0,0),(-1,-1,0),(0,-1,0),
                      (0,0,1),(-1,-1,1),(0,-1,1),
@@ -98,9 +82,9 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
         offset_frac = hex_to_frac_matrix * matrix.col(offset_hex)
         other_site_frac = site_frac + offset_frac
         if (float_asu.is_inside(other_site_frac)):
-          sites_frac.append(str(point), site_frac)
+          sites_frac.append(site_frac)
           break
-  assert sites_frac.sites.size() > 0
+  assert sites_frac.size() > 0
   return sites_frac
 
 def hexagonal_close_packing_sampling(crystal_symmetry,
@@ -134,14 +118,12 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
     buffer_thickness=buffer_thickness,
     all_twelve_neighbors=all_twelve_neighbors)
   rt = cb_op_work.c_inv().as_double_array()
-  sites_frac = rt[:9] * work_sites_frac.sites
+  sites_frac = rt[:9] * work_sites_frac
   sites_frac += rt[9:]
-  return labeled_sites(
-    labels=work_sites_frac.labels,
-    sites=crystal_symmetry.unit_cell().orthogonalization_matrix() * sites_frac)
+  return crystal_symmetry.unit_cell().orthogonalization_matrix() * sites_frac
 
 def check_distances(sites_cart, point_distance):
-  asu_mappings = non_crystallographic_asu_mappings(sites_cart=sites_cart.sites)
+  asu_mappings = non_crystallographic_asu_mappings(sites_cart=sites_cart)
   distance_cutoff = point_distance * math.sqrt(2) * 0.99
   simple_pair_generator = crystal.neighbors_simple_pair_generator(
     asu_mappings=asu_mappings,
@@ -153,12 +135,8 @@ def check_distances(sites_cart, point_distance):
     full_matrix=0001)
   assert simple_pair_generator.count_pairs() == pair_generator.count_pairs()
   pair_generator.restart()
-  labels = sites_cart.labels
   neighbors = {}
   for pair in pair_generator:
-    if (0 and labels[pair.i_seq] in ["(0, 0, 0)",
-                                     "(0, 0, 1)"]):
-      print "pair:", labels[pair.i_seq], labels[pair.j_seq]
     assert approx_equal(pair.dist_sq, point_distance**2)
     neighbors[pair.i_seq] = neighbors.get(pair.i_seq, 0) + 1
   n_dict = {}
@@ -202,16 +180,16 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
         if (inp_tags.tags().tag_array()[point] < 0):
           point_frac_inp=[float(n)/d for n,d in zip(point, inp_tags.n_real())]
           tag_sites_frac.append(point_frac_inp)
-    if (inp_tags.tags().n_independent() < sites_cart.sites.size()):
+    if (inp_tags.tags().n_independent() < sites_cart.size()):
       print "FAIL:", inp_symmetry.space_group_info(), \
-                     inp_tags.tags().n_independent(), sites_cart.sites.size()
+                     inp_tags.tags().n_independent(), sites_cart.size()
       raise AssertionError
   else:
     inp_tags = inp_symmetry.gridding(
       step=point_distance/2.,
       symmetry_flags=symmetry_flags).tags()
     sites_frac_inp = inp_symmetry.unit_cell().fractionalization_matrix() \
-                   * sites_cart.sites
+                   * sites_cart
     rt = cb_op_inp_ref.c().as_double_array()
     sites_frac_ref = rt[:9] * sites_frac_inp
     sites_frac_ref += rt[9:]
@@ -238,9 +216,9 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
           print "FAIL:", inp_symmetry.space_group_info(), \
                          point_frac_ref, min_dist
           raise AssertionError
-    if (inp_tags.tags().n_independent()+10 < sites_cart.sites.size()):
+    if (inp_tags.tags().n_independent()+10 < sites_cart.size()):
       print "FAIL:", inp_symmetry.space_group_info(), \
-                     inp_tags.tags().n_independent(), sites_cart.sites.size()
+                     inp_tags.tags().n_independent(), sites_cart.size()
       raise AssertionError
   if (tag_sites_frac is not None):
     dump_pdb(
@@ -286,7 +264,7 @@ def run_call_back(flags, space_group_info):
       strictly_inside=flags.strictly_inside,
       flag_write_pdb=flags.write_pdb)
   if (flags.write_pdb):
-    dump_pdb("hex_sites.pdb", crystal_symmetry, sites_cart.sites)
+    dump_pdb("hex_sites.pdb", crystal_symmetry, sites_cart)
 
 def exercise_all_twelve_neighbors():
   sites_cart = hexagonal_close_packing_sampling(
@@ -302,7 +280,7 @@ def exercise_all_twelve_neighbors():
     point_distance=2,
     buffer_thickness=-1,
     all_twelve_neighbors=0001)
-  assert len(sites_cart.sites) == 37
+  assert len(sites_cart) == 37
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
