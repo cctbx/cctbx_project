@@ -36,7 +36,7 @@ def interpret_coordinate_line(line, skip_columns):
   return " ".join(flds[:skip_columns]), coordinates
 
 def read_scatterer(flds, default_b_iso=3.0):
-  scatterer = xray.scatterer("const")
+  scatterer = xray.scatterer(scattering_type="const")
   # Label [ScatFact] x y z [Occ [Biso]]
   try:
     scatterer.label = flds[0]

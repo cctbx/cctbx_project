@@ -133,7 +133,7 @@ namespace {
         .def("n_scatterers", &w_t::n_scatterers)
         .def("dict", as_python_dict)
         .def("dict_size", dict_size)
-        .def("find_all_zero", &w_t::find_all_zero)
+        .def("find_undefined", &w_t::find_undefined)
         .def("lookup", &w_t::lookup, ccr())
         .def("scatterer_permutation", &w_t::scatterer_permutation)
         .def("assign", &w_t::assign)

@@ -105,7 +105,8 @@ class model(crystal.special_position_settings):
 
   def as_xray_structure(self, scatterer=None):
     from cctbx import xray
-    if (scatterer is None): scatterer = xray.scatterer(label="const")
+    if (scatterer is None):
+      scatterer = xray.scatterer(scattering_type="const")
     result = xray.structure(special_position_settings=self)
     for position in self.positions():
       result.add_scatterer(scatterer.copy(

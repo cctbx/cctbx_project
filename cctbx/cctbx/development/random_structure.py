@@ -2,7 +2,7 @@ from cctbx import sgtbx
 from cctbx import crystal
 from cctbx import adptbx
 from cctbx import xray
-from cctbx.eltbx import caasf
+from cctbx import eltbx
 from scitbx.python_utils.misc import adopt_init_args
 import random
 
@@ -159,27 +159,30 @@ class xray_structure(xray.structure):
       grid=grid,
       t_centre_of_inversion=t_centre_of_inversion)
     assert len(all_sites) <= self.n_scatterers
+    sf_dict = {}
+    for element in elements:
+      if (not sf_dict.has_key(element)):
+        sf_dict[element] = eltbx.caasf.best_approximation(element)
     fp = 0
     fdp = 0
     n_existing = self.scatterers().size()
     i_label = n_existing
-    caasf_dict = {}
-    for element in elements:
-      if (not caasf_dict.has_key(element)):
-        caasf_dict[element] = caasf.wk1995(element, 1)
     for element,site in zip(elements, all_sites[n_existing:]):
       i_label += 1
-      scatterer = xray.scatterer(element + str(i_label), site)
+      scatterer = xray.scatterer(
+        label=element + str(i_label),
+        scattering_type=element,
+        site=site)
       site_symmetry = scatterer.apply_symmetry(
         self.unit_cell(),
         self.space_group(),
         self.min_distance_sym_equiv())
       if (self.random_f_prime_d_min):
-        f0 = caasf_dict[element].at_d_star_sq(1./self.random_f_prime_d_min**2)
+        f0 = sf_dict[element].at_d_star_sq(1./self.random_f_prime_d_min**2)
         assert f0 > 0
         fp = -f0 * random.random() * self.random_f_prime_scale
       if (self.random_f_double_prime):
-        f0 = caasf_dict[element].at_d_star_sq(0)
+        f0 = sf_dict[element].at_d_star_sq(0)
         fdp = f0 * random.random() * self.random_f_double_prime_scale
       scatterer.fp = fp
       scatterer.fdp = fdp

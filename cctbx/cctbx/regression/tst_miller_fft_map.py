@@ -81,7 +81,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     structure_from_peaks = xray.structure(structure)
     for site in cluster_analysis.sites():
       structure_from_peaks.add_scatterer(
-        xray.scatterer(label="const", site=site))
+        xray.scatterer(label="site", scattering_type="", site=site))
     emma_matches = emma.model_matches(
       structure.as_emma_model(),
       structure_from_peaks.as_emma_model(),

@@ -15,8 +15,6 @@ namespace cctbx { namespace eltbx { namespace caasf {
 
     static const detail::raw_table_entry<5> wk1995_raw_table[] =
     {
-      { "const", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 1. },
-      { "custom", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 0. },
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       { "H",     { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
                  { 15.569946, 32.398468, 5.711404, 61.889874, 1.334118 },
@@ -697,7 +695,7 @@ namespace cctbx { namespace eltbx { namespace caasf {
 
   wk1995_iterator::wk1995_iterator()
   :
-    current_("const", true)
+    current_("H", true)
   {}
 
   wk1995

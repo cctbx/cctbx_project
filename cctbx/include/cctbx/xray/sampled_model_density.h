@@ -79,6 +79,7 @@ namespace cctbx { namespace xray {
     base_t(unit_cell, scatterers, u_extra, wing_cutoff,
            exp_table_one_over_step_size, tolerance_positive_definite)
   {
+    CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     FloatType* map_begin;
     if (this->n_anomalous_scatterers_ == 0 && !force_complex) {
       this->map_accessor_ = accessor_type(fft_m_real, fft_n_real);

@@ -21,6 +21,7 @@ namespace cctbx { namespace xray { namespace minimization {
     af::const_ref<FloatType> const& shifts,
     FloatType const& d_min)
   {
+    CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     BOOST_STATIC_ASSERT(packing_order_convention == 1);
     typedef typename XrayScattererType::float_type sc_f_t;
     af::shared<XrayScattererType> result((af::reserve(scatterers.size())));
