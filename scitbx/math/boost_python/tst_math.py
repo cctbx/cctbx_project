@@ -1,3 +1,4 @@
+import scitbx.math
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import eigensystem
 from scitbx.math import gaussian
@@ -8,6 +9,14 @@ import pickle
 import StringIO
 import random
 import math
+
+def exercise_floating_point_epsilon():
+  float_eps = scitbx.math.floating_point_epsilon_float_get()
+  double_eps = scitbx.math.floating_point_epsilon_double_get()
+  assert 1.+float_eps != 1.
+  assert 1.+double_eps != 1.
+  assert float_eps >= double_eps
+  assert 1.+double_eps/2. == 1.
 
 def exercise_erf():
   erf_verify = erf_verification()
@@ -549,6 +558,7 @@ def exercise_golay():
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
 
 def run():
+  exercise_floating_point_epsilon()
   exercise_erf()
   exercise_eigensystem()
   exercise_gaussian_term()
