@@ -13,6 +13,35 @@ from libtbx.itertbx import count
 import math
 import sys
 
+hexagonal_sampling_generator=crystal.close_packing_hexagonal_sampling_generator
+
+class setup_hexagonal_sampling:
+
+  def __init__(self, crystal_symmetry, symmetry_flags):
+    self.cb_op_original_to_sampling = crystal_symmetry \
+      .change_of_basis_op_to_reference_setting()
+    point_group_type = crystal_symmetry.space_group().point_group_type()
+    add_cb_op = {"2": "z,x,y",
+                 "m": "y,z,x"}.get(point_group_type, None)
+    if (add_cb_op is not None):
+      self.cb_op_original_to_sampling = sgtbx.change_of_basis_op(add_cb_op) \
+                                      * self.cb_op_original_to_sampling
+    sampling_symmetry = crystal_symmetry.change_basis(
+      self.cb_op_original_to_sampling)
+    self.search_symmetry = sgtbx.search_symmetry(
+      flags=symmetry_flags,
+      space_group_type=sampling_symmetry.space_group_info().type(),
+      seminvariant=sampling_symmetry.space_group_info()
+        .structure_seminvariant())
+    self.expanded_symmetry = crystal.symmetry(
+      unit_cell=sampling_symmetry.unit_cell(),
+      space_group=self.search_symmetry.projected_group())
+    self.rational_asu = self.expanded_symmetry.space_group_info() \
+      .direct_space_asu()
+    self.rational_asu.add_planes(
+      normal_directions=self.search_symmetry.continuous_shifts(),
+      both_directions=0001)
+
 def hexagonal_sampling_cell(point_distance):
   return uctbx.unit_cell((
     point_distance, point_distance, point_distance*math.sqrt(8/3.),
@@ -44,7 +73,7 @@ def hcp_fill_box(cb_op_original_to_sampling, float_asu, continuous_shift_flags,
                  buffer_thickness=-1, all_twelve_neighbors=00000,
                  exercise_cpp=0001):
   if (exercise_cpp):
-    cpp = crystal.close_packing_hexagonal_sampling(
+    cpp = hexagonal_sampling_generator(
       cb_op_original_to_sampling=cb_op_original_to_sampling,
       float_asu=float_asu,
       continuous_shift_flags=continuous_shift_flags,
@@ -130,31 +159,14 @@ def hexagonal_close_packing_sampling(crystal_symmetry,
                                      point_distance,
                                      buffer_thickness,
                                      all_twelve_neighbors):
-  cb_op_original_to_sampling = crystal_symmetry \
-    .change_of_basis_op_to_reference_setting()
-  point_group_type = crystal_symmetry.space_group().point_group_type()
-  add_cb_op = {"2": "z,x,y",
-               "m": "y,z,x"}.get(point_group_type, None)
-  if (add_cb_op is not None):
-    cb_op_original_to_sampling = sgtbx.change_of_basis_op(add_cb_op) \
-                               * cb_op_original_to_sampling
-  work_symmetry = crystal_symmetry.change_basis(cb_op_original_to_sampling)
-  search_symmetry = sgtbx.search_symmetry(
-    flags=symmetry_flags,
-    space_group_type=work_symmetry.space_group_info().type(),
-    seminvariant=work_symmetry.space_group_info().structure_seminvariant())
-  expanded_symmetry = crystal.symmetry(
-    unit_cell=work_symmetry.unit_cell(),
-    space_group=search_symmetry.projected_group())
-  rational_asu = expanded_symmetry.space_group_info().direct_space_asu()
-  rational_asu.add_planes(
-    normal_directions=search_symmetry.continuous_shifts(),
-    both_directions=0001)
+  s = setup_hexagonal_sampling(
+    crystal_symmetry=crystal_symmetry,
+    symmetry_flags=symmetry_flags)
   sites_frac = hcp_fill_box(
-    cb_op_original_to_sampling=cb_op_original_to_sampling,
-    float_asu=rational_asu.define_metric(
-      unit_cell=expanded_symmetry.unit_cell()).as_float_asu(),
-    continuous_shift_flags=search_symmetry.continuous_shift_flags(),
+    cb_op_original_to_sampling=s.cb_op_original_to_sampling,
+    float_asu=s.rational_asu.define_metric(
+      unit_cell=s.expanded_symmetry.unit_cell()).as_float_asu(),
+    continuous_shift_flags=s.search_symmetry.continuous_shift_flags(),
     point_distance=point_distance,
     buffer_thickness=buffer_thickness,
     all_twelve_neighbors=all_twelve_neighbors)
