@@ -178,7 +178,9 @@ def emit_setpaths_sh(env):
         print >> f, '%s="%s"' % (var_name, values)
       print >> f, 'export %s' % (var_name,)
     if (file_name == "env_run.sh"):
-      print >> f, '$LIBTBX_PYTHON_EXE "$LIBTBX_DIST/libtbx/command_line/env_run.py" $*'
+      print >> f, '"%s" "%s" "$@"' % (
+        "$LIBTBX_BUILD/libtbx/bin/libtbx.python",
+        "$LIBTBX_DIST/libtbx/command_line/env_run.py")
     f.close()
     os.chmod(full_path, 0755)
 

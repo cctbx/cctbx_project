@@ -1,7 +1,6 @@
 def run_tests(build_dir, dist_dir, tst_list):
   import sys, os, os.path
-  try: python_exe = os.environ["LIBTBX_PYTHON_EXE"]
-  except: python_exe = "python"
+  python_exe = "libtbx.python"
   for tst in tst_list:
     cmd_args = ""
     if (type(tst) == type([])):
