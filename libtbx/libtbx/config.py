@@ -209,12 +209,13 @@ def open_info(path, mode="w", info="Creating:"):
     raise UserError(str(e))
 
 def remove_or_rename(path):
-  try: os.remove(path)
-  except OSError:
-    try: os.remove(path+".old")
-    except OSError: pass
-    try: os.rename(path, path+".old")
-    except OSError: pass
+  if (os.path.isfile(path)):
+    try: os.remove(path)
+    except OSError:
+      try: os.remove(path+".old")
+      except OSError: pass
+      try: os.rename(path, path+".old")
+      except OSError: pass
 
 class environment:
 
@@ -405,9 +406,9 @@ class environment:
       command_name = "libtbx/configure.py"
     parser = option_parser(usage="%s [options] module_name ..." % command_name)
     if (not cold_start):
-      if ("--only" in args): self.reset_module_registry()
       parser.option(None, "--only",
         action="store_true",
+        default=False,
         help="disable previously configured modules")
     else:
       parser.option("-r", "--repository",
@@ -448,7 +449,12 @@ class environment:
     command_line = parser.process(args=args)
     if (default_repository is not None):
       self.add_repository(default_repository)
-    if (cold_start):
+    module_names = list(command_line.args)
+    if (not cold_start):
+      if (not command_line.options.only):
+        for module in self.module_list:
+          module_names.append(module.name)
+    else:
       self.build_options = build_options(
         compiler=command_line.options.compiler,
         mode=command_line.options.build,
@@ -459,7 +465,7 @@ class environment:
         self.command_version_suffix = \
           command_line.options.command_version_suffix
         self.write_command_version_suffix()
-    module_names = list(command_line.args)
+    self.reset_module_registry()
     module_names.append("libtbx")
     module_names.reverse()
     for module_name in module_names:
@@ -786,6 +792,7 @@ class environment:
         for module_name in self.missing_for_build.keys():
           print " ", module_name
         print "***********************************"
+        remove_or_rename(self.under_build("SConstruct"))
     for suffix in ["", "_all", "_debug"]:
       if (hasattr(os, "symlink")):
         self.write_setpaths_sh(suffix)
