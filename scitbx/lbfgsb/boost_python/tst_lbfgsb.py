@@ -14,6 +14,14 @@ def exercise_minimizer_interface():
   pgtol=1.0e-5
   iprint = -1
   minimizer = lbfgsb.ext.minimizer(n, m, l, u, nbd, factr, pgtol, iprint)
+  assert minimizer.n() == n
+  assert minimizer.m() == m
+  assert minimizer.l().id() == l.id()
+  assert minimizer.u().id() == u.id()
+  assert minimizer.nbd().id() == nbd.id()
+  assert eps_eq(minimizer.factr(), factr)
+  assert eps_eq(minimizer.pgtol(), pgtol)
+  assert eps_eq(minimizer.iprint(), iprint)
   assert minimizer.task() == "START"
   x = flex.double(n, 0)
   f = 1
@@ -32,10 +40,14 @@ def exercise_minimizer_interface():
   assert minimizer.task() == "STOP: CPU"
   minimizer.request_restart()
   assert minimizer.task() == "START"
+  minimizer = lbfgsb.minimizer(n=n)
+  assert minimizer.l().size() == n
+  assert minimizer.u().size() == n
+  assert minimizer.nbd().size() == n
+  assert minimizer.nbd().all_eq(0)
 
 def driver1():
   n = 25
-  m = 5
   nbd = flex.int(n)
   x = flex.double(n)
   l = flex.double(n)
@@ -45,8 +57,6 @@ def driver1():
     iprint = 1000
   else:
     iprint = -1
-  factr=1.0e+7
-  pgtol=1.0e-5
   for i in xrange(0,n,2):
     nbd[i] = 2
     l[i] = 1.0e0
@@ -57,7 +67,15 @@ def driver1():
     u[i] = 1.0e2
   for i in xrange(n):
     x[i] = 3.0e0
-  minimizer = lbfgsb.minimizer(n, m, l, u, nbd, factr, pgtol, iprint)
+  minimizer = lbfgsb.minimizer(
+    n=n,
+    m=5,
+    l=l,
+    u=u,
+    nbd=nbd,
+    factr=1.0e+7,
+    pgtol=1.0e-5,
+    iprint=iprint)
   f = 0
   while 0001:
     task = minimizer.process(x, f, g)
