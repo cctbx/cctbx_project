@@ -1,4 +1,4 @@
-import cPickle as pickle
+import cPickle
 import time
 import shutil
 import os
@@ -28,7 +28,7 @@ class dblite:
           raise IOError("Database does not exist: %s" % self._file_name)
         _open(self._file_name, "wb", self._mode)
       else:
-        self._dict = pickle.load(f)
+        self._dict = cPickle.load(f)
 
   def __del__(self):
     if (self._needs_sync):
@@ -37,7 +37,7 @@ class dblite:
   def sync(self):
     self._check_writable()
     f = _open(self._file_name, "wb", self._mode)
-    pickle.dump(self._dict, f, 1)
+    cPickle.dump(self._dict, f, 1)
     f.close()
     self._needs_sync = 00000
     if (keep_all_files):
@@ -54,9 +54,9 @@ class dblite:
 
   def __setitem__(self, key, value):
     self._check_writable()
-    if (not isinstance(key, str)):
+    if (type(key) != type("")):
       raise TypeError, "key must be a string"
-    if (not isinstance(value, str)):
+    if (type(value) != type("")):
       raise TypeError, "value must be a string"
     self._dict[key] = value
     self._needs_sync = 0001
