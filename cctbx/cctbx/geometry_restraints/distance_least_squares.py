@@ -116,7 +116,7 @@ def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
 def distance_and_repulsion_least_squares(
       si_structure,
       distance_cutoff,
-      nonbonded_distance_cutoff,
+      nonbonded_distance_cutoff=None,
       nonbonded_buffer=1,
       n_trials=1,
       connectivities=None):
@@ -139,10 +139,8 @@ def distance_and_repulsion_least_squares(
     si_pair_asu_table=si_pair_asu_table)
   si_o.structure.show_summary().show_scatterers()
   print
-  assert nonbonded_distance_cutoff \
-       > flex.max(si_pairs.distances)/2.*(1-1.e-6)
   si_o_asu_mappings = si_o.structure.asu_mappings(
-    buffer_thickness=nonbonded_distance_cutoff)
+    buffer_thickness=distance_cutoff/2.*3)
   si_o_bond_asu_table = crystal.pair_asu_table(
     asu_mappings=si_o_asu_mappings)
   si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)

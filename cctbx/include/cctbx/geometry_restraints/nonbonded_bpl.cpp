@@ -27,6 +27,8 @@ namespace {
              arg_("const_shrink_1_4_interactions")=0,
              arg_("default_distance")=0,
              arg_("minimum_distance")=0)))
+        .def("find_max_vdw_distance", &w_t::find_max_vdw_distance,
+          (arg_("nonbonded_types")))
         .def_readonly("distance_table", &w_t::distance_table)
         .def_readonly("radius_table", &w_t::radius_table)
         .def_readwrite("factor_1_4_interactions",
