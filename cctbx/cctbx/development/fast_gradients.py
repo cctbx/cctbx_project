@@ -123,7 +123,6 @@ class resampling(crystal.symmetry):
 
   def __call__(self, xray_structure,
                      dp,
-                     lifchitz,
                      d_target_d_f_calc=None,
                      derivative_flags=None,
                      force_complex=00000,
@@ -152,7 +151,6 @@ class resampling(crystal.symmetry):
       xray_structure.unit_cell(),
       xray_structure.scatterers(),
       self.ft_dp(dp).complex_map(),
-      lifchitz,
       self.rfft().n_real(),
       self.rfft().m_real(),
       self.u_extra(),
@@ -228,8 +226,7 @@ def site(structure_ideal, f_obs):
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
   print
   re = resampling(miller_set=f_obs)
-  map0 = re(xray_structure=sh.structure_shifted,
-            dp=dp0, lifchitz=0001)
+  map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
     for i_xyz in (0,1,2):
       delta = 1.e-6
@@ -250,8 +247,8 @@ def site(structure_ideal, f_obs):
                 * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
       print "gxm[%d][%d]:" % (i_scatterer, i_xyz), gxm
-      gl = (map0.grad_x, map0.grad_y, map0.grad_z)[i_xyz]()[i_scatterer]
-      print " m0[%d][%d]:" % (i_scatterer, i_xyz), gl
+      gl = map0.grad_site()[i_scatterer][i_xyz]
+      print " m0[%d][%d]: " % (i_scatterer, i_xyz), gl
       print
 
 class two_p_shifted_u_iso:
@@ -296,8 +293,7 @@ def u_iso(structure_ideal, f_obs):
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
   print
   re = resampling(miller_set=f_obs)
-  map0 = re(xray_structure=sh.structure_shifted,
-            dp=dp0, lifchitz=0001)
+  map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
     delta = 1.e-6
     pl = two_p_shifted_u_iso(
@@ -361,8 +357,7 @@ def occupancy(structure_ideal, f_obs):
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
   print
   re = resampling(miller_set=f_obs)
-  map0 = re(xray_structure=sh.structure_shifted,
-            dp=dp0, lifchitz=0001)
+  map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
     delta = 1.e-6
     pl = two_p_shifted_occupancy(
@@ -459,8 +454,7 @@ def u_star(structure_ideal, f_obs):
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
   print
   re = resampling(miller_set=f_obs)
-  map0 = re(xray_structure=sh.structure_shifted,
-            dp=dp0, lifchitz=0001)
+  map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
     sfd_star = [x*sum_f_obs_sq/2 for x in sfd.d_target_d_u_star()[i_scatterer]]
     sfd_cart = adptbx.grad_u_star_as_u_cart(
@@ -540,8 +534,7 @@ def fp(structure_ideal, f_obs):
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
   print
   re = resampling(miller_set=f_obs)
-  map0 = re(xray_structure=sh.structure_shifted,
-            dp=dp0, lifchitz=0001)
+  map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
     delta = 1.e-6
     pl = two_p_shifted_fp(
@@ -608,8 +601,7 @@ def fdp(structure_ideal, f_obs):
   assert approx_equal(sh.two_p, ls.target() * sum_f_obs_sq)
   print
   re = resampling(miller_set=f_obs)
-  map0 = re(xray_structure=sh.structure_shifted,
-            dp=dp0, lifchitz=0001)
+  map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
     delta = 1.e-6
     pl = two_p_shifted_fdp(
@@ -635,9 +627,8 @@ def fdp(structure_ideal, f_obs):
     print " m0[%d]:" % i_scatterer, gl
     print
 
-def run(n_elements=3, volume_per_atom=1000, d_min=2):
-  fdp_flag = 1
-  anisotropic_flag = 1
+def run_one(n_elements=3, volume_per_atom=1000, d_min=2,
+            fdp_flag=0, anisotropic_flag=0):
   structure_ideal = random_structure.xray_structure(
     sgtbx.space_group_info("P 1"),
     elements=("Se",)*n_elements,
@@ -684,6 +675,11 @@ def run(n_elements=3, volume_per_atom=1000, d_min=2):
   if (1):
     print "fdp"
     fdp(structure_ideal, f_obs)
+
+def run():
+  for fdp_flag in (0, 1):
+    for anisotropic_flag in (0, 1):
+      run_one(fdp_flag=fdp_flag, anisotropic_flag=anisotropic_flag)
 
 if (__name__ == "__main__"):
   run()

@@ -68,20 +68,19 @@ namespace cctbx { namespace xray {
           eight_pi_pow_3_2_w_d_ = const_8_pi_pow_3_2 * w / std::sqrt(d);
         }
 
+        /* Mathematica script used to determine analytical gradients:
+             r = as Exp[bs (d0^2+d1^2+d2^2)]
+             g = {D[r,d0],D[r,d1],D[r,d2]}/r
+           Conclusion:
+             {g0,g1,g2} = 2 bs {d0,d1,d2} r
+         */
         scitbx::vec3<FloatType>
         d_rho_real_d_site(scitbx::vec3<FloatType> const& d,
                           FloatType const& d_sq) const
         {
           scitbx::vec3<FloatType> drds(0,0,0);
-          if (!this->anisotropic_flag_) {
-            for (std::size_t i=0;i<this->n_rho_real_terms;i++) {
-              drds += d*(this->bs_real_[i]*2*this->rho_real_term(d_sq, i));
-            }
-          }
-          else {
-            for (std::size_t i=0;i<this->n_rho_real_terms;i++) {
-              drds += this->aniso_bs_real_[i]*d*(2*this->rho_real_term(d, i));
-            }
+          for (std::size_t i=0;i<this->n_rho_real_terms;i++) {
+            drds += d*(this->bs_real_[i]*2*this->rho_real_term(d_sq, i));
           }
           return drds;
         }
@@ -90,9 +89,22 @@ namespace cctbx { namespace xray {
         d_rho_imag_d_site(scitbx::vec3<FloatType> const& d,
                           FloatType const& d_sq) const
         {
-          if (!this->anisotropic_flag_) {
-            return d*(this->bs_imag_*2*this->rho_imag(d_sq));
+          return d*(this->bs_imag_*2*this->rho_imag(d_sq));
+        }
+
+        scitbx::vec3<FloatType>
+        d_rho_real_d_site(scitbx::vec3<FloatType> const& d) const
+        {
+          scitbx::vec3<FloatType> drds(0,0,0);
+          for (std::size_t i=0;i<this->n_rho_real_terms;i++) {
+            drds += this->aniso_bs_real_[i]*d*(2*this->rho_real_term(d, i));
           }
+          return drds;
+        }
+
+        scitbx::vec3<FloatType>
+        d_rho_imag_d_site(scitbx::vec3<FloatType> const& d) const
+        {
           return this->aniso_bs_imag_*d*(2*this->rho_imag(d));
         }
 
@@ -253,7 +265,6 @@ namespace cctbx { namespace xray {
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
         af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
-        bool lifchitz,
         grid_point_type const& fft_n_real,
         grid_point_type const& fft_m_real,
         FloatType const& u_extra=0.25,
@@ -305,17 +316,8 @@ namespace cctbx { namespace xray {
         return r;
       }
 
-      af::shared<std::complex<FloatType> >
-      grad() const { return grad_; }
-
-      af::shared<std::complex<FloatType> >
-      grad_x() const { return grad_x_; }
-
-      af::shared<std::complex<FloatType> >
-      grad_y() const { return grad_y_; }
-
-      af::shared<std::complex<FloatType> >
-      grad_z() const { return grad_z_; }
+      af::shared<scitbx::vec3<FloatType> >
+      grad_site() const { return grad_site_; }
 
       af::shared<FloatType>
       grad_u_iso() const { return grad_u_iso_; }
@@ -344,10 +346,7 @@ namespace cctbx { namespace xray {
       accessor_type map_accessor_;
       std::size_t exp_table_size_;
       grid_point_type max_shell_radii_;
-      af::shared<std::complex<FloatType> > grad_;
-      af::shared<std::complex<FloatType> > grad_x_;
-      af::shared<std::complex<FloatType> > grad_y_;
-      af::shared<std::complex<FloatType> > grad_z_;
+      af::shared<scitbx::vec3<FloatType> > grad_site_;
       af::shared<FloatType> grad_u_iso_;
       af::shared<scitbx::sym_mat3<FloatType> > grad_u_star_;
       af::shared<std::complex<FloatType> > grad_occupancy_;
@@ -362,7 +361,6 @@ namespace cctbx { namespace xray {
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
     af::const_ref<std::complex<FloatType>, accessor_type> const& ft_dt,
-    bool lifchitz,
     grid_point_type const& fft_n_real,
     grid_point_type const& fft_m_real,
     FloatType const& u_extra,
@@ -446,8 +444,7 @@ namespace cctbx { namespace xray {
           scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
           scatterer->weight(), u_cart, u_extra_);
       }
-      std::complex<FloatType> gr(0);
-      scitbx::vec3<std::complex<FloatType> > gr_site(0,0,0);
+      scitbx::vec3<FloatType> gr_site(0,0,0);
       FloatType gr_b_iso(0);
       scitbx::sym_mat3<FloatType> gr_b_cart(0,0,0,0,0,0);
       std::complex<FloatType> gr_occupancy(0);
@@ -476,102 +473,78 @@ namespace cctbx { namespace xray {
           orth_mx[8] * f2);
         FloatType d_sq = d.length_sq();
         if (d_sq > shell.max_d_sq) continue;
-        if (!lifchitz) {
-          FloatType r;
-          if (!scatterer->anisotropic_flag) {
-            r = caasf_ft.rho_real(d_sq);
+        std::complex<FloatType> f = ft_dt(gp);
+        if (!scatterer->anisotropic_flag) {
+          gr_site += f.real() * caasf_ft.d_rho_real_d_site(d, d_sq);
+          if (fdp) {
+            gr_site += f.imag() * caasf_ft.d_rho_imag_d_site(d, d_sq);
           }
-          else {
-            r = caasf_ft.rho_real(d);
-          }
-          gr += ft_dt(gp) * r;
         }
         else {
-          std::complex<FloatType> f = ft_dt(gp);
-          scitbx::vec3<FloatType>
-            drds_real = caasf_ft.d_rho_real_d_site(d, d_sq)
-                      * unit_cell_.orthogonalization_matrix();
-          if (!fdp) {
-            for(std::size_t i=0;i<3;i++) {
-              gr_site[i] += f * drds_real[i];
-            }
+          gr_site += f.real() * caasf_ft.d_rho_real_d_site(d);
+          if (fdp) {
+            gr_site += f.imag() * caasf_ft.d_rho_imag_d_site(d);
           }
-          else {
-            scitbx::vec3<FloatType>
-              drds_imag = caasf_ft.d_rho_imag_d_site(d, d_sq)
-                        * unit_cell_.orthogonalization_matrix();
-            for(std::size_t i=0;i<3;i++) {
-              gr_site[i] += f * std::complex<FloatType>(
-                drds_real[i], -drds_imag[i]);
-            }
+        }
+        if (!scatterer->anisotropic_flag) {
+          gr_b_iso += f.real() * caasf_ft.d_rho_real_d_b_iso(d_sq);
+          if (fdp) {
+            gr_b_iso += f.imag() * caasf_ft.d_rho_imag_d_b_iso(d_sq);
           }
+        }
+        else {
+          gr_b_cart += f.real() * caasf_ft.d_rho_real_d_b_cart(d);
+          if (fdp) {
+            gr_b_cart += f.imag() * caasf_ft.d_rho_imag_d_b_cart(d);
+          }
+        }
+        FloatType drdo_real;
+        if (!scatterer->anisotropic_flag) {
+          drdo_real = caasf_ft.d_rho_real_d_occupancy(d_sq);
+        }
+        else {
+          drdo_real = caasf_ft.d_rho_real_d_occupancy(d);
+        }
+        if (!fdp) {
+          gr_occupancy += f * drdo_real;
+        }
+        else {
+          FloatType drdo_imag;
           if (!scatterer->anisotropic_flag) {
-            gr_b_iso += f.real() * caasf_ft.d_rho_real_d_b_iso(d_sq);
-            if (fdp) {
-              gr_b_iso += f.imag() * caasf_ft.d_rho_imag_d_b_iso(d_sq);
-            }
+            drdo_imag = caasf_ft.d_rho_imag_d_occupancy(d_sq);
           }
           else {
-            gr_b_cart += f.real() * caasf_ft.d_rho_real_d_b_cart(d);
-            if (fdp) {
-              gr_b_cart += f.imag() * caasf_ft.d_rho_imag_d_b_cart(d);
-            }
+            drdo_imag = caasf_ft.d_rho_imag_d_occupancy(d);
           }
-          FloatType drdo_real;
-          if (!scatterer->anisotropic_flag) {
-            drdo_real = caasf_ft.d_rho_real_d_occupancy(d_sq);
-          }
-          else {
-            drdo_real = caasf_ft.d_rho_real_d_occupancy(d);
-          }
-          if (!fdp) {
-            gr_occupancy += f * drdo_real;
-          }
-          else {
-            FloatType drdo_imag;
-            if (!scatterer->anisotropic_flag) {
-              drdo_imag = caasf_ft.d_rho_imag_d_occupancy(d_sq);
-            }
-            else {
-              drdo_imag = caasf_ft.d_rho_imag_d_occupancy(d);
-            }
-            gr_occupancy += f * std::complex<FloatType>(
-                drdo_real, -drdo_imag);
-          }
-          if (!scatterer->anisotropic_flag) {
-            gr_fp += f * caasf_ft.d_rho_real_d_fp(d_sq);
-          }
-          else {
-            gr_fp += f * caasf_ft.d_rho_real_d_fp(d);
-          }
-          if (!scatterer->anisotropic_flag) {
-            gr_fdp += f * std::complex<FloatType>(
-              0, -caasf_ft.d_rho_imag_d_fdp(d_sq));
-          }
-          else {
-            gr_fdp += f * std::complex<FloatType>(
-              0, -caasf_ft.d_rho_imag_d_fdp(d));
-          }
+          gr_occupancy += f * std::complex<FloatType>(
+              drdo_real, -drdo_imag);
+        }
+        if (!scatterer->anisotropic_flag) {
+          gr_fp += f * caasf_ft.d_rho_real_d_fp(d_sq);
+        }
+        else {
+          gr_fp += f * caasf_ft.d_rho_real_d_fp(d);
+        }
+        if (!scatterer->anisotropic_flag) {
+          gr_fdp += f * std::complex<FloatType>(
+            0, -caasf_ft.d_rho_imag_d_fdp(d_sq));
+        }
+        else {
+          gr_fdp += f * std::complex<FloatType>(
+            0, -caasf_ft.d_rho_imag_d_fdp(d));
         }
       }}}
-      if (!lifchitz) {
-        grad_.push_back(gr);
+      grad_site_.push_back(gr_site * unit_cell_.orthogonalization_matrix());
+      if (!scatterer->anisotropic_flag) {
+        grad_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
       }
       else {
-        grad_x_.push_back(gr_site[0]);
-        grad_y_.push_back(gr_site[1]);
-        grad_z_.push_back(gr_site[2]);
-        if (!scatterer->anisotropic_flag) {
-          grad_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
-        }
-        else {
-          grad_u_star_.push_back(adptbx::grad_u_cart_as_u_star(
-            unit_cell_, adptbx::u_as_b(gr_b_cart)));
-        }
-        grad_occupancy_.push_back(gr_occupancy);
-        grad_fp_.push_back(gr_fp);
-        grad_fdp_.push_back(gr_fdp);
+        grad_u_star_.push_back(adptbx::grad_u_cart_as_u_star(
+          unit_cell_, adptbx::u_as_b(gr_b_cart)));
       }
+      grad_occupancy_.push_back(gr_occupancy);
+      grad_fp_.push_back(gr_fp);
+      grad_fdp_.push_back(gr_fdp);
     }
     exp_table_size_ = exp_table.table().size();
   }
