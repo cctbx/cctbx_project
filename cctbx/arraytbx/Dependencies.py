@@ -21,6 +21,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/tst_vec3.cpp",
       "arraytbx/tst_mat3.cpp",
       "arraytbx/tst_sym_mat3.cpp",
+      "arraytbx/tst_all.py",
     )
 
     self.executables = {
