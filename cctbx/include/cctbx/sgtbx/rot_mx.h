@@ -2,6 +2,7 @@
 #define CCTBX_SGTBX_ROT_MX_H
 
 #include <cctbx/sgtbx/tr_vec.h>
+#include <boost/rational.hpp>
 
 namespace cctbx { namespace sgtbx {
 
@@ -100,6 +101,16 @@ namespace cctbx { namespace sgtbx {
       {
         if (factor == 1) return *this;
         return rot_mx(num_ * factor, den_ * factor);
+      }
+
+      //! Determinant as rational number.
+      /*! An exception is thrown if den() <= 0.
+       */
+      boost::rational<int>
+      determinant() const
+      {
+        CCTBX_ASSERT(den_ > 0);
+        return boost::rational<int>(num_.determinant(), den_*den_*den_);
       }
 
       //! Inverse of this matrix.

@@ -175,19 +175,18 @@ namespace cctbx { namespace sgtbx {
                 double min_distance_sym_equiv,
                 bool assert_min_distance_sym_equiv)
   :
+    site_symmetry_ops(0, 1, 1),
     unit_cell_(unit_cell),
     space_group_(space_group),
     original_site_(original_site),
     min_distance_sym_equiv_sq_(scitbx::fn::pow2(min_distance_sym_equiv)),
     shortest_distance_sq_(-1.),
-    multiplicity_(0),
     exact_site_(original_site)
   {
-    rt_mx last_special_op(1, 1);
     for (;;) {
+      rt_mx last_special_op = special_op_;
       build_special_op();
       if (special_op_ == last_special_op) break;
-      last_special_op = special_op_;
     }
     if (assert_min_distance_sym_equiv && !check_min_distance_sym_equiv()) {
       throw error("site_symmetry: min_distance_sym_equiv too large.");

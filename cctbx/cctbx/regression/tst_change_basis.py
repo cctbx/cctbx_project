@@ -2,7 +2,15 @@ from cctbx.xray import minimization
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
 import sys
+
+def check_weight_without_occupancy(structure):
+  order_z = structure.space_group().order_z()
+  for sc in structure.scatterers():
+    assert approx_equal(
+      sc.weight_without_occupancy(),
+      float(sc.multiplicity()) / order_z)
 
 def exercise(space_group_info, anomalous_flag,
              n_elements=3, d_min=3., verbose=0):
@@ -14,6 +22,7 @@ def exercise(space_group_info, anomalous_flag,
     random_f_double_prime=anomalous_flag,
     random_u_iso=0001,
     random_occupancy=0001)
+  check_weight_without_occupancy(structure_z)
   f_abs_z = abs(structure_z.structure_factors(
     anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
   if (0 or verbose):
@@ -22,6 +31,7 @@ def exercise(space_group_info, anomalous_flag,
           structure_z.special_position_indices().size()
   z2p_op = structure_z.space_group().z2p_op()
   structure_p = structure_z.change_basis(z2p_op)
+  check_weight_without_occupancy(structure_p)
   if (0 or verbose):
     structure_p.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -29,6 +39,7 @@ def exercise(space_group_info, anomalous_flag,
   assert tuple(structure_p.special_position_indices()) \
       == tuple(structure_z.special_position_indices())
   structure_pz = structure_p.change_basis(z2p_op.inverse())
+  check_weight_without_occupancy(structure_pz)
   assert structure_pz.unit_cell().is_similar_to(structure_z.unit_cell())
   assert structure_pz.space_group() == structure_z.space_group()
   f_abs_pz = abs(f_abs_z.structure_factors_from_scatterers(

@@ -19,7 +19,7 @@ namespace xray {
       the representation of anisotropic displacement
       parameters are provided by cctbx::adptbx.
       <p>
-      The apply_symmetry() member function has to be called before
+      One of the apply_symmetry() member functions has to be called before
       the scatterer can be used in a structure factor calculation.
    */
   template <typename FloatType=double,
@@ -135,8 +135,8 @@ namespace xray {
       /*! \brief Computes multiplicity(), weight_without_occupancy(),
           weight() and symmetry-averaged anisotropic displacement parameters.
        */
-      /*! This member function must be called before the
-          scatterer is used in a structure factor calculation.
+      /*! This member function or the other overload must be called before
+          the scatterer is used in a structure factor calculation.
 
           See also:
             apply_symmetry_site,
@@ -150,6 +150,24 @@ namespace xray {
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         double min_distance_sym_equiv=0.5,
+        double u_star_tolerance=0,
+        bool assert_is_positive_definite=false,
+        bool assert_min_distance_sym_equiv=true);
+
+      /*! \brief Computes multiplicity(), weight_without_occupancy(),
+          weight() and symmetry-averaged anisotropic displacement parameters.
+       */
+      /*! This member function or the other overload must be called before
+          the scatterer is used in a structure factor calculation.
+
+          See also:
+            apply_symmetry_site,
+            apply_symmetry_u_star
+       */
+      void
+      apply_symmetry(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::site_symmetry_ops const& site_symmetry_ops,
         double u_star_tolerance=0,
         bool assert_is_positive_definite=false,
         bool assert_min_distance_sym_equiv=true);
@@ -251,17 +269,42 @@ namespace xray {
       site,
       min_distance_sym_equiv,
       assert_min_distance_sym_equiv);
-    multiplicity_ = site_symmetry.multiplicity();
-    weight_without_occupancy_ = FloatType(multiplicity_)
-                              / space_group.order_z();
-    site = site_symmetry.exact_site();
-    apply_symmetry_u_star(
+    apply_symmetry(
       unit_cell,
       site_symmetry,
       u_star_tolerance,
       assert_is_positive_definite,
       assert_min_distance_sym_equiv);
     return site_symmetry;
+  }
+
+  template <typename FloatType,
+            typename LabelType,
+            typename ScatteringTypeType>
+  void
+  scatterer<FloatType, LabelType, ScatteringTypeType>
+  ::apply_symmetry(
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::site_symmetry_ops const& site_symmetry_ops,
+    double u_star_tolerance,
+    bool assert_is_positive_definite,
+    bool assert_min_distance_sym_equiv)
+  {
+    multiplicity_ = site_symmetry_ops.multiplicity();
+    if (site_symmetry_ops.is_point_group_1()) {
+      weight_without_occupancy_ = 1;
+    }
+    else {
+      weight_without_occupancy_ = FloatType(1)
+                                / site_symmetry_ops.matrices().size();
+      apply_symmetry_site(site_symmetry_ops);
+      apply_symmetry_u_star(
+        unit_cell,
+        site_symmetry_ops,
+        u_star_tolerance,
+        assert_is_positive_definite,
+        assert_min_distance_sym_equiv);
+    }
   }
 
   template <typename FloatType,

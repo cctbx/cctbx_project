@@ -117,6 +117,12 @@ def exercise_xray_scatterer():
     assert str(e).find("is_compatible_u_star") > 0
   else:
     raise AssertionError("Exception expected.")
+  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss)
+  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5)
+  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5,
+    assert_is_positive_definite=0)
+  x.apply_symmetry(unit_cell=uc, site_symmetry_ops=ss, u_star_tolerance=0.5,
+    assert_is_positive_definite=0, assert_min_distance_sym_equiv=0)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, 0)
   ss = x.apply_symmetry(
@@ -252,6 +258,7 @@ def exercise_structure_factors():
     xray.scatterer("O1", site=(0.3,0.4,0.5), u=(0.4,0.5,0.6,-.05,0.2,-0.02))))
   for s in scatterers:
     assert s.multiplicity() == 0
+  assert xray.n_undefined_multiplicities(scatterers) == 2
   site_symmetry_table = sgtbx.site_symmetry_table()
   xray.add_scatterers_ext(
     unit_cell=uc,
@@ -266,6 +273,7 @@ def exercise_structure_factors():
   assert list(site_symmetry_table.special_position_indices()) == [0]
   for s in scatterers:
     assert s.multiplicity() != 0
+  assert xray.n_undefined_multiplicities(scatterers) == 0
   mi = flex.miller_index(((1,2,3), (2,3,4)))
   scattering_dict = xray.ext.scattering_dictionary(scatterers)
   scattering_dict.assign_from_table("WK1995")

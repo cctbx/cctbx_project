@@ -54,8 +54,7 @@ namespace cctbx { namespace sgtbx {
         use_special_op_(true),
         max_accepted_tolerance_(-1)
       {
-        std::size_t multiplicity
-          = site_symmetry_ops.multiplicity(space_group_.order_z());
+        std::size_t multiplicity = site_symmetry_ops.multiplicity();
         initialize_with_special_op(multiplicity);
         CCTBX_ASSERT(coordinates_.size() == multiplicity);
       }

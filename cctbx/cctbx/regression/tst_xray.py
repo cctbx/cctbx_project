@@ -25,6 +25,7 @@ def exercise_structure():
     xray.scatterer("O1", (0.19700, -0.19700, 0.83333))))
   xs = xray.structure(sp, scatterers)
   assert xs.scatterers().size() == 2
+  assert xs.n_undefined_multiplicities() == 0
   assert tuple(xs.special_position_indices()) == (0, 1)
   ys = xs.deep_copy_scatterers()
   ys.add_scatterers(ys.scatterers())
@@ -106,7 +107,9 @@ def exercise_structure():
   assert am.mappings().size() == xs.scatterers().size()
   rs = p1.random_shift_sites(max_shift_cart=0.2)
   assert flex.max(flex.abs(p1.difference_vectors_cart(rs).as_double())) <= 0.2
-  assert p1.rms(rs) > 0
+  assert approx_equal(p1.rms_difference(p1), 0)
+  assert approx_equal(rs.rms_difference(rs), 0)
+  assert p1.rms_difference(rs) > 0
   for s in [xs, ys, p1, rs]:
     p = pickle.dumps(s)
     l = pickle.loads(p)
@@ -154,7 +157,15 @@ def exercise_structure():
     xs2 = xs2.expand_to_p1(append_number_to_labels=append_number_to_labels)
     assert xs2.scatterers().size() == 10
   cb_op = sgtbx.change_of_basis_op("z,x,y")
-  xs2 = xs1.change_basis(cb_op).expand_to_p1()
+  xs2 = xs1.change_basis(cb_op)
+  for i,sc in enumerate(xs2.scatterers()):
+    assert sc.multiplicity() > 0
+    ss = xs2.site_symmetry_table().get(i)
+    assert ss.multiplicity() == sc.multiplicity()
+    assert ss.multiplicity() * ss.n_matrices() == xs2.space_group().order_z()
+  xs2 = xs2.expand_to_p1()
+  for sc in xs2.scatterers():
+    assert sc.multiplicity() == 1
   assert xs2.scatterers().size() == 16
   assert approx_equal(xs2.scatterers()[0].site, (0.1, 0.02, 0))
   assert approx_equal(xs2.scatterers()[4].site, (0.1, 0, 0))

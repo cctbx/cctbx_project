@@ -26,12 +26,12 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("site_symmetry_ops", no_init)
         .enable_pickling()
-        .def(init<rt_mx const&, af::shared<rt_mx> const&>()) // for pickle
+        .def(init<int, rt_mx const&, af::shared<rt_mx> const&>()) // for pickle
+        .def("multiplicity", &w_t::multiplicity)
         .def("special_op", &w_t::special_op, ccr())
         .def("matrices", &w_t::matrices, ccr())
         .def("n_matrices", &w_t::n_matrices)
         .def("is_point_group_1", &w_t::is_point_group_1)
-        .def("multiplicity", &w_t::multiplicity, (arg_("space_group_order_z")))
         .def("is_compatible_u_star",
            (bool(w_t::*)(scitbx::sym_mat3<double> const&, double) const)0,
            is_compatible_u_star_overloads(
