@@ -142,12 +142,12 @@ def run(server_info, inp, status):
     model2 = models2.get_next()
     if (not model2): break
     model2.show(model2.label)
-    refined_matches = emma.match_models(model1, model2)
-    if (len(refined_matches) == 0):
+    model_matches = emma.model_matches(model1, model2)
+    if (model_matches.n_matches() == 0):
       print "No matches."
       print
     else:
-      for match in refined_matches:
+      for match in model_matches.refined_matches:
         print "." * 79
         print
         match.show()

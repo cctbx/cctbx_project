@@ -163,8 +163,8 @@ def run_call_back(flags, space_group_info):
         if (0 or verbose):
           m1.show("Model1(%d)" % (i,))
           m2.show("Model2(%d)" % (j,))
-        refined_matches = emma.match_models(m1, m2, rms_penalty_per_site=0)
-        analyze_refined_matches(m1, m2, refined_matches, verbose)
+        model_matches = emma.model_matches(m1, m2, rms_penalty_per_site=0)
+        analyze_refined_matches(m1, m2, model_matches.refined_matches, verbose)
     return 00000
   model_core = test_model(space_group_info)
   model1 = (model_core
