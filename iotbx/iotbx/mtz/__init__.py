@@ -570,6 +570,7 @@ class _dataset(boost.python.injector, ext.dataset):
         column_root_label,
         column_types=None,
         label_decorator=None):
+    assert column_types is None or isinstance(column_types, str)
     if (label_decorator is None):
       label_decorator = globals()["label_decorator"]()
     default_col_types = default_column_types(miller_array=miller_array)
