@@ -110,6 +110,8 @@ int main(int argc, char* argv[])
     check_true(__LINE__, a.size_1d() == 6);
     check_false(__LINE__, a.is_valid_index(af::tiny<std::size_t, 2>(3,1)));
     check_false(__LINE__, a.is_valid_index(af::tiny<std::size_t, 2>(2,2)));
+    check_true(__LINE__, a.is_valid_index(2,1));
+    check_false(__LINE__, a.is_valid_index(2,2));
     std::size_t i = 0;
     af::tiny<std::size_t, 2> j;
     for(j[0]=0;j[0]<3;j[0]++)
@@ -138,6 +140,8 @@ int main(int argc, char* argv[])
     check_false(__LINE__, a.is_valid_index(af::tiny<std::size_t, 3>(3,1,4)));
     check_false(__LINE__, a.is_valid_index(af::tiny<std::size_t, 3>(2,2,4)));
     check_false(__LINE__, a.is_valid_index(af::tiny<std::size_t, 3>(2,1,5)));
+    check_true(__LINE__, a.is_valid_index(2,1,4));
+    check_false(__LINE__, a.is_valid_index(2,1,5));
     std::size_t i = 0;
     af::tiny<std::size_t, 3> j;
     for(j[0]=0;j[0]<3;j[0]++)

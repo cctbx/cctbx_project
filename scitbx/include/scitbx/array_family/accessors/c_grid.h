@@ -121,6 +121,16 @@ namespace scitbx { namespace af {
         return true;
       }
 
+      bool
+      is_valid_index(
+        index_value_type const& i0,
+        index_value_type const& i1) const
+      {
+        if (i0 >= this->elems[0]) return false;
+        if (i1 >= this->elems[1]) return false;
+        return true;
+      }
+
       std::size_t
       operator()(index_type const& i) const
       {
@@ -190,6 +200,18 @@ namespace scitbx { namespace af {
         if (i[0] >= this->elems[0]) return false;
         if (i[1] >= this->elems[1]) return false;
         if (i[2] >= this->elems[2]) return false;
+        return true;
+      }
+
+      bool
+      is_valid_index(
+        index_value_type const& i0,
+        index_value_type const& i1,
+        index_value_type const& i2) const
+      {
+        if (i0 >= this->elems[0]) return false;
+        if (i1 >= this->elems[1]) return false;
+        if (i2 >= this->elems[2]) return false;
         return true;
       }
 
