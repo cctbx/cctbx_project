@@ -113,10 +113,11 @@ def exercise_asu_mappings(space_group_info, n_elements=10):
   for scatterer in structure.scatterers():
     asu_mappings.process(original_site=scatterer.site)
   assert asu_mappings.mappings().size() == structure.scatterers().size()
+  frac = asu_mappings.unit_cell().fractionalize
   for mappings in asu_mappings.mappings():
-    assert asu_mappings.asu().is_inside(mappings[0].mapped_site())
+    assert asu_mappings.asu().is_inside(frac(mappings[0].mapped_site()))
     for mapping in mappings:
-      assert asu_mappings.asu_buffer().is_inside(mapping.mapped_site())
+      assert asu_mappings.asu_buffer().is_inside(frac(mapping.mapped_site()))
 
 def exercise_all(space_group_info):
   exercise_float_asu(space_group_info)

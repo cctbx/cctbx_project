@@ -241,7 +241,7 @@ namespace direct_space_asu {
       asu_mapping(
         std::size_t i_sym_op,
         scitbx::vec3<IntShiftType> const& unit_shifts,
-        fractional<FloatType> const& mapped_site)
+        cartesian<FloatType> const& mapped_site)
       :
         i_sym_op_(i_sym_op),
         unit_shifts_(unit_shifts),
@@ -259,13 +259,27 @@ namespace direct_space_asu {
       //! Fractional coordinates of the mapped site.
       /*! mapped_site = space_group(i_sym_op()) * orginal_site + unit_shifts()
        */
-      fractional<FloatType> const&
+      cartesian<FloatType> const&
       mapped_site() const { return mapped_site_; }
 
     private:
       std::size_t i_sym_op_;
       scitbx::vec3<IntShiftType> unit_shifts_;
-      fractional<FloatType> mapped_site_;
+      cartesian<FloatType> mapped_site_;
+  };
+
+  //! Grouping of indices for pair of sites in asu_mappings container.
+  template <typename FloatType=double>
+  struct asu_mapping_index_pair
+  {
+    //! Main index of first site.
+    std::size_t i_seq;
+    //! Main index of second site.
+    std::size_t j_seq;
+    //! Symmetry index of second site.
+    std::size_t j_sym;
+    //! Distance squared.
+    FloatType dist_sq;
   };
 
   //! Container for mapping of sites to an asymmetric unit.
@@ -305,7 +319,8 @@ namespace direct_space_asu {
         buffer_covering_sphere_(
           scitbx::math::minimum_covering_sphere_3d<FloatType>(
             asu.volume_vertices(true).const_ref())
-          .expand(buffer_thickness+sym_equiv_tolerance_))
+          .expand(buffer_thickness+sym_equiv_tolerance_)),
+        is_locked_(false)
       {}
 
       //! Pre-allocates memory for mappings(); for efficiency.
@@ -348,9 +363,10 @@ namespace direct_space_asu {
       buffer_covering_sphere() const { return buffer_covering_sphere_; }
 
       //! Processes one site and appends the results to mappings().
-      fractional<FloatType>
+      void
       process(fractional<FloatType> const& original_site)
       {
+        CCTBX_ASSERT(!is_locked_);
         mappings_.push_back(array_of_mappings_for_one_site());
         array_of_mappings_for_one_site& site_mappings = mappings_.back();
         sgtbx::sym_equiv_sites<FloatType> equiv_sites(
@@ -385,8 +401,10 @@ namespace direct_space_asu {
             if (   asu_buffer_.is_inside(mapped_site)
                 && buffer_covering_sphere_.is_inside(
                      asu_.unit_cell().orthogonalize(mapped_site))) {
-              asu_mapping<FloatType, IntShiftType>
-                mapping(sym_op_indices[i_sym_eq], u, mapped_site);
+              asu_mapping<FloatType, IntShiftType> mapping(
+                sym_op_indices[i_sym_eq],
+                u,
+                asu_.unit_cell().orthogonalize(mapped_site));
               if (!have_site_in_asu && asu_.is_inside(mapped_site)) {
                 site_mappings.insert(site_mappings.begin(), mapping);
                 have_site_in_asu = true;
@@ -398,8 +416,13 @@ namespace direct_space_asu {
           }}}
         }
         CCTBX_ASSERT(have_site_in_asu);
-        return site_mappings[0].mapped_site();
       }
+
+      void
+      lock() { is_locked_ = true; }
+
+      bool
+      is_locked() const { return is_locked_; }
 
       //! Accumulated mappings due to repeated calls of process().
       array_of_array_of_mappings_for_one_site const&
@@ -415,6 +438,7 @@ namespace direct_space_asu {
       FloatType sym_equiv_minimum_distance_;
       scitbx::math::sphere_3d<FloatType> buffer_covering_sphere_;
       array_of_array_of_mappings_for_one_site mappings_;
+      bool is_locked_;
   };
 
 }}} // namespace cctbx::crystal::direct_space_asu

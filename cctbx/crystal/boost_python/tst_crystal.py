@@ -2,6 +2,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 import cctbx.crystal.direct_space_asu
 from cctbx import uctbx
+from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
 def exercise_direct_space_asu():
@@ -75,6 +76,14 @@ def exercise_direct_space_asu():
   assert asu_mappings.mappings().size() == 0
   asu_mappings.process(original_site=[3.1,-2.2,1.3])
   assert asu_mappings.mappings().size() == 1
+  asu_mappings.process(original_site=[-4.3,1.7,0.4])
+  assert asu_mappings.mappings().size() == 2
+  assert not asu_mappings.is_locked()
+  asu_mappings.lock()
+  assert asu_mappings.is_locked()
+  try: asu_mappings.process(original_site=[0,0,0])
+  except RuntimeError, e: assert str(e).find("is_locked") > 0
+  else: raise RuntimeError("Exception expected.")
   mappings = asu_mappings.mappings()[0]
   assert len(mappings) == 5
   am = mappings[0]
@@ -83,6 +92,68 @@ def exercise_direct_space_asu():
   assert asu.is_inside(am.mapped_site())
   for am in mappings:
     assert asu_mappings.asu_buffer().is_inside(am.mapped_site())
+  index_generator = crystal.neighbors_simple_pair_generator(asu_mappings)
+  assert not index_generator.at_end()
+  assert len(asu_mappings.mappings()[1]) == 6
+  index_pairs = []
+  for index_pair in index_generator:
+    index_pairs.append((index_pair.i_seq, index_pair.j_seq, index_pair.j_sym))
+    assert index_pair.dist_sq == -1
+  assert index_generator.at_end()
+  assert index_pairs == [
+    (0,0,1),(0,0,2),(0,0,3),(0,0,4),
+    (0,1,0),(0,1,1),(0,1,2),(0,1,3),(0,1,4),(0,1,5),
+    (1,1,1),(1,1,2),(1,1,3),(1,1,4),(1,1,5)]
+  for two_flag,buffer_thickness,expected_index_pairs in [
+    (00000, 0.04, []),
+    (00000, 0.1, [(0,0,1),(0,0,2),(0,0,3),(0,0,4)]),
+    (00001, 0, [(0, 1, 0)]),
+    (00001, 0.04, [(0, 1, 0), (0, 1, 1), (1, 1, 1)])]:
+    asu_mappings = crystal.direct_space_asu.asu_mappings(
+      space_group=sgtbx.space_group("P 2 3").change_basis(
+        sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
+      asu=asu,
+      buffer_thickness=buffer_thickness,
+      sym_equiv_epsilon=1.e-6)
+    asu_mappings.process(original_site=[3.1,-2.2,1.3])
+    assert asu_mappings.mappings().size() == 1
+    if (two_flag):
+      asu_mappings.process(original_site=[-4.3,1.7,0.4])
+    index_generator = crystal.neighbors_simple_pair_generator(asu_mappings)
+    index_pairs = []
+    for index_pair in index_generator:
+      index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
+      assert index_pair.dist_sq == -1
+    assert index_generator.at_end()
+    assert index_pairs == expected_index_pairs
+    index_generator = crystal.neighbors_simple_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=100)
+    index_pairs = []
+    dist_sq = flex.double()
+    for index_pair in index_generator:
+      index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
+      assert index_pair.dist_sq > 0
+      dist_sq.append(index_pair.dist_sq)
+    assert index_generator.at_end()
+    assert index_pairs == expected_index_pairs
+    distances = flex.sqrt(dist_sq)
+    if (distances.size() > 0):
+      cutoff = flex.mean(distances) + 1.e-5
+    else:
+      cutoff = 0
+    short_dist_sq = dist_sq.select(distances <= cutoff)
+    index_generator = crystal.neighbors_simple_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=cutoff)
+    index_pairs = []
+    dist_sq = flex.double()
+    for index_pair in index_generator:
+      index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
+      assert index_pair.dist_sq > 0
+      dist_sq.append(index_pair.dist_sq)
+    assert index_generator.at_end()
+    assert approx_equal(dist_sq, short_dist_sq)
 
 def run():
   exercise_direct_space_asu()
