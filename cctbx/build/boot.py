@@ -20,17 +20,24 @@ def create_makefile(pkg_dir, configuration, subdir, package):
   f.close()
   shutil.copy(subdir + "/Makefile", subdir + "/Makefile.nodepend")
 
+def create_lib_python_init_py(path_name):
+  f = open(path_name + "/__init__.py", "w")
+  print >> f, """import sys
+if (sys.platform == "linux2"): sys.setdlopenflags(0x100|0x2)
+"""
+  f.close()
+
 def create_lib_dir_and_lib_python_dir(pkg):
   try: os.makedirs("../lib")
   except OSError: pass
   lib_python_dir = "../lib_python/%s_boost"%(pkg.name)
   try: os.makedirs(lib_python_dir)
   except OSError: pass
+  create_lib_python_init_py(lib_python_dir)
   for subdir in pkg.tbx_subpkg:
     try: os.makedirs(lib_python_dir + "/" + subdir)
     except OSError: pass
-    open(lib_python_dir + "/" + subdir + "/__init__.py", "a+").close()
-  open(lib_python_dir + "/__init__.py", "a+").close()
+    create_lib_python_init_py(lib_python_dir + "/" + subdir)
 
 def run():
   sys.path.insert(0,os.getcwd())

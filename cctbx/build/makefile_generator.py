@@ -116,7 +116,10 @@ class write_makefiles:
         s = s + " $(SP_LIBDIR_WIN)\\lib*.lib"
       else:
         s = s + " -L$(SP_LIBDIR_UNIX)"
-        for l in libs: s = s + " -l" + l
+        if (self.platform != "irix_CC"):
+          for l in libs: s = s + " -l" + l
+        else:
+          for l in libs: s = s + " -exports -l" + l
     if (len(macros) > 0):
       s = s + " " + join(macros)
     return strip(s)
@@ -214,7 +217,10 @@ class write_makefiles:
       print "\t-del %s" % (lib,)
       print "\t$(LD) -library -o %s %s" % (lib, objstr)
     else:
-      lib = "lib" + name + ".a"
+      lib_suffix = ".a"
+      if (self.platform in ("irix_CC", "unix_gcc")):
+        lib_suffix = ".so"
+      lib = "lib" + name + lib_suffix
       print "%s: %s" % (lib, objstr)
       if (self.platform == "mingw32"):
         print "\t-del %s" % (lib,)
@@ -226,17 +232,15 @@ class write_makefiles:
         print "\t  ar r ../%s -input ../%s.input" % (lib, lib)
         print "\trm -f %s.input" % (lib,)
         print "\tar r %s %s" % (lib, objstr)
-      elif (self.platform == "irix_CC"):
-        print "\t$(CPP) -ar -o %s %s" % (lib, objstr)
       elif (self.platform == "macosx"):
         print "\tlibtool -static -o %s %s" % (lib, objstr)
+      elif (self.platform in ("irix_CC", "unix_gcc")):
+        print "\t$(CPP) $(LDDLL) -o %s %s" % (lib, objstr)
       else:
         print "\tar r %s %s" % (lib, objstr)
     if (self.platform  in ("vc60", "mingw32", "win32_mwcc")):
-      print "\t-mkdir $(SP_LIBDIR_WIN)"
       print "\tcopy %s $(SP_LIBDIR_WIN)" % (lib,)
     else:
-      print "\t-mkdir $(SP_LIBDIR_UNIX)"
       print "\tcp %s $(SP_LIBDIR_UNIX)" % (lib,)
     print
     self.make_targets["libraries"].append(lib)
