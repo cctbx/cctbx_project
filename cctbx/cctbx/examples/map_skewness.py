@@ -8,30 +8,21 @@
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
-from scitbx.python_utils import complex_math
-import random
-import math
 
 def randomize_phases(f_calc, fudge_factor):
   assert 0 <= fudge_factor <= 1
   phases = flex.arg(f_calc.data(), 1)
   centric_flags = f_calc.centric_flags().data()
-  new_phases = flex.double()
-  d = 0
-  for i in xrange(len(phases)):
-    old_phase = phases[i]
-    is_centric = centric_flags[i]
-    if (not is_centric):
-      random_offset = (random.random() * 360 - 180) * fudge_factor
-      new_phase = old_phase + random_offset
-    else:
-      if (random.random() < 0.5 * fudge_factor):
-        new_phase = old_phase + 180
-      else:
-        new_phase = old_phase
-    new_phases.append(new_phase)
-    d += math.cos((old_phase-new_phase)*math.pi/180)
-  return f_calc.phase_transfer(new_phases, deg=0001)
+  acentric_flags = ~centric_flags
+  centric_phases = phases.select(centric_flags)
+  acentric_phases = phases.select(acentric_flags)
+  sel = flex.random_double(size=centric_phases.size()) < (0.5 * fudge_factor)
+  centric_phases.set_selected(sel, centric_phases.select(sel) + 180)
+  acentric_phases += (flex.random_double(size=acentric_phases.size())
+                      * 360 - 180) * fudge_factor
+  phases.set_selected(centric_flags, centric_phases)
+  phases.set_selected(acentric_flags, acentric_phases)
+  return f_calc.phase_transfer(phases, deg=0001)
 
 def skewness_calculation(space_group_info, n_test_points=10,
                          n_sites=20, d_min=3, volume_per_atom=200):
