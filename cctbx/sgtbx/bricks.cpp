@@ -5,10 +5,12 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      Created: 11-Jul-2001 (R.W. Grosse-Kunstleve)
  */
 
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/asym_units.h>
 
 namespace sgtbx {
   namespace tables {
@@ -788,13 +790,13 @@ namespace sgtbx {
   namespace detail {
 
     const tables::RawBrick*
-    FindTabulatedBrick(const SpaceGroup& SgOps, const SpaceGroupType& SgType)
+    FindTabulatedBrick(const SpaceGroupInfo& SgInfo)
     {
       for (std::size_t i = 0; tables::TabRawBricks[i].SgNumber != 0; i++) {
-        if (tables::TabRawBricks[i].SgNumber > SgType.SgNumber()) break;
-        if (tables::TabRawBricks[i].SgNumber == SgType.SgNumber()) {
+        if (tables::TabRawBricks[i].SgNumber > SgInfo.SgNumber()) break;
+        if (tables::TabRawBricks[i].SgNumber == SgInfo.SgNumber()) {
           SpaceGroup TabSgOps(tables::TabRawBricks[i].HallSymbol);
-          if (SgOps == TabSgOps) return &tables::TabRawBricks[i];
+          if (SgInfo.SgOps() == TabSgOps) return &tables::TabRawBricks[i];
         }
       }
       return 0;
@@ -802,9 +804,9 @@ namespace sgtbx {
 
   } // namespace detail
 
-  void Brick::initialize(const SpaceGroup& SgOps, const SpaceGroupType& SgType)
+  Brick::Brick(const SpaceGroupInfo& SgInfo)
   {
-    const tables::RawBrick* RB = detail::FindTabulatedBrick(SgOps, SgType);
+    const tables::RawBrick* RB = detail::FindTabulatedBrick(SgInfo);
     if (RB == 0) {
       throw error(
         "Brick is not available for the given space group representation.");
@@ -814,14 +816,6 @@ namespace sgtbx {
         m_Points[i][j] = BrickPoint(RB->Points[i][j]);
       }
     }
-  }
-
-  Brick::Brick(const SpaceGroup& SgOps, const SpaceGroupType& SgType) {
-    initialize(SgOps, SgType);
-  }
-
-  Brick::Brick(const SpaceGroup& SgOps) {
-    initialize(SgOps, SgOps.getSpaceGroupType(false));
   }
 
   BrickPoint

@@ -1,6 +1,7 @@
 #! /usr/local/Python-2.1/bin/python
 
 # Revision history:
+#   2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
 #   2001 Aug 09: Derived from generate_hklf.py (rwgk)
 
 PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
@@ -113,8 +114,8 @@ class SiteInfo:
        self.SiteSymmetry)
       + tuple(self.Coordinates) + (self.Occ, self.Biso))
 
-def BuildMillerIndices(UnitCell, SgOps, Resolution_d_min):
-  MIG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, Resolution_d_min)
+def BuildMillerIndices(UnitCell, SgInfo, Resolution_d_min):
+  MIG = sgtbx.MillerIndexGenerator(UnitCell, SgInfo, Resolution_d_min)
   MillerIndices = []
   for H in MIG: MillerIndices.append(H)
   return MillerIndices
@@ -150,9 +151,9 @@ if (__name__ == "__main__"):
     ShowInputSymbol(inp.sgsymbol, inp.convention, "Input ")
     Symbols_Inp = sgtbx.SpaceGroupSymbols(inp.sgsymbol, inp.convention)
     SgOps = HallSymbol_to_SgOps(Symbols_Inp.Hall())
-    SgType = SgOps.getSpaceGroupType()
+    SgInfo = sgtbx.SpaceGroupInfo(SgOps)
     print "Space group: (%d) %s" % (
-      SgType.SgNumber(), SgOps.BuildLookupSymbol(SgType))
+      SgInfo.SgNumber(), SgInfo.BuildLookupSymbol())
     print
 
     SgOps.CheckUnitCell(UnitCell)
@@ -168,7 +169,7 @@ if (__name__ == "__main__"):
 
     SnapParameters = \
       sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 1, MinMateDistance)
-    WyckoffTable = sgtbx.WyckoffTable(SgOps, SgType)
+    WyckoffTable = sgtbx.WyckoffTable(SgInfo, 1)
 
     print "</pre><table border=2 cellpadding=2>"
     InTable = 1
@@ -207,7 +208,7 @@ if (__name__ == "__main__"):
     InTable = 0
     print
 
-    MillerIndices = BuildMillerIndices(UnitCell, SgOps, d_min)
+    MillerIndices = BuildMillerIndices(UnitCell, SgInfo, d_min)
     FcalcDict = ComputeStructureFactors(Sites, MillerIndices)
 
     print "Number of Miller indices:", len(FcalcDict)

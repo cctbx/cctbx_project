@@ -16,8 +16,8 @@ for HallSymbol in table_hall_std530:
     PSgOps = SgOps.ChangeBasis(Z2POp)
     if (SgOps != PSgOps.ChangeBasis(Z2POp.swap())):
       import sys, tst2
-      print Z2POp.M().as_xyz()
-      print Z2POp.InvM().as_xyz()
+      print Z2POp.M()
+      print Z2POp.InvM()
       tst2.show(SgOps)
       tst2.show(PSgOps.ChangeBasis(Z2POp.swap()))
       sys.exit(1)

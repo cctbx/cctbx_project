@@ -80,9 +80,9 @@ inp = GetFormData()
 try:
   Symbols_Inp = sgtbx.SpaceGroupSymbols(inp.sgsymbol, inp.convention)
   SgOps = HallSymbol_to_SgOps(Symbols_Inp.Hall())
-  SgType = SgOps.getSpaceGroupType()
+  SgInfo = sgtbx.SpaceGroupInfo(SgOps)
   print "Space group: (%d) %s" % (
-    SgType.SgNumber(), SgOps.BuildLookupSymbol(SgType))
+    SgInfo.SgNumber(), SgInfo.BuildLookupSymbol())
   print
   Write_SHELX_LATT_SYMM(SgOps)
 

@@ -89,30 +89,30 @@ try:
   ShowInputSymbol(inp.sgsymbol_old, inp.convention_old, "Old")
   Syms = sgtbx.SpaceGroupSymbols(inp.sgsymbol_old, inp.convention_old)
   SgOps_old = HallSymbol_to_SgOps(Syms.Hall())
-  SgType_old = SgOps_old.getSpaceGroupType()
+  SgInfo_old = sgtbx.SpaceGroupInfo(SgOps_old)
   print
 
   if (len(inp.sgsymbol_new) == 0):
     inp.sgsymbol_new = sgtbx.SpaceGroupSymbols(
-      SgType_old.SgNumber()).ExtendedHermann_Mauguin()
+      SgInfo_old.SgNumber()).ExtendedHermann_Mauguin()
     inp.convention_new = ""
 
   ShowInputSymbol(inp.sgsymbol_new, inp.convention_new, "New")
   Syms = sgtbx.SpaceGroupSymbols(inp.sgsymbol_new, inp.convention_new)
   SgOps_new = HallSymbol_to_SgOps(Syms.Hall())
-  SgType_new = SgOps_new.getSpaceGroupType()
+  SgInfo_new = sgtbx.SpaceGroupInfo(SgOps_new)
   print
 
   print "Old space group: (%d) %s" % (
-    SgType_old.SgNumber(), SgOps_old.BuildLookupSymbol(SgType_old))
+    SgInfo_old.SgNumber(), SgInfo_old.BuildLookupSymbol())
   print "New space group: (%d) %s" % (
-    SgType_new.SgNumber(), SgOps_new.BuildLookupSymbol(SgType_new))
+    SgInfo_new.SgNumber(), SgInfo_new.BuildLookupSymbol())
   print
 
-  if (SgType_old.SgNumber() != SgType_new.SgNumber()):
+  if (SgInfo_old.SgNumber() != SgInfo_new.SgNumber()):
     print "Space group numbers are not equal!"
   else:
-    M = SgType_new.CBOp().InvM() * SgType_old.CBOp().M()
+    M = SgInfo_new.CBOp().InvM() * SgInfo_old.CBOp().M()
     CBOp = sgtbx.ChOfBasisOp(M)
     print "Change-of-basis matrix:", CBOp.M()
     print "               Inverse:", CBOp.InvM()

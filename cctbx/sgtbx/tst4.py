@@ -28,14 +28,15 @@ def recycle(SgOps):
       print "Error: xyz mismatch."
       print xyz
       print rtmx.as_xyz(Decimal, TrFirst, LettersXYZ, Separator)
+      raise
     newSgOps.expandSMx(rtmx)
-  print xyz
   if (   SgOps.nLTr() != newSgOps.nLTr()
       or SgOps.fInv() != newSgOps.fInv()
       or SgOps.nSMx() != newSgOps.nSMx()):
     print "Error: newSgOps mismatch."
     print    SgOps.nLTr(),    SgOps.fInv(),    SgOps.nSMx()
     print newSgOps.nLTr(), newSgOps.fInv(), newSgOps.nSMx()
+    raise
 
 for hsym in table_hall_std530:
   print hsym

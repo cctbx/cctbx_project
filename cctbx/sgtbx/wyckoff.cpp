@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Created: 17-Jun-2001 (R.W. Grosse-Kunstleve)
  */
@@ -2188,12 +2189,12 @@ namespace sgtbx {
     throw error("Not a Wyckoff letter.");
   }
 
-  void WyckoffTable::InitializeOperations(const SpaceGroupType& SgType)
+  void WyckoffTable::InitializeOperations(const SpaceGroupInfo& SgInfo)
   {
     using namespace tables::ReferenceSettings;
-    const int& SgNumber = SgType.SgNumber();
+    const int& SgNumber = SgInfo.SgNumber();
     cctbx_assert(1 <= SgNumber && SgNumber <= 230);
-    const RotMx& CBMxR = SgType.CBOp().M().Rpart();
+    const RotMx& CBMxR = SgInfo.CBOp().M().Rpart();
     int BF = CBMxR.BF();
     boost::rational<int> FactorM(CBMxR.det(), BF * BF * BF);
     boost::rational<int> M = GeneralPositionMultiplicity[SgNumber] * FactorM;
@@ -2202,7 +2203,7 @@ namespace sgtbx {
     cctbx_assert(RWTab.N < 27);
     char Letter = WyckoffLetters[RWTab.N];
     m_Operations.push_back(WyckoffPosition(M.numerator(), Letter, RTMx(1, 1)));
-    ChOfBasisOp InvCBOp = SgType.CBOp().swap();
+    ChOfBasisOp InvCBOp = SgInfo.CBOp().swap();
     RTMx ReferenceSpecialOp;
     for(int i=0;i<RWTab.N;i++) {
       try {
@@ -2225,14 +2226,9 @@ namespace sgtbx {
     }
   }
 
-  WyckoffTable::WyckoffTable(const SpaceGroupType& SgType) {
-    InitializeOperations(SgType);
-  }
-
-  WyckoffTable::WyckoffTable(const SpaceGroup& SgOps,
-                             const SpaceGroupType& SgType) {
-    InitializeOperations(SgType);
-    expand(SgOps);
+  WyckoffTable::WyckoffTable(const SpaceGroupInfo& SgInfo, bool auto_expand) {
+    InitializeOperations(SgInfo);
+    if (auto_expand) expand(SgInfo.SgOps());
   }
 
   const WyckoffMapping

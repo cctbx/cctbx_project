@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Created: 24-Apr-2001 (R.W. Grosse-Kunstleve)
@@ -727,16 +728,16 @@ namespace sgtbx {
 
   } // namespace ConstructCBOpTpart
 
-  SpaceGroupType SpaceGroup::getSpaceGroupType(bool TidyCBOp,
-                                               int RBF, int TBF) const
+  SpaceGroupInfo::SpaceGroupInfo(const SpaceGroup& SgOps,
+                                 bool TidyCBOp, int RBF, int TBF)
+    : m_SgOps(SgOps), m_SgNumber(0), m_CBOp(RBF, TBF)
   {
-    tables::MatrixGroup::Code PG_MGC = getPointGroupType();
+    tables::MatrixGroup::Code PG_MGC = m_SgOps.getPointGroupType();
     tables::MatrixGroup::Code LG_MGC = PG_MGC.LaueGroupType();
     tables::CrystalSystem::Code CrystalSystem = PG_MGC.CrystalSystem();
 
-    SpaceGroup ZPointGroup = BuildDerivedGroup(false, false);
+    SpaceGroup ZPointGroup = m_SgOps.BuildDerivedGroup(false, false);
     SpaceGroup WorkSgOps = ZPointGroup;
-    ChOfBasisOp TotCBOp(RBF, TBF);
     char Z = '\0';
     int RunAwayCounter = 0;
 
@@ -745,30 +746,31 @@ namespace sgtbx {
       cctbx_assert(RunAwayCounter++ < 10);
 
       ChOfBasisOp AddCBOp = WorkSgOps.getZ2POp();
-      TotCBOp.update(AddCBOp.newBaseFactors(RBF, TBF));
-      WorkSgOps = ZPointGroup.ChangeBasis(TotCBOp);
+      m_CBOp.update(AddCBOp.newBaseFactors(RBF, TBF));
+      WorkSgOps = ZPointGroup.ChangeBasis(m_CBOp);
       cctbx_assert(WorkSgOps.nLTr() == 1);
 
       RotMx Basis = ConstructCBOpRpart::StdBasis(WorkSgOps, LG_MGC);
       Basis = Basis.newBaseFactor(RBF);
       AddCBOp = ChOfBasisOp(RTMx(Basis, TBF)).swap();
-      TotCBOp.update(AddCBOp);
-      WorkSgOps = ZPointGroup.ChangeBasis(TotCBOp);
+      m_CBOp.update(AddCBOp);
+      WorkSgOps = ZPointGroup.ChangeBasis(m_CBOp);
       Z = WorkSgOps.getConventionalCentringTypeSymbol();
 
       RotMx AdjRMx = ConstructCBOpRpart::GetAdjRMx(LG_MGC, Z);
       if (AdjRMx.isValid()) {
         AdjRMx = AdjRMx.newBaseFactor(RBF);
         AddCBOp = ChOfBasisOp(RTMx(AdjRMx, TBF));
-        TotCBOp.update(AddCBOp);
-        WorkSgOps = ZPointGroup.ChangeBasis(TotCBOp);
+        m_CBOp.update(AddCBOp);
+        WorkSgOps = ZPointGroup.ChangeBasis(m_CBOp);
         Z = WorkSgOps.getConventionalCentringTypeSymbol();
       }
     }
     while (Z == '\0');
     cctbx_assert(Z != 'Q');
 
-    WorkSgOps = ChangeBasis(TotCBOp); // transform original symmetry operations
+    // transform original symmetry operations
+    WorkSgOps = m_SgOps.ChangeBasis(m_CBOp);
 
     if (   PG_MGC == tables::MatrixGroup::MGC_m3b
         && Z == 'P'
@@ -778,8 +780,8 @@ namespace sgtbx {
                       1,  0,  0,
                       0,  0,  1,  1);
       ChOfBasisOp AddCBOp(RTMx(R_4_001.newBaseFactor(RBF), TBF));
-      TotCBOp.update(AddCBOp);
-      WorkSgOps = ChangeBasis(TotCBOp);
+      m_CBOp.update(AddCBOp);
+      WorkSgOps = m_SgOps.ChangeBasis(m_CBOp);
     }
 
     tables::MatrixGroup::Code
@@ -791,10 +793,10 @@ namespace sgtbx {
       && (   CrystalSystem != tables::CrystalSystem::Orthorhombic
           || (Z == 'I' || Z == 'F')));
 
-    for (int SgNumber = 1; SgNumber <= 230; SgNumber++)
+    for (m_SgNumber = 1; m_SgNumber <= 230; m_SgNumber++)
     {
       const char*
-      HallSymbol = tables::ReferenceSettings::HallSymbols[SgNumber];
+      HallSymbol = tables::ReferenceSettings::HallSymbols[m_SgNumber];
 
       if (MatchSymCType && Z != HallSymbol[1])
         continue;
@@ -802,7 +804,7 @@ namespace sgtbx {
       if ((Z == 'P') != (HallSymbol[1] == 'P'))
         continue;
 
-      if (tables::ReferenceSettings::MatrixGroupCodes[SgNumber] != MGC)
+      if (tables::ReferenceSettings::MatrixGroupCodes[m_SgNumber] != MGC)
         continue;
 
       SpaceGroup TabSgOps;
@@ -821,43 +823,41 @@ namespace sgtbx {
       ChOfBasisOp AddCBOp = ConstructCBOpTpart::MatchGenerators(
         RBF, TBF, WorkSgOps, PG_MGC, HallSymbol[1], TabGenerators);
       if (AddCBOp.isValid()) {
-        TotCBOp.update(AddCBOp);
+        m_CBOp.update(AddCBOp);
         if (TidyCBOp) {
-          TotCBOp = ConstructCBOpTpart::FindBestCBOp(
-            *this, PG_MGC,
-            SgNumber, ChOfBasisOp(RBF, TBF), TabSgOps, TabGenerators, TotCBOp);
+          m_CBOp = ConstructCBOpTpart::FindBestCBOp(
+            m_SgOps, PG_MGC, m_SgNumber,
+            ChOfBasisOp(RBF, TBF), TabSgOps, TabGenerators, m_CBOp);
         }
-        return SpaceGroupType(SgNumber, TotCBOp);
+        return;
       }
     }
     throw cctbx_internal_error();
   }
 
-  std::string SpaceGroup::BuildHallSymbol(const SpaceGroupType& SgType,
-                                          bool TidyCBOp) const
+  std::string SpaceGroupInfo::BuildHallSymbol(bool TidyCBOp) const
   {
-    cctbx_assert(0 < SgType.SgNumber() && SgType.SgNumber() <= 230);
     std::string
-    HallSymbol(tables::ReferenceSettings::HallSymbols[SgType.SgNumber()]);
+    HallSymbol(tables::ReferenceSettings::HallSymbols[m_SgNumber]);
     parse_string ps(HallSymbol);
     SpaceGroup TargetSgOps;
     ChOfBasisOp RefCBOp;
     TargetSgOps.ParseHallSymbolCBOp(ps, RefCBOp, true);
     ChOfBasisOp CBOp = RefCBOp;
     if (CBOp.isValid()) {
-      CBOp = CBOp.newBaseFactors(SgType.CBOp());
-      CBOp = CBOp.swap() * SgType.CBOp();
+      CBOp = CBOp.newBaseFactors(m_CBOp);
+      CBOp = CBOp.swap() * m_CBOp;
     }
     else {
-      CBOp = SgType.CBOp();
+      CBOp = m_CBOp;
     }
     if (TidyCBOp) {
       tables::MatrixGroup::Code PG_MGC = TargetSgOps.getPointGroupType();
       detail::StdGenerators TargetGenerators(TargetSgOps, PG_MGC);
       TargetGenerators.setPrimitive();
       CBOp = ConstructCBOpTpart::FindBestCBOp(
-        *this, PG_MGC,
-        SgType.SgNumber(), RefCBOp, TargetSgOps, TargetGenerators, CBOp);
+        SgOps(), PG_MGC, SgNumber(),
+        RefCBOp, TargetSgOps, TargetGenerators, CBOp);
     }
     else {
       CBOp.modShortInPlace();
@@ -875,8 +875,13 @@ namespace sgtbx {
     return HallSymbol;
   }
 
-  std::string SpaceGroup::BuildHallSymbol(bool TidyCBOp) const {
-    return BuildHallSymbol(getSpaceGroupType(), TidyCBOp);
+  std::string SpaceGroupInfo::BuildLookupSymbol() const
+  {
+    SpaceGroupSymbols Symbols = SgOps().MatchTabulatedSettings();
+    if (Symbols.SgNumber() != 0) {
+      return Symbols.ExtendedHermann_Mauguin();
+    }
+    return "Hall: " + BuildHallSymbol(true);
   }
 
 } // namespace sgtbx
