@@ -157,6 +157,7 @@ class maximum_likelihood_criterion:
   def __call__(self, f_calc,
                      alpha,
                      beta,
+                     k,
                      compute_derivatives):
     assert f_calc.unit_cell().is_similar_to(self.f_obs().unit_cell())
     assert f_calc.space_group() == self.f_obs().space_group()
@@ -165,6 +166,7 @@ class maximum_likelihood_criterion:
         f_calc.data(),
         alpha,
         beta,
+        k,
         self.epsilons,
         self.centric_flags,
         compute_derivatives)
