@@ -1,5 +1,6 @@
 # Generate SHELX LATT and SYMM cards for a given space group.
 
+import sys
 import traceback
 
 from cctbx import sgtbx

@@ -11,3 +11,12 @@ def show_input_symbol(sgsymbol, convention, label="Input"):
     else:
       print "Default"
   print
+
+def interpret_coordinate_line(line, skip_columns):
+  flds = line.split()
+  if (len(flds) < skip_columns + 3): raise FormatError, line
+  coordinates = [0,0,0]
+  for i in xrange(3):
+    try: coordinates[i] = float(flds[skip_columns + i])
+    except: raise FormatError, line
+  return " ".join(flds[:skip_columns]), coordinates

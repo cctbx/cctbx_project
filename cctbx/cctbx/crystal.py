@@ -35,8 +35,7 @@ class symmetry:
     return self.space_group_info().group()
 
   def show_summary(self, f=sys.stdout):
-    print >> f, "Unit cell: (%.6g, %.6g, %.6g, %.6g, %.6g, %.6g)" \
-                % self.unit_cell().parameters()
+    uctbx.show_parameters(self.unit_cell(), f)
     self.space_group_info().show_summary(f)
 
   def is_compatible_unit_cell(self):
