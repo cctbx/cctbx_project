@@ -48,7 +48,7 @@
 
     @author Jorge Nocedal: original Fortran version, including comments
     (July 1990). Robert Dodier: Java translation, August 1997.
-    Ralf W. Grosse-Kunstleve, C++ port, March 2002.
+    Ralf W. Grosse-Kunstleve: C++ port, March 2002.
  */
 
 #include <vector>
@@ -289,7 +289,7 @@ namespace cctbx {
              the point <code>x</code>.
 
           <code>lbfgs</code> will use a default value for diag
-          as described below. XXX
+          as described below. XXX where?
        */
       void run(
         double* x,
@@ -565,29 +565,21 @@ namespace cctbx {
       {
         protected:
           int infoc;
-          double dg;
-          double dgm;
           double dginit;
-          double dgtest;
-          double dgx;
-          double dgxm;
-          double dgy;
-          double dgym;
-          double finit;
-          double ftest1;
-          double fm;
-          double fx;
-          double fxm;
-          double fy;
-          double fym;
-          double stx;
-          double sty;
-          double stmin;
-          double stmax;
-          double width;
-          double width1;
           bool brackt;
           bool stage1;
+          double finit;
+          double dgtest;
+          double width;
+          double width1;
+          double stx;
+          double fx;
+          double dgx;
+          double sty;
+          double fy;
+          double dgy;
+          double stmin;
+          double stmax;
 
           static double sqr(double x) { return x * x; }
 
@@ -793,11 +785,11 @@ namespace cctbx {
               }
               info=0;
               nfev++;
-              dg = 0;
+              double dg(0);
               for (int j = 0; j < n; j++) {
                 dg += g[j] * s[is0+j];
               }
-              ftest1 = finit + stp*dgtest;
+              double ftest1 = finit + stp*dgtest;
               // Test for convergence.
               if (   (brackt && (stp <= stmin || stp >= stmax))
                   || infoc == 0) {
@@ -834,12 +826,12 @@ namespace cctbx {
               // obtained but the decrease is not sufficient.
               if (stage1 && f <= fx && f > ftest1) {
                 // Define the modified function and derivative values.
-                fm = f - stp*dgtest;
-                fxm = fx - stx*dgtest;
-                fym = fy - sty*dgtest;
-                dgm = dg - dgtest;
-                dgxm = dgx - dgtest;
-                dgym = dgy - dgtest;
+                double fm = f - stp*dgtest;
+                double fxm = fx - stx*dgtest;
+                double fym = fy - sty*dgtest;
+                double dgm = dg - dgtest;
+                double dgxm = dgx - dgtest;
+                double dgym = dgy - dgtest;
                 // Call cstep to update the interval of uncertainty
                 // and to compute the new step.
                 mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
@@ -930,7 +922,7 @@ namespace cctbx {
                as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
                Robert Dodier: Java translation, August 1997.
            */
-          void mcstep(
+          static void mcstep(
             double& stx,
             double& fx,
             double& dx,
