@@ -122,10 +122,9 @@ class minimize_lbfgsb(minimize_mixin):
     self.f = 0
     self.g = flex.double(self.n, 0)
     while 0001:
-      task = self.minimizer.process(self.x, self.f, self.g)
-      if (task[:2] == "FG"):
+      if (self.minimizer.process(self.x, self.f, self.g)):
         self.compute_fg()
-      elif (task[:5] != "NEW_X"):
+      elif (self.minimizer.is_terminated()):
         break
 
 def minimize_multi_lbfgs(start_fit,
