@@ -96,7 +96,7 @@ MtzWriter::addColumn(
       i_mtz = ld_pos->second;
     }
     else {
-      i_mtz = lookup_dict.size();
+      i_mtz = NUMBER_OF_EXISTING_INDICES;
       ADD miller_indices[i] TO THE MTZ OBJECT
       FILL IN MISSING VALUES FOR ALL OTHER COLUMNS
     }
