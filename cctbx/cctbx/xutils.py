@@ -48,7 +48,6 @@ class miller_index_set(crystal_symmetry):
 class reciprocal_space_array(miller_index_set):
 
   def __init__(self, miller_indices, F):
-    assert miller_indices.H.size() == F.size()
     miller_index_set.__init__(self, miller_indices, miller_indices.H)
     self.F = F
 

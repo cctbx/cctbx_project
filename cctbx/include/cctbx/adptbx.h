@@ -337,6 +337,23 @@ namespace cctbx {
       + (2 * MIx[1] * MIx[2]) * Ustar[5]));
   }
 
+  //! Coefficients used in anisotropic Debye-Waller factor calculation.
+  /*! Useful for computing partial derivatives w.r.t. Ustar.
+   */
+  template <typename FloatType>
+  inline af::tiny<FloatType, 6>
+  DebyeWallerFactorUstarCoefficients(Miller::Index const& MIx,
+                                     type_holder<FloatType>)
+  {
+    return -constants::two_pi_sq * af::tiny<FloatType, 6>(
+        (MIx[0] * MIx[0]),
+        (MIx[1] * MIx[1]),
+        (MIx[2] * MIx[2]),
+        (2 * MIx[0] * MIx[1]),
+        (2 * MIx[0] * MIx[2]),
+        (2 * MIx[1] * MIx[2]));
+  }
+
   //! Anisotropic Debye-Waller factor given Miller index and beta.
   template <typename FloatType>
   inline FloatType

@@ -15,6 +15,7 @@ softlinks:
 	cd sftbx; make softlinks
 	cd fftbx; make softlinks
 	cd dmtbx; make softlinks
+	cd mintbx; make softlinks
 	cd lbfgs; make softlinks
 	cd examples/cpp; make softlinks
 
@@ -29,6 +30,7 @@ unlink:
 	cd sftbx; make unlink
 	cd fftbx; make unlink
 	cd dmtbx; make unlink
+	cd mintbx; make unlink
 	cd lbfgs; make unlink
 	cd examples/cpp; make unlink
 
@@ -43,6 +45,7 @@ cp:
 	cd sftbx; make cp
 	cd fftbx; make cp
 	cd dmtbx; make cp
+	cd mintbx; make cp
 	cd lbfgs; make cp
 	cd examples/cpp; make cp
 
@@ -57,6 +60,7 @@ rm:
 	cd sftbx; make rm
 	cd fftbx; make rm
 	cd dmtbx; make rm
+	cd mintbx; make rm
 	cd lbfgs; make rm
 	cd examples/cpp; make rm
 
@@ -71,6 +75,7 @@ clean:
 	cd sftbx; make clean
 	cd fftbx; make clean
 	cd dmtbx; make clean
+	cd mintbx; make clean
 	cd lbfgs; make clean
 	cd examples/cpp; make clean
 
@@ -88,6 +93,7 @@ depend:
 	cd sftbx; make -f Makefile.nodepend depend > Makefile
 	cd fftbx; make -f Makefile.nodepend depend > Makefile
 	cd dmtbx; make -f Makefile.nodepend depend > Makefile
+	cd mintbx; make -f Makefile.nodepend depend > Makefile
 	cd lbfgs; make -f Makefile.nodepend depend > Makefile
 	cd examples/cpp; make -f Makefile.nodepend depend > Makefile
 
@@ -102,6 +108,7 @@ executables:
 	cd sgtbx; make executables
 	cd arraytbx; make executables
 	cd dmtbx; make executables
+	cd mintbx; make executables
 	cd lbfgs; make executables
 	cd examples/cpp; make executables
 
@@ -116,5 +123,6 @@ all:
 	cd sftbx; make
 	cd fftbx; make
 	cd dmtbx; make
+	cd mintbx; make
 	cd lbfgs; make
 	cd examples/cpp; make
