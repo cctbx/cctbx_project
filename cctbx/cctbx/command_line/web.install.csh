@@ -5,6 +5,8 @@ set echo
 mkdir -p dist
 cd dist
 cp -r $LIBTBX_DIST .
+mkdir -p boost_adaptbx
+cp -r $BOOST_ADAPTBX_DIST/boost boost_adaptbx
 mkdir -p scitbx
 cp -r $SCITBX_DIST/{scitbx,libtbx_config} scitbx
 mkdir -p cctbx
