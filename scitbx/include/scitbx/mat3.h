@@ -191,11 +191,11 @@ namespace scitbx {
       is_symmetric(NumType const& relative_tolerance) const
       {
         mat3 const& m = *this;
-        NumType scaled_tolerance = af::max_absolute(m.const_ref())
-                                 * relative_tolerance;
-        return    fn::approx_equal_scaled(m[1], m[3], scaled_tolerance)
-               && fn::approx_equal_scaled(m[2], m[6], scaled_tolerance)
-               && fn::approx_equal_scaled(m[5], m[7], scaled_tolerance);
+        NumType
+          tolerance = af::max_absolute(m.const_ref()) * relative_tolerance;
+        return    fn::approx_equal(m[1], m[3], tolerance)
+               && fn::approx_equal(m[2], m[6], tolerance)
+               && fn::approx_equal(m[5], m[7], tolerance);
       }
 
       //! Return the transposed of the co-factor matrix.

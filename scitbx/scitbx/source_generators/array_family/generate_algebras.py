@@ -29,9 +29,7 @@ misc_functions_a = (
 )
 
 misc_functions_x_x_s = (
-  (["approx_equal_scaled"], 1,
-   ["ElementType const& scaled_tolerance", "scaled_tolerance"]),
-  (["approx_equal_unscaled"], 1,
+  (["approx_equal"], 1,
    ["ElementType const& tolerance", "tolerance"]),
 )
 

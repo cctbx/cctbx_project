@@ -12,6 +12,7 @@
 #define SCITBX_ARRAY_FAMILY_SMALL_H
 
 #include <scitbx/array_family/small_plain.h>
+#include <scitbx/array_family/ref_reductions.h>
 
 namespace scitbx { namespace af {
 

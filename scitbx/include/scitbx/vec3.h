@@ -129,7 +129,6 @@ namespace scitbx {
       }
 
       //! Copies the vector to a tiny instance.
-      // XXX regression
       af::tiny<NumType, 3>
       as_tiny() const { return af::tiny<NumType, 3>(*this); }
 

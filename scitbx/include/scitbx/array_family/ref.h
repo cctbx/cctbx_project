@@ -85,137 +85,39 @@ namespace scitbx { namespace af {
         return operator()(index_type(i0, i1, i2));
       }
 
-      bool all_eq(const_ref const& other) const
-      {
-        const ElementType* o = other.begin();
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        if (e-t != other.end()-o) return false;
-        while (t != e) {
-          if (!(*t++ == *o++)) return false;
-        }
-        return true;
-      }
+      bool all_eq(const_ref const& other) const;
 
-      bool all_eq(ElementType const& other) const
-      {
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        while (t != e) {
-          if (!(*t++ == other)) return false;
-        }
-        return true;
-      }
+      bool all_eq(ElementType const& other) const;
 
-      bool all_ne(const_ref const& other) const
-      {
-        const ElementType* o = other.begin();
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        if (e-t != other.end()-o) return false;
-        while (t != e) {
-          if (!(*t++ != *o++)) return false;
-        }
-        return true;
-      }
+      bool all_ne(const_ref const& other) const;
 
-      bool all_ne(ElementType const& other) const
-      {
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        while (t != e) {
-          if (!(*t++ != other)) return false;
-        }
-        return true;
-      }
+      bool all_ne(ElementType const& other) const;
 
-      bool all_lt(const_ref const& other) const
-      {
-        const ElementType* o = other.begin();
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        if (e-t != other.end()-o) throw_range_error();
-        while (t != e) {
-          if (!(*t++ < *o++)) return false;
-        }
-        return true;
-      }
+      bool all_lt(const_ref const& other) const;
 
-      bool all_lt(ElementType const& other) const
-      {
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        while (t != e) {
-          if (!(*t++ < other)) return false;
-        }
-        return true;
-      }
+      bool all_lt(ElementType const& other) const;
 
-      bool all_gt(const_ref const& other) const
-      {
-        const ElementType* o = other.begin();
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        if (e-t != other.end()-o) throw_range_error();
-        while (t != e) {
-          if (!(*t++ > *o++)) return false;
-        }
-        return true;
-      }
+      bool all_gt(const_ref const& other) const;
 
-      bool all_gt(ElementType const& other) const
-      {
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        while (t != e) {
-          if (!(*t++ > other)) return false;
-        }
-        return true;
-      }
+      bool all_gt(ElementType const& other) const;
 
-      bool all_le(const_ref const& other) const
-      {
-        const ElementType* o = other.begin();
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        if (e-t != other.end()-o) throw_range_error();
-        while (t != e) {
-          if (!(*t++ <= *o++)) return false;
-        }
-        return true;
-      }
+      bool all_le(const_ref const& other) const;
 
-      bool all_le(ElementType const& other) const
-      {
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        while (t != e) {
-          if (!(*t++ <= other)) return false;
-        }
-        return true;
-      }
+      bool all_le(ElementType const& other) const;
 
-      bool all_ge(const_ref const& other) const
-      {
-        const ElementType* o = other.begin();
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        if (e-t != other.end()-o) throw_range_error();
-        while (t != e) {
-          if (!(*t++ >= *o++)) return false;
-        }
-        return true;
-      }
+      bool all_ge(const_ref const& other) const;
 
-      bool all_ge(ElementType const& other) const
-      {
-        const ElementType* t = begin();
-        const ElementType* e = end();
-        while (t != e) {
-          if (!(*t++ >= other)) return false;
-        }
-        return true;
-      }
+      bool all_ge(ElementType const& other) const;
+
+      bool
+      all_approx_equal(
+        const_ref const& other,
+        ElementType const& tolerance) const;
+
+      bool
+      all_approx_equal(
+        ElementType const& other,
+        ElementType const& tolerance) const;
 
     protected:
       const ElementType* m_begin;
