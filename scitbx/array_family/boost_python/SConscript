@@ -19,7 +19,6 @@ flex_scitbx_pyd = env_scitbx_boost_python_ext.SharedLibrary(
   "flex_float.cpp",
   "flex_double.cpp",
   "flex_complex_double.cpp",
-  "flex_complex_double_2.cpp",
   "flex_std_string.cpp",
 ])
 env_scitbx_boost_python_ext.Install(
