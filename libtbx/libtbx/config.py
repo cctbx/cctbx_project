@@ -95,9 +95,7 @@ class include_registry:
 
   def prepend_include_switch(self, env, path):
     assert isinstance(path, str)
-    if (env["CXX"].lower() == "cl"):
-      return "/I" + path
-    return "-I" + path
+    return env["INCPREFIX"] + path
 
   def append(self, env, paths):
     assert isinstance(paths, list)
