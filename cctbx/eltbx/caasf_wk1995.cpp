@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/eltbx/caasf.h>
 
 namespace cctbx { namespace eltbx { namespace caasf {
@@ -25,13 +15,16 @@ namespace cctbx { namespace eltbx { namespace caasf {
 
     static const detail::raw_table_entry<5> wk1995_raw_table[] =
     {
-      { "const", { 0., 0., 0., 0., 0. },
-                 { 0., 0., 0., 0., 0. },
-                 1. },
+      { "const", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 1. },
+      { "custom", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 0. },
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       { "H",     { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
                  { 15.569946, 32.398468, 5.711404, 61.889874, 1.334118 },
                  0.000049 },
+      { "H'",    { 0.489918, 0.262003, 0.196767, 0.049879, 0. },
+                 { 20.6593, 7.74039, 49.5519, 2.20159, 0. },
+                 0.001305 },
+                 /* Copy of IT1992 "H'" */
       { "D",     { 0.413048, 0.294953, 0.187491, 0.080701, 0.023736 },
                  { 15.569946, 32.398468, 5.711404, 61.889874, 1.334118 },
                  0.000049 },
@@ -75,6 +68,10 @@ namespace cctbx { namespace eltbx { namespace caasf {
       { "Si",    { 5.275329, 3.191038, 1.511514, 1.356849, 2.519114 },
                  { 2.631338, 33.730728, 0.081119, 86.288643, 1.170087 },
                  0.145073 },
+      { "Siv",   { 5.275329, 3.191038, 1.511514, 1.356849, 2.519114 },
+                 { 2.631338, 33.730728, 0.081119, 86.288643, 1.170087 },
+                 0.145073 },
+                 /* copy of "Si" */
       { "P",     { 1.950541, 4.146930, 1.494560, 1.522042, 5.729711 },
                  { 0.908139, 27.044952, 0.071280, 67.520187, 1.981173 },
                  0.155233 },

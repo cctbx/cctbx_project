@@ -1,20 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
-#include <scitbx/boost_python/utils.h>
-#include <scitbx/boost_python/iterator_wrappers.h>
-#include <cctbx/eltbx/caasf.h>
-#include <scitbx/array_family/tiny.h>
-#include <cctbx/import_scitbx_af.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_const_reference.hpp>
+#include <cctbx/eltbx/caasf.h>
+#include <scitbx/boost_python/iterator_wrappers.h>
 
 namespace cctbx { namespace eltbx { namespace caasf { namespace boost_python {
 
@@ -25,19 +14,19 @@ namespace {
   {
     typedef base<N> w_t;
 
-    static af::tiny<float, N>
+    static af::small<float, custom::max_n_ab>
     a(w_t const& o)
     {
-      af::tiny<float, N> result;
-      for(std::size_t i=0;i<N;i++) result[i] = o.a(i);
+      af::small<float, custom::max_n_ab> result;
+      for(std::size_t i=0;i<N;i++) result.push_back(o.a(i));
       return result;
     }
 
-    static af::tiny<float, N>
+    static af::small<float, custom::max_n_ab>
     b(w_t const& o)
     {
-      af::tiny<float, N> result;
-      for(std::size_t i=0;i<N;i++) result[i] = o.b(i);
+      af::small<float, custom::max_n_ab> result;
+      for(std::size_t i=0;i<N;i++) result.push_back(o.b(i));
       return result;
     }
 
@@ -88,12 +77,37 @@ namespace {
     }
   };
 
+  struct custom_wrappers
+  {
+    typedef custom w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>("custom", no_init)
+        .def(init<std::string const&,
+                  af::small<float, w_t::max_n_ab> const&,
+                  af::small<float, w_t::max_n_ab> const&,
+                  float>())
+        .def("label", &w_t::label, ccr())
+        .def("n_ab", &w_t::n_ab)
+        .def("a", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
+          &w_t::a, ccr())
+        .def("b", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
+          &w_t::b, ccr())
+        .def("c", &w_t::c)
+        .def("at_stol_sq", &w_t::at_stol_sq)
+        .def("at_stol", &w_t::at_stol)
+        .def("at_d_star_sq", &w_t::at_d_star_sq)
+      ;
+    }
+  };
+
   void init_module()
   {
     using namespace boost::python;
-
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
 
     it1992_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
@@ -102,6 +116,8 @@ namespace {
     wk1995_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
       wk1995, wk1995_iterator>::wrap("wk1995_iterator");
+
+    custom_wrappers::wrap();
   }
 
 } // namespace <anonymous>
