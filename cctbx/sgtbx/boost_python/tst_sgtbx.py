@@ -402,6 +402,11 @@ def exercise_rt_mx():
   assert i.location_part().as_double() == (0,-1./4,0)
   assert i.origin_shift().as_double() == (1./12,1./6,0)
   assert approx_equal(rt_mx("z,x,y") * (2,3,4), (4,2,3))
+  r = (-1,1,0,0,1,0,0,0,-1)
+  t = (1/12.,2/12.,3/12.)
+  assert str(rt_mx(r, t)) == "-x+y+1/12,y+1/6,-z+1/4"
+  assert str(rt_mx(r, t, 2)) == "-x+y+1/12,y+1/6,-z+1/4"
+  assert str(rt_mx(r, t, 2, 24)) == "-x+y+1/12,y+1/6,-z+1/4"
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx

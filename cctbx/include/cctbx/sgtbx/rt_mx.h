@@ -86,6 +86,11 @@ namespace cctbx { namespace sgtbx {
             const char* stop_chars="",
             int r_den=1, int t_den=sg_t_den);
 
+      //! Initialize with floating point rotation and translation parts.
+      rt_mx(scitbx::mat3<double> const& r,
+            scitbx::vec3<double> const& t,
+            int r_den=1, int t_den=sg_t_den);
+
       //! Access to rotation part.
       rot_mx const& r() const { return r_; };
 

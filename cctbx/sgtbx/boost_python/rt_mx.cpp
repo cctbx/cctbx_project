@@ -46,6 +46,8 @@ namespace {
         .def(init<tr_vec const&, optional<int> >())
         .def(init<parse_string&, optional<const char*, int, int> >())
         .def(init<std::string const&, optional<const char*, int, int> >())
+        .def(init<scitbx::mat3<double> const&,
+                  scitbx::vec3<double> const&, optional<int, int> >())
         .def("r", (rot_mx const&(w_t::*)() const) &w_t::r, rir())
         .def("t", (tr_vec const&(w_t::*)() const) &w_t::t, rir())
         .def("__eq__", &w_t::operator==)
