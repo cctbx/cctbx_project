@@ -110,7 +110,7 @@ def ShowSgOpsGeneric(SgOps):
     print " ", Brick
   print
   print "List of symmetry operations:"
-  print "</pre><table border=2>"
+  print "</pre><table border=2 cellpadding=2>"
   global InTable
   InTable = 1
   RTMxAnalysisHeader()
@@ -183,7 +183,7 @@ try:
 
   if (len(inp.symxyz) != 0):
     print "Addition of symmetry operations:"
-    print "</pre><table border=2>"
+    print "</pre><table border=2 cellpadding=2>"
     InTable = 1
     RTMxAnalysisHeader()
     for s in inp.symxyz:
