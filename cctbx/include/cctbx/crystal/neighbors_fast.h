@@ -181,7 +181,22 @@ namespace cctbx { namespace crystal { namespace neighbors {
       n_boxes_[i] = static_cast<unsigned>(
         std::max(1, fic::iceil(delta[i] / box_edge)));
     }
-    boxes_.resize(af::c_grid<3, unsigned>(n_boxes_));
+    try {
+      boxes_.resize(af::c_grid<3, unsigned>(n_boxes_));
+    }
+    catch(const std::bad_alloc&) {
+      char buf[512];
+      std::sprintf(buf,
+        "Not enough memory for fast neighbor generation.\n"
+        "  This may be due to unreasonable coordinates:\n"
+        "    box_edge=%.6g\n"
+        "    range of coordinates=(%.6g,%.6g,%.6g)\n"
+        "    n_boxes=(%u,%u,%u)",
+        box_edge,
+        delta[0], delta[1], delta[2],
+        n_boxes_[0], n_boxes_[1], n_boxes_[2]);
+      throw error(buf);
+    }
     af::const_ref<typename asu_mappings_t::array_of_mappings_for_one_site>
       const& mappings = this->asu_mappings_->mappings_const_ref();
     direct_space_asu::asu_mapping_index mi;
