@@ -125,17 +125,17 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
         or (value is not None and attributes_level > 1)
         or attributes_level > 2):
       if (not isinstance(value, str)):
-        print >> out, prefix+"  ."+name, value
+        print >> out, prefix+"  ."+name, "=", value
       else:
         value = str(simple_tokenizer.word(value=value, quote_token='"'))
-        indent = " " * (len(prefix) + 3 + len(name) + 1)
+        indent = " " * (len(prefix) + 3 + len(name) + 3)
         if (len(indent+value) < print_width):
-          print >> out, prefix+"  ."+name, value
+          print >> out, prefix+"  ."+name, "=", value
         else:
           is_first = True
           for block in line_breaker(value[1:-1], print_width-2-len(indent)):
             if (is_first):
-              print >> out, prefix+"  ."+name, '"'+block+'"'
+              print >> out, prefix+"  ."+name, "=", '"'+block+'"'
               is_first = False
             else:
               print >> out, indent+'"'+block+'"'
@@ -196,6 +196,7 @@ class definition(object):
         and not isinstance(previous_object, definition)):
       print >> out, prefix.rstrip()
     line = prefix+self.name
+    if (self.name != "include"): line += " ="
     indent = " " * len(line)
     for word in self.values:
       line_plus = line + " " + str(word)
@@ -673,7 +674,7 @@ def parse(
       file_name=file_name,
       list_of_settings=[
         simple_tokenizer.settings(
-          unquoted_single_character_words="{}",
+          unquoted_single_character_words="{}=",
           contiguous_word_characters=""),
         simple_tokenizer.settings(
           unquoted_single_character_words="",
