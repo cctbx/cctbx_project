@@ -12,6 +12,7 @@
  */
 
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/miller_ref_asu.h>
 #include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
@@ -213,8 +214,12 @@ namespace cctbx { namespace sgtbx {
     std::vector<Miller::SymEquivIndex> plus;
     std::vector<Miller::SymEquivIndex> minus;
     for(std::size_t i=0;i<m_List.size();i++) {
-      if (SignHemisphere(m_List[i].HR()) < 0) minus.push_back(m_List[i]);
-      else                                    plus.push_back(m_List[i]);
+      if (isInReferenceReciprocalSpaceASU_1b(m_List[i].HR())) {
+        plus.push_back(m_List[i]);
+      }
+      else {
+        minus.push_back(m_List[i]);
+      }
     }
     m_List.clear();
     m_List.insert(m_List.end(), plus.begin(), plus.end());

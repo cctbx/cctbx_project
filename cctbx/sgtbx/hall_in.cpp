@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cctbx/sgtbx/groups.h>
-#include <cctbx/sgtbx/tables.h>
+#include <cctbx/sgtbx/rotation_matrices.h>
 #include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {

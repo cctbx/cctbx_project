@@ -13,7 +13,8 @@
 #define CCTBX_SGTBX_REFERENCE_H
 
 #include <vector>
-#include <cctbx/sgtbx/tables.h>
+#include <cctbx/sgtbx/group_codes.h>
+#include <cctbx/sgtbx/matrix.h>
 
 namespace cctbx { namespace sgtbx {
   namespace tables {
