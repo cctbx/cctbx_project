@@ -12,5 +12,7 @@ class injector(object):
       for b in bases:
         if type(b) not in (self, type):
           for k,v in dict.items():
+            if (k in ("__init__", "__del__", "__module__", "__file__")):
+              continue
             setattr(b,k,v)
       return type.__init__(self, name, bases, dict)
