@@ -57,6 +57,7 @@ try:
     SgOps = Symbol_to_SgOps(inp.sgsymbol, inp.convention)
     SgType = SgOps.getSpaceGroupType()
     SgNumber = SgType.SgNumber()
+  nSettings = 0
   print "<table border=2 cellpadding=2>"
   print "<tr>"
   print "<th>Space group<br>No."
@@ -73,7 +74,11 @@ try:
         urllib.quote_plus(SgSymbols.ExtendedHermann_Mauguin()),
         SgSymbols.ExtendedHermann_Mauguin())
       print "<td>%s" % (SgSymbols.Hall(),)
+      nSettings = nSettings + 1
   print "</table>"
+  if (SgNumber == 0):
+    print "<p>"
+    print "Number of settings listed:", nSettings
 
 except RuntimeError, e:
   print e

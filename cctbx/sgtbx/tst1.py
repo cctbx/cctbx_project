@@ -91,7 +91,7 @@ up = pickle.loads(pstr)
 print sgo.BuildHallSymbol(1)
 print up.BuildHallSymbol(1)
 
-enantiomorphic_pairs = []
+enantiomorphic_pairs = {}
 cbop = sgtbx.ChOfBasisOp(sgtbx.RTMx("x+1/12,y+1/12,z+1/12"))
 iter = sgtbx.SpaceGroupSymbolIterator()
 #print iter.next().ExtendedHermann_Mauguin()
@@ -99,7 +99,10 @@ for s in iter:
   sgo = sgtbx.SgOps(s.Hall())#ChangeBasis(cbop)
   ch1 = sgo.getChangeOfHandOp()
   print s.ExtendedHermann_Mauguin(), ch1.M()
-  b = sgo.getBrick()
+  try:
+    b = sgo.getBrick()
+  except RuntimeError, e:
+    print e
   print b
   for i in xrange(3):
     for j in xrange(2):
@@ -108,8 +111,7 @@ for s in iter:
   e = sgo.ChangeBasis(ch1)
   if (e != sgo):
     assert sgo.isEnantiomorphic()
-    enantiomorphic_pairs.append(
-      (s.ExtendedHermann_Mauguin(), e.BuildLookupSymbol()))
+    enantiomorphic_pairs[s.SgNumber()] = e.getSpaceGroupType().SgNumber()
   else:
     assert not sgo.isEnantiomorphic()
   ch2 = e.getChangeOfHandOp()
@@ -122,6 +124,7 @@ for s in iter:
   Ff = SECf.StructureFactor((3,5,7))
   d = abs(Fg) - abs(Ff)
   assert d < 1.e-5
-for p in enantiomorphic_pairs:
-  print p
+for p in enantiomorphic_pairs.keys():
+  print sgtbx.SpaceGroupSymbols(p).Hermann_Mauguin(),
+  print sgtbx.SpaceGroupSymbols(enantiomorphic_pairs[p]).Hermann_Mauguin()
 assert len(enantiomorphic_pairs) == 22

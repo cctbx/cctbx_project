@@ -260,7 +260,7 @@ namespace sgtbx {
       void Clear();
   };
 
-  //! Iterator for the 530 tabulated space group representations.
+  //! Iterator for the 656 tabulated space group representations.
   class SpaceGroupSymbolIterator {
     public:
       //! Initialize the iterator.

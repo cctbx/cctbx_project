@@ -78,6 +78,11 @@ namespace sgtbx {
       bricks with contiguous asymmetric units have not been successful.
       Ideas are very welcome. Until then, the bricks provided by this
       class are the best solution available.
+      <p>
+      Remark: The 126 tabluated Hermann-Mauguin symbols for the
+      "Multiple cell C or F" and "Triple cell H" settings were added in
+      the sgtbx and are not available in the older sginfo2 program.
+      Therefore the bricks for these settings are currently missing.
    */
   class Brick {
     public:
