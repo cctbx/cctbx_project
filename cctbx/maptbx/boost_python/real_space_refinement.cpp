@@ -24,6 +24,8 @@ namespace {
       using namespace boost::python;
       def("residual", real_space_refinement::residual<double>, (
         arg_("map"), arg_("gridding_matrix"), arg_("sites_cart")));
+      def("gradients", real_space_refinement::gradients<double>, (
+        arg_("map"), arg_("gridding_matrix"), arg_("sites_cart")));
     }
   };
 
