@@ -1,6 +1,5 @@
 #include <scitbx/lbfgsb/raw.h>
 #include <scitbx/array_family/shared.h>
-#include <iostream>
 
 namespace {
 
@@ -44,7 +43,7 @@ namespace {
     shared<double> wa_(2*m*n+4*n+12*m*m+12*m);
     ref1<double> wa = make_ref1(wa_);
     double t1, t2;
-    iprint = 1;
+    iprint = 1000;
     factr=1.0e+7;
     pgtol=1.0e-5;
     for(int i=1;i<=n;i+=2) {
@@ -60,10 +59,11 @@ namespace {
     for(int i=1;i<=n;i++) {
       x(i)=3.0e0;
     }
-    std::cout << std::endl;
-    std::cout << "     Solving sample problem." << std::endl;
-    std::cout << "      (f = 0.0 at the optimal solution.)" << std::endl;
-    std::cout << std::endl;
+    printf(
+     "\n"
+     "     Solving sample problem.\n"
+     "      (f = 0.0 at the optimal solution.)\n"
+     "\n");
     task = "START";
     lbl_111:
     setulb(
@@ -96,7 +96,7 @@ int main()
     driver1();
   }
   catch (std::exception const& e) {
-    std::cout << e.what() << std::endl;
+    printf("%s\n", e.what());
   }
   return 0;
 }

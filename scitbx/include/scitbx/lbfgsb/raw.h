@@ -5,7 +5,11 @@
 #include <scitbx/error.h>
 #include <boost/timer.hpp>
 
+#include <cstdio>
+
 namespace scitbx { namespace lbfgsb { namespace raw {
+
+  using std::printf;
 
   template <typename ElementType>
   class ref2;
@@ -82,6 +86,19 @@ namespace scitbx { namespace lbfgsb { namespace raw {
         SCITBX_ASSERT(ref2_begin - this->begin() + n*m <= this->size());
         return ref2(ref2_begin, n, m);
       }
+
+      ref2
+      get2FAIL(int i, int j, int n, int m) const
+      {
+        ElementType* ref2_begin = &(this->operator()(i,j));
+#ifdef JUNK
+        if (!(ref2_begin - this->begin() + n*m <= this->size())) {
+          int* p=0;
+          *p = 0;
+        }
+#endif
+        return ref2(ref2_begin, n, m);
+      }
   };
 
   template <typename T>
@@ -110,6 +127,28 @@ namespace scitbx { namespace lbfgsb { namespace raw {
   inline
   double
   uninitialized_double() { return 12345e6; }
+
+  template <typename ElementType>
+  void
+  write_ref1(
+    std::string const& label,
+    ref1<ElementType> const& a,
+    const char* fmt=" %11.4E")
+  {
+    printf("\n%s", label.c_str());
+    for(int i=1;i<=a.size();i++) {
+      if ((i-1)%6 == 0) {
+        if (i != 1) {
+          printf("\n");
+          for(int j=0;j<label.size();j++) {
+            printf(" ");
+          }
+        }
+      }
+      printf(fmt, a(i));
+    }
+    printf("\n");
+  }
 
 //===============    L-BFGS-B (version 2.1)   ==========================
 
@@ -151,7 +190,7 @@ namespace scitbx { namespace lbfgsb { namespace raw {
     if(n < 7) return;
     lbl_40:
     int mp1 = m + 1;
-    for(int i=mp1;i<=7;i+=7) {
+    for(int i=mp1;i<=n;i+=7) {
       dy(i) = dx(i);
       dy(i + 1) = dx(i + 1);
       dy(i + 2) = dx(i + 2);
@@ -177,7 +216,8 @@ namespace scitbx { namespace lbfgsb { namespace raw {
     if (incx==1) goto lbl_20;
     { // scope for variables
       // code for increment not equal to 1
-      for(int i=1;i<=incx;i+=incx) {
+      int nincx = n*incx;
+      for(int i=1;i<=nincx;i+=incx) {
         dx(i) = da*dx(i);
       }
       return;
@@ -192,7 +232,7 @@ namespace scitbx { namespace lbfgsb { namespace raw {
     }
     if(n < 5) return;
     lbl_40:
-    for(int i=m+1;i<=5;i+=5) {
+    for(int i=m+1;i<=n;i+=5) {
       dx(i) = da*dx(i);
       dx(i + 1) = da*dx(i + 1);
       dx(i + 2) = da*dx(i + 2);
@@ -561,7 +601,7 @@ namespace scitbx { namespace lbfgsb { namespace raw {
     //   elements 1 to n-1 of t.
     if (n > 1) {
       int i = 1;
-      int out = t(1);
+      double out = t(1);
       int indxou = iorder(1);
       double ddum = t(n);
       int indxin = iorder(n);
@@ -674,42 +714,41 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //
 //    ************
     if (iprint >= 0) {
-//PR  write (6,7001) epsmch;
-//PR  write (6,*) 'n = ',n,'    m = ',m;
+      printf("RUNNING THE L-BFGS-B CODE\n");
+      printf("\n");
+      printf("           * * *\n");
+      printf("\n");
+      printf("Machine precision =%10.3E\n", epsmch);
+      printf(" N = %12d    M = %12d\n", n, m);
       if (iprint >= 1) {
-//PR    write (itfile,2001) epsmch;
-//PR    write (itfile,*)'n = ',n,'    m = ',m;
-//PR    write (itfile,9001);
-        if (iprint > 100) {
-//PR       write (6,1004) 'l =',(l(i),i = 1,n);
-//PR       write (6,1004) 'x0 =',(x(i),i = 1,n);
-//PR       write (6,1004) 'u =',(u(i),i = 1,n);
+        // iterate.dat
+        printf("RUNNING THE L-BFGS-B CODE\n");
+        printf("\n");
+        printf("it    = iteration number\n");
+        printf("nf    = number of function evaluations\n");
+        printf("nint  = number of segments explored during the Cauchy search\n");
+        printf("nact  = number of active bounds at the generalized Cauchy point\n");
+        printf("sub   = manner in which the subspace minimization terminated:\n");
+        printf("        con = converged, bnd = a bound was reached\n");
+        printf("itls  = number of iterations performed in the line search\n");
+        printf("stepl = step length used\n");
+        printf("tstep = norm of the displacement (total step)\n");
+        printf("projg = norm of the projected gradient\n");
+        printf("f     = function value\n");
+        printf("\n");
+        printf("           * * *\n");
+        printf("\n");
+        printf("Machine precision =%10.3E\n", epsmch);
+        printf(" N = %12d    M = %12d\n", n, m);
+        printf("\n");
+        printf("   it   nf  nint  nact  sub  itls  stepl    tstep     projg        f\n");
+        if (true || iprint > 100) {
+          write_ref1(" L =", l);
+          write_ref1("X0 =", x);
+          write_ref1(" U =", u);
         }
       }
     }
-/* PR
- 1004 format (/,a4, 1p, 6(1x,d11.4),/,(4x,1p,6(1x,d11.4)));
- 2001 format ('running the l-bfgs-b code',/,/,
-       'it    = iteration number',/,
-       'nf    = number of function evaluations',/,
-       'nint  = number of segments explored during the cauchy search',/,
-       'nact  = number of active bounds at the generalized cauchy point';
-       ,/,
-       'sub   = manner in which the subspace minimization terminated:';
-       ,/,'        con = converged, bnd = a bound was reached',/,
-       'itls  = number of iterations performed in the line search',/,
-       'stepl = step length used',/,
-       'tstep = norm of the displacement (total step)',/,
-       'projg = norm of the projected gradient',/,
-       'f     = function value',/,/,
-       '           * * *',/,/,
-       'machine precision =',1p,d10.3);
- 7001 format ('running the l-bfgs-b code',/,/,
-       '           * * *',/,/,
-       'machine precision =',1p,d10.3);
- 9001 format (/,3x,'it',3x,'nf',2x,'nint',2x,'nact',2x,'sub',2x,'itls',
-              2x,'stepl',4x,'tstep',5x,'projg',8x,'f');
-*/
   }
 
   void
@@ -768,28 +807,28 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       else {
          word = "---";
       }
+      static const char*
+        fmt_2001 = "\nAt iterate%5d    f= %12.5E    |proj g|= %12.5E\n";
       if (iprint >= 99) {
-//PR     write (6,*) 'line search',iback,' times; norm of step = ',xstep;
-//PR     write (6,2001) iter,f,sbgnrm;
+         printf(" LINE SEARCH%12d times; norm of step =  %.15G\n",
+           iback, xstep);
+         printf(fmt_2001, iter,f,sbgnrm);
          if (iprint > 100) {
-//PR        write (6,1004) 'x =',(x(i), i = 1, n);
-//PR        write (6,1004) 'g =',(g(i), i = 1, n);
+           write_ref1(" X =", x);
+           write_ref1(" G =", g);
          }
       }
       else if (iprint > 0) {
          int imod = iter % iprint;
          if (imod == 0) {
-//PR       write (6,2001) iter,f,sbgnrm;
+           printf(fmt_2001, iter,f,sbgnrm);
          }
       }
-//PR  if (iprint >= 1) write (itfile,3001);
-//PR            iter,nfgv,nint,nact,word,iback,stp,xstep,sbgnrm,f;
-/* PR
- 1004 format (/,a4, 1p, 6(1x,d11.4),/,(4x,1p,6(1x,d11.4)));
- 2001 format;
-        (/,'at iterate',i5,4x,'f= ',1p,d12.5,4x,'|proj g|= ',1p,d12.5);
- 3001 format(2(1x,i4),2(1x,i5),2x,a3,1x,i4,1p,2(2x,d7.1),1p,2(1x,d10.3));
-*/
+      if (iprint >= 1) {
+        // iterate.dat
+        printf(" %4d %4d %5d %5d  %-3.3s %4d  %7.1E  %7.1E %10.3E %10.3E\n",
+         iter,nfgv,nint,nact,word.c_str(),iback,stp,xstep,sbgnrm,f);
+      }
   }
 
   void
@@ -818,117 +857,123 @@ namespace scitbx { namespace lbfgsb { namespace raw {
     double const& sbtime,
     double const& lnscht)
   {
-//    ************
-//
-//    Subroutine prn3lb
-//
-//    This subroutine prints out information when either a built-in
-//      convergence test is satisfied or when an error message is
-//      generated.
-//
-//
-//                          *  *  *
-//
-//    NEOS, November 1994. (Latest revision June 1996.)
-//    Optimization Technology Center.
-//    Argonne National Laboratory and Northwestern University.
-//    Written by
-//                       Ciyou Zhu
-//    in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-//
-//
-//    ************
-      if (task.substr(0,5) == "ERROR") goto lbl_999;
-      if (iprint >= 0) {
-//PR     write(6,3003);
-//PR     write(6,3004);
-//PR     write(6,3005) n,iter,nfgv,nintol,nskip,nact,sbgnrm,f;
-         if (iprint >= 100) {
-//PR        write (6,1004) 'x =',(x(i),i = 1,n);
-         }
-//PR     if (iprint >= 1) write (6,*) ' f =',f;
+    /************
+
+     Subroutine prn3lb
+
+     This subroutine prints out information when either a built-in
+       convergence test is satisfied or when an error message is
+       generated.
+
+                           *  *  *
+
+     NEOS, November 1994. (Latest revision June 1996.)
+     Optimization Technology Center.
+     Argonne National Laboratory and Northwestern University.
+     Written by
+                        Ciyou Zhu
+     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+
+     ************/
+    static const char* fmt_3002 =
+      " %4d %4d %5d %5d  %-3.3s %4d  %7.1E  %7.1E      -          -\n";
+    static const char* fmt_3003 =
+      "\n"
+      "           * * *\n\n"
+      "Tit   = total number of iterations\n"
+      "Tnf   = total number of function evaluations\n"
+      "Tnint = total number of segments explored during Cauchy searches\n"
+      "Skip  = number of BFGS updates skipped\n"
+      "Nact  = number of active bounds at final generalized Cauchy point\n"
+      "Projg = norm of the final projected gradient\n"
+      "F     = final function value\n\n"
+      "           * * *\n";
+    static const char* fmt_3004 =
+      "\n   N   Tit  Tnf  Tnint  Skip  Nact     Projg        F\n";
+    static const char* fmt_3005 =
+      "%5d %4d %4d %6d  %4d %5d  %10.3E  %10.3E\n";
+    static const char* fmt_3007 =
+      "\n"
+      " Cauchy                time%10.3E seconds.\n"
+      " Subspace minimization time%10.3E seconds.\n"
+      " Line search           time%10.3E seconds.\n";
+    static const char* fmt_3008 =
+      "\n Total User time%10.3E seconds.\n\n";
+    static const char* fmt_3009 =
+      "\n%-60.60s\n";
+    static const char* fmt_9011 =
+      "\n Matrix in 1st Cholesky factorization in formk is not Pos. Def.\n";
+    static const char* fmt_9012 =
+      "\n Matrix in 2st Cholesky factorization in formk is not Pos. Def.\n";
+    static const char* fmt_9013 =
+      "\n Matrix in the Cholesky factorization in formt is not Pos. Def.\n";
+    static const char* fmt_9014 =
+      "\n"
+      " Derivative >= 0, backtracking line search impossible.\n"
+      "   Previous x, f and g restored.\n"
+      " Possible causes: 1 error in function or gradient evaluation;\n"
+      "                  2 rounding errors dominate computation.\n";
+    static const char* fmt_9015 =
+      "\n"
+      " Warning:  more than 10 function and gradient\n"
+      "   evaluations in the last line search.  Termination\n"
+      "   may possibly be caused by a bad search direction.\n";
+    static const char* fmt_9018 =
+      "\n The triangular system is singular.\n";
+    static const char* fmt_9019 =
+      "\n"
+      " Line search cannot locate an adequate point after 20 function\n"
+      "  and gradient evaluations.  Previous x, f and g restored.\n"
+      " Possible causes: 1 error in function or gradient evaluation;\n"
+      "                  2 rounding error dominate computation.\n";
+    if (task.substr(0,5) == "ERROR") goto lbl_999;
+    if (iprint >= 0) {
+      printf(fmt_3003);
+      printf(fmt_3004);
+      printf(fmt_3005, n,iter,nfgv,nintol,nskip,nact,sbgnrm,f);
+      if (iprint >= 100) {
+        write_ref1(" X =", x);
       }
-      lbl_999:
-      if (iprint >= 0) {
-//PR     write (6,3009) task;
-         if (info != 0) {
-//PR        if (info == -1) write (6,9011);
-//PR        if (info == -2) write (6,9012);
-//PR        if (info == -3) write (6,9013);
-//PR        if (info == -4) write (6,9014);
-//PR        if (info == -5) write (6,9015);
-//PR        if (info == -6) write (6,*)' input nbd(',k,') is invalid.';
-//PR        if (info == -7)
-//PR           write (6,*)' l(',k,') > u(',k,').  no feasible solution.';
-//PR        if (info == -8) write (6,9018);
-//PR        if (info == -9) write (6,9019);
-         }
-//PR     if (iprint >= 1) write (6,3007) cachyt,sbtime,lnscht;
-//PR     write (6,3008) time;
-         if (iprint >= 1) {
-            if (info == -4 || info == -9) {
-//PR           write (itfile,3002);
-//PR               iter,nfgv,nint,nact,word,iback,stp,xstep;
-            }
-//PR        write (itfile,3009) task;
-            if (info != 0) {
-//PR           if (info == -1) write (itfile,9011);
-//PR           if (info == -2) write (itfile,9012);
-//PR           if (info == -3) write (itfile,9013);
-//PR           if (info == -4) write (itfile,9014);
-//PR           if (info == -5) write (itfile,9015);
-//PR           if (info == -8) write (itfile,9018);
-//PR           if (info == -9) write (itfile,9019);
-            }
-//PR        write (itfile,3008) time;
-         }
+      if (iprint >= 1) printf("  F = %.15G\n", f);
+    }
+    lbl_999:
+    if (iprint >= 0) {
+      printf(fmt_3009, task.c_str());
+      if (info != 0) {
+        if (info == -1) printf(fmt_9011);
+        if (info == -2) printf(fmt_9012);
+        if (info == -3) printf(fmt_9013);
+        if (info == -4) printf(fmt_9014);
+        if (info == -5) printf(fmt_9015);
+        if (info == -6) {
+          printf("  Input nbd(%12d) is invalid.\n", k);
+        }
+        if (info == -7) {
+          printf("  l(%12d) > u(%12d).  No feasible solution.\n", k, k);
+        }
+        if (info == -8) printf(fmt_9018);
+        if (info == -9) printf(fmt_9019);
       }
-/* PR
- 1004 format (/,a4, 1p, 6(1x,d11.4),/,(4x,1p,6(1x,d11.4)));
- 3002 format(2(1x,i4),2(1x,i5),2x,a3,1x,i4,1p,2(2x,d7.1),6x,'-',10x,'-');
- 3003 format (/,
-       '           * * *',/,/,
-       'tit   = total number of iterations',/,
-       'tnf   = total number of function evaluations',/,
-       'tnint = total number of segments explored during',
-                 ' cauchy searches',/,
-       'skip  = number of bfgs updates skipped',/,
-       'nact  = number of active bounds at final generalized',
-                ' cauchy point',/,
-       'projg = norm of the final projected gradient',/,
-       'f     = final function value',/,/,
-       '           * * *');
- 3004 format (/,3x,'n',3x,'tit',2x,'tnf',2x,'tnint',2x,
-             'skip',2x,'nact',5x,'projg',8x,'f');
- 3005 format (i5,2(1x,i4),(1x,i6),(2x,i4),(1x,i5),1p,2(2x,d10.3));
- 3006 format (i5,2(1x,i4),2(1x,i6),(1x,i4),(1x,i5),7x,'-',10x,'-');
- 3007 format (/,' cauchy                time',1p,e10.3,' seconds.',/;
-              ' subspace minimization time',1p,e10.3,' seconds.',/;
-              ' line search           time',1p,e10.3,' seconds.');
- 3008 format (/,' total user time',1p,e10.3,' seconds.',/);
- 3009 format (/,a60);
- 9011 format (/,
-      ' matrix in 1st cholesky factorization in formk is not pos. def.');
- 9012 format (/,
-      ' matrix in 2st cholesky factorization in formk is not pos. def.');
- 9013 format (/,
-      ' matrix in the cholesky factorization in formt is not pos. def.');
- 9014 format (/,
-      ' derivative >= 0, backtracking line search impossible.',/,
-      '   previous x, f and g restored.',/,
-      ' possible causes: 1 error in function or gradient evaluation;',/,
-      '                  2 rounding errors dominate computation.');
- 9015 format (/,
-      ' warning:  more than 10 function and gradient',/,
-      '   evaluations in the last line search.  termination',/,
-      '   may possibly be caused by a bad search direction.');
- 9018 format (/,' the triangular system is singular.');
- 9019 format (/,
-      ' line search cannot locate an adequate point after 20 function',/;
-      ,'  and gradient evaluations.  previous x, f and g restored.',/,
-      ' possible causes: 1 error in function or gradient evaluation;',/,
-      '                  2 rounding error dominate computation.');
-*/
+      if (iprint >= 1) printf(fmt_3007, cachyt,sbtime,lnscht);
+      printf(fmt_3008, time);
+      if (iprint >= 1) {
+        if (info == -4 || info == -9) {
+          printf(fmt_3002,
+            iter,nfgv,nint,nact,word.c_str(),iback,stp,xstep); // itfile
+        }
+        printf(fmt_3009, task.c_str()); // itfile
+        if (info != 0) {
+          if (info == -1) printf(fmt_9011); // itfile
+          if (info == -2) printf(fmt_9012); // itfile
+          if (info == -3) printf(fmt_9013); // itfile
+          if (info == -4) printf(fmt_9014); // itfile
+          if (info == -5) printf(fmt_9015); // itfile
+          if (info == -8) printf(fmt_9018); // itfile
+          if (info == -9) printf(fmt_9019); // itfile
+        }
+        printf(fmt_3008, time); // itfile
+      }
+    }
   }
 
   void
@@ -1015,15 +1060,17 @@ namespace scitbx { namespace lbfgsb { namespace raw {
         }
       }
       if (iprint >= 0) {
-//PR    if (prjctd) write (6,*)
-//PR      'the initial x is infeasible.  restart with its projection.';
-//PR    if (!cnstnd)
-//PR      write (6,*) 'this problem is unconstrained.';
+        if (prjctd) {
+          printf(
+            " The initial X is infeasible.  Restart with its projection.\n");
+        }
+        if (!cnstnd) {
+          printf(" This problem is unconstrained.\n");
+        }
       }
-//PR  if (iprint > 0) write (6,1001) nbdd;
-/* PR
- 1001 format (/,'at x0 ',i9,' variables are exactly at the bounds');
-*/
+      if (iprint > 0) {
+        printf("\nAt X0 %9d variables are exactly at the bounds\n", nbdd);
+      }
   }
 
   void
@@ -1255,14 +1302,6 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //
 //
 //    ************
-/*
-      bool          xlower,xupper,bnded;
-      int          i,j,col2,nfree,nbreak,pointr,
-                       ibp,nleft,ibkmin,iter;
-      double f1,f2,dt,dtm,tsum,dibp,zibp,dibp2,bkmin,
-                       tu,tl,wmc,wmp,wmw,ddot,tj,tj0,neggi,
-                       f2_org;
-*/
       double one = 1;
       double zero = 0;
 //    Check the status of the variables, reset iwhere(i) if necessary;
@@ -1270,7 +1309,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //      the derivative f1 and the vector p = W'd (for theta = 1).
 
       if (sbgnrm <= zero) {
-//PR     if (iprint >= 0) write (6,*) 'subgnorm = 0.  gcp = x.';
+         if (iprint >= 0) {
+           printf(" Subgnorm = 0.  GCP = X.\n");
+         }
          dcopy(n,x,1,xcp,1);
          return;
       }
@@ -1281,7 +1322,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       double bkmin = zero;
       int col2 = 2*col;
       double f1 = zero;
-//PR  if (iprint >= 99) write (6,3010);
+      if (iprint >= 99) {
+        printf("\n---------------- CAUCHY entered-------------------\n");
+      }
 //    We set p to zero and build it up as we determine d.
       for(int i=1;i<=col2;i++) {
         p(i) = zero;
@@ -1368,7 +1411,10 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       dcopy(n,x,1,xcp,1);
       if (nbreak == 0 && nfree == n + 1) {
 //                 is a zero vector, return with the initial xcp as GCP.
-//PR     if (iprint > 100) write (6,1010) (xcp(i), i = 1, n);
+         if (iprint > 100) {
+           printf("Cauchy X =  ");
+           write_ref1("    ", xcp);
+         }
          return;
       }
 //    Initialize c = W'(xcp - x) = 0.
@@ -1386,8 +1432,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       double dtm = -f1/f2;
       double tsum = zero;
       nint = 1;
-//PR  if (iprint >= 99)
-//PR     write (6,*) 'there are ',nbreak,'  breakpoints ';
+      if (iprint >= 99) {
+        printf(" There are %12d  breakpoints \n", nbreak);
+      }
 //    If there are no breakpoints, locate the GCP and return.
       if (nbreak == 0) goto lbl_888;
       { // scope for variables
@@ -1424,9 +1471,10 @@ namespace scitbx { namespace lbfgsb { namespace raw {
         }
         double dt = tj - tj0;
         if (dt != zero && iprint >= 100) {
-//PR     write (6,4011) nint,f1,f2;
-//PR     write (6,5010) dt;
-//PR     write (6,6010) dtm;
+          printf("\nPiece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
+            nint,f1,f2);
+          printf("Distance to the next break point =  %11.4E\n", dt);
+          printf("Distance to the stationary point =  %11.4E\n", dtm);
         }
 //    If a minimizer is within this interval, locate the GCP and return.
         if (dtm < dt) goto lbl_888;
@@ -1448,7 +1496,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
            xcp(ibp) = l(ibp);
            iwhere(ibp) = 1;
         }
-//PR  if (iprint >= 100) write (6,*) 'variable  ',ibp,'  is fixed.';
+        if (iprint >= 100) {
+          printf(" Variable  %12d  is fixed.\n", ibp);
+        }
         if (nleft == 0 && nbreak == n) {
 //                                            all n variables are fixed,
 //                                               return with xcp as GCP.
@@ -1503,10 +1553,11 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //------------------ the end of the loop -------------------------------
       lbl_888:
       if (iprint >= 99) {
-//PR     write (6,*);
-//PR     write (6,*) 'gcp found in this segment';
-//PR     write (6,4010) nint,f1,f2;
-//PR     write (6,6010) dtm;
+         printf(" \n");
+         printf(" GCP found in this segment\n");
+         printf("Piece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
+           nint,f1,f2);
+         printf("Distance to the stationary point =  %11.4E\n", dtm);
       }
       if (dtm <= zero) dtm = zero;
       tsum = tsum + dtm;
@@ -1517,18 +1568,13 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //    Update c = c + dtm*p = W'(x^c - x)
 //      which will be used in computing r = Z'(B(x^c - x) + g).
       if (col > 0) daxpy(col2,dtm,p.begin(),c.begin());
-//PR  if (iprint > 100) write (6,1010) (xcp(i),i = 1,n);
-//PR  if (iprint >= 99) write (6,2010);
-/* PR
- 1010 format ('cauchy x =  ',/,(4x,1p,6(1x,d11.4)));
- 2010 format (/,'---------------- exit cauchy----------------------',/);
- 3010 format (/,'---------------- cauchy entered-------------------');
- 4010 format ('piece    ',i3,' --f1, f2 at start point ',1p,2(1x,d11.4));
- 4011 format (/,'piece    ',i3,' --f1, f2 at start point ',
-              1p,2(1x,d11.4));
- 5010 format ('distance to the next break point =  ',1p,d11.4);
- 6010 format ('distance to the stationary point =  ',1p,d11.4);
-*/
+      if (iprint > 100) {
+        printf("Cauchy X =  ");
+        write_ref1("    ", xcp);
+      }
+      if (iprint >= 99) {
+        printf("\n---------------- exit CAUCHY----------------------\n\n");
+      }
   }
 
   void
@@ -1595,8 +1641,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
             if (iwhere(k) > 0) {
                ileave = ileave - 1;
                indx2(ileave) = k;
-//PR           if (iprint >= 100) write (6,*);
-//PR               'variable ',k,' leaves the set of free variables';
+               if (iprint >= 100) {
+                 printf(" Variable %12d leaves the set of free variables\n", k);
+               }
             }
          }
          for(int i=1+nfree;i<=n;i++) {
@@ -1604,12 +1651,15 @@ namespace scitbx { namespace lbfgsb { namespace raw {
             if (iwhere(k) <= 0) {
                nenter = nenter + 1;
                indx2(nenter) = k;
-//PR           if (iprint >= 100) write (6,*);
-//PR               'variable ',k,' enters the set of free variables';
+               if (iprint >= 100) {
+                 printf(" Variable %12d enters the set of free variables\n", k);
+               }
             }
          }
-//PR     if (iprint >= 99) write (6,*);
-//PR         n+1-ileave,' variables leave; ',nenter,' variables enter';
+         if (iprint >= 99) {
+           printf("%12d variables leave; %12d variables enter\n",
+             n+1-ileave, nenter);
+         }
       }
       wrk = (ileave < n+1) || (nenter > 0) || updatd;
 //    Find the index set of free and active variables at the GCP.
@@ -1625,8 +1675,10 @@ namespace scitbx { namespace lbfgsb { namespace raw {
             index(iact) = i;
          }
       }
-//PR  if (iprint >= 99) write (6,*);
-//PR        nfree,' variables are free at gcp ',iter + 1;
+      if (iprint >= 99) {
+        printf("%12d variables are free at GCP %12d\n",
+          nfree, iter + 1);
+      }
   }
 
   void
@@ -1846,14 +1898,6 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //
 //
 //    ************
-/*
-      int          m2,ipntr,jpntr,iy,is,jy,js,is1,js1,k1,i,k,
-                       col2,pbegin,pend,dbegin,dend,upcl;
-      double ddot,temp1,temp2,temp3,temp4;
-      double one,zero;
-      parameter        (one=1.0d0,zero=0.0d0);
-*/
-
 //    Form the lower triangular part of
 //              WN1 = [Y' ZZ'Y   L_a'+R_z']
 //                    [L_a+R_z   S'AA'S   ]
@@ -2019,7 +2063,7 @@ namespace scitbx { namespace lbfgsb { namespace raw {
         }
       }
 //    Cholesky factorization of (2,2) block of wn.
-      dpofa(wn.get2(col+1,col+1,m2,col),m2,col,info);
+      dpofa(wn.get2FAIL(col+1,col+1,m2,col),m2,col,info);
       if (info != 0) {
          info = -2;
          return;
@@ -2288,7 +2332,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //
 //    ************
       if (nsub <= 0) return;
-//PR  if (iprint >= 99) write (6,1001);
+      if (iprint >= 99) {
+        printf("\n----------------SUBSM entered-----------------\n\n");
+      }
       // Compute wv = W'Zd.
       double zero = 0;
       double one = 1;
@@ -2321,7 +2367,7 @@ namespace scitbx { namespace lbfgsb { namespace raw {
          int js = col + jy;
          for(int i=1;i<=nsub;i++) {
             int k = ind(i);
-            d(i) = d(i) + wy(k,pointr)*wv(jy)/theta;
+            d(i) = d(i) + wy(k,pointr)*wv(jy)/theta
                         + ws(k,pointr)*wv(js);
          }
          pointr = pointr % m + 1;
@@ -2382,12 +2428,15 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       }
       if (iprint >= 99) {
          if (alpha < one) {
-//PR        write (6,1002) alpha;
+           printf("ALPHA = %7.5f backtrack to the BOX\n", alpha);
          }
          else {
-//PR        write (6,*) 'sm solution inside the box';
+           printf(" SM solution inside the box\n");
          }
-//PR     if (iprint >100) write (6,1003) (x(i),i=1,n);
+         if (iprint >100) {
+           printf("Subspace solution X =  ");
+           write_ref1("    ", x);
+         }
       }
       if (alpha < one) {
          iword = 1;
@@ -2395,13 +2444,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       else {
          iword = 0;
       }
-//PR  if (iprint >= 99) write (6,1004);
-/* PR
- 1001 format (/,'----------------subsm entered-----------------',/);
- 1002 format ( 'alpha = ',f7.5,' backtrack to the box');
- 1003 format ('subspace solution x =  ',/,(4x,1p,6(1x,d11.4)));
- 1004 format (/,'----------------exit subsm --------------------',/);
-*/
+      if (iprint >= 99) {
+        printf("\n----------------exit SUBSM --------------------\n\n");
+      }
   }
 
   void
@@ -3064,10 +3109,6 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //
 //
 //    **********
-/*
-      int          i;
-      double           precision ddot,a1,a2;
-*/
       double one=1.0e0;
       double zero=0.0e0;
       double big=1.0e+10;
@@ -3550,18 +3591,6 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //
 //
 //    ************
-/*
-      bool          prjctd,cnstnd,boxed,updatd,wrk;
-      std::string      word;
-      int          k,nintol,itfile,iback,nskip,
-                       head,col,iter,itail,iupdat,
-                       nint,nfgv,info,ifun,
-                       iword,nfree,nact,ileave,nenter;
-      double theta,fold,dr,rr,tol,
-                       xstep,sbgnrm,ddum,dnorm,dtd,epsmch,
-                       cpu1,cpu2,cachyt,sbtime,lnscht,time1,time2,
-                       gd,gdold,stp,stpmx,time;
-*/
       double zero = 0;
       double one = 1;
       // begin variables in [lid]save arrays
@@ -3592,7 +3621,7 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       double tol;
       double dnorm;
       double epsmch;
-      double cpu1;
+      double cpu1 = 0; // work around gcc 3.2 or valgrind bug
       double cachyt;
       double sbtime;
       double lnscht;
@@ -3723,8 +3752,11 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       // Compute the infinity norm of the (-) projected gradient.
       projgr(n,l,u,nbd,x,g,sbgnrm);
       if (iprint >= 1) {
-//PR     write (6,1002) iter,f,sbgnrm;
-//PR     write (itfile,1003) iter,nfgv,sbgnrm,f;
+        printf("\nAt iterate%5d    f= %12.5E    |proj g|= %12.5E\n",
+          iter,f,sbgnrm);
+        printf(
+          " %4d %4d     -     -   -     -     -        -    %10.3E %10.3E\n",
+          iter,nfgv,sbgnrm,f);
       }
       if (sbgnrm <= pgtol) {
         // terminate the algorithm.
@@ -3733,7 +3765,9 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       }
       //----------------- the beginning of the loop --------------------------
       lbl_222:
-//PR  if (iprint >= 99) write (6,1001) iter + 1;
+      if (iprint >= 99) {
+        printf("\n\nITERATION %5d\n", iter + 1);
+      }
       iword = -1;
       if (!cnstnd && col > 0) {
          // skip the search for GCP.
@@ -3756,9 +3790,13 @@ namespace scitbx { namespace lbfgsb { namespace raw {
         wa.get1(4*m+1, 2*m),
         wa.get1(6*m+1, 2*m),
         nint,sg,yg,iprint,sbgnrm,info,epsmch);
+      static const char* fmt_1005 =
+        "\n"
+        " Singular triangular system detected;\n"
+        "   refresh the lbfgs memory and restart the iteration.\n";
       if (info != 0) {
          // singular triangular system detected; refresh the lbfgs memory.
-//PR     if(iprint >= 1) write (6, 1005);
+         if(iprint >= 1) printf(fmt_1005);
          info   = 0;
          col    = 0;
          head   = 1;
@@ -3797,7 +3835,11 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       if (info != 0) {
 //         nonpositive definiteness in Cholesky factorization;
 //         refresh the lbfgs memory and restart the iteration.
-//PR     if(iprint >= 1) write (6, 1006);
+         if(iprint >= 1) {
+           printf("\n"
+             " Nonpositive definiteness in Cholesky factorization in formk;\n"
+             "   refresh the lbfgs memory and restart the iteration.\n");
+         }
          info   = 0;
          col    = 0;
          head   = 1;
@@ -3814,13 +3856,13 @@ namespace scitbx { namespace lbfgsb { namespace raw {
              theta,col,head,nfree,cnstnd,info);
       if (info != 0) goto lbl_444;
 //      call the direct method.
-      subsm(n,m,nfree,index,l,u,nbd,z,r,ws,wy,theta,
+      subsm(n,m,nfree,index.get1(1,nfree),l,u,nbd,z,r,ws,wy,theta,
             col,head,iword,wa.get1(1,2*m),wn,iprint,info);
       lbl_444:
       if (info != 0) {
 //         singular triangular system detected;
 //         refresh the lbfgs memory and restart the iteration.
-//PR     if(iprint >= 1) write (6, 1005);
+         if(iprint >= 1)  printf(fmt_1005);
          info   = 0;
          col    = 0;
          head   = 1;
@@ -3868,7 +3910,11 @@ namespace scitbx { namespace lbfgsb { namespace raw {
          }
          else {
 //            refresh the lbfgs memory and restart the iteration.
-//PR        if(iprint >= 1) write (6, 1008);
+            if(iprint >= 1) {
+              printf("\n"
+                " Bad direction in the line search;\n"
+                "   refresh the lbfgs memory and restart the iteration.\n");
+            }
             if (info == 0) nfgv = nfgv - 1;
             info   = 0;
             col    = 0;
@@ -3932,7 +3978,10 @@ namespace scitbx { namespace lbfgsb { namespace raw {
 //                           skip the L-BFGS update.
            nskip = nskip + 1;
            updatd = false;
-//PR     if (iprint >= 1) write (6,1004) dr, ddum;
+           if (iprint >= 1) {
+             printf("  ys=%10.3E  -gs=%10.3E BFGS update SKIPPED\n",
+               dr, ddum);
+           }
            goto lbl_888;
         }
       }
@@ -3954,7 +4003,11 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       if (info != 0) {
 //         nonpositive definiteness in Cholesky factorization;
 //         refresh the lbfgs memory and restart the iteration.
-//PR     if(iprint >= 1) write (6, 1007);
+         if(iprint >= 1) {
+           printf("\n"
+             " Nonpositive definiteness in Cholesky factorization in formt;\n"
+             "   refresh the lbfgs memory and restart the iteration.\n");
+         }
          info = 0;
          col = 0;
          head = 1;
@@ -4019,26 +4072,6 @@ namespace scitbx { namespace lbfgsb { namespace raw {
       dsave(14) = stp;
       dsave(15) = gdold;
       dsave(16) = dtd;
-/* PR
- 1001 format (//,'iteration ',i5);
- 1002 format;
-        (/,'at iterate',i5,4x,'f= ',1p,d12.5,4x,'|proj g|= ',1p,d12.5);
- 1003 format (2(1x,i4),5x,'-',5x,'-',3x,'-',5x,'-',5x,'-',8x,'-',3x,
-              1p,2(1x,d10.3));
- 1004 format ('  ys=',1p,e10.3,'  -gs=',1p,e10.3,' bfgs update skipped');
- 1005 format (/,
-      ' singular triangular system detected;',/,
-      '   refresh the lbfgs memory and restart the iteration.');
- 1006 format (/,
-      ' nonpositive definiteness in cholesky factorization in formk;',/,
-      '   refresh the lbfgs memory and restart the iteration.');
- 1007 format (/,
-      ' nonpositive definiteness in cholesky factorization in formt;',/,
-      '   refresh the lbfgs memory and restart the iteration.');
- 1008 format (/,
-      ' bad direction in the line search;',/,
-      '   refresh the lbfgs memory and restart the iteration.');
-*/
   }
 
   void
