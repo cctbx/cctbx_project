@@ -399,6 +399,12 @@ e $f
 f $d
 g $d
 h $_X_Y_Z_
+i 0
+i 1
+j $i
+k $l
+l x
+l y
 """)
   assert len(parameters.get(path="a").objects) == 1
   for path in "abcdefg":
@@ -416,6 +422,8 @@ h $_X_Y_Z_
   else: raise RuntimeError("Exception expected.")
   os.environ["_X_Y_Z_"] = "xyz"
   check_get_sub(parameters, path="h", expected_out='h "xyz"\n')
+  check_get_sub(parameters, path="j", expected_out='j 1\n')
+  check_get_sub(parameters, path="k", expected_out='k y\n')
   parameters = iotbx.parameters.parse(input_string="""\
 a x
 b $a
