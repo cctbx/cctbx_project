@@ -25,7 +25,7 @@ namespace cctbx {
     //! Copy boost::array with type conversion.
     template <typename U>
     array(const boost::array<U, N>& a) {
-      for(std::size_t i=0;i<a.size();i++) elems[i] = a[i];
+      for(std::size_t i=0;i<size();i++) elems[i] = a[i];
     }
 
     //! Convenience constructor.
