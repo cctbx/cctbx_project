@@ -13,9 +13,13 @@ if (sys.platform == "linux2"):
 """
   f.close()
 
+def norm_join(head, tail):
+  return os.path.normpath(os.path.join(head, tail))
+
 env_etc = empty()
 env_etc.compiler = ARGUMENTS.get("compiler", 0)
 env_etc.touch_init = touch_init
+env_etc.norm_join = norm_join
 
 if (env_etc.compiler == 0):
   if (sys.platform == "win32"):
@@ -37,14 +41,9 @@ assert env_etc.compiler in (
 if (sys.platform == "win32"):
   env_base = Environment(ENV=os.environ)
   env_etc.python_include = r"c:\Python22\include"
-  env_etc.boost_include = r"r:\boost"
-  env_etc.scitbx_include = r"r:\bpl2\scitbx\include"
-  env_etc.cctbx_include = r"r:\bpl2\cctbx\include"
-  env_etc.boost_libs_python = r"r:\boost\libs\python"
   env_etc.libs_python = ["python22"]
   env_etc.libpath_python = [r"c:\Python22\libs"]
   env_etc.extension_module_suffix = ".pyd"
-  env_base.Update(COPYCOM="copy")
   if (env_etc.compiler == "win32_cl"):
     env_base.Update(
       SHCXX="cl",
@@ -65,15 +64,10 @@ else:
     # XXX hack to create a default configuration that we can customize
     tools=['g++', 'gnulink', 'ar'])
   env_etc.python_include = "/usr/local_cci/Python-2.2.1/include/python2.2"
-  env_etc.boost_include = "/net/cci/rwgk/boost"
-  env_etc.scitbx_include = "/net/cci/rwgk/bpl2/scitbx/include"
-  env_etc.cctbx_include = "/net/cci/rwgk/bpl2/cctbx/include"
-  env_etc.boost_libs_python = "/net/cci/rwgk/boost/libs/python"
   env_etc.libs_python = []
   env_etc.libpath_python = []
   env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
-  env_base.Replace(COPYCOM="cp")
   if (env_etc.compiler == "tru64_cxx"):
     env_base.Replace(
       CXX="cxx",
@@ -110,8 +104,16 @@ env_etc.cxxflags_bpl_defines_base = Split("""
     -DBOOST_PYTHON_V2
 """)
 
+env_etc.libtbx_build = os.environ["LIBTBX_BUILD"]
+env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "libtbx/include")
+env_etc.libtbx_lib = norm_join(env_etc.libtbx_build, "libtbx")
+env_etc.libtbx_boost = os.environ["LIBTBX_BOOST"]
+env_etc.boost_include = env_etc.libtbx_boost
+
 env_boost_python_ext = env_base.Copy(
-  CPPPATH=[env_etc.boost_include, env_etc.python_include],
+  CPPPATH=[env_etc.libtbx_include,
+           env_etc.boost_include,
+           env_etc.python_include],
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags_bpl,

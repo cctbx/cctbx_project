@@ -1,11 +1,9 @@
-import sys
+import sys, os.path
 
-import path_to_include
-
-def write_copyright():
+def write_copyright(f):
   try: name = __file__
   except: name = sys.argv[0]
-  print \
+  print >> f, \
 """/* Copyright (c) 2001-2002 The Regents of the University of California
    through E.O. Lawrence Berkeley National Laboratory, subject to
    approval by the U.S. Department of Energy.
@@ -33,8 +31,8 @@ def substitute(subs, template):
   assert template.find("${") < 0, "Incomplete substitutions."
   return template[1:]
 
-def generate_cmp(subs):
-  print substitute(subs, """
+def generate_cmp(f, subs):
+  print >> f, substitute(subs, """
   template <typename ElementType1${templ_decl_2_1},
             typename ElementType2${templ_decl_2_2}>
   int
@@ -67,10 +65,10 @@ def generate_cmp(subs):
   }
 """)
 
-def generate_max_index_etc(subs):
+def generate_max_index_etc(f, subs):
   for func_name in ("max_index", "min_index"):
     subs["func_name"] = func_name
-    print substitute(subs, """
+    print >> f, substitute(subs, """
   template <typename ElementType${templ_decl_2}>
   inline
   std::size_t
@@ -80,11 +78,11 @@ def generate_max_index_etc(subs):
   }
 """)
 
-def generate_max_etc(subs):
+def generate_max_etc(f, subs):
   for func_name in ("max", "min", "sum", "sum_sq",
                     "product", "mean", "mean_sq"):
     subs["func_name"] = func_name
-    print substitute(subs, """
+    print >> f, substitute(subs, """
   template <typename ElementType${templ_decl_2}>
   inline
   ElementType
@@ -94,10 +92,10 @@ def generate_max_etc(subs):
   }
 """)
 
-def generate_mean_weighted_etc(subs):
+def generate_mean_weighted_etc(f, subs):
   for func_name in ("mean_weighted", "mean_sq_weighted"):
     subs["func_name"] = func_name
-    print substitute(subs, """
+    print >> f, substitute(subs, """
   template <typename ElementTypeValues${templ_decl_2_1eq},
             typename ElementTypeWeights${templ_decl_2_2eq}>
   inline
@@ -110,16 +108,16 @@ def generate_mean_weighted_etc(subs):
   }
 """)
 
-def one_type(subs):
+def one_type(target_dir, subs):
   array_type = subs["array_type"]
   subs["array_type_plain"] = array_type + "_plain"
   subs["ARRAY_TYPE"] = array_type.upper()
-  output_file_name = path_to_include.expand("%s_reductions.h" % (array_type,))
+  output_file_name = os.path.normpath(os.path.join(
+    target_dir, "%s_reductions.h" % (array_type,)))
   print "Generating:", output_file_name
   f = open(output_file_name, "w")
-  sys.stdout = f
-  write_copyright()
-  print substitute(subs, """
+  write_copyright(f)
+  print >> f, substitute(subs, """
 #ifndef SCITBX_ARRAY_FAMILY_${ARRAY_TYPE}_REDUCTIONS_H
 #define SCITBX_ARRAY_FAMILY_${ARRAY_TYPE}_REDUCTIONS_H
 
@@ -131,12 +129,12 @@ def one_type(subs):
 namespace scitbx { namespace af {
 """)
 
-  generate_cmp(subs)
-  generate_max_index_etc(subs)
-  generate_max_etc(subs)
-  generate_mean_weighted_etc(subs)
+  generate_cmp(f, subs)
+  generate_max_index_etc(f, subs)
+  generate_max_etc(f, subs)
+  generate_mean_weighted_etc(f, subs)
 
-  print substitute(subs, """
+  print >> f, substitute(subs, """
 }} // namespace scitbx::af
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
@@ -144,10 +142,9 @@ namespace scitbx { namespace af {
 #endif // SCITBX_ARRAY_FAMILY_${ARRAY_TYPE}_REDUCTIONS_H
 """)
 
-  sys.stdout = sys.__stdout__
   f.close()
 
-def run():
+def run(target_dir):
   tiny_subs = make_dict(
     array_type="tiny",
     templ_decl_2=", std::size_t N",
@@ -197,7 +194,7 @@ def run():
     templ_inst_2_1eq=", AccessorType1",
     templ_inst_2_2eq=", AccessorType2")
   for subs in (tiny_subs, small_subs, shared_subs, versa_subs):
-    one_type(subs)
+    one_type(target_dir, subs)
 
 if (__name__ == "__main__"):
-  run()
+  run(".")

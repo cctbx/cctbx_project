@@ -1,9 +1,9 @@
-import path_to_include
+import sys, os.path
 
-def write_copyright():
+def write_copyright(f):
   try: name = __file__
   except: name = sys.argv[0]
-  print \
+  print >> f, \
 """/* Copyright (c) 2001-2002 The Regents of the University of California
    through E.O. Lawrence Berkeley National Laboratory, subject to
    approval by the U.S. Department of Energy.
@@ -47,8 +47,6 @@ special_pairs = (
   (pair("std::complex<float>", "double"), "std::complex<double>"),
 )
 
-import sys
-
 def build_pairs():
   op_types = []
   result_type = []
@@ -63,19 +61,20 @@ def build_pairs():
     result_type[op_types.index(op_t)] = result_t
   return op_types, result_type
 
-def run():
+def run(target_dir):
   op_types, result_type = build_pairs()
   assert len(op_types) == len(result_type)
   if ("--Raw" in sys.argv):
     for i in xrange(len(op_types)):
-      print "%s + %s = %s" % (op_types[i].lhs, op_types[i].rhs, result_type[i])
+      print >> f, "%s + %s = %s" % (
+        op_types[i].lhs, op_types[i].rhs, result_type[i])
   else:
-    output_file_name = path_to_include.expand("operator_traits_builtin.h")
+    output_file_name = os.path.normpath(os.path.join(
+      target_dir, "operator_traits_builtin.h"))
     print "Generating:", output_file_name
     f = open(output_file_name, "w")
-    sys.stdout = f
-    write_copyright()
-    print """
+    write_copyright(f)
+    print >> f, """
 #ifndef SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 #define SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 
@@ -97,19 +96,18 @@ namespace scitbx { namespace af {
 
     for i in xrange(len(op_types)):
       if (result_type[i]):
-        print """  template<>
+        print >> f, """  template<>
   struct binary_operator_traits<%s, %s > {
     typedef %s arithmetic;
   };
 """ % (op_types[i].lhs, op_types[i].rhs, result_type[i])
 
-    print "}} // namespace scitbx::af"
-    print ""
-    print "#endif // DOXYGEN_SHOULD_SKIP_THIS"
-    print ""
-    print "#endif // SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H"
-    sys.stdout = sys.__stdout__
+    print >> f, "}} // namespace scitbx::af"
+    print >> f
+    print >> f, "#endif // DOXYGEN_SHOULD_SKIP_THIS"
+    print >> f
+    print >> f, "#endif // SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H"
     f.close()
 
 if (__name__ == "__main__"):
-  run()
+  run(".")

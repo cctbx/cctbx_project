@@ -1,12 +1,11 @@
-import sys
+import sys, os.path
 
-import path_to_include
 import generate_operator_functors
 
-def write_copyright():
+def write_copyright(f):
   try: name = __file__
   except: name = sys.argv[0]
-  print \
+  print >> f, \
 """/* Copyright (c) 2001-2002 The Regents of the University of California
    through E.O. Lawrence Berkeley National Laboratory, subject to
    approval by the U.S. Department of Energy.
@@ -75,24 +74,24 @@ complex_special = (
 complex_special_addl_1arg = ("real", "imag", "arg", "norm")
 complex_special_addl_2arg = ("polar",)
 
-def generate_1arg():
+def generate_1arg(f):
   for function_name in (
     cmath_1arg + cstdlib_1arg + complex_1arg + complex_special_addl_1arg):
-    generate_operator_functors.generate_unary(
+    generate_operator_functors.generate_unary(f,
       function_name, function_name + "(x)")
 
-def generate_2arg():
+def generate_2arg(f):
   for function_name in cmath_2arg + complex_special_addl_2arg:
-    generate_operator_functors.generate_binary(
+    generate_operator_functors.generate_binary(f,
       function_name, function_name + "(x, y)")
 
-def run():
-  output_file_name = path_to_include.expand("detail/std_imports.h")
+def run(target_dir):
+  output_file_name = os.path.normpath(os.path.join(
+    target_dir, "std_imports.h"))
   print "Generating:", output_file_name
   f = open(output_file_name, "w")
-  sys.stdout = f
-  write_copyright()
-  print """
+  write_copyright(f)
+  print >> f, """
 #ifndef SCITBX_ARRAY_FAMILY_STD_IMPORTS_H
 #define SCITBX_ARRAY_FAMILY_STD_IMPORTS_H
 
@@ -115,19 +114,18 @@ namespace scitbx { namespace fn {
       all_function_names.append(function_name)
 
   for function_name in all_function_names:
-    print "  using std::" + function_name + ";"
+    print >> f, "  using std::" + function_name + ";"
 
-  generate_1arg()
-  generate_2arg()
+  generate_1arg(f)
+  generate_2arg(f)
 
-  print """
+  print >> f, """
 }} // namespace scitbx::af
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // SCITBX_ARRAY_FAMILY_STD_IMPORTS_H"""
-  sys.stdout = sys.__stdout__
   f.close()
 
 if (__name__ == "__main__"):
-  run()
+  run(".")
