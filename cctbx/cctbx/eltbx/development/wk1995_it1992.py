@@ -19,16 +19,18 @@ def run(args):
   max_errors = flex.double()
   for wk in xray_scattering.wk1995_iterator():
     it = xray_scattering.it1992(wk.label(), 1)
-    diff_gaussian = xray_scattering.difference_gaussian(wk.fetch(), it.fetch())
+    fit_object = xray_scattering.gaussian_fit(
+      gaussian_fit.international_tables_sampling_stols[:n_points],
+      wk.fetch(),
+      gaussian_fit.international_tables_sampled_value_sigmas[:n_points],
+      it.fetch())
     labels.append(wk.label())
     max_errors.append(flex.max(gaussian_fit.get_significant_relative_errors(
-      diff_gaussian=diff_gaussian,
-      n_points=n_points)))
+      fit_object=fit_object)))
     gaussian_fit.write_plots(
       plots_dir="wk1995_it1992_plots",
       label=wk.label(),
-      gaussians=[wk.fetch(), it.fetch()],
-      n_points=n_points)
+      fit_object=fit_object)
   perm = flex.sort_permutation(max_errors, 0001)
   labels = labels.select(perm)
   max_errors = max_errors.select(perm)

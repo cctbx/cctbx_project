@@ -76,6 +76,34 @@ namespace {
     }
   };
 
+  struct gaussian_fit_wrappers
+  {
+    typedef gaussian_fit w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<gaussian> >("gaussian_fit", no_init)
+        .def(init<af::shared<double> const&,
+                  af::shared<double> const&,
+                  af::shared<double> const&,
+                  gaussian const&>())
+        .def(init<af::shared<double> const&,
+                  gaussian const&,
+                  af::shared<double> const&,
+                  gaussian const&>())
+        .def("stols", &w_t::stols)
+        .def("target_values", &w_t::target_values)
+        .def("sigmas", &w_t::sigmas)
+        .def("fitted_values", &w_t::fitted_values)
+        .def("differences", &w_t::differences)
+        .def("apply_shifts", &w_t::apply_shifts)
+        .def("sum_of_gradients", &w_t::sum_of_gradients)
+      ;
+    }
+  };
+
   template <std::size_t N>
   struct base_wrappers
   {
@@ -143,6 +171,7 @@ namespace {
 
     gaussian_wrappers::wrap();
     difference_gaussian_wrappers::wrap();
+    gaussian_fit_wrappers::wrap();
 
     it1992_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
