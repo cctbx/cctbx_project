@@ -19,7 +19,8 @@ class ADSCImage:
         pattern = re.compile(item+'='+r'(.*);')
         matches = pattern.findall(header)
         parameters[item] = int(matches[-1])
-      for item in ['PIXEL_SIZE','OSC_START',]:
+      for item in ['PIXEL_SIZE','OSC_START','DISTANCE','WAVELENGTH',
+                   'BEAM_CENTER_X','BEAM_CENTER_Y']:
         pattern = re.compile(item+'='+r'(.*);')
         matches = pattern.findall(header)
         parameters[item] = float(matches[-1])
@@ -32,6 +33,9 @@ class ADSCImage:
     self.size2 = self.parameters['SIZE2']
     self.file_length = self.ptr+2*self.size1*self.size2
     return self.file_length
+    # pure supposition:
+    #  size1 corresponds to number of rows.  Columns are slow. 
+    #  size2 corresponds to number of columns.  Rows are fast.
 
   def read(self):
     self.fileLength()
@@ -45,6 +49,11 @@ class ADSCImage:
     elif attr=='rawdata' : return self.linearintdata
     elif attr=='pixel_size' : return self.parameters['PIXEL_SIZE']
     elif attr=='osc_start' : return self.parameters['OSC_START']
+    elif attr=='distance' : return self.parameters['DISTANCE']
+    elif attr=='wavelength' : return self.parameters['WAVELENGTH']
+    elif attr=='beamx' : return self.parameters['BEAM_CENTER_X']
+    elif attr=='beamy' : return self.parameters['BEAM_CENTER_Y']
+
 
 if __name__=='__main__':
   i = "./procrun0000035903/run35903_1_001.img"
