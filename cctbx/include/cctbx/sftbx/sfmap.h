@@ -314,13 +314,14 @@ namespace cctbx { namespace sftbx {
         const FloatType& exp_table_one_over_step_size = -100,
         bool electron_density_must_be_positive = true)
         : ucell_(ucell),
-          map_accessor_(grid_logical, grid_physical),
+          n_passed_scatterers_(sites.size()),
           u_extra_(u_extra),
           wing_cutoff_(wing_cutoff),
           exp_table_one_over_step_size_(exp_table_one_over_step_size),
+          n_contributing_scatterers_(0),
+          n_anomalous_scatterers_(0),
           exp_table_size_(0),
-          max_shell_radii_(0,0,0),
-          n_anomalous_scatterers_(0)
+          max_shell_radii_(0,0,0)
       {
         typedef
 #if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
@@ -345,28 +346,34 @@ namespace cctbx { namespace sftbx {
         for(site=sites.begin();site!=sites.end();site++)
         {
           if (site->w() == 0) continue;
+          n_contributing_scatterers_++;
           if (site->fpfdp().imag() != 0) {
             n_anomalous_scatterers_++;
           }
         }
+        FloatType* map_begin;
         if (n_anomalous_scatterers_ == 0) {
+          map_accessor_ = sfmap::accessor_type(grid_logical, grid_physical);
           map_real_.resize(map_accessor_);
+          map_begin = map_real_.begin();
         }
         else {
+          map_accessor_ = sfmap::accessor_type(grid_logical, grid_logical);
           map_complex_.resize(map_accessor_);
+          map_begin = reinterpret_cast<FloatType*>(map_complex_.begin());
         }
+        const sfmap::grid_point_type& grid_nl = map_accessor_.n_logical();
+        const sfmap::grid_point_type& grid_np = map_accessor_.n_physical();
         detail::exponent_table<FloatType> exp_table(
           exp_table_one_over_step_size);
         for(site=sites.begin();site!=sites.end();site++)
         {
           if (site->w() == 0) continue;
-          cctbx_assert(site->fpfdp().imag() == 0);
           cctbx_assert(!site->isAnisotropic());
+          FloatType fdp = site->fpfdp().imag();
           const fractional<FloatType>& coor_frac = site->Coordinates();
           detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
             site->CAASF(), site->fpfdp(), site->w(), site->Uiso() + u_extra_);
-          const sfmap::grid_point_type& grid_nl = map_accessor_.n_logical();
-          const sfmap::grid_point_type& grid_np = map_accessor_.n_physical();
           detail::calc_shell<FloatType> shell(
             ucell_, wing_cutoff_, grid_nl, caasf_ft, exp_table);
           if (electron_density_must_be_positive) {
@@ -385,13 +392,6 @@ namespace cctbx { namespace sftbx {
           sfmap::grid_point_element_type g01, g0112;
           FloatType f0, f1, f2;
           FloatType c00, c01, c11, c02, c12, c22;
-          FloatType* map_begin;
-          if (n_anomalous_scatterers_ == 0) {
-            map_begin = map_real_.begin();
-          }
-          else {
-            map_begin = reinterpret_cast<FloatType*>(map_complex_.begin());
-          }
           for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
             g01 = detail::mod_positive(gp[0],grid_nl[0]) * grid_np[1];
             f0 = FloatType(gp[0]) / grid_nl[0] - coor_frac[0];
@@ -414,8 +414,10 @@ namespace cctbx { namespace sftbx {
             }
             else {
               i_map *= 2;
-              map_begin[i_map  ] += caasf_ft.rho_real(exp_table, d_sq);
-              map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d_sq);
+              map_begin[i_map] += caasf_ft.rho_real(exp_table, d_sq);
+              if (fdp) {
+                map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d_sq);
+              }
             }
           }}}
         }
@@ -428,21 +430,34 @@ namespace cctbx { namespace sftbx {
       const FloatType& exp_table_one_over_step_size() const {
         return exp_table_one_over_step_size_;
       }
-      std::size_t exp_table_size() const { return exp_table_size_; }
-      const sfmap::grid_point_type& max_shell_radii() const {
-        return max_shell_radii_;
+      std::size_t n_passed_scatterers() const {
+        return n_passed_scatterers_;
+      }
+      std::size_t n_contributing_scatterers() const {
+        return n_contributing_scatterers_;
+      }
+      std::size_t n_anomalous_scatterers() const {
+        return n_anomalous_scatterers_;
       }
       const map_real_type& map_real() const { return map_real_; }
             map_real_type  map_real()       { return map_real_; }
       const map_complex_type& map_complex() const { return map_complex_; }
             map_complex_type  map_complex()       { return map_complex_; }
+      std::size_t exp_table_size() const { return exp_table_size_; }
+      const sfmap::grid_point_type& max_shell_radii() const {
+        return max_shell_radii_;
+      }
 
       template <typename TagType>
       void
       apply_symmetry(const maps::grid_tags<TagType>& tags)
       {
-        cctbx_assert(map_complex_.size() == 0); // XXX XXX XXX XXX
-        tags.sum_sym_equiv_points(map_real_.ref());
+        if (map_real_.size()) {
+          tags.sum_sym_equiv_points(map_real_.ref());
+        }
+        else {
+          tags.sum_sym_equiv_points(map_complex_.ref());
+        }
       }
 
       void
@@ -458,15 +473,17 @@ namespace cctbx { namespace sftbx {
 
     private:
       uctbx::UnitCell ucell_;
-      sfmap::accessor_type map_accessor_;
+      std::size_t n_passed_scatterers_;
       FloatType u_extra_;
       FloatType wing_cutoff_;
       FloatType exp_table_one_over_step_size_;
-      std::size_t exp_table_size_;
-      sfmap::grid_point_type max_shell_radii_;
       std::size_t n_anomalous_scatterers_;
+      std::size_t n_contributing_scatterers_;
+      sfmap::accessor_type map_accessor_;
       map_real_type map_real_;
       map_complex_type map_complex_;
+      std::size_t exp_table_size_;
+      sfmap::grid_point_type max_shell_radii_;
   };
 
   template <typename FloatType,
@@ -480,6 +497,7 @@ namespace cctbx { namespace sftbx {
     const FloatType& max_q,
     const af::const_ref<FloatType>& transformed_real_map,
     const IndexType& n_complex,
+    bool friedel_flag,
     bool conjugate = true)
   {
     cctbx_assert(
@@ -502,30 +520,53 @@ namespace cctbx { namespace sftbx {
       h[1] = maps::ih_as_h(loop_i[1], n_complex[1]);
       mh[1] = -h[1];
     for(loop_i[2] = 0; loop_i[2] < n_complex[2]; loop_i[2]++, map_i++) {
-      h[2] = loop_i[2];
+      if (!friedel_flag) {
+        h[2] = maps::ih_as_h(loop_i[2], n_complex[2]);
+      }
+      else {
+        h[2] = loop_i[2];
+      }
       mh[2] = -h[2];
       if (ucell.Q(h) <= max_q && map_i) {
         cctbx_assert(loop_i[0] != n_complex[0]/2);
         cctbx_assert(loop_i[1] != n_complex[1]/2);
-        if (asu.isInASU(h)) {
-          if (!sginfo.SgOps().isSysAbsent(h)) {
-            miller_indices.push_back(h);
-            if (!conjugate) {
-              structure_factors.push_back(complex_map[map_i]);
+        if (!friedel_flag) {
+          cctbx_assert(loop_i[2] != n_complex[2]/2);
+        }
+        if (friedel_flag) {
+          if (asu.isInASU(h)) {
+            if (!sginfo.SgOps().isSysAbsent(h)) {
+              miller_indices.push_back(h);
+              if (!conjugate) {
+                structure_factors.push_back(complex_map[map_i]);
+              }
+              else {
+                structure_factors.push_back(std::conj(complex_map[map_i]));
+              }
             }
-            else {
-              structure_factors.push_back(std::conj(complex_map[map_i]));
+          }
+          else if (h[2] && asu.isInASU(mh)) {
+            if (!sginfo.SgOps().isSysAbsent(h)) {
+              miller_indices.push_back(mh);
+              if (!conjugate) {
+                structure_factors.push_back(std::conj(complex_map[map_i]));
+              }
+              else {
+                structure_factors.push_back(complex_map[map_i]);
+              }
             }
           }
         }
-        else if (h[2] && asu.isInASU(mh)) {
-          if (!sginfo.SgOps().isSysAbsent(h)) {
-            miller_indices.push_back(mh);
-            if (!conjugate) {
-              structure_factors.push_back(std::conj(complex_map[map_i]));
-            }
-            else {
-              structure_factors.push_back(complex_map[map_i]);
+        else { // !friedel_flag
+          if (asu.isInASU(h) || asu.isInASU(mh)) { // XXX asu.isInASU(h, check_both) ?
+            if (!sginfo.SgOps().isSysAbsent(h)) {
+              miller_indices.push_back(h);
+              if (!conjugate) {
+                structure_factors.push_back(complex_map[map_i]);
+              }
+              else {
+                structure_factors.push_back(std::conj(complex_map[map_i]));
+              }
             }
           }
         }

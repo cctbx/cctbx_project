@@ -87,7 +87,7 @@ def print_structure_factors(SgInfo,
   sym_flags = sftbx.map_symmetry_flags(1)
   tags.build(xtal.SgInfo, sym_flags)
   sampled_density.apply_symmetry(tags)
-  map = sampled_density.map_as_shared()
+  map = sampled_density.map_real_as_shared()
   map_stats = shared.statistics(map)
   if (0):
     print "Electron density"
@@ -117,9 +117,11 @@ def print_structure_factors(SgInfo,
   if (0):
     map = sftbx.structure_factor_map(
       xtal.SgOps, Fcalc.H, Fcalc.F, fft.Ncomplex())
+  friedel_flag = 1
   miller_indices, fcal = sftbx.collect_structure_factors(
     xtal.UnitCell, xtal.SgInfo,
-    max_q, map, fft.Ncomplex())
+    max_q, map, fft.Ncomplex(),
+    friedel_flag)
   sampled_density.eliminate_u_extra_and_normalize(miller_indices, fcal)
   if (0):
     u_extra = sampled_density.u_extra()

@@ -298,13 +298,16 @@ namespace cctbx {
         ReferenceHend[i] = ReferenceHmax[i] + 1;
       }
       m_loop = af::nested_loop<Miller::Index>(ReferenceHbegin, ReferenceHend);
+      m_next_is_minus_previous = false;
     }
 
     MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
                                                const SpaceGroupInfo& SgInfo,
+                                               bool FriedelFlag,
                                                double Resolution_d_min)
       : m_UnitCell(uc),
         m_SgOps(SgInfo.SgOps()),
+        m_FriedelFlag(FriedelFlag),
         m_ASU(ReciprocalSpaceASU(SgInfo))
     {
       if (Resolution_d_min <= 0.) {
@@ -317,16 +320,18 @@ namespace cctbx {
     }
 
     MillerIndexGenerator::MillerIndexGenerator(const SpaceGroupInfo& SgInfo,
+                                               bool FriedelFlag,
                                                const Miller::Index& MaxIndex)
       : m_UnitCell(),
         m_SgOps(SgInfo.SgOps()),
+        m_FriedelFlag(FriedelFlag),
         m_ASU(ReciprocalSpaceASU(SgInfo)),
         m_Qhigh(-1.)
     {
       InitializeLoop(Miller::Index(af::abs(MaxIndex)));
     }
 
-    Miller::Index MillerIndexGenerator::next()
+    Miller::Index MillerIndexGenerator::next_under_friedel_symmetry()
     {
       const int RBF = m_ASU.CBOp().M().RBF();
       for (; m_loop.over() == 0;) {
@@ -367,6 +372,18 @@ namespace cctbx {
         }
       }
       return Miller::Index(0, 0, 0);
+    }
+
+    Miller::Index MillerIndexGenerator::next()
+    {
+      if (m_FriedelFlag) return next_under_friedel_symmetry();
+      if (m_next_is_minus_previous) {
+        m_next_is_minus_previous = false;
+        return -m_previous;
+      }
+      m_previous = next_under_friedel_symmetry();
+      m_next_is_minus_previous = !m_SgOps.isCentric(m_previous);
+      return m_previous;
     }
 
   } // namespace sgtbx

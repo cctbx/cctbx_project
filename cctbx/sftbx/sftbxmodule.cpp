@@ -225,21 +225,23 @@ namespace {
   py_BuildMillerIndices_Resolution_d_min(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroupInfo& SgInfo,
+    bool FriedelFlag,
     double Resolution_d_min)
   {
     af::shared<Miller::Index> result;
     sgtbx::MillerIndexGenerator(
-      UC, SgInfo, Resolution_d_min).AddToArray(result);
+      UC, SgInfo, FriedelFlag, Resolution_d_min).AddToArray(result);
     return result;
   }
   af::shared<Miller::Index>
   py_BuildMillerIndices_MaxIndex(
     const sgtbx::SpaceGroupInfo& SgInfo,
+    bool FriedelFlag,
     const Miller::Index& MaxIndex)
   {
     af::shared<Miller::Index> result;
     sgtbx::MillerIndexGenerator(
-      SgInfo, MaxIndex).AddToArray(result);
+      SgInfo, FriedelFlag, MaxIndex).AddToArray(result);
     return result;
   }
 
@@ -417,10 +419,17 @@ namespace {
   }
 
   af::shared<double>
-  sampled_model_density_map_as_shared(
+  sampled_model_density_map_real_as_shared(
     sftbx::sampled_model_density<double>& smd)
   {
     return smd.map_real().as_base_array();
+  }
+
+  af::shared<std::complex<double> >
+  sampled_model_density_map_complex_as_shared(
+    sftbx::sampled_model_density<double>& smd)
+  {
+    return smd.map_complex().as_base_array();
   }
 
   af::shared<double>
@@ -522,12 +531,14 @@ namespace {
     const sgtbx::SpaceGroupInfo& sginfo,
     double max_q,
     const af::shared<double>& transformed_real_map,
-    const af::tiny<long, 3>& n_complex)
+    const af::tiny<long, 3>& n_complex,
+    bool friedel_flag)
   {
     std::pair<af::shared<Miller::Index>,
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
-      ucell, sginfo, max_q, transformed_real_map.const_ref(), n_complex);
+      ucell, sginfo, max_q, transformed_real_map.const_ref(), n_complex,
+      friedel_flag);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);
@@ -695,11 +706,20 @@ namespace {
       &sftbx::sampled_model_density<double>::exp_table_size,
                                             "exp_table_size");
     py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::n_passed_scatterers,
+                                            "n_passed_scatterers");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::n_contributing_scatterers,
+                                            "n_contributing_scatterers");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::n_anomalous_scatterers,
+                                            "n_anomalous_scatterers");
+    py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::max_shell_radii,
                                             "max_shell_radii");
     py_sampled_model_density.def(
-      sampled_model_density_map_as_shared,
-                           "map_as_shared");
+      sampled_model_density_map_real_as_shared,
+                           "map_real_as_shared");
     py_sampled_model_density.def(
       sampled_model_density_apply_symmetry,
                            "apply_symmetry");

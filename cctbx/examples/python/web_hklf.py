@@ -197,7 +197,7 @@ if (__name__ == "__main__"):
     InTable = 0
     print
 
-    MillerIndices = sftbx.BuildMillerIndices(UnitCell, SgInfo, d_min)
+    MillerIndices = sftbx.BuildMillerIndices(UnitCell, SgInfo, 1, d_min)
     Fcalc = sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites)
 
     print "Number of Miller indices:", len(Fcalc)
