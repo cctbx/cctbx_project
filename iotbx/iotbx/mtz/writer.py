@@ -42,11 +42,13 @@ def add_miller_array(self, miller_array, label_data, label_sigmas=None):
         [miller_array.indices()],[miller_array.sigmas()])
 
 def Hall_to_CCP4_Converter(spacegroup):
-  symbol = spacegroup.type().lookup_symbol()
-  symbol = symbol.replace(" ","")
-  if len(symbol)>10: symbol=symbol[0:10]
+  symbol = spacegroup.type().lookup_symbol().replace(" ","")
   return symbol
 
-def setSpaceGroup(self, spacegroup):
-  ccp4_symbol = Hall_to_CCP4_Converter(spacegroup)
-  self.ll_setSpaceGroup(spacegroup,ccp4_symbol)
+def setSpaceGroup(self, spacegroup, symbol=None):
+  if symbol==None:
+    symbol = Hall_to_CCP4_Converter(spacegroup)
+  assert not " " in symbol
+  assert len(symbol)<=10
+  self.ll_setSpaceGroup(spacegroup,symbol)
+  
