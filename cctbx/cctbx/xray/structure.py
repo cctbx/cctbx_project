@@ -76,6 +76,9 @@ class structure(crystal.special_position_settings):
     self.set_sites_frac(
       self.unit_cell().fractionalization_matrix() * sites_cart)
 
+  def set_u_iso_from_u_star(self):
+    self._scatterers.set_u_iso_from_u_star(unit_cell=self.unit_cell())
+
   def site_symmetry_table(self):
     return self._site_symmetry_table
 

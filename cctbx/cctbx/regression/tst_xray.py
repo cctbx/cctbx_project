@@ -183,6 +183,7 @@ def exercise_structure():
   assert xs2.special_position_indices().size() == 2
   xs2.set_sites_frac(xs2.sites_frac()+(0.1,0.2,0.3))
   xs2.set_sites_cart(xs2.sites_cart()+(1,2,3))
+  xs2.set_u_iso_from_u_star()
   i = xs2.special_position_indices()[0]
   assert approx_equal(xs2.scatterers()[i].site, (0.2, 0.4, 0.7))
   xs2.apply_symmetry_sites()
