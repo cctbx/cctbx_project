@@ -16,6 +16,7 @@
 #include <cctbx/math/array_utils.h>
 
 #include <cctbx/miller_bpl.h>
+#include <cctbx/hendrickson_lattman_bpl.h>
 
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/sftbx/xray_scatterer.h>
@@ -181,6 +182,7 @@ namespace {
     WRAP_TYPE("std_string", std::string);
 
     WRAP_TYPE("Miller_Index", cctbx::Miller::Index);
+    WRAP_TYPE("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
     WRAP_TYPE("RTMx", cctbx::sgtbx::RTMx);
     WRAP_TYPE("XrayScatterer", XrayScatterer);
 
@@ -246,10 +248,11 @@ namespace {
 
     py_join_sets.def(constructor<>());
     py_join_sets.def(constructor<
-      const cctbx::af::shared<cctbx::Miller::Index>&,
-      const cctbx::af::shared<cctbx::Miller::Index>&>());
+      cctbx::af::shared<cctbx::Miller::Index>,
+      cctbx::af::shared<cctbx::Miller::Index> >());
     py_join_sets.def(&cctbx::Miller::join_sets::pairs, "pairs");
     py_join_sets.def(&cctbx::Miller::join_sets::singles, "singles");
+    py_join_sets.def(&cctbx::Miller::join_sets::have_singles, "have_singles");
   }
 
 }
