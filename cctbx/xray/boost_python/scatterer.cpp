@@ -18,6 +18,18 @@
 #include <boost/python/return_by_value.hpp>
 #endif
 
+#if BOOST_VERSION >= 103100
+# if BOOST_WORKAROUND(__EDG_VERSION__, <= 238)
+namespace boost { namespace python {
+template <class D>
+inline object make_setter(D const& x)
+{
+    return detail::make_setter(x, default_call_policies(), 0L);
+}
+}}
+# endif
+#endif
+
 namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
