@@ -38,16 +38,19 @@ high-level classes.
 \par
 The %cctbx requires the Boost library. This open-source library is a
 high-quality, peer-reviewed collection of generally useful C++ template
-libraries. Currently, the %cctbx uses three components of Boost:
+libraries. Currently, the %cctbx uses four components of Boost:
 
+<a href="http://www.boost.org/libs/compatibility/index.html">Boost.Compatibility</a>,
 <a href="http://www.boost.org/libs/array/array.html">Boost.Array</a>,
 <a href="http://www.boost.org/libs/rational/rational.html">Boost.Rational</a>,
 <a href="http://www.boost.org/libs/python/doc/index.html">Boost.Python</a>.
 
 \par
-Boost.Array and Boost.Rational are required even if the %cctbx is used
-as a pure C++ library. However, in that case it is sufficient to add
-the Boost include directory to the include path.
+The Boost.Compatibility library provides workarounds for compiler
+problems on certain platforms. Boost.Array and Boost.Rational are
+required even if the %cctbx is used as a pure C++ library. However,
+in that case it is sufficient to add the Boost include directory to
+the include path.
 
 \par
 If the %cctbx Python bindings are used, the support for Boost.Python has
@@ -121,12 +124,6 @@ can be used if the following assumptions are valid:
         gunzip -c cctbx_*.tar.gz | tar xf -
 \endverbatim
 
-<li>For the configurations <tt>tru64_cxx</tt> and <tt>irix_CC</tt>,
-    the missing C++ C header files are installed in the subdirectory
-    <tt>C++_C_headers</tt> of the same directory where boost and %cctbx
-    were unpacked, e.g. <tt>development/C++_C_headers</tt> in the
-    example above.
-
 <li>Python version 1.5.2 is installed in these configuration specific
     locations:
     <ul>
@@ -149,7 +146,7 @@ pathnames in the Boost.Python makefile and the
 generic fast_track.py script for all platforms.
 This is explained in more detail in the following section.
 
-If all assumptions above are valid,
+If the assumptions above are valid,
 both Boost.Python and the %cctbx can be installed with just one
 command by invoking the appropriate fast track script with the
 absolute path name. For example on Linux:
