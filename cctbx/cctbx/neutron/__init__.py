@@ -27,10 +27,10 @@ class scatterer:
     self.site = site
     try:
       self.u_iso = float(u)
-      self.anisotropic_flag = False
+      self.anisotropic_flag = 00000
     except:
       assert len(u) == 6
-      self.anisotropic_flag = True
+      self.anisotropic_flag = 0001
       self.u_star = tuple([float(uij) for uij in u])
     self.occupancy = occupancy
     self.scattering_info = scattering_info
@@ -50,9 +50,9 @@ class scatterer:
   def apply_symmetry(self, unit_cell,
                            space_group,
                            min_distance_sym_equiv=0.5,
-                           u_star_tolerance=0.1,
-                           assert_is_positive_definite=True,
-                           assert_min_distance_sym_equiv=True):
+                           u_star_tolerance=0,
+                           assert_is_positive_definite=00000,
+                           assert_min_distance_sym_equiv=0001):
     site_symmetry = sgtbx.site_symmetry(
       unit_cell,
       space_group,
@@ -66,8 +66,12 @@ class scatterer:
       if (u_star_tolerance > 0.):
         assert site_symmetry.is_compatible_u_star(self.u_star,u_star_tolerance)
       self.u_star = site_symmetry.average_u_star(self.u_star)
+      u_cart = adptbx.u_star_as_u_cart(unit_cell, self.u_star)
       if (assert_is_positive_definite):
-        assert adptbx.is_positive_definite(self.u_star)
+        assert adptbx.is_positive_definite(u_cart)
+      u_cart = adptbx.eigenvalue_filtering(u_cart)
+      self.u_star = adptbx.u_cart_as_u_star(unit_cell, u_cart)
+      self.u_star = site_symmetry.average_u_star(self.u_star)
     return site_symmetry
 
 class structure(crystal.special_position_settings):
@@ -116,7 +120,7 @@ class structure(crystal.special_position_settings):
     print "WARNING: RESULTS NOT VERIFIED" # XXX
     miller_set = miller.build_set(
       crystal_symmetry=self,
-      anomalous_flag=True, # XXX always True?
+      anomalous_flag=0001, # XXX always True?
       d_min=d_min)
     f_calc = flex.complex_double()
     for h in miller_set.indices():

@@ -25,8 +25,8 @@ namespace cctbx { namespace xray {
     sgtbx::space_group const& space_group,
     af::ref<scatterer<FloatType,CaasfType,LabelType> > const& scatterers,
     double min_distance_sym_equiv=0.5,
-    double u_star_tolerance=0.1,
-    bool assert_is_positive_definite=true,
+    double u_star_tolerance=0,
+    bool assert_is_positive_definite=false,
     bool assert_min_distance_sym_equiv=true)
   {
     af::shared<std::size_t> special_position_indices;

@@ -51,12 +51,6 @@ namespace {
 
     tuple_mapping_fixed_capacity<small<double, 6> >();
 
-    tuple_mapping_fixed_size<vec3<int> >();
-    tuple_mapping_fixed_size<mat3<int> >();
-    tuple_mapping_fixed_size<vec3<double> >();
-    tuple_mapping_fixed_size<mat3<double> >();
-    tuple_mapping_fixed_size<sym_mat3<double> >();
-
     tuple_mapping_fixed_size<cctbx::cartesian<> >();
     tuple_mapping_fixed_size<cctbx::fractional<> >();
     tuple_mapping_fixed_size<cctbx::hendrickson_lattman<> >();

@@ -111,8 +111,8 @@ class special_position_settings(symmetry):
 
   def __init__(self, crystal_symmetry,
                min_distance_sym_equiv=0.5,
-               u_star_tolerance=0.1,
-               assert_is_positive_definite=0001,
+               u_star_tolerance=0,
+               assert_is_positive_definite=00000,
                assert_min_distance_sym_equiv=0001):
     symmetry._copy_constructor(self, crystal_symmetry)
     self._min_distance_sym_equiv = min_distance_sym_equiv
