@@ -172,21 +172,66 @@ def exercise_from_scatterers_direct(space_group_info,
     print "r-factor:", ls.target()
   assert ls.target() < 1.e-4
 
+def exercise_n_gaussian(space_group_info, verbose=0):
+  structure_5g = random_structure.xray_structure(
+    space_group_info,
+    elements=["H", "C", "N", "O", "S"]*3)
+  if (0 or verbose):
+    structure_five.show_summary().show_scatterers()
+  structure_4g = structure_5g.deep_copy_scatterers()
+  structure_2g = structure_5g.deep_copy_scatterers()
+  structure_5g.scattering_dict()
+  structure_4g.scattering_dict(d_min=1, d_min_it1992=1)
+  structure_2g.scattering_dict(
+    custom_dict=eltbx.xray_scattering.two_gaussian_agarwal_isaacs)
+  for scatterer_group in structure_5g.scattering_dict().dict().values():
+    assert scatterer_group.gaussian.n_ab() == 5
+  for scatterer_group in structure_4g.scattering_dict().dict().values():
+    assert scatterer_group.gaussian.n_ab() == 4
+  for scatterer_group in structure_2g.scattering_dict().dict().values():
+    assert scatterer_group.gaussian.n_ab() == 2
+  d_min = 1
+  f_calc_5g = structure_5g.structure_factors(
+    d_min=d_min,
+    algorithm="direct",
+    cos_sin_table=00000).f_calc()
+  f_calc_4g = f_calc_5g.structure_factors_from_scatterers(
+    xray_structure=structure_4g,
+    algorithm="direct",
+    cos_sin_table=00000).f_calc()
+  f_calc_2g = f_calc_5g.structure_factors_from_scatterers(
+    xray_structure=structure_2g,
+    algorithm="direct",
+    cos_sin_table=00000).f_calc()
+  for n,f_calc_ng in ((4,f_calc_4g), (2,f_calc_2g)):
+    ls = xray.targets_least_squares_residual(
+      abs(f_calc_5g).data(), f_calc_ng.data(), 00000, 1)
+    if (0 or verbose):
+      print "%d-gaussian r-factor:" % n, ls.target()
+    if (n == 2):
+      assert ls.target() < 0.002
+    else:
+      assert ls.target() < 0.0002
+
 def run_call_back(flags, space_group_info):
-  for element_type in ("Se", "const"):
-    for anomalous_flag in [0,1]:
-      for anisotropic_flag in [0,1]:
-        for with_shift in [0,1]:
-          if (with_shift):
-            sgi = debug_utils.random_origin_shift(space_group_info)
-          else:
-            sgi = space_group_info
-          exercise_from_scatterers_direct(
-            space_group_info=sgi,
-            element_type=element_type,
-            anomalous_flag=anomalous_flag,
-            anisotropic_flag=anisotropic_flag,
-            verbose=flags.Verbose)
+  if (1):
+    for element_type in ("Se", "const"):
+      for anomalous_flag in [0,1]:
+        for anisotropic_flag in [0,1]:
+          for with_shift in [0,1]:
+            if (with_shift):
+              sgi = debug_utils.random_origin_shift(space_group_info)
+            else:
+              sgi = space_group_info
+            exercise_from_scatterers_direct(
+              space_group_info=sgi,
+              element_type=element_type,
+              anomalous_flag=anomalous_flag,
+              anisotropic_flag=anisotropic_flag,
+              verbose=flags.Verbose)
+  if (1):
+    exercise_n_gaussian(
+      space_group_info=space_group_info)
 
 def run():
   exercise_scatterer()
