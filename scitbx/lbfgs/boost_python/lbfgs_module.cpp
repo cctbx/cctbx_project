@@ -14,7 +14,9 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <scitbx/boost_python/utils.h>
-#include <boost/python/module.hpp>
+#include <boost/python/module_init.hpp>
+#include <boost/python/scope.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 
 namespace scitbx { namespace lbfgs { namespace {
@@ -62,39 +64,38 @@ namespace scitbx { namespace lbfgs { namespace {
     }
 
     static void
-    def_all(boost::python::module& this_module)
+    wrap()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t>("minimizer",
-          args<>())
-          .def_init(args<std::size_t>())
-          .def_init(args<std::size_t, std::size_t>())
-          .def_init(args<std::size_t, std::size_t, std::size_t>())
-          .def_init(args<std::size_t, std::size_t, std::size_t,
-            double>())
-          .def_init(args<std::size_t, std::size_t, std::size_t,
-            double, double>())
-          .def_init(args<std::size_t, std::size_t, std::size_t,
-            double, double, double>())
-          .def_init(args<std::size_t, std::size_t, std::size_t,
-            double, double, double, double>())
-          .def("run", run_4)
-          .def("run", run_3)
-          .def("n", &w_t::n)
-          .def("m", &w_t::m)
-          .def("maxfev", &w_t::maxfev)
-          .def("gtol", &w_t::gtol)
-          .def("xtol", &w_t::xtol)
-          .def("stpmin", &w_t::stpmin)
-          .def("stpmax", &w_t::stpmax)
-          .def("requests_f_and_g", &w_t::requests_f_and_g)
-          .def("requests_diag", &w_t::requests_diag)
-          .def("iter", &w_t::iter)
-          .def("nfun", &w_t::nfun)
-          .def("euclidean_norm", euclidean_norm)
-          .def("stp", &w_t::stp)
-      );
+      class_<w_t>("minimizer",
+        args<>())
+        .def_init(args<std::size_t>())
+        .def_init(args<std::size_t, std::size_t>())
+        .def_init(args<std::size_t, std::size_t, std::size_t>())
+        .def_init(args<std::size_t, std::size_t, std::size_t,
+          double>())
+        .def_init(args<std::size_t, std::size_t, std::size_t,
+          double, double>())
+        .def_init(args<std::size_t, std::size_t, std::size_t,
+          double, double, double>())
+        .def_init(args<std::size_t, std::size_t, std::size_t,
+          double, double, double, double>())
+        .def("run", run_4)
+        .def("run", run_3)
+        .def("n", &w_t::n)
+        .def("m", &w_t::m)
+        .def("maxfev", &w_t::maxfev)
+        .def("gtol", &w_t::gtol)
+        .def("xtol", &w_t::xtol)
+        .def("stpmin", &w_t::stpmin)
+        .def("stpmax", &w_t::stpmax)
+        .def("requests_f_and_g", &w_t::requests_f_and_g)
+        .def("requests_diag", &w_t::requests_diag)
+        .def("iter", &w_t::iter)
+        .def("nfun", &w_t::nfun)
+        .def("euclidean_norm", euclidean_norm)
+        .def("stp", &w_t::stp)
+      ;
     }
   };
 
@@ -115,18 +116,17 @@ namespace scitbx { namespace lbfgs { namespace {
     }
 
     static void
-    def_all(boost::python::module& this_module)
+    wrap()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t>("traditional_convergence_test",
-          args<>())
-          .def_init(args<std::size_t>())
-          .def_init(args<std::size_t, double>())
-          .def("n", &w_t::n)
-          .def("eps", &w_t::eps)
-          .def("__call__", call)
-      );
+      class_<w_t>("traditional_convergence_test",
+        args<>())
+        .def_init(args<std::size_t>())
+        .def_init(args<std::size_t, double>())
+        .def("n", &w_t::n)
+        .def("eps", &w_t::eps)
+        .def("__call__", call)
+      ;
     }
   };
 
@@ -135,43 +135,41 @@ namespace scitbx { namespace lbfgs { namespace {
     typedef drop_convergence_test<double> w_t;
 
     static void
-    def_all(boost::python::module& this_module)
+    wrap()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t>("drop_convergence_test",
-          args<>())
-          .def_init(args<std::size_t>())
-          .def_init(args<std::size_t, double>())
-          .def_init(args<std::size_t, double, double>())
-          .def("p", &w_t::p)
-          .def("max_drop_eps", &w_t::max_drop_eps)
-          .def("iteration_coefficient", &w_t::iteration_coefficient)
-          .def("__call__", &w_t::operator())
-          .def("objective_function_values", &w_t::objective_function_values)
-          .def("max_drop", &w_t::max_drop)
-      );
+      class_<w_t>("drop_convergence_test",
+        args<>())
+        .def_init(args<std::size_t>())
+        .def_init(args<std::size_t, double>())
+        .def_init(args<std::size_t, double, double>())
+        .def("p", &w_t::p)
+        .def("max_drop_eps", &w_t::max_drop_eps)
+        .def("iteration_coefficient", &w_t::iteration_coefficient)
+        .def("__call__", &w_t::operator())
+        .def("objective_function_values", &w_t::objective_function_values)
+        .def("max_drop", &w_t::max_drop)
+      ;
     }
   };
 
-  void init_module(boost::python::module& this_module)
+  void init_module()
   {
-    this_module
-      .setattr("__version__",
-        scitbx::boost_python::cvs_revision("$Revision$"))
-    ;
+    using namespace boost::python;
+
+    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
+      "$Revision$");
 
     scitbx::boost_python::import_module("scitbx_boost.array_family.flex");
 
-    minimizer_wrappers::def_all(this_module);
-    traditional_convergence_test_wrappers::def_all(this_module);
-    drop_convergence_test_wrappers::def_all(this_module);
+    minimizer_wrappers::wrap();
+    traditional_convergence_test_wrappers::wrap();
+    drop_convergence_test_wrappers::wrap();
   }
 
 }}} // namespace scitbx::lbfgs::<anonymous>
 
 BOOST_PYTHON_MODULE_INIT(lbfgs)
 {
-  boost::python::module this_module("lbfgs");
-  scitbx::lbfgs::init_module(this_module);
+  scitbx::lbfgs::init_module();
 }
