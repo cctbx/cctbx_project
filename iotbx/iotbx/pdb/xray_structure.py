@@ -1,5 +1,9 @@
 from cctbx import xray
+from cctbx import crystal
+from cctbx import uctbx
+from cctbx import sgtbx
 from cctbx import adptbx
+from phenix.foundation.Structure import PDBClass # XXX move to iotbx
 from cStringIO import StringIO
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
@@ -63,3 +67,39 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
   return s.getvalue()
 
 xray.structure.as_pdb_file = xray_structure_as_pdb_file
+
+def from_pdb(file_name, crystal_symmetry=None, force_symmetry=00000):
+  pdb_file = PDBClass(file_name)
+  try:
+    cryst1 = pdb_file.GetUnitCellRecord()
+  except:
+    cryst1 = None
+  try:
+    unit_cell = uctbx.unit_cell(cryst1.ucparams)
+  except:
+    unit_cell = None
+  try:
+    space_group_info = sgtbx.space_group_info(symbol=cryst1.sGroup)
+  except:
+    space_group_info = None
+  else:
+    if (space_group_info.group() == None):
+      space_group_info = None
+  crystal_symmetry=crystal.symmetry(
+    unit_cell=unit_cell,
+    space_group_info=space_group_info).join_symmetry(
+    other_symmetry=crystal_symmetry,
+    force=force_symmetry)
+  structure = xray.structure(
+    special_position_settings=crystal.special_position_settings(
+      crystal_symmetry=crystal_symmetry))
+  for atom in pdb_file.GetAtomList():
+    scatterer = xray.scatterer(
+      label="%s%03d" % (atom.name, atom.serial),
+      site=structure.unit_cell().fractionalize(atom.coordinates),
+      b=atom.tempFactor,
+      occupancy=atom.occupancy)
+    assert structure.unit_cell() != None
+    assert structure.space_group_info() != None
+    structure.add_scatterer(scatterer)
+  return structure
