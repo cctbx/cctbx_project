@@ -33,7 +33,7 @@ namespace cctbx { namespace af {
         : versa_plain<ElementType, AccessorType>(handle, ac)
       {}
 
-      // XXX ref
+      CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(this->begin(), this->accessor())
   };
 
 }} // namespace cctbx::af

@@ -46,3 +46,19 @@ operator ref<ElementType>() { \
 operator const_ref<ElementType>() const { \
   return const_ref<ElementType>(beg, sz); \
 }
+
+#define CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(beg, ac) \
+ref<ElementType, AccessorType> \
+take_ref() { \
+  return ref<ElementType, AccessorType>(beg, ac); \
+} \
+const_ref<ElementType, AccessorType> \
+take_const_ref() const { \
+  return const_ref<ElementType, AccessorType>(beg, ac); \
+} \
+operator ref<ElementType, AccessorType>() { \
+  return ref<ElementType, AccessorType>(beg, ac); \
+} \
+operator const_ref<ElementType, AccessorType>() const { \
+  return const_ref<ElementType, AccessorType>(beg, ac); \
+}

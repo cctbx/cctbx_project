@@ -12,7 +12,6 @@
 #define CCTBX_ARRAY_FAMILY_VERSA_PLAIN_H
 
 #include <cctbx/array_family/shared_base.h>
-#include <cctbx/array_family/grid_accessor.h>
 #include <cctbx/array_family/versa_helpers.h>
 
 namespace cctbx { namespace af {
@@ -43,7 +42,7 @@ namespace cctbx { namespace af {
 
       const accessor_type& accessor() const { return m_accessor; }
 
-      // XXX ref
+      CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(this->begin(), this->accessor())
 
             value_type& operator()(const index_type& i)       {
         return this->begin()[m_accessor(i)];
@@ -54,16 +53,28 @@ namespace cctbx { namespace af {
 
       // Convenience operator()
 
-      value_type& operator()(int i0) const {
+      const value_type& operator()(int i0) const {
         return operator()(index_type(i0));
       }
-      value_type& operator()(int i0,
-                             int i1) const {
+            value_type& operator()(int i0)       {
+        return operator()(index_type(i0));
+      }
+      const value_type& operator()(int i0,
+                                   int i1) const {
         return operator()(index_type(i0, i1));
       }
-      value_type& operator()(int i0,
-                             int i1,
-                             int i2) const {
+            value_type& operator()(int i0,
+                                   int i1)       {
+        return operator()(index_type(i0, i1));
+      }
+      const value_type& operator()(int i0,
+                                   int i1,
+                                   int i2) const {
+        return operator()(index_type(i0, i1, i2));
+      }
+            value_type& operator()(int i0,
+                                   int i1,
+                                   int i2)       {
         return operator()(index_type(i0, i1, i2));
       }
 
