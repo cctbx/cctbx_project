@@ -21,10 +21,10 @@ PYLIB=
 
 STDFIXINC=
 
-CC=gcc -g -w
+CC=gcc
 CPP=g++
 LD=g++
-STDOPTS=-fPIC -ftemplate-depth-50 -DNDEBUG
+STDOPTS=-fPIC -ftemplate-depth-50 -DNDEBUG -DBOOST_PYTHON_DYNAMIC_LIB
 WARNOPTS=-w
 OPTOPTS=-g
 MAKEDEP=-M
