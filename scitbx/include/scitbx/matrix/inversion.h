@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <stdexcept>
 
 namespace scitbx { namespace matrix {
 
@@ -12,18 +13,17 @@ namespace scitbx { namespace matrix {
       n elements per vector.
       On output a is the inverted matrix and b contains the solutions
       x of a*x=b.
-      A return value different from zero indicates that the input matrix
-      is singular.
+      A std::runtime_error is thrown if the input matrix is singular.
    */
   template <typename FloatType>
-  int
+  void
   inversion_in_place(
     FloatType *a,
     std::size_t n,
     FloatType *b,
     std::size_t m)
   {
-    if (n == 0) return 0;
+    if (n == 0) return;
     const std::size_t max_n_stack = 10;
     std::size_t scratch_stack[max_n_stack*3];
     std::vector<std::size_t> scratch_dynamic;
@@ -55,7 +55,7 @@ namespace scitbx { namespace matrix {
               }
             }
             else if (ipivot[k] > 1) {
-              return -1;
+              throw std::runtime_error("inversion_in_place: singular matrix");
             }
           }
         }
@@ -68,7 +68,7 @@ namespace scitbx { namespace matrix {
       indxr[i] = irow;
       indxc[i] = icol;
       if (a[icol*n+icol] == 0) {
-        return -2;
+        throw std::runtime_error("inversion_in_place: singular matrix");
       }
       FloatType one_over_pivot = 1 / a[icol*n+icol];
       a[icol*n+icol] = 1;
@@ -91,7 +91,6 @@ namespace scitbx { namespace matrix {
         }
       }
     }
-    return 0;
   }
 
 }} // namespace scitbx::matrix

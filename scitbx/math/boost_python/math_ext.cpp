@@ -5,7 +5,6 @@
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/math/phase_error.h>
-#include <scitbx/matrix/inversion.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -56,36 +55,6 @@ namespace {
     return result / static_cast<double>(n_repetitions);
   }
 
-  void
-  matrix_inversion_in_place_wrapper_ab(
-    af::ref<double, af::c_grid<2> > const& a,
-    af::ref<double, af::c_grid<2> > const& b)
-  {
-    if (a.accessor()[1] != a.accessor()[0]) {
-      throw error("matrix_inversion_in_place: a square matrix is required.");
-    }
-    if (   b.accessor()[0] != 0
-        && b.accessor()[1] != a.accessor()[0]) {
-      throw error(
-        "matrix_inversion_in_place: if a is a (n*n) matrix b must be (m*n");
-    }
-    if (matrix::inversion_in_place(
-          a.begin(),
-          static_cast<std::size_t>(a.accessor()[0]),
-          b.begin(),
-          static_cast<std::size_t>(b.accessor()[0])) != 0) {
-      throw error("matrix is singular.");
-    }
-  }
-
-  void
-  matrix_inversion_in_place_wrapper_a(
-    af::ref<double, af::c_grid<2> > const& a)
-  {
-    matrix_inversion_in_place_wrapper_ab(
-      a, af::ref<double, af::c_grid<2> >(0,af::c_grid<2>(0,0)));
-  }
-
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     signed_phase_error_overloads, signed_phase_error, 2, 3)
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -121,10 +90,6 @@ namespace {
     wrap_principal_axes_of_inertia();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
-    def("matrix_inversion_in_place", matrix_inversion_in_place_wrapper_ab,
-      (arg_("a"), arg_("b")));
-    def("matrix_inversion_in_place", matrix_inversion_in_place_wrapper_a,
-      (arg_("a")));
 
     def("signed_phase_error",
       (double(*)(

@@ -3,7 +3,6 @@ from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
 from scitbx.math import bessel_inverse_i1_over_i0
-from scitbx.math import matrix_inversion_in_place
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
@@ -168,92 +167,6 @@ def exercise_bessel():
   while x <= 100.0:
     assert approx_equal(bessel_ln_of_i0(x),math.log(bessel_i0(x)))
     x+=0.01
-
-def exercise_matrix_inversion_in_place():
-  m = flex.double()
-  m.resize(flex.grid(0,0))
-  matrix_inversion_in_place(a=m)
-  b = flex.double()
-  b.resize(flex.grid(0,0))
-  matrix_inversion_in_place(a=m, b=b)
-  m = flex.double([2])
-  m.resize(flex.grid(1,1))
-  matrix_inversion_in_place(m)
-  assert approx_equal(m, [1/2.])
-  m = flex.double([2,0,0,-3])
-  m.resize(flex.grid(2,2))
-  matrix_inversion_in_place(m)
-  assert approx_equal(m, [1/2.,0,0,-1/3.])
-  m = flex.double([1,2,-3,4])
-  m.resize(flex.grid(2,2))
-  matrix_inversion_in_place(m)
-  assert approx_equal(m, [2/5.,-1/5.,3/10.,1/10.])
-  m = flex.double([2,0,0,0,-3,0,0,0,4])
-  m.resize(flex.grid(3,3))
-  from scitbx import matrix
-  matrix_inversion_in_place(m)
-  assert approx_equal(m, [1/2.,0,0,0,-1/3.,0,0,0,1/4.])
-  m = flex.double([1,2,-3,-2,4,-1,8,0,4])
-  m.resize(flex.grid(3,3))
-  matrix_inversion_in_place(m)
-  assert approx_equal(m, [1/7.,-1/14.,5/56.,0,1/4.,1/16.,-2/7.,1/7.,1/14.])
-  for n in xrange(1,12):
-    u = flex.double(n*n, 0)
-    for i in xrange(0,n*n,n+1): u[i] = 1
-    for diag in [1,2]:
-      m = flex.double(n*n, 0)
-      for i in xrange(0,n*n,n+1): m[i] = diag
-      m.resize(flex.grid(n,n))
-      m_orig = matrix.rec(m, (n,n))
-      matrix_inversion_in_place(m)
-      m_inv = matrix.rec(m, (n,n))
-      assert approx_equal(m_orig*m_inv, u)
-      assert approx_equal(m_inv*m_orig, u)
-      for n_b in xrange(0,4):
-        m = flex.double(m_orig)
-        m.resize(flex.grid(n,n))
-        b = flex.double(xrange(1,n*n_b+1))
-        b.resize(flex.grid(n_b,n))
-        b_orig = matrix.rec(b, (n,n_b))
-        matrix_inversion_in_place(m, b)
-        m_inv = matrix.rec(m, (n,n))
-        x = matrix.rec(b, (n_b,n))
-        assert approx_equal(m_orig*m_inv, u)
-        assert approx_equal(m_inv*m_orig, u)
-        for i_b in xrange(n_b):
-          b_i = matrix.col(b_orig.elems[i_b*n:(i_b+1)*n])
-          x_i = matrix.col(x.elems[i_b*n:(i_b+1)*n])
-          assert approx_equal(m_orig*x_i, b_i)
-  for n in xrange(1,12):
-    u = flex.double(n*n, 0)
-    for i in xrange(0,n*n,n+1): u[i] = 1
-    for i_trial in xrange(3):
-      m = 2*flex.random_double(n*n)-1
-      m.resize(flex.grid(n,n))
-      m_orig = matrix.rec(m, (n,n))
-      try:
-        matrix_inversion_in_place(m)
-      except RuntimeError, e:
-        assert str(e) == "scitbx Error: matrix is singular."
-      else:
-        m_inv = matrix.rec(m, (n,n))
-        assert approx_equal(m_orig*m_inv, u)
-        assert approx_equal(m_inv*m_orig, u)
-        for n_b in xrange(0,4):
-          m = flex.double(m_orig)
-          m.resize(flex.grid(n,n))
-          b = flex.random_double(n*n_b)
-          b.resize(flex.grid(n_b,n))
-          b_orig = matrix.rec(b, (n,n_b))
-          matrix_inversion_in_place(m, b)
-          m_inv = matrix.rec(m, (n,n))
-          x = matrix.rec(b, (n_b,n))
-          assert approx_equal(m_orig*m_inv, u)
-          assert approx_equal(m_inv*m_orig, u)
-          for i_b in xrange(n_b):
-            b_i = matrix.col(b_orig.elems[i_b*n:(i_b+1)*n])
-            x_i = matrix.col(x.elems[i_b*n:(i_b+1)*n])
-            assert approx_equal(m_orig*x_i, b_i)
 
 def matrix_mul(a, ar, ac, b, br, bc):
   assert br == ac
@@ -974,7 +887,6 @@ def run():
   exercise_euler_angles()
   exercise_erf()
   exercise_bessel()
-  exercise_matrix_inversion_in_place()
   exercise_eigensystem()
   exercise_gaussian_term()
   exercise_gaussian_sum()

@@ -102,8 +102,8 @@ namespace boost_python {
         (double(*)(
           const_ref<double> const&,
           const_ref<double> const&)) matrix_multiply)
-      .def("transpose_in_place",
-        (void(*)(versa<double, flex_grid<> >&)) transpose_in_place)
+      .def("matrix_transpose_in_place",
+        (void(*)(versa<double, flex_grid<> >&)) matrix_transpose_in_place)
       .def("matrix_lu_decomposition_in_place",
         (shared<std::size_t>(*)(
           ref<double, c_grid<2> > const&)) matrix_lu_decomposition_in_place)
@@ -113,6 +113,21 @@ namespace boost_python {
           const_ref<std::size_t> const&,
           const_ref<double> const&)) matrix_lu_back_substitution, (
         arg_("pivot_indices"), arg_("b")))
+      .def("matrix_determinant_via_lu",
+        (double(*)(
+          const_ref<double, c_grid<2> > const&,
+          const_ref<std::size_t> const&)) matrix_determinant_via_lu, (
+        arg_("pivot_indices")))
+      .def("matrix_determinant_via_lu",
+        (double(*)(
+          const_ref<double, c_grid<2> > const&)) matrix_determinant_via_lu)
+      .def("matrix_inversion_in_place",
+        (void(*)(
+          ref<double, c_grid<2> > const&,
+          ref<double, c_grid<2> > const&)) matrix_inversion_in_place, (
+        arg_("b")))
+      .def("matrix_inversion_in_place",
+        (void(*)(ref<double, c_grid<2> > const&)) matrix_inversion_in_place)
     ;
 
     def("extract_double_attributes", extract_double_attributes,
