@@ -107,6 +107,8 @@ namespace cctbx {
 
       const dimension_type& dim() const { return m_dim; }
 
+      const vecref<ValueType>& as_1d() const { return *this; }
+
       template <typename IndexTuple>
       value_type& operator()(const IndexTuple& I) const {
         return m_begin[m_dim(I)];
