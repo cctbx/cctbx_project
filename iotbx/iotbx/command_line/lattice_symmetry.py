@@ -1,10 +1,35 @@
+from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
 from cctbx.sgtbx import lattice_symmetry
 from iotbx.option_parser import iotbx_option_parser
 from scitbx.array_family import flex
+import math
 import sys
+
+class diffraction_angle_comparison:
+
+  def __init__(self, niggli_cell_0, niggli_cell_1, n_orders=5, wavelength=1):
+    p_max = 0
+    self.symmetries = []
+    for niggli_cell in (niggli_cell_0, niggli_cell_1):
+      p_max = max(p_max, niggli_cell.parameters()[2])
+      self.symmetries.append(crystal.symmetry(
+        unit_cell=niggli_cell,
+        space_group_symbol="P 1"))
+    d_min = p_max / n_orders
+    miller_set_0 = miller.build_set(
+      crystal_symmetry=self.symmetries[0],
+      anomalous_flag=00000,
+      d_min=d_min)
+    miller_set_1 = miller.set(
+      crystal_symmetry=self.symmetries[1],
+      indices=miller_set_0.indices(),
+      anomalous_flag=00000)
+    self.tt_0 = miller_set_0.two_theta(wavelength=wavelength, deg=0001)
+    self.tt_1 = miller_set_1.two_theta(wavelength=wavelength, deg=0001)
+    self.rms = math.sqrt(flex.mean_sq(self.tt_0.data()-self.tt_1.data()))
 
 def run():
   command_line = (iotbx_option_parser(
@@ -74,6 +99,10 @@ def run():
     cb_op_inp_best = cb_op_best_cell * cb_op_niggli_ref * cb_op_inp_niggli
     print "        Change of basis:", cb_op_inp_best.c()
     print "                Inverse:", cb_op_inp_best.c_inv()
+    dac = diffraction_angle_comparison(
+      niggli_symmetry.unit_cell(),
+      subsym.unit_cell())
+    print "  Diffraction angle rms: %.2f degrees" % dac.rms
     print
 
 if (__name__ == "__main__"):
