@@ -149,6 +149,25 @@ class symmetry(object):
     return self.space_group_info().direct_space_asu().define_metric(
       unit_cell=self.unit_cell())
 
+  def gridding(self, d_min=None,
+                     resolution_factor=None,
+                     step=None,
+                     symmetry_flags=None,
+                     mandatory_factors=None,
+                     max_prime=5,
+                     assert_shannon_sampling=0001):
+    from cctbx import maptbx
+    return maptbx.crystal_gridding(
+      unit_cell=self.unit_cell(),
+      d_min=d_min,
+      resolution_factor=resolution_factor,
+      step=step,
+      symmetry_flags=symmetry_flags,
+      space_group_info=self.space_group_info(),
+      mandatory_factors=mandatory_factors,
+      max_prime=max_prime,
+      assert_shannon_sampling=assert_shannon_sampling)
+
 class special_position_settings(symmetry):
 
   def __init__(self, crystal_symmetry,
