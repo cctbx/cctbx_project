@@ -508,7 +508,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static std::size_t
-    count(flex_bool const& a1, bool a2)
+    count(f_t const& a1, e_t const& a2)
     {
       std::size_t result = 0;
       for(std::size_t i=0;i<a1.size();i++) if(a1[i] == a2) result++;
@@ -780,6 +780,7 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::def("product", product_a);
       }
       return plain(python_name)
+        .def("count", count)
         .def("__neg__", neg_a)
         .def("__add__", add_a_a)
         .def("__sub__", sub_a_a)
