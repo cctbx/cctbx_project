@@ -1,5 +1,6 @@
 from scitbx.math.ext import *
 import scitbx.math.eigensystem
+import scitbx.math.gaussian
 
 class erf_verification:
 

@@ -1,8 +1,10 @@
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import eigensystem
+from scitbx.math import gaussian
 from scitbx.array_family import flex
-from scitbx.test_utils import approx_equal
+from scitbx.test_utils import approx_equal, eps_eq
 import random
+import math
 
 def exercise_erf():
   erf_verify = erf_verification()
@@ -159,9 +161,55 @@ def exercise_eigensystem():
         lx = [e*l for e in x]
         assert approx_equal(mx, lx)
 
+def gaussian_finite_gradient(gaussian, x, eps=1.e-5):
+  if (x == 0): return 0
+  assert x >= eps
+  tm = gaussian.at_x(x-eps)
+  tp = gaussian.at_x(x+eps)
+  return (tp-tm)/(2*eps)
+
+def exercise_gaussian_gradient(gaussian, x_max=1., n_points=50):
+  for i in xrange(n_points+1):
+    x = x_max * i / n_points
+    grad_finite = gaussian_finite_gradient(gaussian, x)
+    grad_analytical = gaussian.gradient_dx_at_x(x)
+    assert eps_eq(grad_finite, grad_analytical)
+
+def exercise_gaussian_integral(gaussian, x_max=1., n_points=1000):
+  numerical_integral = 0
+  x_step = x_max / n_points
+  for i in xrange(n_points+1):
+    x = x_max * i / n_points
+    new_value = gaussian.at_x(x)
+    if (i):
+      numerical_integral += (prev_value + new_value) * .5
+    prev_value = new_value
+    analytical_integral = gaussian.integral_dx_at_x(x, 1.e-3)
+    assert eps_eq(analytical_integral, gaussian.integral_dx_at_x(x))
+    assert eps_eq(numerical_integral*x_step, analytical_integral)
+
+def exercise_gaussian_term():
+  t = gaussian.term(2,3)
+  assert approx_equal(t.a, 2)
+  assert approx_equal(t.b, 3)
+  assert approx_equal(t.at_x_sq(4), 2*math.exp(-3*4))
+  assert approx_equal(t.at_x(2), 2*math.exp(-3*4))
+  eps = 1.e-5
+  for ix in (xrange(10)):
+    x = ix/10.
+    assert eps_eq((t.at_x(x+eps)-t.at_x(x-eps))/(2*eps), t.gradient_dx_at_x(x))
+  for f in [1,-1]:
+    for t in [gaussian.term(f*2,3),
+              gaussian.term(f*3,0),
+              gaussian.term(f*4,1.e-4),
+              gaussian.term(f*5,-1)]:
+      exercise_gaussian_gradient(t)
+      exercise_gaussian_integral(t)
+
 def run():
   exercise_erf()
   exercise_eigensystem()
+  exercise_gaussian_term()
   print "OK"
 
 if (__name__ == "__main__"):

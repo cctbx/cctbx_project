@@ -7,7 +7,11 @@
 #include <boost/python/class.hpp>
 
 namespace scitbx { namespace math {
-namespace boost_python { namespace {
+namespace boost_python {
+
+  void wrap_gaussian();
+
+namespace {
 
   struct eigensystem_real_symmetric_wrappers
   {
@@ -36,6 +40,8 @@ namespace boost_python { namespace {
     def("erfcx", (double(*)(double const&)) erfcx);
 
     eigensystem_real_symmetric_wrappers::wrap();
+
+    wrap_gaussian();
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
