@@ -980,6 +980,7 @@ namespace lbfgs {
           throw error_improper_input_parameter("stpmax < stpmin");
         }
         w_.resize(n_*(2*m_+1)+2*m_);
+        scratch_array_.resize(n_);
       }
 
       //! Number of free parameters (as passed to the constructor).
@@ -1093,8 +1094,7 @@ namespace lbfgs {
         FloatType f,
         const FloatType* g)
       {
-        if (diag_.size() == 0) diag_.resize(n_);
-        return generic_run(x, f, g, false, &(*(diag_.begin())));
+        return generic_run(x, f, g, false, 0);
       }
 
       //! Execution of one step of the minimization.
@@ -1117,7 +1117,7 @@ namespace lbfgs {
         FloatType* x,
         FloatType f,
         const FloatType* g,
-        FloatType* diag)
+        const FloatType* diag)
       {
         return generic_run(x, f, g, true, diag);
       }
@@ -1134,7 +1134,7 @@ namespace lbfgs {
         FloatType f,
         const FloatType* g,
         bool diagco,
-        FloatType* diag);
+        const FloatType* diag);
 
       detail::mcsrch<FloatType, SizeType> mcsrch_instance;
       const SizeType n_;
@@ -1161,7 +1161,7 @@ namespace lbfgs {
       SizeType bound;
       SizeType nfev;
       std::vector<FloatType> w_;
-      std::vector<FloatType> diag_;
+      std::vector<FloatType> scratch_array_;
   };
 
   template <typename FloatType, typename SizeType>
@@ -1170,7 +1170,7 @@ namespace lbfgs {
     FloatType f,
     const FloatType* g,
     bool diagco,
-    FloatType* diag)
+    const FloatType* diag)
   {
     bool execute_entire_while_loop = false;
     if (!(requests_f_and_g_ || requests_diag_)) {
@@ -1189,7 +1189,8 @@ namespace lbfgs {
         }
       }
       else {
-        std::fill_n(diag, n_, FloatType(1));
+        std::fill_n(scratch_array_.begin(), n_, FloatType(1));
+        diag = &(*(scratch_array_.begin()));
       }
       for (SizeType i = 0; i < n_; i++) {
         w[ispt + i] = -g[i] * diag[i];
@@ -1210,7 +1211,8 @@ namespace lbfgs {
         if (!diagco) {
           FloatType yy = detail::ddot(
             n_, w, iypt + npt, SizeType(1), w, iypt + npt, SizeType(1));
-          std::fill_n(diag, n_, ys / yy);
+          std::fill_n(scratch_array_.begin(), n_, ys / yy);
+          diag = &(*(scratch_array_.begin()));
         }
         else {
           iflag_ = 2;
@@ -1221,6 +1223,9 @@ namespace lbfgs {
     }
     if (execute_entire_while_loop || iflag_ == 2) {
       if (iter_ != 1) {
+        if (diag == 0) {
+          throw error_internal_error(__FILE__, __LINE__);
+        }
         if (diagco) {
           for (SizeType i = 0; i < n_; i++) {
             if (diag[i] <= FloatType(0)) {
@@ -1268,7 +1273,7 @@ namespace lbfgs {
     }
     mcsrch_instance.run(
       gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
-      stp_, ftol, xtol_, maxfev_, info, nfev, diag);
+      stp_, ftol, xtol_, maxfev_, info, nfev, &(*(scratch_array_.begin())));
     if (info == -1) {
       iflag_ = 1;
       requests_f_and_g_ = true;

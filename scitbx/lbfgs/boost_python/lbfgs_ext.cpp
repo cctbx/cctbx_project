@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Ported from cctbx/lbfgs/lbfgsmodule.cpp (rwgk)
-     2002 Mar: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/error.h>
@@ -15,7 +5,6 @@
 #include <scitbx/lbfgs/drop_convergence_test.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/boost_python/utils.h>
-#include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
@@ -33,7 +22,7 @@ namespace scitbx { namespace lbfgs { namespace {
       af::flex_double& x,
       double f,
       af::flex_double const& g,
-      af::flex_double& diag)
+      af::flex_double const& diag)
     {
       using namespace scitbx::af::boost_python;
       SCITBX_ASSERT(flex_as_base_array(x).size() == minimizer.n());
@@ -143,9 +132,6 @@ namespace scitbx { namespace lbfgs { namespace {
   void init_module()
   {
     using namespace boost::python;
-
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
 
     minimizer_wrappers::wrap();
     traditional_convergence_test_wrappers::wrap();
