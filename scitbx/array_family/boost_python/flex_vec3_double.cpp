@@ -144,6 +144,19 @@ namespace {
     return result;
   }
 
+  af::shared<double>
+  dot_a_a(
+    af::const_ref<vec3<double> > const& lhs,
+    af::const_ref<vec3<double> > const& rhs)
+  {
+    SCITBX_ASSERT(lhs.size() == rhs.size());
+    af::shared<double> result((af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result.push_back(lhs[i] * rhs[i]);
+    }
+    return result;
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -161,8 +174,12 @@ namespace boost_python {
       .def("__add__", flex_wrapper<vec3<double> >::add_a_s)
       .def("__add__", flex_wrapper<vec3<double> >::add_a_a)
       .def("__iadd__", flex_wrapper<vec3<double> >::iadd_a_s)
+      .def("__sub__", flex_wrapper<vec3<double> >::sub_a_s)
+      .def("__sub__", flex_wrapper<vec3<double> >::sub_a_a)
+      .def("__isub__", flex_wrapper<vec3<double> >::isub_a_s)
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)
+      .def("dot", dot_a_a)
     ;
   }
 
