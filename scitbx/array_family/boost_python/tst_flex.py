@@ -316,6 +316,8 @@ def exercise_select_shuffle():
   a = flex.double((1,2,3,4,5))
   b = flex.bool((0,1,0,1,1))
   assert tuple(a.select(b)) == (2,4,5)
+  assert tuple(a.set_selected(b, flex.double((7,8,9)))) == (1,7,3,8,9)
+  a = flex.double((1,2,3,4,5))
   b = flex.size_t((3,1,0,4,2))
   assert tuple(a.shuffle(b)) == (4,2,1,5,3)
   assert tuple(a.unshuffle(b)) == (3,2,5,1,4)

@@ -381,6 +381,7 @@ namespace scitbx { namespace af { namespace boost_python {
     select(f_t const& a, flex_bool const& flags)
     {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
+      if (!flags.check_shared_size()) raise_shared_size_mismatch();
       assert_0_based_1d(a.accessor());
       assert_0_based_1d(flags.accessor());
       if (a.size() != flags.size()) {
@@ -393,6 +394,30 @@ namespace scitbx { namespace af { namespace boost_python {
       result.reserve(n);
       for(i=0;i<flags.size();i++) if (flags[i]) result.push_back(a[i]);
       return f_t(result, flex_grid<>(result.size()));
+    }
+
+    static f_t
+    set_selected(f_t& a, flex_bool const& flags, f_t const& new_values)
+    {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
+      if (!flags.check_shared_size()) raise_shared_size_mismatch();
+      if (!new_values.check_shared_size()) raise_shared_size_mismatch();
+      assert_0_based_1d(a.accessor());
+      assert_0_based_1d(flags.accessor());
+      assert_0_based_1d(new_values.accessor());
+      if (a.size() != flags.size()) {
+        raise_incompatible_arrays();
+      }
+      std::size_t i_new_value = 0;
+      for(std::size_t i=0;i<flags.size();i++) {
+        if (flags[i]) {
+          SCITBX_ASSERT(i_new_value < new_values.size());
+          a[i] = new_values[i_new_value];
+          i_new_value++;
+        }
+      }
+      SCITBX_ASSERT(i_new_value == new_values.size());
+      return a;
     }
 
     static void
@@ -697,6 +722,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("indices", indices)
         .def("items", items)
         .def("select", select)
+        .def("set_selected", set_selected)
         .def("shuffle", shuffle)
         .def("unshuffle", unshuffle)
       ;
