@@ -352,11 +352,14 @@ class bond_registry:
     self.direct.append([])
     self.sym.append([])
 
-  def enter_direct(self, entry):
-    self.direct[-1].append(entry)
-
-  def enter_sym(self, entry):
-    self.sym[-1].append(entry)
+  def enter(self, asu_mappings, i_seq, entry):
+    type_id = asu_mappings.interaction_type_id(
+      pair=asu_mappings.make_pair(
+        i_seq=i_seq, j_seq=entry[0], j_sym=entry[1]))
+    if (type_id > 0):
+      self.direct[-1].append(entry[0])
+    elif (type_id == 0):
+      self.sym[-1].append(entry)
 
 def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   scatterers = structure.scatterers()
@@ -423,7 +426,10 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
             rt_mx=rt_mx_pivot.multiply(n.rt_mx))
           if (i_shell == 1): assert i_sym >= 0
           if (i_sym > 0 or (i_sym == 0 and i_seq_pivot < n.i_seq)):
-            bond_reg.enter_sym((n.i_seq, i_sym))
+            bond_reg.enter(
+              asu_mappings=asu_mappings,
+              i_seq=i_seq_pivot,
+              entry=(n.i_seq, i_sym))
       if (0):
         nodes_for_pdb.extend(nodes_next)
         write_nodes_as_pdb(
@@ -448,8 +454,9 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
         print "Found coordination sequence"
   print "TD%d:" % (terms.size()-1), \
         flex.mean_weighted(sums_terms, multiplicities)
-  print [bond_reg.sym for bond_reg in bond_registries]
-  return term_table
+  print "bond_reg.direct:", [bond_reg.direct for bond_reg in bond_registries]
+  print "bond_reg.sym:", [bond_reg.sym for bond_reg in bond_registries]
+  return term_table, bond_registries
 
 def coordination_sequences_sorted(structure, proxies, n_shells=10):
   scatterers = structure.scatterers()
@@ -475,10 +482,14 @@ def coordination_sequences_sorted(structure, proxies, n_shells=10):
   asu_mappings = proxies.asu_mappings
   special_ops = [site_symmetry.special_op()
     for site_symmetry in proxies.site_symmetries]
+  bond_registries = []
   term_table = []
   for i_seq_pivot in xrange(len(pair_lists_sym)):
+    rt_mx_pivot = asu_mappings.get_rt_mx(i_seq=i_seq_pivot, i_sym=0)
+    bond_reg = bond_registry()
     if (  len(pair_lists_direct[i_seq_pivot])
         + len(pair_lists_sym[i_seq_pivot]) == 0):
+      bond_registries.append(bond_reg)
       term_table.append(flex.size_t())
       continue
     nodes_middle = []
@@ -524,9 +535,22 @@ def coordination_sequences_sorted(structure, proxies, n_shells=10):
               and not find_node(test_node=new_node, node_list=nodes_next)):
             nodes_next.append(new_node)
       terms.append(len(nodes_next))
+      if (i_shell <= 3):
+        bond_reg.start_next_shell()
+        for n in nodes_next:
+          i_sym = asu_mappings.find_i_sym(
+            i_seq=n.i_seq,
+            rt_mx=rt_mx_pivot.multiply(n.rt_mx))
+          if (i_shell == 1): assert i_sym >= 0
+          if (i_sym > 0 or (i_sym == 0 and i_seq_pivot < n.i_seq)):
+            bond_reg.enter(
+              asu_mappings=asu_mappings,
+              i_seq=i_seq_pivot,
+              entry=(n.i_seq, i_sym))
+    bond_registries.append(bond_reg)
     term_table.append(terms)
     print scatterers[i_seq_pivot].label, list(terms)
-  return term_table
+  return term_table, bond_registries
 
 def run(distance_cutoff=3.5):
   command_line = (iotbx_option_parser(
@@ -559,17 +583,21 @@ def run(distance_cutoff=3.5):
       if (si_proxies.bond_counts.count(4) != si_proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
       if (1):
-        term_table_0 = coordination_sequences(
+        term_table_0, bond_registries_0 = coordination_sequences(
           structure=si_structure,
           proxies=si_proxies,
           coseq_terms=coseq_dict.get(entry.tag, None))
         if (1):
-          term_table_1 = coordination_sequences_sorted(
+          term_table_1, bond_registries_1 = coordination_sequences_sorted(
             structure=si_structure,
             proxies=si_proxies)
           for t0,t1 in  zip(term_table_0, term_table_1):
             if (not t0.all_eq(t1)):
               print "Error in coordination sequence"
+          for r0,r1 in  zip(bond_registries_0, bond_registries_1):
+            for i in xrange(3):
+              assert len(r0.direct) == len(r1.direct)
+              assert len(r0.sym) == len(r1.sym)
       if (0):
         if (0):
           si_o_structure = si_structure
