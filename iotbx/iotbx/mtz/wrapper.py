@@ -83,6 +83,7 @@ class _object(boost.python.injector, ext.object):
               column.label(),
               n_valid_values,
               self.n_reflections(),
-              100.*n_valid_values/self.n_reflections(),
+              100.*n_valid_values/max(1,self.n_reflections()),
               column.type(),
-              column_type_legend[column.type()])
+              column_type_legend.get(
+                column.type(), "*** UNDEFINED column type ***"))
