@@ -36,5 +36,5 @@ class _unit_cell(injector, ext.unit_cell):
     from cctbx.uctbx import krivy_gruber_1976
     return krivy_gruber_1976.reduction(self, relative_epsilon, iteration_limit)
 
-  def niggli_cell(self):
-    return self.niggli_reduction().as_unit_cell()
+  def niggli_cell(self, relative_epsilon=None):
+    return self.niggli_reduction(relative_epsilon).as_unit_cell()
