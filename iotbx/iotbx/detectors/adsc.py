@@ -28,7 +28,11 @@ class ADSCImage(DetectorImageBase):
           ('BEAM_CENTER_Y',r'\nBEAM_CENTER_Y',float),
           ('OSC_RANGE','OSC_RANGE',float),
           ('TWOTHETA','TWOTHETA',float),
-          ('BYTE_ORDER','BYTE_ORDER',str)
+          ('BYTE_ORDER','BYTE_ORDER',str),
+          ('AXIS','AXIS',str),
+          ('PHI','PHI',float),          
+          ('OMEGA','OMEGA',float),          
+          ('DATE','DATE',str),          
           ]:
           pattern = re.compile(search+'='+r'(.*);')
           matches = pattern.findall(self.header)
