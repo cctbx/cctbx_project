@@ -460,8 +460,6 @@ a0
   check_get(parameters, path="a0.a1.t0.row0.c", expected_out="c = yes\n")
   check_get(parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x = 0\n")
   check_get(parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y = 1.\n")
-  assert [item.path for item in parameters.all_scopes_and_tables()] == [
-    "", "a0", "a0.a1", "a0.a1.t0", "a0.a1.t0.row0.t1"]
   assert [item.path for item in parameters.all_definitions()] == [
     "d0", "a0.d1", "a0.a1.t0.row0.c", "a0.a1.t0.row0.t1.1.x",
     "a0.a1.t0.row0.t1.1.y", "a0.d2"]

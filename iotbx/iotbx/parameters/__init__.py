@@ -224,9 +224,6 @@ class definition(object):
       attributes_level=attributes_level,
       print_width=print_width)
 
-  def all_scopes_and_tables(self, parent_path, result):
-    pass
-
   def all_definitions(self, parent, parent_path, result):
     result.append(object_locator(
       parent=parent, path=parent_path+self.name, object=self))
@@ -347,13 +344,6 @@ class scope:
       previous_object = object
     print >> out, prefix + "}"
 
-  def all_scopes_and_tables(self, parent_path, result):
-    parent_path += self.name
-    result.append(object_locator(parent=None, path=parent_path, object=self))
-    parent_path += "."
-    for object in self.objects:
-      object.all_scopes_and_tables(parent_path, result)
-
   def all_definitions(self, parent, parent_path, result):
     parent_path += self.name+"."
     for object in self.objects:
@@ -454,19 +444,6 @@ class table:
       print >> out, prefix+"  }"
     print >> out, prefix+"}"
 
-  def all_scopes_and_tables(self, parent_path, result):
-    parent_path += self.name
-    result.append(object_locator(parent=None, path=parent_path, object=self))
-    parent_path += "."
-    assert len(self.row_names) == len(self.row_objects)
-    for n_row,row_name,row_objects in zip(count(1),
-                                          self.row_names,
-                                          self.row_objects):
-      if (row_name is None): row_name = str(n_row)
-      row_path = parent_path + row_name + "."
-      for object in row_objects:
-        object.all_scopes_and_tables(row_path, result)
-
   def all_definitions(self, parent, parent_path, result):
     parent_path += self.name + "."
     assert len(self.row_names) == len(self.row_objects)
@@ -516,12 +493,6 @@ class object_list:
         previous_object=previous_object)
       previous_object = object
     return self
-
-  def all_scopes_and_tables(self):
-    result = [object_locator(parent=None, path="", object=self)]
-    for object in self.objects:
-      object.all_scopes_and_tables("", result)
-    return result
 
   def all_definitions(self):
     result = []
