@@ -46,11 +46,11 @@ namespace {
           &w_t::is_valid_phase,
           is_valid_phase_overloads())
         .def("nearest_valid_phase",
-          (std::complex<double>(w_t::*)(std::complex<double> const&) const)
-          &w_t::nearest_valid_phase)
-        .def("nearest_valid_phase",
           (double(w_t::*)(double, bool) const) 0,
           nearest_valid_phase_overloads())
+        .def("valid_structure_factor",
+          (std::complex<double>(w_t::*)(std::complex<double> const&) const)
+          &w_t::valid_structure_factor)
       ;
     }
   };

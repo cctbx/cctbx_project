@@ -736,9 +736,24 @@ def exercise_phase_info():
     assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, 1), 1)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180+1.e-15, 1), 1)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180-1.e-15, 1), 1)
-  phi = p.ht_angle()
-  f = complex_math.polar((1, phi))
-  assert approx_equal(f, p.nearest_valid_phase(f))
+  for i in xrange(-3, 4):
+    phi = p.ht_angle() + i * math.pi
+    f = complex_math.polar((1, phi))
+    assert approx_equal(f, p.valid_structure_factor(f))
+    f = complex_math.polar((1, phi+math.pi/2))
+    assert approx_equal(abs(p.valid_structure_factor(f)), 0)
+    f = complex_math.polar((1, phi+math.pi/3))
+    assert approx_equal(abs(p.valid_structure_factor(f)), 0.5)
+    f = complex_math.polar((1, phi+math.pi/4))
+    assert approx_equal(abs(p.valid_structure_factor(f)), math.sqrt(2)/2)
+    f = complex_math.polar((1, phi+math.pi/6))
+    assert approx_equal(abs(p.valid_structure_factor(f)), math.sqrt(3)/2)
+    f = complex_math.polar((1, phi-math.pi/6))
+    assert approx_equal(abs(p.valid_structure_factor(f)), math.sqrt(3)/2)
+    f = complex_math.polar((2, phi+math.pi/6))
+    assert approx_equal(abs(p.valid_structure_factor(f)), math.sqrt(3))
+    f = complex_math.polar((3, phi+math.pi/6))
+    assert approx_equal(abs(p.valid_structure_factor(f)), 3*math.sqrt(3)/2)
 
 def exercise_reciprocal_space_asu():
   reciprocal_space_asu = sgtbx.reciprocal_space_asu
