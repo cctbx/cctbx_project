@@ -452,15 +452,10 @@ namespace cctbx { namespace xray {
             unit_cell, rho_cutoff, max_d_sq_upper_bound,
             grid_n_f, coor_frac, gaussian_ft,
             i_bv, -1, scitbx::math::iceil(gu_site + gu_radius));
-          box_edges[i_bv] = box_max[i_bv] - box_min[i_bv] + 1;
-          if (box_edges[i_bv] < 1) {
-            throw error(
-              "Error determining sampling box for"
-              " model electron density. This may be due to incorrectly"
-              " defined atomic scattering factors. (calc_box)");
-          }
+          box_edges[i_bv] = std::max(0, box_max[i_bv]-box_min[i_bv]+1);
           n_points *= box_edges[i_bv];
         }
+        if (n_points == 0) max_d_sq = 0;
       }
 
       int
@@ -480,10 +475,7 @@ namespace cctbx { namespace xray {
         while (true) {
           d_frac[i_bv] = f * (coor_frac[i_bv] - box_limit/grid_n_f[i_bv]);
           if (d_frac[i_bv] < 0) {
-            throw error(
-              "Error determining sampling radius for"
-              " model electron density. This may be due to incorrectly"
-              " defined atomic scattering factors. (adjust_box_limit)");
+            return box_limit;
           }
           FloatType d_sq = unit_cell.length_sq(d_frac);
           FloatType abs_rho = scitbx::fn::absolute(gaussian_ft.rho_real(d_sq));
