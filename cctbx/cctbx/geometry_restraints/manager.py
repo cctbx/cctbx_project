@@ -18,7 +18,7 @@ class manager:
         nonbonded_params=None,
         nonbonded_types=None,
         nonbonded_function=None,
-        nonbonded_distance_cutoff=5,
+        nonbonded_distance_cutoff=None,
         nonbonded_buffer=1,
         angle_proxies=None,
         dihedral_proxies=None,
@@ -37,6 +37,9 @@ class manager:
     self._flags_bond_used_for_pair_proxies = False
     self._flags_nonbonded_used_for_pair_proxies = False
     self._pair_proxies = None
+    self.nonbonded_distance_cutoff_was_determined_automatically = False
+    self.adjusted_nonbonded_distance_cutoff = self.nonbonded_distance_cutoff
+    self.effective_nonbonded_buffer = self.nonbonded_buffer
     self.n_updates_pair_proxies = 0
 
   def pair_proxies(self,
@@ -62,7 +65,7 @@ class manager:
                              != flags.nonbonded)
           or (not lock
           and self._sites_cart_used_for_pair_proxies.max_distance(sites_cart)
-              > self.nonbonded_buffer))):
+              > self.effective_nonbonded_buffer))):
       self.n_updates_pair_proxies += 1
       self._sites_cart_used_for_pair_proxies = sites_cart.deep_copy()
       if (flags is None):
@@ -71,49 +74,89 @@ class manager:
       else:
         self._flags_bond_used_for_pair_proxies = flags.bond
         self._flags_nonbonded_used_for_pair_proxies = flags.nonbonded
-      bonded_distance_cutoff = 0
-      if (self.crystal_symmetry is None):
-        for shell_sym_table in self.shell_sym_tables:
-          bonded_distance_cutoff = max(bonded_distance_cutoff,
-            flex.max(crystal.get_distances(
-              pair_sym_table=shell_sym_table,
-              sites_cart=sites_cart)))
-        bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
-        asu_mappings = \
-          crystal.direct_space_asu.non_crystallographic_asu_mappings(
-            sites_cart=sites_cart)
-      else:
-        unit_cell = self.crystal_symmetry.unit_cell()
-        sites_frac = unit_cell.fractionalization_matrix() * sites_cart
-        for shell_sym_table in self.shell_sym_tables:
-          bonded_distance_cutoff = max(bonded_distance_cutoff,
-            flex.max(crystal.get_distances(
-              pair_sym_table=shell_sym_table,
-              orthogonalization_matrix=unit_cell.orthogonalization_matrix(),
-              sites_frac=sites_frac)))
-        bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
-        asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
-          buffer_thickness=max(
-            bonded_distance_cutoff,
-            self.nonbonded_distance_cutoff + self.nonbonded_buffer),
-          is_inside_epsilon=asu_is_inside_epsilon)
-        asu_mappings.process_sites_frac(
-          original_sites=sites_frac,
-          site_symmetry_table=self.site_symmetry_table)
-      shell_asu_tables = [
-        crystal.pair_asu_table(asu_mappings=asu_mappings)
-          .add_pair_sym_table(sym_table=shell_sym_table)
-            for shell_sym_table in self.shell_sym_tables]
-      self._pair_proxies = geometry_restraints.pair_proxies(
-        flags=flags,
-        bond_params_table=self.bond_params_table,
-        shell_asu_tables=shell_asu_tables,
-        model_indices=self.model_indices,
-        conformer_indices=self.conformer_indices,
-        nonbonded_params=self.nonbonded_params,
-        nonbonded_types=self.nonbonded_types,
-        nonbonded_distance_cutoff_plus_buffer=
-          self.nonbonded_distance_cutoff+self.nonbonded_buffer)
+      bonded_distance_cutoff = -1
+      if (self.nonbonded_distance_cutoff is None):
+        self.nonbonded_distance_cutoff \
+          = self.nonbonded_params.find_max_vdw_distance(
+              nonbonded_types=self.nonbonded_types)
+        self.nonbonded_distance_cutoff_was_determined_automatically = True
+        self.adjusted_nonbonded_distance_cutoff \
+          = self.nonbonded_distance_cutoff
+      asu_mappings = None
+      shell_asu_tables = None
+      while True:
+        current_nonbonded_distance_cutoff_plus_buffer \
+          = self.adjusted_nonbonded_distance_cutoff \
+          + self.nonbonded_buffer
+        if (self.crystal_symmetry is None):
+          if (bonded_distance_cutoff < 0):
+            for shell_sym_table in self.shell_sym_tables:
+              bonded_distance_cutoff = max(bonded_distance_cutoff,
+                flex.max(crystal.get_distances(
+                  pair_sym_table=shell_sym_table,
+                  sites_cart=sites_cart)))
+            bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
+            asu_mappings = \
+              crystal.direct_space_asu.non_crystallographic_asu_mappings(
+                sites_cart=sites_cart)
+        else:
+          if (bonded_distance_cutoff < 0):
+            unit_cell = self.crystal_symmetry.unit_cell()
+            sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+            for shell_sym_table in self.shell_sym_tables:
+              bonded_distance_cutoff = max(bonded_distance_cutoff,
+                flex.max(crystal.get_distances(
+                  pair_sym_table=shell_sym_table,
+                  orthogonalization_matrix=unit_cell.orthogonalization_matrix(),
+                  sites_frac=sites_frac)))
+            bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
+          if (asu_mappings is None
+              or asu_mappings.buffer_thickness()
+                 < current_nonbonded_distance_cutoff_plus_buffer):
+            asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
+              buffer_thickness=max(
+                bonded_distance_cutoff,
+                current_nonbonded_distance_cutoff_plus_buffer),
+              is_inside_epsilon=asu_is_inside_epsilon)
+            asu_mappings.process_sites_frac(
+              original_sites=sites_frac,
+              site_symmetry_table=self.site_symmetry_table)
+            shell_asu_tables = None
+        if (shell_asu_tables is None):
+          shell_asu_tables = [
+            crystal.pair_asu_table(asu_mappings=asu_mappings)
+              .add_pair_sym_table(sym_table=shell_sym_table)
+                for shell_sym_table in self.shell_sym_tables]
+        self._pair_proxies = geometry_restraints.pair_proxies(
+          flags=flags,
+          bond_params_table=self.bond_params_table,
+          shell_asu_tables=shell_asu_tables,
+          model_indices=self.model_indices,
+          conformer_indices=self.conformer_indices,
+          nonbonded_params=self.nonbonded_params,
+          nonbonded_types=self.nonbonded_types,
+          nonbonded_distance_cutoff_plus_buffer
+            =current_nonbonded_distance_cutoff_plus_buffer)
+        if (self._pair_proxies.nonbonded_proxies is None):
+          break
+        self.adjusted_nonbonded_distance_cutoff = \
+          max(0, self._pair_proxies.nonbonded_proxies.max_vdw_distance)
+        if (self.nonbonded_distance_cutoff
+            < self._pair_proxies.nonbonded_proxies.max_vdw_distance):
+          if (self.nonbonded_distance_cutoff_was_determined_automatically):
+            raise AssertionError("Internal error.")
+          raise AssertionError(
+            "nonbonded_distance_cutoff=%.6g is too small:"
+            " max_vdw_distance=%.6g" % (
+              self.nonbonded_distance_cutoff,
+              self._pair_proxies.nonbonded_proxies.max_vdw_distance))
+        self.effective_nonbonded_buffer \
+          = current_nonbonded_distance_cutoff_plus_buffer \
+          - self.adjusted_nonbonded_distance_cutoff
+        if (self.effective_nonbonded_buffer > bonded_distance_cutoff_epsilon):
+          break
+        self.adjusted_nonbonded_distance_cutoff \
+          = self.nonbonded_distance_cutoff
     elif (self._pair_proxies is None):
       raise AssertionError("pair_proxies not defined already.")
     return self._pair_proxies

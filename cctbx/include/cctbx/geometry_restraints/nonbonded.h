@@ -35,6 +35,86 @@ namespace cctbx { namespace geometry_restraints {
       minimum_distance(minimum_distance_)
     {}
 
+    //! Find largest possible VdW distance given nonbonded_types.
+    double
+    find_max_vdw_distance(
+      af::const_ref<std::string> const& nonbonded_types) const
+    {
+      double result = -1;
+      std::set<std::string> unique_types(
+        nonbonded_types.begin(), nonbonded_types.end());
+      for(std::set<std::string>::const_iterator
+            unique_types_i =  unique_types.begin();
+            unique_types_i != unique_types.end();
+            unique_types_i++) {
+        for(std::set<std::string>::const_iterator
+              unique_types_j =  unique_types_i;
+              unique_types_j != unique_types.end();
+              unique_types_j++) {
+          double distance = get_nonbonded_distance(
+            *unique_types_i,
+            *unique_types_j);
+          if (distance < 0) distance = default_distance;
+          if (result < distance) result = distance;
+        }
+      }
+      return std::max(minimum_distance, result);
+    }
+
+    //! Determine VdW distance by lookup in distance_table and radius_table.
+    /*! Not available in Python.
+     */
+    double
+    get_nonbonded_distance(
+      std::string const& type_i,
+      std::string const& type_j) const
+    {
+      nonbonded_distance_table::const_iterator
+        distance_dict = distance_table.find(type_i);
+      if (distance_dict != distance_table.end()) {
+        nonbonded_distance_dict::const_iterator
+          dict_entry = distance_dict->second.find(type_j);
+        if (dict_entry != distance_dict->second.end()) {
+          return dict_entry->second;
+        }
+      }
+      distance_dict = distance_table.find(type_j);
+      if (distance_dict != distance_table.end()) {
+        nonbonded_distance_dict::const_iterator
+          dict_entry = distance_dict->second.find(type_i);
+        if (dict_entry != distance_dict->second.end()) {
+          return dict_entry->second;
+        }
+      }
+      geometry_restraints::nonbonded_radius_table::const_iterator
+        radius_i = radius_table.find(type_i);
+      if (radius_i != radius_table.end()) {
+        geometry_restraints::nonbonded_radius_table::const_iterator
+          radius_j = radius_table.find(type_j);
+        if (radius_j != radius_table.end()) {
+          return radius_i->second + radius_j->second;
+        }
+      }
+      return -1;
+    }
+
+    /*! \brief Adjusts distance considering factor_1_4_interactions,
+        const_shrink_1_4_interactions, and minimum_distance.
+     */
+    /*! Not available in Python.
+     */
+    double
+    adjust_nonbonded_distance(
+      double distance,
+      bool is_1_4_interaction) const
+    {
+      if (is_1_4_interaction) {
+        distance *= factor_1_4_interactions;
+        distance -= const_shrink_1_4_interactions;
+      }
+      return std::max(minimum_distance, distance);
+    }
+
     //! Table of VdW distances (given two energy types).
     nonbonded_distance_table distance_table;
     //! Table of VdW radii (given one energy type).

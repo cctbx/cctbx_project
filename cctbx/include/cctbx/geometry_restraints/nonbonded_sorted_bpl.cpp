@@ -75,6 +75,8 @@ namespace {
         .def_readonly("n_nonbonded", &w_t::n_nonbonded)
         .def_readonly("n_unknown_nonbonded_type_pairs",
           &w_t::n_unknown_nonbonded_type_pairs)
+        .def_readonly("min_vdw_distance", &w_t::min_vdw_distance)
+        .def_readonly("max_vdw_distance", &w_t::max_vdw_distance)
       ;
     }
   };

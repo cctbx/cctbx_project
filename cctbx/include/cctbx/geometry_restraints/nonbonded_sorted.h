@@ -22,7 +22,9 @@ namespace cctbx { namespace geometry_restraints {
         n_1_3(0),
         n_1_4(0),
         n_nonbonded(0),
-        n_unknown_nonbonded_type_pairs(0)
+        n_unknown_nonbonded_type_pairs(0),
+        min_vdw_distance(-1),
+        max_vdw_distance(-1)
       {}
 
       //! Generation of nonbonded proxies.
@@ -48,7 +50,9 @@ namespace cctbx { namespace geometry_restraints {
         n_1_3(0),
         n_1_4(0),
         n_nonbonded(0),
-        n_unknown_nonbonded_type_pairs(0)
+        n_unknown_nonbonded_type_pairs(0),
+        min_vdw_distance(-1),
+        max_vdw_distance(-1)
       {
         CCTBX_ASSERT(model_indices.size() == 0
                   || model_indices.size() == nonbonded_types.size());
@@ -93,14 +97,30 @@ namespace cctbx { namespace geometry_restraints {
           }
           if (   shell_asu_tables_size > 2
               && shell_asu_tables[2].contains(pair)) {
-            process(make_nonbonded_asu_proxy(
-              nonbonded_params, nonbonded_types, pair, true));
+            nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
+              nonbonded_params, nonbonded_types, pair, true);
+            if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
+              min_vdw_distance = proxy.vdw_distance;
+            }
+            if (max_vdw_distance < proxy.vdw_distance) {
+              max_vdw_distance = proxy.vdw_distance;
+            }
+            process(proxy);
             n_1_4++;
             continue;
           }
-          process(make_nonbonded_asu_proxy(
-            nonbonded_params, nonbonded_types, pair, false));
-          n_nonbonded++;
+          {
+            nonbonded_asu_proxy proxy = make_nonbonded_asu_proxy(
+              nonbonded_params, nonbonded_types, pair, false);
+            if (min_vdw_distance < 0 || min_vdw_distance > proxy.vdw_distance){
+              min_vdw_distance = proxy.vdw_distance;
+            }
+            if (max_vdw_distance < proxy.vdw_distance) {
+              max_vdw_distance = proxy.vdw_distance;
+            }
+            process(proxy);
+            n_nonbonded++;
+          }
         }
       }
 
@@ -112,63 +132,26 @@ namespace cctbx { namespace geometry_restraints {
         direct_space_asu::asu_mapping_index_pair const& pair,
         bool is_1_4_interaction)
       {
-        std::string const& rep_type_i = nonbonded_types[pair.i_seq];
-        std::string const& rep_type_j = nonbonded_types[pair.j_seq];
-        nonbonded_distance_table::const_iterator
-          distance_dict = nonbonded_params.distance_table.find(rep_type_i);
-        if (distance_dict != nonbonded_params.distance_table.end()) {
-          nonbonded_distance_dict::const_iterator
-            dict_entry = distance_dict->second.find(rep_type_j);
-          if (dict_entry != distance_dict->second.end()) {
-            return nonbonded_asu_proxy(pair, get_nonbonded_distance(
-              nonbonded_params, dict_entry->second, is_1_4_interaction));
-          }
-        }
-        distance_dict = nonbonded_params.distance_table.find(rep_type_j);
-        if (distance_dict != nonbonded_params.distance_table.end()) {
-          nonbonded_distance_dict::const_iterator
-            dict_entry = distance_dict->second.find(rep_type_i);
-          if (dict_entry != distance_dict->second.end()) {
-            return nonbonded_asu_proxy(pair, get_nonbonded_distance(
-              nonbonded_params, dict_entry->second, is_1_4_interaction));
-          }
-        }
-        geometry_restraints::nonbonded_radius_table::const_iterator
-          radius_i = nonbonded_params.radius_table.find(rep_type_i);
-        if (radius_i != nonbonded_params.radius_table.end()) {
-          geometry_restraints::nonbonded_radius_table::const_iterator
-            radius_j = nonbonded_params.radius_table.find(rep_type_j);
-          if (radius_j != nonbonded_params.radius_table.end()) {
-            return nonbonded_asu_proxy(pair, get_nonbonded_distance(
-              nonbonded_params,
-              radius_i->second + radius_j->second,
-              is_1_4_interaction));
-          }
+        std::string const& type_i = nonbonded_types[pair.i_seq];
+        std::string const& type_j = nonbonded_types[pair.j_seq];
+        double distance = nonbonded_params.get_nonbonded_distance(
+          type_i, type_j);
+        if (distance != -1) {
+          return nonbonded_asu_proxy(
+            pair,
+            nonbonded_params.adjust_nonbonded_distance(
+              distance, is_1_4_interaction));
         }
         if (nonbonded_params.default_distance > 0) {
           n_unknown_nonbonded_type_pairs++;
-          return nonbonded_asu_proxy(pair, get_nonbonded_distance(
-            nonbonded_params,
-            nonbonded_params.default_distance,
-            is_1_4_interaction));
+          return nonbonded_asu_proxy(
+            pair,
+            nonbonded_params.adjust_nonbonded_distance(
+              nonbonded_params.default_distance, is_1_4_interaction));
         }
         throw error(
-         "Unknown nonbonded type pair (incomplete nonbonded_distance_table): "
-         + rep_type_i + " - " + rep_type_j);
-      }
-
-      //! For internal use only.
-      double
-      get_nonbonded_distance(
-        geometry_restraints::nonbonded_params const& nonbonded_params,
-        double distance,
-        bool is_1_4_interaction)
-      {
-        if (is_1_4_interaction) {
-          distance *= nonbonded_params.factor_1_4_interactions;
-          distance -= nonbonded_params.const_shrink_1_4_interactions;
-        }
-        return std::max(nonbonded_params.minimum_distance, distance);
+          "Unknown nonbonded type pair (incomplete nonbonded_distance_table): "
+          + type_i + " - " + type_j);
       }
 
       //! Number of 1-3 interactions excluded from nonbonded proxies.
@@ -181,6 +164,11 @@ namespace cctbx { namespace geometry_restraints {
           with default distance).
        */
       unsigned n_unknown_nonbonded_type_pairs;
+
+      //! Smallest VdW distance encountered.
+      double min_vdw_distance;
+      //! Largest VdW distance encountered.
+      double max_vdw_distance;
   };
 
 }} // namespace cctbx::geometry_restraints
