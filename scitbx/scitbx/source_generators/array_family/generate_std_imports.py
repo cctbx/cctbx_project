@@ -1,5 +1,5 @@
 from scitbx.source_generators.array_family import generate_operator_functors
-from scitbx.source_generators.utils import write_this_is_auto_generated
+from scitbx.source_generators import utils
 import sys, os
 
 this = "scitbx.source_generators.array_family.generate_std_imports"
@@ -67,11 +67,8 @@ def generate_2arg(f):
       function_name, function_name + "(x, y)")
 
 def run(target_dir):
-  output_file_name = os.path.normpath(os.path.join(
-    target_dir, "std_imports.h"))
-  print "Generating:", output_file_name
-  f = open(output_file_name, "w")
-  write_this_is_auto_generated(f, this)
+  f = utils.join_open(target_dir, "detail/std_imports.h", "w")
+  utils.write_this_is_auto_generated(f, this)
   print >> f, """\
 #ifndef SCITBX_ARRAY_FAMILY_STD_IMPORTS_H
 #define SCITBX_ARRAY_FAMILY_STD_IMPORTS_H

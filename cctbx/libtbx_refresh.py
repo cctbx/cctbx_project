@@ -5,6 +5,7 @@ import os
 
 if (libtbx.env.is_ready_for_build()):
   target_dir = libtbx.env.under_build("cctbx/eltbx")
+  print '  Generating C++ files in:\n    "%s"' % target_dir
   for label,generator_module in [("Henke", generate_henke_cpp),
                                  ("Sasaki", generate_sasaki_cpp)]:
     if (os.path.isdir(generator_module.reference_tables_directory)):
