@@ -12,7 +12,7 @@ def exercise_triplet_generator():
   assert t.sigma_2_only() == 00000
   assert t.t_den() == sg.t_den()
   assert tuple(t.n_relations(00000, 00000)) == (0,0)
-  assert t.relations_for(0, 00000) == ()
+  assert t.relations_for(0, 00000, 00000) == ()
   assert approx_equal(tuple(t.sum_of_amplitude_products(i, a, 00000, 00000)),
                       (0,0))
   s = flex.bool()
@@ -27,11 +27,20 @@ def exercise_triplet_generator():
   assert tuple(t.n_relations(00000, 0001)) == (2,2,2)
   assert tuple(t.n_relations(0001, 00000)) == (2,1,1)
   assert tuple(t.n_relations(0001, 0001)) == (1,1,1)
-  assert [r.format(i, 0) for r in t.relations_for(0, 00000)] \
+  assert [r.format(i, 0) for r in t.relations_for(0, 00000, 00000)] \
       == ["(4,6,0) (5,2,5) 1 (6,1,5) 0 3 2",
           "(4,6,0) (5,2,5) 0 (6,1,5) 1 9 2"]
-  assert [r.format(i, 0) for r in t.relations_for(0, 0001)] \
+  assert [r.format(i, 0) for r in t.relations_for(0, 0001, 00000)] \
+      == ["(4,6,0) (5,2,5) 1 (6,1,5) 0 3 1",
+          "(4,6,0) (5,2,5) 0 (6,1,5) 1 9 1"]
+  assert [r.format(i, 0) for r in t.relations_for(0, 00000, 0001)] \
       == ["(4,6,0) (5,2,5) 1 (6,1,5) 0 3 2"]
+  assert [r.format(i, 0) for r in t.relations_for(0, 0001, 0001)] \
+      == ["(4,6,0) (5,2,5) 1 (6,1,5) 0 3 1"]
+  assert [r.format(i, 1) for r in t.relations_for(1, 00000, 00000)] \
+      == ["(5,2,5) (4,6,0) 0 (6,1,5) 0 3 2"]
+  assert [r.format(i, 2) for r in t.relations_for(2, 00000, 00000)] \
+      == ["(6,1,5) (4,6,0) 0 (5,2,5) 0 9 2"]
   assert approx_equal(tuple(t.sum_of_amplitude_products(i, a, 00000, 00000)),
                       (24,6,4))
   assert approx_equal(tuple(t.sum_of_amplitude_products(i, a, 00000, 0001)),
@@ -40,6 +49,11 @@ def exercise_triplet_generator():
                       (12,3,2))
   assert approx_equal(tuple(t.sum_of_amplitude_products(i, a, 0001, 0001)),
                       (6,3,2))
+  r0 = t.relations_for(0, 00000, 00000)
+  r1 = t.relations_for(1, 00000, 00000)
+  assert r0[0].is_sigma_2(0)
+  assert r0[0].is_similar_to(r0[1])
+  assert not r0[0].is_similar_to(r1[0])
 
 def run():
   exercise_triplet_generator()
