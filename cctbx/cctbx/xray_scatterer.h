@@ -84,7 +84,9 @@ namespace cctbx {
         m_M = SS.M();
         m_w = m_Occ * m_M / SgOps.OrderZ();
         if (m_Anisotropic) {
-          SS.CheckUstar(m_U, Ustar_tolerance);
+          if (Ustar_tolerance > 0.) {
+            SS.CheckUstar(m_U, Ustar_tolerance);
+          }
           m_U = SS.AverageUstar(m_U);
           adptbx::CheckPositiveDefinite(m_U);
         }
