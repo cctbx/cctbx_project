@@ -3,7 +3,7 @@ from cctbx.xray import structure_factors
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
-from cctbx.eltbx import caasf
+from cctbx import eltbx
 from cctbx import matrix
 from cctbx.array_family import flex
 import types
@@ -11,7 +11,8 @@ import sys
 
 class structure(crystal.special_position_settings):
 
-  def __init__(self, special_position_settings, scatterers=None):
+  def __init__(self, special_position_settings, scatterers=None,
+                     scattering_dict=None):
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
     if (scatterers is None):
@@ -19,19 +20,24 @@ class structure(crystal.special_position_settings):
     else:
       self._scatterers = scatterers.deep_copy()
       self.all_apply_symmetry()
+    self._scattering_dict = scattering_dict
+    self._scattering_dict_is_out_of_date = 0001
 
   def _copy_constructor(self, other):
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
     self._scatterers = other._scatterers
     self._special_position_indices = other._special_position_indices
+    self._scattering_dict = other._scattering_dict
+    self._scattering_dict_is_out_of_date=other._scattering_dict_is_out_of_date
 
   def erase_scatterers(self):
     self._scatterers = flex.xray_scatterer()
     self._special_position_indices = flex.size_t()
+    self._scattering_dict_is_out_of_date = 0001
 
   def deep_copy_scatterers(self):
-    cp = structure(self)
+    cp = structure(self, scattering_dict=self._scattering_dict)
     cp._scatterers = self._scatterers.deep_copy()
     cp._special_position_indices = self._special_position_indices.deep_copy()
     return cp
@@ -42,16 +48,42 @@ class structure(crystal.special_position_settings):
   def special_position_indices(self):
     return self._special_position_indices
 
+  def scattering_dict(self, custom_dict=None, d_min=None, d_min_it1992=1):
+    if (   self._scattering_dict_is_out_of_date
+        or custom_dict is not None
+        or d_min is not None):
+      new_dict = {"const": eltbx.caasf.custom(1) }
+      if (self._scattering_dict is not None and d_min is None):
+        for k,v in self._scattering_dict.dict().items():
+          new_dict[k] = v.coefficients
+      if (custom_dict is not None):
+        new_dict.update(custom_dict)
+      if (d_min is None): d_min = 0
+      self._scattering_dict = ext.scattering_dictionary(self.scatterers())
+      for key_undef in self._scattering_dict.find_undefined():
+        if (new_dict.has_key(key_undef)):
+          val = new_dict[key_undef]
+        else:
+          if (d_min >= d_min_it1992):
+            val = eltbx.caasf.it1992(key_undef, 1).as_custom()
+          else:
+            val = eltbx.caasf.wk1995(key_undef, 1).as_custom()
+        self._scattering_dict.assign(key_undef, val)
+      self._scattering_dict_is_out_of_date = 00000
+    return self._scattering_dict
+
   def __getitem__(self, slice_object):
     assert type(slice_object) == types.SliceType
     assert self.scatterers() is not None
     return structure(
       special_position_settings=self,
-      scatterers=self.scatterers().__getitem__(slice_object))
+      scatterers=self.scatterers().__getitem__(slice_object),
+      scattering_dict=self._scattering_dict)
 
   def add_scatterer(self, scatterer):
     i = self.scatterers().size()
     self._scatterers.append(scatterer)
+    self._scattering_dict_is_out_of_date = 0001
     self.apply_symmetry(i)
 
   def apply_symmetry(self, i, update_special_position_indices=0001):
@@ -70,6 +102,7 @@ class structure(crystal.special_position_settings):
     n = self.scatterers().size()
     special_position_indices = self._all_apply_symmetry(scatterers) + n
     self._scatterers.append(scatterers)
+    self._scattering_dict_is_out_of_date = 0001
     self._special_position_indices.append(special_position_indices)
 
   def all_apply_symmetry(self):
@@ -137,7 +170,8 @@ class structure(crystal.special_position_settings):
   def asymmetric_unit_in_p1(self):
     new_structure = structure(
       crystal.special_position_settings(
-        crystal.symmetry.cell_equivalent_p1(self)))
+        crystal.symmetry.cell_equivalent_p1(self)),
+      scattering_dict=self._scattering_dict)
     new_structure._scatterers = self.scatterers().deep_copy()
     new_structure._special_position_indices = \
       self.special_position_indices().deep_copy()
@@ -146,7 +180,8 @@ class structure(crystal.special_position_settings):
   def expand_to_p1(self):
     new_structure = structure(
       crystal.special_position_settings(
-        crystal.symmetry.cell_equivalent_p1(self)))
+        crystal.symmetry.cell_equivalent_p1(self)),
+      scattering_dict=self._scattering_dict)
     for scatterer in self.scatterers():
       assert not scatterer.anisotropic_flag, "Not implemented." # XXX
       site_symmetry = self.site_symmetry(scatterer.site)
@@ -159,7 +194,8 @@ class structure(crystal.special_position_settings):
 
   def change_basis(self, cb_op):
     new_structure = structure(
-      crystal.special_position_settings.change_basis(self, cb_op))
+      crystal.special_position_settings.change_basis(self, cb_op),
+      scattering_dict=self._scattering_dict)
     for scatterer in self.scatterers():
       assert not scatterer.anisotropic_flag, "Not implemented." # XXX
       new_structure.add_scatterer(scatterer.copy(site=cb_op(scatterer.site)))
@@ -175,7 +211,8 @@ class structure(crystal.special_position_settings):
       shifted_scatterers.extract_sites() + shift)
     return structure(
       special_position_settings=self,
-      scatterers=shifted_scatterers)
+      scatterers=shifted_scatterers,
+      scattering_dict=self._scattering_dict)
 
   def sort(self, by_value="occupancy", reverse=00000):
     assert by_value in ("occupancy",)
@@ -185,7 +222,8 @@ class structure(crystal.special_position_settings):
       reverse)
     return structure(
       special_position_settings=self,
-      scatterers=self.scatterers().select(p))
+      scatterers=self.scatterers().select(p),
+      scattering_dict=self._scattering_dict)
 
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma
@@ -199,9 +237,9 @@ class structure(crystal.special_position_settings):
     result = flex.double()
     for scatterer in self.scatterers():
       scattering_type = scatterer.scattering_type
-      try: label = caasf.wk1995(scattering_type, 1).label()
-      except RuntimeError: label = None
-      if (label in (None, "const", "custom")):
+      try:
+        label = eltbx.caasf.wk1995(scattering_type, 1).label()
+      except RuntimeError:
         raise RuntimeError("Unknown atomic weight: " + scattering_type)
       result.append(tiny_pse.table(label).weight())
     return result
