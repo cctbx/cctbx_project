@@ -43,12 +43,42 @@ def exercise_flex_grid():
   assert g((4,6,8)) == 119
   assert not g.is_valid_index((0,0,0))
   assert not g.is_valid_index((5,0,0))
+  import pickle
+  g.set_layout((3,-9,5))
+  s = pickle.dumps(g)
+  l = pickle.loads(s)
+  assert g.origin() == l.origin()
+  assert g.grid() == l.grid()
+  assert g.layout() == l.layout()
+  assert g == l
+  assert not g != l
+  l = flex.grid((1,2,4), (4,6,8), 0).set_layout((3,-9,5))
+  assert not g == l
+  assert g != l
+  l = flex.grid((1,2,3), (4,7,8), 0).set_layout((3,-9,5))
+  assert not g == l
+  assert g != l
+  l = flex.grid((1,2,3), (4,6,8), 0).set_layout((4,-9,5))
+  assert not g == l
+  assert g != l
 
 def exercise_flex_constructors():
   f = flex.double()
   assert f.size() == 0
   assert f.capacity() == 0
   assert f.accessor().nd() == 1
+  assert tuple(f.accessor().origin()) == (0,)
+  assert tuple(f.accessor().grid()) == (0,)
+  assert tuple(f.accessor().last()) == (0,)
+  assert tuple(f.accessor().last(1)) == (0,)
+  assert tuple(f.accessor().last(0)) == (-1,)
+  assert tuple(f.accessor().layout()) == ()
+  assert f.nd() == 1
+  assert tuple(f.origin()) == (0,)
+  assert tuple(f.grid()) == (0,)
+  assert tuple(f.last()) == (0,)
+  assert tuple(f.last(1)) == (0,)
+  assert tuple(f.last(0)) == (-1,)
   assert tuple(f) == ()
   f = flex.double(flex.grid((2,3,5)))
   assert f.size() == 30
@@ -69,15 +99,15 @@ def exercise_flex_constructors():
 
 def exercise_reinterpret():
   fc = flex.complex_double(flex.grid((2,3,5)))
-  assert fc.accessor().grid() == (2,3,5)
+  assert fc.grid() == (2,3,5)
   fcd = flex.reinterpret_complex_as_real(fc)
   assert fc.id() == fcd.id()
   assert fc.size() * 2 == fcd.size()
-  assert fcd.accessor().grid() == (2,3,10)
+  assert fcd.grid() == (2,3,10)
   fcdc = flex.reinterpret_real_as_complex(fcd)
   assert fc.id() == fcdc.id()
   assert fc.size() == fcdc.size()
-  assert fcdc.accessor().grid() == (2,3,5)
+  assert fcdc.grid() == (2,3,5)
 
 def exercise_misc():
   f = flex.double((1,2,3))
@@ -85,18 +115,25 @@ def exercise_misc():
   assert f.back() == 3
   f.fill(42)
   assert tuple(f) == (42,42,42)
-  f = flex.double((1,2,3))
+  f = flex.double((1,2,3,4,5,6))
   fc = f.deep_copy()
   assert fc.id() != f.id()
-  assert tuple(fc) == (1,2,3)
+  assert tuple(fc) == (1,2,3,4,5,6)
+  fc = f.shallow_copy()
+  assert fc.id() == f.id()
+  assert tuple(fc) == (1,2,3,4,5,6)
+  fc.resize(flex.grid((2,3)))
+  assert f.nd() == 1
+  assert fc.nd() == 2
+  f = flex.double((1,2,3))
   f1 = f.as_1d()
   assert f1.id() == f.id()
   assert tuple(f1) == (1,2,3)
   f = flex.double(flex.grid((2,3)))
-  assert f.accessor().nd() == 2
+  assert f.nd() == 2
   f1 = f.as_1d()
   assert f1.id() == f.id()
-  assert f1.accessor().nd() == 1
+  assert f1.nd() == 1
   assert f1.size() == 6
   i = flex.double_items()
   f = flex.double(flex.grid((2,3)), 12)
@@ -308,6 +345,143 @@ def exercise_exceptions():
   except: pass
   else: raise AssertionError, "No exception."
 
+def exercise_type_1_picklers():
+  import pickle
+  a = flex.bool((1,0,1))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == (1,0,1)
+  a = flex.double(())
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 0
+  a = flex.double((1,2,3))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == (1,2,3)
+  a = flex.int((1,2,3))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == (1,2,3)
+  a = flex.float((1,2,3))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == (1,2,3)
+  a = flex.complex_double((1+2j, 2+3j, 4+5j))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == (1+2j, 2+3j, 4+5j)
+  a = flex.miller_Index(((1,2,3), (-2,3,-4), (3,-4,5)))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == ((1,2,3), (-2,3,-4), (3,-4,5))
+  a = flex.hendrickson_lattman(((1,2,3,4), (-2,3,-4,5), (3,-4,5,-6)))
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 3
+  assert tuple(b) == ((1,2,3,4), (-2,3,-4,5), (3,-4,5,-6))
+  a = flex.double(flex.grid((-1,2,-3), (7,5,3)).set_layout((3,-5,7)), 13)
+  a[(1,2,-1)] = -8
+  p = pickle.dumps(a)
+  b = pickle.loads(p)
+  assert b.size() == 8 * 3 * 6
+  assert tuple(a) == tuple(b)
+  assert a.origin() == b.origin()
+  assert a.grid() == b.grid()
+  assert a.layout() == b.layout()
+  assert a.accessor() == b.accessor()
+
+def exercise_type_2_picklers():
+  import pickle
+  from cctbx_boost import sftbx
+  from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
+  sf = CAASF_WK1995("C")
+  sites = (
+    sftbx.XrayScatterer("C1", sf, 1+2j, (0.1,0.2,0.3), 1, 0.1),
+    sftbx.XrayScatterer("C2", sf, 2+3j, (0.2,0.3,0.4), 0.5, (1,2,3,4,5,6)),
+    sftbx.XrayScatterer("C3", sf, 3+4j, (0.3,0.4,0.5), 1, (6,5,4,3,2,1)),
+    sftbx.XrayScatterer("C4", sf, 4+5j, (0.4,0.5,0.6), 0.5, 0.2),
+  )
+  for nd in (1,2,3):
+    if (nd == 1):
+      a = flex.XrayScatterer(sites)
+    elif (nd == 2):
+      a.resize(flex.grid((1,2), (3,4)))
+    else:
+      a.resize(flex.grid((5,1,2), (7,2,4)))
+    p = pickle.dumps(a)
+    b = pickle.loads(p)
+    assert b.size() == len(sites)
+    assert a.origin() == b.origin()
+    assert a.grid() == b.grid()
+    for i in xrange(len(sites)):
+      assert sites[i].Label() == b[i].Label()
+      assert sites[i].CAASF().Label() == b[i].CAASF().Label()
+      assert sites[i].fpfdp() == b[i].fpfdp()
+      assert sites[i].Coordinates() == b[i].Coordinates()
+      assert sites[i].Occ() == b[i].Occ()
+      assert sites[i].isAnisotropic() == b[i].isAnisotropic()
+      if (b[i].isAnisotropic()):
+        assert sites[i].Uaniso() == b[i].Uaniso()
+      else:
+        assert sites[i].Uiso() == b[i].Uiso()
+
+def pickle_large_arrays(max_exp):
+  import time
+  import pickle, cPickle
+  for array_type in (
+      flex.bool,
+      flex.int,
+      flex.long,
+      flex.float,
+      flex.double,
+      flex.complex_double):
+    for e in xrange(max_exp+1):
+      n = 2**e
+      if (array_type == flex.bool):
+        val = 1
+      elif (array_type == flex.int):
+        val = -2147483647
+      elif (array_type == flex.long):
+        val = -9223372036854775808
+        if (type(val) == type(1L)):
+          val = -2147483647
+      elif (array_type == flex.complex_double):
+        val = complex(-1.234567809123456e+20, -1.234567809123456e+20)
+      else:
+        val = -1.234567809123456e+20
+      a = array_type(n, val)
+      for pickler in (0, pickle, cPickle):
+        if (pickler == 0):
+          pickler_name = "g/setstate"
+          t0 = time.time()
+          s = a.__getstate__()
+          td = time.time() - t0
+          t0 = time.time()
+          b = array_type()
+          b.__setstate__(s)
+          tl = time.time() - t0
+        else:
+          pickler_name = pickler.__name__
+          f = open("pickle.tmp", "wb")
+          t0 = time.time()
+          pickler.dump(a, f, 1)
+          td = time.time() - t0
+          f.close()
+          f = open("pickle.tmp", "rb")
+          t0 = time.time()
+          b = pickle.load(f)
+          tl = time.time() - t0
+          f.close()
+        print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
+        sys.stdout.flush()
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -324,6 +498,8 @@ def run(iterations):
     exercise_complex_functions()
     exercise_select_shuffle()
     exercise_exceptions()
+    exercise_type_1_picklers()
+    exercise_type_2_picklers()
     i += 1
 
 if (__name__ == "__main__"):

@@ -81,11 +81,173 @@ namespace cctbx { namespace af {
     boost::python::throw_error_already_set();
   }
 
-  void raise_incompatible_sizes()
+  void raise_incompatible_arrays()
   {
-    PyErr_SetString(PyExc_RuntimeError, "Incompatible array sizes.");
+    PyErr_SetString(PyExc_RuntimeError, "Incompatible arrays.");
     boost::python::throw_error_already_set();
   }
+
+  inline
+  flex_grid<>
+  make_flex_grid_1d(flex_grid<>::index_value_type const& n)
+  {
+    flex_grid_default_index_type grid;
+    grid.push_back(n);
+    return flex_grid<>(grid);
+  }
+
+  boost::python::tuple flex_bool_getstate(
+    versa<bool, flex_grid<> > const& a);
+  void flex_bool_setstate(
+    versa<bool, flex_grid<> >& a, boost::python::tuple state);
+  boost::python::tuple flex_int_getstate(
+    versa<int, flex_grid<> > const& a);
+  void flex_int_setstate(
+    versa<int, flex_grid<> >& a, boost::python::tuple state);
+  boost::python::tuple flex_long_getstate(
+    versa<long, flex_grid<> > const& a);
+  void flex_long_setstate(
+    versa<long, flex_grid<> >& a, boost::python::tuple state);
+  boost::python::tuple flex_float_getstate(
+    versa<float, flex_grid<> > const& a);
+  void flex_float_setstate(
+    versa<float, flex_grid<> >& a, boost::python::tuple state);
+  boost::python::tuple flex_double_getstate(
+    versa<double, flex_grid<> > const& a);
+  void flex_double_setstate(
+    versa<double, flex_grid<> >& a, boost::python::tuple state);
+  boost::python::tuple flex_complex_double_getstate(
+    versa<std::complex<double>, flex_grid<> > const& a);
+  void flex_complex_double_setstate(
+    versa<std::complex<double>, flex_grid<> >& a,
+    boost::python::tuple state);
+  boost::python::tuple flex_miller_index_getstate(
+    versa<miller::Index, flex_grid<> > const& a);
+  void flex_miller_index_setstate(
+    versa<miller::Index, flex_grid<> >& a,
+    boost::python::tuple state);
+  boost::python::tuple flex_hendrickson_lattman_double_getstate(
+    versa<hendrickson_lattman<double>, flex_grid<> > const& a);
+  void flex_hendrickson_lattman_double_setstate(
+    versa<hendrickson_lattman<double>, flex_grid<> >& a,
+    boost::python::tuple state);
+  boost::python::tuple flex_xray_scatterer_double_wk1995_getstate(
+    versa<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>,
+          flex_grid<> > const& a);
+  void flex_xray_scatterer_double_wk1995_setstate(
+    versa<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>,
+          flex_grid<> >& a,
+    boost::python::tuple state);
+
+  template <typename ElementType>
+  struct flex_pickle
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr) {}
+  };
+
+  template <>
+  struct flex_pickle<bool>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(flex_bool_getstate, "__getstate__");
+      class_bldr.def(flex_bool_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<int>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(flex_int_getstate, "__getstate__");
+      class_bldr.def(flex_int_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<long>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(flex_long_getstate, "__getstate__");
+      class_bldr.def(flex_long_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<float>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(flex_float_getstate, "__getstate__");
+      class_bldr.def(flex_float_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<double>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(flex_double_getstate, "__getstate__");
+      class_bldr.def(flex_double_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<std::complex<double> >
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(flex_complex_double_getstate, "__getstate__");
+      class_bldr.def(flex_complex_double_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<miller::Index>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(flex_miller_index_getstate, "__getstate__");
+      class_bldr.def(flex_miller_index_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<hendrickson_lattman<double> >
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(
+        flex_hendrickson_lattman_double_getstate, "__getstate__");
+      class_bldr.def(
+        flex_hendrickson_lattman_double_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct flex_pickle<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(
+        flex_xray_scatterer_double_wk1995_getstate, "__getstate__");
+      class_bldr.def(
+        flex_xray_scatterer_double_wk1995_setstate, "__setstate__");
+    }
+  };
 
   struct flex_grid_wrappers
   {
@@ -102,6 +264,33 @@ namespace cctbx { namespace af {
     {
       return fg.last(open_range);
     }
+
+    static
+    tuple
+    getinitargs(flex_grid<> const& fg)
+    {
+      bool open_range = true;
+      tuple initargs(3);
+      initargs.set_item(0, boost::python::make_ref(fg.origin()));
+      initargs.set_item(1, boost::python::make_ref(fg.last(open_range)));
+      initargs.set_item(2, boost::python::make_ref(open_range));
+      return initargs;
+    }
+
+    static
+    flex_grid_default_index_type
+    getstate(flex_grid<> const& fg)
+    {
+      return fg.layout();
+    }
+
+    static
+    void
+    setstate(flex_grid<>& fg, flex_grid_default_index_type const& state)
+    {
+      fg.set_layout(state);
+    }
+
   };
 
   template <typename ElementType>
@@ -147,7 +336,7 @@ namespace cctbx { namespace af {
     {}
 
     flex_wrapper(PyObject*)
-      : f_t(make_flex_grid(0))
+      : f_t(make_flex_grid_1d(0))
     {}
 
     flex_wrapper(PyObject*, flex_grid<> const& fg)
@@ -159,15 +348,15 @@ namespace cctbx { namespace af {
     {}
 
     flex_wrapper(PyObject*, std::size_t n)
-      : f_t(make_flex_grid(n))
+      : f_t(make_flex_grid_1d(n))
     {}
 
     flex_wrapper(PyObject*, std::size_t n, ElementType const& x)
-      : f_t(make_flex_grid(n), x)
+      : f_t(make_flex_grid_1d(n), x)
     {}
 
     flex_wrapper(PyObject*, boost::python::tuple tuple)
-      : f_t(make_flex_grid(tuple.size()))
+      : f_t(make_flex_grid_1d(tuple.size()))
     {
       f_t::iterator a = this->begin();
       for(std::size_t i=0;i<tuple.size();i++)
@@ -178,6 +367,33 @@ namespace cctbx { namespace af {
     static
     flex_grid<>
     accessor(f_t const& a) { return a.accessor(); }
+
+    static
+    std::size_t
+    nd(f_t const& a) { return a.accessor().nd(); }
+
+    static
+    flex_grid_default_index_type
+    origin(f_t const& a) { return a.accessor().origin(); }
+
+    static
+    flex_grid_default_index_type
+    grid(f_t const& a) { return a.accessor().grid(); }
+
+    static
+    flex_grid_default_index_type
+    last_0(f_t const& a) { return a.accessor().last(); }
+
+    static
+    flex_grid_default_index_type
+    last_1(f_t const& a, bool open_range)
+    {
+      return a.accessor().last(open_range);
+    }
+
+    static
+    flex_grid_default_index_type
+    layout(f_t const& a) { return a.accessor().layout(); }
 
     static
     std::size_t
@@ -263,6 +479,13 @@ namespace cctbx { namespace af {
 
     static
     f_t
+    shallow_copy(f_t const& a)
+    {
+      return a;
+    }
+
+    static
+    f_t
     as_1d(f_t const& a)
     {
       flex_grid_default_index_type grid;
@@ -294,7 +517,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = as_base_array(a);
       b.assign(sz, x);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -302,7 +525,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = as_base_array(a);
       b.push_back(x);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -312,7 +535,7 @@ namespace cctbx { namespace af {
       base_array_type b = as_base_array(a);
       if (b.size() == 0) raise_index_error();
       b.pop_back();
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -322,7 +545,7 @@ namespace cctbx { namespace af {
       base_array_type b = as_base_array(a);
       if (i >= b.size()) raise_index_error();
       b.insert(&b[i], x);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -332,7 +555,7 @@ namespace cctbx { namespace af {
       base_array_type b = as_base_array(a);
       if (i >= b.size()) raise_index_error();
       b.insert(&b[i], n, x);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -342,7 +565,7 @@ namespace cctbx { namespace af {
       base_array_type b = as_base_array(a);
       if (i >= b.size()) raise_index_error();
       b.erase(&b[i]);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -352,7 +575,7 @@ namespace cctbx { namespace af {
       if (i >= b.size()) raise_index_error();
       if (j >= b.size()) raise_index_error();
       b.erase(&b[i], &b[j]);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -361,7 +584,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = as_base_array(a);
       b.resize(sz);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -370,7 +593,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = as_base_array(a);
       b.resize(sz, x);
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -393,7 +616,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = as_base_array(a);
       b.clear();
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -403,7 +626,7 @@ namespace cctbx { namespace af {
       base_array_type b = as_base_array(a);
       assert_1d(other.accessor());
       b.insert(b.end(), other.begin(), other.end());
-      a = f_t(a, make_flex_grid(b.size()));
+      a.resize(make_flex_grid_1d(b.size()));
     }
 
     static
@@ -426,14 +649,14 @@ namespace cctbx { namespace af {
     {
       assert_1d(a.accessor());
       assert_1d(flags.accessor());
-      if (a.size() != flags.size()) raise_incompatible_sizes();
+      if (a.size() != flags.size()) raise_incompatible_arrays();
       std::size_t n = 0;
       std::size_t i;
       for(i=0;i<flags.size();i++) if (flags[i]) n++;
       base_array_type result;
       result.reserve(n);
       for(i=0;i<flags.size();i++) if (flags[i]) result.push_back(a[i]);
-      return f_t(result, make_flex_grid(result.size()));
+      return f_t(result, make_flex_grid_1d(result.size()));
     }
 
     static
@@ -442,7 +665,7 @@ namespace cctbx { namespace af {
     {
       assert_1d(a.accessor());
       assert_1d(permutation.accessor());
-      if (a.size() != permutation.size()) raise_incompatible_sizes();
+      if (a.size() != permutation.size()) raise_incompatible_arrays();
       base_array_type result;
       if (a.size()) {
         result.resize(a.size(), a[0]); // avoid requirement that e_t is
@@ -469,7 +692,7 @@ namespace cctbx { namespace af {
     flex_bool
     and_a_a(flex_bool const& a1, flex_bool const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] && a2[i]);
@@ -480,7 +703,7 @@ namespace cctbx { namespace af {
     flex_bool
     or_a_a(flex_bool const& a1, flex_bool const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] || a2[i]);
@@ -491,7 +714,7 @@ namespace cctbx { namespace af {
     flex_bool
     iand_a_a(flex_bool a1, flex_bool const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       for(std::size_t i=0;i<a1.size();i++) if(!a2[i]) a1[i] = false;
       return a1;
     }
@@ -500,7 +723,7 @@ namespace cctbx { namespace af {
     flex_bool
     ior_a_a(flex_bool a1, flex_bool const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       for(std::size_t i=0;i<a1.size();i++) if(a2[i]) a1[i] = true;
       return a1;
     }
@@ -554,7 +777,7 @@ namespace cctbx { namespace af {
     f_t
     add_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] + a2[i]);
@@ -565,7 +788,7 @@ namespace cctbx { namespace af {
     f_t
     sub_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] - a2[i]);
@@ -576,7 +799,7 @@ namespace cctbx { namespace af {
     f_t
     mul_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] * a2[i]);
@@ -587,7 +810,7 @@ namespace cctbx { namespace af {
     f_t
     div_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] / a2[i]);
@@ -598,7 +821,7 @@ namespace cctbx { namespace af {
     f_t
     mod_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] % a2[i]);
@@ -724,7 +947,7 @@ namespace cctbx { namespace af {
     flex_bool
     eq_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] == a2[i]);
@@ -735,7 +958,7 @@ namespace cctbx { namespace af {
     flex_bool
     ne_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] != a2[i]);
@@ -746,7 +969,7 @@ namespace cctbx { namespace af {
     flex_bool
     lt_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] < a2[i]);
@@ -757,7 +980,7 @@ namespace cctbx { namespace af {
     flex_bool
     gt_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] > a2[i]);
@@ -768,7 +991,7 @@ namespace cctbx { namespace af {
     flex_bool
     le_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] <= a2[i]);
@@ -779,7 +1002,7 @@ namespace cctbx { namespace af {
     flex_bool
     ge_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       shared_plain<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.push_back(a1[i] >= a2[i]);
@@ -884,7 +1107,7 @@ namespace cctbx { namespace af {
     f_t
     atan2_a_a(f_t const& a1, f_t const& a2)
     {
-      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      if (a1.accessor() != a2.accessor()) raise_incompatible_arrays();
       base_array_type result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) {
@@ -1024,7 +1247,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       versa<double, flex_grid<> > const& theta,
       bool deg)
     {
-      if (rho.size() != theta.size()) raise_incompatible_sizes();
+      if (rho.accessor() != theta.accessor()) raise_incompatible_arrays();
       shared_plain<std::complex<double> > result;
       result.reserve(rho.size());
       if (deg) {
@@ -1073,6 +1296,12 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       py_flex.def(constructor<std::size_t, ElementType const&>());
       py_flex.def(constructor<tuple>());
       py_flex.def(accessor, "accessor");
+      py_flex.def(nd, "nd");
+      py_flex.def(origin, "origin");
+      py_flex.def(grid, "grid");
+      py_flex.def(last_0, "last");
+      py_flex.def(last_1, "last");
+      py_flex.def(layout, "layout");
       py_flex.def(id, "id");
       py_flex.def(size, "size");
       py_flex.def(size, "__len__");
@@ -1085,6 +1314,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       py_flex.def(back, "back");
       py_flex.def(fill, "fill");
       py_flex.def(deep_copy, "deep_copy");
+      py_flex.def(shallow_copy, "shallow_copy");
       py_flex.def(as_1d, "as_1d");
       py_flex.def(assign, "assign");
       py_flex.def(push_back, "push_back");
@@ -1104,6 +1334,8 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       py_flex.def(items, "items");
       py_flex.def(select, "select");
       py_flex.def(shuffle, "shuffle");
+
+      flex_pickle<e_t>::def(py_flex);
 
       return std::make_pair(py_flex, py_flex_items);
     }
@@ -1310,6 +1542,32 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
 
     class_builder<flex_grid<> > py_flex_grid(this_module, "grid");
 
+    py_flex_grid.def(constructor<>());
+    py_flex_grid.def(constructor<
+      flex_grid_default_index_type const&>());
+    py_flex_grid.def(constructor<
+      flex_grid_default_index_type const&,
+      flex_grid_default_index_type const&>());
+    py_flex_grid.def(constructor<
+      flex_grid_default_index_type const&,
+      flex_grid_default_index_type const&,
+      bool>());
+    py_flex_grid.def(&flex_grid<>::set_layout, "set_layout");
+    py_flex_grid.def(&flex_grid<>::nd, "nd");
+    py_flex_grid.def(&flex_grid<>::size1d, "size1d");
+    py_flex_grid.def(&flex_grid<>::origin, "origin");
+    py_flex_grid.def(&flex_grid<>::grid, "grid");
+    py_flex_grid.def(flex_grid_wrappers::last_0, "last");
+    py_flex_grid.def(flex_grid_wrappers::last_1, "last");
+    py_flex_grid.def(&flex_grid<>::layout, "layout");
+    py_flex_grid.def(&flex_grid<>::operator(), "__call__");
+    py_flex_grid.def(&flex_grid<>::is_valid_index, "is_valid_index");
+    py_flex_grid.def(&flex_grid<>::operator==, "__eq__");
+    py_flex_grid.def(&flex_grid<>::operator!=, "__ne__");
+    py_flex_grid.def(flex_grid_wrappers::getinitargs, "__getinitargs__");
+    py_flex_grid.def(flex_grid_wrappers::getstate, "__getstate__");
+    py_flex_grid.def(flex_grid_wrappers::setstate, "__setstate__");
+
 #define WRAP_PLAIN(python_name, element_type) \
     flex_wrapper<element_type >::plain(this_module, python_name)
 #define WRAP_CMP_COMPARABLE(python_name, element_type) \
@@ -1330,11 +1588,11 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     // double is wrapped here to enable .as_double() for the other types
     WRAP_NUMERIC("double", double);
 
+#ifndef FAST_COMPILE
     WRAP_INTEGER("int", int);
     WRAP_NUMERIC("float", float);
     WRAP_COMPLEX("complex_double", std::complex<double>);
 
-#ifndef FAST_COMPILE
     WRAP_INTEGER("long", long);
     WRAP_CMP_COMPARABLE("std_string", std::string);
 
@@ -1348,31 +1606,27 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
     WRAP_CMP_COMPARABLE("size_t", size_t);
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
     WRAP_PLAIN("tiny_size_t_2", tiny_size_t_2);
-#endif
-
-    py_flex_grid.def(constructor<>());
-    py_flex_grid.def(constructor<
-      flex_grid_default_index_type const&>());
-    py_flex_grid.def(constructor<
-      flex_grid_default_index_type const&,
-      flex_grid_default_index_type const&>());
-    py_flex_grid.def(constructor<
-      flex_grid_default_index_type const&,
-      flex_grid_default_index_type const&,
-      bool>());
-    py_flex_grid.def(&flex_grid<>::nd, "nd");
-    py_flex_grid.def(&flex_grid<>::size1d, "size1d");
-    py_flex_grid.def(&flex_grid<>::origin, "origin");
-    py_flex_grid.def(&flex_grid<>::grid, "grid");
-    py_flex_grid.def(flex_grid_wrappers::last_0, "last");
-    py_flex_grid.def(flex_grid_wrappers::last_1, "last");
-    py_flex_grid.def(&flex_grid<>::operator(), "__call__");
-    py_flex_grid.def(&flex_grid<>::is_valid_index, "is_valid_index");
 
     this_module.def(py_reinterpret_complex_as_real,
       "reinterpret_complex_as_real");
     this_module.def(py_reinterpret_real_as_complex,
       "reinterpret_real_as_complex");
+#endif
+  }
+
+  // hook for flex_picklers.cpp
+  boost::python::ref
+  make_ref_flex_grid(flex_grid<> const& fg)
+  {
+    return boost::python::make_ref(fg);
+  }
+
+  // hook for flex_picklers.cpp
+  flex_grid<>
+  flex_grid_from_python(PyObject* obj)
+  {
+    return BOOST_PYTHON_CONVERSION::from_python(
+      obj, boost::python::type<flex_grid<> const&>());
   }
 
 }} // namespace cctbx::af
