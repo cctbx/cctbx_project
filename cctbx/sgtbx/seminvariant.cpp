@@ -32,14 +32,14 @@ namespace cctbx { namespace sgtbx {
       for(std::size_t i=0;i<Gen.nGen;i++) {
         const RotMx R = Gen.ZGen[i].Rpart();
         if (!Primitive) {
-          copy(R.minusUnit(), &result.elems[i * 3*3], 3*3);
+          copy(R.minusUnit(), &result[i * 3*3], 3*3);
         }
         else {
-          copy(Gen.Z2POp(R).minusUnit(), &result.elems[i * 3*3], 3*3);
+          copy(Gen.Z2POp(R).minusUnit(), &result[i * 3*3], 3*3);
         }
       }
       if (Gen.ZInvT.isValid()) {
-        copy(RotMx(1, -2), &result.elems[Gen.nGen * 3*3], 3*3);
+        copy(RotMx(1, -2), &result[Gen.nGen * 3*3], 3*3);
       }
       return result;
     }
@@ -54,7 +54,7 @@ namespace cctbx { namespace sgtbx {
           int OLen2b = 0; for(i=0;i<3;i++) OLen2b += b[i] * b[i];
           if (OLen2a < OLen2b) return true;
           if (OLen2a > OLen2b) return false;
-          return CmpT(a.elems, b.elems);
+          return CmpT(a.begin(), b.begin());
         }
       private:
         const CmpiVect CmpT;
@@ -65,25 +65,26 @@ namespace cctbx { namespace sgtbx {
     {
       af::small<ssVM, 3> result;
       af::tiny<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
-      int RankGenRmI = iRowEchelonFormT(GenRmI.elems, Gen.nAll() * 3, 3, 0, 0);
+      int RankGenRmI = iRowEchelonFormT(
+        GenRmI.begin(), Gen.nAll() * 3, 3, 0, 0);
       cctbx_assert(RankGenRmI >= 0 && RankGenRmI <= 3);
       int IxIndep[3];
-      int nIndep = iRESetIxIndep(GenRmI.elems, RankGenRmI, 3, IxIndep, 3);
+      int nIndep = iRESetIxIndep(GenRmI.begin(), RankGenRmI, 3, IxIndep, 3);
       cctbx_assert(nIndep >= 0);
       if (nIndep != 2) {
         for (int iIndep = 0; iIndep < nIndep; iIndep++) {
           ssVM VM;
           if (Gen.nAll() == 0) VM.V.fill(0);
           VM.V[IxIndep[iIndep]] = 1;
-          cctbx_assert(iREBacksubst(GenRmI.elems, 0, RankGenRmI, 3,
-                                    VM.V.elems, 0) > 0);
+          cctbx_assert(iREBacksubst(GenRmI.begin(), 0, RankGenRmI, 3,
+                                    VM.V.begin(), 0) > 0);
           VM.M = 0;
           result.push_back(VM);
         }
       }
       else {
         af::tiny<af::int3, 4> Sol;
-        SolveHomRE1(GenRmI.elems, IxIndep, Sol.elems);
+        SolveHomRE1(GenRmI.begin(), IxIndep, Sol.begin());
         std::sort(Sol.begin(), Sol.end(), CmpOLen2());
         for (int iIndep = 0; iIndep < 2; iIndep++) {
           ssVM VM;
@@ -218,7 +219,7 @@ namespace cctbx { namespace sgtbx {
       public:
         Cmp_ssVM() : CmpT(3) {}
         bool operator()(const ssVM& a, const ssVM& b) const {
-          return CmpT(a.V.elems, b.V.elems);
+          return CmpT(a.V.begin(), b.V.begin());
         }
       private:
         const CmpiVect CmpT;
@@ -235,7 +236,7 @@ namespace cctbx { namespace sgtbx {
     if (m_VM.size() == 3) return; // space group P1
     af::tiny<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
     int Q[3 * 3];
-    int nd = SmithNormalForm(SNF.elems, Gen.nAll() * 3, 3, 0, Q);
+    int nd = SmithNormalForm(SNF.begin(), Gen.nAll() * 3, 3, 0, Q);
     cctbx_assert(nd >=0 && nd <= 3);
     int id;
     int DTBF = 1;
@@ -248,7 +249,7 @@ namespace cctbx { namespace sgtbx {
         xp.fill(0);
         xp[id] = f * DTBF / d;
         TrVec x(DTBF);
-        MatrixLite::multiply<int>(Q, xp.elems, 3, 3, 1, x.vec().begin());
+        MatrixLite::multiply<int>(Q, xp.begin(), 3, 3, 1, x.vec().begin());
         DiscrGrpP.expand(x);
       }
     }

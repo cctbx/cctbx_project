@@ -282,11 +282,11 @@ namespace cctbx { namespace sgtbx {
         RI[0] = RMx[0].getInfo();
       }
       RotMx CumMx = RMx[0].accumulate(Ord[0]);
-      cctbx_assert(iRowEchelonFormT(CumMx.elems, 3, 3, 0, 0) == 1);
+      cctbx_assert(iRowEchelonFormT(CumMx.vec().begin(), 3, 3, 0, 0) == 1);
       int IxIndep[2];
-      cctbx_assert(iRESetIxIndep(CumMx.elems, 1, 3, IxIndep, 2) == 2);
+      cctbx_assert(iRESetIxIndep(CumMx.vec().begin(), 1, 3, IxIndep, 2) == 2);
       af::int3 Sol[4];
-      SolveHomRE1(CumMx.elems, IxIndep, Sol);
+      SolveHomRE1(CumMx.vec().begin(), IxIndep, Sol);
       int nIx = 1; if (Ord[0] == 2) nIx++;
       RotMx TrialBasis;
       TrialBasis.setColumn(2, RI[0].EV());
@@ -481,7 +481,7 @@ namespace cctbx { namespace sgtbx {
       }
 
       af::int3 x;
-      if (SolveInhomModZ(SNF, nrSNF, 3, V, TBF, x.elems)) {
+      if (SolveInhomModZ(SNF, nrSNF, 3, V, TBF, x.begin())) {
         TrVec CBT = TstGenerators.Z2POp.InvM().Rpart() * TrVec(x, TBF);
         return CBT.newBaseFactor(TBF);
       }
@@ -630,7 +630,7 @@ namespace cctbx { namespace sgtbx {
           if (CmpT(aT.vec().begin(), bT.vec().begin())) return true;
           if (CmpT(bT.vec().begin(), aT.vec().begin())) return false;
 
-          return CmpR(bR.elems, aR.elems);
+          return CmpR(bR.vec().begin(), aR.vec().begin());
         }
       private:
         const CmpiVect CmpR;

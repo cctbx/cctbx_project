@@ -61,11 +61,11 @@ namespace cctbx { namespace sgtbx {
     // REMx must be in row echelon form with Rank 2.
 
     int IxIndep[1];
-    cctbx_assert(iRESetIxIndep(REMx.elems, 2, 3, IxIndep, 1) == 1);
+    cctbx_assert(iRESetIxIndep(REMx.begin(), 2, 3, IxIndep, 1) == 1);
     af::int3 EV;
     rangei(3) EV[i] = 0;
     EV[IxIndep[0]] = 1;
-    cctbx_assert(iREBacksubst(REMx.elems, 0, 2, 3, EV.elems, 0) >= 1);
+    cctbx_assert(iREBacksubst(REMx.begin(), 0, 2, 3, EV.begin(), 0) >= 1);
     if (SignHemisphere(EV) < 0) {
       rangei(3) EV[i] *= -1;
     }
@@ -87,10 +87,10 @@ namespace cctbx { namespace sgtbx {
     }
     if (ProperOrder > 1) {
       RotMx RmI = ProperR - RotMx(ProperR.BF());
-      if (iRowEchelonFormT(RmI.elems, 3, 3, 0, 0) != 2) {
+      if (iRowEchelonFormT(RmI.vec().begin(), 3, 3, 0, 0) != 2) {
         throw error("Cannot determine Eigenvector of rotation matrix.");
       }
-      result.m_EV = SolveHomRE2(RmI);
+      result.m_EV = SolveHomRE2(RmI.vec());
       result.m_SenseOfRotation
              = SenseOfRotation(*this, result.m_Rtype, result.m_EV);
     }
