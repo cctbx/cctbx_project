@@ -146,6 +146,7 @@ def exercise(SgInfo,
     print "sigma %.6g" % (map_stats.sigma())
   if (friedel_flag):
     rfft.forward(map)
+    collect_conj = 1
     map_stats = shared.statistics(map)
     if (0):
       print "Transformed electron density"
@@ -156,18 +157,23 @@ def exercise(SgInfo,
       print "Ncomplex", rfft.Ncomplex()
   else:
     cfft = fftbx.complex_to_complex_3d(rfft.Nreal())
-    cfft.forward(map)
+    if (0):
+      cfft.forward(map)
+      collect_conj = 1
+    else:
+      cfft.backward(map)
+      collect_conj = 0
   if (0):
     map = sftbx.structure_factor_map(
       xtal.SgOps, Fcalc.H, Fcalc.F, rfft.Ncomplex())
   if (friedel_flag):
     miller_indices, fcal = sftbx.collect_structure_factors(
       xtal.UnitCell, xtal.SgInfo,
-      max_q, map, rfft.Ncomplex())
+      max_q, map, rfft.Ncomplex(), collect_conj)
   else:
     miller_indices, fcal = sftbx.collect_structure_factors(
       xtal.UnitCell, xtal.SgInfo,
-      max_q, map, cfft.N())
+      max_q, map, cfft.N(), collect_conj)
   sampled_density.eliminate_u_extra_and_normalize(miller_indices, fcal)
   if (0):
     u_extra = sampled_density.u_extra()

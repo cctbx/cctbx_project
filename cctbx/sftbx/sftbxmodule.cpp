@@ -531,7 +531,8 @@ namespace {
     const sgtbx::SpaceGroupInfo& sginfo,
     double max_q,
     const af::shared<double>& transformed_real_map,
-    const af::tiny<long, 3>& n_complex)
+    const af::tiny<long, 3>& n_complex,
+    bool conjugate)
   {
     cctbx_assert(
          transformed_real_map.size()
@@ -543,7 +544,7 @@ namespace {
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
       ucell, sginfo, max_q, transformed_complex_map, n_complex,
-      true);
+      true, conjugate);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);
@@ -556,13 +557,14 @@ namespace {
     const sgtbx::SpaceGroupInfo& sginfo,
     double max_q,
     const af::shared<std::complex<double> >& transformed_complex_map,
-    const af::tiny<long, 3>& n_complex)
+    const af::tiny<long, 3>& n_complex,
+    bool conjugate)
   {
     std::pair<af::shared<Miller::Index>,
               af::shared<std::complex<double> > >
     indexed_structure_factors = sftbx::collect_structure_factors(
       ucell, sginfo, max_q, transformed_complex_map.const_ref(), n_complex,
-      false);
+      false, conjugate);
     tuple result(2);
     result.set_item(0, indexed_structure_factors.first);
     result.set_item(1, indexed_structure_factors.second);
