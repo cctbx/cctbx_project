@@ -4,7 +4,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
-#include <scitbx/math/gaussian/sum.h>
+#include <scitbx/math/gaussian/fit.h>
 
 namespace scitbx { namespace math { namespace gaussian {
 
@@ -30,6 +30,7 @@ namespace {
         .def("gradient_dx_at_x", &w_t::gradient_dx_at_x)
         .def("integral_dx_at_x", &w_t::integral_dx_at_x,
           integral_dx_at_x_overloads())
+        .def("gradients_d_ab_at_x_sq", &w_t::gradients_d_ab_at_x_sq)
       ;
     }
   };
@@ -56,12 +57,39 @@ namespace {
         .def("array_of_b", &w_t::array_of_b)
         .def("c", &w_t::c, ccr())
         .def("use_c", &w_t::use_c)
-        .def("all_zero", &w_t::all_zero)
+        .def("n_parameters", &w_t::n_parameters)
         .def("at_x_sq", &w_t::at_x_sq)
         .def("at_x", &w_t::at_x)
         .def("gradient_dx_at_x", &w_t::gradient_dx_at_x)
         .def("integral_dx_at_x", &w_t::integral_dx_at_x,
           integral_dx_at_x_overloads())
+      ;
+    }
+  };
+
+  struct fit_wrappers
+  {
+    typedef fit<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<sum<double> > >("gaussian_fit", no_init)
+        .def(init<af::shared<double> const&,
+                  af::shared<double> const&,
+                  af::shared<double> const&,
+                  sum<double> const&>())
+        .def("table_x", &w_t::table_x)
+        .def("table_y", &w_t::table_y)
+        .def("table_sigmas", &w_t::table_sigmas)
+        .def("fitted_values", &w_t::fitted_values)
+        .def("differences", &w_t::differences)
+        .def("significant_relative_errors", &w_t::significant_relative_errors)
+        .def("apply_shifts", &w_t::apply_shifts)
+        .def("target_function", &w_t::target_function)
+        .def("gradients_d_abc", &w_t::gradients_d_abc)
+        .def("gradients_d_shifts", &w_t::gradients_d_shifts)
       ;
     }
   };
@@ -74,6 +102,7 @@ namespace boost_python {
   {
     gaussian::term_wrappers::wrap();
     gaussian::sum_wrappers::wrap();
+    gaussian::fit_wrappers::wrap();
   }
 
 }}} // namespace scitbx::math::boost_python

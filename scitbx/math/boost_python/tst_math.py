@@ -161,21 +161,21 @@ def exercise_eigensystem():
         lx = [e*l for e in x]
         assert approx_equal(mx, lx)
 
-def gaussian_finite_gradient(gaussian, x, eps=1.e-5):
+def gaussian_finite_gradient_dx_at_x(gaussian, x, eps=1.e-5):
   if (x == 0): return 0
   assert x >= eps
   tm = gaussian.at_x(x-eps)
   tp = gaussian.at_x(x+eps)
   return (tp-tm)/(2*eps)
 
-def exercise_gaussian_gradient(gaussian, x_max=1., n_points=50):
+def exercise_gaussian_gradient_dx(gaussian, x_max=1., n_points=50):
   for i in xrange(n_points+1):
     x = x_max * i / n_points
-    grad_finite = gaussian_finite_gradient(gaussian, x)
+    grad_finite = gaussian_finite_gradient_dx_at_x(gaussian, x)
     grad_analytical = gaussian.gradient_dx_at_x(x)
     assert eps_eq(grad_finite, grad_analytical)
 
-def exercise_gaussian_integral(gaussian, x_max=1., n_points=1000):
+def exercise_gaussian_integral_dx(gaussian, x_max=1., n_points=1000):
   numerical_integral = 0
   x_step = x_max / n_points
   for i in xrange(n_points+1):
@@ -187,6 +187,23 @@ def exercise_gaussian_integral(gaussian, x_max=1., n_points=1000):
     analytical_integral = gaussian.integral_dx_at_x(x, 1.e-3)
     assert eps_eq(analytical_integral, gaussian.integral_dx_at_x(x))
     assert eps_eq(numerical_integral*x_step, analytical_integral)
+
+def gaussian_term_finite_gradient_d_ab_at_x(term, x, eps=1.e-5):
+  tm = gaussian.term(term.a-eps,term.b).at_x(x)
+  tp = gaussian.term(term.a+eps,term.b).at_x(x)
+  gr_a = (tp-tm)/(2*eps)
+  tm = gaussian.term(term.a,term.b-eps).at_x(x)
+  tp = gaussian.term(term.a,term.b+eps).at_x(x)
+  gr_b = (tp-tm)/(2*eps)
+  return gaussian.term(gr_a, gr_b)
+
+def exercise_gaussian_term_gradients_d_ab(term, x_max=1., n_points=50):
+  for i in xrange(n_points+1):
+    x = x_max * i / n_points
+    grad_finite = gaussian_term_finite_gradient_d_ab_at_x(term, x)
+    grad_analytical = term.gradients_d_ab_at_x_sq(x*x)
+    assert eps_eq(grad_finite.a, grad_analytical.a)
+    assert eps_eq(grad_finite.b, grad_analytical.b)
 
 def exercise_gaussian_term():
   t = gaussian.term(2,3)
@@ -203,8 +220,9 @@ def exercise_gaussian_term():
               gaussian.term(f*3,0),
               gaussian.term(f*4,1.e-4),
               gaussian.term(f*5,-1)]:
-      exercise_gaussian_gradient(t)
-      exercise_gaussian_integral(t)
+      exercise_gaussian_gradient_dx(t)
+      exercise_gaussian_integral_dx(t)
+      exercise_gaussian_term_gradients_d_ab(t)
 
 def run():
   exercise_erf()
