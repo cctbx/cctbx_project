@@ -5,11 +5,32 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001-Apr-22 Implementation of ConstructZ2POp() (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
+#include <algorithm>
 #include <cctype>
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/basic/define_range.h>
+
+namespace boost {
+
+    template<class T, std::size_t N>
+    bool operator== (const array<T,N>& x, const T& value) {
+        for (std::size_t i = 0; i < x.size(); i++)
+            if (x[i] != value) return false;
+        return true;
+    }
+
+    template<class T, std::size_t N>
+    bool operator!= (const array<T,N>& x, const T& value) {
+        for (std::size_t i = 0; i < x.size(); i++)
+            if (x[i] != value) return true;
+        return false;
+    }
+
+}
 
 namespace sgtbx {
   namespace lattice {
@@ -82,9 +103,99 @@ namespace sgtbx {
     return ChOfBasisOp(RTMx(Z2PMatrix.newBaseFactor(RBF), TrVec(TBF)));
   }
 
+  namespace {
+
+    class CmpTrVec {
+      private:
+        CmpiVect m_CmpiVect;
+      public:
+        inline CmpTrVec() : m_CmpiVect(3) {}
+        inline bool operator()(const TrVec& a, const TrVec& b) {
+          return m_CmpiVect(a.elems, b.elems);
+        }
+    };
+    
+    bool FirstIsShorter(const Vec3& a, const Vec3& b) {
+      rangei(3) {
+        if (a[i]) {
+          if (abs(a[i]) > abs(b[i])) return false;
+          return true;
+        }
+      }
+      return true;
+    }
+
+    std::auto_ptr<std::vector<TrVec> >
+    BuildListTotLTr(const TrOps& LTr, int TBF)
+    {
+      std::auto_ptr<std::vector<TrVec> > TLT(new std::vector<TrVec>);
+
+      for (int iLTr = 1; iLTr < LTr.nVects(); iLTr++)
+      {
+        Vec3 nUTr;
+        nUTr.assign(1);
+        int i;
+        for(i=0;i<3;i++) if (LTr[iLTr][i]) nUTr[i] = 2;
+
+        Vec3 UnitTr;
+        for (UnitTr[0] = 0; UnitTr[0] < nUTr[0]; UnitTr[0]++)
+        for (UnitTr[1] = 0; UnitTr[1] < nUTr[1]; UnitTr[1]++)
+        for (UnitTr[2] = 0; UnitTr[2] < nUTr[2]; UnitTr[2]++)
+        {
+          TrVec V = LTr[iLTr] - TrVec(UnitTr, 1).newBaseFactor(LTr[0].BF());
+          V = V.newBaseFactor(TBF);
+          int iTLT;
+          for (iTLT = 0; iTLT < TLT->size(); iTLT++) {
+            if (CrossProduct((*TLT)[iTLT], V) != 0) {
+              if (! FirstIsShorter((*TLT)[iTLT], V)) (*TLT)[iTLT] = V;
+              break;
+            }
+          }
+          if (iTLT == TLT->size()) TLT->push_back(V);
+        }
+      }
+
+      std::sort(TLT->begin(), TLT->end(), CmpTrVec());
+
+      rangei(3) {
+        TrVec V(Vec3(), TBF);
+        V.assign(0);
+        V[i] = CRBF;
+        TLT->push_back(V);
+      }
+
+      return TLT;
+    }
+
+  } // namespace <anonymous>
+
   ChOfBasisOp SgOps::ConstructZ2POp(int RBF, int TBF) const
   {
-    throw cctbx_not_implemented();
+    ChOfBasisOp result;
+    std::auto_ptr<std::vector<TrVec> > TLT = BuildListTotLTr(m_LTr, RBF);
+    int iTLT[3], i;
+    Mx33 Basis;
+    for (iTLT[0] =           0; iTLT[0] < TLT->size() - 2; iTLT[0]++) {
+      for (i=0;i<3;i++) Basis[i * 3 + 0] = (*TLT)[iTLT[0]][i];
+    for (iTLT[1] = iTLT[0] + 1; iTLT[1] < TLT->size() - 1; iTLT[1]++) {
+      for (i=0;i<3;i++) Basis[i * 3 + 1] = (*TLT)[iTLT[1]][i];
+    for (iTLT[2] = iTLT[1] + 1; iTLT[2] < TLT->size();     iTLT[2]++) {
+      for (i=0;i<3;i++) Basis[i * 3 + 2] = (*TLT)[iTLT[2]][i];
+      try {
+        int det = RotMx(Basis, RBF).det();
+        if (det != 0) {
+          if (det < 0) for(i=0;i<3;i++) Basis[i * 3] *= -1;
+          result = ChOfBasisOp(RTMx(RotMx(Basis, RBF), TBF));
+          ChangeBasis(result);
+        }
+      }
+      catch (error) {
+        continue;
+      }
+      cctbx_assert(result.M().Rpart().det() > 0);
+      return result;
+    }}}
+    throw cctbx_internal_error();
   }
 
   ChOfBasisOp SgOps::getZ2POp(int RBF, int TBF) const

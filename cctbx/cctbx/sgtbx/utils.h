@@ -91,6 +91,14 @@ namespace sgtbx {
 
   int SignHemisphere(const Vec3& v);
 
+  class CmpiVect {
+    private:
+      int m_n;
+    public:
+      inline CmpiVect(int n) : m_n(n) { }
+      bool operator()(const int *a, const int *b) const;
+  };
+
 } // namespace sgtbx
 
 #endif // CCTBX_SGTBX_UTILS_H
