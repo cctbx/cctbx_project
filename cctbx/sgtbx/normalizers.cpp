@@ -30,7 +30,7 @@ namespace sgtbx {
         else if (iType == 1 && UseL2N && (SgNumber >= 75 || affine))
           HallMxSymbol = NormalizerAddlGenerators[SgNumber].L2N;
         if (HallMxSymbol) {
-          SgOps SgOpsAddlG(true); // NoExpand: no group multiplication
+          SpaceGroup SgOpsAddlG(true); // NoExpand: no group multiplication
           parse_string ps(HallMxSymbol);
           int nAddedMx = SgOpsAddlG.ParseHallSymbol(ps, true, true);
           cctbx_assert(nAddedMx > 0);

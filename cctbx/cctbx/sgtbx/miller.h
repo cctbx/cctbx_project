@@ -38,7 +38,9 @@ namespace cctbx {
          */
         inline int TBF() const { return m_TBF; }
 
-        //! Phase of this index in radians, given phase of input Miller index.
+        /*! \brief Phase of this index in radians, given phase of
+            input Miller index.
+         */
         /*! Formula used:<br>
             this_phi = phi - (2 * pi * HT()) / TBF();
          */
@@ -176,7 +178,9 @@ namespace cctbx {
          */
         inline int TBF() const { return m_TBF; }
 
-        //! Phase of master index in radians, given phase of input Miller index.
+        /*! \brief Phase of master index in radians, given phase of
+            input Miller index.
+         */
         /*! Formula used:<br>
             master_phi = phi - (2 * pi * HT()) / TBF();<br>
             if (FriedelSym && iMate()) master_phi = -master_phi;
@@ -188,7 +192,9 @@ namespace cctbx {
           if (FriedelSym && iMate()) return -master_phi;
           return master_phi;
         }
-        //! Phase of master index in degrees, given phase of input Miller index.
+        /*! \brief Phase of master index in degrees, given phase of
+            input Miller index.
+         */
         /*! Formula used:<br>
             master_phi = phi - (2 * 180 * HT()) / TBF();<br>
             if (FriedelSym && iMate()) master_phi = -master_phi;
@@ -199,7 +205,9 @@ namespace cctbx {
           if (FriedelSym && iMate()) return -master_phi;
           return master_phi;
         }
-        //! Complex value for master index, given complex value for input index.
+        /*! \brief Complex value for master index, given complex
+            value for input Miller index.
+         */
         /*! Formula used:<br>
             master_F = F * exp(-2 * pi * j * HT() / TBF());<br>
             where j is the imaginary number.
@@ -318,12 +326,12 @@ namespace sgtbx {
 
   //! class for the handling of symmetry equivalent Miller indices.
   /*! This class is exclusively used to represent the results
-      of SgOps::getEquivMillerIndices().<br>
+      of SpaceGroup::getEquivMillerIndices().<br>
       The Miller index used in the call to getEquivMillerIndices
       is referred to as the "input Miller index."
    */
   class SymEquivMillerIndices {
-    friend class SgOps;
+    friend class SpaceGroup;
     private:
       int m_TBF;
       int m_OrderP;
@@ -381,7 +389,7 @@ namespace sgtbx {
           formulae.<br>
           Note that epsilon is directly related to the number
           of symmetry equivalent indices N():<br>
-          epsilon == sgtbx::SgOps::OrderP() / N()
+          epsilon == sgtbx::SpaceGroup::OrderP() / N()
        */
       inline int epsilon() const { return m_OrderP / N(); }
 
@@ -393,10 +401,10 @@ namespace sgtbx {
       }
       //! Medium-level access to the symmetry equivalent Miller indices.
       /*! Intended use:<pre>
-          sgtbx::SgOps sg = ... // define space group
+          sgtbx::SpaceGroup SgOps = ... // define space group
           Miller::Index H = ... // define input Miller index.
           bool FriedelSym = ... // define Friedel symmetry.
-          sgtbx::SymEquivMillerIndices SEMI = getEquivMillerIndices(H);
+          sgtbx::SymEquivMillerIndices SEMI = SgOps.getEquivMillerIndices(H);
           for (int iList = 0; iList < SEMI.N(); iList++)
             for (int iMate = 0; iMate < SEMI.fMate(FriedelSym); iMate++)
               Miller::Index EquivH = SEMI(iMate, iList);
@@ -408,10 +416,10 @@ namespace sgtbx {
       Miller::Index operator()(int iMate, int iList) const;
       //! High-level access to the symmetry equivalent Miller indices.
       /*! Intended use:<pre>
-          sgtbx::SgOps sg = ... // define space group
+          sgtbx::SpaceGroup SgOps = ... // define space group
           Miller::Index H = ... // define input Miller index.
           bool FriedelSym = ... // define Friedel symmetry.
-          sgtbx::SymEquivMillerIndices SEMI = getEquivMillerIndices(H);
+          sgtbx::SymEquivMillerIndices SEMI = SgOps.getEquivMillerIndices(H);
           for (int iIL = 0; iIL < SEMI.M(FriedelSym); iIL++)
             Miller::Index EquivH = SEMI(iIL);
           </pre>
@@ -458,7 +466,7 @@ namespace sgtbx {
           is only selected from the active region defined by the
           cut parameters. This is useful for building large lists
           of indices quickly.<br>
-          See also: sgtbx::SgOps::getCutParameters()
+          See also: sgtbx::SpaceGroup::getCutParameters()
        */
       Miller::MasterIndex getMasterIndex(const Miller::Vec3& CutP,
                                          bool Pretty = false) const;

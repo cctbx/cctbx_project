@@ -29,7 +29,7 @@
 namespace sgtbx {
 
   class TrOps {
-    friend class SgOps;
+    friend class SpaceGroup;
     private:
       std::vector<TrVec> m_Vects;
       bool add(const TrVec& NewTr);
@@ -57,7 +57,7 @@ namespace sgtbx {
       TrVec TidyT(const TrVec& T) const;
   };
 
-  //! Result type for SgOps::getSpaceGroupType.
+  //! Result type for SpaceGroup::getSpaceGroupType.
   /*! A space group type is characterized by the space group number
       according to the International Tables for Crystallography,
       Volume A, and a change-of-basis matrix that transforms
@@ -109,7 +109,7 @@ namespace sgtbx {
           symmetry matrices.
       </ol>
    */
-  class SgOps {
+  class SpaceGroup {
     private:
       bool  m_NoExpand;
       int   nLSL;
@@ -129,7 +129,7 @@ namespace sgtbx {
       /*! With NoExpand == true, group multiplication will not be
           carried out. This option is for internal use only.
        */
-      inline SgOps(bool NoExpand = false) : m_NoExpand(NoExpand) {
+      inline SpaceGroup(bool NoExpand = false) : m_NoExpand(NoExpand) {
         reset();
       }
       //! Initialize with symmetry encoded by a Hall symbol.
@@ -142,7 +142,7 @@ namespace sgtbx {
           be investigated to locate the input character that triggered
           the error.
        */
-      SgOps(parse_string& HSym,
+      SpaceGroup(parse_string& HSym,
             bool Pedantic = false, bool NoCType = false,
             bool NoExpand = false);
       //! Initialize with symmetry encoded by a Hall symbol.
@@ -151,7 +151,7 @@ namespace sgtbx {
           there is no way to locate the input character that triggered
           the error.
        */
-      SgOps(const std::string& HSym,
+      SpaceGroup(const std::string& HSym,
             bool Pedantic = false, bool NoCType = false,
             bool NoExpand = false);
       /*! Identical to the constructor that takes a parse_string
@@ -159,7 +159,7 @@ namespace sgtbx {
           there is no way to locate the input character that triggered
           the error.
        */
-      SgOps(const char* HSym,
+      SpaceGroup(const char* HSym,
             bool Pedantic = false, bool NoCType = false,
             bool NoExpand = false);
       //! Add a lattice translation vector to the space group.
@@ -209,7 +209,7 @@ namespace sgtbx {
           invalid or if the new symmetry matrices can not be
           represented as integer matrices with the base factors used.
        */
-      SgOps ChangeBasis(const ChOfBasisOp& CBOp) const;
+      SpaceGroup ChangeBasis(const ChOfBasisOp& CBOp) const;
 
       //! Rotation base factor of Seitz Matrices.
       inline int RBF() const { return m_SMx[0].Rpart().BF(); }
@@ -244,7 +244,7 @@ namespace sgtbx {
       inline const RTMx& operator[](int i) const { return m_SMx[i]; }
       //! Return a symmetry operation.
       /*! Usage:<pre>
-          SgOps s(...);
+          SpaceGroup s(...);
           for (int iLTr = 0; iLTr < s.nLTr(); iLTr++)
             for (int iInv = 0; iInv < s.fInv(); iInv++)
               for (int iSMx = 0; iSMx < s.nSMx(); iSMx++)
@@ -259,7 +259,7 @@ namespace sgtbx {
       RTMx operator()(int iLTr, int iInv, int iSMx) const;
       //! Return a symmetry operation.
       /*! Usage:<pre>
-          SgOps s(...);
+          SpaceGroup s(...);
           for (int iLIS = 0; iLIS < s.OrderZ(); iLIS++)
             RTMx M = s(iLIS);</pre>
           The symmetry operations are generated from the representative
@@ -286,15 +286,16 @@ namespace sgtbx {
       //! Test for equality.
       /*! Internally, makeTidy() is used, followed by essentially a
           byte-wise comparison of the objects.<br>
-          Each SgOps object maintains an internal flag
+          Each SpaceGroup object maintains an internal flag
           indicating whether or not makeTidy() was applied already.
-          If an SgOps object is repeatedly used in a test for equality,
+          If an SpaceGroup object is repeatedly used in a test for equality,
           the test will therefore be significantly faster if makeTidy()
           is applied outside the loop.
        */
-      friend bool operator==(const SgOps& lhs, const SgOps& rhs);
+      friend bool operator==(const SpaceGroup& lhs, const SpaceGroup& rhs);
       //! Negation of test for equality.
-      inline friend bool operator!=(const SgOps& lhs, const SgOps& rhs) {
+      inline friend bool operator!=(const SpaceGroup& lhs,
+                                    const SpaceGroup& rhs) {
         return !(lhs == rhs);
       }
 
@@ -309,8 +310,8 @@ namespace sgtbx {
           ><I>Acta Cryst.</I> 1999, <B>A55</B>:383-395</A>.<br>
           The change-of-basis operator can be used as the argument to
           the ChangeBasis() member function:<pre>
-          SgOps centred(...);
-          SgOps primitive = centred.ChangeBasis(centred.getZ2POp());</pre>
+          SpaceGroup centred(...);
+          SpaceGroup primitive = centred.ChangeBasis(centred.getZ2POp());</pre>
        */
       ChOfBasisOp getZ2POp(int RBF = CRBF, int TBF = CTBF) const;
       //! Construct operator for centred->primitive basis transformation.
@@ -370,11 +371,11 @@ namespace sgtbx {
           symmetry operations to obtain the enantiomorph symmetry
           operations (use ChangeBasis()), and to transform fractional
           coordinates. For example:<pre>
-          SgOps sgo = ...;
-          ChOfBasisOp CHOp = sgo.getChangeOfHandOp();
-          SgOps enantiomorph_sgo = sgo.ChangeBasis(CHOp);
+          SpaceGroup SgOps = ...;
+          ChOfBasisOp CHOp = SgOps.getChangeOfHandOp();
+          SpaceGroup EnantiomorphSgOps = SgOps.ChangeBasis(CHOp);
           fractional<double> X = ...;
-          fractional<double> enatiomorph_X = CHOp(X);</pre>
+          fractional<double> EnatiomorphX = CHOp(X);</pre>
           <p>
           See also: isEnantiomorphic(), ChangeBasis(),
                     SpaceGroupType::getAddlGeneratorsOfEuclideanNormalizer()
@@ -485,7 +486,7 @@ namespace sgtbx {
       //! Check if a unit cell is compatible with the symmetry operations.
       /*! This function is designed to work together with the UnitCell
           class in the uctbx:<pre>
-        sgtbx::SgOps sg = ... // define space group
+        sgtbx::SpaceGroup sg = ... // define space group
         uctbx::UnitCell uc = ... // define unit cell
         bool OK = sg.isCompatibleMetricalMatrix(uc.getMetricalMatrix());</pre>
           A given unit cell is compatible with a given space group
@@ -536,13 +537,13 @@ namespace sgtbx {
             BuildDerivedPointGroup(),
             BuildDerivedLaueGroup()
        */
-      SgOps BuildDerivedGroup(bool DiscardZ, bool AddInv) const;
+      SpaceGroup BuildDerivedGroup(bool DiscardZ, bool AddInv) const;
 
       //! Build the corresponding Patterson space group.
       /*! The translation parts of the symmetry operations are set to 0.
           However, the lattice translation vectors are not modified.
        */
-      inline SgOps BuildDerivedPattersonGroup() const {
+      inline SpaceGroup BuildDerivedPattersonGroup() const {
         return BuildDerivedGroup(false, true);
       }
 
@@ -550,7 +551,7 @@ namespace sgtbx {
       /*! The translation parts of the symmetry operations are set to 0,
           and the lattice translation vectors are discarded.
        */
-      inline SgOps BuildDerivedPointGroup() const {
+      inline SpaceGroup BuildDerivedPointGroup() const {
         return BuildDerivedGroup(true, false);
       }
 
@@ -559,7 +560,7 @@ namespace sgtbx {
           the lattice translation vectors are discarded,
           and a centre of inversion is added at the origin.
        */
-      inline SgOps BuildDerivedLaueGroup() const {
+      inline SpaceGroup BuildDerivedLaueGroup() const {
         return BuildDerivedGroup(true, true);
       }
 
@@ -672,10 +673,10 @@ namespace sgtbx {
       }
   };
 
-  //! iostream output operator for class SgOps.
+  //! iostream output operator for class SpaceGroup.
   /*! Provided mainly for debugging purposes.
    */
-  std::ostream& operator<<(std::ostream& os, const SgOps& sgo);
+  std::ostream& operator<<(std::ostream& os, const SpaceGroup& SgOps);
 
 } // namespace sgtbx
 

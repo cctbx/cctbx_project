@@ -37,7 +37,7 @@ def GetFormData():
 def HallSymbol_to_SgOps(HallSymbol):
   try:
     ps = sgtbx.parse_string(HallSymbol)
-    SgOps = sgtbx.SgOps(ps)
+    SgOps = sgtbx.SpaceGroup(ps)
   except RuntimeError, e:
     print "-->" + ps.string() + "<--"
     print ("-" * (ps.where() + 3)) + "^"

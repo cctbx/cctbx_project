@@ -74,7 +74,7 @@ def strip_keyword(line, keyword):
 class StructureInfo:
 
   def __init__(self, UnitCell = uctbx.UnitCell(()),
-                     SgOps = sgtbx.SgOps(),
+                     SgOps = sgtbx.SpaceGroup(),
                      Resolution_d_min = 1.):
     self.Titles = []
     self.UnitCell = UnitCell
@@ -107,7 +107,7 @@ class StructureInfo:
         elif (keyword == "Spacegroup"):
           sym = string.join(flds[1:])
           SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(sym)
-          self.SgOps = sgtbx.SgOps(SpaceGroupSymbols.Hall())
+          self.SgOps = sgtbx.SpaceGroup(SpaceGroupSymbols.Hall())
           self.SgType = self.SgOps.getSpaceGroupType()
           self.WyckoffTable = sgtbx.WyckoffTable(self.SgOps, self.SgType)
 

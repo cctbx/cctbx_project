@@ -116,11 +116,11 @@ namespace sgtbx {
       }
     }
 
-    void BestVectors(const SgOps& sgo,
+    void BestVectors(const SpaceGroup& SgOps,
                      const cctbx::fixcap_vector<ssVM, 3>& ContinuousVM,
                      DiscrList& DiscrZ)
     {
-      if (sgo.nLTr() == 1 && ContinuousVM.size() == 0) return;
+      if (SgOps.nLTr() == 1 && ContinuousVM.size() == 0) return;
       int LTBF = 1;
       int iDL;
       for (iDL = 1; iDL < DiscrZ.size(); iDL++) {
@@ -131,10 +131,10 @@ namespace sgtbx {
         }
       }
       int iLTr;
-      for (iLTr = 1; iLTr < sgo.nLTr(); iLTr++) {
-        int BF = sgo.LTr(iLTr).BF();
+      for (iLTr = 1; iLTr < SgOps.nLTr(); iLTr++) {
+        int BF = SgOps.LTr(iLTr).BF();
         for(int i=0;i<3;i++) {
-          int g = gcd(sgo.LTr(iLTr)[i], BF);
+          int g = gcd(SgOps.LTr(iLTr)[i], BF);
           LTBF = lcm(LTBF, BF / g);
         }
       }
@@ -164,8 +164,8 @@ namespace sgtbx {
         loop_max.push_back(LTBF);
       }
       TrVec LTr[3];
-      for (iLTr = 0; iLTr < sgo.nLTr(); iLTr++) {
-        LTr[0] = sgo.LTr(iLTr).newBaseFactor(LTBF);
+      for (iLTr = 0; iLTr < SgOps.nLTr(); iLTr++) {
+        LTr[0] = SgOps.LTr(iLTr).newBaseFactor(LTBF);
         NestedLoop<cctbx::fixcap_vector<int, 2> > loop(loop_min, loop_max);
         do {
           for (iVM = 0; iVM < ContinuousVM.size(); iVM++) {
@@ -232,9 +232,9 @@ namespace sgtbx {
 
   using namespace seminvariant_cpp;
 
-  StructureSeminvariant::StructureSeminvariant(const SgOps& sgo)
+  StructureSeminvariant::StructureSeminvariant(const SpaceGroup& SgOps)
   {
-    detail::AnyGenerators Gen(sgo);
+    detail::AnyGenerators Gen(SgOps);
     m_VM = GetContNullSpace(Gen);
     if (m_VM.size() == 3) return; // space group P1
     boost::array<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
@@ -262,7 +262,7 @@ namespace sgtbx {
       DiscrZ.push_back(
         (Gen.Z2POp.InvM().Rpart() * DiscrGrpP[iDL]).modPositive());
     }
-    BestVectors(sgo, m_VM, DiscrZ);
+    BestVectors(SgOps, m_VM, DiscrZ);
     std::sort(DiscrZ.begin(), DiscrZ.end(), CmpDiscrZ());
     DiscrList DiscrP;
     for (iDL = 0; iDL < DiscrZ.size(); iDL++) {

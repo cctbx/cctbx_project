@@ -18,10 +18,10 @@ while 1:
   nspgrp = string.atoi(flds[0]) # read spacegroup number
   nsym = string.atoi(flds[1]) # read nsym
   print nspgrp, nsym, flds[2] # print it all
-  sgops = sgtbx.SgOps() # now interpret the symops
+  SgOps = sgtbx.SpaceGroup() # now interpret the symops
   for i in xrange(nsym):
     line = sys.stdin.readline()[:-1] # get the i'th symop
     # print line
-    sgops.expandSMx( sgtbx.RTMx(line) ) # and interpret
-  print sgops.BuildHallSymbol() # now produce the sg symbol
-  print sgops.BuildLookupSymbol()
+    SgOps.expandSMx( sgtbx.RTMx(line) ) # and interpret
+  print SgOps.BuildHallSymbol() # now produce the sg symbol
+  print SgOps.BuildLookupSymbol()

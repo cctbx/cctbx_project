@@ -21,7 +21,7 @@ else:
     table_hall.append(i.Hall())
 
 def random_expand(SgOps):
-  s = sgtbx.SgOps()
+  s = sgtbx.SpaceGroup()
   OrderZ = SgOps.OrderZ()
   l = range(OrderZ)
   while (len(l)):
@@ -34,13 +34,13 @@ def random_expand(SgOps):
 for HallSymbol in table_hall:
   for Z in "PABCIRHF":
     HSym = HallSymbol[0] + Z + HallSymbol[2:]
-    SgOps = sgtbx.SgOps(HSym)
+    SgOps = sgtbx.SpaceGroup(HSym)
     SgNumber = SgOps.getSpaceGroupType().SgNumber()
-    RefSgOps = sgtbx.SgOps(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
+    RefSgOps = sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
     if (SgNumber < 75):
-      RotOps = sgtbx.SgOps('P 1')
+      RotOps = sgtbx.SpaceGroup('P 1')
     else:
-      RotOps = sgtbx.SgOps('P 3*')
+      RotOps = sgtbx.SpaceGroup('P 3*')
     for Rot in RotOps:
       CBOp = sgtbx.ChOfBasisOp(Rot)
       SgOpsRot = SgOps.ChangeBasis(CBOp)
@@ -75,5 +75,5 @@ for HallSymbol in table_hall:
         else:
           print "LookupSymbol:", l
           if (not QuickMode):
-            assert s == sgtbx.SgOps(sgtbx.SpaceGroupSymbols(l).Hall())
+            assert s == sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(l).Hall())
       print

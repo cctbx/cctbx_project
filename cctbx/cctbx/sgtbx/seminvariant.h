@@ -45,7 +45,7 @@ namespace sgtbx {
       Tables for Crystallography Volume A, 1983, Table
       15.3.2., column "Translations."
       <p>
-      See also: SgOps::getAddlGeneratorsOfEuclideanNormalizer()
+      See also: SpaceGroup::getAddlGeneratorsOfEuclideanNormalizer()
    */
   class StructureSeminvariant {
     public:
@@ -58,7 +58,7 @@ namespace sgtbx {
        */
       /*! See class details.
        */
-      StructureSeminvariant(const SgOps& sgo);
+      StructureSeminvariant(const SpaceGroup& SgOps);
       //! Number of structure-seminvariant vectors and moduli.
       /*! Possible results are in the range from 0 (e.g. space group
           Im-3m) to 3 (e.g. space group P1).

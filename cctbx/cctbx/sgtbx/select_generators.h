@@ -18,7 +18,7 @@ namespace sgtbx {
 
     struct AnyGenerators {
       AnyGenerators() : nGen(0) {}
-      AnyGenerators(const SgOps& sgo);
+      AnyGenerators(const SpaceGroup& SgOps);
       inline int nAll() const {
         if (ZInvT.isValid()) return nGen + 1;
         return nGen;
@@ -33,7 +33,7 @@ namespace sgtbx {
     };
 
     struct StdGenerators: AnyGenerators {
-      StdGenerators(const SgOps& WorkSgOps,
+      StdGenerators(const SpaceGroup& WorkSgOps,
                     const tables::MatrixGroup::Code& PG_MGC);
     };
 

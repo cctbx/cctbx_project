@@ -2219,9 +2219,9 @@ namespace sgtbx {
     }
   }
 
-  void WyckoffTable::expand(const SgOps& sgo) {
+  void WyckoffTable::expand(const SpaceGroup& SgOps) {
     for(std::size_t i=0;i<N();i++) {
-      m_Operations[i].expand(sgo);
+      m_Operations[i].expand(SgOps);
     }
   }
 
@@ -2229,14 +2229,15 @@ namespace sgtbx {
     InitializeOperations(SgType);
   }
 
-  WyckoffTable::WyckoffTable(const SgOps& sgo, const SpaceGroupType& SgType) {
+  WyckoffTable::WyckoffTable(const SpaceGroup& SgOps,
+                             const SpaceGroupType& SgType) {
     InitializeOperations(SgType);
-    expand(sgo);
+    expand(SgOps);
   }
 
   const WyckoffMapping
   WyckoffTable::getWyckoffMapping(const uctbx::UnitCell& uc,
-                                  const SgOps& sgo,
+                                  const SpaceGroup& SgOps,
                                   const fractional<double>& X,
                                   double SnapRadius) const
   {
@@ -2245,8 +2246,8 @@ namespace sgtbx {
     for (std::size_t iWP = N() - 1; iWP > 0; iWP--) {
       WyckoffMapping result;
       double ShortestDistance2 = uc.getLongestVector2();
-      for (int iOp = 0; iOp < sgo.OrderZ(); iOp++) {
-        RTMx SymOp = sgo(iOp).modShort();
+      for (int iOp = 0; iOp < SgOps.OrderZ(); iOp++) {
+        RTMx SymOp = SgOps(iOp).modShort();
         fractional<double> SX = SymOp * NormX;
         TrVec U(1);
         for (U[0] = -1; U[0] <= 1; U[0]++)
@@ -2304,17 +2305,17 @@ namespace sgtbx {
     if (WTab[0].M() == SP.M()) return WyckoffMapping(WTab[0], RTMx(1, 1));
     const RotMx& Rs = SP.SpecialOp().Rpart();
     const TrVec& Ts = SP.SpecialOp().Tpart();
-    const SgOps& sgo = SP.m_Parameters.m_SgOps;
+    const SpaceGroup& SgOps = SP.m_Parameters.m_SgOps;
     for(std::size_t iWP=1;iWP<WTab.N();iWP++) {
       if (WTab[iWP].M() == SP.M()) {
         const RotMx& Rw = WTab[iWP].SpecialOp().Rpart();
         const TrVec& Tw = WTab[iWP].SpecialOp().Tpart();
-        for(int iSMx=0;iSMx<sgo.OrderP();iSMx++) {
-          RTMx SMx = sgo(iSMx);
+        for(int iSMx=0;iSMx<SgOps.OrderP();iSMx++) {
+          RTMx SMx = SgOps(iSMx);
           const RotMx& R = SMx.Rpart();
           if (Rw.multiply(R) == R.multiply(Rs)) {
-            for(int iLTr=0;iLTr<sgo.nLTr();iLTr++) {
-              TrVec T = SMx.Tpart() + sgo.LTr(iLTr);
+            for(int iLTr=0;iLTr<SgOps.nLTr();iLTr++) {
+              TrVec T = SMx.Tpart() + SgOps.LTr(iLTr);
               RotMx RwmI = (Rw - Rw.Unit()).cancel();
               TrVec b = R.multiply(Ts).plus(T).minus(Rw.multiply(T)).minus(Tw);
               TrVec U = detail::SolveInZ(RwmI, b);

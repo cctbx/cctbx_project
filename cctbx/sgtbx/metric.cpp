@@ -14,8 +14,8 @@
 
 namespace sgtbx {
 
-  bool SgOps::isCompatibleMetricalMatrix(const uctbx::Mx33& G,
-                                         double tolerance) const
+  bool SpaceGroup::isCompatibleMetricalMatrix(const uctbx::Mx33& G,
+                                              double tolerance) const
   {
     // for all R in the representative set of rotation matrices,
     // assert Transpose[R].G.R == G
@@ -34,8 +34,8 @@ namespace sgtbx {
     return true;
   }
 
-  void SgOps::CheckMetricalMatrix(const uctbx::Mx33& G,
-                                  double tolerance) const
+  void SpaceGroup::CheckMetricalMatrix(const uctbx::Mx33& G,
+                                       double tolerance) const
   {
     if (!isCompatibleMetricalMatrix(G, tolerance)) {
       throw error(

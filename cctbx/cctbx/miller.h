@@ -110,7 +110,9 @@ namespace cctbx {
       return result;
     }
 
-    //! Definition of fast comparison for use in, e.g., std::map<Miller::Index>.
+    /*! \brief Definition of fast comparison for use in,
+        e.g., std::map<Miller::Index>.
+     */
     class hashCompare {
       public:
         //! This fast comparison function is implemented as operator().

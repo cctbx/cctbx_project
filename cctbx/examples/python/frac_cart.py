@@ -40,6 +40,15 @@ def GetFormData():
       if (len(s) != 0): inp.coordinates.append(s)
   return inp
 
+def InterpretCoordinateLine(line, skip_columns):
+  flds = string.split(line)
+  if (len(flds) < skip_columns + 3): raise FormatError, line
+  coordinates = [0,0,0]
+  for i in xrange(3):
+    try: coordinates[i] = string.atof(flds[skip_columns + i])
+    except: raise FormatError, line
+  return string.join(flds[:skip_columns]), coordinates
+
 inp = GetFormData()
 
 try:

@@ -122,7 +122,7 @@ namespace sgtbx {
     return result;
   }
 
-  bool SgOps::isChiral() const
+  bool SpaceGroup::isChiral() const
   {
     if (isCentric()) return false;
     for (int i = 1; i < m_nSMx; i++) {
@@ -131,7 +131,7 @@ namespace sgtbx {
     return true;
   }
 
-  bool SgOps::isEnantiomorphic() const
+  bool SpaceGroup::isEnantiomorphic() const
   {
     if (isCentric()) return false;
     SpaceGroupType SgType = getSpaceGroupType();
@@ -143,7 +143,7 @@ namespace sgtbx {
     return true;
   }
 
-  ChOfBasisOp SgOps::getChangeOfHandOp() const
+  ChOfBasisOp SpaceGroup::getChangeOfHandOp() const
   {
     if (isCentric()) return ChOfBasisOp(1, STBF);
     SpaceGroupType SgType = getSpaceGroupType();

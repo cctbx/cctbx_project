@@ -577,7 +577,9 @@ namespace sgtbx {
       /*! An exception is thrown if the matrix cannot be inverted.
        */
       RTMx inverse_with_cancel() const;
-      //! Similar to /=, but multiply base factors instead of dividing elements.
+      /*! \brief Similar to /=, but multiply base factors instead
+          of dividing elements.
+       */
       inline void pseudo_divide(int rhs) {
         m_R.BF() *= rhs;
         m_T.BF() *= rhs;

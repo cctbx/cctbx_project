@@ -7,7 +7,7 @@ nLTrDict = {}
 for HallSymbol in table_hall_std530:
   for Z in "PABCIRHF":
     hsym = HallSymbol[6] + Z + HallSymbol[8:]
-    SgOps = sgtbx.SgOps(hsym)
+    SgOps = sgtbx.SpaceGroup(hsym)
     n = SgOps.nLTr()
     print n, hsym
     try: nLTrDict[n] = nLTrDict[n] + 1
