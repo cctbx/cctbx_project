@@ -542,7 +542,7 @@ namespace cctbx { namespace af {
     append(f_t& a, f_t const& other)
     {
       base_array_type b = bpl_utils::as_base_array(a);
-      bpl_utils::assert_1d(other.accessor());
+      bpl_utils::assert_0_based_1d(other.accessor());
       b.insert(b.end(), other.begin(), other.end());
       a.resize(make_flex_grid_1d(b.size()));
     }
@@ -565,8 +565,8 @@ namespace cctbx { namespace af {
     f_t
     select(f_t const& a, flex_bool const& flags)
     {
-      bpl_utils::assert_1d(a.accessor());
-      bpl_utils::assert_1d(flags.accessor());
+      bpl_utils::assert_0_based_1d(a.accessor());
+      bpl_utils::assert_0_based_1d(flags.accessor());
       if (a.size() != flags.size()) bpl_utils::raise_incompatible_arrays();
       std::size_t n = 0;
       std::size_t i;
@@ -581,8 +581,8 @@ namespace cctbx { namespace af {
     f_t
     shuffle(f_t const& a, flex_size_t const& permutation)
     {
-      bpl_utils::assert_1d(a.accessor());
-      bpl_utils::assert_1d(permutation.accessor());
+      bpl_utils::assert_0_based_1d(a.accessor());
+      bpl_utils::assert_0_based_1d(permutation.accessor());
       if (a.size() != permutation.size()) {
         bpl_utils::raise_incompatible_arrays();
       }

@@ -91,7 +91,7 @@ namespace {
   // XXX move to a new header file
   template <typename ElementType>
   af::versa<ElementType, af::flex_grid<> >
-  flex_from_versa_grid_3(af::versa<ElementType, af::grid<3> >& map)
+  flex_from_versa_grid_3(af::versa<ElementType, af::grid<3> > map)
   {
     return af::versa<ElementType, af::flex_grid<> >(
       map, af::make_flex_grid(map.accessor()));
