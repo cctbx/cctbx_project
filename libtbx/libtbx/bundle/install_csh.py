@@ -87,7 +87,6 @@ else
     else
       set n_cpu_s="$n_cpu_s[1]"
     endif
-    if ("$n_cpu_s" == "0") exit 0
   else if ($#argv == 1) then
     set n_cpu_s="$1"
   else
@@ -95,6 +94,7 @@ else
     exit 1
   endif
   echo "Number of available CPU's: $n_cpu_s"
+  if ("$n_cpu_s" == "0") exit 0
 
   if ("$python_exe" == None) then
 
