@@ -6,7 +6,7 @@ norm = normpath
 
 import libtbx.config
 import libtbx.path
-from libtbx.config import UserError
+from libtbx.utils import UserError
 
 class registry:
 
@@ -101,8 +101,8 @@ class package:
       for package_name in self.config.get("optional_packages", []):
         try:
           p = package(self.dist_root, package_name)
-        except UserError:
-          pass
+        except UserError, e:
+          e.reset_tracebacklimit()
         else:
           if (p.dist_path is not None):
             self.dependency_registry.merge(p.dependency_registry)
@@ -121,21 +121,30 @@ def open_info(path, mode="w", info="Creating:"):
 class libtbx_env:
 
   def __init__(self, cwd, libtbx_dist):
+    self.LIBTBX_BUILD = norm(abspath(os.getcwd()))
+    self._shortpath_bat = None
+    self.LIBTBX_BUILD = self.abs_path_clean(self.LIBTBX_BUILD)
+    libtbx_dist = self.abs_path_clean(libtbx_dist)
     self.python_version_major_minor = sys.version_info[:2]
     if (os.name == "nt"):
-      self.LIBTBX_PYTHON_EXE = norm(abspath(join(sys.prefix, "python.exe")))
+      self.LIBTBX_PYTHON_EXE = self.abs_path_clean(join(
+        sys.prefix, "python.exe"))
     else:
-      self.LIBTBX_PYTHON_EXE = norm(abspath(join(sys.prefix, "bin", "python")))
-    self.LIBTBX_BUILD = norm(abspath(os.getcwd()))
-    self.LIBTBX_DIST_ROOT = norm(dirname(libtbx_dist))
+      self.LIBTBX_PYTHON_EXE = self.abs_path_clean(join(
+        sys.prefix, "bin/python"))
     self.LD_LIBRARY_PATH = [norm(join(self.LIBTBX_BUILD, "libtbx"))]
     self.PYTHONPATH = [norm(join(self.LIBTBX_BUILD, "libtbx")), libtbx_dist]
     self.PATH = [norm(join(self.LIBTBX_BUILD, "libtbx/bin"))]
+    self.libtbx_dist_root = dirname(libtbx_dist)
+    self.libtbx_python = norm(join(
+      self.LIBTBX_BUILD,"libtbx","bin","libtbx.python"))
+    self.libtbx_path_utility = norm(join(
+      libtbx_dist, "libtbx/command_line/path_utility.py"))
     self.package_list = []
     self.effective_roots = []
     self.dist_paths = {"LIBTBX_DIST": libtbx_dist}
     self.scons_in_dist_root = False
-    if (os.path.isdir(join(self.LIBTBX_DIST_ROOT, "scons"))):
+    if (os.path.isdir(join(self.libtbx_dist_root, "scons"))):
       self.scons_in_dist_root = True
 
   def add_package(self, package, explicit_adaptbx):
@@ -145,14 +154,16 @@ class libtbx_env:
     if (package.effective_root_adaptbx is not None
         and package.effective_root_adaptbx not in self.effective_roots):
       self.effective_roots.append(package.effective_root_adaptbx)
-    self.dist_paths[package.name.upper() + "_DIST"] = package.dist_path
+    self.dist_paths[package.name.upper() + "_DIST"] = self.abs_path_clean(
+      package.dist_path)
     if (not explicit_adaptbx):
       ppn = libtbx.config.package_pair(name=package.name)
       if (package.name == ppn.primary):
         ppd = libtbx.config.package_pair(
           name=package.name,
           dist_root=package.dist_root)
-        self.dist_paths[ppn.adaptbx.upper() + "_DIST"] = ppd.adaptbx
+        self.dist_paths[ppn.adaptbx.upper() + "_DIST"] = self.abs_path_clean(
+          ppd.adaptbx)
     if (package.python_path is not None):
       insert_normed_path(self.PYTHONPATH, package.python_path)
 
@@ -181,107 +192,234 @@ class libtbx_env:
       raise UserError(("Incompatible Python API's: current version: %s,"
         + " used to build binaries: %s") % (api_from_process, api_from_build))
 
-def emit_setpaths_sh(env):
-  for file_name in ("setpaths.sh", "env_run.sh"):
-    full_path = norm(join(env.LIBTBX_BUILD, file_name))
-    f = open_info(full_path)
-    for var_name, values in env.items():
-      if (var_name.upper() != var_name): continue
-      if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
-        var_name = "DYLD_LIBRARY_PATH"
-      if (type(values) == type([])):
-        val = os.pathsep.join(values)
-        print >> f, 'LIBTBX_%s="%s"' % (var_name, val)
-        print >> f, 'export LIBTBX_%s' % var_name
-        val = "$LIBTBX_%s" % var_name
-        print >> f, 'if [ ! -n "$%s" ]; then' % (var_name,)
-        print >> f, '  %s="%s"' % (var_name, val)
-        print >> f, 'else'
-        print >> f, '  %s="%s%s$%s"' % (var_name, val, os.pathsep, var_name)
-        print >> f, 'fi'
-        print >> f, 'LIBTBX0%s="$%s"' % (var_name, var_name)
-        print >> f, 'export LIBTBX0%s' % var_name
+  def abs_path_short(self, abs_path):
+    if (os.name != "nt"): return abs_path
+    if (self._shortpath_bat is None):
+      self._shortpath_bat = "shortpath.bat"
+      libtbx_build = self.LIBTBX_BUILD
+      if (libtbx_build is not None):
+        self._shortpath_bat = os.path.join(libtbx_build, self._shortpath_bat)
+    assert os.path.exists(self._shortpath_bat)
+    return os.popen('call "%s" "%s"' %
+      (self._shortpath_bat, abs_path), "r").readline().rstrip()
+
+  def abs_path_clean(self, path):
+    abs_path = norm(abspath(path))
+    if (os.name != "nt"): return abs_path
+    short = self.abs_path_short(abs_path).split(os.sep)
+    orig = abs_path.split(os.sep)
+    clean = []
+    for o,s in zip(orig, short):
+      if (o.find(" ") < 0):
+        clean.append(o)
       else:
-        print >> f, '%s="%s"' % (var_name, values)
-      print >> f, 'export %s' % (var_name,)
-    if (file_name == "env_run.sh"):
-      print >> f, '"%s" "%s" "$@"' % (
-        "$LIBTBX_BUILD/libtbx/bin/libtbx.python",
-        "$LIBTBX_DIST/libtbx/command_line/env_run.py")
-    f.close()
-    os.chmod(full_path, 0755)
+        clean.append(s)
+    return os.sep.join(clean)
+
+def write_incomplete_libtbx_environment(f):
+  message = [
+    "*******************************************",
+    "Fatal Error: Incomplete libtbx environment!",
+    "*******************************************",
+    "Please re-run the libtbx/configure.py command."]
+  if (os.name != "nt"):
+    for line in message: print >> f, '  echo "%s"' % line
+    print >> f, '  echo ""'
+  else:
+    for line in message: print >> f, '  echo %s' % line
+    print >> f, '  echo.'
+
+class unix_update_path:
+
+  def __init__(self, env, shell, s, u):
+    assert shell in ["sh", "csh"]
+    self.shell = shell
+    self.env = env
+    self.s = s
+    self.u = u
+    if (self.shell == "sh"):
+      self.setenv = "%s="
+    else:
+      self.setenv = "setenv %s "
+
+  def write(self, prefixes, var_name, val):
+    val = os.pathsep.join(val)
+    for f,prefix,action in [(self.s, prefixes[0], "prepend"),
+                            (self.u, prefixes[1], "delete")]:
+      print >> f, '''%s%s"`'%s' '%s' %s %s '%s'`"''' % (
+        prefix,
+        self.setenv % var_name,
+        self.env.LIBTBX_PYTHON_EXE,
+        self.env.libtbx_path_utility,
+        action,
+        var_name,
+        val)
+      if (f is self.s and self.shell == "sh"):
+        print >> f, '%sexport %s' % (prefixes[0], var_name)
+
+class windows_update_path:
+
+  def __init__(self, env, s, u):
+    self.env = env
+    self.s = s
+    self.u = u
+
+  def write(self, prefixes, var_name, val):
+    val = os.pathsep.join(val)
+    fmt = '''%sfor /F %%%%i in ('%s "%s" %s %s "%s"') do set %s=%%%%i'''
+    for f,prefix,action in [(self.s, prefixes[0], "prepend"),
+                            (self.u, prefixes[1], "delete")]:
+      print >> f, fmt % (
+        prefix,
+        self.env.LIBTBX_PYTHON_EXE,
+        self.env.libtbx_path_utility,
+        action,
+        var_name,
+        val,
+        var_name)
+      print >> f, '%sif "%%%s%%" == "E_M_P_T_Y" set %s=' % (
+        prefix, var_name, var_name)
+
+def emit_setpaths_sh(env):
+  setpaths_path = norm(join(env.LIBTBX_BUILD, "setpaths.sh"))
+  unsetpaths_path = norm(join(env.LIBTBX_BUILD, "unsetpaths.sh"))
+  s = open_info(setpaths_path)
+  u = open_info(unsetpaths_path)
+  update_path = unix_update_path(env, "sh", s, u)
+  for f in s, u:
+    print >> f, '"%s" -V > /dev/null 2>&1' % env.libtbx_python
+    print >> f, \
+      'if [ $? -ne 0 -o ! -f "%s" ]; then' % env.libtbx_path_utility
+    write_incomplete_libtbx_environment(f)
+    print >> f, 'else'
+  update_path.write(("  ", "  "), "PATH", env.PATH)
+  for un in ["", "un"]:
+    print >> s, \
+      """  alias libtbx.%ssetpaths='source "%s/%ssetpaths.sh"'""" % (
+        un, env.LIBTBX_BUILD, un)
+  print >> u, '  unalias libtbx.unsetpaths > /dev/null 2>&1'
+  print >> s, '  if [ $# -ne 0 ]; then'
+  print >> s, \
+    '    if [ $# -ne 1 -o \( "$1" != "all" -a "$1" != "debug" \) ]; then'
+  print >> s, '      echo "usage: source setpaths.sh [all|debug]"'
+  print >> s, '    else'
+  print >> s, '      %s="%s"' % ("LIBTBX_BUILD", env.LIBTBX_BUILD)
+  print >> s, '      export %s' % "LIBTBX_BUILD"
+  print >> u, '  unset %s' % "LIBTBX_BUILD"
+  for var_name, values in env.items():
+    if (not var_name.endswith("_DIST")): continue
+    print >> s, '      %s="%s"' % (var_name, values)
+    print >> s, '      export %s' % var_name
+    print >> u, '  unset %s' % var_name
+  print >> s, '      if [ "$1" == "debug" ]; then'
+  update_path.write(("        ", "  "), "PYTHONPATH", env.PYTHONPATH)
+  if (sys.platform.startswith("darwin")):
+    ld_library_path = "DYLD_LIBRARY_PATH"
+  else:
+    ld_library_path = "LD_LIBRARY_PATH"
+  update_path.write(("        ", "  "), ld_library_path, env.LD_LIBRARY_PATH)
+  print >> s, '      fi'
+  print >> s, '    fi'
+  print >> s, '  fi'
+  for f in s, u:
+    print >> f, 'fi'
+  s.close()
+  u.close()
+
+def emit_env_run_sh(env):
+  env_run_sh = norm(join(env.LIBTBX_BUILD, "env_run.sh"))
+  f = open_info(env_run_sh)
+  print >> f, '. "%s" all' % (os.path.join(env.LIBTBX_BUILD, "setpaths.sh"))
+  print >> f, '"%s" "%s" "$@"' % (
+    "$LIBTBX_BUILD/libtbx/bin/python",
+    "$LIBTBX_DIST/libtbx/command_line/env_run.py")
+  f.close()
+  os.chmod(env_run_sh, 0755)
 
 def emit_setpaths_csh(env):
-  libtbx_python = norm(join(
-    env.LIBTBX_BUILD, "libtbx","bin","libtbx.python"))
-  libtbx_path_utility = norm(join(
-    env.LIBTBX_DIST_ROOT, "libtbx","libtbx","command_line","path_utility.py"))
   setpaths_csh_path = norm(join(env.LIBTBX_BUILD, "setpaths.csh"))
   unsetpaths_csh_path = norm(join(env.LIBTBX_BUILD, "unsetpaths.csh"))
   s = open_info(setpaths_csh_path)
   u = open_info(unsetpaths_csh_path)
+  update_path = unix_update_path(env, "csh", s, u)
   for f in s, u:
-    print >> f, '"%s" -V >& /dev/null' % libtbx_python
-    print >> f, 'if ($status != 0 || ! -f "%s") then' % libtbx_path_utility
-    print >> f, '  echo "*******************************************"'
-    print >> f, '  echo "Fatal Error: Incomplete libtbx environment!"'
-    print >> f, '  echo "*******************************************"'
-    print >> f, '  echo "Please re-run the libtbx/configure.py command."'
-    print >> f, '  echo ""'
-    if (f is s):
-      print >> f, 'else if ($#argv != 0 && $#argv != 1'\
-                  ' || $#argv && "$1" != "minimal") then'
-      print >> f, '  echo "usage: source $0 [minimal]"'
+    print >> f, '"%s" -V >& /dev/null' % env.libtbx_python
+    print >> f, \
+      'if ($status != 0 || ! -f "%s") then' % env.libtbx_path_utility
+    write_incomplete_libtbx_environment(f)
     print >> f, 'else'
+  update_path.write(("  ", "  "), "PATH", env.PATH)
+  for un in ["", "un"]:
+    print >> s, \
+      """  alias libtbx.%ssetpaths 'source "%s/%ssetpaths.csh"'""" % (
+        un, env.LIBTBX_BUILD, un)
+  print >> u, '  unalias libtbx.unsetpaths'
+  print >> s, '  if ($#argv != 0) then'
+  print >> s, \
+    '    if ($#argv != 1 || ("$1" != "all" && "$1" != "debug")) then'
+  print >> s, '      echo "usage: source setpaths.csh [all|debug]"'
+  print >> s, '    else'
+  print >> s, '      setenv %s "%s"' % ("LIBTBX_BUILD", env.LIBTBX_BUILD)
+  print >> u, '  unsetenv %s' % "LIBTBX_BUILD"
   for var_name, values in env.items():
-    if (var_name.upper() != var_name): continue
-    if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
-      var_name = "DYLD_LIBRARY_PATH"
-    if (type(values) == type([])):
-      val = os.pathsep.join(values)
-      print >> s, '  setenv LIBTBX_%s "%s"' % (var_name, val)
-      print >> u, '  unsetenv LIBTBX_%s' % var_name
-      fmt_args = (var_name, libtbx_python, libtbx_path_utility, var_name, val)
-      print >> s, '''  setenv %s "`'%s' '%s' prepend %s '%s'`"''' % fmt_args
-      print >> u, '''  setenv %s "`'%s' '%s' delete %s '%s'`"''' % fmt_args
-      print >> s, '  setenv LIBTBX0%s "$%s"' % (var_name, var_name)
-      print >> u, '  unsetenv LIBTBX0%s' % var_name
-    else:
-      if (   var_name.endswith("_DIST")
-          or var_name.endswith("_DIST_ROOT")):
-        condition = "if ($#argv == 0) "
-      else:
-        condition = ""
-      print >> s, '  %ssetenv %s "%s"' % (condition, var_name, values)
-      print >> u, '  unsetenv %s' % var_name
+    if (not var_name.endswith("_DIST")): continue
+    print >> s, '      setenv %s "%s"' % (var_name, values)
+    print >> u, '  unsetenv %s' % var_name
+  print >> s, '      if ("$1" == "debug") then'
+  update_path.write(("        ", "  "), "PYTHONPATH", env.PYTHONPATH)
+  if (sys.platform.startswith("darwin")):
+    ld_library_path = "DYLD_LIBRARY_PATH"
+  else:
+    ld_library_path = "LD_LIBRARY_PATH"
+  update_path.write(("        ", "  "), ld_library_path, env.LD_LIBRARY_PATH)
+  print >> s, '      endif'
+  print >> s, '    endif'
+  print >> s, '  endif'
   for f in s, u:
     print >> f, 'endif'
   s.close()
   u.close()
 
-def join_path_ld_library_path(env):
-  joined_path = list(env.PATH)
-  for path in env.LD_LIBRARY_PATH:
-    if (not path in joined_path):
-      joined_path.append(path)
-  return joined_path
-
 def emit_setpaths_bat(env):
-  setpaths_bat_path = norm(join(env.LIBTBX_BUILD, "setpaths.bat"))
-  f = open_info(setpaths_bat_path)
-  print >> f, '@ECHO off'
+  setpaths_path = norm(join(env.LIBTBX_BUILD, "setpaths.bat"))
+  unsetpaths_path = norm(join(env.LIBTBX_BUILD, "unsetpaths.bat"))
+  s = open_info(setpaths_path)
+  u = open_info(unsetpaths_path)
+  update_path = windows_update_path(env, s, u)
+  for f in s, u:
+    print >> f, '@ECHO off'
+    print >> f, 'if not exist "%s" goto fatal_error' % env.LIBTBX_PYTHON_EXE
+    print >> f, 'if not exist "%s" goto fatal_error' % env.libtbx_path_utility
+    print >> f, 'if exist "%s.exe" goto update_path' % env.libtbx_python
+    write_incomplete_libtbx_environment(f)
+    print >> f, '  goto end_of_script'
+    print >> f, ':update_path'
+  update_path.write(("  ", "  "), "PATH", env.PATH)
+  for un in ["", "un"]:
+    print >> s, '  doskey libtbx.%ssetpaths="%s\\%ssetpaths.bat" $*' % (
+      un, env.LIBTBX_BUILD, un)
+  print >> u, '  doskey libtbx.unsetpaths='
+  print >> s, '  if "%1" == "" goto end_of_script'
+  print >> s, '  if not "%2" == "" goto show_usage'
+  print >> s, '  if "%1" == "all" goto set_all'
+  print >> s, '  if "%1" == "debug" goto set_all'
+  print >> s, ':show_usage'
+  print >> s, '  echo usage: setpaths [all^|debug]'
+  print >> s, '  goto end_of_script'
+  print >> s, ':set_all'
+  print >> s, '  set %s="%s"' % ("LIBTBX_BUILD", env.LIBTBX_BUILD)
+  print >> u, '  set %s=' % "LIBTBX_BUILD"
   for var_name, values in env.items():
-    if (var_name.upper() != var_name): continue
-    if (type(values) == type([])):
-      if (var_name == "LD_LIBRARY_PATH"): continue
-      if (var_name == "PATH"):
-        values = join_path_ld_library_path(env)
-      val = os.pathsep.join([libtbx.path.abs_path_clean(v) for v in values])
-      print >> f, 'if not defined %s set %s=' % (var_name, var_name)
-      print >> f, 'set %s=%s%s%%%s%%' % (var_name, val, os.pathsep, var_name)
-    else:
-      print >> f, 'set %s=%s' % (var_name, libtbx.path.abs_path_clean(values))
-  f.close()
+    if (not var_name.endswith("_DIST")): continue
+    print >> s, '  set %s="%s"' % (var_name, values)
+    print >> u, '  set %s=' % var_name
+  print >> s, '  if not "%1" == "debug" goto end_of_script'
+  update_path.write(("    ", "  "), "PYTHONPATH", env.PYTHONPATH)
+  update_path.write(("    ", "  "), "PATH", env.LD_LIBRARY_PATH)
+  for f in s, u:
+    print >> f, ':end_of_script'
+  s.close()
+  u.close()
 
 class build_options_t:
 
@@ -435,10 +573,11 @@ def run(libtbx_dist, args, old_env=None):
     args.extend(old_env.package_list)
   packages = registry()
   for arg in args:
-    packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
+    packages.merge(package(env.libtbx_dist_root, arg).dependency_registry)
   if (len(packages.list) == 0):
     show_help(old_env)
     raise UserError("At least one package must be specified.")
+  print "Python:", sys.version.split()[0], sys.executable
   if (len(packages.missing_for_build) == 0):
     build_options.report()
   print "Top-down list of all packages involved:"
@@ -464,6 +603,7 @@ def run(libtbx_dist, args, old_env=None):
   env.pickle_dict()
   if (hasattr(os, "symlink")):
     emit_setpaths_sh(env)
+    emit_env_run_sh(env)
     emit_setpaths_csh(env)
   else:
     emit_setpaths_bat(env)
@@ -480,7 +620,6 @@ def cold_start(args):
   except UserError, e:
     print "Error:", e
   else:
-    sys.path.insert(0, norm(join(env.dist_paths["LIBTBX_DIST"], "libtbx")))
     os.environ["LIBTBX_BUILD"] = env.LIBTBX_BUILD
     from libtbx.command_line import refresh
     refresh.run()
@@ -493,7 +632,7 @@ def warm_start(args):
       raise UserError(
         "Current working directory must be: " + old_env.LIBTBX_BUILD)
     run(
-      libtbx_dist=old_env.dist_paths["LIBTBX_DIST"],
+      libtbx_dist=old_env.dist_path("libtbx"),
       args=args[1:],
       old_env=old_env)
   except UserError, e:

@@ -3,7 +3,10 @@ import sys
 
 def run_tests(build_dir, dist_dir, tst_list):
   import sys, os, os.path
-  python_exe = sys.executable
+  if (os.name == "nt"):
+    python_exe = sys.executable
+  else:
+    python_exe = "libtbx.python"
   for tst in tst_list:
     cmd_args = ""
     if (type(tst) == type([])):
@@ -21,12 +24,15 @@ def run_tests(build_dir, dist_dir, tst_list):
       tst_path = tst.replace("$D", dist_dir)
     assert tst_path.find("$") < 0
     tst_path = os.path.normpath(tst_path)
+    cmd = ""
     if (tst_path.endswith(".py")):
-      cmd = python_exe + " " + tst_path
+      if ("--valgrind" in sys.argv[1:]):
+        cmd = "libtbx.valgrind "
+      cmd += python_exe + " " + tst_path
     else:
-      cmd = tst_path
-    if ("--valgrind" in sys.argv[1:]):
-      cmd = os.environ["LIBTBX_VALGRIND"] + " " + cmd
+      if ("--valgrind" in sys.argv[1:]):
+        cmd = os.environ["LIBTBX_VALGRIND"] + " "
+      cmd += tst_path
     cmd += cmd_args
     print cmd
     sys.stdout.flush()

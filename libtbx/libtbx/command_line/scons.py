@@ -1,9 +1,9 @@
 import libtbx.env
 import sys, os
 
-engine = libtbx.env.under_dist_root("scons/engine")
+engine = libtbx.env.under_dist("libtbx", "../scons/engine")
 if (not os.path.isdir(engine)):
-  engine = libtbx.env.under_dist_root("scons/src/engine")
+  engine = libtbx.env.under_dist("libtbx", "../scons/src/engine")
 sys.path.insert(0, engine)
 try: import SCons
 except: del sys.path[0]

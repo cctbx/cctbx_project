@@ -42,7 +42,7 @@ call "%%python%%" ..\%(bundle)s_sources\libtbx\configure.py %(top_modules)s
 set el=%%errorlevel%%
 cd ..
 if not %%el%% == 0 goto end
-call %(bundle)s_build\setpaths.bat
+call %(bundle)s_build\setpaths.bat all
 
 if not exist "%%SCITBX_DIST%%\lbfgs\boost_python\tst_lbfgs.py" goto skip_test
 echo.

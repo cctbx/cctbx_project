@@ -1,9 +1,8 @@
 from libtbx.path import norm_join
+from libtbx.utils import UserError
 import sys, os, pickle
 from os.path import normpath, join, abspath, dirname, isdir, isfile
 norm = normpath
-
-class UserError(Exception): pass
 
 def full_path(command, search_first=[], search_last=[]):
   dirs = search_first + os.environ["PATH"].split(os.pathsep) + search_last
@@ -112,11 +111,20 @@ def read_libtbx_config(path):
   f.close()
   return result
 
+def _windows_pathext():
+  result = os.environ.get("PATHEXT", "").lower().split(os.pathsep)
+  for ext in [".py", ".exe", ".bat"]:
+    if (ext not in result):
+      result.insert(0, ext)
+  return result
+
+if (os.name == "nt"):
+  windows_pathext = _windows_pathext()
+
 class env:
 
-  def __init__(self, application_prefix="LIBTBX"):
-    self.application_prefix = application_prefix
-    libtbx_build = os.environ["LIBTBX_BUILD"] # XXX XXX XXX XXX XXX XXX XXX XXX
+  def __init__(self):
+    libtbx_build = os.environ["LIBTBX_BUILD"]
     file_name = join(libtbx_build, "libtbx_env")
     try:
       f = open(file_name)
@@ -132,7 +140,9 @@ class env:
       raise UserError("Python version incompatible with this build."
        + " Version used to configure: %d.%d." % self.python_version_major_minor
        + " Version used now: %d.%d." % sys.version_info[:2])
-    self._dispatcher_front_end_exe = None
+    self._dispatcher_precall_commands = None
+    self.partially_customized_windows_dispatcher = None
+    self.windows_dispatcher_unique_pattern = None
 
   def write_api_file(self):
     api_file_name = python_api_version_file_name(self.LIBTBX_BUILD)
@@ -145,8 +155,10 @@ class env:
   def has_dist(self, package_name):
     return self.dist_name(package_name) in self.dist_paths
 
-  def dist_path(self, package_name):
-    return self.dist_paths[self.dist_name(package_name)]
+  def dist_path(self, package_name, default=KeyError):
+    if (default is KeyError):
+      return self.dist_paths[self.dist_name(package_name)]
+    return self.dist_paths.get(self.dist_name(package_name), default)
 
   def effective_root(self, package_name):
     return dirname(self.dist_path(package_name))
@@ -154,22 +166,185 @@ class env:
   def current_working_directory_is_libtbx_build(self):
     return norm(os.getcwd()) == self.LIBTBX_BUILD
 
-  def dispatcher_front_end_exe(self,
-       application_prefix_placeholder="3A7P0P0L4I8C3A5T5I6O3N490P0R7E6F8I6X4"):
-    if (    os.name == "nt"
-        and self._dispatcher_front_end_exe is None):
-      self._dispatcher_front_end_exe = open(join(
-        self.dist_path("libtbx"), "dispatcher_front_end.exe"), "rb").read()
-      application_prefix_index = self._dispatcher_front_end_exe.find(
-        application_prefix_placeholder)
-      assert application_prefix_index >= 0
-      assert len(self.application_prefix) <= len(application_prefix_placeholder)
-      self._dispatcher_front_end_exe \
-        = self._dispatcher_front_end_exe[:application_prefix_index] \
-        + self.application_prefix + "\0" \
-        + self._dispatcher_front_end_exe[
-            application_prefix_index+len(self.application_prefix)+1:]
-    return self._dispatcher_front_end_exe
+  def dispatcher_precall_commands(self):
+    if (self._dispatcher_precall_commands is None):
+      lines = []
+      if (    self.python_version_major_minor == (2,2)
+          and sys.platform == "linux2"
+          and os.path.isfile("/etc/redhat-release")):
+        try: red_hat_linux_release = open("/etc/redhat-release").readline()
+        except: pass
+        else:
+          if (    red_hat_linux_release.startswith("Red Hat Linux release")
+              and red_hat_linux_release.split()[4] == "9"):
+            lines.extend([
+              'if [ ! -n "$LD_ASSUME_KERNEL" ]; then',
+              '  LD_ASSUME_KERNEL=2.4.1',
+              '  export LD_ASSUME_KERNEL',
+              'fi'])
+      if (os.name == "posix" and self.compiler == "icc"):
+        addl_lines = self.create_posix_icc_ld_preload()
+        if (addl_lines is None):
+          raise UserError("Cannot determine LD_PRELOAD for icc.")
+        lines.extend(addl_lines)
+      self._dispatcher_precall_commands = lines
+    return self._dispatcher_precall_commands
+
+  def create_posix_icc_ld_preload(self):
+    path_icc = full_path("icc")
+    if (path_icc is None): return None
+    path_lib = os.sep.join(path_icc.split(os.sep)[:-2] + ["lib"])
+    if (not isdir(path_lib)): return None
+    ld_preload = []
+    path_libirc_a = join(path_lib, "libirc.a")
+    path_libirc_so = join(path_lib, "libirc.so")
+    if (isfile(path_libirc_so)):
+      ld_preload.append(path_libirc_so)
+    else:
+      if (isfile(path_libirc_a)):
+        path_libirc_so = join(self.LIBTBX_BUILD, "libtbx/libirc.so")
+        if (not isfile(path_libirc_so)):
+          cmd = "%s -shared -o %s %s" % (
+            path_icc, path_libirc_so, path_libirc_a)
+          print cmd
+          sys.stdout.flush()
+          os.system(cmd)
+        ld_preload.append(path_libirc_so)
+    path_libunwind_so = None
+    best_version = None
+    for file_name in os.listdir(path_lib):
+      if (file_name.startswith("libunwind.so.")):
+        try: version = int(file_name.split(".")[2])
+        except: version = None
+        if (version is not None):
+          if (best_version is None or version > best_version):
+            path_libunwind_so = join(path_lib, file_name)
+            best_version = version
+    if (path_libunwind_so is not None):
+      ld_preload.append(path_libunwind_so)
+    if (len(ld_preload) == 0): return None
+    return [
+      'LD_PRELOAD="%s"' % os.pathsep.join(ld_preload),
+      'export LD_PRELOAD']
+
+  def create_bin_sh_dispatcher(self, source_file, target_file):
+    f = open(target_file, "w")
+    print >> f, '#! /bin/sh'
+    print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
+    print >> f, 'unset PYTHONHOME'
+    print >> f, 'LIBTBX_BUILD="%s"' % self.LIBTBX_BUILD
+    print >> f, 'export LIBTBX_BUILD'
+    essentials = [("PYTHONPATH", self.PYTHONPATH)]
+    if (sys.platform.startswith("darwin")):
+      ld_library_path = "DYLD_LIBRARY_PATH"
+    else:
+      ld_library_path = "LD_LIBRARY_PATH"
+    essentials.append((ld_library_path, self.LD_LIBRARY_PATH))
+    essentials.append(("PATH", self.PATH))
+    for n,v in essentials:
+      v = ":".join(v)
+      print >> f, 'if [ ! -n "$%s" ]; then' % n
+      print >> f, '  %s="%s"' % (n, v)
+      print >> f, 'else'
+      print >> f, '  %s="%s:$%s"' % (n, v, n)
+      print >> f, 'fi'
+      print >> f, 'export %s' % n
+    precall_commands = self.dispatcher_precall_commands()
+    if (precall_commands is not None):
+      for line in precall_commands:
+        print >> f, line
+    cmd = ""
+    if (source_file.lower().endswith(".py")):
+      cmd += " '"+self.LIBTBX_PYTHON_EXE+"'"
+    cmd += " '"+source_file+"'"
+    print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
+    print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
+    print >> f, "elif [ $# -eq 0 ]; then"
+    print >> f, "  exec"+cmd
+    print >> f, "else"
+    print >> f, "  exec"+cmd, '"$@"'
+    print >> f, "fi"
+    f.close()
+    os.chmod(target_file, 0755)
+
+  def windows_dispatcher(self, command_path,
+        unique_pattern="0W6I0N6D0O2W8S5_0D0I8S1P4A3T6C4H9E4R7",
+        libtbx_build="3L0I2B2T9B4X2_8B5U5I5L2D4",
+        python_executable="5P2Y5T7H2O5N8_0E7X9E7C8U6T4A9B9L5E3",
+        pythonpath="2P0Y1T7H3O2N7P7A2T5H8",
+        main_path="1M5A1I0N4_8P7A0T9H9",
+        target_command="5T4A3R7G8E3T7_6C5O0M0M3A8N8D2",
+        dispatcher_exe_file_name="windows_dispatcher.exe"):
+    if (os.name == "nt"
+        and self.partially_customized_windows_dispatcher is None):
+      self.partially_customized_windows_dispatcher = open(join(
+        self.dist_path("libtbx"), dispatcher_exe_file_name), "rb").read()
+      if (self.partially_customized_windows_dispatcher.find(unique_pattern)<0):
+        raise RuntimeError('Unique pattern "%s" not found in file %s' % (
+          unique_pattern, dispatcher_exe_file_name))
+      self.windows_dispatcher_unique_pattern = unique_pattern
+      for place_holder,actual_value in [
+           (libtbx_build, self.LIBTBX_BUILD),
+           (python_executable, self.LIBTBX_PYTHON_EXE),
+           (pythonpath, os.pathsep.join(self.PYTHONPATH)),
+           (main_path, os.pathsep.join([
+                         norm(join(self.LIBTBX_BUILD, "libtbx/bin")),
+                         norm(join(self.LIBTBX_BUILD, "libtbx"))]))]:
+       self.partially_customized_windows_dispatcher = patch_windows_dispatcher(
+         dispatcher_exe_file_name=dispatcher_exe_file_name,
+         binary_string=self.partially_customized_windows_dispatcher,
+         place_holder=place_holder,
+         actual_value=actual_value)
+    if (command_path is None):
+      return self.partially_customized_windows_dispatcher
+    return patch_windows_dispatcher(
+      dispatcher_exe_file_name=dispatcher_exe_file_name,
+      binary_string=self.partially_customized_windows_dispatcher,
+      place_holder=target_command,
+      actual_value=command_path)
+
+  def create_win32_dispatcher(self, source_file, target_file):
+    open(target_file+".exe", "wb").write(
+      self.windows_dispatcher(command_path=source_file))
+
+  def create_dispatcher(self, source_file, target_file):
+    if (os.name == "nt"):
+      action = self.create_win32_dispatcher
+      ext = ".exe"
+    else:
+      action = self.create_bin_sh_dispatcher
+      ext = ""
+      try: os.chmod(source_file, 0755)
+      except OSError: pass
+    target_file_ext = target_file + ext
+    try: os.remove(target_file_ext)
+    except OSError:
+      try: os.remove(target_file_ext+".old")
+      except OSError: pass
+      try: os.rename(target_file_ext, target_file_ext+".old")
+      except OSError: pass
+    try: action(source_file, target_file)
+    except IOError, e: print "  Ignored:", e
+
+  def create_dispatcher_in_bin(self, source_file, target_file):
+    self.create_dispatcher(
+      source_file=source_file,
+      target_file=norm(join(self.LIBTBX_BUILD, "libtbx/bin", target_file)))
+
+def patch_windows_dispatcher(
+      dispatcher_exe_file_name,
+      binary_string,
+      place_holder,
+      actual_value):
+  place_holder_start = binary_string.find(place_holder)
+  if (place_holder_start < 0):
+    raise RuntimeError('Place holder "%s" not found in file %s' % (
+      place_holder, dispatcher_exe_file_name))
+  place_holder_end = binary_string.find("\0", place_holder_start)
+  assert len(actual_value) <= place_holder_end - place_holder_start
+  return binary_string[:place_holder_start] \
+       + actual_value + "\0" \
+       + binary_string[place_holder_start+len(actual_value)+1:]
 
 class include_registry:
 

@@ -7,7 +7,13 @@ import sys, os
 class copy_libtbx_files:
 
   def __init__(self, libtbx_env):
-    self.dispatcher_front_end_exe = libtbx_env.dispatcher_front_end_exe()
+    windows_dispatcher = libtbx_env.windows_dispatcher(command_path=None)
+    if (windows_dispatcher is None):
+      self.windows_dispatcher_size = None
+    else:
+      self.windows_dispatcher_size = len(windows_dispatcher)
+      self.windows_dispatcher_unique_pattern = \
+        libtbx_env.windows_dispatcher_unique_pattern
 
   def __call__(self, target_root_dir, dirname, names):
     is_libtbx_bin = False
@@ -33,10 +39,12 @@ class copy_libtbx_files:
       shutil.copy(src, dest)
 
   def is_disposable_file(self, name, path):
-    if (    self.dispatcher_front_end_exe is not None
+    if (self.windows_dispatcher_size is not None
         and name.endswith(".exe")):
-      if (open(path, "rb").read(len(self.dispatcher_front_end_exe)+1)
-          == self.dispatcher_front_end_exe):
+      binary_string = open(path, "rb").read(self.windows_dispatcher_size+1)
+      if (len(binary_string) > self.windows_dispatcher_size):
+        return True
+      if (binary_string.find(self.windows_dispatcher_unique_pattern) >= 0):
         return True
     else:
       f = open(path, "r")
