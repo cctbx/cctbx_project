@@ -147,6 +147,16 @@ namespace cctbx {
         }
         return *this;
       }
+
+      //! Test for exact equality.
+      bool
+      operator==(hendrickson_lattman const& rhs) const
+      {
+        for(unsigned i=0;i<4;i++) {
+          if (this->elems[i] != rhs[i]) return false;
+        }
+        return true;
+      }
   };
 
 } // namespace cctbx
