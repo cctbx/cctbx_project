@@ -139,7 +139,7 @@ def exercise_array():
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
   assert tuple(ma.all_selection()) == (1,1,1,1,1)
   for sa in (ma.apply_selection(flex.bool((1,0,0,1,0))),
-             ma.shuffle(flex.size_t((0,3)))):
+             ma.select(flex.size_t((0,3)))):
     assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
     assert approx_equal(tuple(sa.data()), (1,3))
     assert approx_equal(tuple(sa.sigmas()), (0.1,0.4))
@@ -196,10 +196,7 @@ def exercise_array():
   no = ma.remove_patterson_origin_peak()
   assert approx_equal(no.data()[0], 3.231974)
   assert approx_equal(no.data()[47], 0.004956642)
-  no = ma.normalize_structure_factors()
-  assert approx_equal(no.data()[0], 1.723818)
-  assert approx_equal(no.data()[47], 0.6992564)
-  no = ma.normalize_structure_factors(quasi=0001)
+  no = ma.quasi_normalize_structure_factors()
   assert approx_equal(no.data()[0], 2.4378468)
   assert approx_equal(no.data()[47], 0.9888979)
   su = ma + 3
@@ -314,11 +311,11 @@ def exercise_array_2(space_group_info):
         p1.sigmas())
       m = ps.merge_equivalents()
       p = m.array().sort_permutation(by_value="data", reverse=0001)
-      assert flex.order(sg.indices(), m.array().indices().shuffle(p)) == 0
-      assert approx_equal(sg.data(), m.array().data().shuffle(p))
+      assert flex.order(sg.indices(), m.array().indices().select(p)) == 0
+      assert approx_equal(sg.data(), m.array().data().select(p))
       if (sigmas is not None):
-        s = m.array().sigmas().shuffle(p)
-        r = m.redundancies().shuffle(p)
+        s = m.array().sigmas().select(p)
+        r = m.redundancies().select(p)
         sr = s * flex.sqrt(r.as_double())
         assert approx_equal(sr, sigmas)
 
@@ -356,7 +353,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
   f_calc = f_calc.sort(by_value="abs")
   f = abs(f_calc)
   f.setup_binner(auto_binning=0001)
-  e = f.normalize_structure_factors(quasi=0001)
+  e = f.quasi_normalize_structure_factors()
   grid_resolution_factor = 1/3.
   u_extra = xray.calc_u_extra(d_min, grid_resolution_factor)
   if (0 or verbose):

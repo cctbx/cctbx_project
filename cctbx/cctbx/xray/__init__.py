@@ -229,7 +229,7 @@ class structure(crystal.special_position_settings):
       reverse)
     return structure(
       special_position_settings=self,
-      scatterers=self.scatterers().shuffle(p))
+      scatterers=self.scatterers().select(p))
 
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma

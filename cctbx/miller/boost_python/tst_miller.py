@@ -227,8 +227,6 @@ def exercise_bins():
   assert perm_array_indices1.size() == m.size()
   assert perm_array_indices2.size() == m.size()
   assert tuple(perm_array_indices1) == tuple(perm_array_indices2)
-  assert tuple(perm_array_indices1.unshuffle(perm_array_indices2)) \
-      == tuple(array_indices)
 
 def exercise_expand():
   sg = sgtbx.space_group("P 41 (1,-1,0)")
@@ -378,13 +376,11 @@ def exercise_match_indices():
   assert approx_equal(tuple(mi.additive_sigmas(d0, d1)), [
     math.sqrt(x*x+y*y) for x,y in ((1,30), (2,10), (3,40), (4,20))])
   q = flex.size_t((3,2,0,4,1))
-  h1 = h0.shuffle(q)
+  h1 = h0.select(q)
   assert tuple(miller.match_indices(h1, h0).permutation()) == tuple(q)
   p = miller.match_indices(h0, h1).permutation()
   assert tuple(p) == (2,4,1,0,3)
-  assert tuple(h1.shuffle(p)) == tuple(h0)
-  assert tuple(h1.unshuffle(q)) == tuple(h0)
-  assert tuple(h0.unshuffle(p)) == tuple(h1)
+  assert tuple(h1.select(p)) == tuple(h0)
 
 def exercise_merge_equivalents():
   i = flex.miller_index(((1,2,3), (1,2,3), (3,0,3), (3,0,3), (3,0,3), (1,1,2)))

@@ -41,6 +41,15 @@ class binner(ext.binner):
         print >> f, "bin %2d: %9.4f >= d > %8.4f: %5d" % (
           (i_bin,) + bin_d_range + (count,))
 
+  def n_bin_d_too_large(self):
+    return self.array_indices(self.i_bin_d_too_large()).size()
+
+  def n_bin_d_too_small(self):
+    return self.array_indices(self.i_bin_d_too_small()).size()
+
+  def n_bin_d_too_large_or_small(self):
+    return self.n_bin_d_too_large() + self.n_bin_d_too_small()
+
 def make_lookup_dict(indices): # XXX push to C++
   result = {}
   for i in xrange(len(indices)):
@@ -223,7 +232,7 @@ class set(crystal.symmetry):
       reverse)
     return set(
       crystal_symmetry=self,
-      indices=self.indices().shuffle(p),
+      indices=self.indices().select(p),
       anomalous_flag=self.anomalous_flag())
 
   def change_basis(self, cb_op):
@@ -339,9 +348,6 @@ def build_set(crystal_symmetry, anomalous_flag, d_min):
       anomalous_flag,
       d_min).to_array(),
     anomalous_flag)
-
-def _ftor_a_s_sub(lhs, rhs): return lhs - rhs
-def _ftor_a_s_div(lhs, rhs): return lhs / rhs
 
 def _array_info(array):
   if (array is None): return str(None)
@@ -493,11 +499,11 @@ class array(set):
     assert self.indices().size() == other.indices().size()
     assert self.anomalous_flag() == other.anomalous_flag()
     p = match_indices(other.indices(), self.indices()).permutation()
-    assert flex.order(self.indices().shuffle(p), other.indices()) == 0
+    assert flex.order(self.indices().select(p), other.indices()) == 0
     d = self.data()
     s = self.sigmas()
-    if (d is not None): d = d.shuffle(p)
-    if (s is not None): s = s.shuffle(p)
+    if (d is not None): d = d.select(p)
+    if (s is not None): s = s.select(p)
     return (array(miller_set=other, data=d, sigmas=s)
       .set_observation_type(self))
 
@@ -530,12 +536,12 @@ class array(set):
   def apply_sort_permutation(self, permutation):
     new_set = set(
       crystal_symmetry=self,
-      indices=self.indices().shuffle(permutation),
+      indices=self.indices().select(permutation),
       anomalous_flag=self.anomalous_flag())
     d = None
     s = None
-    if (self.data() is not None): d = self.data().shuffle(permutation)
-    if (self.sigmas() is not None): s = self.sigmas().shuffle(permutation)
+    if (self.data() is not None): d = self.data().select(permutation)
+    if (self.sigmas() is not None): s = self.sigmas().select(permutation)
     return array(new_set, d, s).set_observation_type(self)
 
   def patterson_symmetry(self):
@@ -649,7 +655,7 @@ class array(set):
     assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     i_column = "+-".index(plus_or_minus)
-    return asu.shuffle(
+    return asu.select(
       permutation=matches.pairs().column(i_column),
       anomalous_flag=00000)
 
@@ -657,7 +663,7 @@ class array(set):
     assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     return tuple(
-      [asu.shuffle(
+      [asu.select(
         permutation=matches.pairs().column(i_column),
         anomalous_flag=00000)
        for i_column in (0,1)])
@@ -687,15 +693,15 @@ class array(set):
     if (self.sigmas() is not None): s = self.sigmas().select(flags)
     return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
-  def shuffle(self, permutation, anomalous_flag=None):
+  def select(self, permutation, anomalous_flag=None):
     assert self.indices() is not None
     if (anomalous_flag is None):
       anomalous_flag = self.anomalous_flag()
-    i = self.indices().shuffle(permutation)
+    i = self.indices().select(permutation)
     d = None
-    if (self.data() is not None): d = self.data().shuffle(permutation)
+    if (self.data() is not None): d = self.data().select(permutation)
     s = None
-    if (self.sigmas() is not None): s = self.sigmas().shuffle(permutation)
+    if (self.sigmas() is not None): s = self.sigmas().select(permutation)
     return array(set(self, i, anomalous_flag), d, s).set_observation_type(self)
 
   def sigma_filter(self, cutoff_factor, negate=0):
@@ -778,37 +784,31 @@ class array(set):
             self.data().select(sel)))
     return result
 
-  def _generic_binner_application(self, binned_values, ftor, result_data):
-    result_perm = flex.size_t()
-    for i_bin in self.binner().range_used():
-      result_perm.append(self.binner().array_indices(i_bin))
-      result_data.append(
-        ftor(self.data().select(self.binner().selection(i_bin)),
-             binned_values[i_bin-1]))
-    assert self.indices().size() == result_data.size()
-    return array(self, result_data.unshuffle(result_perm))
-
   def remove_patterson_origin_peak(self):
     assert self.observation_type() is None or self.is_xray_intensity_array()
-    s_mean = self.statistical_mean(use_binning=1)
-    result_data = flex.double()
-    return self._generic_binner_application(s_mean, _ftor_a_s_sub, result_data)
+    s_mean = self.statistical_mean(use_binning=0001)
+    result_data = self.data().deep_copy()
+    for i_bin in self.binner().range_used():
+      sel = self.binner().array_indices(i_bin)
+      if (sel.size() > 0):
+        result_data.set_selected(
+          sel, self.data().select(sel) - s_mean[i_bin-1])
+    return array(self, result_data)
 
-  def normalize_structure_factors(self, quasi=00000, first_moment=00000):
-    assert quasi in (00000, 0001)
-    assert first_moment in (00000, 0001)
+  def quasi_normalized_as_normalized(self):
+    assert self.observation_type() is None or self.is_xray_amplitude_array()
+    return array(
+      miller_set=self,
+      data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
+
+  def quasi_normalize_structure_factors(self):
     assert self.binner() is not None
+    assert self.binner().n_bin_d_too_large_or_small() == 0
     assert self.data().all_ge(0)
     assert self.observation_type() is None or self.is_xray_amplitude_array()
-    if (first_moment):
-      assert quasi == 00000
-      mean = self.mean(use_binning=1, use_multiplicities=1)
-      result_data = flex.double()
-      return self._generic_binner_application(mean, _ftor_a_s_div, result_data)
     f_sq = flex.pow2(self.data())
     epsilons = self.epsilons().data().as_double()
-    e = flex.double()
-    e_perm = flex.size_t()
+    q = flex.double(f_sq.size(), -1)
     for i_bin in self.binner().range_used():
       sel = self.binner().selection(i_bin)
       sel_f_sq = f_sq.select(sel)
@@ -816,19 +816,9 @@ class array(set):
         sel_epsilons = epsilons.select(sel)
         sel_f_sq_over_epsilon = sel_f_sq / sel_epsilons
         mean_f_sq_over_epsilon = flex.mean(sel_f_sq_over_epsilon)
-        if (quasi):
-          e.append(flex.sqrt(sel_f_sq / mean_f_sq_over_epsilon))
-        else:
-          e.append(flex.sqrt(sel_f_sq_over_epsilon / mean_f_sq_over_epsilon))
-        e_perm.append(self.binner().array_indices(i_bin))
-    assert self.indices().size() == e.size()
-    return array(self, e.unshuffle(e_perm))
-
-  def quasi_normalized_as_normalized(self):
-    assert self.observation_type() is None or self.is_xray_amplitude_array()
-    return array(
-      miller_set=self,
-      data=self.data()/flex.sqrt(self.epsilons().data().as_double()))
+        q.set_selected(sel, flex.sqrt(sel_f_sq / mean_f_sq_over_epsilon))
+    assert q.all_ge(0)
+    return array(self, q)
 
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
@@ -919,17 +909,17 @@ class merge_equivalents:
     packed_indices = span.pack(asu_set.indices())
     p = flex.sort_permutation(packed_indices)
     if (miller_array.sigmas() is not None):
-      s_sq = flex.pow2(miller_array.sigmas().shuffle(p))
+      s_sq = flex.pow2(miller_array.sigmas().select(p))
       assert flex.min(s_sq) > 0
       merge_ext = ext.merge_equivalents(
-        asu_set.indices().shuffle(p),
-        miller_array.data().shuffle(p),
+        asu_set.indices().select(p),
+        miller_array.data().select(p),
         1./s_sq)
       sigmas = merge_ext.sigmas()
     else:
       merge_ext = ext.merge_equivalents(
-        asu_set.indices().shuffle(p),
-        miller_array.data().shuffle(p))
+        asu_set.indices().select(p),
+        miller_array.data().select(p))
       sigmas = None
     self._array = array(
       miller_set=set(
@@ -1004,7 +994,7 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
   assert f_patt.is_patterson_symmetry()
   if (sharpening):
     f_patt.setup_binner(auto_binning=1)
-    f_patt = f_patt.normalize_structure_factors(quasi=0001)
+    f_patt = f_patt.quasi_normalize_structure_factors()
   i_patt = f_patt.f_as_f_sq()
   if (origin_peak_removal):
     i_patt.setup_binner(auto_binning=1)
