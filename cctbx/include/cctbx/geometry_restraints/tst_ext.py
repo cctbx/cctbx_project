@@ -251,9 +251,10 @@ def exercise_nonbonded():
     vdw_distance=5)
   assert p.i_seqs == (0,1)
   assert approx_equal(p.vdw_distance, 5)
-  r = geometry_restraints.nonbonded(
+  r = geometry_restraints.nonbonded_prolsq(
     sites=[(1,2,3),(2,4,6)],
-    vdw_distance=5)
+    vdw_distance=5,
+    function=geometry_restraints.prolsq_repulsion_function())
   assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
   assert approx_equal(r.vdw_distance, 5)
   assert approx_equal(r.function.c_rep, 16)
@@ -263,9 +264,10 @@ def exercise_nonbonded():
     [(34.081026602378813, 68.162053204757626, 102.24307980713644),
      (-34.081026602378813, -68.162053204757626, -102.24307980713644)])
   sites_cart = flex.vec3_double([(1,2,3),(2,4,6)])
-  r = geometry_restraints.nonbonded(
+  r = geometry_restraints.nonbonded_prolsq(
     sites_cart=sites_cart,
-    proxy=p)
+    proxy=p,
+    function=geometry_restraints.prolsq_repulsion_function())
   assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
   assert approx_equal(r.vdw_distance, 5)
   assert approx_equal(r.function.c_rep, 16)
@@ -274,16 +276,37 @@ def exercise_nonbonded():
   for proxy in proxies:
     assert approx_equal(proxy.vdw_distance, 5)
   assert approx_equal(geometry_restraints.nonbonded_deltas(
-    sites_cart=sites_cart,
-    proxies=proxies), [3.74165738677]*2)
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.prolsq_repulsion_function()),
+    [3.74165738677]*2)
+  assert approx_equal(geometry_restraints.nonbonded_deltas(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.inverse_power_repulsion_function(10)),
+    [3.74165738677]*2)
   assert approx_equal(geometry_restraints.nonbonded_residuals(
-    sites_cart=sites_cart,
-    proxies=proxies), [40.1158130612]*2)
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.prolsq_repulsion_function()),
+    [40.1158130612]*2)
+  assert approx_equal(geometry_restraints.nonbonded_residuals(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.inverse_power_repulsion_function(10)),
+    [1.3363062095621219]*2)
   residual_sum = geometry_restraints.nonbonded_residual_sum(
     sites_cart=sites_cart,
     proxies=proxies,
-    gradient_array=None)
+    gradient_array=None,
+    function=geometry_restraints.prolsq_repulsion_function())
   assert approx_equal(residual_sum, 2*40.1158130612)
+  residual_sum = geometry_restraints.nonbonded_residual_sum(
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None,
+    function=geometry_restraints.inverse_power_repulsion_function(10))
+  assert approx_equal(residual_sum, 2*1.3363062095621219)
   #
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
   asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
@@ -309,13 +332,13 @@ def exercise_nonbonded():
   for proxy in sym_proxies:
     assert approx_equal(proxy.vdw_distance, 3)
     proxy.vdw_distance = 2
-  f = geometry_restraints.repulsion_function(
+  f = geometry_restraints.prolsq_repulsion_function(
     c_rep=1, k_rep=4, irexp=2, rexp=3)
   assert approx_equal(f.c_rep, 1)
   assert approx_equal(f.k_rep, 4)
   assert approx_equal(f.irexp, 2)
   assert approx_equal(f.rexp, 3)
-  r = geometry_restraints.nonbonded(
+  r = geometry_restraints.nonbonded_prolsq(
     sites=list(sites_cart),
     vdw_distance=p.vdw_distance,
     function=f)
@@ -325,10 +348,41 @@ def exercise_nonbonded():
   assert approx_equal(r.residual(), 226981)
   assert approx_equal(r.gradients(),
     [(22326.0, 22326.0, 22326.0), (-22326.0, -22326.0, -22326.0)])
-  r = geometry_restraints.nonbonded(
+  for irexp in [1,2,3,4,5]:
+    f = geometry_restraints.inverse_power_repulsion_function(
+      nonbonded_distance_cutoff=100,
+      k_rep=4,
+      irexp=irexp)
+    assert approx_equal(f.k_rep, 4)
+    assert approx_equal(f.irexp, irexp)
+    r = geometry_restraints.nonbonded_inverse_power(
+      sites=list(sites_cart),
+      vdw_distance=p.vdw_distance,
+      function=f)
+    assert approx_equal(r.diff_vec, [-1,-1,-1])
+    assert approx_equal(r.delta**2, 3)
+    assert approx_equal(r.residual(), f.k_rep*p.vdw_distance/r.delta**f.irexp)
+    g = -f.irexp*f.k_rep*p.vdw_distance/(r.delta**(f.irexp+1))/r.delta
+    assert approx_equal(r.gradients(), [(-g,-g,-g),(g,g,g)])
+  for nonbonded_distance_cutoff in [1,2]:
+    f = geometry_restraints.inverse_power_repulsion_function(
+      nonbonded_distance_cutoff=nonbonded_distance_cutoff,
+      k_rep=4,
+      irexp=2)
+    r = geometry_restraints.nonbonded_inverse_power(
+      sites=list(sites_cart),
+      vdw_distance=p.vdw_distance,
+      function=f)
+    if (nonbonded_distance_cutoff == 1):
+      assert approx_equal(r.residual(), 0)
+      assert approx_equal(r.gradients(), [(0,0,0),(0,0,0)])
+    else:
+      assert not approx_equal(r.residual(), 0)
+      assert not approx_equal(r.gradients(), [(0,0,0),(0,0,0)])
+  r = geometry_restraints.nonbonded_prolsq(
     sites=list(sites_cart),
     vdw_distance=p.vdw_distance,
-    function=geometry_restraints.repulsion_function())
+    function=geometry_restraints.prolsq_repulsion_function())
   assert approx_equal(r.function.c_rep, 16)
   assert approx_equal(r.function.k_rep, 1)
   assert approx_equal(r.function.irexp, 1)
@@ -345,30 +399,21 @@ def exercise_nonbonded():
   assert approx_equal(
     flex.pow2(geometry_restraints.nonbonded_deltas(
       sites_cart=sites_cart,
-      sorted_asu_proxies=sorted_asu_proxies)),
-    [3]*2)
-  assert approx_equal(
-    flex.pow2(geometry_restraints.nonbonded_deltas(
-      sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies,
-      function=geometry_restraints.repulsion_function())),
+      function=geometry_restraints.prolsq_repulsion_function())),
     [3]*2)
   assert approx_equal(
     geometry_restraints.nonbonded_residuals(
       sites_cart=sites_cart,
-      sorted_asu_proxies=sorted_asu_proxies),
-    [0.0824764182859]*2)
-  assert approx_equal(
-    geometry_restraints.nonbonded_residuals(
-      sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies,
-      function=geometry_restraints.repulsion_function()),
+      function=geometry_restraints.prolsq_repulsion_function()),
     [0.0824764182859]*2)
   assert approx_equal(
     geometry_restraints.nonbonded_residual_sum(
       sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies,
-      gradient_array=None),
+      gradient_array=None,
+      function=geometry_restraints.prolsq_repulsion_function()),
     0.0824764182859*2)
   for disable_cache in [00000, 0001]:
     gradient_array = flex.vec3_double(2, [0,0,0])
@@ -377,7 +422,7 @@ def exercise_nonbonded():
         sites_cart=sites_cart,
         sorted_asu_proxies=sorted_asu_proxies,
         gradient_array=gradient_array,
-        function=geometry_restraints.repulsion_function(),
+        function=geometry_restraints.prolsq_repulsion_function(),
         disable_cache=disable_cache),
       0.0824764182859*2)
     assert approx_equal(gradient_array,
@@ -392,18 +437,22 @@ def exercise_nonbonded():
   assert sorted_asu_proxies.simple.size() == 2
   assert sorted_asu_proxies.asu.size() == 0
   assert sorted_asu_proxies.n_total() == 2
-  residual_0 = geometry_restraints.nonbonded(
+  residual_0 = geometry_restraints.nonbonded_prolsq(
     sites_cart=sites_cart,
-    proxy=proxies[0]).residual()
-  residual_1 = geometry_restraints.nonbonded(
+    proxy=proxies[0],
+    function=geometry_restraints.prolsq_repulsion_function()).residual()
+  residual_1 = geometry_restraints.nonbonded_prolsq(
     sites_cart=sites_cart,
     asu_mappings=asu_mappings,
-    proxy=sym_proxies[0]).residual()
+    proxy=sym_proxies[0],
+    function=geometry_restraints.prolsq_repulsion_function()).residual()
   gradient_array = flex.vec3_double(2, [0,0,0])
   assert approx_equal(geometry_restraints.nonbonded_residual_sum(
-    sites_cart=sites_cart,
-    sorted_asu_proxies=sorted_asu_proxies,
-    gradient_array=gradient_array), residual_0+residual_1)
+      sites_cart=sites_cart,
+      sorted_asu_proxies=sorted_asu_proxies,
+      gradient_array=gradient_array,
+      function=geometry_restraints.prolsq_repulsion_function()),
+    residual_0+residual_1)
   assert approx_equal(gradient_array,
     [(1290.2817767146657, 1290.2817767146657, 1290.2817767146657),
      (-1290.2817767146657, -1290.2817767146657, -1290.2817767146657)])

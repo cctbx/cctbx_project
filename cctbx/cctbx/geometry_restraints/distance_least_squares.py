@@ -190,6 +190,7 @@ def distance_and_repulsion_least_squares(
     shell_sym_tables=shell_sym_tables,
     nonbonded_params=nonbonded_params,
     nonbonded_types=nonbonded_types,
+    nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
     nonbonded_distance_cutoff=nonbonded_distance_cutoff,
     nonbonded_buffer=nonbonded_buffer)
   minimized = None

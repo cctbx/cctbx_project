@@ -1,8 +1,8 @@
 import iotbx.pdb
 from iotbx.pymol import pml_stick, pml_write
 from cctbx import geometry_restraints
-from cctbx.geometry_restraints.manager import manager as restraints_manager
-from cctbx.geometry_restraints.lbfgs import lbfgs as restraints_lbfgs
+import cctbx.geometry_restraints.manager
+import cctbx.geometry_restraints.lbfgs
 from cctbx import xray
 from cctbx import crystal
 import cctbx.crystal.coordination_sequences
@@ -68,10 +68,10 @@ def exercise(verbose=0):
   bond_params_table = geometry_restraints.extract_bond_params(
     n_seq=sites_cart.size(),
     bond_simple_proxies=bond_proxies.simple)
-  manager = restraints_manager(
+  manager = geometry_restraints.manager.manager(
     bond_params_table=bond_params_table,
     angle_proxies=angle_proxies)
-  minimized = restraints_lbfgs(
+  minimized = geometry_restraints.lbfgs.lbfgs(
     sites_cart=sites_cart,
     geometry_restraints_manager=manager,
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
@@ -162,7 +162,8 @@ def exercise(verbose=0):
     print "min_distance_nonbonded: %.2f" % flex.min(
       geometry_restraints.nonbonded_deltas(
         sites_cart=sites_cart,
-        sorted_asu_proxies=pair_proxies.nonbonded_proxies))
+        sorted_asu_proxies=pair_proxies.nonbonded_proxies,
+        function=geometry_restraints.prolsq_repulsion_function()))
   vdw_1_sticks = []
   vdw_2_sticks = []
   for proxy in pair_proxies.nonbonded_proxies.simple:
@@ -198,11 +199,12 @@ def exercise(verbose=0):
       site_symmetry_table = xray_structure.site_symmetry_table()
     for sites_cart in [sites_cart_manual.deep_copy(),
                        sites_cart_minimized_1.deep_copy()]:
-      manager = restraints_manager(
+      manager = geometry_restraints.manager.manager(
         crystal_symmetry=crystal_symmetry,
         site_symmetry_table=site_symmetry_table,
         nonbonded_params=nonbonded_params,
         nonbonded_types=atom_energy_types,
+        nonbonded_function=geometry_restraints.prolsq_repulsion_function(),
         bond_params_table=bond_params_table,
         shell_sym_tables=shell_sym_tables,
         nonbonded_distance_cutoff=nonbonded_cutoff,
@@ -212,7 +214,7 @@ def exercise(verbose=0):
       if (0 or verbose):
         print "len(vdw_1):", pair_proxies.n_nonbonded
         print "len(vdw_2):", pair_proxies.n_1_4
-      minimized = restraints_lbfgs(
+      minimized = geometry_restraints.lbfgs.lbfgs(
         sites_cart=sites_cart,
         geometry_restraints_manager=manager,
         lbfgs_termination_params=scitbx.lbfgs.termination_parameters(

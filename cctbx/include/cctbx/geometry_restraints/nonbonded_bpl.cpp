@@ -85,17 +85,20 @@ namespace {
     }
   };
 
-  struct repulsion_function_wrappers
+  struct prolsq_repulsion_function_wrappers
   {
-    typedef repulsion_function w_t;
+    typedef prolsq_repulsion_function w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("repulsion_function", no_init)
+      class_<w_t>("prolsq_repulsion_function", no_init)
         .def(init<optional<double, double, double, double> >(
-          (arg_("c_rep"), arg_("k_rep"), arg_("irexp"), arg_("rexp"))))
+          (arg_("c_rep")=16,
+           arg_("k_rep")=1,
+           arg_("irexp")=1,
+           arg_("rexp")=4)))
         .def_readonly("c_rep", &w_t::c_rep)
         .def_readonly("k_rep", &w_t::k_rep)
         .def_readonly("irexp", &w_t::irexp)
@@ -104,28 +107,50 @@ namespace {
     }
   };
 
-  struct nonbonded_wrappers
+  struct inverse_power_repulsion_function_wrappers
   {
-    typedef nonbonded w_t;
+    typedef inverse_power_repulsion_function w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
+      class_<w_t>("inverse_power_repulsion_function", no_init)
+        .def(init<double, optional<double, double> >(
+          (arg_("nonbonded_distance_cutoff"),
+           arg_("k_rep")=1,
+           arg_("irexp")=1)))
+        .def_readonly("nonbonded_distance_cutoff",
+                 &w_t::nonbonded_distance_cutoff)
+        .def_readonly("k_rep", &w_t::k_rep)
+        .def_readonly("irexp", &w_t::irexp)
+      ;
+    }
+  };
+
+  template <typename NonbondedFunction>
+  struct nonbonded_wrappers
+  {
+    typedef nonbonded<NonbondedFunction> w_t;
+
+    static void
+    wrap(const char* python_name)
+    {
+      using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("nonbonded", no_init)
+      class_<w_t>(python_name, no_init)
         .def(init<af::tiny<scitbx::vec3<double>, 2> const&,
                   double,
-                  optional<repulsion_function const& > >(
+                  NonbondedFunction const&>(
           (arg_("sites"), arg_("vdw_distance"), arg_("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   nonbonded_simple_proxy const&,
-                  optional<repulsion_function const& > >(
+                  NonbondedFunction const&>(
           (arg_("sites_cart"), arg_("proxy"), arg_("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   asu_mappings const&,
                   nonbonded_asu_proxy const&,
-                  optional<repulsion_function const& > >(
+                  NonbondedFunction const&>(
           (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxy"),
            arg_("function"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
@@ -175,74 +200,73 @@ namespace {
   };
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    nonbonded_deltas_overloads, nonbonded_deltas, 2, 3)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    nonbonded_residuals_overloads, nonbonded_residuals, 2, 3)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    nonbonded_residual_sum_overloads_1, nonbonded_residual_sum, 3, 4)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    nonbonded_residual_sum_overloads_2, nonbonded_residual_sum, 3, 5)
+    nonbonded_residual_sum_overloads, nonbonded_residual_sum, 4, 5)
+
+  template <typename NonbondedFunction>
+  void
+  wrap_functions(scitbx::type_holder<NonbondedFunction> const&)
+  {
+    using namespace boost::python;
+    def("nonbonded_deltas",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<nonbonded_simple_proxy> const&,
+        NonbondedFunction const& function)) nonbonded_deltas,
+      (arg_("sites_cart"), arg_("proxies"), arg_("function")));
+    def("nonbonded_residuals",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<nonbonded_simple_proxy> const&,
+        NonbondedFunction const& function)) nonbonded_residuals,
+      (arg_("sites_cart"), arg_("proxies"), arg_("function")));
+    def("nonbonded_residual_sum",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<nonbonded_simple_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&,
+        NonbondedFunction const& function)) nonbonded_residual_sum,
+      (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array"),
+       arg_("function")));
+    def("nonbonded_deltas",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        nonbonded_sorted_asu_proxies const&,
+        NonbondedFunction const& function)) nonbonded_deltas,
+      (arg_("sites_cart"), arg_("sorted_asu_proxies"), arg_("function")));
+    def("nonbonded_residuals",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        nonbonded_sorted_asu_proxies const&,
+        NonbondedFunction const& function)) nonbonded_residuals,
+      (arg_("sites_cart"), arg_("sorted_asu_proxies"), arg_("function")));
+    def("nonbonded_residual_sum",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        nonbonded_sorted_asu_proxies const&,
+        af::ref<scitbx::vec3<double> > const&,
+        NonbondedFunction const&,
+        bool)) nonbonded_residual_sum,
+      nonbonded_residual_sum_overloads(
+        (arg_("sites_cart"), arg_("sorted_asu_proxies"),
+         arg_("gradient_array"), arg_("function"),
+         arg_("disable_cache")=false)));
+  }
 
   void
   wrap_all()
   {
-    using namespace boost::python;
     nonbonded_params_wrappers::wrap();
     nonbonded_simple_proxy_wrappers::wrap();
     nonbonded_asu_proxy_wrappers::wrap();
-    repulsion_function_wrappers::wrap();
-    nonbonded_wrappers::wrap();
+    prolsq_repulsion_function_wrappers::wrap();
+    inverse_power_repulsion_function_wrappers::wrap();
+    nonbonded_wrappers<prolsq_repulsion_function>::wrap(
+      "nonbonded_prolsq");
+    nonbonded_wrappers<inverse_power_repulsion_function>::wrap(
+      "nonbonded_inverse_power");
     nonbonded_sorted_asu_proxies_wrappers::wrap();
-    def("nonbonded_deltas",
-      (af::shared<double>(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<nonbonded_simple_proxy> const&,
-        repulsion_function const& function)) nonbonded_deltas,
-      nonbonded_deltas_overloads(
-        (arg_("sites_cart"), arg_("proxies"), arg_("function"))));
-    def("nonbonded_residuals",
-      (af::shared<double>(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<nonbonded_simple_proxy> const&,
-        repulsion_function const& function)) nonbonded_residuals,
-      nonbonded_residuals_overloads(
-        (arg_("sites_cart"), arg_("proxies"), arg_("function"))));
-    def("nonbonded_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<nonbonded_simple_proxy> const&,
-        af::ref<scitbx::vec3<double> > const&,
-        repulsion_function const& function)) nonbonded_residual_sum,
-      nonbonded_residual_sum_overloads_1(
-        (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array"),
-         arg_("function"))));
-    def("nonbonded_deltas",
-      (af::shared<double>(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        nonbonded_sorted_asu_proxies const&,
-        repulsion_function const& function)) nonbonded_deltas,
-      nonbonded_deltas_overloads(
-        (arg_("sites_cart"), arg_("sorted_asu_proxies"),
-         arg_("function"))));
-    def("nonbonded_residuals",
-      (af::shared<double>(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        nonbonded_sorted_asu_proxies const&,
-        repulsion_function const& function)) nonbonded_residuals,
-      nonbonded_residuals_overloads(
-        (arg_("sites_cart"), arg_("sorted_asu_proxies"),
-         arg_("function"))));
-    def("nonbonded_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        nonbonded_sorted_asu_proxies const&,
-        af::ref<scitbx::vec3<double> > const&,
-        repulsion_function const&,
-        bool)) nonbonded_residual_sum,
-      nonbonded_residual_sum_overloads_2(
-        (arg_("sites_cart"), arg_("sorted_asu_proxies"),
-         arg_("gradient_array"), arg_("function"),
-         arg_("disable_cache")=false)));
+    wrap_functions(scitbx::type_holder<prolsq_repulsion_function>());
+    wrap_functions(scitbx::type_holder<inverse_power_repulsion_function>());
   }
 
 } // namespace <anonymous>
