@@ -609,9 +609,9 @@ std::complex<double> mlhl_d_target_dfcalc_one_h(
   double derpc = 0.0;
 
   ////////////////////
-  //if(A < small && B < small && C < small & D < small) {
-  //   return d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
-  //}
+  if(std::abs(A) < small && std::abs(B) < small && std::abs(C) < small & std::abs(D) < small) {
+     return d_maximum_likelihood_target_one_h_over_fc(fo,fc_complex,alpha,beta,k,epsilon,cf);
+  }
   ////////////////////
 
 
