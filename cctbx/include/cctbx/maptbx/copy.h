@@ -10,7 +10,7 @@
 #ifndef CCTBX_MAPTBX_COPY_H
 #define CCTBX_MAPTBX_COPY_H
 
-#include <scitbx/array_family/accessors/flex_grid.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/loops.h>
 #include <cctbx/error.h>
@@ -45,6 +45,23 @@ namespace cctbx { namespace maptbx {
       r_begin[r0(pt)] = map[m0(pt)];
     }
     return result;
+  }
+
+  template <typename ElementType>
+  void
+  copy(
+    af::const_ref<ElementType, af::c_grid_padded<3> > const& source,
+    af::ref<ElementType, af::c_grid<3> > const& target)
+  {
+    CCTBX_ASSERT(target.accessor().all_eq(source.accessor().focus()));
+    typename af::c_grid_padded<3>::index_type n = target.accessor();
+    typename af::c_grid_padded<3>::index_type i;
+    std::size_t j = 0;
+    for(i[0]=0;i[0]<n[0];i[0]++)
+    for(i[1]=0;i[1]<n[1];i[1]++)
+    for(i[2]=0;i[2]<n[2];i[2]++, j++) {
+      target[j] = source(i);
+    }
   }
 
 }} // namespace cctbx::maptbx

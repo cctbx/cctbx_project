@@ -14,36 +14,13 @@
 
 #include <cctbx/translation_search/fast_nv1995/combinations.h>
 #include <cctbx/translation_search/fast_nv1995/summations.h>
+#include <cctbx/maptbx/copy.h>
 #include <cctbx/miller/index_span.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/c_grid_padded.h>
 
 // Navaza, J. & Vernoslova, E. (1995). Acta Cryst. A51, 445-449.
 
 namespace cctbx { namespace translation_search {
-
-  namespace detail {
-
-    // XXX move to cctbx/maptbx/copy.h
-    template <typename ElementType>
-    void
-    copy(
-      af::const_ref<ElementType, af::c_grid_padded<3> > const& source,
-      af::ref<ElementType, af::c_grid<3> > const& target)
-    {
-      CCTBX_ASSERT(target.accessor().all_eq(source.accessor().focus()));
-      typename af::c_grid_padded<3>::index_type n = target.accessor();
-      typename af::c_grid_padded<3>::index_type i;
-      std::size_t j = 0;
-      for(i[0]=0;i[0]<n[0];i[0]++)
-      for(i[1]=0;i[1]<n[1];i[1]++)
-      for(i[2]=0;i[2]<n[2];i[2]++, j++) {
-        target[j] = source(i);
-      }
-    }
-
-  }
 
   template <typename FloatType = double>
   class fast_nv1995
@@ -95,7 +72,7 @@ namespace cctbx { namespace translation_search {
         summation_eq15(space_group, miller_indices_f_obs,
           f_part, fc_map, accu);
         rfft.backward(accu_mem_complex);
-        detail::copy(accu_mem_real_const_ref, target_map_.ref());
+        maptbx::copy(accu_mem_real_const_ref, target_map_.ref());
 
         accu_mem_complex.fill(0);
         summation_eq14(space_group, miller_indices_f_obs,
