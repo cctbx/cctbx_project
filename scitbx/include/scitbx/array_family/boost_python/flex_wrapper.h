@@ -555,8 +555,22 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static bool
     all_eq_a_s(f_t const& a1, e_t const& a2) { return a1.all_eq(a2); }
+#if defined(__APPLE__) && defined(__MACH__) \
+ && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
+    static bool
+    all_ne_a_s(f_t const& a1, e_t const& a2)
+    {
+      const e_t* t = a1.begin();
+      const e_t* e = a1.end();
+      while (t != e) {
+        if (!(*t++ != a2)) return false;
+      }
+      return true;
+    }
+#else
     static bool
     all_ne_a_s(f_t const& a1, e_t const& a2) { return a1.all_ne(a2); }
+#endif
     static bool
     all_lt_a_s(f_t const& a1, e_t const& a2) { return a1.all_lt(a2); }
     static bool
