@@ -26,11 +26,11 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     anomalous_flag=anomalous_flag,
     d_min=d_min,
     method="direct").f_calc_array()
-  n_real = f_direct_array.determine_gridding(
+  n_real = f_direct_array.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
     symmetry_flags=maptbx.use_space_group_symmetry,
-    max_prime=max_prime)
+    max_prime=max_prime).n_real()
   rfft = fftpack.real_to_complex_3d(n_real)
   u_extra = xray.calc_u_extra(d_min, resolution_factor, quality_factor)
   electron_density_must_be_positive = 1

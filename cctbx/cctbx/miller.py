@@ -143,14 +143,21 @@ class set(crystal.symmetry):
       self.space_group(), self.anomalous_flag(), self.indices())
     return set(self.cell_equivalent_p1(), p1.indices(), self.anomalous_flag())
 
-  def determine_gridding(self, resolution_factor=1/3.,
-                               d_min=None,
-                               symmetry_flags=None,
-                               mandatory_factors=None,
-                               max_prime=5,
-                               assert_shannon_sampling=0001):
+  def patterson_symmetry(self):
+    assert self.anomalous_flag() == 00000
+    return set(
+      crystal.symmetry.patterson_symmetry(self),
+      self.indices(),
+      self.anomalous_flag())
+
+  def crystal_gridding(self, resolution_factor=1/3.,
+                             d_min=None,
+                             symmetry_flags=None,
+                             mandatory_factors=None,
+                             max_prime=5,
+                             assert_shannon_sampling=0001):
     if (d_min == None): d_min = self.d_min()
-    return maptbx.determine_gridding(
+    return maptbx.crystal_gridding(
       unit_cell=self.unit_cell(),
       d_min=d_min,
       resolution_factor=resolution_factor,
@@ -159,13 +166,6 @@ class set(crystal.symmetry):
       mandatory_factors=mandatory_factors,
       max_prime=max_prime,
       assert_shannon_sampling=assert_shannon_sampling)
-
-  def patterson_symmetry(self):
-    assert self.anomalous_flag() == 00000
-    return set(
-      crystal.symmetry.patterson_symmetry(self),
-      self.indices(),
-      self.anomalous_flag())
 
   def structure_factors_from_map(self, map, in_place_fft=00000):
     assert map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based()
@@ -648,53 +648,69 @@ class array(set):
         print >> f, h, self.data()[i], self.sigmas()[i]
     return self
 
-class fft_map(crystal.symmetry):
-
-  def __init__(self, coeff_array,
-                     resolution_factor=1./3,
-                     d_min=None,
-                     symmetry_flags=None,
-                     mandatory_factors=None,
-                     max_prime=5,
-                     gridding=None,
-                     f_000=None):
-    assert coeff_array.anomalous_flag() in (00000, 0001)
-    if (gridding != None):
-      assert d_min == None \
-         and symmetry_flags == None \
-         and mandatory_factors == None
-      resolution_factor = None
-      max_prime = None
-    crystal.symmetry._copy_constructor(self, coeff_array)
-    self._resolution_factor = resolution_factor
-    self._symmetry_flags = symmetry_flags
-    self._mandatory_factors = mandatory_factors
-    self._max_prime = max_prime
-    self._anomalous_flag = coeff_array.anomalous_flag()
-    self._gridding = gridding
-    if (self._gridding == None):
-      self._gridding = coeff_array.determine_gridding(
-        resolution_factor=self.resolution_factor(),
+  def fft_map(self, resolution_factor=1/3.,
+                    d_min=None,
+                    symmetry_flags=None,
+                    mandatory_factors=None,
+                    max_prime=5,
+                    assert_shannon_sampling=0001,
+                    f_000=None):
+    return fft_map(
+      crystal_gridding=self.crystal_gridding(
+        resolution_factor=resolution_factor,
         d_min=d_min,
-        symmetry_flags=self.symmetry_flags(),
-        mandatory_factors=self.mandatory_factors(),
-        max_prime=self.max_prime())
-    cf = coeff_array.data()
-    if (type(cf) == type(flex.double())):
-      cf = flex.polar(cf, 0)
+        symmetry_flags=symmetry_flags,
+        mandatory_factors=mandatory_factors,
+        max_prime=max_prime,
+        assert_shannon_sampling=assert_shannon_sampling),
+      coeff_array=self,
+      f_000=f_000)
+
+  def patterson_map(self, resolution_factor=1/3.,
+                          d_min=None,
+                          symmetry_flags=None,
+                          mandatory_factors=None,
+                          max_prime=5,
+                          assert_shannon_sampling=0001,
+                          f_000=None,
+                          sharpening=00000,
+                          origin_peak_removal=00000):
+    self_patt = self.patterson_symmetry()
+    return patterson_map(
+      crystal_gridding=self_patt.crystal_gridding(
+        resolution_factor=resolution_factor,
+        d_min=d_min,
+        symmetry_flags=symmetry_flags,
+        mandatory_factors=mandatory_factors,
+        max_prime=max_prime,
+        assert_shannon_sampling=assert_shannon_sampling),
+      coeff_array=self_patt,
+      f_000=f_000,
+      sharpening=sharpening,
+      origin_peak_removal=origin_peak_removal)
+
+class fft_map(maptbx.crystal_gridding):
+
+  def __init__(self, crystal_gridding, coeff_array, f_000=None):
+    maptbx.crystal_gridding._copy_constructor(self, crystal_gridding)
+    assert coeff_array.anomalous_flag() in (00000, 0001)
+    assert coeff_array.unit_cell().is_similar_to(self.unit_cell())
+    assert coeff_array.space_group() == self.space_group()
+    self._anomalous_flag = coeff_array.anomalous_flag()
     if (not self.anomalous_flag()):
-      rfft = fftpack.real_to_complex_3d(self._gridding)
+      rfft = fftpack.real_to_complex_3d(self.n_real())
       n_complex = rfft.n_complex()
     else:
-      cfft = fftpack.complex_to_complex_3d(self._gridding)
+      cfft = fftpack.complex_to_complex_3d(self.n_real())
       n_complex = cfft.n()
     conjugate_flag = 0001
+    assert type(coeff_array.data()) == type(flex.complex_double())
     map = maptbx.structure_factors.to_map(
       self.space_group(),
       self.anomalous_flag(),
       coeff_array.indices(),
-      cf,
-      self._gridding,
+      coeff_array.data(),
+      self.n_real(),
       flex.grid(n_complex),
       conjugate_flag)
     if (f_000 != None):
@@ -704,21 +720,6 @@ class fft_map(crystal.symmetry):
       self._real_map = rfft.backward(map.complex_map())
     else:
       self._complex_map = cfft.backward(map.complex_map())
-
-  def resolution_factor(self):
-    return self._resolution_factor
-
-  def symmetry_flags(self):
-    return self._symmetry_flags
-
-  def mandatory_factors(self):
-    return self._mandatory_factors
-
-  def max_prime(self):
-    return self._max_prime
-
-  def gridding(self):
-    return self._gridding
 
   def anomalous_flag(self):
     return self._anomalous_flag
@@ -733,17 +734,10 @@ class fft_map(crystal.symmetry):
     assert self.anomalous_flag()
     return self._complex_map
 
-def patterson_map(coeff_array,
-                  resolution_factor=1./3,
-                  d_min=None,
-                  symmetry_flags=None,
-                  mandatory_factors=None,
-                  max_prime=5,
-                  gridding=None,
-                  f_000=None,
+def patterson_map(crystal_gridding, coeff_array, f_000=None,
                   sharpening=00000,
                   origin_peak_removal=00000):
-  coeff_array=coeff_array.patterson_symmetry()
+  assert coeff_array.is_patterson_symmetry()
   if (sharpening):
     coeff_array.setup_binner(auto_binning=1)
     coeff_array = coeff_array.normalize_structure_factors(quasi=0001)
@@ -751,12 +745,7 @@ def patterson_map(coeff_array,
   if (origin_peak_removal):
     coeff_array.setup_binner(auto_binning=1)
     coeff_array = coeff_array.remove_patterson_origin_peak()
-  return fft_map(
-    coeff_array=coeff_array,
-    resolution_factor=resolution_factor,
-    d_min=d_min,
-    symmetry_flags=symmetry_flags,
-    mandatory_factors=mandatory_factors,
-    max_prime=max_prime,
-    gridding=gridding,
-    f_000=f_000*f_000)
+  coeff_array = array(coeff_array, data=flex.polar(coeff_array.data(), 0))
+  if (f_000 != None):
+    f_000 = f_000 * f_000
+  return fft_map(crystal_gridding, coeff_array, f_000)

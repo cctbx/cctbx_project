@@ -61,10 +61,10 @@ def test_atom(space_group_info, use_primitive_setting,
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=0001,
     have_f_part=(n_elements>=2))
-  gridding = miller_set_f_obs.determine_gridding(
+  gridding = miller_set_f_obs.crystal_gridding(
     symmetry_flags=symmetry_flags,
     resolution_factor=grid_resolution_factor,
-    max_prime=max_prime)
+    max_prime=max_prime).n_real()
   structure.build_scatterers(
     elements=["Se"]*n_elements,
     grid=gridding)
@@ -103,10 +103,10 @@ def test_atom(space_group_info, use_primitive_setting,
       is_isotropic_search_model=0001,
       have_f_part=(f_calc_fixed_array != None))
     if (structure_fixed.scatterers().size() <= 1):
-      gridding = miller_set_f_obs.determine_gridding(
+      gridding = miller_set_f_obs.crystal_gridding(
         symmetry_flags=symmetry_flags,
         resolution_factor=grid_resolution_factor,
-        max_prime=max_prime)
+        max_prime=max_prime).n_real()
       grid_tags = maptbx.grid_tags(gridding)
     structure_fixed.add_scatterer(scatterer)
     if (0 or verbose):
@@ -176,10 +176,10 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=00000,
     have_f_part=flag_f_part)
-  gridding = miller_set_f_obs.determine_gridding(
+  gridding = miller_set_f_obs.crystal_gridding(
     symmetry_flags=symmetry_flags,
     resolution_factor=grid_resolution_factor,
-    max_prime=max_prime)
+    max_prime=max_prime).n_real()
   grid_tags = maptbx.grid_tags(gridding)
   peak_list = run_fast_nv1995(
     f_obs_array, f_calc_fixed_array, f_calc_p1_array,

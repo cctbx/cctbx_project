@@ -18,12 +18,13 @@ def exercise(space_group_info, anomalous_flag, conjugate_flag,
     anisotropic_flag=0001,
     random_u_iso=0001,
     random_occupancy=0001
-    ).structure_factors(anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
+    ).structure_factors(
+        anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
   f_calc_array = structure_factors.f_calc_array()
-  n_real = f_calc_array.determine_gridding(
+  n_real = f_calc_array.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
-    max_prime=max_prime)
+    max_prime=max_prime).n_real()
   if (not anomalous_flag):
     rfft = fftpack.real_to_complex_3d(n_real)
     n_complex = rfft.n_complex()
@@ -93,14 +94,15 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     anisotropic_flag=0001,
     random_u_iso=0001,
     random_occupancy=0001
-    ).structure_factors(anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
+    ).structure_factors(
+        anomalous_flag=anomalous_flag, d_min=d_min, method="direct")
   f_calc_array = structure_factors.f_calc_array()
-  n_real = maptbx.determine_gridding(
+  n_real = maptbx.crystal_gridding(
     unit_cell=f_calc_array.unit_cell(),
     d_min=d_min,
     resolution_factor=resolution_factor,
     max_prime=max_prime,
-    mandatory_factors=(under_sampling,)*3)
+    mandatory_factors=(under_sampling,)*3).n_real()
   if (not anomalous_flag):
     rfft = fftpack.real_to_complex_3d(n_real)
     n_complex = rfft.n_complex()
