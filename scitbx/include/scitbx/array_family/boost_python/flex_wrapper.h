@@ -883,9 +883,8 @@ namespace scitbx { namespace af { namespace boost_python {
       ;
     }
 
-    static class_f_t
-    complex(std::string const& python_name,
-            boost::python::object const& flex_root_scope)
+    static void
+    complex_functions(boost::python::object const& flex_root_scope)
     {
       using namespace boost::python;
       using boost::python::def; // works around gcc 2.96 bug
@@ -900,7 +899,6 @@ namespace scitbx { namespace af { namespace boost_python {
         def("polar", polar_complex_3);
         def("polar", polar_complex_2);
       }
-      return numeric_common(python_name, flex_root_scope);
     }
   };
 
