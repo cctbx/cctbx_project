@@ -19,6 +19,7 @@ def run():
   "$D/scitbx/python_utils/math_utils.py",
   "$D/math/boost_python/tst_math.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
+  "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
   )
 

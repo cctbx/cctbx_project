@@ -38,6 +38,11 @@ namespace raw {
     public:
       ref1() {}
 
+      ref1(af::ref<ElementType> const& r)
+      :
+        af::ref<ElementType>(r)
+      {}
+
       ref1(ElementType* begin, int n)
       :
         af::ref<ElementType>(begin, n)
@@ -683,11 +688,6 @@ namespace raw {
     int& info,
     int& k)
   {
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    SCITBX_ASSERT(l.size() == n);
-    SCITBX_ASSERT(u.size() == n);
-    SCITBX_ASSERT(nbd.size() == n);
-#endif
     FloatType zero = 0;
     // Check the input arguments for errors.
     if (n <= 0) task = "ERROR: N .LE. 0";
@@ -815,10 +815,6 @@ namespace raw {
     FloatType const& stp,
     FloatType const& xstep)
   {
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    SCITBX_ASSERT(x.size() == n);
-    SCITBX_ASSERT(g.size() == n);
-#endif
     // 'word' records the status of subspace solutions.
     if (iword == 0) {
       // the subspace minimization converged.
@@ -1464,11 +1460,6 @@ namespace raw {
     FloatType const& epsmch)
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    SCITBX_ASSERT(x.size() == n);
-    SCITBX_ASSERT(l.size() == n);
-    SCITBX_ASSERT(u.size() == n);
-    SCITBX_ASSERT(nbd.size() == n);
-    SCITBX_ASSERT(g.size() == n);
     SCITBX_ASSERT(iorder.size() == n);
     SCITBX_ASSERT(iwhere.size() == n);
     SCITBX_ASSERT(t.size() == n);
@@ -2187,8 +2178,6 @@ namespace raw {
     int& info)
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    SCITBX_ASSERT(x.size() == n);
-    SCITBX_ASSERT(g.size() == n);
     SCITBX_ASSERT(ws.size() == n*m);
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(sy.size() == m*m);
@@ -2391,10 +2380,6 @@ namespace raw {
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(ind.size() == nsub);
-    SCITBX_ASSERT(l.size() == n);
-    SCITBX_ASSERT(u.size() == n);
-    SCITBX_ASSERT(nbd.size() == n);
-    SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(d.size() == n);
     SCITBX_ASSERT(ws.size() == n*m);
     SCITBX_ASSERT(wy.size() == n*m);
@@ -3169,11 +3154,6 @@ namespace raw {
     ref1<FloatType> const& dsave)
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    SCITBX_ASSERT(x.size() == n);
-    SCITBX_ASSERT(l.size() == n);
-    SCITBX_ASSERT(u.size() == n);
-    SCITBX_ASSERT(nbd.size() == n);
-    SCITBX_ASSERT(g.size() == n);
     SCITBX_ASSERT(d.size() == n);
     SCITBX_ASSERT(r.size() == n);
     SCITBX_ASSERT(t.size() == n);
@@ -3627,12 +3607,12 @@ namespace raw {
     ref1<int> const& isave,
     ref1<FloatType> const& dsave)
   {
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(x.size() == n);
     SCITBX_ASSERT(l.size() == n);
     SCITBX_ASSERT(u.size() == n);
     SCITBX_ASSERT(nbd.size() == n);
     SCITBX_ASSERT(g.size() == n);
+#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(ws.size() == n*m);
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(sy.size() == m*m);
@@ -4335,11 +4315,6 @@ namespace raw {
     ref1<FloatType> const& dsave)
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    SCITBX_ASSERT(x.size() == n);
-    SCITBX_ASSERT(l.size() == n);
-    SCITBX_ASSERT(u.size() == n);
-    SCITBX_ASSERT(nbd.size() == n);
-    SCITBX_ASSERT(g.size() == n);
     SCITBX_ASSERT(wa.size() == 2*m*n+4*n+12*m*m+12*m);
     SCITBX_ASSERT(iwa.size() == 3*n);
     SCITBX_ASSERT(lsave.size() == 4);
