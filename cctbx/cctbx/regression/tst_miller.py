@@ -102,6 +102,45 @@ Completeness with d_max=infinity: 1
   c = mc.change_basis(cb_op="k,h,-l")
   assert c.unit_cell().is_similar_to(uctbx.unit_cell((4,3,5,90,90,90)))
 
+def exercise_generate_r_free_flags():
+  for anomalous_flag in [False, True]:
+    miller_set = miller.build_set(
+      crystal_symmetry=crystal.symmetry(
+        unit_cell=(28.174, 52.857, 68.929, 90, 90, 90),
+        space_group_symbol="P 21 21 21"),
+      anomalous_flag=anomalous_flag,
+      d_min=8)
+    for i_trial in xrange(10):
+      if (i_trial == 0):
+        trial_set = miller_set
+      else:
+        trial_set = miller_set.select(
+          flex.random_permutation(size=miller_set.indices().size()))
+        if (i_trial >= 5):
+          trial_set = trial_set.select(
+            flex.random_double(size=miller_set.indices().size()) < 0.8)
+      flags = trial_set.generate_r_free_flags()
+      if (not anomalous_flag):
+        if (i_trial < 5):
+          assert flags.indices().size() == 145
+          assert flags.data().count(True) == 15
+      else:
+        if (i_trial < 5):
+          assert flags.indices().size() == 212
+        fp,fm = flags.hemispheres()
+        assert fp.data().all_eq(fm.data())
+        if (i_trial < 5):
+          assert fp.data().count(True) \
+               + flags.select_centric().data().count(True) == 15
+        flags = flags.select(~flex.bool(
+          flags.indices().size(),
+          flags.match_bijvoet_mates()[1].pairs_hemisphere_selection("-")))
+      flags = flags.sort(by_value="resolution", reverse=True)
+      isel = flags.data().iselection()
+      flag_distances = isel[1:] - isel[:-1]
+      assert flex.min(flag_distances) > 0
+      assert flex.max(flag_distances) <= 20
+
 def exercise_binner():
   crystal_symmetry = crystal.symmetry(
     unit_cell="14.311  57.437  20.143",
@@ -860,6 +899,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   exercise_set()
+  exercise_generate_r_free_flags()
   exercise_binner()
   exercise_array()
   exercise_crystal_gridding()
