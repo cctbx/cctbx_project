@@ -14,8 +14,7 @@ class structure(crystal.special_position_settings):
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
     if (scatterers is None):
-      self._scatterers = flex.xray_scatterer()
-      self._special_position_indices = flex.size_t()
+      self.erase_scatterers()
     else:
       self._scatterers = scatterers.deep_copy()
       self.all_apply_symmetry()
@@ -25,6 +24,10 @@ class structure(crystal.special_position_settings):
       self, special_position_settings)
     self._scatterers = other._scatterers
     self._special_position_indices = other._special_position_indices
+
+  def erase_scatterers(self):
+    self._scatterers = flex.xray_scatterer()
+    self._special_position_indices = flex.size_t()
 
   def deep_copy_scatterers(self):
     cp = structure(self)
@@ -80,6 +83,10 @@ class structure(crystal.special_position_settings):
       self.u_star_tolerance(),
       self.assert_is_positive_definite(),
       self.assert_min_distance_sym_equiv())
+
+  def replace_scatterers(self, scatterers):
+    self.erase_scatterers()
+    self.add_scatterers(scatterers)
 
   def set_occupancy(self, i, value):
     self.scatterers()[i].occupancy = value

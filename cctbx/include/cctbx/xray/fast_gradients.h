@@ -416,126 +416,129 @@ namespace cctbx { namespace xray {
     const xray_scatterer_type* scatterer;
     for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++)
     {
-      if (scatterer->weight() == 0) continue;
-      FloatType fdp = scatterer->fp_fdp.imag();
-      fractional<FloatType> coor_frac = scatterer->site;
-      FloatType u_iso;
-      scitbx::sym_mat3<FloatType> u_cart;
-      if (!scatterer->anisotropic_flag) {
-        u_iso = scatterer->u_iso;
-      }
-      else {
-        u_cart = adptbx::u_star_as_u_cart(this->unit_cell_, scatterer->u_star);
-        scitbx::vec3<FloatType> ev = adptbx::eigenvalues(u_cart);
-        CCTBX_ASSERT(adptbx::is_positive_definite(ev));
-        u_iso = af::max(ev);
-      }
-      CCTBX_ASSERT(u_iso >= 0);
-      detail::d_caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
-        grad_flags,
-        exp_table,
-        scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
-        scatterer->weight_without_occupancy(), scatterer->weight(),
-        u_iso, this->u_extra_);
-      detail::calc_shell<FloatType, grid_point_type> shell(
-        this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
-      detail::array_update_max(this->max_shell_radii_, shell.radii);
-      if (electron_density_must_be_positive) {
-        if (   caasf_ft.rho_real_0() < 0
-            || caasf_ft.rho_real(shell.max_d_sq) < 0) {
-
-          throw error("Negative electron density at sampling point.");
-        }
-      }
-      if (scatterer->anisotropic_flag) {
-        caasf_ft = detail::d_caasf_fourier_transformed<FloatType,caasf_type>(
-          grad_flags,
-          exp_table,
-          scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
-          scatterer->weight_without_occupancy(), scatterer->weight(),
-          u_cart, this->u_extra_);
-      }
       scitbx::vec3<FloatType> gr_site(0,0,0);
       FloatType gr_b_iso(0);
       scitbx::sym_mat3<FloatType> gr_b_cart(0,0,0,0,0,0);
       FloatType gr_occupancy(0);
       FloatType gr_fp(0);
       FloatType gr_fdp(0);
-      grid_point_type pivot = detail::calc_nearest_grid_point(
-        coor_frac, grid_f);
-      FloatType f_real(-1.e20); // could be uninitialized
-      FloatType f_imag(-1.e20); // could be uninitialized
-#     include <cctbx/xray/sampling_loop.h>
-        if (gradient_map_is_real) {
-          f_real = -ft_d_target_d_f_calc_real[i_map];
-        }
-        else {
-          std::complex<FloatType> const&
-            ft_dt_dfc_gp = ft_d_target_d_f_calc_complex[i_map];
-          f_real = -ft_dt_dfc_gp.real();
-          f_imag = -ft_dt_dfc_gp.imag();
-        }
-        if (grad_flags.site) {
-          if (!scatterer->anisotropic_flag) {
-            gr_site += f_real * caasf_ft.d_rho_real_d_site(d, d_sq);
-            if (fdp && !gradient_map_is_real) {
-              gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d, d_sq);
-            }
-          }
-          else {
-            gr_site += f_real * caasf_ft.d_rho_real_d_site(d);
-            if (fdp && !gradient_map_is_real) {
-              gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d);
-            }
-          }
-        }
+      CCTBX_ASSERT(scatterer->weight() >= 0);
+      if (scatterer->weight() != 0) {
+        FloatType fdp = scatterer->fp_fdp.imag();
+        fractional<FloatType> coor_frac = scatterer->site;
+        FloatType u_iso;
+        scitbx::sym_mat3<FloatType> u_cart;
         if (!scatterer->anisotropic_flag) {
-          if (grad_flags.u_iso) {
-            gr_b_iso += f_real * caasf_ft.d_rho_real_d_b_iso(d_sq);
-            if (fdp && !gradient_map_is_real) {
-              gr_b_iso += f_imag * caasf_ft.d_rho_imag_d_b_iso(d_sq);
-            }
-          }
+          u_iso = scatterer->u_iso;
         }
         else {
-          if (grad_flags.u_aniso) {
-            gr_b_cart += f_real * caasf_ft.d_rho_real_d_b_cart(d);
-            if (fdp && !gradient_map_is_real) {
-              gr_b_cart += f_imag * caasf_ft.d_rho_imag_d_b_cart(d);
-            }
+          u_cart = adptbx::u_star_as_u_cart(
+            this->unit_cell_, scatterer->u_star);
+          scitbx::vec3<FloatType> ev = adptbx::eigenvalues(u_cart);
+          CCTBX_ASSERT(adptbx::is_positive_definite(ev));
+          u_iso = af::max(ev);
+        }
+        CCTBX_ASSERT(u_iso >= 0);
+        detail::d_caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
+          grad_flags,
+          exp_table,
+          scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
+          scatterer->weight_without_occupancy(), scatterer->weight(),
+          u_iso, this->u_extra_);
+        detail::calc_shell<FloatType, grid_point_type> shell(
+          this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
+        detail::array_update_max(this->max_shell_radii_, shell.radii);
+        if (electron_density_must_be_positive) {
+          if (   caasf_ft.rho_real_0() < 0
+              || caasf_ft.rho_real(shell.max_d_sq) < 0) {
+
+            throw error("Negative electron density at sampling point.");
           }
         }
-        if (grad_flags.occupancy) {
+        if (scatterer->anisotropic_flag) {
+          caasf_ft = detail::d_caasf_fourier_transformed<FloatType,caasf_type>(
+            grad_flags,
+            exp_table,
+            scatterer->caasf, scatterer->fp_fdp, scatterer->occupancy,
+            scatterer->weight_without_occupancy(), scatterer->weight(),
+            u_cart, this->u_extra_);
+        }
+        grid_point_type pivot = detail::calc_nearest_grid_point(
+          coor_frac, grid_f);
+        FloatType f_real(-1.e20); // could be uninitialized
+        FloatType f_imag(-1.e20); // could be uninitialized
+#       include <cctbx/xray/sampling_loop.h>
+          if (gradient_map_is_real) {
+            f_real = -ft_d_target_d_f_calc_real[i_map];
+          }
+          else {
+            std::complex<FloatType> const&
+              ft_dt_dfc_gp = ft_d_target_d_f_calc_complex[i_map];
+            f_real = -ft_dt_dfc_gp.real();
+            f_imag = -ft_dt_dfc_gp.imag();
+          }
+          if (grad_flags.site) {
+            if (!scatterer->anisotropic_flag) {
+              gr_site += f_real * caasf_ft.d_rho_real_d_site(d, d_sq);
+              if (fdp && !gradient_map_is_real) {
+                gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d, d_sq);
+              }
+            }
+            else {
+              gr_site += f_real * caasf_ft.d_rho_real_d_site(d);
+              if (fdp && !gradient_map_is_real) {
+                gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d);
+              }
+            }
+          }
           if (!scatterer->anisotropic_flag) {
-            gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d_sq);
-            if (fdp && !gradient_map_is_real) {
-              gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d_sq);
+            if (grad_flags.u_iso) {
+              gr_b_iso += f_real * caasf_ft.d_rho_real_d_b_iso(d_sq);
+              if (fdp && !gradient_map_is_real) {
+                gr_b_iso += f_imag * caasf_ft.d_rho_imag_d_b_iso(d_sq);
+              }
             }
           }
           else {
-            gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d);
-            if (fdp && !gradient_map_is_real) {
-              gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d);
+            if (grad_flags.u_aniso) {
+              gr_b_cart += f_real * caasf_ft.d_rho_real_d_b_cart(d);
+              if (fdp && !gradient_map_is_real) {
+                gr_b_cart += f_imag * caasf_ft.d_rho_imag_d_b_cart(d);
+              }
             }
           }
-        }
-        if (grad_flags.fp) {
-          if (!scatterer->anisotropic_flag) {
-            gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d_sq);
+          if (grad_flags.occupancy) {
+            if (!scatterer->anisotropic_flag) {
+              gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d_sq);
+              if (fdp && !gradient_map_is_real) {
+                gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d_sq);
+              }
+            }
+            else {
+              gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d);
+              if (fdp && !gradient_map_is_real) {
+                gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d);
+              }
+            }
           }
-          else {
-            gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d);
+          if (grad_flags.fp) {
+            if (!scatterer->anisotropic_flag) {
+              gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d_sq);
+            }
+            else {
+              gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d);
+            }
           }
-        }
-        if (grad_flags.fdp && !gradient_map_is_real) {
-          if (!scatterer->anisotropic_flag) {
-            gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d_sq);
+          if (grad_flags.fdp && !gradient_map_is_real) {
+            if (!scatterer->anisotropic_flag) {
+              gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d_sq);
+            }
+            else {
+              gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d);
+            }
           }
-          else {
-            gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d);
-          }
-        }
-      }}}
+        }}}
+      }
       if (n_parameters != 0) {
         packing_order_convention<1>::check_version_at_compile_time();
         if (grad_flags.site) {

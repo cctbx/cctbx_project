@@ -75,6 +75,13 @@ def exercise_structure():
   assert approx_equal(ys.scatterers()[1].weight(),0.2)
   assert xs.n_parameters(xray.structure_factors.gradient_flags(default=0001)) \
          == 14
+  g = flex.vec3_double(((0.1,0.2,0.3),(0.2,0.3,0.4)))
+  xs.apply_special_position_ops_d_target_d_site(g)
+  assert approx_equal(g[0], (0,0,0))
+  assert approx_equal(g[1], (-0.05,0.05,0))
+  xs.replace_scatterers(xs.scatterers()[:1])
+  assert xs.scatterers().size() == 1
+  assert tuple(xs.special_position_indices()) == (0,)
 
 def exercise_u_extra():
   d_min = 9

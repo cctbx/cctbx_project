@@ -57,22 +57,6 @@ namespace {
         uctbx::unit_cell const&,
         scitbx::mat3<double> const&,
         af::const_ref<scatterer<> > const&)) rotate);
-
-    def("pack_parameters",
-      (std::size_t(*)(
-        const uctbx::unit_cell*,
-        af::const_ref<scatterer<> > const&,
-        af::versa<double, af::flex_grid<> >&,
-        bool, bool, bool)) pack_parameters);
-
-    def("unpack_parameters",
-      (std::size_t(*)(
-        const uctbx::unit_cell*,
-        std::size_t,
-        af::const_ref<double> const& x,
-        std::size_t start,
-        af::ref<scatterer<> > const&,
-        bool, bool, bool)) unpack_parameters);
   }
 
 } // namespace <anonymous>
