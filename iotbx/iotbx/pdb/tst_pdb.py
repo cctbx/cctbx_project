@@ -1,9 +1,32 @@
 import iotbx.pdb.xray_structure
+from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 from cStringIO import StringIO
 import sys
+
+def exercise_format_records():
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(10,10,13,90,90,120),
+    space_group_symbol="R 3").primitive_setting()
+  assert iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry) \
+    == "CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R3:R           "
+  assert iotbx.pdb.format_scale_records(
+    unit_cell=crystal_symmetry.unit_cell()).splitlines() \
+      == ["SCALE1      0.138527 -0.005617 -0.005402        0.00000",
+          "SCALE2      0.000000  0.138641 -0.005402        0.00000",
+          "SCALE3      0.000000  0.000000  0.138746        0.00000"]
+  assert iotbx.pdb.format_scale_records(
+    fractionalization_matrix=crystal_symmetry.unit_cell()
+      .fractionalization_matrix(),
+    u=[-1,2,-3]).splitlines() \
+      == ["SCALE1      0.138527 -0.005617 -0.005402       -1.00000",
+          "SCALE2      0.000000  0.138641 -0.005402        2.00000",
+          "SCALE3      0.000000  0.000000  0.138746       -3.00000"]
+  assert iotbx.pdb.format_atom_record() \
+      == "ATOM      0  C   DUM     1       0.000   0.000   0.000" \
+        +"  1.00  0.00              "
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(
@@ -38,6 +61,7 @@ def exercise_xray_structure(anisotropic_flag, verbose=0):
 
 def run():
   verbose = "--Verbose" in sys.argv[1:]
+  exercise_format_records()
   for anisotropic_flag in (00000, 0001):
     exercise_xray_structure(anisotropic_flag, verbose=verbose)
   print "OK"

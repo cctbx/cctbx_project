@@ -16,6 +16,28 @@ def format_cryst1_record(crystal_symmetry, z=None):
     crystal_symmetry.unit_cell().parameters()
     + (str(crystal_symmetry.space_group_info()).replace(" ", ""), z))
 
+def format_scale_records(unit_cell=None,
+                         fractionalization_matrix=None,
+                         u=[0,0,0]):
+  #  1 -  6       Record name    "SCALEn"       n=1, 2, or 3
+  # 11 - 20       Real(10.6)     s[n][1]        Sn1
+  # 21 - 30       Real(10.6)     s[n][2]        Sn2
+  # 31 - 40       Real(10.6)     s[n][3]        Sn3
+  # 46 - 55       Real(10.5)     u[n]           Un
+  assert [unit_cell, fractionalization_matrix].count(None) == 1
+  if (unit_cell is not None):
+    f = unit_cell.fractionalization_matrix()
+  else:
+    assert len(fractionalization_matrix) == 9
+    f = fractionalization_matrix
+  assert len(u) == 3
+  return ("SCALE1    %10.6f%10.6f%10.6f     %10.5f\n"
+          "SCALE2    %10.6f%10.6f%10.6f     %10.5f\n"
+          "SCALE3    %10.6f%10.6f%10.6f     %10.5f\n") % (
+    f[0], f[1], f[2], u[0],
+    f[3], f[4], f[5], u[1],
+    f[6], f[7], f[8], u[2])
+
 def format_atom_record(record_name="ATOM",
                        serial=0,
                        name=" C  ",
