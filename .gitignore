@@ -18,7 +18,6 @@ cctbx/eltbx/sasaki_tables_49_60.cpp
 cctbx/eltbx/sasaki_tables_61_72.cpp
 cctbx/eltbx/sasaki_tables_73_82.cpp
 cctbx/global/tiny_bpl.cpp
-cctbx/include/cctbx/array_family/flagged_value_algebra.h
 cctbx/include/cctbx/array_family/operator_functors.h
 cctbx/include/cctbx/array_family/operator_traits_builtin.h
 cctbx/include/cctbx/array_family/ref_algebra.h

@@ -17,6 +17,5 @@
 #include <cctbx/array_family/shared_algebra.h>
 #include <cctbx/array_family/versa_algebra.h>
 #include <cctbx/array_family/ref_algebra.h>
-#include <cctbx/array_family/flagged_value_algebra.h>
 
 #endif // CCTBX_ARRAY_FAMILY_EW_H
