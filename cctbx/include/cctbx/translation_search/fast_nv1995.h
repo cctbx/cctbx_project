@@ -69,7 +69,8 @@ namespace cctbx { namespace translation_search {
         // separate scope for allocation of large memory block
         {
           af::versa<std::complex<sum_f_t>, af::c_grid<3> > sum_eq15(dim_eq15);
-          sum_accu_type accu(sum_eq15.begin(), miller::index<>(dim_eq15));
+          sum_accu_type accu(
+            sum_eq15.begin(), gridding.eighth(), miller::index<>(dim_eq15));
           summation_eq15(space_group, miller_indices_f_obs,
             f_part, fc_map, accu);
           af::ref<target_f_t, af::c_grid<3> > res_eq15 =
@@ -81,7 +82,8 @@ namespace cctbx { namespace translation_search {
         }
 
         af::versa<std::complex<sum_f_t>, af::c_grid<3> > sum_eq14(dim_eq14);
-        sum_accu_type accu(sum_eq14.begin(), miller::index<>(dim_eq14));
+        sum_accu_type accu(
+          sum_eq14.begin(), gridding.quarter(), miller::index<>(dim_eq14));
         summation_eq14(space_group, miller_indices_f_obs,
           af::const_ref<sum_f_t>(0,0), f_part, fc_map, accu);
         af::ref<target_f_t, af::c_grid<3> > res_eq14 =
