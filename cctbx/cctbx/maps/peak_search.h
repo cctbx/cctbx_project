@@ -178,7 +178,7 @@ namespace cctbx { namespace maps {
 
   template <typename DataVecRefNdType,
             typename FlagsVecRefNdType>
-  std::vector<
+  shared_storage<
     indexed_value<
       typename DataVecRefNdType::dimension_type::index_tuple_type,
       typename DataVecRefNdType::value_type,
@@ -224,11 +224,26 @@ namespace cctbx { namespace maps {
                    std::size_t n_slots = 1000)
       : slots(n_slots)
     {
-      data_min = vector::min(data);
-      data_max = vector::max(data);
+      std::size_t i;
+      for(i=0;i<data.size();i++) {
+        if (flags[i] == -2) break;
+      }
+      if (i == data.size()) {
+        data_min = 0;
+        data_max = 0;
+      }
+      else {
+        data_min = data[i];
+        data_max = data[i];
+        for(i++;i<data.size();i++) {
+          if (flags[i] != -2) continue;
+          if (data_min > data[i]) data_min = data[i];
+          if (data_max < data[i]) data_max = data[i];
+        }
+      }
       slot_width = (data_max - data_min) / slots.size();
       std::fill(slots.begin(), slots.end(), 0);
-      for(std::size_t i=0;i<data.size();i++) {
+      for(i=0;i<data.size();i++) {
         if (flags[i] != -2) continue;
         value_type d = data[i] - data_min;
         std::size_t i_slot = 0;

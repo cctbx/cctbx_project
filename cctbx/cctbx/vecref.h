@@ -44,7 +44,7 @@ namespace cctbx {
 
       size_type size() const { return m_size; }
 
-      void* cast() const { return m_begin; }
+      void* handle() const { return m_begin; }
 
     protected:
       ValueType* m_begin;

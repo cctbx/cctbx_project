@@ -72,7 +72,7 @@ namespace cctbx { namespace fftbx {
         }
         typedef typename VecRefNdType::dimension_type dim_type;
         dim_type dim(Map.dim()[0], Map.dim()[1], Map.dim()[2] / 2);
-        vecrefnd<complex_type, dim_type> cmap(Map.cast(), dim);
+        vecrefnd<complex_type, dim_type> cmap(Map.handle(), dim);
         transform(tag, cmap, complex_type());
       }
       // Core routine always works on complex maps.
