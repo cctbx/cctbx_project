@@ -64,7 +64,7 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
     for(int k=-modulus_;k<=modulus_;k++)
     for(int l=-modulus_;l<=modulus_;l++) {
       int abs_uh = scitbx::fn::absolute(u*h+v*k+w*l);
-      if (abs_uh == 1 or abs_uh == 2) {
+      if (abs_uh == 1 || abs_uh == 2) {
         potential_axes_.push_back(potential_axis_t(
           sg_vec3(u,v,w),
           sg_vec3(h,k,l),
@@ -96,11 +96,11 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       for(int k=-modulus;k<=modulus;k++)
       for(int l=-modulus;l<=modulus;l++) {
         int abs_uh = scitbx::fn::absolute(u*h+v*k+w*l);
-        if (abs_uh == 1 or abs_uh == 2) {
+        if (abs_uh == 1 || abs_uh == 2) {
           uc_vec3 tau = uc_vec3(h,k,l) * frac;
           double delta = scitbx::fn::absolute(
             std::atan2(t.cross(tau).length(), abs_uh));
-          if (min_delta == -1 or min_delta > delta) {
+          if (min_delta == -1 || min_delta > delta) {
             min_delta = delta;
           }
         }
