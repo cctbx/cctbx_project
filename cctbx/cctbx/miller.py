@@ -154,7 +154,7 @@ class set(crystal.symmetry):
         no_sys_abs.setup_binner(n_bins=1)
         completeness_d_max_d_min = no_sys_abs.completeness(use_binning=0001)
         assert completeness_d_max_d_min.data()[0][0] == 0
-        assert completeness_d_max_d_min.data()[2] == (0, 0)
+        assert completeness_d_max_d_min.data()[2][0] == 0
         n_obs, n_complete = completeness_d_max_d_min.data()[1]
         if (n_complete != 0):
           print >> f, "Completeness in resolution range: %.6g" % (
