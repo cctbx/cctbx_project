@@ -1,11 +1,11 @@
 from iotbx.kriber import strudat
 from cctbx import crystal
-from cctbx import xray
 import cctbx.crystal.coordination_sequences
+from cctbx import xray
 from iotbx.option_parser import iotbx_option_parser
 import os
 
-def exercise_simple(structure, distance_cutoff, n_shells, verbose):
+def exercise_simple(structure, distance_cutoff, max_shell, verbose):
   asu_mappings = structure.asu_mappings(
     buffer_thickness=distance_cutoff)
   pair_asu_table = cctbx.crystal.pair_asu_table(
@@ -14,10 +14,10 @@ def exercise_simple(structure, distance_cutoff, n_shells, verbose):
     distance_cutoff=distance_cutoff)
   term_table_slow = crystal.coordination_sequences.simple_and_slow(
     pair_asu_table=pair_asu_table,
-    n_shells=n_shells)
-  term_table_simple = cctbx.crystal.coordination_sequences_simple(
+    max_shell=max_shell)
+  term_table_simple = cctbx.crystal.coordination_sequences.simple(
     pair_asu_table=pair_asu_table,
-    n_shells=n_shells)
+    max_shell=max_shell)
   if (verbose):
     print "term_table_slow:"
     cctbx.crystal.coordination_sequences.show_terms(
@@ -36,9 +36,9 @@ def exercise_shell_asu_tables(structure, verbose):
   asu_mappings = structure.asu_mappings(buffer_thickness=10)
   bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   bond_asu_table.add_all_pairs(distance_cutoff=3.5)
-  shell_asu_tables = crystal.coordination_sequences_shell_asu_tables(
+  shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
     pair_asu_table=bond_asu_table,
-    n_shells=3)
+    max_shell=3)
   for shell_asu_table in shell_asu_tables:
     if (0 or verbose):
       pairs_1 = xray.show_pairs(
@@ -59,7 +59,7 @@ def exercise_shell_asu_tables(structure, verbose):
       assert pairs_1.pair_counts.all_eq(pairs_2.pair_counts)
     assert asu_table == shell_asu_table
 
-def exercise(distance_cutoff=3.5, n_shells=5):
+def exercise(distance_cutoff=3.5, max_shell=5):
   command_line = (iotbx_option_parser()
     .option(None, "--tag",
       action="store",
@@ -84,7 +84,7 @@ def exercise(distance_cutoff=3.5, n_shells=5):
     elif (not (command_line.options.full or i % 20 == 0)):
       continue
     exercise_simple(
-      structure, distance_cutoff, n_shells, command_line.options.verbose)
+      structure, distance_cutoff, max_shell, command_line.options.verbose)
     exercise_shell_asu_tables(structure, command_line.options.verbose)
 
 def run():

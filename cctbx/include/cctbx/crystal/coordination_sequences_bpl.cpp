@@ -15,11 +15,11 @@ namespace {
     typedef boost::python::arg arg_; // gcc 2.96 workaround
     def("coordination_sequences_simple", coordination_sequences::simple, (
       arg_("pair_asu_table"),
-      arg_("n_shells")));
+      arg_("max_shell")));
     def("coordination_sequences_shell_asu_tables",
       coordination_sequences::shell_asu_tables, (
       arg_("pair_asu_table"),
-      arg_("n_shells")));
+      arg_("max_shell")));
     {
       using namespace scitbx::boost_python::container_conversions;
       tuple_mapping<

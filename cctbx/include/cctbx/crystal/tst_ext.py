@@ -1,4 +1,5 @@
 from cctbx import crystal
+import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx
 import cctbx.crystal.direct_space_asu
 from cctbx import uctbx
@@ -573,9 +574,9 @@ def exercise_coordination_sequences_simple():
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   asu_table.add_all_pairs(distance_cutoff=3.5)
-  term_table = crystal.coordination_sequences_simple(
+  term_table = crystal.coordination_sequences.simple(
     pair_asu_table=asu_table,
-    n_shells=5)
+    max_shell=5)
   assert [list(terms) for terms in term_table] \
       == [[1,4,10,20,34,54], [1,4,10,20,34,53], [1,4,10,20,34,54]]
   asu_mappings = structure.asu_mappings(buffer_thickness=12)
@@ -599,9 +600,9 @@ def exercise_coordination_sequences_shell_asu_tables():
     [1, 0, 0], [1, 1, 27], [1, 1, 4], [1, 2, 0],
     [2, 1, 0], [2, 1, 83], [2, 2, 3], [2, 2, 25]]
   check_pair_asu_table(asu_table, expected_asu_pairs)
-  shell_asu_tables = crystal.coordination_sequences_shell_asu_tables(
+  shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
     pair_asu_table=asu_table,
-    n_shells=3)
+    max_shell=3)
   check_pair_asu_table(shell_asu_tables[0], expected_asu_pairs)
   if (0):
     from cctbx.crystal import distance_ls
