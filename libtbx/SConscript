@@ -10,6 +10,10 @@ env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
 env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
+env.Replace(CXXFLAGS=env_etc.cxxflags_base)
+env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
+env.Replace(LINKFLAGS=env_etc.shlinkflags)
 
 jamfile_path = os.path.normpath(os.path.join(
   os.environ["LIBTBX_BOOST"], "libs/python/Jamfile"))
@@ -29,4 +33,7 @@ for i in xrange(len(jamfile_lines)):
     bpl_dll_sources.append(os.path.join("#boost/libs/python", line))
 assert len(bpl_dll_sources) > 0
 
-env.SharedLibrary(target="bpl", source=bpl_dll_sources)
+if (env_etc.static_bpl):
+  env.StaticLibrary(target="bpl", source=bpl_dll_sources)
+else:
+  env.SharedLibrary(target="bpl", source=bpl_dll_sources)

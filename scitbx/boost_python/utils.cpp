@@ -29,7 +29,7 @@ namespace scitbx { namespace boost_python {
 
   void raise_index_error()
   {
-    PyErr_SetString(PyExc_IndexError, "Index out of range");
+    PyErr_SetString(PyExc_IndexError, "Index out of range.");
     boost::python::throw_error_already_set();
   }
 

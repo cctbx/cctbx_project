@@ -52,7 +52,8 @@ assert env_etc.compiler in (
 )
 
 if (sys.platform == "win32"):
-  env_etc.is_win32 = 1
+  env_etc.static_libraries = 1
+  env_etc.static_bpl = 0
   env_base = Environment(ENV=os.environ)
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".pyd"
@@ -73,7 +74,6 @@ if (sys.platform == "win32"):
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 else:
-  env_etc.is_win32 = 0
   env_base = Environment(ENV=os.environ,
     # XXX hack to create a default configuration that we can customize
     tools=['g++', 'gnulink', 'ar'])
@@ -81,6 +81,8 @@ else:
   env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
   if (env_etc.compiler == "tru64_cxx"):
+    env_etc.static_libraries = 1
+    env_etc.static_bpl = 1
     env_base.Replace(
       CXX="cxx",
       LINK="cxx",
@@ -97,6 +99,8 @@ else:
                         + " -expect_unresolved '_Py*'"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_gcc"):
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
     env_base.Replace(
       CXX="g++",
       LINK="g++",
@@ -112,6 +116,8 @@ else:
     env_etc.shlinkflags = "-shared"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "irix_CC"):
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
     env_base.Replace(
       CXX="CC -LANG:std -n32 -mips4",
       LINK="CC -LANG:std -n32 -mips4 -LD_MSG:off=15,84",
@@ -127,6 +133,8 @@ else:
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "darwin_c++"):
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
     env_base.Replace(
       CXX="c++",
       LINK="c++",

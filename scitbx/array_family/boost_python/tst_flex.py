@@ -342,14 +342,20 @@ def exercise_complex_functions():
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
   try: f.assign(1, 0)
-  except: pass
-  else: raise AssertionError, "No exception."
+  except RuntimeError, e:
+    assert str(e) == "Array must be 0-based 1-dimensional."
+  else:
+    raise AssertionError, "No exception or wrong exception."
   try: f.push_back(0)
-  except: pass
-  else: raise AssertionError, "No exception."
+  except RuntimeError, e:
+    assert str(e) == "Array must be 0-based 1-dimensional."
+  else:
+    raise AssertionError, "No exception or wrong exception."
   try: f[(2,0)]
-  except: pass
-  else: raise AssertionError, "No exception."
+  except IndexError, e:
+    assert str(e) == "Index out of range."
+  else:
+    raise AssertionError, "No exception or wrong exception."
 
 def exercise_pickle_single_buffered():
   import pickle
