@@ -405,7 +405,7 @@ namespace sgtbx {
 
     SpaceGroupType SgType = m_SgOps.getSpaceGroupType();
     uctbx::UnitCell
-    StdUnitCell = m_UnitCell.ChangeBasis(SgType.CBOp().M().Rpart());
+    StdUnitCell = m_UnitCell.ChangeBasis(SgType.CBOp().InvM().Rpart());
     SgOps StdSgOps = SgOps(SpaceGroupSymbols(SgType.SgNumber()).Hall());
     m_ASU = ReciprocalSpaceASU(SgType);
     Miller::Vec3 CutP = m_ASU.StdASU()->getCutParameters();
