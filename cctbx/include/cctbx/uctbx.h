@@ -1,18 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored (R.W. Grosse-Kunstleve)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
-/*! \file
-    Toolbox for the handling of unit cell parameters.
- */
-
 #ifndef CCTBX_UCTBX_H
 #define CCTBX_UCTBX_H
 
@@ -22,7 +7,7 @@
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/shared.h>
-#include <cctbx/math/utils.h>
+#include <scitbx/math/utils.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 
@@ -285,7 +270,7 @@ namespace cctbx {
         FloatType
           result = mod_short_distance_sq(fractional<FloatType>(xf[0]), yf);
         for(std::size_t i=1;i<xf.size();i++) {
-          math::update_min(
+          scitbx::math::update_min(
             result, mod_short_distance_sq(fractional<FloatType>(xf[i]), yf));
         }
         return result;
@@ -365,7 +350,7 @@ namespace cctbx {
       {
         double result = 0;
         for(std::size_t i=0;i<h.size();i++) {
-          math::update_max(result, d_star_sq(h[i]));
+          scitbx::math::update_max(result, d_star_sq(h[i]));
         }
         return result;
       }
@@ -380,8 +365,8 @@ namespace cctbx {
           result.fill(d_star_sq(h[0]));
           for(std::size_t i=1;i<h.size();i++) {
             double q = d_star_sq(h[i]);
-            math::update_min(result[0], q);
-            math::update_max(result[1], q);
+            scitbx::math::update_min(result[0], q);
+            scitbx::math::update_max(result[1], q);
           }
         }
         return result;

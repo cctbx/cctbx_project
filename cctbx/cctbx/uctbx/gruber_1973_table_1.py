@@ -1,4 +1,4 @@
-from cctbx import matrix
+from scitbx import matrix
 
 raw_mk2 = """
 N

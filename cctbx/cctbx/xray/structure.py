@@ -5,8 +5,8 @@ from cctbx import crystal
 from cctbx import sgtbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
-from cctbx import matrix
 from cctbx.array_family import flex
+from scitbx import matrix
 import types
 import sys
 

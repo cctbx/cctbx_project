@@ -1,8 +1,8 @@
 from cctbx import uctbx
 from cctbx import adptbx
-from cctbx import matrix
 from cctbx.array_family import flex
 import scitbx.math.eigensystem
+from scitbx import matrix
 from libtbx.test_utils import approx_equal
 import math
 import random

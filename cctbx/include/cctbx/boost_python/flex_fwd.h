@@ -37,7 +37,6 @@ namespace cctbx { namespace boost_python {
     flex_fwd<std::string>();
 
     scitbx::af::boost_python::flex_fwd<scitbx::af::tiny<std::size_t, 2> >();
-    scitbx::af::boost_python::flex_fwd<scitbx::vec3<double> >();
     scitbx::af::boost_python::flex_fwd<scitbx::sym_mat3<double> >();
     scitbx::af::boost_python::flex_fwd<miller::index<> >();
     scitbx::af::boost_python::flex_fwd<hendrickson_lattman<> >();

@@ -2,7 +2,7 @@ from cctbx.uctbx.reduction_base import iteration_limit_exceeded
 from cctbx.uctbx.reduction_base import reduction_base
 from cctbx.uctbx.reduction_base import minimum_reduction_mixin
 from cctbx import uctbx
-from cctbx import matrix
+from scitbx import matrix
 import math
 
 def entier(x):

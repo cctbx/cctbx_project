@@ -4,7 +4,7 @@ from cctbx.web.asu_gallery import facet_notation
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx import sgtbx
-from cctbx import matrix
+from scitbx import matrix
 import urllib
 import math
 import sys, os

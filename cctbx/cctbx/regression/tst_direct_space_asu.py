@@ -3,7 +3,7 @@ from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
-from cctbx import matrix
+from scitbx import matrix
 from boost import rational
 import sys
 

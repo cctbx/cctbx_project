@@ -353,7 +353,7 @@ namespace cctbx { namespace sgtbx {
         push_back(i, sx);
       }
       else {
-        math::update_max(max_accepted_tolerance_, dist_sq);
+        scitbx::math::update_max(max_accepted_tolerance_, dist_sq);
       }
     }
     if (space_group_.order_z() % coordinates_.size() != 0) {

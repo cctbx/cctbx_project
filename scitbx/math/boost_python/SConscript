@@ -2,5 +2,9 @@ Import("env_scitbx_boost_python_ext")
 
 env_scitbx_boost_python_ext.SharedLibrary(
   target="#libtbx/scitbx_math_ext",
-  source=["math_ext.cpp", "gaussian.cpp", "golay.cpp"],
+  source=[
+    "math_ext.cpp",
+    "gaussian.cpp",
+    "golay.cpp",
+    "minimum_covering_sphere.cpp"],
 )
