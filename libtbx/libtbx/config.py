@@ -3,8 +3,9 @@ from libtbx.path import norm_join
 
 class UserError(Exception): pass
 
-def full_path(command):
-  for path in os.environ["PATH"].split(os.pathsep):
+def full_path(command, search_first=[], search_last=[]):
+  dirs = search_first + os.environ["PATH"].split(os.pathsep) + search_last
+  for path in dirs:
     path_command = os.path.join(path, command)
     if (os.path.exists(path_command)):
       return os.path.normpath(os.path.abspath(path_command))
