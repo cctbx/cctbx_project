@@ -5,18 +5,9 @@ from cctbx import sgtbx
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
-from scitbx import matrix
 from libtbx.itertbx import count
 import math
 import sys
-
-def unit_cell_bases_rmsd(self, other):
-  diff_sqs = flex.double()
-  for basis_vector in [(1,0,0),(0,1,0),(0,0,1)]:
-    self_v = matrix.col(self.orthogonalize(basis_vector))
-    other_v = matrix.col(other.orthogonalize(basis_vector))
-    diff_sqs.append((self_v - other_v).norm())
-  return math.sqrt(flex.mean(diff_sqs))
 
 class array_cache:
 
@@ -76,17 +67,17 @@ class array_cache:
         other=other.minimum_cell_symmetry.unit_cell(),
         relative_length_tolerance=relative_length_tolerance,
         absolute_angle_tolerance=absolute_angle_tolerance)
-    min_bases_rmsd = None
+    min_bases_msd = None
     similarity_cb_op = None
     for c_inv_r in c_inv_rs:
       c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r))
       cb_op = sgtbx.change_of_basis_op(c_inv).inverse()
-      bases_rmsd = unit_cell_bases_rmsd(
-        self.minimum_cell_symmetry.unit_cell(),
-        other=cb_op.apply(other.minimum_cell_symmetry.unit_cell()))
-      if (min_bases_rmsd is None
-          or min_bases_rmsd > bases_rmsd):
-        min_bases_rmsd = bases_rmsd
+      bases_msd = self.minimum_cell_symmetry.unit_cell() \
+        .bases_mean_square_difference(
+          other=cb_op.apply(other.minimum_cell_symmetry.unit_cell()))
+      if (min_bases_msd is None
+          or min_bases_msd > bases_msd):
+        min_bases_msd = bases_msd
         similarity_cb_op = cb_op
     if (similarity_cb_op is None): return []
     common_lattice_group = sgtbx.space_group(self.lattice_group)
