@@ -11,6 +11,27 @@ from scitbx import fftpack
 import sys
 import math
 
+class binner(ext.binner):
+
+  def __init__(self, binning, miller_indices):
+    ext.binner.__init__(self, binning, miller_indices)
+
+  def show_summary(self, f=sys.stdout):
+    for i_bin in self.range_all():
+      bin_d_range = self.bin_d_range(i_bin)
+      count = self.count(i_bin)
+      if (i_bin == self.i_bin_d_too_large()):
+        assert bin_d_range[0] == -1
+        print >> f, "unused:              d > %8.4f: %5d" % (
+          bin_d_range[1], count)
+      elif (i_bin == self.i_bin_d_too_small()):
+        assert bin_d_range[1] == -1
+        print >> f, "unused: %9.4f >  d           : %5d" % (
+          bin_d_range[0], count)
+      else:
+        print >> f, "bin %2d: %9.4f >= d > %8.4f: %5d" % (
+          (i_bin,) + bin_d_range + (count,))
+
 def make_lookup_dict(indices): # XXX push to C++
   result = {}
   for i in xrange(len(indices)):
@@ -97,6 +118,9 @@ class set(crystal.symmetry):
 
   def binner(self):
     return self._binner
+
+  def use_binner_of(self, other):
+    self._binner = other._binner
 
 def build_set(crystal_symmetry, anomalous_flag, d_min):
   return set(
