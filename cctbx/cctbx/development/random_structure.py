@@ -128,6 +128,7 @@ class xray_structure(xray.structure):
                random_f_double_prime=0,
                random_f_double_prime_scale=0.6,
                random_u_iso=False,
+               random_u_iso_min=0,
                random_u_iso_scale=0.3,
                u_iso=0,
                anisotropic_flag=False,
@@ -199,7 +200,8 @@ class xray_structure(xray.structure):
         scatterer.anisotropic_flag = False
         u_iso = self.u_iso
         if (not u_iso and self.random_u_iso):
-          u_iso = random.random() * self.random_u_iso_scale
+          u_iso = random.random() * self.random_u_iso_scale \
+                + self.random_u_iso_min
         scatterer.u_iso = u_iso
       else:
         scatterer.anisotropic_flag = True
