@@ -1,4 +1,4 @@
-# test CCP4_ReciprocalSpaceASU
+# test ReciprocalSpaceASU
 
 import sys
 import sgtbx
@@ -26,7 +26,6 @@ def OneCycle():
       SgType.SgNumber(),
       SgOps.BuildHallSymbol(SgType))
     sys.stdout.flush()
-    #asu = sgtbx.CCP4_ReciprocalSpaceASU(SgOps)
     asu = sgtbx.ReciprocalSpaceASU(SgOps.getSpaceGroupType())
     print asu.CBOp().M()
     print asu.CBOp().InvM()

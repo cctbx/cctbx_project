@@ -570,8 +570,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_BrickPoint(this_module, "BrickPoint");
     class_builder<Brick>
     py_Brick(this_module, "Brick");
-    class_builder<CCP4_ReciprocalSpaceASU>
-    py_CCP4_ReciprocalSpaceASU(this_module, "CCP4_ReciprocalSpaceASU");
     class_builder<ReferenceReciprocalSpaceASU>
     py_ReferenceReciprocalSpaceASU(this_module, "ReferenceReciprocalSpaceASU");
     class_builder<ReciprocalSpaceASU>
@@ -935,12 +933,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_Brick.def(&Brick::operator(), "__call__");
     py_Brick.def(&Brick::format, "format");
     py_Brick.def(&Brick::format, "__repr__");
-
-    py_CCP4_ReciprocalSpaceASU.def(constructor<const SgOps&>());
-    py_CCP4_ReciprocalSpaceASU.def(
-      &CCP4_ReciprocalSpaceASU::isInASU, "isInASU");
-    py_CCP4_ReciprocalSpaceASU.def(
-      &CCP4_ReciprocalSpaceASU::getCutParameters, "getCutParameters");
 
     py_ReferenceReciprocalSpaceASU.def(
        ReferenceReciprocalSpaceASU_LaueGroupCode, "LaueGroupCode");
