@@ -26,6 +26,18 @@ namespace scitbx { namespace af {
         current_ = begin_;
       }
 
+      nested_loop(
+        typename ArrayType::value_type const& begin,
+        typename ArrayType::value_type const& end)
+      :
+        over_(end == begin)
+      {
+        SCITBX_ASSERT(end >= begin);
+        std::fill(begin_.begin(), begin_.end(), begin);
+        std::fill(end_.begin(), end_.end(), end);
+        current_ = begin_;
+      }
+
       explicit
       nested_loop(
         ArrayType const& end,
