@@ -22,7 +22,10 @@ namespace cctbx { namespace math {
   class linear_regression_core
   {
     public:
-      void reset() { m_is_well_defined = false; m_b = m_m = m_cc = 0; }
+      void reset() {
+        m_is_well_defined = false;
+        m_b = m_m = m_cc = FloatType(0);
+      }
       void set(const IntegerType& n,
                const FloatType& min_x, const FloatType& max_x,
                const FloatType& min_y, const FloatType& max_y,
@@ -36,6 +39,8 @@ namespace cctbx { namespace math {
         if (min_x == max_x) return;
         if (min_y == max_y) {
           m_b = min_y;
+          m_cc = FloatType(1);
+          m_is_well_defined = true;
           return;
         }
         FloatType fn(n);
@@ -46,13 +51,11 @@ namespace cctbx { namespace math {
         if (dx == 0) return;
         if (dy == 0) {
           m_b = sum_y / fn;
+          m_cc = FloatType(1);
+          m_is_well_defined = true;
           return;
         }
         if (dx < dy * epsilon) return;
-        if (dy < dx * epsilon) {
-          m_b = sum_y / fn;
-          return;
-        }
         FloatType d = fn * sum_x2 - sum_x * sum_x;
         if (d != 0) {
           m_b = (sum_x2 * sum_y - sum_x * sum_xy) / d;
