@@ -24,7 +24,7 @@
 #include <cctbx/sgtbx/lattice_tr.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/miller.h>
-#include <cctbx/sgtbx/tables.h>
+#include <cctbx/sgtbx/group_codes.h>
 #include <cctbx/uctbx.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/array_family/shared.h>

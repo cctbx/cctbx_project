@@ -21,6 +21,7 @@
 #else
 # include <ostream>
 #endif
+#include <vector>
 #include <map>
 #include <algorithm>
 #include <cctbx/fixes/cstdlib>
