@@ -132,7 +132,7 @@ class simulated_data:
     elements = ["const"] * number_of_point_atoms
     print "random.getstate():", debug_utils.random.getstate()
     if (0):
-      debug_utils.random.setstate((1, (29212, 18333, 13885), None))
+      debug_utils.random.setstate((1, (14401, 20036, 16503), None))
     xtal = debug_utils.random_structure(
       SgInfo, elements,
       volume_per_atom=50.,
@@ -321,7 +321,7 @@ def recycle(SgInfo,
     if (1): # XXX
       new_phases = sim.phases
     map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
-    peak_list = map_calculator.get_peak_list(map, 1, 10)
+    peak_list = map_calculator.get_peak_list(map, 3, 20)
     if (0 or verbose):
       for peak in peak_list:
         print "peak (%d,%d,%d)" % peak["index"], "%.6g" % (peak["value"],)

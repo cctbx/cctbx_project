@@ -155,15 +155,19 @@ class match_refine:
 
   def eliminate_weak_pairs(self):
     while 1:
-      max_dist = 0
       weak_pair = 0
-      for diff, pair in zip(self.calculate_shortest_diffs(), self.pairs):
-        dist = self.unit_cell.Length(diff)
+      max_dist = 0
+      for pair in self.pairs[1:]:
+        dist = self.unit_cell.Length(self.calculate_shortest_diff(pair))
         if (dist > max_dist):
-          max_dist = dist
           weak_pair = pair
-      if (max_dist < self.tolerance or weak_pair == 0):
-        break
+          max_dist = dist
+      if (weak_pair == 0): break
+      if (max_dist < self.tolerance):
+        dist = self.unit_cell.Length(
+          self.calculate_shortest_diff(self.pairs[0]))
+        if (dist < self.tolerance):
+          break
       assert len(self.pairs) > 1
       self.pairs.remove(weak_pair)
       self.singles1.append(weak_pair[0])
@@ -174,14 +178,14 @@ class match_refine:
     c2 = self.eucl_symop.multiply(self.ref_model2[i_model2].coordinates)
     return python_utils.list_minus(c2, self.adjusted_shift)
 
-  def calculate_shortest_diff(self, i_model1, i_model2):
-    c2 = self.apply_eucl_ops(i_model2)
-    return self.equiv1[i_model1].getShortestDifference(self.unit_cell, c2)
+  def calculate_shortest_diff(self, pair):
+    c2 = self.apply_eucl_ops(pair[1])
+    return self.equiv1[pair[0]].getShortestDifference(self.unit_cell, c2)
 
   def calculate_shortest_diffs(self):
     shortest_diffs = []
     for pair in self.pairs:
-      shortest_diffs.append(self.calculate_shortest_diff(pair[0], pair[1]))
+      shortest_diffs.append(self.calculate_shortest_diff(pair))
     return shortest_diffs
 
   def refine_adjusted_shift(self):
