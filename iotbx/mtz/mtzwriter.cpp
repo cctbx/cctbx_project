@@ -4,18 +4,30 @@
 #include <iotbx/mtzwriter.h>
 #include <string.h>
 
-using namespace CMtz;
+namespace iotbx { namespace mtz {
 
-iotbx::mtz::MtzWriter::MtzWriter():mtz(MtzMalloc(0,0)) { mtz->nref = 0;}
-
-iotbx::mtz::MtzWriter::~MtzWriter() { MtzFree(mtz);}
-
-void iotbx::mtz::MtzWriter::setTitle(const std::string& title){
-  sprintf(mtz->title,"%s",title.c_str());
+MtzWriter::MtzWriter()
+:
+  mtz(CMtz::MtzMalloc(0,0))
+{
+  CCTBX_ASSERT(mtz != NULL);
 }
 
-void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
-                                          const std::string& symbol){
+MtzWriter::~MtzWriter() { MtzFree(mtz); }
+
+void
+MtzWriter::setTitle(const std::string& title)
+{
+  const std::size_t max_chars = sizeof(mtz->title);
+  strncpy(mtz->title, title.c_str(), max_chars-1);
+  mtz->title[max_chars-1] = '\0';
+}
+
+void
+MtzWriter::setSpaceGroup(
+  const cctbx::sgtbx::space_group& sg,
+  const std::string& symbol)
+{
   int val_nsymx = sg.order_z();
   int val_nsympx= sg.order_p();
   float rsymx[192][4][4];
@@ -58,9 +70,12 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
               val_nspgrx, sgtype_s, pgname);
 }
 
-void iotbx::mtz::MtzWriter::oneCrystal(const std::string& crystal,
-  const std::string& project,const cctbx::uctbx::unit_cell& uc){
-
+void
+MtzWriter::oneCrystal(
+  const std::string& crystal,
+  const std::string& project,
+  const cctbx::uctbx::unit_cell& uc)
+{
   std::size_t ind;
   std::string strip_crystal = crystal;
   std::string strip_project = project;
@@ -76,8 +91,11 @@ void iotbx::mtz::MtzWriter::oneCrystal(const std::string& crystal,
             cell);
 }
 
-void iotbx::mtz::MtzWriter::oneDataset(const std::string& dataset,
-                                       const double& w){
+void
+MtzWriter::oneDataset(
+  const std::string& dataset,
+  const double& w)
+{
   float wavelength=w;
   std::size_t ind;
   std::string strip_dataset = dataset;
@@ -90,9 +108,14 @@ void iotbx::mtz::MtzWriter::oneDataset(const std::string& dataset,
   MtzAddColumn (mtz,oneset,"L","H");
 }
 
-void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup[],
-           const int ncol, const int iref)
-{ int i,j,k;
+void
+MtzWriter::safe_ccp4_lwrefl(
+  const float adata[],
+  CMtz::MTZCOL *lookup[],
+  const int ncol,
+  const int iref)
+{
+  int i,j,k;
   /* if this is extra reflection, check memory */
   if (mtz->refs_in_memory && iref > mtz->nref) {
    /* Loop over crystals */
@@ -144,19 +167,19 @@ void iotbx::mtz::MtzWriter::safe_ccp4_lwrefl(const float adata[], MTZCOL *lookup
 }
 
 void
-iotbx::mtz::MtzWriter::addColumn(
+MtzWriter::addColumn(
   const std::string& name,
   char type_code,
   af::const_ref<cctbx::miller::index<> > const& miller_indices,
   af::const_ref<double> const& data)
 {
   using namespace cctbx;
-  MTZCOL* write_columns[4];
+  CMtz::MTZCOL* write_columns[4];
   write_columns[0]=MtzColLookup(mtz,"H");
   write_columns[1]=MtzColLookup(mtz,"K");
   write_columns[2]=MtzColLookup(mtz,"L");
   if (MtzColLookup(mtz,name.c_str())!=NULL)
-    throw iotbx::mtz::Error("Attempt to overwrite existing column "+name);
+    throw Error("Attempt to overwrite existing column "+name);
   write_columns[3]=MtzAddColumn(mtz,oneset,name.c_str(),&type_code);
   CCTBX_ASSERT(miller_indices.size() == data.size());
   typedef std::map<miller::index<>, std::size_t> lookup_dict_type;
@@ -190,6 +213,10 @@ iotbx::mtz::MtzWriter::addColumn(
   }
 }
 
-void iotbx::mtz::MtzWriter::write(const std::string& filename){
+void
+MtzWriter::write(const std::string& filename)
+{
   MtzPut(mtz, const_cast<char*>(filename.c_str()));
 }
+
+}} // namespace iotbx::mtz
