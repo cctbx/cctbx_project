@@ -11,33 +11,42 @@
 #ifndef CCTBX_MAPS_PEAK_SEARCH_H
 #define CCTBX_MAPS_PEAK_SEARCH_H
 
+#include <functional>
+
 namespace cctbx { namespace maps {
 
-  /*
-    requirements:
-      physical dimensions of maps are equal to generic dimensions
-      dimensions of data and flags are equal
+  //! Peak search in a 3d-map covering the unit cell.
+  /*! Dependencies due to symmetry (space group, Euclidean normalizer,
+      or similar) are encoded in a 3d-map of flags.
+      <p>
+      Requirements:
+      <ul>
+        <li>physical dimensions of %maps are equal to generic dimensions
+        <li>dimensions of data and flags are equal
+      </ul>
+      <pre>
+      flags:
+        on input: < 0: independent grid point
+                  >= 0: dependent grid point,
+                        flag is 1d-index of corresponding
+                        independent grid point
+        on output: -1: independent, not a peak
+                   -2: independent, peak
+                   flags for dependent grid points are unchanged
 
-    flags:
-      on input: < 0: independent grid point
-                >= 0: dependent grid point,
-                      flag is 1d-index of corresponding independent grid point
-      on output: -1: independent, not a peak
-                 -2: independent, peak
-                 flags for dependent grid points are unchanged
-
-    level = 1: compare to the 6 nearest neighbors
-          = 2: also compare to the 12 second-nearest neighbors
-          > 2: also compare to the 8 third-nearest neighbors
-  */
-  template <typename VecRefNdDataType,
-            typename VecRefNdFlagsType>
-  void peak_search_p1(const VecRefNdDataType& data,
-                      VecRefNdFlagsType& flags,
-                      int level)
+      level = 1: compare to the 6 nearest neighbors
+            = 2: also compare to the 12 second-nearest neighbors
+            > 2: also compare to the 8 third-nearest neighbors</pre>
+   */
+  template <typename DataVecRefNdType,
+            typename FlagsVecRefNdType>
+  void
+  peak_search_unit_cell(const DataVecRefNdType& data,
+                        FlagsVecRefNdType& flags,
+                        int level)
   {
-    typedef typename VecRefNdDataType::value_type data_value_type;
-    typedef typename VecRefNdFlagsType::value_type flags_value_type;
+    typedef typename DataVecRefNdType::value_type data_value_type;
+    typedef typename FlagsVecRefNdType::value_type flags_value_type;
 
     data_value_type* pdata = data.begin();
     flags_value_type* pflags = flags.begin();
@@ -140,6 +149,59 @@ namespace cctbx { namespace maps {
       ip += nj_nk;
       if (ip == ni_nj_nk) { ip = 0; ibreak = nj_nk; }
     }
+  }
+
+  template <typename IndexType,
+            typename ValueType,
+            typename SortCmpFunctor = std::less<ValueType> >
+  struct indexed_value
+  {
+    typedef IndexType index_type;
+    typedef ValueType value_type;
+
+    indexed_value() {}
+    indexed_value(const index_type& i, const value_type& v)
+      : index(i), value(v)
+    {}
+
+    bool
+    operator<(
+    const indexed_value<IndexType, ValueType, SortCmpFunctor>& rhs) const {
+      return SortCmpFunctor()(this->value, rhs.value);
+    }
+
+    index_type index;
+    value_type value;
+  };
+
+  template <typename DataVecRefNdType,
+            typename FlagsVecRefNdType>
+  std::vector<
+    indexed_value<
+      typename DataVecRefNdType::dimension_type::index_tuple_type,
+      typename DataVecRefNdType::value_type,
+      std::greater<typename DataVecRefNdType::value_type> >
+  >
+  collect_peaks(const DataVecRefNdType& data,
+                const FlagsVecRefNdType& flags)
+  {
+    typedef typename
+    DataVecRefNdType::dimension_type::index_tuple_type index_tuple_type;
+    typedef
+      indexed_value<
+        index_tuple_type,
+        typename DataVecRefNdType::value_type,
+        std::greater<typename DataVecRefNdType::value_type>
+      >
+      iv_type;
+    std::vector<iv_type> result;
+    nested_loop<index_tuple_type> loop(data.dim());
+    for (index_tuple_type pivot = loop(); !loop.over(); pivot = loop.next()) {
+      if (flags(pivot) == -2) {
+        result.push_back(iv_type(pivot, data(pivot)));
+      }
+    }
+    return result;
   }
 
 }} // namespace cctbx::maps

@@ -13,12 +13,17 @@
 
 #include <cctbx/ndim.h>
 
-namespace cctbx { namespace maps {
+namespace cctbx {
+
+//! Algorithms for the handling of 3-dimensional %maps.
+namespace maps {
 
   template <std::size_t D, typename Index1dType = c_index_1d<D> >
   class dimension_p1 : public carray<int, D>
   {
     public:
+      typedef carray<int, D> index_tuple_type;
+
       dimension_p1() {};
       dimension_p1(const carray<int, D>& N) {
         std::copy(N.begin(), N.end(), this->begin());
@@ -38,9 +43,9 @@ namespace cctbx { namespace maps {
 
       std::size_t size1d() const { return cctbx::vector::product(*this); }
 
-      template <typename IndexTuple>
+      template <typename IndexTupleType>
       carray<int, D>
-      p1_I(const IndexTuple& I) const {
+      p1_I(const IndexTupleType& I) const {
         carray<int, D> result;
         for(std::size_t i=0;i<size();i++) {
           result[i] = I[i] % this->elems[i];
@@ -49,8 +54,8 @@ namespace cctbx { namespace maps {
         return result;
       }
 
-      template <typename IndexTuple>
-      std::size_t operator()(const IndexTuple& I) const {
+      template <typename IndexTupleType>
+      std::size_t operator()(const IndexTupleType& I) const {
         return Index1dType()(*this, p1_I(I));
       }
 
