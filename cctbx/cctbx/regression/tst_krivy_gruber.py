@@ -174,7 +174,7 @@ def exercise_grid(quick=00000, verbose=0):
 
 class random_unimodular_integer_matrix_generator:
 
-  def __init__(self, reset_threshold=50):
+  def __init__(self, reset_threshold=10):
     self.reset_threshold = reset_threshold
     self._m1 = matrix.sqr((0,0,1,1,0,0,0,1,0))
     self._m2 = matrix.sqr((1,-1,0,1,0,0,0,0,1))
