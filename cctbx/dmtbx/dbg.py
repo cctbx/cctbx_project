@@ -94,8 +94,10 @@ def square_emap(xtal, e000, p1_miller_indices,
   return new_phases
 
 def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
+                            other_than_sigma_2,
                             verbose):
-  tprs = dmtbx.triplet_invariants(sginfo, miller_indices_h)
+  tprs = dmtbx.triplet_invariants(
+    sginfo, miller_indices_h, 1, other_than_sigma_2)
   print "number_of_weighted_triplets:", \
        tprs.number_of_weighted_triplets()
   print "total_number_of_triplets:", \
@@ -117,6 +119,7 @@ def exercise(SgInfo,
              d_min=1.,
              e_min=1.8,
              exercise_triplets=0,
+             other_than_sigma_2=0,
              exercise_squaring=0,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
@@ -176,34 +179,36 @@ def exercise(SgInfo,
   tprs_sg = None
   if (exercise_triplets):
     tprs_sg = test_triplet_invariants(
-      xtal.SgInfo, MillerIndices.H, e_values, phases, verbose)
-    tprs_p1 = test_triplet_invariants(
-      sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, verbose)
-    sg_new_phases = tprs_sg.apply_tangent_formula(e_values, phases)
-    p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
-    ref_p1_H = shared.Miller_Index()
-    ref_p1_e_values = shared.double()
-    ref_p1_phases = shared.double()
-    sgtbx.expand_to_p1(
-      xtal.SgOps, 1,
-      MillerIndices.H, e_values, sg_new_phases,
-      ref_p1_H, ref_p1_e_values, ref_p1_phases)
-    js = shared.join_sets(ref_p1_H, p1_H)
-    assert not js.have_singles()
-    for i,j in js.pairs():
-      phase_error = debug_utils.phase_error(
-        ref_p1_phases[i], p1_new_phases[j], deg=0)
-      if (phase_error >= 1.e-4):
-        print "Error: phase mismatch" # XXX assert
-      if (0 or verbose or phase_error >= 1.e-4):
-        assert ref_p1_H[i] == p1_H[j]
-        h = str(ref_p1_H[i])
-        print "%-15s %.2f" % (h, p1_phases[i]*180/math.pi)
-        print "%-15s %.2f sg" % ("", ref_p1_phases[i]*180/math.pi)
-        print "%-15s %.2f p1" % ("", p1_new_phases[j]*180/math.pi)
-        print "tprs_p1.n_relations():", tprs_p1.n_relations(j)
-    if (0 or verbose):
-      print
+      xtal.SgInfo, MillerIndices.H, e_values, phases, other_than_sigma_2,
+      verbose)
+    if (other_than_sigma_2):
+      tprs_p1 = test_triplet_invariants(
+        sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, 1, verbose)
+      sg_new_phases = tprs_sg.apply_tangent_formula(e_values, phases)
+      p1_new_phases = tprs_p1.apply_tangent_formula(p1_e_values, p1_phases)
+      ref_p1_H = shared.Miller_Index()
+      ref_p1_e_values = shared.double()
+      ref_p1_phases = shared.double()
+      sgtbx.expand_to_p1(
+        xtal.SgOps, 1,
+        MillerIndices.H, e_values, sg_new_phases,
+        ref_p1_H, ref_p1_e_values, ref_p1_phases)
+      js = shared.join_sets(ref_p1_H, p1_H)
+      assert not js.have_singles()
+      for i,j in js.pairs():
+        phase_error = debug_utils.phase_error(
+          ref_p1_phases[i], p1_new_phases[j], deg=0)
+        if (phase_error >= 1.e-4):
+          print "Error: phase mismatch" # XXX assert
+        if (0 or verbose or phase_error >= 1.e-4):
+          assert ref_p1_H[i] == p1_H[j]
+          h = str(ref_p1_H[i])
+          print "%-15s %.2f" % (h, p1_phases[i]*180/math.pi)
+          print "%-15s %.2f sg" % ("", ref_p1_phases[i]*180/math.pi)
+          print "%-15s %.2f p1" % ("", p1_new_phases[j]*180/math.pi)
+          print "tprs_p1.n_relations():", tprs_p1.n_relations(j)
+      if (0 or verbose):
+        print
   if (exercise_squaring):
     new_phases = square_emap(
       xtal, e000, p1_H, MillerIndices.H, e_values, phases)
@@ -224,6 +229,7 @@ def run():
     "IncludeVeryHighSymmetry",
     "ShowSymbolOnly",
     "triplets",
+    "all_triplets",
     "squaring",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
@@ -260,6 +266,7 @@ def run():
       exercise(
         SgInfo,
         exercise_triplets=Flags.triplets,
+        other_than_sigma_2=Flags.all_triplets,
         exercise_squaring=Flags.squaring)
     sys.stdout.flush()
 
