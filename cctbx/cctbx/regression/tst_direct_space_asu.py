@@ -7,6 +7,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import matrix
+from libtbx.test_utils import approx_equal
 from boost import rational
 import sys
 
@@ -119,14 +120,56 @@ def exercise_asu_mappings(space_group_info, n_elements=10):
     for mapping in mappings:
       assert asu_mappings.asu_buffer().is_inside(frac(mapping.mapped_site()))
 
-def exercise_all(space_group_info):
+def exercise_neighbors_simple_pair_generator(space_group_info, n_elements=10,
+                                             verbose=0):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=["Si"]*n_elements,
+    volume_per_atom=1000,
+    min_distance=3.,
+    general_positions_only=00000)
+  if (0 or verbose):
+    structure.show_summary().show_scatterers()
+    print
+  for buffer_thickness in [1.e-5, 2, 4]:
+    asu_mappings = crystal.direct_space_asu.asu_mappings(
+      space_group=structure.space_group(),
+      asu=structure.direct_space_asu().as_float_asu(),
+      buffer_thickness=buffer_thickness)
+    asu_mappings.reserve(structure.scatterers().size())
+    for scatterer in structure.scatterers():
+      asu_mappings.process(scatterer.site)
+    array_of_array_of_mappings = asu_mappings.mappings()
+    pair_list = []
+    for i_seq in xrange(array_of_array_of_mappings.size()):
+      site_0 = matrix.col(array_of_array_of_mappings[i_seq][0].mapped_site())
+      for j_seq in xrange(i_seq, array_of_array_of_mappings.size()):
+        array_of_mappings = array_of_array_of_mappings[j_seq]
+        if (i_seq == j_seq):
+          j_start = 1
+        else:
+          j_start = 0
+        for j_sym in xrange(j_start, len(array_of_mappings)):
+          site_1 = matrix.col(array_of_mappings[j_sym].mapped_site())
+          dist_sq = (site_1-site_0).norm()
+          pair_list.append((i_seq,j_seq,j_sym,dist_sq))
+    pair_generator = crystal.neighbors_simple_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=1.e6)
+    for pair_direct,pair in zip(pair_list, pair_generator):
+      assert pair_direct[:3] == (pair.i_seq, pair.j_seq, pair.j_sym)
+      assert approx_equal(pair_direct[3], pair.dist_sq)
+
+def exercise_all(flags, space_group_info):
   exercise_float_asu(space_group_info)
   exercise_asu_mappings(space_group_info)
+  exercise_neighbors_simple_pair_generator(
+    space_group_info, verbose=flags.Verbose)
 
 def run_call_back(flags, space_group_info):
-  exercise_all(space_group_info)
+  exercise_all(flags, space_group_info)
   if (space_group_info.group().n_ltr() != 1):
-    exercise_all(space_group_info.primitive_setting())
+    exercise_all(flags, space_group_info.primitive_setting())
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
