@@ -128,7 +128,7 @@ namespace {
   SymEquivIndex
   SymEquivIndices_getitem(const SymEquivIndices& SEMI,
                                 std::size_t key) {
-    if (key >= SEMI.N()) bpl_utils::throw_index_out_of_range();
+    if (key >= SEMI.N()) bpl_utils::raise_index_error();
     return SEMI[key];
   }
   SymEquivIndex
@@ -306,9 +306,11 @@ namespace {
     sgtbx::SpaceGroup const& SgOps,
     bool friedel_flag,
     const af::shared<Index>& in,
-    af::shared<Index> out)
+    af::versa<Index, af::flex_grid<> >& out)
   {
-    expand_to_p1(SgOps, friedel_flag, in, out);
+    af::shared<Index> out_ = bpl_utils::as_base_array(out);
+    expand_to_p1(SgOps, friedel_flag, in, out_);
+    out.resize(af::make_flex_grid_1d(out_.size()));
   }
 
   void
@@ -318,17 +320,24 @@ namespace {
     af::shared<Index> const& h_in,
     af::shared<double> const& ampl_in,
     af::shared<double> const& phase_in,
-    af::shared<Index> h_out,
-    af::shared<double> ampl_out,
-    af::shared<double> phase_out,
+    af::versa<Index, af::flex_grid<> >& h_out,
+    af::versa<double, af::flex_grid<> >& ampl_out,
+    af::versa<double, af::flex_grid<> >& phase_out,
     bool phase_degrees)
   {
+    af::shared<Index> h_out_ = bpl_utils::as_base_array(h_out);
+    af::shared<double> ampl_out_ = bpl_utils::as_base_array(ampl_out);
+    af::shared<double> phase_out_ = bpl_utils::as_base_array(phase_out);
     expand_to_p1(
       SgOps, friedel_flag,
       h_in, ampl_in, phase_in,
-      h_out, ampl_out, phase_out,
+      h_out_, ampl_out_, phase_out_,
       phase_degrees);
+    h_out.resize(af::make_flex_grid_1d(h_out_.size()));
+    ampl_out.resize(af::make_flex_grid_1d(ampl_out_.size()));
+    phase_out.resize(af::make_flex_grid_1d(phase_out_.size()));
   }
+
   void
   py_expand_to_p1_8(
     sgtbx::SpaceGroup const& SgOps,
@@ -336,14 +345,14 @@ namespace {
     af::shared<Index> const& h_in,
     af::shared<double> const& ampl_in,
     af::shared<double> const& phase_in,
-    af::shared<Index> h_out,
-    af::shared<double> ampl_out,
-    af::shared<double> phase_out)
+    af::versa<Index, af::flex_grid<> >& h_out,
+    af::versa<double, af::flex_grid<> >& ampl_out,
+    af::versa<double, af::flex_grid<> >& phase_out)
   {
-    expand_to_p1(
+    py_expand_to_p1_9(
       SgOps, friedel_flag,
       h_in, ampl_in, phase_in,
-      h_out, ampl_out, phase_out);
+      h_out, ampl_out, phase_out, false);
   }
 
   double

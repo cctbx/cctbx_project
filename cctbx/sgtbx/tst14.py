@@ -67,6 +67,7 @@ def OneCycle(settings):
       p1_miller_indices = flex.miller_Index()
       miller.expand_to_p1(
         SgOps, friedel_flag, miller_indices, p1_miller_indices)
+      assert p1_miller_indices.size() >= miller_indices.size()
       h_dict = {}
       for i in xrange(miller_indices.size()):
         h_dict[miller_indices[i]] = 0

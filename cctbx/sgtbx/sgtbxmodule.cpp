@@ -176,7 +176,7 @@ namespace {
   }
   RTMx SpaceGroup_getitem(const SpaceGroup& SgOps, std::size_t key)
   {
-    if (key >= SgOps.OrderZ()) bpl_utils::throw_index_out_of_range();
+    if (key >= SgOps.OrderZ()) bpl_utils::raise_index_error();
     return SgOps(key);
   }
 
@@ -335,7 +335,7 @@ namespace {
                                std::size_t key)
   {
     WP.CheckExpanded();
-    if (key >= WP.M()) bpl_utils::throw_index_out_of_range();
+    if (key >= WP.M()) bpl_utils::raise_index_error();
     return WP(key);
   }
 
@@ -351,7 +351,7 @@ namespace {
   WyckoffPosition WyckoffTable_getitem(const WyckoffTable& WTab,
                                        std::size_t key)
   {
-    if (key >= WTab.N()) bpl_utils::throw_index_out_of_range();
+    if (key >= WTab.N()) bpl_utils::raise_index_error();
     return WTab(key);
   }
 
@@ -413,7 +413,7 @@ namespace {
   RTMx SiteSymmetry_getitem(const SiteSymmetry& SS,
                             std::size_t key)
   {
-    if (key >= SS.M()) bpl_utils::throw_index_out_of_range();
+    if (key >= SS.M()) bpl_utils::raise_index_error();
     return SS(key);
   }
 
@@ -421,7 +421,7 @@ namespace {
   SymEquivCoordinates_getitem(const SymEquivCoordinates<double>& SymEqCoor,
                               std::size_t key)
   {
-    if (key >= SymEqCoor.M()) bpl_utils::throw_index_out_of_range();
+    if (key >= SymEqCoor.M()) bpl_utils::raise_index_error();
     return SymEqCoor(key);
   }
 

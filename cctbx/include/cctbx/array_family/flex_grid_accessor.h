@@ -144,6 +144,15 @@ namespace cctbx { namespace af {
       }
   };
 
+  inline
+  flex_grid<>
+  make_flex_grid_1d(flex_grid<>::index_value_type const& n)
+  {
+    flex_grid_default_index_type grid;
+    grid.push_back(n);
+    return flex_grid<>(grid);
+  }
+
 }} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_FLEX_GRID_ACCESSOR_H
