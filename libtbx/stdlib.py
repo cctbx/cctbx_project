@@ -6,6 +6,9 @@ def import_module(name):
     return sys.modules[name]
   except KeyError:
     pass
+  if (imp.is_builtin(name)):
+    try: return imp.init_builtin(name)
+    except: pass
   sys_path = sys.path[:]
   sys_path.reverse()
   for path in sys_path:
