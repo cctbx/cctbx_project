@@ -56,7 +56,7 @@ namespace scitbx { namespace af {
 
   template <typename DataType>
   shared<DataType>
-  shuffle(
+  select(
     const_ref<DataType> const& data,
     const_ref<std::size_t> const& permutation)
   {
