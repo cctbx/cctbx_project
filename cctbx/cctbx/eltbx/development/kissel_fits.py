@@ -11,7 +11,6 @@ import sys, os
 
 def run(args, cutoff, max_n_terms, six_term=00000, params=None,
         plots_dir="kissel_fits_plots", verbose=0):
-  timer = user_plus_sys_time()
   if (params is None):
     params = cctbx.eltbx.gaussian_fit.fit_parameters(
       max_n_terms=max_n_terms)
@@ -73,7 +72,13 @@ def run(args, cutoff, max_n_terms, six_term=00000, params=None,
         stol=g.table_x()[-1], gaussian_sum=g)]
     sys.stdout.flush()
     easy_pickle.dump("fits_%02d.pickle" % chunk_i, results)
-  print "CPU time: %.2f seconds" % timer.elapsed()
+
+def run_and_time(*args, **kw):
+  timer = user_plus_sys_time()
+  try:
+    apply(run, args, kw)
+  finally:
+    print "CPU time: %.2f seconds" % timer.elapsed()
 
 def main():
   parser = OptionParser(
@@ -94,7 +99,7 @@ def main():
   if (len(args) < 1):
     parser.print_help()
     return
-  run(
+  run_and_time(
     args=args,
     cutoff=options.cutoff,
     max_n_terms=options.max_n_terms,

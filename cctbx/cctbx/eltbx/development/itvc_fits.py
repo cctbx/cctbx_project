@@ -11,7 +11,6 @@ import sys, os
 def run(file_name, args, cutoff, max_n_terms,
         six_term=00000, full_fits=None, params=None,
         plots_dir="itvc_fits_plots", verbose=0):
-  timer = user_plus_sys_time()
   tab = itvc_section61_io.read_table6111(file_name)
   if (params is None):
     params = cctbx.eltbx.gaussian_fit.fit_parameters(
@@ -86,7 +85,13 @@ def run(file_name, args, cutoff, max_n_terms,
         stol=g.table_x()[-1], gaussian_sum=g)]
     sys.stdout.flush()
     easy_pickle.dump("fits_%02d.pickle" % chunk_i, results)
-  print "CPU time: %.2f seconds" % timer.elapsed()
+
+def run_and_time(*args, **kw):
+  timer = user_plus_sys_time()
+  try:
+    apply(run, args, kw)
+  finally:
+    print "CPU time: %.2f seconds" % timer.elapsed()
 
 def main():
   parser = OptionParser(
@@ -115,7 +120,7 @@ def main():
     full_fits = easy_pickle.load(options.full_fits)
   else:
     full_fits = None
-  run(
+  run_and_time(
     file_name=args[0],
     args=args[1:],
     cutoff=options.cutoff,
