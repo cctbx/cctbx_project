@@ -438,6 +438,30 @@ def exercise_array_2(space_group_info):
         r = m.redundancies().select(p)
         sr = s * flex.sqrt(r.as_double())
         assert approx_equal(sr, sigmas)
+      #
+      orig = m.array()
+      ave = orig.average_bijvoet_mates()
+      if (not orig.anomalous_flag()):
+        assert ave.correlation(orig).coefficient() > 1-1.e-6
+        if (sigmas is not None):
+          assert flex.linear_correlation(
+            ave.sigmas(), orig.sigmas()).coefficient() > 1-1.e-6
+      else:
+        asu, matches = orig.match_bijvoet_mates()
+        vfy_indices = asu.indices().select(matches.pairs().column(0))
+        vfy_data = (  asu.data().select(matches.pairs().column(0))
+                    + asu.data().select(matches.pairs().column(1))) / 2
+        for sign in ("+", "-"):
+          sel = matches.singles(sign)
+          vfy_indices.extend(asu.indices().select(sel))
+          vfy_data.extend(asu.data().select(sel))
+        vfy = miller.array(
+          miller_set=miller.set(
+            crystal_symmetry=orig,
+            indices=vfy_indices,
+            anomalous_flag=False),
+          data=vfy_data).adopt_set(ave)
+        assert vfy.correlation(ave).coefficient() > 1-1.e-5
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")

@@ -216,6 +216,12 @@ class set(crystal.symmetry):
     asu, matches = self.match_bijvoet_mates()
     return matches.pairs().size()
 
+  def as_non_anomalous_set(self):
+    return set(
+      crystal_symmetry=self,
+      indices=self.indices(),
+      anomalous_flag=False)
+
   def auto_anomalous(self, min_n_bijvoet_pairs=None,
                            min_fraction_bijvoet_pairs=None):
     assert [min_n_bijvoet_pairs, min_fraction_bijvoet_pairs].count(None) > 0
@@ -1048,6 +1054,16 @@ class array(set):
 
   def merge_equivalents(self):
     return merge_equivalents(self)
+
+  def as_non_anomalous_array(self):
+    return array(
+      miller_set=self.as_non_anomalous_set(),
+      data=self.data(),
+      sigmas=self.sigmas())
+
+  def average_bijvoet_mates(self):
+    assert self.observation_type() is None or self.is_xray_amplitude_array()
+    return self.as_non_anomalous_array().merge_equivalents().array()
 
   def __add__(self, other):
     assert self.indices() is not None
