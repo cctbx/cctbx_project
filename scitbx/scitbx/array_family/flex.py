@@ -9,6 +9,16 @@ import sys, os
 builtin_int = __builtins__["int"]
 builtin_long = __builtins__["long"]
 
+class grid_(boost.python.injector, grid):
+
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "origin:", self.origin()
+    print >> f, "last:", self.last()
+    print >> f, "focus:", self.focus()
+    print >> f, "all:", self.all()
+    return self
+
 def export_to(target_module_name):
   export_list = [
     "to_list",
