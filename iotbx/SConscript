@@ -17,7 +17,6 @@ env_etc.iotbx_common_includes = [
   ccp4_src,
 ]
 
-
 myccflags_base = env_etc.ccflags_base[:]
 mycxxflags_base = env_etc.cxxflags_base[:]
 
@@ -32,6 +31,9 @@ env = env_base.Copy(
   SHLINKFLAGS=env_etc.shlinkflags,
   CPPPATH=env_etc.iotbx_common_includes,
 )
+
+if (sys.platform == "tru64_cxx"):
+  env.Append(SHLINKFLAGS=["pthread",])
 
 envlm = env.Copy(
   LIBS=env_etc.libm
