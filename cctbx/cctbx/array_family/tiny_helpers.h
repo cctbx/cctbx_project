@@ -1,5 +1,5 @@
 // $Id$
-// Included from tiny_base.h
+// Included from tiny_plain.h
 // DO NOT INCLUDE THIS FILE DIRECTLY.
 
 #define CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(class_name) \
@@ -147,12 +147,12 @@ class_name( \
 
 #define CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(class_name) \
 template <typename OtherElementType> \
-class_name(const tiny_base<OtherElementType,N>& rhs) { \
+class_name(const tiny_plain<OtherElementType,N>& rhs) { \
   copy_typeconv(rhs.begin(), rhs.end(), this->elems); \
 } \
 template <typename OtherElementType> \
 class_name<ElementType,N>& \
-operator=(const tiny_base<OtherElementType,N>& rhs) { \
+operator=(const tiny_plain<OtherElementType,N>& rhs) { \
   copy_typeconv(rhs.begin(), rhs.end(), this->elems); \
   return *this; \
 }

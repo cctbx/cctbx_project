@@ -11,13 +11,13 @@
 #ifndef CCTBX_ARRAY_FAMILY_TINY_H
 #define CCTBX_ARRAY_FAMILY_TINY_H
 
-#include <cctbx/array_family/tiny_base.h>
+#include <cctbx/array_family/tiny_plain.h>
 
 namespace cctbx { namespace af {
 
   // Automatic allocation, fixed size, standard operators.
   template <typename ElementType, std::size_t N>
-  class tiny : public tiny_base<ElementType, N>
+  class tiny : public tiny_plain<ElementType, N>
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
