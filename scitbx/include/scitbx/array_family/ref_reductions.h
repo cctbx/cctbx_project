@@ -130,7 +130,9 @@ namespace scitbx { namespace af {
     if (a.size() == 0) {
       throw std::runtime_error("mean() argument is an empty array");
     }
-    return sum(a) / a.size();
+    ElementType result = a[0];
+    for(std::size_t i=1;i<a.size();i++) result += a[i];
+    return result / a.size();
   }
 
   template <typename ElementType, typename AccessorType>
@@ -140,7 +142,9 @@ namespace scitbx { namespace af {
     if (a.size() == 0) {
       throw std::runtime_error("mean_sq() argument is an empty array");
     }
-    return sum_sq(a) / a.size();
+    ElementType result = a[0] * a[0];
+    for(std::size_t i=1;i<a.size();i++) result += a[i] * a[i];
+    return result / a.size();
   }
 
   template <typename ElementTypeValues, typename AccessorTypeValues,
@@ -154,9 +158,9 @@ namespace scitbx { namespace af {
     if (values.size() == 0) {
       throw std::runtime_error("mean_weighted() argument is an empty array");
     }
-    ElementTypeValues sum_vw = 0;
-    ElementTypeWeights sum_w = 0;
-    for(std::size_t i=0;i<values.size();i++) {
+    ElementTypeValues sum_vw = values[0] * weights[0];
+    ElementTypeWeights sum_w = weights[0];
+    for(std::size_t i=1;i<values.size();i++) {
       sum_vw += values[i] * weights[i];
       sum_w += weights[i];
     }
@@ -175,9 +179,9 @@ namespace scitbx { namespace af {
       throw std::runtime_error(
         "mean_sq_weighted() argument is an empty array");
     }
-    ElementTypeValues sum_vvw = 0;
-    ElementTypeWeights sum_w = 0;
-    for(std::size_t i=0;i<values.size();i++) {
+    ElementTypeValues sum_vvw = values[0] * values[0] * weights[0];
+    ElementTypeWeights sum_w = weights[0];
+    for(std::size_t i=1;i<values.size();i++) {
       sum_vvw += values[i] * values[i] * weights[i];
       sum_w += weights[i];
     }
