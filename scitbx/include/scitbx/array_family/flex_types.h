@@ -17,13 +17,38 @@
 
 namespace scitbx { namespace af {
 
-  typedef versa<bool, flex_grid<> > flex_bool;
-  typedef versa<int, flex_grid<> > flex_int;
-  typedef versa<long, flex_grid<> > flex_long;
-  typedef versa<std::size_t, flex_grid<> > flex_size_t;
-  typedef versa<float, flex_grid<> > flex_float;
-  typedef versa<double, flex_grid<> > flex_double;
-  typedef versa<std::complex<double>, flex_grid<> > flex_complex_double;
+  template <typename ElementType>
+  struct flex
+  {
+    typedef versa<ElementType, flex_grid<> > type;
+  };
+
+  template <typename ElementType>
+  struct flex_const_ref
+  {
+    typedef const_ref<ElementType, flex_grid<> > type;
+  };
+
+  template <typename ElementType>
+  struct flex_ref
+  {
+    typedef ref<ElementType, flex_grid<> > type;
+  };
+
+#define SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(T, N) \
+  typedef flex<T>::type flex_ ## N; \
+  typedef flex_const_ref<T>::type flex_ ## N ## _const_ref; \
+  typedef flex_ref<T>::type flex_ ## N ## _ref;
+
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(bool, bool)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(int, int)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(long, long)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(std::size_t, size_t)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(float, float)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(double, double)
+  SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS(std::complex<double>, complex_double)
+
+#undef SCITBX_ARRAY_FAMILY_FLEX_TYPEDEFS
 
 }} // namespace scitbx::af
 
