@@ -14,29 +14,268 @@
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/sftbx/xray_scatterer.h>
 #include <cctbx/array_family/shared.h>
+#include <cctbx/basic/meta.h>
 
 namespace cctbx { namespace af {
 
-  namespace {
+  namespace picklers {
+
+    inline char* o_advance(char *ptr)
+    {
+      while (*ptr != ',') ptr++;
+      return ptr + 1;
+    }
+
+    template <typename ValueType>
+    struct from_string {};
+
+    char* to_string(char* start, bool const& value)
+    {
+      if (value == true) *start = '1';
+      else               *start = '0';
+      return start + 1;
+    }
+
+    template <>
+    struct from_string<bool>
+    {
+      from_string(const char* start) : end(start)
+      {
+        if (*end++ == '1') value = true;
+        else               value = false;
+      }
+
+      bool value;
+      const char* end;
+    };
+
+    char* to_string(char* start, int const& value)
+    {
+      cctbx_assert(sprintf(start, "%d,", value) > 0);
+      return o_advance(start);
+    }
+
+    template <>
+    struct from_string<int>
+    {
+      from_string(const char* start)
+      {
+        value = static_cast<int>(strtol(start, &end, 10));
+        cctbx_assert(*end++ == ',');
+      }
+
+      int value;
+      char* end;
+    };
+
+    char* to_string(char* start, unsigned int const& value)
+    {
+      cctbx_assert(sprintf(start, "%u,", value) > 0);
+      return o_advance(start);
+    }
+
+    template <>
+    struct from_string<unsigned int>
+    {
+      from_string(const char* start)
+      {
+        value = static_cast<unsigned int>(strtoul(start, &end, 10));
+        cctbx_assert(*end++ == ',');
+      }
+
+      unsigned int value;
+      char* end;
+    };
+
+    char* to_string(char* start, long const& value)
+    {
+      cctbx_assert(sprintf(start, "%ld,", value) > 0);
+      return o_advance(start);
+    }
+
+    template <>
+    struct from_string<long>
+    {
+      from_string(const char* start)
+      {
+        value = strtol(start, &end, 10);
+        cctbx_assert(*end++ == ',');
+      }
+
+      long value;
+      char* end;
+    };
+
+    char* to_string(char* start, unsigned long const& value)
+    {
+      cctbx_assert(sprintf(start, "%lu,", value) > 0);
+      return o_advance(start);
+    }
+
+    template <>
+    struct from_string<unsigned long>
+    {
+      from_string(const char* start)
+      {
+        value = strtoul(start, &end, 10);
+        cctbx_assert(*end++ == ',');
+      }
+
+      unsigned long value;
+      char* end;
+    };
+
+    char* to_string(char* start, float const& value)
+    {
+      cctbx_assert(sprintf(start, "%.6g,", value) > 0);
+      return o_advance(start);
+    }
+
+    template <>
+    struct from_string<float>
+    {
+      from_string(const char* start)
+      {
+        value = strtof(start, &end);
+        cctbx_assert(*end++ == ',');
+      }
+
+      float value;
+      char* end;
+    };
+
+    char* to_string(char* start, double const& value)
+    {
+      cctbx_assert(sprintf(start, "%.12g,", value) > 0);
+      return o_advance(start);
+    }
+
+    template <>
+    struct from_string<double>
+    {
+      from_string(const char* start)
+      {
+        value = strtod(start, &end);
+        cctbx_assert(*end++ == ',');
+      }
+
+      double value;
+      char* end;
+    };
+
+    char* to_string(char* start, std::complex<float> const& value)
+    {
+      return to_string(to_string(start, value.real()), value.imag());
+    }
+
+    char* to_string(char* start, std::complex<double> const& value)
+    {
+      return to_string(to_string(start, value.real()), value.imag());
+    }
+
+    template <>
+    struct from_string<std::complex<double> >
+    {
+      from_string(const char* start)
+      {
+        from_string<double> proxy_r(start);
+        from_string<double> proxy_i(proxy_r.end);
+        value = std::complex<double>(proxy_r.value, proxy_i.value);
+        end = proxy_i.end;
+      }
+
+      std::complex<double> value;
+      char* end;
+    };
+
+    char* to_string(char* start, miller::Index const& value)
+    {
+      return
+        to_string(to_string(to_string(start, value[0]), value[1]), value[2]);
+    }
+
+    template <>
+    struct from_string<miller::Index>
+    {
+      from_string(const char* start)
+      {
+        end = start;
+        for(std::size_t i=0;i<3;i++) {
+          from_string<int> proxy(end);
+          value[i] = proxy.value;
+          end = proxy.end;
+        }
+      }
+
+      af::int3 value;
+      const char* end;
+    };
+
+    char* to_string(char* start, hendrickson_lattman<double> const& value)
+    {
+      return
+        to_string(to_string(to_string(to_string(start,
+          value[0]), value[1]), value[2]), value[3]);
+    }
+
+    template <>
+    struct from_string<hendrickson_lattman<double> >
+    {
+      from_string(const char* start)
+      {
+        end = start;
+        for(std::size_t i=0;i<4;i++) {
+          from_string<double> proxy(end);
+          value[i] = proxy.value;
+          end = proxy.end;
+        }
+      }
+
+      hendrickson_lattman<double> value;
+      const char* end;
+    };
+
+    char* to_string(char* start, const char* value)
+    {
+      while (*value) *start++ = *value++;
+      *start++ = '\0';
+      *start++ = ',';
+      return start;
+    }
+
+    char* to_string(char* start, std::string const& value)
+    {
+      return to_string(start, value.c_str());
+    }
+
+    template <>
+    struct from_string<std::string>
+    {
+      from_string(const char* start)
+      {
+        value = std::string(start);
+        while (*end) end++;
+        cctbx_assert(*end++ == ',');
+      }
+
+      std::string value;
+      char* end;
+    };
 
     struct getstate_manager
     {
       getstate_manager(std::size_t a_size, std::size_t size_per_element)
       {
-        str_capacity = a_size * size_per_element + 50; // extra space for a_size
+        str_capacity = a_size * size_per_element + 50;// extra space for a_size
         str_obj = PyString_FromStringAndSize(
           0, static_cast<int>(str_capacity + 100)); // extra space for safety
         str_begin = PyString_AS_STRING(str_obj);
-        str_end = str_begin;
-        sprintf(str_end, "%lu", static_cast<unsigned long>(a_size));
-        while (*str_end) str_end++;
-        *str_end++ = ',';
+        str_end = to_string(str_begin, a_size);
       };
 
-      void advance()
+      void advance(char* str_ptr)
       {
-        while (*str_end) str_end++;
-        *str_end++ = ',';
+        str_end = str_ptr;
         cctbx_assert(str_end - str_begin <= str_capacity);
       }
 
@@ -60,208 +299,50 @@ namespace cctbx { namespace af {
         cctbx_assert(a_size == 0);
         str_ptr = PyString_AsString(state);
         cctbx_assert(str_ptr != 0);
-        cctbx_assert(sscanf(str_ptr, "%lu", &a_capacity) == 1);
-        while (*str_ptr != ',') str_ptr++;
-        str_ptr++;
+        a_capacity = get_value(type_holder<std::size_t>());
       };
 
-      void advance()
+      template <typename ValueType>
+      ValueType get_value(type_holder<ValueType>)
       {
-        while (*str_ptr != ',') str_ptr++;
-        str_ptr++;
+        from_string<ValueType> proxy(str_ptr);
+        str_ptr = proxy.end;
+        return proxy.value;
       }
 
-      void finalize()
+      void assert_end()
       {
         cctbx_assert(*str_ptr == 0);
       }
 
-      char* str_ptr;
+      const char* str_ptr;
       std::size_t a_capacity;
     };
 
-    struct bool_picklers
-    {
-      static
-      boost::python::ref
-      getstate(shared<bool> const& a)
-      {
-        getstate_manager mgr(a.size(), 1);
-        for(std::size_t i=0;i<a.size();i++) {
-          if (a[i]) *mgr.str_end++ = '1';
-          else      *mgr.str_end++ = '0';
-        }
-        return boost::python::ref(mgr.finalize());
-      }
-
-      static
-      void
-      setstate(shared<bool>& a, boost::python::ref state)
-      {
-        setstate_manager mgr(a.size(), state.get());
-        a.reserve(mgr.a_capacity);
-        for(std::size_t i=0;i<mgr.a_capacity;i++) {
-          if (*mgr.str_ptr++ == '1') a.push_back(true);
-          else                       a.push_back(false);
-        }
-        mgr.finalize();
-      }
-    };
-
     template <typename ElementType>
-    struct num_picklers
+    struct array_fast
     {
       static
       boost::python::ref
-      getstate(
-        shared<ElementType> const& a,
-        std::size_t size_per_element,
-        const char* fmt)
+      getstate(shared<ElementType> const& a, std::size_t size_per_element)
       {
         getstate_manager mgr(a.size(), size_per_element);
         for(std::size_t i=0;i<a.size();i++) {
-          sprintf(mgr.str_end, fmt, a[i]);
-          mgr.advance();
+          mgr.advance(to_string(mgr.str_end, a[i]));
         }
         return boost::python::ref(mgr.finalize());
       }
 
       static
       void
-      setstate(
-        shared<ElementType>& a,
-        boost::python::ref state,
-        const char* fmt)
+      setstate(shared<ElementType>& a, boost::python::ref state)
       {
         setstate_manager mgr(a.size(), state.get());
         a.reserve(mgr.a_capacity);
         for(std::size_t i=0;i<mgr.a_capacity;i++) {
-          ElementType val;
-          cctbx_assert(sscanf(mgr.str_ptr, fmt, &val) == 1);
-          mgr.advance();
-          a.push_back(val);
+          a.push_back(mgr.get_value(type_holder<ElementType>()));
         }
-        mgr.finalize();
-      }
-    };
-
-    template <typename ElementType>
-    struct complex_picklers
-    {
-      static
-      boost::python::ref
-      getstate(
-        shared<std::complex<ElementType> > const& a,
-        std::size_t size_per_element,
-        const char* fmt)
-      {
-        getstate_manager mgr(a.size(), 2 * size_per_element);
-        for(std::size_t i=0;i<a.size();i++) {
-          sprintf(mgr.str_end, fmt, a[i].real());
-          mgr.advance();
-          sprintf(mgr.str_end, fmt, a[i].imag());
-          mgr.advance();
-        }
-        return boost::python::ref(mgr.finalize());
-      }
-
-      static
-      void
-      setstate(
-        shared<std::complex<ElementType> >& a,
-        boost::python::ref state,
-        const char* fmt)
-      {
-        setstate_manager mgr(a.size(), state.get());
-        a.reserve(mgr.a_capacity);
-        for(std::size_t i=0;i<mgr.a_capacity;i++) {
-          ElementType val[2];
-          for(std::size_t j=0;j<2;j++) {
-            cctbx_assert(sscanf(mgr.str_ptr, fmt, val+j) == 1);
-            mgr.advance();
-          }
-          a.push_back(std::complex<ElementType>(val[0], val[1]));
-        }
-        mgr.finalize();
-      }
-    };
-
-    struct miller_index_picklers
-    {
-      static
-      boost::python::ref
-      getstate(shared<miller::Index> const& a)
-      {
-        getstate_manager mgr(a.size(), 3 * 6);
-        for(std::size_t i=0;i<a.size();i++) {
-          miller::Index const& h = a[i];
-          for(std::size_t j=0;j<3;j++) {
-            sprintf(mgr.str_end, "%d", h[j]);
-            mgr.advance();
-          }
-        }
-        return boost::python::ref(mgr.finalize());
-      }
-
-      static
-      void
-      setstate(shared<miller::Index>& a, boost::python::ref state)
-      {
-        setstate_manager mgr(a.size(), state.get());
-        a.reserve(mgr.a_capacity);
-        for(std::size_t i=0;i<mgr.a_capacity;i++) {
-          int h[3];
-          for(std::size_t j=0;j<3;j++) {
-            cctbx_assert(sscanf(mgr.str_ptr, "%d", h+j) == 1);
-            mgr.advance();
-          }
-          a.push_back(miller::Index(h));
-        }
-        mgr.finalize();
-      }
-    };
-
-    template <typename FloatType>
-    struct hendrickson_lattman_picklers
-    {
-      typedef hendrickson_lattman<FloatType> hl_type;
-
-      static
-      boost::python::ref
-      getstate(
-        shared<hl_type> const& a,
-        std::size_t size_per_element,
-        const char* fmt)
-      {
-        getstate_manager mgr(a.size(), 4 * size_per_element);
-        for(std::size_t i=0;i<a.size();i++) {
-          af::tiny<FloatType, 4> const& c = a[i].array();
-          for(std::size_t j=0;j<4;j++) {
-            sprintf(mgr.str_end, fmt, c[j]);
-            mgr.advance();
-          }
-        }
-        return boost::python::ref(mgr.finalize());
-      }
-
-      static
-      void
-      setstate(
-        shared<hl_type>& a,
-        boost::python::ref state,
-        const char* fmt)
-      {
-        setstate_manager mgr(a.size(), state.get());
-        a.reserve(mgr.a_capacity);
-        for(std::size_t i=0;i<mgr.a_capacity;i++) {
-          FloatType c[4];
-          for(std::size_t j=0;j<4;j++) {
-            cctbx_assert(sscanf(mgr.str_ptr, fmt, c+j) == 1);
-            mgr.advance();
-          }
-          a.push_back(hl_type(c));
-        }
-        mgr.finalize();
+        mgr.assert_end();
       }
     };
 
@@ -282,8 +363,8 @@ namespace cctbx { namespace af {
 
       make_pickle_string& operator<<(bool const& val)
       {
-        if (val) buffer += "1,";
-        else     buffer += "0,";
+        if (val) buffer += "1";
+        else     buffer += "0";
         return *this;
       }
 
@@ -374,6 +455,14 @@ namespace cctbx { namespace af {
         return *this;
       }
 
+      template <typename ValueType>
+      ValueType get_value(type_holder<ValueType>)
+      {
+        from_string<ValueType> proxy(str_ptr);
+        str_ptr = proxy.end;
+        return proxy.value;
+      }
+
       read_from_pickle_string& operator>>(std::string& val)
       {
         val = std::string(str_ptr);
@@ -383,52 +472,50 @@ namespace cctbx { namespace af {
 
       read_from_pickle_string& operator>>(bool& val)
       {
-        *str_ptr == '1' ? val = true : val = false;
-        return advance();
+        val = get_value(type_holder<bool>());
+        return *this;
       }
 
       read_from_pickle_string& operator>>(int& val)
       {
-        cctbx_assert(sscanf(str_ptr, "%d", &val) == 1);
-        return advance();
+        val = get_value(type_holder<int>());
+        return *this;
       }
 
       read_from_pickle_string& operator>>(unsigned int& val)
       {
-        cctbx_assert(sscanf(str_ptr, "%u", &val) == 1);
-        return advance();
+        val = get_value(type_holder<unsigned int>());
+        return *this;
       }
 
       read_from_pickle_string& operator>>(long& val)
       {
-        cctbx_assert(sscanf(str_ptr, "%ld", &val) == 1);
-        return advance();
+        val = get_value(type_holder<long>());
+        return *this;
       }
 
       read_from_pickle_string& operator>>(unsigned long& val)
       {
-        cctbx_assert(sscanf(str_ptr, "%lu", &val) == 1);
-        return advance();
+        val = get_value(type_holder<unsigned long>());
+        return *this;
       }
 
       read_from_pickle_string& operator>>(float& val)
       {
-        cctbx_assert(sscanf(str_ptr, "%g", &val) == 1);
-        return advance();
+        val = get_value(type_holder<float>());
+        return *this;
       }
 
       read_from_pickle_string& operator>>(double& val)
       {
-        cctbx_assert(sscanf(str_ptr, "%lg", &val) == 1);
-        return advance();
+        val = get_value(type_holder<double>());
+        return *this;
       }
 
       template <typename FloatType>
       read_from_pickle_string& operator>>(std::complex<FloatType>& val)
       {
-        FloatType r, i;
-        *this >> r >> i;
-        val = std::complex<FloatType>(r, i);
+        val = get_value(type_holder<std::complex<FloatType> >());
         return *this;
       }
 
@@ -444,7 +531,7 @@ namespace cctbx { namespace af {
     };
 
     template <typename FloatType, typename CAASF_Type>
-    struct xray_scatterer_picklers
+    struct xray_scatterer_
     {
       typedef sftbx::XrayScatterer<FloatType, CAASF_Type> xs_type;
 
@@ -501,108 +588,109 @@ namespace cctbx { namespace af {
       }
     };
 
-  } // namespace <anonymous>
+  } // picklers
 
   boost::python::ref shared_bool_getstate(shared<bool> const& a)
   {
-    return bool_picklers::getstate(a);
+    return picklers::array_fast<bool>::getstate(a, 1);
   }
 
   void shared_bool_setstate(shared<bool>& a, boost::python::ref state)
   {
-    bool_picklers::setstate(a, state);
+    picklers::array_fast<bool>::setstate(a, state);
   }
 
   boost::python::ref shared_int_getstate(shared<int> const& a)
   {
-    return num_picklers<int>::getstate(a, 12, "%d");
+    return picklers::array_fast<int>::getstate(a, 12);
   }
 
   void shared_int_setstate(shared<int>& a, boost::python::ref state)
   {
-    num_picklers<int>::setstate(a, state, "%d");
+    picklers::array_fast<int>::setstate(a, state);
   }
 
   boost::python::ref shared_long_getstate(shared<long> const& a)
   {
-    return num_picklers<long>::getstate(a, 21, "%ld");
+    return picklers::array_fast<long>::getstate(a, 21);
   }
 
   void shared_long_setstate(shared<long>& a, boost::python::ref state)
   {
-    num_picklers<long>::setstate(a, state, "%ld");
+    picklers::array_fast<long>::setstate(a, state);
   }
 
   boost::python::ref shared_float_getstate(shared<float> const& a)
   {
-    return num_picklers<float>::getstate(a, 13, "%.6g");
+    return picklers::array_fast<float>::getstate(a, 13);
   }
 
   void shared_float_setstate(shared<float>& a, boost::python::ref state)
   {
-    num_picklers<float>::setstate(a, state, "%g");
+    picklers::array_fast<float>::setstate(a, state);
   }
 
   boost::python::ref shared_double_getstate(shared<double> const& a)
   {
-    return num_picklers<double>::getstate(a, 19, "%.12g");
+    return picklers::array_fast<double>::getstate(a, 19);
   }
 
   void shared_double_setstate(shared<double>& a, boost::python::ref state)
   {
-    num_picklers<double>::setstate(a, state, "%lg");
+    picklers::array_fast<double>::setstate(a, state);
   }
 
   boost::python::ref shared_complex_double_getstate(
     shared<std::complex<double> > const& a)
   {
-    return complex_picklers<double>::getstate(a, 19, "%.12g");
+    return picklers::array_fast<std::complex<double> >::getstate(a, 2*19);
   }
 
   void shared_complex_double_setstate(
     shared<std::complex<double> >& a,
     boost::python::ref state)
   {
-    complex_picklers<double>::setstate(a, state, "%lg");
+    picklers::array_fast<std::complex<double> >::setstate(a, state);
   }
 
   boost::python::ref shared_miller_index_getstate(
     shared<miller::Index> const& a)
   {
-    return miller_index_picklers::getstate(a);
+    return picklers::array_fast<miller::Index>::getstate(a, 3*12);
   }
 
   void shared_miller_index_setstate(
     shared<miller::Index>& a,
     boost::python::ref state)
   {
-    miller_index_picklers::setstate(a, state);
+    picklers::array_fast<miller::Index>::setstate(a, state);
   }
 
   boost::python::ref shared_hendrickson_lattman_double_getstate(
     shared<hendrickson_lattman<double> > const& a)
   {
-    return hendrickson_lattman_picklers<double>::getstate(a, 19, "%.12g");
+    return
+      picklers::array_fast<hendrickson_lattman<double> >::getstate(a, 4*19);
   }
 
   void shared_hendrickson_lattman_double_setstate(
     shared<hendrickson_lattman<double> >& a,
     boost::python::ref state)
   {
-    hendrickson_lattman_picklers<double>::setstate(a, state, "%lg");
+    picklers::array_fast<hendrickson_lattman<double> >::setstate(a, state);
   }
 
   boost::python::ref shared_xray_scatterer_double_wk1995_getstate(
     shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > const& a)
   {
-    return xray_scatterer_picklers<double, eltbx::CAASF_WK1995>::getstate(a);
+    return picklers::xray_scatterer_<double, eltbx::CAASF_WK1995>::getstate(a);
   }
 
   void shared_xray_scatterer_double_wk1995_setstate(
     shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >& a,
     boost::python::ref state)
   {
-    xray_scatterer_picklers<double, eltbx::CAASF_WK1995>::setstate(a, state);
+    picklers::xray_scatterer_<double, eltbx::CAASF_WK1995>::setstate(a, state);
   }
 
 }} // namespace cctbx::af

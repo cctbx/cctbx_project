@@ -163,7 +163,6 @@ def exercise_type_1_picklers():
   b = pickle.loads(p)
   assert b.size() == 3
   assert tuple(b) == (1,0,1)
-  a = shared.double((1,2,3))
   a = shared.double(())
   p = pickle.dumps(a)
   b = pickle.loads(p)
@@ -225,6 +224,55 @@ def exercise_type_2_picklers():
     else:
       assert sites[i].Uiso() == b[i].Uiso()
 
+def pickle_large_arrays(max_exp):
+  import time
+  import pickle, cPickle
+  for array_type in (
+      shared.bool,
+      shared.int,
+      shared.long,
+      shared.float,
+      shared.double,
+      shared.complex_double):
+    for e in xrange(max_exp+1):
+      n = 2**e
+      if (array_type == shared.bool):
+        val = 1
+      elif (array_type == shared.int):
+        val = -2147483647
+      elif (array_type == shared.long):
+        val = -9223372036854775808
+        if (type(val) == type(1L)):
+          val = -2147483647
+      elif (array_type == shared.complex_double):
+        val = complex(-1.234567809123456e+20, -1.234567809123456e+20)
+      else:
+        val = -1.234567809123456e+20
+      a = array_type(n, val)
+      for pickler in (0, pickle, cPickle):
+        if (pickler == 0):
+          pickler_name = "g/setstate"
+          t0 = time.time()
+          s = a.__getstate__()
+          td = time.time() - t0
+          t0 = time.time()
+          b = array_type()
+          b.__setstate__(s)
+          tl = time.time() - t0
+        else:
+          pickler_name = pickler.__name__
+          f = open("pickle.tmp", "w")
+          t0 = time.time()
+          pickler.dump(a, f, 1)
+          td = time.time() - t0
+          f.close()
+          f = open("pickle.tmp", "r")
+          t0 = time.time()
+          b = pickle.load(f)
+          tl = time.time() - t0
+          f.close()
+        print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
@@ -241,8 +289,15 @@ def run(iterations):
 
 if (__name__ == "__main__"):
   import sys
-  iterations = 1
-  if (len(sys.argv) > 1):
-    iterations = int(sys.argv[1])
-  run(iterations)
+  from cctbx.development import debug_utils
+  Flags = debug_utils.command_line_options(sys.argv[1:], (
+    "large",
+  ))
+  n = 1
+  if (len(sys.argv) > 1 + Flags.n):
+    n = int(Flags.regular_args[0])
+  if (Flags.large):
+    pickle_large_arrays(n)
+  else:
+    run(n)
   print "OK"
