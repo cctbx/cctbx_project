@@ -24,6 +24,11 @@ namespace cctbx { namespace af {
 
       tiny() {}
 
+      template <typename OtherArrayType>
+      tiny(array_adaptor<OtherArrayType> const& a_a)
+      : tiny_plain<ElementType, N>(a_a)
+      {}
+
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny)
       CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny)
   };

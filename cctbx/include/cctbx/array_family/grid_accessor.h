@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <algorithm>
 #include <cctbx/array_family/tiny_helpers.h>
+#include <cctbx/array_family/array_adaptor.h>
 
 // forward declaration
 namespace cctbx { namespace af {
@@ -84,6 +85,9 @@ namespace cctbx { namespace af {
       grid() { std::fill(this->begin(), this->end(), value_type(0)); }
 
       grid(const IndexType& n) : IndexType(n) {}
+
+      template <typename OtherArrayType>
+      grid(af::array_adaptor<OtherArrayType> const& a_a) : IndexType(a_a) {}
 
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(grid)
 

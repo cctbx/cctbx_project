@@ -82,6 +82,12 @@ namespace cctbx { namespace af {
       {}
 
       // non-std
+      template <typename OtherArrayType>
+      shared(array_adaptor<OtherArrayType> const& a_a)
+        : base_class(a_a)
+      {}
+
+      // non-std
       shared<ElementType>
       deep_copy() const {
         return shared<ElementType>(this->begin(), this->end());

@@ -180,6 +180,15 @@ namespace cctbx { namespace af {
   struct flex_grid_wrappers
   {
     static
+    flex_grid<>
+    set_layout(
+      flex_grid<>& fg,
+      flex_grid_default_index_type const& layout)
+    {
+      return fg.set_layout(layout);
+    }
+
+    static
     flex_grid_default_index_type
     last_0(flex_grid<> const& fg)
     {
@@ -264,7 +273,7 @@ namespace cctbx { namespace af {
     {}
 
     flex_wrapper(PyObject*)
-      : f_t(make_flex_grid_1d(0))
+      : f_t(flex_grid<>(0))
     {}
 
     flex_wrapper(PyObject*, flex_grid<> const& fg)
@@ -276,15 +285,15 @@ namespace cctbx { namespace af {
     {}
 
     flex_wrapper(PyObject*, std::size_t n)
-      : f_t(make_flex_grid_1d(n))
+      : f_t(flex_grid<>(n))
     {}
 
     flex_wrapper(PyObject*, std::size_t n, ElementType const& x)
-      : f_t(make_flex_grid_1d(n), x)
+      : f_t(flex_grid<>(n), x)
     {}
 
     flex_wrapper(PyObject*, boost::python::tuple tuple)
-      : f_t(make_flex_grid_1d(tuple.size()))
+      : f_t(flex_grid<>(tuple.size()))
     {
       f_t::iterator a = this->begin();
       for(std::size_t i=0;i<tuple.size();i++)
@@ -435,7 +444,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = bpl_utils::as_base_array(a);
       b.assign(sz, x);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -443,7 +452,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = bpl_utils::as_base_array(a);
       b.push_back(x);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -453,7 +462,7 @@ namespace cctbx { namespace af {
       base_array_type b = bpl_utils::as_base_array(a);
       if (b.size() == 0) bpl_utils::raise_index_error();
       b.pop_back();
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -463,7 +472,7 @@ namespace cctbx { namespace af {
       base_array_type b = bpl_utils::as_base_array(a);
       if (i >= b.size()) bpl_utils::raise_index_error();
       b.insert(&b[i], x);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -473,7 +482,7 @@ namespace cctbx { namespace af {
       base_array_type b = bpl_utils::as_base_array(a);
       if (i >= b.size()) bpl_utils::raise_index_error();
       b.insert(&b[i], n, x);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -483,7 +492,7 @@ namespace cctbx { namespace af {
       base_array_type b = bpl_utils::as_base_array(a);
       if (i >= b.size()) bpl_utils::raise_index_error();
       b.erase(&b[i]);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -493,7 +502,7 @@ namespace cctbx { namespace af {
       if (i >= b.size()) bpl_utils::raise_index_error();
       if (j >= b.size()) bpl_utils::raise_index_error();
       b.erase(&b[i], &b[j]);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -502,7 +511,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = bpl_utils::as_base_array(a);
       b.resize(sz);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -511,7 +520,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = bpl_utils::as_base_array(a);
       b.resize(sz, x);
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -534,7 +543,7 @@ namespace cctbx { namespace af {
     {
       base_array_type b = bpl_utils::as_base_array(a);
       b.clear();
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -544,7 +553,7 @@ namespace cctbx { namespace af {
       base_array_type b = bpl_utils::as_base_array(a);
       bpl_utils::assert_0_based_1d(other.accessor());
       b.insert(b.end(), other.begin(), other.end());
-      a.resize(make_flex_grid_1d(b.size()));
+      a.resize(flex_grid<>(b.size()));
     }
 
     static
@@ -574,7 +583,7 @@ namespace cctbx { namespace af {
       base_array_type result;
       result.reserve(n);
       for(i=0;i<flags.size();i++) if (flags[i]) result.push_back(a[i]);
-      return f_t(result, make_flex_grid_1d(result.size()));
+      return f_t(result, flex_grid<>(result.size()));
     }
 
     static
@@ -1509,7 +1518,7 @@ CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
       flex_grid_default_index_type const&,
       flex_grid_default_index_type const&,
       bool>());
-    py_flex_grid.def(&flex_grid<>::set_layout, "set_layout");
+    py_flex_grid.def(flex_grid_wrappers::set_layout, "set_layout");
     py_flex_grid.def(&flex_grid<>::nd, "nd");
     py_flex_grid.def(&flex_grid<>::size1d, "size1d");
     py_flex_grid.def(&flex_grid<>::origin, "origin");

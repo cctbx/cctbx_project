@@ -28,10 +28,20 @@ namespace cctbx { namespace af {
 
       flex_grid() {}
 
-      explicit
+      flex_grid(index_value_type const& grid_0)
+      : origin_(1, index_value_type(0)),
+        grid_(1, grid_0)
+      {}
+
       flex_grid(index_type const& grid)
       : origin_(grid.size(), index_value_type(0)),
         grid_(grid)
+      {}
+
+      template <typename OtherArrayType>
+      flex_grid(array_adaptor<OtherArrayType> const& a_a)
+      : origin_((a_a.pointee)->size(), index_value_type(0)),
+        grid_(a_a)
       {}
 
       flex_grid(index_type const& origin,
@@ -41,6 +51,14 @@ namespace cctbx { namespace af {
       {
         cctbx_assert(origin_.size() == last.size());
         set_grid_(origin.size(), origin.begin(), last.begin(), open_range);
+      }
+
+      flex_grid
+      set_layout(index_value_type const& layout_0)
+      {
+        layout_.clear();
+        layout_.push_back(layout_0);
+        return *this;
       }
 
       flex_grid
@@ -159,40 +177,6 @@ namespace cctbx { namespace af {
         return true;
       }
   };
-
-  inline
-  flex_grid_default_index_type
-  make_flex_grid_index(flex_grid<>::index_value_type const& n)
-  {
-    flex_grid_default_index_type grid;
-    grid.push_back(n);
-    return grid;
-  }
-
-  template <typename ElementType, std::size_t N>
-  flex_grid_default_index_type
-  make_flex_grid_index(tiny_plain<ElementType, N> const& index)
-  {
-    flex_grid_default_index_type grid;
-    for(std::size_t i=0;i<index.size();i++) {
-      grid.push_back(index[i]);
-    }
-    return grid;
-  }
-
-  inline
-  flex_grid<>
-  make_flex_grid_1d(flex_grid<>::index_value_type const& n)
-  {
-    return flex_grid<>(make_flex_grid_index(n));
-  }
-
-  template <typename ElementType, std::size_t N>
-  flex_grid<>
-  make_flex_grid(tiny_plain<ElementType, N> const& index)
-  {
-    return flex_grid<>(make_flex_grid_index(index));
-  }
 
 }} // namespace cctbx::af
 

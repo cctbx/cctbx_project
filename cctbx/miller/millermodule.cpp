@@ -310,7 +310,7 @@ namespace {
   {
     af::shared<Index> out_ = bpl_utils::as_base_array(out);
     expand_to_p1(SgOps, friedel_flag, in, out_);
-    out.resize(af::make_flex_grid_1d(out_.size()));
+    out.resize(af::flex_grid<>(out_.size()));
   }
 
   void
@@ -333,9 +333,9 @@ namespace {
       h_in, ampl_in, phase_in,
       h_out_, ampl_out_, phase_out_,
       phase_degrees);
-    h_out.resize(af::make_flex_grid_1d(h_out_.size()));
-    ampl_out.resize(af::make_flex_grid_1d(ampl_out_.size()));
-    phase_out.resize(af::make_flex_grid_1d(phase_out_.size()));
+    h_out.resize(af::flex_grid<>(h_out_.size()));
+    ampl_out.resize(af::flex_grid<>(ampl_out_.size()));
+    phase_out.resize(af::flex_grid<>(phase_out_.size()));
   }
 
   void

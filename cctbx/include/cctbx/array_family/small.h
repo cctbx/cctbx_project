@@ -59,6 +59,11 @@ namespace cctbx { namespace af {
         : base_class(first, last)
       {}
 #endif
+
+      template <typename OtherArrayType>
+      small(array_adaptor<OtherArrayType> const& a_a)
+        : base_class(a_a)
+      {}
   };
 
 }} // namespace cctbx::af

@@ -473,51 +473,41 @@ class fft_map(crystal_symmetry):
   def __init__(self, coeff_set, grid_resolution_factor=1/3., max_prime=5):
     self.grid_resolution_factor = grid_resolution_factor
     self.max_prime = max_prime
-    crystal_symmetry.__init__(
-      self, coeff_set.UnitCell, coeff_set.SgInfo)
+    crystal_symmetry.__init__(self, coeff_set.UnitCell, coeff_set.SgInfo)
     self.friedel_flag = coeff_set.friedel_flag
     cf = coeff_set.F
     if (type(cf[0]) != type(0j)):
       if (cf.size() == 0):
-        cf = flex.complex_double() # XXX avoid large dummy array
+        cf = flex.complex_double()
       else:
-        ph = flex.double(cf.size(), 0)
+        ph = flex.double(cf.size(), 0) # XXX avoid large dummy array
         cf = flex.polar(cf, ph)
         del ph
     max_q = self.UnitCell.max_Q(coeff_set.H)
     mandatory_grid_factors = self.SgOps.refine_gridding()
-    self.n_real = sftbx.determine_grid(
+    n_real = sftbx.determine_grid(
       self.UnitCell, max_q,
       self.grid_resolution_factor, self.max_prime, mandatory_grid_factors)
     if (self.friedel_flag):
-      rfft = fftbx.real_to_complex_3d(self.n_real)
-      self.m_real = rfft.Mreal()
-      self.n_complex = rfft.Ncomplex()
+      rfft = fftbx.real_to_complex_3d(n_real)
+      n_complex = rfft.Ncomplex()
     else:
-      cfft = fftbx.complex_to_complex_3d(self.n_real)
-      self.m_real = cfft.N()
-      self.n_complex = self.m_real
+      cfft = fftbx.complex_to_complex_3d(n_real)
+      n_complex = cfft.N()
     conjugate = 0 # XXX correct?
     cmap = sftbx.structure_factor_map(
       self.SgOps, self.friedel_flag,
       coeff_set.H, cf,
-      self.n_complex, conjugate)
+      n_complex, conjugate)
     if (self.friedel_flag):
-      rfft.backward(cmap)
-      self.rmap = flex.reinterpret_complex_as_real(cmap)
+      self.rmap = rfft.backward(cmap)
     else:
-      cfft.backward(cmap)
-      self.cmap = cmap
-
-  def inplace_unpad(self):
-    if (self.friedel_flag):
-      flex_utils.inplace_unpad(self.rmap, self.n_real, self.m_real)
-      self.m_real = self.n_real
-      del self.n_complex
+      self.cmap = cfft.backward(cmap)
 
   def get_real_map(self):
     if (self.friedel_flag):
-      self.inplace_unpad()
+      if (len(self.rmap.layout())):
+        flex_utils.inplace_unpad(self.rmap)
       return self.rmap
     else:
       return flex.real(self.cmap)

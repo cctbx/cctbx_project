@@ -445,6 +445,23 @@ namespace {
     }
   };
 
+  void exercise_adapt()
+  {
+    af::tiny<int, 3> a0(1,2,3);
+    af::tiny_plain<int, 3> a1(af::adapt(a0));
+    verify(__LINE__, a0, a1);
+    af::tiny<int, 3> a2(af::adapt(a0));
+    verify(__LINE__, a0, a2);
+    af::small_plain<int, 5> a3(af::adapt(a0));
+    verify(__LINE__, a0, a3);
+    af::small<int, 5> a4(af::adapt(a0));
+    verify(__LINE__, a0, a4);
+    af::shared_plain<int> a5(af::adapt(a0));
+    verify(__LINE__, a0, a5);
+    af::shared<int> a6(af::adapt(a0));
+    verify(__LINE__, a0, a6);
+  }
+
 }
 
 int main(int argc, char* argv[])
@@ -473,6 +490,8 @@ int main(int argc, char* argv[])
                     af::versa<int, af::grid<2> > >::run();
 
     exercise_apply_all<int, double>::run();
+
+    exercise_adapt();
 
     if (argc == 1) break;
   }

@@ -22,26 +22,6 @@
 
 #include <cctbx/array_family/shared_bpl_.h>
 
-// XXX move to a new header file
-namespace cctbx { namespace af {
-
-  template <std::size_t N_tiny>
-  struct as_tiny
-  {
-    template <typename ElementType, std::size_t N_small>
-    static
-    tiny<ElementType, N_tiny>
-    convert(small_plain<ElementType, N_small> const& a)
-    {
-      tiny<ElementType, N_tiny> result;
-      cctbx_assert(a.size() == result.size());
-      for(std::size_t i=0;i<result.size();i++) result[i] = a[i];
-      return result;
-    }
-  };
-
-}}
-
 namespace {
   typedef
     cctbx::sftbx::XrayScatterer<double, cctbx::eltbx::CAASF_WK1995>
@@ -84,8 +64,7 @@ namespace {
     cctbx_assert(map.accessor().is_0_based());
     cctbx_assert(!map.accessor().is_padded());
     return af::const_ref<ElementType, af::grid<3> >(
-      map.begin(),
-      af::grid<3>(af::as_tiny<3>::convert(map.accessor().grid())));
+      map.begin(), af::adapt(map.accessor().grid()));
   }
 
   // XXX move to a new header file
@@ -94,7 +73,7 @@ namespace {
   flex_from_versa_grid_3(af::versa<ElementType, af::grid<3> > map)
   {
     return af::versa<ElementType, af::flex_grid<> >(
-      map, af::make_flex_grid(map.accessor()));
+      map, af::adapt(map.accessor()));
   }
 
   void
@@ -329,9 +308,7 @@ namespace {
         xb.push_back(sites[i].Uiso());
       }
     }
-    af::flex_grid_default_index_type grid; // XXX use af::make_flex_grid_1d()
-    grid.push_back(xb.size());
-    x.resize(af::flex_grid<>(grid));
+    x.resize(af::flex_grid<>(xb.size()));
     return x.size();
   }
 

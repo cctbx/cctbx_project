@@ -89,6 +89,15 @@ namespace cctbx { namespace af {
         m_size = other.m_size;
       }
 
+      template <typename OtherArrayType>
+      small_plain(array_adaptor<OtherArrayType> const& a_a)
+        : m_size(0)
+      {
+        OtherArrayType const& a = *(a_a.pointee);
+        if (a.size() > N) throw_range_error();
+        for(std::size_t i=0;i<a.size();i++) push_back(a[i]);
+      }
+
       ~small_plain() { clear(); }
 
       small_plain<ElementType, N>&

@@ -103,8 +103,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), fft.N());
     fft.forward(a.begin());
-    return flex_complex_array(a, af::make_flex_grid_1d(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a, af::flex_grid<>(fft.N())
+      .set_layout(fft.N()));
   }
 
   flex_complex_array
@@ -113,8 +113,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), fft.N());
     fft.backward(a.begin());
-    return flex_complex_array(a, af::make_flex_grid_1d(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a, af::flex_grid<>((fft.N()))
+      .set_layout(fft.N()));
   }
 
   flex_complex_array
@@ -123,8 +123,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), 2 * fft.N());
     fft.forward(a.begin());
-    return flex_complex_array(a.handle(), af::make_flex_grid_1d(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a.handle(), af::flex_grid<>((fft.N()))
+      .set_layout(fft.N()));
   }
 
   flex_complex_array
@@ -133,8 +133,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), 2 * fft.N());
     fft.backward(a.begin());
-    return flex_complex_array(a.handle(), af::make_flex_grid_1d(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a.handle(), af::flex_grid<>((fft.N()))
+      .set_layout(fft.N()));
   }
 
   flex_complex_array
@@ -143,8 +143,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), fft.Ncomplex());
     fft.forward(a.begin());
-    return flex_complex_array(a, af::make_flex_grid_1d(fft.Ncomplex())
-      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
+    return flex_complex_array(a, af::flex_grid<>((fft.Ncomplex()))
+      .set_layout(fft.Ncomplex()));
   }
 
   flex_real_array
@@ -153,8 +153,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), fft.Ncomplex());
     fft.backward(a.begin());
-    return flex_real_array(a.handle(), af::make_flex_grid_1d(fft.Mreal())
-      .set_layout(af::make_flex_grid_index(fft.Nreal())));
+    return flex_real_array(a.handle(), af::flex_grid<>((fft.Mreal()))
+      .set_layout(fft.Nreal()));
   }
 
   flex_complex_array
@@ -163,8 +163,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), fft.Mreal());
     fft.forward(a.begin());
-    return flex_complex_array(a.handle(), af::make_flex_grid_1d(fft.Ncomplex())
-      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
+    return flex_complex_array(a.handle(), af::flex_grid<>((fft.Ncomplex()))
+      .set_layout(fft.Ncomplex()));
   }
 
   flex_real_array
@@ -173,8 +173,8 @@ namespace {
   {
     assert_0_based_1d_size(a.accessor(), fft.Mreal());
     fft.backward(a.begin());
-    return flex_real_array(a, af::make_flex_grid_1d(fft.Mreal())
-      .set_layout(af::make_flex_grid_index(fft.Nreal())));
+    return flex_real_array(a, af::flex_grid<>((fft.Mreal()))
+      .set_layout(fft.Nreal()));
   }
 
   flex_complex_array
@@ -184,8 +184,8 @@ namespace {
     assert_0_based_3d_size(a.accessor(), fft.N());
     ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
     fft.forward(map);
-    return flex_complex_array(a, af::make_flex_grid(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a, af::flex_grid<>(af::adapt((fft.N())))
+      .set_layout(af::adapt(fft.N())));
   }
 
   flex_complex_array
@@ -195,8 +195,8 @@ namespace {
     assert_0_based_3d_size(a.accessor(), fft.N());
     ref_3d_complex_array map(a.begin(), af::grid<3>(fft.N()));
     fft.backward(map);
-    return flex_complex_array(a, af::make_flex_grid(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a, af::flex_grid<>(af::adapt((fft.N())))
+      .set_layout(af::adapt(fft.N())));
   }
 
   flex_complex_array
@@ -207,8 +207,8 @@ namespace {
     ref_3d_real_array map(
       a.begin(), af::grid<3>(fftbx::Nreal_from_Ncomplex(fft.N())));
     fft.forward(map);
-    return flex_complex_array(a.handle(), af::make_flex_grid(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt((fft.N())))
+      .set_layout(af::adapt(fft.N())));
   }
 
   flex_complex_array
@@ -219,8 +219,8 @@ namespace {
     ref_3d_real_array map(
       a.begin(), af::grid<3>(fftbx::Nreal_from_Ncomplex(fft.N())));
     fft.backward(map);
-    return flex_complex_array(a.handle(), af::make_flex_grid(fft.N())
-      .set_layout(af::make_flex_grid_index(fft.N())));
+    return flex_complex_array(a.handle(), af::flex_grid<>(af::adapt((fft.N())))
+      .set_layout(af::adapt(fft.N())));
   }
 
   flex_complex_array
@@ -230,8 +230,8 @@ namespace {
     assert_0_based_3d_size(a.accessor(), fft.Ncomplex());
     ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
     fft.forward(map);
-    return flex_complex_array(a, af::make_flex_grid(fft.Ncomplex())
-      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
+    return flex_complex_array(a, af::flex_grid<>(af::adapt((fft.Ncomplex())))
+      .set_layout(af::adapt(fft.Ncomplex())));
   }
 
   flex_real_array
@@ -241,8 +241,8 @@ namespace {
     assert_0_based_3d_size(a.accessor(), fft.Ncomplex());
     ref_3d_complex_array map(a.begin(), af::grid<3>(fft.Ncomplex()));
     fft.backward(map);
-    return flex_real_array(a.handle(), af::make_flex_grid(fft.Mreal())
-      .set_layout(af::make_flex_grid_index(fft.Nreal())));
+    return flex_real_array(a.handle(), af::flex_grid<>(af::adapt((fft.Mreal())))
+      .set_layout(af::adapt(fft.Nreal())));
   }
 
   flex_complex_array
@@ -252,8 +252,9 @@ namespace {
     assert_0_based_3d_size(a.accessor(), fft.Mreal());
     ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
     fft.forward(map);
-    return flex_complex_array(a.handle(), af::make_flex_grid(fft.Ncomplex())
-      .set_layout(af::make_flex_grid_index(fft.Ncomplex())));
+    return flex_complex_array(a.handle(),
+      af::flex_grid<>(af::adapt((fft.Ncomplex())))
+      .set_layout(af::adapt(fft.Ncomplex())));
   }
 
   flex_real_array
@@ -263,8 +264,8 @@ namespace {
     assert_0_based_3d_size(a.accessor(), fft.Mreal());
     ref_3d_real_array map(a.begin(), af::grid<3>(fft.Mreal()));
     fft.backward(map);
-    return flex_real_array(a, af::make_flex_grid(fft.Mreal())
-      .set_layout(af::make_flex_grid_index(fft.Nreal())));
+    return flex_real_array(a, af::flex_grid<>(af::adapt((fft.Mreal())))
+      .set_layout(af::adapt(fft.Nreal())));
   }
 
 #   include <cctbx/basic/from_bpl_import.h>

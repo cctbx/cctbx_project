@@ -29,16 +29,17 @@ def exercise_regression_and_statistics():
 
 def exercise_map_utils():
   a = flex.double((1,2,0,3,4,0))
-  flex_utils.inplace_unpad(a, (1,2,2), (1,2,3))
+  a.resize(flex.grid((1,2,3)).set_layout((1,2,2)))
+  flex_utils.inplace_unpad(a)
   assert tuple(a) == (1,2,3,4)
-  flex_utils.inplace_unpad(a, (1,2,2), (1,2,2))
+  flex_utils.inplace_unpad(a)
   assert tuple(a) == (1,2,3,4)
 
 def exercise_export():
-  a = flex.double(60)
-  c = flex_utils.as_CObjectZYXfloat(a, (3,4,5), (0,0,0), (3,4,5), 0)
-  a = flex.float(60)
-  c = flex_utils.as_CObjectZYXfloat(a, (3,4,5), (0,0,0), (3,4,5), 1)
+  a = flex.double(flex.grid((3,4,5)))
+  c = flex_utils.as_CObjectZYXfloat(a, (0,0,0), (3,4,5), 0)
+  a = flex.float(flex.grid((3,4,5)))
+  c = flex_utils.as_CObjectZYXfloat(a, (0,0,0), (3,4,5), 1)
 
 def run(iterations):
   i = 0
