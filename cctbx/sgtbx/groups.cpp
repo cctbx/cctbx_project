@@ -222,14 +222,16 @@ namespace sgtbx {
     return true;
   }
 
-  SgOps SgOps::toZPointGroup() const
+  SgOps SgOps::BuildDerivedGroup(bool DiscardZ, bool AddInv) const
   {
     SgOps result;
     int i;
-    for(i=0;i<nLTr();i++) {
-      result.expandLTr(m_LTr[i]);
+    if (!DiscardZ) {
+      for(i=0;i<nLTr();i++) {
+        result.expandLTr(m_LTr[i]);
+      }
     }
-    if (isCentric()) {
+    if (isCentric() || AddInv) {
       result.expandInv(TrVec(TBF()));
     }
     for(i=0;i<nSMx();i++) {
