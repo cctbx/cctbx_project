@@ -68,6 +68,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
     #  print "EQUAL", qi[sp[0]], qi[sp[1]], qi[sp[3]], sp[6], fp[6]
     if (sp[6] != fp[6]):
       print "LOOK weights", q_large.space_group_info()
+    assert sp == fp
 
 def run_call_back(flags, space_group_info):
   e_min = 1.5
