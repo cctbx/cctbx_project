@@ -265,11 +265,29 @@ namespace cctbx { namespace uctbx {
     return result;
   }
   af::shared<double>
-  UnitCell::s(const af::shared<Miller::Index>& MIx) const
+  UnitCell::stol2(const af::shared<Miller::Index>& MIx) const
   {
     af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
     for(std::size_t i=0;i<MIx.size();i++) {
-      result[i] = s(MIx[i]);
+      result[i] = stol2(MIx[i]);
+    }
+    return result;
+  }
+  af::shared<double>
+  UnitCell::two_stol(const af::shared<Miller::Index>& MIx) const
+  {
+    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<MIx.size();i++) {
+      result[i] = two_stol(MIx[i]);
+    }
+    return result;
+  }
+  af::shared<double>
+  UnitCell::stol(const af::shared<Miller::Index>& MIx) const
+  {
+    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<MIx.size();i++) {
+      result[i] = stol(MIx[i]);
     }
     return result;
   }
@@ -279,6 +297,16 @@ namespace cctbx { namespace uctbx {
     af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
     for(std::size_t i=0;i<MIx.size();i++) {
       result[i] = d(MIx[i]);
+    }
+    return result;
+  }
+  af::shared<double>
+  UnitCell::two_theta_deg(
+    const af::shared<Miller::Index>& MIx, double lambda) const
+  {
+    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<MIx.size();i++) {
+      result[i] = two_theta_deg(MIx[i], lambda);
     }
     return result;
   }

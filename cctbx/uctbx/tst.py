@@ -41,10 +41,10 @@ print u.getVolume()
 u = uctbx.UnitCell((30,30,50, 90,90,120))
 print u
 print u.Q((0,0,0))
-print u.s((0,0,0))
+print u.two_stol((0,0,0))
 print u.d((0,0,0))
 print u.Q((3,4,5))
-print u.s((3,4,5))**2
+print u.two_stol((3,4,5))**2
 print (1./u.d((3,4,5)))**2
 print u.getParameters()
 print u.getParameters(0)
@@ -84,12 +84,12 @@ print u.MaxMillerIndices(1)
 print u.Q((0, 0, 0))
 Q = u.Q((1, 2, 3))
 assert Q == u.Q((1, 2, 3))
-s = u.s((1, 2, 3))
-assert s == u.s((1, 2, 3))
+two_stol = u.two_stol((1, 2, 3))
+assert two_stol == u.two_stol((1, 2, 3))
 d = u.d((1, 2, 3))
 assert d == u.d((1, 2, 3))
-print 'Q=', Q, 's=', math.sqrt(Q), 'd=', 1./math.sqrt(Q)
-print 'Q=', Q, 's=', s           , 'd=', d
+print 'Q=', Q, 'two_stol=', math.sqrt(Q), 'd=', 1./math.sqrt(Q)
+print 'Q=', Q, 'two_stol=', two_stol    , 'd=', d
 
 print 'G'
 print u.getMetricalMatrix()

@@ -207,23 +207,42 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     (UnitCell (UnitCell::*)(const af::double9&, double) const)
     &UnitCell::ChangeBasis, "ChangeBasis");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&) const)
-    &UnitCell::Q, "Q");
-  UnitCell_class.def(
     (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
     &UnitCell::Q, "Q");
   UnitCell_class.def(
     (double (UnitCell::*)(const Miller::Index&) const)
-    &UnitCell::s, "s");
+    &UnitCell::Q, "Q");
   UnitCell_class.def(
     (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
-    &UnitCell::s, "s");
+    &UnitCell::stol2, "stol2");
+  UnitCell_class.def(
+    (double (UnitCell::*)(const Miller::Index&) const)
+    &UnitCell::stol2, "stol2");
+  UnitCell_class.def(
+    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    &UnitCell::two_stol, "two_stol");
+  UnitCell_class.def(
+    (double (UnitCell::*)(const Miller::Index&) const)
+    &UnitCell::two_stol, "two_stol");
+  UnitCell_class.def(
+    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    &UnitCell::stol, "stol");
+  UnitCell_class.def(
+    (double (UnitCell::*)(const Miller::Index&) const)
+    &UnitCell::stol, "stol");
+  UnitCell_class.def(
+    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
+    &UnitCell::d, "d");
   UnitCell_class.def(
     (double (UnitCell::*)(const Miller::Index&) const)
     &UnitCell::d, "d");
   UnitCell_class.def(
-    (af::shared<double> (UnitCell::*)(const af::shared<Miller::Index>&) const)
-    &UnitCell::d, "d");
+    (af::shared<double> (UnitCell::*)(
+      const af::shared<Miller::Index>&, double) const)
+    &UnitCell::two_theta_deg, "two_theta_deg");
+  UnitCell_class.def(
+    (double (UnitCell::*)(const Miller::Index&, double) const)
+    &UnitCell::two_theta_deg, "two_theta_deg");
   UnitCell_class.def(UnitCell_fractionalize, "fractionalize");
   UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
   UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
