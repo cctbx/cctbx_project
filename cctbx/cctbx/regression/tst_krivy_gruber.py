@@ -103,7 +103,7 @@ time_uctbx_fast_minimum = time_log("uctbx.fast_minimum_reduction")
 fast_minimum_reduction_max_n_iterations = 0
 
 def reduce(inp):
-  assert not inp.is_degenerated()
+  assert not inp.is_degenerate()
   time_krivy_gruber_1976.start()
   red = krivy_gruber_1976.reduction(
     inp, relative_epsilon=relative_epsilon)

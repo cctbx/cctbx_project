@@ -57,11 +57,11 @@ def exercise_basic():
     assert u.is_similar_to(v, 1.e-3, 1.e-3)
     assert approx_equal(u.volume(), 1/u.reciprocal().volume())
   u = uctbx.unit_cell(p)
-  assert not u.is_degenerated()
-  assert not u.is_degenerated(1.e-10)
-  assert not u.is_degenerated(1.e-10, 1.e-5)
-  assert u.is_degenerated(10)
-  assert u.is_degenerated(1.e-10, 20)
+  assert not u.is_degenerate()
+  assert not u.is_degenerate(1.e-10)
+  assert not u.is_degenerate(1.e-10, 1.e-5)
+  assert u.is_degenerate(10)
+  assert u.is_degenerate(1.e-10, 20)
   m = u.metrical_matrix()
   n = (2*2, 3*3, 4*4,
        2*3*cos(110*pi/180), 2*4*cos(100*pi/180), 3*4*cos(80*pi/180))
@@ -227,7 +227,7 @@ def exercise_fast_minimum_reduction():
       if ("--Verbose" in sys.argv[1:]):
         print "Expected:", e
 
-class exercise_is_degenerated:
+class exercise_is_degenerate:
 
   def __init__(self, n_iterations=None):
     if (n_iterations is not None):
@@ -255,19 +255,19 @@ class exercise_is_degenerated:
             except:
               pass
             else:
-              is_degenerated = u.is_degenerated(1.e-10, 1.e-5)
+              is_degenerate = u.is_degenerate(1.e-10, 1.e-5)
               try:
                 uctbx.fast_minimum_reduction(u)
-                self.n_stable[int(is_degenerated)] += 1
+                self.n_stable[int(is_degenerate)] += 1
               except RuntimeError, e:
-                assert is_degenerated
+                assert is_degenerate
                 self.n_unstable += 1
               i_iteration += 1
               if (i_iteration == self.n_iterations):
                 return
 
   def report(self):
-    print "exercise_is_degenerated:"
+    print "exercise_is_degenerate:"
     s = self.n_stable[0] + self.n_stable[1]
     n = self.n_iterations*0.01
     print "  n_stable:", s, self.n_stable, "= %.3g%%" % (s/n)
@@ -282,7 +282,7 @@ def run():
   exercise_pickle()
   exercise_exceptions()
   exercise_fast_minimum_reduction()
-  e = exercise_is_degenerated()
+  e = exercise_is_degenerate()
   if (e.n_iterations > 100):
     e.report()
   print "OK"
