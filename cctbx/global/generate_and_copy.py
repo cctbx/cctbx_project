@@ -13,25 +13,27 @@ generate_af_algebras.run()
 generate_af_apply.run()
 generate_flagged_value_algebra.run()
 generate_af_tiny_bpl.run()
+array_family_include = "../include/cctbx/array_family/"
 for file, dir in (
-  ("operator_traits_builtin.h", "../include/cctbx/array_family/"),
-  ("std_imports.h", "../include/cctbx/array_family/"),
-  ("operator_functors.h", "../include/cctbx/array_family/"),
-  ("flagged_value_algebra.h", "../include/cctbx/array_family/"),
-  ("ref_algebra.h", "../include/cctbx/array_family/"),
-  ("tiny_algebra.h", "../include/cctbx/array_family/"),
-  ("small_algebra.h", "../include/cctbx/array_family/"),
-  ("shared_algebra.h", "../include/cctbx/array_family/"),
-  ("versa_algebra.h", "../include/cctbx/array_family/"),
-  ("tiny_plain_apply.h", "../include/cctbx/array_family/"),
-  ("small_plain_apply.h", "../include/cctbx/array_family/"),
-  ("shared_plain_apply.h", "../include/cctbx/array_family/"),
-  ("versa_plain_apply.h", "../include/cctbx/array_family/"),
-  ("tiny_apply.h", "../include/cctbx/array_family/"),
-  ("small_apply.h", "../include/cctbx/array_family/"),
-  ("shared_apply.h", "../include/cctbx/array_family/"),
-  ("versa_apply.h", "../include/cctbx/array_family/"),
-  ("tiny_bpl.h", "../include/cctbx/array_family/"),
+  ("operator_traits_builtin.h", array_family_include),
+  ("std_imports.h", array_family_include),
+  ("operator_functors.h", array_family_include),
+  ("flagged_value_algebra.h", array_family_include),
+  ("ref_algebra.h", array_family_include),
+  ("tiny_algebra.h", array_family_include),
+  ("small_algebra.h", array_family_include),
+  ("shared_algebra.h", array_family_include),
+  ("versa_algebra.h", array_family_include),
+  ("tiny_plain_apply.h", array_family_include),
+  ("small_plain_apply.h", array_family_include),
+  ("shared_plain_apply.h", array_family_include),
+  ("versa_plain_apply.h", array_family_include),
+  ("tiny_apply.h", array_family_include),
+  ("small_apply.h", array_family_include),
+  ("shared_apply.h", array_family_include),
+  ("versa_apply.h", array_family_include),
+  ("ref_apply.h", array_family_include),
+  ("tiny_bpl.h", array_family_include),
 ):
   print "Copying " + dir + file
   shutil.copy(file, dir + file)

@@ -5,6 +5,7 @@ cctbx/include/cctbx/array_family/flagged_value_algebra.h
 cctbx/include/cctbx/array_family/operator_functors.h
 cctbx/include/cctbx/array_family/operator_traits_builtin.h
 cctbx/include/cctbx/array_family/ref_algebra.h
+cctbx/include/cctbx/array_family/ref_apply.h
 cctbx/include/cctbx/array_family/shared_algebra.h
 cctbx/include/cctbx/array_family/shared_apply.h
 cctbx/include/cctbx/array_family/shared_plain_apply.h

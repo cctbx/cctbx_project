@@ -120,7 +120,7 @@ namespace cctbx { namespace af {
         : m_begin(begin), m_accessor(n0, n1, n2)
       {}
 
-      const accessor_type& accessor() { return m_accessor; }
+      const accessor_type& accessor() const { return m_accessor; }
       size_type size() const { return m_accessor.size1d(); }
 
       ElementType* begin() const { return m_begin; }

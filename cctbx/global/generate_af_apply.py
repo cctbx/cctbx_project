@@ -22,10 +22,12 @@ def one_type(array_type_name):
   f = open("%s_apply.h" % (array_type_name,), "w")
   sys.stdout = f
   write_copyright()
+  include_array_type_name = array_type_name
+  if (array_type_name == "ref"):
+    include_array_type_name = "versa"
+  generic_include = "functors"
   if (base_array_type_name(array_type_name) == "tiny"):
     generic_include = "operators"
-  else:
-    generic_include = "functors"
   print """
 #ifndef CCTBX_ARRAY_FAMILY_%s_APPLY_H
 #define CCTBX_ARRAY_FAMILY_%s_APPLY_H
@@ -37,7 +39,8 @@ def one_type(array_type_name):
 #include <cctbx/basic/meta.h>
 
 namespace cctbx { namespace af {
-""" % ((array_type_name.upper(),) * 2 + (array_type_name, generic_include))
+""" % ((array_type_name.upper(),) * 2 + (
+    include_array_type_name, generic_include))
 
   generate_unary_apply(array_type_name)
 
@@ -54,7 +57,8 @@ def run():
     "tiny_plain", "tiny",
     "small_plain", "small",
     "shared_plain", "shared",
-    "versa_plain", "versa"):
+    "versa_plain", "versa",
+    "ref"):
     one_type(array_type_name)
 
 if (__name__ == "__main__"):

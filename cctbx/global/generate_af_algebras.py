@@ -38,7 +38,9 @@ reduction_functions_2arg = (
   "weighted_mean",
 )
 
-class empty: pass
+class empty:
+  def join(self, other):
+    self.__dict__.update(other.__dict__)
 
 def format_header(indent, str, max_line_length = 79):
   maxlen = max_line_length - len(indent)
@@ -73,7 +75,7 @@ def get_template_args(array_type_name):
   result = [["typename", "ElementType"]]
   if (base_array_type_name(array_type_name) in ("tiny", "small")):
     result.append(["std::size_t", "N"])
-  elif (base_array_type_name(array_type_name) in ("ref", "versa")):
+  elif (base_array_type_name(array_type_name) in ("ref","const_ref", "versa")):
     result.append(["typename", "AccessorType"])
   return result
 
@@ -141,33 +143,39 @@ def wrap_element_type(array_type_name, element_type, addl):
   if (r.endswith(">>")): return r[:-1] + " >"
   return r
 
-def special_decl_params(array_type_name, special_def):
+def adjust_array_type_names(array_type_name):
   r = empty()
+  r.return_array_type_name = array_type_name
+  r.param_array_type_name = array_type_name
+  if (array_type_name == "ref"):
+    r.return_array_type_name = "versa"
+    r.param_array_type_name = "const_ref"
+  return r
+
+def special_decl_params(array_type_name, special_def):
+  r = adjust_array_type_names(array_type_name)
   r.return_elment_type = special_def[0]
   r.function_name = special_def[1]
   r.arg_element_types = special_def[2:]
-  r.nta = get_numbered_template_args(array_type_name, 1, 0)
+  r.nta = get_numbered_template_args(r.param_array_type_name, 1, 0)
   addl = []
   if (len(r.nta[0]) == 2): addl = [r.nta[0][1][1]]
   r.header = get_template_header(r.nta)
   r.return_array_type = wrap_element_type(
-    array_type_name, r.return_elment_type, addl)
+    r.return_array_type_name, r.return_elment_type, addl)
   r.arg_array_types = []
   for aet in r.arg_element_types:
     r.arg_array_types.append(wrap_element_type(
-      array_type_name, aet, addl))
-  r.false_or_true_type_selector = (
-    "has_trivial_destructor<%s >::value()" % (special_def[0],))
-  if (base_array_type_name(array_type_name) == "tiny"):
-    r.false_or_true_type_selector = "true_type()"
+      r.param_array_type_name, aet, addl))
   return r
 
 def operator_decl_params(array_type_name, op_type, op_class, type_flags,
   equal_element_type = 0
 ):
+  r = adjust_array_type_names(array_type_name)
   if (type_flags != (1,1)):
-    r = get_template_header_and_parameters(array_type_name, 1,
-      equal_element_type)
+    r.join(get_template_header_and_parameters(r.param_array_type_name, 1,
+      equal_element_type))
     r.params.insert(type_flags[0], "ElementType")
     r.return_element_type = ["ElementType"]
     if (op_type == "unary"):
@@ -181,8 +189,8 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
     elif (op_class == "bool_result"):
       r.return_element_type = ["bool"]
   else:
-    r = get_template_header_and_parameters(
-      array_type_name, 2, equal_element_type)
+    r.join(get_template_header_and_parameters(
+      r.param_array_type_name, 2, equal_element_type))
     r.return_element_type = [r.nta[0][0][1]]
     if (op_class == "bool_result"):
       r.return_element_type = ["bool"]
@@ -191,10 +199,11 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
         "typename binary_operator_traits<",
         "  ElementType1, ElementType2>::" + op_class]
   if (len(r.return_element_type) == 1):
-    r.return_array_type = [array_type_name + "<" + r.return_element_type[0]]
+    r.return_array_type = [
+      r.return_array_type_name + "<" + r.return_element_type[0]]
   else:
     r.return_array_type = [
-      array_type_name + "<",
+      r.return_array_type_name + "<",
       "  " + r.return_element_type[0],
       "    " + r.return_element_type[1]]
   if (len(r.nta[0]) == 2):
@@ -205,10 +214,6 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
   r.return_array_type[-1] += ">"
   r.typedef_return_array_type = (["typedef " +  r.return_array_type[0]]
     + r.return_array_type[1:])
-  r.false_or_true_type_selector = (
-    "has_trivial_destructor<return_element_type>::value()")
-  if (base_array_type_name(array_type_name) == "tiny"):
-    r.false_or_true_type_selector = "true_type()"
   r.element_types = ["ElementType", "ElementType"]
   if (type_flags == (1,1)):
     r.element_types = ["ElementType1", "ElementType2"]
@@ -273,19 +278,30 @@ def generate_unary_ops(array_type_name):
   }
 """ % (result_constructor_args,
        unary_functors[op_symbol])
+    if (array_type_name == "ref"):
+      print """%s
+  inline
+%s
+  operator%s(const %s& a) {
+    return operator%s(a.const_ref());
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       op_symbol, d.params[0].replace("const_ref", "ref"),
+       op_symbol)
 
 def generate_unary_apply(array_type_name):
   result_constructor_args = get_result_constructor_args(array_type_name)
+  d = operator_decl_params(array_type_name, "unary", "n/a", (1,0))
   nta = get_numbered_template_args(array_type_name, 1, 0)
   addl = []
   if (len(nta[0]) == 2): addl = [nta[0][1][1]]
   return_array_type = wrap_element_type(
-    array_type_name, "ReturnElementType", addl)
+    d.return_array_type_name, "ReturnElementType", addl)
   nta.insert(0, [["typename", "UnaryOperation"]])
   header2 = get_template_header(nta)
   nta.append([["typename", "ReturnElementType"]])
   header1 = get_template_header(nta)
-  d = operator_decl_params(array_type_name, "unary", "n/a", (1,0))
   print """%s
   inline
   %s
@@ -320,6 +336,29 @@ def generate_unary_apply(array_type_name):
        return_array_type.replace(
          "ReturnElementType", "typename UnaryOperation::result_type"),
        d.params[0])
+  if (array_type_name == "ref"):
+    print """%s
+  inline
+  %s
+  apply(UnaryOperation op,
+        const %s& a,
+        type_holder<ReturnElementType> result_type_holder) {
+    return apply(op, a.const_ref(), result_type_holder);
+  }""" % (format_header("  ", header1),
+          return_array_type,
+          d.params[0].replace("const_ref", "ref"))
+    print """
+%s
+  inline
+  %s
+  apply(UnaryOperation op,
+        const %s& a) {
+    return apply(op, a.const_ref());
+  }
+""" % (format_header("  ", header2),
+       return_array_type.replace(
+         "ReturnElementType", "typename UnaryOperation::result_type"),
+       d.params[0].replace("const_ref", "ref"))
 
 def elementwise_binary_op(
       array_type_name, op_class, op_symbol, type_flags, function_name):
@@ -363,10 +402,28 @@ def elementwise_binary_op(
        a.type_flags_code,
        binary_functors[op_symbol], d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1])
+  if (array_type_name == "ref"):
+    print """%s
+  inline
+%s
+  %s(
+    const %s& a1,
+    const %s& a2) {
+      return %s(a1%s, a2%s);
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name,
+       d.params[0].replace("const_ref", "ref"),
+       d.params[1].replace("const_ref", "ref"),
+       function_name,
+       a.begin[0].replace("begin", "const_ref"),
+       a.begin[1].replace("begin", "const_ref"))
 
 def elementwise_inplace_binary_op(
       array_type_name, op_class, op_symbol, type_flags):
   d = operator_decl_params(array_type_name, "binary", "n/a", type_flags)
+  d.params[0] = d.params[0].replace("const_ref", "ref")
   a = binary_operator_algo_params(array_type_name, type_flags)
   print """%s
   inline
@@ -388,6 +445,21 @@ def elementwise_inplace_binary_op(
        d.return_element_type[0],
        d.element_types[1],
        a.begin[1], a.loop_n);
+  if (array_type_name == "ref" and type_flags == (1,1)):
+    print """%s
+  inline
+  %s&
+  operator%s(
+    %s& a1,
+    const %s& a2) {
+    return operator%s(a1, a2.const_ref());
+  }
+""" % (format_header("  ", d.header),
+       d.params[0],
+       op_symbol,
+       d.params[0],
+       d.params[1].replace("const_ref", "ref"),
+       op_symbol)
 
 def generate_elementwise_binary_op(
       array_type_name, op_class, op_symbol, function_name = None):
@@ -435,6 +507,23 @@ def reducing_boolean_op(array_type_name, op_symbol, type_flags):
        format_list("        ", d.return_element_type),
        d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1], a.loop_n)
+  if (array_type_name == "ref"):
+    print """%s
+  inline
+%s
+  operator%s(
+    const %s& a1,
+    const %s& a2) {
+    return operator%s(a1%s, a2%s);
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_element_type),
+       op_symbol,
+       d.params[0].replace("const_ref", "ref"),
+       d.params[1].replace("const_ref", "ref"),
+       op_symbol,
+       a.begin[0].replace("begin", "const_ref"),
+       a.begin[1].replace("begin", "const_ref"))
 
 def generate_reducing_boolean_op(array_type_name, op_symbol):
   for type_flags in ((1,1), (1,0), (0,1)):
@@ -500,6 +589,17 @@ def generate_1arg_element_wise(array_type_name, function_names):
         functor_%s<return_element_type, ElementType>(), a.begin()));
   }
 """ % (result_constructor_args, function_name)
+    if (array_type_name == "ref"):
+      print """%s
+  inline
+%s
+  %s(const %s& a) {
+    return %s(a.const_ref());
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name, d.params[0].replace("const_ref", "ref"),
+       function_name)
 
 def generate_2arg_element_wise(
   array_type_name, function_names,
@@ -546,6 +646,23 @@ def generate_2arg_element_wise(
        a.type_flags_code,
        function_name, d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1])
+      if (array_type_name == "ref"):
+        print """%s
+  inline
+%s
+  %s(
+    const %s& a1,
+    const %s& a2) {
+      return %s(a1%s, a2%s);
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name,
+       d.params[0].replace("const_ref", "ref"),
+       d.params[1].replace("const_ref", "ref"),
+       function_name,
+       a.begin[0].replace("begin", "const_ref"),
+       a.begin[1].replace("begin", "const_ref"))
 
 def generate_2arg_addl_element_wise(
   array_type_name, function_names,
@@ -596,6 +713,27 @@ def generate_2arg_addl_element_wise(
        a.type_flags_code,
        function_name, "ElementType", "ElementType", "ElementType",
        a.begin[0], a.begin[1], addl_args[1])
+      if (array_type_name == "ref"):
+        print """%s
+  inline
+%s
+  %s(
+    const %s& a1,
+    const %s& a2,
+    %s) {
+      return %s(
+        a1%s, a2%s, %s);
+  }
+""" % (format_header("  ", d.header),
+       format_list("  ", d.return_array_type),
+       function_name,
+       d.params[0].replace("const_ref", "ref"),
+       d.params[1].replace("const_ref", "ref"),
+       addl_args[0],
+       function_name,
+       a.begin[0].replace("begin", "const_ref"),
+       a.begin[1].replace("begin", "const_ref"),
+       addl_args[1])
 
 def generate_element_wise_special(
   array_type_name, special_def
@@ -633,6 +771,18 @@ def generate_element_wise_special(
 """ % (result_constructor_args,
        p.function_name,
        special_def[0], special_def[2])
+    if (array_type_name == "ref"):
+      print """%s
+  inline
+  %s
+  %s(const %s& a) {
+    return %s(a.const_ref());
+  }
+""" % (format_header("  ", p.header),
+       p.return_array_type,
+       p.function_name,
+       p.arg_array_types[0].replace("const_ref", "ref"),
+       p.function_name)
   else:
     for type_flags in ((1,1), (1,0), (0,1)):
       a = binary_operator_algo_params(array_type_name, type_flags)
@@ -679,11 +829,33 @@ def generate_element_wise_special(
        p.function_name,
        special_def[0], special_def[2], special_def[3],
        a.begin[0], a.begin[1])
+      if (array_type_name == "ref"):
+        print """%s
+  inline
+  %s
+  %s(
+    const %s& a1,
+    const %s& a2) {
+      return %s(a1%s, a2%s);
+  }
+""" % (format_header("  ", p.header), p.return_array_type,
+       p.function_name,
+       params[0].replace("const_ref", "ref"),
+       params[1].replace("const_ref", "ref"),
+       p.function_name,
+       a.begin[0].replace("begin", "const_ref"),
+       a.begin[1].replace("begin", "const_ref"))
 
 def one_type(array_type_name):
   f = open("%s_algebra.h" % (array_type_name,), "w")
   sys.stdout = f
   write_copyright()
+  include_array_type_name = array_type_name
+  if (array_type_name == "ref"):
+    include_array_type_name = "versa"
+  generic_include = "functors"
+  if (base_array_type_name(array_type_name) == "tiny"):
+    generic_include = "operators"
   print """
 #ifndef CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
 #define CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
@@ -691,7 +863,7 @@ def one_type(array_type_name):
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 #include <cctbx/array_family/%s.h>
-""" % ((array_type_name.upper(),) * 2 + (array_type_name,))
+""" % ((array_type_name.upper(),) * 2 + (include_array_type_name,))
   if (array_type_name == "tiny"):
     print """#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
 
@@ -699,52 +871,43 @@ def one_type(array_type_name):
 
 #else
 """
-  print "#include <cctbx/array_family/operator_traits_builtin.h>"
-  print "#include <cctbx/array_family/operator_functors.h>"
-  if (array_type_name == "tiny"):
-    print "#include <cctbx/array_family/generic_array_operators.h>"
-  else:
-    print "#include <cctbx/array_family/generic_array_functors.h>"
-  if (array_type_name != "ref"):
-    print "#include <cctbx/array_family/std_imports.h>"
-    print "#include <cctbx/array_family/misc_functions.h>"
-  print """#include <cctbx/array_family/reductions.h>
+  print """#include <cctbx/array_family/operator_traits_builtin.h>
+#include <cctbx/array_family/operator_functors.h>
+#include <cctbx/array_family/generic_array_%s.h>
+#include <cctbx/array_family/std_imports.h>
+#include <cctbx/array_family/misc_functions.h>
+#include <cctbx/array_family/reductions.h>
 
 namespace cctbx { namespace af {
-"""
+""" % (generic_include,)
 
-  all = 1
-  if (array_type_name == "ref"):
-    all = 0
-  if (all): generate_unary_ops(array_type_name)
+  generate_unary_ops(array_type_name)
   for op_symbol in arithmetic_binary_ops:
-    if (all): generate_elementwise_binary_op(
+    generate_elementwise_binary_op(
       array_type_name, "arithmetic", op_symbol)
     generate_elementwise_inplace_binary_op(
       array_type_name, "arithmetic", op_symbol + "=")
-  if (all):
-    for op_symbol in logical_binary_ops:
-      generate_elementwise_binary_op(
-        array_type_name, "logical", op_symbol)
-    for op_symbol, function_name in (
-      ("==", "equal_to"),
-      ("!=", "not_equal_to"),
-      (">", "greater"),
-      ("<", "less"),
-      (">=", "greater_equal"),
-      ("<=", "less_equal")):
-      generate_elementwise_binary_op(
-        array_type_name, "boolean", op_symbol, function_name)
+  for op_symbol in logical_binary_ops:
+    generate_elementwise_binary_op(
+      array_type_name, "logical", op_symbol)
+  for op_symbol, function_name in (
+    ("==", "equal_to"),
+    ("!=", "not_equal_to"),
+    (">", "greater"),
+    ("<", "less"),
+    (">=", "greater_equal"),
+    ("<=", "less_equal")):
+    generate_elementwise_binary_op(
+      array_type_name, "boolean", op_symbol, function_name)
   for op_symbol in boolean_binary_ops:
     generate_reducing_boolean_op(array_type_name, op_symbol)
-  if (all):
-    generate_1arg_element_wise(
-      array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
-    generate_2arg_element_wise(array_type_name, cmath_2arg)
-    for special_def in complex_special:
-      generate_element_wise_special(array_type_name, special_def)
-    for args in misc_functions_2arg:
-      apply(generate_2arg_addl_element_wise, (array_type_name,) + args)
+  generate_1arg_element_wise(
+    array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
+  generate_2arg_element_wise(array_type_name, cmath_2arg)
+  for special_def in complex_special:
+    generate_element_wise_special(array_type_name, special_def)
+  for args in misc_functions_2arg:
+    apply(generate_2arg_addl_element_wise, (array_type_name,) + args)
   generate_1arg_reductions(array_type_name)
   generate_2arg_reductions(array_type_name)
 
