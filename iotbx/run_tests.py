@@ -4,8 +4,10 @@ from scitbx import test_utils
 def run():
   tst_list = (
   "$D/iotbx/pdb/tst_pdb.py",
-  "$D/iotbx/mtz/tst_mtz.py",
+  "$D/iotbx/cns/space_group_symbols.py",
+  "$D/iotbx/cns/tst_cns.py",
   ["$D/iotbx/mtz/regression.py", "P31"],
+  "$D/iotbx/mtz/tst_mtz.py",
   "$D/iotbx/detectors/tst_adsc.py",
   "$D/iotbx/xplor/tst_xplormap.py",
   )
