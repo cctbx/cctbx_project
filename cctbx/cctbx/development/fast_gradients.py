@@ -557,7 +557,7 @@ def fp(structure_ideal, f_obs):
               * complex_math.polar((1, p)))
     print "gxm[%d]:" % i_scatterer, gxm
     gl = map0.grad_fp()[i_scatterer]
-    print " m0[%d]:" % i_scatterer, gl
+    print " m0[%d]: " % i_scatterer, gl
     print
 
 class two_p_shifted_fdp:
@@ -624,7 +624,7 @@ def fdp(structure_ideal, f_obs):
               * complex_math.polar((1, p)))
     print "gxm[%d]:" % i_scatterer, gxm
     gl = map0.grad_fdp()[i_scatterer]
-    print " m0[%d]:" % i_scatterer, gl
+    print " m0[%d]: " % i_scatterer, gl
     print
 
 def run_one(n_elements=3, volume_per_atom=1000, d_min=2,
