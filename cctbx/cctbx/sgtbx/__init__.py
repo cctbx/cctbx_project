@@ -22,7 +22,10 @@ class space_group_info:
 
   __safe_for_unpickling__ = 0001
 
-  def __init__(self, symbol=None, table_id=None, group=None):
+  def __init__(self, symbol=None, table_id=None, group=None, number=None):
+    assert [symbol, group, number].count(None) >= 2
+    if (number is not None):
+      symbol = str(number)
     if (symbol is None):
       assert table_id is None
       self._group = group
