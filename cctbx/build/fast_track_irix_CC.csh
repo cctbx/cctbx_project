@@ -1,11 +1,4 @@
 #! /bin/csh -f
-if ("`gcc --version`" !~ 2.95.*) then
-  echo "FATAL CONFIGURATION PROBLEM:"
-  echo "  Available compiler: gcc version" `gcc --version`
-  echo "  Required compiler:  gcc version 2.95.x, with x >= 2"
-  echo "  See http://cctbx.sourceforge.net/page_compilers.html for more information."
-  exit 1
-endif
 set try_python = "`python -c 'print __name__'`"
 if ($status != 0 || "$try_python" !~ __main__) then
   echo "FATAL CONFIGURATION PROBLEM:"
@@ -17,18 +10,18 @@ set PACKAGES="$0"
 set PACKAGES="$PACKAGES:h"
 set PACKAGES="$PACKAGES:h"
 set PACKAGES="$PACKAGES:h"
-mkdir linux_gcc
-cd linux_gcc
+mkdir irix_CC
+cd irix_CC
 mkdir boost
 cd boost
-cp $PACKAGES/boost/libs/python/build/linux_gcc.mak Makefile
-make ROOT=$PACKAGES cp # with softlinks make test fails on some machines
+cp $PACKAGES/boost/libs/python/build/irix_CC.mak Makefile
+make ROOT=$PACKAGES softlinks
 make ROOT=$PACKAGES
 make test
 cd ..
 mkdir cctbx
 cd cctbx
-cp $PACKAGES/cctbx/build/configuration_linux_gcc configuration
+cp $PACKAGES/cctbx/build/configuration_irix_CC configuration
 python $PACKAGES/cctbx/build/boot.py
 python make.py softlinks
 python make.py compile_all
