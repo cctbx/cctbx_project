@@ -19,6 +19,18 @@ namespace {
 
   typedef sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> ex_xray_scatterer;
 
+  void
+  xray_scatterer_set_Occ_1(ex_xray_scatterer& site,
+                           double Occ) {
+    site.set_Occ(Occ);
+  }
+  void
+  xray_scatterer_set_Occ_2(ex_xray_scatterer& site,
+                           double Occ,
+                           const sgtbx::SpaceGroup& SgOps) {
+    site.set_Occ(Occ, SgOps);
+  }
+
   fractional<double>
   py_least_squares_shift(
     const uctbx::UnitCell& ucell,
@@ -71,16 +83,6 @@ namespace {
     return sftbx::StructureFactor(SgOps, H, X, Ustar);
   }
 
-  af::double3
-  py_StructureFactor_dX(const sgtbx::SpaceGroup& SgOps,
-                        const Miller::Index& H,
-                        const fractional<double>& X,
-                        const std::complex<double>& phase_indep_coeff,
-                        const std::complex<double>& dTarget_dFcalc) {
-    return sftbx::StructureFactor_dX(
-      SgOps, H, X, phase_indep_coeff, dTarget_dFcalc);
-  }
-
   void
   py_StructureFactorArray_add(
     const uctbx::UnitCell& UC,
@@ -108,43 +110,72 @@ namespace {
   }
 
   void
-  py_StructureFactor_dX_Array_add(
+  py_StructureFactor_dT_dX_Array_add(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const af::shared<Miller::Index>& H,
     const af::shared<std::complex<double> >& dTarget_dFcalc,
     const af::shared<ex_xray_scatterer>& Sites,
-    af::shared<af::double3> dF_dX)
+    af::shared<af::double3> dT_dX)
   {
-    sftbx::StructureFactor_dX_Array(
+    sftbx::StructureFactor_dT_dX_Array(
       UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
-      dF_dX.ref());
+      dT_dX.ref());
   }
 
   af::shared<af::double3>
-  py_StructureFactor_dX_Array_new(
+  py_StructureFactor_dT_dX_Array_new(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const af::shared<Miller::Index>& H,
     const af::shared<std::complex<double> >& dTarget_dFcalc,
     const af::shared<ex_xray_scatterer>& Sites)
   {
-    af::shared<af::double3> dF_dX(Sites.size());
-    dF_dX.fill(af::double3(0.,0.,0.));
-    sftbx::StructureFactor_dX_Array(
+    af::shared<af::double3> dT_dX(Sites.size());
+    dT_dX.fill(af::double3(0.,0.,0.));
+    sftbx::StructureFactor_dT_dX_Array(
       UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
-      dF_dX.ref());
-    return dF_dX;
+      dT_dX.ref());
+    return dT_dX;
+  }
+
+  void
+  py_StructureFactor_dT_dOcc_Array_add(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<std::complex<double> >& dTarget_dFcalc,
+    const af::shared<ex_xray_scatterer>& Sites,
+    af::shared<double> dT_dOcc)
+  {
+    sftbx::StructureFactor_dT_dOcc_Array(
+      UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
+      dT_dOcc.ref());
+  }
+
+  af::shared<double>
+  py_StructureFactor_dT_dOcc_Array_new(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<std::complex<double> >& dTarget_dFcalc,
+    const af::shared<ex_xray_scatterer>& Sites)
+  {
+    af::shared<double> dT_dOcc(Sites.size());
+    sftbx::StructureFactor_dT_dOcc_Array(
+      UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
+      dT_dOcc.ref());
+    return dT_dOcc;
   }
 
   void py_apply_special_position_ops(
-    af::shared<af::double3> dF_dX,
+    af::shared<af::double3> dT_dX,
     af::shared<sgtbx::RTMx> special_position_ops)
   {
-    cctbx_assert(dF_dX.size() == special_position_ops.size());
-    for(std::size_t i=0;i<dF_dX.size();i++) {
-      dF_dX[i] = MatrixLite::vector_mul_matrix(
-        dF_dX[i], special_position_ops[i].Rpart().as_array(double()));
+    cctbx_assert(dT_dX.size() == special_position_ops.size());
+    for(std::size_t i=0;i<dT_dX.size();i++) {
+      dT_dX[i] = MatrixLite::vector_mul_matrix(
+        dT_dX[i], special_position_ops[i].Rpart().as_array(double()));
     }
   }
 
@@ -221,13 +252,13 @@ namespace {
   }
 
   void
-  dF_dX_inplace_frac_as_cart(
+  dT_dX_inplace_frac_as_cart(
     const uctbx::UnitCell& UCell,
-    af::shared<af::double3> dF_dX)
+    af::shared<af::double3> dT_dX)
   {
-    for(std::size_t i=0;i<dF_dX.size();i++) {
-      dF_dX[i] = MatrixLite::vector_mul_matrix(
-        dF_dX[i], UCell.getFractionalizationMatrix());
+    for(std::size_t i=0;i<dT_dX.size();i++) {
+      dT_dX[i] = MatrixLite::vector_mul_matrix(
+        dT_dX[i], UCell.getFractionalizationMatrix());
     }
   }
 
@@ -327,9 +358,15 @@ namespace {
     py_XrayScatterer.def(
       &ex_xray_scatterer::set_Coordinates, "set_Coordinates");
     py_XrayScatterer.def(
+      xray_scatterer_set_Occ_1, "set_Occ");
+    py_XrayScatterer.def(
+      xray_scatterer_set_Occ_2, "set_Occ");
+    py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor, "StructureFactor");
     py_XrayScatterer.def(
-      &ex_xray_scatterer::StructureFactor_dX, "StructureFactor_dX");
+      &ex_xray_scatterer::StructureFactor_dT_dX, "StructureFactor_dT_dX");
+    py_XrayScatterer.def(
+      &ex_xray_scatterer::StructureFactor_dT_dOcc, "StructureFactor_dT_dOcc");
 
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
@@ -338,9 +375,13 @@ namespace {
     this_module.def(py_StructureFactorArray_add, "StructureFactorArray");
     this_module.def(py_StructureFactorArray_new, "StructureFactorArray");
     this_module.def(
-      py_StructureFactor_dX_Array_add, "StructureFactor_dX_Array");
+      py_StructureFactor_dT_dX_Array_add, "StructureFactor_dT_dX_Array");
     this_module.def(
-      py_StructureFactor_dX_Array_new, "StructureFactor_dX_Array");
+      py_StructureFactor_dT_dX_Array_new, "StructureFactor_dT_dX_Array");
+    this_module.def(
+      py_StructureFactor_dT_dOcc_Array_add, "StructureFactor_dT_dOcc_Array");
+    this_module.def(
+      py_StructureFactor_dT_dOcc_Array_new, "StructureFactor_dT_dOcc_Array");
 
     this_module.def(py_apply_special_position_ops, "apply");
 
@@ -354,7 +395,7 @@ namespace {
     this_module.def(pack_coordinates_cart, "pack_coordinates");
     this_module.def(unpack_coordinates_cart, "unpack_coordinates");
     this_module.def(flatten, "flatten");
-    this_module.def(dF_dX_inplace_frac_as_cart, "dF_dX_inplace_frac_as_cart");
+    this_module.def(dT_dX_inplace_frac_as_cart, "dT_dX_inplace_frac_as_cart");
   }
 
 }
