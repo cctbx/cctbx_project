@@ -655,6 +655,21 @@ namespace direct_space_asu {
         return true;
       }
 
+      //! Returns a new pair after checking the indices.
+      asu_mapping_index_pair
+      make_pair(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
+      {
+        CCTBX_ASSERT(mappings_const_ref_.begin() == mappings_.begin());
+        CCTBX_ASSERT(i_seq < mappings_const_ref_.size());
+        CCTBX_ASSERT(j_seq < mappings_const_ref_.size());
+        CCTBX_ASSERT(j_sym < mappings_const_ref_[j_seq].size());
+        asu_mapping_index_pair result;
+        result.i_seq = i_seq;
+        result.j_seq = j_seq;
+        result.j_sym = j_sym;
+        return result;
+      }
+
     protected:
       sgtbx::space_group space_group_;
       float_asu<FloatType> asu_;

@@ -172,6 +172,10 @@ class lbfgs:
       sites_special = flex.vec3_double()
       for site_frac,site_symmetry in zip(sites_frac, self.site_symmetries):
         sites_special.append(site_symmetry.special_op()*site_frac)
+        distance_moved = self.site_symmetries[0].unit_cell().distance(
+          sites_special[-1], site_frac)
+        if (distance_moved > 1.e-6):
+          print "LARGE distance_moved:", distance_moved
       self._sites_shifted = self.site_symmetries[0].unit_cell() \
         .orthogonalization_matrix() * sites_special
 
@@ -188,7 +192,7 @@ class lbfgs:
       planarity_proxies=self.planarity_proxies,
       repulsion_proxies=self.repulsion_proxies,
       compute_gradients=compute_gradients)
-    if (1):
+    if (0):
       print "call:"
       self.target_result.show()
     self.time_compute_target.stop()
@@ -206,9 +210,9 @@ class lbfgs:
     return self.x, self.f, self.g
 
   def callback_after_step(self, minimizer):
-    if (1):
+    if (0):
       print "minimizer f,iter,nfun:", self.f,minimizer.iter(),minimizer.nfun()
-    if (1):
+    if (0):
       self.target_result.show()
 
   def show_times(self):

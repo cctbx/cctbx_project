@@ -9,18 +9,38 @@ from cctbx.crystal.neighbors import is_sym_equiv_interaction, show_distances
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx import matrix
+from scitbx.python_utils.misc import adopt_init_args
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 
+class restraint_parameters:
+
+  def __init__(self, distance_ideal, weight):
+    adopt_init_args(self, locals())
+
+restraint_parameters_si_o = restraint_parameters(1.61, 2.0)
+restraint_parameters_o_si_o = restraint_parameters(2.629099, 0.41)
+restraint_parameters_si_o_si = restraint_parameters(3.070969, 0.2308)
+
 class create_bond_proxies:
 
-  def __init__(self, structure, distance_cutoff=3.5, distance_ideal=3.1,
+  def __init__(self, structure, distance_cutoff=3.5,
+                     distance_ideal=3.1,
+                     weight=1,
                      heterogeneous_bonds_only=00000,
+                     asu_mappings_distance_cutoff=None,
+                     distance_cutoff_tolerance=1.e-4,
                      diff_vec_frac_tolerance=1.e-8):
-    distance_cutoff_plus = distance_cutoff * (1+1.e-4)
-    distance_cutoff_minus = distance_cutoff * (1-1.e-4)
+    distance_cutoff_plus = distance_cutoff * (1+distance_cutoff_tolerance)
+    distance_cutoff_minus = distance_cutoff * (1-distance_cutoff_tolerance)
+    if (asu_mappings_distance_cutoff is None):
+      asu_mappings_distance_cutoff = distance_cutoff
+    else:
+      assert asu_mappings_distance_cutoff >= distance_cutoff
+    asu_mappings_distance_cutoff_plus = asu_mappings_distance_cutoff \
+                                      * (1+distance_cutoff_tolerance)
     asu_mappings = structure.asu_mappings(
-      buffer_thickness=distance_cutoff_plus)
+      buffer_thickness=asu_mappings_distance_cutoff_plus)
     pair_generator = crystal.neighbors_simple_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=distance_cutoff_plus)
@@ -68,11 +88,12 @@ class create_bond_proxies:
         proxies.append(stereochemistry.restraints_bond_sym_proxy(
           pair=pair,
           distance_ideal=distance_ideal,
-          weight=100))
+          weight=weight))
         if (pair.dist_sq**.5 > distance_cutoff_minus):
           for pair_fwd in pairs[i_pair+1:]:
             if (    pair_fwd.j_seq == pair.j_seq
-                and abs(pair_fwd.dist_sq**.5-pair.dist_sq**.5) < 1.e-4):
+                and   abs(pair_fwd.dist_sq**.5-pair.dist_sq**.5)
+                    < distance_cutoff_tolerance):
               rt_mx_j_fwd = asu_mappings.get_rt_mx(
                 i_seq=pair_fwd.j_seq, i_sym=pair_fwd.j_sym)
               rt_mx_ji_fwd = rt_mx_i_inverse.multiply(rt_mx_j_fwd)
@@ -88,7 +109,7 @@ class create_bond_proxies:
                 proxies.append(stereochemistry.restraints_bond_sym_proxy(
                   pair=pair_fwd,
                   distance_ideal=distance_ideal,
-                  weight=1))
+                  weight=weight))
                 bond_counts[i_seq] += 1
                 if (pair_fwd.j_sym == 0):
                   bond_counts[pair_fwd.j_seq] += 1
@@ -145,6 +166,135 @@ def add_oxygen(framework_structure, bond_proxies):
       site=bond_center))
   return complete_structure
 
+def add_o_si_o_proxies(structure, proxies, distance_ideal, weight):
+  scatterers = structure.scatterers()
+  pair_lists = [[] for i in xrange(scatterers.size())]
+  for proxy in proxies.proxies:
+    pair = proxy.pair
+    if (scatterers[pair.i_seq].scattering_type == "Si"):
+      assert scatterers[pair.j_seq].scattering_type == "O"
+      pair_lists[pair.i_seq].append(pair)
+  processed_proxy_dict = {}
+  asu_mappings = proxies.asu_mappings
+  mappings = asu_mappings.mappings()
+  for pair_list in pair_lists:
+    for io1 in xrange(len(pair_list)-1):
+      pair1 = pair_list[io1]
+      rt_mx_j1 = asu_mappings.get_rt_mx(i_seq=pair1.j_seq, i_sym=pair1.j_sym)
+      rt_mx_j10 = asu_mappings.get_rt_mx(i_seq=pair1.j_seq, i_sym=0)
+      n_sym_1 = len(mappings[pair1.j_seq])
+      for io2 in xrange(io1+1,len(pair_list)):
+        pair2 = pair_list[io2]
+        rt_mx_j2 = asu_mappings.get_rt_mx(i_seq=pair2.j_seq, i_sym=pair2.j_sym)
+        rt_mx_j20 = asu_mappings.get_rt_mx(i_seq=pair2.j_seq, i_sym=0)
+        n_sym_2 = len(mappings[pair2.j_seq])
+        primary_distance = structure.unit_cell().distance(
+          rt_mx_j1*scatterers[pair1.j_seq].site,
+          rt_mx_j2*scatterers[pair2.j_seq].site)
+        if (pair1.j_seq == pair2.j_seq):
+          k_sym_start = 1
+        else:
+          k_sym_start = 0
+        rt_mx_ji = rt_mx_j1.inverse().multiply(rt_mx_j2)
+        for k_sym in xrange(k_sym_start, n_sym_2):
+          pair_key = (pair1.j_seq, pair2.j_seq, k_sym)
+          if (pair_key in processed_proxy_dict):
+            continue
+          rt_mx_k = asu_mappings.get_rt_mx(i_seq=pair2.j_seq, i_sym=k_sym)
+          k_distance = structure.unit_cell().distance(
+            rt_mx_j10*scatterers[pair1.j_seq].site,
+            rt_mx_k*scatterers[pair2.j_seq].site)
+          if (abs(k_distance-primary_distance) > primary_distance*1.e-6):
+            continue
+          rt_mx_kj = rt_mx_j10.inverse().multiply(rt_mx_k)
+          if (1):
+            ctrl = structure.unit_cell().distance(
+              scatterers[pair1.j_seq].site,
+              rt_mx_kj*scatterers[pair2.j_seq].site)
+            assert abs(ctrl-primary_distance) <= primary_distance*1.e-6
+          if (is_sym_equiv_interaction(
+                unit_cell=structure.unit_cell(),
+                i_seq=pair1.j_seq,
+                site_i=structure.scatterers()[pair1.j_seq].site,
+                j_seq=pair2.j_seq,
+                site_j=structure.scatterers()[pair2.j_seq].site,
+                special_op_j
+                  =proxies.site_symmetries[pair2.j_seq].special_op(),
+                rt_mx_ji_1=rt_mx_ji,
+                rt_mx_ji_2=rt_mx_kj)):
+            processed_proxy_dict[pair_key] = 0
+            if (k_sym != 0 or pair1.j_seq < pair2.j_seq):
+              proxies.proxies.append(
+                stereochemistry.restraints_bond_sym_proxy(
+                  pair=asu_mappings.make_pair(
+                    i_seq=pair1.j_seq, j_seq=pair2.j_seq, j_sym=k_sym),
+                  distance_ideal=distance_ideal,
+                  weight=weight))
+              if (1):
+                assert abs(  stereochemistry.restraints_bond(
+                               sites_cart=structure.sites_cart(),
+                               asu_mappings=proxies.asu_mappings,
+                               proxy=proxies.proxies[-1]).distance_model
+                           - primary_distance) <= primary_distance*1.e-6
+        if (k_sym_start == 0):
+          rt_mx_ji = rt_mx_j2.inverse().multiply(rt_mx_j1)
+          for k_sym in xrange(n_sym_1):
+            pair_key = (pair2.j_seq, pair1.j_seq, k_sym)
+            if (pair_key in processed_proxy_dict):
+              continue
+            rt_mx_k = asu_mappings.get_rt_mx(i_seq=pair1.j_seq, i_sym=k_sym)
+            k_distance = structure.unit_cell().distance(
+              rt_mx_j20*scatterers[pair2.j_seq].site,
+              rt_mx_k*scatterers[pair1.j_seq].site)
+            if (abs(k_distance-primary_distance) > primary_distance*1.e-6):
+              continue
+            rt_mx_kj = rt_mx_j20.inverse().multiply(rt_mx_k)
+            if (1):
+              ctrl = structure.unit_cell().distance(
+                scatterers[pair2.j_seq].site,
+                rt_mx_kj*scatterers[pair1.j_seq].site)
+              assert abs(ctrl-primary_distance) <= primary_distance*1.e-6
+            if (is_sym_equiv_interaction(
+                  unit_cell=structure.unit_cell(),
+                  i_seq=pair2.j_seq,
+                  site_i=structure.scatterers()[pair2.j_seq].site,
+                  j_seq=pair1.j_seq,
+                  site_j=structure.scatterers()[pair1.j_seq].site,
+                  special_op_j
+                    =proxies.site_symmetries[pair1.j_seq].special_op(),
+                  rt_mx_ji_1=rt_mx_ji,
+                  rt_mx_ji_2=rt_mx_kj)):
+              processed_proxy_dict[pair_key] = 0
+              if (k_sym != 0 or pair2.j_seq < pair1.j_seq):
+                proxies.proxies.append(
+                  stereochemistry.restraints_bond_sym_proxy(
+                    pair=asu_mappings.make_pair(
+                      i_seq=pair2.j_seq, j_seq=pair1.j_seq, j_sym=k_sym),
+                    distance_ideal=distance_ideal,
+                    weight=weight))
+                if (1):
+                  assert abs(  stereochemistry.restraints_bond(
+                                 sites_cart=structure.sites_cart(),
+                                 asu_mappings=proxies.asu_mappings,
+                                 proxy=proxies.proxies[-1]).distance_model
+                             - primary_distance) <= primary_distance*1.e-6
+
+def add_si_o_si_proxies(si_proxies, si_o_proxies, distance_ideal, weight):
+  assert si_proxies.asu_mappings.mappings().size() \
+       < si_o_proxies.asu_mappings.mappings().size()
+  for si_mappings,si_o_mappings in zip(si_proxies.asu_mappings.mappings(),
+                                       si_o_proxies.asu_mappings.mappings()):
+    assert len(si_mappings) == len(si_o_mappings)
+    for si_m,si_o_m in zip(si_mappings, si_o_mappings):
+      assert si_m.i_sym_op() == si_o_m.i_sym_op()
+      assert si_m.unit_shifts() == si_o_m.unit_shifts()
+  for si_proxy in si_proxies.proxies:
+    si_o_proxies.proxies.append(
+      stereochemistry.restraints_bond_sym_proxy(
+        pair=si_proxy.pair,
+        distance_ideal=distance_ideal,
+        weight=weight))
+
 def run(distance_cutoff=3.5):
   command_line = (iotbx_option_parser(
     usage="python distance_ls.py [options] studat_file [...]",
@@ -174,32 +324,6 @@ def run(distance_cutoff=3.5):
       print "proxies.bond_counts:", list(proxies.bond_counts)
       if (proxies.bond_counts.count(4) != proxies.bond_counts.size()):
         print "Not fully 4-connected:", entry.tag
-      if (0):
-        sites_cart = structure.sites_cart()
-        gradients_cart = flex.vec3_double(sites_cart.size(), [0,0,0])
-        residual_sum = stereochemistry.restraints_bond_residual_sum(
-          sites_cart=sites_cart,
-          asu_mappings=proxies.asu_mappings,
-          proxies=proxies.proxies,
-          gradient_array=gradients_cart)
-        gradients_frac = gradients_cart \
-                       * structure.unit_cell().orthogonalization_matrix()
-        print "residual sum:", residual_sum
-      if (0):
-        for i_site,scatterer in zip(count(), structure.scatterers()):
-          site = scatterer.site
-          blanks = " "*len(scatterer.label)
-          site_symmetry = proxies.site_symmetries[i_site]
-          special_op = sgtbx.rt_mx(site_symmetry.special_op().r())
-          special_op_tp = float(special_op.r().as_rational()).transpose()
-          print scatterer.label, gradients_frac[i_site]
-          grad_special=(special_op_tp*matrix.col(gradients_frac[i_site])).elems
-          print blanks, grad_special, special_op
-          if (not approx_equal(gradients_frac[i_site], grad_special)):
-            print "MISMATCH GRAD", structure.space_group_info(), special_op
-            raise AssertionError
-          elif (0):
-            print "    GOOD GRAD", structure.space_group_info(), special_op
       if (1):
         if (0):
           complete_structure = structure
@@ -213,8 +337,10 @@ def run(distance_cutoff=3.5):
           complete_proxies = create_bond_proxies(
             structure=complete_structure,
             distance_cutoff=distance_cutoff/2.,
-            distance_ideal=1.61,
-            heterogeneous_bonds_only=0001)
+            distance_ideal=restraint_parameters_si_o.distance_ideal,
+            weight=restraint_parameters_si_o.weight,
+            heterogeneous_bonds_only=0001,
+            asu_mappings_distance_cutoff=distance_cutoff)
           print "complete: number of bond proxies:", \
             complete_proxies.proxies.size()
           print "complete: proxies.bond_counts:", \
@@ -224,9 +350,62 @@ def run(distance_cutoff=3.5):
               == list(proxies.bond_counts)
           assert list(complete_proxies.bond_counts[n_nodes:]) \
               == [2] * (len(complete_proxies.bond_counts) - n_nodes)
+          if (1):
+            add_o_si_o_proxies(
+              structure=complete_structure,
+              proxies=complete_proxies,
+              distance_ideal=restraint_parameters_o_si_o.distance_ideal,
+              weight=restraint_parameters_o_si_o.weight)
+          if (1):
+            add_si_o_si_proxies(
+              si_proxies=proxies,
+              si_o_proxies=complete_proxies,
+              distance_ideal=restraint_parameters_si_o_si.distance_ideal,
+              weight=restraint_parameters_si_o_si.weight)
+          sites_cart = complete_structure.sites_cart()
           for proxy in complete_proxies.proxies:
-            print "proxy:", proxy.pair.i_seq, proxy.pair.j_seq,
-            print proxy.distance_ideal
+            print "proxy:",
+            scatterers = complete_structure.scatterers()
+            pair = proxy.pair
+            print "%s(%d)" % (scatterers[pair.i_seq].label, pair.i_seq),
+            print "%s(%d)" % (scatterers[pair.j_seq].label, pair.j_seq),
+            print pair.j_sym,
+            print proxy.distance_ideal, proxy.weight,
+            print stereochemistry.restraints_bond(
+              sites_cart=sites_cart,
+              asu_mappings=complete_proxies.asu_mappings,
+              proxy=proxy).distance_model
+        if (1):
+          sites_cart = complete_structure.sites_cart()
+          gradients_cart = flex.vec3_double(sites_cart.size(), [0,0,0])
+          residual_sum = stereochemistry.restraints_bond_residual_sum(
+            sites_cart=sites_cart,
+            asu_mappings=complete_proxies.asu_mappings,
+            proxies=complete_proxies.proxies,
+            gradient_array=gradients_cart)
+          gradients_frac = gradients_cart \
+            * complete_structure.unit_cell().orthogonalization_matrix()
+          print "initial residual sum:", residual_sum
+        if (1):
+          for i_site,scatterer in zip(count(),complete_structure.scatterers()):
+            site = scatterer.site
+            site_symmetry = complete_proxies.site_symmetries[i_site]
+            special_op = sgtbx.rt_mx(site_symmetry.special_op().r())
+            special_op_tp = float(special_op.r().as_rational()).transpose()
+            grad_special = (  special_op_tp
+                            * matrix.col(gradients_frac[i_site])).elems
+            blanks = " "*len(scatterer.label)
+            if (not approx_equal(gradients_frac[i_site], grad_special)):
+              print scatterer.label, gradients_frac[i_site]
+              print blanks, grad_special, special_op
+              print "MISMATCH GRAD", complete_structure.space_group_info(),
+              print special_op
+              raise AssertionError
+            elif (0):
+              print scatterer.label, gradients_frac[i_site]
+              print blanks, grad_special, special_op
+              print "    GOOD GRAD", complete_structure.space_group_info(),
+              print special_op
         if (1):
           if (1):
             sites_cart = complete_structure.sites_cart()
@@ -245,7 +424,7 @@ def run(distance_cutoff=3.5):
             asu_mappings=complete_proxies.asu_mappings,
             bond_sym_proxies=complete_proxies.proxies,
             lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-              max_iterations=100))
+              max_iterations=1000))
           print minimized.minimizer.error
           print "first_target_value: %12.6f" % minimized.first_target_value, \
             entry.tag
