@@ -18,4 +18,7 @@ Export("env_scitbx_boost_python")
 env_scitbx_boost_python.SharedLibrary(target="lbfgs", source=[
   "#/scitbx/lbfgs/boost_python/lbfgs_module.cpp",
 ])
+env_scitbx_boost_python.SharedLibrary(target="fftpack", source=[
+  "#/scitbx/fftpack/boost_python/fftpack_module.cpp",
+])
 SConscript("array_family/SConscript")
