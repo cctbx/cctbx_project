@@ -66,6 +66,22 @@ struct Crystal {
 inline Crystal::Crystal(CMtz::MTZXTAL* c):p_xtal(c){
   if (!p_xtal) {throw Error("Request for a non-existent crystal");}}
 
+struct observation_arrays
+{
+  observation_arrays() {}
+
+  observation_arrays(std::size_t size)
+  {
+    indices.reserve(size);
+    data.reserve(size);
+    sigmas.reserve(size);
+  }
+
+  af::shared<cctbx::miller::index<> > indices;
+  af::shared<double> data;
+  af::shared<double> sigmas;
+};
+
 class Mtz {
 private:
   CMtz::MTZ* mtz;
@@ -102,19 +118,26 @@ public:
   valid_indices(
     std::string const& column_label);
 
+  af::shared<double>
+  valid_values(
+    std::string const& column_label);
+
   af::shared<cctbx::miller::index<> >
   valid_indices_anomalous(
     std::string const& column_label_plus,
     std::string const& column_label_minus);
 
   af::shared<double>
-  valid_values(
-    std::string const& column_label);
-
-  af::shared<double>
   valid_values_anomalous(
     std::string const& column_label_plus,
     std::string const& column_label_minus);
+
+  observation_arrays
+  valid_delta_anomalous(
+    std::string const& column_label_f_data,
+    std::string const& column_label_f_sigmas,
+    std::string const& column_label_d_data,
+    std::string const& column_label_d_sigmas);
 
   af::shared<std::complex<double> >
   valid_complex(

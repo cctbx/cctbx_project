@@ -6,6 +6,7 @@ from iotbx_mtz_ext import *
 
 from iotbx.mtz import writer
 from cctbx import miller
+from cctbx.xray import observation_types
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -38,7 +39,7 @@ class Mtz (ext.Mtz):
   def __init__(self,s):
     ext.Mtz.__init__(self,s)
 
-  def __getattr__(self,s):
+  def __getattr__(self,s): # XXX get_column
     assert type(s) == type(str())
     return self.getColumn(s)
 
@@ -100,6 +101,7 @@ class Mtz (ext.Mtz):
       assert dataset.getColumn(i_column).type() in known_mtz_column_types
       l0 = all_column_labels[i_column]
       t0 = all_column_types[i_column]
+      remaining_types = all_column_types[i_column:]
       if (t0 == "H"): continue # skip h,k,l
       if (t0 in "BYI"): # integer columns
         groups.append(column_group(
@@ -128,6 +130,21 @@ class Mtz (ext.Mtz):
           indices=self.valid_indices(l0),
           anomalous_flag=00000,
           data=self.valid_hl(labels[0], labels[1], labels[2], labels[3])))
+      elif (remaining_types[:4] == "FQDQ"):
+        labels = all_column_labels[i_column:i_column+4]
+        i_column += 3
+        arrays = self.valid_delta_anomalous(
+          labels[0], labels[1], labels[2], labels[3])
+        groups.append(column_group(
+          crystal_symmetry=crystal_symmetry,
+          primary_column_type=t0,
+          labels=labels,
+          indices=arrays.indices,
+          anomalous_flag=0001,
+          data=arrays.data,
+          sigmas=arrays.sigmas))
+        groups[-1].set_observation_type(
+          observation_types.reconstructed_amplitude())
       elif (t0 in "JFD"):
         # "J": "intensity"
         # "F": "amplitude"
@@ -164,7 +181,6 @@ class Mtz (ext.Mtz):
         # "K": "I(+) or I(-)"
         # "M": "standard deviation"
         perm = None
-        remaining_types = all_column_types[i_column:]
         if (remaining_types[:4] in ("GLGL", "GPGP", "KMKM")):
           perm = [0,1,2,3]
         elif (remaining_types[:4] in ("GGLL", "GGPP", "KKMM")):
@@ -237,6 +253,7 @@ def column_group(crystal_symmetry, primary_column_type, labels,
                  indices, anomalous_flag,
                  data, sigmas=None):
   assert data is not None
+  assert data.size() == indices.size()
   if (sigmas is not None): assert sigmas.size() == data.size()
   if (anomalous_flag is 0001):
     miller_set = miller.set(

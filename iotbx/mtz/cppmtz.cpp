@@ -144,6 +144,18 @@ bpmtz::Mtz::valid_indices(
   return result;
 }
 
+af::shared<double>
+bpmtz::Mtz::valid_values(
+  std::string const& column_label)
+{
+  bpmtz::Column v(getColumn(column_label));
+  af::shared<double> result((af::reserve(size())));
+  for (int j=0; j<size(); j++) {
+    if (!v.ccp4_isnan(j)) result.push_back(v.lookup(j));
+  }
+  return result;
+}
+
 af::shared<cctbx::miller::index<> >
 bpmtz::Mtz::valid_indices_anomalous(
   std::string const& column_label_plus,
@@ -169,31 +181,60 @@ bpmtz::Mtz::valid_indices_anomalous(
 }
 
 af::shared<double>
-bpmtz::Mtz::valid_values(
-  std::string const& column_label)
-{
-  bpmtz::Column v(getColumn(column_label));
-  af::shared<double> result((af::reserve(size())));
-  for (int j=0; j<size(); j++) {
-    if (!v.ccp4_isnan(j)) result.push_back(v.lookup(j));
-  }
-  return result;
-}
-
-af::shared<double>
 bpmtz::Mtz::valid_values_anomalous(
   std::string const& column_label_plus,
   std::string const& column_label_minus)
 {
-  bpmtz::Column h(getColumn("H"));
-  bpmtz::Column k(getColumn("K"));
-  bpmtz::Column l(getColumn("L"));
   bpmtz::Column v_plus(getColumn(column_label_plus));
   bpmtz::Column v_minus(getColumn(column_label_minus));
   af::shared<double> result((af::reserve(2*size())));
   for (int j=0; j<size(); j++) {
     if (!v_plus.ccp4_isnan(j)) result.push_back(v_plus.lookup(j));
     if (!v_minus.ccp4_isnan(j)) result.push_back(v_minus.lookup(j));
+  }
+  return result;
+}
+
+/* http://www.ccp4.ac.uk/dist/html/mtzMADmod.html
+     F(+) = F + 0.5*D
+     F(-) = F - 0.5*D
+     SIGF(+) = sqrt( SIGF**2 + 0.25*SIGD**2 )
+     SIGF(-) = SIGF(+)
+ */
+bpmtz::observation_arrays
+bpmtz::Mtz::valid_delta_anomalous(
+  std::string const& column_label_f_data,
+  std::string const& column_label_f_sigmas,
+  std::string const& column_label_d_data,
+  std::string const& column_label_d_sigmas)
+{
+  bpmtz::Column h(getColumn("H"));
+  bpmtz::Column k(getColumn("K"));
+  bpmtz::Column l(getColumn("L"));
+  bpmtz::Column v_fd(getColumn(column_label_f_data));
+  bpmtz::Column v_fs(getColumn(column_label_f_sigmas));
+  bpmtz::Column v_dd(getColumn(column_label_d_data));
+  bpmtz::Column v_ds(getColumn(column_label_d_sigmas));
+  observation_arrays result(2*size());
+  for (int j=0; j<size(); j++) {
+    if (   !v_fd.ccp4_isnan(j)
+        && !v_fs.ccp4_isnan(j)
+        && !v_dd.ccp4_isnan(j)
+        && !v_ds.ccp4_isnan(j)) {
+      result.indices.push_back(cctbx::miller::index<>(
+        h.lookup(j), k.lookup(j), l.lookup(j)));
+      result.indices.push_back(cctbx::miller::index<>(
+        -h.lookup(j), -k.lookup(j), -l.lookup(j)));
+      double fd = v_fd.lookup(j);
+      double fs = v_fs.lookup(j);
+      double ddh = v_dd.lookup(j) * .5;
+      double dsh = v_ds.lookup(j) * .5;
+      result.data.push_back(fd + ddh);
+      result.data.push_back(fd - ddh);
+      double s = std::sqrt(fs*fs + dsh*dsh);
+      result.sigmas.push_back(std::sqrt(s));
+      result.sigmas.push_back(std::sqrt(s));
+    }
   }
   return result;
 }

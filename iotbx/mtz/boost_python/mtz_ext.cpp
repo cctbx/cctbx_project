@@ -4,10 +4,28 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
 #include <ccp4_errno.h>
 
 namespace iotbx { namespace mtz { namespace boost_python {
+
+  struct observation_arrays_wrappers
+  {
+    typedef observation_arrays w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("observation_arrays", no_init)
+        .add_property("indices", make_getter(&w_t::indices, rbv()))
+        .add_property("data", make_getter(&w_t::data, rbv()))
+        .add_property("sigmas", make_getter(&w_t::sigmas, rbv()))
+      ;
+    }
+  };
 
   void wrap_Mtz()
   {
@@ -34,9 +52,10 @@ namespace iotbx { namespace mtz { namespace boost_python {
       .def("MIx",        &Mtz::MIx)
       .def("printHeaderAdv",&Mtz::printHeaderAdv)
       .def("valid_indices", &Mtz::valid_indices)
-      .def("valid_indices", &Mtz::valid_indices_anomalous)
       .def("valid_values", &Mtz::valid_values)
+      .def("valid_indices", &Mtz::valid_indices_anomalous)
       .def("valid_values", &Mtz::valid_values_anomalous)
+      .def("valid_delta_anomalous", &Mtz::valid_delta_anomalous)
       .def("valid_complex", &Mtz::valid_complex)
       .def("valid_complex", &Mtz::valid_complex_anomalous)
       .def("valid_hl", &Mtz::valid_hl)
@@ -100,6 +119,7 @@ BOOST_PYTHON_MODULE(iotbx_mtz_ext)
 {
   using namespace iotbx::mtz::boost_python;
   CCP4::ccp4_liberr_verbosity(0);
+  observation_arrays_wrappers::wrap();
   wrap_functions();
   wrap_Mtz();
   wrap_Crystal();
