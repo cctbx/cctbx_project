@@ -130,7 +130,7 @@ namespace cctbx { namespace af {
         m_handle->size = m_handle->capacity;
       }
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
       // non-std
       template <typename InitFunctorType>
       shared_plain(const size_type& sz, InitFunctorType ftor)

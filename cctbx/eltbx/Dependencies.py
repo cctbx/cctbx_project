@@ -46,10 +46,11 @@ class write_makefiles(makefile_generator.write_makefiles):
       "caasf_it1992",
       "caasf_wk1995",
       "efpfdp",
-      "henke",
-      "sasaki",
       "neutron",
     )
+    if (self.platform != "vc60"): # XXX vc70
+      lib.append("henke")
+      lib.append("sasaki")
 
     self.libraries = {
       "eltbx": lib,
@@ -68,13 +69,14 @@ class write_makefiles(makefile_generator.write_makefiles):
         (("caasf_wk1995module", "caasf_wk1995", "basic", "error"), ()),
       "fpfdp":
         (("fpfdpmodule", "efpfdp", "basic", "error"), ()),
-      "henke":
-        (("henkemodule", "henke", "efpfdp", "basic", "error"), ()),
-      "sasaki":
-        (("sasakimodule", "sasaki", "efpfdp", "basic", "error"), ()),
       "neutron":
         (("neutronmodule", "neutron", "basic", "error"), ()),
     }
+    if (self.platform != "vc60"): # XXX vc70
+      self.boost_python_modules["henke"] = (
+        ("henkemodule", "henke", "efpfdp", "basic", "error"), ())
+      self.boost_python_modules["sasaki"] = (
+        ("sasakimodule", "sasaki", "efpfdp", "basic", "error"), ())
 
   def make_test(self):
     print "tst:"
@@ -83,6 +85,7 @@ class write_makefiles(makefile_generator.write_makefiles):
     print "\tpython tst_wavelengths.py"
     print "\tpython tst_caasf_it1992.py"
     print "\tpython tst_caasf_wk1995.py"
-    print "\tpython tst_henke.py"
-    print "\tpython tst_sasaki.py"
     print "\tpython tst_neutron.py"
+    if (self.platform != "vc60"): # XXX vc70
+      print "\tpython tst_henke.py"
+      print "\tpython tst_sasaki.py"
