@@ -141,7 +141,8 @@ class find_max_x:
             use_sigmas=minimize_using_sigmas,
             enforce_positive_b=enforce_positive_b_this_time)
         except RuntimeError, e:
-          if (str(e).find("lbfgs error: ") < 0): raise
+          if (str(e).find("lbfgs error: ") < 0
+              and str(e).find("unidentifiable C++ exception") < 0): raise
           if (enforce_positive_b_mod_n == 1): raise
           minimized = None
           max_error = None
