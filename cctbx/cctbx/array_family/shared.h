@@ -23,7 +23,7 @@ namespace cctbx { namespace af {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef detail::char_block handle_type;
+      typedef typename shared_base<ElementType>::handle_type handle_type;
 
       explicit shared(const size_type& sz = 0)
         : shared_plain<ElementType>(sz)

@@ -23,7 +23,7 @@ namespace cctbx { namespace af {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef detail::char_block handle_type;
+      typedef typename shared_base<ElementType>::handle_type handle_type;
 
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;

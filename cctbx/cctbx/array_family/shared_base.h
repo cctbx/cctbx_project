@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     Feb 2002: Reorganized (rwgk)
      Jan 2002: Created (N.K. Sauter)
  */
 
@@ -23,26 +24,29 @@ namespace cctbx { namespace af {
       public:
         typedef std::size_t size_type;
 
-        long use_count;
-
         basic_storage()
-          : m_capacity(0), m_size(0), m_data(0)
+          : m_capacity(0), m_size(0), m_use_count(1),
+            m_data(0)
         {}
 
         explicit
         basic_storage(const size_type& sz)
-          : m_capacity(sz), m_size(sz), m_data(new ElementType[sz])
+          : m_capacity(sz), m_size(sz), m_use_count(1),
+            m_data(new ElementType[sz])
         {}
 
         ~basic_storage() {
           delete[] m_data;
         }
 
-              ElementType* begin()       { return m_data; }
-        const ElementType* begin() const { return m_data; }
-
         size_type size() const { return m_size; }
         size_type capacity() const { return m_capacity; }
+
+              long& use_count()       { return m_use_count; }
+        const long& use_count() const { return m_use_count; }
+
+        // data are not considered part of the type
+        ElementType* begin() const { return m_data; }
 
         void resize(const size_type& sz) {
           expand_capacity(sz);
@@ -76,6 +80,7 @@ namespace cctbx { namespace af {
 
         size_type m_capacity;
         size_type m_size;
+        long m_use_count;
         ElementType* m_data;
     };
 
@@ -88,60 +93,56 @@ namespace cctbx { namespace af {
 
         explicit
         managed_storage(const size_type& sz)
-          : m_ptr_basic_storage(new basic_storage_type(sz)) {
-          m_ptr_basic_storage->use_count = 1;
-        }
+          : m_ptr_basic_storage(new basic_storage_type(sz))
+        {}
 
         managed_storage(const managed_storage& other)
           : m_ptr_basic_storage(other.m_ptr_basic_storage) {
-          m_ptr_basic_storage->use_count++;
+          m_ptr_basic_storage->use_count()++;
         }
 
         managed_storage& operator=(const managed_storage& other) {
           if (m_ptr_basic_storage != other.m_ptr_basic_storage) {
             dispose();
             m_ptr_basic_storage = other.m_ptr_basic_storage;
-            m_ptr_basic_storage->use_count++;
+            m_ptr_basic_storage->use_count()++;
           }
           return *this;
         }
 
         ~managed_storage() { dispose(); }
 
-        element_type* begin() const { return m_ptr_basic_storage->begin(); }
+        void swap(managed_storage<element_type>& other) {
+          std::swap(m_ptr_basic_storage, other.m_ptr_basic_storage);
+          std::swap(      m_ptr_basic_storage->use_count(),
+                    other.m_ptr_basic_storage->use_count());
+        }
 
         size_type size() const { return m_ptr_basic_storage->size(); }
         size_type capacity() const { return m_ptr_basic_storage->capacity(); }
-        long use_count() const { return m_ptr_basic_storage->use_count; }
-        bool unique() const { return m_ptr_basic_storage->use_count == 1; }
+        long use_count() const { return m_ptr_basic_storage->use_count(); }
 
-        void swap(managed_storage<element_type>& other) {
-          std::swap(m_ptr_basic_storage, other.m_ptr_basic_storage);
-          std::swap(      m_ptr_basic_storage->use_count,
-                    other.m_ptr_basic_storage->use_count);
-        }
+        // data are not considered part of the type
+        element_type* begin() const { return m_ptr_basic_storage->begin(); }
 
         void resize(const size_type& sz) {
           m_ptr_basic_storage->resize(sz);
         }
 
         void auto_resize(const size_type& sz) {
-          m_ptr_basic_storage->resize(sz);
+          m_ptr_basic_storage->auto_resize(sz);
         }
 
       private:
         basic_storage_type* m_ptr_basic_storage;
 
         void dispose() {
-          m_ptr_basic_storage->use_count--;
-          if (m_ptr_basic_storage->use_count == 0) {
+          m_ptr_basic_storage->use_count()--;
+          if (m_ptr_basic_storage->use_count() == 0) {
             delete m_ptr_basic_storage;
-            m_ptr_basic_storage = 0;
           }
         }
     };
-
-    typedef managed_storage<char> char_block;
 
   } //namespace detail
 
@@ -151,17 +152,21 @@ namespace cctbx { namespace af {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef detail::char_block handle_type;
+      typedef detail::managed_storage<char> handle_type;
 
       static size_type element_size() { return sizeof(ElementType); }
 
-      explicit shared_base(const size_type& sz = 0)
-        : m_handle( element_size() * sz )      {}
+      explicit
+      shared_base(const size_type& sz = 0)
+        : m_handle(element_size() * sz)
+      {}
 
-      explicit shared_base(const handle_type& handle)
-        : m_handle(handle){}
+      explicit
+      shared_base(const handle_type& handle)
+        : m_handle(handle)
+      {}
 
-      size_type size() const { return m_handle.size()/element_size(); }
+      size_type size() const { return m_handle.size() / element_size(); }
 
       CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
         reinterpret_cast<ElementType*>(m_handle.begin()), size())
