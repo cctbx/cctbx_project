@@ -22,7 +22,7 @@ def update_libtbx_info(env, package_name, package_dist):
     "LD_LIBRARY_PATH": [],
     "PYTHONPATH": [norm(join(env.libtbx_build, "libtbx")), env.libtbx_dist],
     "PATH": [norm(join(env.libtbx_dist, "libtbx/command_line"))],
-    "LIBTBX_PYTHON_BIN": env.python_bin,
+    "LIBTBX_PYTHON_EXE": env.libtbx_python_exe,
     "LIBTBX_DIST": env.libtbx_dist,
     "LIBTBX_SCONS": env.libtbx_scons,
     "LIBTBX_BUILD": env.libtbx_build,
@@ -38,12 +38,12 @@ def update_libtbx_info(env, package_name, package_dist):
     libtbx_info_write_action = "Updating:"
     libtbx_info.update(eval(" ".join(f.readlines())))
     f.close()
-  if (libtbx_info["LIBTBX_PYTHON_BIN"] != env.python_bin):
+  if (libtbx_info["LIBTBX_PYTHON_EXE"] != env.libtbx_python_exe):
     print >> sys.stderr
     print >> sys.stderr, "#" * 78
     print >> sys.stderr, "FATAL ERROR: python executable mismatch:"
-    print >> sys.stderr, "  previously:", libtbx_info["LIBTBX_PYTHON_BIN"]
-    print >> sys.stderr, "         now:", sys.executable
+    print >> sys.stderr, "  previously:", libtbx_info["LIBTBX_PYTHON_EXE"]
+    print >> sys.stderr, "         now:", env.libtbx_python_exe
     print >> sys.stderr, "#" * 78
     print >> sys.stderr
     sys.exit(1)
@@ -78,8 +78,7 @@ def emit_env_run_sh(libtbx_build, libtbx_info):
     else:
       print >> f, '%s="%s"' % (var_name, values)
     print >> f, 'export %s' % (var_name,)
-  print >> f, 'PATH="$LIBTBX_PYTHON_BIN%s$PATH"' % (os.pathsep,)
-  print >> f, 'python "$LIBTBX_DIST/libtbx/command_line/env_run.py" $*'
+  print >> f, '$LIBTBX_PYTHON_EXE "$LIBTBX_DIST/libtbx/command_line/env_run.py" $*'
   f.close()
   os.chmod(env_run_sh_path, 0755)
 
@@ -159,7 +158,7 @@ def emit_SConstruct(env, libtbx_info):
 
 def run():
   env = empty()
-  env.python_bin = norm(os.path.split(sys.executable)[0])
+  env.libtbx_python_exe = norm(os.path.abspath(sys.executable))
   env.libtbx_build = norm(os.path.abspath(os.getcwd()))
   env.libtbx_dist = norm(os.path.dirname(norm(os.path.abspath(sys.argv[0]))))
   env.dist_root = norm(os.path.dirname(env.libtbx_dist))

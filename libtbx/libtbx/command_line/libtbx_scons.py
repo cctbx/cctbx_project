@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 import sys, os
 try: libtbx_scons = os.environ["LIBTBX_SCONS"]
 except: pass

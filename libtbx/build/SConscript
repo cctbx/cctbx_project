@@ -83,11 +83,12 @@ else:
   if (env_etc.compiler == "tru64_cxx"):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 1
+    cxx = "cxx"# -model ansi"
     env_base.Replace(
-      CXX="cxx",
-      LINK="cxx",
-      SHCXX="cxx",
-      SHLINK="cxx",
+      CXX=cxx,
+      LINK=cxx,
+      SHCXX=cxx,
+      SHLINK=cxx,
     )
     env_etc.cxxflags_base = Split("""
         -std strict_ansi
