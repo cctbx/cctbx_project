@@ -5,6 +5,15 @@ from cctbx import xutils
 from cctbx.development import debug_utils
 from cctbx_boost import dmtbx
 
+def ampl_phase_rad(f):
+  amplidutes = shared.double()
+  phases = shared.double()
+  for i in xrange(f.size()):
+    a, p = xutils.f_as_ampl_phase(f[i], deg=0)
+    amplidutes.append(a)
+    phases.append(p)
+  return amplidutes, phases
+
 def inplace_divide(array, arg):
   for i in xrange(array.size()):
     array[i] = array[i] / arg
@@ -31,15 +40,26 @@ def exercise(SgInfo,
   debug_utils.print_sites(xtal)
   MillerIndices = xutils.build_miller_indices(xtal, friedel_flag=1,d_min=d_min)
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=1)
-  inplace_divide(Fcalc.F, math.sqrt(number_of_point_atoms))
-  dmtbx.inplace_sort(MillerIndices.H, Fcalc.F, 1)
-  s = shared.statistics(Fcalc.F)
+  e_values = Fcalc.F
+  inplace_divide(e_values, math.sqrt(number_of_point_atoms))
+  dmtbx.inplace_sort(MillerIndices.H, e_values, 1)
+  s = shared.statistics(e_values)
   print "mean2:", s.mean2()
-  print "number of structure factors:", Fcalc.F.size()
-  erase_small(MillerIndices.H, Fcalc.F, e_min)
-  print "number of structure factors:", Fcalc.F.size()
-  debug_utils.print_structure_factors(Fcalc)
-  t = dmtbx.triplet_invariants(xtal.SgInfo, MillerIndices.H, Fcalc.F)
+  print "number of structure factors:", e_values.size()
+  erase_small(MillerIndices.H, e_values, e_min)
+  print "number of structure factors:", e_values.size()
+  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=0)
+  dummy, phases = ampl_phase_rad(Fcalc.F)
+  Fcalc.F = e_values
+  #debug_utils.print_structure_factors(Fcalc)
+  t = dmtbx.triplet_invariants(xtal.SgInfo, MillerIndices.H, e_values)
+  print "total_number_of_triplets:", \
+       t.total_number_of_triplets()
+  print "average_number_of_triplets_per_reflection:", \
+       t.average_number_of_triplets_per_reflection()
+  new_phases = t.refine_phases(MillerIndices.H, e_values, phases)
+  for i in xrange(MillerIndices.H.size()):
+    print MillerIndices.H[i], phases[i], new_phases[i]
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
