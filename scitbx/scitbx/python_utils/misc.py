@@ -130,7 +130,7 @@ class line_feeder:
 
   def __init__(self, f):
     self.f = iter(f)
-    self.eof = False
+    self.eof = 00000
 
   def __iter__(self):
     return self
@@ -140,7 +140,7 @@ class line_feeder:
       try:
         return self.f.next()[:-1]
       except StopIteration:
-        self.eof = True
+        self.eof = 0001
     return ""
 
 class input_with_prompt:

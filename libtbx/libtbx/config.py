@@ -3,7 +3,7 @@ from libtbx.path import norm_join
 
 class UserError(Exception): pass
 
-def python_include_path(must_exist=True):
+def python_include_path(must_exist=0001):
   if (sys.platform == "win32"):
     include_path = sys.prefix + r"\include"
   else:
@@ -13,7 +13,7 @@ def python_include_path(must_exist=True):
     assert os.path.isdir(include_path)
   return include_path
 
-def python_api_from_include(must_exist=True):
+def python_api_from_include(must_exist=0001):
   include_path = python_include_path(must_exist)
   if (not os.path.isdir(include_path)): return None
   modsupport_h = open(norm_join(include_path, "modsupport.h")).readlines()
