@@ -131,3 +131,5 @@ for sp in structured_package_dirs:
     # for now, failure to compile sp doesn't kill entire list
     ei = sys.exc_info()
     print traceback.format_exception_only(ei[0], ei[1])[0]
+  sys.stdout.flush()
+  sys.stderr.flush()
