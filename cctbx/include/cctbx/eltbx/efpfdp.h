@@ -13,6 +13,8 @@
 #define CCTBX_ELTBX_EFPFDP_H
 
 #include <complex>
+#include <string>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 
 namespace cctbx { namespace eltbx {
 
@@ -41,7 +43,7 @@ namespace cctbx { namespace eltbx {
       //! Constructor.
       explicit
       fpfdp(float fp  = Efpfdp_undefined,
-                   float fdp = Efpfdp_undefined) : m_fp(fp), m_fdp(fdp) {}
+            float fdp = Efpfdp_undefined) : m_fp(fp), m_fdp(fdp) {}
       //! Test if f-prime is defined.
       bool isValid_fp() const { return m_fp != Efpfdp_undefined; }
       //! Test if f-double-prime is defined.
@@ -62,11 +64,36 @@ namespace cctbx { namespace eltbx {
   };
 
   namespace detail {
-    const Label_Z_Efpfdp* FindEntry(const Label_Z_Efpfdp* Tables,
-                                    const std::string& WorkLabel,
-                                    bool Exact);
+
+    template <typename TableType>
+    const TableType*
+    FindEntry(const TableType* Tables,
+              const std::string& WorkLabel,
+              bool Exact)
+    {
+      // map D to H
+      std::string WL = WorkLabel;
+      if (WL == "D") WL = "H";
+      int m = 0;
+      const TableType* mEntry = 0;
+      for (const TableType* Entry = Tables; Entry->Label; Entry++)
+      {
+        int i = MatchLabels(WL, Entry->Label);
+        if (i < 0) return Entry;
+        if (i > m && !isdigit(Entry->Label[i - 1])) {
+          m = i;
+          mEntry = Entry;
+        }
+      }
+      if (Exact || !mEntry) {
+        throw error("Unknown scattering factor label.");
+      }
+      return mEntry;
+    }
+
     fpfdp interpolate(const Label_Z_Efpfdp* m_Label_Z_Efpfdp, double Energy);
-  }
+
+  } // namespace detail
 
 }} // cctbx::eltbx
 

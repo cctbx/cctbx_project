@@ -1,0 +1,18 @@
+This directory contains anomalous scattering factors and 
+absorption coefficients of each elements.
+
+Any reports or publications of these data will acknowledge its use
+by an appropriate citation.  This would refer to the following publication:
+  1. Anomalous scattering factors
+       S.Sasaki (1989) Numerical Tables of Anomalous Scattering Factors
+       Calculated by the Cromer and Liberman's Method,
+       KEK Report, 88-14, 1-136
+  2. X-ray absorption coefficients
+       S.Sasaki (1990) X-Ray Absorption Coefficients of the Elements   
+       (Li to Bi, U), KEK Report, 90-16, 1-143
+
+
+If you have any question, please contact with Dr.Satoshi Sasaki, 
+Tokyo Institute of Technology.
+              sasaki@nc.titech.ac.jp
+

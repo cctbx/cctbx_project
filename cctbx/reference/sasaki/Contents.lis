@@ -1,0 +1,16 @@
+Contents in this directory                            April 1, 1994
+
+Contents.lis   ...  This file
+README         ...  Readme
+fpk.tbl        ...  anomalus scattering factor at K-edge        (Mg-Pt)
+fpk.lst        ...  atom names in fpk.tbl
+fpl.tbl        ...  anomalus scattering factor at L-edge        (Ag-Bi)
+fpl.lst        ...  atom names in fpl.tbl
+fpwide.tbl     ...  anomalus scattering factor at wide range    (Li-U) 
+fpwide.lst     ...  atom names in fpwide.tbl
+miuk.tbl       ...  X-ray absorption coefficient at K-edge      (Mg-Bi,U)
+miuk.lst       ...  atom names in miuk.tbl
+miul.tbl       ...  X-ray absorption coefficient at K-edge      (Ag,Bi,U)
+miul.lst       ...  atom names in miul.tbl
+miuwide.tbl    ...  X-ray absorption coefficient at wide range  (Li-Bi,U)
+miuwide.lst    ...  atom names in miuwide.tbl
