@@ -304,39 +304,54 @@ class array(set):
         phase_source,
         epsilon))
 
-  def anomalous_differences(self):
+  def match_bijvoet_mates(self):
     assert self.anomalous_flag() == 0001
     assert self.indices() != None
-    assert self.data() != None
     if (self.space_group() != None):
       asu = self.map_to_asu()
-      matching = match_bijvoet_mates(
+      matches = match_bijvoet_mates(
         asu.space_group_info().type(), asu.indices())
     else:
       asu = self
-      matching = match_bijvoet_mates(asu.indices())
-    i = matching.miller_indices_in_hemisphere("+")
-    d = matching.minus(asu.data())
+      matches = match_bijvoet_mates(asu.indices())
+    return asu, matches
+
+  def anomalous_differences(self):
+    assert self.data() != None
+    asu, matches = self.match_bijvoet_mates()
+    i = matches.miller_indices_in_hemisphere("+")
+    d = matches.minus(asu.data())
     s = None
     if (asu.sigmas() != None):
-      s = matching.additive_sigmas(asu.sigmas())
+      s = matches.additive_sigmas(asu.sigmas())
     return array(set(asu, i, anomalous_flag=00000), d, s)
 
   def hemisphere(self, plus_or_minus):
     assert plus_or_minus in ("+", "-")
-    assert self.anomalous_flag() == 0001
-    assert self.indices() != None
     assert self.data() != None
-    if (self.space_group() != None):
-      asu = self.map_to_asu()
-      matching = match_bijvoet_mates(
-        asu.space_group_info().type(), asu.indices())
-    else:
-      asu = self
-      matching = match_bijvoet_mates(asu.indices())
+    asu, matches = self.match_bijvoet_mates()
     return asu.apply_selection(
-      flags=matching.hemisphere_selection(plus_or_minus),
+      flags=matches.hemisphere_selection(plus_or_minus),
       anomalous_flag=00000)
+
+  def hemispheres(self):
+    assert self.data() != None
+    asu, matches = self.match_bijvoet_mates()
+    return tuple(
+      [asu.apply_selection(flags=matches.hemisphere_selection(plus_or_minus),
+                           anomalous_flag=00000)
+       for plus_or_minus in ("+", "-")])
+
+  def anomalous_signal(self, use_binning=00000):
+    "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
+    assert not use_binning, "Not implemented." # XXX
+    assert self.data().all_gt(0)
+    f_plus, f_minus = self.hemispheres()
+    mean_sq_diff = flex.mean(flex.pow2(f_plus.data() - f_minus.data()))
+    assert mean_sq_diff >= 0
+    mean_sum_sq = flex.mean(flex.pow2(f_plus.data())+flex.pow2(f_minus.data()))
+    assert mean_sum_sq > 0
+    return math.sqrt(2 * mean_sq_diff / mean_sum_sq)
 
   def all_selection(self):
     return flex.bool(self.indices().size(), 0001)
@@ -352,6 +367,11 @@ class array(set):
     s = None
     if (self.sigmas() != None): s = self.sigmas().select(flags)
     return array(set(self, i, anomalous_flag), d, s)
+
+  def remove_systematic_absences(self, negate=00000):
+    return self.apply_selection(
+      flags=self.space_group().is_sys_absent(self.indices()),
+      negate=not negate)
 
   def resolution_filter(self, d_max=0, d_min=0, negate=0):
     d = self.d_spacings().data()
