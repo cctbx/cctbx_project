@@ -250,6 +250,24 @@ def run(args):
     cache_0.input.setup_binner(n_bins=n_bins)
     cache_0.input.completeness(use_binning=True).show()
     print
+    print "Perfect merohedral twinning test for %s:"%str(cache_0.input.info())
+    acentric = cache_0.input.select_acentric()
+    assert acentric.observation_type() is cache_0.input.observation_type()
+    acentric.setup_binner(auto_binning=True).counts_complete(
+      include_centric=False)
+    sm = acentric.second_moment_of_intensities(use_binning=True)
+    wr = acentric.wilson_ratio(use_binning=True)
+    print acentric.second_moment_of_intensities.__doc__
+    print acentric.wilson_ratio.__doc__
+    print "See also: http://www.doe-mbi.ucla.edu/Services/Twinning/intro.html"
+    for i_bin,s,w in zip(count(), sm.data, wr.data):
+      print sm.binner.bin_legend(i_bin),
+      for v in s, w:
+        if (v is None): print " "*7,
+        else: print "%7.4f" % v,
+      print
+    print
+    del acentric
     if (cache_0.input.anomalous_flag()):
       print "Anomalous signal of %s:" % str(cache_0.input.info())
       print cache_0.input.anomalous_signal.__doc__
