@@ -3,9 +3,9 @@
 
 #include <cctbx/xray/scattering_dictionary.h>
 #include <cctbx/xray/gradient_flags.h>
+#include <cctbx/xray/hr_ht_cache.h>
 #include <cctbx/xray/packing_order.h>
 #include <cctbx/math/cos_sin_table.h>
-#include <cctbx/sgtbx/miller_ops.h>
 
 namespace cctbx { namespace xray { namespace structure_factors {
 
@@ -25,7 +25,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
     gradients_direct_one_h_one_scatterer(
       CosSinType const& cos_sin,
       sgtbx::space_group const& space_group,
-      miller::index<> const& h,
+      hr_ht_cache<float_type> const& hr_ht,
       float_type d_star_sq,
       float_type f0,
       ScattererType const& scatterer,
@@ -43,23 +43,21 @@ namespace cctbx { namespace xray { namespace structure_factors {
       scitbx::sym_mat3<f_t> dw_coeff;
       f0_fp_fdp = f0 + c_t(scatterer.fp, scatterer.fdp);
       c_t f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
-      for(std::size_t i_smx=0;i_smx<space_group.n_smx();i_smx++) {
-        sgtbx::rt_mx const& s = space_group.smx(i_smx);
-        miller::index<> hr = h * s.r();
-        f_t hrx = hr * scatterer.site;
-        sgtbx::tr_vec t = s.t();
+      for(std::size_t i=0;i<hr_ht.groups.size();i++) {
+        hr_ht_group<f_t> const& g = hr_ht.groups[i];
+        f_t hrx = g.hr * scatterer.site;
+        f_t ht = g.ht;
         if (grad_flags_u_aniso) {
           dw_coeff = adptbx::debye_waller_factor_u_star_coefficients(
-            hr, scitbx::type_holder<f_t>());
+            g.hr, scitbx::type_holder<f_t>());
         }
         c_t sum_inv(0,0);
         if (grad_flags_site) dtds_term.fill(0);
         for(std::size_t i=0;i<space_group.f_inv();i++) {
           if (i) {
             hrx *= -1;
-            t = space_group.inv_t() - t;
+            ht = hr_ht.h_inv_t - ht;
           }
-          f_t ht = f_t(h * t) / space_group.t_den();
           c_t term = cos_sin.get(hrx + ht);
           if (grad_flags_site) {
             c_t f = f0_fp_fdp_w * term;
@@ -67,13 +65,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
                   - d_target_d_f_calc.real() * f.imag();
             if (i) c *= -1;
             for(std::size_t i=0;i<3;i++) {
-              dtds_term[i] += hr[i] * c;
+              dtds_term[i] += g.hr[i] * c;
             }
           }
           sum_inv += term;
         }
         if (scatterer.anisotropic_flag) {
-          f_t dw = adptbx::debye_waller_factor_u_star(hr, scatterer.u_star);
+          f_t dw = adptbx::debye_waller_factor_u_star(g.hr, scatterer.u_star);
           sum_inv *= dw;
           if (grad_flags_site) dtds_term *= dw;
         }
@@ -150,6 +148,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       typedef dict_type::const_iterator dict_iter;
       typedef float_type f_t;
       typedef std::complex<float_type> c_t;
+      hr_ht_cache<f_t> hr_ht(space_group, h);
       f_t d_star_sq = unit_cell.d_star_sq(h);
       dict_type const& scd = scattering_dict.dict();
       std::size_t gr_pos = 0;
@@ -164,7 +163,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           gradients_direct_one_h_one_scatterer<CosSinType, ScattererType> sf(
             cos_sin,
             space_group,
-            h,
+            hr_ht,
             d_star_sq,
             f0,
             scatterer,
