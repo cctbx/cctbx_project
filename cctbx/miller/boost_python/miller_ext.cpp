@@ -29,7 +29,6 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_index_span();
   void wrap_match_bijvoet_mates();
   void wrap_match_indices();
-  void wrap_phase_interpolation();
   void wrap_phase_transfer();
   void wrap_sym_equiv();
 
@@ -62,7 +61,6 @@ namespace {
     wrap_index_span();
     wrap_match_bijvoet_mates();
     wrap_match_indices();
-    wrap_phase_interpolation();
     wrap_phase_transfer();
 
     def("statistical_mean",
