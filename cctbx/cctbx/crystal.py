@@ -11,7 +11,8 @@ class symmetry(object):
                      space_group=None,
                      assert_is_compatible_unit_cell=0001):
     assert [space_group_symbol, space_group_info, space_group].count(None) >= 2
-    if (type(unit_cell) in (type(()), type([]), type(""))):
+    if (    unit_cell is not None
+        and not isinstance(unit_cell, uctbx.ext.unit_cell)):
       unit_cell = uctbx.unit_cell(unit_cell)
     self._unit_cell = unit_cell
     self._space_group_info = space_group_info
@@ -59,6 +60,21 @@ class symmetry(object):
     return symmetry(
       unit_cell=cb_op.apply(self.unit_cell()),
       space_group_info=self.space_group_info().change_basis(cb_op))
+
+  def primitive_setting(self):
+    return self.change_basis(self.space_group().z2p_op())
+
+  def change_of_basis_op_to_niggli_cell(self):
+    z2p_op = self.space_group().z2p_op()
+    r_inv = z2p_op.c_inv().r()
+    p_cell = self.unit_cell().change_basis(r_inv.num(), r_inv.den())
+    red = p_cell.niggli_reduction()
+    p2n_op = sgtbx.change_of_basis_op(
+      sgtbx.rt_mx(sgtbx.rot_mx(red.r_inv().elems, 1))).inverse()
+    return p2n_op.new_denominators(z2p_op) * z2p_op
+
+  def niggli_cell(self):
+    return self.change_basis(self.change_of_basis_op_to_niggli_cell())
 
   def patterson_symmetry(self):
     return symmetry(
