@@ -1133,13 +1133,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_Miller_AsymIndex.def(constructor<
     const SymEquivMillerIndices&>());
   py_Miller_AsymIndex.def(
-    &Miller::AsymIndex::FriedelFlag, "FriedelFlag");
+    &Miller::AsymIndex::one_column, "one_column");
   py_Miller_AsymIndex.def(
-    &Miller::AsymIndex::AnomalousLayout, "AnomalousLayout");
-  py_Miller_AsymIndex.def(
-    &Miller::AsymIndex::HermitianLayout, "HermitianLayout");
-  py_Miller_AsymIndex.def(
-    &Miller::AsymIndex::FplusFminusLayout, "FplusFminusLayout");
+    &Miller::AsymIndex::two_column, "two_column");
 
   py_StructureSeminvariant.def(constructor<>());
   py_StructureSeminvariant.def(constructor<const SpaceGroup&>());

@@ -35,10 +35,7 @@ def verify(sg_miller_index_set, sg_fcalc_set, sg_hl,
   lookup_dict = make_miller_lookup_dict(sg_miller_index_set.H)
   for p1_i in xrange(p1_miller_indices.size()):
     h_asu = sgtbx.Miller_AsymIndex(sgops, asu, p1_miller_indices[p1_i])
-    if (sg_miller_index_set.friedel_flag):
-      h_eq = h_asu.HermitianLayout()
-    else:
-      h_eq = h_asu.AnomalousLayout()
+    h_eq = h_asu.one_column(sg_miller_index_set.friedel_flag)
     fcalc_asu = h_eq.complex_eq(p1_fcalc[p1_i])
     hl_asu = h_eq.hl_eq(p1_hl[p1_i])
     sg_i = lookup_dict[h_eq.H()]
