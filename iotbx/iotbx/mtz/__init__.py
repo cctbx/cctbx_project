@@ -58,7 +58,7 @@ column_type_legend = {
   "M": "standard deviation",
   "P": "phase angle in degrees",
   "W": "weight (of some sort)",
-  "A": "phase probability coefficients (Hendrickson/Lattmann)",
+  "A": "phase probability coefficients (Hendrickson/Lattman)",
   "B": "BATCH number",
   "Y": "M/ISYM, packed partial/reject flag and symmetry number",
   "I": "integer",
