@@ -452,6 +452,11 @@ namespace {
                                  double tolerance) {
     SS.CheckUstar(Ustar, tolerance);
   }
+  boost::array<double, 6>
+  SiteSymmetry_AverageUstar(const SiteSymmetry& SS,
+                            const boost::array<double, 6>& Ustar) {
+    return SS.AverageUstar(Ustar);
+  }
 
   RTMx SiteSymmetry_getitem(const SiteSymmetry& SS,
                             std::size_t key) {
@@ -915,6 +920,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SiteSymmetry.def(SiteSymmetry_isCompatibleUstar_2, "isCompatibleUstar");
     py_SiteSymmetry.def(SiteSymmetry_CheckUstar_1, "CheckUstar");
     py_SiteSymmetry.def(SiteSymmetry_CheckUstar_2, "CheckUstar");
+    py_SiteSymmetry.def(SiteSymmetry_AverageUstar, "AverageUstar");
     py_SiteSymmetry.def(&SiteSymmetry::expand, "expand");
     py_SiteSymmetry.def(&SiteSymmetry::isExpanded, "isExpanded");
     py_SiteSymmetry.def(&SiteSymmetry::CheckExpanded, "CheckExpanded");
