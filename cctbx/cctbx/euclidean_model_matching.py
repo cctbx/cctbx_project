@@ -103,6 +103,16 @@ class model(crystal.special_position_settings):
     for pos in self.positions(): print >> f, pos
     print >> f
 
+  def as_xray_structure(self, scatterer=None):
+    from cctbx import xray
+    if (scatterer == None): scatterer = xray.scatterer(label="const")
+    result = xray.structure(special_position_settings=self)
+    for position in self.positions():
+      result.add_scatterer(scatterer.copy(
+        label=position.label,
+        site=position.site))
+    return result
+
 def filter_shift(continuous_shift_flags, shift, selector=1):
   filtered_shift = [0,0,0]
   for i in xrange(3):
@@ -429,3 +439,36 @@ def match_models(model1, model2,
   weed_refined_matches(model1.space_group_info().type().number(),
                        refined_matches, rms_penalty_per_site)
   return refined_matches
+
+class model_matches:
+
+  def __init__(self, model1, model2,
+                     tolerance=1.,
+                     models_are_diffraction_index_equivalent=00000,
+                     break_if_match_with_no_singles=00000,
+                     rms_penalty_per_site=0.05):
+    adopt_init_args(self, locals())
+    self.refined_matches = match_models(
+      model1, model2,
+      tolerance,
+      models_are_diffraction_index_equivalent,
+      break_if_match_with_no_singles,
+      rms_penalty_per_site)
+
+  def n_matches(self):
+    return len(self.refined_matches)
+
+  def consensus_model(self, i_model=1, i_refined_matches=0):
+    assert i_model in (1,2)
+    assert 0 <= i_refined_matches < self.n_matches()
+    if (i_model == 1):
+      source_model = self.model1
+    else:
+      source_model = self.model2
+    if (self.n_matches() == source_model.size()):
+      return source_model
+    result = model(special_position_settings=source_model)
+    i_model -= 1
+    for pair in self.refined_matches[i_refined_matches].pairs:
+      result.add_position(source_model.positions()[pair[i_model]])
+    return result

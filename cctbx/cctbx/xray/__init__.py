@@ -39,14 +39,14 @@ Python wrapper for C++ constructor.
       caasf = wk1995(caasf, 1)
   return ext.scatterer(label, site, u, occupancy, caasf, fp_fdp)
 
-def copy_scatterer(source,
+def copy_scatterer(self,
                    label=None,
                    site=None,
                    u=None,
                    occupancy=None,
                    caasf=None,
                    fp_fdp=None):
-  result = source.copy()
+  result = self._copy()
   if (label != None): result.label = label
   if (site != None): result.site = site
   if (u != None): result.u = u
@@ -54,6 +54,9 @@ def copy_scatterer(source,
   if (caasf != None): result.caasf = caasf
   if (fp_fdp != None): result.fp_fdp = fp_fdp
   return result
+
+ext.scatterer._copy = ext.scatterer.copy # XXX define as raw_copy to begin with
+ext.scatterer.copy = copy_scatterer
 
 class structure(crystal.special_position_settings):
 
