@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/counts.h>
+#include <scitbx/stl/map_fwd.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
 #include <map>
