@@ -23,9 +23,6 @@ def run(args, simply_return_all_miller_arrays=False):
       dest="label",
       help="Substring of reflection data label or number",
       metavar="STRING")
-    .option(None, "--observation_type",
-      choices=("amplitude", "intensity"),
-      metavar="amplitude|intensity")
     .option(None, "--scale_max",
       action="store",
       type="float",
@@ -116,20 +113,11 @@ def run(args, simply_return_all_miller_arrays=False):
     print "Space group unknown. Please use --symmetry or --space_group."
     print
     return None
-  if (selected_array.observation_type() is None):
-    if (command_line.options.observation_type is None):
-      command_line.parser.show_help()
-      print "Observation type is unknown. Please use --observation_type."
-      print
-      return None
-    if (command_line.options.observation_type == "amplitude"):
-      selected_array.set_observation_type_xray_amplitude()
-    else:
-      selected_array.set_observation_type_xray_intensity()
   print "Selected data:"
   print " ", selected_array.info()
   print "  Observation type:", selected_array.observation_type()
   print
+  selected_array_info = selected_array.info()
   d_max = command_line.options.low_resolution
   d_min = command_line.options.resolution
   if (d_max is not None or d_min is not None):
@@ -155,7 +143,7 @@ def run(args, simply_return_all_miller_arrays=False):
   n_output_files = 0
   if (command_line.options.sca is not None):
     file_name = reflection_file_utils.construct_output_file_name(
-      input_file_names=command_line.args,
+      input_file_names=[selected_array_info.source],
       user_file_name=command_line.options.sca,
       file_type_label="Scalepack",
       file_extension="sca")
@@ -167,7 +155,7 @@ def run(args, simply_return_all_miller_arrays=False):
     print
   if (command_line.options.mtz is not None):
     file_name = reflection_file_utils.construct_output_file_name(
-      input_file_names=command_line.args,
+      input_file_names=[selected_array_info.source],
       user_file_name=command_line.options.mtz,
       file_type_label="MTZ",
       file_extension="mtz")
@@ -181,7 +169,7 @@ def run(args, simply_return_all_miller_arrays=False):
     print
   if (command_line.options.cns is not None):
     file_name = reflection_file_utils.construct_output_file_name(
-      input_file_names=command_line.args,
+      input_file_names=[selected_array_info.source],
       user_file_name=command_line.options.cns,
       file_type_label="CNS",
       file_extension="cns")
@@ -191,7 +179,7 @@ def run(args, simply_return_all_miller_arrays=False):
     print
   if (command_line.options.shelx is not None):
     file_name = reflection_file_utils.construct_output_file_name(
-      input_file_names=command_line.args,
+      input_file_names=[selected_array_info.source],
       user_file_name=command_line.options.shelx,
       file_type_label="SHELX",
       file_extension="shelx")
