@@ -302,5 +302,4 @@ class peak_cluster_analysis:
     while 1:
       if (self._sites.size() >= max_clusters): break
       if (self.next() == None): break
-    assert self._sites.size() == max_clusters
     return self
