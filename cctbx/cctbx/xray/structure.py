@@ -59,6 +59,35 @@ class structure(crystal.special_position_settings):
   def scatterers(self):
     return self._scatterers
 
+  def set_b_iso(self, value=None, values=None):
+    assert [value, values].count(None) == 1
+    s = self._scatterers
+    if (value is not None):
+      s.set_u_iso(flex.double(s.size(), adptbx.b_as_u(value)))
+    else:
+      assert values.size() == s.size()
+      b_iso = values
+      u_iso_values = b_iso*adptbx.b_as_u(1)
+      s.set_u_iso(u_iso_values)
+
+  def shake_b_iso(self, deviation):
+    assert deviation >= 0.0 and deviation <= 100.0
+    s = self._scatterers
+    b_isos = s.extract_u_iso()/adptbx.b_as_u(1)
+    shift_abs = b_isos * deviation/100.
+    r_set = flex.random_double(s.size())-0.5
+    b_iso_shifted = flex.double()
+    for i in xrange(s.size()):
+      if(r_set[i] >= 0): sign = 1.0
+      if(r_set[i] <  0): sign =-1.0
+      shift = shift_abs[i] * sign
+      new_value = b_isos[i] + shift
+      if(new_value > 0.0):
+        b_iso_shifted.append(new_value)
+      else:
+        b_iso_shifted.append(b_isos[i])
+    self.set_b_iso(values = b_iso_shifted)
+
   def n_undefined_multiplicities(self):
     return ext.n_undefined_multiplicities(self._scatterers)
 
