@@ -18,6 +18,7 @@
 #include <cctbx/miller/build.h>
 #include <cctbx/miller/span.h>
 #include <cctbx/miller/join.h>
+#include <cctbx/miller/selection.h>
 #include <cctbx/miller/expand.h>
 
 namespace {
@@ -213,6 +214,23 @@ namespace {
     return jbm.average(sigmas);
   }
 
+  af::shared<double>
+  selection_selected_data_double(
+    selection const& sel,
+    af::shared<double> data)
+  {
+    return sel.selected_data(data);
+  }
+
+  void selection_sigma_filter(
+    selection& sel,
+    af::shared<double> data,
+    af::shared<double> sigmas,
+    double cutoff_factor)
+  {
+    sel.sigma_filter(data, sigmas, cutoff_factor);
+  }
+
   void
   py_expand_to_p1_4(
     sgtbx::SpaceGroup const& SgOps,
@@ -323,84 +341,87 @@ namespace {
     class_builder<join_bijvoet_mates>
     py_join_bijvoet_mates(this_module, "join_bijvoet_mates");
 
+    class_builder<selection>
+    py_selection(this_module, "selection");
+
     py_IndexTableLayoutAdaptor.declare_base(
       py_SymEquivIndex, python::without_downcast);
     py_AsymIndex.declare_base(
       py_SymEquivIndex, python::without_downcast);
 
-  py_SymEquivIndex.def(constructor<>());
-  py_SymEquivIndex.def(
-    constructor<const Index&, int, int, bool>());
-  py_SymEquivIndex.def(&SymEquivIndex::H, "H");
-  py_SymEquivIndex.def(&SymEquivIndex::HR, "HR");
-  py_SymEquivIndex.def(&SymEquivIndex::HT, "HT");
-  py_SymEquivIndex.def(&SymEquivIndex::TBF, "TBF");
-  py_SymEquivIndex.def(&SymEquivIndex::HT_angle, "HT_angle");
-  py_SymEquivIndex.def(SymEquivIndex_HT_angle_0, "HT_angle");
-  py_SymEquivIndex.def(
-    &SymEquivIndex::FriedelFlag, "FriedelFlag");
-  py_SymEquivIndex.def(SymEquivIndex_Mate_0, "Mate");
-  py_SymEquivIndex.def(&SymEquivIndex::Mate, "Mate");
-  py_SymEquivIndex.def(
-    SymEquivIndex_phase_eq_1, "phase_eq");
-  py_SymEquivIndex.def(
-    SymEquivIndex_phase_eq_2, "phase_eq");
-  py_SymEquivIndex.def(
-    SymEquivIndex_phase_in_1, "phase_in");
-  py_SymEquivIndex.def(
-    SymEquivIndex_phase_in_2, "phase_in");
-  py_SymEquivIndex.def(
-    SymEquivIndex_complex_eq, "complex_eq");
-  py_SymEquivIndex.def(
-    SymEquivIndex_complex_in, "complex_in");
-  py_SymEquivIndex.def(
-    SymEquivIndex_hl_eq, "hl_eq");
-  py_SymEquivIndex.def(
-    SymEquivIndex_hl_in, "hl_in");
+    py_SymEquivIndex.def(constructor<>());
+    py_SymEquivIndex.def(
+      constructor<const Index&, int, int, bool>());
+    py_SymEquivIndex.def(&SymEquivIndex::H, "H");
+    py_SymEquivIndex.def(&SymEquivIndex::HR, "HR");
+    py_SymEquivIndex.def(&SymEquivIndex::HT, "HT");
+    py_SymEquivIndex.def(&SymEquivIndex::TBF, "TBF");
+    py_SymEquivIndex.def(&SymEquivIndex::HT_angle, "HT_angle");
+    py_SymEquivIndex.def(SymEquivIndex_HT_angle_0, "HT_angle");
+    py_SymEquivIndex.def(
+      &SymEquivIndex::FriedelFlag, "FriedelFlag");
+    py_SymEquivIndex.def(SymEquivIndex_Mate_0, "Mate");
+    py_SymEquivIndex.def(&SymEquivIndex::Mate, "Mate");
+    py_SymEquivIndex.def(
+      SymEquivIndex_phase_eq_1, "phase_eq");
+    py_SymEquivIndex.def(
+      SymEquivIndex_phase_eq_2, "phase_eq");
+    py_SymEquivIndex.def(
+      SymEquivIndex_phase_in_1, "phase_in");
+    py_SymEquivIndex.def(
+      SymEquivIndex_phase_in_2, "phase_in");
+    py_SymEquivIndex.def(
+      SymEquivIndex_complex_eq, "complex_eq");
+    py_SymEquivIndex.def(
+      SymEquivIndex_complex_in, "complex_in");
+    py_SymEquivIndex.def(
+      SymEquivIndex_hl_eq, "hl_eq");
+    py_SymEquivIndex.def(
+      SymEquivIndex_hl_in, "hl_in");
 
-  py_SymEquivIndices.def(constructor<>());
-  py_SymEquivIndices.def(constructor<
-    sgtbx::SpaceGroup const&,
-    Index const&>());
-  py_SymEquivIndices.def(
-    &SymEquivIndices::getPhaseRestriction, "getPhaseRestriction");
-  py_SymEquivIndices.def(
-    &SymEquivIndices::isCentric, "isCentric");
-  py_SymEquivIndices.def(&SymEquivIndices::N, "N");
-  py_SymEquivIndices.def(&SymEquivIndices::M, "M");
-  py_SymEquivIndices.def(&SymEquivIndices::fMates, "fMates");
-  py_SymEquivIndices.def(&SymEquivIndices::epsilon, "epsilon");
-  py_SymEquivIndices.def(&SymEquivIndices::N, "__len__");
-  py_SymEquivIndices.def(SymEquivIndices_getitem, "__getitem__");
-  py_SymEquivIndices.def(SymEquivIndices_call_1, "__call__");
-  py_SymEquivIndices.def(SymEquivIndices_call_2, "__call__");
-  py_SymEquivIndices.def(
-    &SymEquivIndices::isValidPhase, "isValidPhase");
-  py_SymEquivIndices.def(
-    SymEquivIndices_isValidPhase_2, "isValidPhase");
-  py_SymEquivIndices.def(
-    SymEquivIndices_isValidPhase_1, "isValidPhase");
+    py_SymEquivIndices.def(constructor<>());
+    py_SymEquivIndices.def(constructor<
+      sgtbx::SpaceGroup const&,
+      Index const&>());
+    py_SymEquivIndices.def(
+      &SymEquivIndices::getPhaseRestriction, "getPhaseRestriction");
+    py_SymEquivIndices.def(
+      &SymEquivIndices::isCentric, "isCentric");
+    py_SymEquivIndices.def(&SymEquivIndices::N, "N");
+    py_SymEquivIndices.def(&SymEquivIndices::M, "M");
+    py_SymEquivIndices.def(&SymEquivIndices::fMates, "fMates");
+    py_SymEquivIndices.def(&SymEquivIndices::epsilon, "epsilon");
+    py_SymEquivIndices.def(&SymEquivIndices::N, "__len__");
+    py_SymEquivIndices.def(SymEquivIndices_getitem, "__getitem__");
+    py_SymEquivIndices.def(SymEquivIndices_call_1, "__call__");
+    py_SymEquivIndices.def(SymEquivIndices_call_2, "__call__");
+    py_SymEquivIndices.def(
+      &SymEquivIndices::isValidPhase, "isValidPhase");
+    py_SymEquivIndices.def(
+      SymEquivIndices_isValidPhase_2, "isValidPhase");
+    py_SymEquivIndices.def(
+      SymEquivIndices_isValidPhase_1, "isValidPhase");
 
-  py_IndexTableLayoutAdaptor.def(constructor<>());
-  py_IndexTableLayoutAdaptor.def(
-    &IndexTableLayoutAdaptor::H, "H");
-  py_IndexTableLayoutAdaptor.def(
-    &IndexTableLayoutAdaptor::iColumn, "iColumn");
+    py_IndexTableLayoutAdaptor.def(constructor<>());
+    py_IndexTableLayoutAdaptor.def(
+      &IndexTableLayoutAdaptor::H, "H");
+    py_IndexTableLayoutAdaptor.def(
+      &IndexTableLayoutAdaptor::iColumn, "iColumn");
 
-  py_AsymIndex.def(constructor<>());
-  py_AsymIndex.def(constructor<
-    const sgtbx::SpaceGroup&,
-    const sgtbx::ReciprocalSpaceASU&,
-    const Index&>());
-  py_AsymIndex.def(constructor<
-    const sgtbx::SpaceGroup&,
-    const Index&>());
-  py_AsymIndex.def(constructor<
-    const SymEquivIndices&>());
-  py_AsymIndex.def(
-    &AsymIndex::one_column, "one_column");
-  py_AsymIndex.def(
-    &AsymIndex::two_column, "two_column");
+    py_AsymIndex.def(constructor<>());
+    py_AsymIndex.def(constructor<
+      const sgtbx::SpaceGroup&,
+      const sgtbx::ReciprocalSpaceASU&,
+      const Index&>());
+    py_AsymIndex.def(constructor<
+      const sgtbx::SpaceGroup&,
+      const Index&>());
+    py_AsymIndex.def(constructor<
+      const SymEquivIndices&>());
+    py_AsymIndex.def(
+      &AsymIndex::one_column, "one_column");
+    py_AsymIndex.def(
+      &AsymIndex::two_column, "two_column");
 
     py_IndexGenerator.def(constructor<>());
     py_IndexGenerator.def(constructor<const uctbx::UnitCell&,
@@ -457,7 +478,9 @@ namespace {
     py_join_sets.def(&join_sets::pairs, "pairs");
     py_join_sets.def(&join_sets::singles, "singles");
     py_join_sets.def(&join_sets::have_singles, "have_singles");
-    py_join_sets.def(&join_sets::select, "select");
+    py_join_sets.def(&join_sets::size_processed, "size_processed");
+    py_join_sets.def(&join_sets::common_miller_indices,
+                                "common_miller_indices");
     py_join_sets.def(join_sets_plus, "plus");
     py_join_sets.def(join_sets_minus, "minus");
     py_join_sets.def(join_sets_multiplies, "multiplies");
@@ -473,13 +496,29 @@ namespace {
       af::shared<Index> >());
     py_join_bijvoet_mates.def(&join_bijvoet_mates::pairs, "pairs");
     py_join_bijvoet_mates.def(&join_bijvoet_mates::singles, "singles");
+    py_join_bijvoet_mates.def(&join_bijvoet_mates::have_singles,
+                                                  "have_singles");
+    py_join_bijvoet_mates.def(&join_bijvoet_mates::size_processed,
+                                                  "size_processed");
     py_join_bijvoet_mates.def(
-      &join_bijvoet_mates::have_singles, "have_singles");
-    py_join_bijvoet_mates.def(&join_bijvoet_mates::select, "select");
+      &join_bijvoet_mates::miller_indices_in_hemisphere,
+                          "miller_indices_in_hemisphere");
     py_join_bijvoet_mates.def(join_bijvoet_mates_minus, "minus");
-    py_join_bijvoet_mates.def(
-       join_bijvoet_mates_additive_sigmas, "additive_sigmas");
+    py_join_bijvoet_mates.def(join_bijvoet_mates_additive_sigmas,
+                                                "additive_sigmas");
     py_join_bijvoet_mates.def(join_bijvoet_mates_average, "average");
+
+    py_selection.def(constructor<>());
+    py_selection.def(constructor<af::shared<Index> >());
+    py_selection.def(constructor<af::shared<Index>, bool>());
+    py_selection.def(constructor<selection>());
+    py_selection.def(&selection::size_processed, "size_processed");
+    py_selection.def(&selection::n_selected, "n_selected");
+    py_selection.def(&selection::selected_miller_indices,
+                                "selected_miller_indices");
+    py_selection.def(selection_selected_data_double, "selected_data");
+    py_selection.def(&selection::negate, "negate");
+    py_selection.def(selection_sigma_filter, "sigma_filter");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");

@@ -19,6 +19,7 @@ a.erase(2)
 assert tuple(a) == (3, 1, 4, 4, 1, 1)
 a.erase(3, 5)
 assert tuple(a) == (3, 1, 4, 1)
+assert shared.sum(a) == 9
 a.clear()
 assert a.size() == 0
 a = shared.double((0, 1, 2, 3))
@@ -27,6 +28,24 @@ a.append(b)
 assert tuple(a) == (0, 1, 2, 3, 4, 5, 6)
 assert tuple(a.indices()) == tuple(xrange(a.size()))
 assert list(a.items()) == zip(xrange(a.size()), a)
+a = shared.double((1, 0, 3, 2))
+b = shared.double((4, 5, 6))
+assert shared.min_index(a) == 1
+assert shared.min_index(b) == 0
+assert shared.max_index(a) == 2
+assert shared.max_index(b) == 2
+assert shared.min(a) == 0
+assert shared.min(b) == 4
+assert shared.max(a) == 3
+assert shared.max(b) == 6
+assert shared.sum(a) == 6
+assert shared.sum(b) == 15
+assert shared.product(a) == 0
+assert shared.product(b) == 120
+assert shared.mean(a) == 6. / 4
+assert shared.mean(b) == 15. / 3
+assert shared.rms(a) == math.sqrt((1+3.*3.+2.*2.) / 4)
+assert shared.rms(b) == math.sqrt((4.*4.+5.*5.+6.*6.) / 3)
 x = shared.double((0, 1, 2, 3))
 y = shared.double((1, 3, 5, 7))
 r = shared.linear_regression(x, y)

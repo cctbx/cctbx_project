@@ -183,28 +183,37 @@ namespace {
     python::import_converters<XrayScatterer>
     py_XrayScatterer("cctbx_boost.sftbx", "XrayScatterer");
 
-#define WRAP_TYPE(python_name, element_type) \
+#define WRAP_ARRAY(python_name, element_type) \
     cctbx::af::wrap_shared<element_type >::run(this_module, python_name)
+#define WRAP_REDUCTIONS(element_type) \
+    cctbx::af::wrap_shared_reductions<element_type>::run(this_module)
 
-    WRAP_TYPE("bool", bool);
-    WRAP_TYPE("int", int);
-    WRAP_TYPE("long", long);
-    WRAP_TYPE("float", float);
-    WRAP_TYPE("double", double);
-    WRAP_TYPE("complex_double", std::complex<double>);
-    WRAP_TYPE("std_string", std::string);
+    WRAP_ARRAY("int", int);
+    WRAP_REDUCTIONS(int);
+    WRAP_ARRAY("float", float);
+    WRAP_REDUCTIONS(float);
+    WRAP_ARRAY("double", double);
+    WRAP_REDUCTIONS(double);
+    WRAP_ARRAY("complex_double", std::complex<double>);
 
-    WRAP_TYPE("miller_Index", cctbx::miller::Index);
-    WRAP_TYPE("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
-    WRAP_TYPE("RTMx", cctbx::sgtbx::RTMx);
-    WRAP_TYPE("XrayScatterer", XrayScatterer);
+#ifndef FAST_COMPILE
+    WRAP_ARRAY("bool", bool);
+    WRAP_ARRAY("long", long);
+    WRAP_REDUCTIONS(long);
+    WRAP_ARRAY("std_string", std::string);
 
-    WRAP_TYPE("double3", cctbx::af::double3);
+    WRAP_ARRAY("miller_Index", cctbx::miller::Index);
+    WRAP_ARRAY("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
+    WRAP_ARRAY("RTMx", cctbx::sgtbx::RTMx);
+    WRAP_ARRAY("XrayScatterer", XrayScatterer);
+
+    WRAP_ARRAY("double3", cctbx::af::double3);
 
     typedef std::size_t size_t;
-    WRAP_TYPE("size_t", size_t);
+    WRAP_ARRAY("size_t", size_t);
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
-    WRAP_TYPE("tiny_size_t_2", tiny_size_t_2);
+    WRAP_ARRAY("tiny_size_t_2", tiny_size_t_2);
+#endif
 
     this_module.def(py_reinterpret_complex_as_real,
       "reinterpret_complex_as_real");

@@ -12,6 +12,7 @@
 #include <cctbx/miller/asu.h>
 #include <cctbx/miller/build.h>
 #include <cctbx/miller/join.h>
+#include <cctbx/miller/selection.h>
 
 namespace cctbx { namespace miller {
 
@@ -285,49 +286,63 @@ namespace cctbx { namespace miller {
   }
 
   join_sets::join_sets(
-    af::shared<Index> indices0,
-    af::shared<Index> indices1)
+    af::shared<Index> miller_indices_0,
+    af::shared<Index> miller_indices_1)
+  : miller_indices_(miller_indices_0, miller_indices_1)
   {
     typedef std::map<Index, std::size_t> lookup_map_type;
     lookup_map_type lookup_map;
     std::size_t i;
-    for(i=0;i<indices1.size();i++) lookup_map[indices1[i]] = i;
-    std::vector<bool> indices1_flags(indices1.size(), false);
-    for(i=0;i<indices0.size();i++) {
-      lookup_map_type::const_iterator l = lookup_map.find(indices0[i]);
+    for(i=0;i<miller_indices_[1].size();i++) {
+      lookup_map[miller_indices_[1][i]] = i;
+    }
+    std::vector<bool> miller_indices_1_flags(miller_indices_[1].size(), false);
+    for(i=0;i<miller_indices_[0].size();i++) {
+      lookup_map_type::const_iterator
+      l = lookup_map.find(miller_indices_[0][i]);
       if (l == lookup_map.end()) {
         singles_[0].push_back(i);
       }
       else {
         pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
-        indices1_flags[l->second] = true;
+        miller_indices_1_flags[l->second] = true;
       }
     }
-    for(i=0;i<indices1.size();i++) {
-      if (!indices1_flags[i]) singles_[1].push_back(i);
+    for(i=0;i<miller_indices_[1].size();i++) {
+      if (!miller_indices_1_flags[i]) singles_[1].push_back(i);
     }
   }
 
-  void join_bijvoet_mates::join_(
-    sgtbx::ReciprocalSpaceASU const& asu,
-    af::shared<Index> miller_indices)
+  af::shared<Index>
+  join_sets::common_miller_indices() const
+  {
+    size_assert_intrinsic();
+    af::shared<Index> result;
+    result.reserve(pairs_.size());
+    for(std::size_t i=0;i<pairs_.size();i++) {
+      result.push_back(miller_indices_[0][pairs_[i][0]]);
+    }
+    return result;
+  }
+
+  void join_bijvoet_mates::join_(sgtbx::ReciprocalSpaceASU const& asu)
   {
     typedef std::map<Index, std::size_t> lookup_map_type;
     lookup_map_type lookup_map;
     std::size_t i;
-    for(i=0;i<miller_indices.size();i++) {
-      lookup_map[miller_indices[i]] = i;
+    for(i=0;i<miller_indices_.size();i++) {
+      lookup_map[miller_indices_[i]] = i;
     }
-    std::vector<bool> paired_already(miller_indices.size(), false);
-    for(i=0;i<miller_indices.size();i++) {
+    std::vector<bool> paired_already(miller_indices_.size(), false);
+    for(i=0;i<miller_indices_.size();i++) {
       if (paired_already[i]) continue;
-      lookup_map_type::const_iterator l = lookup_map.find(-miller_indices[i]);
+      lookup_map_type::const_iterator l = lookup_map.find(-miller_indices_[i]);
       if (l == lookup_map.end()) {
         singles_.push_back(i);
       }
       else {
-        int asu_sign = asu.asu_sign(miller_indices[i]);
-        cctbx_assert(asu_sign != 0 || miller_indices[i].is000());
+        int asu_sign = asu.asu_sign(miller_indices_[i]);
+        cctbx_assert(asu_sign != 0 || miller_indices_[i].is000());
         if (asu_sign > 0) {
           pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
         }
@@ -340,29 +355,42 @@ namespace cctbx { namespace miller {
   }
 
   af::shared<Index>
-  join_sets::select(af::shared<Index> indices0) const
+  join_bijvoet_mates::miller_indices_in_hemisphere(char plus_or_minus) const
   {
-    size_assert_1(indices0.size(), 0);
+    cctbx_assert(plus_or_minus == '+' || plus_or_minus == '-');
+    size_assert_intrinsic();
+    std::size_t j = 0;
+    if (plus_or_minus == '-') j = 1;
     af::shared<Index> result;
     result.reserve(pairs_.size());
     for(std::size_t i=0;i<pairs_.size();i++) {
-      result.push_back(indices0[pairs_[i][0]]);
+      result.push_back(miller_indices_[pairs_[i][j]]);
     }
     return result;
   }
 
-  af::shared<Index>
-  join_bijvoet_mates::select(af::shared<Index> miller_indices, bool plus) const
+  std::size_t selection::n_selected() const
   {
-    size_assert(miller_indices.size());
-    std::size_t j = 0;
-    if (!plus) j = 1;
-    af::shared<Index> result;
-    result.reserve(pairs_.size());
-    for(std::size_t i=0;i<pairs_.size();i++) {
-      result.push_back(miller_indices[pairs_[i][j]]);
+    size_assert_intrinsic();
+    std::size_t result = 0;
+    for(std::size_t i=0;i<flags_.size();i++) {
+      if (flags_[i]) result++;
     }
     return result;
+  }
+
+  void selection::negate()
+  {
+    size_assert_intrinsic();
+    for(std::size_t i=0;i<flags_.size();i++) {
+      flags_[i] = !flags_[i];
+    }
+  }
+
+  af::shared<Index>
+  selection::selected_miller_indices() const
+  {
+    return selected_data(miller_indices_);
   }
 
 }} // namespace cctbx::miller

@@ -45,4 +45,18 @@ assert tuple(sum.H) == ((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4))
 assert tuple(sum.F) == (31, 12, 43, 24)
 assert list(sum.sigmas) == [
   math.sqrt(x*x+y*y) for x,y in ((1,30), (2,10), (3,40), (4,20))]
+selected_data_set0 = data_set0.sigma_filter(cutoff_factor=2)
+assert tuple(selected_data_set0.H) == ()
+selected_data_set0 = data_set0.sigma_filter(cutoff_factor=2, negate=1)
+assert tuple(selected_data_set0.H) == tuple(h0)
+assert tuple(selected_data_set0.F) == tuple(d0)
+data_set0.sigmas = shared.double((0.6, 0.4, 2., 0.5, 0.5))
+selected_data_set0 = data_set0.sigma_filter(cutoff_factor=2)
+assert tuple(selected_data_set0.H) == ((-1, -2, -3), (-2, -3, -4), (3, 4, 5))
+assert tuple(selected_data_set0.F) == (2,4,5)
+assert tuple(selected_data_set0.sigmas) == (0.4, 0.5, 0.5)
+selected_data_set0 = data_set0.sigma_filter(cutoff_factor=2, negate=1)
+assert tuple(selected_data_set0.H) == ((1, 2, 3), (2, 3, 4))
+assert tuple(selected_data_set0.F) == (1,3)
+assert tuple(selected_data_set0.sigmas) == (0.6, 2.)
 print "OK"

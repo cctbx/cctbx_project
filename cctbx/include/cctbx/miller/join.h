@@ -14,7 +14,6 @@
 #include <vector>
 #include <map>
 #include <algorithm>
-#include <cctbx/miller.h>
 #include <cctbx/sgtbx/miller_asu.h>
 #include <cctbx/array_family/shared.h>
 
@@ -88,90 +87,108 @@ namespace cctbx { namespace miller {
     public:
       join_sets() {}
 
-      join_sets(af::shared<Index> indices0,
-                af::shared<Index> indices1);
+      join_sets(af::shared<Index> miller_indices_0,
+                af::shared<Index> miller_indices_1);
 
-      af::shared<detail::pair_type> pairs() const {
+      af::shared<detail::pair_type> pairs() const
+      {
         return pairs_;
       }
 
-      af::shared<std::size_t> singles(std::size_t i) const {
+      af::shared<std::size_t> singles(std::size_t i) const
+      {
         if (i) return singles_[1];
         return singles_[0];
       }
 
-      bool have_singles() const {
+      bool have_singles() const
+      {
         return singles_[0].size() || singles_[1].size();
+      }
+
+      std::size_t size_processed(std::size_t i) const
+      {
+        return pairs_.size() + singles_[i].size();
+      }
+
+      void size_assert_intrinsic() const
+      {
+        cctbx_assert(miller_indices_[0].size() == size_processed(0));
+        cctbx_assert(miller_indices_[1].size() == size_processed(1));
       }
 
       void size_assert_1(std::size_t sz, std::size_t i) const
       {
-        cctbx_assert(sz == pairs_.size() + singles_[i].size());
+        size_assert_intrinsic();
+        cctbx_assert(sz == size_processed(i));
       }
 
-      void size_assert_2(std::size_t sz0, std::size_t sz1) const
+      void size_assert_2(std::size_t sz_0, std::size_t sz_1) const
       {
-        size_assert_1(sz0, 0);
-        size_assert_1(sz1, 1);
+        size_assert_intrinsic();
+        cctbx_assert(sz_0 == size_processed(0));
+        cctbx_assert(sz_1 == size_processed(1));
       }
 
       af::shared<Index>
-      select(af::shared<Index> indices0) const;
+      common_miller_indices() const;
 
       template <typename NumType>
       af::shared<NumType>
       plus(
-        af::shared<NumType> data0,
-        af::shared<NumType> data1) const
+        af::shared<NumType> data_0,
+        af::shared<NumType> data_1) const
       {
-        size_assert_2(data0.size(), data1.size());
-        return detail::pair_op<std::plus<NumType> >(pairs_)(data0, data1);
+        size_assert_2(data_0.size(), data_1.size());
+        return detail::pair_op<std::plus<NumType> >(pairs_)(data_0, data_1);
       }
 
       template <typename NumType>
       af::shared<NumType>
       minus(
-        af::shared<NumType> data0,
-        af::shared<NumType> data1) const
+        af::shared<NumType> data_0,
+        af::shared<NumType> data_1) const
       {
-        size_assert_2(data0.size(), data1.size());
-        return detail::pair_op<std::minus<NumType> >(pairs_)(data0, data1);
+        size_assert_2(data_0.size(), data_1.size());
+        return detail::pair_op<std::minus<NumType> >(pairs_)(data_0, data_1);
       }
 
       template <typename NumType>
       af::shared<NumType>
       multiplies(
-        af::shared<NumType> data0,
-        af::shared<NumType> data1) const
+        af::shared<NumType> data_0,
+        af::shared<NumType> data_1) const
       {
-        size_assert_2(data0.size(), data1.size());
-        return detail::pair_op<std::multiplies<NumType> >(pairs_)(data0, data1);
+        size_assert_2(data_0.size(), data_1.size());
+        return
+          detail::pair_op<std::multiplies<NumType> >(pairs_)(data_0, data_1);
       }
 
       template <typename NumType>
       af::shared<NumType>
       divides(
-        af::shared<NumType> data0,
-        af::shared<NumType> data1) const
+        af::shared<NumType> data_0,
+        af::shared<NumType> data_1) const
       {
-        size_assert_2(data0.size(), data1.size());
-        return detail::pair_op<std::divides<NumType> >(pairs_)(data0, data1);
+        size_assert_2(data_0.size(), data_1.size());
+        return detail::pair_op<std::divides<NumType> >(pairs_)(data_0, data_1);
       }
 
       template <typename NumType>
       af::shared<NumType>
       additive_sigmas(
-        af::shared<NumType> sigmas0,
-        af::shared<NumType> sigmas1) const
+        af::shared<NumType> sigmas_0,
+        af::shared<NumType> sigmas_1) const
       {
-        size_assert_2(sigmas0.size(), sigmas1.size());
+        size_assert_2(sigmas_0.size(), sigmas_1.size());
         return detail::pair_op<detail::additive_sigma<NumType> >(pairs_)(
-          sigmas0, sigmas1);
+          sigmas_0, sigmas_1);
       }
 
     protected:
+      af::tiny<af::shared<Index>, 2> miller_indices_;
       af::shared<detail::pair_type> pairs_;
-      af::shared<std::size_t> singles_[2];
+      af::tiny<af::shared<std::size_t>, 2> singles_;
   };
 
   class join_bijvoet_mates
@@ -182,29 +199,34 @@ namespace cctbx { namespace miller {
       join_bijvoet_mates(
         sgtbx::SpaceGroupInfo const& sginfo,
         af::shared<Index> miller_indices)
+      : miller_indices_(miller_indices)
       {
-        join_(sgtbx::ReciprocalSpaceASU(sginfo), miller_indices);
+        join_(sgtbx::ReciprocalSpaceASU(sginfo));
       }
 
       join_bijvoet_mates(
         sgtbx::ReciprocalSpaceASU const& asu,
         af::shared<Index> miller_indices)
+      : miller_indices_(miller_indices)
       {
-        join_(asu, miller_indices);
+        join_(asu);
       }
 
+      explicit
       join_bijvoet_mates(
         af::shared<Index> miller_indices)
+      : miller_indices_(miller_indices)
       {
-        join_(
-          sgtbx::ReciprocalSpaceASU(sgtbx::SpaceGroupInfo()), miller_indices);
+        join_(sgtbx::ReciprocalSpaceASU(sgtbx::SpaceGroupInfo()));
       }
 
-      af::shared<detail::pair_type> pairs() const {
+      af::shared<detail::pair_type> pairs() const
+      {
         return pairs_;
       }
 
-      af::shared<std::size_t> singles() const {
+      af::shared<std::size_t> singles() const
+      {
         return singles_;
       }
 
@@ -212,13 +234,24 @@ namespace cctbx { namespace miller {
         return singles_.size();
       }
 
+      std::size_t size_processed() const
+      {
+        return 2 * pairs_.size() + singles_.size();
+      }
+
+      void size_assert_intrinsic() const
+      {
+        cctbx_assert(miller_indices_.size() == size_processed());
+      }
+
       void size_assert(std::size_t sz) const
       {
-        cctbx_assert(sz == 2 * pairs_.size() + singles_.size());
+        size_assert_intrinsic();
+        cctbx_assert(sz == size_processed());
       }
 
       af::shared<Index>
-      select(af::shared<Index> miller_indices, bool plus) const;
+      miller_indices_in_hemisphere(char plus_or_minus) const;
 
       template <typename NumType>
       af::shared<NumType>
@@ -247,10 +280,9 @@ namespace cctbx { namespace miller {
       }
 
     protected:
-      void join_(
-        sgtbx::ReciprocalSpaceASU const& asu,
-        af::shared<Index> miller_indices);
+      void join_(sgtbx::ReciprocalSpaceASU const& asu);
 
+      af::shared<Index> miller_indices_;
       af::shared<detail::pair_type> pairs_;
       af::shared<std::size_t> singles_;
   };
