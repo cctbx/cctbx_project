@@ -2,8 +2,25 @@
 #define CCTBX_RESTRAINTS_REPULSION_H
 
 #include <cctbx/restraints/asu_cache.h>
+#include <cctbx/restraints/sorted_proxies.h>
 
 namespace cctbx { namespace restraints {
+
+  struct repulsion_proxy
+  {
+    repulsion_proxy() {}
+
+    repulsion_proxy(
+      af::tiny<std::size_t, 2> const& i_seqs_,
+      double vdw_radius_)
+    :
+      i_seqs(i_seqs_),
+      vdw_radius(vdw_radius_)
+    {}
+
+    af::tiny<std::size_t, 2> i_seqs;
+    double vdw_radius;
+  };
 
   struct repulsion_sym_proxy
   {
@@ -16,6 +33,15 @@ namespace cctbx { namespace restraints {
       pair(pair_),
       vdw_radius(vdw_radius_)
     {}
+
+    // Not available in Python.
+    repulsion_proxy
+    as_direct_proxy() const
+    {
+      return repulsion_proxy(
+        af::tiny<std::size_t, 2>(pair.i_seq, pair.j_seq),
+        vdw_radius);
+    }
 
     direct_space_asu::asu_mapping_index_pair pair;
     double vdw_radius;
@@ -85,49 +111,61 @@ namespace cctbx { namespace restraints {
       repulsion() {}
 
       repulsion(
-        af::tiny<scitbx::vec3<double>, 2> const& sites,
-        double vdw_radius,
+        af::tiny<scitbx::vec3<double>, 2> const& sites_,
+        double vdw_radius_,
         repulsion_function const& function_=repulsion_function())
       :
+        sites(sites_),
+        vdw_radius(vdw_radius_),
         function(function_)
       {
-        diff_vec = sites[0] - sites[1];
-        delta = diff_vec.length();
-        term_ = function.term(vdw_radius, delta);
+        init_term();
       }
 
-      // Not available in Python.
+      repulsion(
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        repulsion_proxy const& proxy,
+        repulsion_function const& function_=repulsion_function())
+      :
+        vdw_radius(proxy.vdw_radius),
+        function(function_)
+      {
+        for(int i=0;i<2;i++) {
+          std::size_t i_seq = proxy.i_seqs[i];
+          CCTBX_ASSERT(i_seq < sites_cart.size());
+          sites[i] = sites_cart[i_seq];
+        }
+        init_term();
+      }
+
       repulsion(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         direct_space_asu::asu_mappings<> const& asu_mappings,
         repulsion_sym_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
+        vdw_radius(proxy.vdw_radius),
         function(function_)
       {
-        vec3 mapped_site_0 = asu_mappings.map_moved_site_to_asu(
+        sites[0] = asu_mappings.map_moved_site_to_asu(
           sites_cart[proxy.pair.i_seq], proxy.pair.i_seq, 0);
-        vec3 mapped_site_1 = asu_mappings.map_moved_site_to_asu(
+        sites[1] = asu_mappings.map_moved_site_to_asu(
           sites_cart[proxy.pair.j_seq], proxy.pair.j_seq, proxy.pair.j_sym);
-        diff_vec = mapped_site_0 - mapped_site_1;
-        delta = diff_vec.length();
-        term_ = function.term(proxy.vdw_radius, delta);
+        init_term();
       }
 
       // Not available in Python.
       repulsion(
-        af::const_ref<scitbx::vec3<double> > const& sites_cart,
         asu_cache<> const& cache,
         repulsion_sym_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
+        vdw_radius(proxy.vdw_radius),
         function(function_)
       {
-        vec3 mapped_site_0 = cache.sites[proxy.pair.i_seq][0];
-        vec3 mapped_site_1 = cache.sites[proxy.pair.j_seq][proxy.pair.j_sym];
-        diff_vec = mapped_site_0 - mapped_site_1;
-        delta = diff_vec.length();
-        term_ = function.term(proxy.vdw_radius, delta);
+        sites[0] = cache.sites[proxy.pair.i_seq][0];
+        sites[1] = cache.sites[proxy.pair.j_seq][proxy.pair.j_sym];
+        init_term();
       }
 
       double
@@ -147,6 +185,17 @@ namespace cctbx { namespace restraints {
         result[0] = gradient_0();
         result[1] = -result[0];
         return result;
+      }
+
+      // Not available in Python.
+      void
+      add_gradients(
+        af::ref<scitbx::vec3<double> > const& gradient_array,
+        af::tiny<std::size_t, 2> const& i_seqs) const
+      {
+        vec3 g0 = gradient_0();
+        gradient_array[i_seqs[0]] += g0;
+        gradient_array[i_seqs[1]] += -g0;
       }
 
       // Not available in Python.
@@ -178,12 +227,71 @@ namespace cctbx { namespace restraints {
         }
       }
 
+      af::tiny<scitbx::vec3<double>, 2> sites;
+      double vdw_radius;
       repulsion_function function;
       scitbx::vec3<double> diff_vec;
       double delta;
     protected:
       double term_;
+
+      void
+      init_term()
+      {
+        diff_vec = sites[0] - sites[1];
+        delta = diff_vec.length();
+        term_ = function.term(vdw_radius, delta);
+      }
   };
+
+  inline
+  af::shared<double>
+  repulsion_deltas(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<repulsion_proxy> const& proxies,
+    repulsion_function const& function=repulsion_function())
+  {
+    af::shared<double> result((af::reserve(sites_cart.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      repulsion restraint(sites_cart, proxies[i], function);
+      result.push_back(restraint.delta);
+    }
+    return result;
+  }
+
+  inline
+  af::shared<double>
+  repulsion_residuals(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<repulsion_proxy> const& proxies,
+    repulsion_function const& function=repulsion_function())
+  {
+    af::shared<double> result((af::reserve(sites_cart.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      repulsion restraint(sites_cart, proxies[i], function);
+      result.push_back(restraint.residual());
+    }
+    return result;
+  }
+
+  inline
+  double
+  repulsion_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<repulsion_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    repulsion_function const& function=repulsion_function())
+  {
+    double result = 0;
+    for(std::size_t i=0;i<proxies.size();i++) {
+      repulsion restraint(sites_cart, proxies[i], function);
+      result += restraint.residual();
+      if (gradient_array.size() != 0) {
+        restraint.add_gradients(gradient_array, proxies[i].i_seqs);
+      }
+    }
+    return result;
+  }
 
   inline
   af::shared<double>
@@ -232,7 +340,7 @@ namespace cctbx { namespace restraints {
       asu_cache<> cache(
         sites_cart, asu_mappings, gradient_array.size() != 0);
       for(std::size_t i=0;i<proxies.size();i++) {
-        repulsion restraint(sites_cart, cache, proxies[i], function);
+        repulsion restraint(cache, proxies[i], function);
         if (proxies[i].pair.j_sym == 0) result += restraint.residual();
         else                            result += restraint.residual()*.5;
         if (gradient_array.size() != 0) {
@@ -253,6 +361,33 @@ namespace cctbx { namespace restraints {
         }
       }
     }
+    return result;
+  }
+
+  typedef sorted_proxies<repulsion_proxy, repulsion_sym_proxy>
+    repulsion_sorted_proxies;
+
+  inline
+  double
+  repulsion_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    repulsion_sorted_proxies const& sorted_proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    repulsion_function const& function=repulsion_function(),
+    bool disable_cache=false)
+  {
+    double result = repulsion_residual_sum(
+      sites_cart,
+      sorted_proxies.proxies.const_ref(),
+      gradient_array,
+      function);
+    result += repulsion_residual_sum(
+      sites_cart,
+      *sorted_proxies.asu_mappings(),
+      sorted_proxies.sym_proxies.const_ref(),
+      gradient_array,
+      function,
+      disable_cache);
     return result;
   }
 
