@@ -416,30 +416,6 @@ def compute_refined_matches(ref_model1, ref_model2,
   #print accumulated_match_refine_times
   return refined_matches
 
-def match_models(model1, model2,
-                 tolerance=1.,
-                 models_are_diffraction_index_equivalent=00000,
-                 break_if_match_with_no_singles=00000,
-                 rms_penalty_per_site=0.05):
-  assert model1.cb_op().is_identity_op()
-  assert model2.cb_op().is_identity_op()
-  ref_model1 = model1.transform_to_reference_setting()
-  ref_model2 = model2.transform_to_reference_setting()
-  assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
-  if (ref_model1.space_group() != ref_model2.space_group()):
-    ref_model2 = ref_model2.change_hand()
-  assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
-  assert ref_model1.space_group() == ref_model2.space_group()
-  refined_matches = compute_refined_matches(
-    ref_model1, ref_model2,
-    tolerance,
-    models_are_diffraction_index_equivalent,
-    break_if_match_with_no_singles)
-  refined_matches.sort(match_sort_function)
-  weed_refined_matches(model1.space_group_info().type().number(),
-                       refined_matches, rms_penalty_per_site)
-  return refined_matches
-
 class model_matches:
 
   def __init__(self, model1, model2,
@@ -448,12 +424,23 @@ class model_matches:
                      break_if_match_with_no_singles=00000,
                      rms_penalty_per_site=0.05):
     adopt_init_args(self, locals())
-    self.refined_matches = match_models(
-      model1, model2,
+    assert model1.cb_op().is_identity_op()
+    assert model2.cb_op().is_identity_op()
+    ref_model1 = model1.transform_to_reference_setting()
+    ref_model2 = model2.transform_to_reference_setting()
+    assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
+    if (ref_model1.space_group() != ref_model2.space_group()):
+      ref_model2 = ref_model2.change_hand()
+    assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
+    assert ref_model1.space_group() == ref_model2.space_group()
+    self.refined_matches = compute_refined_matches(
+      ref_model1, ref_model2,
       tolerance,
       models_are_diffraction_index_equivalent,
-      break_if_match_with_no_singles,
-      rms_penalty_per_site)
+      break_if_match_with_no_singles)
+    self.refined_matches.sort(match_sort_function)
+    weed_refined_matches(model1.space_group_info().type().number(),
+                         self.refined_matches, rms_penalty_per_site)
 
   def n_matches(self):
     return len(self.refined_matches)
