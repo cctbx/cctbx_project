@@ -226,8 +226,8 @@ def exercise_bins():
   perm_array_indices1 = flex.size_t()
   perm_array_indices2 = flex.size_t()
   for i_bin in binner1.range_all():
-    perm_array_indices1.append(array_indices.select(binner1.selection(i_bin)))
-    perm_array_indices2.append(binner1.array_indices(i_bin))
+    perm_array_indices1.extend(array_indices.select(binner1.selection(i_bin)))
+    perm_array_indices2.extend(binner1.array_indices(i_bin))
   assert perm_array_indices1.size() == m.size()
   assert perm_array_indices2.size() == m.size()
   assert tuple(perm_array_indices1) == tuple(perm_array_indices2)

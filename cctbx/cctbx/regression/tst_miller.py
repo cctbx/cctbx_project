@@ -53,7 +53,7 @@ def exercise_set():
   ma = ms.remove_systematic_absences()
   assert flex.order(ms.indices(), ma.indices()) == 0
   assert miller.set(xs, mi).auto_anomalous().anomalous_flag() == 00000
-  mi.append(flex.miller_index(((-1,-2,-3), (3,4,5), (-3,-4,-5))))
+  mi.extend(flex.miller_index(((-1,-2,-3), (3,4,5), (-3,-4,-5))))
   ma = miller.set(xs, mi)
   assert ma.n_bijvoet_pairs() == 2
   assert ma.auto_anomalous().anomalous_flag() == 0001
