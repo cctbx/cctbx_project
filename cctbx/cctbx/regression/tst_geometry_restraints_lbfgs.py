@@ -78,6 +78,7 @@ def exercise(verbose=0):
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         traditional_convergence_test=traditional_convergence_test,
         drop_convergence_test_max_drop_eps=1.e-20,
+        drop_convergence_test_iteration_coefficient=1,
         max_iterations=1000))
     assert minimized.minimizer.iter() > 100
     sites_cart_minimized_1 = sites_cart.deep_copy()
