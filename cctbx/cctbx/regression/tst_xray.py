@@ -9,7 +9,7 @@ from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import pickle
-import StringIO
+from cStringIO import StringIO
 import sys
 
 def exercise_scatterer():
@@ -100,7 +100,7 @@ def exercise_structure():
   assert sd.lookup("Si").gaussian.n_terms() == 4
   sd = ys.scattering_dict(custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
   assert sd.lookup("Si").gaussian.n_terms() == 0
-  s = StringIO.StringIO()
+  s = StringIO()
   sd.show_summary(f=s)
   assert s.getvalue().strip() == "Si:0+c*1 O:4+c*1"
   am = xs.asu_mappings(buffer_thickness=1)
@@ -187,6 +187,23 @@ def exercise_structure():
   assert approx_equal(xs2.scatterers()[i].site, (0.2, 0.4, 0.7))
   xs2.apply_symmetry_sites()
   assert approx_equal(xs2.scatterers()[i].site, (0, 0, 0.7))
+  s = StringIO()
+  xs1.show_pairs(distance_cutoff=0.1, out=s)
+  assert s.getvalue() == """\
+C  pair count:   2       <<  0.0200,  0.0000,  0.1000>>
+  C:   0.0000             (  0.0200,  0.0000,  0.1000)
+  C:   0.0000             (  0.0200,  0.0000,  0.1000)
+C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
+  C:   0.0000             (  0.0000,  0.0000,  0.1000)
+C  pair count:   2       <<  0.0200,  0.0000,  0.1000>>
+  C:   0.0000             (  0.0200,  0.0000,  0.1000)
+  C:   0.0000             (  0.0200,  0.0000,  0.1000)
+C  pair count:   2       <<  0.0200,  0.0000,  0.1000>>
+  C:   0.0000             (  0.0200,  0.0000,  0.1000)
+  C:   0.0000             (  0.0200,  0.0000,  0.1000)
+C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
+  C:   0.0000             (  0.0000,  0.0000,  0.1000)
+"""
 
 def exercise_u_base():
   d_min = 9
