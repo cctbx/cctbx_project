@@ -151,6 +151,27 @@ namespace cctbx {
       return result;
     }
 
+    //! Type for vector of multiplicities for given Miller indices.
+    template <class MultiplicityVectorType>
+    struct multiplicity_vector
+    {
+      //! Compute the vector of multiplicites.
+      /*! See also: cctbx::sgtbx::SpaceGroup::multiplicity()
+       */
+      template <class SpaceGroupType, class MillerIndexVectorType>
+      static MultiplicityVectorType
+      get(const SpaceGroupType& SgOps,
+          bool FriedelFlag,
+          const MillerIndexVectorType& MillerIndices)
+      {
+        MultiplicityVectorType result(MillerIndices.size());
+        for(std::size_t i=0;i<MillerIndices.size();i++) {
+          result[i] = SgOps.multiplicity(MillerIndices[i], FriedelFlag);
+        }
+        return result;
+      }
+    };
+
   } // namespace Miller
 } // namespace cctbx
 
