@@ -296,6 +296,7 @@ def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
     "RandomSeed",
     "ShortCut",
+    "AllTabulatedSpaceGroups",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   test_symbols_from_tables()
