@@ -38,6 +38,10 @@ namespace sgtbx {
         if (i >= size()) throw error_index();
         return m_VM[i];
       }
+      inline const Vec3& V(std::size_t i) const { return VM(i).V; }
+      inline int M(std::size_t i) const { return VM(i).M; }
+      bool is_ss(const Miller::Index& H) const;
+      Vec3 get_uvw(const Miller::Index& H) const;
     private:
       boost::array<ssVM, 3> m_VM;
       std::size_t m_size;

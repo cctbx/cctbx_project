@@ -262,6 +262,15 @@ namespace {
     return initargs;
   }
 
+  RTMx std_vector_RTMx_getitem(const std::vector<RTMx>& v, std::size_t key) {
+    if (key >= v.size()) {
+      PyErr_SetString(PyExc_IndexError,
+                      "std::vector<RTMx>: index out of range");
+      throw boost::python::error_already_set();
+    }
+    return v[key];
+  }
+
   int PhaseRestriction_HT_0(const PhaseRestriction& PR) {
     return PR.HT();
   }
@@ -538,6 +547,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     class_builder<SgOps>
     py_SgOps(this_module, "SgOps");
     python::export_converters(py_SgOps);
+    class_builder<std::vector<RTMx> >
+    py_std_vector_RTMx(this_module, "std_vector_RTMx");
     class_builder<SpaceGroupType>
     py_SpaceGroupType(this_module, "SpaceGroupType");
     class_builder<WyckoffPosition>
@@ -793,8 +804,16 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(SgOps_repr, "__repr__");
     py_SgOps.def(SgOps_getinitargs, "__getinitargs__");
 
+    py_std_vector_RTMx.def(constructor<>());
+    py_std_vector_RTMx.def(&std::vector<RTMx>::size, "size");
+    py_std_vector_RTMx.def(&std::vector<RTMx>::size, "__len__");
+    py_std_vector_RTMx.def(std_vector_RTMx_getitem, "__getitem__");
+
     py_SpaceGroupType.def(&SpaceGroupType::SgNumber, "SgNumber");
     py_SpaceGroupType.def(&SpaceGroupType::CBOp, "CBOp");
+    py_SpaceGroupType.def(
+      &SpaceGroupType::getAddlGeneratorsOfEuclideanNormalizer,
+                      "getAddlGeneratorsOfEuclideanNormalizer");
 
     py_WyckoffPosition.def(&WyckoffPosition::M, "M");
     py_WyckoffPosition.def(&WyckoffPosition::Letter, "Letter");
@@ -965,6 +984,12 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
     py_StructureSeminvariant.def(constructor<>());
     py_StructureSeminvariant.def(constructor<const SgOps&>());
+    py_StructureSeminvariant.def(&StructureSeminvariant::size, "size");
+    py_StructureSeminvariant.def(&StructureSeminvariant::size, "__len__");
+    py_StructureSeminvariant.def(&StructureSeminvariant::V, "V");
+    py_StructureSeminvariant.def(&StructureSeminvariant::M, "M");
+    py_StructureSeminvariant.def(&StructureSeminvariant::is_ss, "is_ss");
+    py_StructureSeminvariant.def(&StructureSeminvariant::get_uvw, "get_uvw");
 
     sgtbx::sanity_check();
   }
