@@ -208,10 +208,10 @@ namespace cctbx {
 
         //! Phase shift H*T (mod 1) corresponding to H*R = -H.
         /*! Low-level information for computing the restricted phases.
-            Note that high-level functions are also available (e.g.
-            HT_deg()).<br>
             HT() is multiplied by a base factor TBF() in order to obtain
             an integer value.
+            <p>
+            See also: HT_angle()
          */
         int HT() const { return m_HT; }
         //! Translation base factor.
@@ -219,50 +219,37 @@ namespace cctbx {
          */
         int TBF() const { return m_TBF; }
 
-        //! Compute the phase restriction for the given Period.
-        /*! Formula used:<br>
-            Period * HT() / TBF();<br>
-            The return value is -1 if the phase is not restricted,
-            and >= 0 and < Period otherwise.<br>
-            See also: HT_rad(), HT_deg()
+        //! Phase restriction in radians or degrees.
+        /*! The return value is -1 if the phase is not restricted,
+            and >= 0 and < pi or 180 otherwise.
          */
-        double HT(double Period) const {
-          if (!isCentric()) return -1.;
-          return Period * double(m_HT) / double(m_TBF);
+        double HT_angle(bool deg = false) const
+        {
+          if (deg) return HT_angle_(180.);
+          return HT_angle_(cctbx::constants::pi);
         }
-        //! Compute the phase restriction in radians.
-        /*! The return value is -1 if the phase is not restricted,
-            and >= 0 and < pi otherwise.
-         */
-        double HT_rad() const { return HT(cctbx::constants::pi); }
-        //! Compute the phase restriction in degrees.
-        /*! The return value is -1 if the phase is not restricted,
-            and >= 0 and < 180 otherwise.
-         */
-        double HT_deg() const { return HT(180.); }
 
         /*! \brief Test if phase phi (with given Period) is
             compatible with restriction.
          */
-        /*! Period is the period of the restricted phase, e.g. 180 if
-            the phase is measured in degrees.<br>
-            The tolerance compensates for rounding errors.<br>
-            See also: isValidPhase_rad(), isValidPhase_deg()
-         */
-        bool isValidPhase(double Period, double phi, double tolerance) const;
-        //! Test if phase phi (in radians) is compatible with restriction.
+        //! Test if phase phi is compatible with restriction.
         /*! The tolerance compensates for rounding errors.
          */
-        bool isValidPhase_rad(double phi, double tolerance = 1.e-5) const {
-          return isValidPhase(cctbx::constants::pi, phi, tolerance);
+        bool isValidPhase(
+          double phi, bool deg = false, double tolerance = 1.e-5) const
+        {
+          if (deg) return isValidPhase_(180., phi, tolerance);
+          return isValidPhase_(cctbx::constants::pi, phi, tolerance);
         }
-        //! Test if phase phi (in degrees) is compatible with restriction.
-        /*! The tolerance compensates for rounding errors.
-         */
-        bool isValidPhase_deg(double phi, double tolerance = 1.e-5) const {
-          return isValidPhase(180., phi, tolerance);
-        }
+
       private:
+        double HT_angle_(double Period) const {
+          if (!isCentric()) return -1.;
+          return Period * double(m_HT) / double(m_TBF);
+        }
+
+        bool isValidPhase_(double Period, double phi, double tolerance) const;
+
         int m_HT;
         int m_TBF;
     };
@@ -369,21 +356,14 @@ namespace cctbx {
          */
         Miller::SymEquivIndex operator()(int iIL) const;
 
-        //! Test if phase phi (in radians) is compatible with restriction.
+        //! Test if phase phi is compatible with restriction.
         /*! The tolerance compensates for rounding errors.<br>
             See also: class PhaseRestriction
          */
-        bool isValidPhase_rad(double phi,
-                              double tolerance = 1.e-5) const {
-          return getPhaseRestriction().isValidPhase_rad(phi, tolerance);
-        }
-        //! Test if phase phi (in degrees) is compatible with restriction.
-        /*! The tolerance compensates for rounding errors.<br>
-            See also: class PhaseRestriction
-         */
-        bool isValidPhase_deg(double phi,
-                              double tolerance = 1.e-5) const {
-          return getPhaseRestriction().isValidPhase_deg(phi, tolerance);
+        bool isValidPhase(double phi,
+                          bool deg = false,
+                          double tolerance = 1.e-5) const {
+          return getPhaseRestriction().isValidPhase(phi, deg, tolerance);
         }
       private:
         int m_TBF;

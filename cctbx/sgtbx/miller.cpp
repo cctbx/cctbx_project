@@ -156,11 +156,11 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  bool PhaseRestriction::isValidPhase(double Period,
-                                      double phi, double tolerance) const
+  bool PhaseRestriction::isValidPhase_(double Period,
+                                       double phi, double tolerance) const
   {
     if (m_HT < 0) return true;
-    double delta = std::fmod(phi - HT(Period), Period);
+    double delta = std::fmod(phi - HT_angle(Period), Period);
     if (delta >  tolerance) delta -= Period;
     if (delta < -tolerance) delta += Period;
     if (delta <= tolerance) return true;

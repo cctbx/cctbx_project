@@ -72,8 +72,11 @@ namespace cctbx {
   inline double Q_as_stol2(double Q) { return Q * .25; }
   inline double Q_as_two_stol(double Q) { return std::sqrt(Q); }
   inline double Q_as_stol(double Q) { return std::sqrt(Q) * .5; }
-  inline double Q_as_two_theta_deg(double Q, double lambda) {
-    return rad_as_deg(2. * std::asin(Q_as_stol(Q) * lambda));
+  inline double Q_as_two_theta(double Q, double wavelength, bool deg = false)
+  {
+    double result = 2. * std::asin(Q_as_stol(Q) * wavelength);
+    if (deg) return rad_as_deg(result);
+    return result;
   }
   inline double Q_as_d(double Q) {
     if (Q == 0.) return -1.;
@@ -336,12 +339,17 @@ namespace cctbx {
 
       //! Diffraction angle 2-theta in degrees, given wavelength lamdda.
       double
-      two_theta_deg(const Miller::Index& MIx, double lambda) const {
-        return Q_as_two_theta_deg(Q(MIx), lambda);
+      two_theta(
+        const Miller::Index& MIx, double wavelength, bool deg = false) const
+      {
+        return Q_as_two_theta(Q(MIx), wavelength);
       }
       //! Diffraction angle 2-theta in degrees, given wavelength lamdda.
       af::shared<double>
-      two_theta_deg(const af::shared<Miller::Index>& MIx, double lambda) const;
+      two_theta(
+        af::shared<Miller::Index> MIx,
+        double wavelength,
+        bool deg = false) const;
       //@}
 
       //! @name Stream I/O.

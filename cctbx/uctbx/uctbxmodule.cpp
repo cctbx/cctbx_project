@@ -153,6 +153,24 @@ namespace {
     return uc.isEqual(other);
   }
 
+  double
+  UnitCell_two_theta_s_2(
+    const UnitCell& uc,
+    const Miller::Index& MIx,
+    double wavelength)
+  {
+    return uc.two_theta(MIx, wavelength);
+  }
+
+  af::shared<double>
+  UnitCell_two_theta_a_2(
+    const UnitCell& uc,
+    af::shared<Miller::Index> MIx,
+    double wavelength)
+  {
+    return uc.two_theta(MIx, wavelength);
+  }
+
   af::double3
   modShortDifference(const af::double3& Xf, const af::double3& Yf) {
     return fractional<double>(Xf - Yf).modShort();
@@ -241,11 +259,13 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     &UnitCell::d, "d");
   UnitCell_class.def(
     (af::shared<double> (UnitCell::*)(
-      const af::shared<Miller::Index>&, double) const)
-    &UnitCell::two_theta_deg, "two_theta_deg");
+      af::shared<Miller::Index>, double, bool) const)
+    &UnitCell::two_theta, "two_theta");
+  UnitCell_class.def(UnitCell_two_theta_s_2, "two_theta");
   UnitCell_class.def(
-    (double (UnitCell::*)(const Miller::Index&, double) const)
-    &UnitCell::two_theta_deg, "two_theta_deg");
+    (double (UnitCell::*)(const Miller::Index&, double, bool) const)
+    &UnitCell::two_theta, "two_theta");
+  UnitCell_class.def(UnitCell_two_theta_a_2, "two_theta");
   UnitCell_class.def(UnitCell_fractionalize, "fractionalize");
   UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
   UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");

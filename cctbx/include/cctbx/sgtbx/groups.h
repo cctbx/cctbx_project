@@ -357,15 +357,11 @@ namespace cctbx { namespace sgtbx {
       /*! See class PhaseRestriction.
        */
       PhaseRestriction getPhaseRestriction(const Miller::Index& H) const;
-      //! See class PhaseRestriction::isValidPhase_rad().
-      bool isValidPhase_rad(const Miller::Index& H, double phi,
-                            double tolerance = 1.e-5) const {
-        return getPhaseRestriction(H).isValidPhase_rad(phi, tolerance);
-      }
-      //! See class PhaseRestriction::isValidPhase_deg().
-      bool isValidPhase_deg(const Miller::Index& H, double phi,
-                            double tolerance = 1.e-5) const {
-        return getPhaseRestriction(H).isValidPhase_deg(phi, tolerance);
+      //! See class PhaseRestriction::isValidPhase().
+      bool isValidPhase(const Miller::Index& H, double phi,
+                        bool deg = false,
+                        double tolerance = 1.e-5) const {
+        return getPhaseRestriction(H).isValidPhase(phi, deg, tolerance);
       }
       //! Determine the reflection multiplicity for the given Miller index.
       /*! The multiplicity is defined as the number of symmetrically
