@@ -108,12 +108,30 @@ namespace cctbx { namespace xray { namespace {
   }
 
   af::shared<double>
-  extract_u_iso(af::const_ref<scatterer<> > const& scatterers)
+  extract_u_iso_1(
+    af::const_ref<scatterer<> > const& self)
   {
     af::shared<double>
-      result(af::reserve(scatterers.size()));
-    for(std::size_t i=0;i<scatterers.size();i++) {
-      result.push_back(scatterers[i].u_iso);
+      result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i].u_iso);
+    }
+    return result;
+  }
+
+  af::shared<double>
+  extract_u_iso_2(
+    af::const_ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell)
+  {
+    af::shared<double> result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].anisotropic_flag) {
+        result.push_back(adptbx::u_star_as_u_iso(unit_cell, self[i].u_star));
+      }
+      else {
+        result.push_back(self[i].u_iso);
+      }
     }
     return result;
   }
@@ -231,7 +249,9 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
       .def("set_occupancies", cctbx::xray::set_occupancies,
         (arg_("occupancies")))
-      .def("extract_u_iso", cctbx::xray::extract_u_iso)
+      .def("extract_u_iso", cctbx::xray::extract_u_iso_1)
+      .def("extract_u_iso", cctbx::xray::extract_u_iso_2,
+        (arg_("unit_cell")))
       .def("set_u_iso", cctbx::xray::set_u_iso,
         (arg_("u_iso")))
       .def("extract_u_star", cctbx::xray::extract_u_star)
