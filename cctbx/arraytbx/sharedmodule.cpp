@@ -86,7 +86,7 @@ namespace {
     ex_statistics(const cctbx::af::shared<FloatType>& x)
       : base_type(x.const_ref())
     {}
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
     template <typename OtherFloatType>
     ex_statistics(const cctbx::af::shared<OtherFloatType>& x)
       : base_type(cctbx::af::shared<FloatType>(x.begin(), x.end()).const_ref())
@@ -157,7 +157,7 @@ namespace {
 
     py_statistics.def(constructor<>());
     py_statistics.def(constructor<const cctbx::af::shared<double>&>());
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
     py_statistics.def(constructor<const cctbx::af::shared<float>&>());
 #endif
     py_statistics.def(&ex_statistics<double>::min, "min");

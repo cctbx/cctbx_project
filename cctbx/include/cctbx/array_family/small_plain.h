@@ -51,7 +51,7 @@ namespace cctbx { namespace af {
         m_size = sz;
       }
 
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 6.0
       // non-std
       template <typename InitFunctorType>
       small_plain(const size_type& sz, InitFunctorType ftor)
