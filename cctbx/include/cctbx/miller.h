@@ -266,11 +266,12 @@ namespace cctbx {
       typedef indexed_value<Index, DataType, SortCmpFunctor> ivalue_type;
       af::shared<ivalue_type> ivalues;
       ivalues.reserve(miller_indices.size());
-      for(std::size_t i=0;i<miller_indices.size();i++) {
+      std::size_t i;
+      for(i=0;i<miller_indices.size();i++) {
         ivalues.push_back(ivalue_type(miller_indices[i], data[i]));
       }
       std::sort(ivalues.begin(), ivalues.end());
-      for(std::size_t i=0;i<miller_indices.size();i++) {
+      for(i=0;i<miller_indices.size();i++) {
         miller_indices[i] = ivalues[i].index;
         data[i] = ivalues[i].value;
       }

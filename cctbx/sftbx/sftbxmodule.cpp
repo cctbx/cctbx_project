@@ -635,9 +635,10 @@ namespace {
     int peak_search_level,
     std::size_t max_peaks)
   {
-    cctbx_assert(af::product(n_real) <= af::product(m_real));
-    cctbx_assert(af::product(n_real) == tags.size());
-    cctbx_assert(af::product(m_real) == data.size());
+    cctbx_assert(   af::product(n_real.const_ref())
+                 <= af::product(m_real.const_ref()));
+    cctbx_assert(af::product(n_real.const_ref()) == tags.size());
+    cctbx_assert(af::product(m_real.const_ref()) == data.size());
     typedef af::grid<3> grid_type;
     typedef grid_type::index_type grid_point_type;
     af::ref<double, grid_type> data_3d(data.begin(), grid_type(m_real));
