@@ -23,8 +23,6 @@ if (not env_etc.no_boost_python):
   env_scitbx_boost_python_ext.Replace(
     CPPPATH=env_etc.scitbx_common_includes + [env_etc.python_include])
   env_scitbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
-  if env_etc.compiler =="darwin_g++":
-    env_scitbx_boost_python_ext.Append(LIBS=["System.B","gcc","stdc++"])
   Export("env_scitbx_boost_python_ext")
 
   env_scitbx_boost_python_ext.Command(
