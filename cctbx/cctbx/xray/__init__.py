@@ -60,10 +60,12 @@ class structure(crystal.special_position_settings):
   def __init__(self, special_position_settings, scatterers=None):
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
-    self._scatterers = flex.xray_scatterer()
-    self._special_position_indices = flex.size_t()
-    if (scatterers != None):
-      self.add_scatterers(scatterers)
+    if (scatterers == None):
+      self._scatterers = flex.xray_scatterer()
+      self._special_position_indices = flex.size_t()
+    else:
+      self._scatterers = scatterers.deep_copy()
+      self.all_apply_symmetry()
 
   def _copy_constructor(self, other):
     crystal.special_position_settings._copy_constructor(
@@ -83,6 +85,11 @@ class structure(crystal.special_position_settings):
   def special_position_indices(self):
     return self._special_position_indices
 
+  def add_scatterer(self, scatterer):
+    i = self.scatterers().size()
+    self._scatterers.append(scatterer)
+    self.apply_symmetry(i)
+
   def apply_symmetry(self, i):
     site_symmetry = self._scatterers[i].apply_symmetry(
       self.unit_cell(),
@@ -94,28 +101,25 @@ class structure(crystal.special_position_settings):
     if (not site_symmetry.is_point_group_1()):
       self.special_position_indices().append(i)
 
+  def add_scatterers(self, scatterers):
+    n = self.scatterers().size()
+    special_position_indices = self._all_apply_symmetry(scatterers) + n
+    self._scatterers.append(scatterers)
+    self._special_position_indices.append(special_position_indices)
+
   def all_apply_symmetry(self):
-    self._special_position_indices = apply_symmetry(
+    self._special_position_indices =self._all_apply_symmetry(self.scatterers())
+
+  def _all_apply_symmetry(self, scatterers):
+    return apply_symmetry(
       self.unit_cell(),
       self.space_group(),
-      self.scatterers(),
+      scatterers,
       self.min_distance_sym_equiv(),
       self.u_star_tolerance(),
       self.assert_is_positive_definite(),
       self.assert_min_distance_sym_equiv())
-
-  def add_scatterer(self, scatterer):
-    i = self.scatterers().size()
-    self._scatterers.append(scatterer)
-    self.apply_symmetry(i)
-
-  def add_scatterers(self, scatterers):
-    #XXX crash with RedHat 7.3/gcc 2.96 when running phenix translation search
-    #for scatterer in scatterers:
-    #  self.add_scatterer(scatterer)
-    for i in xrange(scatterers.size()):
-      self.add_scatterer(scatterers[i])
-
+    
   def structure_factors(self, anomalous_flag=None, d_min=None,
                               direct=00000, fft=00000):
     miller_set = miller.build_set(self, anomalous_flag, d_min)
@@ -187,12 +191,9 @@ class structure(crystal.special_position_settings):
     return self.change_basis(ch_op)
 
   def apply_shift(self, shift):
-    # XXX push to C++
-    shifted_scatterers = flex.xray_scatterer()
-    for scatterer in self.scatterers():
-      scatterer = scatterer.copy()
-      scatterer.site = [scatterer.site[i] + shift[i] for i in xrange(3)]
-      shifted_scatterers.append(scatterer)
+    shifted_scatterers = self.scatterers().deep_copy()
+    shifted_scatterers.set_sites(
+      shifted_scatterers.extract_sites() + shift)
     return structure(
       special_position_settings=self,
       scatterers=shifted_scatterers)

@@ -17,6 +17,18 @@ def exercise_flex_triple(flex_triple, ordered, as_double=00000):
     b = flex_triple().from_double(a.as_double())
     assert tuple(a) == tuple(b)
 
+def exercise_flex_vec3_double():
+  a = flex.vec3_double(((1,2,5), (-2,3,4), (3,4,3)))
+  assert approx_equal(a.min(), (-2.0,2.0,3.0))
+  assert approx_equal(a.max(), (3.0,4.0,5.0))
+  a += (10,20,30)
+  assert approx_equal(tuple(a), ((11,22,35), (8,23,34), (13,24,33)))
+  assert approx_equal(tuple(a+(20,30,10)), ((31,52,45),(28,53,44),(33,54,43)))
+  assert approx_equal(tuple(a*(-1,1,0,1,0,-1,1,-1,1)),
+    ((46,-24,13),(49,-26,11),(44,-20,9)))
+  assert approx_equal(tuple((-1,1,0,1,0,-1,1,-1,1)*a),
+    ((11,-24,24),(15,-26,19),(11,-20,22)))
+
 def exercise_flex_sym_mat3_double():
   a = flex.sym_mat3_double()
   a = flex.sym_mat3_double(((1,2,3,4,5,6), (2,3,4,5,6,7)))
@@ -73,10 +85,17 @@ def exercise_flex_xray_scatterer():
     assert ai.u_star == bi.u_star
     assert ai.multiplicity() == bi.multiplicity()
     assert approx_equal(ai.weight(), bi.weight())
+  assert approx_equal(tuple(a.extract_sites()),
+                      ((0.1,0.2,0.3),(0.2,0.3,0.4),(0.3,0.4,0.5)))
+  a.set_sites(flex.vec3_double(
+    ((-0.1,-0.2,-0.3),(-0.2,-0.3,-0.4),(-0.3,-0.4,-0.5))))
+  assert approx_equal(tuple(a.extract_sites()),
+    ((-0.1,-0.2,-0.3),(-0.2,-0.3,-0.4),(-0.3,-0.4,-0.5)))
 
 def run():
   exercise_flex_triple(flex.miller_index, ordered=0001)
   exercise_flex_triple(flex.vec3_double, ordered=00000, as_double=0001)
+  exercise_flex_vec3_double()
   exercise_flex_sym_mat3_double()
   exercise_flex_hendrickson_lattman()
   exercise_flex_tiny_size_t_2()

@@ -65,7 +65,35 @@ namespace {
     }
   };
 
-} // namespace <anonymous>
+}}}} // namespace scitbx::af::boost_python::<anonymous>
+
+namespace cctbx { namespace xray { namespace {
+
+  af::shared<scitbx::vec3<double> >
+  extract_sites(af::const_ref<scatterer<> > const& scatterers)
+  {
+    af::shared<scitbx::vec3<double> >
+      result(af::reserve(scatterers.size()));
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      result.push_back(scatterers[i].site);
+    }
+    return result;
+  }
+
+  void
+  set_sites(
+    af::ref<scatterer<> > const& scatterers,
+    af::const_ref<scitbx::vec3<double> > const& sites)
+  {
+    CCTBX_ASSERT(scatterers.size() == sites.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      scatterers[i].site = sites[i];
+    }
+  }
+
+}}} // namespace cctbx::xray::<anonymous>
+
+namespace scitbx { namespace af { namespace boost_python {
 
   void wrap_flex_xray_scatterer()
   {
@@ -75,7 +103,10 @@ namespace {
                  boost::python::return_internal_reference<>
                 >::plain("xray_scatterer")
       .def_pickle(flex_pickle_double_buffered<
-        cctbx::xray::scatterer<>, to_string, from_string>());
+        cctbx::xray::scatterer<>, to_string, from_string>())
+      .def("extract_sites", cctbx::xray::extract_sites)
+      .def("set_sites", cctbx::xray::set_sites)
+    ;
   }
 
 }}} // namespace scitbx::af::boost_python
