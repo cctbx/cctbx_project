@@ -64,6 +64,13 @@ namespace scitbx { namespace boost_python { namespace {
       return o.numerator() * 32768L + o.denominator();
     }
 
+    static w_t
+    abs(w_t const& o)
+    {
+      if (o < 0) return -o;
+      return o;
+    }
+
     static bool eq_rr(w_t const& lhs, w_t const& rhs) { return lhs == rhs; }
     static bool ne_rr(w_t const& lhs, w_t const& rhs) { return lhs != rhs; }
     static bool lt_rr(w_t const& lhs, w_t const& rhs) { return lhs < rhs; }
@@ -92,6 +99,7 @@ namespace scitbx { namespace boost_python { namespace {
         .def("__str__", as_str)
         .def("__repr__", as_str)
         .def("__hash__", hash)
+        .def("__abs__", abs)
         .def(-self)
         .def(self + self)
         .def(self - self)
