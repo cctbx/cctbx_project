@@ -14,10 +14,10 @@ def interpret_form_data(form):
 
 def run(server_info, inp, status):
   sys.stdout.write("<pre>")
-  if (inp.convention.strip() == ""):
-    z = inp.sgsymbol.strip().upper()
-    if (z in ("P","A","B","C","I","R","F")):
-      inp.sgsymbol = "Hall: %s 1" % z
+  z = inp.sgsymbol.strip().upper()
+  if (z in ("P","A","B","C","I","R","F")):
+    inp.sgsymbol = "Hall: %s 1" % z
+    inp.convention = ""
   input_symmetry = crystal.symmetry(
     unit_cell=inp.ucparams,
     space_group_info=sgtbx.space_group_info(
