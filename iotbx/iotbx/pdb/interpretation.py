@@ -3,6 +3,7 @@ import iotbx.pdb.parser
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.atom
 from cctbx.array_family import flex
+from libtbx.itertbx import count
 import string
 
 class empty: pass
@@ -111,7 +112,7 @@ class stage_1:
     altLoc_dict = {}
     state = empty()
     self.state = state
-    for state.line_number,state.raw_record in enumerate(raw_records):
+    for state.line_number,state.raw_record in zip(count(1), raw_records):
       record_name = state.raw_record[:6]
       if (record_name == "CRYST1"):
         self.crystal_symmetry = pdb.cryst1_interpretation.crystal_symmetry(
@@ -129,8 +130,8 @@ class stage_1:
       elif (record_name.rstrip() == "BREAK"):
         self.break_indices.append(len(self.atom_attributes_list))
       elif (record_name in ("ATOM  ", "HETATM")):
-        atom_attributes = pdb.atom.attributes().set_from_ATOM_record(
-          self.parse_record())
+        atom_attributes = pdb.atom.attributes(line_number=state.line_number)
+        atom_attributes.set_from_ATOM_record(self.parse_record())
         if (model_serial is None):
           atom_attributes.MODELserial = -1
         else:
@@ -158,6 +159,9 @@ class stage_1:
       elif (record_name == "SLTBRG"):
         self.sltbrg_records.append(state.raw_record)
     del self.state
+    self._sites_cart = None
+    self._ter_block_identifiers = None
+    self._break_block_identifiers = None
     self._selection_cache = None
     self._clean_model_serial_list()
     self._fix_false_blank_altLoc_identifiers(altLoc_dict)
@@ -168,14 +172,33 @@ class stage_1:
       line_number=self.state.line_number,
       ignore_columns_73_and_following=self.ignore_columns_73_and_following)
 
-  def get_ter_block_identifiers(self):
-    if (len(self.ter_indices) == 0):
+  def get_sites_cart(self):
+    if (self._sites_cart is None):
+      self._sites_cart = flex.vec3_double()
+      for atom in self.atom_attributes_list:
+        self._sites_cart.append(atom.coordinates)
+    return self._sites_cart
+
+  def get_block_identifiers(self, block_indices):
+    if (len(block_indices) == 0):
       return flex.size_t(len(self.atom_attributes_list), 0)
     result = flex.size_t()
-    for i,j in enumerate(self.ter_indices):
+    for i,j in enumerate(block_indices):
       result.resize(j, i)
     result.resize(len(self.atom_attributes_list), result.back()+1)
     return result
+
+  def get_ter_block_identifiers(self):
+    if (self._ter_block_identifiers is None):
+      self._ter_block_identifiers = self.get_block_identifiers(
+        self.ter_indices)
+    return self._ter_block_identifiers
+
+  def get_break_block_identifiers(self):
+    if (self._break_block_identifiers is None):
+      self._break_block_identifiers = self.get_block_identifiers(
+        self.break_indices)
+    return self._break_block_identifiers
 
   def selection_cache(self):
     if (self._selection_cache is None):
