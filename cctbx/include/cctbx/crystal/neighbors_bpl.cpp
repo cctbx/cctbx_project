@@ -46,6 +46,7 @@ namespace {
         .def("__iter__", scitbx::boost_python::pass_through)
         .def("restart", &w_t::restart)
         .def("count_pairs", &w_t::count_pairs)
+        .def("neighbors_of", &w_t::neighbors_of, (arg_("primary_selection")))
         .def("is_simple_interaction", &w_t::is_simple_interaction)
       ;
     }
@@ -74,6 +75,7 @@ namespace {
         .def("next", helper<w_t>::next)
         .def("restart", &w_t::restart)
         .def("count_pairs", &w_t::count_pairs)
+        .def("neighbors_of", &w_t::neighbors_of, (arg_("primary_selection")))
       ;
     }
   };
