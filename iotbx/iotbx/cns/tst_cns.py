@@ -1,9 +1,12 @@
 import iotbx.cns.xray_structure
+import iotbx.cns.miller_array
 from iotbx.cns import sdb_reader
+from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
+from libtbx.test_utils import show_diff
 from cStringIO import StringIO
 import sys
 
@@ -39,9 +42,82 @@ def exercise_sdb(verbose=0):
   assert abs(regression.slope()-1) < 1.e-4
   assert abs(regression.y_intercept()) < 1.e-3
 
+def exercise_miller_array_as_cns_hkl():
+  s = StringIO()
+  crystal_symmetry = crystal.symmetry()
+  for anomalous_flag in [False, True]:
+    miller_set = miller.set(
+      crystal_symmetry=crystal_symmetry,
+      indices=flex.miller_index([(1,2,3),(-3,5,-7)]),
+      anomalous_flag=anomalous_flag)
+    for data in [flex.bool((0,1)),
+                 flex.int((-3,4)),
+                 flex.double((10,13)),
+                 flex.complex_double((10,13))]:
+      miller_array = miller_set.array(data=data)
+      miller_array.export_as_cns_hkl(file_object=s)
+      if (isinstance(data, flex.double)):
+        miller_array = miller_set.array(data=data, sigmas=data/10.)
+        miller_array.export_as_cns_hkl(file_object=s)
+  assert not show_diff(s.getvalue(), """\
+NREFlections=2
+ANOMalous=FALSe
+DECLare NAME=DATA  DOMAin=RECIprocal TYPE=INTEger END
+INDEx 1 2 3 DATA=0
+INDEx -3 5 -7 DATA=1
+NREFlections=2
+ANOMalous=FALSe
+DECLare NAME=DATA  DOMAin=RECIprocal TYPE=INTEger END
+INDEx 1 2 3 DATA=-3
+INDEx -3 5 -7 DATA=4
+NREFlections=2
+ANOMalous=FALSe
+DECLare NAME=DATA  DOMAin=RECIprocal TYPE=REAL END
+INDEx 1 2 3 DATA=10
+INDEx -3 5 -7 DATA=13
+NREFlections=2
+ANOMalous=FALSe
+DECLare NAME=FOBS DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=SIGMA DOMAin=RECIprocal TYPE=REAL END
+INDEx 1 2 3 FOBS=10 SIGMA=1
+INDEx -3 5 -7 FOBS=13 SIGMA=1.3
+NREFlections=2
+ANOMalous=FALSe
+DECLare NAME=F  DOMAin=RECIprocal TYPE=COMPLEX END
+INDEx 1 2 3 F=10 0
+INDEx -3 5 -7 F=13 0
+NREFlections=2
+ANOMalous=TRUE
+DECLare NAME=DATA  DOMAin=RECIprocal TYPE=INTEger END
+INDEx 1 2 3 DATA=0
+INDEx -3 5 -7 DATA=1
+NREFlections=2
+ANOMalous=TRUE
+DECLare NAME=DATA  DOMAin=RECIprocal TYPE=INTEger END
+INDEx 1 2 3 DATA=-3
+INDEx -3 5 -7 DATA=4
+NREFlections=2
+ANOMalous=TRUE
+DECLare NAME=DATA  DOMAin=RECIprocal TYPE=REAL END
+INDEx 1 2 3 DATA=10
+INDEx -3 5 -7 DATA=13
+NREFlections=2
+ANOMalous=TRUE
+DECLare NAME=FOBS DOMAin=RECIprocal TYPE=REAL END
+DECLare NAME=SIGMA DOMAin=RECIprocal TYPE=REAL END
+INDEx 1 2 3 FOBS=10 SIGMA=1
+INDEx -3 5 -7 FOBS=13 SIGMA=1.3
+NREFlections=2
+ANOMalous=TRUE
+DECLare NAME=F  DOMAin=RECIprocal TYPE=COMPLEX END
+INDEx 1 2 3 F=10 0
+INDEx -3 5 -7 F=13 0
+""")
+
 def run():
   verbose = "--Verbose" in sys.argv[1:]
   exercise_sdb(verbose)
+  exercise_miller_array_as_cns_hkl()
   print "OK"
 
 if (__name__ == "__main__"):
