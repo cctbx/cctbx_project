@@ -25,8 +25,6 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/miller_asu.h>
 
-//#include <cctbx/array_family/simple_io.h> // XXX
-
 namespace cctbx { namespace dmtbx {
 
   struct triplet_phase_relation
@@ -34,7 +32,8 @@ namespace cctbx { namespace dmtbx {
     std::size_t weight;
     std::size_t ik;
     std::size_t ihmk;
-    Miller::AsymIndex hmk;
+    Miller::AsymIndex asym_k;
+    Miller::AsymIndex asym_hmk;
   };
 
   template <typename FloatType>
@@ -49,7 +48,8 @@ namespace cctbx { namespace dmtbx {
       triplet_invariants(sgtbx::SpaceGroupInfo const& SgInfo,
                          af::shared<Miller::Index> miller_indices,
                          af::shared<FloatType> e_values,
-                         bool unique_triplet_phase_relations_only = false) // XXX not used
+                         bool loop_k_equiv,
+                         bool use_weights)
       {
         cctbx_assert(miller_indices.size() == e_values.size());
         Miller::index_span miller_index_span(miller_indices);
@@ -68,24 +68,26 @@ namespace cctbx { namespace dmtbx {
           list_of_list_of_triplets_.push_back(tpr_array_type());
           Miller::Index h = miller_indices[i];
           for(tpr.ik=0;tpr.ik<miller_indices.size();tpr.ik++) {
-            Miller::Index hmk = h - miller_indices[tpr.ik];
-            tpr.hmk = Miller::AsymIndex(SgInfo.SgOps(), asu, hmk);
-            Miller::Index asym_hmk = tpr.hmk.HermitianLayout().H();
-            if (miller_index_span.is_in_domain(asym_hmk)) {
-              typename lookup_dict_type::const_iterator
-              ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk));
-              if (ld_pos != lookup_dict.end()) {
-                tpr.ihmk = ld_pos->second;
-                cctbx_assert(miller_indices[tpr.ihmk] == asym_hmk);
-                /*
-                std::cout << h.ref()
-                   << " " << miller_indices[tpr.ik].ref()
-                   << " " << hmk.ref()
-                   << " " << asym_hmk.ref()
-                   << std::endl;
-                */
-                update_tpr_array(list_of_list_of_triplets_[i], tpr);
+            sgtbx::SymEquivMillerIndices
+            semi = SgInfo.SgOps().getEquivMillerIndices(
+              miller_indices[tpr.ik]);
+            for (std::size_t ik_eq=0;ik_eq<semi.M(false);ik_eq++) {
+              Miller::Index hmk = h - semi(ik_eq);
+              tpr.asym_hmk = Miller::AsymIndex(SgInfo.SgOps(), asu, hmk);
+              Miller::Index asym_hmk = tpr.asym_hmk.HermitianLayout().H();
+              if (miller_index_span.is_in_domain(asym_hmk)) {
+                typename lookup_dict_type::const_iterator
+                ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk));
+                if (ld_pos != lookup_dict.end()) {
+                  tpr.ihmk = ld_pos->second;
+                  cctbx_assert(miller_indices[tpr.ihmk] == asym_hmk);
+                  tpr.asym_k = Miller::AsymIndex(
+                    SgInfo.SgOps(), asu, semi(ik_eq));
+                  update_tpr_array(list_of_list_of_triplets_[i], tpr,
+                    use_weights);
+                }
               }
+              if (!loop_k_equiv) break;
             }
           }
         }
@@ -126,9 +128,9 @@ namespace cctbx { namespace dmtbx {
             cctbx_assert(tpr.ik < miller_indices.size());
             cctbx_assert(tpr.ihmk < miller_indices.size());
             FloatType e_k = e_values[tpr.ik];
-            FloatType phi_k = phases[tpr.ik];
+            FloatType phi_k = tpr.asym_k.phase_in_rad(phases[tpr.ik]);
             FloatType e_hmk = e_values[tpr.ihmk];
-            FloatType phi_hmk = tpr.hmk.phase_in_rad(phases[tpr.ihmk]);
+            FloatType phi_hmk = tpr.asym_hmk.phase_in_rad(phases[tpr.ihmk]);
             FloatType w_e_k_e_hmk = tpr.weight * e_k * e_hmk;
             FloatType phi_k_phi_hmk = phi_k + phi_hmk;
             sum_sin += w_e_k_e_hmk * std::sin(phi_k_phi_hmk);
@@ -145,12 +147,15 @@ namespace cctbx { namespace dmtbx {
 
       static void update_tpr_array(
         tpr_array_type& tpr_array,
-        triplet_phase_relation const& tpr)
+        triplet_phase_relation const& tpr,
+        bool use_weights)
       {
-        for(std::size_t i=0;i<tpr_array.size();i++) {
-          if (tpr_array[i].ik == tpr.ihmk && tpr_array[i].ihmk == tpr.ik) {
-            tpr_array[i].weight++;
-            return;
+        if (use_weights) {
+          for(std::size_t i=0;i<tpr_array.size();i++) {
+            if (tpr_array[i].ik == tpr.ihmk && tpr_array[i].ihmk == tpr.ik) {
+              tpr_array[i].weight++;
+              return;
+            }
           }
         }
         tpr_array.push_back(tpr);
