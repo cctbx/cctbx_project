@@ -14,7 +14,7 @@
 #include <boost/python/list.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/extract.hpp>
-/* #include <boost/python.hpp>  XXX go back later and find the necessary subset*/
+#include <boost/python/to_python_converter.hpp>
 
 namespace scitbx { namespace boost_python { namespace container_conversions {
 
