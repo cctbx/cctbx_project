@@ -18,18 +18,6 @@
 #include <boost/python/return_by_value.hpp>
 #endif
 
-#if BOOST_VERSION >= 103100
-# if BOOST_WORKAROUND(__EDG_VERSION__, <= 238)
-namespace boost { namespace python {
-template <class D>
-inline object make_setter(D const& x)
-{
-    return detail::make_setter(x, default_call_policies(), 0L);
-}
-}}
-# endif
-#endif
-
 namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
@@ -51,6 +39,7 @@ namespace {
       using namespace boost::python;
 #if BOOST_VERSION >= 103000
       typedef return_value_policy<return_by_value> rbv;
+      typedef default_call_policies dcp;
 #endif
       class_<w_t>("scatterer", no_init)
         .def(init<std::string const&,
@@ -67,22 +56,22 @@ namespace {
                   std::complex<flt_t> const&>())
 #if BOOST_VERSION >= 103000
         .add_property("label", make_getter(&w_t::label, rbv()),
-                               make_setter(&w_t::label))
+                               make_setter(&w_t::label, dcp()))
         .add_property("caasf", make_getter(&w_t::caasf, rbv()),
-                               make_setter(&w_t::caasf))
+                               make_setter(&w_t::caasf, dcp()))
         .add_property("fp_fdp", make_getter(&w_t::fp_fdp, rbv()),
-                                make_setter(&w_t::fp_fdp))
+                                make_setter(&w_t::fp_fdp, dcp()))
         .add_property("site", make_getter(&w_t::site, rbv()),
-                              make_setter(&w_t::site))
+                              make_setter(&w_t::site, dcp()))
         .add_property("occupancy", make_getter(&w_t::occupancy, rbv()),
-                                   make_setter(&w_t::occupancy))
+                                   make_setter(&w_t::occupancy, dcp()))
         .add_property("anisotropic_flag",
           make_getter(&w_t::anisotropic_flag, rbv()),
-          make_setter(&w_t::anisotropic_flag))
+          make_setter(&w_t::anisotropic_flag, dcp()))
         .add_property("u_iso", make_getter(&w_t::u_iso, rbv()),
-                               make_setter(&w_t::u_iso))
+                               make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
-                                make_setter(&w_t::u_star))
+                                make_setter(&w_t::u_star, dcp()))
 #else
         .def_readwrite("label", &w_t::label)
         .def_readwrite("caasf", &w_t::caasf)
