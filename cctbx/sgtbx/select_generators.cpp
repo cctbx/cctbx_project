@@ -8,6 +8,7 @@
      2001 Sep 10: created from fragments in type.cpp, seminvariant.cpp (rwgk)
  */
 
+#include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/select_generators.h>
 
 namespace cctbx { namespace sgtbx {
@@ -54,7 +55,7 @@ namespace cctbx { namespace sgtbx {
             RotMxInfo PrincipalRI;
             for(i = 1; i < SgOps.nSMx(); i++) {
               PrincipalRI = SgOps[i].Rpart().getInfo();
-              if (std::abs(PrincipalRI.Rtype()) == PrincipalProperOrder) {
+              if (math::abs(PrincipalRI.Rtype()) == PrincipalProperOrder) {
                 if (PrincipalRI.SenseOfRotation() > 0) {
                   ZGen[0] = SgOps[i];
                   nGen++;
@@ -67,7 +68,7 @@ namespace cctbx { namespace sgtbx {
             for(i = 1; i < SgOps.nSMx(); i++) {
               if (i == iPrincipal) continue;
               RotMxInfo RI = SgOps[i].Rpart().getInfo();
-              if (std::abs(RI.Rtype()) == 2) {
+              if (math::abs(RI.Rtype()) == 2) {
                 if (PrincipalRI.EV() != RI.EV()) {
                   ZGen[1] = SgOps[i];
                   nGen++;
@@ -81,7 +82,7 @@ namespace cctbx { namespace sgtbx {
         case Cubic:
           for(i = 1; i < SgOps.nSMx(); i++) {
             RotMxInfo RI = SgOps[i].Rpart().getInfo();
-            if      (std::abs(RI.Rtype()) == 3) {
+            if      (math::abs(RI.Rtype()) == 3) {
               if (RI.SenseOfRotation() > 0) {
                 if (!ZGen[0].isValid()) {
                   ZGen[0] = SgOps[i];
@@ -90,7 +91,7 @@ namespace cctbx { namespace sgtbx {
                 }
               }
             }
-            else if (std::abs(RI.Rtype()) == SgOps.nSMx() / 6) {
+            else if (math::abs(RI.Rtype()) == SgOps.nSMx() / 6) {
               if (RI.SenseOfRotation() >= 0) {
                 if (!ZGen[1].isValid()) {
                   ZGen[1] = SgOps[i];
@@ -168,7 +169,7 @@ namespace cctbx { namespace sgtbx {
 
           for(i = 1; i < WorkSgOps.nSMx(); i++) {
             RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if (std::abs(RI.Rtype()) == PrincipalProperOrder) {
+            if (math::abs(RI.Rtype()) == PrincipalProperOrder) {
               if (RI.SenseOfRotation() > 0) {
                 ZGen[0] = WorkSgOps[i]; nGen++;
               }
@@ -191,18 +192,18 @@ namespace cctbx { namespace sgtbx {
         case Cubic:
           for(i = 1; i < WorkSgOps.nSMx(); i++) {
             RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if      (std::abs(RI.Rtype()) == 4) {
+            if      (math::abs(RI.Rtype()) == 4) {
               if (RI.SenseOfRotation() > 0 && RI.EV() == EV_001) {
                 if (!ZGen[0].isValid()) nGen++;
                 ZGen[0] = WorkSgOps[i];
               }
             }
-            else if (std::abs(RI.Rtype()) == 2) {
+            else if (math::abs(RI.Rtype()) == 2) {
               if (!ZGen[0].isValid() && RI.EV() == EV_001) {
                 ZGen[0] = WorkSgOps[i]; nGen++;
               }
             }
-            else if (std::abs(RI.Rtype()) == 3) {
+            else if (math::abs(RI.Rtype()) == 3) {
               if (RI.SenseOfRotation() > 0 && RI.EV() == EV_111) {
                 cctbx_assert(!ZGen[1].isValid());
                 ZGen[1] = WorkSgOps[i]; nGen++;

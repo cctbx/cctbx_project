@@ -12,6 +12,7 @@
 #include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <stdio.h>
 #include <cctbx/fixes/cstdlib>
+#include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/math.h>
 #include <cctbx/basic/define_range.h>
@@ -87,8 +88,8 @@ namespace cctbx { namespace sgtbx {
       if (a[i] == 0 && b[i] != 0) return false;
     }
     for(i=0;i<m_n;i++) {
-      if (std::abs(a[i]) < std::abs(b[i])) return true;
-      if (std::abs(a[i]) > std::abs(b[i])) return false;
+      if (math::abs(a[i]) < math::abs(b[i])) return true;
+      if (math::abs(a[i]) > math::abs(b[i])) return false;
     }
     for(i=0;i<m_n;i++) {
       if (a[i] > b[i]) return true;

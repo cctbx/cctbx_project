@@ -14,6 +14,7 @@
 #include <memory>
 #include <algorithm>
 #include <ctype.h> // cannot use cctype b/o non-conforming compilers
+#include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
 
@@ -103,7 +104,7 @@ namespace cctbx { namespace sgtbx {
     bool FirstIsShorter(const af::int3& a, const af::int3& b) {
       rangei(3) {
         if (a[i]) {
-          if (std::abs(a[i]) > std::abs(b[i])) return false;
+          if (math::abs(a[i]) > math::abs(b[i])) return false;
           return true;
         }
       }
