@@ -196,7 +196,7 @@ namespace cctbx { namespace xray { namespace targets {
       }
 
       FobsValueType
-      cc() const { return cc_; }
+      correlation() const { return correlation_; }
 
       FobsValueType
       target() const { return target_; }
@@ -205,7 +205,7 @@ namespace cctbx { namespace xray { namespace targets {
       derivatives() const { return derivatives_; }
 
     protected:
-      FobsValueType cc_;
+      FobsValueType correlation_;
       FobsValueType target_;
       af::shared<FcalcValueType> derivatives_;
 
@@ -258,14 +258,14 @@ namespace cctbx { namespace xray { namespace targets {
     FobsValueType x2xx = sum_x2 - sum_x * sum_x / sum_w;
     FobsValueType y2yy = sum_y2 - sum_y * sum_y / sum_w;
     FobsValueType xyxy = sum_xy - sum_x * sum_y / sum_w;
-    FobsValueType cc_denom2 = x2xx * y2yy;
-    cc_ = 1;
+    FobsValueType correlation_denom2 = x2xx * y2yy;
+    correlation_ = 1;
     if (compute_derivatives) {
       derivatives_ = af::shared<FcalcValueType>(fobs.size());
     }
-    if (cc_denom2 > 0) {
-      FobsValueType cc_denom = std::sqrt(cc_denom2);
-      cc_ = xyxy / cc_denom;
+    if (correlation_denom2 > 0) {
+      FobsValueType correlation_denom = std::sqrt(correlation_denom2);
+      correlation_ = xyxy / correlation_denom;
       if (compute_derivatives) {
         FobsValueType two_w(2);
         for(std::size_t i=0;i<fobs.size();i++) {
@@ -275,13 +275,13 @@ namespace cctbx { namespace xray { namespace targets {
           FobsValueType x = fobs[i] * fobs[i];
           FobsValueType y = std::norm(fcalc[i]);
           FobsValueType factor_deriv =
-              (y - sum_y / sum_w) * cc_ / y2yy
-            - (x - sum_x / sum_w) / cc_denom;
+              (y - sum_y / sum_w) * correlation_ / y2yy
+            - (x - sum_x / sum_w) / correlation_denom;
           derivatives_[i] = fcalc[i] * two_w * factor_deriv;
         }
       }
     }
-    target_ = 1 - cc_;
+    target_ = 1 - correlation_;
   }
 
 }}} // namespace cctbx::xray::targets

@@ -41,7 +41,7 @@ class wilson_plot:
     assert fit.is_well_defined()
     self.fit_y_intercept = fit.y_intercept()
     self.fit_slope = fit.slope()
-    self.fit_cc = fit.cc()
+    self.fit_correlation = fit.correlation()
     self.wilson_k = math.exp(self.fit_y_intercept)
     self.wilson_b = -self.fit_slope / 2
 
@@ -56,7 +56,7 @@ class wilson_plot:
     r.yLegend = "ln(<Fobs^2>/<Fcalc^2>)"
     r.fit_y_intercept = self.fit_y_intercept
     r.fit_slope = self.fit_slope
-    r.fit_cc = self.fit_cc
+    r.fit_correlation = self.fit_correlation
     r.overlayLegend = ("k=%f, b=%f, corr=%f" % (
-      self.wilson_k, self.wilson_b, self.fit_cc))
+      self.wilson_k, self.wilson_b, self.fit_correlation))
     return r

@@ -287,7 +287,8 @@ namespace grid_tags_detail {
         using namespace grid_tags_detail;
         verify_grid_tags<FloatType, TagType> vfy(data, tag_array_.const_ref());
         CCTBX_ASSERT(vfy.n_dependent == n_dependent());
-        if (vfy.is_well_defined() && vfy.cc() < min_correlation) return false;
+        if (   vfy.is_well_defined()
+            && vfy.correlation() < min_correlation) return false;
         return true;
       }
 

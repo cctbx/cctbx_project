@@ -92,7 +92,7 @@ def flex_tuple_as_flex_double(flex_tuple):
 
 def linear_regression_test(d_analytical, d_numerical, test_hard,
                            slope_tolerance=1.e-3,
-                           cc_min=0.999,
+                           correlation_min=0.999,
                            verbose=0):
   if (type(d_analytical) != type(flex.double())):
     d_analytical = flex_tuple_as_flex_double(d_analytical)
@@ -103,10 +103,11 @@ def linear_regression_test(d_analytical, d_numerical, test_hard,
     print "numerical: ", tuple(d_numerical)
   regr = flex.linear_regression(d_analytical, d_numerical)
   assert regr.is_well_defined()
-  if (abs(regr.slope() - 1) > slope_tolerance or regr.cc() < cc_min):
+  if (   abs(regr.slope() - 1) > slope_tolerance
+      or regr.correlation() < correlation_min):
     print "Error: finite difference mismatch:"
     print "slope:", regr.slope()
-    print "cc:", regr.cc()
+    print "correlation:", regr.correlation()
     if (0 or verbose):
       for a, n in zip(d_analytical, d_numerical):
         print a, n
@@ -148,7 +149,7 @@ def exercise(target_functor, parameter_name, space_group_info,
   if (0 or verbose):
     try: print "scale factor = %.6g" % (target_result.scale_factor(),)
     except: pass
-    try: print "correlation = %.6g" % (target_result.cc(),)
+    try: print "correlation = %.6g" % (target_result.correlation(),)
     except: pass
     print "target = %.6g" % (target_result.target(),)
   sf = xray.structure_factors_direct(

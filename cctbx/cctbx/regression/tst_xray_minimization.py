@@ -48,8 +48,8 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   r = flex.linear_regression(f_obs_array.data(), f_final_array.data())
   assert r.is_well_defined()
   if (0 or verbose):
-    print "correlation:", r.cc()
-  assert r.cc() > 0.999
+    print "correlation:", r.correlation()
+  assert r.correlation() > 0.999
 
 def run_call_back(flags, space_group_info):
   for target_functor in xray.target_functors.values():
