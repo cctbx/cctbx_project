@@ -327,3 +327,30 @@ class _intensity_correlation(_target_functor_base):
 target_functors = dicts.easy(
   least_squares_residual=_least_squares_residual,
   intensity_correlation=_intensity_correlation)
+
+class gradient_flags(ext.gradient_flags):
+
+  def __init__(self, site=00000,
+                     u_iso=None,
+                     u_aniso=None,
+                     u=None,
+                     occupancy=00000,
+                     fp=00000,
+                     fdp=00000):
+    if (u is not None): assert u_iso is None and u_aniso is None
+    if (u is None): u = 00000
+    if (u_iso is None): u_iso = u
+    if (u_aniso is None): u_aniso = u
+    ext.gradient_flags.__init__(self, site, u_iso, u_aniso, occupancy, fp, fdp)
+
+class _gradient_flags(injector, ext.gradient_flags):
+
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "gradient_flags:"
+    print >> f, "  site:", self.site
+    print >> f, "  u_iso:", self.u_iso
+    print >> f, "  u_aniso:", self.u_aniso
+    print >> f, "  occupancy:", self.occupancy
+    print >> f, "  fp:", self.fp
+    print >> f, "  fdp:", self.fdp

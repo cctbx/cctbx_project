@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/xray/scatterer.h>
@@ -18,6 +9,7 @@
 namespace cctbx { namespace xray { namespace boost_python {
 
   void wrap_fast_gradients();
+  void wrap_gradient_flags();
   void wrap_conversions();
   void wrap_sampling_base();
   void wrap_sampled_model_density();
@@ -39,6 +31,7 @@ namespace {
     using namespace boost::python;
 
     wrap_conversions();
+    wrap_gradient_flags();
     wrap_sampling_base();
     wrap_fast_gradients();
     wrap_sampled_model_density();

@@ -162,10 +162,10 @@ def exercise(target_functor, parameter_name, space_group_info,
     xray_structure=structure,
     miller_set=f_obs,
     d_target_d_f_calc=target_result.derivatives(),
-    derivative_flags=xray.structure_factors.derivative_flags(
+    gradient_flags=xray.gradient_flags(
       site=(parameter_name=="site" or random.choice((0,1))),
       u_iso=(parameter_name=="u_iso" or random.choice((0,1))),
-      u_star=(parameter_name=="u_star" or random.choice((0,1))),
+      u_aniso=(parameter_name=="u_star" or random.choice((0,1))),
       occupancy=(parameter_name=="occupancy" or random.choice((0,1))),
       fp=(parameter_name=="fp" or random.choice((0,1))),
       fdp=(parameter_name=="fdp" or random.choice((0,1)))))

@@ -24,6 +24,35 @@ def exercise_conversions():
   assert approx_equal(tuple(r.f_sq), (100, 1))
   assert r.sigma_f_sq.size() == 0
 
+def exercise_gradient_flags():
+  f = xray.ext.gradient_flags(00000, 0001, 00000, 0001, 00000, 0001)
+  assert not f.site
+  assert f.u_iso
+  assert not f.u_aniso
+  assert f.occupancy
+  assert not f.fp
+  assert f.fdp
+  f.site = 0001
+  f.u_iso = 00000
+  f.u_aniso = 0001
+  f.occupancy = 00000
+  f.fp = 0001
+  f.fdp = 00000
+  assert f.site
+  assert not f.u_iso
+  assert f.u_aniso
+  assert not f.occupancy
+  assert f.fp
+  assert not f.fdp
+  assert not f.all_false()
+  assert xray.ext.gradient_flags(
+    00000, 00000, 00000, 00000, 00000, 00000).all_false()
+  f.u_iso = 0001
+  assert f.adjust(00000).u_iso == 0001
+  assert f.adjust(0001).u_iso == 00000
+  assert f.adjust(00000).u_aniso == 00000
+  assert f.adjust(0001).u_aniso == 0001
+
 def exercise_xray_scatterer():
   caasf = wk1995("const")
   x = xray.scatterer("a", (0.1,0.2,0.3), 0.25, 0.9, caasf, 0j)
@@ -143,7 +172,8 @@ def exercise_structure_factors():
   mi = flex.miller_index(((1,2,3), (2,3,4)))
   fc = xray.structure_factors_direct_with_first_derivatives(
     uc, sg.group(), mi, scatterers,
-    flex.complex_double(), 0, 0, 0, 0, 0, 0).f_calc()
+    flex.complex_double(),
+    xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 00000)).f_calc()
   a = flex.abs(fc)
   p = flex.arg(fc, 1)
   assert approx_equal(tuple(a), (10.50871, 9.049631))
@@ -254,6 +284,7 @@ def exercise_sampled_model_density():
 
 def run():
   exercise_conversions()
+  exercise_gradient_flags()
   exercise_xray_scatterer()
   exercise_rotate()
   exercise_pack_parameters()

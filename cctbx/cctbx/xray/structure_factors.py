@@ -24,16 +24,6 @@ def quality_factor_from_any(d_min=None,
     quality_factor = 100
   return quality_factor
 
-class derivative_flags:
-
-  def __init__(self, site=00000,
-                     u_iso=00000,
-                     u_star=00000,
-                     occupancy=00000,
-                     fp=00000,
-                     fdp=00000):
-    adopt_init_args(self, locals())
-
 class from_scatterers(crystal.symmetry):
 
   def __init__(self, miller_set=None,
@@ -134,7 +124,7 @@ class from_scatterers(crystal.symmetry):
   def __call__(self, xray_structure,
                      miller_set,
                      d_target_d_f_calc=None,
-                     derivative_flags=None,
+                     gradient_flags=None,
                      direct=00000,
                      fft=00000):
     assert direct == 00000 or fft == 00000
@@ -157,7 +147,7 @@ class from_scatterers(crystal.symmetry):
       xray_structure=xray_structure,
       miller_set=miller_set,
       d_target_d_f_calc=d_target_d_f_calc,
-      derivative_flags=derivative_flags)
+      gradient_flags=gradient_flags)
 
   def have_good_timing_estimates(self):
     return self.estimate_time_direct.have_good_estimate() \
@@ -270,27 +260,22 @@ class from_scatterers_direct(_from_scatterers_base):
                      xray_structure=None,
                      miller_set=None,
                      d_target_d_f_calc=None,
-                     derivative_flags=None):
+                     gradient_flags=None):
     _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
     self._d_target_d_f_calc = d_target_d_f_calc
     if (d_target_d_f_calc is None):
       d_target_d_f_calc = flex.complex_double()
-    if (derivative_flags is None):
-      derivative_flags = globals()["derivative_flags"]()
-    timer = user_plus_sys_time()
     from cctbx import xray
+    if (gradient_flags is None):
+      gradient_flags = xray.gradient_flags()
+    timer = user_plus_sys_time()
     self._results = xray.structure_factors_direct_with_first_derivatives(
       self._miller_set.unit_cell(),
       self._miller_set.space_group(),
       self._miller_set.indices(),
       self._xray_structure.scatterers(),
       d_target_d_f_calc,
-      derivative_flags.site,
-      derivative_flags.u_iso,
-      derivative_flags.u_star,
-      derivative_flags.occupancy,
-      derivative_flags.fp,
-      derivative_flags.fdp)
+      gradient_flags)
     if (manager is not None):
       manager.estimate_time_direct.register(
         xray_structure.scatterers().size() * miller_set.indices().size(),
@@ -349,14 +334,14 @@ class from_scatterers_fft(_from_scatterers_base):
                      xray_structure,
                      miller_set,
                      d_target_d_f_calc=None,
-                     derivative_flags=None,
+                     gradient_flags=None,
                      force_complex=00000,
                      electron_density_must_be_positive=0001):
     _from_scatterers_base.__init__(self, manager, xray_structure, miller_set)
     assert manager.symmetry_flags().use_space_group_symmetry()
     assert miller_set.d_min() >= manager.d_min()
     assert d_target_d_f_calc is None, "FFT derivatives not implemented."
-    assert derivative_flags is None, "FFT derivatives not implemented."
+    assert gradient_flags is None, "FFT derivatives not implemented."
     manager.setup_fft() # before timing
     time_sampling = user_plus_sys_time()
     from cctbx import xray
