@@ -102,9 +102,10 @@ namespace cctbx { namespace fftbx {
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex, real_to_complex
        */
-      template <typename NdimAccessor>
-      void forward(NdimAccessor Map) {
-        typedef typename NdimAccessor::value_type real_or_complex_type;
+      template <typename RealOrComplexNdimAccessor>
+      void forward(RealOrComplexNdimAccessor Map) {
+        typedef
+        typename RealOrComplexNdimAccessor::value_type real_or_complex_type;
         forward(Map, real_or_complex_type());
       }
       //! In-place "backward" Fourier transformation.
@@ -113,13 +114,23 @@ namespace cctbx { namespace fftbx {
           <p>
           See also: complex_to_complex, real_to_complex
        */
-      template <typename NdimAccessor>
-      void backward(NdimAccessor Map) {
-        typedef typename NdimAccessor::value_type real_or_complex_type;
+      template <typename RealOrComplexNdimAccessor>
+      void backward(RealOrComplexNdimAccessor Map) {
+        typedef
+        typename RealOrComplexNdimAccessor::value_type real_or_complex_type;
         backward(Map, real_or_complex_type());
       }
     private:
       void init();
+      // Cast map of complex to map of real.
+      template <typename NdimAccessor>
+      void forward(NdimAccessor Map, complex_type) {
+        typedef typename NdimAccessor::dimension_type dim_type;
+        ndim_accessor<dim_type, real_type*, real_type>
+        rmap(Map, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
+        forward(rmap, real_type());
+      }
+      // Core routine always works on real maps.
       template <typename NdimAccessor>
       void forward(NdimAccessor Map, real_type)
   // FUTURE: move out of class body
@@ -160,6 +171,15 @@ namespace cctbx { namespace fftbx {
       }
     }
   }
+      // Cast map of complex to map of real.
+      template <typename NdimAccessor>
+      void backward(NdimAccessor Map, complex_type) {
+        typedef typename NdimAccessor::dimension_type dim_type;
+        ndim_accessor<dim_type, real_type*, real_type>
+        rmap(Map, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
+        backward(rmap, real_type());
+      }
+      // Core routine always works on real maps.
       template <typename NdimAccessor>
       void backward(NdimAccessor Map, real_type)
   // FUTURE: move out of class body
