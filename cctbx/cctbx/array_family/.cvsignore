@@ -4,4 +4,4 @@ tiny_algebra.h
 small_algebra.h
 shared_algebra.h
 versa_algebra.h
-flagged_value_operators.h
+flagged_value_algebra.h

@@ -29,6 +29,6 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/flagged_value_operators.h>
+#include <cctbx/array_family/flagged_value_algebra.h>
 
 #endif // CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_H

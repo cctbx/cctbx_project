@@ -149,6 +149,7 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags):
   if (type_flags != (1,1)):
     r = get_template_header_and_parameters(array_type_name, 1)
     r.params.insert(type_flags[0], "ElementType")
+    r.return_element_type = ["ElementType"]
     if (op_type == "unary"):
       r.return_element_type = [
         "typename unary_operator_traits<",
@@ -157,13 +158,13 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags):
       r.return_element_type = [
         "typename binary_operator_traits<",
         "  ElementType, ElementType>::" + op_class]
-    else:
-      r.return_element_type = ["ElementType"]
   else:
     r = get_template_header_and_parameters(array_type_name, 2)
-    r.return_element_type = [
-      "typename binary_operator_traits<",
-      "  ElementType1, ElementType2>::" + op_class]
+    r.return_element_type = ["ElementType"]
+    if (op_class != "n/a"):
+      r.return_element_type = [
+        "typename binary_operator_traits<",
+        "  ElementType1, ElementType2>::" + op_class]
   if (len(r.return_element_type) == 1):
     r.return_array_type = [array_type_name + "<" + r.return_element_type[0]]
   else:
@@ -226,7 +227,7 @@ def elementwise_binary_op(
 
 def elementwise_inplace_binary_op(
       array_type_name, op_class, op_symbol, type_flags):
-  d = operator_decl_params(array_type_name, "binary", op_class, type_flags)
+  d = operator_decl_params(array_type_name, "binary", "n/a", type_flags)
   a = binary_operator_algo_params(array_type_name, type_flags)
   print """%s
   inline

@@ -1,4 +1,4 @@
-cctbx/cctbx/array_family/flagged_value_operators.h
+cctbx/cctbx/array_family/flagged_value_algebra.h
 cctbx/cctbx/array_family/operator_traits_builtin.h
 cctbx/cctbx/array_family/ref_algebra.h
 cctbx/cctbx/array_family/shared_algebra.h
