@@ -99,6 +99,19 @@ def exercise_bond():
   assert approx_equal(gradient_array,
     [[ 6.1880215351700611]*3,
      [-6.1880215351700611]*3])
+  for disable_cache in [00000, 0001]:
+    gradient_array = flex.vec3_double(2, [0,0,0])
+    assert approx_equal(
+      restraints.bond_residual_sum(
+        sites_cart=sites_cart,
+        asu_mappings=asu_mappings,
+        proxies=sym_proxies,
+        gradient_array=gradient_array,
+        disable_cache=disable_cache),
+      (10*(2-3**.5)**2)*2)
+    assert approx_equal(gradient_array,
+      [[ 6.1880215351700611]*3,
+       [-6.1880215351700611]*3])
   #
   sorted_proxies = restraints.bond_sorted_proxies(asu_mappings=asu_mappings)
   assert sorted_proxies.asu_mappings().is_locked()

@@ -225,7 +225,8 @@ namespace {
         bool)) repulsion_residual_sum,
       repulsion_residual_sum_overloads_2(
         (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies"),
-         arg_("gradient_array"), arg_("function"), arg_("disable_cache"))));
+         arg_("gradient_array"), arg_("function"),
+         arg_("disable_cache")=false)));
     def("repulsion_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -235,7 +236,8 @@ namespace {
         bool)) repulsion_residual_sum,
       repulsion_residual_sum_overloads_3(
         (arg_("sites_cart"), arg_("sorted_proxies"),
-         arg_("gradient_array"), arg_("function"), arg_("disable_cache"))));
+         arg_("gradient_array"), arg_("function"),
+         arg_("disable_cache")=false)));
   }
 
 } // namespace <anonymous>
