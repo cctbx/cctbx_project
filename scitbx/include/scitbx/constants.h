@@ -54,9 +54,9 @@ namespace scitbx {
       Exponents: (-34 + 8) - (3 - 19 - 10) = 0
      */
     static const double
-    factor_keV_Angstrom = 6.6260755 * 2.99792458 / 1.60217733;
+    factor_kev_angstrom = 6.6260755 * 2.99792458 / 1.60217733;
     static const double
-    factor_eV_Angstrom  = 6626.0755 * 2.99792458 / 1.60217733;
+    factor_ev_angstrom  = 6626.0755 * 2.99792458 / 1.60217733;
   }
 
   //! Conversions from degrees to radians.
