@@ -1109,6 +1109,23 @@ def exercise_row_echelon():
   assert m.focus() == (1,2)
   assert tuple(m) == (1,1)
   assert tuple(t) == (2,1)
+  assert sgtbx.row_echelon_form(m) == 1
+  assert m.focus() == (1,2)
+  assert tuple(m) == (1,1)
+  m = flex.int((0,-24,0,0,0,-24,24,0,24))
+  m.resize(flex.grid(3,3))
+  t = flex.int((-3, -6, 0))
+  t.resize(flex.grid(3,1))
+  assert sgtbx.row_echelon_form_t(m, t) == 3
+  assert tuple(m) == (24,0,24,0,24,0,0,0,24)
+  assert tuple(t) == (0,3,6)
+  t.resize(flex.grid(3))
+  sol = flex.int(3)
+  assert sgtbx.row_echelon_back_substitution(m, t, sol) == 8
+  assert tuple(sol) == (-2,1,2)
+  indep = flex.bool((0001,0001,0001))
+  assert sgtbx.row_echelon_back_substitution(m, indep=indep) == 1
+  assert tuple(indep) == (00000,00000,00000)
 
 def run():
   exercise_symbols()
