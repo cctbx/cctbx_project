@@ -11,7 +11,8 @@ class lbfgs:
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
                      cos_sin_table=0001,
-                     structure_factor_algorithm=None):
+                     structure_factor_algorithm=None,
+                     verbose=0):
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
@@ -75,4 +76,12 @@ class lbfgs:
       n_parameters=self.x.size(),
       algorithm=self.structure_factor_algorithm)
     self.g = sf.packed()
+    if (self.verbose > 1):
+      print "xray.minimization line search: f,|g|:",
+      print self.f, flex.sum(flex.pow2(self.g))
     return self.x, self.f, self.g
+
+  def callback_after_step(self, minimizer):
+    if (self.verbose > 0):
+      print "xray.minimization step: f,iter,nfun:",
+      print self.f,minimizer.iter(),minimizer.nfun()
