@@ -76,9 +76,8 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
     assert len(element_symbol) in (1,2)
     if (res_name is None):
       res_name_i = label[:3]
-    assert serial < 100000
     atom_07_27 = ("%5d %-4s %-3s  %4d" % (
-      serial, label[:4], res_name_i, serial%10000),)
+      serial, label[:4], res_name_i, serial%100000),)
     print >> s, "ATOM  %s    %8.3f%8.3f%8.3f%6.2f%6.2f          %2s" % (
       atom_07_27 + xyz + (scatterer.occupancy, adptbx.u_as_b(u),
       element_symbol.upper()))
