@@ -667,7 +667,7 @@ class _dataset(boost.python.injector, ext.dataset):
           raise RuntimeError("Fatal programming error.")
     return self
 
-def miller_array_as_mtz_object(self,
+def miller_array_as_mtz_dataset(self,
       column_root_label,
       column_types=None,
       column_label_decorator=None,
@@ -690,7 +690,7 @@ def miller_array_as_mtz_object(self,
     .set_title(title=title) \
     .set_space_group_info(space_group_info=space_group_info)
   mtz_object.set_hkl_base(unit_cell=unit_cell)
-  mtz_object.add_crystal(
+  return mtz_object.add_crystal(
     name=crystal_name,
     project_name=project_name,
     unit_cell=unit_cell).add_dataset(
@@ -700,10 +700,6 @@ def miller_array_as_mtz_object(self,
         column_root_label=column_root_label,
         column_types=column_types,
         label_decorator=column_label_decorator)
-  return mtz_object
-
-# injecting
-miller.array.as_mtz_object = miller_array_as_mtz_object
 
 class _batch(boost.python.injector, ext.batch):
 

@@ -159,7 +159,8 @@ def recycle(miller_array, column_root_label, column_types=None, verbose=0):
   restored_miller_arrays = restored.as_miller_arrays()
   assert len(restored_miller_arrays) == 1
   verify_miller_arrays(miller_array, restored_miller_arrays[0])
-  mtz_object = miller_array.as_mtz_object(column_root_label=column_root_label)
+  mtz_object = miller_array.as_mtz_dataset(
+    column_root_label=column_root_label).mtz_object()
   restored_miller_arrays = mtz_object.as_miller_arrays()
   assert len(restored_miller_arrays) == 1
   verify_miller_arrays(miller_array, restored_miller_arrays[0])

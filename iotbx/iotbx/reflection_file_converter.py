@@ -164,8 +164,8 @@ def run(args, simply_return_all_miller_arrays=False):
       file_type_label="MTZ",
       file_extension="mtz")
     print "Writing MTZ file:", file_name
-    selected_array.as_mtz_object(column_root_label=file_name[:-4]) \
-      .write(file_name=file_name)
+    selected_array.as_mtz_dataset(column_root_label=file_name[:-4]) \
+      .mtz_object().write(file_name=file_name)
     n_output_files += 1
     print
   if (command_line.options.cns is not None):

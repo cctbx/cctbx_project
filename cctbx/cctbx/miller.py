@@ -1221,6 +1221,26 @@ class array(set):
       sharpening=sharpening,
       origin_peak_removal=origin_peak_removal)
 
+  def as_mtz_dataset(self,
+        column_root_label,
+        column_types=None,
+        column_label_decorator=None,
+        title=None,
+        crystal_name="crystal",
+        project_name="project",
+        dataset_name="dataset",
+        wavelength=1.0):
+    import iotbx.mtz
+    return iotbx.mtz.miller_array_as_mtz_dataset(self,
+      column_root_label=column_root_label,
+      column_types=column_types,
+      column_label_decorator=column_label_decorator,
+      title=title,
+      crystal_name=crystal_name,
+      project_name=project_name,
+      dataset_name=dataset_name,
+      wavelength=wavelength)
+
 class merge_equivalents:
 
   def __init__(self, miller_array):
