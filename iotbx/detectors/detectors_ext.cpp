@@ -48,6 +48,24 @@ af::flex_int ReadMAR(const std::string& filename,
   return ReadADSC(filename,ptr,size1,size2,big_endian);
 }
 
+af::flex_int Bin2_by_2(const af::flex_int& olddata) {
+  int oldsize = olddata.size();
+  int olddim = std::sqrt((double)oldsize); // implicit real-valued intermediate
+  int newdim = olddim/2;
+  // always assume a square image!!!
+  af::flex_int newdata(af::flex_grid<>(newdim,newdim));
+  int *newptr = newdata.begin();
+
+  const int *old = olddata.begin();
+  for (std::size_t i = 0; i<newdim; ++i) { //think row-down
+    for (std::size_t j = 0; j<newdim; ++j) { // think column-across
+      *newptr++ =  old[2*i*olddim+2*j] + old[2*i*olddim+2*j+1] +
+                         old[(2*i+1)*olddim+2*j] + old[(2*i+1)*olddim+2*j+1] ;
+    }
+  }
+  return newdata;
+}
+
 struct dummy {}; // work around gcc-3.3-darwin bug
 
 } // namespace <anonymous>
@@ -64,4 +82,5 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 #endif
    def("ReadADSC", ReadADSC);
    def("ReadMAR", ReadMAR);
+   def("Bin2_by_2", Bin2_by_2);
 }
