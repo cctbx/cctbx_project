@@ -72,6 +72,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
       peak_list=peak_list,
       special_position_settings=structure,
       general_positions_only=00000,
+      effective_resolution=d_min,
       min_cross_distance=2,
       max_clusters=n_elements).all()
     check_peaks(

@@ -7,6 +7,7 @@ from cctbx_maptbx_ext import *
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
+from scitbx import matrix
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
 import sys
@@ -175,6 +176,9 @@ class crystal_gridding_tags(crystal_gridding):
         crystal_symmetry=self.crystal_symmetry(),
         min_distance_sym_equiv=parameters.min_distance_sym_equiv()),
       general_positions_only=parameters.general_positions_only(),
+      effective_resolution=parameters.effective_resolution(),
+      significant_height_fraction=parameters.significant_height_fraction(),
+      cluster_height_fraction=parameters.cluster_height_fraction(),
       min_cross_distance=parameters.min_cross_distance(),
       max_clusters=parameters.max_clusters())
 
@@ -186,6 +190,9 @@ class peak_search_parameters:
                      interpolate=0001,
                      min_distance_sym_equiv=None,
                      general_positions_only=00000,
+                     effective_resolution=None,
+                     significant_height_fraction=None,
+                     cluster_height_fraction=None,
                      min_cross_distance=None,
                      max_clusters=None):
     adopt_init_args(self, locals(), hide=0001)
@@ -197,6 +204,9 @@ class peak_search_parameters:
     self._interpolate = other._interpolate
     self._min_distance_sym_equiv = other._min_distance_sym_equiv
     self._general_positions_only = other._general_positions_only
+    self._effective_resolution = other._effective_resolution
+    self._significant_height_fraction = other._significant_height_fraction
+    self._cluster_height_fraction = other._cluster_height_fraction
     self._min_cross_distance = other._min_cross_distance
     self._max_clusters = other._max_clusters
 
@@ -218,6 +228,15 @@ class peak_search_parameters:
   def general_positions_only(self):
     return self._general_positions_only
 
+  def effective_resolution(self):
+    return self._effective_resolution
+
+  def significant_height_fraction(self):
+    return self._significant_height_fraction
+
+  def cluster_height_fraction(self):
+    return self._cluster_height_fraction
+
   def min_cross_distance(self):
     return self._min_cross_distance
 
@@ -234,13 +253,25 @@ class peak_cluster_analysis:
   def __init__(self, peak_list,
                      special_position_settings,
                      general_positions_only=00000,
+                     effective_resolution=None,
+                     significant_height_fraction=None,
+                     cluster_height_fraction=None,
                      min_cross_distance=None,
                      max_clusters=None):
+    if (effective_resolution is not None):
+      if (significant_height_fraction is None):
+          significant_height_fraction = 1/5.
+      if (cluster_height_fraction is None):
+          cluster_height_fraction = 1/3.
     if (min_cross_distance is None):
-      min_cross_distance = special_position_settings.min_distance_sym_equiv()
+        min_cross_distance = special_position_settings.min_distance_sym_equiv()
     adopt_init_args(self, locals(), hide=0001)
     assert self._min_cross_distance is not None
     self._gridding = peak_list.gridding()
+    if (effective_resolution is not None):
+      self._is_processed = flex.bool(peak_list.size(), 00000)
+    else:
+      self._is_processed = None
     self._peak_list_indices = flex.size_t()
     self._peak_list_index = 0
     self._sites = flex.vec3_double()
@@ -255,6 +286,15 @@ class peak_cluster_analysis:
 
   def general_positions_only(self):
     return self._general_positions_only
+
+  def effective_resolution(self):
+    return self._effective_resolution
+
+  def significant_height_fraction(self):
+    return self._significant_height_fraction
+
+  def cluster_height_fraction(self):
+    return self._cluster_height_fraction
 
   def min_cross_distance(self):
     return self._min_cross_distance
@@ -289,11 +329,14 @@ class peak_cluster_analysis:
     while 1:
       peak_list_index = self._peak_list_index
       if (peak_list_index >= self._peak_list.size()): return None
+      self._peak_list_index += 1
+      if (self._is_processed is not None):
+        if (self._is_processed[peak_list_index]): continue
+        self._is_processed[peak_list_index] = 0001
       grid_index = self._peak_list.grid_indices(peak_list_index)
       grid_height = self._peak_list.grid_heights()[peak_list_index]
       site = self._peak_list.sites()[peak_list_index]
       height = self._peak_list.heights()[peak_list_index]
-      self._peak_list_index += 1
       site_symmetry = self._special_position_settings.site_symmetry(site)
       if (    self._general_positions_only
           and not site_symmetry.is_point_group_1()):
@@ -307,6 +350,12 @@ class peak_cluster_analysis:
           keep = 00000
           break
       if (keep == 0001):
+        if (    self._effective_resolution is not None
+            and (   self._heights.size() == 0
+                 or height <   self._heights[0]
+                             * self._significant_height_fraction)):
+            site, height = self._accumulate_significant(
+              site, height, site_symmetry, equiv_sites)
         self._peak_list_indices.append(peak_list_index)
         self._sites.append(site)
         self._heights.append(height)
@@ -316,6 +365,35 @@ class peak_cluster_analysis:
           grid_height=grid_height,
           site=site,
           height=height)
+
+  def _accumulate_significant(self, site, height, site_symmetry, equiv_sites):
+    unit_cell = self.special_position_settings().unit_cell()
+    orth = unit_cell.orthogonalize
+    frac = unit_cell.fractionalize
+    sum_w_sites = matrix.col(orth(site)) * height
+    sum_w = height
+    height_cutoff = height * self._cluster_height_fraction
+    for i in xrange(self._peak_list_index, self._peak_list.size()):
+      if (self._is_processed[i]): continue
+      other_height = self._peak_list.heights()[i]
+      if (other_height < height_cutoff): break
+      other_site = self._peak_list.sites()[i]
+      other_site_symmetry = self._special_position_settings.site_symmetry(
+        other_site)
+      if (    self._general_positions_only
+          and not other_site_symmetry.is_point_group_1()):
+        self._is_processed[i] = 0001
+        continue
+      other_site = other_site_symmetry.exact_site()
+      dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites, other_site)
+      dist = dist_info.dist()
+      if (dist < self._min_cross_distance):
+        self._is_processed[i] = 0001
+        close_site = dist_info.apply(flex.vec3_double([other_site]))[0]
+        close_site = site_symmetry.special_op() * close_site
+        sum_w_sites += matrix.col(orth(close_site)) * other_height
+        sum_w += other_height
+    return frac(sum_w_sites / sum_w), height
 
   def all(self, max_clusters=None):
     if (max_clusters is None):
