@@ -241,6 +241,36 @@ to modify the files.
 
 <hr>
 
+\section development_moving_build_directory Moving a build directory
+
+The <tt>lib</tt> directory that is created by <tt>make lib
+libpythondir</tt> can be moved to any location. There are no pathnames
+compiled into the link libraries or the Python modules.
+
+<p>
+There are, however, absolute pathnames in the automatically generated
+makefiles. Therefore the easiest way of moving a build directory is to
+simply re-run the fast-track script in the new location.
+
+<p>
+It is also possible to move an existing build directory without
+the need to recompile everything. The key is to rebuild the makefiles
+after relocating the build directory. For example:
+
+\verbatim
+        cd /scratch/build
+        tar cf transportfile.tar boost cctbx
+        cd /newdisk/build
+        tar xf /scratch/build/transportfile.tar
+        cd cctbx
+        rm setpythonpath.csh
+        python /home/user/development/cctbx/build/boot.py
+\endverbatim
+
+The last command rebuilds all the makefiles.
+
+<hr>
+
 \section new_platform Adding support for a new platform
 
 In favorable cases, adding support for a new platform can be achieved
