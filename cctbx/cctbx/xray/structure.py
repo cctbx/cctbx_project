@@ -165,7 +165,11 @@ class structure(crystal.special_position_settings):
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     self._scattering_dict_is_out_of_date = 0001
 
-  def replace_scatterers(self, scatterers, site_symmetry_table=None):
+  def replace_scatterers(self, scatterers, site_symmetry_table="existing"):
+    if (site_symmetry_table == "existing"):
+      site_symmetry_table = self._site_symmetry_table
+    if (site_symmetry_table is not None):
+      assert site_symmetry_table.indices().size() == self.scatterers().size()
     self.erase_scatterers()
     self.add_scatterers(
       scatterers=scatterers,
