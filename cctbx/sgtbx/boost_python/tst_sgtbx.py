@@ -489,6 +489,7 @@ def exercise_space_group():
   g = space_group("1", 0, 1)
   g = space_group("1", 0, 1, 1)
   g = space_group(sgtbx.space_group_symbols(1))
+  g = space_group(g)
   g.reset()
   assert g.r_den() == 1
   assert g.t_den() == sgtbx.sg_t_den
