@@ -25,9 +25,6 @@ namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "cctbx_boost.array_family.flex_cctbx_ext");
-
     wrap_triplet();
   }
 

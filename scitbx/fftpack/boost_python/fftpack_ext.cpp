@@ -352,9 +352,6 @@ namespace scitbx { namespace fftpack { namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "scitbx_boost.array_family.flex_scitbx_ext");
-
     def("adjust_gridding", adjust_gridding_2);
     def("adjust_gridding", adjust_gridding_3);
     def("adjust_gridding_triple", adjust_gridding_triple_2);

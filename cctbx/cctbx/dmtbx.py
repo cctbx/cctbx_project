@@ -1,4 +1,6 @@
-from scitbx.python_utils.misc import import_regular_symbols
-from cctbx_boost import dmtbx_ext as ext
-import_regular_symbols(globals(), ext.__dict__)
-del import_regular_symbols
+import cctbx.array_family.flex
+
+from scitbx.python_utils import misc
+ext = misc.import_ext("cctbx_boost.dmtbx_ext")
+misc.import_regular_symbols(globals(), ext.__dict__)
+del misc

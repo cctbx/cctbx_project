@@ -145,9 +145,6 @@ namespace scitbx { namespace lbfgs { namespace {
     scope().attr("__version__") = scitbx::boost_python::cvs_revision(
       "$Revision$");
 
-    scitbx::boost_python::import_module(
-      "scitbx_boost.array_family.flex_scitbx_ext");
-
     minimizer_wrappers::wrap();
     traditional_convergence_test_wrappers::wrap();
     drop_convergence_test_wrappers::wrap();

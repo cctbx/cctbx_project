@@ -1,7 +1,9 @@
-from scitbx.python_utils.misc import import_regular_symbols
-from cctbx_boost import adptbx_ext as ext
-import_regular_symbols(globals(), ext.__dict__)
-del import_regular_symbols
+import cctbx.array_family.flex # for tuple mappings
+
+from scitbx.python_utils import misc
+ext = misc.import_ext("cctbx_boost.adptbx_ext")
+misc.import_regular_symbols(globals(), ext.__dict__)
+del misc
 
 from cctbx.macro_mol import rotation_parameters
 import random
