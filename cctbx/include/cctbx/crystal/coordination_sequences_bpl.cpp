@@ -12,7 +12,6 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
     def("coordination_sequences_simple", coordination_sequences::simple, (
       arg_("pair_asu_table"),
       arg_("max_shell")));

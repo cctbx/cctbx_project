@@ -22,7 +22,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle_proxy", no_init)
         .def(init<af::tiny<unsigned, 3> const&, double, double>(
@@ -49,7 +48,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("angle", no_init)
         .def(init<af::tiny<scitbx::vec3<double>, 3> const&, double, double>(
@@ -74,7 +72,6 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
     angle_proxy_wrappers::wrap();
     angle_wrappers::wrap();
     def("angle_deltas", angle_deltas,

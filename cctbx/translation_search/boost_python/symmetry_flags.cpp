@@ -14,7 +14,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t, bases<sgtbx::search_symmetry_flags> >(
         "symmetry_flags", no_init)
         .def(init<bool, bool>(

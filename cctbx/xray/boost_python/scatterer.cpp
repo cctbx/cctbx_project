@@ -34,7 +34,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
       class_<w_t>("scatterer", no_init)
@@ -135,7 +134,6 @@ namespace {
   void wrap_scatterer()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
 
     scatterer_wrappers::wrap();
 

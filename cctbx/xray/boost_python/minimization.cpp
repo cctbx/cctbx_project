@@ -9,7 +9,6 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_minimization()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
 
     def("minimization_apply_shifts",
       (af::shared<scatterer<> >(*)(
