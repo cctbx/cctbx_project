@@ -146,6 +146,7 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     class_builder<UnitCell> UnitCell_class(this_module, "UnitCell");
     python::export_converters(UnitCell_class);
 
+    UnitCell_class.def(constructor<>());
     UnitCell_class.def(constructor<const uc_params&>());
 
     UnitCell_class.def(UnitCell_repr, "__repr__");

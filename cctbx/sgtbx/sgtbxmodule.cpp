@@ -538,6 +538,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_StdReciprocalSpaceASU(this_module, "StdReciprocalSpaceASU");
     class_builder<ReciprocalSpaceASU>
     py_ReciprocalSpaceASU(this_module, "ReciprocalSpaceASU");
+    class_builder<MillerIndexGenerator>
+    py_MillerIndexGenerator(this_module, "MillerIndexGenerator");
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
@@ -905,6 +907,12 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::CBOp, "CBOp");
     py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::isStdASU, "isStdASU");
     py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::isInASU, "isInASU");
+
+    py_MillerIndexGenerator.def(constructor<>());
+    py_MillerIndexGenerator.def(constructor<const uctbx::UnitCell&,
+                                            const SgOps&,
+                                            double>());
+    py_MillerIndexGenerator.def(&MillerIndexGenerator::next, "next");
 
     sgtbx::sanity_check();
   }
