@@ -4,7 +4,7 @@ from cctbx.sgtbx import subgroups
 from cctbx.sgtbx import lattice_symmetry
 
 def run():
-  assert len(lattice_symmetry.group.potential_axes()) == 2391
+  assert lattice_symmetry.group.n_potential_axes() == 2391
   for space_group_symbol in ("P-1",
                              "P2/m",
                              "C2/m",

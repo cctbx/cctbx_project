@@ -64,6 +64,7 @@ lib_cctbx_sources = [
   "sgtbx/group_codes.cpp",
   "sgtbx/hall_in.cpp",
   "sgtbx/lattice_tr.cpp",
+  "sgtbx/lattice_symmetry.cpp",
   "sgtbx/miller.cpp",
   "sgtbx/reciprocal_space_asu.cpp",
   "sgtbx/reciprocal_space_ref_asu.cpp",

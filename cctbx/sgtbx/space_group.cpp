@@ -71,7 +71,7 @@ namespace cctbx { namespace sgtbx {
     }
     int d = new_smx.r().num().determinant();
     if (n_smx() >= smx_.capacity() || (d != -1 && d != 1))
-      throw error("Non-crystallographic rotation matrix encountered.");
+      throw error_non_crystallographic_rotation_matrix_encountered();
     CCTBX_ASSERT(new_smx.t().den() == smx_[0].t().den());
     smx_.push_back(new_smx.mod_positive());
     rt_mx const& s = smx_.back();

@@ -1174,6 +1174,14 @@ def exercise_row_echelon():
   assert sgtbx.row_echelon_back_substitution(m, indep=indep) == 1
   assert tuple(indep) == (00000,00000,00000)
 
+def exercise_lattice_symmetry():
+  niggli_cell = uctbx.unit_cell((12,13,14,80,83,86))
+  group_search = sgtbx.lattice_symmetry_group_search(2)
+  assert group_search.n_potential_axes() == 2391
+  group = group_search(niggli_cell, 3)
+  assert group.order_z() == 1
+  assert sgtbx.lattice_symmetry_find_max_delta(niggli_cell, group, 2) < 1.e-10
+
 def run():
   exercise_symbols()
   exercise_tr_vec()
@@ -1190,6 +1198,7 @@ def run():
   exercise_sym_equiv_sites()
   exercise_seminvariant()
   exercise_row_echelon()
+  exercise_lattice_symmetry()
   print "OK"
 
 if (__name__ == "__main__"):
