@@ -1,3 +1,5 @@
+import sys
+
 def create_script(bundle, top_modules):
   return """\
 #! /bin/csh -f
@@ -192,3 +194,7 @@ cat << EOT
 ***
 EOT
 """ % vars()
+
+if (__name__ == "__main__"):
+  assert len(sys.argv) == 3
+  sys.stdout.write(create_script(sys.argv[1], sys.argv[2]))
