@@ -517,14 +517,20 @@ class scope:
     if (len(self.name) != 0):
       if (self.is_disabled): hash = "#"
       else:                  hash = ""
-      print >> out, prefix + hash + self.name
+      out_attributes = StringIO()
       show_attributes(
         self=self,
-        out=out,
+        out=out_attributes,
         prefix=prefix,
         attributes_level=attributes_level,
         print_width=print_width)
-      print >> out, prefix+"{"
+      out_attributes = out_attributes.getvalue()
+      if (len(out_attributes) == 0):
+        print >> out, prefix + hash + self.name, "{"
+      else:
+        print >> out, prefix + hash + self.name
+        out.write(out_attributes)
+        print >> out, prefix+"{"
       prefix += "  "
     previous_object = None
     for object in self.objects:
