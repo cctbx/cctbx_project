@@ -216,10 +216,15 @@ namespace cctbx { namespace af {
 
   template <typename ElementType>
   struct wrap_shared {
+    // The return value is needed only to work around a Visual C++ 6 bug.
     static
-    boost::python::class_builder<
-      shared<ElementType>,
-      shared_wrapper<ElementType> >
+    std::pair<
+      boost::python::class_builder<
+        shared<ElementType>,
+        shared_wrapper<ElementType> >,
+      boost::python::class_builder<
+        shared_items<ElementType> >
+    >
     run(
       boost::python::module_builder& module,
       const std::string& python_name)
@@ -267,7 +272,7 @@ namespace cctbx { namespace af {
       py_shared.def(&shared_access<ElementType>::indices, "indices");
       py_shared.def(&shared_access<ElementType>::items, "items");
 
-      return py_shared;
+      return std::make_pair(py_shared, py_shared_items);
     }
   };
 

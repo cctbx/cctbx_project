@@ -128,7 +128,8 @@ namespace cctbx { namespace mintbx {
     gradients_b_cif_.fill(0);
     FloatType sum_mult_data_scaled_sq = 0;
     FloatType mult = 1;
-    for(std::size_t i=0;i<miller_indices.size();i++) {
+    std::size_t i;
+    for(i=0;i<miller_indices.size();i++) {
       if (multiplicities.size()) mult = multiplicities[i];
       sum_mult_data_scaled_sq += mult * math::pow2(data_scaled[i]);
     }
@@ -137,7 +138,7 @@ namespace cctbx { namespace mintbx {
     if (anisotropic_) {
       u_star = Ucif_as_Ustar(ucell, B_as_U(b_cif));
     }
-    for(std::size_t i=0;i<miller_indices.size();i++) {
+    for(i=0;i<miller_indices.size();i++) {
       if (multiplicities.size()) mult = multiplicities[i];
       FloatType dw, stol2;
       if (anisotropic_) {
