@@ -135,6 +135,9 @@ namespace {
     py_XrayScatterer.def(
       &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::StructureFactor, "StructureFactor");
+    py_XrayScatterer.def(
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      >::StructureFactorAndDerivatives, "StructureFactorAndDerivatives");
 
     this_module.def(py_StructureFactorArray, "StructureFactorArray");
     this_module.def(py_BuildMillerIndices_Resolution_d_min,

@@ -23,6 +23,54 @@ namespace cctbx {
   //! Structure Factor Toolbox namespace.
   namespace sftbx {
 
+  //! XXX
+  template <typename FloatType>
+  class StructureFactorAndDerivatives
+  { 
+    public:
+      StructureFactorAndDerivatives(
+        const cctbx::sgtbx::SpaceGroup& SgOps,
+        const cctbx::Miller::Index& H,
+        const cctbx::fractional<FloatType> X,
+        const std::complex<FloatType>& dTarget_dFcal)
+      {
+        using constants::pi;
+        m_F = FloatType(0);
+        m_dF_dX.fill(FloatType(0));
+        for (int s = 0; s < SgOps.nSMx(); s++) {
+          cctbx::Miller::Index HR = H * SgOps[s].Rpart();
+          FloatType HRX = HR * X;
+          cctbx::sgtbx::TrVec T = SgOps[s].Tpart();
+          for (int i = 0; i < SgOps.fInv(); i++) {
+            if (i) {
+              HR = -HR;
+              HRX = -HRX;
+              T = SgOps.InvT() - T;
+            }
+            for (int l = 0; l < SgOps.nLTr(); l++) {
+              FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
+              FloatType phase = 2. * pi * (HRX + HT);
+              std::complex<FloatType> fX = std::complex<FloatType>(
+                std::cos(phase), std::sin(phase));
+              m_F += fX;
+              for (int j=0;j<3;j++) {
+                m_dF_dX[j] += HR[j] * (  fX.real() * dTarget_dFcal.imag()
+                                       - fX.imag() * dTarget_dFcal.real());
+              }
+            }
+          }
+        }
+        m_dF_dX *= 2. * pi;
+      }
+      const std::complex<FloatType>& F() const { return m_F; }
+            std::complex<FloatType>& F()       { return m_F; }
+      const cctbx::af::tiny<FloatType, 3>& dF_dX() const { return m_dF_dX; }
+            cctbx::af::tiny<FloatType, 3>& dF_dX()       { return m_dF_dX; }
+    protected:
+      std::complex<FloatType> m_F;
+      cctbx::af::tiny<FloatType, 3> m_dF_dX;
+  };
+
   /*! \brief This class groups the information about an atom that
       is needed for a structure factor calculation.
    */
@@ -219,9 +267,9 @@ namespace cctbx {
                 typename StdComplexArrayType>
       void
       StructureFactorArray(const cctbx::sgtbx::SpaceGroup& SgOps,
-                            const MillerIndexArrayType& H,
-                            const doubleArrayType& Q,
-                            StdComplexArrayType Fcalc) const
+                           const MillerIndexArrayType& H,
+                           const doubleArrayType& Q,
+                           StdComplexArrayType Fcalc) const
       {
         if (m_M == 0) {
           throw cctbx::error(
@@ -232,6 +280,24 @@ namespace cctbx {
         for (std::size_t i = 0; i < H.size(); i++) {
           Fcalc[i] += StructureFactor(SgOps, H[i], Q[i]);
         }
+      }
+      //! XXX
+      std::complex<FloatType>
+      StructureFactorAndDerivatives(
+        const cctbx::sgtbx::SpaceGroup& SgOps,
+        const cctbx::Miller::Index& H,
+        double Q,
+        const std::complex<FloatType>& dTarget_dFcalc) const
+      {
+        if (!m_Anisotropic) {
+          return
+              m_w
+            * cctbx::adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
+            * (m_CAASF.Q(Q) + m_fpfdp)
+            * cctbx::sftbx::StructureFactorAndDerivatives<FloatType>(
+                SgOps, H, m_Coordinates, dTarget_dFcalc).F();
+        }
+        throw cctbx_not_implemented();
       }
     private:
       std::string m_Label;
