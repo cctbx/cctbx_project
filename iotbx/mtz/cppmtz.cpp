@@ -76,6 +76,7 @@ bpmtz::Crystal bpmtz::Mtz::columnToCrystal(std::string s) const{
       }
     }
   }
+  throw iotbx::mtz::Error("no such column label");//Never get here but make compiler happy
 }
 
 af::shared< cctbx::miller::index<> > bpmtz::Mtz::MIx() {
