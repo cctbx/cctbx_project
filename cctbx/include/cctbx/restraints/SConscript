@@ -7,9 +7,8 @@ env_bpl.SharedLibrary(
     "restraints_ext.cpp",
     "bond_bpl.cpp",
     "repulsion_bpl.cpp",
+    "pair_proxies_bpl.cpp",
     "angle_bpl.cpp",
     "dihedral_bpl.cpp",
     "chirality_bpl.cpp",
-    "planarity_bpl.cpp",
-    "pair_proxies_bpl.cpp",
-    "bonded_interactions_bpl.cpp"])
+    "planarity_bpl.cpp"])
