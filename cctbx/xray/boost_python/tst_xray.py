@@ -3,6 +3,8 @@ from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import maptbx
 from cctbx import eltbx
+from cctbx import crystal
+import cctbx.crystal.direct_space_asu
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
@@ -477,6 +479,20 @@ def exercise_minimization_apply_shifts():
   else:
     raise RuntimeError("Exception expected.")
 
+def exercise_asu_mappings():
+  from cctbx.development import random_structure
+  structure = random_structure.xray_structure(
+    space_group_info=sgtbx.space_group_info("P 31"),
+    elements=["O"]*10)
+  asu_mappings = crystal.direct_space_asu.asu_mappings(
+    space_group=structure.space_group(),
+    asu=structure.direct_space_asu().as_float_asu(),
+    buffer_thickness=3)
+  xray.asu_mappings_process(
+    asu_mappings=asu_mappings,
+    scatterers=structure.scatterers())
+  assert asu_mappings.mappings().size() == structure.scatterers().size()
+
 def run():
   exercise_conversions()
   exercise_gradient_flags()
@@ -487,6 +503,7 @@ def run():
   exercise_targets()
   exercise_sampled_model_density()
   exercise_minimization_apply_shifts()
+  exercise_asu_mappings()
   print "OK"
 
 if (__name__ == "__main__"):

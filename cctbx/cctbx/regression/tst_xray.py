@@ -95,6 +95,8 @@ def exercise_structure():
   assert sd.lookup("Si").gaussian.n_terms() == 4
   sd = ys.scattering_dict(custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
   assert sd.lookup("Si").gaussian.n_terms() == 0
+  am = xs.asu_mappings(buffer_thickness=1)
+  assert am.mappings().size() == xs.scatterers().size()
 
 def exercise_u_extra():
   d_min = 9
