@@ -1027,6 +1027,17 @@ u = a b *c
 c=a *b c
   .type=choice
 """)
+  for choice in ["a", "b", "c"]:
+    for stat in ["", "*"]:
+      source = iotbx.parameters.parse(input_string="c="+choice)
+      out = StringIO()
+      master.fetch(source=source).show(out=out)
+      if (choice == "a"):
+        assert out.getvalue() == "c = *a b c\n"
+      elif (choice == "b"):
+        assert out.getvalue() == "c = a *b c\n"
+      else:
+        assert out.getvalue() == "c = a b *c\n"
   source = iotbx.parameters.parse(input_string="""\
 c=a *d c
 """)
