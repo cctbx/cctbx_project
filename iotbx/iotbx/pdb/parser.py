@@ -327,13 +327,13 @@ class pdb_record:
     self.altLoc1 = self.raw[16]
     self.resName1 = self.raw[17:20]
     self.chainID1 = self.raw[21]
-    self.resSeq1 = self.raw[22:26]
+    self.resSeq1 = int(self.raw[22:26])
     self.iCode1 = self.raw[26]
     self.name2 = self.raw[42:46]
     self.altLoc2 = self.raw[46]
     self.resName2 = self.raw[47:50]
     self.chainID2 = self.raw[51]
-    self.resSeq2 = self.raw[52:56]
+    self.resSeq2 = int(self.raw[52:56])
     self.iCode2 = self.raw[56]
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]
