@@ -304,6 +304,7 @@ def run(libtbx_dist, args):
       raise UserError("Unknown option: " + arg)
     else:
       remaining_args.append(arg)
+  env.compiler = build_options.compiler
   args = remaining_args
   for arg in args:
     packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
