@@ -108,10 +108,12 @@ class array_cache:
     print
 
   def show_perfect_merohedral_twinning_test(self, n_bins=None):
-    if (self.input.space_group().is_centric()): return
+    assert not self.input.space_group().is_centric()
     print "Perfect merohedral twinning test for %s:"%str(self.input.info())
-    acentric = self.input.select_acentric()
-    assert acentric.observation_type() is self.input.observation_type()
+    acentric = self.input.select_acentric().as_intensity_array()
+    acentric = acentric.array(
+      data=acentric.data()/acentric.epsilons().data().as_double())
+    acentric.set_observation_type_xray_intensity()
     if (n_bins is not None):
       acentric.setup_binner(n_bins=n_bins)
     else:
@@ -128,6 +130,19 @@ class array_cache:
         if (v is None): print " "*7,
         else: print "%7.4f" % v,
       print
+    print
+
+  def show_second_moments_of_intensities(self, n_bins=None):
+    print "Second moments of intensities for %s:"%str(self.input.info())
+    f = self.input.as_intensity_array()
+    f = f.array(data=f.data()/f.epsilons().data().as_double())
+    f.set_observation_type_xray_intensity()
+    if (n_bins is not None):
+      f.setup_binner(n_bins=n_bins)
+    else:
+      f.setup_binner(auto_binning=True)
+    print f.second_moment_of_intensities.__doc__.split()[0]
+    f.second_moment_of_intensities(use_binning=True).show()
     print
 
   def unique_reindexing_operators(self,
@@ -233,6 +248,13 @@ def run(args):
       default=None,
       help="Number of bins for twinning test",
       metavar="INT")
+    .option(None, "--bins_second_moments",
+      action="store",
+      type="int",
+      dest="n_bins_second_moments",
+      default=None,
+      help="Number of bins for second moments of intensities",
+      metavar="INT")
   ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
@@ -313,8 +335,12 @@ def run(args):
     cache_0.input.completeness(use_binning=True).show()
     print
     cache_0.show_patterson_peaks()
-    cache_0.show_perfect_merohedral_twinning_test(
-      n_bins=command_line.options.n_bins_twinning_test)
+    if (not cache_0.input.space_group().is_centric()):
+      cache_0.show_perfect_merohedral_twinning_test(
+        n_bins=command_line.options.n_bins_twinning_test)
+    else:
+      cache_0.show_second_moments_of_intensities(
+        n_bins=command_line.options.n_bins_second_moments)
     if (cache_0.input.anomalous_flag()):
       print "Anomalous signal of %s:" % str(cache_0.input.info())
       print cache_0.input.anomalous_signal.__doc__
