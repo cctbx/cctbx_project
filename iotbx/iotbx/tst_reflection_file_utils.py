@@ -32,6 +32,7 @@ def exercise_get_xtal_data():
   f_obs = reflection_file_srv.get_xray_data(
     file_name=None,
     labels=None,
+    ignore_all_zeros=False,
     parameter_scope="xray_data")
   assert str(f_obs.info()) == "tmp1.mtz:F0,SIGF0"
   mtz_dataset.add_miller_array(
@@ -49,6 +50,7 @@ def exercise_get_xtal_data():
     f_obs = reflection_file_srv.get_xray_data(
       file_name=None,
       labels=None,
+      ignore_all_zeros=True,
       parameter_scope="xray_data")
   except UserError:
     assert err.getvalue() == """\
@@ -67,12 +69,14 @@ to specify an unambiguous substring of the target label.
   f_obs = reflection_file_srv.get_xray_data(
     file_name=None,
     labels=["F1", "SIGF1"],
+    ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert str(f_obs.info()) == "tmp2.mtz:F1,SIGF1"
   try:
     f_obs = reflection_file_srv.get_xray_data(
       file_name=None,
       labels=["F1", "SIGF0"],
+      ignore_all_zeros=True,
       parameter_scope="xray_data")
   except UserError:
     assert err.getvalue() == """\
@@ -91,28 +95,33 @@ to specify an unambiguous substring of the target label.
   f_obs = reflection_file_srv.get_xray_data(
     file_name=None,
     labels=["1"],
+    ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert str(f_obs.info()) == "tmp2.mtz:F0,SIGF0"
   f_obs = reflection_file_srv.get_xray_data(
     file_name=None,
     labels=["2"],
+    ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert str(f_obs.info()) == "tmp2.mtz:F1,SIGF1"
   f_obs = reflection_file_srv.get_xray_data(
     file_name="tmp2.mtz",
     labels=["2"],
+    ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert str(f_obs.info()) == "tmp2.mtz:F1,SIGF1"
   assert len(reflection_file_srv.file_name_miller_arrays) == 1
   f_obs = reflection_file_srv.get_xray_data(
     file_name="tmp1.mtz",
     labels=None,
+    ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert len(reflection_file_srv.file_name_miller_arrays) == 2
   assert str(f_obs.info()) == "tmp1.mtz:F0,SIGF0"
   f_obs = reflection_file_srv.get_xray_data(
     file_name=os.path.abspath("tmp1.mtz"),
     labels=["sigf0"],
+    ignore_all_zeros=True,
     parameter_scope="xray_data")
   assert len(reflection_file_srv.file_name_miller_arrays) == 2
   assert str(f_obs.info()) == "tmp1.mtz:F0,SIGF0"
@@ -120,6 +129,7 @@ to specify an unambiguous substring of the target label.
     f_obs = reflection_file_srv.get_xray_data(
       file_name=None,
       labels=None,
+      ignore_all_zeros=True,
       parameter_scope="xray_data")
   except UserError:
     assert err.getvalue() == """\
@@ -311,16 +321,32 @@ def exercise_get_experimental_phases():
   mtz_dataset.mtz_object().write("tmp.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
     file_name="tmp.mtz")]
+  err = StringIO()
   reflection_file_srv = reflection_file_server(
     crystal_symmetry=crystal_symmetry,
     force_symmetry=True,
     reflection_files=reflection_files,
-    err=None)
+    err=err)
   experimental_phases = reflection_file_srv.get_experimental_phases(
     file_name=None,
     labels=None,
+    ignore_all_zeros=False,
     parameter_scope="experimental_phases")
   assert str(experimental_phases.info()) == "tmp.mtz:PA,PB,PC,PD"
+  try:
+    reflection_file_srv.get_experimental_phases(
+      file_name=None,
+      labels=None,
+      ignore_all_zeros=True,
+      parameter_scope="experimental_phases")
+  except UserError, e:
+    assert str(e) == "No array of experimental phases found."
+    assert err.getvalue() == """\
+
+No array of experimental phases found.
+
+"""
+  else: raise RuntimeError("Exception expected.")
 
 def exercise():
   exercise_get_xtal_data()
