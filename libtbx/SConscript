@@ -17,7 +17,6 @@ def set_python_include_and_libs(env_etc):
     env_etc.libs_python = []
     env_etc.libpath_python = []
   if (env_etc.compiler == "darwin_g++"):
-    print env_etc.python_include
     env_etc.python_framework = "/".join(
       env_etc.python_include.split("/")[:-2] + ["Python"])
 
