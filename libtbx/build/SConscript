@@ -96,6 +96,7 @@ else:
     env_etc.cxxflags_base = Split("""
         -std strict_ansi
         -msg_display_number -msg_disable 186,450,1115
+        -tlocal
     """)
     env_etc.ccflags_base = Split("""
         -std strict_ansi
