@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/xray/structure_factors.h>
@@ -34,12 +25,7 @@ namespace {
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
                   af::const_ref<std::complex<float_type> > const&,
-                  bool,
-                  bool,
-                  bool,
-                  bool,
-                  bool,
-                  bool>())
+                  gradient_flags const&>())
         .def("f_calc", &w_t::f_calc)
         .def("d_target_d_site", &w_t::d_target_d_site)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)

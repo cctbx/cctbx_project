@@ -126,7 +126,7 @@ class resampling(crystal.symmetry):
   def __call__(self, xray_structure,
                      dp,
                      d_target_d_f_calc=None,
-                     derivative_flags=None,
+                     gradient_flags=None,
                      electron_density_must_be_positive=0001,
                      verbose=0):
     self.setup_fft()
@@ -195,8 +195,7 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    derivative_flags=xray.structure_factors.derivative_flags(
-      site=0001))
+    gradient_flags=xray.gradient_flags(site=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0, verbose=verbose)
@@ -238,8 +237,7 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    derivative_flags=xray.structure_factors.derivative_flags(
-      u_iso=0001))
+    gradient_flags=xray.gradient_flags(u_iso=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
@@ -288,8 +286,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    derivative_flags=xray.structure_factors.derivative_flags(
-      u_star=0001))
+    gradient_flags=xray.gradient_flags(u_aniso=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
@@ -335,8 +332,7 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    derivative_flags=xray.structure_factors.derivative_flags(
-      occupancy=0001))
+    gradient_flags=xray.gradient_flags(occupancy=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
@@ -375,8 +371,7 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    derivative_flags=xray.structure_factors.derivative_flags(
-      fp=0001))
+    gradient_flags=xray.gradient_flags(fp=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
@@ -415,8 +410,7 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
-    derivative_flags=xray.structure_factors.derivative_flags(
-      fdp=0001))
+    gradient_flags=xray.gradient_flags(fdp=0001))
   re = resampling(miller_set=f_obs)
   dp0 = miller.array(miller_set=f_obs, data=ls.derivatives())
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
