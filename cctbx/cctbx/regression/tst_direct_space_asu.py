@@ -11,6 +11,7 @@ from scitbx import matrix
 from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 from boost import rational
+import random
 import sys
 
 def exercise_cut_planes(cut_planes):
@@ -214,6 +215,28 @@ def exercise_is_symmetry_interaction():
       assert direct_interactions[(0,2)] == 1
       assert direct_interactions[(1,2)] == 1
 
+def exercise_non_crystallographic_asu_mappings():
+  asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
+    sites_cart=flex.vec3_double())
+  assert approx_equal(asu_mappings.unit_cell().parameters(), (1,1,1,90,90,90))
+  asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
+    sites_cart=flex.vec3_double([(2,-3,4)]))
+  assert approx_equal(asu_mappings.unit_cell().parameters(), (1,1,1,90,90,90))
+  for i_trial in xrange(10):
+    offs = random.uniform(-100,100)
+    sites_cart = flex.vec3_double()
+    for i_site in xrange(10):
+      sites_cart.append([random.uniform(-10+offs,10+offs) for i in xrange(3)])
+    asu_mappings = crystal.direct_space_asu.non_crystallographic_asu_mappings(
+      sites_cart=sites_cart)
+    for site,asu_mapping in zip(sites_cart,asu_mappings.mappings()):
+      assert len(asu_mapping) == 1
+      assert asu_mapping[0].i_sym_op() == 0
+      assert asu_mapping[0].unit_shifts() == (0,0,0)
+      assert approx_equal(asu_mapping[0].mapped_site(), site)
+    assert approx_equal(asu_mappings.mapped_sites_min(), sites_cart.min())
+    assert approx_equal(asu_mappings.mapped_sites_max(), sites_cart.max())
+
 def exercise_all(flags, space_group_info):
   exercise_float_asu(space_group_info)
   exercise_asu_mappings(space_group_info)
@@ -228,6 +251,7 @@ def run_call_back(flags, space_group_info):
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   exercise_is_symmetry_interaction()
+  exercise_non_crystallographic_asu_mappings()
   print "OK"
 
 if (__name__ == "__main__"):

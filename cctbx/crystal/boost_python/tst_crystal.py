@@ -136,10 +136,13 @@ def exercise_direct_space_asu():
       asu=asu,
       buffer_thickness=buffer_thickness,
       sym_equiv_epsilon=1.e-6)
-    asu_mappings.process(original_site=[3.1,-2.2,1.3])
+    asu_mappings.process_sites_frac(
+      original_sites=flex.vec3_double([[3.1,-2.2,1.3]]))
     assert asu_mappings.mappings().size() == 1
     if (two_flag):
-      asu_mappings.process(original_site=[-4.3,1.7,0.4])
+      asu_mappings.process_sites_cart(
+        original_sites=flex.vec3_double([
+          asu.unit_cell().orthogonalize([-4.3,1.7,0.4])]))
     pair_generator = crystal.neighbors_simple_pair_generator(asu_mappings)
     index_pairs = []
     for index_pair in pair_generator:
