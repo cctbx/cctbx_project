@@ -87,6 +87,8 @@ namespace sgtbx {
           <p>
           getL2N = true requests the additional generators from
           column "Further generators" of Table 15.3.2.
+          <p>
+          See also: class StructureSeminvariant
        */
       std::vector<RTMx>
       getAddlGeneratorsOfEuclideanNormalizer(bool getK2L, bool getL2N) const;

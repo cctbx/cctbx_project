@@ -293,11 +293,12 @@ namespace sgtbx {
     return true;
   }
 
-  Vec3 StructureSeminvariant::get_uvw(const Miller::Index& H) const
+  cctbx::static_vector<int, 3>
+  StructureSeminvariant::apply_mod(const Miller::Index& H) const
   {
-    Vec3 result;
+    cctbx::static_vector<int, 3> result;
     for(std::size_t i=0;i<m_VM.size();i++) {
-      result[i] = m_VM[i].V * H;
+      result.push_back(m_VM[i].V * H);
       if (m_VM[i].M) result[i] %= m_VM[i].M;
     }
     return result;
