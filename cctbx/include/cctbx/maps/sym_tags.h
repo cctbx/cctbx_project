@@ -22,7 +22,7 @@
 
 namespace cctbx { namespace maps {
 
-  // Work-around for VC++ 7.0 (XXX and 6?) overload resolution bug.
+  // Work-around for Visual C++ 6.0 and 7.0 overload resolution bug.
   namespace detail {
     struct space_group_symmetry_tag {};
     struct seminvariant_tag {};
