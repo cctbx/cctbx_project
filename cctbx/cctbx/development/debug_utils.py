@@ -19,8 +19,11 @@ class command_line_options:
     self.n = 0
     for keyword in keywords:
       setattr(self, keyword, 0)
+    self.regular_args = []
     for arg in argv:
-      if (not arg.startswith("--")): continue
+      if (not arg.startswith("--")):
+        self.regular_args.append(arg)
+        continue
       if (not arg[2:] in keywords):
         raise AssertionError, "Unknown option: " + arg
       setattr(self, arg[2:], 1)
