@@ -8,7 +8,7 @@ from iotbx_boost import dtrek_ext
 
 class reflnlist:
 
-  def __init__(self, file):
+  def __init__(self, file, header_only=00000):
     self.file = file
     self.line_no = 0
     line_1 = self.next_line().split()
@@ -41,36 +41,40 @@ class reflnlist:
     assert "fIntensity" in self.column_names
     assert "fSigmaI" in self.column_names
     assert self.column_names[:3] == ["nH", "nK", "nL"]
-    self.miller_indices = flex.miller_index()
-    self.column_dict = {}
-    column_list = [None, None, None]
-    for i in xrange(3, num_columns):
-      if (i < self.NumInts):
-        column_list.append(flex.int())
-      elif (i < self.NumInts + self.NumFloats):
-        column_list.append(flex.double())
-      else:
-        column_list.append(flex.std_string())
-      self.column_dict[self.column_names[i]] = column_list[-1]
-    while 1:
-      line = self.next_line()
-      if (line is None):
-        break
-      data_values = line.split()
-      assert len(data_values) == num_columns, "Line no. %d" % self.line_no
-      h = [int(v) for v in data_values[:3]]
-      self.miller_indices.append(h)
-      offset = 3
-      for i in xrange(offset, self.NumInts):
-        v = int(data_values[i])
-        column_list[i].append(v)
-      offset = self.NumInts
-      for i in xrange(offset, offset+self.NumFloats):
-        v = float(data_values[i])
-        column_list[i].append(v)
-      offset += self.NumFloats
-      for i in xrange(offset, num_columns):
-        column_list[i].append(data_values[i])
+    if (header_only):
+      self.miller_indices = None
+      self.column_dict = None
+    else:
+      self.miller_indices = flex.miller_index()
+      self.column_dict = {}
+      column_list = [None, None, None]
+      for i in xrange(3, num_columns):
+        if (i < self.NumInts):
+          column_list.append(flex.int())
+        elif (i < self.NumInts + self.NumFloats):
+          column_list.append(flex.double())
+        else:
+          column_list.append(flex.std_string())
+        self.column_dict[self.column_names[i]] = column_list[-1]
+      while 1:
+        line = self.next_line()
+        if (line is None):
+          break
+        data_values = line.split()
+        assert len(data_values) == num_columns, "Line no. %d" % self.line_no
+        h = [int(v) for v in data_values[:3]]
+        self.miller_indices.append(h)
+        offset = 3
+        for i in xrange(offset, self.NumInts):
+          v = int(data_values[i])
+          column_list[i].append(v)
+        offset = self.NumInts
+        for i in xrange(offset, offset+self.NumFloats):
+          v = float(data_values[i])
+          column_list[i].append(v)
+        offset += self.NumFloats
+        for i in xrange(offset, num_columns):
+          column_list[i].append(data_values[i])
 
   def next_line(self):
     line = self.file.readline()

@@ -1,5 +1,3 @@
-"Extracts crystal symmetry from CNS input file."
-
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -15,10 +13,17 @@ class read_shelx_latt:
     self.centric = (n > 0)
     self.z = "*PIRFABC"[abs(n)]
 
-def extract_from(file):
+def extract_from(file_name=None, file=None, max_characters=100000):
+  assert [file_name, file].count(None) == 1
+  if (file is None):
+    file = open(file_name)
   unit_cell = None
   space_group = None
+  n_characters = 0
   for line in file:
+    if (max_characters != 0):
+      n_characters += len(line)
+      if (n_characters > max_characters): break
     l = line.strip()
     if (l.startswith("CELL ")):
       assert unit_cell is None
