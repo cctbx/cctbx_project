@@ -5,7 +5,10 @@ ext = misc.import_ext("cctbx_boost.maptbx_ext")
 misc.import_regular_symbols(globals(), ext.__dict__)
 del misc
 
+from cctbx import sgtbx
+from cctbx.array_family import flex
 from scitbx.python_utils import dicts
+from scitbx.python_utils.misc import adopt_init_args
 import sys
 
 class statistics(ext.statistics):
@@ -62,3 +65,56 @@ def determine_gridding(unit_cell,
     unit_cell, d_min, resolution_factor,
     mandatory_factors,
     max_prime, assert_shannon_sampling)
+
+class peak_list_cluster_reduction:
+
+  def __init__(self, peak_list,
+                     special_position_settings,
+                     general_positions_only=00000,
+                     min_cross_distance=None,
+                     max_reduced_sites=None):
+    adopt_init_args(self, locals(), hide=0001)
+    sites = flex.vec3_double()
+    gridding = peak_list.gridding()
+    for entry in peak_list.entries():
+      site = [float(entry.index[i]) / gridding[i] for i in xrange(3)]
+      sites.append(special_position_settings.site_symmetry(site).exact_site())
+    if (min_cross_distance == None):
+      min_cross_distance = special_position_settings.min_distance_sym_equiv()
+    self._unreduced_indices = flex.size_t()
+    self._reduced_sites = flex.vec3_double()
+    for unreduced_index,site in sites.items():
+      site_symmetry = special_position_settings.site_symmetry(site)
+      if (general_positions_only and not site_symmetry.is_point_group_1()):
+        continue
+      equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
+      keep = 0001
+      for reduced_site in self._reduced_sites:
+        dist = sgtbx.min_sym_equiv_distance_info(
+          equiv_sites, reduced_site).dist()
+        if (dist < min_cross_distance):
+          keep = 00000
+          break
+      if (keep == 0001):
+        self._unreduced_indices.append(unreduced_index)
+        self._reduced_sites.append(site)
+        if (len(self._reduced_sites) == max_reduced_sites): break
+
+  def unreduced_peak_list(self):
+    return self._peak_list
+
+  def unreduced_indices(self):
+    return self._unreduced_indices
+
+  def reduced_sites(self):
+    return self._reduced_sites
+
+  def unreduced_index(self, reduced_index):
+    return self._unreduced_indices[reduced_index]
+
+  def reduced_site(self, reduced_index):
+    return self._reduced_sites[reduced_index]
+
+  def peak_height(self, reduced_index):
+    return self._peak_list.entries()[
+      self._unreduced_indices[reduced_index]].value
