@@ -1,3 +1,4 @@
+from __future__ import division
 import cctbx.sgtbx
 
 import boost.python
@@ -11,13 +12,15 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import fftpack
 import scitbx.math
+from scitbx.python_utils.math_utils import iround
 from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
 from libtbx.utils import Keep
 from libtbx import introspection
-import sys
+import random
 import math
 import types
+import sys
 
 def _slice_or_none(array, slice_object):
   assert type(slice_object) == types.SliceType
@@ -316,11 +319,11 @@ class set(crystal.symmetry):
         n_complete = binner.counts_complete()[1]
         if (n_complete != 0):
           print >> f, prefix + "Completeness in resolution range: %.6g" % (
-            float(n_obs) / n_complete)
+            n_obs / n_complete)
         n_complete += binner.counts_complete()[0]
         if (n_complete != 0):
           print >> f, prefix + "Completeness with d_max=infinity: %.6g" % (
-            float(n_obs) / n_complete)
+            n_obs / n_complete)
     if (self.space_group_info() is not None and no_sys_abs.anomalous_flag()):
       asu, matches = no_sys_abs.match_bijvoet_mates()
       print >> f, prefix + "Bijvoet pairs:", matches.pairs().size()
@@ -384,7 +387,7 @@ class set(crystal.symmetry):
                            min_fraction_bijvoet_pairs=None):
     assert [min_n_bijvoet_pairs, min_fraction_bijvoet_pairs].count(None) > 0
     if (min_fraction_bijvoet_pairs is not None):
-      anomalous_flag = (2.*self.n_bijvoet_pairs()/self.indices().size()
+      anomalous_flag = (2*self.n_bijvoet_pairs()/self.indices().size()
                         >= min_fraction_bijvoet_pairs)
     elif (min_n_bijvoet_pairs is not None):
       anomalous_flag = (self.n_bijvoet_pairs() >= min_n_bijvoet_pairs)
@@ -421,14 +424,13 @@ class set(crystal.symmetry):
   def completeness(self, use_binning=False, d_min_tolerance=1.e-6):
     if (not use_binning):
       complete_set = self.complete_set(d_min_tolerance=d_min_tolerance)
-      return self.indices().size() \
-           / float(max(1,complete_set.indices().size()))
+      return self.indices().size() / max(1,complete_set.indices().size())
     assert self.binner() is not None
     data = []
     for n_given,n_complete in zip(self.binner().counts_given(),
                                   self.binner().counts_complete()):
       if (n_complete == 0): data.append(None)
-      else: data.append(float(n_given)/n_complete)
+      else: data.append(n_given/n_complete)
     return binned_data(binner=self.binner(), data=data, data_fmt="%5.3f")
 
   def all_selection(self):
@@ -507,6 +509,63 @@ class set(crystal.symmetry):
     return self.select(
       self.sort_permutation(by_value=by_value, reverse=reverse))
 
+  def generate_r_free_flags(self, fraction=0.1):
+    assert fraction > 0 and fraction < 0.5
+    group_size = 1/fraction
+    assert group_size >= 2
+    if (self.anomalous_flag()):
+      matches = self.match_bijvoet_mates()[1]
+      sel_pp = matches.pairs_hemisphere_selection("+")
+      sel_pm = matches.pairs_hemisphere_selection("-")
+      sel_sp = matches.singles("+")
+      sel_sm = matches.singles("-")
+      n = matches.pairs().size() + matches.n_singles()
+      del matches
+    else:
+      # XXX assert not self.is_merged()
+      n = self.indices().size()
+    result = flex.bool(n, False)
+    i_start = 0
+    for i_group in count(1):
+      i_end = min(n, iround(i_group * group_size))
+      if (i_start == i_end):
+        break
+      if (i_end + 1 == n):
+        i_end += 1
+      assert i_end - i_start >= 2
+      result[random.randrange(i_start, i_end)] = True
+      i_start = i_end
+    if (not self.anomalous_flag()):
+      indices = self.indices()
+    else:
+      indices = self.indices().select(sel_pp)
+      indices.extend(self.indices().select(sel_sp))
+      indices.extend(self.indices().select(sel_sm))
+      assert indices.size() == n
+    result = result.select(
+      indices=flex.sort_permutation(
+        data=self.unit_cell().d_star_sq(indices), reverse=True),
+        reverse=True)
+    if (not self.anomalous_flag()):
+      return self.array(data=result)
+    del indices
+    result_full = flex.bool(self.indices().size(), False)
+    i_pp = sel_pp.size()
+    i_pp_sp = i_pp + sel_sp.size()
+    r_pp = result[:i_pp]
+    result_full.set_selected(sel_pp, r_pp)
+    assert result_full.count(True) == r_pp.count(True)
+    result_full.set_selected(sel_pm, r_pp)
+    assert result_full.count(True) == 2*r_pp.count(True)
+    del r_pp
+    del sel_pm
+    del sel_pp
+    result_full.set_selected(sel_sp, result[i_pp:i_pp_sp])
+    del sel_sp
+    result_full.set_selected(sel_sm, result[i_pp_sp:])
+    del sel_sm
+    return self.array(data=result_full)
+
   def change_basis(self, cb_op):
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
     return set.customized_copy(self,
@@ -526,7 +585,7 @@ class set(crystal.symmetry):
     return set.customized_copy(self,
       crystal_symmetry=crystal.symmetry.patterson_symmetry(self))
 
-  def crystal_gridding(self, resolution_factor=1/3.,
+  def crystal_gridding(self, resolution_factor=1/3,
                              d_min=None,
                              grid_step=None,
                              symmetry_flags=None,
@@ -625,7 +684,7 @@ class set(crystal.symmetry):
     if (auto_binning):
       if (reflections_per_bin == 0): reflections_per_bin = 200
       if (n_bins == 0): n_bins = 8
-      n_per_bin = int(float(len(self.indices())) / n_bins + .5)
+      n_per_bin = int(len(self.indices()) / n_bins + .5)
       if (n_per_bin > reflections_per_bin):
         n_bins = int(len(self.indices()) / reflections_per_bin + .5)
     elif (reflections_per_bin):
@@ -1206,7 +1265,7 @@ class array(set):
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def measurability(self, use_binning=False, cutoff=3.0):
-    ## Peter Zwart 3/4/2005
+    ## Peter Zwart 2005-Mar-04
     """\
 Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
             and min(I_plus/sigma_plus,I_min/sigma_min) > cutoff"""
@@ -1228,7 +1287,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       meas = (  (ratio > cutoff)
               & (i_plus_sigma > cutoff)
               & (i_minus_sigma > cutoff) ).count(True)
-      return float(meas)/float(ratio.size())
+      return meas/ratio.size()
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
@@ -1527,7 +1586,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
         print >> f, prefix + str(h), d, s
     return self
 
-  def fft_map(self, resolution_factor=1/3.,
+  def fft_map(self, resolution_factor=1/3,
                     d_min=None,
                     grid_step=None,
                     symmetry_flags=None,
@@ -1547,7 +1606,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       fourier_coefficients=self,
       f_000=f_000)
 
-  def patterson_map(self, resolution_factor=1/3.,
+  def patterson_map(self, resolution_factor=1/3,
                           d_min=None,
                           symmetry_flags=None,
                           mandatory_factors=None,
@@ -1631,7 +1690,7 @@ class merge_equivalents:
         merge_ext = ext.merge_equivalents(
           asu_set.indices().select(perm),
           miller_array.data().select(perm),
-          1./sigmas_squared)
+          1/sigmas_squared)
         sigmas = merge_ext.sigmas()
       else:
         merge_ext = ext.merge_equivalents(
