@@ -7,6 +7,7 @@
 
 
 #include <cctbx/sgtbx/miller_asu.h>
+#include <cctbx/sgtbx/reference.h>
 
 
 namespace sgtbx
@@ -134,3 +135,198 @@ namespace sgtbx
   }
 
 }
+
+namespace sgtbx {
+
+  class StdReciprocalSpaceASU_1b : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[2]>0 || (H[2]==0 && (H[0]>0 || (H[0]==0 && H[1]>=0))));
+      }
+      virtual const char* representation() const {
+        return "l>0 or (l==0 and (h>0 or (h==0 and k>=0)))";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {-1, -1, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_2_m : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[1]>=0 && (H[2]>0 || (H[2]==0 && H[0]>=0)));
+      }
+      virtual const char* representation() const {
+        return "k>=0 and (l>0 or (l=0 and h>=0))";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {-1, 0, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_mmm : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[0]>=0 && H[1]>=0 && H[2]>=0);
+      }
+      virtual const char* representation() const {
+        return "h>=0 and k>=0 and l>=0";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_4_m : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
+      }
+      virtual const char* representation() const {
+        return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_4_mmm : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
+      }
+      virtual const char* representation() const {
+        return "h>=k and k>=0 and l>=0";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_3b : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0 && H[2]>=0);
+      }
+      virtual const char* representation() const {
+        return "(h>=0 and k>0) or (h=0 and k=0 and l>=0)";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, -1};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_3b1m : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[0]>=H[1] && H[1]>=0 && (H[1]>0 || H[2]>=0));
+      }
+      virtual const char* representation() const {
+        return "h>=k and k>=0 and (k>0 or l>=0)";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, -1};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_3bm1 : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[0]>=H[1] && H[1]>=0 && (H[0]>H[1] || H[2]>=0));
+      }
+      virtual const char* representation() const {
+        return "h>=k and k>=0 and (h>k or l>=0)";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, -1};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_6_m : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
+      }
+      virtual const char* representation() const {
+        return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_6_mmm : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
+      }
+      virtual const char* representation() const {
+        return "h>=k and k>=0 and l>=0";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_m3b : public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return
+        (H[0]>=0 && ((H[2]>=H[0] && H[1]>H[0]) || (H[2]==H[0] && H[1]==H[0])));
+      }
+      virtual const char* representation() const {
+        return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, 0};
+        return result;
+      }
+  };
+  class StdReciprocalSpaceASU_m3bm: public StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        return (H[1]>=H[2] && H[2]>=H[0] && H[0]>=0);
+      }
+      virtual const char* representation() const {
+        return "k>=l and l>=h and h>=0";
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        static const Miller::Vec3 result = {0, 0, 0};
+        return result;
+      }
+  };
+
+  ReciprocalSpaceASU::ReciprocalSpaceASU(const SpaceGroupType& SgType)
+    : m_isStdASU(true), m_StdASU(), m_CBOp()
+  {
+    m_CBOp = SgType.CBOp();
+    m_isStdASU = m_CBOp.M().isUnit();
+    using namespace tables::MatrixGroup;
+    Code MGC = tables::ReferenceSettings::MatrixGroupCodes[SgType.SgNumber()];
+    Code LG_MGC = MGC.LaueGroupType();
+    StdReciprocalSpaceASU* p;
+    if      (LG_MGC == MGC_1b)    p = new StdReciprocalSpaceASU_1b();
+    else if (LG_MGC == MGC_2_m)   p = new StdReciprocalSpaceASU_2_m();
+    else if (LG_MGC == MGC_mmm)   p = new StdReciprocalSpaceASU_mmm();
+    else if (LG_MGC == MGC_4_m)   p = new StdReciprocalSpaceASU_4_m();
+    else if (LG_MGC == MGC_4_mmm) p = new StdReciprocalSpaceASU_4_mmm();
+    else if (LG_MGC == MGC_3b)    p = new StdReciprocalSpaceASU_3b();
+    else if (LG_MGC == MGC_3bm) {
+     if (   MGC == MGC_312
+         || MGC == MGC_31m
+         || MGC == MGC_3b1m) p = new StdReciprocalSpaceASU_3b1m();
+     else                    p = new StdReciprocalSpaceASU_3bm1();
+    }
+    else if (LG_MGC == MGC_6_m)   p = new StdReciprocalSpaceASU_6_m();
+    else if (LG_MGC == MGC_6_mmm) p = new StdReciprocalSpaceASU_6_mmm();
+    else if (LG_MGC == MGC_m3b)   p = new StdReciprocalSpaceASU_m3b();
+    else if (LG_MGC == MGC_m3bm)  p = new StdReciprocalSpaceASU_m3bm();
+    else throw cctbx_internal_error();
+    m_StdASU = boost::shared_ptr<StdReciprocalSpaceASU>(p);
+  }
+
+  class MillerIndexGenerator
+  {
+  };
+
+} // namespace sgtbx

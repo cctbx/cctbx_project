@@ -521,12 +521,41 @@ namespace sgtbx {
       }
 
       //! The translation parts of the symmetry operations are set to 0.
-      /*! The lattice translation vectors are not modified.<br>
-          This function is used by the algorithm for the determination
-          of the space group type and its usefulness is probably
-          limited to this context.
+      /*! If DiscardZ = true, the lattice translation vectors are not
+          modified. If AddInv = true, a centre of inversion is added
+          at the origin.
+          <p>
+          See also:
+            BuildDerivedPattersonGroup(),
+            BuildDerivedPointGroup(),
+            BuildDerivedLaueGroup()
        */
-      SgOps toZPointGroup() const;
+      SgOps BuildDerivedGroup(bool DiscardZ, bool AddInv) const;
+
+      //! Build the corresponding Patterson space group.
+      /*! The translation parts of the symmetry operations are set to 0.
+          However, the lattice translation vectors are not modified.
+       */
+      inline SgOps BuildDerivedPattersonGroup() const {
+        return BuildDerivedGroup(false, true);
+      }
+
+      //! Build the corresponding point group.
+      /*! The translation parts of the symmetry operations are set to 0,
+          and the lattice translation vectors are discarded.
+       */
+      inline SgOps BuildDerivedPointGroup() const {
+        return BuildDerivedGroup(true, false);
+      }
+
+      //! Build the corresponding Laue group.
+      /*! The translation parts of the symmetry operations are set to 0,
+          the lattice translation vectors are discarded,
+          and a centre of inversion is added at the origin.
+       */
+      inline SgOps BuildDerivedLaueGroup() const {
+        return BuildDerivedGroup(true, true);
+      }
 
       //! Histogram of rotation part types.
       /*! The histogram is accumulated in a std::map. The key

@@ -8,7 +8,8 @@ StandardOnly = "--StandardOnly" in sys.argv
 Endless = "--Endless" in sys.argv
 
 if (ShortCut):
-  settings = ("Hall: -P 6 2c (z,1/2*x,1/2*y)",)
+  #settings = ("H 3 2 1",)
+  settings = ("P 3 1 2",)
 else:
   from settings import * # see examples/python/make_settings.py
 
@@ -25,7 +26,12 @@ def OneCycle():
       SgType.SgNumber(),
       SgOps.BuildHallSymbol(SgType))
     sys.stdout.flush()
-    asu = sgtbx.CCP4_ReciprocalSpaceASU(SgOps)
+    #asu = sgtbx.CCP4_ReciprocalSpaceASU(SgOps)
+    asu = sgtbx.ReciprocalSpaceASU(SgOps.getSpaceGroupType())
+    print asu.CBOp().M()
+    print asu.CBOp().InvM()
+    print asu.StdASU().representation()
+    print asu.StdASU().getCutParameters()
     H = [0,0,0]
     for H[0] in range(-2, 3):
       for H[1] in range(-2, 3):

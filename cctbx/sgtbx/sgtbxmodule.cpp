@@ -514,6 +514,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_Brick(this_module, "Brick");
     class_builder<CCP4_ReciprocalSpaceASU>
     py_CCP4_ReciprocalSpaceASU(this_module, "CCP4_ReciprocalSpaceASU");
+    class_builder<StdReciprocalSpaceASU>
+    py_StdReciprocalSpaceASU(this_module, "StdReciprocalSpaceASU");
+    class_builder<ReciprocalSpaceASU>
+    py_ReciprocalSpaceASU(this_module, "ReciprocalSpaceASU");
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
@@ -863,6 +867,22 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_CCP4_ReciprocalSpaceASU.def(constructor<const SgOps&>());
     py_CCP4_ReciprocalSpaceASU.def(
       &CCP4_ReciprocalSpaceASU::isInASU, "isInASU");
+    py_CCP4_ReciprocalSpaceASU.def(
+      &CCP4_ReciprocalSpaceASU::getCutParameters, "getCutParameters");
+
+    py_StdReciprocalSpaceASU.def(
+      &StdReciprocalSpaceASU::isInASU, "isInASU");
+    py_StdReciprocalSpaceASU.def(
+      &StdReciprocalSpaceASU::representation, "representation");
+    py_StdReciprocalSpaceASU.def(
+      &StdReciprocalSpaceASU::getCutParameters, "getCutParameters");
+
+    py_ReciprocalSpaceASU.def(constructor<>());
+    py_ReciprocalSpaceASU.def(constructor<const SpaceGroupType&>());
+    py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::StdASU, "StdASU");
+    py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::CBOp, "CBOp");
+    py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::isStdASU, "isStdASU");
+    py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::isInASU, "isInASU");
 
     sgtbx::sanity_check();
   }

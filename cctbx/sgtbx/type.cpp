@@ -888,7 +888,7 @@ namespace sgtbx {
     tables::MatrixGroup::Code LG_MGC = PG_MGC.LaueGroupType();
     tables::CrystalSystem::Code CrystalSystem = PG_MGC.CrystalSystem();
 
-    SgOps ZPointGroup = toZPointGroup(); // set translation parts to zero
+    SgOps ZPointGroup = BuildDerivedGroup(false, false);
     SgOps WorkSgOps = ZPointGroup;
     ChOfBasisOp TotCBOp(RBF, TBF);
     char Z = '\0';

@@ -9,6 +9,7 @@
 #define CCTBX_SGTBX_MILLER_ASU_H
 
 
+#include <boost/smart_ptr.hpp>
 #include <cctbx/miller.h>
 #include <cctbx/sgtbx/groups.h>
 
@@ -128,7 +129,43 @@ namespace sgtbx
     Miller::Vec3 getCutParameters() const;
   };
 
-}
+} // namespace sgtbx
 
+namespace sgtbx {
+
+  class StdReciprocalSpaceASU {
+    public:
+      virtual bool isInASU(const Miller::Index& H) const {
+        throw cctbx_internal_error();
+      }
+      virtual const char* representation() const {
+        throw cctbx_internal_error();
+      }
+      virtual const Miller::Vec3& getCutParameters() const {
+        throw cctbx_internal_error();
+      }
+  };
+
+  class ReciprocalSpaceASU
+  {
+    public:
+      inline ReciprocalSpaceASU()
+        : m_isStdASU(true), m_StdASU(), m_CBOp() {}
+      ReciprocalSpaceASU(const SpaceGroupType& SgType);
+      inline boost::shared_ptr<StdReciprocalSpaceASU>
+      StdASU() const { return m_StdASU; }
+      inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
+      inline bool isStdASU() const { return m_isStdASU; }
+      inline bool isInASU(const Miller::Index& H) const {
+        if (m_isStdASU) return m_StdASU->isInASU(H);
+        return m_StdASU->isInASU(H * m_CBOp.InvM().Rpart());
+      }
+    private:
+      ChOfBasisOp m_CBOp;
+      bool m_isStdASU;
+      boost::shared_ptr<StdReciprocalSpaceASU> m_StdASU;
+  };
+
+} // namespace sgtbx
 
 #endif // CCTBX_SGTBX_MILLER_ASU_H
