@@ -16,6 +16,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/tst_af_2.cpp",
       "arraytbx/tst_vec3.cpp",
       "arraytbx/tst_mat3.cpp",
+      "arraytbx/tst_sym_mat3.cpp",
     )
 
     self.executables = {
@@ -23,6 +24,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "tst_af_2": (("tst_af_2",), ()),
       "tst_vec3": (("tst_vec3",), ()),
       "tst_mat3": (("tst_mat3",), ("cctbx_misc",)),
+      "tst_sym_mat3": (("tst_sym_mat3",), ("cctbx_misc",)),
     }
 
     self.boost_python_modules = {
