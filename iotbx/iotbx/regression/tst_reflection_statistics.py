@@ -1,5 +1,5 @@
-from iotbx import mtz
 from iotbx.command_line import reflection_statistics
+from iotbx import mtz
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
