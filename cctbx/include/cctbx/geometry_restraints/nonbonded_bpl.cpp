@@ -206,7 +206,8 @@ namespace {
   void
   wrap_functions(scitbx::type_holder<NonbondedFunction> const&)
   {
-    using namespace boost::python;
+    using boost::python::def;
+    using boost::python::arg_;
     def("nonbonded_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
