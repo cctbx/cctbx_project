@@ -163,6 +163,7 @@ def exercise_interpretation(verbose=0, quick=True):
     isel_MODELserial = sel_cache.get_MODELserial(1)
     isel_element = sel_cache.get_element(" C")
     isel_charge = sel_cache.get_charge("2+")
+    isel_anisou = sel_cache.get_anisou()
     if (0 or verbose):
       print "  n_seq:", len(stage_1.atom_attributes_list)
       print "  isel_name:", [isel.size() for isel in isel_name]
@@ -175,6 +176,7 @@ def exercise_interpretation(verbose=0, quick=True):
       print "  isel_MODELserial:", [isel.size() for isel in isel_MODELserial]
       print "  isel_element:", [isel.size() for isel in isel_element]
       print "  isel_charge:", [isel.size() for isel in isel_charge]
+      print "  isel_anisou:", [isel.size() for isel in isel_anisou]
     sel_name = sel_cache.sel_name(" CA ")
     sel_altLoc = sel_cache.sel_altLoc("A")
     sel_resName = sel_cache.sel_resName("?L?")
@@ -185,6 +187,7 @@ def exercise_interpretation(verbose=0, quick=True):
     sel_MODELserial = sel_cache.sel_MODELserial(1)
     sel_element = sel_cache.sel_element(" C")
     sel_charge = sel_cache.sel_charge("2+")
+    sel_anisou = sel_cache.sel_anisou()
     if (0 or verbose):
       print "  sel_name:", sel_name.count(True)
       print "  sel_altLoc:", sel_altLoc.count(True)
@@ -196,6 +199,7 @@ def exercise_interpretation(verbose=0, quick=True):
       print "  sel_MODELserial:", sel_MODELserial.count(True)
       print "  sel_element:", sel_element.count(True)
       print "  sel_charge:", sel_charge.count(True)
+      print "  sel_anisou:", sel_anisou.count(True)
     if (quick): break
 
 def exercise_scalen():
@@ -245,8 +249,10 @@ CRYST1   50.800   50.800  155.300  90.00  90.00  90.00 P 43 21 2     8
 MODEL        1
 ATOM      4  N   SER     1       8.753  29.755  61.685  1.00 49.13
 ATOM      5  CA  SER     1       9.242  30.200  62.974  1.00 46.62
+ANISOU    5  CA  SER     1    343    490   2719    -45   -169    617
 ATOM      6  C   SER     1      10.453  29.500  63.579  1.00 41.99
 ATOM      7  O   SER     1      10.593  29.607  64.814  1.00 43.24
+ANISOU    7  O   SER     1    343    490   2719    -45   -169    617
 ATOM      8  CB  SER     1       8.052  30.189  63.974  1.00 53.00
 ATOM      9  OG  SER     1       7.294  31.409  63.930  1.00 57.79
 ATOM     10  N   ARG     2      11.360  28.819  62.827  1.00 36.48
@@ -363,6 +369,7 @@ END
   assert list(isel(r"segid wate")) == [69]
   assert list(isel(r"element o")) == [65,66,67,68]
   assert list(isel(r"charge 4+")) == [64]
+  assert list(isel(r"anisou")) == [1, 3]
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(

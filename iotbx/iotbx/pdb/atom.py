@@ -216,6 +216,7 @@ class selection_cache:
     self.MODELserial = stl.map.int_stl_vector_unsigned()
     self.element = stl.map.stl_string_stl_vector_unsigned()
     self.charge = stl.map.stl_string_stl_vector_unsigned()
+    self.anisou = stl.vector.unsigned()
     for i_seq,atom_attributes in enumerate(atom_attributes_list):
       self.name.setdefault(atom_attributes.name).append(i_seq)
       self.altLoc.setdefault(atom_attributes.altLoc).append(i_seq)
@@ -227,6 +228,8 @@ class selection_cache:
       self.MODELserial.setdefault(atom_attributes.MODELserial).append(i_seq)
       self.element.setdefault(atom_attributes.element).append(i_seq)
       self.charge.setdefault(atom_attributes.charge).append(i_seq)
+      if (atom_attributes.Ucart is not None):
+        self.anisou.append(i_seq)
 
   def get_all_altLocs_sorted(self):
     result = self.altLoc.keys()
@@ -337,6 +340,9 @@ class selection_cache:
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
+  def get_anisou(self):
+    return [self.anisou]
+
   def union(self, iselections):
     return flex.union(
       size=self.n_seq,
@@ -382,6 +388,9 @@ class selection_cache:
 
   def sel_charge(self, pattern):
     return self.union(iselections=self.get_charge(pattern=pattern))
+
+  def sel_anisou(self):
+    return self.union(iselections=self.get_anisou())
 
   def selection_tokenizer(self, string, contiguous_word_characters=None):
     if (contiguous_word_characters is None):
@@ -475,6 +484,8 @@ class selection_cache:
         elif (lword == "charge"):
           if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
           result_stack.append(self.sel_charge(pattern=word_stack.pop()))
+        elif (lword == "anisou"):
+          result_stack.append(self.sel_anisou())
         elif (callback is not None):
           if (not callback(
                     word=word,
