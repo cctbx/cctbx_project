@@ -2,6 +2,16 @@ import sys, os, os.path
 
 class empty: pass
 
+def set_python_include_and_libs(env_etc):
+  if (sys.platform == "win32"):
+    env_etc.python_include = sys.prefix + r"\include"
+    env_etc.libs_python = ["python" + sys.version[0] + sys.version[2]]
+    env_etc.libpath_python = [sys.prefix + r"\libs"]
+  else:
+    env_etc.python_include = sys.prefix + "/include/python" + sys.version[0:3]
+    env_etc.libs_python = []
+    env_etc.libpath_python = []
+
 def touch_init(env, target, source):
   assert len(target) == 1
   print "Creating:", str(target[0])
@@ -44,9 +54,7 @@ assert env_etc.compiler in (
 if (sys.platform == "win32"):
   env_etc.is_win32 = 1
   env_base = Environment(ENV=os.environ)
-  env_etc.python_include = r"c:\Python22\include"
-  env_etc.libs_python = ["python22"]
-  env_etc.libpath_python = [r"c:\Python22\libs"]
+  set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".pyd"
   if (env_etc.compiler == "win32_cl"):
     env_base.Update(
@@ -69,12 +77,7 @@ else:
   env_base = Environment(ENV=os.environ,
     # XXX hack to create a default configuration that we can customize
     tools=['g++', 'gnulink', 'ar'])
-  if (env_etc.compiler == "irix_CC"): # XXX
-    env_etc.python_include = "/yusr/pom1/rwgrosse/tools/irix/include/python2.2"
-  else:
-    env_etc.python_include = "/usr/local_cci/Python-2.2.1/include/python2.2"
-  env_etc.libs_python = []
-  env_etc.libpath_python = []
+  set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".so"
   env_etc.libm = ["m"]
   if (env_etc.compiler == "tru64_cxx"):
