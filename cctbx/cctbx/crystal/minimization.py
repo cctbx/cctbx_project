@@ -64,7 +64,10 @@ class lbfgs:
   def __init__(self, structure,
                      shell_sym_tables,
                      bond_params_table,
+                     repulsion_types,
                      repulsion_distance_table,
+                     repulsion_radius_table,
+                     repulsion_distance_default,
                      nonbonded_distance_cutoff,
                      nonbonded_buffer,
                      lbfgs_termination_params=None,
@@ -153,9 +156,11 @@ class lbfgs:
           sym_table=shell_sym_table)
             for shell_sym_table in self.shell_sym_tables]
       pair_proxies = restraints.pair_proxies(
-        scatterers=self.structure.scatterers(),
         bond_params_table=self.bond_params_table,
+        repulsion_types=self.repulsion_types,
         repulsion_distance_table=self.repulsion_distance_table,
+        repulsion_radius_table=self.repulsion_radius_table,
+        repulsion_distance_default=self.repulsion_distance_default,
         shell_asu_tables=shell_asu_tables,
         shell_distance_cutoffs=flex.double(shell_distance_cutoffs),
         nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,

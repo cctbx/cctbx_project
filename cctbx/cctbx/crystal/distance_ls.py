@@ -52,7 +52,6 @@ def setup_repulsion_distance_table():
   t = restraints.repulsion_distance_table()
   t.setdefault("Si")["Si"] = 3.1
   t.setdefault("Si")["O"] = 1.5
-  t.setdefault("O")["Si"] = t["Si"]["O"]
   t.setdefault("O")["O"] = 2.0
   return t
 
@@ -245,6 +244,9 @@ def distance_and_repulsion_least_squares(
     structure=si_o.structure,
     bond_sym_table=shell_sym_tables[0])
   repulsion_distance_table = setup_repulsion_distance_table()
+  repulsion_types = flex.std_string()
+  for scatterer in si_o.structure.scatterers():
+    repulsion_types.append(scatterer.scattering_type)
   minimized = None
   for i_trial in xrange(n_trials):
     trial_structure = si_o.structure.deep_copy_scatterers()
@@ -257,7 +259,10 @@ def distance_and_repulsion_least_squares(
       structure=trial_structure,
       shell_sym_tables=shell_sym_tables,
       bond_params_table=bond_params_table,
+      repulsion_types=repulsion_types,
       repulsion_distance_table=repulsion_distance_table,
+      repulsion_radius_table=restraints.repulsion_radius_table(),
+      repulsion_distance_default=0,
       nonbonded_distance_cutoff=nonbonded_distance_cutoff,
       nonbonded_buffer=nonbonded_buffer,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
