@@ -29,24 +29,74 @@ namespace scitbx { namespace af {
       flex_grid() {}
 
       flex_grid(index_value_type const& grid_0)
-      : origin_(1, index_value_type(0)),
+      :
+        origin_(1, index_value_type(0)),
         grid_(1, grid_0)
       {}
 
-      flex_grid(index_value_type const& grid_0, index_value_type const& grid_1)
-      : origin_(2, index_value_type(0)),
+      flex_grid(index_value_type const& grid_0,
+                index_value_type const& grid_1)
+      :
+        origin_(2, index_value_type(0)),
         grid_(1, grid_0)
       {
         grid_.push_back(grid_1);
       }
 
-      flex_grid(index_value_type const& grid_0, index_value_type const& grid_1,
+      flex_grid(index_value_type const& grid_0,
+                index_value_type const& grid_1,
                 index_value_type const& grid_2)
-      : origin_(3, index_value_type(0)),
+      :
+        origin_(3, index_value_type(0)),
         grid_(1, grid_0)
       {
         grid_.push_back(grid_1);
         grid_.push_back(grid_2);
+      }
+
+      flex_grid(index_value_type const& grid_0,
+                index_value_type const& grid_1,
+                index_value_type const& grid_2,
+                index_value_type const& grid_3)
+      :
+        origin_(4, index_value_type(0)),
+        grid_(1, grid_0)
+      {
+        grid_.push_back(grid_1);
+        grid_.push_back(grid_2);
+        grid_.push_back(grid_3);
+      }
+
+      flex_grid(index_value_type const& grid_0,
+                index_value_type const& grid_1,
+                index_value_type const& grid_2,
+                index_value_type const& grid_3,
+                index_value_type const& grid_4)
+      :
+        origin_(5, index_value_type(0)),
+        grid_(1, grid_0)
+      {
+        grid_.push_back(grid_1);
+        grid_.push_back(grid_2);
+        grid_.push_back(grid_3);
+        grid_.push_back(grid_4);
+      }
+
+      flex_grid(index_value_type const& grid_0,
+                index_value_type const& grid_1,
+                index_value_type const& grid_2,
+                index_value_type const& grid_3,
+                index_value_type const& grid_4,
+                index_value_type const& grid_5)
+      :
+        origin_(6, index_value_type(0)),
+        grid_(1, grid_0)
+      {
+        grid_.push_back(grid_1);
+        grid_.push_back(grid_2);
+        grid_.push_back(grid_3);
+        grid_.push_back(grid_4);
+        grid_.push_back(grid_5);
       }
 
       flex_grid(index_type const& grid)
