@@ -18,6 +18,8 @@
 #include <complex>
 #include <cmath>
 #include <scitbx/math/bessel.h>
+#include <cctbx/hendrickson_lattman.h>
+
 
 namespace cctbx { namespace xray { namespace targets {
   namespace detail {
@@ -360,6 +362,224 @@ namespace cctbx { namespace xray { namespace targets {
   }
   };
 // max-like end
+/*
+   Maximum-likelihood target function and gradients.
+   Incorporates experimental phase information as HL coefficients ABCD.
+   As described by Pannu et al, Acta Cryst. (1998). D54, 1285-1294.
+   All the equations are reformulated in terms of alpha/beta.
+   Pavel Afonine // 14-DEC-2004
+*/
+  template <typename FobsValueType    = double,
+            typename FcalcValueType   = std::complex<FobsValueType>,
+            typename AlphaValueType   = FobsValueType,
+            typename BetaValueType    = FobsValueType,
+            typename EpsilonValueType = int,
+            typename CentricValueType = EpsilonValueType,
+            typename FlagValueType    = bool,
+            typename HLValueType      = cctbx::hendrickson_lattman<FobsValueType> >
+  class maximum_likelihood_criterion_hl {
+
+  public:
+    maximum_likelihood_criterion_hl(
+      af::const_ref<FobsValueType> const& fobs,
+      af::const_ref<FcalcValueType> const& fcalc,
+      af::const_ref<AlphaValueType> const& alpha,
+      af::const_ref<BetaValueType> const& beta,
+      af::const_ref<EpsilonValueType> const& eps,
+      af::const_ref<CentricValueType> const& cs,
+      FlagValueType const& compute_derivatives,
+      af::const_ref<HLValueType> const& abcd,
+      FobsValueType const& step_for_integration)
+    {
+       compute(fobs,fcalc,alpha,beta,eps,cs,compute_derivatives,abcd,
+               step_for_integration);
+    }
+
+    FobsValueType
+      target() const { return target_; }
+
+    af::shared<FcalcValueType>
+      derivatives() const { return derivatives_; }
+
+  protected:
+    FobsValueType target_;
+    af::shared<FcalcValueType> derivatives_;
+    void
+    compute(af::const_ref<FobsValueType> const& fobs,
+            af::const_ref<FcalcValueType> const& fcalc,
+            af::const_ref<AlphaValueType> const& alpha,
+            af::const_ref<BetaValueType> const& beta,
+            af::const_ref<EpsilonValueType> const& eps,
+            af::const_ref<CentricValueType> const& cs,
+            FlagValueType const& compute_derivatives,
+            af::const_ref<HLValueType> const& abcd,
+            FobsValueType const& step_for_integration)
+  {
+    CCTBX_ASSERT(fobs.size()==fcalc.size()&&alpha.size()==beta.size());
+    CCTBX_ASSERT(beta.size()==eps.size()&&eps.size()==cs.size());
+    CCTBX_ASSERT(fobs.size()==alpha.size());
+    CCTBX_ASSERT(step_for_integration > 0.);
+    CCTBX_ASSERT(abcd.size() == fobs.size());
+    target_ = 0;
+    if (compute_derivatives) {
+      derivatives_ = af::shared<FcalcValueType>(fobs.size());
+    }
+    // precomute sin cos table   NINT(x) = int(ceil(x+0.5)-(fmod(x*0.5+0.25,1.0)!=0))
+    int n_steps = 360./step_for_integration;
+    double angular_step = scitbx::constants::two_pi / n_steps;
+    std::vector<af::tiny<double, 4> > cos_sin_table;
+    cos_sin_table.reserve(n_steps);
+    for(int i_step=0;i_step<n_steps;i_step++) {
+      double angle = i_step * angular_step;
+      cos_sin_table.push_back(af::tiny<double, 4>(std::cos(angle),
+                                                  std::sin(angle),
+                                                  std::cos(angle+angle),
+                                                  std::sin(angle+angle)));
+    }
+
+    for(std::size_t i=0;i<fobs.size();i++) {
+      double fo = fobs[i];
+      double fc = std::abs(fcalc[i]);
+      double pc = std::arg(fcalc[i]);
+      double ac = std::real(fcalc[i]);
+      double bc = std::imag(fcalc[i]);
+      CCTBX_ASSERT(std::abs(pc-std::atan2(std::imag(fcalc[i]), std::real(fcalc[i]))) < 0.001);
+      double a  = alpha[i];
+      double b  = beta[i];
+      int    e  = eps[i];
+      // acentric: c = 0, centric: c = 1
+      int    c  = cs[i];
+      double X  = fo * fc * a / (e * b);
+      double L1 = (fo * fo - a * a * fc * fc) / (2. * e * b);
+      if(c == 0) {
+        X  *= 2.;
+        L1 *= 2.;
+      }
+      double small = 1.e-6;
+      double A = abcd[i].a();
+      double B = abcd[i].b();
+      double C = abcd[i].c();
+      double D = abcd[i].d();
+      double A_prime = X*std::cos(pc) + A;
+      double B_prime = X*std::sin(pc) + B;
+      // if C = D = 0: calculate ML target explicitly by formulas:
+      // centric and acentric terms accumulated at once.
+      // use ln(ch(x)) = ln[1 + exp(-2 * x)] - ln(2) to avoid overflow
+      if((std::abs(C) < small) && (std::abs(D) < small)) {
+        double arg = std::sqrt(A_prime * A_prime + B_prime * B_prime);
+        target_ += (1-c)*( L1 - scitbx::math::bessel::ln_of_i0(arg) ) +
+                     c  *( L1 - ( arg + std::log(1.+std::exp(-2.*arg)) - std::log(2.) ) );
+        if(compute_derivatives) {
+          double X_d = 2. * fo * a / (e * b);
+          //if(c == 0) X_d *= 2.;
+          double A_prime_d = X_d * fc * std::cos(pc) + A;
+          double B_prime_d = X_d * fc * std::sin(pc) + B;
+          double arg_d = std::sqrt(A_prime_d * A_prime_d + B_prime_d * B_prime_d);
+          if(arg_d < small) {
+            double derfc = 0.;
+            double derpc = 0.;
+            double d1 = derfc*ac - derpc*bc/fc;
+            double d2 = derfc*bc + derpc*ac/fc;
+            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+          }
+          else {
+            double sim = scitbx::math::bessel::i1_over_i0(arg_d);
+            double derfc = sim * X_d * (X_d*fc + A*std::cos(pc) + B*std::sin(pc))/arg_d;
+            double derpc = sim * X_d * fc*(A*std::sin(pc) - B*std::cos(pc))/arg_d;
+            double d1 = derfc*ac - derpc*bc/fc;
+            double d2 = derfc*bc + derpc*ac/fc;
+//std::cout<<" "<<std::endl;
+//std::cout<<sim<<" "<<X_d<<" "<<arg_d<<" "<<derfc<<" "<<derpc<<std::endl;
+//std::cout<<d1<<" "<<d2<<" "<<A_prime_d<<" "<<B_prime_d<<" "<<C<<" "<<D<<" "<<c<<std::endl;
+            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+          }
+        }
+      }
+      // otherwise do it numerically
+      else {
+        // acentric reflections
+        if(c == 0) {
+          double maxv = 0.;
+          for(int i=0;i<n_steps;i++) {
+            maxv = std::max(maxv, A_prime*cos_sin_table[i][0]+
+                                  B_prime*cos_sin_table[i][1]+
+                                  C      *cos_sin_table[i][2]+
+                                  D      *cos_sin_table[i][3]);
+          }
+          double integral = 0.;
+          for(int i=0;i<n_steps;i++) {
+            integral = integral + std::exp(-maxv+A_prime*cos_sin_table[i][0]+
+                                                 B_prime*cos_sin_table[i][1]+
+                                                 C      *cos_sin_table[i][2]+
+                                                 D      *cos_sin_table[i][3]);
+          }
+          integral = integral*step_for_integration;
+          integral = std::log(integral) + maxv;
+          target_ =+ L1 - integral;
+          if(compute_derivatives) {
+            double X_d = 2. * fo * a / (e * b);
+            double A_prime_d = X_d * fc * std::cos(pc) + A;
+            double B_prime_d = X_d * fc * std::sin(pc) + B;
+            double arg_d = std::sqrt(A_prime_d * A_prime_d + B_prime_d * B_prime_d);
+            double maxv = 0.;
+            for(int i=0;i<n_steps;i++) {
+              maxv = std::max(maxv, A_prime_d*cos_sin_table[i][0]+
+                                    B_prime_d*cos_sin_table[i][1]+
+                                    C        *cos_sin_table[i][2]+
+                                    D        *cos_sin_table[i][3]);
+            }
+
+            double integral = 0.;
+            for(int i=0;i<n_steps;i++) {
+              integral = integral + std::exp(-maxv+A_prime_d*cos_sin_table[i][0]+
+                                                   B_prime_d*cos_sin_table[i][1]+
+                                                   C        *cos_sin_table[i][2]+
+                                                   D        *cos_sin_table[i][3]);
+            }
+            integral = integral*step_for_integration;
+            integral = -std::log(integral) - maxv;
+
+            double deranot = 0.;
+            double derbnot = 0.;
+            for(int i=0;i<n_steps;i++) {
+              double tmp = std::exp(-integral+A_prime_d*cos_sin_table[i][0]+
+                                              B_prime_d*cos_sin_table[i][1]+
+                                              C        *cos_sin_table[i][2]+
+                                              D        *cos_sin_table[i][3]);
+              deranot = deranot + cos_sin_table[i][0]*tmp;
+              derbnot = derbnot + cos_sin_table[i][1]*tmp;
+            }
+
+            deranot = step_for_integration*deranot;
+            derbnot = step_for_integration*derbnot;
+            double derfc = X_d*(deranot*std::cos(pc) + derbnot*std::sin(pc));
+            double derpc = X_d*(deranot*std::sin(pc) - derbnot*std::cos(pc))*fc;
+            derfc = 2.*a*a*fc/(e * b) - derfc;
+            double d1 = derfc*ac - derpc*bc/fc;
+            double d2 = derfc*bc + derpc*ac/fc;
+            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+
+          }
+        }
+        // centric reflections
+        else {
+          double arg = -std::abs(A*std::cos(pc) + B*std::sin(pc) + X);
+          target_ =+ L1 + arg - std::log((1. + std::exp(2. * arg)) / 2.);
+          if(compute_derivatives) {
+            double var = e*b;
+            double arg = A*std::cos(pc) + B*std::sin(pc) + fo*a*fc/var;
+            double derfc = a*a*fc/var - std::tanh(arg)*fo*a/var;
+            double derpc = 2.*std::tanh(arg)*(A*std::sin(pc) - B*std::cos(pc));
+            double d1 = derfc*ac - derpc*bc/fc;
+            double d2 = derfc*bc + derpc*ac/fc;
+            derivatives_[i] = std::complex<double> (d1,d2)/fc;
+          }
+        }
+      }
+    } // end loop over reflections
+  }
+  };
+// max-like_hl end
 
 }}} // namespace cctbx::xray::targets
 

@@ -99,6 +99,39 @@ class maximum_likelihood_criterion:
         flex.int(flex.to_list(f_calc.centric_flags().data())),
         compute_derivatives)
 
+class maximum_likelihood_criterion_hl:
+
+  def __init__(self, f_obs,
+                     abcd,
+                     step_for_integration):
+    adopt_init_args(self, locals(), hide=True)
+
+  def f_obs(self):
+    return self._f_obs
+
+  def abcd(self):
+    return self._abcd
+
+  def step_for_integration(self):
+    return self._step_for_integration
+
+  def __call__(self, f_calc,
+                     alpha,
+                     beta,
+                     compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(self.f_obs().unit_cell())
+    assert f_calc.space_group() == self.f_obs().space_group()
+    return ext.targets_maximum_likelihood_criterion_hl(
+        self.f_obs().data(),
+        f_calc.data(),
+        alpha,
+        beta,
+        f_calc.epsilons().data(),
+        flex.int(flex.to_list(f_calc.centric_flags().data())),
+        compute_derivatives,
+        self.abcd(),
+        self.step_for_integration())
+
 def registry():
   return {
     "least_squares_residual": least_squares_residual,
