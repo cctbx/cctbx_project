@@ -26,9 +26,9 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("repulsion_simple_proxy", no_init)
         .def(init<af::tiny<unsigned, 2> const&, double>(
-            (arg_("i_seqs"), arg_("vdw_radius"))))
+            (arg_("i_seqs"), arg_("vdw_distance"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
-        .def_readwrite("vdw_radius", &w_t::vdw_radius)
+        .def_readwrite("vdw_distance", &w_t::vdw_distance)
       ;
       {
         typedef return_internal_reference<> rir;
@@ -50,8 +50,8 @@ namespace {
       class_<w_t, bases<asu_mapping_index_pair> >(
             "repulsion_asu_proxy", no_init)
         .def(init<asu_mapping_index_pair const&, double>(
-          (arg_("pair"), arg_("vdw_radius"))))
-        .def_readwrite("vdw_radius", &w_t::vdw_radius)
+          (arg_("pair"), arg_("vdw_distance"))))
+        .def_readwrite("vdw_distance", &w_t::vdw_distance)
       ;
       {
         typedef return_internal_reference<> rir;
@@ -95,7 +95,7 @@ namespace {
         .def(init<af::tiny<scitbx::vec3<double>, 2> const&,
                   double,
                   optional<repulsion_function const& > >(
-          (arg_("sites"), arg_("vdw_radius"), arg_("function"))))
+          (arg_("sites"), arg_("vdw_distance"), arg_("function"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   repulsion_simple_proxy const&,
                   optional<repulsion_function const& > >(
@@ -107,7 +107,7 @@ namespace {
           (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxy"),
            arg_("function"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
-        .def_readonly("vdw_radius", &w_t::vdw_radius)
+        .def_readonly("vdw_distance", &w_t::vdw_distance)
         .def_readonly("function", &w_t::function)
         .add_property("diff_vec", make_getter(&w_t::diff_vec, rbv()))
         .def_readonly("delta", &w_t::delta)

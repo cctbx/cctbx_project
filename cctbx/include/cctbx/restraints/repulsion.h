@@ -20,14 +20,14 @@ namespace cctbx { namespace restraints {
 
     repulsion_simple_proxy(
       af::tiny<unsigned, 2> const& i_seqs_,
-      double vdw_radius_)
+      double vdw_distance_)
     :
       i_seqs(i_seqs_),
-      vdw_radius(vdw_radius_)
+      vdw_distance(vdw_distance_)
     {}
 
     af::tiny<unsigned, 2> i_seqs;
-    double vdw_radius;
+    double vdw_distance;
   };
 
   struct repulsion_asu_proxy : asu_mapping_index_pair
@@ -36,10 +36,10 @@ namespace cctbx { namespace restraints {
 
     repulsion_asu_proxy(
       asu_mapping_index_pair const& pair_,
-      double vdw_radius_)
+      double vdw_distance_)
     :
       asu_mapping_index_pair(pair_),
-      vdw_radius(vdw_radius_)
+      vdw_distance(vdw_distance_)
     {}
 
     // Not available in Python.
@@ -48,10 +48,10 @@ namespace cctbx { namespace restraints {
     {
       return repulsion_simple_proxy(
         af::tiny<unsigned, 2>(i_seq, j_seq),
-        vdw_radius);
+        vdw_distance);
     }
 
-    double vdw_radius;
+    double vdw_distance;
   };
 
   struct repulsion_function
@@ -72,10 +72,10 @@ namespace cctbx { namespace restraints {
 
     // Not available in Python.
     double
-    term(double vdw_radius, double delta) const
+    term(double vdw_distance, double delta) const
     {
-      if (irexp == 1) return k_rep*vdw_radius - delta;
-      return std::pow(k_rep*vdw_radius, irexp) - std::pow(delta, irexp);
+      if (irexp == 1) return k_rep*vdw_distance - delta;
+      return std::pow(k_rep*vdw_distance, irexp) - std::pow(delta, irexp);
     }
 
     // Not available in Python.
@@ -119,11 +119,11 @@ namespace cctbx { namespace restraints {
 
       repulsion(
         af::tiny<scitbx::vec3<double>, 2> const& sites_,
-        double vdw_radius_,
+        double vdw_distance_,
         repulsion_function const& function_=repulsion_function())
       :
         sites(sites_),
-        vdw_radius(vdw_radius_),
+        vdw_distance(vdw_distance_),
         function(function_)
       {
         init_term();
@@ -134,7 +134,7 @@ namespace cctbx { namespace restraints {
         repulsion_simple_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
-        vdw_radius(proxy.vdw_radius),
+        vdw_distance(proxy.vdw_distance),
         function(function_)
       {
         for(int i=0;i<2;i++) {
@@ -151,7 +151,7 @@ namespace cctbx { namespace restraints {
         repulsion_asu_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
-        vdw_radius(proxy.vdw_radius),
+        vdw_distance(proxy.vdw_distance),
         function(function_)
       {
         sites[0] = asu_mappings.map_moved_site_to_asu(
@@ -167,7 +167,7 @@ namespace cctbx { namespace restraints {
         repulsion_asu_proxy const& proxy,
         repulsion_function const& function_=repulsion_function())
       :
-        vdw_radius(proxy.vdw_radius),
+        vdw_distance(proxy.vdw_distance),
         function(function_)
       {
         sites[0] = cache.sites[proxy.i_seq][0];
@@ -235,7 +235,7 @@ namespace cctbx { namespace restraints {
       }
 
       af::tiny<scitbx::vec3<double>, 2> sites;
-      double vdw_radius;
+      double vdw_distance;
       repulsion_function function;
       scitbx::vec3<double> diff_vec;
       double delta;
@@ -247,7 +247,7 @@ namespace cctbx { namespace restraints {
       {
         diff_vec = sites[0] - sites[1];
         delta = diff_vec.length();
-        term_ = function.term(vdw_radius, delta);
+        term_ = function.term(vdw_distance, delta);
       }
   };
 

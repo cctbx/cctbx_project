@@ -68,32 +68,32 @@ def exercise_bond():
 def exercise_repulsion():
   for i_trial in xrange(5):
     sites = random_sites(n_sites=2)
-    r = restraints.repulsion(sites=sites, vdw_radius=0)
-    vdw_radius = r.delta
+    r = restraints.repulsion(sites=sites, vdw_distance=0)
+    vdw_distance = r.delta
     residual_obj = residual_functor(
       restraint_type=restraints.repulsion,
-      vdw_radius=vdw_radius)
+      vdw_distance=vdw_distance)
     for i_pert in xrange(5):
       if (i_pert == 0):
         sites_mod = sites
       else:
         sites_mod = []
         for site in sites:
-          shift = col([random.uniform(-.1,.1)*vdw_radius for i in xrange(3)])
+          shift = col([random.uniform(-.1,.1)*vdw_distance for i in xrange(3)])
           sites_mod.append(site+shift)
-      r = restraints.repulsion(sites=sites_mod, vdw_radius=vdw_radius)
+      r = restraints.repulsion(sites=sites_mod, vdw_distance=vdw_distance)
       ag = r.gradients()
       fg = finite_differences(sites_mod, residual_obj)
       for analytical,finite in zip(ag,fg):
         assert approx_equal(analytical, finite)
   sites = [[0,0,0], [0,0,0]]
-  vdw_radius = 1.8
+  vdw_distance = 1.8
   for i_step in xrange(100):
     delta = i_step/50.
     sites[1][0] = delta
     r = restraints.repulsion(
       sites=[col(site) for site in sites],
-      vdw_radius=vdw_radius)
+      vdw_distance=vdw_distance)
     assert approx_equal(delta, r.delta)
     if (0):
       print delta, r.residual()
