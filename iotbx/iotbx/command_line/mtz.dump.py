@@ -23,6 +23,11 @@ def walk_callback(arg, top, names):
 def run():
   command_line = (iotbx_option_parser(
     usage="iotbx.mtz.dump [options] file_name [...]")
+    .option("-v", "--verbose",
+      action="store_true",
+      default=False,
+      dest="verbose",
+      help="Enable CMTZ library messages.")
     .option(None, "--show_batches",
       action="store_true",
       dest="show_batches")
@@ -33,6 +38,8 @@ def run():
       metavar="ROOT_DIR",
       help="Find and process all MTZ files under ROOT_DIR")
   ).process(args=sys.argv[1:])
+  if (command_line.options.verbose):
+    mtz.ccp4_liberr_verbosity(1)
   for file_name in command_line.args:
     process(
       file_name=file_name,
