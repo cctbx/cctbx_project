@@ -120,7 +120,7 @@ namespace cctbx { namespace af {
         : base_class(begin, n0, n1, n2)
       {}
 
-      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(ref,
         const_cast<ElementType*>(this->m_begin), this->size())
 
       ref<ElementType> as_1d() const {

@@ -155,7 +155,8 @@ namespace cctbx { namespace af {
       size_type size() const { return m_accessor.size1d(); }
 
       // since size() is not a virtual function end() needs to be redefined.
-      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(base_class::begin(), size())
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(versa_plain,
+        base_class::begin(), size())
 
       CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(begin(), m_accessor)
 

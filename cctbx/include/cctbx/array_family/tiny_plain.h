@@ -36,7 +36,7 @@ namespace cctbx { namespace af {
       static size_type max_size() { return N; }
       static size_type capacity() { return N; }
 
-      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(elems, N)
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(tiny_plain, elems, N)
 
       CCTBX_ARRAY_FAMILY_TAKE_REF(elems, N)
 
