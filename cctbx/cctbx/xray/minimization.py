@@ -1,6 +1,7 @@
 import cctbx.xray.structure_factors
 from cctbx.xray import ext
 from cctbx.xray.structure import structure as cctbx_xray_structure
+from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx.python_utils.misc import adopt_init_args
@@ -41,14 +42,22 @@ class lbfgs:
     self.final_target_value = self.target_result.target()
 
   def apply_shifts(self):
+    unit_cell = self.xray_structure.unit_cell()
     scatterers_shifted = ext.minimization_apply_shifts(
-      self.xray_structure.unit_cell(),
-      self.xray_structure.space_group_info().type(),
-      self._scatterers_start,
-      self._scattering_dict,
-      self.gradient_flags,
-      self.x,
-      self._d_min)
+      unit_cell=unit_cell,
+      space_group_type=self.xray_structure.space_group_info().type(),
+      scatterers=self._scatterers_start,
+      scattering_dict=self._scattering_dict,
+      gradient_flags=self.gradient_flags,
+      shifts=self.x,
+      d_min=self._d_min)
+    if (0): # XXX ASSERTION FAILURE
+      site_symmetry_table = self.xray_structure.site_symmetry_table()
+      for i_seq in site_symmetry_table.special_position_indices():
+        scatterers_shifted[i_seq].site = crystal.correct_special_position(
+          unit_cell=unit_cell,
+          special_op=site_symmetry_table.get(i_seq).special_op(),
+          site_frac=scatterers_shifted[i_seq].site)
     self.xray_structure.replace_scatterers(scatterers_shifted)
 
   def compute_target(self, compute_gradients):

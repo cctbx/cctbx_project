@@ -247,3 +247,25 @@ class special_position_settings(symmetry):
       u_star_tolerance=self.u_star_tolerance(),
       assert_is_positive_definite=self.assert_is_positive_definite(),
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+
+def correct_special_position(
+      unit_cell,
+      special_op,
+      site_frac=None,
+      site_cart=None,
+      tolerance=1.e-2,
+      error_message="Corrupt gradient calculations."):
+  """
+  During refinement it is essential to reset special positions
+  because otherwise rounding error accumulate over many cycles.
+  """
+  assert (site_frac is None) != (site_cart is None)
+  if (site_frac is None):
+    site_frac = unit_cell.fractionalize(site_cart)
+  site_special_frac = special_op * site_frac
+  distance_moved = unit_cell.distance(site_special_frac, site_frac)
+  if (distance_moved > tolerance):
+    raise AssertionError(error_message)
+  if (site_cart is None):
+    return site_special_frac
+  return unit_cell.orthogonalize(site_special_frac)
