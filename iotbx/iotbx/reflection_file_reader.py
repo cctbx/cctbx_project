@@ -1,5 +1,6 @@
 from iotbx import mtz
-from iotbx.scalepack import reader as scalepack_reader
+from iotbx.scalepack import merge as scalepack_merge
+from iotbx.scalepack import no_merge_original_index as scalepack_no_merge
 from iotbx.cns import reflection_reader as cns_reflection_reader
 from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
 from iotbx.shelx import hklf as shelx_hklf
@@ -27,10 +28,14 @@ class any_reflection_file:
       except cns_reflection_reader.CNS_input_Error: pass
       else: self._file_type = "cns_reflection_file"
     if (self._file_type is None):
-      try: self._file_content = scalepack_reader.scalepack_file(
+      try: self._file_content = scalepack_merge.reader(
         open(file_name))
-      except scalepack_reader.ScalepackFormatError: pass
-      else: self._file_type = "scalepack_merged"
+      except scalepack_merge.FormatError: pass
+      else: self._file_type = "scalepack_merge"
+    if (self._file_type is None):
+      try: self._file_content = scalepack_no_merge.reader(file_name)
+      except: pass
+      else: self._file_type = "scalepack_no_merge_original_index"
     if (self._file_type is None):
       try: self._file_content = dtrek_reflnlist_reader.reflnlist(
         open(file_name))
