@@ -14,4 +14,5 @@ if (not env_etc.no_boost_python):
       "dihedral_bpl.cpp",
       "chirality_bpl.cpp",
       "planarity_bpl.cpp",
+      "bond_tables_bpl.cpp",
       "bonded_interactions_bpl.cpp"])
