@@ -48,8 +48,8 @@ class ADSCImage:
 
   def read(self):
     self.fileLength()
-    #ADSC Quantum 210, ALS beamline 5.0.2; SUN: unsigned short little endian
-    #ADSC Quantum 4R, ALS beamline 5.0.3; WINDOWS: unsigned short big endian
+    #ADSC Quantum 210, ALS beamline 5.0.2; SUN: unsigned short big endian
+    #ADSC Quantum 4R, ALS beamline 5.0.3; WINDOWS: unsigned short little endian
     if self.parameters['BYTE_ORDER'].lower().find('big')>=0:
       self.linearintdata = ReadADSC(self.filename,self.ptr,
                                     self.size1,self.size2,1) #big_endian
