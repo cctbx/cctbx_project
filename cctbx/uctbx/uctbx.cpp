@@ -254,6 +254,34 @@ namespace cctbx { namespace uctbx {
     return MaxMIx;
   }
 
+  af::shared<double>
+  UnitCell::Q(const af::shared<Miller::Index>& MIx) const
+  {
+    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<MIx.size();i++) {
+      result[i] = Q(MIx[i]);
+    }
+    return result;
+  }
+  af::shared<double>
+  UnitCell::s(const af::shared<Miller::Index>& MIx) const
+  {
+    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<MIx.size();i++) {
+      result[i] = s(MIx[i]);
+    }
+    return result;
+  }
+  af::shared<double>
+  UnitCell::d(const af::shared<Miller::Index>& MIx) const
+  {
+    af::shared<double> result(MIx.size()); // FUTURE: avoid default init.
+    for(std::size_t i=0;i<MIx.size();i++) {
+      result[i] = d(MIx[i]);
+    }
+    return result;
+  }
+
   UnitCell UnitCell::ChangeBasis(const af::double9& InvCBMxR, double RBF) const
   {
     af::double9 R = InvCBMxR;

@@ -118,6 +118,7 @@ namespace {
 #define WRAP_TYPE(python_name, element_type) \
     cctbx::af::wrap_shared<element_type >::run(this_module, python_name)
 
+    WRAP_TYPE("bool", bool);
     WRAP_TYPE("int", int);
     WRAP_TYPE("long", long);
     WRAP_TYPE("float", float);

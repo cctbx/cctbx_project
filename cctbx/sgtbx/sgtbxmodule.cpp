@@ -158,11 +158,28 @@ namespace {
     }
   }
 
+  bool
+  SpaceGroup_isSysAbsent_s(const SpaceGroup& SgOps,
+                         const Miller::Index& H) {
+    return SgOps.isSysAbsent(H);
+  }
+  af::shared<bool>
+  SpaceGroup_isSysAbsent_a(const SpaceGroup& SgOps,
+                         const af::shared<Miller::Index>& H) {
+    return SgOps.isSysAbsent(H);
+  }
+
   bool SpaceGroup_isCentric_0(const SpaceGroup& SgOps) {
     return SgOps.isCentric();
   }
   bool
-  SpaceGroup_isCentric_1(const SpaceGroup& SgOps, const Miller::Index& H) {
+  SpaceGroup_isCentric_s(const SpaceGroup& SgOps,
+                         const Miller::Index& H) {
+    return SgOps.isCentric(H);
+  }
+  af::shared<bool>
+  SpaceGroup_isCentric_a(const SpaceGroup& SgOps,
+                         const af::shared<Miller::Index>& H) {
     return SgOps.isCentric(H);
   }
 
@@ -183,6 +200,30 @@ namespace {
                                      const Miller::Index& H, double phi,
                                      double tolerance) {
     return SgOps.isValidPhase_deg(H, phi, tolerance);
+  }
+
+  int
+  SpaceGroup_epsilon_s(const SpaceGroup& SgOps,
+                       const Miller::Index& H) {
+    return SgOps.epsilon(H);
+  }
+  af::shared<int>
+  SpaceGroup_epsilon_a(const SpaceGroup& SgOps,
+                       const af::shared<Miller::Index>& H) {
+    return SgOps.epsilon(H);
+  }
+
+  int
+  SpaceGroup_multiplicity_s(const SpaceGroup& SgOps,
+                            const Miller::Index& H,
+                            bool FriedelFlag) {
+    return SgOps.multiplicity(H, FriedelFlag);
+  }
+  af::shared<int>
+  SpaceGroup_multiplicity_a(const SpaceGroup& SgOps,
+                            const af::shared<Miller::Index>& H,
+                            bool FriedelFlag) {
+    return SgOps.multiplicity(H, FriedelFlag);
   }
 
   void SpaceGroup_CheckMetricalMatrix_1(const SpaceGroup& SgOps,
@@ -524,6 +565,12 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   python::import_converters<uctbx::UnitCell>
   py_UnitCell("cctbx_boost.uctbx", "UnitCell");
 
+  python::import_converters<af::shared<bool> >
+  py_shared_bool("cctbx_boost.arraytbx.shared", "bool");
+
+  python::import_converters<af::shared<int> >
+  py_shared_int("cctbx_boost.arraytbx.shared", "int");
+
   python::import_converters<af::shared<Miller::Index> >
   py_shared_Miller_Index("cctbx_boost.arraytbx.shared", "Miller_Index");
 
@@ -782,17 +829,21 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroup.def(&SpaceGroup::getConventionalCentringTypeSymbol,
                                 "getConventionalCentringTypeSymbol");
   py_SpaceGroup.def(&SpaceGroup::isChiral, "isChiral");
-  py_SpaceGroup.def(&SpaceGroup::isSysAbsent, "isSysAbsent");
+  py_SpaceGroup.def(SpaceGroup_isSysAbsent_a, "isSysAbsent");
+  py_SpaceGroup.def(SpaceGroup_isSysAbsent_s, "isSysAbsent");
   py_SpaceGroup.def(SpaceGroup_isCentric_0, "isCentric");
-  py_SpaceGroup.def(SpaceGroup_isCentric_1, "isCentric");
+  py_SpaceGroup.def(SpaceGroup_isCentric_a, "isCentric");
+  py_SpaceGroup.def(SpaceGroup_isCentric_s, "isCentric");
   py_SpaceGroup.def(&SpaceGroup::isOriginCentric, "isOriginCentric");
   py_SpaceGroup.def(&SpaceGroup::getPhaseRestriction, "getPhaseRestriction");
   py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_2, "isValidPhase_rad");
   py_SpaceGroup.def(SpaceGroup_isValidPhase_rad_3, "isValidPhase_rad");
   py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_2, "isValidPhase_deg");
   py_SpaceGroup.def(SpaceGroup_isValidPhase_deg_3, "isValidPhase_deg");
-  py_SpaceGroup.def(&SpaceGroup::epsilon, "epsilon");
-  py_SpaceGroup.def(&SpaceGroup::multiplicity, "multiplicity");
+  py_SpaceGroup.def(SpaceGroup_epsilon_a, "epsilon");
+  py_SpaceGroup.def(SpaceGroup_epsilon_s, "epsilon");
+  py_SpaceGroup.def(SpaceGroup_multiplicity_a, "multiplicity");
+  py_SpaceGroup.def(SpaceGroup_multiplicity_s, "multiplicity");
   py_SpaceGroup.def(&SpaceGroup::getEquivMillerIndices,
                                 "getEquivMillerIndices");
   py_SpaceGroup.def(SpaceGroup_CheckMetricalMatrix_1, "CheckMetricalMatrix");
