@@ -374,13 +374,15 @@ namespace cctbx { namespace maps {
           for (const grid_point_type& pt = loop(); !loop.over(); loop.incr()) {
             if ((*this)(pt) >= 0) continue;
             std::size_t i_pt = map.accessor()(pt);
+            FloatType sum = map[i_pt];
             for(int ismx=1;ismx<sgops.OrderZ();ismx++) {
               sgtbx::RTMx m = sgops(ismx);
               tagged_value<grid_point_type>
               sym_equiv_point = multiply(this->accessor(), m, pt);
               cctbx_assert(sym_equiv_point.tag);
-              map[i_pt] += map(sym_equiv_point.tag);
+              sum += map(sym_equiv_point.value);
             }
+            map[i_pt] = sum;
           }
         }
         {

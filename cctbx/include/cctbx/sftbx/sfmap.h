@@ -217,15 +217,15 @@ namespace cctbx { namespace sftbx {
           ae.push_back(site->w() * site->CAASF().c() * f);
           be.push_back(-four_pi_sq / b_incl_extra);
           FloatType max_d_sq = calc_max_sampling_distance_sq(ae, be);
-          std::cout << "max_d_sq: " << max_d_sq << std::endl;
+          //XXXstd::cout << "max_d_sq: " << max_d_sq << std::endl;
           //Calculate limits of shell search
           cartesian<FloatType> max_d_cart;
           max_d_cart.fill(std::sqrt(max_d_sq));
-          std::cout << "max_d_cart: " << max_d_cart.const_ref() << std::endl;
+          //XXXstd::cout << "max_d_cart: " << max_d_cart.const_ref() << std::endl;
           fractional<FloatType> max_d_frac = ucell.fractionalize(max_d_cart);
-          std::cout << "max_d_frac: " << max_d_frac.const_ref() << std::endl;
+          //XXXstd::cout << "max_d_frac: " << max_d_frac.const_ref() << std::endl;
           const grid_point_type& grid_logical = map_.accessor().n_logical();
-          std::cout << "grid_logical: " << grid_logical.const_ref() << std::endl;
+          //XXXstd::cout << "grid_logical: " << grid_logical.const_ref() << std::endl;
           af::int3 shell_limit;
           for(i=0;i<3;i++) {
             //Round number down to nearest integer as you will never "make it"
@@ -233,10 +233,11 @@ namespace cctbx { namespace sftbx {
             shell_limit[i] = int(
               std::floor(max_d_frac[i] * grid_logical[i]) + .5);
           }
-          std::cout << "shell_limit: " << shell_limit.const_ref() << std::endl;
+          //XXXstd::cout << "shell_limit: " << shell_limit.const_ref() << std::endl;
           grid_point_type pivot = detail::calc_nearest_grid_point(
             coor_frac, grid_logical);
-          std::cout << "pivot: " << pivot.const_ref() << std::endl;
+          //XXXstd::cout << "pivot: " << pivot.const_ref() << std::endl;
+          // XXX TODO pre-compute pivot - coor_frac
           grid_point_type ip;
           fractional<FloatType> g_frac;
           for(ip[0] = -shell_limit[0]; ip[0] <= shell_limit[0]; ip[0]++) {
