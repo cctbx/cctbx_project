@@ -10,7 +10,7 @@ C
       INTEGER N,M,IPRINT(2),IFLAG
       DOUBLE PRECISION X(N),G(N),DIAG(N),W(N*(2*M+1)+2*M)
       DOUBLE PRECISION F,EPS,XTOL
-      LOGICAL DIAGCO
+      INTEGER DIAGCO
 C
 C        LIMITED MEMORY BFGS METHOD FOR LARGE SCALE OPTIMIZATION
 C                          JORGE NOCEDAL
@@ -249,7 +249,7 @@ C
       NFUN= 1
       POINT= 0
       FINISH= .FALSE.
-      IF(DIAGCO) THEN
+      IF(DIAGCO.NE.0) THEN
          DO 30 I=1,N
  30      IF (DIAG(I).LE.ZERO) GO TO 195
       ELSE
@@ -298,7 +298,7 @@ C
       IF (ITER .GT. M)BOUND=M
 C
          YS= DDOT(N,W(IYPT+NPT+1),1,W(ISPT+NPT+1),1)
-      IF(.NOT.DIAGCO) THEN
+      IF(DIAGCO.EQ.0) THEN
          YY= DDOT(N,W(IYPT+NPT+1),1,W(IYPT+NPT+1),1)
          DO 90 I=1,N
    90    DIAG(I)= YS/YY
@@ -307,7 +307,7 @@ C
          RETURN
       ENDIF
  100  CONTINUE
-      IF(DIAGCO) THEN
+      IF(DIAGCO.NE.0) THEN
         DO 110 I=1,N
  110    IF (DIAG(I).LE.ZERO) GO TO 195
       ENDIF

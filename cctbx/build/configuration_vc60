@@ -21,7 +21,7 @@ STDFIXINC=
 
 CPP=cl.exe
 LD=link.exe
-STDOPTS=/nologo /MD /GR /GX /Zm350
+STDOPTS=/nologo /MD /GR /GX /Zm400
 WARNOPTS=
 OPTOPTS=
 MAKEDEP=
