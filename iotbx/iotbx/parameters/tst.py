@@ -203,8 +203,7 @@ u
   a=z
 }
 """)
-  for expert_level in [-1,0]:
-    assert params.as_str(expert_level=expert_level) == """\
+  assert params.as_str(expert_level=0) == """\
 x = 1
 s {
   a = x
@@ -220,7 +219,7 @@ t {
   a = y
 }
 """
-  for expert_level in [2,3,None]:
+  for expert_level in [-1,2,3,None]:
     assert params.as_str(expert_level=expert_level) == """\
 x = 1
 y = 2

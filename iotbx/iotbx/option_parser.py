@@ -10,6 +10,7 @@ class iotbx_option_parser(OptionParser):
   def __init__(self, usage=None, description=None, more_help=None):
     OptionParser.__init__(self, usage=usage, description=description)
     self.more_help = more_help
+    self.show_defaults_callback = show_defaults_callback()
     self.symmetry_callback = symmetry_callback()
     self.chunk_callback = chunk_callback()
 
@@ -37,6 +38,16 @@ class iotbx_option_parser(OptionParser):
     self.add_option(apply(make_option, args, kw))
     return self
 
+  def enable_show_defaults(self):
+    self.add_option(make_option(None, "--show_defaults",
+      action="callback",
+      type="string",
+      callback=self.show_defaults_callback,
+      help="Print parameters visible at the given expert level and exit",
+      metavar="EXPERT_LEVEL"))
+    self.show_defaults_callback.is_enabled = True
+    return self
+
   def enable_unit_cell(self):
     self.add_option(make_option(None, "--unit_cell",
       action="callback",
@@ -44,6 +55,7 @@ class iotbx_option_parser(OptionParser):
       callback=self.symmetry_callback,
       help="External unit cell parameters",
       metavar="10,10,20,90,90,120|FILENAME"))
+    self.symmetry_callback.is_enabled = True
     return self
 
   def enable_space_group(self):
@@ -53,6 +65,7 @@ class iotbx_option_parser(OptionParser):
       callback=self.symmetry_callback,
       help="External space group symbol",
       metavar="P212121|FILENAME"))
+    self.symmetry_callback.is_enabled = True
     return self
 
   def enable_symmetry(self):
@@ -62,6 +75,7 @@ class iotbx_option_parser(OptionParser):
       callback=self.symmetry_callback,
       help="External file with symmetry information",
       metavar="FILENAME"))
+    self.symmetry_callback.is_enabled = True
     return self
 
   def enable_symmetry_comprehensive(self):
@@ -102,9 +116,15 @@ class iotbx_option_parser(OptionParser):
       callback=self.chunk_callback,
       help="Number of chunks for parallel execution and index for one process",
       metavar="n,i"))
+    self.chunk_callback.is_enabled = True
     return self
 
   def process(self, args=None, nargs=None, min_nargs=None, max_nargs=None):
+    if (self.show_defaults_callback.is_enabled
+        and args is not None
+        and len(args) > 0
+        and args[-1] == "--show_defaults"):
+      args = args + ["0"]
     assert nargs is None or (min_nargs is None and max_nargs is None)
     try:
       (options, args) = self.parse_args(args)
@@ -125,22 +145,45 @@ class iotbx_option_parser(OptionParser):
         self.error("Too many arguments (at most %d allowed, %d given)." % (
           max_nargs, len(args)))
     return processed_options(self, options, args,
-      self.symmetry_callback.get(),
-      self.chunk_callback)
+      show_defaults_callback=self.show_defaults_callback,
+      symmetry_callback=self.symmetry_callback,
+      chunk_callback=self.chunk_callback)
 
 class processed_options:
 
-  def __init__(self, parser, options, args, symmetry, chunk_callback):
+  def __init__(self, parser, options, args,
+        show_defaults_callback,
+        symmetry_callback,
+        chunk_callback):
     self.parser = parser
     self.options = options
     self.args = args
-    self.symmetry = symmetry
+    self.expert_level = show_defaults_callback.expert_level
+    self.symmetry = symmetry_callback.get()
     self.chunk_n = chunk_callback.n
     self.chunk_i = chunk_callback.i
+
+class show_defaults_callback:
+
+  def __init__(self):
+    self.is_enabled = False
+    self.expert_level = None
+
+  def __call__(self, option, opt, value, parser):
+    value = value.strip().lower()
+    if (value == "all"):
+      self.expert_level = -1
+    else:
+      try: value = int(value)
+      except ValueError:
+        raise OptionError('invalid value "%s"\n' % value
+          + '  Please specify an integer value or the word "all"', opt)
+      self.expert_level = value
 
 class symmetry_callback:
 
   def __init__(self):
+    self.is_enabled = False
     self.unit_cell = None
     self.space_group_info = None
 
@@ -190,6 +233,7 @@ class symmetry_callback:
 class chunk_callback:
 
   def __init__(self):
+    self.is_enabled = False
     self.n = 1
     self.i = 0
 
