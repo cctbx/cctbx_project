@@ -5,6 +5,11 @@ env_scitbx_boost_python_ext.Command(
   "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
 
 env_scitbx_boost_python_ext.SharedLibrary(
+  target="#libtbx/scitbx_boost/math/math_ext",
+  source="math_ext.cpp",
+)
+
+env_scitbx_boost_python_ext.SharedLibrary(
   target="#libtbx/scitbx_boost/math/eigensystem_ext",
   source="eigensystem_ext.cpp",
 )
