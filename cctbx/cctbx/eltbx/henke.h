@@ -18,9 +18,21 @@
 namespace eltbx {
 
   //! Access to Henke tables.
-  /*! Reference: B. L. Henke, E. M. Gullikson, and J. C. Davis,
+  /*! Henke tables are available for elements with Z=1-92.
+      Each table contains 500+ points on a uniform logarithmic mesh
+      from 10 to 30,000 eV with points added 0.1 eV above and below
+      "sharp" absorption edges. The atomic scattering factors are
+      based upon experimental measurements of the atomic
+      photoabsorption cross section. The absorption measurements
+      provide values for the imaginary part of the atomic scattering
+      factor. The real part is calculated from the absorption
+      measurements using the Kramers-Kronig integral relations.
+      <p>
+      Reference: B. L. Henke, E. M. Gullikson, and J. C. Davis,
       Atomic Data and Nuclear Data Tables Vol. 54 No. 2 (July 1993).<br>
-      ftp://grace.lbl.gov/pub/sf/
+      ftp://grace.lbl.gov/pub/sf/<br>
+      See also:
+      http://www.esrf.fr/computing/expg/subgroups/theory/DABAX/tmp_file/FileDesc.html
    */
   class Henke {
     public:

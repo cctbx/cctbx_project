@@ -18,10 +18,17 @@
 namespace eltbx {
 
   //! Access to Sasaki tables.
-  /*! Reference: S.Sasaki (1989) Numerical Tables of Anomalous
+  /*! Sasaki tables are available for elements with Z=4-83 and Z=92.
+      They are valid in the energy range 4-124 keV and they have a fine
+      step size close to the absorption edges (K,L1,L2,L3). The tables
+      are therefore suitable for use in connection with anomalous
+      diffraction experiments.
+      <p>
+      Reference: S.Sasaki (1989) Numerical Tables of Anomalous
       Scattering Factors Calculated by the Cromer and Liberman Method,
       KEK Report, 88-14, 1-136<br>
-      ftp://pfweis.kek.jp/pub/Sasaki-table/
+      ftp://pfweis.kek.jp/pub/Sasaki-table/<br>
+      See also: http://www.esrf.fr/computing/expg/subgroups/theory/DABAX/tmp_file/FileDesc.html
    */
   class Sasaki {
     public:
