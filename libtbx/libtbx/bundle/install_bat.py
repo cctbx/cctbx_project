@@ -4,6 +4,9 @@ def create_script(bundle, top_modules):
   py_major, py_minor = sys.version_info[:2]
   return r"""@echo off
 
+set PYTHONHOME=
+set PYTHONCASEOK=1
+
 if not exist %(bundle)s_sources\TAG goto find_python
 echo.
 echo Build tag:
