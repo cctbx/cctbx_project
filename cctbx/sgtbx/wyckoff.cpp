@@ -2310,10 +2310,11 @@ namespace sgtbx {
         const RotMx& Rw = WTab[iWP].SpecialOp().Rpart();
         const TrVec& Tw = WTab[iWP].SpecialOp().Tpart();
         for(int iSMx=0;iSMx<sgo.OrderP();iSMx++) {
-          const RotMx& R = sgo(iSMx).Rpart();
+          RTMx SMx = sgo(iSMx);
+          const RotMx& R = SMx.Rpart();
           if (Rw.multiply(R) == R.multiply(Rs)) {
             for(int iLTr=0;iLTr<sgo.nLTr();iLTr++) {
-              TrVec T = sgo(iSMx).Tpart() + sgo.LTr(iLTr);
+              TrVec T = SMx.Tpart() + sgo.LTr(iLTr);
               RotMx RwmI = (Rw - Rw.Unit()).cancel();
               TrVec b = R.multiply(Ts).plus(T).minus(Rw.multiply(T)).minus(Tw);
               TrVec U = detail::SolveInZ(RwmI, b);
