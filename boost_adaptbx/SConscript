@@ -108,8 +108,8 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.77
-    jamfile_md5 = "52f8ff8be7a2b40c1c90f60007c509ae"
+    # based on boost/libs/python/test/Jamfile revision 1.78
+    jamfile_md5 = "23007e8bc8c42d7aeaf96f6df1bf4568"
     if (m.hexdigest() != jamfile_md5):
       print "***************************************************"
       print "Warning: boost/libs/python/test/Jamfile has changed"
@@ -170,6 +170,7 @@ properties
 map_indexing_suite;int_map_indexing_suite,map_indexing_suite_ext,map_indexing_suite
 injected
 slice
+const_argument
 """)
     Import("env_boost_python_ext")
     all_tst = []
