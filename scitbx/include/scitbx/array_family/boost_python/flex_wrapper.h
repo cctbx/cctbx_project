@@ -70,7 +70,7 @@ namespace scitbx { namespace af { namespace boost_python {
     nd(f_t const& a) { return a.accessor().nd(); }
 
     static bool
-    has_origin(f_t const& a) { return a.accessor().has_origin(); }
+    is_0_based(f_t const& a) { return a.accessor().is_0_based(); }
 
     static flex_grid_default_index_type
     origin(f_t const& a) { return a.accessor().origin(); }
@@ -88,7 +88,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static bool
-    has_focus(f_t const& a) { return a.accessor().has_focus(); }
+    is_padded(f_t const& a) { return a.accessor().is_padded(); }
 
     static flex_grid_default_index_type
     focus_0(f_t const& a) { return a.accessor().focus(); }
@@ -101,12 +101,6 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static std::size_t
     focus_size_1d(f_t const& a) { return a.accessor().focus_size_1d(); }
-
-    static bool
-    is_0_based(f_t const& a) { return a.accessor().is_0_based(); }
-
-    static bool
-    is_padded(f_t const& a) { return a.accessor().is_padded(); }
 
     static bool
     is_trivial_1d(f_t const& a) { return a.accessor().is_trivial_1d(); }
@@ -658,17 +652,15 @@ namespace scitbx { namespace af { namespace boost_python {
         .def(init<shared_plain<ElementType> const&>())
         .def("accessor", accessor)
         .def("nd", nd)
-        .def("has_origin", has_origin)
+        .def("is_0_based", is_0_based)
         .def("origin", origin)
         .def("all", all)
         .def("last", last_0)
         .def("last", last_1)
-        .def("has_focus", has_focus)
+        .def("is_padded", is_padded)
         .def("focus", focus_0)
         .def("focus", focus_1)
         .def("focus_size_1d", focus_size_1d)
-        .def("is_0_based", is_0_based)
-        .def("is_padded", is_padded)
         .def("is_trivial_1d", is_trivial_1d)
         .def("shift_origin", shift_origin)
         .def("id", id)
