@@ -88,6 +88,36 @@ class set(crystal.symmetry):
     crystal.symmetry.show_summary(self, f)
     return self
 
+  def show_comprehensive_summary(self, f=sys.stdout):
+    self.show_summary(f=f)
+    no_sys_abs = self
+    if (self.space_group_info() != None):
+      sys_absent_flags = self.sys_absent_flags().data()
+      n_sys_abs = sys_absent_flags.count(0001)
+      print >> f, "Systematic absences:", n_sys_abs
+      if (n_sys_abs != 0):
+        no_sys_abs = self.apply_selection(flags=~sys_absent_flags)
+        print >> f, "Systematic absences not included in following:"
+      n_centric = no_sys_abs.centric_flags().data().count(True)
+      print >> f, "Centric reflections:", n_centric
+    if (self.unit_cell() != None):
+      print >> f, "Resolution range: %.6g %.6g" % no_sys_abs.resolution_range()
+      if (self.space_group_info() != None):
+        print >> f, "Completeness: %.6g" % no_sys_abs.completeness()
+    if (self.space_group_info() != None and no_sys_abs.anomalous_flag()):
+      asu, matches = no_sys_abs.match_bijvoet_mates()
+      print >> f, "Bijvoet pairs:", matches.pairs().size()
+      print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
+      if (isinstance(self, array)):
+        print >> f, "Anomalous signal: %.4f" % no_sys_abs.apply_selection(
+          no_sys_abs.data() > 0).anomalous_signal()
+    return self
+
+  def sys_absent_flags(self):
+    return array(
+      self,
+      self.space_group().is_sys_absent(self.indices()))
+
   def centric_flags(self):
     return array(
       self,
@@ -114,6 +144,59 @@ class set(crystal.symmetry):
   def d_min(self):
     return uctbx.d_star_sq_as_d(self.unit_cell().max_d_star_sq(self.indices()))
 
+  def map_to_asu(self):
+    i = self.indices().deep_copy()
+    map_to_asu(
+      self.space_group_info().type(),
+      self.anomalous_flag(),
+      i)
+    return set(self, i, self.anomalous_flag())
+
+  def complete_set(self):
+    assert self.anomalous_flag() in (00000, 0001)
+    return build_set(
+      crystal_symmetry=self,
+      anomalous_flag=self.anomalous_flag(),
+      d_min=self.d_min())
+
+  def completeness(self):
+    return self.indices().size() / float(self.complete_set().indices().size())
+
+  def all_selection(self):
+    return flex.bool(self.indices().size(), 0001)
+
+  def apply_selection(self, flags, negate=00000, anomalous_flag=None):
+    assert self.indices() != None
+    if (anomalous_flag == None):
+      anomalous_flag = self.anomalous_flag()
+    if (negate): flags = ~flags
+    i = self.indices().select(flags)
+    return set(self, i, anomalous_flag)
+
+  def remove_systematic_absences(self, negate=00000):
+    return self.apply_selection(
+      flags=self.sys_absent_flags().data(),
+      negate=not negate)
+
+  def resolution_filter(self, d_max=0, d_min=0, negate=0):
+    d = self.d_spacings().data()
+    keep = self.all_selection()
+    if (d_max): keep &= d <= d_max
+    if (d_min): keep &= d >= d_min
+    return self.apply_selection(keep, negate)
+
+  def match_bijvoet_mates(self):
+    assert self.anomalous_flag() == 0001
+    assert self.indices() != None
+    if (self.space_group_info() != None):
+      asu = self.map_to_asu()
+      matches = match_bijvoet_mates(
+        asu.space_group_info().type(), asu.indices())
+    else:
+      asu = self
+      matches = match_bijvoet_mates(asu.indices())
+    return asu, matches
+
   def resolution_range(self):
     r = self.unit_cell().min_max_d_star_sq(self.indices())
     return tuple([uctbx.d_star_sq_as_d(x) for x in r])
@@ -136,7 +219,7 @@ class set(crystal.symmetry):
       anomalous_flag=self.anomalous_flag())
 
   def expand_to_p1(self):
-    assert self.space_group() != None
+    assert self.space_group_info() != None
     assert self.indices() != None
     assert self.anomalous_flag() != None
     p1 = expand_to_p1(
@@ -388,7 +471,7 @@ class array(set):
       self.sigmas())
 
   def expand_to_p1(self, phase_deg=None):
-    assert self.space_group() != None
+    assert self.space_group_info() != None
     assert self.indices() != None
     assert self.anomalous_flag() != None
     assert self.data() != None
@@ -468,18 +551,6 @@ class array(set):
     sum_we = flex.sum(w * e)
     return sum_we / sum_w * 180/math.pi
 
-  def match_bijvoet_mates(self):
-    assert self.anomalous_flag() == 0001
-    assert self.indices() != None
-    if (self.space_group() != None):
-      asu = self.map_to_asu()
-      matches = match_bijvoet_mates(
-        asu.space_group_info().type(), asu.indices())
-    else:
-      asu = self
-      matches = match_bijvoet_mates(asu.indices())
-    return asu, matches
-
   def anomalous_differences(self):
     assert self.data() != None
     asu, matches = self.match_bijvoet_mates()
@@ -512,14 +583,13 @@ class array(set):
     assert not use_binning, "Not implemented." # XXX
     assert self.data().all_gt(0)
     f_plus, f_minus = self.hemispheres()
+    assert f_plus.data().size() == f_minus.data().size()
+    if (f_plus.data().size() == 0): return 0
     mean_sq_diff = flex.mean(flex.pow2(f_plus.data() - f_minus.data()))
     assert mean_sq_diff >= 0
     mean_sum_sq = flex.mean(flex.pow2(f_plus.data())+flex.pow2(f_minus.data()))
     assert mean_sum_sq > 0
     return math.sqrt(2 * mean_sq_diff / mean_sum_sq)
-
-  def all_selection(self):
-    return flex.bool(self.indices().size(), 0001)
 
   def apply_selection(self, flags, negate=00000, anomalous_flag=None):
     assert self.indices() != None
@@ -532,18 +602,6 @@ class array(set):
     s = None
     if (self.sigmas() != None): s = self.sigmas().select(flags)
     return array(set(self, i, anomalous_flag), d, s)
-
-  def remove_systematic_absences(self, negate=00000):
-    return self.apply_selection(
-      flags=self.space_group().is_sys_absent(self.indices()),
-      negate=not negate)
-
-  def resolution_filter(self, d_max=0, d_min=0, negate=0):
-    d = self.d_spacings().data()
-    keep = self.all_selection()
-    if (d_max): keep &= d <= d_max
-    if (d_min): keep &= d >= d_min
-    return self.apply_selection(keep, negate)
 
   def sigma_filter(self, cutoff_factor, negate=0):
     assert self.data() != None

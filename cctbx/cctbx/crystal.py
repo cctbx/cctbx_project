@@ -16,13 +16,13 @@ class symmetry(object):
     self._unit_cell = unit_cell
     self._space_group_info = space_group_info
     if (self._space_group_info == None):
-      if (space_group == None):
+      if (space_group_symbol != None):
         self._space_group_info = sgtbx.space_group_info(space_group_symbol)
-      else:
+      elif (space_group != None):
         self._space_group_info = sgtbx.space_group_info(group=space_group)
     if (    assert_is_compatible_unit_cell
         and self.unit_cell() != None
-        and self.space_group() != None):
+        and self.space_group_info() != None):
       assert self.is_compatible_unit_cell()
 
   def _copy_constructor(self, other):
@@ -39,8 +39,14 @@ class symmetry(object):
     return self.space_group_info().group()
 
   def show_summary(self, f=sys.stdout):
-    self.unit_cell().show_parameters(f)
-    self.space_group_info().show_summary(f)
+    if (self.unit_cell() == None):
+      print >> f, "Unit cell:", None
+    else:
+      self.unit_cell().show_parameters(f)
+    if (self.space_group_info() == None):
+      print >> f, "Space group:", None
+    else:
+      self.space_group_info().show_summary(f)
 
   def is_compatible_unit_cell(self):
     return self.space_group().is_compatible_unit_cell(self.unit_cell())
