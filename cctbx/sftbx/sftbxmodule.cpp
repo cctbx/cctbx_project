@@ -137,6 +137,17 @@ namespace {
     return dF_dX;
   }
 
+  void py_apply_special_position_ops(
+    af::shared<af::double3> dF_dX,
+    af::shared<sgtbx::RTMx> special_position_ops)
+  {
+    cctbx_assert(dF_dX.size() == special_position_ops.size());
+    for(std::size_t i=0;i<dF_dX.size();i++) {
+      dF_dX[i] = MatrixLite::vector_mul_matrix(
+        dF_dX[i], special_position_ops[i].Rpart().as_array(double()));
+    }
+  }
+
   af::shared<Miller::Index>
   py_BuildMillerIndices_Resolution_d_min(
     const uctbx::UnitCell& UC,
@@ -256,6 +267,10 @@ namespace {
     python::import_converters<af::shared<af::double3> >
     py_shared_double3("cctbx_boost.arraytbx.shared", "double3");
 
+    python::import_converters<af::shared<sgtbx::RTMx> >
+    py_shared_RTMx(
+      "cctbx_boost.arraytbx.shared", "RTMx");
+
     class_builder<ex_xray_scatterer>
     py_XrayScatterer(this_module, "XrayScatterer");
     python::export_converters(py_XrayScatterer);
@@ -326,6 +341,8 @@ namespace {
       py_StructureFactor_dX_Array_add, "StructureFactor_dX_Array");
     this_module.def(
       py_StructureFactor_dX_Array_new, "StructureFactor_dX_Array");
+
+    this_module.def(py_apply_special_position_ops, "apply");
 
     this_module.def(py_BuildMillerIndices_Resolution_d_min,
                       "BuildMillerIndices");
