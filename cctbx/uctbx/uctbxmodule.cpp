@@ -11,7 +11,6 @@
 
 #include <boost/python/cross_module.hpp>
 #include <cctbx/bpl_utils.h>
-#include <cctbx/carray_bpl.h>
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/uctbx.h>

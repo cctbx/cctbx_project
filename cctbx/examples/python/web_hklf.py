@@ -20,6 +20,7 @@ class FormatError(exceptions.Exception): pass
 import math, string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
+from cctbx.arraytbx import std_vector
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.eltbx.caasf_wk1995 import CAASF_WK1995
@@ -169,7 +170,7 @@ if (__name__ == "__main__"):
     print "<th>Occupancy<br>factor"
     print "<th>Biso"
     print "<tr>"
-    Sites = sftbx.vector_of_XrayScatterer()
+    Sites = std_vector.XrayScatterer()
     print
     for line in inp.coordinates:
       flds = string.split(line)

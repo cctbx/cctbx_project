@@ -1,4 +1,5 @@
-import fftbx
+from cctbx.arraytbx import std_vector
+from cctbx import fftbx
 
 def fmtfloat(f):
   s = "%.1f" % (f,)
@@ -29,8 +30,8 @@ def assert_complex_eq_real(vc, vd):
 
 def test_complex_to_complex(verbose):
   fft = fftbx.complex_to_complex(5)
-  vc = fftbx.vector_of_complex(fft.N())
-  vd = fftbx.vector_of_double(fft.N() * 2)
+  vc = std_vector.complex_double(fft.N())
+  vd = std_vector.double(fft.N() * 2)
   for i in xrange(fft.N()):
     vc[i] = complex(2.*i, 2.*i+1.)
     vd[2*i] = 2.*i
@@ -46,7 +47,7 @@ def test_complex_to_complex(verbose):
 
 def test_complex_to_complex_3d(test_map_cast, verbose):
   fft = fftbx.complex_to_complex_3d((3,4,5))
-  vc = fftbx.vector_of_complex()
+  vc = std_vector.complex_double()
   mapc = fftbx.vc3d_accessor(fft.N(), vc, 1)
   mapc[(0,0,0)] = 123+4j
   assert mapc[(0,0,0)] == 123+4j
@@ -54,7 +55,7 @@ def test_complex_to_complex_3d(test_map_cast, verbose):
     vc[i] = complex(2*i, 2*i+1)
   Ncomplex = fft.N()
   Nreal = (Ncomplex[0], Ncomplex[1], Ncomplex[2] * 2)
-  vd = fftbx.vector_of_double()
+  vd = std_vector.double()
   mapd = fftbx.vd3d_accessor(Nreal, vd, 1)
   for i in xrange(vd.size()):
     vd[i] = i
@@ -75,8 +76,8 @@ def test_complex_to_complex_3d(test_map_cast, verbose):
 
 def test_real_to_complex(verbose):
   fft = fftbx.real_to_complex(6)
-  vd = fftbx.vector_of_double(fft.Mreal())
-  vc = fftbx.vector_of_complex(fft.Ncomplex())
+  vd = std_vector.double(fft.Mreal())
+  vc = std_vector.complex_double(fft.Ncomplex())
   for i in xrange(fft.Nreal()):
     vd[i] = 1.*i
   for i in xrange(fft.Ncomplex()):
@@ -92,13 +93,13 @@ def test_real_to_complex(verbose):
 
 def test_real_to_complex_3d(test_map_cast, verbose):
   fft = fftbx.real_to_complex_3d((3,4,5))
-  vd = fftbx.vector_of_double()
+  vd = std_vector.double()
   mapd = fftbx.vd3d_accessor(fft.Mreal(), vd, 1)
   mapd[(0,0,0)] = 123
   assert mapd[(0,0,0)] == 123
   for i in xrange(vd.size()):
     vd[i] = i
-  vc = fftbx.vector_of_complex()
+  vc = std_vector.complex_double()
   mapc = fftbx.vc3d_accessor(fft.Ncomplex(), vc, 1)
   for i in xrange(vc.size()):
     vc[i] = complex(2*i, 2*i+1)

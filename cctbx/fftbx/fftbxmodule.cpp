@@ -13,7 +13,6 @@
 #include <cctbx/fftbx/gridding.h>
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
-#include <cctbx/std_vector_bpl.h>
 #include <cctbx/carray_bpl.h>
 
 using namespace cctbx;
@@ -190,24 +189,17 @@ namespace {
     this_module.add(ref(to_python(
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    (void) python::wrap_std_vector(this_module,
-      "vector_of_int", int());
-    python::class_builder<
-      std::vector<double>,
-      python::std_vector_wrapper<double> >
-    py_vector_of_double =
-    python::wrap_std_vector(this_module,
-      "vector_of_double",
-      double());
-    python::export_converters(py_vector_of_double);
-    python::class_builder<
-      std::vector<std::complex<double> >,
-      python::std_vector_wrapper<std::complex<double> > >
-    py_vector_of_complex =
-    python::wrap_std_vector(this_module,
-      "vector_of_complex",
-      std::complex<double>());
-    python::export_converters(py_vector_of_complex);
+    python::import_converters<std::vector<int> >
+    py_std_vector_int(
+      "cctbx.arraytbx.std_vector", "int");
+
+    python::import_converters<std::vector<double> >
+    py_std_vector_double(
+      "cctbx.arraytbx.std_vector", "double");
+
+    python::import_converters<std::vector<std::complex<double> > >
+    py_std_vector_complex_double(
+      "cctbx.arraytbx.std_vector", "complex_double");
 
     class_builder<vd3d_accessor>
     py_vd3d_accessor(this_module, "vd3d_accessor");

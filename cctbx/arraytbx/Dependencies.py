@@ -7,14 +7,18 @@ class write_makefiles(makefile_generator.write_makefiles):
   def dependencies(self):
 
     self.files = (
+      "global/error.cpp",
       "global/bpl_utils.cpp",
       "global/carray_bpl.cpp",
+      "arraytbx/std_vectormodule.cpp",
       "arraytbx/shared_storagemodule.cpp",
       "arraytbx/tst.py",
     )
 
-    if (self.platform != "vc60"):
-      self.boost_python_modules = {
-        "shared_storage": (("shared_storagemodule", "bpl_utils", "carray_bpl"),
-                           ()),
-      }
+    self.boost_python_modules = {
+      "std_vector":
+        (("std_vectormodule", "error", "bpl_utils", "carray_bpl"), ()),
+      "shared_storage":
+        (("shared_storagemodule", "bpl_utils", "carray_bpl"), ()),
+    }
+

@@ -14,7 +14,7 @@
 #ifndef CCTBX_STD_VECTOR_BPL_H
 #define CCTBX_STD_VECTOR_BPL_H
 
-#include <boost/python/class_builder.hpp>
+#include <boost/python/cross_module.hpp>
 
 namespace boost {
   namespace python {
@@ -107,33 +107,37 @@ namespace boost {
       }
     };
 
-    // This function will build a vector<T> and add it to the given
-    // module with the given name.
     template <typename T>
-    boost::python::class_builder<std::vector<T>, std_vector_wrapper<T> >
-    wrap_std_vector(boost::python::module_builder& module,
-                    const std::string& vector_name,
-                    const T&)
-    {
-      // Add the vector<T> to the module.
+    struct wrap_std_vector {
+      // This function will build a vector<T> and add it to the given
+      // module with the given name.
+      static
       boost::python::class_builder<std::vector<T>, std_vector_wrapper<T> >
-      py_vector(module, vector_name.c_str());
+      run(
+        boost::python::module_builder& module,
+        const std::string& vector_name)
+      {
+        // Add the vector<T> to the module.
+        boost::python::class_builder<std::vector<T>, std_vector_wrapper<T> >
+        py_vector(module, vector_name.c_str());
+        boost::python::export_converters(py_vector);
 
-      // Define constructors and methods for the vector<T>.
-      py_vector.def(boost::python::constructor<>());
-      py_vector.def(boost::python::constructor<std::size_t>());
-      py_vector.def(boost::python::constructor<boost::python::tuple>());
-      py_vector.def(&std::vector<T>::size, "size");
-      py_vector.def(&std::vector<T>::size, "__len__");
-      py_vector.def(&std_vector_access<T>::getitem, "__getitem__");
-      py_vector.def(&std_vector_access<T>::setitem, "__setitem__");
-      py_vector.def(&std_vector_access<T>::delitem, "__delitem__");
-      py_vector.def(&std_vector_access<T>::as_tuple, "as_tuple");
-      py_vector.def(&std_vector_access<T>::push_back, "push_back");
-      py_vector.def(&std_vector_access<T>::push_back, "append");
+        // Define constructors and methods for the vector<T>.
+        py_vector.def(boost::python::constructor<>());
+        py_vector.def(boost::python::constructor<std::size_t>());
+        py_vector.def(boost::python::constructor<boost::python::tuple>());
+        py_vector.def(&std::vector<T>::size, "size");
+        py_vector.def(&std::vector<T>::size, "__len__");
+        py_vector.def(&std_vector_access<T>::getitem, "__getitem__");
+        py_vector.def(&std_vector_access<T>::setitem, "__setitem__");
+        py_vector.def(&std_vector_access<T>::delitem, "__delitem__");
+        py_vector.def(&std_vector_access<T>::as_tuple, "as_tuple");
+        py_vector.def(&std_vector_access<T>::push_back, "push_back");
+        py_vector.def(&std_vector_access<T>::push_back, "append");
 
-      return py_vector;
-    }
+        return py_vector;
+      }
+    };
 
   } // namespace python
 } // namespace boost
