@@ -218,8 +218,8 @@ class libtbx_env:
         clean.append(s)
     return os.sep.join(clean)
 
-def emit_dispatcher_includes_sh(env):
-  file_name = norm(join(env.LIBTBX_BUILD, "dispatcher_includes.sh"))
+def emit_dispatcher_include_sh(env):
+  file_name = norm(join(env.LIBTBX_BUILD, "dispatcher_include.sh"))
   if (not isfile(file_name)):
     f = open_info(file_name)
     print >> f, \
@@ -617,7 +617,7 @@ def run(libtbx_dist, args, old_env=None):
   build_options.add_to_libtbx_env(env=env)
   env.pickle_dict()
   if (hasattr(os, "symlink")):
-    emit_dispatcher_includes_sh(env)
+    emit_dispatcher_include_sh(env)
     emit_setpaths_sh(env)
     emit_env_run_sh(env)
     for all in [False, True]:

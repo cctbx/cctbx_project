@@ -227,9 +227,9 @@ class env:
       'LD_PRELOAD="%s"' % os.pathsep.join(ld_preload),
       'export LD_PRELOAD']
 
-  def dispatcher_includes(self):
-    if (not hasattr(self, "_dispatcher_includes")):
-      file_name = norm(join(self.LIBTBX_BUILD, "dispatcher_includes.sh"))
+  def dispatcher_include(self):
+    if (not hasattr(self, "_dispatcher_include")):
+      file_name = norm(join(self.LIBTBX_BUILD, "dispatcher_include.sh"))
       if (isfile(file_name)):
         try: lines = open(file_name).read().splitlines()
         except IOError, e: raise UserError(str(e))
@@ -237,10 +237,10 @@ class env:
         m = max([len(line) for line in lines])
         lines.insert(0, "# " + "-"*(m-2))
         lines.append(lines[0])
-        self._dispatcher_includes = lines
+        self._dispatcher_include = lines
       else:
-        self._dispatcher_includes = []
-    return self._dispatcher_includes
+        self._dispatcher_include = []
+    return self._dispatcher_include
 
   def create_bin_sh_dispatcher(self, source_file, target_file):
     f = open(target_file, "w")
@@ -268,7 +268,7 @@ class env:
     if (precall_commands is not None):
       for line in precall_commands:
         print >> f, line
-    for line in self.dispatcher_includes():
+    for line in self.dispatcher_include():
       print >> f, line
     cmd = ""
     if (source_file.lower().endswith(".py")):
