@@ -27,6 +27,9 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_SMALL_CONSTRUCTORS(small_plain)
       CCTBX_ARRAY_FAMILY_SMALL_COPY_AND_ASSIGNMENT(small_plain)
+
+      ~small_plain() { clear(); }
+
       CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), N)
 
       size_type size() const { return m_size; }
@@ -41,26 +44,37 @@ namespace cctbx { namespace af {
         std::swap(*this, other);
       }
 
-      void resize(const size_type& new_size,
-                  const ElementType& x = ElementType()) {
-        if (new_size > N) throw_range_error();
-        size_type old_size = this->size();
-        if (new_size < old_size) {
-          detail::destroy_array_elements(this->begin()+new_size, this->end());
-        }
-        m_size = new_size;
-        if (new_size > old_size) {
-          std::fill(this->begin()+old_size, this->end(), x);
-        }
-      }
-
-      void auto_resize(const size_type& new_size, const ElementType& x) {
-        resize(new_size, x);
+      void reserve(const size_type& sz) {
+        if (N < sz) throw_range_error();
       }
 
 #     include <cctbx/array_family/push_back_etc.h>
 
     protected:
+      void m_insert_overflow(ElementType* pos,
+                             const size_type& n, const ElementType& x,
+                             bool at_end) {
+        throw_range_error();
+      }
+
+      void m_insert_overflow(ElementType* pos,
+                             const ElementType* first,
+                             const ElementType* last) {
+        throw_range_error();
+      }
+
+      void m_set_size(const size_type& sz) {
+        m_size = sz;
+      }
+
+      void m_incr_size(const size_type& n) {
+        m_size += n;
+      }
+
+      void m_decr_size(const size_type& n) {
+        m_size -= n;
+      }
+
       detail::auto_allocator<ElementType, N> m_elems;
       size_type m_size;
   };
