@@ -1,17 +1,22 @@
 from cctbx import xray
 from cctbx import adptbx
-import cStringIO import StringIO
+from cStringIO import StringIO
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
                                      fractional_coordinates=00000):
   if (remark != None):
     remarks.insert(0, remark)
+  i = 0
   s = StringIO()
   for remark in remarks:
     print >> s, "REMARK", remark
   print >> s, "REMARK Number of scatterers:", self.scatterers().size()
   print >> s, "REMARK At special positions:", \
     self.special_position_indices().size()
+  if (fractional_coordinates):
+    print >> s, "REMARK Fractional coordinates"
+  else:
+    print >> s, "REMARK Cartesian coordinates"
   # CRYST1
   #  7 - 15       Real(9.3)      a             a (Angstroms).
   # 16 - 24       Real(9.3)      b             b (Angstroms).
@@ -22,8 +27,7 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
   # 56 - 66       LString        sGroup        Space group.
   # 67 - 70       Integer        z             Z value.
   print >> s, "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %s" % (
-    self.unit_cell().parameters()
-    + (str(xray_structure.space_group_info()),))
+    self.unit_cell().parameters() + (str(self.space_group_info()),))
   # ATOM
   #  7 - 11  Integer       serial        Atom serial number.
   # 13 - 16  Atom          name          Atom name.
@@ -40,7 +44,6 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
   #                                      Angstroms.
   # 55 - 60  Real(6.2)     occupancy     Occupancy.
   # 61 - 66  Real(6.2)     tempFactor    Temperature factor.
-  i = 0
   for scatterer in self.scatterers():
     assert not scatterer.anisotropic_flag, "Not implemented." # XXX
     xyz = scatterer.site
@@ -57,6 +60,6 @@ def xray_structure_as_pdb_file(self, remark=None, remarks=[],
       scatterer.occupancy,
       adptbx.u_as_b(scatterer.u_iso)))
   print >> s, "END"
-  return s
+  return s.getvalue()
 
 xray.structure.as_pdb_file = xray_structure_as_pdb_file
