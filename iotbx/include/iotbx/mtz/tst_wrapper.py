@@ -1,6 +1,8 @@
 from iotbx import mtz
 import iotbx.mtz.wrapper
 from iotbx.option_parser import iotbx_option_parser
+from cctbx import sgtbx
+from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from cStringIO import StringIO
@@ -16,11 +18,11 @@ def exercise_basic():
   assert mtz_object.title() == ""
   assert mtz_object.history().size() == 0
   assert mtz_object.space_group_name() == ""
+  assert mtz_object.space_group_number() == 0
   assert mtz_object.point_group_name() == ""
   assert mtz_object.space_group().order_z() == 1
   assert mtz_object.n_batches() == 0
   assert mtz_object.n_reflections() == 0
-  assert mtz_object.space_group_number() == 0
   assert mtz_object.max_min_resolution() == (-1, -1)
   assert mtz_object.n_crystals() == 0
   assert mtz_object.n_active_crystals() == 0
@@ -34,11 +36,11 @@ def exercise_basic():
     assert mtz_object.title() == "......"
     assert mtz_object.history().size() == 17
     assert mtz_object.space_group_name() == "P212121"
+    assert mtz_object.space_group_number() == 19
     assert mtz_object.point_group_name() == "PG222"
     assert mtz_object.space_group().type().lookup_symbol() == "P 21 21 21"
     assert mtz_object.n_batches() == 0
     assert mtz_object.n_reflections() == 165
-    assert mtz_object.space_group_number() == 19
     assert approx_equal(mtz_object.max_min_resolution(),
       (0.0044435299932956696, 0.00253282580524683))
     assert mtz_object.n_crystals() == 4
@@ -302,6 +304,197 @@ def exercise_walk(root_dir, full, verbose=False):
   if (verbose):
     print exercise_function.counters
 
+def exercise_modifiers(verbose=0):
+  if (verbose):
+    out = sys.stdout
+  mtz_object = mtz.wrapper.object()
+  mtz_object.set_title(title="012345678")
+  assert mtz_object.title() == "012345678"
+  mtz_object.set_title(title="012345678", append=True)
+  assert mtz_object.title() == "012345678 012345678"
+  mtz_object.set_title(title="0123456789"*10+"012345678", append=True)
+  assert mtz_object.title() == "012345678 "*2 + "0123456789"*5
+  mtz_object.set_title("0123456789"*100)
+  assert mtz_object.title() == "0123456789"*7
+  mtz_object.add_history(lines=flex.std_string(["a1", "a2"]))
+  assert list(mtz_object.history()) == ["a1", "a2"]
+  mtz_object.add_history(lines=flex.std_string(["b1", "b2"]))
+  assert list(mtz_object.history()) == ["b1", "b2", "a1", "a2"]
+  mtz_object.set_space_group_name(name="sg"*100)
+  assert mtz_object.space_group_name() == "sgsgsgsgsgsgsgsgsgsg"
+  mtz_object.set_space_group_number(number=12)
+  assert mtz_object.space_group_number() == 12
+  mtz_object.set_point_group_name(name="pg"*100)
+  assert mtz_object.point_group_name() == "pgpgpgpgpg"
+  for space_group_symbols in sgtbx.space_group_symbol_iterator():
+    space_group = sgtbx.space_group(space_group_symbols)
+    mtz_object.set_space_group(space_group)
+    assert mtz_object.space_group() == space_group
+  mtz_object = mtz.wrapper.object() \
+    .set_title(title="exercise") \
+    .add_history(lines=flex.std_string(["h1", "h2"])) \
+    .set_space_group_name("sg") \
+    .set_space_group_number(123) \
+    .set_point_group_name("pg") \
+    .set_space_group(sgtbx.space_group_info(number=123).group())
+  assert mtz_object.title() == "exercise"
+  assert list(mtz_object.history()) == ["h1", "h2"]
+  for stage in [0,1]:
+    for i_crystal in xrange(3):
+      if (stage == 0):
+        if (i_crystal % 2 == 0):
+          crystal = mtz_object.add_crystal(
+            name="crystal_%d"%i_crystal,
+            project_name="project_%d"%i_crystal,
+            unit_cell_parameters=(10+i_crystal,20,20,90,90,120))
+        else:
+          crystal = mtz_object.add_crystal(
+            name="crystal_%d"%i_crystal,
+            project_name="project_%d"%i_crystal,
+            unit_cell=uctbx.unit_cell((10+i_crystal,20,20,90,90,120)))
+      else:
+        crystal = mtz_object.crystals()[i_crystal]
+      assert crystal.i_crystal() == i_crystal
+      assert crystal.name() == "crystal_%d"%i_crystal
+      assert crystal.project_name() == "project_%d"%i_crystal
+      assert approx_equal(crystal.unit_cell_parameters(),
+        (10+i_crystal,20,20,90,90,120))
+  if (not verbose): out = StringIO()
+  mtz_object.show_summary(out=out)
+  if (not verbose):
+    assert out.getvalue() == """\
+Title: exercise
+Space group symbol from file: sg
+Space group number from file: 123
+Space group from matrices: P 4/m m m (No. 123)
+Point group symbol from file: pg
+Number of crystals: 3
+Number of Miller indices: 0
+History:
+  h1
+  h2
+Crystal 1:
+  Name: crystal_0
+  Project: project_0
+  Id: 1
+  Unit cell: (10, 20, 20, 90, 90, 120)
+  Number of datasets: 0
+Crystal 2:
+  Name: crystal_1
+  Project: project_1
+  Id: 2
+  Unit cell: (11, 20, 20, 90, 90, 120)
+  Number of datasets: 0
+Crystal 3:
+  Name: crystal_2
+  Project: project_2
+  Id: 3
+  Unit cell: (12, 20, 20, 90, 90, 120)
+  Number of datasets: 0
+"""
+  for stage in [0,1]:
+    for i_crystal,crystal in enumerate(mtz_object.crystals()):
+      for i_dataset in xrange(5-i_crystal):
+        if (stage == 0):
+          dataset = crystal.add_dataset("dataset_%d"%i_dataset, 10-i_dataset)
+        else:
+          dataset = crystal.datasets()[i_dataset]
+        assert dataset.name() == "dataset_%d"%i_dataset
+        assert approx_equal(dataset.wavelength(), 10-i_dataset)
+  if (not verbose): out = StringIO()
+  mtz_object.show_summary(out=out)
+  if (not verbose):
+    assert out.getvalue() == """\
+Title: exercise
+Space group symbol from file: sg
+Space group number from file: 123
+Space group from matrices: P 4/m m m (No. 123)
+Point group symbol from file: pg
+Number of crystals: 3
+Number of Miller indices: 0
+History:
+  h1
+  h2
+Crystal 1:
+  Name: crystal_0
+  Project: project_0
+  Id: 1
+  Unit cell: (10, 20, 20, 90, 90, 120)
+  Number of datasets: 5
+  Dataset 1:
+    Name: dataset_0
+    Id: 0
+    Wavelength: 10
+    Number of columns: 0
+  Dataset 2:
+    Name: dataset_1
+    Id: 1
+    Wavelength: 9
+    Number of columns: 0
+  Dataset 3:
+    Name: dataset_2
+    Id: 2
+    Wavelength: 8
+    Number of columns: 0
+  Dataset 4:
+    Name: dataset_3
+    Id: 3
+    Wavelength: 7
+    Number of columns: 0
+  Dataset 5:
+    Name: dataset_4
+    Id: 4
+    Wavelength: 6
+    Number of columns: 0
+Crystal 2:
+  Name: crystal_1
+  Project: project_1
+  Id: 2
+  Unit cell: (11, 20, 20, 90, 90, 120)
+  Number of datasets: 4
+  Dataset 1:
+    Name: dataset_0
+    Id: 5
+    Wavelength: 10
+    Number of columns: 0
+  Dataset 2:
+    Name: dataset_1
+    Id: 6
+    Wavelength: 9
+    Number of columns: 0
+  Dataset 3:
+    Name: dataset_2
+    Id: 7
+    Wavelength: 8
+    Number of columns: 0
+  Dataset 4:
+    Name: dataset_3
+    Id: 8
+    Wavelength: 7
+    Number of columns: 0
+Crystal 3:
+  Name: crystal_2
+  Project: project_2
+  Id: 3
+  Unit cell: (12, 20, 20, 90, 90, 120)
+  Number of datasets: 3
+  Dataset 1:
+    Name: dataset_0
+    Id: 9
+    Wavelength: 10
+    Number of columns: 0
+  Dataset 2:
+    Name: dataset_1
+    Id: 10
+    Wavelength: 9
+    Number of columns: 0
+  Dataset 3:
+    Name: dataset_2
+    Id: 11
+    Wavelength: 8
+    Number of columns: 0
+"""
+
 def exercise():
   command_line = (iotbx_option_parser()
     .option(None, "--verbose",
@@ -323,6 +516,7 @@ def exercise():
       help="Visit all MTZ file.")
   ).process(args=sys.argv[1:])
   exercise_basic()
+  exercise_modifiers(verbose=command_line.options.verbose)
   for file_name in command_line.args:
     exercise_extract_any()(file_name=file_name, out=sys.stdout)
   if (command_line.options.walk is not None):
@@ -332,6 +526,7 @@ def exercise():
       verbose=command_line.options.verbose)
   while (command_line.options.forever):
     exercise_basic()
+    exercise_modifiers()
   print "OK"
 
 if (__name__ == "__main__"):

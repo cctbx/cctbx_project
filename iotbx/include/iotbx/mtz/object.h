@@ -112,10 +112,18 @@ namespace iotbx { namespace mtz {
       std::string
       title() const
       {
-        std::vector<char> result(strlen(ptr()->title)+1);
-        int len = CMtz::ccp4_lrtitl(ptr(), &*result.begin());
-        CCTBX_ASSERT(len < result.size());
-        return std::string(&*result.begin(), len);
+        char result[sizeof(ptr()->title)];
+        int title_length = CMtz::ccp4_lrtitl(ptr(), result);
+        return std::string(result, title_length);
+      }
+
+      object&
+      set_title(const char* title, bool append=false)
+      {
+        int set_title_success = CMtz::ccp4_lwtitl(ptr(), title, append);
+        CCTBX_ASSERT(set_title_success);
+        ptr()->title[sizeof(ptr()->title)-1] = '\0';
+        return *this;
       }
 
       af::shared<std::string>
@@ -124,34 +132,119 @@ namespace iotbx { namespace mtz {
         CMtz::MTZ* p = ptr();
         af::shared<std::string> result((af::reserve(p->histlines)));
         for(int i=0;i<p->histlines;i++) {
-          result.push_back(
-            std::string(p->hist+MTZRECORDLENGTH*i, MTZRECORDLENGTH));
+          const char* line = p->hist+MTZRECORDLENGTH*i;
+          int j = 0;
+          for(;j<MTZRECORDLENGTH;j++) {
+            if (line[j] == '\0') break;
+          }
+          result.push_back(std::string(line, j));
         }
         return result;
+      }
+
+      object&
+      add_history(af::const_ref<std::string> const& lines)
+      {
+        boost::shared_ptr<char> buffer(
+          CMtz::MtzCallocHist(lines.size()), CMtz::MtzFreeHist);
+        for(std::size_t i=0;i<lines.size();i++) {
+          strncpy(
+            buffer.get()+i*MTZRECORDLENGTH,
+            lines[i].c_str(),
+            std::min(
+              static_cast<std::size_t>(MTZRECORDLENGTH),
+              lines[i].size()));
+        }
+        int add_history_success = CMtz::MtzAddHistory(
+          ptr(),
+          reinterpret_cast<char (*)[MTZRECORDLENGTH]>(buffer.get()),
+          lines.size());
+        CCTBX_ASSERT(add_history_success);
+        return *this;
       }
 
       std::string
       space_group_name() const { return ptr()->mtzsymm.spcgrpname; }
 
+      object&
+      set_space_group_name(const char* name)
+      {
+        char* target = ptr()->mtzsymm.spcgrpname;
+        const unsigned target_size = sizeof(ptr()->mtzsymm.spcgrpname);
+        strncpy(target, name, target_size-1);
+        target[target_size-1] = '\0';
+        return *this;
+      }
+
+      int
+      space_group_number() const { return ptr()->mtzsymm.spcgrp; }
+
+      object&
+      set_space_group_number(int number)
+      {
+        ptr()->mtzsymm.spcgrp = number;
+        return *this;
+      }
+
       std::string
       point_group_name() const { return ptr()->mtzsymm.pgname; }
+
+      object&
+      set_point_group_name(const char* name)
+      {
+        char* target = ptr()->mtzsymm.pgname;
+        const unsigned target_size = sizeof(ptr()->mtzsymm.pgname);
+        strncpy(target, name, target_size-1);
+        target[target_size-1] = '\0';
+        return *this;
+      }
 
       cctbx::sgtbx::space_group
       space_group() const
       {
+        CMtz::MTZ* p = ptr();
         cctbx::sgtbx::space_group result;
-        scitbx::mat3<double> r;
-        scitbx::vec3<double> t;
-        for(int i=0;i<ptr()->mtzsymm.nsym;i++) {
-          for (int p=0;p<3;p++) {
-            for (int q=0;q<3;q++) {
-              r(p,q) = ptr()->mtzsymm.sym[i][p][q];
+        scitbx::mat3<double> rm;
+        scitbx::vec3<double> tv;
+        for(int im=0;im<p->mtzsymm.nsym;im++) {
+          for (int ir=0;ir<3;ir++) {
+            for (int ic=0;ic<3;ic++) {
+              rm(ir,ic) = p->mtzsymm.sym[im][ir][ic];
             }
-            t[p] = ptr()->mtzsymm.sym[i][p][3];
+            tv[ir] = p->mtzsymm.sym[im][ir][3];
           }
-          result.expand_smx(cctbx::sgtbx::rt_mx(r, t));
+          result.expand_smx(cctbx::sgtbx::rt_mx(rm, tv));
         }
         return result;
+      }
+
+      object&
+      set_space_group(cctbx::sgtbx::space_group const& space_group)
+      {
+        CMtz::MTZ* p = ptr();
+        CCTBX_ASSERT(sizeof(p->mtzsymm.sym) / sizeof(*p->mtzsymm.sym)
+                  >= space_group.order_z());
+        p->mtzsymm.nsym = static_cast<int>(space_group.order_z());
+        for (int im=0;im<p->mtzsymm.nsym;im++) {
+          cctbx::sgtbx::rt_mx sm = space_group(im).mod_positive();
+          cctbx::sgtbx::rot_mx rm = sm.r();
+          cctbx::sgtbx::tr_vec tv = sm.t();
+          scitbx::mat3<int> rm_num = rm.num();
+          float rm_den = rm.den();
+          scitbx::vec3<int> tv_num = tv.num();
+          float tv_den = tv.den();
+          for (int ir=0;ir<3;ir++) {
+            for (int ic=0;ic<3;ic++) {
+              p->mtzsymm.sym[im][ir][ic] = rm_num(ir,ic)/rm_den;
+            }
+            p->mtzsymm.sym[im][ir][3] = tv_num[ir]/tv_den;
+          }
+          for (int ic=0;ic<3;ic++) {
+            p->mtzsymm.sym[im][3][ic] = 0.;
+          }
+          p->mtzsymm.sym[im][3][3] = 1.;
+        }
+        return *this;
       }
 
       int
@@ -159,9 +252,6 @@ namespace iotbx { namespace mtz {
 
       int
       n_reflections() const { return CMtz::MtzNref(ptr()); }
-
-      int
-      space_group_number() const { return CMtz::MtzSpacegroupNumber(ptr()); }
 
       af::tiny<double, 2>
       max_min_resolution() const
@@ -180,8 +270,23 @@ namespace iotbx { namespace mtz {
       int
       n_active_crystals() const { return CMtz::MtzNumActiveXtal(ptr()); }
 
+      inline
       af::shared<crystal>
       crystals() const;
+
+      inline
+      crystal
+      add_crystal(
+        const char* name,
+        const char* project_name,
+        af::double6 unit_cell_parameters);
+
+      inline
+      crystal
+      add_crystal(
+        const char* name,
+        const char* project_name,
+        cctbx::uctbx::unit_cell const& unit_cell);
 
       inline
       column

@@ -59,8 +59,15 @@ namespace iotbx { namespace mtz {
       int
       n_datasets() const { return CMtz::MtzNsetsInXtal(ptr()); }
 
+      inline
       af::shared<dataset>
       datasets() const;
+
+      inline
+      dataset
+      add_dataset(
+        const char *name,
+        double wavelength);
 
     protected:
       object mtz_object_;
@@ -76,6 +83,35 @@ namespace iotbx { namespace mtz {
       result.push_back(crystal(*this, i_crystal));
     }
     return result;
+  }
+
+  inline
+  crystal
+  object::add_crystal(
+    const char* name,
+    const char* project_name,
+    af::double6 unit_cell_parameters)
+  {
+    float uc_params[6];
+    for(int i=0;i<6;i++) uc_params[i] = unit_cell_parameters[i];
+    int i_crystal = n_crystals();
+    CMtz::MTZXTAL* crystal_ptr = CMtz::MtzAddXtal(
+      ptr(), name, project_name, uc_params);
+    CCTBX_ASSERT(crystal_ptr != 0);
+    CCTBX_ASSERT(n_crystals() == i_crystal+1);
+    crystal result(*this, i_crystal);
+    CCTBX_ASSERT(result.ptr() == crystal_ptr);
+    return result;
+  }
+
+  inline
+  crystal
+  object::add_crystal(
+    const char* name,
+    const char* project_name,
+    cctbx::uctbx::unit_cell const& unit_cell)
+  {
+    return add_crystal(name, project_name, unit_cell.parameters());
   }
 
 }} // namespace iotbx::mtz

@@ -3,8 +3,10 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/return_arg.hpp>
 #include <iotbx/mtz/column.h>
 
 namespace iotbx { namespace mtz {
@@ -62,6 +64,9 @@ namespace {
   {
     typedef object w_t;
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      set_title_overloads, set_title, 1, 2)
+
     static void
     wrap()
     {
@@ -72,17 +77,43 @@ namespace {
           (arg_("n_datasets_for_each_crystal"))))
         .def(init<const char*>((arg_("file_name"))))
         .def("title", &w_t::title)
+        .def("set_title", &w_t::set_title, set_title_overloads((
+          arg_("title"), arg_("append")=false))[return_self<>()])
         .def("history", &w_t::history)
+        .def("add_history", &w_t::add_history, (
+          arg_("lines")), return_self<>())
         .def("space_group_name", &w_t::space_group_name)
+        .def("set_space_group_name", &w_t::set_space_group_name, (
+          arg_("name")), return_self<>())
+        .def("space_group_number", &w_t::space_group_number)
+        .def("set_space_group_number", &w_t::set_space_group_number, (
+          arg_("number")), return_self<>())
         .def("point_group_name", &w_t::point_group_name)
+        .def("set_point_group_name", &w_t::set_point_group_name, (
+          arg_("name")), return_self<>())
         .def("space_group", &w_t::space_group)
+        .def("set_space_group", &w_t::set_space_group, (
+          arg_("space_group")), return_self<>())
         .def("n_batches", &w_t::n_batches)
         .def("n_reflections", &w_t::n_reflections)
-        .def("space_group_number", &w_t::space_group_number)
         .def("max_min_resolution", &w_t::max_min_resolution)
         .def("n_crystals", &w_t::n_crystals)
         .def("n_active_crystals", &w_t::n_active_crystals)
         .def("crystals", &w_t::crystals)
+        .def("add_crystal",
+          (crystal(w_t::*)(
+            const char*, const char*, af::double6))
+              &w_t::add_crystal, (
+          arg_("name"),
+          arg_("project_name"),
+          arg_("unit_cell_parameters")))
+        .def("add_crystal",
+          (crystal(w_t::*)(
+            const char*, const char*, cctbx::uctbx::unit_cell const&))
+              &w_t::add_crystal, (
+          arg_("name"),
+          arg_("project_name"),
+          arg_("unit_cell")))
         .def("lookup_column", &w_t::lookup_column, (arg_("label")))
         .def("extract_integers", &w_t::extract_integers, (
           (arg_("column_label"))))
