@@ -34,6 +34,10 @@ namespace cctbx { namespace restraints {
         double nonbonded_buffer,
         double vdw_1_4_factor)
       :
+        n_bonded(0),
+        n_1_3(0),
+        n_1_4(0),
+        n_nonbonded(0),
         n_unknown_repulsion_type_pairs(0)
       {
         CCTBX_ASSERT(repulsion_types.size() == bond_params_table.size());
@@ -63,10 +67,11 @@ namespace cctbx { namespace restraints {
           if (shell_asu_tables[0].contains(pair)) {
             bond_proxies.process(
               make_bond_asu_proxy(bond_params_table, pair));
+            n_bonded++;
           }
           else if (shell_asu_tables.size() > 1
                    && shell_asu_tables[1].contains(pair)) {
-            continue;
+            n_1_3++;
           }
           else if (shell_asu_tables.size() > 2
                    && shell_asu_tables[2].contains(pair)) {
@@ -77,6 +82,7 @@ namespace cctbx { namespace restraints {
               repulsion_distance_default,
               pair,
               vdw_1_4_factor));
+            n_1_4++;
           }
           else if (pair.dist_sq <= nonbonded_distance_cutoff_sq) {
             repulsion_proxies.process(make_repulsion_asu_proxy(
@@ -85,6 +91,7 @@ namespace cctbx { namespace restraints {
               repulsion_radius_table,
               repulsion_distance_default,
               pair));
+            n_nonbonded++;
           }
         }
       }
@@ -163,6 +170,10 @@ namespace cctbx { namespace restraints {
 
       bond_sorted_asu_proxies bond_proxies;
       repulsion_sorted_asu_proxies repulsion_proxies;
+      unsigned n_bonded;
+      unsigned n_1_3;
+      unsigned n_1_4;
+      unsigned n_nonbonded;
       unsigned n_unknown_repulsion_type_pairs;
   };
 
