@@ -17,11 +17,13 @@ cctbx links
 
 - Newsletter articles, IUCr Computing Commission:
 
-  - `January 2004 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2004.pdf>`_
+  - `No. 1, 2003/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
 
-  - `July 2003 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
+  - `No. 2, 2003/07 <http://cci.lbl.gov/publications/download/iucrcompcomm_jul2003.pdf>`_
 
-  - `January 2003 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2003.pdf>`_
+  - `No. 3, 2004/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2004.pdf>`_
+
+  - `No. 4, 2004/08 <http://cci.lbl.gov/publications/download/iucrcompcomm_aug2004.pdf>`_
 
 - Python interfaces:
   `libtbx <current_cvs/python/libtbx/>`_
