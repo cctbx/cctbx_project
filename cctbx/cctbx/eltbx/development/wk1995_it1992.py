@@ -25,8 +25,7 @@ def run(args):
       gaussian_fit.international_tables_sampled_value_sigmas[:n_points],
       it.fetch())
     labels.append(wk.label())
-    max_errors.append(flex.max(gaussian_fit.get_significant_relative_errors(
-      fit_object=fit_object)))
+    max_errors.append(flex.max(fit_object.significant_relative_errors()))
     gaussian_fit.write_plots(
       plots_dir="wk1995_it1992_plots",
       label=wk.label(),

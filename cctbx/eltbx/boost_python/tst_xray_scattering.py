@@ -238,17 +238,23 @@ def exercise_gaussian_fit():
       (2.657506, 1.078079, 1.490909, -4.2410698, 0.71379101),
       (14.780758, 0.776775, 42.086842, -0.000294, 0.239535),
       4.2979832),
-    flex.double(),
+    flex.double(5, 0.0005),
     xray_scattering.gaussian(
       (1.1423916, 4.1728425, 0.61716694),
       (0.50733125, 14.002512, 41.978928)))
   differences = flex.double([-0.064797341823577881, 0.003608505180995536,
     0.098159179757290715, 0.060724224581695019, -0.10766283796372011])
   assert approx_equal(gf.differences(), differences)
+  assert approx_equal(gf.significant_relative_errors(),
+    [0.0107212, 0.0005581, 0.0213236, 0.0169304, 0.0385142])
+  gabc = gf.gradients_w_r_t_abc(2, 00000, differences, 00000)
   assert approx_equal(
-    gf.gradients_w_r_t_abc(2, 00000, differences, 00000),
+    gabc,
     [-0.016525391425206391, 0.020055876723667564, -0.018754011379726425,
     0.0074465239375589107, 0.00054794635257838251, -0.0011194004809549143])
+  assert approx_equal(
+    gf.gradients_w_r_t_shifts(flex.double((0.1,0.2,0.3,0.4,0.5,0.6)), gabc),
+    [-0.0165254, 0.0200559, -0.0187540, 0.01656512, 0.0046488, -0.0158487])
   for include_constant_term in (00000, 0001):
     g5c = xray_scattering.wk1995("C")
     a = flex.double(g5c.a())

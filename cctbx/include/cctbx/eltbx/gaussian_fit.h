@@ -91,6 +91,27 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         return result;
       }
 
+      af::shared<double>
+      significant_relative_errors() const
+      {
+        using scitbx::fn::absolute;
+        af::shared<double> diffs_ = differences();
+        af::const_ref<double> diffs = diffs_.const_ref();
+        af::const_ref<double> target_values = target_values_.const_ref();
+        af::const_ref<double> sigmas = sigmas_.const_ref();
+        double zero(0);
+        af::shared<double> results(af::reserve(diffs.size()));
+        for(std::size_t i=0;i<diffs.size();i++) {
+          double result = std::max(zero, absolute(diffs[i]) - sigmas[i]);
+          if (result > 0) {
+            CCTBX_ASSERT(target_values[i] != 0);
+            result /= absolute(target_values[i]);
+          }
+          results.push_back(result);
+        }
+        return results;
+      }
+
       gaussian_fit
       apply_shifts(
         af::const_ref<double> const& shifts,
