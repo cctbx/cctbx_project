@@ -156,9 +156,23 @@ def exercise_neighbors_simple_pair_generator(space_group_info, n_elements=10,
     pair_generator = crystal.neighbors_simple_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=1.e6)
+    mps = asu_mappings.mappings()
+    sc = structure.scatterers()
+    uc = structure.unit_cell()
+    sg = structure.space_group()
+    col = matrix.col
     for pair_direct,pair in zip(pair_list, pair_generator):
       assert pair_direct[:3] == (pair.i_seq, pair.j_seq, pair.j_sym)
       assert approx_equal(pair_direct[3], pair.dist_sq)
+      mp_i = mps[pair.i_seq][0]
+      mp_j = mps[pair.j_seq][pair.j_sym]
+      site_i = (  col(sg(mp_i.i_sym_op())*sc[pair.i_seq].site)
+                + col(mp_i.unit_shifts())).elems
+      site_j = (  col(sg(mp_j.i_sym_op())*sc[pair.j_seq].site)
+                + col(mp_j.unit_shifts())).elems
+      assert approx_equal(uc.orthogonalize(site_i), mp_i.mapped_site())
+      assert approx_equal(uc.orthogonalize(site_j), mp_j.mapped_site())
+      assert approx_equal(uc.distance(site_i, site_j)**2, pair.dist_sq)
 
 def exercise_all(flags, space_group_info):
   exercise_float_asu(space_group_info)

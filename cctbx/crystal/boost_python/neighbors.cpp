@@ -38,6 +38,7 @@ namespace {
         .def("at_end", &w_t::at_end)
         .def("next", next)
         .def("__iter__", scitbx::boost_python::pass_through)
+        .def("restart", &w_t::restart)
       ;
     }
   };

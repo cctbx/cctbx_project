@@ -3,6 +3,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
+from scitbx.python_utils.misc import adopt_init_args
 import sys, os
 
 def check_cns_availability():
@@ -248,29 +249,53 @@ def script_xray_gradients(d_min, f_obs, structure, method):
   a("stop")
   return cns_input
 
-def script_vdw_energy(structure):
+class parameter_nbonds:
+
+  def __init__(self, ctofnb=7.5,
+                     ctonnb=6.5,
+                     cutnb=8.5,
+                     irexponent=2,
+                     nbxmod=5,
+                     rconst=100,
+                     repel=0,
+                     rexponent=2,
+                     tolerance=0.5,
+                     wmin=1.5):
+    adopt_init_args(self, locals())
+
+class parameter_nonb:
+
+  def __init__(self, epsilon=0.1,
+                     sigma=1.5,
+                     epsilon14=0.1,
+                     sigma14=1.3):
+    adopt_init_args(self, locals())
+
+def script_vdw_energy(structure, param_nbonds=None, param_nonb=None):
+  if (param_nbonds is None): param_nbonds = parameter_nbonds()
+  if (param_nonb is None): param_nonb = parameter_nonb()
   cns_input = xray_unit_cell(structure.unit_cell())
   a,e = cns_input.append,cns_input.extend
+  e(xray_symmetry(structure.space_group()))
   e(topology(structure.scatterers()))
   e(coordinates(structure.scatterers(), xyz_only=0001))
   a("""\
 param
   nbonds
-    cutnb=7.0
-    wmin=1.5
-    repel = 1.0
-    rexponent = 4
-    irexponent = 1
-    rconst = 16.0
-    tolerance = 0.5
-    nbxmod = 1
-    ctonnb=5.5
-    ctofnb=6.0
+    ctofnb=%(ctofnb).6g
+    ctonnb=%(ctonnb).6g
+    cutnb=%(cutnb).6g
+    irexponent=%(irexponent).6g
+    nbxmod=%(nbxmod).6g
+    rconst=%(rconst).6g
+    repel=%(repel).6g
+    rexponent=%(rexponent).6g
+    tolerance=%(tolerance).6g
+    wmin=%(wmin).6g
   end
-
-  ! chemical_type  vdw_eps vdw_radius  vdw_eps vdw_radius14""")
-  for scatterer in structure.scatterers():
-    a("  nonbonded %s 0.1 1.5 0.1 1.3" % scatterer.label)
+""" % vars(param_nbonds))
+  a("  nonb (all) %(epsilon).6g %(sigma).6g %(epsilon14).6g %(sigma14).6g" %
+    vars(param_nonb))
   a("""\
 
   nbonds
@@ -278,7 +303,7 @@ param
   end
 end
 
-flags exclude * include vdw end
+flags exclude * include vdw pvdw end
 
 energy end
 
@@ -286,11 +311,11 @@ distance
   from=(all)
   to=(all)
   cuton=0
-  cutoff=7
+  cutoff=%(cutnb).6g
   disp=print
 end
 
-stop""")
+stop""" % vars(param_nbonds))
   return cns_input
 
 def exercise(space_group_info,
@@ -312,7 +337,7 @@ def exercise(space_group_info,
   for f_obs in [f_calc, abs(f_calc)]:
     script_predict_methods_comparison(d_min, structure, f_obs)
     script_xray_gradients(d_min, f_obs, structure, method="direct")
-  script_vdw_energy(structure)
+  script_vdw_energy(structure=structure)
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001):

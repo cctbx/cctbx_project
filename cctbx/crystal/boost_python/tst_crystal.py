@@ -126,6 +126,17 @@ def exercise_direct_space_asu():
       assert index_pair.dist_sq == -1
     assert index_generator.at_end()
     assert index_pairs == expected_index_pairs
+    index_generator.restart()
+    if (len(expected_index_pairs) == 0):
+      assert index_generator.at_end()
+    else:
+      assert not index_generator.at_end()
+    index_pairs = []
+    for index_pair in index_generator:
+      index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
+      assert index_pair.dist_sq == -1
+    assert index_generator.at_end()
+    assert index_pairs == expected_index_pairs
     index_generator = crystal.neighbors_simple_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100)
