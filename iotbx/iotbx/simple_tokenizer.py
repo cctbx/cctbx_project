@@ -44,7 +44,7 @@ def where(file_name, line_number):
   if (len(result) == 0): return None
   return ", ".join(result)
 
-class word(object):
+class word: # FUTURE word(object)
 
   __slots__ = ["value", "quote_token", "line_number", "file_name"]
 
@@ -57,12 +57,6 @@ class word(object):
     self.quote_token = quote_token
     self.line_number = line_number
     self.file_name = file_name
-
-  def __getstate__(self):
-    return [getattr(self, name) for name in self.__slots__]
-
-  def __setstate__(self, state):
-    for i,value in enumerate(state): setattr(self, self.__slots__[i], value)
 
   def __str__(self):
     if (self.quote_token is None):
