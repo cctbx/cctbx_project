@@ -12,9 +12,9 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  void add_flex_complex_double(boost::python::module& m)
+  void wrap_flex_complex_double()
   {
-    flex_wrapper<std::complex<double> >::complex(m, "complex_double")
+    flex_wrapper<std::complex<double> >::complex("complex_double")
       .def_pickle(flex_pickle_single_buffered<std::complex<double>, 2*20>());
   }
 

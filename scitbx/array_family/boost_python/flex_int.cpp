@@ -12,9 +12,9 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  void add_flex_int(boost::python::module& m)
+  void wrap_flex_int()
   {
-    flex_wrapper<int>::integer(m, "int")
+    flex_wrapper<int>::integer("int")
       .def_pickle(flex_pickle_single_buffered<int, 12>());
   }
 

@@ -20,7 +20,7 @@
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
 #include <scitbx/array_family/boost_python/utils.h>
-#include <boost/python/module.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -582,9 +582,7 @@ namespace scitbx { namespace af { namespace boost_python {
     typedef boost::python::class_<f_t, flex_wrapper<ElementType> > class_f_t;
 
     static class_f_t
-    plain(
-      boost::python::module& m,
-      std::string const& python_name)
+    plain(std::string const& python_name)
     {
       using namespace boost::python;
 
@@ -599,17 +597,15 @@ namespace scitbx { namespace af { namespace boost_python {
       shared_flex_conversions<ElementType>();
       ref_1d_flex_conversions<ElementType>();
 
-      m.add(
-        class_<flex_items<ElementType> >((python_name+"_items").c_str(),
-          args<>())
-          .def_init(args<f_t const&>())
-          .def("__len__", &flex_items<ElementType>::size)
-          .def("__getitem__", &flex_items<ElementType>::getitem)
-      );
+      class_<flex_items<ElementType> >((python_name+"_items").c_str(),
+        args<>())
+        .def_init(args<f_t const&>())
+        .def("__len__", &flex_items<ElementType>::size)
+        .def("__getitem__", &flex_items<ElementType>::getitem)
+      ;
 
-      class_<f_t, flex_wrapper<ElementType> > py_flex(python_name.c_str(),
-        args<>());
-      py_flex
+      return class_f_t(python_name.c_str(),
+        args<>())
         .def_init(args<flex_grid<> const&>())
         .def_init(args<flex_grid<> const&, ElementType const&>())
         .def_init(args<std::size_t>())
@@ -657,29 +653,21 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("select", select)
         .def("shuffle", shuffle)
       ;
-      m.add(py_flex);
-
-      return py_flex;
     }
 
     static class_f_t
-    ordered(
-      boost::python::module& m,
-      std::string const& python_name)
+    ordered(std::string const& python_name)
     {
-      m
-        .def("order", order_a_a)
-        .def("order", order_a_s)
-      ;
-      return plain(m, python_name);
+      using namespace  boost::python;
+      def("order", order_a_a);
+      def("order", order_a_s);
+      return plain(python_name);
     }
 
     static class_f_t
-    logical(
-      boost::python::module& m,
-      std::string const& python_name)
+    logical(std::string const& python_name)
     {
-      return ordered(m, python_name)
+      return ordered(python_name)
         .def("__invert__", invert_a)
         .def("__and__", and_a_a)
         .def("__or__", or_a_a)
@@ -692,16 +680,13 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    numeric_common(
-      boost::python::module& m,
-      std::string const& python_name)
+    numeric_common(std::string const& python_name)
     {
-      m
-        .def("sum", sum_a)
-        .def("sum_sq", sum_sq_a)
-        .def("product", product_a)
-      ;
-      return plain(m, python_name)
+      using namespace  boost::python;
+      def("sum", sum_a);
+      def("sum_sq", sum_sq_a);
+      def("product", product_a);
+      return plain(python_name)
         .def("__neg__", neg_a)
         .def("__add__", add_a_a)
         .def("__sub__", sub_a_a)
@@ -723,21 +708,18 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    numeric_no_pow(
-      boost::python::module& m,
-      std::string const& python_name)
+    numeric_no_pow(std::string const& python_name)
     {
-      m
-        .def("order", order_a_a)
-        .def("order", order_a_s)
-        .def("abs", abs_a)
-        .def("pow2", pow2_a)
-        .def("min_index", min_index_a)
-        .def("max_index", max_index_a)
-        .def("min", min_a)
-        .def("max", max_a)
-      ;
-      return numeric_common(m, python_name)
+      using namespace  boost::python;
+      def("order", order_a_a);
+      def("order", order_a_s);
+      def("abs", abs_a);
+      def("pow2", pow2_a);
+      def("min_index", min_index_a);
+      def("max_index", max_index_a);
+      def("min", min_a);
+      def("max", max_a);
+      return numeric_common(python_name)
         .def("as_double", as_double)
         .def("__lt__", lt_a_a)
         .def("__gt__", gt_a_a)
@@ -751,44 +733,40 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    numeric(
-      boost::python::module& m,
-      std::string const& python_name)
+    numeric(std::string const& python_name)
     {
-      m
-        .def("pow", pow_a_s)
-        .def("fmod", fmod_a_s)
-        .def("atan2", atan2_a_a)
-        .def("acos", acos_a)
-        .def("cos", cos_a)
-        .def("tan", tan_a)
-        .def("asin", asin_a)
-        .def("cosh", cosh_a)
-        .def("tanh", tanh_a)
-        .def("atan", atan_a)
-        .def("exp", exp_a)
-        .def("sin", sin_a)
-        .def("fabs", fabs_a)
-        .def("log", log_a)
-        .def("sinh", sinh_a)
-        .def("ceil", ceil_a)
-        .def("floor", floor_a)
-        .def("log10", log10_a)
-        .def("sqrt", sqrt_a)
-        .def("mean", mean_a)
-        .def("mean_sq", mean_sq_a)
-        .def("mean_weighted", mean_weighted_a_a)
-        .def("mean_sq_weighted", mean_sq_weighted_a_a)
-      ;
-      return numeric_no_pow(m, python_name);
+      using namespace  boost::python;
+      def("pow", pow_a_s);
+      def("fmod", fmod_a_s);
+      def("atan2", atan2_a_a);
+      def("acos", acos_a);
+      def("cos", cos_a);
+      def("tan", tan_a);
+      def("asin", asin_a);
+      def("cosh", cosh_a);
+      def("tanh", tanh_a);
+      def("atan", atan_a);
+      def("exp", exp_a);
+      def("sin", sin_a);
+      def("fabs", fabs_a);
+      def("log", log_a);
+      def("sinh", sinh_a);
+      def("ceil", ceil_a);
+      def("floor", floor_a);
+      def("log10", log10_a);
+      def("sqrt", sqrt_a);
+      def("mean", mean_a);
+      def("mean_sq", mean_sq_a);
+      def("mean_weighted", mean_weighted_a_a);
+      def("mean_sq_weighted", mean_sq_weighted_a_a);
+      return numeric_no_pow(python_name);
     }
 
     static class_f_t
-    integer(
-      boost::python::module& m,
-      std::string const& python_name)
+    integer(std::string const& python_name)
     {
-      return numeric_no_pow(m, python_name)
+      using namespace  boost::python;
+      return numeric_no_pow(python_name)
         .def("__mod__", mod_a_a)
         .def("__mod__", mod_a_s)
         .def("__imod__", imod_a_s)
@@ -796,21 +774,18 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static class_f_t
-    complex(
-      boost::python::module& m,
-      std::string const& python_name)
+    complex(std::string const& python_name)
     {
-      m
-        .def("real", real_complex)
-        .def("imag", imag_complex)
-        .def("abs", abs_complex)
-        .def("arg", arg_complex_2)
-        .def("arg", arg_complex_1)
-        .def("norm", norm_complex)
-        .def("polar", polar_complex_3)
-        .def("polar", polar_complex_2)
-      ;
-      return numeric_common(m, python_name);
+      using namespace  boost::python;
+      def("real", real_complex);
+      def("imag", imag_complex);
+      def("abs", abs_complex);
+      def("arg", arg_complex_2);
+      def("arg", arg_complex_1);
+      def("norm", norm_complex);
+      def("polar", polar_complex_3);
+      def("polar", polar_complex_2);
+      return numeric_common(python_name);
     }
   };
 
