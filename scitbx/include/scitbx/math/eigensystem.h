@@ -73,14 +73,15 @@ namespace scitbx { namespace math { namespace eigensystem {
         }
       }
       // The matrix that will hold the results is initially = I.
-      for (std::size_t i=0; i< (n*n); i++) {
+      std::size_t i;
+      for (i=0; i< (n*n); i++) {
         *(eigenvectors+i) = 0.0;
       }
-      for (std::size_t i=0; i< (n*n); i += (n+1)) {
+      for (i=0; i< (n*n); i += (n+1)) {
         *(eigenvectors+i) = 1.0;
       }
       // Setup variables
-      std::size_t i, il, ilq, ilr, im, imq, imr, ind, iq;
+      std::size_t il, ilq, ilr, im, imq, imr, ind, iq;
       std::size_t j, k, km, l, ll, lm, lq, m, mm, mq;
       FloatType am, anorm, anrmx, cosx, cosx2, sincs, sinx, sinx2, thr, x, y;
       // Initial and final norms (anorm & anrmx).
