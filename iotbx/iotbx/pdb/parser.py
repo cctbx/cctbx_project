@@ -175,6 +175,28 @@ class pdb_record:
       except: self.raise_FormatError("Corrupt Z value.")
     else: self.z = None
 
+  def read_SCALEn(self):
+    #  1 -  6       Record name    "SCALEn"       n=1, 2, or 3
+    # 11 - 20       Real(10.6)     s[n][1]        Sn1
+    # 21 - 30       Real(10.6)     s[n][2]        Sn2
+    # 31 - 40       Real(10.6)     s[n][3]        Sn3
+    # 46 - 55       Real(10.5)     u[n]           Un
+    self.n = int(self.record_name[5])
+    try:
+      self.Sn1, self.Sn2, self.Sn3, self.Un = [float(self.raw[i:i+10])
+        for i in [10,20,30,45]]
+    except ValueError:
+      raise self.raise_FormatError()
+
+  def read_SCALE1(self):
+    self.read_SCALEn()
+
+  def read_SCALE2(self):
+    self.read_SCALEn()
+
+  def read_SCALE3(self):
+    self.read_SCALEn()
+
   def read_ATOM_01_27(self):
     #  7 - 11  Integer       serial        Atom serial number.
     # 13 - 16  Atom          name          Atom name.
