@@ -115,13 +115,13 @@ O  0.0 0.0 0.0
   assert all_entries.get("mixcon1").connectivities() == [4, None]
   assert all_entries.get("mixcon2").connectivities() == [4, None, None]
   try:
-    all_entries.get("mixcon1").connectivities(all_or_nothing=0001)
+    all_entries.get("mixcon1").connectivities(all_or_nothing=True)
   except AssertionError, e:
     assert str(e) == "Tag mixcon1: 1 atom is missing the bond count."
   else:
     raise AssertionError("Exception expected.")
   try:
-    all_entries.get("mixcon2").connectivities(all_or_nothing=0001)
+    all_entries.get("mixcon2").connectivities(all_or_nothing=True)
   except AssertionError, e:
     assert str(e) == "Tag mixcon2: 2 atoms are missing the bond count."
   else:

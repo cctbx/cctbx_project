@@ -27,7 +27,7 @@ class setup_hexagonal_sampling:
     self.rational_asu = expanded_symmetry.space_group_info().direct_space_asu()
     self.rational_asu.add_planes(
       normal_directions=search_symmetry.continuous_shifts(),
-      both_directions=0001)
+      both_directions=True)
     self.float_asu=self.rational_asu.define_metric(
       unit_cell=expanded_symmetry.unit_cell()).as_float_asu()
     self.continuous_shift_flags=search_symmetry.continuous_shift_flags()
@@ -38,7 +38,7 @@ def hexagonal_sampling(crystal_symmetry,
                        buffer_thickness=None,
                        all_twelve_neighbors=None):
   if (buffer_thickness is None): buffer_thickness = -1
-  if (all_twelve_neighbors is None): all_twelve_neighbors = 00000
+  if (all_twelve_neighbors is None): all_twelve_neighbors = False
   s = setup_hexagonal_sampling(
     crystal_symmetry=crystal_symmetry,
     symmetry_flags=symmetry_flags)

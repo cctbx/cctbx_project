@@ -1,13 +1,13 @@
 import clipper
 from iotbx import reflection_file_converter
-from cctbx import utils
 from cctbx.array_family import flex
+import scitbx.math
 from stdlib import math
 import sys
 
 def exercise_Compute_phifom_from_abcd_interface(args):
   miller_arrays = reflection_file_converter.run(
-    args=args, simply_return_all_miller_arrays=0001)
+    args=args, simply_return_all_miller_arrays=True)
   complex_input = None
   for miller_array in miller_arrays:
     if (miller_array.is_complex()):
@@ -40,7 +40,7 @@ def exercise_Compute_phifom_from_abcd_interface(args):
       fom_clipper = phi_fom.figures_of_merit()
       fom_deltas = fom_input.data() - fom_clipper
       if (fom_input is not None):
-        perm = flex.sort_permutation(flex.abs(fom_deltas), reverse=0001)
+        perm = flex.sort_permutation(flex.abs(fom_deltas), reverse=True)
         fom_deltas_sorted = fom_deltas.select(perm)
         fom_clipper_sorted = fom_clipper.select(perm)
         fom_input_sorted = fom_input.data().select(perm)
@@ -61,11 +61,12 @@ def exercise_Compute_phifom_from_abcd_interface(args):
           print
         print
       if (complex_input is not None):
-        phi_input = complex_input.phases(deg=0001).data()
+        phi_input = complex_input.phases(deg=True).data()
         phi_deltas = flex.double()
         for phi1,phi2 in zip(phi_input, phi_clipper):
-          phi_deltas.append(utils.signed_phase_error(phi1, phi2, deg=0001))
-        perm = flex.sort_permutation(flex.abs(phi_deltas), reverse=0001)
+          phi_deltas.append(
+            scitbx.math.signed_phase_error(phi1, phi2, deg=True))
+        perm = flex.sort_permutation(flex.abs(phi_deltas), reverse=True)
         phi_deltas_sorted = phi_deltas.select(perm)
         phi_clipper_sorted = phi_clipper.select(perm)
         phi_input_sorted = phi_input.select(perm)

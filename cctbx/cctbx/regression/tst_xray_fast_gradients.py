@@ -19,16 +19,16 @@ def randomize_gradient_flags(gradient_flags, anomalous_flag,
                              thresholds=(2/3., 1/3.)):
   r = random.random()
   if (r >= thresholds[0]):
-    gradient_flags = xray.structure_factors.gradient_flags(default=0001)
+    gradient_flags = xray.structure_factors.gradient_flags(default=True)
   elif (r >= thresholds[1]):
     gradient_flags = gradient_flags.copy()
-    if (random.random() > 0.5): gradient_flags.site = 0001
-    if (random.random() > 0.5): gradient_flags.u_iso = 0001
-    if (random.random() > 0.5): gradient_flags.u_aniso = 0001
-    if (random.random() > 0.5): gradient_flags.occupancy = 0001
-    if (random.random() > 0.5): gradient_flags.fp = 0001
+    if (random.random() > 0.5): gradient_flags.site = True
+    if (random.random() > 0.5): gradient_flags.u_iso = True
+    if (random.random() > 0.5): gradient_flags.u_aniso = True
+    if (random.random() > 0.5): gradient_flags.occupancy = True
+    if (random.random() > 0.5): gradient_flags.fp = True
     if (anomalous_flag):
-      if (random.random() > 0.5): gradient_flags.fdp = 0001
+      if (random.random() > 0.5): gradient_flags.fdp = True
   return gradient_flags
 
 class resampling(crystal.symmetry):
@@ -59,7 +59,7 @@ class resampling(crystal.symmetry):
     del miller_set
     del u_base
     del b_base
-    adopt_init_args(self, locals(), hide=0001)
+    adopt_init_args(self, locals(), hide=True)
     self._crystal_gridding = None
     self._crystal_gridding_tags = None
     self._rfft = None
@@ -89,7 +89,7 @@ class resampling(crystal.symmetry):
   def max_prime(self):
     return self._max_prime
 
-  def crystal_gridding(self, assert_shannon_sampling=0001):
+  def crystal_gridding(self, assert_shannon_sampling=True):
     if (self._crystal_gridding is None):
       self._crystal_gridding = maptbx.crystal_gridding(
         unit_cell=self.unit_cell(),
@@ -102,7 +102,7 @@ class resampling(crystal.symmetry):
         assert_shannon_sampling=assert_shannon_sampling)
     return self._crystal_gridding
 
-  def crystal_gridding_tags(self, assert_shannon_sampling=0001):
+  def crystal_gridding_tags(self, assert_shannon_sampling=True):
     if (self._crystal_gridding_tags is None):
       self._crystal_gridding_tags = self.crystal_gridding(
         assert_shannon_sampling).tags()
@@ -181,7 +181,7 @@ class resampling(crystal.symmetry):
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,
       n_parameters=n_parameters,
-      sampled_density_must_be_positive=00000)
+      sampled_density_must_be_positive=False)
     if (0 or verbose):
       print "max_sampling_box_edges:", result.max_sampling_box_edges()
       print "exp_table_size:", result.exp_table_size()
@@ -195,10 +195,10 @@ class judge:
     s = ""
     r = (reference-other)/max(abs(top), min(abs(reference), abs(other)))
     s += " %.5f " % r + label
-    self.is_bad = 00000
+    self.is_bad = False
     if (abs(r) > 0.03):
       s += " very large mismatch"
-      self.is_bad = 0001
+      self.is_bad = True
     elif (abs(r) > 0.01):
       s += " large mismatch"
     self.s = s.lstrip()
@@ -224,9 +224,9 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     sh.structure_shifted.show_summary().show_scatterers()
     print
   ls = xray.targets_least_squares_residual(
-    f_obs.data(), sh.f_calc.data(), 0001, 1)
+    f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
-    xray.structure_factors.gradient_flags(site=0001),
+    xray.structure_factors.gradient_flags(site=True),
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
@@ -273,9 +273,9 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     sh.structure_shifted.show_summary().show_scatterers()
     print
   ls = xray.targets_least_squares_residual(
-    f_obs.data(), sh.f_calc.data(), 0001, 1)
+    f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
-    xray.structure_factors.gradient_flags(u_iso=0001),
+    xray.structure_factors.gradient_flags(u_iso=True),
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
@@ -323,9 +323,9 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
     sh.structure_shifted.show_summary().show_scatterers()
     print
   ls = xray.targets_least_squares_residual(
-    f_obs.data(), sh.f_calc.data(), 0001, 1)
+    f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
-    xray.structure_factors.gradient_flags(u_aniso=0001),
+    xray.structure_factors.gradient_flags(u_aniso=True),
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
@@ -379,9 +379,9 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     sh.structure_shifted.show_summary().show_scatterers()
     print
   ls = xray.targets_least_squares_residual(
-    f_obs.data(), sh.f_calc.data(), 0001, 1)
+    f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
-    xray.structure_factors.gradient_flags(occupancy=0001),
+    xray.structure_factors.gradient_flags(occupancy=True),
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
@@ -426,9 +426,9 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     sh.structure_shifted.show_summary().show_scatterers()
     print
   ls = xray.targets_least_squares_residual(
-    f_obs.data(), sh.f_calc.data(), 0001, 1)
+    f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
-    xray.structure_factors.gradient_flags(fp=0001),
+    xray.structure_factors.gradient_flags(fp=True),
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
@@ -473,9 +473,9 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     sh.structure_shifted.show_summary().show_scatterers()
     print
   ls = xray.targets_least_squares_residual(
-    f_obs.data(), sh.f_calc.data(), 0001, 1)
+    f_obs.data(), sh.f_calc.data(), True, 1)
   gradient_flags = randomize_gradient_flags(
-    xray.structure_factors.gradient_flags(fdp=0001),
+    xray.structure_factors.gradient_flags(fdp=True),
     f_obs.anomalous_flag())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
@@ -515,7 +515,7 @@ def shift_all(structure_ideal, f_obs, anomalous_flag, anisotropic_flag):
     sh = shifted_fdp(None, sh.structure_shifted, 0, 2)
   sh = shifted_fp(f_obs, sh.structure_shifted, 0, -0.2)
   ls = xray.targets_least_squares_residual(
-    f_obs.data(), sh.f_calc.data(), 0001, 1)
+    f_obs.data(), sh.f_calc.data(), True, 1)
   return sh, ls
 
 def exercise_packed(structure_ideal, f_obs,
@@ -556,7 +556,7 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     miller_set=f_obs,
     quality_factor=100000,
     wing_cutoff=1.e-10)
-  gradient_flags=xray.structure_factors.gradient_flags(default=0001)
+  gradient_flags=xray.structure_factors.gradient_flags(default=True)
   if (random.random() > 0.5):
     n_parameters = 0
   else:
@@ -619,10 +619,10 @@ def run_one(space_group_info, n_elements=4, volume_per_atom=1000, d_min=2,
     random_f_prime_scale=random_f_prime_scale,
     random_f_double_prime=anomalous_flag,
     anisotropic_flag=anisotropic_flag,
-    random_u_iso=0001,
+    random_u_iso=True,
     random_u_iso_scale=.3,
     random_u_cart_scale=.3,
-    random_occupancy=0001)
+    random_occupancy=True)
   if (random.random() < 0.5):
     assign_custom_gaussians(structure_ideal, negative_a=random.random()<0.5)
   if (0 or verbose):

@@ -32,10 +32,10 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     elements=["Si"]*n_elements,
     volume_per_atom=200,
     min_distance=3.,
-    general_positions_only=00000)
+    general_positions_only=False)
   miller_set_f_obs = miller.build_set(
     crystal_symmetry=structure,
-    anomalous_flag=00000,
+    anomalous_flag=False,
     d_min=d_min)
   f_obs = miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
@@ -58,7 +58,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   assert grid_tags.n_grid_misses() == 0
   assert grid_tags.verify(real_map)
   rms = []
-  for interpolate in (00000,0001):
+  for interpolate in (False,True):
     peak_list = maptbx.peak_list(
       data=real_map,
       tags=grid_tags.tag_array(),
@@ -71,7 +71,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     cluster_analysis = maptbx.peak_cluster_analysis(
       peak_list=peak_list,
       special_position_settings=structure,
-      general_positions_only=00000,
+      general_positions_only=False,
       effective_resolution=d_min,
       min_cross_distance=2,
       max_clusters=n_elements).all()

@@ -56,14 +56,14 @@ class reader:
   def sigmas(self):
     return self._sigmas
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=self.indices(),
-      anomalous_flag=0001)
+      anomalous_flag=True)
     return [miller.array(
       miller_set=miller_set,
       data=self.data(),

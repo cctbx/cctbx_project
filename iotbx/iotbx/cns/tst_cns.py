@@ -13,10 +13,10 @@ def exercise_sdb(verbose=0):
     elements=["N","C","C","O"]*2,
     volume_per_atom=500,
     min_distance=2.,
-    general_positions_only=00000,
-    random_u_iso=0001)
+    general_positions_only=False,
+    random_u_iso=True)
   f_abs = abs(structure.structure_factors(
-    anomalous_flag=00000, d_min=2, algorithm="direct").f_calc())
+    anomalous_flag=False, d_min=2, algorithm="direct").f_calc())
   sdb_out = structure.as_cns_sdb_file(
     file="foo.sdb",
     description="random_structure",

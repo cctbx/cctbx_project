@@ -24,8 +24,8 @@ class detect_binary_file:
         if (self.monitor_initial == 0):
           if (  self.n_non_ascii_characters
               > self.n_ascii_characters * self.max_fraction_non_ascii):
-            self.status = 0001
+            self.status = True
           else:
-            self.status = 00000
+            self.status = False
           break
     return self.status

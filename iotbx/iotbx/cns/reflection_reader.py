@@ -87,7 +87,7 @@ class cns_reciprocal_space_object:
       self.data = flex.double()
     elif (type == "complex"):
       self.data = flex.complex_double()
-      self.has_non_zero_phases = 00000
+      self.has_non_zero_phases = False
     elif (type == "integer"):
       self.data = flex.int()
     else:
@@ -280,9 +280,9 @@ class CNS_xray_reflection_Reader(CNS_input):
                 except ValueError:
                   reuse_word = 1 # declared complex but only real part given
                 else:
-                  value = complex_math.polar((value, phase), deg=0001)
+                  value = complex_math.polar((value, phase), deg=True)
                   if (phase != 0):
-                    rso.has_non_zero_phases = 0001
+                    rso.has_non_zero_phases = True
           rso.append(current_hkl, value)
           self.level = self.level - 1
     except EOFError:
@@ -357,7 +357,7 @@ class cns_reflection_file:
         result.set_observation_type_xray_intensity()
     return result
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry(

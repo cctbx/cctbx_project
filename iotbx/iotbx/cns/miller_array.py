@@ -28,7 +28,7 @@ def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
   elif (self.is_complex()):
     print >> f, "DECLare NAME=F  DOMAin=RECIprocal TYPE=COMPLEX END"
     a = flex.abs(self.data())
-    p = flex.arg(self.data(), 0001)
+    p = flex.arg(self.data(), True)
     for i,h in self.indices().items():
       print >> f, "INDEx %d %d %d" % h,
       print >> f, "F=%.6g %.6g" % (a[i], p[i])

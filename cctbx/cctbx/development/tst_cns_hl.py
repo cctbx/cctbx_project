@@ -79,7 +79,7 @@ def write_cns_input(fcalc_array, hl):
   l("  reflection")
   for i,h in enumerate(fcalc_array.indices()):
     l(  ("    index %d %d %d" % h)
-      + (" fcalc=%.6g %.6g\n" % abs_arg(fcalc_array.data()[i], deg=0001))
+      + (" fcalc=%.6g %.6g\n" % abs_arg(fcalc_array.data()[i], deg=True))
       + (" pa=%.6g pb=%.6g pc=%.6g pd=%.6g" % hl[i]))
   l("  end")
   l("  declare name=pi domain=reciprocal type=complex end")
@@ -110,12 +110,12 @@ class read_reflection_arrays:
     assert not miller.match_indices(
       self.miller_indices, self.pi.indices).have_singles()
 
-def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
+def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   sg_fcalc = random_structure.xray_structure(
     space_group_info,
     elements=("N", "C", "C", "O"),
-    random_u_iso=0001,
-    random_occupancy=0001
+    random_u_iso=True,
+    random_occupancy=True
     ).structure_factors(
       anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc()
   sg_hl = generate_random_hl(sg_fcalc).data()
@@ -130,7 +130,7 @@ def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
   verify(sg_fcalc, sg_hl, sg_cns, p1_cns)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
 def run():

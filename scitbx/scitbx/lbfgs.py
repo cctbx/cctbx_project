@@ -18,7 +18,7 @@ class core_parameters:
 
 class termination_parameters:
 
-  def __init__(self, traditional_convergence_test=0001,
+  def __init__(self, traditional_convergence_test=True,
                      traditional_convergence_test_eps=1.e-5,
                      min_iterations=0,
                      max_iterations=None,
@@ -27,12 +27,12 @@ class termination_parameters:
 
 class exception_handling_parameters:
 
-  def __init__(self, ignore_line_search_failed_rounding_errors=0001,
-                     ignore_line_search_failed_step_at_lower_bound=00000,
-                     ignore_line_search_failed_step_at_upper_bound=00000,
-                     ignore_line_search_failed_maxfev=00000,
-                     ignore_line_search_failed_xtol=00000,
-                     ignore_search_direction_not_descent=00000):
+  def __init__(self, ignore_line_search_failed_rounding_errors=True,
+                     ignore_line_search_failed_step_at_lower_bound=False,
+                     ignore_line_search_failed_step_at_upper_bound=False,
+                     ignore_line_search_failed_maxfev=False,
+                     ignore_line_search_failed_xtol=False,
+                     ignore_search_direction_not_descent=False):
     adopt_init_args(self, locals())
 
   def filter(self, msg, n, x, g):
@@ -121,9 +121,9 @@ def run_c_plus_plus(target_evaluator,
     if (error_classification > 0):
       raise
     elif (error_classification < 0):
-      minimizer.is_unusual_error = 0001
+      minimizer.is_unusual_error = True
     else:
-      minimizer.is_unusual_error = 00000
+      minimizer.is_unusual_error = False
   else:
     minimizer.error = None
     minimizer.is_unusual_error = None
@@ -175,7 +175,7 @@ def run(target_evaluator,
         termination_params=None,
         core_params=None,
         exception_handling_params=None,
-        use_fortran=00000):
+        use_fortran=False):
   if (use_fortran):
     return run_fortran(target_evaluator, termination_params, core_params)
   else:

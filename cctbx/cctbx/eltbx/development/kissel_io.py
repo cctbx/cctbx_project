@@ -17,18 +17,18 @@ class table:
   def itvc_sampling_selection(self):
     xi = cctbx.eltbx.gaussian_fit.international_tables_stols
     xk = self.x
-    selection = flex.bool(xk.size(), 00000)
+    selection = flex.bool(xk.size(), False)
     i_kissel = 0
     for i_itvc in xrange(xi.size()):
       while (xk[i_kissel] < xi[i_itvc]):
         i_kissel += 1
       if (xk[i_kissel] == xi[i_itvc]):
-        selection[i_kissel] = 0001
+        selection[i_kissel] = True
       elif (i_kissel > 0 and xk[i_kissel-1] < xi[i_itvc] < xk[i_kissel]):
         if (xi[i_itvc] - xk[i_kissel-1] < xk[i_kissel] - xi[i_itvc]):
-          selection[i_kissel-1] = 0001
+          selection[i_kissel-1] = True
         else:
-          selection[i_kissel] = 0001
+          selection[i_kissel] = True
     return selection
 
 def read_table(file_name):
@@ -53,7 +53,7 @@ def read_table(file_name):
         line = lf.next()
         assert not lf.eof
         if (line == " *** END OF DATA ***"):
-          lf.eof = 0001
+          lf.eof = True
           break
         vals_str = line.split()
         for val_str in vals_str: assert len(val_str) == 13
@@ -77,7 +77,7 @@ def main():
   for file_name in args:
     tab = read_table(file_name)
     if (tab.element == "Es"): continue
-    wk = xray_scattering.wk1995(tab.element, 0001).fetch()
+    wk = xray_scattering.wk1995(tab.element, True).fetch()
     sel = tab.x <= cutoff
     tab_x = tab.x.select(sel)
     tab_y = tab.y.select(sel)

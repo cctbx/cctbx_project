@@ -23,7 +23,7 @@ def exercise_fast_nv1995():
   f = translation_search.fast_nv1995(
     gridding=(20,20,36),
     space_group=space_group,
-    anomalous_flag=00000,
+    anomalous_flag=False,
     miller_indices_f_obs=miller_indices_f_obs,
     f_obs=flex.double((1,2)),
     f_part=flex.complex_double(),
@@ -36,7 +36,7 @@ def exercise_fast_terms():
   miller_indices_f_obs = flex.miller_index(((3,4,5),(4,5,6)))
   f = translation_search.fast_terms(
     gridding=(20,20,36),
-    anomalous_flag=00000,
+    anomalous_flag=False,
     miller_indices_p1_f_calc=flex.miller_index(((1,2,3),)),
     p1_f_calc=flex.complex_double((12,)))
   assert f.summation(
@@ -45,7 +45,7 @@ def exercise_fast_terms():
     m=flex.double((1,2)),
     f_obs=flex.double((1,2)),
     f_part=None,
-    squared_flag=00000).fft().accu_real_copy().all() == (20,20,36)
+    squared_flag=False).fft().accu_real_copy().all() == (20,20,36)
 
 def run():
   exercise_symmetry_flags()

@@ -114,7 +114,7 @@ class _linear_regression(boost.python.injector, ext.linear_regression):
     print >> f, "y_intercept:", self.y_intercept()
     print >> f, "slope:", self.slope()
 
-def exercise_triple(flex_triple, flex_order=None, as_double=00000):
+def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
   import pickle
   a = flex_triple()

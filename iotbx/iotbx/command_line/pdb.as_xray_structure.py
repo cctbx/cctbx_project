@@ -12,12 +12,12 @@ def run(args):
     .enable_symmetry_comprehensive()
     .option(None, "--force_symmetry",
       action="store_true",
-      default=00000,
+      default=False,
       dest="force_symmetry",
       help="symmetry on command line is stronger than symmetry found in files")
     .option("-v", "--verbose",
       action="store_true",
-      default=00000,
+      default=False,
       dest="verbose",
       help="show scatterers")
     .option(None, "--pickle",

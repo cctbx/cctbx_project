@@ -21,9 +21,9 @@ def exercise(
     volume_per_atom=200,
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
-    random_u_iso=0001,
+    random_u_iso=True,
     anisotropic_flag=anisotropic_flag,
-    random_occupancy=0001)
+    random_occupancy=True)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -31,7 +31,7 @@ def exercise(
   structure_p1 = structure.expand_to_p1()
   assert structure_p1.scatterers()[0].label == "Se1"
   assert structure_p1.scatterers()[-1].label == ("Se%d" % n_elements)
-  structure_p1 = structure.expand_to_p1(append_number_to_labels=0001)
+  structure_p1 = structure.expand_to_p1(append_number_to_labels=True)
   if (0 or verbose):
     structure_p1.show_summary().show_scatterers()
   l,i = structure_p1.scatterers()[0].label.split("_")
@@ -56,7 +56,7 @@ def exercise(
   if (0 or verbose):
     print "correlation:", c.coefficient()
   assert c.coefficient() > 0.999
-  for phase_deg in (00000, 0001):
+  for phase_deg in (False, True):
     phases = f_calc.arg(phase_deg)
     phases_p1 = phases.expand_to_p1(phase_deg)
     assert flex.order(miller_set_p1.indices(), phases_p1.indices()) == 0
@@ -74,12 +74,12 @@ def exercise(
   assert c.coefficient() > 0.999
 
 def run_call_back(flags, space_group_info):
-  use_primitive_setting_flags = [00000]
+  use_primitive_setting_flags = [False]
   if (space_group_info.group().conventional_centring_type_symbol() != "P"):
-    use_primitive_setting_flags.append(0001)
+    use_primitive_setting_flags.append(True)
   for use_primitive_setting in use_primitive_setting_flags:
-    for anomalous_flag in (00000, 0001)[:]: #SWITCH
-      for anisotropic_flag in (00000, 0001)[:]: #SWITCH
+    for anomalous_flag in (False, True)[:]: #SWITCH
+      for anisotropic_flag in (False, True)[:]: #SWITCH
         exercise(
           space_group_info=space_group_info,
           use_primitive_setting=use_primitive_setting,

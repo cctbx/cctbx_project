@@ -31,14 +31,14 @@ class direct_space_asu:
       print "    &", facet
     return self
 
-  def is_inside(self, point, volume_only=00000):
+  def is_inside(self, point, volume_only=False):
     if (volume_only):
       for facet in self.facets:
-        if (facet.evaluate(point) < 0): return 00000
+        if (facet.evaluate(point) < 0): return False
     else:
       for facet in self.facets:
-        if (not facet.is_inside(point)): return 00000
-    return 0001
+        if (not facet.is_inside(point)): return False
+    return True
 
   def in_which_facets(self, point):
     result = []
@@ -66,7 +66,7 @@ class direct_space_asu:
             c = m.co_factor_matrix_transposed() / d
             b = matrix.col([-facets[i0].c,-facets[i1].c,-facets[i2].c])
             vertex = c * b
-            if (self.is_inside(vertex, volume_only=0001)):
+            if (self.is_inside(vertex, volume_only=True)):
               result[vertex.elems] = 0
     return result.keys()
 
@@ -94,7 +94,7 @@ class direct_space_asu:
       n=normal_direction,
       c=-(matrix.col(normal_direction).dot(matrix.col(point)))))
 
-  def add_planes(self, normal_directions, point=None, both_directions=00000):
+  def add_planes(self, normal_directions, point=None, both_directions=False):
     if (point is None):
       point = self.box_min()
     for normal_direction in normal_directions:

@@ -96,7 +96,7 @@ class any_reflection_file:
   def file_content(self):
     return self._file_content
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000):
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False):
     if (self.file_type() is None):
       return []
     if (self.file_type() == "cctbx.miller.array"):
@@ -111,7 +111,7 @@ class any_reflection_file:
 
 def collect_arrays(file_names,
                    crystal_symmetry, force_symmetry,
-                   discard_arrays=00000,
+                   discard_arrays=False,
                    verbose=2,
                    report_out=None):
   if (report_out is None):
@@ -150,7 +150,7 @@ def run(args):
     .enable_symmetry_comprehensive()
     .option(None, "--weak_symmetry",
       action="store_true",
-      default=00000,
+      default=False,
       dest="weak_symmetry",
       help="symmetry on command line is weaker than symmetry found in files")
     .option(None, "--pickle",

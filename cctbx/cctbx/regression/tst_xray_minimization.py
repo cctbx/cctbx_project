@@ -12,13 +12,13 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     space_group_info,
     elements=("Se",)*n_elements,
     volume_per_atom=200,
-    random_u_iso=0001,
-    random_occupancy=0001)
+    random_u_iso=True,
+    random_occupancy=True)
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
     algorithm="direct",
-    cos_sin_table=0001).f_calc())
+    cos_sin_table=True).f_calc())
   if (0 or verbose):
     print "structure_ideal:"
     structure_ideal.show_summary().show_scatterers()
@@ -58,7 +58,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   f_final = abs(f_obs.structure_factors_from_scatterers(
     xray_structure=structure_shake,
     algorithm="direct",
-    cos_sin_table=0001).f_calc())
+    cos_sin_table=True).f_calc())
   c = flex.linear_correlation(f_obs.data(), f_final.data())
   assert c.is_well_defined()
   if (0 or verbose):
@@ -73,7 +73,7 @@ def run_call_back(flags, space_group_info):
         site=(i_options % 2),
         u_iso=(i_options/2 % 2),
         occupancy=(i_options/4 % 2))
-      for anomalous_flag in (00000, 0001)[:]: #SWITCH
+      for anomalous_flag in (False, True)[:]: #SWITCH
         exercise(target_functor, space_group_info, anomalous_flag,
                  gradient_flags, verbose=flags.Verbose)
 

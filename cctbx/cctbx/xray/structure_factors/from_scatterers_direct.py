@@ -9,14 +9,14 @@ class from_scatterers_direct(managed_calculation_base):
   def __init__(self, xray_structure,
                      miller_set,
                      manager=None,
-                     cos_sin_table=00000):
+                     cos_sin_table=False):
     managed_calculation_base.__init__(self, manager,xray_structure,miller_set)
     timer = user_plus_sys_time()
     if (manager is not None):
       cos_sin_table = manager.cos_sin_table()
-    if (cos_sin_table == 0001):
+    if (cos_sin_table == True):
       cos_sin_table = default_cos_sin_table
-    elif (cos_sin_table == 00000):
+    elif (cos_sin_table == False):
       cos_sin_table = None
     if (cos_sin_table is None):
       self._results = ext.structure_factors_direct(

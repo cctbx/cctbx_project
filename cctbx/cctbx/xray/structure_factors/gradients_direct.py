@@ -13,15 +13,15 @@ class gradients_direct(gradients_base):
                      gradient_flags,
                      n_parameters,
                      manager=None,
-                     cos_sin_table=00000):
+                     cos_sin_table=False):
     gradients_base.__init__(self, manager, xray_structure, miller_set)
     self._d_target_d_f_calc = d_target_d_f_calc
     timer = user_plus_sys_time()
     if (manager is not None):
       cos_sin_table = manager.cos_sin_table()
-    if (cos_sin_table == 0001):
+    if (cos_sin_table == True):
       cos_sin_table = default_cos_sin_table
-    elif (cos_sin_table == 00000):
+    elif (cos_sin_table == False):
       cos_sin_table = None
     if (cos_sin_table is None):
       self._results = ext.structure_factors_gradients_direct(
@@ -48,8 +48,8 @@ class gradients_direct(gradients_base):
       manager.estimate_time_direct.register(
         xray_structure.scatterers().size() * miller_set.indices().size(),
         timer.elapsed())
-    self.d_target_d_site_cart_was_used = 00000
-    self.d_target_d_u_cart_was_used = 00000
+    self.d_target_d_site_cart_was_used = False
+    self.d_target_d_u_cart_was_used = False
 
   def d_target_d_site_frac(self):
     return self.check_size(self._results.d_target_d_site_frac())
@@ -57,7 +57,7 @@ class gradients_direct(gradients_base):
   def d_target_d_site_cart(self):
     if (self.d_target_d_site_cart_was_used):
       raise RuntimeError(expensive_function_call_message)
-    self.d_target_d_site_cart_was_used = 0001
+    self.d_target_d_site_cart_was_used = True
     return self.d_target_d_site_frac() \
          * self.xray_structure().unit_cell().fractionalization_matrix()
 
@@ -67,6 +67,6 @@ class gradients_direct(gradients_base):
   def d_target_d_u_cart(self):
     if (self.d_target_d_u_cart_was_used):
       raise RuntimeError(expensive_function_call_message)
-    self.d_target_d_u_cart_was_used = 0001
+    self.d_target_d_u_cart_was_used = True
     return adptbx.grad_u_star_as_u_cart(
       self.xray_structure().unit_cell(), self.d_target_d_u_star())

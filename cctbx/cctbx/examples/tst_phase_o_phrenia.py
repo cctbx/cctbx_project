@@ -9,7 +9,7 @@ def exercise(space_group_info, n_scatterers=1, d_min=2, verbose=0):
     elements=["Hg"]*n_scatterers,
     volume_per_atom=500,
     min_distance=2.,
-    general_positions_only=0001)
+    general_positions_only=True)
   if (1 or verbose):
     structure.show_summary().show_scatterers()
   reduced_peaks = phase_o_phrenia.calculate_exp_i_two_phi_peaks(

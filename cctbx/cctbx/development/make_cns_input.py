@@ -37,7 +37,7 @@ def topology(scatterers):
   a("")
   return cns_input
 
-def coordinates(scatterers, xyz_only=00000):
+def coordinates(scatterers, xyz_only=False):
   cns_input = []
   a = cns_input.append
   resid = 1
@@ -278,7 +278,7 @@ def script_vdw_energy(structure, param_nbonds=None, param_nonb=None):
   a,e = cns_input.append,cns_input.extend
   e(xray_symmetry(structure.space_group()))
   e(topology(structure.scatterers()))
-  e(coordinates(structure.scatterers(), xyz_only=0001))
+  e(coordinates(structure.scatterers(), xyz_only=True))
   a("""\
 param
   nbonds
@@ -323,7 +323,7 @@ stop""" % vars(param_nbonds))
   return cns_input
 
 def exercise(space_group_info,
-             anomalous_flag=00000,
+             anomalous_flag=False,
              d_min=2.,
              verbose=0):
   structure = random_structure.xray_structure(
@@ -331,8 +331,8 @@ def exercise(space_group_info,
     elements=("N", "C", "C", "O"),
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
-    random_u_iso=0001,
-    random_occupancy=0001)
+    random_u_iso=True,
+    random_occupancy=True)
   if (0 or verbose):
     structure.show_summary()
   f_calc = structure.structure_factors(
@@ -344,7 +344,7 @@ def exercise(space_group_info,
   script_vdw_energy(structure=structure)
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     exercise(space_group_info, anomalous_flag,
              verbose=flags.Verbose)
 

@@ -5,7 +5,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from stdlib import math
 
-def euler_angles_as_matrix(angles, deg=00000):
+def euler_angles_as_matrix(angles, deg=False):
   if (deg):
     angles = [a*math.pi/180 for a in angles]
   c = [math.cos(a) for a in angles]

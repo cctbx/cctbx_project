@@ -79,8 +79,8 @@ def exercise_flex_grid():
   g.set_focus((3,-9,5))
   assert g.has_focus()
   assert g.focus() == (3,-9,5)
-  assert g.focus(00000) == (2,-10,4)
-  g.set_focus((3,-9,5), 00000)
+  assert g.focus(False) == (2,-10,4)
+  g.set_focus((3,-9,5), False)
   assert g.focus() == (4,-8,6)
   assert not g.is_0_based()
   assert g.is_padded()
@@ -355,31 +355,31 @@ def exercise_select():
       assert a.next_permutation() == (expected != [3, 2, 1])
   a = flex.bool((0,1,0,1,1))
   assert tuple(a.iselection()) == (1,3,4)
-  assert tuple(a.iselection(test_value=0001)) == (1,3,4)
-  assert tuple(a.iselection(test_value=00000)) == (0,2)
+  assert tuple(a.iselection(test_value=True)) == (1,3,4)
+  assert tuple(a.iselection(test_value=False)) == (0,2)
   a = flex.bool((0,0,0,0,0))
-  assert tuple(a.iselection(00000)) == (0,1,2,3,4)
-  assert tuple(a.iselection(0001)) == ()
+  assert tuple(a.iselection(False)) == (0,1,2,3,4)
+  assert tuple(a.iselection(True)) == ()
   from scitbx import stl
   import scitbx.stl.vector
   isel = stl.vector.unsigned([1,3])
   a = flex.bool(size=5, iselection=isel)
-  assert tuple(a) == (00000, 0001, 00000, 0001, 00000)
+  assert tuple(a) == (False, True, False, True, False)
   isel2 = stl.vector.unsigned([1,4])
   assert tuple(flex.union(size=5, iselections=[isel,isel2])) \
-      == (00000, 0001, 00000, 0001, 0001)
+      == (False, True, False, True, True)
   assert tuple(flex.intersection(size=5, iselections=[isel,isel2])) \
-      == (00000, 0001, 00000, 00000, 00000)
+      == (False, True, False, False, False)
   assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
       == [1]
   isel = flex.size_t([1,4])
   a = flex.bool(size=5, iselection=isel)
-  assert tuple(a) == (00000, 0001, 00000, 00000, 0001)
+  assert tuple(a) == (False, True, False, False, True)
   isel2 = flex.size_t([0,4])
   assert tuple(flex.union(size=5, iselections=[isel,isel2])) \
-      == (0001, 0001, 00000, 00000, 0001)
+      == (True, True, False, False, True)
   assert tuple(flex.intersection(size=5, iselections=[isel,isel2])) \
-      == (00000, 00000, 00000, 00000, 0001)
+      == (False, False, False, False, True)
   assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
       == [4]
 
@@ -596,10 +596,10 @@ def exercise_sort():
     p = flex.sort_permutation(data=x)
     assert tuple(p) == (1,2,0)
     assert approx_equal(x.select(p), (1,2,3))
-    p = flex.sort_permutation(data=x, reverse=00000)
+    p = flex.sort_permutation(data=x, reverse=False)
     assert tuple(p) == (1,2,0)
     assert approx_equal(x.select(p), (1,2,3))
-    p = flex.sort_permutation(x, 0001)
+    p = flex.sort_permutation(x, True)
     assert tuple(p) == (0,2,1)
     assert approx_equal(x.select(p), (3,2,1))
   for i_trial in xrange(10):
@@ -640,7 +640,7 @@ def exercise_random():
   assert list(flex.random_permutation(size=5)) == [0, 3, 4, 1, 2]
 
 def exercise_flex_vec3_double():
-  flex.exercise_triple(flex.vec3_double, as_double=0001)
+  flex.exercise_triple(flex.vec3_double, as_double=True)
   a = flex.vec3_double(((1,2,5), (-2,3,4), (3,4,3)))
   assert approx_equal(a.min(), (-2.0,2.0,3.0))
   assert approx_equal(a.max(), (3.0,4.0,5.0))
@@ -829,11 +829,11 @@ def exercise_loops():
     points.append(index)
   assert points == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
   points = []
-  for index in flex.nested_loop(end=(2,3), open_range=0001):
+  for index in flex.nested_loop(end=(2,3), open_range=True):
     points.append(index)
   assert points == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
   points = []
-  for index in flex.nested_loop((2,3), 00000):
+  for index in flex.nested_loop((2,3), False):
     points.append(index)
   assert points == [(0,0),(0,1),(0,2),(0,3),
                     (1,0),(1,1),(1,2),(1,3),
@@ -843,15 +843,15 @@ def exercise_loops():
     points.append(index)
   assert points == [(1, 2), (1, 3), (2, 2), (2, 3)]
   points = []
-  for index in flex.nested_loop(begin=(1,2),end=(3,4),open_range=0001):
+  for index in flex.nested_loop(begin=(1,2),end=(3,4),open_range=True):
     points.append(index)
   assert points == [(1, 2), (1, 3), (2, 2), (2, 3)]
   points = []
-  for index in flex.nested_loop((1,2),(3,4),00000):
+  for index in flex.nested_loop((1,2),(3,4),False):
     points.append(index)
   assert points == [(1,2),(1,3),(1,4),(2,2),(2,3),(2,4),(3,2),(3,3),(3,4)]
   points = []
-  for index in flex.nested_loop((1,2),(1,2),00000):
+  for index in flex.nested_loop((1,2),(1,2),False):
     points.append(index)
   assert points == [(1, 2)]
   points = []

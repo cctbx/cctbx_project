@@ -22,7 +22,7 @@ def direct_space_squaring(start, selection_fixed):
     fixed = start.apply_selection(selection_fixed)
     var = start.apply_selection(~selection_fixed)
   rfft = fftpack.real_to_complex_3d([n*3//2 for n in map_gridding])
-  conjugate_flag = 0001
+  conjugate_flag = True
   structure_factor_map = maptbx.structure_factors.to_map(
     fixed.space_group(),
     fixed.anomalous_flag(),
@@ -34,7 +34,7 @@ def direct_space_squaring(start, selection_fixed):
   real_map = rfft.backward(structure_factor_map.complex_map())
   squared_map = flex.pow2(real_map)
   squared_sf_map = rfft.forward(squared_map)
-  allow_miller_indices_outside_map = 00000
+  allow_miller_indices_outside_map = False
   from_map = maptbx.structure_factors.from_map(
     var.anomalous_flag(),
     var.indices(),
@@ -105,7 +105,7 @@ def exercise_truncate(q_large):
     aa = flex.double()
     for relation in tprs.relations_for(ih):
       aa.append(amp[relation.ik()] * amp[relation.ihmk()])
-    aa_full = aa_full.select(flex.sort_permutation(data=aa_full, reverse=0001))
+    aa_full = aa_full.select(flex.sort_permutation(data=aa_full, reverse=True))
     assert approx_equal(aa_full[:n], aa)
 
 def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
@@ -115,12 +115,12 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
     elements=["const"]*n_scatterers,
     volume_per_atom=200,
     min_distance=3.,
-    general_positions_only=0001,
+    general_positions_only=True,
     u_iso=0.0)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_calc = structure.structure_factors(
-    d_min=d_min, anomalous_flag=00000).f_calc()
+    d_min=d_min, anomalous_flag=False).f_calc()
   f_obs = abs(f_calc)
   q_obs = miller.array(
     miller_set=f_obs,
@@ -128,7 +128,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
         / math.sqrt(f_obs.space_group().order_p() * n_scatterers)
         / f_obs.space_group().n_ltr())
   q_obs = q_obs.sort(by_value="abs")
-  q_obs.setup_binner(auto_binning=0001)
+  q_obs.setup_binner(auto_binning=True)
   n_obs = q_obs.quasi_normalize_structure_factors()
   r = flex.linear_regression(q_obs.data(), n_obs.data())
   if (0 or verbose):
@@ -145,7 +145,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
     elements=["const"]*n_scatterers,
     volume_per_atom=200,
     min_distance=3.,
-    general_positions_only=0001,
+    general_positions_only=True,
     u_iso=0.0)
   assert other_structure.unit_cell().is_similar_to(structure.unit_cell())
   q_calc = q_large.structure_factors_from_scatterers(

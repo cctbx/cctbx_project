@@ -30,63 +30,63 @@ class reduction(reduction_base):
     # N2
     if (gt(s.b, s.c) or (eq(s.b, s.c) and gt(abs(s.e), abs(s.f)))):
       s.n2_action()
-      return 0001
+      return True
     # N3
     if (s.def_gt_0()):
       s.n3_true_action()
     else:
       s.n3_false_action()
-    if (s.b2_action()): return 0001
-    if (s.b3_action()): return 0001
-    if (s.b4_action()): return 0001
-    if (s.b5_action()): return 0001
-    return 00000
+    if (s.b2_action()): return True
+    if (s.b3_action()): return True
+    if (s.b4_action()): return True
+    if (s.b5_action()): return True
+    return False
 
   def b2_action(s):
-    if (not s.eps_gt(abs(s.d), s.b)): return 00000
+    if (not s.eps_gt(abs(s.d), s.b)): return False
     j = entier((s.d+s.b)/(2*s.b))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,0,0,0,1,-j,0,0,1))
     s.c += j*j*s.b - j*s.d
     s.d -= 2*j*s.b
     s.e -= j*s.f
     assert s.c > 0
-    return 0001
+    return True
 
   def b3_action(s):
-    if (not s.eps_gt(abs(s.e), s.a)): return 00000
+    if (not s.eps_gt(abs(s.e), s.a)): return False
     j = entier((s.e+s.a)/(2*s.a))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,0,-j,0,1,0,0,0,1))
     s.c += j*j*s.a - j*s.e
     s.d -= j*s.f
     s.e -= 2*j*s.a
     assert s.c > 0
-    return 0001
+    return True
 
   def b4_action(s):
-    if (not s.eps_gt(abs(s.f), s.a)): return 00000
+    if (not s.eps_gt(abs(s.f), s.a)): return False
     j = entier((s.f+s.a)/(2*s.a))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,-j,0,0,1,0,0,0,1))
     s.b += j*j*s.a - j*s.f
     s.d -= j*s.e
     s.f -= 2*j*s.a
     assert s.b > 0
-    return 0001
+    return True
 
   def b5_action(s):
     de = s.d + s.e
     fab = s.f + s.a + s.b
-    if (not s.eps_lt(de+fab, 0)): return 00000
+    if (not s.eps_lt(de+fab, 0)): return False
     j = entier((de+fab)/(2*fab))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,0,-j,0,1,-j,0,0,1))
     s.c += j*j*fab-j*de
     s.d -= j*(2*s.b+s.f)
     s.e -= j*(2*s.a+s.f)
     assert s.c > 0
-    return 0001
+    return True
 
 class minimum_reduction(minimum_reduction_mixin, reduction):
   """Development and regression test code. Do not use for applications.
@@ -138,7 +138,7 @@ class fast_minimum_reduction:
     return (self.a, self.b, self.c, self.f/2, self.e/2, self.d/2)
 
   def as_unit_cell(self):
-    return uctbx.unit_cell(self.as_sym_mat3(), is_metrical_matrix=0001)
+    return uctbx.unit_cell(self.as_sym_mat3(), is_metrical_matrix=True)
 
   def iteration_limit(self):
     return self._iteration_limit
@@ -177,19 +177,19 @@ class fast_minimum_reduction:
     # N2
     if (s.c < s.b):
       s.n2_action()
-      return 0001
+      return True
     # N3
     if (s.def_gt_0()):
       s.n3_true_action()
     else:
       s.n3_false_action()
       if (not s.significant_change_test()):
-        return 00000
-    if (s.b2_action()): return 0001
-    if (s.b3_action()): return 0001
-    if (s.b4_action()): return 0001
-    if (s.b5_action()): return 0001
-    return 00000
+        return False
+    if (s.b2_action()): return True
+    if (s.b3_action()): return True
+    if (s.b4_action()): return True
+    if (s.b5_action()): return True
+    return False
 
   def significant_change_test(self):
     abc = (self.a,self.b,self.c)
@@ -199,11 +199,11 @@ class fast_minimum_reduction:
     if (change == (0,0,0)):
       self._n_no_significant_change += 1
       if (self._n_no_significant_change >= self.min_n_no_significant_change):
-        return 00000
+        return False
     else:
       self._n_no_significant_change = 0
     self._last_abc_significant_change_test = abc
-    return 0001
+    return True
 
   def cb_update(self, m_elems):
     if (self._n_iterations == self._iteration_limit):
@@ -251,47 +251,47 @@ class fast_minimum_reduction:
     s.f = -abs(s.f)
 
   def b2_action(s):
-    if (not s.b < abs(s.d)): return 00000
+    if (not s.b < abs(s.d)): return False
     j = entier((s.d+s.b)/(2*s.b))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,0,0,0,1,-j,0,0,1))
     s.c += j*j*s.b - j*s.d
     s.d -= 2*j*s.b
     s.e -= j*s.f
     assert 0 < s.c
-    return 0001
+    return True
 
   def b3_action(s):
-    if (not s.a < abs(s.e)): return 00000
+    if (not s.a < abs(s.e)): return False
     j = entier((s.e+s.a)/(2*s.a))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,0,-j,0,1,0,0,0,1))
     s.c += j*j*s.a - j*s.e
     s.d -= j*s.f
     s.e -= 2*j*s.a
     assert 0 < s.c
-    return 0001
+    return True
 
   def b4_action(s):
-    if (not s.a < abs(s.f)): return 00000
+    if (not s.a < abs(s.f)): return False
     j = entier((s.f+s.a)/(2*s.a))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,-j,0,0,1,0,0,0,1))
     s.b += j*j*s.a - j*s.f
     s.d -= j*s.e
     s.f -= 2*j*s.a
     assert 0 < s.b
-    return 0001
+    return True
 
   def b5_action(s):
     de = s.d + s.e
     fab = s.f + s.a + s.b
-    if (not de+fab < 0): return 00000
+    if (not de+fab < 0): return False
     j = entier((de+fab)/(2*fab))
-    if (j == 0): return 00000
+    if (j == 0): return False
     s.cb_update((1,0,-j,0,1,-j,0,0,1))
     s.c += j*j*fab-j*de
     s.d -= j*(2*s.b+s.f)
     s.e -= j*(2*s.a+s.f)
     assert 0 < s.c
-    return 0001
+    return True

@@ -9,7 +9,7 @@ dtrek_ext = boost.python.import_ext("iotbx_dtrek_ext")
 
 class reflnlist:
 
-  def __init__(self, file, header_only=00000):
+  def __init__(self, file, header_only=False):
     self.file = file
     self.line_no = 0
     line_1 = self.next_line().split()
@@ -104,7 +104,7 @@ class reflnlist:
       unit_cell=self.unit_cell(),
       space_group_info=self.space_group_info())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     crystal_symmetry = crystal.symmetry(
       unit_cell=self.unit_cell(),
@@ -117,7 +117,7 @@ class reflnlist:
       miller_set=miller.set(
         crystal_symmetry=crystal_symmetry,
         indices=self.miller_indices,
-        anomalous_flag=00000),
+        anomalous_flag=False),
       data=self.column_dict["fIntensity"],
       sigmas=sigmas)
       .apply_selection(sigmas > 0)
@@ -139,7 +139,7 @@ class reflnlist:
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
           indices=ac.miller_indices(),
-          anomalous_flag=0001),
+          anomalous_flag=True),
         data=ac.data(),
         sigmas=ac.sigmas())
         .set_info(info_prefix+"Intensity+-,SigmaI+-")
@@ -154,7 +154,7 @@ class reflnlist:
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
           indices=self.miller_indices,
-          anomalous_flag=00000),
+          anomalous_flag=False),
         data=self.column_dict[column_name])
         .set_info(info_prefix+column_name[1:]))
     return miller_arrays

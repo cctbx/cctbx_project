@@ -29,19 +29,19 @@ def run(server_info, inp, status):
 
   structure = io_utils.structure_from_inp(inp, status, special_position_settings)
   f_calc = structure.structure_factors(
-    anomalous_flag=00000, d_min=d_min).f_calc()
+    anomalous_flag=False, d_min=d_min).f_calc()
   print "Number of Miller indices:", f_calc.indices().size()
   print
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = 0001
+  status.in_table = True
   print "<tr>"
   print "<th>hkl<th>Amplitude<th>Phase"
   for i,h in f_calc.indices().items():
     print "<tr>"
     print "<td>%3d %3d %3d<td>%.6g<td align=right>%.3f" % (
-      h + complex_math.abs_arg(f_calc.data()[i], deg=0001))
+      h + complex_math.abs_arg(f_calc.data()[i], deg=True))
   print "</table><pre>"
-  status.in_table = 00000
+  status.in_table = False
   print
 
   print "</pre>"

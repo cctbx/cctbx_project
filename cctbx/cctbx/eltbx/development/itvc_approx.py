@@ -7,9 +7,9 @@ from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
 def run(file_name, table_of_gaussians, cutoff,
-        low_resolution_only=00000,
-        high_resolution_only=00000,
-        significant_errors_only=00000,
+        low_resolution_only=False,
+        high_resolution_only=False,
+        significant_errors_only=False,
         plots_dir=None,
         quiet=0,
         verbose=0):
@@ -41,7 +41,7 @@ def run(file_name, table_of_gaussians, cutoff,
     entry = tab.entries[element]
     wk = table_of_gaussians(element, 1)
     assert entry.table_y.size() == 62
-    if (not flex.sort_permutation(data=entry.table_y, reverse=0001)
+    if (not flex.sort_permutation(data=entry.table_y, reverse=True)
             .all_eq(range_62)):
       print "Increasing: %s (%d)" % (element, entry.atomic_number)
       prev_y = entry.table_y[0]
@@ -94,7 +94,7 @@ def run(file_name, table_of_gaussians, cutoff,
           plots_dir=plots_dir,
           label=element,
           gaussian_fit=gaussian_fit))
-  perm = flex.sort_permutation(data=max_errors, reverse=0001)
+  perm = flex.sort_permutation(data=max_errors, reverse=True)
   labels = labels.select(perm)
   errors = flex.select(errors, perm)
   correlations = correlations.select(perm)
@@ -105,7 +105,7 @@ def run(file_name, table_of_gaussians, cutoff,
   for l,e,cc,p in zip(labels, errors, correlations, cmp_plots):
     entry = tab.entries[l]
     y = entry.table_y
-    perm = flex.sort_permutation(data=e, reverse=0001)[:3]
+    perm = flex.sort_permutation(data=e, reverse=True)[:3]
     high = []
     for i in perm:
       if (significant_errors_only and e[i] < 0.01): break

@@ -47,7 +47,7 @@ def exercise_shell_asu_tables(structure, verbose):
       print list(pairs_1.pair_counts)
       print
     sym_table = shell_asu_table.extract_pair_sym_table(
-      skip_j_seq_less_than_i_seq=00000)
+      skip_j_seq_less_than_i_seq=False)
     asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     asu_table.add_pair_sym_table(sym_table=sym_table)
     if (0 or verbose):

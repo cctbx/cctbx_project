@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 class index_fobs_sigma_line:
 
   def __init__(self, raw_line):
-    self.is_complete = 00000
+    self.is_complete = False
     flds = raw_line.replace("="," ").split()
     if (len(flds) != 8): return
     if (flds[0].lower() not in ("inde", "index")): return
@@ -17,7 +17,7 @@ class index_fobs_sigma_line:
     except: return
     try: self.sigma = float(flds[7])
     except: return
-    self.is_complete = 0001
+    self.is_complete = True
 
 class reader:
 
@@ -28,7 +28,7 @@ class reader:
     self._indices = flex.miller_index()
     self._data = flex.double()
     self._sigmas = flex.double()
-    have_data = 00000
+    have_data = False
     self.n_lines = 0
     for raw_line in file_object:
       self.n_lines += 1
@@ -42,7 +42,7 @@ class reader:
         self._indices.append(ifs.index)
         self._data.append(ifs.fobs)
         self._sigmas.append(ifs.sigma)
-        have_data = 0001
+        have_data = True
     if (not have_data):
       raise RuntimeError, "No data found in file."
 
@@ -55,7 +55,7 @@ class reader:
   def sigmas(self):
     return self._sigmas
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()

@@ -21,7 +21,7 @@ class reduction(reduction_base):
     # A2
     if (gt(s.b, s.c) or (eq(s.b, s.c) and gt(abs(s.e), abs(s.f)))):
       s.a2_action()
-      return 0001
+      return True
     # A3
     if (s.def_gt_0()):
       s.a3_action()
@@ -33,25 +33,25 @@ class reduction(reduction_base):
         or (eq(s.d, s.b) and lt(s.e+s.e, s.f))
         or (eq(s.d, -s.b) and lt(s.f, 0))):
       s.a5_action()
-      return 0001
+      return True
     # A6
     if (gt(abs(s.e), s.a)
         or (eq(s.e, s.a) and lt(s.d+s.d, s.f))
         or (eq(s.e, -s.a) and lt(s.f, 0))):
       s.a6_action()
-      return 0001
+      return True
     # A7
     if (gt(abs(s.f), s.a)
         or (eq(s.f, s.a) and lt(s.d+s.d, s.e))
         or (eq(s.f, -s.a) and lt(s.e, 0))):
       s.a7_action()
-      return 0001
+      return True
     # A8
     if (lt(s.d+s.e+s.f+s.a+s.b, 0)
         or (eq(s.d+s.e+s.f+s.a+s.b, 0) and gt(s.a+s.a+s.e+s.e+s.f, 0))):
       s.a8_action()
-      return 0001
-    return 00000
+      return True
+    return False
 
   def a1_action(s):
     s.n1_action()

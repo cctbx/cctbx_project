@@ -14,8 +14,8 @@ def exercise(space_group_info, anomalous_flag,
     elements=elements,
     volume_per_atom=50.,
     min_distance=1.5,
-    general_positions_only=0001,
-    anisotropic_flag=00000,
+    general_positions_only=True,
+    anisotropic_flag=False,
     u_iso=adptbx.b_as_u(10)
     ).structure_factors(
         anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
@@ -25,7 +25,7 @@ def exercise(space_group_info, anomalous_flag,
   for elem in elements: asu_contents[elem] += 1
   f_calc = abs(structure_factors.f_calc())
   f_calc.setup_binner(
-    auto_binning=0001,
+    auto_binning=True,
     reflections_per_bin=reflections_per_bin,
     n_bins=n_bins)
   if (0 or verbose):
@@ -43,7 +43,7 @@ def exercise(space_group_info, anomalous_flag,
     assert wp.xy_plot_info().fit_correlation == wp.fit_correlation
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     exercise(space_group_info, anomalous_flag, verbose=flags.Verbose)
 
 def run():

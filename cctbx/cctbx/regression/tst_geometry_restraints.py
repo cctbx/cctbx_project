@@ -177,10 +177,10 @@ def random_sites(n_sites, max_coordinate=10, min_distance=0.5,
     run_away_counter += 1
     assert run_away_counter < max_trials
     new_site = random_site(max_coordinate)
-    ok = 0001
+    ok = True
     for site in sites:
       if ((new_site-site).norm() < min_distance**2):
-        ok = 00000
+        ok = False
         break
     if (ok):
       sites.append(new_site)
@@ -257,7 +257,7 @@ def exercise_chirality(verbose=0):
   chir = geometry_restraints.chirality(
     sites=sites,
     volume_ideal=-2.48,
-    both_signs=00000,
+    both_signs=False,
     weight=1)
   assert approx_equal(chir.volume_model, -2.411548478)
   assert approx_equal(chir.residual(), 0.00468561086412)
@@ -275,7 +275,7 @@ def exercise_chirality(verbose=0):
     print "angle model:", dih.angle_model
   for i_trial in xrange(50):
     volume_ideal = chir.volume_ideal
-    for both_signs in [00000, 0001]:
+    for both_signs in [False, True]:
       sites_mod = []
       for site in sites:
         shift = col([random.uniform(-.5,.5) for i in xrange(3)])

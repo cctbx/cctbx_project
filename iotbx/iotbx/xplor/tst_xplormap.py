@@ -124,9 +124,9 @@ def exercise_fft_map_as_xplor_map(space_group_info, n_elements=10, d_min=3):
     elements=["Si"]*n_elements,
     volume_per_atom=1000,
     min_distance=3.,
-    general_positions_only=00000)
+    general_positions_only=False)
   f_calc = structure.structure_factors(
-    d_min=d_min, anomalous_flag=00000).f_calc()
+    d_min=d_min, anomalous_flag=False).f_calc()
   fft_map = f_calc.fft_map()
   fft_map.as_xplor_map(
     file_name="tmp.map",

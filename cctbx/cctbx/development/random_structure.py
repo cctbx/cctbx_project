@@ -16,13 +16,13 @@ def have_suitable_hetero_distance(existing_sites,
     if (sgtbx.min_sym_equiv_distance_info(
           sym_equiv_sites_of_other_site, existing_site).dist()
         < min_hetero_distance):
-      return 00000
-  return 0001
+      return False
+  return True
 
 def random_site(special_position_settings,
                 existing_sites,
                 min_hetero_distance=1.5,
-                general_position_only=00000,
+                general_position_only=False,
                 grid=None,
                 t_centre_of_inversion=None,
                 max_trials=100):
@@ -57,7 +57,7 @@ def random_sites(special_position_settings,
                  existing_sites,
                  n_new,
                  min_hetero_distance=1.5,
-                 general_positions_only=00000,
+                 general_positions_only=False,
                  grid=None,
                  t_centre_of_inversion=None,
                  max_trials=100,
@@ -88,7 +88,7 @@ def random_sites(special_position_settings,
 
 def random_modify_site(special_position_settings, site, gauss_sigma,
                        max_distance=0,
-                       vary_z_only=00000,
+                       vary_z_only=False,
                        max_trials=100):
   site_symmetry = special_position_settings.site_symmetry(site)
   assert site_symmetry.distance_moved() < 1.e-5
@@ -121,17 +121,17 @@ class xray_structure(xray.structure):
                volume_per_atom=50.,
                min_distance=1.5,
                min_distance_sym_equiv=None,
-               general_positions_only=00000,
+               general_positions_only=False,
                random_f_prime_d_min=0,
                random_f_prime_scale=0.6,
                random_f_double_prime=0,
                random_f_double_prime_scale=0.6,
-               random_u_iso=00000,
+               random_u_iso=False,
                random_u_iso_scale=0.3,
                u_iso=0,
-               anisotropic_flag=00000,
+               anisotropic_flag=False,
                random_u_cart_scale=0.3,
-               random_occupancy=00000):
+               random_occupancy=False):
     assert elements is None or n_scatterers is None
     assert not (elements is None and n_scatterers is None)
     adopt_init_args(self, locals(),
@@ -150,8 +150,8 @@ class xray_structure(xray.structure):
       crystal_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv,
       u_star_tolerance=0,
-      assert_is_positive_definite=00000,
-      assert_min_distance_sym_equiv=0001)
+      assert_is_positive_definite=False,
+      assert_min_distance_sym_equiv=True)
     xray.structure.__init__(self, special_position_settings)
     if (elements is not None):
       self.build_scatterers(elements)
@@ -194,13 +194,13 @@ class xray_structure(xray.structure):
       scatterer.fp = fp
       scatterer.fdp = fdp
       if (not self.anisotropic_flag):
-        scatterer.anisotropic_flag = 00000
+        scatterer.anisotropic_flag = False
         u_iso = self.u_iso
         if (not u_iso and self.random_u_iso):
           u_iso = random.random() * self.random_u_iso_scale
         scatterer.u_iso = u_iso
       else:
-        scatterer.anisotropic_flag = 0001
+        scatterer.anisotropic_flag = True
         run_away_counter = 0
         while 1:
           run_away_counter += 1
@@ -221,7 +221,7 @@ class xray_structure(xray.structure):
 
   def random_modify_site(self, site, gauss_sigma,
                          max_distance=0,
-                         vary_z_only=00000,
+                         vary_z_only=False,
                          max_trials=100):
     return random_modify_site(
       self, site, gauss_sigma, max_distance, vary_z_only, max_trials)
@@ -261,7 +261,7 @@ class xray_structure(xray.structure):
     return max(0.1, random.gauss(fdp, gauss_sigma))
 
   def random_modify_parmeters(self, parameter_name, gauss_sigma=0.1,
-                                    vary_z_only=00000):
+                                    vary_z_only=False):
     modified_structure = self.deep_copy_scatterers()
     for scatterer in modified_structure.scatterers():
       if (parameter_name == "site"):

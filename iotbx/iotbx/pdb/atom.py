@@ -29,18 +29,18 @@ class labels:
       self.resSeq, self.iCode, self.segID]])
 
   def is_in_same_chain(self, other):
-    if (self.chainID != other.chainID): return 00000
-    if (self.chainID == " " and self.segID != other.segID): return 00000
-    return 0001
+    if (self.chainID != other.chainID): return False
+    if (self.chainID == " " and self.segID != other.segID): return False
+    return True
 
   def is_label_equivalent(self, other):
-    if (self.name != other.name): return 00000
-    if (self.altLoc != other.altLoc): return 00000
-    if (self.resName != other.resName): return 00000
-    if (not self.is_in_same_chain(other)): return 00000
-    if (self.resSeq != other.resSeq): return 00000
-    if (self.iCode != other.iCode): return 00000
-    return 0001
+    if (self.name != other.name): return False
+    if (self.altLoc != other.altLoc): return False
+    if (self.resName != other.resName): return False
+    if (not self.is_in_same_chain(other)): return False
+    if (self.resSeq != other.resSeq): return False
+    if (self.iCode != other.iCode): return False
+    return True
 
 def labels_from_string(s):
   fields = []

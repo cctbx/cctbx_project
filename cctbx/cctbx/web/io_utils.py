@@ -46,17 +46,17 @@ def read_scatterer(flds, default_b_iso=3.0):
     except:
       offs = 2
       scatterer.scattering_type = eltbx.xray_scattering.wk1995(
-        flds[1], 0001).label()
+        flds[1], True).label()
     else:
       offs = 1
       scatterer.scattering_type = eltbx.xray_scattering.wk1995(
-        flds[0], 00000).label()
+        flds[0], False).label()
     site = flds[offs : offs + 3]
     for i in xrange(3):
       site[i] = float(site[i])
     scatterer.site = site
     scatterer.occupancy = 1.
-    scatterer.anisotropic_flag = 00000
+    scatterer.anisotropic_flag = False
     scatterer.u_iso = adptbx.b_as_u(default_b_iso)
     if (len(flds) >= offs + 4):
       scatterer.occupancy = float(flds[offs + 3])
@@ -80,7 +80,7 @@ def special_position_settings_from_inp(inp):
 def structure_from_inp(inp, status, special_position_settings):
   wyckoff_table=special_position_settings.space_group_info().wyckoff_table()
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = 0001
+  status.in_table = True
   print "<tr>"
   print "<th>Label"
   print "<th>Scattering<br>factor<br>label"
@@ -113,6 +113,6 @@ def structure_from_inp(inp, status, special_position_settings):
      + scatterer.site
      + (scatterer.occupancy, adptbx.u_as_b(scatterer.u_iso)))
   print "</table><pre>"
-  status.in_table = 00000
+  status.in_table = False
   print
   return structure

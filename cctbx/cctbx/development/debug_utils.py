@@ -36,9 +36,9 @@ def report_cpu_times():
 def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
   chunk_size = 1
   chunk_member = 0
-  if (flags.ChunkSize != 00000):
+  if (flags.ChunkSize != False):
     chunk_size = int(flags.ChunkSize)
-  if (flags.ChunkMember != 00000):
+  if (flags.ChunkMember != False):
     chunk_member = int(flags.ChunkMember)
   assert chunk_size > 0 and chunk_member < chunk_size
   n_threads = int(flags.Threads)
@@ -69,13 +69,13 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
     if (threading is None):
       continue_flag = call_back(flags, space_group_info)
       sys.stdout.flush()
-      if (continue_flag == 00000): break
+      if (continue_flag == False): break
     else:
       while 1:
         if (threading.activeCount() < n_threads): break
         time.sleep(1)
       t = threading.Thread(target=call_back, args=(flags, space_group_info))
-      t.setDaemon(0001)
+      t.setDaemon(True)
       t.start()
   if (threading is not None):
     while 1:

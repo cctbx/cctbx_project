@@ -92,11 +92,11 @@ def human_readable_time(time_in_seconds):
         time_unit = "days"
   return time_units, time_unit
 
-def adopt_init_args(obj, args, exclude=(), hide=00000):
+def adopt_init_args(obj, args, exclude=(), hide=False):
   del args["self"]
   for param in exclude:
     del args[param]
-  if (hide == 00000):
+  if (hide == False):
     for key in args.keys():
       assert not hasattr(obj.__dict__, key)
     obj.__dict__.update(args)
@@ -110,7 +110,7 @@ class line_feeder:
 
   def __init__(self, f):
     self.f = iter(f)
-    self.eof = 00000
+    self.eof = False
 
   def __iter__(self):
     return self
@@ -120,7 +120,7 @@ class line_feeder:
       try:
         return self.f.next()[:-1]
       except StopIteration:
-        self.eof = 0001
+        self.eof = True
     return ""
 
   def next_non_empty(self):

@@ -97,7 +97,7 @@ def run(args):
     if (array_0.anomalous_flag()):
       print "Anomalous signal of %s:" % str(array_0.info())
       print array_0.anomalous_signal.__doc__
-      anom_signal = array_0.anomalous_signal(use_binning=0001)
+      anom_signal = array_0.anomalous_signal(use_binning=True)
       anom_signal.show(data_fmt="%.4f")
       print
     for array_1,anom_diffs_1 in zip(all_miller_arrays[i_0+1:],
@@ -117,7 +117,7 @@ def run(args):
         print "Overall correlation: %6.3f" % correlation.coefficient()
         correlation = array_0.correlation(
           other=array_1,
-          use_binning=0001)
+          use_binning=True)
         correlation.show(data_fmt=binned_correlation_fmt)
         print
         if (anom_diffs_0 is not None and anom_diffs_1 is not None):
@@ -129,7 +129,7 @@ def run(args):
           print "Overall correlation: %6.3f" % correlation.coefficient()
           correlation = anom_diffs_0.correlation(
             other=anom_diffs_1,
-            use_binning=0001)
+            use_binning=True)
           correlation.show(data_fmt=binned_correlation_fmt)
           print
     print "=" * 79

@@ -12,7 +12,7 @@ class lbfgs:
   def __init__(self, target_functor, gradient_flags, xray_structure,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
-                     cos_sin_table=0001,
+                     cos_sin_table=True,
                      structure_factor_algorithm=None,
                      verbose=0):
     adopt_init_args(self, locals())
@@ -38,7 +38,7 @@ class lbfgs:
     del self._scatterers_start
     del self._scattering_dict
     del self._d_min
-    self.compute_target(compute_gradients=00000)
+    self.compute_target(compute_gradients=False)
     self.final_target_value = self.target_result.target()
 
   def apply_shifts(self):
@@ -73,7 +73,7 @@ class lbfgs:
       assert self.x.all_eq(0)
     else:
       self.apply_shifts()
-    self.compute_target(compute_gradients=0001)
+    self.compute_target(compute_gradients=True)
     self.f = self.target_result.target()
     if (self.first_target_value is None):
       self.first_target_value = self.f

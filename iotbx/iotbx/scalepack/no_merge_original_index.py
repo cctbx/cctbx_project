@@ -25,7 +25,7 @@ class reader:
   #    orig. hkl   uniq. hkl    b# c s  a       I    sigI
   #    0   0   3   0   0   3    14 0 0  1    -1.8     1.3
 
-  def __init__(self, file_name, header_only=00000):
+  def __init__(self, file_name, header_only=False):
     self.file_name = os.path.normpath(file_name)
     f = open(file_name)
     line = f.readline()
@@ -56,7 +56,7 @@ class reader:
   def space_group_info(self):
     return sgtbx.space_group_info(group=self.space_group)
 
-  def unmerged_miller_set(self, crystal_symmetry=None, force_symmetry=00000):
+  def unmerged_miller_set(self, crystal_symmetry=None, force_symmetry=False):
     return miller.set(
       crystal_symmetry=crystal.symmetry(
         unit_cell=None,
@@ -64,21 +64,21 @@ class reader:
           other_symmetry=crystal_symmetry,
           force=force_symmetry),
       indices=self.original_indices,
-      anomalous_flag=0001)
+      anomalous_flag=True)
 
-  def merge_equivalents(self, crystal_symmetry=None, force_symmetry=00000):
+  def merge_equivalents(self, crystal_symmetry=None, force_symmetry=False):
     return miller.array(
       miller_set=self.unmerged_miller_set(crystal_symmetry, force_symmetry),
       data=self.i_obs,
       sigmas=self.sigmas).merge_equivalents()
 
-  def as_miller_array(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_array(self, crystal_symmetry=None, force_symmetry=False,
                             info_prefix=""):
     return (self.merge_equivalents(crystal_symmetry, force_symmetry).array()
       .set_info(info_prefix+"i_obs,sigma")
       .set_observation_type_xray_intensity())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
 

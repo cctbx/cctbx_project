@@ -20,7 +20,7 @@ def get_emma_model_from_pdb(file_name=None,
   if (pdb_records is None):
     pdb_records = iotbx.pdb.parser.collect_records(
       raw_records=open(file_name),
-      ignore_master=0001)
+      ignore_master=True)
   cryst1_symmetry = None
   for record in pdb_records:
     if (record.record_name.startswith("CRYST1")):
@@ -32,7 +32,7 @@ def get_emma_model_from_pdb(file_name=None,
   if (cryst1_symmetry is not None):
     crystal_symmetry = cryst1_symmetry.join_symmetry(
       other_symmetry=crystal_symmetry,
-      force=00000)
+      force=False)
   positions = []
   for record in pdb_records:
     if (not record.record_name in ("ATOM", "HETATM")): continue
@@ -59,7 +59,7 @@ def get_emma_model_from_sdb(file_name, crystal_symmetry):
   sdb_file = sdb_files[0]
   crystal_symmetry = crystal_symmetry.join_symmetry(
     other_symmetry=sdb_file.crystal_symmetry(),
-    force=0001)
+    force=True)
   positions = []
   for i,site in zip(count(1),sdb_file.sites):
     if (crystal_symmetry.unit_cell() is None):
@@ -159,7 +159,7 @@ def run(args):
       crystal_symmetry = crystal_symmetry.join_symmetry(
         other_symmetry=crystal_symmetry_from_any.extract_from(
           file_name=file_name),
-        force=00000)
+        force=False)
   tolerance = command_line.options.tolerance
   print "Tolerance:", tolerance
   if (tolerance <= 0.):

@@ -41,7 +41,7 @@ class sdb_file:
       unit_cell=self.unit_cell,
       space_group_info=self.space_group_info)
 
-  def as_xray_structure(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_xray_structure(self, crystal_symmetry=None, force_symmetry=False,
                               min_distance_sym_equiv=0.5):
     crystal_symmetry = self.crystal_symmetry().join_symmetry(
       other_symmetry=crystal_symmetry,

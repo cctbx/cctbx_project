@@ -55,7 +55,7 @@ def exercise(space_group_info, anomalous_flags,
   assert flex.linear_correlation(j.sigmas(), fssr).coefficient() > 1-1.e-6
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     exercise(space_group_info, anomalous_flag)
 
 def run():

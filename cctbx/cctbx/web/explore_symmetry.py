@@ -90,11 +90,11 @@ def show_group_generic(sg_type, status):
   print
   print "List of symmetry operations:"
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = 0001
+  status.in_table = True
   rt_mx_analysis_header()
   for s in sg: rt_mx_analysis(s)
   print "</table><pre>"
-  status.in_table = 00000
+  status.in_table = False
   print
 
 def show_symbols(symbols):
@@ -187,7 +187,7 @@ def run(server_info, inp, status):
   if (len(inp.symxyz) != 0):
     print "Addition of symmetry operations:"
     print "</pre><table border=2 cellpadding=2>"
-    status.in_table = 0001
+    status.in_table = True
     rt_mx_analysis_header()
     for s in inp.symxyz:
       ps = sgtbx.parse_string(s)
@@ -195,14 +195,14 @@ def run(server_info, inp, status):
         s = sgtbx.rt_mx(ps)
       except RuntimeError, e:
         print "</table><pre>"
-        status.in_table = 00000
+        status.in_table = False
         print "--&gt;" + ps.string() + "&lt;--"
         print ("-" * (ps.where() + 3)) + "^"
         raise
       rt_mx_analysis(s)
       sg.expand_smx(s)
     print "</table><pre>"
-    status.in_table = 00000
+    status.in_table = False
     print
 
   sg_type = sg.type()
@@ -233,7 +233,7 @@ def run(server_info, inp, status):
   wyckoff_table = sgtbx.wyckoff_table(sg_type)
   print "List of Wyckoff positions:"
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = 0001
+  status.in_table = True
   print "<tr>"
   print "<th>Wyckoff letter"
   print "<th>Multiplicity"
@@ -250,12 +250,12 @@ def run(server_info, inp, status):
       str(position.special_op()))
     print "</tr>"
   print "</table><pre>"
-  status.in_table = 00000
+  status.in_table = False
   print
 
   print "Harker planes:"
   print "</pre><table border=2 cellpadding=2>"
-  status.in_table = 0001
+  status.in_table = True
   print "<tr>"
   print "<th>Algebraic"
   print "<th>Normal vector"
@@ -268,7 +268,7 @@ def run(server_info, inp, status):
       plane.algebraic(), str_ev(plane.n), str(plane.p))
     print "</tr>"
   print "</table><pre>"
-  status.in_table = 00000
+  status.in_table = False
   print
 
   print "Additional generators of Euclidean normalizer:"
@@ -278,8 +278,8 @@ def run(server_info, inp, status):
   if (len(ss_vm)):
     print "    Vector    Modulus"
     for vm in ss_vm: print "   ", vm.v, vm.m
-  k2l = sg_type.addl_generators_of_euclidean_normalizer(0001, 00000)
-  l2n = sg_type.addl_generators_of_euclidean_normalizer(00000, 0001)
+  k2l = sg_type.addl_generators_of_euclidean_normalizer(True, False)
+  l2n = sg_type.addl_generators_of_euclidean_normalizer(False, True)
   if (len(k2l)):
     print "  Inversion through a centre at:",
     assert len(k2l) == 1
@@ -287,17 +287,17 @@ def run(server_info, inp, status):
   if (len(l2n)):
     print "  Further generators:"
     print "</pre><table border=2 cellpadding=2>"
-    status.in_table = 0001
+    status.in_table = True
     rt_mx_analysis_header()
     for s in l2n: rt_mx_analysis(s)
     print "</table><pre>"
-    status.in_table = 00000
+    status.in_table = False
   print
 
   print "Grid factors implied by symmetries:"
   grid_sg = sg.gridding()
   grid_ss = ss.gridding()
-  eucl_sg = sg_type.expand_addl_generators_of_euclidean_normalizer(0001,0001)
+  eucl_sg = sg_type.expand_addl_generators_of_euclidean_normalizer(True,True)
   grid_eucl = eucl_sg.refine_gridding(grid_ss)
   print "  Space group:", grid_sg
   print "  Structure-seminvariant vectors and moduli:", grid_ss

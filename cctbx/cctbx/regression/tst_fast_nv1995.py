@@ -14,7 +14,7 @@ def run_fast_terms(structure_fixed, structure_p1,
                    f_obs, f_calc_fixed, f_calc_p1,
                    symmetry_flags, gridding, grid_tags,
                    n_sample_grid_points=10,
-                   test_origin=00000,
+                   test_origin=False,
                    verbose=0):
   if (f_calc_fixed is None):
     f_part = flex.complex_double()
@@ -29,7 +29,7 @@ def run_fast_terms(structure_fixed, structure_p1,
     anomalous_flag=f_obs.anomalous_flag(),
     miller_indices_p1_f_calc=f_calc_p1.indices(),
     p1_f_calc=f_calc_p1.data())
-  for squared_flag in (00000, 0001):
+  for squared_flag in (False, True):
     map = fast_terms.summation(
       space_group=f_obs.space_group(),
       miller_indices_f_obs=f_obs.indices(),
@@ -100,7 +100,7 @@ def run_fast_nv1995(f_obs, f_calc_fixed, f_calc_p1,
     tags=grid_tags.tag_array(),
     peak_search_level=1,
     max_peaks=10,
-    interpolate=0001)
+    interpolate=True)
   if (0 or verbose):
     print "gridding:", gridding
     for i,site in peak_list.sites().items():
@@ -118,13 +118,13 @@ def test_atom(space_group_info, use_primitive_setting,
     n_scatterers=n_elements,
     volume_per_atom=150,
     min_distance=1.,
-    general_positions_only=0001)
+    general_positions_only=True)
   miller_set_f_obs = miller.build_set(
     crystal_symmetry=structure,
     anomalous_flag=(random.random() < 0.5),
     d_min=d_min)
   symmetry_flags = translation_search.symmetry_flags(
-    is_isotropic_search_model=0001,
+    is_isotropic_search_model=True,
     have_f_part=(n_elements>=2))
   gridding = miller_set_f_obs.crystal_gridding(
     symmetry_flags=symmetry_flags,
@@ -164,7 +164,7 @@ def test_atom(space_group_info, use_primitive_setting,
         xray_structure=structure_fixed,
         algorithm="direct").f_calc()
     symmetry_flags = translation_search.symmetry_flags(
-      is_isotropic_search_model=0001,
+      is_isotropic_search_model=True,
       have_f_part=(f_calc_fixed is not None))
     if (structure_fixed.scatterers().size() <= 1):
       gridding = miller_set_f_obs.crystal_gridding(
@@ -200,9 +200,9 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     elements=elements,
     volume_per_atom=50,
     min_distance=1.,
-    general_positions_only=0001,
-    random_u_iso=0001,
-    random_occupancy=0001)
+    general_positions_only=True,
+    random_u_iso=True,
+    random_occupancy=True)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   miller_set_f_obs = miller.build_set(
@@ -241,7 +241,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     xray_structure=structure_p1,
     algorithm="direct").f_calc()
   symmetry_flags = translation_search.symmetry_flags(
-    is_isotropic_search_model=00000,
+    is_isotropic_search_model=False,
     have_f_part=flag_f_part)
   gridding = miller_set_f_obs.crystal_gridding(
     symmetry_flags=symmetry_flags,
@@ -252,7 +252,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     structure_fixed, structure_p1,
     f_obs, f_calc_fixed, f_calc_p1,
     symmetry_flags, gridding, grid_tags,
-    test_origin=0001,
+    test_origin=True,
     verbose=verbose)
   peak_list = run_fast_nv1995(
     f_obs, f_calc_fixed, f_calc_p1,
@@ -264,16 +264,16 @@ def run_call_back(flags, space_group_info):
     print "High symmetry space group skipped."
     return
   if (not (flags.Atom or flags.Molecule)):
-    flags.Atom = 0001
-    flags.Molecule = 0001
-  use_primitive_setting_flags = [00000]
+    flags.Atom = True
+    flags.Molecule = True
+  use_primitive_setting_flags = [False]
   if (space_group_info.group().conventional_centring_type_symbol() != "P"):
-    use_primitive_setting_flags.append(0001)
+    use_primitive_setting_flags.append(True)
   if (flags.Atom):
     for use_primitive_setting in use_primitive_setting_flags:
       test_atom(space_group_info, use_primitive_setting, verbose=flags.Verbose)
   if (flags.Molecule):
-    for flag_f_part in (00000, 0001)[:]: #SWITCH
+    for flag_f_part in (False, True)[:]: #SWITCH
       for use_primitive_setting in use_primitive_setting_flags:
         test_molecule(space_group_info, use_primitive_setting, flag_f_part,
                       verbose=flags.Verbose)

@@ -34,7 +34,7 @@ class _statistics(boost.python.injector, ext.statistics):
     print >> f, "sigma %.6g" % (self.sigma())
 
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
-  use_space_group_symmetry=0001)
+  use_space_group_symmetry=True)
 
 class peak_list(ext.peak_list):
 
@@ -43,7 +43,7 @@ class peak_list(ext.peak_list):
                      peak_search_level=1,
                      max_peaks=0,
                      peak_cutoff=None,
-                     interpolate=0001):
+                     interpolate=True):
     if (peak_cutoff is None):
       ext.peak_list.__init__(self,
         data, tags, peak_search_level, max_peaks, interpolate)
@@ -51,7 +51,7 @@ class peak_list(ext.peak_list):
       ext.peak_list.__init__(self,
         data, tags, peak_search_level, peak_cutoff, max_peaks, interpolate)
 
-def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
+def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=True):
   return ext.as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling)
 
 structure_factors = dicts.easy(
@@ -68,7 +68,7 @@ class crystal_gridding:
                      space_group_info=None,
                      mandatory_factors=None,
                      max_prime=5,
-                     assert_shannon_sampling=0001):
+                     assert_shannon_sampling=True):
     assert [d_min, step].count(None) == 1
     if (step is not None):
       d_min = step*2
@@ -78,7 +78,7 @@ class crystal_gridding:
     if (symmetry_flags is not None): assert space_group_info is not None
     if (mandatory_factors is None): mandatory_factors = (1,1,1)
     assert len(mandatory_factors) == 3
-    adopt_init_args(self, locals(), hide=0001)
+    adopt_init_args(self, locals(), hide=True)
     if (symmetry_flags is not None):
       self._n_real = determine_gridding(
         unit_cell, d_min, resolution_factor,
@@ -156,7 +156,7 @@ class crystal_gridding_tags(crystal_gridding):
   def tags(self):
     return self._tags
 
-  def peak_search(self, parameters, map, verify_symmetry=0001):
+  def peak_search(self, parameters, map, verify_symmetry=True):
     if (verify_symmetry):
       assert self._tags.verify(map)
     if (map.accessor().is_padded()):
@@ -187,15 +187,15 @@ class peak_search_parameters:
   def __init__(self, peak_search_level=1,
                      max_peaks=0,
                      peak_cutoff=None,
-                     interpolate=0001,
+                     interpolate=True,
                      min_distance_sym_equiv=None,
-                     general_positions_only=00000,
+                     general_positions_only=False,
                      effective_resolution=None,
                      significant_height_fraction=None,
                      cluster_height_fraction=None,
                      min_cross_distance=None,
                      max_clusters=None):
-    adopt_init_args(self, locals(), hide=0001)
+    adopt_init_args(self, locals(), hide=True)
 
   def _copy_constructor(self, other):
     self._peak_search_level = other._peak_search_level
@@ -252,7 +252,7 @@ class peak_cluster_analysis:
 
   def __init__(self, peak_list,
                      special_position_settings,
-                     general_positions_only=00000,
+                     general_positions_only=False,
                      effective_resolution=None,
                      significant_height_fraction=None,
                      cluster_height_fraction=None,
@@ -265,11 +265,11 @@ class peak_cluster_analysis:
           cluster_height_fraction = 1/3.
     if (min_cross_distance is None):
         min_cross_distance = special_position_settings.min_distance_sym_equiv()
-    adopt_init_args(self, locals(), hide=0001)
+    adopt_init_args(self, locals(), hide=True)
     assert self._min_cross_distance is not None
     self._gridding = peak_list.gridding()
     if (effective_resolution is not None):
-      self._is_processed = flex.bool(peak_list.size(), 00000)
+      self._is_processed = flex.bool(peak_list.size(), False)
     else:
       self._is_processed = None
     self._peak_list_indices = flex.size_t()
@@ -332,7 +332,7 @@ class peak_cluster_analysis:
       self._peak_list_index += 1
       if (self._is_processed is not None):
         if (self._is_processed[peak_list_index]): continue
-        self._is_processed[peak_list_index] = 0001
+        self._is_processed[peak_list_index] = True
       grid_index = self._peak_list.grid_indices(peak_list_index)
       grid_height = self._peak_list.grid_heights()[peak_list_index]
       site = self._peak_list.sites()[peak_list_index]
@@ -343,13 +343,13 @@ class peak_cluster_analysis:
         continue
       site = site_symmetry.exact_site()
       equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
-      keep = 0001
+      keep = True
       for s in self._sites:
         dist = sgtbx.min_sym_equiv_distance_info(equiv_sites, s).dist()
         if (dist < self._min_cross_distance):
-          keep = 00000
+          keep = False
           break
-      if (keep == 0001):
+      if (keep == True):
         if (    self._effective_resolution is not None
             and (   self._heights.size() == 0
                  or height <   self._heights[0]
@@ -382,13 +382,13 @@ class peak_cluster_analysis:
         other_site)
       if (    self._general_positions_only
           and not other_site_symmetry.is_point_group_1()):
-        self._is_processed[i] = 0001
+        self._is_processed[i] = True
         continue
       other_site = other_site_symmetry.exact_site()
       dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites, other_site)
       dist = dist_info.dist()
       if (dist < self._min_cross_distance):
-        self._is_processed[i] = 0001
+        self._is_processed[i] = True
         close_site = dist_info.apply(flex.vec3_double([other_site]))[0]
         close_site = site_symmetry.special_op() * close_site
         sum_w_sites += matrix.col(orth(close_site)) * other_height

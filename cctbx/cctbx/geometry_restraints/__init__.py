@@ -25,7 +25,7 @@ def angle_delta_deg(angle_1, angle_2, periodicity=1):
 
 class proxy_registry_add_result:
 
-  def __init__(self, tabulated_proxy=None, is_new=00000, is_conflicting=00000):
+  def __init__(self, tabulated_proxy=None, is_new=False, is_conflicting=False):
     adopt_init_args(self, locals())
 
 class angle_proxy_registry:
@@ -45,7 +45,7 @@ class angle_proxy_registry:
       self.proxies.append(proxy)
       self.counts.append(1)
       result.tabulated_proxy = proxy
-      result.is_new = 0001
+      result.is_new = True
     else:
       i_list = tab_i_seq_1[i_seqs_0_2]
       result.tabulated_proxy = self.proxies[i_list]
@@ -53,7 +53,7 @@ class angle_proxy_registry:
                                  proxy.angle_ideal)) > tolerance
           or abs(result.tabulated_proxy.weight - proxy.weight)
                > tolerance):
-        result.is_conflicting = 0001
+        result.is_conflicting = True
       else:
         self.counts[i_list] += 1
     return result
@@ -75,7 +75,7 @@ class dihedral_proxy_registry:
       self.proxies.append(proxy)
       self.counts.append(1)
       result.tabulated_proxy = proxy
-      result.is_new = 0001
+      result.is_new = True
     else:
       i_list = tab_i_seq_0[i_seqs_1_2_3]
       result.tabulated_proxy = self.proxies[i_list]
@@ -85,7 +85,7 @@ class dihedral_proxy_registry:
           or abs(result.tabulated_proxy.weight - proxy.weight)
                > tolerance
           or result.tabulated_proxy.periodicity != proxy.periodicity):
-        result.is_conflicting = 0001
+        result.is_conflicting = True
       else:
         self.counts[i_list] += 1
     return result
@@ -107,7 +107,7 @@ class chirality_proxy_registry:
       self.proxies.append(proxy)
       self.counts.append(1)
       result.tabulated_proxy = proxy
-      result.is_new = 0001
+      result.is_new = True
     else:
       i_list = tab_i_seq_0[i_seqs_1_2_3]
       result.tabulated_proxy = self.proxies[i_list]
@@ -115,7 +115,7 @@ class chirality_proxy_registry:
                > tolerance
           or abs(result.tabulated_proxy.weight - proxy.weight)
                > tolerance):
-        result.is_conflicting = 0001
+        result.is_conflicting = True
       else:
         self.counts[i_list] += 1
     return result
@@ -138,13 +138,13 @@ class planarity_proxy_registry:
       self.proxies.append(proxy)
       self.counts.append(1)
       result.tabulated_proxy = proxy
-      result.is_new = 0001
+      result.is_new = True
     else:
       i_list = tab_i_seq_0[i_seqs_1_up]
       result.tabulated_proxy = self.proxies[i_list]
       if (not approx_equal(result.tabulated_proxy.weights, proxy.weights,
                            eps=tolerance)):
-        result.is_conflicting = 0001
+        result.is_conflicting = True
       else:
         self.counts[i_list] += 1
     return result

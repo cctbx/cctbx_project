@@ -13,7 +13,7 @@ class lbfgs:
       lbfgs_termination_params=None,
       lbfgs_core_params=None,
       lbfgs_exception_handling_params=None,
-      disable_asu_cache=00000):
+      disable_asu_cache=False):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
@@ -25,7 +25,7 @@ class lbfgs:
     self.tmp.disable_asu_cache = disable_asu_cache
     self.tmp.sites_cart = sites_cart
     self.tmp.sites_shifted = sites_cart
-    self.tmp.lock_pair_proxies = 00000
+    self.tmp.lock_pair_proxies = False
     self.first_target_result = None
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
@@ -33,7 +33,7 @@ class lbfgs:
       core_params=lbfgs_core_params,
       exception_handling_params=lbfgs_exception_handling_params)
     self.apply_shifts()
-    self.compute_target(compute_gradients=0001)
+    self.compute_target(compute_gradients=True)
     self.final_target_result = self.tmp.target_result
     sites_cart.clear()
     sites_cart.extend(self.tmp.sites_shifted)
@@ -62,17 +62,17 @@ class lbfgs:
       compute_gradients=compute_gradients,
       disable_asu_cache=self.tmp.disable_asu_cache,
       lock_pair_proxies=self.tmp.lock_pair_proxies)
-    self.tmp.lock_pair_proxies = 0001
+    self.tmp.lock_pair_proxies = True
 
   def callback_after_step(self, minimizer):
-    self.tmp.lock_pair_proxies = 00000
+    self.tmp.lock_pair_proxies = False
 
   def __call__(self):
     if (self.first_target_result is None):
       assert self.x.all_eq(0)
     else:
       self.apply_shifts()
-    self.compute_target(compute_gradients=0001)
+    self.compute_target(compute_gradients=True)
     self.f = self.tmp.target_result.target()
     if (self.first_target_result is None):
       self.first_target_result = self.tmp.target_result

@@ -94,7 +94,7 @@ class fit_parameters:
 
   def __init__(self, max_n_terms=5,
                      target_powers=[2,4],
-                     minimize_using_sigmas=00000,
+                     minimize_using_sigmas=False,
                      n_repeats_minimization=5,
                      shift_sqrt_b_mod_n=[0,1,2],
                      b_min=1.e-6,
@@ -218,7 +218,7 @@ def zig_zag_fits(label, null_fit, null_fit_more, params):
     params=params)
   results = []
   n_term_best_min = six_term_best_min
-  have_all_points_in_previous = 0001
+  have_all_points_in_previous = True
   while 1:
     while 1:
       if (n_term_best_min.final_gaussian_fit.n_terms() == 1):

@@ -23,7 +23,7 @@ class _weighted_triplet_phase_relation(
 
 def triplet_generator(miller_set,
                       amplitudes=None, max_relations_per_reflection=0,
-                      sigma_2_only=00000, discard_weights=00000):
+                      sigma_2_only=False, discard_weights=False):
   return ext.triplet_generator(
     miller_set.space_group(), miller_set.indices(),
     amplitudes, max_relations_per_reflection,
@@ -33,8 +33,8 @@ class _triplet_generator(boost.python.injector, ext.triplet_generator):
 
   def apply_tangent_formula(self, amplitudes, phases,
                                   selection_fixed=None,
-                                  use_fixed_only=00000,
-                                  reuse_results=00000,
+                                  use_fixed_only=False,
+                                  reuse_results=False,
                                   sum_epsilon=1.e-10):
     return self.raw_apply_tangent_formula(
       amplitudes, phases,

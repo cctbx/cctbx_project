@@ -170,7 +170,7 @@ def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
       TotalMismatches, TotalANISOU))
   assert TotalMismatches == 0
 
-def run_shelx(shelx_titl, structure_factors, short_sfac=00000, verbose=0):
+def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
   xray_structure = structure_factors.xray_structure()
   assert xray_structure.scatterers().size() > 0
   pre_check(xray_structure)
@@ -220,8 +220,8 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=00000, verbose=0):
   check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose)
 
 def exercise(space_group_info,
-             anomalous_flag=00000,
-             anisotropic_flag=00000,
+             anomalous_flag=False,
+             anisotropic_flag=False,
              d_min=2.,
              verbose=0):
   structure_factors = random_structure.xray_structure(
@@ -230,8 +230,8 @@ def exercise(space_group_info,
     anisotropic_flag=anisotropic_flag,
     random_f_prime_d_min=1.0,
     random_f_double_prime=anomalous_flag,
-    random_u_iso=0001,
-    random_occupancy=0001
+    random_u_iso=True,
+    random_occupancy=True
     ).structure_factors(
         anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
   if (0 or verbose):
@@ -246,8 +246,8 @@ def run_call_back(flags, space_group_info):
   if (sg.is_centric() and not sg.is_origin_centric()):
     print "Skipping space group: centre of inversion is not at origin."
     return
-  for anomalous_flag in (00000, 0001):
-    for anisotropic_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
+    for anisotropic_flag in (False, True):
       exercise(space_group_info, anomalous_flag, anisotropic_flag,
                verbose=flags.Verbose)
 

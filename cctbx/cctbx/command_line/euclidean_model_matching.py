@@ -41,8 +41,8 @@ def run():
       reference_model,
       structure.as_emma_model(),
       tolerance=3,
-      models_are_diffraction_index_equivalent=00000,
-      break_if_match_with_no_singles=0001).refined_matches
+      models_are_diffraction_index_equivalent=False,
+      break_if_match_with_no_singles=True).refined_matches
     if (len(refined_matches)):
       refined_matches[0].show()
       m = len(refined_matches[0].pairs)

@@ -7,7 +7,7 @@ from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import user_plus_sys_time
 import sys
 
-def timings(structure, d_min, fft_only=00000,
+def timings(structure, d_min, fft_only=False,
             wing_cutoff_reference=1.e-6,
             wing_cutoff_others=1.e-3):
   structure_ng = structure.deep_copy_scatterers()
@@ -26,7 +26,7 @@ def timings(structure, d_min, fft_only=00000,
   miller_set = miller.build_set(
     crystal_symmetry=structure,
     d_min=d_min,
-    anomalous_flag=00000)
+    anomalous_flag=False)
   miller_set.show_summary()
   print "d_min:", d_min
   if (fft_only):
@@ -55,8 +55,8 @@ def timings(structure, d_min, fft_only=00000,
                     structure_2g, structure_1g):
     structure.scattering_dict().show_summary()
     if (not fft_only):
-      for calc_type,cos_sin_flag in (("direct cos+sin function:",00000),
-                                     ("direct cos+sin table:",0001)):
+      for calc_type,cos_sin_flag in (("direct cos+sin function:",False),
+                                     ("direct cos+sin table:",True)):
         timer = user_plus_sys_time()
         f_calc = miller_set.structure_factors_from_scatterers(
           xray_structure=structure,
@@ -64,7 +64,7 @@ def timings(structure, d_min, fft_only=00000,
           cos_sin_table=cos_sin_flag).f_calc()
         print "  %-24s %.2f seconds," % (calc_type, timer.elapsed()),
         ls = xray.targets_least_squares_residual(
-          f_calc_reference, f_calc.data(), 00000, 1)
+          f_calc_reference, f_calc.data(), False, 1)
         print "r-factor: %.6f" % ls.target()
     for calc_type,exp_table_one_over_step_size in (("fft exp function:",0),
                                                    ("fft exp table:",-100)):
@@ -78,7 +78,7 @@ def timings(structure, d_min, fft_only=00000,
           algorithm="fft").f_calc()
       print "  %-24s %.2f seconds," % (calc_type, timer.elapsed()),
       ls = xray.targets_least_squares_residual(
-        f_calc_reference, f_calc.data(), 00000, 1)
+        f_calc_reference, f_calc.data(), False, 1)
       print "r-factor: %.6f" % ls.target()
   print
 
@@ -93,9 +93,9 @@ def run(args):
   "usage: cctbx.structure_factor_timings" \
   + " [--fft_only] coordinate_file [d-spacing ...]"
   try: i = args.index("--fft_only")
-  except: fft_only = 00000
+  except: fft_only = False
   else:
-    fft_only = 0001
+    fft_only = True
     args = args[:]
     del args[i]
   if (len(args) == 0):

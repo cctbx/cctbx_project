@@ -54,7 +54,7 @@ class reader:
   def alphas(self):
     return self._alphas
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              info_prefix=""):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()

@@ -24,7 +24,7 @@ class gruber_parameterization:
     return (self.a, self.b, self.c, self.f/2, self.e/2, self.d/2)
 
   def as_unit_cell(self):
-    return uctbx.unit_cell(self.as_sym_mat3(), is_metrical_matrix=0001)
+    return uctbx.unit_cell(self.as_sym_mat3(), is_metrical_matrix=True)
 
   def eps_lt(self, x, y):
     return x < y - self.epsilon
@@ -61,54 +61,54 @@ class gruber_parameterization:
   def meets_primary_conditions(self):
     gt = self.eps_gt
     s = self
-    if (gt(s.a, s.b)): return 00000
-    if (gt(s.b, s.c)): return 00000
-    if (gt(abs(s.d), s.b)): return 00000
-    if (gt(abs(s.e), s.a)): return 00000
-    if (gt(abs(s.f), s.a)): return 00000
-    return 0001
+    if (gt(s.a, s.b)): return False
+    if (gt(s.b, s.c)): return False
+    if (gt(abs(s.d), s.b)): return False
+    if (gt(abs(s.e), s.a)): return False
+    if (gt(abs(s.f), s.a)): return False
+    return True
 
   def meets_main_conditions(self):
-    if (not self.meets_primary_conditions()): return 00000
+    if (not self.meets_primary_conditions()): return False
     type = self.type()
-    if (type == 0): return 00000
+    if (type == 0): return False
     if (type == 2):
       lt = self.eps_lt
       s = self
-      if (lt(s.d+s.e+s.f+s.a+s.b, 0)): return 00000
-    return 0001
+      if (lt(s.d+s.e+s.f+s.a+s.b, 0)): return False
+    return True
 
   def is_buerger_cell(self):
-    if (not self.meets_main_conditions()): return 00000
+    if (not self.meets_main_conditions()): return False
     eq = self.eps_eq
     gt = self.eps_gt
     s = self
     if (eq(s.a, s.b)):
-      if (gt(abs(s.d), abs(s.e))): return 00000
+      if (gt(abs(s.d), abs(s.e))): return False
     if (eq(s.b, s.c)):
-      if (gt(abs(s.e), abs(s.f))): return 00000
-    return 0001
+      if (gt(abs(s.e), abs(s.f))): return False
+    return True
 
   def is_niggli_cell(self):
-    if (not self.is_buerger_cell()): return 00000
+    if (not self.is_buerger_cell()): return False
     eq = self.eps_eq
     gt = self.eps_gt
     s = self
     if (eq(s.d, s.b)):
-      if (gt(s.f, s.e+s.e)): return 00000
+      if (gt(s.f, s.e+s.e)): return False
     if (eq(s.e, s.a)):
-      if (gt(s.f, s.d+s.d)): return 00000
+      if (gt(s.f, s.d+s.d)): return False
     if (eq(s.f, s.a)):
-      if (gt(s.e, s.d+s.d)): return 00000
+      if (gt(s.e, s.d+s.d)): return False
     if (eq(s.d, -s.b)):
-      if (not eq(s.f, 0)): return 00000
+      if (not eq(s.f, 0)): return False
     if (eq(s.e, -s.a)):
-      if (not eq(s.f, 0)): return 00000
+      if (not eq(s.f, 0)): return False
     if (eq(s.f, -s.a)):
-      if (not eq(s.e, 0)): return 00000
+      if (not eq(s.e, 0)): return False
     if (eq(s.d+s.e+s.f+s.a+s.b, 0)):
-      if (gt(s.a+s.a+s.e+s.e+s.f, 0)): return 00000
-    return 0001
+      if (gt(s.a+s.a+s.e+s.e+s.f, 0)): return False
+    return True
 
 class iteration_limit_exceeded(RuntimeError): pass
 
@@ -200,12 +200,12 @@ class minimum_reduction_mixin:
         unit_cell=unit_cell,
         relative_epsilon=0,
         iteration_limit=iteration_limit)
-      self.termination_due_to_significant_change_test = 00000
+      self.termination_due_to_significant_change_test = False
     except StopIteration:
-      self.termination_due_to_significant_change_test = 0001
+      self.termination_due_to_significant_change_test = True
 
   def eps_eq(self, x, y):
-    return 00000
+    return False
 
   def significant_change_test(self):
     abc = (self.a,self.b,self.c)
@@ -215,8 +215,8 @@ class minimum_reduction_mixin:
     if (change == (0,0,0)):
       self._n_no_significant_change += 1
       if (self._n_no_significant_change >= self.min_n_no_significant_change):
-        return 00000
+        return False
     else:
       self._n_no_significant_change = 0
     self._last_abc_significant_change_test = abc
-    return 0001
+    return True

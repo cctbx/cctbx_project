@@ -53,7 +53,7 @@ def recycle(miller_array, mtz_label, verbose=0):
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
             indices=p.valid_indices(mtz_label),
-            anomalous_flag=00000),
+            anomalous_flag=False),
           data=p.valid_complex(mtz_label, label_phases))
       else:
         assert dataset.ncolumns() == 3+1
@@ -61,7 +61,7 @@ def recycle(miller_array, mtz_label, verbose=0):
           miller_set=miller.set(
             crystal_symmetry=crystal_symmetry,
             indices=p.valid_indices(mtz_label),
-            anomalous_flag=00000),
+            anomalous_flag=False),
           data=p.valid_values(mtz_label))
     else:
       assert dataset.ncolumns() == 3+2
@@ -69,7 +69,7 @@ def recycle(miller_array, mtz_label, verbose=0):
         miller_set=miller.set(
           crystal_symmetry=crystal_symmetry,
           indices=p.valid_indices(mtz_label),
-          anomalous_flag=00000),
+          anomalous_flag=False),
         data=p.valid_values(mtz_label),
         sigmas=p.valid_values(label_sigmas))
   else:
@@ -81,7 +81,7 @@ def recycle(miller_array, mtz_label, verbose=0):
             crystal_symmetry=crystal_symmetry,
             indices=p.valid_indices_anomalous(
               w.label_plus(mtz_label), w.label_minus(mtz_label)),
-            anomalous_flag=0001),
+            anomalous_flag=True),
           data=p.valid_complex_anomalous(
             w.label_plus(mtz_label), w.label_plus(label_phases),
             w.label_minus(mtz_label), w.label_minus(label_phases)))
@@ -92,7 +92,7 @@ def recycle(miller_array, mtz_label, verbose=0):
             crystal_symmetry=crystal_symmetry,
             indices=p.valid_indices_anomalous(
               w.label_plus(mtz_label), w.label_minus(mtz_label)),
-            anomalous_flag=0001),
+            anomalous_flag=True),
           data=p.valid_values_anomalous(
             w.label_plus(mtz_label), w.label_minus(mtz_label)))
     else:
@@ -102,7 +102,7 @@ def recycle(miller_array, mtz_label, verbose=0):
           crystal_symmetry=crystal_symmetry,
           indices=p.valid_indices_anomalous(
             w.label_plus(mtz_label), w.label_minus(mtz_label)),
-          anomalous_flag=0001),
+          anomalous_flag=True),
         data=p.valid_values_anomalous(
           w.label_plus(mtz_label), w.label_minus(mtz_label)),
         sigmas=p.valid_values_anomalous(
@@ -120,7 +120,7 @@ def verify_miller_arrays(a1, a2):
     assert flex.max(flex.abs(a1.sigmas() - v.sigmas())) < 1.e-5
 
 def exercise(space_group_info, n_scatterers=8, d_min=2.5,
-             anomalous_flag=00000, verbose=0):
+             anomalous_flag=False, verbose=0):
   f_calc = random_f_calc(
     space_group_info=space_group_info,
     n_scatterers=n_scatterers,
@@ -147,7 +147,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2.5,
   assert arrays[0].anomalous_flag() == anomalous_flag
 
 def run_call_back(flags, space_group_info):
-  for anomalous_flag in (00000, 0001):
+  for anomalous_flag in (False, True):
     exercise(
       space_group_info,
       anomalous_flag=anomalous_flag,

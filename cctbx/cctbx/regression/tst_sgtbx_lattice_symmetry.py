@@ -42,7 +42,7 @@ def run():
       subsym = crystal.symmetry(
         unit_cell=minimum_symmetry.unit_cell(),
         space_group=group,
-        assert_is_compatible_unit_cell=00000)
+        assert_is_compatible_unit_cell=False)
       assert subsym.unit_cell().is_similar_to(minimum_symmetry.unit_cell())
       assert lattice_symmetry.find_max_delta(
         minimum_cell=minimum_symmetry.unit_cell(),

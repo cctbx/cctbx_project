@@ -46,7 +46,7 @@ class structure(crystal.special_position_settings):
   def erase_scatterers(self):
     self._scatterers = flex.xray_scatterer()
     self._site_symmetry_table = sgtbx.site_symmetry_table()
-    self._scattering_dict_is_out_of_date = 0001
+    self._scattering_dict_is_out_of_date = True
 
   def deep_copy_scatterers(self):
     cp = structure(self, scattering_dict=self._scattering_dict)
@@ -112,7 +112,7 @@ class structure(crystal.special_position_settings):
             val = eltbx.xray_scattering.n_gaussian_table_entry(
               key_undef, d_min, 0).gaussian()
         self._scattering_dict.assign(key_undef, val)
-      self._scattering_dict_is_out_of_date = 00000
+      self._scattering_dict_is_out_of_date = False
     return self._scattering_dict
 
   def __getitem__(self, slice_object):
@@ -145,7 +145,7 @@ class structure(crystal.special_position_settings):
         assert_is_positive_definite=self.assert_is_positive_definite(),
         assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     self._site_symmetry_table.process(site_symmetry_ops)
-    self._scattering_dict_is_out_of_date = 0001
+    self._scattering_dict_is_out_of_date = True
 
   def add_scatterers(self, scatterers, site_symmetry_table=None):
     if (site_symmetry_table is None):
@@ -163,7 +163,7 @@ class structure(crystal.special_position_settings):
       u_star_tolerance=self.u_star_tolerance(),
       assert_is_positive_definite=self.assert_is_positive_definite(),
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
-    self._scattering_dict_is_out_of_date = 0001
+    self._scattering_dict_is_out_of_date = True
 
   def replace_scatterers(self, scatterers, site_symmetry_table="existing"):
     if (site_symmetry_table == "existing"):
@@ -177,15 +177,15 @@ class structure(crystal.special_position_settings):
 
   def structure_factors(self, anomalous_flag=None, d_min=None,
                               algorithm=None,
-                              cos_sin_table=00000,
+                              cos_sin_table=False,
                               quality_factor=None,
                               u_base=None,
                               b_base=None):
     if (anomalous_flag is None):
       if (self.scatterers().count_anomalous() != 0):
-        anomalous_flag = 0001
+        anomalous_flag = True
       else:
-        anomalous_flag = 00000
+        anomalous_flag = False
     elif (not anomalous_flag):
       if (self.scatterers().count_anomalous() != 0):
         raise RuntimeError(
@@ -249,7 +249,7 @@ class structure(crystal.special_position_settings):
     ch_op = self.space_group_info().type().change_of_hand_op()
     return self.change_basis(ch_op)
 
-  def expand_to_p1(self, append_number_to_labels=00000):
+  def expand_to_p1(self, append_number_to_labels=False):
     return structure(
       special_position_settings
         =crystal.special_position_settings(
@@ -262,7 +262,7 @@ class structure(crystal.special_position_settings):
         append_number_to_labels=append_number_to_labels),
       scattering_dict=self._scattering_dict)
 
-  def apply_shift(self, shift, recompute_site_symmetries=00000):
+  def apply_shift(self, shift, recompute_site_symmetries=False):
     shifted_scatterers = self.scatterers().deep_copy()
     shifted_scatterers.set_sites(shifted_scatterers.extract_sites() + shift)
     if (recompute_site_symmetries):
@@ -280,9 +280,9 @@ class structure(crystal.special_position_settings):
       (flex.random_double(self.scatterers().size()*3)*2-1) * max_shift_cart)
     return self.apply_shift(self.unit_cell().fractionalization_matrix()*shifts)
 
-  def sort(self, by_value="occupancy", reverse=00000):
+  def sort(self, by_value="occupancy", reverse=False):
     assert by_value in ("occupancy",)
-    assert reverse in (00000, 0001)
+    assert reverse in (False, True)
     p = flex.sort_permutation(
       data=self.scatterers().extract_occupancies(),
       reverse=reverse)

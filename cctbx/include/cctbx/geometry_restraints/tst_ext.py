@@ -163,7 +163,7 @@ def exercise_bond():
   assert approx_equal(gradient_array,
     [[ 6.1880215351700611]*3,
      [-6.1880215351700611]*3])
-  for disable_cache in [00000, 0001]:
+  for disable_cache in [False, True]:
     gradient_array = flex.vec3_double(2, [0,0,0])
     assert approx_equal(
       geometry_restraints.bond_residual_sum(
@@ -414,7 +414,7 @@ def exercise_nonbonded():
       gradient_array=None,
       function=geometry_restraints.prolsq_repulsion_function()),
     0.0824764182859*2)
-  for disable_cache in [00000, 0001]:
+  for disable_cache in [False, True]:
     gradient_array = flex.vec3_double(2, [0,0,0])
     assert approx_equal(
       geometry_restraints.nonbonded_residual_sum(
@@ -622,7 +622,7 @@ def exercise_chirality():
   p = geometry_restraints.chirality_proxy(
     i_seqs=[0,2,3,1],
     volume_ideal=4,
-    both_signs=00000,
+    both_signs=False,
     weight=1)
   assert p.i_seqs == (0,2,3,1)
   assert approx_equal(p.volume_ideal, 4)
@@ -634,7 +634,7 @@ def exercise_chirality():
   p = geometry_restraints.chirality_proxy(
     i_seqs=[0,2,1,3],
     volume_ideal=-4,
-    both_signs=00000,
+    both_signs=False,
     weight=1)
   assert approx_equal(p.volume_ideal, -4)
   p = p.sort_i_seqs()
@@ -643,7 +643,7 @@ def exercise_chirality():
   c = geometry_restraints.chirality(
     sites=[(1,0,0),(0,0,0),(0,1,0),(1,0,1)],
     volume_ideal=4,
-    both_signs=00000,
+    both_signs=False,
     weight=1)
   assert approx_equal(c.sites, [(1,0,0),(0,0,0),(0,1,0),(1,0,1)])
   assert approx_equal(c.volume_ideal, 4)
