@@ -46,7 +46,7 @@ class write_makefiles(makefile_generator.write_makefiles):
         ("cctbx_misc", "cctbx_bpl1")),
       "flex":
         (("flexmodule", "flex_picklers"),
-        ("cctbx_misc", "cctbx_bpl1")),
+        ("eltbx", "cctbx_misc", "cctbx_bpl1")),
       "flex_utils":
         (("flex_utilsmodule",),
         ("cctbx_misc", "cctbx_bpl1")),
