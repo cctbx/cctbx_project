@@ -157,13 +157,13 @@ def emit_setpaths_bat(env):
   print >> f, 'set PATHEXT=.PY;%PATHEXT%'
   f.close()
 
-def emit_SConstruct(env):
+def emit_SConstruct(env, build_mode):
   SConstruct_path = norm(join(env.LIBTBX_BUILD, "SConstruct"))
   f = open_info(SConstruct_path)
-  print >> f, 'import os, os.path'
-  print >> f, 'norm = os.path.normpath'
-  print >> f, 'assert norm(os.getcwd()) == norm(os.environ["LIBTBX_BUILD"])'
-  print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
+  print >> f, 'import libtbx.config'
+  print >> f, 'libtbx.config.build_options.set('
+  print >> f, '  optimization=%d,' % int(build_mode == "release")
+  print >> f, '  debug_symbols=%d)' % int(build_mode == "debug")
   print >> f, 'try:'
   print >> f, '  CScanSetFlags('
   print >> f, '    python=0,'
@@ -175,21 +175,31 @@ def emit_SConstruct(env):
   print >> f, 'except:'
   print >> f, '  pass'
   print >> f, '#SetContentSignatureType("timestamp")'
+  print >> f
+  print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
   print >> f, 'SConscript("libtbx/SConscript")'
-  print >> f, '''\
-
-def use_SConscript_if_present(package_name):
-  dist = os.environ[package_name.upper() + "_DIST"]
-  if (os.path.isfile(dist + "/SConscript")):
-    SConscript(package_name + "/SConscript")
-'''
+  print >> f, 'Import("env_etc")'
+  print >> f, 'env_etc.use_SConscript_if_present('
   for package_name in env.package_list:
-    print >> f, 'use_SConscript_if_present("%s")' % package_name
+    print >> f, '  "%s",' % package_name
+  print >> f, ')'
   f.close()
 
 def run(libtbx_dist, args):
   env = libtbx_env(os.getcwd(), libtbx_dist)
   packages = registry()
+  build_mode = "release"
+  remaining_args = []
+  for arg in args:
+    if (arg.startswith("--build=")):
+      build_mode = arg.split("=", 1)[1]
+      assert build_mode in ("quick", "release", "debug")
+    elif (arg.startswith("--")):
+      raise UserError("Unknown option: " + arg)
+    else:
+      remaining_args.append(arg)
+  args = remaining_args
+  print "Build mode:", build_mode
   for arg in args:
     packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
   if (len(packages.list) == 0):
@@ -205,7 +215,7 @@ def run(libtbx_dist, args):
     emit_setpaths_csh(env)
   else:
     emit_setpaths_bat(env)
-  emit_SConstruct(env)
+  emit_SConstruct(env, build_mode)
   return env
 
 def cold_start(args):

@@ -1,4 +1,5 @@
-import sys, os, os.path
+import libtbx.config
+import sys, os
 
 class empty: pass
 
@@ -24,13 +25,19 @@ def touch_init(env, target, source):
 def norm_join(*args):
   return os.path.normpath(apply(os.path.join,args))
 
+def use_SConscript_if_present(*package_names):
+  for package_name in package_names:
+    dist = env_etc.libtbx_env.dist_path(package_name)
+    if (os.path.isfile(dist + "/SConscript")):
+      SConscript(package_name + "/SConscript")
+
 env_etc = empty()
+env_etc.libtbx_env = libtbx.config.env()
 env_etc.compiler = ARGUMENTS.get("compiler", 0)
-env_etc.release_build = ARGUMENTS.get("release_build", 0)
-env_etc.debug_build = ARGUMENTS.get("debug_build", 0)
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
+env_etc.use_SConscript_if_present = use_SConscript_if_present
 
 if (env_etc.compiler == 0):
   if (sys.platform == "win32"):
@@ -110,10 +117,12 @@ else:
     env_etc.ccflags_base = Split("""
         -std1
     """)
-    if (not env_etc.debug_build):
+    if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
     else:
       opts = ["-O0"]
+    if (libtbx.config.build_options.debug_symbols):
+      opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
@@ -138,10 +147,12 @@ else:
     env_etc.ccflags_base = Split("""
       -w
     """)
-    if (env_etc.release_build):
+    if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O3"]
     else:
       opts = ["-O0", "-fno-inline"]
+    if (libtbx.config.build_options.debug_symbols):
+      opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -162,10 +173,12 @@ else:
     """)
     env_etc.ccflags_base = Split("""
     """)
-    if (env_etc.release_build):
+    if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O", "-tpp2", "-ip", "-ftz"]
     else:
       opts = ["-O0"]
+    if (libtbx.config.build_options.debug_symbols):
+      opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -188,13 +201,15 @@ else:
     env_etc.cxxflags_base = Split("""
         -I%s/boost/compatibility/cpp_c_headers
         -woff 1001,1234,1311,1682,3439
-    """ % (os.environ["BOOST_DIST"],))
+    """ % env_etc.libtbx_env.dist_path("boost"))
     env_etc.ccflags_base = Split("""
     """)
-    if (not env_etc.debug_build):
+    if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
     else:
       opts = ["-O0"]
+    if (libtbx.config.build_options.debug_symbols):
+      opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared -LD_MSG:off=15,84"
@@ -219,10 +234,12 @@ else:
     """)
     env_etc.ccflags_base = Split("""
     """)
-    if (env_etc.release_build):
+    if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O3"]
     else:
       opts = ["-O0", "-fno-inline"]
+    if (libtbx.config.build_options.debug_symbols):
+      opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-dynamiclib"
@@ -246,12 +263,14 @@ else:
     """)
     env_etc.ccflags_base = Split("""
     """)
-    if (env_etc.release_build):
+    if (libtbx.config.build_options.optimization):
       opts = ["-DNDEBUG", "-O3"]
     else:
-      opts = ["-O0", "-g", "-fno-inline",
+      opts = ["-O0", "-fno-inline",
               #"-Wall"
               ]
+    if (libtbx.config.build_options.debug_symbols):
+      opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-dynamiclib"
@@ -270,10 +289,10 @@ env_etc.cxxflags_bpl_defines_base = Split("""
     -DBOOST_PYTHON_MAX_BASES=2
 """)
 
-env_etc.libtbx_build = os.environ["LIBTBX_BUILD"]
+env_etc.libtbx_build = env_etc.libtbx_env.LIBTBX_BUILD
 env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "libtbx/include")
 env_etc.libtbx_lib = norm_join(env_etc.libtbx_build, "libtbx")
-env_etc.boost_dist = os.environ["BOOST_DIST"]
+env_etc.boost_dist = env_etc.libtbx_env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
 
 try:
