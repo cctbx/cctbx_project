@@ -146,7 +146,7 @@ namespace cctbx { namespace sgtbx {
       int i;
       for(i=0;i<3;i++) Sol[iPV][i] = 0;
       for(i=0;i<2;i++) Sol[iPV][IxIndep[i]] = TrialV[iPV][i];
-      cctbx_assert(iREBacksubst(REMx, 0, 2, 3, Sol[iPV].elems, 0) > 0);
+      cctbx_assert(iREBacksubst(REMx, 0, 2, 3, Sol[iPV].begin(), 0) > 0);
     }
   }
 

@@ -43,7 +43,8 @@ namespace cctbx { namespace sgtbx {
   RotMx RotMx::newBaseFactor(int NewBF) const
   {
     RotMx result(NewBF);
-    if (ChangeBaseFactor(elems, BF(), result.elems, NewBF, 9) != 0) {
+    if (ChangeBaseFactor(
+          m_vec.begin(), BF(), result.m_vec.begin(), NewBF, 9) != 0) {
       throw error_base_factor(
         __FILE__, __LINE__, "out of rotation-base-factor range");
     }
@@ -67,7 +68,8 @@ namespace cctbx { namespace sgtbx {
   af::int3 operator*(const RotMx& lhs, const af::int3& rhs)
   {
     af::int3 result;
-    MatrixLite::multiply(lhs.elems, rhs.elems, 3, 3, 1, result.elems);
+    MatrixLite::multiply(
+      lhs.vec().begin(), rhs.begin(), 3, 3, 1, result.begin());
     return result;
   }
 
@@ -75,7 +77,7 @@ namespace cctbx { namespace sgtbx {
   {
     TrVec result(lhs.BF() * rhs.BF());
     MatrixLite::multiply(
-      lhs.elems, rhs.vec().begin(), 3, 3, 1, result.vec().begin());
+      lhs.vec().begin(), rhs.vec().begin(), 3, 3, 1, result.vec().begin());
     return result;
   }
 
@@ -83,7 +85,7 @@ namespace cctbx { namespace sgtbx {
   {
     TrVec result(lhs.BF() * rhs.BF());
     MatrixLite::multiply(
-      lhs.vec().begin(), rhs.elems, 1, 3, 3, result.vec().begin());
+      lhs.vec().begin(), rhs.vec().begin(), 1, 3, 3, result.vec().begin());
     return result;
   }
 
@@ -97,11 +99,6 @@ namespace cctbx { namespace sgtbx {
     os << ")/";
     os << T.BF();
     return os;
-  }
-
-  RotMx RotMx::CoFactorMxTp() const
-  {
-    return RotMx(MatrixLite::CoFactorMxTp(*this), BF() * BF());
   }
 
   RotMx RotMx::inverse() const
@@ -137,7 +134,8 @@ namespace cctbx { namespace sgtbx {
   RotMx operator*(const RotMx& lhs, const RotMx& rhs)
   {
     RotMx result(lhs.BF() * rhs.BF());
-    MatrixLite::multiply(lhs.elems, rhs.elems, 3, 3, 3, result.elems);
+    MatrixLite::multiply(
+      lhs.vec().begin(), rhs.vec().begin(), 3, 3, 3, result.vec().begin());
     return result;
   }
 
@@ -151,7 +149,8 @@ namespace cctbx { namespace sgtbx {
   RotMx operator/(const RotMx& lhs, int rhs)
   {
     RotMx result(lhs);
-    if (ChangeBaseFactor(lhs.elems, rhs, result.elems, 1, 9) != 0) {
+    if (ChangeBaseFactor(
+          lhs.vec().begin(), rhs, result.vec().begin(), 1, 9) != 0) {
       throw error_base_factor(
         __FILE__, __LINE__, "out of rotation-base-factor range");
     }
@@ -423,11 +422,11 @@ namespace cctbx { namespace sgtbx {
   {
     RotMx RmI = Rpart() - Rpart().Unit();
     RotMx P(1);
-    (void) iRowEchelonFormT(RmI.elems, 3, 3, P.elems, 3);
+    (void) iRowEchelonFormT(RmI.vec().begin(), 3, 3, P.vec().begin(), 3);
     TrVec Pwl = P * wl;
     TrVec sh(0);
     sh.BF() = iREBacksubst(
-      RmI.elems, Pwl.vec().begin(), 3, 3, sh.vec().begin(), 0);
+      RmI.vec().begin(), Pwl.vec().begin(), 3, 3, sh.vec().begin(), 0);
     cctbx_assert(sh.BF() > 0);
     sh.BF() *= Pwl.BF();
     return sh;
@@ -456,10 +455,10 @@ namespace cctbx { namespace sgtbx {
   {
     int g = BF();
     int i;
-    for(i=0;i<9;i++) g = gcd(g, elems[i]);
+    for(i=0;i<9;i++) g = gcd(g, m_vec[i]);
     if (g == 0) g = 1;
     af::int9 result;
-    for(i=0;i<9;i++) result[i] = elems[i] / g;
+    for(i=0;i<9;i++) result[i] = m_vec[i] / g;
     return RotMx(result, BF() / g);
   }
 

@@ -157,31 +157,37 @@ namespace cctbx { namespace sgtbx {
   };
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-  class RotMx : public af::int9 {
+  class RotMx {
     private:
+      af::int9 m_vec;
       int m_BF;
     public:
-      typedef af::int9 base_type;
       explicit RotMx(int RotationBaseFactor = 1, int Diagonal = 1)
-        : m_BF(RotationBaseFactor) {
-        for(int i=0;i<9;i++) elems[i] = 0;
+        : m_BF(RotationBaseFactor)
+      {
+        m_vec.fill(0);
         if (Diagonal * m_BF) {
-          for(int i=0;i<3;i++) elems[i * 4] = Diagonal * m_BF;
+          for(int i=0;i<3;i++) m_vec[i * 4] = Diagonal * m_BF;
         }
       }
       explicit RotMx(const af::int9& m, int RotationBaseFactor = 1)
-        : base_type(m), m_BF(RotationBaseFactor) {}
+        : m_vec(m), m_BF(RotationBaseFactor)
+      {}
       RotMx(int m00, int m01, int m02,
-                   int m10, int m11, int m12,
-                   int m20, int m21, int m22,
-                   const int RotationBaseFactor = 1)
-        : m_BF(RotationBaseFactor) {
-        elems[0] = m00; elems[1] = m01; elems[2] = m02;
-        elems[3] = m10; elems[4] = m11; elems[5] = m12;
-        elems[6] = m20; elems[7] = m21; elems[8] = m22;
-      }
+            int m10, int m11, int m12,
+            int m20, int m21, int m22,
+            int RotationBaseFactor = 1)
+        : m_vec(m00,m01,m02, m10,m11,m12, m20,m21, m22),
+          m_BF(RotationBaseFactor)
+      {}
+      const af::int9& vec() const { return m_vec; }
+            af::int9& vec()       { return m_vec; }
+      const int& operator[](std::size_t i) const { return m_vec[i]; }
+            int& operator[](std::size_t i)       { return m_vec[i]; }
+      const int& operator()(int r, int c) const { return m_vec[r * 3 + c]; }
+            int& operator()(int r, int c)       { return m_vec[r * 3 + c]; }
       const int& BF() const { return m_BF; }
-      int& BF() { return m_BF; }
+            int& BF()       { return m_BF; }
       bool isValid() const { return m_BF != 0; }
       RotMx Unit() const {
         return RotMx(BF());
@@ -197,75 +203,68 @@ namespace cctbx { namespace sgtbx {
       RotMx newBaseFactor(int NewBF) const;
       RotMx scale(int factor) const {
         if (factor == 1) return *this;
-        RotMx result(m_BF * factor);
-        for(int i=0;i<9;i++) result[i] = elems[i] * factor;
-        return result;
+        return RotMx(m_vec * factor, m_BF * factor);
       }
       RotMx cancel() const;
       void setColumn(int c, const af::int3& v) {
-        for(int i=0;i<3;i++) elems[i * 3 + c] = v[i];
+        for(int i=0;i<3;i++) m_vec[i * 3 + c] = v[i];
       }
       af::int3 getColumn(int c) const {
         af::int3 result;
-        for(int i=0;i<3;i++) result[i] = elems[i * 3 + c];
+        for(int i=0;i<3;i++) result[i] = m_vec[i * 3 + c];
         return result;
       }
       void swapColumns(int c1, int c2) {
         for(int i=0;i<3;i++) {
-          int e = elems[i * 3 + c1];
-          elems[i * 3 + c1] = elems[i * 3 + c2];
-          elems[i * 3 + c2] = e;
+          int e = m_vec[i * 3 + c1];
+          m_vec[i * 3 + c1] = m_vec[i * 3 + c2];
+          m_vec[i * 3 + c2] = e;
         }
       }
-      int& operator()(int r, int c) {
-        return elems[r * 3 + c];
-      }
-      const int& operator()(int r, int c) const {
-        return elems[r * 3 + c];
-      }
       int det() const {
-        return MatrixLite::Determinant(*this);
+        return MatrixLite::Determinant(m_vec);
       }
       int trace() const {
-        return elems[0] + elems[4] + elems[8];
+        return m_vec[0] + m_vec[4] + m_vec[8];
       }
-      RotMx CoFactorMxTp() const;
+      RotMx CoFactorMxTp() const {
+        return RotMx(MatrixLite::CoFactorMxTp(m_vec), m_BF * m_BF);
+      }
       RotMx inverse() const;
       RotMx inverse_with_cancel() const;
       RotMx divide(int rhs) const;
       RotMx operator-() const {
         RotMx result(m_BF);
-        for(int i=0;i<9;i++) result[i] = -elems[i];
+        for(int i=0;i<9;i++) result[i] = -m_vec[i];
         return result;
       }
       friend RotMx operator-(const RotMx& lhs, const RotMx& rhs) {
         cctbx_assert(lhs.m_BF == rhs.m_BF);
-        RotMx result(lhs.m_BF);
-        for(int i=0;i<9;i++) result[i] = lhs[i] - rhs[i];
-        return result;
+        return RotMx(lhs.m_vec - rhs.m_vec, lhs.m_BF);
       }
       friend RotMx operator+(const RotMx& lhs, const RotMx& rhs) {
         cctbx_assert(lhs.m_BF == rhs.m_BF);
-        RotMx result(lhs.m_BF);
-        for(int i=0;i<9;i++) result[i] = lhs[i] + rhs[i];
-        return result;
+        return RotMx(lhs.m_vec + rhs.m_vec, lhs.m_BF);
       }
       RotMx& operator+=(const RotMx& rhs) {
         cctbx_assert(m_BF == rhs.m_BF);
-        for(int i=0;i<9;i++) elems[i] += rhs.elems[i];
+        for(int i=0;i<9;i++) m_vec[i] += rhs.m_vec[i];
         return *this;
       }
       friend bool operator==(const RotMx& lhs, const RotMx& rhs) {
         if (lhs.m_BF != rhs.m_BF) return false;
-        for(int i=0;i<9;i++) if (lhs.elems[i] != rhs.elems[i]) return false;
+        for(int i=0;i<9;i++) if (lhs.m_vec[i] != rhs.m_vec[i]) return false;
         return true;
+      }
+      friend bool operator!=(const RotMx& lhs, const RotMx& rhs) {
+        return !(lhs == rhs);
       }
       friend RotMx operator*(const RotMx& lhs, int rhs);
       friend RotMx operator*(const int lhs, RotMx& rhs) {
         return rhs * lhs;
       }
       RotMx& operator*=(int rhs) {
-        for(int i=0;i<9;i++) elems[i] *= rhs;
+        for(int i=0;i<9;i++) m_vec[i] *= rhs;
         return *this;
       }
       friend RotMx operator*(const RotMx& lhs, const RotMx& rhs);
@@ -284,7 +283,7 @@ namespace cctbx { namespace sgtbx {
       af::tiny<FloatType, 9> as_array(const FloatType&) const {
         af::tiny<FloatType, 9> result;
         for(int i=0;i<9;i++) {
-          result[i] = FloatType(elems[i]) / FloatType(m_BF);
+          result[i] = FloatType(m_vec[i]) / FloatType(m_BF);
         }
         return result;
       }
@@ -679,9 +678,9 @@ namespace cctbx { namespace sgtbx {
     const double TBF = T.BF();
     af::double3 result;
     for(int i=0;i<3;i++) {
-      result[i] = (  R[i * 3 + 0] * rhs[0]
-                   + R[i * 3 + 1] * rhs[1]
-                   + R[i * 3 + 2] * rhs[2]) / RBF + T.vec()[i] / TBF;
+      result[i] = (  R(i,0) * rhs[0]
+                   + R(i,1) * rhs[1]
+                   + R(i,2) * rhs[2]) / RBF + T.vec()[i] / TBF;
     }
     return result;
   }

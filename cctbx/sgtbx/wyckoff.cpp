@@ -2280,7 +2280,8 @@ namespace cctbx { namespace sgtbx {
       M = M.scale(f / M.BF());
       b = b.scale(f / b.BF());
       RotMx P(1), Q(1);
-      int nd = SmithNormalForm(M.elems, 3, 3, P.elems, Q.elems);
+      int nd = SmithNormalForm(
+        M.vec().begin(), 3, 3, P.vec().begin(), Q.vec().begin());
       cctbx_assert(nd >= 0 && nd <= 3);
       TrVec Pb = P * b;
       int i;

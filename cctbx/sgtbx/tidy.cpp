@@ -51,8 +51,8 @@ namespace cctbx { namespace sgtbx {
         if (std::abs(RI_a.Rtype()) < std::abs(RI_b.Rtype())) return false;
         if (RI_a.Rtype() > RI_b.Rtype()) return true;
         if (RI_a.Rtype() < RI_b.Rtype()) return false;
-        if (CmpiVect(3)(RI_a.EV().elems, RI_b.EV().elems)) return true;
-        if (CmpiVect(3)(RI_b.EV().elems, RI_a.EV().elems)) return false;
+        if (CmpiVect(3)(RI_a.EV().begin(), RI_b.EV().begin())) return true;
+        if (CmpiVect(3)(RI_b.EV().begin(), RI_a.EV().begin())) return false;
         if (RI_a.SenseOfRotation() > RI_b.SenseOfRotation()) return true;
         if (RI_a.SenseOfRotation() < RI_b.SenseOfRotation()) return false;
         if (CmpiVect(3)(

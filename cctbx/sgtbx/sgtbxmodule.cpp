@@ -84,8 +84,7 @@ namespace {
   tuple RTMx_as_tuple_2(const RTMx& M, int RBF, int TBF) {
     RTMx N = M.newBaseFactors(RBF, TBF);
     tuple result(2);
-    result.set_item(0,
-      ref(to_python(static_cast<af::int9>(N.Rpart()))));
+    result.set_item(0, ref(to_python(N.Rpart().vec())));
     result.set_item(1, ref(to_python(N.Tpart().vec())));
     return result;
   }
