@@ -25,6 +25,10 @@ def exercise_direct_space_asu():
   cpb = cp.add_buffer(unit_cell=unit_cell, thickness=0.5)
   assert approx_equal(cpb.n, cp.n)
   assert approx_equal(cpb.c, 2.5)
+  asu = crystal.direct_space_asu_float_asu(
+    unit_cell=unit_cell,
+    facets=[])
+  assert asu.volume_vertices().size() == 0
   facets = []
   for i in xrange(3):
     n = [0,0,0]
@@ -61,6 +65,8 @@ def exercise_direct_space_asu():
       [(1, 0, -1), 1/4.]]])
   assert approx_equal(asu.box_min(), [0.25, -0.25, 0.5])
   assert approx_equal(asu.box_max(), [1.25, 0.75, 1.0])
+  assert approx_equal(asu.box_min(cartesian=0001), [0.25, -0.25, 0.5])
+  assert approx_equal(asu.box_max(cartesian=0001), [1.25, 0.75, 1.0])
   asu_mappings = crystal.direct_space_asu.asu_mappings(
     space_group=sgtbx.space_group("P 2 3").change_basis(
       sgtbx.change_of_basis_op("x+1/4,y-1/4,z+1/2")),
