@@ -2,7 +2,6 @@
 #define IOTBX_MTZ_CRYSTAL_H
 
 #include <iotbx/mtz/object.h>
-#include <cctbx/uctbx.h>
 
 namespace iotbx { namespace mtz {
 
