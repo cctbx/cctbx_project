@@ -3,4 +3,4 @@ env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(
   target="#libtbx/cctbx_boost/uctbx_ext",
-  source=["uctbx_ext.cpp", "fast_minimal_reduction.cpp"])
+  source=["uctbx_ext.cpp", "fast_minimum_reduction.cpp"])

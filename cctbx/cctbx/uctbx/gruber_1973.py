@@ -1,6 +1,6 @@
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded
 from cctbx.uctbx.reduction_base import reduction_base
-from cctbx.uctbx.reduction_base import minimal_reduction_mixin
+from cctbx.uctbx.reduction_base import minimum_reduction_mixin
 from cctbx import uctbx
 from cctbx import matrix
 import math
@@ -88,11 +88,11 @@ class reduction(reduction_base):
     assert s.c > 0
     return 0001
 
-class minimal_reduction(minimal_reduction_mixin, reduction):
+class minimum_reduction(minimum_reduction_mixin, reduction):
 
   def __init__(self, unit_cell, expected_cycle_limit=None,
                                 iteration_limit=None):
-    minimal_reduction_mixin.__init__(self,
+    minimum_reduction_mixin.__init__(self,
       unit_cell, expected_cycle_limit, iteration_limit)
 
   def n3_false_action(self):
@@ -103,7 +103,7 @@ class minimal_reduction(minimal_reduction_mixin, reduction):
     self.current_cycle_id = 2
     return reduction.b5_action(self)
 
-class fast_minimal_reduction:
+class fast_minimum_reduction:
 
   def __init__(self, unit_cell, expected_cycle_limit=None,
                                 iteration_limit=None):

@@ -78,6 +78,18 @@ class symmetry(object):
     return self.change_basis(self.change_of_basis_op_to_best_cell(
       angular_tolerance=angular_tolerance))
 
+  def change_of_basis_op_to_minimum_cell(self):
+    z2p_op = self.space_group().z2p_op()
+    r_inv = z2p_op.c_inv().r()
+    p_cell = self.unit_cell().change_basis(r_inv.num(), r_inv.den())
+    red = p_cell.minimum_reduction()
+    p2n_op = sgtbx.change_of_basis_op(
+      sgtbx.rt_mx(sgtbx.rot_mx(red.r_inv(), 1))).inverse()
+    return p2n_op.new_denominators(z2p_op) * z2p_op
+
+  def minimum_cell(self):
+    return self.change_basis(self.change_of_basis_op_to_minimum_cell())
+
   def change_of_basis_op_to_niggli_cell(self):
     z2p_op = self.space_group().z2p_op()
     r_inv = z2p_op.c_inv().r()

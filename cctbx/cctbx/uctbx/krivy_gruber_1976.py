@@ -1,6 +1,6 @@
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded
 from cctbx.uctbx.reduction_base import reduction_base
-from cctbx.uctbx.reduction_base import minimal_reduction_mixin
+from cctbx.uctbx.reduction_base import minimum_reduction_mixin
 
 class reduction(reduction_base):
 
@@ -111,11 +111,11 @@ class reduction(reduction_base):
     s.e += s.a+s.a+s.f
     assert s.c > 0
 
-class minimal_reduction(minimal_reduction_mixin, reduction):
+class minimum_reduction(minimum_reduction_mixin, reduction):
 
   def __init__(self, unit_cell, expected_cycle_limit=None,
                                 iteration_limit=None):
-    minimal_reduction_mixin.__init__(self,
+    minimum_reduction_mixin.__init__(self,
       unit_cell, expected_cycle_limit, iteration_limit)
 
   def a4_action(self):

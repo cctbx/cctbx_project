@@ -32,20 +32,20 @@ def run():
     crystal_symmetry = crystal.symmetry(
       unit_cell=unit_cell,
       space_group_info=non_centric_info)
-    niggli_symmetry = crystal_symmetry.niggli_cell()
+    minimum_symmetry = crystal_symmetry.minimum_cell()
     lattice_group = lattice_symmetry.group(
-      niggli_symmetry.unit_cell(), max_delta=0.5)
+      minimum_symmetry.unit_cell(), max_delta=0.5)
     lattice_group_info = sgtbx.space_group_info(group=lattice_group)
-    assert lattice_group_info.group() == niggli_symmetry.space_group()
+    assert lattice_group_info.group() == minimum_symmetry.space_group()
     subgrs = subgroups.subgroups(lattice_group_info).groups_parent_setting()
     for group in subgrs:
       subsym = crystal.symmetry(
-        unit_cell=niggli_symmetry.unit_cell(),
+        unit_cell=minimum_symmetry.unit_cell(),
         space_group=group,
         assert_is_compatible_unit_cell=00000)
-      assert subsym.unit_cell().is_similar_to(niggli_symmetry.unit_cell())
+      assert subsym.unit_cell().is_similar_to(minimum_symmetry.unit_cell())
       assert lattice_symmetry.find_max_delta(
-        niggli_cell=niggli_symmetry.unit_cell(),
+        minimum_cell=minimum_symmetry.unit_cell(),
         group=group) < 0.6
   print "OK"
 
