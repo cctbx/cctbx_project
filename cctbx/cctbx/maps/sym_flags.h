@@ -12,6 +12,7 @@
 #define CCTBX_MAPS_SYM_FLAGS_H
 
 #include <cctbx/fixcap_vector.h>
+#include <cctbx/loops.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/vector/linear_regression.h>
 

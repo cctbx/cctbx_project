@@ -29,6 +29,7 @@ namespace {
       this_module, python_name, cctbx::type_holder<ss_value_type >())
 
     WRAP_TYPE("int", int);
+    WRAP_TYPE("long", long);
     WRAP_TYPE("float", float);
     WRAP_TYPE("double", double);
     WRAP_TYPE("complex", std::complex<double>);
