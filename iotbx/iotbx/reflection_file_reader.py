@@ -127,6 +127,8 @@ def run(args):
     all_miller_arrays.extend(miller_arrays)
     print
   if (pickle_file_name != None):
+    if (len(all_miller_arrays) == 1):
+      all_miller_arrays = all_miller_arrays[0]
     if (not pickle_file_name.lower().endswith(".pickle")):
       pickle_file_name += ".pickle"
     print "Writing all Miller arrays to file:", pickle_file_name
