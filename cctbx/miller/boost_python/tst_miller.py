@@ -386,6 +386,21 @@ def exercise_match_indices():
   assert tuple(h1.unshuffle(q)) == tuple(h0)
   assert tuple(h0.unshuffle(p)) == tuple(h1)
 
+def exercise_merge_equivalents():
+  i = flex.miller_index(((1,2,3), (1,2,3), (3,0,3), (3,0,3), (3,0,3), (1,1,2)))
+  d = flex.double((1,2,3,4,5,6))
+  s = flex.double((1/3.,1/2.,1/4.,1/6.,1/3.,1/5.))
+  m = miller.ext.merge_equivalents(i, d)
+  assert tuple(m.indices()) == ((1,2,3), (3,0,3), (1,1,2))
+  assert approx_equal(m.data(), (3/2., 4, 6))
+  assert m.sigmas().size() == 0
+  assert tuple(m.redundancies()) == (2,3,1)
+  m = miller.ext.merge_equivalents(i, d, s)
+  assert tuple(m.indices()) == ((1,2,3), (3,0,3), (1,1,2))
+  assert approx_equal(m.data(), (17/13., (16*3+36*4+9*5)/(16+36+9.), 6))
+  assert approx_equal(flex.pow2(m.sigmas()), (1/13., 1/(16+36+9.), 1/25.))
+  assert tuple(m.redundancies()) == (2,3,1)
+
 def exercise_phase_transfer():
   sg = sgtbx.space_group_info("P 21 21 21").group()
   i = flex.miller_index(((1,2,3), (3,0,3)))
@@ -405,6 +420,7 @@ def run():
   exercise_index_generator()
   exercise_index_span()
   exercise_match_bijvoet_mates()
+  exercise_merge_equivalents()
   exercise_match_indices()
   exercise_phase_transfer()
   print "OK"

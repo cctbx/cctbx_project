@@ -27,7 +27,7 @@ namespace {
       class_<w_t>("merge_equivalents", no_init)
         .def(init<af::const_ref<index<> > const&,
                   af::const_ref<double> const&,
-                  af::const_ref<double> const&>())
+                  optional<af::const_ref<double> const&> >())
         .def("indices", &w_t::indices)
         .def("data", &w_t::data)
         .def("sigmas", &w_t::sigmas)

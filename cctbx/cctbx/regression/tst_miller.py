@@ -261,6 +261,32 @@ def exercise_array():
   assert approx_equal(tuple(p1.data()), (3,4,4))
   assert approx_equal(tuple(p1.sigmas()), (5,6,6))
 
+def exercise_array_2(space_group_info):
+  xs = crystal.symmetry(
+    unit_cell=space_group_info.any_compatible_unit_cell(60),
+    space_group_info=space_group_info)
+  for anomalous_flag in (00000, 0001):
+    st = miller.build_set(xs, anomalous_flag, d_min=1)
+    for sigmas in (None, flex.double(xrange(1,st.indices().size()+1))):
+      sg = miller.array(
+        st,
+        data=flex.double(xrange(st.indices().size())),
+        sigmas=sigmas)
+      p1 = sg.expand_to_p1()
+      ps = miller.array(
+        miller.set(xs, p1.indices(), p1.anomalous_flag()),
+        p1.data(),
+        p1.sigmas())
+      m = ps.merge_equivalents()
+      p = m.array().sort_permutation(by_value="data", reverse=0001)
+      assert flex.order(sg.indices(), m.array().indices().shuffle(p)) == 0
+      assert approx_equal(sg.data(), m.array().data().shuffle(p))
+      if (sigmas != None):
+        s = m.array().sigmas().shuffle(p)
+        r = m.redundancies().shuffle(p)
+        sr = s * flex.sqrt(r.as_double())
+        assert approx_equal(sr, sigmas)
+
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
   mi = flex.miller_index(((1,-2,3), (0,0,-4)))
@@ -329,6 +355,7 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.verify(patterson_map.real_map())
 
 def run_call_back(flags, space_group_info):
+  exercise_array_2(space_group_info)
   exercise_squaring_and_patterson_map(space_group_info, verbose=flags.Verbose)
 
 def run():
