@@ -187,7 +187,7 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
   search_symmetry = sgtbx.search_symmetry(
     flags=symmetry_flags,
     space_group_type=ref_symmetry.space_group_info().type(),
-    seminvariant=ref_symmetry.space_group_info().structure_seminvariant())
+    seminvariant=ref_symmetry.space_group_info().structure_seminvariants())
   assert search_symmetry.continuous_shifts_are_principal()
   continuous_shift_flags = search_symmetry.continuous_shift_flags()
   if (flag_write_pdb):
@@ -227,7 +227,7 @@ def check_with_grid_tags(inp_symmetry, symmetry_flags,
         point_frac_ref = cb_op_inp_ref.c() * point_frac_inp
         equiv_points = sgtbx.sym_equiv_sites(
           unit_cell=ref_symmetry.unit_cell(),
-          space_group=search_symmetry.group(),
+          space_group=search_symmetry.subgroup(),
           original_site=point_frac_ref,
           minimum_distance=2.e-6,
           tolerance=1.e-6)
@@ -260,7 +260,7 @@ def run_call_back(flags, space_group_info):
   symmetry_flags=sgtbx.search_symmetry_flags(
       use_space_group_symmetry=0001,
       use_space_group_ltr=0,
-      use_seminvariant=0001,
+      use_seminvariants=0001,
       use_normalizer_k2l=00000,
       use_normalizer_l2n=00000)
   point_distance = 2
@@ -304,7 +304,7 @@ def exercise_all_twelve_neighbors():
     symmetry_flags=sgtbx.search_symmetry_flags(
       use_space_group_symmetry=0001,
       use_space_group_ltr=0,
-      use_seminvariant=0001,
+      use_seminvariants=0001,
       use_normalizer_k2l=00000,
       use_normalizer_l2n=00000),
     point_distance=2,
@@ -319,7 +319,7 @@ def exercise_groel_sampling(verbose):
   t00 = time.time()
   n_sites = []
   for use_space_group_symmetry in [0001,00000]:
-    for use_seminvariant in [0001,00000]:
+    for use_seminvariants in [0001,00000]:
       for all_twelve_neighbors in [00000,0001]:
         if (not use_space_group_symmetry and all_twelve_neighbors):
           continue
@@ -328,7 +328,7 @@ def exercise_groel_sampling(verbose):
           symmetry_flags=sgtbx.search_symmetry_flags(
             use_space_group_symmetry=use_space_group_symmetry,
             use_space_group_ltr=0,
-            use_seminvariant=use_seminvariant,
+            use_seminvariants=use_seminvariants,
             use_normalizer_k2l=00000,
             use_normalizer_l2n=00000),
           point_distance=2,

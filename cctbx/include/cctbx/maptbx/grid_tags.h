@@ -346,19 +346,19 @@ namespace grid_tags_detail {
     symmetry_flags_ = symmetry_flags;
     n_grid_misses_ = 0;
     tag_array_.fill(-1);
-    sgtbx::structure_seminvariant ss;
+    sgtbx::structure_seminvariants ss;
     sgtbx::space_group sym;
-    if (symmetry_flags.use_seminvariant()) {
-      ss = sgtbx::structure_seminvariant(sg_type.group());
-      sym = sgtbx::search_symmetry(symmetry_flags_, sg_type_, ss).group();
+    if (symmetry_flags.use_seminvariants()) {
+      ss = sgtbx::structure_seminvariants(sg_type.group());
+      sym = sgtbx::search_symmetry(symmetry_flags_, sg_type_, ss).subgroup();
     }
     else {
-      sym = sgtbx::search_symmetry(symmetry_flags_, sg_type_).group();
+      sym = sgtbx::search_symmetry(symmetry_flags_, sg_type_).subgroup();
     }
     if (mark_orbits(tag_array_, sym, space_group_symmetry_tag()) > 0) {
       throw error("Grid is not compatible with symmetry.");
     }
-    if (symmetry_flags.use_seminvariant()) {
+    if (symmetry_flags.use_seminvariants()) {
       grid_ss_continuous_ = ss.select(false).grid_adapted_moduli(
         tag_array_.accessor());
       n_grid_misses_ = mark_orbits(

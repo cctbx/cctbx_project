@@ -37,7 +37,7 @@ namespace cctbx { namespace sgtbx {
       <p>
       See also: space_group_type::addl_generators_of_euclidean_normalizer()
    */
-  class structure_seminvariant
+  class structure_seminvariants
   {
     public:
       //! Default constructor.
@@ -45,14 +45,14 @@ namespace cctbx { namespace sgtbx {
           <p>
           Not available in Python.
        */
-      structure_seminvariant() {}
+      structure_seminvariants() {}
 
       /*! \brief Computes structure-seminvariant vectors and moduli
           for the given space group.
        */
       /*! See class details.
        */
-      structure_seminvariant(space_group const& sg);
+      structure_seminvariants(space_group const& sg);
 
       //! The computed structure-seminvariant vectors and moduli.
       af::small<ss_vec_mod, 3> const&
@@ -87,10 +87,10 @@ namespace cctbx { namespace sgtbx {
       apply_mod(miller::index<> const& h) const;
 
       //! Selects discrete or continuous shifts only.
-      structure_seminvariant
+      structure_seminvariants
       select(bool discrete)
       {
-        structure_seminvariant result;
+        structure_seminvariants result;
         for(std::size_t i_ss=0;i_ss<size();i_ss++) {
           ss_vec_mod const& ss = vec_mod_[i_ss];
           if ((ss.m != 0) == discrete) {
@@ -125,7 +125,7 @@ namespace cctbx { namespace sgtbx {
 
   template <typename GridTupleType>
   GridTupleType
-  structure_seminvariant
+  structure_seminvariants
   ::refine_gridding(GridTupleType const& grid) const
   {
     GridTupleType ref_grid = grid;
@@ -152,7 +152,7 @@ namespace cctbx { namespace sgtbx {
 
   template <typename DimensionTupleType>
   af::small<ss_vec_mod, 3>
-  structure_seminvariant
+  structure_seminvariants
   ::grid_adapted_moduli(DimensionTupleType const& dim) const
   {
     af::small<ss_vec_mod, 3> result = vec_mod_;

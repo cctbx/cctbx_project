@@ -81,14 +81,14 @@ def exercise_grid_tags():
     f = sgtbx.search_symmetry_flags(
       use_space_group_symmetry=i_flags % 2 != 0,
       use_space_group_ltr=0,
-      use_seminvariant=(i_flags/4) % 2 != 0,
+      use_seminvariants=(i_flags/4) % 2 != 0,
       use_normalizer_k2l=(i_flags/2) % 2 != 0,
       use_normalizer_l2n=00000)
     t.build(s.type(), f)
     assert t.is_valid()
     assert t.space_group_type().group() == s.group()
     assert t.symmetry_flags() == f
-    if (f.use_seminvariant()):
+    if (f.use_seminvariants()):
       assert [(vm.v, vm.m) for vm in t.grid_ss_continuous()] \
           == [((0, 1, 0), 10)]
     assert t.n_grid_misses() == 0
@@ -173,7 +173,7 @@ def exercise_gridding():
   f = sgtbx.search_symmetry_flags(
     use_space_group_symmetry=0001,
     use_space_group_ltr=0,
-    use_seminvariant=00000,
+    use_seminvariants=00000,
     use_normalizer_k2l=0001,
     use_normalizer_l2n=00000)
   t = sgtbx.space_group_info("F 2 2 2").primitive_setting().type()

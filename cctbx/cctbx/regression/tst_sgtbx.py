@@ -16,7 +16,7 @@ def exercise_space_group_info():
       == "k>=0 and (l>0 or (l==0 and h>=0))"
   assert str(i.brick()) == "0<=x<=1/2; 0<=y<1; 0<=z<1"
   assert i.wyckoff_table().space_group_type().group() == i.type().group()
-  assert len(i.structure_seminvariant().vectors_and_moduli()) == 3
+  assert len(i.structure_seminvariants().vectors_and_moduli()) == 3
   for sg_number in (1,3,15,75,143,195):
     assert approx_equal(
       sgtbx.space_group_info(sg_number).any_compatible_unit_cell(100).volume(),

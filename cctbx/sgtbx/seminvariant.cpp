@@ -249,7 +249,7 @@ namespace cctbx { namespace sgtbx {
 
   } // namespace <anonymous>
 
-  structure_seminvariant::structure_seminvariant(space_group const& sg)
+  structure_seminvariants::structure_seminvariants(space_group const& sg)
   {
     select_generators::any gen(sg, cb_r_den, cb_t_den);
     vec_mod_ = get_cont_null_space(gen);
@@ -303,7 +303,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   bool
-  structure_seminvariant::is_ss(miller::index<> const& h) const
+  structure_seminvariants::is_ss(miller::index<> const& h) const
   {
     for(std::size_t i=0;i<vec_mod_.size();i++) {
       int u = vec_mod_[i].v * h;
@@ -318,7 +318,7 @@ namespace cctbx { namespace sgtbx {
   }
 
   af::small<int, 3>
-  structure_seminvariant::apply_mod(miller::index<> const& h) const
+  structure_seminvariants::apply_mod(miller::index<> const& h) const
   {
     af::small<int, 3> result;
     for(std::size_t i=0;i<vec_mod_.size();i++) {

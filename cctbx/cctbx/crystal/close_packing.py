@@ -20,10 +20,10 @@ class setup_hexagonal_sampling:
       flags=symmetry_flags,
       space_group_type=sampling_symmetry.space_group_info().type(),
       seminvariant=sampling_symmetry.space_group_info()
-        .structure_seminvariant())
+        .structure_seminvariants())
     expanded_symmetry = crystal.symmetry(
       unit_cell=sampling_symmetry.unit_cell(),
-      space_group=search_symmetry.projected_group())
+      space_group=search_symmetry.projected_subgroup())
     self.rational_asu = expanded_symmetry.space_group_info().direct_space_asu()
     self.rational_asu.add_planes(
       normal_directions=search_symmetry.continuous_shifts(),

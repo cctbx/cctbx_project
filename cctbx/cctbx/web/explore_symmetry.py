@@ -272,7 +272,7 @@ def run(server_info, inp, status):
   print
 
   print "Additional generators of Euclidean normalizer:"
-  ss = sgtbx.structure_seminvariant(sg)
+  ss = sgtbx.structure_seminvariants(sg)
   ss_vm = ss.vectors_and_moduli()
   print "  Number of structure-seminvariant vectors and moduli:", len(ss_vm)
   if (len(ss_vm)):

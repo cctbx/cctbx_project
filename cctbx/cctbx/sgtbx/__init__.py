@@ -91,11 +91,11 @@ class space_group_info:
       cache._wyckoff_table = wyckoff_table(self.type())
     return cache._wyckoff_table
 
-  def structure_seminvariant(self):
+  def structure_seminvariants(self):
     cache = self._space_group_info_cache
-    if (not hasattr(cache, "_structure_seminvariant")):
-      cache._structure_seminvariant = structure_seminvariant(self._group)
-    return cache._structure_seminvariant
+    if (not hasattr(cache, "_structure_seminvariants")):
+      cache._structure_seminvariants = structure_seminvariants(self._group)
+    return cache._structure_seminvariants
 
   def reference_setting(self):
     return space_group_info(symbol=self.type().number())
@@ -174,4 +174,4 @@ class _search_symmetry_flags(boost.python.injector, ext.search_symmetry_flags):
     print >> f, "use_space_group_ltr:", self.use_space_group_ltr()
     print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
     print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
-    print >> f, "use_seminvariant:", self.use_seminvariant()
+    print >> f, "use_seminvariants:", self.use_seminvariants()
