@@ -109,7 +109,7 @@ if (not env_etc.no_boost_python):
 
   env_cctbx_boost_python_ext.Command(
     "#libtbx/cctbx_boost/__init__.py",
-    "#libtbx/build/SConscript", env_etc.touch_init)
+    "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
 
   SConscript("array_family/boost_python/SConscript")
   SConscript("eltbx/boost_python/SConscript")
