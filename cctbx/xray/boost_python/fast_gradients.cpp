@@ -27,7 +27,8 @@ namespace {
                   optional<double const&,
                            double const&,
                            double const&,
-                           bool> >())
+                           bool,
+                           double const&> >())
         .def("packed", &w_t::packed)
         .def("d_target_d_site_cart", &w_t::d_target_d_site_cart)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)

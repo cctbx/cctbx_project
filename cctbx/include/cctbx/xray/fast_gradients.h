@@ -331,7 +331,8 @@ namespace cctbx { namespace xray {
         FloatType const& u_extra=0.25,
         FloatType const& wing_cutoff=1.e-6,
         FloatType const& exp_table_one_over_step_size=-100,
-        bool electron_density_must_be_positive=true);
+        bool electron_density_must_be_positive=true,
+        FloatType const& tolerance_positive_definite=1.e-5);
 
       af::shared<FloatType>
       packed() const { return packed_; }
@@ -379,10 +380,11 @@ namespace cctbx { namespace xray {
     FloatType const& u_extra,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
-    bool electron_density_must_be_positive)
+    bool electron_density_must_be_positive,
+    FloatType const& tolerance_positive_definite)
   :
     base_t(unit_cell, scatterers, u_extra, wing_cutoff,
-           exp_table_one_over_step_size)
+           exp_table_one_over_step_size, tolerance_positive_definite)
   {
     CCTBX_ASSERT(   (ft_d_target_d_f_calc_real.size() == 0)
                  != (ft_d_target_d_f_calc_complex.size() == 0));
@@ -432,11 +434,7 @@ namespace cctbx { namespace xray {
           u_iso = scatterer->u_iso;
         }
         else {
-          u_cart = adptbx::u_star_as_u_cart(
-            this->unit_cell_, scatterer->u_star);
-          scitbx::vec3<FloatType> ev = adptbx::eigenvalues(u_cart);
-          CCTBX_ASSERT(adptbx::is_positive_definite(ev));
-          u_iso = af::max(ev);
+          u_iso = this->get_u_cart_and_u_iso(scatterer->u_star, u_cart);
         }
         CCTBX_ASSERT(u_iso >= 0);
         detail::d_caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(

@@ -28,6 +28,8 @@ namespace {
         .def("wing_cutoff", &w_t::wing_cutoff)
         .def("exp_table_one_over_step_size",
           &w_t::exp_table_one_over_step_size)
+        .def("tolerance_positive_definite",
+          &w_t::tolerance_positive_definite)
         .def("n_scatterers_passed", &w_t::n_scatterers_passed)
         .def("n_contributing_scatterers", &w_t::n_contributing_scatterers)
         .def("n_anomalous_scatterers", &w_t::n_anomalous_scatterers)

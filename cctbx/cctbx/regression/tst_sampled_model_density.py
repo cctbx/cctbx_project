@@ -40,6 +40,7 @@ def exercise(space_group_info, caasf_const,
   rfft = fftpack.real_to_complex_3d(crystal_gridding.n_real())
   u_extra = xray.calc_u_extra(d_min, resolution_factor, quality_factor)
   electron_density_must_be_positive = 1
+  tolerance_positive_definite = 1.e-5
   sampled_density = xray.sampled_model_density(
     structure.unit_cell(),
     structure.scatterers(),
@@ -49,7 +50,8 @@ def exercise(space_group_info, caasf_const,
     wing_cutoff,
     exp_table_one_over_step_size,
     force_complex,
-    electron_density_must_be_positive)
+    electron_density_must_be_positive,
+    tolerance_positive_definite)
   assert sampled_density.anomalous_flag() == (anomalous_flag or force_complex)
   if (0 or verbose):
     print "number of scatterers passed:", \

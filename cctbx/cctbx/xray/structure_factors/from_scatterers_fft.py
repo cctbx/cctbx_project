@@ -22,7 +22,8 @@ class from_scatterers_fft(managed_calculation_base):
       manager.wing_cutoff(),
       manager.exp_table_one_over_step_size(),
       manager.force_complex(),
-      manager.electron_density_must_be_positive())
+      manager.electron_density_must_be_positive(),
+      manager.tolerance_positive_definite())
     time_sampling = time_sampling.elapsed()
     time_fft = user_plus_sys_time()
     if (not sampled_density.anomalous_flag()):

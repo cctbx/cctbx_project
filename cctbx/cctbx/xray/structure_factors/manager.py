@@ -22,7 +22,8 @@ class manager(crystal.symmetry):
                      exp_table_one_over_step_size=-100,
                      max_prime=5,
                      force_complex=00000,
-                     electron_density_must_be_positive=0001):
+                     electron_density_must_be_positive=0001,
+                     tolerance_positive_definite=1.e-5):
     assert miller_set is None or crystal_symmetry is None
     if (miller_set is None):
       assert crystal_symmetry is not None and d_min is not None
@@ -77,6 +78,9 @@ class manager(crystal.symmetry):
 
   def electron_density_must_be_positive(self):
     return self._electron_density_must_be_positive
+
+  def tolerance_positive_definite(self):
+    return self._tolerance_positive_definite
 
   def crystal_gridding(self, assert_shannon_sampling=0001):
     if (self._crystal_gridding is None):

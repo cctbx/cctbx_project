@@ -684,9 +684,26 @@ namespace cctbx {
    */
   template <typename FloatType>
   bool
-  is_positive_definite(vec3<FloatType> const& adp_eigenvalues)
+  is_positive_definite(
+    vec3<FloatType> const& adp_eigenvalues)
   {
-    return scitbx::af::min(adp_eigenvalues.const_ref()) > 0.;
+    return scitbx::af::min(adp_eigenvalues.const_ref()) > 0;
+  }
+
+  /*! \brief Tests if the anisotropic displacement tensor is
+      positive definite, given adp_eigenvalues.
+   */
+  /*! Tests if all adp_eigenvalues are >= -tolerance.
+      <p>
+      See also: eigenvalues().
+   */
+  template <typename FloatType>
+  bool
+  is_positive_definite(
+    vec3<FloatType> const& adp_eigenvalues,
+    FloatType const& tolerance)
+  {
+    return scitbx::af::min(adp_eigenvalues.const_ref()) >= -tolerance;
   }
 
   /*! \brief Tests if the anisotropic displacement tensor is
@@ -696,9 +713,24 @@ namespace cctbx {
    */
   template <typename FloatType>
   bool
-  is_positive_definite(sym_mat3<FloatType> const& adp)
+  is_positive_definite(
+    sym_mat3<FloatType> const& adp)
   {
     return is_positive_definite(eigenvalues(adp));
+  }
+
+  /*! \brief Tests if the anisotropic displacement tensor is
+      positive definite.
+   */
+  /*! Tests if all eigenvalues(adp) are >= -tolerance.
+   */
+  template <typename FloatType>
+  bool
+  is_positive_definite(
+    sym_mat3<FloatType> const& adp,
+    FloatType const& tolerance)
+  {
+    return is_positive_definite(eigenvalues(adp), tolerance);
   }
 
   namespace detail {

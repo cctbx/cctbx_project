@@ -58,7 +58,11 @@ def exercise_interface():
   for e in adptbx.eigenvalues(u):
     check_eigenvalue(u, e)
   assert not adptbx.is_positive_definite(adptbx.eigenvalues(u))
+  assert not adptbx.is_positive_definite(adptbx.eigenvalues(u), 0)
+  assert adptbx.is_positive_definite(adptbx.eigenvalues(u), 1.22)
   assert not adptbx.is_positive_definite(u)
+  assert not adptbx.is_positive_definite(u, 0)
+  assert adptbx.is_positive_definite(u, 1.22)
   up = (0.534, 0.812, 0.613, 0.0166, 0.134, -0.0124)
   s = adptbx.eigensystem(up)
   s = adptbx.eigensystem(up, 1.e-7)
