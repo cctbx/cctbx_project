@@ -1,3 +1,7 @@
+hint:
+	@echo "This Makefile is not for compilation."
+	@echo "The build procedure is explained in the documentation."
+
 makefiles:
 	cd eltbx; python MakeMakefiles.py
 	cd sgtbx; python MakeMakefiles.py
