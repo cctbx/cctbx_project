@@ -765,13 +765,14 @@ namespace cctbx { namespace sftbx {
       sgtbx::SymEquivMillerIndices semi = sgops.getEquivMillerIndices(
         miller_indices[i]);
       for(int e=0;e<semi.M(friedel_flag);e++) {
-        Miller::Index h = semi(e);
+        Miller::SymEquivIndex h_seq = semi(e);
+        Miller::Index h = h_seq.H();
         if (conjugate) h = -h;
         if (friedel_flag && h[2] < 0) continue;
         sfmap::grid_point_type ih = detail::h_as_ih_array(
           friedel_flag, h, n_complex);
         cctbx_assert(ih >= sfmap::grid_point_element_type(0));
-        map(ih) = semi.complex_eq(e, structure_factors[i]);
+        map(ih) = h_seq.complex_eq(structure_factors[i]);
       }
     }
     return map;

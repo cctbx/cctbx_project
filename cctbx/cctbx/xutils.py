@@ -40,9 +40,9 @@ class miller_index_set(crystal_symmetry):
     crystal_symmetry.__init__(self, xsym.UnitCell, xsym.SgInfo)
     self.H = H
 
-  def expand_indices_to_p1(self, friedel_flag = 1):
+  def expand_to_p1(self, friedel_flag):
     set_p1_H = shared.Miller_Index()
-    sgtbx.expand_to_p1(self.SgOps, self.H, set_p1_H, friedel_flag)
+    sgtbx.expand_to_p1(self.SgOps, friedel_flag, self.H, set_p1_H)
     return miller_index_set(self.cell_equivalent_p1(), set_p1_H)
 
 class reciprocal_space_array(miller_index_set):

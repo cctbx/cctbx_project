@@ -161,8 +161,8 @@ namespace cctbx { namespace sgtbx {
   {
     if (m_HT < 0) return true;
     double delta = std::fmod(phi - HT(Period), Period);
-    if      (delta >  tolerance) delta -= Period;
-    else if (delta < -tolerance) delta += Period;
+    if (delta >  tolerance) delta -= Period;
+    if (delta < -tolerance) delta += Period;
     if (delta <= tolerance) return true;
     return false;
   }
@@ -185,11 +185,14 @@ namespace cctbx { namespace sgtbx {
           }
         }
         if (!found) {
-          SEMI.add(Miller::SymEquivIndex(HR, HT_mod_1(H, M.Tpart()), TBF()));
+          SEMI.add(
+            Miller::SymEquivIndex(HR, HT_mod_1(H, M.Tpart()), TBF(), false));
         }
       }
     }
     cctbx_assert((m_nSMx * m_fInv) % SEMI.N() == 0);
+    cctbx_assert(!SEMI.isCentric() || SEMI.N() % 2 == 0);
+    SEMI.sort_in_hemispheres();
     return SEMI;
   }
 
@@ -197,21 +200,35 @@ namespace cctbx { namespace sgtbx {
   {
     m_List.push_back(SEI);
     if (m_List.size() > 1) {
-      if (SEI.HR() == m_List[0].HR().FriedelMate()) {
+      if (SEI.HR() == -m_List[0].HR()) {
         cctbx_assert(m_HT_Restriction < 0 || m_HT_Restriction == SEI.HT());
         m_HT_Restriction = SEI.HT();
       }
     }
   }
 
-  Miller::Index SymEquivMillerIndices::operator()(int iMate, int iList) const
+  void SymEquivMillerIndices::sort_in_hemispheres()
+  {
+    if (!isCentric()) return;
+    std::vector<Miller::SymEquivIndex> plus;
+    std::vector<Miller::SymEquivIndex> minus;
+    for(std::size_t i=0;i<m_List.size();i++) {
+      if (SignHemisphere(m_List[i].HR()) < 0) minus.push_back(m_List[i]);
+      else                                    plus.push_back(m_List[i]);
+    }
+    m_List.clear();
+    m_List.insert(m_List.end(), plus.begin(), plus.end());
+    m_List.insert(m_List.end(), minus.begin(), minus.end());
+  }
+
+  Miller::SymEquivIndex
+  SymEquivMillerIndices::operator()(int iMate, int iList) const
   {
     if (   iMate < 0 || iMate >= fMates(true)
         || iList < 0 || iList >= N()) {
       throw error_index();
     }
-    if (iMate == 0) return m_List[iList].HR();
-    return m_List[iList].HR().FriedelMate();
+    return m_List[iList].Mate(iMate);
   }
 
   SymEquivMillerIndices::iIL_decomposition
@@ -224,7 +241,8 @@ namespace cctbx { namespace sgtbx {
     return iIL_decomposition(iIL / N(), iIL % N());
   }
 
-  Miller::Index SymEquivMillerIndices::operator()(int iIL) const
+  Miller::SymEquivIndex
+  SymEquivMillerIndices::operator()(int iIL) const
   {
     iIL_decomposition d = decompose_iIL(iIL);
     return operator()(d.iMate, d.iList);

@@ -266,6 +266,67 @@ namespace cctbx {
         Miller::Index m_previous;
     };
 
+    //! Expand an array of Miller indices to P1 symmetry.
+    /*! The symmetry operations are applied to each element
+        of the input array in. The unique symmetrically
+        equivalent indices are appended to the output array out.
+        <p>
+        If friedel_flag == true, centric indices are treated in a
+        special way: Friedel mates are suppressed. If N is the
+        number of unique symmetrically equivalent indices for
+        a given centric index, only N/2 indices will be generated.
+        <p>
+        See also: class SymEquivMillerIndices
+     */
+    template <typename MillerIndexArrayType>
+    void
+    expand_to_p1(
+      const SpaceGroup& SgOps,
+      bool friedel_flag,
+      const MillerIndexArrayType& h_in,
+      MillerIndexArrayType& h_out)
+    {
+      for(std::size_t i_in = 0; i_in < h_in.size(); i_in++) {
+        SymEquivMillerIndices h_seq = SgOps.getEquivMillerIndices(h_in[i_in]);
+        for (int i_eq = 0; i_eq < h_seq.n_p1_listing(friedel_flag); i_eq++) {
+          h_out.push_back(h_seq(i_eq).H());
+        }
+      }
+    }
+
+    //! XXX
+    template <typename MillerIndexArrayType,
+              typename AmplitudeArrayType,
+              typename PhaseArrayType>
+    void
+    expand_to_p1(
+      SpaceGroup const& SgOps,
+      bool friedel_flag,
+      MillerIndexArrayType const& h_in,
+      AmplitudeArrayType const& ampl_in,
+      PhaseArrayType const& phase_in,
+      MillerIndexArrayType& h_out,
+      AmplitudeArrayType& ampl_out,
+      PhaseArrayType& phase_out,
+      bool phase_degrees = false)
+    {
+      cctbx_assert(h_in.size() == ampl_in.size() || ampl_in.size() == 0);
+      cctbx_assert(h_in.size() == phase_in.size() || phase_in.size() == 0);
+      for(std::size_t i_in = 0; i_in < h_in.size(); i_in++) {
+        SymEquivMillerIndices h_seq = SgOps.getEquivMillerIndices(h_in[i_in]);
+        for (int i_eq = 0; i_eq < h_seq.n_p1_listing(friedel_flag); i_eq++) {
+          h_out.push_back(h_seq(i_eq).H());
+          if (ampl_in.size()) {
+            ampl_out.push_back(ampl_in[i_in]);
+          }
+          if (phase_in.size()) {
+            phase_out.push_back(
+              h_seq(i_eq).phase_eq(phase_in[i_in], phase_degrees));
+          }
+        }
+      }
+    }
+
   } // namespace sgtbx
 
   namespace Miller {
@@ -275,7 +336,7 @@ namespace cctbx {
      */
     /*! See AsymIndex for details.
      */
-    class IndexTableLayoutAdaptor : private SymEquivIndex
+    class IndexTableLayoutAdaptor : public SymEquivIndex
     {
       public:
         //! Default constructor. Some data members are not initialized!
@@ -283,65 +344,27 @@ namespace cctbx {
         //! The entry in the table of asymmetric Miller indices.
         /*! See AsymIndex.
          */
-        Index H() const {
-          return m_H;
-        }
+        Index H() const { return m_H; }
         /*! \brief %Index (0 or 1) of the column for the
             AsymIndex::FplusFminusLayout().
          */
-        int iColumn() const {
-          return m_iColumn;
-        }
-        /*! \brief Phase for equivalent index in radians, given phase for
-            input Miller index.
-         */
-        template <class FloatType>
-        FloatType
-        phase_eq_rad(const FloatType& phi_in) const {
-          if (m_ConjF) return -SymEquivIndex::phase_eq_rad(phi_in);
-          return SymEquivIndex::phase_eq_rad(phi_in);
-        }
-        /*! \brief Phase for input index in radians, given phase for
-            equivalent Miller index.
-         */
-        template <class FloatType>
-        FloatType
-        phase_in_rad(const FloatType& phi_eq) const {
-          if (m_ConjF) return SymEquivIndex::phase_in_rad(-phi_eq);
-          return SymEquivIndex::phase_in_rad(phi_eq);
-        }
-        //! Phase in degrees, given phase for input Miller index.
-        template <class FloatType>
-        FloatType
-        phase_eq_deg(const FloatType& phi_in) const {
-          if (m_ConjF) return -SymEquivIndex::phase_eq_deg(phi_in);
-          return SymEquivIndex::phase_eq_deg(phi_in);
-        }
-        /*! \brief Complex structure factor, given structure factor
-            for input Miller index.
-         */
-        template <class FloatType>
-        std::complex<FloatType>
-        complex_eq(const std::complex<FloatType>& f_in) const {
-          if (m_ConjF) return std::conj(SymEquivIndex::complex_eq(f_in));
-          return SymEquivIndex::complex_eq(f_in);
-        }
+        int iColumn() const { return m_iColumn; }
       private:
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
         friend class AsymIndex;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
         IndexTableLayoutAdaptor(const SymEquivIndex& SEI,
                                 bool ConjH, bool FminusColumn, bool ConjF)
-          : SymEquivIndex(SEI), m_iColumn(0), m_ConjF(ConjF)
+          : SymEquivIndex(SEI), m_iColumn(0)
         {
           m_H = m_HR;
-          if (ConjH) m_H = m_H.FriedelMate();
+          if (ConjH) m_H = -m_H;
           if (FminusColumn) m_iColumn = 1;
+          m_FriedelFlag = ConjF;
         }
-      private:
+
         Index m_H;
         int m_iColumn;
-        bool m_ConjF;
     };
 
     //! Selection of an asymmetric Miller index.
@@ -399,24 +422,6 @@ namespace cctbx {
             selected is not necessarily contiguous.
          */
         AsymIndex(const sgtbx::SymEquivMillerIndices& SEMI);
-        //! Flag for application of Friedel's law.
-        /*! This flag indicates if Friedel's law was applied
-            in the selection of the index. If true, the
-            selected index is the Friedel mate of one of
-            the indices that are symmetrically equivalent
-            to the input index. (For centric reflections,
-            FriedelFlag() is always false.)
-            <p>
-            Note that support for common layouts
-            of tables of asymmetric Miller indices is
-            included in this class (AnomalousLayout(),
-            HermitianLayout(), FplusFminusLayout()).
-            For these layouts it should not be necessary to
-            inspect FriedelFlag() directly.
-         */
-        bool FriedelFlag() const {
-          return m_FriedelFlag;
-        }
         //! Adaptor for table of asymmetric Miller indices.
         /*! No Friedel symmetry (i.e. in the presence of an
             anomalous signal), one column of data:<pre>
@@ -455,8 +460,6 @@ namespace cctbx {
           return IndexTableLayoutAdaptor(*this,
             m_FriedelFlag, m_FriedelFlag, false);
         }
-      private:
-        bool m_FriedelFlag;
     };
 
     template <typename DataType>

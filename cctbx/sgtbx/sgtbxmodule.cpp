@@ -318,22 +318,51 @@ namespace {
     return PR.isValidPhase_deg(phi, tolerance);
   }
 
-  double Miller_SymEquivIndex_phase_eq_rad(
-    const Miller::SymEquivIndex& SEI,
-    double phi_in)
+  Miller::SymEquivIndex Miller_SymEquivIndex_Mate_0(
+    const Miller::SymEquivIndex& SEI)
   {
-    return SEI.phase_eq_rad(phi_in);
+    return SEI.Mate();
   }
-  double Miller_SymEquivIndex_phase_eq_deg(
+
+  double Miller_SymEquivIndex_phase_eq_1(
     const Miller::SymEquivIndex& SEI,
     double phi_in)
   {
-    return SEI.phase_eq_deg(phi_in);
+    return SEI.phase_eq(phi_in);
+  }
+  double Miller_SymEquivIndex_phase_eq_2(
+    const Miller::SymEquivIndex& SEI,
+    double phi_in,
+    bool deg)
+  {
+    return SEI.phase_eq(phi_in, deg);
+  }
+  double Miller_SymEquivIndex_phase_in_1(
+    const Miller::SymEquivIndex& SEI,
+    double phi_eq)
+  {
+    return SEI.phase_in(phi_eq);
+  }
+  double Miller_SymEquivIndex_phase_in_2(
+    const Miller::SymEquivIndex& SEI,
+    double phi_eq,
+    bool deg)
+  {
+    return SEI.phase_in(phi_eq, deg);
   }
   std::complex<double>
-  Miller_SymEquivIndex_complex_eq(const Miller::SymEquivIndex& SEI,
-                                  const std::complex<double>& f_in) {
+  Miller_SymEquivIndex_complex_eq(
+    const Miller::SymEquivIndex& SEI,
+    const std::complex<double>& f_in)
+  {
     return SEI.complex_eq(f_in);
+  }
+  std::complex<double>
+  Miller_SymEquivIndex_complex_in(
+    const Miller::SymEquivIndex& SEI,
+    const std::complex<double>& f_eq)
+  {
+    return SEI.complex_in(f_eq);
   }
 
   Miller::SymEquivIndex
@@ -346,12 +375,12 @@ namespace {
     }
     return SEMI[key];
   }
-  Miller::Index
+  Miller::SymEquivIndex
   SymEquivMillerIndices_call_1(const SymEquivMillerIndices& SEMI,
                                int iIL) {
     return SEMI(iIL);
   }
-  Miller::Index
+  Miller::SymEquivIndex
   SymEquivMillerIndices_call_2(const SymEquivMillerIndices& SEMI,
                                int iInv, int iList) {
     return SEMI(iInv, iList);
@@ -503,21 +532,6 @@ namespace {
     return result;
   }
 
-  double Miller_IndexTableLayoutAdaptor_phase_eq_rad(
-    const Miller::IndexTableLayoutAdaptor& TLA, double phi_in) {
-    return TLA.phase_eq_rad(phi_in);
-  }
-  double Miller_IndexTableLayoutAdaptor_phase_eq_deg(
-    const Miller::IndexTableLayoutAdaptor& TLA, double phi_in) {
-    return TLA.phase_eq_deg(phi_in);
-  }
-  std::complex<double>
-  Miller_IndexTableLayoutAdaptor_complex_eq(
-    const Miller::IndexTableLayoutAdaptor& TLA,
-    const std::complex<double>& f_in){
-    return TLA.complex_eq(f_in);
-  }
-
   af::int3 StructureSeminvariant_refine_gridding_0(
     const StructureSeminvariant& ssVM) {
     return ssVM.refine_gridding();
@@ -531,63 +545,44 @@ namespace {
   void
   py_expand_to_p1_4(
     const SpaceGroup& SgOps,
+    bool friedel_flag,
     const af::shared<Miller::Index>& in,
-    af::shared<Miller::Index>& out,
-    bool friedel_flag) {
-    expand_to_p1(SgOps, in, out, friedel_flag);
-  }
-  void
-  py_expand_to_p1_3(
-    const SpaceGroup& SgOps,
-    const af::shared<Miller::Index>& in,
-    af::shared<Miller::Index>& out) {
-    expand_to_p1(SgOps, in, out);
+    af::shared<Miller::Index>& out)
+  {
+    expand_to_p1(SgOps, friedel_flag, in, out);
   }
 
   void
   py_expand_to_p1_9(
     SpaceGroup const& SgOps,
+    bool friedel_flag,
     af::shared<Miller::Index> const& h_in,
     af::shared<double> const& ampl_in,
     af::shared<double> const& phase_in,
     af::shared<Miller::Index> h_out,
     af::shared<double> ampl_out,
     af::shared<double> phase_out,
-    bool phase_degrees,
-    bool friedel_flag) {
+    bool phase_degrees)
+  {
     expand_to_p1(
-      SgOps,
-      h_in, ampl_in, phase_in,
-      h_out, ampl_out, phase_out,
-      phase_degrees, friedel_flag);
-  }
-  void
-  py_expand_to_p1_8(
-    SpaceGroup const& SgOps,
-    af::shared<Miller::Index> const& h_in,
-    af::shared<double> const& ampl_in,
-    af::shared<double> const& phase_in,
-    af::shared<Miller::Index> h_out,
-    af::shared<double> ampl_out,
-    af::shared<double> phase_out,
-    bool phase_degrees) {
-    expand_to_p1(
-      SgOps,
+      SgOps, friedel_flag,
       h_in, ampl_in, phase_in,
       h_out, ampl_out, phase_out,
       phase_degrees);
   }
   void
-  py_expand_to_p1_7(
+  py_expand_to_p1_8(
     SpaceGroup const& SgOps,
+    bool friedel_flag,
     af::shared<Miller::Index> const& h_in,
     af::shared<double> const& ampl_in,
     af::shared<double> const& phase_in,
     af::shared<Miller::Index> h_out,
     af::shared<double> ampl_out,
-    af::shared<double> phase_out) {
+    af::shared<double> phase_out)
+  {
     expand_to_p1(
-      SgOps,
+      SgOps, friedel_flag,
       h_in, ampl_in, phase_in,
       h_out, ampl_out, phase_out);
   }
@@ -704,6 +699,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   class_builder<StructureSeminvariant>
   py_StructureSeminvariant(this_module, "StructureSeminvariant");
 
+  py_Miller_IndexTableLayoutAdaptor.declare_base(
+    py_Miller_SymEquivIndex, python::without_downcast);
   py_Miller_AsymIndex.declare_base(
     py_Miller_SymEquivIndex, python::without_downcast);
 
@@ -812,16 +809,27 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_ChOfBasisOp.def(ChOfBasisOp_apply_UnitCell, "apply");
 
   py_Miller_SymEquivIndex.def(constructor<>());
-  py_Miller_SymEquivIndex.def(constructor<const Miller::Index&, int, int>());
+  py_Miller_SymEquivIndex.def(
+    constructor<const Miller::Index&, int, int, bool>());
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::TBF, "TBF");
   py_Miller_SymEquivIndex.def(
-    Miller_SymEquivIndex_phase_eq_rad, "phase_eq_rad");
+    &Miller::SymEquivIndex::FriedelFlag, "FriedelFlag");
+  py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Mate_0, "Mate");
+  py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::Mate, "Mate");
   py_Miller_SymEquivIndex.def(
-    Miller_SymEquivIndex_phase_eq_deg, "phase_eq_deg");
+    Miller_SymEquivIndex_phase_eq_1, "phase_eq");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_phase_eq_2, "phase_eq");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_phase_in_1, "phase_in");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_phase_in_2, "phase_in");
   py_Miller_SymEquivIndex.def(
     Miller_SymEquivIndex_complex_eq, "complex_eq");
+  py_Miller_SymEquivIndex.def(
+    Miller_SymEquivIndex_complex_in, "complex_in");
 
   py_PhaseRestriction.def(constructor<>());
   py_PhaseRestriction.def(&PhaseRestriction::isCentric, "isCentric");
@@ -846,6 +854,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     &SymEquivMillerIndices::isCentric, "isCentric");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "N");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::M, "M");
+  py_SymEquivMillerIndices.def(
+    &SymEquivMillerIndices::n_p1_listing, "n_p1_listing");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::fMates, "fMates");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::epsilon, "epsilon");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "__len__");
@@ -1115,12 +1125,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     &Miller::IndexTableLayoutAdaptor::H, "H");
   py_Miller_IndexTableLayoutAdaptor.def(
     &Miller::IndexTableLayoutAdaptor::iColumn, "iColumn");
-  py_Miller_IndexTableLayoutAdaptor.def(
-    Miller_IndexTableLayoutAdaptor_phase_eq_rad, "phase_eq_rad");
-  py_Miller_IndexTableLayoutAdaptor.def(
-    Miller_IndexTableLayoutAdaptor_phase_eq_deg, "phase_eq_deg");
-  py_Miller_IndexTableLayoutAdaptor.def(
-    Miller_IndexTableLayoutAdaptor_complex_eq, "complex_eq");
 
   py_Miller_AsymIndex.def(constructor<>());
   py_Miller_AsymIndex.def(constructor<
@@ -1157,10 +1161,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     StructureSeminvariant_refine_gridding_1, "refine_gridding");
 
   this_module.def(py_expand_to_p1_4, "expand_to_p1");
-  this_module.def(py_expand_to_p1_3, "expand_to_p1");
   this_module.def(py_expand_to_p1_9, "expand_to_p1");
   this_module.def(py_expand_to_p1_8, "expand_to_p1");
-  this_module.def(py_expand_to_p1_7, "expand_to_p1");
 
   sgtbx::sanity_check();
 }

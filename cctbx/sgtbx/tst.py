@@ -313,7 +313,7 @@ def run():
   test_pickle()
   test_site_symmetry()
   test_loop_internal_symbol_table()
-  import tst6, tst7, tst9, tst10, tst11, tst12, tst13
+  import tst6, tst7, tst9, tst10, tst11, tst12, tst13, tst14
   tst6.run(0)
   tst7.run(0)
   tst9.run(0)
@@ -321,6 +321,7 @@ def run():
   tst11.run(0)
   tst12.run(0)
   tst13.run(0)
+  tst14.run(0)
   t = os.times()
   print "u+s,u,s:", t[0] + t[1], t[0], t[1]
 
