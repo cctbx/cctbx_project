@@ -194,8 +194,11 @@ namespace cctbx { namespace sgtbx {
           this is not enforced.
        */
       af::tiny<bool, 3>
-      continuous_shift_flags() const
+      continuous_shift_flags(bool assert_principal=true) const
       {
+        if (assert_principal) {
+          CCTBX_ASSERT(continuous_shifts_are_principal());
+        }
         af::tiny<bool, 3> result(false,false,false);
         typedef scitbx::vec3<int> v;
         for(std::size_t i=0;i<continuous_shifts_.size();i++) {

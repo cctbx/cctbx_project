@@ -1,5 +1,6 @@
 from cctbx import restraints
 from cctbx.crystal import minimization
+from cctbx.crystal import bond_records
 from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 from cctbx import xray
@@ -375,14 +376,20 @@ class bond_registry:
           return i+1
     return 0
 
-def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
+def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None,
+                           heterogeneous_pairs_only=00000):
   scatterers = structure.scatterers()
   pair_lists = [[] for i in xrange(scatterers.size())]
   for proxy in proxies.proxies:
     pair = proxy.pair
+    if (heterogeneous_pairs_only
+        and scatterers[pair.i_seq].scattering_type
+         == scatterers[pair.j_seq].scattering_type): continue
     pair_lists[pair.i_seq].append(pair)
     if (pair.j_sym == 0):
       pair_lists[pair.j_seq].append(pair)
+  print list(proxies.bond_counts)
+  print [len(pair_list) for pair_list in pair_lists]
   assert list(proxies.bond_counts) \
       == [len(pair_list) for pair_list in pair_lists]
   print "site symmetries:", [site_symmetry.point_group_type()
@@ -472,30 +479,39 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   print "bond_reg.sym:", [bond_reg.sym for bond_reg in bond_registries]
   return term_table, bond_registries
 
-def coordination_sequences_sorted(structure, proxies, n_shells=10):
+def coordination_sequences_sorted(structure, sorted_proxies, n_shells=10,
+                                  heterogeneous_pairs_only=00000,
+                                  bond_counts=None):
   scatterers = structure.scatterers()
   print "sorted_proxies.proxies.size():", \
-         proxies.sorted_proxies.proxies.size()
+         sorted_proxies.proxies.size()
   print "sorted_proxies.sym_proxies.size():", \
-         proxies.sorted_proxies.sym_proxies.size()
-  if (proxies.sorted_proxies.proxies.size() > 0):
+         sorted_proxies.sym_proxies.size()
+  if (sorted_proxies.proxies.size() > 0):
     print "Mixed proxies"
   pair_lists_direct = [[] for i in xrange(scatterers.size())]
-  for proxy in proxies.sorted_proxies.proxies:
+  for proxy in sorted_proxies.proxies:
+    if (heterogeneous_pairs_only
+        and scatterers[proxy.i_seqs[0]].scattering_type
+         == scatterers[proxy.i_seqs[1]].scattering_type): continue
     pair_lists_direct[proxy.i_seqs[0]].append(proxy.i_seqs[1])
     pair_lists_direct[proxy.i_seqs[1]].append(proxy.i_seqs[0])
   pair_lists_sym = [[] for i in xrange(scatterers.size())]
-  for proxy in proxies.sorted_proxies.sym_proxies:
+  for proxy in sorted_proxies.sym_proxies:
     pair = proxy.pair
+    if (heterogeneous_pairs_only
+        and scatterers[pair.i_seq].scattering_type
+         == scatterers[pair.j_seq].scattering_type): continue
     pair_lists_sym[pair.i_seq].append(pair)
     if (pair.j_sym == 0):
       pair_lists_sym[pair.j_seq].append(pair)
-  assert list(proxies.bond_counts) \
-      == [len(pair_list_d)+len(pair_list_s) for pair_list_d,pair_list_s
-           in zip(pair_lists_direct,pair_lists_sym)]
-  asu_mappings = proxies.asu_mappings
-  special_ops = [site_symmetry.special_op()
-    for site_symmetry in proxies.site_symmetries]
+  if (bond_counts is not None):
+    assert list(bond_counts) \
+        == [len(pair_list_d)+len(pair_list_s) for pair_list_d,pair_list_s
+             in zip(pair_lists_direct,pair_lists_sym)]
+  asu_mappings = sorted_proxies.asu_mappings()
+  special_ops = [asu_mappings.special_ops()[i]
+    for i in asu_mappings.special_op_indices()]
   bond_registries = []
   term_table = []
   for i_seq_pivot in xrange(len(pair_lists_sym)):
@@ -563,7 +579,8 @@ def coordination_sequences_sorted(structure, proxies, n_shells=10):
               entry=(n.i_seq, i_sym))
     bond_registries.append(bond_reg)
     term_table.append(terms)
-    print scatterers[i_seq_pivot].label, list(terms)
+    if (0):
+      print scatterers[i_seq_pivot].label, list(terms)
   return term_table, bond_registries
 
 class start_repulsion_proxies:
@@ -602,6 +619,32 @@ class start_repulsion_proxies:
     if (self.min_distance_1_4 > 0):
       self.min_distance_1_4 = math.sqrt(self.min_distance_1_4)
 
+def get_vdw_radius(proxy, types, factor=1.0):
+  if (types == ["Si", "Si"]):
+    return factor*0.5
+  if (types == ["O", "Si"]):
+    return factor*0.5
+  if (types == ["O", "O"]):
+    return factor*0.5
+  raise RuntimeError
+
+def set_vdw_radii(structure, repulsion_proxies):
+  scatterers = structure.scatterers()
+  for ip,proxy in zip(count(), repulsion_proxies.sorted_proxies.proxies):
+    types = [scatterers[i_seq].scattering_type for i_seq in proxy.i_seqs]
+    types.sort()
+    proxy.vdw_radius = get_vdw_radius(proxy, types)
+    if (0):
+      print types, repulsion_proxies.sorted_proxies.proxies[ip].vdw_radius
+  for ip,proxy in zip(count(), repulsion_proxies.sorted_proxies.sym_proxies):
+    pair = proxy.pair
+    types = [scatterers[i_seq].scattering_type
+      for i_seq in [pair.i_seq, pair.j_seq]]
+    types.sort()
+    proxy.vdw_radius = get_vdw_radius(proxy, types)
+    if (0):
+      print types, repulsion_proxies.sorted_proxies.sym_proxies[ip].vdw_radius
+
 def run(distance_cutoff=3.5, nonbonded_cutoff=5):
   command_line = (iotbx_option_parser(
     usage="python distance_ls.py [options] studat_file [...]",
@@ -636,7 +679,7 @@ def run(distance_cutoff=3.5, nonbonded_cutoff=5):
         print "Not fully 4-connected:", entry.tag
       repulsion_proxies = None
       si_bond_registries = None
-      if (1):
+      if (0):
         repulsion_n_shells = 1
         term_table_0, bond_registries_0 = coordination_sequences(
           structure=si_structure,
@@ -647,8 +690,9 @@ def run(distance_cutoff=3.5, nonbonded_cutoff=5):
         if (1):
           term_table_1, bond_registries_1 = coordination_sequences_sorted(
             structure=si_structure,
-            proxies=si_proxies,
-            n_shells=repulsion_n_shells)
+            sorted_proxies=si_proxies.sorted_proxies,
+            n_shells=repulsion_n_shells,
+            bond_counts=si_proxies.bond_counts)
           for t0,t1 in  zip(term_table_0, term_table_1):
             if (not t0.all_eq(t1)):
               print "Error in coordination sequence"
@@ -711,7 +755,7 @@ def run(distance_cutoff=3.5, nonbonded_cutoff=5):
           print si_o_proxies.sorted_proxies.proxies.size()
           print "sorted_proxies.sym_proxies.size():",
           print si_o_proxies.sorted_proxies.sym_proxies.size()
-          if (1 and si_bond_registries is not None):
+          if (0 and si_bond_registries is not None):
             for i in xrange(  si_o_structure.scatterers().size()
                             - si_structure.scatterers().size()):
               si_bond_registries.append(bond_registry())
@@ -765,9 +809,29 @@ def run(distance_cutoff=3.5, nonbonded_cutoff=5):
               print "    GOOD GRAD", si_o_structure.space_group_info(),
               print special_op
         if (1):
+          repulsion_n_shells = 3
+          term_table, si_o_bond_registries = coordination_sequences(
+            structure=si_o_structure,
+            proxies=si_o_proxies,
+            n_shells=repulsion_n_shells,
+            heterogeneous_pairs_only=0001)
+          pair_generator = crystal.neighbors_fast_pair_generator(
+            asu_mappings=si_o_proxies.asu_mappings,
+            distance_cutoff=nonbonded_cutoff)
+          repulsion_proxies = start_repulsion_proxies(
+            bond_registries=si_o_bond_registries,
+            pair_generator=pair_generator,
+            vdw_radius=-1,
+            vdw_radius_1_4=-2)
+          set_vdw_radii(
+            structure=si_o_structure,
+            repulsion_proxies=repulsion_proxies)
+          print "repulsion_proxies n_total:", \
+                repulsion_proxies.sorted_proxies.n_total()
+        if (1):
           best_target_value = None
           best_sites_cart = None
-          for i_trial in xrange(10):
+          for i_trial in xrange(1): # XXX
             if (1 and i_trial == 0):
               sites_cart = si_o_structure.sites_cart()
             else:
@@ -779,13 +843,30 @@ def run(distance_cutoff=3.5, nonbonded_cutoff=5):
                 sites_special.append(site_symmetry.special_op()*site_frac)
               sites_cart = si_o_structure.unit_cell() \
                 .orthogonalization_matrix() * sites_special
+            rep_proxies = None
+            if (repulsion_proxies is not None):
+              rep_proxies=repulsion_proxies.sorted_proxies
+            si_o_bond_records = bond_records.from_bond_proxies(
+              sorted_proxies=si_o_proxies.sorted_proxies)
             if (0):
+              restored_proxies = restraints.bond_sorted_proxies(
+                asu_mappings=si_o_proxies.sorted_proxies.asu_mappings())
+              bond_records.as_bond_proxies(
+                sorted_proxies=restored_proxies,
+                records=si_o_bond_records)
+              bond_records.check_bond_proxies(
+                structure=si_o_structure,
+                sites_cart=si_o_structure.sites_cart(),
+                sorted_proxies_a=si_o_proxies.sorted_proxies,
+                sorted_proxies_b=restored_proxies)
+            if (0):
+              raise # XXX
               minimized = minimization.lbfgs(
                 sites_cart=sites_cart,
                 site_symmetries=si_o_proxies.site_symmetries,
                 asu_mappings=si_o_proxies.asu_mappings,
                 bond_sym_proxies=si_o_proxies.proxies,
-                repulsion_proxies=repulsion_proxies.sorted_proxies,
+                repulsion_proxies=rep_proxies,
                 lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
                   max_iterations=1000))
             else:
@@ -794,9 +875,24 @@ def run(distance_cutoff=3.5, nonbonded_cutoff=5):
                 site_symmetries=si_o_proxies.site_symmetries,
                 asu_mappings=si_o_proxies.asu_mappings,
                 bond_sorted_proxies=si_o_proxies.sorted_proxies,
-                repulsion_proxies=repulsion_proxies.sorted_proxies,
+                bond_records=si_o_bond_records,
+                structure=si_o_structure.deep_copy_scatterers(),
+                nonbonded_cutoff=nonbonded_cutoff,
+                repulsion_proxies=rep_proxies,
                 lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
                   max_iterations=1000))
+            if (1):
+              show_bonds(
+                structure=si_o_structure,
+                sites_cart=sites_cart,
+                sorted_proxies=si_o_proxies.sorted_proxies)
+              if (rep_proxies is not None):
+                show_repulsions(
+                  structure=si_o_structure,
+                  sites_cart=sites_cart,
+                  sorted_proxies=rep_proxies)
+            if (1):
+              minimized.target_result.show()
             if (0):
               print minimized.minimizer.error
             if (0):
@@ -819,9 +915,60 @@ def run(distance_cutoff=3.5, nonbonded_cutoff=5):
             scatterer.site = site
           print "minimized_structure:"
           minimized_structure.show_summary().show_scatterers()
-          show_distances(minimized_structure, distance_cutoff=distance_cutoff)
+          if (0):
+            show_distances(minimized_structure, distance_cutoff=distance_cutoff)
       print
       sys.stdout.flush()
+
+def show_bonds(structure, sites_cart, sorted_proxies):
+  scatterers = structure.scatterers()
+  for proxy in sorted_proxies.proxies:
+    print "bond proxy:",
+    for i_seq in proxy.i_seqs:
+      print "%s(%d)" % (scatterers[i_seq].label, i_seq),
+    print "w=%.6g" % proxy.weight,
+    r = restraints.bond(
+          sites_cart=sites_cart,
+          proxy=proxy)
+    print "ideal,model=%.6g %.6g %.6g" % (
+      proxy.distance_ideal, r.distance_model, r.residual())
+  for proxy in sorted_proxies.sym_proxies:
+    print "bond proxy:",
+    pair = proxy.pair
+    for i_seq in [pair.i_seq, pair.j_seq]:
+      print "%s(%d)" % (scatterers[i_seq].label, i_seq),
+    print "j_sym=%d" % pair.j_sym,
+    print "w=%.6g" % proxy.weight,
+    r = restraints.bond(
+          sites_cart=sites_cart,
+          asu_mappings=sorted_proxies.asu_mappings(),
+          proxy=proxy)
+    print "ideal,model=%.6g %.6g %.6g" % (
+      proxy.distance_ideal, r.distance_model, r.residual())
+
+def show_repulsions(structure, sites_cart, sorted_proxies):
+  scatterers = structure.scatterers()
+  for proxy in sorted_proxies.proxies:
+    print "repulsion proxy:",
+    for i_seq in proxy.i_seqs:
+      print "%s(%d)" % (scatterers[i_seq].label, i_seq),
+    r = restraints.repulsion(
+          sites_cart=sites_cart,
+          proxy=proxy)
+    print "vdw,model=%.6g %.6g %.6g" % (
+      proxy.vdw_radius, r.delta, r.residual())
+  for proxy in sorted_proxies.sym_proxies:
+    print "repulsion proxy:",
+    pair = proxy.pair
+    for i_seq in [pair.i_seq, pair.j_seq]:
+      print "%s(%d)" % (scatterers[i_seq].label, i_seq),
+    print "j_sym=%d" % pair.j_sym,
+    r = restraints.repulsion(
+          sites_cart=sites_cart,
+          asu_mappings=sorted_proxies.asu_mappings(),
+          proxy=proxy)
+    print "vdw,model=%.6g %.6g %.6g" % (
+      proxy.vdw_radius, r.delta, r.residual())
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,5 @@
 from cctbx import restraints
+from cctbx.crystal import bond_records
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils.misc import time_log
@@ -12,6 +13,7 @@ class energies:
                      bond_proxies=None,
                      bond_sym_proxies=None,
                      bond_sorted_proxies=None,
+                     bond_records=None,
                      angle_proxies=None,
                      dihedral_proxies=None,
                      chirality_proxies=None,
@@ -46,7 +48,6 @@ class energies:
       self.n_bond_sorted_proxies = 0
       self.bond_sorted_residual_sum = 0
     else:
-      assert asu_mappings is not None
       self.n_bond_sorted_proxies = bond_sorted_proxies.n_total()
       self.bond_sorted_residual_sum=restraints.bond_residual_sum(
         sites_cart=sites_cart,
@@ -92,7 +93,6 @@ class energies:
       self.n_repulsion_proxies = 0
       self.repulsion_residual_sum = 0
     else:
-      assert asu_mappings is not None
       self.n_repulsion_proxies = repulsion_proxies.n_total()
       self.repulsion_residual_sum = restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
@@ -145,6 +145,9 @@ class lbfgs:
                      bond_proxies=None,
                      bond_sym_proxies=None,
                      bond_sorted_proxies=None,
+                     bond_records=None,
+                     structure=None,
+                     nonbonded_cutoff=None,
                      angle_proxies=None,
                      dihedral_proxies=None,
                      chirality_proxies=None,
@@ -180,29 +183,66 @@ class lbfgs:
       sites_frac = self.site_symmetries[0].unit_cell() \
         .fractionalization_matrix() * self._sites_shifted
       sites_special = flex.vec3_double()
+      i_sc = -1
       for site_frac,site_symmetry in zip(sites_frac, self.site_symmetries):
+        i_sc += 1
         sites_special.append(site_symmetry.special_op()*site_frac)
         distance_moved = self.site_symmetries[0].unit_cell().distance(
           sites_special[-1], site_frac)
         if (distance_moved > 1.e-6):
-          print "LARGE distance_moved:", distance_moved
+          print "LARGE distance_moved:", distance_moved,
+          print self.structure.scatterers()[i_sc].label
       self._sites_shifted = self.site_symmetries[0].unit_cell() \
         .orthogonalization_matrix() * sites_special
 
   def compute_target(self, compute_gradients):
-    self.time_compute_target.start()
-    self.target_result = energies(
-      sites_cart=self._sites_shifted,
-      asu_mappings=self.asu_mappings,
-      bond_proxies=self.bond_proxies,
-      bond_sym_proxies=self.bond_sym_proxies,
-      bond_sorted_proxies=self.bond_sorted_proxies,
-      angle_proxies=self.angle_proxies,
-      dihedral_proxies=self.dihedral_proxies,
-      chirality_proxies=self.chirality_proxies,
-      planarity_proxies=self.planarity_proxies,
-      repulsion_proxies=self.repulsion_proxies,
-      compute_gradients=compute_gradients)
+    if (0):
+      assert self.bond_proxies is None
+      assert self.bond_sym_proxies is None
+      self.time_compute_target.start()
+      self.target_result = energies(
+        sites_cart=self._sites_shifted,
+        bond_sorted_proxies=self.bond_sorted_proxies,
+        angle_proxies=self.angle_proxies,
+        dihedral_proxies=self.dihedral_proxies,
+        chirality_proxies=self.chirality_proxies,
+        planarity_proxies=self.planarity_proxies,
+        repulsion_proxies=self.repulsion_proxies,
+        compute_gradients=compute_gradients)
+    else:
+      assert self.bond_records is not None
+      assert self.nonbonded_cutoff is not None
+      interaction_proxies = bond_records.recompute_interaction_proxies(
+        structure=self.structure.deep_copy_scatterers(),
+        original_asu_mappings=self.asu_mappings,
+        bond_records=self.bond_records,
+        sites_cart=self._sites_shifted,
+        nonbonded_cutoff=self.nonbonded_cutoff)
+      self.time_compute_target.start()
+      rep_proxies = None
+      if (0):
+        rep_proxies = interaction_proxies.repulsion_proxies.sorted_proxies
+      if (   self.bond_sorted_proxies.n_total()
+          != interaction_proxies.bond_sorted_proxies.n_total()):
+        print "n_total mismatch:",
+        print "original:", self.bond_sorted_proxies.n_total(),
+        print "recomputed:", interaction_proxies.bond_sorted_proxies.n_total()
+      else:
+        print "n_total OK"
+      bond_records.check_bond_proxies(
+        structure=self.structure,
+        sites_cart=self._sites_shifted,
+        sorted_proxies_a=self.bond_sorted_proxies,
+        sorted_proxies_b=interaction_proxies.bond_sorted_proxies)
+      self.target_result = energies(
+        sites_cart=self._sites_shifted,
+        bond_sorted_proxies=interaction_proxies.bond_sorted_proxies,
+        angle_proxies=self.angle_proxies,
+        dihedral_proxies=self.dihedral_proxies,
+        chirality_proxies=self.chirality_proxies,
+        planarity_proxies=self.planarity_proxies,
+        repulsion_proxies=rep_proxies,
+        compute_gradients=compute_gradients)
     if (0):
       print "call:"
       self.target_result.show()
