@@ -570,13 +570,13 @@ class variable_substitution_proxy:
         c = char_iter.next()
         if (c is None):
           word.raise_syntax_error("$ must be followed by an identifier: ")
-        if (c == "{"):
+        if (c == "("):
           self.force_string = True
           while True:
             c = char_iter.next()
             if (c is None):
-              word.raise_syntax_error('missing "}": ')
-            if (c == "}"):
+              word.raise_syntax_error('missing ")": ')
+            if (c == ")"):
               c = char_iter.next()
               break
             fragment_value += c
@@ -630,8 +630,8 @@ def parse(
     word_stack=simple_tokenizer.as_word_stack(
       input_string=input_string,
       file_name=file_name,
-      contiguous_word_characters="",
-      auto_split_unquoted={"{}": ("{", "}")}),
+      unquoted_single_character_words="{}",
+      contiguous_word_characters=""),
     definition_type_names=definition_type_names))
   if (process_includes):
     if (file_name is None):

@@ -118,7 +118,7 @@ name
 }
 """)
   recycle(
-    input_string="name { a b \n c d }", expected_out="""\
+    input_string="name{a b\nc d}", expected_out="""\
 name
 {
   a b
@@ -126,7 +126,7 @@ name
 }
 """)
   recycle(
-    input_string="table name { }", expected_out="""\
+    input_string="table name{}", expected_out="""\
 table name
 {
 }
@@ -200,7 +200,7 @@ table name
 }
 """)
   recycle(
-    input_string="table name { {} }", expected_out="""\
+    input_string="table name{{}}", expected_out="""\
 table name
 {
   {
@@ -536,13 +536,13 @@ c $a $b.d
 d $a \$b
 answer yes no
 e "$a"
-f ${a}
-g abc${answer}bc
-h abc${answer}bc 12$answer${a}56
+f $(a)
+g abc$(answer)bc
+h abc$(answer)bc 12$answer$(a)56
 i $
-j ${abc
-k ${1bc}
-l ${}
+j $(abc
+k $(1bc)
+l $()
 m $@
 """)
   check_get_sub(parameters, path="a", expected_out="a x\n")
@@ -562,16 +562,16 @@ m $@
   else: raise RuntimeError("Exception expected.")
   try: parameters.get_with_variable_substitution(path="j")
   except RuntimeError, e:
-    assert str(e) == 'Syntax error: missing "}": "${abc" (input line 11)'
+    assert str(e) == 'Syntax error: missing ")": "$(abc" (input line 11)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get_with_variable_substitution(path="k")
   except RuntimeError, e:
-    assert str(e) == 'Syntax error: improper variable name "${1bc}"' \
+    assert str(e) == 'Syntax error: improper variable name "$(1bc)"' \
                    + ' (input line 12)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get_with_variable_substitution(path="l")
   except RuntimeError, e:
-    assert str(e)=='Syntax error: improper variable name "${}" (input line 13)'
+    assert str(e)=='Syntax error: improper variable name "$()" (input line 13)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get_with_variable_substitution(path="m")
   except RuntimeError, e:
