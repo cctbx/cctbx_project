@@ -5,6 +5,23 @@
 
 namespace scitbx { namespace math {
 
+  namespace detail {
+
+    std::string
+    report_negative_weight(
+      double weight,
+      const char* where_file_name,
+      long where_line_number)
+    {
+      char buf[256];
+      std::sprintf(buf,
+        "weight=%.6g is negative (must be >=0) (%s, line %ld)",
+        weight, where_file_name, where_line_number);
+      return std::string(buf);
+    }
+
+  } // namespace detail
+
   /*! Principal axes of inertia given discrete points in 3-dimensional
       space and optionally weights.
    */
@@ -59,6 +76,10 @@ namespace scitbx { namespace math {
         FloatType sum_weights = 0;
         for(std::size_t i_p=0;i_p<points.size();i_p++) {
           FloatType w = weights[i_p];
+          if (w < 0) {
+            throw std::runtime_error(detail::report_negative_weight(
+              static_cast<double>(w), __FILE__, __LINE__));
+          }
           center_of_mass_ += w * points[i_p];
           sum_weights += w;
         }
