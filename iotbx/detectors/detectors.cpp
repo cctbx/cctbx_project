@@ -50,11 +50,8 @@ struct dummy {}; // work around gcc-3.3-darwin bug
 #include <scitbx/boost_python/utils.h>
 using namespace boost::python;
 
-BOOST_PYTHON_MODULE(detectors)
+BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 {
-   //scitbx::boost_python::import_module(
-   //   "scitbx_boost.array_family.flex_scitbx_ext");
-   //import in the __init__ file instead
 #if defined(__APPLE__) && defined(__MACH__) \
  && defined(__GNUC__) && __GNUC__ == 3 && __GNUC_MINOR__ == 3
    class_<dummy>("_dummy", no_init);

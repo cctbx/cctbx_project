@@ -1,3 +1,3 @@
-import scitbx.python_utils.misc
-scitbx.python_utils.misc.import_ext("cctbx_boost.xray_ext")
-from cctbx_boost.xray_ext import *
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("cctbx_xray_ext")
+from cctbx_xray_ext import *

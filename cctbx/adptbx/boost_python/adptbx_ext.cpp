@@ -1,9 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/adptbx.h>
-#include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
@@ -32,9 +30,6 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
 
     def("u_as_b", (double(*)(double)) u_as_b);
     def("b_as_u", (double(*)(double)) b_as_u);
@@ -150,7 +145,7 @@ namespace {
 } // namespace <anonymous>
 }}} // namespace cctbx::adptbx::boost_python
 
-BOOST_PYTHON_MODULE(adptbx_ext)
+BOOST_PYTHON_MODULE(cctbx_adptbx_ext)
 {
   cctbx::adptbx::boost_python::init_module();
 }

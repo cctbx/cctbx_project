@@ -1,7 +1,7 @@
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-env.SharedLibrary(target="#libtbx/cctbx_boost/mintbx_ext", source=[
+env.SharedLibrary(target="#libtbx/cctbx_mintbx_ext", source=[
   "mintbx_ext.cpp",
   "k_b_scaling.cpp",
 ])

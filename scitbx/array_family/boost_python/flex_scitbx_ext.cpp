@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/arraytbx/flexmodule.cpp (rwgk)
-     2002 Aug: Created, based on sharedmodule.cpp, shared_bpl.h (rwgk)
- */
-
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/math/linear_regression.h>
@@ -17,10 +7,8 @@
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
-#include <scitbx/boost_python/utils.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
@@ -132,9 +120,6 @@ namespace {
   {
     using namespace boost::python;
 
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
     register_scitbx_tuple_mappings();
 
     scitbx::boost_python::slice_from_python();
@@ -166,7 +151,7 @@ namespace {
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
 
-BOOST_PYTHON_MODULE(flex_scitbx_ext)
+BOOST_PYTHON_MODULE(scitbx_array_family_flex_ext)
 {
   scitbx::af::boost_python::init_module();
 }

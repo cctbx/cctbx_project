@@ -1,3 +1,3 @@
-import scitbx.python_utils.misc
-scitbx.python_utils.misc.import_ext("scitbx_boost.scitbx_math_ext")
-from scitbx_boost.scitbx_math_ext import *
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("scitbx_math_ext")
+from scitbx_math_ext import *

@@ -1,6 +1,6 @@
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
-env.SharedLibrary(target="#libtbx/cctbx_boost/emma_ext", source=[
+env.SharedLibrary(target="#libtbx/cctbx_emma_ext", source=[
   "emma_ext.cpp",
 ])

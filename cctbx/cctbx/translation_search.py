@@ -1,9 +1,8 @@
 import cctbx.maptbx
 
-from scitbx.python_utils import misc
-ext = misc.import_ext("cctbx_boost.translation_search_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("cctbx_translation_search_ext")
+from cctbx_translation_search_ext import *
 
 from scitbx.boost_python_utils import injector
 

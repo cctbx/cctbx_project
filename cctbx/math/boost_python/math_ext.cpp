@@ -29,7 +29,7 @@ namespace {
 } // namespace <anonymous>
 }}} // namespace cctbx::math::boost_python
 
-BOOST_PYTHON_MODULE(math_ext)
+BOOST_PYTHON_MODULE(cctbx_math_ext)
 {
   cctbx::math::boost_python::init_module();
 }

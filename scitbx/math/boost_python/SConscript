@@ -1,6 +1,6 @@
-Import("env_etc", "env_scitbx_boost_python_ext")
+Import("env_scitbx_boost_python_ext")
 
 env_scitbx_boost_python_ext.SharedLibrary(
-  target="#libtbx/scitbx_boost/scitbx_math_ext",
+  target="#libtbx/scitbx_math_ext",
   source=["math_ext.cpp", "gaussian.cpp"],
 )

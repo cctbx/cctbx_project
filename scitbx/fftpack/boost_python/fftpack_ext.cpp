@@ -1,26 +1,13 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Created, based on cctbx/fftbx/fftbxmodule.cpp (rwgk)
-     2001 Dec: Using iterator-based fftbx interface (rwgk)
-     2001 Nov: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/error.h>
 #include <scitbx/fftpack/gridding.h>
 #include <scitbx/fftpack/complex_to_complex_3d.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
-#include <scitbx/boost_python/utils.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 
@@ -351,9 +338,6 @@ namespace scitbx { namespace fftpack { namespace {
   {
     using namespace boost::python;
 
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
     def("adjust_gridding", adjust_gridding_2);
     def("adjust_gridding", adjust_gridding_3);
     def("adjust_gridding_triple", adjust_gridding_triple_2);
@@ -368,7 +352,7 @@ namespace scitbx { namespace fftpack { namespace {
 
 }}} // namespace scitbx::fftpack::<anonymous>
 
-BOOST_PYTHON_MODULE(fftpack_ext)
+BOOST_PYTHON_MODULE(scitbx_fftpack_ext)
 {
   scitbx::fftpack::init_module();
 }

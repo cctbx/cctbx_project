@@ -81,7 +81,7 @@ namespace iotbx { namespace mtz { namespace boost_python {
 
 }}} // namespace iotbx::mtz::boost_python
 
-BOOST_PYTHON_MODULE(mtz)
+BOOST_PYTHON_MODULE(iotbx_mtz_ext)
 {
   using namespace iotbx::mtz::boost_python;
   wrap_Mtz();

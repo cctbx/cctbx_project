@@ -1,7 +1,6 @@
-from scitbx.python_utils import misc
-ext = misc.import_ext("scitbx_boost.array_family.flex_scitbx_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("scitbx_array_family_flex_ext")
+from scitbx_array_family_flex_ext import *
 
 import sys
 
@@ -16,7 +15,8 @@ def to_list(array):
 def linear_regression(x, y, epsilon=1.e-15):
   return ext.linear_regression(x, y, epsilon)
 
-def linear_regression_show_summary(self, f=sys.stdout):
+def linear_regression_show_summary(self, f=None):
+  if (f is None): f = sys.stdout
   print >> f, "y_intercept:", self.y_intercept()
   print >> f, "slope:", self.slope()
 

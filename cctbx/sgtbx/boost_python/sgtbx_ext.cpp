@@ -1,17 +1,7 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/seminvariant.h>
 #include <scitbx/array_family/shared.h>
-#include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
@@ -85,9 +75,6 @@ namespace {
   {
     using namespace boost::python;
 
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
-
     sanity_check();
 
     scope s;
@@ -123,7 +110,7 @@ namespace {
 } // namespace <anonymous>
 }}} // namespace cctbx::sgtbx::boost_python
 
-BOOST_PYTHON_MODULE(sgtbx_ext)
+BOOST_PYTHON_MODULE(cctbx_sgtbx_ext)
 {
   cctbx::sgtbx::boost_python::init_module();
 }

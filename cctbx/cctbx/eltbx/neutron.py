@@ -1,4 +1,3 @@
-from scitbx.python_utils import misc
-ext = misc.import_ext("cctbx_boost.eltbx.neutron_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("cctbx_eltbx_neutron_ext")
+from cctbx_eltbx_neutron_ext import *

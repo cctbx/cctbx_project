@@ -164,7 +164,7 @@ void XplorMap::WriteXplorMap(cctbx::uctbx::unit_cell const& uc,
 
 } // namespace <anonymous>
 
-BOOST_PYTHON_MODULE(xplor)
+BOOST_PYTHON_MODULE(iotbx_xplor_ext)
 {
     using namespace boost::python;
     class_<XplorMap>("XplorMap", init<>())

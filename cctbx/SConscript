@@ -109,10 +109,6 @@ if (not env_etc.no_boost_python):
     paths=env_etc.cctbx_common_includes + [env_etc.python_include])
   Export("env_cctbx_boost_python_ext")
 
-  env_cctbx_boost_python_ext.Command(
-    "#libtbx/cctbx_boost/__init__.py",
-    "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
-
   SConscript("math/boost_python/SConscript")
   SConscript("array_family/boost_python/SConscript")
   SConscript("eltbx/boost_python/SConscript")

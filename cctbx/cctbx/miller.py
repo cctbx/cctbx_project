@@ -1,9 +1,8 @@
 import cctbx.sgtbx
 
-from scitbx.python_utils import misc
-ext = misc.import_ext("cctbx_boost.miller_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("cctbx_miller_ext")
+from cctbx_miller_ext import *
 
 from cctbx import crystal
 from cctbx import maptbx

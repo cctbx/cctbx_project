@@ -101,7 +101,7 @@ namespace {
 
 } // namespace <anonymous>
 
-BOOST_PYTHON_MODULE(dtrek_ext)
+BOOST_PYTHON_MODULE(iotbx_dtrek_ext)
 {
   init_module();
 }

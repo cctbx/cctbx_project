@@ -1,13 +1,9 @@
-Import("env_etc", "env_cctbx_boost_python_ext")
-
-env_cctbx_boost_python_ext.Command(
-  "#libtbx/cctbx_boost/array_family/__init__.py",
-  "#libtbx/libtbx/touch_init.py", env_etc.touch_init)
+Import("env_cctbx_boost_python_ext")
 
 env = env_cctbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(
-  target="#libtbx/cctbx_boost/array_family/flex_cctbx_ext",
+  target="#libtbx/cctbx_array_family_flex_ext",
   source=[
   "flex_cctbx_ext.cpp",
   "flex_hendrickson_lattman.cpp",

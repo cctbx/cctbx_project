@@ -64,7 +64,7 @@ namespace {
 } // namespace <anonymous>
 }}} // namespace cctbx::xray::boost_python
 
-BOOST_PYTHON_MODULE(xray_ext)
+BOOST_PYTHON_MODULE(cctbx_xray_ext)
 {
   cctbx::xray::boost_python::init_module();
 }
