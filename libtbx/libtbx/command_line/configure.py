@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import sys, os, pickle
 from os.path import normpath, join, abspath, dirname, isdir, isfile
 norm = normpath
@@ -115,7 +117,10 @@ class libtbx_env:
 
   def __init__(self, cwd, libtbx_dist):
     self.python_version_major_minor = sys.version_info[:2]
-    self.LIBTBX_PYTHON_EXE = norm(abspath(sys.executable))
+    if (os.name == "nt"):
+      self.LIBTBX_PYTHON_EXE = norm(abspath(join(sys.prefix, "python.exe")))
+    else:
+      self.LIBTBX_PYTHON_EXE = norm(abspath(join(sys.prefix, "bin", "python")))
     self.LIBTBX_BUILD = norm(abspath(os.getcwd()))
     self.LIBTBX_DIST_ROOT = norm(dirname(libtbx_dist))
     self.LD_LIBRARY_PATH = [norm(join(self.LIBTBX_BUILD, "libtbx"))]
