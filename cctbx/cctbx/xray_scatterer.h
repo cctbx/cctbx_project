@@ -20,8 +20,11 @@
 
 namespace cctbx {
 
+  /*! This class groups the information about an atom that
+      is needed for a structure factor calculation.
+   */
   template <class FloatType, class CAASF_Type>
-  class XrayScatterer : public fractional<FloatType>
+  class XrayScatterer
   {
     public:
       XrayScatterer() {}
@@ -34,7 +37,7 @@ namespace cctbx {
         : m_Label(Label),
           m_CAASF(CAASF),
           m_fpfdp(fpfdp),
-          fractional<FloatType>(Coordinates),
+          m_Coordinates(Coordinates),
           m_Occ(Occ),
           m_Anisotropic(false),
           m_M(0),
@@ -52,7 +55,7 @@ namespace cctbx {
         : m_Label(Label),
           m_CAASF(CAASF),
           m_fpfdp(fpfdp),
-          fractional<FloatType>(Coordinates),
+          m_Coordinates(Coordinates),
           m_Occ(Occ),
           m_Anisotropic(true),
           m_U(Uaniso),
@@ -64,7 +67,7 @@ namespace cctbx {
       inline const CAASF_Type& CAASF() const { return m_CAASF; }
       inline const std::complex<FloatType>& fpfdp() const { return m_fpfdp; }
       inline const fractional<FloatType>& Coordinates() const {
-        return static_cast<const fractional<FloatType>&>(*this);
+        return m_Coordinates;
       }
       inline bool isAnisotropic() const { return m_Anisotropic; }
       inline const FloatType& Uiso() const { return m_U[0]; }
@@ -79,8 +82,8 @@ namespace cctbx {
         sgtbx::SpecialPositionSnapParameters
         SnapParameters(UC, SgOps, true, MinMateDistance);
         sgtbx::SiteSymmetry
-        SS(SnapParameters, *this);
-        for(std::size_t i=0;i<3;i++) elems[i] = SS.SnapPosition()[i];
+        SS(SnapParameters, m_Coordinates);
+        m_Coordinates = SS.SnapPosition();
         m_M = SS.M();
         m_w = m_Occ * m_M / SgOps.OrderZ();
         if (m_Anisotropic) {
@@ -99,11 +102,11 @@ namespace cctbx {
         if (!m_Anisotropic) {
           return
               m_w * (m_CAASF.Q(Q) + m_fpfdp)
-            * SgOps.StructureFactor(Q / 4., H, *this, m_U[0]);
+            * SgOps.StructureFactor(Q / 4., H, m_Coordinates, m_U[0]);
         }
         return
             m_w * (m_CAASF.Q(Q) + m_fpfdp)
-          * SgOps.StructureFactor(H, *this, m_U);
+          * SgOps.StructureFactor(H, m_Coordinates, m_U);
       }
       template <class MillerVectorType,
                 class doubleVectorType,
@@ -124,6 +127,7 @@ namespace cctbx {
       std::string m_Label;
       CAASF_Type m_CAASF;
       std::complex<FloatType> m_fpfdp;
+      fractional<FloatType> m_Coordinates;
       FloatType m_Occ;
       bool m_Anisotropic;
       boost::array<FloatType, 6> m_U;
