@@ -360,43 +360,56 @@ namespace mtz {
 
       //! Retrieves columns H, K, L.
       /*! An exception is thrown if any of the columns does not exist.
+
+          Not available in Python.
        */
       hkl_columns
       get_hkl_columns() const;
 
+      //! Copies Miller indices from columns H, K, L.
+      af::shared<cctbx::miller::index<> >
+      extract_miller_indices() const;
+
+      //! Overwrites Miller indices in columns H, K, L.
+      /*! The miller_indices.size() must be equal to n_reflections().
+       */
+      void
+      replace_miller_indices(
+        af::const_ref<cctbx::miller::index<> > const& miller_indices);
+
       //! Read-only access.
       integer_group
       extract_integers(
-        const char* column_label);
+        const char* column_label) const;
 
       //! Read-only access.
       af::shared<int>
       extract_integers(
         af::const_ref<int> const& mtz_reflection_indices,
-        const char* column_label);
+        const char* column_label) const;
 
       //! Read-only access.
       integer_group
       extract_integers_anomalous(
         const char* column_label_plus,
-        const char* column_label_minus);
+        const char* column_label_minus) const;
 
       //! Read-only access.
       real_group
       extract_reals(
-        const char* column_label);
+        const char* column_label) const;
 
       //! Read-only access.
       af::shared<double>
       extract_reals(
         af::const_ref<int> const& mtz_reflection_indices,
-        const char* column_label);
+        const char* column_label) const;
 
       //! Read-only access.
       real_group
       extract_reals_anomalous(
         const char* column_label_plus,
-        const char* column_label_minus);
+        const char* column_label_minus) const;
 
       //! Read-only access.
       hl_group
@@ -404,7 +417,7 @@ namespace mtz {
         const char* column_label_a,
         const char* column_label_b,
         const char* column_label_c,
-        const char* column_label_d);
+        const char* column_label_d) const;
 
       //! Read-only access.
       hl_group
@@ -416,13 +429,13 @@ namespace mtz {
         const char* column_label_a_minus,
         const char* column_label_b_minus,
         const char* column_label_c_minus,
-        const char* column_label_d_minus);
+        const char* column_label_d_minus) const;
 
       //! Read-only access.
       observations_group
       extract_observations(
         const char* column_label_data,
-        const char* column_label_sigmas);
+        const char* column_label_sigmas) const;
 
       //! Read-only access.
       observations_group
@@ -430,7 +443,7 @@ namespace mtz {
         const char* column_label_data_plus,
         const char* column_label_sigmas_plus,
         const char* column_label_data_minus,
-        const char* column_label_sigmas_minus);
+        const char* column_label_sigmas_minus) const;
 
       //! Read-only access.
       /*! http://www.ccp4.ac.uk/dist/html/mtzMADmod.html
@@ -444,13 +457,13 @@ namespace mtz {
         const char* column_label_f_data,
         const char* column_label_f_sigmas,
         const char* column_label_d_data,
-        const char* column_label_d_sigmas);
+        const char* column_label_d_sigmas) const;
 
       //! Read-only access.
       complex_group
       extract_complex(
         const char* column_label_ampl,
-        const char* column_label_phi);
+        const char* column_label_phi) const;
 
       //! Read-only access.
       complex_group
@@ -458,7 +471,7 @@ namespace mtz {
         const char* column_label_ampl_plus,
         const char* column_label_phi_plus,
         const char* column_label_ampl_minus,
-        const char* column_label_phi_minus);
+        const char* column_label_phi_minus) const;
 
       //! Wrapper for CMtz::MtzPut() .
       void

@@ -137,21 +137,26 @@ namespace {
           arg_("unit_cell")))
         .def("has_column", &w_t::has_column, (arg_("label")))
         .def("get_column", &w_t::get_column, (arg_("label")))
+        .def("extract_miller_indices", &w_t::extract_miller_indices)
+        .def("replace_miller_indices", &w_t::replace_miller_indices, (
+          (arg_("miller_indices"))))
         .def("extract_integers",
-          (integer_group(w_t::*)(const char*)) &w_t::extract_integers, (
+          (integer_group(w_t::*)(const char*) const) &w_t::extract_integers, (
           (arg_("column_label"))))
         .def("extract_integers",
-          (af::shared<int>(w_t::*)(af::const_ref<int> const&, const char*))
-            &w_t::extract_integers, (
+          (af::shared<int>(w_t::*)
+            (af::const_ref<int> const&, const char*) const)
+              &w_t::extract_integers, (
           (arg_("mtz_reflection_indices"), arg_("column_label"))))
         .def("extract_integers_anomalous", &w_t::extract_integers_anomalous, (
           arg_("column_label_plus"), arg_("column_label_minus")))
         .def("extract_reals",
-          (real_group(w_t::*)(const char*)) &w_t::extract_reals, (
+          (real_group(w_t::*)(const char*) const) &w_t::extract_reals, (
           (arg_("column_label"))))
         .def("extract_reals",
-          (af::shared<double>(w_t::*)(af::const_ref<int> const&, const char*))
-            &w_t::extract_reals, (
+          (af::shared<double>(w_t::*)
+            (af::const_ref<int> const&, const char*) const)
+              &w_t::extract_reals, (
           (arg_("mtz_reflection_indices"), arg_("column_label"))))
         .def("extract_reals_anomalous", &w_t::extract_reals_anomalous, (
           arg_("column_label_plus"), arg_("column_label_minus")))

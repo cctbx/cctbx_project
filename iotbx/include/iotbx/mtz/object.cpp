@@ -380,9 +380,32 @@ namespace iotbx { namespace mtz {
     }
   }
 
+  af::shared<cctbx::miller::index<> >
+  object::extract_miller_indices() const
+  {
+    int n_refl = n_reflections();
+    af::shared<cctbx::miller::index<> > result((af::reserve(n_refl)));
+    hkl_columns hkl = get_hkl_columns();
+    for(int i_refl=0;i_refl<n_refl;i_refl++) {
+      result.push_back(hkl.get_miller_index(i_refl));
+    }
+    return result;
+  }
+
+  void
+  object::replace_miller_indices(
+    af::const_ref<cctbx::miller::index<> > const& miller_indices)
+  {
+    CCTBX_ASSERT(miller_indices.size() == n_reflections());
+    hkl_columns hkl = get_hkl_columns();
+    for(int i_refl=0;i_refl<miller_indices.size();i_refl++) {
+      hkl.replace_miller_index(i_refl, miller_indices[i_refl]);
+    }
+  }
+
   integer_group
   object::extract_integers(
-    const char* column_label)
+    const char* column_label) const
   {
     int n_refl = n_reflections();
     integer_group result(false, n_refl);
@@ -401,7 +424,7 @@ namespace iotbx { namespace mtz {
   af::shared<int>
   object::extract_integers(
     af::const_ref<int> const& mtz_reflection_indices,
-    const char* column_label)
+    const char* column_label) const
   {
     int n_refl = n_reflections();
     af::shared<int> result((af::reserve(mtz_reflection_indices.size())));
@@ -418,7 +441,7 @@ namespace iotbx { namespace mtz {
   integer_group
   object::extract_integers_anomalous(
     const char* column_label_plus,
-    const char* column_label_minus)
+    const char* column_label_minus) const
   {
     int n_refl = n_reflections();
     integer_group result(true, 2*n_refl);
@@ -442,7 +465,7 @@ namespace iotbx { namespace mtz {
 
   real_group
   object::extract_reals(
-    const char* column_label)
+    const char* column_label) const
   {
     int n_refl = n_reflections();
     real_group result(false, n_refl);
@@ -461,7 +484,7 @@ namespace iotbx { namespace mtz {
   af::shared<double>
   object::extract_reals(
     af::const_ref<int> const& mtz_reflection_indices,
-    const char* column_label)
+    const char* column_label) const
   {
     int n_refl = n_reflections();
     af::shared<double> result((af::reserve(mtz_reflection_indices.size())));
@@ -478,7 +501,7 @@ namespace iotbx { namespace mtz {
   real_group
   object::extract_reals_anomalous(
     const char* column_label_plus,
-    const char* column_label_minus)
+    const char* column_label_minus) const
   {
     int n_refl = n_reflections();
     real_group result(true, 2*n_refl);
@@ -505,7 +528,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_a,
     const char* column_label_b,
     const char* column_label_c,
-    const char* column_label_d)
+    const char* column_label_d) const
   {
     int n_refl = n_reflections();
     hl_group result(false, n_refl);
@@ -548,7 +571,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_a_minus,
     const char* column_label_b_minus,
     const char* column_label_c_minus,
-    const char* column_label_d_minus)
+    const char* column_label_d_minus) const
   {
     int n_refl = n_reflections();
     hl_group result(true, n_refl);
@@ -609,7 +632,7 @@ namespace iotbx { namespace mtz {
   observations_group
   object::extract_observations(
     const char* column_label_data,
-    const char* column_label_sigmas)
+    const char* column_label_sigmas) const
   {
     int n_refl = n_reflections();
     observations_group result(false, n_refl);
@@ -637,7 +660,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_data_plus,
     const char* column_label_sigmas_plus,
     const char* column_label_data_minus,
-    const char* column_label_sigmas_minus)
+    const char* column_label_sigmas_minus) const
   {
     int n_refl = n_reflections();
     observations_group result(true, 2*n_refl);
@@ -678,7 +701,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_f_data,
     const char* column_label_f_sigmas,
     const char* column_label_d_data,
-    const char* column_label_d_sigmas)
+    const char* column_label_d_sigmas) const
   {
     int n_refl = n_reflections();
     observations_group result(true, 2*n_refl);
@@ -726,7 +749,7 @@ namespace iotbx { namespace mtz {
   complex_group
   object::extract_complex(
     const char* column_label_ampl,
-    const char* column_label_phi)
+    const char* column_label_phi) const
   {
     int n_refl = n_reflections();
     complex_group result(false, n_refl);
@@ -754,7 +777,7 @@ namespace iotbx { namespace mtz {
     const char* column_label_ampl_plus,
     const char* column_label_phi_plus,
     const char* column_label_ampl_minus,
-    const char* column_label_phi_minus)
+    const char* column_label_phi_minus) const
   {
     int n_refl = n_reflections();
     complex_group result(true, n_refl);
