@@ -346,25 +346,33 @@ class array(set):
     return self.apply_selection(match.pair_selection(0))
 
   def sort(self, by_value="resolution", reverse=00000):
+    return self.apply_sort_permutation(self.sort_permutation(
+      by_value=by_value,
+      reverse=reverse))
+
+  def sort_permutation(self, by_value="resolution", reverse=00000):
     assert reverse in (00000, 0001)
     if (by_value == "resolution"):
-      p = flex.sort_permutation(
+      result = flex.sort_permutation(
         self.unit_cell().d_star_sq(self.indices()),
         reverse)
     elif (by_value == "data"):
-      p = flex.sort_permutation(self.data(), not reverse)
+      result = flex.sort_permutation(self.data(), not reverse)
     elif (by_value == "abs"):
-      p = flex.sort_permutation(flex.abs(self.data()), not reverse)
+      result = flex.sort_permutation(flex.abs(self.data()), not reverse)
     else:
-      p = flex.sort_permutation(by_value, not reverse)
+      result = flex.sort_permutation(by_value, not reverse)
+    return result
+
+  def apply_sort_permutation(self, permutation):
     new_set = set(
       crystal_symmetry=self,
-      indices=self.indices().shuffle(p),
+      indices=self.indices().shuffle(permutation),
       anomalous_flag=self.anomalous_flag())
     d = None
     s = None
-    if (self.data() != None): d = self.data().shuffle(p)
-    if (self.sigmas() != None): s = self.sigmas().shuffle(p)
+    if (self.data() != None): d = self.data().shuffle(permutation)
+    if (self.sigmas() != None): s = self.sigmas().shuffle(permutation)
     return array(new_set, d, s)
 
   def patterson_symmetry(self):
