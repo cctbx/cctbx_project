@@ -52,6 +52,12 @@ def exercise_set():
   assert b.limits().size() == 9
   assert tuple(ms.sort().indices()) == ((0,0,4), (1,2,3))
   assert tuple(ms.sort(reverse=True).indices()) == ((1,2,3), (0,0,4))
+  assert tuple(ms.sort(reverse=True)
+                .sort(by_value="packed_indices").indices()) \
+      == ((0, 0, 4), (1, 2, 3))
+  assert tuple(ms.sort(reverse=True)
+                .sort(by_value="packed_indices", reverse=True).indices()) \
+      == ((1, 2, 3), (0, 0, 4))
   ms = miller.set(xs, mi, False)
   mp = ms.patterson_symmetry()
   assert str(mp.space_group_info()) == "P m m m"
@@ -388,6 +394,8 @@ def exercise_array():
   assert tuple(sa.indices()) == ((0,0,-4), (0,0,-3), (0,0,2), (0,0,1))
   assert approx_equal(sa.data(), (-2,1,4,3))
   assert approx_equal(sa.sigmas(), (.2,.1,.4,.3))
+  sa = ma.sort(by_value="packed_indices", reverse=True)
+  assert tuple(sa.indices()) == ((0,0,2), (0,0,1), (0,0,-3), (0,0,-4))
   sa = ma.sort(by_value="data")
   assert approx_equal(sa.data(), (4,3,1,-2))
   sa = ma.sort(by_value="data", reverse=True)

@@ -470,16 +470,19 @@ class set(crystal.symmetry):
     r = self.unit_cell().min_max_d_star_sq(self.indices())
     return tuple([uctbx.d_star_sq_as_d(x) for x in r])
 
+  def sort_permutation(self, by_value="resolution", reverse=False):
+    assert by_value in ["resolution", "packed_indices"]
+    assert reverse in [False, True]
+    if (by_value == "resolution"):
+      return flex.sort_permutation(
+        data=self.unit_cell().d_star_sq(self.indices()), reverse=reverse)
+    else:
+      return flex.sort_permutation(
+        data=index_span(self.indices()).pack(self.indices()), reverse=reverse)
+
   def sort(self, by_value="resolution", reverse=False):
-    assert by_value in ("resolution",)
-    assert reverse in (False, True)
-    p = flex.sort_permutation(
-      data=self.unit_cell().d_star_sq(self.indices()),
-      reverse=reverse)
-    return set(
-      crystal_symmetry=self,
-      indices=self.indices().select(p),
-      anomalous_flag=self.anomalous_flag())
+    return self.select(
+      self.sort_permutation(by_value=by_value, reverse=reverse))
 
   def change_basis(self, cb_op):
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
@@ -923,39 +926,21 @@ class array(set):
     return [self.select(pairs.column(1)),
             other.select(pairs.column(0))]
 
-  def sort(self, by_value="resolution", reverse=False):
-    return self.apply_sort_permutation(self.sort_permutation(
-      by_value=by_value,
-      reverse=reverse))
-
   def sort_permutation(self, by_value="resolution", reverse=False):
     assert reverse in (False, True)
-    if (by_value == "resolution"):
-      result = flex.sort_permutation(
-        data=self.unit_cell().d_star_sq(self.indices()),
-        reverse=reverse)
+    if (by_value in ["resolution", "packed_indices"]):
+      result = set.sort_permutation(self,
+        by_value=by_value, reverse=reverse)
     elif (by_value == "data"):
       result = flex.sort_permutation(
-        data=self.data(),
-        reverse=not reverse)
+        data=self.data(), reverse=not reverse)
     elif (by_value == "abs"):
       result = flex.sort_permutation(
-        data=flex.abs(self.data()),
-        reverse=not reverse)
+        data=flex.abs(self.data()), reverse=not reverse)
     else:
       result = flex.sort_permutation(
-        data=by_value,
-        reverse=not reverse)
+        data=by_value, reverse=not reverse)
     return result
-
-  def apply_sort_permutation(self, permutation):
-    new_set = set.customized_copy(self,
-      indices=self.indices().select(permutation))
-    d = None
-    s = None
-    if (self.data() is not None): d = self.data().select(permutation)
-    if (self.sigmas() is not None): s = self.sigmas().select(permutation)
-    return array(new_set, d, s).set_observation_type(self)
 
   def patterson_symmetry(self):
     data = self.data()
@@ -1540,21 +1525,19 @@ class merge_equivalents:
       if (sel.count(True) > 0):
         miller_array = miller_array.select(~sel)
     asu_set = set.map_to_asu(miller_array)
-    span = index_span(asu_set.indices())
-    packed_indices = span.pack(asu_set.indices())
-    p = flex.sort_permutation(data=packed_indices)
+    perm = asu_set.sort_permutation(by_value="packed_indices")
     if (miller_array.sigmas() is not None):
-      sigmas_squared = flex.pow2(miller_array.sigmas().select(p))
+      sigmas_squared = flex.pow2(miller_array.sigmas().select(perm))
       assert flex.min(sigmas_squared) > 0
       merge_ext = ext.merge_equivalents(
-        asu_set.indices().select(p),
-        miller_array.data().select(p),
+        asu_set.indices().select(perm),
+        miller_array.data().select(perm),
         1./sigmas_squared)
       sigmas = merge_ext.sigmas()
     else:
       merge_ext = ext.merge_equivalents(
-        asu_set.indices().select(p),
-        miller_array.data().select(p))
+        asu_set.indices().select(perm),
+        miller_array.data().select(perm))
       sigmas = None
     self._array = array(
       miller_set=set(
