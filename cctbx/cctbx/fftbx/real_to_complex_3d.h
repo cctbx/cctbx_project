@@ -128,7 +128,6 @@ namespace cctbx { namespace fftbx {
       void init();
     private:
       triple m_Nreal;
-      std::size_t m_Nz_complex;
       complex_to_complex<VectorType> m_fft1d_x;
       complex_to_complex<VectorType> m_fft1d_y;
       real_to_complex<VectorType>   m_fft1d_z;
@@ -138,7 +137,6 @@ namespace cctbx { namespace fftbx {
   template <class VectorType>
   void real_to_complex_3d<VectorType>::init()
   {
-    m_Nz_complex = Ncomplex_from_Nreal(m_Nreal[2]);
     m_fft1d_x = complex_to_complex<VectorType>(m_Nreal[0]);
     m_fft1d_y = complex_to_complex<VectorType>(m_Nreal[1]);
     m_fft1d_z = real_to_complex<VectorType>(m_Nreal[2]);
@@ -152,20 +150,10 @@ namespace cctbx { namespace fftbx {
     iterator_type Seq_begin = m_Seq.begin();
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
-        iterator_type s = Map[triple(ix, iy, 0)];
         // Transform along z (fast direction)
-        m_fft1d_z.forward(s);
-        // The imaginary part of the first coefficient is always zero.
-        // FFTPACK uses this knowledge to conserve space: the sequence
-        // of floating point numbers is shifted down one real-sized slot.
-        // Here the shift is undone for the 3D transform.
-        std::copy_backward(s + 1, s + m_Nreal[2], s + m_Nreal[2] + 1);
-        s[1] = value_type(0);
-        if (m_Nreal[2] % 2 == 0) {
-          s[m_Nreal[2] + 1] = value_type(0);
-        }
+        m_fft1d_z.forward(Map[triple(ix, iy, 0)]);
       }
-      for (std::size_t iz = 0; iz < m_Nz_complex; iz++) {
+      for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t iy;
         for (iy = 0; iy < m_Nreal[1]; iy++) {
           m_Seq[2*iy] = Map(ix, iy, 2*iz); // Seq_begin
@@ -180,7 +168,7 @@ namespace cctbx { namespace fftbx {
       }
     }
     for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
-      for (std::size_t iz = 0; iz < m_Nz_complex; iz++) {
+      for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
           m_Seq[2*ix] = Map(ix, iy, 2*iz);
@@ -201,7 +189,7 @@ namespace cctbx { namespace fftbx {
   real_to_complex_3d<VectorType>::backward(adaptors::rc_3d<VectorType>& Map)
   {
     iterator_type Seq_begin = m_Seq.begin();
-    for (std::size_t iz = 0; iz < m_Nz_complex; iz++) {
+    for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
@@ -231,14 +219,8 @@ namespace cctbx { namespace fftbx {
     }
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
-        iterator_type s = Map[triple(ix, iy, 0)];
-        // The imaginary part of the first coefficient is always zero.
-        // FFTPACK uses this knowledge to conserve space: the sequence
-        // of floating point numbers is shifted down one real-sized slot.
-        // Here the shift is applied before calling the 1D transform.
-        std::copy(s + 2, s + 2 * m_Nz_complex, s + 1);
         // Transform along z (fast direction)
-        m_fft1d_z.backward(s);
+        m_fft1d_z.backward(Map[triple(ix, iy, 0)]);
       }
     }
   }
