@@ -11,6 +11,8 @@
 #ifndef CCTBX_MATH_MOD_H
 #define CCTBX_MATH_MOD_H
 
+#include <cmath>
+
 namespace cctbx { namespace math {
 
   template <typename IntType>
@@ -34,6 +36,16 @@ namespace cctbx { namespace math {
     if (ix > iy / 2)
         ix -= iy;
     return ix;
+  }
+
+  template <typename FloatType>
+  inline FloatType
+  fmod_short(FloatType const& x, FloatType const& y)
+  {
+    FloatType result = std::fmod(x, y);
+    if (result < 0) result += y;
+    if (result > y/2) result -= y;
+    return result;
   }
 
 }} // namespace cctbx::math

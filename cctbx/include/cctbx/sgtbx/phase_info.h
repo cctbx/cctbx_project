@@ -104,7 +104,7 @@ namespace cctbx { namespace sgtbx {
       double ht_angle(bool deg=false) const
       {
         if (!is_centric()) return -1.;
-        return (ht_period(deg) * ht_) / t_den_;
+        return (pi_unit(deg) * ht_) / t_den_;
       }
 
       //! Tests if phase phi is compatible with restriction.
@@ -140,7 +140,7 @@ namespace cctbx { namespace sgtbx {
       int t_den_;
       bool sys_abs_was_tested_;
 
-      double ht_period(bool deg) const
+      double pi_unit(bool deg) const
       {
         if (deg) return 180.;
         return scitbx::constants::pi;

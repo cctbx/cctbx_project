@@ -81,10 +81,10 @@ namespace cctbx { namespace sgtbx {
   phase_info::is_valid_phase(double phi, bool deg, double tolerance) const
   {
     if (!is_centric()) return true;
-    double period = ht_period(deg);
-    double delta = std::fmod(phi - ht_angle(deg), period);
-    if (delta >  tolerance) delta -= period;
-    if (delta < -tolerance) delta += period;
+    double pi_u = pi_unit(deg);
+    double delta = std::fmod(phi - ht_angle(deg), pi_u);
+    if (delta >  tolerance) delta -= pi_u;
+    if (delta < -tolerance) delta += pi_u;
     if (delta <= tolerance) return true;
     return false;
   }
@@ -92,14 +92,11 @@ namespace cctbx { namespace sgtbx {
   double
   phase_info::nearest_valid_phase(double phi, bool deg) const
   {
-    using scitbx::fn::absolute;
     if (!is_centric()) return phi;
-    double period = ht_period(deg);
+    double pi_u = pi_unit(deg);
     double phi_restr = ht_angle(deg);
-    double delta0 = phi - phi_restr;
-    double delta1 = delta0 - period;
-    if (  absolute(std::fmod(delta1, 2*period))
-        < absolute(std::fmod(delta0, 2*period))) return phi_restr + period;
+    double delta = math::fmod_short(phi - phi_restr, 2*pi_u);
+    if (delta <= -pi_u/2 || delta > pi_u/2) return phi_restr + pi_u;
     return phi_restr;
   }
 
