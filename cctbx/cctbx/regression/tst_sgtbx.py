@@ -13,7 +13,7 @@ def exercise_space_group_info():
   assert str(i) == "P 1 2 1"
   assert i.group() == i.type().group()
   assert i.reciprocal_space_asu().reference_as_string() \
-      == "k>=0 and (l>0 or (l=0 and h>=0))"
+      == "k>=0 and (l>0 or (l==0 and h>=0))"
   assert str(i.brick()) == "0<=x<=1/2; 0<=y<1; 0<=z<1"
   assert i.wyckoff_table().space_group_type().group() == i.type().group()
   assert len(i.structure_seminvariant().vectors_and_moduli()) == 3
