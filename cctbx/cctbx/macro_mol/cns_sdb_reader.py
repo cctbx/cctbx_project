@@ -31,7 +31,7 @@ class sdb_file:
   def __init__(self, file_name, unit_cell, space_group_info, sites):
     adopt_init_args(self, locals())
 
-  def as_xray_structure(self):
+  def as_xray_structure(self, min_distance_sym_equiv=0.5):
     assert self.unit_cell != None
     assert self.space_group_info != None
     from cctbx import crystal
@@ -39,7 +39,9 @@ class sdb_file:
     symmetry = crystal.symmetry(
       unit_cell=self.unit_cell,
       space_group_info=self.space_group_info)
-    structure = xray.structure(crystal.special_position_settings(symmetry))
+    structure = xray.structure(crystal.special_position_settings(
+      crystal_symmetry=symmetry,
+      min_distance_sym_equiv=min_distance_sym_equiv))
     for site in self.sites:
       structure.add_scatterer(site.as_xray_scatterer(self.unit_cell))
     return structure
