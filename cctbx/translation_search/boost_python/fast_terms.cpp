@@ -22,7 +22,7 @@ namespace {
                   bool,
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<std::complex<double> > >())
-        .def("summation", &w_t::summation, rir())
+        .def("raw_summation", &w_t::summation, rir())
         .def("fft", &w_t::fft, rir())
         .def("accu_real_copy", &w_t::accu_real_copy)
       ;
