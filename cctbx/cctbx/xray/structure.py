@@ -2,6 +2,7 @@ from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller
 from cctbx import crystal
+import cctbx.crystal.direct_space_asu
 from cctbx import sgtbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
@@ -293,4 +294,18 @@ class structure(crystal.special_position_settings):
     if (gradient_flags.occupancy): result += n_scatterers
     if (gradient_flags.fp): result += n_scatterers
     if (gradient_flags.fdp): result += n_scatterers
+    return result
+
+  def asu_mappings(self, buffer_thickness,
+                         is_inside_epsilon=None,
+                         sym_equiv_epsilon=1.e-6):
+    result = crystal.direct_space_asu.asu_mappings(
+      space_group=self.space_group(),
+      asu=self.direct_space_asu().as_float_asu(
+        is_inside_epsilon=is_inside_epsilon),
+      buffer_thickness=buffer_thickness,
+      sym_equiv_epsilon=sym_equiv_epsilon)
+    ext.asu_mappings_process(
+      asu_mappings=result,
+      scatterers=self.scatterers())
     return result

@@ -1,8 +1,11 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <cctbx/xray/scatterer.h>
+#include <cctbx/xray/asu_mappings.h>
+#include <cctbx/crystal/direct_space_asu.h>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 
@@ -72,7 +75,16 @@ namespace {
 
   void wrap_scatterer()
   {
+    using namespace boost::python;
+    typedef boost::python::arg arg_; // gcc 2.96 workaround
+
     scatterer_wrappers::wrap();
+
+    def("asu_mappings_process",
+      (void(*)(
+        crystal::direct_space_asu::asu_mappings<>&,
+        af::const_ref<scatterer<> > const&))
+      asu_mappings_process, (arg_("asu_mappings"), arg_("scatterers")));
   }
 
 }}} // namespace cctbx::xray::boost_python
