@@ -135,31 +135,30 @@ def exercise_bond():
   for proxy in sym_proxies:
     assert approx_equal(proxy.distance_ideal, -4)
     proxy.distance_ideal = 2
+  sorted_asu_proxies = restraints.bond_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  sorted_asu_proxies.process(proxies=sym_proxies)
   assert approx_equal(
     restraints.bond_deltas(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies),
+      sorted_asu_proxies=sorted_asu_proxies),
     [2-3**.5]*2)
   assert approx_equal(
     restraints.bond_residuals(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies),
+      sorted_asu_proxies=sorted_asu_proxies),
     [10*(2-3**.5)**2]*2)
   assert approx_equal(
     restraints.bond_residual_sum(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies,
+      sorted_asu_proxies=sorted_asu_proxies,
       gradient_array=None),
     (10*(2-3**.5)**2)*2)
   gradient_array = flex.vec3_double(2, [0,0,0])
   assert approx_equal(
     restraints.bond_residual_sum(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies,
+      sorted_asu_proxies=sorted_asu_proxies,
       gradient_array=gradient_array),
     (10*(2-3**.5)**2)*2)
   assert approx_equal(gradient_array,
@@ -170,8 +169,7 @@ def exercise_bond():
     assert approx_equal(
       restraints.bond_residual_sum(
         sites_cart=sites_cart,
-        asu_mappings=asu_mappings,
-        proxies=sym_proxies,
+        sorted_asu_proxies=sorted_asu_proxies,
         gradient_array=gradient_array,
         disable_cache=disable_cache),
       (10*(2-3**.5)**2)*2)
@@ -316,37 +314,35 @@ def exercise_repulsion():
   assert approx_equal(r.gradients(),
     [(0.71084793153727288, 0.71084793153727288, 0.71084793153727288),
      (-0.71084793153727288, -0.71084793153727288, -0.71084793153727288)])
+  sorted_asu_proxies = restraints.repulsion_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  sorted_asu_proxies.process(proxies=sym_proxies)
   assert approx_equal(
     flex.pow2(restraints.repulsion_deltas(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies)),
+      sorted_asu_proxies=sorted_asu_proxies)),
     [3]*2)
   assert approx_equal(
     flex.pow2(restraints.repulsion_deltas(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies,
+      sorted_asu_proxies=sorted_asu_proxies,
       function=restraints.repulsion_function())),
     [3]*2)
   assert approx_equal(
     restraints.repulsion_residuals(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies),
+      sorted_asu_proxies=sorted_asu_proxies),
     [0.0824764182859]*2)
   assert approx_equal(
     restraints.repulsion_residuals(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies,
+      sorted_asu_proxies=sorted_asu_proxies,
       function=restraints.repulsion_function()),
     [0.0824764182859]*2)
   assert approx_equal(
     restraints.repulsion_residual_sum(
       sites_cart=sites_cart,
-      asu_mappings=asu_mappings,
-      proxies=sym_proxies,
+      sorted_asu_proxies=sorted_asu_proxies,
       gradient_array=None),
     0.0824764182859*2)
   for disable_cache in [00000, 0001]:
@@ -354,8 +350,7 @@ def exercise_repulsion():
     assert approx_equal(
       restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
-        asu_mappings=asu_mappings,
-        proxies=sym_proxies,
+        sorted_asu_proxies=sorted_asu_proxies,
         gradient_array=gradient_array,
         function=restraints.repulsion_function(),
         disable_cache=disable_cache),

@@ -30,7 +30,7 @@ namespace cctbx { namespace restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         af::const_ref<ProxyType> const& proxies)
       {
-        af::shared<double> result((af::reserve(sites_cart.size())));
+        af::shared<double> result((af::reserve(proxies.size())));
         for(std::size_t i=0;i<proxies.size();i++) {
           ProxyType const& proxy = proxies[i];
           RestraintType restraint(sites_cart, proxy);
@@ -45,7 +45,7 @@ namespace cctbx { namespace restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         af::const_ref<ProxyType> const& proxies)
       {
-        af::shared<double> result((af::reserve(sites_cart.size())));
+        af::shared<double> result((af::reserve(proxies.size())));
         for(std::size_t i=0;i<proxies.size();i++) {
           ProxyType const& proxy = proxies[i];
           RestraintType restraint(sites_cart, proxy);
@@ -65,7 +65,7 @@ namespace cctbx { namespace restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         af::const_ref<ProxyType> const& proxies)
       {
-        af::shared<double> result((af::reserve(sites_cart.size())));
+        af::shared<double> result((af::reserve(proxies.size())));
         for(std::size_t i=0;i<proxies.size();i++) {
           ProxyType const& proxy = proxies[i];
           RestraintType restraint(sites_cart, proxy);
