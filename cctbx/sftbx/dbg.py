@@ -46,7 +46,7 @@ def show_joined_sets(h1, h2, js):
     print h2[j]
 
 def exercise(SgInfo,
-             d_min=3.,
+             d_min=1.,
              grid_resolution_factor = 1./3,
              adp=0,
              force_complex=0,

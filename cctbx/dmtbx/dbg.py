@@ -28,7 +28,9 @@ def erase_small(miller_indices, data, cutoff):
 def exercise(SgInfo,
              number_of_point_atoms = 10,
              d_min=1.,
-             e_min=1.2):
+             e_min=1.2,
+             unique_triplet_phase_relations_only=0,
+             verbose=0):
   elements = ["const"] * number_of_point_atoms
   xtal = debug_utils.random_structure(
     SgInfo, elements,
@@ -41,7 +43,8 @@ def exercise(SgInfo,
   MillerIndices = xutils.build_miller_indices(xtal, friedel_flag=1,d_min=d_min)
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=1)
   e_values = Fcalc.F
-  inplace_divide(e_values, math.sqrt(number_of_point_atoms))
+  inplace_divide(
+    e_values, math.sqrt(xtal.SgOps.OrderZ() * number_of_point_atoms))
   dmtbx.inplace_sort(MillerIndices.H, e_values, 1)
   s = shared.statistics(e_values)
   print "mean2:", s.mean2()
@@ -51,20 +54,33 @@ def exercise(SgInfo,
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=0)
   dummy, phases = ampl_phase_rad(Fcalc.F)
   Fcalc.F = e_values
-  #debug_utils.print_structure_factors(Fcalc)
-  t = dmtbx.triplet_invariants(xtal.SgInfo, MillerIndices.H, e_values)
+  if (0 or verbose):
+    debug_utils.print_structure_factors(Fcalc)
+  t = dmtbx.triplet_invariants(
+   xtal.SgInfo, MillerIndices.H, e_values, unique_triplet_phase_relations_only)
   print "total_number_of_triplets:", \
        t.total_number_of_triplets()
   print "average_number_of_triplets_per_reflection:", \
        t.average_number_of_triplets_per_reflection()
   new_phases = t.refine_phases(MillerIndices.H, e_values, phases)
+  sum_w_phase_error = 0
+  sum_w = 0
   for i in xrange(MillerIndices.H.size()):
-    print MillerIndices.H[i], phases[i], new_phases[i]
+    phase_error = debug_utils.phase_error(
+      phases[i], new_phases[i], deg=0) * 180/math.pi
+    if (0 or verbose):
+      print MillerIndices.H[i], "%.3f %.3f %.3f" % (
+        phases[i], new_phases[i], phase_error)
+    sum_w_phase_error += e_values[i] * phase_error
+    sum_w += e_values[i]
+  print "mean weighted phase error: %.2f" % (sum_w_phase_error / sum_w,)
+  print
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
     "RandomSeed",
     "AllSpaceGroups",
+    "Unique",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   symbols_to_stdout = 0
@@ -84,7 +100,7 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
-    exercise(SgInfo)
+    exercise(SgInfo, unique_triplet_phase_relations_only=Flags.Unique)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):

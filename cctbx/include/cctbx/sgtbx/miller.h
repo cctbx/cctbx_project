@@ -45,36 +45,51 @@ namespace cctbx {
          */
         int TBF() const { return m_TBF; }
 
-        /*! \brief Phase of this index in radians, given phase of
+        /*! \brief Phase for equivalent index in radians, given phase for
             input Miller index.
          */
         /*! Formula used:<br>
-            this_phi = phi - (2 * pi * HT()) / TBF();
+            phi_eq = phi_in - (2 * pi * HT()) / TBF();
          */
         template <class FloatType>
-        FloatType Phase_rad(const FloatType& phi) const {
+        FloatType phase_eq_rad(const FloatType& phi_in) const {
           using cctbx::constants::pi;
-          return phi - (2. * pi * HT()) / TBF();
+          return phi_in - (2. * pi * HT()) / TBF();
         }
-        //! Phase of this index in degrees, given phase of input Miller index.
+        /*! \brief Phase for input index in radians, given phase for
+            equivalent Miller index.
+         */
         /*! Formula used:<br>
-            this_phi = phi - (2 * 180 * HT()) / TBF();
+            phi_in = phi_eq + (2 * pi * HT()) / TBF();
          */
         template <class FloatType>
-        FloatType Phase_deg(const FloatType& phi) const {
-          return phi - (2. * 180. * HT()) / TBF();
+        FloatType phase_in_rad(const FloatType& phi_eq) const {
+          using cctbx::constants::pi;
+          return phi_eq + (2. * pi * HT()) / TBF();
         }
-        //! Complex value for this index, given complex value for input index.
+        /*! \brief Phase for equivalent index in degrees, given phase for
+            input Miller index.
+         */
         /*! Formula used:<br>
-            this_F = F * exp(-2 * pi * j * HT() / TBF());<br>
+            phi_eq = phi_in - (2 * pi * HT()) / TBF();
+         */
+        template <class FloatType>
+        FloatType phase_eq_deg(const FloatType& phi_in) const {
+          return phi_in - (2. * 180. * HT()) / TBF();
+        }
+        /*! \brief Complex value for equivalent index, given complex
+            value for input index.
+         */
+        /*! Formula used:<br>
+            f_eq = f_in * exp(-2 * pi * j * HT() / TBF());<br>
             where j is the imaginary number.
          */
         template <class FloatType>
         std::complex<FloatType>
-        ShiftPhase(const std::complex<FloatType>& F) const {
+        complex_eq(const std::complex<FloatType>& f_in) const {
           using cctbx::constants::pi;
           FloatType theta = (-2. * pi * HT()) / TBF();
-          return F * std::polar(1., theta);
+          return f_in * std::polar(1., theta);
         }
       protected:
         Index m_HR;
@@ -307,7 +322,7 @@ namespace cctbx {
          */
         Miller::Index operator()(int iIL) const;
 
-        /*! \brief Shift phase of structure factor F corresponding to
+        /*! \brief Shift phase of structure factor f_in corresponding to
             input Miller index to structure factor corresponding to
             operator()(iMate, iList).
          */
@@ -318,12 +333,12 @@ namespace cctbx {
         inline
         std::complex<double>
 #endif
-        ShiftPhase(
+        complex_eq(
           int iMate, int iList,
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-          const std::complex<FloatType>& F
+          const std::complex<FloatType>& f_in
 #else
-          const std::complex<double>& F
+          const std::complex<double>& f_in
 #endif
           ) const;
 
@@ -338,12 +353,12 @@ namespace cctbx {
         inline
         std::complex<double>
 #endif
-        ShiftPhase(
+        complex_eq(
           int iIL,
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-          const std::complex<FloatType>& F
+          const std::complex<FloatType>& f_in
 #else
-          const std::complex<double>& F
+          const std::complex<double>& f_in
 #endif
           ) const;
 
@@ -391,19 +406,19 @@ namespace cctbx {
     inline
     std::complex<double>
 #endif
-    SymEquivMillerIndices::ShiftPhase(
+    SymEquivMillerIndices::complex_eq(
       int iMate, int iList,
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-      const std::complex<FloatType>& F
+      const std::complex<FloatType>& f_in
 #else
-      const std::complex<double>& F
+      const std::complex<double>& f_in
 #endif
       ) const
     {
       if (iMate == 0) {
-        return m_List[iList].ShiftPhase(F);
+        return m_List[iList].complex_eq(f_in);
       }
-      return std::conj(m_List[iList].ShiftPhase(F));
+      return std::conj(m_List[iList].complex_eq(f_in));
     }
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
@@ -413,17 +428,17 @@ namespace cctbx {
     inline
     std::complex<double>
 #endif
-    SymEquivMillerIndices::ShiftPhase(
+    SymEquivMillerIndices::complex_eq(
       int iIL,
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
-      const std::complex<FloatType>& F
+      const std::complex<FloatType>& f_in
 #else
-      const std::complex<double>& F
+      const std::complex<double>& f_in
 #endif
       ) const
     {
       iIL_decomposition d = decompose_iIL(iIL);
-      return ShiftPhase(d.iMate, d.iList, F);
+      return complex_eq(d.iMate, d.iList, f_in);
     }
 
   } // namespace sgtbx
