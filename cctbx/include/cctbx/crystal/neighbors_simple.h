@@ -31,7 +31,9 @@ namespace neighbors {
           region are generated.
        */
       simple_pair_generator(
-        boost::shared_ptr<asu_mappings_t>& asu_mappings,
+        boost::shared_ptr<
+          direct_space_asu::asu_mappings<
+            FloatType, IntShiftType> >& asu_mappings,
         FloatType const& distance_cutoff=0)
       :
         asu_mappings_owner_(asu_mappings),
@@ -44,7 +46,9 @@ namespace neighbors {
       }
 
       //! Instance as passed to the constructor.
-      boost::shared_ptr<asu_mappings_t> const&
+      boost::shared_ptr<
+        direct_space_asu::asu_mappings<
+          FloatType, IntShiftType> > const&
       asu_mappings() const { return asu_mappings_owner_; }
 
       //! Square of value as passed to the constructor.

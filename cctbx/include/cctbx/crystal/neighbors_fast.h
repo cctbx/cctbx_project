@@ -39,7 +39,9 @@ namespace cctbx { namespace crystal { namespace neighbors {
           epsilon must be greater than zero and smaller than 0.01.
        */
       fast_pair_generator(
-        boost::shared_ptr<asu_mappings_t>& asu_mappings,
+        boost::shared_ptr<
+          direct_space_asu::asu_mappings<
+            FloatType, IntShiftType> >& asu_mappings,
         FloatType const& distance_cutoff,
         FloatType const& epsilon=1.e-6)
       :
