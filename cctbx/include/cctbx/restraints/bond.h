@@ -8,7 +8,20 @@
 
 namespace cctbx { namespace restraints {
 
-  struct bond_simple_proxy
+  struct bond_params
+  {
+    bond_params() {}
+
+    bond_params(double distance_ideal_, double weight_)
+    :
+      distance_ideal(distance_ideal_), weight(weight_)
+    {}
+
+    double distance_ideal;
+    double weight;
+  };
+
+  struct bond_simple_proxy : bond_params
   {
     bond_simple_proxy() {}
 
@@ -17,17 +30,14 @@ namespace cctbx { namespace restraints {
       double distance_ideal_,
       double weight_)
     :
-      i_seqs(i_seqs_),
-      distance_ideal(distance_ideal_),
-      weight(weight_)
+      bond_params(distance_ideal_, weight_),
+      i_seqs(i_seqs_)
     {}
 
     af::tiny<std::size_t, 2> i_seqs;
-    double distance_ideal;
-    double weight;
   };
 
-  struct bond_asu_proxy
+  struct bond_asu_proxy : bond_params
   {
     bond_asu_proxy() {}
 
@@ -36,9 +46,8 @@ namespace cctbx { namespace restraints {
       double distance_ideal_,
       double weight_)
     :
-      pair(pair_),
-      distance_ideal(distance_ideal_),
-      weight(weight_)
+      bond_params(distance_ideal_, weight_),
+      pair(pair_)
     {}
 
     bond_simple_proxy
@@ -51,11 +60,9 @@ namespace cctbx { namespace restraints {
     }
 
     direct_space_asu::asu_mapping_index_pair pair;
-    double distance_ideal;
-    double weight;
   };
 
-  class bond
+  class bond : public bond_params
   {
     public:
       typedef scitbx::vec3<double> vec3;
@@ -67,9 +74,8 @@ namespace cctbx { namespace restraints {
         double distance_ideal_,
         double weight_)
       :
-        sites(sites_),
-        distance_ideal(distance_ideal_),
-        weight(weight_)
+        bond_params(distance_ideal_, weight_),
+        sites(sites_)
       {
         init_distance_model();
       }
@@ -78,8 +84,7 @@ namespace cctbx { namespace restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         bond_simple_proxy const& proxy)
       :
-        distance_ideal(proxy.distance_ideal),
-        weight(proxy.weight)
+        bond_params(proxy.distance_ideal, proxy.weight)
       {
         for(int i=0;i<2;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -94,8 +99,7 @@ namespace cctbx { namespace restraints {
         direct_space_asu::asu_mappings<> const& asu_mappings,
         bond_asu_proxy const& proxy)
       :
-        distance_ideal(proxy.distance_ideal),
-        weight(proxy.weight)
+        bond_params(proxy.distance_ideal, proxy.weight)
       {
         sites[0] = asu_mappings.map_moved_site_to_asu(
           sites_cart[proxy.pair.i_seq], proxy.pair.i_seq, 0);
@@ -109,8 +113,7 @@ namespace cctbx { namespace restraints {
         asu_cache<> const& cache,
         bond_asu_proxy const& proxy)
       :
-        distance_ideal(proxy.distance_ideal),
-        weight(proxy.weight)
+        bond_params(proxy.distance_ideal, proxy.weight)
       {
         sites[0] = cache.sites[proxy.pair.i_seq][0];
         sites[1] = cache.sites[proxy.pair.j_seq][proxy.pair.j_sym];
@@ -177,8 +180,6 @@ namespace cctbx { namespace restraints {
       }
 
       af::tiny<scitbx::vec3<double>, 2> sites;
-      double distance_ideal;
-      double weight;
       double distance_model;
       double delta;
 

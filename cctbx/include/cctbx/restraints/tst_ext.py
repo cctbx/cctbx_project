@@ -7,6 +7,19 @@ from libtbx.test_utils import approx_equal, eps_eq
 from libtbx.itertbx import count
 
 def exercise_bond():
+  p = restraints.bond_params(
+    distance_ideal=3.5,
+    weight=1)
+  assert approx_equal(p.distance_ideal, 3.5)
+  assert approx_equal(p.weight, 1)
+  p.distance_ideal = 35
+  assert approx_equal(p.distance_ideal, 35)
+  p.distance_ideal = 3.5
+  assert approx_equal(p.distance_ideal, 3.5)
+  p.weight = 10
+  assert approx_equal(p.weight, 10)
+  p.weight = 1
+  assert approx_equal(p.weight, 1)
   p = restraints.bond_simple_proxy(
     i_seqs=[0,1],
     distance_ideal=3.5,
