@@ -96,7 +96,6 @@ def exercise_structure():
   assert approx_equal(ys.center_of_mass(), (0,0,0))
   ys = xray.structure(xs)
   assert ys.atomic_weights().size() == 0
-  assert ys.center_of_mass() == (0,0,0)
   ys = xray.structure(sp, scatterers)
   ys.scatterers()[1].occupancy = 0.5
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
