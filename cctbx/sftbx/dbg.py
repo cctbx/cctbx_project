@@ -24,6 +24,17 @@ def zero_out_fpfdp(xtal):
     new_sites.append(site)
   xtal.Sites = new_sites
 
+def set_equiv_adp(xtal):
+  new_sites = shared.XrayScatterer()
+  for site in xtal.Sites:
+    if (not site.isAnisotropic()):
+      site.set_Uaniso(adptbx.Uiso_as_Ustar(xtal.UnitCell, site.Uiso()))
+    else:
+      site.set_Uaniso(adptbx.Uiso_as_Ustar(xtal.UnitCell,
+        adptbx.Ustar_as_Uiso(xtal.UnitCell, site.Uaniso())))
+    new_sites.append(site)
+  xtal.Sites = new_sites
+
 def show_joined_sets(h1, h2, js):
   for i,j in js.pairs():
     print h1[i], h2[j]
@@ -56,6 +67,8 @@ def exercise(SgInfo,
   if (0):
     zero_out_fpfdp(xtal)
   if (0):
+    set_equiv_adp(xtal)
+  if (0):
     i_select = 3
     elements = [elements[i_select]]
     site = xtal.Sites[i_select]
@@ -76,8 +89,11 @@ def exercise(SgInfo,
   MillerIndices = xutils.build_miller_indices(xtal, friedel_flag, d_min)
   Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
   if (0):
-    # reset fpfdp to verify that correlation is significantly different from 1.
+    # to verify that correlation is significantly different from 1.
     zero_out_fpfdp(xtal)
+  if (0):
+    # to verify that correlation is significantly different from 1.
+    set_equiv_adp(xtal)
   if (use_cns):
     run_cns(elements, xtal, d_min, grid_resolution_factor, friedel_flag, Fcalc)
     return
@@ -195,7 +211,7 @@ def exercise(SgInfo,
     assert js.singles(i).size() == 0
   show_structure_factor_correlation(
     "sgtbx_dir/sgtbx_fft", Fcalc.H, js, Fcalc.F, fcal,
-    min_corr_ampl=0.99, max_mean_w_phase_error=3.,
+    min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
     verbose=0)
 
 def write_cns_input(elements, xtal, d_min, grid_resolution_factor,
