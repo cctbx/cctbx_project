@@ -1,6 +1,7 @@
 from cctbx.crystal import coordination_sequences
 from cctbx.crystal import distance_ls
 import cctbx.crystal.pair_asu_table
+from cctbx import crystal
 from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 import sys
@@ -68,8 +69,9 @@ def run():
       print "Pair counts:", list(pairs.pair_counts)
       print
       if (n_shells is not None):
-        term_table = coordination_sequences.simple_and_slow(
-          pair_asu_table=pair_asu_table,
+        term_table = crystal.coordination_sequences_simple(
+          asu_mappings=pair_asu_table.asu_mappings,
+          pair_asu_table_table=pair_asu_table.table,
           n_shells=n_shells)
         coordination_sequences.show_terms(
           structure=structure,
