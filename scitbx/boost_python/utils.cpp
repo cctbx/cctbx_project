@@ -1,6 +1,3 @@
-#if defined(_SGI_COMPILER_VERSION) && _SGI_COMPILER_VERSION == 741
-# include <complex>
-#endif
 #include <scitbx/boost_python/utils.h>
 
 namespace scitbx { namespace boost_python {
