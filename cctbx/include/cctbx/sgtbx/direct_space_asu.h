@@ -4,7 +4,10 @@
 #include <cctbx/sgtbx/sym_equiv_sites.h>
 #include <scitbx/math/minimum_covering_sphere.h>
 
-namespace cctbx { namespace sgtbx { namespace direct_space_asu {
+namespace cctbx { namespace sgtbx {
+
+//! Direct-space asymmetric units.
+namespace direct_space_asu {
 
   //! Floating-point parameterization of a cut plane.
   template <typename FloatType=double>
@@ -339,7 +342,7 @@ namespace cctbx { namespace sgtbx { namespace direct_space_asu {
       /*! The sphere is computed as the minimum covering sphere
           for the vertices of asu(), followed by adding buffer_thickness()
           to the radius. In general some of the vertices of buffer_asu()
-          maybe outside buffer_covering_sphere().
+          may be outside buffer_covering_sphere().
        */
       scitbx::math::sphere_3d<FloatType> const&
       buffer_covering_sphere() const { return buffer_covering_sphere_; }
