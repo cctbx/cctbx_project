@@ -25,9 +25,20 @@ def exercise_flex_hendrickson_lattman():
   a = flex.hendrickson_lattman(((1,2,3,4), (2,3,4,5), (3,4,5,6)))
   assert a.size() == 3
   assert tuple(a) == ((1,2,3,4), (2,3,4,5), (3,4,5,6))
+  assert tuple(a+a) == ((2,4,6,8), (4,6,8,10), (6,8,10,12))
+  a += a
+  assert tuple(a) == ((2,4,6,8), (4,6,8,10), (6,8,10,12))
   p = pickle.dumps(a)
   b = pickle.loads(p)
   assert tuple(a) == tuple(b)
+  centric_flags = flex.bool([00000, 0001])
+  phase_integrals = flex.complex_double([complex(0.5,-0.7), complex(-0.3,0.4)])
+  a = flex.hendrickson_lattman(
+    centric_flags=centric_flags,
+    phase_integrals=phase_integrals,
+    max_figure_of_merit=1-1.e-6)
+  assert approx_equal(a, [(2.2684820912654264, -3.1758749277715967, 0, 0),
+                          (-0.3295836866004328, 0.43944491546724396, 0, 0)])
 
 def exercise_flex_tiny_size_t_2():
   a = flex.tiny_size_t_2()

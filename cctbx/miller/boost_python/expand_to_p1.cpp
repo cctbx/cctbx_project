@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/expand_to_p1.h>
@@ -50,10 +41,16 @@ namespace {
                   bool,
                   af::const_ref<index<> > const&,
                   af::const_ref<std::complex<double> > const&>())
+        .def(init<sgtbx::space_group const&,
+                  bool,
+                  af::const_ref<index<> > const&,
+                  af::const_ref<hendrickson_lattman<> > const&>())
         .def("indices", &w_t::indices, ccr())
         .def("amplitudes", &w_t::amplitudes, ccr())
         .def("phases", &w_t::phases, ccr())
         .def("structure_factors", &w_t::structure_factors, ccr())
+        .def("hendrickson_lattman_coefficients",
+          &w_t::hendrickson_lattman_coefficients, ccr())
       ;
     }
   };

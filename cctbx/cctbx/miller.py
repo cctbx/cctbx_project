@@ -552,6 +552,9 @@ class array(set):
   def is_complex(self):
     return isinstance(self.data(), flex.complex_double)
 
+  def is_hendrickson_lattman_array(self):
+    return isinstance(self.data(), flex.hendrickson_lattman)
+
   def copy(self):
     return (array(
       miller_set=self,
@@ -718,6 +721,11 @@ class array(set):
         self.space_group(), self.anomalous_flag(), self.indices(),
         self.data())
       new_data = p1.structure_factors()
+    elif (self.is_hendrickson_lattman_array()):
+      p1 = expand_to_p1(
+        self.space_group(), self.anomalous_flag(), self.indices(),
+        self.data())
+      new_data = p1.hendrickson_lattman_coefficients()
     else:
       assert isinstance(self.data(), flex.double)
       assert phase_deg in (None, 00000, 0001)
@@ -780,6 +788,21 @@ class array(set):
         self.data(),
         phase_source,
         deg))
+
+  def phase_integrals(self, n_steps=None, integrator=None):
+    assert self.is_hendrickson_lattman_array()
+    assert n_steps is None or integrator is None
+    if (integrator is None):
+      if (n_steps is None):
+        integrator = phase_integrator()
+      else:
+        integrator = phase_integrator(n_steps=n_steps)
+    return array(
+      miller_set=self,
+      data=integrator(
+        space_group=self.space_group(),
+        miller_indices=self.indices(),
+        hendrickson_lattman_coefficients=self.data()))
 
   def mean_weighted_phase_error(self, phase_source):
     assert self.data() is not None
