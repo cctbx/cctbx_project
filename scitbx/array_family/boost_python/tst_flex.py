@@ -4,7 +4,7 @@ from scitbx.array_family import flex
 def exercise_flex_grid():
   g = flex.grid()
   assert g.nd() == 0
-  assert g.size1d() == 0
+  assert g.size_1d() == 0
   assert g.origin() == ()
   assert g.grid() == ()
   assert g.last() == ()
@@ -14,7 +14,7 @@ def exercise_flex_grid():
   assert not g.is_padded()
   g = flex.grid((2,3,5))
   assert g.nd() == 3
-  assert g.size1d() == 30
+  assert g.size_1d() == 30
   assert g.origin() == (0,0,0)
   assert g.grid() == (2,3,5)
   assert g.last() == (2,3,5)
@@ -26,7 +26,7 @@ def exercise_flex_grid():
   assert not g.is_padded()
   g = flex.grid((1,2,3), (4,6,8))
   assert g.nd() == 3
-  assert g.size1d() == 60
+  assert g.size_1d() == 60
   assert g.origin() == (1,2,3)
   assert g.grid() == (3,4,5)
   assert g.last() == (4,6,8)
@@ -39,7 +39,7 @@ def exercise_flex_grid():
   assert not g.is_padded()
   g = flex.grid((1,2,3), (4,6,8), 0)
   assert g.nd() == 3
-  assert g.size1d() == 120
+  assert g.size_1d() == 120
   assert g.origin() == (1,2,3)
   assert g.grid() == (4,5,6)
   assert g.last() == (5,7,9)

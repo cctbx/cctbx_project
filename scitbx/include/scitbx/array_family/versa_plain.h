@@ -37,42 +37,43 @@ namespace scitbx { namespace af {
 
       explicit
       versa_plain(AccessorType const& ac)
-        : base_class(ac.size1d()),
+        : base_class(ac.size_1d()),
           m_accessor(ac)
       {}
 
       versa_plain(AccessorType const& ac, reserve_flag)
-        : base_class(ac.size1d(), reserve_flag()),
+        : base_class(ac.size_1d(), reserve_flag()),
           m_accessor(ac)
       {}
 
       explicit
       versa_plain(long n0)
-        : base_class(AccessorType(n0).size1d()),
+        : base_class(AccessorType(n0).size_1d()),
           m_accessor(n0)
       {}
 
       versa_plain(AccessorType const& ac, ElementType const& x)
-        : base_class(ac.size1d(), x),
+        : base_class(ac.size_1d(), x),
           m_accessor(ac)
       {}
 
       versa_plain(long n0, ElementType const& x)
-        : base_class(AccessorType(n0).size1d(), x),
+        : base_class(AccessorType(n0).size_1d(), x),
           m_accessor(n0)
       {}
 
       // non-std
       template <typename FunctorType>
-      versa_plain(AccessorType const& ac, init_functor<FunctorType> const& ftor)
-        : base_class(ac.size1d(), ftor),
+      versa_plain(AccessorType const& ac,
+                  init_functor<FunctorType> const& ftor)
+        : base_class(ac.size_1d(), ftor),
           m_accessor(ac)
       {}
 
       // non-std
       template <typename FunctorType>
       versa_plain(long n0, init_functor<FunctorType> const& ftor)
-        : base_class(AccessorType(n0).size1d(), ftor),
+        : base_class(AccessorType(n0).size_1d(), ftor),
           m_accessor(n0)
       {}
 
@@ -104,7 +105,7 @@ namespace scitbx { namespace af {
         : base_class(other),
           m_accessor(ac)
       {
-        base_class::resize(m_accessor.size1d(), x);
+        base_class::resize(m_accessor.size_1d(), x);
       }
 
       versa_plain(base_class const& other,
@@ -113,7 +114,7 @@ namespace scitbx { namespace af {
         : base_class(other),
           m_accessor(n0)
       {
-        base_class::resize(m_accessor.size1d(), x);
+        base_class::resize(m_accessor.size_1d(), x);
       }
 
       versa_plain(sharing_handle* other_handle, AccessorType const& ac)
@@ -139,7 +140,7 @@ namespace scitbx { namespace af {
         : base_class(other_handle),
           m_accessor(ac)
       {
-        base_class::resize(m_accessor.size1d(), x);
+        base_class::resize(m_accessor.size_1d(), x);
       }
 
       versa_plain(sharing_handle* other_handle, long n0,
@@ -147,19 +148,19 @@ namespace scitbx { namespace af {
         : base_class(other_handle),
           m_accessor(n0)
       {
-        base_class::resize(m_accessor.size1d(), x);
+        base_class::resize(m_accessor.size_1d(), x);
       }
 
       AccessorType const& accessor() const { return m_accessor; }
 
       bool check_shared_size() const
       {
-        return base_class::size() >= m_accessor.size1d();
+        return base_class::size() >= m_accessor.size_1d();
       }
 
       size_type size() const
       {
-        size_type sz = m_accessor.size1d();
+        size_type sz = m_accessor.size_1d();
         SCITBX_ASSERT(base_class::size() >= sz);
         return sz;
       }
@@ -172,12 +173,12 @@ namespace scitbx { namespace af {
 
       void resize(AccessorType const& ac) {
         m_accessor = ac;
-        base_class::resize(m_accessor.size1d(), ElementType());
+        base_class::resize(m_accessor.size_1d(), ElementType());
       }
 
       void resize(AccessorType const& ac, ElementType const& x) {
         m_accessor = ac;
-        base_class::resize(m_accessor.size1d(), x);
+        base_class::resize(m_accessor.size_1d(), x);
       }
 
       one_dim_type as_1d() {
