@@ -432,20 +432,33 @@ namespace direct_space_asu {
       void
       process(fractional<FloatType> const& original_site)
       {
-        CCTBX_ASSERT(!is_locked_);
-        CCTBX_ASSERT(mappings_.begin()
-                  == mappings_const_ref_.begin());
-        mappings_.push_back(array_of_mappings_for_one_site());
-        mappings_const_ref_ = mappings_.const_ref();
-        array_of_mappings_for_one_site& site_mappings = mappings_.back();
         sgtbx::site_symmetry site_symmetry(
           asu_.unit_cell(),
           space_group_,
           original_site,
           min_distance_sym_equiv_,
           true);
-        site_symmetry_table_.process(site_symmetry);
-        sgtbx::sym_equiv_sites<FloatType> equiv_sites(site_symmetry);
+        process(original_site, site_symmetry);
+      }
+
+      //! Processes one site and appends the results to mappings().
+      void
+      process(
+        fractional<FloatType> const& original_site,
+        sgtbx::site_symmetry_ops const& site_symmetry_ops)
+      {
+        CCTBX_ASSERT(!is_locked_);
+        CCTBX_ASSERT(mappings_.begin()
+                  == mappings_const_ref_.begin());
+        mappings_.push_back(array_of_mappings_for_one_site());
+        mappings_const_ref_ = mappings_.const_ref();
+        array_of_mappings_for_one_site& site_mappings = mappings_.back();
+        site_symmetry_table_.process(site_symmetry_ops);
+        sgtbx::sym_equiv_sites<FloatType> equiv_sites(
+          asu_.unit_cell(),
+          space_group_,
+          original_site,
+          site_symmetry_ops);
         af::const_ref<typename sgtbx::sym_equiv_sites<FloatType>::coor_t>
           coordinates = equiv_sites.coordinates().const_ref();
         af::const_ref<std::size_t>
@@ -514,12 +527,39 @@ namespace direct_space_asu {
 
       //! Calls process() for each original site.
       void
+      process_sites_frac(
+        af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
+        sgtbx::site_symmetry_table const& site_symmetry_table)
+      {
+        CCTBX_ASSERT(site_symmetry_table.indices_const_ref().size()
+                  == original_sites.size());
+        for(std::size_t i=0;i<original_sites.size();i++) {
+          process(original_sites[i], site_symmetry_table.get(i));
+        }
+      }
+
+      //! Calls process() for each original site.
+      void
       process_sites_cart(
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
       {
         scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
         for(std::size_t i=0;i<original_sites.size();i++) {
           process(frac * original_sites[i]);
+        }
+      }
+
+      //! Calls process() for each original site.
+      void
+      process_sites_cart(
+        af::const_ref<scitbx::vec3<FloatType> > const& original_sites,
+        sgtbx::site_symmetry_table const& site_symmetry_table)
+      {
+        CCTBX_ASSERT(site_symmetry_table.indices_const_ref().size()
+                  == original_sites.size());
+        scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
+        for(std::size_t i=0;i<original_sites.size();i++) {
+          process(frac * original_sites[i], site_symmetry_table.get(i));
         }
       }
 
