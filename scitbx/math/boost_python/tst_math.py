@@ -15,7 +15,7 @@ from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, eps_eq
 import pickle
-import StringIO
+from cStringIO import StringIO
 import random
 import math
 import time
@@ -412,11 +412,11 @@ def exercise_gaussian_sum():
     [14.780758,0.776775,42.086842,-0.000294,0.239535],
     4.297983))
   g = gaussian.sum((1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5), 6)
-  s = StringIO.StringIO()
+  s = StringIO()
   g.show(s)
   assert len(s.getvalue().split()) == 14
   g = gaussian.sum((3,-2,1,-4,5), (-.3,.2,-.1,.4,-.5))
-  s = StringIO.StringIO()
+  s = StringIO()
   g.show(s)
   assert len(s.getvalue().split()) == 12
   assert isinstance(g.sort(), gaussian.sum)
@@ -1036,6 +1036,9 @@ def exercise_basic_statistics():
   assert approx_equal(s.skew, 0)
   assert approx_equal(s.kurtosis, 1.7)
   assert approx_equal(s.kurtosis_excess, -1.3)
+  f = StringIO()
+  s.show(f=f)
+  assert len(f.getvalue().splitlines()) == 14
   for i_trial in xrange(10):
     x = flex.random_double(size=2+int(random.random()*10))
     s = scitbx.math.basic_statistics(values=x)
