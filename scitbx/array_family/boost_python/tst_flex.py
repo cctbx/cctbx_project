@@ -602,6 +602,18 @@ def exercise_sort():
     p = flex.sort_permutation(x, 0001)
     assert tuple(p) == (0,2,1)
     assert approx_equal(x.select(p), (3,2,1))
+  for i_trial in xrange(10):
+    a = flex.size_t([0,0,0,1,1,2,2,2,3,4,4])
+    if (i_trial):
+      a = a.select(flex.sort_permutation(flex.random_double(size=a.size())))
+    x = flex.random_double(size=5)
+    p = flex.sort_permutation(data=x)
+    pp = p.inverse_permutation()
+    assert pp.inverse_permutation().all_eq(p)
+    ap = pp.select(a)
+    xp = x.select(p)
+    for i,j in zip(a,ap):
+      assert x[i] == xp[j]
 
 def exercise_random():
   for i in xrange(3):
