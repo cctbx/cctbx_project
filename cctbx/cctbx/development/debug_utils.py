@@ -31,7 +31,12 @@ def random_origin_shift(space_group_info, grid=12):
 
 def report_cpu_times():
   t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]),
+  try: python_ticker = sys.gettickeraccumulation()
+  except AttributeError: pass
+  else:
+    print "micro-seconds/tick: %.3f" % ((t[0] + t[1]) / python_ticker * 1.e6),
+  print
 
 def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
   chunk_size = 1
