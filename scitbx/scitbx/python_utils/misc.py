@@ -1,5 +1,10 @@
 import sys, os
 
+class store:
+
+  def __init__(self, **kw):
+    self.__dict__.update(kw)
+
 class user_plus_sys_time:
 
   def __init__(self):
