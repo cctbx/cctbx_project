@@ -242,7 +242,7 @@ namespace cctbx { namespace af {
       // non-std
       bool is_weak_ref() const { return m_is_weak_ref; }
 
-      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(shared_plain,
         reinterpret_cast<ElementType*>(m_handle->data), size())
 
       CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())

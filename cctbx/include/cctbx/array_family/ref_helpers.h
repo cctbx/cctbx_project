@@ -11,7 +11,7 @@ typedef const ElementType& const_reference; \
 typedef std::size_t        size_type; \
 typedef std::ptrdiff_t     difference_type;
 
-#define CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(beg, sz) \
+#define CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(this_type, beg, sz) \
 ElementType* begin() { return beg; } \
 const ElementType* begin() const { return beg; } \
 ElementType* end() { return beg+sz; } \
@@ -30,7 +30,10 @@ ElementType& at(size_type i) { \
 const ElementType& at(size_type i) const { \
   if (i >= sz) throw_range_error(); return beg[i]; \
 } \
-void fill(const ElementType& x) { std::fill(this->begin(), this->end(), x); }
+this_type& fill(const ElementType& x) { \
+  std::fill(this->begin(), this->end(), x); \
+  return *this; \
+}
 
 #define CCTBX_ARRAY_FAMILY_TAKE_REF(beg, sz) \
 af::ref<ElementType> \
