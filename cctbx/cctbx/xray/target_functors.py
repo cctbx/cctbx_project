@@ -274,7 +274,7 @@ class maximum_likelihood_criterion:
   def __init__(self, f_obs):
     adopt_init_args(self, locals(), hide=True)
     self.epsilons = f_obs.epsilons().data()
-    self.centric_flags = flex.int(flex.to_list(f_obs.centric_flags().data()))
+    self.centric_flags = f_obs.centric_flags().data()
 
   def f_obs(self):
     return self._f_obs
