@@ -78,7 +78,7 @@ class StructureInfo:
     self.Resolution_d_min = Resolution_d_min
     self.Sites = []
 
-  def read(self, files):
+  def read(self, files, SpaceGroupSymbolConvention = ""):
     iline = 0
     try:
       input = fileinput.input(files)
@@ -102,7 +102,8 @@ class StructureInfo:
 
         elif (keyword == "Spacegroup"):
           sym = string.join(flds[1:])
-          self.SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(sym)
+          self.SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(sym,
+            SpaceGroupSymbolConvention)
 
         elif (keyword == "Resolution"):
           if (   string.lower(flds[1]) != "d_min"
