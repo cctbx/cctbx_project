@@ -267,6 +267,10 @@ class rt:
       return rt((self.r * sqr(other), self.t))
     return self.r * col(other) + self.t
 
+  def inverse(self):
+    r_inv = self.r.inverse()
+    return rt((r_inv, -(r_inv*self.t)))
+
 if (__name__ == "__main__"):
   from libtbx.test_utils import approx_equal
   from boost import rational
@@ -293,21 +297,29 @@ if (__name__ == "__main__"):
   assert g.r.mathematica_form() == \
     "{{90, 96, 102}, {216, 231, 246}, {342, 366, 390}}"
   assert g.t.mathematica_form() == "{{33}, {79}, {125}}"
-  rt = g.r.transpose()
-  assert rt.mathematica_form() == \
+  grt = g.r.transpose()
+  assert grt.mathematica_form() == \
     "{{90, 216, 342}, {96, 231, 366}, {102, 246, 390}}"
-  rtt = rt.transpose()
-  assert rtt.mathematica_form() == \
+  grtt = grt.transpose()
+  assert grtt.mathematica_form() == \
     "{{90, 96, 102}, {216, 231, 246}, {342, 366, 390}}"
-  tt = g.t.transpose()
-  assert tt.mathematica_form() == "{{33, 79, 125}}"
-  ttt = tt.transpose()
-  assert ttt.mathematica_form() == "{{33}, {79}, {125}}"
+  gtt = g.t.transpose()
+  assert gtt.mathematica_form() == "{{33, 79, 125}}"
+  gttt = gtt.transpose()
+  assert gttt.mathematica_form() == "{{33}, {79}, {125}}"
   m = sqr((7, 7, -4, 3, 1, -1, 15, 16, -9))
   mi = m.inverse()
   assert mi.mathematica_form() == "{{7, -1, -3}, {12, -3, -5}, {33, -7, -14}}"
   assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  s = rt((m, (1,-2,3)))
+  si = s.inverse()
+  assert si.r.mathematica_form() == mi.mathematica_form()
+  assert (s*si).r.mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  assert (si*s).r.mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  assert si.t.mathematica_form() == "{{0}, {-3}, {-5}}"
+  assert (s*si).t.mathematica_form() == "{{0}, {0}, {0}}"
+  assert (si*s).t.mathematica_form() == "{{0}, {0}, {0}}"
   assert approx_equal(float(col((rational.int(3,4),2,1.5))).elems,(0.75,2,1.5))
   assert approx_equal(col((-2,3,-6)).normalize().elems, (-2/7.,3/7.,-6/7.))
   assert col((-1,2,-3)).each_abs().elems == (1,2,3)
