@@ -463,10 +463,12 @@ def exercise_angle():
 
 def exercise_dihedral():
   p = geometry_restraints.dihedral_proxy(
-    i_seqs=[0,1,2,3],
+    i_seqs=[3,2,1,0],
     angle_ideal=-40,
     weight=1,
     periodicity=2)
+  assert p.i_seqs == (3,2,1,0)
+  p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2,3)
   assert approx_equal(p.angle_ideal, -40)
   assert approx_equal(p.weight, 1)
@@ -529,6 +531,44 @@ def exercise_dihedral():
     proxies=proxies,
     gradient_array=None)
   assert approx_equal(residual_sum, 2*25)
+  #
+  sites_cart = flex.vec3_double((
+    (44.14, -3.376, 8.756),
+    (43.598, -2.045, 8.726),
+    (42.178, -2.036, 9.302),
+    (41.818, -0.984, 10.006)))
+  r_orig = geometry_restraints.dihedral(
+    sites=list(sites_cart), angle_ideal=0, weight=1)
+  perm = flex.size_t(xrange(4))
+  n_perms = 0
+  n_equiv = 0
+  n_equiv_direct = 0
+  while 1:
+    sites_perm = sites_cart.select(perm)
+    r = geometry_restraints.dihedral(
+      sites=list(sites_perm), angle_ideal=0, weight=1)
+    if (   abs(r.angle_model - r_orig.angle_model) < 1.e-6
+        or abs(r.angle_model + r_orig.angle_model) < 1.e-6):
+      n_equiv += 1
+      p = geometry_restraints.dihedral_proxy(
+        i_seqs=list(perm),
+        angle_ideal=r.angle_model,
+        weight=1)
+      rp = geometry_restraints.dihedral(
+        sites_cart=sites_cart,
+        proxy=p)
+      assert approx_equal(rp.angle_model, r.angle_model)
+      if (approx_equal(p.angle_ideal, r_orig.angle_model)):
+        n_equiv_direct += 1
+      p_sorted = p.sort_i_seqs()
+      assert p_sorted.i_seqs == (0,1,2,3)
+      assert approx_equal(p_sorted.angle_ideal, r_orig.angle_model)
+    n_perms += 1
+    if (not perm.next_permutation()):
+      break
+  assert n_perms == 24
+  assert n_equiv == 4
+  assert n_equiv_direct == 2
 
 def exercise_chirality():
   p = geometry_restraints.chirality_proxy(

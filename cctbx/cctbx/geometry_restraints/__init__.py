@@ -48,3 +48,34 @@ class angle_proxy_registry:
       else:
         self.counts[i_list] += 1
     return result
+
+class dihedral_proxy_registry:
+
+  def __init__(self):
+    self.table = {}
+    self.proxies = shared_dihedral_proxy()
+    self.counts = flex.size_t()
+
+  def add(self, proxy, tolerance=1.e-6):
+    result = proxy_registry_add_result()
+    proxy = proxy.sort_i_seqs()
+    tab_i_seq_0 = self.table.setdefault(proxy.i_seqs[0], {})
+    i_seqs_1_2_3 = (proxy.i_seqs[0], proxy.i_seqs[2], proxy.i_seqs[3])
+    if (not tab_i_seq_0.has_key(i_seqs_1_2_3)):
+      tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
+      self.proxies.append(proxy)
+      self.counts.append(1)
+      result.tabulated_proxy = proxy
+      result.is_new = 0001
+    else:
+      i_list = tab_i_seq_0[i_seqs_1_2_3]
+      result.tabulated_proxy = self.proxies[i_list]
+      if (   abs(result.tabulated_proxy.angle_ideal - proxy.angle_ideal)
+               > tolerance
+          or abs(result.tabulated_proxy.weight - proxy.weight)
+               > tolerance
+          or result.tabulated_proxy.periodicity != proxy.periodicity):
+        result.is_conflicting = 0001
+      else:
+        self.counts[i_list] += 1
+    return result
