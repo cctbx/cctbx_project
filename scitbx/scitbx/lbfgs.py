@@ -23,8 +23,12 @@ def run(target_evaluator,
       if (minimizer.nfun() > max_calls): break
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
-    if (    str(e).find("Tolerances may be too small.")<0
-        and str(e).find("The search direction is not a descent direction")<0):
-      raise
     minimizer.error = str(e)
+    if (    str(e).find("Tolerances may be too small.")<0
+        and str(e).find("The search direction is not a descent direction")<0
+        and str(e).find("The step is at the lower bound")<0):
+      raise
+    if (str(e).find("The step is at the lower bound")>=0):
+      if (not ext.traditional_convergence_test(target_evaluator.n)(x, g)):
+        raise
   return minimizer
