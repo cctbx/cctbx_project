@@ -7,6 +7,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/array_family/selections.h>
 #include <scitbx/stl/map_wrapper.h>
 #include <cctbx/geometry_restraints/bond.h>
 
@@ -39,7 +40,13 @@ namespace {
       scitbx::stl::boost_python::map_wrapper<bond_params_dict, rir>::wrap(
         "bond_params_dict");
       scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
-        "bond_params_table");
+        "bond_params_table")
+        .def("select",
+          (bond_params_table(*)(
+            af::const_ref<bond_params_dict> const&,
+            af::const_ref<std::size_t> const&))
+              scitbx::af::array_of_map_select)
+      ;
     }
   };
 
