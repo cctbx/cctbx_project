@@ -166,6 +166,8 @@ namespace {
         .def("buffer_thickness", &w_t::buffer_thickness)
         .def("asu_buffer", &w_t::asu_buffer, rir())
         .def("sym_equiv_epsilon", &w_t::sym_equiv_epsilon)
+        .def("sym_equiv_tolerance", &w_t::sym_equiv_tolerance)
+        .def("sym_equiv_minimum_distance", &w_t::sym_equiv_minimum_distance)
         .def("buffer_covering_sphere", &w_t::buffer_covering_sphere, rir())
         .def("process", &w_t::process, (arg_("original_site")))
         .def("process_sites_frac", &w_t::process_sites_frac,
