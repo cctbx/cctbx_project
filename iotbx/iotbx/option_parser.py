@@ -25,6 +25,10 @@ class iotbx_option_parser(OptionParser):
       result.append("\n")
     return "".join(result)
 
+  def show_help(self, f=None):
+    if (f is None): f = sys.stdout
+    f.write(self.format_help())
+
   def option(self, *args, **kw):
     self.add_option(apply(make_option, args, kw))
     return self

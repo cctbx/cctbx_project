@@ -34,7 +34,7 @@ def run():
     print "Please specify unit cell parameters"
     print "***********************************"
     print
-    sys.stdout.write(command_line.parser.format_help())
+    command_line.parser.show_help()
     return
   if (len(command_line.args) > 0):
     input_symmetry = crystal.symmetry(
