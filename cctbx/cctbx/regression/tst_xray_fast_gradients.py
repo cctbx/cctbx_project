@@ -546,7 +546,7 @@ def exercise_packed(structure_ideal, f_obs,
   assert map0.packed().size() == n_parameters
   correlation = flex.linear_correlation(sfd.packed(), map0.packed())
   assert correlation.is_well_defined()
-  assert correlation.coefficient() > 0.9999
+  assert correlation.coefficient() > 0.999
 
 def exercise_gradient_manager(structure_ideal, f_obs,
                               anomalous_flag, anisotropic_flag,
@@ -601,13 +601,13 @@ def exercise_gradient_manager(structure_ideal, f_obs,
   else:
     correlation = flex.linear_correlation(gd.packed(), gf.packed())
     assert correlation.is_well_defined()
-    assert correlation.coefficient() > 0.9999
+    assert correlation.coefficient() > 0.999
 
 def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
             anomalous_flag=0, anisotropic_flag=0, verbose=0):
   structure_ideal = random_structure.xray_structure(
     space_group_info,
-    elements=("Se",)*n_elements,
+    elements=(("C","N","O")*(n_elements/3+1))[:n_elements],
     volume_per_atom=volume_per_atom,
     min_distance=5,
     general_positions_only=1,

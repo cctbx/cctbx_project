@@ -131,6 +131,10 @@ def exercise_rotate():
   assert approx_equal(r[0].site, (-0.02,-0.01,-0.3))
 
 def exercise_scattering_dictionary():
+  sd = xray.scattering_dictionary()
+  assert sd.n_scatterers() == 0
+  assert sd.dict_size() == 0
+  assert len(sd.dict()) == 0
   scatterers = flex.xray_scatterer((
     xray.scatterer("Si1"),
     xray.scatterer("Si2"),
@@ -142,7 +146,8 @@ def exercise_scattering_dictionary():
     xray.scatterer("const"),
     xray.scatterer("custom")))
   sd = xray.scattering_dictionary(scatterers)
-  assert sd.size() == 5
+  assert sd.n_scatterers() == 9
+  assert sd.dict_size() == 5
   sd_dict = sd.dict()
   assert len(sd_dict) == 5
   k = sd_dict.keys()
@@ -156,6 +161,9 @@ def exercise_scattering_dictionary():
     elif (k == "custom"): assert tuple(v.member_indices) == (8,)
     assert v.coefficients.n_ab() == 0
     assert v.coefficients.c() == 0
+  p = list(sd.scatterer_permutation())
+  p.sort()
+  assert p == range(9)
   for table,n_ab in (("IT1992",4), ("WK1995",5)):
     sd.assign_from_table(table)
     for k,v in sd.dict().items():
@@ -220,15 +228,15 @@ def exercise_structure_factors():
     math_module.cos_sin_table(12),
     uc, sg.group(), mi, scatterers, scattering_dict).f_calc()
   xray.ext.structure_factors_gradients_direct(
-    uc, sg.group(), mi, scatterers,
-    flex.complex_double(),
-    xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 00000),
+    uc, sg.group(), mi, scatterers, scattering_dict,
+    flex.complex_double(mi.size()),
+    xray.ext.gradient_flags(00001, 00001, 00001, 00001, 00001, 00001),
     0)
   xray.ext.structure_factors_gradients_direct(
     math_module.cos_sin_table(12),
-    uc, sg.group(), mi, scatterers,
-    flex.complex_double(),
-    xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 00000),
+    uc, sg.group(), mi, scatterers, scattering_dict,
+    flex.complex_double(mi.size()),
+    xray.ext.gradient_flags(00001, 00001, 00001, 00001, 00001, 00001),
     0)
 
 def exercise_targets():
