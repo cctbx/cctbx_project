@@ -136,14 +136,7 @@ def exercise_asu_mappings(space_group_info, n_elements=10):
     for mapping in mappings:
       assert asu_mappings.asu_buffer().is_inside(frac(mapping.mapped_site()))
 
-def exercise_neighbors_pair_generators(space_group_info, n_elements=10,
-                                       verbose=0):
-  structure = random_structure.xray_structure(
-    space_group_info,
-    elements=["Si"]*n_elements,
-    volume_per_atom=1000,
-    min_distance=3.,
-    general_positions_only=00000)
+def exercise_neighbors_pair_generators(structure, verbose=0):
   if (0 or verbose):
     structure.show_summary().show_scatterers()
     print
@@ -156,72 +149,75 @@ def exercise_neighbors_pair_generators(space_group_info, n_elements=10,
     for scatterer in structure.scatterers():
       asu_mappings.process(scatterer.site)
     array_of_array_of_mappings = asu_mappings.mappings()
-    for full_matrix in [00000,0001]:
-      pair_list = []
-      for i_seq in xrange(array_of_array_of_mappings.size()):
-        site_0 = matrix.col(array_of_array_of_mappings[i_seq][0].mapped_site())
-        if (full_matrix):
-          j_seq_start = 0
+    pair_list = []
+    for i_seq in xrange(array_of_array_of_mappings.size()):
+      array_of_mappings_i = array_of_array_of_mappings[i_seq]
+      site_0 = matrix.col(array_of_mappings_i[0].mapped_site())
+      for j_seq in xrange(i_seq, array_of_array_of_mappings.size()):
+        array_of_mappings_j = array_of_array_of_mappings[j_seq]
+        if (i_seq == j_seq):
+          j_sym_start = 1
         else:
-          j_seq_start = i_seq
-        for j_seq in xrange(j_seq_start, array_of_array_of_mappings.size()):
-          array_of_mappings = array_of_array_of_mappings[j_seq]
-          if (i_seq == j_seq):
-            j_start = 1
-          else:
-            j_start = 0
-          for j_sym in xrange(j_start, len(array_of_mappings)):
-            site_1 = matrix.col(array_of_mappings[j_sym].mapped_site())
-            dist_sq = (site_1-site_0).norm()
-            pair_list.append((i_seq,j_seq,j_sym,dist_sq))
-      for pair_generator_type in [crystal.neighbors_simple_pair_generator,
-                                  crystal.neighbors_fast_pair_generator]:
-        pair_generator = pair_generator_type(
-          asu_mappings=asu_mappings,
-          distance_cutoff=1.e6,
-          full_matrix=full_matrix)
-        assert pair_generator.full_matrix() == full_matrix
-        mps = asu_mappings.mappings()
-        sc = structure.scatterers()
-        uc = structure.unit_cell()
-        sg = structure.space_group()
-        col = matrix.col
-        for pair_direct,pair in zip(pair_list, pair_generator):
-          assert pair_direct[:3] == (pair.i_seq, pair.j_seq, pair.j_sym)
-          assert approx_equal(pair_direct[3], pair.dist_sq)
-          mp_i = mps[pair.i_seq][0]
-          mp_j = mps[pair.j_seq][pair.j_sym]
-          site_i = (  col(sg(mp_i.i_sym_op())*sc[pair.i_seq].site)
-                    + col(mp_i.unit_shifts())).elems
-          site_j = (  col(sg(mp_j.i_sym_op())*sc[pair.j_seq].site)
-                    + col(mp_j.unit_shifts())).elems
-          assert approx_equal(uc.orthogonalize(site_i), mp_i.mapped_site())
-          assert approx_equal(uc.orthogonalize(site_j), mp_j.mapped_site())
-          assert approx_equal(uc.distance(site_i, site_j)**2, pair.dist_sq)
-          site_i = asu_mappings.get_rt_mx(pair.i_seq, 0) \
-                 * sc[pair.i_seq].site
-          site_j = asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym) \
-                 * sc[pair.j_seq].site
-          assert approx_equal(uc.orthogonalize(site_i), mp_i.mapped_site())
-          assert approx_equal(uc.orthogonalize(site_j), mp_j.mapped_site())
-          j_frac = uc.fractionalize(mp_j.mapped_site())
-          assert approx_equal(
-            asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym).inverse() * j_frac,
-            sc[pair.j_seq].site)
-          assert approx_equal(
-            asu_mappings.map_moved_site_to_asu(
-              moved_original_site
-                =asu_mappings.unit_cell().orthogonalize(sc[pair.i_seq].site),
-              i_seq=pair.i_seq,
-              i_sym=0),
-            mp_i.mapped_site())
-          assert approx_equal(
-            asu_mappings.map_moved_site_to_asu(
-              moved_original_site
-                =asu_mappings.unit_cell().orthogonalize(sc[pair.j_seq].site),
-              i_seq=pair.j_seq,
-              i_sym=pair.j_sym),
-            mp_j.mapped_site())
+          j_sym_start = 0
+        for j_sym in xrange(j_sym_start, len(array_of_mappings_j)):
+          site_1 = matrix.col(array_of_mappings_j[j_sym].mapped_site())
+          dist_sq = (site_1-site_0).norm()
+          pair_list.append((i_seq,j_seq,j_sym,dist_sq))
+        if (i_seq != j_seq):
+          site_1 = matrix.col(array_of_mappings_j[0].mapped_site())
+          for i_sym in xrange(1, len(array_of_mappings_i)):
+            site_2 = matrix.col(array_of_mappings_i[i_sym].mapped_site())
+            dist_sq = (site_2-site_1).norm()
+            pair_list.append((j_seq,i_seq,i_sym,dist_sq))
+    for pair_generator_type in [crystal.neighbors_simple_pair_generator,
+                                crystal.neighbors_fast_pair_generator]:
+      pair_generator = pair_generator_type(
+        asu_mappings=asu_mappings,
+        distance_cutoff=1.e6)
+      mps = asu_mappings.mappings()
+      sc = structure.scatterers()
+      uc = structure.unit_cell()
+      sg = structure.space_group()
+      col = matrix.col
+      pair_dict = dict([(pair[:3], pair[3]) for pair in pair_list])
+      for pair in pair_generator:
+        key = (pair.i_seq, pair.j_seq, pair.j_sym)
+        assert approx_equal(pair_dict[key], pair.dist_sq)
+        del pair_dict[key]
+        mp_i = mps[pair.i_seq][0]
+        mp_j = mps[pair.j_seq][pair.j_sym]
+        site_i = (  col(sg(mp_i.i_sym_op())*sc[pair.i_seq].site)
+                  + col(mp_i.unit_shifts())).elems
+        site_j = (  col(sg(mp_j.i_sym_op())*sc[pair.j_seq].site)
+                  + col(mp_j.unit_shifts())).elems
+        assert approx_equal(uc.orthogonalize(site_i), mp_i.mapped_site())
+        assert approx_equal(uc.orthogonalize(site_j), mp_j.mapped_site())
+        assert approx_equal(uc.distance(site_i, site_j)**2, pair.dist_sq)
+        site_i = asu_mappings.get_rt_mx(pair.i_seq, 0) \
+               * sc[pair.i_seq].site
+        site_j = asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym) \
+               * sc[pair.j_seq].site
+        assert approx_equal(uc.orthogonalize(site_i), mp_i.mapped_site())
+        assert approx_equal(uc.orthogonalize(site_j), mp_j.mapped_site())
+        j_frac = uc.fractionalize(mp_j.mapped_site())
+        assert approx_equal(
+          asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym).inverse() * j_frac,
+          sc[pair.j_seq].site)
+        assert approx_equal(
+          asu_mappings.map_moved_site_to_asu(
+            moved_original_site
+              =asu_mappings.unit_cell().orthogonalize(sc[pair.i_seq].site),
+            i_seq=pair.i_seq,
+            i_sym=0),
+          mp_i.mapped_site())
+        assert approx_equal(
+          asu_mappings.map_moved_site_to_asu(
+            moved_original_site
+              =asu_mappings.unit_cell().orthogonalize(sc[pair.j_seq].site),
+            i_seq=pair.j_seq,
+            i_sym=pair.j_sym),
+          mp_j.mapped_site())
+      assert len(pair_dict) == 0
 
 def exercise_is_symmetry_interaction():
   for space_group_symbol in ["P1", "P4"]:
@@ -275,7 +271,13 @@ def exercise_all(flags, space_group_info):
   exercise_float_asu(space_group_info)
   exercise_asu_mappings(space_group_info)
   exercise_neighbors_pair_generators(
-    space_group_info, verbose=flags.Verbose)
+    structure = random_structure.xray_structure(
+      space_group_info,
+      elements=["Si"]*5,
+      volume_per_atom=100,
+      min_distance=3.,
+      general_positions_only=00000),
+    verbose=flags.Verbose)
 
 def run_call_back(flags, space_group_info):
   exercise_all(flags, space_group_info)

@@ -148,18 +148,19 @@ def check_distances(sites_cart, point_distance, verbose):
   distance_cutoff = point_distance * math.sqrt(2) * 0.99
   simple_pair_generator = crystal.neighbors_simple_pair_generator(
     asu_mappings=asu_mappings,
-    distance_cutoff=distance_cutoff,
-    full_matrix=0001)
+    distance_cutoff=distance_cutoff)
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=asu_mappings,
-    distance_cutoff=distance_cutoff,
-    full_matrix=0001)
+    distance_cutoff=distance_cutoff)
   assert simple_pair_generator.count_pairs() == pair_generator.count_pairs()
   pair_generator.restart()
   neighbors = {}
   for pair in pair_generator:
+    assert pair.j_seq != pair.i_seq
+    assert pair.j_sym == 0
     assert approx_equal(pair.dist_sq, point_distance**2)
     neighbors[pair.i_seq] = neighbors.get(pair.i_seq, 0) + 1
+    neighbors[pair.j_seq] = neighbors.get(pair.j_seq, 0) + 1
   n_dict = {}
   for n in neighbors.values():
     n_dict[n] = n_dict.get(n, 0) + 1

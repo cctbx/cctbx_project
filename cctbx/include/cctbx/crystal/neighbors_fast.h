@@ -41,7 +41,6 @@ namespace cctbx { namespace crystal { namespace neighbors {
       fast_pair_generator(
         asu_mappings_t* asu_mappings,
         FloatType const& distance_cutoff,
-        bool full_matrix=false,
         FloatType const& epsilon=1.e-6)
       :
         epsilon_(epsilon)
@@ -51,7 +50,6 @@ namespace cctbx { namespace crystal { namespace neighbors {
         CCTBX_ASSERT(epsilon < 0.01);
         this->asu_mappings_ = asu_mappings;
         this->distance_cutoff_sq_ = distance_cutoff*distance_cutoff;
-        this->full_matrix_ = full_matrix;
         asu_mappings->lock();
         create_boxes(distance_cutoff * (1 + epsilon));
         restart();
@@ -127,6 +125,14 @@ namespace cctbx { namespace crystal { namespace neighbors {
 
       void
       incr(bool start);
+
+      void
+      assign_pair()
+      {
+        this->pair_.i_seq = boxes_ii_->i_seq;
+        this->pair_.j_seq = boxes_ji_->i_seq;
+        this->pair_.j_sym = boxes_ji_->i_sym;
+      }
   };
 
   template <typename FloatType, typename IntShiftType>
@@ -183,7 +189,6 @@ namespace cctbx { namespace crystal { namespace neighbors {
           boxes_ii_!=boxes_i_->end();
           boxes_ii_++) {
         if (boxes_ii_->i_sym != 0) continue;
-        this->pair_.i_seq = boxes_ii_->i_seq;
         for(j_box_[0]=j_box_min_[0];j_box_[0]<=j_box_max_[0];j_box_[0]++) {
         for(j_box_[1]=j_box_min_[1];j_box_[1]<=j_box_max_[1];j_box_[1]++) {
         for(j_box_[2]=j_box_min_[2];j_box_[2]<=j_box_max_[2];j_box_[2]++) {
@@ -191,12 +196,17 @@ namespace cctbx { namespace crystal { namespace neighbors {
           for(boxes_ji_=boxes_j_->begin();
               boxes_ji_!=boxes_j_->end();
               boxes_ji_++) {
-            if (!this->full_matrix_
-                && boxes_ji_->i_seq <  this->pair_.i_seq) continue;
-            if (   boxes_ji_->i_seq == this->pair_.i_seq
-                && boxes_ji_->i_sym == 0) continue;
-            this->pair_.j_seq = boxes_ji_->i_seq;
-            this->pair_.j_sym = boxes_ji_->i_sym;
+            if (boxes_ji_->i_seq == boxes_ii_->i_seq) {
+              if (boxes_ji_->i_sym == 0) continue;
+              assign_pair();
+            }
+            else if (boxes_ji_->i_sym != 0) {
+              assign_pair();
+            }
+            else {
+              if (boxes_ji_->i_seq < boxes_ii_->i_seq) continue;
+              assign_pair();
+            }
             this->pair_.diff_vec =
                mappings[this->pair_.j_seq][this->pair_.j_sym].mapped_site()
              - mappings[this->pair_.i_seq][0].mapped_site();
