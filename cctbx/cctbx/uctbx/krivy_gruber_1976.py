@@ -105,10 +105,10 @@ class reduction(reduction_base):
     assert s.b > 0
 
   def a8_action(s):
+    s.cb_update((1,0,1,0,1,1,0,0,1))
     s.c += s.a+s.b+s.d+s.e+s.f
     s.d += s.b+s.b+s.f
     s.e += s.a+s.a+s.f
-    s.cb_update((1,0,1,0,1,1,0,0,1))
     assert s.c > 0
 
 class minimal_reduction(minimal_reduction_mixin, reduction):

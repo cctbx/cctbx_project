@@ -207,13 +207,13 @@ class minimal_reduction_mixin:
     if (self.current_cycle_id == 1):
       if (self.last_cycle_id != 2):
         self.n_expected_cycles = 0
+    elif (self.current_cycle_id == 2):
+      if (self.last_cycle_id != 1):
+        self.n_expected_cycles = 0
       else:
         self.n_expected_cycles += 1
         if (self.n_expected_cycles == self.expected_cycle_limit):
           raise StopIteration
-    elif (self.current_cycle_id == 2):
-      if (self.last_cycle_id != 1):
-        self.n_expected_cycles = 0
     else:
       self.n_expected_cycles = 0
     self.last_cycle_id = self.current_cycle_id
