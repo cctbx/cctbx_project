@@ -62,6 +62,7 @@ class categorize:
     return None
 
   def space_group_info(self, unit_cell=None):
+    if (self.symbol is None): return None
     if (self.category is None):
       try: return sgtbx.space_group_info(self.symbol)
       except RuntimeError: return None
