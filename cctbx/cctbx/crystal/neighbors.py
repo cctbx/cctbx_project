@@ -3,22 +3,20 @@ from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
+from scitbx import matrix
 from libtbx.itertbx import count
-from libtbx.test_utils import eps_eq, approx_equal
+from libtbx.test_utils import approx_equal
 import math
 import sys
 
-from cctbx import sgtbx
-from scitbx import matrix
-
-def is_sym_equiv_interaction(unit_cell,
-                             i_seq,
-                             site_i,
-                             j_seq,
-                             site_j,
-                             special_op_j,
-                             rt_mx_ji_1,
-                             rt_mx_ji_2):
+def is_sym_equiv_interaction_simple(unit_cell,
+                                    i_seq,
+                                    site_i,
+                                    j_seq,
+                                    site_j,
+                                    special_op_j,
+                                    rt_mx_ji_1,
+                                    rt_mx_ji_2):
   f = unit_cell.shortest_vector_sq()**.5*.1
   trial_shifts = [f*x for x in [math.sqrt(2),math.sqrt(3),math.sqrt(5)]]
   frac = unit_cell.fractionalize
@@ -94,36 +92,20 @@ def is_sym_equiv_interaction_heterogeneous(unit_cell,
     for rt in [rt_mx_ji_1, rt_mx_ji_2]]
   return approx_equal(atas[0].as_tuple(), atas[1].as_tuple())
 
-def is_sym_equiv_interaction_g(unit_cell,
-                               i_seq,
-                               site_i,
-                               j_seq,
-                               site_j,
-                               special_op_j,
-                               rt_mx_ji_1,
-                               rt_mx_ji_2):
+def is_sym_equiv_interaction(unit_cell,
+                             i_seq,
+                             site_i,
+                             j_seq,
+                             site_j,
+                             special_op_j,
+                             rt_mx_ji_1,
+                             rt_mx_ji_2):
   if (i_seq == j_seq):
     return is_sym_equiv_interaction_homogeneous(
       unit_cell, special_op_j, rt_mx_ji_1, rt_mx_ji_2)
-  elif (1):
+  else:
     return is_sym_equiv_interaction_heterogeneous(
       unit_cell, site_i, special_op_j, rt_mx_ji_1, rt_mx_ji_2)
-  f = unit_cell.shortest_vector_sq()**.5*.1
-  trial_shifts = [f*x for x in [math.sqrt(2),math.sqrt(3),math.sqrt(5)]]
-  frac = unit_cell.fractionalize
-  orth = unit_cell.orthogonalize
-  dist = unit_cell.distance
-  for shifts in [[0,0,0], trial_shifts]:
-    site_j_mod = special_op_j * frac([x+s for x,s in zip(orth(site_j),shifts)])
-    if (shifts == [0,0,0] or j_seq != i_seq):
-      site_i_mod = site_i
-    else:
-      site_i_mod = site_j_mod
-    d1 = dist(rt_mx_ji_1 * site_j_mod, site_i_mod)
-    d2 = dist(rt_mx_ji_2 * site_j_mod, site_i_mod)
-    if (shifts == [0,0,0]):
-      assert abs(d1-d2) < 4.e-4
-  return abs(d1-d2) < 1.e-3
 
 class contact:
 
@@ -137,7 +119,7 @@ class contact:
       + (self.rt_mx, self.dist))
     return result
 
-def show_distances(structure, distance_cutoff=10):
+def show_distances(structure, distance_cutoff=3.5):
   distance_cutoff_plus = distance_cutoff * (1+1.e-4)
   distance_cutoff_minus = distance_cutoff * (1-1.e-4)
   asu_mappings = structure.asu_mappings(
@@ -162,11 +144,6 @@ def show_distances(structure, distance_cutoff=10):
   for i,distances,pairs in zip(count(),distances_list,pairs_list):
     perm = flex.sort_permutation(distances)
     pairs_list[i] = flex.select(pairs, perm)
-    distances_list[i] = distances.select(perm)
-  unit_mx = matrix.rt(([1,0,0,0,1,0,0,0,1], [0,0,0]))
-  orth_rt = matrix.rt(
-    (structure.unit_cell().orthogonalization_matrix(), [0,0,0]))
-  dist = structure.unit_cell().distance
   site_symmetries = []
   scatterers = structure.scatterers()
   for scatterer in scatterers:
@@ -178,7 +155,6 @@ def show_distances(structure, distance_cutoff=10):
       site_i = scatterer_i.site
       site_symmetry_i = site_symmetries[i_seq]
       rt_mx_i_inverse = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0).inverse()
-      special_op_i = site_symmetries[i_seq].special_op().as_rational()
       print "%s: site symmetry: %s, multiplicity: %d" % (
         scatterer_i.label,
         site_symmetry_i.point_group_type(),
@@ -205,7 +181,7 @@ def show_distances(structure, distance_cutoff=10):
             rt_mx_j_fwd = asu_mappings.get_rt_mx(
               i_seq=pair_fwd.j_seq, i_sym=pair_fwd.j_sym)
             rt_mx_ji_fwd = rt_mx_i_inverse.multiply(rt_mx_j_fwd)
-            if (is_sym_equiv_interaction(
+            if (is_sym_equiv_interaction_simple(
                   unit_cell=structure.unit_cell(),
                   i_seq=i_seq,
                   site_i=site_i,
@@ -228,7 +204,7 @@ def show_distances(structure, distance_cutoff=10):
             and prev_c.j_seq == curr_c.j_seq
             and abs(prev_c.dist-curr_c.dist)<1.e-4):
         is_sym_equiv_results = []
-        for func in [is_sym_equiv_interaction, is_sym_equiv_interaction_g]:
+        for func in [is_sym_equiv_interaction_simple,is_sym_equiv_interaction]:
           is_sym_equiv_results.append(func(
                 unit_cell=structure.unit_cell(),
                 i_seq=i_seq,
@@ -242,8 +218,6 @@ def show_distances(structure, distance_cutoff=10):
           print "is_sym_equiv_interaction"
         if (is_sym_equiv_results.count(00000) % 2 != 0):
           print "is_sym_equiv mismatch:", is_sym_equiv_results
-        elif (curr_c.j_seq != i_seq):
-          print "good"
       prev_c = curr_c
 
 def test_hcp():
