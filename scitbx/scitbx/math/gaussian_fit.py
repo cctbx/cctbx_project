@@ -361,7 +361,7 @@ def make_start_gaussian(null_fit,
       a[i_split] *= scale_old
       yx_part = t_split.at_x_sq(x_sq) * start_fraction
   addl_b = 0
-  if (a[-1] != 0):
+  if (a[-1] != 0 and x_sq != 0):
     r = yx_part / a[-1]
     if (0 < r <= 1):
       addl_b = -math.log(r) / x_sq
@@ -398,11 +398,14 @@ def find_max_x_multi(null_fit,
     if (i_x_begin is None and target_value < y0 * factor_y_x_begin):
       i_x_begin = i
     if (i_x_end is None and target_value < y0 * factor_y_x_end):
-      i_x_end = i
+      i_x_end = i+1
       break
-  assert i_x_begin is not None
   if (i_x_end is None):
-    i_x_end = null_fit.table_y().size()-1
+    i_x_end = null_fit.table_y().size()
+  if (i_x_begin is None):
+    i_x_begin = min(existing_gaussian.n_parameters(), i_x_end-1)
+  assert i_x_end > 0
+  assert i_x_begin < i_x_end
   n_terms = existing_gaussian.n_terms() + 1
   i_x_step = max(1, ifloor((i_x_end-i_x_begin) / (factor_x_step*n_terms)))
   if (n_terms == 1): n_start_fractions = 2
@@ -459,7 +462,10 @@ def fit_with_golay_starts(label,
   if (print_to is not None):
     print >> print_to, "label:", label
     print_to.flush()
+  n_golay_codes_total = 2**12
+  n_golay_codes_processed = 0
   for golay_code in golay_24_12_generator():
+    n_golay_codes_processed += 1
     start_fit = make_golay_based_start_gaussian(
       null_fit=null_fit,
       code=golay_code)
@@ -473,6 +479,7 @@ def fit_with_golay_starts(label,
     if (best_min is not None):
       if (good_min is None or good_min.max_error > best_min.max_error):
         good_min = best_min
+        good_min.n_golay_codes_processed = n_golay_codes_processed
         fit_more = scitbx.math.gaussian.fit(
           null_fit_more.table_x(),
           null_fit_more.table_y(),
@@ -482,9 +489,11 @@ def fit_with_golay_starts(label,
           print >> print_to, label, "max_error fitted=%.4f" % (
             good_min.max_error),
           if (null_fit_more.table_x().size() > null_fit.table_x().size()):
-            print >> print_to, label, "more=%.4f" % (
+            print >> print_to, "more=%.4f" % (
               flex.max(fit_more.significant_relative_errors())),
-          print >> print_to
+          print >> print_to, "Golay code #%d (%.2f%% of all)" % (
+            good_min.n_golay_codes_processed,
+            100.*good_min.n_golay_codes_processed/n_golay_codes_total)
           fit_more.show(f=print_to)
           fit_more.show_table(f=print_to)
           print >> print_to
@@ -498,9 +507,11 @@ def fit_with_golay_starts(label,
       print >> print_to, "Final:", label, "max_error fitted=%.4f" %(
         good_min.max_error),
       if (null_fit_more.table_x().size() > null_fit.table_x().size()):
-        print >> print_to, label, "more=%.4f" % (
+        print >> print_to, "more=%.4f" % (
           flex.max(fit_more.significant_relative_errors())),
-      print >> print_to
+      print >> print_to, "Golay code #%d (%.2f%% of all)" % (
+        good_min.n_golay_codes_processed,
+        100.*good_min.n_golay_codes_processed/n_golay_codes_total)
     good_min.show_minimization_parameters(f=print_to)
     print >> print_to
     show_minimize_multi_histogram(f=print_to)
