@@ -133,7 +133,8 @@ class xray_structure(xray.structure):
                u_iso=0,
                anisotropic_flag=False,
                random_u_cart_scale=0.3,
-               random_occupancy=False):
+               random_occupancy=False,
+               random_occupancy_min=0.1):
     assert elements is None or n_scatterers is None
     assert not (elements is None and n_scatterers is None)
     adopt_init_args(self, locals(),
@@ -218,7 +219,8 @@ class xray_structure(xray.structure):
           if (min(eigenvalues) > 0.001):
             break
       if (self.random_occupancy):
-        scatterer.occupancy = max(0.1, min(1.0, random.gauss(0.5, 0.2)))
+        scatterer.occupancy = self.random_occupancy_min \
+                            + (1-self.random_occupancy_min)*random.random()
       self.add_scatterer(scatterer)
 
   def random_modify_site(self, site, gauss_sigma,
