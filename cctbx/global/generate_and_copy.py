@@ -18,6 +18,7 @@ generate_af_tiny_bpl.run()
 generate_henke_cpp.run()
 generate_sasaki_cpp.run()
 array_family_include = "../include/cctbx/array_family/"
+misc_src = "../misc/"
 eltbx_src = "../eltbx/"
 for file, dir in (
   ("operator_traits_builtin.h", array_family_include),
@@ -39,6 +40,7 @@ for file, dir in (
   ("versa_apply.h", array_family_include),
   ("ref_apply.h", array_family_include),
   ("tiny_bpl.h", array_family_include),
+  ("tiny_bpl.cpp", misc_src),
   ("henke.cpp", eltbx_src),
   ("henke_tables_01_12.cpp", eltbx_src),
   ("henke_tables_13_24.cpp", eltbx_src),

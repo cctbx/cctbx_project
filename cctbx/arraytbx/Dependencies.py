@@ -9,9 +9,6 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.lib_python_subdir = "cctbx_boost/arraytbx"
 
     self.files = (
-      "global/error.cpp",
-      "global/bpl_utils.cpp",
-      "global/tiny_bpl.cpp",
       "arraytbx/sharedmodule.cpp",
       "arraytbx/tst_shared.py",
       "arraytbx/tst_af_helpers.cpp",
@@ -25,11 +22,11 @@ class write_makefiles(makefile_generator.write_makefiles):
       "tst_af_1": (("tst_af_1",), ()),
       "tst_af_2": (("tst_af_2",), ()),
       "tst_vec3": (("tst_vec3",), ()),
-      "tst_mat3": (("tst_mat3", "error"), ()),
+      "tst_mat3": (("tst_mat3",), ("cctbx_misc",)),
     }
 
     self.boost_python_modules = {
       "shared":
-        (("sharedmodule", "error", "bpl_utils", "tiny_bpl"), ()),
+        (("sharedmodule",), ("cctbx_misc", "cctbx_bpl1")),
     }
 

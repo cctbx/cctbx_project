@@ -9,7 +9,6 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.lib_python_subdir = "cctbx_boost/eltbx"
 
     self.files = (
-      "global/error.cpp",
       "eltbx/basic.cpp",
       "eltbx/tinypse.cpp",
       "eltbx/tinypsemodule.cpp",
@@ -55,7 +54,6 @@ class write_makefiles(makefile_generator.write_makefiles):
     )
 
     lib = [
-      "error",
       "basic",
       "tinypse",
       "icsd_radii",
@@ -89,17 +87,17 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.boost_python_modules = {
       "tinypse":
-        (("tinypsemodule", "tinypse", "basic", "error"), ()),
+        (("tinypsemodule", "tinypse", "basic"), ("cctbx_misc",)),
       "icsd_radii":
-        (("icsd_radiimodule", "icsd_radii", "basic", "error"), ()),
+        (("icsd_radiimodule", "icsd_radii", "basic"), ("cctbx_misc",)),
       "wavelengths":
-        (("wavelengthsmodule", "wavelengths", "basic", "error"), ()),
+        (("wavelengthsmodule", "wavelengths", "basic"), ("cctbx_misc",)),
       "caasf_it1992":
-        (("caasf_it1992module", "caasf_it1992", "basic", "error"), ()),
+        (("caasf_it1992module", "caasf_it1992", "basic"), ("cctbx_misc",)),
       "caasf_wk1995":
-        (("caasf_wk1995module", "caasf_wk1995", "basic", "error"), ()),
+        (("caasf_wk1995module", "caasf_wk1995", "basic"), ("cctbx_misc",)),
       "fpfdp":
-        (("fpfdpmodule", "efpfdp", "basic", "error"), ()),
+        (("fpfdpmodule", "efpfdp", "basic"), ("cctbx_misc",)),
       "henke":
         (("henkemodule",
           "henke",
@@ -111,7 +109,7 @@ class write_makefiles(makefile_generator.write_makefiles):
           "henke_tables_61_72",
           "henke_tables_73_84",
           "henke_tables_85_92",
-          "efpfdp", "basic", "error"), ()),
+          "efpfdp", "basic"), ("cctbx_misc",)),
       "sasaki":
         (("sasakimodule",
           "sasaki",
@@ -122,9 +120,9 @@ class write_makefiles(makefile_generator.write_makefiles):
           "sasaki_tables_49_60",
           "sasaki_tables_61_72",
           "sasaki_tables_73_82",
-          "efpfdp", "basic", "error"), ()),
+          "efpfdp", "basic"), ("cctbx_misc",)),
       "neutron":
-        (("neutronmodule", "neutron", "basic", "error"), ()),
+        (("neutronmodule", "neutron", "basic"), ("cctbx_misc",)),
     }
 
   def make_test(self):

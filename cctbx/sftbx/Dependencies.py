@@ -9,16 +9,12 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.lib_python_subdir = "cctbx_boost"
 
     self.files = (
-      "global/error.cpp",
-      "global/bpl_utils.cpp",
-      "global/tiny_bpl.cpp",
       "sftbx/sftbxmodule.cpp",
       "sftbx/tst.py",
       "sftbx/tst_basic.py",
     )
 
     self.boost_python_modules = {
-      "sftbx": (("sftbxmodule",
-                 "error",
-                 "bpl_utils", "tiny_bpl"), ("sgtbx", "uctbx")),
+      "sftbx": (("sftbxmodule",),
+                ("sgtbx", "uctbx", "cctbx_misc", "cctbx_bpl1")),
     }

@@ -13,7 +13,7 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.executables = {
       "getting_started":
-        (("getting_started",), ("sgtbx", "uctbx")),
+        (("getting_started",), ("sgtbx", "uctbx", "cctbx_misc")),
       "convert_ccp4_symop_lib":
-        (("convert_ccp4_symop_lib",), ("uctbx", "sgtbx")),
+        (("convert_ccp4_symop_lib",), ("sgtbx", "uctbx", "cctbx_misc")),
     }
