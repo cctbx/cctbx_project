@@ -216,8 +216,8 @@ def exercise_syntax_errors():
     'Syntax error: missing closing quote (input line 2)')
   test_exception('1 {',
     'Syntax error: improper scope name "1" (input line 1)')
-  test_exception('scope\n.junk',
-    'Unexpected scope attribute: .junk (input line 2)')
+  test_exception('scope\n.foo',
+    'Unexpected scope attribute: .foo (input line 2)')
   test_exception('a. 2',
     'Syntax error: improper definition name "a." (input line 1)')
 
@@ -534,9 +534,9 @@ group {
     .type=multi_choice
   f=a b c
     .type=multi_choice
-  g="/var/tmp/junk"
+  g="/var/tmp/foo"
     .type=path
-  h="var.tmp.junk"
+  h="var.tmp.foo"
     .type=key
   i=ceil(4/3)
     .type=int
@@ -584,9 +584,9 @@ group {
   assert parameters.get_without_substitution(
     path="group.f").objects[2].extract() == []
   assert parameters.get_without_substitution(
-    path="group.g").objects[0].extract() == "/var/tmp/junk"
+    path="group.g").objects[0].extract() == "/var/tmp/foo"
   assert parameters.get_without_substitution(
-    path="group.h").objects[0].extract() == "var.tmp.junk"
+    path="group.h").objects[0].extract() == "var.tmp.foo"
   assert parameters.get_without_substitution(
     path="group.i").objects[0].extract() == 2
   try: parameters.get_without_substitution(
@@ -616,10 +616,10 @@ group {
       == "P 21 21 21"
   definition = parameters.get_without_substitution(
     path="group.a").objects[0]
-  definition.type = "junk"
+  definition.type = "foo"
   try: definition.extract()
   except RuntimeError, e:
-    str(e) == 'No converter for parameter definition type "junk"' \
+    str(e) == 'No converter for parameter definition type "foo"' \
             + ' required for converting values of "a" (input line 3)'
   else: raise RuntimeError("Exception expected.")
   parameters = iotbx.parameters.parse(input_string="""\
@@ -655,9 +655,9 @@ group {
     .type=choice
   f=a *b *c
     .type=multi_choice
-  g="/var/tmp/junk"
+  g="/var/tmp/foo"
     .type=path
-  h="var.tmp.junk"
+  h="var.tmp.foo"
     .type=key
   u=10,12 13 80,90 100
     .type=unit_cell
@@ -677,12 +677,19 @@ group
   d = "abc def ghi"
   e = a *b c
   f = a *b *c
-  g = "/var/tmp/junk"
-  h = "var.tmp.junk"
+  g = "/var/tmp/foo"
+  h = "var.tmp.foo"
   u = 10 12 13 80 90 100
   s = "P 21 21 21"
 }
 """
+  definition = parameters.get_last(path="group.a")
+  definition.type = "foo"
+  try: definition.format(python_object=0)
+  except RuntimeError, e:
+    assert str(e) == 'No converter for parameter definition type "foo"' \
+                   + ' required for converting values of "a" (input line 4)'
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_deepcopy():
   parameters = iotbx.parameters.parse(input_string="""\
