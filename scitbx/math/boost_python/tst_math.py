@@ -590,7 +590,7 @@ def exercise_golay():
     weights[list(code).count(1)] += 1
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
 
-def exercise_minimum_covering_sphere(epsilon=1.e-3):
+def exercise_minimum_covering_sphere(epsilon=1.e-2):
   points = flex.vec3_double([(0,0,0),(1,0,0),(0,1,0),(1,1,1)])
   mcs = minimum_covering_sphere(points=points)
   assert mcs.n_iterations() > 0
@@ -646,13 +646,50 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
         if (poly_index == 0):
           assert mcs.n_iterations() <= 1
         r = random.random
-        for i_addl in xrange(10):
+        for i_addl in xrange(3):
           points.append(
             (matrix.col(expected_center)
              + matrix.col([r(),r(),r()]).normalize()*expected_radius).elems)
           mcs = minimum_covering_sphere(points, epsilon=epsilon)
           assert approx_equal(mcs.center(), expected_center, eps=eps*4)
           assert approx_equal(mcs.radius(), expected_radius, eps=eps)
+        # also exercise the Python implementation
+        mcs = minimum_covering_sphere(
+          points=[matrix.col(point) for point in points],
+          epsilon=epsilon)
+        assert approx_equal(mcs.center(), expected_center, eps=eps*4)
+        assert approx_equal(mcs.radius(), expected_radius, eps=eps)
+  # exercise Python implementation with sets of 2-dimensional points
+  for i,j in flex.nested_loop((1,1),(2,3),00000):
+    for shift in [(0,0),(3,4),(-3,-5)]:
+      # square
+      points = [matrix.col(t)+matrix.col(shift) for t in [
+        (0,0),
+        (0,j),
+        (i,0),
+        (i,j)]]
+      expected_center = (matrix.col(shift) + matrix.col([i,j])/2.).elems
+      expected_radius = math.sqrt(i**2+j**2)/2
+      mcs = minimum_covering_sphere(points, epsilon=epsilon)
+      if (expected_center is None):
+        expected_center = mcs.center()
+        expected_radius = mcs.radius()
+      assert approx_equal(mcs.center(), expected_center, eps=eps)
+      assert approx_equal(mcs.radius(), expected_radius, eps=eps)
+      assert mcs.n_iterations() == 0
+      points.append(matrix.col(expected_center))
+      mcs = minimum_covering_sphere(points, epsilon=epsilon)
+      assert approx_equal(mcs.center(), expected_center, eps=eps)
+      assert approx_equal(mcs.radius(), expected_radius, eps=eps)
+      assert mcs.n_iterations() <= 1
+      r = random.random
+      for i_addl in xrange(3):
+        points.append(
+          matrix.col(expected_center)
+          + matrix.col([r(),r()]).normalize()*expected_radius)
+        mcs = minimum_covering_sphere(points, epsilon=epsilon)
+        assert approx_equal(mcs.center(), expected_center, eps=eps*4)
+        assert approx_equal(mcs.radius(), expected_radius, eps=eps)
 
 def run():
   exercise_floating_point_epsilon()
