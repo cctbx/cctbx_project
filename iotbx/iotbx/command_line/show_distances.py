@@ -70,8 +70,8 @@ def run():
       print
       if (n_shells is not None):
         term_table = crystal.coordination_sequences_simple(
-          asu_mappings=pair_asu_table.asu_mappings,
-          pair_asu_table_table=pair_asu_table.table,
+          asu_mappings=pair_asu_table.asu_mappings(),
+          pair_asu_table_table=pair_asu_table.table(),
           n_shells=n_shells)
         coordination_sequences.show_terms(
           structure=structure,

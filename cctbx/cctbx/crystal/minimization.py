@@ -121,8 +121,8 @@ class lbfgs:
 
   def compute_target(self, compute_gradients):
     import cctbx.crystal
-    from cctbx.crystal import pair_asu_table
     from cctbx.crystal import distance_ls
+    from cctbx import crystal
     bonded_distance_cutoff = flex.max(distance_ls.get_distances(
       unit_cell=self.structure.unit_cell(),
       sites_cart=self._sites_shifted,
@@ -134,7 +134,7 @@ class lbfgs:
     asu_mappings.process_sites_cart(
       original_sites=self._sites_shifted,
       site_symmetry_table=self.structure.site_symmetry_table())
-    bond_asu_table = pair_asu_table.pair_asu_table(
+    bond_asu_table = crystal.pair_asu_table(
       asu_mappings=asu_mappings).add_pair_sym_table(
         sym_table=self.bond_sym_table)
     if (1):

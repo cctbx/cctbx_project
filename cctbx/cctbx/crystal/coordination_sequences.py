@@ -16,9 +16,9 @@ def find_node(test_node, node_list):
   return 00000
 
 def simple_and_slow(pair_asu_table, n_shells=10):
-  asu_mappings = pair_asu_table.asu_mappings
+  asu_mappings = pair_asu_table.asu_mappings()
   term_table = []
-  for i_seq_pivot,pair_asu_dict_pivot in enumerate(pair_asu_table.table):
+  for i_seq_pivot,pair_asu_dict_pivot in enumerate(pair_asu_table.table()):
     rt_mx_pivot = asu_mappings.get_rt_mx(i_seq=i_seq_pivot, i_sym=0)
     if (pair_asu_dict_pivot.size() == 0):
       term_table.append([])
@@ -36,7 +36,7 @@ def simple_and_slow(pair_asu_table, n_shells=10):
       for node_m in nodes_middle:
         rt_mx_i = asu_mappings.get_rt_mx(i_seq=node_m.i_seq, i_sym=0)
         rt_mx_ni = node_m.rt_mx.multiply(rt_mx_i.inverse())
-        for j_seq,j_sym_groups in pair_asu_table.table[node_m.i_seq].items():
+        for j_seq,j_sym_groups in pair_asu_table.table()[node_m.i_seq].items():
           for j_sym_group in j_sym_groups:
             for j_sym in j_sym_group:
               rt_mx_j = asu_mappings.get_rt_mx(i_seq=j_seq, i_sym=j_sym)
