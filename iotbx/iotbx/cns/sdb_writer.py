@@ -99,7 +99,8 @@ def xray_structure_as_cns_sdb_file(self, file=None,
   for running_index,scatterer in enumerate(self.scatterers()):
     write_scatterer(s,
       running_index+1,
-      scatterer.copy(site=self.unit_cell().orthogonalize(scatterer.site)),
+      scatterer.customized_copy(
+        site=self.unit_cell().orthogonalize(scatterer.site)),
       action=action,
       segid=segid,
       group=group)

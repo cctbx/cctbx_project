@@ -111,7 +111,7 @@ class model(crystal.special_position_settings):
       scatterer = xray.scatterer(scattering_type="const")
     result = xray.structure(special_position_settings=self)
     for position in self.positions():
-      result.add_scatterer(scatterer.copy(
+      result.add_scatterer(scatterer.customized_copy(
         label=position.label,
         site=position.site))
     return result

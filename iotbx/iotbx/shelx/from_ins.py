@@ -55,7 +55,7 @@ def from_ins(file_name=None, ins_records=None,
         occupancy = record.occupancy,
         scattering_type = wk1995(
           dict_allowed_atoms[record.name_id], 1).label())
-      scatterer = scatterer.copy(
+      scatterer = scatterer.customized_copy(
         u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
       structure.add_scatterer(scatterer)
     elif(record.record_iden == "ATOM" and record.rec_part == 0):

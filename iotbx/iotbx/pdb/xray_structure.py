@@ -184,7 +184,7 @@ def from_pdb(file_name=None, file_iterator=None, pdb_records=None,
           "ANISOU record does not match preceeding %s record."
             % prev_record.record_name)
       if (scatterer is not None):
-        scatterer = scatterer.copy(
+        scatterer = scatterer.customized_copy(
           u=adptbx.u_cart_as_u_star(structure.unit_cell(), record.Ucart))
     elif (scatterer is not None):
       try: structure.add_scatterer(scatterer)
