@@ -374,7 +374,8 @@ namespace direct_space_asu {
         buffer_covering_sphere_(
           scitbx::math::minimum_covering_sphere_3d<FloatType>(
             asu.volume_vertices(true).const_ref())
-          .expand(buffer_thickness)),
+          .expand(buffer_thickness)
+          .expand_relative(2*asu.is_inside_epsilon())),
         mappings_const_ref_(mappings_.const_ref()),
         n_sites_in_asu_and_buffer_(0),
         mapped_sites_min_(0,0,0),
@@ -466,9 +467,9 @@ namespace direct_space_asu {
           scitbx::vec3<IntShiftType> unit_shifts_max;
           for(std::size_t i=0;i<3;i++) {
             unit_shifts_min[i] = scitbx::math::iceil(
-              asu_buffer_.box_min()[i] - site[i]);
+              asu_buffer_.box_min()[i] - site[i] - 2*asu_.is_inside_epsilon());
             unit_shifts_max[i] = scitbx::math::ifloor(
-              asu_buffer_.box_max()[i] - site[i]);
+              asu_buffer_.box_max()[i] - site[i] + 2*asu_.is_inside_epsilon());
           }
           scitbx::vec3<IntShiftType> u;
           fractional<FloatType> mapped_site;
