@@ -744,7 +744,7 @@ class _dataset(boost.python.injector, ext.dataset):
 def miller_array_as_mtz_dataset(self,
       column_root_label,
       column_types=None,
-      column_label_decorator=None,
+      label_decorator=None,
       title=None,
       crystal_name="crystal",
       project_name="project",
@@ -773,7 +773,7 @@ def miller_array_as_mtz_dataset(self,
         miller_array=self,
         column_root_label=column_root_label,
         column_types=column_types,
-        label_decorator=column_label_decorator)
+        label_decorator=label_decorator)
 
 class _batch(boost.python.injector, ext.batch):
 
