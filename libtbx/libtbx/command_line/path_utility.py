@@ -10,7 +10,7 @@ def run(args):
   env_key = args[1]
   arg_paths = args[2].split(os.pathsep)
   try: env_val = os.environ[env_key]
-  except: env_val = ""
+  except KeyError: env_val = ""
   env_paths = env_val.split(os.pathsep)
   if (os.name == "nt"):
     unquoted_paths = []
@@ -41,7 +41,7 @@ def run(args):
         remaining_env_paths.append(path)
         remaining_env_paths_norm.append(norm(path))
   if (len(remaining_env_paths) == 0):
-    return "E_M_P_T_Y"
+    return "L_I_B_T_B_X_E_M_P_T_Y"
   return os.pathsep.join(remaining_env_paths)
 
 if (__name__ == "__main__"):
