@@ -25,7 +25,7 @@ def collect_assigned_words(word_iterator, lead_word):
 
 def collect_objects(
       word_iterator,
-      definition_type_names,
+      converter_registry,
       primary_id_generator,
       primary_parent_scope,
       stop_token=None,
@@ -73,13 +73,11 @@ def collect_objects(
         word_iterator.pop_unquoted().assert_expected("=")
         assigned_words = collect_assigned_words(word_iterator, word)
         if (not is_disabled):
-          scope.assign_attribute(
-            name=word.value[1:],
-            assigned_words=assigned_words)
+          scope.assign_attribute(name=word.value[1:], words=assigned_words)
         word = word_iterator.pop_unquoted()
       collect_objects(
         word_iterator=word_iterator,
-        definition_type_names=definition_type_names,
+        converter_registry=converter_registry,
         primary_id_generator=primary_id_generator,
         primary_parent_scope=scope,
         stop_token="}",
@@ -111,8 +109,8 @@ def collect_objects(
         if (not is_disabled):
           active_definition.assign_attribute(
             name=lead_word.value[1:],
-            assigned_words=assigned_words,
-            type_names=definition_type_names)
+            words=assigned_words,
+            converter_registry=converter_registry)
   if (stop_token is not None):
     if (start_word is None):
       where = ""

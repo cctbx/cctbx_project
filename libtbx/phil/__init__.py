@@ -29,34 +29,115 @@ def is_standard_identifier(string):
       if (not is_standard_identifier(sub)): return False
   return True
 
-def str_from_assigned_words(assigned_words):
-  if (len(assigned_words) == 1 and assigned_words[0].value.lower() == "none"):
-    return None
-  return " ".join([word.value for word in assigned_words])
+class words_converters:
 
-def bool_from_assigned_words(assigned_words):
-  value_string = str_from_assigned_words(assigned_words)
+  def __str__(self): return "words"
+
+  def from_words(self, words, master):
+    if (len(words) == 1
+        and words[0].quote_token is None
+        and words[0].value.lower() == "none"):
+      return None
+    return words
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    for word in python_object:
+      assert isinstance(word, tokenizer.word)
+    return python_object
+
+def strings_from_words(words):
+  if (len(words) == 1
+      and words[0].quote_token is None
+      and words[0].value.lower() == "none"):
+    return None
+  return [word.value for word in words]
+
+def strings_as_words(python_object):
+  if (python_object is None):
+    return [tokenizer.word(value="None")]
+  words = []
+  for value in python_object:
+    if (is_standard_identifier(value)):
+      words.append(tokenizer.word(value=value))
+    else:
+      words.append(tokenizer.word(value=value, quote_token='"'))
+  return words
+
+class strings_converters:
+
+  def __str__(self): return "strings"
+
+  def from_words(self, words, master):
+    return strings_from_words(words)
+
+  def as_words(self, python_object, master):
+    return strings_as_words(python_object)
+
+def str_from_words(words):
+  if (len(words) == 1 and words[0].value.lower() == "none"):
+    return None
+  return " ".join([word.value for word in words])
+
+class str_converters:
+
+  def __str__(self): return "str"
+
+  def from_words(self, words, master):
+    return str_from_words(words=words)
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    return [tokenizer.word(value=python_object, quote_token='"')]
+
+class path_converters(str_converters):
+
+  def __str__(self): return "path"
+
+class key_converters(str_converters):
+
+  def __str__(self): return "key"
+
+def bool_from_words(words):
+  value_string = str_from_words(words)
   if (value_string is None): return None
-  word_lower = assigned_words[0].value.lower()
+  word_lower = words[0].value.lower()
   if (word_lower == "none"): return None
   if (word_lower in ["false", "no", "off", "0"]): return False
   if (word_lower in ["true", "yes", "on", "1"]): return True
-  assert len(assigned_words) > 0
+  assert len(words) > 0
   raise RuntimeError(
     'One True or False value expected, "%s" found%s' % (
-      value_string, assigned_words[0].where_str()))
+      value_string, words[0].where_str()))
 
-def number_from_assigned_words(assigned_words):
-  value_string = str_from_assigned_words(assigned_words)
+class bool_converters:
+
+  def __str__(self): return "bool"
+
+  def from_words(self, words, master):
+    return bool_from_words(words)
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    if (python_object):
+      return [tokenizer.word(value="True")]
+    else:
+      return [tokenizer.word(value="False")]
+
+def number_from_words(words):
+  value_string = str_from_words(words)
   if (value_string is None): return None
   try: return eval(value_string, math.__dict__, {})
   except Exception, e:
     raise RuntimeError(
       'Error interpreting "%s" as a numeric expression: %s%s' % (
-        value_string, str(e), assigned_words[0].where_str()))
+        value_string, str(e), words[0].where_str()))
 
-def int_from_assigned_words(assigned_words):
-  result = number_from_assigned_words(assigned_words)
+def int_from_words(words):
+  result = number_from_words(words)
   if (result is not None):
     if (isinstance(result, float)
         and round(result) == result):
@@ -64,55 +145,159 @@ def int_from_assigned_words(assigned_words):
     elif (not isinstance(result, int)):
       raise RuntimeError(
         'Integer expression expected, "%s" found%s' % (
-          str_from_assigned_words(assigned_words),
-          assigned_words[0].where_str()))
+          str_from_words(words),
+          words[0].where_str()))
   return result
 
-def float_from_assigned_words(assigned_words):
-  result = number_from_assigned_words(assigned_words)
+class int_converters:
+
+  def __str__(self): return "int"
+
+  def from_words(self, words, master):
+    return int_from_words(words)
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    return [tokenizer.word(value=str(python_object))]
+
+def float_from_words(words):
+  result = number_from_words(words)
   if (result is not None):
     if (isinstance(result, int)):
       result = float(result)
     elif (not isinstance(result, float)):
       raise RuntimeError(
         'Floating-point expression expected, "%s" found%s' % (
-          str_from_assigned_words(assigned_words),
-          assigned_words[0].where_str()))
+          str_from_words(words),
+          words[0].where_str()))
   return result
 
-def choice_from_assigned_words(optional, assigned_words):
-  result = None
-  for word in assigned_words:
-    if (word.value.startswith("*")):
-      if (result is not None):
-        raise RuntimeError("Multiple choices where only one is possible%s" %
-          assigned_words[0].where_str())
-      result = word.value[1:]
-  if (result is None and not optional):
-    raise RuntimeError("Unspecified choice%s" % assigned_words[0].where_str())
-  return result
+class float_converters:
 
-def multi_choice_from_assigned_words(assigned_words):
-  result = []
-  for word in assigned_words:
-    if (word.value.startswith("*")):
-      result.append(word.value[1:])
-  return result
+  def __str__(self): return "float"
 
-default_definition_type_names = [
-  "words", "strings", "str", "bool", "int", "float",
-  "choice", "multi_choice",
-  "path", "key"]
+  def from_words(self, words, master):
+    return float_from_words(words)
 
-def definition_type_from_assigned_words(assigned_words, type_names):
-  if (len(assigned_words) == 1):
-    word_lower = assigned_words[0].value.lower()
-    if (word_lower == "none"): return None
-    if (word_lower in type_names): return word_lower
-  assert len(assigned_words) > 0
-  raise RuntimeError(
-    'Unexpected definition type: "%s"%s' % (
-      assigned_words[0].value, assigned_words[0].where_str()))
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    return [tokenizer.word(value="%.10g" % python_object)]
+
+class choice_converters:
+
+  def __init__(self, multi=False):
+    self.multi = multi
+
+  def __str__(self):
+    if (self.multi): return "choice(multi=True)"
+    return "choice"
+
+  def from_words(self, words, master):
+    if (self.multi):
+      result = []
+      for word in words:
+        if (word.value.startswith("*")):
+          result.append(word.value[1:])
+    else:
+      result = None
+      for word in words:
+        if (word.value.startswith("*")):
+          if (result is not None):
+            raise RuntimeError(
+              "Multiple choices where only one is possible%s" %
+              words[0].where_str())
+          result = word.value[1:]
+      if (result is None and not master.optional):
+        raise RuntimeError("Unspecified choice%s" % words[0].where_str())
+    return result
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    words = []
+    for word in master.words:
+      if (word.value.startswith("*")): value = word.value[1:]
+      else: value = word.value
+      if (not self.multi):
+        if (value == python_object):
+          value = "*" + value
+      else:
+        if (value in python_object):
+          value = "*" + value
+      words.append(tokenizer.word(
+        value=value, quote_token=word.quote_token))
+    return words
+
+  def fetch(self, source_words, master):
+    flags = {}
+    for word in master.words:
+      if (word.value.startswith("*")): value = word.value[1:]
+      else: value = word.value
+      flags[value] = False
+    for word in source_words:
+      if (word.value.startswith("*")):
+        value = word.value[1:]
+        flag = True
+      else:
+        value = word.value
+        if (len(source_words) == 1):
+          flag = True
+        else:
+          flag = False
+      if (flag and value not in flags):
+        raise RuntimeError("Not a possible choice: %s%s" % (
+          str(word), word.where_str()))
+      flags[value] = flag
+    words = []
+    for word in master.words:
+      if (word.value.startswith("*")): value = word.value[1:]
+      else: value = word.value
+      if (flags[value]): value = "*" + value
+      words.append(tokenizer.word(
+        value=value,
+        line_number=word.line_number,
+        source_info=word.source_info))
+    return master.customized_copy(words=words)
+
+default_converter_registry = dict([(str(converters()), converters)
+  for converters in [
+     words_converters,
+     strings_converters,
+     str_converters,
+     path_converters,
+     key_converters,
+     bool_converters,
+     int_converters,
+     float_converters,
+     choice_converters]])
+
+def definition_converters_from_words(words, converter_registry):
+  name = words[0].value
+  if (len(words) == 1):
+    if (name.lower() == "none" and words[0].quote_token is None):
+      return None
+    converters = converter_registry.get(name, None)
+    if (converters is not None):
+      try: return converters()
+      except Exception, e:
+        raise RuntimeError(
+          'Error constructing definition type "%s": %s%s' % (
+            name, str(e), words[0].where_str()))
+  flds = name.split("(", 1)
+  if (len(flds) == 2):
+    name = flds[0]
+    converters = converter_registry.get(name, None)
+  if (converters is None):
+    raise RuntimeError(
+      'Unexpected definition type: "%s"%s' % (name, words[0].where_str()))
+  constructor = str_from_words(words)
+  try: return eval(constructor, math.__dict__, {name: converters})
+  except Exception, e:
+    raise RuntimeError(
+      'Error constructing definition type "%s": %s%s' % (
+        constructor, str(e), words[0].where_str()))
 
 def show_attributes(self, out, prefix, attributes_level, print_width):
   if (attributes_level <= 0): return
@@ -207,51 +392,24 @@ class definition: # FUTURE definition(object)
       raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
         (self.name, self.where_str, source.name, source.where_str))
     source = source.resolve_variables()
-    if (self.type not in ["choice", "multi_choice"]):
+    type_fetch = getattr(self.type, "fetch", None)
+    if (type_fetch is None):
       return self.customized_copy(words=source.words)
-    flags = {}
-    for word in self.words:
-      if (word.value.startswith("*")): value = word.value[1:]
-      else: value = word.value
-      flags[value] = False
-    for word in source.words:
-      if (word.value.startswith("*")):
-        value = word.value[1:]
-        flag = True
-      else:
-        value = word.value
-        if (len(source.words) == 1):
-          flag = True
-        else:
-          flag = False
-      if (flag and value not in flags):
-        raise RuntimeError("Not a possible choice: %s%s" % (
-          str(word), word.where_str()))
-      flags[value] = flag
-    words = []
-    for word in self.words:
-      if (word.value.startswith("*")): value = word.value[1:]
-      else: value = word.value
-      if (flags[value]): value = "*" + value
-      words.append(tokenizer.word(
-        value=value,
-        line_number=word.line_number,
-        source_info=word.source_info))
-    return self.customized_copy(words=words)
+    return type_fetch(source_words=source.words, master=self)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
-  def assign_attribute(self, name, assigned_words, type_names):
+  def assign_attribute(self, name, words, converter_registry):
     assert self.has_attribute_with_name(name)
     if (name in ["optional", "multiple"]):
-      value = bool_from_assigned_words(assigned_words)
+      value = bool_from_words(words)
     elif (name == "type"):
-      value = definition_type_from_assigned_words(assigned_words, type_names)
+      value = definition_converters_from_words(words, converter_registry)
     elif (name in ["input_size", "expert_level"]):
-      value = int_from_assigned_words(assigned_words)
+      value = int_from_words(words)
     else:
-      value = str_from_assigned_words(assigned_words)
+      value = str_from_words(words)
     setattr(self, name, value)
 
   def show(self,
@@ -314,126 +472,24 @@ class definition: # FUTURE definition(object)
     if (self.is_disabled or self.name != path): return []
     return [self]
 
-  def automatic_type(self):
-    types = {}
-    for word in self.words:
-      if (word.quote_token is not None):
-        types["str"] = None
-        continue
-      word_lower = word.value.lower()
-      if (word_lower in ["false", "no", "off"
-                         "true", "yes", "on"]):
-        types["bool"] = None
-        continue
-      try: py_value = eval(word.value, {}, {})
-      except:
-        if (word.value[0] in standard_identifier_start_characters):
-          types["str"] = None
-        else:
-          types["unknown"] = None
-        continue
-      if (isinstance(py_value, float)):
-        types["float"] = None
-        continue
-      if (isinstance(py_value, int)):
-        types["int"] = None
-        continue
-    types = types.keys()
-    types.sort()
-    if (types == ["int", "float"]): return "float"
-    if (len(types) == 1): return types[0]
-    return None
-
-  def automatic_type_assignment(self, assignment_if_unknown=None):
+  def extract(self):
     if (self.type is None):
-      self.type = self.automatic_type()
-      if (self.type is None):
-        self.type = assignment_if_unknown
+      return strings_from_words(words=self.words)
+    try: type_from_words = self.type.from_words
+    except AttributeError, e:
+      raise RuntimeError('.type=%s does not have a from_words method%s: %s' %
+        (str(self.type), self.where_str, str(e)))
+    return type_from_words(self.words, master=self)
 
-  def extract(self, custom_converters=None):
-    if (self.type == "words"):
-      if (len(self.words) == 1
-          and self.words[0].quote_token is None
-          and self.words[0].value.lower() == "none"):
-        return None
-      return self.words
-    if (self.type in ["str", "path", "key"]):
-      return str_from_assigned_words(self.words)
-    if (self.type == "bool"):
-      return bool_from_assigned_words(self.words)
-    if (self.type == "int"):
-      return int_from_assigned_words(self.words)
-    if (self.type == "float"):
-      return float_from_assigned_words(self.words)
-    if (self.type == "choice"):
-      return choice_from_assigned_words(self.optional, self.words)
-    if (self.type == "multi_choice"):
-      return multi_choice_from_assigned_words(self.words)
-    if (self.type != "strings"
-        and custom_converters is not None):
-      converter = custom_converters.get(self.type, None)
-      if (converter is not None):
-        return converter.process_assigned_words(self.words)
-    if (self.type == "strings" or self.type is None):
-      if (len(self.words) == 1
-          and self.words[0].quote_token is None
-          and self.words[0].value.lower() == "none"):
-        return None
-      return [word.value for word in self.words]
-    raise RuntimeError(
-       ('No converter for parameter definition type "%s"'
-      + ' required for converting words assigned to "%s"%s') % (
-        self.type, self.name, self.where_str))
-
-  def format(self, python_object, custom_converters=None):
-    words = None
-    if (python_object is None):
-      words = [tokenizer.word(value="None")]
-    elif (self.type == "words"):
-      words = python_object
-      for word in words:
-        assert isinstance(word, tokenizer.word)
-    elif (self.type in ["str", "path", "key"]):
-      words = [tokenizer.word(value=python_object, quote_token='"')]
-    elif (self.type == "bool"):
-      if (python_object):
-        words = [tokenizer.word(value="True")]
-      else:
-        words = [tokenizer.word(value="False")]
-    elif (self.type == "int"):
-      words = [tokenizer.word(value=str(python_object))]
-    elif (self.type == "float"):
-      words = [tokenizer.word(value="%.10g" % python_object)]
-    elif (self.type in ["choice", "multi_choice"]):
-      words = []
-      for word in self.words:
-        if (word.value.startswith("*")): value = word.value[1:]
-        else: value = word.value
-        if (self.type == "choice"):
-          if (value == python_object):
-            value = "*" + value
-        else:
-          if (value in python_object):
-            value = "*" + value
-        words.append(tokenizer.word(
-          value=value, quote_token=word.quote_token))
-    elif (self.type != "strings"
-          and custom_converters is not None):
-      converter = custom_converters.get(self.type, None)
-      if (converter is not None):
-        words = converter.format_as_assigned_words(self, python_object)
-    elif (self.type == "strings" or self.type is None):
-      words = []
-      for value in python_object:
-        if (is_standard_identifier(value)):
-          words.append(tokenizer.word(value=value))
-        else:
-          words.append(tokenizer.word(value=value, quote_token='"'))
-    if (words is None):
-      raise RuntimeError(
-         ('No converter for parameter definition type "%s"'
-        + ' required for converting values for "%s"%s') % (
-          self.type, self.name, self.where_str))
+  def format(self, python_object):
+    if (self.type is None):
+      words = strings_as_words(python_object=python_object)
+    else:
+      try: type_as_words = self.type.as_words
+      except AttributeError, e:
+        raise RuntimeError('.type=%s does not have an as_words method%s: %s' %
+          (str(self.type), self.where_str, str(e)))
+      words = type_as_words(python_object=python_object, master=self)
     return self.customized_copy(words=words)
 
   def unique(self):
@@ -573,14 +629,14 @@ class scope:
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
-  def assign_attribute(self, name, assigned_words):
+  def assign_attribute(self, name, words):
     assert self.has_attribute_with_name(name)
     if (name in ["optional", "multiple", "disable_add", "disable_delete"]):
-      value = bool_from_assigned_words(assigned_words)
+      value = bool_from_words(words)
     elif (name in ["expert_level"]):
-      value = int_from_assigned_words(assigned_words)
+      value = int_from_words(words)
     else:
-      value = str_from_assigned_words(assigned_words)
+      value = str_from_words(words)
       if (name == "style"):
         style = value
         assert style in [None, "row", "column", "block", "page"]
@@ -684,11 +740,6 @@ class scope:
         result=result)
     return result
 
-  def automatic_type_assignment(self, assignment_if_unknown=None):
-    for item in self.all_definitions():
-      item.object.automatic_type_assignment(
-        assignment_if_unknown=assignment_if_unknown)
-
   def get_without_substitution(self, path):
     if (self.is_disabled): return []
     if (len(self.name) == 0):
@@ -739,17 +790,17 @@ class scope:
     if (self.primary_parent_scope is None): return None
     return self.primary_parent_scope.lexical_get(path=path, stop_id=stop_id)
 
-  def extract(self, custom_converters=None):
+  def extract(self):
     result = scope_extract()
     for object in self.objects:
       if (object.is_disabled):
         value = scope_extract_is_disabled
       else:
-        value = object.extract(custom_converters=custom_converters)
+        value = object.extract()
       result.__set__(name=object.name, multiple=object.multiple, value=value)
     return result
 
-  def format(self, python_object, custom_converters=None):
+  def format(self, python_object):
     result = []
     for object in self.active_objects():
       if (isinstance(python_object, scope_extract)):
@@ -758,19 +809,16 @@ class scope:
         sub_python_object = python_object_i.__get__(object.name)
         if (sub_python_object is not scope_extract_attribute_error):
           if (not object.multiple):
-            result.append(object.format(
-              sub_python_object, custom_converters))
+            result.append(object.format(sub_python_object))
           else:
             for sub_python_object_i in sub_python_object:
-              result.append(object.format(
-                sub_python_object_i, custom_converters))
+              result.append(object.format(sub_python_object_i))
     return self.customized_copy(objects=result)
 
-  def clone(self, python_object, custom_converters=None):
+  def clone(self, python_object):
     return parse(
       input_string=self.format(
-        python_object=python_object,
-        custom_converters=custom_converters).as_str(
+        python_object=python_object).as_str(
           attributes_level=3)).extract()
 
   def fetch(self, source=None, sources=None):
@@ -817,11 +865,11 @@ class scope:
       objects=clean_fetched_scope(fetched_objects=result_objects))
 
   def process_includes(self,
-        definition_type_names,
+        converter_registry,
         reference_directory,
         include_stack=None):
-    if (definition_type_names is None):
-      definition_type_names = default_definition_type_names
+    if (converter_registry is None):
+      converter_registry = default_converter_registry
     if (include_stack is None): include_stack = []
     result = []
     for object in self.objects:
@@ -838,12 +886,12 @@ class scope:
               file_name = os.path.join(reference_directory, file_name)
             result.extend(parse(
               file_name=file_name,
-              definition_type_names=definition_type_names,
+              converter_registry=converter_registry,
               process_includes=True,
               include_stack=include_stack).objects)
       else:
         result.append(object.process_includes(
-          definition_type_names=definition_type_names,
+          converter_registry=converter_registry,
           reference_directory=reference_directory,
           include_stack=include_stack))
     return self.customized_copy(objects=result)
@@ -962,7 +1010,7 @@ def parse(
       input_string=None,
       source_info=None,
       file_name=None,
-      definition_type_names=None,
+      converter_registry=None,
       process_includes=False,
       include_stack=None):
   from phil import parser
@@ -970,8 +1018,8 @@ def parse(
   if (input_string is None):
     assert file_name is not None
     input_string = open(file_name).read()
-  if (definition_type_names is None):
-    definition_type_names = default_definition_type_names
+  if (converter_registry is None):
+    converter_registry = default_converter_registry
   result = scope(name="", primary_id=0)
   parser.collect_objects(
     word_iterator=tokenizer.word_iterator(
@@ -986,7 +1034,7 @@ def parse(
         tokenizer.settings(
           unquoted_single_character_words="",
           contiguous_word_characters="")]),
-    definition_type_names=definition_type_names,
+    converter_registry=converter_registry,
     primary_id_generator=count(1),
     primary_parent_scope=result)
   if (process_includes):
@@ -1003,7 +1051,7 @@ def parse(
           % ", ".join(include_stack+[file_name_normalized]))
       include_stack.append(file_name_normalized)
     result = result.process_includes(
-      definition_type_names=definition_type_names,
+      converter_registry=converter_registry,
       reference_directory=reference_directory,
       include_stack=include_stack)
     if (include_stack is not None):
@@ -1013,12 +1061,12 @@ def parse(
 def read_default(
       caller_file_name,
       params_extension=".params",
-      definition_type_names=None,
+      converter_registry=None,
       process_includes=True):
   params_file_name = os.path.splitext(caller_file_name)[0] + params_extension
   if (not os.path.isfile(params_file_name)):
     raise RuntimeError("Missing parameter file: %s" % params_file_name)
   return parse(
     file_name=params_file_name,
-    definition_type_names=definition_type_names,
+    converter_registry=converter_registry,
     process_includes=process_includes)
