@@ -4,6 +4,7 @@ import pickle
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx import uctbx
+from scitbx.python_utils import complex_math
 from scitbx.test_utils import approx_equal
 
 def exercise_symbols():
@@ -730,6 +731,9 @@ def exercise_phase_info():
     assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, 1), 1)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180+1.e-15, 1), 1)
     assert p.is_valid_phase(p.nearest_valid_phase(phi+180-1.e-15, 1), 1)
+  phi = p.ht_angle()
+  f = complex_math.polar((1, phi))
+  assert approx_equal(f, p.nearest_valid_phase(f))
 
 def exercise_reciprocal_space_asu():
   reciprocal_space_asu = sgtbx.reciprocal_space_asu

@@ -18,6 +18,16 @@
 
 namespace cctbx { namespace sgtbx {
 
+#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
+  namespace {
+    inline double
+    abs_wrapper(double const& x) { return scitbx::fn::absolute(x); }
+
+    inline double
+    abs_wrapper(std::complex<double> const& x) { return std::abs(x); }
+  }
+#endif
+
   class space_group; // forward declaration
 
   /*! \brief Handling of phase restrictions and optional evaluation
@@ -119,6 +129,24 @@ namespace cctbx { namespace sgtbx {
           nearest to the input phase phi.
        */
       double nearest_valid_phase(double phi, bool deg=false) const;
+
+      //! Complex value with nearest valid phase.
+      /*! For acentric reflections equivalent to the input phase phi.
+          For centric reflections, the restricted phase which is
+          nearest to the input phase phi.
+       */
+      template <typename FloatType>
+      std::complex<FloatType>
+      nearest_valid_phase(std::complex<FloatType> const& f) const
+      {
+        return std::polar(
+#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
+          FloatType(abs_wrapper(f)),
+#else
+          FloatType(std::abs(f)),
+#endif
+          FloatType(nearest_valid_phase(std::arg(f))));
+      }
 
     private:
       int ht_;
