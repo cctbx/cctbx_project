@@ -123,7 +123,7 @@ namespace cctbx { namespace sgtbx {
        */
       RotMx operator()(const RotMx& R) const;
       //! M() * RT * InvM(), for RT with rotation base factor 1.
-      /*! Similar to apply(R), but faster. The translation base factor
+      /*! Similar to apply(RT), but faster. The translation base factor
           of the result is equal to the translation base factor of RT.
        */
       RTMx operator()(const RTMx& RT) const;
