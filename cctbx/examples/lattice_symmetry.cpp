@@ -221,6 +221,14 @@ namespace cctbx { namespace {
       sgtbx::change_of_basis_op cb_op_inp_best = cb_op_best_cell
                                                * cb_op_minimum_ref
                                                * cb_op_inp_minimum;
+      // Use identity change-of-basis operator if possible
+      if (best_subsym.unit_cell().is_similar_to(input_symmetry.unit_cell())) {
+        sgtbx::change_of_basis_op cb_op_corr = cb_op_inp_best.inverse();
+        if (   best_subsym.change_basis(cb_op_corr).space_group()
+            == best_subsym.space_group()) {
+          cb_op_inp_best = cb_op_corr * cb_op_inp_best;
+        }
+      }
 
       std::printf("Symmetry in minimum-lengths cell: ");
       show_space_group_type(subsym_type);
