@@ -7,6 +7,7 @@ del misc
 
 def run(target_evaluator,
         min_iterations=10,
+        max_iterations=None,
         max_calls=100,
         traditional_convergence_test=0):
   minimizer = ext.minimizer(target_evaluator.n)
@@ -22,6 +23,8 @@ def run(target_evaluator,
         if (minimizer.iter() >= min_iterations and is_converged(x, g)): break
       else:
         if (is_converged(f)): break
+      if (max_iterations is not None and minimizer.iter() >= max_iterations):
+        break
       if (minimizer.nfun() > max_calls): break
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
