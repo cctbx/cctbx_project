@@ -29,7 +29,9 @@ def collect_objects(
       primary_id_generator,
       primary_parent_scope,
       stop_token=None,
-      start_word=None):
+      start_word=None,
+      converter_cache=None):
+  if (converter_cache is None): converter_cache = {}
   active_definition = None
   while True:
     lead_word = word_iterator.try_pop_unquoted()
@@ -81,7 +83,8 @@ def collect_objects(
         primary_id_generator=primary_id_generator,
         primary_parent_scope=scope,
         stop_token="}",
-        start_word=word)
+        start_word=word,
+        converter_cache=converter_cache)
       primary_parent_scope.adopt(scope)
     else:
       word_iterator.backup()
@@ -110,7 +113,8 @@ def collect_objects(
           active_definition.assign_attribute(
             name=lead_word.value[1:],
             words=assigned_words,
-            converter_registry=converter_registry)
+            converter_registry=converter_registry,
+            converter_cache=converter_cache)
   if (stop_token is not None):
     if (start_word is None):
       where = ""
