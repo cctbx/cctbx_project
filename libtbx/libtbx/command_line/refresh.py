@@ -2,7 +2,7 @@
 
 import libtbx.config
 import sys, os
-from os.path import normpath, join, split, isdir, isfile, splitext
+from os.path import normpath, join, split, isdir, isfile, islink, splitext
 norm = normpath
 import shutil
 
@@ -23,7 +23,7 @@ def create_driver(target_dir, package_name, source_dir, file_name):
     action = os.symlink
     try: os.chmod(source_file, 0755)
     except: pass
-  if (os.path.isfile(target_file)):
+  if (isfile(target_file) or islink(target_file)):
     try: os.remove(target_file)
     except OSError: pass
     else: action(source_file, target_file)
@@ -44,7 +44,7 @@ def create_python_dispatchers(target_dir, python_exe):
       action = shutil.copyfile
     else:
       action = os.symlink
-    if (os.path.isfile(target_file)):
+    if (isfile(target_file)):
       try: os.remove(target_file)
       except OSError: pass
       else: action(python_exe, target_file)
