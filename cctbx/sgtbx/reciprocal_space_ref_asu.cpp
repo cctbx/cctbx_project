@@ -46,7 +46,7 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
         return (h[1]>=0 && (h[2]>0 || (h[2]==0 && h[0]>=0)));
       }
       virtual const char* as_string() const {
-        return "k>=0 and (l>0 or (l=0 and h>=0))";
+        return "k>=0 and (l>0 or (l==0 and h>=0))";
       }
       virtual af::int3 const& cut_parameters() const {
         static const af::int3 result(-1, 0, 0);
@@ -80,7 +80,7 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
         return (h[2]>=0 && ((h[0]>=0 && h[1]>0) || (h[0]==0 && h[1]==0)));
       }
       virtual const char* as_string() const {
-        return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
+        return "l>=0 and ((h>=0 and k>0) or (h==0 and k==0))";
       }
       virtual af::int3 const& cut_parameters() const {
         static const af::int3 result(0, 0, 0);
@@ -114,7 +114,7 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
         return (h[0]>=0 && h[1]>0) || (h[0]==0 && h[1]==0 && h[2]>=0);
       }
       virtual const char* as_string() const {
-        return "(h>=0 and k>0) or (h=0 and k=0 and l>=0)";
+        return "(h>=0 and k>0) or (h==0 and k==0 and l>=0)";
       }
       virtual af::int3 const& cut_parameters() const {
         static const af::int3 result(0, 0, -1);
@@ -156,37 +156,17 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
       }
     };
 
-    struct asu_6_m : reference_asu
+    struct asu_6_m : asu_4_m
     {
       virtual matrix_group::code laue_group() const {
         return matrix_group::code_6_m;
       }
-      virtual bool is_inside(miller::index<> const& h) const {
-        return (h[2]>=0 && ((h[0]>=0 && h[1]>0) || (h[0]==0 && h[1]==0)));
-      }
-      virtual const char* as_string() const {
-        return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
-      }
-      virtual af::int3 const& cut_parameters() const {
-        static const af::int3 result(0, 0, 0);
-        return result;
-      }
     };
 
-    struct asu_6_mmm : reference_asu
+    struct asu_6_mmm : asu_4_mmm
     {
       virtual matrix_group::code laue_group() const {
         return matrix_group::code_6_mmm;
-      }
-      virtual bool is_inside(miller::index<> const& h) const {
-        return (h[0]>=h[1] && h[1]>=0 && h[2]>=0);
-      }
-      virtual const char* as_string() const {
-        return "h>=k and k>=0 and l>=0";
-      }
-      virtual af::int3 const& cut_parameters() const {
-        static const af::int3 result(0, 0, 0);
-        return result;
       }
     };
 
@@ -200,7 +180,7 @@ namespace cctbx { namespace sgtbx { namespace reciprocal_space {
                             || (h[2]==h[0] && h[1]==h[0])));
       }
       virtual const char* as_string() const {
-        return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
+        return "h>=0 and ((l>=h and k>h) or (l==h and k==h))";
       }
       virtual af::int3 const& cut_parameters() const {
         static const af::int3 result(0, 0, 0);
