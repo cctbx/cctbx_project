@@ -29,7 +29,9 @@ class word:
     if (self.quote_token is None):
       return self.value
     return self.quote_token \
-         + self.value.replace(self.quote_token, "\\"+self.quote_token) \
+         + self.value \
+            .replace("\\", "\\\\") \
+            .replace(self.quote_token, "\\"+self.quote_token) \
          + self.quote_token
 
   def assert_expected(self, value):
@@ -76,7 +78,9 @@ def split_into_words(
             char_iter.next()
             break
         if (c == "\\"):
-          if (char_iter.look_ahead() == quote_char):
+          if (char_iter.look_ahead() == "\\"):
+            char_iter.next()
+          elif (char_iter.look_ahead() == quote_char):
             c = char_iter.next()
           elif (char_iter.look_ahead() == "\n"):
             char_iter.next()
