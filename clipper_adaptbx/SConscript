@@ -1,7 +1,8 @@
+import libtbx.load_env
 Import("env_base", "env_etc")
 
-env_etc.clipper_dist = env_etc.libtbx_env.dist_path("clipper")
-env_etc.clipper_include = env_etc.norm_join(env_etc.clipper_dist)
+env_etc.clipper_dist = libtbx.env.dist_path("clipper")
+env_etc.clipper_include = env_etc.clipper_dist
 
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
@@ -61,13 +62,13 @@ env_exe.Prepend(LIBS=["clipper"])
 exe = env_exe.Program(target='#exe/clipper.symtest',
   source = ["../clipper/examples/symtest.cpp",
            ])
-env_etc.libtbx_env.create_dispatcher_in_bin(
+libtbx.env.write_dispatcher_in_bin(
   source_file=exe[0].get_abspath(),
   target_file="clipper.symtest")
 exe = env_exe.Program(target='#exe/clipper.sanity_check',
   source = ["sanity_check.cpp",
            ])
-env_etc.libtbx_env.create_dispatcher_in_bin(
+libtbx.env.write_dispatcher_in_bin(
   source_file=exe[0].get_abspath(),
   target_file="clipper.sanity_check")
 
