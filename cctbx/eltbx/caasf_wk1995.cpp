@@ -21,32 +21,7 @@ namespace eltbx {
           ftp://wrzx02.rz.uni-wuerzburg.de/pub/local/Crystallography/sfac.dat
 
       File picked up Jul  4, 1995.
-      File verified  Jun 11, 1996.
-
-      Head of "index.txt" in same directory:
-
-        New Analytical Scattering Factor Functions for Free Atoms and Ions
-                            D. Waasmaier & A. Kirfel
-                         Acta Cryst. A, 1995, in press
-                                  April, 1995
-
-      Header of "sfac.dat":
-
-        - Fitparameters of all atoms/ions (with the excepetion of O1-)
-          from publication "New Analytical Scattering Factor Functions
-          for Free Atoms and Ions", D. Waasmaier & A. Kirfel, Acta Cryst.
-          A 1995, in press)
-
-        - Fit for O1- based on the tabulated values of Table 2 (D.REZ,
-          P.REZ & I.GRANT, Acta Cryst. (1994), A50, 481-497).
-
-        - Fits for all other atoms/ions based on the tabulated values
-          of Table 6.1.1.1 (atoms) and Table 6.1.1.3 (ions)
-          (International Tables for Crystallography, Vol. C, 1992).
-
-        WAASMAIER D; KIRFEL A.
-        NEW ANALYTICAL SCATTERING-FACTOR FUNCTIONS FOR FREE ATOMS AND IONS.
-        ACTA CRYSTALLOGRAPHICA A51, 1995 MAY 1, 416-431.
+      File verified  Sep 12, 2001.
      */
 
     static const eltbx::detail::CAASF_Raw<5> WK1995_CAASF_RawTable[] =

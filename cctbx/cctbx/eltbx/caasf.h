@@ -117,9 +117,32 @@ namespace eltbx {
   };
 
   //! Coefficients for the Analytical Approximation to the Scattering Factor.
-  /*! Coefficients from the International Tables Volume B (1992).
+  /*! Coefficients from the International Tables for Crystallography,
+      Volume C, Mathematical, Physical and Chemical Tables,
+      Edited by A.J.C. Wilson, Kluwer Academic Publishers,
+      Dordrecht/Boston/London, 1992.
       <p>
-      See also: class CAASF
+      Table 6.1.1.4 (pp. 500-502):
+      Coefficients for analytical approximation to the scattering factors
+      of Tables 6.1.1.1 and 6.1.1.3.
+      <p>
+      Table 6.1.1.4 is a reprint of Table 2.2B, pp. 99-101,
+      International Tables for X-ray Crystallography, Volume IV,
+      The Kynoch Press: Birmingham, England, 1974.
+      There is just one difference for <tt>Tl3+</tt>:<pre>
+                IT Vol IV 1974: a2 = 18.3841
+                IT Vol C  1992: a2 = 18.3481</pre>
+      <p>
+      The value from IT Vol IV is presumed to be the correct one
+      and used here.
+      <p>
+      If possible, the class CAASF_WK1995 should be used
+      instead of this class.
+      The coefficients of Waasmaier & Kirfel give more precise
+      approximations than the coefficients of Volume C
+      and some errors are corrected.
+      <p>
+      See also: class CAASF, class CAASF_WK1995
    */
   class CAASF_IT1992: public CAASF<4> {
     public:
@@ -140,7 +163,29 @@ namespace eltbx {
   //! Coefficients for the Analytical Approximation to the Scattering Factor.
   /*! Coefficients from Waasmaier & Kirfel (1995), Acta Cryst. A51, 416-431.
       <p>
-      See also: class CAASF
+      The original data can be found at:
+      <pre>
+      ftp://wrzx02.rz.uni-wuerzburg.de/pub/local/Crystallography/sfac.dat
+      </pre>
+      File picked up Jul  4, 1995.
+      File verified  Sep 12, 2001.
+      <p>
+      Header of "sfac.dat":
+      <pre>
+        - Fitparameters of all atoms/ions (with the excepetion of O1-)
+          from publication "New Analytical Scattering Factor Functions
+          for Free Atoms and Ions", D. Waasmaier & A. Kirfel, Acta Cryst.
+          A 1995, in press)
+
+        - Fit for O1- based on the tabulated values of Table 2 (D.REZ,
+          P.REZ & I.GRANT, Acta Cryst. (1994), A50, 481-497).
+
+        - Fits for all other atoms/ions based on the tabulated values
+          of Table 6.1.1.1 (atoms) and Table 6.1.1.3 (ions)
+          (International Tables for Crystallography, Vol. C, 1992).
+      </pre>
+      <p>
+      See also: class CAASF, class CAASF_IT1992
    */
   class CAASF_WK1995: public CAASF<5> {
     public:
