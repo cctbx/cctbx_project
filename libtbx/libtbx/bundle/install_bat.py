@@ -12,7 +12,8 @@ type %(bundle)s_sources\TAG
 :find_python
 echo.
 echo Trying to find Python:
-set python=%(bundle)s_build\python\python
+cd %(bundle)s_build
+set python=python\python
 call %%python%% -V
 if %%errorlevel%% == 0 goto have_python
 set python=python
@@ -29,7 +30,6 @@ goto end
 :have_python
 echo.
 echo Configuring %(bundle)s build directory
-cd %(bundle)s_build
 call %%python%% ..\%(bundle)s_sources\libtbx\configure.py %(top_modules)s
 set el=%%errorlevel%%
 cd ..
