@@ -42,7 +42,9 @@ def exercise_basic():
   assert mtz_object.n_active_crystals() == 0
   file_name = os.path.expandvars(
     "$LIBTBX_DIST_ROOT/regression/reflection_files/dano.mtz")
-  if (os.path.isfile(file_name)):
+  if (not os.path.isfile(file_name)):
+    print "Skipping dano.mtz test: input file not available"
+  else:
     mtz_object = mtz.object(file_name=file_name)
     assert mtz_object.title() == "......"
     assert mtz_object.history().size() == 17

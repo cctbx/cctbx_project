@@ -168,7 +168,9 @@ def run():
   exercise_map_gridding()
   recycle()
   test_file_name = get_test_file_name()
-  if (os.path.isfile(test_file_name)):
+  if (not os.path.isfile(test_file_name)):
+    print "Skipping original CNS map test: input file not available"
+  else:
     map1 = read_xplor(test_file_name)
     write_xplor(map1, "tmp.map")
     map2 = read_xplor("tmp.map")

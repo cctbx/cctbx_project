@@ -145,7 +145,9 @@ def exercise_altLoc_grouping():
 def exercise_interpretation(verbose=0, quick=True):
   pdb_dir = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
     "regression", "pdb")
-  if (not os.path.isdir(pdb_dir)): return
+  if (not os.path.isdir(pdb_dir)):
+    print "Skipping exercise_interpretation(): input file not available"
+    return
   for file_name in os.listdir(pdb_dir):
     if (    not file_name.endswith(".pdb")
         and not file_name.endswith(".ent")): continue
