@@ -43,7 +43,7 @@ namespace {
       check_true(__LINE__, g2.nd() == 3);
       check_true(__LINE__, g2.size_1d() == 30);
       verify(__LINE__, g2.origin(), af::tiny<long, 3>(0,0,0));
-      verify(__LINE__, g2.grid(), grid);
+      verify(__LINE__, g2.all(), grid);
       verify(__LINE__, g2.last(), grid);
       verify(__LINE__, g2.last(true), grid);
       verify(__LINE__, g2.last(false), af::tiny<long, 3>(1,2,4));
@@ -51,7 +51,7 @@ namespace {
       check_true(__LINE__, g3.nd() == 3);
       check_true(__LINE__, g3.size_1d() == 60);
       verify(__LINE__, g3.origin(), origin);
-      verify(__LINE__, g3.grid(), af::tiny<long, 3>(3,4,5));
+      verify(__LINE__, g3.all(), af::tiny<long, 3>(3,4,5));
       verify(__LINE__, g3.last(false), last);
       verify(__LINE__, g3.last(true), af::tiny<long, 3>(4,6,8));
       verify(__LINE__, g3.last(), af::tiny<long, 3>(4,6,8));
@@ -59,7 +59,7 @@ namespace {
       check_true(__LINE__, g4.nd() == 3);
       check_true(__LINE__, g4.size_1d() == 24);
       verify(__LINE__, g4.origin(), origin);
-      verify(__LINE__, g4.grid(), af::tiny<long, 3>(2,3,4));
+      verify(__LINE__, g4.all(), af::tiny<long, 3>(2,3,4));
       verify(__LINE__, g4.last(false), af::tiny<long, 3>(2,4,6));
       verify(__LINE__, g4.last(true), last);
       verify(__LINE__, g4.last(), last);

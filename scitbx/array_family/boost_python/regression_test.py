@@ -79,21 +79,21 @@ def exercise_ref_flex_grid_flex_conversions(verbose=0):
   if (verbose): print 'Checking flex->ref_flex_grid conversions'
   a = flex.double(flex.grid((2, 3)))
   assert a.accessor() == rt.use_const_ref_flex_grid(a)
-  assert a.grid() == rt.use_const_ref_flex_grid(a).grid()
+  assert a.all() == rt.use_const_ref_flex_grid(a).all()
   if (verbose): print 'OK'
 
 def exercise_c_grid_conversions(verbose=0):
   if (verbose): print 'Checking flex->ref_c_grid conversions'
   a = flex.double(flex.grid((2, 3)))
   assert a.accessor() == rt.use_const_ref_c_grid_2(a)
-  assert a.grid() == rt.use_const_ref_c_grid_2(a).grid()
-  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_2(a).grid()
-  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_2(a).layout()
+  assert a.all() == rt.use_const_ref_c_grid_2(a).all()
+  assert a.accessor().all() == rt.use_const_ref_c_grid_padded_2(a).all()
+  assert a.accessor().all() == rt.use_const_ref_c_grid_padded_2(a).focus()
   a = flex.double(flex.grid((2, 3, 4)))
   assert a.accessor() == rt.use_const_ref_c_grid_3(a)
-  assert a.grid() == rt.use_const_ref_c_grid_3(a).grid()
-  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_3(a).grid()
-  assert a.accessor().grid() == rt.use_const_ref_c_grid_padded_3(a).layout()
+  assert a.all() == rt.use_const_ref_c_grid_3(a).all()
+  assert a.accessor().all() == rt.use_const_ref_c_grid_padded_3(a).all()
+  assert a.accessor().all() == rt.use_const_ref_c_grid_padded_3(a).focus()
   if (verbose): print 'OK'
 
 def exercise_to_tuple(verbose=0):

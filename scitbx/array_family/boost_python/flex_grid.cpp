@@ -27,16 +27,16 @@ namespace {
     typedef boost::python::class_<w_t> c_w_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      set_layout_tuple_overloads, set_layout, 1, 2)
+      set_focus_tuple_overloads, set_focus, 1, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      set_layout_convenience_overloads, set_layout, 1, 6)
+      set_focus_convenience_overloads, set_focus, 1, 6)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       last_overloads, last, 0, 1)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      layout_overloads, layout, 0, 1)
+      focus_overloads, focus, 0, 1)
 
     static boost::python::tuple
     getinitargs(w_t const& fg)
@@ -51,13 +51,13 @@ namespace {
     static df_i_t
     getstate(w_t const& fg)
     {
-      return fg.layout();
+      return fg.focus();
     }
 
     static void
     setstate(w_t& fg, df_i_t const& state)
     {
-      fg.set_layout(state);
+      fg.set_focus(state);
     }
 
     static void
@@ -70,22 +70,22 @@ namespace {
         .def(init<ivt const&, optional<ivt const&, ivt const&,
                   ivt const&, ivt const&, ivt const&> >())
         .def(init<df_i_t const&, df_i_t const&, optional<bool> >())
-        .def("set_layout",
+        .def("set_focus",
           (w_t(w_t::*)(df_i_t const&, bool)) 0,
-            set_layout_tuple_overloads())
-        .def("set_layout",
+            set_focus_tuple_overloads())
+        .def("set_focus",
           (w_t(w_t::*)(ivt const&, ivt const&, ivt const&,
                        ivt const&, ivt const&, ivt const&)) 0,
-            set_layout_convenience_overloads())
+            set_focus_convenience_overloads())
         .def("nd", &w_t::nd)
         .def("size_1d", &w_t::size_1d)
         .def("has_origin", &w_t::has_origin)
         .def("origin", &w_t::origin)
-        .def("grid", &w_t::grid, copy_const_reference())
+        .def("all", &w_t::all, copy_const_reference())
         .def("last", (df_i_t(w_t::*)(bool)) 0, last_overloads())
-        .def("has_layout", &w_t::has_layout)
-        .def("layout", (df_i_t(w_t::*)(bool)) 0, layout_overloads())
-        .def("layout_size_1d", &w_t::layout_size_1d)
+        .def("has_focus", &w_t::has_focus)
+        .def("focus", (df_i_t(w_t::*)(bool)) 0, focus_overloads())
+        .def("focus_size_1d", &w_t::focus_size_1d)
         .def("is_0_based", &w_t::is_0_based)
         .def("is_padded", &w_t::is_padded)
         .def("shift_origin", &w_t::shift_origin)
