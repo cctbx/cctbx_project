@@ -55,6 +55,21 @@ namespace {
     return new flex<vec3<double> >::type(result, result.size());
   }
 
+  flex<vec3<double> >::type*
+  from_double(
+    af::const_ref<double> const& x)
+  {
+    SCITBX_ASSERT(x.size() % 3 == 0);
+    std::size_t result_size = x.size() / 3;
+    af::shared<vec3<double> > result((af::reserve(result_size)));
+    const double* d = x.begin();
+    for(std::size_t i=0;i<result_size;i++) {
+      result.push_back(vec3<double>(d));
+      d += 3;
+    }
+    return new flex<vec3<double> >::type(result, result.size());
+  }
+
   flex_double
   as_double(flex<vec3<double> >::type const& a)
   {
@@ -68,23 +83,6 @@ namespace {
       }
     }
     return result;
-  }
-
-  flex<vec3<double> >::type
-  from_double(flex<vec3<double> >::type& vec, flex_double const& dbl)
-  {
-    SCITBX_ASSERT(vec.size() == 0);
-    SCITBX_ASSERT(dbl.size() % 3 == 0);
-    std::size_t vec_size = dbl.size() / 3;
-    shared<vec3<double> > v = vec.as_base_array();
-    v.reserve(vec_size);
-    const double* d = dbl.begin();
-    for(std::size_t i=0;i<vec_size;i++) {
-      v.push_back(vec3<double>(d));
-      d += 3;
-    }
-    vec.resize(flex_grid<>(vec_size));
-    return vec;
   }
 
   vec3<double>
@@ -156,11 +154,12 @@ namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<vec3<double>,
         3*pickle_size_per_element<double>::value>())
       .def("__init__", boost::python::make_constructor(join))
+      .def("__init__", boost::python::make_constructor(from_double))
       .def("as_double", as_double)
-      .def("from_double", from_double)
       .def("min", vec3_min)
       .def("max", vec3_max)
       .def("__add__", flex_wrapper<vec3<double> >::add_a_s)
+      .def("__add__", flex_wrapper<vec3<double> >::add_a_a)
       .def("__iadd__", flex_wrapper<vec3<double> >::iadd_a_s)
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)

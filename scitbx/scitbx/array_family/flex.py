@@ -77,5 +77,5 @@ def exercise_triple(flex_triple, flex_order=None, as_double=00000):
     assert flex_order(a, b) == 0
   if (as_double):
     assert approx_equal(tuple(a.as_double()), (1,2,3,2,3,4,3,4,5))
-    b = flex_triple().from_double(a.as_double())
+    b = flex_triple(a.as_double())
     assert tuple(a) == tuple(b)
