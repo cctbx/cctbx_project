@@ -135,6 +135,9 @@ namespace sgtbx {
 
   class StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        throw cctbx_internal_error();
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         throw cctbx_internal_error();
       }
