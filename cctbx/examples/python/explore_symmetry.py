@@ -27,7 +27,7 @@ class Empty: pass
 def GetFormData():
   form = cgi.FieldStorage()
   inp = Empty()
-  for key in (("sgsymbol", "P1"),
+  for key in (("sgsymbol", ""),
               ("convention", "")):
     if (form.has_key(key[0])):
       inp.__dict__[key[0]] = string.strip(form[key[0]].value)
