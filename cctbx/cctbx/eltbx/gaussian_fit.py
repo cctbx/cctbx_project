@@ -62,34 +62,56 @@ class minimize:
       self.first_target_value = self.f
     return self.x, self.f, self.g
 
-def make_start_approximation(reference_gaussian, n_terms,
-                             min_partitioning_factor=0.01,
-                             d_max_random_points=10.,
-                             d_min_random_points=1/12.):
+class d_interval:
+
+  def __init__(self, d_max, d_min):
+    assert 0 < d_min < d_max
+    self.d_max = d_max
+    self.d_min = d_min
+    self.d_star_min = 1./d_max
+    self.d_star_max = 1./d_min
+    self.d_star_range = self.d_star_max - self.d_star_min
+
+  def d_star(self, f_range):
+    return self.d_star_min + f_range * self.d_star_range
+
+  def d_star_sq(self, f_range):
+    return self.d_star(f_range)**2
+
+  def stol_sq(self, f_range):
+    return self.d_star_sq(f_range) / 4
+
+  def d(self, f_range):
+    return 1./self.d_star(f_range)
+
+def make_start_approximation(reference_gaussian, n_terms, start_interval,
+                             f_trial_point=None,
+                             min_partitioning_factor=0.01):
   assert n_terms <= reference_gaussian.n_ab()
+  assert f_trial_point is None or n_terms == 1
   assert 0 < min_partitioning_factor < 1
-  assert d_max_random_points > 0
-  assert 0 < d_min_random_points < d_max_random_points
   partitioning = flex.double()
-  for i_term in xrange(n_terms):
-    partitioning.append(min_partitioning_factor + random.random())
-  min_partitioning = 1. / n_terms * min_partitioning_factor
-  while 1:
-    partitioning /= flex.sum(partitioning)
-    i = flex.min_index(partitioning)
-    if (partitioning[i] >= min_partitioning):
-      break
-    partitioning[i] = min_partitioning
-  assert abs(flex.sum(partitioning)-1) < 1.e-6
+  if (n_terms == 1):
+    partitioning.append(1)
+  else:
+    for i_term in xrange(n_terms):
+      partitioning.append(min_partitioning_factor + random.random())
+    min_partitioning = 1. / n_terms * min_partitioning_factor
+    while 1:
+      partitioning /= flex.sum(partitioning)
+      i = flex.min_index(partitioning)
+      if (partitioning[i] >= min_partitioning):
+        break
+      partitioning[i] = min_partitioning
+    assert abs(flex.sum(partitioning)-1) < 1.e-6
   f0_reference = reference_gaussian.at_d_star_sq(0)
   a = partitioning * f0_reference
   b = flex.double()
-  d_star_min = 1 / d_max_random_points
-  d_star_max = 1 / d_min_random_points
-  d_star_range = d_star_max - d_star_min
+  f_range = f_trial_point
   for i_term in xrange(n_terms):
-    d_star_sq = d_star_min + d_star_range * random.random()
-    stol_sq = d_star_sq / 4.
+    if (f_trial_point is None):
+      f_range = random.random()
+    stol_sq = start_interval.stol_sq(f_range)
     f0_reference = reference_gaussian.at_stol_sq(stol_sq)
     f0_part = partitioning[i_term] * f0_reference
     b.append(-math.log(f0_part / a[i_term]) / stol_sq)
@@ -98,20 +120,21 @@ def make_start_approximation(reference_gaussian, n_terms,
     reference_gaussian,
     xray_scattering.gaussian(iter(a), iter(b)))
   assert abs(result.at_d_star_sq(0)-reference_gaussian.at_d_star_sq(0)) < 1.e-4
+  if (f_trial_point is not None):
+    stol_sq = start_interval.stol_sq(f_trial_point)
+    assert abs(  result.at_stol_sq(stol_sq)
+               - reference_gaussian.at_stol_sq(stol_sq)) < 1.e-4
   return result
 
 class find_d_min:
 
-  def __init__(self, reference_gaussian, n_terms, max_target_value,
+  def __init__(self, diff_gaussian, max_target_value,
                      n_points,
                      start_interval,
                      dead_end_d_min,
                      min_interval):
     adopt_init_args(self, locals())
-    diff_gaussian = make_start_approximation(
-      reference_gaussian=reference_gaussian,
-      n_terms=n_terms)
-    interval = [start_interval[0], start_interval[1]-min_interval]
+    interval = [start_interval.d_max, start_interval.d_min-min_interval]
     good_min = None
     while 1:
       self.d_min = (interval[0] + interval[1]) / 2.
@@ -125,7 +148,7 @@ class find_d_min:
         interval[0] = self.d_min
         good_min = self.min
       else:
-        if (self.d_min > dead_end_d_min):
+        if (dead_end_d_min is not None and self.d_min > dead_end_d_min):
           self.d_min = None
           self.min = None
           break
@@ -138,6 +161,41 @@ class find_d_min:
             self.min = None
           break
         interval[1] = self.d_min
+
+class find_one_term_d_min:
+
+  def __init__(self, reference_gaussian,
+                     start_interval,
+                     n_trial_points,
+                     n_points,
+                     max_target_value,
+                     min_interval):
+    best_fit = None
+    for i_trial_point in xrange(n_trial_points+1):
+      f_range = i_trial_point / float(n_trial_points)
+      d_min = start_interval.d(f_range)
+      d_star_sq = d_star_sq_points(d_min=d_min, n_points=n_points)
+      diff_gaussian = make_start_approximation(
+        reference_gaussian=reference_gaussian,
+        n_terms=1,
+        start_interval=start_interval,
+        f_trial_point=f_range/2)
+      fit = find_d_min(
+        diff_gaussian=diff_gaussian,
+        max_target_value=max_target_value,
+        start_interval=start_interval,
+        n_points=n_points,
+          dead_end_d_min=None,
+          min_interval=min_interval)
+      if (fit.d_min is not None):
+        if (best_fit is None or best_fit.d_min > fit.d_min):
+          best_fit = fit
+    if (best_fit is None):
+      self.d_min = None
+      self.min = None
+    else:
+      self.d_min = fit.d_min
+      self.min = fit.min
 
 def show_fit_summary(source, label, gaussian, d_min, q, q_other=None):
   n_terms = str(gaussian.n_ab())
@@ -190,7 +248,8 @@ def write_plots(plots_dir, label, reference_gaussian, gaussian,
 class fit_parameters:
 
   def __init__(self, n_points=50,
-                     max_target_value=1.e-4,
+                     max_relative_target_value=1.e-4,
+                     find_d_min_min_interval=0.01,
                      n_similar_fits=10,
                      max_d_min_spread_similar_fits=0.02,
                      max_calls_find_d_min_per_term=1000):
@@ -212,6 +271,7 @@ def run(args=[], params=fit_parameters(), verbose=0):
     plots_dir = None
   results = {}
   results["fit_parameters"] = params
+  start_interval = d_interval(d_max=15, d_min=1/12.)
   i_chunk = 0
   for g5c in xray_scattering.wk1995_iterator():
     flag = i_chunk % chunk_n == chunk_i
@@ -219,27 +279,43 @@ def run(args=[], params=fit_parameters(), verbose=0):
     if (not flag):
       continue
     if (len(args) > 0 and g5c.label() not in args): continue
-    reference_gaussian=g5c.fetch()
+    reference_gaussian = g5c.fetch()
+    f0 = reference_gaussian.at_d_star_sq(0)
+    one_term_fit = find_one_term_d_min(
+      reference_gaussian=reference_gaussian,
+      start_interval=start_interval,
+      n_trial_points=3,
+      n_points=params.n_points,
+      max_target_value=params.max_relative_target_value*f0,
+      min_interval=params.find_d_min_min_interval)
+    assert one_term_fit.d_min is not None
+    show_fit_summary(
+      "Best fit", g5c.label(),
+      one_term_fit.min.final_diff_gaussian,
+      one_term_fit.d_min,
+      one_term_fit.min.final_target_value)
+    sys.stdout.flush()
     results[g5c.label()] = []
     previous_d_min = None
-    for n_terms in [5,4,3,2,1]:
+    for n_terms in [2,3,4,5][:1]:
       fits = []
       fits_d_min = flex.double()
       fits_min_d_min = 15
-      start_interval = [15, 1/12.]
       n_calls_find_d_min = 0
       while 1:
-        n_calls_find_d_min += 1
-        fit = find_d_min(
+        diff_gaussian = make_start_approximation(
           reference_gaussian=reference_gaussian,
           n_terms=n_terms,
-          max_target_value=params.max_target_value,
+          start_interval=start_interval)
+        n_calls_find_d_min += 1
+        fit = find_d_min(
+          diff_gaussian=diff_gaussian,
+          max_target_value=params.max_relative_target_value*f0,
           start_interval=start_interval,
           n_points=params.n_points,
           dead_end_d_min=fits_min_d_min+params.max_d_min_spread_similar_fits,
-          min_interval=0.01)
-        if (    fit.min is not None
-            and min(fit.min.final_diff_gaussian.b()) > fit.min.b_min):
+          min_interval=params.find_d_min_min_interval)
+        if (fit.d_min is not None):
           fits.append(fit)
           fits_d_min.append(fit.d_min)
           fits_min_d_min = min(fits_min_d_min, fit.d_min)
