@@ -156,6 +156,10 @@ int main(int argc, char* argv[])
     check_true(__LINE__, r3.inverse() == r3i);
   }
   {
+    check_true(__LINE__, mat3<int>(7,-2,9,-4,5,-6,1,-8,3).max_abs() == 9);
+    check_true(__LINE__, mat3<int>(-7,2,-9,4,-5,6,-1,8,-3).max_abs() == 9);
+  }
+  {
     mat3<double> t;
     t.set_row(0, vec3<int>(1,2,3));
     t.set_row(1, vec3<int>(2,5,6));
