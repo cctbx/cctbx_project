@@ -20,7 +20,7 @@ class ADSCImage:
         matches = pattern.findall(header)
         parameters[item] = int(matches[-1])
       for item in ['PIXEL_SIZE','OSC_START','DISTANCE','WAVELENGTH',
-                   'BEAM_CENTER_X','BEAM_CENTER_Y']:
+                   'BEAM_CENTER_X','BEAM_CENTER_Y','OSC_RANGE']:
         pattern = re.compile(item+'='+r'(.*);')
         matches = pattern.findall(header)
         parameters[item] = float(matches[-1])
@@ -53,6 +53,7 @@ class ADSCImage:
     elif attr=='wavelength' : return self.parameters['WAVELENGTH']
     elif attr=='beamx' : return self.parameters['BEAM_CENTER_X']
     elif attr=='beamy' : return self.parameters['BEAM_CENTER_Y']
+    elif attr=='deltaphi' : return self.parameters['OSC_RANGE']
 
 
 if __name__=='__main__':
