@@ -8,6 +8,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from scitbx import matrix
+from stdlib import math
 import types
 import sys
 
@@ -246,6 +247,11 @@ class structure(crystal.special_position_settings):
       scatterers=shifted_scatterers,
       scattering_dict=self._scattering_dict)
 
+  def random_shift_sites(self, max_shift_cart=0.2):
+    shifts = flex.vec3_double(
+      (flex.random_double(self.scatterers().size()*3)*2-1) * max_shift_cart)
+    return self.apply_shift(self.unit_cell().fractionalization_matrix()*shifts)
+
   def sort(self, by_value="occupancy", reverse=00000):
     assert by_value in ("occupancy",)
     assert reverse in (00000, 0001)
@@ -315,3 +321,10 @@ class structure(crystal.special_position_settings):
       asu_mappings=result,
       scatterers=self.scatterers())
     return result
+
+  def difference_vectors_cart(self, other):
+    return other.sites_cart() - self.sites_cart()
+
+  def rms(self, other):
+    d = self.difference_vectors_cart(other)
+    return math.sqrt(flex.mean(d.dot(d)))
