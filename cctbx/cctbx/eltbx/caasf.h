@@ -42,6 +42,8 @@ namespace eltbx {
   template <std::size_t N>
   class CAASF {
     public:
+      //! XXX
+      CAASF() : m_Entry(0), m_Table(0) {}
       //! Constructor. For internal use only.
       CAASF(const detail::CAASF_Raw<N>* TableRaw,
             const char* Table,
@@ -146,6 +148,8 @@ namespace eltbx {
    */
   class CAASF_IT1992: public CAASF<4> {
     public:
+      //! XXX
+      CAASF_IT1992() {}
       //! Lookup coefficients for the given scattering factor label.
       /*! If Exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not
@@ -189,6 +193,8 @@ namespace eltbx {
    */
   class CAASF_WK1995: public CAASF<5> {
     public:
+      //! XXX
+      CAASF_WK1995() {}
       //! Lookup coefficients for the given scattering factor label.
       /*! If Exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not

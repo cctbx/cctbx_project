@@ -8,7 +8,7 @@
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <boost/python/class_builder.hpp>
+#include <boost/python/cross_module.hpp>
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/caasf.h>
 
@@ -28,9 +28,11 @@ BOOST_PYTHON_MODULE_INIT(caasf_it1992)
 
     class_builder<CAASF<4> > py_CAASF_4(this_module, "CAASF_4");
     class_builder<CAASF_IT1992> py_CAASF_IT1992(this_module, "CAASF_IT1992");
+    python::export_converters(py_CAASF_IT1992);
 
     py_CAASF_IT1992.declare_base(py_CAASF_4, python::without_downcast);
 
+    py_CAASF_IT1992.def(constructor<>());
     py_CAASF_IT1992.def(constructor<const std::string&>());
     py_CAASF_IT1992.def(constructor<const std::string&, bool>());
     py_CAASF_IT1992.def(&CAASF_IT1992::Table, "Table");
