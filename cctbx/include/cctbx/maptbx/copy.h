@@ -56,24 +56,24 @@ namespace cctbx { namespace maptbx {
     }
   }
 
-  template <typename OutFloatType, typename InpFloatType>
-  af::versa<OutFloatType, af::flex_grid<> >
+  template <typename FloatType>
+  af::versa<FloatType, af::flex_grid<> >
   copy(
-    af::const_ref<InpFloatType, c_grid_padded_p1<3> > const& map_unit_cell,
+    af::const_ref<FloatType, c_grid_padded_p1<3> > const& map_unit_cell,
     af::int3 const& first,
     af::int3 const& last)
   {
     CCTBX_ASSERT(first.all_le(last));
     af::flex_grid_default_index_type first_(af::adapt(first));
     af::flex_grid_default_index_type last_(af::adapt(last));
-    af::versa<OutFloatType, af::flex_grid<> > result(
+    af::versa<FloatType, af::flex_grid<> > result(
       af::flex_grid<>(first_, last_, false));
-    OutFloatType* out_ptr = result.begin();
+    FloatType* out_ptr = result.begin();
     typename c_grid_padded_p1<3>::index_type out_pt;
     for (out_pt[0] = first[0]; out_pt[0] <= last[0]; out_pt[0]++) {
     for (out_pt[1] = first[1]; out_pt[1] <= last[1]; out_pt[1]++) {
     for (out_pt[2] = first[2]; out_pt[2] <= last[2]; out_pt[2]++) {
-      *out_ptr++ = static_cast<OutFloatType>(map_unit_cell(out_pt));
+      *out_ptr++ = static_cast<FloatType>(map_unit_cell(out_pt));
     }}}
     return result;
   }
