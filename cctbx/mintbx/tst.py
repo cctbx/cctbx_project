@@ -83,10 +83,10 @@ class k_b_scaling_minimizer:
     if (self.anisotropic):
       self.g = self.pack(tg.gradient_k(), tg.gradients_b_cif())
     else:
-      raise AssertionError, "Not implemented."
+      self.g = self.pack(tg.gradient_k(), tg.gradient_b_iso())
     return self.x, self.f, self.g
 
-def exercise(SgInfo, d_min=2., verbose=0):
+def exercise_k_b_scaling(SgInfo, d_min=2., verbose=0):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   friedel_flag = 0
   xtal = debug_utils.random_structure(
@@ -100,28 +100,44 @@ def exercise(SgInfo, d_min=2., verbose=0):
   multiplicity_set = xutils.reciprocal_space_array(miller_set,
     xtal.SgOps.multiplicity(miller_set.H, friedel_flag))
   f_ref = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
-  f_sca = xutils.reciprocal_space_array(miller_set, shared.double())
-  k_sim = 1000
-  b_cif = [5,10,15,20,25,30]
-  u_star = adptbx.Ucif_as_Ustar(xtal.UnitCell, adptbx.B_as_U(b_cif))
-  for i,h in miller_set.H.items():
-    f_sca.F.push_back(
-      k_sim * f_ref.F[i] * adptbx.DebyeWallerFactorUstar(h, u_star))
-    if (0 or verbose): print h, f_ref.F[i], f_sca.F[i]
-  k_min = 1
-  b_min = [0,0,0,0,0,0]
-  for p in xrange(10):
-    for refine_k, refine_b in ((1,0), (0,1), (1,0), (0,1), (1,0), (1,1)):
-      minimized = k_b_scaling_minimizer(
-        xtal.UnitCell, miller_set.H, multiplicity_set.F, f_ref.F, f_sca.F,
-        k_min, b_min,
-        refine_k, refine_b)
-      k_min = minimized.k_min
-      b_min = minimized.b_min
-  print "k_min:", minimized.k_min
-  print "b_min:", minimized.b_min
-  print "target:", minimized.f,
-  print "after %d iteration(s)" % (minimized.minimizer.iter(),)
+  for anisotropic in (0,1):
+    f_sca = xutils.reciprocal_space_array(miller_set, shared.double())
+    k_sim = 1000
+    b_iso = 13
+    b_cif = [5,10,15,20,25,30]
+    if (anisotropic):
+      u_star = adptbx.Ucif_as_Ustar(xtal.UnitCell, adptbx.B_as_U(b_cif))
+    for i,h in miller_set.H.items():
+      if (anisotropic):
+        dw = adptbx.DebyeWallerFactorUstar(h, u_star)
+      else:
+        dw = adptbx.DebyeWallerFactorBiso(xtal.UnitCell, h, b_iso)
+      f_sca.F.push_back(k_sim * f_ref.F[i] * dw)
+      if (0 or verbose): print h, f_ref.F[i], f_sca.F[i]
+    k_min = 1
+    if (anisotropic):
+      b_min = [0,0,0,0,0,0]
+    else:
+      b_min = 0
+    for p in xrange(10):
+      for refine_k, refine_b in ((1,0), (0,1), (1,0), (0,1), (1,0), (1,1)):
+        minimized = k_b_scaling_minimizer(
+          xtal.UnitCell, miller_set.H, multiplicity_set.F, f_ref.F, f_sca.F,
+          k_min, b_min,
+          refine_k, refine_b)
+        k_min = minimized.k_min
+        b_min = minimized.b_min
+    print "anisotropic:", anisotropic
+    print "k_min:", minimized.k_min
+    print "b_min:", minimized.b_min
+    print "target:", minimized.f,
+    print "after %d iteration(s)" % (minimized.minimizer.iter(),)
+    assert abs(minimized.k_min - k_sim) < 1.e-4
+    if (anisotropic):
+      for i in xrange(6):
+        assert abs(minimized.b_min[i] - b_cif[i]) < 1.e-4
+    else:
+      assert abs(minimized.b_min - b_iso) < 1.e-4
   print
 
 def run():
@@ -150,7 +166,7 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
-    exercise(SgInfo)
+    exercise_k_b_scaling(SgInfo)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):

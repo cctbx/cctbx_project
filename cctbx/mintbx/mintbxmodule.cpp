@@ -41,11 +41,22 @@ namespace {
     py_shared_Miller_Index(
       "cctbx_boost.arraytbx.shared", "Miller_Index");
 
-    typedef k_b_scaling_target_and_gradients kbstg;
+    typedef k_b_scaling_target_and_gradients<double> kbstg;
     class_builder<kbstg>
     py_kbstg(this_module, "k_b_scaling_target_and_gradients");
 
     py_kbstg.def(constructor<>());
+    py_kbstg.def(constructor<
+      uctbx::UnitCell const&,
+      af::shared<Miller::Index>,
+      af::shared<int>,
+      af::shared<double>,
+      af::shared<double>,
+      double,
+      double,
+      bool,
+      bool
+      >());
     py_kbstg.def(constructor<
       uctbx::UnitCell const&,
       af::shared<Miller::Index>,
@@ -59,6 +70,8 @@ namespace {
       >());
     py_kbstg.def(&kbstg::target, "target");
     py_kbstg.def(&kbstg::gradient_k, "gradient_k");
+    py_kbstg.def(&kbstg::anisotropic, "anisotropic");
+    py_kbstg.def(&kbstg::gradient_b_iso, "gradient_b_iso");
     py_kbstg.def(&kbstg::gradients_b_cif, "gradients_b_cif");
   }
 
