@@ -71,16 +71,16 @@ namespace cctbx {
     protected:
       std::string msg_;
     public:
-      static std::string itoa(int i) {
+      static std::string itoa(unsigned long i) {
         char buf[80];
-        sprintf(buf, "%d", i); // FUTURE: use C++ facility
+        sprintf(buf, "%lu", i); // FUTURE: use C++ facility
         return std::string(buf);
       }
   };
 
   class lbfgs_error_internal_error : public lbfgs_error {
     public:
-      lbfgs_error_internal_error(const char* file, long line) throw()
+      lbfgs_error_internal_error(const char* file, unsigned long line) throw()
         : lbfgs_error(
             "Internal Error: " + std::string(file) + "(" + itoa(line) + ")")
       {}
@@ -212,8 +212,8 @@ namespace cctbx {
           case the exponent should be increased).
        */
       explicit lbfgs(
-        int n,
-        int m = 5,
+        std::size_t n,
+        std::size_t m = 5,
         double eps = 1.e-5,
         double xtol = 1.e-16,
         int maxfev = 20,
@@ -227,10 +227,10 @@ namespace cctbx {
           ispt(n+2*m), iypt((n+2*m)+n*m),
           info(0), bound(0), nfev(0)
       {
-        if (n_ <= 0) {
+        if (n_ == 0) {
           throw lbfgs_error_improper_input_parameter("n is not positive.");
         }
-        if (m_ <= 0) {
+        if (m_ == 0) {
           throw lbfgs_error_improper_input_parameter("m is not positive.");
         }
         if (gtol_ <= 1.e-4) {
@@ -240,10 +240,10 @@ namespace cctbx {
       }
 
       //! Number of free parameters.
-      int n() const { return n_; }
+      std::size_t n() const { return n_; }
 
       //! Number of corrections kept.
-      int m() const { return m_; }
+      std::size_t m() const { return m_; }
 
       //! XXX
       double eps() const { return eps_; }
@@ -273,7 +273,7 @@ namespace cctbx {
       bool requests_diag() const { return iflag_ == 2; }
 
       //! Number of iterations so far.
-      int iter() const { return iter_; }
+      std::size_t iter() const { return iter_; }
 
       //! Number of function evaluations so far.
       /*! This method returns the total number of evaluations of the
@@ -282,7 +282,7 @@ namespace cctbx {
           search; the total is only increased after a successful line
           search.
         */
-      int nfun() const { return nfun_; }
+      std::size_t nfun() const { return nfun_; }
 
       //! Norm of gradient at current solution <code>x</code>.
       double gnorm() const { return gnorm_; }
@@ -350,7 +350,7 @@ namespace cctbx {
       }
 
     protected:
-      static void throw_diagonal_element_not_positive(int i) {
+      static void throw_diagonal_element_not_positive(std::size_t i) {
         throw lbfgs_error_improper_input_data(
           "The " + lbfgs_error::itoa(i) + ". diagonal element of the"
           " inverse Hessian approximation is not positive.");
@@ -368,7 +368,7 @@ namespace cctbx {
         if (iflag_ == 0) { // Initialize.
           nfun_ = 1;
           if (diagco) {
-            for (int i = 0; i < n_; i++) {
+            for (std::size_t i = 0; i < n_; i++) {
               if (diag[i] <= 0) {
                 throw_diagonal_element_not_positive(i);
               }
@@ -377,7 +377,7 @@ namespace cctbx {
           else {
             std::fill_n(diag, n_, double(1));
           }
-          for (int i = 0; i < n_; i++) {
+          for (std::size_t i = 0; i < n_; i++) {
             w[ispt + i] = -g[i] * diag[i];
           }
           gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
@@ -386,9 +386,9 @@ namespace cctbx {
         }
         for (;;) {
           if (execute_entire_while_loop) {
+            bound = iter_;
             iter_++;
             info = 0;
-            bound = iter_ - 1;
             if (iter_ != 1) {
               if (iter_ > m_) bound = m_;
               ys = ddot(n_, w, iypt + npt, 1, w, ispt + npt, 1);
@@ -405,26 +405,26 @@ namespace cctbx {
           if (execute_entire_while_loop || iflag_ == 2) {
             if (iter_ != 1) {
               if (diagco) {
-                for (int i = 0; i < n_; i++) {
+                for (std::size_t i = 0; i < n_; i++) {
                   if (diag[i] <= 0) {
                     throw_diagonal_element_not_positive(i);
                   }
                 }
               }
-              int cp = point;
+              std::size_t cp = point;
               if (point == 0) cp = m_;
               w[n_ + cp -1] = 1 / ys;
-              int i;
+              std::size_t i;
               for (i = 0; i < n_; i++) {
                 w[i] = -g[i];
               }
               cp = point;
               for (i = 0; i < bound; i++) {
+                if (cp == 0) cp = m_;
                 cp--;
-                if (cp == -1) cp = m_ - 1;
                 double sq = ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
-                int inmc=n_+m_+cp;
-                int iycn=iypt+cp*n_;
+                std::size_t inmc=n_+m_+cp;
+                std::size_t iycn=iypt+cp*n_;
                 w[inmc] = w[n_ + cp] * sq;
                 daxpy(n_, -w[inmc], w, iycn, 1, w, 0, 1);
               }
@@ -434,9 +434,9 @@ namespace cctbx {
               for (i = 0; i < bound; i++) {
                 double yr = ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
                 double beta = w[n_ + cp] * yr;
-                int inmc=n_+m_+cp;
+                std::size_t inmc=n_+m_+cp;
                 beta = w[inmc] - beta;
-                int iscn=ispt+cp*n_;
+                std::size_t iscn=ispt+cp*n_;
                 daxpy(n_, beta, w, iscn, 1, w, 0, 1);
                 cp++;
                 if (cp == m_) cp = 0;
@@ -459,7 +459,7 @@ namespace cctbx {
           }
           nfun_ += nfev;
           npt = point*n_;
-          for (int i = 0; i < n_; i++) {
+          for (std::size_t i = 0; i < n_; i++) {
             w[ispt + npt + i] = stp_ * w[ispt + npt + i];
             w[iypt + npt + i] = g[i] - w[i];
           }
@@ -479,92 +479,78 @@ namespace cctbx {
       /* Compute the sum of a vector times a scalara plus another vector.
          Adapted from the subroutine <code>daxpy</code> in
          <code>lbfgs.f</code>.
-         This code is a straight translation from the Fortran.
        */
       static void daxpy(
-        int n,
+        std::size_t n,
         double da,
         const double* dx,
-        int ix0,
-        int incx,
+        std::size_t ix0,
+        std::size_t incx,
         double* dy,
-        int iy0,
-        int incy)
+        std::size_t iy0,
+        std::size_t incy)
       {
-        int i, ix, iy, m, mp1;
-        if (n <= 0) return;
-        if (da == 0) return;
+        std::size_t i, ix, iy, m;
+        if (n == 0) return;
+        if (da == double(0)) return;
         if  (!(incx == 1 && incy == 1)) {
-          ix = 1;
-          iy = 1;
-          if (incx < 0) ix = (-n + 1) * incx + 1;
-          if (incy < 0) iy = (-n + 1) * incy + 1;
-          for (i = 1; i <= n; i += 1) {
-            dy[iy0+iy -1] = dy[iy0+iy -1] + da * dx[ix0+ix -1];
-            ix = ix + incx;
-            iy = iy + incy;
+          ix = 0;
+          iy = 0;
+          for (i = 0; i < n; i++) {
+            dy[iy0+iy] += da * dx[ix0+ix];
+            ix += incx;
+            iy += incy;
           }
           return;
         }
         m = n % 4;
-        if (m != 0) {
-          for (i = 1; i <= m; i += 1) {
-            dy[iy0+i -1] = dy[iy0+i -1] + da * dx[ix0+i -1];
-          }
-          if (n < 4) return;
+        for (i = 0; i < m; i++) {
+          dy[iy0+i] += da * dx[ix0+i];
         }
-        mp1 = m + 1;
-        for (i = mp1; i <= n; i += 4) {
-          dy[iy0+i     -1] = dy[iy0+i     -1] + da * dx[ix0+i     -1];
-          dy[iy0+i + 1 -1] = dy[iy0+i + 1 -1] + da * dx[ix0+i + 1 -1];
-          dy[iy0+i + 2 -1] = dy[iy0+i + 2 -1] + da * dx[ix0+i + 2 -1];
-          dy[iy0+i + 3 -1] = dy[iy0+i + 3 -1] + da * dx[ix0+i + 3 -1];
+        for (; i < n;) {
+          dy[iy0+i] += da * dx[ix0+i]; i++;
+          dy[iy0+i] += da * dx[ix0+i]; i++;
+          dy[iy0+i] += da * dx[ix0+i]; i++;
+          dy[iy0+i] += da * dx[ix0+i]; i++;
         }
       }
 
       /* Compute the dot product of two vectors.
          Adapted from the subroutine <code>ddot</code>
          in <code>lbfgs.f</code>.
-         This code is a straight translation from the Fortran.
        */
       static double ddot(
-        int n,
+        std::size_t n,
         const double* dx,
-        int ix0,
-        int incx,
+        std::size_t ix0,
+        std::size_t incx,
         const double* dy,
-        int iy0,
-        int incy)
+        std::size_t iy0,
+        std::size_t incy)
       {
-        int i, ix, iy, m, mp1;
+        std::size_t i, ix, iy, m, mp1;
         double dtemp(0);
-        if (n <= 0) return 0;
+        if (n == 0) return double(0);
         if (!(incx == 1 && incy == 1)) {
-          ix = 1;
-          iy = 1;
-          if (incx < 0) ix = (-n + 1) * incx + 1;
-          if (incy < 0) iy = (-n + 1) * incy + 1;
-          for (i = 1; i <= n; i += 1) {
-            dtemp = dtemp + dx[ix0+ix -1] * dy[iy0+iy -1];
-            ix = ix + incx;
-            iy = iy + incy;
+          ix = 0;
+          iy = 0;
+          for (i = 0; i < n; i++) {
+            dtemp += dx[ix0+ix] * dy[iy0+iy];
+            ix += incx;
+            iy += incy;
           }
           return dtemp;
         }
         m = n % 5;
-        if (m != 0) {
-          for (i = 1; i <= m; i += 1) {
-            dtemp = dtemp + dx[ix0+i -1] * dy[iy0+i -1];
-          }
-          if (n < 5) return dtemp;
+        for (i = 0; i < m; i++) {
+          dtemp += dx[ix0+i] * dy[iy0+i];
         }
-        mp1 = m + 1;
-        for (i = mp1; i <= n; i += 5) {
-          dtemp += dx[ix0+i -1] * dy[iy0+i -1]
-                 + dx[ix0+i + 1 -1] * dy[iy0+i + 1 -1]
-                 + dx[ix0+i + 2 -1] * dy[iy0+i + 2 -1]
-                 + dx[ix0+i + 3 -1] * dy[iy0+i + 3 -1]
-                 + dx[ix0+i + 4 -1] * dy[iy0+i + 4 -1];
+        for (; i < n;) {
+          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+          dtemp += dx[ix0+i] * dy[iy0+i]; i++;
         }
         return dtemp;
       }
@@ -694,18 +680,18 @@ namespace cctbx {
             const double& gtol,
             const double& stpmin,
             const double& stpmax,
-            int n,
+            std::size_t n,
             double* x,
             double f,
             const double* g,
             double* s,
-            int is0,
+            std::size_t is0,
             double& stp,
             double ftol,
             double xtol,
             int maxfev,
             int& info,
-            int& nfev,
+            std::size_t& nfev,
             double* wa)
           {
             if (info != -1) {
@@ -724,7 +710,7 @@ namespace cctbx {
               // Compute the initial gradient in the search direction
               // and check that s is a descent direction.
               dginit = 0;
-              for (int j = 0; j < n; j++) {
+              for (std::size_t j = 0; j < n; j++) {
                 dginit += g[j] * s[is0+j];
               }
               if (dginit >= 0) {
@@ -777,7 +763,7 @@ namespace cctbx {
                 // Evaluate the function and gradient at stp
                 // and compute the directional derivative.
                 // We return to main program to obtain F and G.
-                for (int j = 0; j < n; j++) {
+                for (std::size_t j = 0; j < n; j++) {
                   x[j] = wa[j] + stp * s[is0+j];
                 }
                 info=-1;
@@ -786,7 +772,7 @@ namespace cctbx {
               info = 0;
               nfev++;
               double dg(0);
-              for (int j = 0; j < n; j++) {
+              for (std::size_t j = 0; j < n; j++) {
                 dg += g[j] * s[is0+j];
               }
               double ftest1 = finit + stp*dgtest;
@@ -1105,8 +1091,8 @@ namespace cctbx {
       };
 
       mcsrch mcsrch_instance;
-      const int n_;
-      const int m_;
+      const std::size_t n_;
+      const std::size_t m_;
       const double eps_;
       const double xtol_;
       const int maxfev_;
@@ -1114,20 +1100,20 @@ namespace cctbx {
       const double stpmin_;
       const double stpmax_;
       int iflag_;
-      int iter_;
-      int nfun_;
+      std::size_t iter_;
+      std::size_t nfun_;
       double gnorm_;
       double stp_;
       double stp1;
       double ftol;
       double ys;
-      int point;
-      int npt;
-      const int ispt;
-      const int iypt;
+      std::size_t point;
+      std::size_t npt;
+      const std::size_t ispt;
+      const std::size_t iypt;
       int info;
-      int bound;
-      int nfev;
+      std::size_t bound;
+      std::size_t nfev;
       std::vector<double> w_;
       std::vector<double> diag_;
   };
