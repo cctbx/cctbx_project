@@ -47,6 +47,14 @@ def run():
       assert lattice_symmetry.find_max_delta(
         minimum_cell=minimum_symmetry.unit_cell(),
         group=group) < 0.6
+  minimum_symmetry = crystal.symmetry(
+    unit_cell="106.04, 181.78, 110.12, 90, 90, 90",
+    space_group_symbol="P 1").minimum_cell()
+  for max_delta in xrange(10,100,10):
+    lattice_group = lattice_symmetry.group(
+      minimum_symmetry.unit_cell(), max_delta=max_delta)
+    lattice_group_info = sgtbx.space_group_info(group=lattice_group)
+    assert str(lattice_group_info) == "P 4 2 2"
   print "OK"
 
 if (__name__ == "__main__"):
