@@ -51,6 +51,12 @@ def run(args, simply_return_all_miller_arrays=False):
       dest="mtz",
       help="write data to MTZ FILE ('--mtz .' copies name of input file)",
       metavar="FILE")
+    .option(None, "--mtz_root_label",
+      action="store",
+      type="string",
+      dest="mtz_root_label",
+      help="Root label for MTZ file (e.g. Fobs)",
+      metavar="STRING")
     .option(None, "--cns",
       action="store",
       type="string",
@@ -166,7 +172,10 @@ def run(args, simply_return_all_miller_arrays=False):
       file_type_label="MTZ",
       file_extension="mtz")
     print "Writing MTZ file:", file_name
-    selected_array.as_mtz_dataset(column_root_label=file_name[:-4]) \
+    column_root_label = command_line.options.mtz_root_label
+    if (column_root_label is None):
+      column_root_label = file_name[:min(24,len(file_name)-4)]
+    selected_array.as_mtz_dataset(column_root_label=column_root_label) \
       .mtz_object().write(file_name=file_name)
     n_output_files += 1
     print
