@@ -158,6 +158,12 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
         CCTBX_ASSERT(n_complex[2] == n_real[2]/2+1);
       }
 
+      void
+      plus_000(FloatType const& cf)
+      {
+        begin_[0] += cf;
+      }
+
       // Adds cf if -h is in the positive halfspace.
       // Ignores cf otherwise.
       // Manually optimized for best performance.
@@ -272,6 +278,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       if (have_f_part) {
         fpi = f_part[ih];
         fpi_sq = fpi * fpi;
+        sum.plus_000(mh * std::norm(fpi_sq));
         two_fpi_sq_conj_fpi = 2. * fpi_sq * std::conj(fpi);
         four_conj_fpi_fpi = 4. * std::conj(fpi) * fpi;
         two_fpi = 2. * fpi;
@@ -334,15 +341,20 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     mi_t* hs = &*hs_vector.begin();
     std::vector<cx_t> fts_vector(order_z);
     cx_t* fts = &*fts_vector.begin();
+    cx_t fpi(0);
     for (std::size_t ih = 0; ih < miller_indices.size(); ih++) {
       mi_t h = miller_indices[ih];
       FloatType mh = m[ih];
       set_ftilde(space_group, p1_f_calc, h, hs, fts);
+      if (have_f_part) {
+        fpi = f_part[ih];
+        sum.plus_000(mh * std::norm(fpi));
+      }
       for (std::size_t is0 = 0; is0 < order_z; is0++) {
         const mi_t& hm0 = hs[is0];
         cx_t mh_ftil0c = mh * std::conj(fts[is0]);
         if (have_f_part) {
-          cx_t cf = mh_ftil0c * f_part[ih];
+          cx_t cf = mh_ftil0c * fpi;
           sum.plus_minus(hm0, cf);
         }
         for (std::size_t is1 = 0; is1 < order_z; is1++) {

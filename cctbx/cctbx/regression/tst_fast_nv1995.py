@@ -66,12 +66,8 @@ def run_fast_terms(structure_fixed, structure_p1,
       map_value = map[grid_point]
       if (not squared_flag):
         sum_m_i_grid = flex.sum(m * i_grid)
-        if (f_part.size()):
-          map_value += flex.sum(m * flex.norm(f_part))
       else:
         sum_m_i_grid = flex.sum(m * flex.pow2(i_grid))
-        if (f_part.size()):
-          map_value += flex.sum(m * flex.pow2(flex.norm(f_part)))
       assert "%.6g" % sum_m_i_grid == "%.6g" % map_value, (
         sum_m_i_grid, map_value)
 
@@ -175,14 +171,14 @@ def test_atom(space_group_info, use_primitive_setting,
         resolution_factor=grid_resolution_factor,
         max_prime=max_prime).n_real()
       grid_tags = maptbx.grid_tags(gridding)
-    peak_list = run_fast_nv1995(
-      f_obs, f_calc_fixed, f_calc_p1,
-      symmetry_flags, gridding, grid_tags, verbose)
     run_fast_terms(
       structure_fixed, structure_p1,
       f_obs, f_calc_fixed, f_calc_p1,
       symmetry_flags, gridding, grid_tags,
       verbose=verbose)
+    peak_list = run_fast_nv1995(
+      f_obs, f_calc_fixed, f_calc_p1,
+      symmetry_flags, gridding, grid_tags, verbose)
     structure_fixed.add_scatterer(scatterer)
     if (0 or verbose):
       structure_fixed.show_summary().show_scatterers()
@@ -251,16 +247,16 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     resolution_factor=grid_resolution_factor,
     max_prime=max_prime).n_real()
   grid_tags = maptbx.grid_tags(gridding)
-  peak_list = run_fast_nv1995(
-    f_obs, f_calc_fixed, f_calc_p1,
-    symmetry_flags, gridding, grid_tags, verbose)
-  assert peak_list.heights()[0] > 0.99
   run_fast_terms(
     structure_fixed, structure_p1,
     f_obs, f_calc_fixed, f_calc_p1,
     symmetry_flags, gridding, grid_tags,
     test_origin=0001,
     verbose=verbose)
+  peak_list = run_fast_nv1995(
+    f_obs, f_calc_fixed, f_calc_p1,
+    symmetry_flags, gridding, grid_tags, verbose)
+  assert peak_list.heights()[0] > 0.99
 
 def run_call_back(flags, space_group_info):
   if (space_group_info.group().order_p() > 8 and not flags.HighSymmetry):
