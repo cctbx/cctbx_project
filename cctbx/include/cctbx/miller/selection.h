@@ -27,21 +27,11 @@ namespace cctbx { namespace miller {
         flags_(miller_indices.size(), flag)
       {}
 
-      // copy constructor: deep-copy flags
-      selection(selection const& other)
-      : miller_indices_(other.miller_indices_),
-        flags_(other.flags_.deep_copy())
+      selection(af::shared<Index> miller_indices, af::shared<bool> flags)
+      : miller_indices_(miller_indices),
+        flags_(flags.deep_copy())
       {
         size_assert_intrinsic();
-      }
-
-      // assignment operator: deep-copy flags
-      selection operator=(selection const& other)
-      {
-        other.size_assert_intrinsic();
-        miller_indices_ = other.miller_indices_;
-        flags_ = other.flags_.deep_copy();
-        return *this;
       }
 
       std::size_t size_processed() const
@@ -66,47 +56,24 @@ namespace cctbx { namespace miller {
 
       template <typename DataType>
       af::shared<DataType>
-      selected_data(af::shared<DataType> data) const;
+      selected_data(af::shared<DataType> data) const
+      {
+        size_assert(data.size());
+        af::shared<DataType> result;
+        for(std::size_t i=0;i<flags_.size();i++) {
+          if (flags_[i] == true) result.push_back(data[i]);
+        }
+        return result;
+      }
 
       void negate();
 
-      template <typename FloatType>
-      void sigma_filter(
-        af::shared<FloatType> data,
-        af::shared<FloatType> sigmas,
-        FloatType const& cutoff_factor);
+      void operator()(af::shared<bool> flags);
 
     protected:
       af::shared<Index> miller_indices_;
       af::shared<bool> flags_;
   };
-
-  template <typename DataType>
-  af::shared<DataType>
-  selection::selected_data(af::shared<DataType> data) const
-  {
-    af::shared<DataType> result;
-    size_assert(data.size());
-    for(std::size_t i=0;i<flags_.size();i++) {
-      if (flags_[i] == true) result.push_back(data[i]);
-    }
-    return result;
-  }
-
-  template <typename FloatType>
-  void selection::sigma_filter(
-    af::shared<FloatType> data,
-    af::shared<FloatType> sigmas,
-    FloatType const& cutoff_factor)
-  {
-    size_assert(data.size());
-    size_assert(sigmas.size());
-    for(std::size_t i=0;i<flags_.size();i++) {
-      if (math::abs(data[i]) < cutoff_factor * sigmas[i]) {
-        flags_[i] = false;
-      }
-    }
-  }
 
 }} // namespace cctbx::miller
 

@@ -95,7 +95,7 @@ def raise_emap(xtal, e000, p1_miller_indices,
   rmap = shared.reinterpret_complex_as_real(map)
   if (zero_out_negative):
     shared.set_if_less_than(rmap, 0, 0)
-  shared.pow(rmap, exponent)
+  shared.in_place_pow(rmap, exponent)
   rfft.forward(map)
   new_e_complex = sftbx.collect_structure_factors(
     friedel_flag, miller_indices, map, n_complex, conjugate)

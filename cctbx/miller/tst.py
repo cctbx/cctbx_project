@@ -59,4 +59,10 @@ selected_data_set0 = data_set0.sigma_filter(cutoff_factor=2, negate=1)
 assert tuple(selected_data_set0.H) == ((1, 2, 3), (2, 3, 4))
 assert tuple(selected_data_set0.F) == (1,3)
 assert tuple(selected_data_set0.sigmas) == (0.6, 2.)
+data_set = xutils.reciprocal_space_array(
+  xutils.miller_set(xtal, shared.miller_Index(((1,2,3), (2,3,4)))),
+  shared.double((0,1)))
+selected_data_set = data_set.rms_filter(cutoff_factor=0.5)
+assert tuple(selected_data_set.H) == ((1,2,3),)
+assert tuple(selected_data_set.F) == (0,)
 print "OK"

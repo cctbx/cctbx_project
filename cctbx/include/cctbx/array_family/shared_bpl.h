@@ -13,6 +13,7 @@
 #define CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 
 #include <cctbx/constants.h>
+#include <cctbx/math/utils.h>
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/array_family/operator_functors.h>
 #include <cctbx/array_family/generic_array_functors.h>
@@ -625,16 +626,38 @@ namespace cctbx { namespace af {
       return result;
     }
 
+    static
+    sh_t
+    abs_a(sh_t const& a)
+    {
+      sh_t result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) result.append(math::abs(a[i]));
+      return result;
+    }
+
+    static
+    sh_t
+    pow_a_s(sh_t const& a, e_t const& exponent)
+    {
+      sh_t result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) {
+        result.append(std::pow(a[i], exponent));
+      }
+      return result;
+    }
+
     static std::size_t
-    max_index(sh_t const& a) { return af::max_index(a.const_ref()); }
+    max_index_a(sh_t const& a) { return af::max_index(a.const_ref()); }
     static std::size_t
-    min_index(sh_t const& a) { return af::min_index(a.const_ref()); }
-    static e_t max(sh_t const& a) { return af::max(a.const_ref()); }
-    static e_t min(sh_t const& a) { return af::min(a.const_ref()); }
-    static e_t sum(sh_t const& a) { return af::sum(a.const_ref()); }
-    static e_t product(sh_t const& a) { return af::product(a.const_ref()); }
-    static f_e_t mean(sh_t const& a) { return af::mean(a.const_ref()); }
-    static f_e_t rms(sh_t const& a) { return af::rms(a.const_ref()); }
+    min_index_a(sh_t const& a) { return af::min_index(a.const_ref()); }
+    static e_t max_a(sh_t const& a) { return af::max(a.const_ref()); }
+    static e_t min_a(sh_t const& a) { return af::min(a.const_ref()); }
+    static e_t sum_a(sh_t const& a) { return af::sum(a.const_ref()); }
+    static e_t product_a(sh_t const& a) { return af::product(a.const_ref()); }
+    static f_e_t mean_a(sh_t const& a) { return af::mean(a.const_ref()); }
+    static f_e_t rms_a(sh_t const& a) { return af::rms(a.const_ref()); }
 
     static
     sh_class_builders
@@ -660,14 +683,14 @@ namespace cctbx { namespace af {
       class_blds.first.def(ne_a_a, "__ne__");
       class_blds.first.def(eq_a_s, "__eq__");
       class_blds.first.def(ne_a_s, "__ne__");
-      bpl_module.def(sum, "sum");
-      bpl_module.def(product, "product");
+      bpl_module.def(sum_a, "sum");
+      bpl_module.def(product_a, "product");
       return class_blds;
     }
 
     static
     sh_class_builders
-    numeric(
+    numeric_no_pow(
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
     {
@@ -681,12 +704,24 @@ namespace cctbx { namespace af {
       class_blds.first.def(gt_a_s, "__gt__");
       class_blds.first.def(le_a_s, "__le__");
       class_blds.first.def(ge_a_s, "__ge__");
-      bpl_module.def(min_index, "min_index");
-      bpl_module.def(max_index, "max_index");
-      bpl_module.def(min, "min");
-      bpl_module.def(max, "max");
-      bpl_module.def(mean, "mean");
-      bpl_module.def(rms, "rms");
+      bpl_module.def(abs_a, "abs");
+      bpl_module.def(min_index_a, "min_index");
+      bpl_module.def(max_index_a, "max_index");
+      bpl_module.def(min_a, "min");
+      bpl_module.def(max_a, "max");
+      bpl_module.def(mean_a, "mean");
+      bpl_module.def(rms_a, "rms");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    numeric(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
+      bpl_module.def(pow_a_s, "pow");
       return class_blds;
     }
 
@@ -696,7 +731,7 @@ namespace cctbx { namespace af {
       boost::python::module_builder& bpl_module,
       std::string const& python_name)
     {
-      sh_class_builders class_blds = numeric(bpl_module, python_name);
+      sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
       class_blds.first.def(mod_a_a, "__mod__");
       class_blds.first.def(mod_a_s, "mod");
       class_blds.first.def(imod_a_s, "__imod__");

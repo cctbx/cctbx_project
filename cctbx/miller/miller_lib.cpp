@@ -387,6 +387,15 @@ namespace cctbx { namespace miller {
     }
   }
 
+  void
+  selection::operator()(af::shared<bool> flags)
+  {
+    size_assert(flags.size());
+    for(std::size_t i=0;i<flags_.size();i++) {
+      if (!flags[i]) flags_[i] = false;
+    }
+  }
+
   af::shared<Index>
   selection::selected_miller_indices() const
   {

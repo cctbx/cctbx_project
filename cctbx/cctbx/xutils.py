@@ -65,29 +65,34 @@ class reciprocal_space_array(miller_set):
       s = jbm.additive_sigmas(self.sigmas)
     return reciprocal_space_array(miller_set(self, h), f, s)
 
-  def sigma_filter(self, cutoff_factor, negate=0):
-    sel = miller.selection(self.H)
-    sel.sigma_filter(self.F, self.sigmas, cutoff_factor)
-    if (negate): sel.negate()
+  def apply_selection(self, sel):
     h = sel.selected_miller_indices()
-    f = sel.selected_data(self.F)
-    s = sel.selected_data(self.sigmas)
+    f = 0
+    if (self.F): f = sel.selected_data(self.F)
+    s = 0
+    if (self.sigmas): s = sel.selected_data(self.sigmas)
     return reciprocal_space_array(miller_set(self, h), f, s)
 
+  def sigma_filter(self, cutoff_factor, negate=0):
+    sel = miller.selection(self.H)
+    sel(shared.abs(self.F) >= self.sigmas.mul(cutoff_factor))
+    if (negate): sel.negate()
+    return self.apply_selection(sel)
+
   def rms_filter(self, cutoff_factor, negate=0):
+    sel = miller.selection(self.H)
     rms = shared.rms(self.F)
-    pass # XXX
+    sel(shared.abs(self.F) <= cutoff_factor * rms)
+    if (negate): sel.negate()
+    return self.apply_selection(sel)
 
   def __add__(self, other):
     if (type(other) != type(self)):
       # add a scalar
-      # XXX push to C++
-      f = self.F.deep_copy()
-      for i in f.indices(): f[i] += other
+      f = 0
+      if (self.F): f = self.F.add(other)
       s = 0
-      if (self.sigmas):
-        s = self.sigmas.deep_copy()
-        for i in s.indices(): s[i] += other
+      if (self.sigmas): s = self.sigmas.add(other)
       return reciprocal_space_array(self, f, s)
     # add arrays
     js = miller.join_sets(self.H, other.H)
