@@ -11,7 +11,6 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
-from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils.str_utils import overwrite_at
 
 column_type_legend_source = \
