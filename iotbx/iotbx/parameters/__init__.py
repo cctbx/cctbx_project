@@ -198,7 +198,7 @@ class definition: # FUTURE definition(object)
     self.input_size = input_size
     self.expert_level = expert_level
 
-  def copy(self, name=None, words=None):
+  def customized_copy(self, name=None, words=None):
     keyword_args = {}
     for keyword in self.__slots__:
       keyword_args[keyword] = getattr(self, keyword)
@@ -214,7 +214,7 @@ class definition: # FUTURE definition(object)
         (self.name, self.where_str, source.name, source.where_str))
     source = source.resolve_variables()
     if (self.type not in ["choice", "multi_choice"]):
-      return self.copy(words=source.words)
+      return self.customized_copy(words=source.words)
     flags = {}
     for word in self.words:
       if (word.value.startswith("*")): value = word.value[1:]
@@ -243,7 +243,7 @@ class definition: # FUTURE definition(object)
         value=value,
         line_number=word.line_number,
         source_info=word.source_info))
-    return self.copy(words=words)
+    return self.customized_copy(words=words)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
@@ -420,7 +420,7 @@ class definition: # FUTURE definition(object)
          ('No converter for parameter definition type "%s"'
         + ' required for converting values for "%s"%s') % (
           self.type, self.name, self.where_str))
-    return self.copy(words=words)
+    return self.customized_copy(words=words)
 
   def unique(self):
     return self
@@ -463,7 +463,7 @@ class definition: # FUTURE definition(object)
             value=" ".join([str(v) for v in variable_words]),
             quote_token='"')
       new_words.extend(substitution_proxy.get_new_words())
-    return self.copy(words=new_words)
+    return self.customized_copy(words=new_words)
 
 class scope_extract_attribute_error: pass
 class scope_extract_is_disabled: pass
@@ -525,7 +525,7 @@ class scope:
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
 
-  def copy(self, name=None, objects=None):
+  def customized_copy(self, name=None, objects=None):
     keyword_args = {}
     for keyword in self.__init__varnames__[1:]:
       keyword_args[keyword] = getattr(self, keyword)
@@ -680,7 +680,7 @@ class scope:
     result = []
     for object in self.active_objects():
       result.append(object.resolve_variables())
-    return self.copy(objects=result)
+    return self.customized_copy(objects=result)
 
   def lexical_get(self, path, stop_id, search_up=True):
     if (path.startswith(".")):
@@ -731,7 +731,7 @@ class scope:
             for sub_python_object_i in sub_python_object:
               result.append(object.format(
                 sub_python_object_i, custom_converters))
-    return self.copy(objects=result)
+    return self.customized_copy(objects=result)
 
   def _fetch(self, source):
     assert source.name == self.name
@@ -779,7 +779,8 @@ class scope:
       result = []
       for source in sources:
         result.extend(self._fetch(source=source))
-    return self.copy(objects=clean_fetched_scope(fetched_scope=result))
+    return self.customized_copy(
+      objects=clean_fetched_scope(fetched_scope=result))
 
   def process_includes(self,
         definition_type_names,
@@ -811,7 +812,7 @@ class scope:
           definition_type_names=definition_type_names,
           reference_directory=reference_directory,
           include_stack=include_stack))
-    return self.copy(objects=result)
+    return self.customized_copy(objects=result)
 
   def unique(self):
     selection = {}
@@ -821,7 +822,7 @@ class scope:
     for i_object,object in enumerate(self.active_objects()):
       if (selection[object.name] == i_object):
         result.append(object.unique())
-    return self.copy(objects=result)
+    return self.customized_copy(objects=result)
 
 def clean_fetched_scope(fetched_scope):
   result = []
@@ -835,11 +836,11 @@ def clean_fetched_scope(fetched_scope):
           child_group.append(child)
         else:
           if (len(child_group) > 0):
-            result.append(object.copy(objects=child_group))
+            result.append(object.customized_copy(objects=child_group))
             child_groups = []
-          result.append(object.copy(objects=[child]))
+          result.append(object.customized_copy(objects=[child]))
       if (len(child_group) > 0):
-        result.append(object.copy(objects=child_group))
+        result.append(object.customized_copy(objects=child_group))
   return result
 
 class variable_substitution_fragment(object):
