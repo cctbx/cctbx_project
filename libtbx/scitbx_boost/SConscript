@@ -1,3 +1,4 @@
 Import("env_base", "env_etc")
-env_base.Command("__init__.py", [], [env_etc.touch_init])
+env_base.Command(
+  "__init__.py", "#/libtbx/build/SConscript", env_etc.touch_init)
 SConscript("array_family/SConscript")

@@ -5,7 +5,13 @@ class empty: pass
 def touch_init(env, target, source):
   assert len(target) == 1
   print "Creating:", str(target[0])
-  open(str(target[0]), "a").close()
+  f = open(str(target[0]), "w")
+  print >> f, """import sys
+if (sys.platform == "linux2"):
+  if (hasattr(sys, "setdlopenflags")):
+    sys.setdlopenflags(0x100|0x2)
+"""
+  f.close()
 
 env_etc = empty()
 env_etc.compiler = ARGUMENTS.get("compiler", 0)
