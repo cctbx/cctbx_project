@@ -1,0 +1,35 @@
+/*! \page page_installation_compilers Computational Crystallography Toolbox
+
+<hr>
+<h2>Notes on using and installing C++ compilers</h2>
+<hr>
+
+\par
+To be done.
+
+\section compilers_vc60 Microsoft Visual C++ 6.0 Service Pack 4
+
+\par
+To be done.
+
+\section compilers_mingw32 MINGW32 (a free compiler for Windows)
+
+\par
+To be done.
+
+\section compilers_linux Linux (gcc 2.95.2 and gcc 2.95.3)
+
+\par
+To be done.
+
+\section compilers_compaq_tru64 Compaq Tru64
+
+\par
+To be done.
+
+\section compilers_silicon_graphics_irix Silicon Graphics IRIX 6.5
+
+\par
+To be done.
+
+*/
