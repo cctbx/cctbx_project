@@ -13,6 +13,7 @@
 #include <scitbx/array_family/flex_grid_accessor.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/object.hpp>
 #include <boost/python/extract.hpp>
 
@@ -63,6 +64,7 @@ namespace scitbx { namespace af { namespace boost_python {
       using namespace boost::python;
       object obj(borrowed(obj_ptr));
       flex_type const& a = extract<flex_type const&>(obj)();
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
       assert(a.accessor().nd() == 1);
       assert(a.accessor().is_0_based());
       assert(!a.accessor().is_padded());

@@ -152,6 +152,11 @@ namespace scitbx { namespace af {
 
       AccessorType const& accessor() const { return m_accessor; }
 
+      bool check_shared_size() const
+      {
+        return base_class::size() >= m_accessor.size1d();
+      }
+
       size_type size() const
       {
         size_type sz = m_accessor.size1d();

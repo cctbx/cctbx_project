@@ -354,6 +354,7 @@ namespace {
     static void run() {
       shared_exercise<ArrayType>::run_2();
       run_1();
+      run_2();
     }
     static void run_1() {
       ArrayType a1;
@@ -397,6 +398,17 @@ namespace {
         check_true(__LINE__, w1.use_count() == 6);
       }
       check_true(__LINE__, w1.use_count() == 0);
+    }
+    static void run_2() {
+      ArrayType a(10);
+      typename ArrayType::base_array_type b = a.as_base_array();
+      check_true(__LINE__, a.check_shared_size());
+      b.resize(12);
+      check_true(__LINE__, a.check_shared_size());
+      b.resize(8);
+      check_false(__LINE__, a.check_shared_size());
+      b.resize(10);
+      check_true(__LINE__, a.check_shared_size());
     }
   };
 
