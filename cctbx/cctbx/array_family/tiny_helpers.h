@@ -143,16 +143,21 @@ class_name( \
   this->elems[7] = v7; \
   this->elems[8] = v8; \
   this->elems[9] = v9; \
+} \
+template <typename OtherElementType> \
+class_name(const OtherElementType* first, const OtherElementType* last) { \
+  if (last - first != this->size()) throw_range_error(); \
+  copy_typeconv(first, last, this->begin()); \
 }
 
 #define CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(class_name) \
 template <typename OtherElementType> \
 class_name(const tiny_plain<OtherElementType,N>& rhs) { \
-  copy_typeconv(rhs.begin(), rhs.end(), this->elems); \
+  copy_typeconv(rhs.begin(), rhs.end(), this->begin()); \
 } \
 template <typename OtherElementType> \
 class_name<ElementType,N>& \
 operator=(const tiny_plain<OtherElementType,N>& rhs) { \
-  copy_typeconv(rhs.begin(), rhs.end(), this->elems); \
+  copy_typeconv(rhs.begin(), rhs.end(), this->begin()); \
   return *this; \
 }

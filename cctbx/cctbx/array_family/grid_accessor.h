@@ -12,6 +12,7 @@
 #define CCTBX_ARRAY_FAMILY_GRID_ACCESSOR_H
 
 #include <cstddef>
+#include <cctbx/array_family/misc.h>
 #include <cctbx/array_family/tiny_helpers.h>
 
 // forward declaration

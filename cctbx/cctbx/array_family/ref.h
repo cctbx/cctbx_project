@@ -26,24 +26,6 @@
 
 namespace cctbx { namespace af {
 
-  inline
-  void throw_range_error() {
-    throw std::range_error("array_family");
-  }
-
-  template <typename InputElementType,
-            typename OutputElementType>
-  OutputElementType*
-  copy_typeconv(
-    const InputElementType* first,
-    const InputElementType* last,
-    OutputElementType* result)
-  {
-    OutputElementType* p = result;
-    while (first != last) *p++ = OutputElementType(*first++);
-    return result;
-  }
-
   template <typename ElementType,
             typename AccessorType = grid_accessor<1> >
   class const_ref

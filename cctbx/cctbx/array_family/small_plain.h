@@ -31,12 +31,11 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_TAKE_REF(elems, N)
 
       size_type size() const { return m_size; }
-
-      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(elems, m_size)
-
       bool empty() const { if (size() == 0) return true; return false; }
       static size_type max_size() { return N; }
       static size_type capacity() { return N; }
+
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(elems, m_size)
 
       void swap(small_plain<ElementType, N>& other) {
         std::swap(*this, other);

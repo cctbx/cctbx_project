@@ -25,8 +25,15 @@ namespace cctbx { namespace af {
 
       typedef typename shared_base<ElementType>::handle_type handle_type;
 
-      explicit shared(const size_type& sz = 0)
-        : shared_plain<ElementType>(sz)
+      explicit
+      shared(const size_type& sz = 0,
+             const ElementType& x = ElementType())
+        : shared_plain<ElementType>(sz, x)
+      {}
+
+      template <typename OtherElementType>
+      shared(const OtherElementType* first, const OtherElementType* last)
+        : shared_plain<ElementType>(first, last)
       {}
 
       explicit shared(const handle_type& handle)
