@@ -9,6 +9,7 @@
  */
 
 #include <algorithm>
+#include <cctbx/loops.h>
 #include <cctbx/sgtbx/select_generators.h>
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/reference.h>
@@ -139,8 +140,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
       int fGrd = 1;
-      int iVM;
-      for (iVM = 0; iVM < ContinuousVM.size(); iVM++) {
+      for (int iVM = 0; iVM < ContinuousVM.size(); iVM++) {
         for(int i=0;i<3;i++) {
           if (ContinuousVM[iVM].V[i]) fGrd = lcm(fGrd, ContinuousVM[iVM].V[i]);
         }
@@ -158,17 +158,14 @@ namespace cctbx { namespace sgtbx {
         BestZc.push_back(BestZf[iDL].cancel());
       }
       cctbx_assert(ContinuousVM.size() < 3);
-      cctbx::fixcap_vector<int, 2> loop_min, loop_max;
-      for (iVM = 0; iVM < ContinuousVM.size(); iVM++) {
-        loop_min.push_back(0); // XXX eliminate
-        loop_max.push_back(LTBF); // XXX loop_end
-      }
+      cctbx::fixcap_vector<int, 2> loop_end(ContinuousVM.size());
+      std::fill(loop_end.begin(), loop_end.end(), LTBF);
       TrVec LTr[3];
       for (iLTr = 0; iLTr < SgOps.nLTr(); iLTr++) {
         LTr[0] = SgOps.LTr(iLTr).newBaseFactor(LTBF);
-        NestedLoop<cctbx::fixcap_vector<int, 2> > loop(loop_min, loop_max);
+        nested_loop<cctbx::fixcap_vector<int, 2> > loop(loop_end);
         do {
-          for (iVM = 0; iVM < ContinuousVM.size(); iVM++) {
+          for (int iVM = 0; iVM < ContinuousVM.size(); iVM++) {
             const cctbx::fixcap_vector<int, 2>& f = loop();
             LTr[iVM + 1] = LTr[iVM] + f[iVM] * TrVec(ContinuousVM[iVM].V, LTBF);
           }

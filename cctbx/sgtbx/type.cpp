@@ -15,6 +15,7 @@
 
 #include <string>
 #include <algorithm>
+#include <cctbx/loops.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
 #include <cctbx/sgtbx/select_generators.h>

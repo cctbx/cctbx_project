@@ -15,6 +15,7 @@
 #ifndef CCTBX_SGTBX_MILLER_ASU_H
 #define CCTBX_SGTBX_MILLER_ASU_H
 
+#include <cctbx/loops.h>
 #include <cctbx/sgtbx/groups.h>
 
 namespace cctbx {
@@ -232,7 +233,7 @@ namespace cctbx {
         SpaceGroup m_SgOps;
         ReciprocalSpaceASU m_ASU;
         double m_Qhigh;
-        NestedLoop<Miller::Index> m_loop;
+        nested_loop<Miller::Index> m_loop;
     };
 
   } // namespace sgtbx
