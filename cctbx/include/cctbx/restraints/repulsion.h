@@ -14,6 +14,28 @@ namespace cctbx { namespace restraints {
   typedef std::map<std::string, double>
     repulsion_radius_table;
 
+  struct repulsion_params
+  {
+    repulsion_params(
+      double factor_1_4_interactions_=2/3.,
+      double const_shrink_1_4_interactions_=0,
+      double default_distance_=0,
+      double minimum_distance_=0)
+    :
+      factor_1_4_interactions(factor_1_4_interactions_),
+      const_shrink_1_4_interactions(const_shrink_1_4_interactions_),
+      default_distance(default_distance_),
+      minimum_distance(minimum_distance_)
+    {}
+
+    repulsion_distance_table distance_table;
+    repulsion_radius_table radius_table;
+    double factor_1_4_interactions;
+    double const_shrink_1_4_interactions;
+    double default_distance;
+    double minimum_distance;
+  };
+
   struct repulsion_simple_proxy
   {
     repulsion_simple_proxy() {}

@@ -14,6 +14,33 @@
 namespace cctbx { namespace restraints {
 namespace {
 
+  struct repulsion_params_wrappers
+  {
+    typedef repulsion_params w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
+      class_<w_t>("repulsion_params", no_init)
+        .def(init<optional<double, double, double, double> >(
+            (arg_("factor_1_4_interactions")=2/3.,
+             arg_("const_shrink_1_4_interactions")=0,
+             arg_("default_distance")=0,
+             arg_("minimum_distance")=0)))
+        .def_readonly("distance_table", &w_t::distance_table)
+        .def_readonly("radius_table", &w_t::radius_table)
+        .def_readwrite("factor_1_4_interactions",
+                  &w_t::factor_1_4_interactions)
+        .def_readwrite("const_shrink_1_4_interactions",
+                  &w_t::const_shrink_1_4_interactions)
+        .def_readwrite("default_distance", &w_t::default_distance)
+        .def_readwrite("minimum_distance", &w_t::minimum_distance)
+      ;
+    }
+  };
+
   struct repulsion_simple_proxy_wrappers
   {
     typedef repulsion_simple_proxy w_t;
@@ -167,6 +194,7 @@ namespace {
   {
     using namespace boost::python;
     typedef boost::python::arg arg_; // gcc 2.96 workaround
+    repulsion_params_wrappers::wrap();
     repulsion_simple_proxy_wrappers::wrap();
     repulsion_asu_proxy_wrappers::wrap();
     repulsion_function_wrappers::wrap();
