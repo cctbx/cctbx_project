@@ -82,39 +82,35 @@ namespace cctbx { namespace af {
           m_accessor(other.m_accessor)
       {}
 
-      template <typename OtherAccessorType>
-      versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
+      versa_plain(const base_class& other,
                   const AccessorType& ac)
-        : base_class(other.handle()),
+        : base_class(other),
           m_accessor(ac)
       {
         if (other.size() < size()) throw_range_error();
       }
 
-      template <typename OtherAccessorType>
-      versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
+      versa_plain(const base_class& other,
                   long n0)
-        : base_class(other.handle()),
+        : base_class(other),
           m_accessor(n0)
       {
         if (other.size() < size()) throw_range_error();
       }
 
-      template <typename OtherAccessorType>
-      versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
+      versa_plain(const base_class& other,
                   const AccessorType& ac,
                   const ElementType& x)
-        : base_class(other.handle()),
+        : base_class(other),
           m_accessor(ac)
       {
         base_class::resize(m_accessor.size1d(), x);
       }
 
-      template <typename OtherAccessorType>
-      versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
+      versa_plain(const base_class& other,
                   long n0,
                   const ElementType& x)
-        : base_class(other.handle()),
+        : base_class(other),
           m_accessor(n0)
       {
         base_class::resize(m_accessor.size1d(), x);

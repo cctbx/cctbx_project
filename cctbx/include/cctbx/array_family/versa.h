@@ -73,29 +73,25 @@ namespace cctbx { namespace af {
         : base_class(other, weak_ref_flag())
       {}
 
-      template <typename OtherAccessorType>
-      versa(versa<ElementType, OtherAccessorType>& other,
+      versa(const shared_plain<ElementType>& other,
             const AccessorType& ac)
         : base_class(other, ac)
       {}
 
-      template <typename OtherAccessorType>
-      versa(versa<ElementType, OtherAccessorType>& other,
-                  long n0)
+      versa(const shared_plain<ElementType>& other,
+            long n0)
         : base_class(other, n0)
       {}
 
-      template <typename OtherAccessorType>
-      versa(versa<ElementType, OtherAccessorType>& other,
-                  const AccessorType& ac,
-                  const ElementType& x)
+      versa(const shared_plain<ElementType>& other,
+            const AccessorType& ac,
+            const ElementType& x)
         : base_class(other, ac, x)
       {}
 
-      template <typename OtherAccessorType>
-      versa(versa<ElementType, OtherAccessorType>& other,
-                  long n0,
-                  const ElementType& x)
+      versa(const shared_plain<ElementType>& other,
+            long n0,
+            const ElementType& x)
         : base_class(other, n0, x)
       {}
 
