@@ -23,6 +23,7 @@ def run():
   "$D/dmtbx/boost_python/tst_dmtbx.py",
   "$D/translation_search/boost_python/tst_translation_search.py",
   "$D/include/cctbx/geometry_restraints/tst_ext.py",
+  "$D/include/cctbx/adp_restraints/tst_ext.py",
   ["$D/cctbx/regression/tst_krivy_gruber.py", "--Quick"],
   "$D/cctbx/regression/tst_sgtbx.py",
   ["$D/cctbx/regression/tst_sgtbx_denominators.py", "P31"],
