@@ -146,6 +146,16 @@ class set(crystal.symmetry):
   def d_min(self):
     return uctbx.d_star_sq_as_d(self.unit_cell().max_d_star_sq(self.indices()))
 
+  def n_bijvoet_pairs(self):
+    asu, matches = self.match_bijvoet_mates()
+    return matches.pairs().size()
+
+  def auto_anomalous(self):
+    return set(
+      crystal_symmetry=self,
+      indices=self.indices(),
+      anomalous_flag=self.n_bijvoet_pairs()>0)
+
   def map_to_asu(self):
     i = self.indices().deep_copy()
     map_to_asu(
@@ -189,7 +199,7 @@ class set(crystal.symmetry):
     return self.apply_selection(keep, negate)
 
   def match_bijvoet_mates(self):
-    assert self.anomalous_flag() == 0001
+    assert self.anomalous_flag() in (None, 0001)
     assert self.indices() != None
     if (self.space_group_info() != None):
       asu = self.map_to_asu()
