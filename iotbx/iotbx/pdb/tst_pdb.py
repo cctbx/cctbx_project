@@ -352,6 +352,7 @@ END
   stage_1 = pdb.interpretation.stage_1(raw_records=pdb_file)
   sel_cache = stage_1.selection_cache()
   isel = sel_cache.iselection
+  assert isel("").size() == 0
   assert isel("all").size() == sel_cache.n_seq
   assert isel("none").size() == 0
   assert isel("not all").size() == 0
@@ -392,6 +393,10 @@ END
   assert list(isel(r"element o")) == [65,66,67,68]
   assert list(isel(r"charge 4+")) == [64]
   assert list(isel(r"anisou")) == [1, 3]
+  try: isel(r"resSeq")
+  except RuntimeError, e:
+    assert str(e) == "Missing argument for resSeq."
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(

@@ -1,4 +1,5 @@
 from iotbx import simple_tokenizer
+import sys
 
 def exercise():
   tests = [
@@ -55,13 +56,16 @@ def exercise():
   ['name """o1\\\n  o2\'"""',
     ['name', "o1  o2'"]],
   ]
+  verbose = "--verbose" in sys.argv[1:]
   for input_string,expected_result in tests:
+    show = verbose or expected_result is None
+    if (show): print input_string
     result = [word.value
-      for word in simple_tokenizer.split_into_words(input_string=input_string)]
-    if (expected_result is None):
-      print result
-    else:
+      for word in simple_tokenizer.word_iterator(input_string=input_string)]
+    if (show): print result
+    if (expected_result is not None):
       assert result == expected_result
+    if (show): print
   print "OK"
 
 if (__name__ == "__main__"):

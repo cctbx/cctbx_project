@@ -201,6 +201,23 @@ def _get_map_string(map, pattern, wildcard_escape_char='\\'):
       result.append(value)
   return result
 
+class selection_tokenizer(simple_tokenizer.word_iterator):
+
+  def __init__(self, string, contiguous_word_characters=None):
+    if (contiguous_word_characters is None):
+      contiguous_word_characters \
+        = simple_tokenizer.default_contiguous_word_characters \
+        + r"\*?[]^+-.:"
+    simple_tokenizer.word_iterator.__init__(self,
+      input_string=string,
+      list_of_settings=[simple_tokenizer.settings(
+        contiguous_word_characters=contiguous_word_characters)])
+
+  def pop_argument(self, keyword):
+    word = self.try_pop()
+    if (word is None): raise RuntimeError("Missing argument for %s." % keyword)
+    return word
+
 class selection_cache:
 
   def __init__(self, atom_attributes_list, wildcard_escape_char='\\'):
@@ -393,24 +410,16 @@ class selection_cache:
     return self.union(iselections=self.get_anisou())
 
   def selection_tokenizer(self, string, contiguous_word_characters=None):
-    if (contiguous_word_characters is None):
-      contiguous_word_characters \
-        = simple_tokenizer.default_contiguous_word_characters \
-        + r"\*?[]^+-.:"
-    word_stack = simple_tokenizer.split_into_words(
-      input_string=string,
-      contiguous_word_characters=contiguous_word_characters)
-    word_stack.reverse()
-    return word_stack
+    return selection_tokenizer(string, contiguous_word_characters)
 
   def selection_parser(self,
-        word_stack,
+        word_iterator,
         callback=None,
         stop_word=None,
         expect_nonmatching_closing_parenthesis=False):
     result_stack = []
-    for word,word_stack in simple_parser.infix_as_postfix(
-          word_stack=word_stack,
+    for word,word_iterator in simple_parser.infix_as_postfix(
+          word_iterator=word_iterator,
           stop_word=stop_word,
           expect_nonmatching_closing_parenthesis
             =expect_nonmatching_closing_parenthesis):
@@ -433,20 +442,19 @@ class selection_cache:
         elif (lword == "none"):
           result_stack.append(flex.bool(self.n_seq, False))
         elif (lword == "name"):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_name(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_name(pattern=word_iterator.pop_argument(word.value)))
         elif (lword in ["altloc", "altid"]):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_altLoc(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_altLoc(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "resname"):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_resName(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_resName(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "chain"):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_chainID(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_chainID(pattern=word_iterator.pop_argument(word.value)))
         elif (lword in ["resseq", "resid", "model"]):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          arg = word_stack.pop()
+          arg = word_iterator.pop_argument(word.value)
           i_colon_or_dash = arg.value.find(":")
           if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
           if (i_colon_or_dash < 0):
@@ -473,23 +481,23 @@ class selection_cache:
             else:
               result_stack.append(self.sel_MODELserial_range(i=i, j=j))
         elif (lword == "icode"):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_iCode(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_iCode(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "segid"):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_segID(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_segID(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "element"):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_element(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_element(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "charge"):
-          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
-          result_stack.append(self.sel_charge(pattern=word_stack.pop()))
+          result_stack.append(
+            self.sel_charge(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "anisou"):
           result_stack.append(self.sel_anisou())
         elif (callback is not None):
           if (not callback(
                     word=word,
-                    word_stack=word_stack,
+                    word_iterator=word_iterator,
                     result_stack=result_stack)):
             raise RuntimeError("Syntax error.")
         else:
@@ -503,7 +511,7 @@ class selection_cache:
 
   def selection(self, string, contiguous_word_characters=None, callback=None):
     return self.selection_parser(
-      word_stack=self.selection_tokenizer(
+      word_iterator=self.selection_tokenizer(
         string=string,
         contiguous_word_characters=contiguous_word_characters),
       callback=callback)
