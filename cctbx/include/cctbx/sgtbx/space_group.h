@@ -22,6 +22,16 @@
 
 namespace cctbx { namespace sgtbx {
 
+  //! Specific exception to indicate failure of group multiplication.
+  class error_non_crystallographic_rotation_matrix_encountered : public error
+  {
+    public:
+      error_non_crystallographic_rotation_matrix_encountered()
+      :
+        error("Non-crystallographic rotation matrix encountered.")
+      {}
+  };
+
   class space_group_type; // forward declaration
 
   //! Space group operations.
