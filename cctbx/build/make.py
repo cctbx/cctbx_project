@@ -40,7 +40,8 @@ def read_configuration(config_file = "configuration", path_root = None):
       sys.version[0], sys.version[2])
   else:
     python_include = sys.prefix + "/include/python" + sys.version[0:3]
-    python_lib = ""
+    python_lib = "%s/lib/python%s/config/libpython%s.a" % (
+      sys.prefix, sys.version[0:3], sys.version[0:3])
   expand_cf(cf, "@(python_executable)", python_executable, normpath = 1)
   expand_cf(cf, "@(python_include)", python_include, normpath = 1)
   expand_cf(cf, "@(python_lib)", python_lib, normpath = 1)
@@ -72,17 +73,17 @@ def make_lib_python_dir(platform):
   else:
     libpyd = ".so"
   if (hasattr(os, "symlink")):
-    system_verbose("cp eltbx/*%s lib_python/cctbx/eltbx" % (libpyd,))
     system_verbose("cp uctbx/*%s lib_python/cctbx" % (libpyd,))
     system_verbose("cp sgtbx/*%s lib_python/cctbx" % (libpyd,))
     system_verbose("cp adptbx/*%s lib_python/cctbx" % (libpyd,))
+    system_verbose("cp eltbx/*%s lib_python/cctbx/eltbx" % (libpyd,))
     system_verbose("cp sftbx/*%s lib_python/cctbx" % (libpyd,))
     system_verbose("cp fftbx/*%s lib_python/cctbx" % (libpyd,))
   else:
-    system_verbose(r"copy eltbx\*.pyd lib_python\cctbx\eltbx")
     system_verbose(r"copy uctbx\*.pyd lib_python\cctbx")
     system_verbose(r"copy sgtbx\*.pyd lib_python\cctbx")
     system_verbose(r"copy adptbx\*.pyd lib_python\cctbx")
+    system_verbose(r"copy eltbx\*.pyd lib_python\cctbx\eltbx")
     system_verbose(r"copy sftbx\*.pyd lib_python\cctbx")
     system_verbose(r"copy fftbx\*.pyd lib_python\cctbx")
 
@@ -96,7 +97,7 @@ if (__name__ == "__main__"):
   make_all = "all" in sys.argv
 
   externals = ("external/boost_python",)
-  toolboxes = ("eltbx", "uctbx", "sgtbx", "adptbx", "sftbx", "fftbx")
+  toolboxes = ("uctbx", "sgtbx", "adptbx", "eltbx", "sftbx", "fftbx")
   examples = ("examples/cpp",)
   all_targets = externals + toolboxes + examples
 

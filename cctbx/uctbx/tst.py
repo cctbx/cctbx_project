@@ -112,3 +112,11 @@ print pstr
 up = pickle.loads(pstr)
 print u
 print up
+print u.isEqual(up)
+print up.isEqual(u)
+o = uctbx.UnitCell((30.1,30,50,90,90,120))
+print o
+print u.isEqual(o)
+print o.isEqual(u)
+print u.isEqual(o, 0.1)
+print o.isEqual(u, 0.1)

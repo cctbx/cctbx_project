@@ -187,7 +187,7 @@ class write_makefiles:
       elif (self.platform == "irix_CC"):
         print "\t$(CPP) -ar -o %s %s" % (lib, objstr)
       elif (self.platform == "macosx"):
-        print "\tlibtool -static -o %s %s\n\tranlib %s" % (lib, objstr,objstr)
+        print "\tlibtool -static -o %s %s" % (lib, objstr)
       else:
         print "\tar r %s %s" % (lib, objstr)
     else:
@@ -198,9 +198,10 @@ class write_makefiles:
     if (self.platform  in ("vc60", "mingw32")):
       print "\t-mkdir $(CCTBXLIBDIR_WIN)"
       print "\tcopy %s $(CCTBXLIBDIR_WIN)" % (lib,)
+      print "\tdel %s" % (lib,)
     else:
       print "\t-mkdir $(CCTBXLIBDIR_UNIX)"
-      print "\tcp %s $(CCTBXLIBDIR_UNIX)" % (lib,)
+      print "\tmv %s $(CCTBXLIBDIR_UNIX)" % (lib,)
     print
     self.make_targets["libraries"].append(lib)
     self.update_depend(objects)

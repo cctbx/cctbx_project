@@ -15,16 +15,16 @@ CCTBXLIBDIR_WIN=
 
 PYEXE=PYTHONPATH=. @(python_executable)
 PYINC=-I@(python_include)
-PYLIB=
+PYLIB=@(python_lib)
 
 STDFIXINC=
 
 CPP=c++
 LD=c++
-STDOPTS=-fPIC -ftemplate-depth-21
-WARNOPTS=
+STDOPTS=-fno-common -no-cpp-precomp -ftemplate-depth-21
+WARNOPTS=-Wno-long-double
 OPTOPTS=-g
 MAKEDEP=-M
 LDEXE=
-LDDLL=-shared -undefined warning
+LDDLL=-bundle -flat_namespace -undefined warning
 LDMATH=-lm

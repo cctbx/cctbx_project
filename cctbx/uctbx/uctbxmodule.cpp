@@ -127,6 +127,10 @@ namespace {
     return uc.orthogonalize(Xf);
   }
 
+  bool UnitCell_isEqual_1(const UnitCell& uc, const UnitCell& other) {
+    return uc.isEqual(other);
+  }
+
 }
 
 BOOST_PYTHON_MODULE_INIT(uctbx)
@@ -173,6 +177,7 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     UnitCell_class.def(UnitCell_fractionalize, "fractionalize");
     UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
     UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
+    UnitCell_class.def(UnitCell_isEqual_1, "isEqual");
     UnitCell_class.def(&UnitCell::isEqual, "isEqual");
   }
   catch(...)

@@ -183,10 +183,13 @@ namespace cctbx {
       //! @name Test equality.
       //@{
       //! Test the equality of two Unit Cell instances.
-      /*! Test the fractional difference of each of the six parameters
-          and compare to epsilon.
+      /*! Test if
+          2 * abs(  (self.paramter - other.paramter)
+                  / (self.paramter + other.paramter))
+          is less then the given tolerance for all six unit cell
+          parameters.
        */
-      bool isEqual(const UnitCell& uc, const double& epsilon) const;
+      bool isEqual(const UnitCell& other, double tolerance = 1.e-6) const;
       //@}
 
       //! @name Orthogonalization and fractionalization of coordinates.

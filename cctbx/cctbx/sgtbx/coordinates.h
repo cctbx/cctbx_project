@@ -284,7 +284,9 @@ namespace cctbx { namespace sgtbx {
           Up = MatrixLite::FullSymMx33_as_CondensedSymMx33(
             RURt, MatrixLite::return_type<FloatType>());
           for(std::size_t j=0;j<6;j++) {
-            if (!approx_equal(Ustar[j], Up[j], scaled_tolerance)) return false;
+            if (!approx_equal_scaled(Ustar[j], Up[j], scaled_tolerance)) {
+              return false;
+            }
           }
         }
         return true;

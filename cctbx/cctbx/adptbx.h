@@ -509,8 +509,10 @@ namespace cctbx {
         boost::array<FloatType, 3> absMV = boost::array_abs(MV);
         std::size_t iMax = boost::array_max_index(absMV);
         FloatType scaled_tolerance = absMV[iMax] * tolerance;
-        bool converged = MatrixLite::approx_equal(MV, V, scaled_tolerance);
-        if (!converged && MatrixLite::approx_equal(MV, -V, scaled_tolerance)) {
+        bool converged = MatrixLite::approx_equal_scaled(
+          MV, V, scaled_tolerance);
+        if (!converged && MatrixLite::approx_equal_scaled(
+          MV, -V, scaled_tolerance)) {
           throw not_positive_definite; // lambda < 0
         }
         V = MV;
