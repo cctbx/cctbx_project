@@ -11,7 +11,7 @@ class symmetry(object):
                      space_group=None,
                      assert_is_compatible_unit_cell=0001):
     assert [space_group_symbol, space_group_info, space_group].count(None) >= 2
-    if (type(unit_cell) in (type(()), type([]))):
+    if (type(unit_cell) in (type(()), type([]), type(""))):
       unit_cell = uctbx.unit_cell(unit_cell)
     self._unit_cell = unit_cell
     self._space_group_info = space_group_info
