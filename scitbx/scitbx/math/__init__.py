@@ -27,7 +27,8 @@ class erf_verification:
 
 class minimum_covering_sphere:
 
-  def __init__(self, points, epsilon=1.e-6):
+  def __init__(self, points, epsilon=None):
+    if (epsilon is None): epsilon = 1.e-6
     if (isinstance(points, flex.vec3_double)):
       mcs = scitbx.math.ext.minimum_covering_sphere(
         points=points, epsilon=epsilon)
@@ -54,7 +55,7 @@ class minimum_covering_sphere:
         sigma += w * r**2
       sigma = math.sqrt(sigma)
       tau = radii.max()
-      if (tau - sigma < epsilon):
+      if (tau - sigma < tau * epsilon):
         break
       w_r = []
       for w,r in zip(weights.elems,radii.elems):

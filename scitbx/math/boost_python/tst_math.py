@@ -590,7 +590,7 @@ def exercise_golay():
     weights[list(code).count(1)] += 1
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
 
-def exercise_minimum_covering_sphere(epsilon=1.e-2):
+def exercise_minimum_covering_sphere(epsilon=1.e-3):
   points = flex.vec3_double([(0,0,0),(1,0,0),(0,1,0),(1,1,1)])
   mcs = minimum_covering_sphere(points=points)
   assert mcs.n_iterations() > 0
