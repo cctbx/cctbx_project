@@ -32,6 +32,12 @@ class word:
          + self.value.replace(self.quote_token, "\\"+self.quote_token) \
          + self.quote_token
 
+  def assert_expected(self, value):
+    if (self.value != value):
+      raise RuntimeError(
+        'Syntax error: expected "{", found "%s" (input line %d)' % (
+          self.value, self.line_number))
+
 default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                    + "abcdefghijklmnopqrstuvwxyz" \
                                    + "0123456789" \
@@ -39,7 +45,8 @@ default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
 def split_into_words(
       input_string,
       contiguous_word_characters=None,
-      enable_unquoted_embedded_quotes=True):
+      enable_unquoted_embedded_quotes=True,
+      auto_split_unquoted={}):
   if (contiguous_word_characters is None):
     contiguous_word_characters = default_contiguous_word_characters
   words = []
@@ -74,7 +81,10 @@ def split_into_words(
           elif (char_iter.look_ahead() == "\n"):
             char_iter.next()
             c = char_iter.next()
-        if (c is None): raise RuntimeError("No closing quote.")
+        if (c is None):
+          raise RuntimeError(
+            "Syntax error: missing closing quote (input line %d)." % (
+              char_iter.line_number))
         word_value += c
       words.append(word(
         value=word_value,
@@ -98,9 +108,15 @@ def split_into_words(
                    or c not in ['"', "'"])):
             break
           word_value += c
-      words.append(word(
-        value=word_value,
-        line_number=word_line_number))
+      if (word_value not in auto_split_unquoted):
+        words.append(word(
+          value=word_value,
+          line_number=word_line_number))
+      else:
+        for value in auto_split_unquoted[word_value]:
+          words.append(word(
+            value=value,
+            line_number=word_line_number))
   return words
 
 class word_stack:
@@ -130,8 +146,10 @@ class word_stack:
 def as_word_stack(
       input_string,
       contiguous_word_characters=None,
-      enable_unquoted_embedded_quotes=True):
+      enable_unquoted_embedded_quotes=True,
+      auto_split_unquoted={}):
   return word_stack(split_into_words(
     input_string=input_string,
     contiguous_word_characters=contiguous_word_characters,
-    enable_unquoted_embedded_quotes=enable_unquoted_embedded_quotes))
+    enable_unquoted_embedded_quotes=enable_unquoted_embedded_quotes,
+    auto_split_unquoted=auto_split_unquoted))
