@@ -136,8 +136,7 @@ def assemble_dispatcher_precall_commands(libtbx_env):
     lines.extend(addl_lines)
   return lines
 
-def create_python_dispatchers(libtbx_env, target_dir,
-                              python_exe, precall_commands):
+def create_python_dispatchers(target_dir, python_exe, precall_commands):
   for file_name in ("libtbx.python", "python"):
     target_file = norm(join(target_dir, file_name))
     if (os.name == "nt"):
@@ -163,7 +162,6 @@ def run():
     os.makedirs(target_dir)
   precall_commands = assemble_dispatcher_precall_commands(libtbx_env)
   create_python_dispatchers(
-    libtbx_env=libtbx_env,
     target_dir=target_dir,
     python_exe=libtbx_env.LIBTBX_PYTHON_EXE,
     precall_commands=precall_commands)
