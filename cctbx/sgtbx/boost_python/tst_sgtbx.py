@@ -988,13 +988,14 @@ def exercise_sym_equiv_sites():
       if (i == 0): e = sym_equiv_sites(ss)
       if (i == 1): e = sym_equiv_sites(wm)
       if (i == 2): e = sym_equiv_sites(u, g, x)
-      d = sgtbx.min_sym_equiv_distance_info(e, x)
+      d = sgtbx.min_sym_equiv_distance_info(reference_sites=e, other=x)
+      assert d.i_other() == 0
       assert str(d.sym_op()) == "x,y,z"
       assert d.continuous_shifts() == (0,0,0)
       assert approx_equal(d.diff(), (0,0,0))
       assert approx_equal(d.dist(), 0)
       assert approx_equal(d.sym_op() * x, x)
-      a = d.apply(e.coordinates())
+      a = d.apply(sites_frac=e.coordinates())
       assert a.size() == e.coordinates().size()
       for i in e.coordinates().indices():
         assert approx_equal(a[i], e.coordinates()[i])
@@ -1002,6 +1003,12 @@ def exercise_sym_equiv_sites():
         d = sgtbx.min_sym_equiv_distance_info(e, y)
         assert approx_equal(d.dist(), 0)
         assert approx_equal(d.sym_op() * y, x)
+      d = sgtbx.min_sym_equiv_distance_info(
+        reference_sites=e,
+        others=flex.vec3_double([(x[0]+0.1,x[1]+0.2,x[2]+0.3), x]))
+      assert d.i_other() == 1
+      assert approx_equal(d.continuous_shifts(), (0,0,0))
+      assert approx_equal(d.dist(), 0)
   x = (1.732, -1.414, 2.236)
   for hall_symbol in ("P 1",
                       "P -1 (2,-1,1)",
@@ -1028,7 +1035,10 @@ def exercise_sym_equiv_sites():
     for x in ((1.732, -1.414, 2.236), (0.939, 0.128, 0.178)):
       g = sgtbx.space_group(hall_symbol)
       e = sym_equiv_sites(g, x, uctbx.unit_cell(()))
-      d = sgtbx.min_sym_equiv_distance_info(e, x, shift_flags)
+      d = sgtbx.min_sym_equiv_distance_info(
+        reference_sites=e,
+        other=x,
+        principal_continuous_allowed_origin_shift_flags=shift_flags)
       assert approx_equal(d.continuous_shifts(), (0,0,0))
       assert approx_equal(d.dist(), 0)
       shift = [s * f for s,f in zip(shift_flags, (0.123,0.234,0.345))]
@@ -1259,6 +1269,9 @@ def exercise_search_symmetry():
     space_group_type=sg149.type(),
     seminvariant=ss149)
   assert s.group() == sgtbx.space_group("P 1 (-1/3*y-1/3*z,1/3*y-2/3*z,1/2*x)")
+  assert s.continuous_shifts() == ()
+  assert s.continuous_shifts_are_principal()
+  assert s.continuous_shift_flags() == (00000,00000,00000)
   s = sgtbx.search_symmetry(
     flags=sgtbx.search_symmetry_flags(00000, 0, 00000, 0001, 00000),
     space_group_type=sg149.type())
@@ -1319,6 +1332,8 @@ def exercise_search_symmetry():
     seminvariant=ss143)
   assert s.group().type().hall_symbol() == " P 1 (2/3*x-1/3*y,1/3*x+1/3*y,z)"
   assert s.continuous_shifts() == ((0,0,1),)
+  assert s.continuous_shifts_are_principal()
+  assert s.continuous_shift_flags() == (00000,00000,0001)
   s = sgtbx.search_symmetry(
     flags=sgtbx.search_symmetry_flags(0001, 0, 0001, 0001, 0001),
     space_group_type=sg143.type(),
@@ -1333,6 +1348,8 @@ def exercise_search_symmetry():
     seminvariant=ss1)
   assert s.group() == sgtbx.space_group("-P 1")
   assert s.continuous_shifts() == ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+  assert s.continuous_shifts_are_principal()
+  assert s.continuous_shift_flags() == (0001,0001,0001)
   sg6 = sgtbx.space_group_info(number=6)
   ss6 = sg6.structure_seminvariant()
   s = sgtbx.search_symmetry(
@@ -1341,6 +1358,16 @@ def exercise_search_symmetry():
     seminvariant=ss6)
   assert s.group() == sgtbx.space_group("-P 2y (x,1/2*y,z)")
   assert s.continuous_shifts() == ((1, 0, 0), (0, 0, 1))
+  assert s.continuous_shift_flags() == (0001,00000,0001)
+  sg146r = sgtbx.space_group_info("R 3 r")
+  ss146r = sg146r.structure_seminvariant()
+  s = sgtbx.search_symmetry(
+    flags=sgtbx.search_symmetry_flags(00000, 0, 0001, 00000, 00000),
+    space_group_type=sg146r.type(),
+    seminvariant=ss146r)
+  assert s.group() == sgtbx.space_group("P 1")
+  assert s.continuous_shifts() == ((1, 1, 1),)
+  assert not s.continuous_shifts_are_principal()
 
 def run():
   exercise_symbols()

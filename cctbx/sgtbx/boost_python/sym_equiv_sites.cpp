@@ -62,16 +62,29 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("min_sym_equiv_distance_info", no_init)
         .def(init<sym_equiv_sites<> const&,
                   fractional<> const&,
-                  optional<af::tiny<bool, 3> const&> >())
+                  optional<af::tiny<bool, 3> const&> >(
+          (arg_("reference_sites"),
+           arg_("other"),
+           arg_("principal_continuous_allowed_origin_shift_flags")
+             =no_continuous_allowed_shifts)))
+        .def(init<sym_equiv_sites<> const&,
+                  af::const_ref<scitbx::vec3<double> > const&,
+                  optional<af::tiny<bool, 3> const&> >(
+          (arg_("reference_sites"),
+           arg_("others"),
+           arg_("principal_continuous_allowed_origin_shift_flags")
+             =no_continuous_allowed_shifts)))
+        .def("i_other", &w_t::i_other)
         .def("sym_op", &w_t::sym_op, ccr())
         .def("continuous_shifts", &w_t::continuous_shifts, ccr())
         .def("diff", &w_t::diff, ccr())
         .def("dist", &w_t::dist)
-        .def("apply", &w_t::apply)
+        .def("apply", &w_t::apply, (arg_("sites_frac")))
       ;
     }
   };

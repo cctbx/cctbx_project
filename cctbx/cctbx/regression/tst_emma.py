@@ -91,7 +91,6 @@ class test_model(emma.model):
     match_symmetry = emma.euclidean_match_symmetry(
       self.space_group_info(),
       use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
-    match_symmetry.set_continuous_shift_flags()
     i = random.randrange(match_symmetry.rt_mx.order_z())
     eucl_symop = match_symmetry.rt_mx(i)
     shift = [0.5 - random.random() for i in xrange(3)]
