@@ -13,10 +13,6 @@ CCTBXINC=-I"$(ROOT)\cctbx\include"
 CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
 CCTBXLIBDIR_WIN=@(CCTBXLIBDIR_WIN)
 
-PHENIX_UNIX="$(HOME)/phenix"
-PHENIX_WIN="$(ROOT)\phenix"
-PHENIXINC=-I"$(ROOT)\phenix\source"
-
 PYEXE="@(python_executable)"
 PYINC=-I"@(python_include)"
 PYLIB="@(python_lib)"
@@ -25,7 +21,7 @@ STDFIXINC=
 
 CPP=mwcc
 LD=mwld
-STDOPTS=-gccinc -prefix UseDLLPrefix.h
+STDOPTS=-gccinc -prefix UseDLLPrefix.h -DBOOST_PYTHON_STATIC_LIB
 WARNOPTS=-warn off
 OPTOPTS=-O
 MAKEDEP=
