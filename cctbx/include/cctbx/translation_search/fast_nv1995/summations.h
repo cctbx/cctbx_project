@@ -223,7 +223,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
                   miller::index<>* hs,
                   std::complex<FloatType>* fts)
   {
-    for(std::size_t i=0;i<space_group.order_z();i++) {
+    for(std::size_t i=0;i<space_group.order_p();i++) {
       sgtbx::rt_mx s = space_group(i);
       hs[i] = h * s.r();
       fts[i] = fc_map(hs[i]) * std::polar(1.,
@@ -260,11 +260,12 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
                  || f_part.size() == miller_indices.size());
     typedef miller::index<> mi_t;
     typedef std::complex<FloatType> cx_t;
-    std::size_t order_z = space_group.order_z();
+    std::size_t order_p = space_group.order_p();
+    FloatType n_ltr = static_cast<FloatType>(space_group.n_ltr());
     bool have_f_part = f_part.size();
-    std::vector<mi_t> hs_vector(order_z);
+    std::vector<mi_t> hs_vector(order_p);
     mi_t* hs = &*hs_vector.begin();
-    std::vector<cx_t> fts_vector(order_z);
+    std::vector<cx_t> fts_vector(order_p);
     cx_t* fts = &*fts_vector.begin();
     cx_t fpi(0);
     cx_t fpi_sq(0);
@@ -276,21 +277,21 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       FloatType mh = m[ih];
       set_ftilde(space_group, p1_f_calc, h, hs, fts);
       if (have_f_part) {
-        fpi = f_part[ih];
+        fpi = f_part[ih] / n_ltr;
         fpi_sq = fpi * fpi;
         sum.plus_000(mh * std::norm(fpi_sq));
         two_fpi_sq_conj_fpi = 2. * fpi_sq * std::conj(fpi);
         four_conj_fpi_fpi = 4. * std::conj(fpi) * fpi;
         two_fpi = 2. * fpi;
       }
-      for (std::size_t is0 = 0; is0 < order_z; is0++) {
+      for (std::size_t is0 = 0; is0 < order_p; is0++) {
         const mi_t& hm0 = hs[is0];
         cx_t mh_ftil0c = mh * std::conj(fts[is0]);
         if (have_f_part) {
           cx_t cf = mh_ftil0c * two_fpi_sq_conj_fpi;
           sum.plus_minus(hm0, cf);
         }
-        for (std::size_t is1 = 0; is1 < order_z; is1++) {
+        for (std::size_t is1 = 0; is1 < order_p; is1++) {
           mi_t hm01(hm0 - hs[is1]);
           cx_t mh_ftil0c_ftil1(mh_ftil0c * fts[is1]);
           if (have_f_part) {
@@ -300,7 +301,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
             cf = mul_conj(mh_ftil0c, fts[is1]) * fpi_sq;
             sum.plus_minus(hm0p1, cf);
           }
-          for (std::size_t is2 = 0; is2 < order_z; is2++) {
+          for (std::size_t is2 = 0; is2 < order_p; is2++) {
             mi_t hm01p2(hm01 + hs[is2]);
             cx_t mh_ftil0c_ftil1_ftil2c(
               mul_conj(mh_ftil0c_ftil1, fts[is2]));
@@ -308,7 +309,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
               cx_t cf = mh_ftil0c_ftil1_ftil2c * two_fpi;
               sum.plus_minus(hm01p2, cf);
             }
-            for (std::size_t is3 = 0; is3 < order_z; is3++) {
+            for (std::size_t is3 = 0; is3 < order_p; is3++) {
               mi_t hm01p23(hm01p2 - hs[is3]);
               cx_t cf = mh_ftil0c_ftil1_ftil2c * fts[is3];
               sum.minus(hm01p23, cf);
@@ -335,11 +336,12 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
                  || f_part.size() == miller_indices.size());
     typedef miller::index<> mi_t;
     typedef std::complex<FloatType> cx_t;
-    std::size_t order_z = space_group.order_z();
+    std::size_t order_p = space_group.order_p();
+    FloatType n_ltr = static_cast<FloatType>(space_group.n_ltr());
     bool have_f_part = f_part.size();
-    std::vector<mi_t> hs_vector(order_z);
+    std::vector<mi_t> hs_vector(order_p);
     mi_t* hs = &*hs_vector.begin();
-    std::vector<cx_t> fts_vector(order_z);
+    std::vector<cx_t> fts_vector(order_p);
     cx_t* fts = &*fts_vector.begin();
     cx_t fpi(0);
     for (std::size_t ih = 0; ih < miller_indices.size(); ih++) {
@@ -347,17 +349,17 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       FloatType mh = m[ih];
       set_ftilde(space_group, p1_f_calc, h, hs, fts);
       if (have_f_part) {
-        fpi = f_part[ih];
+        fpi = f_part[ih] / n_ltr;
         sum.plus_000(mh * std::norm(fpi));
       }
-      for (std::size_t is0 = 0; is0 < order_z; is0++) {
+      for (std::size_t is0 = 0; is0 < order_p; is0++) {
         const mi_t& hm0 = hs[is0];
         cx_t mh_ftil0c = mh * std::conj(fts[is0]);
         if (have_f_part) {
           cx_t cf = mh_ftil0c * fpi;
           sum.plus_minus(hm0, cf);
         }
-        for (std::size_t is1 = 0; is1 < order_z; is1++) {
+        for (std::size_t is1 = 0; is1 < order_p; is1++) {
           mi_t hm01(hm0 - hs[is1]);
           cx_t cf = mh_ftil0c * fts[is1];
           sum.minus(hm01, cf);
