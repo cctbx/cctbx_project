@@ -1,5 +1,8 @@
 from scitbx import lbfgsb
 from scitbx.array_family import flex
+import scitbx.math
+from libtbx.test_utils import eps_eq
+import sys
 
 def exercise_minimizer_interface():
   n = 25
@@ -13,15 +16,22 @@ def exercise_minimizer_interface():
   minimizer = lbfgsb.ext.minimizer(n, m, l, u, nbd, factr, pgtol, iprint)
   assert minimizer.task() == "START"
   x = flex.double(n, 0)
-  f = 0
-  g = flex.double(n, 0)
+  f = 1
+  g = flex.double(n, -1)
   task = minimizer.process(x, f, g)
   assert task == "FG_START"
+  assert minimizer.f() == 0
+  task = minimizer.process(x, f, g)
+  assert minimizer.f() == 1
+  assert task == "FG_LNSRCH"
+  assert not minimizer.is_terminated()
   minimizer.request_stop()
   task = minimizer.process(x, f, g)
-  assert task == "STOP: QUICK"
+  assert task == "STOP: NO RESTORE"
   minimizer.request_stop_with_restore()
   assert minimizer.task() == "STOP: CPU"
+  minimizer.request_restart()
+  assert minimizer.task() == "START"
 
 def driver1():
   n = 25
@@ -31,7 +41,10 @@ def driver1():
   l = flex.double(n)
   u = flex.double(n)
   g = flex.double(n)
-  iprint = -1
+  if ("--Verbose" in sys.argv[1:]):
+    iprint = 1000
+  else:
+    iprint = -1
   factr=1.0e+7
   pgtol=1.0e-5
   for i in xrange(0,n,2):
@@ -63,6 +76,46 @@ def driver1():
     elif (task[:5] != "NEW_X"):
       break
   assert minimizer.task() == "CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH"
+  assert minimizer.is_terminated()
+  assert minimizer.f_list().size() == minimizer.n_iteration() + 1
+  assert minimizer.f_list()[-1] == minimizer.f()
+  assert minimizer.f_list()[-2] == minimizer.f_previous_iteration()
+  assert not minimizer.initial_x_replaced_by_projection()
+  assert minimizer.is_constrained()
+  assert minimizer.is_fully_constrained()
+  if ("--soft" not in sys.argv[1:]):
+    assert minimizer.n_fg_evaluations_total() == 27
+    assert minimizer.n_fg_evaluations_iter() == 1
+    assert minimizer.n_intervals_explored_cauchy_search_total() == 48
+    assert minimizer.n_intervals_explored_cauchy_search_iter() == 1
+    assert minimizer.n_skipped_bfgs_updates_total() == 0
+    assert minimizer.n_bfgs_updates_total() == 22
+    assert minimizer.subspace_argmin_is_within_box() == 1
+    assert minimizer.n_free_variables() == 25
+    assert minimizer.n_active_constraints() == 0
+    assert minimizer.n_variables_leaving_active_set() == 0
+    assert minimizer.n_variables_entering_active_set() == 0
+    assert eps_eq(minimizer.theta_bfgs_matrix_current(), 23.2674689856)
+    assert minimizer.f_previous_iteration() >= 0
+    assert minimizer.floating_point_epsilon() \
+        == scitbx.math.floating_point_epsilon_double_get()
+    assert eps_eq(minimizer.factr_times_floating_point_epsilon(),
+                  minimizer.factr() * minimizer.floating_point_epsilon())
+    assert eps_eq(minimizer.two_norm_line_search_direction_vector(),
+                  1.56259327735e-05)
+    assert eps_eq(minimizer.two_norm_line_search_direction_vector_sq(),
+      minimizer.two_norm_line_search_direction_vector()**2)
+    assert minimizer.accumulated_time_cauchy_search() > -0.02
+    assert minimizer.accumulated_time_subspace_minimization() > -0.02
+    assert minimizer.accumulated_time_line_search() > -0.02
+    assert eps_eq(minimizer.slope_line_search_function_current(),
+                  9.31496613169e-10)
+    assert eps_eq(minimizer.slope_line_search_function_start(),
+                  -3.6762390377e-09)
+    assert eps_eq(minimizer.maximum_relative_step_length(), 1.37484166517)
+    assert eps_eq(minimizer.relative_step_length_line_search(), 1.0)
+    assert eps_eq(minimizer.infinity_norm_projected_gradient(),
+                  0.000143369780806)
 
 def run():
   exercise_minimizer_interface()

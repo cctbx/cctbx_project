@@ -17,13 +17,17 @@
 #endif
 
 namespace scitbx {
-//! C++ port of L-BFGS-B Version 2.1
+namespace lbfgsb {
+//! C++ port of the raw FORTRAN interface of L-BFGS-B Version 2.1
 /*! Original FORTRAN distribution:
 
       http://www.ece.northwestern.edu/~nocedal/lbfgsb.html
+
+    Written by Ciyou Zhu in collaboration with R.H. Byrd, P. Lu-Chen
+    and J. Nocedal.
+
+    C++ port by Ralf W. Grosse-Kunstleve.
  */
-namespace lbfgsb {
-//! C++ port of the raw FORTRAN interface of L-BFGS-B Version 2.1
 namespace raw {
 
   using std::printf;
@@ -619,14 +623,17 @@ namespace raw {
         int indxin = iorder(k);
         // Add ddum to the heap.
         int i = k;
-        lbl_10:
-        if (i>1) {
+        // lbl_10:
+        while (i>1) {
           int j = i/2;
           if (ddum < t(j)) {
             t(i) = t(j);
             iorder(i) = iorder(j);
             i = j;
-            goto lbl_10;
+            // goto lbl_10;
+          }
+          else {
+            break;
           }
         }
         t(i) = ddum;
@@ -643,16 +650,19 @@ namespace raw {
       FloatType ddum = t(n);
       int indxin = iorder(n);
       // Restore the heap
-      lbl_30:
-      int j = i+i;
-      if (j <= n-1) {
-        if (t(j+1) < t(j)) j = j+1;
-        if (t(j) < ddum ) {
-          t(i) = t(j);
-          iorder(i) = iorder(j);
-          i = j;
-          goto lbl_30;
+      while (true) { // lbl_30:
+        int j = i+i;
+        if (j <= n-1) {
+          if (t(j+1) < t(j)) j = j+1;
+          if (t(j) < ddum ) {
+            t(i) = t(j);
+            iorder(i) = iorder(j);
+            i = j;
+            // goto lbl_30;
+            continue;
+          }
         }
+        break;
       }
       t(i) = ddum;
       iorder(i) = indxin;
@@ -1143,7 +1153,7 @@ namespace raw {
       // Find the next smallest breakpoint;
       // compute dt = t(nleft) - t(nleft + 1).
       FloatType tj0 = tj;
-      int ibp; // uninitialized
+      int ibp = 0; // uninitialized
       if (iter == 1) {
         // Since we already have the smallest breakpoint we need not do
         // heapsort yet. Often only one breakpoint is used and the
@@ -1182,7 +1192,7 @@ namespace raw {
       iter = iter + 1;
       FloatType dibp = d(ibp);
       d(ibp) = zero;
-      FloatType zibp; // uninitialized
+      FloatType zibp = 0; // uninitialized
       if (dibp > zero) {
         zibp = u(ibp) - x(ibp);
         xcp(ibp) = u(ibp);
@@ -1507,8 +1517,8 @@ namespace raw {
     // Smallest breakpoint is identified.
     for(int i=1;i<=n;i++) {
       FloatType neggi = -g(i);
-      FloatType tl; // uninitialized
-      FloatType tu; // uninitialized
+      FloatType tl = 0; // uninitialized
+      FloatType tu = 0; // uninitialized
       if (iwhere(i) != 3 && iwhere(i) != -1) {
         // if x(i) is not a constant and has bounds,
         // compute the difference between x(i) and its bounds.
@@ -1972,7 +1982,7 @@ namespace raw {
     //         [L_a+R_z   S'AA'S   ]
     // where L_a is the strictly lower triangular part of S'AA'Y
     //   R_z is the upper triangular part of S'ZZ'Y.
-    int upcl; // uninitialized
+    int upcl = 0; // uninitialized
     if (updatd) {
       if (iupdat > m) {
         // shift old part of WN1.
@@ -2433,7 +2443,7 @@ namespace raw {
     // Backtrack to the feasible region.
     FloatType alpha = 1;
     FloatType temp1 = alpha;
-    int ibd; // uninitialized
+    int ibd = 0; // uninitialized
     bool ibd_is_defined = false;
     for(int i=1;i<=nsub;i++) {
       int k = ind(i);
@@ -2616,7 +2626,7 @@ namespace raw {
     FloatType two=2.0e0;
     FloatType three=3.0e0;
     FloatType sgnd = dp*(dx/fn::absolute(dx));
-    FloatType stpf;
+    FloatType stpf = 0; // uninitialized
     if (fp > fx) {
       // First case: A higher function value. The minimum is bracketed.
       // If the cubic step is closer to stx than the quadratic step, the
@@ -2923,21 +2933,21 @@ namespace raw {
     FloatType xtrapl=1.1e0;
     FloatType xtrapu=4.0e0;
     // Initialization block.
-    bool brackt;
-    int stage;
-    FloatType finit;
-    FloatType ginit;
-    FloatType gtest;
-    FloatType width;
-    FloatType width1;
-    FloatType stx;
-    FloatType fx;
-    FloatType gx;
-    FloatType sty;
-    FloatType fy;
-    FloatType gy;
-    FloatType stmin;
-    FloatType stmax;
+    bool brackt = false; // uninitialized
+    int stage = 0; // uninitialized
+    FloatType finit = 0; // uninitialized
+    FloatType ginit = 0; // uninitialized
+    FloatType gtest = 0; // uninitialized
+    FloatType width = 0; // uninitialized
+    FloatType width1 = 0; // uninitialized
+    FloatType stx = 0; // uninitialized
+    FloatType fx = 0; // uninitialized
+    FloatType gx = 0; // uninitialized
+    FloatType sty = 0; // uninitialized
+    FloatType fy = 0; // uninitialized
+    FloatType gy = 0; // uninitialized
+    FloatType stmin = 0; // uninitialized
+    FloatType stmax = 0; // uninitialized
     while (true) { // enable use of break instead of goto lbl_1000
       if (task.substr(0,5) == "START") {
         // Check the input arguments for errors.
@@ -3640,51 +3650,51 @@ namespace raw {
     FloatType zero = 0;
     FloatType one = 1;
     // begin variables in [lid]save arrays
-    bool prjctd;
-    bool cnstnd;
-    bool boxed;
-    bool updatd;
-    int nintol;
-    int itfile;
-    int iback;
-    int nskip;
-    int head;
-    int col;
-    int itail;
-    int iter;
-    int iupdat;
-    int nint;
-    int nfgv;
-    int info;
-    int ifun;
-    int iword;
-    int nfree;
-    int nact;
-    int ileave;
-    int nenter;
-    FloatType theta;
-    FloatType fold;
-    FloatType tol;
-    FloatType dnorm;
-    FloatType epsmch;
-    FloatType cpu1 = 0; // work around gcc 3.2 or valgrind bug
-    FloatType cachyt;
-    FloatType sbtime;
-    FloatType lnscht;
-    FloatType time1;
-    FloatType gd;
-    FloatType stpmx;
-    FloatType sbgnrm;
-    FloatType stp;
-    FloatType gdold;
-    FloatType dtd;
+    bool prjctd = false; // uninitialized
+    bool cnstnd = false; // uninitialized
+    bool boxed = false; // uninitialized
+    bool updatd = false; // uninitialized
+    int nintol = 0; // uninitialized
+    int itfile = 0; // uninitialized
+    int iback = 0; // uninitialized
+    int nskip = 0; // uninitialized
+    int head = 0; // uninitialized
+    int col = 0; // uninitialized
+    int itail = 0; // uninitialized
+    int iter = 0; // uninitialized
+    int iupdat = 0; // uninitialized
+    int nint = 0; // uninitialized
+    int nfgv = 0; // uninitialized
+    int info = 0; // uninitialized
+    int ifun = 0; // uninitialized
+    int iword = 0; // uninitialized
+    int nfree = 0; // uninitialized
+    int nact = 0; // uninitialized
+    int ileave = 0; // uninitialized
+    int nenter = 0; // uninitialized
+    FloatType theta = 0; // uninitialized
+    FloatType fold = 0; // uninitialized
+    FloatType tol = 0; // uninitialized
+    FloatType dnorm = 0; // uninitialized
+    FloatType epsmch = 0; // uninitialized
+    FloatType cpu1 = 0; // uninitialized
+    FloatType cachyt = 0; // uninitialized
+    FloatType sbtime = 0; // uninitialized
+    FloatType lnscht = 0; // uninitialized
+    FloatType time1 = 0; // uninitialized
+    FloatType gd = 0; // uninitialized
+    FloatType stpmx = 0; // uninitialized
+    FloatType sbgnrm = 0; // uninitialized
+    FloatType stp = 0; // uninitialized
+    FloatType gdold = 0; // uninitialized
+    FloatType dtd = 0; // uninitialized
     // end variables in [lid]save arrays
-    bool wrk; // uninitialized
-    int k; // uninitialized
-    FloatType cpu2; // uninitialized
-    FloatType dr; // uninitialized
-    FloatType rr; // uninitialized
-    FloatType xstep; // uninitialized
+    bool wrk = false; // uninitialized
+    int k = 0; // uninitialized
+    FloatType cpu2 = 0; // uninitialized
+    FloatType dr = 0; // uninitialized
+    FloatType rr = 0; // uninitialized
+    FloatType xstep = 0; // uninitialized
     std::string word; // uninitialized
     if (task.substr(0,5) == "START") {
       timer(time1);
