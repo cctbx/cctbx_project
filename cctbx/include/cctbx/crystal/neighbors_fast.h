@@ -92,6 +92,18 @@ namespace cctbx { namespace crystal { namespace neighbors {
         }
       }
 
+      //! Count the number of pairs.
+      std::size_t
+      count_pairs()
+      {
+        std::size_t result = 0;
+        while (!this->at_end_) {
+          next();
+          result++;
+        }
+        return result;
+      }
+
     protected:
       FloatType epsilon_;
       typedef std::vector<direct_space_asu::asu_mapping_index> box_content_t;
