@@ -53,7 +53,7 @@ def read_table6111(file_name):
         line = lf.next()
         assert not lf.eof
         if (len(line.strip()) == 0): continue
-        raw_value_row = line.split("\t")
+        raw_value_row = line.rstrip().split("\t")
         assert len(raw_value_row) == len(elements) + 1, line
         stols.append(float(raw_value_row[0]))
         assert stols[-1] == international_tables_stols[stols.size()-1], line
