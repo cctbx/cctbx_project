@@ -1,5 +1,5 @@
-from cctbx.array_family import flex
 from iotbx.command_line import reflection_statistics
+from cctbx.array_family import flex
 from iotbx import mtz
 from cctbx import miller
 from cctbx import crystal
