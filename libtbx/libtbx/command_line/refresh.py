@@ -8,16 +8,16 @@ import shutil
 
 class create_bin_sh_dispatcher:
 
-  def __init__(self, is_python_exe=00000, insert_lines=None):
+  def __init__(self, is_python_exe=00000, precall_commands=None):
     self.is_python_exe = is_python_exe
-    self.insert_lines = insert_lines
+    self.precall_commands = precall_commands
 
   def __call__(self, source_file, target_file):
     f = open(target_file, "w")
     print >> f, "#! /bin/sh"
     print >> f, "# LIBTBX_DISPATCHER DO NOT EDIT"
-    if (self.insert_lines is not None):
-      for line in self.insert_lines:
+    if (self.precall_commands is not None):
+      for line in self.precall_commands:
         print >> f, line
     cmd = "  exec"
     if (not self.is_python_exe and source_file.lower().endswith(".py")):
@@ -85,12 +85,30 @@ def create_posix_icc_ld_preload():
     'LD_PRELOAD="%s%s%s"' % (path_lib, os.sep, best_libunwind_so),
     'export LD_PRELOAD']
 
-def create_python_dispatchers(libtbx_env, target_dir, python_exe):
-  insert_lines = None
+def assemble_dispatcher_precall_commands(libtbx_env):
+  lines = []
+  if (    libtbx_env.python_version_major_minor == (2,2)
+      and sys.platform == "linux2"
+      and os.path.isfile("/etc/redhat-release")):
+    try: red_hat_linux_release = open("/etc/redhat-release").readline()
+    except: pass
+    else:
+      if (    red_hat_linux_release.startswith("Red Hat Linux release")
+          and red_hat_linux_release.split()[4] == "9"):
+        lines.extend([
+          'if [ ! -n "$LD_ASSUME_KERNEL" ]; then',
+          '  LD_ASSUME_KERNEL=2.4.1',
+          '  export LD_ASSUME_KERNEL',
+          'fi'])
   if (os.name == "posix" and libtbx_env.compiler == "icc"):
-    insert_lines = create_posix_icc_ld_preload()
-    if (insert_lines is None):
+    addl_lines = create_posix_icc_ld_preload()
+    if (addl_lines is None):
       raise libtbx.config.UserError("Cannot determine LD_PRELOAD for icc.")
+    lines.extend(addl_lines)
+  return lines
+
+def create_python_dispatchers(libtbx_env, target_dir, python_exe):
+  precall_commands = assemble_dispatcher_precall_commands(libtbx_env)
   for file_name in ("libtbx.python", "python"):
     target_file = norm(join(target_dir, file_name))
     if (os.name == "nt"):
@@ -98,7 +116,7 @@ def create_python_dispatchers(libtbx_env, target_dir, python_exe):
       action = shutil.copyfile
     else:
       action = create_bin_sh_dispatcher(
-        is_python_exe=0001, insert_lines=insert_lines)
+        is_python_exe=0001, precall_commands=precall_commands)
       try: os.chmod(source_file, 0755)
       except: pass
     if (isfile(target_file) or islink(target_file)):
