@@ -17,14 +17,7 @@ def run(file_name,
   tab = itvc_section61_io.read_table6111(file_name)
   for wk in xray_scattering.wk1995_iterator():
     label = wk.label()
-    if (label in ["H'", "D"]): continue
-    if (label == "Siv"):
-      label = "Sival"
-    for sign in ["+", "-"]:
-      i = label.find(sign)
-      if (i > 0):
-        label = label[:i-1] + sign + label[i-1] + label[i+1:]
-        break
+    if (label in ["H'", "D", "Siv"]): continue
     if (not label in tab.entries):
       print "Warning: missing scatterer:", label
   stols = cctbx.eltbx.gaussian_fit.international_tables_stols
@@ -47,15 +40,7 @@ def run(file_name,
   cmp_plots = flex.std_string()
   for element in tab.elements:
     entry = tab.entries[element]
-    element_of_ion = None
-    label = element
-    for sign in ["+", "-"]:
-      i = label.find(sign)
-      if (i > 0):
-        element_of_ion = label[:i]
-        label = label.replace(sign,"") + sign
-        break
-    wk = xray_scattering.wk1995(label, 1)
+    wk = xray_scattering.wk1995(element, 1)
     assert entry.table_y.size() == 62
     if (not flex.sort_permutation(entry.table_y, 0001).all_eq(range_62)):
       print "Increasing: %s (%d)" % (element, entry.atomic_number)
@@ -77,19 +62,20 @@ def run(file_name,
         entry.table_y[-6:],
         sigmas,
         wk.fetch())
-    elif (element_of_ion is None or not entry.table_y[-6:].all_eq(0)):
-      gaussian_fit = scitbx.math.gaussian.fit(
-        stols,
-        entry.table_y,
-        sigmas,
-        wk.fetch())
-    else:
-      element_of_ion_entry = tab.entries[element_of_ion]
+    elif (    entry.element != entry.atomic_symbol
+          and entry.table_y[-6:].all_eq(0)):
+      atom_entry = tab.entries[entry.atomic_symbol]
       patched_table_y = entry.table_y[:-6]
-      patched_table_y.append(element_of_ion_entry.table_y[-6:])
+      patched_table_y.append(atom_entry.table_y[-6:])
       gaussian_fit = scitbx.math.gaussian.fit(
         stols,
         patched_table_y,
+        sigmas,
+        wk.fetch())
+    else:
+      gaussian_fit = scitbx.math.gaussian.fit(
+        stols,
+        entry.table_y,
         sigmas,
         wk.fetch())
     labels.append(element)
