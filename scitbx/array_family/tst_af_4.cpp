@@ -214,6 +214,8 @@ namespace {
     }
   };
 
+  static long a_value_allocation = 0;
+
   // a type with a non-trivial destructor
   template <typename ValueType>
   struct a_value {
@@ -259,8 +261,22 @@ namespace {
 
     operator double() const { return *m_value; }
 
-    void m_init(ValueType const& v) { m_value = new ValueType(v); }
-    void m_destory() { delete m_value; }
+    void m_init(ValueType const& v)
+    {
+      m_value = new ValueType(v);
+      a_value_allocation++;
+    }
+
+    void m_destory()
+    {
+// This destructor is called too often under
+// Mac OS 10.2 g++ (GCC) 3.1 20020420 (prerelease)
+#if !(defined(__APPLE__) && defined(__MACH__) && __APPLE_CC__ <= 1161)
+      delete m_value;
+#endif
+      a_value_allocation--;
+    }
+
     ValueType* m_value;
   };
 
@@ -280,6 +296,9 @@ int main(int argc, char* argv[])
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {
     std::cout << "Total Errors: " << error_counter << std::endl;
+  }
+  if (a_value_allocation || verbose) {
+    std::cout << "a_value_allocation: " << a_value_allocation << std::endl;
   }
   return 0;
 }
