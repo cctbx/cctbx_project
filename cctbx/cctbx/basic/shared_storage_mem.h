@@ -11,6 +11,7 @@
 #define CCTBX_SHARED_STORAGE_MEM_H
 
 #include <cstddef>
+#include <cctbx/basic/vector.h>
 #include <vector>
 #include <algorithm>
 
@@ -22,6 +23,7 @@ namespace cctbx {
   public:
     typedef ElementType element_type;
     typedef std::size_t size_type;
+    typedef cctbx::std_emulator::vector<element_type> vector_type;
 
     struct Courier {
       element_type*        px;
@@ -31,24 +33,15 @@ namespace cctbx {
     };
 
     explicit SharedStorageMemHandle(const size_type& s) {
-      element_type* pi;
-      //try{
-        ps = new size_type(s);
-      //} catch (...) { throw; }
-      try{
-        pi = new element_type[s];
-      } catch (...) { delete ps; throw; }
-      try {
-        px = new element_type*(pi);
-      } catch (...) { delete ps; delete [] pi; throw; }
+        px = new vector_type(s);
       try { 
         pn = new long(1);
-      } catch (...) { delete ps; delete [] pi; delete px; throw; } 
-    }  // pedanticly insures no leaks if any new operator throws
+      } catch (...) { delete px; throw; } 
+    }  // insure no leaks if any new operator throws
 
     //copy constructor with reference semantics
     SharedStorageMemHandle(const SharedStorageMemHandle& r) : 
-      px(r.px), ps(r.ps) { 
+      px(r.px) { 
       ++*(pn = r.pn); 
     }
 
@@ -57,73 +50,68 @@ namespace cctbx {
       if (pn != r.pn) {
         dispose();
         px = r.px;
-        ps = r.ps;
         ++*(pn = r.pn);
       }
       return *this;
     }
 
     //constructor from a pointer and size; assume ownership of data
+    //since std::vector has no constructor from a T*, I need to use
+    //copy semantics, followed by destruction of the original data.
+    //  ...now that I have my own emulator::vector,  I could 
+    //  provide a constructor from a pointer & size
     SharedStorageMemHandle(const Courier& r) {
-      ps = new size_type(r.sz);
-      try {
-        px = new element_type*(r.px);
-      } catch (...) { delete ps; delete [] r.px; throw; }
+      //copy constructor of vector
+      px = new vector_type(r.px, r.px+r.sz);
+      delete r.px;
       try { 
         pn = new long(1);
-      } catch (...) { delete ps; delete [] *px; delete px; throw; } 
+      } catch (...) { delete px; throw; } 
     } 
-      
 
     ~SharedStorageMemHandle() {  dispose(); }
 
 
-    element_type* get() const                 { return *px; } 
-    element_type& operator[](const size_type& i) const { return (*px)[i]; }
+    element_type* get() const { return &(*(px->begin())); } 
+    element_type& operator[](const size_type& i) const 
+                              { return (&(*(px->begin())))[i]; }
 
-    size_type size() const             { return *ps; }
+    size_type size() const            { return px->size(); }
+    size_type capacity() const            { return px->capacity(); }
     long use_count() const             { return *pn; } 
     bool unique() const                { return *pn == 1; } 
 
     void swap(SharedStorageMemHandle<element_type>& other)  // never throws
      { std::swap(px,other.px); 
-       std::swap(pn,other.pn); std::swap(ps,other.ps);}
+       std::swap(pn,other.pn);}
+
+    void resize(const size_type& s)
+      {px->resize(s);}
 
     //relinquish... and appropriate... used to transfer ownership of the       
     // referenced data from source array group to a target group of arrays 
-    // all of which then share the referenced data.  
+    // all of which then share the referenced data. 
+    // Note! returning a std::vector has copy semantics.  This is inefficient
+    // but it's likely that I will never use the appropriate...relinquish 
+    // mechanism so this can be deprecated. 
 
-    Courier relinquish() {
-      Courier m(*px,*ps);
-      delete px;
-      element_type* pi;
-      try {
-        pi = new element_type[1];
-      } catch (...) { /* no real way to recover from this? */; throw; }
-      *ps = 1;
-      try {
-        px = new element_type*(pi);
-      } catch (...) { delete [] pi; throw; }
+    vector_type relinquish() {
+      vector_type m(1);
+      px->swap(m);
       return m;
-    } // Courier has no memory management; relinquished data must be 
-      // appropriated by exactly one SharedStorageMemHandle before Courier
-      // goes out of scope.
+    }
 
-    void appropriate(const Courier& m) {
-      delete [] *px;
-      *px = m.px;
-      *ps = m.sz;
+    void appropriate(vector_type m) {
+      px->swap(m);
     }
 
   protected:
-
-    element_type**    px;     // pointer to a pointer to elements
-    long*             pn;     // pointer to reference counter
-    size_type*        ps;     // pointer to the size lookup 
+    vector_type*               px;     // pointer to a std::vector
+    long*                      pn;     // pointer to reference counter
 
     void dispose() { 
       --*pn;
-      if (*pn == 0) { delete [] *px; delete px; delete pn; delete ps; }
+      if (*pn == 0) { delete px; delete pn; }
     }
 
 
