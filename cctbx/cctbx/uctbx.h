@@ -76,7 +76,7 @@ namespace cctbx {
   //@}
 
   //! Helper class for passing unit cell parameters.
-  class uc_params : public carray<double, 6> {
+  class uc_params : public double6 {
     public:
       //! @name Constructors.
       //@{

@@ -114,7 +114,7 @@ namespace {
       const std::complex<double>&,
       const fractional<double>&,
       const double&,
-      const carray<double, 6>&>());
+      const double6&>());
     py_XrayScatterer.def(
       &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Label, "Label");
