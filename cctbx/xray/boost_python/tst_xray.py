@@ -250,6 +250,8 @@ def exercise_sampled_model_density():
   i = flex.miller_index(((1,2,3), (2,3,4)))
   f = flex.complex_double((1+2j, 2+3j))
   d.eliminate_u_extra_and_normalize(i, f)
+  xray.eliminate_u_extra(d.unit_cell(), 0, i, f)
+  xray.eliminate_u_extra(d.unit_cell(), 0, i, f, 1)
 
 def run():
   exercise_conversions()
