@@ -2,12 +2,15 @@ import sys
 
 def create_script(bundle, top_modules):
   py_major, py_minor = sys.version_info[:2]
-  return r"""\
-@echo off
+  return r"""@echo off
 
+if not exist %(bundle)s_sources\TAG goto find_python
+echo.
 echo Build tag:
 type %(bundle)s_sources\TAG
 
+:find_python
+echo.
 echo Trying to find Python:
 set python=python
 call %%python%% -V
@@ -32,6 +35,7 @@ call %(bundle)s_build\setpaths.bat
 
 echo.
 echo Running a selected test
+echo python "%%SCITBX_DIST%%\lbfgs\boost_python\tst_lbfgs.py"
 call python "%%SCITBX_DIST%%\lbfgs\boost_python\tst_lbfgs.py"
 if not %%errorlevel%% == 0 goto end
 
