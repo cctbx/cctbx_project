@@ -1,6 +1,7 @@
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import eigensystem
 from scitbx.math import gaussian
+from scitbx.math import golay_24_12_generator
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, eps_eq
 import pickle
@@ -540,12 +541,30 @@ def exercise_gaussian_fit():
             fi=gaussian_fit_finite_diff_target_gradients(gf, power, use_sigmas)
             assert eps_eq(an, fi, eps=1.e-3)
 
+def exercise_golay():
+  weights = [0]*25
+  gg = golay_24_12_generator()
+  while not gg.at_end():
+    weights[list(gg.next()).count(1)] += 1
+  assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
+  try:
+    gg.next()
+  except StopIteration, e:
+    assert str(e) == "golay_24_12_generator is exhausted."
+  else:
+    raise RuntimeError("Exception expected.")
+  weights = [0]*25
+  for code in golay_24_12_generator():
+    weights[list(code).count(1)] += 1
+  assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
+
 def run():
   exercise_erf()
   exercise_eigensystem()
   exercise_gaussian_term()
   exercise_gaussian_sum()
   exercise_gaussian_fit()
+  exercise_golay()
   print "OK"
 
 if (__name__ == "__main__"):

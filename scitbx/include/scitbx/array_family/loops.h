@@ -1,19 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Feb: Copied from scitbx/loops.h (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_LOOPS_H
 #define SCITBX_ARRAY_FAMILY_LOOPS_H
 
+#include <scitbx/error.h>
 #include <algorithm>
 #include <cstddef>
-#include <scitbx/error.h>
 
 #include <boost/config.hpp> // FIXES for broken compilers
 
@@ -24,48 +14,77 @@ namespace scitbx { namespace af {
   {
     public:
       nested_loop() : m_over(1) {}
+
       explicit
-      nested_loop(ArrayType const& end,
-                  bool open_range = true)
-        : m_begin(end), m_end(end), m_current(end), m_over(0)
+      nested_loop(typename ArrayType::value_type const& end)
+      :
+        m_over(0)
       {
-        std::fill(m_begin.begin(), m_begin.end(), 0);
-        m_current = m_begin;
+        std::fill(begin_.begin(), begin_.end(), 0);
+        std::fill(end_.begin(), end_.end(), end);
+        current_ = begin_;
+      }
+
+      explicit
+      nested_loop(
+        ArrayType const& end,
+        bool open_range=true)
+      :
+        begin_(end), end_(end), current_(end), m_over(0)
+      {
+        std::fill(begin_.begin(), begin_.end(), 0);
+        current_ = begin_;
         adjust_end(open_range);
       }
-      nested_loop(ArrayType const& begin, ArrayType const& end,
-                  bool open_range = true)
-        : m_begin(begin), m_end(end), m_current(begin), m_over(0)
+
+      nested_loop(
+        ArrayType const& begin,
+        ArrayType const& end,
+        bool open_range=true)
+      :
+        begin_(begin), end_(end), current_(begin), m_over(0)
       {
-        SCITBX_ASSERT(m_begin.size() == m_end.size());
+        SCITBX_ASSERT(begin_.size() == end_.size());
         adjust_end(open_range);
       }
-      bool incr()
+
+      bool
+      incr()
       {
-        for (std::size_t i = m_current.size(); i != 0;) {
+        for (std::size_t i = current_.size(); i != 0;) {
           i--;
-          m_current[i]++;
-          if (m_current[i] < m_end[i]) return true;
-          m_current[i] = m_begin[i];
+          current_[i]++;
+          if (current_[i] < end_[i]) return true;
+          current_[i] = begin_[i];
         }
         m_over++;
         return false;
       }
-      ArrayType const& begin() const { return m_begin; }
-      ArrayType const& end() const { return m_end; }
-      ArrayType const& operator()() const { return m_current; }
-      std::size_t over() const { return m_over; }
-    private:
-      ArrayType m_begin;
-      ArrayType m_end;
-      ArrayType m_current;
+
+      ArrayType const&
+      begin() const { return begin_; }
+
+      ArrayType const&
+      end() const { return end_; }
+
+      ArrayType const&
+      operator()() const { return current_; }
+
+      std::size_t over()
+      const { return m_over; }
+
+    protected:
+      ArrayType begin_;
+      ArrayType end_;
+      ArrayType current_;
       std::size_t m_over;
 
-      void adjust_end(bool open_range)
+      void
+      adjust_end(bool open_range)
       {
         if (!open_range) {
-          for(std::size_t i=0;i<m_end.size();i++) {
-            m_end[i] += 1;
+          for(std::size_t i=0;i<end_.size();i++) {
+            end_[i] += 1;
           }
         }
       }
