@@ -89,7 +89,7 @@ namespace scitbx { namespace fftpack { namespace {
     typedef factorization w_t;
 
     static void
-    def_all()
+    wrap()
     {
       using namespace boost::python;
       class_<w_t>("factorization",
@@ -147,7 +147,7 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all()
+    wrap()
     {
       using namespace boost::python;
       class_<w_t, bases<factorization> >("complex_to_complex",
@@ -203,7 +203,7 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all()
+    wrap()
     {
       using namespace boost::python;
       class_<w_t, bases<factorization> >("real_to_complex",
@@ -268,7 +268,7 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all()
+    wrap()
     {
       using namespace boost::python;
       class_<w_t>("complex_to_complex_3d",
@@ -332,7 +332,7 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all()
+    wrap()
     {
       using namespace boost::python;
       class_<w_t>("real_to_complex_3d",
@@ -365,11 +365,11 @@ namespace scitbx { namespace fftpack { namespace {
     def("adjust_gridding_triple", adjust_gridding_triple_2);
     def("adjust_gridding_triple", adjust_gridding_triple_3);
 
-    factorization_wrappers::def_all();
-    complex_to_complex_wrappers::def_all();
-    real_to_complex_wrappers::def_all();
-    complex_to_complex_3d_wrappers::def_all();
-    real_to_complex_3d_wrappers::def_all();
+    factorization_wrappers::wrap();
+    complex_to_complex_wrappers::wrap();
+    real_to_complex_wrappers::wrap();
+    complex_to_complex_3d_wrappers::wrap();
+    real_to_complex_3d_wrappers::wrap();
   }
 
 }}} // namespace scitbx::fftpack::<anonymous>
