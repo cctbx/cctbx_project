@@ -301,13 +301,7 @@ namespace adptbx {
   DebyeWallerFactor_beta(const Miller::Index& MIx,
                          const boost::array<FloatType, 6>& beta)
   {
-    return std::exp(-(
-        (MIx[0] * MIx[0]) * beta[0]
-      + (MIx[1] * MIx[1]) * beta[1]
-      + (MIx[2] * MIx[2]) * beta[2]
-      + (2 * MIx[0] * MIx[1]) * beta[3]
-      + (2 * MIx[0] * MIx[2]) * beta[4]
-      + (2 * MIx[1] * MIx[2]) * beta[5]));
+    return DebyeWallerFactorUstar(MIx, beta_as_Ustar(beta));
   }
 
   //! Anisotropic Debye-Waller factor given Miller index and Uuvrs.
