@@ -109,8 +109,10 @@ class set(crystal.symmetry):
       print >> f, "Bijvoet pairs:", matches.pairs().size()
       print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
       if (isinstance(self, array)):
-        print >> f, "Anomalous signal: %.4f" % no_sys_abs.apply_selection(
-          no_sys_abs.data() > 0).anomalous_signal()
+        obs = no_sys_abs.apply_selection(no_sys_abs.data() > 0)
+        if (isinstance(self, intensity_array)):
+          obs = obs.f_sq_as_f()
+        print >> f, "Anomalous signal: %.4f" % obs.anomalous_signal()
     return self
 
   def sys_absent_flags(self):
