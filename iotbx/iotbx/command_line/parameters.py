@@ -47,7 +47,7 @@ def run(args):
     attributes_level = 1
   prefix = command_line.options.print_prefix
   for file_name in command_line.args:
-    print prefix + 'parameter_file "%s"' % file_name.replace('"', '\\"')
+    print prefix + 'parameter_file = "%s"' % file_name.replace('"', '\\"')
     print prefix.rstrip()
     parameters = iotbx.parameters.parse(
       file_name=file_name,

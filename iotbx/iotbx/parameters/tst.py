@@ -42,62 +42,62 @@ def exercise_parse_and_show():
   for input_string in ["", "\n", "   \n", "   \t \n \t "]:
     recycle(input_string=input_string, expected_out="")
   recycle(
-    input_string="   name\tvalue\n\n",
-    expected_out="name value\n")
+    input_string="   name\t=value\n\n",
+    expected_out="name = value\n")
   recycle(
-    input_string='name "value\\\\"',
-    expected_out='name "value\\\\"\n')
+    input_string='name="value\\\\"',
+    expected_out='name = "value\\\\"\n')
   recycle(
-    input_string='name "value\\\\\\""',
-    expected_out='name "value\\\\\\""\n')
+    input_string='name="value\\\\\\""',
+    expected_out='name = "value\\\\\\""\n')
   r = recycle(
-    input_string="   name\tvalue\n\n",
+    input_string="   name\t=\tvalue\n\n",
     attributes_level=3,
     expected_out="""\
-name value
-  .help None
-  .caption None
-  .short_caption None
-  .required None
-  .type None
-  .input_size None
-  .expert_level None
+name = value
+  .help = None
+  .caption = None
+  .short_caption = None
+  .required = None
+  .type = None
+  .input_size = None
+  .expert_level = None
 """)
   input_string = """
-name value
-.help help message with detailed information
-.required True
-.type path
+name=value
+.help=help message with detailed information
+.required=True
+.type=path
 """
   recycle(input_string=input_string, attributes_level=3, expected_out="""\
-name value
-  .help "help message with detailed information"
-  .caption None
-  .short_caption None
-  .required %s
-  .type "path"
-  .input_size None
-  .expert_level None
+name = value
+  .help = "help message with detailed information"
+  .caption = None
+  .short_caption = None
+  .required = %s
+  .type = "path"
+  .input_size = None
+  .expert_level = None
 """ % str(True))
   recycle(input_string=input_string, attributes_level=2, expected_out="""\
-name value
-  .help "help message with detailed information"
-  .required %s
-  .type "path"
+name = value
+  .help = "help message with detailed information"
+  .required = %s
+  .type = "path"
 """ % str(True))
   recycle(input_string=input_string, attributes_level=1, expected_out="""\
-name value
-  .help "help message with detailed information"
+name = value
+  .help = "help message with detailed information"
 """)
   recycle(input_string=input_string, attributes_level=0, expected_out="""\
-name value
+name = value
 """)
   recycle(input_string=input_string, attributes_level=1, print_width=25,
     expected_out="""\
-name value
-  .help "help message"
-        "with detailed"
-        "information"
+name = value
+  .help = "help message"
+          "with detailed"
+          "information"
 """)
   recycle(
     input_string="name { }", expected_out="""\
@@ -106,23 +106,23 @@ name
 }
 """)
   recycle(
-    input_string="name\n.help message\n.expert_level 3\n{ }",
+    input_string="name\n.help=message\n.expert_level=3\n{ }",
     attributes_level=3,
     expected_out="""\
 name
-  .help "message"
-  .caption None
-  .short_caption None
-  .expert_level 3
+  .help = "message"
+  .caption = None
+  .short_caption = None
+  .expert_level = 3
 {
 }
 """)
   recycle(
-    input_string="name{a b\nc d\n}", expected_out="""\
+    input_string="name{a=b\nc=d\n}", expected_out="""\
 name
 {
-  a b
-  c d
+  a = b
+  c = d
 }
 """)
   recycle(
@@ -134,56 +134,56 @@ table name
   recycle(
     input_string="table name { }", attributes_level=3, expected_out="""\
 table name
-  .style None
-  .help None
-  .caption None
-  .short_caption None
-  .sequential_format None
-  .disable_add None
-  .disable_delete None
-  .expert_level None
+  .style = None
+  .help = None
+  .caption = None
+  .short_caption = None
+  .sequential_format = None
+  .disable_add = None
+  .disable_delete = None
+  .expert_level = None
 {
 }
 """)
   input_string = """\
 table name
-  .style column
-  .help "help message with detailed information"
-  .caption None
-  .short_caption None
-  .sequential_format None
-  .disable_add None
-  .disable_delete None
-  .expert_level 2
+  .style=column
+  .help="help message with detailed information"
+  .caption=None
+  .short_caption=None
+  .sequential_format=None
+  .disable_add=None
+  .disable_delete=None
+  .expert_level=2
 {}
 """
   recycle(input_string=input_string, attributes_level=3,
     expected_out="""\
 table name
-  .style "column"
-  .help "help message with detailed information"
-  .caption None
-  .short_caption None
-  .sequential_format None
-  .disable_add None
-  .disable_delete None
-  .expert_level 2
+  .style = "column"
+  .help = "help message with detailed information"
+  .caption = None
+  .short_caption = None
+  .sequential_format = None
+  .disable_add = None
+  .disable_delete = None
+  .expert_level = 2
 {
 }
 """)
   recycle(input_string=input_string, attributes_level=2,
     expected_out="""\
 table name
-  .style "column"
-  .help "help message with detailed information"
-  .expert_level 2
+  .style = "column"
+  .help = "help message with detailed information"
+  .expert_level = 2
 {
 }
 """)
   recycle(input_string=input_string, attributes_level=1,
     expected_out="""\
 table name
-  .help "help message with detailed information"
+  .help = "help message with detailed information"
 {
 }
 """)
@@ -246,11 +246,11 @@ table name
 }
 """)
   recycle(
-    input_string="a b\nc d\n e {} table name { row_1 {} row_2 {} } f g",
+    input_string="a=b\nc=d\n e {} table name { row_1 {} row_2 {} } f=g",
     prefix=" prefix ",
     expected_out="""\
- prefix a b
- prefix c d
+ prefix a = b
+ prefix c = d
  prefix
  prefix e
  prefix {
@@ -264,7 +264,7 @@ table name
  prefix   }
  prefix }
  prefix
- prefix f g
+ prefix f = g
 """)
 
 def test_exception(input_string, exception_string=None):
@@ -283,6 +283,8 @@ def exercise_syntax_errors():
     """Unquoted word expected, found 'a' (input line 1)""")
   test_exception("a",
     'Unexpected end of input.')
+  test_exception("a b",
+    'Syntax error: expected "=", found "b" (input line 1)')
   test_exception("{}",
     'Syntax error: unexpected "{" (input line 1)')
   test_exception("a {",
@@ -293,9 +295,9 @@ def exercise_syntax_errors():
     'Syntax error: expected "{", found "foo" (input line 1)')
   test_exception("table name { row_1 bar",
     'Syntax error: expected "{", found "bar" (input line 1)')
-  test_exception("a b\n.foo none",
-    'Unexpected attribute: .foo (input line 2)')
-  test_exception('a b\nc "abc',
+  test_exception("a=b\n.foo none",
+    'Unexpected definition attribute: .foo (input line 2)')
+  test_exception('a=b\nc "abc',
     'Syntax error: missing closing quote (input line 2)')
   test_exception('table 1',
     'Syntax error: improper table name "1" (input line 1)')
@@ -324,81 +326,81 @@ def check_get_sub(parameters, path, expected_out=None):
 
 def exercise_get_without_substitution():
   parameters = iotbx.parameters.parse(input_string="""\
-a b
-c d
+a=b
+c=d
 e {
-  a 1
-  b x
+  a=1
+  b=x
 }
 table name {
   row_1 {
-    a 1
-    b x
+    a=1
+    b=x
   }
   row_2 {
-    a 2
-    b y
+    a=2
+    b=y
   }
   {
-    a 3
-    b z
+    a=3
+    b=z
   }
 }
-e g""")
+e=g""")
   check_get(parameters, path="a", expected_out="""\
-a b
+a = b
 """)
   check_get(parameters, path="e", expected_out="""\
 e
 {
-  a 1
-  b x
+  a = 1
+  b = x
 }
 
-e g
+e = g
 """)
   check_get(parameters, path="e.a", expected_out="""\
-a 1
+a = 1
 """)
   check_get(parameters, path="e.b", expected_out="""\
-b x
+b = x
 """)
   check_get(parameters, path="name", expected_out="""\
 table name
 {
   row_1 {
-    a 1
-    b x
+    a = 1
+    b = x
   }
   row_2 {
-    a 2
-    b y
+    a = 2
+    b = y
   }
   {
-    a 3
-    b z
+    a = 3
+    b = z
   }
 }
 """)
   check_get(parameters, path="name.1", expected_out="""\
-a 1
-b x
+a = 1
+b = x
 """)
   check_get(parameters, path="name.row_1", expected_out="""\
-a 1
-b x
+a = 1
+b = x
 """)
   check_get(parameters, path="name.2", expected_out="""\
-a 2
-b y
+a = 2
+b = y
 """)
   check_get(parameters, path="name.row_2", expected_out="""\
-a 2
-b y
+a = 2
+b = y
 """)
   check_get(parameters, path="name.3", expected_out="""\
-a 3
-b z
+a = 3
+b = z
 """)
   check_get(parameters, path="name.row_3", expected_out="")
 
@@ -406,111 +408,111 @@ def exercise_nested():
   parameters = recycle(
     input_string="""\
 a0 {
-  d1 a b c
+  d1=a b c
   a1 {
     table t0 {
       row0
       {
-        c yes
+        c=yes
         table t1 {
           {
-            x 0
-            y 1.
+            x=0
+            y=1.
           }
         }
       }
     }
   }
-  d2 e f 0g
+  d2=e f 0g
 }
 """,
     expected_out="""\
 a0
 {
-  d1 a b c
+  d1 = a b c
 
   a1
   {
     table t0
     {
       row0 {
-        c yes
+        c = yes
 
         table t1
         {
           {
-            x 0
-            y 1.
+            x = 0
+            y = 1.
           }
         }
       }
     }
   }
 
-  d2 e f 0g
+  d2 = e f 0g
 }
 """).parameters
-  check_get(parameters, path="a0.d1", expected_out="d1 a b c\n")
-  check_get(parameters, path="a0.a1.t0.row0.c", expected_out="c yes\n")
-  check_get(parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x 0\n")
-  check_get(parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y 1.\n")
+  check_get(parameters, path="a0.d1", expected_out="d1 = a b c\n")
+  check_get(parameters, path="a0.a1.t0.row0.c", expected_out="c = yes\n")
+  check_get(parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x = 0\n")
+  check_get(parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y = 1.\n")
   parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
   out = StringIO()
   parameters.show(out=out, attributes_level=2)
   assert out.getvalue() == """\
 a0
 {
-  d1 a b c
-    .type "str"
+  d1 = a b c
+    .type = "str"
 
   a1
   {
     table t0
     {
       row0 {
-        c yes
-          .type "bool"
+        c = yes
+          .type = "bool"
 
         table t1
         {
           {
-            x 0
-              .type "int"
-            y 1.
-              .type "float"
+            x = 0
+              .type = "int"
+            y = 1.
+              .type = "float"
           }
         }
       }
     }
   }
 
-  d2 e f 0g
-    .type "UNKNOWN"
+  d2 = e f 0g
+    .type = "UNKNOWN"
 }
 """
 
 def exercise_get_with_substitution():
   parameters = iotbx.parameters.parse(input_string="""\
-a b
-c   d   e   2
+a=b
+c = d   e   2
 """)
-  check_get_sub(parameters, path="a", expected_out="a b\n")
-  check_get_sub(parameters, path="c", expected_out="c d e 2\n")
+  check_get_sub(parameters, path="a", expected_out="a = b\n")
+  check_get_sub(parameters, path="c", expected_out="c = d e 2\n")
   parameters = iotbx.parameters.parse(input_string="""\
-a $a
-b $c
-c $b
-d $e
-e $f
-f $d
-g $d
-h $_X_Y_Z_
-i 0
-i 1
-j $i
-k $l
-l x
-l y
+a=$a
+b=$c
+c=$b
+d=$e
+e=$f
+f=$d
+g=$d
+h=$_X_Y_Z_
+i=0
+i=1
+j=$i
+k=$l
+l=x
+l=y
 """)
   assert len(parameters.get_without_substitution(
     path="a").objects) == 1
@@ -528,36 +530,36 @@ l y
     assert str(e) == "Undefined variable: $_X_Y_Z_ (input line 8)"
   else: raise RuntimeError("Exception expected.")
   os.environ["_X_Y_Z_"] = "xyz"
-  check_get_sub(parameters, path="h", expected_out='h "xyz"\n')
-  check_get_sub(parameters, path="j", expected_out='j 1\n')
-  check_get_sub(parameters, path="k", expected_out='k y\n')
+  check_get_sub(parameters, path="h", expected_out='h = "xyz"\n')
+  check_get_sub(parameters, path="j", expected_out='j = 1\n')
+  check_get_sub(parameters, path="k", expected_out='k = y\n')
   parameters = iotbx.parameters.parse(input_string="""\
-a x
-b $a
-c $a $b.d
-d $a \$b
-answer yes no
-e "$a"
-f ${a}
-g abc${answer}bc
-h abc${answer}bc 12$answer${a}56
-i $
-j ${abc
-k ${1bc}
-l ${}
-m $@
-n '$a'
+a=x
+b=$a
+c=$a $b.d
+d=$a \$b
+answer=yes no
+e="$a"
+f=${a}
+g=abc${answer}bc
+h=abc${answer}bc 12$answer${a}56
+i=$
+j=${abc
+k=${1bc}
+l=${}
+m=$@
+n='$a'
 """)
-  check_get_sub(parameters, path="a", expected_out="a x\n")
-  check_get_sub(parameters, path="b", expected_out="b x\n")
-  check_get_sub(parameters, path="c", expected_out='c x "x.d"\n')
-  check_get_sub(parameters, path="d", expected_out="d x \\$b\n")
-  check_get_sub(parameters, path="answer", expected_out="answer yes no\n")
-  check_get_sub(parameters, path="e", expected_out='e "x"\n')
-  check_get_sub(parameters, path="f", expected_out='f "x"\n')
-  check_get_sub(parameters, path="g", expected_out='g "abcyes nobc"\n')
+  check_get_sub(parameters, path="a", expected_out="a = x\n")
+  check_get_sub(parameters, path="b", expected_out="b = x\n")
+  check_get_sub(parameters, path="c", expected_out='c = x "x.d"\n')
+  check_get_sub(parameters, path="d", expected_out="d = x \\$b\n")
+  check_get_sub(parameters, path="answer", expected_out="answer = yes no\n")
+  check_get_sub(parameters, path="e", expected_out='e = "x"\n')
+  check_get_sub(parameters, path="f", expected_out='f = "x"\n')
+  check_get_sub(parameters, path="g", expected_out='g = "abcyes nobc"\n')
   check_get_sub(parameters, path="h",
-    expected_out='h "abcyes nobc" "12yes nox56"\n')
+    expected_out='h = "abcyes nobc" "12yes nox56"\n')
   try: parameters.get(path="i")
   except RuntimeError, e:
     assert str(e) == 'Syntax error: $ must be followed by an identifier:' \
@@ -580,40 +582,40 @@ n '$a'
   except RuntimeError, e:
     assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
   else: raise RuntimeError("Exception expected.")
-  check_get_sub(parameters, path="n", expected_out="n '$a'\n")
+  check_get_sub(parameters, path="n", expected_out="n = '$a'\n")
 
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
 include tmp1.params
-a x
+a=x
 """
   print >> open("tmp2.params", "w"), """\
-b y
+b=y
 """
   print >> open("tmp3.params", "w"), """\
-c z
+c=z
 include tmp2.params
-d $z
+d=$z
 """
   parameters = iotbx.parameters.parse(
     input_string="""\
-tmp2 tmp2.params
+tmp2=tmp2.params
 include tmp1.params $tmp2
-r 0
+r=0
 include tmp3.params
-s 1
+s=1
 """,
     process_includes=True)
   out = StringIO()
   parameters.show(out=out)
   assert out.getvalue() == """\
-tmp2 tmp2.params
-a x
-b y
-r 0
-c z
-d $z
-s 1
+tmp2 = tmp2.params
+a = x
+b = y
+r = 0
+c = z
+d = $z
+s = 1
 """
   try: parameters.get(path="d")
   except RuntimeError, e:
@@ -622,74 +624,76 @@ s 1
   try: os.makedirs("tmp")
   except OSError: pass
   print >> open("tmp1.params", "w"), """\
-a 0
+a=0
 include tmp/tmp1.params
-x 1
+x=1
 """
   print >> open("tmp/tmp1.params", "w"), """\
-b 1
+b=1
 include tmp2.params
-y 2
+y=2
 """
   print >> open("tmp/tmp2.params", "w"), """\
-c 2
+c=2
 include tmp1.params
-z 3
+z=3
 """
-  parameters = iotbx.parameters.parse(file_name="tmp1.params", process_includes=True)
+  parameters = iotbx.parameters.parse(
+    file_name="tmp1.params",
+    process_includes=True)
   out = StringIO()
   parameters.show(out=out)
   assert out.getvalue() == """\
-a 0
-b 1
-c 2
-z 3
-y 2
-x 1
+a = 0
+b = 1
+c = 2
+z = 3
+y = 2
+x = 1
 """
 
 def exercise_extract():
   parameters = iotbx.parameters.parse(input_string="""\
 group {
-  a yes
-    .type bool
-  a yes
-  b 13
-    .type int
-  c 1.3
-    .type float
-  d abc def ghi
-    .type str
-  e a *b c
-    .type choice
-  e a *b *c
-    .type choice
-  e a b c
-    .type choice
-  f a *b c
-    .type multi_choice
-  f a *b *c
-    .type multi_choice
-  f a b c
-    .type multi_choice
-  g "/var/tmp/junk"
-    .type path
-  h "var.tmp.junk"
-    .type key
-  i ceil(4/3)
-    .type int
-  i 1/2
-    .type int
-  j 1/(5-3)
-    .type float
-  j "'a'"
-    .type float
-  j a
-    .type float
-  u 10,12 13 80,90 100
-    .type unit_cell
-  s 19
-    .type space_group
+  a=yes
+    .type=bool
+  a=yes
+  b=13
+    .type=int
+  c=1.3
+    .type=float
+  d=abc def ghi
+    .type=str
+  e=a *b c
+    .type=choice
+  e=a *b *c
+    .type=choice
+  e=a b c
+    .type=choice
+  f=a *b c
+    .type=multi_choice
+  f=a *b *c
+    .type=multi_choice
+  f=a b c
+    .type=multi_choice
+  g="/var/tmp/junk"
+    .type=path
+  h="var.tmp.junk"
+    .type=key
+  i=ceil(4/3)
+    .type=int
+  i=1/2
+    .type=int
+  j=1/(5-3)
+    .type=float
+  j="'a'"
+    .type=float
+  j=a
+    .type=float
+  u=10,12 13 80,90 100
+    .type=unit_cell
+  s=19
+    .type=space_group
 }
 """)
   assert parameters.get_without_substitution(
@@ -762,12 +766,12 @@ group {
   else: raise RuntimeError("Exception expected.")
   parameters = iotbx.parameters.parse(input_string="""\
 group {
-  a yes
-    .type bool
-  b 13
-    .type int
-  s P 21 21 21
-    .type space_group
+  a=yes
+    .type=bool
+  b=13
+    .type=int
+  s=P 21 21 21
+    .type=space_group
 }
 """)
   group = parameters.get_without_substitution(

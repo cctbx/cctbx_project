@@ -41,6 +41,7 @@ def collect_objects(
           raise RuntimeError(
             "Unexpected table attribute: %s%s" % (
               word.value, word.where_str()))
+        word_iterator.pop_unquoted().assert_expected("=")
         table.assign_attribute(
           name=word.value[1:],
           value_words=collect_values(word_iterator, word, stop_token))
@@ -83,6 +84,7 @@ def collect_objects(
             raise RuntimeError(
               "Unexpected scope attribute: %s%s" % (
                 word.value, word.where_str()))
+          word_iterator.pop_unquoted().assert_expected("=")
           scope.assign_attribute(
             name=word.value[1:],
             value_words=collect_values(word_iterator, word, stop_token))
@@ -98,6 +100,8 @@ def collect_objects(
         if (lead_word.value[:1] != "."):
           if (not parameters.is_standard_identifier(lead_word.value)):
             lead_word.raise_syntax_error("improper definition name ")
+          if (lead_word.value != "include"):
+            word_iterator.pop_unquoted().assert_expected("=")
           objects.append(parameters.definition(
             name=lead_word.value,
             values=collect_values(word_iterator, lead_word, stop_token)))
@@ -105,8 +109,10 @@ def collect_objects(
           if (len(objects) == 0
               or not isinstance(objects[-1], parameters.definition)
               or not objects[-1].has_attribute_with_name(lead_word.value[1:])):
-            raise RuntimeError("Unexpected attribute: %s%s" % (
+            raise RuntimeError("Unexpected definition attribute: %s%s" % (
               lead_word.value, lead_word.where_str()))
+          word = word_iterator.pop_unquoted()
+          word.assert_expected("=")
           objects[-1].assign_attribute(
             name=lead_word.value[1:],
             value_words=collect_values(word_iterator, lead_word, stop_token),
