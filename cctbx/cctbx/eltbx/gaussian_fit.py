@@ -111,9 +111,9 @@ class fit_parameters:
       n_repeats_minimization=1,
       shift_sqrt_b_mod_n=[1],
       b_min=self.b_min,
-      max_max_error=self.max_max_error,
+      max_max_error=0.02,
       n_start_fractions=2,
-      negligible_max_error=min(0.01,self.max_max_error))
+      negligible_max_error=0.02)
 
 def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
   if (params is None): params = fit_parameters()

@@ -6,10 +6,19 @@ namespace n_gaussian { namespace raw {
 
   struct entry
   {
-    const char* label;
     const double* stols;
+    const double* max_errors;
     const double** coeff;
   };
+
+  const char*
+  get_tag();
+
+  const char**
+  get_labels();
+
+  const entry*
+  get_table();
 
 }}}}} // namespace cctbx::eltbx::xray_scattering::n_gaussian::raw
 

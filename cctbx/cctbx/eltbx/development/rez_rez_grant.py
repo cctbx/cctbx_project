@@ -63,12 +63,14 @@ table_2_o2minus = flex.double([
 0.0686,
 0.0351])
 
+table_2_sigmas = flex.double(table_2_stol.size(), 0.00005)
+
 def run():
   wk = xray_scattering.wk1995("O2-")
   gaussian_fit = scitbx.math.gaussian.fit(
     table_2_stol,
     table_2_o2minus,
-    flex.double(table_2_stol.size(), 0.00005),
+    table_2_sigmas,
     wk.fetch())
   print "max error:", flex.max(gaussian_fit.significant_relative_errors())
   cctbx.eltbx.gaussian_fit.write_plots(
