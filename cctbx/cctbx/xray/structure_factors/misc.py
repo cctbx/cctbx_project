@@ -1,5 +1,4 @@
 from cctbx import adptbx
-from scitbx.python_utils.misc import adopt_init_args
 
 def quality_factor_from_any(d_min=None,
                             grid_resolution_factor=None,
