@@ -800,6 +800,26 @@ a=$b
     assert str(e) == 'Undefined variable: $b (input line 1)'
   else: raise RuntimeError("Exception expected.")
 
+def exercise_full_path():
+  params = phil.parse(input_string="""\
+d0=0
+a0 {
+  d1=a
+  a1 {
+    t0 {
+      c=yes
+      t1 {
+        x=0
+      }
+    }
+  }
+  d2=e
+}
+""")
+  for path in ["d0", "a0", "a0.d1", "a0.a1", "a0.a1.t0", "a0.a1.t0.c",
+               "a0.a1.t0.t1", "a0.a1.t0.t1.x", "a0.d2"]:
+    assert params.get(path).objects[0].full_path() == path
+
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
 #include none
@@ -1312,7 +1332,7 @@ c=a *d c
 """)
   try: fetched = master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == "Not a possible choice: *d (input line 1)"
+    assert str(e) == "Not a possible choice for c: *d (input line 1)"
   else: raise RuntimeError("Exception expected.")
   #
   master = phil.parse(input_string="""\
@@ -1626,12 +1646,12 @@ group {
     with_substitution=False).objects[1].extract()
   except RuntimeError, e:
     assert str(e) \
-      == 'Multiple choices where only one is possible (input line 13)'
+      == 'Multiple choices for group.e; only one is possible (input line 13)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.e",
     with_substitution=False).objects[2].extract()
   except RuntimeError, e:
-    assert str(e) == 'Unspecified choice (input line 15)'
+    assert str(e) == 'Unspecified choice for group.e (input line 15)'
   else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.e").objects[0].type \
       is parameters.get(path="group.e").objects[1].type
@@ -2269,6 +2289,37 @@ foo_converter_registry = dict(phil.default_converter_registry)
 foo_converter_registry["foo1"] = foo1_converters
 foo_converter_registry["foo2"] = foo2_converters
 
+def exercise_choice_exceptions():
+  master = phil.parse(input_string="""\
+x=*a b
+  .type=choice
+y=*a b
+  .type=choice
+  .optional=True
+""")
+  py_params = master.extract()
+  py_params.x = "c"
+  try: master.format(py_params)
+  except RuntimeError, e:
+    assert str(e) == "Not a valid choice: x=c"
+  else: raise RuntimeError("Exception expected.")
+  py_params.x = "b"
+  py_params.y = "c"
+  try: master.format(py_params)
+  except RuntimeError, e:
+    assert str(e) == "Not a valid choice: y=c"
+  else: raise RuntimeError("Exception expected.")
+  master = phil.parse(input_string="""\
+x=*a a
+  .type=choice
+""")
+  py_params = master.extract()
+  try: master.format(py_params)
+  except RuntimeError, e:
+    assert str(e) \
+        == "Improper master choice definition: x = *a a (input line 1)"
+  else: raise RuntimeError("Exception expected.")
+
 def exercise_type_constructors():
   params = phil.parse(
     input_string="""\
@@ -2408,10 +2459,12 @@ def exercise():
   exercise_nested()
   exercise_get_with_substitution()
   exercise_include()
+  exercise_full_path()
   exercise_fetch()
   exercise_extract()
   exercise_format()
   exercise_type_constructors()
+  exercise_choice_exceptions()
   exercise_command_line()
   print "OK"
 

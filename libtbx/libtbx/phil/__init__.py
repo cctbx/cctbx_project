@@ -207,28 +207,40 @@ class choice_converters:
         if (word.value.startswith("*")):
           if (result is not None):
             raise RuntimeError(
-              "Multiple choices where only one is possible%s" %
-              words[0].where_str())
+              "Multiple choices for %s; only one is possible%s" % (
+                master.full_path(), words[0].where_str()))
           result = word.value[1:]
       if (result is None and not master.optional):
-        raise RuntimeError("Unspecified choice%s" % words[0].where_str())
+        raise RuntimeError("Unspecified choice for %s%s" % (
+          master.full_path(), words[0].where_str()))
     return result
 
   def as_words(self, python_object, master):
+    n_choices = 0
+    if (python_object is not None):
+      words = []
+      for word in master.words:
+        if (word.value.startswith("*")): value = word.value[1:]
+        else: value = word.value
+        if (not self.multi):
+          if (value == python_object):
+            value = "*" + value
+            n_choices += 1
+            if (n_choices > 1):
+              raise RuntimeError("Improper master choice definition: %s%s" % (
+                master.as_str().rstrip(), master.words[0].where_str()))
+        else:
+          if (value in python_object):
+            value = "*" + value
+            n_choices += 1
+        words.append(tokenizer.word(
+          value=value, quote_token=word.quote_token))
+    if (n_choices == 0
+        and (not master.optional or python_object is not None)):
+      raise RuntimeError("Not a valid choice: %s=%s" % (
+        master.full_path(), str(python_object)))
     if (python_object is None):
       return [tokenizer.word(value="None")]
-    words = []
-    for word in master.words:
-      if (word.value.startswith("*")): value = word.value[1:]
-      else: value = word.value
-      if (not self.multi):
-        if (value == python_object):
-          value = "*" + value
-      else:
-        if (value in python_object):
-          value = "*" + value
-      words.append(tokenizer.word(
-        value=value, quote_token=word.quote_token))
     return words
 
   def fetch(self, source_words, master):
@@ -248,8 +260,8 @@ class choice_converters:
         else:
           flag = False
       if (flag and value not in flags):
-        raise RuntimeError("Not a possible choice: %s%s" % (
-          str(word), word.where_str()))
+        raise RuntimeError("Not a possible choice for %s: %s%s" % (
+          master.full_path(), str(word), word.where_str()))
       flags[value] = flag
     words = []
     for word in master.words:
@@ -317,6 +329,16 @@ def definition_converters_from_words(
         constructor, str(e), words[0].where_str()))
   converter_cache[constructor] = weakref.ref(converters_instance)
   return converters_instance
+
+def full_path(self):
+  result = [self.name]
+  pps = self.primary_parent_scope
+  while (pps is not None):
+    if (pps.name == ""): break
+    result.append(pps.name)
+    pps = pps.primary_parent_scope
+  result.reverse()
+  return ".".join(result)
 
 def show_attributes(self, out, prefix, attributes_level, print_width):
   if (attributes_level <= 0): return
@@ -407,6 +429,9 @@ class definition: # FUTURE definition(object)
     if (name is not None): result.name = name
     if (words is not None): result.words = words
     return result
+
+  def full_path(self):
+    return full_path(self)
 
   def fetch(self, source):
     if (not isinstance(source, definition)):
@@ -630,6 +655,9 @@ class scope:
     if (name is not None): result.name = name
     if (objects is not None): result.objects = objects
     return result
+
+  def full_path(self):
+    return full_path(self)
 
   def adopt(self, object):
     assert len(object.name) > 0
