@@ -1,5 +1,6 @@
 from iotbx import reflection_file_reader
 from iotbx.option_parser import iotbx_option_parser
+from cctbx import maptbx
 from cctbx import crystal
 from cctbx import sgtbx
 import cctbx.sgtbx.lattice_symmetry
@@ -57,6 +58,73 @@ class array_cache:
       if (partition[0].r().determinant() > 0):
         result.append(partition[0])
     return result
+
+  def show_possible_twin_laws(self):
+    print "Space group of the intensities:", \
+      self.intensity_symmetry.space_group_info() \
+        .as_reference_setting()
+    print "Space group of the metric:     ", \
+      self.lattice_symmetry.space_group_info() \
+        .as_reference_setting()
+    twin_laws = self.possible_twin_laws()
+    if (len(twin_laws) == 0):
+      print "Possible twin laws: None"
+    else:
+      s = str(self.idealized_input_unit_cell())
+      if (s != str(self.input.unit_cell())):
+        print "Idealized unit cell:", s
+      print "Possible twin laws:"
+      for s in twin_laws:
+        print " ", s.r().as_hkl()
+    print
+
+  def show_patterson_peaks(self,
+        min_relative_peak_height=0.1,
+        show_at_least=3):
+    print "Patterson peaks for %s:" % str(self.input.info())
+    reciprocal_map = self.input
+    if (reciprocal_map.anomalous_flag()):
+      reciprocal_map = reciprocal_map.average_bijvoet_mates()
+    patterson_map = reciprocal_map.patterson_map(
+      symmetry_flags=maptbx.use_space_group_symmetry)
+    patterson_map.apply_sigma_scaling()
+    peak_list = patterson_map.tags().peak_search(
+      map=patterson_map.real_map(),
+      parameters=maptbx.peak_search_parameters())
+    max_height = peak_list.heights()[0]
+    sym_equiv_origin = sgtbx.sym_equiv_sites(
+      unit_cell=patterson_map.unit_cell(),
+      space_group=patterson_map.space_group(),
+      original_site=(0,0,0))
+    print "      Fractional coordinates     Height  Distance from origin"
+    for i_peak in xrange(peak_list.size()):
+      height = peak_list.heights()[i_peak]
+      if (height < max_height * min_relative_peak_height
+          and i_peak > show_at_least): break
+      site = peak_list.sites()[i_peak]
+      dist_info = sgtbx.min_sym_equiv_distance_info(sym_equiv_origin, site)
+      print "  %8.4f %8.4f %8.4f" % (dist_info.sym_op()*site),
+      print "  %8.3f  %8.3f" % (height, dist_info.dist())
+    print
+
+  def show_perfect_merohedral_twinning_test(self):
+    print "Perfect merohedral twinning test for %s:"%str(self.input.info())
+    acentric = self.input.select_acentric()
+    assert acentric.observation_type() is self.input.observation_type()
+    acentric.setup_binner(auto_binning=True).counts_complete(
+      include_centric=False)
+    sm = acentric.second_moment_of_intensities(use_binning=True)
+    wr = acentric.wilson_ratio(use_binning=True)
+    print acentric.second_moment_of_intensities.__doc__
+    print acentric.wilson_ratio.__doc__
+    print "See also: http://www.doe-mbi.ucla.edu/Services/Twinning/intro.html"
+    for i_bin,s,w in zip(count(), sm.data, wr.data):
+      print sm.binner.bin_legend(i_bin),
+      for v in s, w:
+        if (v is None): print " "*7,
+        else: print "%7.4f" % v,
+      print
+    print
 
   def unique_reindexing_operators(self,
         other,
@@ -228,46 +296,13 @@ def run(args):
     print "Summary", i_0+1
     cache_0.input.show_comprehensive_summary()
     print
-    print "Space group of the intensities:", \
-      cache_0.intensity_symmetry.space_group_info() \
-        .as_reference_setting()
-    print "Space group of the metric:     ", \
-      cache_0.lattice_symmetry.space_group_info() \
-        .as_reference_setting()
-    twin_laws = cache_0.possible_twin_laws()
-    if (len(twin_laws) == 0):
-      print "Possible twin laws: None"
-      print
-    else:
-      s = str(cache_0.idealized_input_unit_cell())
-      if (s != str(cache_0.input.unit_cell())):
-        print "Idealized unit cell:", s
-      print "Possible twin laws:"
-      for s in twin_laws:
-        print " ", s.r().as_hkl()
-      print
+    cache_0.show_possible_twin_laws()
     print "Completeness of %s:" % str(cache_0.input.info())
     cache_0.input.setup_binner(n_bins=n_bins)
     cache_0.input.completeness(use_binning=True).show()
     print
-    print "Perfect merohedral twinning test for %s:"%str(cache_0.input.info())
-    acentric = cache_0.input.select_acentric()
-    assert acentric.observation_type() is cache_0.input.observation_type()
-    acentric.setup_binner(auto_binning=True).counts_complete(
-      include_centric=False)
-    sm = acentric.second_moment_of_intensities(use_binning=True)
-    wr = acentric.wilson_ratio(use_binning=True)
-    print acentric.second_moment_of_intensities.__doc__
-    print acentric.wilson_ratio.__doc__
-    print "See also: http://www.doe-mbi.ucla.edu/Services/Twinning/intro.html"
-    for i_bin,s,w in zip(count(), sm.data, wr.data):
-      print sm.binner.bin_legend(i_bin),
-      for v in s, w:
-        if (v is None): print " "*7,
-        else: print "%7.4f" % v,
-      print
-    print
-    del acentric
+    cache_0.show_patterson_peaks()
+    cache_0.show_perfect_merohedral_twinning_test()
     if (cache_0.input.anomalous_flag()):
       print "Anomalous signal of %s:" % str(cache_0.input.info())
       print cache_0.input.anomalous_signal.__doc__
