@@ -30,6 +30,8 @@ def interpret_generic_coordinate_line(line, skip_columns):
   flds = line.replace(",", " ").split()
   try: site = [float(x) for x in flds[skip_columns: skip_columns+3]]
   except: raise RuntimeError, "FormatError: " + line
+  if (len(site) != 3):
+    raise RuntimeError, "FormatError: " + line
   return " ".join(flds[:skip_columns]), site
 
 def sdb_file_to_emma_model(crystal_symmetry, sdb_file):
