@@ -2,8 +2,8 @@
 // TODO: complete std::vector interface
 // XXX copyright
 
-#ifndef STATIC_VECTOR_H
-#define STATIC_VECTOR_H
+#ifndef FIXCAP_VECTOR_H
+#define FIXCAP_VECTOR_H
 
 #include <cstddef>
 #include <stdexcept>
@@ -16,7 +16,7 @@
 namespace cctbx {
 
     template<class T, std::size_t N>
-    class static_vector {
+    class fixcap_vector {
       public:
         T elems[N];    // fixed-size array of elements of type T
 
@@ -30,8 +30,8 @@ namespace cctbx {
         typedef std::size_t    size_type;
         typedef std::ptrdiff_t difference_type;
 
-        static_vector() : m_size(0) {}
-        static_vector(const T& value) : m_size(0) { assign(value); }
+        fixcap_vector() : m_size(0) {}
+        fixcap_vector(const T& value) : m_size(0) { assign(value); }
 
         // iterator support
         iterator begin() { return elems; }
@@ -75,10 +75,10 @@ namespace cctbx {
         size_type size() const { return m_size; }
         bool empty() const { if (size() == 0) return true; return false; }
         static size_type max_size() { return size(); }
-        enum { static_size = N };
+        enum { fixcap_size = N };
 
         // swap (note: linear complexity)
-        void swap (static_vector<T,N>& y) {
+        void swap (fixcap_vector<T,N>& y) {
             std::swap_ranges(begin(),end(),y.begin());
         }
 
@@ -87,7 +87,7 @@ namespace cctbx {
 
         // assignment with type conversion
         template <typename T2>
-        static_vector<T,N>& operator= (const static_vector<T2,N>& rhs) {
+        fixcap_vector<T,N>& operator= (const fixcap_vector<T2,N>& rhs) {
             std::copy(rhs.begin(),rhs.end(), begin());
             return *this;
         }
@@ -100,16 +100,16 @@ namespace cctbx {
 
         void push_back (const T& x)
         {
-          if (m_size == static_size)
-            { throw std::range_error("static_vector"); }
+          if (m_size == fixcap_size)
+            { throw std::range_error("fixcap_vector"); }
           elems[m_size] = x;
           m_size++;
         }
 
       private:
-        // check range (may be private because it is static)
+        // check range (may be private because it is fixcap)
         void rangecheck (size_type i) {
-            if (i >= size()) { throw std::range_error("static_vector"); }
+            if (i >= size()) { throw std::range_error("fixcap_vector"); }
         }
 
       private:
@@ -118,36 +118,36 @@ namespace cctbx {
 
     // comparisons
     template<class T, std::size_t N>
-    bool operator== (const static_vector<T,N>& x, const static_vector<T,N>& y) {
+    bool operator== (const fixcap_vector<T,N>& x, const fixcap_vector<T,N>& y) {
         return std::equal(x.begin(), x.end(), y.begin());
     }
     template<class T, std::size_t N>
-    bool operator< (const static_vector<T,N>& x, const static_vector<T,N>& y) {
+    bool operator< (const fixcap_vector<T,N>& x, const fixcap_vector<T,N>& y) {
         return std::lexicographical_compare(x.begin(),x.end(),y.begin(),y.end());
     }
     template<class T, std::size_t N>
-    bool operator!= (const static_vector<T,N>& x, const static_vector<T,N>& y) {
+    bool operator!= (const fixcap_vector<T,N>& x, const fixcap_vector<T,N>& y) {
         return !(x==y);
     }
     template<class T, std::size_t N>
-    bool operator> (const static_vector<T,N>& x, const static_vector<T,N>& y) {
+    bool operator> (const fixcap_vector<T,N>& x, const fixcap_vector<T,N>& y) {
         return y<x;
     }
     template<class T, std::size_t N>
-    bool operator<= (const static_vector<T,N>& x, const static_vector<T,N>& y) {
+    bool operator<= (const fixcap_vector<T,N>& x, const fixcap_vector<T,N>& y) {
         return !(y<x);
     }
     template<class T, std::size_t N>
-    bool operator>= (const static_vector<T,N>& x, const static_vector<T,N>& y) {
+    bool operator>= (const fixcap_vector<T,N>& x, const fixcap_vector<T,N>& y) {
         return !(x<y);
     }
 
     // global swap()
     template<class T, std::size_t N>
-    inline void swap (static_vector<T,N>& x, static_vector<T,N>& y) {
+    inline void swap (fixcap_vector<T,N>& x, fixcap_vector<T,N>& y) {
         x.swap(y);
     }
 
 } // namespace cctbx
 
-#endif // STATIC_VECTOR_H
+#endif // FIXCAP_VECTOR_H

@@ -57,10 +57,10 @@ namespace sgtbx {
         const CmpiVect CmpT;
     };
 
-    cctbx::static_vector<ssVM, 3>
+    cctbx::fixcap_vector<ssVM, 3>
     GetContNullSpace(const detail::AnyGenerators& Gen)
     {
-      cctbx::static_vector<ssVM, 3> result;
+      cctbx::fixcap_vector<ssVM, 3> result;
       boost::array<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
       int RankGenRmI = iRowEchelonFormT(GenRmI.elems, Gen.nAll() * 3, 3, 0, 0);
       cctbx_assert(RankGenRmI >= 0 && RankGenRmI <= 3);
@@ -92,7 +92,7 @@ namespace sgtbx {
       return result;
     }
 
-    typedef cctbx::static_vector<TrVec, 8> DiscrList;
+    typedef cctbx::fixcap_vector<TrVec, 8> DiscrList;
 
     void UpdateBestZ(const DiscrList& OrigZf,
                      const TrVec& Shift,
@@ -117,7 +117,7 @@ namespace sgtbx {
     }
 
     void BestVectors(const SgOps& sgo,
-                     const cctbx::static_vector<ssVM, 3>& ContinuousVM,
+                     const cctbx::fixcap_vector<ssVM, 3>& ContinuousVM,
                      DiscrList& DiscrZ)
     {
       if (sgo.nLTr() == 1 && ContinuousVM.size() == 0) return;
@@ -158,7 +158,7 @@ namespace sgtbx {
         BestZc.push_back(BestZf[iDL].cancel());
       }
       cctbx_assert(ContinuousVM.size() < 3);
-      cctbx::static_vector<int, 2> loop_min, loop_max;
+      cctbx::fixcap_vector<int, 2> loop_min, loop_max;
       for (iVM = 0; iVM < ContinuousVM.size(); iVM++) {
         loop_min.push_back(0);
         loop_max.push_back(LTBF - 1);
@@ -166,10 +166,10 @@ namespace sgtbx {
       TrVec LTr[3];
       for (iLTr = 0; iLTr < sgo.nLTr(); iLTr++) {
         LTr[0] = sgo.LTr(iLTr).newBaseFactor(LTBF);
-        NestedLoop<cctbx::static_vector<int, 2> > loop(loop_min, loop_max);
+        NestedLoop<cctbx::fixcap_vector<int, 2> > loop(loop_min, loop_max);
         do {
           for (iVM = 0; iVM < ContinuousVM.size(); iVM++) {
-            const cctbx::static_vector<int, 2>& f = loop();
+            const cctbx::fixcap_vector<int, 2>& f = loop();
             LTr[iVM + 1] = LTr[iVM] + f[iVM] * TrVec(ContinuousVM[iVM].V, LTBF);
           }
           UpdateBestZ(OrigZf, LTr[ContinuousVM.size()], BestZf, BestZc);
@@ -182,16 +182,16 @@ namespace sgtbx {
       }
     }
 
-    cctbx::static_vector<TrVec, 3>
+    cctbx::fixcap_vector<TrVec, 3>
     SelectDiscreteGenerators(const DiscrList& DiscrP,
                              const DiscrList& DiscrZ)
     {
-      if (DiscrP.size() == 1) return cctbx::static_vector<TrVec, 3>();
+      if (DiscrP.size() == 1) return cctbx::fixcap_vector<TrVec, 3>();
       for (int nIx = 1; nIx <= DiscrP.size() - 1 && nIx <= 3; nIx++) {
         int Ix[3], iIx;
         for (iIx = 0; iIx < nIx; iIx++) Ix[iIx] = iIx;
         do {
-          cctbx::static_vector<TrVec, 3> result;
+          cctbx::fixcap_vector<TrVec, 3> result;
           TrOps DiscrGrp(DiscrP[0].BF());
           for (iIx = 0; iIx < nIx; iIx++) {
             DiscrGrp.expand(DiscrP[Ix[iIx] + 1]);
@@ -254,19 +254,20 @@ namespace sgtbx {
         DiscrGrpP.expand(x);
       }
     }
+    int iDL;
     DiscrList DiscrZ;
-    for (int iDL = 0; iDL < DiscrGrpP.nVects(); iDL++) {
+    for (iDL = 0; iDL < DiscrGrpP.nVects(); iDL++) {
       DiscrZ.push_back(
         (Gen.Z2POp.InvM().Rpart() * DiscrGrpP[iDL]).modPositive());
     }
     BestVectors(sgo, m_VM, DiscrZ);
     std::sort(DiscrZ.begin(), DiscrZ.end(), CmpDiscrZ());
     DiscrList DiscrP;
-    for (int iDL = 0; iDL < DiscrZ.size(); iDL++) {
+    for (iDL = 0; iDL < DiscrZ.size(); iDL++) {
       DiscrP.push_back(
         (Gen.Z2POp.M().Rpart() * DiscrZ[iDL]).newBaseFactor(DTBF));
     }
-    cctbx::static_vector<TrVec, 3>
+    cctbx::fixcap_vector<TrVec, 3>
     DiscrGen = SelectDiscreteGenerators(DiscrP, DiscrZ);
     for (int iG = 0; iG < DiscrGen.size(); iG++) {
       cctbx_assert(m_VM.size() < 3);
@@ -293,10 +294,10 @@ namespace sgtbx {
     return true;
   }
 
-  cctbx::static_vector<int, 3>
+  cctbx::fixcap_vector<int, 3>
   StructureSeminvariant::apply_mod(const Miller::Index& H) const
   {
-    cctbx::static_vector<int, 3> result;
+    cctbx::fixcap_vector<int, 3> result;
     for(std::size_t i=0;i<m_VM.size();i++) {
       result.push_back(m_VM[i].V * H);
       if (m_VM[i].M) result[i] %= m_VM[i].M;
