@@ -11,15 +11,15 @@ from cctbx import adptbx
 from cctbx.eltbx.xray_scattering import wk1995
 from iotbx.shelx import crystal_symmetry_from_ins
 
-def from_ins(file_name=None,
+def from_ins(file_name=None, ins_records=None,
              crystal_symmetry=None, force_symmetry=00000,
              ignore_atom_element_q=0001,
              scan_atom_element_columns=0001,
-             fractional_coordinates=00000,
              min_distance_sym_equiv=0.5):
 
-  file = open(file_name)
-  pdb_records = collect_records(raw_records=file)
+  assert [file_name, ins_records].count(None) == 1
+  if (ins_records is None):
+    ins_records = collect_records(raw_records=open(file_name))
 
   crystal_symmetry = None
   crystal_symmetry = crystal_symmetry_from_ins.extract_from(
@@ -35,7 +35,7 @@ def from_ins(file_name=None,
 
   k=0
   dict_allowed_atoms = {}
-  for record in pdb_records:
+  for record in ins_records:
     if(record.record_name == "SFAC"):
       for x in record.dict_sfac_content.values():
         k += 1
@@ -43,13 +43,13 @@ def from_ins(file_name=None,
 
   u_iso_negative = 0
   scatterer = None
-  for i in xrange(len(pdb_records)):
-    record = pdb_records[i]
+  for i in xrange(len(ins_records)):
+    record = ins_records[i]
     if(record.record_iden == "ATOM" and record.rec_part == 1):
-      record_next = pdb_records[i+1]
+      record_next = ins_records[i+1]
       b = record.tempFactor + record_next.tempFactor
       scatterer = xray.scatterer(
-        label     = " %s" % record.name,
+        label     = "%s" % record.name,
         site      = record.coordinates,
         b         = record.tempFactor + record_next.tempFactor,
         occupancy = record.occupancy,
@@ -59,13 +59,14 @@ def from_ins(file_name=None,
         u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
       structure.add_scatterer(scatterer)
     elif(record.record_iden == "ATOM" and record.rec_part == 0):
-      if(record.tempFactor[0] < 0.0): 
+      if(record.tempFactor[0] < 0.0):
         u_iso_negative = 1
         u_iso = record.tempFactor[0]
       else:
-        u_iso = adptbx.u_iso_as_u_star(structure.unit_cell(),record.tempFactor[0])
+        u_iso = adptbx.u_iso_as_u_star(
+          structure.unit_cell(),record.tempFactor[0])
       scatterer = xray.scatterer(
-        label     = " %s" % record.name,
+        label     = "%s" % record.name,
         site      = record.coordinates,
         u         = u_iso,
         occupancy = record.occupancy,
@@ -77,7 +78,7 @@ def from_ins(file_name=None,
 
 def if_u_iso_negative(structure):
   for j in xrange(structure.scatterers().size()):
-    atom_chem_type = structure.scatterers()[j].element_symbol() 
+    atom_chem_type = structure.scatterers()[j].element_symbol()
     if(atom_chem_type == "H" and structure.scatterers()[j].u_iso < 0.0):
       check_bond_number = 0
       for i in xrange(structure.scatterers().size()):
@@ -85,7 +86,7 @@ def if_u_iso_negative(structure):
           structure.scatterers()[i].site)
         site_j = structure.unit_cell().orthogonalize(
           structure.scatterers()[j].site)
-        atom_chem_type = structure.scatterers()[i].element_symbol() 
+        atom_chem_type = structure.scatterers()[i].element_symbol()
         if(atom_chem_type != "H"):
           dist = math.sqrt((site_i[0]-site_j[0])**2 +
                            (site_i[1]-site_j[1])**2 +
@@ -226,8 +227,8 @@ class ins_record:
     atom_rec_length = len(atom_rec_items)
     self.dict_sfac_content = {}
     for i in range(1,atom_rec_length,1):
-       assert atom_rec_items[i] == wk1995(atom_rec_items[i]).label()
        self.dict_sfac_content[i] = wk1995(atom_rec_items[i]).label()
+       assert self.dict_sfac_content[i] == atom_rec_items[i]
 
 def collect_records(raw_records):
   line_number = 0
