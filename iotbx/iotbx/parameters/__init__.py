@@ -1,3 +1,6 @@
+from __future__ import generators
+from iotbx import simple_tokenizer
+from scitbx.python_utils.str_utils import line_breaker
 from libtbx import introspection
 
 def str_from_value_words(value_words):
@@ -35,7 +38,8 @@ def float_from_value_words(value_words):
 default_definition_type_names = [
   "bool", "int", "float", "str",
   "choice", "multi_choice",
-  "path", "key"]
+  "path", "key",
+  "unit_cell", "space_group"]
 
 def definition_type_from_value_words(value_words, type_names):
   if (len(value_words) == 1):
@@ -80,15 +84,42 @@ class definition:
       value = str_from_value_words(value_words)
     setattr(self, name, value)
 
-  def show(self, out, prefix="", attributes_level=0):
-    print >> out, prefix+self.name, [word.value for word in self.values]
+  def show(self, out, prefix="", attributes_level=0, print_width=79,
+                 previous_object=None):
+    if (previous_object is not None
+        and not isinstance(previous_object, definition)):
+      print >> out, prefix.rstrip()
+    line = prefix+self.name
+    indent = " " * len(line)
+    for word in self.values:
+      line_plus = line + " " + str(word)
+      if (len(line_plus) > print_width-2 and len(line) > len(indent)):
+        print >> out, line + " \\"
+        line = indent + " " + str(word)
+      else:
+        line = line_plus
+    print >> out, line
     if (attributes_level > 0):
       for name in self.attribute_names:
         value = getattr(self, name)
         if ((name == "help" and value is not None)
             or (value is not None and attributes_level > 1)
             or attributes_level > 2):
-          print >> out, prefix+"  ."+name, value
+          if (not isinstance(value, str)):
+            print >> out, prefix+"  ."+name, value
+          else:
+            value = '"' + value.replace('"', '\\"') + '"'
+            indent = " " * (len(prefix) + 3 + len(name) + 1)
+            if (len(indent+value) < print_width):
+              print >> out, prefix+"  ."+name, value
+            else:
+              is_first = True
+              for block in line_breaker(value[1:-1],print_width-2-len(indent)):
+                if (is_first):
+                  print >> out, prefix+"  ."+name, '"'+block+'"'
+                  is_first = False
+                else:
+                  print >> out, indent+'"'+block+'"'
 
 class scope:
 
@@ -97,13 +128,20 @@ class scope:
         objects=[]):
     introspection.adopt_init_args()
 
-  def show(self, out, prefix="", attributes_level=0):
+  def show(self, out, prefix="", attributes_level=0, print_width=79,
+                 previous_object=None):
+    if (previous_object is not None):
+      print >> out, prefix.rstrip()
     print >> out, prefix + self.name + " {"
+    previous_object = None
     for object in self.objects:
       object.show(
         out=out,
         prefix=prefix+"  ",
-        attributes_level=attributes_level)
+        attributes_level=attributes_level,
+        print_width=print_width,
+        previous_object=previous_object)
+      previous_object = object
     print >> out, prefix + "}"
 
 class table:
@@ -147,7 +185,10 @@ class table:
     self.row_names.append(name)
     self.row_objects.append(objects)
 
-  def show(self, out, prefix="", attributes_level=0):
+  def show(self, out, prefix="", attributes_level=0, print_width=79,
+                 previous_object=None):
+    if (previous_object is not None):
+      print >> out, prefix.rstrip()
     print >> out, "%stable %s" % (prefix, self.name)
     if (attributes_level > 0):
       for name in self.attribute_names:
@@ -163,10 +204,40 @@ class table:
       if (name is not None):
         s += name + " "
       print >> out, s+"{"
+      previous_object = None
       for object in objects:
         object.show(
           out=out,
           prefix=prefix+"    ",
-          attributes_level=attributes_level)
+          attributes_level=attributes_level,
+          print_width=print_width,
+          previous_object=previous_object)
+        previous_object = object
       print >> out, prefix+"  }"
     print >> out, prefix+"}"
+
+class parse:
+
+  def __init__(self, input_string, definition_type_names=None):
+    from iotbx.parameters import parser
+    if (definition_type_names is None):
+      definition_type_names = default_definition_type_names
+    self.objects = parser.collect_objects(
+      word_stack=simple_tokenizer.as_word_stack(
+        input_string=input_string,
+        contiguous_word_characters=""),
+      definition_type_names=definition_type_names)
+
+  def show(self, out, prefix="", attributes_level=0, print_width=None):
+    if (print_width is None):
+      print_width = 79
+    previous_object = None
+    for object in self.objects:
+      object.show(
+        out=out,
+        prefix=prefix,
+        attributes_level=attributes_level,
+        print_width=print_width,
+        previous_object=previous_object)
+      previous_object = object
+    return self

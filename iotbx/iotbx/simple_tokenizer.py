@@ -19,11 +19,18 @@ class word:
 
   def __init__(self,
         value,
-        quote_char=None,
+        quote_token=None,
         line_number=None):
     self.value = value
-    self.quote_char = quote_char
+    self.quote_token = quote_token
     self.line_number = line_number
+
+  def __str__(self):
+    if (self.quote_token is None):
+      return self.value
+    return self.quote_token \
+         + self.value.replace(self.quote_token, "\\"+self.quote_token) \
+         + self.quote_token
 
 default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                    + "abcdefghijklmnopqrstuvwxyz" \
@@ -50,13 +57,13 @@ def split_into_words(
       if (char_iter.look_ahead(n=2) == quote_char+quote_char):
         char_iter.next()
         char_iter.next()
-        triple_quote = True
+        quote_token = quote_char+quote_char+quote_char
       else:
-        triple_quote = False
+        quote_token = quote_char
       while True:
         c = char_iter.next()
         if (c == quote_char):
-          if (not triple_quote): break
+          if (quote_token is quote_char): break
           if (char_iter.look_ahead(n=2) == quote_char+quote_char):
             char_iter.next()
             char_iter.next()
@@ -71,7 +78,7 @@ def split_into_words(
         word_value += c
       words.append(word(
         value=word_value,
-        quote_char=quote_char,
+        quote_token=quote_token,
         line_number=word_line_number))
       c = char_iter.next()
     else:
@@ -112,7 +119,7 @@ class word_stack:
 
   def pop_unquoted(self):
     result = self.pop()
-    if (result.quote_char is not None):
+    if (result.quote_token is not None):
       raise RuntimeError('Unquoted word expected: line=%d, word="%s"' % (
         result.line_number, result.value))
     return result
