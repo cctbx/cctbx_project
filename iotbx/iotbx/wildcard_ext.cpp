@@ -63,7 +63,8 @@ namespace {
                   case 2:
                       return 2;
                   default:
-                      abort();    /* Cannot happen */
+                      throw std::runtime_error("Internal error: " __FILE__);
+                      /* Cannot happen */
                   }
                   *estr = string;
               }
@@ -121,7 +122,6 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
     def("is_match", is_match, (arg_("string"), arg_("pattern")));
   }
 
