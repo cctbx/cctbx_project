@@ -160,25 +160,27 @@ class libtbx_env:
       raise UserError(("Incompatible Python API's: current version: %s,"
         + " used to build binaries: %s") % (api_from_include, api_from_build))
 
-def emit_env_run_sh(env):
-  env_run_sh_path = norm(join(env.LIBTBX_BUILD, "env_run.sh"))
-  f = open_info(env_run_sh_path)
-  for var_name, values in env.items():
-    if (var_name.upper() != var_name): continue
-    if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
-      var_name = "DYLD_LIBRARY_PATH"
-    if (type(values) == type([])):
-      val = os.pathsep.join(values)
-      print >> f, 'if [ ! -n "$%s" ]; then' % (var_name,)
-      print >> f, '  %s=""' % (var_name,)
-      print >> f, 'fi'
-      print >> f, '%s="%s%s$%s"' % (var_name, val, os.pathsep, var_name)
-    else:
-      print >> f, '%s="%s"' % (var_name, values)
-    print >> f, 'export %s' % (var_name,)
-  print >> f, '$LIBTBX_PYTHON_EXE "$LIBTBX_DIST/libtbx/command_line/env_run.py" $*'
-  f.close()
-  os.chmod(env_run_sh_path, 0755)
+def emit_setpaths_sh(env):
+  for file_name in ("setpaths.sh", "env_run.sh"):
+    full_path = norm(join(env.LIBTBX_BUILD, file_name))
+    f = open_info(full_path)
+    for var_name, values in env.items():
+      if (var_name.upper() != var_name): continue
+      if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
+        var_name = "DYLD_LIBRARY_PATH"
+      if (type(values) == type([])):
+        val = os.pathsep.join(values)
+        print >> f, 'if [ ! -n "$%s" ]; then' % (var_name,)
+        print >> f, '  %s=""' % (var_name,)
+        print >> f, 'fi'
+        print >> f, '%s="%s%s$%s"' % (var_name, val, os.pathsep, var_name)
+      else:
+        print >> f, '%s="%s"' % (var_name, values)
+      print >> f, 'export %s' % (var_name,)
+    if (file_name == "env_run.sh"):
+      print >> f, '$LIBTBX_PYTHON_EXE "$LIBTBX_DIST/libtbx/command_line/env_run.py" $*'
+    f.close()
+    os.chmod(full_path, 0755)
 
 def emit_setpaths_csh(env):
   libtbx_python = norm(join(
@@ -189,6 +191,15 @@ def emit_setpaths_csh(env):
   unsetpaths_csh_path = norm(join(env.LIBTBX_BUILD, "unsetpaths.csh"))
   s = open_info(setpaths_csh_path)
   u = open_info(unsetpaths_csh_path)
+  for f in s, u:
+    print >> f, '%s -V >& /dev/null' % libtbx_python
+    print >> f, 'if ($status != 0 || ! -f "%s") then' % libtbx_path_utility
+    print >> f, '  echo "*******************************************"'
+    print >> f, '  echo "Fatal Error: Incomplete libtbx environment!"'
+    print >> f, '  echo "*******************************************"'
+    print >> f, '  echo "Please re-run the libtbx/configure.py command."'
+    print >> f, '  echo ""'
+    print >> f, 'else'
   for var_name, values in env.items():
     if (var_name.upper() != var_name): continue
     if (var_name == "LD_LIBRARY_PATH" and sys.platform.startswith("darwin")):
@@ -196,11 +207,13 @@ def emit_setpaths_csh(env):
     if (type(values) == type([])):
       val = os.pathsep.join(values)
       fmt_args = (var_name, libtbx_python, libtbx_path_utility, var_name, val)
-      print >> s, '''setenv %s "`%s %s prepend %s '%s'`"''' % fmt_args
-      print >> u, '''setenv %s "`%s %s delete %s '%s'`"''' % fmt_args
+      print >> s, '''  setenv %s "`%s %s prepend %s '%s'`"''' % fmt_args
+      print >> u, '''  setenv %s "`%s %s delete %s '%s'`"''' % fmt_args
     else:
-      print >> s, 'setenv %s "%s"' % (var_name, values)
-      print >> u, 'unsetenv %s' % var_name
+      print >> s, '  setenv %s "%s"' % (var_name, values)
+      print >> u, '  unsetenv %s' % var_name
+  for f in s, u:
+    print >> f, 'endif'
   s.close()
   u.close()
 
@@ -287,7 +300,7 @@ def run(libtbx_dist, args):
     env.add_package(packages.dict[package_name])
   env.pickle_dict()
   if (hasattr(os, "symlink")):
-    emit_env_run_sh(env)
+    emit_setpaths_sh(env)
     emit_setpaths_csh(env)
   else:
     emit_setpaths_bat(env)
