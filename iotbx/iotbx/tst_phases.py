@@ -92,9 +92,15 @@ def generate_random_f_calc(
 def run():
   exercise_basic()
   if (len(sys.argv) > 1):
-    generate_random_f_calc(
-      sgtbx.space_group_info(sys.argv[1]),
-      verbose="--verbose" in sys.argv[2:])
+    verbose = 0
+    args = []
+    for arg in sys.argv[1:]:
+      if (arg.lower() == "--verbose"):
+        verbose = 1
+      else:
+        args.append(arg)
+    for arg in args:
+      generate_random_f_calc(sgtbx.space_group_info(arg), verbose=verbose)
   print "OK"
 
 if (__name__ == "__main__"):
