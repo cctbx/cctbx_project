@@ -713,6 +713,87 @@ namespace lbfgs {
       return info;
     }
 
+    /* Compute the sum of a vector times a scalar plus another vector.
+       Adapted from the subroutine <code>daxpy</code> in
+       <code>lbfgs.f</code>.
+     */
+    template <typename FloatType>
+    void daxpy(
+      std::size_t n,
+      FloatType da,
+      const FloatType* dx,
+      std::size_t ix0,
+      std::size_t incx,
+      FloatType* dy,
+      std::size_t iy0,
+      std::size_t incy)
+    {
+      std::size_t i, ix, iy, m;
+      if (n == 0) return;
+      if (da == FloatType(0)) return;
+      if  (!(incx == 1 && incy == 1)) {
+        ix = 0;
+        iy = 0;
+        for (i = 0; i < n; i++) {
+          dy[iy0+iy] += da * dx[ix0+ix];
+          ix += incx;
+          iy += incy;
+        }
+        return;
+      }
+      m = n % 4;
+      for (i = 0; i < m; i++) {
+        dy[iy0+i] += da * dx[ix0+i];
+      }
+      for (; i < n;) {
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+      }
+    }
+
+    /* Compute the dot product of two vectors.
+       Adapted from the subroutine <code>ddot</code>
+       in <code>lbfgs.f</code>.
+     */
+    template <typename FloatType>
+    FloatType ddot(
+      std::size_t n,
+      const FloatType* dx,
+      std::size_t ix0,
+      std::size_t incx,
+      const FloatType* dy,
+      std::size_t iy0,
+      std::size_t incy)
+    {
+      std::size_t i, ix, iy, m, mp1;
+      FloatType dtemp(0);
+      if (n == 0) return FloatType(0);
+      if (!(incx == 1 && incy == 1)) {
+        ix = 0;
+        iy = 0;
+        for (i = 0; i < n; i++) {
+          dtemp += dx[ix0+ix] * dy[iy0+iy];
+          ix += incx;
+          iy += incy;
+        }
+        return dtemp;
+      }
+      m = n % 5;
+      for (i = 0; i < m; i++) {
+        dtemp += dx[ix0+i] * dy[iy0+i];
+      }
+      for (; i < n;) {
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+      }
+      return dtemp;
+    }
+
   } // namespace detail
 
   //! Interface to the LBFGS %minimizer.
@@ -741,8 +822,12 @@ namespace lbfgs {
       reverse communication is used. The routine must be called
       repeatedly under the control of the member functions
       <code>requests_f_and_g()</code>,
-      <code>requests_diag()</code> and
-      <code>is_converged()</code>.
+      <code>requests_diag()</code>.
+      If neither requests_f_and_g() nor requests_diag() is
+      <code>true</code> the user should check for convergence
+      (using class traditional_convergence_test or any
+      other custom test). If the convergence test is negative,
+      the minimizer may be called again for the next iteration.
 
       The steplength (stp()) is determined at each iteration
       by means of the line search routine <code>mcsrch</code>, which is
@@ -770,7 +855,7 @@ namespace lbfgs {
       //! Default constructor. Some members are not initialized!
       minimizer()
       : n_(0), m_(0), maxfev_(0),
-        eps_(0), gtol_(0), xtol_(0),
+        gtol_(0), xtol_(0),
         stpmin_(0), stpmax_(0),
         ispt(0), iypt(0)
       {}
@@ -789,13 +874,6 @@ namespace lbfgs {
           @param maxfev Termination occurs when the number of evaluations
              of the objective function is at least <code>maxfev</code> by
              the end of an iteration.
-
-          @param eps Determines the accuracy with which the solution
-            is to be found. The subroutine terminates when
-            <pre>
-                    ||G|| &lt; eps max(1,||X||),
-            </pre>
-            where <code>||.||</code> denotes the Euclidean norm.
 
           @param gtol Controls the accuracy of the line search.
             If the function and gradient evaluations are inexpensive with
@@ -824,19 +902,20 @@ namespace lbfgs {
             or unless the problem is extremely badly scaled (in which
             case the exponent should be increased).
        */
-      explicit minimizer(
+      explicit
+      minimizer(
         std::size_t n,
         std::size_t m = 5,
         std::size_t maxfev = 20,
-        FloatType eps = FloatType(1.e-5),
         FloatType gtol = FloatType(0.9),
         FloatType xtol = FloatType(1.e-16),
         FloatType stpmin = FloatType(1.e-20),
         FloatType stpmax = FloatType(1.e20))
         : n_(n), m_(m), maxfev_(maxfev),
-          eps_(eps), gtol_(gtol), xtol_(xtol),
+          gtol_(gtol), xtol_(xtol),
           stpmin_(stpmin), stpmax_(stpmax),
-          iflag_(0), iter_(0), nfun_(0), gnorm_(0), stp_(0),
+          iflag_(0), requests_f_and_g_(false), requests_diag_(false),
+          iter_(0), nfun_(0), stp_(0),
           stp1(0), ftol(0.0001), ys(0), point(0), npt(0),
           ispt(n+2*m), iypt((n+2*m)+n*m),
           info(0), bound(0), nfev(0)
@@ -849,9 +928,6 @@ namespace lbfgs {
         }
         if (maxfev_ == 0) {
          throw error_improper_input_parameter("maxfev = 0.");
-        }
-        if (eps_ < FloatType(0)) {
-          throw error_improper_input_parameter("eps < 0.");
         }
         if (gtol_ <= FloatType(1.e-4)) {
           throw error_improper_input_parameter("gtol <= 1.e-4.");
@@ -879,11 +955,6 @@ namespace lbfgs {
        */
       std::size_t maxfev() const { return maxfev_; }
 
-      /*! \brief Accuracy with which the solution is to be found
-          (as passed to the constructor).
-       */
-      FloatType eps() const { return eps_; }
-
       /*! \brief Control of the accuracy of the line search.
           (as passed to the constructor).
        */
@@ -910,9 +981,9 @@ namespace lbfgs {
           run() function is called again with the updated values for
           <code>f</code> and <code>g</code>.
           <p>
-          See also: is_converged(), requests_diag()
+          See also: requests_diag()
        */
-      bool requests_f_and_g() const { return iflag_ == 1; }
+      bool requests_f_and_g() const { return requests_f_and_g_; }
 
       //! Status indicator for reverse communication.
       /*! <code>true</code> if the run() function returns to request
@@ -921,20 +992,9 @@ namespace lbfgs {
           To continue the minimization the run() function is called
           again with the updated values for <code>diag</code>.
           <p>
-          See also: is_converged(), requests_f_and_g()
+          See also: requests_f_and_g()
        */
-      bool requests_diag() const { return iflag_ == 2; }
-
-      //! Status indicator.
-      /*! <code>true</code> if
-          <pre>
-            ||G|| &lt; eps max(1,||X||),
-          </pre>
-          where <code>||.||</code> denotes the Euclidean norm.
-          <p>
-          See also: requests_f_and_g(), requests_diag()
-       */
-      bool is_converged() const { return iflag_ == 0 && nfun_ > 0; }
+      bool requests_diag() const { return requests_diag_; }
 
       //! Number of iterations so far.
       /*! Note that one iteration may involve multiple evaluations
@@ -953,12 +1013,9 @@ namespace lbfgs {
        */
       std::size_t nfun() const { return nfun_; }
 
-      //! Norm of last gradient array passed to the run() function.
-      FloatType gnorm() const { return gnorm_; }
-
       //! Norm of gradient given gradient array of length n().
-      FloatType gnorm(const FloatType* g) const {
-        return std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
+      FloatType euclidean_norm(const FloatType* a) const {
+        return std::sqrt(detail::ddot(n_, a, 0, 1, a, 0, 1));
       }
 
       //! Current stepsize.
@@ -967,8 +1024,6 @@ namespace lbfgs {
       //! Execution of one step of the minimization.
       /*! @param x On initial entry this must be set by the user to
              the values of the initial estimate of the solution vector.
-             On return with is_converted() = <code>true</code> it
-             contains the values of the variables at the best point found.
 
           @param f Before initial entry or on re-entry under the
              control of requests_f_and_g(), <code>f</code> must be set
@@ -980,18 +1035,28 @@ namespace lbfgs {
              by the user to contain the components of the gradient at
              the current point <code>x</code>.
 
+          The return value is <code>true</code> if either
+          requests_f_and_g() or requests_diag() is <code>true</code>.
+          Otherwise the user should check for convergence
+          (e.g. using class traditional_convergence_test) and
+          call the run() function again to continue the minimization.
+          If the return value is <code>false</code> the user
+          should <b>not</b> update <code>f</code>, <code>g</code> or
+          <code>diag</code> (other overload) before calling
+          the run() function again.
+
           Note that <code>x</code> is always modified by the run()
           function. Depending on the situation it can therefore be
           necessary to evaluate the objective function one more time
           after the minimization is terminated.
        */
-      void run(
+      bool run(
         FloatType* x,
         FloatType f,
         const FloatType* g)
       {
         if (diag_.size() == 0) diag_.resize(n_);
-        generic_run(x, f, g, false, &(*(diag_.begin())));
+        return generic_run(x, f, g, false, &(*(diag_.begin())));
       }
 
       //! Execution of one step of the minimization.
@@ -1010,13 +1075,13 @@ namespace lbfgs {
              Restriction: all elements of <code>diag</code> must be
              positive.
        */
-      void run(
+      bool run(
         FloatType* x,
         FloatType f,
         const FloatType* g,
         FloatType* diag)
       {
-        generic_run(x, f, g, true, diag);
+        return generic_run(x, f, g, true, diag);
       }
 
     protected:
@@ -1026,53 +1091,26 @@ namespace lbfgs {
           " inverse Hessian approximation is not positive.");
       }
 
-      void generic_run(
+      bool generic_run(
         FloatType* x,
         FloatType f,
         const FloatType* g,
         bool diagco,
         FloatType* diag);
 
-      /* Compute the sum of a vector times a scalar plus another vector.
-         Adapted from the subroutine <code>daxpy</code> in
-         <code>lbfgs.f</code>.
-       */
-      static void daxpy(
-        std::size_t n,
-        FloatType da,
-        const FloatType* dx,
-        std::size_t ix0,
-        std::size_t incx,
-        FloatType* dy,
-        std::size_t iy0,
-        std::size_t incy);
-
-      /* Compute the dot product of two vectors.
-         Adapted from the subroutine <code>ddot</code>
-         in <code>lbfgs.f</code>.
-       */
-      static FloatType ddot(
-        std::size_t n,
-        const FloatType* dx,
-        std::size_t ix0,
-        std::size_t incx,
-        const FloatType* dy,
-        std::size_t iy0,
-        std::size_t incy);
-
       detail::mcsrch<FloatType> mcsrch_instance;
       const std::size_t n_;
       const std::size_t m_;
       const std::size_t maxfev_;
-      const FloatType eps_;
       const FloatType gtol_;
       const FloatType xtol_;
       const FloatType stpmin_;
       const FloatType stpmax_;
       int iflag_;
+      bool requests_f_and_g_;
+      bool requests_diag_;
       std::size_t iter_;
-      std::size_t nfun_;
-      FloatType gnorm_;
+      std::size_t nfun_; // XXX make this nrun_ = number of times the run ...
       FloatType stp_;
       FloatType stp1;
       FloatType ftol;
@@ -1088,16 +1126,98 @@ namespace lbfgs {
       std::vector<FloatType> diag_;
   };
 
+  //! Traditional LBFGS convergence test.
+  /*! This convergence test is equivalent to the test embedded
+      in the <code>lbfgs.f</code> Fortran code. The test assumes that
+      there is a meaningful relation between the Euclidean norm of the
+      parameter vector <code>x</code> and the norm of the gradient
+      vector <code>g</code>. Therefore this test should not be used if
+      this assumption is not correct for a given problem.
+   */
   template <typename FloatType>
-  void minimizer<FloatType>::generic_run(
+  class traditional_convergence_test
+  {
+    public:
+      //! Default constructor.
+      traditional_convergence_test()
+      : n_(0), eps_(0)
+      {}
+
+      //! Constructor.
+      /*! @param n The number of variables in the minimization problem.
+             Restriction: <code>n &gt; 0</code>.
+
+          @param eps Determines the accuracy with which the solution
+            is to be found. The subroutine terminates when
+            <pre>
+                    ||G|| &lt; eps max(1,||X||),
+            </pre>
+            where <code>||.||</code> denotes the Euclidean norm.
+       */
+      explicit
+      traditional_convergence_test(
+        std::size_t n,
+        FloatType eps = FloatType(1.e-5))
+      : n_(n), eps_(eps)
+      {
+        if (n_ == 0) {
+          throw error_improper_input_parameter("n = 0.");
+        }
+        if (eps_ < FloatType(0)) {
+          throw error_improper_input_parameter("eps < 0.");
+        }
+      }
+
+      //! Number of free parameters (as passed to the constructor).
+      std::size_t n() const { return n_; }
+
+      /*! \brief Accuracy with which the solution is to be found
+          (as passed to the constructor).
+       */
+      FloatType eps() const { return eps_; }
+
+      //! Execution of the convergence test for the given parameters.
+      /*! Returns <code>true</code> if
+          <pre>
+            ||g|| &lt; eps * max(1,||x||),
+          </pre>
+          where <code>||.||</code> denotes the Euclidean norm.
+
+          @param x Current solution vector.
+
+          @param f Current value of the objective function.
+
+          @param g Components of the gradient at the current
+            point <code>x</code>.
+       */
+      bool
+      operator()(const FloatType* x, FloatType f, const FloatType* g) const
+      {
+        FloatType xnorm = std::sqrt(detail::ddot(n_, x, 0, 1, x, 0, 1));
+        FloatType gnorm = std::sqrt(detail::ddot(n_, g, 0, 1, g, 0, 1));
+        if (gnorm <= eps_ * std::max(FloatType(1), xnorm)) return true;
+        return false;
+      }
+    protected:
+      const std::size_t n_;
+      const FloatType eps_;
+  };
+
+  template <typename FloatType>
+  bool minimizer<FloatType>::generic_run(
     FloatType* x,
     FloatType f,
     const FloatType* g,
     bool diagco,
     FloatType* diag)
   {
-    FloatType* w = &(*(w_.begin()));
     bool execute_entire_while_loop = false;
+    if (!(requests_f_and_g_ || requests_diag_)) {
+      execute_entire_while_loop = true;
+    }
+    requests_f_and_g_ = false;
+    requests_diag_ = false;
+    FloatType* w = &(*(w_.begin()));
     if (iflag_ == 0) { // Initialize.
       nfun_ = 1;
       if (diagco) {
@@ -1113,174 +1233,94 @@ namespace lbfgs {
       for (std::size_t i = 0; i < n_; i++) {
         w[ispt + i] = -g[i] * diag[i];
       }
-      gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
-      stp1 = FloatType(1) / gnorm_;
+      FloatType gnorm = std::sqrt(detail::ddot(n_, g, 0, 1, g, 0, 1));
+      if (gnorm == FloatType(0)) return false;
+      stp1 = FloatType(1) / gnorm;
       execute_entire_while_loop = true;
     }
-    for (;;) {
-      if (execute_entire_while_loop) {
-        bound = iter_;
-        iter_++;
-        info = 0;
-        if (iter_ != 1) {
-          if (iter_ > m_) bound = m_;
-          ys = ddot(n_, w, iypt + npt, 1, w, ispt + npt, 1);
-          if (!diagco) {
-            FloatType yy = ddot(n_, w, iypt + npt, 1, w, iypt + npt, 1);
-            std::fill_n(diag, n_, ys / yy);
-          }
-          else {
-            iflag_ = 2;
-            return;
-          }
+    if (execute_entire_while_loop) {
+      bound = iter_;
+      iter_++;
+      info = 0;
+      if (iter_ != 1) {
+        if (iter_ > m_) bound = m_;
+        ys = detail::ddot(n_, w, iypt + npt, 1, w, ispt + npt, 1);
+        if (!diagco) {
+          FloatType yy = detail::ddot(n_, w, iypt+npt, 1, w, iypt+npt, 1);
+          std::fill_n(diag, n_, ys / yy);
+        }
+        else {
+          iflag_ = 2;
+          requests_diag_ = true;
+          return true;
         }
       }
-      if (execute_entire_while_loop || iflag_ == 2) {
-        if (iter_ != 1) {
-          if (diagco) {
-            for (std::size_t i = 0; i < n_; i++) {
-              if (diag[i] <= FloatType(0)) {
-                throw_diagonal_element_not_positive(i);
-              }
+    }
+    if (execute_entire_while_loop || iflag_ == 2) {
+      if (iter_ != 1) {
+        if (diagco) {
+          for (std::size_t i = 0; i < n_; i++) {
+            if (diag[i] <= FloatType(0)) {
+              throw_diagonal_element_not_positive(i);
             }
           }
-          std::size_t cp = point;
-          if (point == 0) cp = m_;
-          w[n_ + cp -1] = 1 / ys;
-          std::size_t i;
-          for (i = 0; i < n_; i++) {
-            w[i] = -g[i];
-          }
-          cp = point;
-          for (i = 0; i < bound; i++) {
-            if (cp == 0) cp = m_;
-            cp--;
-            FloatType sq = ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
-            std::size_t inmc=n_+m_+cp;
-            std::size_t iycn=iypt+cp*n_;
-            w[inmc] = w[n_ + cp] * sq;
-            daxpy(n_, -w[inmc], w, iycn, 1, w, 0, 1);
-          }
-          for (i = 0; i < n_; i++) {
-            w[i] *= diag[i];
-          }
-          for (i = 0; i < bound; i++) {
-            FloatType yr = ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
-            FloatType beta = w[n_ + cp] * yr;
-            std::size_t inmc=n_+m_+cp;
-            beta = w[inmc] - beta;
-            std::size_t iscn=ispt+cp*n_;
-            daxpy(n_, beta, w, iscn, 1, w, 0, 1);
-            cp++;
-            if (cp == m_) cp = 0;
-          }
-          std::copy(w, w+n_, w+(ispt + point * n_));
         }
-        stp_ = FloatType(1);
-        if (iter_ == 1) stp_ = stp1;
-        std::copy(g, g+n_, w);
+        std::size_t cp = point;
+        if (point == 0) cp = m_;
+        w[n_ + cp -1] = 1 / ys;
+        std::size_t i;
+        for (i = 0; i < n_; i++) {
+          w[i] = -g[i];
+        }
+        cp = point;
+        for (i = 0; i < bound; i++) {
+          if (cp == 0) cp = m_;
+          cp--;
+          FloatType sq = detail::ddot(n_, w, ispt + cp * n_, 1, w, 0, 1);
+          std::size_t inmc=n_+m_+cp;
+          std::size_t iycn=iypt+cp*n_;
+          w[inmc] = w[n_ + cp] * sq;
+          detail::daxpy(n_, -w[inmc], w, iycn, 1, w, 0, 1);
+        }
+        for (i = 0; i < n_; i++) {
+          w[i] *= diag[i];
+        }
+        for (i = 0; i < bound; i++) {
+          FloatType yr = detail::ddot(n_, w, iypt + cp * n_, 1, w, 0, 1);
+          FloatType beta = w[n_ + cp] * yr;
+          std::size_t inmc=n_+m_+cp;
+          beta = w[inmc] - beta;
+          std::size_t iscn=ispt+cp*n_;
+          detail::daxpy(n_, beta, w, iscn, 1, w, 0, 1);
+          cp++;
+          if (cp == m_) cp = 0;
+        }
+        std::copy(w, w+n_, w+(ispt + point * n_));
       }
-      mcsrch_instance.run(
-        gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
-        stp_, ftol, xtol_, maxfev_, info, nfev, diag);
-      if (info == -1) {
-        iflag_ = 1;
-        return;
-      }
-      if (info != 1) {
-        throw error_internal_error(__FILE__, __LINE__);
-      }
-      nfun_ += nfev;
-      npt = point*n_;
-      for (std::size_t i = 0; i < n_; i++) {
-        w[ispt + npt + i] = stp_ * w[ispt + npt + i];
-        w[iypt + npt + i] = g[i] - w[i];
-      }
-      point++;
-      if (point == m_) point = 0;
-      gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
-      // XXX bogus, instead only indicate that the line search was successful
-      FloatType xnorm = std::max(
-        FloatType(1), std::sqrt(ddot(n_, x, 0, 1, x, 0, 1)));
-      if (gnorm_ / xnorm <= eps_) {
-        iflag_ = 0;
-        break;
-      }
-      execute_entire_while_loop = true; // from now on, execute whole loop
+      stp_ = FloatType(1);
+      if (iter_ == 1) stp_ = stp1;
+      std::copy(g, g+n_, w);
     }
-  }
-
-  template <typename FloatType>
-  void minimizer<FloatType>::daxpy(
-    std::size_t n,
-    FloatType da,
-    const FloatType* dx,
-    std::size_t ix0,
-    std::size_t incx,
-    FloatType* dy,
-    std::size_t iy0,
-    std::size_t incy)
-  {
-    std::size_t i, ix, iy, m;
-    if (n == 0) return;
-    if (da == FloatType(0)) return;
-    if  (!(incx == 1 && incy == 1)) {
-      ix = 0;
-      iy = 0;
-      for (i = 0; i < n; i++) {
-        dy[iy0+iy] += da * dx[ix0+ix];
-        ix += incx;
-        iy += incy;
-      }
-      return;
+    mcsrch_instance.run(
+      gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
+      stp_, ftol, xtol_, maxfev_, info, nfev, diag);
+    if (info == -1) {
+      iflag_ = 1;
+      requests_f_and_g_ = true;
+      return true;
     }
-    m = n % 4;
-    for (i = 0; i < m; i++) {
-      dy[iy0+i] += da * dx[ix0+i];
+    if (info != 1) {
+      throw error_internal_error(__FILE__, __LINE__);
     }
-    for (; i < n;) {
-      dy[iy0+i] += da * dx[ix0+i]; i++;
-      dy[iy0+i] += da * dx[ix0+i]; i++;
-      dy[iy0+i] += da * dx[ix0+i]; i++;
-      dy[iy0+i] += da * dx[ix0+i]; i++;
+    nfun_ += nfev;
+    npt = point*n_;
+    for (std::size_t i = 0; i < n_; i++) {
+      w[ispt + npt + i] = stp_ * w[ispt + npt + i];
+      w[iypt + npt + i] = g[i] - w[i];
     }
-  }
-
-  template <typename FloatType>
-  FloatType minimizer<FloatType>::ddot(
-    std::size_t n,
-    const FloatType* dx,
-    std::size_t ix0,
-    std::size_t incx,
-    const FloatType* dy,
-    std::size_t iy0,
-    std::size_t incy)
-  {
-    std::size_t i, ix, iy, m, mp1;
-    FloatType dtemp(0);
-    if (n == 0) return FloatType(0);
-    if (!(incx == 1 && incy == 1)) {
-      ix = 0;
-      iy = 0;
-      for (i = 0; i < n; i++) {
-        dtemp += dx[ix0+ix] * dy[iy0+iy];
-        ix += incx;
-        iy += incy;
-      }
-      return dtemp;
-    }
-    m = n % 5;
-    for (i = 0; i < m; i++) {
-      dtemp += dx[ix0+i] * dy[iy0+i];
-    }
-    for (; i < n;) {
-      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-      dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-    }
-    return dtemp;
+    point++;
+    if (point == m_) point = 0;
+    return false;
   }
 
 }} // namespace cctbx::lbfgs

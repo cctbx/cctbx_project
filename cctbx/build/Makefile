@@ -88,6 +88,7 @@ executables:
 	cd uctbx; make executables
 	cd sgtbx; make executables
 	cd arraytbx; make executables
+	cd lbfgs; make executables
 	cd examples/cpp; make executables
 
 compile:
