@@ -177,6 +177,12 @@ namespace {
           arg_("assert_is_positive_definite"),
           arg_("assert_min_distance_sym_equiv")));
 
+    def("change_basis",
+      (af::shared<scatterer<> >(*)(
+        af::const_ref<scatterer<> > const&,
+        sgtbx::change_of_basis_op const&)) change_basis, (
+      arg_("scatterers"), arg_("cb_op")));
+
     def("n_undefined_multiplicities",
       (std::size_t(*)(
         af::const_ref<scatterer<> > const&)) n_undefined_multiplicities, (

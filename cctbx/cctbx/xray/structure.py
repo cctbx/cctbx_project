@@ -5,10 +5,10 @@ from cctbx import crystal
 import cctbx.crystal.direct_space_asu
 from cctbx import sgtbx
 import cctbx.eltbx.xray_scattering
+from cctbx import adptbx
 from cctbx import eltbx
 from cctbx.array_family import flex
 from scitbx import matrix
-from libtbx.itertbx import count
 from stdlib import math
 import types
 import sys
@@ -239,7 +239,6 @@ class structure(crystal.special_position_settings):
         crystal.symmetry.cell_equivalent_p1(self)),
       scattering_dict=self._scattering_dict)
     for i_seq,scatterer in enumerate(self.scatterers()):
-      assert not scatterer.anisotropic_flag, "Not implemented." # XXX
       if (append_number_to_labels):
         if (scatterer.multiplicity() >= 100):
           fmt = "_%03d"
@@ -253,24 +252,23 @@ class structure(crystal.special_position_settings):
         original_site=scatterer.site,
         site_symmetry_ops=self._site_symmetry_table.get(i_seq))
       new_scatterer = scatterer.copy()
-      for i,site in zip(count(), equiv_sites.coordinates()):
+      for i,site in enumerate(equiv_sites.coordinates()):
         if (append_number_to_labels):
           new_scatterer.label = scatterer.label + fmt % i
         new_scatterer.site = site
+        if (scatterer.anisotropic_flag):
+          new_scatterer.u_star = adptbx.c_u_c_transpose(
+            float(equiv_sites.sym_op(i).r()), scatterer.u_star)
         new_structure.add_scatterer(new_scatterer)
     return new_structure
 
   def change_basis(self, cb_op):
-    new_structure = structure(
-      crystal.special_position_settings.change_basis(self, cb_op),
+    return structure(
+      special_position_settings
+        =crystal.special_position_settings.change_basis(self, cb_op),
+      scatterers=ext.change_basis(scatterers=self._scatterers, cb_op=cb_op),
+      site_symmetry_table=self._site_symmetry_table.change_basis(cb_op=cb_op),
       scattering_dict=self._scattering_dict)
-    for i_seq,scatterer in enumerate(self.scatterers()):
-      assert not scatterer.anisotropic_flag, "Not implemented." # XXX
-      new_structure.add_scatterer(
-        scatterer.copy(site=cb_op(scatterer.site)),
-        site_symmetry_ops=
-          self._site_symmetry_table.get(i_seq).change_basis(cb_op))
-    return new_structure
 
   def change_hand(self):
     ch_op = self.space_group_info().type().change_of_hand_op()

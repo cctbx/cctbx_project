@@ -100,6 +100,26 @@ namespace cctbx { namespace xray {
   }
 
   template <typename ScattererType>
+  af::shared<ScattererType>
+  change_basis(
+    af::const_ref<ScattererType> const& scatterers,
+    sgtbx::change_of_basis_op const& cb_op)
+  {
+    af::shared<ScattererType> new_scatterers(
+      scatterers.begin(), scatterers.end());
+    af::ref<ScattererType> new_scatterers_ref = new_scatterers.ref();
+    scitbx::mat3<double> c = cb_op.c().r().as_double();
+    for(std::size_t i_seq=0;i_seq<new_scatterers_ref.size();i_seq++) {
+      ScattererType& new_scatterer = new_scatterers_ref[i_seq];
+      new_scatterer.site = cb_op(new_scatterer.site);
+      if (new_scatterer.anisotropic_flag) {
+        new_scatterer.u_star = new_scatterer.u_star.tensor_transform(c);
+      }
+    }
+    return new_scatterers;
+  }
+
+  template <typename ScattererType>
   std::size_t
   n_undefined_multiplicities(
     af::const_ref<ScattererType> const& scatterers)
