@@ -2,6 +2,6 @@ Import("env_scitbx_boost_python_ext")
 lbfgs_pyd = env_scitbx_boost_python_ext.SharedLibrary(
   target="lbfgs_ext",
   source=[
-    "lbfgs_module.cpp",
+    "lbfgs_ext.cpp",
 ])
 env_scitbx_boost_python_ext.Install("#libtbx/scitbx_boost", lbfgs_pyd)

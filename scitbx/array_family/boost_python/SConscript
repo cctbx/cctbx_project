@@ -1,7 +1,7 @@
 Import("env_etc", "env_scitbx_boost_python_ext")
 
 env_scitbx_boost_python_ext.SharedLibrary(target="regression_test_ext", source=[
-  "regression_test_module.cpp",
+  "regression_test_ext.cpp",
 ])
 
 env_scitbx_boost_python_ext.Command(
@@ -11,7 +11,7 @@ env_scitbx_boost_python_ext.Command(
 flex_scitbx_pyd = env_scitbx_boost_python_ext.SharedLibrary(
   target="flex_scitbx_ext",
   source=[
-  "flex_scitbx_module.cpp",
+  "flex_scitbx_ext.cpp",
   "flex_grid.cpp",
   "flex_bool.cpp",
   "flex_size_t.cpp",
