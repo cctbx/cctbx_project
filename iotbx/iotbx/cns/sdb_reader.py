@@ -164,10 +164,14 @@ def run(args):
   show_raw = "--show_raw" in args
   write_pickle = "--pickle" in args
   unit_cell = None
+  space_group_info = None
   for arg in args:
     if (arg.startswith("--unit_cell=")):
       params = arg.split("=", 1)[1]
       unit_cell = uctbx.unit_cell(params)
+    elif (arg.startswith("--space_group=")):
+      symbol = arg.split("=", 1)[1]
+      space_group_info = sgtbx.space_group_info(symbol)
   for file_name in args:
     if (file_name.startswith("--")): continue
     f = open(file_name, "r")
@@ -176,6 +180,7 @@ def run(args):
     sdb_files = multi_sdb_parser(lines, file_name)
     for sdb in sdb_files:
       if (unit_cell is not None): sdb.unit_cell = unit_cell
+      if (space_group_info is not None): sdb.space_group_info=space_group_info
       print "file:", sdb.file_name
       if (sdb.unit_cell is not None):
         print "unit cell:", sdb.unit_cell.parameters()
