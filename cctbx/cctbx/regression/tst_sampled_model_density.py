@@ -5,7 +5,7 @@ from cctbx.development import structure_factor_utils
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
-import sys, os
+import sys
 
 def exercise(space_group_info, anomalous_flag, anisotropic_flag,
              d_min=1., resolution_factor=1./3, max_prime=5,
@@ -117,5 +117,3 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])

@@ -1,6 +1,6 @@
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
-import sys, random
+import sys, os, random
 
 def get_test_space_group_symbols(flag_AllSpaceGroups, flag_AllSettings):
   if (flag_AllSettings):
@@ -12,6 +12,10 @@ def get_test_space_group_symbols(flag_AllSpaceGroups, flag_AllSettings):
     sg_numbers = (1,2,3,15,16,74,75,76,142,143,144,157,167,168,194,195,230)
   return [sgtbx.space_group_symbols(n).extended_hermann_mauguin()
           for n in sg_numbers]
+
+def report_cpu_times():
+  t = os.times()
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
 
 def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
   if (not flags.RandomSeed): random.seed(0)
@@ -33,6 +37,7 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
     continue_flag = call_back(flags, space_group_info)
     sys.stdout.flush()
     if (continue_flag == False): break
+  report_cpu_times()
 
 def parse_options_loop_space_groups(argv, call_back,
                                     keywords=(),

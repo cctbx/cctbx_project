@@ -5,7 +5,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from scitbx.python_utils import list_algebra
 import random
-import sys, os
+import sys
 
 def verify_match(model1, model2, tolerance, match_rt, pairs):
   adj_tolerance = tolerance * (1 + 1.e-6)
@@ -191,5 +191,3 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
