@@ -14,9 +14,8 @@ class wilson_plot:
     self.mean_fobs_sq = fobs_set.mean_sq(use_binning=1, use_multiplicities=1)
     # compute <s^2> = <(sin(theta)/lambda)^2> in resolution shells
     stol_sq_set = fobs_set.sin_theta_over_lambda_sq()
-    stol_sq_set.F = shared.sqrt(stol_sq_set.F) # XXX use stol_sq_set.mean
     stol_sq_set.binner = fobs_set.binner
-    self.mean_stol_sq = stol_sq_set.mean_sq(use_binning=1, use_multiplicities=1)
+    self.mean_stol_sq = stol_sq_set.mean(use_binning=1, use_multiplicities=1)
     # cache scattering factor info
     caasf = {}
     for chemical_type in asu_contents.keys():
