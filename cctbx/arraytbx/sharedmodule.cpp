@@ -99,13 +99,13 @@ namespace {
     result.reserve(rho.size());
     if (deg) {
       for(std::size_t i=0;i<rho.size();i++) {
-        result.push_back(std::polar(rho[i], theta[i]));
+        result.push_back(
+          std::polar(rho[i], theta[i] * cctbx::constants::pi_180));
       }
     }
     else {
       for(std::size_t i=0;i<rho.size();i++) {
-        result.push_back(
-          std::polar(rho[i], theta[i] * cctbx::constants::pi_180));
+        result.push_back(std::polar(rho[i], theta[i]));
       }
     }
     return result;
