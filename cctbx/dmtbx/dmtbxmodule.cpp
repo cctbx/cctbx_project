@@ -75,6 +75,9 @@ namespace {
     py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::apply_tangent_formula,
                                          "apply_tangent_formula");
+    py_triplet_invariants.def(
+      &dmtbx::triplet_invariants<double>::weights_and_epsilon,
+                                         "weights_and_epsilon");
 
     this_module.def(inplace_sort, "inplace_sort");
   }

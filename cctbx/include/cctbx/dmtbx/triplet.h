@@ -201,8 +201,7 @@ namespace cctbx { namespace dmtbx {
 
       void dump_triplets(af::shared<Miller::Index> miller_indices)
       {
-        cctbx_assert(
-          miller_indices.size() == list_of_tpr_maps_.size());
+        cctbx_assert(miller_indices.size() == list_of_tpr_maps_.size());
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
         for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
           for(tpr_map_type::const_iterator
@@ -210,8 +209,11 @@ namespace cctbx { namespace dmtbx {
             triplet_phase_relation const& tpr = lij->first;
             std::cout << miller_indices[i].ref()
                << " " << miller_indices[tpr.ik_].ref()
+               << " " << tpr.friedel_flag_k_
                << " " << miller_indices[tpr.ihmk_].ref()
-               << " " << lij->second
+               << " " << tpr.friedel_flag_hmk_
+               << " shift: " << tpr.ht_sum_
+               << " w: " << lij->second
                << std::endl;
           }
         }
@@ -252,6 +254,33 @@ namespace cctbx { namespace dmtbx {
           }
         }
         return result;
+      }
+
+      void weights_and_epsilon(
+        sgtbx::SpaceGroupInfo const& sginfo,
+        af::shared<Miller::Index> miller_indices) const
+      {
+        cctbx_assert(miller_indices.size() == list_of_tpr_maps_.size());
+        af::shared<int> epsilons = sginfo.SgOps().epsilon(miller_indices);
+        std::size_t result = 0;
+        list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
+        for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
+          for(tpr_map_type::const_iterator
+              lij=li->begin();lij!=li->end();lij++) {
+            triplet_phase_relation const& tpr = lij->first;
+            Miller::Index h = miller_indices[i];
+            Miller::Index k = miller_indices[tpr.ik_];
+            Miller::Index hmk = miller_indices[tpr.ihmk_];
+            std::cout << h.ref()
+               << " " << k.ref()
+               << " " << hmk.ref()
+               << " " << epsilons[i]
+               << " " << epsilons[tpr.ik_]
+               << " " << epsilons[tpr.ihmk_]
+               << " " << lij->second
+               << std::endl;
+          }
+        }
       }
 
     private:
