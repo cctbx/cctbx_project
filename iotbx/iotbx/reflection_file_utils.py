@@ -91,7 +91,7 @@ class label_table:
     if (f is None): f = self.err
     scores = self.scores(label=label)
     selected_array = None
-    for high_score in [2,1]:
+    for high_score in xrange(max(scores),0,-1):
       if (scores.count(high_score) > 0):
         if (scores.count(high_score) > 1):
           print >> f
