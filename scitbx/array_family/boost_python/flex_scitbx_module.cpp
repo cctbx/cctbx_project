@@ -9,7 +9,7 @@
  */
 
 #include <scitbx/math/linear_regression.h>
-#include <scitbx/array_family/boost_python/ref_c_grid_flex_conversions.h>
+#include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
@@ -91,11 +91,11 @@ namespace {
     wrap_flex_complex_double();
     wrap_flex_std_string();
 
-    default_ref_c_grid_flex_conversions<int>();
-    default_ref_c_grid_flex_conversions<long>();
-    default_ref_c_grid_flex_conversions<float>();
-    default_ref_c_grid_flex_conversions<double>();
-    default_ref_c_grid_flex_conversions<std::complex<double> >();
+    default_c_grid_flex_conversions<int>();
+    default_c_grid_flex_conversions<long>();
+    default_c_grid_flex_conversions<float>();
+    default_c_grid_flex_conversions<double>();
+    default_c_grid_flex_conversions<std::complex<double> >();
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
