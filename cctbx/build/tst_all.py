@@ -1,4 +1,4 @@
-import os, os.path
+import sys, os, os.path
 
 tst_list = (
 "./arraytbx/tst_af_1",
@@ -26,14 +26,20 @@ tst_list = (
 "./miller/tst.py",
 "./mintbx/tst.py",
 "./adptbx/tst.py",
-"./sftbx/tst.py",
 "./sftbx/tst_basic.py",
+"./sftbx/tst.py",
+"$CCTBX_DIST/cctbx/euclidean_model_matching.py",
 )
+
+assert "CCTBX_DIST" in os.environ
 
 for tst in tst_list:
   print tst
+  sys.stdout.flush()
   if (tst.endswith(".py")):
     os.system("python " + os.path.normpath(tst))
   else:
     os.system(os.path.normpath(tst))
   print
+  sys.stderr.flush()
+  sys.stdout.flush()

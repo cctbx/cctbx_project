@@ -1,6 +1,6 @@
 # $Id$
 
-from wavelengths import *
+from cctbx_boost.eltbx.wavelengths import *
 
 print keV_as_Angstrom(1)
 print Angstrom_as_keV(10)

@@ -1,6 +1,6 @@
 # $Id$
 
-from caasf_wk1995 import *
+from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
 sf = CAASF_WK1995("SI")
 print sf.Table()
 print sf.Label()
