@@ -24,6 +24,7 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
   void wrap_phase_info();
   void wrap_reciprocal_space_asu();
   void wrap_rot_mx();
+  void wrap_row_echelon();
   void wrap_rt_mx();
   void wrap_seminvariant();
   void wrap_site_symmetry();
@@ -105,6 +106,7 @@ namespace {
     wrap_phase_info();
     wrap_reciprocal_space_asu();
     wrap_rot_mx();
+    wrap_row_echelon();
     wrap_rt_mx();
     wrap_seminvariant();
     wrap_site_symmetry();
