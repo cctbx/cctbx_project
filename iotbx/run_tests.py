@@ -13,6 +13,7 @@ def run():
   ["$D/iotbx/scalepack/tst_merge.py", "P31"],
   ["$D/iotbx/mtz/tst_mtz.py", "P31"],
   "$D/include/iotbx/mtz/tst_wrapper.py",
+  ["$D/iotbx/mtz/tst_wrapper.py", "P31"],
   "$D/iotbx/detectors/tst_adsc.py",
   "$D/iotbx/xplor/tst_xplormap.py",
   )

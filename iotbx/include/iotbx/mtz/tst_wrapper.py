@@ -9,6 +9,17 @@ from libtbx.test_utils import approx_equal
 from cStringIO import StringIO
 import sys, os
 
+def exercise_read_corrupt():
+  for i_trial in xrange(5):
+    f = open("tmp.mtz", "wb")
+    if (i_trial > 0):
+      f.write("\0"*(40*i_trial))
+    f.close()
+    try: mtz.wrapper.object(file_name="tmp.mtz")
+    except RuntimeError, e:
+      assert str(e) == "cctbx Error: MTZ file read error: tmp.mtz"
+    else: raise AssertionError("Exception expected.")
+
 def exercise_basic():
   assert mtz.wrapper.ccp4_liberr_verbosity(-1) == 0
   assert mtz.wrapper.ccp4_liberr_verbosity(1) == 1
@@ -20,8 +31,9 @@ def exercise_basic():
   assert mtz_object.history().size() == 0
   assert mtz_object.space_group_name() == ""
   assert mtz_object.space_group_number() == 0
-  assert mtz_object.point_group_name() == ""
   assert mtz_object.space_group().order_z() == 1
+  assert mtz_object.point_group_name() == ""
+  assert mtz_object.lattice_centring_type() == "\0"
   assert mtz_object.n_batches() == 0
   assert mtz_object.n_reflections() == 0
   assert mtz_object.max_min_resolution() == (-1, -1)
@@ -39,6 +51,7 @@ def exercise_basic():
     assert mtz_object.space_group_name() == "P212121"
     assert mtz_object.space_group_number() == 19
     assert mtz_object.point_group_name() == "PG222"
+    assert mtz_object.lattice_centring_type() == "P"
     assert mtz_object.space_group().type().lookup_symbol() == "P 21 21 21"
     assert mtz_object.n_batches() == 0
     assert mtz_object.n_reflections() == 165
@@ -76,10 +89,10 @@ def exercise_basic():
     assert column.array_size() == 165
     assert column.array_capacity() == 200
     assert column.path() == "/unknown/unknown230103:23:14:49/H"
-    assert column.lookup_other("H").i_column() == 0
-    assert column.lookup_other("K").i_column() == 1
-    assert column.lookup_other("L").i_column() == 2
-    column = mtz_object.lookup_column("F*")
+    assert column.get_other("H").i_column() == 0
+    assert column.get_other("K").i_column() == 1
+    assert column.get_other("L").i_column() == 2
+    column = mtz_object.get_column("F*")
     assert column.label() == "Frem"
     expected_dataset_ids = iter(range(4))
     expected_dataset_names = iter([
@@ -114,11 +127,16 @@ def exercise_basic():
           assert column.array_size() == 165
           assert column.array_capacity() == 200
           assert column.path().endswith(column.label())
-          lookup_column = mtz_object.lookup_column(column.label())
-          assert lookup_column.label() == column.label()
+          get_column = mtz_object.get_column(column.label())
+          assert get_column.label() == column.label()
     group = mtz_object.extract_integers(
       column_label="ISYMabs")
     assert group.indices.size() == 165
+    assert group.data.size() == group.indices.size()
+    group = mtz_object.extract_integers_anomalous(
+      column_label_plus="ISYMabs",
+      column_label_minus="ISYMabs")
+    assert group.indices.size() == 330
     assert group.data.size() == group.indices.size()
     group = mtz_object.extract_reals(
       column_label="Frem")
@@ -135,6 +153,17 @@ def exercise_basic():
       column_label_c="Frem",
       column_label_d="DANOrem")
     assert group.indices.size() == 163
+    assert group.data.size() == group.indices.size()
+    group = mtz_object.extract_hls_anomalous(
+      column_label_a_plus="Frem",
+      column_label_b_plus="DANOrem",
+      column_label_c_plus="Frem",
+      column_label_d_plus="DANOrem",
+      column_label_a_minus="Frem",
+      column_label_b_minus="DANOrem",
+      column_label_c_minus="Frem",
+      column_label_d_minus="DANOrem")
+    assert group.indices.size() == 326
     assert group.data.size() == group.indices.size()
     group = mtz_object.extract_observations(
       column_label_data="Frem",
@@ -334,6 +363,8 @@ def exercise_modifiers(verbose=0):
   assert mtz_object.space_group_number() == 12
   mtz_object.set_point_group_name(name="pg"*100)
   assert mtz_object.point_group_name() == "pgpgpgpgpg"
+  mtz_object.set_lattice_centring_type(symbol="C")
+  assert mtz_object.lattice_centring_type() == "C"
   for space_group_symbols in sgtbx.space_group_symbol_iterator():
     space_group = sgtbx.space_group(space_group_symbols)
     mtz_object.set_space_group(space_group)
@@ -663,28 +694,24 @@ Crystal 3:
     .set_space_group_name("sg") \
     .set_space_group_number(123) \
     .set_point_group_name("pg") \
+    .set_lattice_centring_type("pg") \
     .set_space_group(sgtbx.space_group_info(number=123).group())
   unit_cell = uctbx.unit_cell((10,10,10,90,90,90))
-  mtz_object.add_crystal(
-    name="HKL_base",
-    project_name="HKL_base",
-    unit_cell=unit_cell).set_id(id=0).add_dataset(
-      name="HKL_base",
-      wavelength=0).set_id(id=0)
-  crystal = mtz_object.add_crystal(
+  mtz_object.set_hkl_base(unit_cell=unit_cell)
+  dataset = mtz_object.add_crystal(
     name="crystal_1",
     project_name="crystal_1",
     unit_cell=unit_cell).add_dataset(
       name="crystal_1",
       wavelength=0)
   for label in "HKL":
-    crystal.add_column(label=label, type="H")
-  column = crystal.add_column(label="F", type="F")
+    dataset.add_column(label=label, type="H")
+  column = dataset.add_column(label="F", type="F")
   mtz_reflection_indices = column.set_reals(
     miller_indices=flex.miller_index([(1,2,3),(2,3,4),(3,4,5)]),
     data=flex.double([10,20,30]))
   assert list(mtz_reflection_indices) == [0,1,2]
-  column = crystal.add_column(label="SigF", type="Q")
+  column = dataset.add_column(label="SigF", type="Q")
   column.set_reals(
     mtz_reflection_indices=mtz_reflection_indices,
     data=flex.double([1,2,3]))
@@ -694,12 +721,12 @@ Crystal 3:
   assert list(group.indices) == [(1, 2, 3), (2, 3, 4), (3, 4, 5)]
   assert approx_equal(group.data, [10, 20, 30])
   assert approx_equal(group.sigmas, [1, 2, 3])
-  column = crystal.add_column(label="I", type="F")
+  column = dataset.add_column(label="I", type="F")
   mtz_reflection_indices = column.set_reals(
     miller_indices=flex.miller_index([(2,3,5),(1,2,3),(3,4,5)]),
     data=flex.double([11,21,31]))
   assert list(mtz_reflection_indices) == [3, 0, 2]
-  column = crystal.add_column(label="SigI", type="Q")
+  column = dataset.add_column(label="SigI", type="Q")
   column.set_reals(
     mtz_reflection_indices=mtz_reflection_indices,
     data=flex.double([4,5,6]))
@@ -753,6 +780,51 @@ Crystal 2:
       6 I    3/4=75.00%  F: amplitude
       7 SigI 3/4=75.00%  Q: standard deviation
 """
+  mtz_object.write(file_name="tmp.mtz")
+  if (not verbose): out = StringIO()
+  mtz.wrapper.object(file_name="tmp.mtz").show_summary(out=out)
+  if (not verbose):
+    assert out.getvalue() == """\
+Title: exercise
+Space group symbol from file: sg
+Space group number from file: 123
+Space group from matrices: P 4/m m m (No. 123)
+Point group symbol from file: pg
+Number of crystals: 2
+Number of Miller indices: 4
+Resolution range: 2.67261 1.41421
+History:
+Crystal 1:
+  Name: HKL_base
+  Project: HKL_base
+  Id: 0
+  Unit cell: (10, 10, 10, 90, 90, 90)
+  Number of datasets: 1
+  Dataset 1:
+    Name: HKL_base
+    Id: 0
+    Wavelength: 0
+    Number of columns: 0
+Crystal 2:
+  Name: crystal_1
+  Project: crystal_1
+  Id: 2
+  Unit cell: (10, 10, 10, 90, 90, 90)
+  Number of datasets: 1
+  Dataset 1:
+    Name: crystal_1
+    Id: 1
+    Wavelength: 0
+    Number of columns: 7
+    Column number, label, number of valid values, type:
+      1 H    4/4=100.00% H: index h,k,l
+      2 K    4/4=100.00% H: index h,k,l
+      3 L    4/4=100.00% H: index h,k,l
+      4 F    3/4=75.00%  F: amplitude
+      5 SigF 3/4=75.00%  Q: standard deviation
+      6 I    3/4=75.00%  F: amplitude
+      7 SigI 3/4=75.00%  Q: standard deviation
+"""
 
 def exercise():
   command_line = (iotbx_option_parser()
@@ -774,6 +846,7 @@ def exercise():
       dest="full",
       help="Visit all MTZ file.")
   ).process(args=sys.argv[1:])
+  exercise_read_corrupt()
   exercise_basic()
   exercise_modifiers(verbose=command_line.options.verbose)
   for file_name in command_line.args:

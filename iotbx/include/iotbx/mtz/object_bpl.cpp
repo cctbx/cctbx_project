@@ -97,6 +97,11 @@ namespace {
         .def("point_group_name", &w_t::point_group_name)
         .def("set_point_group_name", &w_t::set_point_group_name, (
           arg_("name")), return_self<>())
+        .def("lattice_centring_type",
+          &w_t::lattice_centring_type)
+        .def("set_lattice_centring_type",
+          &w_t::set_lattice_centring_type, (
+            arg_("symbol")), return_self<>())
         .def("space_group", &w_t::space_group)
         .def("set_space_group", &w_t::set_space_group, (
           arg_("space_group")), return_self<>())
@@ -121,9 +126,12 @@ namespace {
           arg_("name"),
           arg_("project_name"),
           arg_("unit_cell")))
-        .def("lookup_column", &w_t::lookup_column, (arg_("label")))
+        .def("has_column", &w_t::has_column, (arg_("label")))
+        .def("get_column", &w_t::get_column, (arg_("label")))
         .def("extract_integers", &w_t::extract_integers, (
           (arg_("column_label"))))
+        .def("extract_integers_anomalous", &w_t::extract_integers_anomalous, (
+          arg_("column_label_plus"), arg_("column_label_minus")))
         .def("extract_reals", &w_t::extract_reals, (
           (arg_("column_label"))))
         .def("extract_reals_anomalous", &w_t::extract_reals_anomalous, (
@@ -133,6 +141,15 @@ namespace {
           arg_("column_label_b"),
           arg_("column_label_c"),
           arg_("column_label_d")))
+        .def("extract_hls_anomalous", &w_t::extract_hls_anomalous, (
+          arg_("column_label_a_plus"),
+          arg_("column_label_b_plus"),
+          arg_("column_label_c_plus"),
+          arg_("column_label_d_plus"),
+          arg_("column_label_a_minus"),
+          arg_("column_label_b_minus"),
+          arg_("column_label_c_minus"),
+          arg_("column_label_d_minus")))
         .def("extract_observations", &w_t::extract_observations, (
           arg_("column_label_data"),
           arg_("column_label_sigmas")))
@@ -155,6 +172,7 @@ namespace {
           arg_("column_label_phi_plus"),
           arg_("column_label_ampl_minus"),
           arg_("column_label_phi_minus")))
+        .def("write", &w_t::write, (arg_("file_name")))
       ;
     }
   };

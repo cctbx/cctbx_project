@@ -29,7 +29,7 @@ namespace {
         .def("array_size", &w_t::array_size)
         .def("array_capacity", &w_t::array_capacity)
         .def("path", &w_t::path)
-        .def("lookup_other", &w_t::lookup_other, (arg_("label")))
+        .def("get_other", &w_t::get_other, (arg_("label")))
         .def("n_valid_values", &w_t::n_valid_values)
         .def("set_reals",
           (af::shared<int>(w_t::*)(
