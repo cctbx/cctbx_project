@@ -15,6 +15,7 @@
 #include <vector>
 #include <algorithm>
 #include <boost/smart_ptr.hpp>
+#include <cctbx/vecref.h>
 
 namespace cctbx {
 
@@ -62,7 +63,15 @@ namespace cctbx {
 
       size_type size() const { return m_size; }
 
+            handle_type& handle()       { return m_handle; }
       const handle_type& handle() const { return m_handle; }
+
+      vecref<      value_type> ref()       {
+        return vecref<      value_type>(m_begin, m_size);
+      }
+      vecref<const value_type> ref() const {
+        return vecref<const value_type>(m_begin, m_size);
+      }
 
       shared_storage<value_type>
       deepcopy() const

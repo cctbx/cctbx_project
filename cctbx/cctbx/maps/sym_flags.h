@@ -75,7 +75,7 @@ namespace cctbx { namespace maps {
   template <typename VecRefNdType,
             typename IndexTupleType>
   std::size_t
-  mark_orbit(const VecRefNdType& p1_flags,
+  mark_orbit(VecRefNdType& p1_flags,
              const sgtbx::SpaceGroup& SgOps,
              const IndexTupleType& pivot)
   {
@@ -100,7 +100,7 @@ namespace cctbx { namespace maps {
             typename GridSsType,
             typename IndexTupleType>
   std::size_t
-  mark_orbit(const VecRefNdType& p1_flags,
+  mark_orbit(VecRefNdType& p1_flags,
              const GridSsType& grid_ss,
              const IndexTupleType& pivot)
   {
@@ -126,7 +126,7 @@ namespace cctbx { namespace maps {
   template <typename VecRefNdType,
             typename SymmetryType>
   std::size_t
-  mark_orbits(const VecRefNdType& p1_flags,
+  mark_orbits(VecRefNdType& p1_flags,
               const SymmetryType& symmetry)
   {
     std::size_t grid_misses = 0;

@@ -34,7 +34,7 @@ namespace cctbx {
       template <typename IteratorOrPointerType>
       vecref(IteratorOrPointerType begin, size_type size)
         : m_begin(&(*(begin))), m_size(size) {}
-      vecref(void* begin, size_type size)
+      vecref(char* begin, size_type size)
         : m_begin(reinterpret_cast<ValueType*>(begin)), m_size(size) {}
 
       ValueType* begin() const { return m_begin; }
@@ -44,7 +44,7 @@ namespace cctbx {
 
       size_type size() const { return m_size; }
 
-      void* handle() const { return m_begin; }
+      char* handle() const { return reinterpret_cast<char*>(m_begin); }
 
     protected:
       ValueType* m_begin;

@@ -104,7 +104,7 @@ namespace cctbx {
       vecrefnd(IteratorOrPointerType begin, const dimension_type& dim)
         : vecref<ValueType>(begin, dim.size1d()), m_dim(dim)
       {}
-      vecrefnd(void* begin, const dimension_type& dim)
+      vecrefnd(char* begin, const dimension_type& dim)
         : vecref<ValueType>(begin, dim.size1d()), m_dim(dim)
       {}
 
@@ -174,6 +174,13 @@ namespace cctbx {
       {}
 
       const dimension_type& dim() const { return m_dim; }
+
+      vecrefnd<      value_type, dimension_type> ref()       {
+        return vecrefnd<      value_type, dimension_type>(m_begin, m_dim);
+      }
+      vecrefnd<const value_type, dimension_type> ref() const {
+        return vecrefnd<const value_type, dimension_type>(m_begin, m_dim);
+      }
 
             shared_storage<value_type>& as_1d()       { return *this; }
       const shared_storage<value_type>& as_1d() const { return *this; }
