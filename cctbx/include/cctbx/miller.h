@@ -213,8 +213,8 @@ namespace cctbx {
       public:
         join_sets() {}
 
-        join_sets(const af::shared<Index>& a1,
-                  const af::shared<Index>& a2)
+        join_sets(af::shared<Index> a1,
+                  af::shared<Index> a2)
         {
           typedef std::map<Index, std::size_t> lookup_map_type;
           lookup_map_type lookup_map;
@@ -244,6 +244,11 @@ namespace cctbx {
           if (i) return singles_[1];
           return singles_[0];
         }
+
+        bool have_singles() const {
+          return singles_[0].size() || singles_[1].size();
+        }
+
       protected:
         af::shared<af::tiny<std::size_t, 2> > pairs_;
         af::shared<std::size_t> singles_[2];

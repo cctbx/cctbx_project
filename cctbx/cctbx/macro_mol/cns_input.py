@@ -119,6 +119,33 @@ class cns_reflection_file:
       result += "group: " + str(g) + "\n"
     return result[:-1]
 
+  def join_hl_group(self, group_index=None):
+    if (group_index == None):
+      assert len(self.groups) == 1
+      group_index = 0
+    selected_group = self.groups[group_index]
+    assert len(selected_group) == 4
+    miller_indices = 0
+    rsos = []
+    joined_sets = []
+    for name in selected_group:
+      rso = self.reciprocal_space_objects[name]
+      assert rso.type == "real"
+      rsos.append(rso)
+      if (miller_indices == 0): miller_indices = rso.H
+      js = shared.join_sets(miller_indices, rso.H)
+      assert not js.have_singles()
+      joined_sets.append(js)
+    hl = shared.hendrickson_lattman()
+    for ih in xrange(miller_indices.size()):
+      coeff = []
+      for ic in xrange(4):
+        ih0, ih1 = joined_sets[ic].pairs()[ih]
+        assert ih0 == ih
+        coeff.append(rsos[ic].data[ih1])
+      hl.append(coeff)
+    return miller_indices, hl
+
 class CNS_xray_reflection_Reader(CNS_input):
 
   def __init__(self, file):
