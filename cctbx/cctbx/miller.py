@@ -154,7 +154,7 @@ class set(crystal.symmetry):
       asu, matches = no_sys_abs.match_bijvoet_mates()
       print >> f, "Bijvoet pairs:", matches.pairs().size()
       print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
-      if (isinstance(self, array)):
+      if (isinstance(self, array) and self.is_real()):
         obs = no_sys_abs.apply_selection(no_sys_abs.data() > 0)
         print >> f, "Anomalous signal: %.4f" % obs.anomalous_signal()
     return self
@@ -510,6 +510,9 @@ class array(set):
   def is_xray_intensity_array(self):
     from cctbx.xray import observation_types
     return isinstance(self.observation_type(), observation_types.intensity)
+
+  def is_real(self):
+    return isinstance(self.data(), flex.double)
 
   def is_complex(self):
     return isinstance(self.data(), flex.complex_double)
