@@ -17,22 +17,32 @@ namespace cctbx { namespace uctbx {
   };
 
   //! Specific exception to indicate failure of reduction algorithm.
-  class error_degenerated_unit_cell_parameters : public error
+  class error_degenerate_unit_cell_parameters : public error
   {
     public:
-      error_degenerated_unit_cell_parameters()
+      error_degenerate_unit_cell_parameters()
       :
-        error("Degenerated unit cell parameters.")
+        error("Degenerate unit cell parameters.")
       {}
   };
+
+  //! Helper function to disable optimization.
+  float spoil_optimization(float);
+  //! Helper function to disable optimization.
+  double spoil_optimization(double);
 
   //! Fast minimum-lengths cell reduction.
   /*! Based on the algorithm of Gruber (1973), Acta Cryst. A29, 433-440.
       Tests for equality are removed in order to make the algorithm
-      numerically stable. In some cases the algorithm still oscillates
-      between the action in the false branch of N3 and the action B5.
-      This situation is analyzed in the implementation below and the
-      cycle is terminated after the action in the false branch of N3.
+      numerically more stable. However, in some cases the algorithm
+      still oscillates. This situation is analyzed in the implementation
+      below and the cycle is terminated after the action in the false
+      branch of N3.
+
+      Attention:
+        If this class is instantiated with a FloatType other than
+        float or double a corresponding spoil_optimization() helper
+        function must be defined!
    */
   template <typename FloatType=double,
             typename IntFromFloatType=int>
@@ -43,24 +53,20 @@ namespace cctbx { namespace uctbx {
       fast_minimum_reduction() {}
 
       //! Executes the reduction algorithm.
-      /*! The expected cycles described above are terminated after
-          expected_cycle_limit passes.
-          error_iteration_limit_exceeded is thrown if iteration_limit
-          is exceeded (this should never happen).
-       */
       fast_minimum_reduction(
         uctbx::unit_cell const& unit_cell,
-        std::size_t expected_cycle_limit=2,
-        std::size_t iteration_limit=100)
+        std::size_t iteration_limit=100,
+        FloatType multiplier_significant_change_test=10,
+        std::size_t min_n_no_significant_change=2)
       :
-        expected_cycle_limit_(expected_cycle_limit),
         iteration_limit_(iteration_limit),
+        multiplier_significant_change_test_(
+          multiplier_significant_change_test),
+        min_n_no_significant_change_(min_n_no_significant_change),
         r_inv_(scitbx::mat3<IntFromFloatType>(1)),
         n_iterations_(0),
-        current_cycle_id_(0),
-        last_cycle_id_(0),
-        n_expected_cycles_(0),
-        had_expected_cycle_(false)
+        n_no_significant_change_(0),
+        termination_due_to_significant_change_test_(false)
       {
         uc_sym_mat3 const& g = unit_cell.metrical_matrix();
         a_ = g[0];
@@ -69,6 +75,8 @@ namespace cctbx { namespace uctbx {
         d_ = 2*g[5];
         e_ = 2*g[4];
         f_ = 2*g[3];
+        last_abc_significant_change_test_ = scitbx::vec3<FloatType>(
+          -a_,-b_,-c_);
         while (step());
       }
 
@@ -102,11 +110,21 @@ namespace cctbx { namespace uctbx {
 
       //! Value as passed to the constructor.
       std::size_t
-      expected_cycle_limit() const { return expected_cycle_limit_; }
+      iteration_limit() const { return iteration_limit_; }
+
+      //! Value as passed to the constructor.
+      FloatType
+      multiplier_significant_change_test() const
+      {
+        return multiplier_significant_change_test_;
+      }
 
       //! Value as passed to the constructor.
       std::size_t
-      iteration_limit() const { return iteration_limit_; }
+      min_n_no_significant_change() const
+      {
+        return min_n_no_significant_change_;
+      }
 
       //! Change-of-basis matrix.
       /*! Compatible with uctbx::unit_cell::change_basis()
@@ -118,9 +136,15 @@ namespace cctbx { namespace uctbx {
       std::size_t
       n_iterations() const { return n_iterations_; }
 
-      //! Indicates if the expected cycle was detected (see above).
+      /*! Indicates if the reduction was terminated because it
+          was detected that the unit cell lengths did no longer
+          change significantly.
+       */
       bool
-      had_expected_cycle() const { return had_expected_cycle_; }
+      termination_due_to_significant_change_test() const
+      {
+        return termination_due_to_significant_change_test_;
+      }
 
       //! Cell type according to International Tables for Crystallography.
       /*! Possible values: 1 or 2. The value 0 is not possible if
@@ -186,6 +210,9 @@ namespace cctbx { namespace uctbx {
         }
         else {
           n3_false_action();
+          if (!significant_change_test()) {
+            return false;
+          }
         }
         if (b2_action()) return true;
         if (b3_action()) return true;
@@ -194,31 +221,37 @@ namespace cctbx { namespace uctbx {
         return false;
       }
 
+      FloatType
+      significant_change_test(FloatType const& new_value, std::size_t i) const
+      {
+        FloatType m_new = multiplier_significant_change_test_ * new_value;
+        FloatType diff = new_value - last_abc_significant_change_test_[i];
+        FloatType m_new_plus_diff = spoil_optimization(m_new + diff);
+        FloatType m_new_plus_diff_minus_m_new = m_new_plus_diff - m_new;
+        return m_new_plus_diff_minus_m_new != 0;
+      }
+
+      bool
+      significant_change_test()
+      {
+        if (   significant_change_test(a_, 0)
+            || significant_change_test(b_, 1)
+            || significant_change_test(c_, 2)) {
+          n_no_significant_change_ = 0;
+        }
+        else {
+          n_no_significant_change_++;
+          if (n_no_significant_change_ == min_n_no_significant_change_) {
+            return false;
+          }
+        }
+        last_abc_significant_change_test_ = scitbx::vec3<FloatType>(a_,b_,c_);
+        return true;
+      }
+
       void
       cb_update(scitbx::mat3<IntFromFloatType> const& m)
       {
-        if (current_cycle_id_ == 1) {
-          if (last_cycle_id_ != 2) {
-            n_expected_cycles_ = 0;
-          }
-        }
-        else if (current_cycle_id_ == 2) {
-          if (last_cycle_id_ != 1) {
-            n_expected_cycles_ = 0;
-          }
-          else {
-            n_expected_cycles_ += 1;
-            if (n_expected_cycles_ == expected_cycle_limit_) {
-              had_expected_cycle_ = true;
-              return;
-            }
-          }
-        }
-        else {
-          n_expected_cycles_ = 0;
-        }
-        last_cycle_id_ = current_cycle_id_;
-        current_cycle_id_ = 0;
         if (n_iterations_ == iteration_limit_) {
           throw error_iteration_limit_exceeded();
         }
@@ -270,7 +303,6 @@ namespace cctbx { namespace uctbx {
           CCTBX_ASSERT(z != -1);
           m[z] = -1;
         }
-        current_cycle_id_ = 1;
         cb_update(m);
         d_ = -scitbx::fn::absolute(d_);
         e_ = -scitbx::fn::absolute(e_);
@@ -287,7 +319,7 @@ namespace cctbx { namespace uctbx {
         c_ += j*j*b_ - j*d_;
         d_ -= 2*j*b_;
         e_ -= j*f_;
-        if (!(0 < c_)) throw error_degenerated_unit_cell_parameters();
+        if (!(0 < c_)) throw error_degenerate_unit_cell_parameters();
         return true;
       }
 
@@ -301,7 +333,7 @@ namespace cctbx { namespace uctbx {
         c_ += j*j*a_ - j*e_;
         d_ -= j*f_;
         e_ -= 2*j*a_;
-        if (!(0 < c_)) throw error_degenerated_unit_cell_parameters();
+        if (!(0 < c_)) throw error_degenerate_unit_cell_parameters();
         return true;
       }
 
@@ -315,7 +347,7 @@ namespace cctbx { namespace uctbx {
         b_ += j*j*a_ - j*f_;
         d_ -= j*e_;
         f_ -= 2*j*a_;
-        if (!(0 < b_)) throw error_degenerated_unit_cell_parameters();
+        if (!(0 < b_)) throw error_degenerate_unit_cell_parameters();
         return true;
       }
 
@@ -327,25 +359,23 @@ namespace cctbx { namespace uctbx {
         if (!(de+fab < 0)) return false;
         IntFromFloatType j = entier((de+fab)/(2*fab));
         if (j == 0) return false;
-        current_cycle_id_ = 2;
         cb_update(scitbx::mat3<IntFromFloatType>(1,0,-j,0,1,-j,0,0,1));
-        if (had_expected_cycle_) return false;
         c_ += j*j*fab-j*de;
         d_ -= j*(2*b_+f_);
         e_ -= j*(2*a_+f_);
-        if (!(0 < c_)) throw error_degenerated_unit_cell_parameters();
+        if (!(0 < c_)) throw error_degenerate_unit_cell_parameters();
         return true;
       }
 
-      std::size_t expected_cycle_limit_;
+      FloatType multiplier_significant_change_test_;
+      std::size_t min_n_no_significant_change_;
       std::size_t iteration_limit_;
       scitbx::mat3<IntFromFloatType> r_inv_;
       std::size_t n_iterations_;
-      int current_cycle_id_;
-      int last_cycle_id_;
-      std::size_t n_expected_cycles_;
-      bool had_expected_cycle_;
+      std::size_t n_no_significant_change_;
+      bool termination_due_to_significant_change_test_;
       FloatType a_, b_, c_, d_, e_, f_;
+      scitbx::vec3<FloatType> last_abc_significant_change_test_;
   };
 
 }} // namespace cctbx::uctbx
