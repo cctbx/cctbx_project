@@ -48,7 +48,19 @@ namespace cctbx { namespace xray {
           caasf_fourier_transformed<FloatType, CaasfType>(
             caasf, fp_fdp, w, u_cart, u_extra),
           occupancy_(occupancy)
-        {}
+        {
+          std::size_t i = 0;
+          for(;i<caasf.n_ab();i++) {
+            scitbx::sym_mat3<FloatType>
+              b_all = compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart);
+            detb_[i] = b_all.determinant();
+            bcfmt_[i] = b_all.co_factor_matrix_transposed();
+          }
+          scitbx::sym_mat3<FloatType>
+            b_all = compose_anisotropic_b_all(0, u_extra, u_cart);
+          detb_[i] = b_all.determinant();
+          bcfmt_[i] = b_all.co_factor_matrix_transposed();
+        }
 
         scitbx::vec3<FloatType>
         d_rho_real_d_site(exponent_table<FloatType>& exp_table,
@@ -91,17 +103,49 @@ namespace cctbx { namespace xray {
           return adptbx::u_as_b(drdb);
         }
 
+        /* Mathematica script used to determine analytical gradients:
+             bcart={{b00+bx,b01,b02},{b01,b11+bx,b12},{b02,b12,b22+bx}}
+             binv=Inverse[bcart]
+             detb=Det[bcart]
+             d={dx,dy,dz}
+             r=ca/Sqrt[detb] Exp[cb d.binv.d]
+             g={{D[r,b00], D[r,b01], D[r,b02]},
+                {D[r,b01], D[r,b11], D[r,b12]},
+                {D[r,b02], D[r,b12], D[r,b22]}}
+             bcfmt=binv*detb
+             bd=bcfmt.d
+             cbd=cb/detb
+             chk={{  cbd bd[[1]] bd[[1]] + bcfmt[[1,1]]/2,
+                   2 cbd bd[[1]] bd[[2]] + bcfmt[[1,2]],
+                   2 cbd bd[[1]] bd[[3]] + bcfmt[[1,3]]},
+                  {2 cbd bd[[1]] bd[[2]] + bcfmt[[1,2]],
+                     cbd bd[[2]] bd[[2]] + bcfmt[[2,2]]/2,
+                   2 cbd bd[[2]] bd[[3]] + bcfmt[[2,3]]},
+                  {2 cbd bd[[1]] bd[[3]] + bcfmt[[1,3]],
+                   2 cbd bd[[2]] bd[[3]] + bcfmt[[2,3]],
+                     cbd bd[[3]] bd[[3]] + bcfmt[[3,3]]/2}}/(-detb)
+             FullSimplify[g-r*chk]
+        */
         scitbx::sym_mat3<FloatType>
-        d_rho_real_d_u_star(exponent_table<FloatType>& exp_table,
+        d_rho_real_d_b_cart(exponent_table<FloatType>& exp_table,
                             scitbx::vec3<FloatType> const& d) const
         {
-          scitbx::sym_mat3<FloatType> drdu(FloatType(0));
+          scitbx::sym_mat3<FloatType> drdb(0,0,0,0,0,0);
           for (std::size_t i=0;i<this->as_real_.size();i++) {
             FloatType r = this->as_real_[i]
                           * exp_table(d * this->aniso_bs_real_[i] * d);
-            //drdu[0] += XXX
+            scitbx::vec3<FloatType> bd = bcfmt_[i] * d;
+            FloatType cbd = const_minus_4_pi_sq / detb_[i];
+            FloatType rd = r / detb_[i];
+            for(std::size_t j=0;j<3;j++) {
+              drdb[j] += rd * (cbd*bd[j]*bd[j] + bcfmt_[i][j]*.5);
+            }
+            cbd *= 2;
+            drdb[3] += rd * (cbd*bd[0]*bd[1] + bcfmt_[i][3]);
+            drdb[4] += rd * (cbd*bd[0]*bd[2] + bcfmt_[i][4]);
+            drdb[5] += rd * (cbd*bd[1]*bd[2] + bcfmt_[i][5]);
           }
-          return drdu;
+          return drdb;
         }
 
         FloatType
@@ -120,6 +164,8 @@ namespace cctbx { namespace xray {
 
       protected:
         af::tiny<FloatType, CaasfType::n_plus_1> b_;
+        af::tiny<FloatType, CaasfType::n_plus_1> detb_;
+        af::tiny<scitbx::sym_mat3<FloatType>, CaasfType::n_plus_1> bcfmt_;
         FloatType occupancy_;
     };
 
@@ -206,40 +252,40 @@ namespace cctbx { namespace xray {
         return r;
       }
 
-      af::shared<std::complex<double> >
+      af::shared<std::complex<FloatType> >
       grad() const { return grad_; }
 
-      af::shared<std::complex<double> >
+      af::shared<std::complex<FloatType> >
       grad_x() const { return grad_x_; }
 
-      af::shared<std::complex<double> >
+      af::shared<std::complex<FloatType> >
       grad_y() const { return grad_y_; }
 
-      af::shared<std::complex<double> >
+      af::shared<std::complex<FloatType> >
       grad_z() const { return grad_z_; }
 
-      af::shared<std::complex<double> >
+      af::shared<std::complex<FloatType> >
       grad_u_iso() const { return grad_u_iso_; }
 
-      af::shared<std::complex<double> >
+      af::shared<FloatType>
       grad_u_00() const { return grad_u_00_; }
 
-      af::shared<std::complex<double> >
+      af::shared<FloatType>
       grad_u_11() const { return grad_u_11_; }
 
-      af::shared<std::complex<double> >
+      af::shared<FloatType>
       grad_u_22() const { return grad_u_22_; }
 
-      af::shared<std::complex<double> >
+      af::shared<FloatType>
       grad_u_01() const { return grad_u_01_; }
 
-      af::shared<std::complex<double> >
+      af::shared<FloatType>
       grad_u_02() const { return grad_u_02_; }
 
-      af::shared<std::complex<double> >
+      af::shared<FloatType>
       grad_u_12() const { return grad_u_12_; }
 
-      af::shared<std::complex<double> >
+      af::shared<std::complex<FloatType> >
       grad_occupancy() const { return grad_occupancy_; }
 
       template <typename TagType>
@@ -277,18 +323,18 @@ namespace cctbx { namespace xray {
       complex_map_type complex_map_;
       std::size_t exp_table_size_;
       grid_point_type max_shell_radii_;
-      af::shared<std::complex<double> > grad_;
-      af::shared<std::complex<double> > grad_x_;
-      af::shared<std::complex<double> > grad_y_;
-      af::shared<std::complex<double> > grad_z_;
-      af::shared<std::complex<double> > grad_u_iso_;
-      af::shared<std::complex<double> > grad_u_00_;
-      af::shared<std::complex<double> > grad_u_11_;
-      af::shared<std::complex<double> > grad_u_22_;
-      af::shared<std::complex<double> > grad_u_01_;
-      af::shared<std::complex<double> > grad_u_02_;
-      af::shared<std::complex<double> > grad_u_12_;
-      af::shared<std::complex<double> > grad_occupancy_;
+      af::shared<std::complex<FloatType> > grad_;
+      af::shared<std::complex<FloatType> > grad_x_;
+      af::shared<std::complex<FloatType> > grad_y_;
+      af::shared<std::complex<FloatType> > grad_z_;
+      af::shared<std::complex<FloatType> > grad_u_iso_;
+      af::shared<FloatType> grad_u_00_;
+      af::shared<FloatType> grad_u_11_;
+      af::shared<FloatType> grad_u_22_;
+      af::shared<FloatType> grad_u_01_;
+      af::shared<FloatType> grad_u_02_;
+      af::shared<FloatType> grad_u_12_;
+      af::shared<std::complex<FloatType> > grad_occupancy_;
   };
 
   template <typename FloatType,
@@ -400,7 +446,7 @@ namespace cctbx { namespace xray {
       std::complex<FloatType> gr(0);
       scitbx::vec3<std::complex<FloatType> > gr_site(0,0,0);
       std::complex<FloatType> gr_u_iso(0);
-      scitbx::sym_mat3<std::complex<FloatType> > gr_u_star(0,0,0,0,0,0);
+      scitbx::sym_mat3<FloatType> gr_u_cart(0,0,0,0,0,0);
       std::complex<FloatType> gr_occupancy(0);
       for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
         g01 = math::mod_positive(gp[0],grid_f[0]) * grid_a[1];
@@ -462,9 +508,11 @@ namespace cctbx { namespace xray {
           }
           else {
             scitbx::sym_mat3<FloatType>
-              drdu = caasf_ft.d_rho_real_d_u_star(exp_table, d);
-            for(std::size_t i=0;i<3;i++) {
-              gr_u_star[i] += f * drdu[i];
+              drdu = adptbx::u_as_b(
+                caasf_ft.d_rho_real_d_b_cart(exp_table, d)
+                );
+            for(std::size_t i=0;i<6;i++) {
+              gr_u_cart[i] += (f * drdu[i]).real();
             }
           }
           if (!scatterer->anisotropic_flag) {
@@ -488,12 +536,15 @@ namespace cctbx { namespace xray {
           grad_u_iso_.push_back(gr_u_iso);
         }
         else {
-          grad_u_00_.push_back(gr_u_star[0]);
-          grad_u_11_.push_back(gr_u_star[1]);
-          grad_u_22_.push_back(gr_u_star[2]);
-          grad_u_01_.push_back(gr_u_star[3]);
-          grad_u_02_.push_back(gr_u_star[4]);
-          grad_u_12_.push_back(gr_u_star[5]);
+          //scitbx::sym_mat3<FloatType>
+          //  gr_u_star = gr_u_cart.tensor_transform(
+          //    unit_cell_.orthogonalization_matrix());
+          grad_u_00_.push_back(gr_u_cart[0]);
+          grad_u_11_.push_back(gr_u_cart[1]);
+          grad_u_22_.push_back(gr_u_cart[2]);
+          grad_u_01_.push_back(gr_u_cart[3]);
+          grad_u_02_.push_back(gr_u_cart[4]);
+          grad_u_12_.push_back(gr_u_cart[5]);
         }
         grad_occupancy_.push_back(gr_occupancy);
       }
