@@ -706,7 +706,7 @@ namespace direct_space_asu {
       /*! For sites in special positions the return value is always false.
        */
       bool
-      is_direct_interaction(asu_mapping_index_pair const& pair) const
+      is_simple_interaction(asu_mapping_index_pair const& pair) const
       {
         if (   special_op_indices_const_ref_[pair.i_seq]
             || special_op_indices_const_ref_[pair.j_seq]) return false;
@@ -724,7 +724,7 @@ namespace direct_space_asu {
       int
       interaction_type_id(asu_mapping_index_pair const& pair) const
       {
-        if (is_direct_interaction(pair)) {
+        if (is_simple_interaction(pair)) {
           if (pair.i_seq < pair.j_seq) return 1;
           return -2;
         }

@@ -101,12 +101,12 @@ namespace neighbors {
         return result;
       }
 
-      //! Calls direct_space_asu::asu_mappings::is_direct_interaction.
+      //! Calls direct_space_asu::asu_mappings::is_simple_interaction.
       bool
-      is_direct_interaction(
+      is_simple_interaction(
         direct_space_asu::asu_mapping_index_pair const& pair) const
       {
-        return asu_mappings_->is_direct_interaction(pair);
+        return asu_mappings_->is_simple_interaction(pair);
       }
 
     protected:

@@ -219,7 +219,7 @@ def exercise_neighbors_pair_generators(structure, verbose=0):
           mp_j.mapped_site())
       assert len(pair_dict) == 0
 
-def exercise_is_direct_interaction():
+def exercise_is_simple_interaction():
   for space_group_symbol in ["P1", "P41"]:
     for shifts in flex.nested_loop((-2,-2,-2),(2,2,2),00000):
       shifts = matrix.col(shifts)
@@ -237,7 +237,7 @@ def exercise_is_direct_interaction():
         distance_cutoff=7)
       direct_interactions = {}
       for i_pair,pair in zip(count(),pair_generator):
-        if (asu_mappings.is_direct_interaction(pair)):
+        if (asu_mappings.is_simple_interaction(pair)):
           key = (pair.i_seq,pair.j_seq)
           assert direct_interactions.get(key, None) is None
           direct_interactions[key] = 1
@@ -286,7 +286,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  exercise_is_direct_interaction()
+  exercise_is_simple_interaction()
   exercise_non_crystallographic_asu_mappings()
   print "OK"
 

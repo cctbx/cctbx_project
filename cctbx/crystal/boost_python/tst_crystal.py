@@ -135,7 +135,7 @@ def exercise_direct_space_asu():
   for index_pair in pair_generator:
     index_pairs.append((index_pair.i_seq, index_pair.j_seq, index_pair.j_sym))
     assert index_pair.dist_sq == -1
-    assert not pair_generator.is_direct_interaction(index_pair)
+    assert not pair_generator.is_simple_interaction(index_pair)
   assert pair_generator.at_end()
   assert index_pairs == [
     (0,0,1),(0,0,2),(0,0,3),(0,0,4),
@@ -240,7 +240,7 @@ def exercise_direct_space_asu():
         assert approx_equal(
           matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm(),
           index_pair.dist_sq)
-        assert not asu_mappings.is_direct_interaction(pair=index_pair)
+        assert not asu_mappings.is_simple_interaction(pair=index_pair)
         assert asu_mappings.interaction_type_id(pair=index_pair) == 0
         dist_sq.append(index_pair.dist_sq)
       assert pair_generator.at_end()
