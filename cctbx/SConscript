@@ -119,3 +119,4 @@ if (not env_etc.no_boost_python):
   SConscript("translation_search/boost_python/SConscript")
   SConscript("mintbx/boost_python/SConscript")
   SConscript("dmtbx/boost_python/SConscript")
+  SConscript("boost_python/SConscript")

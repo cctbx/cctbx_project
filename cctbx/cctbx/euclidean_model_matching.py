@@ -3,8 +3,11 @@ from cctbx import matrix
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import list_algebra
-from scitbx.python_utils.misc import adopt_init_args
+from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
+from scitbx.python_utils import dicts
 import sys, math
+
+from cctbx_boost import emma_ext as ext
 
 def sgtbx_rt_mx_as_matrix_rt(s):
   return matrix.rt((s.r().as_double(), s.t().as_double()))
@@ -122,12 +125,9 @@ class euclidean_match_symmetry:
   def set_continuous_shift_flags(self):
     assert self.continuous_shifts_are_principal()
     self.continuous_shift_flags = [0,0,0]
-    self.continuous_shift_count = 0
     for pa in self.continuous_shifts:
       for i in xrange(3):
-        if (pa[i]):
-          self.continuous_shift_flags[i] = 1
-          self.continuous_shift_count += 1
+        if (pa[i]): self.continuous_shift_flags[i] = 1
 
   def show(self, title="", f=sys.stdout):
     print >> f, "euclidean_match_symmetry:", title
@@ -143,20 +143,30 @@ def generate_singles(n, i):
 def pair_sort_function(pair_a, pair_b):
   return cmp(pair_a[0], pair_b[0])
 
+def match_refine_times():
+  return dicts.easy(
+    exclude_pairs=0,
+    add_pairs=0,
+    eliminate_weak_pairs=0,
+    refine_adjusted_shift=0)
+
 class match_refine:
 
   def __init__(self, tolerance,
                ref_model1, ref_model2,
                match_symmetry,
-               equiv1,
+               add_pair_ext,
                i_pivot1, i_pivot2,
                eucl_symop,
-               initial_shift):
+               initial_shift,
+               times=None):
     adopt_init_args(self, locals(), exclude=("initial_shift",))
     self.singles1 = generate_singles(self.ref_model1.size(), self.i_pivot1)
     self.singles2 = generate_singles(self.ref_model2.size(), self.i_pivot2)
     self.pairs = [(self.i_pivot1, self.i_pivot2)]
     self.adjusted_shift = initial_shift[:]
+    if (self.times == None):
+      self.times = match_refine_times()
     self.exclude_pairs()
     self.add_pairs()
     self.eliminate_weak_pairs()
@@ -171,57 +181,38 @@ class match_refine:
     #   exclude all pairs with dist_allowed >= tolerance
     # if 0 continuous shifts: dist_allowed == dist:
     #   exclude all pairs with dist >= tolerance
-    continuous_shift_count = self.match_symmetry.continuous_shift_count
-    length = self.ref_model1.unit_cell().length
-    self.pair_flags = flex.bool(flex.grid(self.ref_model1.size(),
-                                          self.ref_model2.size()))
-    for is2 in self.singles2:
-      c2 = self.eucl_symop * self.ref_model2[is2].site
-      c2 = list_algebra.plus(c2, self.adjusted_shift)
-      for is1 in self.singles1:
-        dist_info = sgtbx.min_sym_equiv_distance_info(self.equiv1[is1], c2)
-        dist = dist_info.dist()
-        if (continuous_shift_count == 0):
-          if (dist < self.tolerance):
-            self.pair_flags[(is1,is2)] = 0001
-        elif (dist < 4 * self.tolerance):
-          # ensure that this pair can be matched within 1 * tolerance.
-          # (not entirely sure that this is safe under all circumstances.)
-          diff = dist_info.diff()
-          diff_allowed = self.match_symmetry.filter_shift(diff, selector=1)
-          dist_allowed = length(diff_allowed)
-          if (dist_allowed < self.tolerance):
-            self.pair_flags[(is1,is2)] = 0001
+    timer = user_plus_sys_time()
+    self.add_pair_ext.next_pivot(
+      self.match_symmetry.continuous_shift_flags,
+      self.eucl_symop,
+      self.adjusted_shift,
+      flex.int(self.singles1),
+      flex.int(self.singles2))
+    self.times.exclude_pairs += timer.delta()
 
   def add_pairs(self):
     # XXX possible optimizations:
     #   if 0 continuous shifts:
     #     tabulate dist
-    #     keep all <= tolerance
-    #     sort
+    #     keep all < tolerance
     #     we do not need eliminate_weak_matches
-    length = self.ref_model1.unit_cell().length
+    timer = user_plus_sys_time()
     while (len(self.singles1) and len(self.singles2)):
-      shortest_dist = 2 * self.tolerance
-      new_pair = 0
-      for is2 in self.singles2:
-        c2 = self.eucl_symop * self.ref_model2[is2].site
-        c2 = list_algebra.plus(c2, self.adjusted_shift)
-        for is1 in self.singles1:
-          if (self.pair_flags[(is1,is2)]):
-            dist_info = sgtbx.min_sym_equiv_distance_info(self.equiv1[is1], c2)
-            dist = dist_info.dist()
-            if (dist < shortest_dist):
-              shortest_dist = dist
-              new_pair = (is1, is2)
-      if (new_pair == 0):
+      if (not self.add_pair_ext.next_pair(
+        self.adjusted_shift,
+        flex.int(self.singles1),
+        flex.int(self.singles2))):
         break
+      new_pair = (self.add_pair_ext.new_pair_1(),
+                  self.add_pair_ext.new_pair_2())
       self.pairs.append(new_pair)
       self.singles1.remove(new_pair[0])
       self.singles2.remove(new_pair[1])
       self.refine_adjusted_shift()
+    self.times.add_pairs += timer.delta()
 
   def eliminate_weak_pairs(self):
+    timer = user_plus_sys_time()
     while 1:
       weak_pair = 0
       max_dist = 0
@@ -240,6 +231,7 @@ class match_refine:
       self.singles1.append(weak_pair[0])
       self.singles2.append(weak_pair[1])
       self.refine_adjusted_shift()
+    self.times.eliminate_weak_pairs += timer.delta()
 
   def apply_eucl_ops(self, i_model2):
     c2 = self.eucl_symop * self.ref_model2[i_model2].site
@@ -247,7 +239,8 @@ class match_refine:
 
   def calculate_shortest_diff(self, pair):
     c2 = self.apply_eucl_ops(pair[1])
-    return sgtbx.min_sym_equiv_distance_info(self.equiv1[pair[0]], c2).diff()
+    return sgtbx.min_sym_equiv_distance_info(
+      self.add_pair_ext.equiv1(pair[0]), c2).diff()
 
   def calculate_shortest_dist(self, pair):
     length = self.ref_model1.unit_cell().length
@@ -260,6 +253,7 @@ class match_refine:
     return shortest_diffs
 
   def refine_adjusted_shift(self):
+    timer = user_plus_sys_time()
     unit_cell = self.ref_model1.unit_cell()
     sum_diff_cart = [0,0,0]
     for diff in self.calculate_shortest_diffs():
@@ -270,6 +264,7 @@ class match_refine:
     mean_diff_frac = unit_cell.fractionalize(mean_diff_cart)
     self.adjusted_shift = list_algebra.plus(
       self.adjusted_shift, mean_diff_frac)
+    self.times.refine_adjusted_shift += timer.delta()
 
   def calculate_rms(self):
     length = self.ref_model1.unit_cell().length
@@ -356,16 +351,23 @@ def compute_refined_matches(ref_model1, ref_model2,
     ref_model1.space_group_info(),
     use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
   match_symmetry.set_continuous_shift_flags()
-  equiv1 = []
-  for pos in ref_model1:
-    equiv1.append(sgtbx.sym_equiv_sites(ref_model1.site_symmetry(pos.site)))
+  ref_model1_sites = flex.vec3_double([pos.site for pos in ref_model1])
+  ref_model2_sites = flex.vec3_double([pos.site for pos in ref_model2])
+  add_pair_ext = ext.add_pair(
+    tolerance,
+    ref_model1.unit_cell(),
+    ref_model1.space_group(),
+    ref_model1.min_distance_sym_equiv(),
+    ref_model1_sites,
+    ref_model2_sites)
+  accumulated_match_refine_times = match_refine_times()
   refined_matches = []
   for i_pivot1 in xrange(ref_model1.size()):
     for i_pivot2 in xrange(ref_model2.size()):
       for eucl_symop in match_symmetry.rt_mx:
         c2 = eucl_symop * ref_model2[i_pivot2].site
         dist_info = sgtbx.min_sym_equiv_distance_info(
-          equiv1[i_pivot1],
+          add_pair_ext.equiv1(i_pivot1),
           c2,
           match_symmetry.continuous_shift_flags)
         if (dist_info.dist() < tolerance):
@@ -373,10 +375,11 @@ def compute_refined_matches(ref_model1, ref_model2,
           match = match_refine(tolerance,
                                ref_model1, ref_model2,
                                match_symmetry,
-                               equiv1,
+                               add_pair_ext,
                                i_pivot1, i_pivot2,
                                eucl_symop,
-                               allowed_shift)
+                               allowed_shift,
+                               accumulated_match_refine_times)
           match.rt = match_rt_from_ref_eucl_rt(
             ref_model1.cb_op(),
             ref_model2.cb_op(),
@@ -385,6 +388,7 @@ def compute_refined_matches(ref_model1, ref_model2,
           if (break_if_match_with_no_singles):
             if (len(match.singles1) == 0 or len(match.singles2) == 0):
               return refined_matches
+  #print accumulated_match_refine_times
   return refined_matches
 
 def match_models(model1, model2,
