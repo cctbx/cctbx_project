@@ -4,6 +4,7 @@ from iotbx.option_parser import iotbx_option_parser
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
+from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 from cStringIO import StringIO
 import sys, os
@@ -60,6 +61,7 @@ def exercise_basic():
     dataset = mtz.wrapper.dataset(mtz_crystal=crystal, i_dataset=0)
     assert dataset.mtz_crystal().i_crystal() == 1
     assert dataset.i_dataset() == 0
+    assert dataset.mtz_object().n_crystals() == mtz_object.n_crystals()
     assert dataset.id() == 1
     assert dataset.name() == "unknown230103:23:14:49"
     assert dataset.wavelength() == 0
@@ -320,6 +322,8 @@ def exercise_modifiers(verbose=0):
   assert list(mtz_object.history()) == ["a1", "a2"]
   mtz_object.add_history(lines=flex.std_string(["b1", "b2"]))
   assert list(mtz_object.history()) == ["b1", "b2", "a1", "a2"]
+  mtz_object.add_history(line="c1")
+  assert list(mtz_object.history()) == ["c1", "b1", "b2", "a1", "a2"]
   mtz_object.set_space_group_name(name="sg"*100)
   assert mtz_object.space_group_name() == "sgsgsgsgsgsgsgsgsgsg"
   mtz_object.set_space_group_number(number=12)
@@ -332,7 +336,8 @@ def exercise_modifiers(verbose=0):
     assert mtz_object.space_group() == space_group
   mtz_object = mtz.wrapper.object() \
     .set_title(title="exercise") \
-    .add_history(lines=flex.std_string(["h1", "h2"])) \
+    .add_history(lines=flex.std_string(["h2"])) \
+    .add_history(line="h1") \
     .set_space_group_name("sg") \
     .set_space_group_number(123) \
     .set_point_group_name("pg") \
@@ -396,7 +401,8 @@ Crystal 3:
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
       for i_dataset in xrange(5-i_crystal):
         if (stage == 0):
-          dataset = crystal.add_dataset("dataset_%d"%i_dataset, 10-i_dataset)
+          dataset = crystal.add_dataset(
+            name="dataset_%d"%i_dataset, wavelength=10-i_dataset)
         else:
           dataset = crystal.datasets()[i_dataset]
         assert dataset.name() == "dataset_%d"%i_dataset
@@ -493,6 +499,148 @@ Crystal 3:
     Id: 11
     Wavelength: 8
     Number of columns: 0
+"""
+  for stage in [0,1]:
+    i_seq_iter = count()
+    for i_crystal,crystal in enumerate(mtz_object.crystals()):
+      for i_dataset,dataset in enumerate(crystal.datasets()):
+        for i_column in xrange((i_crystal+i_dataset) % 3 + 1):
+          i_seq = i_seq_iter.next()
+          col_label = "column_%d"%i_seq
+          col_type = "FB?"[(i_crystal-i_dataset+i_column) % 3]
+          if (stage == 0):
+            column = dataset.add_column(label=col_label, type=col_type)
+          else:
+            column = dataset.columns()[i_column]
+          assert column.label() == col_label
+          assert column.type() == col_type
+  if (not verbose): out = StringIO()
+  mtz_object.show_summary(out=out)
+  if (not verbose):
+    assert out.getvalue() == """\
+Title: exercise
+Space group symbol from file: sg
+Space group number from file: 123
+Space group from matrices: P 4/m m m (No. 123)
+Point group symbol from file: pg
+Number of crystals: 3
+Number of Miller indices: 0
+History:
+  h1
+  h2
+Crystal 1:
+  Name: crystal_0
+  Project: project_0
+  Id: 1
+  Unit cell: (10, 20, 20, 90, 90, 120)
+  Number of datasets: 5
+  Dataset 1:
+    Name: dataset_0
+    Id: 0
+    Wavelength: 10
+    Number of columns: 1
+    Column number, label, number of valid values, type:
+        1, column_0, 0/0=0.00%, F: amplitude
+  Dataset 2:
+    Name: dataset_1
+    Id: 1
+    Wavelength: 9
+    Number of columns: 2
+    Column number, label, number of valid values, type:
+        1, column_1, 0/0=0.00%, ?: *** UNDEFINED column type ***
+        2, column_2, 0/0=0.00%, F: amplitude
+  Dataset 3:
+    Name: dataset_2
+    Id: 2
+    Wavelength: 8
+    Number of columns: 3
+    Column number, label, number of valid values, type:
+        1, column_3, 0/0=0.00%, B: BATCH number
+        2, column_4, 0/0=0.00%, ?: *** UNDEFINED column type ***
+        3, column_5, 0/0=0.00%, F: amplitude
+  Dataset 4:
+    Name: dataset_3
+    Id: 3
+    Wavelength: 7
+    Number of columns: 1
+    Column number, label, number of valid values, type:
+        1, column_6, 0/0=0.00%, F: amplitude
+  Dataset 5:
+    Name: dataset_4
+    Id: 4
+    Wavelength: 6
+    Number of columns: 2
+    Column number, label, number of valid values, type:
+        1, column_7, 0/0=0.00%, ?: *** UNDEFINED column type ***
+        2, column_8, 0/0=0.00%, F: amplitude
+Crystal 2:
+  Name: crystal_1
+  Project: project_1
+  Id: 2
+  Unit cell: (11, 20, 20, 90, 90, 120)
+  Number of datasets: 4
+  Dataset 1:
+    Name: dataset_0
+    Id: 5
+    Wavelength: 10
+    Number of columns: 2
+    Column number, label, number of valid values, type:
+        1, column_9, 0/0=0.00%, B: BATCH number
+        2, column_10, 0/0=0.00%, ?: *** UNDEFINED column type ***
+  Dataset 2:
+    Name: dataset_1
+    Id: 6
+    Wavelength: 9
+    Number of columns: 3
+    Column number, label, number of valid values, type:
+        1, column_11, 0/0=0.00%, F: amplitude
+        2, column_12, 0/0=0.00%, B: BATCH number
+        3, column_13, 0/0=0.00%, ?: *** UNDEFINED column type ***
+  Dataset 3:
+    Name: dataset_2
+    Id: 7
+    Wavelength: 8
+    Number of columns: 1
+    Column number, label, number of valid values, type:
+        1, column_14, 0/0=0.00%, ?: *** UNDEFINED column type ***
+  Dataset 4:
+    Name: dataset_3
+    Id: 8
+    Wavelength: 7
+    Number of columns: 2
+    Column number, label, number of valid values, type:
+        1, column_15, 0/0=0.00%, B: BATCH number
+        2, column_16, 0/0=0.00%, ?: *** UNDEFINED column type ***
+Crystal 3:
+  Name: crystal_2
+  Project: project_2
+  Id: 3
+  Unit cell: (12, 20, 20, 90, 90, 120)
+  Number of datasets: 3
+  Dataset 1:
+    Name: dataset_0
+    Id: 9
+    Wavelength: 10
+    Number of columns: 3
+    Column number, label, number of valid values, type:
+        1, column_17, 0/0=0.00%, ?: *** UNDEFINED column type ***
+        2, column_18, 0/0=0.00%, F: amplitude
+        3, column_19, 0/0=0.00%, B: BATCH number
+  Dataset 2:
+    Name: dataset_1
+    Id: 10
+    Wavelength: 9
+    Number of columns: 1
+    Column number, label, number of valid values, type:
+        1, column_20, 0/0=0.00%, B: BATCH number
+  Dataset 3:
+    Name: dataset_2
+    Id: 11
+    Wavelength: 8
+    Number of columns: 2
+    Column number, label, number of valid values, type:
+        1, column_21, 0/0=0.00%, F: amplitude
+        2, column_22, 0/0=0.00%, B: BATCH number
 """
 
 def exercise():

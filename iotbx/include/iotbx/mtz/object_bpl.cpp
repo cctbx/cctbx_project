@@ -80,8 +80,14 @@ namespace {
         .def("set_title", &w_t::set_title, set_title_overloads((
           arg_("title"), arg_("append")=false))[return_self<>()])
         .def("history", &w_t::history)
-        .def("add_history", &w_t::add_history, (
+        .def("add_history",
+          (object&(w_t::*)(af::const_ref<std::string> const&))
+            &w_t::add_history, (
           arg_("lines")), return_self<>())
+        .def("add_history",
+          (object&(w_t::*)(const char*))
+            &w_t::add_history, (
+          arg_("line")), return_self<>())
         .def("space_group_name", &w_t::space_group_name)
         .def("set_space_group_name", &w_t::set_space_group_name, (
           arg_("name")), return_self<>())

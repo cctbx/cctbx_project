@@ -119,6 +119,22 @@ namespace iotbx { namespace mtz {
 
   inline
   column
+  dataset::add_column(
+    const char *label,
+    const char *type)
+  {
+    int i_column = n_columns();
+    CMtz::MTZCOL* column_ptr = CMtz::MtzAddColumn(
+      mtz_object().ptr(), ptr(), label, type);
+    CCTBX_ASSERT(column_ptr != 0);
+    CCTBX_ASSERT(n_columns() == i_column+1);
+    column result(*this, i_column);
+    CCTBX_ASSERT(result.ptr() == column_ptr);
+    return result;
+  }
+
+  inline
+  column
   object::lookup_column(const char* label) const
   {
     for(int i_crystal=0;i_crystal<n_crystals();i_crystal++) {

@@ -25,6 +25,9 @@ namespace iotbx { namespace mtz {
       int
       i_dataset() const { return i_dataset_; }
 
+      object
+      mtz_object() const { return mtz_crystal_.mtz_object(); }
+
       CMtz::MTZSET*
       ptr() const
       {
@@ -46,6 +49,12 @@ namespace iotbx { namespace mtz {
 
       af::shared<column>
       columns() const;
+
+      inline
+      column
+      add_column(
+        const char *label,
+        const char *type);
 
     protected:
       crystal mtz_crystal_;
