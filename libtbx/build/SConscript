@@ -29,7 +29,7 @@ env_etc.compiler = ARGUMENTS.get("compiler", 0)
 env_etc.release_build = ARGUMENTS.get("release_build", 0)
 env_etc.debug_build = ARGUMENTS.get("debug_build", 0)
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
-env_etc.no_prelink = ARGUMENTS.get("no_prelink", 0)
+env_etc.no_prelink = ARGUMENTS.get("no_prelink", 1)
 env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
 
