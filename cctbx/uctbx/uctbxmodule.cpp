@@ -129,6 +129,24 @@ namespace {
                          const fractional<double>& Xf) {
     return uc.orthogonalize(Xf);
   }
+  double
+  UnitCell_TemperatureFactor_iso_stol2(const UnitCell& uc,
+                                 double stol2,
+                                 double Uiso) {
+    return uc.TemperatureFactor(stol2, Uiso);
+  }
+  double
+  UnitCell_TemperatureFactor_iso_MIx(const UnitCell& uc,
+                                 const Miller::Index& MIx,
+                                 double Uiso) {
+    return uc.TemperatureFactor(MIx, Uiso);
+  }
+  double
+  UnitCell_TemperatureFactor_aniso(const UnitCell& uc,
+                                   const Miller::Index& MIx,
+                                   const boost::array<double, 6>& uij) {
+    return uc.TemperatureFactor(MIx, uij);
+  }
 }
 
 BOOST_PYTHON_MODULE_INIT(uctbx)
@@ -174,6 +192,12 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
     UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
     UnitCell_class.def(&UnitCell::isEqual, "isEqual");
+    UnitCell_class.def(UnitCell_TemperatureFactor_iso_stol2,
+                               "TemperatureFactor");
+    UnitCell_class.def(UnitCell_TemperatureFactor_iso_MIx,
+                               "TemperatureFactor");
+    UnitCell_class.def(UnitCell_TemperatureFactor_aniso,
+                               "TemperatureFactor");
   }
   catch(...)
   {

@@ -247,6 +247,45 @@ namespace uctbx {
       inline double d(const Miller::Index& MIx) const { return Q_as_d(Q(MIx));}
       //@}
 
+      //! @name Temperature factors.
+      /*! Literature:
+          Jan Drenth,
+          Principles of Protein X-Ray Crystallography,
+          2nd edition, 1999, section 4.9 (pp. 89-92)
+       */
+      //@{
+      //! Isotropic temperature factor given (sin(theta)/lambda)^2 and Uiso.
+      inline double
+      TemperatureFactor(double stol2,
+                        double Uiso) const
+      {
+        using cctbx::constants::pi;
+        return std::exp(-8. * pi * pi * Uiso * stol2);
+      }
+      //! Isotropic temperature factor given Miller index and Uiso.
+      inline double
+      TemperatureFactor(const Miller::Index& MIx,
+                        double Uiso) const
+      {
+        return TemperatureFactor(Q(MIx) / 4., Uiso);
+      }
+      //! Anisotropic temperature factor given coefficients Uij.
+      template <class FloatType>
+      inline FloatType
+      TemperatureFactor(const Miller::Index& MIx,
+                        const boost::array<FloatType, 6>& Uij) const
+      {
+        using cctbx::constants::pi;
+        return std::exp(FloatType(-2. * pi * pi) * (
+            (MIx[0] * MIx[0]) * (R_Len[0] * R_Len[0]) * Uij[0]
+          + (MIx[1] * MIx[1]) * (R_Len[1] * R_Len[1]) * Uij[1]
+          + (MIx[2] * MIx[2]) * (R_Len[2] * R_Len[2]) * Uij[2]
+          + (2 * MIx[0] * MIx[1]) * (R_Len[0] * R_Len[1]) * Uij[3]
+          + (2 * MIx[0] * MIx[2]) * (R_Len[0] * R_Len[2]) * Uij[4]
+          + (2 * MIx[1] * MIx[2]) * (R_Len[1] * R_Len[2]) * Uij[5]));
+      }
+      //@}
+
       //! @name Stream I/O.
       //@{
       //! Print the unit cell parameters to an output stream.
