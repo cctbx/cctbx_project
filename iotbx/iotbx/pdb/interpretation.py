@@ -2,6 +2,11 @@ from iotbx import pdb
 import iotbx.pdb.parser
 import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.atom
+from cctbx import xray
+from cctbx import crystal
+from cctbx import adptbx
+from cctbx import eltbx
+import cctbx.eltbx.xray_scattering
 from cctbx.array_family import flex
 from scitbx.stl import set
 from libtbx.itertbx import count
@@ -189,6 +194,37 @@ class stage_1:
       line_number=self.state.line_number,
       ignore_columns_73_and_following=self.ignore_columns_73_and_following)
 
+  def get_special_position_settings(self,
+        special_position_settings=None,
+        crystal_symmetry=None,
+        force_symmetry=False):
+    assert special_position_settings is None or crystal_symmetry is None
+    assert self.crystal_symmetry is not None or crystal_symmetry is not None or special_position_settings is not None
+    if (crystal_symmetry is None):
+      crystal_symmetry = special_position_settings
+    if (self.crystal_symmetry is not None):
+      if (crystal_symmetry is None):
+        crystal_symmetry = self.crystal_symmetry
+      else:
+        crystal_symmetry = self.crystal_symmetry.join_symmetry(
+          other_symmetry=crystal_symmetry,
+          force=force_symmetry)
+    assert crystal_symmetry.unit_cell() is not None
+    assert crystal_symmetry.space_group_info() is not None
+    if (special_position_settings is None):
+      special_position_settings = crystal.special_position_settings(
+        crystal_symmetry=crystal_symmetry)
+    else:
+      special_position_settings = crystal.special_position_settings(
+        crystal_symmetry=crystal_symmetry,
+        min_distance_sym_equiv
+          =special_position_settings.min_distance_sym_equiv,
+        u_star_tolerance
+          =special_position_settings.u_star_tolerance,
+        assert_is_positive_definite
+          =special_position_settings.assert_is_positive_definite)
+    return special_position_settings
+
   def get_sites_cart(self):
     if (self._sites_cart is None):
       self._sites_cart = flex.vec3_double()
@@ -219,6 +255,50 @@ class stage_1:
         result.push_back(atom.element.strip())
       else:
         result.push_back(atom.element)
+    return result
+
+  def extract_xray_structure(self,
+        special_position_settings=None,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        discard_atoms_with_unknown_scattering_type=False,
+        sites_cart=None,
+        sites_frac=None,
+        scattering_types=None):
+    assert sites_cart is None or sites_frac is None
+    result = xray.structure(
+      special_position_settings=self.get_special_position_settings(
+        special_position_settings=special_position_settings,
+        crystal_symmetry=crystal_symmetry,
+        force_symmetry=force_symmetry))
+    if (sites_cart is None):
+      sites_cart = self.get_sites_cart()
+    if (sites_frac is None):
+      sites_frac = result.unit_cell().orthogonalization_matrix() * sites_cart
+    if (scattering_types is None):
+      scattering_types = self.get_element_symbols(strip_symbols=True)
+    for i_seq,atom,site_frac,scattering_type in zip(
+          count(),
+          self.atom_attributes_list,
+          sites_frac,
+          scattering_types):
+      if (scattering_type == ""):
+        if (discard_atoms_with_unknown_scattering_type):
+          continue
+        raise RuntimeError("Unknown scattering type: %s" % str(atom))
+      scattering_type = eltbx.xray_scattering.it1992(
+        scattering_type, False).label()
+      if (atom.Ucart is None):
+        u = adptbx.b_as_u(atom.tempFactor)
+      else:
+        u = adptbx.u_cart_as_u_star(result.unit_cell(), atom.Ucart)
+      result.add_scatterer(
+        scatterer=xray.scatterer(
+          label=str(i_seq),
+          site=site_frac,
+          u=u,
+          occupancy=atom.occupancy,
+          scattering_type=scattering_type))
     return result
 
   def get_block_identifiers(self, block_indices):
