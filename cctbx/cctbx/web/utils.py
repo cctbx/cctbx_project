@@ -1,5 +1,37 @@
+import urlparse
 import exceptions
 class FormatError(exceptions.Exception): pass
+import os
+
+class server_info:
+
+  def __init__(self):
+    server_name = os.environ["SERVER_NAME"]
+    server_port = os.environ["SERVER_PORT"]
+    script_name = os.environ["SCRIPT_NAME"]
+    self._script = [
+      'http',
+      '%s:%s' % (server_name, server_port),
+      script_name,
+      '',
+      '']
+    self._base = [
+      'http',
+      '%s:%s' % (server_name, server_port),
+      "/".join(script_name.split("/")[:-1]) + "/",
+      '',
+      '']
+
+  def script(self, query=''):
+    return urlparse.urlunsplit(
+      self._script[:3] + [query] + self._script[4:])
+
+  def base(self):
+    return urlparse.urlunsplit(self._base)
+
+  def file(self, target):
+    return urlparse.urlunsplit(
+      self._base[:2] + [self._base[2] + target] + self._base[3:])
 
 def show_input_symbol(sgsymbol, convention, label="Input"):
   if (sgsymbol != ""):
@@ -13,7 +45,7 @@ def show_input_symbol(sgsymbol, convention, label="Input"):
       print "Hall symbol"
     else:
       print "Default"
-  print
+    print
 
 def interpret_skip_columns(skip_columns):
   result = int(skip_columns)

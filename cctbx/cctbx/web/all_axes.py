@@ -13,9 +13,7 @@ def interpret_form_data(form):
       inp.__dict__[key[0]] = key[1]
   return inp
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
+def run(server_info, inp, status):
   print "<pre>"
   space_group_info = sgtbx.space_group_info(
     symbol=inp.sgsymbol,

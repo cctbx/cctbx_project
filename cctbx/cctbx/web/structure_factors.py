@@ -60,11 +60,7 @@ def read_scatterer(flds, default_b_iso=3.0):
     raise utils.FormatError, flds
   return scatterer
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
-
-  print "<pre>"
+def run(server_info, inp, status):
   print "<pre>"
   special_position_settings = crystal.special_position_settings(
     crystal.symmetry(

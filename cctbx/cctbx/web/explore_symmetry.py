@@ -156,10 +156,7 @@ def expand_shelx_latt(sg, n_fld):
   sg.expand_conventional_centring_type(z)
   print
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
-
+def run(server_info, inp, status):
   print "<pre>"
   utils.show_input_symbol(inp.sgsymbol, inp.convention)
 

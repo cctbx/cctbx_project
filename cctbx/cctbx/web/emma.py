@@ -114,9 +114,7 @@ class web_to_models:
     self.i_next_model += 1
     return m
 
-def run(cctbx_url, inp, status):
-  print "Content-type: text/html"
-  print
+def run(server_info, inp, status):
   print "<pre>"
 
   if (inp.ucparams_2 == ""):
