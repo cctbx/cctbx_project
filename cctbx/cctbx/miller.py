@@ -1230,7 +1230,7 @@ class array(set):
       s = matches.additive_sigmas(asu.sigmas())
     return array(set(asu, i, anomalous_flag=False), d, s)
 
-  def hemisphere(self, plus_or_minus):
+  def hemisphere_acentrics(self, plus_or_minus):
     assert plus_or_minus in ("+", "-")
     assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
@@ -1239,7 +1239,7 @@ class array(set):
       selection=matches.pairs().column(i_column),
       anomalous_flag=False)
 
-  def hemispheres(self):
+  def hemispheres_acentrics(self):
     assert self.data() is not None
     asu, matches = self.match_bijvoet_mates()
     return tuple(
@@ -1255,7 +1255,7 @@ class array(set):
       obs = self.select(self.data() > 0)
       if (self.is_xray_intensity_array()):
         obs = obs.f_sq_as_f()
-      f_plus, f_minus = obs.hemispheres()
+      f_plus, f_minus = obs.hemispheres_acentrics()
       assert f_plus.data().size() == f_minus.data().size()
       if (f_plus.data().size() == 0): return 0
       mean_sq_diff = flex.mean(flex.pow2(f_plus.data() - f_minus.data()))
@@ -1283,7 +1283,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       if (self.is_xray_amplitude_array()):
         obs = obs.f_as_f_sq()
       if (obs.data().size() == 0): return 0
-      i_plus, i_minus = obs.hemispheres()
+      i_plus, i_minus = obs.hemispheres_acentrics()
       assert i_plus.data().size() == i_minus.data().size()
       ratio = flex.fabs(i_plus.data()-i_minus.data()) / flex.sqrt(
                              (i_plus.sigmas()*i_plus.sigmas())

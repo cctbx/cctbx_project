@@ -127,7 +127,7 @@ def exercise_generate_r_free_flags():
       else:
         if (i_trial < 5):
           assert flags.indices().size() == 212
-        fp,fm = flags.hemispheres()
+        fp,fm = flags.hemispheres_acentrics()
         assert fp.data().all_eq(fm.data())
         if (i_trial < 5):
           assert fp.data().count(True) \
@@ -328,7 +328,8 @@ def exercise_array():
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
   assert approx_equal(tuple(ad.data()), (-1.0, 2.0))
   assert approx_equal(tuple(ad.sigmas()), (math.sqrt(0.05), 0.5))
-  for hp,hm in ((ma.hemisphere("+"), ma.hemisphere("-")), ma.hemispheres()):
+  for hp,hm in ((ma.hemisphere_acentrics("+"), ma.hemisphere_acentrics("-")),
+                ma.hemispheres_acentrics()):
     assert tuple(hp.indices()) == ((1,2,3), (2,3,4))
     assert approx_equal(tuple(hp.data()), (1,5))
     assert approx_equal(tuple(hp.sigmas()), (0.1,0.3))
@@ -344,7 +345,8 @@ def exercise_array():
   ma = miller.array(ms, data, sigmas)
   ad = ma.anomalous_differences()
   assert tuple(ad.indices()) == ((1,2,3), (2,3,4))
-  for hp,hm in ((ma.hemisphere("+"), ma.hemisphere("-")), ma.hemispheres()):
+  for hp,hm in ((ma.hemisphere_acentrics("+"), ma.hemisphere_acentrics("-")),
+                ma.hemispheres_acentrics()):
     assert tuple(hp.indices()) == ((1,2,3), (2,3,4))
     assert approx_equal(tuple(hp.data()), (1,5))
     assert approx_equal(tuple(hp.sigmas()), (0.1,0.3))
