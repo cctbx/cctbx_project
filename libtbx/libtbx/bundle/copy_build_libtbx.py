@@ -1,5 +1,5 @@
 import libtbx.bundle.utils
-import libtbx.env
+import libtbx.load_env
 import libtbx.path
 import shutil
 import sys, os
@@ -47,7 +47,7 @@ def run(target_root):
       target_dir = libtbx.path.norm_join(abs_target_root, sub_dir)
       os.chdir(source_dir)
       os.path.walk(".", visitor, target_dir)
-  libtbx.bundle.utils.write_bundle_info(libtbx.env.build_path, abs_target_root)
+  libtbx.bundle.utils.write_bundle_info(abs_target_root, write_build_options=True)
   os.chdir(cwd)
 
 if (__name__ == "__main__"):

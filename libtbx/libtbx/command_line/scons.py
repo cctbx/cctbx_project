@@ -1,12 +1,13 @@
-import libtbx.env
+import libtbx.load_env
 import sys, os
 
-engine = libtbx.env.under_dist("libtbx", "../scons/engine")
+engine = os.path.join(libtbx.env.scons_dist_path, "engine")
 if (not os.path.isdir(engine)):
-  engine = libtbx.env.under_dist("libtbx", "../scons/src/engine")
-sys.path.insert(0, engine)
-try: import SCons
-except: del sys.path[0]
+  engine = os.path.join(libtbx.env.scons_dist_path, "src", "engine")
+if (os.path.isdir(engine)):
+  sys.path.insert(0, engine)
+  try: import SCons
+  except: del sys.path[0]
 
 def show_times():
   t = os.times()

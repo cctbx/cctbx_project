@@ -1,3 +1,4 @@
+import libtbx.load_env
 import libtbx.config
 from libtbx.path import norm_join
 import sys, os
@@ -34,16 +35,14 @@ def darwin_framework_path():
   return os.sep.join(os.path.realpath(sys.executable).split(os.sep)[:-5])
 
 env_etc = empty()
-env_etc.libtbx_env = libtbx.config.env()
-env_etc.libtbx_env.write_api_file()
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.norm_join = norm_join
 env_etc.darwin_framework_path = darwin_framework_path
 
 env_etc.include_registry = libtbx.config.include_registry() \
-  .scan_boost(flag=libtbx.config.build_options.scan_boost)
+  .scan_boost(flag=libtbx.env.build_options.scan_boost)
 
-compiler = libtbx.config.build_options.compiler
+compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   env_etc.compiler = "win32_cl"
 elif (sys.platform.startswith("osf")):
@@ -88,7 +87,7 @@ if (not env_etc.compiler in supported_compilers):
   raise RuntimeError("Unknown platform/compiler: %s. Choices are: %s" % (
     env_etc.compiler, ", ".join(supported_compilers)))
 
-static_exe = libtbx.config.build_options.static_exe
+static_exe = libtbx.env.build_options.static_exe
 
 if (sys.platform == "win32"):
   env_etc.static_libraries = 1
@@ -114,11 +113,11 @@ if (sys.platform == "win32"):
         /MD
         /Zm800
     """)
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/Ox"]
     else:
       opts = ["/Od"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       sys.tracebacklimit = 0
       raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
@@ -157,11 +156,11 @@ else:
     env_etc.ccflags_base = Split("""
         -std1
     """)
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-fast"]
     else:
       opts = ["-O0"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -192,11 +191,11 @@ else:
       -fPIC
       -w
     """)
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -222,11 +221,11 @@ else:
     """)
     env_etc.ccflags_base = Split("""
     """)
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O", "-tpp2", "-ip", "-ftz"]
     else:
       opts = ["-O0"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -249,11 +248,11 @@ else:
     """)
     env_etc.ccflags_base = Split("""
     """)
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
     else:
       opts = ["-O0"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -279,17 +278,17 @@ else:
     else:
       env_etc.cxxflags_base = [
         "-woff", "1001,1174,1183,1188,1234,1311,1682,3439,3506"]
-    if (mipspro_version == "73" and env_etc.libtbx_env.has_dist("boost")):
+    if (mipspro_version == "73" and libtbx.env.module_dict.has_key("boost")):
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
-        % env_etc.libtbx_env.dist_path("boost"))
+        % libtbx.env.dist_path("boost"))
     env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     env_etc.ccflags_base = []
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
     else:
       opts = ["-O0"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -320,11 +319,11 @@ else:
     env_etc.ccflags_base = Split("""
       -w
     """)
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -362,11 +361,11 @@ else:
       -Wno-long-double
       -w
     """)
-    if (libtbx.config.build_options.optimization):
+    if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
     else:
       opts = ["-O0", "-fno-inline"]
-    if (libtbx.config.build_options.debug_symbols):
+    if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
@@ -385,12 +384,12 @@ if (static_exe):
   raise RuntimeError("Static executables not supported on this platforms.")
 
 if (env_etc.static_libraries == 0
-    and libtbx.config.build_options.static_libraries):
+    and libtbx.env.build_options.static_libraries):
   env_etc.static_libraries = 1
-env_etc.static_exe = libtbx.config.build_options.static_exe
+env_etc.static_exe = libtbx.env.build_options.static_exe
 
-env_etc.libtbx_build = env_etc.libtbx_env.LIBTBX_BUILD
-env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "include")
-env_etc.libtbx_lib = norm_join(env_etc.libtbx_build, "libtbx")
+env_etc.libtbx_build = libtbx.env.build_path
+env_etc.libtbx_include = libtbx.env.under_build("include")
+env_etc.libtbx_lib = libtbx.env.lib_path
 
 Export("env_base", "env_etc")
