@@ -16,6 +16,7 @@ def set_random_seed(seed):
 class command_line_options:
 
   def __init__(self, argv, keywords):
+    self.keywords = keywords
     self.n = 0
     for keyword in keywords:
       setattr(self, keyword, 0)
