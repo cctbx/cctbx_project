@@ -46,7 +46,7 @@ namespace sftbx {
       XrayScatterer(const std::string& Label,
                     const CAASF_Type& CAASF,
                     const std::complex<FloatType>& fpfdp,
-                    const fractional<FloatType>& Coordinates,
+                    const cctbx::fractional<FloatType>& Coordinates,
                     const FloatType& Occ,
                     const FloatType& Uiso)
         : m_Label(Label),
@@ -65,7 +65,7 @@ namespace sftbx {
       XrayScatterer(const std::string& Label,
                     const CAASF_Type& CAASF,
                     const std::complex<FloatType>& fpfdp,
-                    const fractional<FloatType>& Coordinates,
+                    const cctbx::fractional<FloatType>& Coordinates,
                     const FloatType& Occ,
                     const boost::array<FloatType, 6>& Uaniso)
         : m_Label(Label),
@@ -91,7 +91,7 @@ namespace sftbx {
        */
       inline const std::complex<FloatType>& fpfdp() const { return m_fpfdp; }
       //! Access the fractional coordinates.
-      inline const fractional<FloatType>& Coordinates() const {
+      inline const cctbx::fractional<FloatType>& Coordinates() const {
         return m_Coordinates;
       }
       //! Access the occupancy factor.
@@ -179,7 +179,7 @@ namespace sftbx {
        */
       inline std::complex<FloatType>
       StructureFactor(const sgtbx::SpaceGroup& SgOps,
-                      const Miller::Index& H,
+                      const cctbx::Miller::Index& H,
                       double Q) const
       {
         if (!m_Anisotropic) {
@@ -218,7 +218,7 @@ namespace sftbx {
                             StdComplexVectorType& Fcalc) const
       {
         if (m_M == 0) {
-          throw error(
+          throw cctbx::error(
             "ApplySymmetry() has not been called for this scatterer.");
         }
         cctbx_assert(Q.size() == H.size());
@@ -231,7 +231,7 @@ namespace sftbx {
       std::string m_Label;
       CAASF_Type m_CAASF;
       std::complex<FloatType> m_fpfdp;
-      fractional<FloatType> m_Coordinates;
+      cctbx::fractional<FloatType> m_Coordinates;
       FloatType m_Occ;
       bool m_Anisotropic;
       boost::array<FloatType, 6> m_U;
