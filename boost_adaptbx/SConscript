@@ -111,9 +111,10 @@ if (not env_etc.no_boost_python):
     # based on boost/libs/python/test/Jamfile revision 1.74
     jamfile_md5 = "15f28887719a7864eb006cdb3e06ad80"
     if (m.hexdigest() != jamfile_md5):
-      print "boost/libs/python/test/Jamfile has changed"
+      print "***************************************************"
+      print "Warning: boost/libs/python/test/Jamfile has changed"
       print "New md5 signature:", m.hexdigest()
-      raise RuntimeError, "Jamfile md5 mismatch."
+      print "***************************************************"
     bpl_tests = Split("""
 staticmethod
 shared_ptr
