@@ -1,5 +1,5 @@
 from cctbx.xray import ext
-from cctbx.eltbx.caasf import wk1995
+from cctbx.eltbx import caasf
 from cctbx import adptbx
 from scitbx.boost_python_utils import injector
 import sys
@@ -10,19 +10,17 @@ class scatterer(ext.scatterer):
                      site=(0,0,0),
                      u=None,
                      occupancy=1,
-                     caasf="",
+                     scattering_type=None,
                      fp=0,
                      fdp=0,
                      b=None):
     assert u is None or b is None
     if   (b is not None): u = adptbx.b_as_u(b)
     elif (u is None): u = 0
-    if (isinstance(caasf, str)):
-      if (caasf == ""):
-        caasf = wk1995(label, 0)
-      else:
-        caasf = wk1995(caasf, 1)
-    ext.scatterer.__init__(self, label, site, u, occupancy, caasf, fp, fdp)
+    if (scattering_type is None):
+      scattering_type = caasf.wk1995(label, 0).label()
+    ext.scatterer.__init__(
+      self, label, site, u, occupancy, scattering_type, fp, fdp)
 
 class _scatterer(injector, ext.scatterer):
 
@@ -31,7 +29,7 @@ class _scatterer(injector, ext.scatterer):
                  u=None,
                  b=None,
                  occupancy=None,
-                 caasf=None,
+                 scattering_type=None,
                  fp=None,
                  fdp=None):
     assert u is None or b is None
@@ -42,7 +40,7 @@ class _scatterer(injector, ext.scatterer):
       if (self.anisotropic_flag): u = self.u_star
       else: u = self.u_iso
     if (occupancy is None): occupancy = self.occupancy
-    if (caasf is None): caasf = self.caasf
+    if (scattering_type is None): scattering_type = self.scattering_type
     if (fp is None): fp = self.fp
     if (fdp is None): fdp = self.fdp
     return scatterer(
@@ -50,7 +48,7 @@ class _scatterer(injector, ext.scatterer):
       site=site,
       u=u,
       occupancy=occupancy,
-      caasf=caasf,
+      scattering_type=scattering_type,
       fp=fp,
       fdp=fdp)
 

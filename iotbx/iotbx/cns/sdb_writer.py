@@ -77,7 +77,7 @@ def write_scatterer(s, running_index, scatterer,
 {===>} site.x_%d=%.6g; site.y_%d=%.6g; site.z_%d=%.6g;
 {===>} site.b_%d=%.6g; site.q_%d=%.6g; site.g_%d="%s";
 """ % (i,action,
-       i,segid, i,scatterer.caasf.label(),
+       i,segid, i,scatterer.scattering_type,
        i,scatterer.site[0],
        i,scatterer.site[1],
        i,scatterer.site[2],

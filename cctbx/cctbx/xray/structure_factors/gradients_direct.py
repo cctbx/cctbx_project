@@ -23,16 +23,17 @@ class gradients_direct(gradients_base):
       cos_sin_table = default_cos_sin_table
     elif (cos_sin_table == 00000):
       cos_sin_table = None
-    scattering_dictionary = ext.scattering_dictionary(
+    scattering_dict = ext.scattering_dictionary(
       self._xray_structure.scatterers())
-    scattering_dictionary.assign_from_table("WK1995")
+    scattering_dict.assign_from_table("WK1995")
+    assert scattering_dict.find_all_zero().size() == 0
     if (cos_sin_table is None):
       self._results = ext.structure_factors_gradients_direct(
         self._miller_set.unit_cell(),
         self._miller_set.space_group(),
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
-        scattering_dictionary,
+        scattering_dict,
         d_target_d_f_calc,
         gradient_flags,
         n_parameters)
@@ -43,7 +44,7 @@ class gradients_direct(gradients_base):
         self._miller_set.space_group(),
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
-        scattering_dictionary,
+        scattering_dict,
         d_target_d_f_calc,
         gradient_flags,
         n_parameters)

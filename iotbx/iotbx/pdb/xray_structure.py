@@ -1,6 +1,6 @@
 from iotbx.pdb import parser
 from iotbx.pdb import cryst1_interpretation
-from iotbx.pdb import caasf_interpretation
+from iotbx.pdb import scattering_type_interpr
 from cctbx import xray
 from cctbx import crystal
 from cctbx import adptbx
@@ -115,7 +115,7 @@ def from_pdb(file_name=None, file_iterator=None,
   assert crystal_symmetry.space_group_info() is not None,"Unknown space group."
   if (scan_atom_element_columns):
     have_useful_atom_element_columns = (
-      caasf_interpretation.scan_atom_element_columns(pdb_records)
+      scattering_type_interpr.scan_atom_element_columns(pdb_records)
         .n_uninterpretable == 0)
   else:
     have_useful_atom_element_columns = None
@@ -144,7 +144,7 @@ def from_pdb(file_name=None, file_iterator=None,
           site=site,
           b=record.tempFactor,
           occupancy=record.occupancy,
-          caasf=caasf_interpretation.from_pdb_atom_record(
+          scattering_type=scattering_type_interpr.from_pdb_atom_record(
             record, have_useful_atom_element_columns))
     elif (record.record_name == "SIGATM"):
       if (not prev_record.record_name in ("ATOM", "HETATM")):

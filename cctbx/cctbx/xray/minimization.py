@@ -24,6 +24,9 @@ class lbfgs:
     self.n = xray_structure.n_parameters(gradient_flags)
     self.x = flex.double(self.n, 0)
     self._scatterers_start = xray_structure.scatterers()
+    self._scattering_dict = ext.scattering_dictionary(self._scatterers_start)
+    self._scattering_dict.assign_from_table("WK1995")
+    assert self._scattering_dict.find_all_zero().size() == 0
     self._d_min = self.target_functor.f_obs().d_min()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(
@@ -41,6 +44,7 @@ class lbfgs:
       self.xray_structure.unit_cell(),
       self.xray_structure.space_group_info().type(),
       self._scatterers_start,
+      self._scattering_dict,
       self.gradient_flags,
       self.x,
       self._d_min)

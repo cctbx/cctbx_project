@@ -110,7 +110,8 @@ namespace cctbx { namespace eltbx {
         }
       }
       if (exact || !m_entry) {
-        throw error("Unknown scattering factor label.");
+        throw error(
+          "Unknown scattering type label: " + std::string(work_label));
       }
       return m_entry;
     }

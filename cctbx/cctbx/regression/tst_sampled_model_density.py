@@ -43,6 +43,7 @@ def exercise(space_group_info, caasf_const,
   tolerance_positive_definite = 1.e-5
   scattering_dict = xray.scattering_dictionary(structure.scatterers())
   scattering_dict.assign_from_table("WK1995")
+  assert scattering_dict.find_all_zero().size() == 0
   sampled_density = xray.sampled_model_density(
     structure.unit_cell(),
     structure.scatterers(),

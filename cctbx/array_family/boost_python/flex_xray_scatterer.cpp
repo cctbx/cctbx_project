@@ -16,7 +16,7 @@ namespace {
     to_string& operator<<(cctbx::xray::scatterer<> const& val)
     {
       *this << val.label
-            << val.caasf.label()
+            << val.scattering_type
             << val.fp
             << val.fdp;
       *this << val.site.const_ref()
@@ -40,11 +40,10 @@ namespace {
 
     from_string& operator>>(cctbx::xray::scatterer<>& val)
     {
-      std::string caasf_label;
       int multiplicity;
       cctbx::xray::scatterer<>::float_type weight_without_occupancy;
       *this >> val.label
-            >> caasf_label
+            >> val.scattering_type
             >> val.fp
             >> val.fdp;
       *this >> val.site.ref()
@@ -54,7 +53,7 @@ namespace {
       *this >> val.u_star.ref()
             >> multiplicity
             >> weight_without_occupancy;
-      val.setstate(caasf_label, multiplicity, weight_without_occupancy);
+      val.setstate(multiplicity, weight_without_occupancy);
       return *this;
     }
   };

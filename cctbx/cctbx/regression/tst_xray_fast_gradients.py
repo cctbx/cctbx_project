@@ -169,6 +169,7 @@ class resampling(crystal.symmetry):
         print
     scattering_dict = xray.scattering_dictionary(xray_structure.scatterers())
     scattering_dict.assign_from_table("WK1995")
+    assert scattering_dict.find_all_zero().size() == 0
     result = xray.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),

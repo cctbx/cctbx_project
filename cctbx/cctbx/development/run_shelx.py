@@ -1,6 +1,6 @@
 from iotbx.shelx.write_ins import LATT_SYMM
 from cctbx import adptbx
-from cctbx.eltbx.caasf import it1992
+from cctbx import eltbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.development.fmt_utils import *
@@ -23,7 +23,7 @@ def check_shelx_availability():
 def calculate_cell_content(xray_structure):
   result = dicts.with_default_value(0)
   for sc in xray_structure.scatterers():
-    result[sc.caasf.label()] += sc.occupancy * sc.multiplicity()
+    result[sc.scattering_type] += sc.occupancy * sc.multiplicity()
   return result
 
 def SFAC_DISP_UNIT(xray_structure, short_sfac):
@@ -38,7 +38,7 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
       UNIT.append(str(max(1, int(celcon[sf] + 0.5))))
   else:
     for scatterer in xray_structure.scatterers():
-      caasf = it1992(scatterer.caasf.label())
+      caasf = eltbx.caasf.it1992(scatterer.scattering_type)
       a = caasf.a()
       b = caasf.b()
       l("SFAC %s %.6g %.6g %.6g %.6g %.6g %.6g =" %
@@ -69,9 +69,9 @@ def atoms(xray_structure, short_sfac):
   i = 0
   for scatterer in xray_structure.scatterers():
     i += 1
-    lbl = scatterer.caasf.label() + str(i)
+    lbl = scatterer.scattering_type + str(i)
     if (short_sfac):
-      sfac = celcon.index(scatterer.caasf.label()) + 1
+      sfac = celcon.index(scatterer.scattering_type) + 1
     else:
       sfac = i
     coor = []
@@ -138,7 +138,7 @@ def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
   i = 0
   for scatterer in xray_structure.scatterers():
     i += 1
-    lbl = (scatterer.caasf.label() + str(i)).upper()
+    lbl = (scatterer.scattering_type + str(i)).upper()
     lbl_dict[lbl] = i - 1
   TotalANISOU = 0
   TotalMismatches = 0
@@ -241,6 +241,10 @@ def exercise(space_group_info,
   run_shelx(shelx_titl, structure_factors, verbose=verbose)
 
 def run_call_back(flags, space_group_info):
+  sg = space_group_info.group()
+  if (sg.is_centric() and not sg.is_origin_centric()):
+    print "Skipping space group: centre of inversion is not at origin."
+    return
   for anomalous_flag in (00000, 0001):
     for anisotropic_flag in (00000, 0001):
       exercise(space_group_info, anomalous_flag, anisotropic_flag,

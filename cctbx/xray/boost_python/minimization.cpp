@@ -14,6 +14,7 @@ namespace cctbx { namespace xray { namespace boost_python {
         uctbx::unit_cell const&,
         sgtbx::space_group_type const&,
         af::const_ref<scatterer<> > const&,
+        scattering_dictionary const&,
         gradient_flags const&,
         af::const_ref<double> const&,
         double const&)) minimization::apply_shifts);

@@ -76,6 +76,13 @@ namespace cctbx { namespace eltbx { namespace caasf {
       float
       c() const { return c_; }
 
+      //! Test if n_ab() == 0 and c() == 0.
+      bool
+      all_zero() const
+      {
+        return n_ab() == 0 && c() == 0;
+      }
+
 #     include <cctbx/eltbx/caasf_at_d_star_sq.h>
 
     private:
@@ -212,7 +219,7 @@ namespace cctbx { namespace eltbx { namespace caasf {
       }
     }
     if (exact || !entry_) {
-      throw error("Unknown scattering factor label.");
+      throw error("Unknown scattering type label: " + std::string(label));
     }
   }
 

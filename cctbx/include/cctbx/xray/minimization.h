@@ -1,7 +1,7 @@
 #ifndef CCTBX_XRAY_MINIMIZATION_H
 #define CCTBX_XRAY_MINIMIZATION_H
 
-#include <cctbx/xray/scatterer.h>
+#include <cctbx/xray/scattering_dictionary.h>
 #include <cctbx/xray/gradient_flags.h>
 #include <cctbx/xray/packing_order.h>
 #include <cctbx/sgtbx/space_group_type.h>
@@ -16,6 +16,7 @@ namespace cctbx { namespace xray { namespace minimization {
     uctbx::unit_cell const& unit_cell,
     sgtbx::space_group_type const& space_group_type,
     af::const_ref<XrayScattererType> const& scatterers,
+    scattering_dictionary const& scattering_dict,
     xray::gradient_flags const& gradient_flags,
     af::const_ref<FloatType> const& shifts,
     FloatType const& d_min)
@@ -54,7 +55,9 @@ namespace cctbx { namespace xray { namespace minimization {
       if (gradient_flags.fp) {
         sc.fp += next_shifts();
         if (d_star_sq_max != 0) {
-          sc_f_t f0 = sc.caasf.at_d_star_sq(d_star_sq_max);
+          sc_f_t f0 = scattering_dict
+            .lookup(sc.scattering_type)
+            .coefficients.at_d_star_sq(d_star_sq_max);
           if (f0 + sc.fp < 0) {
             sc.fp = -f0;
           }

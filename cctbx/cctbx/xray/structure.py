@@ -3,6 +3,7 @@ from cctbx.xray import structure_factors
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
+from cctbx.eltbx import caasf
 from cctbx import matrix
 from cctbx.array_family import flex
 import types
@@ -197,8 +198,11 @@ class structure(crystal.special_position_settings):
     from cctbx.eltbx import tiny_pse
     result = flex.double()
     for scatterer in self.scatterers():
-      label = scatterer.caasf.label()
-      assert label != "const", "Unknown atomic weight: "+scatterer.label
+      scattering_type = scatterer.scattering_type
+      try: label = caasf.wk1995(scattering_type, 1).label()
+      except RuntimeError: label = None
+      if (label in (None, "const", "custom")):
+        raise RuntimeError("Unknown atomic weight: " + scattering_type)
       result.append(tiny_pse.table(label).weight())
     return result
 

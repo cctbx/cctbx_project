@@ -1,5 +1,5 @@
 from cctbx import adptbx
-from cctbx.eltbx.caasf import it1992
+from cctbx import eltbx
 import sys, os
 
 def check_cns_availability():
@@ -42,7 +42,7 @@ def coordinates(scatterers):
     q = scatterer.occupancy
     assert not scatterer.anisotropic_flag
     b = adptbx.u_as_b(scatterer.u_iso)
-    caasf = it1992(scatterer.caasf.label())
+    caasf = eltbx.caasf.it1992(scatterer.scattering_type)
     fp = scatterer.fp
     fdp = scatterer.fdp
     for i in xrange(3):

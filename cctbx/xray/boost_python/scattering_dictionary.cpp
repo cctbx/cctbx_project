@@ -7,6 +7,7 @@
 #include <boost/python/extract.hpp>
 #include <boost/python/detail/api_placeholder.hpp>
 #include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 
 namespace cctbx { namespace xray { namespace boost_python {
@@ -126,11 +127,14 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("scattering_dictionary")
         .def(init<af::const_ref<scatterer<> > const&>())
         .def("n_scatterers", &w_t::n_scatterers)
         .def("dict", as_python_dict)
         .def("dict_size", dict_size)
+        .def("find_all_zero", &w_t::find_all_zero)
+        .def("lookup", &w_t::lookup, ccr())
         .def("scatterer_permutation", &w_t::scatterer_permutation)
         .def("assign", &w_t::assign)
         .def("assign_from_table", &w_t::assign_from_table)
