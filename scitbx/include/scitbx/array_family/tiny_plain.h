@@ -12,8 +12,8 @@
 #define SCITBX_ARRAY_FAMILY_TINY_PLAIN_H
 
 #include <scitbx/array_family/ref.h>
-#include <scitbx/array_family/misc.h>
-#include <scitbx/array_family/tiny_helpers.h>
+#include <scitbx/array_family/detail/misc.h>
+#include <scitbx/array_family/detail/tiny_helpers.h>
 #include <scitbx/array_family/array_adaptor.h>
 
 namespace scitbx { namespace af {

@@ -13,7 +13,7 @@
 
 #include <scitbx/array_family/error.h>
 #include <scitbx/array_family/grid_accessor.h>
-#include <scitbx/array_family/ref_helpers.h>
+#include <scitbx/array_family/detail/ref_helpers.h>
 
 namespace scitbx { namespace af {
 

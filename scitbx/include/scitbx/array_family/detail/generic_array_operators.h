@@ -11,7 +11,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_GENERIC_ARRAY_OPERATORS_H
 #define SCITBX_ARRAY_FAMILY_GENERIC_ARRAY_OPERATORS_H
 
-#include <scitbx/array_family/misc.h>
+#include <scitbx/array_family/detail/misc.h>
 
 namespace scitbx { namespace af {
 

@@ -640,9 +640,9 @@ def one_type(array_type_name):
 
 """
   print """#include <scitbx/array_family/operator_traits_builtin.h>
-#include <scitbx/array_family/operator_functors.h>
-#include <scitbx/array_family/generic_array_%s.h>
-#include <scitbx/array_family/std_imports.h>
+#include <scitbx/array_family/detail/operator_functors.h>
+#include <scitbx/array_family/detail/generic_array_%s.h>
+#include <scitbx/array_family/detail/std_imports.h>
 #include <scitbx/array_family/misc_functions.h>
 
 namespace scitbx { namespace af {

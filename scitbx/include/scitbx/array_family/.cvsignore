@@ -3,8 +3,6 @@ small_reductions.h
 shared_reductions.h
 versa_reductions.h
 operator_traits_builtin.h
-operator_functors.h
-std_imports.h
 ref_algebra.h
 tiny_algebra.h
 small_algebra.h
