@@ -198,8 +198,7 @@ if (__name__ == "__main__"):
     print
 
     MillerIndices = sftbx.BuildMillerIndices(UnitCell, SgInfo, d_min)
-    Fcalc = shared.complex_double(MillerIndices.size())
-    sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites, Fcalc)
+    Fcalc = sftbx.StructureFactorArray(UnitCell, SgOps, MillerIndices, Sites)
 
     print "Number of Miller indices:", len(Fcalc)
     print

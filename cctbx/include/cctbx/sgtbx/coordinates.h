@@ -250,6 +250,12 @@ namespace cctbx { namespace sgtbx {
       const RTMx& SpecialOp() const { return m_SpecialOp; }
       //! Determine the site symmetry point group type.
       tables::MatrixGroup::Code PointGroupType() const;
+      //! Apply special position operator to coordinates X.
+      template <class FloatType>
+      const fractional<FloatType>
+      ApplySpecialOp(const fractional<FloatType>& X) const {
+        return m_SpecialOp * X;
+      }
       /*! \brief Test if given anisotropic displacement parameters
           Ustar are compatible with site symmetry.
        */

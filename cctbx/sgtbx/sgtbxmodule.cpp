@@ -385,6 +385,12 @@ namespace {
     return SS.PointGroupType().Label();
   }
 
+  fractional<double>
+  SiteSymmetry_ApplySpecialOp(const SiteSymmetry& SS,
+                              const fractional<double>& X) {
+    return SS.ApplySpecialOp(X);
+  }
+
   bool SiteSymmetry_isCompatibleUstar_1(const SiteSymmetry& SS,
                                         const af::double6& Ustar) {
     return SS.isCompatibleUstar(Ustar);
@@ -897,6 +903,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SiteSymmetry.def(&SiteSymmetry::M, "M");
   py_SiteSymmetry.def(&SiteSymmetry::SpecialOp, "SpecialOp");
   py_SiteSymmetry.def(SiteSymmetry_PointGroupType, "PointGroupType");
+  py_SiteSymmetry.def(SiteSymmetry_ApplySpecialOp, "ApplySpecialOp");
   py_SiteSymmetry.def(SiteSymmetry_isCompatibleUstar_1, "isCompatibleUstar");
   py_SiteSymmetry.def(SiteSymmetry_isCompatibleUstar_2, "isCompatibleUstar");
   py_SiteSymmetry.def(SiteSymmetry_CheckUstar_1, "CheckUstar");

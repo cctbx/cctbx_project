@@ -336,6 +336,23 @@ namespace cctbx {
             "ApplySymmetry() has not been called for this scatterer.");
         }
       }
+      //! XXX
+      fractional<FloatType>
+      difference(const fractional<FloatType>& other_coordinates) const {
+        return m_Coordinates - other_coordinates;
+      }
+      //! XXX
+      FloatType
+      distance2(const uctbx::UnitCell& ucell,
+                const fractional<FloatType>& other_coordinates) const {
+        return ucell.orthogonalize(difference(other_coordinates)).Length2();
+      }
+      //! XXX
+      FloatType
+      distance(const uctbx::UnitCell& ucell,
+               const fractional<FloatType>& other_coordinates) const {
+        return std::sqrt(distance2(ucell, other_coordinates));
+      }
       /*! \brief Contribution of the (one) scatterer to the
           structure factor with the Miller index H.
        */
@@ -440,25 +457,49 @@ namespace cctbx {
       FloatType m_w;
   };
 
-  //! XXX
-  template <typename SiteArray>
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
-  typename SiteArray::value_type::float_type
+# define CCTBX_tn_S_A_T_v_t_f_t typename SiteArrayType::value_type::float_type
 #else
-  double
+# define CCTBX_tn_S_A_T_v_t_f_t double
 #endif
-  rms_coordinates(const uctbx::UnitCell& ucell,
-                  const SiteArray& sites1,
-                  const SiteArray& sites2)
+
+  //! XXX
+  template <typename SiteArrayType>
+  fractional<CCTBX_tn_S_A_T_v_t_f_t>
+  least_squares_shift(const uctbx::UnitCell& ucell,
+                      const SiteArrayType& sites1,
+                      const SiteArrayType& sites2)
   {
-    typedef typename SiteArray::value_type::float_type float_type;
+    typedef CCTBX_tn_S_A_T_v_t_f_t float_type;
+    cctbx_assert(sites1.size() == sites2.size());
+    cartesian<float_type> sum_delta_c(0.,0.,0.);
+    for(std::size_t i=0;i<sites1.size();i++) {
+      fractional<float_type>
+      delta_f = sites2[i].Coordinates() - sites1[i].Coordinates();
+      cartesian<float_type> delta_c = ucell.orthogonalize(delta_f);
+      sum_delta_c += delta_c;
+    }
+    cartesian<float_type> shift_c = sum_delta_c / float_type(sites1.size());
+    return ucell.fractionalize(shift_c);
+  }
+
+  //! XXX
+  template <typename SiteArrayType>
+  CCTBX_tn_S_A_T_v_t_f_t
+  rms_coordinates(
+    const uctbx::UnitCell& ucell,
+    const SiteArrayType& sites1,
+    const SiteArrayType& sites2,
+    const fractional<CCTBX_tn_S_A_T_v_t_f_t>& shift
+        = fractional<CCTBX_tn_S_A_T_v_t_f_t>(0.,0.,0.))
+  {
+    typedef CCTBX_tn_S_A_T_v_t_f_t float_type;
     cctbx_assert(sites1.size() == sites2.size());
     std::vector<float_type> len2;
     len2.reserve(sites1.size());
     for(std::size_t i=0;i<sites1.size();i++) {
-      fractional<float_type> delta =   sites1[i].Coordinates()
-                                     - sites2[i].Coordinates();
-      len2.push_back(ucell.orthogonalize(delta).Length2());
+      fractional<float_type> x = sites2[i].Coordinates() - shift;
+      len2.push_back(sites1[i].distance2(ucell, x));
     }
     return std::sqrt(af::mean(af::make_ref(len2)));
   }
@@ -482,13 +523,13 @@ namespace cctbx {
    */
   template <typename MillerIndexArrayType,
             typename QArrayType,
-            typename SitesArrayType,
+            typename SiteArrayType,
             typename FcalcArrayType>
   void
   StructureFactorArray(const sgtbx::SpaceGroup& SgOps,
                        const MillerIndexArrayType& H,
                        const QArrayType& Q,
-                       const SitesArrayType& Sites,
+                       const SiteArrayType& Sites,
                        FcalcArrayType Fcalc)
   {
     for (std::size_t i = 0; i < Sites.size(); i++) {
@@ -515,13 +556,13 @@ namespace cctbx {
       See also: XrayScatterer::StructureFactorArray()
    */
   template <typename MillerIndexArrayType,
-            typename SitesArrayType,
+            typename SiteArrayType,
             typename FcalcArrayType>
   void
   StructureFactorArray(const uctbx::UnitCell& UC,
                        const sgtbx::SpaceGroup& SgOps,
                        const MillerIndexArrayType& H,
-                       const SitesArrayType& Sites,
+                       const SiteArrayType& Sites,
                        FcalcArrayType Fcalc)
   {
     af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
@@ -535,7 +576,7 @@ namespace cctbx {
   template <typename MillerIndexArrayType,
             typename QArrayType,
             typename DerivativesArrayType,
-            typename SitesArrayType,
+            typename SiteArrayType,
             typename DerivativesXArrayType>
   void
   StructureFactor_dX_Array(
@@ -543,7 +584,7 @@ namespace cctbx {
     const MillerIndexArrayType& H,
     const QArrayType& Q,
     const DerivativesArrayType& dTarget_dFcalc,
-    const SitesArrayType& Sites,
+    const SiteArrayType& Sites,
     DerivativesXArrayType dF_dX)
   {
     cctbx_assert(Sites.size() == dF_dX.size());
@@ -556,7 +597,7 @@ namespace cctbx {
   //! XXX
   template <typename MillerIndexArrayType,
             typename DerivativesArrayType,
-            typename SitesArrayType,
+            typename SiteArrayType,
             typename DerivativesXArrayType>
   void
   StructureFactor_dX_Array(
@@ -564,7 +605,7 @@ namespace cctbx {
     const sgtbx::SpaceGroup& SgOps,
     const MillerIndexArrayType& H,
     const DerivativesArrayType& dTarget_dFcalc,
-    const SitesArrayType& Sites,
+    const SiteArrayType& Sites,
     DerivativesXArrayType dF_dX)
   {
     af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
