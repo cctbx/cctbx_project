@@ -5,14 +5,14 @@ class flags:
 
   def __init__(self,
         bond=None,
-        repulsion=None,
+        nonbonded=None,
         angle=None,
         dihedral=None,
         chirality=None,
         planarity=None,
         default=00000):
     if (bond is None): bond = default
-    if (repulsion is None): repulsion = default
+    if (nonbonded is None): nonbonded = default
     if (angle is None): angle = default
     if (dihedral is None): dihedral = default
     if (chirality is None): chirality = default
@@ -23,7 +23,7 @@ class flags:
     if (f is None): f = sys.stdout
     print >> f, "geometry_restraints.manager.flags:"
     print >> f, "  bond:", self.bond
-    print >> f, "  repulsion:", self.repulsion
+    print >> f, "  nonbonded:", self.nonbonded
     print >> f, "  angle:", self.angle
     print >> f, "  dihedral:", self.dihedral
     print >> f, "  chirality:", self.chirality

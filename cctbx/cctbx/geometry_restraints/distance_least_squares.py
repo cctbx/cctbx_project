@@ -51,8 +51,8 @@ def setup_bond_params_table(structure, bond_sym_table):
         assert abs(prev_params.weight - params.weight) < 1.e-8
   return t
 
-def setup_repulsion_params():
-  p = geometry_restraints.repulsion_params()
+def setup_nonbonded_params():
+  p = geometry_restraints.nonbonded_params()
   d = p.distance_table
   d.setdefault("Si")["Si"] = 3.1
   d.setdefault("Si")["O"] = 1.5
@@ -179,17 +179,17 @@ def distance_and_repulsion_least_squares(
   bond_params_table = setup_bond_params_table(
     structure=si_o.structure,
     bond_sym_table=shell_sym_tables[0])
-  repulsion_params = setup_repulsion_params()
-  repulsion_types = flex.std_string()
+  nonbonded_params = setup_nonbonded_params()
+  nonbonded_types = flex.std_string()
   for scatterer in si_o.structure.scatterers():
-    repulsion_types.append(scatterer.scattering_type)
+    nonbonded_types.append(scatterer.scattering_type)
   geometry_restraints_manager = geometry_restraints.manager.manager(
     crystal_symmetry=si_o.structure,
     site_symmetry_table=si_o.structure.site_symmetry_table(),
     bond_params_table=bond_params_table,
     shell_sym_tables=shell_sym_tables,
-    repulsion_params=repulsion_params,
-    repulsion_types=repulsion_types,
+    nonbonded_params=nonbonded_params,
+    nonbonded_types=nonbonded_types,
     nonbonded_distance_cutoff=nonbonded_distance_cutoff,
     nonbonded_buffer=nonbonded_buffer)
   minimized = None
@@ -203,14 +203,14 @@ def distance_and_repulsion_least_squares(
           size=n_scatterers*3)))
         trial_structure.apply_symmetry_sites()
       trial_minimized = []
-      for enable_repulsions in [00000, 0001]:
-        if (not enable_repulsions):
+      for enable_nonbonded in [00000, 0001]:
+        if (not enable_nonbonded):
           geometry_restraints_flags = geometry_restraints.flags.flags(
             bond=0001)
         else:
           geometry_restraints_flags = geometry_restraints.flags.flags(
             bond=0001,
-            repulsion=0001)
+            nonbonded=0001)
           trial_structure.set_sites_cart(sites_cart=trial_sites_cart)
           trial_structure = trial_structure.random_shift_sites(
             max_shift_cart=0.2)

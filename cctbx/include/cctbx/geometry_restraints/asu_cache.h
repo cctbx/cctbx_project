@@ -21,7 +21,7 @@ namespace cctbx { namespace geometry_restraints {
       //! Default constructor. Some data members are not initialized!
       asu_cache() {}
 
-      //! Support for bond_residual_sum and repulsion_residual_sum functions.
+      //! Support for bond_residual_sum and nonbonded_residual_sum functions.
       asu_cache(
         af::const_ref<scitbx::vec3<FloatType> > const& moved_sites_cart,
         asu_mappings_t const& asu_mappings,
@@ -53,7 +53,7 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
-      //! Support for bond_residual_sum and repulsion_residual_sum functions.
+      //! Support for bond_residual_sum and nonbonded_residual_sum functions.
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,

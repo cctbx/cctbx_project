@@ -65,13 +65,13 @@ def exercise_bond():
       for analytical,finite in zip(ag,fg):
         assert approx_equal(analytical, finite)
 
-def exercise_repulsion():
+def exercise_nonbonded():
   for i_trial in xrange(5):
     sites = random_sites(n_sites=2)
-    r = geometry_restraints.repulsion(sites=sites, vdw_distance=0)
+    r = geometry_restraints.nonbonded(sites=sites, vdw_distance=0)
     vdw_distance = r.delta
     residual_obj = residual_functor(
-      restraint_type=geometry_restraints.repulsion,
+      restraint_type=geometry_restraints.nonbonded,
       vdw_distance=vdw_distance)
     for i_pert in xrange(5):
       if (i_pert == 0):
@@ -81,7 +81,7 @@ def exercise_repulsion():
         for site in sites:
           shift = col([random.uniform(-.1,.1)*vdw_distance for i in xrange(3)])
           sites_mod.append(site+shift)
-      r = geometry_restraints.repulsion(
+      r = geometry_restraints.nonbonded(
         sites=sites_mod,
         vdw_distance=vdw_distance)
       ag = r.gradients()
@@ -93,7 +93,7 @@ def exercise_repulsion():
   for i_step in xrange(100):
     delta = i_step/50.
     sites[1][0] = delta
-    r = geometry_restraints.repulsion(
+    r = geometry_restraints.nonbonded(
       sites=[col(site) for site in sites],
       vdw_distance=vdw_distance)
     assert approx_equal(delta, r.delta)
@@ -359,7 +359,7 @@ def exercise_planarity():
 
 def exercise():
   exercise_bond()
-  exercise_repulsion()
+  exercise_nonbonded()
   exercise_angle()
   exercise_dihedral()
   exercise_chirality(verbose="--verbose" in sys.argv[1:])

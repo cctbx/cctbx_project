@@ -6,7 +6,7 @@ env_bpl.SharedLibrary(
   source=[
     "geometry_restraints_ext.cpp",
     "bond_bpl.cpp",
-    "repulsion_bpl.cpp",
+    "nonbonded_bpl.cpp",
     "pair_proxies_bpl.cpp",
     "angle_bpl.cpp",
     "dihedral_bpl.cpp",

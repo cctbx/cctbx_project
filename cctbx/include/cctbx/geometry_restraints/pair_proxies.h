@@ -2,7 +2,7 @@
 #define CCTBX_GEOMETRY_RESTRAINTS_PAIR_PROXIES_H
 
 #include <cctbx/geometry_restraints/bond.h>
-#include <cctbx/geometry_restraints/repulsion.h>
+#include <cctbx/geometry_restraints/nonbonded.h>
 #include <cctbx/crystal/pair_tables.h>
 
 namespace cctbx { namespace geometry_restraints {
@@ -33,7 +33,7 @@ namespace cctbx { namespace geometry_restraints {
         n_1_3(0),
         n_1_4(0),
         n_nonbonded(0),
-        n_unknown_repulsion_type_pairs(0)
+        n_unknown_nonbonded_type_pairs(0)
       {
         for(unsigned i_seq=0;i_seq<bond_params_table.size();i_seq++) {
           for(bond_params_dict::const_iterator
@@ -47,7 +47,7 @@ namespace cctbx { namespace geometry_restraints {
         }
       }
 
-      //! Generation of bond and repulsion proxies.
+      //! Generation of bond and nonbonded proxies.
       /*! Bonds (1-2) interactions are defined by shell_asu_tables[0]
           and are used at the same time as nonbonded exculsions.
 
@@ -56,11 +56,11 @@ namespace cctbx { namespace geometry_restraints {
 
           1-4 interactions are defined by shell_asu_tables[2]
           and are used to attenuate nonbonded energies according to
-          repulsion_params.
+          nonbonded_params.
        */
       pair_proxies(
-        geometry_restraints::repulsion_params const& repulsion_params,
-        af::const_ref<std::string> const& repulsion_types,
+        geometry_restraints::nonbonded_params const& nonbonded_params,
+        af::const_ref<std::string> const& nonbonded_types,
         af::const_ref<bond_params_dict> const& bond_params_table,
         std::vector<crystal::pair_asu_table<> > const& shell_asu_tables,
         double bonded_distance_cutoff,
@@ -71,9 +71,9 @@ namespace cctbx { namespace geometry_restraints {
         n_1_3(0),
         n_1_4(0),
         n_nonbonded(0),
-        n_unknown_repulsion_type_pairs(0)
+        n_unknown_nonbonded_type_pairs(0)
       {
-        CCTBX_ASSERT(repulsion_types.size() == bond_params_table.size());
+        CCTBX_ASSERT(nonbonded_types.size() == bond_params_table.size());
         CCTBX_ASSERT(shell_asu_tables.size() > 0);
         for(unsigned i=0; i<shell_asu_tables.size(); i++) {
           CCTBX_ASSERT(shell_asu_tables[i].table().size()
@@ -85,7 +85,7 @@ namespace cctbx { namespace geometry_restraints {
         }
         bond_proxies = bond_sorted_asu_proxies(
           shell_asu_tables[0].asu_mappings());
-        repulsion_proxies = repulsion_sorted_asu_proxies(
+        nonbonded_proxies = nonbonded_sorted_asu_proxies(
           shell_asu_tables[0].asu_mappings());
         double distance_cutoff = std::max(
           bonded_distance_cutoff,
@@ -111,13 +111,13 @@ namespace cctbx { namespace geometry_restraints {
           }
           else if (shell_asu_tables.size() > 2
                    && shell_asu_tables[2].contains(pair)) {
-            repulsion_proxies.process(make_repulsion_asu_proxy(
-              repulsion_params, repulsion_types, pair, true));
+            nonbonded_proxies.process(make_nonbonded_asu_proxy(
+              nonbonded_params, nonbonded_types, pair, true));
             n_1_4++;
           }
           else if (pair.dist_sq <= nonbonded_distance_cutoff_sq) {
-            repulsion_proxies.process(make_repulsion_asu_proxy(
-              repulsion_params, repulsion_types, pair, false));
+            nonbonded_proxies.process(make_nonbonded_asu_proxy(
+              nonbonded_params, nonbonded_types, pair, false));
             n_nonbonded++;
           }
         }
@@ -149,88 +149,88 @@ namespace cctbx { namespace geometry_restraints {
       }
 
       //! For internal use only.
-      repulsion_asu_proxy
-      make_repulsion_asu_proxy(
-        geometry_restraints::repulsion_params const& repulsion_params,
-        af::const_ref<std::string> const& repulsion_types,
+      nonbonded_asu_proxy
+      make_nonbonded_asu_proxy(
+        geometry_restraints::nonbonded_params const& nonbonded_params,
+        af::const_ref<std::string> const& nonbonded_types,
         direct_space_asu::asu_mapping_index_pair const& pair,
         bool is_1_4_interaction)
       {
-        std::string const& rep_type_i = repulsion_types[pair.i_seq];
-        std::string const& rep_type_j = repulsion_types[pair.j_seq];
-        repulsion_distance_table::const_iterator
-          distance_dict = repulsion_params.distance_table.find(rep_type_i);
-        if (distance_dict != repulsion_params.distance_table.end()) {
-          repulsion_distance_dict::const_iterator
+        std::string const& rep_type_i = nonbonded_types[pair.i_seq];
+        std::string const& rep_type_j = nonbonded_types[pair.j_seq];
+        nonbonded_distance_table::const_iterator
+          distance_dict = nonbonded_params.distance_table.find(rep_type_i);
+        if (distance_dict != nonbonded_params.distance_table.end()) {
+          nonbonded_distance_dict::const_iterator
             dict_entry = distance_dict->second.find(rep_type_j);
           if (dict_entry != distance_dict->second.end()) {
-            return repulsion_asu_proxy(pair, get_repulsion_distance(
-              repulsion_params, dict_entry->second, is_1_4_interaction));
+            return nonbonded_asu_proxy(pair, get_nonbonded_distance(
+              nonbonded_params, dict_entry->second, is_1_4_interaction));
           }
         }
-        distance_dict = repulsion_params.distance_table.find(rep_type_j);
-        if (distance_dict != repulsion_params.distance_table.end()) {
-          repulsion_distance_dict::const_iterator
+        distance_dict = nonbonded_params.distance_table.find(rep_type_j);
+        if (distance_dict != nonbonded_params.distance_table.end()) {
+          nonbonded_distance_dict::const_iterator
             dict_entry = distance_dict->second.find(rep_type_i);
           if (dict_entry != distance_dict->second.end()) {
-            return repulsion_asu_proxy(pair, get_repulsion_distance(
-              repulsion_params, dict_entry->second, is_1_4_interaction));
+            return nonbonded_asu_proxy(pair, get_nonbonded_distance(
+              nonbonded_params, dict_entry->second, is_1_4_interaction));
           }
         }
-        geometry_restraints::repulsion_radius_table::const_iterator
-          radius_i = repulsion_params.radius_table.find(rep_type_i);
-        if (radius_i != repulsion_params.radius_table.end()) {
-          geometry_restraints::repulsion_radius_table::const_iterator
-            radius_j = repulsion_params.radius_table.find(rep_type_j);
-          if (radius_j != repulsion_params.radius_table.end()) {
-            return repulsion_asu_proxy(pair, get_repulsion_distance(
-              repulsion_params,
+        geometry_restraints::nonbonded_radius_table::const_iterator
+          radius_i = nonbonded_params.radius_table.find(rep_type_i);
+        if (radius_i != nonbonded_params.radius_table.end()) {
+          geometry_restraints::nonbonded_radius_table::const_iterator
+            radius_j = nonbonded_params.radius_table.find(rep_type_j);
+          if (radius_j != nonbonded_params.radius_table.end()) {
+            return nonbonded_asu_proxy(pair, get_nonbonded_distance(
+              nonbonded_params,
               radius_i->second + radius_j->second,
               is_1_4_interaction));
           }
         }
-        if (repulsion_params.default_distance > 0) {
-          n_unknown_repulsion_type_pairs++;
-          return repulsion_asu_proxy(pair, get_repulsion_distance(
-            repulsion_params,
-            repulsion_params.default_distance,
+        if (nonbonded_params.default_distance > 0) {
+          n_unknown_nonbonded_type_pairs++;
+          return nonbonded_asu_proxy(pair, get_nonbonded_distance(
+            nonbonded_params,
+            nonbonded_params.default_distance,
             is_1_4_interaction));
         }
         throw error(
-         "Unknown repulsion type pair (incomplete repulsion_distance_table): "
+         "Unknown nonbonded type pair (incomplete nonbonded_distance_table): "
          + rep_type_i + " - " + rep_type_j);
       }
 
       //! For internal use only.
       double
-      get_repulsion_distance(
-        geometry_restraints::repulsion_params const& repulsion_params,
+      get_nonbonded_distance(
+        geometry_restraints::nonbonded_params const& nonbonded_params,
         double distance,
         bool is_1_4_interaction)
       {
         if (is_1_4_interaction) {
-          distance *= repulsion_params.factor_1_4_interactions;
-          distance -= repulsion_params.const_shrink_1_4_interactions;
+          distance *= nonbonded_params.factor_1_4_interactions;
+          distance -= nonbonded_params.const_shrink_1_4_interactions;
         }
-        return std::max(repulsion_params.minimum_distance, distance);
+        return std::max(nonbonded_params.minimum_distance, distance);
       }
 
       //! Final bond proxies.
       bond_sorted_asu_proxies bond_proxies;
-      //! Final repulsion proxies.
-      repulsion_sorted_asu_proxies repulsion_proxies;
+      //! Final nonbonded proxies.
+      nonbonded_sorted_asu_proxies nonbonded_proxies;
       //! Total number of bond proxies (simple + asu).
       unsigned n_bonded;
-      //! Number of 1-3 interactions excluded from repulsion proxies.
+      //! Number of 1-3 interactions excluded from nonbonded proxies.
       unsigned n_1_3;
       //! Number of attenuated 1-4 interactions.
       unsigned n_1_4;
-      //! Total number of full strength (not attenuated) repulsion terms.
+      //! Total number of full strength (not attenuated) nonbonded terms.
       unsigned n_nonbonded;
-      /*! \brief Number of unknown repulsion type pairs (repulsion proxies
+      /*! \brief Number of unknown nonbonded type pairs (nonbonded proxies
           with default distance).
        */
-      unsigned n_unknown_repulsion_type_pairs;
+      unsigned n_unknown_nonbonded_type_pairs;
   };
 
 }} // namespace cctbx::geometry_restraints

@@ -22,28 +22,28 @@ namespace {
           af::const_ref<bond_params_dict> const&>((
            arg_("bond_params_table"))))
         .def(init<
-          repulsion_params const&,
+          nonbonded_params const&,
           af::const_ref<std::string> const&,
           af::const_ref<bond_params_dict> const&,
           std::vector<crystal::pair_asu_table<> > const&,
           double,
           double,
           double>((
-           arg_("repulsion_params"),
-           arg_("repulsion_types"),
+           arg_("nonbonded_params"),
+           arg_("nonbonded_types"),
            arg_("bond_params_table"),
            arg_("shell_asu_tables"),
            arg_("bonded_distance_cutoff"),
            arg_("nonbonded_distance_cutoff"),
            arg_("nonbonded_buffer"))))
         .def_readonly("bond_proxies", &w_t::bond_proxies)
-        .def_readonly("repulsion_proxies", &w_t::repulsion_proxies)
+        .def_readonly("nonbonded_proxies", &w_t::nonbonded_proxies)
         .def_readonly("n_bonded", &w_t::n_bonded)
         .def_readonly("n_1_3", &w_t::n_1_3)
         .def_readonly("n_1_4", &w_t::n_1_4)
         .def_readonly("n_nonbonded", &w_t::n_nonbonded)
-        .def_readonly("n_unknown_repulsion_type_pairs",
-          &w_t::n_unknown_repulsion_type_pairs)
+        .def_readonly("n_unknown_nonbonded_type_pairs",
+          &w_t::n_unknown_nonbonded_type_pairs)
       ;
     }
   };

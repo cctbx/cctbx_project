@@ -131,15 +131,15 @@ def exercise(verbose=0):
     n_seq=sites_cart.size(),
     bond_simple_proxies=bond_proxies.simple)
   atom_energy_types = flex.std_string(sites_cart.size(), "Default")
-  repulsion_params = geometry_restraints.repulsion_params(
+  nonbonded_params = geometry_restraints.nonbonded_params(
     factor_1_4_interactions=vdw_1_4_factor,
     const_shrink_1_4_interactions=0,
     default_distance=default_vdw_distance)
-  repulsion_params.distance_table.setdefault(
+  nonbonded_params.distance_table.setdefault(
     "Default")["Default"] = default_vdw_distance
   pair_proxies = geometry_restraints.pair_proxies(
-    repulsion_params = repulsion_params,
-    repulsion_types=atom_energy_types,
+    nonbonded_params = nonbonded_params,
+    nonbonded_types=atom_energy_types,
     bond_params_table=bond_params_table,
     shell_asu_tables=shell_asu_tables,
     bonded_distance_cutoff=0,
@@ -150,19 +150,19 @@ def exercise(verbose=0):
            pair_proxies.bond_proxies.n_total(),
     print "simple:", pair_proxies.bond_proxies.simple.size(),
     print "sym:", pair_proxies.bond_proxies.asu.size()
-    print "pair_proxies.repulsion_proxies.n_total():", \
-           pair_proxies.repulsion_proxies.n_total(),
-    print "simple:", pair_proxies.repulsion_proxies.simple.size(),
-    print "sym:", pair_proxies.repulsion_proxies.asu.size()
+    print "pair_proxies.nonbonded_proxies.n_total():", \
+           pair_proxies.nonbonded_proxies.n_total(),
+    print "simple:", pair_proxies.nonbonded_proxies.simple.size(),
+    print "sym:", pair_proxies.nonbonded_proxies.asu.size()
     print "pair_proxies.n_nonbonded:", pair_proxies.n_nonbonded
     print "pair_proxies.n_1_4:      ", pair_proxies.n_1_4
     print "min_distance_nonbonded: %.2f" % flex.min(
-      geometry_restraints.repulsion_deltas(
+      geometry_restraints.nonbonded_deltas(
         sites_cart=sites_cart,
-        sorted_asu_proxies=pair_proxies.repulsion_proxies))
+        sorted_asu_proxies=pair_proxies.nonbonded_proxies))
   vdw_1_sticks = []
   vdw_2_sticks = []
-  for proxy in pair_proxies.repulsion_proxies.simple:
+  for proxy in pair_proxies.nonbonded_proxies.simple:
     if (proxy.vdw_distance == default_vdw_distance):
       vdw_1_sticks.append(pml_stick(
         begin=sites_cart[proxy.i_seqs[0]],
@@ -172,7 +172,7 @@ def exercise(verbose=0):
         begin=sites_cart[proxy.i_seqs[0]],
         end=sites_cart[proxy.i_seqs[1]]))
   mps = asu_mappings.mappings()
-  for proxy in pair_proxies.repulsion_proxies.asu:
+  for proxy in pair_proxies.nonbonded_proxies.asu:
     if (proxy.vdw_distance == default_vdw_distance):
       vdw_1_sticks.append(pml_stick(
         begin=mps[proxy.i_seq][0].mapped_site(),
@@ -198,8 +198,8 @@ def exercise(verbose=0):
       manager = restraints_manager(
         crystal_symmetry=crystal_symmetry,
         site_symmetry_table=site_symmetry_table,
-        repulsion_params=repulsion_params,
-        repulsion_types=atom_energy_types,
+        nonbonded_params=nonbonded_params,
+        nonbonded_types=atom_energy_types,
         bond_params_table=bond_params_table,
         shell_sym_tables=shell_sym_tables,
         nonbonded_distance_cutoff=nonbonded_cutoff,
@@ -220,10 +220,10 @@ def exercise(verbose=0):
         print "n_updates_pair_proxies:", manager.n_updates_pair_proxies
       if (not use_crystal_symmetry):
         assert minimized.final_target_result.bond_residual_sum < 1.e-3
-        assert minimized.final_target_result.repulsion_residual_sum < 0.1
+        assert minimized.final_target_result.nonbonded_residual_sum < 0.1
       else:
         assert minimized.final_target_result.bond_residual_sum < 1.e-2
-        assert minimized.final_target_result.repulsion_residual_sum < 0.1
+        assert minimized.final_target_result.nonbonded_residual_sum < 0.1
       assert minimized.final_target_result.angle_residual_sum < 1.e-3
       if (0 or verbose):
         pdb_file_name = "minimized_%d.pdb" % i_pdb.next()

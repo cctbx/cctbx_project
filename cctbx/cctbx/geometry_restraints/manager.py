@@ -12,8 +12,8 @@ class manager:
         site_symmetry_table=None,
         bond_params_table=None,
         shell_sym_tables=None,
-        repulsion_params=None,
-        repulsion_types=None,
+        nonbonded_params=None,
+        nonbonded_types=None,
         nonbonded_distance_cutoff=5,
         nonbonded_buffer=1,
         angle_proxies=None,
@@ -26,8 +26,8 @@ class manager:
     if (shell_sym_tables is not None and site_symmetry_table is not None):
       assert len(shell_sym_tables) > 0
       assert shell_sym_tables[0].size() == site_symmetry_table.indices().size()
-    if (repulsion_types is not None and site_symmetry_table is not None):
-      assert repulsion_types.size() == site_symmetry_table.indices().size()
+    if (nonbonded_types is not None and site_symmetry_table is not None):
+      assert nonbonded_types.size() == site_symmetry_table.indices().size()
     adopt_init_args(self, locals())
     self._sites_cart_used_for_pair_proxies = None
     self._pair_proxies = None
@@ -40,7 +40,7 @@ class manager:
         bonded_distance_cutoff_epsilon=None):
     if (bonded_distance_cutoff_epsilon is None):
       bonded_distance_cutoff_epsilon = 1.e-6
-    if (self.repulsion_types is None):
+    if (self.nonbonded_types is None):
       if (self._pair_proxies is None):
         self.n_updates_pair_proxies += 1
         self._pair_proxies = geometry_restraints.pair_proxies(
@@ -81,8 +81,8 @@ class manager:
           .add_pair_sym_table(sym_table=shell_sym_table)
             for shell_sym_table in self.shell_sym_tables]
       self._pair_proxies = geometry_restraints.pair_proxies(
-        repulsion_params=self.repulsion_params,
-        repulsion_types=self.repulsion_types,
+        nonbonded_params=self.nonbonded_params,
+        nonbonded_types=self.nonbonded_types,
         bond_params_table=self.bond_params_table,
         shell_asu_tables=shell_asu_tables,
         bonded_distance_cutoff=bonded_distance_cutoff,
@@ -104,13 +104,13 @@ class manager:
       sites_cart=sites_cart,
       lock=lock_pair_proxies)
     (bond_proxies,
-     repulsion_proxies,
+     nonbonded_proxies,
      angle_proxies,
      dihedral_proxies,
      chirality_proxies,
      planarity_proxies) = [None]*6
     if (flags.bond):      bond_proxies = pair_proxies.bond_proxies
-    if (flags.repulsion): repulsion_proxies = pair_proxies.repulsion_proxies
+    if (flags.nonbonded): nonbonded_proxies = pair_proxies.nonbonded_proxies
     if (flags.angle):     angle_proxies = self.angle_proxies
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies
@@ -118,7 +118,7 @@ class manager:
     return geometry_restraints.energies.energies(
       sites_cart=sites_cart,
       bond_proxies=bond_proxies,
-      repulsion_proxies=repulsion_proxies,
+      nonbonded_proxies=nonbonded_proxies,
       angle_proxies=angle_proxies,
       dihedral_proxies=dihedral_proxies,
       chirality_proxies=chirality_proxies,

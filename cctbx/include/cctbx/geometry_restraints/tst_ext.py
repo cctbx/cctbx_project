@@ -220,15 +220,15 @@ def exercise_bond():
     bond_simple_proxies=proxies)
   assert pair_asu_table.table()[0].keys() == [1]
 
-def exercise_repulsion():
-  params = geometry_restraints.repulsion_params()
+def exercise_nonbonded():
+  params = geometry_restraints.nonbonded_params()
   assert params.distance_table.size() == 0
   assert params.radius_table.size() == 0
   assert approx_equal(params.factor_1_4_interactions, 2/3.)
   assert approx_equal(params.const_shrink_1_4_interactions, 0)
   assert approx_equal(params.default_distance, 0)
   assert approx_equal(params.minimum_distance, 0)
-  params = geometry_restraints.repulsion_params(
+  params = geometry_restraints.nonbonded_params(
     factor_1_4_interactions=.5,
     const_shrink_1_4_interactions=.1,
     default_distance=1,
@@ -246,12 +246,12 @@ def exercise_repulsion():
   params.minimum_distance = .6
   assert approx_equal(params.minimum_distance, .6)
   #
-  p = geometry_restraints.repulsion_simple_proxy(
+  p = geometry_restraints.nonbonded_simple_proxy(
     i_seqs=[0,1],
     vdw_distance=5)
   assert p.i_seqs == (0,1)
   assert approx_equal(p.vdw_distance, 5)
-  r = geometry_restraints.repulsion(
+  r = geometry_restraints.nonbonded(
     sites=[(1,2,3),(2,4,6)],
     vdw_distance=5)
   assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
@@ -263,23 +263,23 @@ def exercise_repulsion():
     [(34.081026602378813, 68.162053204757626, 102.24307980713644),
      (-34.081026602378813, -68.162053204757626, -102.24307980713644)])
   sites_cart = flex.vec3_double([(1,2,3),(2,4,6)])
-  r = geometry_restraints.repulsion(
+  r = geometry_restraints.nonbonded(
     sites_cart=sites_cart,
     proxy=p)
   assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
   assert approx_equal(r.vdw_distance, 5)
   assert approx_equal(r.function.c_rep, 16)
   assert approx_equal(r.delta, 3.74165738677)
-  proxies = geometry_restraints.shared_repulsion_simple_proxy([p,p])
+  proxies = geometry_restraints.shared_nonbonded_simple_proxy([p,p])
   for proxy in proxies:
     assert approx_equal(proxy.vdw_distance, 5)
-  assert approx_equal(geometry_restraints.repulsion_deltas(
+  assert approx_equal(geometry_restraints.nonbonded_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [3.74165738677]*2)
-  assert approx_equal(geometry_restraints.repulsion_residuals(
+  assert approx_equal(geometry_restraints.nonbonded_residuals(
     sites_cart=sites_cart,
     proxies=proxies), [40.1158130612]*2)
-  residual_sum = geometry_restraints.repulsion_residual_sum(
+  residual_sum = geometry_restraints.nonbonded_residual_sum(
     sites_cart=sites_cart,
     proxies=proxies,
     gradient_array=None)
@@ -291,7 +291,7 @@ def exercise_repulsion():
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=asu_mappings,
     distance_cutoff=5)
-  p = geometry_restraints.repulsion_asu_proxy(
+  p = geometry_restraints.nonbonded_asu_proxy(
     pair=pair_generator.next(),
     vdw_distance=2)
   assert pair_generator.at_end()
@@ -302,7 +302,7 @@ def exercise_repulsion():
   p.vdw_distance = 3
   assert approx_equal(p.vdw_distance, 3)
   p.vdw_distance = 2
-  sym_proxies = geometry_restraints.shared_repulsion_asu_proxy([p,p])
+  sym_proxies = geometry_restraints.shared_nonbonded_asu_proxy([p,p])
   for proxy in sym_proxies:
     assert approx_equal(proxy.vdw_distance, 2)
     proxy.vdw_distance = 3
@@ -315,7 +315,7 @@ def exercise_repulsion():
   assert approx_equal(f.k_rep, 4)
   assert approx_equal(f.irexp, 2)
   assert approx_equal(f.rexp, 3)
-  r = geometry_restraints.repulsion(
+  r = geometry_restraints.nonbonded(
     sites=list(sites_cart),
     vdw_distance=p.vdw_distance,
     function=f)
@@ -325,7 +325,7 @@ def exercise_repulsion():
   assert approx_equal(r.residual(), 226981)
   assert approx_equal(r.gradients(),
     [(22326.0, 22326.0, 22326.0), (-22326.0, -22326.0, -22326.0)])
-  r = geometry_restraints.repulsion(
+  r = geometry_restraints.nonbonded(
     sites=list(sites_cart),
     vdw_distance=p.vdw_distance,
     function=geometry_restraints.repulsion_function())
@@ -339,33 +339,33 @@ def exercise_repulsion():
   assert approx_equal(r.gradients(),
     [(0.71084793153727288, 0.71084793153727288, 0.71084793153727288),
      (-0.71084793153727288, -0.71084793153727288, -0.71084793153727288)])
-  sorted_asu_proxies = geometry_restraints.repulsion_sorted_asu_proxies(
+  sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
     asu_mappings=asu_mappings)
   sorted_asu_proxies.process(proxies=sym_proxies)
   assert approx_equal(
-    flex.pow2(geometry_restraints.repulsion_deltas(
+    flex.pow2(geometry_restraints.nonbonded_deltas(
       sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies)),
     [3]*2)
   assert approx_equal(
-    flex.pow2(geometry_restraints.repulsion_deltas(
+    flex.pow2(geometry_restraints.nonbonded_deltas(
       sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies,
       function=geometry_restraints.repulsion_function())),
     [3]*2)
   assert approx_equal(
-    geometry_restraints.repulsion_residuals(
+    geometry_restraints.nonbonded_residuals(
       sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies),
     [0.0824764182859]*2)
   assert approx_equal(
-    geometry_restraints.repulsion_residuals(
+    geometry_restraints.nonbonded_residuals(
       sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies,
       function=geometry_restraints.repulsion_function()),
     [0.0824764182859]*2)
   assert approx_equal(
-    geometry_restraints.repulsion_residual_sum(
+    geometry_restraints.nonbonded_residual_sum(
       sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies,
       gradient_array=None),
@@ -373,7 +373,7 @@ def exercise_repulsion():
   for disable_cache in [00000, 0001]:
     gradient_array = flex.vec3_double(2, [0,0,0])
     assert approx_equal(
-      geometry_restraints.repulsion_residual_sum(
+      geometry_restraints.nonbonded_residual_sum(
         sites_cart=sites_cart,
         sorted_asu_proxies=sorted_asu_proxies,
         gradient_array=gradient_array,
@@ -384,7 +384,7 @@ def exercise_repulsion():
       [(1.4216958630745458, 1.4216958630745458, 1.4216958630745458),
        (-1.4216958630745458, -1.4216958630745458, -1.4216958630745458)])
   #
-  sorted_asu_proxies = geometry_restraints.repulsion_sorted_asu_proxies(
+  sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
     asu_mappings=asu_mappings)
   assert sorted_asu_proxies.asu_mappings().is_locked()
   assert not sorted_asu_proxies.process(proxy=proxies[0])
@@ -392,15 +392,15 @@ def exercise_repulsion():
   assert sorted_asu_proxies.simple.size() == 2
   assert sorted_asu_proxies.asu.size() == 0
   assert sorted_asu_proxies.n_total() == 2
-  residual_0 = geometry_restraints.repulsion(
+  residual_0 = geometry_restraints.nonbonded(
     sites_cart=sites_cart,
     proxy=proxies[0]).residual()
-  residual_1 = geometry_restraints.repulsion(
+  residual_1 = geometry_restraints.nonbonded(
     sites_cart=sites_cart,
     asu_mappings=asu_mappings,
     proxy=sym_proxies[0]).residual()
   gradient_array = flex.vec3_double(2, [0,0,0])
-  assert approx_equal(geometry_restraints.repulsion_residual_sum(
+  assert approx_equal(geometry_restraints.nonbonded_residual_sum(
     sites_cart=sites_cart,
     sorted_asu_proxies=sorted_asu_proxies,
     gradient_array=gradient_array), residual_0+residual_1)
@@ -634,7 +634,7 @@ def exercise_planarity():
 
 def exercise():
   exercise_bond()
-  exercise_repulsion()
+  exercise_nonbonded()
   exercise_angle()
   exercise_dihedral()
   exercise_chirality()
