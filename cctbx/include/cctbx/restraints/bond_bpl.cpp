@@ -3,6 +3,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
@@ -119,6 +120,11 @@ namespace {
     }
   };
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    bond_residual_sum_overloads_1, bond_residual_sum, 4, 5)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    bond_residual_sum_overloads_2, bond_residual_sum, 3, 4)
+
   void
   wrap_all()
   {
@@ -166,21 +172,25 @@ namespace {
         af::const_ref<scitbx::vec3<double> > const&,
         direct_space_asu::asu_mappings<> const&,
         af::const_ref<bond_sym_proxy> const&,
-        af::ref<scitbx::vec3<double> > const&))
-      bond_residual_sum,
-      (arg_("sites_cart"),
-       arg_("asu_mappings"),
-       arg_("proxies"),
-       arg_("gradient_array")));
+        af::ref<scitbx::vec3<double> > const&,
+        bool)) bond_residual_sum,
+      bond_residual_sum_overloads_1((
+        arg_("sites_cart"),
+        arg_("asu_mappings"),
+        arg_("proxies"),
+        arg_("gradient_array"),
+        arg_("disable_cache")=false)));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         bond_sorted_proxies const&,
-        af::ref<scitbx::vec3<double> > const&))
-      bond_residual_sum,
-      (arg_("sites_cart"),
-       arg_("sorted_proxies"),
-       arg_("gradient_array")));
+        af::ref<scitbx::vec3<double> > const&,
+        bool)) bond_residual_sum,
+      bond_residual_sum_overloads_2((
+        arg_("sites_cart"),
+        arg_("sorted_proxies"),
+        arg_("gradient_array"),
+        arg_("disable_cache")=false)));
     def("bond_sets", bond_sets,
       (arg_("n_sites"), arg_("bond_proxies")));
   }

@@ -105,6 +105,19 @@ namespace cctbx { namespace restraints {
         init_distance_model();
       }
 
+      // Not available in Python.
+      bond(
+        asu_cache<> const& cache,
+        bond_sym_proxy const& proxy)
+      :
+        distance_ideal(proxy.distance_ideal),
+        weight(proxy.weight)
+      {
+        sites[0] = cache.sites[proxy.pair.i_seq][0];
+        sites[1] = cache.sites[proxy.pair.j_seq][proxy.pair.j_sym];
+        init_distance_model();
+      }
+
       double
       residual() const { return weight * scitbx::fn::pow2(delta); }
 
@@ -148,6 +161,19 @@ namespace cctbx { namespace restraints {
         if (pair.j_sym == 0) {
           vec3 grad_j_seq = asu_mappings.r_inv_cart(pair.j_seq, 0) * grad_asu;
           gradient_array[pair.j_seq] -= grad_j_seq;
+        }
+      }
+
+      // Not available in Python.
+      void
+      add_gradients(
+        asu_cache<>& cache,
+        direct_space_asu::asu_mapping_index_pair const& pair) const
+      {
+        vec3 grad_asu = gradient_0();
+        cache.gradients[pair.i_seq] += grad_asu;
+        if (pair.j_sym == 0) {
+          cache.gradients[pair.j_seq] -= grad_asu;
         }
       }
 
@@ -233,15 +259,34 @@ namespace cctbx { namespace restraints {
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
     af::const_ref<bond_sym_proxy> const& proxies,
-    af::ref<scitbx::vec3<double> > const& gradient_array)
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    bool disable_cache=false)
   {
     double result = 0;
-    for(std::size_t i=0;i<proxies.size();i++) {
-      bond restraint(sites_cart, asu_mappings, proxies[i]);
-      if (proxies[i].pair.j_sym == 0) result += restraint.residual();
-      else                            result += restraint.residual()*.5;
+    if (!disable_cache) {
+      asu_cache<> cache(
+        sites_cart, asu_mappings, gradient_array.size() != 0);
+      for(std::size_t i=0;i<proxies.size();i++) {
+        bond restraint(cache, proxies[i]);
+        if (proxies[i].pair.j_sym == 0) result += restraint.residual();
+        else                            result += restraint.residual()*.5;
+        if (gradient_array.size() != 0) {
+          restraint.add_gradients(cache, proxies[i].pair);
+        }
+      }
       if (gradient_array.size() != 0) {
-        restraint.add_gradients(gradient_array, asu_mappings, proxies[i].pair);
+        cache.add_gradients(gradient_array, asu_mappings);
+      }
+    }
+    else {
+      for(std::size_t i=0;i<proxies.size();i++) {
+        bond restraint(sites_cart, asu_mappings, proxies[i]);
+        if (proxies[i].pair.j_sym == 0) result += restraint.residual();
+        else                            result += restraint.residual()*.5;
+        if (gradient_array.size() != 0) {
+          restraint.add_gradients(
+            gradient_array, asu_mappings, proxies[i].pair);
+        }
       }
     }
     return result;
@@ -255,7 +300,8 @@ namespace cctbx { namespace restraints {
   bond_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     bond_sorted_proxies const& sorted_proxies,
-    af::ref<scitbx::vec3<double> > const& gradient_array)
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    bool disable_cache=false)
   {
     double result = bond_residual_sum(
       sites_cart,
@@ -265,7 +311,8 @@ namespace cctbx { namespace restraints {
       sites_cart,
       *sorted_proxies.asu_mappings(),
       sorted_proxies.sym_proxies.const_ref(),
-      gradient_array);
+      gradient_array,
+      disable_cache);
     return result;
   }
 
