@@ -165,6 +165,22 @@ namespace cctbx {
     return ListOfH;
   }
 
+  inline
+  boost::shared_ptr<std::vector<Miller::Index> >
+  BuildMillerIndices(const sgtbx::SpaceGroup& SgOps,
+                     const Miller::Index& MaxIndex)
+  {
+    boost::shared_ptr<std::vector<Miller::Index> >
+    ListOfH(new std::vector<Miller::Index>);
+    sgtbx::MillerIndexGenerator MIG(SgOps, MaxIndex);
+    for (;;) {
+      Miller::Index H = MIG.next();
+      if (H.is000()) break;
+      ListOfH->push_back(H);
+    }
+    return ListOfH;
+  }
+
 } // namespace cctbx
 
 #endif // CCTBX_XRAY_SCATTERER_H
