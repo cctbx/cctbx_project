@@ -12,6 +12,7 @@ from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 from boost import rational
 import random
+import copy
 import sys
 
 def exercise_cut_planes(cut_planes):
@@ -21,6 +22,9 @@ def exercise_cut_planes(cut_planes):
 def exercise_volume_vertices(asu, unit_cell):
   volume_asu = asu.volume_only()
   asu_volume_vertices = asu.volume_vertices()
+  for box_min,box_max in zip(asu.box_min(volume_vertices=asu_volume_vertices),
+                             asu.box_max(volume_vertices=asu_volume_vertices)):
+    assert box_min < box_max
   float_asu = asu.add_buffer(unit_cell=unit_cell, thickness=0)
   asu_shrunk = float_asu.add_buffer(relative_thickness=-1.e-5)
   mcs = asu.define_metric(unit_cell).minimum_covering_sphere()
@@ -48,6 +52,10 @@ def exercise_volume_vertices(asu, unit_cell):
     if (radius - r < radius * 1.e-2):
       m_near_sphere_surface += 1
   assert m_near_sphere_surface >= n_near_sphere_surface
+  line_asu = copy.copy(asu)
+  line_asu.add_planes([(0,0,1),(1,1,1)], both_directions=0001)
+  assert len(line_asu.facets) == len(asu.facets) + 4
+  assert line_asu.facets[-2].n == (-line_asu.facets[-1]).n
 
 def exercise_float_asu(space_group_info, n_grid=6):
   unit_cell = space_group_info.any_compatible_unit_cell(volume=1000)
