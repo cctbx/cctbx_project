@@ -10,6 +10,7 @@
 
 #include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/coordinates.h>
 #include <boost/python/cross_module.hpp>
 #include <cctbx/basic/boost_array_bpl.h>
 #include <cctbx/miller_bpl.h>
@@ -231,6 +232,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     class_builder<SgOps>
     py_SgOps(this_module, "SgOps");
     python::export_converters(py_SgOps);
+    class_builder<SymEquivCoordinates>
+    py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
@@ -383,6 +386,17 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(&SgOps::makeTidy, "makeTidy");
     py_SgOps.def(SgOps_cmp_equal, "__cmp__");
 
+    py_SymEquivCoordinates.def(constructor<const uctbx::UnitCell&,
+                                           const SgOps&,
+                                           const uctbx::Vec3&>());
+    py_SymEquivCoordinates.def(constructor<const uctbx::UnitCell&,
+                                           const SgOps&,
+                                           const uctbx::Vec3&,
+                                           double>());
+    py_SymEquivCoordinates.def(&SymEquivCoordinates::M, "M");
+    py_SymEquivCoordinates.def(&SymEquivCoordinates::operator(), "__call__");
+    py_SymEquivCoordinates.def(&SymEquivCoordinates::StructureFactor,
+                                                    "StructureFactor");
     sgtbx::sanity_check();
   }
   catch(...)

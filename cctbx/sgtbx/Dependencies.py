@@ -22,6 +22,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sgtbx/tidy.cpp",
       "sgtbx/symbols.cpp",
       "sgtbx/metric.cpp",
+      "sgtbx/coordinates.cpp",
       "sgtbx/sgtbxmodule.cpp",
       "sgtbx/sgtbxdriver.cpp",
       "sgtbx/symbols.py",
@@ -47,6 +48,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "tidy",
       "symbols",
       "metric",
+      "coordinates",
     )
 
     self.libraries = {

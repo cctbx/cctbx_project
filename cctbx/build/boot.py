@@ -1,20 +1,19 @@
 import sys, os, shutil
 
-def create_makefiles(path_cctbx, configuration):
-  for subdir in ("eltbx", "sgtbx", "uctbx", "examples/cpp"):
-    print "Creating Makefile in " + subdir
-    exe_g = {}
-    exe_l = {}
-    execfile(path_cctbx + "/" + subdir + "/Dependencies.py", exe_g, exe_l)
-    try:
-      os.makedirs(subdir)
-    except OSError:
-      pass
-    h = exe_l['write_makefiles'](configuration)
-    f = open(subdir + "/Makefile", "wb")
-    h.write(f)
-    f.close()
-    shutil.copy(subdir + "/Makefile", subdir + "/Makefile.nodepend")
+def create_makefile(path_cctbx, configuration, subdir):
+  print "Creating Makefile in " + subdir
+  exe_g = {}
+  exe_l = {}
+  execfile(path_cctbx + "/" + subdir + "/Dependencies.py", exe_g, exe_l)
+  try:
+    os.makedirs(subdir)
+  except OSError:
+    pass
+  h = exe_l['write_makefiles'](configuration)
+  f = open(subdir + "/Makefile", "wb")
+  h.write(f)
+  f.close()
+  shutil.copy(subdir + "/Makefile", subdir + "/Makefile.nodepend")
 
 if (__name__ == "__main__"):
   path_cctbx = os.path.dirname(os.path.dirname(sys.argv[0]))
@@ -25,7 +24,12 @@ if (__name__ == "__main__"):
   if (platform in ("vc60", "mingw32") and hasattr(os, "symlink")):
     print "Error: Must run under Windows!"
     sys.exit(1)
-  create_makefiles(path_cctbx, cf)
+  if (len(sys.argv) == 1):
+    for subdir in ("eltbx", "sgtbx", "uctbx", "examples/cpp"):
+      create_makefile(path_cctbx, cf, subdir)
+  else:
+    for subdir in sys.argv[1:]:
+      create_makefile(path_cctbx, cf, subdir)
   if (hasattr(os, "symlink")):
     try: os.symlink(path_cctbx + "/examples/python", "examples/python")
     except: pass
