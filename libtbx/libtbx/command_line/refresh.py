@@ -60,10 +60,11 @@ def run():
   create_python_dispatchers(target_dir, libtbx_env.LIBTBX_PYTHON_EXE)
   for dist_path in libtbx_env.dist_paths.values():
     package_name = split(dist_path)[1]
-    create_drivers(
-      target_dir,
-      package_name,
-      source_dir=norm(join(dist_path, package_name, "command_line")))
+    for suffix in ("", "_adaptbx"):
+      create_drivers(
+        target_dir,
+        package_name,
+        source_dir=norm(join(dist_path+suffix, package_name, "command_line")))
 
 if (__name__ == "__main__"):
   run()
