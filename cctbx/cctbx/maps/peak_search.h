@@ -232,7 +232,7 @@ namespace cctbx { namespace maps {
         if (flags[i] != -2) continue;
         value_type d = data[i] - data_min;
         std::size_t i_slot = 0;
-        if (d >= slot_width) {
+        if (d != 0 && d >= slot_width) {
               i_slot = std::size_t(d / slot_width);
           if (i_slot >= slots.size()) i_slot = slots.size() - 1;
         }
