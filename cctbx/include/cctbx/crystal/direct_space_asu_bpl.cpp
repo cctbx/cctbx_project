@@ -231,8 +231,6 @@ namespace {
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
         .def("is_simple_interaction", &w_t::is_simple_interaction, (
           arg_("pair")))
-        .def("interaction_type_id", &w_t::interaction_type_id, (
-          arg_("pair")))
         .def("make_trial_pair", &w_t::make_trial_pair, (
           arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
         .def("make_pair", &w_t::make_pair, (
