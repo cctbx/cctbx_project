@@ -8,7 +8,7 @@ namespace cctbx { namespace restraints {
 
   typedef std::map<std::string, double>
     repulsion_distance_dict;
-  typedef std::map<std::string, repulsion_distance_dict>
+  typedef std::map<std::string, std::map<std::string, double> >
     repulsion_distance_table;
 
   typedef std::map<std::string, double>
