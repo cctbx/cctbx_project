@@ -1467,6 +1467,18 @@ group {
     .type=unit_cell
   s=19
     .type=space_group
+  n=none
+    .type=None
+  m=Plain "%^ &*"
+    .type=None
+  s0=none
+    .type=strings
+  s1=" a " b
+    .type=strings
+  v=none
+    .type=words
+  w=plain "% ^&*"
+    .type=words
 }
 """)
   assert parameters.get(path="group.a",
@@ -1529,6 +1541,18 @@ group {
   assert str(parameters.get(path="group.s",
     with_substitution=False).objects[0].extract()) \
       == "P 21 21 21"
+  assert parameters.get(path="group.n",
+    with_substitution=False).objects[0].extract() is None
+  assert parameters.get(path="group.m",
+    with_substitution=False).objects[0].extract() == ["Plain", "%^ &*"]
+  assert parameters.get(path="group.s0",
+    with_substitution=False).objects[0].extract() is None
+  assert parameters.get(path="group.s1",
+    with_substitution=False).objects[0].extract() == [" a ", "b"]
+  assert parameters.get(path="group.v",
+    with_substitution=False).objects[0].extract() is None
+  assert [word.value for word in parameters.get(path="group.w",
+    with_substitution=False).objects[0].extract()] == ["plain", "% ^&*"]
   definition = parameters.get(path="group.a",
     with_substitution=False).objects[0]
   definition.type = "foo"
@@ -1663,6 +1687,14 @@ group {
     .type=unit_cell
   S=none
     .type=space_group
+  m=plain "% ^&*"
+    .type=None
+  s0=none
+    .type=strings
+  s1=' a ' b
+    .type=strings
+  w=plain "% ^&*"
+    .type=words
 }
 """)
   out = StringIO()
@@ -1670,7 +1702,7 @@ group {
   parameters.format(extracted).show(out=out)
   assert out.getvalue() == """\
 group {
-  n = "ab" "c d" "ef "
+  n = ab "c d" "ef "
   a = True
   b = 13
   c = 1.3
@@ -1683,6 +1715,10 @@ group {
   s = "P 21 21 21"
   U = None
   S = None
+  m = plain "% ^&*"
+  s0 = None
+  s1 = " a " b
+  w = plain "% ^&*"
 }
 """
   definition = parameters.get(path="group.a").objects[0]

@@ -113,7 +113,7 @@ def space_group_info_from_assigned_words(assigned_words):
   return sgtbx.space_group_info(symbol=symbol)
 
 default_definition_type_names = [
-  "str", "bool", "int", "float",
+  "words", "strings", "str", "bool", "int", "float",
   "choice", "multi_choice",
   "path", "key",
   "unit_cell", "space_group"]
@@ -352,6 +352,12 @@ class definition: # FUTURE definition(object)
         self.type = assignment_if_unknown
 
   def extract(self, custom_converters=None):
+    if (self.type == "words"):
+      if (len(self.words) == 1
+          and self.words[0].quote_token is None
+          and self.words[0].value.lower() == "none"):
+        return None
+      return self.words
     if (self.type in ["str", "path", "key"]):
       return str_from_assigned_words(self.words)
     if (self.type == "bool"):
@@ -368,11 +374,16 @@ class definition: # FUTURE definition(object)
       return unit_cell_from_assigned_words(self.words)
     if (self.type == "space_group"):
       return space_group_info_from_assigned_words(self.words)
-    if (custom_converters is not None):
+    if (self.type != "strings"
+        and custom_converters is not None):
       converter = custom_converters.get(self.type, None)
       if (converter is not None):
         return converter.process_assigned_words(self.words)
-    if (self.type is None):
+    if (self.type == "strings" or self.type is None):
+      if (len(self.words) == 1
+          and self.words[0].quote_token is None
+          and self.words[0].value.lower() == "none"):
+        return None
       return [word.value for word in self.words]
     raise RuntimeError(
        ('No converter for parameter definition type "%s"'
@@ -383,6 +394,10 @@ class definition: # FUTURE definition(object)
     words = None
     if (python_object is None):
       words = [simple_tokenizer.word(value="None")]
+    elif (self.type == "words"):
+      words = python_object
+      for word in words:
+        assert isinstance(word, simple_tokenizer.word)
     elif (self.type in ["str", "path", "key"]):
       words = [simple_tokenizer.word(value=python_object, quote_token='"')]
     elif (self.type == "bool"):
@@ -413,13 +428,18 @@ class definition: # FUTURE definition(object)
     elif (self.type == "space_group"):
       words = [simple_tokenizer.word(
         value=str(python_object), quote_token='"')]
-    elif (custom_converters is not None):
+    elif (self.type != "strings"
+          and custom_converters is not None):
       converter = custom_converters.get(self.type, None)
       if (converter is not None):
         words = converter.format_as_assigned_words(self, python_object)
-    elif (self.type is None):
-      words = [simple_tokenizer.word(value=value, quote_token='"')
-        for value in python_object]
+    elif (self.type == "strings" or self.type is None):
+      words = []
+      for value in python_object:
+        if (is_standard_identifier(value)):
+          words.append(simple_tokenizer.word(value=value))
+        else:
+          words.append(simple_tokenizer.word(value=value, quote_token='"'))
     if (words is None):
       raise RuntimeError(
          ('No converter for parameter definition type "%s"'
