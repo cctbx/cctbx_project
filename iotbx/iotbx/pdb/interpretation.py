@@ -250,12 +250,13 @@ class stage_1:
           =special_position_settings.assert_is_positive_definite())
     return special_position_settings
 
-  def get_sites_cart(self):
+  def get_sites_cart(self, always_apply_scale_records=False):
     if (self._sites_cart is None):
       self._sites_cart = flex.vec3_double()
       for atom in self.atom_attributes_list:
         self._sites_cart.append(atom.coordinates)
-      if (    self.scale_matrix is not None
+      if (always_apply_scale_records
+          or (self.scale_matrix is not None
           and self.crystal_symmetry is not None
           and self.crystal_symmetry.unit_cell() is not None
           and (   not approx_equal(
@@ -263,9 +264,9 @@ class stage_1:
             self.crystal_symmetry.unit_cell().fractionalization_matrix()
                or not approx_equal(
             self.scale_matrix[0],
-            [0,0,0])))):
-        sites_frac = self._sites_cart * self.scale_matrix[0] \
-                                      + self.scale_matrix[1]
+            [0,0,0]))))):
+        sites_frac = self.scale_matrix[0] * self._sites_cart \
+                   + self.scale_matrix[1]
         self._sites_cart = \
           self.crystal_symmetry.unit_cell().orthogonalization_matrix() \
           * sites_frac
@@ -474,13 +475,12 @@ class stage_1:
   def write_modified(self, out, new_sites_cart, crystal_symmetry=None):
     assert new_sites_cart.size() == len(self.atom_attributes_list)
     if (crystal_symmetry is None):
-      if (self.cryst1_record is not None):
-        print >> out, self.cryst1_record.rstrip()
-      elif (self.crystal_symmetry is not None):
-        crystal_symmetry = self.crystal_symmetry
+      crystal_symmetry = self.crystal_symmetry
     if (crystal_symmetry is not None):
       print >> out, pdb.format_cryst1_record(
         crystal_symmetry=crystal_symmetry)
+      print >> out, pdb.format_scale_records(
+        unit_cell=crystal_symmetry.unit_cell())
     ter_flags = flex.bool(len(self.atom_attributes_list)+1, False)
     ter_flags.set_selected(self.ter_indices, True)
     break_flags = flex.bool(len(self.atom_attributes_list)+1, False)

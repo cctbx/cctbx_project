@@ -232,16 +232,38 @@ At special positions: 0
 Unit cell: (8.098, 5.953, 8.652, 90, 124.4, 90)
 Space group: P 1 21/c 1 (No. 14)
 Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
-0    C      4 ( 0.2773  0.0185  0.2848) 1.00 0.0000
-1    C      4 ( 0.2247  0.1638  0.1632) 1.00 0.0000
-2    H      4 ( 0.0742  0.3907 -0.0986) 1.00 0.0000
-3    C      4 ( 0.0561  0.1052  0.0118) 1.00 0.0000
-4    H      4 ( 0.2996  0.3056  0.1766) 1.00 0.0000
-5    C      4 (-0.0030  0.2518 -0.1163) 1.00 0.0000
-6    H      4 ( 0.3911  0.0590  0.3897) 1.00 0.0000
-7    C      4 ( 0.1659 -0.1902  0.2616) 1.00 0.0000
-8    H      4 ( 0.2055 -0.2951  0.3489) 1.00 0.0000
+0    C      4 ( 0.0823  0.0185  0.3283) 1.00 0.0000
+1    C      4 ( 0.1130  0.1638  0.2229) 1.00 0.0000
+2    H      4 ( 0.1417  0.3907 -0.0236) 1.00 0.0000
+3    C      4 ( 0.0480  0.1052  0.0372) 1.00 0.0000
+4    H      4 ( 0.1787  0.3056  0.2711) 1.00 0.0000
+5    C      4 ( 0.0766  0.2518 -0.0758) 1.00 0.0000
+6    H      4 ( 0.1242  0.0590  0.4554) 1.00 0.0000
+7    C      4 (-0.0132 -0.1902  0.2546) 1.00 0.0000
+8    H      4 (-0.0334 -0.2951  0.3313) 1.00 0.0000
 """
+  s = StringIO()
+  stage_1.write_modified(out=s, new_sites_cart=xray_structure.sites_cart())
+  assert s.getvalue() == """\
+CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P121/c1
+SCALE1      0.123487 -0.000000  0.084554        0.00000
+SCALE2      0.000000  0.167983 -0.000000        0.00000
+SCALE3      0.000000  0.000000  0.140078        0.00000
+HETATM    1  C1  UNK     0      -0.938   0.110   2.344  1.00  0.00           C
+HETATM    2  X2  UNK     0      -0.175   0.975   1.592  1.00  0.00           C
+HETATM    3 8H   UNK     0       1.263   2.326  -0.169  1.00  0.00           H
+HETATM    4  C3  UNK     0       0.207   0.626   0.266  1.00  0.00           C
+HETATM    5 7H   UNK     0       0.122   1.819   1.935  1.00  0.00
+HETATM    6  C_4 UNK     0       0.991   1.499  -0.541  1.00  0.00
+HETATM    7 6H   UNK     0      -1.220   0.351   3.251  1.00  0.00
+HETATM    8  C5  UNK     0      -1.351  -1.132   1.818  1.00  0.00
+HETATM    9 9H   UNK     0      -1.890  -1.757   2.365  1.00  0.00
+TER      10      UNK     0
+END
+"""
+  stage_1 = pdb.interpretation.stage_1(raw_records=s.getvalue().splitlines())
+  sites_cart = stage_1.get_sites_cart(always_apply_scale_records=True)
+  assert sites_cart.rms_difference(xray_structure.sites_cart()) < 1.e-2
 
 def exercise_selection():
   pdb_file = """\
