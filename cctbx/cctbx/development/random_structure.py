@@ -98,10 +98,10 @@ class xray_structure(xray.structure):
                general_positions_only=False,
                random_f_prime_d_min=0,
                random_f_double_prime=0,
-               random_u_iso=True,
+               random_u_iso=False,
                u_iso=0,
                anisotropic_flag=False,
-               random_occupancy=True):
+               random_occupancy=False):
     assert elements == None or n_scatterers == None
     assert not (elements == None and n_scatterers == None)
     adopt_init_args(self, locals(), exclude=("space_group_info",))

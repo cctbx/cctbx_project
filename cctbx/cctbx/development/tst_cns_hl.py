@@ -80,7 +80,10 @@ def write_cns_input(fcalc_array, hl):
 def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   sg_fcalc_array = random_structure.xray_structure(
     space_group_info,
-    elements=("N", "C", "C", "O")).structure_factors_direct(
+    elements=("N", "C", "C", "O"),
+    random_u_iso=True,
+    random_occupancy=True
+    ).structure_factors_direct(
       anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array()
   sg_hl = generate_random_hl(sg_fcalc_array)
   write_cns_input(sg_fcalc_array, sg_hl)

@@ -15,9 +15,7 @@ def exercise(space_group_info, anomalous_flag,
     min_distance=1.5,
     general_positions_only=True,
     anisotropic_flag=False,
-    random_u_iso=False,
-    u_iso=adptbx.b_as_u(10),
-    random_occupancy=False
+    u_iso=adptbx.b_as_u(10)
     ).structure_factors_direct(
         anomalous_flag=anomalous_flag, d_min=d_min)
   if (0 or verbose):
