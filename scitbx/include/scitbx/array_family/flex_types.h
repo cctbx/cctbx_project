@@ -11,6 +11,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_FLEX_TYPES_H
 #define SCITBX_ARRAY_FAMILY_FLEX_TYPES_H
 
+#include <complex>
 #include <scitbx/array_family/flex_grid_accessor.h>
 #include <scitbx/array_family/versa.h>
 
