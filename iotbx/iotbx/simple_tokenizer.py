@@ -19,15 +19,16 @@ class word:
     self.value = value
     self.quote_char = quote_char
 
+default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+                                   + "abcdefghijklmnopqrstuvwxyz" \
+                                   + "0123456789" \
+                                   + "_"
 def split_into_words(
       input_string,
       contiguous_word_characters=None,
       enable_unquoted_embedded_quotes=True):
   if (contiguous_word_characters is None):
-    contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-                               + "abcdefghijklmnopqrstuvwxyz" \
-                               + "0123456789" \
-                               + "_"
+    contiguous_word_characters = default_contiguous_word_characters
   words = []
   char_iter = character_iterator(input_string)
   c = char_iter.next()
@@ -63,58 +64,3 @@ def split_into_words(
           word_value += c
       words.append(word(value=word_value))
   return words
-
-def exercise():
-  tests = [
-  ["",
-    []],
-  ["resname=a and chain=b",
-    ['resname', '=', 'a', 'and', 'chain', '=', 'b']],
-  ["resname a and chain b",
-    ['resname', 'a', 'and', 'chain', 'b']],
-  ["resname resname and chain chain",
-    ['resname', 'resname', 'and', 'chain', 'chain']],
-  ["resname \"a b\"",
-    ['resname', 'a b']],
-  ["resname a",
-    ['resname', 'a']],
-  ["resname ala and backbone",
-    ['resname', 'ala', 'and', 'backbone']],
-  ["resname ala or backbone",
-    ['resname', 'ala', 'or', 'backbone']],
-  ["name x and x > 10",
-    ['name', 'x', 'and', 'x', '>', '10']],
-  ["((expr or expr) and expr)",
-    ['(', '(', 'expr', 'or', 'expr', ')', 'and', 'expr', ')']],
-  ["resname and and chain b",
-    ['resname', 'and', 'and', 'chain', 'b']],
-  ["resname ( and chain b",
-    ['resname', '(', 'and', 'chain', 'b']],
-  ["resname \"(\" and chain b",
-    ['resname', '(', 'and', 'chain', 'b']],
-  ["all_hydrophobic_within(5) and resname ALA",
-    ['all_hydrophobic_within', '(', '5', ')', 'and', 'resname', 'ALA']],
-  ["something(a, b)",
-    ['something', '(', 'a', ',', 'b', ')']],
-  ["something(a b)",
-    ['something', '(', 'a', 'b', ')']],
-  ["something(\"a\"\"b\")",
-    ['something', '(', 'a', 'b', ')']],
-  ["resname 'a'",
-    ['resname', 'a']],
-  ["resname '\"'",
-    ['resname', '"']],
-  ["resname '\"\\''",
-    ['resname', '"\'']],
-  ["resname \"'\\\"\"",
-    ['resname', '\'"']],
-  ["name o1'",
-    ['name', 'o1\'']],
-  ]
-  for input_string,expected_result in tests:
-    assert [word.value for word in split_into_words(input_string=input_string)
-           ] == expected_result
-  print "OK"
-
-if (__name__ == "__main__"):
-  exercise()

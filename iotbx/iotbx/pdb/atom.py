@@ -383,23 +383,33 @@ class selection_cache:
   def sel_charge(self, pattern):
     return self.union(iselections=self.get_charge(pattern=pattern))
 
-  def selection(self, string, contiguous_word_characters=None, callback=None):
+  def selection_tokenizer(self, string, contiguous_word_characters=None):
     if (contiguous_word_characters is None):
-      contiguous_word_characters="ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-                                +"abcdefghijklmnopqrstuvwxyz" \
-                                +"0123456789" \
-                                +"_" \
-                                +"\\*?[]^+-:"
-    result_stack = []
-    infix = simple_tokenizer.split_into_words(
+      contiguous_word_characters \
+        = simple_tokenizer.default_contiguous_word_characters \
+        + r"\*?[]^+-.:"
+    word_stack = simple_tokenizer.split_into_words(
       input_string=string,
       contiguous_word_characters=contiguous_word_characters)
-    for word,word_stack in simple_parser.infix_as_postfix(words=infix):
-      if (word.quote_char is None and word.value == "not"):
+    word_stack.reverse()
+    return word_stack
+
+  def selection_parser(self,
+        word_stack,
+        callback=None,
+        stop_word=None,
+        expect_nonmatching_closing_parenthesis=False):
+    result_stack = []
+    for word,word_stack in simple_parser.infix_as_postfix(
+          word_stack=word_stack,
+          stop_word=stop_word,
+          expect_nonmatching_closing_parenthesis
+            =expect_nonmatching_closing_parenthesis):
+      if (word.value == "not"):
         assert len(result_stack) >= 1
         arg = result_stack.pop()
         result_stack.append(~arg)
-      elif (word.quote_char is None and word.value in ["and", "or"]):
+      elif (word.value in ["and", "or"]):
         assert len(result_stack) >= 2
         rhs = result_stack.pop()
         lhs = result_stack.pop()
@@ -407,7 +417,7 @@ class selection_cache:
           result_stack.append(lhs & rhs)
         else:
           result_stack.append(lhs | rhs)
-      elif (word.quote_char is None):
+      else:
         lword = word.value.lower()
         if (lword == "all"):
           result_stack.append(flex.bool(self.n_seq, True))
@@ -428,7 +438,6 @@ class selection_cache:
         elif (lword in ["resseq", "resid", "model"]):
           if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
           arg = word_stack.pop()
-          if (arg.quote_char is not None): raise RuntimeError("Value error.")
           i_colon_or_dash = arg.value.find(":")
           if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
           if (i_colon_or_dash < 0):
@@ -474,14 +483,19 @@ class selection_cache:
             raise RuntimeError("Syntax error.")
         else:
           raise RuntimeError("Syntax error.")
-      else:
-        raise RuntimeError("Syntax error.")
     if (len(result_stack) == 0):
       return flex.bool(self.n_seq, False)
     selection = result_stack[0]
     for result in result_stack[1:]:
       selection &= result
     return selection
+
+  def selection(self, string, contiguous_word_characters=None, callback=None):
+    return self.selection_parser(
+      word_stack=self.selection_tokenizer(
+        string=string,
+        contiguous_word_characters=contiguous_word_characters),
+      callback=callback)
 
   def iselection(self, string, contiguous_word_characters=None):
     return self.selection(
