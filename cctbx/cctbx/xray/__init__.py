@@ -117,7 +117,8 @@ class structure(crystal.special_position_settings):
 
   def structure_factors(self, anomalous_flag=None, d_min=None, method=None):
     miller_set = miller.build_set(self, anomalous_flag, d_min)
-    return structure_factors(xray_structure=self, miller_set=miller_set, method=method)
+    return structure_factors(
+      xray_structure=self, miller_set=miller_set, method=method)
 
   def show_summary(self, f=sys.stdout):
     print >> f, "Number of scatterers:", self.scatterers().size()
