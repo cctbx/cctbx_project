@@ -622,10 +622,16 @@ class environment:
                   pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
                   source_file=source_file):
       print >> f, line
+    start_python = False
     cmd = ""
     if (source_file.lower().endswith(".py")):
       cmd += " '"+self.python_exe+"'"
-    cmd += " '"+source_file+"'"
+      if (len(source_specific_dispatcher_include(
+                pattern="LIBTBX_START_PYTHON",
+                source_file=source_file)) > 3):
+        start_python = True
+    if (not start_python):
+      cmd += " '"+source_file+"'"
     print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
     print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
     print >> f, "elif [ $# -eq 0 ]; then"
