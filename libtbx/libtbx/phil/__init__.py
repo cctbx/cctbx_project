@@ -655,7 +655,7 @@ class scope:
     assert self.has_attribute_with_name(name)
     if (name in ["optional", "multiple", "disable_add", "disable_delete"]):
       value = bool_from_words(words)
-    elif (name in ["expert_level"]):
+    elif (name == "expert_level"):
       value = int_from_words(words)
     else:
       value = str_from_words(words)
