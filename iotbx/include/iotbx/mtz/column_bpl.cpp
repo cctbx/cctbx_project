@@ -28,9 +28,7 @@ namespace {
         .def("is_active", &w_t::is_active)
         .def("path", &w_t::path)
         .def("lookup_other", &w_t::lookup_other, (arg_("label")))
-        .def("valid_indices", &w_t::valid_indices)
-        .def("valid_values", &w_t::valid_values)
-        .def("valid_integers", &w_t::valid_integers)
+        .def("n_valid_values", &w_t::n_valid_values)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
