@@ -69,7 +69,7 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
         ms.u_iso += d_sign * delta
       elif (parameter_name == "occupancy"):
         ms.occupancy += d_sign * delta
-        ms.update_weight(structure.space_group())
+        ms.update_weight(structure.space_group().order_z())
       elif (parameter_name == "fp"):
         ms.fp_fdp = complex(ms.fp_fdp.real + d_sign * delta, ms.fp_fdp.imag)
       elif (parameter_name == "fdp"):
