@@ -8,9 +8,9 @@ class MARImage:
     self.linearintdata=None
 
     byte_order = str(open(self.filename,"rb").read(2))
-    if byte_order == 'II': 
+    if byte_order == 'II':
       self.endian = 0
-    else: 
+    else:
       self.endian = 1
 
     assert not self.isCompressed()
@@ -27,7 +27,7 @@ class MARImage:
     # if ifd is 0 then there are no more Image File Directories
     while ifd:
       f.seek(ifd)
-    
+
       rawdata = f.read(2)
       # get the number of directory entries in the IFD
       numentries = struct.unpack(format+'h',rawdata)[0]
@@ -48,10 +48,10 @@ class MARImage:
             return 0
           else:
             return 1
-      
+
       f.seek(ifd+numentries*12+2)
       rawdata = f.read(4)
-      ifd = struct.unpack(format+'i',rawdata)[0]    
+      ifd = struct.unpack(format+'i',rawdata)[0]
 
     # control should never reach this point
     assert 1==0
@@ -77,10 +77,14 @@ class MARImage:
         if len(matches) > 0:
           parameters[item] = int(matches[-1])
 
+      f.seek(offset+28)
+      rawdata = f.read(8)
+      header_byte_order,data_byte_order = struct.unpack(format+'ii',rawdata)
+
       f.seek(offset+80)
       rawdata = f.read(8)
       parameters['SIZE1'],parameters['SIZE2'] = struct.unpack(format+'ii',rawdata)
-      assert parameters['SIZE1'] == parameters['SIZE2']      
+      assert parameters['SIZE1'] == parameters['SIZE2']
       f.seek(offset+88)
       rawdata = f.read(4)
       self.depth = struct.unpack(format+'i',rawdata)[0]
@@ -88,6 +92,10 @@ class MARImage:
       f.seek(offset+104)
       rawdata = f.read(4)
       parameters['CCD_IMAGE_SATURATION'] = struct.unpack(format+'i',rawdata)[0]
+
+      f.seek(offset+116)
+      rawdata = f.read(12)
+      origin,orientation,view_direction = struct.unpack(format+'iii',rawdata)
 
       f.seek(offset+696)
       rawdata = f.read(4)
@@ -103,6 +111,7 @@ class MARImage:
       pixelsize_x,pixelsize_y = struct.unpack(format+'ii',rawdata)
       assert pixelsize_x == pixelsize_y
       parameters['PIXEL_SIZE'] = pixelsize_x*1.0e-6 # convert from nano to milli
+
 
       f.seek(offset+644)
       rawdata = f.read(8)
@@ -133,7 +142,7 @@ class MARImage:
       rawdata = f.read(4)
       rotation_axis = struct.unpack(format+'i',rawdata)[0]
       assert rotation_axis == 4 # if it isn't phi; go back and recode to cover all cases
-            
+
       # ----- omega analysis
       f.seek(offset+672)
       rawdata = f.read(4)
@@ -142,7 +151,7 @@ class MARImage:
       f.seek(offset+704)
       rawdata = f.read(4)
       parameters['OMEGA_END'] = struct.unpack(format+'i',rawdata)[0]/1000.
-      
+
 
       f.seek(offset+668)
       rawdata = f.read(4)
