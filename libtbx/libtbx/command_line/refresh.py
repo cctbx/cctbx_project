@@ -212,8 +212,11 @@ def run():
     precall_commands=precall_commands)
   dispatcher_dict = {}
   for dist_path in libtbx_env.dist_paths.values():
+    dist_root = os.path.dirname(dist_path)
     package_name = os.path.basename(dist_path)
-    for dist_path_suf in libtbx.config.package_pair(dist_path).primary_first():
+    for dist_path_suf in libtbx.config.package_pair(
+                           name=package_name,
+                           dist_root=dist_root).primary_first():
       create_drivers(
         libtbx_env=libtbx_env,
         precall_commands=precall_commands,

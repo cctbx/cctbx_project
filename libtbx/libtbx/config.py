@@ -1,14 +1,16 @@
-import sys, os, pickle
 from libtbx.path import norm_join
+import sys, os, pickle
+from os.path import normpath, join, abspath, dirname, isdir, isfile
+norm = normpath
 
 class UserError(Exception): pass
 
 def full_path(command, search_first=[], search_last=[]):
   dirs = search_first + os.environ["PATH"].split(os.pathsep) + search_last
   for path in dirs:
-    path_command = os.path.join(path, command)
+    path_command = join(path, command)
     if (os.path.exists(path_command)):
-      return os.path.normpath(os.path.abspath(path_command))
+      return norm(abspath(path_command))
   return None
 
 def get_hostname():
@@ -23,7 +25,7 @@ def python_include_path(must_exist=True):
   else:
     include_path = sys.prefix + "/include/python" + sys.version[0:3]
   include_path = norm_join(include_path)
-  if (must_exist and not os.path.isdir(include_path)):
+  if (must_exist and not isdir(include_path)):
     raise RuntimeError("Cannot locate Python's include directory: %s"
       % include_path)
   return include_path
@@ -32,7 +34,7 @@ def python_api_from_process(must_exist=True):
   try: return str(sys.api_version) # Python 2.3 or higher
   except AttributeError: pass
   include_path = python_include_path(must_exist)
-  if (not os.path.isdir(include_path)): return None
+  if (not isdir(include_path)): return None
   modsupport_h = open(norm_join(include_path, "modsupport.h")).readlines()
   python_api_version = None
   for line in modsupport_h:
@@ -47,17 +49,44 @@ def python_api_from_process(must_exist=True):
 def python_api_version_file_name(libtbx_build):
   return norm_join(libtbx_build, "libtbx", "PYTHON_API_VERSION")
 
+class resolve_redirection:
+
+  def __init__(self, dist_root, name):
+    self.effective_root = dist_root
+    self.dist_path = norm_join(self.effective_root, name)
+    if (isfile(self.dist_path)):
+      try:
+        redirection = open(self.dist_path).readlines()[0][:-1]
+        assert len(redirection) > 0
+      except:
+        raise UserError("Error reading redirection file: %s" % self.dist_path)
+      # first attempt: interpret the redirection as absolute path
+      self.effective_root = norm(abspath(redirection))
+      self.dist_path = norm_join(self.effective_root, name)
+      if (not isdir(self.dist_path)):
+        # second attempt: interpret the redirection as relative path
+        self.effective_root = norm(abspath(join(dist_root, redirection)))
+        self.dist_path = norm(join(self.effective_root, name))
+        if (not isdir(self.dist_path)):
+          raise UserError('Redirection to non-existing directory: "%s"'
+            % self.effective_root)
+
 adaptor_toolbox_suffix = "_adaptbx"
 
 class package_pair:
 
-  def __init__(self, name):
+  def __init__(self, name, dist_root=None):
     if (name.lower().endswith(adaptor_toolbox_suffix)):
       self.primary = name[:-len(adaptor_toolbox_suffix)]
       self.adaptbx = name
     else:
       self.primary = name
       self.adaptbx = name + adaptor_toolbox_suffix
+    if (dist_root is not None):
+      self.primary = resolve_redirection(
+        dist_root=dist_root, name=self.primary).dist_path
+      self.adaptbx = resolve_redirection(
+        dist_root=dist_root, name=self.adaptbx).dist_path
 
   def primary_first(self):
     return (self.primary, self.adaptbx)
@@ -75,7 +104,7 @@ class env:
 
   def __init__(self):
     libtbx_build = os.environ["LIBTBX_BUILD"]
-    file_name = os.path.join(libtbx_build, "libtbx_env")
+    file_name = join(libtbx_build, "libtbx_env")
     try:
       f = open(file_name)
     except:
@@ -107,15 +136,15 @@ class env:
     return self.dist_paths[self.dist_name(package_name)]
 
   def effective_root(self, package_name):
-    return os.path.dirname(self.dist_path(package_name))
+    return dirname(self.dist_path(package_name))
 
   def current_working_directory_is_libtbx_build(self):
-    return os.path.normpath(os.getcwd()) == self.LIBTBX_BUILD
+    return norm(os.getcwd()) == self.LIBTBX_BUILD
 
   def dispatcher_front_end_exe(self):
     if (    os.name == "nt"
         and self._dispatcher_front_end_exe is None):
-      self._dispatcher_front_end_exe = open(os.path.join(
+      self._dispatcher_front_end_exe = open(join(
         self.dist_path("libtbx"), "dispatcher_front_end.exe"), "rb").read()
     return self._dispatcher_front_end_exe
 

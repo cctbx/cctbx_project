@@ -23,11 +23,12 @@ def copy_dist_files(dist_copy, dirname, names):
         or name.endswith(".csh")
         or name.endswith(".sh")):
       src = libtbx.path.norm_join(dirname, file_name)
-      dest = libtbx.path.norm_join(dist_copy, src)
-      if (create_target_dir):
-        libtbx.path.create_target_dir(dest)
-        create_target_dir = False
-      shutil.copy(src, dest)
+      if (not os.path.isdir(src)):
+        dest = libtbx.path.norm_join(dist_copy, src)
+        if (create_target_dir):
+          libtbx.path.create_target_dir(dest)
+          create_target_dir = False
+        shutil.copy(src, dest)
 
 def is_required(dist, package):
   p = libtbx.path.norm_join(dist, "libtbx_config")
@@ -40,12 +41,16 @@ def is_required(dist, package):
 
 def run(target_root):
   cwd = os.getcwd()
-  abs_target_root = os.path.normpath(os.path.abspath(os.path.join(target_root)))
+  abs_target_root = os.path.normpath(os.path.abspath(os.path.join(
+    target_root)))
   libtbx_env = libtbx.config.env()
   dist_root = libtbx_env.LIBTBX_DIST_ROOT
   for package in ["libtbx"] + libtbx_env.package_list:
-    for package_suf in libtbx.config.package_pair(package).primary_first():
-      dist = libtbx.path.norm_join(dist_root, package_suf)
+    for package_suf in libtbx.config.package_pair(
+                         name=package).primary_first():
+      dist = libtbx.config.resolve_redirection(
+        dist_root=dist_root,
+        name=package_suf).dist_path
       if (os.path.isdir(dist) and is_required(dist, package)):
         dist_copy = libtbx.path.norm_join(abs_target_root, package_suf)
         os.chdir(dist)
