@@ -989,8 +989,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_StructureSeminvariant.def(&StructureSeminvariant::V, "V");
     py_StructureSeminvariant.def(&StructureSeminvariant::M, "M");
     py_StructureSeminvariant.def(&StructureSeminvariant::is_ss, "is_ss");
-    py_StructureSeminvariant.def(&StructureSeminvariant::get_uvw, "get_uvw");
-
+    //TODO: expose static_vector<int, 3>
+    //py_StructureSeminvariant.def(&StructureSeminvariant::apply_mod,
+                                                          "apply_mod");
     sgtbx::sanity_check();
   }
   catch(...)
