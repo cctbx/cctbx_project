@@ -37,6 +37,8 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_complex_double();
   void wrap_flex_std_string();
 
+  void wrap_flex_sort();
+
 namespace {
 
   void register_scitbx_tuple_mappings()
@@ -140,6 +142,8 @@ namespace {
     default_c_grid_flex_conversions<float>();
     default_c_grid_flex_conversions<double>();
     default_c_grid_flex_conversions<std::complex<double> >();
+
+    wrap_flex_sort();
 
     linear_regression_core_wrappers::wrap();
     linear_regression_wrappers::wrap();

@@ -317,7 +317,8 @@ def exercise_select_shuffle():
   b = flex.bool((0,1,0,1,1))
   assert tuple(a.select(b)) == (2,4,5)
   b = flex.size_t((3,1,0,4,2))
-  assert tuple(a.shuffle(b)) == (3,2,5,1,4)
+  assert tuple(a.shuffle(b)) == (4,2,1,5,3)
+  assert tuple(a.unshuffle(b)) == (3,2,5,1,4)
 
 def exercise_operators():
   a = flex.bool((0, 1, 0, 1))
@@ -487,6 +488,18 @@ def exercise_complex_functions():
   d = y[0]
   assert approx_equal(d.real, 0)
   assert approx_equal(d.imag, a[0])
+
+def exercise_sort():
+  x = flex.double((3,1,2))
+  p = flex.sort_permutation(x)
+  assert tuple(p) == (1,2,0)
+  assert approx_equal(x.shuffle(p), (1,2,3))
+  p = flex.sort_permutation(x, 00000)
+  assert tuple(p) == (1,2,0)
+  assert approx_equal(x.shuffle(p), (1,2,3))
+  p = flex.sort_permutation(x, 0001)
+  assert tuple(p) == (0,2,1)
+  assert approx_equal(x.shuffle(p), (3,2,1))
 
 def exercise_linear_regression():
   x = flex.double((1,2,3))
@@ -682,6 +695,7 @@ def run(iterations):
     exercise_arith_inplace_operators()
     exercise_functions()
     exercise_complex_functions()
+    exercise_sort()
     exercise_linear_regression()
     exercise_linear_correlation()
     exercise_exceptions()
