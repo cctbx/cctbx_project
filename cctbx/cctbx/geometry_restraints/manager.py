@@ -10,6 +10,8 @@ class manager:
 
   def __init__(self,
         crystal_symmetry=None,
+        model_indices=None,
+        conformer_indices=None,
         site_symmetry_table=None,
         bond_params_table=None,
         shell_sym_tables=None,
@@ -88,6 +90,8 @@ class manager:
           .add_pair_sym_table(sym_table=shell_sym_table)
             for shell_sym_table in self.shell_sym_tables]
       self._pair_proxies = geometry_restraints.pair_proxies(
+        model_indices=self.model_indices,
+        conformer_indices=self.conformer_indices,
         nonbonded_params=self.nonbonded_params,
         nonbonded_types=self.nonbonded_types,
         bond_params_table=self.bond_params_table,
