@@ -70,6 +70,20 @@ namespace cctbx {
       virtual const char* what() const throw() { return msg_.c_str(); }
     protected:
       std::string msg_;
+    public:
+      static std::string itoa(int i) {
+        char buf[80];
+        sprintf(buf, "%d", i); // FUTURE: use C++ facility
+        return std::string(buf);
+      }
+  };
+
+  class lbfgs_error_internal_error : public lbfgs_error {
+    public:
+      lbfgs_error_internal_error(const char* file, long line) throw()
+        : lbfgs_error(
+            "Internal Error: " + std::string(file) + "(" + itoa(line) + ")")
+      {}
   };
 
   class lbfgs_error_improper_input_parameter : public lbfgs_error {
@@ -90,6 +104,13 @@ namespace cctbx {
     public:
       lbfgs_error_search_direction_not_descent() throw()
         : lbfgs_error("The search direction is not a descent direction.")
+      {}
+  };
+
+  class lbfgs_error_line_search_failed : public lbfgs_error {
+    public:
+      lbfgs_error_line_search_failed(const std::string& msg) throw()
+        : lbfgs_error("Line search failed: " + msg)
       {}
   };
 
@@ -207,15 +228,12 @@ namespace cctbx {
           info(0), bound(0), nfev(0)
       {
         if (n_ <= 0) {
-          iflag_ = -3;
           throw lbfgs_error_improper_input_parameter("n is not positive.");
         }
         if (m_ <= 0) {
-          iflag_ = -3;
           throw lbfgs_error_improper_input_parameter("m is not positive.");
         }
         if (gtol_ <= 1.e-4) {
-          iflag_ = -3;
           throw lbfgs_error_improper_input_parameter("gtol <= 1.e-4.");
         }
         w_.resize(n_*(2*m_+1)+2*m_);
@@ -245,40 +263,14 @@ namespace cctbx {
       //! XXX
       double stpmax() const { return stpmax_; }
 
-      //! Status indicator.
-      /*! A return with <code>iflag &lt; 0</code> indicates an error,
-          and <code>iflag = 0</code> indicates that the routine has
-          terminated without detecting errors. On a return with
-          <code>iflag = 1</code>, the user must evaluate the function
-          <code>f</code> and gradient <code>g</code>. On a return with
-          <code>iflag = 2</code>, the user must provide the diagonal
-          matrix <code>Hk0</code>.
-          <p>
-          The following negative values of <code>iflag</code>,
-          detecting an error, are possible:
-          <ul>
-          <li><code>iflag = -1</code> The line search routine
-              <code>mcsrch</code> failed. One of the following
-              messages is printed:
-            <ul>
-            <li>Improper input parameters.
-            <li>Relative width of the interval of uncertainty is at
-                most <code>xtol</code>.
-            <li>More than maxfev function evaluations were required at the
-                present iteration.
-            <li>The step is too small.
-            <li>The step is too large.
-            <li>Rounding errors prevent further progress. There may not
-                be a step which satisfies the sufficient decrease and
-                curvature conditions. Tolerances may be too small.
-            </ul>
-          <li><code>iflag = -2</code> The i-th diagonal element of
-              the diagonal inverse Hessian approximation, given in DIAG,
-              is not positive.
-          <li><code>iflag = -3</code> Improper input parameters for LBFGS.
-          </ul>
-       */
-      int iflag() const { return iflag_; }
+      //! XXX
+      bool is_converged() const { return iflag_ == 0 && nfun_ > 0; }
+
+      //! XXX
+      bool requests_f_and_g() const { return iflag_ == 1; }
+
+      //! XXX
+      bool requests_diag() const { return iflag_ == 2; }
 
       //! Number of iterations so far.
       int iter() const { return iter_; }
@@ -358,16 +350,10 @@ namespace cctbx {
       }
 
     protected:
-      static std::string itoa(int i) {
-        char buf[80];
-        sprintf(buf, "%d", i); // FUTURE: use C++ facility
-        return std::string(buf);
-      }
-
       static void throw_diagonal_element_not_positive(int i) {
         throw lbfgs_error_improper_input_data(
-          "The " + itoa(i) + ". diagonal element of the inverse"
-          " Hessian approximation is not positive.");
+          "The " + lbfgs_error::itoa(i) + ". diagonal element of the"
+          " inverse Hessian approximation is not positive.");
       }
 
       void generic_run(
@@ -384,7 +370,6 @@ namespace cctbx {
           if (diagco) {
             for (int i = 0; i < n_; i++) {
               if (diag[i] <= 0) {
-                iflag_ = -2;
                 throw_diagonal_element_not_positive(i);
               }
             }
@@ -422,7 +407,6 @@ namespace cctbx {
               if (diagco) {
                 for (int i = 0; i < n_; i++) {
                   if (diag[i] <= 0) {
-                    iflag_ = -2;
                     throw_diagonal_element_not_positive(i);
                   }
                 }
@@ -463,22 +447,15 @@ namespace cctbx {
             if (iter_ == 1) stp_ = stp1;
             std::copy(g, g+n_, w);
           }
-          if (!mcsrch_instance.run(
-                 gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
-                 stp_, ftol, xtol_, maxfev_, info, nfev, diag)) {
-            iflag_ = -1;
-            throw lbfgs_error_search_direction_not_descent(); // XXX move down
-          }
+          mcsrch_instance.run(
+            gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
+            stp_, ftol, xtol_, maxfev_, info, nfev, diag);
           if (info == -1) {
             iflag_ = 1;
             return;
           }
           if (info != 1) {
-            iflag_ = -1;
-            throw lbfgs_error(
-              "Line search failed (info=" + itoa(info) + ")."
-              " Possible causes: function or gradient are incorrect,"
-              " or incorrect tolerances.");
+            throw lbfgs_error_internal_error(__FILE__, __LINE__);
           }
           nfun_ += nfev;
           npt = point*n_;
@@ -702,23 +679,10 @@ namespace cctbx {
              @param info This is an output variable, which can have these
                values:
                <ul>
-               <li><code>info = 0</code> Improper input parameters.
                <li><code>info = -1</code> A return is made to compute
                    the function and gradient.
                <li><code>info = 1</code> The sufficient decrease condition
                    and the directional derivative condition hold.
-               <li><code>info = 2</code> Relative width of the interval of
-                   uncertainty is at most <code>xtol</code>.
-               <li><code>info = 3</code> Number of function evaluations
-                   has reached <code>maxfev</code>.
-               <li><code>info = 4</code> The step is at the lower bound
-                   <code>stpmin</code>.
-               <li><code>info = 5</code> The step is at the upper bound
-                   <code>stpmax</code>.
-               <li><code>info = 6</code> Rounding errors prevent further
-                   progress. There may not be a step which satisfies the
-                   sufficient decrease and curvature conditions.
-                   Tolerances may be too small.
                </ul>
 
              @param nfev On exit, this is set to the number of function
@@ -726,7 +690,7 @@ namespace cctbx {
 
              @param wa Temporary storage array, of length <code>n</code>.
            */
-          bool run(
+          void run(
             const double& gtol,
             const double& stpmin,
             const double& stpmax,
@@ -746,12 +710,16 @@ namespace cctbx {
           {
             if (info != -1) {
               infoc = 1;
-              if (   n <= 0 || stp <= 0 || ftol < 0 || xtol < 0
+              if (   n <= 0
+                  || xtol < 0
+                  || maxfev <= 0
                   || gtol < 0
                   || stpmin < 0
-                  || stpmax < stpmin
-                  || maxfev <= 0) {
-                return true;
+                  || stpmax < stpmin) {
+                throw lbfgs_error_internal_error(__FILE__, __LINE__);
+              }
+              if (stp <= 0 || ftol < 0) {
+                throw lbfgs_error_internal_error(__FILE__, __LINE__);
               }
               // Compute the initial gradient in the search direction
               // and check that s is a descent direction.
@@ -760,7 +728,7 @@ namespace cctbx {
                 dginit += g[j] * s[is0+j];
               }
               if (dginit >= 0) {
-                return false;
+                throw lbfgs_error_search_direction_not_descent();
               }
               brackt = false;
               stage1 = true;
@@ -815,7 +783,7 @@ namespace cctbx {
                 info=-1;
                 break;
               }
-              info=0;
+              info = 0;
               nfev++;
               double dg(0);
               for (int j = 0; j < n; j++) {
@@ -823,28 +791,35 @@ namespace cctbx {
               }
               double ftest1 = finit + stp*dgtest;
               // Test for convergence.
-              if (   (brackt && (stp <= stmin || stp >= stmax))
-                  || infoc == 0) {
-                info = 6;
+              if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
+                throw lbfgs_error_line_search_failed(
+                  "Rounding errors prevent further progress."
+                  " There may not be a step which satisfies the"
+                  " sufficient decrease and curvature conditions."
+                  " Tolerances may be too small.");
               }
               if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
-                info = 5;
+                throw lbfgs_error_line_search_failed(
+                  "The step is at the upper bound stpmax().");
               }
               if (stp == stpmin && (f > ftest1 || dg >= dgtest)) {
-                info = 4;
+                throw lbfgs_error_line_search_failed(
+                  "The step is at the lower bound stpmin().");
               }
               if (nfev >= maxfev) {
-                info = 3;
+                throw lbfgs_error_line_search_failed(
+                  "Number of function evaluations has reached maxfev().");
               }
               if (brackt && stmax - stmin <= xtol * stmax) {
-                info = 2;
-              }
-              if (   f <= ftest1
-                  && std::fabs(dg) <= gtol * (-dginit)) {
-                info = 1;
+                throw lbfgs_error_line_search_failed(
+                  "Relative width of the interval of uncertainty"
+                  " is at most xtol().");
               }
               // Check for termination.
-              if (info != 0) break;
+              if (f <= ftest1 && std::fabs(dg) <= gtol * (-dginit)) {
+                info = 1;
+                break;
+              }
               // In the first stage we seek a step for which the modified
               // function has a nonpositive value and nonnegative derivative.
               if (   stage1 && f <= ftest1
@@ -866,8 +841,8 @@ namespace cctbx {
                 double dgym = dgy - dgtest;
                 // Call cstep to update the interval of uncertainty
                 // and to compute the new step.
-                mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
-                       brackt, stmin, stmax, infoc);
+                infoc = mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
+                               brackt, stmin, stmax);
                 // Reset the function and gradient values for f.
                 fx = fxm + stx*dgtest;
                 fy = fym + sty*dgtest;
@@ -877,8 +852,8 @@ namespace cctbx {
               else {
                 // Call mcstep to update the interval of uncertainty
                 // and to compute the new step.
-                mcstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg,
-                       brackt, stmin, stmax, infoc);
+                infoc = mcstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg,
+                               brackt, stmin, stmax);
               }
               // Force a sufficient decrease in the size of the
               // interval of uncertainty.
@@ -890,7 +865,6 @@ namespace cctbx {
                 width = std::fabs(sty - stx);
               }
             }
-            return true;
           }
 
           /* The purpose of this function is to compute a safeguarded step
@@ -944,17 +918,15 @@ namespace cctbx {
              @param stpmin Lower bound for the step.
              @param stpmax Upper bound for the step.
 
-             @param info On return from <code>mcstep</code>, this is set as
-               follows:
-               If <code>info</code> is 1, 2, 3, or 4, then the step has been
-               computed successfully. Otherwise <code>info</code> = 0, and
-               this indicates improper input parameters.
+             If the return value is 1, 2, 3, or 4, then the step has
+             been computed successfully. A return value of 0 indicates
+             improper input parameters.
 
              @author Jorge J. More, David J. Thuente: original Fortran version,
                as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
                Robert Dodier: Java translation, August 1997.
            */
-          static void mcstep(
+          static int mcstep(
             double& stx,
             double& fx,
             double& dx,
@@ -966,16 +938,15 @@ namespace cctbx {
             double dp,
             bool& brackt,
             double stpmin,
-            double stpmax,
-            int& info)
+            double stpmax)
           {
             bool bound;
             double gamma, p, q, r, s, sgnd, stpc, stpf, stpq, theta;
-            info = 0;
+            int info = 0;
             if (   (   brackt && (stp <= std::min(stx, sty)
                     || stp >= std::max(stx, sty)))
                 || dx * (stp - stx) >= 0.0 || stpmax < stpmin) {
-              return;
+              return 0;
             }
             // Determine if the derivatives have opposite sign.
             sgnd = dp * (dx / std::fabs(dx));
@@ -1129,6 +1100,7 @@ namespace cctbx {
                 stp = std::max(stx + 0.66 * (sty - stx), stp);
               }
             }
+            return info;
           }
       };
 
