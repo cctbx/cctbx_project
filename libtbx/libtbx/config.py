@@ -163,10 +163,11 @@ class unix_setpaths(common_setpaths):
       if (f is self.s and self.shell == "sh"):
         print >> f, '  export %s' % var_name
       if (self.shell == "sh"):
-        print >> f, '  if [ "$%s" == "E_M_P_T_Y" ]; then unset %s; fi' % (
+        print >> f, \
+          '  if [ "$%s" == "L_I_B_T_B_X_E_M_P_T_Y" ]; then unset %s; fi' % (
           var_name, var_name)
       else:
-        print >> f, '  if ("$%s" == "E_M_P_T_Y") unsetenv %s' % (
+        print >> f, '  if ("$%s" == "L_I_B_T_B_X_E_M_P_T_Y") unsetenv %s' % (
           var_name, var_name)
 
 class windows_setpaths(common_setpaths):
@@ -190,7 +191,7 @@ class windows_setpaths(common_setpaths):
         var_name,
         val,
         var_name)
-      print >> f, '  if "%%%s%%" == "E_M_P_T_Y" set %s=' % (
+      print >> f, '  if "%%%s%%" == "L_I_B_T_B_X_E_M_P_T_Y" set %s=' % (
         var_name, var_name)
 
 def _windows_pathext():
@@ -204,7 +205,7 @@ if (os.name == "nt"):
   windows_pathext = _windows_pathext()
 
 def open_info(path, mode="w", info="Creating:"):
-  print info, repr(path)
+  print info, '"%s"'%path
   try: return open(path, mode)
   except IOError, e:
     raise UserError(str(e))
@@ -346,7 +347,7 @@ class environment:
     path = self.under_build("command_version_suffix")
     try: f = open(path, "w")
     except IOError:
-      raise UserError("Cannot write command_version_suffix file: "+repr(path))
+      raise UserError('Cannot write command_version_suffix file: "%s"' % path)
     print >> f, self.command_version_suffix
 
   def read_command_version_suffix(self):
@@ -357,7 +358,7 @@ class environment:
       try:
         self.command_version_suffix = open(path).read().strip()
       except IOError:
-        raise UserError("Cannot read command_version_suffix file: "+repr(path))
+        raise UserError('Cannot read command_version_suffix file: "%s"' % path)
 
   def register_module(self, dependent_module, module):
     if (dependent_module is None):
@@ -384,7 +385,7 @@ class environment:
       msg = ["Module not found: %s" % module_name,
              "  Repository directories searched:"]
       for path in self.repository_paths:
-        msg.append("    " + repr(path))
+        msg.append('    "%s"' % path)
       raise UserError("\n".join(msg))
     return None
 
@@ -473,11 +474,11 @@ class environment:
         dist_path = self.abs_path_clean(os.path.expandvars(redirection))
         if (not os.path.isdir(dist_path)):
           raise UserError(
-            "Invalid command line redirection:\n"
-            "  module name = %s\n"
-            "  redirection = %s\n"
-            "  resulting target = %s" % (
-              repr(module_name), repr(redirection), repr(dist_path)))
+            'Invalid command line redirection:\n'
+            '  module name = "%s"\n'
+            '  redirection = "%s"\n'
+            '  resulting target = "%s"' % (
+              module_name, redirection, dist_path))
         self.command_line_redirections[module_name] = dist_path
       module_names.append(module_name)
     if (not cold_start):
@@ -508,7 +509,7 @@ class environment:
 
   def option_repository(self, option, opt, value, parser):
     if (not os.path.isdir(value)):
-      raise UserError("Not a directory: --repository %s" % repr(value))
+      raise UserError('Not a directory: --repository "%s"' % value)
     self.add_repository(value)
 
   def dispatcher_precall_commands(self):
@@ -804,7 +805,7 @@ class environment:
     pickle.dump(self, open(file_name, "wb"), 0)
 
   def write_setpath_files(self):
-    print "Python:", sys.version.split()[0], repr(sys.executable)
+    print 'Python: %s "%s"' % (sys.version.split()[0], sys.executable)
     if (self.is_ready_for_build()):
       self.build_options.report()
     print "command_version_suffix:", self.command_version_suffix
@@ -898,7 +899,7 @@ class environment:
     for module in self.module_list:
       module.process_command_line_directories()
     if (os.path.isdir(self.exe_path)):
-      print "Processing:", repr(self.exe_path)
+      print 'Processing: "%s"' % self.exe_path
       for file_name in os.listdir(self.exe_path):
         if (file_name[0] == "."): continue
         self.write_dispatcher_in_bin(
@@ -961,30 +962,29 @@ class module:
             break
           try: f = open(path)
           except IOError: raise UserError(
-            "Cannot open configuration file: " + repr(path))
+            'Cannot open configuration file: "%s"' % path)
           try: config = eval(" ".join(f.readlines()), {}, {})
           except KeyboardInterrupt: raise
-          except: raise UserError("Corrupt configuration file: " + repr(path))
+          except: raise UserError('Corrupt configuration file: "%s"' % path)
           f.close()
           redirection = config.get("redirection", None)
           if (redirection is None):
             break
           if (not isinstance(redirection, str)):
             raise UserError(
-              "Corrupt configuration file:\n"
-              "  file = %s\n"
-              "  redirection must be a Python string" % repr(path))
+              'Corrupt configuration file:\n'
+              '  file = "%s"\n'
+              '  redirection must be a Python string' % path)
           new_dist_path = os.path.expandvars(redirection)
           if (not os.path.isabs(new_dist_path)):
             new_dist_path = libtbx.path.norm_join(dist_path, new_dist_path)
           new_dist_path = self.env.abs_path_clean(new_dist_path)
           if (not os.path.isdir(new_dist_path)):
             raise UserError(
-              "Invalid redirection:\n"
-              "  file = %s\n"
-              "  redirection = %s\n"
-              "  resulting target = %s" % (
-                repr(path), repr(redirection), repr(new_dist_path)))
+              'Invalid redirection:\n'
+              '  file = "%s"\n'
+              '  redirection = "%s"\n'
+              '  resulting target = "%s"' % (path, redirection, new_dist_path))
           dist_path = new_dist_path
         if (config is not None):
           self.required_for_build.extend(config.get(
@@ -1045,7 +1045,7 @@ class module:
             libtbx.path.norm_join(dist_path, "command_line"),
             libtbx.path.norm_join(dist_path, self.name, "command_line")]:
         if (not os.path.isdir(source_dir)): continue
-        print "Processing:", repr(source_dir)
+        print 'Processing: "%s"' % source_dir
         for file_name in os.listdir(source_dir):
           self.write_dispatcher(source_dir=source_dir, file_name=file_name)
 
@@ -1053,7 +1053,7 @@ class module:
     for dist_path in self.dist_paths_active():
       custom_refresh = libtbx.path.norm_join(dist_path, "libtbx_refresh.py")
       if (os.path.isfile(custom_refresh)):
-        print "Processing:", repr(custom_refresh)
+        print 'Processing: "%s"' % custom_refresh
         execfile(custom_refresh, {}, {})
 
   def collect_test_scripts(self,
