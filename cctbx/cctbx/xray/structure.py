@@ -189,14 +189,12 @@ class structure(crystal.special_position_settings):
         space_group=self.space_group(),
         min_distance_sym_equiv=self.min_distance_sym_equiv(),
         u_star_tolerance=self.u_star_tolerance(),
-        assert_is_positive_definite=self.assert_is_positive_definite(),
         assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     else:
       self._scatterers[-1].apply_symmetry(
         unit_cell=self.unit_cell(),
         site_symmetry_ops=site_symmetry_ops,
         u_star_tolerance=self.u_star_tolerance(),
-        assert_is_positive_definite=self.assert_is_positive_definite(),
         assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     self._site_symmetry_table.process(site_symmetry_ops)
     self._scattering_dict_is_out_of_date = True
@@ -215,7 +213,6 @@ class structure(crystal.special_position_settings):
       site_symmetry_table_for_new=site_symmetry_table,
       min_distance_sym_equiv=self.min_distance_sym_equiv(),
       u_star_tolerance=self.u_star_tolerance(),
-      assert_is_positive_definite=self.assert_is_positive_definite(),
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     self._scattering_dict_is_out_of_date = True
 
@@ -287,6 +284,24 @@ class structure(crystal.special_position_settings):
       out=out,
       prefix=prefix)
 
+  def is_positive_definite_u(self, u_cart_tolerance=None):
+    if (u_cart_tolerance is None):
+      return ext.is_positive_definite_u(
+        scatterers=self._scatterers,
+        unit_cell=self.unit_cell())
+    else:
+      return ext.is_positive_definite_u(
+        scatterers=self._scatterers,
+        unit_cell=self.unit_cell(),
+        u_cart_tolerance=u_cart_tolerance)
+
+  def tidy_us(self, u_min):
+    ext.tidy_us(
+      scatterers=self._scatterers,
+      unit_cell=self.unit_cell(),
+      site_symmetry_table=self._site_symmetry_table,
+      u_min=u_min)
+
   def apply_symmetry_sites(self):
     ext.apply_symmetry_sites(
       site_symmetry_table=self._site_symmetry_table,
@@ -297,9 +312,7 @@ class structure(crystal.special_position_settings):
       unit_cell=self.unit_cell(),
       site_symmetry_table=self._site_symmetry_table,
       scatterers=self._scatterers,
-      u_star_tolerance=self.u_star_tolerance(),
-      assert_is_positive_definite=self.assert_is_positive_definite(),
-      assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
+      u_star_tolerance=self.u_star_tolerance())
 
   def apply_special_position_ops_d_target_d_site(self, d_target_d_site):
     for i in self.special_position_indices():

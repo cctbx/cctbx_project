@@ -249,9 +249,7 @@ class stage_1:
         min_distance_sym_equiv
           =special_position_settings.min_distance_sym_equiv(),
         u_star_tolerance
-          =special_position_settings.u_star_tolerance(),
-        assert_is_positive_definite
-          =special_position_settings.assert_is_positive_definite())
+          =special_position_settings.u_star_tolerance())
     return special_position_settings
 
   def get_sites_cart(self, always_apply_scale_records=False):

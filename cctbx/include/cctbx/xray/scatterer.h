@@ -132,6 +132,56 @@ namespace xray {
        */
       scitbx::sym_mat3<FloatType> u_star;
 
+      //! Tests u_iso > 0 or adptbx::is_positive_definite(u_cart).
+      bool
+      is_positive_definite_u(
+        uctbx::unit_cell const& unit_cell) const
+      {
+        if (anisotropic_flag) {
+          return adptbx::is_positive_definite(
+            adptbx::u_star_as_u_cart(unit_cell, u_star));
+        }
+        return u_iso > 0;
+      }
+
+      /*! Tests u_iso >= u_cart_tolerance or
+          adptbx::is_positive_definite(u_cart, u_cart_tolerance).
+       */
+      bool
+      is_positive_definite_u(
+        uctbx::unit_cell const& unit_cell,
+        FloatType const& u_cart_tolerance) const
+      {
+        if (anisotropic_flag) {
+          return adptbx::is_positive_definite(
+            adptbx::u_star_as_u_cart(unit_cell, u_star), u_cart_tolerance);
+        }
+        return u_iso >= -u_cart_tolerance;
+      }
+
+      //! Changes u_iso or u_star in place such that u_iso >= u_min.
+      /*! In the anisotropic case the eigenvalues of u_cart are
+          changed using adptbx::eigenvalue_filtering().
+       */
+      void
+      tidy_u(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::site_symmetry_ops const& site_symmetry_ops,
+        FloatType const& u_min)
+      {
+        if (!anisotropic_flag) {
+          if (u_iso < u_min) u_iso = u_min;
+        }
+        else {
+          u_star = site_symmetry_ops.average_u_star(u_star);
+          scitbx::sym_mat3<FloatType>
+            u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
+          u_cart = adptbx::eigenvalue_filtering(u_cart, u_min);
+          u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
+          u_star = site_symmetry_ops.average_u_star(u_star);
+        }
+      }
+
       /*! \brief Computes multiplicity(), weight_without_occupancy(),
           weight() and symmetry-averaged anisotropic displacement parameters.
        */
@@ -149,9 +199,8 @@ namespace xray {
       apply_symmetry(
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
-        double min_distance_sym_equiv=0.5,
-        double u_star_tolerance=0,
-        bool assert_is_positive_definite=false,
+        FloatType const& min_distance_sym_equiv=0.5,
+        FloatType const& u_star_tolerance=0,
         bool assert_min_distance_sym_equiv=true);
 
       /*! \brief Computes multiplicity(), weight_without_occupancy(),
@@ -168,8 +217,7 @@ namespace xray {
       apply_symmetry(
         uctbx::unit_cell const& unit_cell,
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
-        double u_star_tolerance=0,
-        bool assert_is_positive_definite=false,
+        FloatType const& u_star_tolerance=0,
         bool assert_min_distance_sym_equiv=true);
 
       //! Apply previously determined site symmetry to site.
@@ -191,25 +239,13 @@ namespace xray {
           application of the site symmetry is greater than
           u_star_tolerance.
 
-          If assert_is_positive_definite == true,
-          for scatterers with anisotropic displacement
-          parameters it is tested if the symmetry-averaged
-          u_star tensor is positive definite. An exception
-          is thrown if this is not the case.
-          adptbx::eigenvalue_filtering is used to reset
-          negative eigenvalues of u_star to zero.
-          cctbx::sgtbx::site_symmetry::average_u_star
-          is applied again to compute the final u_star.
-
           This function has no effect if anisotropic_flag == false.
        */
       void
       apply_symmetry_u_star(
         uctbx::unit_cell const& unit_cell,
         sgtbx::site_symmetry_ops const& site_symmetry_ops,
-        double u_star_tolerance=0,
-        bool assert_is_positive_definite=false,
-        bool assert_min_distance_sym_equiv=true);
+        FloatType const& u_star_tolerance=0);
 
       //! Access to multiplicity computed by apply_symmetry().
       int
@@ -258,9 +294,8 @@ namespace xray {
   ::apply_symmetry(
     uctbx::unit_cell const& unit_cell,
     sgtbx::space_group const& space_group,
-    double min_distance_sym_equiv,
-    double u_star_tolerance,
-    bool assert_is_positive_definite,
+    FloatType const& min_distance_sym_equiv,
+    FloatType const& u_star_tolerance,
     bool assert_min_distance_sym_equiv)
   {
     sgtbx::site_symmetry site_symmetry(
@@ -273,7 +308,6 @@ namespace xray {
       unit_cell,
       site_symmetry,
       u_star_tolerance,
-      assert_is_positive_definite,
       assert_min_distance_sym_equiv);
     return site_symmetry;
   }
@@ -286,8 +320,7 @@ namespace xray {
   ::apply_symmetry(
     uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_ops const& site_symmetry_ops,
-    double u_star_tolerance,
-    bool assert_is_positive_definite,
+    FloatType const& u_star_tolerance,
     bool assert_min_distance_sym_equiv)
   {
     multiplicity_ = site_symmetry_ops.multiplicity();
@@ -302,9 +335,7 @@ namespace xray {
     apply_symmetry_u_star(
       unit_cell,
       site_symmetry_ops,
-      u_star_tolerance,
-      assert_is_positive_definite,
-      assert_min_distance_sym_equiv);
+      u_star_tolerance);
   }
 
   template <typename FloatType,
@@ -315,25 +346,13 @@ namespace xray {
   ::apply_symmetry_u_star(
     uctbx::unit_cell const& unit_cell,
     sgtbx::site_symmetry_ops const& site_symmetry_ops,
-    double u_star_tolerance,
-    bool assert_is_positive_definite,
-    bool assert_min_distance_sym_equiv)
+    FloatType const& u_star_tolerance)
   {
-    if (anisotropic_flag) {
+    if (anisotropic_flag && !site_symmetry_ops.is_point_group_1()) {
       if (u_star_tolerance > 0.) {
         CCTBX_ASSERT(
           site_symmetry_ops.is_compatible_u_star(u_star, u_star_tolerance));
       }
-      if (!site_symmetry_ops.is_point_group_1()) {
-        u_star = site_symmetry_ops.average_u_star(u_star);
-      }
-      scitbx::sym_mat3<FloatType>
-        u_cart = adptbx::u_star_as_u_cart(unit_cell, u_star);
-      if (assert_is_positive_definite) {
-        CCTBX_ASSERT(adptbx::is_positive_definite(u_cart));
-      }
-      u_cart = adptbx::eigenvalue_filtering(u_cart);
-      u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
       u_star = site_symmetry_ops.average_u_star(u_star);
     }
   }
