@@ -84,13 +84,14 @@ class iotbx_option_parser(OptionParser):
       if (len(args) > max_nargs):
         self.error("Too many arguments (at most %d allowed, %d given)." % (
           max_nargs, len(args)))
-    return processed_options(options, args,
+    return processed_options(self, options, args,
       self.symmetry_callback.get(),
       self.chunk_callback)
 
 class processed_options:
 
-  def __init__(self, options, args, symmetry, chunk_callback):
+  def __init__(self, parser, options, args, symmetry, chunk_callback):
+    self.parser = parser
     self.options = options
     self.args = args
     self.symmetry = symmetry
