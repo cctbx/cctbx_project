@@ -105,7 +105,7 @@ class raw_parameters:
     return sdb_file(
       self.file_name, self.unit_cell, self.space_group_info, sites)
 
-def multi_sdb_parser(lines):
+def multi_sdb_parser(lines, file_name=None):
   # Parser for one or more cns sdb files.
   # Lines interpreted:
   #   {+ file: heavy_search_1.sdb +}
@@ -117,12 +117,25 @@ def multi_sdb_parser(lines):
   # Sites must be sorted.
   import re
   sdb_files = []
+  block_name = None
   p = 0
   for line in lines:
     m = re.search(r'\{\+\s+file:\s*(\S*)', line)
     if (m):
+      block_name = m.group(1)
+    m = re.search(
+      r'\{\-\s+begin\s+block\s+parameter\s+definition\s+\-\}', line)
+    if (m):
+      if (block_name is None):
+        i = len(sdb_files) + 1
+        if (p): i += 1
+        if (file_name is None):
+          block_name = "block_%d" % i
+        else:
+          block_name = file_name + "_%d" % i
       if (p): sdb_files.append(p.as_sdb_sites())
-      p = raw_parameters(m.group(1))
+      p = raw_parameters(block_name)
+      block_name = None
     if (not p): continue
     m = re.match(  r'sg=\s*(\S+)\s*a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)'
                  + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)',
@@ -160,7 +173,7 @@ def run(args):
     f = open(file_name, "r")
     lines = f.readlines()
     f.close()
-    sdb_files = multi_sdb_parser(lines)
+    sdb_files = multi_sdb_parser(lines, file_name)
     for sdb in sdb_files:
       if (unit_cell is not None): sdb.unit_cell = unit_cell
       print "file:", sdb.file_name
