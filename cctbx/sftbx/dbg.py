@@ -57,25 +57,25 @@ def print_structure_factors(SgInfo,
   fft = fftbx.real_to_complex_3d(grid_logical)
   quality_factor = 100
   u_extra = sftbx.calc_u_extra(max_q, grid_resolution_factor, quality_factor)
-  u_extra = adptbx.B_as_U(20) # XXX
-  wing_cutoff = 1.e-7
-  exp_table_one_over_step_size = 0
+  if (0):
+    u_extra = adptbx.B_as_U(20)
+  wing_cutoff = 1.e-3
+  exp_table_one_over_step_size = -100
   sampled_density = sftbx.sampled_model_density(
     xtal.UnitCell, xtal.Sites,
-    max_q, grid_resolution_factor, u_extra,
     fft.Nreal(), fft.Mreal(),
-    wing_cutoff, exp_table_one_over_step_size)
+    u_extra, wing_cutoff, exp_table_one_over_step_size)
+  print "u_extra:", sampled_density.u_extra(),
+  print "b_extra:", adptbx.U_as_B(sampled_density.u_extra())
+  if (1):
+    print "wing_cutoff:", sampled_density.wing_cutoff()
+    print "exp_table_one_over_step_size:", \
+      sampled_density.exp_table_one_over_step_size()
+    print "exp_table_size:", sampled_density.exp_table_size()
   tags = sftbx.grid_tags(fft.Nreal())
   sym_flags = sftbx.map_symmetry_flags(1)
   tags.build(xtal.SgInfo, sym_flags)
   sampled_density.apply_symmetry(tags)
-  if (0):
-    print "max_q:", sampled_density.max_q()
-    print "grid_resolution_factor:", sampled_density.grid_resolution_factor()
-    print "quality_factor:", sampled_density.quality_factor()
-    print "wing_cutoff:", sampled_density.wing_cutoff()
-    print "u_extra:", sampled_density.u_extra()
-  print "b_extra:", adptbx.U_as_B(sampled_density.u_extra())
   map = sampled_density.map_as_shared()
   map_stats = shared.statistics(map)
   if (0):
@@ -257,7 +257,7 @@ def run():
     "Anisotropic",
     "cns",
   ))
-  if (not Flags.RandomSeed): debug_utils.set_random_seed(6) # XXX
+  if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   if (not (Flags.Isotropic or Flags.Anisotropic)):
     Flags.Isotropic = 1
     # XXX Flags.Anisotropic = 1
