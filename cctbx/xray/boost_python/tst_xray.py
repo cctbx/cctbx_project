@@ -538,7 +538,7 @@ def exercise_minimization_apply_shifts():
   else:
     raise RuntimeError("Exception expected.")
 
-def exercise_minimization_add_restraints_site_gradients():
+def exercise_minimization_add_geometry_restraints_site_gradients():
   uc = uctbx.unit_cell((20, 20, 23))
   scatterers = flex.xray_scatterer((
     xray.scatterer("Si1", site=(0.01,0.02,0.3), fp=-1, fdp=2),
@@ -548,42 +548,42 @@ def exercise_minimization_add_restraints_site_gradients():
   gradient_flags = xray.ext.gradient_flags(
     0001, 00000, 00000, 00000, 00000, 00000)
   xray_gradients = flex.double(xrange(6))
-  restraints_site_gradients = flex.vec3_double([(1,-2,3),(-4,-5,6)])
-  xray.ext.minimization_add_restraints_site_gradients(
+  geometry_restraints_site_gradients = flex.vec3_double([(1,-2,3),(-4,-5,6)])
+  xray.ext.minimization_add_geometry_restraints_site_gradients(
     scatterers=scatterers,
     gradient_flags=gradient_flags,
     xray_gradients=xray_gradients,
-    restraints_site_gradients=restraints_site_gradients)
+    geometry_restraints_site_gradients=geometry_restraints_site_gradients)
   assert approx_equal(xray_gradients,
     [1,-1,5,-1,-1,11])
   gradient_flags = xray.ext.gradient_flags(
     0001, 0001, 0001, 0001, 0001, 0001)
   xray_gradients = flex.double(xrange(19))
-  xray.ext.minimization_add_restraints_site_gradients(
+  xray.ext.minimization_add_geometry_restraints_site_gradients(
     scatterers=scatterers,
     gradient_flags=gradient_flags,
     xray_gradients=xray_gradients,
-    restraints_site_gradients=restraints_site_gradients)
+    geometry_restraints_site_gradients=geometry_restraints_site_gradients)
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12,13,14,15,16,17,18])
   gradient_flags = xray.ext.gradient_flags(
     0001, 0001, 00000, 0001, 0001, 0001)
   xray_gradients = flex.double(xrange(13))
-  xray.ext.minimization_add_restraints_site_gradients(
+  xray.ext.minimization_add_geometry_restraints_site_gradients(
     scatterers=scatterers,
     gradient_flags=gradient_flags,
     xray_gradients=xray_gradients,
-    restraints_site_gradients=restraints_site_gradients)
+    geometry_restraints_site_gradients=geometry_restraints_site_gradients)
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,5,6,3,3,15,10,11,12])
   gradient_flags = xray.ext.gradient_flags(
     0001, 00000, 0001, 0001, 00000, 0001)
   xray_gradients = flex.double(xrange(16))
-  xray.ext.minimization_add_restraints_site_gradients(
+  xray.ext.minimization_add_geometry_restraints_site_gradients(
     scatterers=scatterers,
     gradient_flags=gradient_flags,
     xray_gradients=xray_gradients,
-    restraints_site_gradients=restraints_site_gradients)
+    geometry_restraints_site_gradients=geometry_restraints_site_gradients)
   assert approx_equal(xray_gradients,
     [1,-1,5,3,4,1,1,13,8,9,10,11,12,13,14,15])
 
@@ -612,7 +612,7 @@ def run():
   exercise_targets()
   exercise_sampled_model_density()
   exercise_minimization_apply_shifts()
-  exercise_minimization_add_restraints_site_gradients()
+  exercise_minimization_add_geometry_restraints_site_gradients()
   exercise_asu_mappings()
   print "OK"
 

@@ -1,6 +1,6 @@
 #include <boost/python/module.hpp>
 
-namespace cctbx { namespace restraints { namespace boost_python {
+namespace cctbx { namespace geometry_restraints { namespace boost_python {
 
   void wrap_bond();
   void wrap_repulsion();
@@ -24,9 +24,9 @@ namespace {
   }
 
 } // namespace <anonymous>
-}}} // namespace cctbx::restraints::boost_python
+}}} // namespace cctbx::geometry_restraints::boost_python
 
-BOOST_PYTHON_MODULE(cctbx_restraints_ext)
+BOOST_PYTHON_MODULE(cctbx_geometry_restraints_ext)
 {
-  cctbx::restraints::boost_python::init_module();
+  cctbx::geometry_restraints::boost_python::init_module();
 }

@@ -9,9 +9,9 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <cctbx/restraints/angle.h>
+#include <cctbx/geometry_restraints/angle.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 namespace {
 
   struct angle_proxy_wrappers
@@ -92,4 +92,4 @@ namespace boost_python {
   void
   wrap_angle() { wrap_all(); }
 
-}}} // namespace cctbx::restraints::boost_python
+}}} // namespace cctbx::geometry_restraints::boost_python

@@ -1,11 +1,11 @@
-#ifndef CCTBX_RESTRAINTS_BOND_H
-#define CCTBX_RESTRAINTS_BOND_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_BOND_H
+#define CCTBX_GEOMETRY_RESTRAINTS_BOND_H
 
-#include <cctbx/restraints/utils.h>
-#include <cctbx/restraints/asu_cache.h>
-#include <cctbx/restraints/sorted_asu_proxies.h>
+#include <cctbx/geometry_restraints/utils.h>
+#include <cctbx/geometry_restraints/asu_cache.h>
+#include <cctbx/geometry_restraints/sorted_asu_proxies.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 
   struct bond_params
   {
@@ -380,6 +380,6 @@ namespace cctbx { namespace restraints {
     return result;
   }
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_RESTRAINTS_BOND_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_BOND_H

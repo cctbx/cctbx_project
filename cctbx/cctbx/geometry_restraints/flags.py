@@ -21,7 +21,7 @@ class flags:
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "restraints.manager.flags:"
+    print >> f, "geometry_restraints.manager.flags:"
     print >> f, "  bond:", self.bond
     print >> f, "  repulsion:", self.repulsion
     print >> f, "  angle:", self.angle

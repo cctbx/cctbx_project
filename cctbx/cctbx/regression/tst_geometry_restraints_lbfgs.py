@@ -1,8 +1,8 @@
 import iotbx.pdb
 from iotbx.pymol import pml_stick, pml_write
-from cctbx import restraints
-from cctbx.restraints.manager import manager as restraints_manager
-from cctbx.restraints.lbfgs import lbfgs as restraints_lbfgs
+from cctbx import geometry_restraints
+from cctbx.geometry_restraints.manager import manager as restraints_manager
+from cctbx.geometry_restraints.lbfgs import lbfgs as restraints_lbfgs
 from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
@@ -20,13 +20,13 @@ def exercise(verbose=0):
   sites_cart_manual = flex.vec3_double([
     (1,3,0), (2,3,0), (3,2,0), (3,1,0), (4,1,0), (3,4,0), (4,3,0), (5,3,0),
     (6,2,0), (7,2,0), (8,3,0), (7,4,0), (6,4,0), (7,5,0), (6,6,0), (8,6,0)])
-  bond_proxies = restraints.bond_sorted_asu_proxies(asu_mappings=None)
+  bond_proxies = geometry_restraints.bond_sorted_asu_proxies(asu_mappings=None)
   for i_seqs in [(0,1),(1,2),(2,3),(3,4),(1,5),(2,6),(5,6),
                  (6,7),(7,8),(8,9),(9,10),(10,11),(11,12),
                  (12,7),(11,13),(13,14),(14,15),(15,13)]:
-    bond_proxies.process(restraints.bond_simple_proxy(
+    bond_proxies.process(geometry_restraints.bond_simple_proxy(
       i_seqs=i_seqs, distance_ideal=distance_ideal, weight=100))
-  angle_proxies = restraints.shared_angle_proxy()
+  angle_proxies = geometry_restraints.shared_angle_proxy()
   for i_seqs,angle_ideal in [[(0,1,2),135],
                              [(0,1,5),135],
                              [(1,2,3),135],
@@ -53,7 +53,7 @@ def exercise(verbose=0):
                              [(13,15,14),60],
                              [(15,14,13),60],
                              [(14,13,15),60]]:
-    angle_proxies.append(restraints.angle_proxy(
+    angle_proxies.append(geometry_restraints.angle_proxy(
       i_seqs=i_seqs, angle_ideal=angle_ideal, weight=1))
   if (0 or verbose):
     f = open("manual.pdb", "w")
@@ -63,7 +63,7 @@ def exercise(verbose=0):
     f.close()
   sites_cart = sites_cart_manual.deep_copy()
   assert bond_proxies.asu.size() == 0
-  bond_params_table = restraints.extract_bond_params(
+  bond_params_table = geometry_restraints.extract_bond_params(
     n_seq=sites_cart.size(),
     bond_simple_proxies=bond_proxies.simple)
   manager = restraints_manager(
@@ -71,7 +71,7 @@ def exercise(verbose=0):
     angle_proxies=angle_proxies)
   minimized = restraints_lbfgs(
     sites_cart=sites_cart,
-    restraints_manager=manager,
+    geometry_restraints_manager=manager,
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
       max_iterations=1000))
   sites_cart_minimized_1 = sites_cart.deep_copy()
@@ -81,10 +81,10 @@ def exercise(verbose=0):
       print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
     print >> f, "END"
     f.close()
-  bond_deltas = restraints.bond_deltas(
+  bond_deltas = geometry_restraints.bond_deltas(
     sites_cart=sites_cart_minimized_1,
     proxies=bond_proxies.simple)
-  angle_deltas = restraints.angle_deltas(
+  angle_deltas = geometry_restraints.angle_deltas(
     sites_cart=sites_cart_minimized_1,
     proxies=angle_proxies)
   if (0 or verbose):
@@ -120,23 +120,23 @@ def exercise(verbose=0):
   asu_mappings = xray_structure.asu_mappings(
     buffer_thickness=nonbonded_cutoff)
   bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-  restraints.add_pairs(bond_asu_table, bond_proxies.simple)
+  geometry_restraints.add_pairs(bond_asu_table, bond_proxies.simple)
   shell_asu_tables = crystal.coordination_sequences_shell_asu_tables(
     pair_asu_table=bond_asu_table,
     n_shells=3)
   shell_sym_tables = [shell_asu_table.extract_pair_sym_table()
     for shell_asu_table in shell_asu_tables]
-  bond_params_table = restraints.extract_bond_params(
+  bond_params_table = geometry_restraints.extract_bond_params(
     n_seq=sites_cart.size(),
     bond_simple_proxies=bond_proxies.simple)
   atom_energy_types = flex.std_string(sites_cart.size(), "Default")
-  repulsion_params = restraints.repulsion_params(
+  repulsion_params = geometry_restraints.repulsion_params(
     factor_1_4_interactions=vdw_1_4_factor,
     const_shrink_1_4_interactions=0,
     default_distance=default_vdw_distance)
   repulsion_params.distance_table.setdefault(
     "Default")["Default"] = default_vdw_distance
-  pair_proxies = restraints.pair_proxies(
+  pair_proxies = geometry_restraints.pair_proxies(
     repulsion_params = repulsion_params,
     repulsion_types=atom_energy_types,
     bond_params_table=bond_params_table,
@@ -156,7 +156,7 @@ def exercise(verbose=0):
     print "pair_proxies.n_nonbonded:", pair_proxies.n_nonbonded
     print "pair_proxies.n_1_4:      ", pair_proxies.n_1_4
     print "min_distance_nonbonded: %.2f" % flex.min(
-      restraints.repulsion_deltas(
+      geometry_restraints.repulsion_deltas(
         sites_cart=sites_cart,
         sorted_asu_proxies=pair_proxies.repulsion_proxies))
   vdw_1_sticks = []
@@ -210,7 +210,7 @@ def exercise(verbose=0):
         print "len(vdw_2):", pair_proxies.n_1_4
       minimized = restraints_lbfgs(
         sites_cart=sites_cart,
-        restraints_manager=manager,
+        geometry_restraints_manager=manager,
         lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
           max_iterations=1000))
       if (0 or verbose):

@@ -1,7 +1,7 @@
 // Documentation only. Do not include.
 namespace cctbx {
 
-//! Stereochemistry restraints (bond, angle, etc.).
-namespace restraints {}
+//! Geometry restraints (bond, angle, etc.).
+namespace geometry_restraints {}
 
 } // namespace cctbx

@@ -1,4 +1,4 @@
-from cctbx.restraints import distance_least_squares
+from cctbx.geometry_restraints import distance_least_squares
 from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 import sys

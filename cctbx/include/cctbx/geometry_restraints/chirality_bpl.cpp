@@ -9,14 +9,14 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <cctbx/restraints/planarity.h>
+#include <cctbx/geometry_restraints/chirality.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 namespace {
 
-  struct planarity_proxy_wrappers
+  struct chirality_proxy_wrappers
   {
-    typedef planarity_proxy w_t;
+    typedef chirality_proxy w_t;
 
     static void
     wrap()
@@ -24,51 +24,53 @@ namespace {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("planarity_proxy", no_init)
-        .def(init<
-          af::shared<std::size_t> const&,
-          af::shared<double> const&>(
-            (arg_("i_seqs"), arg_("weights"))))
+      class_<w_t>("chirality_proxy", no_init)
+        .def(init<af::tiny<unsigned, 4> const&, double, bool, double>(
+          (arg_("i_seqs"),
+           arg_("volume_ideal"),
+           arg_("both_signs"),
+           arg_("weight"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
-        .add_property("weights", make_getter(&w_t::weights, rbv()))
+        .def_readonly("volume_ideal", &w_t::volume_ideal)
+        .def_readonly("both_signs", &w_t::both_signs)
+        .def_readonly("weight", &w_t::weight)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
-          "shared_planarity_proxy");
+          "shared_chirality_proxy");
       }
     }
   };
 
-  struct planarity_wrappers
+  struct chirality_wrappers
   {
-    typedef planarity w_t;
+    typedef chirality w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
-      typedef return_value_policy<copy_const_reference> ccr;
-      typedef return_internal_reference<> rir;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("planarity", no_init)
-        .def(init<
-          af::shared<scitbx::vec3<double> > const&,
-          af::shared<double> const&>(
-            (arg_("sites"), arg_("weights"))))
+      class_<w_t>("chirality", no_init)
+        .def(init<af::tiny<scitbx::vec3<double>, 4> const&,
+                  double, bool, double>(
+          (arg_("sites"),
+           arg_("volume_ideal"),
+           arg_("both_signs"),
+           arg_("weight"))))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
-                  planarity_proxy const&>(
+                  chirality_proxy const&>(
           (arg_("sites_cart"), arg_("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
-        .add_property("weights", make_getter(&w_t::weights, rbv()))
-        .def("deltas", &w_t::deltas, ccr())
+        .def_readonly("volume_ideal", &w_t::volume_ideal)
+        .def_readonly("both_signs", &w_t::both_signs)
+        .def_readonly("weight", &w_t::weight)
+        .def_readonly("volume_model", &w_t::volume_model)
+        .def_readonly("delta_sign", &w_t::delta_sign)
+        .def_readonly("delta", &w_t::delta)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
-        .def("normal", &w_t::normal)
-        .def("lambda_min", &w_t::lambda_min)
-        .def("center_of_mass", &w_t::center_of_mass, ccr())
-        .def("residual_tensor", &w_t::residual_tensor, ccr())
-        .def("eigensystem", &w_t::eigensystem, rir())
       ;
     }
   };
@@ -78,13 +80,13 @@ namespace {
   {
     using namespace boost::python;
     typedef boost::python::arg arg_; // gcc 2.96 workaround
-    planarity_proxy_wrappers::wrap();
-    planarity_wrappers::wrap();
-    def("planarity_deltas_rms", planarity_deltas_rms,
+    chirality_proxy_wrappers::wrap();
+    chirality_wrappers::wrap();
+    def("chirality_deltas", chirality_deltas,
       (arg_("sites_cart"), arg_("proxies")));
-    def("planarity_residuals", planarity_residuals,
+    def("chirality_residuals", chirality_residuals,
       (arg_("sites_cart"), arg_("proxies")));
-    def("planarity_residual_sum", planarity_residual_sum,
+    def("chirality_residual_sum", chirality_residual_sum,
       (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
   }
 
@@ -93,6 +95,6 @@ namespace {
 namespace boost_python {
 
   void
-  wrap_planarity() { wrap_all(); }
+  wrap_chirality() { wrap_all(); }
 
-}}} // namespace cctbx::restraints::boost_python
+}}} // namespace cctbx::geometry_restraints::boost_python

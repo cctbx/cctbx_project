@@ -9,9 +9,9 @@
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <cctbx/restraints/repulsion.h>
+#include <cctbx/geometry_restraints/repulsion.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 namespace {
 
   struct repulsion_params_wrappers
@@ -259,4 +259,4 @@ namespace boost_python {
   void
   wrap_repulsion() { wrap_all(); }
 
-}}} // namespace cctbx::boost_python
+}}} // namespace cctbx::geometry_restraints::boost_python

@@ -1,10 +1,10 @@
-#ifndef CCTBX_RESTRAINTS_REPULSION_H
-#define CCTBX_RESTRAINTS_REPULSION_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_REPULSION_H
+#define CCTBX_GEOMETRY_RESTRAINTS_REPULSION_H
 
-#include <cctbx/restraints/asu_cache.h>
-#include <cctbx/restraints/sorted_asu_proxies.h>
+#include <cctbx/geometry_restraints/asu_cache.h>
+#include <cctbx/geometry_restraints/sorted_asu_proxies.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 
   typedef std::map<std::string, double>
     repulsion_distance_dict;
@@ -443,6 +443,6 @@ namespace cctbx { namespace restraints {
     return result;
   }
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_RESTRAINTS_REPULSION_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_REPULSION_H

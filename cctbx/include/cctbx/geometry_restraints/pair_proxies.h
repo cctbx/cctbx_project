@@ -1,11 +1,11 @@
-#ifndef CCTBX_RESTRAINTS_PAIR_PROXIES_H
-#define CCTBX_RESTRAINTS_PAIR_PROXIES_H
+#ifndef CCTBX_GEOMETRY_RESTRAINTS_PAIR_PROXIES_H
+#define CCTBX_GEOMETRY_RESTRAINTS_PAIR_PROXIES_H
 
-#include <cctbx/restraints/bond.h>
-#include <cctbx/restraints/repulsion.h>
+#include <cctbx/geometry_restraints/bond.h>
+#include <cctbx/geometry_restraints/repulsion.h>
 #include <cctbx/crystal/pair_tables.h>
 
-namespace cctbx { namespace restraints {
+namespace cctbx { namespace geometry_restraints {
 
   void
   add_pairs(
@@ -44,7 +44,7 @@ namespace cctbx { namespace restraints {
       }
 
       pair_proxies(
-        restraints::repulsion_params const& repulsion_params,
+        geometry_restraints::repulsion_params const& repulsion_params,
         af::const_ref<std::string> const& repulsion_types,
         af::const_ref<bond_params_dict> const& bond_params_table,
         std::vector<crystal::pair_asu_table<> > const& shell_asu_tables,
@@ -134,7 +134,7 @@ namespace cctbx { namespace restraints {
 
       repulsion_asu_proxy
       make_repulsion_asu_proxy(
-        restraints::repulsion_params const& repulsion_params,
+        geometry_restraints::repulsion_params const& repulsion_params,
         af::const_ref<std::string> const& repulsion_types,
         direct_space_asu::asu_mapping_index_pair const& pair,
         bool is_1_4_interaction)
@@ -160,10 +160,10 @@ namespace cctbx { namespace restraints {
               repulsion_params, dict_entry->second, is_1_4_interaction));
           }
         }
-        restraints::repulsion_radius_table::const_iterator
+        geometry_restraints::repulsion_radius_table::const_iterator
           radius_i = repulsion_params.radius_table.find(rep_type_i);
         if (radius_i != repulsion_params.radius_table.end()) {
-          restraints::repulsion_radius_table::const_iterator
+          geometry_restraints::repulsion_radius_table::const_iterator
             radius_j = repulsion_params.radius_table.find(rep_type_j);
           if (radius_j != repulsion_params.radius_table.end()) {
             return repulsion_asu_proxy(pair, get_repulsion_distance(
@@ -186,7 +186,7 @@ namespace cctbx { namespace restraints {
 
       double
       get_repulsion_distance(
-        restraints::repulsion_params const& repulsion_params,
+        geometry_restraints::repulsion_params const& repulsion_params,
         double distance,
         bool is_1_4_interaction)
       {
@@ -206,6 +206,6 @@ namespace cctbx { namespace restraints {
       unsigned n_unknown_repulsion_type_pairs;
   };
 
-}} // namespace cctbx::restraints
+}} // namespace cctbx::geometry_restraints
 
-#endif // CCTBX_RESTRAINTS_PAIR_PROXIES_H
+#endif // CCTBX_GEOMETRY_RESTRAINTS_PAIR_PROXIES_H

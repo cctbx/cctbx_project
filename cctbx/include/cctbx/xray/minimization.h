@@ -78,13 +78,15 @@ namespace cctbx { namespace xray { namespace minimization {
   template <typename XrayScattererType,
             typename FloatType>
   void
-  add_restraints_site_gradients(
+  add_geometry_restraints_site_gradients(
     af::const_ref<XrayScattererType> const& scatterers,
     xray::gradient_flags const& gradient_flags,
     af::ref<FloatType> const& xray_gradients,
-    af::const_ref<scitbx::vec3<FloatType> > const& restraints_site_gradients)
+    af::const_ref<scitbx::vec3<FloatType> > const&
+      geometry_restraints_site_gradients)
   {
-    CCTBX_ASSERT(restraints_site_gradients.size() == scatterers.size());
+    CCTBX_ASSERT(
+      geometry_restraints_site_gradients.size() == scatterers.size());
     CCTBX_ASSERT(gradient_flags.site == true);
     BOOST_STATIC_ASSERT(packing_order_convention == 1);
     scitbx::af::block_iterator<FloatType> next_xray_gradients(
@@ -92,8 +94,9 @@ namespace cctbx { namespace xray { namespace minimization {
     for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
       XrayScattererType const& sc = scatterers[i_sc];
       FloatType* xg = next_xray_gradients(3);
-      scitbx::vec3<FloatType> const& rsg = restraints_site_gradients[i_sc];
-      for(std::size_t i=0;i<3;i++) xg[i] += rsg[i];
+      scitbx::vec3<FloatType> const&
+        grsg = geometry_restraints_site_gradients[i_sc];
+      for(std::size_t i=0;i<3;i++) xg[i] += grsg[i];
       if (!sc.anisotropic_flag) {
         if (gradient_flags.u_iso) {
           next_xray_gradients();

@@ -1,4 +1,4 @@
-from cctbx import restraints
+from cctbx import geometry_restraints
 from iotbx.pymol import pml_stick, pml_write
 import iotbx.pdb
 from cctbx.array_family import flex
@@ -42,12 +42,12 @@ def finite_differences(sites, residual_obj, eps=1.e-6):
 def exercise_bond():
   for i_trial in xrange(5):
     sites = random_sites(n_sites=2)
-    b = restraints.bond(sites=sites, distance_ideal=0, weight=0)
+    b = geometry_restraints.bond(sites=sites, distance_ideal=0, weight=0)
     distance_ideal = b.distance_model
     sigma = distance_ideal * 0.01
     weight = 1 / sigma**2
     residual_obj = residual_functor(
-      restraint_type=restraints.bond,
+      restraint_type=geometry_restraints.bond,
       distance_ideal=distance_ideal,
       weight=weight)
     for i_pert in xrange(5):
@@ -58,7 +58,7 @@ def exercise_bond():
         for site in sites:
           shift = col([random.uniform(-3,3)*sigma for i in xrange(3)])
           sites_mod.append(site+shift)
-      b = restraints.bond(
+      b = geometry_restraints.bond(
         sites=sites_mod, distance_ideal=distance_ideal, weight=weight)
       ag = b.gradients()
       fg = finite_differences(sites_mod, residual_obj)
@@ -68,10 +68,10 @@ def exercise_bond():
 def exercise_repulsion():
   for i_trial in xrange(5):
     sites = random_sites(n_sites=2)
-    r = restraints.repulsion(sites=sites, vdw_distance=0)
+    r = geometry_restraints.repulsion(sites=sites, vdw_distance=0)
     vdw_distance = r.delta
     residual_obj = residual_functor(
-      restraint_type=restraints.repulsion,
+      restraint_type=geometry_restraints.repulsion,
       vdw_distance=vdw_distance)
     for i_pert in xrange(5):
       if (i_pert == 0):
@@ -81,7 +81,9 @@ def exercise_repulsion():
         for site in sites:
           shift = col([random.uniform(-.1,.1)*vdw_distance for i in xrange(3)])
           sites_mod.append(site+shift)
-      r = restraints.repulsion(sites=sites_mod, vdw_distance=vdw_distance)
+      r = geometry_restraints.repulsion(
+        sites=sites_mod,
+        vdw_distance=vdw_distance)
       ag = r.gradients()
       fg = finite_differences(sites_mod, residual_obj)
       for analytical,finite in zip(ag,fg):
@@ -91,7 +93,7 @@ def exercise_repulsion():
   for i_step in xrange(100):
     delta = i_step/50.
     sites[1][0] = delta
-    r = restraints.repulsion(
+    r = geometry_restraints.repulsion(
       sites=[col(site) for site in sites],
       vdw_distance=vdw_distance)
     assert approx_equal(delta, r.delta)
@@ -112,14 +114,14 @@ def exercise_angle():
     else:
       while 1:
         sites = random_sites(n_sites=3)
-        angle_ideal = restraints.angle(
+        angle_ideal = geometry_restraints.angle(
           sites, angle_ideal=0, weight=0).angle_model
         if (angle_ideal > 10):
           break
     sigma = angle_ideal * 0.1
     weight = 1 / sigma**2
     residual_obj = residual_functor(
-      restraint_type=restraints.angle,
+      restraint_type=geometry_restraints.angle,
       angle_ideal=angle_ideal,
       weight=weight)
     for i_pert in xrange(5):
@@ -130,7 +132,7 @@ def exercise_angle():
         for site in sites:
           shift = col([random.uniform(3,3)*sigma for i in xrange(3)])
           sites_mod.append(site+shift)
-      a = restraints.angle(
+      a = geometry_restraints.angle(
         sites=sites_mod, angle_ideal=angle_ideal, weight=weight)
       if (eps != 0):
         ag = a.gradients()
@@ -180,7 +182,7 @@ def random_sites(n_sites, max_coordinate=10, min_distance=0.5,
 
 def exercise_dihedral_core(sites, angle_ideal, angle_esd, periodicity,
                                   angle_model):
-  dih = restraints.dihedral(
+  dih = geometry_restraints.dihedral(
     sites=sites,
     angle_ideal=angle_ideal,
     weight=1./angle_esd**2,
@@ -189,7 +191,7 @@ def exercise_dihedral_core(sites, angle_ideal, angle_esd, periodicity,
     assert approx_equal(angle_model, dih.angle_model)
   ag = flex.vec3_double(dih.gradients())
   residual_obj = residual_functor(
-    restraint_type=restraints.dihedral,
+    restraint_type=geometry_restraints.dihedral,
     angle_ideal=dih.angle_ideal,
     weight=dih.weight,
     periodicity=periodicity)
@@ -207,7 +209,10 @@ def exercise_dihedral():
     if (flip != 0):
       sites = [sites[i] for i in [0,2,1,3]]
       angle_ideal *= -1
-    dih = restraints.dihedral(sites=sites, angle_ideal=angle_ideal, weight=1)
+    dih = geometry_restraints.dihedral(
+      sites=sites,
+      angle_ideal=angle_ideal,
+      weight=1)
     assert approx_equal(dih.angle_ideal, angle_ideal)
     assert approx_equal(dih.angle_model, angle_ideal)
     assert approx_equal(dih.delta, 0)
@@ -240,14 +245,14 @@ def exercise_chirality(verbose=0):
     (28.049, 9.675, 3.486),
     (28.183, 11.269, 1.625),
     (28.085, 8.759, 1.165)]]
-  chir = restraints.chirality(
+  chir = geometry_restraints.chirality(
     sites=sites,
     volume_ideal=-2.48,
     both_signs=00000,
     weight=1)
   assert approx_equal(chir.volume_model, -2.411548478)
   assert approx_equal(chir.residual(), 0.00468561086412)
-  dih = restraints.dihedral(
+  dih = geometry_restraints.dihedral(
     sites=improper_permutation(sites),
     angle_ideal=35.26439,
     weight=1)
@@ -267,20 +272,20 @@ def exercise_chirality(verbose=0):
         shift = col([random.uniform(-.5,.5) for i in xrange(3)])
         sites_mod.append(site+shift)
       if (both_signs): volume_ideal = abs(volume_ideal)
-      c = restraints.chirality(
+      c = geometry_restraints.chirality(
         sites=sites_mod,
         volume_ideal=volume_ideal,
         both_signs=both_signs,
         weight=500*1/0.2**2)
       residual_obj = residual_functor(
-        restraint_type=restraints.chirality,
+        restraint_type=geometry_restraints.chirality,
         volume_ideal=c.volume_ideal,
         both_signs=c.both_signs,
         weight=c.weight)
       fg = finite_differences(sites_mod, residual_obj)
       ag = c.gradients()
       assert eps_eq(ag, fg, eps=1.e-4)
-      d = restraints.dihedral(
+      d = geometry_restraints.dihedral(
         sites=improper_permutation(sites_mod),
         angle_ideal=dih.angle_ideal,
         weight=750)
@@ -337,7 +342,7 @@ def exercise_planarity():
               f = 0.1
               pert = col([(random.random()-0.5)*f for i in xrange(3)])
               sites.append(rot*col(v)+shift+pert)
-        pl = restraints.planarity(sites=sites, weights=weights)
+        pl = geometry_restraints.planarity(sites=sites, weights=weights)
         n = col(pl.normal())
         gradients_analytical = pl.gradients()
         if (i_pert == 0):
@@ -347,7 +352,7 @@ def exercise_planarity():
             assert approx_equal(grad, [0,0,0])
         assert approx_equal(pl.residual(), pl.lambda_min())
         residual_obj = residual_functor(
-          restraint_type=restraints.planarity,
+          restraint_type=geometry_restraints.planarity,
           weights=weights)
         gradients_finite = finite_differences(sites, residual_obj)
         assert approx_equal(gradients_finite, gradients_analytical)
@@ -357,7 +362,7 @@ def exercise():
   exercise_repulsion()
   exercise_angle()
   exercise_dihedral()
-  exercise_chirality(verbose="--Verbose" in sys.argv[1:])
+  exercise_chirality(verbose="--verbose" in sys.argv[1:])
   exercise_planarity()
   print "OK"
 
