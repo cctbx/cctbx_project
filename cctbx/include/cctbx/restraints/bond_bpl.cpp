@@ -55,6 +55,7 @@ namespace {
         .def_readonly("pair", &w_t::pair)
         .def_readonly("distance_ideal", &w_t::distance_ideal)
         .def_readonly("weight", &w_t::weight)
+        .def("as_direct_proxy", &w_t::as_direct_proxy)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
@@ -111,8 +112,12 @@ namespace {
         .def("asu_mappings", &w_t::asu_mappings, ccr())
         .def("process", (bool(w_t::*)(bond_proxy const&)) &w_t::process,
           (arg_("proxy")))
-        .def("process", (bool(w_t::*)(bond_sym_proxy const&)) &w_t::process,
-          (arg_("proxy")))
+        .def("process",
+          (bool(w_t::*)(bond_sym_proxy const&)) &w_t::process,
+            (arg_("proxy")))
+        .def("push_back",
+          (void(w_t::*)(bond_sym_proxy const&)) &w_t::push_back,
+            (arg_("proxy")))
         .def("n_total", &w_t::n_total)
         .def_readonly("proxies", &w_t::proxies)
         .def_readonly("sym_proxies", &w_t::sym_proxies)
