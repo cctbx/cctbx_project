@@ -89,6 +89,7 @@ namespace {
         .def("__call__", getitem)
         .def("__getitem__", getitem)
         .def("make_tidy", &w_t::make_tidy)
+        .def("is_tidy", &w_t::is_tidy)
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
         .def("conventional_centring_type_symbol",

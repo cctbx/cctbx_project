@@ -295,6 +295,10 @@ namespace cctbx { namespace sgtbx {
        */
       void make_tidy();
 
+      //! True if make_tidy() was called before.
+      bool
+      is_tidy() const { return is_tidy_; }
+
       //! Tests for equality.
       /*! Internally, make_tidy() is used, followed by essentially a
           byte-wise comparison of the objects.<br>
