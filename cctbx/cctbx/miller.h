@@ -133,6 +133,24 @@ namespace cctbx {
       return os;
     }
 
+    //! Determine max(abs(H[i])), i=1..3, for a vector of Miller indices.
+    template <class MillerIndexVectorType>
+    boost::array<int, 3>
+    IndexRange(const MillerIndexVectorType& Indices)
+    {
+      boost::array<int, 3> result;
+      result.assign(0);
+      for(std::size_t i=0;i<Indices.size();i++) {
+        for(std::size_t j=0;j<3;j++) {
+          int m = Indices[i][j];
+          if (m < 0) m *= -1;
+          if (result[j] < m) result[j] = m;
+        }
+      }
+      for(std::size_t j=0;j<3;j++) result[j]++;
+      return result;
+    }
+
   } // namespace Miller
 } // namespace cctbx
 
