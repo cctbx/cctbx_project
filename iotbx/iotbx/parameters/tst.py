@@ -224,6 +224,15 @@ def exercise_syntax_errors():
   test_exception('a. 2',
     'Syntax error: improper definition name "a." (input line 1)')
 
+def exercise_deepcopy():
+  parameters = iotbx.parameters.parse(input_string="""\
+  a=1
+  b {
+    a=1
+  }
+""")
+  copy.deepcopy(parameters)
+
 def check_get(parameters, path, expected_out=None, with_substitution=False):
   out = StringIO()
   parameters.get(
@@ -550,6 +559,193 @@ z = 3
 y = 2
 x = 1
 """
+
+def exercise_fetch():
+  master = iotbx.parameters.parse(input_string="""\
+a=None
+  .expert_level=1
+b=None
+  .expert_level=2
+c
+{
+  a=None
+    .expert_level=3
+  b=None
+    .expert_level=4
+  c
+    .expert_level=5
+  {
+    x=1
+      .expert_level=6
+    y=2
+      .type="int"
+      .expert_level=7
+    t
+      .expert_level=8
+    {
+      r=3
+        .help="help"
+    }
+  }
+}
+t
+  .expert_level=9
+{
+  a=4
+    .expert_level=10
+  b=5
+    .expert_level=11
+}
+
+u=a *b c
+  .type=choice
+""")
+  source = iotbx.parameters.parse(input_string="""\
+a=7
+v
+{
+  x=y
+  y=3
+}
+c
+{
+  a=${v.x}
+  b=1
+  c
+  {
+    y=${v.y}
+    t
+    {
+      r=x
+    }
+  }
+}
+t
+{
+  a=1
+    .expert_level=-1
+  b=2
+}
+a=9
+t
+{
+  b=3
+    .expert_level=-2
+}
+u=e b f *c a g
+""")
+  fetched = master.fetch(source=source)
+  out = StringIO()
+  fetched.show(out=out, attributes_level=2)
+  assert out.getvalue() == """\
+a = 7
+  .expert_level = 1
+
+c
+{
+  a = y
+    .expert_level = 3
+  b = 1
+    .expert_level = 4
+
+  c
+    .expert_level = 5
+  {
+    y = 3
+      .type = "int"
+      .expert_level = 7
+
+    t
+      .expert_level = 8
+    {
+      r = x
+        .help = "help"
+    }
+
+    x = 1
+      .expert_level = 6
+  }
+}
+
+t
+  .expert_level = 9
+{
+  a = 1
+    .expert_level = 10
+  b = 2
+    .expert_level = 11
+}
+
+a = 9
+  .expert_level = 1
+
+t
+  .expert_level = 9
+{
+  b = 3
+    .expert_level = 11
+  a = 4
+    .expert_level = 10
+}
+
+u = a b *c
+  .type = "choice"
+b = None
+  .expert_level = 2
+"""
+  master = iotbx.parameters.parse(input_string="""\
+c=a *b c
+  .type=choice
+""")
+  source = iotbx.parameters.parse(input_string="""\
+c=a *d c
+""")
+  try: fetched = master.fetch(sources=[source])
+  except RuntimeError, e:
+    assert str(e) == "Not a possible choice: *d (input line 1)"
+  else: raise RuntimeError("Exception expected.")
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+v {
+  x=y
+}
+c {
+  a=${v.x}
+}
+v {
+  x=z
+}
+""")
+  out = StringIO()
+  parameters.fetch(source=parameters).show(out=out)
+  assert out.getvalue() == """\
+v
+{
+  x = y
+}
+
+c
+{
+  a = y
+}
+
+v
+{
+  x = z
+}
+"""
+  parameters = iotbx.parameters.parse(input_string="""\
+c {
+  a=${v.x}
+}
+v {
+  x=y
+}
+""")
+  try: parameters.fetch(source=parameters)
+  except RuntimeError, e:
+    assert str(e) == 'Undefined variable: $v.x (input line 2)'
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_extract():
   parameters = iotbx.parameters.parse(input_string="""\
@@ -1038,213 +1234,17 @@ s {
   assert extracted.s[0].a == 1
   assert extracted.s[1].a == 3
 
-def exercise_deepcopy():
-  parameters = iotbx.parameters.parse(input_string="""\
-  a=1
-  b {
-    a=1
-  }
-""")
-  copy.deepcopy(parameters)
-
-def exercise_fetch():
-  master = iotbx.parameters.parse(input_string="""\
-a=None
-  .expert_level=1
-b=None
-  .expert_level=2
-c
-{
-  a=None
-    .expert_level=3
-  b=None
-    .expert_level=4
-  c
-    .expert_level=5
-  {
-    x=1
-      .expert_level=6
-    y=2
-      .type="int"
-      .expert_level=7
-    t
-      .expert_level=8
-    {
-      r=3
-        .help="help"
-    }
-  }
-}
-t
-  .expert_level=9
-{
-  a=4
-    .expert_level=10
-  b=5
-    .expert_level=11
-}
-
-u=a *b c
-  .type=choice
-""")
-  source = iotbx.parameters.parse(input_string="""\
-a=7
-v
-{
-  x=y
-  y=3
-}
-c
-{
-  a=${v.x}
-  b=1
-  c
-  {
-    y=${v.y}
-    t
-    {
-      r=x
-    }
-  }
-}
-t
-{
-  a=1
-    .expert_level=-1
-  b=2
-}
-a=9
-t
-{
-  b=3
-    .expert_level=-2
-}
-u=e b f *c a g
-""")
-  fetched = master.fetch(source=source)
-  out = StringIO()
-  fetched.show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
-a = 7
-  .expert_level = 1
-
-c
-{
-  a = y
-    .expert_level = 3
-  b = 1
-    .expert_level = 4
-
-  c
-    .expert_level = 5
-  {
-    y = 3
-      .type = "int"
-      .expert_level = 7
-
-    t
-      .expert_level = 8
-    {
-      r = x
-        .help = "help"
-    }
-
-    x = 1
-      .expert_level = 6
-  }
-}
-
-t
-  .expert_level = 9
-{
-  a = 1
-    .expert_level = 10
-  b = 2
-    .expert_level = 11
-}
-
-a = 9
-  .expert_level = 1
-
-t
-  .expert_level = 9
-{
-  b = 3
-    .expert_level = 11
-  a = 4
-    .expert_level = 10
-}
-
-u = a b *c
-  .type = "choice"
-b = None
-  .expert_level = 2
-"""
-  master = iotbx.parameters.parse(input_string="""\
-c=a *b c
-  .type=choice
-""")
-  source = iotbx.parameters.parse(input_string="""\
-c=a *d c
-""")
-  try: fetched = master.fetch(sources=[source])
-  except RuntimeError, e:
-    assert str(e) == "Not a possible choice: *d (input line 1)"
-  else: raise RuntimeError("Exception expected.")
-  #
-  parameters = iotbx.parameters.parse(input_string="""\
-v {
-  x=y
-}
-c {
-  a=${v.x}
-}
-v {
-  x=z
-}
-""")
-  out = StringIO()
-  parameters.fetch(source=parameters).show(out=out)
-  assert out.getvalue() == """\
-v
-{
-  x = y
-}
-
-c
-{
-  a = y
-}
-
-v
-{
-  x = z
-}
-"""
-  parameters = iotbx.parameters.parse(input_string="""\
-c {
-  a=${v.x}
-}
-v {
-  x=y
-}
-""")
-  try: parameters.fetch(source=parameters)
-  except RuntimeError, e:
-    assert str(e) == 'Undefined variable: $v.x (input line 2)'
-  else: raise RuntimeError("Exception expected.")
-
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
+  exercise_deepcopy()
   exercise_get_without_substitution()
   exercise_nested()
   exercise_get_with_substitution()
   exercise_include()
+  exercise_fetch()
   exercise_extract()
   exercise_format()
-  exercise_deepcopy()
-  exercise_fetch()
   print "OK"
 
 if (__name__ == "__main__"):
