@@ -32,7 +32,7 @@ class create_bin_sh_dispatcher:
 
 def create_python_execfile_dispatcher(source_file, target_file):
   f = open(target_file, "w")
-  print >> f, 'execfile("%s")' % source_file
+  print >> f, 'execfile(r"%s")' % source_file
   f.close()
 
 def create_driver(target_dir, package_name, source_dir, file_name):
