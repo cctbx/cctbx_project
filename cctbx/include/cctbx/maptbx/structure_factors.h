@@ -16,8 +16,27 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
   class to_map
   {
     public:
+      //! Default constructor.
       to_map() {}
 
+      //! C++ interface.
+      template <typename OtherFloatType>
+      to_map(
+        sgtbx::space_group const& space_group,
+        bool anomalous_flag,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<std::complex<OtherFloatType> > const& structure_factors,
+        af::int3 const& n_real,
+        af::c_grid_padded<3> const& map_grid,
+        bool conjugate_flag)
+      :
+        complex_map_(map_grid)
+      {
+        init(space_group, anomalous_flag, miller_indices, structure_factors,
+             n_real, conjugate_flag);
+      }
+
+      //! Python interface.
       template <typename OtherFloatType>
       to_map(
         sgtbx::space_group const& space_group,
@@ -30,7 +49,28 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       :
         complex_map_(af::c_grid_padded<3>(map_grid))
       {
-        CCTBX_ASSERT(map_grid.all().all_ge(map_grid.focus()));
+        init(space_group, anomalous_flag, miller_indices, structure_factors,
+             n_real, conjugate_flag);
+      }
+
+      af::versa<std::complex<FloatType>, af::c_grid_padded<3> >
+      complex_map() const { return complex_map_; }
+
+    protected:
+      af::versa<std::complex<FloatType>, af::c_grid_padded<3> > complex_map_;
+
+      template <typename OtherFloatType>
+      void
+      init(
+        sgtbx::space_group const& space_group,
+        bool anomalous_flag,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<std::complex<OtherFloatType> > const& structure_factors,
+        af::int3 const& n_real,
+        bool conjugate_flag)
+      {
+        CCTBX_ASSERT(complex_map_.accessor().all()
+             .all_ge(complex_map_.accessor().focus()));
         af::int3 map_grid_focus(complex_map_.accessor().focus());
         std::size_t count_n_real_not_equal_map_grid_focus = 0;
         for(std::size_t i=0;i<3;i++) {
@@ -55,12 +95,6 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
           }
         }
       }
-
-      af::versa<std::complex<FloatType>, af::c_grid_padded<3> >
-      complex_map() const { return complex_map_; }
-
-    protected:
-      af::versa<std::complex<FloatType>, af::c_grid_padded<3> > complex_map_;
   };
 
   //! Extracts structure factors from a 3-dimensional complex map.
