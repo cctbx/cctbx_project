@@ -630,6 +630,21 @@ namespace cctbx { namespace sgtbx {
       friend bool operator!=(const RTMx& lhs, const RTMx& rhs) {
         return !(lhs == rhs);
       }
+      /*! \brief Refine gridding such that each grid point is
+          mapped onto another grid point by the symmetry operation.
+       */
+      template <typename GridTupleType>
+      GridTupleType refine_gridding(const GridTupleType& grid) {
+        GridTupleType result;
+        for(int ir=0;ir<3;ir++) {
+          result[ir] = lcm(grid[ir], norm_denominator(m_T[ir], m_T.BF()));
+          for(int ic=0;ic<3;ic++) {
+            result[ir] = lcm(
+              result[ir], norm_denominator(m_R(ir, ic), grid[ic]));
+          }
+        }
+        return result;
+      }
       //! Output operator, mainly for debugging.
       /*! Use the member function as_xyz() for high-level formatting.
        */

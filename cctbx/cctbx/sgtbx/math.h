@@ -52,6 +52,10 @@ namespace cctbx { namespace sgtbx {
 
   int rationalize(double fVal, int& iVal, int BF);
 
+  inline int norm_denominator(int numerator, int denominator) {
+    return denominator / gcd(numerator, denominator);
+  }
+
   int iRowEchelonFormT(int *M, int mr, int mc, int *T, int tc);
   int iREBacksubst(const int *M, const int *V,
                    const int nr, const int nc,

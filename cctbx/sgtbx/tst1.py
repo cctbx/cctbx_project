@@ -122,6 +122,15 @@ for s in iter:
   Ff = SECf.StructureFactor((3,5,7))
   d = abs(Fg) - abs(Ff)
   assert d < 1.e-5
+  grid_sg = SgOps.refine_gridding()
+  grid_ss = sgtbx.StructureSeminvariant(SgOps).refine_gridding()
+  grid_sg_ss = SgOps.refine_gridding(grid_ss)
+  eucl = SgInfo.expandAddlGeneratorsOfEuclideanNormalizer(1, 1)
+  grid_eucl = eucl.refine_gridding(grid_ss)
+  print "Gridding SpaceGroup", grid_sg
+  print "Gridding StructureSeminvariant", grid_ss
+  print "Gridding SpaceGroup+StructureSeminvariant", grid_sg_ss
+  print "Gridding Euclidean normalizer", grid_eucl
 for p in enantiomorphic_pairs.keys():
   print sgtbx.SpaceGroupSymbols(p).Hermann_Mauguin(),
   print sgtbx.SpaceGroupSymbols(enantiomorphic_pairs[p]).Hermann_Mauguin()

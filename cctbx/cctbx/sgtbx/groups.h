@@ -152,6 +152,15 @@ namespace cctbx { namespace sgtbx {
           (unless NoExpand == true).
        */
       void expandSMx(const RTMx& NewSMx);
+      //! Add a vector of Seitz matrices to the space group.
+      /*! See also: expandSMx()
+       */
+      template <typename RTMxVectorType>
+      void expandSMxVector(const RTMxVectorType& SMxVector) {
+        for(std::size_t i=0;i<SMxVector.size();i++) {
+          expandSMx(SMxVector[i]);
+        }
+      }
 
       //! Add lattice translation vectors to the space group.
       /*! The lattice translation vectors corresponding to the
@@ -581,6 +590,28 @@ namespace cctbx { namespace sgtbx {
       SpaceGroupSymbols MatchTabulatedSettings() const;
       //! Convenience method for instantiating class SpaceGroupInfo.
       SpaceGroupInfo Info() const;
+      /*! \brief Refine gridding such that each grid point is
+          mapped onto another grid point by all symmetry operations.
+       */
+      template <typename GridTupleType>
+      GridTupleType refine_gridding(const GridTupleType& grid) const {
+        GridTupleType prev_grid = grid;
+        GridTupleType ref_grid = grid;
+        for (;;) {
+          for(int i=0;i<OrderZ();i++) {
+            ref_grid = operator()(i).refine_gridding(ref_grid);
+          }
+          if (prev_grid == ref_grid) break;
+          prev_grid = ref_grid;
+        }
+        return ref_grid;
+      }
+      //! Refine gridding starting with grid 1,1,1.
+      /*! See also: other overload.
+       */
+      boost::array<int, 3> refine_gridding() const {
+        return refine_gridding(array<int, 3>(1, 1, 1));
+      }
   };
 
   //! iostream output operator for class SpaceGroup.
@@ -653,6 +684,20 @@ namespace cctbx { namespace sgtbx {
        */
       std::vector<RTMx>
       getAddlGeneratorsOfEuclideanNormalizer(bool getK2L, bool getL2N) const;
+      /*! \brief Add the additional generators of the Euclidean normalizer
+          to the space group.
+       */
+      /*! See also: getAddlGeneratorsOfEuclideanNormalizer(),
+                    SpaceGroup::expandSMxVector()
+       */
+      SpaceGroup
+      expandAddlGeneratorsOfEuclideanNormalizer(bool useK2L, bool useL2N)
+      {
+        SpaceGroup result = SgOps();
+        result.expandSMxVector(
+          getAddlGeneratorsOfEuclideanNormalizer(useK2L, useL2N));
+        return result;
+      }
       //! Test for the 22 (11 pairs) enantiomorphic space groups.
       /*! A space group G is enantiomorphic if G and -I.G.-I have
           two different space group types. I is the unit matrix.<br>

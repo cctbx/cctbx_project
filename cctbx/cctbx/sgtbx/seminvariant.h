@@ -108,6 +108,29 @@ namespace cctbx { namespace sgtbx {
        */
       cctbx::fixcap_vector<int, 3>
       apply_mod(const Miller::Index& H) const;
+      /*! \brief Refine gridding such that each grid point is
+          mapped onto another grid point by the seminvariant
+          translations.
+       */
+      template <typename GridTupleType>
+      GridTupleType refine_gridding(const GridTupleType& grid) const {
+        GridTupleType ref_grid = grid;
+        for(int i_ss=0;i_ss<m_VM.size();i_ss++) {
+          const ssVM& ss = m_VM[i_ss];
+          if (ss.M != 0) {
+            for(int i=0;i<3;i++) {
+              ref_grid[i] = lcm(ref_grid[i], norm_denominator(ss.V[i], ss.M));
+            }
+          }
+        }
+        return ref_grid;
+      }
+      //! Refine gridding starting with grid 1,1,1.
+      /*! See also: other overload.
+       */
+      boost::array<int, 3> refine_gridding() const {
+        return refine_gridding(array<int, 3>(1, 1, 1));
+      }
 
     private:
       cctbx::fixcap_vector<ssVM, 3> m_VM;

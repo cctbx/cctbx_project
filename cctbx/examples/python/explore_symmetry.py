@@ -328,6 +328,20 @@ try:
     InTable = 0
   print
 
+  print "Grid factors implied by symmetries:"
+  grid_sg = SgOps.refine_gridding()
+  grid_ss = ss.refine_gridding()
+  EuclOps = SgInfo.expandAddlGeneratorsOfEuclideanNormalizer(1, 1)
+  grid_eucl = EuclOps.refine_gridding(grid_ss)
+  print "  Space group:", grid_sg
+  print "  Structure-seminvariant vectors and moduli:", grid_ss
+  print "  Euclidean normalizer:", grid_eucl
+  print
+  print "  All points of a grid over the unit cell are mapped"
+  print "  exactly onto other grid points only if the factors"
+  print "  shown above are factors of the grid."
+  print
+
 except RuntimeError, e:
   if (InTable): print "</table><pre>"
   print e
