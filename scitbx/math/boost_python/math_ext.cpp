@@ -68,6 +68,7 @@ namespace {
     def("bessel_i1_over_i0", (double(*)(double const&)) bessel::i1_over_i0);
     def("bessel_i0", (double(*)(double const&)) bessel::i0);
     def("bessel_i1", (double(*)(double const&)) bessel::i1);
+    def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
 
     eigensystem_real_symmetric_wrappers::wrap();
 

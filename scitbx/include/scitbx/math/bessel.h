@@ -58,17 +58,17 @@ namespace bessel {
     if (abs_x < 0) abs_x = -abs_x;
     f_t bessel_i0;
     if (abs_x/3.75 < 1.0) {
-          f_t y = x/3.75;
-          y *= y;
-          bessel_i0=1.0+y*(3.5156229+y*(3.0899424+y*(1.2067492+
-         y*(0.2659732+y*(0.0360768+y*0.0045813)))));
+       f_t y = x/3.75;
+       y *= y;
+       bessel_i0=1.0+y*(3.5156229+y*(3.0899424+y*(1.2067492+
+                 y*(0.2659732+y*(0.0360768+y*0.0045813)))));
     }
     else {
-          f_t y = 3.75/abs_x;
-          y=0.39894228+y*(0.01328592+y*(0.00225319+y*(-0.00157565+
-        y*(0.00916281+y*(-0.02057706+y*(0.02635537+
-        y*(-0.01647633+y*0.00392377)))))));
-      bessel_i0=y*std::exp(abs_x)/std::sqrt(abs_x);
+       f_t y = 3.75/abs_x;
+       y=0.39894228+y*(0.01328592+y*(0.00225319+y*(-0.00157565+
+         y*(0.00916281+y*(-0.02057706+y*(0.02635537+
+         y*(-0.01647633+y*0.00392377)))))));
+       bessel_i0=y*std::exp(abs_x)/std::sqrt(abs_x);
     }
     return bessel_i0;
   }
@@ -96,11 +96,37 @@ namespace bessel {
           +y*(0.163801e-2+y*(-0.1031555e-1+y*ans))));
       ans *= (std::exp(abs_x)/std::sqrt(abs_x));
   }
-  //return x < 0.0 ? -ans : ans;
   f_t result = ans;
   if (x < 0.0 && result > 0.0) return -result;
   return result;
 }
+
+  //! Calculates ln( I0(x) ).
+  template <typename FloatType>
+  FloatType
+  ln_of_i0(FloatType const& x)
+  {
+    typedef FloatType f_t;
+    f_t abs_x = x;
+    if (abs_x < 0) abs_x = -abs_x;
+    f_t bessel_lni0;
+    if (abs_x/3.75 < 1.0) {
+       f_t y = x/3.75;
+       y *= y;
+       bessel_lni0=1.0+y*(3.5156229+y*(3.0899424+y*(1.2067492+
+                 y*(0.2659732+y*(0.0360768+y*0.0045813)))));
+       bessel_lni0 = std::log(bessel_lni0);
+    }
+    else {
+       f_t y = 3.75/abs_x;
+       y=0.39894228+y*(0.01328592+y*(0.00225319+y*(-0.00157565+
+         y*(0.00916281+y*(-0.02057706+y*(0.02635537+
+         y*(-0.01647633+y*0.00392377)))))));
+       bessel_lni0 = std::log(y) + abs_x - 0.5*std::log(abs_x);
+    }
+    return bessel_lni0;
+  }
+
 
 }}} // namespace scitbx::math::bessel
 
