@@ -246,15 +246,7 @@ class cut(cut_expr_ops):
         return result
     raise RuntimeError("cut_plane normal vector is the null vector.")
 
-  def add_buffer(self, unit_cell, thickness):
+  def as_float_cut_plane(self):
     from cctbx.sgtbx.direct_space_asu import float_cut_plane
-    x_frac = [float(e) for e in self.get_point_in_plane()]
-    x_cart = matrix.col(unit_cell.orthogonalize(x_frac))
-    n_star = matrix.col([float(e) for e in self.n])
-    f_mx_tp = matrix.sqr(unit_cell.fractionalization_matrix()).transpose()
-    n_cart = f_mx_tp * n_star
-    n_cart = n_cart / abs(n_cart)
-    y_cart = x_cart - n_cart * thickness
-    y_frac = matrix.col(unit_cell.fractionalize(y_cart.elems))
-    c = -n_star.dot(y_frac)
-    return float_cut_plane(n_star.elems, c)
+    result = float_cut_plane(n=[float(e) for e in self.n], c=float(self.c))
+    return result
