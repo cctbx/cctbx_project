@@ -56,8 +56,8 @@ class structure(crystal.special_position_settings):
 
   def scattering_dict(self, custom_dict=None, d_min=None, table=None):
     assert table in [None, "n_gaussian", "it1992", "wk1995"]
-    if (table == "it1992"): assert d_min == 0 or d_min >= 1/4.
-    if (table == "wk1995"): assert d_min == 0 or d_min >= 1/12.
+    if (table == "it1992"): assert d_min in [0,None] or d_min >= 1/4.
+    if (table == "wk1995"): assert d_min in [0,None] or d_min >= 1/12.
     if (   self._scattering_dict_is_out_of_date
         or custom_dict is not None
         or d_min is not None

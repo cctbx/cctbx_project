@@ -18,8 +18,8 @@ class manager(crystal.symmetry):
                      symmetry_flags=None,
                      mandatory_grid_factors=None,
                      quality_factor=None, u_extra=None, b_extra=None,
-                     wing_cutoff=1.e-6,
-                     exp_table_one_over_step_size=-100,
+                     wing_cutoff=None,
+                     exp_table_one_over_step_size=None,
                      max_prime=5,
                      force_complex=00000,
                      electron_density_must_be_positive=0001,
@@ -36,6 +36,10 @@ class manager(crystal.symmetry):
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     quality_factor = quality_factor_from_any(
       d_min, grid_resolution_factor, quality_factor, u_extra, b_extra)
+    if (wing_cutoff is None):
+      wing_cutoff = 1.e-6
+    if (exp_table_one_over_step_size is None):
+      exp_table_one_over_step_size = -100
     del miller_set
     adopt_init_args(self, locals(), hide=0001)
     self._crystal_gridding = None
