@@ -1,0 +1,13 @@
+Metadata-Version: 1.0
+Name: Optik
+Version: 1.4.1
+Summary: Powerful, flexible, easy-to-use, command-line parsing library
+Home-page: http://optik.sourceforge.net/
+Author: Greg Ward
+Author-email: gward@python.net
+License: BSD
+Description: Optik is a powerful, flexible, extensible, easy-to-use
+        command-line parsing library for Python.  Using Optik, you
+        can add intelligent, sophisticated handling of command-line
+        options to your scripts with very little overhead.
+Platform: UNKNOWN
