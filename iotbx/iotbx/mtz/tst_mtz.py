@@ -5,7 +5,7 @@ def get_test_files(file):
   urllib.urlretrieve('http://cci.lbl.gov/build/'+file,file)
 
 def print_uc(uc):
-  for n in uc:
+  for n in uc.parameters():
     print "%10.4f"%n,
   print
 
