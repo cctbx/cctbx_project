@@ -183,6 +183,8 @@ class definition: # FUTURE definition(object)
         multiple=None,
         input_size=None,
         expert_level=None):
+    if (name != "include" and "include" in name.split(".")):
+      raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     self.name = name
     self.words = words
     self.is_disabled = is_disabled
@@ -476,6 +478,8 @@ class scope:
     introspection.adopt_init_args()
     self.attribute_names = self.__init__varnames__[5:]
     assert style in [None, "row", "column", "block", "page"]
+    if ("include" in name.split(".")):
+      raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
 

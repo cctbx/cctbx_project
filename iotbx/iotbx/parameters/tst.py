@@ -219,6 +219,12 @@ def exercise_syntax_errors():
     'Unexpected scope attribute: .foo (input line 2)')
   test_exception('a. 2',
     'Syntax error: improper definition name "a." (input line 1)')
+  test_exception('a.include=None',
+    'Reserved identifier: "include" (input line 1)')
+  test_exception('include {}',
+    'Reserved identifier: "include" (input line 1)')
+  test_exception('a.include.b.c {}',
+    'Reserved identifier: "include" (input line 1)')
 
 def exercise_deepcopy():
   parameters = iotbx.parameters.parse(input_string="""\
