@@ -31,6 +31,11 @@ namespace {
     site.set_Occ(Occ, SgOps);
   }
 
+  ex_xray_scatterer
+  xray_scatterer_copy(const ex_xray_scatterer& site) {
+    return site;
+  }
+
   fractional<double>
   py_least_squares_shift(
     const uctbx::UnitCell& ucell,
@@ -414,6 +419,8 @@ namespace {
       &ex_xray_scatterer::set_Uiso, "set_Uiso");
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor, "StructureFactor");
+    py_XrayScatterer.def(
+      xray_scatterer_copy, "copy");
 
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
