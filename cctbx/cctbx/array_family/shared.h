@@ -59,6 +59,11 @@ namespace cctbx { namespace af {
       {}
 #endif
 
+      // non-std: hook for versa::as_shared()
+      shared(const shared_plain<ElementType>& other)
+        : base_class(other)
+      {}
+
       // non-std: shallow copy semantics, weak reference
       shared(const shared<ElementType>& other, weak_ref_flag)
         : base_class(other, weak_ref_flag())

@@ -12,6 +12,7 @@
 #define CCTBX_ARRAY_FAMILY_VERSA_H
 
 #include <cctbx/array_family/versa_plain.h>
+#include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
 
@@ -118,6 +119,11 @@ namespace cctbx { namespace af {
       deep_copy() const {
         shared_plain<ElementType> c(this->begin(), this->end());
         return versa<ElementType, AccessorType>(c.handle(), this->m_accessor);
+      }
+
+      shared<ElementType>
+      as_shared() const {
+        return shared<ElementType>(*this);
       }
 
       versa<ElementType, AccessorType>
