@@ -123,7 +123,16 @@ namespace {
         .def("reserve", &w_t::reserve)
         .def("deep_copy", &w_t::deep_copy)
         .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
-        .def("select", &w_t::select, (arg_("indices")))
+        .def("select",
+          (site_symmetry_table(w_t::*)(
+            af::const_ref<std::size_t> const& ) const)
+              &w_t::select,
+          (arg_("selection")))
+        .def("select",
+          (site_symmetry_table(w_t::*)(
+            af::const_ref<bool> const& ) const)
+              &w_t::select,
+          (arg_("selection")))
       ;
     }
   };

@@ -139,6 +139,15 @@ def exercise_structure():
   assert list(xs1[:].special_position_indices()) == [1,3,4,5]
   xs1.add_scatterers(xs1.scatterers(), xs1.site_symmetry_table())
   assert list(xs1[:].special_position_indices()) == [1,3,4,5,7,9,10,11]
+  for selection in [flex.size_t([1,4,6]),
+                    flex.bool([False,True,False,False,True,False,
+                               True,False,False,False,False,False])]:
+    xs2 = xs1.select(selection=selection)
+    assert xs2.scatterers().size() == 3
+    assert list(xs2.special_position_indices()) == [0,1]
+    if (isinstance(selection, flex.bool)):
+      xs2 = xs1.select(selection=selection, negate=True)
+      assert xs2.scatterers().size() == 9
   xs2 = xs1[2::2]
   assert xs2.scatterers().size() == 5
   assert list(xs2[:].special_position_indices()) == [1,4]

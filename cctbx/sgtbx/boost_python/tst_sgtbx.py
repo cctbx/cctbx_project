@@ -944,13 +944,18 @@ def exercise_site_symmetry():
   assert list(tc.indices()) == [1,1,2,1,0,2]
   assert list(t.special_position_indices()) == [0,1,2,3]
   assert list(tc.special_position_indices()) == [0,1,2,3,5]
-  ts = tc.select(indices=flex.size_t([5,0,4,1]))
+  ts = tc.select(selection=flex.size_t([5,0,4,1]))
   assert list(ts.indices()) == [1,2,0,2]
   assert ts.get(0).special_op() == tc.get(5).special_op()
   assert ts.get(1).special_op() == tc.get(0).special_op()
   assert ts.get(2).special_op() == tc.get(4).special_op()
   assert ts.get(3).special_op() == tc.get(1).special_op()
-  ts = tc.select(indices=flex.size_t())
+  ts = tc.select(selection=flex.bool([True,True,False,False,True,True]))
+  assert ts.get(0).special_op() == tc.get(0).special_op()
+  assert ts.get(1).special_op() == tc.get(1).special_op()
+  assert ts.get(2).special_op() == tc.get(4).special_op()
+  assert ts.get(3).special_op() == tc.get(5).special_op()
+  ts = tc.select(selection=flex.size_t())
   assert ts.indices().size() == 0
   for i in xrange(tc.indices().size()):
     s = tc.get(i)
