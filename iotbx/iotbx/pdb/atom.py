@@ -1,3 +1,5 @@
+from iotbx import simple_parser
+from iotbx import simple_tokenizer
 from iotbx import wildcard
 from scitbx.array_family import flex
 from scitbx import stl
@@ -174,17 +176,36 @@ class attributes(labels):
         value = '"' + value.replace('"','\\"') + '"'
       print >> f, "%s%-12s" % (prefix, attr_name+":"), value
 
-def _get_map_string(map, pattern):
+def _get_map_string(map, pattern, wildcard_escape_char='\\'):
+  do_strip = False
+  do_upper = False
+  if (not isinstance(pattern, str)):
+    if (pattern.quote_char is None):
+      do_strip = True
+      do_upper = True
+      for c in pattern.value:
+        if (c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
+          do_upper = False
+          break
+    pattern = pattern.value
+    if (do_strip): pattern = pattern.strip()
+    if (do_upper): pattern = pattern.upper()
   result = []
   for key,value in map.items():
-    if (wildcard.is_match(string=key, pattern=pattern)):
+    if (do_strip): key = key.strip()
+    if (do_upper): key = key.upper()
+    if (wildcard.is_match(
+          string=key,
+          pattern=pattern,
+          escape_char=wildcard_escape_char)):
       result.append(value)
   return result
 
 class selection_cache:
 
-  def __init__(self, atom_attributes_list):
+  def __init__(self, atom_attributes_list, wildcard_escape_char='\\'):
     self.n_seq = len(atom_attributes_list)
+    self.wildcard_escape_char = wildcard_escape_char
     self.name = stl.map.stl_string_stl_vector_unsigned()
     self.altLoc = stl.map.stl_string_stl_vector_unsigned()
     self.resName = stl.map.stl_string_stl_vector_unsigned()
@@ -237,38 +258,84 @@ class selection_cache:
     return result
 
   def get_name(self, pattern):
-    return _get_map_string(map=self.name, pattern=pattern)
+    return _get_map_string(
+      map=self.name,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def get_altLoc(self, pattern):
-    return _get_map_string(map=self.altLoc, pattern=pattern)
+    return _get_map_string(
+      map=self.altLoc,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def get_resName(self, pattern):
-    return _get_map_string(map=self.resName, pattern=pattern)
+    return _get_map_string(
+      map=self.resName,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def get_chainID(self, pattern):
-    return _get_map_string(map=self.chainID, pattern=pattern)
+    return _get_map_string(
+      map=self.chainID,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def get_resSeq(self, i):
     result = self.resSeq.get(i, None)
     if (result is None): return []
     return [result]
 
+  def get_resSeq_range(self, i, j):
+    if (i is None): i = min(self.resSeq.keys())
+    if (j is None): j = max(self.resSeq.keys())
+    if (i > j):
+      raise RuntimeError("resSeq range with first index > last index.")
+    result = []
+    for i in xrange(i,j+1):
+      iselection = self.resSeq.get(i, None)
+      if (iselection is not None): result.append(iselection)
+    return result
+
   def get_iCode(self, pattern):
-    return _get_map_string(map=self.iCode, pattern=pattern)
+    return _get_map_string(
+      map=self.iCode,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def get_segID(self, pattern):
-    return _get_map_string(map=self.segID, pattern=pattern)
+    return _get_map_string(
+      map=self.segID,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def get_MODELserial(self, i):
     result = self.MODELserial.get(i, None)
     if (result is None): return []
     return [result]
 
+  def get_MODELserial_range(self, i, j):
+    if (i is None): i = min(self.MODELserial.keys())
+    if (j is None): j = max(self.MODELserial.keys())
+    if (i > j):
+      raise RuntimeError("MODELserial range with first index > last index.")
+    result = []
+    for i in xrange(i,j+1):
+      iselection = self.MODELserial.get(i, None)
+      if (iselection is not None): result.append(iselection)
+    return result
+
   def get_element(self, pattern):
-    return _get_map_string(map=self.element, pattern=pattern)
+    return _get_map_string(
+      map=self.element,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def get_charge(self, pattern):
-    return _get_map_string(map=self.charge, pattern=pattern)
+    return _get_map_string(
+      map=self.charge,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
   def union(self, iselections):
     return flex.union(
@@ -295,6 +362,9 @@ class selection_cache:
   def sel_resSeq(self, i):
     return self.union(iselections=self.get_resSeq(i=i))
 
+  def sel_resSeq_range(self, i, j):
+    return self.union(iselections=self.get_resSeq_range(i=i, j=j))
+
   def sel_iCode(self, pattern):
     return self.union(iselections=self.get_iCode(pattern=pattern))
 
@@ -304,11 +374,109 @@ class selection_cache:
   def sel_MODELserial(self, i):
     return self.union(iselections=self.get_MODELserial(i=i))
 
+  def sel_MODELserial_range(self, i, j):
+    return self.union(iselections=self.get_MODELserial_range(i=i, j=j))
+
   def sel_element(self, pattern):
     return self.union(iselections=self.get_element(pattern=pattern))
 
   def sel_charge(self, pattern):
     return self.union(iselections=self.get_charge(pattern=pattern))
+
+  def selection(self, string, contiguous_word_characters=None):
+    if (contiguous_word_characters is None):
+      contiguous_word_characters="ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+                                +"abcdefghijklmnopqrstuvwxyz" \
+                                +"0123456789" \
+                                +"_" \
+                                +"\\*?[]^+-:"
+    result_stack = []
+    infix = simple_tokenizer.split_into_words(
+      input_string=string,
+      contiguous_word_characters=contiguous_word_characters)
+    for word,word_stack in simple_parser.infix_as_postfix(words=infix):
+      if (word.quote_char is None and word.value == "not"):
+        assert len(result_stack) >= 1
+        arg = result_stack.pop()
+        result_stack.append(~arg)
+      elif (word.quote_char is None and word.value in ["and", "or"]):
+        assert len(result_stack) >= 2
+        rhs = result_stack.pop()
+        lhs = result_stack.pop()
+        if (word.value == "and"):
+          result_stack.append(lhs & rhs)
+        else:
+          result_stack.append(lhs | rhs)
+      elif (word.quote_char is None):
+        lword = word.value.lower()
+        if (lword == "name"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_name(pattern=word_stack.pop()))
+        elif (lword == "altloc"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_altLoc(pattern=word_stack.pop()))
+        elif (lword == "resname"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_resName(pattern=word_stack.pop()))
+        elif (lword == "chain"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_chainID(pattern=word_stack.pop()))
+        elif (lword in ["resseq", "model"]):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          arg = word_stack.pop()
+          if (arg.quote_char is not None): raise RuntimeError("Value error.")
+          i_colon_or_dash = arg.value.find(":")
+          if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
+          if (i_colon_or_dash < 0):
+            try: i = int(arg.value)
+            except ValueError: raise RuntimeError("Value error.")
+            if (lword == "resseq"):
+              result_stack.append(self.sel_resSeq(i=i))
+            else:
+              result_stack.append(self.sel_MODELserial(i=i))
+          else:
+            i,j = arg.value[:i_colon_or_dash], arg.value[i_colon_or_dash+1:]
+            if (len(i) == 0):
+              i = None
+            else:
+              try: i = int(i)
+              except ValueError: raise RuntimeError("Value error.")
+            if (len(j) == 0):
+              j = None
+            else:
+              try: j = int(j)
+              except ValueError: raise RuntimeError("Value error.")
+            if (lword == "resseq"):
+              result_stack.append(self.sel_resSeq_range(i=i, j=j))
+            else:
+              result_stack.append(self.sel_MODELserial_range(i=i, j=j))
+        elif (lword == "icode"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_iCode(pattern=word_stack.pop()))
+        elif (lword == "segid"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_segID(pattern=word_stack.pop()))
+        elif (lword == "element"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_element(pattern=word_stack.pop()))
+        elif (lword == "charge"):
+          if (len(word_stack) == 0): raise RuntimeError("Missing argument.")
+          result_stack.append(self.sel_charge(pattern=word_stack.pop()))
+        else:
+          raise RuntimeError("Syntax error.")
+      else:
+        raise RuntimeError("Syntax error.")
+    if (len(result_stack) == 0):
+      return flex.bool(self.n_seq, False)
+    selection = result_stack[0]
+    for result in result_stack[1:]:
+      selection &= result
+    return selection
+
+  def iselection(self, string, contiguous_word_characters=None):
+    return self.selection(
+      string=string,
+      contiguous_word_characters=contiguous_word_characters).iselection()
 
   def get_labels(self,
         name=None,

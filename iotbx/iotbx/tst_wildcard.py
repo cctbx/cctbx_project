@@ -13,6 +13,13 @@ def exercise():
   assert not wildcard.is_match("wildcard", "w*d??d")
   assert wildcard.is_match("wildcard", "w*c[a]?d")
   assert not wildcard.is_match("wildcard", "w*c[^a]?d")
+  assert not wildcard.is_match("wild*ard", r"wild\*ard")
+  assert wildcard.is_match("wild*ard", r"wild\*ard", escape_char='\\')
+  assert wildcard.is_match("wild*ard", r"wild\**", escape_char='\\')
+  assert wildcard.is_match(
+    r"\*?[^a-z]", r"\\\*\?\[\^\a\-\z\]", escape_char='\\')
+  assert not wildcard.is_match(
+    r"\*?[^a-z]", r"\\\*\?\[\^\a\-\z\]")
   print "OK"
 
 if (__name__ == "__main__"):
