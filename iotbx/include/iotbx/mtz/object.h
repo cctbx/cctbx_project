@@ -273,6 +273,9 @@ namespace iotbx { namespace mtz {
         return *this;
       }
 
+      int
+      n_symmetry_matrices() const { return ptr()->mtzsymm.nsym; }
+
       cctbx::sgtbx::space_group
       space_group() const
       {

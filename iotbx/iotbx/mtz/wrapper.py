@@ -7,9 +7,12 @@ from iotbx_mtz_wrapper_ext import *
 import iotbx_mtz_wrapper_ext as ext
 
 from iotbx.mtz import extract_from_symop_lib
+from cctbx import xray
+import cctbx.xray.observation_types
 from cctbx import miller
 import cctbx.crystal
 from cctbx import sgtbx
+from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx.python_utils.str_utils import overwrite_at, contains_one_of
 from scitbx.python_utils.misc import adopt_init_args
@@ -170,6 +173,7 @@ class _object(boost.python.injector, ext.object):
     if (self.lattice_centring_type() == "\0"):
       self.set_lattice_centring_type(symbol="?")
     self.set_space_group(space_group=space_group_info.group())
+    return self
 
   def set_hkl_base(self, unit_cell):
     assert self.n_crystals() == 0
@@ -341,7 +345,7 @@ class _object(boost.python.injector, ext.object):
         labels = all_column_labels[i_column:i_column+4]
         i_column += 3
         group = self.extract_delta_anomalous(*labels)
-        observation_type = observation_types.reconstructed_amplitude()
+        observation_type = xray.observation_types.reconstructed_amplitude()
       elif (t0 in "JFD"):
         # "J": "intensity"
         # "F": "amplitude"
@@ -524,7 +528,7 @@ class _dataset(boost.python.injector, ext.dataset):
 
   def add_miller_array(self,
         miller_array,
-        root_label,
+        column_root_label,
         column_types=None,
         label_decorator=None):
     if (label_decorator is None):
@@ -543,40 +547,40 @@ class _dataset(boost.python.injector, ext.dataset):
     if (not miller_array.anomalous_flag()):
       if (default_col_types in ["FQ", "JQ"]):
         self._add_observations(
-          data_label=root_label,
-          sigmas_label=label_decorator.sigmas(root_label),
+          data_label=column_root_label,
+          sigmas_label=label_decorator.sigmas(column_root_label),
           column_types=column_types,
           indices=miller_array.indices(),
           data=miller_array.data(),
           sigmas=miller_array.sigmas())
       elif (default_col_types == "FP"):
         self._add_complex(
-          amplitudes_label=root_label,
-          phases_label=label_decorator.phases(root_label),
+          amplitudes_label=column_root_label,
+          phases_label=label_decorator.phases(column_root_label),
           column_types=column_types,
           indices=miller_array.indices(),
           data=miller_array.data())
       elif (default_col_types == "F"):
         self.add_column(
-          label=root_label,
+          label=column_root_label,
           type=column_types).set_reals(
             miller_indices=miller_array.indices(),
             data=miller_array.data())
       elif (default_col_types == "I"):
         self.add_column(
-          label=root_label,
+          label=column_root_label,
           type=column_types).set_reals(
             miller_indices=miller_array.indices(),
             data=miller_array.data().as_double())
       elif (default_col_types == "AAAA"):
         mtz_reflection_indices = self.add_column(
-          label=label_decorator.hendrickson_lattman(root_label, 0),
+          label=label_decorator.hendrickson_lattman(column_root_label, 0),
           type=column_types).set_reals(
             miller_indices=miller_array.indices(),
             data=miller_array.data().slice(0))
         for i in xrange(1,4):
           self.add_column(
-            label=label_decorator.hendrickson_lattman(root_label, i),
+            label=label_decorator.hendrickson_lattman(column_root_label, i),
             type=column_types).set_reals(
               mtz_reflection_indices=mtz_reflection_indices,
               data=miller_array.data().slice(i))
@@ -594,8 +598,10 @@ class _dataset(boost.python.injector, ext.dataset):
         data = asu.data().select(sel)
         if (default_col_types in ["GL", "KM"]):
           self._add_observations(
-            data_label=label_decorator.anomalous(root_label, anomalous_sign),
-            sigmas_label=label_decorator.sigmas(root_label, anomalous_sign),
+            data_label=label_decorator.anomalous(
+              column_root_label, anomalous_sign),
+            sigmas_label=label_decorator.sigmas(
+              column_root_label, anomalous_sign),
             column_types=column_types,
             indices=indices,
             data=data,
@@ -603,40 +609,79 @@ class _dataset(boost.python.injector, ext.dataset):
         elif (default_col_types == "GP"):
           self._add_complex(
             amplitudes_label=label_decorator.anomalous(
-              root_label, anomalous_sign),
+              column_root_label, anomalous_sign),
             phases_label=label_decorator.phases(
-              root_label, anomalous_sign),
+              column_root_label, anomalous_sign),
             column_types=column_types,
             indices=indices,
             data=data)
         elif (default_col_types == "G"):
           self.add_column(
-            label=label_decorator.anomalous(root_label, anomalous_sign),
+            label=label_decorator.anomalous(column_root_label, anomalous_sign),
             type=column_types).set_reals(
               miller_indices=indices,
               data=data)
         elif (default_col_types == "I"):
           self.add_column(
-            label=label_decorator.anomalous(root_label, anomalous_sign),
+            label=label_decorator.anomalous(column_root_label, anomalous_sign),
             type=column_types).set_reals(
               miller_indices=indices,
               data=data.as_double())
         elif (default_col_types == "AAAA"):
           mtz_reflection_indices = self.add_column(
             label=label_decorator.hendrickson_lattman(
-              root_label, 0, anomalous_sign),
+              column_root_label, 0, anomalous_sign),
             type=column_types[0]).set_reals(
               miller_indices=indices,
               data=data.slice(0))
           for i in xrange(1,4):
             self.add_column(
               label=label_decorator.hendrickson_lattman(
-                root_label, i, anomalous_sign),
+                column_root_label, i, anomalous_sign),
               type=column_types[i]).set_reals(
                 mtz_reflection_indices=mtz_reflection_indices,
                 data=data.slice(i))
         else:
           raise RuntimeError("Fatal programming error.")
+    return self
+
+def miller_array_as_mtz_object(self,
+      column_root_label,
+      column_types=None,
+      column_label_decorator=None,
+      title=None,
+      crystal_name="crystal",
+      project_name="project",
+      dataset_name="dataset",
+      wavelength=1.0):
+  if (title is None):
+    title = self.info()
+  if (title is None):
+    title = "cctbx.miller.array"
+  unit_cell = self.unit_cell()
+  if (unit_cell is None):
+    unit_cell = uctbx.unit_cell((1,1,1,90,90,90))
+  space_group_info = self.space_group_info()
+  if (space_group_info is None):
+    space_group_info = sgtbx.space_group_info(symbol="P 1")
+  mtz_object = object() \
+    .set_title(title=title) \
+    .set_space_group_info(space_group_info=space_group_info)
+  mtz_object.set_hkl_base(unit_cell=unit_cell)
+  mtz_object.add_crystal(
+    name=crystal_name,
+    project_name=project_name,
+    unit_cell=unit_cell).add_dataset(
+      name=dataset_name,
+      wavelength=wavelength).add_miller_array(
+        miller_array=self,
+        column_root_label=column_root_label,
+        column_types=column_types,
+        label_decorator=column_label_decorator)
+  return mtz_object
+
+# injecting
+miller.array.as_mtz_object = miller_array_as_mtz_object
 
 class _batch(boost.python.injector, ext.batch):
 
