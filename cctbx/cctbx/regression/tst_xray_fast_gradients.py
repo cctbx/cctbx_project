@@ -144,6 +144,7 @@ class resampling(crystal.symmetry):
       fourier_coefficients=coeff)
 
   def __call__(self, xray_structure,
+                     mean_displacements,
                      dp,
                      gradient_flags,
                      n_parameters,
@@ -177,7 +178,7 @@ class resampling(crystal.symmetry):
         print
     result.sampling(
       scatterers=xray_structure.scatterers(),
-      mean_displacements=None,
+      mean_displacements=mean_displacements,
       scattering_dict=xray_structure.scattering_dict(),
       ft_d_target_d_f_calc=gradient_map,
       grad_flags=gradient_flags,
@@ -239,6 +240,7 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=gradient_flags,
     n_parameters=0,
@@ -267,7 +269,7 @@ class shifted_u_iso:
       self.f_calc = f_obs.structure_factors_from_scatterers(
         xray_structure=self.structure_shifted).f_calc()
 
-def u_iso(structure_ideal, d_min, f_obs, verbose=0):
+def u_iso(structure_ideal, d_min, f_obs, sqrt_u_iso, verbose=0):
   sh = shifted_u_iso(f_obs, structure_ideal, 0, 0.05)
   if (0 or verbose):
     print "u_iso"
@@ -278,9 +280,12 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
   gradient_flags = randomize_gradient_flags(
     xray.structure_factors.gradient_flags(u_iso=True),
     f_obs.anomalous_flag())
+  gradient_flags.sqrt_u_iso = sqrt_u_iso
+  mean_displacements = flex.sqrt(
+    sh.structure_shifted.scatterers().extract_u_iso())
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
-    mean_displacements=None,
+    mean_displacements=mean_displacements,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -288,6 +293,7 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
+    mean_displacements=mean_displacements,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=gradient_flags,
     n_parameters=0,
@@ -338,6 +344,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=gradient_flags,
     n_parameters=0,
@@ -394,6 +401,7 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=gradient_flags,
     n_parameters=0,
@@ -441,6 +449,7 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=gradient_flags,
     n_parameters=0,
@@ -488,6 +497,7 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
+    mean_displacements=None,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=gradient_flags,
     n_parameters=0,
@@ -530,9 +540,13 @@ def exercise_packed(structure_ideal, f_obs,
     thresholds=(1/2.,0))
   n_parameters = structure_ideal.n_parameters(gradient_flags)
   assert n_parameters > 0
+  mean_displacements = flex.sqrt(
+    sh.structure_shifted.scatterers().extract_u_iso())
+  if (gradient_flags.u_iso):
+    gradient_flags.sqrt_u_iso = (random.random() > 0.5)
   sfd = xray.structure_factors.gradients_direct(
     xray_structure=sh.structure_shifted,
-    mean_displacements=None,
+    mean_displacements=mean_displacements,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
@@ -541,6 +555,7 @@ def exercise_packed(structure_ideal, f_obs,
   re = resampling(miller_set=f_obs)
   map0 = re(
     xray_structure=sh.structure_shifted,
+    mean_displacements=mean_displacements,
     dp=miller.array(miller_set=f_obs, data=ls.derivatives()),
     gradient_flags=gradient_flags,
     n_parameters=n_parameters,
@@ -642,7 +657,8 @@ def run_one(space_group_info, n_elements=4, volume_per_atom=1000, d_min=2,
     site(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
     if (not anisotropic_flag):
-      u_iso(structure_ideal, d_min, f_obs, verbose=verbose)
+      u_iso(structure_ideal, d_min, f_obs, sqrt_u_iso=False, verbose=verbose)
+      u_iso(structure_ideal, d_min, f_obs, sqrt_u_iso=True, verbose=verbose)
     else:
       u_star(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
