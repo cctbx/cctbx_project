@@ -1,7 +1,8 @@
+import libtbx.load_env
 Import("env_base", "env_etc")
 
-env_etc.cctbx_dist = env_etc.libtbx_env.dist_path("cctbx")
-env_etc.cctbx_include = env_etc.norm_join(env_etc.cctbx_dist, "include")
+env_etc.cctbx_dist = libtbx.env.dist_path("cctbx")
+env_etc.cctbx_include = libtbx.env.under_dist("cctbx", "include")
 env_etc.cctbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.cctbx_include,

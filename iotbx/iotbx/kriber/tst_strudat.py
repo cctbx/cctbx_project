@@ -3,7 +3,7 @@ from cctbx.regression import tst_direct_space_asu
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx.array_family import flex
-import libtbx.env
+import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 

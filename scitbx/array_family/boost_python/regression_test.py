@@ -1,5 +1,5 @@
 from scitbx.array_family import flex
-import libtbx.env
+import libtbx.load_env
 import sys
 
 def extend_sys_path():

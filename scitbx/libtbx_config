@@ -1,4 +1,4 @@
 {
-  "packages_required_for_build": ["boost"],
-  "packages_required_for_use": ["boost_adaptbx"],
+  "modules_required_for_build": ["boost"],
+  "modules_required_for_use": ["boost_adaptbx"],
 }

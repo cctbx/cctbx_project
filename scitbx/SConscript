@@ -1,7 +1,8 @@
+import libtbx.load_env
 Import("env_etc")
 
-env_etc.scitbx_dist = env_etc.libtbx_env.dist_path("scitbx")
-env_etc.scitbx_include = env_etc.norm_join(env_etc.scitbx_dist, "include")
+env_etc.scitbx_dist = libtbx.env.dist_path("scitbx")
+env_etc.scitbx_include = libtbx.env.under_dist("scitbx", "include")
 env_etc.scitbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.scitbx_include,

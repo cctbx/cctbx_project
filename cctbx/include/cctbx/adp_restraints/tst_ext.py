@@ -2,7 +2,7 @@ from libtbx.test_utils import approx_equal
 from iotbx.shelx import from_ins
 from cctbx.array_family import flex
 from cctbx import adp_restraints
-import libtbx.env
+import libtbx.load_env
 import math, os
 
 result = [

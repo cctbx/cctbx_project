@@ -1,5 +1,5 @@
 from cctbx import sgtbx
-import libtbx.env
+import libtbx.load_env
 import os
 
 try:
