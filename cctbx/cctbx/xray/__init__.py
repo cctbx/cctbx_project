@@ -97,26 +97,26 @@ class structure(crystal.special_position_settings):
     return structure_factors_direct(self, miller_set)
 
   def show_summary(self, f=sys.stdout):
-    print "Number of scatterers:", self.scatterers().size()
-    print "At special positions:", self.special_position_indices().size()
+    print >> f, "Number of scatterers:", self.scatterers().size()
+    print >> f, "At special positions:", self.special_position_indices().size()
     crystal.symmetry.show_summary(self, f)
     return self
 
   def show_scatterers(self, f=sys.stdout):
-    print "Label  M  Coordinates            Occ  Uiso or Ustar"
+    print >> f, "Label  M  Coordinates            Occ  Uiso or Ustar"
     for scatterer in self.scatterers():
-      print "%-4s" % (scatterer.label,),
-      print "%3d" % (scatterer.multiplicity(),),
-      print "%7.4f %7.4f %7.4f" % scatterer.site,
-      print "%4.2f" % (scatterer.occupancy,),
+      print >> f, "%-4s" % (scatterer.label,),
+      print >> f, "%3d" % (scatterer.multiplicity(),),
+      print >> f, "%7.4f %7.4f %7.4f" % scatterer.site,
+      print >> f, "%4.2f" % (scatterer.occupancy,),
       if (not scatterer.anisotropic_flag):
-        print "%6.4f" % (scatterer.u_iso,),
+        print >> f, "%6.4f" % (scatterer.u_iso,),
       else:
-        print ("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
+        print >> f, ("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
           self.unit_cell(), scatterer.u_star),
-      print
+      print >> f
       if (abs(scatterer.fp_fdp) != 0):
-        print "     fp,fdp = %6.4f,%6.4f" % (
+        print >> f, "     fp,fdp = %6.4f,%6.4f" % (
           scatterer.fp_fdp.real,
           scatterer.fp_fdp.imag)
     return self
