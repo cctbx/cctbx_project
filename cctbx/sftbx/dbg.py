@@ -72,6 +72,7 @@ def print_structure_factors(SgInfo,
     print "exp_table_one_over_step_size:", \
       sampled_density.exp_table_one_over_step_size()
     print "exp_table_size:", sampled_density.exp_table_size()
+    print "max_shell_radii:", sampled_density.max_shell_radii()
   tags = sftbx.grid_tags(fft.Nreal())
   sym_flags = sftbx.map_symmetry_flags(1)
   tags.build(xtal.SgInfo, sym_flags)
@@ -146,6 +147,10 @@ def print_structure_factors(SgInfo,
   xy_regr = shared.linear_regression(x, y)
   assert xy_regr.is_well_defined()
   print "cc:", xy_regr.cc(), "m:", xy_regr.m()
+  if (1):
+    assert xy_regr.cc() > 0.99
+    assert xy_regr.m() > 0.95
+    assert xy_regr.m() < 1.05
 
 def write_cns_input(elements, xtal, d_min, grid_resolution_factor):
   cns_input = make_cns_input.topology(elements)

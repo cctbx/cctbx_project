@@ -284,6 +284,7 @@ namespace cctbx {
   {
     public:
       typedef FloatType float_type;
+      typedef CAASF_Type caasf_type;
       //! Default constructor. Data members are not initialized!
       XrayScatterer() {}
       //! Constructor with isotropic displacement parameter.

@@ -42,6 +42,8 @@ namespace cctbx { namespace eltbx {
   template <std::size_t N>
   class CAASF {
     public:
+      //! Hook for compile-time array allocation in other procedures.
+      BOOST_STATIC_CONSTANT(std::size_t, n_plus_1 = N + 1);
       //! Default constructor. Calling certain methods may cause crashes!
       CAASF() : m_Entry(0), m_Table(0) {}
       //! Constructor. For internal use only.
@@ -148,6 +150,7 @@ namespace cctbx { namespace eltbx {
    */
   class CAASF_IT1992: public CAASF<4> {
     public:
+      typedef CAASF<4> base_type;
       //! Default constructor. Calling certain methods may cause crashes!
       CAASF_IT1992() {}
       //! Lookup coefficients for the given scattering factor label.
@@ -193,6 +196,7 @@ namespace cctbx { namespace eltbx {
    */
   class CAASF_WK1995: public CAASF<5> {
     public:
+      typedef CAASF<5> base_type;
       //! Default constructor. Calling certain methods may cause crashes!
       CAASF_WK1995() {}
       //! Lookup coefficients for the given scattering factor label.
