@@ -1,6 +1,8 @@
 #ifndef SCITBX_MATH_BESSEL_H
 #define SCITBX_MATH_BESSEL_H
 
+#include <cmath>
+
 namespace scitbx { namespace math {
 
 //! Family of Bessel functions.
