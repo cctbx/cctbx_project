@@ -795,7 +795,7 @@ class environment:
       self.write_setpaths_bat()
     self.pickle()
 
-  def write_show_path_duplicates(self):
+  def write_python_and_show_path_duplicates(self):
     module_names = {}
     for file_name in os.listdir(self.bin_path):
       if (file_name.startswith(".")): continue
@@ -809,6 +809,9 @@ class environment:
       source_file = self.under_dist(
         "libtbx", "libtbx/command_line/"+command+".py")
       for module_name in module_names:
+        self.write_dispatcher_in_bin(
+          source_file=self.python_exe,
+          target_file=module_name+".python")
         self.write_dispatcher_in_bin(
           source_file=source_file,
           target_file=module_name+"."+command)
@@ -848,7 +851,7 @@ class environment:
         self.write_dispatcher_in_bin(
           source_file=libtbx.path.norm_join(self.exe_path, file_name),
           target_file=file_name)
-    self.write_show_path_duplicates()
+    self.write_python_and_show_path_duplicates()
 
 class module:
 
