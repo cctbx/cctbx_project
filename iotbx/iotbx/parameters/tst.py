@@ -279,6 +279,8 @@ def test_exception(input_string, exception_string=None):
   else: raise RuntimeError("Exception expected.")
 
 def exercise_syntax_errors():
+  test_exception("'a'",
+    """Unquoted word expected, found 'a' (input line 1)""")
   test_exception("a",
     'Unexpected end of input.')
   test_exception("{}",

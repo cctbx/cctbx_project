@@ -140,7 +140,13 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
             else:
               print >> out, indent+'"'+block+'"'
 
-class definition:
+class definition(object):
+
+  attribute_names = [
+    "help", "caption", "short_caption", "required",
+    "type", "input_size", "expert_level"]
+
+  __slots__ = ["name", "values"] + attribute_names
 
   def __init__(self,
         name,
@@ -152,12 +158,19 @@ class definition:
         type=None,
         input_size=None,
         expert_level=None):
-    introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[3:]
+    self.name = name
+    self.values = values
+    self.help = help
+    self.caption = caption
+    self.short_caption = short_caption
+    self.required = required
+    self.type = type
+    self.input_size = input_size
+    self.expert_level = expert_level
 
   def copy(self, values):
     keyword_args = {}
-    for keyword in self.__init__varnames__[1:]:
+    for keyword in self.__slots__:
       keyword_args[keyword] = getattr(self, keyword)
     keyword_args["values"] = values
     return definition(**keyword_args)
@@ -562,12 +575,17 @@ class object_list:
       object.automatic_type_assignment(
         assignment_if_unknown=assignment_if_unknown)
 
-class variable_substitution_fragment:
+class variable_substitution_fragment(object):
+
+  __slots__ = ["is_variable", "value", "result"]
 
   def __init__(self, is_variable, value):
-    introspection.adopt_init_args()
+    self.is_variable = is_variable
+    self.value = value
 
-class variable_substitution_proxy:
+class variable_substitution_proxy(object):
+
+  __slots__ = ["word", "force_string", "have_variables", "fragments"]
 
   def __init__(self, word):
     self.word = word
