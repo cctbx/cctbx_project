@@ -26,7 +26,9 @@ def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
   else:
     p = mtz.Mtz("tmp.mtz")
   assert p.title() == "mtz writer test"
+  assert p.nsym() == miller_array.space_group().order_z()
   assert p.ncrystals() == 1
+  assert p.getSgtbxSpaceGroup() == miller_array.space_group()
   assert p.history().size() == 0
   cryst = p.getCrystal(0)
   assert cryst.crystal_name() == "test_crystal"
@@ -34,7 +36,7 @@ def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
   assert cryst.UnitCell().is_similar_to(miller_array.unit_cell())
   crystal_symmetry = crystal.symmetry(
     unit_cell=cryst.UnitCell(),
-    space_group_symbol=str(miller_array.space_group_info())) # XXX
+    space_group_info=p.get_space_group_info())
   assert cryst.ndatasets() == 1
   dataset = cryst.getDataset(0)
   assert dataset.dataset_name() == "test_dataset"
