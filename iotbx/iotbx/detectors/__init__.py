@@ -7,11 +7,11 @@ from iotbx_detectors_ext import *
 import exceptions
 from iotbx.detectors.adsc import ADSCImage
 from iotbx.detectors.mar import MARImage
- 
+
 class ImageException(exceptions.Exception):
   def __init__(self,string):
     self.message = string
-    
+
 all_image_types = [ADSCImage,MARImage]
 
 def ImageFactory(filename):
