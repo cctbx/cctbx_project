@@ -28,12 +28,22 @@ cctbx links
   - `No. 5, 2005/01 <http://cci.lbl.gov/publications/download/iucrcompcomm_jan2005.pdf>`_
 
 - Python interfaces:
-  `libtbx <current_cvs/python/libtbx/>`_
-  `scitbx <current_cvs/python/scitbx/>`_
-  `cctbx <current_cvs/python/cctbx/>`_
-  `iotbx <current_cvs/python/iotbx/>`_
+
+  - `libtbx <current_cvs/python/libtbx/>`_
+
+  - `scitbx <current_cvs/python/scitbx/>`_
+
+  - `cctbx <current_cvs/python/cctbx/>`_
+
+  - `iotbx <current_cvs/python/iotbx/>`_
 
 - `C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
+
+- Notes by Michael Hohn:
+
+  - `scitbx tour <http://cci.lbl.gov/~hohn/scitbx-tour.html>`_
+
+  - `array family tour <http://cci.lbl.gov/~hohn/array-family-tour.html>`_
 
 - `Most current source tree <http://phenix-online.org/cctbx_sources/>`_
 
