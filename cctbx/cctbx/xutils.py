@@ -12,11 +12,15 @@ class crystal_symmetry:
 class miller_index_set(crystal_symmetry):
 
   def __init__(self, xsym, d_min = 0, # XXX friedel_flag?
+               H = 0,
                init_from_other = 0):
     crystal_symmetry.__init__(self, xsym.UnitCell, xsym.SgInfo)
     if (not init_from_other):
       self.d_min = d_min
-      if (d_min): self.build(d_min)
+      if (d_min):
+        self.build(d_min)
+      else:
+        self.H = H
     else:
       self.d_min = xsym.d_min
       if (hasattr(xsym, "H")): self.H = xsym.H
