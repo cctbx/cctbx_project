@@ -12,13 +12,6 @@
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/reference.h>
 
-#if 1
-#include <iostream>
-using std::cout;
-using std::endl;
-#define CheckPoint cout << __FILE__ << "(" << __LINE__ << ")" << endl
-#endif
-
 namespace sgtbx {
 
   namespace detail {
@@ -346,18 +339,6 @@ namespace sgtbx {
           LTr[iVM + 1] = LTr[iVM] + f[iVM] * TrVec(m_VM[iVM].V, LTBF);
         }
         UpdateBestZ(DiscrLst.size(), OrigZf, LTr[m_size], BestZf, BestZc);
-#ifdef JUNK
-cout << "Shift ";
-for (int ic=0;ic<3;ic++) {
-   cout << " " << LTr[m_size][ic];
-}
-cout << endl;
-cout << "BestZf ";
-for (int ic=0;ic<3;ic++) {
-   cout << " " << BestZf[1][ic];
-}
-cout << endl;
-#endif
         loop.incr();
       }
       while (loop.over() == 0);
@@ -417,77 +398,37 @@ cout << endl;
     for(std::size_t i = 0; i < 3; i++) m_VM[i].zero_out();
     detail::AnyGenerators Gen(sgo);
     GetContNullSpace(Gen);
-    for(int j=0;j<m_size;j++) {
-      cout << m_VM[j].V[0] << " ";
-      cout << m_VM[j].V[1] << " ";
-      cout << m_VM[j].V[2] << endl;
-    }
     if (m_size == 3) return; // space group P1
     boost::array<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
-#ifdef JUNK
-cout << "SNF before\n";
-for (int d = 0; d < Gen.nAll(); d++) {
-  for (int ir=0;ir<3;ir++) {
-    for (int ic=0;ic<3;ic++) {
-      cout << " " << SNF[(d * 3 + ir) * 3 + ic];
-    }
-    cout << endl;
-  }
-}
-#endif
     int Q[3 * 3];
     int nd = SmithNormalForm(SNF.elems, Gen.nAll() * 3, 3, 0, Q);
-#ifdef JUNK
-cout << "SNF after\n";
-for (int d = 0; d < Gen.nAll(); d++) {
-  for (int ir=0;ir<3;ir++) {
-    for (int ic=0;ic<3;ic++) {
-      cout << " " << SNF[(d * 3 + ir) * 3 + ic];
-    }
-    cout << endl;
-  }
-}
-#endif
     cctbx_assert(nd >=0 && nd <= 3);
     int id;
     int DTBF = 1;
     for (id = 0; id < nd; id++) DTBF = lcm(DTBF, SNF[(nd + 1) * id]);
-    cout << "DTBF " << DTBF << endl;
     TrOps DiscrGrpP(DTBF);
     for (id = 0; id < nd; id++) {
       int d = SNF[(nd + 1) * id];
-      cout << "d " << d << endl;
       for (int f = 1; f < d; f++) {
         Vec3 xp;
         xp.assign(0);
         xp[id] = f * DTBF / d;
-        //cout << "xp " << xp << endl;
         TrVec x(DTBF);
         MatrixLite::multiply<int>(Q, xp.elems, 3, 3, 1, x.elems);
-        //cout << "x " << x << endl;
         DiscrGrpP.expand(x);
       }
     }
-    cout << Gen.nAll() * 3 << " " << nd << " " << DiscrGrpP.nVects() << endl;
     cctbx_assert(DiscrGrpP.nVects() <= detail::mDiscrList);
     cctbx::static_vector<detail::DiscrList, detail::mDiscrList> DiscrLst;
     for (int iDL = 0; iDL < DiscrGrpP.nVects(); iDL++) {
       detail::DiscrList v;
       v.P = DiscrGrpP[iDL];
       v.Z = (Gen.Z2POp.InvM().Rpart() * v.P).modPositive();
-      //cout << iDL << " P " << v.P[0] << " " << v.P[1] << " " << v.P[2] << endl;
-      //cout << iDL << " Z " << v.Z[0] << " " << v.Z[1] << " " << v.Z[2] << endl;
       DiscrLst.push_back(v);
     }
     cctbx_assert(DiscrLst.size() == DiscrGrpP.nVects());
     BestVectors(sgo, DiscrLst);
     std::sort(DiscrLst.begin(), DiscrLst.end(), CmpDiscr());
-    for(int k=0;k<DiscrLst.size();k++) {
-      cout << DiscrLst[k].Z[0] << " ";
-      cout << DiscrLst[k].Z[1] << " ";
-      cout << DiscrLst[k].Z[2] << "  ";
-      cout << DiscrLst[k].Z.BF() << endl;
-    }
     cctbx::static_vector<TrVec, 3>
     DiscrGen = SelectDiscreteGenerators(DiscrLst);
     for (int iG = 0; iG < DiscrGen.size(); iG++) {
@@ -498,13 +439,6 @@ for (int d = 0; d < Gen.nAll(); d++) {
       m_size++;
     }
     std::sort(m_VM.begin(), m_VM.begin() + m_size, Cmp_ssVM());
-    for(int l=0;l<m_size;l++) {
-      cout << "ssVM ";
-      cout << m_VM[l].V[0] << " ";
-      cout << m_VM[l].V[1] << " ";
-      cout << m_VM[l].V[2] << "  ";
-      cout << m_VM[l].M << endl;
-    }
   }
 
 } // namespace sgtbx
