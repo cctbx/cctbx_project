@@ -16,6 +16,8 @@
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/miller.h>
 
+#if defined(__sgi) && !defined(__GNUC__)
+
 namespace cctbx { namespace boost_python {
 
   template <typename T>
@@ -40,5 +42,7 @@ namespace cctbx { namespace boost_python {
   }
 
 }} // namespace cctbx::boost_python
+
+#endif // defined(__sgi) && !defined(__GNUC__)
 
 #endif // CCTBX_BOOST_PYTHON_FLEX_FWD_H
