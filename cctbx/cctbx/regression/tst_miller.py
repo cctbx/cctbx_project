@@ -36,6 +36,7 @@ def exercise_set():
   assert mc.anomalous_flag() == ms.anomalous_flag()
   assert tuple(ms.multiplicities().data()) == (4, 2)
   assert tuple(ms.epsilons().data()) == (1, 2)
+  assert approx_equal(ms.d_star_sq().data(), [0.7211111, 0.64])
   assert approx_equal(tuple(ms.d_spacings().data()), (1.177603, 1.25))
   assert approx_equal(tuple(ms.sin_theta_over_lambda_sq().data()),
                       (0.1802778, 0.16))
