@@ -91,8 +91,8 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.69
-    jamfile_md5 = "8d74c2fb2551cdd7a804d1755a525d0d"
+    # based on boost/libs/python/test/Jamfile revision 1.70
+    jamfile_md5 = "c4af3c62bc81965142ac6c1c6f3b4833"
     if (m.hexdigest() != jamfile_md5):
       print "boost/libs/python/test/Jamfile has changed"
       print "New md5 signature:", m.hexdigest()
@@ -148,6 +148,7 @@ return_arg
 keywords,keywords,keywords_test
 properties
 map_indexing_suite
+injected
 """)
     Import("env_boost_python_ext")
     env = env_boost_python_ext.Copy()
