@@ -89,6 +89,7 @@ namespace cctbx { namespace maps {
       sym_equiv_point = multiply(p1_tags.accessor(), M, pivot);
       if (sym_equiv_point.tag) {
         std::size_t i1d_sep = p1_tags.accessor()(sym_equiv_point.value);
+        while (p1_tags[i1d_sep] != -1) i1d_sep = p1_tags[i1d_sep];
         if (i1d_sep != i1d_pivot) p1_tags[i1d_sep] = i1d_pivot;
       }
       else {
@@ -116,6 +117,7 @@ namespace cctbx { namespace maps {
       sym_equiv_point = add(p1_tags.accessor(), grid_ss, pivot, f);
       if (sym_equiv_point.tag) {
         std::size_t i1d_sep = p1_tags.accessor()(sym_equiv_point.value);
+        while (p1_tags[i1d_sep] != -1) i1d_sep = p1_tags[i1d_sep];
         if (i1d_sep != i1d_pivot) p1_tags[i1d_sep] = i1d_pivot;
       }
       else {
