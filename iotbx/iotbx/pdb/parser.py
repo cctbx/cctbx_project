@@ -22,7 +22,7 @@ class UnknownRecordName(FormatError): pass
 class pdb_record:
 
   def __init__(self, raw_record, line_number=None, strict=00000):
-    self.raw = (raw_record + " " * 80)[:80]
+    self.raw = (raw_record.rstrip() + " " * 80)[:80]
     self.line_number = line_number
     self.strict = strict
     self.record_name = (self.raw)[:6].upper().strip()
