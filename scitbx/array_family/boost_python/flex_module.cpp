@@ -31,32 +31,13 @@ namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
 
-  //BOOST_PYTHON_MEM_FUN_GENERATOR(flex_grid_last_stubs, last, 1, 1)
+  BOOST_PYTHON_MEM_FUN_GENERATOR(flex_grid_last_overloads, last, 0, 1)
 
   struct flex_grid_wrappers : boost::python::pickle_suite
   {
+    typedef flex_grid_default_index_type df_i_t;
     typedef flex_grid<> w_t;
     typedef boost::python::class_<w_t> c_w_t;
-
-    static w_t
-    set_layout(
-      w_t& fg,
-      flex_grid_default_index_type const& layout)
-    {
-      return fg.set_layout(layout);
-    }
-
-    static flex_grid_default_index_type
-    last_0(w_t const& fg)
-    {
-      return fg.last();
-    }
-
-    static flex_grid_default_index_type
-    last_1(w_t const& fg, bool open_range)
-    {
-      return fg.last(open_range);
-    }
 
     static boost::python::tuple
     getinitargs(w_t const& fg)
@@ -68,14 +49,14 @@ namespace {
         open_range);
     }
 
-    static flex_grid_default_index_type
+    static df_i_t
     getstate(w_t const& fg)
     {
       return fg.layout();
     }
 
     static void
-    setstate(w_t& fg, flex_grid_default_index_type const& state)
+    setstate(w_t& fg, df_i_t const& state)
     {
       fg.set_layout(state);
     }
@@ -87,23 +68,15 @@ namespace {
       typedef return_value_policy<copy_const_reference> copy_const_reference;
       c_w_t("grid",
         args<>())
-        .def_init(args<
-          flex_grid_default_index_type const&>())
-        .def_init(args<
-          flex_grid_default_index_type const&,
-          flex_grid_default_index_type const&>())
-        .def_init(args<
-          flex_grid_default_index_type const&,
-          flex_grid_default_index_type const&,
-          bool>())
-        .def("set_layout", flex_grid_wrappers::set_layout)
+        .def_init(args<df_i_t const&>())
+        .def_init(args<df_i_t const&, df_i_t const&>())
+        .def_init(args<df_i_t const&, df_i_t const&, bool>())
+        .def("set_layout", (w_t(w_t::*)(df_i_t const&))&w_t::set_layout)
         .def("nd", &w_t::nd)
         .def("size_1d", &w_t::size_1d)
         .def("origin", &w_t::origin, copy_const_reference())
         .def("grid", &w_t::grid, copy_const_reference())
-        .def("last", flex_grid_wrappers::last_0)
-        .def("last", flex_grid_wrappers::last_1)
-        //.def("last", &w_t::last, flex_grid_last_stubs())
+        .def("last", (df_i_t(w_t::*)(bool)) 0, flex_grid_last_overloads())
         .def("layout", &w_t::layout, copy_const_reference())
         .def("is_0_based", &w_t::is_0_based)
         .def("is_padded", &w_t::is_padded)
