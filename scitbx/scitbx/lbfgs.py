@@ -72,4 +72,6 @@ def run(target_evaluator,
     if (str(e).find("The step is at the lower bound")>=0):
       if (not ext.traditional_convergence_test(target_evaluator.n)(x, g)):
         raise
+  else:
+    minimizer.error = None
   return minimizer
