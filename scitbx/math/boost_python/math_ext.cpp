@@ -87,7 +87,6 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
 
     def("floating_point_epsilon_float_get",
       &floating_point_epsilon<float>::get);

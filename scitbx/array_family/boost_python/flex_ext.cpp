@@ -164,7 +164,6 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-    typedef boost::python::arg arg_; // gcc 2.96 workaround
 
     register_scitbx_tuple_mappings();
 

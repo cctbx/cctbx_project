@@ -360,6 +360,28 @@ def exercise_select():
   a = flex.bool((0,0,0,0,0))
   assert tuple(a.iselection(00000)) == (0,1,2,3,4)
   assert tuple(a.iselection(0001)) == ()
+  from scitbx import stl
+  import scitbx.stl.vector
+  isel = stl.vector.unsigned([1,3])
+  a = flex.bool(size=5, iselection=isel)
+  assert tuple(a) == (00000, 0001, 00000, 0001, 00000)
+  isel2 = stl.vector.unsigned([1,4])
+  assert tuple(flex.union(size=5, iselections=[isel,isel2])) \
+      == (00000, 0001, 00000, 0001, 0001)
+  assert tuple(flex.intersection(size=5, iselections=[isel,isel2])) \
+      == (00000, 0001, 00000, 00000, 00000)
+  assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
+      == [1]
+  isel = flex.size_t([1,4])
+  a = flex.bool(size=5, iselection=isel)
+  assert tuple(a) == (00000, 0001, 00000, 00000, 0001)
+  isel2 = flex.size_t([0,4])
+  assert tuple(flex.union(size=5, iselections=[isel,isel2])) \
+      == (0001, 0001, 00000, 00000, 0001)
+  assert tuple(flex.intersection(size=5, iselections=[isel,isel2])) \
+      == (00000, 00000, 00000, 00000, 0001)
+  assert list(flex.intersection(size=5,iselections=[isel,isel2]).iselection())\
+      == [4]
 
 def exercise_operators():
   a = flex.bool((0, 1, 0, 1))
