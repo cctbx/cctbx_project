@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Created (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
@@ -44,6 +35,20 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
 namespace scitbx { namespace af { namespace boost_python {
 
+namespace {
+
+  af::shared<vec3<double> >
+  as_vec3_double(af::const_ref<cctbx::miller::index<> > const& a)
+  {
+    af::shared<vec3<double> > result((af::reserve(a.size())));
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(vec3<double>(a[i]));
+    }
+    return result;
+  }
+
+} // namespace <anonymous>
+
   void wrap_flex_miller_index(boost::python::object const& flex_root_scope)
   {
     using namespace cctbx;
@@ -51,7 +56,9 @@ namespace scitbx { namespace af { namespace boost_python {
     flex_wrapper<miller::index<> >::ordered("miller_index", flex_root_scope)
       .def("__neg__", flex_wrapper<miller::index<> >::neg_a)
       .def_pickle(flex_pickle_single_buffered<miller::index<>,
-        3*pickle_size_per_element<miller::index<>::value_type>::value>());
+        3*pickle_size_per_element<miller::index<>::value_type>::value>())
+      .def("as_vec3_double", as_vec3_double)
+    ;
   }
 
 }}} // namespace scitbx::af::boost_python

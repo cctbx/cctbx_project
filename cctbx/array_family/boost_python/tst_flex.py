@@ -2,6 +2,12 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import pickle
 
+def exercise_flex_miller_index():
+  from scitbx.array_family.flex import exercise_triple
+  exercise_triple(flex_triple=flex.miller_index, flex_order=flex.order)
+  a = flex.miller_index([(1,2,3), (2,3,4)])
+  assert approx_equal(a.as_vec3_double(), [(1,2,3), (2,3,4)])
+
 def exercise_flex_sym_mat3_double():
   a = flex.sym_mat3_double()
   a = flex.sym_mat3_double(((1,2,3,4,5,6), (2,3,4,5,6,7)))
@@ -77,8 +83,7 @@ def exercise_flex_xray_scatterer():
   assert a.count_anomalous() == 1
 
 def run():
-  from scitbx.array_family.flex import exercise_triple
-  exercise_triple(flex_triple=flex.miller_index, flex_order=flex.order)
+  exercise_flex_miller_index()
   exercise_flex_sym_mat3_double()
   exercise_flex_hendrickson_lattman()
   exercise_flex_tiny_size_t_2()
