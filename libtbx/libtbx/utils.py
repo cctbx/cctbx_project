@@ -4,6 +4,9 @@ class Keep: pass
 
 class UserError(Exception):
 
+  # trick to get just "UserError" instead of "libtbx.utils.UserError"
+  __module__ = "exceptions"
+
   def __init__(self, *args, **keyword_args):
     self.previous_tracebacklimit = getattr(sys, "tracebacklimit", None)
     sys.tracebacklimit = 0
