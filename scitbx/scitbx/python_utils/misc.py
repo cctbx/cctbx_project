@@ -9,11 +9,36 @@ class user_plus_sys_time:
     t = os.times()
     return t[0] + t[1]
 
+  def elapsed(self):
+    t = self.get()
+    d = t - self.t
+    return d
+
   def delta(self):
     t = self.get()
     d = t - self.t
     self.t = t
     return d
+
+class time_log:
+
+  def __init__(self, label):
+    self.label = label
+    self.accumulation = 0
+    self.n = 0
+    self.timer = None
+
+  def start(self):
+    self.timer = user_plus_sys_time()
+    return self
+
+  def log(self):
+    delta = self.timer.delta()
+    self.timer = None
+    self.accumulation += delta
+    self.n += 1
+    return "time_log: %s: %d %.2f %.2f %.2f" % (
+      self.label, self.n, self.accumulation, delta, self.accumulation/self.n)
 
 def adopt_init_args(obj, args, exclude=(), hide=00000):
   del args["self"]
