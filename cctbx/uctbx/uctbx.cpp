@@ -1,17 +1,4 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored (R.W. Grosse-Kunstleve)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
-#include <cctbx/error.h>
-#include <cctbx/uctbx.h>
+#include <cctbx/uctbx/fast_minimum_reduction.h>
 #include <cctbx/sgtbx/rot_mx.h>
 
 namespace cctbx { namespace uctbx {
@@ -173,6 +160,7 @@ namespace cctbx { namespace uctbx {
     init_metrical_matrices();
     init_orth_and_frac_matrices();
     longest_vector_sq_ = -1.;
+    shortest_vector_sq_ = -1.;
   }
 
   unit_cell::unit_cell(af::small<double, 6> const& parameters,
@@ -227,7 +215,8 @@ namespace cctbx { namespace uctbx {
     r_sin_ang_(r_sin_ang),
     r_cos_ang_(r_cos_ang),
     r_metr_mx_(r_metr_mx),
-    longest_vector_sq_(-1.)
+    longest_vector_sq_(-1.),
+    shortest_vector_sq_(-1.)
   {
     init_orth_and_frac_matrices();
   }
@@ -262,6 +251,20 @@ namespace cctbx { namespace uctbx {
       }
     }
     return longest_vector_sq_;
+  }
+
+  double
+  unit_cell::shortest_vector_sq() const
+  {
+    if (shortest_vector_sq_ < 0.) {
+      af::double6 gruber_params = fast_minimum_reduction<>(*this)
+        .as_gruber_matrix();
+      shortest_vector_sq_ = 0.;
+      for(std::size_t i=0;i<3;i++) {
+        scitbx::math::update_max(shortest_vector_sq_, gruber_params[i]);
+      }
+    }
+    return shortest_vector_sq_;
   }
 
   bool

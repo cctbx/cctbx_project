@@ -63,6 +63,7 @@ namespace {
         .def("volume", &w_t::volume)
         .def("reciprocal", &w_t::reciprocal)
         .def("longest_vector_sq", &w_t::longest_vector_sq)
+        .def("shortest_vector_sq", &w_t::shortest_vector_sq)
         .def("is_degenerate",
           &w_t::is_degenerate,
           is_degenerate_overloads())

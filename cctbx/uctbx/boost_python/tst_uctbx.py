@@ -33,6 +33,7 @@ def exercise_basic():
   assert approx_equal(u.parameters(), u.reciprocal_parameters())
   assert approx_equal(u.volume(), 1)
   assert approx_equal(u.longest_vector_sq(), 3)
+  assert approx_equal(u.shortest_vector_sq(), 1)
   p = (2,3,4,80,100,110)
   for i in xrange(7):
     u = uctbx.unit_cell(p[:i])
@@ -71,6 +72,7 @@ def exercise_basic():
   u = uctbx.unit_cell((2,3,4))
   assert approx_equal(u.volume(), 2*3*4)
   assert approx_equal(u.longest_vector_sq(), 2*2+3*3+4*4)
+  assert approx_equal(u.shortest_vector_sq(), 4*4)
   u = uctbx.unit_cell(p)
   assert approx_equal(u.volume(), 22.04006625)
 
