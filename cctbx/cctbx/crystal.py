@@ -68,6 +68,25 @@ class symmetry(object):
     return self.space_group().build_derived_patterson_group() \
         == self.space_group()
 
+  def join_symmetry(self, other_symmetry, force=00000):
+    if (other_symmetry == None):
+      return self
+    if (force == 00000):
+      strong = self
+      weak = other_symmetry
+    else:
+      strong = other_symmetry
+      weak = self
+    unit_cell = strong.unit_cell()
+    space_group_info = strong.space_group_info()
+    if (unit_cell == None):
+      unit_cell = weak.unit_cell()
+    if (space_group_info == None):
+      space_group_info = weak.space_group_info()
+    return symmetry(
+       unit_cell=unit_cell,
+       space_group_info=space_group_info)
+
 class special_position_settings(symmetry):
 
   def __init__(self, crystal_symmetry,
