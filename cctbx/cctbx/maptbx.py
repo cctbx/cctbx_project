@@ -118,6 +118,86 @@ class crystal_gridding:
       unit_cell=self.unit_cell(),
       space_group_info=self.space_group_info())
 
+  def tags(self):
+    return crystal_gridding_tags(self)
+
+class crystal_gridding_tags(crystal_gridding):
+
+  def __init__(self, gridding):
+    crystal_gridding._copy_constructor(self, gridding)
+    assert gridding.symmetry_flags() != None
+    self._tags = grid_tags(self.n_real())
+    self._tags.build(
+      self.space_group_info().type(),
+      self.symmetry_flags())
+    assert self._tags.n_grid_misses() == 0
+
+  def tags(self):
+    return self._tags
+
+  def peak_search(self, parameters, map, verify_symmetry=0001):
+    if (verify_symmetry):
+      assert self._tags.verify(map)
+    if (map.accessor().is_padded()):
+      map = copy(map, flex.grid(map.focus()))
+    grid_peaks = peak_list(
+      data=map,
+      tags=self._tags.tag_array(),
+      peak_search_level=parameters.peak_search_level(),
+      max_peaks=parameters.max_peaks(),
+      peak_cutoff=parameters.peak_cutoff())
+    if (parameters.min_distance_sym_equiv() == None):
+      return grid_peaks
+    return peak_list_cluster_reduction(
+      peak_list=grid_peaks,
+      special_position_settings=crystal.special_position_settings(
+        crystal_symmetry=self.crystal_symmetry(),
+        min_distance_sym_equiv=parameters.min_distance_sym_equiv()),
+      general_positions_only=parameters.general_positions_only(),
+      min_cross_distance=parameters.min_cross_distance(),
+      max_reduced_sites=parameters.max_reduced_sites())
+
+class peak_search_parameters:
+
+  def __init__(self, peak_search_level=1,
+                     max_peaks=0,
+                     peak_cutoff=None,
+                     min_distance_sym_equiv=None,
+                     general_positions_only=00000,
+                     min_cross_distance=None,
+                     max_reduced_sites=None):
+    adopt_init_args(self, locals(), hide=0001)
+
+  def _copy_constructor(self, other):
+    self._peak_search_level = other._peak_search_level
+    self._max_peaks = other._max_peaks
+    self._peak_cutoff = other._peak_cutoff
+    self._min_distance_sym_equiv = other._min_distance_sym_equiv
+    self._general_positions_only = other._general_positions_only
+    self._min_cross_distance = other._min_cross_distance
+    self._max_reduced_sites = other._max_reduced_sites
+
+  def peak_search_level(self):
+    return self._peak_search_level
+
+  def max_peaks(self):
+    return self._max_peaks
+
+  def peak_cutoff(self):
+    return self._peak_cutoff
+
+  def min_distance_sym_equiv(self):
+    return self._min_distance_sym_equiv
+
+  def general_positions_only(self):
+    return self._general_positions_only
+
+  def min_cross_distance(self):
+    return self._min_cross_distance
+
+  def max_reduced_sites(self):
+    return self._max_reduced_sites
+
 class peak_list_cluster_reduction:
 
   def __init__(self, peak_list,
