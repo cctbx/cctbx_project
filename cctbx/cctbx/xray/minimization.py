@@ -8,7 +8,8 @@ from scitbx.python_utils.misc import adopt_init_args
 class lbfgs:
 
   def __init__(self, target_functor, gradient_flags, xray_structure,
-                     min_iterations=10, max_iterations=None,
+                     lbfgs_termination_params=None,
+                     lbfgs_core_params=None,
                      cos_sin_table=0001,
                      direct=00000,
                      fft=00000):
@@ -27,7 +28,9 @@ class lbfgs:
     self._d_min = self.target_functor.f_obs().d_min()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(
-      self, min_iterations=min_iterations, max_iterations=max_iterations)
+      target_evaluator=self,
+      termination_params=lbfgs_termination_params,
+      core_params=lbfgs_core_params)
     self.apply_shifts()
     del self._scatterers_start
     del self._d_min

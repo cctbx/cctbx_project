@@ -1,31 +1,64 @@
 import scitbx.array_family.flex
 
-from scitbx.python_utils import misc
-ext = misc.import_ext("scitbx_boost.lbfgs_ext")
-misc.import_regular_symbols(globals(), ext.__dict__)
-del misc
+import scitbx.python_utils.misc
+ext = scitbx.python_utils.misc.import_ext("scitbx_boost.lbfgs_ext")
+from scitbx_boost.lbfgs_ext import *
+
+from scitbx.python_utils.misc import adopt_init_args
+
+class core_parameters:
+
+  def __init__(self, m=5,
+                     maxfev=20,
+                     gtol=0.9,
+                     xtol=1.e-16,
+                     stpmin=1.e-20,
+                     stpmax=1.e20):
+    adopt_init_args(self, locals())
+
+class termination_parameters:
+
+  def __init__(self, traditional_convergence_test=0001,
+                     min_iterations=0,
+                     max_iterations=None,
+                     max_calls=None):
+    adopt_init_args(self, locals())
 
 def run(target_evaluator,
-        min_iterations=10,
-        max_iterations=None,
-        max_calls=100,
-        traditional_convergence_test=0):
-  minimizer = ext.minimizer(target_evaluator.n)
-  if (traditional_convergence_test):
+        termination_params=None,
+        core_params=None):
+  if (termination_params is None):
+    termination_params = termination_parameters()
+  if (core_params is None):
+    core_params = core_parameters()
+  minimizer = ext.minimizer(
+    target_evaluator.n,
+    core_params.m,
+    core_params.maxfev,
+    core_params.gtol,
+    core_params.xtol,
+    core_params.stpmin,
+    core_params.stpmax)
+  if (termination_params.traditional_convergence_test):
     is_converged = ext.traditional_convergence_test(target_evaluator.n)
   else:
-    is_converged = ext.drop_convergence_test(min_iterations)
+    is_converged = ext.drop_convergence_test(termination_params.min_iterations)
   try:
     while 1:
       x, f, g = target_evaluator()
       if (minimizer.run(x, f, g)): continue
-      if (traditional_convergence_test):
-        if (minimizer.iter() >= min_iterations and is_converged(x, g)): break
+      if (termination_params.traditional_convergence_test):
+        if (    minimizer.iter() >= termination_params.min_iterations
+            and is_converged(x, g)):
+          break
       else:
         if (is_converged(f)): break
-      if (max_iterations is not None and minimizer.iter() >= max_iterations):
+      if (    termination_params.max_iterations is not None
+          and minimizer.iter() >= termination_params.max_iterations):
         break
-      if (minimizer.nfun() > max_calls): break
+      if (    termination_params.max_calls is not None
+          and minimizer.nfun() > termination_params.max_calls):
+        break
       if (not minimizer.run(x, f, g)): break
   except RuntimeError, e:
     minimizer.error = str(e)

@@ -21,7 +21,11 @@ class k_b_scaling_minimizer:
     self.b_min = self.b_initial
     self.x = self.pack(self.k_min, self.b_min)
     self.n = self.x.size()
-    self.minimizer = lbfgs.run(self, min_iterations, max_calls)
+    self.minimizer = lbfgs.run(
+      target_evaluator=self,
+      termination_params=lbfgs.termination_parameters(
+        min_iterations=min_iterations,
+        max_calls=max_calls))
     self()
     del self.x
     self.k_min *= self.k_initial
