@@ -133,7 +133,7 @@ def exercise_direct_space_asu():
     assert asu_mappings.asu_buffer().is_inside(am.mapped_site())
   o = matrix.sqr(asu_mappings.unit_cell().orthogonalization_matrix())
   f = matrix.sqr(asu_mappings.unit_cell().fractionalization_matrix())
-  for i_seq,m_i_seq in zip(count(), asu_mappings.mappings()):
+  for i_seq,m_i_seq in enumerate(asu_mappings.mappings()):
     for i_sym in xrange(len(m_i_seq)):
       rt_mx = asu_mappings.get_rt_mx(i_seq, i_sym)
       assert asu_mappings.get_rt_mx(asu_mappings.mappings()[i_seq][i_sym]) \
@@ -303,7 +303,7 @@ def exercise_direct_space_asu():
   assert pair.j_sym == 1
   assert pair.is_active(minimal=00000)
   assert not pair.is_active(minimal=0001)
-  for i_seq,m in zip(count(), asu_mappings.mappings()):
+  for i_seq,m in enumerate(asu_mappings.mappings()):
     for i_sym in xrange(len(m)):
       rt_mx = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=i_sym)
       i_sym_found = asu_mappings.find_i_sym(i_seq=i_seq, rt_mx=rt_mx)

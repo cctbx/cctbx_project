@@ -8,7 +8,6 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import matrix
-from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 from boost import rational
 import random
@@ -243,7 +242,7 @@ def exercise_is_simple_interaction():
         asu_mappings=asu_mappings,
         distance_cutoff=7)
       simple_interactions = {}
-      for i_pair,pair in zip(count(),pair_generator):
+      for i_pair,pair in enumerate(pair_generator):
         if (asu_mappings.is_simple_interaction(pair)):
           assert asu_mappings_is_simple_interaction_emulation(
             asu_mappings, pair)
