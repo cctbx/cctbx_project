@@ -1,28 +1,5 @@
 from cctbx import sgtbx
 
-def cmp_orthorhombic_cell_parameters(lhs, rhs):
-  for i in xrange(3):
-    if (lhs[i] < rhs[i]): return -1
-    if (lhs[i] > rhs[i]): return  1
-  return 0
-
-def cmp_monoclinic_cell_parameters(lhs, rhs, unique_axis, angular_tolerance):
-  lhs_ang = lhs[unique_axis]
-  rhs_ang = rhs[unique_axis]
-  if (abs(lhs_ang - rhs_ang) < angular_tolerance):
-    return cmp_orthorhombic_cell_parameters(lhs, rhs)
-  lhs_ang_d90 = abs(lhs_ang - 90)
-  rhs_ang_d90 = abs(rhs_ang - 90)
-  if (abs(lhs_ang_d90 - rhs_ang_d90) > angular_tolerance):
-    if (lhs_ang_d90 < rhs_ang_d90): return -1
-    if (lhs_ang_d90 > rhs_ang_d90): return  1
-  else:
-    if (lhs_ang > 90 and rhs_ang < 90): return -1
-    if (lhs_ang < 90 and rhs_ang > 90): return  1
-  if (lhs_ang > rhs_ang): return -1
-  if (lhs_ang < rhs_ang): return  1
-  return 0
-
 class find_best_cell:
 
   def __init__(self, input_symmetry, angular_tolerance=None):
@@ -47,7 +24,6 @@ class find_best_cell:
     cb_op_std_ref = standard_info.type().cb_op()
     cb_op_std_inp = cb_op_inp_ref.inverse() * cb_op_std_ref
     assert standard_info.group().change_basis(cb_op_std_inp) == input_symmetry.space_group()
-    best_cell_parameters = input_symmetry.unit_cell().parameters()
     best_cb_op = sgtbx.change_of_basis_op()
     best_symmetry = input_symmetry
     if (space_group_number <= 15):
@@ -55,19 +31,18 @@ class find_best_cell:
       assert abs(two_fold_info.type()) == 2
       ev = list(two_fold_info.ev())
       assert ev.count(0) == 2
-      unique_axis = ev.index(1) + 3
+      unique_axis = ev.index(1)
       affine = sgtbx.find_affine(input_symmetry.space_group())
       for cb_mx in affine.cb_mx():
         cb_op = sgtbx.change_of_basis_op(cb_mx).new_denominators(best_cb_op)
         alt_symmetry = input_symmetry.change_basis(cb_op)
         if (alt_symmetry.space_group() == input_symmetry.space_group()):
           self._all_cells.append(alt_symmetry)
-          alt_cell_parameters = alt_symmetry.unit_cell().parameters()
-          cmp_result = cmp_monoclinic_cell_parameters(
-            best_cell_parameters, alt_cell_parameters, unique_axis,
-            angular_tolerance)
+          cmp_result = best_symmetry.unit_cell().compare_monoclinic(
+            other=alt_symmetry.unit_cell(),
+            unique_axis=unique_axis,
+            angular_tolerance=angular_tolerance)
           if (cmp_result > 0):
-            best_cell_parameters = alt_cell_parameters
             best_cb_op = cb_op
             best_symmetry = alt_symmetry
     else:
@@ -80,11 +55,9 @@ class find_best_cell:
         alt_symmetry = input_symmetry.change_basis(cb_op)
         if (alt_symmetry.space_group() == input_symmetry.space_group()):
           self._all_cells.append(alt_symmetry)
-          alt_cell_parameters = alt_symmetry.unit_cell().parameters()
-          cmp_result = cmp_orthorhombic_cell_parameters(
-            best_cell_parameters, alt_cell_parameters)
+          cmp_result = best_symmetry.unit_cell().compare_orthorhombic(
+            alt_symmetry.unit_cell())
           if (cmp_result > 0):
-            best_cell_parameters = alt_cell_parameters
             best_cb_op = cb_op
             best_symmetry = alt_symmetry
     self._cb_op = best_cb_op

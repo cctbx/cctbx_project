@@ -336,4 +336,47 @@ namespace cctbx { namespace uctbx {
     return max_h;
   }
 
+  int
+  unit_cell::compare_orthorhombic(
+    const unit_cell& other) const
+  {
+    af::double6 const& lhs = params_;
+    af::double6 const& rhs = other.params_;
+    for(std::size_t i=0;i<3;i++) {
+      if (lhs[i] < rhs[i]) return -1;
+      if (lhs[i] > rhs[i]) return  1;
+    }
+    return 0;
+  }
+
+  int
+  unit_cell::compare_monoclinic(
+    const unit_cell& other,
+    unsigned unique_axis,
+    double angular_tolerance) const
+  {
+    CCTBX_ASSERT(unique_axis < 3);
+    af::double6 const& lhs = params_;
+    af::double6 const& rhs = other.params_;
+    double lhs_ang = lhs[unique_axis+3];
+    double rhs_ang = rhs[unique_axis+3];
+    using scitbx::fn::absolute;
+    if (absolute(lhs_ang - rhs_ang) < angular_tolerance) {
+      return compare_orthorhombic(other);
+    }
+    double lhs_ang_d90 = absolute(lhs_ang - 90);
+    double rhs_ang_d90 = absolute(rhs_ang - 90);
+    if (absolute(lhs_ang_d90 - rhs_ang_d90) > angular_tolerance) {
+      if (lhs_ang_d90 < rhs_ang_d90) return -1;
+      if (lhs_ang_d90 > rhs_ang_d90) return  1;
+    }
+    else {
+      if (lhs_ang > 90 && rhs_ang < 90) return -1;
+      if (lhs_ang < 90 && rhs_ang > 90) return  1;
+    }
+    if (lhs_ang > rhs_ang) return -1;
+    if (lhs_ang < rhs_ang) return  1;
+    return 0;
+  }
+
 }} // namespace cctbx::uctbx

@@ -485,6 +485,54 @@ namespace cctbx {
         return result;
       }
 
+      /*! \brief Sort order for alternative settings of otherwise
+          identical orthorhombic cells.
+       */
+      /*! The cell with the smaller a-parameter is preferred.
+          If the a-parameters are equal, the cell with the
+          smaller b-parameter is preferred.
+          If the a-parameters and b-parameters are equal, the cell
+          with the smaller c-parameter is preferred.
+
+          The return value is -1 if this is the preferred cell,
+          1 if other is the preferred cell, and 0 otherwise.
+
+          The result is meaningless if the two unit cells are
+          not alternative settings; i.e. the two cells must be
+          related to each other by a transformation matrix
+          with determinant 1.
+       */
+      int
+      compare_orthorhombic(
+        const unit_cell& other) const;
+
+      /*! \brief Sort order for alternative settings of otherwise
+          identical monoclinic cells.
+       */
+      /*! unique_axis must be one of:
+            0 for a-unique,
+            1 for b-unique,
+            2 for c-unique.
+
+          If the absolute value of the difference between the
+          monoclinic angels is less than angular_tolerance
+          compare_orthorhombic() is used to determine the return value
+          (-1, 1, or 0). Otherwise the return value is determined
+          by evaluating the monoclinic angels. For exact details
+          refer to the source code of the implementation
+          ($CCTBX_DIST/cctbx/uctbx/uctbx.cpp).
+
+          The result is meaningless if the two unit cells are
+          not alternative settings; i.e. the two cells must be
+          related to each other by a transformation matrix
+          with determinant 1.
+       */
+      int
+      compare_monoclinic(
+        const unit_cell& other,
+        unsigned unique_axis,
+        double angular_tolerance) const;
+
     protected:
       void init_volume();
       void init_reciprocal();
