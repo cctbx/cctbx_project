@@ -1,3 +1,4 @@
+import md5
 import sys
 Import("env_base", "env_etc")
 env_etc.boost_dist = env_etc.libtbx_env.dist_path("boost")
@@ -84,7 +85,14 @@ if (not env_etc.no_boost_python):
     env.SharedLibrary(target="#libtbx/boost_python", source=bpl_dll_sources)
 
   if (int(ARGUMENTS.get("boost_python_tests", 0))):
-    # based on boost/libs/python/test/Jamfile revision 1.60
+    jamfile_path = os.path.normpath(os.path.join(
+      env_etc.boost_dist, "libs/python/test/Jamfile"))
+    jamfile = " ".join(
+      [line.rstrip() for line in open(jamfile_path).readlines()])
+    m = md5.new()
+    m.update(jamfile)
+    # based on boost/libs/python/test/Jamfile revision 1.65
+    assert m.hexdigest() == "6a4a11c8a35bac27101b8b22cf3acf16"
     bpl_tests = Split("""
 staticmethod
 shared_ptr
@@ -131,13 +139,18 @@ iterator,iterator_ext,iterator
 input_iterator,input_iterator,iterator
 crossmod_exception_a,crossmod_exception_a,crossmod_exception
 crossmod_exception_b,crossmod_exception_b,crossmod_exception
-vector_indexing_suite
+#vector_indexing_suite
+return_arg
+#keywords,keywords,keywords_test
 """)
     Import("env_boost_python_ext")
     env = env_boost_python_ext.Copy()
     env.Replace(CPPPATH=[env_etc.boost_include, env_etc.python_include])
     all_tst = []
     for bpl_test in bpl_tests:
+      if (bpl_test[0] == "#"):
+        print "Warning: disabled Boost.Python test:", bpl_test
+        continue
       flds = bpl_test.split(",")
       assert len(flds) in (1,3)
       if (len(flds) == 1):
