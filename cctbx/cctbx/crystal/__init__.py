@@ -26,10 +26,13 @@ class symmetry(object):
     self._space_group_info = space_group_info
     if (self._space_group_info is None):
       if (space_group_symbol is not None):
-        self._space_group_info = sgtbx.space_group_info(space_group_symbol)
+        self._space_group_info = sgtbx.space_group_info(
+          symbol=space_group_symbol)
       elif (space_group is not None):
-        self._space_group_info = sgtbx.space_group_info(group=space_group)
-
+        if (isinstance(space_group, sgtbx.space_group)):
+          self._space_group_info = sgtbx.space_group_info(group=space_group)
+        else:
+          self._space_group_info = sgtbx.space_group_info(symbol=space_group)
     if (self.unit_cell() is not None and self.space_group_info() is not None):
       if (assert_is_compatible_unit_cell):
         assert self.is_compatible_unit_cell(), \
