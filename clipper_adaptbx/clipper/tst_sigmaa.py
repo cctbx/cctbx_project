@@ -31,6 +31,7 @@ def exercise_SFweight_spline_core(structure, d_min, verbose=0):
     unit_cell=f_obs.unit_cell(),
     space_group=f_obs.space_group(),
     miller_indices=f_obs.indices(),
+    anomalous_flag=f_obs.anomalous_flag(),
     f_obs_data=f_obs.data(),
     f_obs_sigmas=f_obs.sigmas(),
     f_calc=f_calc.data(),

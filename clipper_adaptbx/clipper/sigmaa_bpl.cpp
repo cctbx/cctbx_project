@@ -23,6 +23,7 @@ namespace clipper { namespace {
         cctbx::uctbx::unit_cell const& unit_cell,
         cctbx::sgtbx::space_group const& space_group,
         af::shared<cctbx::miller::index<> > const& miller_indices,
+        bool anomalous_flag,
         af::const_ref<double> const& f_obs_data,
         af::const_ref<double> const& f_obs_sigmas,
         af::const_ref<std::complex<double> > const& f_calc,
@@ -38,7 +39,11 @@ namespace clipper { namespace {
         phiw_(hkls_),
         sfweight_spline_(n_refln, n_param)
       {
-
+        if (anomalous_flag) {
+          throw cctbx::error(
+            "SFweight_spline_interface cannot currently"
+            " handle anomalous arrays.");
+        }
         CCTBX_ASSERT(test_set_flags.size() == miller_indices.size());
         CCTBX_ASSERT(hkls_.num_reflections() == miller_indices.size());
         af::const_ref<cctbx::miller::index<> >
@@ -114,6 +119,7 @@ namespace clipper { namespace {
         .def(init<cctbx::uctbx::unit_cell const&,
                   cctbx::sgtbx::space_group const&,
                   af::shared<cctbx::miller::index<> > const&,
+                  bool,
                   af::const_ref<double> const&,
                   af::const_ref<double> const&,
                   af::const_ref<std::complex<double> > const&,
@@ -122,6 +128,7 @@ namespace clipper { namespace {
           arg_("unit_cell"),
           arg_("space_group"),
           arg_("miller_indices"),
+          arg_("anomalous_flag"),
           arg_("f_obs_data"),
           arg_("f_obs_sigmas"),
           arg_("f_calc"),
