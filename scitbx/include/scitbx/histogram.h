@@ -95,6 +95,9 @@ namespace scitbx {
         return data_min_ + i * slot_width_ + slot_width_ * relative_tolerance;
       }
 
+
+
+
     private:
       void
       assign_to_slot(ValueType const& d)

@@ -3,6 +3,8 @@ from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0
 from scitbx.math import bessel_inverse_i1_over_i0
+from scitbx.math import incomplete_gamma
+from scitbx.math import complete_gamma
 from scitbx.math import lambertw
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import gaussian
@@ -138,6 +140,37 @@ def exercise_erf():
   erf_verify(erfcx, -23.9658621423763, 5.540070644707187E+249)
   erf_verify(erfcx, -26.6287357137515, 1.790000000000000E+308)
   assert erf_verify.max_delta < erf_verify.tolerance
+
+def exercise_incomplete_gamma():
+  assert approx_equal(incomplete_gamma(2.0, 0.1),0.004678840160445)
+  assert approx_equal(incomplete_gamma(2.0, 0.5),0.090204010431050)
+  assert approx_equal(incomplete_gamma(2.0, 2.5),0.712702504816354)
+  assert approx_equal(incomplete_gamma(2.0, 5.0),0.959572318005487)
+  assert approx_equal(incomplete_gamma(2.0,15.5),0.999996938604252)
+  assert approx_equal(incomplete_gamma(2.0,21.0),0.999999983318367)
+
+  assert approx_equal(incomplete_gamma(20.0, 0.1),0)
+  assert approx_equal(incomplete_gamma(20.0, 0.5),0)
+  assert approx_equal(incomplete_gamma(20.0, 2.5),3.480438159897403e-12)
+  assert approx_equal(incomplete_gamma(20.0, 5.0),3.452135821646607e-7)
+  assert approx_equal(incomplete_gamma(20.0,15.5),0.154492096867129)
+  assert approx_equal(incomplete_gamma(20.0,21.0),0.615737227735658)
+
+def exercise_complete_gamma():
+  ## complete gamma with lanczos approx for x<12 and minimax otherwise
+  assert approx_equal(complete_gamma(0.1),9.5135076986687)
+  assert approx_equal(complete_gamma(0.5),1.7724538509055)
+  assert approx_equal(complete_gamma(2.5),1.3293403881791)
+  assert approx_equal(complete_gamma(5.0),24.0)
+  assert approx_equal(complete_gamma(15.5),3.3483860987356E11)
+  assert approx_equal(complete_gamma(21.0),2432902008176640000)
+  ## complete gamma with lanczos approx for all values
+  assert approx_equal(complete_gamma(0.1,minimax=False),9.5135076986687)
+  assert approx_equal(complete_gamma(0.5,minimax=False),1.7724538509055)
+  assert approx_equal(complete_gamma(2.5,minimax=False),1.3293403881791)
+  assert approx_equal(complete_gamma(5.0,minimax=False),24.)
+  assert approx_equal(complete_gamma(15.5,minimax=False),3.3483860987356E11)
+  assert approx_equal(complete_gamma(21.0,minimax=False),2432902008176640000)
 
 def exercise_bessel():
   assert approx_equal(bessel_i1_over_i0(-1e+9), -1.0)
@@ -1068,6 +1101,8 @@ def run():
   exercise_floating_point_epsilon()
   exercise_euler_angles()
   exercise_erf()
+  exercise_incomplete_gamma()
+  exercise_complete_gamma()
   exercise_bessel()
   exercise_lambertw()
   exercise_eigensystem()

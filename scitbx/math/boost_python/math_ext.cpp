@@ -3,6 +3,7 @@
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/math/erf.h>
 #include <scitbx/math/bessel.h>
+#include <scitbx/math/gamma.h>
 #include <scitbx/math/lambertw.h>
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/math/phase_error.h>
@@ -59,6 +60,10 @@ namespace {
     return result / static_cast<double>(n_repetitions);
   }
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    complete_gamma_overloads,
+    complete_gamma, 1, 2)
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(lambertw_overloads, lambertw, 1, 2)
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -87,6 +92,15 @@ namespace {
     def("bessel_i0", (double(*)(double const&)) bessel::i0);
     def("bessel_i1", (double(*)(double const&)) bessel::i1);
     def("bessel_ln_of_i0", (double(*)(double const&)) bessel::ln_of_i0);
+
+    def("complete_gamma", (double(*)(double const&, bool))
+        complete_gamma,
+        complete_gamma_overloads( (arg_("x"),
+                                          arg_("minimax")=true)));
+    def("incomplete_gamma", (double(*)(double const&, double const&))
+                             incomplete_gamma);
+    def("imcomplete_gamma_complement",(double(*)(double const&, double const&))
+                             incomplete_gamma);
 
     def("lambertw", (double(*)(double const&, unsigned)) lambertw,
       lambertw_overloads(
