@@ -143,8 +143,8 @@ namespace cctbx { namespace uctbx {
       std::size_t
       n_iterations() const { return n_iterations_; }
 
-      /*! Indicates if the reduction was terminated because it
-          was detected that the unit cell lengths did no longer
+      /*! \brief Indicates if the reduction was terminated because
+          it was detected that the unit cell lengths did no longer
           change significantly.
        */
       bool
