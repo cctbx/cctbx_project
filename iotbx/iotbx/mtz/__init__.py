@@ -256,7 +256,11 @@ class _object(boost.python.injector, ext.object):
           for fields in fields_list:
             print >> out, format % tuple(fields)
 
-  def change_basis_in_place(self, cb_op, new_space_group_info=None):
+  def change_basis_in_place(self,
+        cb_op,
+        new_space_group_info=None,
+        assert_is_compatible_unit_cell=False
+        ):
     # force update if column_type_legend is changed
     assert len(column_type_legend) == 16 # programmer alert
     for column_type in self.column_types():
@@ -274,7 +278,9 @@ class _object(boost.python.injector, ext.object):
     for crystal in self.crystals():
       crystal_symmetry = cctbx.crystal.symmetry(
         unit_cell=cb_op.apply(crystal.unit_cell()),
-        space_group_info=new_space_group_info)
+        space_group_info=new_space_group_info,
+        assert_is_compatible_unit_cell=assert_is_compatible_unit_cell
+        )
       crystal.set_unit_cell_parameters(
         crystal_symmetry.unit_cell().parameters())
 
