@@ -43,7 +43,7 @@ def exercise_basic():
     assert mtz_object.n_batches() == 0
     assert mtz_object.n_reflections() == 165
     assert approx_equal(mtz_object.max_min_resolution(),
-      (0.0044435299932956696, 0.00253282580524683))
+      (19.869975507347792, 15.001543055390009))
     assert mtz_object.n_crystals() == 4
     assert mtz_object.n_active_crystals() == 3
     crystal = mtz.wrapper.crystal(mtz_object=mtz_object, i_crystal=1)

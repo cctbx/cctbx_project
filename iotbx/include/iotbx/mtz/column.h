@@ -180,6 +180,38 @@ namespace iotbx { namespace mtz {
       lookup_column("L"));
   }
 
+  inline
+  af::double2
+  object::max_min_resolution() const
+  {
+    double d_star_sq_min = -1;
+    double d_star_sq_max = -1;
+    int n_refl = n_reflections();
+    int n_crys = n_crystals();
+    if (n_refl > 0 && n_crys > 0) {
+      hkl_columns hkl = lookup_hkl_columns();
+      std::vector<cctbx::uctbx::unit_cell> unit_cells;
+      for(int i_crystal=0;i_crystal<n_crys;i_crystal++) {
+        unit_cells.push_back(crystal(*this, i_crystal).unit_cell());
+      }
+      for(int i_refl=0;i_refl<n_refl;i_refl++) {
+        for(int i_crystal=0;i_crystal<n_crys;i_crystal++) {
+          double d_star_sq = unit_cells[i_crystal].d_star_sq(
+            hkl.get_miller_index(i_refl));
+          if (d_star_sq_min > d_star_sq || d_star_sq_min < 0) {
+              d_star_sq_min = d_star_sq;
+          }
+          if (d_star_sq_max < d_star_sq) {
+              d_star_sq_max = d_star_sq;
+          }
+        }
+      }
+    }
+    return af::double2(
+      d_star_sq_min <= 0 ? -1 : 1/std::sqrt(d_star_sq_min),
+      d_star_sq_max <= 0 ? -1 : 1/std::sqrt(d_star_sq_max));
+  }
+
   namespace detail {
     inline
     std::complex<double>
