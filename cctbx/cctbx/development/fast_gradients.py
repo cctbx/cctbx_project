@@ -145,6 +145,12 @@ class resampling(crystal.symmetry):
     time_sampling = time_sampling.elapsed()
     return result
 
+def judge(scatterer, label, reference, other, agreement_factor=0.99):
+  aniso_label = [" iso", " aniso"]
+  if (abs(reference-other) > abs(reference*(1-agreement_factor))):
+    return "BAD " + label + aniso_label[int(scatterer.anisotropic_flag)]
+  return ""
+
 def get_gms(xray_structure, f_obs):
   uc = xray_structure.unit_cell()
   gms = []
@@ -213,6 +219,7 @@ def site(structure_ideal, f_obs):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
+    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     for i_xyz in (0,1,2):
       delta = 1.e-6
       pl = two_p_shifted_site(
@@ -221,9 +228,10 @@ def site(structure_ideal, f_obs):
         f_obs, sh.structure_shifted, i_scatterer,i_xyz,-delta)
       j = (pl.e - mi.e) / (2*delta)
       g = flex.sum(j * sh.e)
-      print "  g[%d][%d]: " % (i_scatterer, i_xyz), g
-      print "sfd[%d][%d]: " % (i_scatterer, i_xyz), \
-            sfd.d_target_d_site()[i_scatterer][i_xyz] * sum_f_obs_sq/2
+      print "finite diff[%d][%d]: " % (i_scatterer, i_xyz), g
+      direct_summ = sfd.d_target_d_site()[i_scatterer][i_xyz] * sum_f_obs_sq/2
+      print "direct summ[%d][%d]: " % (i_scatterer, i_xyz), direct_summ,
+      print judge(scatterer, "site", g, direct_summ)
       if (f_obs.space_group().order_z() == 1):
         rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
         gxm = 0
@@ -232,9 +240,11 @@ def site(structure_ideal, f_obs):
           gxm += (dps[i_xyz].data()[i]
                   * gms[i_scatterer][i].conjugate()
                   * complex_math.polar((1, p)))
-        print "gxm[%d][%d]:" % (i_scatterer, i_xyz), gxm
-      gl = map0.d_target_d_site()[i_scatterer][i_xyz]
-      print " m0[%d][%d]: " % (i_scatterer, i_xyz), gl
+        print "        gxm[%d][%d]:" % (i_scatterer, i_xyz), gxm
+      fast_gradie = map0.d_target_d_site()[i_scatterer][i_xyz] \
+                  * f_obs.space_group().n_ltr()
+      print "fast gradie[%d][%d]: " % (i_scatterer, i_xyz), fast_gradie,
+      print judge(scatterer, "site", g, fast_gradie, agreement_factor=0.8)
       print
 
 class two_p_shifted_u_iso:
@@ -282,6 +292,7 @@ def u_iso(structure_ideal, f_obs):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
+    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     delta = 1.e-6
     pl = two_p_shifted_u_iso(
       f_obs, sh.structure_shifted, i_scatterer, delta)
@@ -289,9 +300,10 @@ def u_iso(structure_ideal, f_obs):
       f_obs, sh.structure_shifted, i_scatterer, -delta)
     j = (pl.e - mi.e) / (2*delta)
     g = flex.sum(j * sh.e)
-    print "  g[%d]: " % i_scatterer, g
-    print "sfd[%d]: " % i_scatterer, \
-          sfd.d_target_d_u_iso()[i_scatterer] * sum_f_obs_sq/2
+    print "finite diff[%d]: " % i_scatterer, g
+    direct_summ = sfd.d_target_d_u_iso()[i_scatterer] * sum_f_obs_sq/2
+    print "direct summ[%d]: " % i_scatterer, direct_summ,
+    print judge(scatterer, "u_iso", g, direct_summ)
     if (f_obs.space_group().order_z() == 1):
       rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
       gxm = 0
@@ -300,9 +312,11 @@ def u_iso(structure_ideal, f_obs):
         gxm += (dps.data()[i]
                 * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
-      print "gxm[%d]:" % i_scatterer, gxm
-    gl = map0.d_target_d_u_iso()[i_scatterer]
-    print " m0[%d]: " % i_scatterer, gl
+      print "        gxm[%d]:" % i_scatterer, gxm
+    fast_gradie = map0.d_target_d_u_iso()[i_scatterer] \
+                * f_obs.space_group().n_ltr()
+    print "fast gradie[%d]: " % i_scatterer, fast_gradie,
+    print judge(scatterer, "u_iso", g, fast_gradie, agreement_factor=0.8)
     print
 
 class two_p_shifted_occupancy:
@@ -324,6 +338,9 @@ def occupancy(structure_ideal, f_obs):
   sum_f_obs_sq = flex.sum(flex.pow2(f_obs.data()))
   sh = two_p_shifted_occupancy(f_obs, structure_ideal, 0, 0.2)
   sh.structure_shifted.show_summary().show_scatterers()
+  import iotbx.pdb.xray_structure
+  open("mod_occupancy.pdb", "w").write(
+    sh.structure_shifted.as_pdb_file(remark="occupancy"))
   ls = xray.targets_least_squares_residual(
     f_obs.data(), sh.f_calc.data(), 0001, 1)
   sfd = xray.structure_factors.from_scatterers_direct(
@@ -348,6 +365,7 @@ def occupancy(structure_ideal, f_obs):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
+    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     delta = 1.e-6
     pl = two_p_shifted_occupancy(
       f_obs, sh.structure_shifted, i_scatterer, delta)
@@ -355,9 +373,10 @@ def occupancy(structure_ideal, f_obs):
       f_obs, sh.structure_shifted, i_scatterer, -delta)
     j = (pl.e - mi.e) / (2*delta)
     g = flex.sum(j * sh.e)
-    print "  g[%d]: " % i_scatterer, g
-    print "sfd[%d]: " % i_scatterer, \
-          sfd.d_target_d_occupancy()[i_scatterer] * sum_f_obs_sq/2
+    print "finite diff[%d]: " % i_scatterer, g
+    direct_summ = sfd.d_target_d_occupancy()[i_scatterer] * sum_f_obs_sq/2
+    print "direct summ[%d]: " % i_scatterer, direct_summ,
+    print judge(scatterer, "occupancy", g, direct_summ)
     if (f_obs.space_group().order_z() == 1):
       m = sh.structure_shifted.scatterers()[i_scatterer]
       rm = matrix.col(m.site)
@@ -367,9 +386,11 @@ def occupancy(structure_ideal, f_obs):
         gxm += (dps.data()[i]
                 * gms[i_scatterer][i].conjugate()
                 * complex_math.polar((1, p)))
-      print "gxm[%d]:" % i_scatterer, gxm/m.occupancy
-    gl = map0.d_target_d_occupancy()[i_scatterer]
-    print " m0[%d]: " % i_scatterer, gl
+      print "        gxm[%d]:" % i_scatterer, gxm/m.occupancy
+    fast_gradie = map0.d_target_d_occupancy()[i_scatterer] \
+                * f_obs.space_group().n_ltr()
+    print "fast gradie[%d]: " % i_scatterer, fast_gradie,
+    print judge(scatterer, "occupancy", g, fast_gradie, agreement_factor=0.8)
     print
 
 class two_p_shifted_u_cart:
@@ -447,6 +468,7 @@ def u_star(structure_ideal, f_obs):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
+    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     sfd_star = [x*sum_f_obs_sq/2 for x in sfd.d_target_d_u_star()[i_scatterer]]
     sfd_cart = adptbx.grad_u_star_as_u_cart(
       structure_ideal.unit_cell(), sfd_star)
@@ -467,9 +489,10 @@ def u_star(structure_ideal, f_obs):
         f_obs, sh.structure_shifted, i_scatterer, ij, -delta)
       jc = (plc.e - mic.e) / (2*delta)
       gc = flex.sum(jc * sh.e)
-      print "  g[%d][%d]: " % (i_scatterer, ij), g
-      print "sfd[%d][%d]: " % (i_scatterer, ij), \
-            sfd.d_target_d_u_star()[i_scatterer][ij] * sum_f_obs_sq/2
+      print "finite diff[%d][%d]: " % (i_scatterer, ij), g
+      direct_summ = sfd.d_target_d_u_star()[i_scatterer][ij] * sum_f_obs_sq/2
+      print "direct summ[%d][%d]: " % (i_scatterer, ij), direct_summ,
+      print judge(scatterer, "u_star", g, direct_summ)
       if (f_obs.space_group().order_z() == 1):
         rm = matrix.col(sh.structure_shifted.scatterers()[i_scatterer].site)
         gxm = 0
@@ -478,11 +501,14 @@ def u_star(structure_ideal, f_obs):
           gxm += (dps[ij].data()[i]
                   * gms[i_scatterer][i].conjugate()
                   * complex_math.polar((1, p)))
-        print "gxm[%d][%d]:" % (i_scatterer, ij), gxm
-      gl = map0.d_target_d_u_star()[i_scatterer][ij]
-      print " m0[%d][%d]: " % (i_scatterer, ij), gl
-      print " gc[%d][%d]: " % (i_scatterer, ij), gc
-      print "s2c[%d][%d]: " % (i_scatterer, ij), sfd_cart[ij]
+        print "        gxm[%d][%d]:" % (i_scatterer, ij), gxm
+      fast_gradie = map0.d_target_d_u_star()[i_scatterer][ij] \
+                  * f_obs.space_group().n_ltr()
+      print "fast gradie[%d][%d]: " % (i_scatterer, ij), fast_gradie,
+      print judge(scatterer, "u_star", g, fast_gradie, agreement_factor=0.8)
+      if (0):
+        print "         gc[%d][%d]: " % (i_scatterer, ij), gc
+        print "        s2c[%d][%d]: " % (i_scatterer, ij), sfd_cart[ij]
       print
 
 class two_p_shifted_fp:
@@ -529,6 +555,7 @@ def fp(structure_ideal, f_obs):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
+    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     delta = 1.e-6
     pl = two_p_shifted_fp(
       f_obs, sh.structure_shifted, i_scatterer, delta)
@@ -536,9 +563,10 @@ def fp(structure_ideal, f_obs):
       f_obs, sh.structure_shifted, i_scatterer, -delta)
     j = (pl.e - mi.e) / (2*delta)
     g = flex.sum(j * sh.e)
-    print "  g[%d]: " % i_scatterer, g
-    print "sfd[%d]: " % i_scatterer, \
-          sfd.d_target_d_fp()[i_scatterer] * sum_f_obs_sq/2
+    print "finite diff[%d]: " % i_scatterer, g
+    direct_summ = sfd.d_target_d_fp()[i_scatterer] * sum_f_obs_sq/2
+    print "direct summ[%d]: " % i_scatterer, direct_summ,
+    print judge(scatterer, "fp", g, direct_summ)
     m = sh.structure_shifted.scatterers()[i_scatterer]
     if (f_obs.space_group().order_z() == 1):
       rm = matrix.col(m.site)
@@ -549,9 +577,11 @@ def fp(structure_ideal, f_obs):
         gxm += (dps.data()[i]
                 * (gms[i_scatterer][i]/f0_fp_fdp).conjugate()
                 * complex_math.polar((1, p)))
-      print "gxm[%d]:" % i_scatterer, gxm
-    gl = map0.d_target_d_fp()[i_scatterer]
-    print " m0[%d]: " % i_scatterer, gl
+      print "        gxm[%d]:" % i_scatterer, gxm
+    fast_gradie = map0.d_target_d_fp()[i_scatterer] \
+                * f_obs.space_group().n_ltr()
+    print "fast gradie[%d]: " % i_scatterer, fast_gradie,
+    print judge(scatterer, "fp", g, fast_gradie, agreement_factor=0.8)
     print
 
 class two_p_shifted_fdp:
@@ -598,6 +628,7 @@ def fdp(structure_ideal, f_obs):
   re = resampling(miller_set=f_obs)
   map0 = re(xray_structure=sh.structure_shifted, dp=dp0)
   for i_scatterer in (0,1,2):
+    scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     delta = 1.e-6
     pl = two_p_shifted_fdp(
       f_obs, sh.structure_shifted, i_scatterer, delta)
@@ -605,9 +636,10 @@ def fdp(structure_ideal, f_obs):
       f_obs, sh.structure_shifted, i_scatterer, -delta)
     j = (pl.e - mi.e) / (2*delta)
     g = flex.sum(j * sh.e)
-    print "  g[%d]: " % i_scatterer, g
-    print "sfd[%d]: " % i_scatterer, \
-          sfd.d_target_d_fdp()[i_scatterer] * sum_f_obs_sq/2
+    print "finite diff[%d]: " % i_scatterer, g
+    direct_summ = sfd.d_target_d_fdp()[i_scatterer] * sum_f_obs_sq/2
+    print "direct summ[%d]: " % i_scatterer, direct_summ,
+    print judge(scatterer, "fdp", g, direct_summ)
     m = sh.structure_shifted.scatterers()[i_scatterer]
     if (f_obs.space_group().order_z() == 1):
       rm = matrix.col(m.site)
@@ -618,9 +650,11 @@ def fdp(structure_ideal, f_obs):
         gxm += (dps.data()[i]
                 * (gms[i_scatterer][i]/(-1j*f0_fp_fdp)).conjugate()
                 * complex_math.polar((1, p)))
-      print "gxm[%d]:" % i_scatterer, gxm
-    gl = map0.d_target_d_fdp()[i_scatterer]
-    print " m0[%d]: " % i_scatterer, gl
+      print "        gxm[%d]:" % i_scatterer, gxm
+    fast_gradie = map0.d_target_d_fdp()[i_scatterer] \
+                * f_obs.space_group().n_ltr()
+    print "fast gradie[%d]: " % i_scatterer, fast_gradie,
+    print judge(scatterer, "fdp", g, fast_gradie, agreement_factor=0.8)
     print
 
 def run_one(n_elements=3, volume_per_atom=1000, d_min=2,
@@ -633,14 +667,15 @@ def run_one(n_elements=3, volume_per_atom=1000, d_min=2,
     random_f_double_prime=fdp_flag,
     anisotropic_flag=anisotropic_flag,
     random_u_iso=1,
-    random_u_cart_scale=.1,
+    random_u_cart_scale=.3,
     random_occupancy=1)
   if (0):
     a = structure_ideal.unit_cell().volume()**(1/3.)
+    r = 1.3
     structure_ideal = xray.structure(
       special_position_settings=crystal.special_position_settings(
         crystal_symmetry=crystal.symmetry(
-          unit_cell=(1.3*a,a,a/1.3,90,90,90),
+          unit_cell=(r*a,a,a/r,90,90,90),
           space_group_symbol="P 1")),
       scatterers=structure_ideal.scatterers())
   structure_ideal.show_summary().show_scatterers()
