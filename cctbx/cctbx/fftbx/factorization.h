@@ -43,10 +43,11 @@ namespace cctbx { namespace fftbx {
 
   namespace detail {
 
-    inline std::size_t
-    CountReduce(std::size_t& RedN, const std::size_t& factor)
+    template <typename IntegerType>
+    IntegerType
+    CountReduce(IntegerType& RedN, const IntegerType& factor)
     {
-      std::size_t result = 0;
+      IntegerType result = 0;
       while (RedN % factor == 0) {
         RedN /= factor;
         result++;
