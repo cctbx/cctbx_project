@@ -53,15 +53,20 @@ class manager:
               > self.nonbonded_buffer))):
       self.n_updates_pair_proxies += 1
       self._sites_cart_used_for_pair_proxies = sites_cart.deep_copy()
+      bonded_distance_cutoff = 0
       if (self.crystal_symmetry is None):
+        for shell_sym_table in self.shell_sym_tables:
+          bonded_distance_cutoff = max(bonded_distance_cutoff,
+            flex.max(crystal.get_distances(
+              pair_sym_table=shell_sym_table,
+              sites_cart=sites_cart)))
+        bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
         asu_mappings = \
           crystal.direct_space_asu.non_crystallographic_asu_mappings(
             sites_cart=sites_cart)
-        bonded_distance_cutoff = 0
       else:
         unit_cell = self.crystal_symmetry.unit_cell()
         sites_frac = unit_cell.fractionalization_matrix() * sites_cart
-        bonded_distance_cutoff = 0
         for shell_sym_table in self.shell_sym_tables:
           bonded_distance_cutoff = max(bonded_distance_cutoff,
             flex.max(crystal.get_distances(

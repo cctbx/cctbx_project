@@ -97,11 +97,21 @@ namespace {
   {
     using namespace boost::python;
 
-    pair_sym_table_wrappers::wrap();
-    def("get_distances", get_distances, (
+    def("get_distances",
+      (af::shared<double>(*)(
+        af::const_ref<crystal::pair_sym_dict> const&,
+        scitbx::mat3<double> const&,
+        af::const_ref<scitbx::vec3<double> > const&)) get_distances, (
       arg_("pair_sym_table"),
       arg_("orthogonalization_matrix"),
       arg_("sites_frac")));
+    def("get_distances",
+      (af::shared<double>(*)(
+        af::const_ref<crystal::pair_sym_dict> const&,
+        af::const_ref<scitbx::vec3<double> > const&)) get_distances, (
+      arg_("pair_sym_table"),
+      arg_("sites_cart")));
+    pair_sym_table_wrappers::wrap();
 
     pair_asu_table_table_wrappers::wrap();
     pair_asu_table_wrappers::wrap();

@@ -48,6 +48,40 @@ namespace cctbx { namespace crystal {
     return distances;
   }
 
+  /*! \brief Determination of distances of all pair interactions
+      defined by pair_sym_table for exclusively non-crystallographic
+      interactions.
+   */
+  /*! All symmetry operations must be the identity. An exception
+      is thrown otherwise.
+   */
+  inline
+  af::shared<double>
+  get_distances(
+    af::const_ref<crystal::pair_sym_dict> const& pair_sym_table,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart)
+  {
+    CCTBX_ASSERT(sites_cart.size() == pair_sym_table.size());
+    af::shared<double> distances;
+    for(unsigned i_seq=0;i_seq<pair_sym_table.size();i_seq++) {
+      crystal::pair_sym_dict const& pair_sym_dict = pair_sym_table[i_seq];
+      scitbx::vec3<double> const& site_i = sites_cart[i_seq];
+      for(crystal::pair_sym_dict::const_iterator
+            pair_sym_dict_i=pair_sym_dict.begin();
+            pair_sym_dict_i!=pair_sym_dict.end();
+            pair_sym_dict_i++) {
+        unsigned j_seq = pair_sym_dict_i->first;
+        scitbx::vec3<double> const& site_j = sites_cart[j_seq];
+        af::const_ref<sgtbx::rt_mx> rt_mx_list = af::make_const_ref(
+          pair_sym_dict_i->second);
+        CCTBX_ASSERT(rt_mx_list.size() == 1);
+        CCTBX_ASSERT(rt_mx_list[0].is_unit_mx());
+        distances.push_back((site_i - site_j).length());
+      }
+    }
+    return distances;
+  }
+
   //! Set of j_sym indices of symmetrically equivalent pair interactions.
   typedef std::set<unsigned> pair_asu_j_sym_group;
   //! Array of sets of symmetrically equivalent pair interactions.
