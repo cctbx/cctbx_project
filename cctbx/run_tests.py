@@ -28,6 +28,7 @@ def run():
   "$D/cctbx/regression/tst_sgtbx_lattice_symmetry.py",
   "$D/cctbx/regression/tst_sgtbx_harker.py",
   "$D/cctbx/sgtbx/symbol_confidence.py",
+  "$D/cctbx/sgtbx/bravais_types.py",
   "$D/cctbx/regression/tst_crystal.py",
   "$D/cctbx/regression/tst_xray.py",
   ["$D/cctbx/regression/tst_miller.py", "P31"],
