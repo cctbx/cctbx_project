@@ -20,6 +20,7 @@ def run():
   "$D/mintbx/boost_python/tst_mintbx.py",
   "$D/dmtbx/boost_python/tst_dmtbx.py",
   "$D/translation_search/boost_python/tst_translation_search.py",
+  "$D/cctbx/matrix.py",
   "$D/cctbx/regression/tst_sgtbx.py",
   "$D/cctbx/regression/tst_crystal.py",
   "$D/cctbx/regression/tst_miller.py",
