@@ -358,14 +358,10 @@ def exercise_match_bijvoet_mates():
   assert tuple(bm.singles("+")) == (4,)
   assert tuple(bm.singles("-")) == ()
   assert bm.n_singles() != 0
-  assert tuple(bm.pairs_hemisphere_selection("+")) \
-      == (0001,00000,0001,00000,00000)
-  assert tuple(bm.pairs_hemisphere_selection("-")) \
-      == (00000,0001,00000,0001,00000)
-  assert tuple(bm.singles_hemisphere_selection("+")) \
-      == (00000,00000,00000,00000,0001)
-  assert tuple(bm.singles_hemisphere_selection("-")) \
-      == (00000,00000,00000,00000,00000)
+  assert tuple(bm.pairs_hemisphere_selection("+")) == (0, 2)
+  assert tuple(bm.pairs_hemisphere_selection("-")) == (1, 3)
+  assert tuple(bm.singles_hemisphere_selection("+")) == (4,)
+  assert tuple(bm.singles_hemisphere_selection("-")) == ()
   assert tuple(bm.miller_indices_in_hemisphere("+")) == ((1,2,3), (2,3,4))
   assert tuple(bm.miller_indices_in_hemisphere("-")) == ((-1,-2,-3),(-2,-3,-4))
   assert approx_equal(tuple(bm.minus(d0)), (-1, -1))

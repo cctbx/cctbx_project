@@ -1,16 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/miller/match_bijvoet_mates.h>
 #include <boost/python/class.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace miller { namespace boost_python {
 
@@ -24,6 +17,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("match_bijvoet_mates", no_init)
         .def(init<sgtbx::space_group_type const&,
                   af::shared<index<> > const&>())
@@ -33,9 +27,11 @@ namespace {
         .def("pairs", &w_t::pairs)
         .def("singles", &w_t::singles)
         .def("n_singles", &w_t::n_singles)
-        .def("pairs_hemisphere_selection",&w_t::pairs_hemisphere_selection)
-        .def("singles_hemisphere_selection",&w_t::singles_hemisphere_selection)
-        .def("miller_indices_in_hemisphere",&w_t::miller_indices_in_hemisphere)
+        .def("pairs_hemisphere_selection", &w_t::pairs_hemisphere_selection)
+        .def("singles_hemisphere_selection",
+          &w_t::singles_hemisphere_selection, ccr())
+        .def("miller_indices_in_hemisphere",
+          &w_t::miller_indices_in_hemisphere)
 #define CCTBX_DEF(function_name) \
         .def(# function_name, \
           (af::shared<double>(w_t::*)(af::const_ref<double> const&) const) \

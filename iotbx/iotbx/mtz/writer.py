@@ -113,8 +113,8 @@ def add_miller_array(self, miller_array, mtz_label):
     carry_sigma = []
     asu, matches = miller_array.match_bijvoet_mates()
     for i,s in ((0,"+"),(1,"-")):
-      sel = matches.pairs_hemisphere_selection(s) \
-          | matches.singles_hemisphere_selection(s)
+      sel = matches.pairs_hemisphere_selection(s)
+      sel.extend(matches.singles_hemisphere_selection(s))
       if (i == 0):
         carry_miller.append(asu.indices().select(sel))
       else:

@@ -58,25 +58,14 @@ namespace cctbx { namespace miller {
     CCTBX_ASSERT(sz == size_processed());
   }
 
-  af::shared<bool>
+  af::shared<std::size_t>
   match_bijvoet_mates::pairs_hemisphere_selection(char plus_or_minus) const
   {
     std::size_t j = plus_or_minus_index_(plus_or_minus);
-    af::shared<bool> result(miller_indices_.size(), false);
-    for(std::size_t i=0;i<pairs_.size();i++) {
-      result[pairs_[i][j]] = true;
-    }
-    return result;
-  }
-
-  af::shared<bool>
-  match_bijvoet_mates::singles_hemisphere_selection(char plus_or_minus) const
-  {
-    std::size_t j = plus_or_minus_index_(plus_or_minus);
-    af::shared<bool> result(miller_indices_.size(), false);
-    af::const_ref<std::size_t> singles_j = singles_[j].const_ref();
-    for(std::size_t i=0;i<singles_j.size();i++) {
-      result[singles_j[i]] = true;
+    af::const_ref<pair_type> pairs_ref = pairs_.const_ref();
+    af::shared<std::size_t> result((af::reserve(pairs_ref.size())));
+    for(std::size_t i=0;i<pairs_ref.size();i++) {
+      result.push_back(pairs_[i][j]);
     }
     return result;
   }
