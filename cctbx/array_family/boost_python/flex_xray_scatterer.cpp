@@ -33,7 +33,7 @@ namespace {
             << val.u_iso;
       *this << val.u_star.const_ref()
             << val.multiplicity()
-            << val.weight();
+            << val.weight_without_occupancy();
       return *this;
     }
   };
@@ -50,7 +50,7 @@ namespace {
     {
       std::string caasf_label;
       int multiplicity;
-      cctbx::xray::scatterer<>::float_type weight;
+      cctbx::xray::scatterer<>::float_type weight_without_occupancy;
       *this >> val.label
             >> caasf_label
             >> val.fp_fdp;
@@ -60,8 +60,8 @@ namespace {
             >> val.u_iso;
       *this >> val.u_star.ref()
             >> multiplicity
-            >> weight;
-      val.setstate(caasf_label, multiplicity, weight);
+            >> weight_without_occupancy;
+      val.setstate(caasf_label, multiplicity, weight_without_occupancy);
       return *this;
     }
   };

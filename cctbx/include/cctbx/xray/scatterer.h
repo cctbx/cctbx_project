@@ -66,7 +66,7 @@ namespace xray {
         u_iso(u_iso_),
         u_star(-1,-1,-1,-1,-1,-1),
         multiplicity_(0),
-        weight_(0)
+        weight_without_occupancy_(0)
       {}
 
       //! Initialization with anisotropic displacement parameters.
@@ -86,7 +86,7 @@ namespace xray {
         u_iso(-1),
         u_star(u_star_),
         multiplicity_(0),
-        weight_(0)
+        weight_without_occupancy_(0)
       {}
 
       //! Direct access to label.
@@ -137,8 +137,8 @@ namespace xray {
        */
       scitbx::sym_mat3<FloatType> u_star;
 
-      /*! \brief Computes multiplicity(), weight() and symmetry-averaged
-           anisotropic displacement parameters.
+      /*! \brief Computes multiplicity(), weight_without_occupancy(),
+          weight() and symmetry-averaged anisotropic displacement parameters.
        */
       /*! This member function must be called before the
           scatterer is used in a structure factor calculation
@@ -174,7 +174,7 @@ namespace xray {
                      bool assert_is_positive_definite=false,
                      bool assert_min_distance_sym_equiv=true);
 
-      //! Updates the weight().
+      //! Updates weight() and weight_without_occupancy().
       /*! This member function must be called if the occupancy
           factor is changed after calling apply_symmetry(),
           and calling apply_symmetry() again is not desired
@@ -183,21 +183,32 @@ namespace xray {
       void
       update_weight(std::size_t space_group_order_z)
       {
-        weight_ = occupancy * multiplicity_ / space_group_order_z;
+        weight_without_occupancy_ = FloatType(multiplicity_)
+                                  / space_group_order_z;
       }
 
       //! Access to multiplicity computed by apply_symmetry().
       int
       multiplicity() const { return multiplicity_; }
 
-      //! Access to "weight" computed by apply_symmetry().
-      /*! The weight is defined as
-              occupancy() * multiplicity() / space_group.order_z(),
+      //! Access to "weight_without_occupancy" computed by apply_symmetry().
+      /*! weight_without_occupancy is defined as
+              multiplicity() / space_group.order_z(),
           with space_group as passed to apply_symmetry().
-          The weight is used in structure factor calculations.
+          weight_without_occupancy() is used in the computation
+          of structure factor derivatives.
        */
       FloatType
-      weight() const { return weight_; }
+      weight_without_occupancy() const { return weight_without_occupancy_; }
+
+      //! Access to "weight" computed by apply_symmetry().
+      /*! The weight is defined as
+              occupancy * multiplicity() / space_group.order_z(),
+          with space_group as passed to apply_symmetry().
+          The weight() is used in structure factor calculations.
+       */
+      FloatType
+      weight() const { return weight_without_occupancy_ * occupancy; }
 
       //! Helper function for object serialization (Python pickle).
       /*! For internal use only.
@@ -205,16 +216,16 @@ namespace xray {
       void
       setstate(std::string const& caasf_label,
                int multiplicity,
-               FloatType weight)
+               FloatType weight_without_occupancy)
       {
         caasf = caasf_type(caasf_label);
         multiplicity_ = multiplicity;
-        weight_ = weight;
+        weight_without_occupancy_ = weight_without_occupancy;
       }
 
     protected:
       int multiplicity_;
-      FloatType weight_;
+      FloatType weight_without_occupancy_;
   };
 
   template <typename FloatType,
@@ -230,11 +241,11 @@ namespace xray {
                    bool assert_min_distance_sym_equiv)
   {
     sgtbx::site_symmetry site_symmetry(
-       unit_cell,
-       space_group,
-       site,
-       min_distance_sym_equiv,
-       assert_min_distance_sym_equiv);
+      unit_cell,
+      space_group,
+      site,
+      min_distance_sym_equiv,
+      assert_min_distance_sym_equiv);
     site = site_symmetry.exact_site();
     multiplicity_ = site_symmetry.multiplicity();
     update_weight(space_group.order_z());
