@@ -21,6 +21,8 @@ class space_group_info:
         self._group = space_group(space_group_symbols(symbol))
       else:
         self._group = space_group(space_group_symbols(symbol, table_id))
+    if (self._group != None):
+      self._group.make_tidy()
     self._space_group_info_cache = empty()
 
   def _copy_constructor(self, other):

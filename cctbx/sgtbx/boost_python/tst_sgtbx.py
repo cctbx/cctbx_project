@@ -102,6 +102,11 @@ def exercise_tr_vec():
   c = a.minus(b)
   assert c.den() == 6
   assert c.num() == (-4,1,1)
+  a = tr_vec((-1,0,2), 4)
+  assert str(a) == "-1/4,0,1/2"
+  assert a.as_string() == "-1/4,0,1/2"
+  assert a.as_string(True) == "-.25,0,.5"
+  assert a.as_string(False, ";") == "-1/4;0;1/2"
 
 def exercise_rot_mx():
   tr_vec = sgtbx.tr_vec

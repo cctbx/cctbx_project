@@ -10,9 +10,9 @@
      2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <boost/rational.hpp>
 #include <cctbx/sgtbx/tr_vec.h>
 #include <cctbx/sgtbx/utils.h>
+#include <cctbx/rational.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -67,6 +67,18 @@ namespace cctbx { namespace sgtbx {
     int r = result.den() / rhs.den();
     for(std::size_t i=0;i<3;i++) result[i] = num_[i] * l - rhs[i] * r;
     return result.cancel();
+  }
+
+  std::string
+  tr_vec::as_string(bool decimal, const char* separator) const
+  {
+    std::string result;
+    for(int i=0;i<3;i++) {
+      if (i != 0) result += separator;
+      boost::rational<int> t_frac((*this)[i], den());
+      result += format(t_frac, decimal);
+    }
+    return result;
   }
 
 }} // namespace cctbx::sgtbx
