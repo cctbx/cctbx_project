@@ -230,3 +230,31 @@ class cut(cut_expr_ops):
       return cut(np.elems, cp, inclusive=self.inclusive,
         cut_expr=self.cut_expr.change_basis(cb_op))
     return cut(np.elems, cp, inclusive=self.inclusive)
+
+  def lcm_of_denominators(self, start_lcm=1):
+    result = start_lcm
+    for e in self.n:
+      result = rational.lcm(result, rational.int(e).denominator())
+    result = rational.lcm(result, rational.int(self.c).denominator())
+    return result
+
+  def get_point_in_plane(self):
+    result = [0,0,0]
+    for i in xrange(3):
+      if (self.n[i] != 0):
+        result[i] = -rational.int(self.c) / self.n[i]
+        return result
+    raise RuntimeError("cut_plane normal vector is the null vector.")
+
+  def add_buffer(self, unit_cell, thickness):
+    from cctbx.sgtbx.direct_space_asu import float_cut_plane
+    x_frac = [float(e) for e in self.get_point_in_plane()]
+    x_cart = matrix.col(unit_cell.orthogonalize(x_frac))
+    n_star = matrix.col([float(e) for e in self.n])
+    f_mx_tp = matrix.sqr(unit_cell.fractionalization_matrix()).transpose()
+    n_cart = f_mx_tp * n_star
+    n_cart = n_cart / abs(n_cart)
+    y_cart = x_cart - n_cart * thickness
+    y_frac = matrix.col(unit_cell.fractionalize(y_cart.elems))
+    c = -n_star.dot(y_frac)
+    return float_cut_plane(n_star.elems, c)

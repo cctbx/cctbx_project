@@ -11,6 +11,7 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
 
   void wrap_brick();
   void wrap_change_of_basis_op();
+  void wrap_direct_space_asu();
   void wrap_find_affine();
   void wrap_lattice_symmetry();
   void wrap_phase_info();
@@ -92,6 +93,7 @@ namespace {
 
     wrap_brick();
     wrap_change_of_basis_op();
+    wrap_direct_space_asu();
     wrap_find_affine();
     wrap_lattice_symmetry();
     wrap_phase_info();

@@ -31,6 +31,7 @@ def run():
   "$D/cctbx/sgtbx/symbol_confidence.py",
   "$D/cctbx/sgtbx/bravais_types.py",
   "$D/cctbx/regression/tst_crystal.py",
+  ["$D/cctbx/regression/tst_direct_space_asu.py", "I41/acd"],
   ["$D/cctbx/regression/tst_xray.py", "I41/acd"],
   ["$D/cctbx/regression/tst_miller.py", "P31"],
   ["$D/cctbx/regression/tst_reciprocal_space_asu.py", "P312"],

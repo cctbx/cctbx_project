@@ -1192,6 +1192,33 @@ def exercise_find_affine():
     cb_mx = affine.cb_mx()
     assert len(cb_mx) == n
 
+def exercise_direct_space_asu():
+  cp = sgtbx.direct_space_asu_float_cut_plane([-1,0,0], 1)
+  assert approx_equal(cp.n, [-1,0,0])
+  assert approx_equal(cp.c, 1)
+  assert approx_equal(cp.evaluate([0,2,3]), 1)
+  assert approx_equal(cp.evaluate([1,2,3]), 0)
+  assert cp.is_inside([0.99,0,0])
+  assert not cp.is_inside([1.01,0,0])
+  cp.n = [0,-1,0]
+  assert approx_equal(cp.n, [0,-1,0])
+  cp.c = 2
+  assert approx_equal(cp.c, 2)
+  facets = []
+  for i in xrange(3):
+    n = [0,0,0]
+    n[i] = -1
+    facets.append(sgtbx.direct_space_asu_float_cut_plane(n, i+1))
+  asu = sgtbx.direct_space_asu_float_asu(facets)
+  for i in xrange(3):
+    n = [0,0,0]
+    n[i] = -1
+    assert approx_equal(asu.facets[i].n, n)
+    assert approx_equal(asu.facets[i].c, i+1)
+  assert asu.is_inside([0.99,0.49,0.32])
+  eps = 0.02
+  assert not asu.is_inside([0.99+eps,0.49+eps,0.32+eps])
+
 def run():
   exercise_symbols()
   exercise_tr_vec()
@@ -1210,6 +1237,7 @@ def run():
   exercise_row_echelon()
   exercise_lattice_symmetry()
   exercise_find_affine()
+  exercise_direct_space_asu()
   print "OK"
 
 if (__name__ == "__main__"):

@@ -1,6 +1,9 @@
 from cctbx import sgtbx
 import sys
 
+float_cut_plane = sgtbx.direct_space_asu_float_cut_plane
+float_asu = sgtbx.direct_space_asu_float_asu
+
 class direct_space_asu:
 
   def __init__(self, hall_symbol, facets=[]):
@@ -58,3 +61,9 @@ class direct_space_asu:
     for facet in self.facets:
       cb_asu.facets.append(facet.change_basis(cb_op))
     return cb_asu
+
+  def add_buffer(self, unit_cell, thickness):
+    facets = []
+    for facet in self.facets:
+      facets.append(facet.add_buffer(unit_cell=unit_cell, thickness=thickness))
+    return float_asu(facets)
