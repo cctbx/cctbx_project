@@ -357,7 +357,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             grad_flags,
             gr_refs);
         }
-        {
+        { // scope for temporary array perm
           af::shared<std::size_t>
             perm = scattering_dict.scatterer_permutation();
           f_t n_ltr = static_cast<f_t>(space_group.n_ltr());
@@ -390,6 +390,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           }
         }
         if (n_parameters != 0) {
+          // reassign gr_refs after unscrambling
           gr_refs = detail::gradient_refs<f_t>(
             d_target_d_site_frac_.ref(),
             d_target_d_u_iso_.ref(),
