@@ -8,6 +8,18 @@ import sys, os
 
 def run(file_name, plots_dir="itvc_wk1995_plots", quiet=0, verbose=0):
   tab = itvc_section61_io.read_table6111(file_name)
+  for wk in xray_scattering.wk1995_iterator():
+    label = wk.label()
+    if (label in ["H'", "D"]): continue
+    if (label == "Siv"):
+      label = "Sival"
+    for sign in ["+", "-"]:
+      i = label.find(sign)
+      if (i > 0):
+        label = label[:i-1] + sign + label[i-1] + label[i+1:]
+        break
+    if (not label in tab.entries):
+      print "Warning: missing scatterer:", label
   labels = flex.std_string()
   errors = []
   max_errors = flex.double()
