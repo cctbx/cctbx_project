@@ -3,7 +3,8 @@ from libtbx.path import norm_join
 from libtbx.touch_init import touch_init
 import sys, os
 
-def SCons_Action_FunctionAction_get_contents(self, target, source, env):
+def SCons_Action_FunctionAction_get_contents(self, target, source, env,
+                                                   dict=None):
   import cPickle, string
   code = cPickle.dumps(self.execfunction)
   return str(code) + env.subst(string.join(map(lambda v: '${'+v+'}',
