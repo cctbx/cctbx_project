@@ -79,7 +79,8 @@ namespace cctbx { namespace af {
       }
     }
     catch (...) {
-      cctbx::af::detail::destroy_array_elements(result_start, result);
+      cctbx::af::detail::destroy_array_elements(result_start, result,
+        false_type());
       throw;
     }
   }
@@ -125,7 +126,8 @@ namespace cctbx { namespace af {
       }
     }
     catch (...) {
-      cctbx::af::detail::destroy_array_elements(result_start, result);
+      cctbx::af::detail::destroy_array_elements(result_start, result,
+        false_type());
       throw;
     }
   }
@@ -170,7 +172,8 @@ namespace cctbx { namespace af {
       }
     }
     catch (...) {
-      cctbx::af::detail::destroy_array_elements(result_start, result);
+      cctbx::af::detail::destroy_array_elements(result_start, result,
+        false_type());
       throw;
     }
   }
@@ -218,7 +221,8 @@ namespace cctbx { namespace af {
       }
     }
     catch (...) {
-      cctbx::af::detail::destroy_array_elements(result_start, result);
+      cctbx::af::detail::destroy_array_elements(result_start, result,
+        false_type());
       throw;
     }
   }
@@ -267,7 +271,8 @@ namespace cctbx { namespace af {
       }
     }
     catch (...) {
-      cctbx::af::detail::destroy_array_elements(result_start, result);
+      cctbx::af::detail::destroy_array_elements(result_start, result,
+        false_type());
       throw;
     }
   }
@@ -314,7 +319,8 @@ namespace cctbx { namespace af {
       }
     }
     catch (...) {
-      cctbx::af::detail::destroy_array_elements(result_start, result);
+      cctbx::af::detail::destroy_array_elements(result_start, result,
+        false_type());
       throw;
     }
   }
