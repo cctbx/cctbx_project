@@ -12,7 +12,7 @@ class lbfgs:
   def __init__(self, target_functor, options, xray_structure):
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
-      xray.structure_factors_new.from_scatterers(
+      xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs_array())
     self.pack_parameters()
     self.first_target_value = None
@@ -57,7 +57,7 @@ class lbfgs:
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs_array(),
       d_target_d_f_calc=self.target_result.derivatives(),
-      derivative_flags=xray.structure_factors_new.derivative_flags(
+      derivative_flags=xray.structure_factors.derivative_flags(
         site=self.options.site,
         u_iso=self.options.u_iso,
         occupancy=self.options.occupancy),

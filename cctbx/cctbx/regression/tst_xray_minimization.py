@@ -45,11 +45,9 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     print "first:", minimizer.first_target_value
     print "final:", minimizer.final_target_value
   assert minimizer.final_target_value < minimizer.first_target_value
-  f_final_array = abs(xray.structure_factors_new.from_scatterers(
-    miller_set=f_obs_array)(
-      xray_structure=structure_shake,
-      miller_set=f_obs_array,
-      direct=0001).f_calc())
+  f_final_array = abs(f_obs_array.structure_factors_from_scatterers(
+    xray_structure=structure_shake,
+    direct=0001).f_calc())
   c = flex.linear_correlation(f_obs_array.data(), f_final_array.data())
   assert c.is_well_defined()
   if (0 or verbose):

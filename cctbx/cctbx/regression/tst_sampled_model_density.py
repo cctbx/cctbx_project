@@ -92,7 +92,7 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     f_direct_array.data(), f_fft_data,
     min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
     verbose=verbose)
-  f_fft_array = xray.structure_factors_new.from_scatterers(
+  f_fft_array = xray.structure_factors.from_scatterers(
     miller_set=f_direct_array,
     grid_resolution_factor=resolution_factor,
     quality_factor=quality_factor,

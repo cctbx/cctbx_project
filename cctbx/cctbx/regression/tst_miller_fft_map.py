@@ -1,6 +1,5 @@
 from cctbx import crystal
 from cctbx import miller
-from cctbx import xray
 from cctbx import maptbx
 from cctbx import sgtbx
 from cctbx.development import random_structure
@@ -36,11 +35,9 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     crystal_symmetry=structure,
     anomalous_flag=00000,
     d_min=d_min)
-  f_obs_array = xray.structure_factors_new.from_scatterers(
-    miller_set=miller_set_f_obs)(
-      xray_structure=structure,
-      miller_set=miller_set_f_obs,
-      direct=0001).f_calc()
+  f_obs_array = miller_set_f_obs.structure_factors_from_scatterers(
+    xray_structure=structure,
+    direct=0001).f_calc()
   structure_factor_utils.check_phase_restrictions(f_obs_array, verbose=verbose)
   if (0 or verbose):
     f_obs_array.show_summary()

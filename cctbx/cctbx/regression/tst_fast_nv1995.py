@@ -70,11 +70,9 @@ def test_atom(space_group_info, use_primitive_setting,
     grid=gridding)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
-  f_obs_array = abs(xray.structure_factors_new.from_scatterers(
-    miller_set=miller_set_f_obs)(
-      xray_structure=structure,
-      miller_set=miller_set_f_obs,
-      direct=0001).f_calc())
+  f_obs_array = abs(miller_set_f_obs.structure_factors_from_scatterers(
+    xray_structure=structure,
+    direct=0001).f_calc())
   if (0 or verbose):
     f_obs_array.show_summary()
   if (0 or verbose):
@@ -91,20 +89,16 @@ def test_atom(space_group_info, use_primitive_setting,
     structure_p1.add_scatterer(scatterer_at_origin)
     if (0 or verbose):
       structure_p1.show_summary().show_scatterers()
-    f_calc_p1_array = xray.structure_factors_new.from_scatterers(
-      miller_set=miller_set_p1)(
-        xray_structure=structure_p1,
-        miller_set=miller_set_p1,
-        direct=0001).f_calc()
+    f_calc_p1_array = miller_set_p1.structure_factors_from_scatterers(
+      xray_structure=structure_p1,
+      direct=0001).f_calc()
     if (0 or verbose):
       f_calc_p1_array.show_array()
     f_calc_fixed_array = None
     if (structure_fixed.scatterers().size() > 0):
-      f_calc_fixed_array = xray.structure_factors_new.from_scatterers(
-        miller_set=f_obs_array)(
-          xray_structure=structure_fixed,
-          miller_set=f_obs_array,
-          direct=0001).f_calc()
+      f_calc_fixed_array = f_obs_array.structure_factors_from_scatterers(
+        xray_structure=structure_fixed,
+        direct=0001).f_calc()
     symmetry_flags = translation_search.symmetry_flags(
       is_isotropic_search_model=0001,
       have_f_part=(f_calc_fixed_array != None))
@@ -146,11 +140,9 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     crystal_symmetry=structure,
     anomalous_flag=00000,
     d_min=d_min)
-  f_obs_array = abs(xray.structure_factors_new.from_scatterers(
-    miller_set=miller_set_f_obs)(
-      xray_structure=structure,
-      miller_set=miller_set_f_obs,
-      direct=0001).f_calc())
+  f_obs_array = abs(miller_set_f_obs.structure_factors_from_scatterers(
+    xray_structure=structure,
+    direct=0001).f_calc())
   if (0 or verbose):
     f_obs_array.show_summary()
   if (0 or verbose):
@@ -175,16 +167,12 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     structure_p1.show_summary().show_scatterers()
   f_calc_fixed_array = None
   if (flag_f_part):
-    f_calc_fixed_array = xray.structure_factors_new.from_scatterers(
-      miller_set=f_obs_array)(
-        xray_structure=structure_fixed,
-        miller_set=f_obs_array,
-        direct=0001).f_calc()
-  f_calc_p1_array = xray.structure_factors_new.from_scatterers(
-    miller_set=miller_set_p1)(
-      xray_structure=structure_p1,
-      miller_set=miller_set_p1,
+    f_calc_fixed_array = f_obs_array.structure_factors_from_scatterers(
+      xray_structure=structure_fixed,
       direct=0001).f_calc()
+  f_calc_p1_array = miller_set_p1.structure_factors_from_scatterers(
+    xray_structure=structure_p1,
+    direct=0001).f_calc()
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=00000,
     have_f_part=flag_f_part)
