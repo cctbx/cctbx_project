@@ -23,12 +23,12 @@ namespace {
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
     const std::vector<cctbx::Miller::Index>& H,
-    const std::vector<cctbx::XrayScatterer<double, eltbx::CAASF_WK1995> >&
+    const std::vector<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >&
       Sites)
   {
     boost::shared_ptr<std::vector<std::complex<double> > >
     Fcalc(new std::vector<std::complex<double> >(H.size()));
-    cctbx::StructureFactorVector(UC, SgOps, H, Sites, *Fcalc);
+    sftbx::StructureFactorVector(UC, SgOps, H, Sites, *Fcalc);
     return Fcalc;
   }
 
@@ -73,12 +73,12 @@ namespace {
     python::import_converters<eltbx::CAASF_WK1995>
     CAASF_WK1995_converters("eltbx.caasf_wk1995", "CAASF_WK1995");
 
-    class_builder<cctbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
+    class_builder<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
     py_XrayScatterer(this_module, "XrayScatterer");
 
     (void) cctbx::wrap_std_vector(this_module,
       "vector_of_XrayScatterer",
-      cctbx::XrayScatterer<double, eltbx::CAASF_WK1995>());
+      sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>());
     (void) cctbx::wrap_std_vector(this_module,
       "vector_of_Miller_Index",
       cctbx::Miller::Index());
@@ -102,40 +102,40 @@ namespace {
       const double&,
       const boost::array<double, 6>&>());
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Label, "Label");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::CAASF, "CAASF");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::fpfdp, "fpfdp");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Coordinates, "Coordinates");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Occ, "Occ");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::isAnisotropic, "isAnisotropic");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Uiso, "Uiso");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Uaniso, "Uaniso");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::M, "M");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::w, "w");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::ApplySymmetry, "ApplySymmetry");
     py_XrayScatterer.def(
-      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::StructureFactor, "StructureFactor");
 
     this_module.def(py_StructureFactorVector, "StructureFactorVector");
