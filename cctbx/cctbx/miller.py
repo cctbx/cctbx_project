@@ -25,8 +25,34 @@ def _slice_or_none(array, slice_object):
 
 class binner(ext.binner):
 
-  def __init__(self, binning, miller_indices):
-    ext.binner.__init__(self, binning, miller_indices)
+  def __init__(self, binning, miller_set):
+    ext.binner.__init__(self, binning, miller_set.indices())
+    self.space_group_info = miller_set.space_group_info()
+    self.anomalous_flag = miller_set.anomalous_flag()
+    self.given_indices_d_min = miller_set.d_min()
+    self._counts_given = None
+    self._counts_complete = None
+    self._have_format_strings = False
+
+  def counts_given(self):
+    if (self._counts_given is None):
+      self._counts_given = []
+      for i_bin in self.range_all():
+        self._counts_given.append(self.count(i_bin))
+    return self._counts_given
+
+  def counts_complete(self, d_min_tolerance=1.e-6):
+    if (self._counts_complete is None):
+      assert self.anomalous_flag in (False, True)
+      complete_set = build_set(
+        crystal_symmetry=crystal.symmetry(
+          unit_cell=self.unit_cell(),
+          space_group_info=self.space_group_info),
+        anomalous_flag=self.anomalous_flag,
+        d_min=self.given_indices_d_min*(1-d_min_tolerance))
+      binner_complete = binner(binning=self, miller_set=complete_set)
+      self._counts_complete = binner_complete.counts_given()
+    return self._counts_complete
 
   def n_bin_d_too_large(self):
     return self.array_indices(self.i_bin_d_too_large()).size()
@@ -37,54 +63,108 @@ class binner(ext.binner):
   def n_bin_d_too_large_or_small(self):
     return self.n_bin_d_too_large() + self.n_bin_d_too_small()
 
-  def show_summary(self, f=None):
-    counts = []
-    for i_bin in self.range_all():
-      bin_d_range = self.bin_d_range(i_bin)
-      counts.append(self.count(i_bin))
-    self.show_data(data=counts, data_fmt="%5d", f=f)
+  def _setup_format_strings(self):
+    if (not self._have_format_strings):
+      self._have_format_strings = True
+      n = max(2, len(str(self.n_bins_used())))
+      self.fmt_bin = "bin %%%dd:"%n
+      self.fmt_unused = " "*(4+n+1-7) + "unused:"
+      n = len("%.4f" % self.bin_d_range(1)[0])
+      self.fmt_d = "%%%d.4f"%n
+      blank_d = " "*n
+      self.fmt_d_range_first = " ".join([blank_d,    "-", self.fmt_d])
+      self.fmt_d_range_used  = " ".join([self.fmt_d, "-", self.fmt_d])
+      self.fmt_d_range_last  = " ".join([self.fmt_d, "-", blank_d])
+      self.fmt_counts_given = "%%%dd"%len(str(max(self.counts_given())))
+      self.fmt_counts_complete = "%%-%dd"%len(str(max(self.counts_complete())))
+      self.fmt_both_counts \
+        = "["+self.fmt_counts_given+"/"+self.fmt_counts_complete+"]"
 
-  def bin_legend(self, i_bin):
+  def bin_legend(self,
+        i_bin,
+        show_bin_number=True,
+        show_d_range=True,
+        show_counts=True):
+    self._setup_format_strings()
+    is_first = (i_bin == self.i_bin_d_too_large())
+    is_last = (i_bin == self.i_bin_d_too_small())
+    result = []
+    if (show_bin_number):
+      if (is_first or is_last):
+        result.append(self.fmt_unused)
+      else:
+        result.append(self.fmt_bin % i_bin)
     bin_d_range = self.bin_d_range(i_bin)
-    if (i_bin == self.i_bin_d_too_large()):
-      assert bin_d_range[0] == -1
-      return "unused:              d > %9.4f:" % bin_d_range[1]
-    if (i_bin == self.i_bin_d_too_small()):
-      assert bin_d_range[1] == -1
-      return "unused: %9.4f >  d            :" % bin_d_range[0]
-    return "bin %2d:" % i_bin + " %9.4f >= d > %9.4f:" % bin_d_range
+    if (show_d_range):
+      if (is_first):
+        result.append(self.fmt_d_range_first % bin_d_range[1])
+      elif (is_last):
+        result.append(self.fmt_d_range_last % bin_d_range[0])
+      else:
+        result.append(self.fmt_d_range_used % bin_d_range)
+    if (show_counts):
+      result.append(self.fmt_both_counts % (
+        self._counts_given[i_bin], self._counts_complete[i_bin]))
+    return " ".join(result)
 
-  def show_data(self, data, data_fmt=None, show_n=False, f=None):
+  def show_summary(self,
+        show_bin_number=True,
+        show_d_range=True,
+        show_counts=True,
+        f=None):
+    if (f is None): f = sys.stdout
+    for i_bin in self.range_all():
+      print >> f, self.bin_legend(
+        i_bin=i_bin,
+        show_bin_number=show_bin_number,
+        show_d_range=show_d_range,
+        show_counts=show_counts)
+
+  def show_data(self,
+        data,
+        data_fmt=None,
+        show_bin_number=True,
+        show_d_range=True,
+        show_counts=True,
+        f=None):
     assert len(data) == self.n_bins_all()
     if (f is None): f = sys.stdout
     for i_bin in self.range_all():
-      print >> f, self.bin_legend(i_bin),
-      if (show_n):
-        print >> f, "n=%5d," % self.count(i_bin),
-      if (data_fmt is None):
-        print >> f, data[i_bin]
-      elif (isinstance(data_fmt, str)):
-        print >> f, data_fmt % data[i_bin]
-      else:
-        print >> f, data_fmt(data[i_bin])
+      print >> f, self.bin_legend(
+        i_bin=i_bin,
+        show_bin_number=show_bin_number,
+        show_d_range=show_d_range,
+        show_counts=show_counts),
+      if (data[i_bin] is not None):
+        if (isinstance(data[i_bin], str) or data_fmt is None):
+          print >> f, data[i_bin],
+        elif (isinstance(data_fmt, str)):
+          print >> f, data_fmt % data[i_bin],
+        else:
+          s = data_fmt(binner=self, i_bin=i_bin, data=data)
+          if (s is not None and len(s) > 0): print >> f, s,
+      print >> f
 
 class binned_data:
 
-  def __init__(self, binner, data):
-    self._binner = binner
-    self._data = data
+  def __init__(self, binner, data, data_fmt=None):
+    self.binner = binner
+    self.data = data
+    self.data_fmt = data_fmt
 
-  def binner(self):
-    return self._binner
-
-  def data(self):
-    return self._data
-
-  def show(self, data_fmt=None, show_n=False, f=None):
-    self.binner().show_data(
-      data=self.data(),
+  def show(self,
+        data_fmt=None,
+        show_bin_number=True,
+        show_d_range=True,
+        show_counts=True,
+        f=None):
+    if (data_fmt is None): data_fmt = self.data_fmt
+    self.binner.show_data(
+      data=self.data,
       data_fmt=data_fmt,
-      show_n=show_n,
+      show_bin_number=show_bin_number,
+      show_d_range=show_d_range,
+      show_counts=show_counts,
       f=f)
 
 def make_lookup_dict(indices): # XXX push to C++
@@ -179,13 +259,15 @@ class set(crystal.symmetry):
       if (self.space_group_info() is not None and self.indices().size() > 0):
         no_sys_abs.setup_binner(n_bins=1)
         completeness_d_max_d_min = no_sys_abs.completeness(use_binning=True)
-        assert completeness_d_max_d_min.data()[0][0] == 0
-        assert completeness_d_max_d_min.data()[2][0] == 0
-        n_obs, n_complete = completeness_d_max_d_min.data()[1]
+        binner = completeness_d_max_d_min.binner
+        assert binner.counts_given()[0] == 0
+        assert binner.counts_given()[2] == 0
+        n_obs = binner.counts_given()[1]
+        n_complete = binner.counts_complete()[1]
         if (n_complete != 0):
           print >> f, "Completeness in resolution range: %.6g" % (
             float(n_obs) / n_complete)
-        n_complete += completeness_d_max_d_min.data()[0][1]
+        n_complete += binner.counts_complete()[0]
         if (n_complete != 0):
           print >> f, "Completeness with d_max=infinity: %.6g" % (
             float(n_obs) / n_complete)
@@ -272,7 +354,7 @@ class set(crystal.symmetry):
       i)
     return set(self, i, self.anomalous_flag())
 
-  def complete_set(self, tolerance=1.e-6):
+  def complete_set(self, d_min_tolerance=1.e-6):
     assert self.anomalous_flag() in (False, True)
     if (self.indices().size() == 0):
       return set(
@@ -282,38 +364,20 @@ class set(crystal.symmetry):
     return build_set(
       crystal_symmetry=self,
       anomalous_flag=self.anomalous_flag(),
-      d_min=self.d_min()*(1-tolerance))
+      d_min=self.d_min()*(1-d_min_tolerance))
 
-  def completeness(self, use_binning=False, tolerance=1.e-6):
-    complete_set = self.complete_set(tolerance=tolerance)
+  def completeness(self, use_binning=False, d_min_tolerance=1.e-6):
     if (not use_binning):
+      complete_set = self.complete_set(d_min_tolerance=d_min_tolerance)
       return self.indices().size() \
            / float(max(1,complete_set.indices().size()))
     assert self.binner() is not None
-    complete_set.use_binning_of(self)
-    ratios = []
-    for i_bin in self.binner().range_all():
-      n_complete = complete_set.binner().selection(i_bin).count(True)
-      n_given = self.binner().selection(i_bin).count(True)
-      ratios.append((n_given, n_complete))
-    return binned_data(binner=self.binner(), data=ratios)
-
-  def show_completeness_in_bins(self, tolerance=1.e-6, f=None):
-    if (f is None): f = sys.stdout
-    binned_ratios = self.completeness(use_binning=True, tolerance=tolerance)
-    fractions = []
-    max_len = 0
-    for ratio in binned_ratios.data():
-      fraction = "%d/%d" % ratio
-      fractions.append(fraction)
-      max_len = max(max_len, len(fraction))
-    fmt_fraction = "%%%ds" % max_len
-    bin_legend = binned_ratios.binner().bin_legend
-    for i_bin,ratio,fraction in zip(count(), binned_ratios.data(), fractions):
-      print >> f, bin_legend(i_bin), fmt_fraction % fraction,
-      if (ratio[1] != 0):
-        print >> f, "= %8.4f" % (float(ratio[0]) / ratio[1]),
-      print >> f
+    data = []
+    for n_given,n_complete in zip(self.binner().counts_given(),
+                                  self.binner().counts_complete()):
+      if (n_complete == 0): data.append(None)
+      else: data.append(float(n_given)/n_complete)
+    return binned_data(binner=self.binner(), data=data, data_fmt="%5.3f")
 
   def all_selection(self):
     return flex.bool(self.indices().size(), True)
@@ -508,14 +572,14 @@ class set(crystal.symmetry):
     assert n_bins > 0
     assert self.unit_cell() is not None
     bng = binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min)
-    self._binner = binner(bng, self.indices())
+    self._binner = binner(bng, self)
     return self.binner()
 
   def binner(self):
     return getattr(self, "_binner", None)
 
   def use_binning_of(self, other):
-    self._binner = binner(other.binner(), self.indices())
+    self._binner = binner(other.binner(), self)
 
   def use_binner_of(self, other):
     assert self.indices().all_eq(other.indices())
@@ -1011,7 +1075,7 @@ class array(set):
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
       results.append(self.select(sel).anomalous_signal())
-    return binned_data(binner=self.binner(), data=results)
+    return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def select(self, selection, negate=False, anomalous_flag=None):
     assert self.indices() is not None
@@ -1235,13 +1299,15 @@ class array(set):
     if (not use_binning):
       return flex.linear_correlation(lhs.data(), other.data())
     lhs.use_binning_of(self)
-    results = []
+    data = []
     for i_bin in self.binner().range_all():
       sel = lhs.binner().selection(i_bin)
-      results.append(flex.linear_correlation(
+      correlation = flex.linear_correlation(
         lhs.data().select(sel),
-        other.data().select(sel)))
-    return binned_data(binner=lhs.binner(), data=results)
+        other.data().select(sel))
+      if (not correlation.is_well_defined()): data.append(None)
+      else: data.append(correlation.coefficient())
+    return binned_data(binner=lhs.binner(), data=data, data_fmt="%6.3f")
 
   def show_array(self, f=None):
     if (f is None): f = sys.stdout

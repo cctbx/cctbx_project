@@ -108,11 +108,11 @@ def exercise_binner():
     s = StringIO.StringIO()
     set1.binner().show_summary(f=s)
     assert s.getvalue() == """\
-unused:              d >   28.7186:     0
-bin  1:   28.7186 >= d >   14.1305:     3
-bin  2:   14.1305 >= d >   11.4473:     3
-bin  3:   11.4473 >= d >   10.0715:     2
-unused:   10.0715 >  d            :     0
+unused:         - 28.7186 [0/0]
+bin  1: 28.7186 - 14.1305 [3/3]
+bin  2: 14.1305 - 11.4473 [3/3]
+bin  3: 11.4473 - 10.0715 [2/2]
+unused: 10.0715 -         [0/0]
 """
     set2 = miller.build_set(
       crystal_symmetry=crystal_symmetry,
@@ -120,32 +120,50 @@ unused:   10.0715 >  d            :     0
       d_min=8)
     set2.use_binning_of(set1)
     s = StringIO.StringIO()
-    set2.show_completeness_in_bins(f=s)
+    set2.completeness(use_binning=True).show(f=s)
     assert s.getvalue() == """\
-unused:              d >   28.7186: 0/0
-bin  1:   28.7186 >= d >   14.1305: 3/3 =   1.0000
-bin  2:   14.1305 >= d >   11.4473: 3/3 =   1.0000
-bin  3:   11.4473 >= d >   10.0715: 2/2 =   1.0000
-unused:   10.0715 >  d            : 8/8 =   1.0000
-"""
-    binned_ratios = set2.completeness(use_binning=True)
-    s = StringIO.StringIO()
-    binned_ratios.show(f=s)
-    assert s.getvalue() == """\
-unused:              d >   28.7186: (0, 0)
-bin  1:   28.7186 >= d >   14.1305: (3, 3)
-bin  2:   14.1305 >= d >   11.4473: (3, 3)
-bin  3:   11.4473 >= d >   10.0715: (2, 2)
-unused:   10.0715 >  d            : (8, 8)
+unused:         - 28.7186 [0/0]
+bin  1: 28.7186 - 14.1305 [3/3] 1.000
+bin  2: 14.1305 - 11.4473 [3/3] 1.000
+bin  3: 11.4473 - 10.0715 [2/2] 1.000
+unused: 10.0715 -         [8/8] 1.000
 """
     s = StringIO.StringIO()
-    binned_ratios.show(show_n=True, f=s)
+    set2.completeness(use_binning=True).show(show_bin_number=False, f=s)
     assert s.getvalue() == """\
-unused:              d >   28.7186: n=    0, (0, 0)
-bin  1:   28.7186 >= d >   14.1305: n=    3, (3, 3)
-bin  2:   14.1305 >= d >   11.4473: n=    3, (3, 3)
-bin  3:   11.4473 >= d >   10.0715: n=    2, (2, 2)
-unused:   10.0715 >  d            : n=    8, (8, 8)
+        - 28.7186 [0/0]
+28.7186 - 14.1305 [3/3] 1.000
+14.1305 - 11.4473 [3/3] 1.000
+11.4473 - 10.0715 [2/2] 1.000
+10.0715 -         [8/8] 1.000
+"""
+    s = StringIO.StringIO()
+    set2.completeness(use_binning=True).show(show_d_range=False, f=s)
+    assert s.getvalue() == """\
+unused: [0/0]
+bin  1: [3/3] 1.000
+bin  2: [3/3] 1.000
+bin  3: [2/2] 1.000
+unused: [8/8] 1.000
+"""
+    s = StringIO.StringIO()
+    set2.completeness(use_binning=True).show(show_counts=False, f=s)
+    assert s.getvalue() == """\
+unused:         - 28.7186
+bin  1: 28.7186 - 14.1305 1.000
+bin  2: 14.1305 - 11.4473 1.000
+bin  3: 11.4473 - 10.0715 1.000
+unused: 10.0715 -         1.000
+"""
+    s = StringIO.StringIO()
+    set2.completeness(use_binning=True).show(
+      show_bin_number=False, show_d_range=False, show_counts=False, f=s)
+    assert s.getvalue() == """\
+
+ 1.000
+ 1.000
+ 1.000
+ 1.000
 """
 
 def exercise_crystal_gridding():
@@ -563,15 +581,15 @@ def exercise_array_correlation(space_group_info,
                         arrays[1].correlation(arrays[0]).coefficient())
     arrays[0].setup_binner(auto_binning=True)
     arrays[1].use_binning_of(arrays[0])
-    for corr in arrays[0].correlation(arrays[0], use_binning=True).data():
-      if (corr.n() > 0):
-        assert approx_equal(corr.coefficient(), 1)
-    corr0 = arrays[0].correlation(arrays[1], use_binning=True).data()
-    corr1 = arrays[1].correlation(arrays[0], use_binning=True).data()
+    for corr in arrays[0].correlation(arrays[0], use_binning=True).data:
+      if (corr is not None):
+        assert approx_equal(corr, 1)
+    corr0 = arrays[0].correlation(arrays[1], use_binning=True).data
+    corr1 = arrays[1].correlation(arrays[0], use_binning=True).data
     for c0,c1 in zip(corr0,corr1):
-      assert c0.n() == c1.n()
-      if (c0.n() > 0):
-        assert approx_equal(c0.coefficient(), c1.coefficient())
+      assert (c0 is None) == (c1 is None)
+      if (c0 is None): continue
+      assert approx_equal(c0, c1)
 
 def exercise_as_hendrickson_lattman(space_group_info, n_scatterers=5, d_min=3,
                                     verbose=0):
