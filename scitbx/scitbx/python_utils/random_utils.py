@@ -17,6 +17,17 @@ def random_subset(set, n):
     del set[random.randrange(len(set))]
   return set
 
+def random_selection(size, n):
+  assert n >= 0 and n <= size
+  result = flex.bool(size, 00000)
+  if (n > 0):
+    set = range(size)
+    while (len(set) > n):
+      del set[random.randrange(len(set))]
+    for i in set:
+      result[i] = 0001
+  return result
+
 class weighted_choice:
 
   def __init__(self, weights):
@@ -39,6 +50,10 @@ if (__name__ == "__main__"):
   print random_subset(range(5), 5)
   print random_subset(range(5), 2)
   print random_subset(range(5), 3)
+  print tuple(random_selection(5, 0))
+  print tuple(random_selection(5, 5))
+  print tuple(random_selection(5, 2))
+  print tuple(random_selection(5, 3))
   for weights in ([5,5], [4,3,2,1]):
     r = weighted_choice(weights)
     hist = [0 for i in xrange(len(weights))]
