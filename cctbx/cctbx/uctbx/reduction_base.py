@@ -180,7 +180,7 @@ class reduction_base(gruber_parameterization):
     self.e = -abs(self.e)
     self.f = -abs(self.f)
 
-class minimal_reduction_mixin:
+class minimum_reduction_mixin:
 
   def __init__(self, unit_cell, expected_cycle_limit, iteration_limit):
     if (expected_cycle_limit is None):

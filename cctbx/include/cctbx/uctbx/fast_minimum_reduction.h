@@ -1,5 +1,5 @@
-#ifndef CCTBX_UCTBX_FAST_MINIMAL_REDUCTION_H
-#define CCTBX_UCTBX_FAST_MINIMAL_REDUCTION_H
+#ifndef CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_H
+#define CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_H
 
 #include <cctbx/uctbx.h>
 #include <cctbx/error.h>
@@ -16,7 +16,7 @@ namespace cctbx { namespace uctbx {
       {}
   };
 
-  //! Fast minimal-cell reduction.
+  //! Fast minimum-lengths cell reduction.
   /*! Based on the algorithm of Gruber (1973), Acta Cryst. A29, 433-440.
       Tests for equality are removed in order to make the algorithm
       numerically stable. In some cases the algorithm still oscillates
@@ -26,11 +26,11 @@ namespace cctbx { namespace uctbx {
    */
   template <typename FloatType=double,
             typename IntFromFloatType=int>
-  class fast_minimal_reduction
+  class fast_minimum_reduction
   {
     public:
       //! Default contructor. Some data members are not initialized!
-      fast_minimal_reduction() {}
+      fast_minimum_reduction() {}
 
       //! Executes the reduction algorithm.
       /*! The expected cycles described above are terminated after
@@ -38,7 +38,7 @@ namespace cctbx { namespace uctbx {
           error_iteration_limit_exceeded is thrown if iteration_limit
           is exceeded (this should never happen).
        */
-      fast_minimal_reduction(
+      fast_minimum_reduction(
         uctbx::unit_cell const& unit_cell,
         std::size_t expected_cycle_limit=2,
         std::size_t iteration_limit=100)
@@ -340,4 +340,4 @@ namespace cctbx { namespace uctbx {
 
 }} // namespace cctbx::uctbx
 
-#endif // CCTBX_UCTBX_FAST_MINIMAL_REDUCTION_H
+#endif // CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_H

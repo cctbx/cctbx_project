@@ -22,7 +22,7 @@
 
 namespace cctbx { namespace uctbx { namespace boost_python {
 
-  void wrap_fast_minimal_reduction();
+  void wrap_fast_minimum_reduction();
 
 namespace {
 
@@ -167,7 +167,7 @@ namespace {
     def("d_star_sq_as_d", d_star_sq_as_d);
 
     unit_cell_wrappers::wrap();
-    wrap_fast_minimal_reduction();
+    wrap_fast_minimum_reduction();
   }
 
 } // namespace <anonymous>

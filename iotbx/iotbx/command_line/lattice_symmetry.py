@@ -54,10 +54,10 @@ def show(input_symmetry, max_delta):
   print "Similar symmetries"
   print "=================="
   print
-  cb_op_inp_niggli = input_symmetry.change_of_basis_op_to_niggli_cell()
-  niggli_symmetry = input_symmetry.change_basis(cb_op_inp_niggli)
+  cb_op_inp_minimum = input_symmetry.change_of_basis_op_to_minimum_cell()
+  minimum_symmetry = input_symmetry.change_basis(cb_op_inp_minimum)
   lattice_group = lattice_symmetry.group(
-    niggli_symmetry.unit_cell(), max_delta=max_delta)
+    minimum_symmetry.unit_cell(), max_delta=max_delta)
   lattice_group_info = sgtbx.space_group_info(group=lattice_group)
   subgrs = subgroups.subgroups(lattice_group_info).groups_parent_setting()
   sort_values = flex.double()
@@ -69,28 +69,28 @@ def show(input_symmetry, max_delta):
   perm = flex.sort_permutation(sort_values, 0001)
   for i_subgrs in perm:
     subsym = crystal.symmetry(
-      unit_cell=niggli_symmetry.unit_cell(),
+      unit_cell=minimum_symmetry.unit_cell(),
       space_group=subgrs[i_subgrs],
       assert_is_compatible_unit_cell=00000)
-    cb_op_niggli_ref = subsym.space_group_info().type().cb_op()
-    ref_subsym = subsym.change_basis(cb_op_niggli_ref)
+    cb_op_minimum_ref = subsym.space_group_info().type().cb_op()
+    ref_subsym = subsym.change_basis(cb_op_minimum_ref)
     if (not str(ref_subsym.space_group_info()) in bravais_types.acentric):
       continue
     cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
     best_subsym = ref_subsym.change_basis(cb_op_best_cell)
-    cb_op_inp_best = cb_op_best_cell * cb_op_niggli_ref * cb_op_inp_niggli
+    cb_op_inp_best = cb_op_best_cell * cb_op_minimum_ref * cb_op_inp_minimum
     subsym.space_group_info().show_summary(
-      prefix="Symmetry in Niggli cell: ")
-    print "      Input Niggli cell:", niggli_symmetry.unit_cell()
-    print "  Symmetry-adapted cell:", subsym.unit_cell()
+      prefix="Symmetry in minimum-lengths cell: ")
+    print "      Input minimum-lengths cell:", minimum_symmetry.unit_cell()
+    print "           Symmetry-adapted cell:", subsym.unit_cell()
     best_subsym.space_group_info().show_summary(
-      prefix="   Conventional setting: ")
-    print "              Unit cell:", best_subsym.unit_cell()
-    print "        Change of basis:", cb_op_inp_best.c()
-    print "                Inverse:", cb_op_inp_best.c_inv()
-    print " Max angular difference: %.3f degrees" % (
+      prefix="            Conventional setting: ")
+    print "                       Unit cell:", best_subsym.unit_cell()
+    print "                 Change of basis:", cb_op_inp_best.c()
+    print "                         Inverse:", cb_op_inp_best.c_inv()
+    print "      Maximal angular difference: %.3f degrees" % (
       lattice_symmetry.find_max_delta(
-        niggli_cell=niggli_symmetry.unit_cell(),
+        minimum_cell=minimum_symmetry.unit_cell(),
         group=subsym.space_group()))
     print
 

@@ -1,22 +1,22 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
-#include <cctbx/uctbx/fast_minimal_reduction.h>
+#include <cctbx/uctbx/fast_minimum_reduction.h>
 
 namespace cctbx { namespace uctbx { namespace boost_python {
 
 namespace {
 
-  struct fast_minimal_reduction_wrappers
+  struct fast_minimum_reduction_wrappers
   {
-    typedef fast_minimal_reduction<> w_t;
+    typedef fast_minimum_reduction<> w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("fast_minimal_reduction", no_init)
+      class_<w_t>("fast_minimum_reduction", no_init)
         .def(init<unit_cell const&, optional<std::size_t, std::size_t> >())
         .def("as_gruber_matrix", &w_t::as_gruber_matrix)
         .def("as_niggli_matrix", &w_t::as_niggli_matrix)
@@ -34,9 +34,9 @@ namespace {
 
 } // namespace <anoymous>
 
-  void wrap_fast_minimal_reduction()
+  void wrap_fast_minimum_reduction()
   {
-    fast_minimal_reduction_wrappers::wrap();
+    fast_minimum_reduction_wrappers::wrap();
   }
 
 }}} // namespace cctbx::sgtbx::boost_python
