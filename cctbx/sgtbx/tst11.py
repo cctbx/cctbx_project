@@ -30,6 +30,7 @@ def OneCycle():
     asu = sgtbx.ReciprocalSpaceASU(SgOps.getSpaceGroupType())
     print asu.CBOp().M()
     print asu.CBOp().InvM()
+    print asu.StdASU().LaueGroupCode()
     print asu.StdASU().representation()
     print asu.StdASU().getCutParameters()
     H = [0,0,0]

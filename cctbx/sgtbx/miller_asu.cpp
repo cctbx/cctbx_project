@@ -140,6 +140,9 @@ namespace sgtbx {
 
   class StdReciprocalSpaceASU_1b : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_1b;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[2]>0 || (H[2]==0 && (H[0]>0 || (H[0]==0 && H[1]>=0))));
       }
@@ -153,6 +156,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_2_m : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_2_m;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[1]>=0 && (H[2]>0 || (H[2]==0 && H[0]>=0)));
       }
@@ -166,6 +172,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_mmm : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_mmm;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[0]>=0 && H[1]>=0 && H[2]>=0);
       }
@@ -179,6 +188,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_4_m : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_4_m;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
       }
@@ -192,6 +204,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_4_mmm : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_4_mmm;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
       }
@@ -205,6 +220,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_3b : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_3b;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0 && H[2]>=0);
       }
@@ -218,6 +236,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_3b1m : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_3b1m;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[0]>=H[1] && H[1]>=0 && (H[1]>0 || H[2]>=0));
       }
@@ -231,6 +252,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_3bm1 : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_3bm1;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[0]>=H[1] && H[1]>=0 && (H[0]>H[1] || H[2]>=0));
       }
@@ -244,6 +268,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_6_m : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_6_m;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[2]>=0 && ((H[0]>=0 && H[1]>0) || (H[0]==0 && H[1]==0)));
       }
@@ -257,6 +284,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_6_mmm : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_6_mmm;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[0]>=H[1] && H[1]>=0 && H[2]>=0);
       }
@@ -270,6 +300,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_m3b : public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_m3b;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return
         (H[0]>=0 && ((H[2]>=H[0] && H[1]>H[0]) || (H[2]==H[0] && H[1]==H[0])));
@@ -284,6 +317,9 @@ namespace sgtbx {
   };
   class StdReciprocalSpaceASU_m3bm: public StdReciprocalSpaceASU {
     public:
+      virtual tables::MatrixGroup::Code LaueGroupCode() const {
+        return tables::MatrixGroup::MGC_m3bm;
+      }
       virtual bool isInASU(const Miller::Index& H) const {
         return (H[1]>=H[2] && H[2]>=H[0] && H[0]>=0);
       }

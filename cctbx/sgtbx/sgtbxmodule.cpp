@@ -446,6 +446,11 @@ namespace {
     }
   }
 
+  const char*
+  StdReciprocalSpaceASU_LaueGroupCode(const StdReciprocalSpaceASU& asu) {
+    return asu.LaueGroupCode().Label();
+  }
+
 }
 
 BOOST_PYTHON_MODULE_INIT(sgtbx)
@@ -870,6 +875,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_CCP4_ReciprocalSpaceASU.def(
       &CCP4_ReciprocalSpaceASU::getCutParameters, "getCutParameters");
 
+    py_StdReciprocalSpaceASU.def(
+       StdReciprocalSpaceASU_LaueGroupCode, "LaueGroupCode");
     py_StdReciprocalSpaceASU.def(
       &StdReciprocalSpaceASU::isInASU, "isInASU");
     py_StdReciprocalSpaceASU.def(
