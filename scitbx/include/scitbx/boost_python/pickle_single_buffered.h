@@ -21,6 +21,25 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
 
   namespace detail {
 
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
+    inline double
+    pickle_strtod(const char *nptr, char **endptr)
+    {
+      return strtod(nptr, endptr);
+    }
+#else
+    inline double
+    pickle_strtod(const char *nptr, char **endptr)
+    {
+      char buf[128];
+      char* b = buf;
+      while (*nptr != ',') *b++ = *nptr++;
+      *b = '\0';
+      *endptr = const_cast<char*>(nptr);
+      return strtod(buf, 0);
+    }
+#endif
+
     inline char* o_advance(char *ptr)
     {
       while (*ptr != ',') ptr++;
@@ -145,7 +164,7 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
   {
     from_string(const char* start)
     {
-      value = strtod(start, &end);
+      value = detail::pickle_strtod(start, &end);
       SCITBX_ASSERT(*end++ == ',');
     }
 
@@ -165,7 +184,7 @@ namespace scitbx { namespace boost_python { namespace pickle_single_buffered {
   {
     from_string(const char* start)
     {
-      value = strtod(start, &end);
+      value = detail::pickle_strtod(start, &end);
       SCITBX_ASSERT(*end++ == ',');
     }
 
