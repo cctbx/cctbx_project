@@ -153,9 +153,20 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     public:
       summation_accumulator() {}
 
-      summation_accumulator(complex_type* begin, miller::index<> const& n)
-      : begin_(begin), accessor_(true, n, false)
-      {}
+      summation_accumulator(complex_type* begin,
+                            miller::index<> const& n_real,
+                            miller::index<> const& n_complex)
+      :
+        begin_(begin),
+        n_0_(n_real[0]),
+        n_1_(n_real[1]),
+        n_real_2_(n_real[2]),
+        n_complex_2_(n_complex[2])
+      {
+        CCTBX_ASSERT(n_complex[0] == n_real[0]);
+        CCTBX_ASSERT(n_complex[1] == n_real[1]);
+        CCTBX_ASSERT(n_complex[2] == n_real[2]/2+1);
+      }
 
       // Adds cf if -h is in the positive halfspace.
       // Ignores cf otherwise.
@@ -163,12 +174,16 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       void
       minus(miller::index<> const& h, complex_type const& cf)
       {
-        if (0 > -h[2] || -h[2] >= accessor_[2]) return;
-        mi_v_t h1 = -h[1];
-        if (h1 < 0) h1 += accessor_[1];
-        mi_v_t h0 = -h[0];
-        if (h0 < 0) h0 += accessor_[0];
-        begin_[(h0 * accessor_[1] + h1) * accessor_[2] - h[2]] += cf;
+        mi_v_t
+        h2 = (-h[2]) % n_real_2_;
+        if (h2 < 0) h2 += n_real_2_;
+        if (h2 < n_complex_2_) {
+          mi_v_t h1 = (-h[1]) % n_1_;
+          if (h1 < 0) h1 += n_1_;
+          mi_v_t h0 = (-h[0]) % n_0_;
+          if (h0 < 0) h0 += n_0_;
+          begin_[(h0 * n_1_ + h1) * n_complex_2_ + h2] += cf;
+        }
       }
 
       // Adds conj(cf) if +h is in the positive halfspace.
@@ -177,27 +192,30 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
       void
       plus_minus(miller::index<> const& h, complex_type const& cf)
       {
-        if (!(0 > h[2] || h[2] >= accessor_[2])) {
-          mi_v_t h1 = h[1];
-          if (h1 < 0) h1 += accessor_[1];
-          mi_v_t h0 = h[0];
-          if (h0 < 0) h0 += accessor_[0];
-          begin_[(h0 * accessor_[1] + h1) * accessor_[2] + h[2]]
-            += std::conj(cf);
+        mi_v_t
+        h2 = h[2] % n_real_2_;
+        if (h2 < 0) h2 += n_real_2_;
+        if (h2 < n_complex_2_) {
+          mi_v_t h1 = h[1] % n_1_;
+          if (h1 < 0) h1 += n_1_;
+          mi_v_t h0 = h[0] % n_0_;
+          if (h0 < 0) h0 += n_0_;
+          begin_[(h0 * n_1_ + h1) * n_complex_2_ + h2] += std::conj(cf);
         }
-        if (!(0 > -h[2] || -h[2] >= accessor_[2])) {
-          mi_v_t h1 = -h[1];
-          if (h1 < 0) h1 += accessor_[1];
-          mi_v_t h0 = -h[0];
-          if (h0 < 0) h0 += accessor_[0];
-          begin_[(h0 * accessor_[1] + h1) * accessor_[2] - h[2]]
-            += cf;
+        h2 = (-h[2]) % n_real_2_;
+        if (h2 < 0) h2 += n_real_2_;
+        if (h2 < n_complex_2_) {
+          mi_v_t h1 = (-h[1]) % n_1_;
+          if (h1 < 0) h1 += n_1_;
+          mi_v_t h0 = (-h[0]) % n_0_;
+          if (h0 < 0) h0 += n_0_;
+          begin_[(h0 * n_1_ + h1) * n_complex_2_ + h2] += cf;
         }
       }
 
     protected:
       complex_type* begin_;
-      hermitian_accessor accessor_;
+      mi_v_t n_0_, n_1_, n_real_2_, n_complex_2_;
   };
 
   // Precomputes f~(hs) (Navaza & Vernoslova (1995), p.447, following Eq. (14))
