@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import generators
 from iotbx import simple_tokenizer
 from scitbx.python_utils.str_utils import line_breaker
 from libtbx.itertbx import count
@@ -501,6 +502,11 @@ class scope:
           assert isinstance(sequential_format % 0, str)
     setattr(self, name, value)
 
+  def active_objects(self):
+    for object in self.objects:
+      if (object.is_disabled): continue
+      yield object
+
   def show(self, out=None, prefix="", attributes_level=0, print_width=None,
                  previous_object=None):
     if (out is None): out = sys.stdout
@@ -541,15 +547,13 @@ class scope:
 
   def _all_definitions(self, parent, parent_path, result):
     parent_path += self.name+"."
-    for object in self.objects:
-      if (object.is_disabled): continue
+    for object in self.active_objects():
       object._all_definitions(
         parent=self, parent_path=parent_path, result=result)
 
   def all_definitions(self):
     result = []
-    for object in self.objects:
-      if (object.is_disabled): continue
+    for object in self.active_objects():
       object._all_definitions(parent=self, parent_path="", result=result)
     return result
 
@@ -565,8 +569,7 @@ class scope:
         result = [self]
       else:
         result = []
-        for object in self.objects:
-          if (object.is_disabled): continue
+        for object in self.active_objects():
           result.extend(object.get_without_substitution(
             path=path,
             stopper=stopper))
@@ -578,8 +581,7 @@ class scope:
       elif (path.startswith(self.name+".")):
         path = path[len(self.name)+1:]
         result = []
-        for object in self.objects:
-          if (object.is_disabled): continue
+        for object in self.active_objects():
           result.extend(object.get_without_substitution(
             path=path,
             stopper=stopper))
@@ -587,8 +589,7 @@ class scope:
       else:
         result = []
         if (stopper is not None):
-          for object in self.objects:
-            if (object.is_disabled): continue
+          for object in self.active_objects():
             object.get_without_substitution(
               path="",
               stopper=stopper)
@@ -597,8 +598,7 @@ class scope:
 
   def substitute_all(self, substitution_scope, path_memory):
     result = []
-    for object in self.objects:
-      if (object.is_disabled): continue
+    for object in self.active_objects():
       result.append(object.substitute_all(
         substitution_scope=substitution_scope,
         path_memory=path_memory))
@@ -647,8 +647,7 @@ class scope:
 
   def format(self, python_object, custom_converters=None):
     result = []
-    for object in self.objects:
-      if (object.is_disabled): continue
+    for object in self.active_objects():
       if (isinstance(python_object, scope_extract)):
         python_object = [python_object]
       for python_object_i in python_object:
@@ -670,8 +669,7 @@ class scope:
         name=self.name,
         objects=[source.copy(name=source_name)])
     result_objects = []
-    for master_object in self.objects:
-      if (master_object.is_disabled): continue
+    for master_object in self.active_objects():
       if (len(self.name) == 0):
         path = master_object.name
         master_object_for_fetch = master_object
@@ -682,8 +680,7 @@ class scope:
       matching_sources = source.get(path=path, with_substitution=False)
       fetch_count = 0
       if (master_object.multiple):
-        for matching_source in matching_sources.objects:
-          if (matching_source.is_disabled): continue
+        for matching_source in matching_sources.active_objects():
           fetch_count += 1
           result_objects.append(master_object_for_fetch.fetch(
             source=matching_source,
@@ -699,8 +696,7 @@ class scope:
           result_objects[-1].is_disabled = True
       else:
         result_object = master_object_for_fetch
-        for matching_source in matching_sources.objects:
-          if (matching_source.is_disabled): continue
+        for matching_source in matching_sources.active_objects():
           fetch_count += 1
           result_object = result_object.fetch(
             source=matching_source,
