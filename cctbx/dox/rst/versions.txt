@@ -20,6 +20,8 @@ Please direct questions to cctbx@cci.lbl.gov .
 Quick links
 ===========
 
+- `cctbx - Web services`_
+
 - `cctbx - Automatic multi-platform builds`_
 
 - `cctbx - Public CVS repository`_
@@ -33,6 +35,8 @@ Quick links
   `iotbx <current_cvs/python/iotbx/>`_
 
 - `cctbx C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
+
+.. _`cctbx - Web services`: http://cci.lbl.gov/cctbx/
 
 .. _`cctbx - Automatic multi-platform builds`: http://cci.lbl.gov/cctbx_build/
 
