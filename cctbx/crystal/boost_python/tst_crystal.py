@@ -183,11 +183,13 @@ def exercise_direct_space_asu():
     simple_pair_generator = crystal.neighbors_simple_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100)
+    assert simple_pair_generator.asu_mappings().is_locked()
     assert approx_equal(simple_pair_generator.distance_cutoff_sq(), 100*100)
     fast_pair_generator = crystal.neighbors_fast_pair_generator(
       asu_mappings=asu_mappings,
       distance_cutoff=100,
       epsilon=1.e-6)
+    assert fast_pair_generator.asu_mappings().is_locked()
     assert approx_equal(fast_pair_generator.distance_cutoff_sq(), 100*100)
     assert approx_equal(fast_pair_generator.epsilon()/1.e-6, 1)
     assert fast_pair_generator.n_boxes() == (1,1,1)

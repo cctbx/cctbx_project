@@ -31,16 +31,21 @@ namespace neighbors {
           region are generated.
        */
       simple_pair_generator(
-        asu_mappings_t* asu_mappings,
+        boost::shared_ptr<asu_mappings_t>& asu_mappings,
         FloatType const& distance_cutoff=0)
       :
-        asu_mappings_(asu_mappings),
+        asu_mappings_owner_(asu_mappings),
+        asu_mappings_(asu_mappings.get()),
         distance_cutoff_sq_(distance_cutoff*distance_cutoff)
       {
         CCTBX_ASSERT(distance_cutoff >= 0);
         asu_mappings->lock();
         restart();
       }
+
+      //! Instance as passed to the constructor.
+      boost::shared_ptr<asu_mappings_t> const&
+      asu_mappings() const { return asu_mappings_owner_; }
 
       //! Square of value as passed to the constructor.
       FloatType
@@ -101,7 +106,8 @@ namespace neighbors {
       }
 
     protected:
-      direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
+      boost::shared_ptr<asu_mappings_t> asu_mappings_owner_;
+      const direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
       FloatType distance_cutoff_sq_;
       bool at_end_;
       bool is_swapped_;

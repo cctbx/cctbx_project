@@ -150,7 +150,8 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
-      class_<w_t>("direct_space_asu_asu_mappings", no_init)
+      class_<w_t, boost::shared_ptr<w_t> >(
+          "direct_space_asu_asu_mappings", no_init)
         .def(init<sgtbx::space_group const&,
                   float_asu<> const&,
                   double const&,
