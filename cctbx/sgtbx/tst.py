@@ -170,7 +170,11 @@ def test_pickle():
   import pickle
   pstr = pickle.dumps(SgOps)
   up = pickle.loads(pstr)
-  assert SgOps.Info().BuildHallSymbol(1) == up.Info().BuildHallSymbol(1)
+  sginfo = SgOps.Info()
+  assert sginfo.BuildHallSymbol(1) == up.Info().BuildHallSymbol(1)
+  pstr = pickle.dumps(sginfo)
+  up = pickle.loads(pstr)
+  assert sginfo.BuildHallSymbol(1) == up.BuildHallSymbol(1)
 
 def show_position(p):
   print "%.6g %.6g %.6g" % tuple(p)
@@ -360,7 +364,7 @@ def run():
   tst14.run(0)
   tst15.run(0)
   t = os.times()
-  print "u+s,u,s:", t[0] + t[1], t[0], t[1]
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
 
 def run_other(args, timing, function_object, shortcut_settings=None):
   import os
@@ -387,7 +391,7 @@ def run_other(args, timing, function_object, shortcut_settings=None):
     function_object(settings)
     if (timing and not Flags.ShortCut):
       t = os.times()
-      print "u+s,u,s:", t[0] + t[1], t[0], t[1]
+      print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
     if (not Flags.Endless): break
 
 if (__name__ == "__main__"):
