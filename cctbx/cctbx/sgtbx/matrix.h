@@ -318,7 +318,24 @@ namespace sgtbx {
       vector are stored as integer numbers and base factors. The actual
       value of an element is obtained by dividing the integer number by
       the corresponding base factor:<br>
-      Rpart()[i] / Rpart().BF(), Tpart()[i] / Tpart().BF().
+      Rpart()[i] / RBF(), Tpart()[i] / TBF().
+      <p>
+      Python only:
+      <dl>
+      <dt>sgtbx.RTMx_from_tuple((R, T), RBF, TBF)
+        <dd>R is a list or tuple with the 9 elements of the rotation part.
+            T is a list or tuple with the 3 elements of the translation part.
+            RBF and TBF are the rotation and translation base factors.
+      <dt>sgtbx.RTMx().as_tuple()
+        <dd>Return a tuple of two tuples: (R, T). Both the elements of
+            R and T are Python floating point numbers.
+      <dt>sgtbx.RTMx().as_tuple(RBF, TBF)
+        <dd>Return a tuple of two tuples: (R, T). Both the elements of
+            R and T are Python integers. The rotation and translation
+            base factors are RBF and TBF, respectively. An exception
+            is raised if the requested base factors are not compatible
+            with the RTMx instance.
+      </dl>
    */
   class RTMx {
     private:
@@ -389,6 +406,37 @@ namespace sgtbx {
       std::string as_xyz(bool Decimal = false, bool TrFirst = false,
                          const char* LettersXYZ = "xyz",
                          const char* Separator = ",") const;
+      //! Export matrix elements to a plain boost array of integers.
+      /*! The 9 elements of the rotation part are copied to
+          elements 0..8 of the plain boost array.
+          The 3 elements of the translation part are copied to
+          elements 9..11 of the plain boost array.
+          Use RBF() and TBF() to access the base factors
+          for conversion to floating point representations.
+          <p>
+          See also: as_array()
+       */
+      boost::array<int, 12> as_int_array() const;
+      //! Export matrix elements to a floating point boost array.
+      /*! The 9 elements of the rotation part are divided by RBF()
+          and copied to elements 0..8 of the boost array.
+          The 3 elements of the translation part are divided by TBF()
+          and copied to elements 9..11 of the boost array.
+          <p>
+          See also: as_int_array()
+       */
+      template <class T>
+      boost::array<T, 12> as_array(const T&) const {
+        boost::array<T, 12> result;
+        int i;
+        for(i=0;i<9;i++) {
+          result[i    ] = static_cast<T>(Rpart()[i]) / static_cast<T>(RBF());
+        }
+        for(i=0;i<3;i++) {
+          result[i + 9] = static_cast<T>(Tpart()[i]) / static_cast<T>(TBF());
+        }
+        return result;
+      }
       //! Test if the matrix is valid.
       /*! A RTMx is valid only if both the rotation base factor and the
           translation base factor are not zero.

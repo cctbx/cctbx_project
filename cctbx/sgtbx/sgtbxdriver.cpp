@@ -14,7 +14,7 @@
 int main(void)
 {
   using namespace sgtbx;
-  parse_string HSym("P x");
+  parse_string HSym("P 31");
   SgOps sgops;
   try {
     sgops.ParseHallSymbol(HSym);
@@ -25,6 +25,10 @@ int main(void)
     for (int i = 0; i < HSym.where(); i++) std::cout << "_";
     std::cout << "^" << std::endl;
   }
+
+  RTMx M = sgops(1);
+  std::cout << M.as_array(double(0)) << std::endl;
+  std::cout << M.as_int_array() << std::endl;
 
   return 0;
 }
