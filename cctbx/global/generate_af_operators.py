@@ -6,7 +6,7 @@ def write_copyright():
    cctbx/LICENSE.txt for further details.
 
    Revision history:
-     Jan 2002: Created, based on generate_tiny_operators.py (rwgk)
+     Jan 2002: Created (Ralf W. Grosse-Kunstleve)
  */"""
 
 arithmetic_unary_ops = ("-")
@@ -20,12 +20,15 @@ class empty: pass
 
 def form_param(array_type_name, access, Xhs, distinct_N):
   if (access == ""): return "ElementType" + Xhs
-  NXhs = ""
-  if (distinct_N):
-    NXhs = ", N" + Xhs
+  if (array_type_name in ("tiny", "small")):
+    NXhs = ""
+    if (distinct_N):
+      NXhs = ", N" + Xhs
+    else:
+      NXhs = ", N"
+    return "%s<ElementType%s%s>" % (array_type_name, Xhs, NXhs)
   else:
-    NXhs = ", N"
-  return "%s<ElementType%s%s>" % (array_type_name, Xhs, NXhs)
+    return "%s<ElementType%s>" % (array_type_name, Xhs)
 
 def op_vars(array_type_name, access_lhs, access_rhs):
   v = empty()
@@ -42,17 +45,23 @@ def op_vars(array_type_name, access_lhs, access_rhs):
     if (access_lhs != "" and access_rhs != ""):
       v.size_assert = """if (lhs.size() != rhs.size()) throw_range_error();
     """
-  if (array_type_name != "tiny" and access_lhs != "" and access_rhs != ""):
-    v.template_head = \
+  if (array_type_name in ("tiny", "small")):
+    if (array_type_name != "tiny" and access_lhs != "" and access_rhs != ""):
+      v.template_head = \
 """template <typename ElementTypeLhs, std::size_t NLhs,
             typename ElementTypeRhs, std::size_t NRhs>"""
-    v.Nresult = "((NLhs<NRhs)?NLhs:NRhs)"
-    distinct_N = 1
-  else:
-    v.template_head = \
+      v.Nresult = ", ((NLhs<NRhs)?NLhs:NRhs)"
+      distinct_N = 1
+    else:
+      v.template_head = \
 """template <typename ElementTypeLhs,
             typename ElementTypeRhs, std::size_t N>"""
-    v.Nresult = "N"
+      v.Nresult = ", N"
+      distinct_N = 0
+  else:
+    v.template_head = \
+"""template <typename ElementTypeLhs, typename ElementTypeRhs>"""
+    v.Nresult = ""
     distinct_N = 0
   v.param_lhs = form_param(array_type_name, access_lhs, "Lhs", distinct_N)
   v.param_rhs = form_param(array_type_name, access_rhs, "Rhs", distinct_N)
@@ -66,13 +75,13 @@ def elementwise_binary_op(
   inline
   %s<
     typename binary_operator_traits<
-      ElementTypeLhs, ElementTypeRhs>::%s, %s>
+      ElementTypeLhs, ElementTypeRhs>::%s%s>
   %s(
     const %s& lhs,
     const %s& rhs) {
     %s<
       typename binary_operator_traits<
-        ElementTypeLhs, ElementTypeRhs>::%s, %s>
+        ElementTypeLhs, ElementTypeRhs>::%s%s>
     result%s;
     %sfor(std::size_t i=0;i<%s;i++) result[i] = lhs%s %s rhs%s;
     return result;
@@ -89,9 +98,9 @@ def elementwise_inplace_binary_op(
   v = op_vars(array_type_name, "[i]", access_rhs)
   print """  %s
   inline
-  %s<ElementTypeLhs, %s>
+  %s<ElementTypeLhs%s>&
   %s(
-    const %s<ElementTypeLhs, %s>& lhs,
+    %s<ElementTypeLhs%s>& lhs,
     const %s& rhs) {
     %sfor(std::size_t i=0;i<%s;i++) lhs[i] %s= rhs%s;
     return lhs;
@@ -123,11 +132,17 @@ def reducing_boolean_op(
       truth_test_type):
   v = op_vars(array_type_name, access_lhs, access_rhs)
   if (op_symbol == "=="):
+    if (v.size_assert != ""):
+      v.size_assert = """if (lhs.size() != rhs.size()) return %s() != %s();
+    """ % (truth_test_type, truth_test_type)
     tests = (
 """      if (lhs%s != rhs%s) return %s() != %s();"""
     % (access_lhs, access_rhs, truth_test_type, truth_test_type))
     final_op = "=="
   elif (op_symbol == "!="):
+    if (v.size_assert != ""):
+      v.size_assert = """if (lhs.size() != rhs.size()) return %s() == %s();
+    """ % (truth_test_type, truth_test_type)
     tests = (
 """      if (lhs%s != rhs%s) return %s() == %s();"""
     % (access_lhs, access_rhs, truth_test_type, truth_test_type))
@@ -169,24 +184,32 @@ def generate_reducing_boolean_op(array_type_name, op_symbol):
     array_type_name, "", "[i]", "ElementTypeRhs")
 
 def generate_unary_ops(array_type_name):
+  Nresult = ""
+  Ntemplate_head = ""
+  if (array_type_name in ("tiny", "small")):
+    Nresult = ", N"
+    Ntemplate_head = ", std::size_t N"
   result_constructor_args = ""
   if (array_type_name != "tiny"): result_constructor_args = "(a.size())"
   for op_class, op_symbol in (("arithmetic", "-"),
                               ("logical", "!")):
-    print """  template <typename ElementType, std::size_t N>
+    print """  template <typename ElementType%s>
   inline
   %s<
     typename unary_operator_traits<
-      ElementType>::%s, N>
-  operator%s(const %s<ElementType, N>& a) {
+      ElementType>::%s%s>
+  operator%s(const %s<ElementType%s>& a) {
     %s<
       typename unary_operator_traits<
-        ElementType>::%s, N> result%s;
+        ElementType>::%s%s> result%s;
     for(std::size_t i=0;i<a.size();i++) result[i] = %sa[i];
     return result;
   }
-""" % (array_type_name, op_class, op_symbol, array_type_name,
-       array_type_name, op_class, result_constructor_args,
+""" % (Ntemplate_head,
+       array_type_name, op_class, Nresult,
+       op_symbol, array_type_name, Nresult,
+       array_type_name, op_class, Nresult,
+       result_constructor_args,
        op_symbol)
 
 def one_type(array_type_name):
@@ -231,6 +254,7 @@ namespace cctbx { namespace af {
 def run():
   one_type("tiny")
   one_type("small")
+  one_type("shared")
 
 if (__name__ == "__main__"):
   run()
