@@ -474,7 +474,9 @@ class object_list:
   def variable_substitution(self, object, path_memory):
     new_values = []
     for word in object.values:
-      if (word.quote_token == "'"): continue
+      if (word.quote_token == "'"):
+        new_values.append(word)
+        continue
       substitution_proxy = variable_substitution_proxy(word)
       for fragment in substitution_proxy.fragments:
         if (not fragment.is_variable):

@@ -544,6 +544,7 @@ j $(abc
 k $(1bc)
 l $()
 m $@
+n '$a'
 """)
   check_get_sub(parameters, path="a", expected_out="a x\n")
   check_get_sub(parameters, path="b", expected_out="b x\n")
@@ -577,6 +578,7 @@ m $@
   except RuntimeError, e:
     assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
   else: raise RuntimeError("Exception expected.")
+  check_get_sub(parameters, path="n", expected_out="n '$a'\n")
 
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
