@@ -620,10 +620,21 @@ class array(set):
       data=new_data,
       sigmas=new_sigmas).set_observation_type(self)
 
-  def phase_transfer(self, phase_source, epsilon=1.e-10):
+  def phase_transfer(self, phase_source, epsilon=1.e-10, deg=00000):
     assert self.data() is not None
     if (hasattr(phase_source, "data")):
       phase_source = phase_source.data()
+    assert isinstance(self.data(), flex.complex_double) or isinstance(self.data(), flex.double)
+    assert isinstance(phase_source, flex.complex_double) or isinstance(phase_source, flex.double)
+    if (isinstance(phase_source, flex.complex_double)):
+      return array(
+        miller_set=self,
+        data=phase_transfer(
+          self.space_group(),
+          self.indices(),
+          self.data(),
+          phase_source,
+          epsilon))
     return array(
       miller_set=self,
       data=phase_transfer(
@@ -631,7 +642,7 @@ class array(set):
         self.indices(),
         self.data(),
         phase_source,
-        epsilon))
+        deg))
 
   def mean_weighted_phase_error(self, phase_source):
     assert self.data() is not None
@@ -841,6 +852,16 @@ class array(set):
 
   def arg(self, deg=00000):
     return array(self, flex.arg(self.data(), deg))
+
+  def amplitudes(self):
+    assert isinstance(self.data(), flex.complex_double)
+    assert self.sigmas() is None
+    return abs(self)
+
+  def phases(self, deg=00000):
+    assert isinstance(self.data(), flex.complex_double)
+    assert self.sigmas() is None
+    return self.arg(deg)
 
   def merge_equivalents(self):
     return merge_equivalents(self)

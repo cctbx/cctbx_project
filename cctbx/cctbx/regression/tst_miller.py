@@ -304,6 +304,21 @@ def exercise_array():
   assert p1.indices().size() == 3
   assert approx_equal(tuple(p1.data()), (3,4,4))
   assert approx_equal(tuple(p1.sigmas()), (5,6,6))
+  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  mi = flex.miller_index(((1,-2,3), (0,0,-4)))
+  data = flex.double((1,2))
+  a = miller.array(miller.set(xs, mi), data)
+  ph = flex.double((10,20))
+  b = a.phase_transfer(ph, deg=0001)
+  assert approx_equal(tuple(b.amplitudes().data()), a.data())
+  assert approx_equal(tuple(b.phases(deg=0001).data()), (10,0))
+  ph = ph * math.pi/180
+  b = a.phase_transfer(ph, deg=00000)
+  assert approx_equal(tuple(b.amplitudes().data()), a.data())
+  assert approx_equal(tuple(b.phases(deg=0001).data()), (10,0))
+  c = a.phase_transfer(b.data())
+  assert approx_equal(tuple(c.amplitudes().data()), a.data())
+  assert approx_equal(tuple(c.phases(deg=0001).data()), (10,0))
 
 def exercise_array_2(space_group_info):
   xs = crystal.symmetry(
@@ -365,6 +380,9 @@ def exercise_squaring_and_patterson_map(space_group_info,
     d_min=d_min, anomalous_flag=00000).f_calc()
   f_calc = f_calc.sort(by_value="abs")
   f = abs(f_calc)
+  assert approx_equal(f.data(), f_calc.amplitudes().data())
+  assert approx_equal(f_calc.phases(deg=0001).data()*math.pi/180,
+                      f_calc.phases().data())
   f.setup_binner(auto_binning=0001)
   e = f.quasi_normalize_structure_factors()
   grid_resolution_factor = 1/3.
