@@ -76,6 +76,11 @@ def run():
 
 namespace cctbx { namespace vector {
 
+  template <typename T>
+  struct algebra_constructor : T {
+    algebra_constructor(std::size_t sz) : T(sz) {}
+  };
+
   struct qualifier_v_v {}; // lhs = vector type, rhs = vector type
   struct qualifier_v_s {}; // lhs = vector type, rhs = scalar type
   struct qualifier_s_v {}; // etc.
