@@ -78,7 +78,7 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
   multiplicities = f_ref.multiplicities()
   for anisotropic_flag in (00000, 0001):
     f_sca = miller.array(miller_set=f_ref, data=flex.double())
-    k_sim = 1000
+    k_sim = 100
     b_iso = 13
     b_cif = [5,10,15,20,25,30]
     if (anisotropic_flag):
