@@ -415,6 +415,15 @@ def exercise_pair_tables():
     [1, 0, 0], [1, 1, 4], [1, 1, 1], [1, 2, 0],
     [2, 1, 0], [2, 1, 11], [2, 2, 1], [2, 2, 2]]
   check_pair_asu_table(asu_table, expected_asu_pairs)
+  asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  for minimal in [0001, 00000]:
+    pair_generator = crystal.neighbors_fast_pair_generator(
+      asu_mappings,
+      distance_cutoff=3.5,
+      minimal=minimal)
+    for pair in pair_generator:
+      asu_table.add_pair(pair=pair)
+    check_pair_asu_table(asu_table, expected_asu_pairs)
   for p in expected_asu_pairs:
     assert asu_table.contains(i_seq=p[0], j_seq=p[1], j_sym=p[2])
     pair = asu_mappings.make_trial_pair(*p)

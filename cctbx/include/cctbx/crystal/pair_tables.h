@@ -209,14 +209,7 @@ namespace cctbx { namespace crystal {
           distance_cutoff*(1+epsilon),
           minimal);
         while (!pair_generator.at_end()) {
-          direct_space_asu::asu_mapping_index_pair
-            pair = pair_generator.next();
-          sgtbx::rt_mx rt_mx_i = asu_mappings_->get_rt_mx_i(pair);
-          sgtbx::rt_mx rt_mx_j = asu_mappings_->get_rt_mx_j(pair);
-          add_pair(
-            pair.i_seq,
-            pair.j_seq,
-            rt_mx_i.inverse().multiply(rt_mx_j));
+          add_pair(pair_generator.next());
         }
         return *this;
       }
@@ -241,6 +234,18 @@ namespace cctbx { namespace crystal {
           }
         }
         return *this;
+      }
+
+      //! Adds a pair and all symmetrically equivalent pairs.
+      pair_asu_table&
+      add_pair(direct_space_asu::asu_mapping_index_pair const& pair)
+      {
+        sgtbx::rt_mx rt_mx_i = asu_mappings_->get_rt_mx_i(pair);
+        sgtbx::rt_mx rt_mx_j = asu_mappings_->get_rt_mx_j(pair);
+        add_pair(
+          pair.i_seq,
+          pair.j_seq,
+          rt_mx_i.inverse().multiply(rt_mx_j));
       }
 
       //! Adds the pair defined by i_seq, j_seq and rt_mx_ji.
