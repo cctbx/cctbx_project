@@ -1,5 +1,8 @@
 class easy(dict):
 
+  def __init__(self, **kw):
+    dict.update(self, kw)
+
   def __getattr__(self, key):
     return dict.__getitem__(self, key)
 
