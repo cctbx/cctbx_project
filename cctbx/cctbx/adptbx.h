@@ -255,6 +255,68 @@ namespace adptbx {
     return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));
   }
 
+  //! Test if adp tensor is positive definite.
+  /*! Necessary and sufficient conditions for positive-definiteness
+      are:
+      <p>
+      det(U) > 0<br>
+      Uii > 0<br>
+      Uii Uij > 0 for i,j=1,2,3
+      <p>
+      If the above conditions are violated then atomic
+      displacements could be described by imaginary
+      ellipsoids or by paraboloids or hyperboloids,
+      with the obvious meaning that the experimental
+      data are not of sufficient accuracy to
+      justify the use of anisotropic displacement
+      parameters.
+      (Giacovazzo, Fundamentals of Crystallography 1992,
+      p. 188-189).
+   */
+  template <class FloatType>
+  bool
+  isPositiveDefinite_adpTensor(const boost::array<FloatType, 6>& adp)
+  {
+    for(std::size_t i=0;i<6;i++) {
+      if (adp[i] <= 0.) return false;
+    }
+    FloatType
+    det =  adp[0] * (adp[1] * adp[2] - adp[5] * adp[5]);
+    det -= adp[3] * (adp[3] * adp[2] - adp[5] * adp[4]);
+    det += adp[4] * (adp[3] * adp[5] - adp[1] * adp[4]);
+    if (det < 0.) return false;
+    return true;
+  }
+
+  template <class FloatType>
+  boost::array<FloatType, 3>
+  EigenValues(const boost::array<FloatType, 6>& adp)
+  {
+    // normal form: x^3 + r x^2 + s x + t == 0
+    FloatType r = -adp[0] - adp[1] - adp[2];
+    FloatType s =   adp[0] * adp[1] + adp[0] * adp[2] + adp[1] * adp[2]
+                  - adp[3] * adp[3] - adp[4] * adp[4] - adp[5] * adp[5];
+    FloatType t =   adp[0] * adp[5] * adp[5] - adp[0] * adp[1] * adp[2]
+                  + adp[2] * adp[3] * adp[3] + adp[1] * adp[4] * adp[4]
+                  - 2 * adp[3] * adp[4] * adp[5];
+    // reduced form: y^3 + p y + q == 0
+    FloatType p = s - r * r / 3.;
+    FloatType q = 2. * r * r * r / 27. - r * s / 3. + t;
+    FloatType p3 = p * p * p;
+    FloatType q2 = q * q;
+    FloatType D = p3 / 27. + q2 / 4.;
+    if (D >= 0.) throw error("adp tensor is not positive definite.");
+    FloatType zeta = std::sqrt(-p3 / 27);
+    FloatType phi = std::acos(-q / (2. * zeta));
+    FloatType rzeta = 2. * std::pow(zeta, FloatType(1/3.));
+    boost::array<FloatType, 3> result;
+    for (int i = 0; i < 3; i++) {
+      result[i] =   rzeta * std::cos((phi + (i * 2) * constants::pi) / 3.)
+                  - r / 3.;
+    }
+    return result;
+  }
+
 } // namespace adptbx
 
 #endif // CCTBX_ADPTBX_H
