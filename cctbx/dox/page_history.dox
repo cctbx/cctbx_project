@@ -9,7 +9,7 @@
 <a href="http://www.ccp14.ac.uk/ccp/ccp14/ftp-mirror/ralf_grosse_kunstleve/pub/local/rwgk/atominfo/">atominfo</a>.
 The \c Henke, \c Sasaki and \c neutron modules are based on C source code
 contributed by
-<a href="http://crystsun1.unige.ch/favrev/>Vincent Favre-Nicolin</a>.
+<a href="http://www.unige.ch/crystal/favrev/">Vincent Favre-Nicolin</a>.
 
 <dt>sgtbx - Space Group Toolbox
 <dd>The %cctbx Space Group Toolbox is based on
