@@ -536,6 +536,8 @@ def exercise_flex_vec3_double():
   a += (10,20,30)
   assert approx_equal(tuple(a), ((11,22,35), (8,23,34), (13,24,33)))
   assert approx_equal(tuple(a+(20,30,10)), ((31,52,45),(28,53,44),(33,54,43)))
+  assert approx_equal(tuple(a+a),
+    ((2*11,2*22,2*35), (2*8,2*23,2*34), (2*13,2*24,2*33)))
   assert approx_equal(tuple(a*(-1,1,0,1,0,-1,1,-1,1)),
     ((46,-24,13),(49,-26,11),(44,-20,9)))
   assert approx_equal(tuple((-1,1,0,1,0,-1,1,-1,1)*a),
