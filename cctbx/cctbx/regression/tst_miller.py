@@ -631,6 +631,18 @@ def exercise_phase_integrals(space_group_info):
       elif (abs(pi_p1 - pi_p1_sg) > 1.e-6):
         print "Error:", h, pi_p1, pi_p1_sg
         raise AssertionError
+    #
+    amplitude_array = miller.array(
+      miller_set=miller_set,
+      data=flex.random_double(size=miller_set.indices().size()))
+    for phase_integrator_n_steps in [None, 360/5]:
+      with_phases = amplitude_array.phase_transfer(
+        phase_source=sg_hl,
+        phase_integrator_n_steps=phase_integrator_n_steps)
+      assert flex.max(  flex.abs(amplitude_array.data()
+                      - abs(with_phases).data())) < 1.e-6
+      assert with_phases.mean_weighted_phase_error(
+        phase_source=sg_phase_integrals) < 1.e-6
 
 def run_call_back(flags, space_group_info):
   exercise_array_2(space_group_info)

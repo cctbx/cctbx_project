@@ -765,12 +765,22 @@ class array(set):
       data=new_data,
       sigmas=new_sigmas).set_observation_type(self)
 
-  def phase_transfer(self, phase_source, epsilon=1.e-10, deg=00000):
+  def phase_transfer(self, phase_source, epsilon=1.e-10, deg=00000,
+                           phase_integrator_n_steps=None):
     assert self.data() is not None
     if (hasattr(phase_source, "data")):
       phase_source = phase_source.data()
     assert isinstance(self.data(), flex.complex_double) or isinstance(self.data(), flex.double)
-    assert isinstance(phase_source, flex.complex_double) or isinstance(phase_source, flex.double)
+    assert isinstance(phase_source, flex.complex_double) or isinstance(phase_source, flex.double) or isinstance(phase_source, flex.hendrickson_lattman)
+    if (isinstance(phase_source, flex.hendrickson_lattman)):
+      if (phase_integrator_n_steps is None):
+        integrator = phase_integrator()
+      else:
+        integrator = phase_integrator(n_steps=phase_integrator_n_steps)
+      phase_source = integrator(
+        space_group=self.space_group(),
+        miller_indices=self.indices(),
+        hendrickson_lattman_coefficients=phase_source)
     if (isinstance(phase_source, flex.complex_double)):
       return array(
         miller_set=self,
