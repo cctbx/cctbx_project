@@ -804,13 +804,14 @@ class environment:
           or file_name_lower.startswith("python.")): continue
       module_names[file_name.split(".")[0]] = None
     module_names = module_names.keys()
+    for module_name in module_names:
+      self.write_dispatcher_in_bin(
+        source_file=self.python_exe,
+        target_file=module_name+".python")
     for command in ["show_build_path", "show_dist_paths"]:
       source_file = self.under_dist(
         "libtbx", "libtbx/command_line/"+command+".py")
       for module_name in module_names:
-        self.write_dispatcher_in_bin(
-          source_file=self.python_exe,
-          target_file=module_name+".python")
         self.write_dispatcher_in_bin(
           source_file=source_file,
           target_file=module_name+"."+command)
