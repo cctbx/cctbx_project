@@ -4,7 +4,6 @@
 #include <cctbx/restraints/utils.h>
 #include <cctbx/restraints/asu_cache.h>
 #include <cctbx/restraints/sorted_asu_proxies.h>
-#include <set>
 
 namespace cctbx { namespace restraints {
 
@@ -368,24 +367,6 @@ namespace cctbx { namespace restraints {
         sorted_asu_proxies.sym_active_flags,
         gradient_array,
         disable_cache);
-    }
-    return result;
-  }
-
-  inline
-  af::shared<std::set<unsigned> >
-  bond_sets(
-    std::size_t n_sites,
-    af::const_ref<restraints::bond_simple_proxy> const& proxies)
-  {
-    af::shared<std::set<unsigned> > result;
-    result.resize(n_sites);
-    for(std::size_t i=0;i<proxies.size();i++) {
-      restraints::bond_simple_proxy const& proxy = proxies[i];
-      CCTBX_ASSERT(proxy.i_seqs[0] < n_sites);
-      CCTBX_ASSERT(proxy.i_seqs[1] < n_sites);
-      result[proxy.i_seqs[0]].insert(proxy.i_seqs[1]);
-      result[proxy.i_seqs[1]].insert(proxy.i_seqs[0]);
     }
     return result;
   }
