@@ -173,6 +173,17 @@ def exercise_xray_scatterer():
   y.tidy_u(unit_cell=uc, site_symmetry_ops=ss, u_min=1)
   assert approx_equal(y.u_iso, 1)
   assert y.is_positive_definite_u(unit_cell=uc)
+  x_u_star_orig = x.u_star
+  x.shift_u(unit_cell=uc, u_shift=10)
+  assert approx_equal(x.u_star,
+    (3.4458045216665267, 4.6710990727698389, 4.5312175371866088,
+     3.9006326295505751, 3.8598099147456764, 4.5133641373560351))
+  y.shift_u(unit_cell=uc, u_shift=10)
+  assert approx_equal(y.u_iso, 11)
+  a = flex.xray_scatterer([x,y])
+  xray.shift_us(scatterers=a, unit_cell=uc, u_shift=-10)
+  assert approx_equal(a[0].u_star, x_u_star_orig)
+  assert approx_equal(a[1].u_iso, 1)
 
 def exercise_rotate():
   uc = uctbx.unit_cell((10, 10, 13))
