@@ -856,6 +856,31 @@ def exercise_loops():
     points.append(index)
   assert points == []
 
+def exercise_extract_attributes():
+  class group:
+    def __init__(self, a, b):
+      self.a = a
+      self.b = b
+  groups = []
+  for i in xrange(3):
+    groups.append(group(i, i+1))
+  for array in [groups, tuple(groups)]:
+    as = flex.extract_double_attributes(
+      array=array, attribute_name="a", none_substitute=None)
+    assert approx_equal(as, [0,1,2])
+    bs = flex.extract_double_attributes(
+      array=array, attribute_name="b", none_substitute=None)
+    assert approx_equal(bs, [1,2,3])
+  groups[1].a = None
+  groups[2].b = None
+  for array in [groups, tuple(groups)]:
+    as = flex.extract_double_attributes(
+      array=array, attribute_name="a", none_substitute=3)
+    assert approx_equal(as, [0,3,2])
+    bs = flex.extract_double_attributes(
+      array=array, attribute_name="b", none_substitute=-4)
+    assert approx_equal(bs, [1,2,-4])
+
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
   try: f.assign(1, 0)
@@ -1029,6 +1054,7 @@ def run(iterations):
     exercise_mean_and_variance()
     exercise_linear_interpolation()
     exercise_loops()
+    exercise_extract_attributes()
     exercise_exceptions()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()
