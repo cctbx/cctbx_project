@@ -79,7 +79,7 @@ namespace scitbx { namespace af {
 
     template <class ElementType>
     inline
-    void destroy_array_elements(ElementType* first, ElementType* last,
+    void destroy_array_elements(ElementType*, ElementType*,
                                 true_type) {
     }
 
