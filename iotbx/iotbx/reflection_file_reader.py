@@ -109,6 +109,40 @@ class any_reflection_file:
       force_symmetry=force_symmetry,
       info_prefix=info_prefix)
 
+def collect_arrays(file_names,
+                   crystal_symmetry, force_symmetry,
+                   discard_arrays=00000,
+                   verbose=2,
+                   report_out=None):
+  if (report_out is None):
+    report_out = sys.stdout
+  if (discard_arrays):
+    result = None
+  else:
+    result = []
+  for file_name in file_names:
+    if (verbose > 0):
+      print >> report_out
+      print >> report_out, "file_name:", file_name
+      report_out.flush()
+    reflection_file = any_reflection_file(file_name)
+    if (verbose > 0):
+      print >> report_out, "file_type:", reflection_file.file_type()
+      print >> report_out
+    miller_arrays = reflection_file.as_miller_arrays(
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry)
+    for miller_array in miller_arrays:
+      if (verbose > 0):
+        if (verbose > 1):
+          miller_array.show_comprehensive_summary(f=report_out)
+        else:
+          miller_array.show_summary(f=report_out)
+        print >> report_out
+    if (not discard_arrays):
+      result.extend(miller_arrays)
+  return result
+
 def run(args):
   command_line = (iotbx_option_parser(
     usage="iotbx.reflection_file_reader [options] reflection_file ...",
@@ -126,24 +160,16 @@ def run(args):
       help="write all data to FILE ('--pickle .' copies name of input file)",
       metavar="FILE")
   ).process()
-  if (command_line.options.pickle is None):
-    all_miller_arrays = None
-  else:
-    all_miller_arrays = []
-  for file_name in command_line.args:
-    print
-    print "file_name:", file_name
-    sys.stdout.flush()
-    reflection_file = any_reflection_file(file_name)
-    print "file_type:", reflection_file.file_type()
-    miller_arrays = reflection_file.as_miller_arrays(
-      crystal_symmetry=command_line.symmetry,
-      force_symmetry=not command_line.options.weak_symmetry)
-    for miller_array in miller_arrays:
-      print
-      miller_array.show_comprehensive_summary()
-    if (all_miller_arrays is not None):
-      all_miller_arrays.extend(miller_arrays)
+  if (len(command_line.args) == 0):
+    command_line.parser.show_help()
+    return
+  all_miller_arrays = collect_arrays(
+    file_names=command_line.args,
+    crystal_symmetry=command_line.symmetry,
+    force_symmetry=not command_line.options.weak_symmetry,
+    discard_arrays=command_line.options.pickle is None,
+    verbose=2,
+    report_out=sys.stdout)
   if (all_miller_arrays is not None and len(all_miller_arrays) > 0):
     if (len(all_miller_arrays) == 1):
       all_miller_arrays = all_miller_arrays[0]
