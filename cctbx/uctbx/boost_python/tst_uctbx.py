@@ -3,6 +3,7 @@ import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
 from scitbx.test_utils import approx_equal
+import random
 import sys
 
 def exercise_functions():
@@ -56,6 +57,11 @@ def exercise_basic():
     assert u.is_similar_to(v, 1.e-3, 1.e-3)
     assert approx_equal(u.volume(), 1/u.reciprocal().volume())
   u = uctbx.unit_cell(p)
+  assert not u.is_degenerated()
+  assert not u.is_degenerated(1.e-10)
+  assert not u.is_degenerated(1.e-10, 1.e-5)
+  assert u.is_degenerated(10)
+  assert u.is_degenerated(1.e-10, 20)
   m = u.metrical_matrix()
   n = (2*2, 3*3, 4*4,
        2*3*cos(110*pi/180), 2*4*cos(100*pi/180), 3*4*cos(80*pi/180))
@@ -219,7 +225,53 @@ def exercise_fast_minimum_reduction():
       uctbx.fast_minimum_reduction(u)
     except RuntimeError, e:
       if ("--Verbose" in sys.argv[1:]):
-        print e
+        print "Expected:", e
+
+class exercise_is_degenerated:
+
+  def __init__(self, n_iterations=None):
+    if (n_iterations is not None):
+      self.n_iterations = n_iterations
+    else:
+      if ("--hardest" in sys.argv[1:]):
+        self.n_iterations = 1000000
+      elif ("--harder" in sys.argv[1:]):
+        self.n_iterations = 100000
+      elif ("--hard" in sys.argv[1:]):
+        self.n_iterations = 10000
+      else:
+        self.n_iterations = 100
+    self.n_stable = [0,0]
+    self.n_unstable = 0
+    i_iteration = 0
+    rnd = random.random
+    while 1:
+      lengths = [rnd(), rnd(), rnd()]
+      for alpha in xrange(10,180,10):
+        for beta in xrange(10,180,10):
+          for gamma in xrange(10,180,10):
+            try:
+              u = uctbx.unit_cell((2,3,5,alpha,beta,gamma))
+            except:
+              pass
+            else:
+              is_degenerated = u.is_degenerated(1.e-10, 1.e-5)
+              try:
+                uctbx.fast_minimum_reduction(u)
+                self.n_stable[int(is_degenerated)] += 1
+              except RuntimeError, e:
+                assert is_degenerated
+                self.n_unstable += 1
+              i_iteration += 1
+              if (i_iteration == self.n_iterations):
+                return
+
+  def report(self):
+    print "exercise_is_degenerated:"
+    s = self.n_stable[0] + self.n_stable[1]
+    n = self.n_iterations*0.01
+    print "  n_stable:", s, self.n_stable, "= %.3g%%" % (s/n)
+    print "  n_unstable:", self.n_unstable, "= %.3g%%" % (self.n_unstable/n)
 
 def run():
   exercise_functions()
@@ -230,6 +282,9 @@ def run():
   exercise_pickle()
   exercise_exceptions()
   exercise_fast_minimum_reduction()
+  e = exercise_is_degenerated()
+  if (e.n_iterations > 100):
+    e.report()
   print "OK"
 
 if (__name__ == "__main__"):

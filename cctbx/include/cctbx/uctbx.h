@@ -156,6 +156,11 @@ namespace cctbx {
       double
       longest_vector_sq() const;
 
+      //! Simple test for degenerated unit cell parameters.
+      bool
+      is_degenerated(double min_min_length_over_max_length=1.e-10,
+                     double min_volume_over_min_length=1.e-5);
+
       //! Comparison of unit cell parameters.
       bool
       is_similar_to(unit_cell const& other,
