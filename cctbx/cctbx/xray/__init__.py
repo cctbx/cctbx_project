@@ -134,7 +134,7 @@ class structure(crystal.special_position_settings):
     return self
 
   def show_scatterers(self, f=sys.stdout):
-    print >> f, "Label  M  Coordinates            Occ  Uiso or Ustar"
+    print >> f, "Label  M  Coordinates            Occ  Uiso or Ucart"
     for scatterer in self.scatterers():
       print >> f, "%-4s" % (scatterer.label,),
       print >> f, "%3d" % (scatterer.multiplicity(),),
