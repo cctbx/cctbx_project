@@ -45,7 +45,7 @@ def exercise_set():
   mc = ms.complete_set()
   c = mc.completeness()
   assert c >= 1-1.e5
-  assert c <= mc.indices().size()/float(mc.indices().size()-1)
+  assert c <= 1
   ma = ms.map_to_asu()
   assert flex.order(ms.indices(), ma.indices()) == 0
   ma = ms.remove_systematic_absences()
