@@ -8,6 +8,7 @@ from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
+import scitbx.math
 from cStringIO import StringIO
 import sys, os
 
@@ -454,6 +455,16 @@ def exercise_xray_structure(anisotropic_flag, verbose=0):
       assert abs(regression.slope()-1) < 1.e-2
       assert abs(regression.y_intercept()) < 0.1
 
+def write_icosahedron():
+  for level in xrange(3):
+    icosahedron = scitbx.math.icosahedron(level=level)
+    scale = 1.5/icosahedron.next_neighbors_distance()
+    f = open("icosahedron_%d.pdb"%level, "w")
+    for i,site in enumerate(icosahedron.sites*scale):
+      print >> f, iotbx.pdb.format_atom_record(serial=i+1, site=site)
+    print >> f, "END"
+    f.close()
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_format_records()
@@ -466,6 +477,7 @@ def run():
   exercise_selection()
   for anisotropic_flag in (False, True):
     exercise_xray_structure(anisotropic_flag, verbose=verbose)
+  write_icosahedron()
   print "OK"
 
 if (__name__ == "__main__"):

@@ -81,6 +81,7 @@ namespace {
           arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
+        .def("pair_counts", &w_t::pair_counts)
         .def("add_all_pairs", &w_t::add_all_pairs,
           add_all_pairs_overloads((
             arg_("distance_cutoff"), arg_("epsilon")=1.e-6))[return_self<>()])

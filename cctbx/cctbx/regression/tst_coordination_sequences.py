@@ -41,20 +41,18 @@ def exercise_shell_asu_tables(structure, verbose):
     max_shell=3)
   for shell_asu_table in shell_asu_tables:
     if (0 or verbose):
-      pairs_1 = xray.show_pairs(
-        xray_structure=structure,
-        pair_asu_table=shell_asu_table)
+      pairs_1 = structure.show_distances(pair_asu_table=shell_asu_table)
       print list(pairs_1.pair_counts)
+      assert pairs_1.pair_counts == shell_asu_table.pair_counts()
       print
     sym_table = shell_asu_table.extract_pair_sym_table(
       skip_j_seq_less_than_i_seq=False)
     asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     asu_table.add_pair_sym_table(sym_table=sym_table)
     if (0 or verbose):
-      pairs_2 = xray.show_pairs(
-        xray_structure=structure,
-        pair_asu_table=asu_table)
+      pairs_2 = structure.show_distances(pair_asu_table=asu_table)
       print list(pairs_2.pair_counts)
+      assert pairs_2.pair_counts == asu_table.pair_counts()
       print
       assert pairs_1.pair_counts.all_eq(pairs_2.pair_counts)
     assert asu_table == shell_asu_table
