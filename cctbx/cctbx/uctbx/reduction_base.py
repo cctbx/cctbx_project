@@ -122,6 +122,7 @@ class reduction_base(gruber_parameterization):
     gruber_parameterization.__init__(self, unit_cell, relative_epsilon)
     self._r_inv = matrix.sqr((1,0,0,0,1,0,0,0,1))
     self._n_iterations = 0
+    self._last_after_all_obtuse_action = (-1,-1,-1)
 
   def iteration_limit(self):
     return self._iteration_limit
@@ -187,7 +188,7 @@ class minimum_reduction_mixin:
 
   def __init__(self, unit_cell, expected_cycle_limit, iteration_limit):
     if (expected_cycle_limit is None):
-      self.expected_cycle_limit = 2
+      self.expected_cycle_limit = 20
     else:
       self.expected_cycle_limit = expected_cycle_limit
     self.current_cycle_id = 0

@@ -100,7 +100,17 @@ class minimum_reduction(minimum_reduction_mixin, reduction):
 
   def n3_false_action(self):
     self.current_cycle_id = 1
-    return reduction.n3_false_action(self)
+    result = reduction.n3_false_action(self)
+    abc = (self.a,self.b,self.c)
+    if (abc == self._last_after_all_obtuse_action):
+      raise StopIteration
+    self._last_after_all_obtuse_action = abc
+    print abc
+    return result
+
+  def b3_action(self):
+    self.current_cycle_id = 2
+    return reduction.b3_action(self)
 
   def b5_action(self):
     self.current_cycle_id = 2
@@ -273,6 +283,7 @@ class fast_minimum_reduction:
     if (not s.a < abs(s.e)): return 00000
     j = entier((s.e+s.a)/(2*s.a))
     if (j == 0): return 00000
+    s.current_cycle_id = 2
     s.cb_update((1,0,-j,0,1,0,0,0,1))
     s.c += j*j*s.a - j*s.e
     s.d -= j*s.f
