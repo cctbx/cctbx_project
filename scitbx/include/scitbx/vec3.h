@@ -54,6 +54,40 @@ namespace scitbx {
         return !(this->elems[0] || this->elems[1] || this->elems[2]);
       }
 
+      //! Minimum of vector elements.
+      NumType
+      min() const
+      {
+        NumType result = this->elems[0];
+        if (result > this->elems[1]) result = this->elems[1];
+        if (result > this->elems[2]) result = this->elems[2];
+        return result;
+      }
+
+      //! Maximum of vector elements.
+      NumType
+      max() const
+      {
+        NumType result = this->elems[0];
+        if (result < this->elems[1]) result = this->elems[1];
+        if (result < this->elems[2]) result = this->elems[2];
+        return result;
+      }
+
+      //! Sum of vector elements.
+      NumType
+      sum() const
+      {
+        return this->elems[0] + this->elems[1] + this->elems[2];
+      }
+
+      //! Product of vector elements.
+      NumType
+      product() const
+      {
+        return this->elems[0] * this->elems[1] * this->elems[2];
+      }
+
       //! Cross product.
       vec3 cross(vec3 const& other) const
       {
