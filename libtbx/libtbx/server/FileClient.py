@@ -64,7 +64,6 @@ class FileClient:
   def tester(self,*arg,**kw):
     return self._remote_call('tester',arg,kw)
 
-
 ##############################################################################
 # Client functions
 ##############################################################################
@@ -89,9 +88,9 @@ class FileClient:
       result = pickle.load(self.recv)
     except:
       result = None
-    if result.__class__.__name__ == "PropagateExceptionClass":
-      cmd = "raise %s, \"%s\"" % (result.type, result.message)
-      exec cmd
+    #if result.__class__.__name__ == "PropagateExceptionClass":
+    #  cmd = "raise %s, \"%s\"" % (result.type, result.message)
+    #  exec cmd
 
     # Closing the socket connection increases the speed of transfer but ruins
     # the possibility of contacting the clients.
@@ -128,6 +127,47 @@ class FileClient:
       pass
     return None
 
+#-----------------------------------------------------------------------------
+
+def LockReadProcessWriteUnlock(client, file, id, func):
+  """
+  This method will lock a file, read the contents and pass it to
+  the user defined function.  This function should return the
+  return item and the new contents of the file.  The contents is
+  writing and the file unlocked.
+  """
+  client.LockFile(file, id)
+  try:
+    lines = client.ReadFile(file)
+
+    return_item = None
+    if lines:
+      return_item, lines = func(lines)
+      client.WriteFile(lines, file)
+
+  finally:
+    client.UnlockFile(file, id)
+
+  return return_item
+
+def LockReadPickleProcessWritePickleUnlock(client, file, id, func):
+  """
+  Same as above except a pickled obj is used.
+  """
+  client.LockFile(file, id)
+  try:
+    obj = client.ReadPickleFile(file)
+
+    return_item = None
+    if obj:
+      return_item, obj = func(obj)
+      client.WritePickleFile(obj, file)
+
+  finally:
+    client.UnlockFile(file, id)
+
+  return return_item
+
 if __name__=="__main__":
 
   import FileServer
@@ -145,7 +185,7 @@ if __name__=="__main__":
               (python_path, cmd)
                )
 
-  time.sleep(2)
+  time.sleep(5)
 
   client = FileServer.GetServerClient()
 
