@@ -52,6 +52,7 @@ def run(args):
         miller_array = None
       if (miller_arrays is not None):
         for miller_array in miller_arrays:
+          info = miller_array.info()
           if (miller_array.is_xray_intensity_array()):
             miller_array = miller_array.f_sq_as_f()
           elif (miller_array.is_complex()):
@@ -75,7 +76,6 @@ def run(args):
               print
               command_line.parser.show_help()
               return
-            info = miller_array.info()
             if (command_line.options.resolution is not None):
               miller_array = miller_array.resolution_filter(
                 d_min=command_line.options.resolution)
