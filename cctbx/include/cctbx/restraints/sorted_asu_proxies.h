@@ -49,9 +49,11 @@ namespace cctbx { namespace restraints {
       bool
       process(SymProxyType const& proxy)
       {
-        CCTBX_ASSERT(asu_mappings_ != 0);
+        CCTBX_ASSERT(asu_mappings_ != 0 && proxy.is_active());
         if (asu_mappings_->is_simple_interaction(proxy)) {
-          simple.push_back(proxy.as_simple_proxy());
+          if (proxy.i_seq < proxy.j_seq) {
+            simple.push_back(proxy.as_simple_proxy());
+          }
           return false;
         }
         push_back(proxy);
