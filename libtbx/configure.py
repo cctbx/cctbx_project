@@ -64,6 +64,7 @@ def emit_env_run_sh(libtbx_build, paths_raw_dict):
   print "Updating:", env_run_sh_path
   f = open(env_run_sh_path, "w")
   for var_name, values in paths_raw_dict.items():
+    if (var_name == "LIBTBX_PACKAGES"): continue
     if (type(values) == type([])):
       val = os.pathsep.join(values)
       print >> f, 'if [ ! -n "$%s" ]; then' % (var_name,)
@@ -83,6 +84,7 @@ def emit_setpaths_csh(libtbx_build, paths_raw_dict):
   print "Updating:", setpaths_csh_path
   f = open(setpaths_csh_path, "w")
   for var_name, values in paths_raw_dict.items():
+    if (var_name == "LIBTBX_PACKAGES"): continue
     if (type(values) == type([])):
       val = os.pathsep.join(values)
       print >> f, 'if (! $?%s) then' % (var_name,)
@@ -93,13 +95,24 @@ def emit_setpaths_csh(libtbx_build, paths_raw_dict):
       print >> f, 'setenv %s "%s"' % (var_name, values)
   f.close()
 
+def join_path_ld_library_path(paths_raw_dict):
+  joined_path = paths_raw_dict["PATH"]
+  for path in paths_raw_dict["LD_LIBRARY_PATH"]:
+    if (not path in joined_path):
+      joined_path.append(path)
+  return joined_path
+
 def emit_setpaths_bat(libtbx_build, paths_raw_dict):
   setpaths_bat_path = norm(join(libtbx_build, "setpaths.bat"))
   print "Updating:", setpaths_bat_path
   f = open(setpaths_bat_path, "w")
+  print >> f, '@ECHO off'
   for var_name, values in paths_raw_dict.items():
+    if (var_name == "LIBTBX_PACKAGES"): continue
     if (type(values) == type([])):
       if (var_name == "LD_LIBRARY_PATH"): continue
+      if (var_name == "PATH"):
+        values = join_path_ld_library_path(paths_raw_dict)
       val = os.pathsep.join(values)
       print >> f, 'if not defined %s set %s=' % (var_name, var_name)
       print >> f, 'set %s=%s%s%%%s%%' % (var_name, val, os.pathsep, var_name)
