@@ -965,10 +965,10 @@ def parse(
   return result
 
 def read_default(
+      caller_file_name,
       params_extension=".params",
       definition_type_names=None,
       process_includes=True):
-  caller_file_name = introspection.caller_location(frames_back=1).file_name
   params_file_name = os.path.splitext(caller_file_name)[0] + params_extension
   if (not os.path.isfile(params_file_name)):
     raise RuntimeError("Missing parameter file: %s" % params_file_name)
