@@ -1,2 +1,0 @@
-find . \( -name \*.c -o -name \*.cpp -o -name \*.h -o -name \*.hpp -o -name \*.py -o -name \*.dox -o -name \*.html -o -name SC\* \) -exec egrep -l '	|[ 	]$$|
-' {} /dev/null \;
