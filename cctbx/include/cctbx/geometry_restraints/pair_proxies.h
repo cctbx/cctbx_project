@@ -49,10 +49,10 @@ namespace cctbx { namespace geometry_restraints {
 
       //! Generation of bond and nonbonded proxies.
       /*! Bonds (1-2) interactions are defined by shell_asu_tables[0]
-          and are used at the same time as nonbonded exculsions.
+          and are used at the same time as nonbonded exclusions.
 
           1-3 interactions are defined by shell_asu_tables[1]
-          and are used as nonbonded exculsions.
+          and are used as nonbonded exclusions.
 
           1-4 interactions are defined by shell_asu_tables[2]
           and are used to attenuate nonbonded energies according to
