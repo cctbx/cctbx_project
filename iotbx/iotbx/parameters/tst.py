@@ -514,7 +514,7 @@ def exercise_extract():
 group {
   a=yes
     .type=bool
-  a=yes
+  a=yes "n o"
   b=13
     .type=int
   c=1.3
@@ -527,6 +527,7 @@ group {
     .type=choice
   e=a b c
     .type=choice
+    .required=yes
   f=a *b c
     .type=multi_choice
   f=a *b *c
@@ -556,7 +557,7 @@ group {
   assert parameters.get_without_substitution(
     path="group.a").objects[0].extract() is True
   assert parameters.get_without_substitution(
-    path="group.a").objects[1].extract() == "yes"
+    path="group.a").objects[1].extract() == ["yes", "n o"]
   assert parameters.get_without_substitution(
     path="group.b").objects[0].extract() == 13
   assert parameters.get_without_substitution(
@@ -591,7 +592,7 @@ group {
   try: parameters.get_without_substitution(
     path="group.i").objects[1].extract()
   except RuntimeError, e:
-    assert str(e) == 'Integer expression expected, "1/2" found (input line 29)'
+    assert str(e) == 'Integer expression expected, "1/2" found (input line 30)'
   else: raise RuntimeError("Exception expected.")
   assert parameters.get_without_substitution(
     path="group.j").objects[0].extract() == 0.5
@@ -599,13 +600,13 @@ group {
     path="group.j").objects[1].extract()
   except RuntimeError, e:
     assert str(e) == \
-      """Floating-point expression expected, "'a'" found (input line 33)"""
+      """Floating-point expression expected, "'a'" found (input line 34)"""
   else: raise RuntimeError("Exception expected.")
   try: parameters.get_without_substitution(
     path="group.j").objects[2].extract()
   except RuntimeError, e:
     assert str(e) == 'Error interpreting "a" as a numeric expression:' \
-                   + " name 'a' is not defined (input line 35)"
+                   + " name 'a' is not defined (input line 36)"
   else: raise RuntimeError("Exception expected.")
   assert str(parameters.get_without_substitution(
     path="group.u").objects[0].extract()) \
@@ -636,6 +637,52 @@ group {
   assert group.a is True
   assert group.b == 13
   assert group.s.type().number() == 19
+
+def exercise_format():
+  parameters = iotbx.parameters.parse(input_string="""\
+group {
+  n=ab "c d" 'ef '
+    .type=None
+  a=yes
+    .type=bool
+  b=13
+    .type=int
+  c=1.3
+    .type=float
+  d=abc def ghi
+    .type=str
+  e=a *b c
+    .type=choice
+  f=a *b *c
+    .type=multi_choice
+  g="/var/tmp/junk"
+    .type=path
+  h="var.tmp.junk"
+    .type=key
+  u=10,12 13 80,90 100
+    .type=unit_cell
+  s=19
+    .type=space_group
+}
+""")
+  out = StringIO()
+  parameters.extract(master=parameters).format().show(out=out)
+  assert out.getvalue() == """\
+group
+{
+  n = "ab" "c d" "ef "
+  a = True
+  b = 13
+  c = 1.3
+  d = "abc def ghi"
+  e = a *b c
+  f = a *b *c
+  g = "/var/tmp/junk"
+  h = "var.tmp.junk"
+  u = 10 12 13 80 90 100
+  s = "P 21 21 21"
+}
+"""
 
 def exercise_deepcopy():
   parameters = iotbx.parameters.parse(input_string="""\
@@ -682,6 +729,9 @@ t
   b=5
     .expert_level=11
 }
+
+u=a *b c
+  .type=choice
 """)
   source = iotbx.parameters.parse(input_string="""\
 a=7
@@ -715,6 +765,7 @@ t
   b=3
     .expert_level=-2
 }
+u=e b f *c a g
 """)
   merged = master.merge(source=source)
   out = StringIO()
@@ -776,10 +827,23 @@ t
     .expert_level = 10
 }
 
+u = a b *c
+  .type = "choice"
 b = None
   .expert_level = 2
 """
   assert merged.get(path="c.c.y").objects[0].extract() == 3
+  master = iotbx.parameters.parse(input_string="""\
+c=a *b c
+  .type=choice
+""")
+  source = iotbx.parameters.parse(input_string="""\
+c=a *d c
+""")
+  try: merged = master.merge(sources=[source])
+  except RuntimeError, e:
+    assert str(e) == "Not a possible choice: *d (input line 1)"
+  else: raise RuntimeError("Exception expected.")
 
 def exercise():
   exercise_parse_and_show()
@@ -789,6 +853,7 @@ def exercise():
   exercise_get_with_substitution()
   exercise_include()
   exercise_extract()
+  exercise_format()
   exercise_deepcopy()
   exercise_merge()
   print "OK"

@@ -75,7 +75,7 @@ def float_from_value_words(value_words):
           str_from_value_words(value_words), value_words[0].where_str()))
   return result
 
-def choice_from_value_words(value_words):
+def choice_from_value_words(is_required, value_words):
   result = None
   for word in value_words:
     if (word.value.startswith("*")):
@@ -83,7 +83,7 @@ def choice_from_value_words(value_words):
         raise RuntimeError("Multiple choices where only one is possible%s" %
           value_words[0].where_str())
       result = word.value[1:]
-  if (result is None):
+  if (result is None and is_required):
     raise RuntimeError("Unspecified choice%s" % value_words[0].where_str())
   return result
 
@@ -184,7 +184,34 @@ class definition: # FUTURE definition(object)
     return definition(**keyword_args)
 
   def merge(self, source):
-    return self.copy(source.values)
+    if (self.type not in ["choice", "multi_choice"]):
+      return self.copy(source.values)
+    flags = {}
+    for word in self.values:
+      if (word.value.startswith("*")): value = word.value[1:]
+      else: value = word.value
+      flags[value] = False
+    for word in source.values:
+      if (word.value.startswith("*")):
+        value = word.value[1:]
+        flag = True
+      else:
+        value = word.value
+        flag = False
+      if (flag and value not in flags):
+        raise RuntimeError("Not a possible choice: %s%s" % (
+          str(word), word.where_str()))
+      flags[value] = flag
+    values = []
+    for word in self.values:
+      if (word.value.startswith("*")): value = word.value[1:]
+      else: value = word.value
+      if (flags[value]): value = "*" + value
+      values.append(simple_tokenizer.word(
+        value=value,
+        line_number=word.line_number,
+        file_name=word.file_name))
+    return self.copy(values)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
@@ -280,7 +307,7 @@ class definition: # FUTURE definition(object)
     if (self.type == "float"):
       return float_from_value_words(self.values)
     if (self.type == "choice"):
-      return choice_from_value_words(self.values)
+      return choice_from_value_words(self.required, self.values)
     if (self.type == "multi_choice"):
       return multi_choice_from_value_words(self.values)
     if (self.type == "unit_cell"):
@@ -292,11 +319,58 @@ class definition: # FUTURE definition(object)
       if (converter is not None):
         return converter.process_value_words(self.values)
     if (self.type is None):
-      return str_from_value_words(self.values)
+      return [word.value for word in self.values]
     raise RuntimeError(
        ('No converter for parameter definition type "%s"'
       + ' required for converting values of "%s"%s') % (
         self.type, self.name, self.values[0].where_str()))
+
+  def format(self, python_object, custom_converters=None):
+    words = None
+    if (python_object is None):
+      words = [simple_tokenizer.word(value="None")]
+    elif (self.type in ["str", "path", "key"]):
+      words = [simple_tokenizer.word(value=python_object, quote_token='"')]
+    elif (self.type == "bool"):
+      if (python_object):
+        words = [simple_tokenizer.word(value="True")]
+      else:
+        words = [simple_tokenizer.word(value="False")]
+    elif (self.type == "int"):
+      words = [simple_tokenizer.word(value=str(python_object))]
+    elif (self.type == "float"):
+      words = [simple_tokenizer.word(value="%.10g" % python_object)]
+    elif (self.type in ["choice", "multi_choice"]):
+      words = []
+      for word in self.values:
+        if (word.value.startswith("*")): value = word.value[1:]
+        else: value = word.value
+        if (self.type == "choice"):
+          if (value == python_object):
+            value = "*" + value
+        else:
+          if (value in python_object):
+            value = "*" + value
+        words.append(simple_tokenizer.word(
+          value=value, quote_token=word.quote_token))
+    elif (self.type == "unit_cell"):
+      words = [simple_tokenizer.word(value="%.10g" % v)
+        for v in python_object.parameters()]
+    elif (self.type == "space_group"):
+      words = [simple_tokenizer.word(value=str(python_object),quote_token='"')]
+    elif (custom_converters is not None):
+      converter = custom_converters.get(self.type, None)
+      if (converter is not None):
+        words = converter.format_as_value_words(self, python_object)
+    elif (self.type is None):
+      words = [simple_tokenizer.word(value=value, quote_token='"')
+        for value in python_object]
+    if (words is None):
+      raise RuntimeError(
+         ('No converter for parameter definition type "%s"'
+        + ' required for converting values of "%s"%s') % (
+          self.type, self.name, self.values[0].where_str()))
+    return self.copy(values=words)
 
 def scope_merge(master, source):
   result_objects = []
@@ -424,8 +498,17 @@ class object_list:
   def __init__(self, objects):
     self.objects = objects
 
-  def merge(self, source):
-    return object_list(objects=scope_merge(self, source=source))
+  def merge(self, source=None, sources=None):
+    assert [source, sources].count(None) == 1
+    if (source is not None):
+      return object_list(objects=scope_merge(self, source=source))
+    elif (len(sources) == 0):
+      return self
+    else:
+      objects = []
+      for source in sources:
+        objects.extend(scope_merge(self, source=source))
+      return object_list(objects=objects)
 
   def show(self, out=None, prefix="", attributes_level=0, print_width=None):
     if (out is None): out = sys.stdout
@@ -477,6 +560,27 @@ class object_list:
           object=object, path_memory=path_memory))
     del path_memory[path]
     return object_list(objects=result_sub)
+
+  def get_last(self, path, with_substitution=True):
+    all = self.get(path=path, with_substitution=with_substitution)
+    if (len(all.objects) == 0): return None
+    return all.objects[-1]
+
+  def extract_last(self, path, with_substitution=True, custom_converters=None):
+    raw = self.get_last(path=path, with_substitution=with_substitution)
+    if (raw is None): return None
+    return raw.extract(custom_converters=custom_converters)
+
+  def extract(self, master, custom_converters=None):
+    return object_list_extract(
+      object_list=self, master=master, custom_converters=custom_converters)
+
+  def merge_and_extract(self,
+        source=None,
+        sources=None,
+        custom_converters=None):
+    return self.merge(source=source, sources=sources).extract(
+      master=self, custom_converters=custom_converters)
 
   def variable_substitution(self, object, path_memory):
     new_values = []
@@ -548,6 +652,31 @@ class object_list:
     for item in self.all_definitions():
       item.object.automatic_type_assignment(
         assignment_if_unknown=assignment_if_unknown)
+
+class object_list_extract:
+
+  def __init__(self, object_list, master, custom_converters):
+    self.__object_list__ = object_list
+    self.__master__ = master
+    for object in master.objects:
+      attr_name = object.name.split(".")[-1]
+      assert attr_name not in ["__object_list__", "__master__"]
+      setattr(self, attr_name, object_list.extract_last(
+        path=object.name, custom_converters=custom_converters))
+
+  def format(self):
+    scopes = []
+    for scope_object in self.__master__.objects:
+      assert isinstance(scope_object, scope) # not implemented
+      attr_name = scope_object.name.split(".")[-1]
+      py_scope = getattr(self, attr_name)
+      definitions = []
+      for definition_object in scope_object.objects:
+        assert isinstance(definition_object, definition) # not implemented
+        value = getattr(py_scope, definition_object.name)
+        definitions.append(definition_object.format(value))
+      scopes.append(scope_object.copy(objects=definitions))
+    return object_list(objects=scopes)
 
 class variable_substitution_fragment(object):
 
