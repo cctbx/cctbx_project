@@ -1,5 +1,6 @@
 import scitbx.math
 from scitbx.math import erf_verification, erf, erfc, erfcx
+from scitbx.math import bessel_i1_over_i0
 from scitbx.math import eigensystem
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
@@ -114,6 +115,21 @@ def exercise_erf():
   erf_verify(erfcx, -23.9658621423763, 5.540070644707187E+249)
   erf_verify(erfcx, -26.6287357137515, 1.790000000000000E+308)
   assert erf_verify.max_delta < erf_verify.tolerance
+
+def exercise_bessel():
+  assert approx_equal(bessel_i1_over_i0(-1e+9), -1.0)
+  assert approx_equal(bessel_i1_over_i0(-99.99),-0.994988)
+  assert approx_equal(bessel_i1_over_i0(-50.00),-0.98995)
+  assert approx_equal(bessel_i1_over_i0( -1.00),-0.44639)
+  assert approx_equal(bessel_i1_over_i0(  0.0),  0.0)
+  assert approx_equal(bessel_i1_over_i0(  1.00), 0.44639)
+  assert approx_equal(bessel_i1_over_i0( 50.0),  0.98995)
+  assert approx_equal(bessel_i1_over_i0( 99.99), 0.994988)
+  assert approx_equal(bessel_i1_over_i0(1e+9),   1.0)
+  x=0.0
+  while x <= 100.0:
+    assert approx_equal(-bessel_i1_over_i0(-x),bessel_i1_over_i0(x))
+    x+=0.01
 
 def matrix_mul(a, ar, ac, b, br, bc):
   assert br == ac
@@ -707,6 +723,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
 def run():
   exercise_floating_point_epsilon()
   exercise_erf()
+  exercise_bessel()
   exercise_eigensystem()
   exercise_gaussian_term()
   exercise_gaussian_sum()
