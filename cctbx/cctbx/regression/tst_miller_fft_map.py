@@ -50,11 +50,12 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     tags=grid_tags.tag_array(),
     peak_search_level=1,
     max_peaks=2*n_elements)
+  assert peak_list.gridding() == real_map.focus()
   peak_sites = flex.vec3_double()
   peak_heights = flex.double()
   for entry in peak_list.entries():
     peak_sites.append(
-      [float(entry.index[i]) / real_map.focus()[i] for i in xrange(3)])
+      [float(entry.index[i]) / peak_list.gridding()[i] for i in xrange(3)])
     peak_heights.append(entry.value)
   for scatterer in structure.scatterers():
     site_symmetry = structure.site_symmetry(scatterer.site)
