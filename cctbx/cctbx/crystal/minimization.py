@@ -93,11 +93,10 @@ class energies:
       self.repulsion_residual_sum = 0
     else:
       assert asu_mappings is not None
-      self.n_repulsion_proxies = len(repulsion_proxies)
+      self.n_repulsion_proxies = repulsion_proxies.n_total()
       self.repulsion_residual_sum = restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
-        asu_mappings=asu_mappings,
-        proxies=repulsion_proxies,
+        sorted_proxies=repulsion_proxies,
         gradient_array=self.gradients,
         function=restraints.repulsion_function(),
         disable_cache=00000)
