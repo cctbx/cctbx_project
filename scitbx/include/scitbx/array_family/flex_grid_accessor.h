@@ -12,12 +12,12 @@
 #define SCITBX_ARRAY_FAMILY_FLEX_GRID_ACCESSOR_H
 
 #include <scitbx/error.h>
-#include <scitbx/array_family/small_plain.h>
+#include <scitbx/array_family/small.h>
 #include <scitbx/array_family/small_reductions.h>
 
 namespace scitbx { namespace af {
 
-  typedef small_plain<long, 10> flex_grid_default_index_type;
+  typedef small<long, 10> flex_grid_default_index_type;
 
   template <typename IndexType = flex_grid_default_index_type>
   class flex_grid
@@ -94,17 +94,15 @@ namespace scitbx { namespace af {
 
       bool is_0_based() const
       {
-        return !af::order(origin_, index_value_type(0));
+        return origin_.all_eq(0);
       }
 
       bool is_padded() const
       {
         if (layout_.size() == 0) return false;
         SCITBX_ASSERT(grid_.size() == layout_.size());
-        int c = af::order(grid_, layout_);
-        if (c == 0) return false;
-        SCITBX_ASSERT(c > 0);
-        return true;
+        SCITBX_ASSERT(grid_.all_ge(layout_));
+        return !grid_.all_eq(layout_);
       }
 
       std::size_t operator()(index_type const& i) const
@@ -136,9 +134,9 @@ namespace scitbx { namespace af {
 
       bool operator==(flex_grid<index_type> const& other) const
       {
-        if (af::order(origin_, other.origin_)) return false;
-        if (af::order(grid_, other.grid_)) return false;
-        return !af::order(layout_, other.layout_);
+        if (!origin_.all_eq(other.origin_)) return false;
+        if (!grid_.all_eq(other.grid_)) return false;
+        return layout_.all_eq(other.layout_);
       }
 
       bool operator!=(flex_grid<index_type> const& other) const

@@ -98,6 +98,8 @@ namespace scitbx { namespace af {
       weak_ref() const {
         return shared<ElementType>(*this, weak_ref_flag());
       }
+
+#     include <scitbx/array_family/detail/reducing_boolean_mem_fun.h>
   };
 
 }} // namespace scitbx::af

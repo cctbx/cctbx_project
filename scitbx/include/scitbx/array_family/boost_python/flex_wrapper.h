@@ -448,11 +448,34 @@ namespace scitbx { namespace af { namespace boost_python {
     static f_t idiv_a_s(f_t& a1, e_t const& a2) { return a1 /= a2; }
     static f_t imod_a_s(f_t& a1, e_t const& a2) { return a1 %= a2; }
 
-    static int
-    order_a_a(f_t const& a1, f_t const& a2) { return order(a1, a2); }
+    static bool
+    all_eq_a_a(f_t const& a1, f_t const& a2) { return a1.all_eq(a2); }
+    static bool
+    all_ne_a_a(f_t const& a1, f_t const& a2) { return a1.all_ne(a2); }
+    static bool
+    all_lt_a_a(f_t const& a1, f_t const& a2) { return a1.all_lt(a2); }
+    static bool
+    all_gt_a_a(f_t const& a1, f_t const& a2) { return a1.all_gt(a2); }
+    static bool
+    all_le_a_a(f_t const& a1, f_t const& a2) { return a1.all_le(a2); }
+    static bool
+    all_ge_a_a(f_t const& a1, f_t const& a2) { return a1.all_ge(a2); }
+
+    static bool
+    all_eq_a_s(f_t const& a1, e_t const& a2) { return a1.all_eq(a2); }
+    static bool
+    all_ne_a_s(f_t const& a1, e_t const& a2) { return a1.all_ne(a2); }
+    static bool
+    all_lt_a_s(f_t const& a1, e_t const& a2) { return a1.all_lt(a2); }
+    static bool
+    all_gt_a_s(f_t const& a1, e_t const& a2) { return a1.all_gt(a2); }
+    static bool
+    all_le_a_s(f_t const& a1, e_t const& a2) { return a1.all_le(a2); }
+    static bool
+    all_ge_a_s(f_t const& a1, e_t const& a2) { return a1.all_ge(a2); }
 
     static int
-    order_a_s(f_t const& a1, e_t const& a2) { return order(a1, a2); }
+    order_a_a(f_t const& a1, f_t const& a2) { return order(a1, a2); }
 
     static flex_bool eq_a_a(f_t const& a1, f_t const& a2) { return a1 == a2; }
 #if defined(__GNUC__) && __GNUC__ == 2 && __GNUC_MINOR__ == 96
@@ -688,7 +711,6 @@ namespace scitbx { namespace af { namespace boost_python {
       {
         scope local_scope(flex_root_scope);
         def("order", order_a_a);
-        def("order", order_a_s);
       }
       return plain(python_name);
     }
@@ -739,6 +761,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__ne__", ne_a_a)
         .def("__eq__", eq_a_s)
         .def("__ne__", ne_a_s)
+        .def("all_eq", all_eq_a_a)
+        .def("all_ne", all_ne_a_a)
+        .def("all_eq", all_eq_a_s)
+        .def("all_ne", all_ne_a_s)
       ;
     }
 
@@ -751,7 +777,6 @@ namespace scitbx { namespace af { namespace boost_python {
       {
         scope local_scope(flex_root_scope);
         def("order", order_a_a);
-        def("order", order_a_s);
         def("abs", abs_a);
         def("pow2", pow2_a);
         def("min_index", min_index_a);
@@ -769,6 +794,14 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__gt__", gt_a_s)
         .def("__le__", le_a_s)
         .def("__ge__", ge_a_s)
+        .def("all_lt", all_lt_a_a)
+        .def("all_gt", all_gt_a_a)
+        .def("all_le", all_le_a_a)
+        .def("all_ge", all_ge_a_a)
+        .def("all_lt", all_lt_a_s)
+        .def("all_gt", all_gt_a_s)
+        .def("all_le", all_le_a_s)
+        .def("all_ge", all_ge_a_s)
       ;
     }
 

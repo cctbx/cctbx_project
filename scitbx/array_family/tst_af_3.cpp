@@ -27,14 +27,33 @@ namespace {
     ArrayType4 const& a4)
   {
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+    check_true(__LINE__, a1.all_eq(a1));
+    check_false(__LINE__, a1.all_eq(a2));
+    check_false(__LINE__, a1.all_eq(0));
+    check_true(__LINE__, a1.all_ne(a2));
+    check_false(__LINE__, a1.all_ne(a1));
+    check_false(__LINE__, a1.all_ne(0));
+    check_true(__LINE__, a1.all_ne(3));
+    check_true(__LINE__, a1.all_lt(a2));
+    check_false(__LINE__, a1.all_lt(a1));
+    check_true(__LINE__, a1.all_lt(5));
+    check_false(__LINE__, a1.all_lt(2));
+    check_true(__LINE__, a2.all_gt(a1));
+    check_false(__LINE__, a1.all_gt(a1));
+    check_true(__LINE__, a1.all_gt(-1));
+    check_false(__LINE__, a1.all_gt(0));
+    check_true(__LINE__, a1.all_le(a1));
+    check_true(__LINE__, a1.all_le(a2));
+    check_true(__LINE__, a1.all_le(2));
+    check_false(__LINE__, a1.all_le(0));
+    check_true(__LINE__, a1.all_ge(a1));
+    check_false(__LINE__, a1.all_ge(a2));
+    check_true(__LINE__, a1.all_ge(0));
+    check_false(__LINE__, a1.all_ge(2));
     check_true(__LINE__, af::order(a1, a2) == -1);
     check_true(__LINE__, af::order(a1, a1) == 0);
     check_true(__LINE__, af::order(a2, a2) == 0);
     check_true(__LINE__, af::order(a2, a1) == 1);
-    check_true(__LINE__, af::order(a1, 0) == 1);
-    check_true(__LINE__, af::order(a1, 1) == -1);
-    check_true(__LINE__, af::order(0, a1) == -1);
-    check_true(__LINE__, af::order(1, a1) == 1);
     check_true(__LINE__, af::max_index(a1) == 2);
     check_true(__LINE__, af::min_index(a1) == 0);
     check_true(__LINE__, af::max(a1) == a1[2]);
