@@ -132,7 +132,7 @@ class resampling(crystal.symmetry):
                   / matrix.row(self.rfft().n_real()).product()
                   * self.space_group().order_z()
                   / dp.multiplicities().data().as_double())
-    coeff = dp.deep_copy()
+    coeff = dp.conjugate()
     xray.apply_u_extra(
       self.unit_cell(),
       u_extra,
