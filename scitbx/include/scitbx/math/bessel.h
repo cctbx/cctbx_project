@@ -95,11 +95,11 @@ namespace bessel {
       ans=0.39894228+y*(-0.3988024e-1+y*(-0.362018e-2
           +y*(0.163801e-2+y*(-0.1031555e-1+y*ans))));
       ans *= (std::exp(abs_x)/std::sqrt(abs_x));
+    }
+    f_t result = ans;
+    if (x < 0.0 && result > 0.0) return -result;
+    return result;
   }
-  f_t result = ans;
-  if (x < 0.0 && result > 0.0) return -result;
-  return result;
-}
 
   //! Calculates ln( I0(x) ).
   template <typename FloatType>
@@ -126,7 +126,6 @@ namespace bessel {
     }
     return bessel_lni0;
   }
-
 
 }}} // namespace scitbx::math::bessel
 
