@@ -7,7 +7,7 @@ from cctbx_boost import lbfgs
 from cctbx_boost import mintbx
 from cctbx import xutils
 from cctbx.development import debug_utils
- 
+
 # XXX move to cctbx.minimization
 def run_lbfgs(target_evaluator,
               min_iterations=10,
