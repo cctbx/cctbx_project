@@ -178,15 +178,7 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
       equal_element_type))
     r.params.insert(type_flags[0], "ElementType")
     r.return_element_type = ["ElementType"]
-    if (op_type == "unary"):
-      r.return_element_type = [
-        "typename unary_operator_traits<",
-        "  ElementType>::" + op_class]
-    elif (op_class == "boolean"):
-      r.return_element_type = [
-        "typename binary_operator_traits<",
-        "  ElementType, ElementType>::" + op_class]
-    elif (op_class == "bool_result"):
+    if (op_class in ("boolean", "bool_result")):
       r.return_element_type = ["bool"]
   else:
     r.join(get_template_header_and_parameters(

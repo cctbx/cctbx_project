@@ -12,7 +12,6 @@
 #include <cctbx/bpl_utils.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/hendrickson_lattman_bpl.h>
-#include <cctbx/array_family/shared_bpl.h>
 #include <cctbx/miller/sym_equiv.h>
 #include <cctbx/miller/asu.h>
 #include <cctbx/miller/build.h>
