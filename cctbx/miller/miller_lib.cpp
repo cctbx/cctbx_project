@@ -449,15 +449,17 @@ namespace cctbx { namespace miller {
   }
 
   binner::binner(binning const& bng, af::shared<Index> miller_indices)
+  : binning(bng)
   {
     bin_indices_.reserve(miller_indices.size());
     for(std::size_t i=0;i<miller_indices.size();i++) {
-      bin_indices_.push_back(bng.get_i_bin(miller_indices[i]));
+      bin_indices_.push_back(this->get_i_bin(miller_indices[i]));
     }
   }
 
   af::shared<bool> binner::bin_selection(std::size_t i_bin) const
   {
+    cctbx_assert(i_bin < this->n_bins_all());
     af::shared<bool> flags;
     flags.reserve(bin_indices_.size());
     for(std::size_t i=0;i<bin_indices_.size();i++) {
