@@ -5,31 +5,31 @@
 #define CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(class_name) \
 explicit \
 class_name( \
-  const ElementType& v0 \
+  const value_type& v0 \
 ) { \
   this->elems[0] = v0; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1 \
+  const value_type& v0, \
+  const value_type& v1 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
   this->elems[2] = v2; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2, \
-  const ElementType& v3 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2, \
+  const value_type& v3 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -37,11 +37,11 @@ class_name( \
   this->elems[3] = v3; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2, \
-  const ElementType& v3, \
-  const ElementType& v4 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2, \
+  const value_type& v3, \
+  const value_type& v4 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -50,12 +50,12 @@ class_name( \
   this->elems[4] = v4; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2, \
-  const ElementType& v3, \
-  const ElementType& v4, \
-  const ElementType& v5 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2, \
+  const value_type& v3, \
+  const value_type& v4, \
+  const value_type& v5 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -65,13 +65,13 @@ class_name( \
   this->elems[5] = v5; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2, \
-  const ElementType& v3, \
-  const ElementType& v4, \
-  const ElementType& v5, \
-  const ElementType& v6 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2, \
+  const value_type& v3, \
+  const value_type& v4, \
+  const value_type& v5, \
+  const value_type& v6 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -82,14 +82,14 @@ class_name( \
   this->elems[6] = v6; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2, \
-  const ElementType& v3, \
-  const ElementType& v4, \
-  const ElementType& v5, \
-  const ElementType& v6, \
-  const ElementType& v7 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2, \
+  const value_type& v3, \
+  const value_type& v4, \
+  const value_type& v5, \
+  const value_type& v6, \
+  const value_type& v7 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -101,15 +101,15 @@ class_name( \
   this->elems[7] = v7; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2, \
-  const ElementType& v3, \
-  const ElementType& v4, \
-  const ElementType& v5, \
-  const ElementType& v6, \
-  const ElementType& v7, \
-  const ElementType& v8 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2, \
+  const value_type& v3, \
+  const value_type& v4, \
+  const value_type& v5, \
+  const value_type& v6, \
+  const value_type& v7, \
+  const value_type& v8 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
@@ -122,16 +122,16 @@ class_name( \
   this->elems[8] = v8; \
 } \
 class_name( \
-  const ElementType& v0, \
-  const ElementType& v1, \
-  const ElementType& v2, \
-  const ElementType& v3, \
-  const ElementType& v4, \
-  const ElementType& v5, \
-  const ElementType& v6, \
-  const ElementType& v7, \
-  const ElementType& v8, \
-  const ElementType& v9 \
+  const value_type& v0, \
+  const value_type& v1, \
+  const value_type& v2, \
+  const value_type& v3, \
+  const value_type& v4, \
+  const value_type& v5, \
+  const value_type& v6, \
+  const value_type& v7, \
+  const value_type& v8, \
+  const value_type& v9 \
 ) { \
   this->elems[0] = v0; \
   this->elems[1] = v1; \
