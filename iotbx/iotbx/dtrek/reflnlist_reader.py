@@ -120,7 +120,7 @@ class reflnlist:
         anomalous_flag=False),
       data=self.column_dict["fIntensity"],
       sigmas=sigmas)
-      .apply_selection(sigmas > 0)
+      .select(sigmas > 0)
       .set_info(info_prefix+"Intensity,SigmaI")
       .set_observation_type_xray_intensity())
     if ("fIntensity+" in self.column_dict):

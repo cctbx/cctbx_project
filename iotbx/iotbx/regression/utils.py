@@ -25,5 +25,5 @@ def random_f_calc(space_group_info, n_scatterers, d_min, anomalous_flag,
     for i in xrange(f_calc.indices().size()/10):
       j = random.randrange(f_calc.indices().size())
       selection[j] = False
-    f_calc = f_calc.apply_selection(selection)
+    f_calc = f_calc.select(selection)
   return f_calc
