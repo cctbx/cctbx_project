@@ -110,84 +110,78 @@ namespace cctbx { namespace xray {
       this->u_radius_cache_.begin();
     typename u_cart_cache_t::const_iterator u_cart =
       this->u_cart_cache_.begin();
-    typedef scattering_dictionary::dict_type dict_type;
-    typedef dict_type::const_iterator dict_iter;
-    dict_type const& scd = scattering_dict.dict();
-    for(dict_iter di=scd.begin();di!=scd.end();di++) {
-      eltbx::xray_scattering::gaussian const& gaussian = di->second.gaussian;
-      af::const_ref<std::size_t>
-        member_indices = di->second.member_indices.const_ref();
-      for(std::size_t mi=0;mi<member_indices.size();mi++) {
-        XrayScattererType const& scatterer = scatterers[member_indices[mi]];
-        CCTBX_ASSERT(scatterer.weight() >= 0);
-        if (scatterer.weight() == 0) continue;
-        FloatType fdp = scatterer.fdp;
-        fractional<FloatType> coor_frac = scatterer.site;
-        detail::gaussian_fourier_transformed<FloatType> gaussian_ft(
+    for(std::size_t i_seq=0;i_seq<scatterers.size();i_seq++) {
+      XrayScattererType const& scatterer = scatterers[i_seq];
+      eltbx::xray_scattering::gaussian const& gaussian=scattering_dict.lookup(
+        scatterer.scattering_type).gaussian;
+      CCTBX_ASSERT(scatterer.weight() >= 0);
+      if (scatterer.weight() == 0) continue;
+      FloatType fdp = scatterer.fdp;
+      fractional<FloatType> coor_frac = scatterer.site;
+      detail::gaussian_fourier_transformed<FloatType> gaussian_ft(
+        exp_table,
+        gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
+        *u_radius++, this->u_extra_);
+      detail::calc_box<FloatType, grid_point_type> sampling_box(
+        this->unit_cell_, this->rho_cutoff_, this->max_d_sq_upper_bound_,
+        grid_f, coor_frac, gaussian_ft);
+      this->update_sampling_box_statistics(
+        sampling_box.n_points, sampling_box.box_edges);
+      if (sampled_density_must_be_positive) {
+        if (   gaussian_ft.rho_real_0() < 0
+            || gaussian_ft.rho_real(sampling_box.max_d_sq) < 0) {
+
+          throw error("Negative electron density at sampling point.");
+        }
+      }
+      if (scatterer.anisotropic_flag) {
+        gaussian_ft = detail::gaussian_fourier_transformed<FloatType>(
           exp_table,
           gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
-          *u_radius++, this->u_extra_);
-        detail::calc_box<FloatType, grid_point_type> sampling_box(
-          this->unit_cell_, this->rho_cutoff_, this->max_d_sq_upper_bound_,
-          grid_f, coor_frac, gaussian_ft);
-        this->update_sampling_box_statistics(
-          sampling_box.n_points, sampling_box.box_edges);
-        if (sampled_density_must_be_positive) {
-          if (   gaussian_ft.rho_real_0() < 0
-              || gaussian_ft.rho_real(sampling_box.max_d_sq) < 0) {
-
-            throw error("Negative electron density at sampling point.");
-          }
-        }
-        if (scatterer.anisotropic_flag) {
-          gaussian_ft = detail::gaussian_fourier_transformed<FloatType>(
-            exp_table,
-            gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
-            *u_cart++, this->u_extra_);
-        }
-        std::size_t exp_tab_size = exp_table.table_.size();
-#       include <cctbx/xray/sampling_loop.h>
-          if (this->anomalous_flag_) i_map *= 2;
-          if (!scatterer.anisotropic_flag) {
+          *u_cart++, this->u_extra_);
+      }
+      std::size_t exp_tab_size = exp_table.table_.size();
+#     include <cctbx/xray/sampling_loop.h>
+        if (this->anomalous_flag_) i_map *= 2;
+        if (!scatterer.anisotropic_flag) {
 #ifdef CCTBX_READABLE_CODE
-            map_begin[i_map] += gaussian_ft.rho_real(d_sq);
+          map_begin[i_map] += gaussian_ft.rho_real(d_sq);
 #else
-            if (exp_table.one_over_step_size_ == 0) {
-              FloatType contr = 0;
-              for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
-                contr += gaussian_ft.as_real_[i]
-                       * std::exp(gaussian_ft.bs_real_[i] * d_sq);
-              }
-              map_begin[i_map] += contr;
+          if (exp_table.one_over_step_size_ == 0) {
+            FloatType contr = 0;
+            for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
+              contr += gaussian_ft.as_real_[i]
+                     * std::exp(gaussian_ft.bs_real_[i] * d_sq);
             }
-            else {
-              FloatType contr = 0;
-              FloatType d_sq_et = d_sq * exp_table.one_over_step_size_;
-              for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
-                FloatType xs = gaussian_ft.bs_real_[i] * d_sq_et;
-                std::size_t j = static_cast<std::size_t>(xs+.5);
-                if (j >= exp_tab_size) {
-                  exp_table.expand(j + 1);
-                  exp_tab_size = exp_table.table_.size();
-                }
-                contr += gaussian_ft.as_real_[i]
-                       * exp_table.table_[j];
-              }
-              map_begin[i_map] += contr;
-            }
-#endif
-            if (fdp) {
-              map_begin[i_map+1] += gaussian_ft.rho_imag(d_sq);
-            }
+            map_begin[i_map] += contr;
           }
           else {
-            map_begin[i_map] += gaussian_ft.rho_real(d);
-            if (fdp) {
-              map_begin[i_map+1] += gaussian_ft.rho_imag(d);
+            FloatType contr = 0;
+            FloatType d_sq_et = d_sq * exp_table.one_over_step_size_;
+            for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
+              FloatType xs = gaussian_ft.bs_real_[i] * d_sq_et;
+              std::size_t j = static_cast<std::size_t>(xs+.5);
+              if (j >= exp_tab_size) {
+                exp_table.expand(j + 1);
+                exp_tab_size = exp_table.table_.size();
+              }
+              contr += gaussian_ft.as_real_[i]
+                     * exp_table.table_[j];
             }
+            map_begin[i_map] += contr;
           }
-        CCTBX_XRAY_SAMPLING_LOOP_END
-      }
+#endif
+          if (fdp) {
+            map_begin[i_map+1] += gaussian_ft.rho_imag(d_sq);
+          }
+        }
+        else {
+          map_begin[i_map] += gaussian_ft.rho_real(d);
+          if (fdp) {
+            map_begin[i_map+1] += gaussian_ft.rho_imag(d);
+          }
+        }
+      CCTBX_XRAY_SAMPLING_LOOP_END
     }
     CCTBX_ASSERT(u_radius == this->u_radius_cache_.end());
     CCTBX_ASSERT(u_cart == this->u_cart_cache_.end());

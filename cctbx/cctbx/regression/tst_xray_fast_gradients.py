@@ -603,7 +603,7 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     assert correlation.is_well_defined()
     assert correlation.coefficient() > 0.999
 
-def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
+def run_one(space_group_info, n_elements=4, volume_per_atom=1000, d_min=2,
             anomalous_flag=0, anisotropic_flag=0, verbose=0):
   if (random.random() < 0.5):
     random_f_prime_scale=0.6
@@ -611,7 +611,7 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
     random_f_prime_scale=0
   structure_ideal = random_structure.xray_structure(
     space_group_info,
-    elements=(("C","N","O")*(n_elements/3+1))[:n_elements],
+    elements=(("O","N","C")*(n_elements/3+1))[:n_elements],
     volume_per_atom=volume_per_atom,
     min_distance=5,
     general_positions_only=1,
