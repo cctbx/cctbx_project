@@ -78,8 +78,11 @@ namespace cctbx { namespace geometry_restraints {
               params = params_dict->find(pair.i_seq);
             }
             if (params == params_dict->end()) {
-              throw error(
-                "Unknown bond parameters (incomplete bond_params_table).");
+              char buf[256];
+              std::sprintf(buf,
+                "Unknown bond parameters (incomplete bond_params_table):"
+                " i_seq=%d, j_seq=%d", pair.i_seq, pair.j_seq);
+              throw error(buf);
             }
             crystal::pair_asu_j_sym_groups const& jgs = asu_dict_i->second;
             for(unsigned ig=0;ig<jgs.size();ig++) {
