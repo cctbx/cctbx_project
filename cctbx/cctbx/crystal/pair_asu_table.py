@@ -7,18 +7,12 @@ import libtbx.itertbx
 import math
 import sys, os
 
-class pair_sym_proxy:
-
-  def __init__(self, i_seqs, rt_mx, distance_ideal=0, weight=0):
-    adopt_init_args(self, locals())
-
 class pair_asu_table:
 
   def __init__(self, asu_mappings):
     self.asu_mappings = asu_mappings
     self.table = crystal.pair_asu_table_table(
       self.asu_mappings.mappings().size())
-    #self.table = [{} for i_seq in xrange(self.asu_mappings.mappings().size())]
 
   def add_all_pairs(self, distance_cutoff, verbose=0):
     pair_generator = crystal.neighbors_fast_pair_generator(
@@ -35,17 +29,12 @@ class pair_asu_table:
         verbose=verbose)
     return self
 
-  def add_pair_sym_proxies(self, proxies, verbose=0):
-    for proxy in proxies:
-      self.add_pair_sym_proxy(proxy=proxy, verbose=verbose)
+  def add_pair_sym_table(self, sym_table, verbose=0):
+    for i_seq,sym_dict in enumerate(sym_table):
+      for j_seq,rt_mx_list in sym_dict.items():
+        for rt_mx_ji in rt_mx_list:
+          self.add_pair(i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
     return self
-
-  def add_pair_sym_proxy(self, proxy, verbose=0):
-    self.add_pair(
-      i_seq=proxy.i_seqs[0],
-      j_seq=proxy.i_seqs[1],
-      rt_mx_ji=proxy.rt_mx,
-      verbose=verbose)
 
   def add_pair(self, i_seq, j_seq, rt_mx_ji, verbose=0):
     is_new = self._process_pair(
@@ -101,18 +90,18 @@ class pair_asu_table:
           return 0001
     return 00000
 
-  def extract_pair_sym_proxies(self):
-    pair_sym_proxies = []
+  def extract_pair_sym_table(self):
+    sym_table = crystal.pair_sym_table(self.asu_mappings.mappings().size())
     for i_seq,j_seq_dict in enumerate(self.table):
       rt_mx_i_inv = self.asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=0).inverse()
       for j_seq,j_sym_groups in j_seq_dict.items():
         for j_sym_group in j_sym_groups:
+          if (j_seq < i_seq): continue
           j_sym = j_sym_group[0]
           rt_mx_j = self.asu_mappings.get_rt_mx(i_seq=j_seq, i_sym=j_sym)
-          pair_sym_proxies.append(pair_sym_proxy(
-            i_seqs=(i_seq, j_seq),
-            rt_mx=rt_mx_i_inv.multiply(rt_mx_j)))
-    return pair_sym_proxies
+          sym_table[i_seq].setdefault(j_seq).append(
+            rt_mx_i_inv.multiply(rt_mx_j))
+    return sym_table
 
 def is_sym_equiv_interaction_simple(unit_cell,
                                     i_seq,
@@ -196,10 +185,10 @@ def exercise(
         distance_cutoff=distance_cutoff,
         verbose=verbose)
     else:
-      bond_sym_proxies = bond_asu_table.extract_pair_sym_proxies()
+      bond_sym_table = bond_asu_table.extract_pair_sym_table()
       bond_asu_table = pair_asu_table(asu_mappings=asu_mappings)
-      bond_asu_table.add_pair_sym_proxies(
-        proxies=bond_sym_proxies,
+      bond_asu_table.add_pair_sym_table(
+        sym_table=bond_sym_table,
         verbose=verbose)
     if (connectivities is not None):
       check_connectivities(bond_asu_table, connectivities, verbose)

@@ -61,7 +61,7 @@ class energies:
 class lbfgs:
 
   def __init__(self, structure,
-                     bond_sym_proxies,
+                     bond_sym_table,
                      nonbonded_distance_cutoff,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None):
@@ -126,7 +126,7 @@ class lbfgs:
     bonded_distance_cutoff = flex.max(distance_ls.get_distances(
       unit_cell=self.structure.unit_cell(),
       sites_cart=self._sites_shifted,
-      pair_sym_proxies=self.bond_sym_proxies)) * (1+1.e-6)
+      pair_sym_table=self.bond_sym_table)) * (1+1.e-6)
     asu_mappings = cctbx.crystal.symmetry.asu_mappings(self.structure,
       buffer_thickness=max(
         self.nonbonded_distance_cutoff,
@@ -135,11 +135,14 @@ class lbfgs:
       original_sites=self._sites_shifted,
       site_symmetry_table=self.structure.site_symmetry_table())
     bond_asu_table = pair_asu_table.pair_asu_table(
-      asu_mappings=asu_mappings).add_pair_sym_proxies(
-        proxies=self.bond_sym_proxies)
+      asu_mappings=asu_mappings).add_pair_sym_table(
+        sym_table=self.bond_sym_table)
     if (1):
-      validation_proxies = bond_asu_table.extract_pair_sym_proxies()
-      assert len(validation_proxies) == len(self.bond_sym_proxies)
+      validation_sym_table = bond_asu_table.extract_pair_sym_table()
+      for dict_a,dict_b in zip(self.bond_sym_table, validation_sym_table):
+        assert len(dict_a) == len(dict_b)
+        for j_seq,rt_mx_list_a in dict_a.items():
+          assert len(dict_b[j_seq]) == len(rt_mx_list_a)
     bond_asu_proxies, repulsion_asu_proxies = distance_ls.get_all_proxies(
       structure=self.structure,
       bond_asu_table=bond_asu_table,

@@ -26,7 +26,8 @@ class add_oxygen:
 
   def __init__(self, si_structure, si_pair_asu_table):
     self.structure = si_structure.deep_copy_scatterers()
-    self.bond_sym_proxies = []
+    self.bond_sym_table = crystal.pair_sym_table(
+      si_pair_asu_table.table.size())
     sites_frac = si_structure.sites_frac()
     si_asu_mappings = si_pair_asu_table.asu_mappings
     i_oxygen = count(1)
@@ -45,12 +46,10 @@ class add_oxygen:
           self.structure.add_scatterer(xray.scatterer(
             label="O%d"%i_oxygen.next(),
             site=bond_center))
-          self.bond_sym_proxies.append(pair_asu_table.pair_sym_proxy(
-            i_seqs=[i_seq, i_seq_o],
-            rt_mx=sgtbx.rt_mx(1,1)))
-          self.bond_sym_proxies.append(pair_asu_table.pair_sym_proxy(
-            i_seqs=[j_seq, i_seq_o],
-            rt_mx=rt_mx_ji.inverse_cancel()))
+          self.bond_sym_table[i_seq].setdefault(i_seq_o).append(
+            sgtbx.rt_mx(1,1))
+          self.bond_sym_table[j_seq].setdefault(i_seq_o).append(
+            rt_mx_ji.inverse_cancel())
 
 def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
   scatterers = si_o_structure.scatterers()
@@ -104,14 +103,6 @@ def edit_bond_asu_proxies(structure, asu_mappings, bond_asu_proxies):
     edit_bond_proxy(
       scatterers=scatterers,
       i_seqs=(proxy.i_seq, proxy.j_seq),
-      proxy=proxy)
-
-def edit_bond_sym_proxies(structure, bond_sym_proxies):
-  scatterers = structure.scatterers()
-  for proxy in bond_sym_proxies:
-    edit_bond_proxy(
-      scatterers=scatterers,
-      i_seqs=proxy.i_seqs,
       proxy=proxy)
 
 def edit_bond_proxy(scatterers, i_seqs, proxy):
@@ -205,14 +196,15 @@ def show_nonbonded_interactions(structure, asu_mappings, nonbonded_proxies):
     print "%-20s %8.4f" % (pair_labels, distance)
   return distances
 
-def get_distances(unit_cell, sites_cart, pair_sym_proxies):
+def get_distances(unit_cell, sites_cart, pair_sym_table):
   sites_frac = unit_cell.fractionalization_matrix() * sites_cart
   distances = flex.double()
-  for proxy in pair_sym_proxies:
-    distance = unit_cell.distance(
-      sites_frac[proxy.i_seqs[0]],
-      proxy.rt_mx*sites_frac[proxy.i_seqs[1]])
-    distances.append(distance)
+  for i_seq,pair_sym_dict in enumerate(pair_sym_table):
+    site_i = sites_frac[i_seq]
+    for j_seq,rt_mx_list in pair_sym_dict.items():
+      site_j = sites_frac[j_seq]
+      for rt_mx in rt_mx_list:
+        distances.append(unit_cell.distance(site_i, rt_mx*site_j))
   return distances
 
 def distance_and_repulsion_least_squares(
@@ -246,7 +238,7 @@ def distance_and_repulsion_least_squares(
     buffer_thickness=nonbonded_distance_cutoff)
   si_o_bond_asu_table = pair_asu_table.pair_asu_table(
     asu_mappings=si_o_asu_mappings)
-  si_o_bond_asu_table.add_pair_sym_proxies(proxies=si_o.bond_sym_proxies)
+  si_o_bond_asu_table.add_pair_sym_table(sym_table=si_o.bond_sym_table)
   si_o_bonds = show_pairs(
     structure=si_o.structure,
     pair_asu_table=si_o_bond_asu_table)
@@ -266,12 +258,12 @@ def distance_and_repulsion_least_squares(
     assert o_si_o_pairs.pair_counts[n_si:].all_eq(6)
   print
   if (1):
-    si_o_bond_asu_table.add_pair_sym_proxies(
-      proxies=si_pair_asu_table.extract_pair_sym_proxies())
+    si_o_bond_asu_table.add_pair_sym_table(
+      sym_table=si_pair_asu_table.extract_pair_sym_table())
   if (1):
-    si_o_bond_asu_table.add_pair_sym_proxies(
-      proxies=o_si_o_asu_table.extract_pair_sym_proxies())
-  bond_sym_proxies = si_o_bond_asu_table.extract_pair_sym_proxies()
+    si_o_bond_asu_table.add_pair_sym_table(
+      sym_table=o_si_o_asu_table.extract_pair_sym_table())
+  bond_sym_table = si_o_bond_asu_table.extract_pair_sym_table()
   minimized = None
   for i_trial in xrange(n_trials):
     trial_structure = si_o.structure.deep_copy_scatterers()
@@ -282,7 +274,7 @@ def distance_and_repulsion_least_squares(
       trial_structure.apply_symmetry_sites()
     trial_minimized = minimization.lbfgs(
       structure=trial_structure,
-      bond_sym_proxies=bond_sym_proxies,
+      bond_sym_table=bond_sym_table,
       nonbonded_distance_cutoff=nonbonded_distance_cutoff,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=100))
