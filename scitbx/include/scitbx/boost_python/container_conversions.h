@@ -158,23 +158,35 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
           boost::type<ContainerType>(), obj_size)) return 0;
         bool is_range = PyRange_Check(obj_ptr);
         std::size_t i=0;
-        for(;;i++) {
-          boost::python::handle<> py_elem_hdl(
-            boost::python::allow_null(PyIter_Next(obj_iter.get())));
-          if (PyErr_Occurred()) {
-            PyErr_Clear();
-            return 0;
-          }
-          if (!py_elem_hdl.get()) break; // end of iteration
-          boost::python::object py_elem_obj(py_elem_hdl);
-          boost::python::extract<container_element_type>
-            elem_proxy(py_elem_obj);
-          if (!elem_proxy.check()) return 0;
-          if (is_range) break; // in a range all elements are of the same type
-        }
+        if (!all_elements_convertible(obj_iter, is_range, i)) return 0;
         if (!is_range) assert(i == obj_size);
       }
       return obj_ptr;
+    }
+
+    // This loop factored out by Achim Domma to avoid Visual C++
+    // Internal Compiler Error.
+    static bool
+    all_elements_convertible(
+      boost::python::handle<>& obj_iter,
+      bool is_range,
+      std::size_t& i)
+    {
+      for(;;i++) {
+        boost::python::handle<> py_elem_hdl(
+          boost::python::allow_null(PyIter_Next(obj_iter.get())));
+        if (PyErr_Occurred()) {
+          PyErr_Clear();
+          return false;
+        }
+        if (!py_elem_hdl.get()) break; // end of iteration
+        boost::python::object py_elem_obj(py_elem_hdl);
+        boost::python::extract<container_element_type>
+          elem_proxy(py_elem_obj);
+        if (!elem_proxy.check()) return false;
+        if (is_range) break; // in a range all elements are of the same type
+      }
+      return true;
     }
 
     static void construct(
