@@ -16,7 +16,7 @@ def create_makefile(path_cctbx, configuration, subdir):
   shutil.copy(subdir + "/Makefile", subdir + "/Makefile.nodepend")
 
 if (__name__ == "__main__"):
-  path_cctbx = os.path.dirname(os.path.dirname(sys.argv[0]))
+  path_cctbx = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
   sys.path.insert(0, path_cctbx + "/build")
   from make import read_configuration
   cf = read_configuration(os.path.dirname(path_cctbx))
