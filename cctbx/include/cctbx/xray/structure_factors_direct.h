@@ -156,12 +156,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         }
         if (space_group.n_ltr() > 1) {
           for(std::size_t i=0;i<miller_indices.size();i++) {
-            miller::index<> const& h = miller_indices[i];
-            c_t f = f_calc_ref[i];
-            for(std::size_t l=1;l<space_group.n_ltr();l++) {
-              f_t ht = f_t(h * space_group.ltr(l)) / space_group.t_den();
-              f_calc_ref[i] += f * cos_sin.get(ht);
-            }
+            f_calc_ref[i] *= space_group.n_ltr();
           }
         }
       }
