@@ -107,24 +107,29 @@ class label_table:
     self.show_possible_choices(f=f)
     return None
 
-def get_xray_data_scores(miller_arrays):
+def get_xray_data_scores(miller_arrays, ignore_all_zeros):
   result = []
   for miller_array in miller_arrays:
     if (not miller_array.is_real_array()):
       result.append(0)
     else:
-      if (miller_array.is_xray_intensity_array()):
-        result.append(4)
+      if (miller_array.data().all_eq(0)):
+        if (ignore_all_zeros):
+          result.append(0)
+        else:
+          result.append(1)
+      elif (miller_array.is_xray_intensity_array()):
+        result.append(5)
       elif (miller_array.is_xray_amplitude_array()):
         if (miller_array.is_xray_reconstructed_amplitude_array()):
-          result.append(2)
-        else:
           result.append(3)
+        else:
+          result.append(4)
       elif (    isinstance(miller_array.data(), flex.double)
             and isinstance(miller_array.sigmas(), flex.double)):
-        result.append(1)
+        result.append(2)
       else:
-        result.append(0)
+        result.append(1)
   return result
 
 def looks_like_r_free_flags_info(array_info):
@@ -217,11 +222,16 @@ class get_r_free_flags_scores:
     assert len(self.scores) == len(miller_arrays)
     assert len(self.test_flag_values) == len(miller_arrays)
 
-def get_experimental_phases_scores(miller_arrays):
+def get_experimental_phases_scores(miller_arrays, ignore_all_zeros):
   result = []
   for miller_array in miller_arrays:
     if (miller_array.is_hendrickson_lattman_array()):
-      result.append(1)
+      if (not miller_array.data().all_eq((0,0,0,0))):
+        result.append(2)
+      elif (not ignore_all_zeros):
+        result.append(1)
+      else:
+        result.append(0)
     else:
       result.append(0)
   return result
@@ -329,9 +339,15 @@ class reflection_file_server:
       raise UserError("No reflection data in file: %s" % file_name)
     return result
 
-  def get_xray_data(self, file_name, labels, parameter_scope):
+  def get_xray_data(self,
+        file_name,
+        labels,
+        ignore_all_zeros,
+        parameter_scope):
     miller_arrays = self.get_miller_arrays(file_name=file_name)
-    data_scores = get_xray_data_scores(miller_arrays=miller_arrays)
+    data_scores = get_xray_data_scores(
+      miller_arrays=miller_arrays,
+      ignore_all_zeros=ignore_all_zeros)
     i = select_array(
       parameter_name=parameter_scope+".labels",
       labels=labels,
@@ -395,9 +411,15 @@ class reflection_file_server:
       return miller_arrays[i], test_flag_value
     return miller_arrays[i], flag_scores.test_flag_values[i]
 
-  def get_experimental_phases(self, file_name, labels, parameter_scope):
+  def get_experimental_phases(self,
+        file_name,
+        labels,
+        ignore_all_zeros,
+        parameter_scope):
     miller_arrays = self.get_miller_arrays(file_name=file_name)
-    data_scores = get_experimental_phases_scores(miller_arrays=miller_arrays)
+    data_scores = get_experimental_phases_scores(
+      miller_arrays=miller_arrays,
+      ignore_all_zeros=ignore_all_zeros)
     i = select_array(
       parameter_name=parameter_scope+".labels",
       labels=labels,
