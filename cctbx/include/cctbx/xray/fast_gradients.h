@@ -32,26 +32,26 @@ namespace cctbx { namespace xray {
           FloatType const& u_extra)
         :
           base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra),
-          i_const_term(gaussian.n_ab())
+          i_const_term(gaussian.n_terms())
         {
           if (gf.u_iso || gf.occupancy || gf.fp || gf.fdp) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
             if (gf.u_iso)
             {
               std::size_t i = 0;
-              for(;i<gaussian.n_ab();i++) {
-                b_[i] = gaussian.b(i) + b_incl_extra;
+              for(;i<gaussian.n_terms();i++) {
+                b_[i] = gaussian.terms()[i].b + b_incl_extra;
               }
               b_[i] = b_incl_extra;
             }
             if (gf.occupancy) {
               std::size_t i = 0;
-              for(;i<gaussian.n_ab();i++) {
+              for(;i<gaussian.n_terms();i++) {
+                scitbx::math::gaussian::term<double> ti = gaussian.terms()[i];
                 as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
-                  weight_without_occupancy * gaussian.a(i),
-                  gaussian.b(i) + b_incl_extra);
+                  weight_without_occupancy * ti.a, ti.b + b_incl_extra);
               }
-              if (this->n_rho_real_terms > gaussian.n_ab()) {
+              if (this->n_rho_real_terms > gaussian.n_terms()) {
                 as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
                   weight_without_occupancy * (gaussian.c() + fp),
                   b_incl_extra);
@@ -80,13 +80,13 @@ namespace cctbx { namespace xray {
           FloatType const& u_extra)
         :
           base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra),
-          i_const_term(gaussian.n_ab())
+          i_const_term(gaussian.n_terms())
         {
           if (gf.u_aniso) {
-            for(std::size_t i=0;i<gaussian.n_ab();i++) {
+            for(std::size_t i=0;i<gaussian.n_terms();i++) {
               scitbx::sym_mat3<FloatType>
                 b_all = compose_anisotropic_b_all(
-                  gaussian.b(i), u_extra, u_cart);
+                  gaussian.terms()[i].b, u_extra, u_cart);
               detb_[i] = b_all.determinant();
               bcfmt_[i] = b_all.co_factor_matrix_transposed();
             }
@@ -105,13 +105,14 @@ namespace cctbx { namespace xray {
           }
           if (gf.occupancy) {
             std::size_t i = 0;
-            for(;i<gaussian.n_ab();i++) {
+            for(;i<gaussian.n_terms();i++) {
+              scitbx::math::gaussian::term<double> ti = gaussian.terms()[i];
               as_occupancy_real_[i] =
                 anisotropic_3d_gaussian_fourier_transform(
-                  weight_without_occupancy * gaussian.a(i),
-                  compose_anisotropic_b_all(gaussian.b(i), u_extra, u_cart));
+                  weight_without_occupancy * ti.a,
+                  compose_anisotropic_b_all(ti.b, u_extra, u_cart));
             }
-            if (this->n_rho_real_terms > gaussian.n_ab()) {
+            if (this->n_rho_real_terms > gaussian.n_terms()) {
               as_occupancy_real_[i] =
                 anisotropic_3d_gaussian_fourier_transform(
                   weight_without_occupancy * (gaussian.c() + fp),

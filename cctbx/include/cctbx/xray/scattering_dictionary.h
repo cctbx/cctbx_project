@@ -9,7 +9,7 @@ namespace cctbx { namespace xray {
 
   struct scatterer_group
   {
-    scatterer_group() : gaussian(0) {}
+    scatterer_group() : gaussian(0, false) {}
 
     eltbx::xray_scattering::gaussian gaussian;
     af::shared<std::size_t> member_indices;
@@ -51,7 +51,7 @@ namespace cctbx { namespace xray {
       {
         af::shared<std::string> result;
         for(dict_type::const_iterator e=dict_.begin();e!=dict_.end();e++) {
-          if (e->second.gaussian.all_zero()) {
+          if (e->second.gaussian.n_parameters() == 0) {
             result.push_back(e->first);
           }
         }
@@ -85,7 +85,7 @@ namespace cctbx { namespace xray {
       void
       assign(
         std::string const& label,
-        eltbx::xray_scattering::gaussian const& gaussian)
+        scitbx::math::gaussian::sum<double> const& gaussian)
       {
         CCTBX_ASSERT(dict_.find(label) != dict_.end());
         dict_[label].gaussian = gaussian;
@@ -97,14 +97,14 @@ namespace cctbx { namespace xray {
         CCTBX_ASSERT(table == "IT1992" || table == "WK1995");
         if (table == "IT1992") {
           for(dict_type::iterator e=dict_.begin();e!=dict_.end();e++) {
-            if (!e->second.gaussian.all_zero()) continue;
+            if (e->second.gaussian.n_parameters() != 0) continue;
             e->second.gaussian
               = eltbx::xray_scattering::it1992(e->first, 1).fetch();
           }
         }
         else {
           for(dict_type::iterator e=dict_.begin();e!=dict_.end();e++) {
-            if (!e->second.gaussian.all_zero()) continue;
+            if (e->second.gaussian.n_parameters() != 0) continue;
             e->second.gaussian
               = eltbx::xray_scattering::wk1995(e->first, 1).fetch();
           }

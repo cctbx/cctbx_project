@@ -20,14 +20,14 @@ def assign_custom_gaussians(structure):
       (14.780757904052734, 0.77677500247955322, 42.086841583251953), 0),
   }
   d = structure.scattering_dict(custom_dict=custom_gaussians).dict()
-  assert d["N"].gaussian.n_ab() == 2
+  assert d["N"].gaussian.n_terms() == 2
   assert d["N"].gaussian.c() == 0
-  assert d["C"].gaussian.n_ab() == 3
+  assert d["C"].gaussian.n_terms() == 3
   assert d["C"].gaussian.c() == 0
-  assert d["O"].gaussian.n_ab() == 5
+  assert d["O"].gaussian.n_terms() == 5
   assert d["O"].gaussian.c() != 0
   d = structure.scattering_dict().dict()
-  assert d["N"].gaussian.n_ab() == 2
+  assert d["N"].gaussian.n_terms() == 2
 
 def exercise(space_group_info, const_gaussian,
              anomalous_flag, anisotropic_flag,

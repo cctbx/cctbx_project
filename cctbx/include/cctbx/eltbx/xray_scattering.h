@@ -1,147 +1,94 @@
 #ifndef CCTBX_ELTBX_XRAY_SCATTERING_H
 #define CCTBX_ELTBX_XRAY_SCATTERING_H
 
-#ifndef CCTBX_ELTBX_XRAY_SCATTERING_GAUSSIAN_MAX_N_AB
-#define CCTBX_ELTBX_XRAY_SCATTERING_GAUSSIAN_MAX_N_AB 10
-#endif
-
 #include <cctbx/eltbx/basic.h>
-#include <scitbx/math/erf.h>
-#include <scitbx/constants.h>
-#include <scitbx/array_family/small.h>
-#include <scitbx/array_family/shared.h>
+#include <scitbx/math/gaussian/sum.h>
 #include <cctbx/import_scitbx_af.h>
 #include <boost/config.hpp>
-#include <cstddef>
-#include <cmath>
 #include <ctype.h>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
 
-  template <typename FloatType>
-  inline
-  FloatType
-  one_gaussian_term_integral_at_d_star(
-    FloatType const& a,
-    FloatType const& b,
-    FloatType const& d_star,
-    FloatType const& b_min_for_erf_base_algorithm=1.e-3)
-  {
-    using scitbx::math::erf;
-    static const double sqrt_pi = std::sqrt(scitbx::constants::pi);
-    if (b == 0) return a * d_star;
-    if (b > b_min_for_erf_base_algorithm) {
-      /* Mathematica:
-           f = a Exp[-b / 4 s^2]
-           Integrate[f,s]
-       */
-      FloatType sqrt_b = std::sqrt(b);
-      return a*sqrt_pi*erf(sqrt_b*d_star*.5)/sqrt_b;
-    }
-    /* Mathematica:
-         f = a Exp[-b4 s^2]
-         Series[Integrate[f,s], {s,0,20}]
-       Formula for the denominator of the series expansion: (2n+1)*n!
-       Encyclopedia of Integer Sequences ID Number: A007680
-     */
-    FloatType as = a * d_star;
-    FloatType bss = b / 4. * d_star * d_star;
-    FloatType part = 1;
-    FloatType result = 1;
-    FloatType prev_result = result;
-    unsigned n = 0;
-    unsigned tnp1 = 1;
-    while (true) {
-      n++;
-      tnp1 += 2;
-      part *= bss / n;
-      result -= part / tnp1;
-      if (result == prev_result) break;
-      prev_result = result;
-      n++;
-      tnp1 += 2;
-      part *= bss / n;
-      result += part / tnp1;
-      if (result == prev_result) break;
-      prev_result = result;
-    }
-    return as * result;
-  }
-
-  class gaussian
+  class gaussian : public scitbx::math::gaussian::sum<double>
   {
     public:
-      //! Maximum number of a,b pairs.
-      BOOST_STATIC_CONSTANT(std::size_t,
-        max_n_ab=CCTBX_ELTBX_XRAY_SCATTERING_GAUSSIAN_MAX_N_AB);
+      typedef scitbx::math::gaussian::sum<double> base_t;
 
       //! Default constructor. Some data members are not initialized!
       gaussian() {}
 
-      //! Initialization of constant scatterer.
-      gaussian(double c)
+      //! Initialization given an instance of the base type.
+      gaussian(base_t const& gaussian_sum)
       :
-        c_(c)
+        base_t(gaussian_sum)
       {}
 
-      //! Initialization with label and coefficients.
-      gaussian(
-        af::small<double, max_n_ab> const& a,
-        af::small<double, max_n_ab> const& b,
-        double c=0)
+      //! Initialization of the constant.
+      explicit
+      gaussian(double c, bool use_c=true)
       :
-        a_(a),
-        b_(b),
-        c_(c)
-      {
-        CCTBX_ASSERT(a_.size() == b_.size());
-      }
+        base_t(c, use_c)
+      {}
 
-      //! Number of a and b coefficients as passed to the constructor.
-      std::size_t
-      n_ab() const { return a_.size(); }
+      //! Initialization of the terms and optionally the constant.
+      /*! If c is different from zero use_c will automatically be
+          set to true.
+       */
+      gaussian(
+        af::small<double, base_t::max_n_terms> const& a,
+        af::small<double, base_t::max_n_terms> const& b,
+        double c=0,
+        bool use_c=false)
+      :
+        base_t(a, b, c, use_c)
+      {}
 
-      //! Array of coefficients a.
-      af::small<double, max_n_ab> const&
-      a() const { return a_; }
-
-      //! Array of coefficients b.
-      af::small<double, max_n_ab> const&
-      b() const { return b_; }
-
-      //! Coefficient a(i), with 0 <= i < n_ab().
-      /*! No range checking (for runtime efficiency).
-          <p>
-          Not available in Python.
+      /*! \brief Sum of Gaussian terms at the point stol
+          (sin-theta-over-lambda), given stol^2.
+       */
+      /*! See also: at_stol(), at_d_star(), at_d_star_sq(),
+                    uctbx::unit_cell::stol()
        */
       double
-      a(int i) const { return a_[i]; }
-
-      //! Coefficient b(i), with 0 <= i < n_ab().
-      /*! No range checking (for runtime efficiency).
-          <p>
-          Not available in Python.
-       */
-      double
-      b(int i) const { return b_[i]; }
-
-      //! Coefficient c.
-      double
-      c() const { return c_; }
-
-      //! Test if n_ab() == 0 and c() == 0.
-      bool
-      all_zero() const
+      at_stol_sq(double stol_sq) const
       {
-        return n_ab() == 0 && c() == 0;
+        return at_x_sq(stol_sq);
       }
 
-#     include <cctbx/eltbx/xray_scattering_gaussian_at.h>
+      /*! \brief Sum of Gaussian terms at the point stol
+          (sin-theta-over-lambda).
+       */
+      /*! See also: at_stol_sq(), at_d_star(), at_d_star_sq(),
+       */
+      double
+      at_stol(double stol) const
+      {
+        return at_x_sq(stol * stol);
+      }
 
-    protected:
-      af::small<double, max_n_ab> a_;
-      af::small<double, max_n_ab> b_;
-      double c_;
+      /*! \brief Sum of Gaussian terms at the point d_star
+          (1/d), given d_star^2.
+       */
+      /*! See also: at_stol_sq(), at_stol(), at_d_star(),
+                    uctbx::unit_cell::d_star_sq()
+       */
+      double
+      at_d_star_sq(double d_star_sq) const
+      {
+        return at_x_sq(d_star_sq / 4);
+      }
+
+      /*! \brief Sum of Gaussian terms at the point d_star
+          (1/d).
+       */
+      /*! See also: at_stol_sq(), at_stol(), at_d_star_sq(),
+                    uctbx::unit_cell::d_star_sq()
+       */
+      double
+      at_d_star(double d_star) const
+      {
+        return at_x_sq(d_star * d_star / 4);
+      }
   };
 
   namespace detail {
@@ -158,7 +105,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
   }
 
   //! Coefficients for the Analytical Approximation to the Scattering Factor.
-  /*! Currently used to work with coefficients from the International
+  /*! Used to work with coefficients from the International
       Tables Volume C (1992) (template parameter N = 4) and Waasmaier &
       Kirfel (1995), Acta Cryst. A51, 416-431 (template parameter N = 5).
    */
@@ -166,9 +113,6 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
   class base
   {
     public:
-      //! Enables compile-time array allocation in other procedures.
-      BOOST_STATIC_CONSTANT(std::size_t, n_plus_1 = N + 1);
-
       //! Default constructor. Calling certain methods may cause crashes!
       base() : entry_(0), table_(0) {}
 
@@ -186,57 +130,22 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       bool
       is_valid() const { return entry_->label != 0; }
 
-      //! Label of table. Currently either "IT1992" or "WK1995".
+      //! Label of table. Either "IT1992" or "WK1995".
       const char* table() const { return table_; }
 
       //! Scattering factor label. E.g. "Si4+".
       const char* label() const { return entry_->label; }
 
-      //! Number of a and b coefficients. Currently either 4 or 5.
-      /*! Note that the total number of coefficients is 2*n_ab()+1.
-          <p>
-          Not available in Python.
-       */
-      static std::size_t n_ab() { return N; }
-
-      //! Array of coefficients a.
-      af::small<double, gaussian::max_n_ab>
-      a() const
-      {
-        return af::small<double, gaussian::max_n_ab>(entry_->a, entry_->a+N);
-      }
-
-      //! Array of coefficients a.
-      af::small<double, gaussian::max_n_ab>
-      b() const
-      {
-        return af::small<double, gaussian::max_n_ab>(entry_->b, entry_->b+N);
-      }
-
-      //! Coefficient a(i), with 0 <= i < n_ab().
-      /*! No range checking (for runtime efficiency).
-          <p>
-          Not available in Python.
-       */
-      float a(int i) const { return entry_->a[i]; }
-
-      //! Coefficient b(i), with 0 <= i < n_ab().
-      /*! No range checking (for runtime efficiency).
-          <p>
-          Not available in Python.
-       */
-      float b(int i) const { return entry_->b[i]; }
-
-      //! Coefficient c.
-      float c() const { return entry_->c; }
-
+      //! Fetches the Gaussian terms from the static table.
       gaussian
       fetch() const
       {
-        return gaussian(a(), b(), c());
+        typedef af::small<double, gaussian::max_n_terms> small_t;
+        return gaussian(
+          small_t(entry_->a, entry_->a+N),
+          small_t(entry_->b, entry_->b+N),
+          entry_->c, true);
       }
-
-#     include <cctbx/eltbx/xray_scattering_gaussian_at.h>
 
     protected:
       const char *table_;

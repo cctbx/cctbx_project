@@ -10,7 +10,7 @@ import sys
 def show_scatterer_digest(structure):
   sd = structure.scattering_dict().dict()
   for key,val in sd.items():
-    gn = str(val.gaussian.n_ab())
+    gn = str(val.gaussian.n_terms())
     if (val.gaussian.c() != 0):
       gn += "+c"
     print "%s:%s*%d" % (key, gn, val.member_indices.size()),

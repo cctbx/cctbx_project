@@ -1,4 +1,4 @@
-import cctbx.array_family.flex # for tuple mappings
+import scitbx.math.gaussian # base class for gaussian
 
 from scitbx.python_utils import misc
 ext = misc.import_ext("cctbx_boost.eltbx.xray_scattering_ext")
@@ -13,7 +13,7 @@ class _gaussian(injector, ext.gaussian):
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout
     if (format is None): format = "%.8g"
-    for l,v in (("a:", self.a()), ("b:", self.b())):
+    for l,v in (("a:", self.array_of_a()), ("b:", self.array_of_b())):
       print >> f, l, " ".join([format % x for x in v])
     print >> f, "c:", format % self.c()
     return self
@@ -61,12 +61,12 @@ class one_gaussian_agarwal_1978:
 
 class fitted_gaussian(gaussian):
 
-  def __init__(self, stol, a, b, c=0):
-    gaussian.__init__(self, a, b, c)
+  def __init__(self, stol, gaussian_sum):
+    gaussian.__init__(self, gaussian_sum)
     self.stol = stol
 
   def __getinitargs__(self):
-    return (self.stol, self.a(), self.b(), self.c())
+    return (self.stol, gaussian(self))
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout

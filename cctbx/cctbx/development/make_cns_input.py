@@ -1,6 +1,8 @@
 from cctbx import adptbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
+from cctbx.development import random_structure
+from cctbx.development import debug_utils
 import sys, os
 
 def check_cns_availability():
@@ -43,7 +45,7 @@ def coordinates(scatterers):
     q = scatterer.occupancy
     assert not scatterer.anisotropic_flag
     b = adptbx.u_as_b(scatterer.u_iso)
-    gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type)
+    gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type).fetch()
     fp = scatterer.fp
     fdp = scatterer.fdp
     for i in xrange(3):
@@ -53,7 +55,7 @@ def coordinates(scatterers):
     a("xray")
     a("  scatter (chemical=%s)" % (scatterer.label,))
     for i in xrange(4):
-      a("    %.6g %.6g" % (gaussian.a()[i], gaussian.b()[i]))
+      a("    %.6g %.6g" % (gaussian.array_of_a()[i], gaussian.array_of_b()[i]))
     a("    %.6g" % (gaussian.c(),))
     a("end")
     a("do (scatter_fp=%.12g) (resid=%d)" % (fp, resid))
@@ -242,3 +244,34 @@ def script_xray_gradients(d_min, f_obs, structure, method):
   e(xray_gradients())
   a("stop")
   return cns_input
+
+def exercise(space_group_info,
+             anomalous_flag=00000,
+             d_min=2.,
+             verbose=0):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=("N", "C", "C", "O"),
+    random_f_prime_d_min=1.0,
+    random_f_double_prime=anomalous_flag,
+    random_u_iso=0001,
+    random_occupancy=0001)
+  if (0 or verbose):
+    structure.show_summary()
+  f_calc = structure.structure_factors(
+    d_min=d_min,
+    algorithm="direct").f_calc()
+  for f_obs in [f_calc, abs(f_calc)]:
+    script_predict_methods_comparison(d_min, structure, f_obs)
+    script_xray_gradients(d_min, f_obs, structure, method="direct")
+
+def run_call_back(flags, space_group_info):
+  for anomalous_flag in (00000, 0001):
+    exercise(space_group_info, anomalous_flag,
+             verbose=flags.Verbose)
+
+def run():
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+
+if (__name__ == "__main__"):
+  run()

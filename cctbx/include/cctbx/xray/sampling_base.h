@@ -220,8 +220,8 @@ namespace cctbx { namespace xray {
     class gaussian_fourier_transformed
     {
       public:
-        BOOST_STATIC_CONSTANT(std::size_t,
-          max_n_rho_real_terms = eltbx::xray_scattering::gaussian::max_n_ab+1);
+        BOOST_STATIC_CONSTANT(std::size_t, max_n_rho_real_terms =
+          eltbx::xray_scattering::gaussian::max_n_terms+1);
 
         gaussian_fourier_transformed() {}
 
@@ -236,13 +236,14 @@ namespace cctbx { namespace xray {
         :
           exp_table_(&exp_table),
           anisotropic_flag_(false),
-          n_rho_real_terms(gaussian.n_ab())
+          n_rho_real_terms(gaussian.n_terms())
         {
           FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
           std::size_t i = 0;
-          for(;i<gaussian.n_ab();i++) {
+          for(;i<gaussian.n_terms();i++) {
+            scitbx::math::gaussian::term<double> ti = gaussian.terms()[i];
             isotropic_3d_gaussian_fourier_transform(
-              w * gaussian.a(i), gaussian.b(i) + b_incl_extra,
+              w * ti.a, ti.b + b_incl_extra,
               as_real_[i], bs_real_[i]);
           }
           isotropic_3d_gaussian_fourier_transform(
@@ -265,13 +266,13 @@ namespace cctbx { namespace xray {
         :
           exp_table_(&exp_table),
           anisotropic_flag_(true),
-          n_rho_real_terms(gaussian.n_ab())
+          n_rho_real_terms(gaussian.n_terms())
         {
           std::size_t i = 0;
-          for(;i<gaussian.n_ab();i++) {
+          for(;i<gaussian.n_terms();i++) {
+            scitbx::math::gaussian::term<double> ti = gaussian.terms()[i];
             anisotropic_3d_gaussian_fourier_transform(
-              w * gaussian.a(i),
-              compose_anisotropic_b_all(gaussian.b(i), u_extra, u_cart),
+              w * ti.a, compose_anisotropic_b_all(ti.b, u_extra, u_cart),
               as_real_[i], aniso_bs_real_[i]);
           }
           anisotropic_3d_gaussian_fourier_transform(
