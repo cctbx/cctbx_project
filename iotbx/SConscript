@@ -26,26 +26,7 @@ env_etc.include_registry.append(
   env=mtz_env,
   paths=env_etc.iotbx_common_includes)
 
-envlm = mtz_env.Copy(
-  LIBS=env_etc.libm
-)
-
-lib_iotbx_sources = [
-  "mtz/cppmtz.cpp",
-  "mtz/mtzwriter.cpp",
-]
-
-envlm.Prepend(LIBS=["cctbx", "cmtz"])
-envlm.Append(LIBPATH=["#libtbx",])
-
-if (env_etc.static_libraries): builder = envlm.StaticLibrary
-else:                          builder = envlm.SharedLibrary
-builder(
-  target="#libtbx/iotbx",
-  source=lib_iotbx_sources)
-
 Export("mtz_env")
-SConscript("mtz/SConscript")
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
@@ -62,7 +43,6 @@ if (not env_etc.no_boost_python):
 
   SConscript("iotbx/SConscript")
   SConscript("detectors/SConscript")
-  SConscript("mtz/boost_python/SConscript")
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
   SConscript("include/iotbx/mtz/SConscript")
