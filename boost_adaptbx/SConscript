@@ -108,8 +108,8 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.72
-    jamfile_md5 = "79b309f870c9e8c43d0b8aa3e0b61544"
+    # based on boost/libs/python/test/Jamfile revision 1.74
+    jamfile_md5 = "15f28887719a7864eb006cdb3e06ad80"
     if (m.hexdigest() != jamfile_md5):
       print "boost/libs/python/test/Jamfile has changed"
       print "New md5 signature:", m.hexdigest()
@@ -148,6 +148,7 @@ opaque
 pickle1
 pickle2
 pickle3
+pickle4
 nested
 docstring
 bienstman4
@@ -166,6 +167,7 @@ keywords,keywords,keywords_test
 properties
 map_indexing_suite
 injected
+slice
 """)
     Import("env_boost_python_ext")
     all_tst = []
