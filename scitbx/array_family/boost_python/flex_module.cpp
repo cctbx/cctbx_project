@@ -31,7 +31,7 @@ namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
 
-  BOOST_PYTHON_MEM_FUN_GENERATOR(flex_grid_last_overloads, last, 0, 1)
+  BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(flex_grid_last_overloads, last, 0, 1)
 
   struct flex_grid_wrappers : boost::python::pickle_suite
   {
