@@ -844,7 +844,7 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  bool Brick::isInBrick(const carray<rational, 3>& P) const
+  bool Brick::isInBrick(const af::tiny<rational, 3>& P) const
   {
     for(std::size_t i=0;i<3;i++) {
       if (!m_Points[i][0].Off()) {

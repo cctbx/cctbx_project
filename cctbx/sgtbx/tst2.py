@@ -1,7 +1,7 @@
 # $Id$
 
 import sys
-from cctbx import sgtbx
+from cctbx_boost import sgtbx
 
 def parse(hall_symbol):
   s = sgtbx.parse_string(hall_symbol)
@@ -36,7 +36,7 @@ def hkl(SgOps):
     print semi[iList].HR(), semi[iList].HT()
 
 def BuildIndices(SgOps):
-  from cctbx import uctbx
+  from cctbx_boost import uctbx
   UnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
   SgInfo = SgOps.Info()
   MIG = sgtbx.MillerIndexGenerator(UnitCell, SgInfo, 3)

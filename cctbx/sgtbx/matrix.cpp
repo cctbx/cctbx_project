@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/matrix.h>
+#include <cctbx/array_family/tiny_algebra.h>
 #include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
@@ -62,9 +63,9 @@ namespace cctbx { namespace sgtbx {
     return RTMx(m_R.scale(factorR), m_T.scale(factorT));
   }
 
-  int3 operator*(const RotMx& lhs, const int3& rhs)
+  af::int3 operator*(const RotMx& lhs, const af::int3& rhs)
   {
-    int3 result;
+    af::int3 result;
     MatrixLite::multiply(lhs.elems, rhs.elems, 3, 3, 1, result.elems);
     return result;
   }
@@ -252,9 +253,9 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
-  carray<int, 12> RTMx::as_int_array() const
+  af::tiny<int, 12> RTMx::as_int_array() const
   {
-    carray<int, 12> result;
+    af::tiny<int, 12> result;
     int i;
     for(i=0;i<9;i++) result[i    ] = Rpart()[i];
     for(i=0;i<3;i++) result[i + 9] = Tpart()[i];
@@ -396,7 +397,7 @@ namespace cctbx { namespace sgtbx {
     *this = RTMx(StrXYZ_PS, StopChars, RBF, TBF);
   }
 
-  bool RTMx::isPerpendicular(const int3& v) const
+  bool RTMx::isPerpendicular(const af::int3& v) const
   {
     return Rpart().accumulate() * v == 0;
   }
@@ -442,7 +443,7 @@ namespace cctbx { namespace sgtbx {
     int i;
     for(i=0;i<3;i++) g = gcd(g, elems[i]);
     if (g == 0) g = 1;
-    int3 result;
+    af::int3 result;
     for(i=0;i<3;i++) result[i] = elems[i] / g;
     return TrVec(result, BF() / g);
   }
@@ -453,7 +454,7 @@ namespace cctbx { namespace sgtbx {
     int i;
     for(i=0;i<9;i++) g = gcd(g, elems[i]);
     if (g == 0) g = 1;
-    int9 result;
+    af::int9 result;
     for(i=0;i<9;i++) result[i] = elems[i] / g;
     return RotMx(result, BF() / g);
   }

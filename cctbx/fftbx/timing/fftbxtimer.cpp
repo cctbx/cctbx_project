@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include <cctbx/fftbx/complex_to_complex.h>
 #include <cctbx/fftbx/real_to_complex.h>

@@ -1,6 +1,6 @@
 # $Id$
 
-from cctbx import sgtbx
+from cctbx_boost import sgtbx
 from symbols import table_hall_std530
 from tst2 import parse, hkl
 

@@ -1,5 +1,5 @@
-from cctbx.arraytbx import std_vector
-from cctbx import fftbx
+from cctbx_boost.arraytbx import shared
+from cctbx_boost import fftbx
 
 def fmtfloat(f):
   s = "%.1f" % (f,)
@@ -16,11 +16,11 @@ def show_rseq(vr, N):
     print fmtfloat(vr[i])
   print
 
-def show_rseq_3d(map, N):
+def show_rseq_3d(a, M, N):
   for i in xrange(N[0]):
     for j in xrange(N[1]):
       for k in xrange(N[2]):
-        print fmtfloat(map[(i, j, k)])
+        print fmtfloat(a[(i * M[1] + j) * M[2] + k])
   print
 
 def assert_complex_eq_real(vc, vd):
@@ -30,8 +30,8 @@ def assert_complex_eq_real(vc, vd):
 
 def test_complex_to_complex(verbose):
   fft = fftbx.complex_to_complex(5)
-  vc = std_vector.complex_double(fft.N())
-  vd = std_vector.double(fft.N() * 2)
+  vc = shared.complex_double(fft.N())
+  vd = shared.double(fft.N() * 2)
   for i in xrange(fft.N()):
     vc[i] = complex(2.*i, 2.*i+1.)
     vd[2*i] = 2.*i
@@ -45,39 +45,28 @@ def test_complex_to_complex(verbose):
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
 
-def test_complex_to_complex_3d(test_map_cast, verbose):
+def test_complex_to_complex_3d(verbose):
   fft = fftbx.complex_to_complex_3d((3,4,5))
-  vc = std_vector.complex_double()
-  mapc = fftbx.vc3d_accessor(fft.N(), vc, 1)
-  mapc[(0,0,0)] = 123+4j
-  assert mapc[(0,0,0)] == 123+4j
+  N = fft.N()
+  vc = shared.complex_double(N[0] * N[1] * N[2])
+  vd = shared.double(2 * vc.size())
   for i in xrange(vc.size()):
     vc[i] = complex(2*i, 2*i+1)
-  Ncomplex = fft.N()
-  Nreal = (Ncomplex[0], Ncomplex[1], Ncomplex[2] * 2)
-  vd = std_vector.double()
-  mapd = fftbx.vd3d_accessor(Nreal, vd, 1)
   for i in xrange(vd.size()):
     vd[i] = i
-  assert vd.size() == 2 * vc.size()
-  if (test_map_cast):
-    mapc = fftbx.vd3d_accessor(Nreal, vc, 1)
-    assert vd.size() == 2 * vc.size()
-    mapd = fftbx.vc3d_accessor(fft.N(), vd, 1)
-    assert vd.size() == 2 * vc.size()
-  fft.forward(mapc)
-  fft.forward(mapd)
+  fft.forward(vc)
+  fft.forward(vd)
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
-  fft.backward(mapc)
-  fft.backward(mapd)
+  fft.backward(vc)
+  fft.backward(vd)
   if (verbose): show_cseq(vc)
   assert_complex_eq_real(vc, vd)
 
 def test_real_to_complex(verbose):
   fft = fftbx.real_to_complex(6)
-  vd = std_vector.double(fft.Mreal())
-  vc = std_vector.complex_double(fft.Ncomplex())
+  vd = shared.double(fft.Mreal())
+  vc = shared.complex_double(fft.Ncomplex())
   for i in xrange(fft.Nreal()):
     vd[i] = 1.*i
   for i in xrange(fft.Ncomplex()):
@@ -91,31 +80,23 @@ def test_real_to_complex(verbose):
   if (verbose): show_rseq(vd, fft.Nreal())
   assert_complex_eq_real(vc, vd)
 
-def test_real_to_complex_3d(test_map_cast, verbose):
+def test_real_to_complex_3d(verbose):
   fft = fftbx.real_to_complex_3d((3,4,5))
-  vd = std_vector.double()
-  mapd = fftbx.vd3d_accessor(fft.Mreal(), vd, 1)
-  mapd[(0,0,0)] = 123
-  assert mapd[(0,0,0)] == 123
+  M = fft.Mreal()
+  vd = shared.double(M[0] * M[1] * M[2])
+  vc = shared.complex_double(vd.size() / 2)
   for i in xrange(vd.size()):
     vd[i] = i
-  vc = std_vector.complex_double()
-  mapc = fftbx.vc3d_accessor(fft.Ncomplex(), vc, 1)
   for i in xrange(vc.size()):
     vc[i] = complex(2*i, 2*i+1)
   assert vd.size() == 2 * vc.size()
-  if (test_map_cast):
-    mapd = fftbx.vc3d_accessor(fft.Ncomplex(), vd, 1)
-    assert vd.size() == 2 * vc.size()
-    mapc = fftbx.vd3d_accessor(fft.Mreal(), vc, 1)
-    assert vd.size() == 2 * vc.size()
-  fft.forward(mapd)
-  fft.forward(mapc)
-  if (verbose): show_rseq_3d(mapd, fft.Mreal())
+  fft.forward(vd)
+  fft.forward(vc)
+  if (verbose): show_rseq_3d(vd, fft.Mreal(), fft.Mreal())
   assert_complex_eq_real(vc, vd)
-  fft.backward(mapd)
-  fft.backward(mapc)
-  if (verbose): show_rseq_3d(mapd, fft.Nreal())
+  fft.backward(vd)
+  fft.backward(vc)
+  if (verbose): show_rseq_3d(vd, fft.Mreal(), fft.Nreal())
   assert_complex_eq_real(vc, vd)
 
 if (__name__ == "__main__"):
@@ -127,7 +108,5 @@ if (__name__ == "__main__"):
   assert fftbx.adjust_gridding_triple((13,22,34), 5, (6,10,8)) == (18,30,40)
   test_complex_to_complex(verbose)
   test_real_to_complex(verbose)
-  test_complex_to_complex_3d(0, verbose)
-  test_complex_to_complex_3d(1, 0)
-  test_real_to_complex_3d(0, verbose)
-  test_real_to_complex_3d(1, 0)
+  test_complex_to_complex_3d(verbose)
+  test_real_to_complex_3d(verbose)

@@ -2,6 +2,7 @@
 #include <vector>
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
+#include <cctbx/array_family/versa.h>
 
 int main(void)
 {
@@ -36,20 +37,16 @@ int main(void)
   }
 
   cctbx::fftbx::complex_to_complex_3d<double> cfft3d(2, 3, 5);
-  cctbx::dimension<3> dim_c3d(cfft3d.N());
-  std::vector<std::complex<double> > vc3d(dim_c3d.size1d());
-  cctbx::vecrefnd<std::complex<double>, cctbx::dimension<3> >
-  c3dmap(vc3d.begin(), dim_c3d);
-  cfft3d.forward(c3dmap);
-  cfft3d.backward(c3dmap);
+  cctbx::af::versa<std::complex<double>, cctbx::af::grid<3> >
+  c3dmap(cctbx::af::grid<3>(cfft3d.N()));
+  cfft3d.forward(c3dmap.ref());
+  cfft3d.backward(c3dmap.ref());
 
   cctbx::fftbx::real_to_complex_3d<double> rfft3d(3, 4, 5);
-  cctbx::dimension<3> dim_r3d(rfft3d.Mreal());
-  std::vector<double> vr3d(dim_r3d.size1d());
-  cctbx::vecrefnd<double, cctbx::dimension<3> >
-  r3dmap(vr3d.begin(), dim_r3d);
-  rfft3d.forward(r3dmap);
-  rfft3d.backward(r3dmap);
+  cctbx::af::versa<double, cctbx::af::grid<3> >
+  r3dmap(cctbx::af::grid<3>(rfft3d.Mreal()));
+  rfft3d.forward(r3dmap.ref());
+  rfft3d.backward(r3dmap.ref());
 #ifdef NEVER_DEFINED
 #endif
 

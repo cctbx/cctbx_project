@@ -17,7 +17,7 @@ class FormatError(exceptions.Exception): pass
 import string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-from cctbx import uctbx
+from cctbx_boost import uctbx
 
 print "uctbx version:", uctbx.__version__
 print

@@ -17,13 +17,13 @@
 namespace cctbx { namespace sgtbx {
   namespace ReferenceSettings {
 
-    std::vector<RTMx>
+    af::shared<RTMx>
     GetNormAddlG(int SgNumber, bool affine, bool UseK2L, bool UseL2N)
     {
       using sgtbx::tables::ReferenceSettings::NormalizerAddlGenerators;
 
       cctbx_assert(0 < SgNumber && SgNumber <= 230);
-      std::vector<RTMx> result;
+      af::shared<RTMx> result;
       for (int iType = 0; iType < 2; iType++) {
         const char* HallMxSymbol = 0;
         if      (iType == 0 && UseK2L)
@@ -119,11 +119,11 @@ namespace cctbx { namespace sgtbx {
 
   } // namespace ReferenceSettings
 
-  std::vector<RTMx>
+  af::shared<RTMx>
   SpaceGroupInfo::getAddlGeneratorsOfEuclideanNormalizer(bool getK2L,
                                                          bool getL2N) const
   {
-    std::vector<RTMx> result
+    af::shared<RTMx> result
       = ReferenceSettings::GetNormAddlG(SgNumber(), false, getK2L, getL2N);
     ChOfBasisOp C = CBOp().swap();
     for(std::size_t i=0;i<result.size();i++) {

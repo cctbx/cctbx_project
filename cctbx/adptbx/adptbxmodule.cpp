@@ -27,96 +27,96 @@ namespace {
   py_B_as_U_iso(double Biso) {
     return B_as_U(Biso);
   }
-  double6
-  py_U_as_B_ansio(const double6& Uaniso) {
+  af::double6
+  py_U_as_B_ansio(const af::double6& Uaniso) {
     return U_as_B(Uaniso);
   }
-  double6
-  py_B_as_U_ansio(const double6& Baniso) {
+  af::double6
+  py_B_as_U_ansio(const af::double6& Baniso) {
     return B_as_U(Baniso);
   }
 
-  double6
+  af::double6
   py_Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
-                    const double6& Uuvrs) {
+                    const af::double6& Uuvrs) {
     return Uuvrs_as_Ustar(uc, Uuvrs);
   }
-  double6
+  af::double6
   py_Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
-                    const double6& Ustar) {
+                    const af::double6& Ustar) {
     return Ustar_as_Uuvrs(uc, Ustar);
   }
 
-  double6
+  af::double6
   py_Ucart_as_Ustar(const uctbx::UnitCell& uc,
-                    const double6& Ucart) {
+                    const af::double6& Ucart) {
     return Ucart_as_Ustar(uc, Ucart);
   }
-  double6
+  af::double6
   py_Ustar_as_Ucart(const uctbx::UnitCell& uc,
-                    const double6& Ustar) {
+                    const af::double6& Ustar) {
     return Ustar_as_Ucart(uc, Ustar);
   }
 
-  double6
+  af::double6
   py_Ucart_as_Uuvrs(const uctbx::UnitCell& uc,
-                    const double6& Ucart) {
+                    const af::double6& Ucart) {
     return Ucart_as_Uuvrs(uc, Ucart);
   }
-  double6
+  af::double6
   py_Uuvrs_as_Ucart(const uctbx::UnitCell& uc,
-                    const double6& Uuvrs) {
+                    const af::double6& Uuvrs) {
     return Uuvrs_as_Ucart(uc, Uuvrs);
   }
 
-  double6
+  af::double6
   py_Ustar_as_beta(const uctbx::UnitCell& uc,
-                   const double6& Ustar) {
+                   const af::double6& Ustar) {
     return Ustar_as_beta(Ustar);
   }
-  double6
+  af::double6
   py_beta_as_Ustar(const uctbx::UnitCell& uc,
-                   const double6& beta) {
+                   const af::double6& beta) {
     return beta_as_Ustar(beta);
   }
 
-  double6
+  af::double6
   py_Ucart_as_beta(const uctbx::UnitCell& uc,
-                   const double6& Ucart) {
+                   const af::double6& Ucart) {
     return Ucart_as_beta(uc, Ucart);
   }
-  double6
+  af::double6
   py_beta_as_Ucart(const uctbx::UnitCell& uc,
-                   const double6& beta) {
+                   const af::double6& beta) {
     return beta_as_Ucart(uc, beta);
   }
 
-  double6
+  af::double6
   py_Uuvrs_as_beta(const uctbx::UnitCell& uc,
-                   const double6& Uuvrs) {
+                   const af::double6& Uuvrs) {
     return Uuvrs_as_beta(uc, Uuvrs);
   }
-  double6
+  af::double6
   py_beta_as_Uuvrs(const uctbx::UnitCell& uc,
-                   const double6& beta) {
+                   const af::double6& beta) {
     return beta_as_Uuvrs(uc, beta);
   }
 
   double
-  py_Ucart_as_Uiso(const double6& Ucart) {
+  py_Ucart_as_Uiso(const af::double6& Ucart) {
     return Ucart_as_Uiso(Ucart);
   }
-  double6
+  af::double6
   py_Uiso_as_Ucart(const double& Uiso) {
     return Uiso_as_Ucart(Uiso);
   }
 
   double
   py_Ustar_as_Uiso(const uctbx::UnitCell& uc,
-                   const double6& Ustar) {
+                   const af::double6& Ustar) {
     return Ustar_as_Uiso(uc, Ustar);
   }
-  double6
+  af::double6
   py_Uiso_as_Ustar(const uctbx::UnitCell& uc,
                    const double& Uiso) {
     return Uiso_as_Ustar(uc, Uiso);
@@ -124,10 +124,10 @@ namespace {
 
   double
   py_Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
-                   const double6& Uuvrs) {
+                   const af::double6& Uuvrs) {
     return Uuvrs_as_Uiso(uc, Uuvrs);
   }
-  double6
+  af::double6
   py_Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
                    const double& Uiso) {
     return Uiso_as_Uuvrs(uc, Uiso);
@@ -135,10 +135,10 @@ namespace {
 
   double
   py_beta_as_Uiso(const uctbx::UnitCell& uc,
-                   const double6& beta) {
+                   const af::double6& beta) {
     return beta_as_Uiso(uc, beta);
   }
-  double6
+  af::double6
   py_Uiso_as_beta(const uctbx::UnitCell& uc,
                    const double& Uiso) {
     return Uiso_as_beta(uc, Uiso);
@@ -167,58 +167,58 @@ namespace {
 
   double
   py_DebyeWallerFactorUstar(const Miller::Index& MIx,
-                            const double6& Ustar) {
+                            const af::double6& Ustar) {
     return DebyeWallerFactorUstar(MIx, Ustar);
   }
   double
   py_DebyeWallerFactor_beta(const Miller::Index& MIx,
-                            const double6& beta) {
+                            const af::double6& beta) {
     return DebyeWallerFactor_beta(MIx, beta);
   }
   double
   py_DebyeWallerFactorUuvrs(const uctbx::UnitCell& uc,
                             const Miller::Index& MIx,
-                            const double6& Uuvrs) {
+                            const af::double6& Uuvrs) {
     return DebyeWallerFactorUuvrs(uc, MIx, Uuvrs);
   }
   double
   py_DebyeWallerFactorUcart(const uctbx::UnitCell& uc,
                             const Miller::Index& MIx,
-                            const double6& Ucart) {
+                            const af::double6& Ucart) {
     return DebyeWallerFactorUcart(uc, MIx, Ucart);
   }
 
-  double3
-  py_Eigenvalues(const double6& adp) {
+  af::double3
+  py_Eigenvalues(const af::double6& adp) {
     return Eigenvalues(adp);
   }
 
   bool
   py_isPositiveDefinite_adp_eigenvalues(
-    const double3& adp_eigenvalues) {
+    const af::double3& adp_eigenvalues) {
     return isPositiveDefinite(adp_eigenvalues);
   }
 
   bool
   py_isPositiveDefinite_adp(
-    const double6& adp) {
+    const af::double6& adp) {
     return isPositiveDefinite(adp);
   }
 
   void
   py_CheckPositiveDefinite_adp_eigenvalues(
-    const double3& adp_eigenvalues) {
+    const af::double3& adp_eigenvalues) {
     CheckPositiveDefinite(adp_eigenvalues);
   }
 
   void
   py_CheckPositiveDefinite_adp(
-    const double6& adp) {
+    const af::double6& adp) {
     CheckPositiveDefinite(adp);
   }
 
   // We need this wrapper only to make Visual C++ 6 happy.
-  double3
+  af::double3
   py_Eigensystem_vectors(const Eigensystem<double>& ES, std::size_t i) {
     return ES.vectors(i);
   }
@@ -236,7 +236,7 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
       Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
   python::import_converters<uctbx::UnitCell>
-  py_UnitCell("cctbx.uctbx", "UnitCell");
+  py_UnitCell("cctbx_boost.uctbx", "UnitCell");
 
   class_builder<Eigensystem<double> >
   py_Eigensystem(this_module, "Eigensystem");
@@ -288,8 +288,8 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
                     "CheckPositiveDefinite");
 
   py_Eigensystem.def(constructor<>());
-  py_Eigensystem.def(constructor<const double6&>());
-  py_Eigensystem.def(constructor<const double6&, double>());
+  py_Eigensystem.def(constructor<const af::double6&>());
+  py_Eigensystem.def(constructor<const af::double6&, double>());
   py_Eigensystem.def(py_Eigensystem_vectors, "vectors");
   py_Eigensystem.def(&Eigensystem<double>::values, "values");
 }

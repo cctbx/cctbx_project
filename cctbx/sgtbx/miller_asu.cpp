@@ -32,8 +32,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "l>0 or (l==0 and (h>0 or (h==0 and k>=0)))";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(-1, -1, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(-1, -1, 0);
             return result;
           }
       };
@@ -49,8 +49,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "k>=0 and (l>0 or (l=0 and h>=0))";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(-1, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(-1, 0, 0);
             return result;
           }
       };
@@ -66,8 +66,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "h>=0 and k>=0 and l>=0";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, 0);
             return result;
           }
       };
@@ -83,8 +83,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, 0);
             return result;
           }
       };
@@ -100,8 +100,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "h>=k and k>=0 and l>=0";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, 0);
             return result;
           }
       };
@@ -117,8 +117,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "(h>=0 and k>0) or (h=0 and k=0 and l>=0)";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, -1);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, -1);
             return result;
           }
       };
@@ -134,8 +134,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "h>=k and k>=0 and (k>0 or l>=0)";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, -1);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, -1);
             return result;
           }
       };
@@ -151,8 +151,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "h>=k and k>=0 and (h>k or l>=0)";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, -1);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, -1);
             return result;
           }
       };
@@ -168,8 +168,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "l>=0 and ((h>=0 and k>0) or (h=0 and k=0))";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, 0);
             return result;
           }
       };
@@ -185,8 +185,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "h>=k and k>=0 and l>=0";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, 0);
             return result;
           }
       };
@@ -203,8 +203,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "h>=0 and ((l>=h and k>h) or (l=h and k=h))";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, 0);
             return result;
           }
       };
@@ -220,8 +220,8 @@ namespace cctbx {
           virtual const char* representation() const {
             return "k>=l and l>=h and h>=0";
           }
-          virtual const int3& getCutParameters() const {
-            static const int3 result(0, 0, 0);
+          virtual const af::int3& getCutParameters() const {
+            static const af::int3 result(0, 0, 0);
             return result;
           }
       };
@@ -290,14 +290,14 @@ namespace cctbx {
     void
     MillerIndexGenerator::InitializeLoop(const Miller::Index& ReferenceHmax)
     {
-      int3 CutP = m_ASU.ReferenceASU()->getCutParameters();
+      af::int3 CutP = m_ASU.ReferenceASU()->getCutParameters();
       Miller::Index ReferenceHbegin;
       Miller::Index ReferenceHend;
       for(std::size_t i=0;i<3;i++) {
         ReferenceHbegin[i] = ReferenceHmax[i] * CutP[i];
         ReferenceHend[i] = ReferenceHmax[i] + 1;
       }
-      m_loop = nested_loop<Miller::Index>(ReferenceHbegin, ReferenceHend);
+      m_loop = af::nested_loop<Miller::Index>(ReferenceHbegin, ReferenceHend);
     }
 
     MillerIndexGenerator::MillerIndexGenerator(const uctbx::UnitCell& uc,
@@ -323,7 +323,7 @@ namespace cctbx {
         m_ASU(ReciprocalSpaceASU(SgInfo)),
         m_Qhigh(-1.)
     {
-      InitializeLoop(Miller::Index(carray_abs(MaxIndex)));
+      InitializeLoop(Miller::Index(af::abs(MaxIndex)));
     }
 
     Miller::Index MillerIndexGenerator::next()

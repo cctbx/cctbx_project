@@ -9,10 +9,12 @@
  */
 
 #include <algorithm>
-#include <cctbx/loops.h>
+#include <cctbx/array_family/loops.h>
+#include <cctbx/math/loops.h>
 #include <cctbx/sgtbx/select_generators.h>
 #include <cctbx/sgtbx/seminvariant.h>
 #include <cctbx/sgtbx/reference.h>
+#include <cctbx/array_family/tiny_algebra.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -23,10 +25,10 @@ namespace cctbx { namespace sgtbx {
       for(std::size_t i=0;i<n;i++) target[i] = source[i];
     }
 
-    carray<int, 3 * 3*3>
+    af::tiny<int, 3 * 3*3>
     ConstructGenRmI(const detail::AnyGenerators& Gen, bool Primitive)
     {
-      carray<int, 3 * 3*3> result;
+      af::tiny<int, 3 * 3*3> result;
       for(std::size_t i=0;i<Gen.nGen;i++) {
         const RotMx R = Gen.ZGen[i].Rpart();
         if (!Primitive) {
@@ -45,7 +47,7 @@ namespace cctbx { namespace sgtbx {
     class CmpOLen2 {
       public:
         CmpOLen2() : CmpT(3) {}
-        bool operator()(const int3& a, const int3& b) const
+        bool operator()(const af::int3& a, const af::int3& b) const
         {
           int i;
           int OLen2a = 0; for(i=0;i<3;i++) OLen2a += a[i] * a[i];
@@ -58,11 +60,11 @@ namespace cctbx { namespace sgtbx {
         const CmpiVect CmpT;
     };
 
-    cctbx::fixcap_vector<ssVM, 3>
+    af::small<ssVM, 3>
     GetContNullSpace(const detail::AnyGenerators& Gen)
     {
-      cctbx::fixcap_vector<ssVM, 3> result;
-      carray<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
+      af::small<ssVM, 3> result;
+      af::tiny<int, 3 * 3 * 3> GenRmI = ConstructGenRmI(Gen, false);
       int RankGenRmI = iRowEchelonFormT(GenRmI.elems, Gen.nAll() * 3, 3, 0, 0);
       cctbx_assert(RankGenRmI >= 0 && RankGenRmI <= 3);
       int IxIndep[3];
@@ -71,7 +73,7 @@ namespace cctbx { namespace sgtbx {
       if (nIndep != 2) {
         for (int iIndep = 0; iIndep < nIndep; iIndep++) {
           ssVM VM;
-          if (Gen.nAll() == 0) VM.V.assign(0);
+          if (Gen.nAll() == 0) VM.V.fill(0);
           VM.V[IxIndep[iIndep]] = 1;
           cctbx_assert(iREBacksubst(GenRmI.elems, 0, RankGenRmI, 3,
                                     VM.V.elems, 0) > 0);
@@ -80,7 +82,7 @@ namespace cctbx { namespace sgtbx {
         }
       }
       else {
-        carray<int3, 4> Sol;
+        af::tiny<af::int3, 4> Sol;
         SolveHomRE1(GenRmI.elems, IxIndep, Sol.elems);
         std::sort(Sol.begin(), Sol.end(), CmpOLen2());
         for (int iIndep = 0; iIndep < 2; iIndep++) {
@@ -93,12 +95,10 @@ namespace cctbx { namespace sgtbx {
       return result;
     }
 
-    typedef cctbx::fixcap_vector<TrVec, 8> DiscrList;
-
-    void UpdateBestZ(const DiscrList& OrigZf,
+    void UpdateBestZ(const af::small<TrVec, 8>& OrigZf,
                      const TrVec& Shift,
-                     DiscrList& BestZf,
-                     DiscrList& BestZc)
+                     af::small<TrVec, 8>& BestZf,
+                     af::small<TrVec, 8>& BestZc)
     {
       for (int iDL = 1; iDL < OrigZf.size(); iDL++) {
         TrVec Zf = (OrigZf[iDL] + Shift).modPositive();
@@ -106,7 +106,8 @@ namespace cctbx { namespace sgtbx {
         for(int i=0;i<3;i++) {
           if (Zf[i]) {
             if (   CmpOLen2()(Zc, BestZc[iDL])
-                || (   static_cast<int3>(Zc) == static_cast<int3>(BestZc[iDL])
+                || (   static_cast<af::int3>(Zc)
+                    == static_cast<af::int3>(BestZc[iDL])
                     && Zc.BF() < BestZc[iDL].BF())) {
               BestZf[iDL] = Zf;
               BestZc[iDL] = Zc;
@@ -118,8 +119,8 @@ namespace cctbx { namespace sgtbx {
     }
 
     void BestVectors(const SpaceGroup& SgOps,
-                     const cctbx::fixcap_vector<ssVM, 3>& ContinuousVM,
-                     DiscrList& DiscrZ)
+                     const af::small<ssVM, 3>& ContinuousVM,
+                     af::small<TrVec, 8>& DiscrZ)
     {
       if (SgOps.nLTr() == 1 && ContinuousVM.size() == 0) return;
       int LTBF = 1;
@@ -149,24 +150,24 @@ namespace cctbx { namespace sgtbx {
       cctbx_assert(LTBF > 0);
       if (LTBF > 6) LTBF = lcm(LTBF,  6);
       else          LTBF = lcm(LTBF, 12);
-      DiscrList OrigZf;
-      DiscrList BestZf;
-      DiscrList BestZc;
+      af::small<TrVec, 8> OrigZf;
+      af::small<TrVec, 8> BestZf;
+      af::small<TrVec, 8> BestZc;
       for (iDL = 0; iDL < DiscrZ.size(); iDL++) {
         OrigZf.push_back(DiscrZ[iDL].newBaseFactor(LTBF));
         BestZf.push_back(OrigZf[iDL]);
         BestZc.push_back(BestZf[iDL].cancel());
       }
       cctbx_assert(ContinuousVM.size() < 3);
-      cctbx::fixcap_vector<int, 2> loop_end(ContinuousVM.size());
+      af::small<int, 2> loop_end(ContinuousVM.size());
       std::fill(loop_end.begin(), loop_end.end(), LTBF);
       TrVec LTr[3];
       for (iLTr = 0; iLTr < SgOps.nLTr(); iLTr++) {
         LTr[0] = SgOps.LTr(iLTr).newBaseFactor(LTBF);
-        nested_loop<cctbx::fixcap_vector<int, 2> > loop(loop_end);
+        af::nested_loop<af::small<int, 2> > loop(loop_end);
         do {
           for (int iVM = 0; iVM < ContinuousVM.size(); iVM++) {
-            const cctbx::fixcap_vector<int, 2>& f = loop();
+            const af::small<int, 2>& f = loop();
             LTr[iVM + 1] = LTr[iVM] + f[iVM] * TrVec(ContinuousVM[iVM].V, LTBF);
           }
           UpdateBestZ(OrigZf, LTr[ContinuousVM.size()], BestZf, BestZc);
@@ -179,11 +180,11 @@ namespace cctbx { namespace sgtbx {
       }
     }
 
-    cctbx::fixcap_vector<TrVec, 3>
-    SelectDiscreteGenerators(const DiscrList& DiscrP,
-                             const DiscrList& DiscrZ)
+    af::small<TrVec, 3>
+    SelectDiscreteGenerators(const af::small<TrVec, 8>& DiscrP,
+                             const af::small<TrVec, 8>& DiscrZ)
     {
-      if (DiscrP.size() == 1) return cctbx::fixcap_vector<TrVec, 3>();
+      if (DiscrP.size() == 1) return af::small<TrVec, 3>();
       for (int nDVM = 1; nDVM <= DiscrP.size() - 1 && nDVM <= 3; nDVM++) {
         for (loop_n_from_m<3>
              Ix(DiscrP.size() - 1, nDVM); !Ix.over(); Ix.incr()) {
@@ -192,7 +193,7 @@ namespace cctbx { namespace sgtbx {
             DiscrGrp.expand(DiscrP[Ix[iIx] + 1]);
           }
           if (DiscrGrp.nVects() == DiscrP.size()) {
-            cctbx::fixcap_vector<TrVec, 3> result;
+            af::small<TrVec, 3> result;
             for (std::size_t iIx = 0; iIx < Ix.n(); iIx++) {
               result.push_back(DiscrZ[Ix[iIx] + 1]);
             }
@@ -233,7 +234,7 @@ namespace cctbx { namespace sgtbx {
     detail::AnyGenerators Gen(SgOps);
     m_VM = GetContNullSpace(Gen);
     if (m_VM.size() == 3) return; // space group P1
-    carray<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
+    af::tiny<int, 3 * 3 * 3> SNF = ConstructGenRmI(Gen, true);
     int Q[3 * 3];
     int nd = SmithNormalForm(SNF.elems, Gen.nAll() * 3, 3, 0, Q);
     cctbx_assert(nd >=0 && nd <= 3);
@@ -244,8 +245,8 @@ namespace cctbx { namespace sgtbx {
     for (id = 0; id < nd; id++) {
       int d = SNF[(nd + 1) * id];
       for (int f = 1; f < d; f++) {
-        int3 xp;
-        xp.assign(0);
+        af::int3 xp;
+        xp.fill(0);
         xp[id] = f * DTBF / d;
         TrVec x(DTBF);
         MatrixLite::multiply<int>(Q, xp.elems, 3, 3, 1, x.elems);
@@ -253,25 +254,25 @@ namespace cctbx { namespace sgtbx {
       }
     }
     int iDL;
-    DiscrList DiscrZ;
+    af::small<TrVec, 8> DiscrZ;
     for (iDL = 0; iDL < DiscrGrpP.nVects(); iDL++) {
       DiscrZ.push_back(
         (Gen.Z2POp.InvM().Rpart() * DiscrGrpP[iDL]).modPositive());
     }
     BestVectors(SgOps, m_VM, DiscrZ);
     std::sort(DiscrZ.begin(), DiscrZ.end(), CmpDiscrZ());
-    DiscrList DiscrP;
+    af::small<TrVec, 8> DiscrP;
     for (iDL = 0; iDL < DiscrZ.size(); iDL++) {
       DiscrP.push_back(
         (Gen.Z2POp.M().Rpart() * DiscrZ[iDL]).newBaseFactor(DTBF));
     }
-    cctbx::fixcap_vector<TrVec, 3>
+    af::small<TrVec, 3>
     DiscrGen = SelectDiscreteGenerators(DiscrP, DiscrZ);
     for (int iG = 0; iG < DiscrGen.size(); iG++) {
       cctbx_assert(m_VM.size() < 3);
       TrVec G = DiscrGen[iG].cancel();
       ssVM VM;
-      VM.V = static_cast<int3>(G);
+      VM.V = static_cast<af::int3>(G);
       VM.M = G.BF();
       m_VM.push_back(VM);
     }
@@ -281,7 +282,7 @@ namespace cctbx { namespace sgtbx {
   bool StructureSeminvariant::is_ss(const Miller::Index& H) const
   {
     for(std::size_t i=0;i<m_VM.size();i++) {
-      int u = m_VM[i].V * H;
+      int u = af::sum(m_VM[i].V * H);
       if (m_VM[i].M) {
         if (u % m_VM[i].M) return false;
       }
@@ -292,12 +293,12 @@ namespace cctbx { namespace sgtbx {
     return true;
   }
 
-  cctbx::fixcap_vector<int, 3>
+  af::small<int, 3>
   StructureSeminvariant::apply_mod(const Miller::Index& H) const
   {
-    cctbx::fixcap_vector<int, 3> result;
+    af::small<int, 3> result;
     for(std::size_t i=0;i<m_VM.size();i++) {
-      result.push_back(m_VM[i].V * H);
+      result.push_back(af::sum(m_VM[i].V * H));
       if (m_VM[i].M) result[i] %= m_VM[i].M;
     }
     return result;

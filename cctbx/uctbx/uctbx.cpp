@@ -11,8 +11,6 @@
  */
 
 #include <cctbx/uctbx.h>
-#include <cctbx/utils.h>
-#include <cctbx/basic/matrixlite.h>
 #include <cctbx/basic/define_range.h>
 
 namespace { // Helper functions in anonymous namespace.
@@ -35,23 +33,26 @@ namespace { // Helper functions in anonymous namespace.
     return std::cos(arg);
   }
 
-  inline double DotG(const double3& u, const double9& G, const double3& v) {
+  inline
+  double
+  DotG(const af::double3& u, const af::double9& G, const af::double3& v) {
     return   u[0] * (G[0] * v[0] + G[1] * v[1] + G[2] * v[2])
            + u[1] * (G[3] * v[0] + G[4] * v[1] + G[5] * v[2])
            + u[2] * (G[6] * v[0] + G[7] * v[1] + G[8] * v[2]);
   }
 
-  double3 CrossG(const double sqrtdetG, const double9& G,
-                 const double3& r, const double3& s) {
-    double3 Gr, Gs;
+  af::double3 CrossG(const double& sqrtdetG, const af::double9& G,
+                     const af::double3& r, const af::double3& s) {
+    af::double3 Gr, Gs;
     MatrixLite::multiply<double>(G.elems, r.elems, 3, 3, 1, Gr.elems);
     MatrixLite::multiply<double>(G.elems, s.elems, 3, 3, 1, Gs.elems);
     return sqrtdetG * MatrixLite::cross_product(Gr, Gs);
   }
 
-  double9 ConstructMetricalMatrix(const double3& Len, const double3& cosAng)
+  af::double9
+  ConstructMetricalMatrix(const af::double3& Len, const af::double3& cosAng)
   {
-    double9 G;
+    af::double9 G;
     rangei(3) G[i * 4] = Len[i] * Len[i];
     G[1] = G[3] = Len[0] * Len[1] * cosAng[2];
     G[2] = G[6] = Len[0] * Len[2] * cosAng[1];
@@ -59,13 +60,13 @@ namespace { // Helper functions in anonymous namespace.
     return G;
   }
 
-  bool isSymmetric(const double9& M, double tolerance = 1.e-6)
+  bool isSymmetric(const af::double9& M, double tolerance = 1.e-6)
   {
     double maxelem = M[0];
     for(int i=1;i<9;i++) if (maxelem < M[i]) maxelem = M[i];
-    return    approx_equal_scaled(M[1], M[3], maxelem * tolerance)
-           && approx_equal_scaled(M[2], M[6], maxelem * tolerance)
-           && approx_equal_scaled(M[5], M[7], maxelem * tolerance);
+    return    af::approx_equal_scaled(M[1], M[3], maxelem * tolerance)
+           && af::approx_equal_scaled(M[2], M[6], maxelem * tolerance)
+           && af::approx_equal_scaled(M[5], M[7], maxelem * tolerance);
   }
 }
 
@@ -195,7 +196,7 @@ namespace cctbx { namespace uctbx {
     Initialize();
   }
 
-  UnitCell::UnitCell(const double9& MetricalMatrix)
+  UnitCell::UnitCell(const af::double9& MetricalMatrix)
   {
     for (int i = 0; i < 9; i += 4) {
       if (MetricalMatrix[i] <= 0.) throw corrupt_metrical_matrix;
@@ -228,8 +229,10 @@ namespace cctbx { namespace uctbx {
   UnitCell::isEqual(const UnitCell& other, double tolerance) const
   {
     for(int i=0;i<3;i++) {
-      if (!approx_equal_unscaled(Len[i],other.Len[i], tolerance)) return false;
-      if (!approx_equal_unscaled(Ang[i],other.Ang[i], tolerance)) return false;
+      if (!af::approx_equal_unscaled(Len[i],other.Len[i], tolerance))
+        return false;
+      if (!af::approx_equal_unscaled(Ang[i],other.Ang[i], tolerance))
+        return false;
     }
     return true;
   }
@@ -239,7 +242,7 @@ namespace cctbx { namespace uctbx {
     Miller::Index MaxMIx;
     int i, j;
     for(i=0;i<3;i++) {
-      double3 u, v, uxv;
+      af::double3 u, v, uxv;
       for(j=0;j<3;j++) u[j] = 0.; u[(i + 1) % 3] = 1.;
       for(j=0;j<3;j++) v[j] = 0.; v[(i + 2) % 3] = 1.;
       uxv = CrossG(1., R_G, u, v); // Since length of uxv is not used
@@ -251,11 +254,11 @@ namespace cctbx { namespace uctbx {
     return MaxMIx;
   }
 
-  UnitCell UnitCell::ChangeBasis(const double9& InvCBMxR, double RBF) const
+  UnitCell UnitCell::ChangeBasis(const af::double9& InvCBMxR, double RBF) const
   {
-    double9 R = InvCBMxR;
+    af::double9 R = InvCBMxR;
     if (RBF != 0.) rangei(9) R[i] /= RBF;
-    double9 RtGR = getRtGR(G, R);
+    af::double9 RtGR = getRtGR(G, R);
     return UnitCell(RtGR);
   }
 

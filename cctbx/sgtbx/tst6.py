@@ -8,7 +8,7 @@ TidyCBOp = "--TidyCBOp" in sys.argv
 QuickMode = "--Quick" in sys.argv
 Endless = "--Endless" in sys.argv
 
-from cctbx import sgtbx
+from cctbx_boost import sgtbx
 
 #Shifts = (0, 1, 2, 3, 5, 7, 11)
 #Shifts = (1, 3)

@@ -87,18 +87,18 @@ compile:
 	cd examples/cpp; make
 
 lib_python_dir:
-	-test ! -d lib_python/cctbx && mkdir -p lib_python/cctbx
-	touch lib_python/cctbx/__init__.py
-	-test ! -d lib_python/cctbx/arraytbx && mkdir lib_python/cctbx/arraytbx
-	touch lib_python/cctbx/arraytbx/__init__.py
-	-test ! -d lib_python/cctbx/eltbx && mkdir lib_python/cctbx/eltbx
-	touch lib_python/cctbx/eltbx/__init__.py
-	cp uctbx/*.so lib_python/cctbx
-	cp sgtbx/*.so lib_python/cctbx
-	cp arraytbx/*.so lib_python/cctbx/arraytbx
-	cp adptbx/*.so lib_python/cctbx
-	cp eltbx/*.so lib_python/cctbx/eltbx
-	cp sftbx/*.so lib_python/cctbx
-	cp fftbx/*.so lib_python/cctbx
+	-test ! -d lib_python/cctbx_boost && mkdir -p lib_python/cctbx_boost
+	touch lib_python/cctbx_boost/__init__.py
+	-test ! -d lib_python/cctbx_boost/arraytbx && mkdir lib_python/cctbx_boost/arraytbx
+	touch lib_python/cctbx_boost/arraytbx/__init__.py
+	-test ! -d lib_python/cctbx_boost/eltbx && mkdir lib_python/cctbx_boost/eltbx
+	touch lib_python/cctbx_boost/eltbx/__init__.py
+	cp uctbx/*.so lib_python/cctbx_boost
+	cp sgtbx/*.so lib_python/cctbx_boost
+	cp arraytbx/*.so lib_python/cctbx_boost/arraytbx
+	cp adptbx/*.so lib_python/cctbx_boost
+	cp eltbx/*.so lib_python/cctbx_boost/eltbx
+	cp sftbx/*.so lib_python/cctbx_boost
+	cp fftbx/*.so lib_python/cctbx_boost
 
 all: compile lib_python_dir

@@ -17,42 +17,38 @@ namespace {
 
   using namespace cctbx;
 
-  boost::shared_ptr<std::vector<std::complex<double> > >
-  py_StructureFactorVector(
+  void
+  py_StructureFactorArray(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
-    const std::vector<Miller::Index>& H,
-    const std::vector<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >&
-      Sites)
+    const af::shared<Miller::Index>& H,
+    const af::shared<
+      sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >& Sites,
+    af::shared<std::complex<double> > Fcalc)
   {
-    boost::shared_ptr<std::vector<std::complex<double> > >
-    Fcalc(new std::vector<std::complex<double> >(H.size()));
-    sftbx::StructureFactorVector(UC, SgOps, H, Sites, *Fcalc);
-    return Fcalc;
+    sftbx::StructureFactorArray(UC, SgOps, H, Sites, Fcalc.ref());
   }
 
-  boost::shared_ptr<std::vector<Miller::Index> >
+  af::shared<Miller::Index>
   py_BuildMillerIndices_Resolution_d_min(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroupInfo& SgInfo,
     double Resolution_d_min)
   {
-    boost::shared_ptr<std::vector<Miller::Index> >
-    VectorOfH(new std::vector<Miller::Index>);
+    af::shared<Miller::Index> result;
     sgtbx::MillerIndexGenerator(
-      UC, SgInfo, Resolution_d_min).AddToVector(*VectorOfH);
-    return VectorOfH;
+      UC, SgInfo, Resolution_d_min).AddToArray(result);
+    return result;
   }
-  boost::shared_ptr<std::vector<Miller::Index> >
+  af::shared<Miller::Index>
   py_BuildMillerIndices_MaxIndex(
     const sgtbx::SpaceGroupInfo& SgInfo,
     const Miller::Index& MaxIndex)
   {
-    boost::shared_ptr<std::vector<Miller::Index> >
-    VectorOfH(new std::vector<Miller::Index>);
+    af::shared<Miller::Index> result;
     sgtbx::MillerIndexGenerator(
-      SgInfo, MaxIndex).AddToVector(*VectorOfH);
-    return VectorOfH;
+      SgInfo, MaxIndex).AddToArray(result);
+    return result;
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
@@ -64,25 +60,25 @@ namespace {
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
     python::import_converters<uctbx::UnitCell>
-    py_UnitCell("cctbx.uctbx", "UnitCell");
+    py_UnitCell("cctbx_boost.uctbx", "UnitCell");
     python::import_converters<sgtbx::SpaceGroup>
-    py_SpaceGroup("cctbx.sgtbx", "SpaceGroup");
+    py_SpaceGroup("cctbx_boost.sgtbx", "SpaceGroup");
     python::import_converters<sgtbx::SpaceGroupInfo>
-    py_SpaceGroupInfo("cctbx.sgtbx", "SpaceGroupInfo");
+    py_SpaceGroupInfo("cctbx_boost.sgtbx", "SpaceGroupInfo");
     python::import_converters<eltbx::CAASF_WK1995>
-    py_CAASF_WK1995("cctbx.eltbx.caasf_wk1995", "CAASF_WK1995");
+    py_CAASF_WK1995("cctbx_boost.eltbx.caasf_wk1995", "CAASF_WK1995");
 
-    python::import_converters<std::vector<std::complex<double> > >
-    py_std_vector_complex_double(
-      "cctbx.arraytbx.std_vector", "complex_double");
+    python::import_converters<af::shared<std::complex<double> > >
+    py_shared_complex_double(
+      "cctbx_boost.arraytbx.shared", "complex_double");
 
-    python::import_converters<std::vector<Miller::Index> >
-    py_std_vector_Miller_Index(
-      "cctbx.arraytbx.std_vector", "Miller_Index");
+    python::import_converters<af::shared<Miller::Index> >
+    py_shared_Miller_Index(
+      "cctbx_boost.arraytbx.shared", "Miller_Index");
 
     python::import_converters<
-      std::vector<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > >
-    py_std_vector_XrayScatterer("cctbx.arraytbx.std_vector", "XrayScatterer");
+      af::shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > >
+    py_shared_XrayScatterer("cctbx_boost.arraytbx.shared", "XrayScatterer");
 
     class_builder<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
     py_XrayScatterer(this_module, "XrayScatterer");
@@ -102,7 +98,7 @@ namespace {
       const std::complex<double>&,
       const fractional<double>&,
       const double&,
-      const double6&>());
+      const af::double6&>());
     py_XrayScatterer.def(
       &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::Label, "Label");
@@ -140,7 +136,7 @@ namespace {
       &sftbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::StructureFactor, "StructureFactor");
 
-    this_module.def(py_StructureFactorVector, "StructureFactorVector");
+    this_module.def(py_StructureFactorArray, "StructureFactorArray");
     this_module.def(py_BuildMillerIndices_Resolution_d_min,
                       "BuildMillerIndices");
     this_module.def(py_BuildMillerIndices_MaxIndex,

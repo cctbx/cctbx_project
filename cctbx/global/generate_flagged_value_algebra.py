@@ -208,6 +208,8 @@ def run():
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
+#include <cctbx/array_family/flagged_value.h>
+
 #include <cctbx/array_family/operator_traits_builtin.h>
 #include <cctbx/array_family/std_imports.h>
 #include <cctbx/array_family/misc_functions.h>
@@ -232,7 +234,17 @@ namespace cctbx { namespace af {
     a[2][1] = ", " + a[2][1]
     apply(generate_2arg_element_wise, a)
 
-  print """}} // namespace cctbx::af
+  print """template<typename ValueTypeLhs, typename ValueTypeRhs>
+  struct binary_operator_traits<
+    flagged_value<ValueTypeLhs>,
+    flagged_value<ValueTypeRhs> > {
+    typedef binary_operator_traits<ValueTypeLhs, ValueTypeRhs> val_traits;
+    typedef flagged_value<typename val_traits::arithmetic> arithmetic;
+    typedef flagged_value<typename val_traits::logical> logical;
+    typedef flagged_value<typename val_traits::boolean> boolean;
+  };
+
+}} // namespace cctbx::af
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 

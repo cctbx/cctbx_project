@@ -178,11 +178,15 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
       r.return_element_type = [
         "typename binary_operator_traits<",
         "  ElementType, ElementType>::" + op_class]
+    elif (op_class == "bool_result"):
+      r.return_element_type = ["bool"]
   else:
     r = get_template_header_and_parameters(
       array_type_name, 2, equal_element_type)
     r.return_element_type = [r.nta[0][0][1]]
-    if (op_class != "n/a"):
+    if (op_class == "bool_result"):
+      r.return_element_type = ["bool"]
+    elif (op_class != "n/a"):
       r.return_element_type = [
         "typename binary_operator_traits<",
         "  ElementType1, ElementType2>::" + op_class]
@@ -528,7 +532,8 @@ def generate_2arg_addl_element_wise(
   for function_name in function_names:
     for type_flags in ((1,1), (1,0), (0,1)):
       d = operator_decl_params(
-        array_type_name, "binary", "n/a", type_flags, equal_element_type)
+        array_type_name, "binary", "bool_result",
+        type_flags, equal_element_type)
       a = binary_operator_algo_params(array_type_name, type_flags)
       print """%s
   inline
@@ -631,11 +636,20 @@ def one_type(array_type_name):
 #define CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
-""" % ((array_type_name.upper(),) * 2)
+
+#include <cctbx/array_family/%s.h>
+""" % ((array_type_name.upper(),) * 2 + (array_type_name,))
+  if (array_type_name == "tiny"):
+    print """#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+
+#include <cctbx/array_family/tiny_trivial_algebra.h>
+
+#else
+"""
+  print "#include <cctbx/array_family/operator_traits_builtin.h>"
+  print "#include <cctbx/array_family/operator_functors.h>"
+  print "#include <cctbx/array_family/generic_array_operators.h>"
   if (array_type_name != "ref"):
-    print "#include <cctbx/array_family/operator_traits_builtin.h>"
-    print "#include <cctbx/array_family/operator_functors.h>"
-    print "#include <cctbx/array_family/generic_array_operators.h>"
     print "#include <cctbx/array_family/std_imports.h>"
     print "#include <cctbx/array_family/misc_functions.h>"
   print """#include <cctbx/array_family/reductions.h>
@@ -643,13 +657,16 @@ def one_type(array_type_name):
 namespace cctbx { namespace af {
 """
 
-  if (array_type_name != "ref"):
-    generate_unary_ops(array_type_name)
-    for op_symbol in arithmetic_binary_ops:
-      generate_elementwise_binary_op(
-        array_type_name, "arithmetic", op_symbol)
-      generate_elementwise_inplace_binary_op(
-        array_type_name, "arithmetic", op_symbol + "=")
+  all = 1
+  if (array_type_name == "ref"):
+    all = 0
+  if (all): generate_unary_ops(array_type_name)
+  for op_symbol in arithmetic_binary_ops:
+    if (all): generate_elementwise_binary_op(
+      array_type_name, "arithmetic", op_symbol)
+    generate_elementwise_inplace_binary_op(
+      array_type_name, "arithmetic", op_symbol + "=")
+  if (all):
     for op_symbol in logical_binary_ops:
       generate_elementwise_binary_op(
         array_type_name, "logical", op_symbol)
@@ -662,8 +679,9 @@ namespace cctbx { namespace af {
       ("<=", "less_equal")):
       generate_elementwise_binary_op(
         array_type_name, "boolean", op_symbol, function_name)
-    for op_symbol in boolean_binary_ops:
-      generate_reducing_boolean_op(array_type_name, op_symbol)
+  for op_symbol in boolean_binary_ops:
+    generate_reducing_boolean_op(array_type_name, op_symbol)
+  if (all):
     generate_1arg_element_wise(
       array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
     generate_2arg_element_wise(array_type_name, cmath_2arg)
@@ -674,11 +692,16 @@ namespace cctbx { namespace af {
   generate_1arg_reductions(array_type_name)
   generate_2arg_reductions(array_type_name)
 
-  print """}} // namespace cctbx::af
+  print "}} // namespace cctbx::af"
+  print
+  if (array_type_name == "tiny"):
+    print "#endif // (defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0"
+    print
+  print "#endif // DOXYGEN_SHOULD_SKIP_THIS"
+  print
+  print "#endif // CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H" % (
+    array_type_name.upper(),)
 
-#endif // DOXYGEN_SHOULD_SKIP_THIS
-
-#endif // CCTBX_ARRAY_FAMILY_%s_ALGEBRA_H""" % (array_type_name.upper(),)
   sys.stdout = sys.__stdout__
   f.close()
 
