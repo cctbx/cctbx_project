@@ -205,7 +205,7 @@ else:
       SHCC="gcc",
       CXX="g++",
       LINK="g++",
-      SHCXX="g++",
+      SHCXX="libtbx.mac_os_x_cpp",
       SHLINK="g++",
       SHLIBSUFFIX=".dylib",
     )
