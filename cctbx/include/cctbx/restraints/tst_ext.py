@@ -125,6 +125,45 @@ def exercise_bond():
      (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
 
 def exercise_repulsion():
+  p = restraints.repulsion_proxy(
+    i_seqs=[0,1],
+    vdw_radius=5)
+  assert p.i_seqs == (0,1)
+  assert approx_equal(p.vdw_radius, 5)
+  r = restraints.repulsion(
+    sites=[(1,2,3),(2,4,6)],
+    vdw_radius=5)
+  assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
+  assert approx_equal(r.vdw_radius, 5)
+  assert approx_equal(r.function.c_rep, 16)
+  assert approx_equal(r.delta, 3.74165738677)
+  assert approx_equal(r.residual(), 40.1158130612)
+  assert approx_equal(r.gradients(),
+    [(34.081026602378813, 68.162053204757626, 102.24307980713644),
+     (-34.081026602378813, -68.162053204757626, -102.24307980713644)])
+  sites_cart = flex.vec3_double([(1,2,3),(2,4,6)])
+  r = restraints.repulsion(
+    sites_cart=sites_cart,
+    proxy=p)
+  assert approx_equal(r.sites, [(1,2,3),(2,4,6)])
+  assert approx_equal(r.vdw_radius, 5)
+  assert approx_equal(r.function.c_rep, 16)
+  assert approx_equal(r.delta, 3.74165738677)
+  proxies = restraints.shared_repulsion_proxy([p,p])
+  for proxy in proxies:
+    assert approx_equal(proxy.vdw_radius, 5)
+  assert approx_equal(restraints.repulsion_deltas(
+    sites_cart=sites_cart,
+    proxies=proxies), [3.74165738677]*2)
+  assert approx_equal(restraints.repulsion_residuals(
+    sites_cart=sites_cart,
+    proxies=proxies), [40.1158130612]*2)
+  residual_sum = restraints.repulsion_residual_sum(
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None)
+  assert approx_equal(residual_sum, 2*40.1158130612)
+  #
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
   asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
     sites_cart=sites_cart)
@@ -142,11 +181,11 @@ def exercise_repulsion():
   p.vdw_radius = 3
   assert approx_equal(p.vdw_radius, 3)
   p.vdw_radius = 2
-  proxies = restraints.shared_repulsion_sym_proxy([p,p])
-  for proxy in proxies:
+  sym_proxies = restraints.shared_repulsion_sym_proxy([p,p])
+  for proxy in sym_proxies:
     assert approx_equal(proxy.vdw_radius, 2)
     proxy.vdw_radius = 3
-  for proxy in proxies:
+  for proxy in sym_proxies:
     assert approx_equal(proxy.vdw_radius, 3)
     proxy.vdw_radius = 2
   f = restraints.repulsion_function(
@@ -183,33 +222,33 @@ def exercise_repulsion():
     flex.pow2(restraints.repulsion_deltas(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies)),
+      proxies=sym_proxies)),
     [3]*2)
   assert approx_equal(
     flex.pow2(restraints.repulsion_deltas(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies,
+      proxies=sym_proxies,
       function=restraints.repulsion_function())),
     [3]*2)
   assert approx_equal(
     restraints.repulsion_residuals(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies),
+      proxies=sym_proxies),
     [0.0824764182859]*2)
   assert approx_equal(
     restraints.repulsion_residuals(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies,
+      proxies=sym_proxies,
       function=restraints.repulsion_function()),
     [0.0824764182859]*2)
   assert approx_equal(
     restraints.repulsion_residual_sum(
       sites_cart=sites_cart,
       asu_mappings=asu_mappings,
-      proxies=proxies,
+      proxies=sym_proxies,
       gradient_array=None),
     0.0824764182859*2)
   for disable_cache in [00000, 0001]:
@@ -218,7 +257,7 @@ def exercise_repulsion():
       restraints.repulsion_residual_sum(
         sites_cart=sites_cart,
         asu_mappings=asu_mappings,
-        proxies=proxies,
+        proxies=sym_proxies,
         gradient_array=gradient_array,
         function=restraints.repulsion_function(),
         disable_cache=disable_cache),
@@ -226,6 +265,30 @@ def exercise_repulsion():
     assert approx_equal(gradient_array,
       [(1.4216958630745458, 1.4216958630745458, 1.4216958630745458),
        (-1.4216958630745458, -1.4216958630745458, -1.4216958630745458)])
+  #
+  sorted_proxies = restraints.repulsion_sorted_proxies(
+    asu_mappings=asu_mappings)
+  assert sorted_proxies.asu_mappings().is_locked()
+  assert not sorted_proxies.process(proxy=proxies[0])
+  assert not sorted_proxies.process(proxy=sym_proxies[0])
+  assert sorted_proxies.proxies.size() == 2
+  assert sorted_proxies.sym_proxies.size() == 0
+  assert sorted_proxies.n_total() == 2
+  residual_0 = restraints.repulsion(
+    sites_cart=sites_cart,
+    proxy=proxies[0]).residual()
+  residual_1 = restraints.repulsion(
+    sites_cart=sites_cart,
+    asu_mappings=asu_mappings,
+    proxy=sym_proxies[0]).residual()
+  gradient_array = flex.vec3_double(2, [0,0,0])
+  assert approx_equal(restraints.repulsion_residual_sum(
+    sites_cart=sites_cart,
+    sorted_proxies=sorted_proxies,
+    gradient_array=gradient_array), residual_0+residual_1)
+  assert approx_equal(gradient_array,
+    [(1290.2817767146657, 1290.2817767146657, 1290.2817767146657),
+     (-1290.2817767146657, -1290.2817767146657, -1290.2817767146657)])
 
 def exercise_angle():
   p = restraints.angle_proxy(
