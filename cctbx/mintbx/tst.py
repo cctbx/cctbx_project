@@ -99,7 +99,8 @@ def exercise_k_b_scaling(SgInfo, d_min=2., verbose=0):
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
   multiplicity_set = xutils.reciprocal_space_array(miller_set,
     xtal.SgOps.multiplicity(miller_set.H, friedel_flag))
-  f_ref = xutils.calculate_structure_factors(miller_set, xtal, abs_F=1)
+  f_ref = xutils.calculate_structure_factors_direct(
+    miller_set, xtal, abs_F=1)
   for anisotropic in (0,1):
     f_sca = xutils.reciprocal_space_array(miller_set, shared.double())
     k_sim = 1000

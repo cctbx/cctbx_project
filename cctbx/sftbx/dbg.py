@@ -88,7 +88,7 @@ def exercise(SgInfo,
   friedel_flag = not (random_f_double_prime or force_complex)
   print "friedel_flag:", friedel_flag
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
-  Fcalc = xutils.calculate_structure_factors(miller_set, xtal)
+  Fcalc = xutils.calculate_structure_factors_direct(miller_set, xtal)
   if (0):
     # to verify that correlation is significantly different from 1.
     zero_out_fpfdp(xtal)
@@ -158,7 +158,8 @@ def exercise(SgInfo,
   if (0):
     u_extra = sampled_density.u_extra()
     xtal_extra = add_u_extra(xtal, u_extra)
-    fcalc_extra = xutils.calculate_structure_factors(miller_set, xtal_extra)
+    fcalc_extra = xutils.calculate_structure_factors_direct(
+      miller_set, xtal_extra)
     debug_utils.show_structure_factor_correlation(
       "before", Fcalc.H, 0, Fcalc.F, fcalc_extra.F)
     sftbx.eliminate_u_extra(
