@@ -180,7 +180,7 @@ def _get_map_string(map, pattern, wildcard_escape_char='\\'):
   do_strip = False
   do_upper = False
   if (not isinstance(pattern, str)):
-    if (pattern.quote_char is None):
+    if (pattern.quote_token is None):
       do_strip = True
       do_upper = True
       for c in pattern.value:

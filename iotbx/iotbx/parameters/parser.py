@@ -1,17 +1,15 @@
 from iotbx import parameters
-from iotbx import simple_tokenizer
-from cStringIO import StringIO
 
 def collect_values(word_stack, last_word):
   result = []
   while (len(word_stack) > 0):
     word = word_stack.pop()
-    if (last_word.value == "\\"):
+    if (last_word.value == "\\" or word.quote_token is not None):
       result.append(word)
     elif (word.line_number != last_word.line_number):
       word_stack.push_back(word)
       break
-    elif (word.quote_char is not None or word.value != "\\"):
+    elif (word.value != "\\"):
       result.append(word)
     last_word = word
   return result
@@ -55,7 +53,7 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
     else:
       lead_word = word
       word = word_stack.pop()
-      if (word.quote_char is None and word.value == "{"):
+      if (word.quote_token is None and word.value == "{"):
         objects.append(parameters.scope(
           name=lead_word.value,
           objects=collect_objects(
@@ -81,21 +79,3 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
   if (stop_token is not None):
     raise RuntimeError('No matching "%s".' % stop_token)
   return objects
-
-def run():
-  import sys
-  input_string = open(sys.argv[1]).read()
-  word_stack = simple_tokenizer.as_word_stack(
-    input_string=input_string,
-    contiguous_word_characters="")
-  objects = collect_objects(
-    word_stack=word_stack,
-    definition_type_names=parameters.default_definition_type_names)
-  if (1):
-    out=sys.stdout
-  else:
-    out=StringIO()
-  for object in objects:
-    object.show(out=out, prefix="", attributes_level=1)
-
-run()
