@@ -239,7 +239,8 @@ def select_array(
       error_message_multiple_equally_suitable):
   if (labels is not None): assert parameter_name is not None
   if (len(miller_arrays) == 0):
-    raise UserError("No reflection arrays available.")
+    raise UserError_No_array_of_the_required_type(
+      "No reflection arrays available.")
   if (data_scores is not None):
     assert max(data_scores) >= 0
   else:
