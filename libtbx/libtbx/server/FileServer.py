@@ -275,6 +275,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
 
     sys.stdout.flush()
 
+#-----------------------------------------------------------------------------
 
 def StartServer():
   s = FileSocket.GetSocket()
@@ -301,17 +302,33 @@ def BindClient(host, port):
 
   return client
 
-def GetServerClient():
+def ReadServerFile():
   host = None
+  port = None
   try:
     f = open('server.port', 'rb')
     host, port = pickle.load(f)
     f.close()
   except:
     print 'failed to read server port file'
+  return host, port
 
+def WriteServerFile(port):
+  try:
+    f = open('server.port', 'wb')
+    pickle.dump((socket.getfqdn(),
+                 port),
+                f
+                )
+    f.close()
+  except:
+    print 'failed to write server port file'
+
+def GetServerClient():
+  host, port = ReadServerFile()
   client = None
   if host:
     client = BindClient(host, port)
 
   return client
+
