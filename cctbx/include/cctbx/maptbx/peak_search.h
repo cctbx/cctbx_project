@@ -423,10 +423,10 @@ namespace cctbx { namespace maptbx {
         af::shared<std::size_t>
           perm = af::sort_permutation(heights_.const_ref(), true);
         af::const_ref<std::size_t> p = perm.const_ref();
-        grid_indices_ = af::shuffle(grid_indices_.const_ref(), p);
-        grid_heights_ = af::shuffle(grid_heights_.const_ref(), p);
-        sites_ = af::shuffle(sites_.const_ref(), p);
-        heights_ = af::shuffle(heights_.const_ref(),p);
+        grid_indices_ = af::select(grid_indices_.const_ref(), p);
+        grid_heights_ = af::select(grid_heights_.const_ref(), p);
+        sites_ = af::select(sites_.const_ref(), p);
+        heights_ = af::select(heights_.const_ref(),p);
       }
   };
 
