@@ -2,8 +2,10 @@
 #include <iotbx/cppmtz.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
+#include <ccp4_errno.h>
 
 namespace iotbx { namespace mtz { namespace boost_python {
 
@@ -84,6 +86,8 @@ namespace iotbx { namespace mtz { namespace boost_python {
 BOOST_PYTHON_MODULE(iotbx_mtz_ext)
 {
   using namespace iotbx::mtz::boost_python;
+  CCP4::ccp4_liberr_verbosity(0);
+  boost::python::def("ccp4_liberr_verbosity", CCP4::ccp4_liberr_verbosity);
   wrap_Mtz();
   wrap_Crystal();
   wrap_Dataset();

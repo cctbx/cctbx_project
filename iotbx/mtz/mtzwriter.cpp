@@ -20,6 +20,7 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
   int val_nsympx= sg.order_p();
   float rsymx[192][4][4];
 
+  CCTBX_ASSERT(sg.order_z() <= 192);
   for(std::size_t i=0;i<sg.order_z();i++) {
     cctbx::sgtbx::rt_mx s = sg(i);
     cctbx::sgtbx::rot_mx r = s.r();
@@ -53,8 +54,8 @@ void iotbx::mtz::MtzWriter::setSpaceGroup(const cctbx::sgtbx::space_group& sg,
   CCTBX_ASSERT(strlen(mgcode.label()) <= 10);
   sprintf(pgname,"%s",mgcode.label());
 
-  ccp4_lwsymm(mtz, &val_nsymx, &val_nsympx, rsymx, &val_ltypex,
-              &val_nspgrx, sgtype_s, pgname);
+  ccp4_lwsymm(mtz, val_nsymx, val_nsympx, rsymx, &val_ltypex,
+              val_nspgrx, sgtype_s, pgname);
 }
 
 void iotbx::mtz::MtzWriter::oneCrystal(const std::string& crystal,

@@ -28,12 +28,16 @@ def recycle(miller_array, mtz_label, verbose=0):
     p = dump("tmp.mtz")
   else:
     p = mtz.Mtz("tmp.mtz")
-  assert p.title() == "mtz writer test"
+  assert p.title().rstrip() == "mtz writer test"
   assert p.nsym() == miller_array.space_group().order_z()
-  assert p.ncrystals() == 1
+  assert p.ncrystals() in (1,2) # XXX transition from ccp4io_2003 -> Apr 2004
   assert p.getSgtbxSpaceGroup() == miller_array.space_group()
   assert p.history().size() == 0
   cryst = p.getCrystal(0)
+  if (p.ncrystals() == 2):
+    assert cryst.crystal_name() == "HKL_base"
+    assert cryst.project_name() == "HKL_base"
+    cryst = p.getCrystal(1)
   assert cryst.crystal_name() == "test_crystal"
   assert cryst.project_name() == "test_project"
   assert cryst.UnitCell().is_similar_to(miller_array.unit_cell())
@@ -122,6 +126,11 @@ def exercise(space_group_info, n_scatterers=8, d_min=2.5,
              anomalous_flag=00000, verbose=0):
   if (anomalous_flag and space_group_info.group().is_centric()):
     return
+  assert mtz.ccp4_liberr_verbosity(-1) == 0
+  assert mtz.ccp4_liberr_verbosity(1) == 1
+  assert mtz.ccp4_liberr_verbosity(-1) == 1
+  assert mtz.ccp4_liberr_verbosity(0) == 0
+  assert mtz.ccp4_liberr_verbosity(-1) == 0
   structure = random_structure.xray_structure(
     space_group_info,
     elements=["const"]*n_scatterers,
