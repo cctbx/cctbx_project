@@ -389,7 +389,7 @@ namespace sgtbx {
     : m_CBOp(), m_isReferenceASU(true), m_ReferenceASU()
   {
     m_CBOp = SgType.CBOp();
-    m_isReferenceASU = m_CBOp.M().isUnit();
+    m_isReferenceASU = m_CBOp.M().Rpart().isUnit();
     using namespace tables::MatrixGroup;
     Code MGC = tables::ReferenceSettings::MatrixGroupCodes[SgType.SgNumber()];
     Code LG_MGC = MGC.LaueGroupType();
