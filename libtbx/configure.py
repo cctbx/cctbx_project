@@ -139,12 +139,14 @@ def find_scons(env):
     try: import SCons
     except: pass
     else: env.libtbx_scons = "default"
-  if (env.libtbx_scons == None):
-    print >> sys.stderr, "Cannot find SCons (Software Construction Tool)"
-    print >> sys.stderr, "Please refer to file: XXX"
-    sys.exit(1)
 
 def emit_SConstruct(env, libtbx_info):
+  if (env.libtbx_scons == None):
+    if (not os.path.isdir("libtbx")):
+      print >> sys.stderr, "Warning: Cannot find SCons (Software Construction Tool)"
+      print >> sys.stderr, "         For more information please refer to:"
+      print >> sys.stderr, "         XXX"
+    return
   SConstruct_path = norm(join(env.libtbx_build, "SConstruct"))
   f = open_info(SConstruct_path)
   print >> f, 'import os, os.path'
