@@ -28,12 +28,12 @@ def LATT_SYMM(s, space_group):
   for i in xrange(1, space_group.n_smx()):
     print >> s, "SYMM", space_group(i).as_xyz(0, 0, "XYZ", ",")
 
-def shelxd(s, title, crystal_symmetry, n_sites, scatterer_label, d_min):
+def shelxd(s, title, crystal_symmetry, n_sites, scattering_type, d_min):
   print >> s, "TITL", title
   print >> s, "CELL 1.0 %.6g %.6g %.6g %.6g %.6g %.6g" \
                 % crystal_symmetry.unit_cell().parameters()
   LATT_SYMM(s, crystal_symmetry.space_group())
-  print >> s, "SFAC", scatterer_label
+  print >> s, "SFAC", scattering_type
   print >> s, "UNIT", n_sites * 4
   print >> s, "SHEL 999 %.2f" % d_min
   print >> s, "PSMF  pres -%.2f" % d_min

@@ -3,7 +3,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import xray
-from cctbx.eltbx.caasf import wk1995
+from cctbx import eltbx
 from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import adopt_init_args
 import re
@@ -15,12 +15,12 @@ class sdb_site:
     adopt_init_args(self, locals())
 
   def as_xray_scatterer(self, unit_cell=None):
-    caasf = None
-    try: caasf = wk1995(self.type)
-    except:
-      try: caasf = wk1995(self.segid)
-      except: pass
-    if (caasf is None): caasf = wk1995("const")
+    scattering_type = None
+    try: scattering_type = eltbx.caasf.wk1995(self.type).label()
+    except RuntimeError:
+      try: scattering_type = eltbx.caasf.wk1995(self.segid).label()
+      except RuntimeError: pass
+    if (scattering_type is None): scattering_type = "unknown"
     site = (self.x, self.y, self.z)
     if (unit_cell is not None): site = unit_cell.fractionalize(site)
     return xray.scatterer(
@@ -28,7 +28,7 @@ class sdb_site:
       site=site,
       u=adptbx.b_as_u(self.b),
       occupancy=self.q,
-      caasf=caasf)
+      scattering_type=scattering_type)
 
 class sdb_file:
 

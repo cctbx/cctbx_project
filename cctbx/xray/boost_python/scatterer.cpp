@@ -3,11 +3,8 @@
 #include <cctbx/xray/scatterer.h>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION >= 103000
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
-#endif
 
 namespace cctbx { namespace xray { namespace boost_python {
 
@@ -25,30 +22,28 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-#if BOOST_VERSION >= 103000
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
-#endif
       class_<w_t>("scatterer", no_init)
         .def(init<std::string const&,
                   fractional<flt_t> const&,
                   flt_t const&,
                   flt_t const&,
-                  eltbx::caasf::wk1995 const&,
+                  std::string const&,
                   flt_t const&,
                   flt_t const&>())
         .def(init<std::string const&,
                   fractional<flt_t> const&,
                   scitbx::sym_mat3<flt_t> const&,
                   flt_t const&,
-                  eltbx::caasf::wk1995 const&,
+                  std::string const&,
                   flt_t const&,
                   flt_t const&>())
-#if BOOST_VERSION >= 103000
         .add_property("label", make_getter(&w_t::label, rbv()),
                                make_setter(&w_t::label, dcp()))
-        .add_property("caasf", make_getter(&w_t::caasf, rbv()),
-                               make_setter(&w_t::caasf, dcp()))
+        .add_property("scattering_type",
+          make_getter(&w_t::scattering_type, rbv()),
+          make_setter(&w_t::scattering_type, dcp()))
         .add_property("fp", make_getter(&w_t::fp, rbv()),
                             make_setter(&w_t::fp, dcp()))
         .add_property("fdp", make_getter(&w_t::fdp, rbv()),
@@ -64,17 +59,6 @@ namespace {
                                make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
-#else
-        .def_readwrite("label", &w_t::label)
-        .def_readwrite("caasf", &w_t::caasf)
-        .def_readwrite("fp", &w_t::fp)
-        .def_readwrite("fdp", &w_t::fdp)
-        .def_readwrite("site", &w_t::site)
-        .def_readwrite("occupancy", &w_t::occupancy)
-        .def_readwrite("anisotropic_flag", &w_t::anisotropic_flag)
-        .def_readwrite("u_iso", &w_t::u_iso)
-        .def_readwrite("u_star", &w_t::u_star)
-#endif
         .def("apply_symmetry", &w_t::apply_symmetry,apply_symmetry_overloads())
         .def("update_weight", &w_t::update_weight)
         .def("multiplicity", &w_t::multiplicity)

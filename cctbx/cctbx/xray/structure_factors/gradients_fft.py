@@ -36,6 +36,7 @@ class gradients_fft(gradients_base):
     time_sampling = user_plus_sys_time()
     scattering_dict = ext.scattering_dictionary(xray_structure.scatterers())
     scattering_dict.assign_from_table("WK1995")
+    assert scattering_dict.find_all_zero().size() == 0
     self._results = ext.fast_gradients(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),

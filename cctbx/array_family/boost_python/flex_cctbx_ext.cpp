@@ -8,6 +8,7 @@
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/utils.h>
+#include <cctbx/eltbx/caasf.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>

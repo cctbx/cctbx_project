@@ -2,6 +2,7 @@
 #define CCTBX_XRAY_SCATTERING_DICTIONARY_H
 
 #include <cctbx/xray/scatterer.h>
+#include <cctbx/eltbx/caasf.h>
 #include <map>
 
 namespace cctbx { namespace xray {
@@ -31,7 +32,8 @@ namespace cctbx { namespace xray {
         n_scatterers_(xray_scatterers.size())
       {
         for(std::size_t i=0;i<xray_scatterers.size();i++) {
-          dict_[xray_scatterers[i].caasf.label()].member_indices.push_back(i);
+          dict_[xray_scatterers[i].scattering_type]
+            .member_indices.push_back(i);
         }
       }
 
@@ -43,6 +45,28 @@ namespace cctbx { namespace xray {
 
       dict_type&
       dict() { return dict_; }
+
+      af::shared<std::string>
+      find_all_zero() const
+      {
+        af::shared<std::string> result;
+        for(dict_type::const_iterator e=dict_.begin();e!=dict_.end();e++) {
+          if (e->second.coefficients.all_zero()) {
+            result.push_back(e->first);
+          }
+        }
+        return result;
+      }
+
+      scatterer_group const&
+      lookup(std::string const& label) const
+      {
+        dict_type::const_iterator e = dict_.find(label);
+        if (e == dict_.end()) {
+          throw error("Label not in scattering dictionary: " + label);
+        }
+        return e->second;
+      }
 
       af::shared<std::size_t>
       scatterer_permutation() const

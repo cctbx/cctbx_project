@@ -134,6 +134,7 @@ def exercise_from_scatterers_direct(space_group_info,
     cos_sin_table=00000).f_calc()
   scattering_dict = xray.scattering_dictionary(structure.scatterers())
   scattering_dict.assign_from_table("WK1995")
+  assert scattering_dict.find_all_zero().size() == 0
   f_obs_simple = xray.ext.structure_factors_simple(
     f_obs_exact.unit_cell(),
     f_obs_exact.space_group(),

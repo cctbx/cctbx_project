@@ -15,6 +15,7 @@ class from_scatterers_fft(managed_calculation_base):
     time_sampling = user_plus_sys_time()
     scattering_dict = ext.scattering_dictionary(xray_structure.scatterers())
     scattering_dict.assign_from_table("WK1995")
+    assert scattering_dict.find_all_zero().size() == 0
     sampled_density = ext.sampled_model_density(
       xray_structure.unit_cell(),
       xray_structure.scatterers(),

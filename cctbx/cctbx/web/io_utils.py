@@ -2,7 +2,7 @@ from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-from cctbx.eltbx.caasf import wk1995
+from cctbx import eltbx
 from cctbx import adptbx
 from cctbx.web import cgi_utils
 
@@ -44,10 +44,10 @@ def read_scatterer(flds, default_b_iso=3.0):
       float(flds[1])
     except:
       offs = 2
-      scatterer.caasf = wk1995(flds[1], 0001)
+      scatterer.scattering_type = eltbx.caasf.wk1995(flds[1], 0001).label()
     else:
       offs = 1
-      scatterer.caasf = wk1995(flds[0], 00000)
+      scatterer.scattering_type = eltbx.caasf.wk1995(flds[0], 00000).label()
     site = flds[offs : offs + 3]
     for i in xrange(3):
       site[i] = float(site[i])
@@ -104,7 +104,7 @@ def structure_from_inp(inp, status, special_position_settings):
            + "<td><tt>%.6g</tt><td><tt>%.6g</tt><td><tt>%.6g</tt>"
            + "<td align=center><tt>%.6g</tt>"
            + "<td align=center><tt>%.6g</tt>") % (
-      (scatterer.label, scatterer.caasf.label(),
+      (scatterer.label, scatterer.scattering_type,
        wyckoff_position.multiplicity(), wyckoff_position.letter(),
        site_symmetry.point_group_type())
      + scatterer.site

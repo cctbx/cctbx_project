@@ -37,6 +37,7 @@ namespace {
         .def("b", (af::small<float, w_t::max_n_ab> const&(w_t::*)()const)
           &w_t::b, ccr())
         .def("c", &w_t::c)
+        .def("all_zero", &w_t::all_zero)
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
         .def("at_d_star_sq", &w_t::at_d_star_sq)

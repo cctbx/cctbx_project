@@ -63,14 +63,13 @@ def exercise_gradient_flags():
   assert f.adjust(0001).u_aniso == 0001
 
 def exercise_xray_scatterer():
-  scf = caasf.wk1995("const")
-  x = xray.scatterer("a", (0.1,0.2,0.3), 0.25, 0.9, scf, 0, 0)
+  x = xray.scatterer("a", (0.1,0.2,0.3), 0.25, 0.9, "const", 0, 0)
   assert x.label == "a"
   x.label = "b"
   assert x.label == "b"
-  assert x.caasf.label() == "const"
-  x.caasf = caasf.wk1995("SI")
-  assert x.caasf.label() == "Si"
+  assert x.scattering_type == "const"
+  x.scattering_type = "Si"
+  assert x.scattering_type == "Si"
   assert x.fp == 0
   assert x.fdp == 0
   x.fp = 1
@@ -87,7 +86,7 @@ def exercise_xray_scatterer():
   assert approx_equal(x.u_iso, 0.25)
   x.u_iso = 0.52
   assert approx_equal(x.u_iso, 0.52)
-  x = xray.scatterer("a", (0.1,0.2,0.3), (1,2,3,4,5,6), 0.9, scf, 0, 0)
+  x = xray.scatterer("a", (0.1,0.2,0.3), (1,2,3,4,5,6), 0.9, "const", 0, 0)
   assert x.anisotropic_flag
   assert approx_equal(x.u_star, (1,2,3,4,5,6))
   x.u_star = (3,2,1,6,5,4)
@@ -96,7 +95,7 @@ def exercise_xray_scatterer():
   assert not x.anisotropic_flag
   x = xray.scatterer(
     "si1", site=(0.01,0.02,0.3), occupancy=0.9, u=(0.3, 0.3, 0.2, 0,0,0))
-  assert x.caasf.label() == "Si"
+  assert x.scattering_type == "Si"
   uc = uctbx.unit_cell((10, 10, 13))
   sg = sgtbx.space_group_info("P 4")
   ss = x.apply_symmetry(uc, sg.group())
@@ -143,16 +142,16 @@ def exercise_scattering_dictionary():
     xray.scatterer("Al1"),
     xray.scatterer("O3"),
     xray.scatterer("Al2"),
-    xray.scatterer("const"),
-    xray.scatterer("custom")))
+    xray.scatterer("const", scattering_type="const"),
+    xray.scatterer("custom", scattering_type="custom")))
   sd = xray.scattering_dictionary(scatterers)
   assert sd.n_scatterers() == 9
   assert sd.dict_size() == 5
   sd_dict = sd.dict()
   assert len(sd_dict) == 5
-  k = sd_dict.keys()
-  k.sort()
-  assert k == ["Al", "O", "Si", "const", "custom"]
+  all_keys = sd_dict.keys()
+  all_keys.sort()
+  assert all_keys == ["Al", "O", "Si", "const", "custom"]
   for k,v in sd_dict.items():
     if   (k == "Si"): assert tuple(v.member_indices) == (0,1)
     elif (k == "O"): assert tuple(v.member_indices) == (2,3,5)
@@ -161,6 +160,10 @@ def exercise_scattering_dictionary():
     elif (k == "custom"): assert tuple(v.member_indices) == (8,)
     assert v.coefficients.n_ab() == 0
     assert v.coefficients.c() == 0
+    assert tuple(sd.lookup(k).member_indices) == tuple(v.member_indices)
+  z = list(sd.find_all_zero())
+  z.sort()
+  assert z == all_keys
   p = list(sd.scatterer_permutation())
   p.sort()
   assert p == range(9)
@@ -175,7 +178,10 @@ def exercise_scattering_dictionary():
           assert v.coefficients.c() == 1
         else:
           assert v.coefficients.c() == 0
+  z = list(sd.find_all_zero())
+  assert z == ["custom"]
   sd.assign("custom", caasf.custom((1,2),(3,4),5))
+  assert sd.find_all_zero().size() == 0
   g = sd.dict()["custom"]
   c = g.coefficients
   assert c.n_ab() == 2
@@ -202,6 +208,13 @@ def exercise_scattering_dictionary():
     assert vc.a() == wc.a()
     assert vc.b() == wc.b()
     assert vc.c() == wc.c()
+  try:
+    sd.lookup("undef")
+  except RuntimeError, e:
+    assert str(e).startswith(
+      "cctbx Error: Label not in scattering dictionary: ")
+  else:
+    raise RuntimeError("Exception expected.")
 
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -360,12 +373,14 @@ def exercise_minimization_apply_shifts():
     xray.scatterer("O1", site=(0.3,0.4,0.5),
                    u=adptbx.u_cart_as_u_star(uc,
                      (0.04,0.05,0.06,-.005,0.02,-0.002)))))
+  scattering_dict = xray.ext.scattering_dictionary(scatterers)
+  scattering_dict.assign_from_table("WK1995")
   f = xray.ext.gradient_flags(0001, 0001, 0001, 0001, 0001, 0001)
   shifts = flex.double(19, 0.001)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 0)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   for a,b in zip(scatterers, shifted_scatterers):
-    assert a.caasf.label() == b.caasf.label()
+    assert a.scattering_type == b.scattering_type
     assert a.site != b.site
     if (not a.anisotropic_flag):
       assert a.u_iso != b.u_iso
@@ -378,9 +393,9 @@ def exercise_minimization_apply_shifts():
     assert a.fdp != b.fdp
   shifts = flex.double(19, -0.001)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), shifted_scatterers, f, shifts, 0)
+    uc, sg.type(), shifted_scatterers, scattering_dict, f, shifts, 0)
   for a,b in zip(scatterers, shifted_scatterers):
-    assert a.caasf.label() == b.caasf.label()
+    assert a.scattering_type == b.scattering_type
     assert approx_equal(a.site, b.site)
     assert approx_equal(a.u_iso, b.u_iso)
     assert approx_equal(a.u_star, b.u_star)
@@ -390,7 +405,7 @@ def exercise_minimization_apply_shifts():
   f = xray.ext.gradient_flags(0001, 00000, 00000, 00000, 00000, 00000)
   shifts = flex.double((-1,2,-3,4,-5,-6))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 0)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   assert approx_equal(
     shifted_scatterers[0].site,
     (0.01-1/20.,0.02+2/20.,0.3-3/23.))
@@ -400,16 +415,16 @@ def exercise_minimization_apply_shifts():
   f = xray.ext.gradient_flags(00000, 0001, 00000, 00000, 00000, 00000)
   shifts = flex.double(1, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 0)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   assert shifted_scatterers[0].u_iso == 0
   f = xray.ext.gradient_flags(00000, 00000, 0001, 00000, 00000, 00000)
   shifts = flex.double(6, -100)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 0)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   assert not approx_equal(scatterers[1].u_star, shifted_scatterers[1].u_star)
   shifts = flex.double(6, -1000)
   shifted_scatterers_2 = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 0)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   # due to eigenvalue filtering two extreme shifts
   # should produce the same result
   assert approx_equal(shifted_scatterers[1].u_star,
@@ -417,40 +432,44 @@ def exercise_minimization_apply_shifts():
   f = xray.ext.gradient_flags(00000, 00000, 00000, 0001, 00000, 00000)
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 0)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   for i in xrange(2):
     assert shifted_scatterers[i].occupancy == 0
   f = xray.ext.gradient_flags(00000, 00000, 00000, 00000, 0001, 00000)
   shifts = flex.double(2, -10)
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 0)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   assert approx_equal(shifted_scatterers[0].fp, -11)
   assert shifted_scatterers[1].fp == -10
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 3)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 3)
   for i in xrange(2):
     assert approx_equal(
       shifted_scatterers[i].fp,
-      -shifted_scatterers[i].caasf.at_d_star_sq(1/9.))
+      -(scattering_dict
+          .lookup(shifted_scatterers[i].scattering_type)
+          .coefficients.at_d_star_sq(1/9.)))
     assert shifted_scatterers[i].fdp == scatterers[i].fdp
   f = xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 0001)
   shifts = flex.double((2,3))
   shifted_scatterers = xray.ext.minimization_apply_shifts(
-    uc, sg.type(), scatterers, f, shifts, 3)
+    uc, sg.type(), scatterers, scattering_dict, f, shifts, 3)
   assert shifted_scatterers[0].fp == -1
   assert approx_equal(shifted_scatterers[0].fdp, 4)
   assert shifted_scatterers[1].fp == 0
   assert shifted_scatterers[1].fdp == 3
   shifts = flex.double(1)
   try:
-    xray.ext.minimization_apply_shifts(uc, sg.type(), scatterers, f, shifts, 0)
+    xray.ext.minimization_apply_shifts(
+      uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   except Exception, e:
     assert str(e) == "scitbx Error: Array of shifts is too small."
   else:
     raise RuntimeError("Exception expected.")
   shifts = flex.double(3)
   try:
-    xray.ext.minimization_apply_shifts(uc, sg.type(), scatterers, f, shifts, 0)
+    xray.ext.minimization_apply_shifts(
+      uc, sg.type(), scatterers, scattering_dict, f, shifts, 0)
   except Exception, e:
     assert str(e) == "cctbx Error: Array of shifts is too large."
   else:

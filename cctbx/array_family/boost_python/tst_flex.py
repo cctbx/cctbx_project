@@ -82,7 +82,7 @@ def exercise_flex_xray_scatterer():
   for i,ai in a.items():
     bi = b[i]
     assert ai.label == bi.label
-    assert ai.caasf.label() == bi.caasf.label()
+    assert ai.scattering_type == bi.scattering_type
     assert approx_equal(ai.fp, bi.fp)
     assert approx_equal(ai.fdp, bi.fdp)
     assert approx_equal(ai.site, bi.site)

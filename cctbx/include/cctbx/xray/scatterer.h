@@ -1,7 +1,6 @@
 #ifndef CCTBX_XRAY_SCATTERER_H
 #define CCTBX_XRAY_SCATTERER_H
 
-#include <cctbx/eltbx/caasf.h>
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <cctbx/adptbx.h>
 
@@ -23,18 +22,18 @@ namespace xray {
       The apply_symmetry() member function has to be called before
       the scatterer can be used in a structure factor calculation.
    */
-  template <typename FloatType = double,
-            typename CaasfType = eltbx::caasf::wk1995,
-            typename LabelType = std::string>
+  template <typename FloatType=double,
+            typename LabelType=std::string,
+            typename ScatteringTypeType=std::string>
   class scatterer
   {
     public:
       //! Facilitates meta-programming.
       typedef FloatType float_type;
       //! Facilitates meta-programming.
-      typedef CaasfType caasf_type;
-      //! Facilitates meta-programming.
       typedef LabelType label_type;
+      //! Facilitates meta-programming.
+      typedef ScatteringTypeType scattering_type_type;
 
       //! Default constructor. Data members are not initialized!
       scatterer() {}
@@ -44,12 +43,12 @@ namespace xray {
                 fractional<FloatType> const& site_,
                 FloatType const& u_iso_,
                 FloatType const& occupancy_,
-                CaasfType const& caasf_,
+                ScatteringTypeType const& scattering_type_,
                 FloatType fp_,
                 FloatType fdp_)
       :
         label(label_),
-        caasf(caasf_),
+        scattering_type(scattering_type_),
         fp(fp_),
         fdp(fdp_),
         site(site_),
@@ -66,12 +65,12 @@ namespace xray {
                 fractional<FloatType> const& site_,
                 scitbx::sym_mat3<FloatType> const& u_star_,
                 FloatType const& occupancy_,
-                CaasfType const& caasf_,
+                ScatteringTypeType const& scattering_type_,
                 FloatType fp_,
                 FloatType fdp_)
       :
         label(label_),
-        caasf(caasf_),
+        scattering_type(scattering_type_),
         fp(fp_),
         fdp(fdp_),
         site(site_),
@@ -86,11 +85,11 @@ namespace xray {
       //! Direct access to label.
       LabelType label;
 
-      //! Direct access to analytical approximation to the scattering factor.
+      //! Direct access to the scattering type.
       /*! See also: eltbx::caasf::it1992,
                     eltbx::caasf::wk1995
        */
-      CaasfType caasf;
+      ScatteringTypeType scattering_type;
 
       //! Direct access to f-prime.
       /*! f-prime is the dispersive contribution to the scattering
@@ -214,11 +213,9 @@ namespace xray {
       /*! For internal use only.
        */
       void
-      setstate(std::string const& caasf_label,
-               int multiplicity,
+      setstate(int multiplicity,
                FloatType weight_without_occupancy)
       {
-        caasf = caasf_type(caasf_label);
         multiplicity_ = multiplicity;
         weight_without_occupancy_ = weight_without_occupancy;
       }
@@ -229,10 +226,10 @@ namespace xray {
   };
 
   template <typename FloatType,
-            typename CaasfType,
-            typename LabelType>
+            typename LabelType,
+            typename ScatteringTypeType>
   sgtbx::site_symmetry
-  scatterer<FloatType, CaasfType, LabelType>
+  scatterer<FloatType, LabelType, ScatteringTypeType>
   ::apply_symmetry(uctbx::unit_cell const& unit_cell,
                    sgtbx::space_group const& space_group,
                    double min_distance_sym_equiv,
