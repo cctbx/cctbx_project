@@ -70,9 +70,9 @@ class CNS_input:
     return self._LastWord
 
   def raiseError(self, message):
-    raise CNS_input_Error, \
-      "line %d, word \"%s\": " % (self._LineNo,
-                                  self._LastWord) + message
+    raise CNS_input_Error(
+      "line %d, word \"%s\": " % (self._LineNo, self._LastWord) + message)
+
   def raiseError_floating_point(self, name):
     self.raiseError("floating-point value expected for array " + name)
 
@@ -91,7 +91,7 @@ class cns_reciprocal_space_object:
     elif (type == "integer"):
       self.data = flex.int()
     else:
-      raise RuntimeError, "Internal Error."
+      raise RuntimeError("Internal Error.")
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -227,9 +227,12 @@ class CNS_xray_reflection_Reader(CNS_input):
     to_obj.groups = []
     current_hkl = None
     reuse_word = 0
+    n_words_processed = 0
     try:
       while 1:
-        if (not reuse_word): word = gNW(4)
+        if (not reuse_word):
+          word = gNW(4)
+          n_words_processed += 1
         reuse_word = 0
         if (word == "INDE"):
           self.level = self.level + 1
@@ -286,7 +289,9 @@ class CNS_xray_reflection_Reader(CNS_input):
           rso.append(current_hkl, value)
           self.level = self.level - 1
     except EOFError:
-      if (self.level != 0): raise CNS_input_Error, "premature end-of-file"
+      if (self.level != 0): raise CNS_input_Error("premature end-of-file")
+    if (n_words_processed == 0):
+      raise CNS_input_Error("empty file")
 
 class cns_reflection_file:
 
