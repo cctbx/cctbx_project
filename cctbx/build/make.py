@@ -63,39 +63,6 @@ def run_in_subdirs(subdirs, command_line, verbose = 0):
     os.system(command_line)
     os.chdir(cwd)
 
-def make_lib_python_dir(platform):
-  lib_python_dir = "lib_python/cctbx_boost"
-  try: os.makedirs(lib_python_dir + "/arraytbx")
-  except OSError: pass
-  try: os.makedirs(lib_python_dir + "/eltbx")
-  except OSError: pass
-  open(lib_python_dir + "/__init__.py", "a+").close()
-  open(lib_python_dir + "/arraytbx/__init__.py", "a+").close()
-  open(lib_python_dir + "/eltbx/__init__.py", "a+").close()
-  if (platform in ("vc60", "mingw32", "win32_mwcc")):
-    libpyd = ".pyd"
-  else:
-    libpyd = ".so"
-  if (hasattr(os, "symlink")):
-    system_verbose("cp uctbx/*%s %s" % (libpyd, lib_python_dir))
-    system_verbose("cp sgtbx/*%s %s" % (libpyd, lib_python_dir))
-    system_verbose("cp arraytbx/*%s %s/arraytbx" % (libpyd, lib_python_dir))
-    system_verbose("cp adptbx/*%s %s" % (libpyd, lib_python_dir))
-    system_verbose("cp eltbx/*%s %s/eltbx" % (libpyd, lib_python_dir))
-    system_verbose("cp sftbx/*%s %s" % (libpyd, lib_python_dir))
-    system_verbose("cp fftbx/*%s %s" % (libpyd, lib_python_dir))
-    system_verbose("cp lbfgs/*%s %s" % (libpyd, lib_python_dir))
-  else:
-    lib_python_dir = lib_python_dir.replace("/", "\\")
-    system_verbose(r"copy uctbx\*.pyd %s" % (lib_python_dir,))
-    system_verbose(r"copy sgtbx\*.pyd %s" % (lib_python_dir,))
-    system_verbose(r"copy arraytbx\*.pyd %s\arraytbx" % (lib_python_dir,))
-    system_verbose(r"copy adptbx\*.pyd %s" % (lib_python_dir,))
-    system_verbose(r"copy eltbx\*.pyd %s\eltbx" % (lib_python_dir,))
-    system_verbose(r"copy sftbx\*.pyd %s" % (lib_python_dir,))
-    system_verbose(r"copy fftbx\*.pyd %s" % (lib_python_dir,))
-    system_verbose(r"copy lbfgs\*.pyd %s" % (lib_python_dir,))
-
 if (__name__ == "__main__"):
   cf = read_configuration()
   platform = cf[0]
@@ -134,6 +101,3 @@ if (__name__ == "__main__"):
 
   if ("compile" in sys.argv or make_all):
     run_in_subdirs(all_targets, make + " compile")
-
-  if ("lib_python_dir" in sys.argv or make_all):
-    make_lib_python_dir(platform)

@@ -36,9 +36,7 @@ if (hasattr(os, "symlink")):
 else:
   link_cmd = "copy"
 
-if (os.path.isdir("cctbx")):
-  print "Warning: directory cctbx already exists"
-else:
+if (not os.path.isdir("cctbx")):
   os.mkdir("cctbx")
 os.chdir("cctbx")
 shutil.copy(config_file, "configuration")

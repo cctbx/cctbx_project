@@ -65,7 +65,7 @@ clean:
 	cd examples/cpp; make clean
 
 all_clean: clean
-	find . -name \*.o -o -name \*.so -o -name \*tbx.a -exec rm {} \;
+	find . \( -name \*.o -o -name \*.so -o -name \*tbx.a \) -exec rm {} \;
 
 depend:
 	cd external/boost_python; make -f Makefile.nodepend depend > Makefile
@@ -91,7 +91,7 @@ executables:
 	cd lbfgs; make executables
 	cd examples/cpp; make executables
 
-compile:
+all:
 	cd external/boost_python; make
 	cd uctbx; make
 	cd sgtbx; make
@@ -102,21 +102,3 @@ compile:
 	cd fftbx; make
 	cd lbfgs; make
 	cd examples/cpp; make
-
-lib_python_dir:
-	-test ! -d lib_python/cctbx_boost && mkdir -p lib_python/cctbx_boost
-	touch lib_python/cctbx_boost/__init__.py
-	-test ! -d lib_python/cctbx_boost/arraytbx && mkdir lib_python/cctbx_boost/arraytbx
-	touch lib_python/cctbx_boost/arraytbx/__init__.py
-	-test ! -d lib_python/cctbx_boost/eltbx && mkdir lib_python/cctbx_boost/eltbx
-	touch lib_python/cctbx_boost/eltbx/__init__.py
-	cp uctbx/*.so lib_python/cctbx_boost
-	cp sgtbx/*.so lib_python/cctbx_boost
-	cp arraytbx/*.so lib_python/cctbx_boost/arraytbx
-	cp adptbx/*.so lib_python/cctbx_boost
-	cp eltbx/*.so lib_python/cctbx_boost/eltbx
-	cp sftbx/*.so lib_python/cctbx_boost
-	cp fftbx/*.so lib_python/cctbx_boost
-	cp lbfgs/*.so lib_python/cctbx_boost
-
-all: compile lib_python_dir
