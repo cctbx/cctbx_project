@@ -18,11 +18,6 @@ namespace cctbx { namespace uctbx {
 
   namespace {
 
-    void throw_corrupt_unit_cell_parameters()
-    {
-      throw error("Corrupt unit cell parameters.");
-    }
-
     void throw_corrupt_metrical_matrix()
     {
       throw error("Corrupt metrical matrix.");
@@ -80,9 +75,9 @@ namespace cctbx { namespace uctbx {
     double d = 1.;
     for(std::size_t i=0;i<3;i++) d -= cos_ang_[i] * cos_ang_[i];
     d += 2. * cos_ang_[0] * cos_ang_[1] * cos_ang_[2];
-    if (d < 0.) throw_corrupt_unit_cell_parameters();
+    if (d < 0.) throw error("Square of unit cell volume is negative.");
         volume_ = params_[0] * params_[1] * params_[2] * std::sqrt(d);
-    if (volume_ <= 0.) throw_corrupt_unit_cell_parameters();
+    if (volume_ <= 0.) throw error("Unit cell volume is zero or negative.");
   }
 
   void unit_cell::init_reciprocal()
@@ -116,7 +111,10 @@ namespace cctbx { namespace uctbx {
     //   k = i x j
 
     double s1rca2 = std::sqrt(1. - r_cos_ang_[0] * r_cos_ang_[0]);
-    if (s1rca2 == 0.) throw_corrupt_unit_cell_parameters();
+    if (s1rca2 == 0.) {
+      throw error(
+       "Reciprocal unit cell alpha angle is zero or extremely close to zero.");
+    }
 
     // fractional to cartesian
     orth_[0] =  params_[0];
@@ -153,15 +151,22 @@ namespace cctbx { namespace uctbx {
   {
     std::size_t i;
     for(i=0;i<6;i++) {
-      if (params_[i] <= 0.) throw_corrupt_unit_cell_parameters();
+      if (params_[i] <= 0.) {
+        throw error("Unit cell parameter is zero or negative.");
+      }
     }
     for(i=3;i<6;i++) {
       double a_deg = params_[i];
-      if (a_deg >= 180.) throw_corrupt_unit_cell_parameters();
+      if (a_deg >= 180.) {
+        throw error(
+          "Unit cell angle is greater than or equal to 180 degrees.");
+      }
       double a_rad = scitbx::deg_as_rad(a_deg);
       cos_ang_[i-3] = std::cos(a_rad);
       sin_ang_[i-3] = std::sin(a_rad);
-      if (sin_ang_[i-3] == 0.) throw_corrupt_unit_cell_parameters();
+      if (sin_ang_[i-3] == 0.) {
+        throw error("Unit cell angle is zero or or extremely close to zero.");
+      }
     }
     init_volume();
     init_reciprocal();

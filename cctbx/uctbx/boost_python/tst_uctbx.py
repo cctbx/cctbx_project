@@ -178,7 +178,7 @@ def exercise_exceptions():
   try:
     u = uctbx.unit_cell((0,0,0,0,0,0))
   except RuntimeError, e:
-    assert str(e) == "cctbx Error: Corrupt unit cell parameters."
+    assert str(e) == "cctbx Error: Unit cell parameter is zero or negative."
   else:
     raise AssertionError, 'exception expected'
   try:
