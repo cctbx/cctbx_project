@@ -20,7 +20,7 @@ namespace scitbx { namespace af { namespace boost_python {
   {
     flex_wrapper<std::complex<double> >::numeric_common(
       "complex_double", boost::python::scope())
-      .def_pickle(flex_pickle_single_buffered<std::complex<double>, 2*20>());
+      .def_pickle(flex_pickle_single_buffered<std::complex<double> >());
     wrap_flex_complex_double_2();
   }
 

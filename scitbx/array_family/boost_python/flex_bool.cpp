@@ -15,7 +15,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_bool()
   {
     flex_wrapper<bool>::logical("bool", boost::python::scope())
-      .def_pickle(flex_pickle_single_buffered<bool, 1>());
+      .def_pickle(flex_pickle_single_buffered<bool>());
   }
 
 }}} // namespace scitbx::af::boost_python
