@@ -27,7 +27,7 @@ def run(args):
       default=10,
       help="Number of bins",
       metavar="INT")
-  ).process()
+  ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return

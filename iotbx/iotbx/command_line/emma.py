@@ -151,7 +151,7 @@ def run(args):
       action="store_true",
       dest="diffraction_index_equivalent",
       help="Use only if models are diffraction-index equivalent.")
-  ).process(nargs=2)
+  ).process(args=args, nargs=2)
   crystal_symmetry = command_line.symmetry
   if (   crystal_symmetry.unit_cell() is None
       or crystal_symmetry.space_group_info() is None):

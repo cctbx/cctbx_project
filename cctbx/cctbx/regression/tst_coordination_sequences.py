@@ -3,7 +3,7 @@ from cctbx import crystal
 import cctbx.crystal.coordination_sequences
 from cctbx import xray
 from iotbx.option_parser import iotbx_option_parser
-import os
+import sys, os
 
 def exercise_simple(structure, distance_cutoff, max_shell, verbose):
   asu_mappings = structure.asu_mappings(
@@ -59,7 +59,7 @@ def exercise_shell_asu_tables(structure, verbose):
       assert pairs_1.pair_counts.all_eq(pairs_2.pair_counts)
     assert asu_table == shell_asu_table
 
-def exercise(distance_cutoff=3.5, max_shell=5):
+def exercise(args, distance_cutoff=3.5, max_shell=5):
   command_line = (iotbx_option_parser()
     .option(None, "--tag",
       action="store",
@@ -71,7 +71,7 @@ def exercise(distance_cutoff=3.5, max_shell=5):
     .option(None, "--verbose",
       action="store_true",
       dest="verbose")
-  ).process()
+  ).process(args=args)
   atlas_file = os.path.join(os.environ["LIBTBX_DIST_ROOT"],
     "regression", "misc", "strudat_zeolite_atlas")
   if (not os.path.isfile(atlas_file)): return
@@ -88,7 +88,7 @@ def exercise(distance_cutoff=3.5, max_shell=5):
     exercise_shell_asu_tables(structure, command_line.options.verbose)
 
 def run():
-  exercise()
+  exercise(sys.argv[1:])
   print "OK"
 
 if (__name__ == "__main__"):

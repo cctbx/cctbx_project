@@ -5,7 +5,7 @@ from iotbx.kriber import strudat
 from iotbx.option_parser import iotbx_option_parser
 import sys
 
-def run():
+def run(args):
   command_line = (iotbx_option_parser(
     usage="iotbx.show_distances [options] studat_file [...]",
     description="Example: iotbx.show_distances strudat --tag=SOD")
@@ -33,7 +33,7 @@ def run():
       dest="coseq",
       help="name of file with known coordination sequences",
       metavar="FILE")
-  ).process()
+  ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
@@ -78,4 +78,4 @@ def run():
         print
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])

@@ -159,7 +159,7 @@ def run(args):
       dest="pickle",
       help="write all data to FILE ('--pickle .' copies name of input file)",
       metavar="FILE")
-  ).process()
+  ).process(args=args)
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
