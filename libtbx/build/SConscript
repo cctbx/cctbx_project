@@ -87,8 +87,9 @@ else:
         -O2
         -DNDEBUG
     """)
-    env_etc.shlinkflags_bpl="-shared -expect_unresolved 'Py*'" \
-                           + " -expect_unresolved '_Py*'"
+    env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
+                        + " -expect_unresolved '_Py*'"
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_gcc"):
     env_base.Replace(
       CXX="g++",
@@ -102,7 +103,8 @@ else:
       -w
       -g
     """)
-    env_etc.shlinkflags_bpl="-shared"
+    env_etc.shlinkflags = "-shared"
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "irix_CC"):
     env_base.Replace(
       CXX="CC -LANG:std -n32 -mips4",
