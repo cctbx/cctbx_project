@@ -59,15 +59,10 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     data=real_map,
     tags=grid_tags.tag_array(),
     peak_search_level=1,
-    max_peaks=2*n_elements)
+    max_peaks=2*n_elements,
+    interpolate=00000)
   assert peak_list.gridding() == real_map.focus()
-  peak_sites = flex.vec3_double()
-  peak_heights = flex.double()
-  for entry in peak_list.entries():
-    peak_sites.append(
-      [float(entry.index[i]) / peak_list.gridding()[i] for i in xrange(3)])
-    peak_heights.append(entry.value)
-  check_peaks(structure, peak_sites, d_min * grid_resolution_factor)
+  check_peaks(structure, peak_list.sites(), d_min * grid_resolution_factor)
   crystal_gridding_tags = fft_map.tags()
   cluster_analysis = maptbx.peak_cluster_analysis(
     peak_list=peak_list,

@@ -36,10 +36,13 @@ def peak_list(data,
               tags,
               peak_search_level=1,
               max_peaks=0,
-              peak_cutoff=None):
+              peak_cutoff=None,
+              interpolate=0001):
   if (peak_cutoff is None):
-    return ext.peak_list(data, tags, peak_search_level, max_peaks)
-  return ext.peak_list(data, tags, peak_search_level, peak_cutoff, max_peaks)
+    return ext.peak_list(
+      data, tags, peak_search_level, max_peaks, interpolate)
+  return ext.peak_list(
+    data, tags, peak_search_level, peak_cutoff, max_peaks, interpolate)
 
 def as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling=0001):
   return ext.as_CObjectZYX(map_unit_cell, first, last, apply_sigma_scaling)
@@ -151,7 +154,8 @@ class crystal_gridding_tags(crystal_gridding):
       tags=self._tags.tag_array(),
       peak_search_level=parameters.peak_search_level(),
       max_peaks=parameters.max_peaks(),
-      peak_cutoff=parameters.peak_cutoff())
+      peak_cutoff=parameters.peak_cutoff(),
+      interpolate=parameters.interpolate())
     if (parameters.min_distance_sym_equiv() is None):
       return grid_peaks
     return peak_cluster_analysis(
@@ -168,6 +172,7 @@ class peak_search_parameters:
   def __init__(self, peak_search_level=1,
                      max_peaks=0,
                      peak_cutoff=None,
+                     interpolate=0001,
                      min_distance_sym_equiv=None,
                      general_positions_only=00000,
                      min_cross_distance=None,
@@ -178,6 +183,7 @@ class peak_search_parameters:
     self._peak_search_level = other._peak_search_level
     self._max_peaks = other._max_peaks
     self._peak_cutoff = other._peak_cutoff
+    self._interpolate = other._interpolate
     self._min_distance_sym_equiv = other._min_distance_sym_equiv
     self._general_positions_only = other._general_positions_only
     self._min_cross_distance = other._min_cross_distance
@@ -191,6 +197,9 @@ class peak_search_parameters:
 
   def peak_cutoff(self):
     return self._peak_cutoff
+
+  def interpolate(self):
+    return self._interpolate
 
   def min_distance_sym_equiv(self):
     return self._min_distance_sym_equiv
@@ -206,7 +215,7 @@ class peak_search_parameters:
 
 class cluster_site_info:
 
-  def __init__(self, peak_list_index, grid_index, grid_height, site):
+  def __init__(self, peak_list_index, grid_index, grid_height, site, height):
     adopt_init_args(self, locals())
 
 class peak_cluster_analysis:
@@ -220,11 +229,10 @@ class peak_cluster_analysis:
     if (min_cross_distance is None):
       min_cross_distance = special_position_settings.min_distance_sym_equiv()
     self._gridding = peak_list.gridding()
-    self._peak_list_entries = peak_list.entries()
     self._peak_list_indices = flex.size_t()
     self._peak_list_index = 0
     self._sites = flex.vec3_double()
-    self._grid_heights = flex.double()
+    self._heights = flex.double()
     self._fixed_site_indices = flex.size_t()
 
   def peak_list(self):
@@ -251,28 +259,29 @@ class peak_cluster_analysis:
   def sites(self):
     return self._sites
 
-  def grid_heights(self):
-    return self._grid_heights
+  def heights(self):
+    return self._heights
 
   def max_grid_height(self):
-    if (len(self._peak_list_entries) == 0):
+    if (self._peak_list.size() == 0):
       return None
-    return self._peak_list_entries[0].value
+    return self._peak_list.heights()[0]
 
   def append_fixed_site(self, site, height=0):
     self._fixed_site_indices.append(self._sites.size())
     self._sites.append(site)
-    self._grid_heights.append(height)
-    self._peak_list_indices.append(len(self._peak_list_entries))
+    self._heights.append(height)
+    self._peak_list_indices.append(self._peak_list.size())
 
   def next(self):
     while 1:
       peak_list_index = self._peak_list_index
-      if (peak_list_index >= len(self._peak_list_entries)): return None
-      peak_list_entry = self._peak_list_entries[peak_list_index]
+      if (peak_list_index >= self._peak_list.size()): return None
+      grid_index = self._peak_list.grid_indices(peak_list_index)
+      grid_height = self._peak_list.grid_heights()[peak_list_index]
+      site = self._peak_list.sites()[peak_list_index]
+      height = self._peak_list.heights()[peak_list_index]
       self._peak_list_index += 1
-      grid_index = peak_list_entry.index
-      site = [float(grid_index[i]) / self._gridding[i] for i in xrange(3)]
       site_symmetry = self._special_position_settings.site_symmetry(site)
       if (    self._general_positions_only
           and not site_symmetry.is_point_group_1()):
@@ -288,12 +297,13 @@ class peak_cluster_analysis:
       if (keep == 0001):
         self._peak_list_indices.append(peak_list_index)
         self._sites.append(site)
-        self._grid_heights.append(peak_list_entry.value)
+        self._heights.append(height)
         return cluster_site_info(
           peak_list_index=peak_list_index,
           grid_index=grid_index,
-          grid_height=peak_list_entry.value,
-          site=site)
+          grid_height=grid_height,
+          site=site,
+          height=height)
 
   def all(self, max_clusters=None):
     if (max_clusters is None):
@@ -308,4 +318,4 @@ class peak_cluster_analysis:
     assert self._peak_list_indices.size() > 0
     self._peak_list_indices.pop_back()
     self._sites.pop_back()
-    self._grid_heights.pop_back()
+    self._heights.pop_back()
