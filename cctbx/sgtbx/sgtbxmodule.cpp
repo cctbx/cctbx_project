@@ -14,6 +14,7 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/coordinates.h>
 #include <cctbx/sgtbx/miller_asu.h>
+#include <cctbx/sgtbx/seminvariant.h>
 #include <boost/python/cross_module.hpp>
 #include <cctbx/basic/boost_array_bpl.h>
 #include <cctbx/coordinates_bpl.h>
@@ -568,6 +569,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_MillerIndexGenerator(this_module, "MillerIndexGenerator");
     class_builder<Miller::SymUniqueIndex>
     py_Miller_SymUniqueIndex(this_module, "Miller_SymUniqueIndex");
+    class_builder<StructureSeminvariant>
+    py_StructureSeminvariant(this_module, "StructureSeminvariant");
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
@@ -959,6 +962,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_Phase_deg, "Phase_deg");
     py_Miller_SymUniqueIndex.def(Miller_SymUniqueIndex_ShiftPhase,
                                                       "ShiftPhase");
+
+    py_StructureSeminvariant.def(constructor<>());
+    py_StructureSeminvariant.def(constructor<const SgOps&>());
+
     sgtbx::sanity_check();
   }
   catch(...)
