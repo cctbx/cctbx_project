@@ -1168,12 +1168,12 @@ class array(set):
     if (f is None): f = sys.stdout
     assert self.data().size() == self.indices().size()
     if (self.sigmas() is None):
-      for i,h in enumerate(self.indices()):
-        print >> f, h, self.data()[i]
+      for h,d in zip(self.indices(), self.data()):
+        print >> f, h, d
     else:
       assert self.indices().size() == self.sigmas().size()
-      for i,h in enumerate(self.indices()):
-        print >> f, h, self.data()[i], self.sigmas()[i]
+      for h,d,s in zip(self.indices(), self.data(), self.sigmas()):
+        print >> f, h, d, s
     return self
 
   def fft_map(self, resolution_factor=1/3.,
