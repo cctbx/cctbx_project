@@ -83,11 +83,13 @@ class reader:
           self.i_obs.append(i_obs)
           self.sigmas.append(sigma)
 
-  def info(self):
-    return "i_obs,sigma"
-
-  def as_miller_array(self, crystal_symmetry=None, force_symmetry=False,
-                            info_prefix=""):
+  def as_miller_array(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="scalepack_merge")
     return (miller.array(
       miller_set=miller.set(
         crystal_symmetry=crystal.symmetry(
@@ -99,11 +101,19 @@ class reader:
         anomalous_flag=self.anomalous),
       data=self.i_obs,
       sigmas=self.sigmas)
-      .set_info(info_prefix+self.info()).set_observation_type_xray_intensity())
+      .set_info(base_array_info.customized_copy(labels=["i_obs", "sigma"]))
+      .set_observation_type_xray_intensity())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             info_prefix=""):
-    return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
+    return [self.as_miller_array(
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry,
+      merge_equivalents=merge_equivalents,
+      base_array_info=base_array_info)]
 
 def format_f8_1_or_i8(h, label, value):
   if (value < 1.e6): return "%8.1f" % value

@@ -99,19 +99,24 @@ class any_reflection_file:
   def as_miller_arrays(self,
         crystal_symmetry=None,
         force_symmetry=False,
-        info_prefix=None):
+        merge_equivalents=True,
+        base_array_info=None):
     if (self.file_type() is None):
       return []
     if (self.file_type() == "cctbx.miller.array"):
       return self.file_content()
-    if (info_prefix is None):
-      info_prefix = self.file_name() + ":"
-      if (info_prefix.startswith("./") or info_prefix.startswith(".\\")):
-        info_prefix = info_prefix[2:]
+    if (base_array_info is None):
+      source = self.file_name()
+      if (source.startswith("./") or source.startswith(".\\")):
+        source = source[2:]
+      base_array_info = miller.array_info(
+        source=source,
+        source_type=self.file_type())
     return self._file_content.as_miller_arrays(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
-      info_prefix=info_prefix)
+      merge_equivalents=merge_equivalents,
+      base_array_info=base_array_info)
 
 def collect_arrays(file_names,
                    crystal_symmetry, force_symmetry,

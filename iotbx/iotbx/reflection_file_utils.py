@@ -2,15 +2,21 @@ from libtbx.itertbx import count
 from libtbx.utils import UserError
 import sys, os
 
+def find_labels(search_labels, candidate_labels):
+  for search_label in search_labels:
+    for candidate_label in candidate_labels:
+      if (candidate_label.find(search_label) < 0):
+        return False
+  return True
+
 class label_table:
 
   def __init__(self, miller_arrays):
     self.miller_arrays = miller_arrays
     self.labels = []
     for p_array,miller_array in zip(count(1), miller_arrays):
-      lbl = miller_array.info()
-      if (lbl is not None):
-        self.labels.append(lbl)
+      if (miller_array.info() is not None):
+        self.labels.append(str(miller_array.info()))
       else:
         self.labels.append(str(p_array))
 
@@ -29,19 +35,41 @@ class label_table:
     print >> f, "target data label."
     print >> f
 
-  def match_data_label(self, label, f=None, command_line_switch="--label"):
+  def match_data_label(self,
+        label=None,
+        labels=None,
+        f=None,
+        command_line_switch=None,
+        parameter_name=None):
+    assert label is None or labels is None
+    assert label is not None or labels is not None
     if (f is None): f = sys.stdout
-    try: i = int(label)-1
-    except: pass
+    assert command_line_switch is None or parameter_name is None
+    if (labels is None):
+      labels = [label]
     else:
-      if (0 <= i < len(self.miller_arrays)):
-        return self.miller_arrays[i]
+      assert len(labels) > 0
+      label = labels[0]
+    if (command_line_switch is None):
+      if (parameter_name is None):
+        label_identifier = "--label"
+      else:
+        label_identifier = parameter_name
+    else:
+      label_identifier = parameter_name
+    if (len(labels) == 1):
+      try: i = int(label)-1
+      except: pass
+      else:
+        if (0 <= i < len(self.miller_arrays)):
+          return self.miller_arrays[i]
     scores = []
-    label_lower = label.lower()
+    labels_lower = [lbl.lower() for lbl in labels]
     for lbl in self.labels:
-      if (lbl.lower().find(label_lower) < 0):
+      if (not find_labels(
+               search_labels=labels_lower, candidate_labels=[lbl.lower()])):
         scores.append(0)
-      elif (lbl.find(label) < 0):
+      elif (not find_labels(search_labels=labels, candidate_labels=[lbl])):
         scores.append(1)
       else:
         scores.append(2)
@@ -50,13 +78,13 @@ class label_table:
       if (scores.count(high_score) > 0):
         if (scores.count(high_score) > 1):
           print >> f
-          print >> f, "Ambiguous %s=%s" % (command_line_switch, label)
+          print >> f, "Ambiguous %s=%s" % (label_identifier, " ".join(labels))
           print >> f
           self.show_possible_choices(f=f, scores=scores, high_score=high_score)
           return None
         return self.miller_arrays[scores.index(high_score)]
     print >> f
-    print >> f, "Unknown %s=%s" % (command_line_switch, label)
+    print >> f, "Unknown %s=%s" % (label_identifier, " ".join(labels))
     print >> f
     self.show_possible_choices(f=f)
     return None

@@ -285,10 +285,14 @@ class _object(boost.python.injector, ext.object):
       crystal.set_unit_cell_parameters(
         crystal_symmetry.unit_cell().parameters())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             merge_equivalents=True,
-                             info_prefix=""):
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
     other_symmetry = crystal_symmetry
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="ccp4_mtz")
     result = []
     for crystal in self.crystals():
       crystal_symmetry = cctbx.crystal.symmetry(
@@ -297,9 +301,11 @@ class _object(boost.python.injector, ext.object):
           other_symmetry=other_symmetry,
           force=force_symmetry)
       for dataset in crystal.datasets():
-        column_groups = self.group_columns(crystal_symmetry, dataset)
+        column_groups = self.group_columns(
+          crystal_symmetry=crystal_symmetry,
+          base_array_info=base_array_info,
+          dataset=dataset)
         for column_group in column_groups:
-          info = info_prefix + column_group.info()
           if (merge_equivalents
               and isinstance(column_group.data(), flex.double)
               and isinstance(column_group.sigmas(), flex.double)
@@ -307,12 +313,13 @@ class _object(boost.python.injector, ext.object):
             merged_column_group = column_group.merge_equivalents().array()
             if (merged_column_group.indices().size()
                 != column_group.indices().size()):
+              merged_column_group.set_info(
+                column_group.info().customized_copy(merged=True))
               column_group = merged_column_group
-              info += ",merged"
-          result.append(column_group.set_info(info))
+          result.append(column_group)
     return result
 
-  def group_columns(self, crystal_symmetry, dataset):
+  def group_columns(self, crystal_symmetry, base_array_info, dataset):
     known_mtz_column_types = "".join(column_type_legend.keys())
     assert len(known_mtz_column_types) == 16 # safety guard
     all_columns = dataset.columns()
@@ -425,6 +432,7 @@ class _object(boost.python.injector, ext.object):
         group = self.extract_reals(l0)
       groups.append(column_group(
         crystal_symmetry=crystal_symmetry,
+        base_array_info=base_array_info,
         primary_column_type=t0,
         labels=labels,
         group=group,
@@ -433,6 +441,7 @@ class _object(boost.python.injector, ext.object):
 
 def column_group(
       crystal_symmetry,
+      base_array_info,
       primary_column_type,
       labels,
       group,
@@ -453,7 +462,8 @@ def column_group(
     miller_set=miller_set,
     data=group.data,
     sigmas=sigmas)
-    .set_info(",".join(labels)))
+    .set_info(base_array_info.customized_copy(
+      labels=labels)))
   if (observation_type is not None):
     result.set_observation_type(observation_type)
   elif (primary_column_type in "FG"):
@@ -684,7 +694,7 @@ def miller_array_as_mtz_dataset(self,
       dataset_name="dataset",
       wavelength=1.0):
   if (title is None):
-    title = self.info()
+    title = str(self.info())
   if (title is None):
     title = "cctbx.miller.array"
   unit_cell = self.unit_cell()

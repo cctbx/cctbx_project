@@ -14,6 +14,7 @@ import scitbx.math
 from scitbx.python_utils.misc import store
 from libtbx.itertbx import count
 from libtbx.utils import Keep
+from libtbx import introspection
 import sys
 import math
 import types
@@ -608,7 +609,52 @@ def build_set(crystal_symmetry, anomalous_flag, d_min):
       d_min).to_array(),
     anomalous_flag)
 
-def _array_info(array):
+class array_info:
+
+  def __init__(self,
+        source=None,
+        source_type=None,
+        history=None,
+        labels=None,
+        merged=False):
+    introspection.adopt_init_args()
+
+  def customized_copy(self,
+        source=Keep,
+        source_type=Keep,
+        history=Keep,
+        labels=Keep,
+        merged=Keep):
+    if (source is Keep): source = self.source
+    if (source_type is Keep): source_type = self.source_type
+    if (history is Keep): history = self.history
+    if (labels is Keep): labels = self.labels
+    if (merged is Keep): merged = self.merged
+    return array_info(
+      source=source,
+      source_type=source_type,
+      history=history,
+      labels=labels,
+      merged=merged)
+
+  def __str__(self):
+    result = []
+    if (self.source is not None):
+      result.append(str(self.source))
+    elif (self.source_type is not None):
+      result.append(str(self.source_type))
+    part_2 = []
+    if (self.labels is not None):
+      part_2.extend(self.labels)
+    if (self.merged):
+      part_2.append("merged")
+    if (len(part_2) > 0):
+      result.append(",".join(part_2))
+    if (len(result) == 0):
+      return "None"
+    return ":".join(result)
+
+def raw_array_summary(array):
   if (array is None): return str(None)
   try:
     return array.__class__.__name__ + ", size=%d" % (len(array),)
@@ -753,8 +799,8 @@ class array(set):
     if (f is None): f = sys.stdout
     print >> f, "Miller %s info:" % self.__class__.__name__, self.info()
     print >> f, "Observation type:", self.observation_type()
-    print >> f, "Type of data:", _array_info(self.data())
-    print >> f, "Type of sigmas:", _array_info(self.sigmas())
+    print >> f, "Type of data:", raw_array_summary(self.data())
+    print >> f, "Type of sigmas:", raw_array_summary(self.sigmas())
     set.show_summary(self, f)
     return self
 

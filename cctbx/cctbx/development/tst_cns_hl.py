@@ -102,7 +102,7 @@ class read_reflection_arrays:
     if (0 or verbose):
       print reflection_file.show_summary()
     assert reflection_file.anomalous == anomalous_flag
-    self.miller_indices, self.hl = reflection_file.join_hl_group()
+    names, self.miller_indices, self.hl = reflection_file.join_hl_group()
     self.fcalc = reflection_file.reciprocal_space_objects["FCALC"]
     self.pi = reflection_file.reciprocal_space_objects["PI"]
     assert not miller.match_indices(

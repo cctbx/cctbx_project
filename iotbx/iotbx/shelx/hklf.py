@@ -54,10 +54,15 @@ class reader:
   def alphas(self):
     return self._alphas
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             info_prefix=""):
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="shelx_hklf")
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=self.indices()).auto_anomalous()
@@ -66,11 +71,11 @@ class reader:
       miller_set=miller_set,
       data=self.data(),
       sigmas=self.sigmas())
-      .set_info(info_prefix+"obs,sigmas"))
+      .set_info(base_array_info.customized_copy(labels=["obs", "sigmas"])))
     miller_arrays.append(obs)
     if (self.alphas() is not None):
       miller_arrays.append(miller.array(
         miller_set=miller_set,
         data=self.alphas())
-        .set_info(info_prefix+"alphas"))
+        .set_info(base_array_info.customized_copy(labels=["alphas"])))
     return miller_arrays

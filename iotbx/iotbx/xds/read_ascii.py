@@ -77,16 +77,18 @@ class reader:
     assert 0 <= i_column < self.number_of_items_in_each_data_record
     return i_column
 
-  def info(self):
-    return "iobs,sigma_iobs"
-
   def crystal_symmetry(self):
     return crystal.symmetry(
       unit_cell=self.unit_cell,
       space_group_symbol=self.space_group_number)
 
-  def as_miller_array(self, crystal_symmetry=None, force_symmetry=False,
-                            info_prefix=""):
+  def as_miller_array(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="xds_ascii")
     return (miller.array(
       miller_set=miller.set(
         crystal_symmetry=self.crystal_symmetry().join_symmetry(
@@ -96,11 +98,20 @@ class reader:
         anomalous_flag=self.anomalous_flag),
       data=self.iobs,
       sigmas=self.sigma_iobs)
-      .set_info(info_prefix+self.info()).set_observation_type_xray_intensity())
+      .set_info(base_array_info.customized_copy(
+        labels=["iobs", "sigma_iobs"]))
+      .set_observation_type_xray_intensity())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             info_prefix=""):
-    return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
+    return [self.as_miller_array(
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry,
+      merge_equivalents=merge_equivalents,
+      base_array_info=base_array_info)]
 
 if (__name__ == "__main__"):
   reader(open(sys.argv[1])).as_miller_array().show_comprehensive_summary()

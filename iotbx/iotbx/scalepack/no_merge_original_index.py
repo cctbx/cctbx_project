@@ -66,21 +66,36 @@ class reader:
       indices=self.original_indices,
       anomalous_flag=True)
 
-  def merge_equivalents(self, crystal_symmetry=None, force_symmetry=False):
-    return miller.array(
+  def as_miller_array(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
+    if (base_array_info is None):
+      base_array_info = miller.array_info(
+        source_type="scalepack_no_merge_original_index")
+    result = miller.array(
       miller_set=self.unmerged_miller_set(crystal_symmetry, force_symmetry),
       data=self.i_obs,
-      sigmas=self.sigmas).merge_equivalents()
-
-  def as_miller_array(self, crystal_symmetry=None, force_symmetry=False,
-                            info_prefix=""):
-    return (self.merge_equivalents(crystal_symmetry, force_symmetry).array()
-      .set_info(info_prefix+"i_obs,sigma")
+      sigmas=self.sigmas)
+    if (merge_equivalents):
+      result = result.merge_equivalents().array()
+    return (result
+      .set_info(base_array_info.customized_copy(
+        labels=["i_obs", "sigma"],
+        merged=merge_equivalents))
       .set_observation_type_xray_intensity())
 
-  def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
-                             info_prefix=""):
-    return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
+    return [self.as_miller_array(
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry,
+      merge_equivalents=merge_equivalents,
+      base_array_info=base_array_info)]
 
 def quick_test(file_name):
   from scitbx.python_utils.misc import user_plus_sys_time
@@ -103,28 +118,27 @@ def quick_test(file_name):
   print tuple(s.asymmetric_unit_indices[-3:])
   print tuple(s.i_obs[-3:])
   print tuple(s.sigmas[-3:])
-  m = s.merge_equivalents()
-  m.array().show_summary()
+  m = s.as_miller_array(merge_equivalents=False).merge_equivalents()
   print "min redundancies:", flex.min(m.redundancies())
   print "max redundancies:", flex.max(m.redundancies())
   print "mean redundancies:", flex.mean(m.redundancies().as_double())
-  s.as_miller_arrays()
+  s.as_miller_arrays()[0].show_summary()
   print
 
 def run(args):
   file_names = """
-lbnl1/share/structure-lib/p9/data/infl.sca
-lbnl1/share/structure-lib/p9/data/peak.sca
-lbnl1/share/structure-lib/p9/data/high.sca
-lbnl1/share/structure-lib/rh-dehalogenase/data/auki_rd_1.sca
-lbnl1/share/structure-lib/rh-dehalogenase/data/hgi2_rd_1.sca
-lbnl1/share/structure-lib/rh-dehalogenase/data/hgki_rd_1.sca
-lbnl1/share/structure-lib/rh-dehalogenase/data/ndac_rd_1.sca
-lbnl1/share/structure-lib/rh-dehalogenase/data/rt_rd_1.sca
-lbnl1/share/structure-lib/rh-dehalogenase/data/smac_1.sca
-lbnl1/share/structure-lib/vmp/data/infl.sca
-lbnl1/share/structure-lib/vmp/data/peak.sca
-lbnl1/share/structure-lib/vmp/data/high.sca
+p9/data/infl.sca
+p9/data/peak.sca
+p9/data/high.sca
+rh-dehalogenase/data/auki_rd_1.sca
+rh-dehalogenase/data/hgi2_rd_1.sca
+rh-dehalogenase/data/hgki_rd_1.sca
+rh-dehalogenase/data/ndac_rd_1.sca
+rh-dehalogenase/data/rt_rd_1.sca
+rh-dehalogenase/data/smac_1.sca
+vmp/data/infl.sca
+vmp/data/peak.sca
+vmp/data/high.sca
 bnl_2003/karen/shelxd/p123-unmerged.sca
 bnl_2003/karen/shelxd/pk1-unmerged.sca
 bnl_2003/karen/shelxd/pk12-unmerged.sca
