@@ -25,7 +25,7 @@ def miller_array_export_as_cns_hkl(self, file_object, file_name=None, info=[]):
       print >> f, "INDEx %d %d %d" % h,
       print >> f, "FOBS=%.6g" % f_obs.data()[i],
       print >> f, "SIGMA=%.6g" % f_obs.sigmas()[i]
-  elif (self.is_complex()):
+  elif (self.is_complex_array()):
     print >> f, "DECLare NAME=F  DOMAin=RECIprocal TYPE=COMPLEX END"
     a = flex.abs(self.data())
     p = flex.arg(self.data(), True)

@@ -117,7 +117,7 @@ def xray_anomalous(flag):
 def xray_declare(names, miller_array):
   assert len(names) in (1,2)
   if (len(names) == 2): assert miller_array.sigmas() is not None
-  if (miller_array.is_complex()):
+  if (miller_array.is_complex_array()):
     type = "complex"
   else:
     type = "real"

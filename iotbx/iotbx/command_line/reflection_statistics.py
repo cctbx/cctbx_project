@@ -50,9 +50,9 @@ def run(args):
           info = miller_array.info()
           if (miller_array.is_xray_intensity_array()):
             miller_array = miller_array.f_sq_as_f()
-          elif (miller_array.is_complex()):
+          elif (miller_array.is_complex_array()):
             miller_array = abs(miller_array)
-          if (miller_array.is_real()):
+          if (miller_array.is_real_array()):
             if (miller_array.unit_cell() is None):
               print
               print "*" * 79

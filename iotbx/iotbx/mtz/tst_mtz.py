@@ -50,7 +50,7 @@ def recycle(miller_array, mtz_label, verbose=0):
   assert dataset.wavelength() - 1.0 < 1.e-5
   if (not miller_array.anomalous_flag()):
     if (miller_array.sigmas() is None):
-      if (miller_array.is_complex()):
+      if (miller_array.is_complex_array()):
         assert dataset.ncolumns() == 3+2
         r = miller.array(
           miller_set=miller.set(
@@ -77,7 +77,7 @@ def recycle(miller_array, mtz_label, verbose=0):
         sigmas=p.valid_values(label_sigmas))
   else:
     if (miller_array.sigmas() is None):
-      if (miller_array.is_complex()):
+      if (miller_array.is_complex_array()):
         assert dataset.ncolumns() == 3+4
         r = miller.array(
           miller_set=miller.set(
