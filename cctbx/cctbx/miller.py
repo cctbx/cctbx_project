@@ -1205,13 +1205,14 @@ class array(set):
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
-  def measurability(self, use_binning=False, cut_off=3.0):
+  def measurability(self, use_binning=False, cutoff=3.0):
     ## Peter Zwart 3/4/2005
-    """% of reflections for which (|delta I|/sigma_dI) > cut_off
-       AND min(I_plus/sigma_plus,I_min/sigma_min) > cut_off """
+    """\
+Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
+            and min(I_plus/sigma_plus,I_min/sigma_min) > cutoff"""
     assert not use_binning or self.binner() is not None
     assert self.sigmas() is not None
-    cut_off = float(cut_off)
+    cutoff = float(cutoff)
     if (not use_binning):
       obs = self.select(self.data() > 0 )
       if (self.is_xray_amplitude_array()):
@@ -1219,16 +1220,14 @@ class array(set):
       if (obs.data().size() == 0): return 0
       i_plus, i_minus = obs.hemispheres()
       assert i_plus.data().size() == i_minus.data().size()
-
       ratio = flex.fabs(i_plus.data()-i_minus.data()) / flex.sqrt(
                              (i_plus.sigmas()*i_plus.sigmas())
                            + (i_minus.sigmas()*i_minus.sigmas()) )
-
       i_plus_sigma = i_plus.data()/i_plus.sigmas()
       i_minus_sigma = i_minus.data()/i_minus.sigmas()
-
-
-      meas = ( (ratio > cut_off) &  (i_plus_sigma > cut_off) & (i_minus_sigma > cut_off) ).count(True)
+      meas = (  (ratio > cutoff)
+              & (i_plus_sigma > cutoff)
+              & (i_minus_sigma > cutoff) ).count(True)
       return float(meas)/float(ratio.size())
     results = []
     for i_bin in self.binner().range_all():
