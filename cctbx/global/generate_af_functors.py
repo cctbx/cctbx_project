@@ -3,6 +3,7 @@ def generate_unary_functor(name, op):
   template <typename ResultType,
             typename ArgumentType>
   struct functor_%s {
+    typedef ResultType result_type;
     ResultType operator()(const ArgumentType& x) const {
       return ResultType(%s);
     }
@@ -14,6 +15,7 @@ def generate_binary_functor(name, op):
             typename ArgumentType1,
             typename ArgumentType2>
   struct functor_%s {
+    typedef ResultType result_type;
     ResultType operator()(const ArgumentType1& x,
                           const ArgumentType2& y) const {
       return ResultType(%s);
@@ -38,6 +40,7 @@ def generate_greater_less_functor(name, op):
             typename ArgumentType1,
             typename ArgumentType2>
   struct functor_%s {
+    typedef ResultType result_type;
     ResultType operator()(const ArgumentType1& x,
                           const ArgumentType2& y) const {
       return ResultType(x %s y);

@@ -23,7 +23,6 @@ namespace cctbx { namespace af {
   }
 
   struct reserve_flag {};
-  struct no_initialization_flag {};
 
   namespace detail {
 

@@ -20,7 +20,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   void // not inline
   array_operation_unary(
-    const UnaryFunctorType& ftor,
+    UnaryFunctorType ftor,
     const ElementType* a,
     ElementTypeResult* result,
     const std::size_t& sz,
@@ -45,7 +45,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   inline void
   array_operation_unary(
-    const UnaryFunctorType& ftor,
+    UnaryFunctorType ftor,
     const ElementType* a,
     ElementTypeResult* result,
     const std::size_t& sz,
@@ -64,7 +64,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   void // not inline
   array_operation_binary_a_a(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     ElementTypeResult* result,
@@ -92,7 +92,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   inline void
   array_operation_binary_a_a(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     ElementTypeResult* result,
@@ -112,7 +112,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   void // not inline
   array_operation_binary_a_s(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1* a1,
     const ElementType2& a2,
     ElementTypeResult* result,
@@ -140,7 +140,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   inline void
   array_operation_binary_a_s(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1* a1,
     const ElementType2& a2,
     ElementTypeResult* result,
@@ -160,7 +160,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   void // not inline
   array_operation_binary_s_a(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1& a1,
     const ElementType2* a2,
     ElementTypeResult* result,
@@ -188,7 +188,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   inline void
   array_operation_binary_s_a(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1& a1,
     const ElementType2* a2,
     ElementTypeResult* result,
@@ -209,7 +209,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   void // not inline
   array_operation_binary_addl_a_a(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     const ElementType3& a3,
@@ -239,7 +239,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   inline void
   array_operation_binary_addl_a_a(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     const ElementType3& a3,
@@ -259,7 +259,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   void // not inline
   array_operation_binary_addl_a_s(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType* a1,
     const ElementType& a2,
     const ElementType& a3,
@@ -287,7 +287,7 @@ namespace cctbx { namespace af {
             typename ElementTypeResult>
   inline void
   array_operation_binary_addl_a_s(
-    const BinaryFunctorType& ftor,
+    BinaryFunctorType ftor,
     const ElementType* a1,
     const ElementType& a2,
     const ElementType& a3,
@@ -303,14 +303,16 @@ namespace cctbx { namespace af {
 
   // functor(scalar, array), non-POD result type
   template <typename BinaryFunctorType,
-            typename ElementType,
+            typename ElementType1,
+            typename ElementType2,
+            typename ElementType3,
             typename ElementTypeResult>
   void // not inline
   array_operation_binary_addl_s_a(
-    const BinaryFunctorType& ftor,
-    const ElementType& a1,
-    const ElementType* a2,
-    const ElementType& a3,
+    BinaryFunctorType ftor,
+    const ElementType1& a1,
+    const ElementType2* a2,
+    const ElementType3& a3,
     ElementTypeResult* result,
     const std::size_t& sz,
     false_type) // non-POD result type
@@ -331,14 +333,16 @@ namespace cctbx { namespace af {
 
   // functor(scalar, array), POD result type
   template <typename BinaryFunctorType,
-            typename ElementType,
+            typename ElementType1,
+            typename ElementType2,
+            typename ElementType3,
             typename ElementTypeResult>
   inline void
   array_operation_binary_addl_s_a(
-    const BinaryFunctorType& ftor,
-    const ElementType& a1,
-    const ElementType* a2,
-    const ElementType& a3,
+    BinaryFunctorType ftor,
+    const ElementType1& a1,
+    const ElementType2* a2,
+    const ElementType3& a3,
     ElementTypeResult* result,
     const std::size_t& sz,
     true_type) // POD result type
@@ -355,7 +359,7 @@ namespace cctbx { namespace af {
             typename ElementType2>
   inline void
   array_operation_in_place_binary(
-    const InPlaceBinaryFunctorType& ftor,
+    InPlaceBinaryFunctorType ftor,
     ElementType1* a1,
     const ElementType2* a2,
     const std::size_t& sz)
@@ -369,7 +373,7 @@ namespace cctbx { namespace af {
             typename ElementType>
   inline void
   array_operation_in_place_binary(
-    const InPlaceBinaryFunctorType& ftor,
+    InPlaceBinaryFunctorType ftor,
     ElementType* a1,
     const ElementType& a2,
     const std::size_t& sz)
@@ -383,7 +387,7 @@ namespace cctbx { namespace af {
             typename ElementType2>
   inline bool
   array_operation_reducing_boolean(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     const std::size_t& sz)
@@ -399,7 +403,7 @@ namespace cctbx { namespace af {
             typename ElementType>
   inline bool
   array_operation_reducing_boolean(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType* a1,
     const ElementType& a2,
     const std::size_t& sz)
@@ -415,7 +419,7 @@ namespace cctbx { namespace af {
             typename ElementType>
   inline bool
   array_operation_reducing_boolean(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType& a1,
     const ElementType* a2,
     const std::size_t& sz)
@@ -432,7 +436,7 @@ namespace cctbx { namespace af {
             typename ElementType2>
   inline bool
   array_operation_reducing_boolean_not_equal_to(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     const std::size_t& sz)
@@ -448,7 +452,7 @@ namespace cctbx { namespace af {
             typename ElementType>
   inline bool
   array_operation_reducing_boolean_not_equal_to(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType* a1,
     const ElementType& a2,
     const std::size_t& sz)
@@ -464,7 +468,7 @@ namespace cctbx { namespace af {
             typename ElementType>
   inline bool
   array_operation_reducing_boolean_not_equal_to(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType& a1,
     const ElementType* a2,
     const std::size_t& sz)
@@ -481,7 +485,7 @@ namespace cctbx { namespace af {
             typename ElementType2>
   inline bool
   array_operation_reducing_boolean_greater_less(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType1* a1,
     const ElementType2* a2,
     const std::size_t& sz)
@@ -498,7 +502,7 @@ namespace cctbx { namespace af {
             typename ElementType>
   inline bool
   array_operation_reducing_boolean_greater_less(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType* a1,
     const ElementType& a2,
     const std::size_t& sz)
@@ -515,7 +519,7 @@ namespace cctbx { namespace af {
             typename ElementType>
   inline bool
   array_operation_reducing_boolean_greater_less(
-    const BooleanFunctorType& ftor,
+    BooleanFunctorType ftor,
     const ElementType& a1,
     const ElementType* a2,
     const std::size_t& sz)

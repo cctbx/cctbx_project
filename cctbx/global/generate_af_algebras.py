@@ -217,17 +217,15 @@ def operator_decl_params(array_type_name, op_type, op_class, type_flags,
 def get_result_constructor_args(array_type_name, type_flags = None):
   arg_name = "a"
   if (type_flags != None): arg_name = "a%d" % ((type_flags[0] + 1) % 2 + 1,)
-  if (base_array_type_name(array_type_name) == "tiny"): return ""
   if (base_array_type_name(array_type_name) == "versa"):
-    return "(%s.accessor(), reserve_flag())" % (arg_name,)
-  return "(%s.size(), reserve_flag())" % (arg_name,)
+    return "%s.accessor()" % (arg_name,)
+  return "%s.size()" % (arg_name,)
 
 def binary_operator_algo_params(array_type_name, type_flags):
   r = empty()
   r.loop_n = "N"
   r.size_assert = ""
   r.result_constructor_args = ""
-  r.set_size_back_door = ""
   if (base_array_type_name(array_type_name) != "tiny"):
     r.loop_n = "a%d.size()" % ((type_flags[0] + 1) % 2 + 1,)
     if (type_flags == (1,1)):
@@ -235,18 +233,11 @@ def binary_operator_algo_params(array_type_name, type_flags):
     """
     r.result_constructor_args = get_result_constructor_args(
       array_type_name, type_flags)
-    r.set_size_back_door = """result.set_size_back_door(%s);
-    """ % (r.loop_n,)
   r.begin = ["", ""]
   for i in xrange(2):
     if (type_flags[i]): r.begin[i] = ".begin()"
   r.type_flags_code = "sa"[type_flags[0]] + "_" + "sa"[type_flags[1]]
   return r
-
-def set_size_back_door(array_type_name):
-  if (base_array_type_name(array_type_name) == "tiny"): return ""
-  return """result.set_size_back_door(a.size());
-    """
 
 def generate_unary_ops(array_type_name):
   result_constructor_args = get_result_constructor_args(array_type_name)
@@ -258,24 +249,30 @@ def generate_unary_ops(array_type_name):
 %s
   operator%s(const %s& a) {
 %s
-    result_array_type;
-    typedef typename result_array_type::value_type return_element_type;
-    result_array_type result%s;
+    return_array_type;
+    typedef typename return_array_type::value_type return_element_type;""" % (
+      format_header("  ", d.header),
+      format_list("  ", d.return_array_type),
+      op_symbol, d.params[0],
+      format_list("    ", d.typedef_return_array_type))
+    if (base_array_type_name(array_type_name) == "tiny"):
+      print """    return_array_type result;
     array_operation_unary(functor_%s<
         return_element_type,
         ElementType>(),
-      a.begin(), result.begin(), a.size(),
-      %s);
-    %sreturn result;
+      a.begin(), result.begin(), a.size(), true_type());
+    return result;
   }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       op_symbol, d.params[0],
-       format_list("    ", d.typedef_return_array_type),
-       result_constructor_args,
-       unary_functors[op_symbol],
-       d.false_or_true_type_selector,
-       set_size_back_door(array_type_name))
+""" % (unary_functors[op_symbol],)
+    else:
+      print """    return return_array_type(%s,
+      make_array_functor_unary(
+        functor_%s<
+          return_element_type,
+          ElementType>(), a.begin()));
+  }
+""" % (result_constructor_args,
+       unary_functors[op_symbol])
 
 def generate_unary_apply(array_type_name):
   result_constructor_args = get_result_constructor_args(array_type_name)
@@ -292,33 +289,34 @@ def generate_unary_apply(array_type_name):
   print """%s
   inline
   %s
-  apply(const UnaryOperation& op,
+  apply(UnaryOperation op,
         const %s& a,
         type_holder<ReturnElementType> result_type_holder) {
-    %s
-    result%s;
+    typedef %s return_array_type;""" % (
+       format_header("  ", header1),
+       return_array_type,
+       d.params[0],
+       return_array_type)
+  if (base_array_type_name(array_type_name) == "tiny"):
+    print """    return_array_type result;
     array_operation_unary(op,
-      a.begin(), result.begin(), a.size(),
-      %s);
-    %sreturn result;
-  }
-
+      a.begin(), result.begin(), a.size(), true_type());
+    return result;
+  }"""
+  else:
+    print """    return return_array_type(%s,
+      array_functor_unary<UnaryOperation, ElementType, ReturnElementType>(
+        op, a.begin()));
+  }""" % (result_constructor_args,)
+  print """
 %s
   inline
   %s
-  apply(const UnaryOperation& op,
+  apply(UnaryOperation op,
         const %s& a) {
     return apply(op, a, type_holder<typename UnaryOperation::result_type>());
   }
-""" % (format_header("  ", header1),
-       return_array_type,
-       d.params[0],
-       return_array_type,
-       result_constructor_args,
-       d.false_or_true_type_selector.replace(
-         "return_element_type", "ReturnElementType"),
-       set_size_back_door(array_type_name),
-       format_header("  ", header2),
+""" % (format_header("  ", header2),
        return_array_type.replace(
          "ReturnElementType", "typename UnaryOperation::result_type"),
        d.params[0])
@@ -334,28 +332,37 @@ def elementwise_binary_op(
     const %s& a1,
     const %s& a2) {
 %s
-    result_array_type;
-    typedef typename result_array_type::value_type return_element_type;
-    %sresult_array_type result%s;
+    return_array_type;
+    typedef typename return_array_type::value_type return_element_type;""" % (
+      format_header("  ", d.header),
+      format_list("  ", d.return_array_type),
+      function_name, d.params[0], d.params[1],
+      format_list("    ", d.typedef_return_array_type))
+  if (base_array_type_name(array_type_name) == "tiny"):
+    print """    return_array_type result;
     array_operation_binary_%s(functor_%s<
         return_element_type,
         %s,
         %s>(),
-      a1%s, a2%s, result.begin(), %s,
-      %s);
-    %sreturn result;
+      a1%s, a2%s, result.begin(), %s, true_type());
+    return result;
   }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       function_name, d.params[0], d.params[1],
-       format_list("    ", d.typedef_return_array_type),
-       a.size_assert,
+""" % (a.type_flags_code,
+       binary_functors[op_symbol], d.element_types[0], d.element_types[1],
+       a.begin[0], a.begin[1], a.loop_n)
+  else:
+    print """    %sreturn return_array_type(%s,
+      make_array_functor_binary_%s(
+        functor_%s<
+          return_element_type,
+          %s,
+          %s>(), a1%s, a2%s));
+  }
+""" % (a.size_assert,
        a.result_constructor_args,
        a.type_flags_code,
        binary_functors[op_symbol], d.element_types[0], d.element_types[1],
-       a.begin[0], a.begin[1], a.loop_n,
-       d.false_or_true_type_selector,
-       a.set_size_back_door)
+       a.begin[0], a.begin[1])
 
 def elementwise_inplace_binary_op(
       array_type_name, op_class, op_symbol, type_flags):
@@ -436,13 +443,17 @@ def generate_reducing_boolean_op(array_type_name, op_symbol):
 def generate_1arg_reductions(array_type_name):
   hp = get_template_header_and_parameters(array_type_name, 1)
   for function_name in reduction_functions_1arg:
+    return_type = "ElementType"
+    if (function_name in ("max_index", "min_index")):
+      return_type = "std::size_t"
     print """%s
   inline
-  ElementType
+  %s
   %s(const %s& a) {
     return %s(a.const_ref());
   }
 """ % (format_header("  ", hp.header),
+       return_type,
        function_name, hp.params[0],
        function_name)
 
@@ -470,22 +481,25 @@ def generate_1arg_element_wise(array_type_name, function_names):
 %s
   %s(const %s& a) {
 %s
-    result_array_type;
-    typedef typename result_array_type::value_type return_element_type;
-    result_array_type result%s;
+    return_array_type;
+    typedef typename return_array_type::value_type return_element_type;""" % (
+      format_header("  ", d.header),
+      format_list("  ", d.return_array_type),
+      function_name, d.params[0],
+      format_list("    ", d.typedef_return_array_type))
+    if (base_array_type_name(array_type_name) == "tiny"):
+      print """    return_array_type result;
     array_operation_unary(functor_%s<return_element_type, ElementType>(),
-      a.begin(), result.begin(), a.size(),
-      %s);
-    %sreturn result;
+      a.begin(), result.begin(), a.size(), true_type());
+    return result;
   }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       function_name, d.params[0],
-       format_list("    ", d.typedef_return_array_type),
-       result_constructor_args,
-       function_name,
-       d.false_or_true_type_selector,
-       set_size_back_door(array_type_name))
+""" % (function_name,)
+    else:
+      print """    return return_array_type(%s,
+      make_array_functor_unary(
+        functor_%s<return_element_type, ElementType>(), a.begin()));
+  }
+""" % (result_constructor_args, function_name)
 
 def generate_2arg_element_wise(
   array_type_name, function_names,
@@ -503,26 +517,35 @@ def generate_2arg_element_wise(
     const %s& a1,
     const %s& a2) {
 %s
-    result_array_type;
-    typedef typename result_array_type::value_type return_element_type;
-    %sresult_array_type result%s;
-    array_operation_binary_%s(functor_%s<
-        return_element_type, %s, %s>(),
-      a1%s, a2%s, result.begin(), %s,
-      %s);
-    %sreturn result;
-  }
-""" % (format_header("  ", d.header),
+    return_array_type;
+    typedef typename return_array_type::value_type return_element_type;""" % (
+       format_header("  ", d.header),
        format_list("  ", d.return_array_type),
        function_name, d.params[0], d.params[1],
-       format_list("    ", d.typedef_return_array_type),
-       a.size_assert,
+       format_list("    ", d.typedef_return_array_type))
+      if (base_array_type_name(array_type_name) == "tiny"):
+        print """
+    return_array_type result;
+    array_operation_binary_%s(functor_%s<
+        return_element_type, %s, %s>(),
+      a1%s, a2%s, result.begin(), %s, true_type());
+    return result;
+  }
+""" % (a.type_flags_code,
+       function_name, d.element_types[0], d.element_types[1],
+       a.begin[0], a.begin[1], a.loop_n)
+      else:
+        print """    %sreturn return_array_type(%s,
+      make_array_functor_binary_%s(
+        functor_%s<return_element_type,
+          %s, %s>(),
+        a1%s, a2%s));
+  }
+""" % (a.size_assert,
        a.result_constructor_args,
        a.type_flags_code,
        function_name, d.element_types[0], d.element_types[1],
-       a.begin[0], a.begin[1], a.loop_n,
-       d.false_or_true_type_selector,
-       a.set_size_back_door)
+       a.begin[0], a.begin[1])
 
 def generate_2arg_addl_element_wise(
   array_type_name, function_names,
@@ -543,54 +566,73 @@ def generate_2arg_addl_element_wise(
     const %s& a2,
     %s) {
 %s
-    result_array_type;
-    typedef typename result_array_type::value_type return_element_type;
-    %sresult_array_type result%s;
-    array_operation_binary_addl_%s(functor_%s<
-        return_element_type, %s, %s, %s>(),
-      a1%s, a2%s, %s, result.begin(), %s,
-      %s);
-    %sreturn result;
-  }
-""" % (format_header("  ", d.header),
+    return_array_type;
+    typedef typename return_array_type::value_type return_element_type;""" % (
+      (format_header("  ", d.header),
        format_list("  ", d.return_array_type),
        function_name, d.params[0], d.params[1], addl_args[0],
-       format_list("    ", d.typedef_return_array_type),
-       a.size_assert,
+       format_list("    ", d.typedef_return_array_type)))
+      if (base_array_type_name(array_type_name) == "tiny"):
+        print """
+    return_array_type result;
+    array_operation_binary_addl_%s(functor_%s<
+        return_element_type, %s, %s, %s>(),
+      a1%s, a2%s, %s,
+      result.begin(), %s, true_type());
+    return result;
+  }
+""" % (a.type_flags_code,
+       function_name, "ElementType", "ElementType", "ElementType",
+       a.begin[0], a.begin[1], addl_args[1], a.loop_n)
+      else:
+        print """    %sreturn return_array_type(%s,
+      make_array_functor_binary_addl_%s(
+        functor_%s<return_element_type,
+          %s, %s, %s>(),
+        a1%s, a2%s, %s));
+  }
+""" % (a.size_assert,
        a.result_constructor_args,
        a.type_flags_code,
        function_name, "ElementType", "ElementType", "ElementType",
-       a.begin[0], a.begin[1], addl_args[1], a.loop_n,
-       d.false_or_true_type_selector,
-       a.set_size_back_door)
+       a.begin[0], a.begin[1], addl_args[1])
 
 def generate_element_wise_special(
   array_type_name, special_def
 ):
   p = special_decl_params(array_type_name, special_def)
   if (len(p.arg_array_types) == 1):
-    result_constructor_args = get_result_constructor_args(array_type_name)
     print """%s
   inline
   %s
   %s(const %s& a) {
-    %s result%s;
+    typedef %s return_array_type;""" % (
+      format_header("  ", p.header),
+      p.return_array_type,
+      p.function_name, p.arg_array_types[0],
+      p.return_array_type)
+    if (base_array_type_name(array_type_name) == "tiny"):
+      print """    return_array_type result;
     array_operation_unary(functor_%s<
       %s,
       %s >(),
-      a.begin(), result.begin(), a.size(),
-      %s);
-    %sreturn result;
+      a.begin(), result.begin(), a.size(), true_type());
+    return result;
   }
-""" % (format_header("  ", p.header),
-       p.return_array_type,
-       p.function_name, p.arg_array_types[0],
-       p.return_array_type,
-       result_constructor_args,
+""" % (p.function_name,
+       special_def[0], special_def[2])
+    else:
+      result_constructor_args = get_result_constructor_args(
+        array_type_name)
+      print """    return return_array_type(%s,
+      make_array_functor_unary(
+        functor_%s<
+          %s,
+          %s >(), a.begin()));
+  }
+""" % (result_constructor_args,
        p.function_name,
-       special_def[0], special_def[2],
-       p.false_or_true_type_selector,
-       set_size_back_door(array_type_name))
+       special_def[0], special_def[2])
   else:
     for type_flags in ((1,1), (1,0), (0,1)):
       a = binary_operator_algo_params(array_type_name, type_flags)
@@ -606,26 +648,37 @@ def generate_element_wise_special(
   %s(
     const %s& a1,
     const %s& a2) {
-    %s result%s;
-    %sarray_operation_binary_%s(functor_%s<
+    typedef %s return_array_type;""" % (
+      format_header("  ", p.header), p.return_array_type,
+      p.function_name, params[0], params[1],
+      p.return_array_type)
+      if (base_array_type_name(array_type_name) == "tiny"):
+        print """    return_array_type result;
+    array_operation_binary_%s(functor_%s<
         %s,
         %s,
         %s >(),
-      a1%s, a2%s, result.begin(), %s,
-      %s);
-    %sreturn result;
+      a1%s, a2%s, result.begin(), %s, true_type());
+    return result;
   }
-""" % (format_header("  ", p.header), p.return_array_type,
-       p.function_name, params[0], params[1],
-       p.return_array_type,
+""" % (a.type_flags_code,
+       p.function_name,
+       special_def[0], special_def[2], special_def[3],
+       a.begin[0], a.begin[1], a.loop_n)
+      else:
+        print """    %sreturn return_array_type(%s,
+      make_array_functor_binary_%s(
+        functor_%s<
+          %s,
+          %s,
+          %s >(), a1%s, a2%s));
+  }
+""" % (a.size_assert,
        a.result_constructor_args,
-       a.size_assert,
        a.type_flags_code,
        p.function_name,
        special_def[0], special_def[2], special_def[3],
-       a.begin[0], a.begin[1], a.loop_n,
-       p.false_or_true_type_selector,
-       a.set_size_back_door)
+       a.begin[0], a.begin[1])
 
 def one_type(array_type_name):
   f = open("%s_algebra.h" % (array_type_name,), "w")
@@ -648,7 +701,10 @@ def one_type(array_type_name):
 """
   print "#include <cctbx/array_family/operator_traits_builtin.h>"
   print "#include <cctbx/array_family/operator_functors.h>"
-  print "#include <cctbx/array_family/generic_array_operators.h>"
+  if (array_type_name == "tiny"):
+    print "#include <cctbx/array_family/generic_array_operators.h>"
+  else:
+    print "#include <cctbx/array_family/generic_array_functors.h>"
   if (array_type_name != "ref"):
     print "#include <cctbx/array_family/std_imports.h>"
     print "#include <cctbx/array_family/misc_functions.h>"

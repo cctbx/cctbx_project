@@ -50,16 +50,6 @@ namespace cctbx { namespace af {
           m_accessor(n0)
       {}
 
-      versa_plain(const AccessorType& ac, no_initialization_flag)
-        : base_class(ac.size1d(), no_initialization_flag()),
-          m_accessor(ac)
-      {}
-
-      versa_plain(long n0, no_initialization_flag)
-        : base_class(AccessorType(n0).size1d(), no_initialization_flag()),
-          m_accessor(n0)
-      {}
-
       versa_plain(const AccessorType& ac, const ElementType& x)
         : base_class(ac.size1d(), x),
           m_accessor(ac)
@@ -69,6 +59,22 @@ namespace cctbx { namespace af {
         : base_class(AccessorType(n0).size1d(), x),
           m_accessor(n0)
       {}
+
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
+      // non-std
+      template <typename InitFunctorType>
+      versa_plain(const AccessorType& ac, InitFunctorType ftor)
+        : base_class(ac.size1d(), ftor),
+          m_accessor(ac)
+      {}
+
+      // non-std
+      template <typename InitFunctorType>
+      versa_plain(long n0, InitFunctorType ftor)
+        : base_class(AccessorType(n0).size1d(), ftor),
+          m_accessor(n0)
+      {}
+#endif
 
       versa_plain(const versa_plain<ElementType, AccessorType>& other,
                   weak_ref_flag)
