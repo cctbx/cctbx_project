@@ -1,5 +1,6 @@
 from scitbx.python_utils.misc import adopt_init_args
 from cctbx.xray import ext
+from cctbx.array_family import flex
 
 class target_functor_base:
 
@@ -84,8 +85,6 @@ class maximum_likelihood_criterion:
   def __call__(self, f_calc,
                      alpha,
                      beta,
-                     eps,
-                     cs,
                      compute_derivatives):
     assert f_calc.unit_cell().is_similar_to(self.f_obs().unit_cell())
     assert f_calc.space_group() == self.f_obs().space_group()
@@ -94,8 +93,8 @@ class maximum_likelihood_criterion:
         f_calc.data(),
         alpha,
         beta,
-        eps,
-        cs,
+        f_calc.epsilons().data(),
+        flex.int(flex.to_list(f_calc.centric_flags().data())),
         compute_derivatives)
 
 def registry():
