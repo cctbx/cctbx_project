@@ -1,19 +1,22 @@
 from iotbx import parameters
 
 def collect_values(word_iterator, lead_word):
+  is_disabled = False
   last_word = lead_word
   result = []
   while True:
     word = word_iterator.try_pop(settings_index=1)
     if (word is None): break
-    if (word.quote_token is not None
+    if (word.quote_token is None and word.value == "#"):
+      is_disabled = True
+    elif (word.quote_token is not None
         or (last_word.quote_token is None and last_word.value == "\\")):
-      result.append(word)
+      if (not is_disabled): result.append(word)
     elif (word.line_number != last_word.line_number):
       word_iterator.backup()
       break
     elif (word.value != "\\" or word.quote_token is not None):
-      result.append(word)
+      if (not is_disabled): result.append(word)
     last_word = word
   if (len(result) == 0):
     raise RuntimeError("Missing value for %s%s" % (
@@ -27,33 +30,46 @@ def collect_objects(
       start_word=None):
   objects = []
   while True:
-    word = word_iterator.try_pop_unquoted()
-    if (word is None): break
-    if (stop_token is not None and word.value == stop_token):
+    lead_word = word_iterator.try_pop_unquoted()
+    if (lead_word is None): break
+    if (stop_token is not None and lead_word.value == stop_token):
       return objects
-    lead_word = word
     if (lead_word.value == "{"):
       raise RuntimeError(
         'Syntax error: unexpected "{"%s' % lead_word.where_str())
+    if (lead_word.value[:1] == "#"):
+      lead_word.value = lead_word.value[1:]
+      is_disabled = True
+    else:
+      is_disabled = False
     word = word_iterator.pop()
     if (word.quote_token is None
         and (word.value == "{"
           or (word.line_number != lead_word.line_number
-              and word.value[:1] == "."))):
+              and (word.value[:1] == "." or word.value[:2] == "#.")))):
       if (not parameters.is_standard_identifier(lead_word.value)):
         lead_word.raise_syntax_error("improper scope name ")
-      scope = parameters.scope(name=lead_word.value, objects=None)
+      scope = parameters.scope(
+        name=lead_word.value,
+        objects=None,
+        is_disabled=is_disabled)
       while True:
-        if (word.value[:1] == "{"):
+        if (word.value == "{"):
           break
-        if (not scope.has_attribute_with_name(word.value[1:])):
+        if (word.value[:1] == "#"):
+          word.value = word.value[1:]
+          is_disabled = True
+        else:
+          is_disabled = False
+        if (word.value[:1] != "."
+            or not scope.has_attribute_with_name(word.value[1:])):
           raise RuntimeError(
             "Unexpected scope attribute: %s%s" % (
               word.value, word.where_str()))
         word_iterator.pop_unquoted().assert_expected("=")
-        scope.assign_attribute(
-          name=word.value[1:],
-          value_words=collect_values(word_iterator, word))
+        value_words = collect_values(word_iterator, word)
+        if (not is_disabled):
+          scope.assign_attribute(name=word.value[1:], value_words=value_words)
         word = word_iterator.pop_unquoted()
       scope.objects = collect_objects(
         word_iterator=word_iterator,
@@ -70,7 +86,8 @@ def collect_objects(
           word_iterator.pop_unquoted().assert_expected("=")
         objects.append(parameters.definition(
           name=lead_word.value,
-          values=collect_values(word_iterator, lead_word)))
+          values=collect_values(word_iterator, lead_word),
+          is_disabled=is_disabled))
       else:
         if (len(objects) == 0
             or not isinstance(objects[-1], parameters.definition)
@@ -79,10 +96,12 @@ def collect_objects(
             lead_word.value, lead_word.where_str()))
         word = word_iterator.pop_unquoted()
         word.assert_expected("=")
-        objects[-1].assign_attribute(
-          name=lead_word.value[1:],
-          value_words=collect_values(word_iterator, lead_word),
-          type_names=definition_type_names)
+        value_words = collect_values(word_iterator, lead_word)
+        if (not is_disabled):
+          objects[-1].assign_attribute(
+            name=lead_word.value[1:],
+            value_words=value_words,
+            type_names=definition_type_names)
   if (stop_token is not None):
     if (start_word is None):
       where = ""
