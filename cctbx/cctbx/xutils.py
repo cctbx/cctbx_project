@@ -2,6 +2,20 @@ from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
 from cctbx_boost import sftbx
 
+# XXX move to uctbx
+def are_similar_unit_cells(ucell1, ucell2,
+                           length_tolerance=0.01,
+                           angle_tolerance=1.):
+  p1 = ucell1.getParameters()
+  p2 = ucell2.getParameters()
+  for i in xrange(3):
+    if (min(p1[i], p2[i]) / max(p1[i], p2[i]) > (1 + length_tolerance)):
+      return False
+  for i in xrange(3, 6):
+    if (abs(p1[i] - p2[i]) > angle_tolerance):
+      return False
+  return True
+
 def space_group_info(space_group_symbol):
   return sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(space_group_symbol)).Info()
 

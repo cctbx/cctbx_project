@@ -46,7 +46,7 @@ class matrix:
     for ir in xrange(self.n[0]):
       s += "{"
       for ic in xrange(self.n[1]):
-	s += str(self(ir, ic))
+        s += str(self(ir, ic))
         s += ", "
       s = s[:-2] + "}, "
     return s[:-2] + "}"
@@ -89,7 +89,15 @@ class rt:
     return rt((self.r, self.t - other))
 
   def __mul__(self, other):
-    return rt((self.r * other.r, self.r * other.t + self.t))
+    try: return rt((self.r * other.r, self.r * other.t + self.t))
+    except: pass
+    try: return rt((self.r * other, self.t))
+    except: pass
+    try: return self.r * other + self.t
+    except: pass
+    if (len(other) == 9):
+      return rt((self.r * sqr(other), self.t))
+    return self.r * col(other) + self.t
 
 if (__name__ == "__main__"):
   a = matrix(range(1,7), (3,2))
