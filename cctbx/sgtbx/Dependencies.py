@@ -26,6 +26,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sgtbx/type.cpp",
       "sgtbx/normalizers.cpp",
       "sgtbx/wyckoff.cpp",
+      "sgtbx/bricks.cpp",
       "sgtbx/sgtbxmodule.cpp",
       "sgtbx/sgtbxdriver.cpp",
       "sgtbx/symbols.py",
@@ -61,6 +62,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "type",
       "normalizers",
       "wyckoff",
+      "bricks",
     )
 
     self.libraries = {

@@ -42,8 +42,9 @@ namespace sgtbx {
   using boost::gcd;
   using boost::lcm;
   struct rational : boost::rational<int> {
-    rational(int n = 0) : boost::rational<int>(n) { }
-    rational(int n, int d) : boost::rational<int>(n, d) { }
+    rational(int n = 0) : boost::rational<int>(n) {}
+    rational(int n, int d) : boost::rational<int>(n, d) {}
+    rational(const boost::rational<int>& r) : boost::rational<int>(r) {}
     std::string format(bool Decimal = 0) const;
   };
 
