@@ -102,7 +102,7 @@ time_gruber_1973_fast_minimum = time_log("gruber_1973.fast_minimum_reduction")
 time_uctbx_fast_minimum = time_log("uctbx.fast_minimum_reduction")
 fast_minimum_reduction_max_n_iterations = 0
 
-def reduce(inp):
+def do_reduce(inp):
   assert not inp.is_degenerate()
   time_krivy_gruber_1976.start()
   red = krivy_gruber_1976.reduction(
@@ -173,6 +173,13 @@ def reduce(inp):
         print
       sys.stdout.flush()
   return red
+
+def reduce(inp):
+  try:
+    return do_reduce(inp)
+  except:
+    print "Problem parameters:", inp.parameters()
+    raise
 
 def ucgmx((a,b,c,d,e,f)): # unit cell given Gruber matrix
   return uctbx.unit_cell((a,b,c,f/2.,e/2.,d/2.), is_metrical_matrix=0001)
