@@ -15,6 +15,7 @@ def export_to(target_module_name):
     "select",
     "get_random_seed",
     "random_generator",
+    "set_random_seed",
     "random_size_t",
     "random_double",
     "py_object",
