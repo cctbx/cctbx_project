@@ -74,8 +74,12 @@ namespace {
             arg_("distance_cutoff"), arg_("epsilon")=1.e-6))[return_self<>()])
         .def("add_pair_sym_table", &w_t::add_pair_sym_table, (
           arg_("sym_table")), return_self<>())
-        .def("add_pair", &w_t::add_pair,
+        .def("add_pair", (pair_asu_table<>&(w_t::*)(
+            unsigned, unsigned, sgtbx::rt_mx const&)) &w_t::add_pair,
           (arg_("i_seq"), arg_("j_seq"), arg_("rt_mx_ji")), return_self<>())
+        .def("add_pair", (pair_asu_table<>&(w_t::*)(
+            af::tiny<unsigned, 2> const&)) &w_t::add_pair,
+          (arg_("i_seqs")), return_self<>())
         .def("extract_pair_sym_table", &w_t::extract_pair_sym_table)
       ;
     }

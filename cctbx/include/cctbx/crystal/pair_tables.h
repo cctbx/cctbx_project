@@ -118,6 +118,18 @@ namespace cctbx { namespace crystal {
         return *this;
       }
 
+      pair_asu_table&
+      add_pair(af::tiny<unsigned, 2> const& i_seqs)
+      {
+        sgtbx::rt_mx rt_mx_ji(1, 1);
+        bool is_new = process_pair(i_seqs[0], i_seqs[1], rt_mx_ji);
+        if (is_new and i_seqs[0] != i_seqs[1]) {
+          is_new = process_pair(i_seqs[1], i_seqs[0], rt_mx_ji);
+          CCTBX_ASSERT(is_new);
+        }
+        return *this;
+      }
+
       pair_sym_table
       extract_pair_sym_table() const
       {

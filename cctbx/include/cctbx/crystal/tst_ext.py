@@ -453,6 +453,16 @@ def exercise_pair_tables():
     n_shells=5)
   assert [list(terms) for terms in term_table] \
       == [[1,4,10,20,34,54], [1,4,10,20,34,53], [1,4,10,20,34,54]]
+  asu_mappings = structure.asu_mappings(buffer_thickness=12)
+  asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  asu_table.add_pair(i_seqs=[0, 1])
+  asu_table.add_pair([0, 2])
+  asu_table.add_pair([1, 2])
+  expected_asu_pairs = [
+    [0, 1, 78], [0, 1, 121], [0, 2, 12], [0, 2, 72],
+    [1, 0, 67], [1, 2, 67],
+    [2, 0, 8], [2, 0, 79], [2, 1, 107], [2, 1, 120]]
+  check_pair_asu_table(asu_table, expected_asu_pairs)
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(
