@@ -77,9 +77,8 @@ class FileClient:
     if self.sock is None:
       self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
       self.sock.connect((self.host, self.port))
-      #  self.sock.connect((self.IP, self.port))
-      self.send = self.sock.makefile('w')
-      self.recv = self.sock.makefile('r')
+      self.send = self.sock.makefile('wb')
+      self.recv = self.sock.makefile('rb')
     pickle.dump(meth,self.send,1) # binary by default
     pickle.dump(args,self.send,1)
     pickle.dump(kwds,self.send,1)
@@ -96,10 +95,10 @@ class FileClient:
 
     # Closing the socket connection increases the speed of transfer but ruins
     # the possibility of contacting the clients.
-    # self.send.close()
-    # self.recv.close()
-    # self.sock.close()
-    # self.sock=None
+    self.send.close()
+    self.recv.close()
+    self.sock.close()
+    self.sock=None
     return result
 
   def __repr__(self):

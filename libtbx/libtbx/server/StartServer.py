@@ -28,4 +28,4 @@ if not client:
   except:
     print 'failed to write server port file'
 
-  thread.run()
+  thread.start()
