@@ -261,6 +261,165 @@ def exercise_difference_gaussian():
             gshifted, include_constant_term, power, d_star_sq[0], weights[0])
           assert eps_eq(an, fi, eps=1.e-3)
 
+def new_finite_diff_target_gradients(gaussian_fit, include_constant_term,
+                                     power, eps=1.e-2):
+  assert gaussian_fit.stols().size() == 1
+  weight = 1/gaussian_fit.sigmas()[0]**2
+  gr = flex.double()
+  c = gaussian_fit.c()
+  for i in xrange(gaussian_fit.n_ab()):
+    t = []
+    for seps in (eps, -eps):
+      a = list(gaussian_fit.a())
+      a[i] += seps
+      t.append(weight*xray_scattering.gaussian_fit(
+        gaussian_fit.stols(),
+        gaussian_fit.target_values(),
+        gaussian_fit.sigmas(),
+        xray_scattering.gaussian(
+          a, gaussian_fit.b(), c)).differences()[0]**power)
+    gr.append((t[0]-t[1])/(2*eps))
+  for i in xrange(gaussian_fit.n_ab()):
+    t = []
+    for seps in (eps, -eps):
+      b = list(gaussian_fit.b())
+      b[i] += seps
+      t.append(weight*xray_scattering.gaussian_fit(
+        gaussian_fit.stols(),
+        gaussian_fit.target_values(),
+        gaussian_fit.sigmas(),
+        xray_scattering.gaussian(
+          gaussian_fit.a(), b, c)).differences()[0]**power)
+    gr.append((t[0]-t[1])/(2*eps))
+  if (include_constant_term):
+    t = []
+    for seps in (eps, -eps):
+      t.append(weight*xray_scattering.gaussian_fit(
+        gaussian_fit.stols(),
+        gaussian_fit.target_values(),
+        gaussian_fit.sigmas(),
+        xray_scattering.gaussian(
+          gaussian_fit.a(), gaussian_fit.b(), c+seps)).differences()[0]**power)
+    gr.append((t[0]-t[1])/(2*eps))
+  return gr
+
+def exercise_gaussian_fit():
+  stols = flex.double((0.1, 0.2, 0.5))
+  values = flex.double((3,2,1))
+  sigmas = flex.double((0.04,0.02,0.01))
+  gf = xray_scattering.gaussian_fit(
+    stols, values, sigmas,
+    xray_scattering.gaussian((1,2), (4,5)))
+  assert approx_equal(gf.a(), (1,2))
+  assert approx_equal(gf.b(), (4,5))
+  assert approx_equal(gf.c(), 0)
+  assert approx_equal(gf.stols(), stols)
+  assert approx_equal(gf.target_values(), values)
+  assert approx_equal(gf.sigmas(), sigmas)
+  assert approx_equal(gf.fitted_values(),
+    [2.8632482881537511, 2.4896052951221748, 0.94088903489182252])
+  gf = xray_scattering.gaussian_fit(
+    stols, values, flex.double(),
+    xray_scattering.gaussian((1,2), (4,5)))
+  assert approx_equal(gf.sigmas(), [1,1,1])
+  reference_gaussian = xray_scattering.gaussian((1,2,3), (4,5,6))
+  gf = xray_scattering.gaussian_fit(
+    stols, reference_gaussian, sigmas,
+    xray_scattering.gaussian((1,2), (4,5)))
+  assert approx_equal(gf.a(), (1,2))
+  assert approx_equal(gf.b(), (4,5))
+  assert approx_equal(gf.c(), 0)
+  assert approx_equal(gf.stols(), stols)
+  assert approx_equal(gf.target_values(),
+    [reference_gaussian.at_stol(stol) for stol in stols])
+  assert approx_equal(gf.sigmas(), sigmas)
+  gf = xray_scattering.gaussian_fit(
+    stols, reference_gaussian, flex.double(),
+    xray_scattering.gaussian((1,2), (4,5)))
+  assert approx_equal(gf.sigmas(), [1,1,1])
+  sgf = gf.apply_shifts(flex.double((3,4,-5,6)), 1)
+  assert approx_equal(sgf.a(), (1+3,2+4))
+  assert approx_equal(sgf.b(), (1,5+6))
+  assert approx_equal(sgf.c(), 0)
+  differences = sgf.differences()
+  assert approx_equal(differences,
+    [sgf.at_stol(stol)-reference_gaussian.at_stol(stol) for stol in stols])
+  assert approx_equal(
+    sgf.sum_of_gradients(2, differences, 00000),
+    [15.6539271, 10.4562306, -4.1090114, -1.6376781])
+  gf = xray_scattering.gaussian_fit(
+    flex.double([0.0, 0.066666666666666666, 0.13333333333333333,
+                 0.2, 0.26666666666666666]),
+    xray_scattering.gaussian(
+      (2.657506, 1.078079, 1.490909, -4.2410698, 0.71379101),
+      (14.780758, 0.776775, 42.086842, -0.000294, 0.239535),
+      4.2979832),
+    flex.double(),
+    xray_scattering.gaussian(
+      (1.1423916, 4.1728425, 0.61716694),
+      (0.50733125, 14.002512, 41.978928)))
+  differences = flex.double([-0.064797341823577881, 0.003608505180995536,
+    0.098159179757290715, 0.060724224581695019, -0.10766283796372011])
+  assert approx_equal(gf.differences(), differences)
+  assert approx_equal(
+    gf.sum_of_gradients(2, differences, 00000),
+    [-0.016525391425206391, 0.020055876723667564, -0.018754011379726425,
+    0.0074465239375589107, 0.00054794635257838251, -0.0011194004809549143])
+  for include_constant_term in (00000, 0001):
+    g5c = xray_scattering.wk1995("C")
+    a = flex.double(g5c.a())
+    b = flex.double(g5c.b())
+    permutation = flex.sort_permutation(flex.abs(a), 1)[:4]
+    gf = xray_scattering.gaussian_fit(
+      flex.double([0]),
+      g5c.fetch(),
+      flex.double(),
+      xray_scattering.gaussian(
+        iter(a.select(permutation)),
+        iter(b.select(permutation)), 0))
+    assert approx_equal(gf.differences(), [-5.01177418232])
+    shifts = flex.double(8,-1)
+    if (include_constant_term): shifts.append(-.2)
+    b_min = -1
+    sgf = gf.apply_shifts(shifts, b_min)
+    assert approx_equal(sgf.a(),
+                        [-5.2410698, 1.657506, 0.49090898, 0.078078985])
+    assert approx_equal(sgf.b(),
+                        [-1, 13.780758, 41.086842, -0.223225])
+    if (include_constant_term):
+      assert approx_equal(sgf.c(), -.2)
+    expected_gradients = [1,1,1,1,0,0,0,0]
+    if (include_constant_term): expected_gradients.append(1)
+    assert approx_equal(
+      finite_diff_gradients(sgf, include_constant_term, 0),
+      expected_gradients,
+      eps=1.e-4)
+    for i in xrange(10):
+      gf = xray_scattering.gaussian_fit(
+        flex.double([i / 10.]),
+        g5c.fetch(),
+        flex.double(),
+        sgf)
+      differences = flex.double([0.5])
+      assert approx_equal(
+        gf.sum_of_gradients(
+          2, differences, include_constant_term),
+        finite_diff_gradients(
+          gf, include_constant_term, (gf.stols()[0]*2)**2),
+        eps=1.e-4)
+      for sigma in [0.04,0.02,0.01]:
+        gf = xray_scattering.gaussian_fit(
+          flex.double([i / 20.]),
+          g5c.fetch(),
+          flex.double([sigma]),
+          sgf)
+        for power in [2,4]:
+          differences = gf.differences()
+          an = gf.sum_of_gradients(power, differences, include_constant_term)
+          fi = new_finite_diff_target_gradients(
+            gf, include_constant_term, power)
+          assert eps_eq(an, fi, eps=1.e-3)
+
 def exercise_it1992():
   c = xray_scattering.it1992("c1")
   assert c.label() == "C"
@@ -359,6 +518,7 @@ def ensure_correct_element_symbol():
 def run():
   exercise_gaussian()
   exercise_difference_gaussian()
+  exercise_gaussian_fit()
   exercise_it1992()
   exercise_wk1995()
   ensure_common_symbols()
