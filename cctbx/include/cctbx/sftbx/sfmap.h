@@ -685,7 +685,7 @@ namespace cctbx { namespace sftbx {
       mh[2] = -h[2];
       int asu_sign = asu.asu_sign(h, mh);
       if (asu_sign == 0) continue;
-      sgtbx::PhaseInfo phase_info(sgops, h);
+      sgtbx::PhaseInfo phase_info(sgops, h, false);
       if (phase_info.isSysAbsent()) continue;
       bool f_conj = false;
       if (friedel_flag) {

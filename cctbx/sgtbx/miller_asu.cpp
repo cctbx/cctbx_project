@@ -71,7 +71,7 @@ namespace cctbx {
 
     bool MillerIndexGenerator::set_sys_abs_test(const Miller::Index& h)
     {
-      m_phase_info = PhaseInfo(m_SgOps, h);
+      m_phase_info = PhaseInfo(m_SgOps, h, false);
       return m_phase_info.isSysAbsent();
     }
 

@@ -803,8 +803,11 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     Miller_SymEquivIndex_complex_in, "complex_in");
 
   py_PhaseInfo.def(constructor<>());
-  py_PhaseInfo.def(constructor<SpaceGroup const&, Miller::Index const&>());
-  py_PhaseInfo.def(&PhaseInfo::SysAbsChecked, "SysAbsChecked");
+  py_PhaseInfo.def(
+    constructor<SpaceGroup const&, Miller::Index const&>());
+  py_PhaseInfo.def(
+    constructor<SpaceGroup const&, Miller::Index const&, bool>());
+  py_PhaseInfo.def(&PhaseInfo::SysAbsWasTested, "SysAbsWasTested");
   py_PhaseInfo.def(&PhaseInfo::isSysAbsent, "isSysAbsent");
   py_PhaseInfo.def(&PhaseInfo::isCentric, "isCentric");
   py_PhaseInfo.def(&PhaseInfo::HT, "HT");
