@@ -289,8 +289,10 @@ class stage_1:
         discard_atoms_with_unknown_scattering_type=False,
         sites_cart=None,
         sites_frac=None,
-        scattering_types=None):
+        scattering_types=None,
+        infer_scattering_types_from_names=False):
     assert sites_cart is None or sites_frac is None
+    if (infer_scattering_types_from_names): assert scattering_types is None
     special_position_settings = self.get_special_position_settings(
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
@@ -310,12 +312,18 @@ class stage_1:
           self.atom_attributes_list,
           sites_frac,
           scattering_types):
-      if (scattering_type == ""):
+      if (scattering_type == ""
+          and infer_scattering_types_from_names):
+        scattering_type = atom.name
+        if (scattering_type[0] in "0123456789"):
+          scattering_type = scattering_type[1:]
+      try:
+        scattering_type = eltbx.xray_scattering.it1992(
+          scattering_type, False).label()
+      except RuntimeError:
         if (discard_atoms_with_unknown_scattering_type):
           continue
         raise RuntimeError("Unknown scattering type: %s" % str(atom))
-      scattering_type = eltbx.xray_scattering.it1992(
-        scattering_type, False).label()
       if (atom.Ucart is None):
         u = adptbx.b_as_u(atom.tempFactor)
       else:
