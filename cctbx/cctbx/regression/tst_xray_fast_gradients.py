@@ -147,6 +147,7 @@ class resampling(crystal.symmetry):
                      gradient_flags,
                      n_parameters,
                      electron_density_must_be_positive=0001,
+                     tolerance_positive_definite=1.e-5,
                      verbose=0):
     gradient_map = self.ft_dp(dp)
     if (not gradient_map.anomalous_flag()):
@@ -176,7 +177,8 @@ class resampling(crystal.symmetry):
       self.u_extra(),
       self.wing_cutoff(),
       self.exp_table_one_over_step_size(),
-      electron_density_must_be_positive)
+      electron_density_must_be_positive,
+      tolerance_positive_definite)
     if (0 or verbose):
       print "max_shell_radii:", result.max_shell_radii()
       print "exp_table_size:", result.exp_table_size()

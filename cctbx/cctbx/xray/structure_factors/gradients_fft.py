@@ -44,7 +44,8 @@ class gradients_fft(gradients_base):
       manager.u_extra(),
       manager.wing_cutoff(),
       manager.exp_table_one_over_step_size(),
-      manager.electron_density_must_be_positive())
+      manager.electron_density_must_be_positive(),
+      manager.tolerance_positive_definite())
     time_sampling = time_sampling.elapsed()
     manager.estimate_time_fft.register(
       n_scatterers=xray_structure.scatterers().size(),

@@ -25,7 +25,8 @@ namespace {
                            double const&,
                            double const&,
                            bool,
-                           bool> >())
+                           bool,
+                           double const&> >())
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
         .def("eliminate_u_extra_and_normalize",

@@ -244,6 +244,7 @@ def exercise_sampled_model_density():
   assert approx_equal(d.u_extra(), 0.25)
   assert approx_equal(d.wing_cutoff(), 1.e-6)
   assert approx_equal(d.exp_table_one_over_step_size(), -100)
+  assert approx_equal(d.tolerance_positive_definite(), 1.e-5)
   assert d.n_scatterers_passed() == 2
   assert d.n_contributing_scatterers() == 2
   assert d.n_anomalous_scatterers() == 1

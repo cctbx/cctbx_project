@@ -132,7 +132,11 @@ namespace {
     def("is_positive_definite",
       (bool(*)(vec3<double> const&)) is_positive_definite);
     def("is_positive_definite",
+      (bool(*)(vec3<double> const&, double const&)) is_positive_definite);
+    def("is_positive_definite",
       (bool(*)(sym_mat3<double> const&)) is_positive_definite);
+    def("is_positive_definite",
+      (bool(*)(sym_mat3<double> const&, double const&)) is_positive_definite);
     def("eigenvalue_filtering",
       (sym_mat3<double>(*)(sym_mat3<double> const&)) eigenvalue_filtering);
 

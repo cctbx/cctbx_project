@@ -465,7 +465,8 @@ namespace cctbx { namespace xray {
         af::const_ref<XrayScattererType> const& scatterers,
         FloatType const& u_extra,
         FloatType const& wing_cutoff,
-        FloatType const& exp_table_one_over_step_size);
+        FloatType const& exp_table_one_over_step_size,
+        FloatType const& tolerance_positive_definite);
 
       uctbx::unit_cell const&
       unit_cell() { return unit_cell_; }
@@ -480,6 +481,12 @@ namespace cctbx { namespace xray {
       exp_table_one_over_step_size() const
       {
         return exp_table_one_over_step_size_;
+      }
+
+      FloatType
+      tolerance_positive_definite() const
+      {
+        return tolerance_positive_definite_;
       }
 
       std::size_t
@@ -516,12 +523,26 @@ namespace cctbx { namespace xray {
       FloatType u_extra_;
       FloatType wing_cutoff_;
       FloatType exp_table_one_over_step_size_;
+      FloatType tolerance_positive_definite_;
       std::size_t n_contributing_scatterers_;
       std::size_t n_anomalous_scatterers_;
       bool anomalous_flag_;
       std::size_t exp_table_size_;
       grid_point_type max_shell_radii_;
       accessor_type map_accessor_;
+
+      FloatType
+      get_u_cart_and_u_iso(
+        scitbx::sym_mat3<FloatType> const& u_star,
+        scitbx::sym_mat3<FloatType>& u_cart)
+      {
+        u_cart = adptbx::u_star_as_u_cart(unit_cell_, u_star);
+        scitbx::vec3<FloatType>
+          u_cart_eigenvalues = adptbx::eigenvalues(u_cart);
+        CCTBX_ASSERT(adptbx::is_positive_definite(u_cart_eigenvalues,
+          tolerance_positive_definite_));
+        return af::max(u_cart_eigenvalues);
+      }
   };
 
   template <typename FloatType,
@@ -532,13 +553,15 @@ namespace cctbx { namespace xray {
     af::const_ref<XrayScattererType> const& scatterers,
     FloatType const& u_extra,
     FloatType const& wing_cutoff,
-    FloatType const& exp_table_one_over_step_size)
+    FloatType const& exp_table_one_over_step_size,
+    FloatType const& tolerance_positive_definite)
   :
     unit_cell_(unit_cell),
     n_scatterers_passed_(scatterers.size()),
     u_extra_(u_extra),
     wing_cutoff_(wing_cutoff),
     exp_table_one_over_step_size_(exp_table_one_over_step_size),
+    tolerance_positive_definite_(tolerance_positive_definite),
     n_contributing_scatterers_(0),
     n_anomalous_scatterers_(0),
     anomalous_flag_(false),
