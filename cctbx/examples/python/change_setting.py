@@ -133,7 +133,7 @@ try:
     print
 
     SgOps_old.CheckUnitCell(UnitCell_old)
-    UnitCell_new = UnitCell_old.ChangeBasis(CBOp.InvM().as_tuple()[0])
+    UnitCell_new = CBOp.apply(UnitCell_old)
     print "New unit cell parameters: ", UnitCell_new
     SgOps_new.CheckUnitCell(UnitCell_new)
     print

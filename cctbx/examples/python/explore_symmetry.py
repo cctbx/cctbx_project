@@ -170,7 +170,7 @@ def get_unitcell(SgInfo):
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 120))
   else:
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  return RefUnitCell.ChangeBasis(SgInfo.CBOp().M().as_tuple()[0])
+  return SgInfo.CBOp().swap().apply(RefUnitCell)
 
 def expandSHELX_LATT(SgOps, N_fld):
   Z_dict = {
@@ -277,6 +277,7 @@ try:
       print
 
   UnitCell = get_unitcell(SgInfo)
+  SgOps.CheckUnitCell(UnitCell)
   SnapParameters = sgtbx.SpecialPositionSnapParameters(
     UnitCell, SgOps, 1, 1.e-6)
   WyckoffTable = sgtbx.WyckoffTable(SgInfo)
