@@ -10,6 +10,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
+from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 from scitbx.python_utils.str_utils import overwrite_at
 
@@ -58,6 +59,7 @@ class Mtz (ext.Mtz):
     return sgtbx.space_group_info(group=self.getSgtbxSpaceGroup())
 
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
+                             merge_equivalents=0001,
                              info_prefix=""):
     other_symmetry = crystal_symmetry
     result = []
@@ -73,6 +75,15 @@ class Mtz (ext.Mtz):
         column_groups = self.group_columns(crystal_symmetry, dataset)
         for column_group in column_groups:
           info = info_prefix + column_group.info()
+          if (merge_equivalents
+              and isinstance(column_group.data(), flex.double)
+              and isinstance(column_group.sigmas(), flex.double)
+              and flex.min(column_group.sigmas()) > 0):
+            merged_column_group = column_group.merge_equivalents().array()
+            if (merged_column_group.indices().size()
+                != column_group.indices().size()):
+              column_group = merged_column_group
+              info += ",merged"
           result.append(column_group.set_info(info))
     return result
 
