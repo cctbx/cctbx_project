@@ -7,6 +7,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_arg.hpp>
+#include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
 
 namespace iotbx { namespace mtz {
@@ -109,6 +110,8 @@ namespace {
           arg_("space_group")), return_self<>())
         .def("reserve", &w_t::reserve)
         .def("n_batches", &w_t::n_batches)
+        .def("batches", &w_t::batches)
+        .def("add_batch", &w_t::add_batch)
         .def("n_reflections", &w_t::n_reflections)
         .def("max_min_resolution", &w_t::max_min_resolution)
         .def("n_crystals", &w_t::n_crystals)

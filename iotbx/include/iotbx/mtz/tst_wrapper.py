@@ -35,6 +35,7 @@ def exercise_basic():
   assert mtz_object.point_group_name() == ""
   assert mtz_object.lattice_centring_type() == "\0"
   assert mtz_object.n_batches() == 0
+  assert mtz_object.batches().size() == 0
   assert mtz_object.n_reflections() == 0
   assert mtz_object.max_min_resolution() == (-1, -1)
   assert mtz_object.n_crystals() == 0
@@ -54,6 +55,7 @@ def exercise_basic():
     assert mtz_object.lattice_centring_type() == "P"
     assert mtz_object.space_group().type().lookup_symbol() == "P 21 21 21"
     assert mtz_object.n_batches() == 0
+    assert mtz_object.batches().size() == 0
     assert mtz_object.n_reflections() == 165
     assert approx_equal(mtz_object.max_min_resolution(),
       (19.869975507347792, 15.001543055390009))
@@ -836,6 +838,207 @@ Crystal 2:
       6 I    3/4=75.00%  F: amplitude
       7 SigI 3/4=75.00%  Q: standard deviation
 """
+  #
+  values_in = count()
+  values_out = count()
+  for i_batch in xrange(10):
+    batch = mtz_object.add_batch()
+    assert batch.num() == i_batch+1
+    assert batch.set_num(value=values_in.next()) is batch
+    assert batch.num() == values_out.next()
+    assert batch.set_num(value=i_batch+1) is batch
+    assert batch.title() == " "
+    assert batch.set_title("Hello MTZ") is batch
+    assert batch.title() == "Hello MTZ"
+    assert batch.set_title("Hello MTZ"*10) is batch
+    assert len(batch.title()) == 70
+    assert list(batch.gonlab()) == ["", "", ""]
+    assert batch.set_gonlab(
+      flex.std_string(["what", "ever", "this_is....."])) is batch
+    assert list(batch.gonlab()) == ["what", "ever", "this_is"]
+    assert batch.iortyp() == 0
+    assert batch.set_iortyp(value=values_in.next()) is batch
+    assert batch.iortyp() == values_out.next()
+    assert list(batch.lbcell()) == [0, 0, 0, 0, 0, 0]
+    assert batch.set_lbcell(flex.int(range(3,9))) is batch
+    assert list(batch.lbcell()) == range(3,9)
+    assert batch.misflg() == 0
+    assert batch.set_misflg(value=values_in.next()) is batch
+    assert batch.misflg() == values_out.next()
+    assert batch.jumpax() == 0
+    assert batch.set_jumpax(value=values_in.next()) is batch
+    assert batch.jumpax() == values_out.next()
+    assert batch.ncryst() == 0
+    assert batch.set_ncryst(value=values_in.next()) is batch
+    assert batch.ncryst() == values_out.next()
+    assert batch.lcrflg() == 0
+    assert batch.set_lcrflg(value=values_in.next()) is batch
+    assert batch.lcrflg() == values_out.next()
+    assert batch.ldtype() == 0
+    assert batch.set_ldtype(value=values_in.next()) is batch
+    assert batch.ldtype() == values_out.next()
+    assert batch.jsaxs() == 0
+    assert batch.set_jsaxs(value=values_in.next()) is batch
+    assert batch.jsaxs() == values_out.next()
+    assert batch.nbscal() == 0
+    assert batch.set_nbscal(value=values_in.next()) is batch
+    assert batch.nbscal() == values_out.next()
+    assert batch.ngonax() == 0
+    assert batch.set_ngonax(value=values_in.next()) is batch
+    assert batch.ngonax() == values_out.next()
+    assert batch.lbmflg() == 0
+    assert batch.set_lbmflg(value=values_in.next()) is batch
+    assert batch.lbmflg() == values_out.next()
+    assert batch.ndet() == 0
+    assert batch.set_ndet(value=values_in.next() % 3) is batch
+    assert batch.ndet() == values_out.next() % 3
+    assert batch.nbsetid() == 0
+    assert batch.set_nbsetid(value=values_in.next()) is batch
+    assert batch.nbsetid() == values_out.next()
+    assert list(batch.cell()) == [0]*6
+    assert batch.set_cell(flex.float(range(18,24))) is batch
+    assert list(batch.cell()) == range(18,24)
+    assert list(batch.umat()) == [0]*9
+    assert batch.set_umat(flex.float(range(16,25))) is batch
+    assert list(batch.umat()) == range(16,25)
+    assert list(batch.phixyz()) == [0]*6
+    assert batch.set_phixyz(flex.float(range(28,34))) is batch
+    assert list(batch.phixyz()) == range(28,34)
+    assert list(batch.crydat()) == [0]*12
+    assert batch.set_crydat(flex.float(range(26,38))) is batch
+    assert list(batch.crydat()) == range(26,38)
+    assert list(batch.datum()) == [0]*3
+    assert batch.set_datum(flex.float(range(26,29))) is batch
+    assert list(batch.datum()) == range(26,29)
+    assert batch.phistt() == 0
+    assert batch.set_phistt(value=values_in.next()) is batch
+    assert batch.phistt() == values_out.next()
+    assert batch.phiend() == 0
+    assert batch.set_phiend(value=values_in.next()) is batch
+    assert batch.phiend() == values_out.next()
+    assert list(batch.scanax()) == [0]*3
+    assert batch.set_scanax(flex.float(range(62,65))) is batch
+    assert list(batch.scanax()) == range(62,65)
+    assert batch.time1() == 0
+    assert batch.set_time1(value=values_in.next()) is batch
+    assert batch.time1() == values_out.next()
+    assert batch.time2() == 0
+    assert batch.set_time2(value=values_in.next()) is batch
+    assert batch.time2() == values_out.next()
+    assert batch.bscale() == 0
+    assert batch.set_bscale(value=values_in.next()) is batch
+    assert batch.bscale() == values_out.next()
+    assert batch.bbfac() == 0
+    assert batch.set_bbfac(value=values_in.next()) is batch
+    assert batch.bbfac() == values_out.next()
+    assert batch.sdbscale() == 0
+    assert batch.set_sdbscale(value=values_in.next()) is batch
+    assert batch.sdbscale() == values_out.next()
+    assert batch.sdbfac() == 0
+    assert batch.set_sdbfac(value=values_in.next()) is batch
+    assert batch.sdbfac() == values_out.next()
+    assert batch.phirange() == 0
+    assert batch.set_phirange(value=values_in.next()) is batch
+    assert batch.phirange() == values_out.next()
+    assert list(batch.e1()) == [0]*3
+    assert batch.set_e1(flex.float(range(71,74))) is batch
+    assert list(batch.e1()) == range(71,74)
+    assert list(batch.e2()) == [0]*3
+    assert batch.set_e2(flex.float(range(72,75))) is batch
+    assert list(batch.e2()) == range(72,75)
+    assert list(batch.e3()) == [0]*3
+    assert batch.set_e3(flex.float(range(73,76))) is batch
+    assert list(batch.e3()) == range(73,76)
+    assert list(batch.source()) == [0]*3
+    assert batch.set_source(flex.float(range(74,77))) is batch
+    assert list(batch.source()) == range(74,77)
+    assert list(batch.so()) == [0]*3
+    assert batch.set_so(flex.float(range(75,78))) is batch
+    assert list(batch.so()) == range(75,78)
+    assert batch.alambd() == 0
+    assert batch.set_alambd(value=values_in.next()) is batch
+    assert batch.alambd() == values_out.next()
+    assert batch.delamb() == 0
+    assert batch.set_delamb(value=values_in.next()) is batch
+    assert batch.delamb() == values_out.next()
+    assert batch.delcor() == 0
+    assert batch.set_delcor(value=values_in.next()) is batch
+    assert batch.delcor() == values_out.next()
+    assert batch.divhd() == 0
+    assert batch.set_divhd(value=values_in.next()) is batch
+    assert batch.divhd() == values_out.next()
+    assert batch.divvd() == 0
+    assert batch.set_divvd(value=values_in.next()) is batch
+    assert batch.divvd() == values_out.next()
+    assert list(batch.dx()) == [0]*2
+    assert batch.set_dx(flex.float(range(84,86))) is batch
+    assert list(batch.dx()) == range(84,86)
+    assert list(batch.theta()) == [0]*2
+    assert batch.set_theta(flex.float(range(85,87))) is batch
+    assert list(batch.theta()) == range(85,87)
+    assert list(batch.detlm()) == [0]*8
+    assert batch.set_detlm(flex.float(range(86,94))) is batch
+    assert list(batch.detlm()) == range(86,94)
+    if (not verbose): out = StringIO()
+    batch.show(out=out)
+    if (not verbose and i_batch == 3):
+      batch_3_show = out
+      assert out.getvalue() == """\
+batch number: 4
+batch title: Hello MTZHello MTZHello MTZHello MTZHello MTZHello MTZHello MTZHello M
+names of the three axes: ['what', 'ever', 'this_is']
+type of orientation block: 82
+refinement flags for cell: [3, 4, 5, 6, 7, 8]
+number of phixyz used (0, 1, or 2): 83
+reciprocal axis closest to rotation axis: 84
+crystal number: 85
+mosaicity model: 0 = isotropic, 1 = anisotropic: 86
+type of data: 2D (1), 3D (2), or Laue (3): 87
+goniostat scan axis number: 88
+number of batch scales & Bfactors (0 if unset): 89
+number of goniostat axes: 90
+flag for type of beam info: 91
+  0: for alambd, delamb; 1: also delcor, divhd, divvd
+number of detectors (current maximum 2): 2
+dataset id: 93
+cell dimensions: [18.0, 19.0, 20.0, 21.0, 22.0, 23.0]
+orientation matrix U: [16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0]
+  in Fortranic order, i.e. U(1,1), U(2,1) ...
+missetting angles at beginning and end of oscillation: [28.0, 29.0, 30.0, 31.0, 32.0, 33.0]
+mosaicity: [26.0, 27.0, 28.0, 29.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0]
+datum values of goniostat axes: [26.0, 27.0, 28.0]
+start of phi relative to datum: 94.0
+end of phi relative to datum: 95.0
+rotation axis in lab frame: [62.0, 63.0, 64.0]
+start time: 96.0
+stop time: 97.0
+batch scale: 98.0
+batch temperature factor: 99.0
+sd bscale: 100.0
+sd bbfac: 101.0
+phi range: 102.0
+vectors ("Cambridge" laboratory axes) defining ngonax goniostat axes:
+  vector 1: [71.0, 72.0, 73.0]
+  vector 2: [72.0, 73.0, 74.0]
+  vector 3: [73.0, 74.0, 75.0]
+idealised source vector: [74.0, 75.0, 76.0]
+source vector: [75.0, 76.0, 77.0]
+wavelength (A): 103.0
+dispersion (deltalambda / lambda): 104.0
+correlated component: 105.0
+horizontal beam divergence: 106.0
+vertical beam divergence: 107.0
+xtal to detector distance: [84.0, 85.0]
+detector tilt angle: [85.0, 86.0]
+min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.0, 92.0, 93.0]
+"""
+  mtz_object.write(file_name="tmp.mtz")
+  restored = mtz.wrapper.object(file_name="tmp.mtz")
+  assert restored.n_batches() == 10
+  if (not verbose): out = StringIO()
+  restored.batches()[3].show(out=out)
+  if (not verbose):
+    assert out.getvalue() == batch_3_show.getvalue()
 
 def exercise():
   command_line = (iotbx_option_parser()
