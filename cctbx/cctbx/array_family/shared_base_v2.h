@@ -34,109 +34,126 @@
  *
  */
 
+// XXX weak reference count
+
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_BASE_V2_H
 #define CCTBX_ARRAY_FAMILY_SHARED_BASE_V2_H
 
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
+#include <cctbx/array_family/type_traits.h>
 
 namespace cctbx { namespace af {
 
-  struct reserve_flag {};
-
   namespace detail {
-
     const std::size_t global_max_size(std::size_t(-1));
+  }
 
-    template <typename ElementType,
-              std::size_t SmallestAutoCapacity = 8>
-    class basic_storage_v2 {
-      public:
-        typedef std::size_t size_type;
-
-        basic_storage_v2()
-          : use_count(1), size(0), capacity(0),
-            data(0)
-        {}
-
-        explicit
-        basic_storage_v2(const size_type& sz)
-          : use_count(1), size(sz), capacity(sz),
-            data(new ElementType[sz])
-        {}
-
-        basic_storage_v2(const size_type& cap, reserve_flag)
-          : use_count(1), size(0), capacity(cap),
-            data(new ElementType[cap])
-        {}
-
-        ~basic_storage_v2() {
-          delete[] data;
-        }
-
-        long use_count;
-        size_type size;
-        size_type capacity;
-        ElementType* data;
-
-      private:
-        basic_storage_v2(const basic_storage_v2<ElementType>&);
-        basic_storage_v2<ElementType>&
-        operator=(const basic_storage_v2<ElementType>&);
-    };
-
-  } // namespace detail
-
-  template <class ElementType>
+  template <typename ElementType>
   class shared_base_v2
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef detail::basic_storage_v2<char> basic_storage_type;
-
       static size_type element_size() { return sizeof(ElementType); }
 
+    protected:
+      class handle_type {
+        public:
+          handle_type()
+            : use_count(1), size(0), capacity(0),
+              data(0)
+          {}
+
+          explicit
+          handle_type(const size_type& sz)
+            : use_count(1), size(0), capacity(sz),
+              data(new char[sz])
+          {}
+
+          ~handle_type() {
+            delete[] data;
+          }
+
+          void swap(handle_type& other) {
+            std::swap(size, other.size);
+            std::swap(capacity, other.capacity);
+            std::swap(data, other.data);
+          }
+
+          size_type use_count;
+          size_type size;
+          size_type capacity;
+          char* data;
+
+        private:
+          handle_type(const handle_type&);
+          handle_type& operator=(const handle_type&);
+      };
+
+    public:
       shared_base_v2()
-        : m_handle(new basic_storage_type)
+        : m_handle(new handle_type)
       {}
 
       explicit
-      shared_base_v2(size_type sz)
-        : m_handle(new basic_storage_type(sz * sizeof(ElementType)))
+      shared_base_v2(const size_type& sz)
+        : m_handle(new handle_type(sz * element_size()))
       {
-        std::uninitialized_fill(begin(), end(), ElementType());
+        std::uninitialized_fill_n(begin(), sz, ElementType());
+        m_handle->size = m_handle->capacity;
       }
 
-      shared_base_v2(size_type sz, reserve_flag)
-        : m_handle(
-            new basic_storage_type(sz * sizeof(ElementType), reserve_flag()))
-      {
-        std::uninitialized_fill(begin(), end(), ElementType());
-      }
+      // non-std
+      shared_base_v2(const size_type& sz, reserve_flag)
+        : m_handle(new handle_type(sz * element_size()))
+      {}
 
-      shared_base_v2(size_type sz, const ElementType& x)
-        : m_handle(new basic_storage_type(sz * sizeof(ElementType)))
+      shared_base_v2(const size_type& sz, const ElementType& x)
+        : m_handle(new handle_type(sz * element_size()))
       {
-        std::uninitialized_fill(begin(), end(), x);
+        std::uninitialized_fill_n(begin(), sz, x);
+        m_handle->size = m_handle->capacity;
       }
 
       shared_base_v2(const ElementType* first, const ElementType* last)
-        : m_handle(new basic_storage_type((last-first) * sizeof(ElementType)))
+        : m_handle(new handle_type((last - first) * element_size()))
       {
         std::uninitialized_copy(first, last, begin());
+        m_handle->size = m_handle->capacity;
       }
 
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
+                                        // 1200 == VC++ 6.0
+      template <typename OtherElementType>
+      shared_base_v2(
+        const OtherElementType* first, const OtherElementType* last)
+        : m_handle(new handle_type((last - first) * element_size()))
+      {
+        uninitialized_copy_typeconv(first, last, begin());
+        m_handle->size = m_handle->capacity;
+      }
+#endif
+
+      // non-std: shallow copy semantics
       shared_base_v2(const shared_base_v2<ElementType>& other)
         : m_handle(other.m_handle)
       {
         m_handle->use_count++;
       }
 
+      explicit
+      shared_base_v2(const handle_type& handle)
+        : m_handle(handle)
+      {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+      }
+
       ~shared_base_v2() {
         m_dispose();
       }
 
+      // non-std: shallow copy semantics
       shared_base_v2<ElementType>&
       operator=(const shared_base_v2<ElementType>& other)
       {
@@ -148,6 +165,17 @@ namespace cctbx { namespace af {
         return *this;
       }
 
+      // non-std
+            handle_type& handle()       {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+        return m_handle;
+      }
+      // non-std
+      const handle_type& handle() const {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+        return m_handle;
+      }
+
       size_type size() const { return m_handle->size / element_size(); }
 
       bool empty() const { if (size() == 0) return true; return false; }
@@ -157,10 +185,11 @@ namespace cctbx { namespace af {
       }
 
       static size_type max_size() {
-        return detail::global_max_size / sizeof(ElementType);
+        return detail::global_max_size / element_size();
       }
 
-      long use_count() const { return m_handle->use_count; }
+      // non-std
+      size_type use_count() const { return m_handle->use_count; }
 
       CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
         reinterpret_cast<ElementType*>(m_handle->data), size())
@@ -168,18 +197,18 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())
 
       void swap(shared_base_v2<ElementType>& other) {
-        std::swap(m_handle, other.m_handle);
-        std::swap(m_handle->use_count, other.m_handle->use_count);
+        m_handle->swap(*(other.m_handle));
       }
 
-      void reserve(size_type sz) {
+      void reserve(const size_type& sz) {
         if (capacity() < sz) {
-          shared_base_v2<ElementType> new_this(begin(), end());
+          shared_base_v2<ElementType> new_this(sz, reserve_flag());
+          new_this.assign(begin(), end());
           new_this.swap(*this);
         }
       }
 
-      void assign(size_type sz, const ElementType& x) {
+      void assign(const size_type& sz, const ElementType& x) {
         if (sz > capacity()) {
           shared_base_v2<ElementType> new_this(sz, x);
           new_this.swap(*this);
@@ -250,6 +279,7 @@ namespace cctbx { namespace af {
         return begin() + n;
       }
 
+      // restricted to ElementType
       void insert(ElementType* pos,
                   const ElementType* first, const ElementType* last)
       {
@@ -289,7 +319,7 @@ namespace cctbx { namespace af {
         }
       }
 
-      void insert(ElementType* pos, size_type n, const ElementType& x) {
+      void insert(ElementType* pos, const size_type& n, const ElementType& x) {
         if (n == 0) return;
         if (size() + n > capacity()) {
           m_insert_overflow(pos, x, n, false);
@@ -330,7 +360,7 @@ namespace cctbx { namespace af {
         return first;
       }
 
-      void resize(size_type new_size, const ElementType& x) {
+      void resize(const size_type& new_size, const ElementType& x) {
         if (new_size < size())  {
           erase(begin() + new_size, end());
         }
@@ -339,7 +369,7 @@ namespace cctbx { namespace af {
         }
       }
 
-      void resize(size_type new_size) {
+      void resize(const size_type& new_size) {
         resize(new_size, ElementType());
       }
 
@@ -347,10 +377,39 @@ namespace cctbx { namespace af {
         erase(begin(), end());
       }
 
+      // non-std
+      shared_base_v2<ElementType>
+      deep_copy() const {
+        shared_base_v2<ElementType> result(size(), reserve_flag());
+        result.assign(begin(), end());
+        return result;
+      }
+
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
+                                        // 1200 == VC++ 6.0
+      // non-std
+      template <typename OtherElementType>
+      void
+      assign(const OtherElementType* first, const OtherElementType* last) {
+        clear();
+        size_type sz = last - first;
+        reserve(sz);
+        uninitialized_copy_typeconv(first, last, begin());
+        m_set_size(sz);
+      }
+#endif
+
+      // non-std
+      template <typename OtherArrayType>
+      void
+      assign(const OtherArrayType& other) {
+        assign(other.begin(), other.end());
+      }
+
     protected:
 
       void m_insert_overflow(ElementType* pos, const ElementType& x,
-                             size_type n, bool at_end) {
+                             const size_type& n, bool at_end) {
         size_type old_size = size();
         size_type new_capacity = old_size + std::max(old_size, n);
         shared_base_v2<ElementType>
@@ -382,19 +441,19 @@ namespace cctbx { namespace af {
         }
       }
 
-      void m_set_size(size_type sz) {
+      void m_set_size(const size_type& sz) {
         m_handle->size = sz * element_size();
       }
 
-      void m_incr_size(size_type n) {
+      void m_incr_size(const size_type& n) {
         m_handle->size = (size() + n) * element_size();
       }
 
-      void m_decr_size(size_type n) {
+      void m_decr_size(const size_type& n) {
         m_handle->size = (size() - n) * element_size();
       }
 
-      basic_storage_type* m_handle;
+      handle_type* m_handle;
   };
 
 }} // namespace cctbx::af

@@ -14,29 +14,7 @@
 
 #include <algorithm>
 #include <cctbx/array_family/ref.h>
-
-#if defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
-
-#define CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
-
-#else
-
-#include <boost/static_assert.hpp>
-#include <boost/type_traits.hpp>
-#define CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR \
-{ \
-  BOOST_STATIC_ASSERT(::boost::has_trivial_destructor<ElementType>::value); \
-}
-
-namespace boost {
-  template <typename T>
-  struct has_trivial_destructor<std::complex<T> > {
-    // we really hope that this is true ...
-    static const bool value = true;
-  };
-}
-
-#endif // defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+#include <cctbx/array_family/type_traits.h>
 
 namespace cctbx { namespace af {
   namespace detail {
