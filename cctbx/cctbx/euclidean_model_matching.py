@@ -142,7 +142,7 @@ class match_refine:
 
   def __init__(self, tolerance,
                ref_model1, ref_model2,
-               unit_cell, match_symmetry,
+               match_symmetry,
                equiv1,
                i_pivot1, i_pivot2,
                eucl_symop,
@@ -160,6 +160,7 @@ class match_refine:
     self.calculate_rms()
 
   def add_pairs(self):
+    length = self.ref_model1.unit_cell().length
     while (len(self.singles1) and len(self.singles2)):
       shortest_dist = 2 * self.tolerance
       new_pair = 0
@@ -173,7 +174,7 @@ class match_refine:
             # ensure that this pair can be matched within 1 * tolerance.
             diff = dist_info.diff()
             diff_allowed = self.match_symmetry.filter_shift(diff, selector=1)
-            dist_allowed = self.unit_cell.length(diff_allowed)
+            dist_allowed = length(diff_allowed)
             if (dist_allowed < self.tolerance):
               shortest_dist = dist
               new_pair = (is1, is2)
@@ -213,7 +214,8 @@ class match_refine:
     return sgtbx.min_sym_equiv_distance_info(self.equiv1[pair[0]], c2).diff()
 
   def calculate_shortest_dist(self, pair):
-    return self.unit_cell.length(self.calculate_shortest_diff(pair))
+    length = self.ref_model1.unit_cell().length
+    return length(self.calculate_shortest_diff(pair))
 
   def calculate_shortest_diffs(self):
     shortest_diffs = []
@@ -222,20 +224,22 @@ class match_refine:
     return shortest_diffs
 
   def refine_adjusted_shift(self):
+    unit_cell = self.ref_model1.unit_cell()
     sum_diff_cart = [0,0,0]
     for diff in self.calculate_shortest_diffs():
       diff_allowed = self.match_symmetry.filter_shift(diff, selector=1)
-      diff_cart = self.unit_cell.orthogonalize(diff_allowed)
+      diff_cart = unit_cell.orthogonalize(diff_allowed)
       sum_diff_cart = list_algebra.plus(sum_diff_cart, diff_cart)
     mean_diff_cart = [s / len(self.pairs) for s in sum_diff_cart]
-    mean_diff_frac = self.unit_cell.fractionalize(mean_diff_cart)
+    mean_diff_frac = unit_cell.fractionalize(mean_diff_cart)
     self.adjusted_shift = list_algebra.plus(
       self.adjusted_shift, mean_diff_frac)
 
   def calculate_rms(self):
+    length = self.ref_model1.unit_cell().length
     sum_dist2 = 0
     for pair in self.pairs:
-      sum_dist2 += self.unit_cell.length(self.calculate_shortest_diff(pair))**2
+      sum_dist2 += length(self.calculate_shortest_diff(pair))**2
     self.rms = math.sqrt(sum_dist2 / len(self.pairs))
 
   def show(self, f=sys.stdout):
@@ -308,20 +312,10 @@ def match_rt_from_ref_eucl_rt(model1_cb_op, model2_cb_op, ref_eucl_rt):
   # X1 = inv_m1 * ref_eucl_rt * m2 * X2
   return inv_m1 * ref_eucl_rt * m2
 
-def match_models(model1, model2,
-                 tolerance=1.,
-                 models_are_diffraction_index_equivalent=00000,
-                 rms_penalty_per_site=0.05):
-  assert model1.cb_op().is_identity_op()
-  assert model2.cb_op().is_identity_op()
-  ref_model1 = model1.transform_to_reference_setting()
-  ref_model2 = model2.transform_to_reference_setting()
-  assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
-  if (ref_model1.space_group() != ref_model2.space_group()):
-    ref_model2 = ref_model2.change_hand()
-  assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
-  assert ref_model1.space_group() == ref_model2.space_group()
-  unit_cell = ref_model1.unit_cell()
+def compute_refined_matches(ref_model1, ref_model2,
+                            tolerance,
+                            models_are_diffraction_index_equivalent,
+                            break_if_match_with_no_singles):
   match_symmetry = euclidean_match_symmetry(
     ref_model1.space_group_info(),
     use_k2l=0001, use_l2n=(not models_are_diffraction_index_equivalent))
@@ -342,7 +336,7 @@ def match_models(model1, model2,
           allowed_shift = dist_info.continuous_shifts()
           match = match_refine(tolerance,
                                ref_model1, ref_model2,
-                               unit_cell, match_symmetry,
+                               match_symmetry,
                                equiv1,
                                i_pivot1, i_pivot2,
                                eucl_symop,
@@ -352,6 +346,30 @@ def match_models(model1, model2,
             ref_model2.cb_op(),
             match.ref_eucl_rt)
           refined_matches.append(match)
+          if (break_if_match_with_no_singles):
+            if (len(match.singles1) == 0 or len(match.singles2) == 0):
+              return refined_matches
+  return refined_matches
+
+def match_models(model1, model2,
+                 tolerance=1.,
+                 models_are_diffraction_index_equivalent=00000,
+                 break_if_match_with_no_singles=00000,
+                 rms_penalty_per_site=0.05):
+  assert model1.cb_op().is_identity_op()
+  assert model2.cb_op().is_identity_op()
+  ref_model1 = model1.transform_to_reference_setting()
+  ref_model2 = model2.transform_to_reference_setting()
+  assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
+  if (ref_model1.space_group() != ref_model2.space_group()):
+    ref_model2 = ref_model2.change_hand()
+  assert ref_model1.unit_cell().is_similar_to(ref_model2.unit_cell())
+  assert ref_model1.space_group() == ref_model2.space_group()
+  refined_matches = compute_refined_matches(
+    ref_model1, ref_model2,
+    tolerance,
+    models_are_diffraction_index_equivalent,
+    break_if_match_with_no_singles)
   refined_matches.sort(match_sort_function)
   weed_refined_matches(model1.space_group_info().type().number(),
                        refined_matches, rms_penalty_per_site)
