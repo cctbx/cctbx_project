@@ -20,4 +20,5 @@ env_scitbx_boost_python_ext.SharedLibrary(
   "flex_sort.cpp",
   "flex_histogram.cpp",
   "flex_mean_and_variance.cpp",
+  "flex_linear_interpolation.cpp",
 ])
