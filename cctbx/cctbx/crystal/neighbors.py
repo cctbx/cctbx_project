@@ -174,7 +174,7 @@ def show_distances(structure, distance_cutoff=3.5):
       if (pair.dist_sq**.5 > distance_cutoff):
         break
       scatterer_j = scatterers[pair.j_seq]
-      rt_mx_j = asu_mappings.get_rt_mx(i_seq=pair.j_seq, i_sym=pair.j_sym)
+      rt_mx_j = asu_mappings.get_rt_mx_j(pair=pair)
       rt_mx_ji = rt_mx_i_inverse.multiply(rt_mx_j)
       contacts.append(contact(
         i=len(contacts),
@@ -187,8 +187,7 @@ def show_distances(structure, distance_cutoff=3.5):
         for pair_fwd in pairs[i_pair+1:]:
           if (    pair_fwd.j_seq == pair.j_seq
               and abs(pair_fwd.dist_sq**.5-pair.dist_sq**.5) < 1.e-4):
-            rt_mx_j_fwd = asu_mappings.get_rt_mx(
-              i_seq=pair_fwd.j_seq, i_sym=pair_fwd.j_sym)
+            rt_mx_j_fwd = asu_mappings.get_rt_mx_j(pair=pair_fwd)
             rt_mx_ji_fwd = rt_mx_i_inverse.multiply(rt_mx_j_fwd)
             if (is_sym_equiv_interaction_simple(
                   unit_cell=structure.unit_cell(),

@@ -223,6 +223,8 @@ namespace {
         .def("special_op", &w_t::special_op, (arg_("i_seq")), ccr())
         .def("site_symmetry_table", &w_t::site_symmetry_table, rir())
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
+        .def("get_rt_mx_i", &w_t::get_rt_mx_i, (arg_("pair")))
+        .def("get_rt_mx_j", &w_t::get_rt_mx_j, (arg_("pair")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
         .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu, (
           arg_("moved_original_site"), arg_("i_seq"), arg_("i_sym")))

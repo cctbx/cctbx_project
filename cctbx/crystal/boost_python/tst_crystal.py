@@ -295,7 +295,7 @@ def exercise_direct_space_asu():
   assert pair.j_sym == 1
   assert pair.is_active(minimal=00000)
   assert not pair.is_active(minimal=0001)
-  for i_seeq,m in zip(count(), asu_mappings.mappings()):
+  for i_seq,m in zip(count(), asu_mappings.mappings()):
     for i_sym in xrange(len(m)):
       rt_mx = asu_mappings.get_rt_mx(i_seq=i_seq, i_sym=i_sym)
       i_sym_found = asu_mappings.find_i_sym(i_seq=i_seq, rt_mx=rt_mx)
@@ -304,6 +304,13 @@ def exercise_direct_space_asu():
         i_seq=i_seq,
         rt_mx=sgtbx.rt_mx("0,0,0"))
       assert i_sym_found == -1
+      if (i_sym != 0):
+        pair_i_seq = max(0, i_seq-1)
+        pair = asu_mappings.make_trial_pair(pair_i_seq, i_seq, i_sym)
+        assert asu_mappings.get_rt_mx_i(pair=pair) \
+            == asu_mappings.get_rt_mx(pair_i_seq, 0)
+        assert asu_mappings.get_rt_mx_j(pair=pair) \
+            == asu_mappings.get_rt_mx(i_seq, i_sym)
   assert str(asu_mappings.special_op(0)) == "x,y,1/4"
   assert str(asu_mappings.special_op(1)) == "x,y,z"
   assert str(asu_mappings.special_op(2)) == "x-1/2*y,0,0"
