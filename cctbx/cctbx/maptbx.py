@@ -5,8 +5,7 @@ ext = misc.import_ext("cctbx_boost.maptbx_ext")
 misc.import_regular_symbols(globals(), ext.__dict__)
 del misc
 
-from scitbx import fftpack
-from scitbx.python_utils import dicts, list_algebra
+from scitbx.python_utils import dicts
 import sys
 
 class statistics(ext.statistics):

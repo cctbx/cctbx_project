@@ -78,7 +78,7 @@ namespace cctbx { namespace maptbx {
       grid = determine_gridding(
         unit_cell, d_min, resolution_factor,
         mandatory_factors, max_prime, assert_shannon_sampling);
-    i_v_t best_size = 0;
+    std::size_t best_size = 0;
     af::tiny<i_v_t, 3> best_grid(0,0,0);
     i_v_t g_limit = af::max(grid) + 1;
     af::tiny<i_v_t, 3> loop;
@@ -93,10 +93,12 @@ namespace cctbx { namespace maptbx {
       trial_grid = sub_space_group.refine_gridding(trial_grid);
       CCTBX_ASSERT(scitbx::fftpack::adjust_gridding_array(
         trial_grid, max_prime, mandatory_factors).all_eq(trial_grid));
-      i_v_t trial_size = af::product(trial_grid);
       if (best_size == 0 && trial_grid.all_eq(grid)) {
         return grid;
       }
+      std::size_t trial_size = 1;
+      for(std::size_t i=0;i<3;i++) trial_size *= trial_grid[i];
+      CCTBX_ASSERT(trial_size > 0);
       if (best_size == 0 || trial_size < best_size) {
         best_grid = trial_grid;
         best_size = trial_size;
