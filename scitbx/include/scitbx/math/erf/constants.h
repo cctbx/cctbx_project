@@ -1,6 +1,8 @@
 #ifndef SCITBX_MATH_ERF_CONSTANTS_H
 #define SCITBX_MATH_ERF_CONSTANTS_H
 
+#include <cstddef>
+
 namespace scitbx { namespace math {
 
 //! Port of http://www.netlib.org/specfun/erf (as of 2003 Dec 03).
