@@ -2,7 +2,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <iotbx/mtz/crystal.h>
+#include <iotbx/mtz/column.h>
 
 namespace iotbx { namespace mtz {
 namespace {
@@ -20,6 +20,8 @@ namespace {
         .def(init<af::const_ref<int> const&>(
           (arg_("n_datasets_for_each_crystal"))))
         .def(init<const char*>((arg_("file_name"))))
+        .def("title", &w_t::title)
+        .def("history", &w_t::history)
         .def("n_batches", &w_t::n_batches)
         .def("n_reflections", &w_t::n_reflections)
         .def("space_group_number", &w_t::space_group_number)
@@ -27,6 +29,7 @@ namespace {
         .def("n_crystals", &w_t::n_crystals)
         .def("n_active_crystals", &w_t::n_active_crystals)
         .def("crystals", &w_t::crystals)
+        .def("lookup_column", &w_t::lookup_column, (arg_("label")))
       ;
     }
   };

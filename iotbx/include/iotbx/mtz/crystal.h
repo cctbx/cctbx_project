@@ -2,6 +2,7 @@
 #define IOTBX_MTZ_CRYSTAL_H
 
 #include <iotbx/mtz/object.h>
+#include <cctbx/uctbx.h>
 
 namespace iotbx { namespace mtz {
 
@@ -10,23 +11,60 @@ namespace iotbx { namespace mtz {
     public:
       crystal() {}
 
-      crystal(mtz::object const& object, int i_crystal)
+      crystal(object const& mtz_object, int i_crystal)
       :
-        object_(object),
+        mtz_object_(mtz_object),
         i_crystal_(i_crystal)
       {
         CCTBX_ASSERT(i_crystal >= 0);
-        CCTBX_ASSERT(i_crystal < object.n_crystals());
+        CCTBX_ASSERT(i_crystal < mtz_object.n_crystals());
       }
 
-      mtz::object
-      object() const { return object_; }
+      object
+      mtz_object() const { return mtz_object_; }
 
       int
       i_crystal() const { return i_crystal_; }
 
+      CMtz::MTZXTAL*
+      ptr() const
+      {
+        CCTBX_ASSERT(mtz_object_.n_crystals() > i_crystal_);
+        return MtzIxtal(mtz_object_.ptr(), i_crystal_);
+      }
+
+      int
+      id() const { return ptr()->xtalid; }
+
+      const char*
+      name() const { return ptr()->xname; }
+
+      const char*
+      project_name() const { return ptr()->pname; }
+
+      af::small<double, 6>
+      unit_cell_parameters() const
+      {
+        af::small<double, 6> result;
+        float* cell = ptr()->cell;
+        for(std::size_t i=0;i<6;i++) result.push_back(cell[i]);
+        return result;
+      }
+
+      cctbx::uctbx::unit_cell
+      unit_cell() const
+      {
+        return cctbx::uctbx::unit_cell(unit_cell_parameters());
+      }
+
+      int
+      n_datasets() const { return CMtz::MtzNsetsInXtal(ptr()); }
+
+      af::shared<dataset>
+      datasets() const;
+
     protected:
-      mtz::object object_;
+      object mtz_object_;
       int i_crystal_;
   };
 
