@@ -244,9 +244,6 @@ else:
     env_etc.static_bpl = 0
     cxx = "CC -n32 -mips4 -LANG:std"
     cxx += " -LANG:pch=OFF -no_prelink -ptused"
-    if (mipspro_version == "73XXX"):
-      cxx += " -FE:template_in_elf_section"
-      cxx += " -FE:eliminate_duplicate_inline_copies"
     env_base.Replace(
       CC="cc",
       SHCC="cc",
