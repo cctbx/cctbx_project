@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Refactored parts of cctbx/math.h (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_ROW_ECHELON_H
 #define CCTBX_SGTBX_ROW_ECHELON_H
 
@@ -125,8 +114,8 @@ namespace cctbx { namespace sgtbx { namespace row_echelon {
                   size_t icp = ic + 1;
         size_t nv = nc - icp;
         if (nv) {
-          scitbx::matrix_multiply(&re_mx(ir,icp), &sol[icp], 1, nv, 1,
-                                  &sol[ic]);
+          scitbx::matrix::multiply(&re_mx(ir,icp), &sol[icp], 1, nv, 1,
+                                   &sol[ic]);
           sol[ic] *= -1;
         }
         else {
