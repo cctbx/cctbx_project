@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Oct 16: Moved tensor transformations from adptbx (rwgk)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      2001 May 07 added: identidy, isDiagonal, transpose
@@ -248,6 +249,70 @@ namespace cctbx {
         if (!cctbx::approx_equal(a[i], b[i], scaled_tolerance)) return false;
       }
       return true;
+    }
+
+    template <class FloatType>
+    struct return_type {};
+
+    template <class FloatType6, class FloatType33>
+    boost::array<FloatType33, 3*3>
+    CondensedSymMx33_as_FullSymMx33(
+      const boost::array<FloatType6, 6>& Mcond,
+      return_type<FloatType33>)
+    {
+      boost::array<FloatType33, 3*3> Mfull;
+      Mfull[0] = Mcond[0];
+      Mfull[1] = Mcond[3];
+      Mfull[2] = Mcond[4];
+      Mfull[3] = Mcond[3];
+      Mfull[4] = Mcond[1];
+      Mfull[5] = Mcond[5];
+      Mfull[6] = Mcond[4];
+      Mfull[7] = Mcond[5];
+      Mfull[8] = Mcond[2];
+      return Mfull;
+    }
+
+    template <class FloatType33, class FloatType6>
+    inline boost::array<FloatType6, 6>
+    FullSymMx33_as_CondensedSymMx33(
+      const boost::array<FloatType33, 3*3>& Mfull,
+      return_type<FloatType6>)
+    {
+      boost::array<FloatType6, 6> Mcond;
+      Mcond[0] = Mfull[0];
+      Mcond[1] = Mfull[4];
+      Mcond[2] = Mfull[8];
+      Mcond[3] = Mfull[1];
+      Mcond[4] = Mfull[2];
+      Mcond[5] = Mfull[5];
+      return Mcond;
+    }
+
+    template <class FloatType>
+    boost::array<FloatType, 9>
+    FullTensorTransformation(const boost::array<FloatType, 9>& C,
+                             const boost::array<FloatType, 9>& T)
+    {
+      boost::array<FloatType, 9> CT;
+      multiply<FloatType>(C.elems, T.elems, 3, 3, 3, CT.elems);
+      boost::array<FloatType, 9> Ct;
+      transpose<FloatType>(C.elems, 3, 3, Ct.elems);
+      boost::array<FloatType, 9> CTCt;
+      multiply<FloatType>(CT.elems, Ct.elems, 3, 3, 3, CTCt.elems);
+      return CTCt;
+    }
+
+    template <class FloatTypeC, class FloatTypeT>
+    inline boost::array<FloatTypeT, 6>
+    CondensedTensorTransformation(const boost::array<FloatTypeC, 9>& C,
+                                  const boost::array<FloatTypeT, 6>& Tcond)
+    {
+      return
+        FullSymMx33_as_CondensedSymMx33(
+          FullTensorTransformation(C,
+            CondensedSymMx33_as_FullSymMx33(Tcond, return_type<FloatTypeT>())),
+            return_type<FloatTypeT>());
     }
 
   } // namespace MatrixLite

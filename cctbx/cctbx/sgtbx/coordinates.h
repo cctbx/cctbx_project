@@ -18,7 +18,6 @@
 #include <complex>
 #include <cctbx/utils.h>
 #include <cctbx/uctbx.h>
-#include <cctbx/adptbx.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
 #include <cctbx/sgtbx/groups.h>
@@ -263,15 +262,16 @@ namespace sgtbx {
         }
         scaled_tolerance *= tolerance;
         boost::array<FloatType, 9>
-        U = adptbx::Xaniso_as_SymMx33(Ustar, adptbx::return_type<FloatType>());
+        U = MatrixLite::CondensedSymMx33_as_FullSymMx33(
+          Ustar, MatrixLite::return_type<FloatType>());
         for (std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
           boost::array<FloatType, 9>
           R = m_PointGroup.Matrices[i].Rpart().as_array(FloatType());
           boost::array<FloatType, 9>
-          RURt = adptbx::A_X_At(R, U);
+          RURt = MatrixLite::FullTensorTransformation(R, U);
           boost::array<FloatType, 6>
-          Up = adptbx::SymMx33_as_Xaniso(RURt,
-                                         adptbx::return_type<FloatType>());
+          Up = MatrixLite::FullSymMx33_as_CondensedSymMx33(
+            RURt, MatrixLite::return_type<FloatType>());
           for(std::size_t j=0;j<6;j++) {
             if (!approx_equal(Ustar[j], Up[j], scaled_tolerance)) return false;
           }
@@ -294,7 +294,7 @@ namespace sgtbx {
             "Ustar tensor is incompatible with site symmetry.");
         }
       }
-      /*! \briev Average symmetry copies of Ustar tensor to obtain a
+      /*! \brief Average symmetry copies of Ustar tensor to obtain a
           tensor that satisfies the symmetry constraints.
        */
       /*! The averaged tensor is equivalent to beta_inv
@@ -306,19 +306,20 @@ namespace sgtbx {
       AverageUstar(const boost::array<FloatType, 6>& Ustar) const
       {
         boost::array<FloatType, 9>
-        U = adptbx::Xaniso_as_SymMx33(Ustar, adptbx::return_type<FloatType>());
+        U = MatrixLite::CondensedSymMx33_as_FullSymMx33(
+          Ustar, MatrixLite::return_type<FloatType>());
         boost::array<FloatType, 9> SumRURt;
         SumRURt.assign(0.);
         for (std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
           boost::array<FloatType, 9>
           R = m_PointGroup.Matrices[i].Rpart().as_array(FloatType());
           boost::array<FloatType, 9>
-          RURt = adptbx::A_X_At(R, U);
+          RURt = MatrixLite::FullTensorTransformation(R, U);
           SumRURt = SumRURt + RURt;
         }
-        return adptbx::SymMx33_as_Xaniso(SumRURt,
-          adptbx::return_type<FloatType>())
-          / FloatType(m_PointGroup.Matrices.size());
+        return MatrixLite::FullSymMx33_as_CondensedSymMx33(
+          SumRURt, MatrixLite::return_type<FloatType>())
+            / FloatType(m_PointGroup.Matrices.size());
       }
       //! Expand the special position symmetry operation.
       /*! The SpecialOp() is multiplied with all symmetry operations.
