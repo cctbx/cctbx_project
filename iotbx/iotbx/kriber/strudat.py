@@ -134,6 +134,17 @@ class read_entry:
         print "%2d" % atm.connectivity,
       print
 
+  def connectivities(self, all_or_nothing=00000):
+    result = [atom.connectivity for atom in self.atoms]
+    if (all_or_nothing):
+      n_none = result.count(None)
+      if (n_none == len(result)):
+        result = None
+      elif (n_none != 0):
+        raise AssertionError("Tag %s: %d atom%s missing the bond count."
+          % (self.tag, n_none, [" is","s are"][int(n_none!=1)]))
+    return result
+
   def as_xray_structure(self):
     result = xray.structure(
       special_position_settings=crystal.special_position_settings(

@@ -80,6 +80,23 @@ P 2 3
 Si 0.1 0.2 0.3
 O  0.0 0.0 0.0
 ---------------------------------
+*mixcon1
+Title
+Reference
+P 2 3
+ 11
+Si 0.1 0.2 0.3 4
+O  0.0 0.0 0.0
+---------------------------------
+*mixcon2
+Title
+Reference
+P 2 3
+ 11
+Si 0.1 0.2 0.3 4
+O  0.0 0.0 0.0
+O  0.0 0.0 0.0
+---------------------------------
 """)
   all_entries = strudat.read_all_entries(test_file)
   for tag,cell in (("tric", (11,12,13,100,110,120)),
@@ -96,6 +113,20 @@ O  0.0 0.0 0.0
       uctbx.unit_cell(cell))
   assert all_entries.get("orth").atoms[0].connectivity is None
   assert all_entries.get("tetr").atoms[0].connectivity == 4
+  assert all_entries.get("mixcon1").connectivities() == [4, None]
+  assert all_entries.get("mixcon2").connectivities() == [4, None, None]
+  try:
+    all_entries.get("mixcon1").connectivities(all_or_nothing=0001)
+  except AssertionError, e:
+    assert str(e) == "Tag mixcon1: 1 atom is missing the bond count."
+  else:
+    raise AssertionError("Exception expected.")
+  try:
+    all_entries.get("mixcon2").connectivities(all_or_nothing=0001)
+  except AssertionError, e:
+    assert str(e) == "Tag mixcon2: 2 atoms are missing the bond count."
+  else:
+    raise AssertionError("Exception expected.")
   assert all_entries.get("cubi").as_xray_structure().scatterers().size() == 2
 
 def exercise_zeolite_atlas(distance_cutoff=3.5):
