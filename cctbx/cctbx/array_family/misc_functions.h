@@ -12,7 +12,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 #define CCTBX_ARRAY_FAMILY_MISC_FUNCTIONS_H
 
-namespace cctbx { namespace af
+namespace cctbx { namespace af {
 
   //! Test if abs(a-b) < scaled_tolerance.
   template <class FloatType>
