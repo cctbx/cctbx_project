@@ -28,8 +28,6 @@ class Sorry(Exception):
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
 
-UserError = Sorry # XXX backward compatibility
-
 def format_exception():
   type_, value = sys.exc_info()[:2]
   type_ = str(type_)
