@@ -8,6 +8,26 @@
 namespace cctbx { namespace restraints {
 namespace {
 
+  struct bond_params_dict_wrappers
+  {
+    typedef bond_params_dict w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
+      class_<w_t>("bond_params_dict")
+        .def(map_indexing_suite<w_t>())
+      ;
+      {
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<bond_params_dict, rir>::wrap(
+          "bond_params_table");
+      }
+    }
+  };
+
   struct bond_sym_dict_wrappers
   {
     typedef bond_sym_dict w_t;
@@ -31,6 +51,7 @@ namespace {
   void
   wrap_all()
   {
+    bond_params_dict_wrappers::wrap();
     bond_sym_dict_wrappers::wrap();
   }
 

@@ -185,8 +185,24 @@ def exercise_bond():
      (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
 
 def exercise_bond_tables():
-  sym_ops = sgtbx.space_group("P 41").all_ops()
+  assert "map_indexing_suite_bond_params_dict_entry" in restraints.__dict__
   assert "map_indexing_suite_bond_sym_dict_entry" in restraints.__dict__
+  t = restraints.bond_params_table()
+  assert t.size() == 0
+  d = restraints.bond_params_dict()
+  assert len(d) == 0
+  p = restraints.bond_params(distance_ideal=3, weight=2)
+  d[10] = p
+  assert approx_equal(d[10].distance_ideal, 3)
+  t.append(d)
+  t.append(d)
+  assert approx_equal(t[1][10].distance_ideal, 3)
+  t[0][13] = p
+  assert approx_equal(t[0][13].distance_ideal, 3)
+  sym_ops = sgtbx.space_group("P 41").all_ops()
+  t[0][13].distance_ideal = 5
+  assert approx_equal(t[0][13].distance_ideal, 5)
+  assert approx_equal(t[1][10].distance_ideal, 3)
   d = restraints.bond_sym_dict()
   assert len(d) == 0
   for i,j_sym in enumerate([10,18,13]):

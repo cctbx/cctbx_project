@@ -6,6 +6,9 @@
 
 namespace cctbx { namespace restraints {
 
+  typedef std::map<unsigned, bond_params> bond_params_dict;
+  typedef af::shared<bond_params_dict> bond_params_table;
+
   typedef sgtbx::rt_mx bond_sym_op;
   typedef std::vector<sgtbx::rt_mx> bond_sym_ops;
   typedef std::map<unsigned, bond_sym_ops> bond_sym_dict;
