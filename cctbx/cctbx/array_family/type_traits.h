@@ -48,7 +48,7 @@ namespace boost {
   template <typename T>
   struct has_trivial_destructor<std::complex<T> > {
     // we really hope that this is true ...
-    static const bool value = true;
+    static const bool value = ::boost::has_trivial_destructor<T>::value;
   };
 }
 
