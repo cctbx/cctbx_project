@@ -75,7 +75,7 @@ def sdb_file_to_emma_model(xsym, sdb_file):
   i = 0
   for site in sdb_file.sites:
     i += 1
-    positions.append(emma.labelled_position(
+    positions.append(emma.labeled_position(
       ":".join((str(i), site.segid, site.type)),
       xsym.UnitCell.fractionalize((site.x, site.y, site.z))))
   m = emma.model(xsym, positions)
@@ -97,7 +97,7 @@ class web_to_models:
         if (label == ""): label = "Site" + str(len(positions)+1)
         if (coor_type != "Fractional"):
           coor = xsym.UnitCell.fractionalize(coor)
-        self.positions.append(emma.labelled_position(label, coor))
+        self.positions.append(emma.labeled_position(label, coor))
     else:
       from cctbx.macro_mol import cns_sdb_reader
       self.sdb_files = cns_sdb_reader.multi_sdb_parser(coordinates)
