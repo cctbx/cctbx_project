@@ -55,6 +55,49 @@ def format_cpu_times(show_micro_seconds_per_tick=True):
       result += " micro-seconds/tick: %.3f" % ((t[0]+t[1])/python_ticker*1.e6)
   return result
 
+class multi_out:
+
+  def __init__(self):
+    self.labels = []
+    self.file_objects = []
+    self.closed = False
+    self.softspace = 0
+
+  def register(self, label, file_object):
+    assert not self.closed
+    self.labels.append(label)
+    self.file_objects.append(file_object)
+    return self
+
+  def replace_stringio(self, old_label, new_label, new_file_object):
+    i = self.labels.index(old_label)
+    old_file_object = self.file_objects[i]
+    new_file_object.write(old_file_object.getvalue())
+    old_file_object.close()
+    self.labels[i] = new_label
+    self.file_objects[i] = new_file_object
+
+  def isatty(self):
+    return False
+
+  def close(self):
+    for file_object in self.file_objects:
+      file_object.close()
+    self.closed = True
+
+  def flush(self):
+    for file_object in self.file_objects:
+      flush = getattr(file_object, "flush", None)
+      if (flush is not None): flush()
+
+  def write(self, str):
+    for file_object in self.file_objects:
+      file_object.write(str)
+
+  def writelines(self, sequence):
+    for file_object in self.file_objects:
+      file_object.writelines(sequence)
+
 def exercise():
   try:
     raise RuntimeError("Trial")
