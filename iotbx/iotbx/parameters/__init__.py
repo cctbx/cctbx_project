@@ -146,7 +146,7 @@ class object_locator:
   def __init__(self, parent, path, object):
     introspection.adopt_init_args()
 
-class definition(object):
+class definition: # FUTURE definition(object)
 
   attribute_names = [
     "help", "caption", "short_caption", "required",
@@ -175,12 +175,6 @@ class definition(object):
     self.type = type
     self.input_size = input_size
     self.expert_level = expert_level
-
-  def __getstate__(self):
-    return [getattr(self, name) for name in self.__slots__]
-
-  def __setstate__(self, state):
-    for i,value in enumerate(state): setattr(self, self.__slots__[i], value)
 
   def copy(self, values):
     keyword_args = {}
