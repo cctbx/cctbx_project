@@ -24,8 +24,8 @@ class pair_asu_table:
       distance_cutoff=distance_cutoff,
       minimal=0001)
     for pair in pair_generator:
-      rt_mx_i = self.asu_mappings.get_rt_mx(i_seq=pair.i_seq, i_sym=0)
-      rt_mx_j = self.asu_mappings.get_rt_mx(i_seq=pair.j_seq, i_sym=pair.j_sym)
+      rt_mx_i = self.asu_mappings.get_rt_mx_i(pair=pair)
+      rt_mx_j = self.asu_mappings.get_rt_mx_j(pair=pair)
       self.add_pair(
         i_seq=pair.i_seq,
         j_seq=pair.j_seq,

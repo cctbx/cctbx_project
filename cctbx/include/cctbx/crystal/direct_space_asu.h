@@ -636,6 +636,24 @@ namespace direct_space_asu {
         return rt + sgtbx::tr_vec(am.unit_shifts()*t_den, t_den);
       }
 
+      //! Symmetry operation original_site -> site in asu.
+      /*! Shorthand for: get_rt_mx(pair.i_seq, 0)
+       */
+      sgtbx::rt_mx
+      get_rt_mx_i(asu_mapping_index_pair const& pair) const
+      {
+        return get_rt_mx(pair.i_seq, 0);
+      }
+
+      //! Symmetry operation original_site -> site in asu.
+      /*! Shorthand for: get_rt_mx(pair.j_seq, pair.j_sym)
+       */
+      sgtbx::rt_mx
+      get_rt_mx_j(asu_mapping_index_pair const& pair) const
+      {
+        return get_rt_mx(pair.j_seq, pair.j_sym);
+      }
+
       //! Difference vector for the given pair.
       /*! result = site(j_seq,j_sym) - site(i_seq,0).
        */
@@ -715,9 +733,7 @@ namespace direct_space_asu {
             || site_symmetry_table_.indices_const_ref()[pair.j_seq]) {
           return false;
         }
-        sgtbx::rt_mx rt_i = get_rt_mx(pair.i_seq, 0);
-        sgtbx::rt_mx rt_j = get_rt_mx(pair.j_seq, pair.j_sym);
-        return (rt_i == rt_j);
+        return (get_rt_mx_i(pair) == get_rt_mx_j(pair));
       }
 
       /*! \brief Classification of interactions as
