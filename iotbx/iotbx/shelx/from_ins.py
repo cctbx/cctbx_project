@@ -48,7 +48,6 @@ def from_ins(file_name=None,
     if(record.record_iden == "ATOM" and record.rec_part == 1):
       record_next = pdb_records[i+1]
       b = record.tempFactor + record_next.tempFactor
-      print record.name,dict_allowed_atoms[record.name_id]
       scatterer = xray.scatterer(label     = " %s" % record.name, 
                                  site      = record.coordinates,
                                  b         = record.tempFactor + record_next.tempFactor,
