@@ -221,7 +221,7 @@ class peak_cluster_analysis:
     self._grid_heights = flex.double()
 
   def peak_list(self):
-    return self._peak_list()
+    return self._peak_list
 
   def special_position_settings(self):
     return self._special_position_settings
