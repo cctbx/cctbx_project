@@ -13,10 +13,10 @@ Tables is apparently uncorrected from the 1989 edition.
 Author: N.K. Sauter
 '''
 
-from iotbx.command_line.lattice_symmetry import metric_subgroups
 from cctbx import crystal
 from cctbx.uctbx import unit_cell
 from scitbx import matrix
+from iotbx.command_line.lattice_symmetry import metric_subgroups
 import math
 import sys
 
