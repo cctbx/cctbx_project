@@ -4,6 +4,17 @@
 # Boost.Python converters for boost arrays need to be enumerated
 # explicitly.
 
+def write_copyright():
+  print """// This is an automatically generated file. Do not edit.
+/* Copyright (c) 2001 The Regents of the University of California through
+   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
+   U.S. Department of Energy. See files COPYRIGHT.txt and
+   cctbx/LICENSE.txt for further details.
+
+   Revision history:
+     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+ */"""
+
 def one_definition(T, N, declaration):
   prototype = """
   boost::array<%s, %d> from_python(PyObject* p,
@@ -14,7 +25,8 @@ def one_definition(T, N, declaration):
     print prototype
     print """
   {
-    boost::python::tuple tup = bpl_utils::tuple_from_python_list_or_tuple(p);
+    boost::python::tuple
+    tup = cctbx::bpl_utils::tuple_from_python_list_or_tuple(p);
     boost::array<%s, %d> result;
     if (tup.size() != result.size()) {
       PyErr_SetString(PyExc_ValueError,
@@ -44,8 +56,8 @@ def one_definition(T, N, declaration):
 """
 
 def write_declarations(T_N_List):
-  print """// This is an automatically generated file. Do not edit.
-
+  write_copyright()
+  print """
 #ifndef CCTBX_BASIC_BOOST_ARRAY_BPL_H
 #define CCTBX_BASIC_BOOST_ARRAY_BPL_H
 
@@ -64,8 +76,8 @@ BOOST_PYTHON_END_CONVERSION_NAMESPACE
 """
 
 def write_definitions(T_N_List):
-  print """// This is an automatically generated file. Do not edit.
-
+  write_copyright()
+  print """
 #include <boost/array.hpp>
 #include <cctbx/bpl_utils.h>
 
@@ -88,6 +100,7 @@ if (__name__ == "__main__"):
   T_N_List = (
     T_N("int", 3),
     T_N("int", 9),
+    T_N("std::size_t", 3),
     T_N("double", 3),
     T_N("double", 6),
     T_N("double", 9),

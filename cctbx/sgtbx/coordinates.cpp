@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <cctbx/sgtbx/coordinates.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   namespace detail {
 
@@ -43,7 +43,7 @@ namespace sgtbx {
 
     class CmpCloseMates {
       public:
-        inline bool operator()(const CloseMate& a, const CloseMate& b) {
+        bool operator()(const CloseMate& a, const CloseMate& b) {
           if (a.CartDelta2 < b.CartDelta2) return true;
           return false;
         }
@@ -109,8 +109,8 @@ namespace sgtbx {
 
   void SiteSymmetry::BuildSpecialOp()
   {
-    const uctbx::UnitCell& uc = m_Parameters.m_UnitCell;
-    const SpaceGroup& SgOps = m_Parameters.m_SgOps;
+    const uctbx::UnitCell& uc = m_Parameters->m_UnitCell;
+    const SpaceGroup& SgOps = m_Parameters->m_SgOps;
     int TBF = SgOps.TBF();
     m_ShortestDistance2 = uc.getLongestVector2();
     std::vector<detail::CloseMate> CloseMates;
@@ -135,7 +135,7 @@ namespace sgtbx {
           fractional<double> Delta = Delta0 + UShifts;
           double CartDelta2 = uc.Length2(Delta);
           if (SD2 > CartDelta2) SD2 = CartDelta2;
-          if (CartDelta2 <= m_Parameters.m_MinMateDistance2) {
+          if (CartDelta2 <= m_Parameters->m_MinMateDistance2) {
             TrVec MTU = MT + UShifts;
             TrVec IntrinsicPart = CumR * MTU;
             if (static_cast<Vec3>(IntrinsicPart) == 0) {
@@ -170,7 +170,7 @@ namespace sgtbx {
                              const fractional<double>& X,
                              bool auto_expand)
 
-    : m_Parameters(params),
+    : m_Parameters(&params),
       m_OriginalPosition(X),
       m_SnapPosition(X),
       m_ShortestDistance2(-1.),
@@ -183,7 +183,7 @@ namespace sgtbx {
       if (m_SpecialOp == LastSpecialOp) break;
       LastSpecialOp = m_SpecialOp;
     }
-    if (m_Parameters.m_MustBeWellBehaved && !isWellBehaved()) {
+    if (m_Parameters->m_MustBeWellBehaved && !isWellBehaved()) {
       throw error("SiteSymmetry: MinMateDistance too large.");
     }
     if (auto_expand) expand();
@@ -199,4 +199,4 @@ namespace sgtbx {
     return SiteSgOps.getPointGroupType();
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

@@ -15,7 +15,7 @@
 #include <string>
 #include <cctbx/sgtbx/basic.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   //! class for communicating string parsing errors.
   /*! This class is used by functions such as
@@ -43,53 +43,57 @@ namespace sgtbx {
       </pre>
    */
   class parse_string {
-    private:
-      std::string s;
-      int pos;
-      int marked_pos;
     public:
       //! Initialize the parse_string with the input string.
-      inline parse_string(const std::string& str)
+      explicit
+      parse_string(const std::string& str = "")
         : s(str), pos(0), marked_pos(0) { }
       //! Get back the input string.
-      inline const char* string() const { return s.c_str(); }
+      const char* string() const { return s.c_str(); }
       //! Index of last character accessed by the parsing algorithm.
-      inline int where() const { return pos; }
+      int where() const { return pos; }
       //! For internal use only.
-      inline char operator()() const { return s[pos]; }
+      char operator()() const { return s[pos]; }
       //! For internal use only.
-      inline const char* peek() { return s.c_str() + pos; }
+      const char* peek() { return s.c_str() + pos; }
       //! For internal use only.
-      inline char get() {
+      char get() {
         if (pos >= s.size()) return '\0';
         return s[pos++];
       }
       //! For internal use only.
-      inline void skip(int n = 1) { pos += n; }
+      void skip(int n = 1) { pos += n; }
       //! For internal use only.
-      inline void set_mark() { marked_pos = pos; }
+      void set_mark() { marked_pos = pos; }
       //! For internal use only.
-      inline void go_to_mark() { pos = marked_pos; }
+      void go_to_mark() { pos = marked_pos; }
+    private:
+      std::string s;
+      int pos;
+      int marked_pos;
   };
 
-  template <class T>
-  inline void swap(T* a, T* b, int n)
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
+  template <class AnyType>
+  inline void
+  swap(AnyType* a, AnyType* b, int n)
   {
     for(int i=0;i<n;i++) {
-      T tmp = a[i];
+      AnyType tmp = a[i];
       a[i] = b[i];
       b[i] = tmp;
     }
   }
 
-  template <class T>
+  template <class AnyType>
   class Array2DAdaptor {
-    private:
-      T*  m_M;
-      int m_mc;
     public:
-      inline Array2DAdaptor(T *M, int mc) : m_M(M), m_mc(mc) { }
-      inline T& operator()(int ir, int ic) { return m_M[ir * m_mc + ic]; }
+      Array2DAdaptor(AnyType *M, int mc) : m_M(M), m_mc(mc) { }
+      AnyType& operator()(int ir, int ic) { return m_M[ir * m_mc + ic]; }
+    private:
+      AnyType*  m_M;
+      int m_mc;
   };
 
   int ChangeBaseFactor(const int *Old, int OldBF, int *New, int NewBF, int n);
@@ -100,7 +104,7 @@ namespace sgtbx {
     private:
       int m_n;
     public:
-      inline CmpiVect(int n) : m_n(n) { }
+      CmpiVect(int n) : m_n(n) { }
       bool operator()(const int *a, const int *b) const;
   };
 
@@ -114,7 +118,7 @@ namespace sgtbx {
         cctbx_assert(MaxN >= m_n);
         for(std::size_t i=0;i<m_n;i++) m_current[i] = i;
       }
-      inline bool incr()
+      bool incr()
       {
         if (m_n > 0) {
           std::size_t p, l;
@@ -137,10 +141,10 @@ namespace sgtbx {
         m_over++;
         return false;
       }
-      inline std::size_t m() { return m_m; }
-      inline std::size_t n() { return m_n; }
-      inline std::size_t operator[](std::size_t i) { return m_current[i]; }
-      inline std::size_t over() const { return m_over; }
+      std::size_t m() { return m_m; }
+      std::size_t n() { return m_n; }
+      std::size_t operator[](std::size_t i) { return m_current[i]; }
+      std::size_t over() const { return m_over; }
     private:
       std::size_t m_m;
       std::size_t m_n;
@@ -157,7 +161,7 @@ namespace sgtbx {
         : m_begin(begin), m_end(end), m_current(m_begin), m_over(0) {
         cctbx_assert(m_begin.size() == m_end.size());
       }
-      inline bool incr()
+      bool incr()
       {
         for (std::size_t i = m_current.size(); i != 0;) {
           i--;
@@ -168,11 +172,11 @@ namespace sgtbx {
         m_over++;
         return false;
       }
-      inline const ArrayType& begin() const { return m_begin; }
-      inline const ArrayType& end() const { return m_end; }
-      inline const ArrayType& operator()() { return m_current; }
-      inline std::size_t over() const { return m_over; }
-      inline const ArrayType& next() { incr(); return m_current; }
+      const ArrayType& begin() const { return m_begin; }
+      const ArrayType& end() const { return m_end; }
+      const ArrayType& operator()() { return m_current; }
+      std::size_t over() const { return m_over; }
+      const ArrayType& next() { incr(); return m_current; }
     private:
       ArrayType m_begin;
       ArrayType m_end;
@@ -180,6 +184,8 @@ namespace sgtbx {
       std::size_t m_over;
   };
 
-} // namespace sgtbx
+#endif // DOXYGEN_SHOULD_SKIP_THIS
+
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_UTILS_H

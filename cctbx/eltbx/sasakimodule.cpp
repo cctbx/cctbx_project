@@ -12,7 +12,8 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/sasaki.h>
 
-using namespace eltbx;
+using namespace cctbx;
+using namespace cctbx::eltbx;
 
 BOOST_PYTHON_MODULE_INIT(sasaki)
 {
@@ -26,9 +27,11 @@ BOOST_PYTHON_MODULE_INIT(sasaki)
     this_module.add(ref(to_python(
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    python::import_converters<fpfdp> fpfdp_converters("eltbx.fpfdp", "fpfdp");
+    python::import_converters<fpfdp>
+    fpfdp_converters("cctbx.eltbx.fpfdp", "fpfdp");
     class_builder<Sasaki> py_Sasaki(this_module, "Sasaki");
 
+    py_Sasaki.def(constructor<>());
     py_Sasaki.def(constructor<const std::string&>());
     py_Sasaki.def(constructor<const std::string&, bool>());
     py_Sasaki.def(&Sasaki::Label, "Label");

@@ -13,7 +13,7 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/wavelengths.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace tables {
 
     const detail::RawWaveLength RawWaveLengths[] = {
@@ -28,9 +28,6 @@ namespace eltbx {
     };
 
   } // namespace tables
-} // namespace eltbx
-
-namespace eltbx {
 
   WaveLength::WaveLength(int i)
   {
@@ -59,4 +56,4 @@ namespace eltbx {
     throw error("Unknown label for characteristic wavelength.");
   }
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

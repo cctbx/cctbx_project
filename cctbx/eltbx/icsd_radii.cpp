@@ -11,7 +11,7 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/icsd_radii.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace tables {
 
 /* Table of ionic radii
@@ -496,19 +496,19 @@ namespace eltbx {
     };
 
   } // namespace tables
-} // namespace eltbx
+}} // namespace cctbx::eltbx
 
 namespace {
 
-  const eltbx::detail::Label_Radius* FindEntry(const std::string& WorkLabel,
-                                               bool Exact)
+  const cctbx::eltbx::detail::Label_Radius*
+  FindEntry(const std::string& WorkLabel, bool Exact)
   {
     int m = 0;
-    const eltbx::detail::Label_Radius* mEntry = 0;
-    for (const eltbx::detail::Label_Radius*
-         Entry = eltbx::tables::ICSD_Radii; Entry->Label; Entry++)
+    const cctbx::eltbx::detail::Label_Radius* mEntry = 0;
+    for (const cctbx::eltbx::detail::Label_Radius*
+         Entry = cctbx::eltbx::tables::ICSD_Radii; Entry->Label; Entry++)
     {
-      int i = eltbx::MatchLabels(WorkLabel, Entry->Label);
+      int i = cctbx::eltbx::MatchLabels(WorkLabel, Entry->Label);
       if (i < 0) return Entry;
       if (i > m) {
         m = i;
@@ -516,14 +516,14 @@ namespace {
       }
     }
     if (Exact || !mEntry) {
-      throw eltbx::error("Unknown ion label.");
+      throw cctbx::eltbx::error("Unknown ion label.");
     }
     return mEntry;
   }
 
 } // namespace <anonymous>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   ICSD_Radius::ICSD_Radius(const std::string& Label, bool Exact)
   {
@@ -531,4 +531,4 @@ namespace eltbx {
     m_Label_Radius = FindEntry(WorkLabel, Exact);
   }
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

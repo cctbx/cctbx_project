@@ -13,9 +13,9 @@
 
 #include <boost/python/class_builder.hpp>
 
-namespace bpl_utils {
+namespace cctbx { namespace bpl_utils {
 
   boost::python::tuple tuple_from_python_list_or_tuple(PyObject* p);
-}
+}}
 
 #endif // CCTBX_BPL_UTILS_H

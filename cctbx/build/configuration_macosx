@@ -2,6 +2,10 @@ macosx
 
 ROOT=@(ROOT)
 
+BOOST_UNIX="$(ROOT)/boost"
+BOOST_WIN=
+BOOSTINC=-I"$(ROOT)/boost"
+
 CCTBX_UNIX="$(ROOT)/cctbx"
 CCTBX_WIN=
 CCTBXINC=-I"$(ROOT)/cctbx"
@@ -9,11 +13,8 @@ CCTBXINC=-I"$(ROOT)/cctbx"
 CCTBXLIBDIR_UNIX=@(CCTBXLIBDIR_UNIX)
 CCTBXLIBDIR_WIN=
 
-BOOSTINC=-I"$(ROOT)/boost"
-BOOST_PYTHONLIB=@(CWD)/../boost/libboost_python.a
-
-PYEXE=PYTHONPATH=. /usr/bin/python
-PYINC=-I/usr/include/python1.5
+PYEXE=PYTHONPATH=. @(python_executable)
+PYINC=-I@(python_include)
 PYLIB=
 
 STDFIXINC=

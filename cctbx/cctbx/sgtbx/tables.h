@@ -14,7 +14,7 @@
 
 #include <cctbx/sgtbx/matrix.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace tables {
 
     namespace RotationMatrices
@@ -94,28 +94,28 @@ namespace sgtbx {
 
       class Code {
         public:
-          inline Code(const CrystalSystem::Code& X, int L, int P, int M)
+          Code(const CrystalSystem::Code& X, int L, int P, int M)
             : m_X(X), m_L(L), m_P(P), m_M(M) {}
-          inline bool operator==(const Code& rhs) const {
+          bool operator==(const Code& rhs) const {
             return    m_X == rhs.m_X
                    && m_L == rhs.m_L
                    && m_P == rhs.m_P
                    && m_M == rhs.m_M;
           }
-          inline bool operator!=(const Code& rhs) const {
+          bool operator!=(const Code& rhs) const {
             return !(*this == rhs);
           }
-          inline int index() const { return m_M; }
-          inline Code PointGroupType() const {
+          int index() const { return m_M; }
+          Code PointGroupType() const {
             return Code(m_X, m_L - m_P, 0, m_M + m_P);
           }
-          inline Code LaueGroupType() const {
+          Code LaueGroupType() const {
             return Code(m_X, 0, 0, m_M + m_L);
           }
-          inline CrystalSystem::Code CrystalSystem() const {
+          CrystalSystem::Code CrystalSystem() const {
             return m_X;
           }
-          inline const char* Label() const {
+          const char* Label() const {
             static const char* Names[] = {
               "Undefined",
               "Unknown",
@@ -214,6 +214,6 @@ namespace sgtbx {
 
     } // namespace MatrixGroup
   } // namespace tables
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_TABLES_H

@@ -1,7 +1,7 @@
 # $Id$
 
-import uctbx
-import sgtbx
+from cctbx import uctbx
+from cctbx import sgtbx
 
 uc = uctbx.UnitCell([])
 sg = sgtbx.SpaceGroup("F 4 2")

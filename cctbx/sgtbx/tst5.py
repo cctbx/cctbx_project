@@ -1,6 +1,6 @@
 # $Id$
 
-import sgtbx
+from cctbx import sgtbx
 from symbols import table_hall_std530
 
 nLTrDict = {}

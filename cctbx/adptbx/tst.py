@@ -1,5 +1,5 @@
-import uctbx
-import adptbx
+from cctbx import uctbx
+from cctbx import adptbx
 
 u = uctbx.UnitCell((5,7,9,80,100,130))
 print adptbx.DebyeWallerFactorUiso(u.Q((7, 8, 9)) / 4, 0.025)

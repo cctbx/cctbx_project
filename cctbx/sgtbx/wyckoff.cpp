@@ -14,7 +14,7 @@
 #include <cctbx/sgtbx/coordinates.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace tables {
     namespace ReferenceSettings {
 
@@ -2304,7 +2304,7 @@ namespace sgtbx {
     if (WTab[0].M() == SS.M()) return WyckoffMapping(WTab[0], RTMx(1, 1));
     const RotMx& Rs = SS.SpecialOp().Rpart();
     const TrVec& Ts = SS.SpecialOp().Tpart();
-    const SpaceGroup& SgOps = SS.m_Parameters.m_SgOps;
+    const SpaceGroup& SgOps = SS.m_Parameters->m_SgOps;
     for(std::size_t iWP=1;iWP<WTab.N();iWP++) {
       if (WTab[iWP].M() == SS.M()) {
         const RotMx& Rw = WTab[iWP].SpecialOp().Rpart();
@@ -2329,4 +2329,4 @@ namespace sgtbx {
     throw error("Cannot determine mapping to Wyckoff position.");
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

@@ -2,15 +2,15 @@
 
 <hr>
 
-The fast-track installation scripts use a lower-level build system that
-is designed to support efficient cross-platform development.
-Boost.Python and the %cctbx can be installed and maintained manually
-with the commands shown in the following sections. In addition,
-commands for rebuilding individual components are introduced.
+The fast-track installation script uses a lower-level build system that
+is designed to support efficient cross-platform development.  The
+%cctbx can be installed and maintained manually with the commands shown
+in the following sections. In addition, commands for rebuilding
+individual components are introduced.
 
 \par
 The design of the cross-platform build system is motivated by the goal
-to minimize dependencies on external software packages, and based on
+to minimize dependencies on external software packages, and is based on
 the assumptions that:
 
 <ul>
@@ -28,33 +28,151 @@ that are expressed as a Python script
 
 <hr>
 
-\section installation_boost_python Boost.Python installation
+\section installation_cctbx cctbx installation
 
-\par
-Assuming that the boost distribution is unpacked in your home
-directory, Boost.Python can be installed and tested with the following
-sequence of commands:
+Assuming that the boost and %cctbx distributions are unpacked in your
+home directory, the %cctbx can be installed and minimally tested with
+the following sequence of commands (this is what the \c fast_track.py
+script does automatically):
 
 \verbatim
-        mkdir boost
-        cd boost
-        cp ~/boost/libs/python/build/linux_gcc.mak Makefile
-        make softlinks
-        make
-        make test
+        mkdir cctbx
+        cd cctbx
+        cp ~/cctbx/build/configuration_unix_gcc configuration
+        python ~/cctbx/build/boot.py
+        python make.py softlinks
+        python make.py all
+        python test_imports.py
 \endverbatim
 
 \par
-If pathnames or compiler and linker options need to be adjusted,
-edit the <tt>Makefile</tt> before entering <tt>make</tt>.
+The <tt>boot.py</tt> script will create individual subdirectories for
+each toolbox (e.g. \c eltbx, \c uctbx, etc.) and automatically generate
+Makefiles in each of these subdirectories (see below for details).
 
 \par
-The command <tt>make softlinks</tt> creates softlinks to the central
-distribution. This facilitates cross-platform development: changes in
-the central distribution are immediately effective in all build
-directories. If this is not desired, <tt>make cp</tt> can be used
-instead. Since Windows does not support softlinks, <tt>make copy</tt>
-has to always be used.
+Pathnames, compiler options and linker options can be adjusted by
+editing the <tt>configuration</tt> file. The first line of the
+<tt>configuration</tt> file is a platform identifier (e.g.
+<tt>unix_gcc</tt>). The rest of the <tt>configuration</tt> file is
+pasted literally into the automatically generated makefiles.
+However, to simplify the configuration, some meta symbols are recognized
+and replaced:
+
+<hr>
+
+<dl>
+<dt><tt>@(ROOT)</tt>
+<dd>This is replaced by the pathname of the directory
+    in which the %cctbx distribution was unpacked. For example, if you
+    unpacked %cctbx in your home directory, <tt>@(ROOT)</tt> will be
+    substituted by the pathname of your home directory.
+
+<dt><tt>@(CWD)</tt>
+<dd>This is replaced by the pathname of the directory
+    in which the <tt>configuration</tt> file is located
+    ("current working directory").
+
+<dt><tt>@(python_executable)</tt>
+<dd>This is replaced by the pathname of the python executable
+    that is used to invoke the build system (<tt>sys.executable</tt>
+    in Python).
+
+<dt><tt>@(python_include)</tt>
+<dd>This is replaced by the pathname of the python include
+    directory (e.g. <tt>/usr/local/include/python2.1</tt>).
+    <p>
+    mingw32 is a special case:
+    <tt>@(python_include)</tt> is substituted
+    by, e.g. <tt>$(MINGW32_USR)\include\python2.1</tt>.
+    The macro \c MINGW32_USR has to be set manually in the
+    \c configuration file.
+
+<dt><tt>@(python_lib)</tt>
+<dd>This is replaced by the pathname of the python runtime library
+    (e.g. <tt>c:\Python21\libs\python21.lib</tt>). This is only needed
+    for Windows.
+    <p>
+    mingw32 is a special case:
+    <tt>@(python_lib)</tt> is substituted
+    by, e.g. <tt>$(MINGW32_USR)\lib\libpython21.a</tt>.
+    The macro \c MINGW32_USR has to be set manually in the
+    \c configuration file.
+
+<dt><tt>@(CCTBXLIBDIR_UNIX)</tt>
+<dd>This is replaced by the relative pathname of the directory
+    for the %cctbx libraries (e.g. <tt>../lib</tt> or
+    <tt>../../lib</tt>) within the %cctbx build tree.
+
+<dt><tt>@(CCTBXLIBDIR_WIN)</tt>
+<dd>This is replaced by the relative pathname of the directory
+    for the %cctbx libraries (e.g. <tt>..\lib</tt> or
+    <tt>..\..\lib</tt>) within the %cctbx build tree.
+
+</dl>
+
+<hr>
+
+\par
+The make targets supported by the automatically generated makefiles
+<i>in each subdirectory</i> (e.g. \c eltbx or \c examples/cpp)
+include:
+
+<dl>
+
+<dt><tt>make softlinks</tt>
+<dd>Create softlinks to the central distribution.
+    This facilitates cross-platform development: changes in the central
+    distribution are immediately effective in all build directories. If
+    this is not desired, <tt>make cp</tt> can be used instead. Since
+    Windows does not support softlinks, <tt>make copy</tt> has to
+    always be used.
+
+<dt><tt>make unlink</tt>
+<dd>Remove all softlinks that are generated by
+    <tt>make softlinks</tt>. (Unix)
+
+<dt><tt>make cp</tt>
+<dd>Copy relevant files from the central distribution. (Unix)
+
+<dt><tt>make rm</tt>
+<dd>Remove all files that are copied by
+    <tt>make cp</tt>. (Unix)
+
+<dt><tt>make copy</tt>
+<dd>Copy relevant files from the central distribution. (Windows)
+
+<dt><tt>make del</tt>
+<dd>Remove all files that are copied by
+    <tt>make copy</tt>. (Windows)
+
+<dt><tt>make</tt> or <tt>make all</tt>
+<dd>Compiles and links all targets. (Unix, Windows)
+
+<dt><tt>make clean</tt>
+<dd>Remove all files that are generated by
+   <tt>make</tt> (object files, executables, libraries, etc.) (Unix, Windows)
+
+<dt><tt>make libraries</tt>
+<dd>Builds only the library files, e.g.
+    <tt>libuctbx.a</tt>. Does not require
+    Python (but then again you used Python
+    to generate the makefile).
+
+<dt><tt>make executables</tt>
+<dd>Builds only the executables, if any.
+    Currently the executables are trivial
+    and only useful for debugging.
+
+<dt><tt>make boost_python_modules</tt>
+<dd>Builds the Python modules.
+
+<dt><tt>make examples</tt>
+<dd>Builds the examples. Similar to
+    <tt>make executables</tt>, but
+    links against the %cctbx libraries.
+
+</dl>
 
 \par
 For efficient development it is important to add all header
@@ -72,125 +190,17 @@ header files used will automatically trigger the recompilation of all
 source code files that directly or indirectly use the modified header
 files.
 
-\par
-Other commands available include:
-
-<hr>
-
-<dl>
-<dt><tt>make clean</tt>
-<dd>Remove all files that are generated by
-   <tt>make</tt> (object files, executables, libraries, etc.) (Unix, Windows)
-
-<dt><tt>make unlink</tt>
-<dd>Remove all softlinks that are generated by
-    <tt>make softlinks</tt>. (Unix)
-
-<dt><tt>make rm</tt>
-<dd>Remove all files that are copied by
-    <tt>make cp</tt>. (Unix)
-
-<dt><tt>make del</tt>
-<dd>Remove all files that are copied by
-    <tt>make copy</tt>. (Windows)
-
-</dl>
-
-<hr>
-
-\section installation_cctbx cctbx installation
-
-Assuming that the boost and %cctbx distribution is unpacked in your home
-directory, the %cctbx can be installed and tested with the following
-sequence of commands:
-
-\verbatim
-        mkdir cctbx
-        cd cctbx
-        cp ~/cctbx/build/configuration_linux_gcc configuration
-        python ~/cctbx/build/boot.py
-        python make.py softlinks
-        python make.py compile_all
-        python test.py
-\endverbatim
-
-\par
-The <tt>boot.py</tt> script will create individual subdirectories for
-each toolbox (currently %eltbx, %sgtbx, %uctbx) and automatically generate
-Makefiles in each of these subdirectories (see below for details).
-
-\par
-Pathnames, compiler options and linker options can be adjusted by
-editing the <tt>configuration</tt> file. The first line of the
-<tt>configuration</tt> file is a platform identifier (e.g.
-<tt>linux_gcc</tt>). The rest of the <tt>configuration</tt> file is
-pasted literally into the automatically generated makefiles.
-However, to simplify the configuration, two meta symbols are recognized
-and replaced:
-
-<hr>
-
-<dl>
-<dt><tt>@(ROOT)</tt>
-<dd>This is replaced by the pathname of the directory
-    in which the %cctbx distribution was unpacked. For example, if you
-    unpacked %cctbx in your home directory, <tt>@(ROOT)</tt> will be
-    substituted by the pathname of your home directory.
-
-<dt><tt>@(CWD)</tt>
-<dd>This is replaced by the pathname of the directory
-    in which the <tt>configuration</tt> file is located
-    ("current working directory").
-
-</dl>
-
 <hr>
 
 \par
-The make commands supported by the automatically generated makefiles
-<i>in each subdirectory</i> (%eltbx, %sgtbx, %uctbx, examples/cpp) are a
-super-set of the commands supported by the Boost.Python makefiles as
-documented above.  Additional commands include:
-
-<hr>
-
-<dl>
-<dt><tt>make libraries</tt>
-<dd>Builds only the library files, e.g.
-    <tt>libuctbx.a</tt>. Does not require
-    Python (but then again you used Python
-    to generate the makefile).
-
-<dt><tt>make executables</tt>
-<dd>Builds only the executables, if any.
-    Currently the executables are trivial
-    and only useful for debugging.
-
-<dt><tt>make boost_python_modules</tt>
-<dd>Builds the Python modules.
-    Requires <tt>libboost_python.a</tt> (Unix)
-    or <tt>boost_python.lib</tt> (Windows).
-
-<dt><tt>make examples</tt>
-<dd>Builds the examples. Similar to
-    <tt>make executables</tt>, but
-    links against the %cctbx libraries.
-
-</dl>
-
-<hr>
-
-\par
-The script <tt>make.py</tt> can be used to execute certain make
-commands in all subdirectories. One example is the <tt>python make.py
-softlinks</tt> command used above. Additional keywords are supported
-that trigger several individual build steps (e.g. <tt>python make.py
-compile_all</tt>).
+The script <tt>make.py</tt> in the top level build directory can be
+used to execute certain make commands in all subdirectories. One
+example is the <tt>python make.py softlinks</tt> command used above.
+Additional keywords are supported that trigger several individual build
+steps (e.g. <tt>python make.py all</tt>).
 
 \par
 Keywords supported by <tt>make.py</tt> include:
-
-<hr>
 
 <dl>
 <dt><tt>softlinks</tt>
@@ -200,27 +210,18 @@ Keywords supported by <tt>make.py</tt> include:
 <dt><tt>copy</tt>
 <dt><tt>del</tt>
 <dt><tt>depend</tt>
-<dd>See documentation for Boost.Python makefile.
+<dd>See above.
 
 <dt><tt>compile</tt>
 <dd>Calls <tt>make</tt> (with no arguments) in
-    the toolbox subdirectories (i.e. %eltbx, %sgtbx, %uctbx).
+    the subdirectories (e.g. %eltbx, examples/cpp, etc.)
 
-<dt><tt>libdir</tt>
-<dd>Copies all %cctbx libraries (i.e. <tt>libuctbx.a</tt>)
-    to the subdirectory <tt>lib</tt>.
-
-<dt><tt>libpythondir</tt>
+<dt><tt>lib_python_dir</tt>
 <dd>Copies all %cctbx Python modules (i.e. <tt>uctbx.so</tt>)
-    to the subdirectory <tt>lib/python</tt>.
+    to the subdirectory <tt>lib_python/%cctbx</tt>.
 
-<dt><tt>compile_examples</tt>
-<dd>Calls <tt>make</tt> (with no arguments) in
-    the <tt>examples/cpp</tt> subdirectory.
-
-<dt><tt>compile_all</tt>
-<dd>Equivalent to the sequence <tt>compile</tt>,
-    <tt>libdir</tt>, <tt>libpythondir</tt>, <tt>compile_examples</tt>.
+<dt><tt>all</tt>
+<dd>Equivalent to the sequence <tt>compile</tt>, <tt>libpythondir</tt>.
 
 </dl>
 
@@ -243,9 +244,9 @@ to modify the files.
 
 \section development_moving_build_directory Moving a build directory
 
-The <tt>lib</tt> directory that is created by <tt>make lib
-libpythondir</tt> can be moved to any location. There are no pathnames
-compiled into the link libraries or the Python modules.
+The <tt>lib</tt> and <tt>lib_python/%cctbx</tt> directories can be
+moved to any location. There are no pathnames compiled into the link
+libraries or the Python modules.
 
 <p>
 There are, however, absolute pathnames in the automatically generated
@@ -274,9 +275,9 @@ The last command rebuilds all the makefiles.
 \section new_platform Adding support for a new platform
 
 In favorable cases, adding support for a new platform can be achieved
-by providing a new Boost.Python makefile and a modified %cctbx
-<tt>configuration</tt> file. However, in general it will be necessary
-to also update the <tt>%cctbx/build/makefile_generator.py</tt> script.
+by providing a modified %cctbx <tt>configuration</tt> file. However, in
+general it will be necessary to also update the
+<tt>%cctbx/build/makefile_generator.py</tt> script.
 This will not always be a trivial task.
 
 \par
@@ -333,6 +334,6 @@ http://www.wincvs.org/TortoiseCVS/ .
 <hr>
 
 \par
-R.W. Grosse-Kunstleve, April 2001
+R.W. Grosse-Kunstleve, November 2001
 
 */

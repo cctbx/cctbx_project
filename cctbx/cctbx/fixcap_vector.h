@@ -1,9 +1,17 @@
-// derived from boost::array
-// TODO: complete std::vector interface
-// XXX copyright
+// $Id$
+/* Copyright (c) 2001 The Regents of the University of California through
+   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
+   U.S. Department of Energy. See files COPYRIGHT.txt and
+   cctbx/LICENSE.txt for further details.
+
+   Revision history:
+     2001 Sep 08: Created, based on boost::array (R.W. Grosse-Kunstleve)
+ */
 
 #ifndef FIXCAP_VECTOR_H
 #define FIXCAP_VECTOR_H
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 #include <cstddef>
 #include <stdexcept>
@@ -15,6 +23,9 @@
 
 namespace cctbx {
 
+    //! Similar to  boost::array and std::vector, but with fixed capacity.
+    /*! TODO: complete std::vector interface
+     */
     template<class T, std::size_t N>
     class fixcap_vector {
       public:
@@ -152,5 +163,7 @@ namespace cctbx {
     }
 
 } // namespace cctbx
+
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // FIXCAP_VECTOR_H

@@ -1,7 +1,7 @@
 # test StructureSeminvariant
 
 import sys, os
-import sgtbx
+from cctbx import sgtbx
 
 ShortCut = "--ShortCut" in sys.argv
 StandardOnly = "--StandardOnly" in sys.argv

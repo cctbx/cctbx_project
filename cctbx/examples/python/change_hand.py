@@ -1,6 +1,8 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
+# Change the hand of a set of coordinates (useful in heavy atom location).
+
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 
 import sys
 sys.stderr = sys.stdout
@@ -15,8 +17,8 @@ class FormatError(exceptions.Exception): pass
 import string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-import sgtbx
-import uctbx
+from cctbx import sgtbx
+from cctbx import uctbx
 
 print "sgtbx version:", sgtbx.__version__
 print "uctbx version:", uctbx.__version__

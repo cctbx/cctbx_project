@@ -14,13 +14,15 @@
 #include <cctbx/fixcap_vector.h>
 #include <cctbx/sgtbx/groups.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
   //! Helper struct for class StructureSeminvariant.
   struct ssVM {
     Vec3 V;
     int M;
   };
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
   //! Structure-seminvariant vector and moduli.
   /*! Implementation of the algorithm published in section 6. of
@@ -63,13 +65,13 @@ namespace sgtbx {
       /*! Possible results are in the range from 0 (e.g. space group
           Im-3m) to 3 (e.g. space group P1).
        */
-      inline std::size_t size() const { return m_VM.size(); }
+      std::size_t size() const { return m_VM.size(); }
       //! The i'th structure-seminvariant vector and modulus.
       /*! An exception is thrown if i is out of range.
           <p>
           See also: V(), M()
        */
-      inline const ssVM& VM(std::size_t i) const {
+      const ssVM& VM(std::size_t i) const {
         if (i >= size()) throw error_index();
         return m_VM[i];
       }
@@ -78,13 +80,13 @@ namespace sgtbx {
           <p>
           See also: VM(), M()
        */
-      inline const Vec3& V(std::size_t i) const { return VM(i).V; }
+      const Vec3& V(std::size_t i) const { return VM(i).V; }
       //! The i'th structure-seminvariant modulus.
       /*! An exception is thrown if i is out of range.
           <p>
           See also: VM(), V()
        */
-      inline int M(std::size_t i) const { return VM(i).M; }
+      int M(std::size_t i) const { return VM(i).M; }
       /*! \brief Test if the phase angle of the reflection with
           given Miller index is a structure-seminvariant.
        */
@@ -111,6 +113,6 @@ namespace sgtbx {
       cctbx::fixcap_vector<ssVM, 3> m_VM;
   };
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_SEMINVARIANT_H

@@ -18,7 +18,7 @@ class write_makefiles:
 
   def __init__(self, subdir, configuration):
     self.platform = strip(configuration[0])
-    if (not (self.platform in ("tru64_cxx", "linux_gcc", "irix_CC",
+    if (not (self.platform in ("tru64_cxx", "unix_gcc", "irix_CC",
                                "macosx", "mingw32", "vc60"))):
       stdout = sys.stdout
       sys.stdout = sys.__stdout__
@@ -138,11 +138,11 @@ class write_makefiles:
   def file_management(self):
     print "softlinks:"
     for srcf in self.files:
-      print "\t-ln -s $(CCTBX_UNIX)/" + srcf + " ."
+      print "\t-ln -s $(%s_UNIX)/%s ." % (self.prefix_macro, srcf)
     print
     print "cp:"
     for srcf in self.files:
-      print "\t-cp $(CCTBX_UNIX)/" + srcf + " ."
+      print "\t-cp $(%s_UNIX)/%s ." % (self.prefix_macro, srcf)
     print
     print "unlink:"
     for srcf in self.files:
@@ -157,7 +157,7 @@ class write_makefiles:
       print "copy:"
       for srcf in self.files:
         f = translate(srcf, transl_table_slash_backslash)
-        print "\t-copy $(CCTBX_WIN)\\" + f
+        print "\t-copy $(%s_WIN)\\%s" % (self.prefix_macro, f)
       print
       print "del:"
       for srcf in self.files:
@@ -227,7 +227,7 @@ class write_makefiles:
 
   def make_boost_python_module(self, name, objects_and_libs):
     objects = objects_and_libs[0]
-    libs = objects_and_libs[1]
+    libs = objects_and_libs[1] + ("boost_python",)
     objstr = self.format_objects(objects)
     if   (self.platform == "mingw32"):
       self.mingw32_pyd(name, objstr, libs)
@@ -239,8 +239,7 @@ class write_makefiles:
     self.update_depend(objects)
 
   def unix_so(self, name, objstr, libs):
-    libstr = self.format_libs(libs,
-      ("$(BOOST_PYTHONLIB)", "$(PYLIB)", "$(LDMATH)"))
+    libstr = self.format_libs(libs, ("$(PYLIB)", "$(LDMATH)"))
     nameso = name + ".so"
     print "%s: %s" % (nameso, objstr)
     print "\t$(LD) $(LDDLL) -o %s %s %s" \
@@ -249,8 +248,7 @@ class write_makefiles:
     self.make_targets["boost_python_modules"].append(nameso)
 
   def mingw32_pyd(self, name, objstr, libs):
-    libstr = self.format_libs(libs,
-      ("$(BOOST_PYTHONLIB)", "$(PYLIB)"))
+    libstr = self.format_libs(libs, ("$(PYLIB)",))
     namepyd = name + ".pyd"
     namedef = name + ".def"
     print "%s: %s %s" % (namepyd, namedef, objstr)
@@ -265,8 +263,7 @@ class write_makefiles:
     self.make_targets["boost_python_modules"].append(namepyd)
 
   def vc60_pyd(self, name, objstr, libs):
-    libstr = self.format_libs(libs,
-      ("$(BOOST_PYTHONLIB)", "$(PYLIB)"))
+    libstr = self.format_libs(libs, ("$(PYLIB)",))
     namepyd = name + ".pyd"
     print "%s: %s" % (namepyd, objstr)
     print (  "\t$(LD) $(LDDLL) /out:%s /export:init%s %s"
@@ -297,6 +294,8 @@ class write_makefiles:
   def write(self, file):
     old_sys_stdout = sys.stdout
     sys.stdout = file
+    if (not hasattr(self, "prefix_macro")):
+      self.prefix_macro = "CCTBX"
     try:
       self.head()
       if (hasattr(self, "libraries")):

@@ -29,7 +29,7 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/adptbx.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   class TrOps {
     friend class SpaceGroup;
@@ -37,22 +37,23 @@ namespace sgtbx {
       std::vector<TrVec> m_Vects;
       bool add(const TrVec& NewTr);
     public:
-      inline TrOps(int BF = STBF) : m_Vects() {
+      explicit
+      TrOps(int BF = STBF) : m_Vects() {
         m_Vects.push_back(TrVec(BF));
       }
-      inline void reset(int BF = STBF) {
+      void reset(int BF = STBF) {
         m_Vects.clear();
         m_Vects.push_back(TrVec());
       }
-      inline const std::vector<TrVec>& Vects() const { return m_Vects; }
-      inline std::vector<TrVec>& Vects() { return m_Vects; }
-      inline int nVects() const { return m_Vects.size(); }
+      const std::vector<TrVec>& Vects() const { return m_Vects; }
+      std::vector<TrVec>& Vects() { return m_Vects; }
+      int nVects() const { return m_Vects.size(); }
       bool expand(const TrVec& NewTr);
 
       TrOps ChangeBasis(const ChOfBasisOp& CBOp) const;
 
-      inline TrVec& operator[](int i) { return m_Vects[i]; }
-      inline const TrVec& operator[](int i) const { return m_Vects[i]; }
+      TrVec& operator[](int i) { return m_Vects[i]; }
+      const TrVec& operator[](int i) const { return m_Vects[i]; }
 
       char getConventionalCentringTypeSymbol() const;
       ChOfBasisOp getConventionalZ2POp(int RBF = CRBF,
@@ -94,7 +95,8 @@ namespace sgtbx {
       /*! With NoExpand == true, group multiplication will not be
           carried out. This option is for internal use only.
        */
-      inline SpaceGroup(bool NoExpand = false) : m_NoExpand(NoExpand) {
+      explicit
+      SpaceGroup(bool NoExpand = false) : m_NoExpand(NoExpand) {
         reset();
       }
       //! Initialize with symmetry encoded by a Hall symbol.
@@ -107,6 +109,7 @@ namespace sgtbx {
           be investigated to locate the input character that triggered
           the error.
        */
+      explicit
       SpaceGroup(parse_string& HSym,
             bool Pedantic = false, bool NoCType = false,
             bool NoExpand = false);
@@ -116,6 +119,7 @@ namespace sgtbx {
           there is no way to locate the input character that triggered
           the error.
        */
+      explicit
       SpaceGroup(const std::string& HSym,
             bool Pedantic = false, bool NoCType = false,
             bool NoExpand = false);
@@ -124,10 +128,12 @@ namespace sgtbx {
           there is no way to locate the input character that triggered
           the error.
        */
+      explicit
       SpaceGroup(const char* HSym,
             bool Pedantic = false, bool NoCType = false,
             bool NoExpand = false);
       //! Initizalize with the Hall symbol in the SpaceGroupSymbols object.
+      explicit
       SpaceGroup(const SpaceGroupSymbols& SgSymbols);
       //! Add a lattice translation vector to the space group.
       /*! Group multiplication is automatically performed
@@ -179,36 +185,36 @@ namespace sgtbx {
       SpaceGroup ChangeBasis(const ChOfBasisOp& CBOp) const;
 
       //! Rotation base factor of Seitz Matrices.
-      inline int RBF() const { return m_SMx[0].Rpart().BF(); }
+      int RBF() const { return m_SMx[0].Rpart().BF(); }
       //! Translation base factor of Seitz Matrices.
-      inline int TBF() const { return m_SMx[0].Tpart().BF(); }
+      int TBF() const { return m_SMx[0].Tpart().BF(); }
 
       //! Number of lattice translations.
-      inline int nLTr() const { return m_LTr.nVects(); }
+      int nLTr() const { return m_LTr.nVects(); }
       //! Flag for centre of inversion.
       /*! fInv() == 1 if no inversion operation exists,<br>
           fInv() == 2 otherwise.
        */
-      inline int fInv() const { return m_fInv; }
+      int fInv() const { return m_fInv; }
       //! Translation part for centre of inversion.
-      inline TrVec InvT(bool tidy = false) const {
+      TrVec InvT(bool tidy = false) const {
         if (tidy == false) return m_InvT;
         if (!m_InvT.isValid()) return m_InvT;
         return m_LTr.TidyT(m_InvT);
       }
       //! Number of representative Seitz matrices.
-      inline int nSMx() const { return m_nSMx; }
+      int nSMx() const { return m_nSMx; }
       //! Order of the point-group = fInv() * nSMx().
-      inline int OrderP() const { return m_fInv * m_nSMx; }
+      int OrderP() const { return m_fInv * m_nSMx; }
       //! Order of the space-group = nLTr() * fInv() * nSMx().
-      inline int OrderZ() const { return m_LTr.nVects() * m_fInv * m_nSMx; }
+      int OrderZ() const { return m_LTr.nVects() * m_fInv * m_nSMx; }
 
       //! Access to the list of lattice translation vectors.
-      inline const TrVec& LTr(int i) const { return m_LTr[i]; }
+      const TrVec& LTr(int i) const { return m_LTr[i]; }
       //! Access to the list of representative Seitz matrices.
-      inline RTMx& operator[](int i) { return m_SMx[i]; }
+      RTMx& operator[](int i) { return m_SMx[i]; }
       //! Access to the list of representative Seitz matrices.
-      inline const RTMx& operator[](int i) const { return m_SMx[i]; }
+      const RTMx& operator[](int i) const { return m_SMx[i]; }
       //! Return a symmetry operation.
       /*! Usage:<pre>
           SpaceGroup s(...);
@@ -261,7 +267,7 @@ namespace sgtbx {
        */
       friend bool operator==(const SpaceGroup& lhs, const SpaceGroup& rhs);
       //! Negation of test for equality.
-      inline friend bool operator!=(const SpaceGroup& lhs,
+      friend bool operator!=(const SpaceGroup& lhs,
                                     const SpaceGroup& rhs) {
         return !(lhs == rhs);
       }
@@ -292,7 +298,7 @@ namespace sgtbx {
           any of the conventional centring types, the null character
           is returned.
        */
-      inline char getConventionalCentringTypeSymbol() const {
+      char getConventionalCentringTypeSymbol() const {
         return m_LTr.getConventionalCentringTypeSymbol();
       }
 
@@ -307,9 +313,9 @@ namespace sgtbx {
        */
       bool isChiral() const;
       //! Test for a centre of inversion.
-      inline bool isCentric() const { return m_fInv == 2; }
+      bool isCentric() const { return m_fInv == 2; }
       //! Test if centre of inversion is at the origin.
-      inline bool isOriginCentric() const {
+      bool isOriginCentric() const {
         return isCentric() && InvT(true).isNull();
       }
 
@@ -331,23 +337,23 @@ namespace sgtbx {
        */
       PhaseRestriction getPhaseRestriction(const Miller::Index& H) const;
       //! See class PhaseRestriction::isValidPhase_rad().
-      inline bool isValidPhase_rad(const Miller::Index& H, double phi,
+      bool isValidPhase_rad(const Miller::Index& H, double phi,
                                    double tolerance = 1.e-5) const {
         return getPhaseRestriction(H).isValidPhase_rad(phi, tolerance);
       }
       //! See class PhaseRestriction::isValidPhase_deg().
-      inline bool isValidPhase_deg(const Miller::Index& H, double phi,
+      bool isValidPhase_deg(const Miller::Index& H, double phi,
                                    double tolerance = 1.e-5) const {
         return getPhaseRestriction(H).isValidPhase_deg(phi, tolerance);
       }
       //! Determine the reflection multiplicity for the given Miller index.
-      /*! The multiplicity is defined as the number of symmetry
+      /*! The multiplicity is defined as the number of symmetrically
           equivalent but distinct reflections.<br>
-          If FriedelSym == true, a centre of inversion is added to the
+          If FriedelFlag == true, a centre of inversion is added to the
           list of symmetry matrices considered in the determination of
           the multiplicity.
        */
-      int multiplicity(const Miller::Index& H, bool FriedelSym) const;
+      int multiplicity(const Miller::Index& H, bool FriedelFlag) const;
       //! Determine "epsilon" for the given Miller index.
       /*! The factor epsilon counts the number of times a Miller
           index H is mapped onto itself by symmetry. This factor
@@ -356,60 +362,15 @@ namespace sgtbx {
           See also: sgtbx::SymEquivIndices::epsilon()
        */
       int epsilon(const Miller::Index& H) const;
-      //! Generate list of symmetry equivalent reflections.
+      //! Generate list of symmetrically equivalent reflections.
       /*! See class SymEquivMillerIndices
        */
       SymEquivMillerIndices
       getEquivMillerIndices(const Miller::Index& H) const;
-      //! Determine "cut parameters" for building Miller indices.
-      /*! When building (or generating) a large list of Miller indices,
-          it is useful to restrict the loop over all possible indices
-          to 1/2, 1/4, or 1/8 of reciprocal space, if possible.<br>
-          The getCutParameters() function returns parameters that can be
-          used in the following way:<pre>
-          Miller::Index Hmax = ... // determine max hkl
-          Miller::Vec3 CutP = getCutParameters();
-          Miller::Index Hmin;
-          for(int i=0;i<3;i++) Hmin[i] = CutP[i] * Hmax[i];
-          Miller::Index H;
-          for (H[0] = Hmin[0]; H[0] <= Hmax[0]; H[0]++)
-            for (H[1] = Hmin[1]; H[1] <= Hmax[1]; H[1]++)
-              for (H[2] = Hmin[2]; H[2] <= Hmax[2]; H[2]++)
-                // use H</pre>
-          This is, each element of CutP is either -1 or 0. A value
-          of 0 indicates that the corresponding negative half-space
-          can be omitted in the loop over possible indices.
-          <p>
-          Friedel symmetry is implied in the determination of
-          the cut parameters. If the Friedel mates are needed
-          explicitly, they have to be added in a separate step.
-          Note that the Friedel mate appears explicitly only for
-          acentric reflections (use !isCentric(H) to determine
-          which reflections are acentric).
-       */
-      Miller::Vec3 getCutParameters() const;
-      //! Determine a representative ("asymmetric") Miller index.
-      /*! A light-weight, general alternative to using contiguous
-          asymmetric units.<br>
-          See sgtbx::SymEquivMillerIndices::getMasterIndex()
-       */
-      Miller::MasterIndex
-      getMasterIndex(const Miller::Index& H,
-                     bool Pretty = false) const;
-      //! Determine a representative ("asymmetric") Miller index.
-      /*! Similar to getMasterIndex(H, Pretty), but the master index
-          is only selected from the active region defined by the
-          cut parameters. This is useful for building large lists
-          of indices quickly.<br>
-          See also: getCutParameters(),
-          sgtbx::SymEquivMillerIndices::getMasterIndex()
-       */
-      Miller::MasterIndex
-      getMasterIndex(const Miller::Index& H, const Miller::Vec3& CutP,
-                     bool Pretty = false) const;
 
       //! Structure factor without Debye-Waller factor.
-      /*! XXX
+      /*! Sum of exp(2 pi j H S X) over all symmetry operations S.
+          j is the imaginary number.
        */
       template <class FloatType>
       std::complex<FloatType>
@@ -437,7 +398,13 @@ namespace sgtbx {
         return F;
       }
       //! Structure factor with isotropic Debye-Waller factor given Uiso.
-      /*! XXX
+      /*! Sum of exp(2 pi j H S X) over all symmetry operations S,
+          multiplied by cctbx::adptbx::DebyeWallerFactorUiso().
+          j is the imaginary number.
+          <p>
+          This function is provided for symmetry with the
+          structure factor calculation given anisotropic
+          displacement parameters.
        */
       template <class FloatType>
       std::complex<FloatType>
@@ -450,7 +417,13 @@ namespace sgtbx {
           StructureFactor(H, X) * adptbx::DebyeWallerFactorUiso(uc, H, Uiso);
       }
       //! Structure factor with isotropic Debye-Waller factor given Uiso.
-      /*! XXX
+      /*! Sum of exp(2 pi j H S X) over all symmetry operations S,
+          multiplied by cctbx::adptbx::DebyeWallerFactorUiso().
+          j is the imaginary number.
+          <p>
+          This function is provided for symmetry with the
+          structure factor calculation given anisotropic
+          displacement parameters.
        */
       template <class FloatType>
       std::complex<FloatType>
@@ -463,7 +436,9 @@ namespace sgtbx {
           StructureFactor(H, X) * adptbx::DebyeWallerFactorUiso(stol2, Uiso);
       }
       //! Structure factor with anisotropic Debye-Waller factor given Ustar.
-      /*! XXX
+      /*! Sum of cctbx::adptbx::DebyeWallerFactorUstar() * exp(2 pi j H S X)
+          over all symmetry operations S.
+          j is the imaginary number.
        */
       template <class FloatType>
       std::complex<FloatType>
@@ -524,7 +499,7 @@ namespace sgtbx {
           The metrical matrix is computed from the given unit cell.<br>
           The tolerance compensates for rounding errors.
        */
-      inline bool isCompatibleUnitCell(const uctbx::UnitCell& uc,
+      bool isCompatibleUnitCell(const uctbx::UnitCell& uc,
                                        double tolerance = 1.e-4) const {
         return isCompatibleMetricalMatrix(uc.getMetricalMatrix(), tolerance);
       }
@@ -533,7 +508,7 @@ namespace sgtbx {
           is thrown if the unit cell is incompatible with the
           symmetry operations.
        */
-      inline void CheckUnitCell(const uctbx::UnitCell& uc,
+      void CheckUnitCell(const uctbx::UnitCell& uc,
                          double tolerance = 1.e-4) const {
         CheckMetricalMatrix(uc.getMetricalMatrix(), tolerance);
       }
@@ -554,7 +529,7 @@ namespace sgtbx {
       /*! The translation parts of the symmetry operations are set to 0.
           However, the lattice translation vectors are not modified.
        */
-      inline SpaceGroup BuildDerivedPattersonGroup() const {
+      SpaceGroup BuildDerivedPattersonGroup() const {
         return BuildDerivedGroup(false, true);
       }
 
@@ -562,7 +537,7 @@ namespace sgtbx {
       /*! The translation parts of the symmetry operations are set to 0,
           and the lattice translation vectors are discarded.
        */
-      inline SpaceGroup BuildDerivedPointGroup() const {
+      SpaceGroup BuildDerivedPointGroup() const {
         return BuildDerivedGroup(true, false);
       }
 
@@ -571,7 +546,7 @@ namespace sgtbx {
           the lattice translation vectors are discarded,
           and a centre of inversion is added at the origin.
        */
-      inline SpaceGroup BuildDerivedLaueGroup() const {
+      SpaceGroup BuildDerivedLaueGroup() const {
         return BuildDerivedGroup(true, true);
       }
 
@@ -657,11 +632,11 @@ namespace sgtbx {
                      bool TidyCBOp = true,
                      int RBF = CRBF, int TBF = CTBF);
       //! Access to space group passed to the constructor.
-      inline const SpaceGroup& SgOps() const { return m_SgOps; }
+      const SpaceGroup& SgOps() const { return m_SgOps; }
       //! Space group number according to the International Tables.
-      inline int SgNumber() const { return m_SgNumber; }
+      int SgNumber() const { return m_SgNumber; }
       //! Change-of-basis operator.
-      inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
+      const ChOfBasisOp& CBOp() const { return m_CBOp; }
       //! Get the additional generators of the Euclidean normalizer.
       /*! See International Tables for Crystallography Volume A,
           1983, Table 15.3.2. The generators are tabulated for
@@ -757,6 +732,6 @@ namespace sgtbx {
     return SpaceGroupInfo(*this);
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_GROUPS_H

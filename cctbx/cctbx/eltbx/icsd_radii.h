@@ -13,7 +13,7 @@
 
 #include <string>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   namespace detail {
     struct Label_Radius {
@@ -51,6 +51,8 @@ namespace eltbx {
    */
   class ICSD_Radius {
     public:
+      //! Default constructor. Calling certain methods may cause crashes!
+      ICSD_Radius() : m_Label_Radius(0)  {}
       //! Lookup ionic radius for the given ion label.
       /*! If Exact == true, the ion label must exactly
           match the tabulated label. However, the lookup is not
@@ -59,15 +61,16 @@ namespace eltbx {
           "Si4+" and "Si+4" will be matched with "Si4+".<br>
           See also: eltbx::StripLabel()
        */
+      explicit
       ICSD_Radius(const std::string& Label, bool Exact = false);
       //! Return label from table.
-      inline const char* Label() const { return m_Label_Radius->Label; }
+      const char* Label() const { return m_Label_Radius->Label; }
       //! Return radius (Angstrom) from table.
-      inline float Radius() const { return m_Label_Radius->Radius; }
+      float Radius() const { return m_Label_Radius->Radius; }
     private:
       const detail::Label_Radius* m_Label_Radius;
   };
 
-} // eltbx
+}} // cctbx::eltbx
 
 #endif // CCTBX_ELTBX_ICSD_RADII_H

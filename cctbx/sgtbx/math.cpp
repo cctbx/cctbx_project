@@ -16,7 +16,7 @@
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   int iRowEchelonFormT(int *M, int mr, int mc, int *T, int tc)
   {
@@ -171,4 +171,4 @@ namespace sgtbx {
     return rr;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

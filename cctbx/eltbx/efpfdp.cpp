@@ -15,7 +15,7 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/efpfdp.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace detail {
 
     const Label_Z_Efpfdp* FindEntry(const Label_Z_Efpfdp* Tables,
@@ -66,4 +66,4 @@ namespace eltbx {
     }
 
   } // namespace detail
-} // namespace eltbx
+}} // namespace cctbx::eltbx

@@ -17,7 +17,7 @@ is freely available under the GNU General Public License (GPL).
 To regenerate the %cctbx documentation, Doxygen first needs to be
 installed on your system. A binary distribution for Linux is available
 and can be installed without root permissions. Essentially, only one
-file in the binary distribution, the <tt>Doxygen</tt> executable, is
+file in the binary distribution, the <tt>doxygen</tt> executable, is
 needed. I.e., installing Doxygen can be as easy as copying this one
 file to your system.
 
@@ -39,7 +39,7 @@ FILE_PATTERNS          = *.cpp *.h *.dox
 To regenerate the %cctbx documentation, adjust the
 <tt>OUTPUT_DIRECTORY</tt> pathname and run the command <tt>doxygen</tt>
 in the directory <tt>%cctbx/dox</tt>. Doxygen will recursively
-use all C++ header files in the directory tree <tt>%cctbx/%cctbx</tt>,
+scan all C++ header files in the directory tree <tt>%cctbx/%cctbx</tt>,
 and the <tt>*.dox</tt> files in <tt>%cctbx/dox</tt>.
 
 \par
@@ -54,6 +54,6 @@ and run Doxygen again.
 <hr>
 
 \par
-R.W. Grosse-Kunstleve, April 2001
+R.W. Grosse-Kunstleve, November 2001
 
 */

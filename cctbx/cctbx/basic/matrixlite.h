@@ -23,70 +23,75 @@
 
 namespace boost {
 
-    template<class T, std::size_t N>
-    bool operator== (const array<T,N>& x, const T& value) {
+    template<class AnyType, std::size_t N>
+    bool operator== (const array<AnyType,N>& x, const AnyType& value) {
         for (std::size_t i = 0; i < x.size(); i++)
             if (x[i] != value) return false;
         return true;
     }
 
-    template<class T, std::size_t N>
-    bool operator!= (const array<T,N>& x, const T& value) {
+    template<class AnyType, std::size_t N>
+    bool operator!= (const array<AnyType,N>& x, const AnyType& value) {
         for (std::size_t i = 0; i < x.size(); i++)
             if (x[i] != value) return true;
         return false;
     }
 
-    template<class T, std::size_t N>
-    T operator* (const array<T,N>& lhs, const array<T,N>& rhs) {
-        T result = 0;
+    template<class NumType, std::size_t N>
+    NumType operator* (const array<NumType,N>& lhs,
+                       const array<NumType,N>& rhs) {
+        NumType result = 0;
         for (std::size_t i = 0; i < lhs.size(); i++) result += lhs[i] * rhs[i];
         return result;
     }
 
-    template<class T, std::size_t N>
-    const array<T,N> operator/ (const array<T,N>& lhs, const T& rhs) {
-        array<T,N> result;
+    template<class NumType, std::size_t N>
+    const array<NumType,N> operator/ (const array<NumType,N>& lhs,
+                                      const NumType& rhs) {
+        array<NumType,N> result;
         for (std::size_t i = 0; i < lhs.size(); i++) result[i] = lhs[i] / rhs;
         return result;
     }
 
-    template<class T, std::size_t N>
-    const array<T,N> operator* (const T& lhs, const array<T,N>& rhs) {
-        array<T,N> result;
+    template<class NumType, std::size_t N>
+    const array<NumType,N> operator* (const NumType& lhs,
+                                      const array<NumType,N>& rhs) {
+        array<NumType,N> result;
         for (std::size_t i = 0; i < rhs.size(); i++) result[i] = lhs * rhs[i];
         return result;
     }
 
-    template<class T, std::size_t N>
-    array<T,N> operator+ (const array<T,N>& lhs, const array<T,N>& rhs) {
-        array<T,N> result;
+    template<class NumType, std::size_t N>
+    array<NumType,N> operator+ (const array<NumType,N>& lhs,
+                                const array<NumType,N>& rhs) {
+        array<NumType,N> result;
         for (std::size_t i = 0; i < lhs.size(); i++) {
             result[i] = lhs[i] + rhs[i];
         }
         return result;
     }
 
-    template<class T, std::size_t N>
-    array<T,N> operator- (const array<T,N>& lhs, const array<T,N>& rhs) {
-        array<T,N> result;
+    template<class NumType, std::size_t N>
+    array<NumType,N> operator- (const array<NumType,N>& lhs,
+                                const array<NumType,N>& rhs) {
+        array<NumType,N> result;
         for (std::size_t i = 0; i < lhs.size(); i++) {
             result[i] = lhs[i] - rhs[i];
         }
         return result;
     }
 
-    template<class T, std::size_t N>
-    array<T,N> operator- (const array<T,N>& rhs) {
-        array<T,N> result;
+    template<class NumType, std::size_t N>
+    array<NumType,N> operator- (const array<NumType,N>& rhs) {
+        array<NumType,N> result;
         for (std::size_t i = 0; i < rhs.size(); i++) {
             result[i] = -rhs[i];
         }
         return result;
     }
 
-    template<class T, std::size_t N>
-    std::ostream& operator<<(std::ostream& os, const array<T,N>& x) {
+    template<class AnyType, std::size_t N>
+    std::ostream& operator<<(std::ostream& os, const array<AnyType,N>& x) {
         os << "(";
         if (x.size() > 0) {
             for (std::size_t i = 0;;) {
@@ -100,15 +105,15 @@ namespace boost {
         return os;
     }
 
-    template <class T, std::size_t N>
+    template <class AnyType, std::size_t N>
     std::size_t
-    array_min_index(const boost::array<T, N>& a) {
+    array_min_index(const boost::array<AnyType, N>& a) {
       return std::min_element(a.begin(), a.end()) - a.begin();
     }
 
-    template <class T, std::size_t N>
+    template <class AnyType, std::size_t N>
     std::size_t
-    array_max_index(const boost::array<T, N>& a) {
+    array_max_index(const boost::array<AnyType, N>& a) {
       return std::max_element(a.begin(), a.end()) - a.begin();
     }
 
@@ -147,16 +152,18 @@ namespace cctbx {
       typedef boost::array<double, 3 * 3> Mx33;
     }
 
-    template <class T>
-    void identity(T *M, const std::size_t n, const T& diagonal = 1)
+    template <class NumType>
+    void
+    identity(NumType *M, const std::size_t n, const NumType& diagonal = 1)
     {
       int i;
       for(i=0;i<n*n;i++) M[i] = 0;
       for(i=0;i<n*n;i+=n+1) M[i] = diagonal;
     }
 
-    template <class T>
-    bool isDiagonal(const T *M, const std::size_t nr, const std::size_t nc)
+    template <class NumType>
+    bool
+    isDiagonal(const NumType *M, const std::size_t nr, const std::size_t nc)
     {
       if (nr != nc) return false;
       for (int ir = 0; ir < nr; ir++)
@@ -165,30 +172,33 @@ namespace cctbx {
       return true;
     }
 
-    template <class T>
-    void transpose(const T *M, const std::size_t nr, const std::size_t nc,
-                   T *Mt)
+    template <class NumType>
+    void
+    transpose(const NumType *M, const std::size_t nr, const std::size_t nc,
+              NumType *Mt)
     {
       for (int ir = 0; ir < nr; ir++)
         for (int ic = 0; ic < nc; ic++)
           Mt[ic * nr + ir] = M[ir * nc + ic];
     }
 
-    template <class T>
-    void transpose(T *M, const std::size_t nr, const std::size_t nc)
+    template <class NumType>
+    void
+    transpose(NumType *M, const std::size_t nr, const std::size_t nc)
     {
-      std::vector<T> Mt(nr * nc);
+      std::vector<NumType> Mt(nr * nc);
       for (int ir = 0; ir < nr; ir++)
         for (int ic = 0; ic < nc; ic++)
           Mt[ic * nr + ir] = M[ir * nc + ic];
       for (int i = 0; i < nr * nc; i++) M[i] = Mt[i];
     }
 
-    template <class T>
-    void multiply(const T *A, const T *B,
-                  const std::size_t ma,
-                  const std::size_t na, const std::size_t nb,
-                  T *AB) {
+    template <class NumType>
+    void
+    multiply(const NumType *A, const NumType *B,
+             const std::size_t ma,
+             const std::size_t na, const std::size_t nb,
+             NumType *AB) {
       // AB[ma, nb] = A[ma, na] * B[na, nb]
       for (int i = 0; i < ma; i++) {
         for (int k = 0; k < nb; k++) {
@@ -211,7 +221,8 @@ namespace cctbx {
     }
 
     template <class NumType>
-    inline NumType Determinant(const boost::array<NumType, 9>& M) {
+    inline NumType
+    Determinant(const boost::array<NumType, 9>& M) {
       return   M[0] * (M[4] * M[8] - M[5] * M[7])
              - M[1] * (M[3] * M[8] - M[5] * M[6])
              + M[2] * (M[3] * M[7] - M[4] * M[6]);

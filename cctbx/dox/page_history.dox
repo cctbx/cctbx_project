@@ -5,11 +5,12 @@
 <dl>
 
 <dt>eltbx - Element Toolbox
-<dd>The %cctbx Element Toolbox superseeds
+<dd>The %cctbx Element Toolbox supersedes
 <a href="http://www.ccp14.ac.uk/ccp/ccp14/ftp-mirror/ralf_grosse_kunstleve/pub/local/rwgk/atominfo/">atominfo</a>.
 The \c Henke, \c Sasaki and \c neutron modules are based on C source code
 contributed by
-<a href="http://www.unige.ch/crystal/favrev/">Vincent Favre-Nicolin</a>.
+<a href="http://v.favrenicolin.free.fr/cv/index-en.html"
+>Vincent Favre-Nicolin</a>.
 
 <dt>sgtbx - Space Group Toolbox
 <dd>The %cctbx Space Group Toolbox is based on
@@ -19,16 +20,15 @@ All new development will be focussed on the %sgtbx.
 SgLite and SgInfo are not being developed anymore.<br>
 More information: \ref page_history_sgtbx
 
-<dt>uctbx - Unit Cell Toolbox
-<dd>The %cctbx Unit Cell Toolbox was developed by the
+</dl>
+
+The other toolboxes are developed by the
 <a href="http://cci.lbl.gov/">Computational Crystallography Initiative</a>
 (CCI).
-
-</dl>
 
 <hr>
 
 \par
-R.W. Grosse-Kunstleve, April 2001
+R.W. Grosse-Kunstleve, November 2001
 
 */

@@ -1,8 +1,8 @@
 # test StructureFactor
 
 import sys, os
-import sgtbx
-import uctbx
+from cctbx import sgtbx
+from cctbx import uctbx
 import random
 
 ShortCut = "--ShortCut" in sys.argv

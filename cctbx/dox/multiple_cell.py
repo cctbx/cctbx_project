@@ -160,8 +160,8 @@ if (__name__ == "__main__"):
 
 The Hermann-Mauguin symbols listed in the tables below are
 not recognized by the class sgtbx::SpaceGroupSymbols,
-but you may click on the Hall symbols in the tables
-below to explore the symmetries.
+but you may click on the Hall symbols in the right
+columns to explore the symmetries.
 
 \par
 
@@ -173,7 +173,7 @@ the International Tables for Crystallography, Volume I from
 International Tables for Crystallography, Volume A from
 1983 (IT-A1983), the multiple cell and triple cell symbols
 reappear in the sub- and supergroup data, and are also
-included in the Synoptic Tables of Space-Group Symbols
+included in the <i>Synoptic Tables of Space-Group Symbols</i>
 (Table 4.3.1).
 
 \par
@@ -185,13 +185,14 @@ shown in the table headers below. For most settings the
 choice of the transformation matrix does not effect the
 result of the transformation. However, there are a number
 of settings where the result of the transformation depends
-on the choice.  For these settings IT-A1983 does not
-unambiguously define a specific space group representation
-for the given Hermann-Mauguin symbol (see e.g. F41 below).
-The situation is similar for the transformation from a
-primitive trigonal or hexagonal setting to a triple cell H
-setting. Unfortunately there is no established notation
-for resolving these ambigous definitions of IT-1983.
+on the choice of the matrix. For these settings IT-A1983
+does not unambiguously define a specific space group
+representation for the given Hermann-Mauguin symbol (see
+e.g. F41 below). The situation is similar for the
+transformation from a primitive trigonal or hexagonal
+setting to a triple cell H setting. Unfortunately there is
+no established notation for resolving these ambigous
+definitions of IT-1983.
 
 \par
 
@@ -234,7 +235,7 @@ very old papers. A related problem is that the Protein Data
 Bank (PDB) sometimes uses the symbol H to distinguish
 between the hexagonal and the rhombohedral setting of
 trigonal space groups (e.g. the symbol <i>H 3</i> in the
-PDB corresponds to <i>R 3 with hexangonal axes</i> in
+PDB corresponds to <i>R 3 with hexagonal axes</i> in
 IT-A1983). It could therefore cause significant confusion
 if the sgtbx interprets the PDB symbols according to the
 IT-1935 conventions.

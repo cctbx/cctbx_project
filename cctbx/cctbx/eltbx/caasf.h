@@ -22,7 +22,7 @@
 // FIXES for broken compilers
 #include <boost/config.hpp>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   static const float caasf_undefined = -99999.;
 
@@ -42,7 +42,7 @@ namespace eltbx {
   template <std::size_t N>
   class CAASF {
     public:
-      //! XXX
+      //! Default constructor. Calling certain methods may cause crashes!
       CAASF() : m_Entry(0), m_Table(0) {}
       //! Constructor. For internal use only.
       CAASF(const detail::CAASF_Raw<N>* TableRaw,
@@ -75,23 +75,23 @@ namespace eltbx {
         }
       }
       //! Label of table. Currently either "IT1992" or "WK1995".
-      inline const char* Table() const { return m_Table; }
+      const char* Table() const { return m_Table; }
       //! Scattering factor label. E.g. "Si4+".
-      inline const char* Label() const { return m_Entry->Label; }
+      const char* Label() const { return m_Entry->Label; }
       //! Number of a and b coefficients. Currently either 4 or 5.
       /*! Note that the total number of coefficients is 2*n_ab()+1.
        */
-      inline int n_ab() const { return N; }
+      int n_ab() const { return N; }
       //! Return coefficient a(i), with 0 <= i < n_ab().
       /*! No range checking (for runtime efficiency).
        */
-      inline float a(int i) const { return m_Entry->a[i]; }
+      float a(int i) const { return m_Entry->a[i]; }
       //! Return coefficient b(i), with 0 <= i < n_ab().
       /*! No range checking (for runtime efficiency).
        */
-      inline float b(int i) const { return m_Entry->b[i]; }
+      float b(int i) const { return m_Entry->b[i]; }
       //! Return coefficient c.
-      inline float c() const { return m_Entry->c; }
+      float c() const { return m_Entry->c; }
       //! Return the analytical approximation to the scattering factor.
       /*! stol2 = sin-theta-over-lambda-squared: (sin(theta)/lambda)^2<br>
           See also: uctbx::UnitCell::Q()
@@ -106,13 +106,13 @@ namespace eltbx {
       //! Return the analytical approximation to the scattering factor.
       /*! See also: stol2(), uctbx::UnitCell::Q()
        */
-      inline double stol(double stol_value) const {
+      double stol(double stol_value) const {
         return stol2(stol_value * stol_value);
       }
       //! Return the analytical approximation to the scattering factor.
       /*! See also: stol2(), uctbx::UnitCell::Q()
        */
-      inline double Q(double Q_value) const { return stol2(Q_value / 4.); }
+      double Q(double Q_value) const { return stol2(Q_value / 4.); }
     private:
       const char *m_Table;
       const detail::CAASF_Raw<N>* m_Entry;
@@ -148,7 +148,7 @@ namespace eltbx {
    */
   class CAASF_IT1992: public CAASF<4> {
     public:
-      //! XXX
+      //! Default constructor. Calling certain methods may cause crashes!
       CAASF_IT1992() {}
       //! Lookup coefficients for the given scattering factor label.
       /*! If Exact == true, the scattering factor label must exactly
@@ -193,7 +193,7 @@ namespace eltbx {
    */
   class CAASF_WK1995: public CAASF<5> {
     public:
-      //! XXX
+      //! Default constructor. Calling certain methods may cause crashes!
       CAASF_WK1995() {}
       //! Lookup coefficients for the given scattering factor label.
       /*! If Exact == true, the scattering factor label must exactly
@@ -209,6 +209,6 @@ namespace eltbx {
       CAASF_WK1995(const std::string& Label, bool Exact = false);
   };
 
-} // eltbx
+}} // cctbx::eltbx
 
 #endif // CCTBX_ELTBX_CAASF_H

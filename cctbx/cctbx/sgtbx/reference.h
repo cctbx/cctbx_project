@@ -15,7 +15,7 @@
 #include <vector>
 #include <cctbx/sgtbx/tables.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace tables {
     namespace ReferenceSettings {
 
@@ -762,6 +762,6 @@ namespace sgtbx {
 
   } // namespace ReferenceSettings
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_REFERENCE_H

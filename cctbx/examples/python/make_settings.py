@@ -3,7 +3,7 @@
 #
 # usage: python make_settings.py > settings.py
 
-import sgtbx
+from cctbx import sgtbx
 
 settings = [0]
 for i in xrange(1, 231): settings.append({})

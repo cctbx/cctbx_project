@@ -22,25 +22,27 @@
 #include <cctbx/miller.h>
 #include <cctbx/sgtbx/groups.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   namespace detail {
 
-    template <class T>
-    TrVec getUnitShifts(const boost::array<T, 3>& Delta)
+    template <class FloatType>
+    TrVec
+    getUnitShifts(const boost::array<FloatType, 3>& Delta)
     {
       TrVec result(1);
       for(std::size_t i=0;i<3;i++) {
-        if (Delta[i] >= 0.) result[i] = static_cast<int>(Delta[i] + 0.5);
-        else                result[i] = static_cast<int>(Delta[i] - 0.5);
+        if (Delta[i] >= 0.) result[i] = int(Delta[i] + 0.5);
+        else                result[i] = int(Delta[i] - 0.5);
       }
       return result;
     }
 
-    template <class T>
-    double modShortLength2(const uctbx::UnitCell& uc,
-                           const boost::array<T, 3>& Diff) {
-      return uc.Length2(fractional<T>(Diff).modShort());
+    template <class FloatType>
+    double
+    modShortLength2(const uctbx::UnitCell& uc,
+                    const boost::array<FloatType, 3>& Diff) {
+      return uc.Length2(fractional<FloatType>(Diff).modShort());
     }
 
     void SetUniqueOps(const SpaceGroup& SgOps,
@@ -52,6 +54,7 @@ namespace sgtbx {
   //! Container for special position snap parameters.
   class SpecialPositionSnapParameters {
     public:
+      // NO DEFAULT CONSTRUCTOR
       //! Define special position snap parameters.
       /*! The definitions are used in a constructor of
           class SiteSymmetry. The parameters are used in a
@@ -89,19 +92,22 @@ namespace sgtbx {
           m_MustBeWellBehaved(MustBeWellBehaved),
           m_MinMateDistance2(MinMateDistance * MinMateDistance) {}
     private:
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
       friend class SiteSymmetry;
       friend class WyckoffTable;
+#endif // DOXYGEN_SHOULD_SKIP_THIS
       const uctbx::UnitCell& m_UnitCell;
       const SpaceGroup& m_SgOps;
       bool m_MustBeWellBehaved;
       double m_MinMateDistance2;
   };
 
-  template <class T> class SymEquivCoordinates;
+  template <class FloatType> class SymEquivCoordinates;
 
   //! Container for special position tolerance parameters.
   class SpecialPositionTolerances {
     public:
+      // NO DEFAULT CONSTRUCTOR
       //! Define special position tolerance parameters.
       /*! The definitions are used in a constructor of
           class SymEquivCoordinates. The parameters are used in an
@@ -123,7 +129,7 @@ namespace sgtbx {
           <p>
           The simple distance calculation is not guaranteed to be
           numerically stable.  As a safeguard it is asserted that the
-          number of symmetry equivalent coordinates is a factor of the
+          number of symmetrically equivalent coordinates is a factor of the
           space group multiplicity.
           <p>
           To avoid numerical instabilities and potentially inaccurate
@@ -146,12 +152,14 @@ namespace sgtbx {
         cctbx_assert(m_MinimumDistance2 >= m_Tolerance2);
       }
     private:
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 # if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // 1200 == VC++ 6.0
-      template <class T> friend class SymEquivCoordinates;
+      template <class FloatType> friend class SymEquivCoordinates;
 # else
       friend class SymEquivCoordinates<float>;
       friend class SymEquivCoordinates<double>;
 # endif
+#endif // DOXYGEN_SHOULD_SKIP_THIS
       const uctbx::UnitCell& m_UnitCell;
       const SpaceGroup& m_SgOps;
       double m_MinimumDistance2;
@@ -178,6 +186,8 @@ namespace sgtbx {
   //! Robust algorithm for the determination of site-symmetries.
   class SiteSymmetry {
     public:
+      //! Default constructor. Calling certain methods may cause crashes!
+      SiteSymmetry() : m_Parameters(0) {}
       //! Determine the site symmetry of X.
       /*! The SpecialPositionSnapParameters are used in a numerically
           robust algorithm that first determines the point group of the
@@ -196,38 +206,38 @@ namespace sgtbx {
                    const fractional<double>& X,
                    bool auto_expand = false);
       //! Retrieve the original coordinates (X in the constructor).
-      inline const fractional<double>& OriginalPosition() const {
+      const fractional<double>& OriginalPosition() const {
         return m_OriginalPosition;
       }
       //! Exact location of the special position.
-      inline const fractional<double>& SnapPosition() const {
+      const fractional<double>& SnapPosition() const {
         return m_SnapPosition;
       }
       //! Distance squared between OriginalPosition() and SnapPosition().
-      inline double DistanceMoved2() const {
-        return m_Parameters.m_UnitCell.Distance2(m_SnapPosition,
-                                                 m_OriginalPosition);
+      double DistanceMoved2() const {
+        return m_Parameters->m_UnitCell.Distance2(m_SnapPosition,
+                                                  m_OriginalPosition);
       }
       //! Distance between OriginalPosition() and SnapPosition().
-      inline double DistanceMoved() const {
+      double DistanceMoved() const {
         return std::sqrt(DistanceMoved2());
       }
       //! Shortest distance squared between symmetry mates of SnapPosition().
-      inline double ShortestDistance2() const {
+      double ShortestDistance2() const {
         return m_ShortestDistance2;
       }
       //! Shortest distance between symmetry mates of SnapPosition().
-      inline double ShortestDistance() const {
+      double ShortestDistance() const {
         return std::sqrt(m_ShortestDistance2);
       }
       //! Test if ShortestDistance() > MinMateDistance.
       /*! See SpecialPositionSnapParameters for details.
        */
-      inline bool isWellBehaved() const {
-        return m_ShortestDistance2 > m_Parameters.m_MinMateDistance2;
+      bool isWellBehaved() const {
+        return m_ShortestDistance2 > m_Parameters->m_MinMateDistance2;
       }
       //! Multiplicity (number of distinct symmetry mates) of SnapPosition().
-      inline int M() const { return m_M; }
+      int M() const { return m_M; }
       //! Special position operation.
       /*! This operation is used to compute SnapPosition() from the
           input coordinates X and satisfies the following two
@@ -237,7 +247,7 @@ namespace sgtbx {
           <li>SpecialOp() * SnapPosition() = SnapPosition()
           </ul>
        */
-      inline const RTMx& SpecialOp() const { return m_SpecialOp; }
+      const RTMx& SpecialOp() const { return m_SpecialOp; }
       //! Determine the site symmetry point group type.
       tables::MatrixGroup::Code PointGroupType() const;
       /*! \brief Test if given anisotropic displacement parameters
@@ -251,8 +261,9 @@ namespace sgtbx {
           symmetry.
        */
       template <class FloatType>
-      bool isCompatibleUstar(const boost::array<FloatType, 6>& Ustar,
-                             FloatType tolerance = 1.e-6) const
+      bool
+      isCompatibleUstar(const boost::array<FloatType, 6>& Ustar,
+                        FloatType tolerance = 1.e-6) const
       {
         FloatType scaled_tolerance = 0.;
         for(std::size_t j=0;j<6;j++) {
@@ -286,8 +297,9 @@ namespace sgtbx {
           the site symmetry.
        */
       template <class FloatType>
-      void CheckUstar(const boost::array<FloatType, 6>& Ustar,
-                      double tolerance = 1.e-6) const
+      void
+      CheckUstar(const boost::array<FloatType, 6>& Ustar,
+                 double tolerance = 1.e-6) const
       {
         if (!isCompatibleUstar(Ustar, tolerance)) {
           throw error(
@@ -330,20 +342,20 @@ namespace sgtbx {
           can be used as an argument in the constructor of
           SymEquivCoordinates.
        */
-      inline void expand() {
-        detail::SetUniqueOps(m_Parameters.m_SgOps, m_SpecialOp, m_UniqueOps);
+      void expand() {
+        detail::SetUniqueOps(m_Parameters->m_SgOps, m_SpecialOp, m_UniqueOps);
         cctbx_assert(m_UniqueOps.size() == m_M);
       }
       //! Test if expand() has been called.
       /*! See also: CheckExpanded()
        */
-      inline bool isExpanded() const { return m_UniqueOps.size() != 0; }
+      bool isExpanded() const { return m_UniqueOps.size() != 0; }
       //! Assert that expand() has been called.
       /*! An exception is thrown if this assertion fails.
           <p>
           See also: isExpanded()
        */
-      inline void CheckExpanded() const {
+      void CheckExpanded() const {
         if (!isExpanded()) {
           throw error(
           "Unique operations not initialized. Use expand() to initialize.");
@@ -353,22 +365,24 @@ namespace sgtbx {
       /*! i must be in the range [0,M()[. No range checking is
           performed for maximal performance.
        */
-      inline const RTMx& operator[](std::size_t i) const {
+      const RTMx& operator[](std::size_t i) const {
         return m_UniqueOps[i];
       }
       //! Access the i'th element of the list generated by expand().
       /*! i must be in the range [0,M()[. An exception (cctbx::error_index)
           is thrown if i is out of range.
        */
-      inline const RTMx& operator()(std::size_t i) const {
+      const RTMx& operator()(std::size_t i) const {
         CheckExpanded();
         if (i >= m_M) throw error_index();
         return m_UniqueOps[i];
       }
     private:
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
       friend class WyckoffTable;
+#endif // DOXYGEN_SHOULD_SKIP_THIS
       void BuildSpecialOp();
-      const SpecialPositionSnapParameters& m_Parameters;
+      const SpecialPositionSnapParameters* m_Parameters;
       const fractional<double> m_OriginalPosition;
       detail::RT_PointGroup m_PointGroup;
       fractional<double> m_SnapPosition;
@@ -383,17 +397,19 @@ namespace sgtbx {
    */
   class WyckoffPosition {
     public:
+      //! Default constructor. Some data members are not initialized!
+      WyckoffPosition() {}
       //! Constructor. For internal use only.
       WyckoffPosition(int M, const char Letter, const RTMx& SpecialOp)
         : m_M(M), m_Letter(Letter), m_SpecialOp(SpecialOp) {}
       //! The multiplicity of the Wyckoff position.
-      inline int M() const { return m_M; }
+      int M() const { return m_M; }
       //! The Wyckoff letter according to the International Tables.
       /*! The Wyckoff letter "alpha" is represented by the character "@".
        */
-      inline char Letter() const { return m_Letter; }
+      char Letter() const { return m_Letter; }
       //! A representative special position operation.
-      inline const RTMx& SpecialOp() const { return m_SpecialOp; }
+      const RTMx& SpecialOp() const { return m_SpecialOp; }
       //! Expand the representative special position operation.
       /*! The SpecialOp() is multiplied with all symmetry operations.
           The unique results are stored in an internal list which
@@ -405,19 +421,19 @@ namespace sgtbx {
           <p>
           See also: WyckoffTable::expand()
        */
-      inline void expand(const SpaceGroup& SgOps) {
+      void expand(const SpaceGroup& SgOps) {
         detail::SetUniqueOps(SgOps, m_SpecialOp, m_UniqueOps);
         cctbx_assert(m_UniqueOps.size() == m_M);
       }
       //! Test if expand() has been called.
       /*! See also: CheckExpanded()
        */
-      inline bool isExpanded() const { return m_UniqueOps.size() != 0; }
+      bool isExpanded() const { return m_UniqueOps.size() != 0; }
       //! Assert that expand() has been called.
       /*! An exception is thrown if this assertion fails.<br>
           See also: isExpanded()
        */
-      inline void CheckExpanded() const {
+      void CheckExpanded() const {
         if (!isExpanded()) {
           throw error(
           "Unique operations not initialized. Use expand() to initialize.");
@@ -427,14 +443,14 @@ namespace sgtbx {
       /*! i must be in the range [0,M()[. No range checking is
           performed for maximal performance.
        */
-      inline const RTMx& operator[](std::size_t i) const {
+      const RTMx& operator[](std::size_t i) const {
         return m_UniqueOps[i];
       }
       //! Access the i'th element of the list generated by expand().
       /*! i must be in the range [0,M()[. An exception (cctbx::error_index)
           is thrown if i is out of range.
        */
-      inline const RTMx& operator()(std::size_t i) const {
+      const RTMx& operator()(std::size_t i) const {
         CheckExpanded();
         if (i >= m_M) throw error_index();
         return m_UniqueOps[i];
@@ -466,7 +482,7 @@ namespace sgtbx {
    */
   class WyckoffMapping {
     public:
-      //! Constructor. For internal use only.
+      //! Default constructor. Calling certain methods may cause crashes!
       WyckoffMapping() : m_WP(0), m_Mapping(RTMx(0, 0)) {}
       //! Constructor. For internal use only.
       WyckoffMapping(const WyckoffPosition& WP, const RTMx& Mapping)
@@ -476,11 +492,11 @@ namespace sgtbx {
           WyckoffTable must exist as long as this reference
           is used.
        */
-      inline const WyckoffPosition& WP() const { return *m_WP; }
+      const WyckoffPosition& WP() const { return *m_WP; }
       //! Symmetry operation that maps to the representative Wyckoff position.
       /*! See class details and WyckoffTable::getWyckoffMapping().
        */
-      inline const RTMx& Mapping() const { return m_Mapping; }
+      const RTMx& Mapping() const { return m_Mapping; }
       //! Exact location of the representative Wyckoff position.
       /*! Formula used: WP().SpecialOp() * Mapping() * X
           <p>
@@ -489,19 +505,19 @@ namespace sgtbx {
           is useful for repeated, efficient computation of
           symmetry mates.
        */
-      inline fractional<double>
+      fractional<double>
       snap_to_representative(const fractional<double>& X) const {
-        return (*m_WP).SpecialOp() * (m_Mapping * X);
+        return m_WP->SpecialOp() * (m_Mapping * X);
       }
       //! Exact location of the special position.
       /*! This is equivalent to SiteSymmetry::SnapPosition().
           <p>
           Formula used: Mapping().inverse() * WP().SpecialOp() * Mapping() * X
        */
-      inline fractional<double>
+      fractional<double>
       snap(const fractional<double>& X) const {
         return    m_Mapping.inverse_with_cancel()
-               * ((*m_WP).SpecialOp() * (m_Mapping * X));
+               * (m_WP->SpecialOp() * (m_Mapping * X));
       }
     private:
       const WyckoffPosition* m_WP;
@@ -520,6 +536,8 @@ namespace sgtbx {
    */
   class WyckoffTable {
     public:
+      //! Default constructor. Some data members are not initialized!
+      WyckoffTable() {}
       //! Constructor.
       /*! The Wyckoff positions for the 230 reference settings are
           tabulated. SgInfo::CBOp() is used to transform the
@@ -531,6 +549,7 @@ namespace sgtbx {
           <p>
           See also: expand(), WyckoffPosition::expand()
        */
+      explicit
       WyckoffTable(const SpaceGroupInfo& SgInfo, bool auto_expand = false);
       //! Call expand() for all Wyckoff positions.
       /*! See also: WyckoffPosition::expand()
@@ -539,7 +558,7 @@ namespace sgtbx {
       //! The number of Wyckoff positions for the given space group.
       /*! This number varies between 1 and 27.
        */
-      inline std::size_t N() const { return m_Operations.size(); }
+      std::size_t N() const { return m_Operations.size(); }
       //! Return a reference to the i'th Wyckoff position.
       /*! i must be in the range [0,N()[. No range checking is
           performed for maximal performance.
@@ -547,7 +566,7 @@ namespace sgtbx {
           The general position has the index 0. The Wyckoff position
           with the letter "a" has the index N()-1.
        */
-      inline const WyckoffPosition& operator[](std::size_t i) const {
+      const WyckoffPosition& operator[](std::size_t i) const {
         return m_Operations[i];
       }
       //! Return a reference to the i'th Wyckoff position.
@@ -557,7 +576,7 @@ namespace sgtbx {
           The general position has the index 0. The Wyckoff position
           with the letter "a" has the index N()-1.
        */
-      inline const WyckoffPosition& operator()(std::size_t i) const {
+      const WyckoffPosition& operator()(std::size_t i) const {
         if (i >= N()) throw error_index();
         return m_Operations[i];
       }
@@ -572,7 +591,7 @@ namespace sgtbx {
           For a given space group type, there is a setting independent
           one-to-one correspondence between letters and indices.
        */
-      inline const WyckoffPosition& operator()(char Letter) const {
+      const WyckoffPosition& operator()(char Letter) const {
         return m_Operations[LookupIndex(Letter)];
       }
       //! Look up the Wyckoff position index for a given Wyckoff Letter.
@@ -612,27 +631,34 @@ namespace sgtbx {
       std::vector<WyckoffPosition> m_Operations;
   };
 
-  //! Container for symmetry equivalent (atomic) coordinates.
-  template <class T>
+  //! Container for symmetrically equivalent (atomic) coordinates.
+  template <class FloatType>
   class SymEquivCoordinates {
     public:
-      //! Compute symmetry equivalent coordinates using a robust algorithm.
+      //! Default constructor. Some data members are not initialized!
+      SymEquivCoordinates() {}
+      /*! \brief Compute symmetrically equivalent coordinates
+          using a robust algorithm.
+       */
       /*! See class SpecialPositionSnapParameters for details.
        */
       SymEquivCoordinates(const SpecialPositionSnapParameters& params,
-                          const fractional<T>& X)
+                          const fractional<FloatType>& X)
       {
         SiteSymmetry SS(params, X, true);
         for(std::size_t i=0;i<SS.M();i++) {
           m_Coordinates.push_back(SS[i] * SS.SnapPosition());
         }
       }
-      //! Compute symmetry equivalent coordinates using a robust algorithm.
+      /*! \brief Compute symmetrically equivalent coordinates
+          using a robust algorithm.
+       */
       /*! See class SiteSymmetry for details.
           <p>
           SiteSymmetry::expand() has to be called for SS before SS
           can be used in this constructor.
        */
+      explicit
       SymEquivCoordinates(const SiteSymmetry& SS)
       {
         SS.CheckExpanded();
@@ -640,7 +666,7 @@ namespace sgtbx {
           m_Coordinates.push_back(SS[i] * SS.SnapPosition());
         }
       }
-      //! Compute symmetry equivalent coordinates using a WyckoffMapping.
+      //! Compute symmetrically equivalent coordinates using a WyckoffMapping.
       /*! See class WyckoffMapping for details.
           <p>
           WyckoffPosition::expand() has to be called for WM.WP() before WM
@@ -648,16 +674,16 @@ namespace sgtbx {
           by calling WyckoffTable::expand().
        */
       SymEquivCoordinates(const WyckoffMapping& WM,
-                          const fractional<T>& X)
+                          const fractional<FloatType>& X)
       {
         const WyckoffPosition& WP = WM.WP();
         WP.CheckExpanded();
-        fractional<T> Xr = WM.snap_to_representative(X);
+        fractional<FloatType> Xr = WM.snap_to_representative(X);
         for(std::size_t i=0;i<WP.M();i++) {
           m_Coordinates.push_back(WP[i] * Xr);
         }
       }
-      //! Compute symmetry equivalent coordinates using a WyckoffPosition.
+      //! Compute symmetrically equivalent coordinates using a WyckoffPosition.
       /*! See class WyckoffMapping for details. If X is known to be
           close to the representative Wyckoff position, the
           WyckoffMapping::Mapping() is not needed. The reference
@@ -665,21 +691,21 @@ namespace sgtbx {
           <p>
           This constructor should only be used with great care:
           If X is not close to the representative Wyckoff position, the
-          symmetry equivalent coordinates will in general be incorrect.
+          symmetrically equivalent coordinates will in general be incorrect.
           The representative Wyckoff position in turn depends on the
           change-of-basis matrix of SgType used in the constructor of
           WyckoffTable. This is, it is important that TidyCBOp = true
           when calling getSpaceGroupType().
        */
       SymEquivCoordinates(const WyckoffPosition& WP,
-                          const fractional<T>& X)
+                          const fractional<FloatType>& X)
       {
         WP.CheckExpanded();
         for(std::size_t i=0;i<WP.M();i++) {
           m_Coordinates.push_back(WP[i] * X);
         }
       }
-      /*! \brief Compute symmetry equivalent coordinates using simple
+      /*! \brief Compute symmetrically equivalent coordinates using simple
           distance calculations.
        */
       /*! See class SpecialPositionTolerances for details.
@@ -692,14 +718,14 @@ namespace sgtbx {
           is only marginally slower.
        */
       SymEquivCoordinates(const SpecialPositionTolerances& params,
-                          const fractional<T>& X)
+                          const fractional<FloatType>& X)
       {
-        T Tolerance2 = params.m_Tolerance2;
-        T MinimumDistance2 = params.m_MinimumDistance2;
+        FloatType Tolerance2 = params.m_Tolerance2;
+        FloatType MinimumDistance2 = params.m_MinimumDistance2;
         m_Coordinates.push_back(X);
         for(int i=1;i<params.m_SgOps.OrderZ();i++) {
-          fractional<T> SX = params.m_SgOps(i) * X;
-          T Delta2 = getShortestDistance2(params.m_UnitCell, SX);
+          fractional<FloatType> SX = params.m_SgOps(i) * X;
+          FloatType Delta2 = getShortestDistance2(params.m_UnitCell, SX);
           if (Delta2 >= Tolerance2) {
             if (Delta2 < MinimumDistance2) {
               throw error(
@@ -716,7 +742,7 @@ namespace sgtbx {
           "Numerical instability. Use SpecialPositionSnapParameters.");
         }
       }
-      /*! \brief Compute symmetry equivalent coordinates without
+      /*! \brief Compute symmetrically equivalent coordinates without
           treatment of special positions.
        */
       /*! The symmetry operations are applied to X. Duplicates on
@@ -728,28 +754,28 @@ namespace sgtbx {
           as a weight in structure factor calculations.
        */
       SymEquivCoordinates(const SpaceGroup& SgOps,
-                          const fractional<T>& X)
+                          const fractional<FloatType>& X)
       {
         m_Coordinates.push_back(X);
         for(int i=1;i<SgOps.OrderZ();i++) {
-          fractional<T> SX = SgOps(i) * X;
+          fractional<FloatType> SX = SgOps(i) * X;
           m_Coordinates.push_back(SX);
         }
       }
-      //! Number of symmetry equivalent coordinates (multiplicity).
-      inline int M() const { return m_Coordinates.size(); }
-      //! Return the i'th symmetry equivalent coordinate.
+      //! Number of symmetrically equivalent coordinates (multiplicity).
+      int M() const { return m_Coordinates.size(); }
+      //! Return the coordinates of the i'th symmetrically equivalent position.
       /*! i must be in the range [0,M()[. No range checking is
           performed for maximal performance.
        */
-      inline const fractional<T>&
+      const fractional<FloatType>&
       operator[](std::size_t i) const {
         return m_Coordinates[i];
       }
-      //! Return the i'th symmetry equivalent coordinate.
+      //! Return the coordinates of the i'th symmetrically equivalent position.
       /*! An exception is thrown if i is out of range.
        */
-      inline const fractional<T>&
+      const fractional<FloatType>&
       operator()(std::size_t i) const {
         if (i >= M()) throw error_index();
         return m_Coordinates[i];
@@ -758,12 +784,12 @@ namespace sgtbx {
       /*! Determine the shortest distance between Y and the symmetry
           mates in the internal table.
        */
-      T getShortestDistance2(const uctbx::UnitCell& uc,
-                             const fractional<T>& Y) const
+      FloatType getShortestDistance2(const uctbx::UnitCell& uc,
+                                     const fractional<FloatType>& Y) const
       {
-        T result = detail::modShortLength2(uc, Y - m_Coordinates[0]);
+        FloatType result = detail::modShortLength2(uc, Y - m_Coordinates[0]);
         for(std::size_t i=1;i<m_Coordinates.size();i++) {
-          T Delta2 = detail::modShortLength2(uc, Y - m_Coordinates[i]);
+          FloatType Delta2 = detail::modShortLength2(uc, Y - m_Coordinates[i]);
           if (result > Delta2)
               result = Delta2;
         }
@@ -773,29 +799,29 @@ namespace sgtbx {
       /*! Determine the shortest distance between Y and the symmetry
           mates in the internal table.
        */
-      inline T getShortestDistance(const uctbx::UnitCell& uc,
-                                   const fractional<T>& Y) const {
+      FloatType getShortestDistance(const uctbx::UnitCell& uc,
+                                    const fractional<FloatType>& Y) const {
         return std::sqrt(getShortestDistance2(uc, Y));
       }
-      //! Compute Sum(exp(2 pi i H X)) for all symmetry equivalent X.
+      //! Compute Sum(exp(2 pi i H X)) for all symmetrically equivalent X.
       /*! This sum is a sub-expression in the structure factor
           calculation. See file examples/python/generate_hklf.py.
        */
-      std::complex<T> StructureFactor(const Miller::Index& H) const
+      std::complex<FloatType> StructureFactor(const Miller::Index& H) const
       {
         using cctbx::constants::pi;
-        std::complex<T> F(0., 0.);
+        std::complex<FloatType> F(0., 0.);
         for(std::size_t i=0;i<M();i++) {
-          T phase = 2. * pi * (H * m_Coordinates[i]);
-          F += std::complex<T>(std::cos(phase), std::sin(phase));
+          FloatType phase = 2. * pi * (H * m_Coordinates[i]);
+          F += std::complex<FloatType>(std::cos(phase), std::sin(phase));
         }
         return F;
       }
 
     private:
-      std::vector<fractional<T> > m_Coordinates;
+      std::vector<fractional<FloatType> > m_Coordinates;
   };
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_COORDINATES_H

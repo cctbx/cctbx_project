@@ -19,7 +19,7 @@ namespace cctbx {
   }
 
   const char* error::what() const throw() {
-     return const_cast<char*>(message.c_str());
+     return message.c_str();
   }
 
   error::error(const char* file, long line, const std::string& msg,

@@ -26,6 +26,11 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 
   PyObject* to_python(const boost::array<int, 9>& tobj);
 
+  boost::array<std::size_t, 3> from_python(PyObject* p,
+    boost::python::type<const boost::array<std::size_t, 3>&>);
+
+  PyObject* to_python(const boost::array<std::size_t, 3>& tobj);
+
   boost::array<double, 3> from_python(PyObject* p,
     boost::python::type<const boost::array<double, 3>&>);
 

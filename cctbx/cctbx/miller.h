@@ -25,9 +25,10 @@
 #include <cctbx/constants.h>
 
 namespace cctbx {
-  //! Miller index namespace.
+  //! %Miller index namespace.
   namespace Miller {
 
+    //! Triple of 3 integers.
     typedef MatrixLite::itype::Vec3 Vec3;
 
     //! Enumeration for symbolic subscripting (e.g. MillerIndex[H]).
@@ -54,24 +55,24 @@ namespace cctbx {
 
         //! @name Convenience methods.
         //@{
-        inline bool is000() const {
+        bool is000() const {
           return !(elems[0] || elems[1] || elems[2]);
         }
-        inline Index operator-() const {
+        Index operator-() const {
           return Index(-elems[0], -elems[1], -elems[2]);
         }
-        inline Index FriedelMate() const {
+        Index FriedelMate() const {
           return operator-();
         }
         //@}
 
         //! @name Test for equality and inequality.
         //@{
-        inline friend bool operator==(const Index& lhs, const Index& rhs) {
+        friend bool operator==(const Index& lhs, const Index& rhs) {
           for(std::size_t i=0;i<3;i++) if (lhs[i] != rhs[i]) return false;
           return true;
         }
-        inline friend bool operator!=(const Index& lhs, const Index& rhs) {
+        friend bool operator!=(const Index& lhs, const Index& rhs) {
           return !(lhs == rhs);
         }
         //@}
@@ -81,7 +82,7 @@ namespace cctbx {
         /*! This comparison is computationally more expensive than
             the Miller::hashCompare below.
          */
-        inline bool operator<(const Index& m2) const
+        bool operator<(const Index& m2) const
         {
           const int P[3] = {2, 0, 1};
           std::size_t i;
@@ -95,17 +96,17 @@ namespace cctbx {
           }
           return false;
         }
-        inline bool operator>(const Index& m2) const {
+        bool operator>(const Index& m2) const {
           return !(*this < m2);
         }
         //@}
     };
 
     //! Multiplication of Miller indices and fractional coordiantes.
-    template <class T>
-    inline T
-    operator*(const Index& lhs, const fractional<T>& rhs) {
-      double result = 0.;
+    template <class FloatType>
+    inline FloatType
+    operator*(const Index& lhs, const fractional<FloatType>& rhs) {
+      FloatType result = 0.;
       for(std::size_t i=0;i<3;i++) result += lhs[i] * rhs[i];
       return result;
     }
@@ -116,7 +117,7 @@ namespace cctbx {
     class hashCompare {
       public:
         //! This fast comparison function is implemented as operator().
-        inline bool operator()(const Index& m1,const Index& m2) const {
+        bool operator()(const Index& m1,const Index& m2) const {
           for(std::size_t i=0;i<3;i++) {
             if (m1[i] < m2[i]) return true;
             if (m1[i] > m2[i]) return false;

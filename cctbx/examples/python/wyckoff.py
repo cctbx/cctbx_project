@@ -1,6 +1,10 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
+# When studying a crystal structure it can be helpful to know the Wyckoff
+# positions of the atoms in the structure. This script can be used to
+# assign Wyckoff letters.
+
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 
 import sys
 sys.stderr = sys.stdout
@@ -15,8 +19,8 @@ class FormatError(exceptions.Exception): pass
 import string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-import sgtbx
-import uctbx
+from cctbx import sgtbx
+from cctbx import uctbx
 
 print "sgtbx version:", sgtbx.__version__
 print "<br>"

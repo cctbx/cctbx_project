@@ -18,11 +18,13 @@
 
 namespace {
 
+  using namespace cctbx;
+
   boost::shared_ptr<std::vector<std::complex<double> > >
   py_StructureFactorVector(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroup& SgOps,
-    const std::vector<cctbx::Miller::Index>& H,
+    const std::vector<Miller::Index>& H,
     const std::vector<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >&
       Sites)
   {
@@ -32,25 +34,25 @@ namespace {
     return Fcalc;
   }
 
-  boost::shared_ptr<std::vector<cctbx::Miller::Index> >
+  boost::shared_ptr<std::vector<Miller::Index> >
   py_BuildMillerIndices_Resolution_d_min(
     const uctbx::UnitCell& UC,
     const sgtbx::SpaceGroupInfo& SgInfo,
     double Resolution_d_min)
   {
-    boost::shared_ptr<std::vector<cctbx::Miller::Index> >
-    VectorOfH(new std::vector<cctbx::Miller::Index>);
+    boost::shared_ptr<std::vector<Miller::Index> >
+    VectorOfH(new std::vector<Miller::Index>);
     sgtbx::MillerIndexGenerator(
       UC, SgInfo, Resolution_d_min).AddToVector(*VectorOfH);
     return VectorOfH;
   }
-  boost::shared_ptr<std::vector<cctbx::Miller::Index> >
+  boost::shared_ptr<std::vector<Miller::Index> >
   py_BuildMillerIndices_MaxIndex(
     const sgtbx::SpaceGroupInfo& SgInfo,
-    const cctbx::Miller::Index& MaxIndex)
+    const Miller::Index& MaxIndex)
   {
-    boost::shared_ptr<std::vector<cctbx::Miller::Index> >
-    VectorOfH(new std::vector<cctbx::Miller::Index>);
+    boost::shared_ptr<std::vector<Miller::Index> >
+    VectorOfH(new std::vector<Miller::Index>);
     sgtbx::MillerIndexGenerator(
       SgInfo, MaxIndex).AddToVector(*VectorOfH);
     return VectorOfH;
@@ -65,13 +67,13 @@ namespace {
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
     python::import_converters<uctbx::UnitCell>
-    UnitCell_converters("uctbx", "UnitCell");
+    UnitCell_converters("cctbx.uctbx", "UnitCell");
     python::import_converters<sgtbx::SpaceGroup>
-    SpaceGroup_converters("sgtbx", "SpaceGroup");
+    SpaceGroup_converters("cctbx.sgtbx", "SpaceGroup");
     python::import_converters<sgtbx::SpaceGroupInfo>
-    SpaceGroupInfo_converters("sgtbx", "SpaceGroupInfo");
+    SpaceGroupInfo_converters("cctbx.sgtbx", "SpaceGroupInfo");
     python::import_converters<eltbx::CAASF_WK1995>
-    CAASF_WK1995_converters("eltbx.caasf_wk1995", "CAASF_WK1995");
+    CAASF_WK1995_converters("cctbx.eltbx.caasf_wk1995", "CAASF_WK1995");
 
     class_builder<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
     py_XrayScatterer(this_module, "XrayScatterer");
@@ -89,7 +91,7 @@ namespace {
 
     (void) python::wrap_std_vector(this_module,
       "vector_of_Miller_Index",
-      cctbx::Miller::Index());
+      Miller::Index());
     (void) python::wrap_std_vector(this_module,
       "vector_of_complex",
       std::complex<double>());
@@ -99,14 +101,14 @@ namespace {
       const std::string&,
       const eltbx::CAASF_WK1995&,
       const std::complex<double>&,
-      const cctbx::fractional<double>&,
+      const fractional<double>&,
       const double&,
       const double&>());
     py_XrayScatterer.def(constructor<
       const std::string&,
       const eltbx::CAASF_WK1995&,
       const std::complex<double>&,
-      const cctbx::fractional<double>&,
+      const fractional<double>&,
       const double&,
       const boost::array<double, 6>&>());
     py_XrayScatterer.def(

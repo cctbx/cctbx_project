@@ -13,36 +13,37 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   TrVec ChOfBasisOp::operator()(const TrVec& T, int SignI) const
   {
     // (C|V)( I|T)(C^-1|W)=( C|CT+V)(C^-1|W)=( I|CT+V+CW)=( I|C(T+W)+V)
     // (C|V)(-I|T)(C^-1|W)=(-C|CT+V)(C^-1|W)=(-I|CT+V-CW)=(-I|C(T-W)+V)
-    TrVec Tf = T.newBaseFactor(InvMx.Tpart().BF());
+    TrVec Tf = T.newBaseFactor(m_InvM.Tpart().BF());
     TrVec TW;
-    if (SignI >= 0) TW = Tf + InvMx.Tpart();
-    else            TW = Tf - InvMx.Tpart();
-    return (  Mx.Rpart() * TW
-            + Mx.Tpart().scale(Mx.Rpart().BF())).newBaseFactor(T.BF());
+    if (SignI >= 0) TW = Tf + m_InvM.Tpart();
+    else            TW = Tf - m_InvM.Tpart();
+    return (  m_M.Rpart() * TW
+            + m_M.Tpart().scale(m_M.Rpart().BF())).newBaseFactor(T.BF());
   }
 
   RotMx ChOfBasisOp::operator()(const RotMx& R) const
   {
     cctbx_assert(R.BF() == 1);
-    return (Mx.Rpart() * R * InvMx.Rpart()).newBaseFactor(1);
+    return (m_M.Rpart() * R * m_InvM.Rpart()).newBaseFactor(1);
   }
 
   RTMx ChOfBasisOp::operator()(const RTMx& RT) const
   {
     // This function only works for Seitz matrices:
     cctbx_assert(RT.RBF() == 1);
-    cctbx_assert(Mx.TBF() % RT.TBF() == 0);
-    return (Mx * (RT.scale(1, Mx.TBF()/RT.TBF()) * InvMx)).newBaseFactors(RT);
+    cctbx_assert(m_M.TBF() % RT.TBF() == 0);
+    return
+      (m_M * (RT.scale(1, m_M.TBF()/RT.TBF()) * m_InvM)).newBaseFactors(RT);
   }
 
   RTMx ChOfBasisOp::apply(const RTMx& RT) {
-    return Mx.multiply(RT.multiply(InvMx));
+    return m_M.multiply(RT.multiply(m_InvM));
   }
 
   TrOps TrOps::ChangeBasis(const ChOfBasisOp& CBOp) const
@@ -73,4 +74,4 @@ namespace sgtbx {
     return result;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

@@ -1,10 +1,11 @@
 #! /usr/local/Python-2.1/bin/python
 
 # Revision history:
+#   2001 Nov 26: Use sftbx (rwgk).
 #   2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
 #   2001 Aug 09: Derived from generate_hklf.py (rwgk)
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 
 import sys
 sys.stderr = sys.stdout
@@ -19,13 +20,19 @@ class FormatError(exceptions.Exception): pass
 import math, string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-import sgtbx
-import uctbx
-from eltbx.caasf_wk1995 import CAASF_WK1995
+from cctbx import sgtbx
+from cctbx import uctbx
+from cctbx.eltbx.caasf_wk1995 import CAASF_WK1995
+from cctbx import adptbx
+from cctbx import sftbx
 
 print "sgtbx version:", sgtbx.__version__
 print "<br>"
 print "uctbx version:", uctbx.__version__
+print "<br>"
+print "adptbx version:", adptbx.__version__
+print "<br>"
+print "sftbx version:", sftbx.__version__
 print "<p>"
 print "<pre>"
 InTable = 0
@@ -86,10 +93,10 @@ class SiteInfo:
         string.atof(flds[1])
       except:
         offs = 2
-        self.Sf = CAASF_WK1995(flds[1], 1)
+        self.SF = CAASF_WK1995(flds[1], 1)
       else:
         offs = 1
-        self.Sf = CAASF_WK1995(flds[0], 0)
+        self.SF = CAASF_WK1995(flds[0], 0)
       coordinates = flds[offs : offs + 3]
       for i in xrange(3):
         coordinates[i] = string.atof(coordinates[i])
@@ -102,36 +109,15 @@ class SiteInfo:
           self.Biso = string.atof(flds[offs + 4])
         elif (len(flds) > offs + 5):
           raise FormatError, flds
-      self.WyckoffMapping = None
-      self.SiteSymmetry = None
     except:
       raise FormatError, flds
 
-  def __str__(self):
-    return "%s %s (%d %s %s) (%.6g %.6g %.6g) %.6g %.6g" % (
-      (self.Label, self.Sf.Label(),
-       self.WyckoffMapping.WP().M(), self.WyckoffMapping.WP().Letter(),
-       self.SiteSymmetry)
-      + tuple(self.Coordinates) + (self.Occ, self.Biso))
-
-def BuildMillerIndices(UnitCell, SgInfo, Resolution_d_min):
-  MIG = sgtbx.MillerIndexGenerator(UnitCell, SgInfo, Resolution_d_min)
-  MillerIndices = []
-  for H in MIG: MillerIndices.append(H)
-  return MillerIndices
-
-def ComputeStructureFactors(Sites, MillerIndices):
-  FcalcDict = {}
-  for H in MillerIndices: FcalcDict[H] = 0j
-  for Site in Sites:
-    SEC = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
-                                    Site.Coordinates)
-    for H in MillerIndices:
-      stol2 = UnitCell.Q(H) / 4.
-      f0 = Site.Sf.stol2(stol2)
-      f = f0 * math.exp(-Site.Biso * stol2) * Site.Occ
-      FcalcDict[H] += f * SEC.StructureFactor(H)
-  return FcalcDict
+  def as_XrayScatterer(self, UnitCell, SpaceGroup, MinMateDistance):
+    Scatterer = sftbx.XrayScatterer(
+      self.Label, self.SF, 0j, self.Coordinates,
+      self.Occ, adptbx.B_as_U(self.Biso))
+    Scatterer.ApplySymmetry(UnitCell, SpaceGroup, MinMateDistance, 0.1, 1)
+    return Scatterer
 
 def polar(c):
   from math import hypot, atan2, pi
@@ -183,44 +169,46 @@ if (__name__ == "__main__"):
     print "<th>Occupancy<br>factor"
     print "<th>Biso"
     print "<tr>"
-    Sites = []
+    Sites = sftbx.vector_of_XrayScatterer()
     print
     for line in inp.coordinates:
       flds = string.split(line)
-      site = SiteInfo(flds)
+      Site = SiteInfo(flds)
       if (inp.coor_type != "Fractional"):
-        site.Coordinates = UnitCell.fractionalize(site.Coordinates)
-      SS = sgtbx.SiteSymmetry(SnapParameters, site.Coordinates, 0)
-      site.WyckoffMapping = WyckoffTable.getWyckoffMapping(SS)
-      site.SiteSymmetry = SS.PointGroupType()
-      Sites.append(site)
+        Site.Coordinates = UnitCell.fractionalize(Site.Coordinates)
+      Site = Site.as_XrayScatterer(UnitCell, SgOps, MinMateDistance)
+      Sites.append(Site)
+      SS = sgtbx.SiteSymmetry(SnapParameters, Site.Coordinates())
+      WyckoffPosition = WyckoffTable.getWyckoffMapping(SS).WP()
+      SiteSymmetryPointGroupLabel = SS.PointGroupType()
       print "<tr>"
       print (  "<td>%s<td>%s"
              + "<td align=center>%d<td align=center>%s<td align=center>%s"
              + "<td><tt>%.6g</tt><td><tt>%.6g</tt><td><tt>%.6g</tt>"
              + "<td align=center><tt>%.6g</tt>"
              + "<td align=center><tt>%.6g</tt>") % (
-      (site.Label, site.Sf.Label(),
-       site.WyckoffMapping.WP().M(), site.WyckoffMapping.WP().Letter(),
-       site.SiteSymmetry)
-      + tuple(site.Coordinates) + (site.Occ, site.Biso))
+        (Site.Label(), Site.CAASF().Label(),
+         WyckoffPosition.M(), WyckoffPosition.Letter(),
+         SiteSymmetryPointGroupLabel)
+       + Site.Coordinates()
+       + (Site.Occ(), adptbx.U_as_B(Site.Uiso())))
     print "</table><pre>"
     InTable = 0
     print
 
-    MillerIndices = BuildMillerIndices(UnitCell, SgInfo, d_min)
-    FcalcDict = ComputeStructureFactors(Sites, MillerIndices)
+    MillerIndices = sftbx.BuildMillerIndices(UnitCell, SgInfo, d_min)
+    Fcalc = sftbx.StructureFactorVector(UnitCell, SgOps, MillerIndices, Sites)
 
-    print "Number of Miller indices:", len(FcalcDict)
+    print "Number of Miller indices:", len(Fcalc)
     print
     print "</pre><table border=2 cellpadding=2>"
     InTable = 1
     print "<tr>"
     print "<th>hkl<th>Amplitude<th>Phase"
-    for H in FcalcDict.keys():
+    for i in xrange(len(MillerIndices)):
       print "<tr>"
       print "<td>%3d %3d %3d<td>%.6g<td align=right>%.3f" % (
-        tuple(H) + polar(FcalcDict[H]))
+        MillerIndices[i] + polar(Fcalc[i]))
     print "</table><pre>"
     InTable = 0
     print

@@ -15,7 +15,7 @@
 #include <string>
 #include <cctbx/eltbx/efpfdp.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   //! Access to Sasaki tables.
   /*! Sasaki tables are available for elements with Z=4-83 and Z=92.
@@ -32,17 +32,20 @@ namespace eltbx {
    */
   class Sasaki {
     public:
+      //! Default constructor. Calling certain methods may cause crashes!
+      Sasaki() : m_Label_Z_Efpfdp(0) {}
       //! Search Sasaki table for the given scattering factor label.
       /*! If Exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not
           case-sensitive.<br>
           See also: eltbx::StripLabel()
        */
+      explicit
       Sasaki(const std::string& Label, bool Exact = false);
       //! Return scattering factor label.
-      inline const char* Label() const { return m_Label_Z_Efpfdp->Label; }
+      const char* Label() const { return m_Label_Z_Efpfdp->Label; }
       //! Return atomic number.
-      inline int Z() const { return m_Label_Z_Efpfdp->Z; }
+      int Z() const { return m_Label_Z_Efpfdp->Z; }
       //! Compute f-prime (f') and f-double-prime (f") for given energy.
       /*! f-prime and f-double-prime are determined by linear
           interpolation.<br>
@@ -53,6 +56,6 @@ namespace eltbx {
       const eltbx::detail::Label_Z_Efpfdp* m_Label_Z_Efpfdp;
   };
 
-} // eltbx
+}} // cctbx::eltbx
 
 #endif // CCTBX_ELTBX_SASAKI_H

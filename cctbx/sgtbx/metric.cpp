@@ -12,7 +12,7 @@
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   bool SpaceGroup::isCompatibleMetricalMatrix(const uctbx::Mx33& G,
                                               double tolerance) const
@@ -23,7 +23,7 @@ namespace sgtbx {
     for (int iSMx = 1; iSMx < m_nSMx; iSMx++) {
       uctbx::Mx33 R;
       int i;
-      for(i=0;i<9;i++) R[i] = static_cast<double>(m_SMx[iSMx].Rpart()[i]);
+      for(i=0;i<9;i++) R[i] = double(m_SMx[iSMx].Rpart()[i]);
       uctbx::Mx33 RtGR = uctbx::getRtGR(G, R);
       for(i=0;i<9;i++) {
         double delta = RtGR[i] - G[i];
@@ -43,4 +43,4 @@ namespace sgtbx {
     }
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

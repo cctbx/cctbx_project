@@ -13,6 +13,7 @@
 
 namespace cctbx {
 
+  //! Test if abs(a-b) < scaled_tolerance.
   template <class FloatType>
   bool
   approx_equal(const FloatType& a,

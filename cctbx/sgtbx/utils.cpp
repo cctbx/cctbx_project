@@ -16,7 +16,7 @@
 #include <cctbx/sgtbx/math.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   int ChangeBaseFactor(const int *Old, int OldBF, int *New, int NewBF, int n)
   {
@@ -32,8 +32,8 @@ namespace sgtbx {
   {
     if (BF == 0) return -1;
         fVal *= BF;
-    if (fVal < 0.) iVal = static_cast<int>(fVal - .5);
-    else           iVal = static_cast<int>(fVal + .5);
+    if (fVal < 0.) iVal = int(fVal - .5);
+    else           iVal = int(fVal + .5);
         fVal -= iVal;
         fVal /= BF;
     if (fVal < 0.) fVal = -fVal;
@@ -46,7 +46,7 @@ namespace sgtbx {
     if (numerator() == 0) return std::string("0");
     char buf[32];
     if (Decimal) {
-      sprintf(buf, "%.6g", static_cast<double>(numerator()) / denominator());
+      sprintf(buf, "%.6g", double(numerator()) / denominator());
       char* cp = buf;
       if (*cp == '-') cp++;
       if (*cp == '0') {
@@ -97,4 +97,4 @@ namespace sgtbx {
     return false;
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

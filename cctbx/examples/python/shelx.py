@@ -1,6 +1,8 @@
 #! /usr/local/Python-2.1/bin/python
 
-PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib/python"
+# Generate SHELX LATT and SYMM cards for a given space group.
+
+PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 
 import sys
 sys.stderr = sys.stdout
@@ -15,7 +17,7 @@ class FormatError(exceptions.Exception): pass
 import string, cgi
 
 sys.path.insert(0, PATH_cctbx_lib_python)
-import sgtbx
+from cctbx import sgtbx
 
 print "sgtbx version:", sgtbx.__version__
 print

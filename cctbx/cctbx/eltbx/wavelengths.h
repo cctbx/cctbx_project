@@ -14,7 +14,7 @@
 #include <string>
 #include <cctbx/constants.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   namespace detail {
     struct RawWaveLength {
@@ -26,20 +26,23 @@ namespace eltbx {
   //! Characteristic wavelengths of commonly used x-ray tube target materials.
   class WaveLength {
     public:
+      //! Default constructor. Calling certain methods may cause crashes!
+      WaveLength() : m_RawEntry(0) {}
       //! Get i'th entry in the internal table.
       /*! Can be used to iterate over all entries.
        */
+      explicit
       WaveLength(int i);
       //! Lookup characteristic wavelength for given label.
       /*! The lookup is not case-sensitive.
        */
       WaveLength(const std::string& Label);
       //! Return label.
-      inline const char* Label() const { return m_RawEntry->Label; }
+      const char* Label() const { return m_RawEntry->Label; }
       //! Return wavelength (Angstrom).
-      inline float operator()() const { return m_RawEntry->lambda; }
+      float operator()() const { return m_RawEntry->lambda; }
       //! Return energy (keV).
-      inline float Energy() const {
+      float Energy() const {
         if (m_RawEntry->lambda == 0.) return 0.;
         return cctbx::constants::factor_keV_Angstrom / m_RawEntry->lambda;
       }
@@ -47,6 +50,6 @@ namespace eltbx {
       const detail::RawWaveLength* m_RawEntry;
   };
 
-} // eltbx
+}} // cctbx::eltbx
 
 #endif // CCTBX_ELTBX_WAVELENGTHS_H

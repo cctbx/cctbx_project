@@ -13,7 +13,7 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/henke.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace tables {
 
 /*
@@ -47322,4 +47322,4 @@ static const eltbx::detail::Label_Z_Efpfdp HenkeTables[] = {
     return fpfdp(raw.fp() - m_Label_Z_Efpfdp->Z, raw.fdp());
   }
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

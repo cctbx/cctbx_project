@@ -20,7 +20,7 @@
 #include <cctbx/sgtbx/select_generators.h>
 #include <cctbx/basic/define_range.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   std::map<int, int> SpaceGroup::CountRtypes() const
   {
@@ -403,9 +403,7 @@ namespace sgtbx {
     }
 
   } // namespace ConstructCBOpRpart
-} // namespace sgtbx
 
-namespace sgtbx {
   namespace ConstructCBOpTpart {
 
     bool SolveInhomModZ(int *M, int nr, int nc, int *b, int BF, int *x)
@@ -884,4 +882,4 @@ namespace sgtbx {
     return "Hall: " + BuildHallSymbol(true);
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx

@@ -12,7 +12,7 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/neutron.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace tables {
 
     /*
@@ -118,21 +118,21 @@ namespace eltbx {
     };
 
   } // namespace tables
-} // namespace eltbx
+}} // namespace cctbx::eltbx
 
 namespace {
 
-  const eltbx::detail::RawNeutronNews1992Record*
+  const cctbx::eltbx::detail::RawNeutronNews1992Record*
   FindEntry(const std::string& WorkLabel, bool Exact)
   {
     int m = 0;
-    const eltbx::detail::RawNeutronNews1992Record* mEntry = 0;
-    for (const eltbx::detail::RawNeutronNews1992Record*
-         Entry = eltbx::tables::RawNeutronNews1992Records;
+    const cctbx::eltbx::detail::RawNeutronNews1992Record* mEntry = 0;
+    for (const cctbx::eltbx::detail::RawNeutronNews1992Record*
+         Entry = cctbx::eltbx::tables::RawNeutronNews1992Records;
          Entry->Symbol;
          Entry++)
     {
-      int i = eltbx::MatchLabels(WorkLabel, Entry->Symbol);
+      int i = cctbx::eltbx::MatchLabels(WorkLabel, Entry->Symbol);
       if (i < 0) return Entry;
       if (i > m) {
         m = i;
@@ -140,14 +140,14 @@ namespace {
       }
     }
     if (Exact || !mEntry) {
-      throw eltbx::error("Unknown element symbol.");
+      throw cctbx::eltbx::error("Unknown element symbol.");
     }
     return mEntry;
   }
 
 } // namespace <anonymous>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   NeutronNews1992Record::NeutronNews1992Record(const std::string& Label,
                                                bool Exact)
@@ -156,4 +156,4 @@ namespace eltbx {
     m_RawEntry = FindEntry(WorkLabel, Exact);
   }
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

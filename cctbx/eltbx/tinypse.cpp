@@ -12,7 +12,7 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/tinypse.h>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
   namespace tables {
 
     /*
@@ -131,19 +131,20 @@ namespace eltbx {
     };
 
   } // namespace tables
-} // namespace eltbx
+}} // namespace cctbx::eltbx
 
 namespace {
 
-  const eltbx::detail::TinyPSE_RawEntry*
+  const cctbx::eltbx::detail::TinyPSE_RawEntry*
   FindEntry(const std::string& WorkLabel, bool Exact)
   {
     int m = 0;
-    const eltbx::detail::TinyPSE_RawEntry* mEntry = 0;
-    for (const eltbx::detail::TinyPSE_RawEntry*
-         Entry = eltbx::tables::TinyPSE_RawTable; Entry->Symbol; Entry++)
+    const cctbx::eltbx::detail::TinyPSE_RawEntry* mEntry = 0;
+    for (const cctbx::eltbx::detail::TinyPSE_RawEntry*
+         Entry = cctbx::eltbx::tables::TinyPSE_RawTable;
+         Entry->Symbol; Entry++)
     {
-      int i = eltbx::MatchLabels(WorkLabel, Entry->Symbol);
+      int i = cctbx::eltbx::MatchLabels(WorkLabel, Entry->Symbol);
       if (i < 0) return Entry;
       if (i > m) {
         m = i;
@@ -151,14 +152,14 @@ namespace {
       }
     }
     if (Exact || !mEntry) {
-      throw eltbx::error("Unknown element symbol.");
+      throw cctbx::eltbx::error("Unknown element symbol.");
     }
     return mEntry;
   }
 
 } // namespace <anonymous>
 
-namespace eltbx {
+namespace cctbx { namespace eltbx {
 
   TinyPSE::TinyPSE(const std::string& Label, bool Exact)
   {
@@ -176,4 +177,4 @@ namespace eltbx {
     throw eltbx::error_index("Atomic number out of range.");
   }
 
-} // namespace eltbx
+}} // namespace cctbx::eltbx

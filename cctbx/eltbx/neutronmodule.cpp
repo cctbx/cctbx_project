@@ -12,7 +12,8 @@
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/neutron.h>
 
-using namespace eltbx;
+using namespace cctbx;
+using namespace cctbx::eltbx;
 
 BOOST_PYTHON_MODULE_INIT(neutron)
 {
@@ -29,6 +30,7 @@ BOOST_PYTHON_MODULE_INIT(neutron)
     class_builder<NeutronNews1992Record>
     py_NeutronNews1992Record(this_module, "NeutronNews1992Record");
 
+    py_NeutronNews1992Record.def(constructor<>());
     py_NeutronNews1992Record.def(constructor<const std::string&>());
     py_NeutronNews1992Record.def(constructor<const std::string&, bool>());
     py_NeutronNews1992Record.def(&NeutronNews1992Record::Symbol, "Symbol");

@@ -18,36 +18,44 @@
 #include <cctbx/error.h>
 #include <cctbx/basic/matrixlite.h>
 
-//! Space Group Toolbox namespace.
-namespace sgtbx {
+namespace cctbx {
+  //! Space Group Toolbox namespace.
+  namespace sgtbx {
 
-  using namespace cctbx;
-
+  //! Special class for "out of base factor" exceptions.
   class error_base_factor : public error {
     public:
+      // NO DEFAULT CONSTRUCTOR
+      //! Constructor.
       error_base_factor(const char* file, long line,
                         const std::string& msg = "") throw()
         : error(file, line, msg) {}
+      //! Virtual destructor.
       virtual ~error_base_factor() throw() {}
   };
 
   using MatrixLite::itype::Mx33;
   using MatrixLite::itype::Vec3;
 
-  // Maximum number of representative rotation matrices for
-  // 3-dimensional crystallographic space groups.
+  /*! \brief Maximum number of representative rotation matrices for
+      3-dimensional crystallographic space groups.
+   */
   static const int nMaxReprRotMx = 24;
 
-  const int STBF = 12; // Seitz           Matrix Translation Base Factor
-  const int CRBF = 12; // Change of Basis Matrix Rotation    Base Factor
-  const int CTBF = 72; // Change of Basis Matrix Translation Base Factor
+  //! Seitz           Matrix Translation Base Factor.
+  const int STBF = 12;
+  //! Change of Basis Matrix Rotation    Base Factor.
+  const int CRBF = 12;
+  //! Change of Basis Matrix Translation Base Factor.
+  const int CTBF = 72;
 
+  //! Check base factors for consistency.
   inline void sanity_check() {
     cctbx_assert(STBF % 12 == 0);
     cctbx_assert(CTBF >= 2 * STBF);
     cctbx_assert(CTBF % STBF == 0);
   }
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_BASIC_H

@@ -14,7 +14,7 @@
 
 #include <string>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
 
   namespace symbols {
     namespace tables {
@@ -124,6 +124,8 @@ namespace sgtbx {
    */
   class SpaceGroupSymbols {
     public:
+      //! Default constructor. Some data members are not initialized!
+      SpaceGroupSymbols() {}
       //! Lookup space group Symbol.
       /*! For a general introduction see class details.<br>
           TableId is one of "" (the empty string), "I1952",
@@ -149,6 +151,7 @@ namespace sgtbx {
           Note that SgNumber(), Hermann_Mauguin() etc. are not defined
           if a Hall symbol is used!
        */
+      explicit
       SpaceGroupSymbols(const std::string& Symbol,
                         const std::string& TableId = "");
       //! Lookup space group number.
@@ -157,6 +160,7 @@ namespace sgtbx {
           other constructor for details.<br>
           See also: Extension()
        */
+      explicit
       SpaceGroupSymbols(int SgNumber, const std::string& Extension = "",
                         const std::string& TableId = "");
       //! For internal use only.
@@ -171,7 +175,7 @@ namespace sgtbx {
           are multiple space group representations listed in the
           International Tables.
        */
-      inline int SgNumber() const { return m_SgNumber; }
+      int SgNumber() const { return m_SgNumber; }
       //! Schoenflies symbol.
       /*! One of the 230 unique Schoenflies symbols defined in the
           International Tables. A Schoenflies symbol uniquely defines
@@ -182,7 +186,7 @@ namespace sgtbx {
           are multiple space group representations listed in the
           International Tables.
        */
-      inline const std::string& Schoenflies() const { return m_Schoenflies; }
+      const std::string& Schoenflies() const { return m_Schoenflies; }
       //! A qualifier for the classification of alternative representations.
       /*! A qualifier for monoclinic and orthorhombic space groups.<br>
           For monoclinic space groups, the qualifier takes the
@@ -197,7 +201,7 @@ namespace sgtbx {
           Note that this qualifier is purely informational and not
           actively used in any of the symbol lookup algorithms.
        */
-      inline const std::string& Qualifier() const { return m_Qualifier; }
+      const std::string& Qualifier() const { return m_Qualifier; }
       //! Hermann-Mauguin symbol as defined in the International Tables.
       /*! Hermann-Mauguin (H-M) symbols were originally designed as a
           convenient description of given space-group representations.
@@ -211,7 +215,7 @@ namespace sgtbx {
           ambiguity in the origin selection is overcome by using an
           Extension().
        */
-      inline const std::string& Hermann_Mauguin() const {
+      const std::string& Hermann_Mauguin() const {
         return m_Hermann_Mauguin; }
       //! Extension to the Hermann-Mauguin symbol.
       /*! For some space groups, the extension is used to distinguish
@@ -224,7 +228,7 @@ namespace sgtbx {
           The extension is '\0' (the null character) otherwise.<br>
           See also: Hermann_Mauguin()
        */
-      inline char Extension() const { return m_Extension; }
+      char Extension() const { return m_Extension; }
       //! Hermann-Mauguin symbol with extension appended (if any).
       /*! If the extension is '\0' (the null character),
           ExtendedHermann_Mauguin() is equivalent to
@@ -246,7 +250,7 @@ namespace sgtbx {
           The most common use of Hall symbols in this implementation
           is to initialize objects of class SpaceGroup.
        */
-      inline const std::string& Hall() const { return m_Hall; }
+      const std::string& Hall() const { return m_Hall; }
     private:
       int         m_SgNumber;
       std::string m_Schoenflies;
@@ -278,6 +282,6 @@ namespace sgtbx {
       int iHall;
   };
 
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_SYMBOLS_H

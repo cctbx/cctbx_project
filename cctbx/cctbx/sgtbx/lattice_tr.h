@@ -13,7 +13,7 @@
 
 #include <cctbx/sgtbx/matrix.h>
 
-namespace sgtbx {
+namespace cctbx { namespace sgtbx {
   namespace lattice {
     namespace tables {
 
@@ -116,6 +116,6 @@ namespace sgtbx {
     const CentringTypeMap* getConventionalCentringType(char Symbol);
 
   } // namespace lattice
-} // namespace sgtbx
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_LATTICE_TR_H
