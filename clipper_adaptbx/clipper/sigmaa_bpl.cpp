@@ -69,7 +69,7 @@ namespace clipper { namespace {
       std::size_t
       number_of_spline_parameters()
       {
-        return sfweight_spline_.params_s().size();
+        return sfweight_spline_.params_scale().size();
       }
 
       af::shared<std::complex<double> >
