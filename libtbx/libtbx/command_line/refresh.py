@@ -30,6 +30,11 @@ class create_bin_sh_dispatcher:
     f.close()
     os.chmod(target_file, 0755)
 
+def create_python_execfile_dispatcher(source_file, target_file):
+  f = open(target_file, "w")
+  print >> f, 'execfile("%s")' % source_file
+  f.close()
+
 def create_driver(target_dir, package_name, source_dir, file_name):
   source_file = norm(join(source_dir, file_name))
   if (not isfile(source_file)): return
@@ -42,7 +47,7 @@ def create_driver(target_dir, package_name, source_dir, file_name):
   if (os.name == "nt"):
     if (not file_name.lower().endswith(".py")): return
     target_file += ".py"
-    action = shutil.copyfile
+    action = create_python_execfile_dispatcher
   else:
     action = create_bin_sh_dispatcher()
     try: os.chmod(source_file, 0755)
