@@ -23,22 +23,27 @@ def set_python_include_and_libs(env_etc):
 env_etc = empty()
 env_etc.libtbx_env = libtbx.config.env()
 env_etc.libtbx_env.write_api_file()
-env_etc.compiler = ARGUMENTS.get("compiler", 0)
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
 
-if (env_etc.compiler == 0):
-  if (sys.platform == "win32"):
-    env_etc.compiler = "win32_cl"
-  elif (sys.platform.startswith("linux")):
+compiler = libtbx.config.build_options.compiler
+if (sys.platform == "win32"):
+  env_etc.compiler = "win32_cl"
+elif (sys.platform.startswith("linux")):
+  if (compiler == "default"):
     env_etc.compiler = "unix_gcc"
-  elif (sys.platform.startswith("osf")):
-    env_etc.compiler = "tru64_cxx"
-  elif (sys.platform.startswith("irix")):
-    env_etc.compiler = "irix_CC"
-  elif (sys.platform.startswith("darwin")):
-    env_etc.compiler = "darwin_g++"
+  else:
+    env_etc.compiler = "unix_"+compiler
+    compiler = None
+elif (sys.platform.startswith("osf")):
+  env_etc.compiler = "tru64_cxx"
+elif (sys.platform.startswith("irix")):
+  env_etc.compiler = "irix_CC"
+elif (sys.platform.startswith("darwin")):
+  env_etc.compiler = "darwin_g++"
+if (compiler not in ("default", None)):
+  raise RuntimeError("Compiler not supported on this platform: %s" % compiler)
 assert env_etc.compiler in (
   "win32_cl",
   "unix_gcc",
@@ -48,6 +53,8 @@ assert env_etc.compiler in (
   "irix_CC",
   "darwin_g++",
 )
+
+static_exe = libtbx.config.build_options.static_exe
 
 if (sys.platform == "win32"):
   env_etc.static_libraries = 1
@@ -77,14 +84,14 @@ if (sys.platform == "win32"):
     else:
       opts = ["/Od"]
     if (libtbx.config.build_options.debug_symbols):
-      raise RuntimeError, "Debug build not supported."
+      raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "/nologo /incremental:no /dll"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   else:
-    raise "Unknown compiler choice:", env_etc.compiler
+    raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
 else:
   env_base = Environment(
     ENV=os.environ,
@@ -150,6 +157,9 @@ else:
       opts.insert(0, "-g")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
+    if (static_exe):
+      env_base.Prepend(LINKFLAGS=["-static"])
+      static_exe = None
     env_etc.shlinkflags = "-shared"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_ecc"):
@@ -270,7 +280,15 @@ else:
       "-bundle",
       "-bundle_loader", env_etc.python_framework, env_etc.python_framework,]
   else:
-    raise "Unknown compiler choice:", env_etc.compiler
+    raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
+
+if (static_exe):
+  raise RuntimeError("Static executables not supported on this platforms.")
+
+if (env_etc.static_libraries == 0
+    and libtbx.config.build_options.static_libraries):
+  env_etc.static_libraries = 1
+env_etc.static_exe = libtbx.config.build_options.static_exe
 
 env_etc.libtbx_build = env_etc.libtbx_env.LIBTBX_BUILD
 env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "libtbx/include")
