@@ -1193,6 +1193,36 @@ class array(set):
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
+  def measurability(self, use_binning=False):
+    ## Peter Zwart 3/4/2005
+    """% of reflections for which (|delta I|/sigma_dI) > 3
+       AND min(I_plus/sigma_plus,I_min/sigma_min) > 3 """
+    assert not use_binning or self.binner() is not None
+    assert self.sigmas() is not None
+    if (not use_binning):
+      obs = self.select(self.data() > 0 )
+      if (self.is_xray_amplitude_array()):
+        obs = obs.f_as_f_sq()
+      if (obs.data().size() == 0): return 0
+      i_plus, i_minus = obs.hemispheres()
+      assert i_plus.data().size() == i_minus.data().size()
+
+      ratio = flex.fabs(i_plus.data()-i_minus.data()) / flex.sqrt(
+                             (i_plus.sigmas()*i_plus.sigmas())
+                           + (i_minus.sigmas()*i_minus.sigmas()) )
+
+      i_plus_sigma = i_plus.data()/i_plus.sigmas()
+      i_minus_sigma = i_minus.data()/i_minus.sigmas()
+
+
+      meas = ( (ratio > 3.0) &  (i_plus_sigma > 3.0) & (i_minus_sigma > 3.0) ).count(True)
+      return float(meas)/float(ratio.size())
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      results.append(self.select(sel).measurability())
+    return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
+
   def second_moment(self, use_binning=False):
     "<data^2>/(<data>)^2"
     assert not use_binning or self.binner() is not None
