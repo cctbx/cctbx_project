@@ -12,7 +12,7 @@ except KeyError:
   raise RuntimeError('Environment variable "%s" not defined.' % sys.argv[1])
 args = []
 if (sys.argv[2].lower().endswith(".py")):
- args.append(sys.executable)
+  args.append(sys.executable)
 args.append(os.path.normpath(os.path.join(cmd_root, sys.argv[2])))
 args.extend(sys.argv[3:])
 if (not os.path.isfile(args[0])):
