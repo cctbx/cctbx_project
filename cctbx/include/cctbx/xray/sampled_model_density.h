@@ -271,7 +271,7 @@ namespace cctbx { namespace xray {
           return as_imag_ * exp_table(d * aniso_bs_imag_ * d);
         }
 
-      private:
+      protected:
         bool anisotropic_flag_;
         af::tiny<FloatType, CaasfType::n_plus_1> as_real_;
         af::tiny<FloatType, CaasfType::n_plus_1> bs_real_;
