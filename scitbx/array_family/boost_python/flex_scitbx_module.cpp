@@ -149,7 +149,7 @@ namespace {
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
 
-BOOST_PYTHON_MODULE(flex_scitbx)
+BOOST_PYTHON_MODULE(flex_scitbx_ext)
 {
   scitbx::af::boost_python::init_module();
 }
