@@ -7,19 +7,26 @@ from cctbx.utils import phase_error
 from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
+import random
 import math
 import sys
 
-def direct_space_squaring(start):
+def direct_space_squaring(start, selection_fixed):
   map_gridding = miller.index_span(
     miller.set.expand_to_p1(start).indices()).map_grid()
+  if (selection_fixed is None):
+    fixed = start
+    var = start
+  else:
+    fixed = start.apply_selection(selection_fixed)
+    var = start.apply_selection(~selection_fixed)
   rfft = fftpack.real_to_complex_3d([n*3//2 for n in map_gridding])
   conjugate_flag = 0001
   structure_factor_map = maptbx.structure_factors.to_map(
-    start.space_group(),
-    start.anomalous_flag(),
-    start.indices(),
-    start.data(),
+    fixed.space_group(),
+    fixed.anomalous_flag(),
+    fixed.indices(),
+    fixed.data(),
     rfft.n_real(),
     flex.grid(rfft.n_complex()),
     conjugate_flag)
@@ -28,14 +35,19 @@ def direct_space_squaring(start):
   squared_sf_map = rfft.forward(squared_map)
   allow_miller_indices_outside_map = 00000
   from_map = maptbx.structure_factors.from_map(
-    start.anomalous_flag(),
-    start.indices(),
+    var.anomalous_flag(),
+    var.indices(),
     squared_sf_map,
     conjugate_flag,
     allow_miller_indices_outside_map)
-  return from_map.data()
+  if (selection_fixed is None):
+    return from_map.data()
+  result = start.data().deep_copy()
+  result.set_selected(~selection_fixed, from_map.data())
+  assert result.select(selection_fixed).all_eq(fixed.data())
+  return result
 
-def reciprocal_space_squaring(start, verbose):
+def reciprocal_space_squaring(start, selection_fixed, verbose):
   tprs = dmtbx.triplet_generator(start.space_group(), start.indices())
   if (0 or verbose):
     for ih in start.indices()[:1].indices():
@@ -44,9 +56,19 @@ def reciprocal_space_squaring(start, verbose):
         if (not relation.is_sigma_2(ih)):
           print "not sigma-2",
         print
-  return tprs.apply_tangent_formula(
-    amplitudes=abs(start).data(),
-    phases=flex.arg(start.data()))
+  amplitudes = abs(start).data()
+  if (selection_fixed is not None):
+    sel_var = ~selection_fixed
+    amplitudes.set_selected(sel_var, flex.double(sel_var.count(0001), 0))
+  input_phases = flex.arg(start.data())
+  result = tprs.apply_tangent_formula(
+    amplitudes=amplitudes,
+    phases=input_phases,
+    selection_fixed=selection_fixed)
+  if (selection_fixed is not None):
+    assert result.select(selection_fixed).all_eq(
+      input_phases.select(selection_fixed))
+  return result
 
 def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
              e_min=1.5):
@@ -91,19 +113,25 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
   q_calc = q_large.structure_factors_from_scatterers(
     other_structure, direct=0001).f_calc()
   start = q_large.phase_transfer(q_calc.data())
-  from_map_data = direct_space_squaring(start)
-  direct_space_result = start.phase_transfer(phase_source=from_map_data)
-  new_phases = reciprocal_space_squaring(start, verbose)
-  reciprocal_space_result = start.phase_transfer(
-    phase_source=flex.polar(1,new_phases))
-  mwpe = direct_space_result.mean_weighted_phase_error(reciprocal_space_result)
-  if (0 or verbose):
-    print "mwpe: %.2f" % mwpe, start.space_group_info()
-  for i,h in direct_space_result.indices().items():
-    amp_d,phi_d = complex_math.abs_arg(direct_space_result.data()[i], deg=1)
-    amp_r,phi_r = complex_math.abs_arg(reciprocal_space_result.data()[i],deg=1)
-    phase_err = phase_error(phi_d, phi_r, deg=1)
-    assert phase_err < 1.0 or abs(from_map_data[i]) < 1.e-6
+  for selection_fixed in (
+        None,
+        flex.double([random.random() for i in xrange(start.size())]) < 0.4):
+    from_map_data = direct_space_squaring(start, selection_fixed)
+    direct_space_result = start.phase_transfer(phase_source=from_map_data)
+    new_phases = reciprocal_space_squaring(start, selection_fixed, verbose)
+    reciprocal_space_result = start.phase_transfer(
+      phase_source=flex.polar(1,new_phases))
+    mwpe = direct_space_result.mean_weighted_phase_error(
+      reciprocal_space_result)
+    if (0 or verbose):
+      print "mwpe: %.2f" % mwpe, start.space_group_info()
+    for i,h in direct_space_result.indices().items():
+      amp_d,phi_d = complex_math.abs_arg(
+        direct_space_result.data()[i], deg=1)
+      amp_r,phi_r = complex_math.abs_arg(
+        reciprocal_space_result.data()[i],deg=1)
+      phase_err = phase_error(phi_d, phi_r, deg=1)
+      assert phase_err < 1.0 or abs(from_map_data[i]) < 1.e-6
 
 def run_call_back(flags, space_group_info):
   exercise(space_group_info, verbose=flags.Verbose)

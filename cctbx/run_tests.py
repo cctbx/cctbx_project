@@ -28,7 +28,7 @@ def run():
   "$D/cctbx/regression/tst_xray.py",
   ["$D/cctbx/regression/tst_miller.py", "P31"],
   ["$D/cctbx/regression/tst_reciprocal_space_asu.py", "P312"],
-  ["$D/cctbx/regression/tst_triplet_generator.py", "P312"],
+  ["$D/cctbx/regression/tst_triplet_generator.py", "P41"],
   ["$D/cctbx/regression/tst_emma.py", "P31"],
   ["$D/cctbx/regression/tst_find_centre_of_inversion.py", "P31"],
   ["$D/cctbx/regression/tst_expand_to_p1.py", "P31"],
