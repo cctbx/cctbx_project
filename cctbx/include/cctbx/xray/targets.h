@@ -293,6 +293,7 @@ namespace cctbx { namespace xray { namespace targets {
     c    = flag (1 fro acentric, 0 for centric)
     k    = overall scale coefficient
 */
+inline
 double maximum_likelihood_target_one_h(double fo,
                                        double fc,
                                        double a,
@@ -340,6 +341,7 @@ double maximum_likelihood_target_one_h(double fo,
     c    = flag (0 fro acentric, 1 for centric)
     k    = overall scale coefficient
 */
+inline
 std::complex<double> d_maximum_likelihood_target_one_h_over_fc(
                                                double fo,
                                                std::complex<double> fc_complex,
@@ -383,6 +385,7 @@ std::complex<double> d_maximum_likelihood_target_one_h_over_fc(
     c    = flag (0 fro acentric, 1 for centric)
     k    = overall scale coefficient
 */
+inline
 double d_maximum_likelihood_target_one_h_over_k(double fo,
                                                 double fc,
                                                 double a,
@@ -476,6 +479,183 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
     }
   }
   };
+
+inline
+double mlhl_target_one_h(double fo,
+                         double fc,
+                         double pc,
+                         double alpha,
+                         double beta,
+                         double k,
+                         int epsilon,
+                         int cf,
+                         cctbx::hendrickson_lattman<double> abcd,
+                         std::vector<af::tiny<double, 4> > cos_sin_table,
+                         int n_steps,
+                         double step_for_integration)
+{
+  double small = 1.e-9;
+  CCTBX_ASSERT( (cf == 1 || cf == 0) && (epsilon > 0) );
+  CCTBX_ASSERT( fo >= 0 && fc >= 0 );
+  CCTBX_ASSERT( std::abs(k) > small );
+  double target = 0.0;
+  if(alpha <= 0.0 || beta <= 0.0) {
+     return 0.0;
+  }
+  alpha *= k;
+  beta *= k*k;
+  double A = abcd.a();
+  double B = abcd.b();
+  double C = abcd.c();
+  double D = abcd.d();
+
+  // acentric reflection
+  if(cf == 0) {
+     double arg = 2.0*alpha*fo*fc/(beta*epsilon);
+     double A_prime = arg * std::cos(pc) + A;
+     double B_prime = arg * std::sin(pc) + B;
+     // calculate target analytically
+     if((std::abs(C) < small) && (std::abs(D) < small)) {
+        double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
+        target = scitbx::math::bessel::ln_of_i0(val);
+     }
+     // calculate target numerically
+     else {
+       double maxv = 0.;
+       for(int i=0;i<n_steps;i++) {
+           maxv = std::max(maxv, A_prime*cos_sin_table[i][0]+
+                                 B_prime*cos_sin_table[i][1]+
+                                 C      *cos_sin_table[i][2]+
+                                 D      *cos_sin_table[i][3]);
+       }
+       target = 0.;
+       for(int i=0;i<n_steps;i++) {
+           target += std::exp(-maxv+A_prime*cos_sin_table[i][0]+
+                                    B_prime*cos_sin_table[i][1]+
+                                    C      *cos_sin_table[i][2]+
+                                    D      *cos_sin_table[i][3]);
+       }
+       target *= step_for_integration;
+       target = std::log(target) + maxv;
+     }
+     target = (fo*fo+alpha*alpha*fc*fc)/(beta*epsilon) - target;
+  }
+  // centric reflection
+  if(cf == 1) {
+     double var = beta*epsilon;
+     double arg = A*std::cos(pc) + B*std::sin(pc) + fo*alpha*fc/var;
+     double mabsarg = -std::abs(arg);
+     target = (fo*fo + alpha*alpha*fc*fc)/(2.0*var) + mabsarg -
+              std::log((1.0 + std::exp(2.0*mabsarg))/2.0);
+  }
+  return target;
+}
+
+inline
+std::complex<double> mlhl_d_target_dfcalc_one_h(
+                                  double fo,
+                                  double fc,
+                                  double pc,
+                                  double ac,
+                                  double bc,
+                                  double alpha,
+                                  double beta,
+                                  double k,
+                                  int epsilon,
+                                  int cf,
+                                  cctbx::hendrickson_lattman<double> abcd,
+                                  std::vector<af::tiny<double, 4> > cos_sin_table,
+                                  int n_steps,
+                                  double step_for_integration)
+{
+  double small = 1.e-9;
+  CCTBX_ASSERT( (cf == 1 || cf == 0) && (beta > 0.) && (epsilon > 0) );
+  CCTBX_ASSERT( fo >= 0 && fc >= 0 );
+  CCTBX_ASSERT( alpha >= 0. );
+  CCTBX_ASSERT( std::abs(k) > small );
+  std::complex<double> d_target_over_fc = std::complex<double> (0.0,0.0);
+  if(alpha <= 0.0 || beta <= 0.0) {
+     return std::complex<double> (0.0,0.0);
+  }
+  alpha *= k;
+  beta *= k*k;
+  double A = abcd.a();
+  double B = abcd.b();
+  double C = abcd.c();
+  double D = abcd.d();
+  double derfc = 0.0;
+  double derpc = 0.0;
+  // acentric reflection
+  if(cf == 0) {
+     double arg = 2.0*alpha*fo/(beta*epsilon);
+     double A_prime = arg * std::cos(pc) + A;
+     double B_prime = arg * std::sin(pc) + B;
+     // calculate derivative analytically
+     if((std::abs(C) < small) && (std::abs(D) < small)) {
+        double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
+        if(val < small) {
+           derfc = 0.0;
+           derpc = 0.0;
+        }
+        else {
+           double sim = scitbx::math::bessel::i1_over_i0(val);
+           derfc = sim*arg*(arg*fc + A*std::cos(pc) + B*std::sin(pc))/val;
+           derpc = sim*arg*fc*(A*std::sin(pc) - B*std::cos(pc))/val;
+        }
+     }
+     // calculate derivative numerically
+     else {
+       double maxv = 0.;
+       for(int i=0;i<n_steps;i++) {
+           maxv = std::max(maxv, A_prime*cos_sin_table[i][0]+
+                                 B_prime*cos_sin_table[i][1]+
+                                 C      *cos_sin_table[i][2]+
+                                 D      *cos_sin_table[i][3]);
+       }
+       double target = 0.;
+       for(int i=0;i<n_steps;i++) {
+           target += std::exp(-maxv+A_prime*cos_sin_table[i][0]+
+                                    B_prime*cos_sin_table[i][1]+
+                                    C      *cos_sin_table[i][2]+
+                                    D      *cos_sin_table[i][3]);
+       }
+       target *= step_for_integration;
+       target = -std::log(target) - maxv;
+       double deranot = 0.0;
+       double derbnot = 0.0;
+       for(int i=0;i<n_steps;i++) {
+           double tmp = std::exp(target + A_prime*cos_sin_table[i][0]+
+                                          B_prime*cos_sin_table[i][1]+
+                                          C      *cos_sin_table[i][2]+
+                                          D      *cos_sin_table[i][3]);
+           deranot += cos_sin_table[i][0]*tmp;
+           derbnot += cos_sin_table[i][1]*tmp;
+       }
+
+       deranot *= step_for_integration;
+       derbnot *= step_for_integration;
+       derfc = arg*(deranot*std::cos(pc) + derbnot*std::sin(pc));
+       derpc = arg*(deranot*std::sin(pc) - derbnot*std::cos(pc))*fc;
+     }
+     derfc = 2.0*alpha*alpha*fc/(beta*epsilon) - derfc;
+  }
+  // centric reflection
+  if(cf == 1) {
+     double var = beta*epsilon;
+     double arg = A*std::cos(pc) + B*std::sin(pc) + fo*alpha*fc/var;
+     derfc = alpha*alpha*fc/var - std::tanh(arg)*fo*alpha/var;
+     derpc = 2.0*std::tanh(arg)*(A*std::sin(pc) - B*std::cos(pc));
+  }
+  if(fc < small) {
+     d_target_over_fc = std::complex<double> (0.0,0.0);
+  }
+  else {
+     double d1 = derfc*ac - derpc*bc/fc;
+     double d2 = derfc*bc + derpc*ac/fc;
+     d_target_over_fc = std::complex<double> (d1,d2)/fc;
+  }
+  return std::conj(d_target_over_fc);
+}
 
 /*
    Maximum-likelihood target function and gradients.
@@ -724,181 +904,6 @@ double d_maximum_likelihood_target_one_h_over_k(double fo,
     } // end loop over reflections
   }
   };
-
-double mlhl_target_one_h(double fo,
-                         double fc,
-                         double pc,
-                         double alpha,
-                         double beta,
-                         double k,
-                         int epsilon,
-                         int cf,
-                         cctbx::hendrickson_lattman<double> abcd,
-                         std::vector<af::tiny<double, 4> > cos_sin_table,
-                         int n_steps,
-                         double step_for_integration)
-{
-  double small = 1.e-9;
-  CCTBX_ASSERT( (cf == 1 || cf == 0) && (epsilon > 0) );
-  CCTBX_ASSERT( fo >= 0 && fc >= 0 );
-  CCTBX_ASSERT( std::abs(k) > small );
-  double target = 0.0;
-  if(alpha <= 0.0 || beta <= 0.0) {
-     return 0.0;
-  }
-  alpha *= k;
-  beta *= k*k;
-  double A = abcd.a();
-  double B = abcd.b();
-  double C = abcd.c();
-  double D = abcd.d();
-
-  // acentric reflection
-  if(cf == 0) {
-     double arg = 2.0*alpha*fo*fc/(beta*epsilon);
-     double A_prime = arg * std::cos(pc) + A;
-     double B_prime = arg * std::sin(pc) + B;
-     // calculate target analytically
-     if((std::abs(C) < small) && (std::abs(D) < small)) {
-        double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
-        target = scitbx::math::bessel::ln_of_i0(val);
-     }
-     // calculate target numerically
-     else {
-       double maxv = 0.;
-       for(int i=0;i<n_steps;i++) {
-           maxv = std::max(maxv, A_prime*cos_sin_table[i][0]+
-                                 B_prime*cos_sin_table[i][1]+
-                                 C      *cos_sin_table[i][2]+
-                                 D      *cos_sin_table[i][3]);
-       }
-       target = 0.;
-       for(int i=0;i<n_steps;i++) {
-           target += std::exp(-maxv+A_prime*cos_sin_table[i][0]+
-                                    B_prime*cos_sin_table[i][1]+
-                                    C      *cos_sin_table[i][2]+
-                                    D      *cos_sin_table[i][3]);
-       }
-       target *= step_for_integration;
-       target = std::log(target) + maxv;
-     }
-     target = (fo*fo+alpha*alpha*fc*fc)/(beta*epsilon) - target;
-  }
-  // centric reflection
-  if(cf == 1) {
-     double var = beta*epsilon;
-     double arg = A*std::cos(pc) + B*std::sin(pc) + fo*alpha*fc/var;
-     double mabsarg = -std::abs(arg);
-     target = (fo*fo + alpha*alpha*fc*fc)/(2.0*var) + mabsarg -
-              std::log((1.0 + std::exp(2.0*mabsarg))/2.0);
-  }
-  return target;
-}
-
-std::complex<double> mlhl_d_target_dfcalc_one_h(
-                                  double fo,
-                                  double fc,
-                                  double pc,
-                                  double ac,
-                                  double bc,
-                                  double alpha,
-                                  double beta,
-                                  double k,
-                                  int epsilon,
-                                  int cf,
-                                  cctbx::hendrickson_lattman<double> abcd,
-                                  std::vector<af::tiny<double, 4> > cos_sin_table,
-                                  int n_steps,
-                                  double step_for_integration)
-{
-  double small = 1.e-9;
-  CCTBX_ASSERT( (cf == 1 || cf == 0) && (beta > 0.) && (epsilon > 0) );
-  CCTBX_ASSERT( fo >= 0 && fc >= 0 );
-  CCTBX_ASSERT( alpha >= 0. );
-  CCTBX_ASSERT( std::abs(k) > small );
-  std::complex<double> d_target_over_fc = std::complex<double> (0.0,0.0);
-  if(alpha <= 0.0 || beta <= 0.0) {
-     return std::complex<double> (0.0,0.0);
-  }
-  alpha *= k;
-  beta *= k*k;
-  double A = abcd.a();
-  double B = abcd.b();
-  double C = abcd.c();
-  double D = abcd.d();
-  double derfc = 0.0;
-  double derpc = 0.0;
-  // acentric reflection
-  if(cf == 0) {
-     double arg = 2.0*alpha*fo/(beta*epsilon);
-     double A_prime = arg * std::cos(pc) + A;
-     double B_prime = arg * std::sin(pc) + B;
-     // calculate derivative analytically
-     if((std::abs(C) < small) && (std::abs(D) < small)) {
-        double val = std::sqrt(A_prime*A_prime + B_prime*B_prime);
-        if(val < small) {
-           derfc = 0.0;
-           derpc = 0.0;
-        }
-        else {
-           double sim = scitbx::math::bessel::i1_over_i0(val);
-           derfc = sim*arg*(arg*fc + A*std::cos(pc) + B*std::sin(pc))/val;
-           derpc = sim*arg*fc*(A*std::sin(pc) - B*std::cos(pc))/val;
-        }
-     }
-     // calculate derivative numerically
-     else {
-       double maxv = 0.;
-       for(int i=0;i<n_steps;i++) {
-           maxv = std::max(maxv, A_prime*cos_sin_table[i][0]+
-                                 B_prime*cos_sin_table[i][1]+
-                                 C      *cos_sin_table[i][2]+
-                                 D      *cos_sin_table[i][3]);
-       }
-       double target = 0.;
-       for(int i=0;i<n_steps;i++) {
-           target += std::exp(-maxv+A_prime*cos_sin_table[i][0]+
-                                    B_prime*cos_sin_table[i][1]+
-                                    C      *cos_sin_table[i][2]+
-                                    D      *cos_sin_table[i][3]);
-       }
-       target *= step_for_integration;
-       target = -std::log(target) - maxv;
-       double deranot = 0.0;
-       double derbnot = 0.0;
-       for(int i=0;i<n_steps;i++) {
-           double tmp = std::exp(target + A_prime*cos_sin_table[i][0]+
-                                          B_prime*cos_sin_table[i][1]+
-                                          C      *cos_sin_table[i][2]+
-                                          D      *cos_sin_table[i][3]);
-           deranot += cos_sin_table[i][0]*tmp;
-           derbnot += cos_sin_table[i][1]*tmp;
-       }
-
-       deranot *= step_for_integration;
-       derbnot *= step_for_integration;
-       derfc = arg*(deranot*std::cos(pc) + derbnot*std::sin(pc));
-       derpc = arg*(deranot*std::sin(pc) - derbnot*std::cos(pc))*fc;
-     }
-     derfc = 2.0*alpha*alpha*fc/(beta*epsilon) - derfc;
-  }
-  // centric reflection
-  if(cf == 1) {
-     double var = beta*epsilon;
-     double arg = A*std::cos(pc) + B*std::sin(pc) + fo*alpha*fc/var;
-     derfc = alpha*alpha*fc/var - std::tanh(arg)*fo*alpha/var;
-     derpc = 2.0*std::tanh(arg)*(A*std::sin(pc) - B*std::cos(pc));
-  }
-  if(fc < small) {
-     d_target_over_fc = std::complex<double> (0.0,0.0);
-  }
-  else {
-     double d1 = derfc*ac - derpc*bc/fc;
-     double d2 = derfc*bc + derpc*ac/fc;
-     d_target_over_fc = std::complex<double> (d1,d2)/fc;
-  }
-  return std::conj(d_target_over_fc);
-}
 
 // max-like_hl end
 
