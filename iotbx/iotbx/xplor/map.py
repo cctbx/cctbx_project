@@ -68,7 +68,7 @@ class gridding:
 
 class reader:
 
-  def __init__(self, file_name):
+  def __init__(self, file_name, header_only=00000):
     f = open(file_name, "r")
     f.readline()
     self.title_lines = []
@@ -89,13 +89,18 @@ class reader:
     order = f.readline().strip()
     assert order == "ZYX"
     f.close()
-    ext_reader = ext.map_reader(
-      file_name=file_name,
-      n_header_lines=len(self.title_lines)+5,
-      grid=self.gridding.as_flex_grid())
-    self.data = ext_reader.data
-    self.average = ext_reader.average
-    self.standard_deviation = ext_reader.standard_deviation
+    if (header_only):
+      self.data = None
+      self.average = None
+      self.standard_deviation = None
+    else:
+      ext_reader = ext.map_reader(
+        file_name=file_name,
+        n_header_lines=len(self.title_lines)+5,
+        grid=self.gridding.as_flex_grid())
+      self.data = ext_reader.data
+      self.average = ext_reader.average
+      self.standard_deviation = ext_reader.standard_deviation
 
 def writer(file_name, title_lines, unit_cell, gridding,
            data, is_p1_cell=00000,
