@@ -49,6 +49,7 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name, kissel_dir):
   if (itvc_file_name is not None):
     itvc_tab = itvc_section61_io.read_table6111(itvc_file_name)
   fits = read_pickled_fits(gaussian_fit_pickle_file_names)
+  easy_pickle.dump("all_fits.pickle", fits)
   for k,v in fits.parameters.items():
     print "# %s:" % k, v
   print
@@ -182,4 +183,5 @@ def main():
     cross_check(args)
 
 if (__name__ == "__main__"):
-  main()
+  from cctbx.eltbx.development import format_gaussian_fits
+  format_gaussian_fits.main()

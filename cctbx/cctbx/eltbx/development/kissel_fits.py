@@ -9,11 +9,12 @@ from scitbx.python_utils import easy_pickle
 from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
-def run(args, cutoff, six_term=00000, params=None,
+def run(args, cutoff, max_n_terms, six_term=00000, params=None,
         plots_dir="kissel_fits_plots", verbose=0):
   timer = user_plus_sys_time()
   if (params is None):
-    params = cctbx.eltbx.gaussian_fit.fit_parameters()
+    params = cctbx.eltbx.gaussian_fit.fit_parameters(
+      max_n_terms=max_n_terms)
   chunk_n = 1
   chunk_i = 0
   if (len(args) > 0 and len(args[0].split(",")) == 2):
@@ -57,7 +58,7 @@ def run(args, cutoff, six_term=00000, params=None,
     else:
       print "label:", tab.element
       sys.stdout.flush()
-      fit = scitbx.math.gaussian_fit.fit_with_golay_starts(
+      best_min = scitbx.math.gaussian_fit.fit_with_golay_starts(
         label=tab.element,
         null_fit=null_fit,
         null_fit_more=null_fit_more,
@@ -67,7 +68,7 @@ def run(args, cutoff, six_term=00000, params=None,
         enforce_positive_b_mod_n=params.enforce_positive_b_mod_n,
         b_min=params.b_min,
         n_repeats_minimization=params.n_repeats_minimization)
-      g = fit.min.final_gaussian_fit
+      g = best_min.final_gaussian_fit
       results[tab.element] = [xray_scattering.fitted_gaussian(
         stol=g.table_x()[-1], gaussian_sum=g)]
     sys.stdout.flush()
@@ -83,6 +84,9 @@ def main():
   parser.add_option("-c", "--cutoff",
     type="float", dest="cutoff", default=6, metavar="FLOAT",
     help="maximum sin(theta)/lambda")
+  parser.add_option("-n", "--max_n_terms",
+    type="int", dest="max_n_terms", default=5, metavar="INT",
+    help="maximum number of Gaussian terms")
   parser.add_option("-s", "--six_term",
     action="store_true", dest="six_term", default=0,
     help="fit six-term Gaussians using Golay based starts")
@@ -93,6 +97,7 @@ def main():
   run(
     args=args,
     cutoff=options.cutoff,
+    max_n_terms=options.max_n_terms,
     six_term=options.six_term,
     verbose=options.verbose)
 
