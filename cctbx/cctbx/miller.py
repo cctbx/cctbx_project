@@ -153,6 +153,10 @@ class set(crystal.symmetry):
     return array(
       self, self.unit_cell().stol_sq(self.indices()))
 
+  def two_theta(self, wavelength, deg=00000):
+    return array(
+      self, self.unit_cell().two_theta(self.indices(), wavelength, deg))
+
   def d_min(self):
     return uctbx.d_star_sq_as_d(self.unit_cell().max_d_star_sq(self.indices()))
 
