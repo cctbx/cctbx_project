@@ -658,8 +658,10 @@ namespace cctbx { namespace sgtbx {
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
+  // Work-around for Visual C++ 7.0 overload resolution bug.
+  // Should just be operator+
   inline af::double3
-  operator+(const af::double3& lhs, const TrVec& rhs) {
+  double3_plus_TrVec(const af::double3& lhs, const TrVec& rhs) {
     af::double3 result;
     for(int i=0;i<3;i++) result[i] = lhs[i] + double(rhs[i]) / rhs.BF();
     return result;
