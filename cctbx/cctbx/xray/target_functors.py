@@ -28,11 +28,14 @@ class target_functors_manager:
                      use_sigmas_as_weights  = False,
                      scale_factor           = 0):
     adopt_init_args(self, locals())
-    assert self.target_name in ("ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit",
-                                "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
-                                "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit",
-                                "lsm_k1"     ,"lsm_k2"     ,"lsm_kunit",
-                                "ml","mlhl")
+    assert self.target_name in (
+      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
+      "ls_wunit_k1ask3_fixed",
+      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
+      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
+      "ls_wff_k1ask3_fixed",
+      "lsm_k1"     ,"lsm_k2"     ,"lsm_kunit",
+      "ml","mlhl")
     assert self.f_obs.data().size() == self.flags.size()
     if(self.flags.count(True) > 0):
       self.f_obs_w = self.f_obs.select(~self.flags)
@@ -55,7 +58,7 @@ class target_functors_manager:
     else:
       self.abcd_w, self.abcd_t = None, None
     if(self.weights is not None):
-      assert self.target_name.count("ls")+self.target_name.count("k") == 2
+      assert self.target_name.count("ls") == 1
       if(self.flags.count(True) > 0):
         self.weights_w = self.weights.select(~self.flags)
         self.weights_t = self.weights.select( self.flags)
@@ -77,20 +80,20 @@ class target_functors_manager:
       else:                           weights = self.weights_w
       if(self.abcd_w is not None): abcd = self.abcd_w.select(selection)
       else:                        abcd = self.abcd_w
-    if(self.target_name.count("k1") == 1):
+    if(self.target_name.count("k1") == 1 and self.target_name.count("k1as") == 0):
        assert self.scale_factor == 0
        return ls_k1(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
                     fix_scale_factor = False)
-    if(self.target_name.count("k2") == 1):
+    if(self.target_name.count("k2") == 1 and self.target_name.count("k2as") == 0):
        assert self.scale_factor == 0
        return ls_k2(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
                     fix_scale_factor = False)
-    if(self.target_name.count("kunit") == 1):
-       assert self.scale_factor == 1
+    if(self.target_name.count("kunit") == 1 or self.target_name.count("ask") == 1):
+       assert self.scale_factor != 0.0
        return ls_k1(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
@@ -114,20 +117,20 @@ class target_functors_manager:
       else:                           weights = self.weights_t
       if(self.abcd_t is not None): abcd = self.abcd_t.select(selection)
       else:                        abcd = self.abcd_t
-    if(self.target_name.count("k1") == 1):
+    if(self.target_name.count("k1") == 1 and self.target_name.count("k1as") == 0):
        assert self.scale_factor == 0
        return ls_k1(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
                     fix_scale_factor = False)
-    if(self.target_name.count("k2") == 1):
+    if(self.target_name.count("k2") == 1 and self.target_name.count("k2as") == 0):
        assert self.scale_factor == 0
        return ls_k2(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
                     fix_scale_factor = False)
-    if(self.target_name.count("kunit") == 1):
-       assert self.scale_factor == 1
+    if(self.target_name.count("kunit") == 1 or self.target_name.count("ask") == 1):
+       assert self.scale_factor != 0.0
        return ls_k1(f_obs            = f_obs,
                     weights          = weights,
                     scale_factor     = self.scale_factor,
