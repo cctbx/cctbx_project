@@ -368,20 +368,26 @@ h=$_X_Y_Z_
 i=0
 i=1
 j=$i
-k=$l
-l=x
-l=y
+k=x
+k=y
+l=$k
+k=z
+m=$k
 """)
   assert len(parameters.get(path="a", with_substitution=False).objects) == 1
+  diags = {
+    "a": "Dependency cycle in variable substitution: $a",
+    "b": "Undefined variable: $c (input line 2)",
+    "c": "Dependency cycle in variable substitution: $c",
+    "d": "Undefined variable: $e (input line 4)",
+    "e": "Undefined variable: $f (input line 5)",
+    "f": "Undefined variable: $e (input line 4)",
+    "g": "Undefined variable: $e (input line 4)"}
   for path in "abcdefg":
-    if (path == "g"):
-      diag = "d"
-    else:
-      diag = path
-  try: parameters.get(path=path)
-  except RuntimeError, e:
-    assert str(e) == "Dependency cycle in variable substitution: $%s" % diag
-  else: raise RuntimeError("Exception expected.")
+    try: parameters.get(path=path)
+    except RuntimeError, e:
+      assert str(e) == diags[path]
+    else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="h")
   except RuntimeError, e:
     assert str(e) == "Undefined variable: $_X_Y_Z_ (input line 8)"
@@ -389,7 +395,8 @@ l=y
   os.environ["_X_Y_Z_"] = "xyz"
   check_get_sub(parameters, path="h", expected_out='h = "xyz"\n')
   check_get_sub(parameters, path="j", expected_out='j = 1\n')
-  check_get_sub(parameters, path="k", expected_out='k = y\n')
+  check_get_sub(parameters, path="l", expected_out='l = y\n')
+  check_get_sub(parameters, path="m", expected_out='m = z\n')
   parameters = iotbx.parameters.parse(input_string="""\
 a=x
 b=$a
@@ -464,6 +471,15 @@ s
   }
 }
 """)
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+a=$b
+#b=y
+""")
+  try: parameters.get(path="a")
+  except RuntimeError, e:
+    assert str(e) == 'Undefined variable: $b (input line 1)'
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_include():
   print >> open("tmp1.params", "w"), """\
@@ -1073,6 +1089,11 @@ u=a *b c
 """)
   source = iotbx.parameters.parse(input_string="""\
 a=7
+v
+{
+  x=y
+  y=3
+}
 c
 {
   a=${v.x}
@@ -1085,11 +1106,6 @@ c
       r=x
     }
   }
-}
-v
-{
-  x=y
-  y=3
 }
 t
 {
@@ -1174,6 +1190,48 @@ c=a *d c
   try: fetched = master.fetch(sources=[source])
   except RuntimeError, e:
     assert str(e) == "Not a possible choice: *d (input line 1)"
+  else: raise RuntimeError("Exception expected.")
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
+v {
+  x=y
+}
+c {
+  a=${v.x}
+}
+v {
+  x=z
+}
+""")
+  out = StringIO()
+  parameters.fetch(source=parameters).show(out=out)
+  assert out.getvalue() == """\
+v
+{
+  x = y
+}
+
+c
+{
+  a = y
+}
+
+v
+{
+  x = z
+}
+"""
+  parameters = iotbx.parameters.parse(input_string="""\
+c {
+  a=${v.x}
+}
+v {
+  x=y
+}
+""")
+  try: parameters.fetch(source=parameters)
+  except RuntimeError, e:
+    assert str(e) == 'Undefined variable: $v.x (input line 2)'
   else: raise RuntimeError("Exception expected.")
 
 def exercise():
