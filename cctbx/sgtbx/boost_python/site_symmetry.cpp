@@ -4,7 +4,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
-#include <cctbx/sgtbx/site_symmetry.h>
+#include <cctbx/sgtbx/site_symmetry_table.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
 
@@ -76,12 +76,34 @@ namespace {
     }
   };
 
+  struct site_symmetry_table_wrappers
+  {
+    typedef site_symmetry_table w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
+      typedef return_value_policy<copy_const_reference> ccr;
+      typedef return_internal_reference<> rir;
+      class_<w_t>("site_symmetry_table")
+        .def("process", &w_t::process, (arg_("site_symmetry_ops")))
+        .def("get_site_symmetry_ops", &w_t::get_site_symmetry_ops,
+          (arg_("i_seq")), rir())
+        .def("n_unique_site_symmetry_ops", &w_t::n_unique_site_symmetry_ops)
+        .def("indices", &w_t::indices, ccr())
+      ;
+    }
+  };
+
 } // namespace <anoymous>
 
   void wrap_site_symmetry()
   {
     site_symmetry_ops_wrappers::wrap();
     site_symmetry_wrappers::wrap();
+    site_symmetry_table_wrappers::wrap();
   }
 
 }}} // namespace cctbx::sgtbx::boost_python

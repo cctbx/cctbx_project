@@ -842,7 +842,7 @@ def exercise_site_symmetry():
   assert not s.is_point_group_1()
   assert s.point_group_type() == "2"
   assert [str(o) for o in s.unique_ops()] == ["0,0,z"]
-  u = uctbx.unit_cell((3,3,5,90,90,120))
+  u = uctbx.unit_cell((10,10,15,90,90,120))
   g = sgtbx.space_group("-P 3 2")
   s = site_symmetry(unit_cell=u, space_group=g, original_site=(0,0,0))
   a = (5,2,3,-1,2,-2)
@@ -852,6 +852,33 @@ def exercise_site_symmetry():
   assert s.is_compatible_u_star(u_star=a)
   assert len(s.matrices()) == 12
   assert str(s.matrices()[1]) == "-y,x-y,z"
+  t = sgtbx.site_symmetry_table()
+  assert t.indices().size() == 0
+  t.process(site_symmetry_ops=s)
+  assert t.indices().size() == 1
+  assert t.n_unique_site_symmetry_ops() == 2
+  t.process(site_symmetry_ops=s)
+  assert t.indices().size() == 2
+  assert t.n_unique_site_symmetry_ops() == 2
+  s2 = site_symmetry(unit_cell=u, space_group=g, original_site=(0.5,0.5,0.5))
+  t.process(site_symmetry_ops=s2)
+  assert t.indices().size() == 3
+  assert t.n_unique_site_symmetry_ops() == 3
+  t.process(site_symmetry_ops=s)
+  assert t.indices().size() == 4
+  assert t.n_unique_site_symmetry_ops() == 3
+  s3 = site_symmetry(unit_cell=u, space_group=g, original_site=(0.25,0.66,0.0))
+  assert s3.is_point_group_1()
+  t.process(site_symmetry_ops=s3)
+  assert t.indices().size() == 5
+  assert t.n_unique_site_symmetry_ops() == 3
+  assert list(t.indices()) == [1,1,2,1,0]
+  assert t.get_site_symmetry_ops(0).special_op() == s.special_op()
+  assert t.get_site_symmetry_ops(1).special_op() == s.special_op()
+  assert t.get_site_symmetry_ops(2).special_op() == s2.special_op()
+  assert t.get_site_symmetry_ops(3).special_op() == s.special_op()
+  assert t.get_site_symmetry_ops(4).is_point_group_1()
+  assert str(t.get_site_symmetry_ops(4).matrices()[0]) == "x,y,z"
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type
