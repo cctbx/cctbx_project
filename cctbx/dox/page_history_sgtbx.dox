@@ -12,10 +12,9 @@ low-level source code development of the
 <a href="http://cci.lbl.gov/">Computational Crystallography Initiative</a>
 (CCI) will be in C++, conversion of SgLite to %sgtbx has
 been started. At the point of this writing, not all of SgLite has been
-converted to C++. In particular, the algorithm for the determination of
-the space group type is not yet available in the %sgtbx. Similarly,
-not all of the useful source code fragments of sginfo2 have been
-incorporated into SgLite, and therefore also not yet in the %sgtbx.
+converted to C++. Similarly, not all of the useful source code
+fragments of sginfo2 have been incorporated into SgLite, and therefore
+also not yet in the %sgtbx.
 
 \par
 Attached is a list of publications related to space group algorithms,

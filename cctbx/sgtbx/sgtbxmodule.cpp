@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -21,6 +22,27 @@ namespace {
 
 # include <cctbx/basic/from_bpl_import.h>
 
+  SpaceGroupSymbols
+  SpaceGroupSymbolIterator_getitem(SpaceGroupSymbolIterator& iter,
+                                   std::size_t) {
+    SpaceGroupSymbols result = iter.next();
+    if (result.SgNumber() == 0) {
+      PyErr_SetString(PyExc_IndexError, "At end of table.");
+      throw python::error_already_set();
+    }
+    return result;
+  }
+
+  RTMx TranslationComponents_IntrinsicPart(const TranslationComponents& tc) {
+    return RTMx(RotMx(1, 0), tc.IntrinsicPart());
+  }
+  RTMx TranslationComponents_LocationPart(const TranslationComponents& tc) {
+    return RTMx(RotMx(1, 0), tc.LocationPart());
+  }
+  RTMx TranslationComponents_OriginShift(const TranslationComponents& tc) {
+    return RTMx(RotMx(1, 0), tc.OriginShift());
+  }
+
   std::string RTMx_as_xyz_0(const RTMx& M) {
     return M.as_xyz();
   }
@@ -32,6 +54,13 @@ namespace {
     result.set_item(1,
       ref(to_python(M.Tpart().as_array(static_cast<double>(0)))));
     return result;
+  }
+
+  RTMx RTMx_from_tuple(const tuple& t, int RBF, int TBF) {
+    cctbx_assert(t.size() == 2);
+    Mx33 Rpart = from_python(t[0].get(), boost::python::type<const Mx33&>());
+    Vec3 Tpart = from_python(t[1].get(), boost::python::type<const Vec3&>());
+    return RTMx(RotMx(Rpart, RBF), TrVec(Tpart, TBF));
   }
 
   int SgOps_ParseHallSymbol_parse_string(SgOps& sgo, parse_string& HSym) {
@@ -47,6 +76,16 @@ namespace {
   }
   RTMx SgOps_call_3(const SgOps& sgo, int iLTr, int iInv, int iSMx) {
     return sgo(iLTr, iInv, iSMx);
+  }
+  RTMx SgOps_getitem(const SgOps& sgo, int key) {
+    try {
+      return sgo(key);
+    }
+    catch (const error&) {
+      PyErr_SetString(PyExc_IndexError,
+                      "Symmetry operation index out of range");
+      throw boost::python::error_already_set();
+    }
   }
 
   bool SgOps_isCentric_0(const SgOps& sgo) {
@@ -105,6 +144,64 @@ namespace {
     return sgo.getZ2POp();
   }
 
+  SpaceGroupType SgOps_getSpaceGroupType_0(const SgOps& sgo) {
+    return sgo.getSpaceGroupType();
+  }
+  SpaceGroupType SgOps_getSpaceGroupType_1(const SgOps& sgo, bool TidyCBOp) {
+    return sgo.getSpaceGroupType(TidyCBOp);
+  }
+
+  std::string SgOps_BuildHallSymbol_0of1(const SgOps& sgo) {
+    return sgo.BuildHallSymbol();
+  }
+  std::string SgOps_BuildHallSymbol_1of1(const SgOps& sgo, bool TidyCBOp) {
+    return sgo.BuildHallSymbol(TidyCBOp);
+  }
+  std::string SgOps_BuildHallSymbol_1of2(const SgOps& sgo,
+                                         const SpaceGroupType& SgType) {
+    return sgo.BuildHallSymbol(SgType);
+  }
+  std::string SgOps_BuildHallSymbol_2of2(const SgOps& sgo,
+                                         const SpaceGroupType& SgType,
+                                         bool TidyCBOp) {
+    return sgo.BuildHallSymbol(SgType, TidyCBOp);
+  }
+
+  std::string SgOps_BuildLookupSymbol_0(const SgOps& sgo) {
+    return sgo.BuildLookupSymbol();
+  }
+  std::string SgOps_BuildLookupSymbol_1(const SgOps& sgo,
+                                        const SpaceGroupType& SgType) {
+    return sgo.BuildLookupSymbol(SgType);
+  }
+
+  python::string SgOps_repr(const SgOps& sgo)
+  {
+    std::string result;
+    char buf[256];
+    int i;
+    sprintf(buf, "nLTr=%d\n", sgo.nLTr());
+    result += buf;
+    for (i = 0; i < sgo.nLTr(); i++)
+      result += "  " + sgo(i, 0, 0).as_xyz() + "\n";
+    sprintf(buf, "fInv=%d\n", sgo.fInv());
+    result += buf;
+    if (sgo.isCentric())
+      result += "  " + sgo(0, 1, 0).as_xyz() + "\n";
+    sprintf(buf, "nSMx=%d\n", sgo.nSMx());
+    result += buf;
+    for (i = 0; i < sgo.nSMx(); i++)
+      result += "  " + sgo(0, 0, i).as_xyz() + "\n";
+    return python::string(result.c_str());
+  }
+
+  // Support for pickle.
+  tuple SgOps_getinitargs(const SgOps& sgo) {
+    tuple initargs(1);
+    initargs.set_item(0, ref(to_python(sgo.BuildHallSymbol())));
+    return initargs;
+  }
+
   int PhaseRestriction_HT_0(const PhaseRestriction& PR) {
     return PR.HT();
   }
@@ -127,6 +224,20 @@ namespace {
   bool PhaseRestriction_isValidPhase_deg_2(const PhaseRestriction& PR,
                                            double phi, double tolerance) {
     return PR.isValidPhase_deg(phi, tolerance);
+  }
+
+  double Miller_SymEquivIndex_Phase_rad(const Miller::SymEquivIndex& SEI,
+                                        double phi) {
+    return SEI.Phase_rad(phi);
+  }
+  double Miller_SymEquivIndex_Phase_deg(const Miller::SymEquivIndex& SEI,
+                                        double phi) {
+    return SEI.Phase_deg(phi);
+  }
+  std::complex<double>
+  Miller_SymEquivIndex_ShiftPhase(const Miller::SymEquivIndex& SEI,
+                                  const std::complex<double>& F) {
+    return SEI.ShiftPhase(F);
   }
 
   Miller::SymEquivIndex
@@ -213,10 +324,14 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
 
     class_builder<SpaceGroupSymbols>
     py_SpaceGroupSymbols(this_module, "SpaceGroupSymbols");
+    class_builder<SpaceGroupSymbolIterator>
+    py_SpaceGroupSymbolIterator(this_module, "SpaceGroupSymbolIterator");
     class_builder<parse_string>
     py_parse_string(this_module, "parse_string");
     class_builder<RotMxInfo>
     py_RotMxInfo(this_module, "RotMxInfo");
+    class_builder<TranslationComponents>
+    py_TranslationComponents(this_module, "TranslationComponents");
     class_builder<RTMx>
     py_RTMx(this_module, "RTMx");
     class_builder<ChOfBasisOp>
@@ -232,6 +347,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     class_builder<SgOps>
     py_SgOps(this_module, "SgOps");
     python::export_converters(py_SgOps);
+    class_builder<SpaceGroupType>
+    py_SpaceGroupType(this_module, "SpaceGroupType");
     class_builder<SymEquivCoordinates>
     py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
 
@@ -257,6 +374,11 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
                                                 "ExtendedHermann_Mauguin");
     py_SpaceGroupSymbols.def(&SpaceGroupSymbols::Hall, "Hall");
 
+    py_SpaceGroupSymbolIterator.def(constructor<>());
+    py_SpaceGroupSymbolIterator.def(&SpaceGroupSymbolIterator::next, "next");
+    py_SpaceGroupSymbolIterator.def(SpaceGroupSymbolIterator_getitem,
+      "__getitem__");
+
     py_parse_string.def(constructor<const std::string&>());
     py_parse_string.def(&parse_string::string, "string");
     py_parse_string.def(&parse_string::where, "where");
@@ -265,6 +387,14 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RotMxInfo.def(&RotMxInfo::EV, "EV");
     py_RotMxInfo.def(&RotMxInfo::SenseOfRotation, "SenseOfRotation");
 
+    py_TranslationComponents.def(
+       TranslationComponents_IntrinsicPart, "IntrinsicPart");
+    py_TranslationComponents.def(
+       TranslationComponents_LocationPart, "LocationPart");
+    py_TranslationComponents.def(
+       TranslationComponents_OriginShift, "OriginShift");
+
+    this_module.def(RTMx_from_tuple, "RTMx_from_tuple");
     py_RTMx.def(constructor<>());
     py_RTMx.def(constructor<parse_string&>());
     py_RTMx.def(constructor<parse_string&, const char*>());
@@ -275,20 +405,36 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RTMx.def(constructor<const std::string&, const char*, int>());
     py_RTMx.def(constructor<const std::string&, const char*, int, int>());
     py_RTMx.def(&RTMx::isValid, "isValid");
-    py_RTMx.def(&RTMx::normalize, "normalize");
+    py_RTMx.def(&RTMx::RBF, "RBF");
+    py_RTMx.def(&RTMx::TBF, "TBF");
+    py_RTMx.def(&RTMx::Unit, "Unit");
+    py_RTMx.def(&RTMx::isUnit, "isUnit");
+    py_RTMx.def(&RTMx::ModPositive, "ModPositive");
+    py_RTMx.def(&RTMx::ModShort, "ModShort");
     py_RTMx.def(&RTMx::inverse, "inverse");
+    py_RTMx.def(RTMx_as_xyz_0, "__repr__");
     py_RTMx.def(RTMx_as_xyz_0, "as_xyz");
     py_RTMx.def(&RTMx::as_xyz, "as_xyz");
     py_RTMx.def(RTMx_as_tuple, "as_tuple");
     py_RTMx.def(&RTMx::getRotMxInfo, "getRotMxInfo");
+    py_RTMx.def(&RTMx::analyzeTpart, "analyzeTpart");
     py_RTMx.def(operators<python::op_mul>());
 
+    py_ChOfBasisOp.def(constructor<const RTMx&, const RTMx&>());
+    py_ChOfBasisOp.def(constructor<const RTMx&>());
+    py_ChOfBasisOp.def(constructor<>());
+    py_ChOfBasisOp.def(constructor<int>());
+    py_ChOfBasisOp.def(constructor<int, int>());
+    py_ChOfBasisOp.def(&ChOfBasisOp::isValid, "isValid");
     py_ChOfBasisOp.def(&ChOfBasisOp::M, "M");
     py_ChOfBasisOp.def(&ChOfBasisOp::InvM, "InvM");
     py_ChOfBasisOp.def(&ChOfBasisOp::swap, "swap");
 
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
+    py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_rad, "Phase_rad");
+    py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_Phase_deg, "Phase_deg");
+    py_Miller_SymEquivIndex.def(Miller_SymEquivIndex_ShiftPhase, "ShiftPhase");
 
     py_Miller_MasterIndex.def(&Miller::MasterIndex::TBF, "TBF");
     py_Miller_MasterIndex.def(&Miller::MasterIndex::haveCutP, "haveCutP");
@@ -362,7 +508,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(&SgOps::OrderZ, "OrderZ");
     py_SgOps.def(SgOps_call_1, "__call__");
     py_SgOps.def(SgOps_call_3, "__call__");
+    py_SgOps.def(SgOps_getitem, "__getitem__");
     py_SgOps.def(&SgOps::isChiral, "isChiral");
+    py_SgOps.def(&SgOps::isEnantiomorphic, "isEnantiomorphic");
     py_SgOps.def(&SgOps::isSysAbsent, "isSysAbsent");
     py_SgOps.def(SgOps_isCentric_0, "isCentric");
     py_SgOps.def(SgOps_isCentric_1, "isCentric");
@@ -385,6 +533,21 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(&SgOps::getZ2POp, "getZ2POp");
     py_SgOps.def(&SgOps::makeTidy, "makeTidy");
     py_SgOps.def(SgOps_cmp_equal, "__cmp__");
+    py_SgOps.def(SgOps_getSpaceGroupType_0, "getSpaceGroupType");
+    py_SgOps.def(SgOps_getSpaceGroupType_1, "getSpaceGroupType");
+    py_SgOps.def(&SgOps::getSpaceGroupType, "getSpaceGroupType");
+    py_SgOps.def(SgOps_BuildHallSymbol_0of1, "BuildHallSymbol");
+    py_SgOps.def(SgOps_BuildHallSymbol_1of1, "BuildHallSymbol");
+    py_SgOps.def(SgOps_BuildHallSymbol_1of2, "BuildHallSymbol");
+    py_SgOps.def(SgOps_BuildHallSymbol_2of2, "BuildHallSymbol");
+    py_SgOps.def(&SgOps::MatchTabulatedSettings, "MatchTabulatedSettings");
+    py_SgOps.def(SgOps_BuildLookupSymbol_0, "BuildLookupSymbol");
+    py_SgOps.def(SgOps_BuildLookupSymbol_1, "BuildLookupSymbol");
+    py_SgOps.def(SgOps_repr, "__repr__");
+    py_SgOps.def(SgOps_getinitargs, "__getinitargs__");
+
+    py_SpaceGroupType.def(&SpaceGroupType::SgNumber, "SgNumber");
+    py_SpaceGroupType.def(&SpaceGroupType::CBOp, "CBOp");
 
     py_SymEquivCoordinates.def(constructor<const uctbx::UnitCell&,
                                            const SgOps&,

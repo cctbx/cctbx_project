@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -30,11 +31,11 @@ namespace sgtbx {
       Miller::Index HR = H * R;
       if      (H == HR) {
         TS = T;
-        if (m_fInv == 2) TR = m_InvT - T;
+        if (isCentric()) TR = m_InvT - T;
       }
       else if (H == HR.FriedelMate()) {
         TR = T;
-        if (m_fInv == 2) TS = m_InvT - T;
+        if (isCentric()) TS = m_InvT - T;
       }
       if (TS.isValid()) {
         int iLTr;
@@ -60,7 +61,7 @@ namespace sgtbx {
 
   bool SgOps::isCentric(const Miller::Index& H) const
   {
-    if (m_fInv == 2) return true;
+    if (isCentric()) return true;
     rangei(m_nSMx) {
       if (H * m_SMx[i].Rpart() == H.FriedelMate()) return true;
     }
@@ -70,7 +71,7 @@ namespace sgtbx {
   PhaseRestriction SgOps::getPhaseRestriction(const Miller::Index& H) const
   {
     // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
-    if (m_fInv == 2) {
+    if (isCentric()) {
       return PhaseRestriction(HT_mod_1(H, m_InvT), TBF());
     }
     rangei(m_nSMx) {
@@ -86,7 +87,7 @@ namespace sgtbx {
     int result = 0;
     rangei(m_nSMx) {
       Miller::Index HR = H * m_SMx[i].Rpart();
-      if (HR == H || (m_fInv == 2 && HR == H.FriedelMate()))
+      if (HR == H || (isCentric() && HR == H.FriedelMate()))
         result++;
     }
     cctbx_assert(result != 0 && m_nSMx % result == 0);
@@ -96,7 +97,7 @@ namespace sgtbx {
   int SgOps::multiplicity(const Miller::Index& H, bool FriedelSym) const
   {
     if (H.is000()) return 1;
-    int Centro = ((m_fInv == 2) || FriedelSym);
+    int Centro = (isCentric() || FriedelSym);
     int M = 0;
     int R = 0;
     rangei(m_nSMx) {
@@ -138,8 +139,8 @@ namespace sgtbx {
             break;
           }
         }
-        if (! found) {
-          SEMI.add(Miller::SymEquivIndex(HR, HT_mod_1(H, M.Tpart())));
+        if (!found) {
+          SEMI.add(Miller::SymEquivIndex(HR, HT_mod_1(H, M.Tpart()), TBF()));
         }
       }
     }
@@ -188,7 +189,7 @@ namespace sgtbx {
       for(ic=0;ic<3;ic++) {
         int s = 0;
         int ir;
-        for(ir=0;ir<3;ir++) s += abs(R(ir, ic));
+        for(ir=0;ir<3;ir++) s += std::abs(R(ir, ic));
         if (m < s)
             m = s;
       }
@@ -279,7 +280,7 @@ namespace sgtbx {
       int iMate;
       for(iMate = 0; iMate < fMates(true); iMate++) {
         if (iMate) TrialH = TrialH.FriedelMate();
-        Master.Update(TrialH, iMate, HS, m_TBF);
+        Master.Update(TrialH, iMate, HS);
       }
     }
   }

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -36,7 +37,7 @@ namespace sgtbx {
   void SgOps::CheckMetricalMatrix(const uctbx::Mx33& G,
                                   double tolerance) const
   {
-    if (! isCompatibleMetricalMatrix(G, tolerance)) {
+    if (!isCompatibleMetricalMatrix(G, tolerance)) {
       throw error(
         "Unit cell is incompatible with symmetry operations.");
     }

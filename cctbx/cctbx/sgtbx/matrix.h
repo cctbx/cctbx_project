@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -32,8 +33,15 @@ namespace sgtbx {
         : m_BF(TranslationBaseFactor) {
         elems[0] = v0; elems[1] = v1; elems[2] = v2;
       }
-      inline int BF() const { return m_BF; }
+      inline const int& BF() const { return m_BF; }
+      inline int& BF() { return m_BF; }
       inline bool isValid() const { return m_BF != 0; }
+      inline TrVec Null() const {
+        return TrVec(BF());
+      }
+      inline bool isNull() const {
+        return *this == Null();
+      }
       TrVec newBaseFactor(int NewBF) const;
       inline TrVec scale(int factor) const {
         if (factor == 1) return *this;
@@ -78,6 +86,7 @@ namespace sgtbx {
         for(int i=0;i<3;i++) result[i] = lhs[i] * rhs;
         return result;
       }
+      friend TrVec operator/(const TrVec& lhs, int rhs);
       inline friend TrVec operator*(const int& lhs, const TrVec& rhs) {
         return rhs * lhs;
       }
@@ -111,10 +120,11 @@ namespace sgtbx {
       int  m_Rtype;
       Vec3 m_EV;
       int  m_SenseOfRotation;
+    public:
+      //! For internal use only.
       inline RotMxInfo() : m_Rtype(0), m_SenseOfRotation(0) {
         for(int i=0;i<3;i++) m_EV[i] = 0;
       }
-    public:
       //! Rotation-part type (1, 2, 3, 4, 6, -1, -2=m, -3, -4, -6)
       inline const int& Rtype() const { return m_Rtype; }
       //! Axis direction (Eigenvector) of the corresponding proper rotation.
@@ -136,7 +146,9 @@ namespace sgtbx {
       explicit inline RotMx(int RotationBaseFactor = 1, int Diagonal = 1)
         : m_BF(RotationBaseFactor) {
         for(int i=0;i<9;i++) elems[i] = 0;
-        if (Diagonal) for(int i=0;i<3;i++) elems[i * 4] = Diagonal * m_BF;
+        if (Diagonal * m_BF) {
+          for(int i=0;i<3;i++) elems[i * 4] = Diagonal * m_BF;
+        }
       }
       explicit inline RotMx(const Mx33& m, int RotationBaseFactor = 1)
         : Mx33(m), m_BF(RotationBaseFactor) {}
@@ -151,12 +163,33 @@ namespace sgtbx {
       }
       inline int BF() const { return m_BF; }
       inline bool isValid() const { return m_BF != 0; }
+      inline RotMx Unit() const {
+        return RotMx(BF());
+      }
+      inline bool isUnit() const {
+        return *this == Unit();
+      }
       RotMx newBaseFactor(int NewBF) const;
       inline RotMx scale(int factor) const {
         if (factor == 1) return *this;
         RotMx result(m_BF * factor);
         for(int i=0;i<9;i++) result[i] = elems[i] * factor;
         return result;
+      }
+      inline void setColumn(int c, const Vec3& v) {
+        for(int i=0;i<3;i++) elems[i * 3 + c] = v[i];
+      }
+      inline Vec3 getColumn(int c) {
+        Vec3 result;
+        for(int i=0;i<3;i++) result[i] = elems[i * 3 + c];
+        return result;
+      }
+      inline void swapColumns(int c1, int c2) {
+        for(int i=0;i<3;i++) {
+          int e = elems[i * 3 + c1];
+          elems[i * 3 + c1] = elems[i * 3 + c2];
+          elems[i * 3 + c2] = e;
+        }
       }
       inline int& operator()(int r, int c) {
         return elems[r * 3 + c];
@@ -197,11 +230,19 @@ namespace sgtbx {
         for(int i=0;i<9;i++) if (lhs.elems[i] != rhs.elems[i]) return false;
         return true;
       }
-      friend RotMx operator*(const RotMx& lhs, const RotMx& rhs);
       friend RotMx operator*(const RotMx& lhs, int rhs);
       inline friend RotMx operator*(const int lhs, RotMx& rhs) {
         return rhs * lhs;
       }
+      inline RotMx& operator*=(int rhs) {
+        for(int i=0;i<9;i++) elems[i] *= rhs;
+        return *this;
+      }
+      inline RotMx& operator+=(const RotMx& rhs) {
+        for(int i=0;i<9;i++) elems[i] += rhs.elems[i];
+        return *this;
+      }
+      friend RotMx operator*(const RotMx& lhs, const RotMx& rhs);
       friend RotMx operator/(const RotMx& lhs, int rhs);
       friend std::ostream& operator<<(std::ostream& os, const RotMx& R);
       template <class T>
@@ -214,9 +255,40 @@ namespace sgtbx {
       }
       int getRtype() const;
       RotMxInfo getInfo() const;
+      RotMx accumulate(int Rtype = 0) const;
   };
 
+  int OrderOfRtype(int Rtype);
+  Vec3 operator*(const RotMx& lhs, const Vec3& rhs);
   TrVec operator*(const RotMx& lhs, const TrVec& rhs);
+
+  //! Result type for RTMx::analyzeTpart.
+  /*! See RTMx::analyzeTpart.
+   */
+  class TranslationComponents {
+    public:
+      //! Constructor. For internal use only.
+      inline TranslationComponents(const TrVec& IP,
+                                   const TrVec& LP,
+                                   const TrVec& OS)
+        : m_IP(IP), m_LP(LP), m_OS(OS) {}
+      //! Intrinsic (srew or glide) part.
+      /*! See RTMx::getIntrinsicPart.
+       */
+      inline const TrVec& IntrinsicPart() const { return m_IP; }
+      //! Location part.
+      /*! See RTMx::getLocationPart.
+       */
+      inline const TrVec& LocationPart() const { return m_LP; }
+      //! Origin shift.
+      /*! See RTMx::getOriginShift.
+       */
+      inline const TrVec& OriginShift() const { return m_OS; }
+    private:
+      TrVec m_IP;
+      TrVec m_LP;
+      TrVec m_OS;
+  };
 
   //! Rotation-Translation matrix.
   /*! Rpart() is the (3x3) rotation part or rotation matrix and Tpart()
@@ -299,27 +371,98 @@ namespace sgtbx {
       inline bool isValid() const {
         return m_R.isValid() && m_T.isValid();
       }
-      //! Return a copy with the new base factors RBF and TBF.
+      //! Rotation base factor.
+      /*! This is the factor by which the elements of the rotation
+          part are multiplied.
+       */
+      inline int RBF() const { return m_R.BF(); }
+      //! Translation base factor.
+      /*! This is the factor by which the elements of the translation
+          part are multiplied.
+       */
+      inline int TBF() const { return m_T.BF(); }
+      //! Return a new unit matrix.
+      /*! The new matrix inherits the rotation and translation base factors.
+       */
+      inline RTMx Unit() const {
+        return RTMx(RBF(), TBF());
+      }
+      //! Test if the matrix is the unit matrix.
+      inline bool isUnit() const {
+        return *this == Unit();
+      }
+      //! Return a new copy with the base factors RBF and TBF.
       /*! An exception is thrown if the elements cannot be scaled to
           the new base factors.<br>
           RBF or TBF == 0 indicates that the corresponding old base
           factor is retained.
        */
-      RTMx newBaseFactor(int RBF, int TBF = 0) const;
+      RTMx newBaseFactors(int RBF, int TBF = 0) const;
+      //! Return a new copy of the matrix, but with the base factors of M.
+      /*! An exception is thrown if the elements cannot be scaled to
+          the new base factors.
+       */
+      inline RTMx newBaseFactors(const RTMx& M) const {
+        return newBaseFactors(M.Rpart().BF(), M.Tpart().BF());
+      }
       //! Multiply the elements and the base factors by the given factors.
       /*! if (factorT == 0) factorT = factorR;
        */
       RTMx scale(int factorR, int factorT = 0) const;
-      //! Normalize the translation vector in place.
-      /*! A modulus operation is applied to the elements of the
-          translation vector such that 0 <= T()[i] < T().BF.
+      //! Apply modulus operation such that 0 <= x < TBF().
+      /*! The operation is applied to the elements of the
+          translation vector. The vector is modified in place.
        */
-      inline void normalize() { m_T = m_T.ModPositive(); }
+      inline void ModPositive() { m_T = m_T.ModPositive(); }
+      //! Apply modulus operation such that -TBF()/2+1 < x <= TBF()/2.
+      /*! The operation is applied to the elements of the
+          translation vector. The vector is modified in place.
+       */
+      inline void ModShort() { m_T = m_T.ModShort(); }
       //! Compute information about the rotation part.
       /*! See information about class RotMxInfo.
        */
       inline RotMxInfo getRotMxInfo() const { return m_R.getInfo(); }
-      //! Efficient computation of (-I, InvT) * (R, T).
+      //! Compute the intrinsic (screw or glide) part of the translation part.
+      /*! Let N be the rotation-part type of Rpart().
+          Following the procedure given by Fischer & Koch
+          (International Tables for Crystallography, Volume A, 1983,
+          Chapter 11), the first step in the analysis of the
+          translation part Tpart() is the decomposition into the
+          intrinsic part wi and the location part wl. For this,
+          (Rpart()|Tpart())^n = (I|t) has to be computed, where the
+          rotational order n = abs(N), except for N = -1
+          and N = -3. For those two cases, n = -2*N. The
+          intrinsic part is obtained as wi = (1/n)*t.<br>
+          See also: analyzeTpart()
+       */
+      TrVec getIntrinsicPart() const;
+      //! Compute the location part given the intrinsic part wi.
+      /*! wi is the result of getIntrinsicPart(). The location part
+          is simply the difference wl = Tpart() - wi.<br>
+          See also: analyzeTpart()
+       */
+      TrVec getLocationPart(const TrVec& wi) const;
+      //! Compute the origin shift given the location part wl.
+      /*! wl is the result of getLocationPart(). The origin shift
+          is obtained by solving the equation (Rpart()|wl)*x = x
+          for x (see
+          <A HREF="http://journals.iucr.org/a/issues/1999/02/02/au0146/"
+          ><I>Acta Cryst.</I> 1999, <B>A55</B>:383-395</A>).
+          For rotation-part types N > 1 and N = -2, the combination
+          with the axis direction of Rpart() is a convenient
+          description of all fixed points. For the other rotation-part
+          types, the fixed point is unique.<br>
+          See also: analyzeTpart()
+       */
+      TrVec getOriginShift(const TrVec& wl) const;
+      //! Analyse the translation part.
+      /*! The results of getIntrinsicPart(), getLocationPart(),
+          and getOriginShift() are collected in class
+          TranslationComponents.
+       */
+      TranslationComponents analyzeTpart() const;
+      //! Efficient computation of (-I|InvT) * (R|T).
       /*! I is the identidy matrix. InvT is the translation part
           of a centre of inversion.
        */
@@ -340,7 +483,7 @@ namespace sgtbx {
       friend RTMx operator+(const RTMx& lhs, const TrVec& rhs);
       //! Test for equality.
       /*! Essentially this is a byte-wise comparison. Note that the
-          translation vectors are not normalized as part of this
+          translation vectors are not modified as part of this
           equality test.
        */
       inline friend bool operator==(const RTMx& lhs, const RTMx& rhs) {
@@ -348,7 +491,7 @@ namespace sgtbx {
       }
       //! Negation of test for equality.
       inline friend bool operator!=(const RTMx& lhs, const RTMx& rhs) {
-        return ! (lhs == rhs);
+        return !(lhs == rhs);
       }
       //! Output operator, mainly for debugging.
       /*! Use the member function as_xyz() for high-level formatting.

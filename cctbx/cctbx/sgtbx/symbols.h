@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -112,7 +113,7 @@ namespace sgtbx {
         </ul>
         <p>
         When Hall symbols are used, all the lookup algorithms provided
-        by this class are bypasswed. This feature is provided for
+        by this class are bypassed. This feature is provided for
         generality and convenience. Note that SgNumber(),
         Hermann_Mauguin() etc. are not defined if a Hall symbol is
         used!
@@ -122,16 +123,43 @@ namespace sgtbx {
   class SpaceGroupSymbols {
     public:
       //! Lookup space group Symbol.
-      /*! See class details.
+      /*! For a general introduction see class details.<br>
+          TableId is one of "" (the empty string), "I1952",
+          "A1983", or "Hall".<br>
+          <p>
+          The default table lookup preferences are described
+          in the class details section.
+          <p>
+          <b>I1952</b> selects the preferences of the
+          International Tables for Crystallography, Volume I, 1952:<br>
+          monoclinic unique axis c (example: P 2),<br>
+          origin choice 1 (example: P n n n),<br>
+          rhombohedral axes (example: R 3).
+          <p>
+          <b>A1983</b> selects the preferences of the
+          International Tables for Crystallography, Volume A, 1983:<br>
+          monoclinic unique axis b (example: P 2),<br>
+          origin choice 1 (example: P n n n),<br>
+          hexagonal axes (example: R 3).
+          <p>
+          <b>Hall</b> signals that Symbol is a Hall symbols
+          without a leading "Hall: ". The table lookup is bypassed.
+          Note that SgNumber(), Hermann_Mauguin() etc. are not defined
+          if a Hall symbol is used!
        */
       SpaceGroupSymbols(const std::string& Symbol,
                         const std::string& TableId = "");
       //! Lookup space group number.
-      /*! See class details.
+      /*! For a general introduction see class details.<br>
+          TableId is one of "", "I1952", "A1983", or "Hall". See the
+          other constructor for details.<br>
           See also: Extension()
        */
       SpaceGroupSymbols(int SgNumber, const std::string& Extension = "",
                         const std::string& TableId = "");
+      //! For internal use only.
+      SpaceGroupSymbols(const symbols::tables::Main_Symbol_Dict_Entry* Entry,
+                        char Extension);
       //! Space group number according to the International Tables.
       /*! A number in the range 1 - 230. This number uniquely defines
           the space group type.<br>
@@ -227,9 +255,25 @@ namespace sgtbx {
       std::string m_Hall;
       void SetAll(const symbols::tables::Main_Symbol_Dict_Entry* Entry,
                   char WorkExtension,
-                  const std::string& TableHall);
+                  const std::string& StdTableId);
       int HallPassThrough(const std::string& Symbol);
       void Clear();
+  };
+
+  //! Iterator for the 530 tabulated space group representations.
+  class SpaceGroupSymbolIterator {
+    public:
+      //! Initialize the iterator.
+      SpaceGroupSymbolIterator();
+      //! Get symbols for next space group representation.
+      /*! result.SgNumber() == 0 signals that the end of the internal
+          table was reached.
+       */
+      SpaceGroupSymbols next();
+    private:
+      const symbols::tables::Main_Symbol_Dict_Entry* Entry;
+      int nHall;
+      int iHall;
   };
 
 } // namespace sgtbx

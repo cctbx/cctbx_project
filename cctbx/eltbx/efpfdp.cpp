@@ -5,11 +5,13 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
                Based on C code contributed by Vincent Favre-Nicolin.
  */
 
 #include <string>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/efpfdp.h>
 

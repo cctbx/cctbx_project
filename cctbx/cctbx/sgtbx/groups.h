@@ -5,18 +5,23 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_SGTBX_GROUPS_H
 #define CCTBX_SGTBX_GROUPS_H
 
+#include <iostream>
 #include <vector>
+#include <map>
+#include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/matrix.h>
 #include <cctbx/sgtbx/change_basis.h>
 #include <cctbx/sgtbx/lattice_tr.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/miller.h>
+#include <cctbx/sgtbx/tables.h>
 #include <cctbx/uctbx.h>
 
 namespace sgtbx {
@@ -44,6 +49,30 @@ namespace sgtbx {
       ChOfBasisOp getConventionalZ2POp(int RBF = CRBF,
                                        int TBF = CTBF) const;
       TrVec TidyT(const TrVec& T) const;
+  };
+
+  //! Result type for SgOps::getSpaceGroupType.
+  /*! A space group type is characterized by the space group number
+      according to the International Tables for Crystallography,
+      Volume A, and a change-of-basis matrix that transforms
+      the coordinates of a given setting to a reference setting.
+   */
+  class SpaceGroupType {
+    public:
+      //! Constructor. For internal use only.
+      inline SpaceGroupType(int SgNumber, const ChOfBasisOp& CBOp)
+        : m_SgNumber(SgNumber), m_CBOp(CBOp) {
+        cctbx_assert(0 < SgNumber && SgNumber <= 230);
+        cctbx_assert(CBOp.M().Rpart().det() > 0);
+        cctbx_assert(CBOp.InvM().Rpart().det() > 0);
+      }
+      //! Space group number according to the International Tables.
+      inline int SgNumber() const { return m_SgNumber; }
+      //! Change-of-basis operator.
+      inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
+    private:
+      int m_SgNumber;
+      ChOfBasisOp m_CBOp;
   };
 
   //! Space Group Operations.
@@ -172,6 +201,12 @@ namespace sgtbx {
           fInv() == 2 otherwise.
        */
       inline int fInv() const { return m_fInv; }
+      //! Translation part for centre of inversion.
+      inline TrVec InvT(bool tidy = false) const {
+        if (tidy == false) return m_InvT;
+        if (!m_InvT.isValid()) return m_InvT;
+        return m_LTr.TidyT(m_InvT);
+      }
       //! Number of representative Seitz matrices.
       inline int nSMx() const { return m_nSMx; }
       //! Order of the point-group = fInv() * nSMx().
@@ -195,7 +230,7 @@ namespace sgtbx {
           iLTr is added to the translation part. If iInv == 1, the
           representative Seitz matrix is pre-multiplied by (-I, InvT).<br>
           Note that the translation part of the returned Seitz matrix
-          is not normalized.
+          is not modified.
        */
       RTMx operator()(int iLTr, int iInv, int iSMx) const;
       //! Return a symmetry operation.
@@ -233,7 +268,7 @@ namespace sgtbx {
       friend bool operator==(const SgOps& lhs, const SgOps& rhs);
       //! Negation of test for equality.
       inline friend bool operator!=(const SgOps& lhs, const SgOps& rhs) {
-        return ! (lhs == rhs);
+        return !(lhs == rhs);
       }
 
       //! Determine operator for centred->primitive basis transformation.
@@ -243,7 +278,8 @@ namespace sgtbx {
           a standard change-of-basis operator is determined by a lookup in a
           table. For unconventional lattice centring types, a change-of-basis
           operator is constructed with the algorithm published in
-          R.W. Grosse-Kunstleve (1999), Acta Cryst. A55, 383-395.<br>
+          <A HREF="http://journals.iucr.org/a/issues/1999/02/02/au0146/"
+          ><I>Acta Cryst.</I> 1999, <B>A55</B>:383-395</A>.<br>
           The change-of-basis operator can be used as the argument to
           the ChangeBasis() member function:<pre>
           SgOps centred(...);
@@ -256,6 +292,14 @@ namespace sgtbx {
           For internal use only.
        */
       ChOfBasisOp ConstructZ2POp(int RBF = CRBF, int TBF = CTBF) const;
+      //! Determine the conventional centring type symbol (P,A,B,C,I,R,H,F).
+      /*! If the lattice translation vectors do not correspond to
+          any of the conventional centring types, the null character
+          is returned.
+       */
+      inline char getConventionalCentringTypeSymbol() const {
+        return m_LTr.getConventionalCentringTypeSymbol();
+      }
 
       //! Test for chirality.
       /*! A space group is chiral if all its symmetry operations
@@ -267,6 +311,19 @@ namespace sgtbx {
           group.
        */
       bool isChiral() const;
+      //! Test for the 22 (11 pairs) enantiomorphic space groups.
+      /*! A space group G is enantiomorphic if G and -I.G.-I have
+          two different space group types. I is the unit matrix.<br>
+          There are 11 pairs of enantiomorphic space groups,
+          for example P41 and P43.<br>
+          The notion of enantiomorphic space groups is connected
+          to the notion of <i>affine</i> space group types. There
+          are only 219 affine space group types, compared to the
+          230 conventional space group types. An pair of
+          enantiomorphic space groups corresponds to a single
+          affine space group type.
+       */
+      bool isEnantiomorphic() const;
       //! Test for a centre of inversion.
       inline bool isCentric() const { return m_fInv == 2; }
 
@@ -404,7 +461,112 @@ namespace sgtbx {
                          double tolerance = 1.e-4) const {
         CheckMetricalMatrix(uc.getMetricalMatrix(), tolerance);
       }
+
+      //! The translation parts of the symmetry operations are set to 0.
+      /*! The lattice translation vectors are not modified.<br>
+          This function is used by the algorithm for the determination
+          of the space group type and its usefulness is probably
+          limited to this context.
+       */
+      SgOps toZPointGroup() const;
+
+      //! Histogram of rotation part types.
+      /*! The histogram is accumulated in a std::map. The key
+          is the rotation part type (-6,-4,-3,-2,-1,1,2,3,4,6),
+          and the value is the number of times this rotation part
+          type occurs in the list of representative symmetry
+          matrices.<br>
+          This function is used by the algorithm for the determination
+          of the space group type and its usefulness is probably
+          limited to this context.
+       */
+      std::map<int, int> CountRtypes() const;
+      //! Determine the point group type.
+      /*! The code returned is a matrix group code. There are
+          exactly 32 possible return values, corresponding to
+          the 32 crystallographic point group types.
+       */
+      tables::MatrixGroup::Code getPointGroupType() const;
+      //! Determine the space group type.
+      /*! The algorithm for the determination of the space group
+          type is published in
+          <A HREF="http://journals.iucr.org/a/issues/1999/02/02/au0146/"
+          ><I>Acta Cryst.</I> 1999, <B>A55</B>:383-395</A>.
+          The result is the space group number according to the
+          International Tables for Crystallography, and a
+          change-of-basis matrix that transforms the given space group
+          to its reference setting. RBF and TBF are the rotation base
+          factor and the translation base factor, respectively, for the
+          change-of-basis matrix.<br>
+          In general, there are several change-of-basis matrices that
+          could be used. If TidyCBOp == true, the operations of the
+          affine normalizer are used to determine a "standard"
+          change-of-basis matrix. This is, the change-of-basis matrix
+          is independent of the order of the given symmetry operations.
+          In principle, the space group number and the "standard"
+          change-of-basis matrix could be used to test for the
+          equivalence of two groups of symmetry operations (but the
+          algorithm used for operator== is more efficient).
+          On average, the additional time required for the
+          determination of the "standard" change-of-basis matrix
+          is about 70% of the time for the main determination
+          of the space group type. This is, the TidyCBOp == true
+          option is relatively expensive. However, the absolute
+          runtime is only in the order of 1/10 of a second.
+       */
+      SpaceGroupType getSpaceGroupType(bool TidyCBOp = true,
+                                       int RBF = CRBF, int TBF = CTBF) const;
+      //! Build a Hall symbol for the given symmetry operations.
+      /*! For a given group of symmetry operations, there are in
+          general several plausible choices for a Hall symbol.
+          The Hall symbol returned by this algorithm is derived
+          from the Hall symbol for the reference setting. A change-of-basis
+          operator is attached, if necessary (i.e. "P 2 (y,z,x)").<br>
+          See getSpaceGroupType() for a discussion of TidyCBOp.<br>
+          This algorithm involves the determination of the space group
+          type. If the space group type has been determined already,
+          the result can be re-used to avoid run-time overhead.
+       */
+      std::string BuildHallSymbol(const SpaceGroupType& SgType,
+                                  bool TidyCBOp = true) const;
+      //! Build a Hall symbol for the given symmetry operations.
+      /*! See previous overload for this function.
+       */
+      std::string BuildHallSymbol(bool TidyCBOp = true) const;
+      //! Match given symmetry operations with the 530 tabulated settings.
+      /*! This is a light-weight alternative to getSpaceGroupType(),
+          but will only work for the 530 tabulated settings.<br>
+          This algorithm is not particularly optimized. Therefore
+          the run-times for MatchTabulatedSettings() and
+          getSpaceGroupType() are in general comparable.
+          The main purpose of this algorithm is therefore the
+          retrieval of conventional Hermann-Mauguin symbols.
+       */
+      SpaceGroupSymbols MatchTabulatedSettings() const;
+      //! Determine conventional Hermann-Mauguin symbol or Hall symbol.
+      /*! First, MatchTabulatedSettings() is called. If the given
+          symmetry operations correspond to one of the 530 tabulated
+          settings, the extended Hermann-Mauguin symbol is returned
+          (e.g. "P n n n :2").  Otherwise the string "Hall: " + the
+          result of BuildHallSymbol() is returned (e.g. "Hall:  P 2 2
+          -1n").<br>
+          The result of BuildLookupSymbol() can be used as the input
+          for the constructor of class SpaceGroupSymbols.<br>
+          This algorithm involves the determination of the space group
+          type. If the space group type has been determined already,
+          the result can be re-used to avoid run-time overhead.
+       */
+      std::string BuildLookupSymbol(const SpaceGroupType& SgType) const;
+      //! Determine conventional Hermann-Mauguin symbol or Hall symbol.
+      /*! See previous overload for this function.
+       */
+      std::string BuildLookupSymbol() const;
   };
+
+  //! iostream output operator for class SgOps.
+  /*! Provided mainly for debugging purposes.
+   */
+  std::ostream& operator<<(std::ostream& os, const SgOps& sgo);
 
 } // namespace sgtbx
 

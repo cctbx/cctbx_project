@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -94,13 +95,47 @@ namespace sgtbx {
     return result;
   }
 
+  int OrderOfRtype(int Rtype) {
+    if (Rtype > 0) return  Rtype;
+    if (Rtype % 2) return -Rtype * 2;
+                   return -Rtype;
+  }
+
+  RotMx RotMx::accumulate(int Rtype) const
+  {
+    if (Rtype == 0) Rtype = getRtype();
+    cctbx_assert(Rtype != 0);
+    if (Rtype == 1) return *this;
+    int Order = OrderOfRtype(Rtype);
+    RotMx result(m_BF);
+    RotMx MxA(*this), MxB;
+    RotMx* RR = &MxA;
+    RotMx* RRR = &MxB;
+    for (int iO = 1;;) {
+      result += (*RR);
+      if (++iO == Order)
+        break;
+      *RRR = (*this) * (*RR);
+      RotMx* Swp = RR; RR = RRR; RRR = Swp;
+    }
+    return result;
+  }
+
   bool SgOps::isChiral() const
   {
-    if (m_fInv == 2) return false;
+    if (isCentric()) return false;
     for (int i = 1; i < m_nSMx; i++) {
       if (m_SMx[i].Rpart().getRtype() < 0) return false;
     }
     return true;
+  }
+
+  bool SgOps::isEnantiomorphic() const
+  {
+    RTMx FlipCBMx(RotMx(CRBF, -1), CTBF);
+    SgOps FlipSgOps = ChangeBasis(ChOfBasisOp(FlipCBMx, FlipCBMx));
+    return              getSpaceGroupType().SgNumber()
+           != FlipSgOps.getSpaceGroupType().SgNumber();
   }
 
 } // namespace sgtbx

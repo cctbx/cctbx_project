@@ -5,11 +5,13 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctype>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <stdio.h>
+#include <cctbx/fixes/cstdlib>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/math.h>
 #include <cctbx/basic/define_range.h>
@@ -85,14 +87,33 @@ namespace sgtbx {
       if (a[i] == 0 && b[i] != 0) return false;
     }
     for(i=0;i<m_n;i++) {
-      if (abs(a[i]) < abs(b[i])) return true;
-      if (abs(a[i]) > abs(b[i])) return false;
+      if (std::abs(a[i]) < std::abs(b[i])) return true;
+      if (std::abs(a[i]) > std::abs(b[i])) return false;
     }
     for(i=0;i<m_n;i++) {
       if (a[i] > b[i]) return true;
       if (a[i] < b[i]) return false;
     }
     return false;
+  }
+
+  int NextOf_n_from_m(int m, int n, int *ix)
+  {
+    int  p, l;
+    p = l = n - 1;
+    for (; p >= 0;) {
+          ix[p]++;
+      if (ix[p] == m - l + p)
+        p--;
+      else if (p < l) {
+        ix[p + 1] = ix[p];
+           p++;
+      }
+      else {
+        return 1;
+      }
+    }
+    return 0;
   }
 
 } // namespace sgtbx

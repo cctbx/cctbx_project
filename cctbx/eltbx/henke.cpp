@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
                Based on C code contributed by Vincent Favre-Nicolin.
  */
@@ -47314,7 +47315,7 @@ static const eltbx::detail::Label_Z_Efpfdp HenkeTables[] = {
   fpfdp Henke::operator()(double Energy)
   {
     fpfdp raw = detail::interpolate(m_Label_Z_Efpfdp, Energy);
-    if (! raw.isValid_fp()) return raw;
+    if (!raw.isValid_fp()) return raw;
     // subtract the number of electrons
     return fpfdp(raw.fp() - m_Label_Z_Efpfdp->Z, raw.fdp());
   }

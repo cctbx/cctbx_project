@@ -1,0 +1,60 @@
+<html>
+<head>
+<title>sgtbx</title>
+</head>
+<body bgcolor=#ffffff>
+<h1>sgtbx</h1>
+<hr>
+<FORM METHOD=POST ACTION="sgtbx_server.py">
+<strong>Space group symbol: </strong><input
+name="sgsymbol" size=40
+value="">
+<p>
+Convention for space group symbol:
+<blockquote>
+<input type=radio name="convention" value="" checked>
+                   Default
+<br>
+<input type=radio name="convention" value="A1983">
+                   International Tables for Crystallography, Volume A 1983
+<br>
+<input type=radio name="convention" value="I1952">
+                   International Tables for Crystallography, Volume I 1952
+<br>
+<input type=radio name="convention" value="Hall">
+                   Hall symbol
+</blockquote>
+<p>
+<input type="submit" value="Submit">
+<p>
+<strong>Additional symmetry operations:</strong>
+<p>
+<textarea name="symxyz" rows=8 cols=40></textarea>
+<p>
+<input type="submit" value="Submit">
+<input type="reset"  value="Reset">
+</FORM>
+<hr>
+View the
+<a href="script"
+>Python script</a>
+that does the work.
+<p>
+The sgtbx source code is available at SourceForge as part of the
+<a href="http://cctbx.sourceforge.net/">cctbx</a>
+package.
+<hr>
+<i>Reference:</i><br>
+Grosse-Kunstleve RW:<br>
+<a href="http://cci.lbl.gov/~rwgk/my_papers/au0146.pdf"
+>Algorithms for Deriving Crystallographic Space-Group Information</a>.<br>
+Acta Cryst. 1999, A55:383-395.
+<hr>
+<address>
+<a href="http://cci.lbl.gov/~rwgk/"
+>Ralf W. Grosse-Kunstleve</a>
+&lt;<a href="mailto:RWGrosse-Kunstleve@lbl.gov"
+                   >RWGrosse-Kunstleve@lbl.gov</a>&gt;
+</address>
+</body>
+</html>

@@ -12,6 +12,7 @@
 """
 
 # Revision history:
+#   2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
 #   2001-04-20 Using new sgtbx::SymEquivCoordinates (Ralf W. Grosse-Kunstleve)
 #   Created April 2001 (Ralf W. Grosse-Kunstleve)
 
@@ -209,7 +210,7 @@ if (__name__ == "__main__"):
   for S in Structure.Sites: print S
   print
 
-  print "Number of Miller indicies:", len(FcalcDict)
+  print "Number of Miller indices:", len(FcalcDict)
   print "H K L Fcalc"
   for H in FcalcDict.keys(): print H, "(%.6g, %.3f)" % polar(FcalcDict[H])
   print

@@ -5,10 +5,11 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctype>
+#include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <stdio.h>
 #include <string.h>
 #include <cctbx/sgtbx/groups.h>
@@ -28,7 +29,7 @@ namespace sgtbx {
     bool IsHSymChar(char c)
     {
       if (c == '\0') return 0;
-      return ! IsHSymSpace(c);
+      return !IsHSymSpace(c);
     }
 
     int GetAbsOrder(char c)
@@ -123,7 +124,7 @@ namespace sgtbx {
         if (   TabRMx[i].Order == AbsOrder
             && TabRMx[i].DirCode == DirCode) {
           RotMx R;
-          if (! Improper) R =  (*TabRMx[i].RMx);
+          if (!Improper)  R =  (*TabRMx[i].RMx);
           else            R = -(*TabRMx[i].RMx);
           if (RefAxis == 'x') return R_3_111 * R * R_3i111;
           if (RefAxis == 'y') return R_3i111 * R * R_3_111;
@@ -165,7 +166,7 @@ namespace sgtbx {
     int nAddedMx = 0;
 
     // Interpret the lattice type code.
-    if (! NoCType) {
+    if (!NoCType) {
       while (IsHSymSpace(HSym())) HSym.skip();
       if (HSym() == '-') {
         expandInv(TrVec(STBF));
@@ -183,9 +184,9 @@ namespace sgtbx {
       if (Pedantic) throw error("Matrix symbol expected.");
       if (HSym() == '\0') return nAddedMx;
     }
-    if (   ! NoCType
+    if (   !NoCType
         && Pedantic
-        && ! IsHSymSpace(char_after_lattice_type_symbol))
+        && !IsHSymSpace(char_after_lattice_type_symbol))
       throw error("Space expected after lattice type symbol.");
 
     // Loop over the matrix symbols.
@@ -205,12 +206,12 @@ namespace sgtbx {
       if (HSym() == '-') {
         Improper = true;
         HSym.skip();
-        if (! IsHSymChar(HSym())) {
+        if (!IsHSymChar(HSym())) {
           throw error("Incomplete matrix symbol.");
         }
       }
             AbsOrder = GetAbsOrder(HSym());
-      if (! AbsOrder) {
+      if (!AbsOrder) {
         throw error("Improper symbol for rotational order.");
       }
       HSym.skip();
@@ -243,9 +244,9 @@ namespace sgtbx {
         if (  DirCode == '\0') {
               DirCode = GetDirCode(HSym());
           if (DirCode != '\0') {
-            if (   ! (AbsOrder == 2 && (   DirCode ==  '"'
-                                        || DirCode == '\''))
-                && ! (AbsOrder == 3 && DirCode == '*')) {
+            if (   !(AbsOrder == 2 && (   DirCode ==  '"'
+                                       || DirCode == '\''))
+                && !(AbsOrder == 3 && DirCode == '*')) {
               throw error("Inconsistent matrix symbol.");
             }
             if (Screw) {
@@ -279,7 +280,7 @@ namespace sgtbx {
       if (RefAxis == '\0') {
         if      (iMxSym == 0) {
           if (      AbsOrder != 1
-              && ! (AbsOrder == 3 && DirCode == '*'))
+              && !(AbsOrder == 3 && DirCode == '*'))
             RefAxis = 'z';
         }
         else if (iMxSym == 1) {
@@ -350,10 +351,10 @@ namespace sgtbx {
       HSym.skip();
       HSym.set_mark();
       RTMx V = RTMx(ParseShortCBO(HSym, ")", CTBF), CRBF);
-      if (! V.isValid()) {
+      if (!V.isValid()) {
         HSym.go_to_mark();
         V = RTMx(HSym, ")", CRBF, CTBF);
-        if (! V.isValid()) {
+        if (!V.isValid()) {
           throw error("Malformed change-of-basis operator.");
         }
       }
@@ -365,7 +366,7 @@ namespace sgtbx {
       try {
         CBOp = ChOfBasisOp(V);
       }
-      catch (error) {
+      catch (const error&) {
         throw error("Change-of-basis operator is not invertible.");
       }
       HSym.skip();

@@ -5,11 +5,14 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 May 08 added: SmithNormalForm (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
-#include <cctbx/sgtbx/utils.h>
+#include <cctbx/fixes/cstdlib>
 #include <cctbx/sgtbx/math.h>
+#include <cctbx/sgtbx/utils.h>
 #include <cctbx/basic/define_range.h>
 
 namespace sgtbx {
@@ -35,8 +38,8 @@ namespace sgtbx {
           if (T) swap(&T2D(i, 0), &T2D(k, 0), tc);
         }
         for (k++; k < mr; k++) {
-          int a = abs(M2D(k, j));
-          if (a != 0 && a < abs(M2D(i, j))) {
+          int a = std::abs(M2D(k, j));
+          if (a != 0 && a < std::abs(M2D(i, j))) {
                    swap(&M2D(i, 0), &M2D(k, 0), mc);
             if (T) swap(&T2D(i, 0), &T2D(k, 0), tc);
           }
@@ -123,6 +126,28 @@ namespace sgtbx {
       }
     }
     return nIndep;
+  }
+
+  int SmithNormalForm(int *M, int mr, int mc, int *P, int *Q)
+  {
+    int rr = mr;
+    int rc = mc;
+
+    if (P) MatrixLite::identity(P, mr);
+    if (Q) MatrixLite::identity(Q, mc);
+
+    for (;;)
+    {
+      rr = iRowEchelonFormT(M, rr, rc, P, mr);
+      if (MatrixLite::isDiagonal(M, rr, rc)) break;
+      MatrixLite::transpose(M, rr, rc);
+
+      rc = iRowEchelonFormT(M, rc, rr, Q, mc);
+      if (MatrixLite::isDiagonal(M, rc, rr)) break;
+      MatrixLite::transpose(M, rc, rr);
+    }
+
+    return rr;
   }
 
 } // namespace sgtbx
