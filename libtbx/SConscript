@@ -9,7 +9,7 @@ def SCons_Action_FunctionAction_get_contents(self, target, source, env,
   code = cPickle.dumps(self.execfunction)
   return str(code) + env.subst(string.join(map(lambda v: '${'+v+'}',
                                                self.varlist)))
-if (0):
+if (1):
   import SCons.Action
   SCons.Action.FunctionAction.get_contents = \
   SCons_Action_FunctionAction_get_contents
