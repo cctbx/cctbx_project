@@ -501,6 +501,18 @@ def exercise_sort():
   assert tuple(p) == (0,2,1)
   assert approx_equal(x.shuffle(p), (3,2,1))
 
+def exercise_histogram():
+  x = flex.double(xrange(20))
+  h = flex.histogram(x)
+  assert h.slots().size() == 1000
+  h = flex.histogram(x, 5)
+  assert approx_equal(h.data_min(), 0)
+  assert approx_equal(h.data_max(), 19)
+  assert approx_equal(h.slot_width(), 19/5.)
+  assert tuple(h.slots()) == (4,4,4,4,4)
+  assert approx_equal(h.get_cutoff(15), 7.60038)
+  assert approx_equal(h.get_cutoff(15, 0.1), 7.98)
+
 def exercise_linear_regression():
   x = flex.double((1,2,3))
   r = flex.linear_regression(x, x, 1.e-6)
@@ -696,6 +708,7 @@ def run(iterations):
     exercise_functions()
     exercise_complex_functions()
     exercise_sort()
+    exercise_histogram()
     exercise_linear_regression()
     exercise_linear_correlation()
     exercise_exceptions()

@@ -27,6 +27,7 @@ flex_scitbx_pyd = env_scitbx_boost_python_ext.SharedLibrary(
   "flex_complex_double_2.cpp",
   "flex_std_string.cpp",
   "flex_sort.cpp",
+  "flex_histogram.cpp",
 ])
 env_scitbx_boost_python_ext.Install(
   "#libtbx/scitbx_boost/array_family", flex_scitbx_pyd)
