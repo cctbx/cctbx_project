@@ -114,7 +114,6 @@ namespace cctbx { namespace xray {
       XrayScattererType const& scatterer = scatterers[i_seq];
       eltbx::xray_scattering::gaussian const& gaussian=scattering_dict.lookup(
         scatterer.scattering_type).gaussian;
-      CCTBX_ASSERT(scatterer.weight() >= 0);
       if (scatterer.weight() == 0) continue;
       FloatType fdp = scatterer.fdp;
       fractional<FloatType> coor_frac = scatterer.site;

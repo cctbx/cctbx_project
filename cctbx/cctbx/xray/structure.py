@@ -231,7 +231,8 @@ class structure(crystal.special_position_settings):
                               cos_sin_table=False,
                               quality_factor=None,
                               u_base=None,
-                              b_base=None):
+                              b_base=None,
+                              wing_cutoff=None):
     if (anomalous_flag is None):
       if (self.scatterers().count_anomalous() != 0):
         anomalous_flag = True
@@ -249,7 +250,8 @@ class structure(crystal.special_position_settings):
       cos_sin_table=cos_sin_table,
       quality_factor=quality_factor,
       u_base=u_base,
-      b_base=b_base)(
+      b_base=b_base,
+      wing_cutoff=wing_cutoff)(
         xray_structure=self,
         miller_set=miller_set,
         algorithm=algorithm)

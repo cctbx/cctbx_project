@@ -481,7 +481,6 @@ namespace cctbx { namespace xray {
       FloatType gr_occupancy(0);
       FloatType gr_fp(0);
       FloatType gr_fdp(0);
-      CCTBX_ASSERT(scatterer.weight() >= 0);
       if (scatterer.weight() != 0) {
         FloatType fdp = scatterer.fdp;
         fractional<FloatType> coor_frac = scatterer.site;

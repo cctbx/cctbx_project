@@ -1,5 +1,7 @@
 from cctbx import xray
 from cctbx import maptbx
+from cctbx import crystal
+from cctbx import adptbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.development import random_structure
@@ -7,6 +9,7 @@ from cctbx.development import structure_factor_utils
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
+from libtbx.test_utils import approx_equal
 import random
 import sys
 
@@ -172,6 +175,76 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     min_corr_ampl=1*0.99, max_mean_w_phase_error=1*3.,
     verbose=verbose)
 
+def exercise_negative_parameters(verbose=0):
+  structure_default = xray.structure(
+    crystal_symmetry = crystal.symmetry(
+      unit_cell=((10,13,17,75,80,85)),
+      space_group_symbol="P 1"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer(label="C", site=(0,0,0), u=0.25)]))
+  negative_gaussian = eltbx.xray_scattering.gaussian((1,2), (2,3), -4)
+  for i_trial in xrange(7):
+    structure = structure_default.deep_copy_scatterers()
+    scatterer = structure.scatterers()[0]
+    if (i_trial == 1):
+      scatterer.occupancy *= -1
+    elif (i_trial == 2):
+      structure.scattering_dict(custom_dict={"C": negative_gaussian})
+    elif (i_trial == 3):
+      scatterer.u_iso *= -1
+    elif (i_trial == 4):
+      u_cart = adptbx.random_u_cart(u_scale=1, u_min=-1.1)
+      assert max(adptbx.eigenvalues(u_cart)) < 0
+      u_star = adptbx.u_cart_as_u_star(structure.unit_cell(), u_cart)
+      scatterer.u_star = u_star
+      scatterer.anisotropic_flag = True
+    elif (i_trial == 5):
+      scatterer.fp = -10
+    elif (i_trial == 6):
+      scatterer.fp = -3
+    f_direct = structure.structure_factors(
+      d_min=1, algorithm="direct", cos_sin_table=False).f_calc()
+    f_fft = structure.structure_factors(
+      d_min=1, algorithm="fft",
+      quality_factor=1.e8, wing_cutoff=1.e-10).f_calc()
+    if (i_trial == 2):
+      assert negative_gaussian.at_d_star_sq(f_fft.d_star_sq().data()).all_lt(0)
+    if (i_trial in [5,6]):
+      f = structure.scattering_dict().lookup("C").gaussian.at_d_star_sq(
+        f_fft.d_star_sq().data())
+      if (i_trial == 5):
+        assert flex.max(f) + scatterer.fp < 0
+      else:
+        assert flex.max(f) + scatterer.fp > 0
+        assert flex.min(f) + scatterer.fp < 0
+    cc = flex.linear_correlation(
+      abs(f_direct).data(),
+      abs(f_fft).data()).coefficient()
+    if (cc < 0.999):
+      raise AssertionError("i_trial=%d, correlation=%.6g" % (i_trial, cc))
+    elif (0 or verbose):
+      print "correlation=%.6g" % cc
+    #
+    # very simple test of gradient calculations with negative parameters
+    structure_factor_gradients = \
+      cctbx.xray.structure_factors.gradients(
+        miller_set=f_direct,
+        cos_sin_table=False)
+    target_functor = xray.target_functors.intensity_correlation(
+      f_obs=abs(f_direct))
+    target_result = target_functor(f_fft, True)
+    gradient_flags = xray.structure_factors.gradient_flags(default=True)
+    grads = []
+    for algorithm in ["direct", "fft"]:
+      grads.append(structure_factor_gradients(
+        xray_structure=structure,
+        miller_set=f_direct,
+        d_target_d_f_calc=target_result.derivatives(),
+        gradient_flags=gradient_flags,
+        n_parameters=structure.n_parameters(gradient_flags=gradient_flags),
+        algorithm="direct").packed())
+    assert approx_equal(grads[0], grads[1]) # all very close to zero
+
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (False, True)[:]: #SWITCH
     for anisotropic_flag in (False, True)[:]: #SWITCH
@@ -186,6 +259,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  exercise_negative_parameters()
 
 if (__name__ == "__main__"):
   run()
