@@ -119,7 +119,7 @@ class stage_1:
       elif (state.raw_record.startswith("REMARK 290 ")):
         self.remark_290_records.append(state.raw_record.rstrip())
       elif (record_name == "MODEL "):
-        model_serial = self.parse_record().serial
+        model_serial = max(1, self.parse_record().serial)
         self.model_serial_list.append(model_serial)
       elif (record_name == "ENDMDL"):
         model_serial = None
@@ -131,9 +131,9 @@ class stage_1:
         atom_attributes = pdb.atom.attributes(line_number=state.line_number)
         atom_attributes.set_from_ATOM_record(self.parse_record())
         if (model_serial is None):
-          atom_attributes.MODELserial = -1
+          atom_attributes.MODELserial = 0
         else:
-          atom_attributes.MODELserial = len(self.model_serial_list)-1
+          atom_attributes.MODELserial = len(self.model_serial_list)
         self.atom_attributes_list.append(atom_attributes)
         altLoc_dict[atom_attributes.altLoc] = 0
       elif (record_name == "SIGATM"):
@@ -217,9 +217,9 @@ class stage_1:
     self.model_serial_list = clean_model_serial_list
     if (len(self.model_serial_list) > 0):
       for atom_attributes in self.atom_attributes_list:
-        if (atom_attributes.MODELserial < 0): continue
+        if (atom_attributes.MODELserial == 0): continue
         atom_attributes.MODELserial \
-          = self.model_serial_list[atom_attributes.MODELserial]
+          = self.model_serial_list[atom_attributes.MODELserial-1]
     if (self.n_model_serial_numbers_changed > 0):
       self._selection_cache = None
 
