@@ -1,9 +1,11 @@
 import scitbx.math.gaussian
+from scitbx.math import golay_24_12_generator
 from scitbx import lbfgs
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import ifloor
 from scitbx.python_utils.misc import adopt_init_args
 import math
+import sys
 
 def n_less_than(sorted_array, cutoff, eps=1.e-6):
   selection = sorted_array < cutoff + eps
@@ -159,8 +161,11 @@ class find_max_x:
             use_sigmas=minimize_using_sigmas,
             enforce_positive_b=enforce_positive_b_this_time)
         except RuntimeError, e:
-          if (str(e).find("lbfgs error: ") < 0
-              and str(e).find("unidentifiable C++ exception") < 0): raise
+          if (str(e).find("lbfgs error: ") < 0): raise
+          print e
+          print "Aborting this minimization."
+          print
+          sys.stdout.flush()
           if (enforce_positive_b_mod_n == 1): raise
           minimized = None
           max_error = None
@@ -254,3 +259,74 @@ class find_max_x_multi:
     else:
       self.min = best_fit.min
       self.max_error = best_fit.max_error
+
+def make_golay_based_start_gaussian(null_fit, code):
+  assert len(code) == 24
+  a_starts = [1,4,16,32]
+  b_starts = [1,4,16,32]
+  a = flex.double()
+  b = flex.double()
+  for i_term in xrange(6):
+    i_bits = i_term * 4
+    bits_a = code[i_bits:i_bits+2]
+    bits_b = code[i_bits+2:i_bits+4]
+    a.append(a_starts[bits_a[0]*2+bits_a[1]])
+    b.append(b_starts[bits_b[0]*2+bits_b[1]])
+  a = a * null_fit.table_y()[0] / flex.sum(a)
+  return scitbx.math.gaussian.fit(
+    null_fit.table_x(),
+    null_fit.table_y(),
+    null_fit.table_sigmas(),
+    scitbx.math.gaussian.sum(iter(a), iter(b)))
+
+class fit_with_golay_starts:
+
+  def __init__(self, null_fit,
+                     n_terms,
+                     target_powers,
+                     minimize_using_sigmas,
+                     enforce_positive_b_mod_n,
+                     b_min,
+                     n_repeats_minimization):
+    assert n_terms == 6
+    self.min = None
+    self.max_error = None
+    for golay_code in golay_24_12_generator():
+      gaussian_fit = make_golay_based_start_gaussian(
+        null_fit=null_fit,
+        code=golay_code)
+      for target_power in target_powers:
+        min_gaussian_fit = gaussian_fit
+        for i in xrange(n_repeats_minimization):
+          enforce_positive_b_this_time = (i % enforce_positive_b_mod_n == 0)
+          try:
+            minimized = minimize(
+              gaussian_fit=min_gaussian_fit,
+              target_power=target_power,
+              use_sigmas=minimize_using_sigmas,
+              enforce_positive_b=enforce_positive_b_this_time)
+          except RuntimeError, e:
+            if (str(e).find("lbfgs error: ") < 0): raise
+            print e
+            print "Aborting this minimization."
+            print
+            sys.stdout.flush()
+            if (enforce_positive_b_mod_n == 1): raise
+            minimized = None
+            break
+          if (min(minimized.final_gaussian_fit.array_of_b()) < b_min):
+            minimized = None
+            break
+          min_gaussian_fit = minimized.final_gaussian_fit
+          max_error = flex.max(
+            minimized.final_gaussian_fit.significant_relative_errors())
+          if (    (self.max_error > max_error or self.max_error is None)
+              and min(minimized.final_gaussian_fit.array_of_b()) >= b_min):
+            self.min = minimized
+            self.max_error = max_error
+            self.min.final_gaussian_fit.show()
+            print self.max_error
+            print
+            sys.stdout.flush()
+            if (self.max_error < 0.001):
+              return
