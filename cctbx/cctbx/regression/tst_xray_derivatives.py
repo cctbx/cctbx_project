@@ -90,7 +90,7 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
 def flex_tuple_as_flex_double(flex_tuple):
   result = flex.double()
   for t in flex_tuple:
-    result.append(flex.double(tuple(t)))
+    result.extend(flex.double(tuple(t)))
   return result
 
 def linear_regression_test(d_analytical, d_numerical, test_hard=0001,

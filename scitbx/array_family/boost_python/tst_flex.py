@@ -288,7 +288,7 @@ def exercise_push_back_etc():
   assert a.size() == 0
   a = flex.double((0, 1, 2, 3))
   b = flex.double((4, 5, 6))
-  a.append(b)
+  a.extend(b)
   assert tuple(a) == (0, 1, 2, 3, 4, 5, 6)
   assert tuple(a.indices()) == tuple(xrange(a.size()))
   assert list(a.items()) == zip(xrange(a.size()), a)

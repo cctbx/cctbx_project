@@ -357,7 +357,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
-    append(f_t& a, f_t const& other)
+    extend(f_t& a, f_t const& other)
     {
       base_array_type b = flex_as_base_array(a);
       assert_0_based_1d(other.accessor());
@@ -731,7 +731,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("resize", resize_flex_grid_1)
         .def("resize", resize_flex_grid_2)
         .def("clear", clear)
-        .def("append", append)
+        .def("extend", extend)
         .def("indices", indices)
         .def("items", items)
         .def("select", select_bool)

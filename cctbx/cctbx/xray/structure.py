@@ -123,9 +123,9 @@ class structure(crystal.special_position_settings):
   def add_scatterers(self, scatterers):
     n = self.scatterers().size()
     special_position_indices = self._all_apply_symmetry(scatterers) + n
-    self._scatterers.append(scatterers)
+    self._scatterers.extend(scatterers)
     self._scattering_dict_is_out_of_date = 0001
-    self._special_position_indices.append(special_position_indices)
+    self._special_position_indices.extend(special_position_indices)
 
   def all_apply_symmetry(self):
     self._special_position_indices =self._all_apply_symmetry(self.scatterers())
