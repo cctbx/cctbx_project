@@ -3,6 +3,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_double_buffered.h>
 #include <scitbx/array_family/boost_python/ref_pickle_double_buffered.h>
+#include <boost/python/args.hpp>
 #include <boost/python/return_internal_reference.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -150,6 +151,33 @@ namespace cctbx { namespace xray { namespace {
     }
   }
 
+  af::shared<scitbx::sym_mat3<double> >
+  extract_u_cart(
+    af::const_ref<scatterer<> > const& scatterers,
+    uctbx::unit_cell const& unit_cell)
+  {
+    af::shared<scitbx::sym_mat3<double> >
+      result(af::reserve(scatterers.size()));
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      result.push_back(adptbx::u_star_as_u_cart(
+        unit_cell, scatterers[i].u_star));
+    }
+    return result;
+  }
+
+  void
+  set_u_cart(
+    af::ref<scatterer<> > const& scatterers,
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart)
+  {
+    CCTBX_ASSERT(scatterers.size() == u_cart.size());
+    for(std::size_t i=0;i<scatterers.size();i++) {
+      scatterers[i].u_star = adptbx::u_cart_as_u_star(
+        unit_cell, u_cart[i]);
+    }
+  }
+
   std::size_t
   count_anisotropic(af::const_ref<scatterer<> > const& scatterers)
   {
@@ -177,20 +205,29 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_xray_scatterer()
   {
     using namespace cctbx;
+    using namespace boost::python;
 
     flex_wrapper<cctbx::xray::scatterer<>,
-                 boost::python::return_internal_reference<>
+                 return_internal_reference<>
                 >::plain("xray_scatterer")
       .def_pickle(flex_pickle_double_buffered<
         cctbx::xray::scatterer<>, to_string, from_string>())
       .def("extract_sites", cctbx::xray::extract_sites)
-      .def("set_sites", cctbx::xray::set_sites)
+      .def("set_sites", cctbx::xray::set_sites,
+        (arg_("sites")))
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
-      .def("set_occupancies", cctbx::xray::set_occupancies)
+      .def("set_occupancies", cctbx::xray::set_occupancies,
+        (arg_("occupancies")))
       .def("extract_u_iso", cctbx::xray::extract_u_iso)
-      .def("set_u_iso", cctbx::xray::set_u_iso)
+      .def("set_u_iso", cctbx::xray::set_u_iso,
+        (arg_("u_iso")))
       .def("extract_u_star", cctbx::xray::extract_u_star)
-      .def("set_u_star", cctbx::xray::set_u_star)
+      .def("set_u_star", cctbx::xray::set_u_star,
+        (arg_("u_star")))
+      .def("extract_u_cart", cctbx::xray::extract_u_cart,
+        (arg_("unit_cell")))
+      .def("set_u_cart", cctbx::xray::set_u_cart,
+        (arg_("unit_cell"), arg_("u_cart")))
       .def("count_anisotropic", cctbx::xray::count_anisotropic)
       .def("count_anomalous", cctbx::xray::count_anomalous)
     ;
