@@ -60,8 +60,10 @@ class binner(ext.binner):
         print >> f, "n=%5d," % self.count(i_bin),
       if (data_fmt is None):
         print >> f, data[i_bin]
-      else:
+      elif (isinstance(data_fmt, str)):
         print >> f, data_fmt % data[i_bin]
+      else:
+        print >> f, data_fmt(data[i_bin])
 
 class binned_data:
 
@@ -421,7 +423,7 @@ class set(crystal.symmetry):
     return self.binner()
 
   def binner(self):
-    return self._binner
+    return getattr(self, "_binner", None)
 
   def use_binning_of(self, other):
     self._binner = binner(other.binner(), self.indices())
@@ -781,16 +783,23 @@ class array(set):
 
   def anomalous_signal(self, use_binning=00000):
     "sqrt((<||f_plus|-|f_minus||**2>)/(1/2(<|f_plus|>**2+<|f_minus|>**2)))"
-    assert not use_binning, "Not implemented." # XXX
-    assert self.data().all_gt(0)
-    f_plus, f_minus = self.as_amplitude_array().hemispheres()
-    assert f_plus.data().size() == f_minus.data().size()
-    if (f_plus.data().size() == 0): return 0
-    mean_sq_diff = flex.mean(flex.pow2(f_plus.data() - f_minus.data()))
-    assert mean_sq_diff >= 0
-    mean_sum_sq = flex.mean(flex.pow2(f_plus.data())+flex.pow2(f_minus.data()))
-    assert mean_sum_sq > 0
-    return math.sqrt(2 * mean_sq_diff / mean_sum_sq)
+    assert not use_binning or self.binner() is not None
+    if (not use_binning):
+      assert self.data().all_gt(0)
+      f_plus, f_minus = self.as_amplitude_array().hemispheres()
+      assert f_plus.data().size() == f_minus.data().size()
+      if (f_plus.data().size() == 0): return 0
+      mean_sq_diff = flex.mean(flex.pow2(f_plus.data() - f_minus.data()))
+      assert mean_sq_diff >= 0
+      mean_sum_sq = flex.mean(  flex.pow2(f_plus.data())
+                              + flex.pow2(f_minus.data()))
+      assert mean_sum_sq > 0
+      return math.sqrt(2 * mean_sq_diff / mean_sum_sq)
+    results = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      results.append(self.apply_selection(sel).anomalous_signal())
+    return binned_data(binner=self.binner(), data=results)
 
   def apply_selection(self, flags, negate=00000, anomalous_flag=None):
     assert self.indices() is not None
