@@ -1,9 +1,11 @@
 import scitbx.math
+from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0
 from scitbx.math import eigensystem
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
+from scitbx.math import principle_axes_of_inertia
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -21,6 +23,22 @@ def exercise_floating_point_epsilon():
   assert 1.+double_eps != 1.
   assert float_eps >= double_eps
   assert 1.+double_eps/2. == 1.
+
+def exercise_euler_angles():
+  assert approx_equal(euler_angles_as_matrix([0,0,0]).elems,
+    [1,0,0,0,1,0,0,0,1])
+  assert approx_equal(euler_angles_as_matrix([180,0,0], deg=0001).elems,
+    [-1,0,0,0,-1,0,0,0,1])
+  assert approx_equal(euler_angles_as_matrix([0,180,0], deg=0001).elems,
+    [-1,0,0,0,1,0,0,0,-1])
+  assert approx_equal(euler_angles_as_matrix([0,0,180], deg=0001).elems,
+    [-1,0,0,0,-1,0,0,0,1])
+  assert approx_equal(euler_angles_as_matrix([90,0,0], deg=0001).elems,
+    [0,-1,0,1,0,0,0,0,1])
+  assert approx_equal(euler_angles_as_matrix([0,90,0], deg=0001).elems,
+    [0,0,1,0,1,0,-1,0,0])
+  assert approx_equal(euler_angles_as_matrix([0,0,90], deg=0001).elems,
+    [0,-1,0,1,0,0,0,0,1])
 
 def exercise_erf():
   erf_verify = erf_verification()
@@ -606,6 +624,99 @@ def exercise_golay():
     weights[list(code).count(1)] += 1
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
 
+def exercise_principle_axes_of_inertia():
+  rnd = random.random
+  for i_trial in xrange(10):
+    if (i_trial == 0):
+      points = flex.vec3_double()
+    elif (i_trial == 1):
+      points = flex.vec3_double([[0,0,0]])
+    else:
+      points = flex.vec3_double([[rnd(),rnd(),rnd()]])
+    pai = principle_axes_of_inertia(points=points)
+    if (i_trial == 0):
+      assert approx_equal(pai.center_of_mass(), [0,0,0])
+    else:
+      assert approx_equal(pai.center_of_mass(), points[0])
+    assert approx_equal(pai.inertia_tensor(), [0,0,0,0,0,0])
+    es = pai.eigensystem()
+    assert approx_equal(es.values(), [0,0,0])
+    assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+  for i_trial in xrange(10):
+    if (i_trial == 0):
+      center_of_mass = [0,0,0]
+    else:
+      center_of_mass = [rnd(),rnd(),rnd()]
+    points = flex.vec3_double()
+    for point in flex.nested_loop([-1,-1,-1], [2,2,2]):
+      points.append((matrix.col(point) + matrix.col(center_of_mass)).elems)
+    pai = principle_axes_of_inertia(points=points)
+    assert approx_equal(pai.center_of_mass(), center_of_mass)
+    assert approx_equal(pai.inertia_tensor(), [36,36,36,0,0,0])
+    es = pai.eigensystem()
+    assert approx_equal(es.values(), [36,36,36])
+    if (i_trial == 0):
+      assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+  for i_trial in xrange(10):
+    if (i_trial == 0):
+      center_of_mass = [0,0,0]
+    else:
+      center_of_mass = [rnd(),rnd(),rnd()]
+    points = flex.vec3_double()
+    for point in flex.nested_loop([-1,-1,-1], [2,2,2]):
+      points.append((matrix.col([point[0],point[1]*2,point[2]*3])
+                   + matrix.col(center_of_mass)).elems)
+    pai = principle_axes_of_inertia(points=points)
+    assert approx_equal(pai.center_of_mass(), center_of_mass)
+    assert approx_equal(pai.inertia_tensor(), [234,180,90,0,0,0])
+    es = pai.eigensystem()
+    assert approx_equal(es.values(), [234,180,90])
+    if (i_trial == 0):
+      assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+  for i_trial in xrange(10):
+    if (i_trial == 0):
+      center_of_mass = [0,0,0]
+    else:
+      center_of_mass = [rnd(),rnd(),rnd()]
+    if (i_trial < 2):
+      rot = matrix.sqr([1,0,0,0,1,0,0,0,1])
+    else:
+      rot = euler_angles_as_matrix(
+        angles=[random.uniform(0,360) for i in xrange(3)],
+        deg=0001)
+    points = flex.vec3_double()
+    for point in [
+      [-1,-1, 0],[-1, 1, 0],
+      [ 1,-1, 0],[ 1, 1, 0],
+      [-1, 0,-1],[-1, 0, 0],[-1, 0, 1],
+      [ 1, 0,-1],[ 1, 0, 0],[ 1, 0, 1],
+      [ 0, 0,-1],
+      [ 0, 0, 1]]:
+      points.append((rot*matrix.col(point)+matrix.col(center_of_mass)).elems)
+    pai = principle_axes_of_inertia(points=points)
+    assert approx_equal(pai.center_of_mass(), center_of_mass)
+    if (i_trial < 2):
+      assert approx_equal(pai.inertia_tensor(), [10,16,14,0,0,0])
+    es = pai.eigensystem()
+    assert approx_equal(es.values(), [16,14,10])
+    if (i_trial < 2):
+      assert approx_equal(es.vectors(), [0,1,0,0,0,1,1,0,0])
+    assert abs(abs(matrix.col(es.vectors()[0:3]).dot(
+                   rot*matrix.col([0,1,0])))-1) < 1.e-3
+    assert abs(abs(matrix.col(es.vectors()[3:6]).dot(
+                   rot*matrix.col([0,0,1])))-1) < 1.e-3
+    assert abs(abs(matrix.col(es.vectors()[6:9]).dot(
+                   rot*matrix.col([1,0,0])))-1) < 1.e-3
+    weights = flex.double(points.size(), 1)
+    points_plus = points.deep_copy()
+    for i_p in [0,3,5,5,9,10,10,10]:
+      points_plus.append(points[i_p])
+      weights[i_p] += 1
+    paip = principle_axes_of_inertia(points=points_plus)
+    paiw = principle_axes_of_inertia(points=points, weights=weights)
+    assert approx_equal(paip.center_of_mass(), paiw.center_of_mass())
+    assert approx_equal(paip.inertia_tensor(), paiw.inertia_tensor())
+
 def exercise_minimum_covering_sphere(epsilon=1.e-3):
   s3 = sphere_3d(center=[1,2,3], radius=4)
   assert approx_equal(s3.center(), [1,2,3])
@@ -722,6 +833,7 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
 
 def run():
   exercise_floating_point_epsilon()
+  exercise_euler_angles()
   exercise_erf()
   exercise_bessel()
   exercise_eigensystem()
@@ -729,6 +841,7 @@ def run():
   exercise_gaussian_sum()
   exercise_gaussian_fit()
   exercise_golay()
+  exercise_principle_axes_of_inertia()
   forever = "--Forever" in sys.argv[1:]
   while 1:
     exercise_minimum_covering_sphere()
