@@ -4,7 +4,8 @@ class easy(dict):
     dict.update(self, kw)
 
   def __getattr__(self, key):
-    return dict.__getitem__(self, key)
+    try: return dict.__getitem__(self, key)
+    except KeyError: raise AttributeError
 
   def __setattr__(self, key, value):
     dict.__setitem__(self, key, value)
