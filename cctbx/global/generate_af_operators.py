@@ -35,6 +35,22 @@ reduction_functions_2arg = (
   "weighted_mean",
 )
 
+cmath_1arg = (
+  'acos', 'cos', 'fmod', 'tan',
+  'asin', 'cosh', 'tanh',
+  'atan', 'exp', 'sin',
+  'fabs', 'log', 'sinh',
+  'ceil', 'floor', 'log10', 'sqrt',
+)
+
+cmath_2arg = (
+  'fmod', 'pow', 'atan2',
+)
+
+cstdlib_1arg = (
+  'abs',
+)
+
 class empty: pass
 
 def decl_params(array_type_name, op_class, type_flags):
@@ -67,7 +83,7 @@ def decl_params(array_type_name, op_class, type_flags):
       v.return_type = (
         "small<",
         "  typename binary_operator_traits<",
-        "    ElementTypeLhs, ElementTypeRhs>::%s, (NLhs>NRhs?NLhs:NRhs)>" % (
+        "    ElementTypeLhs, ElementTypeRhs>::%s, (NLhs<NRhs?NLhs:NRhs)>" % (
           op_class,))
       v.param_lhs = "small<ElementTypeLhs, NLhs>"
       v.param_rhs = "small<ElementTypeRhs, NRhs>"
@@ -278,18 +294,22 @@ def generate_reducing_boolean_op(array_type_name, op_symbol):
   for type_flags in ((1,1), (1,0), (0,1)):
     reducing_boolean_op(array_type_name, op_symbol, type_flags)
 
+def get_result_constructor_args(array_type_name, arg_name = "a"):
+  if (array_type_name == "tiny"): return ""
+  if (array_type_name == "versa"):
+    return "(%s.accessor())" % (arg_name,)
+  return "(%s.size())" % (arg_name,)
+
 def generate_unary_ops(array_type_name):
   Ntemplate_head = ""
   Nresult = ""
-  result_constructor_args = ""
-  if (array_type_name != "tiny"): result_constructor_args = "(a.size())"
+  result_constructor_args = get_result_constructor_args(array_type_name)
   if (array_type_name in ("tiny", "small")):
     Ntemplate_head = ", std::size_t N"
     Nresult = ", N"
   elif (array_type_name == "versa"):
     Ntemplate_head = ", typename AccessorType"
     Nresult = ", AccessorType"
-    result_constructor_args = "(a.accessor())"
   for op_class, op_symbol in (("arithmetic", "-"),
                               ("logical", "!")):
     print """  template <typename ElementType%s>
@@ -347,6 +367,23 @@ def wrap_template_param(array_type_name, param):
   result += (param[-1] + ">")
   return result
 
+def number_template_args(array_type_name, for_header, args, i):
+  if (array_type_name != "tiny"):
+    return [a + str(i) for a in args]
+  if (i == 1 or not for_header):
+    return [a + str(i) for a in args[:-1]] + [args[-1]]
+  return [a + str(i) for a in args[:-1]]
+
+def number_list(array_type_name, for_header, args, n_parameters):
+  result = []
+  for i in xrange(1, n_parameters+1):
+    result.append(number_template_args(array_type_name, for_header, args, i))
+  return result
+
+def form_result_type(array_type_name, tp):
+  if (array_type_name != "small"): return tp[0]
+  return [tp[0][0], "(N1<N2?N1:N2)"]
+
 def generate_1arg_reductions(array_type_name):
   template_args = get_array_template_args(array_type_name)
   template_param = get_template_param(array_type_name)
@@ -362,20 +399,11 @@ def generate_1arg_reductions(array_type_name):
        wrap_template_param(array_type_name, template_param),
        function_name)
 
-def number_template_args(args, i):
-  return [a + str(i) for a in args]
-
-def number_list(args, n_parameters):
-  result = []
-  for i in xrange(1, n_parameters+1):
-    result.append(number_template_args(args, i))
-  return result
-
 def generate_2arg_reductions(array_type_name):
   template_args = get_array_template_args(array_type_name)
-  ta = number_list(template_args, 2)
+  ta = number_list(array_type_name, 1, template_args, 2)
   template_param = get_template_param(array_type_name)
-  tp = number_list(template_param, 2)
+  tp = number_list(array_type_name, 0, template_param, 2)
   header = wrap_template_args([assemble_template_args(a) for a in ta])
   for function_name in reduction_functions_2arg:
     print """%s
@@ -391,6 +419,55 @@ def generate_2arg_reductions(array_type_name):
        wrap_template_param(array_type_name, tp[1]),
        function_name)
 
+def generate_1arg_element_wise(array_type_name):
+  result_constructor_args = get_result_constructor_args(array_type_name)
+  template_args = get_array_template_args(array_type_name)
+  template_param = get_template_param(array_type_name)
+  header = wrap_template_args([assemble_template_args(template_args)])
+  for function_name in cmath_1arg + cstdlib_1arg:
+    print """%s
+  %s
+  %s(const %s& a) {
+    %s result%s;
+    for(std::size_t i=0;i<a.size();i++) result[i] = std::%s(a[i]);
+    return result;
+  }
+""" % (format_list(header, "  "),
+       wrap_template_param(array_type_name, template_param),
+       function_name,
+       wrap_template_param(array_type_name, template_param),
+       wrap_template_param(array_type_name, template_param),
+       result_constructor_args,
+       function_name)
+
+def generate_2arg_element_wise(array_type_name):
+  result_constructor_args = get_result_constructor_args(array_type_name, "a1")
+  template_args = get_array_template_args(array_type_name)
+  ta = number_list(array_type_name, 1, template_args, 2)
+  template_param = get_template_param(array_type_name)
+  tp = number_list(array_type_name, 0, template_param, 2)
+  rt = form_result_type(array_type_name, tp)
+  header = wrap_template_args([assemble_template_args(a) for a in ta])
+  for function_name in cmath_2arg:
+    print """%s
+  %s
+  %s(
+    const %s& a1,
+    const %s& a2) {
+    %s result%s;
+    for(std::size_t i=0;i<a1.size();i++) {
+      result[i] = std::%s(a1[i], a2[i]);
+    }
+    return result;
+  }
+""" % (format_list(header, "  "),
+       wrap_template_param(array_type_name, rt),
+       function_name,
+       wrap_template_param(array_type_name, tp[0]),
+       wrap_template_param(array_type_name, tp[1]),
+       wrap_template_param(array_type_name, rt), result_constructor_args,
+       function_name)
+
 def one_type(array_type_name):
   f = open("%s_operators.h" % (array_type_name,), "w")
   sys.stdout = f
@@ -400,7 +477,8 @@ def one_type(array_type_name):
 #define CCTBX_ARRAY_FAMILY_%s_OPERATORS_H
 """ % ((array_type_name.upper(),) * 2)
   if (array_type_name != "ref"):
-    print """
+    print """#include <cmath>
+#include <cstdlib>
 #include <cctbx/array_family/operator_traits_builtin.h>"""
   print """#include <cctbx/array_family/reductions.h>
 
@@ -428,6 +506,8 @@ namespace cctbx { namespace af {
         array_type_name, "boolean", op_symbol, function_name)
     for op_symbol in boolean_ops:
       generate_reducing_boolean_op(array_type_name, op_symbol)
+    generate_1arg_element_wise(array_type_name)
+    generate_2arg_element_wise(array_type_name)
   generate_1arg_reductions(array_type_name)
   generate_2arg_reductions(array_type_name)
 
