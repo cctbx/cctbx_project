@@ -98,6 +98,7 @@ class stage_1:
     raw_records = columns_73_76_eval.raw_records
     self.ignore_columns_73_and_following = columns_73_76_eval.is_old_style
     self.crystal_symmetry = None
+    self.remark_3_records = []
     self.remark_290_records = []
     self.ter_indices = []
     self.break_indices = []
@@ -117,6 +118,8 @@ class stage_1:
         self.crystal_symmetry = pdb.cryst1_interpretation.crystal_symmetry(
           cryst1_record=state.raw_record,
           line_number=state.line_number)
+      elif (state.raw_record.startswith("REMARK   3 ")):
+        self.remark_3_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK 290 ")):
         self.remark_290_records.append(state.raw_record.rstrip())
       elif (record_name == "MODEL "):
