@@ -53,51 +53,51 @@ namespace cctbx {
     return (1. / constants::eight_pi_sq) * Baniso;
   }
 
-  //! Convert anisotropic displacement parameters Uuvrs -> Ustar.
+  //! Convert anisotropic displacement parameters Ucif -> Ustar.
   /*! The transformation matrix used is:<pre>
               (a*  0  0)
           C = ( 0 b*  0)
               ( 0  0 c*)</pre>
-      The formula for the transformation is Ustar = C Uuvrs Ct,
+      The formula for the transformation is Ustar = C Ucif Ct,
       where Ct is the transposed of C. In this particular case
       the expression simplifies to:<pre>
-          Ustar11 = a*^2  Uuvrs11
-          Ustar22 = b*^2  Uuvrs22
-          Ustar33 = c*^2  Uuvrs33
-          Ustar12 = a* b* Uuvrs12
-          Ustar13 = a* c* Uuvrs13
-          Ustar23 = b* c* Uuvrs23</pre>
+          Ustar11 = a*^2  Ucif11
+          Ustar22 = b*^2  Ucif22
+          Ustar33 = c*^2  Ucif33
+          Ustar12 = a* b* Ucif12
+          Ustar13 = a* c* Ucif13
+          Ustar23 = b* c* Ucif23</pre>
    */
   template <typename FloatType>
   af::tiny<FloatType, 6>
-  Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
-                 const af::tiny<FloatType, 6>& Uuvrs) {
+  Ucif_as_Ustar(const uctbx::UnitCell& uc,
+                const af::tiny<FloatType, 6>& Ucif) {
     const af::double3& R_Len = uc.getLen(true);
     af::tiny<FloatType, 6> Ustar;
-    Ustar[0] = Uuvrs[0] * (R_Len[0] * R_Len[0]);
-    Ustar[1] = Uuvrs[1] * (R_Len[1] * R_Len[1]);
-    Ustar[2] = Uuvrs[2] * (R_Len[2] * R_Len[2]);
-    Ustar[3] = Uuvrs[3] * (R_Len[0] * R_Len[1]);
-    Ustar[4] = Uuvrs[4] * (R_Len[0] * R_Len[2]);
-    Ustar[5] = Uuvrs[5] * (R_Len[1] * R_Len[2]);
+    Ustar[0] = Ucif[0] * (R_Len[0] * R_Len[0]);
+    Ustar[1] = Ucif[1] * (R_Len[1] * R_Len[1]);
+    Ustar[2] = Ucif[2] * (R_Len[2] * R_Len[2]);
+    Ustar[3] = Ucif[3] * (R_Len[0] * R_Len[1]);
+    Ustar[4] = Ucif[4] * (R_Len[0] * R_Len[2]);
+    Ustar[5] = Ucif[5] * (R_Len[1] * R_Len[2]);
     return Ustar;
   }
-  //! Convert anisotropic displacement parameters Ustar -> Uuvrs.
-  /*! Inverse of Uuvrs_as_Ustar().
+  //! Convert anisotropic displacement parameters Ustar -> Ucif.
+  /*! Inverse of Ucif_as_Ustar().
    */
   template <typename FloatType>
   af::tiny<FloatType, 6>
-  Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
-                 const af::tiny<FloatType, 6>& Ustar) {
+  Ustar_as_Ucif(const uctbx::UnitCell& uc,
+                const af::tiny<FloatType, 6>& Ustar) {
     const af::double3& R_Len = uc.getLen(true);
-    af::tiny<FloatType, 6> Uuvrs;
-    Uuvrs[0] = Ustar[0] / (R_Len[0] * R_Len[0]);
-    Uuvrs[1] = Ustar[1] / (R_Len[1] * R_Len[1]);
-    Uuvrs[2] = Ustar[2] / (R_Len[2] * R_Len[2]);
-    Uuvrs[3] = Ustar[3] / (R_Len[0] * R_Len[1]);
-    Uuvrs[4] = Ustar[4] / (R_Len[0] * R_Len[2]);
-    Uuvrs[5] = Ustar[5] / (R_Len[1] * R_Len[2]);
-    return Uuvrs;
+    af::tiny<FloatType, 6> Ucif;
+    Ucif[0] = Ustar[0] / (R_Len[0] * R_Len[0]);
+    Ucif[1] = Ustar[1] / (R_Len[1] * R_Len[1]);
+    Ucif[2] = Ustar[2] / (R_Len[2] * R_Len[2]);
+    Ucif[3] = Ustar[3] / (R_Len[0] * R_Len[1]);
+    Ucif[4] = Ustar[4] / (R_Len[0] * R_Len[2]);
+    Ucif[5] = Ustar[5] / (R_Len[1] * R_Len[2]);
+    return Ucif;
   }
 
   //! Convert anisotropic displacement parameters Ucart -> Ustar.
@@ -128,25 +128,25 @@ namespace cctbx {
       uc.getOrthogonalizationMatrix(), Ustar);
   }
 
-  //! Convert anisotropic displacement parameters Ucart -> Uuvrs.
+  //! Convert anisotropic displacement parameters Ucart -> Ucif.
   /*! This is implemented without a significant loss of efficiency
-      as Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart)).
+      as Ustar_as_Ucif(uc, Ucart_as_Ustar(uc, Ucart)).
    */
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
-  Ucart_as_Uuvrs(const uctbx::UnitCell& uc,
-                 const af::tiny<FloatType, 6>& Ucart) {
-    return Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart));
+  Ucart_as_Ucif(const uctbx::UnitCell& uc,
+                const af::tiny<FloatType, 6>& Ucart) {
+    return Ustar_as_Ucif(uc, Ucart_as_Ustar(uc, Ucart));
   }
-  //! Convert anisotropic displacement parameters Uuvrs -> Ucart.
+  //! Convert anisotropic displacement parameters Ucif -> Ucart.
   /*! This is implemented without a significant loss of efficiency
-      as Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs)).
+      as Ustar_as_Ucart(uc, Ucif_as_Ustar(uc, Ucif)).
    */
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
-  Uuvrs_as_Ucart(const uctbx::UnitCell& uc,
-                 const af::tiny<FloatType, 6>& Uuvrs) {
-    return Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs));
+  Ucif_as_Ucart(const uctbx::UnitCell& uc,
+                const af::tiny<FloatType, 6>& Ucif) {
+    return Ustar_as_Ucart(uc, Ucif_as_Ustar(uc, Ucif));
   }
 
   //! Convert anisotropic displacement parameters Ustar -> beta.
@@ -185,23 +185,23 @@ namespace cctbx {
     return Ustar_as_Ucart(uc, beta_as_Ustar(beta));
   }
 
-  //! Convert anisotropic displacement parameters Uuvrs -> beta.
-  /*! This is implemented as Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs)).
+  //! Convert anisotropic displacement parameters Ucif -> beta.
+  /*! This is implemented as Ustar_as_beta(Ucif_as_Ustar(uc, Ucif)).
    */
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
-  Uuvrs_as_beta(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Uuvrs) {
-    return Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs));
+  Ucif_as_beta(const uctbx::UnitCell& uc,
+               const af::tiny<FloatType, 6>& Ucif) {
+    return Ustar_as_beta(Ucif_as_Ustar(uc, Ucif));
   }
-  //! Convert anisotropic displacement parameters beta -> Uuvrs.
-  /*! This is implemented as Ustar_as_Uuvrs(uc, beta_as_Ustar(beta)).
+  //! Convert anisotropic displacement parameters beta -> Ucif.
+  /*! This is implemented as Ustar_as_Ucif(uc, beta_as_Ustar(beta)).
    */
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
-  beta_as_Uuvrs(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& beta) {
-    return Ustar_as_Uuvrs(uc, beta_as_Ustar(beta));
+  beta_as_Ucif(const uctbx::UnitCell& uc,
+               const af::tiny<FloatType, 6>& beta) {
+    return Ustar_as_Ucif(uc, beta_as_Ustar(beta));
   }
 
   //! Convert anisotropic displacement parameters Ucart -> Uiso.
@@ -249,25 +249,25 @@ namespace cctbx {
     return Ucart_as_Ustar(uc, Uiso_as_Ucart(Uiso));
   }
 
-  //! Convert Uuvrs -> Uiso.
-  /*! This is implemented as Ucart_as_Uiso(Uuvrs_as_Ucart(uc, Uuvrs)).
+  //! Convert Ucif -> Uiso.
+  /*! This is implemented as Ucart_as_Uiso(Ucif_as_Ucart(uc, Ucif)).
    */
   template <typename FloatType>
   inline FloatType
-  Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
-                const af::tiny<FloatType, 6>& Uuvrs)
+  Ucif_as_Uiso(const uctbx::UnitCell& uc,
+               const af::tiny<FloatType, 6>& Ucif)
   {
-    return Ucart_as_Uiso(Uuvrs_as_Ucart(uc, Uuvrs));
+    return Ucart_as_Uiso(Ucif_as_Ucart(uc, Ucif));
   }
-  //! Convert Uiso -> Uuvrs.
-  /*! This is implemented as Ucart_as_Uuvrs(uc, Uiso_as_Ucart(Uiso)).
+  //! Convert Uiso -> Ucif.
+  /*! This is implemented as Ucart_as_Ucif(uc, Uiso_as_Ucart(Uiso)).
    */
   template <typename FloatType>
   inline af::tiny<FloatType, 6>
-  Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
-                const FloatType& Uiso)
+  Uiso_as_Ucif(const uctbx::UnitCell& uc,
+               const FloatType& Uiso)
   {
-    return Ucart_as_Uuvrs(uc, Uiso_as_Ucart(Uiso));
+    return Ucart_as_Ucif(uc, Uiso_as_Ucart(Uiso));
   }
 
   //! Convert beta -> Uiso.
@@ -346,14 +346,14 @@ namespace cctbx {
     return DebyeWallerFactorUstar(MIx, beta_as_Ustar(beta));
   }
 
-  //! Anisotropic Debye-Waller factor given Miller index and Uuvrs.
+  //! Anisotropic Debye-Waller factor given Miller index and Ucif.
   template <typename FloatType>
   inline FloatType
-  DebyeWallerFactorUuvrs(const uctbx::UnitCell& uc,
-                         const Miller::Index& MIx,
-                         const af::tiny<FloatType, 6>& Uuvrs)
+  DebyeWallerFactorUcif(const uctbx::UnitCell& uc,
+                        const Miller::Index& MIx,
+                        const af::tiny<FloatType, 6>& Ucif)
   {
-    return DebyeWallerFactorUstar(MIx, Uuvrs_as_Ustar(uc, Uuvrs));
+    return DebyeWallerFactorUstar(MIx, Ucif_as_Ustar(uc, Ucif));
   }
   //! Anisotropic Debye-Waller factor given Miller index and Ucart.
   template <typename FloatType>
