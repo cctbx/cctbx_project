@@ -138,7 +138,7 @@ namespace cctbx { namespace fftbx {
     for(std::size_t i=0;i<3;i++) {
       m_fft1d[i] = complex_to_complex<VectorType>(N[i]);
     }
-    m_Seq.resize(2 * triple(N).max());
+    m_Seq.resize(2 * cctbx::vector::max(triple(N)));
   }
 
   template <class VectorType>
@@ -148,7 +148,7 @@ namespace cctbx { namespace fftbx {
     m_fft1d[0] = complex_to_complex<VectorType>(Nx);
     m_fft1d[1] = complex_to_complex<VectorType>(Ny);
     m_fft1d[2] = complex_to_complex<VectorType>(Nz);
-    m_Seq.resize(2 * triple(Nx, Ny, Nz).max());
+    m_Seq.resize(2 * cctbx::vector::max(triple(Nx, Ny, Nz)));
   }
 
 

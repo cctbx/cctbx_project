@@ -21,6 +21,6 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.executables = {
       "fftbxtimer": (("fftbxtimer",), ()),
     }
-    if (self.platform in ("tru64_cxx", "linux_gcc", "irix_CC")):
+    if (self.platform in ("tru64_cxx", "unix_gcc", "irix_CC")):
       self.executables["fftwtimer"] = (("fftwtimer",), ("fftw", "rfftw"))
       self.executables["tst3d"] = (("tst3d",), ("fftw", "rfftw"))

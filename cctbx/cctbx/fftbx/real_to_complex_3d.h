@@ -21,8 +21,8 @@ namespace cctbx { namespace fftbx {
   /*! \brief Dimensions of 3-dimensional real-to-complex array
       given dimensions of real array.
    */
-  /*! The complex array contains Ncomplex.product() complex
-      values, i.e. 2*Ncomplex.product() real values.
+  /*! The complex array contains product(Ncomplex) complex
+      values, i.e. product(2*Ncomplex) real values.
    */
   inline triple Ncomplex_from_Nreal(const triple& Nreal) {
     return triple(Nreal[0], Nreal[1], Ncomplex_from_Nreal(Nreal[2]));
@@ -140,7 +140,7 @@ namespace cctbx { namespace fftbx {
     m_fft1d_x = complex_to_complex<VectorType>(m_Nreal[0]);
     m_fft1d_y = complex_to_complex<VectorType>(m_Nreal[1]);
     m_fft1d_z = real_to_complex<VectorType>(m_Nreal[2]);
-    m_Seq.resize(2 * Ncomplex_from_Nreal(m_Nreal).max());
+    m_Seq.resize(2 * cctbx::vector::max(Ncomplex_from_Nreal(m_Nreal)));
   }
 
   template <class VectorType>
