@@ -1,0 +1,28 @@
+macosx
+
+ROOT=@(ROOT)
+
+CCTBX_UNIX="$(ROOT)/cctbx"
+CCTBX_WIN=
+CCTBXINC=-I"$(ROOT)/cctbx"
+
+BOOSTINC=-I"$(ROOT)/boost"
+BOOST_PYTHONLIB=@(CWD)/../boost/libboost_python.a
+
+PYEXE=/usr/bin/python
+PYINC=-I/usr/include/python1.5
+PYLIB=
+
+STDFIXINC=
+
+CCTBXLIB=-L../../lib -leltbx -lsgtbx -luctbx
+
+CPP=c++
+LD=c++
+STDOPTS=-fPIC -ftemplate-depth-21
+WARNOPTS=
+OPTOPTS=-g
+MAKEDEP=-M
+LDEXE=
+LDDLL=-shared -undefined warning
+LDMATH=-lm
