@@ -18,13 +18,13 @@ namespace scitbx { namespace fftpack {
 
   template <typename IntegerType>
   bool
-  check_max_prime(const IntegerType& max_prime, const IntegerType& N)
+  check_max_prime(const IntegerType& max_prime, const IntegerType& n)
   {
-    IntegerType RedN = N;
-    detail::CountReduce(RedN, IntegerType(2));
-    for (IntegerType factor = 3; RedN > 1; factor += 2) {
+    IntegerType red_n = n;
+    detail::count_reduce(red_n, IntegerType(2));
+    for (IntegerType factor = 3; red_n > 1; factor += 2) {
       if (factor > max_prime) return false;
-      detail::CountReduce(RedN, factor);
+      detail::count_reduce(red_n, factor);
     }
     return true;
   }
