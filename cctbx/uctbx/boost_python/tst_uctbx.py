@@ -307,6 +307,24 @@ class exercise_is_degenerate:
     print "  n_stable:", s, self.n_stable, "= %.3g%%" % (s/n)
     print "  n_unstable:", self.n_unstable, "= %.3g%%" % (self.n_unstable/n)
 
+def exercise_similarity_transformations():
+  reference = uctbx.unit_cell(
+    (79.61, 86.07, 96.9986, 89.3203, 65.7721, 62.4533))
+  others = [uctbx.unit_cell(params) for params in [
+    (79, 85.6519, 97.0483, 89.6713, 65.9826, 62.5374),
+    (79, 85.6519, 97.0483, 68.3049, 65.9826, 62.5374)]]
+  expected_transformations = [
+    [(1, 0, 0, 0, 1, 0, 0, 0, 1), (1, 1, 1, 0, -1, 0, 0, 0, -1)],
+    [(-1, 0, -1, 0, -1, 0, 0, 0, 1), (-1, -1, 0, 0, 1, 0, 0, 0, -1)]
+  ]
+  for other,expected in zip(others, expected_transformations):
+    transformations = reference.similarity_transformations(
+      other=other,
+      relative_length_tolerance=0.02,
+      absolute_angle_tolerance=2,
+      unimodular_generator_range=1)
+    assert list(transformations) == expected
+
 def run():
   exercise_functions()
   exercise_basic()
@@ -317,6 +335,7 @@ def run():
   exercise_pickle()
   exercise_exceptions()
   exercise_fast_minimum_reduction()
+  exercise_similarity_transformations()
   e = exercise_is_degenerate()
   if (e.n_iterations > 100):
     e.report()

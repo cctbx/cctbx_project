@@ -46,21 +46,20 @@ namespace cctbx { namespace sgtbx {
     return rt_mx(r_inv, t_inv);
   }
 
-  rt_mx operator+(rt_mx const& lhs, rt_mx const& rhs)
+  rt_mx rt_mx::operator+(rt_mx const& rhs) const
   {
-    return rt_mx(lhs.r_ + rhs.r_, lhs.t_ + rhs.t_);
+    return rt_mx(r_ + rhs.r_, t_ + rhs.t_);
   }
 
-  rt_mx operator*(rt_mx const& lhs, rt_mx const& rhs)
+  rt_mx rt_mx::operator*(rt_mx const& rhs) const
   {
-    CCTBX_ASSERT(lhs.t_.den() == rhs.t_.den());
-    return rt_mx(lhs.r_ * rhs.r_,
-                lhs.r_ * rhs.t_ + lhs.t_.scale(lhs.r_.den()));
+    CCTBX_ASSERT(t_.den() == rhs.t_.den());
+    return rt_mx(r_ * rhs.r_, r_ * rhs.t_ + t_.scale(r_.den()));
   }
 
-  rt_mx operator+(rt_mx const& lhs, tr_vec const& rhs)
+  rt_mx rt_mx::operator+(tr_vec const& rhs) const
   {
-    return rt_mx(lhs.r_, lhs.t_ + rhs);
+    return rt_mx(r_, t_ + rhs);
   }
 
   std::string rt_mx::as_xyz(bool decimal, bool t_first,
