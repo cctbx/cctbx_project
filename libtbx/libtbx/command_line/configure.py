@@ -183,10 +183,16 @@ def emit_setpaths_sh(env):
         var_name = "DYLD_LIBRARY_PATH"
       if (type(values) == type([])):
         val = os.pathsep.join(values)
+        print >> f, 'LIBTBX_%s="%s"' % (var_name, val)
+        print >> f, 'export LIBTBX_%s' % var_name
+        val = "$LIBTBX_%s" % var_name
         print >> f, 'if [ ! -n "$%s" ]; then' % (var_name,)
-        print >> f, '  %s=""' % (var_name,)
+        print >> f, '  %s="%s"' % (var_name, val)
+        print >> f, 'else'
+        print >> f, '  %s="%s%s$%s"' % (var_name, val, os.pathsep, var_name)
         print >> f, 'fi'
-        print >> f, '%s="%s%s$%s"' % (var_name, val, os.pathsep, var_name)
+        print >> f, 'LIBTBX0%s="$%s"' % (var_name, var_name)
+        print >> f, 'export LIBTBX0%s' % var_name
       else:
         print >> f, '%s="%s"' % (var_name, values)
       print >> f, 'export %s' % (var_name,)
@@ -221,9 +227,13 @@ def emit_setpaths_csh(env):
       var_name = "DYLD_LIBRARY_PATH"
     if (type(values) == type([])):
       val = os.pathsep.join(values)
+      print >> s, '  setenv LIBTBX_%s "%s"' % (var_name, val)
+      print >> u, '  unsetenv LIBTBX_%s' % var_name
       fmt_args = (var_name, libtbx_python, libtbx_path_utility, var_name, val)
       print >> s, '''  setenv %s "`%s %s prepend %s '%s'`"''' % fmt_args
       print >> u, '''  setenv %s "`%s %s delete %s '%s'`"''' % fmt_args
+      print >> s, '  setenv LIBTBX0%s "$%s"' % (var_name, var_name)
+      print >> u, '  unsetenv LIBTBX0%s' % var_name
     else:
       print >> s, '  setenv %s "%s"' % (var_name, values)
       print >> u, '  unsetenv %s' % var_name
