@@ -4,6 +4,7 @@ import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.atom
 from cctbx.array_family import flex
 from libtbx.itertbx import count
+from libtbx.test_utils import approx_equal
 import string
 import sys
 
@@ -98,6 +99,7 @@ class stage_1:
     raw_records = columns_73_76_eval.raw_records
     self.ignore_columns_73_and_following = columns_73_76_eval.is_old_style
     self.crystal_symmetry = None
+    self.scale_matrix = [[None]*9,[None]*3]
     self.remark_3_records = []
     self.remark_290_records = []
     self.ter_indices = []
@@ -118,6 +120,13 @@ class stage_1:
         self.crystal_symmetry = pdb.cryst1_interpretation.crystal_symmetry(
           cryst1_record=state.raw_record,
           line_number=state.line_number)
+      elif (state.raw_record.startswith("SCALE")):
+        scale_record = self.parse_record()
+        for i_col,v in enumerate([scale_record.Sn1,
+                                  scale_record.Sn2,
+                                  scale_record.Sn3]):
+          self.scale_matrix[0][(scale_record.n-1)*3+i_col] = v
+        self.scale_matrix[1][scale_record.n-1] = scale_record.Un
       elif (state.raw_record.startswith("REMARK   3 ")):
         self.remark_3_records.append(state.raw_record.rstrip())
       elif (state.raw_record.startswith("REMARK 290 ")):
@@ -161,6 +170,9 @@ class stage_1:
       elif (record_name == "SLTBRG"):
         self.sltbrg_records.append(state.raw_record)
     del self.state
+    if (   None in self.scale_matrix[0]
+        or None in self.scale_matrix[1]):
+      self.scale_matrix = None
     self._sites_cart = None
     self._ter_block_identifiers = None
     self._break_block_identifiers = None
@@ -179,6 +191,20 @@ class stage_1:
       self._sites_cart = flex.vec3_double()
       for atom in self.atom_attributes_list:
         self._sites_cart.append(atom.coordinates)
+      if (    self.scale_matrix is not None
+          and self.crystal_symmetry is not None
+          and self.crystal_symmetry.unit_cell() is not None
+          and (   not approx_equal(
+            self.scale_matrix[0],
+            self.crystal_symmetry.unit_cell().fractionalization_matrix()
+               or not approx_equal(
+            self.scale_matrix[0],
+            [0,0,0])))):
+        sites_frac = self.scale_matrix[0] * self._sites_cart \
+                   + self.scale_matrix[1]
+        self._sites_cart = \
+          self.crystal_symmetry.unit_cell().orthogonalization_matrix() \
+          * sites_frac
     return self._sites_cart
 
   def get_block_identifiers(self, block_indices):
