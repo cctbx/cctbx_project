@@ -41,7 +41,7 @@ class exception_handling_parameters:
     if (msg.find("Rounding errors prevent further progress.") >= 0):
       if (self.ignore_line_search_failed_rounding_errors):
         return 0
-    elif (msg.find("The step is at the lower bound stpmax().") >= 0):
+    elif (msg.find("The step is at the lower bound stpmin().") >= 0):
       if (x is not None and g is not None
           and ext.traditional_convergence_test(n)(x, g)):
         return 0
