@@ -35,6 +35,12 @@ namespace cctbx { namespace af {
       CCTBX_ARRAY_FAMILY_TAKE_REF(this->begin(), this->size())
   };
 
+  template <typename ElementType, typename OtherElementType>
+  struct change_array_element_type<
+    shared<ElementType>, OtherElementType> {
+    typedef shared<OtherElementType> array_type;
+  };
+
 }} // namespace cctbx::af
 
 #include <cctbx/array_family/shared_operators.h>

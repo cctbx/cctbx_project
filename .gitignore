@@ -1,5 +1,6 @@
 cctbx/cctbx/array_family/flagged_value_operators.h
 cctbx/cctbx/array_family/operator_traits_builtin.h
+cctbx/cctbx/array_family/ref_operators.h
 cctbx/cctbx/array_family/shared_operators.h
 cctbx/cctbx/array_family/small_operators.h
 cctbx/cctbx/array_family/tiny_operators.h
