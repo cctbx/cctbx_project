@@ -1,5 +1,7 @@
 #include <cctbx/array_family/simple_io.h>
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
 #include <cctbx/array_family_ew.h>
+#endif
 
 using namespace cctbx;
 
@@ -7,6 +9,7 @@ namespace {
 
 # include "tst_af_helpers.cpp"
 
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
   template <typename ArrayType1,
             typename ArrayType2>
   void
@@ -365,16 +368,19 @@ namespace {
     void m_destory() { delete m_value; }
     ValueType* m_value;
   };
+#endif // ! VC++ 7.0
 }
 
 int main(int argc, char* argv[])
 {
   for(;;) {
 #if !(defined(__GNUC__) && __GNUC__ < 3)
+#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
     exercise_main<int, double>::run();
     exercise_main<a_value<int>, double>::run();
     exercise_main<int, a_value<double> >::run();
     exercise_main<a_value<int>, a_value<double> >::run();
+#endif
 #endif
     if (argc == 1) break;
   }
