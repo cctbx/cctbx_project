@@ -12,8 +12,12 @@ import sys
 
 class structure(crystal.special_position_settings):
 
-  def __init__(self, special_position_settings, scatterers=None,
-                     scattering_dict=None):
+  def __init__(self, special_position_settings=None, scatterers=None,
+                     scattering_dict=None, crystal_symmetry=None):
+    assert [special_position_settings, crystal_symmetry].count(None) == 1
+    if (special_position_settings is None):
+      special_position_settings = crystal.special_position_settings(
+        crystal_symmetry=crystal_symmetry)
     crystal.special_position_settings._copy_constructor(
       self, special_position_settings)
     if (scatterers is None):
