@@ -33,8 +33,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
         if (word.value[0] != "."): break
         if (not table.has_attribute_with_name(word.value[1:])):
           raise RuntimeError(
-            "Unexpected table attribute: %s (input line %d)" % (
-              word.value, word.line_number))
+            "Unexpected table attribute: %s%s" % (
+              word.value, word.where_str()))
         table.assign_attribute(
           name=word.value[1:],
           value_words=collect_values(word_stack, word, stop_token))
@@ -60,8 +60,7 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
       lead_word = word
       if (lead_word.value == "{"):
         raise RuntimeError(
-          'Syntax error: unexpected "{" (input line %d)' % (
-            lead_word.line_number))
+          'Syntax error: unexpected "{"%s' % lead_word.where_str())
       word = word_stack.pop()
       if (word.quote_token is None and word.value == "{"):
         if (not parameters.is_standard_identifier(lead_word.value)):
@@ -84,8 +83,8 @@ def collect_objects(word_stack, definition_type_names, stop_token=None):
           if (len(objects) == 0
               or not isinstance(objects[-1], parameters.definition)
               or not objects[-1].has_attribute_with_name(lead_word.value[1:])):
-            raise RuntimeError("Unexpected attribute: %s (input line %d)" % (
-              lead_word.value, lead_word.line_number))
+            raise RuntimeError("Unexpected attribute: %s%s" % (
+              lead_word.value, lead_word.where_str()))
           objects[-1].assign_attribute(
             name=lead_word.value[1:],
             value_words=collect_values(word_stack, lead_word, stop_token),

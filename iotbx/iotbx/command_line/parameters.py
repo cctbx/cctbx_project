@@ -41,7 +41,7 @@ def run(args):
   for file_name in command_line.args:
     print prefix + 'parameter_file "%s"' % file_name.replace('"', '\\"')
     print prefix.rstrip()
-    parameters = iotbx.parameters.parse(input_string=open(file_name).read())
+    parameters = iotbx.parameters.parse(file_name=file_name)
     parameters.show(
       out=sys.stdout,
       prefix=prefix,

@@ -22,10 +22,12 @@ class word:
   def __init__(self,
         value,
         quote_token=None,
-        line_number=None):
+        line_number=None,
+        file_name=None):
     self.value = value
     self.quote_token = quote_token
     self.line_number = line_number
+    self.file_name = file_name
 
   def __str__(self):
     if (self.quote_token is None):
@@ -36,10 +38,25 @@ class word:
             .replace(self.quote_token, "\\"+self.quote_token) \
          + self.quote_token
 
+  def where(self):
+    result = []
+    if (self.file_name is not None):
+      result.append('file "%s"' % self.file_name)
+      if (self.line_number is not None):
+        result.append("line %d" % self.line_number)
+    elif (self.line_number is not None):
+      result.append("input line %d" % self.line_number)
+    if (len(result) == 0): return None
+    return ", ".join(result)
+
+  def where_str(self):
+    where = self.where()
+    if (self.where() is None): return ""
+    return " (%s)" % where
+
   def raise_syntax_error(self, message):
     raise RuntimeError(
-      'Syntax error: %s"%s" (input line %d)' % (
-        message, self.value, self.line_number))
+      'Syntax error: %s"%s"%s' % (message, self.value, self.where_str()))
 
   def assert_expected(self, value):
     if (self.value != value):
@@ -51,6 +68,7 @@ default_contiguous_word_characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
                                    + "_"
 def split_into_words(
       input_string,
+      file_name=None,
       contiguous_word_characters=None,
       enable_unquoted_embedded_quotes=True,
       auto_split_unquoted={}):
@@ -97,7 +115,8 @@ def split_into_words(
       words.append(word(
         value=word_value,
         quote_token=quote_token,
-        line_number=word_line_number))
+        line_number=word_line_number,
+        file_name=file_name))
       c = char_iter.next()
     else:
       word_value = c
@@ -119,12 +138,14 @@ def split_into_words(
       if (word_value not in auto_split_unquoted):
         words.append(word(
           value=word_value,
-          line_number=word_line_number))
+          line_number=word_line_number,
+          file_name=file_name))
       else:
         for value in auto_split_unquoted[word_value]:
           words.append(word(
             value=value,
-            line_number=word_line_number))
+            line_number=word_line_number,
+            file_name=file_name))
   return words
 
 class word_stack:
@@ -153,11 +174,13 @@ class word_stack:
 
 def as_word_stack(
       input_string,
+      file_name=None,
       contiguous_word_characters=None,
       enable_unquoted_embedded_quotes=True,
       auto_split_unquoted={}):
   return word_stack(split_into_words(
     input_string=input_string,
+    file_name=file_name,
     contiguous_word_characters=contiguous_word_characters,
     enable_unquoted_embedded_quotes=enable_unquoted_embedded_quotes,
     auto_split_unquoted=auto_split_unquoted))
