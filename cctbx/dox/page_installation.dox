@@ -191,7 +191,7 @@ Example directory structure:
 
 \verbatim
         cd /scratch/build
-        /home/user/development/cctbx/build/fast_track.py unix_gcc
+        python /home/user/development/cctbx/build/fast_track.py unix_gcc
 \endverbatim
 
 The fast track script creates a subdirectory
