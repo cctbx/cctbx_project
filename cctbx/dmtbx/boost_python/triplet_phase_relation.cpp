@@ -19,6 +19,12 @@ namespace {
   {
     typedef weighted_triplet_phase_relation w_t;
 
+    static bool
+    is_similar_to(w_t const& self, w_t const& other)
+    {
+      return self.is_similar_to(other);
+    }
+
     static void
     wrap()
     {
@@ -29,6 +35,8 @@ namespace {
         .def("ihmk", &w_t::ihmk)
         .def("friedel_flag_hmk", &w_t::friedel_flag_hmk)
         .def("ht_sum", &w_t::ht_sum)
+        .def("is_sigma_2", &w_t::is_sigma_2)
+        .def("is_similar_to", is_similar_to)
         .def("weight", &w_t::weight)
       ;
     }

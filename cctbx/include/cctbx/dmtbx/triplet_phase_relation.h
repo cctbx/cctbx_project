@@ -65,6 +65,17 @@ namespace cctbx { namespace dmtbx {
       int
       ht_sum() const { return ht_sum_; }
 
+      bool
+      is_sigma_2(std::size_t ih) const
+      {
+        return ik_ != ih && ihmk_ != ih && ik_ != ihmk_;
+      }
+
+      bool is_similar_to(triplet_phase_relation const& other) const
+      {
+        return ik_ == other.ik_ && ihmk_ == other.ihmk_;
+      }
+
       //! Not available in Python.
       bool operator<(triplet_phase_relation const& other) const
       {
