@@ -13,6 +13,8 @@
 #define CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 
 #include <cctbx/array_family/reductions.h>
+#include <cctbx/array_family/operator_functors.h>
+#include <cctbx/array_family/generic_array_functors.h>
 #include <cctbx/array_family/shared.h>
 
 namespace cctbx { namespace af {
@@ -48,6 +50,10 @@ namespace cctbx { namespace af {
   template <typename ElementType>
   struct shared_wrapper : shared<ElementType>
   {
+    typedef ElementType e_t;
+    typedef af::shared<ElementType> sh_t;
+    typedef typename af::integer_to_float<ElementType>::float_type f_e_t;
+
     // Tell the compiler how to convert a base class object to
     // this wrapper object.
     shared_wrapper(PyObject*,
@@ -71,11 +77,6 @@ namespace cctbx { namespace af {
           tuple[i].get(), boost::python::type<const ElementType&>());
     }
 
-  };
-
-  template <typename ElementType>
-  struct shared_access
-  {
     static
     std::size_t
     size(shared<ElementType>& v) { return v.size(); }
@@ -213,12 +214,8 @@ namespace cctbx { namespace af {
       return shared_items<ElementType>(v);
     }
 
-  };
-
-  template <typename ElementType>
-  struct wrap_shared {
-    // The return value is needed only to work around a Visual C++ 6 bug.
-    static
+    // This type is needed only to work around a Visual C++ 6 bug.
+    typedef
     std::pair<
       boost::python::class_builder<
         shared<ElementType>,
@@ -226,19 +223,23 @@ namespace cctbx { namespace af {
       boost::python::class_builder<
         shared_items<ElementType> >
     >
-    run(
-      boost::python::module_builder& module,
+    sh_class_builders;
+
+    static
+    sh_class_builders
+    plain(
+      boost::python::module_builder& bpl_module,
       const std::string& python_name)
     {
       using namespace boost::python;
 
       class_builder<shared_items<ElementType> >
-      py_shared_items(module, (python_name+"_items").c_str());
+      py_shared_items(bpl_module, (python_name+"_items").c_str());
 
       class_builder<
         shared<ElementType>,
         shared_wrapper<ElementType> >
-      py_shared(module, python_name.c_str());
+      py_shared(bpl_module, python_name.c_str());
       export_converters(py_shared);
 
       py_shared_items.def(constructor<>());
@@ -249,40 +250,368 @@ namespace cctbx { namespace af {
       py_shared.def(constructor<>());
       py_shared.def(constructor<std::size_t>());
       py_shared.def(constructor<tuple>());
-      py_shared.def(&shared_access<ElementType>::size, "size");
-      py_shared.def(&shared_access<ElementType>::size, "__len__");
-      py_shared.def(&shared_access<ElementType>::capacity, "capacity");
-      py_shared.def(&shared_access<ElementType>::getitem, "__getitem__");
-      py_shared.def(&shared_access<ElementType>::setitem, "__setitem__");
-      py_shared.def(&shared_access<ElementType>::front, "front");
-      py_shared.def(&shared_access<ElementType>::back, "back");
-      py_shared.def(&shared_access<ElementType>::fill, "fill");
-      py_shared.def(&shared_access<ElementType>::deep_copy, "deep_copy");
-      py_shared.def(&shared_access<ElementType>::reserve, "reserve");
-      py_shared.def(&shared_access<ElementType>::assign, "assign");
-      py_shared.def(&shared_access<ElementType>::push_back, "push_back");
-      py_shared.def(&shared_access<ElementType>::push_back, "append");
-      py_shared.def(&shared_access<ElementType>::pop_back, "pop_back");
-      py_shared.def(&shared_access<ElementType>::insert_i_x, "insert");
-      py_shared.def(&shared_access<ElementType>::insert_i_n_x, "insert");
-      py_shared.def(&shared_access<ElementType>::erase_i, "erase");
-      py_shared.def(&shared_access<ElementType>::erase_i_j, "erase");
-      py_shared.def(&shared_access<ElementType>::resize, "resize");
-      py_shared.def(&shared_access<ElementType>::clear, "clear");
-      py_shared.def(&shared_access<ElementType>::append, "append");
-      py_shared.def(&shared_access<ElementType>::indices, "indices");
-      py_shared.def(&shared_access<ElementType>::items, "items");
+      py_shared.def(size, "size");
+      py_shared.def(size, "__len__");
+      py_shared.def(capacity, "capacity");
+      py_shared.def(getitem, "__getitem__");
+      py_shared.def(setitem, "__setitem__");
+      py_shared.def(front, "front");
+      py_shared.def(back, "back");
+      py_shared.def(fill, "fill");
+      py_shared.def(deep_copy, "deep_copy");
+      py_shared.def(reserve, "reserve");
+      py_shared.def(assign, "assign");
+      py_shared.def(push_back, "push_back");
+      py_shared.def(push_back, "append");
+      py_shared.def(pop_back, "pop_back");
+      py_shared.def(insert_i_x, "insert");
+      py_shared.def(insert_i_n_x, "insert");
+      py_shared.def(erase_i, "erase");
+      py_shared.def(erase_i_j, "erase");
+      py_shared.def(resize, "resize");
+      py_shared.def(clear, "clear");
+      py_shared.def(append, "append");
+      py_shared.def(indices, "indices");
+      py_shared.def(items, "items");
 
       return std::make_pair(py_shared, py_shared_items);
     }
-  };
 
-  template <typename ElementType>
-  struct wrap_shared_reductions
-  {
-    typedef ElementType e_t;
-    typedef typename af::integer_to_float<ElementType>::float_type f_e_t;
-    typedef af::shared<ElementType> sh_t;
+    static
+    shared<bool>
+    invert_a(shared<bool> const& a)
+    {
+      shared<ElementType> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) result.append(!a[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    and_a_a(shared<bool> const& a1, shared<bool> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] && a2[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    or_a_a(shared<bool> const& a1, shared<bool> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] || a2[i]);
+      return result;
+    }
+
+    static
+    sh_class_builders
+    logical(
+      boost::python::module_builder& bpl_module,
+      const std::string& python_name)
+    {
+      sh_class_builders class_blds = plain(bpl_module, python_name);
+      class_blds.first.def(invert_a, "__invert__");
+      class_blds.first.def(and_a_a, "__and__");
+      class_blds.first.def(or_a_a, "__or__");
+      return class_blds;
+    }
+
+    static
+    shared<double>
+    as_double(shared<ElementType> const& a)
+    {
+      shared<double> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) result.append(a[i]);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    neg_a(shared<ElementType> const& a)
+    {
+      shared<ElementType> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) result.append(-a[i]);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    add_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] + a2[i]);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    sub_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] - a2[i]);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    mul_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] * a2[i]);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    div_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] / a2[i]);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    mod_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] % a2[i]);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    add_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] + a2);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    sub_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] - a2);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    mul_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] * a2);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    div_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] / a2);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    mod_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<ElementType> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] % a2);
+      return result;
+    }
+
+    static
+    shared<ElementType>
+    iadd_a_s(shared<ElementType>& a1, ElementType const& a2)
+    {
+      for(std::size_t i=0;i<a1.size();i++) a1[i] += a2;
+      return a1;
+    }
+
+    static
+    shared<ElementType>
+    isub_a_s(shared<ElementType>& a1, ElementType const& a2)
+    {
+      for(std::size_t i=0;i<a1.size();i++) a1[i] -= a2;
+      return a1;
+    }
+
+    static
+    shared<ElementType>
+    imul_a_s(shared<ElementType>& a1, ElementType const& a2)
+    {
+      for(std::size_t i=0;i<a1.size();i++) a1[i] *= a2;
+      return a1;
+    }
+
+    static
+    shared<ElementType>
+    idiv_a_s(shared<ElementType>& a1, ElementType const& a2)
+    {
+      for(std::size_t i=0;i<a1.size();i++) a1[i] /= a2;
+      return a1;
+    }
+
+    static
+    shared<ElementType>
+    imod_a_s(shared<ElementType>& a1, ElementType const& a2)
+    {
+      for(std::size_t i=0;i<a1.size();i++) a1[i] %= a2;
+      return a1;
+    }
+
+    static
+    shared<bool>
+    eq_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] == a2[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    ne_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] != a2[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    lt_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] < a2[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    gt_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] > a2[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    le_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] <= a2[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    ge_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    {
+      if (a1.size() != a2.size()) throw_range_error();
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] >= a2[i]);
+      return result;
+    }
+
+    static
+    shared<bool>
+    eq_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] == a2);
+      return result;
+    }
+
+    static
+    shared<bool>
+    ne_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] != a2);
+      return result;
+    }
+
+    static
+    shared<bool>
+    lt_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] < a2);
+      return result;
+    }
+
+    static
+    shared<bool>
+    gt_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] > a2);
+      return result;
+    }
+
+    static
+    shared<bool>
+    le_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] <= a2);
+      return result;
+    }
+
+    static
+    shared<bool>
+    ge_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    {
+      shared<bool> result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] >= a2);
+      return result;
+    }
 
     static std::size_t
     max_index(sh_t const& a) { return af::max_index(a.const_ref()); }
@@ -296,17 +625,60 @@ namespace cctbx { namespace af {
     static f_e_t rms(sh_t const& a) { return af::rms(a.const_ref()); }
 
     static
-    void
-    run(boost::python::module_builder& module)
+    sh_class_builders
+    numeric(
+      boost::python::module_builder& bpl_module,
+      const std::string& python_name)
     {
-      module.def(min_index, "min_index");
-      module.def(max_index, "max_index");
-      module.def(min, "min");
-      module.def(max, "max");
-      module.def(sum, "sum");
-      module.def(product, "product");
-      module.def(mean, "mean");
-      module.def(rms, "rms");
+      sh_class_builders class_blds = plain(bpl_module, python_name);
+      class_blds.first.def(as_double, "as_double");
+      class_blds.first.def(neg_a, "__neg__");
+      class_blds.first.def(add_a_a, "__add__");
+      class_blds.first.def(sub_a_a, "__sub__");
+      class_blds.first.def(mul_a_a, "__mul__");
+      class_blds.first.def(div_a_a, "__div__");
+      class_blds.first.def(add_a_s, "add");
+      class_blds.first.def(sub_a_s, "sub");
+      class_blds.first.def(mul_a_s, "mul");
+      class_blds.first.def(div_a_s, "div");
+      class_blds.first.def(iadd_a_s, "__iadd__");
+      class_blds.first.def(isub_a_s, "__isub__");
+      class_blds.first.def(imul_a_s, "__imul__");
+      class_blds.first.def(idiv_a_s, "__idiv__");
+      class_blds.first.def(eq_a_a, "__eq__");
+      class_blds.first.def(ne_a_a, "__ne__");
+      class_blds.first.def(lt_a_a, "__lt__");
+      class_blds.first.def(gt_a_a, "__gt__");
+      class_blds.first.def(le_a_a, "__le__");
+      class_blds.first.def(ge_a_a, "__ge__");
+      class_blds.first.def(eq_a_s, "__eq__");
+      class_blds.first.def(ne_a_s, "__ne__");
+      class_blds.first.def(lt_a_s, "__lt__");
+      class_blds.first.def(gt_a_s, "__gt__");
+      class_blds.first.def(le_a_s, "__le__");
+      class_blds.first.def(ge_a_s, "__ge__");
+      bpl_module.def(min_index, "min_index");
+      bpl_module.def(max_index, "max_index");
+      bpl_module.def(min, "min");
+      bpl_module.def(max, "max");
+      bpl_module.def(sum, "sum");
+      bpl_module.def(product, "product");
+      bpl_module.def(mean, "mean");
+      bpl_module.def(rms, "rms");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    integer(
+      boost::python::module_builder& bpl_module,
+      const std::string& python_name)
+    {
+      sh_class_builders class_blds = numeric(bpl_module, python_name);
+      class_blds.first.def(mod_a_a, "__mod__");
+      class_blds.first.def(mod_a_s, "mod");
+      class_blds.first.def(imod_a_s, "__imod__");
+      return class_blds;
     }
   };
 

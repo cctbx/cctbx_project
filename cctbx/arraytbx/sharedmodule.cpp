@@ -183,36 +183,43 @@ namespace {
     python::import_converters<XrayScatterer>
     py_XrayScatterer("cctbx_boost.sftbx", "XrayScatterer");
 
-#define WRAP_ARRAY(python_name, element_type) \
-    cctbx::af::wrap_shared<element_type >::run(this_module, python_name)
+#define WRAP_PLAIN(python_name, element_type) \
+    cctbx::af::shared_wrapper<element_type >::plain( \
+      this_module, python_name)
+#define WRAP_NUMERIC(python_name, element_type) \
+    cctbx::af::shared_wrapper<element_type >::numeric( \
+      this_module, python_name)
+#define WRAP_INTEGER(python_name, element_type) \
+    cctbx::af::shared_wrapper<element_type >::integer( \
+      this_module, python_name)
 #define WRAP_REDUCTIONS(element_type) \
     cctbx::af::wrap_shared_reductions<element_type>::run(this_module)
 
-    WRAP_ARRAY("int", int);
-    WRAP_REDUCTIONS(int);
-    WRAP_ARRAY("float", float);
-    WRAP_REDUCTIONS(float);
-    WRAP_ARRAY("double", double);
-    WRAP_REDUCTIONS(double);
-    WRAP_ARRAY("complex_double", std::complex<double>);
+    // bool is wrapped here to enable boolean operators for numeric types
+    cctbx::af::shared_wrapper<bool>::logical(this_module, "bool");
 
-#ifndef FAST_COMPILE
-    WRAP_ARRAY("bool", bool);
-    WRAP_ARRAY("long", long);
-    WRAP_REDUCTIONS(long);
-    WRAP_ARRAY("std_string", std::string);
+    // double is wrapped here to enable .as_double() for the other types
+    WRAP_NUMERIC("double", double);
 
-    WRAP_ARRAY("miller_Index", cctbx::miller::Index);
-    WRAP_ARRAY("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
-    WRAP_ARRAY("RTMx", cctbx::sgtbx::RTMx);
-    WRAP_ARRAY("XrayScatterer", XrayScatterer);
+    WRAP_INTEGER("int", int);
+    WRAP_PLAIN("float", float);
+    WRAP_PLAIN("complex_double", std::complex<double>);
 
-    WRAP_ARRAY("double3", cctbx::af::double3);
+#ifdef FAST_COMPILE
+    WRAP_PLAIN("long", long);
+    WRAP_PLAIN("std_string", std::string);
+
+    WRAP_PLAIN("miller_Index", cctbx::miller::Index);
+    WRAP_PLAIN("hendrickson_lattman", cctbx::hendrickson_lattman<double>);
+    WRAP_PLAIN("RTMx", cctbx::sgtbx::RTMx);
+    WRAP_PLAIN("XrayScatterer", XrayScatterer);
+
+    WRAP_PLAIN("double3", cctbx::af::double3);
 
     typedef std::size_t size_t;
-    WRAP_ARRAY("size_t", size_t);
+    WRAP_PLAIN("size_t", size_t);
     typedef cctbx::af::tiny<size_t, 2> tiny_size_t_2;
-    WRAP_ARRAY("tiny_size_t_2", tiny_size_t_2);
+    WRAP_PLAIN("tiny_size_t_2", tiny_size_t_2);
 #endif
 
     this_module.def(py_reinterpret_complex_as_real,
