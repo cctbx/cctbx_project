@@ -23,7 +23,9 @@ def create_makefile(pkg_dir, configuration, subdir, package):
 def create_lib_python_init_py(path_name):
   f = open(path_name + "/__init__.py", "w")
   print >> f, """import sys
-if (sys.platform == "linux2"): sys.setdlopenflags(0x100|0x2)
+if (sys.platform == "linux2"):
+  if (hasattr(sys, "setdlopenflags")):
+    sys.setdlopenflags(0x100|0x2)
 """
   f.close()
 

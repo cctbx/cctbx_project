@@ -120,10 +120,7 @@ class write_makefiles:
         s = s + " $(SP_LIBDIR_WIN)\\lib*.lib"
       else:
         s = s + " -L$(SP_LIBDIR_UNIX)"
-        if (1 or self.platform != "irix_CC"): # XXX disabled for testing
-          for l in libs: s = s + " -l" + l
-        else:
-          for l in libs: s = s + " -exports -l" + l
+        for l in libs: s = s + " -l" + l
     if (len(macros) > 0):
       s = s + " " + join(macros)
     return strip(s)
