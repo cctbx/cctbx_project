@@ -363,6 +363,9 @@ class array(set):
     self._sigmas = other._sigmas
     self._info = other._info
 
+  def is_intensity_array(self):
+    return isinstance(self, intensity_array)
+
   def data(self):
     return self._data
 
