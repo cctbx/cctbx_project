@@ -125,7 +125,7 @@ else:
     )
     env_etc.cxxflags_base = Split("""
       -fPIC
-      -ftemplate-depth-100
+      -ftemplate-depth-120
       -w
     """)
     env_etc.ccflags_base = Split("""
