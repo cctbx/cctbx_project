@@ -15,6 +15,11 @@
 
 namespace cctbx { namespace vector {
 
+template <class T, std::size_t N>
+struct algebra_constructor<carray<T, N> > : carray<T, N> {
+  algebra_constructor(std::size_t) {}
+};
+
 template <class T, class U, std::size_t N>
 struct algebra_traits<carray<T, N>, carray<U, N> >
 {
@@ -22,8 +27,6 @@ struct algebra_traits<carray<T, N>, carray<U, N> >
   typedef carray<value_type, N> promotion_type;
   typedef carray<bool, N> bool_type;
   typedef qualifier_v_v type_qualifier;
-  template <typename ResultType, typename SizeType>
-  static void init(ResultType& v, const SizeType& n) {}
 };
 
 template <class T, class U, std::size_t N>
@@ -33,8 +36,6 @@ struct algebra_traits<carray<T, N>, U>
   typedef carray<value_type, N> promotion_type;
   typedef carray<bool, N> bool_type;
   typedef qualifier_v_s type_qualifier;
-  template <typename ResultType, typename SizeType>
-  static void init(ResultType& v, const SizeType& n) {}
 };
 
 template <class T, class U, std::size_t N>
@@ -44,8 +45,6 @@ struct algebra_traits<T, carray<U, N> >
   typedef carray<value_type, N> promotion_type;
   typedef carray<bool, N> bool_type;
   typedef qualifier_s_v type_qualifier;
-  template <typename ResultType, typename SizeType>
-  static void init(ResultType& v, const SizeType& n) {}
 };
 
 }} // namespace cctbx::vector

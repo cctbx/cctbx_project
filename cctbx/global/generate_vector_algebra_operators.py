@@ -85,8 +85,7 @@ def one_abinop(LHS_is_vector, RHS_is_vector):
     print \
 """    typedef typename algebra_traits<TypeLHS, TypeRHS>::promotion_type
     promotion_type;
-    promotion_type result;
-    algebra_traits<TypeLHS, TypeRHS>::init(result, %shs.size());
+    algebra_constructor<promotion_type> result(%shs.size());
     for(typename Type%sHS::size_type i=0;i<%shs.size();i++)
       result[i] = op(lhs%s, rhs%s);
     return result;
@@ -173,8 +172,7 @@ def one_boolop(LHS_is_vector, RHS_is_vector):
     print \
 """    typedef typename algebra_traits<TypeLHS, TypeRHS>::bool_type
     bool_type;
-    bool_type result;
-    algebra_traits<TypeLHS, TypeRHS>::init(result, %shs.size());
+    algebra_constructor<bool_type> result(%shs.size());
     for(typename Type%sHS::size_type i=0;i<%shs.size();i++)
       result[i] = op(lhs%s, rhs%s);
     return result;
