@@ -78,6 +78,21 @@ def exercise_join_sets():
   assert tuple(selected_data_set.H) == ((1,2,3),)
   assert tuple(selected_data_set.F) == (0,)
 
+def show_binner_info(binning, binner):
+  for i_bin in xrange(binning.n_bins_all()):
+    bin_d_range = binning.bin_d_range(i_bin)
+    bin_sel = binner.bin_selection(i_bin)
+    count = bin_sel.count(1)
+    if (i_bin == binning.i_bin_d_too_large()):
+      assert bin_d_range[0] == 0
+      print "unused:              d > %8.4f: %5d" % (bin_d_range[1], count)
+    elif (i_bin == binning.i_bin_d_too_small()):
+      assert bin_d_range[1] == 0
+      print "unused: %9.4f >  d           : %5d" % (bin_d_range[0], count)
+    else:
+      print "bin %2d: %9.4f >= d > %8.4f: %5d" % (
+        (i_bin,) + bin_d_range + (count,))
+
 def exercise_bins(SgInfo, n_bins=10, d_min=1):
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   friedel_flag = 1
@@ -89,14 +104,21 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1):
   print "Unit cell:", xtal.UnitCell
   print "Space group:", xtal.SgInfo.BuildLookupSymbol()
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
-  binning = miller.binning(xtal.UnitCell, miller_set.H, n_bins)
-  assert binning.n_bins() == n_bins
+  binning = miller.binning(xtal.UnitCell, n_bins, miller_set.H)
+  assert binning.n_bins_used() == n_bins
   assert binning.limits().size() == n_bins + 1
-  binner = miller.binner(binning, miller_set.H)
-  print "binning.d(0):", binning.d(0)
-  for i in binning.limits().indices():
-    print "binning.d(%d):" % (i,), binning.d(i)
+  assert binning.n_bins_all() == n_bins + 2
+  print "binning.d_max():", binning.d_max()
   print "binning.d_min():", binning.d_min()
+  binner = miller.binner(binning, miller_set.H)
+  assert binner.bin_selection(binning.i_bin_d_too_large()).count(1) == 0
+  assert binner.bin_selection(binning.i_bin_d_too_small()).count(1) == 0
+  show_binner_info(binning, binner)
+  binning = miller.binning(xtal.UnitCell, n_bins - 2,
+    binning.bin_d_min(2),
+    binning.bin_d_min(n_bins))
+  binner = miller.binner(binning, miller_set.H)
+  show_binner_info(binning, binner)
 
 def run():
   exercise_join_sets()

@@ -217,27 +217,15 @@ namespace {
   struct binning_
   {
     static std::size_t
-    get_bin_index_d_2(binning const& bng, double d_star_sq, double tolerance)
+    get_i_bin_d(binning const& bng, double d_star_sq)
     {
-      return bng.get_bin_index(d_star_sq, tolerance);
+      return bng.get_i_bin(d_star_sq);
     }
 
     static std::size_t
-    get_bin_index_d_1(binning const& bng, double d_star_sq)
+    get_i_bin_i(binning const& bng, Index const& h)
     {
-      return bng.get_bin_index(d_star_sq);
-    }
-
-    static std::size_t
-    get_bin_index_i_2(binning const& bng, Index const& h, double tolerance)
-    {
-      return bng.get_bin_index(h, tolerance);
-    }
-
-    static std::size_t
-    get_bin_index_i_1(binning const& bng, Index const& h)
-    {
-      return bng.get_bin_index(h);
+      return bng.get_i_bin(h);
     }
   };
 
@@ -526,23 +514,44 @@ namespace {
 
     py_binning.def(constructor<>());
     py_binning.def(constructor<
-      uctbx::UnitCell const&, af::shared<Index>,
-      std::size_t, double, double>());
+      uctbx::UnitCell const&,
+      std::size_t,
+      af::shared<Index>,
+      double,
+      double,
+      double>());
     py_binning.def(constructor<
-      uctbx::UnitCell const&, af::shared<Index>, std::size_t, double>());
+      uctbx::UnitCell const&,
+      std::size_t,
+      af::shared<Index>,
+      double,
+      double>());
     py_binning.def(constructor<
-      uctbx::UnitCell const&, af::shared<Index>, std::size_t>());
+      uctbx::UnitCell const&,
+      std::size_t,
+      af::shared<Index>,
+      double>());
     py_binning.def(constructor<
-      uctbx::UnitCell const&, std::size_t, double, double>());
+      uctbx::UnitCell const&,
+      std::size_t,
+      af::shared<Index> >());
+    py_binning.def(constructor<
+      uctbx::UnitCell const&,
+      std::size_t,
+      double,
+      double>());
     py_binning.def(&binning::unit_cell, "unit_cell");
-    py_binning.def(&binning::n_bins, "n_bins");
-    py_binning.def(&binning::d, "d");
+    py_binning.def(&binning::n_bins_used, "n_bins_used");
+    py_binning.def(&binning::n_bins_all, "n_bins_all");
+    py_binning.def(&binning::i_bin_d_too_large, "i_bin_d_too_large");
+    py_binning.def(&binning::i_bin_d_too_small, "i_bin_d_too_small");
+    py_binning.def(&binning::d_max, "d_max");
     py_binning.def(&binning::d_min, "d_min");
+    py_binning.def(&binning::bin_d_range, "bin_d_range");
+    py_binning.def(&binning::bin_d_min, "bin_d_min");
     py_binning.def(&binning::limits, "limits");
-    py_binning.def(binning_::get_bin_index_d_2, "get_bin_index");
-    py_binning.def(binning_::get_bin_index_d_2, "get_bin_index");
-    py_binning.def(binning_::get_bin_index_i_2, "get_bin_index");
-    py_binning.def(binning_::get_bin_index_i_2, "get_bin_index");
+    py_binning.def(binning_::get_i_bin_d, "get_i_bin");
+    py_binning.def(binning_::get_i_bin_i, "get_i_bin");
 
     py_binner.def(constructor<>());
     py_binner.def(constructor<binning const&, af::shared<Index> >());
