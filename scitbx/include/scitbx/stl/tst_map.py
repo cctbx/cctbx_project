@@ -65,7 +65,7 @@ def exercise_stl_string_double():
   l = pickle.loads(d)
   assert l.items() == zip(["c","r","s","x","y"], [3,9,8,-1,-2])
 
-def exercise_stl_stl_string_stl_map_stl_string_double():
+def exercise_stl_string_stl_map_stl_string_double():
   mm = map.stl_string_stl_map_stl_string_double()
   m = mm.setdefault("a")
   assert mm["a"].size() == 0
@@ -78,10 +78,41 @@ def exercise_stl_stl_string_stl_map_stl_string_double():
   del mm["a"]["b"]
   assert mm["a"].size() == 1
   assert m.size() == 1
+  d = pickle.dumps(mm)
+  l = pickle.loads(d)
+  assert l["a"].size() == 1
+
+def exercise_stl_string_stl_vector_unsigned():
+  sv = map.stl_string_stl_vector_unsigned()
+  v = sv.setdefault("a")
+  assert sv["a"].size() == 0
+  v.append(10)
+  assert sv["a"].size() == 1
+  sv["a"].append(20)
+  assert v.size() == 2
+  d = pickle.dumps(sv)
+  l = pickle.loads(d)
+  assert l.keys() == ["a"]
+  assert list(l["a"]) == [10,20]
+
+def exercise_int_stl_vector_unsigned():
+  sv = map.int_stl_vector_unsigned()
+  v = sv.setdefault(-1)
+  assert sv[-1].size() == 0
+  v.append(10)
+  assert sv[-1].size() == 1
+  sv[-1].append(20)
+  assert v.size() == 2
+  d = pickle.dumps(sv)
+  l = pickle.loads(d)
+  assert l.keys() == [-1]
+  assert list(l[-1]) == [10,20]
 
 def exercise():
   exercise_stl_string_double()
-  exercise_stl_stl_string_stl_map_stl_string_double()
+  exercise_stl_string_stl_map_stl_string_double()
+  exercise_stl_string_stl_vector_unsigned()
+  exercise_int_stl_vector_unsigned()
   print "OK"
 
 if (__name__ == "__main__"):
