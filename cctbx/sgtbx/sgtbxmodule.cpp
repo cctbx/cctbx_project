@@ -224,6 +224,18 @@ namespace {
     return SgOps.getZ2POp();
   }
 
+  boost::array<int, 3>
+  SpaceGroup_refine_gridding_0(
+    const SpaceGroup& SgOps) {
+    return SgOps.refine_gridding();
+  }
+  boost::array<int, 3>
+  SpaceGroup_refine_gridding_1(
+    const SpaceGroup& SgOps,
+    const boost::array<int, 3>& grid) {
+    return SgOps.refine_gridding(grid);
+  }
+
   python::string SpaceGroup_repr(const SpaceGroup& SgOps)
   {
     std::string result;
@@ -480,6 +492,18 @@ namespace {
   Miller_IndexTableLayoutAdaptor_ShiftPhase(
     const Miller::IndexTableLayoutAdaptor& TLA, const std::complex<double>& F){
     return TLA.ShiftPhase(F);
+  }
+
+  boost::array<int, 3>
+  StructureSeminvariant_refine_gridding_0(
+    const StructureSeminvariant& ssVM) {
+    return ssVM.refine_gridding();
+  }
+  boost::array<int, 3>
+  StructureSeminvariant_refine_gridding_1(
+    const StructureSeminvariant& ssVM,
+    const boost::array<int, 3>& grid) {
+    return ssVM.refine_gridding(grid);
   }
 
 } // namespace <anonymous>
@@ -791,6 +815,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroup.def(&SpaceGroup::MatchTabulatedSettings,
                                 "MatchTabulatedSettings");
   py_SpaceGroup.def(&SpaceGroup::Info, "Info");
+  py_SpaceGroup.def(SpaceGroup_refine_gridding_0, "refine_gridding");
+  py_SpaceGroup.def(SpaceGroup_refine_gridding_1, "refine_gridding");
   py_SpaceGroup.def(SpaceGroup_repr, "__repr__");
   py_SpaceGroup.def(SpaceGroup_getinitargs, "__getinitargs__");
 
@@ -805,6 +831,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroupInfo.def(
     &SpaceGroupInfo::getAddlGeneratorsOfEuclideanNormalizer,
                     "getAddlGeneratorsOfEuclideanNormalizer");
+  py_SpaceGroupInfo.def(
+    &SpaceGroupInfo::expandAddlGeneratorsOfEuclideanNormalizer,
+                    "expandAddlGeneratorsOfEuclideanNormalizer");
   py_SpaceGroupInfo.def(&SpaceGroupInfo::isEnantiomorphic,
                                         "isEnantiomorphic");
   py_SpaceGroupInfo.def(&SpaceGroupInfo::getChangeOfHandOp,
@@ -1012,5 +1041,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   //XXX: expose fixcap_vector<int, 3>
   //py_StructureSeminvariant.def(&StructureSeminvariant::apply_mod,
   //                                                    "apply_mod");
+  py_StructureSeminvariant.def(
+    StructureSeminvariant_refine_gridding_0, "refine_gridding");
+  py_StructureSeminvariant.def(
+    StructureSeminvariant_refine_gridding_1, "refine_gridding");
   sgtbx::sanity_check();
 }
