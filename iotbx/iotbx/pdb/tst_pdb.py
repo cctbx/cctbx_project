@@ -198,6 +198,47 @@ def exercise_interpretation(verbose=0, quick=True):
       print "  sel_charge:", sel_charge.count(True)
     if (quick): break
 
+def exercise_scalen():
+  pdb_file = """\
+REMARK   4 napt COMPLIES WITH FORMAT V. 2.0
+CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P 21/c
+SCALE1       0.14966   0.00000   0.00000        0.00000
+SCALE2       0.00000   0.16798   0.00000        0.00000
+SCALE3       0.07914   0.00000   0.11558        0.00000
+HETATM    1  C1  UNK     0       0.550   0.110   2.464  1.00  0.00           C
+HETATM    2  X2  UNK     0       0.755   0.975   1.412  1.00  0.00           C
+HETATM    3 8H   UNK     0       0.947   2.326  -0.853  1.00  0.00           H
+HETATM    4  C3  UNK     0       0.321   0.626   0.102  1.00  0.00           C
+HETATM    5 7H   UNK     0       1.194   1.819   1.528  1.00  0.00
+HETATM    6  C_4 UNK     0       0.512   1.499  -1.006  1.00  0.00
+HETATM    7 6H   UNK     0       0.830   0.351   3.372  1.00  0.00
+HETATM    8  C5  UNK     0      -0.088  -1.132   2.263  1.00  0.00
+HETATM    9 9H   UNK     0      -0.223  -1.757   3.019  1.00  0.00
+TER      10      UNK     0
+END
+""".splitlines()
+  stage_1 = pdb.interpretation.stage_1(raw_records=pdb_file)
+  xray_structure = stage_1.extract_xray_structure(
+    infer_scattering_types_from_names=True)
+  s = StringIO()
+  xray_structure.show_summary(f=s).show_scatterers(f=s)
+  assert s.getvalue() == """\
+Number of scatterers: 9
+At special positions: 0
+Unit cell: (8.098, 5.953, 8.652, 90, 124.4, 90)
+Space group: P 1 21/c 1 (No. 14)
+Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
+0    C      4 ( 0.0823  0.0185  0.3283) 1.00 0.0000
+1    C      4 ( 0.1130  0.1638  0.2229) 1.00 0.0000
+2    H      4 ( 0.1417  0.3907 -0.0236) 1.00 0.0000
+3    C      4 ( 0.0480  0.1052  0.0372) 1.00 0.0000
+4    H      4 ( 0.1787  0.3056  0.2711) 1.00 0.0000
+5    C      4 ( 0.0766  0.2518 -0.0758) 1.00 0.0000
+6    H      4 ( 0.1242  0.0590  0.4554) 1.00 0.0000
+7    C      4 (-0.0132 -0.1902  0.2546) 1.00 0.0000
+8    H      4 (-0.0334 -0.2951  0.3313) 1.00 0.0000
+"""
+
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info=sgtbx.space_group_info("P 31"),
@@ -237,6 +278,7 @@ def run():
   exercise_atom()
   exercise_altLoc_grouping()
   exercise_interpretation(verbose=verbose)
+  exercise_scalen()
   for anisotropic_flag in (False, True):
     exercise_xray_structure(anisotropic_flag, verbose=verbose)
   print "OK"
