@@ -122,7 +122,7 @@ class rec:
         elems.append(self(i,j))
     return rec(elems, (self.n_columns(), self.n_rows()))
 
-  def mathematica_form(self, label=""):
+  def mathematica_form(self, label="", one_row_per_line=00000):
     s = ""
     if (label): s = label + "="
     s += "{"
@@ -131,8 +131,18 @@ class rec:
       for ic in xrange(self.n_columns()):
         s += str(self(ir, ic))
         s += ", "
-      s = s[:-2] + "}, "
+      s = s[:-2] + "},"
+      if (one_row_per_line): s += "\n  "
+      else: s += " "
     return s[:-2] + "}"
+
+  def as_sym_mat3(self):
+    assert self.n == (3,3)
+    m = self.elems
+    return (m[0],m[4],m[8],
+            (m[1]+m[3])/2.,
+            (m[2]+m[6])/2.,
+            (m[5]+m[7])/2.)
 
 class row(rec):
 
@@ -150,6 +160,15 @@ class sqr(rec):
     l = len(elems)
     n = int(l**(.5) + 0.5)
     assert l == n * n
+    rec.__init__(self, elems, (n,n))
+
+class diag(rec):
+
+  def __init__(self, diag_elems):
+    n = len(diag_elems)
+    elems = [0 for i in xrange(n*n)]
+    for i in xrange(n):
+      elems[i*(n+1)] = diag_elems[i]
     rec.__init__(self, elems, (n,n))
 
 class sym(rec):
@@ -231,4 +250,6 @@ if (__name__ == "__main__"):
   assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert col((2,3,4)).product() == 2*3*4
+  assert diag((1,2,3)).mathematica_form() == \
+    "{{1, 0, 0}, {0, 2, 0}, {0, 0, 3}}"
   print "OK"
