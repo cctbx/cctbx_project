@@ -5,6 +5,7 @@ env.SharedLibrary(target="#libtbx/cctbx_sgtbx_ext", source=[
   "sgtbx_ext.cpp",
   "brick.cpp",
   "change_of_basis.cpp",
+  "direct_space_asu.cpp",
   "find_affine.cpp",
   "lattice_symmetry.cpp",
   "phase_info.cpp",

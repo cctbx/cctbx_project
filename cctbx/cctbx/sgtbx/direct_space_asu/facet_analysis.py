@@ -10,11 +10,8 @@ def intersection(facets):
   m = flex.int()
   t = flex.int()
   denominator = 1
-  r1 = rational.int(1)
   for facet in facets:
-    for e in facet.n:
-      denominator = rational.lcm(denominator, (r1*e).denominator())
-    denominator = rational.lcm(denominator, (r1*facet.c).denominator())
+    denominator = facet.lcm_of_denominators(start_lcm=denominator)
   for facet in facets:
     for e in facet.n: m.append(int(e * denominator))
     t.append(-int(facet.c * denominator))

@@ -29,6 +29,14 @@ def exercise_space_group_info():
   assert str(i.reference_setting()) == "C 1 2 1"
   assert str(i.as_reference_setting()) == "C 1 2 1"
   assert str(i.primitive_setting()) == "Hall:  C 2y (-x+y,z,x+y)"
+  asu = i.direct_space_asu()
+  assert len(asu.facets) == 6
+  assert sgtbx.space_group(asu.hall_symbol) == i.group()
+  j = i.primitive_setting()
+  asu = j.direct_space_asu()
+  assert len(asu.facets) == 6
+  asu.show_summary()
+  assert sgtbx.space_group(asu.hall_symbol) == j.group()
 
 def test_enantiomorphic_pairs():
   pairs = []

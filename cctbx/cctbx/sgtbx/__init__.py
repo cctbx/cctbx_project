@@ -67,6 +67,15 @@ class space_group_info:
       cache._reciprocal_space_asu = reciprocal_space_asu(self.type())
     return cache._reciprocal_space_asu
 
+  def direct_space_asu(self):
+    from cctbx.sgtbx.direct_space_asu import reference_table
+    cache = self._space_group_info_cache
+    if (not hasattr(cache, "_direct_space_asu")):
+      reference_asu = reference_table.get_asu(self.type().number())
+      cache._direct_space_asu = reference_asu.change_basis(
+        self.type().cb_op().inverse())
+    return cache._direct_space_asu
+
   def brick(self):
     cache = self._space_group_info_cache
     if (not hasattr(cache, "_brick")):
