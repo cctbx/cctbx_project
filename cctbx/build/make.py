@@ -84,6 +84,7 @@ def make_lib_python_dir(platform):
     system_verbose("cp eltbx/*%s %s/eltbx" % (libpyd, lib_python_dir))
     system_verbose("cp sftbx/*%s %s" % (libpyd, lib_python_dir))
     system_verbose("cp fftbx/*%s %s" % (libpyd, lib_python_dir))
+    system_verbose("cp lbfgs/*%s %s" % (libpyd, lib_python_dir))
   else:
     lib_python_dir = lib_python_dir.replace("/", "\\")
     system_verbose(r"copy uctbx\*.pyd %s" % (lib_python_dir,))
@@ -93,6 +94,7 @@ def make_lib_python_dir(platform):
     system_verbose(r"copy eltbx\*.pyd %s\eltbx" % (lib_python_dir,))
     system_verbose(r"copy sftbx\*.pyd %s" % (lib_python_dir,))
     system_verbose(r"copy fftbx\*.pyd %s" % (lib_python_dir,))
+    system_verbose(r"copy lbfgs\*.pyd %s" % (lib_python_dir,))
 
 if (__name__ == "__main__"):
   cf = read_configuration()
@@ -105,7 +107,7 @@ if (__name__ == "__main__"):
 
   externals = ("external/boost_python",)
   toolboxes = ("uctbx", "sgtbx", "arraytbx",
-               "adptbx", "eltbx", "sftbx", "fftbx")
+               "adptbx", "eltbx", "sftbx", "fftbx", "lbfgs")
   examples = ("examples/cpp",)
   all_targets = externals + toolboxes + examples
 

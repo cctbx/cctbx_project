@@ -14,3 +14,4 @@ import cctbx_boost.eltbx.neutron
 from cctbx_boost import adptbx
 from cctbx_boost import sftbx
 from cctbx_boost import fftbx
+from cctbx_boost import lbfgs

@@ -34,6 +34,7 @@ if (__name__ == "__main__"):
                    "adptbx",
                    "sftbx",
                    "fftbx",
+                   "lbfgs",
                    "examples/cpp"):
       create_makefile(path_cctbx, cf, subdir)
   else:

@@ -10,8 +10,9 @@ C
 C                          JORGE NOCEDAL
 C                        *** July 1990 ***
 C
-      PROGRAM SDRIVE
-      PARAMETER(NDIM=2000,MSAVE=7,NWORK=NDIM*(2*MSAVE +1)+2*MSAVE)
+      subroutine one_pass(iprint1)
+      integer iprint1
+      PARAMETER(NDIM=100,MSAVE=7,NWORK=NDIM*(2*MSAVE +1)+2*MSAVE)
       DOUBLE PRECISION X(NDIM),G(NDIM),DIAG(NDIM),W(NWORK)
       DOUBLE PRECISION F,EPS,XTOL,GTOL,T1,T2,STPMIN,STPMAX
       INTEGER IPRINT(2),IFLAG,ICALL,N,M,MP,LP,J
@@ -24,7 +25,7 @@ C
 C
       N=100
       M=5
-      IPRINT(1)= 1
+      IPRINT(1)= iprint1
       IPRINT(2)= 0
 C
 C     We do not wish to provide the diagonal matrices Hk0, and 
@@ -60,3 +61,13 @@ C     We allow at most 2000 evaluations of F and G
 C
 C     ** LAST LINE OF SIMPLE DRIVER (SDRIVE) **
 
+      program sdrive
+      integer passes, i, iprint1
+      passes = 1
+C     passes = 10000
+      iprint1 = -1
+      if (passes .eq. 1) iprint1 = 1
+      do i = 1, passes
+        call one_pass(iprint1)
+      end do
+      end

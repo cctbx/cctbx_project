@@ -13,6 +13,7 @@ softlinks:
 	cd eltbx; make softlinks
 	cd sftbx; make softlinks
 	cd fftbx; make softlinks
+	cd lbfgs; make softlinks
 	cd examples/cpp; make softlinks
 
 unlink:
@@ -24,6 +25,7 @@ unlink:
 	cd eltbx; make unlink
 	cd sftbx; make unlink
 	cd fftbx; make unlink
+	cd lbfgs; make unlink
 	cd examples/cpp; make unlink
 
 cp:
@@ -35,6 +37,7 @@ cp:
 	cd eltbx; make cp
 	cd sftbx; make cp
 	cd fftbx; make cp
+	cd lbfgs; make cp
 	cd examples/cpp; make cp
 
 rm:
@@ -46,6 +49,7 @@ rm:
 	cd eltbx; make rm
 	cd sftbx; make rm
 	cd fftbx; make rm
+	cd lbfgs; make rm
 	cd examples/cpp; make rm
 
 clean:
@@ -57,6 +61,7 @@ clean:
 	cd eltbx; make clean
 	cd sftbx; make clean
 	cd fftbx; make clean
+	cd lbfgs; make clean
 	cd examples/cpp; make clean
 
 all_clean: clean
@@ -71,6 +76,7 @@ depend:
 	cd eltbx; make -f Makefile.nodepend depend > Makefile
 	cd sftbx; make -f Makefile.nodepend depend > Makefile
 	cd fftbx; make -f Makefile.nodepend depend > Makefile
+	cd lbfgs; make -f Makefile.nodepend depend > Makefile
 	cd examples/cpp; make -f Makefile.nodepend depend > Makefile
 
 libraries:
@@ -93,6 +99,7 @@ compile:
 	cd eltbx; make
 	cd sftbx; make
 	cd fftbx; make
+	cd lbfgs; make
 	cd examples/cpp; make
 
 lib_python_dir:
@@ -109,5 +116,6 @@ lib_python_dir:
 	cp eltbx/*.so lib_python/cctbx_boost/eltbx
 	cp sftbx/*.so lib_python/cctbx_boost
 	cp fftbx/*.so lib_python/cctbx_boost
+	cp lbfgs/*.so lib_python/cctbx_boost
 
 all: compile lib_python_dir
