@@ -37,8 +37,8 @@ def bool_from_value_words(value_words):
   if (word_lower in ["true", "yes", "on", "1"]): return True
   assert len(value_words) > 0
   raise RuntimeError(
-    'One True of False value expected, "%s" found (input line %d)' % (
-      value_string, value_words[0].line_number))
+    'One True of False value expected, "%s" found%s' % (
+      value_string, value_words[0].where_str()))
 
 def number_from_value_words(value_words, number_type, number_type_name):
   value_string = str_from_value_words(value_words)
@@ -46,8 +46,8 @@ def number_from_value_words(value_words, number_type, number_type_name):
   try: return number_type(value_string)
   except:
     raise RuntimeError(
-      '%s value expected, "%s" found (input line %d)' % (
-        number_type_name, value_string, value_words[0].line_number))
+      '%s value expected, "%s" found%s' % (
+        number_type_name, value_string, value_words[0].where_str()))
 
 def int_from_value_words(value_words):
   return number_from_value_words(value_words, int, "Integer")
@@ -71,8 +71,8 @@ def definition_type_from_value_words(value_words, type_names):
       return word_lower
   assert len(value_words) > 0
   raise RuntimeError(
-    'Unexpected definition type: "%s" (input line %d)' % (
-      value_words[0].value, value_words[0].line_number))
+    'Unexpected definition type: "%s"%s' % (
+      value_words[0].value, value_words[0].where_str()))
 
 def show_attributes(self, out, prefix, attributes_level, print_width):
   if (attributes_level <= 0): return
@@ -345,8 +345,8 @@ class object_list:
                 value=env_var,
                 quote_token='"')]
           if (variable_values is None):
-            raise RuntimeError("Undefined variable: $%s (input line %d)" % (
-              fragment.value, word.line_number))
+            raise RuntimeError("Undefined variable: $%s%s" % (
+              fragment.value, word.where_str()))
           if (not substitution_proxy.force_string):
             fragment.result = variable_values
           else:
@@ -434,13 +434,17 @@ class variable_substitution_proxy:
       value="".join([fragment.result.value for fragment in self.fragments]),
       quote_token='"')]
 
-def parse(input_string, definition_type_names=None):
+def parse(input_string=None, file_name=None, definition_type_names=None):
   from iotbx.parameters import parser
+  if (input_string is None):
+    assert file_name is not None
+    input_string = open(file_name).read()
   if (definition_type_names is None):
     definition_type_names = default_definition_type_names
   return object_list(objects=parser.collect_objects(
     word_stack=simple_tokenizer.as_word_stack(
       input_string=input_string,
+      file_name=file_name,
       contiguous_word_characters="",
       auto_split_unquoted={"{}": ("{", "}")}),
     definition_type_names=definition_type_names))
