@@ -125,6 +125,10 @@ class minimum_reduction(minimum_reduction_mixin, reduction):
     self.current_cycle_id = 1
     reduction.a4_action(self)
 
+  def a6_action(self):
+    self.current_cycle_id = 2
+    reduction.a6_action(self)
+
   def a8_action(self):
     self.current_cycle_id = 2
     reduction.a8_action(self)

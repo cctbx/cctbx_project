@@ -126,6 +126,9 @@ def do_reduce(inp):
   time_krivy_gruber_1976_minimum.stop()
   assert min_reduction.type() in (1,2)
   min_cell = min_reduction.as_unit_cell()
+  if (not approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])):
+    print red_cell.parameters()
+    print min_cell.parameters()
   assert approx_equal(min_cell.parameters()[:3], red_cell.parameters()[:3])
   assert inp.change_basis(min_reduction.r_inv().elems).is_similar_to(min_cell)
   time_gruber_1973_minimum.start()
@@ -460,7 +463,48 @@ def exercise_real_world_examples():
   assert red.as_unit_cell().is_similar_to(nc)
   assert red.r_inv().elems == (-1, 0, 1, 1, -1, 0, 0, 0, 1)
 
+def exercise_problem_parameters():
+  # krivy_gruber_1976 and gruber_1973 minimum reduction problems
+  # if a6_action or b3_action do not set current_cycle_id = 2
+  problem_parameters = (
+    (10.816653826391969, 13.820274961085254, 13.820274961085254,
+     60.0, 66.962544368849834, 66.962544368849834),
+    (10.148891565092219, 13.379088160259652, 13.379088160259652,
+     107.33461190548745, 107.94415159713115, 109.72759194290299),
+    (19.798989873223331, 231.21851136965654, 14.352700094407323,
+     133.37207519042573, 92.016673840743408, 134.55815348093702),
+    (10.392304845413264, 13.19090595827292, 13.19090595827292,
+     112.64730819498385, 104.36056979415913, 106.96527532101391),
+    (16.046806535881213, 13.341664064126334, 197.64614845728718,
+     153.28759931491018, 114.05435960569044, 92.543256980798247),
+    (10.488088481701515, 13.820274961085254, 13.820274961085254,
+     109.9226012907464, 104.00699650533103, 110.31922490992999),
+    (10.04987562112089, 13.19090595827292, 13.19090595827292,
+     118.05419482122835, 97.404049814230376, 106.92070123011929),
+    (10.04987562112089, 13.45362404707371, 13.45362404707371,
+     109.02416163919622, 105.88181549565937, 109.44017310001107),
+    (11.357816691600547, 13.638181696985853, 13.638181696985855,
+     115.81608733396159, 104.29612977641231, 104.29612977641233),
+    (11.832159566199232, 13.784048752090222, 13.784048752090222,
+     110.67521616123457, 104.95317005195066, 110.01926787579129))
+  for inp in problem_parameters:
+    reduce(uctbx.unit_cell(inp))
+  return
+  red0 = reduction_with_tracking_and_eq_always_false(inp)
+  n = min(len(red0.action_log), 20)
+  print inp
+  print "red0.action_log:", red0.action_log[-n:]
+  for cell in red0.cell_log[-n:]:
+    print cell
+  if (red0.iteration_limit_exceeded):
+    print "Iteration limit exceeded."
+  min_reduction = uctbx.fast_minimum_reduction(inp)
+  red = krivy_gruber_1976.reduction(inp)
+
 def exercise():
+  if (1):
+    exercise_problem_parameters()
+    return
   exercise_extreme()
   quick = "--Quick" in sys.argv[1:]
   verbose = "--Verbose" in sys.argv[1:]
