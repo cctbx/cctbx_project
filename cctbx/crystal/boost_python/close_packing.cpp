@@ -34,16 +34,20 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
       class_<w_t>("close_packing_hexagonal_sampling", no_init)
-        .def(init<direct_space_asu::float_asu<double>,
+        .def(init<sgtbx::change_of_basis_op const&,
+                  direct_space_asu::float_asu<double>,
                   af::tiny<bool, 3> const&,
                   double const&,
                   optional<double const&,
                            bool> >(
-          (arg_("float_asu"),
+          (arg_("cb_op_original_to_sampling"),
+           arg_("float_asu"),
            arg_("continuous_shift_flags"),
            arg_("point_distance"),
            arg_("buffer_thickness")=-1,
            arg_("all_twelve_neighbors")=false)))
+        .def("cb_op_original_to_sampling",
+          &w_t::cb_op_original_to_sampling, rir())
         .def("float_asu", &w_t::float_asu, rir())
         .def("continuous_shift_flags", &w_t::continuous_shift_flags, ccr())
         .def("point_distance", &w_t::point_distance, ccr())
