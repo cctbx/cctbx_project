@@ -2253,7 +2253,7 @@ namespace cctbx { namespace sgtbx {
         for (Uv[0] = -1; Uv[0] <= 1; Uv[0]++)
         for (Uv[1] = -1; Uv[1] <= 1; Uv[1]++)
         for (Uv[2] = -1; Uv[2] <= 1; Uv[2]++) {
-          fractional<double> USX = double3_plus_TrVec(SX, U);
+          fractional<double> USX = SX + U;
           fractional<double> SnappedUSX = m_Operations[iWP].SpecialOp() * USX;
           double Dist2 = uc.Distance2(SnappedUSX, USX);
           if (ShortestDistance2 > Dist2) {

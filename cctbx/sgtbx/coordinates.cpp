@@ -120,7 +120,7 @@ namespace cctbx { namespace sgtbx {
       RotMx CumR = M.Rpart().accumulate();
       fractional<double> Mate0 = M * m_SnapPosition;
       for (int iLTr = 0; iLTr < SgOps.nLTr(); iLTr++) {
-        fractional<double> Mate = double3_plus_TrVec(Mate0, SgOps.LTr(iLTr));
+        fractional<double> Mate = Mate0 + SgOps.LTr(iLTr);
         fractional<double> Delta0 = Mate - m_SnapPosition;
         Delta0 = Delta0.modShort();
         TrVec UShifts(
@@ -133,7 +133,7 @@ namespace cctbx { namespace sgtbx {
         for (USh_vec[0] = -TBF; USh_vec[0] <= TBF; USh_vec[0] += TBF)
         for (USh_vec[1] = -TBF; USh_vec[1] <= TBF; USh_vec[1] += TBF)
         for (USh_vec[2] = -TBF; USh_vec[2] <= TBF; USh_vec[2] += TBF) {
-          fractional<double> Delta = double3_plus_TrVec(Delta0, UShifts);
+          fractional<double> Delta = Delta0 + UShifts;
           double CartDelta2 = uc.Length2(Delta);
           if (SD2 > CartDelta2) SD2 = CartDelta2;
           if (CartDelta2 <= m_Parameters->m_MinMateDistance2) {
