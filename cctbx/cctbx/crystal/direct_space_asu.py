@@ -55,14 +55,18 @@ class _asu_mappings(boost.python.injector, asu_mappings):
   def get_rt_mx_ji(self, pair):
     return self.get_rt_mx_i(pair).inverse().multiply(self.get_rt_mx_j(pair))
 
-def non_crystallographic_asu_mappings(sites_cart, default_buffer_layer=0.5):
+def non_crystallographic_asu_mappings(
+      sites_cart,
+      default_buffer_layer=0.5,
+      min_unit_cell_length=0):
   sites_min = sites_cart.min()
   sites_max = sites_cart.max()
   sites_span = matrix.col(sites_max) - matrix.col(sites_min)
   buffer_layer = max(list(sites_span))
   if (buffer_layer == 0):
     buffer_layer = default_buffer_layer
-  unit_cell_lengths = list(sites_span + matrix.col([buffer_layer]*3)*2)
+  unit_cell_lengths = [max(min_unit_cell_length, unit_cell_length)
+    for unit_cell_length in (sites_span + matrix.col([buffer_layer]*3)*2)]
   crystal_symmetry = crystal.symmetry(
     unit_cell=unit_cell_lengths,
     space_group=sgtbx.space_group())
