@@ -45,7 +45,7 @@ namespace { // Helper functions in anonymous namespace.
 
   Vec3 CrossG(const double sqrtdetG, const Mx33& G,
               const Vec3& r, const Vec3& s) {
-    Vec3 Gr, Gs, rxs;
+    Vec3 Gr, Gs;
     MatrixLite::multiply<double>(G.elems, r.elems, 3, 3, 1, Gr.elems);
     MatrixLite::multiply<double>(G.elems, s.elems, 3, 3, 1, Gs.elems);
     return sqrtdetG * MatrixLite::cross_product(Gr, Gs);
