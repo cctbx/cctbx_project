@@ -803,6 +803,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_Miller_SymEquivIndex.def(constructor<>());
   py_Miller_SymEquivIndex.def(
     constructor<const Miller::Index&, int, int, bool>());
+  py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::H, "H");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
   py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::TBF, "TBF");
