@@ -47,13 +47,16 @@ class FileClient:
     return self._remote_call('WriteFile',arg,kw)
 
   def ReadPickleFile(self,*arg,**kw):
-    return self._remote_call('ReadFile',arg,kw)
+    return self._remote_call('ReadPickleFile',arg,kw)
 
   def WritePickleFile(self,*arg,**kw):
-    return self._remote_call('WriteFile',arg,kw)
+    return self._remote_call('WritePickleFile',arg,kw)
 
   def UnlockFile(self,*arg,**kw):
     return self._remote_call('UnlockFile',arg,kw)
+
+  def FileExists(self,*arg,**kw):
+    return self._remote_call('FileExists',arg,kw)
 
 ##############################################################################
 # Process commands
