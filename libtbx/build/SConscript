@@ -16,7 +16,6 @@ if (sys.platform == "linux2"):
 env_etc = empty()
 env_etc.compiler = ARGUMENTS.get("compiler", 0)
 env_etc.touch_init = touch_init
-env_base = Environment(ENV = os.environ)
 
 if (env_etc.compiler == 0):
   if (sys.platform == "win32"):
@@ -34,6 +33,8 @@ assert env_etc.compiler in (
   "tru64_cxx",
   #"irix_CC",
 )
+
+env_base = Environment(ENV=os.environ)
 
 if (sys.platform == "win32"):
   env_etc.python_include = r"c:\Python22\include"
@@ -107,4 +108,16 @@ env_etc.cxxflags_bpl_defines_base = Split("""
     -DBOOST_PYTHON_V2
 """)
 
-Export("env_base", "env_etc")
+env_boost_python_ext = env_base.Copy(
+  CPPPATH=[env_etc.boost_include, env_etc.python_include],
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags_bpl,
+  SHLIBPREFIX="",
+  LIBPATH=["#/libtbx"] + env_etc.libpath_python,
+  LIBS=["bpl"] + env_etc.libs_python + env_etc.libm,
+)
+env_boost_python_ext.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+env_boost_python_ext.Replace(SHLIBSUFFIX=env_etc.extension_module_suffix)
+
+Export("env_base", "env_etc", "env_boost_python_ext")

@@ -20,10 +20,11 @@ def update_libtbx_info(env, package_name, package_dist):
   package_dist_varname = package_name.upper() + "_DIST"
   libtbx_info = {
     "LD_LIBRARY_PATH": [],
-    "PYTHONPATH": [],
-    "PATH": [],
+    "PYTHONPATH": [norm(join(env.libtbx_build, "libtbx")), env.libtbx_dist],
+    "PATH": [norm(join(env.libtbx_dist, "libtbx/command_line"))],
     "LIBTBX_PYTHON_BIN": env.python_bin,
     "LIBTBX_DIST": env.libtbx_dist,
+    "LIBTBX_SCONS": norm(join(env.libtbx_dist, "libtbx")),
     "LIBTBX_BUILD": env.libtbx_build,
     package_dist_varname: package_dist,
     "package_names": [],
@@ -49,8 +50,6 @@ def update_libtbx_info(env, package_name, package_dist):
   assert libtbx_info["LIBTBX_BUILD"] == env.libtbx_build
   assert libtbx_info[package_dist_varname] == package_dist
   insert_normed_path(libtbx_info["LD_LIBRARY_PATH"],
-    join(env.libtbx_build, "libtbx"))
-  insert_normed_path(libtbx_info["PYTHONPATH"],
     join(env.libtbx_build, "libtbx"))
   insert_normed_path(libtbx_info["PYTHONPATH"],
     package_dist)
@@ -79,7 +78,7 @@ def emit_env_run_sh(libtbx_build, libtbx_info):
       print >> f, '%s="%s"' % (var_name, values)
     print >> f, 'export %s' % (var_name,)
   print >> f, 'PATH="$LIBTBX_PYTHON_BIN%s$PATH"' % (os.pathsep,)
-  print >> f, 'python "$LIBTBX_DIST/env_run.py" $*'
+  print >> f, 'python "$LIBTBX_DIST/libtbx/command_line/env_run.py" $*'
   f.close()
   os.chmod(env_run_sh_path, 0755)
 
@@ -128,37 +127,13 @@ def emit_SConstruct(env, libtbx_info):
   SConstruct_path = norm(join(env.libtbx_build, "SConstruct"))
   f = open_info(SConstruct_path)
   print >> f, 'Repository(r"%s")' % (env.dist_root,)
-  print >> f, 'SConscript("libtbx/build/SConscript")'
   print >> f, 'SConscript("libtbx/SConscript")'
   for package_name in libtbx_info["package_names"]:
-    print >> f, 'SConscript("libtbx/%s_boost/SConscript")' % (package_name,)
     print >> f, 'SConscript("%s/SConscript")' % (package_name,)
   f.close()
 
-def emit_build_py(env):
-  build_py_path = norm(join(env.libtbx_build, "build.py"))
-  f = open_info(build_py_path)
-  print >> f, """#!%s
-import os, sys
-args = sys.argv[1:]
-if (len(args) == 0):
-  os.chdir(r"%s")
-  args = ["."]
-cmd = r"%s " + " ".join(args)
-print cmd
-sys.stdout.flush()
-os.system(cmd)""" % (
-  sys.executable, env.libtbx_build, env.scons_cmd)
-  f.close()
-  os.chmod(build_py_path, 0755)
-
 def run():
   env = empty()
-  # XXX TODO encapsulate scons
-  if (hasattr(os, "symlink")):
-    env.scons_cmd = "/net/cci/rwgk/xp/scons-cvs/bin/scons"
-  else:
-    env.scons_cmd = r"python R:\xp\scons-cvs\bin\scons"
   env.python_bin = norm(os.path.split(sys.executable)[0])
   env.libtbx_build = norm(os.path.abspath(os.getcwd()))
   env.libtbx_dist = norm(os.path.dirname(norm(os.path.abspath(sys.argv[0]))))
@@ -176,7 +151,6 @@ def run():
         emit_setpaths_csh(env.libtbx_build, libtbx_info)
       else:
         emit_setpaths_bat(env.libtbx_build, libtbx_info)
-      emit_build_py(env)
   if (libtbx_info == None):
     print "Specify at least one package name."
   else:

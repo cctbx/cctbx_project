@@ -1,4 +1,18 @@
+Import("env_etc", "env_boost_python_ext")
+
+env_scitbx_boost_python = env_boost_python_ext.Copy()
+env_scitbx_boost_python.Prepend(CPPPATH=[env_etc.scitbx_include])
+env_scitbx_boost_python.Prepend(LIBS=["scitbx_boost_python"])
+Export("env_scitbx_boost_python")
+
+env_scitbx_boost_python.Command(
+  "#/libtbx/scitbx_boost/__init__.py",
+  "#/libtbx/build/SConscript", env_etc.touch_init)
+
+SConscript("boost_python/SConscript")
 SConscript("array_family/SConscript")
 SConscript("array_family/boost_python/SConscript")
 SConscript("lbfgs/SConscript")
+SConscript("lbfgs/boost_python/SConscript")
 SConscript("fftpack/timing/SConscript")
+SConscript("fftpack/boost_python/SConscript")
