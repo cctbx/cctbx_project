@@ -285,7 +285,8 @@ namespace {
 int main(int argc, char* argv[])
 {
   for(;;) {
-#if !(defined(__GNUC__) && __GNUC__ < 3)
+#if !(defined(__GNUC__) && __GNUC__ < 3) \
+ && !(defined(BOOST_MSVC) && BOOST_MSVC == 1310)
     exercise_main<int, double>::run();
     exercise_main<a_value<int>, double>::run();
     exercise_main<int, a_value<double> >::run();
