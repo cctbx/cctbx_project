@@ -372,6 +372,7 @@ else:
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
     env_etc.shlinkflags_bpl = [
+      "-w", # suppress "source/lib does not exist" warning
       "-bundle",
       "-F"+darwin_framework_path(),
       "-framework", "Python"]
