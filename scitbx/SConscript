@@ -16,6 +16,7 @@ Export("env_scitbx_boost_python_ext")
 
 SConscript("scitbx/source_generators/array_family/SConscript")
 SConscript("array_family/SConscript")
+SConscript("serialization/SConscript")
 SConscript("fftpack/timing/SConscript")
 SConscript("lbfgs/SConscript")
 
