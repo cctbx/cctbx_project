@@ -146,8 +146,16 @@ def from_pdb(file_name=None, file_iterator=None,
           occupancy=record.occupancy,
           caasf=caasf_interpretation.from_pdb_atom_record(
             record, have_useful_atom_element_columns))
-    elif (record.record_name == "ANISOU"):
+    elif (record.record_name == "SIGATM"):
       if (not prev_record.record_name in ("ATOM", "HETATM")):
+        record.raise_FormatError(
+          "SIGATM record without preceeding ATOM or HETATM record.")
+      if (prev_record.raw[7:27] != record.raw[7:27]):
+        record.raise_FormatError(
+          "SIGATM record does not match preceeding %s record."
+            % prev_record.record_name)
+    elif (record.record_name == "ANISOU"):
+      if (not prev_record.record_name in ("ATOM", "HETATM", "SIGATM")):
         record.raise_FormatError(
           "ANISOU record without preceeding ATOM or HETATM record.")
       if (prev_record.raw[7:27] != record.raw[7:27]):
