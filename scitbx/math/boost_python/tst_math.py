@@ -166,7 +166,10 @@ def exercise_bessel():
 def exercise_matrix_inversion_in_place():
   m = flex.double()
   m.resize(flex.grid(0,0))
-  matrix_inversion_in_place(m)
+  matrix_inversion_in_place(a=m)
+  b = flex.double()
+  b.resize(flex.grid(0,0))
+  matrix_inversion_in_place(a=m, b=b)
   m = flex.double([2])
   m.resize(flex.grid(1,1))
   matrix_inversion_in_place(m)
@@ -200,10 +203,25 @@ def exercise_matrix_inversion_in_place():
       m_inv = matrix.rec(m, (n,n))
       assert approx_equal(m_orig*m_inv, u)
       assert approx_equal(m_inv*m_orig, u)
+      for n_b in xrange(0,4):
+        m = flex.double(m_orig)
+        m.resize(flex.grid(n,n))
+        b = flex.double(xrange(1,n*n_b+1))
+        b.resize(flex.grid(n_b,n))
+        b_orig = matrix.rec(b, (n,n_b))
+        matrix_inversion_in_place(m, b)
+        m_inv = matrix.rec(m, (n,n))
+        x = matrix.rec(b, (n_b,n))
+        assert approx_equal(m_orig*m_inv, u)
+        assert approx_equal(m_inv*m_orig, u)
+        for i_b in xrange(n_b):
+          b_i = matrix.col(b_orig.elems[i_b*n:(i_b+1)*n])
+          x_i = matrix.col(x.elems[i_b*n:(i_b+1)*n])
+          assert approx_equal(m_orig*x_i, b_i)
   for n in xrange(1,12):
     u = flex.double(n*n, 0)
     for i in xrange(0,n*n,n+1): u[i] = 1
-    for i_trial in xrange(10):
+    for i_trial in xrange(3):
       m = 2*flex.random_double(n*n)-1
       m.resize(flex.grid(n,n))
       m_orig = matrix.rec(m, (n,n))
@@ -215,6 +233,21 @@ def exercise_matrix_inversion_in_place():
         m_inv = matrix.rec(m, (n,n))
         assert approx_equal(m_orig*m_inv, u)
         assert approx_equal(m_inv*m_orig, u)
+        for n_b in xrange(0,4):
+          m = flex.double(m_orig)
+          m.resize(flex.grid(n,n))
+          b = flex.random_double(n*n_b)
+          b.resize(flex.grid(n_b,n))
+          b_orig = matrix.rec(b, (n,n_b))
+          matrix_inversion_in_place(m, b)
+          m_inv = matrix.rec(m, (n,n))
+          x = matrix.rec(b, (n_b,n))
+          assert approx_equal(m_orig*m_inv, u)
+          assert approx_equal(m_inv*m_orig, u)
+          for i_b in xrange(n_b):
+            b_i = matrix.col(b_orig.elems[i_b*n:(i_b+1)*n])
+            x_i = matrix.col(x.elems[i_b*n:(i_b+1)*n])
+            assert approx_equal(m_orig*x_i, b_i)
 
 def matrix_mul(a, ar, ac, b, br, bc):
   assert br == ac

@@ -8,6 +8,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 
 namespace scitbx { namespace math {
 namespace boost_python {
@@ -54,24 +55,39 @@ namespace {
   }
 
   void
-  matrix_inversion_in_place_wrapper(
-    af::ref<double, af::c_grid<2> > const& a)
+  matrix_inversion_in_place_wrapper_ab(
+    af::ref<double, af::c_grid<2> > const& a,
+    af::ref<double, af::c_grid<2> > const& b)
   {
-    if (a.accessor()[0] != a.accessor()[1]) {
-      throw error("matrix_inversion_in_place requires a square matrix.");
+    if (a.accessor()[1] != a.accessor()[0]) {
+      throw error("matrix_inversion_in_place: a square matrix is required.");
+    }
+    if (   b.accessor()[0] != 0
+        && b.accessor()[1] != a.accessor()[0]) {
+      throw error(
+        "matrix_inversion_in_place: if a is a (n*n) matrix b must be (m*n");
     }
     if (matrix_inversion_in_place(
           a.begin(),
           static_cast<std::size_t>(a.accessor()[0]),
-          static_cast<double*>(0),
-          static_cast<std::size_t>(0)) != 0) {
+          b.begin(),
+          static_cast<std::size_t>(b.accessor()[0])) != 0) {
       throw error("matrix is singular.");
     }
+  }
+
+  void
+  matrix_inversion_in_place_wrapper_a(
+    af::ref<double, af::c_grid<2> > const& a)
+  {
+    matrix_inversion_in_place_wrapper_ab(
+      a, af::ref<double, af::c_grid<2> >(0,af::c_grid<2>(0,0)));
   }
 
   void init_module()
   {
     using namespace boost::python;
+    typedef boost::python::arg arg_; // gcc 2.96 workaround
 
     def("floating_point_epsilon_float_get",
       &floating_point_epsilon<float>::get);
@@ -95,7 +111,10 @@ namespace {
     wrap_principal_axes_of_inertia();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
-    def("matrix_inversion_in_place", matrix_inversion_in_place_wrapper);
+    def("matrix_inversion_in_place", matrix_inversion_in_place_wrapper_ab,
+      (arg_("a"), arg_("b")));
+    def("matrix_inversion_in_place", matrix_inversion_in_place_wrapper_a,
+      (arg_("a")));
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
