@@ -253,19 +253,24 @@ namespace cctbx { namespace restraints {
     return result;
   }
 
+  //! Not available in Python.
   inline
   double
   bond_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
     af::const_ref<bond_sym_proxy> const& proxies,
+    std::vector<bool> const& sym_active_flags,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     bool disable_cache=false)
   {
     double result = 0;
     if (!disable_cache) {
       asu_cache<> cache(
-        sites_cart, asu_mappings, gradient_array.size() != 0);
+        sites_cart,
+        asu_mappings,
+        sym_active_flags,
+        gradient_array.size() != 0);
       for(std::size_t i=0;i<proxies.size();i++) {
         bond restraint(cache, proxies[i]);
         if (proxies[i].pair.j_sym == 0) result += restraint.residual();
@@ -292,6 +297,28 @@ namespace cctbx { namespace restraints {
     return result;
   }
 
+  inline
+  double
+  bond_residual_sum(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    direct_space_asu::asu_mappings<> const& asu_mappings,
+    af::const_ref<bond_sym_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array,
+    bool disable_cache=false)
+  {
+    std::vector<bool> sym_active_flags;
+    if (!disable_cache) {
+      sym_active_flags.resize(asu_mappings.mappings_const_ref().size(), true);
+    }
+    return bond_residual_sum(
+      sites_cart,
+      asu_mappings,
+      proxies,
+      sym_active_flags,
+      gradient_array,
+      disable_cache);
+  }
+
   typedef sorted_proxies<bond_proxy, bond_sym_proxy>
     bond_sorted_proxies;
 
@@ -311,6 +338,7 @@ namespace cctbx { namespace restraints {
       sites_cart,
       *sorted_proxies.asu_mappings(),
       sorted_proxies.sym_proxies.const_ref(),
+      sorted_proxies.sym_active_flags,
       gradient_array,
       disable_cache);
     return result;
