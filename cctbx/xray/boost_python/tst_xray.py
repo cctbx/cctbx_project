@@ -7,6 +7,7 @@ from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
+import pickle
 
 def exercise_conversions():
   d = flex.double((10,-1))
@@ -174,6 +175,25 @@ def exercise_scattering_dictionary():
   assert approx_equal(c.b(), (3,4))
   assert approx_equal(c.c(), 5)
   assert tuple(g.member_indices) == (8,)
+  s = pickle.dumps(g)
+  l = pickle.loads(s)
+  c = l.coefficients
+  assert c.n_ab() == 2
+  assert approx_equal(c.a(), (1,2))
+  assert approx_equal(c.b(), (3,4))
+  assert approx_equal(c.c(), 5)
+  assert tuple(l.member_indices) == (8,)
+  s = pickle.dumps(sd)
+  l = pickle.loads(s)
+  l_dict = l.dict()
+  for k,v in sd.dict().items():
+    w = l_dict[k]
+    assert tuple(v.member_indices) == tuple(w.member_indices)
+    vc = v.coefficients
+    wc = w.coefficients
+    assert vc.a() == wc.a()
+    assert vc.b() == wc.b()
+    assert vc.c() == wc.c()
 
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))

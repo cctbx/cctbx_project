@@ -1,5 +1,6 @@
 from cctbx.eltbx import caasf
 from scitbx.test_utils import approx_equal
+import pickle
 
 def exercise_it1992():
   c = caasf.it1992("const")
@@ -108,16 +109,22 @@ def exercise_custom():
   assert c.a() == ()
   assert c.b() == ()
   assert approx_equal(c.c(), 1)
-  c = caasf.custom((1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5), 6)
-  assert c.n_ab() == 5
-  assert approx_equal(c.a(),(1,-2,3,-4,5))
-  assert approx_equal(c.b(),(-.1,.2,-.3,.4,-.5))
-  assert approx_equal(c.c(), 6)
   c = caasf.custom((), (), -2)
   assert c.n_ab() == 0
   assert c.a() == ()
   assert c.b() == ()
   assert approx_equal(c.c(), -2)
+  c = caasf.custom((1,-2,3,-4,5), (-.1,.2,-.3,.4,-.5), 6)
+  assert c.n_ab() == 5
+  assert approx_equal(c.a(),(1,-2,3,-4,5))
+  assert approx_equal(c.b(),(-.1,.2,-.3,.4,-.5))
+  assert approx_equal(c.c(), 6)
+  s = pickle.dumps(c)
+  l = pickle.loads(s)
+  assert l.n_ab() == c.n_ab()
+  assert approx_equal(l.a(), c.a())
+  assert approx_equal(l.b(), c.b())
+  assert approx_equal(l.c(), c.c())
 
 def run():
   exercise_it1992()
