@@ -2,7 +2,7 @@ import sys, os, pickle
 from os.path import normpath, join, abspath, dirname, isdir
 norm = normpath
 
-class UserError(Exception): pass
+from libtbx.config import UserError
 
 class registry:
 
@@ -73,6 +73,7 @@ def open_info(path, mode="w", info="Creating:"):
 class libtbx_env:
 
   def __init__(self, cwd, libtbx_dist):
+    self.python_version_major_minor = sys.version_info[:2]
     self.LIBTBX_PYTHON_EXE = norm(abspath(sys.executable))
     self.LIBTBX_BUILD = norm(abspath(os.getcwd()))
     self.LIBTBX_DIST_ROOT = norm(dirname(libtbx_dist))
