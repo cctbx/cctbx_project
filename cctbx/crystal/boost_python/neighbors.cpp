@@ -45,6 +45,7 @@ namespace {
         .def("next", helper<w_t>::next)
         .def("__iter__", scitbx::boost_python::pass_through)
         .def("restart", &w_t::restart)
+        .def("count_pairs", &w_t::count_pairs)
       ;
     }
   };
@@ -72,6 +73,7 @@ namespace {
         .def("n_boxes", &w_t::n_boxes, ccr())
         .def("next", helper<w_t>::next)
         .def("restart", &w_t::restart)
+        .def("count_pairs", &w_t::count_pairs)
       ;
     }
   };

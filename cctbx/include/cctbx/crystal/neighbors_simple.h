@@ -79,6 +79,18 @@ namespace neighbors {
         }
       }
 
+      //! Count the number of pairs.
+      std::size_t
+      count_pairs()
+      {
+        std::size_t result = 0;
+        while (!at_end_) {
+          next();
+          result++;
+        }
+        return result;
+      }
+
     protected:
       direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
       FloatType distance_cutoff_sq_;

@@ -151,6 +151,8 @@ def exercise_direct_space_asu():
       assert pair_generator.at_end()
     else:
       assert not pair_generator.at_end()
+    assert pair_generator.count_pairs() == len(index_pairs)
+    pair_generator.restart()
     index_pairs = []
     for index_pair in pair_generator:
       index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
@@ -226,6 +228,9 @@ def exercise_direct_space_asu():
         dist_sq_sorted = dist_sq.select(
           flex.sort_permutation(dist_sq))
         assert approx_equal(dist_sq_sorted, short_dist_sq_sorted)
+      assert pair_generator.count_pairs() == 0
+      pair_generator.restart()
+      assert pair_generator.count_pairs() == len(index_pairs)
 
 def run():
   exercise_direct_space_asu()
