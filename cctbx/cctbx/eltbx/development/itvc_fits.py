@@ -35,11 +35,11 @@ def run(file_name, args, cutoff, max_n_terms,
   results["fit_parameters"] = params
   i_chunk = 0
   for element in tab.elements:
+    if (len(args) > 0 and element not in args): continue
     flag = i_chunk % chunk_n == chunk_i
     i_chunk += 1
     if (not flag):
       continue
-    if (len(args) > 0 and element not in args): continue
     wk = xray_scattering.wk1995(element, 1)
     entry = tab.entries[element]
     null_fit = scitbx.math.gaussian.fit(
