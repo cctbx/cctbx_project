@@ -357,27 +357,49 @@ def exercise_from_scatterers_direct(space_group_info,
   if (0 or verbose):
     print "r-factor:", ls.target()
   assert ls.target() < 1.e-4
-  if (not anomalous_flag):
-    two_f_obs_minus_f_calc=abs(f_obs_exact).f_obs_minus_xray_structure_f_calc(
-      f_obs_factor=2,
-      xray_structure=structure,
-      structure_factor_algorithm="direct",
-      cos_sin_table=False)
-    phase_error = two_f_obs_minus_f_calc.mean_weighted_phase_error(
-      phase_source=f_obs_exact)
-    if (0 or verbose):
-      print "%.2f" % phase_error
-    assert approx_equal(phase_error, 0)
-    two_f_obs_minus_f_calc=abs(f_obs_exact).f_obs_minus_xray_structure_f_calc(
-      f_obs_factor=2,
-      xray_structure=structure[:-1],
-      structure_factor_algorithm="direct",
-      cos_sin_table=False)
-    real_map = two_f_obs_minus_f_calc.fft_map().real_map_unpadded()
-    density_at_sites = [real_map.eight_point_interpolation(scatterer.site)
-      for scatterer in structure.scatterers()]
-    assert density_at_sites[-1] \
-         > min(density_at_sites[:-1])/(space_group_info.group().order_z()*3)
+
+def exercise_f_obs_minus_xray_structure_f_calc(
+      space_group_info,
+      d_min=3,
+      verbose=0):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=["C"]*3,
+    volume_per_atom=1000,
+    min_distance=5,
+    general_positions_only=True,
+    random_u_iso=False)
+  if (0 or verbose):
+    structure.show_summary().show_scatterers()
+  f_obs_exact = structure.structure_factors(
+    d_min=d_min, algorithm="direct",
+    cos_sin_table=False).f_calc()
+  two_f_obs_minus_f_calc=abs(f_obs_exact).f_obs_minus_xray_structure_f_calc(
+    f_obs_factor=2,
+    xray_structure=structure,
+    structure_factor_algorithm="direct",
+    cos_sin_table=False)
+  phase_error = two_f_obs_minus_f_calc.mean_weighted_phase_error(
+    phase_source=f_obs_exact)
+  if (0 or verbose):
+    print "%.2f" % phase_error
+  assert approx_equal(phase_error, 0)
+  two_f_obs_minus_f_calc=abs(f_obs_exact).f_obs_minus_xray_structure_f_calc(
+    f_obs_factor=2,
+    xray_structure=structure[:-1],
+    structure_factor_algorithm="direct",
+    cos_sin_table=False)
+  fft_map = two_f_obs_minus_f_calc.fft_map()
+  fft_map.apply_sigma_scaling()
+  real_map = fft_map.real_map_unpadded()
+  density_at_sites = [real_map.eight_point_interpolation(scatterer.site)
+    for scatterer in structure.scatterers()]
+  try:
+    assert min(density_at_sites[:-1]) > 7
+    assert density_at_sites[-1] > 2.5
+  except AssertionError:
+    print "density_at_sites:", density_at_sites
+    raise
 
 def exercise_n_gaussian(space_group_info, verbose=0):
   structure_5g = random_structure.xray_structure(
@@ -438,6 +460,9 @@ def run_call_back(flags, space_group_info):
               verbose=flags.Verbose)
   if (1):
     exercise_n_gaussian(
+      space_group_info=space_group_info)
+  if (1):
+    exercise_f_obs_minus_xray_structure_f_calc(
       space_group_info=space_group_info)
 
 def run():
