@@ -36,6 +36,12 @@ namespace cctbx { namespace restraints {
         return false;
       }
 
+      void
+      process(af::const_ref<SimpleProxyType> const& proxies)
+      {
+        for(std::size_t i=0;i<proxies.size();i++) process(proxies[i]);
+      }
+
       bool
       process(SymProxyType const& proxy)
       {
@@ -48,11 +54,23 @@ namespace cctbx { namespace restraints {
       }
 
       void
+      process(af::const_ref<SymProxyType> const& proxies)
+      {
+        for(std::size_t i=0;i<proxies.size();i++) process(proxies[i]);
+      }
+
+      void
       push_back(SymProxyType const& proxy)
       {
         sym.push_back(proxy);
         sym_active_flags[proxy.i_seq] = true;
         sym_active_flags[proxy.j_seq] = true;
+      }
+
+      void
+      push_back(af::const_ref<SymProxyType> const& proxies)
+      {
+        for(std::size_t i=0;i<proxies.size();i++) push_back(proxies[i]);
       }
 
       std::size_t

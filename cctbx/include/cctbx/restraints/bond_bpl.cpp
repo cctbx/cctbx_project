@@ -140,11 +140,23 @@ namespace {
         .def("process", (bool(w_t::*)(bond_simple_proxy const&)) &w_t::process,
           (arg_("proxy")))
         .def("process",
+          (void(w_t::*)(af::const_ref<bond_simple_proxy> const&))
+            &w_t::process,
+          (arg_("proxies")))
+        .def("process",
           (bool(w_t::*)(bond_asu_proxy const&)) &w_t::process,
             (arg_("proxy")))
+        .def("process",
+          (void(w_t::*)(af::const_ref<bond_asu_proxy> const&))
+            &w_t::process,
+          (arg_("proxies")))
         .def("push_back",
           (void(w_t::*)(bond_asu_proxy const&)) &w_t::push_back,
             (arg_("proxy")))
+        .def("push_back",
+          (void(w_t::*)(af::const_ref<bond_asu_proxy> const&))
+            &w_t::push_back,
+          (arg_("proxies")))
         .def("n_total", &w_t::n_total)
         .def_readonly("simple", &w_t::simple)
         .def_readonly("sym", &w_t::sym)
