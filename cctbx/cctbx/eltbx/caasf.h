@@ -36,7 +36,7 @@ namespace eltbx {
 
   //! Coefficients for the Analytical Approximation to the Scattering Factor.
   /*! Currently used to work with coefficients from the International
-      Tables Volume B (1992) (template parameter N = 4) and Waasmaier &
+      Tables Volume C (1992) (template parameter N = 4) and Waasmaier &
       Kirfel (1995), Acta Cryst. A51, 416-431 (template parameter N = 5).
    */
   template <std::size_t N>
