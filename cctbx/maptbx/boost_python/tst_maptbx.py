@@ -159,6 +159,11 @@ def exercise_structure_factors():
         anomalous_flag, mi, t.complex_map(), conjugate_flag)
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
+      f = maptbx.structure_factors.from_map(
+        anomalous_flag, mi, t.complex_map(), conjugate_flag, 0001)
+      assert f.miller_indices().size() == 0
+      assert f.data().size() == mi.size()
+      assert f.outside_map().size() == 0
 
 def exercise_gridding():
   u = uctbx.unit_cell((4,6,7))

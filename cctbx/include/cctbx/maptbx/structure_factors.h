@@ -155,7 +155,8 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<std::complex<OtherFloatType>,
                       af::c_grid_padded<3> > const& complex_map,
-        bool conjugate_flag)
+        bool conjugate_flag,
+        bool allow_miller_indices_outside_map=false)
       {
         af::int3 map_grid_focus = complex_map.accessor().focus();
         data_.reserve(miller_indices.size());
@@ -175,9 +176,17 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
             }
           }
           af::int3 ih = h_as_ih_exact_array(anomalous_flag, h, map_grid_focus);
-          CCTBX_ASSERT(ih.all_ge(0));
-          if (!f_conj) data_.push_back(complex_map(ih));
-          else         data_.push_back(std::conj(complex_map(ih)));
+          if (ih.all_ge(0)) {
+            if (!f_conj) data_.push_back(complex_map(ih));
+            else         data_.push_back(std::conj(complex_map(ih)));
+          }
+          else if (allow_miller_indices_outside_map) {
+            outside_map_.push_back(data_.size());
+            data_.push_back(0);
+          }
+          else {
+            throw error("Miller index not in structure factor map.");
+          }
         }
       }
 
@@ -187,10 +196,15 @@ namespace cctbx { namespace maptbx { namespace structure_factors {
       af::shared<std::complex<FloatType> >
       data() const { return data_; }
 
+      af::shared<std::size_t>
+      outside_map() const { return outside_map_; }
+
     protected:
       af::shared<miller::index<> > miller_indices_;
       af::shared<std::complex<FloatType> > data_;
+      af::shared<std::size_t> outside_map_;
   };
+
 }}} // namespace cctbx::maptbx::structure_factors
 
 #endif // CCTBX_MAPTBX_STRUCTURE_FACTORS_H
