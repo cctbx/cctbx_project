@@ -1,6 +1,7 @@
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
+from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -14,8 +15,8 @@ def exercise_cut_planes(cut_planes):
 def exercise_volume_vertices(asu, unit_cell):
   volume_asu = asu.volume_only()
   asu_volume_vertices = asu.volume_vertices()
-  float_asu = asu.add_buffer(unit_cell=unit_cell, relative_thickness=1.e-6)
-  asu_shrunk = float_asu.add_buffer(relative_thickness=-2.e-6)
+  float_asu = asu.add_buffer(unit_cell=unit_cell, thickness=0)
+  asu_shrunk = float_asu.add_buffer(relative_thickness=-1.e-5)
   mcs = asu.define_metric(unit_cell).minimum_covering_sphere()
   center = matrix.col(mcs.center())
   radius = mcs.radius()
@@ -30,12 +31,11 @@ def exercise_volume_vertices(asu, unit_cell):
     if (radius - r < radius * 1.e-2):
       n_near_sphere_surface += 1
   assert n_near_sphere_surface >= 2
-  float_asu = asu.add_buffer(unit_cell=unit_cell, relative_thickness=0)
   float_asu_volume_vertices = float_asu.volume_vertices()
   assert len(float_asu_volume_vertices) >= len(asu_volume_vertices)
   m_near_sphere_surface = 0
   for vertex in float_asu_volume_vertices:
-    assert float_asu.is_inside(point=vertex, epsilon=1.e-6)
+    assert float_asu.is_inside(point=vertex)
     assert not asu_shrunk.is_inside(vertex)
     r = abs(matrix.col(unit_cell.orthogonalize(vertex)) - center)
     assert r < radius + 1.e-5
@@ -43,7 +43,7 @@ def exercise_volume_vertices(asu, unit_cell):
       m_near_sphere_surface += 1
   assert m_near_sphere_surface >= n_near_sphere_surface
 
-def exercise_direct_space_asu(space_group_info, n_grid=6):
+def exercise_float_asu(space_group_info, n_grid=6):
   unit_cell = space_group_info.any_compatible_unit_cell(volume=1000)
   ref_asu = reference_table.get_asu(space_group_info.type().number())
   exercise_cut_planes(ref_asu.facets)
@@ -83,9 +83,9 @@ def exercise_direct_space_asu(space_group_info, n_grid=6):
   assert asu_with_metric.hall_symbol is inp_asu.hall_symbol
   assert len(asu_with_metric.facets) == len(inp_asu.facets)
   assert asu_with_metric.unit_cell is unit_cell
-  asu_tight = asu_with_metric.add_buffer()
+  asu_tight = asu_with_metric.as_float_asu()
   asu_buffer = asu_with_metric.add_buffer(thickness=2)
-  asu_shrunk = asu_with_metric.add_buffer(relative_thickness=-1.e-6)
+  asu_shrunk = asu_with_metric.add_buffer(relative_thickness=-1.e-5)
   vertices = facet_analysis.volume_vertices(inp_asu)
   for vertex in vertices:
     assert inp_asu.volume_only().is_inside(vertex)
@@ -96,10 +96,34 @@ def exercise_direct_space_asu(space_group_info, n_grid=6):
   for vertex in vertices:
     assert not asu_shrunk.is_inside(float(matrix.col(vertex)).elems)
 
+def exercise_asu_mappings(space_group_info, n_elements=10):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=["Si"]*n_elements,
+    volume_per_atom=1000,
+    min_distance=3.,
+    general_positions_only=00000)
+  asu_mappings = sgtbx.direct_space_asu.asu_mappings(
+    space_group=structure.space_group(),
+    asu=structure.direct_space_asu().as_float_asu(),
+    buffer_thickness=4)
+  asu_mappings.reserve(structure.scatterers().size())
+  for scatterer in structure.scatterers():
+    asu_mappings.process(original_site=scatterer.site)
+  assert asu_mappings.mappings().size() == structure.scatterers().size()
+  for mappings in asu_mappings.mappings():
+    assert asu_mappings.asu().is_inside(mappings[0].mapped_site())
+    for mapping in mappings:
+      assert asu_mappings.asu_buffer().is_inside(mapping.mapped_site())
+
+def exercise_all(space_group_info):
+  exercise_float_asu(space_group_info)
+  exercise_asu_mappings(space_group_info)
+
 def run_call_back(flags, space_group_info):
-  exercise_direct_space_asu(space_group_info)
+  exercise_all(space_group_info)
   if (space_group_info.group().n_ltr() != 1):
-    exercise_direct_space_asu(space_group_info.primitive_setting())
+    exercise_all(space_group_info.primitive_setting())
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
