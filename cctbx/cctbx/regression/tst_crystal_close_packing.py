@@ -321,8 +321,6 @@ def exercise_groel_sampling(verbose):
   for use_space_group_symmetry in [0001,00000]:
     for use_seminvariants in [0001,00000]:
       for all_twelve_neighbors in [00000,0001]:
-        if (not use_space_group_symmetry and all_twelve_neighbors):
-          continue
         sampling_generator = close_packing.hexagonal_sampling(
           crystal_symmetry=crystal_symmetry,
           symmetry_flags=sgtbx.search_symmetry_flags(
@@ -338,7 +336,8 @@ def exercise_groel_sampling(verbose):
         n_sites.append(sampling_generator.count_sites())
         if (verbose):
           print n_sites[-1], "%.2f" % (time.time() - t0)
-  assert n_sites == [46332, 50579, 304200, 315809, 162240, 1195830]
+  assert n_sites == [46332, 50579, 304200, 315809,
+                     162240, 170797, 1195830, 1232774]
   print "time groel_sampling: %.2f seconds" % (time.time() - t00)
 
 def run():
