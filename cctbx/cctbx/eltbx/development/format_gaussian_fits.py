@@ -67,22 +67,23 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name):
       n_processed += 1
   print
   assert n_processed == len(fits.all)
-  print "Summary:"
-  perm = flex.sort_permutation(max_errors, 0001)
-  max_errors = max_errors.select(perm)
-  labeled_fits = flex.select(labeled_fits, perm)
-  for me,lf in zip(max_errors, labeled_fits):
-    print lf.label, "n_terms=%d max_error: %.4f" % (
-      lf.gaussian_fit.n_terms(), me)
-    if (me > 0.01):
-      fit = lf.gaussian_fit
-      re = fit.significant_relative_errors()
-      for s,y,a,r in zip(fit.table_x(),fit.table_y(),fit.fitted_values(),re):
-        comment = ""
-        if (r > 0.01): comment = " large error"
-        print "%4.2f %7.4f %7.4f %7.4f %7.4f%s" % (s,y,a,a-y,r,comment)
-      print
-  print
+  if (itvc_tab is not None):
+    print "Summary:"
+    perm = flex.sort_permutation(max_errors, 0001)
+    max_errors = max_errors.select(perm)
+    labeled_fits = flex.select(labeled_fits, perm)
+    for me,lf in zip(max_errors, labeled_fits):
+      print lf.label, "n_terms=%d max_error: %.4f" % (
+        lf.gaussian_fit.n_terms(), me)
+      if (me > 0.01):
+        fit = lf.gaussian_fit
+        re = fit.significant_relative_errors()
+        for s,y,a,r in zip(fit.table_x(),fit.table_y(),fit.fitted_values(),re):
+          comment = ""
+          if (r > 0.01): comment = " large error"
+          print "%4.2f %7.4f %7.4f %7.4f %7.4f%s" % (s,y,a,a-y,r,comment)
+        print
+    print
 
 def main():
   parser = OptionParser(
