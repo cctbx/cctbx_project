@@ -14,7 +14,6 @@
 #include <cctbx/array_family/grid_accessor_bpl.h>
 #include <cctbx/sftbx/xray_scatterer.h>
 #include <cctbx/sftbx/sfmap.h>
-#include <cctbx/maps/sym_tags.h>
 
 namespace {
 
@@ -583,10 +582,6 @@ namespace {
     class_builder<maps::grid_tags<long> >
     py_grid_tags(this_module, "grid_tags");
 
-    this_module.def(py_StructureFactor_plain, "StructureFactor");
-    this_module.def(py_StructureFactor_iso,   "StructureFactor");
-    this_module.def(py_StructureFactor_aniso, "StructureFactor");
-
     py_XrayScatterer.def(constructor<>());
     py_XrayScatterer.def(constructor<
       const std::string&,
@@ -649,45 +644,37 @@ namespace {
     py_sampled_model_density.def(constructor<
       const uctbx::UnitCell&,
       const af::shared<ex_xray_scatterer>&,
-      const double&,
-      const double&,
-      const double&,
       const af::tiny<long, 3>&,
       const af::tiny<long, 3>&>());
     py_sampled_model_density.def(constructor<
       const uctbx::UnitCell&,
       const af::shared<ex_xray_scatterer>&,
-      const double&,
-      const double&,
-      const double&,
       const af::tiny<long, 3>&,
       const af::tiny<long, 3>&,
       double>());
     py_sampled_model_density.def(constructor<
       const uctbx::UnitCell&,
       const af::shared<ex_xray_scatterer>&,
-      const double&,
-      const double&,
-      const double&,
       const af::tiny<long, 3>&,
       const af::tiny<long, 3>&,
+      double,
       double,
       double>());
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::ucell,
                                             "ucell");
     py_sampled_model_density.def(
-      &sftbx::sampled_model_density<double>::max_q,
-                                            "max_q");
-    py_sampled_model_density.def(
-      &sftbx::sampled_model_density<double>::grid_resolution_factor,
-                                            "grid_resolution_factor");
-    py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::u_extra,
                                             "u_extra");
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::wing_cutoff,
                                             "wing_cutoff");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::exp_table_one_over_step_size,
+                                            "exp_table_one_over_step_size");
+    py_sampled_model_density.def(
+      &sftbx::sampled_model_density<double>::exp_table_size,
+                                            "exp_table_size");
     py_sampled_model_density.def(
       sampled_model_density_map_as_shared,
                            "map_as_shared");
@@ -697,6 +684,10 @@ namespace {
     py_sampled_model_density.def(
       sampled_model_density_eliminate_u_extra_and_normalize,
                            "eliminate_u_extra_and_normalize");
+
+    this_module.def(py_StructureFactor_plain, "StructureFactor");
+    this_module.def(py_StructureFactor_iso,   "StructureFactor");
+    this_module.def(py_StructureFactor_aniso, "StructureFactor");
 
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
@@ -737,7 +728,8 @@ namespace {
     this_module.def(py_calc_u_extra_4, "calc_u_extra");
     this_module.def(py_calc_u_extra_3, "calc_u_extra");
     this_module.def(py_calc_u_extra_2, "calc_u_extra");
-    this_module.def(py_determine_grid, "determine_grid");
+    this_module.def(py_eliminate_u_extra_5, "eliminate_u_extra");
+    this_module.def(py_eliminate_u_extra_4, "eliminate_u_extra");
     this_module.def(py_collect_structure_factors, "collect_structure_factors");
     this_module.def(py_structure_factor_map, "structure_factor_map");
 
@@ -775,8 +767,7 @@ namespace {
     py_grid_tags.def(grid_tags_verify_1, "verify");
     py_grid_tags.def(grid_tags_verify_2, "verify");
 
-    this_module.def(py_eliminate_u_extra_5, "eliminate_u_extra");
-    this_module.def(py_eliminate_u_extra_4, "eliminate_u_extra");
+    this_module.def(py_determine_grid, "determine_grid");
   }
 
 }
