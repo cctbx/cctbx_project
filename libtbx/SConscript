@@ -18,20 +18,6 @@ if (not env_etc.no_boost_python):
 
   jamfile_path = os.path.normpath(os.path.join(
     os.environ["LIBTBX_BOOST"], "libs/python/build/Jamfile"))
-  jamfile_lines = [
-    line.strip() for line in open(str(jamfile_path), "r").readlines()]
-  for i in xrange(len(jamfile_lines)):
-    line = jamfile_lines[i]
-    if (line == "dll boost_python"):
-      assert jamfile_lines[i+1] == ":"
-      jamfile_lines = jamfile_lines[i+2:]
-      break
-  bpl_dll_sources = []
-  for i in xrange(len(jamfile_lines)):
-    line = jamfile_lines[i]
-    if (line == ":"): break
-    if (line):
-      bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
 
   try:  #appropriate for Boost.Python snapshot on 2003-Feb-25
     jamfile_all =   open(str(jamfile_path), "r").read()
