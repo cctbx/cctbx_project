@@ -84,8 +84,7 @@ def test_atom(space_group_info, use_primitive_setting,
   for scatterer in structure.scatterers():
     structure_p1 = xray.structure(
       special_position_settings=special_position_settings_p1)
-    scatterer_at_origin = scatterer.copy()
-    scatterer_at_origin.site = (0,0,0)
+    scatterer_at_origin = scatterer.copy(site=(0,0,0))
     structure_p1.add_scatterer(scatterer_at_origin)
     if (0 or verbose):
       structure_p1.show_summary().show_scatterers()

@@ -31,7 +31,7 @@ namespace {
       apply_symmetry_overloads, apply_symmetry, 2, 6)
 
     static w_t
-    copy(w_t const& o) { return o; }
+    raw_copy(w_t const& o) { return o; }
 
     static void
     wrap()
@@ -85,7 +85,7 @@ namespace {
         .def("update_weight", &w_t::update_weight)
         .def("multiplicity", &w_t::multiplicity)
         .def("weight", &w_t::weight)
-        .def("copy", copy)
+        .def("raw_copy", raw_copy)
       ;
     }
   };

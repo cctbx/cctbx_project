@@ -77,7 +77,7 @@ def exercise_xray_scatterer():
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0, 0, 0)
   assert ss.is_compatible_u_star(x.u_star)
   assert approx_equal(x.u_star, (0.0035625, 0.0035625, 0.002884, 0, 0, 0))
-  c = x.copy()
+  c = x.raw_copy()
   c.site = (1,2,3)
   assert approx_equal(c.site, (1,2,3))
   assert approx_equal(x.site, (0,0,0.3))
