@@ -25,7 +25,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
   };
 
-  void register_small_conversions();
+  void register_flex_grid_default_index_type_conversions();
 
 }}} // namespace scitbx::af::boost_python
 

@@ -25,6 +25,8 @@ namespace scitbx { namespace af { namespace boost_python {
     }
   };
 
+  void register_tiny_types_conversions();
+
 }}} // namespace scitbx::af::boost_python
 
 #endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_TINY_CONVERSIONS_H

@@ -83,7 +83,7 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::copy_const_reference>
         copy_const_reference;
 
-    register_small_conversions();
+    register_flex_grid_default_index_type_conversions();
 
     m
       .setattr("__version__",

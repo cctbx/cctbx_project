@@ -47,6 +47,7 @@ env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 scitbx_boost_python_sources = Split("""
   #/scitbx/boost_python/utils.cpp
   #/scitbx/array_family/boost_python/utils.cpp
+  #/scitbx/array_family/boost_python/tiny_conversions.cpp
   #/scitbx/array_family/boost_python/small_conversions.cpp
 """)
 env.StaticLibrary(
