@@ -619,8 +619,8 @@ group {
   definition.type = "foo"
   try: definition.extract()
   except RuntimeError, e:
-    str(e) == 'No converter for parameter definition type "foo"' \
-            + ' required for converting values of "a" (input line 3)'
+    assert str(e) == 'No converter for parameter definition type "foo"' \
+      + ' required for converting words assigned to "a" (input line 2)'
   else: raise RuntimeError("Exception expected.")
   parameters = iotbx.parameters.parse(input_string="""\
 group {
@@ -688,7 +688,7 @@ group
   try: definition.format(python_object=0)
   except RuntimeError, e:
     assert str(e) == 'No converter for parameter definition type "foo"' \
-                   + ' required for converting values of "a" (input line 4)'
+      + ' required for converting values for "a" (input line 4)'
   else: raise RuntimeError("Exception expected.")
 
 def exercise_deepcopy():

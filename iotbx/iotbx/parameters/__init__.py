@@ -26,34 +26,34 @@ def is_standard_identifier(string):
       if (not is_standard_identifier(sub)): return False
   return True
 
-def str_from_value_words(value_words):
-  if (len(value_words) == 1 and value_words[0].value.lower() == "none"):
+def str_from_assigned_words(assigned_words):
+  if (len(assigned_words) == 1 and assigned_words[0].value.lower() == "none"):
     return None
-  return " ".join([word.value for word in value_words])
+  return " ".join([word.value for word in assigned_words])
 
-def bool_from_value_words(value_words):
-  value_string = str_from_value_words(value_words)
+def bool_from_assigned_words(assigned_words):
+  value_string = str_from_assigned_words(assigned_words)
   if (value_string is None): return None
-  word_lower = value_words[0].value.lower()
+  word_lower = assigned_words[0].value.lower()
   if (word_lower == "none"): return None
   if (word_lower in ["false", "no", "off", "0"]): return False
   if (word_lower in ["true", "yes", "on", "1"]): return True
-  assert len(value_words) > 0
+  assert len(assigned_words) > 0
   raise RuntimeError(
     'One True of False value expected, "%s" found%s' % (
-      value_string, value_words[0].where_str()))
+      value_string, assigned_words[0].where_str()))
 
-def number_from_value_words(value_words):
-  value_string = str_from_value_words(value_words)
+def number_from_assigned_words(assigned_words):
+  value_string = str_from_assigned_words(assigned_words)
   if (value_string is None): return None
   try: return eval(value_string, math.__dict__, {})
   except Exception, e:
     raise RuntimeError(
       'Error interpreting "%s" as a numeric expression: %s%s' % (
-        value_string, str(e), value_words[0].where_str()))
+        value_string, str(e), assigned_words[0].where_str()))
 
-def int_from_value_words(value_words):
-  result = number_from_value_words(value_words)
+def int_from_assigned_words(assigned_words):
+  result = number_from_assigned_words(assigned_words)
   if (result is not None):
     if (isinstance(result, float)
         and round(result) == result):
@@ -61,46 +61,48 @@ def int_from_value_words(value_words):
     elif (not isinstance(result, int)):
       raise RuntimeError(
         'Integer expression expected, "%s" found%s' % (
-          str_from_value_words(value_words), value_words[0].where_str()))
+          str_from_assigned_words(assigned_words),
+          assigned_words[0].where_str()))
   return result
 
-def float_from_value_words(value_words):
-  result = number_from_value_words(value_words)
+def float_from_assigned_words(assigned_words):
+  result = number_from_assigned_words(assigned_words)
   if (result is not None):
     if (isinstance(result, int)):
       result = float(result)
     elif (not isinstance(result, float)):
       raise RuntimeError(
         'Floating-point expression expected, "%s" found%s' % (
-          str_from_value_words(value_words), value_words[0].where_str()))
+          str_from_assigned_words(assigned_words),
+          assigned_words[0].where_str()))
   return result
 
-def choice_from_value_words(is_required, value_words):
+def choice_from_assigned_words(is_required, assigned_words):
   result = None
-  for word in value_words:
+  for word in assigned_words:
     if (word.value.startswith("*")):
       if (result is not None):
         raise RuntimeError("Multiple choices where only one is possible%s" %
-          value_words[0].where_str())
+          assigned_words[0].where_str())
       result = word.value[1:]
   if (result is None and is_required):
-    raise RuntimeError("Unspecified choice%s" % value_words[0].where_str())
+    raise RuntimeError("Unspecified choice%s" % assigned_words[0].where_str())
   return result
 
-def multi_choice_from_value_words(value_words):
+def multi_choice_from_assigned_words(assigned_words):
   result = []
-  for word in value_words:
+  for word in assigned_words:
     if (word.value.startswith("*")):
       result.append(word.value[1:])
   return result
 
-def unit_cell_from_value_words(value_words):
+def unit_cell_from_assigned_words(assigned_words):
   from cctbx import uctbx
-  return uctbx.unit_cell(str_from_value_words(value_words))
+  return uctbx.unit_cell(str_from_assigned_words(assigned_words))
 
-def space_group_info_from_value_words(value_words):
+def space_group_info_from_assigned_words(assigned_words):
   from cctbx import sgtbx
-  return sgtbx.space_group_info(symbol=str_from_value_words(value_words))
+  return sgtbx.space_group_info(symbol=str_from_assigned_words(assigned_words))
 
 default_definition_type_names = [
   "str", "bool", "int", "float",
@@ -108,15 +110,15 @@ default_definition_type_names = [
   "path", "key",
   "unit_cell", "space_group"]
 
-def definition_type_from_value_words(value_words, type_names):
-  if (len(value_words) == 1):
-    word_lower = value_words[0].value.lower()
+def definition_type_from_assigned_words(assigned_words, type_names):
+  if (len(assigned_words) == 1):
+    word_lower = assigned_words[0].value.lower()
     if (word_lower == "none"): return None
     if (word_lower in type_names): return word_lower
-  assert len(value_words) > 0
+  assert len(assigned_words) > 0
   raise RuntimeError(
     'Unexpected definition type: "%s"%s' % (
-      value_words[0].value, value_words[0].where_str()))
+      assigned_words[0].value, assigned_words[0].where_str()))
 
 def show_attributes(self, out, prefix, attributes_level, print_width):
   if (attributes_level <= 0): return
@@ -152,11 +154,11 @@ class definition: # FUTURE definition(object)
     "help", "caption", "short_caption", "required",
     "type", "input_size", "expert_level"]
 
-  __slots__ = ["name", "values", "is_disabled"] + attribute_names
+  __slots__ = ["name", "words", "is_disabled"] + attribute_names
 
   def __init__(self,
         name,
-        values,
+        words,
         is_disabled=False,
         help=None,
         caption=None,
@@ -166,7 +168,7 @@ class definition: # FUTURE definition(object)
         input_size=None,
         expert_level=None):
     self.name = name
-    self.values = values
+    self.words = words
     self.is_disabled = is_disabled
     self.help = help
     self.caption = caption
@@ -176,22 +178,22 @@ class definition: # FUTURE definition(object)
     self.input_size = input_size
     self.expert_level = expert_level
 
-  def copy(self, values):
+  def copy(self, words):
     keyword_args = {}
     for keyword in self.__slots__:
       keyword_args[keyword] = getattr(self, keyword)
-    keyword_args["values"] = values
+    keyword_args["words"] = words
     return definition(**keyword_args)
 
   def merge(self, source):
     if (self.type not in ["choice", "multi_choice"]):
-      return self.copy(source.values)
+      return self.copy(source.words)
     flags = {}
-    for word in self.values:
+    for word in self.words:
       if (word.value.startswith("*")): value = word.value[1:]
       else: value = word.value
       flags[value] = False
-    for word in source.values:
+    for word in source.words:
       if (word.value.startswith("*")):
         value = word.value[1:]
         flag = True
@@ -202,30 +204,30 @@ class definition: # FUTURE definition(object)
         raise RuntimeError("Not a possible choice: %s%s" % (
           str(word), word.where_str()))
       flags[value] = flag
-    values = []
-    for word in self.values:
+    words = []
+    for word in self.words:
       if (word.value.startswith("*")): value = word.value[1:]
       else: value = word.value
       if (flags[value]): value = "*" + value
-      values.append(simple_tokenizer.word(
+      words.append(simple_tokenizer.word(
         value=value,
         line_number=word.line_number,
         file_name=word.file_name))
-    return self.copy(values)
+    return self.copy(words=words)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
-  def assign_attribute(self, name, value_words, type_names):
+  def assign_attribute(self, name, assigned_words, type_names):
     assert self.has_attribute_with_name(name)
     if (name in ["required"]):
-      value = bool_from_value_words(value_words)
+      value = bool_from_assigned_words(assigned_words)
     elif (name == "type"):
-      value = definition_type_from_value_words(value_words, type_names)
+      value = definition_type_from_assigned_words(assigned_words, type_names)
     elif (name in ["input_size", "expert_level"]):
-      value = int_from_value_words(value_words)
+      value = int_from_assigned_words(assigned_words)
     else:
-      value = str_from_value_words(value_words)
+      value = str_from_assigned_words(assigned_words)
     setattr(self, name, value)
 
   def show(self, out, prefix="", attributes_level=0, print_width=79,
@@ -238,7 +240,7 @@ class definition: # FUTURE definition(object)
     line = prefix + hash + self.name
     if (self.name != "include"): line += " ="
     indent = " " * len(line)
-    for word in self.values:
+    for word in self.words:
       line_plus = line + " " + str(word)
       if (len(line_plus) > print_width-2 and len(line) > len(indent)):
         print >> out, line + " \\"
@@ -263,7 +265,7 @@ class definition: # FUTURE definition(object)
 
   def automatic_type(self):
     types = {}
-    for word in self.values:
+    for word in self.words:
       if (word.quote_token is not None):
         types["str"] = None
         continue
@@ -299,31 +301,31 @@ class definition: # FUTURE definition(object)
 
   def extract(self, custom_converters=None):
     if (self.type in ["str", "path", "key"]):
-      return str_from_value_words(self.values)
+      return str_from_assigned_words(self.words)
     if (self.type == "bool"):
-      return bool_from_value_words(self.values)
+      return bool_from_assigned_words(self.words)
     if (self.type == "int"):
-      return int_from_value_words(self.values)
+      return int_from_assigned_words(self.words)
     if (self.type == "float"):
-      return float_from_value_words(self.values)
+      return float_from_assigned_words(self.words)
     if (self.type == "choice"):
-      return choice_from_value_words(self.required, self.values)
+      return choice_from_assigned_words(self.required, self.words)
     if (self.type == "multi_choice"):
-      return multi_choice_from_value_words(self.values)
+      return multi_choice_from_assigned_words(self.words)
     if (self.type == "unit_cell"):
-      return unit_cell_from_value_words(self.values)
+      return unit_cell_from_assigned_words(self.words)
     if (self.type == "space_group"):
-      return space_group_info_from_value_words(self.values)
+      return space_group_info_from_assigned_words(self.words)
     if (custom_converters is not None):
       converter = custom_converters.get(self.type, None)
       if (converter is not None):
-        return converter.process_value_words(self.values)
+        return converter.process_assigned_words(self.words)
     if (self.type is None):
-      return [word.value for word in self.values]
+      return [word.value for word in self.words]
     raise RuntimeError(
        ('No converter for parameter definition type "%s"'
-      + ' required for converting values of "%s"%s') % (
-        self.type, self.name, self.values[0].where_str()))
+      + ' required for converting words assigned to "%s"%s') % (
+        self.type, self.name, self.words[0].where_str()))
 
   def format(self, python_object, custom_converters=None):
     words = None
@@ -342,7 +344,7 @@ class definition: # FUTURE definition(object)
       words = [simple_tokenizer.word(value="%.10g" % python_object)]
     elif (self.type in ["choice", "multi_choice"]):
       words = []
-      for word in self.values:
+      for word in self.words:
         if (word.value.startswith("*")): value = word.value[1:]
         else: value = word.value
         if (self.type == "choice"):
@@ -361,16 +363,16 @@ class definition: # FUTURE definition(object)
     elif (custom_converters is not None):
       converter = custom_converters.get(self.type, None)
       if (converter is not None):
-        words = converter.format_as_value_words(self, python_object)
+        words = converter.format_as_assigned_words(self, python_object)
     elif (self.type is None):
       words = [simple_tokenizer.word(value=value, quote_token='"')
         for value in python_object]
     if (words is None):
       raise RuntimeError(
          ('No converter for parameter definition type "%s"'
-        + ' required for converting values of "%s"%s') % (
-          self.type, self.name, self.values[0].where_str()))
-    return self.copy(values=words)
+        + ' required for converting values for "%s"%s') % (
+          self.type, self.name, self.words[0].where_str()))
+    return self.copy(words=words)
 
 def scope_merge(master, source):
   result_objects = []
@@ -429,14 +431,14 @@ class scope:
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
-  def assign_attribute(self, name, value_words):
+  def assign_attribute(self, name, assigned_words):
     assert self.has_attribute_with_name(name)
     if (name in ["required", "disable_add", "disable_delete"]):
-      value = bool_from_value_words(value_words)
+      value = bool_from_assigned_words(assigned_words)
     elif (name in ["expert_level"]):
-      value = int_from_value_words(value_words)
+      value = int_from_assigned_words(assigned_words)
     else:
-      value = str_from_value_words(value_words)
+      value = str_from_assigned_words(assigned_words)
       if (name == "style"):
         style = value
         assert style in [None, "row", "column", "block", "page"]
@@ -583,10 +585,10 @@ class object_list:
       master=self, custom_converters=custom_converters)
 
   def variable_substitution(self, object, path_memory):
-    new_values = []
-    for word in object.values:
+    new_words = []
+    for word in object.words:
       if (word.quote_token == "'"):
-        new_values.append(word)
+        new_words.append(word)
         continue
       substitution_proxy = variable_substitution_proxy(word)
       for fragment in substitution_proxy.fragments:
@@ -594,29 +596,29 @@ class object_list:
           fragment.result = simple_tokenizer.word(
             value=fragment.value, quote_token='"')
           continue
-        variable_values = None
+        variable_words = None
         for variable_object in self.get(
                                  path=fragment.value,
                                  path_memory=path_memory).objects:
           if (isinstance(variable_object, definition)):
-            variable_values = variable_object.values
-        if (variable_values is None):
+            variable_words = variable_object.words
+        if (variable_words is None):
           env_var = os.environ.get(fragment.value, None)
           if (env_var is not None):
-            variable_values = [simple_tokenizer.word(
+            variable_words = [simple_tokenizer.word(
               value=env_var,
               quote_token='"')]
-        if (variable_values is None):
+        if (variable_words is None):
           raise RuntimeError("Undefined variable: $%s%s" % (
             fragment.value, word.where_str()))
         if (not substitution_proxy.force_string):
-          fragment.result = variable_values
+          fragment.result = variable_words
         else:
           fragment.result = simple_tokenizer.word(
-            value=" ".join([str(v) for v in variable_values]),
+            value=" ".join([str(v) for v in variable_words]),
             quote_token='"')
-      new_values.extend(substitution_proxy.get_new_values())
-    return object.copy(values=new_values)
+      new_words.extend(substitution_proxy.get_new_words())
+    return object.copy(words=new_words)
 
   def process_includes(self,
         definition_type_names,
@@ -633,7 +635,7 @@ class object_list:
         result.append(object)
       else:
         object_sub = self.variable_substitution(object=object, path_memory={})
-        for file_name in [word.value for word in object_sub.values]:
+        for file_name in [word.value for word in object_sub.words]:
           if (reference_directory is not None
               and not os.path.isabs(file_name)):
             file_name = os.path.join(reference_directory, file_name)
@@ -749,7 +751,7 @@ class variable_substitution_proxy(object):
     if (len(self.fragments) > 1):
       self.force_string = True
 
-  def get_new_values(self):
+  def get_new_words(self):
     if (not self.have_variables):
       return [self.word]
     if (not self.force_string):
