@@ -1199,6 +1199,7 @@ namespace lbfgs {
       point++;
       if (point == m_) point = 0;
       gnorm_ = std::sqrt(ddot(n_, g, 0, 1, g, 0, 1));
+      // XXX bogus, instead only indicate that the line search was successful
       FloatType xnorm = std::max(
         FloatType(1), std::sqrt(ddot(n_, x, 0, 1, x, 0, 1)));
       if (gnorm_ / xnorm <= eps_) {
