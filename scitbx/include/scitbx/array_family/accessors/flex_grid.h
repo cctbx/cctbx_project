@@ -206,6 +206,7 @@ namespace scitbx { namespace af {
       std::size_t
       size_1d() const
       {
+        SCITBX_ASSERT(all_.all_ge(0));
         return af::product(all_);
       }
 
@@ -251,6 +252,7 @@ namespace scitbx { namespace af {
         if (focus_.size() == 0) return size_1d();
         index_type n = focus();
         n -= origin();
+        SCITBX_ASSERT(n.all_ge(0));
         return af::product(n);
       }
 
