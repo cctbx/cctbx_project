@@ -378,10 +378,8 @@ def elementwise_inplace_binary_op(
        d.element_types[1],
        a.begin[1], a.loop_n);
 
-def generate_elementwise_binary_op(
-      array_type_name, op_class, op_symbol, function_name = None):
-  if (function_name == None):
-    function_name = "operator" + op_symbol
+def generate_elementwise_binary_op(array_type_name, op_class, op_symbol):
+  function_name = "operator" + op_symbol
   for type_flags in ((1,1), (1,0), (0,1)):
     elementwise_binary_op(
       array_type_name, op_class, op_symbol, type_flags, function_name)
@@ -630,7 +628,6 @@ def one_type(array_type_name):
 #include <cctbx/array_family/generic_array_%s.h>
 #include <cctbx/array_family/std_imports.h>
 #include <cctbx/array_family/misc_functions.h>
-#include <cctbx/array_family/reductions.h>
 
 namespace cctbx { namespace af {
 """ % (generic_include,)
@@ -644,15 +641,9 @@ namespace cctbx { namespace af {
   for op_symbol in logical_binary_ops:
     generate_elementwise_binary_op(
       array_type_name, "logical", op_symbol)
-  for op_symbol, function_name in (
-    ("==", "equal_to"),
-    ("!=", "not_equal_to"),
-    (">", "greater"),
-    ("<", "less"),
-    (">=", "greater_equal"),
-    ("<=", "less_equal")):
+  for op_symbol in boolean_binary_ops:
     generate_elementwise_binary_op(
-      array_type_name, "boolean", op_symbol, function_name)
+      array_type_name, "boolean", op_symbol)
   generate_1arg_element_wise(
     array_type_name, cmath_1arg + cstdlib_1arg + complex_1arg)
   generate_2arg_element_wise(array_type_name, cmath_2arg)
