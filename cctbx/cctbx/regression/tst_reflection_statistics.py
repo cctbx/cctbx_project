@@ -199,10 +199,20 @@ def run():
     for anomalous_flag in [False, True]:
       if (verbose):
         print symbol, "anomalous_flag =", anomalous_flag
-      exercise(
-        space_group_info=space_group_info,
-        anomalous_flag=anomalous_flag,
-        verbose=verbose)
+      run_away_counter = 0
+      while True:
+        try:
+          exercise(
+            space_group_info=space_group_info,
+            anomalous_flag=anomalous_flag,
+            verbose=verbose)
+        except RuntimeError, e:
+          if (str(e) != "max(double_coset_repetitions) > 1"): raise
+          print e, "(ignored since it may happen by chance)"
+          run_away_counter += 1
+          assert run_away_counter < 10
+        else:
+          break
   print "OK"
 
 if (__name__ == "__main__"):
