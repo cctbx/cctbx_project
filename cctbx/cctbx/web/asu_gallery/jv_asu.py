@@ -1,5 +1,6 @@
 from cctbx.web.asu_gallery import jvx
 from cctbx.web.asu_gallery import jv_index
+from cctbx.web.asu_gallery import facet_notation
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
 from cctbx import sgtbx
@@ -212,25 +213,30 @@ def asu_as_jvx(space_group_number, asu, colored_grid_points=None,
       g.jvx(f)
     jvx.tail(f)
     f.close()
-  legend = ["Basis vectors: a = red, b = green, c = blue"]
-  legend.append("<p>")
+  legend = []
+  l = legend.append
+  l("Surface area: green = inside the asymmetric unit, red = outside")
+  l("<br>")
+  l("Basis vectors: a = red, b = green, c = blue")
+  l("<p>")
   volume_vertices = facet_analysis.volume_vertices(asu)
-  legend.append("<table border=2 cellpadding=8>")
-  legend.append("<tr valign=top>")
-  legend.append("<td>")
-  legend.append("<pre>Number of vertices: %d" % len(volume_vertices))
+  l("<table border=2 cellpadding=8>")
+  l("<tr valign=top>")
+  l("<td>")
+  l("<pre>Number of vertices: %d" % len(volume_vertices))
   for vertex in volume_vertices:
-    legend.append("  "+str(vertex)[1:-1])
-  legend.append("</pre>")
-  legend.append("</td>")
-  legend.append("<td>")
-  legend.append("<pre>Number of facets: %d" % len(asu.facets))
+    l("  "+str(vertex)[1:-1])
+  l("</pre>")
+  l("</td>")
+  l("<td>")
+  l("<pre>Number of facets: %d" % len(asu.facets))
   for facet in asu.facets:
-    legend.append("  "+facet.as_xyz())
-  legend.append("</pre>")
-  legend.append("</td>")
-  legend.append("</tr>")
-  legend.append("</table>")
+    l("  "+facet.as_xyz())
+  l("</pre>")
+  l('<a href="facet_notation.html">[Guide to notation]</a>')
+  l("</td>")
+  l("</tr>")
+  l("</table>")
   f = open(html_file_name, "w")
   jvx.html_loader(
     jvx_in_html,
@@ -253,6 +259,7 @@ def run(args, html_subdir="asu_gallery"):
   if (not os.path.isdir(html_subdir)):
     os.makedirs(html_subdir)
   jv_index.write_html(open("%s/index.html" % html_subdir, "w"))
+  facet_notation.write_html(open("%s/facet_notation.html" % html_subdir, "w"))
   if (len(args) == 0):
     args = ["1-230"]
   for arg in args:

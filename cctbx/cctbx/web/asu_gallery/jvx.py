@@ -1,7 +1,7 @@
 import sys
 
 def head(f=None):
-  if (f == None): f = sys.stdout
+  if (f is None): f = sys.stdout
   print >> f, '''\
 <?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <!DOCTYPE jvx-model SYSTEM "http://www.javaview.de/rsrc/jvx.dtd">
@@ -9,7 +9,7 @@ def head(f=None):
 <geometries>'''
 
 def tail(f=None):
-  if (f == None): f = sys.stdout
+  if (f is None): f = sys.stdout
   print >> f, '''\
 </geometries>
 </jvx-model>'''
@@ -61,7 +61,7 @@ class pointSet:
     return self
 
   def jvx(self, f=None):
-    if (f == None): f = sys.stdout
+    if (f is None): f = sys.stdout
     if (self.size() == 0): return
     print >> f, '<pointSet dim="3" point="%s" color="show">' % self.show_points
     print >> f, '  <points>'
@@ -91,7 +91,7 @@ class lineSet:
     self.lines.append(line)
 
   def jvx(self, f=None):
-    if (f == None): f = sys.stdout
+    if (f is None): f = sys.stdout
     print >> f, '<lineSet line="show" color="show">'
     print >> f, '  <lines>'
     for line in self.lines:
@@ -121,7 +121,7 @@ class faceSet:
     self.faces.append(face)
 
   def jvx(self, f=None):
-    if (f == None): f = sys.stdout
+    if (f is None): f = sys.stdout
     print >> f,'<faceSet face="show" edge="hide" backface="hide" color="show">'
     print >> f, '  <faces>'
     for face in self.faces:
@@ -141,7 +141,7 @@ class geometry:
     self.faces = faceSet()
 
   def jvx(self, f=None):
-    if (f == None): f = sys.stdout
+    if (f is None): f = sys.stdout
     print >> f, '<geometry name="%s">' % self.name
     if (self.points.size() > 0): self.points.jvx(f)
     if (self.lines.size() > 0): self.lines.jvx(f)
@@ -149,7 +149,7 @@ class geometry:
     print >> f, '</geometry>'
 
 def bracketed_link(text, html, f=None):
-  if (f == None): f = sys.stdout
+  if (f is None): f = sys.stdout
   if (html is not None):
     print >> f, '[<a href="%s">' % html,
   print >> f, '%s' % text
@@ -168,7 +168,7 @@ def html_loader(jvx_file_name,
                 legend=None,
                 f=None,
                 jars_url=None):
-  if (f == None): f = sys.stdout
+  if (f is None): f = sys.stdout
   print >> f, '''\
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
