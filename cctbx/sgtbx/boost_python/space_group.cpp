@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/space_group_type.h>
@@ -88,6 +79,7 @@ namespace {
         .def("order_p", &w_t::order_p)
         .def("order_z", &w_t::order_z)
         .def("__len__", &w_t::order_z)
+        .def("n_equivalent_positions", &w_t::n_equivalent_positions)
         .def("n_ltr", &w_t::n_ltr)
         .def("is_centric", (bool(w_t::*)() const) &w_t::is_centric)
         .def("is_origin_centric", &w_t::is_origin_centric)
