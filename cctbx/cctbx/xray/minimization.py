@@ -9,14 +9,16 @@ class options:
 
 class lbfgs:
 
-  def __init__(self, target_functor, options, xray_structure):
+  def __init__(self, target_functor, options, xray_structure,
+                     min_iterations=10, max_iterations=None):
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
       xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs())
     self.pack_parameters()
     self.first_target_value = None
-    self.minimizer = scitbx.lbfgs.run(self)
+    self.minimizer = scitbx.lbfgs.run(
+      self, min_iterations=min_iterations, max_iterations=max_iterations)
     self.unpack_parameters()
     self.compute_target(compute_derivatives=00000)
     self.final_target_value = self.target_result.target()
