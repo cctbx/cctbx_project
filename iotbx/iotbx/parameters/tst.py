@@ -681,11 +681,7 @@ group {
 }
 """)
   assert parameters.get(path="group.a").objects[0].extract() is True
-  try: parameters.get(path="group.a").objects[1].extract()
-  except RuntimeError, e:
-    assert str(e) == 'Undefined parameter definition type for' \
-                   + ' values of "a" (input line 4).'
-  else: raise RuntimeError("Exception expected.")
+  assert parameters.get(path="group.a").objects[1].extract() == "yes"
   assert parameters.get(path="group.b").objects[0].extract() == 13
   assert parameters.get(path="group.c").objects[0].extract() == 1.3
   assert parameters.get(path="group.d").objects[0].extract() == "abc def ghi"

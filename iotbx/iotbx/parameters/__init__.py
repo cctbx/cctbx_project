@@ -245,9 +245,7 @@ class definition:
       if (converter is not None):
         return converter.process_value_words(self.values)
     if (self.type is None):
-      raise RuntimeError(
-        'Undefined parameter definition type for values of "%s"%s.' % (
-          self.name, self.values[0].where_str()))
+      return str_from_value_words(self.values)
     raise RuntimeError(
        ('No converter for parameter definition type "%s"'
       + ' required for converting values of "%s"%s.') % (
