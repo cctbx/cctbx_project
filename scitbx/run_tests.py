@@ -27,6 +27,7 @@ def run():
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
+  "$D/scitbx/examples/lbfgs_linear_least_squares_fit.py",
   )
 
   build_dir = libtbx.env.under_build("scitbx")
