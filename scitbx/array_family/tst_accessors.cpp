@@ -43,6 +43,56 @@ int main(int argc, char* argv[])
     check_true(__LINE__, r.accessor().nd() == 6);
   }
   {
+    af::flex_grid<> g(3, 4);
+    std::size_t i = 0;
+    af::flex_grid<>::index_type j(2, 0);
+    for(j[0]=0;j[0]<3;j[0]++)
+    for(j[1]=0;j[1]<4;j[1]++, i++) {
+      check_true(__LINE__, g.is_valid_index(j));
+      check_true(__LINE__, g(j) == i);
+      check_true(__LINE__, g(j[0],j[1]) == i);
+    }
+  }
+  {
+    af::flex_grid<>::index_type origin(af::adapt(af::tiny<int, 2>(-2,-13)));
+    af::flex_grid<>::index_type last(af::adapt(af::tiny<int, 2>(1,-8)));
+    af::flex_grid<> g(origin, last, false);
+    std::size_t i = 0;
+    af::flex_grid<>::index_type j(2, 0);
+    for(j[0]=-2;j[0]<=1;j[0]++)
+    for(j[1]=-13;j[1]<=-8;j[1]++, i++) {
+      check_true(__LINE__, g.is_valid_index(j));
+      check_true(__LINE__, g(j) == i);
+      check_true(__LINE__, g(j[0],j[1]) == i);
+    }
+  }
+  {
+    af::flex_grid<> g(3, 4, 5);
+    std::size_t i = 0;
+    af::flex_grid<>::index_type j(3, 0);
+    for(j[0]=0;j[0]<3;j[0]++)
+    for(j[1]=0;j[1]<4;j[1]++)
+    for(j[2]=0;j[2]<5;j[2]++, i++) {
+      check_true(__LINE__, g.is_valid_index(j));
+      check_true(__LINE__, g(j) == i);
+      check_true(__LINE__, g(j[0],j[1],j[2]) == i);
+    }
+  }
+  {
+    af::flex_grid<>::index_type origin(af::adapt(af::tiny<int, 3>(-2,3,-10)));
+    af::flex_grid<>::index_type last(af::adapt(af::tiny<int, 3>(1,7,-6)));
+    af::flex_grid<> g(origin, last, false);
+    std::size_t i = 0;
+    af::flex_grid<>::index_type j(3, 0);
+    for(j[0]=-2;j[0]<=1;j[0]++)
+    for(j[1]=3;j[1]<=7;j[1]++)
+    for(j[2]=-10;j[2]<=-6;j[2]++, i++) {
+      check_true(__LINE__, g.is_valid_index(j));
+      check_true(__LINE__, g(j) == i);
+      check_true(__LINE__, g(j[0],j[1],j[2]) == i);
+    }
+  }
+  {
     af::c_grid<1> a;
     check_true(__LINE__, a.size() == 1);
     check_true(__LINE__, a.size_1d() == 0);

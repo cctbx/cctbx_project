@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Jan: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_REF_H
 #define SCITBX_ARRAY_FAMILY_REF_H
 
@@ -86,26 +76,26 @@ namespace scitbx { namespace af {
       value_type const&
       operator()(index_type const& i) const
       {
-        return this->begin_[accessor_(i)];
+        return begin_[accessor_(i)];
       }
 
       // Convenience operator()
       value_type const& operator()(index_value_type const& i0) const
       {
-        return operator()(index_type(i0));
+        return begin_[accessor_(i0)];
       }
 
       value_type const& operator()(index_value_type const& i0,
                                    index_value_type const& i1) const
       {
-        return operator()(index_type(i0, i1));
+        return begin_[accessor_(i0, i1)];
       }
 
       value_type const& operator()(index_value_type const& i0,
                                    index_value_type const& i1,
                                    index_value_type const& i2) const
       {
-        return operator()(index_type(i0, i1, i2));
+        return begin_[accessor_(i0, i1, i2)];
       }
 
       bool all_eq(const_ref const& other) const;
