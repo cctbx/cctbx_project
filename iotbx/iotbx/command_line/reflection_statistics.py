@@ -109,12 +109,16 @@ class array_cache:
         other,
         auto_binning=False,
         reflections_per_bin=0,
-        n_bins=0):
+        n_bins=0,
+        d_tolerance=1.e-6):
     d_max = min(self.resolution_range[0], other.resolution_range[0])
     d_min = max(self.resolution_range[1], other.resolution_range[1])
     if (d_max == d_min):
       d_max += d_max*0.5
       d_min -= d_min*0.5
+    else:
+      d_max *= (1+d_tolerance)
+      d_min *= (1-d_tolerance)
     self.observations.setup_binner(
       d_max=d_max,
       d_min=d_min,
@@ -128,9 +132,6 @@ class array_cache:
         auto_binning=auto_binning,
         reflections_per_bin=reflections_per_bin,
         n_bins=n_bins)
-
-def binned_correlation_fmt(correlation):
-  return "%6.3f" % correlation.coefficient()
 
 def run(args):
   print "Command line arguments:",
@@ -247,13 +248,13 @@ def run(args):
       print
     print "Completeness of %s:" % str(cache_0.input.info())
     cache_0.input.setup_binner(n_bins=n_bins)
-    cache_0.input.show_completeness_in_bins()
+    cache_0.input.completeness(use_binning=True).show()
     print
     if (cache_0.input.anomalous_flag()):
       print "Anomalous signal of %s:" % str(cache_0.input.info())
       print cache_0.input.anomalous_signal.__doc__
       anom_signal = cache_0.input.anomalous_signal(use_binning=True)
-      anom_signal.show(data_fmt="%.4f")
+      anom_signal.show()
       print
     if (not command_line.options.quick):
       for j_1,cache_1 in enumerate(array_caches[i_0+1:]):
@@ -308,7 +309,7 @@ def run(args):
                 other=similar_array_1,
                 use_binning=True,
                 assert_is_similar_symmetry=False)
-              correlation.show(data_fmt=binned_correlation_fmt)
+              correlation.show()
             print
             if (    cache_0.anom_diffs is not None
                 and cache_1.anom_diffs is not None):
@@ -330,7 +331,7 @@ def run(args):
                   other=similar_anom_diffs_1,
                   use_binning=True,
                   assert_is_similar_symmetry=False)
-                correlation.show(data_fmt=binned_correlation_fmt)
+                correlation.show()
               print
     print "=" * 79
     print
