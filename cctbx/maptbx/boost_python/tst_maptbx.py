@@ -156,11 +156,21 @@ def exercise_structure_factors():
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
 
+def exercise_gridding():
+  u = uctbx.unit_cell((4,6,7))
+  assert maptbx.ext.determine_gridding(u, 2, 1/3., (1,1,1), 5, 0001) \
+      == (8,9,12)
+  f = maptbx.symmetry_flags(0001, 0001)
+  t = sgtbx.space_group_info("F 2 2 2").primitive_setting().type()
+  assert maptbx.ext.determine_gridding(u, 2, 1/3., f, t, 5, 0001) \
+      == (12, 12, 12)
+
 def run():
   exercise_copy()
   exercise_statistics()
   exercise_symmetry_flags()
   exercise_grid_tags()
+  exercise_gridding()
   exercise_peak_search()
   exercise_pymol_interface()
   exercise_structure_factors()

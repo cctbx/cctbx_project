@@ -18,6 +18,7 @@
 namespace cctbx { namespace maptbx { namespace boost_python {
 
   void wrap_grid_tags();
+  void wrap_gridding();
   void wrap_peak_list();
   void wrap_pymol_interface();
   void wrap_statistics();
@@ -34,6 +35,7 @@ namespace {
       "$Revision$");
 
     wrap_grid_tags();
+    wrap_gridding();
     wrap_peak_list();
     wrap_pymol_interface();
     wrap_statistics();

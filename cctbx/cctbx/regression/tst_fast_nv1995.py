@@ -37,13 +37,17 @@ def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
     peak_search_level=1,
     max_peaks=10)
   if (0 or verbose):
+    print "gridding:", gridding
     for entry in peak_list.entries():
       print "(%d,%d,%d)" % entry.index, "%.6g" % (entry.value,)
   assert approx_equal(map_stats.max(), peak_list.entries()[0].value)
   return peak_list
 
-def test_atom(space_group_info, n_elements=3, d_min=3.,
+def test_atom(space_group_info, use_primitive_setting,
+              n_elements=3, d_min=3.,
               grid_resolution_factor=0.48, max_prime=5, verbose=0):
+  if (use_primitive_setting):
+    space_group_info = space_group_info.primitive_setting()
   structure = random_structure.xray_structure(
     space_group_info,
     n_scatterers=n_elements,
@@ -116,8 +120,11 @@ def test_atom(space_group_info, n_elements=3, d_min=3.,
       assert peak_list.entries()[0].value > 0.99
   assert peak_list.entries()[0].value > 0.99
 
-def test_molecule(space_group_info, flag_f_part, d_min=3.,
-                  grid_resolution_factor=0.48, max_prime=5, verbose=0):
+def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
+                  d_min=3., grid_resolution_factor=0.48, max_prime=5,
+                  verbose=0):
+  if (use_primitive_setting):
+    space_group_info = space_group_info.primitive_setting()
   elements = ("N", "C", "C", "O", "N", "C", "C", "O")
   structure = random_structure.xray_structure(
     space_group_info,
@@ -180,17 +187,23 @@ def test_molecule(space_group_info, flag_f_part, d_min=3.,
   assert peak_list.entries()[0].value > 0.99
 
 def run_call_back(flags, space_group_info):
-  if (space_group_info.group().order_z() > 16 and not flags.HighSymmetry):
+  if (space_group_info.group().order_p() > 8 and not flags.HighSymmetry):
     print "High symmetry space group skipped."
     return
   if (not (flags.Atom or flags.Molecule)):
     flags.Atom = 0001
     flags.Molecule = 0001
+  use_primitive_setting_flags = [00000]
+  if (space_group_info.group().conventional_centring_type_symbol() != "P"):
+    use_primitive_setting_flags.append(0001)
   if (flags.Atom):
-    test_atom(space_group_info, verbose=flags.Verbose)
+    for use_primitive_setting in use_primitive_setting_flags:
+      test_atom(space_group_info, use_primitive_setting, verbose=flags.Verbose)
   if (flags.Molecule):
     for flag_f_part in (00000, 0001)[:]: #SWITCH
-      test_molecule(space_group_info, flag_f_part, verbose=flags.Verbose)
+      for use_primitive_setting in use_primitive_setting_flags:
+        test_molecule(space_group_info, use_primitive_setting, flag_f_part,
+                      verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (

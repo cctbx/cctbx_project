@@ -52,38 +52,14 @@ def determine_gridding(unit_cell,
                        assert_shannon_sampling=0001):
   assert symmetry_flags == None or mandatory_factors == None
   if (symmetry_flags != None): assert space_group_info != None
-  if (mandatory_factors == None):
-    mandatory_factors = (1,1,1)
   if (symmetry_flags != None):
-    if (symmetry_flags.use_structure_seminvariants()):
-      mandatory_factors = space_group_info.structure_seminvariant().gridding()
-    sub_space_group = symmetry_flags.select_sub_space_group(
-      space_group_info.type())
-    mandatory_factors = sub_space_group.refine_gridding(mandatory_factors)
+    return ext.determine_gridding(
+      unit_cell, d_min, resolution_factor,
+      symmetry_flags, space_group_info.type(),
+      max_prime, assert_shannon_sampling)
+  if (mandatory_factors == None): mandatory_factors = (1,1,1)
   assert len(mandatory_factors) == 3
-  assert d_min > 0
-  if (assert_shannon_sampling): assert resolution_factor <= 0.5
-  grid = unit_cell.max_miller_indices(d_min * 2 * resolution_factor)
-  grid = [2 * n + 1 for n in grid]
-  grid = fftpack.adjust_gridding_triple(grid, max_prime, mandatory_factors)
-  if (symmetry_flags == None): return grid
-  best_size = None
-  ss = space_group_info.structure_seminvariant()
-  g_limit = max(grid) + 1
-  for g0 in xrange(grid[0], g_limit, mandatory_factors[0]):
-    for g1 in xrange(grid[1], g_limit, mandatory_factors[1]):
-      for g2 in xrange(grid[2], g_limit, mandatory_factors[2]):
-        trial_grid = fftpack.adjust_gridding_triple(
-          (g0, g1, g2), max_prime, mandatory_factors)
-        if (symmetry_flags.use_structure_seminvariants()):
-          trial_grid = ss.refine_gridding(trial_grid)
-        trial_grid = sub_space_group.refine_gridding(trial_grid)
-        assert fftpack.adjust_gridding_triple(
-          trial_grid, max_prime, mandatory_factors) == trial_grid
-        trial_size = list_algebra.product(trial_grid)
-        if (best_size == None and trial_grid == grid):
-          return grid
-        if (best_size == None or trial_size < best_size):
-          best_grid = trial_grid
-          best_size = trial_size
-  return best_grid
+  return ext.determine_gridding(
+    unit_cell, d_min, resolution_factor,
+    mandatory_factors,
+    max_prime, assert_shannon_sampling)
