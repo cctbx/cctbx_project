@@ -66,6 +66,7 @@ class ata_group:
 def show_distances(structure, distance_cutoff=8):
   asu_mappings = structure.asu_mappings(
     buffer_thickness=distance_cutoff)
+  cb_op_to_niggli_cell = structure.change_of_basis_op_to_niggli_cell()
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=asu_mappings,
     distance_cutoff=distance_cutoff,
@@ -75,6 +76,11 @@ def show_distances(structure, distance_cutoff=8):
   pairs_list = [[]
     for i in xrange(structure.scatterers().size())]
   for pair in pair_generator:
+    diff_vec_frac_niggli = matrix.col(
+        cb_op_to_niggli_cell.c()
+      * structure.unit_cell().fractionalize(pair.diff_vec))
+    if (diff_vec_frac_niggli.each_abs().max() > 1.+1.e-6):
+      continue
     distances_list[pair.i_seq].append(pair.dist_sq)
     pairs_list[pair.i_seq].append(pair)
   for i,distances,pairs in zip(count(),distances_list,pairs_list):
@@ -136,6 +142,14 @@ def show_distances(structure, distance_cutoff=8):
               -pair.dist_sq)
             assert mismatch < asu_mappings.sym_equiv_tolerance()**2
         if (pair.j_seq == i_seq):
+          s = rt_mx_ji
+          while 1:
+            print "sym eq inter:", s
+            if (s.r().is_unit_mx()):
+              break
+            s = rt_mx_ji.multiply(s)
+          print
+        if (0 and pair.j_seq == i_seq):
           ag_ji = ata_group(mm, rt_mx_ji, special_op_i)
           site_ji = rt_mx_ji * site_i
           for rt_mx_k in structure.space_group():
