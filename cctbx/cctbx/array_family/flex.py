@@ -8,3 +8,4 @@ misc.import_regular_symbols(globals(), cctbx_ext.__dict__)
 del misc
 
 to_list = scitbx.array_family.flex.to_list
+linear_regression = scitbx.array_family.flex.linear_regression
