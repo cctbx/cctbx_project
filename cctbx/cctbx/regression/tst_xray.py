@@ -132,11 +132,14 @@ def exercise_from_scatterers_direct(space_group_info,
   f_obs_exact = structure.structure_factors(
     d_min=d_min, anomalous_flag=anomalous_flag, algorithm="direct",
     cos_sin_table=00000).f_calc()
+  scattering_dict = xray.scattering_dictionary(structure.scatterers())
+  scattering_dict.assign_from_table("WK1995")
   f_obs_simple = xray.ext.structure_factors_simple(
     f_obs_exact.unit_cell(),
     f_obs_exact.space_group(),
     f_obs_exact.indices(),
-    structure.scatterers()).f_calc()
+    structure.scatterers(),
+    scattering_dict).f_calc()
   if (0 or verbose):
     for i,h in f_obs_exact.indices().items():
       print h

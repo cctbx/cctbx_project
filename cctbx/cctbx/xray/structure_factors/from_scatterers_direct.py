@@ -18,19 +18,24 @@ class from_scatterers_direct(managed_calculation_base):
       cos_sin_table = default_cos_sin_table
     elif (cos_sin_table == 00000):
       cos_sin_table = None
+    scattering_dictionary = ext.scattering_dictionary(
+      self._xray_structure.scatterers())
+    scattering_dictionary.assign_from_table("WK1995")
     if (cos_sin_table is None):
       self._results = ext.structure_factors_direct(
         self._miller_set.unit_cell(),
         self._miller_set.space_group(),
         self._miller_set.indices(),
-        self._xray_structure.scatterers())
+        self._xray_structure.scatterers(),
+        scattering_dictionary)
     else:
       self._results = ext.structure_factors_direct(
         cos_sin_table,
         self._miller_set.unit_cell(),
         self._miller_set.space_group(),
         self._miller_set.indices(),
-        self._xray_structure.scatterers())
+        self._xray_structure.scatterers(),
+        scattering_dictionary)
     if (manager is not None):
       manager.estimate_time_direct.register(
         xray_structure.scatterers().size() * miller_set.indices().size(),
