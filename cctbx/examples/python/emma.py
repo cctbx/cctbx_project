@@ -36,11 +36,13 @@ def GetFormData():
   for key in (("ucparams_1", ""),
               ("sgsymbol_1", "P1"),
               ("convention_1", ""),
+              ("format_1", None),
               ("coor_type_1", None),
               ("skip_columns_1", 0),
               ("ucparams_2", ""),
               ("sgsymbol_2", ""),
               ("convention_2", ""),
+              ("format_2", None),
               ("coor_type_2", None),
               ("skip_columns_2", 0),
               ("tolerance", "1.0"),
@@ -61,29 +63,57 @@ def GetFormData():
     inp.coordinates.append(coordinates)
   return inp
 
-def interpret_coordinate_line(line, skip_columns):
+def interpret_generic_coordinate_line(line, skip_columns):
   flds = line.split()
   try: coor = [float(x) for x in flds[skip_columns: skip_columns+3]]
   except: raise FormatError, line
   return " ".join(flds[:skip_columns]), coor
 
-class web_to_model(emma.model):
+def sdb_file_to_emma_model(xsym, sdb_file):
+  positions = []
+  i = 0
+  for site in sdb_file.sites:
+    i += 1
+    positions.append(emma.labelled_position(
+      ":".join((str(i), site.segid, site.type)),
+      xsym.UnitCell.fractionalize((site.x, site.y, site.z))))
+  m = emma.model(xsym, positions)
+  m.label = sdb_file.file_name
+  return m
+
+class web_to_models:
 
   def __init__(self, ucparams, sgsymbol, convention,
-               coor_type, skip_columns, coordinates):
-    xsym = xutils.crystal_symmetry(
+               format, coor_type, skip_columns, coordinates):
+    self.xsym = xutils.crystal_symmetry(
       uctbx.UnitCell([float(p) for p in ucparams.split()]),
       sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(sgsymbol, convention)).Info(),
       auto_check=1)
-    skip_columns = int(skip_columns)
-    positions = []
-    for line in coordinates:
-      label, coor = interpret_coordinate_line(line, skip_columns)
-      if (label == ""): label = "Site" + str(len(positions)+1)
-      if (coor_type != "Fractional"):
-        coor = xsym.UnitCell.fractionalize(coor)
-      positions.append(emma.labelled_position(label, coor))
-    emma.model.__init__(self, xsym, positions)
+    if (format == "generic"):
+      skip_columns = int(skip_columns)
+      self.positions = []
+      for line in coordinates:
+        label, coor = interpret_generic_coordinate_line(line, skip_columns)
+        if (label == ""): label = "Site" + str(len(positions)+1)
+        if (coor_type != "Fractional"):
+          coor = xsym.UnitCell.fractionalize(coor)
+        self.positions.append(emma.labelled_position(label, coor))
+    else:
+      from cctbx.macro_mol import cns_sdb_reader
+      self.sdb_files = cns_sdb_reader.multi_sdb_parser(coordinates)
+    self.i_next_model = 0
+
+  def get_next(self):
+    if (hasattr(self, "positions")):
+      if (self.i_next_model): return None
+      m = emma.model(self.xsym, self.positions)
+      m.label = "Model 2"
+      self.i_next_model += 1
+      return m
+    if (self.i_next_model >= len(self.sdb_files)): return None
+    m = sdb_file_to_emma_model(self.xsym, self.sdb_files[self.i_next_model])
+    self.i_next_model += 1
+    return m
 
 if (__name__ == "__main__"):
 
@@ -96,18 +126,6 @@ if (__name__ == "__main__"):
       inp.convention_2 = inp.convention_1
 
   try:
-    model1 = web_to_model(
-      inp.ucparams_1,
-      inp.sgsymbol_1, inp.convention_1,
-      inp.coor_type_1, inp.skip_columns_1, inp.coordinates[0])
-    model1.show("Model 1")
-
-    model2 = web_to_model(
-      inp.ucparams_2,
-      inp.sgsymbol_2, inp.convention_2,
-      inp.coor_type_2, inp.skip_columns_2, inp.coordinates[1])
-    model2.show("Model 2")
-
     tolerance = float(inp.tolerance)
     print "Tolerance:", tolerance
     if (tolerance <= 0.):
@@ -119,9 +137,32 @@ if (__name__ == "__main__"):
       print "Models are diffraction index equivalent."
       print
 
-    refined_matches = emma.match_models(model1, model2)
-    for match in refined_matches:
-      match.show()
+    models1 = web_to_models(
+      inp.ucparams_1,
+      inp.sgsymbol_1, inp.convention_1,
+      inp.format_1, inp.coor_type_1, inp.skip_columns_1,
+      inp.coordinates[0])
+    model1 = models1.get_next()
+    assert model1, "Problems reading reference model."
+    model1.show("Reference model")
+    assert not models1.get_next()
+
+    models2 = web_to_models(
+      inp.ucparams_2,
+      inp.sgsymbol_2, inp.convention_2,
+      inp.format_2, inp.coor_type_2, inp.skip_columns_2,
+      inp.coordinates[1])
+    while 1:
+      print "#" * 79
+      print
+      model2 = models2.get_next()
+      if (not model2): break
+      model2.show(model2.label)
+      refined_matches = emma.match_models(model1, model2)
+      for match in refined_matches:
+        print "." * 79
+        print
+        match.show()
 
   except RuntimeError, e:
     print e
