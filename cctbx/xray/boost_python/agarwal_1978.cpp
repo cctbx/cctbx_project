@@ -60,6 +60,7 @@ namespace {
         .def("grad_u_12", &w_t::grad_u_12)
         .def("grad_occupancy", &w_t::grad_occupancy)
         .def("grad_fp", &w_t::grad_fp)
+        .def("grad_fdp", &w_t::grad_fdp)
       ;
     }
   };
