@@ -162,6 +162,13 @@ namespace uctbx {
       inline double getLongestVector2() const { return LongestVector2; }
       //@}
 
+      //! @name Test equality.
+      //@{
+      bool isEqual(const UnitCell& uc, const double& epsilon) const;
+      //! Test the equality of two Unit Cell instances.  Test the fractional
+      //! difference of each of the six parameters and compare to epsilon
+      //@}
+
       //! @name Orthogonalization and fractionalization of coordinates.
       //@{
       //! This matrix converts cartesian to fractional coordinates.<br>
