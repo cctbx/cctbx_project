@@ -148,12 +148,6 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
             else:
               print >> out, indent+'"'+block+'"'
 
-def partial_name(path, name):
-  if (name == path): return name.split(".")[-1]
-  if (name.startswith(path+".")):
-    return name[len(".".join(("."+path).split(".")[:-1])):]
-  return None
-
 class get_stopper:
 
   def __init__(self, object):
@@ -171,13 +165,16 @@ class definition: # FUTURE definition(object)
     "help", "caption", "short_caption", "optional",
     "type", "multiple", "input_size", "expert_level"]
 
-  __slots__ = ["name", "words", "is_disabled", "where_str"] + attribute_names
+  __slots__ = ["name", "words", "parser_parent_scope",
+               "is_disabled", "where_str", "merge_names"] + attribute_names
 
   def __init__(self,
         name,
         words,
+        parser_parent_scope=None,
         is_disabled=False,
         where_str="",
+        merge_names=False,
         help=None,
         caption=None,
         short_caption=None,
@@ -190,8 +187,10 @@ class definition: # FUTURE definition(object)
       raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     self.name = name
     self.words = words
+    self.parser_parent_scope = None
     self.is_disabled = is_disabled
     self.where_str = where_str
+    self.merge_names = merge_names
     self.help = help
     self.caption = caption
     self.short_caption = short_caption
@@ -265,14 +264,15 @@ class definition: # FUTURE definition(object)
       value = str_from_assigned_words(assigned_words)
     setattr(self, name, value)
 
-  def show(self, out, prefix="", attributes_level=0, print_width=79,
-                 previous_object=None):
-    if (previous_object is not None
-        and not isinstance(previous_object, definition)):
-      print >> out, prefix.rstrip()
+  def show(self,
+        out,
+        merged_names=[],
+        prefix="",
+        attributes_level=0,
+        print_width=79):
     if (self.is_disabled): hash = "#"
     else:                  hash = ""
-    line = prefix + hash + self.name
+    line = prefix + hash + ".".join(merged_names + [self.name])
     if (self.name != "include"): line += " ="
     indent = " " * len(line)
     for word in self.words:
@@ -306,8 +306,7 @@ class definition: # FUTURE definition(object)
       stopper.stop = True
       return []
     if (self.is_disabled): return []
-    name = partial_name(path=path, name=self.name)
-    if (name is not None): return [self.copy(name=name)]
+    if (self.name == path): return [self]
     return []
 
   def substitute_all(self, substitution_scope, path_memory):
@@ -428,49 +427,45 @@ class definition: # FUTURE definition(object)
   def unique(self):
     return self
 
+class scope_extract_attribute_error: pass
+class scope_extract_is_disabled: pass
+
 class scope_extract:
 
-  class attribute_error: pass
-  class is_disabled: pass
-
-  def __set__(self, path_as_list, multiple, value):
-    if (len(path_as_list) == 1):
-      if (not multiple):
-        if (value is scope_extract.is_disabled):
-          value = None
-        setattr(self, path_as_list[0], value)
+  def __set__(self, name, multiple, value):
+    assert not "." in name
+    node = getattr(self, name, scope_extract_attribute_error)
+    if (not multiple):
+      if (value is scope_extract_is_disabled):
+        value = None
+      if (node is scope_extract_attribute_error
+          or not isinstance(value, scope_extract)
+          or not isinstance(node, scope_extract)):
+        setattr(self, name, value)
       else:
-        node = getattr(self, path_as_list[0], scope_extract.attribute_error)
-        if (node is scope_extract.attribute_error):
-          if (value is scope_extract.is_disabled):
-            setattr(self, path_as_list[0], [])
-          else:
-            setattr(self, path_as_list[0], [value])
-        elif (not value is scope_extract.is_disabled):
-          node.append(value)
+        node.__dict__.update(value.__dict__)
     else:
-      node = getattr(self, path_as_list[0], scope_extract.attribute_error)
-      if (node is scope_extract.attribute_error):
-        node = scope_extract()
-        setattr(self, path_as_list[0], node)
-      else:
-        assert isinstance(node, scope_extract)
-      node.__set__(path_as_list[1:], multiple, value)
+      if (node is scope_extract_attribute_error):
+        if (value is scope_extract_is_disabled):
+          setattr(self, name, [])
+        else:
+          setattr(self, name, [value])
+      elif (not value is scope_extract_is_disabled):
+        node.append(value)
 
-  def __get__(self, path_as_list):
-    node = getattr(self, path_as_list[0], scope_extract.attribute_error)
-    if (node is not scope_extract.attribute_error
-        and len(path_as_list) > 1):
-      node = node.__get__(path_as_list[1:])
-    return node
+  def __get__(self, name):
+    assert not "." in name
+    return getattr(self, name, scope_extract_attribute_error)
 
 class scope:
 
   def __init__(self,
         name,
-        objects,
+        objects=None,
+        parser_parent_scope=None,
         is_disabled=False,
         where_str="",
+        merge_names=False,
         style=None,
         help=None,
         caption=None,
@@ -482,7 +477,9 @@ class scope:
         disable_delete=None,
         expert_level=None):
     introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[5:]
+    self.attribute_names = self.__init__varnames__[7:]
+    if (objects is None):
+      self.objects = []
     assert style in [None, "row", "column", "block", "page"]
     if ("include" in name.split(".")):
       raise RuntimeError('Reserved identifier: "include"%s' % where_str)
@@ -498,6 +495,25 @@ class scope:
     if (objects is not None):
       keyword_args["objects"] = objects
     return scope(**keyword_args)
+
+  def adopt(self, object):
+    assert len(object.name) > 0
+    parser_parent_scope = self
+    name_components = object.name.split(".")
+    merge_names = False
+    for name in name_components[:-1]:
+      child_scope = scope(name=name)
+      child_scope.merge_names = merge_names
+      child_scope.optional = object.optional
+      child_scope.multiple = object.multiple
+      parser_parent_scope.adopt(child_scope)
+      parser_parent_scope = child_scope
+      merge_names = True
+    if (len(name_components) > 1):
+      object.name = name_components[-1]
+      object.merge_names = True
+    object.parser_parent_scope = parser_parent_scope
+    parser_parent_scope.objects.append(object)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
@@ -524,14 +540,23 @@ class scope:
       if (object.is_disabled): continue
       yield object
 
-  def show(self, out=None, prefix="", attributes_level=0, print_width=None,
-                 previous_object=None):
+  def show(self,
+        out=None,
+        merged_names=[],
+        prefix="",
+        attributes_level=0,
+        print_width=None):
     if (out is None): out = sys.stdout
     if (print_width is None):
       print_width = 79
-    if (previous_object is not None):
-      print >> out, prefix.rstrip()
-    if (len(self.name) != 0):
+    is_proper_scope = False
+    if (len(self.name) == 0):
+      assert len(merged_names) == 0
+    elif (len(self.objects) == 1 and self.objects[0].merge_names):
+      merged_names = merged_names + [self.name]
+    else:
+      if (len(self.objects) > 1): assert not self.objects[0].merge_names
+      is_proper_scope = True
       if (self.is_disabled): hash = "#"
       else:                  hash = ""
       out_attributes = StringIO()
@@ -542,23 +567,23 @@ class scope:
         attributes_level=attributes_level,
         print_width=print_width)
       out_attributes = out_attributes.getvalue()
+      merged_name = ".".join(merged_names + [self.name])
+      merged_names = []
       if (len(out_attributes) == 0):
-        print >> out, prefix + hash + self.name, "{"
+        print >> out, prefix + hash + merged_name, "{"
       else:
-        print >> out, prefix + hash + self.name
+        print >> out, prefix + hash + merged_name
         out.write(out_attributes)
         print >> out, prefix+"{"
       prefix += "  "
-    previous_object = None
     for object in self.objects:
       object.show(
         out=out,
+        merged_names=merged_names,
         prefix=prefix,
         attributes_level=attributes_level,
-        print_width=print_width,
-        previous_object=previous_object)
-      previous_object = object
-    if (len(self.name) != 0):
+        print_width=print_width)
+    if (is_proper_scope):
       print >> out, prefix[:-2] + "}"
 
   def has_same_definitions(self, other):
@@ -588,35 +613,26 @@ class scope:
   def get_without_substitution(self, path, stopper):
     if (self.is_disabled): return []
     if (len(self.name) == 0):
-      if (len(path) == 0):
-        result = [self]
-      else:
-        result = []
-        for object in self.active_objects():
-          result.extend(object.get_without_substitution(
-            path=path,
-            stopper=stopper))
-          if (stopper is not None and stopper.stop): break
+      if (len(path) == 0): return self.objects
+    elif (self.name == path):
+      return [self]
+    elif (path.startswith(self.name+".")):
+      path = path[len(self.name)+1:]
     else:
-      name = partial_name(path=path, name=self.name)
-      if (name is not None):
-        result = [self.copy(name=name)]
-      elif (path.startswith(self.name+".")):
-        path = path[len(self.name)+1:]
-        result = []
-        for object in self.active_objects():
-          result.extend(object.get_without_substitution(
-            path=path,
-            stopper=stopper))
-          if (stopper is not None and stopper.stop): break
-      else:
-        result = []
-        if (stopper is not None):
-          for object in self.active_objects():
-            object.get_without_substitution(
-              path="",
-              stopper=stopper)
-            if (stopper.stop): break
+      if (stopper is not None):
+        parser_parent_scope = stopper.object.parser_parent_scope
+        while (parser_parent_scope is not None):
+          if (parser_parent_scope is self):
+            stopper.stop = True
+            break
+          parser_parent_scope = parser_parent_scope.parser_parent_scope
+      return []
+    result = []
+    for object in self.active_objects():
+      result.extend(object.get_without_substitution(
+        path=path,
+        stopper=stopper))
+      if (stopper is not None and stopper.stop): break
     return result
 
   def substitute_all(self, substitution_scope, path_memory):
@@ -659,13 +675,10 @@ class scope:
     result = scope_extract()
     for object in self.objects:
       if (object.is_disabled):
-        value = scope_extract.is_disabled
+        value = scope_extract_is_disabled
       else:
         value = object.extract(custom_converters=custom_converters)
-      result.__set__(
-        path_as_list=object.name.split("."),
-        multiple=object.multiple,
-        value=value)
+      result.__set__(name=object.name, multiple=object.multiple, value=value)
     return result
 
   def format(self, python_object, custom_converters=None):
@@ -674,8 +687,8 @@ class scope:
       if (isinstance(python_object, scope_extract)):
         python_object = [python_object]
       for python_object_i in python_object:
-        sub_python_object = python_object_i.__get__(object.name.split("."))
-        if (sub_python_object is not scope_extract.attribute_error):
+        sub_python_object = python_object_i.__get__(object.name)
+        if (sub_python_object is not scope_extract_attribute_error):
           if (not object.multiple):
             result.append(object.format(
               sub_python_object, custom_converters))
@@ -688,34 +701,25 @@ class scope:
   def _fetch(self, source, substitution_scope=None):
     if (substitution_scope is None):
       substitution_scope = source
-    if (source.name == self.name):
-      if (not isinstance(source, scope)):
-        raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
-          (self.name, self.where_str, source.name, source.where_str))
-    else:
-      assert source.name.startswith(self.name+".")
-      source_name = source.name[len(self.name)+1:]
-      source = scope(
-        name=self.name,
-        objects=[source.copy(name=source_name)])
+    assert source.name == self.name
+    if (not isinstance(source, scope)):
+      raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
+        (self.name, self.where_str, source.name, source.where_str))
     result_objects = []
     for master_object in self.active_objects():
       if (len(self.name) == 0):
         path = master_object.name
-        master_object_for_fetch = master_object
       else:
         path = self.name + "." + master_object.name
-      master_object_for_fetch = master_object.copy(
-        name=master_object.name.split(".")[-1])
       matching_sources = source.get(path=path, with_substitution=False)
       fetch_count = 0
       if (master_object.multiple):
         for matching_source in matching_sources.active_objects():
           fetch_count += 1
-          result_objects.append(master_object_for_fetch.fetch(
+          result_object = master_object.fetch(
             source=matching_source,
             substitution_scope=substitution_scope)
-              .copy(name=master_object.name))
+          result_objects.append(result_object)
         if (fetch_count == 0):
           result_objects.append(copy.deepcopy(master_object))
           if (master_object.optional):
@@ -725,7 +729,7 @@ class scope:
               and master_object.has_same_definitions(result_objects[-1])):
           result_objects[-1].is_disabled = True
       else:
-        result_object = master_object_for_fetch
+        result_object = master_object
         for matching_source in matching_sources.active_objects():
           fetch_count += 1
           result_object = result_object.fetch(
@@ -734,24 +738,25 @@ class scope:
         if (fetch_count == 0):
           result_objects.append(copy.deepcopy(master_object))
         else:
-          result_objects.append(result_object.copy(name=master_object.name))
+          result_objects.append(result_object)
     return result_objects
 
   def fetch(self, source=None, sources=None, substitution_scope=None):
     assert [source, sources].count(None) == 1
     if (source is not None):
-      return self.copy(objects=self._fetch(
+      result = objects=self._fetch(
         source=source,
-        substitution_scope=substitution_scope))
+        substitution_scope=substitution_scope)
     elif (len(sources) == 0):
       return self
     else:
-      objects = []
+      result = []
       for source in sources:
-        objects.extend(self._fetch(
+        result_objects = self._fetch(
           source=source,
-          substitution_scope=substitution_scope))
-      return self.copy(objects=objects)
+          substitution_scope=substitution_scope)
+        result.extend(result_objects)
+    return self.copy(objects=clean_fetched_scope(fetched_scope=result))
 
   def variable_substitution(self, object, path_memory):
     new_words = []
@@ -766,6 +771,7 @@ class scope:
             value=fragment.value, quote_token='"')
           continue
         variable_words = None
+        # XXX print fragment.value
         for variable_object in self.get(
                                  path=fragment.value,
                                  path_memory=path_memory,
@@ -837,6 +843,25 @@ class scope:
       if (selection[object.name] == i_object):
         result.append(object.unique())
     return self.copy(objects=result)
+
+def clean_fetched_scope(fetched_scope):
+  result = []
+  for object in fetched_scope:
+    if (not isinstance(object, scope) or len(object.objects) < 2):
+      result.append(object)
+    else:
+      child_group = []
+      for child in object.objects:
+        if (not child.merge_names):
+          child_group.append(child)
+        else:
+          if (len(child_group) > 0):
+            result.append(object.copy(objects=child_group))
+            child_groups = []
+          result.append(object.copy(objects=[child]))
+      if (len(child_group) > 0):
+        result.append(object.copy(objects=child_group))
+  return result
 
 class variable_substitution_fragment(object):
 
@@ -932,7 +957,8 @@ def parse(
     input_string = open(file_name).read()
   if (definition_type_names is None):
     definition_type_names = default_definition_type_names
-  result = scope(name="", objects=parser.collect_objects(
+  result = scope(name="")
+  parser.collect_objects(
     word_iterator=simple_tokenizer.word_iterator(
       input_string=input_string,
       source_info=source_info,
@@ -945,7 +971,8 @@ def parse(
         simple_tokenizer.settings(
           unquoted_single_character_words="",
           contiguous_word_characters="")]),
-    definition_type_names=definition_type_names))
+    definition_type_names=definition_type_names,
+    parser_parent_scope=result)
   if (process_includes):
     if (file_name is None):
       file_name_normalized = None

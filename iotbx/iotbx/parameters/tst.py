@@ -139,15 +139,12 @@ name {
     expected_out="""\
  prefix a = b
  prefix c = d
- prefix
  prefix e {
  prefix }
- prefix
  prefix name {
  prefix   var1 = None
  prefix   var2 = None
  prefix }
- prefix
  prefix f = g
 """)
   recycle(
@@ -181,7 +178,6 @@ d=a b c # 1 2 3 \\
   c = d
     .expert_level = 2
 }
-
 d = a b c
 """)
 
@@ -261,12 +257,10 @@ e=g""")
   check_get(parameters, path="", expected_out="""\
 a = b
 c = d
-
 e {
   a = 1
   b = x
 }
-
 e = g
 """)
   check_get(parameters, path="a", expected_out="""\
@@ -277,7 +271,6 @@ e {
   a = 1
   b = x
 }
-
 e = g
 """)
   check_get(parameters, path="e.a", expected_out="""\
@@ -309,21 +302,17 @@ a0 {
 """,
     expected_out="""\
 d0 = 0
-
 a0 {
   d1 = a b c
-
   a1 {
     t0 {
       c = yes
-
       t1 {
         x = 0
         y = 1.
       }
     }
   }
-
   d2 = e f 0g
   #d3 = x
 }
@@ -340,16 +329,13 @@ a0 {
   assert out.getvalue() == """\
 d0 = 0
   .type = int
-
 a0 {
   d1 = a b c
     .type = str
-
   a1 {
     t0 {
       c = yes
         .type = bool
-
       t1 {
         x = 0
           .type = int
@@ -358,7 +344,6 @@ a0 {
       }
     }
   }
-
   d2 = e f 0g
     .type = UNKNOWN
   #d3 = x
@@ -394,6 +379,18 @@ s {
 t.a.b=0
 t.a.c.d=1
 """)
+  out = StringIO()
+  parameters.show(out=out)
+  assert out.getvalue() == """\
+s {
+  a {
+    b = 0
+    c.d = 1
+  }
+}
+t.a.b = 0
+t.a.c.d = 1
+"""
   check_get(parameters, path="s", expected_out="""\
 s {
   a {
@@ -437,7 +434,6 @@ x.z { }
 a {
   b {
   }
-
   c {
   }
 }
@@ -453,7 +449,6 @@ c {
   check_get(parameters, path="x", expected_out="""\
 x.y {
 }
-
 x.z {
 }
 """)
@@ -615,7 +610,6 @@ s {
   check_get_sub(parameters, path="s", expected_out="""\
 s {
   a = x
-
   s {
     a = y
     b = x
@@ -757,7 +751,6 @@ c = 2
 z = 3
 y = 2
 x = 1
-
 s {
   a = 2
   a = 0
@@ -768,7 +761,6 @@ s {
   x = 1
   z = 2
 }
-
 s {
   a = 3
   a = 0
@@ -779,7 +771,6 @@ s {
   x = 1
   z = 3
 }
-
 z = 1
 """
   out = StringIO()
@@ -790,7 +781,6 @@ b = 1
 c = 2
 y = 2
 x = 1
-
 s {
   a = 0
   b = 1
@@ -799,7 +789,6 @@ s {
   x = 1
   z = 3
 }
-
 z = 1
 """
 
@@ -921,7 +910,6 @@ s
 s {
   a = 1
 }
-
 s {
   a = 2
 }
@@ -949,7 +937,6 @@ s {
 s {
   a = 1
 }
-
 s {
   a = None
 }
@@ -1099,13 +1086,11 @@ a = 9
   .expert_level = 1
 b = None
   .expert_level = 2
-
 c {
   a = y
     .expert_level = 3
   b = 1
     .expert_level = 4
-
   c
     .expert_level = 5
   {
@@ -1114,7 +1099,6 @@ c {
     y = 3
       .type = int
       .expert_level = 7
-
     t
       .expert_level = 8
     {
@@ -1123,7 +1107,6 @@ c {
     }
   }
 }
-
 t
   .expert_level = 9
 {
@@ -1132,7 +1115,6 @@ t
   b = 3
     .expert_level = 11
 }
-
 u = a b *c
   .type = choice
 """
@@ -1191,15 +1173,12 @@ c {
 v {
   x = y
 }
-
 v {
   x = z
 }
-
 c {
   a = y
 }
-
 c {
   a = z
 }
@@ -1337,27 +1316,21 @@ s.t.a{b=e
 s.t {
   a.b = x
 }
-
 s.t {
   a.b = y
 }
-
 s.t {
   a.b = z
 }
-
 s.t {
   a.b = q
 }
-
 s.t {
   a.b = w
 }
-
 s.t {
   a.b = f
 }
-
 s.t {
   a.b = e
 }
@@ -1493,6 +1466,37 @@ group {
   assert group.s.type().number() == 19
   #
   parameters = iotbx.parameters.parse(input_string="""\
+c.d=5
+  .type=int
+c.e=6
+  .type=int
+c {
+  f=7
+    .type=int
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.c.d == 5
+  assert extracted.c.e == 6
+  assert extracted.c.f == 7
+  parameters = iotbx.parameters.parse(input_string="""\
+c.d=5
+  .type=int
+c.e=6
+  .type=int
+c {
+  d=7
+    .type=int
+  f=8
+    .type=int
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.c.d == 7
+  assert extracted.c.e == 6
+  assert extracted.c.f == 8
+  #
+  parameters = iotbx.parameters.parse(input_string="""\
 a=1
   .type=int
 b {
@@ -1518,6 +1522,7 @@ c.a {
   assert extracted.b.b.a == 3
   assert extracted.c.a.b == 4
   assert extracted.c.a.c.d == 5
+  assert extracted.c.a.c.e == 6
   #
   parameters = iotbx.parameters.parse(input_string="""\
 a=1
@@ -1815,7 +1820,6 @@ s {
 s {
   a = 1
 }
-
 s {
   a = 2
 }
@@ -1838,7 +1842,6 @@ s {
 s {
   a = 1
 }
-
 s {
   a = 3
 }
@@ -1889,7 +1892,6 @@ s {
 s {
   a = 1
 }
-
 s {
   a = 2
 }
@@ -1912,7 +1914,6 @@ s {
 s {
   a = 1
 }
-
 s {
   a = 3
 }
@@ -1982,20 +1983,17 @@ c {
   assert out.getvalue() == """\
 a = 1
 a = 2
-
 b {
   a = 3
   a = 4
   c = 20
 }
-
 b {
   a = None
   b = 5
   b = 6
   c = None
 }
-
 d {
   a = None
 }
