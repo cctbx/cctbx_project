@@ -5,7 +5,7 @@ from cctbx.array_family import flex
 import sys
 
 def exercise(target_functor, space_group_info, anomalous_flag,
-             gradient_flags,
+             gradient_flags, u_penalty=None,
              n_elements=3, d_min=3., shake_sigma=0.1,
              verbose=0):
   structure_ideal = random_structure.xray_structure(
@@ -13,6 +13,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     elements=("Se",)*n_elements,
     volume_per_atom=200,
     random_u_iso=True,
+    random_u_iso_min=0.05,
     random_occupancy=True)
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag,
@@ -45,6 +46,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     target_functor=target_functor(f_obs),
     gradient_flags=gradient_flags,
     xray_structure=structure_shake,
+    u_penalty=u_penalty,
     structure_factor_algorithm="direct")
   if (0 or verbose):
     print "first:", minimizer.first_target_value
@@ -74,8 +76,15 @@ def run_call_back(flags, space_group_info):
         u_iso=(i_options/2 % 2),
         occupancy=(i_options/4 % 2))
       for anomalous_flag in (False, True)[:]: #SWITCH
-        exercise(target_functor, space_group_info, anomalous_flag,
-                 gradient_flags, verbose=flags.Verbose)
+        u_penalty_types = [None]
+        if (gradient_flags.u_iso):
+          u_penalty_types.extend([
+            xray.minimization.u_penalty_exp(),
+            xray.minimization.u_penalty_singular_at_zero()])
+        for u_penalty in u_penalty_types:
+          exercise(target_functor, space_group_info, anomalous_flag,
+                   gradient_flags, u_penalty=u_penalty,
+                   verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
