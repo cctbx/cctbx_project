@@ -12,6 +12,8 @@
 """
 
 # Revision history:
+#   2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
+#   2001 Jun 21: use WyckoffTable (R.W. Grosse-Kunstleve)
 #   2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
 #   2001-04-20 Using new sgtbx::SymEquivCoordinates (Ralf W. Grosse-Kunstleve)
 #   Created April 2001 (Ralf W. Grosse-Kunstleve)
@@ -48,13 +50,14 @@ class SiteInfo:
           self.Uiso = flds[offs + 4]
         else:
           raise FormatError
-      self.Multiplicity = 0
+      self.WyckoffMapping = None
     except:
       raise FormatError
 
   def __str__(self):
-    return "%s %s (%d) (%.6g %.6g %.6g) %.6g %.6g" % (
-      (self.Label, self.Sf.Label(), self.Multiplicity)
+    return "%s %s (%d %s) (%.6g %.6g %.6g) %.6g %.6g" % (
+      (self.Label, self.Sf.Label(),
+       self.WyckoffMapping.WP().M(), self.WyckoffMapping.WP().Letter())
       + tuple(self.Coordinates) + (self.Occ, self.Uiso))
 
 class FormatError(exceptions.Exception):
@@ -71,15 +74,15 @@ def strip_keyword(line, keyword):
 class StructureInfo:
 
   def __init__(self, UnitCell = uctbx.UnitCell(()),
-                     SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(1),
+                     SgOps = sgtbx.SgOps(),
                      Resolution_d_min = 1.):
     self.Titles = []
     self.UnitCell = UnitCell
-    self.SpaceGroupSymbols = SpaceGroupSymbols
+    self.SgOps = SgOps
     self.Resolution_d_min = Resolution_d_min
     self.Sites = []
 
-  def read(self, files, SpaceGroupSymbolConvention = ""):
+  def read(self, files):
     iline = 0
     try:
       input = fileinput.input(files)
@@ -103,8 +106,10 @@ class StructureInfo:
 
         elif (keyword == "Spacegroup"):
           sym = string.join(flds[1:])
-          self.SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(sym,
-            SpaceGroupSymbolConvention)
+          SpaceGroupSymbols = sgtbx.SpaceGroupSymbols(sym)
+          self.SgOps = sgtbx.SgOps(SpaceGroupSymbols.Hall())
+          self.SgType = self.SgOps.getSpaceGroupType()
+          self.WyckoffTable = sgtbx.WyckoffTable(self.SgOps, self.SgType)
 
         elif (keyword == "Resolution"):
           if (   string.lower(flds[1]) != "d_min"
@@ -125,16 +130,23 @@ class StructureInfo:
       print "Input:", line
       raise
 
+    self.SgOps.CheckUnitCell(self.UnitCell)
+
+    SnapParameters = \
+      sgtbx.SpecialPositionSnapParameters(self.UnitCell, self.SgOps)
+    for Site in self.Sites:
+      SP = sgtbx.SpecialPosition(SnapParameters, Site.Coordinates)
+      Site.WyckoffMapping = self.WyckoffTable.getWyckoffMapping(SP)
+
 class MillerIndexSet:
 
-  def __init__(self, SpaceGroupSymbols, UnitCell):
-    self.SpaceGroupSymbols = SpaceGroupSymbols
+  def __init__(self, SgOps, UnitCell):
+    self.SgOps = SgOps
     self.UnitCell = UnitCell
     self.IndexDict = {}
 
   def BuildIndices(self, Resolution_d_min, FriedelSym = 1):
-    SgOps = sgtbx.SgOps(self.SpaceGroupSymbols.Hall())
-    SgOps.CheckUnitCell(self.UnitCell)
+    SgOps = self.SgOps
     CutP = SgOps.getCutParameters(FriedelSym)
     Hmax = self.UnitCell.MaxMillerIndices(Resolution_d_min)
     Qlow = 0.
@@ -161,14 +173,12 @@ class MillerIndexSet:
 
 def ComputeStructureFactors(Sites, IndexSet):
   EightPiSquared = 8. * math.pi * math.pi
-  SgOps = sgtbx.SgOps(IndexSet.SpaceGroupSymbols.Hall())
   FcalcDict = {}
   for H in IndexSet.IndexDict.keys():
     FcalcDict[H] = 0j
   for Site in Sites:
-    SymEquivCoordinates = sgtbx.SymEquivCoordinates(
-      IndexSet.UnitCell, SgOps, Site.Coordinates)
-    Site.Multiplicity = SymEquivCoordinates.M()
+    SymEquivCoordinates = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
+                                                    Site.Coordinates)
     for H in IndexSet.IndexDict.keys():
       Q = IndexSet.IndexDict[H]
       stol2 = Q / 4.
@@ -195,20 +205,19 @@ if (__name__ == "__main__"):
 
   for T in Structure.Titles: print "Title:", T
   print "Unit cell:", Structure.UnitCell
-  print "Space group symbol:", \
-        Structure.SpaceGroupSymbols.ExtendedHermann_Mauguin()
+  print "Space group symbol:", Structure.SgOps.BuildLookupSymbol()
   print "Resolution d_min:", Resolution_d_min
   print "Number of sites:", len(Structure.Sites)
   print
 
-  IndexSet = MillerIndexSet(Structure.SpaceGroupSymbols, Structure.UnitCell)
+  print "Label ScatterLabel WyckoffPosition Coordinates Occupancy Uiso"
+  for S in Structure.Sites: print S
+  print
+
+  IndexSet = MillerIndexSet(Structure.SgOps, Structure.UnitCell)
   IndexSet.BuildIndices(Resolution_d_min)
 
   FcalcDict = ComputeStructureFactors(Structure.Sites, IndexSet)
-
-  print "Label ScatterLabel Multiplicity Coordinates Occupancy Uiso"
-  for S in Structure.Sites: print S
-  print
 
   print "Number of Miller indices:", len(FcalcDict)
   print "H K L Fcalc"

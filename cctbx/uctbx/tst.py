@@ -105,6 +105,8 @@ print u.getFractionalizationMatrix()
 print 'OrthogonalizationMatrix'
 print u.getOrthogonalizationMatrix()
 
+print u.getLongestVector2()
+
 pstr = pickle.dumps(u)
 print pstr
 up = pickle.loads(pstr)

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -73,7 +74,7 @@ namespace sgtbx {
     if (isCentric()) {
       m_InvT = InvT(true);
       for (int i = 1; i < m_nSMx; i++) {
-        if (m_SMx[i].Rpart().getRtype() < 0) { // XXX .det()
+        if (m_SMx[i].Rpart().det() < 0) {
           m_SMx[i] = m_SMx[i].pre_multiply_InvT(m_InvT);
         }
       }

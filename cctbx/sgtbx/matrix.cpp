@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -75,6 +76,13 @@ namespace sgtbx {
     return result;
   }
 
+  TrVec operator*(const TrVec& lhs, const RotMx& rhs)
+  {
+    TrVec result(lhs.BF() * rhs.BF());
+    MatrixLite::multiply(lhs.elems, rhs.elems, 1, 3, 3, result.elems);
+    return result;
+  }
+
   std::ostream& operator<<(std::ostream& os, const TrVec& T)
   {
     os << "(";
@@ -111,6 +119,27 @@ namespace sgtbx {
     return (C * (BF() * BF())) / detBF3;
   }
 
+  RotMx RotMx::inverse_with_cancel() const
+  {
+    boost::rational<int> d(det(), BF()*BF()*BF());
+    if (d == 0) throw error("Rotation matrix is not invertible.");
+    return (CoFactorMxTp() * d.denominator()).divide(d.numerator());
+  }
+
+  RotMx RotMx::divide(int rhs) const
+  {
+    RotMx result;
+    if (rhs < 0) {
+      result = -(*this);
+      rhs = -rhs;
+    }
+    else {
+      result = *this;
+    }
+    result.m_BF *= rhs;
+    return result.cancel();
+  }
+
   RotMx operator*(const RotMx& lhs, const RotMx& rhs)
   {
     RotMx result(lhs.BF() * rhs.BF());
@@ -142,6 +171,13 @@ namespace sgtbx {
     return RTMx(InvR, InvT);
   }
 
+  RTMx RTMx::inverse_with_cancel() const
+  {
+    RotMx InvR = m_R.inverse_with_cancel();
+    TrVec InvT = (-InvR).multiply(m_T);
+    return RTMx(InvR, InvT);
+  }
+
   std::ostream& operator<<(std::ostream& os, const RotMx& R)
   {
     os << "(";
@@ -153,6 +189,11 @@ namespace sgtbx {
     os << ")/";
     os << R.BF();
     return os;
+  }
+
+  RTMx operator+(const RTMx& lhs, const RTMx& rhs)
+  {
+    return RTMx(lhs.m_R + rhs.m_R, lhs.m_T + rhs.m_T);
   }
 
   RTMx operator*(const RTMx& lhs, const RTMx& rhs)
@@ -358,10 +399,10 @@ namespace sgtbx {
 
   TrVec RTMx::getIntrinsicPart() const
   {
-    RotMxInfo RI = Rpart().getInfo();
-    RotMx CumMx = Rpart().accumulate(RI.Rtype());
+    int Rtype = Rpart().getRtype();
+    RotMx CumMx = Rpart().accumulate(Rtype);
     TrVec wi = CumMx * Tpart();
-    wi = wi / OrderOfRtype(RI.Rtype());
+    wi = wi / OrderOfRtype(Rtype);
     return wi;
   }
 
@@ -389,6 +430,68 @@ namespace sgtbx {
     TrVec wl = getLocationPart(wi);
     TrVec sh = getOriginShift(wl);
     return TranslationComponents(wi, wl, sh);
+  }
+
+  TrVec TrVec::cancel() const
+  {
+    int g = BF();
+    int i;
+    for(i=0;i<3;i++) g = gcd(g, elems[i]);
+    if (g == 0) g = 1;
+    Vec3 result;
+    for(i=0;i<3;i++) result[i] = elems[i] / g;
+    return TrVec(result, BF() / g);
+  }
+
+  RotMx RotMx::cancel() const
+  {
+    int g = BF();
+    int i;
+    for(i=0;i<9;i++) g = gcd(g, elems[i]);
+    if (g == 0) g = 1;
+    Mx33 result;
+    for(i=0;i<9;i++) result[i] = elems[i] / g;
+    return RotMx(result, BF() / g);
+  }
+
+  RTMx RTMx::cancel() const
+  {
+    return RTMx(Rpart().cancel(), Tpart().cancel());
+  }
+
+  TrVec TrVec::plus(const TrVec& rhs) const
+  {
+    TrVec result(lcm(BF(), rhs.BF()));
+    int l = result.BF() / BF();
+    int r = result.BF() / rhs.BF();
+    for(int i=0;i<3;i++) result[i] = elems[i] * l + rhs[i] * r;
+    return result.cancel();
+  }
+
+  TrVec TrVec::minus(const TrVec& rhs) const
+  {
+    TrVec result(lcm(BF(), rhs.BF()));
+    int l = result.BF() / BF();
+    int r = result.BF() / rhs.BF();
+    for(int i=0;i<3;i++) result[i] = elems[i] * l - rhs[i] * r;
+    return result.cancel();
+  }
+
+  RTMx RTMx::multiply(const RTMx& rhs) const
+  {
+    if (TBF() == rhs.TBF()) {
+      return RTMx(
+        (Rpart() * rhs.Rpart()),
+        (Rpart() * rhs.Tpart() + Tpart().scale(RBF()))).cancel();
+    }
+    else {
+      int f = lcm(TBF(), rhs.TBF());
+      int l = f / TBF() * RBF();
+      int r = f / rhs.TBF();
+      return RTMx(
+        (Rpart() * rhs.Rpart()),
+        (Rpart() * rhs.Tpart().scale(r) + Tpart().scale(l))).cancel();
+    }
   }
 
 } // namespace sgtbx

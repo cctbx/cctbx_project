@@ -2,9 +2,11 @@
 
 import sys, string
 
+ShortCut = "--ShortCut" in sys.argv
+StandardOnly = "--StandardOnly" in sys.argv
 TidyCBOp = "--TidyCBOp" in sys.argv
 QuickMode = "--Quick" in sys.argv
-ShortCut = "--ShortCut" in sys.argv
+Endless = "--Endless" in sys.argv
 
 import sgtbx
 
@@ -16,15 +18,16 @@ RBF = 36
 TBF = 144
 
 if (ShortCut):
-  table_hall = (" P 2c 2",)
+  settings = ("Hall:  P 2c 2",)
 else:
-  table_hall = []
-  for i in sgtbx.SpaceGroupSymbolIterator():
-    table_hall.append(i.Hall())
+  from settings import * # see examples/python/make_settings.py
 
-for HallSymbol in table_hall:
-  for Z in "PABCIRHF":
-    HSym = HallSymbol[0] + Z + HallSymbol[2:]
+def OneCycle():
+  print "# Starting over"
+  for LookupSymbol in settings:
+    if (StandardOnly and LookupSymbol[:5] == "Hall:"): continue
+    SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
+    HSym = SgSymbols.Hall()
     SgOps = sgtbx.SgOps(HSym)
     SgNumber = SgOps.getSpaceGroupType().SgNumber()
     RefSgOps = sgtbx.SgOps(sgtbx.SpaceGroupSymbols(SgNumber).Hall())
@@ -56,3 +59,7 @@ for HallSymbol in table_hall:
             if (not QuickMode):
               assert s == sgtbx.SgOps(h)
             print
+
+while 1:
+  OneCycle()
+  if (not Endless): break

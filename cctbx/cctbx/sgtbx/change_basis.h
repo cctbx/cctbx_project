@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -106,13 +107,24 @@ namespace sgtbx {
         Mx.ModShort();
         InvMx.ModShort();
       }
-      //! M() * RT * InvM()
+      //! M() * RT * InvM(), for RT with rotation base factor 1.
+      /*! Similar to apply(), but faster. The translation base factor
+          of the result is equal to the translation base factor of RT.
+       */
       RTMx operator()(const RTMx& RT) const;
+      //! M() * RT * InvM(), for general RT.
+      /*! Similar to opertor()(). RT may have any rotation base factor
+          or translation base factor. The base factors of the result
+          are made as small as possible.
+          <p>
+          See also: RTMx::multiply, RTMx::cancel()
+       */
+      RTMx apply(const RTMx& RT);
       //! M() * (RotMx(SignI)|T) * InvM()
       TrVec operator()(const TrVec& T, int SignI) const;
       //! Transform fractional coordinates: M() * X
-      MatrixLite::dtype::Vec3
-      operator()(const MatrixLite::dtype::Vec3& X) const;
+      inline MatrixLite::dtype::Vec3
+      operator()(const MatrixLite::dtype::Vec3& X) const { return Mx * X; }
       //! M() = CBOp.M() * M(); InvM() = InvM() * CBOp.InvM();
       inline void update(const ChOfBasisOp& CBOp) {
         Mx = (CBOp.M() * Mx).newBaseFactors(CBOp.M());

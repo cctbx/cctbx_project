@@ -19,7 +19,7 @@ CCTBXLIB=..\..\lib\lib*.lib
 
 CPP=cl.exe
 LD=link.exe
-STDOPTS=/nologo /MD /GR /GX /Zm200
+STDOPTS=/nologo /MD /GR /GX /Zm250
 WARNOPTS=
 OPTOPTS=
 MAKEDEP=

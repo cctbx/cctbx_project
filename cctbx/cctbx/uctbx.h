@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -151,6 +152,11 @@ namespace uctbx {
       inline double getVolume() const { return Vol; }
       //@}
 
+      //! @name Length^2 of the longest lattice vector in the unit cell.
+      //@{
+      inline double getLongestVector2() const { return LongestVector2; }
+      //@}
+
       //! @name Orthogonalization and fractionalization of coordinates.
       //@{
       //! This matrix converts cartesian to fractional coordinates.<br>
@@ -163,6 +169,27 @@ namespace uctbx {
       inline Vec3 fractionalize(const Vec3& Xc) const { return Frac * Xc; }
       //! Converts fractional coordinates Xf to cartesian coordinates.
       inline Vec3 orthogonalize(const Vec3& Xf) const { return Orth * Xf; }
+      //@}
+
+      //! @name Measurements, given fractional coordinates.
+      //@{
+      //! Length squared of vector.
+      inline double Length2(const Vec3& Xf) const {
+        Vec3 Xc = orthogonalize(Xf);
+        return Xc * Xc;
+      }
+      //! Length of vector.
+      inline double Length(const Vec3& Xf) const {
+        return std::sqrt(Length2(Xf));
+      }
+      //! Distance squared.
+      inline double Distance2(const Vec3& Xf, const Vec3& Yf) const {
+        return Length2(Xf - Yf);
+      }
+      //! Distance.
+      inline double Distance(const Vec3& Xf, const Vec3& Yf) const {
+        return Length(Xf - Yf);
+      }
       //@}
 
       //! @name Transformation (change-of-basis) of unit cell parameters.
@@ -206,6 +233,7 @@ namespace uctbx {
       void SetReciprocal();
       void SetMetricalMatrices();
       void SetOrthAndFracMatrix();
+      void SetLongestVector2();
       void Initialize();
 
       Vec3   Len;
@@ -221,6 +249,7 @@ namespace uctbx {
       Mx33   R_G;
       Mx33   Frac;
       Mx33   Orth;
+      double LongestVector2;
   };
 
   //! iostream output operator for class UnitCell.

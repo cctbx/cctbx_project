@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -49,6 +50,7 @@ namespace sgtbx {
         for(int i=0;i<3;i++) result[i] = elems[i] * factor;
         return result;
       }
+      TrVec cancel() const;
       inline TrVec ModPositive() const {
         TrVec result(m_BF);
         for(int i=0;i<3;i++) result[i] = iModPositive(elems[i], m_BF);
@@ -74,6 +76,13 @@ namespace sgtbx {
         TrVec result(lhs.m_BF);
         for(int i=0;i<3;i++) result[i] = lhs[i] + rhs[i];
         return result;
+      }
+      TrVec plus(const TrVec& rhs) const;
+      TrVec minus(const TrVec& rhs) const;
+      inline TrVec& operator+=(const TrVec& rhs) {
+        cctbx_assert(m_BF == rhs.m_BF);
+        for(int i=0;i<3;i++) elems[i] += rhs.elems[i];
+        return *this;
       }
       inline friend TrVec operator-(const TrVec& lhs, const TrVec& rhs) {
         cctbx_assert(lhs.m_BF == rhs.m_BF);
@@ -161,7 +170,8 @@ namespace sgtbx {
         elems[3] = m10; elems[4] = m11; elems[5] = m12;
         elems[6] = m20; elems[7] = m21; elems[8] = m22;
       }
-      inline int BF() const { return m_BF; }
+      inline const int& BF() const { return m_BF; }
+      inline int& BF() { return m_BF; }
       inline bool isValid() const { return m_BF != 0; }
       inline RotMx Unit() const {
         return RotMx(BF());
@@ -176,10 +186,11 @@ namespace sgtbx {
         for(int i=0;i<9;i++) result[i] = elems[i] * factor;
         return result;
       }
+      RotMx cancel() const;
       inline void setColumn(int c, const Vec3& v) {
         for(int i=0;i<3;i++) elems[i * 3 + c] = v[i];
       }
-      inline Vec3 getColumn(int c) {
+      inline Vec3 getColumn(int c) const {
         Vec3 result;
         for(int i=0;i<3;i++) result[i] = elems[i * 3 + c];
         return result;
@@ -208,6 +219,8 @@ namespace sgtbx {
       }
       RotMx CoFactorMxTp() const;
       RotMx inverse() const;
+      RotMx inverse_with_cancel() const;
+      RotMx divide(int rhs) const;
       inline RotMx operator-() const {
         RotMx result(m_BF);
         for(int i=0;i<9;i++) result[i] = -elems[i];
@@ -225,6 +238,11 @@ namespace sgtbx {
         for(int i=0;i<9;i++) result[i] = lhs[i] + rhs[i];
         return result;
       }
+      inline RotMx& operator+=(const RotMx& rhs) {
+        cctbx_assert(m_BF == rhs.m_BF);
+        for(int i=0;i<9;i++) elems[i] += rhs.elems[i];
+        return *this;
+      }
       inline friend bool operator==(const RotMx& lhs, const RotMx& rhs) {
         if (lhs.m_BF != rhs.m_BF) return false;
         for(int i=0;i<9;i++) if (lhs.elems[i] != rhs.elems[i]) return false;
@@ -238,12 +256,17 @@ namespace sgtbx {
         for(int i=0;i<9;i++) elems[i] *= rhs;
         return *this;
       }
-      inline RotMx& operator+=(const RotMx& rhs) {
-        for(int i=0;i<9;i++) elems[i] += rhs.elems[i];
-        return *this;
-      }
       friend RotMx operator*(const RotMx& lhs, const RotMx& rhs);
       friend RotMx operator/(const RotMx& lhs, int rhs);
+      friend Vec3 operator*(const RotMx& lhs, const Vec3& rhs);
+      friend TrVec operator*(const RotMx& lhs, const TrVec& rhs);
+      friend TrVec operator*(const TrVec& lhs, const RotMx& rhs);
+      inline RotMx multiply(const RotMx& rhs) const {
+        return ((*this) * rhs).cancel();
+      }
+      inline TrVec multiply(const TrVec& rhs) const {
+        return ((*this) * rhs).cancel();
+      }
       friend std::ostream& operator<<(std::ostream& os, const RotMx& R);
       template <class T>
       boost::array<T, 9> as_array(const T&) const {
@@ -259,8 +282,6 @@ namespace sgtbx {
   };
 
   int OrderOfRtype(int Rtype);
-  Vec3 operator*(const RotMx& lhs, const Vec3& rhs);
-  TrVec operator*(const RotMx& lhs, const TrVec& rhs);
 
   //! Result type for RTMx::analyzeTpart.
   /*! See RTMx::analyzeTpart.
@@ -306,8 +327,12 @@ namespace sgtbx {
     public:
       //! Access to rotation part.
       inline const RotMx& Rpart() const { return m_R; };
+      //! Access to rotation part.
+      inline RotMx& Rpart() { return m_R; };
       //! Access to translation part.
       inline const TrVec& Tpart() const { return m_T; };
+      //! Access to translation part.
+      inline TrVec& Tpart() { return m_T; };
       //! Initialize identity rotation matrix and zero translation vector.
       /*! The base factors used are RBF and TBF for the rotation part
           and the translation part, respectively.
@@ -409,6 +434,12 @@ namespace sgtbx {
       /*! if (factorT == 0) factorT = factorR;
        */
       RTMx scale(int factorR, int factorT = 0) const;
+      //! Reduce base factors by cancellation.
+      /*! The rotation base factor and the elements of the rotation
+          part are divided by their greatest common denominator.
+          The same procedure is applied to the translation part.
+       */
+      RTMx cancel() const;
       //! Apply modulus operation such that 0 <= x < TBF().
       /*! The operation is applied to the elements of the
           translation vector. The vector is modified in place.
@@ -475,10 +506,44 @@ namespace sgtbx {
           or the translation base factor.
        */
       RTMx inverse() const;
+      //! Compute the inverse matrix.
+      /*! An exception is thrown if the matrix cannot be inverted.
+       */
+      RTMx inverse_with_cancel() const;
+      //! Similar to /=, but multiply base factors instead of dividing elements.
+      inline void pseudo_divide(int rhs) {
+        m_R.BF() *= rhs;
+        m_T.BF() *= rhs;
+      }
       //! Unary minus.
       inline RTMx operator-() const { return RTMx(-m_R, -m_T); }
-      //! Multiplication operator.
+      //! Addition operator.
+      friend RTMx operator+(const RTMx& lhs, const RTMx& rhs);
+      //! += operator.
+      inline RTMx& operator+=(const RTMx& rhs) {
+        m_R += rhs.m_R;
+        m_T += rhs.m_T;
+        return *this;
+      }
+      //! Multiplication of homogeneous RTMx with RBF()=1.
+      /*! The rotation base factor of both matrices must be equal to 1.
+          The translation base factors of the two matrices must be equal.
+          <p>
+          The base factors of the result are equal to the base factors
+          of the operands.
+          <p>
+          operator*() is faster than multiply().
+       */
       friend RTMx operator*(const RTMx& lhs, const RTMx& rhs);
+      //! Multiplication with cancellation for general RTMx.
+      /*! Similar to opertor*(). However, the operands may have any
+          rotation base factor or translation base factor.
+          <p>
+          The base factors of the result are made as small as possible.
+          <p>
+          See also: RTMx::cancel()
+       */
+      RTMx multiply(const RTMx& rhs) const;
       //! Addition of translation vector to translation part.
       friend RTMx operator+(const RTMx& lhs, const TrVec& rhs);
       //! Test for equality.
@@ -498,6 +563,28 @@ namespace sgtbx {
        */
       friend std::ostream& operator<<(std::ostream& os, const RTMx& M);
   };
+
+  inline MatrixLite::dtype::Vec3
+  operator+(const MatrixLite::dtype::Vec3& lhs, const TrVec& rhs) {
+    MatrixLite::dtype::Vec3 result;
+    for(int i=0;i<3;i++) result[i] = lhs[i] + double(rhs[i]) / rhs.BF();
+    return result;
+  }
+
+  inline MatrixLite::dtype::Vec3
+  operator*(const RTMx& lhs, const MatrixLite::dtype::Vec3& rhs) {
+    const RotMx& R = lhs.Rpart();
+    const TrVec& T = lhs.Tpart();
+    const double RBF = R.BF();
+    const double TBF = T.BF();
+    MatrixLite::dtype::Vec3 result;
+    for(int i=0;i<3;i++) {
+      result[i] = (  R[i * 3 + 0] * rhs[0]
+                   + R[i * 3 + 1] * rhs[1]
+                   + R[i * 3 + 2] * rhs[2]) / RBF + T[i] / TBF;
+    }
+    return result;
+  }
 
 } // namespace sgtbx
 

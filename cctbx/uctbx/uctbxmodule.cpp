@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
@@ -125,6 +126,10 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
                                  "getFractionalizationMatrix");
     UnitCell_class.def(&UnitCell::getOrthogonalizationMatrix,
                                  "getOrthogonalizationMatrix");
+    UnitCell_class.def(&UnitCell::Length2, "Length2");
+    UnitCell_class.def(&UnitCell::Length, "Length");
+    UnitCell_class.def(&UnitCell::Distance2, "Distance2");
+    UnitCell_class.def(&UnitCell::Distance, "Distance");
     UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
     UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
     UnitCell_class.def(UnitCell_ChangeBasis_2, "ChangeBasis");
@@ -133,6 +138,7 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     UnitCell_class.def(&UnitCell::d, "d");
     UnitCell_class.def(&UnitCell::fractionalize, "fractionalize");
     UnitCell_class.def(&UnitCell::orthogonalize, "orthogonalize");
+    UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
   }
   catch(...)
   {

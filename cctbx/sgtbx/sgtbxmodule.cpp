@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -67,10 +68,25 @@ namespace {
   }
 
   RTMx RTMx_from_tuple(const tuple& t, int RBF, int TBF) {
-    cctbx_assert(t.size() == 2);
+    if (t.size() != 2) {
+      PyErr_SetString(PyExc_ValueError,
+        "First argument must be a tuple that contains two tuples"
+        " (rotation part and translation part)");
+      throw boost::python::error_already_set();
+    }
     Mx33 Rpart = from_python(t[0].get(), boost::python::type<const Mx33&>());
     Vec3 Tpart = from_python(t[1].get(), boost::python::type<const Vec3&>());
     return RTMx(RotMx(Rpart, RBF), TrVec(Tpart, TBF));
+  }
+
+  RTMx RTMx_mul_RTMx(const RTMx& lhs, const RTMx& rhs) {
+    return lhs * rhs;
+  }
+  RTMx RTMx_multiply_RTMx(const RTMx& lhs, const RTMx& rhs) {
+    return lhs.multiply(rhs);
+  }
+  uctbx::Vec3 RTMx_multiply_Vec3(const RTMx& lhs, const uctbx::Vec3& rhs) {
+    return lhs * rhs;
   }
 
   MatrixLite::dtype::Vec3
@@ -92,13 +108,12 @@ namespace {
   RTMx SgOps_call_3(const SgOps& sgo, int iLTr, int iInv, int iSMx) {
     return sgo(iLTr, iInv, iSMx);
   }
-  RTMx SgOps_getitem(const SgOps& sgo, int key) {
+  RTMx SgOps_getitem(const SgOps& sgo, std::size_t key) {
     try {
       return sgo(key);
     }
-    catch (const error&) {
-      PyErr_SetString(PyExc_IndexError,
-                      "Symmetry operation index out of range");
+    catch (const error_index& e) {
+      PyErr_SetString(PyExc_IndexError, e.what());
       throw boost::python::error_already_set();
     }
   }
@@ -257,11 +272,13 @@ namespace {
 
   Miller::SymEquivIndex
   SymEquivMillerIndices_getitem(const SymEquivMillerIndices& SEMI,
-                                int iList) {
-    if (iList < 0 || iList >= SEMI.N()) {
-      throw error("Index out of range.");
+                                std::size_t key) {
+    if (key >= SEMI.N()) {
+      PyErr_SetString(PyExc_IndexError,
+                      "SymEquivMillerIndices: index out of range");
+      throw boost::python::error_already_set();
     }
-    return SEMI[iList];
+    return SEMI[key];
   }
   Miller::Index
   SymEquivMillerIndices_call_1(const SymEquivMillerIndices& SEMI,
@@ -319,6 +336,83 @@ namespace {
                                 bool FriedelSym) {
     return Master.ShiftPhase(F, FriedelSym);
   }
+
+  RTMx WyckoffPosition_getitem(const WyckoffPosition& WP,
+                               std::size_t key) {
+    WP.CheckExpanded();
+    try {
+      return WP(key);
+    }
+    catch (const error_index& e) {
+      PyErr_SetString(PyExc_IndexError, e.what());
+      throw boost::python::error_already_set();
+    }
+  }
+
+  WyckoffPosition WyckoffTable_call_size_t(const WyckoffTable& WTab,
+                                           std::size_t i) {
+    return WTab(i);
+  }
+  WyckoffPosition WyckoffTable_call_char(const WyckoffTable& WTab,
+                                         char Letter) {
+    return WTab(Letter);
+  }
+
+  WyckoffPosition WyckoffTable_getitem(const WyckoffTable& WTab,
+                                       std::size_t key) {
+    try {
+      return WTab(key);
+    }
+    catch (const error_index& e) {
+      PyErr_SetString(PyExc_IndexError, e.what());
+      throw boost::python::error_already_set();
+    }
+  }
+
+  WyckoffMapping
+  WyckoffTable_getWyckoffMapping_SP(const WyckoffTable& WTab,
+                                    const SpecialPosition& SP) {
+    return WTab.getWyckoffMapping(SP);
+  }
+  WyckoffMapping
+  WyckoffTable_getWyckoffMapping_3(const WyckoffTable& WTab,
+                                   const uctbx::UnitCell& uc,
+                                   const SgOps& sgo,
+                                   const uctbx::Vec3& X) {
+    return WTab.getWyckoffMapping(uc, sgo, X);
+  }
+  WyckoffMapping
+  WyckoffTable_getWyckoffMapping_4(const WyckoffTable& WTab,
+                                   const uctbx::UnitCell& uc,
+                                   const SgOps& sgo,
+                                   const uctbx::Vec3& X,
+                                   double SnapRadius) {
+    return WTab.getWyckoffMapping(uc, sgo, X, SnapRadius);
+  }
+
+  RTMx SpecialPosition_getitem(const SpecialPosition& SP,
+                               std::size_t key) {
+    try {
+      return SP(key);
+    }
+    catch (const error_index& e) {
+      PyErr_SetString(PyExc_IndexError, e.what());
+      throw boost::python::error_already_set();
+    }
+  }
+
+  uctbx::Vec3
+  SymEquivCoordinates_getitem(const SymEquivCoordinates& SEC,
+                              std::size_t key) {
+    try {
+      return SEC(key);
+    }
+    catch (const error_index& e) {
+      PyErr_SetString(PyExc_IndexError, e.what());
+      throw boost::python::error_already_set();
+    }
+  }
+
 }
 
 BOOST_PYTHON_MODULE_INIT(sgtbx)
@@ -364,6 +458,19 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     python::export_converters(py_SgOps);
     class_builder<SpaceGroupType>
     py_SpaceGroupType(this_module, "SpaceGroupType");
+    class_builder<WyckoffPosition>
+    py_WyckoffPosition(this_module, "WyckoffPosition");
+    class_builder<WyckoffMapping>
+    py_WyckoffMapping(this_module, "WyckoffMapping");
+    class_builder<WyckoffTable>
+    py_WyckoffTable(this_module, "WyckoffTable");
+    class_builder<SpecialPositionSnapParameters>
+    py_SpecialPositionSnapParameters(this_module,
+      "SpecialPositionSnapParameters");
+    class_builder<SpecialPositionTolerances>
+    py_SpecialPositionTolerances(this_module, "SpecialPositionTolerances");
+    class_builder<SpecialPosition>
+    py_SpecialPosition(this_module, "SpecialPosition");
     class_builder<SymEquivCoordinates>
     py_SymEquivCoordinates(this_module, "SymEquivCoordinates");
 
@@ -424,9 +531,11 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RTMx.def(&RTMx::TBF, "TBF");
     py_RTMx.def(&RTMx::Unit, "Unit");
     py_RTMx.def(&RTMx::isUnit, "isUnit");
+    py_RTMx.def(&RTMx::cancel, "cancel");
     py_RTMx.def(&RTMx::ModPositive, "ModPositive");
     py_RTMx.def(&RTMx::ModShort, "ModShort");
     py_RTMx.def(&RTMx::inverse, "inverse");
+    py_RTMx.def(&RTMx::inverse_with_cancel, "inverse_with_cancel");
     py_RTMx.def(RTMx_as_xyz_0, "__repr__");
     py_RTMx.def(RTMx_as_xyz_0, "as_xyz");
     py_RTMx.def(&RTMx::as_xyz, "as_xyz");
@@ -434,7 +543,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_RTMx.def(RTMx_as_tuple_2, "as_tuple");
     py_RTMx.def(&RTMx::getRotMxInfo, "getRotMxInfo");
     py_RTMx.def(&RTMx::analyzeTpart, "analyzeTpart");
-    py_RTMx.def(operators<python::op_mul>());
+    py_RTMx.def(RTMx_mul_RTMx, "__mul__");
+    py_RTMx.def(RTMx_multiply_RTMx, "multiply");
+    py_RTMx.def(RTMx_multiply_Vec3, "multiply");
 
     py_ChOfBasisOp.def(constructor<const RTMx&, const RTMx&>());
     py_ChOfBasisOp.def(constructor<const RTMx&>());
@@ -446,6 +557,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ChOfBasisOp.def(&ChOfBasisOp::InvM, "InvM");
     py_ChOfBasisOp.def(&ChOfBasisOp::swap, "swap");
     py_ChOfBasisOp.def(ChOfBasisOp_call, "__call__");
+    py_ChOfBasisOp.def(&ChOfBasisOp::apply, "apply");
 
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HR, "HR");
     py_Miller_SymEquivIndex.def(&Miller::SymEquivIndex::HT, "HT");
@@ -488,6 +600,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SymEquivMillerIndices.def(&SymEquivMillerIndices::M, "M");
     py_SymEquivMillerIndices.def(&SymEquivMillerIndices::fMates, "fMates");
     py_SymEquivMillerIndices.def(&SymEquivMillerIndices::epsilon, "epsilon");
+    py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "__len__");
     py_SymEquivMillerIndices.def(SymEquivMillerIndices_getitem, "__getitem__");
     py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_1, "__call__");
     py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_2, "__call__");
@@ -525,6 +638,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SgOps.def(&SgOps::OrderZ, "OrderZ");
     py_SgOps.def(SgOps_call_1, "__call__");
     py_SgOps.def(SgOps_call_3, "__call__");
+    py_SgOps.def(&SgOps::OrderZ, "__len__");
     py_SgOps.def(SgOps_getitem, "__getitem__");
     py_SgOps.def(&SgOps::isChiral, "isChiral");
     py_SgOps.def(&SgOps::isEnantiomorphic, "isEnantiomorphic");
@@ -566,15 +680,99 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroupType.def(&SpaceGroupType::SgNumber, "SgNumber");
     py_SpaceGroupType.def(&SpaceGroupType::CBOp, "CBOp");
 
-    py_SymEquivCoordinates.def(constructor<const uctbx::UnitCell&,
-                                           const SgOps&,
+    py_WyckoffPosition.def(&WyckoffPosition::M, "M");
+    py_WyckoffPosition.def(&WyckoffPosition::Letter, "Letter");
+    py_WyckoffPosition.def(&WyckoffPosition::SpecialOp, "SpecialOp");
+    py_WyckoffPosition.def(&WyckoffPosition::isExpanded, "isExpanded");
+    py_WyckoffPosition.def(&WyckoffPosition::CheckExpanded,"CheckExpanded");
+    py_WyckoffPosition.def(&WyckoffPosition::operator(), "__call__");
+    py_WyckoffPosition.def(&WyckoffPosition::M, "__len__");
+    py_WyckoffPosition.def(WyckoffPosition_getitem, "__getitem__");
+
+    py_WyckoffMapping.def(&WyckoffMapping::WP, "WP");
+    py_WyckoffMapping.def(&WyckoffMapping::Mapping, "Mapping");
+    py_WyckoffMapping.def(&WyckoffMapping::snap_to_representative,
+                                          "snap_to_representative");
+    py_WyckoffMapping.def(&WyckoffMapping::snap, "snap");
+
+    py_WyckoffTable.def(constructor<const SpaceGroupType&>());
+    py_WyckoffTable.def(constructor<const SgOps&, const SpaceGroupType&>());
+    py_WyckoffTable.def(&WyckoffTable::expand, "expand");
+    py_WyckoffTable.def(&WyckoffTable::N, "N");
+    py_WyckoffTable.def(WyckoffTable_call_size_t, "__call__");
+    py_WyckoffTable.def(WyckoffTable_call_char, "__call__");
+    py_WyckoffTable.def(&WyckoffTable::N, "__len__");
+    py_WyckoffTable.def(WyckoffTable_getitem, "__getitem__");
+    py_WyckoffTable.def(&WyckoffTable::LookupIndex, "LookupIndex");
+    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_SP,"getWyckoffMapping");
+    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_3, "getWyckoffMapping");
+    py_WyckoffTable.def(WyckoffTable_getWyckoffMapping_4, "getWyckoffMapping");
+
+    py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
+                                                     const SgOps&>());
+    py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
+                                                     const SgOps&,
+                                                     bool>());
+    py_SpecialPositionSnapParameters.def(constructor<const uctbx::UnitCell&,
+                                                     const SgOps&,
+                                                     bool,
+                                                     double>());
+
+    py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
+                                                 const SgOps&>());
+    py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
+                                                 const SgOps&,
+                                                 double>());
+    py_SpecialPositionTolerances.def(constructor<const uctbx::UnitCell&,
+                                                 const SgOps&,
+                                                 double,
+                                                 double>());
+
+    py_SpecialPosition.def(constructor<const SpecialPositionSnapParameters&,
+                                       const uctbx::Vec3&>());
+    py_SpecialPosition.def(constructor<const SpecialPositionSnapParameters&,
+                                       const uctbx::Vec3&,
+                                       bool>());
+    py_SpecialPosition.def(&SpecialPosition::OriginalPosition,
+                                            "OriginalPosition");
+    py_SpecialPosition.def(&SpecialPosition::SnapPosition, "SnapPosition");
+    py_SpecialPosition.def(&SpecialPosition::DistanceMoved2,
+                                            "DistanceMoved2");
+    py_SpecialPosition.def(&SpecialPosition::DistanceMoved,
+                                            "DistanceMoved");
+    py_SpecialPosition.def(&SpecialPosition::ShortestDistance2,
+                                            "ShortestDistance2");
+    py_SpecialPosition.def(&SpecialPosition::ShortestDistance,
+                                            "ShortestDistance");
+    py_SpecialPosition.def(&SpecialPosition::isWellBehaved, "isWellBehaved");
+    py_SpecialPosition.def(&SpecialPosition::M, "M");
+    py_SpecialPosition.def(&SpecialPosition::SpecialOp, "SpecialOp");
+    py_SpecialPosition.def(&SpecialPosition::expand, "expand");
+    py_SpecialPosition.def(&SpecialPosition::isExpanded, "isExpanded");
+    py_SpecialPosition.def(&SpecialPosition::CheckExpanded, "CheckExpanded");
+    py_SpecialPosition.def(&SpecialPosition::operator(), "__call__");
+    py_SpecialPosition.def(&SpecialPosition::M, "__len__");
+    py_SpecialPosition.def(SpecialPosition_getitem, "__getitem__");
+
+    py_SymEquivCoordinates.def(constructor<const SpecialPositionSnapParameters&,
                                            const uctbx::Vec3&>());
-    py_SymEquivCoordinates.def(constructor<const uctbx::UnitCell&,
-                                           const SgOps&,
-                                           const uctbx::Vec3&,
-                                           double>());
+    py_SymEquivCoordinates.def(constructor<const SpecialPosition&>());
+    py_SymEquivCoordinates.def(constructor<const WyckoffMapping&,
+                                           const uctbx::Vec3&>());
+    py_SymEquivCoordinates.def(constructor<const WyckoffPosition&,
+                                           const uctbx::Vec3&>());
+    py_SymEquivCoordinates.def(constructor<const SpecialPositionTolerances&,
+                                           const uctbx::Vec3&>());
+    py_SymEquivCoordinates.def(constructor<const SgOps&,
+                                           const uctbx::Vec3&>());
     py_SymEquivCoordinates.def(&SymEquivCoordinates::M, "M");
     py_SymEquivCoordinates.def(&SymEquivCoordinates::operator(), "__call__");
+    py_SymEquivCoordinates.def(&SymEquivCoordinates::M, "__len__");
+    py_SymEquivCoordinates.def(SymEquivCoordinates_getitem, "__getitem__");
+    py_SymEquivCoordinates.def(&SymEquivCoordinates::getShortestDistance2,
+                                                    "getShortestDistance2");
+    py_SymEquivCoordinates.def(&SymEquivCoordinates::getShortestDistance,
+                                                    "getShortestDistance");
     py_SymEquivCoordinates.def(&SymEquivCoordinates::StructureFactor,
                                                     "StructureFactor");
     sgtbx::sanity_check();

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      2001-Apr-23 Initial m_isTidy = false (R.W. Grosse-Kunstleve)
        This fixes a bug (interaction with SgOps::ChangeBasis())
@@ -189,7 +190,7 @@ namespace sgtbx {
     if (   iLTr < 0 || iLTr >= m_LTr.nVects()
         || iInv < 0 || iInv >= m_fInv
         || iSMx < 0 || iSMx >= m_nSMx) {
-      throw error("Index out of range.");
+      throw error_index();
     }
     if (iInv == 0) return m_SMx[iSMx] + m_LTr[iLTr];
     return -m_SMx[iSMx] + m_InvT + m_LTr[iLTr];
@@ -199,7 +200,7 @@ namespace sgtbx {
   {
     // iLIS = ((iLTr * fInv) + iInv) * nSMx + iSMx
     if (iLIS < 0 || iLIS >= OrderZ()) {
-      throw error("Index out of range.");
+      throw error_index();
     }
     int iSMx = iLIS % m_nSMx;
     int iInv = (iLIS / m_nSMx) % m_fInv;

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      2001-Apr-22 Implementation of ConstructZ2POp() (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
@@ -15,24 +16,6 @@
 #include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/basic/define_range.h>
-
-namespace boost {
-
-    template<class T, std::size_t N>
-    bool operator== (const array<T,N>& x, const T& value) {
-        for (std::size_t i = 0; i < x.size(); i++)
-            if (x[i] != value) return false;
-        return true;
-    }
-
-    template<class T, std::size_t N>
-    bool operator!= (const array<T,N>& x, const T& value) {
-        for (std::size_t i = 0; i < x.size(); i++)
-            if (x[i] != value) return true;
-        return false;
-    }
-
-}
 
 namespace sgtbx {
   namespace lattice {

@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      2001 May 07 added: identidy, isDiagonal, transpose
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
@@ -15,7 +16,75 @@
 
 #include <vector>
 #include <cstddef>
+#include <iostream>
 #include <boost/array.hpp>
+
+namespace boost {
+
+    template<class T, std::size_t N>
+    bool operator== (const array<T,N>& x, const T& value) {
+        for (std::size_t i = 0; i < x.size(); i++)
+            if (x[i] != value) return false;
+        return true;
+    }
+
+    template<class T, std::size_t N>
+    bool operator!= (const array<T,N>& x, const T& value) {
+        for (std::size_t i = 0; i < x.size(); i++)
+            if (x[i] != value) return true;
+        return false;
+    }
+
+    template<class T, std::size_t N>
+    T operator* (const array<T,N>& lhs, const array<T,N>& rhs) {
+        T result = 0;
+        for (std::size_t i = 0; i < lhs.size(); i++) result += lhs[i] * rhs[i];
+        return result;
+    }
+
+    template<class T, std::size_t N>
+    array<T,N> operator+ (const array<T,N>& lhs, const array<T,N>& rhs) {
+        array<T,N> result;
+        for (std::size_t i = 0; i < lhs.size(); i++) {
+            result[i] = lhs[i] + rhs[i];
+        }
+        return result;
+    }
+
+    template<class T, std::size_t N>
+    array<T,N> operator- (const array<T,N>& lhs, const array<T,N>& rhs) {
+        array<T,N> result;
+        for (std::size_t i = 0; i < lhs.size(); i++) {
+            result[i] = lhs[i] - rhs[i];
+        }
+        return result;
+    }
+
+    template<class T, std::size_t N>
+    array<T,N> operator- (const array<T,N>& rhs) {
+        array<T,N> result;
+        for (std::size_t i = 0; i < rhs.size(); i++) {
+            result[i] = -rhs[i];
+        }
+        return result;
+    }
+
+    template<class T, std::size_t N>
+    std::ostream& operator<<(std::ostream& os, const array<T,N>& x) {
+        os << "(";
+        if (x.size() > 0) {
+            for (std::size_t i = 0;;) {
+                os << x[i];
+                i++;
+                if (i == x.size()) break;
+                os << ",";
+            }
+        }
+        os << ")";
+        return os;
+    }
+
+} // namespace boost
 
 namespace MatrixLite {
 

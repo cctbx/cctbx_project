@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
  */
@@ -26,28 +27,16 @@ namespace sgtbx {
             + Mx.Tpart().scale(Mx.Rpart().BF())).newBaseFactor(T.BF());
   }
 
-  RTMx ChOfBasisOp::operator()(const RTMx& M) const
+  RTMx ChOfBasisOp::operator()(const RTMx& RT) const
   {
     // This function only works for Seitz matrices:
-    cctbx_assert(M.Rpart().BF() == 1);
-    cctbx_assert(Mx.Tpart().BF() % M.Tpart().BF() == 0);
-    RTMx
-    mx_rt_invmx = Mx * (M.scale(1, Mx.Tpart().BF() / M.Tpart().BF()) * InvMx);
-    return mx_rt_invmx.newBaseFactors(M);
+    cctbx_assert(RT.RBF() == 1);
+    cctbx_assert(Mx.TBF() % RT.TBF() == 0);
+    return (Mx * (RT.scale(1, Mx.TBF()/RT.TBF()) * InvMx)).newBaseFactors(RT);
   }
 
-  MatrixLite::dtype::Vec3
-  ChOfBasisOp::operator()(const MatrixLite::dtype::Vec3& X) const {
-    MatrixLite::dtype::Vec3 result;
-    const double RBF = Mx.RBF();
-    const double TBF = Mx.TBF();
-    for(int i=0;i<3;i++) {
-      result[i] = (  Mx.Rpart()[3 * i + 0] * X[0]
-                   + Mx.Rpart()[3 * i + 1] * X[1]
-                   + Mx.Rpart()[3 * i + 2] * X[2]) / RBF
-                  + Mx.Tpart()[i] / TBF;
-    }
-    return result;
+  RTMx ChOfBasisOp::apply(const RTMx& RT) {
+    return Mx.multiply(RT.multiply(InvMx));
   }
 
   TrOps TrOps::ChangeBasis(const ChOfBasisOp& CBOp) const
