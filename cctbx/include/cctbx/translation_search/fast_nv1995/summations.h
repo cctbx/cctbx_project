@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     Oct 2002: Modified copy of phenix/fast_translation/summations.h (rwgk)
-     Dec 2001: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_TRANSLATION_SEARCH_FAST_NV1995_SUMMATIONS_H
 #define CCTBX_TRANSLATION_SEARCH_FAST_NV1995_SUMMATIONS_H
 
@@ -220,12 +210,12 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
 
   // Precomputes f~(hs) (Navaza & Vernoslova (1995), p.447, following Eq. (14))
   // ftil = f_calc(hr) * exp(2*pi*i*ht)
-  template <typename FloatTypeSummation>
+  template <typename FloatType>
   void set_ftilde(sgtbx::space_group const& space_group,
-                  f_calc_map<FloatTypeSummation> const& fc_map,
+                  f_calc_map<FloatType> const& fc_map,
                   miller::index<> const& h,
                   miller::index<>* hs,
-                  std::complex<FloatTypeSummation>* fts)
+                  std::complex<FloatType>* fts)
   {
     for(std::size_t i=0;i<space_group.order_z();i++) {
       sgtbx::rt_mx s = space_group(i);
@@ -249,19 +239,21 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
 
   // Sum according to Eq. (15) of Navaza & Vernoslova (1995), p. 447.
   // Manually optimized for best performance.
-  template <typename FloatTypeSummation>
+  template <typename FloatType>
   void
   summation_eq15(
     sgtbx::space_group const& space_group,
     af::const_ref<miller::index<> > const& miller_indices,
-    af::const_ref<std::complex<FloatTypeSummation> > const& f_part,
-    f_calc_map<FloatTypeSummation> const& p1_f_calc,
-    summation_accumulator<FloatTypeSummation>& sum)
+    af::const_ref<FloatType> const& m,
+    af::const_ref<std::complex<FloatType> > const& f_part,
+    f_calc_map<FloatType> const& p1_f_calc,
+    summation_accumulator<FloatType>& sum)
   {
+    CCTBX_ASSERT(m.size() == miller_indices.size());
     CCTBX_ASSERT(   f_part.size() == 0
                  || f_part.size() == miller_indices.size());
     typedef miller::index<> mi_t;
-    typedef std::complex<FloatTypeSummation> cx_t;
+    typedef std::complex<FloatType> cx_t;
     std::size_t order_z = space_group.order_z();
     bool have_f_part = f_part.size();
     std::vector<mi_t> hs_vector(order_z);
@@ -275,7 +267,7 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     cx_t two_fpi(0);
     for (std::size_t ih = 0; ih < miller_indices.size(); ih++) {
       mi_t h = miller_indices[ih];
-      double mh = space_group.multiplicity(h, p1_f_calc.anomalous_flag());
+      FloatType mh = m[ih];
       set_ftilde(space_group, p1_f_calc, h, hs, fts);
       if (have_f_part) {
         fpi = f_part[ih];
@@ -321,23 +313,21 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
   }
 
   // Sum according to Eq. (14) of Navaza & Vernoslova (1995), p. 447.
-  template <typename FloatTypeIobs,
-            typename FloatTypeSummation>
+  template <typename FloatType>
   void
   summation_eq14(
     sgtbx::space_group const& space_group,
     af::const_ref<miller::index<> > const& miller_indices,
-    af::const_ref<FloatTypeIobs> const& d_i_obs,
-    af::const_ref<std::complex<FloatTypeSummation> > const& f_part,
-    f_calc_map<FloatTypeSummation> const& p1_f_calc,
-    summation_accumulator<FloatTypeSummation>& sum)
+    af::const_ref<FloatType> const& m,
+    af::const_ref<std::complex<FloatType> > const& f_part,
+    f_calc_map<FloatType> const& p1_f_calc,
+    summation_accumulator<FloatType>& sum)
   {
-    CCTBX_ASSERT(   d_i_obs.size() == 0
-                 || d_i_obs.size() == miller_indices.size());
+    CCTBX_ASSERT(m.size() == miller_indices.size());
     CCTBX_ASSERT(   f_part.size() == 0
                  || f_part.size() == miller_indices.size());
     typedef miller::index<> mi_t;
-    typedef std::complex<FloatTypeSummation> cx_t;
+    typedef std::complex<FloatType> cx_t;
     std::size_t order_z = space_group.order_z();
     bool have_f_part = f_part.size();
     std::vector<mi_t> hs_vector(order_z);
@@ -346,19 +336,18 @@ namespace cctbx { namespace translation_search { namespace fast_nv1995_detail {
     cx_t* fts = &*fts_vector.begin();
     for (std::size_t ih = 0; ih < miller_indices.size(); ih++) {
       mi_t h = miller_indices[ih];
-      double mh_di = space_group.multiplicity(h, p1_f_calc.anomalous_flag());
-      if (d_i_obs.size()) mh_di *= d_i_obs[ih];
+      FloatType mh = m[ih];
       set_ftilde(space_group, p1_f_calc, h, hs, fts);
       for (std::size_t is0 = 0; is0 < order_z; is0++) {
         const mi_t& hm0 = hs[is0];
-        cx_t mh_di_ftil0c = mh_di * std::conj(fts[is0]);
+        cx_t mh_ftil0c = mh * std::conj(fts[is0]);
         if (have_f_part) {
-          cx_t cf = mh_di_ftil0c * f_part[ih];
+          cx_t cf = mh_ftil0c * f_part[ih];
           sum.plus_minus(hm0, cf);
         }
         for (std::size_t is1 = 0; is1 < order_z; is1++) {
           mi_t hm01(hm0 - hs[is1]);
-          cx_t cf = mh_di_ftil0c * fts[is1];
+          cx_t cf = mh_ftil0c * fts[is1];
           sum.minus(hm01, cf);
         }
       }
