@@ -467,11 +467,13 @@ class fft_map(crystal.symmetry):
                      resolution_factor=1./3,
                      d_min=None,
                      symmetry_flags=None,
+                     mandatory_factors=None,
                      max_prime=5):
     assert coeff_array.anomalous_flag() in (00000, 0001)
     crystal.symmetry._copy_constructor(self, coeff_array)
     self._resolution_factor = resolution_factor
     self._symmetry_flags = symmetry_flags
+    self._mandatory_factors = mandatory_factors
     self._max_prime = max_prime
     self._anomalous_flag = coeff_array.anomalous_flag()
     cf = coeff_array.data()
@@ -484,7 +486,8 @@ class fft_map(crystal.symmetry):
     n_real = coeff_array.determine_gridding(
       resolution_factor=self.resolution_factor(),
       d_min=d_min,
-      symmetry_flags=symmetry_flags,
+      symmetry_flags=self.symmetry_flags(),
+      mandatory_factors=self.mandatory_factors(),
       max_prime=self.max_prime())
     if (not self.anomalous_flag()):
       rfft = fftpack.real_to_complex_3d(n_real)
@@ -511,6 +514,9 @@ class fft_map(crystal.symmetry):
 
   def symmetry_flags(self):
     return self._symmetry_flags
+
+  def mandatory_factors(self):
+    return self._mandatory_factors
 
   def max_prime(self):
     return self._max_prime
