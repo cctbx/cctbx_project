@@ -6,6 +6,7 @@ from libtbx.itertbx import count
 from libtbx import introspection
 from cStringIO import StringIO
 import math
+import weakref
 import sys, os
 
 default_print_width = 79
@@ -273,18 +274,34 @@ default_converter_registry = dict([(str(converters()), converters)
      float_converters,
      choice_converters]])
 
-def definition_converters_from_words(words, converter_registry):
+def definition_converters_from_words(
+      words,
+      converter_registry,
+      converter_cache):
   name = words[0].value
   if (len(words) == 1):
     if (name.lower() == "none" and words[0].quote_token is None):
       return None
+    converters_weakref = converter_cache.get(name, None)
+    if (converters_weakref is not None):
+      converters_instance = converters_weakref()
+      if (converters_instance is not None):
+        return converters_instance
     converters = converter_registry.get(name, None)
     if (converters is not None):
-      try: return converters()
+      try: converters_instance = converters()
       except Exception, e:
         raise RuntimeError(
           'Error constructing definition type "%s": %s%s' % (
             name, str(e), words[0].where_str()))
+      converter_cache[name] = weakref.ref(converters_instance)
+      return converters_instance
+  constructor = str_from_words(words)
+  converters_weakref = converter_cache.get(constructor, None)
+  if (converters_weakref is not None):
+    converters_instance = converters_weakref()
+    if (converters_instance is not None):
+      return converters_instance
   flds = name.split("(", 1)
   if (len(flds) == 2):
     name = flds[0]
@@ -292,12 +309,14 @@ def definition_converters_from_words(words, converter_registry):
   if (converters is None):
     raise RuntimeError(
       'Unexpected definition type: "%s"%s' % (name, words[0].where_str()))
-  constructor = str_from_words(words)
-  try: return eval(constructor, math.__dict__, {name: converters})
+  try:
+    converters_instance = eval(constructor, math.__dict__, {name: converters})
   except Exception, e:
     raise RuntimeError(
       'Error constructing definition type "%s": %s%s' % (
         constructor, str(e), words[0].where_str()))
+  converter_cache[constructor] = weakref.ref(converters_instance)
+  return converters_instance
 
 def show_attributes(self, out, prefix, attributes_level, print_width):
   if (attributes_level <= 0): return
@@ -400,12 +419,15 @@ class definition: # FUTURE definition(object)
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
 
-  def assign_attribute(self, name, words, converter_registry):
+  def assign_attribute(self, name, words, converter_registry, converter_cache):
     assert self.has_attribute_with_name(name)
     if (name in ["optional", "multiple"]):
       value = bool_from_words(words)
     elif (name == "type"):
-      value = definition_converters_from_words(words, converter_registry)
+      value = definition_converters_from_words(
+        words=words,
+        converter_registry=converter_registry,
+        converter_cache=converter_cache)
     elif (name in ["input_size", "expert_level"]):
       value = int_from_words(words)
     else:

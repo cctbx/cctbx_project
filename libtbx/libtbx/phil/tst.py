@@ -1527,11 +1527,11 @@ group {
     .type=choice
     .optional=no
   f=a *b c
-    .type=choice(multi=True)
+    .type=choice(multi = True)
   f=a *b *c
-    .type=choice(multi=True)
+    .type=choice(multi = True)
   f=a b c
-    .type=choice(multi=True)
+    .type=choice(multi =True)
   g="/var/tmp/foo"
     .type=path
   h="var.tmp.foo"
@@ -1583,12 +1583,20 @@ group {
   except RuntimeError, e:
     assert str(e) == 'Unspecified choice (input line 15)'
   else: raise RuntimeError("Exception expected.")
+  assert parameters.get(path="group.e").objects[0].type \
+      is parameters.get(path="group.e").objects[1].type
+  assert parameters.get(path="group.e").objects[0].type \
+      is parameters.get(path="group.e").objects[2].type
   assert parameters.get(path="group.f",
     with_substitution=False).objects[0].extract() == ["b"]
   assert parameters.get(path="group.f",
     with_substitution=False).objects[1].extract() == ["b", "c"]
   assert parameters.get(path="group.f",
     with_substitution=False).objects[2].extract() == []
+  assert parameters.get(path="group.f").objects[0].type \
+      is parameters.get(path="group.f").objects[1].type
+  assert parameters.get(path="group.f").objects[0].type \
+  is not parameters.get(path="group.f").objects[2].type
   assert parameters.get(path="group.g",
     with_substitution=False).objects[0].extract() == "/var/tmp/foo"
   assert parameters.get(path="group.h",
