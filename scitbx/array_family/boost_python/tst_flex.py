@@ -726,7 +726,7 @@ def exercise_linear_interpolation():
 
 def exercise_loops():
   points = []
-  loop = flex.nested_loop((2,3))
+  loop = flex.nested_loop(end=(2,3))
   while (not loop.over()):
     points.append(loop())
     loop.incr()
@@ -736,7 +736,7 @@ def exercise_loops():
     points.append(index)
   assert points == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
   points = []
-  for index in flex.nested_loop((2,3), 0001):
+  for index in flex.nested_loop(end=(2,3), open_range=0001):
     points.append(index)
   assert points == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
   points = []
@@ -746,11 +746,11 @@ def exercise_loops():
                     (1,0),(1,1),(1,2),(1,3),
                     (2,0),(2,1),(2,2),(2,3)]
   points = []
-  for index in flex.nested_loop((1,2),(3,4)):
+  for index in flex.nested_loop(begin=(1,2),end=(3,4)):
     points.append(index)
   assert points == [(1, 2), (1, 3), (2, 2), (2, 3)]
   points = []
-  for index in flex.nested_loop((1,2),(3,4),0001):
+  for index in flex.nested_loop(begin=(1,2),end=(3,4),open_range=0001):
     points.append(index)
   assert points == [(1, 2), (1, 3), (2, 2), (2, 3)]
   points = []

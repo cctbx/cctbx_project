@@ -1,4 +1,5 @@
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <scitbx/array_family/loops.h>
@@ -30,10 +31,13 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("nested_loop", no_init)
-        .def(init<array_t const&, optional<bool> >())
-        .def(init<array_t const&, array_t const&, optional<bool> >())
+        .def(init<array_t const&, optional<bool> >(
+          (arg_("end"), arg_("open_range")=true)))
+        .def(init<array_t const&, array_t const&, optional<bool> >(
+          (arg_("begin"), arg_("end"), arg_("open_range")=true)))
         .def("incr", &w_t::incr)
         .def("begin", &w_t::begin, ccr())
         .def("end", &w_t::end, ccr())
