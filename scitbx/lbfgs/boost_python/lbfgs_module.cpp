@@ -16,13 +16,11 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 
-namespace {
+namespace scitbx { namespace lbfgs { namespace {
 
-  using namespace scitbx;
-
-  struct lbfgs_minimizer_wrappers
+  struct minimizer_wrappers
   {
-    typedef lbfgs::minimizer<double> w_t;
+    typedef minimizer<double> w_t;
 
     static bool
     run_4(
@@ -98,7 +96,7 @@ namespace {
 
   struct traditional_convergence_test_wrappers
   {
-    typedef lbfgs::traditional_convergence_test<double> w_t;
+    typedef traditional_convergence_test<double> w_t;
 
     static bool
     call(
@@ -129,7 +127,7 @@ namespace {
 
   struct drop_convergence_test_wrappers
   {
-    typedef lbfgs::drop_convergence_test<double> w_t;
+    typedef drop_convergence_test<double> w_t;
 
     static void
     def_all(boost::python::module& this_module)
@@ -160,15 +158,15 @@ namespace {
 
     scitbx::boost_python::import_module("scitbx_boost.array_family.flex");
 
-    lbfgs_minimizer_wrappers::def_all(this_module);
+    minimizer_wrappers::def_all(this_module);
     traditional_convergence_test_wrappers::def_all(this_module);
     drop_convergence_test_wrappers::def_all(this_module);
   }
 
-}
+}}} // namespace scitbx::lbfgs::<anonymous>
 
 BOOST_PYTHON_MODULE_INIT(lbfgs)
 {
   boost::python::module this_module("lbfgs");
-  init_module(this_module);
+  scitbx::lbfgs::init_module(this_module);
 }
