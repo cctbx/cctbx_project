@@ -11,6 +11,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_H
 #define CCTBX_ARRAY_FAMILY_SHARED_H
 
+#include <cctbx/array_family/apply.h>
 #include <cctbx/array_family/shared_plain.h>
 
 namespace cctbx { namespace af {

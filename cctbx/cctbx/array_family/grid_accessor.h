@@ -17,7 +17,7 @@
 // forward declaration
 namespace cctbx { namespace af {
   template <typename ElementType, std::size_t N>
-  class tiny;
+  class tiny_plain;
 }}
 
 namespace cctbx { namespace af {
@@ -72,7 +72,7 @@ namespace cctbx { namespace af {
 
   template <std::size_t Nd,
             typename Index1dType = c_index_1d<Nd>,
-            typename IndexType = tiny<int, Nd> >
+            typename IndexType = tiny_plain<int, Nd> >
   class grid_accessor : public IndexType
   {
     public:
