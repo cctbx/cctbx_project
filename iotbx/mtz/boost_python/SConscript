@@ -3,4 +3,4 @@ env = env_iotbx_boost_python_ext.Copy()
 env.Prepend(LIBS=["iotbx","cmtz","cctbx"])
 env.SharedLibrary(
   target="#libtbx/iotbx_boost/mtz",
-  source=["cppmtzmodule.cpp"])
+  source=["cppmtzmodule.cpp", "writer.cpp"])
