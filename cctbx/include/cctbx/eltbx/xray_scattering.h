@@ -6,6 +6,8 @@
 #endif
 
 #include <cctbx/eltbx/basic.h>
+#include <scitbx/math/erf.h>
+#include <scitbx/constants.h>
 #include <scitbx/array_family/small.h>
 #include <cctbx/import_scitbx_af.h>
 #include <boost/config.hpp>
@@ -14,6 +16,56 @@
 #include <ctype.h>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
+
+  template <typename FloatType>
+  inline
+  FloatType
+  one_gaussian_term_integral_at_d_star(
+    FloatType const& a,
+    FloatType const& b,
+    FloatType const& d_star,
+    FloatType const& b_min_for_erf_base_algorithm=1.e-3)
+  {
+    using scitbx::math::erf;
+    static const double sqrt_pi = std::sqrt(scitbx::constants::pi);
+    if (b == 0) return a * d_star;
+    if (b > b_min_for_erf_base_algorithm) {
+      /* Mathematica:
+           f = a Exp[-b / 4 s^2]
+           Integrate[f,s]
+       */
+      FloatType sqrt_b = std::sqrt(b);
+      return a*sqrt_pi*erf(sqrt_b*d_star*.5)/sqrt_b;
+    }
+    /* Mathematica:
+         f = a Exp[-b4 s^2]
+         Series[Integrate[f,s], {s,0,20}]
+       Formula for the denominator of the series expansion: (2n+1)*n!
+       Encyclopedia of Integer Sequences ID Number: A007680
+     */
+    FloatType as = a * d_star;
+    FloatType bss = b / 4. * d_star * d_star;
+    FloatType part = 1;
+    FloatType result = 1;
+    FloatType prev_result = result;
+    unsigned n = 0;
+    unsigned tnp1 = 1;
+    while (true) {
+      n++;
+      tnp1 += 2;
+      part *= bss / n;
+      result -= part / tnp1;
+      if (result == prev_result) break;
+      prev_result = result;
+      n++;
+      tnp1 += 2;
+      part *= bss / n;
+      result += part / tnp1;
+      if (result == prev_result) break;
+      prev_result = result;
+    }
+    return as * result;
+  }
 
   class gaussian
   {
