@@ -27,11 +27,11 @@ namespace cctbx { namespace restraints {
     double weight;
   };
 
-  struct bond_sym_proxy
+  struct bond_asu_proxy
   {
-    bond_sym_proxy() {}
+    bond_asu_proxy() {}
 
-    bond_sym_proxy(
+    bond_asu_proxy(
       direct_space_asu::asu_mapping_index_pair const& pair_,
       double distance_ideal_,
       double weight_)
@@ -92,7 +92,7 @@ namespace cctbx { namespace restraints {
       bond(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         direct_space_asu::asu_mappings<> const& asu_mappings,
-        bond_sym_proxy const& proxy)
+        bond_asu_proxy const& proxy)
       :
         distance_ideal(proxy.distance_ideal),
         weight(proxy.weight)
@@ -107,7 +107,7 @@ namespace cctbx { namespace restraints {
       // Not available in Python.
       bond(
         asu_cache<> const& cache,
-        bond_sym_proxy const& proxy)
+        bond_asu_proxy const& proxy)
       :
         distance_ideal(proxy.distance_ideal),
         weight(proxy.weight)
@@ -227,7 +227,7 @@ namespace cctbx { namespace restraints {
   bond_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<bond_sym_proxy> const& proxies)
+    af::const_ref<bond_asu_proxy> const& proxies)
   {
     af::shared<double> result((af::reserve(sites_cart.size())));
     for(std::size_t i=0;i<proxies.size();i++) {
@@ -242,7 +242,7 @@ namespace cctbx { namespace restraints {
   bond_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<bond_sym_proxy> const& proxies)
+    af::const_ref<bond_asu_proxy> const& proxies)
   {
     af::shared<double> result((af::reserve(sites_cart.size())));
     for(std::size_t i=0;i<proxies.size();i++) {
@@ -258,7 +258,7 @@ namespace cctbx { namespace restraints {
   bond_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<bond_sym_proxy> const& proxies,
+    af::const_ref<bond_asu_proxy> const& proxies,
     std::vector<bool> const& sym_active_flags,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     bool disable_cache=false)
@@ -301,7 +301,7 @@ namespace cctbx { namespace restraints {
   bond_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     direct_space_asu::asu_mappings<> const& asu_mappings,
-    af::const_ref<bond_sym_proxy> const& proxies,
+    af::const_ref<bond_asu_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
     bool disable_cache=false)
   {
@@ -318,7 +318,7 @@ namespace cctbx { namespace restraints {
       disable_cache);
   }
 
-  typedef sorted_proxies<bond_proxy, bond_sym_proxy>
+  typedef sorted_proxies<bond_proxy, bond_asu_proxy>
     bond_sorted_proxies;
 
   inline
@@ -363,9 +363,9 @@ namespace cctbx { namespace restraints {
 
   inline
   af::shared<std::set<direct_space_asu::asu_mapping_index> >
-  bond_sym_sets(
+  bond_asu_sets(
     std::size_t n_sites,
-    af::const_ref<restraints::bond_sym_proxy> const& proxies)
+    af::const_ref<restraints::bond_asu_proxy> const& proxies)
   {
     typedef direct_space_asu::asu_mapping_index ami;
     af::shared<std::set<ami> > result;
