@@ -366,11 +366,13 @@ class set(crystal.symmetry):
     return array(miller_set=self, data=from_map.data())
 
   def structure_factors_from_scatterers(self, xray_structure,
-                                              algorithm=None,
-                                              cos_sin_table=00000,
-                                              quality_factor=None,
-                                              u_extra=None,
-                                              b_extra=None):
+                                        algorithm=None,
+                                        cos_sin_table=00000,
+                                        quality_factor=None,
+                                        u_extra=None,
+                                        b_extra=None,
+                                        wing_cutoff=None,
+                                        exp_table_one_over_step_size=None):
     from cctbx import xray
     if (algorithm == "direct"):
       return xray.structure_factors.from_scatterers_direct(
@@ -382,7 +384,9 @@ class set(crystal.symmetry):
       cos_sin_table=cos_sin_table,
       quality_factor=quality_factor,
       u_extra=u_extra,
-      b_extra=b_extra)(
+      b_extra=b_extra,
+      wing_cutoff=wing_cutoff,
+      exp_table_one_over_step_size=exp_table_one_over_step_size)(
         xray_structure=xray_structure,
         miller_set=self,
         algorithm=algorithm)
