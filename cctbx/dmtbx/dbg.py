@@ -1,6 +1,8 @@
 import sys, os, math
 from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
+from cctbx_boost import sftbx
+from cctbx_boost import fftbx
 from cctbx import xutils
 from cctbx.development import debug_utils
 from cctbx_boost import dmtbx
@@ -25,6 +27,53 @@ def erase_small(miller_indices, data, cutoff):
       miller_indices.erase(i)
       data.erase(i)
 
+def compute_mean_weighted_phase_error(h, f, phi1, phi2, verbose=0):
+  sum_w_phase_error = 0
+  sum_w = 0
+  for i in xrange(h.size()):
+    phase_error = debug_utils.phase_error(
+      phi1[i], phi2[i], deg=0) * 180/math.pi
+    if (0 or verbose):
+      print h[i], "%.3f %.3f %.3f" % (
+        phi1[i], phi2[i], phase_error)
+    sum_w_phase_error += f[i] * phase_error
+    sum_w += f[i]
+  return sum_w_phase_error / sum_w
+
+def square_emap(xtal, p1_miller_indices, miller_indices, e_values, phases):
+  index_span = sftbx.index_span(p1_miller_indices)
+  if (1):
+    print "index_span:"
+    print "  min:", index_span.min()
+    print "  max:", index_span.max()
+    print "  abs_range:", index_span.abs_range()
+    print "  map_grid:", index_span.map_grid()
+    print
+  grid_logical = index_span.map_grid()
+  #grid_logical = (47, 47, 76)
+  print "grid_logical:", grid_logical
+  rfft = fftbx.real_to_complex_3d(grid_logical)
+  friedel_flag = 1
+  old_e_complex = shared.polar_rad(e_values, phases)
+  n_complex = rfft.Ncomplex()
+  print "n_complex:", n_complex
+  conjugate = 0
+  map = sftbx.structure_factor_map(
+    xtal.SgOps, friedel_flag, miller_indices,
+    old_e_complex, n_complex, conjugate)
+  rfft.backward(map)
+  shared.square(shared.reinterpret_complex_as_real(map))
+  rfft.forward(map)
+  new_e_complex = sftbx.collect_structure_factors(
+    friedel_flag, miller_indices, map, n_complex, conjugate)
+  new_phases = shared.arg_rad(new_e_complex)
+  if (1):
+    for i in xrange(miller_indices.size()):
+      print miller_indices[i], "%.2f %.2f" % (
+        phases[i]*180/math.pi,
+        new_phases[i]*180/math.pi)
+  return new_phases
+
 def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
                             verbose):
   tprs = dmtbx.triplet_invariants(sginfo, miller_indices_h, e_values)
@@ -40,37 +89,32 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
        utprs.average_number_of_triplets_per_reflection())
   means = []
   for t in (tprs, utprs):
-    mean_weightd_phase_error = []
+    mean_weighted_phase_error = []
     for ignore_weights in (0, 1):
       new_phases = t.refine_phases(
         miller_indices_h, e_values, phases, ignore_weights)
-      sum_w_phase_error = 0
-      sum_w = 0
-      for i in xrange(miller_indices_h.size()):
-        phase_error = debug_utils.phase_error(
-          phases[i], new_phases[i], deg=0) * 180/math.pi
-        if (0 or verbose):
-          print miller_indices_h[i], "%.3f %.3f %.3f" % (
-            phases[i], new_phases[i], phase_error)
-        sum_w_phase_error += e_values[i] * phase_error
-        sum_w += e_values[i]
-      mean_weightd_phase_error.append(sum_w_phase_error / sum_w)
+      mean_weighted_phase_error.append(
+        compute_mean_weighted_phase_error(
+          miller_indices_h, e_values, phases, new_phases, verbose))
     print "mean weighted phase error: %.2f %.2f delta: %.2f" % (
-      mean_weightd_phase_error[0],
-      mean_weightd_phase_error[1],
-      mean_weightd_phase_error[1] - mean_weightd_phase_error[0])
-    means.append(mean_weightd_phase_error)
+      mean_weighted_phase_error[0],
+      mean_weighted_phase_error[1],
+      mean_weighted_phase_error[1] - mean_weighted_phase_error[0])
+    means.append(mean_weighted_phase_error)
   print "        delta phase error: %.2f %.2f" % (
     means[1][0] - means[0][0],
     means[1][1] - means[0][1])
   if (0 or verbose):
     tprs.dump_triplets(miller_indices_h)
   print
+  return tprs
 
 def exercise(SgInfo,
              number_of_point_atoms = 10,
              d_min=1.,
              e_min=1.4,
+             exercise_triplets=0,
+             exercise_squaring=0,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
   xtal = debug_utils.random_structure(
@@ -106,10 +150,30 @@ def exercise(SgInfo,
     p1_H, p1_e_values, p1_phases,
     0, 0)
   print "number of structure factors p1:", p1_H.size()
-  test_triplet_invariants(
-    xtal.SgInfo, MillerIndices.H, e_values, phases, verbose)
-  test_triplet_invariants(
-    sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, verbose)
+  print
+  if (exercise_triplets):
+    tprs_sg = test_triplet_invariants(
+      xtal.SgInfo, MillerIndices.H, e_values, phases, verbose)
+    tprs_p1 = test_triplet_invariants(
+      sgtbx.SpaceGroup().Info(), p1_H, p1_e_values, p1_phases, verbose)
+    js = shared.join_sets(MillerIndices.H, p1_H)
+    assert js.pairs().size() == MillerIndices.H.size()
+    sg_new_phases = tprs_sg.refine_phases(MillerIndices.H, e_values, phases)
+    p1_new_phases = tprs_p1.refine_phases(p1_H, p1_e_values, p1_phases)
+    if (0 or verbose):
+      for i,j in js.pairs():
+        h = str(MillerIndices.H[i])
+        print "%-15s %.2f %.2f" % (
+          h, phases[i]*180/math.pi, sg_new_phases[i]*180/math.pi)
+        print "%-15s %.2f %.2f" % (
+          "", p1_phases[j]*180/math.pi, p1_new_phases[j]*180/math.pi)
+      print
+  if (exercise_squaring):
+    new_phases = square_emap(xtal, p1_H, MillerIndices.H, e_values, phases)
+    mwpe = compute_mean_weighted_phase_error(
+      MillerIndices.H, e_values, phases, new_phases, verbose)
+    print "squaring mean weighted phase error: %.2f" % (mwpe,)
+    print
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
@@ -117,6 +181,8 @@ def run():
     "AllSpaceGroups",
     "IncludeVeryHighSymmetry",
     "ShowSymbolOnly",
+    "triplets",
+    "squaring",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
   symbols_to_stdout = 0
@@ -144,7 +210,10 @@ def run():
     if (Flags.ShowSymbolOnly):
       print "Space group:", LookupSymbol
     else:
-      exercise(SgInfo)
+      exercise(
+        SgInfo,
+        exercise_triplets=Flags.triplets,
+        exercise_squaring=Flags.squaring)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):
