@@ -25,35 +25,123 @@ namespace cctbx {
   //! Structure Factor Toolbox namespace.
   namespace sftbx {
 
+  namespace detail {
+
+    template <typename FloatType,
+              typename AccumulatorType>
+    void
+    generic_sum_over_symmetry(const sgtbx::SpaceGroup& SgOps,
+                              const Miller::Index& H,
+                              const fractional<FloatType>& X,
+                              AccumulatorType& accu)
+    {
+      using constants::pi;
+      for (int s = 0; s < SgOps.nSMx(); s++) {
+        Miller::Index HR = H * SgOps[s].Rpart();
+        FloatType HRX = HR * X;
+        sgtbx::TrVec T = SgOps[s].Tpart();
+        accu.inner_sum_reset();
+        for (int i = 0; i < SgOps.fInv(); i++) {
+          if (i) {
+            HR = -HR;
+            HRX = -HRX;
+            T = SgOps.InvT() - T;
+          }
+          for (int l = 0; l < SgOps.nLTr(); l++) {
+            FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
+            FloatType phase = FloatType(2 * pi) * (HRX + HT);
+            accu.inner_sum_add(
+              std::complex<FloatType>(std::cos(phase), std::sin(phase)), HR);
+          }
+        }
+        accu.outer_sum_add();
+      }
+      accu.finalize();
+    }
+
+    template <typename FloatType>
+    struct null_accumulator
+    {
+      void outer_sum_reset() {}
+      void inner_sum_reset() {}
+      void outer_sum_add() {}
+      void finalize() {}
+    };
+
+    template <typename FloatType>
+    struct structure_factor_plain_accumulator : null_accumulator<FloatType>
+    {
+      void outer_sum_reset() { outer_sum = std::complex<FloatType>(0); }
+      void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
+                         const Miller::Index&) {
+        outer_sum += e2piiHXs;
+      }
+      std::complex<FloatType> outer_sum;
+    };
+
+    template <typename FloatType>
+    struct dTarget_dX_accumulator : null_accumulator<FloatType>
+    {
+      dTarget_dX_accumulator(
+        const std::complex<FloatType>& phase_indep_coeff,
+        const std::complex<FloatType>& dTarget_dFcalc)
+      : pic_(phase_indep_coeff),
+        dT_dF_(dTarget_dFcalc)
+      {}
+      void outer_sum_reset() { outer_sum.fill(FloatType(0)); }
+      void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
+                         const Miller::Index& HR) {
+        std::complex<FloatType> f = pic_ * e2piiHXs;
+        FloatType c =   f.real() * dT_dF_.imag()
+                      - f.imag() * dT_dF_.real();
+        for(int i=0;i<3;i++) {
+          outer_sum[i] += FloatType(HR[i]) * c;
+        }
+      }
+      void finalize() {
+        outer_sum *= FloatType(2 * constants::pi);
+      }
+      const std::complex<FloatType>& pic_;
+      const std::complex<FloatType>& dT_dF_;
+      af::tiny<FloatType, 3> outer_sum;
+    };
+
+    template <typename FloatType>
+    struct dTarget_dS_accumulator : null_accumulator<FloatType>
+    {
+      dTarget_dS_accumulator(
+        const std::complex<FloatType>& phase_indep_coeff,
+        const std::complex<FloatType>& dTarget_dFcalc)
+      : pic_(phase_indep_coeff),
+        dT_dF_(dTarget_dFcalc)
+      {}
+      void outer_sum_reset() { outer_sum = FloatType(0); }
+      void inner_sum_add(const std::complex<FloatType>& e2piiHXs,
+                         const Miller::Index& HR) {
+        std::complex<FloatType> f = pic_ * e2piiHXs;
+        outer_sum +=   f.real() * dT_dF_.real()
+                     + f.imag() * dT_dF_.imag();
+      }
+      const std::complex<FloatType>& pic_;
+      const std::complex<FloatType>& dT_dF_;
+      FloatType outer_sum;
+    };
+
+  } // namespace detail
+
   //! Structure factor without Debye-Waller factor.
   /*! Sum of exp(2 pi j H S X) over all symmetry operations S.
       j is the imaginary number.
    */
-  template <class FloatType>
+  template <typename FloatType>
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
                   const Miller::Index& H,
                   const fractional<FloatType>& X)
   {
-    using constants::pi;
-    std::complex<FloatType> F(FloatType(0));
-    for (int s = 0; s < SgOps.nSMx(); s++) {
-      Miller::Index HR = H * SgOps[s].Rpart();
-      FloatType HRX = HR * X;
-      sgtbx::TrVec T = SgOps[s].Tpart();
-      for (int i = 0; i < SgOps.fInv(); i++) {
-        if (i) {
-          HRX = -HRX;
-          T = SgOps.InvT() - T;
-        }
-        for (int l = 0; l < SgOps.nLTr(); l++) {
-          FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = FloatType(2 * pi) * (HRX + HT);
-          F += std::complex<FloatType>(std::cos(phase), std::sin(phase));
-        }
-      }
-    }
-    return F;
+    detail::structure_factor_plain_accumulator<FloatType> accu;
+    detail::generic_sum_over_symmetry(SgOps, H, X, accu);
+    return accu.outer_sum;
   }
 
   //! Structure factor with isotropic Debye-Waller factor given Uiso.
@@ -65,7 +153,7 @@ namespace cctbx {
       structure factor calculation given anisotropic
       displacement parameters.
    */
-  template <class FloatType>
+  template <typename FloatType>
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
                   const uctbx::UnitCell& uc,
@@ -86,7 +174,7 @@ namespace cctbx {
       structure factor calculation given anisotropic
       displacement parameters.
    */
-  template <class FloatType>
+  template <typename FloatType>
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
                   double stol2,
@@ -103,7 +191,7 @@ namespace cctbx {
       over all symmetry operations S.
       j is the imaginary number.
    */
-  template <class FloatType>
+  template <typename FloatType>
   std::complex<FloatType>
   StructureFactor(const sgtbx::SpaceGroup& SgOps,
                   const Miller::Index& H,
@@ -143,107 +231,28 @@ namespace cctbx {
     const std::complex<FloatType>& phase_indep_coeff,
     const std::complex<FloatType>& dTarget_dFcalc)
   {
-    using constants::pi;
-    af::tiny<FloatType, 3> result;
-    result.fill(FloatType(0));
-    for (int s = 0; s < SgOps.nSMx(); s++) {
-      Miller::Index HR = H * SgOps[s].Rpart();
-      FloatType HRX = HR * X;
-      sgtbx::TrVec T = SgOps[s].Tpart();
-      for (int i = 0; i < SgOps.fInv(); i++) {
-        if (i) {
-          HR = -HR;
-          HRX = -HRX;
-          T = SgOps.InvT() - T;
-        }
-        for (int l = 0; l < SgOps.nLTr(); l++) {
-          FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = FloatType(2 * pi) * (HRX + HT);
-          std::complex<FloatType> fX = std::complex<FloatType>(
-            std::cos(phase), std::sin(phase));
-          fX *= phase_indep_coeff;
-          FloatType c =   fX.real() * dTarget_dFcalc.imag()
-                        - fX.imag() * dTarget_dFcalc.real();
-          for(int j=0;j<3;j++) {
-            result[j] += HR[j] * c;
-          }
-        }
-      }
-    }
-    result *= FloatType(2 * pi);
-    return result;
+    detail::dTarget_dX_accumulator<FloatType> accu(
+      phase_indep_coeff, dTarget_dFcalc);
+    accu.outer_sum_reset();
+    detail::generic_sum_over_symmetry(SgOps, H, X, accu);
+    return accu.outer_sum;
   }
 
   //! XXX
   template <typename FloatType>
   FloatType
-  StructureFactor_dT_dOcc(
+  StructureFactor_dT_dS(
     const sgtbx::SpaceGroup& SgOps,
     const Miller::Index& H,
     const fractional<FloatType>& X,
     const std::complex<FloatType>& phase_indep_coeff,
     const std::complex<FloatType>& dTarget_dFcalc)
   {
-    using constants::pi;
-    FloatType result(0);
-    for (int s = 0; s < SgOps.nSMx(); s++) {
-      Miller::Index HR = H * SgOps[s].Rpart();
-      FloatType HRX = HR * X;
-      sgtbx::TrVec T = SgOps[s].Tpart();
-      for (int i = 0; i < SgOps.fInv(); i++) {
-        if (i) {
-          HR = -HR;
-          HRX = -HRX;
-          T = SgOps.InvT() - T;
-        }
-        for (int l = 0; l < SgOps.nLTr(); l++) {
-          FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = FloatType(2 * pi) * (HRX + HT);
-          std::complex<FloatType> fX = std::complex<FloatType>(
-            std::cos(phase), std::sin(phase));
-          fX *= phase_indep_coeff;
-          result +=   fX.real() * dTarget_dFcalc.real()
-                    + fX.imag() * dTarget_dFcalc.imag();
-        }
-      }
-    }
-    return result;
-  }
-
-  //! XXX
-  template <typename FloatType>
-  FloatType
-  StructureFactor_dT_dUiso(
-    const sgtbx::SpaceGroup& SgOps,
-    const Miller::Index& H,
-    const fractional<FloatType>& X,
-    const std::complex<FloatType>& phase_indep_coeff,
-    const std::complex<FloatType>& dTarget_dFcalc)
-  {
-    using constants::pi;
-    FloatType result(0);
-    for (int s = 0; s < SgOps.nSMx(); s++) {
-      Miller::Index HR = H * SgOps[s].Rpart();
-      FloatType HRX = HR * X;
-      sgtbx::TrVec T = SgOps[s].Tpart();
-      for (int i = 0; i < SgOps.fInv(); i++) {
-        if (i) {
-          HR = -HR;
-          HRX = -HRX;
-          T = SgOps.InvT() - T;
-        }
-        for (int l = 0; l < SgOps.nLTr(); l++) {
-          FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = FloatType(2 * pi) * (HRX + HT);
-          std::complex<FloatType> fX = std::complex<FloatType>(
-            std::cos(phase), std::sin(phase));
-          fX *= phase_indep_coeff;
-          result +=   fX.real() * dTarget_dFcalc.real()
-                    + fX.imag() * dTarget_dFcalc.imag();
-        }
-      }
-    }
-    return result;
+    detail::dTarget_dS_accumulator<FloatType> accu(
+      phase_indep_coeff, dTarget_dFcalc);
+    accu.outer_sum_reset();
+    detail::generic_sum_over_symmetry(SgOps, H, X, accu);
+    return accu.outer_sum;
   }
 
   /*! \brief This class groups the information about an atom that
@@ -499,7 +508,7 @@ namespace cctbx {
         const std::complex<FloatType>& dTarget_dFcalc) const
       {
         if (!m_Anisotropic) {
-          return sftbx::StructureFactor_dT_dOcc(
+          return sftbx::StructureFactor_dT_dS(
             SgOps, H, m_Coordinates,
               FloatType(m_M) / SgOps.OrderZ()
             * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
@@ -518,7 +527,7 @@ namespace cctbx {
       {
         if (!m_Anisotropic) {
           return FloatType(-adptbx::U_as_B(1.) * Q / 4.)
-            * sftbx::StructureFactor_dT_dUiso(
+            * sftbx::StructureFactor_dT_dS(
                 SgOps, H, m_Coordinates,
                   m_w
                 * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
