@@ -12,6 +12,9 @@ type %(bundle)s_sources\TAG
 :find_python
 echo.
 echo Trying to find Python:
+set python=%(bundle)s_build\python\python
+call %%python%% -V
+if %%errorlevel%% == 0 goto have_python
 set python=python
 call %%python%% -V
 if %%errorlevel%% == 0 goto have_python
