@@ -26,7 +26,7 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
           site = unit_cell.fractionalize(site_cart)
         ms.site = site
         f_calc_array = xray.structure_factors_direct(
-          modified_structure, target_ftor.f_obs_array).f_calc_array()
+          modified_structure, target_ftor.f_obs_array()).f_calc_array()
         target_result = target_ftor(f_calc_array, compute_derivatives=False)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -49,7 +49,7 @@ def finite_differences_u_star(target_ftor, structure,
         u_star[iu] += d_sign * delta
         ms.u_star = u_star
         f_calc_array = xray.structure_factors_direct(
-          modified_structure, target_ftor.f_obs_array).f_calc_array()
+          modified_structure, target_ftor.f_obs_array()).f_calc_array()
         target_result = target_ftor(f_calc_array, compute_derivatives=False)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -77,7 +77,7 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
       else:
         raise RuntimeError
       f_calc_array = xray.structure_factors_direct(
-        modified_structure, target_ftor.f_obs_array).f_calc_array()
+        modified_structure, target_ftor.f_obs_array()).f_calc_array()
       target_result = target_ftor(f_calc_array, compute_derivatives=False)
       target_values.append(target_result.target())
     derivative = (target_values[1] - target_values[0]) / (2 * delta)

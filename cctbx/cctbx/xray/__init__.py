@@ -300,41 +300,60 @@ def structure_factors(xray_structure, miller_set, method=None):
   result.f_calc_method = method
   return result
 
-class target_functor_base:
+class _target_functor_base:
 
   def __call__(self, f_calc_array, compute_derivatives):
-    assert f_calc_array.unit_cell().is_similar_to(self.f_obs_array.unit_cell())
-    assert f_calc_array.space_group() == self.f_obs_array.space_group()
-    if (self.weights != None):
-      return self.target_calculator(self.f_obs_array.data(),
-                                    self.weights,
-                                    f_calc_array.data(),
-                                    compute_derivatives)
+    assert f_calc_array.unit_cell().is_similar_to(
+           self.f_obs_array().unit_cell())
+    assert f_calc_array.space_group() == self.f_obs_array().space_group()
+    if (self.weights() != None):
+      return self._target_calculator(self.f_obs_array().data(),
+                                     self.weights(),
+                                     f_calc_array.data(),
+                                     compute_derivatives)
     else:
-      return self.target_calculator(self.f_obs_array.data(),
-                                    f_calc_array.data(),
-                                    compute_derivatives)
+      return self._target_calculator(self.f_obs_array().data(),
+                                     f_calc_array.data(),
+                                     compute_derivatives)
 
-class least_squares_residual(target_functor_base):
+class _least_squares_residual(_target_functor_base):
 
   def __init__(self, f_obs_array, weights=None,
                use_sigmas_as_weights=False):
-    adopt_init_args(self, locals())
-    assert self.weights == None or self.use_sigmas_as_weights == False
-    self.target_calculator = targets_least_squares_residual
-    if (self.use_sigmas_as_weights):
-      self.weights = f_obs_array.sigmas().data()
+    adopt_init_args(self, locals(), hide=True)
+    assert self._weights == None or self._use_sigmas_as_weights == False
+    self._target_calculator = targets_least_squares_residual
+    if (self._use_sigmas_as_weights):
+      self._weights = self._f_obs_array.sigmas().data()
 
-class intensity_correlation(target_functor_base):
+  def f_obs_array(self):
+    return self._f_obs_array
+
+  def weights(self):
+    return self._weights
+
+  def use_sigmas_as_weights(self):
+    return self._use_sigmas_as_weights
+
+class _intensity_correlation(_target_functor_base):
 
   def __init__(self, f_obs_array, weights=None,
                use_multiplicities_as_weights=False):
-    adopt_init_args(self, locals())
-    assert self.weights == None or self.use_multiplicities_as_weights == False
-    self.target_calculator = targets_intensity_correlation
-    if (self.use_multiplicities_as_weights):
-      self.weights = f_obs_array.multiplicities().data()
+    adopt_init_args(self, locals(), hide=True)
+    assert self._weights==None or self._use_multiplicities_as_weights==False
+    self._target_calculator = targets_intensity_correlation
+    if (self._use_multiplicities_as_weights):
+      self._weights = self._f_obs_array.multiplicities().data()
+
+  def f_obs_array(self):
+    return self._f_obs_array
+
+  def weights(self):
+    return self._weights
+
+  def use_multiplicities_as_weights(self):
+    return self._use_multiplicities_as_weights
 
 target_functors = dicts.easy()
-target_functors.least_squares_residual = least_squares_residual
-target_functors.intensity_correlation = intensity_correlation
+target_functors.least_squares_residual = _least_squares_residual
+target_functors.intensity_correlation = _intensity_correlation
