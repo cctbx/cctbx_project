@@ -393,7 +393,7 @@ protected:
     struct Abstract
     {
 #if !(defined(__EDG_VERSION__) && __EDG_VERSION__ <= 245)
-#if !(defined(__GNUC__) && ((__GNUC__ < 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ < 2))))
+#if !(defined(__GNUC__) && ((__GNUC__ < 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ < 3))))
        virtual void Fun() {}
 #endif
 #endif
