@@ -1,8 +1,13 @@
 from cctbx import crystal
 from cctbx import miller
+from cctbx import xray
+from cctbx import maptbx
+from cctbx.development import random_structure
+from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
 import math
+import sys
 
 def exercise_set():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
@@ -33,6 +38,10 @@ def exercise_set():
   assert b.limits().size() == 9
   assert tuple(ms.sort().indices()) == ((0,0,4), (1,2,3))
   assert tuple(ms.sort(reverse=0001).indices()) == ((1,2,3), (0,0,4))
+  ms = miller.set(xs, mi, 00000)
+  mp = ms.patterson_symmetry()
+  assert str(mp.space_group_info()) == "P m m m"
+  assert mp.indices() == ms.indices()
 
 def exercise_array():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
@@ -203,6 +212,11 @@ def exercise_array():
   assert tuple(sa.indices()) == ((0,0,-3), (0,0,1), (0,0,-4), (0,0,2))
   sa = ma.sort(by_value=flex.double((3,1,4,2)), reverse=0001)
   assert tuple(sa.indices()) == ((0,0,2), (0,0,-4), (0,0,1), (0,0,-3))
+  ma = miller.array(miller.set(xs, mi, 00000),data,sigmas).patterson_symmetry()
+  assert str(ma.space_group_info()) == "P 1 1 2/m"
+  assert ma.indices() == mi
+  assert ma.data() == data
+  assert ma.sigmas() == sigmas
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
@@ -220,10 +234,67 @@ def exercise_fft_map():
       if (anomalous_flag):
         assert fft_map.complex_map().size() > 0
 
+def exercise_squaring_and_patterson_map(space_group_info,
+                                        n_scatterers=8,
+                                        d_min=2,
+                                        verbose=0):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=["const"]*n_scatterers,
+    volume_per_atom=500,
+    min_distance=5.,
+    general_positions_only=0001,
+    u_iso=0.0)
+  if (0 or verbose):
+    structure.show_summary().show_scatterers()
+  e_000 = math.sqrt(n_scatterers * structure.space_group().order_z())
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=00000).f_calc_array()
+  f_calc = f_calc.sort(by_value="abs")
+  f = abs(f_calc)
+  f.setup_binner(auto_binning=0001)
+  e = f.normalize_structure_factors(quasi=0001)
+  grid_resolution_factor = 1/3.
+  u_extra = xray.calc_u_extra(d_min, grid_resolution_factor)
+  if (0 or verbose):
+    print "u_extra:", u_extra
+  d_star_sq = e.unit_cell().d_star_sq(e.indices())
+  dw = flex.exp(d_star_sq*2*(math.pi**2)*u_extra)
+  eb = miller.array(miller_set=e, data=e.data()/dw)
+  eb_map = miller.fft_map(
+    coeff_array=eb.phase_transfer(f_calc),
+    resolution_factor=grid_resolution_factor,
+    d_min=d_min,
+    f_000=e_000).real_map()
+  eb_map_sq = flex.pow2(eb_map)
+  eb_sq = eb.structure_factors_from_map(eb_map_sq)
+  mwpe = f_calc.mean_weighted_phase_error(eb_sq)
+  if (0 or verbose):
+    print "mean_weighted_phase_error: %.2f" % mwpe
+  assert mwpe < 2
+  eb_patt = eb.patterson_symmetry()
+  patterson_map = miller.fft_map(
+    coeff_array=miller.array(
+      miller_set=eb_patt,
+      data=eb_patt.f_as_f_sq().data()),
+    symmetry_flags=maptbx.use_space_group_symmetry,
+    resolution_factor=grid_resolution_factor,
+    f_000=e_000*e_000)
+  grid_tags = maptbx.grid_tags(patterson_map.gridding())
+  grid_tags.build(
+    eb_patt.space_group_info().type(),
+    maptbx.use_space_group_symmetry)
+  assert grid_tags.n_grid_misses() == 0
+  assert grid_tags.verify(patterson_map.real_map())
+
+def run_call_back(flags, space_group_info):
+  exercise_squaring_and_patterson_map(space_group_info, verbose=flags.Verbose)
+
 def run():
   exercise_set()
   exercise_array()
   exercise_fft_map()
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 
 if (__name__ == "__main__"):

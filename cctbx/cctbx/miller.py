@@ -8,6 +8,7 @@ del misc
 from cctbx import crystal
 from cctbx import maptbx
 from cctbx import uctbx
+from cctbx.utils import phase_error
 from cctbx.array_family import flex
 from scitbx import fftpack
 import sys
@@ -159,6 +160,32 @@ class set(crystal.symmetry):
       max_prime=max_prime,
       assert_shannon_sampling=assert_shannon_sampling)
 
+  def patterson_symmetry(self):
+    assert self.anomalous_flag() == 00000
+    return set(
+      crystal.symmetry.patterson_symmetry(self),
+      self.indices(),
+      self.anomalous_flag())
+
+  def structure_factors_from_map(self, map, in_place_fft=00000):
+    assert map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based()
+    assert type(map[0]) in (type(float()), type(complex()))
+    assert in_place_fft in (00000, 0001)
+    if (not in_place_fft):
+      map = map.deep_copy()
+    if (type(map[0]) == type(float())):
+      fft = fftpack.real_to_complex_3d(map.focus())
+    else:
+      fft = fftpack.complex_to_complex_3d(map.focus())
+    map = fft.forward(map)
+    conjugate_flag = 0001
+    from_map = maptbx.structure_factors.from_map(
+      self.anomalous_flag(),
+      self.indices(),
+      map,
+      conjugate_flag)
+    return array(miller_set=self, data=from_map.data())
+
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=0,
                    reflections_per_bin=0,
@@ -299,6 +326,15 @@ class array(set):
     if (self.sigmas() != None): s = self.sigmas().shuffle(p)
     return array(new_set, d, s)
 
+  def patterson_symmetry(self):
+    data = self.data()
+    if (type(data) == type(flex.complex_double())):
+      data = flex.abs(self.data())
+    return array(
+      set.patterson_symmetry(self),
+      data,
+      self.sigmas())
+
   def expand_to_p1(self, phase_deg=None):
     assert self.space_group() != None
     assert self.indices() != None
@@ -354,6 +390,23 @@ class array(set):
         self.data(),
         phase_source,
         epsilon))
+
+  def mean_weighted_phase_error(self, phase_source):
+    assert self.data() != None
+    if (hasattr(phase_source, "data")):
+      assert flex.order(phase_source.indices(), self.indices()) == 0
+      phase_source = phase_source.data()
+    p1 = flex.arg(self.data())
+    p2 = flex.arg(phase_source)
+    assert p1.size() == p2.size()
+    e = flex.double()
+    for i in p1.indices():
+      e.append(phase_error(p1[i], p2[i]))
+    w = flex.abs(self.data())
+    sum_w = flex.sum(w)
+    assert sum_w != 0
+    sum_we = flex.sum(w * e)
+    return sum_we / sum_w * 180/math.pi
 
   def match_bijvoet_mates(self):
     assert self.anomalous_flag() == 0001
@@ -596,30 +649,38 @@ class fft_map(crystal.symmetry):
                      d_min=None,
                      symmetry_flags=None,
                      mandatory_factors=None,
-                     max_prime=5):
+                     max_prime=5,
+                     gridding=None,
+                     f_000=None):
     assert coeff_array.anomalous_flag() in (00000, 0001)
+    if (gridding != None):
+      assert d_min == None \
+         and symmetry_flags == None \
+         and mandatory_factors == None
+      resolution_factor = None
+      max_prime = None
     crystal.symmetry._copy_constructor(self, coeff_array)
     self._resolution_factor = resolution_factor
     self._symmetry_flags = symmetry_flags
     self._mandatory_factors = mandatory_factors
     self._max_prime = max_prime
     self._anomalous_flag = coeff_array.anomalous_flag()
+    self._gridding = gridding
+    if (self._gridding == None):
+      self._gridding = coeff_array.determine_gridding(
+        resolution_factor=self.resolution_factor(),
+        d_min=d_min,
+        symmetry_flags=self.symmetry_flags(),
+        mandatory_factors=self.mandatory_factors(),
+        max_prime=self.max_prime())
     cf = coeff_array.data()
-    if (cf.size() == 0):
-      cf = flex.complex_double()
-    elif (type(cf[0]) != type(0j)):
+    if (type(cf) == type(flex.double())):
       cf = flex.polar(cf, 0)
-    n_real = coeff_array.determine_gridding(
-      resolution_factor=self.resolution_factor(),
-      d_min=d_min,
-      symmetry_flags=self.symmetry_flags(),
-      mandatory_factors=self.mandatory_factors(),
-      max_prime=self.max_prime())
     if (not self.anomalous_flag()):
-      rfft = fftpack.real_to_complex_3d(n_real)
+      rfft = fftpack.real_to_complex_3d(self._gridding)
       n_complex = rfft.n_complex()
     else:
-      cfft = fftpack.complex_to_complex_3d(n_real)
+      cfft = fftpack.complex_to_complex_3d(self._gridding)
       n_complex = cfft.n()
     conjugate_flag = 0001
     map = maptbx.structure_factors.to_map(
@@ -627,9 +688,12 @@ class fft_map(crystal.symmetry):
       self.anomalous_flag(),
       coeff_array.indices(),
       cf,
-      n_real,
+      self._gridding,
       flex.grid(n_complex),
       conjugate_flag)
+    if (f_000 != None):
+      assert map.complex_map()[0] == 0j
+      map.complex_map()[0] = complex(f_000)
     if (not self.anomalous_flag()):
       self._real_map = rfft.backward(map.complex_map())
     else:
@@ -646,6 +710,9 @@ class fft_map(crystal.symmetry):
 
   def max_prime(self):
     return self._max_prime
+
+  def gridding(self):
+    return self._gridding
 
   def anomalous_flag(self):
     return self._anomalous_flag
