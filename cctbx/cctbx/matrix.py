@@ -1,3 +1,5 @@
+import math
+
 class rec:
 
   def __init__(self, elems, n):
@@ -5,6 +7,12 @@ class rec:
     assert len(elems) == n[0] * n[1]
     self.elems = tuple(elems)
     self.n = tuple(n)
+
+  def n_rows(self):
+    return self.n[0]
+
+  def n_columns(self):
+    return self.n[1]
 
   def __add__(self, other):
     assert self.n == other.n
@@ -22,11 +30,11 @@ class rec:
     if (not hasattr(other, "elems")):
       return rec([x * other for x in self.elems], self.n)
     a = self.elems
-    ar = self.n[0]
-    ac = self.n[1]
+    ar = self.n_rows()
+    ac = self.n_columns()
     b = other.elems
-    assert other.n[0] == ac, "Incompatible matrices."
-    bc = other.n[1]
+    assert other.n_rows() == ac, "Incompatible matrices."
+    bc = other.n_columns()
     result = []
     for i in xrange(ar):
       for k in xrange(bc):
@@ -38,16 +46,54 @@ class rec:
       return sqr(result)
     return rec(result, (ar, bc))
 
+  def __div__(self, other):
+    return rec([e/other for e in self.elems], self.n)
+
   def __call__(self, ir, ic):
-    return self.elems[ir * self.n[1] + ic]
+    return self.elems[ir * self.n_columns() + ic]
+
+  def norm(self):
+    assert self.n_rows() == 1 or self.n_columns() == 1
+    result = 0
+    for e in self.elems:
+      result += e**2
+    return result
+
+  def __abs__(self):
+    return math.sqrt(self.norm())
+
+  def dot(self, other):
+    assert self.n_rows() == 1 or self.n_columns() == 1
+    assert other.n_rows() == 1 or other.n_columns() == 1
+    result = 0
+    for i in xrange(len(self.elems)):
+      result += self.elems[i] * other.elems[i]
+    return result
+
+  def cross(self, other):
+    assert self.n in ((3,1), (1,3))
+    assert self.n == other.n
+    a = self.elems
+    b = other.elems
+    return col((
+      a[1] * b[2] - b[1] * a[2],
+      a[2] * b[0] - b[2] * a[0],
+      a[0] * b[1] - b[0] * a[1]))
+
+  def determinant(self):
+    assert self.n == (3,3)
+    m = self.elems
+    return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
+           - m[1] * (m[3] * m[8] - m[5] * m[6]) \
+           + m[2] * (m[3] * m[7] - m[4] * m[6])
 
   def mathematica_form(self, label=""):
     s = ""
     if (label): s = label + "="
     s += "{"
-    for ir in xrange(self.n[0]):
+    for ir in xrange(self.n_rows()):
       s += "{"
-      for ic in xrange(self.n[1]):
+      for ic in xrange(self.n_columns()):
         s += str(self(ir, ic))
         s += ", "
       s = s[:-2] + "}, "
@@ -71,13 +117,6 @@ class sqr(rec):
     assert l == n * n
     rec.__init__(self, elems, (n,n))
 
-  def determinant(self):
-    assert self.n == (3,3)
-    m = self.elems
-    return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
-           - m[1] * (m[3] * m[8] - m[5] * m[6]) \
-           + m[2] * (m[3] * m[7] - m[4] * m[6])
-
 class sym(rec):
 
   def __init__(self, elems):
@@ -100,7 +139,7 @@ class rt:
       self.t = col(tuple_r_t[1].elems)
     else:
       self.t = col(tuple_r_t[1])
-    assert self.r.n[0] == self.t.n[0]
+    assert self.r.n_rows() == self.t.n_rows()
 
   def __add__(self, other):
     return rt((self.r, self.t + other))
