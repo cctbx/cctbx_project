@@ -27,6 +27,8 @@ namespace cctbx { namespace af {
     throw std::range_error("array_family");
   }
 
+  struct reserve_flag {};
+
   // XXX use std::copy if compiler permits
   template <typename InputElementType,
             typename OutputElementType>
@@ -38,6 +40,21 @@ namespace cctbx { namespace af {
   {
     OutputElementType* p = result;
     while (first != last) *p++ = OutputElementType(*first++);
+    return result;
+  }
+
+  // XXX use std::uninitialized_copy if compiler permits
+  template <typename InputElementType,
+            typename OutputElementType>
+  OutputElementType*
+  uninitialized_copy_typeconv(
+    const InputElementType* first,
+    const InputElementType* last,
+    OutputElementType* result)
+  {
+    OutputElementType* p = result;
+    // XXX catch exceptions
+    while (first != last) new (p++) OutputElementType(*first++);
     return result;
   }
 

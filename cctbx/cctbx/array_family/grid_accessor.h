@@ -18,7 +18,7 @@
 // forward declaration
 namespace cctbx { namespace af {
   template <typename ElementType, std::size_t N>
-  class tiny_plain;
+  class tiny;
 }}
 
 namespace cctbx { namespace af {
@@ -74,17 +74,20 @@ namespace cctbx { namespace af {
 
   template <std::size_t Nd,
             typename Index1dCalculatorType = c_index_1d_calculator<Nd>,
-            typename IndexType = tiny_plain<int, Nd> >
-  class grid_accessor : public IndexType
+            typename IndexType = tiny<long, Nd> >
+  class grid : public IndexType
   {
     public:
       typedef IndexType index_type;
       typedef typename IndexType::value_type value_type;
 
-      grid_accessor() {};
-      grid_accessor(const IndexType& n) : IndexType(n) {}
+      grid() { // XXX more general
+        for(std::size_t i=0;i<Nd;i++) this->elems[i] = 0;
+      }
 
-      CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(grid_accessor)
+      grid(const IndexType& n) : IndexType(n) {}
+
+      CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(grid)
 
       static std::size_t nd() { return Nd; }
 

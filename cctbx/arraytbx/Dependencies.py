@@ -13,7 +13,12 @@ class write_makefiles(makefile_generator.write_makefiles):
       "arraytbx/std_vectormodule.cpp",
       "arraytbx/shared_storagemodule.cpp",
       "arraytbx/tst.py",
+      "arraytbx/tst_af_1.cpp",
     )
+
+    self.executables = {
+      "tst_af_1": (("tst_af_1",), ()),
+    }
 
     self.boost_python_modules = {
       "std_vector":

@@ -30,18 +30,18 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny_plain)
       CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny_plain)
-      CCTBX_ARRAY_FAMILY_TAKE_REF(elems, N)
 
       static size_type size() { return N; }
-
-      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(elems, N)
-
       static bool empty() { return false; }
       static size_type max_size() { return N; }
       static size_type capacity() { return N; }
 
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(elems, N)
+
+      CCTBX_ARRAY_FAMILY_TAKE_REF(elems, N)
+
       void swap(ElementType* other) {
-        std::swap(begin(), end(), other);
+        std::swap(*this, other);
       }
   };
 

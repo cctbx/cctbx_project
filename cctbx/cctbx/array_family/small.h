@@ -55,8 +55,4 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
-#include <cctbx/array_family/small_algebra.h>
-#endif
-
 #endif // CCTBX_ARRAY_FAMILY_SMALL_H
