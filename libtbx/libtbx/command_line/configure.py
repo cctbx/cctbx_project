@@ -39,36 +39,22 @@ class package:
 
   def __init__(self, dist_root, name, must_exist=1):
     self.dist_root = dist_root
-    self.effective_root = dist_root
     self.name = name
-    self.dist_path = norm(join(self.effective_root, name))
-    if (isfile(self.dist_path)):
-      try:
-        redirection = open(self.dist_path).readlines()[0][:-1]
-        assert len(redirection) > 0
-      except:
-        raise UserError("Error reading redirection file: %s" % self.dist_path)
-      # first attempt: interpret the redirection as absolute path
-      self.effective_root = norm(abspath(redirection))
-      self.dist_path = norm(join(self.effective_root, name))
-      if (not isdir(self.dist_path)):
-        # second attempt: interpret the redirection as relative path
-        self.effective_root = norm(abspath(join(self.dist_root, redirection)))
-        self.dist_path = norm(join(self.effective_root, name))
-        if (not isdir(self.dist_path)):
-          raise UserError('Redirection to non-existing directory: "%s"'
-            % self.effective_root)
+    paths = libtbx.config.resolve_redirection(dist_root=dist_root, name=name)
+    self.effective_root = paths.effective_root
+    self.dist_path = paths.dist_path
     self.config = None
     self.SConscript_path = None
     self.needs_adaptbx = False
+    self.effective_root_adaptbx = None
     self.python_path = None
     if (not isdir(self.dist_path)):
       if (must_exist):
         raise UserError("Not a directory: " + self.dist_path)
       self.dist_path = None
     else:
-      ppn = libtbx.config.package_pair(self.name)
-      ppd = libtbx.config.package_pair(self.dist_path)
+      ppn = libtbx.config.package_pair(name=self.name)
+      ppd = libtbx.config.package_pair(name=self.name, dist_root=dist_root)
       for dist_path_suf in ppd.adaptbx_first():
         path = norm(join(dist_path_suf, "libtbx_config"))
         if (isfile(path)):
@@ -100,6 +86,8 @@ class package:
               self.needs_adaptbx = (    self.name == ppn.primary
                                     and dist_path_suf is ppd.adaptbx)
             break
+      if (self.needs_adaptbx):
+        self.effective_root_adaptbx = dirname(ppd.adaptbx)
       self._build_dependency_registry()
 
   def _build_dependency_registry(self):
@@ -159,12 +147,17 @@ class libtbx_env:
     self.package_list.insert(0, package.name)
     if (package.effective_root not in self.effective_roots):
       self.effective_roots.append(package.effective_root)
+    if (package.effective_root_adaptbx is not None
+        and package.effective_root_adaptbx not in self.effective_roots):
+      self.effective_roots.append(package.effective_root_adaptbx)
     self.dist_paths[package.name.upper() + "_DIST"] = package.dist_path
     if (not explicit_adaptbx):
-      pp = libtbx.config.package_pair(package.name)
-      if (package.name == pp.primary):
-        self.dist_paths[pp.adaptbx.upper() + "_DIST"] = \
-          package.dist_path + libtbx.config.adaptor_toolbox_suffix
+      ppn = libtbx.config.package_pair(name=package.name)
+      if (package.name == ppn.primary):
+        ppd = libtbx.config.package_pair(
+          name=package.name,
+          dist_root=package.dist_root)
+        self.dist_paths[ppn.adaptbx.upper() + "_DIST"] = ppd.adaptbx
     if (package.python_path is not None):
       insert_normed_path(self.PYTHONPATH, package.python_path)
 
@@ -414,7 +407,7 @@ def run(libtbx_dist, args, old_env=None):
   print "Top-down list of all packages involved:"
   for package_name in packages.list:
     p = packages.dict[package_name]
-    pp = libtbx.config.package_pair(package_name)
+    pp = libtbx.config.package_pair(name=package_name)
     if (p.needs_adaptbx and pp.adaptbx not in packages.dict):
       explicit_adaptbx = False
       print "  %s+%s" % pp.primary_first()
