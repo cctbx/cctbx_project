@@ -80,8 +80,6 @@ namespace {
       using namespace boost::python;
       class_<w_t>("object", no_init)
         .def(init<>())
-        .def(init<af::const_ref<int> const&>(
-          (arg_("n_datasets_for_each_crystal"))))
         .def(init<const char*>((arg_("file_name"))))
         .def("title", &w_t::title)
         .def("set_title", &w_t::set_title, set_title_overloads((
