@@ -98,7 +98,9 @@ class manager:
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
             asu_mappings = \
               crystal.direct_space_asu.non_crystallographic_asu_mappings(
-                sites_cart=sites_cart)
+                sites_cart=sites_cart,
+                min_unit_cell_length=
+                  2*current_nonbonded_distance_cutoff_plus_buffer)
         else:
           if (bonded_distance_cutoff < 0):
             unit_cell = self.crystal_symmetry.unit_cell()
