@@ -73,6 +73,8 @@ def exercise_basic():
     assert column.label() == "H"
     assert column.type() == "H"
     assert column.is_active()
+    assert column.array_size() == 165
+    assert column.array_capacity() == 200
     assert column.path() == "/unknown/unknown230103:23:14:49/H"
     assert column.lookup_other("H").i_column() == 0
     assert column.lookup_other("K").i_column() == 1
@@ -109,6 +111,8 @@ def exercise_basic():
           assert column.label() == expected_column_labels.next()
           assert column.type() == expected_column_types.next()
           assert column.is_active()
+          assert column.array_size() == 165
+          assert column.array_capacity() == 200
           assert column.path().endswith(column.label())
           lookup_column = mtz_object.lookup_column(column.label())
           assert lookup_column.label() == column.label()
@@ -641,6 +645,112 @@ Crystal 3:
     Column number, label, number of valid values, type:
         1, column_21, 0/0=0.00%, F: amplitude
         2, column_22, 0/0=0.00%, B: BATCH number
+"""
+  for column in mtz_object.columns():
+    assert column.array_size() == 2000
+    assert column.array_capacity() == 2402
+  mtz_object.reserve(5000)
+  for column in mtz_object.columns():
+    assert column.array_size() == 2000
+    assert column.array_capacity() == 5000
+  mtz_object.reserve(100)
+  for column in mtz_object.columns():
+    assert column.array_size() == 2000
+    assert column.array_capacity() == 5000
+  #
+  mtz_object = mtz.wrapper.object() \
+    .set_title(title="exercise") \
+    .set_space_group_name("sg") \
+    .set_space_group_number(123) \
+    .set_point_group_name("pg") \
+    .set_space_group(sgtbx.space_group_info(number=123).group())
+  unit_cell = uctbx.unit_cell((10,10,10,90,90,90))
+  mtz_object.add_crystal(
+    name="HKL_base",
+    project_name="HKL_base",
+    unit_cell=unit_cell).set_id(id=0).add_dataset(
+      name="HKL_base",
+      wavelength=0).set_id(id=0)
+  crystal = mtz_object.add_crystal(
+    name="crystal_1",
+    project_name="crystal_1",
+    unit_cell=unit_cell).add_dataset(
+      name="crystal_1",
+      wavelength=0)
+  for label in "HKL":
+    crystal.add_column(label=label, type="H")
+  column = crystal.add_column(label="F", type="F")
+  mtz_reflection_indices = column.set_reals(
+    miller_indices=flex.miller_index([(1,2,3),(2,3,4),(3,4,5)]),
+    data=flex.double([10,20,30]))
+  assert list(mtz_reflection_indices) == [0,1,2]
+  column = crystal.add_column(label="SigF", type="Q")
+  column.set_reals(
+    mtz_reflection_indices=mtz_reflection_indices,
+    data=flex.double([1,2,3]))
+  group = mtz_object.extract_observations(
+    column_label_data="F",
+    column_label_sigmas="SigF")
+  assert list(group.indices) == [(1, 2, 3), (2, 3, 4), (3, 4, 5)]
+  assert approx_equal(group.data, [10, 20, 30])
+  assert approx_equal(group.sigmas, [1, 2, 3])
+  column = crystal.add_column(label="I", type="F")
+  mtz_reflection_indices = column.set_reals(
+    miller_indices=flex.miller_index([(2,3,5),(1,2,3),(3,4,5)]),
+    data=flex.double([11,21,31]))
+  assert list(mtz_reflection_indices) == [3, 0, 2]
+  column = crystal.add_column(label="SigI", type="Q")
+  column.set_reals(
+    mtz_reflection_indices=mtz_reflection_indices,
+    data=flex.double([4,5,6]))
+  group = mtz_object.extract_observations(
+    column_label_data="I",
+    column_label_sigmas="SigI")
+  assert list(group.indices) == [(1, 2, 3), (3, 4, 5), (2, 3, 5)]
+  assert approx_equal(group.data, [21, 31, 11])
+  assert approx_equal(group.sigmas, [5, 6, 4])
+  if (not verbose): out = StringIO()
+  mtz_object.show_summary(out=out)
+  if (not verbose):
+    assert out.getvalue() == """\
+Title: exercise
+Space group symbol from file: sg
+Space group number from file: 123
+Space group from matrices: P 4/m m m (No. 123)
+Point group symbol from file: pg
+Number of crystals: 2
+Number of Miller indices: 4
+History:
+Crystal 1:
+  Name: HKL_base
+  Project: HKL_base
+  Id: 0
+  Unit cell: (10, 10, 10, 90, 90, 90)
+  Number of datasets: 1
+  Dataset 1:
+    Name: HKL_base
+    Id: 0
+    Wavelength: 0
+    Number of columns: 0
+Crystal 2:
+  Name: crystal_1
+  Project: crystal_1
+  Id: 1
+  Unit cell: (10, 10, 10, 90, 90, 90)
+  Number of datasets: 1
+  Dataset 1:
+    Name: crystal_1
+    Id: 1
+    Wavelength: 0
+    Number of columns: 7
+    Column number, label, number of valid values, type:
+        1, H, 4/4=100.00%, H: index h,k,l
+        2, K, 4/4=100.00%, H: index h,k,l
+        3, L, 4/4=100.00%, H: index h,k,l
+        4, F, 3/4=75.00%, F: amplitude
+        5, SigF, 3/4=75.00%, Q: standard deviation
+        6, I, 3/4=75.00%, F: amplitude
+        7, SigI, 3/4=75.00%, Q: standard deviation
 """
 
 def exercise():

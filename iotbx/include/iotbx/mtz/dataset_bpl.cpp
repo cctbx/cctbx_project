@@ -2,6 +2,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/return_arg.hpp>
 #include <iotbx/mtz/column.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 
@@ -23,6 +24,7 @@ namespace {
         .def("i_dataset", &w_t::i_dataset)
         .def("mtz_object", &w_t::mtz_object)
         .def("id", &w_t::id)
+        .def("set_id", &w_t::set_id, (arg_("id")), return_self<>())
         .def("name", &w_t::name)
         .def("wavelength", &w_t::wavelength)
         .def("n_columns", &w_t::n_columns)

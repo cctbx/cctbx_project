@@ -2,6 +2,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/return_arg.hpp>
 #include <iotbx/mtz/dataset.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 
@@ -21,6 +22,7 @@ namespace {
         .def("mtz_object", &w_t::mtz_object)
         .def("i_crystal", &w_t::i_crystal)
         .def("id", &w_t::id)
+        .def("set_id", &w_t::set_id, (arg_("id")), return_self<>())
         .def("name", &w_t::name)
         .def("project_name", &w_t::project_name)
         .def("unit_cell_parameters", &w_t::unit_cell_parameters)

@@ -35,6 +35,20 @@ namespace iotbx { namespace mtz {
       int
       id() const { return ptr()->xtalid; }
 
+      crystal&
+      set_id(int id)
+      {
+        if (ptr()->xtalid != id) {
+          CMtz::MTZ* p = mtz_object().ptr();
+          CCTBX_ASSERT(p->refs_in_memory);
+          for(int i=0;i<p->nxtal;i++) {
+            CCTBX_ASSERT(p->xtal[i]->xtalid != id);
+          }
+          ptr()->xtalid = id;
+        }
+        return *this;
+      }
+
       const char*
       name() const { return ptr()->xname; }
 

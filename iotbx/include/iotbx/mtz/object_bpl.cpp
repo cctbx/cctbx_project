@@ -100,6 +100,7 @@ namespace {
         .def("space_group", &w_t::space_group)
         .def("set_space_group", &w_t::set_space_group, (
           arg_("space_group")), return_self<>())
+        .def("reserve", &w_t::reserve)
         .def("n_batches", &w_t::n_batches)
         .def("n_reflections", &w_t::n_reflections)
         .def("max_min_resolution", &w_t::max_min_resolution)
