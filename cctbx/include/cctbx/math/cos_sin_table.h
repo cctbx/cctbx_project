@@ -57,6 +57,13 @@ namespace cctbx { namespace math {
       std::vector<FloatType> values_;
   };
 
+#if defined(__sgi) && !defined(__GNUC__)
+  namespace work_around_edg_typename_handling {
+    typedef cos_sin_exact<double> cos_sin_exact_double;
+    typedef cos_sin_table<double> cos_sin_table_double;
+  }
+#endif
+
 }} // namespace cctbx::math
 
 #endif // CCTBX_MATH_COS_SIN_TABLE_H
