@@ -1,5 +1,21 @@
 from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
 
+def format_cryst1_record(crystal_symmetry, z=None):
+  # CRYST1
+  #  7 - 15       Real(9.3)      a             a (Angstroms).
+  # 16 - 24       Real(9.3)      b             b (Angstroms).
+  # 25 - 33       Real(9.3)      c             c (Angstroms).
+  # 34 - 40       Real(7.2)      alpha         alpha (degrees).
+  # 41 - 47       Real(7.2)      beta          beta (degrees).
+  # 48 - 54       Real(7.2)      gamma         gamma (degrees).
+  # 56 - 66       LString        sGroup        Space group.
+  # 67 - 70       Integer        z             Z value.
+  if (z is None): z = ""
+  else: z = str(z)
+  return "CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11.11s%4.4s" % (
+    crystal_symmetry.unit_cell().parameters()
+    + (str(crystal_symmetry.space_group_info()).replace(" ", ""), z))
+
 def format_atom_record(record_name="ATOM",
                        serial=0,
                        name=" C  ",
