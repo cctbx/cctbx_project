@@ -105,17 +105,19 @@ class lbfgs:
 
   def apply_shifts(self):
     self._sites_shifted = self._sites_cart + flex.vec3_double(self.x)
-    if (1):
-      unit_cell = self.structure.unit_cell()
-      site_symmetry_table = self.structure.site_symmetry_table()
-      for i_seq in site_symmetry_table.special_position_indices():
-        site_frac = unit_cell.fractionalize(self._sites_shifted[i_seq])
-        site_special_frac = site_symmetry_table.get(i_seq).special_op() \
-                          * site_frac
-        distance_moved = unit_cell.distance(site_special_frac, site_frac)
-        if (distance_moved > 1.e-2):
-          print "WARNING: LARGE distance_moved: i_seq+1=%d, %.6g" % (
-            i_seq+1, distance_moved)
+    unit_cell = self.structure.unit_cell()
+    site_symmetry_table = self.structure.site_symmetry_table()
+    for i_seq in site_symmetry_table.special_position_indices():
+      site_frac = unit_cell.fractionalize(self._sites_shifted[i_seq])
+      site_special_frac = site_symmetry_table.get(i_seq).special_op() \
+                        * site_frac
+      distance_moved = unit_cell.distance(site_special_frac, site_frac)
+      if (distance_moved > 1.e-2):
+        print "WARNING: LARGE distance_moved: i_seq+1=%d, %.6g" % (
+          i_seq+1, distance_moved)
+      # it is essential to reset the site here because over
+      # many cycles rounding error accumulate otherwise
+      self._sites_shifted[i_seq] = unit_cell.orthogonalize(site_special_frac)
 
   def compute_target(self, compute_gradients):
     import cctbx.crystal
@@ -135,6 +137,9 @@ class lbfgs:
     bond_asu_table = pair_asu_table.pair_asu_table(
       asu_mappings=asu_mappings).add_pair_sym_proxies(
         proxies=self.bond_sym_proxies)
+    if (1):
+      validation_proxies = bond_asu_table.extract_pair_sym_proxies()
+      assert len(validation_proxies) == len(self.bond_sym_proxies)
     bond_asu_proxies, repulsion_asu_proxies = distance_ls.get_all_proxies(
       structure=self.structure,
       bond_asu_table=bond_asu_table,
