@@ -74,29 +74,29 @@ namespace sgtbx
 
     //! internal ASU function for Laue group -1 with change-of-basis
     inline bool cASU_1b   (const Miller::Index& r) const
-      { return ASU_1b   ( cbm*r ); }
+      { return ASU_1b   ( r * cbm ); }
     inline bool cASU_2_m  (const Miller::Index& r) const
-      { return ASU_2_m  ( cbm*r ); }
+      { return ASU_2_m  ( r * cbm ); }
     inline bool cASU_mmm  (const Miller::Index& r) const
-      { return ASU_mmm  ( cbm*r ); }
+      { return ASU_mmm  ( r * cbm ); }
     inline bool cASU_4_m  (const Miller::Index& r) const
-      { return ASU_4_m  ( cbm*r ); }
+      { return ASU_4_m  ( r * cbm ); }
     inline bool cASU_4_mmm(const Miller::Index& r) const
-      { return ASU_4_mmm( cbm*r ); }
+      { return ASU_4_mmm( r * cbm ); }
     inline bool cASU_3b   (const Miller::Index& r) const
-      { return ASU_3b   ( cbm*r ); }
+      { return ASU_3b   ( r * cbm ); }
     inline bool cASU_3bm  (const Miller::Index& r) const
-      { return ASU_3bm  ( cbm*r ); }
+      { return ASU_3bm  ( r * cbm ); }
     inline bool cASU_3bmx (const Miller::Index& r) const
-      { return ASU_3bmx ( cbm*r ); }
+      { return ASU_3bmx ( r * cbm ); }
     inline bool cASU_6_m  (const Miller::Index& r) const
-      { return ASU_6_m  ( cbm*r ); }
+      { return ASU_6_m  ( r * cbm ); }
     inline bool cASU_6_mmm(const Miller::Index& r) const
-      { return ASU_6_mmm( cbm*r ); }
+      { return ASU_6_mmm( r * cbm ); }
     inline bool cASU_m3b  (const Miller::Index& r) const
-      { return ASU_m3b  ( cbm*r ); }
+      { return ASU_m3b  ( r * cbm ); }
     inline bool cASU_m3bm (const Miller::Index& r) const
-      { return ASU_m3bm ( cbm*r ); }
+      { return ASU_m3bm ( r * cbm ); }
 
    public:
     //! Null constructor

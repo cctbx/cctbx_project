@@ -113,8 +113,9 @@ namespace sgtbx
     Miller::Vec3 v001 = { 0, 0,-1};
     Miller::Vec3 v100 = {-1, 0, 0};
     Miller::Vec3 v110 = {-1,-1, 0};
+    Miller::Vec3 v111 = {-1,-1,-1};
 
-    if (!cbm.isUnit() ) return v110;
+    if (!cbm.isUnit() ) return v111;
     if      ( rsg == 2   ) return v110;
     else if ( rsg == 10  ) return v100;
     else if ( rsg == 47  ) return v000;

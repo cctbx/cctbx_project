@@ -41,10 +41,10 @@ namespace cctbx {
         Index() {
           for(std::size_t i=0;i<3;i++) elems[i] = 0;
         }
-        Index(const Vec3& v) {
+        explicit Index(const Vec3& v) {
           for(std::size_t i=0;i<3;i++) elems[i] = v[i];
         }
-        Index(const int* hkl) {
+        explicit Index(const int* hkl) {
           for(std::size_t i=0;i<3;i++) elems[i] = hkl[i];
         }
         Index(const int h, const int k, const int l) {
