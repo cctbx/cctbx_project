@@ -30,6 +30,7 @@ bpmtz::Mtz::getSgtbxSpaceGroup(){
   return sg;
 }
 
+int bpmtz::Mtz::nsym() const {return mtz->mtzsymm.nsym;}
 int& bpmtz::Mtz::size(){return mtz->nref;}
 int& bpmtz::Mtz::ncrystals() const {return mtz->nxtal;}
 int bpmtz::Mtz::ndatasets(const int& xtal) {return mtz->xtal[xtal]->nset;}
