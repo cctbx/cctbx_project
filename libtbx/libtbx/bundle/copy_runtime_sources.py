@@ -18,6 +18,8 @@ def copy_dist_files(dist_copy, dirname, names):
         or name.startswith("copying")
         or name.startswith("copyright")
         or name.startswith("license")
+        or name == "academic_software_licence.pdf"
+        or name == "symop.lib"
         or name.endswith(".py")
         or name.endswith(".html")
         or name.endswith(".csh")
@@ -30,15 +32,6 @@ def copy_dist_files(dist_copy, dirname, names):
           create_target_dir = False
         shutil.copy(src, dest)
 
-def is_required(dist, package):
-  p = libtbx.path.norm_join(dist, "libtbx_config")
-  if (os.path.isfile(p)): return True
-  p = libtbx.path.norm_join(dist, package)
-  if (os.path.isdir(p)):
-    p = libtbx.path.norm_join(p, "__init__.py")
-    if (os.path.isfile(p)): return True
-  return False
-
 def run(target_root):
   cwd = os.getcwd()
   abs_target_root = os.path.normpath(os.path.abspath(os.path.join(
@@ -48,10 +41,12 @@ def run(target_root):
   for package in ["libtbx"] + libtbx_env.package_list:
     for package_suf in libtbx.config.package_pair(
                          name=package).primary_first():
+      if (package_suf == "boost"):
+        continue
       dist = libtbx.config.resolve_redirection(
         dist_root=dist_root,
         name=package_suf).dist_path
-      if (os.path.isdir(dist) and is_required(dist, package)):
+      if (os.path.isdir(dist)):
         dist_copy = libtbx.path.norm_join(abs_target_root, package_suf)
         os.chdir(dist)
         os.path.walk(".", copy_dist_files, dist_copy)
