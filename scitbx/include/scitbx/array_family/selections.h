@@ -24,9 +24,10 @@ namespace scitbx { namespace af {
     af::const_ref<MapType> const& self,
     af::const_ref<std::size_t> const& iselection)
   {
-    std::size_t n = self.size();
+    std::size_t selectee_size = self.size();
     af::shared<std::size_t>
-      reindexing_array = scitbx::af::reindexing_array(n, iselection);
+      reindexing_array = scitbx::af::reindexing_array(
+        selectee_size, iselection);
     std::size_t* reindexing_array_begin = reindexing_array.begin();
     af::shared<MapType> result((af::reserve(iselection.size())));
     for(std::size_t i=0;i<iselection.size();i++) {
@@ -37,8 +38,9 @@ namespace scitbx { namespace af {
             old_map_i=old_map.begin();
             old_map_i!=old_map.end();
             old_map_i++) {
+        SCITBX_ASSERT(old_map_i->first < selectee_size);
         std::size_t j = reindexing_array_begin[old_map_i->first];
-        if (j < n) {
+        if (j != selectee_size) {
           new_map[static_cast<typename MapType::key_type>(j)]
             = old_map_i->second;
         }
