@@ -176,7 +176,7 @@ if __name__=="__main__":
   import FileServer
   import time
 
-  cmd = 'StartServer.py'
+  cmd = os.path.expandvars('$LIBTBX_DIST/libtbx/server/StartServer.py')
   python_path = sys.executable
 
   if sys.platform == 'win32':

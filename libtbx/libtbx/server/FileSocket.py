@@ -1,5 +1,5 @@
 import socket
-import whrandom
+import random
 import os, sys
 from string import *
 
@@ -11,7 +11,7 @@ def GetSocket(HOST=""):
     HOST = socket.getfqdn(socket.gethostname())
   i = 0
   while unbind:
-    portnumber = int(whrandom.random()*(upper_limit-lower_limit)+lower_limit)
+    portnumber = int(random.random()*(upper_limit-lower_limit)+lower_limit)
     try:
       s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       s.bind((HOST, portnumber))
