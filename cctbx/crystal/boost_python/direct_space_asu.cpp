@@ -174,6 +174,7 @@ namespace {
           (arg_("original_sites")))
         .def("process_sites_cart", &w_t::process_sites_cart,
           (arg_("original_sites")))
+        .def("n_sites_in_asu_and_buffer", &w_t::n_sites_in_asu_and_buffer)
         .def("lock", &w_t::lock)
         .def("is_locked", &w_t::is_locked)
         .def("mappings", &w_t::mappings, ccr())

@@ -81,6 +81,8 @@ def exercise_direct_space_asu():
   assert approx_equal(asu_mappings.asu_buffer().box_min(),
     [0.0085786, -0.4914214, 0.4])
   assert approx_equal(asu_mappings.sym_equiv_epsilon(), 1.e-6)
+  assert approx_equal(asu_mappings.sym_equiv_tolerance(), 1.e-6)
+  assert approx_equal(asu_mappings.sym_equiv_minimum_distance(), 1.e-5)
   assert approx_equal(asu_mappings.buffer_covering_sphere().radius(),0.8071081)
   sites_seq = [
     [3.1,-2.2,1.3],
@@ -90,6 +92,7 @@ def exercise_direct_space_asu():
   assert asu_mappings.mappings().size() == 1
   asu_mappings.process(original_site=sites_seq[1])
   assert asu_mappings.mappings().size() == 2
+  assert asu_mappings.n_sites_in_asu_and_buffer() == 11
   assert not asu_mappings.is_locked()
   asu_mappings.lock()
   assert asu_mappings.is_locked()
