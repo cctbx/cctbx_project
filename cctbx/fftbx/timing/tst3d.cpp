@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <cassert>
 
 #include <boost/smart_ptr.hpp>
 
@@ -58,6 +59,7 @@ namespace {
       fft.forward(*cseq);
     }
     else {
+      fft.forward(*cseq); // complex values have some symmetry
       fft.backward(*cseq);
     }
     return cseq;
@@ -91,11 +93,8 @@ namespace {
 
   shared_vector tst_rfftw(char dir, const fftbx::triple& N)
   {
-    //std::cout << N[0] << " " << N[1] << " " << N[2] << std::endl;
     fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
-    //std::cout << M[0] << " " << M[1] << " " << M[2] << std::endl;
     shared_vector cseq = init_cseq(M);
-    //std::cout << cseq->size() << std::endl;
     rfftwnd_plan Plan;
     if (dir == 'f') {
       Plan = rfftw3d_create_plan(
@@ -103,6 +102,8 @@ namespace {
       rfftwnd_one_real_to_complex(Plan, (fftw_real *) &(*cseq)[0], 0);
     }
     else {
+      fftbx::real_to_complex_3d<std::vector<double> > fft(N);
+      fft.forward(*cseq); // complex values have some symmetry
       Plan = rfftw3d_create_plan(
         N[0], N[1], N[2], FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
       rfftwnd_one_complex_to_real(Plan, (fftw_complex *) &(*cseq)[0], 0);
@@ -115,6 +116,20 @@ namespace {
   {
     for(std::size_t i=0;i<cseq->size();i++) {
       std::cout << (*cseq)[i] << std::endl;
+    }
+  }
+
+  void show_cseq(const shared_vector& cseq, const fftbx::triple& N)
+  {
+    fftbx::triple M = fftbx::Ncomplex_from_Nreal(N);
+    M[2] *= 2;
+    assert(cseq->size() == M.product());
+    c_index_1d<3> i1d;
+    boost::array<std::size_t, 3> I;
+    for(I[0]=0;I[0]<N[0];I[0]++)
+    for(I[1]=0;I[1]<N[1];I[1]++)
+    for(I[2]=0;I[2]<N[2];I[2]++) {
+      std::cout << (*cseq)[i1d(M, I)] << std::endl;
     }
   }
 
@@ -240,20 +255,23 @@ int main(int argc, const char* argv[])
     if (package == "fftbx") {
       if (type_and_dir[0] == 'c') {
         cseq = tst_complex_to_complex(type_and_dir[1], N);
+        show_cseq(cseq);
       }
       else {
         cseq = tst_real_to_complex(type_and_dir[1], N);
+        show_cseq(cseq, N);
       }
     }
     else {
       if (type_and_dir[0] == 'c') {
         cseq = tst_fftw(type_and_dir[1], N);
+        show_cseq(cseq);
       }
       else {
         cseq = tst_rfftw(type_and_dir[1], N);
+        show_cseq(cseq, N);
       }
     }
-    show_cseq(cseq);
   }
   else {
     if (package == "fftbx") {

@@ -116,8 +116,8 @@ namespace cctbx { namespace fftbx {
     value_type TR2;
     std::size_t K;
     for (K = 0; K < L1; K++) {
-      CH(0,K,0) = CC(0,0,K)+CC(IDO,1,K);
-      CH(0,K,1) = CC(0,0,K)-CC(IDO,1,K);
+      CH(0,K,0) = CC(0,0,K)+CC(IDO-1,1,K);
+      CH(0,K,1) = CC(0,0,K)-CC(IDO-1,1,K);
     }
     if (IDO < 2) return;
     if (IDO > 2) {
