@@ -124,10 +124,11 @@ def exercise_array():
     assert approx_equal(tuple(hm.sigmas()), (0.2,0.4))
   assert approx_equal(ma.anomalous_signal(), 0.5063697)
   assert tuple(ma.all_selection()) == (1,1,1,1,1)
-  sa = ma.apply_selection(flex.bool((1,0,0,1,0)))
-  assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
-  assert approx_equal(tuple(sa.data()), (1,3))
-  assert approx_equal(tuple(sa.sigmas()), (0.1,0.4))
+  for sa in (ma.apply_selection(flex.bool((1,0,0,1,0))),
+             ma.shuffle(flex.size_t((0,3)))):
+    assert tuple(sa.indices()) == ((1,2,3), (-2,-3,-4))
+    assert approx_equal(tuple(sa.data()), (1,3))
+    assert approx_equal(tuple(sa.sigmas()), (0.1,0.4))
   ms = miller.build_set(xs, anomalous_flag=00000, d_min=1)
   ma = miller.array(ms)
   sa = ma.resolution_filter()
