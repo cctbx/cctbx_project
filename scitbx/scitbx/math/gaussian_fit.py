@@ -1,6 +1,7 @@
 import scitbx.math.gaussian
 from scitbx import lbfgs
 from cctbx.array_family import flex
+from scitbx.python_utils.math_utils import ifloor
 from scitbx.python_utils.misc import adopt_init_args
 import math
 
@@ -60,6 +61,7 @@ class minimize:
 
 def make_start_gaussian(null_fit,
                         existing_gaussian,
+                        i_split,
                         i_x,
                         start_fraction,
                         b_range=1.e-3):
@@ -75,14 +77,23 @@ def make_start_gaussian(null_fit,
     yx_part = yx_table
   else:
     scale_old = 1 - start_fraction
-    a = flex.double(existing_gaussian.array_of_a()) * scale_old
-    a.append(y0_table - flex.sum(a))
     b = flex.double(existing_gaussian.array_of_b())
     b_max = flex.max(flex.abs(b))
     b_min = b_max * b_range
     sel = b < b_min
     b.set_selected(sel, flex.double(sel.count(0001), b_min))
-    yx_part = yx_table - yx_existing * scale_old
+    if (i_split < 0):
+      a = flex.double(existing_gaussian.array_of_a()) * scale_old
+      a.append(y0_table - flex.sum(a))
+      yx_part = yx_table - yx_existing * scale_old
+    else:
+      t_split = scitbx.math.gaussian.term(
+        existing_gaussian.array_of_a()[i_split],
+        existing_gaussian.array_of_b()[i_split])
+      a = flex.double(existing_gaussian.array_of_a())
+      a.append(a[i_split] * start_fraction)
+      a[i_split] *= scale_old
+      yx_part = t_split.at_x_sq(x_sq) * start_fraction
   addl_b = 0
   if (a[-1] != 0):
     r = yx_part / a[-1]
@@ -96,7 +107,7 @@ def make_start_gaussian(null_fit,
     null_fit.table_y(),
     null_fit.table_sigmas(),
     scitbx.math.gaussian.sum(iter(a), iter(b)))
-  if (addl_b != 0):
+  if (addl_b != 0 and i_split < 0):
     assert abs(result.at_x_sq(0) - y0_table) < 1.e-4
   if (n_terms == 1):
     assert abs(result.at_x_sq(x_sq) - yx_table) < 1.e-4
@@ -194,7 +205,8 @@ class find_max_x_multi:
                      n_start_fractions,
                      n_repeats_minimization,
                      factor_y_x_begin=0.9,
-                     factor_y_x_end=0.1):
+                     factor_y_x_end=0.1,
+                     factor_x_step=2.):
     i_x_begin = None
     i_x_end = None
     y0 = null_fit.table_y()[0]
@@ -207,32 +219,35 @@ class find_max_x_multi:
     assert i_x_begin is not None
     assert i_x_end is not None
     n_terms = existing_gaussian.n_terms() + 1
+    i_x_step = ifloor((i_x_end-i_x_begin) / (factor_x_step*n_terms))
     if (n_terms == 1): n_start_fractions = 2
     best_fit = None
-    for i_x in xrange(i_x_begin, i_x_end):
-      for i_start_fraction in xrange(0,n_start_fractions):
-        gaussian_fit = make_start_gaussian(
-          null_fit=null_fit,
-          existing_gaussian=existing_gaussian,
-          i_x=i_x,
-          start_fraction=i_start_fraction/float(n_start_fractions))
-        for target_power in target_powers:
-          fit = find_max_x(
-            gaussian_fit=gaussian_fit,
-            target_power=target_power,
-            minimize_using_sigmas=minimize_using_sigmas,
-            n_repeats_minimization=n_repeats_minimization,
-            enforce_positive_b_mod_n=enforce_positive_b_mod_n,
-            b_min=b_min,
-            max_max_error=max_max_error)
-          if (fit.min is not None):
-            if (best_fit is None
-                or best_fit.min.final_gaussian_fit.table_x().size()
-                      < fit.min.final_gaussian_fit.table_x().size()
-                or best_fit.min.final_gaussian_fit.table_x().size()
-                     == fit.min.final_gaussian_fit.table_x().size()
-                  and best_fit.max_error > fit.max_error):
-              best_fit = fit
+    for i_x in xrange(i_x_begin, i_x_end, i_x_step):
+      for i_split in xrange(-1, existing_gaussian.n_terms()):
+        for i_start_fraction in xrange(0,n_start_fractions):
+          gaussian_fit = make_start_gaussian(
+            null_fit=null_fit,
+            existing_gaussian=existing_gaussian,
+            i_split=i_split,
+            i_x=i_x,
+            start_fraction=i_start_fraction/float(n_start_fractions))
+          for target_power in target_powers:
+            fit = find_max_x(
+              gaussian_fit=gaussian_fit,
+              target_power=target_power,
+              minimize_using_sigmas=minimize_using_sigmas,
+              n_repeats_minimization=n_repeats_minimization,
+              enforce_positive_b_mod_n=enforce_positive_b_mod_n,
+              b_min=b_min,
+              max_max_error=max_max_error)
+            if (fit.min is not None):
+              if (best_fit is None
+                  or best_fit.min.final_gaussian_fit.table_x().size()
+                        < fit.min.final_gaussian_fit.table_x().size()
+                  or best_fit.min.final_gaussian_fit.table_x().size()
+                       == fit.min.final_gaussian_fit.table_x().size()
+                    and best_fit.max_error > fit.max_error):
+                best_fit = fit
     if (best_fit is None):
       self.min = None
       self.max_error = None
