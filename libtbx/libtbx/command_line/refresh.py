@@ -4,7 +4,6 @@ import libtbx.config
 import sys, os
 from os.path import normpath, join, split, isdir, isfile, islink, splitext
 norm = normpath
-import shutil
 
 class create_bin_sh_dispatcher:
 
@@ -34,12 +33,11 @@ class create_bin_sh_dispatcher:
 
 class create_win32_dispatcher:
 
-  def __init__(self, libtbx_dist):
-    self.dispatcher_front_end_exe = os.path.join(
-      libtbx_dist, "dispatcher_front_end.exe")
+  def __init__(self, dispatcher_front_end_exe):
+    self.dispatcher_front_end_exe = dispatcher_front_end_exe
 
   def __call__(self, source_file, target_file):
-    shutil.copyfile(self.dispatcher_front_end_exe, target_file+".exe")
+    open(target_file+".exe", "wb").write(self.dispatcher_front_end_exe)
 
 def create_driver(libtbx_env, precall_commands,
                   target_dir, package_name, source_dir, file_name,
@@ -55,7 +53,7 @@ def create_driver(libtbx_env, precall_commands,
   if (os.name == "nt"):
     if (not file_name.lower().endswith(".py")): return
     action = create_win32_dispatcher(
-      libtbx_dist=libtbx_env.dist_path("libtbx"))
+      dispatcher_front_end_exe=libtbx_env.dispatcher_front_end_exe())
   else:
     action = create_bin_sh_dispatcher(
       python_exe=libtbx_env.LIBTBX_PYTHON_EXE,
@@ -170,7 +168,7 @@ def create_python_dispatchers(libtbx_env, target_dir, precall_commands):
     target_file = norm(join(target_dir, file_name))
     if (os.name == "nt"):
       action = create_win32_dispatcher(
-        libtbx_dist=libtbx_env.dist_path("libtbx"))
+        dispatcher_front_end_exe=libtbx_env.dispatcher_front_end_exe())
     else:
       action = create_bin_sh_dispatcher(
         python_exe=python_exe,

@@ -1,7 +1,7 @@
 #! /bin/csh -f
 set noglob
 if ($#argv < 2) then
-  echo "usage: libtbx.bundle_up bundle_prefix platform_string [addl_files...]"
+  echo "usage: libtbx.bundle_as_selfx bundle_prefix platform_string [addl_files...]"
   exit 1
 endif
 set bundle="$1"

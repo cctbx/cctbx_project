@@ -90,6 +90,7 @@ class env:
       raise UserError("Python version incompatible with this build."
        + " Version used to configure: %d.%d." % self.python_version_major_minor
        + " Version used now: %d.%d." % sys.version_info[:2])
+    self._dispatcher_front_end_exe = None
 
   def write_api_file(self):
     api_file_name = python_api_version_file_name(self.LIBTBX_BUILD)
@@ -107,6 +108,13 @@ class env:
 
   def current_working_directory_is_libtbx_build(self):
     return os.path.normpath(os.getcwd()) == self.LIBTBX_BUILD
+
+  def dispatcher_front_end_exe(self):
+    if (    os.name == "nt"
+        and self._dispatcher_front_end_exe is None):
+      self._dispatcher_front_end_exe = open(os.path.join(
+        self.dist_path("libtbx"), "dispatcher_front_end.exe"), "rb").read()
+    return self._dispatcher_front_end_exe
 
 class include_registry:
 
