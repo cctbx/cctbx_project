@@ -26,7 +26,7 @@ BOOST_PYTHON_MODULE_INIT(henke)
     this_module.add(ref(to_python(
         Revision.substr(11, Revision.size() - 11 - 2))), "__version__");
 
-    python::import_converters<fpfdp> fpfdp_converters("fpfdp", "fpfdp");
+    python::import_converters<fpfdp> fpfdp_converters("eltbx.fpfdp", "fpfdp");
     class_builder<Henke> py_Henke(this_module, "Henke");
 
     py_Henke.def(constructor<const std::string&>());

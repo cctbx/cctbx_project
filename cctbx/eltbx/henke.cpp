@@ -47313,7 +47313,10 @@ static const eltbx::detail::Label_Z_Efpfdp HenkeTables[] = {
 
   fpfdp Henke::operator()(double Energy)
   {
-    return detail::interpolate(m_Label_Z_Efpfdp, Energy);
+    fpfdp raw = detail::interpolate(m_Label_Z_Efpfdp, Energy);
+    if (! raw.isValid_fp()) return raw;
+    // subtract the number of electrons
+    return fpfdp(raw.fp() - m_Label_Z_Efpfdp->Z, raw.fdp());
   }
 
 } // namespace eltbx

@@ -2,8 +2,8 @@
 
 from wavelengths import *
 
-print keV(1)
-print Angstrom(10)
+print keV_as_Angstrom(1)
+print Angstrom_as_keV(10)
 
 i = 0
 while 1:
