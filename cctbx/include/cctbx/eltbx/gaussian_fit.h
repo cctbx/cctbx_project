@@ -118,18 +118,23 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       double
       target_function(
         int power,
+        bool use_sigmas,
         af::const_ref<double> const& differences)
       {
         CCTBX_ASSERT(differences.size() == stols_.size());
         CCTBX_ASSERT(power == 2 || power == 4);
         size_assert_intrinsic();
         af::const_ref<double> sigmas = sigmas_.const_ref();
+        double sigma_squared = 1;
         double result = 0;
         for(std::size_t i=0;i<differences.size();i++) {
           double diff_squared = differences[i] * differences[i];
-          double sigma_squared = sigmas[i] * sigmas[i];
-          CCTBX_ASSERT(sigma_squared > 0);
-          double term = diff_squared / sigma_squared;
+          double term = diff_squared;
+          if (use_sigmas) {
+            sigma_squared = sigmas[i] * sigmas[i];
+            CCTBX_ASSERT(sigma_squared > 0);
+            term /= sigma_squared;
+          }
           if (power == 4) term *= diff_squared;
           result += term;
         }
@@ -139,6 +144,7 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       af::shared<double>
       gradients(
         int power,
+        bool use_sigmas,
         af::const_ref<double> const& differences,
         bool include_constant_term) const
       {
@@ -149,13 +155,17 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         if (!include_constant_term) result.pop_back();
         af::const_ref<double> stols = stols_.const_ref();
         af::const_ref<double> sigmas = sigmas_.const_ref();
+        double sigma_squared = 1;
         af::ref<double> g = result.ref();
         for(std::size_t i_point=0;i_point<stols.size();i_point++) {
           gaussian grg = gradients_at_stol(stols[i_point]);
           double diff = differences[i_point];
-          double sigma_squared = sigmas[i_point] * sigmas[i_point];
-          CCTBX_ASSERT(sigma_squared > 0);
-          double nwpd = 2 * diff / sigma_squared;
+          double nwpd = 2 * diff;
+          if (use_sigmas) {
+            sigma_squared = sigmas[i_point] * sigmas[i_point];
+            CCTBX_ASSERT(sigma_squared > 0);
+            nwpd /= sigma_squared;
+          }
           if (power == 4) nwpd *= 2 * diff * diff;
           std::size_t i=0;
           for(;i<n_ab();i++) {

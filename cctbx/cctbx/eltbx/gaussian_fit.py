@@ -43,6 +43,7 @@ def n_less_than(sorted_array, cutoff, eps=1.e-6):
 class minimize:
 
   def __init__(self, fit_object, target_power,
+                     use_sigmas=00000,
                      b_min=-1,
                      enforce_positive_b=0001,
                      lbfgs_termination_params=None,
@@ -81,10 +82,11 @@ class minimize:
 
   def compute_target(self, compute_gradients):
     differences = self.fit_object_shifted.differences()
-    self.f = self.fit_object.target_function(self.target_power, differences)
+    self.f = self.fit_object.target_function(
+      self.target_power, self.use_sigmas, differences)
     if (compute_gradients):
       self.g = self.fit_object_shifted.gradients(
-        self.target_power, differences, 00000)
+        self.target_power, self.use_sigmas, differences, 00000)
       if (self.enforce_positive_b):
         n_ab = self.fit_object.n_ab()
         b = flex.double(self.fit_object.b())
@@ -185,7 +187,7 @@ class find_max_stol:
       min_fit_object = xray_scattering.gaussian_fit(
         stols[:n_points],
         target_values[:n_points],
-        flex.double(),
+        sigmas[:n_points],
         fit_object)
       for i in xrange(n_repeats_minimization):
         minimized = minimize(
@@ -194,11 +196,6 @@ class find_max_stol:
         if (min(minimized.final_fit_object.b()) <= minimized.b_min):
           break
         min_fit_object = minimized.final_fit_object
-      minimized.final_fit_object = xray_scattering.gaussian_fit(
-        minimized.final_fit_object.stols(),
-        minimized.final_fit_object.target_values(),
-        sigmas[:n_points],
-        minimized.final_fit_object)
       max_error = flex.max(get_significant_relative_errors(
         fit_object=minimized.final_fit_object))
       if (    max_error > max_max_error
