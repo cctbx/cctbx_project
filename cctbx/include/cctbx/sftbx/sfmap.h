@@ -520,14 +520,17 @@ namespace cctbx { namespace sftbx {
     af::shared<std::complex<FloatType> > structure_factors;
     Miller::Index h;
     Miller::Index mh;
+    uctbx::incremental_d_star_sq<FloatType> incr_d_star_sq(ucell);
     IndexType loop_i;
     std::size_t map_i = 0;
     for(loop_i[0] = 0; loop_i[0] < n_complex[0]; loop_i[0]++) {
       h[0] = maps::ih_as_h(loop_i[0], n_complex[0]);
       mh[0] = -h[0];
+      incr_d_star_sq.update0(h[0]);
     for(loop_i[1] = 0; loop_i[1] < n_complex[1]; loop_i[1]++) {
       h[1] = maps::ih_as_h(loop_i[1], n_complex[1]);
       mh[1] = -h[1];
+      incr_d_star_sq.update1(h[1]);
     for(loop_i[2] = 0; loop_i[2] < n_complex[2]; loop_i[2]++, map_i++) {
       if (!friedel_flag) {
         h[2] = maps::ih_as_h(loop_i[2], n_complex[2]);
@@ -535,37 +538,38 @@ namespace cctbx { namespace sftbx {
       else {
         h[2] = loop_i[2];
       }
+      if (incr_d_star_sq.get(h[2]) > max_q || map_i == 0) {
+        continue;
+      }
+      cctbx_assert(loop_i[0] != n_complex[0]/2);
+      cctbx_assert(loop_i[1] != n_complex[1]/2);
+      if (!friedel_flag) {
+        cctbx_assert(loop_i[2] != n_complex[2]/2);
+      }
       mh[2] = -h[2];
-      if (ucell.Q(h) <= max_q && map_i) {
-        cctbx_assert(loop_i[0] != n_complex[0]/2);
-        cctbx_assert(loop_i[1] != n_complex[1]/2);
-        if (!friedel_flag) {
-          cctbx_assert(loop_i[2] != n_complex[2]/2);
-        }
-        int asu_sign = asu.asu_sign(h, mh);
-        if (asu_sign == 0) continue;
-        sgtbx::sys_absent_test sa_test(sgops, h);
-        if (sa_test.is_sys_absent()) continue;
-        bool f_conj = false;
-        if (friedel_flag) {
-          if (asu_sign > 0) {
-            miller_indices.push_back(h);
-            f_conj = conjugate;
-          }
-          else {
-            if (h[2] == 0) continue;
-            miller_indices.push_back(mh);
-            f_conj = !conjugate;
-          }
+      int asu_sign = asu.asu_sign(h, mh);
+      if (asu_sign == 0) continue;
+      sgtbx::sys_absent_test sa_test(sgops, h);
+      if (sa_test.is_sys_absent()) continue;
+      bool f_conj = false;
+      if (friedel_flag) {
+        if (asu_sign > 0) {
+          miller_indices.push_back(h);
+          f_conj = conjugate;
         }
         else {
-          if (((asu_sign < 0) != conjugate) && sa_test.is_centric()) continue;
-          if (conjugate) miller_indices.push_back(mh);
-          else           miller_indices.push_back(h);
+          if (h[2] == 0) continue;
+          miller_indices.push_back(mh);
+          f_conj = !conjugate;
         }
-        if (f_conj) structure_factors.push_back(std::conj(complex_map[map_i]));
-        else        structure_factors.push_back(complex_map[map_i]);
       }
+      else {
+        if (((asu_sign < 0) != conjugate) && sa_test.is_centric()) continue;
+        if (conjugate) miller_indices.push_back(mh);
+        else           miller_indices.push_back(h);
+      }
+      if (f_conj) structure_factors.push_back(std::conj(complex_map[map_i]));
+      else        structure_factors.push_back(complex_map[map_i]);
     }}}
     return std::make_pair(miller_indices, structure_factors);
   }

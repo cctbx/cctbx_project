@@ -286,12 +286,12 @@ namespace cctbx {
       Q(const Miller::Index& MIx) const
       {
         return
-            (MIx[0] * MIx[0]) * (R_Len[0] * R_Len[0])
-          + (MIx[1] * MIx[1]) * (R_Len[1] * R_Len[1])
-          + (MIx[2] * MIx[2]) * (R_Len[2] * R_Len[2])
-          + (2 * MIx[0] * MIx[1]) * (R_Len[0] * R_Len[1] * R_cosAng[2])
-          + (2 * MIx[0] * MIx[2]) * (R_Len[0] * R_Len[2] * R_cosAng[1])
-          + (2 * MIx[1] * MIx[2]) * (R_Len[1] * R_Len[2] * R_cosAng[0]);
+            (MIx[0] * MIx[0]) * R_G[0]
+          + (MIx[1] * MIx[1]) * R_G[4]
+          + (MIx[2] * MIx[2]) * R_G[8]
+          + (2 * MIx[0] * MIx[1]) * R_G[1]
+          + (2 * MIx[0] * MIx[2]) * R_G[2]
+          + (2 * MIx[1] * MIx[2]) * R_G[5];
       }
       //! d-spacing measure Q = 1/d^2 = (2*sin(theta)/lambda)^2.
       af::shared<double>
@@ -373,6 +373,54 @@ namespace cctbx {
 
   //! ostream output operator for class UnitCell.
   std::ostream& operator<<(std::ostream& os, const UnitCell& uc);
+
+  //! XXX
+  template <typename FloatType>
+  class incremental_d_star_sq
+  {
+    public:
+      incremental_d_star_sq() {}
+
+      incremental_d_star_sq(const UnitCell& ucell)
+      {
+        initialize(ucell.getMetricalMatrix(true));
+      }
+
+      void update0(int h0)
+      {
+        h0_ = h0;
+        im0_ = (h0_ * h0_) * r_g00_;
+      }
+
+      void update1(int h1)
+      {
+        h1_ = h1;
+        im1_ = im0_ + (h1_ * h1_) * r_g11_
+                    + (2 * h0_ * h1_) * r_g01_;
+      }
+
+      FloatType get(int h2)
+      {
+        return im1_ + (h2 * h2) * r_g22_
+                    + (2 * h0_ * h2) * r_g02_
+                    + (2 * h1_ * h2) * r_g12_;
+      }
+
+    protected:
+      FloatType r_g00_, r_g11_, r_g22_, r_g01_, r_g02_, r_g12_;
+      int h0_, h1_;
+      FloatType im0_, im1_;
+
+      void initialize(const af::tiny<FloatType, 9>& r_g)
+      {
+        r_g00_ = r_g[0];
+        r_g11_ = r_g[4];
+        r_g22_ = r_g[8];
+        r_g01_ = r_g[1];
+        r_g02_ = r_g[2];
+        r_g12_ = r_g[5];
+      }
+  };
 
 }} // namespace cctbx::uctbx
 
