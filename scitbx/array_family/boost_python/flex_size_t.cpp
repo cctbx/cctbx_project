@@ -14,7 +14,7 @@ namespace scitbx { namespace af { namespace boost_python {
 
   void add_flex_size_t(boost::python::module& m)
   {
-    flex_wrapper<std::size_t>::cmp_comparable(m, "size_t")
+    flex_wrapper<std::size_t>::ordered(m, "size_t")
       .def_pickle(flex_pickle_single_buffered<std::size_t, 11>());
   }
 

@@ -94,14 +94,14 @@ namespace scitbx { namespace af {
 
       bool is_0_based() const
       {
-        return !af::cmp(origin_, index_value_type(0));
+        return !af::order(origin_, index_value_type(0));
       }
 
       bool is_padded() const
       {
         if (layout_.size() == 0) return false;
         SCITBX_ASSERT(grid_.size() == layout_.size());
-        int c = af::cmp(grid_, layout_);
+        int c = af::order(grid_, layout_);
         if (c == 0) return false;
         SCITBX_ASSERT(c > 0);
         return true;
@@ -136,9 +136,9 @@ namespace scitbx { namespace af {
 
       bool operator==(flex_grid<index_type> const& other) const
       {
-        if (af::cmp(origin_, other.origin_)) return false;
-        if (af::cmp(grid_, other.grid_)) return false;
-        return !af::cmp(layout_, other.layout_);
+        if (af::order(origin_, other.origin_)) return false;
+        if (af::order(grid_, other.grid_)) return false;
+        return !af::order(layout_, other.layout_);
       }
 
       bool operator!=(flex_grid<index_type> const& other) const

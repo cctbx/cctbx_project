@@ -27,14 +27,14 @@ namespace {
     ArrayType4 const& a4)
   {
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
-    check_true(__LINE__, af::cmp(a1, a2) == -1);
-    check_true(__LINE__, af::cmp(a1, a1) == 0);
-    check_true(__LINE__, af::cmp(a2, a2) == 0);
-    check_true(__LINE__, af::cmp(a2, a1) == 1);
-    check_true(__LINE__, af::cmp(a1, 0) == 1);
-    check_true(__LINE__, af::cmp(a1, 1) == -1);
-    check_true(__LINE__, af::cmp(0, a1) == -1);
-    check_true(__LINE__, af::cmp(1, a1) == 1);
+    check_true(__LINE__, af::order(a1, a2) == -1);
+    check_true(__LINE__, af::order(a1, a1) == 0);
+    check_true(__LINE__, af::order(a2, a2) == 0);
+    check_true(__LINE__, af::order(a2, a1) == 1);
+    check_true(__LINE__, af::order(a1, 0) == 1);
+    check_true(__LINE__, af::order(a1, 1) == -1);
+    check_true(__LINE__, af::order(0, a1) == -1);
+    check_true(__LINE__, af::order(1, a1) == 1);
     check_true(__LINE__, af::max_index(a1) == 2);
     check_true(__LINE__, af::min_index(a1) == 0);
     check_true(__LINE__, af::max(a1) == a1[2]);
