@@ -426,26 +426,47 @@ def exercise_complex_functions():
   c = 1+2j
   x = flex.complex_double((c,))
   a = flex.abs(x)
-  assert abs(a[0] - abs(c)) < 1.e-6
+  assert approx_equal(a[0], abs(c))
   p = flex.arg(x)
   y = flex.polar(a, p)
   d = y[0]
-  assert abs(d.real - c.real) < 1.e-6
-  assert abs(d.imag - c.imag) < 1.e-6
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, c.imag)
   p = flex.arg(x, 0)
   y = flex.polar(a, p, 0)
   d = y[0]
-  assert abs(d.real - c.real) < 1.e-6
-  assert abs(d.imag - c.imag) < 1.e-6
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, c.imag)
   p = flex.arg(x, 1)
   y = flex.polar(a, p, 1)
   d = y[0]
-  assert abs(d.real - c.real) < 1.e-6
-  assert abs(d.imag - c.imag) < 1.e-6
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, c.imag)
   y = flex.polar(a, p, 0)
   d = y[0]
-  assert abs(d.real - c.real) > 1.e-6
-  assert abs(d.imag - c.imag) > 1.e-6
+  assert not approx_equal(d.real, c.real)
+  assert not approx_equal(d.imag, c.imag)
+  p = flex.arg(x, 0)
+  y = flex.polar(x, p)
+  d = y[0]
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, c.imag)
+  y = flex.polar(x, p, 0)
+  d = y[0]
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, c.imag)
+  y = flex.polar(x, p, 1)
+  d = y[0]
+  assert not approx_equal(d.real, c.real)
+  assert not approx_equal(d.imag, c.imag)
+  y = flex.polar(a, x)
+  d = y[0]
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, c.imag)
+  y = flex.polar(x, x)
+  d = y[0]
+  assert approx_equal(d.real, c.real)
+  assert approx_equal(d.imag, c.imag)
 
 def exercise_linear_regression():
   x = flex.double((1,2,3))
