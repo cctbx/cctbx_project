@@ -2441,43 +2441,43 @@ namespace raw {
       d(i) = d(i)/theta;
     }
     // Backtrack to the feasible region.
-    FloatType alpha = 1;
+    FloatType alpha = one;
     FloatType temp1 = alpha;
     int ibd = 0; // uninitialized
-    bool ibd_is_defined = false;
     for(int i=1;i<=nsub;i++) {
       int k = ind(i);
       FloatType dk = d(i);
       if (nbd(k) != 0) {
+        bool temp1_updated = false;
         if (dk < zero && nbd(k) <= 2) {
           FloatType temp2 = l(k) - x(k);
           if (temp2 >= zero) {
             temp1 = zero;
+            temp1_updated = true;
           }
           else if (dk*alpha < temp2) {
             temp1 = temp2/dk;
+            temp1_updated = true;
           }
         }
         else if (dk > zero && nbd(k) >= 2) {
           FloatType temp2 = u(k) - x(k);
           if (temp2 <= zero) {
             temp1 = zero;
+            temp1_updated = true;
           }
           else if (dk*alpha > temp2) {
             temp1 = temp2/dk;
+            temp1_updated = true;
           }
         }
-        if (temp1 < alpha) {
+        if (temp1_updated && temp1 < alpha) {
           alpha = temp1;
           ibd = i;
-          ibd_is_defined = true;
         }
       }
     }
     if (alpha < one) {
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-      SCITBX_ASSERT(ibd_is_defined);
-#endif
       FloatType dk = d(ibd);
       int k = ind(ibd);
       if (dk > zero) {
