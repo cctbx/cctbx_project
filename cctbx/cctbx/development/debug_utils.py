@@ -97,9 +97,6 @@ def generate_positions(N,
     "Cannot find position matching all constraints."
   return new_positions
 
-def random_adp():
-  return random.random()
-
 def random_rotate_ellipsoid(Ucart):
   C = rotation_parameters.amore_alpha_beta_gamma_as_matrix(
     [random.uniform(0,360) for i in xrange(3)]).elems
@@ -151,13 +148,13 @@ class random_structure(xutils.symmetrized_sites):
       fpfdp = complex(fp, fdp)
       U = self.uiso
       if (not U and not self.no_random_u):
-        U = random_adp()
+        U = random.random()
       if (self.anisotropic_displacement_parameters):
         run_away_counter = 0
         while 1:
           run_away_counter += 1
           assert run_away_counter < 100
-          U = [math.fmod(i * random_adp(), 1) for i in xrange(3)] + [0.,0.,0.]
+          U = [random.random() for i in xrange(3)] + [0.,0.,0.]
           U = random_rotate_ellipsoid(U)
           U = adptbx.Ucart_as_Ustar(self.UnitCell, U)
           Site = sftbx.XrayScatterer(Elem + str(n), SF, fpfdp, Pos, 1., U)
