@@ -454,8 +454,8 @@ namespace cctbx { namespace xray {
         FloatType d_sq = d.length_sq();
         if (d_sq > shell.max_d_sq) continue;
         std::complex<FloatType> ft_dt_dfc_gp = ft_d_target_d_f_calc(gp);
-        FloatType f_real = ft_dt_dfc_gp.real();
-        FloatType f_imag = ft_dt_dfc_gp.imag();
+        FloatType f_real = -ft_dt_dfc_gp.real();
+        FloatType f_imag = -ft_dt_dfc_gp.imag();
         if (!scatterer->anisotropic_flag) {
           gr_site += f_real * caasf_ft.d_rho_real_d_site(d, d_sq);
           if (fdp) {

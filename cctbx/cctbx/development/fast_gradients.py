@@ -208,7 +208,7 @@ def site(structure_ideal, d_min, f_obs, verbose=0):
     for i_xyz in (0,1,2):
       direct_summ = sfd.d_target_d_site()[i_scatterer][i_xyz]
       if (top_gradient is None): top_gradient = direct_summ
-      fast_gradie = -map0.d_target_d_site()[i_scatterer][i_xyz] \
+      fast_gradie = map0.d_target_d_site()[i_scatterer][i_xyz] \
                   * f_obs.space_group().n_ltr()
       match = judge(scatterer, "site", direct_summ, fast_gradie, top_gradient)
       if (0 or verbose):
@@ -248,7 +248,7 @@ def u_iso(structure_ideal, d_min, f_obs, verbose=0):
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_u_iso()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = -map0.d_target_d_u_iso()[i_scatterer] \
+    fast_gradie = map0.d_target_d_u_iso()[i_scatterer] \
                 * f_obs.space_group().n_ltr()
     match = judge(scatterer, "u_iso", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
@@ -305,7 +305,7 @@ def u_star(structure_ideal, d_min, f_obs, verbose=0):
     for ij in xrange(6):
       direct_summ = sfd.d_target_d_u_star()[i_scatterer][ij]
       if (top_gradient is None): top_gradient = direct_summ
-      fast_gradie = -map0.d_target_d_u_star()[i_scatterer][ij] \
+      fast_gradie = map0.d_target_d_u_star()[i_scatterer][ij] \
                   * f_obs.space_group().n_ltr()
       match = judge(scatterer, "u_star", direct_summ,fast_gradie,top_gradient)
       if (0 or verbose):
@@ -345,7 +345,7 @@ def occupancy(structure_ideal, d_min, f_obs, verbose=0):
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_occupancy()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = -map0.d_target_d_occupancy()[i_scatterer] \
+    fast_gradie = map0.d_target_d_occupancy()[i_scatterer] \
                 * f_obs.space_group().n_ltr()
     match = judge(scatterer, "occupancy", direct_summ,fast_gradie,top_gradient)
     if (0 or verbose):
@@ -385,7 +385,7 @@ def fp(structure_ideal, d_min, f_obs, verbose=0):
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_fp()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = -map0.d_target_d_fp()[i_scatterer] \
+    fast_gradie = map0.d_target_d_fp()[i_scatterer] \
                 * f_obs.space_group().n_ltr()
     match = judge(scatterer, "fp", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
@@ -425,7 +425,7 @@ def fdp(structure_ideal, d_min, f_obs, verbose=0):
     scatterer = sh.structure_shifted.scatterers()[i_scatterer]
     direct_summ = sfd.d_target_d_fdp()[i_scatterer]
     if (top_gradient is None): top_gradient = direct_summ
-    fast_gradie = -map0.d_target_d_fdp()[i_scatterer] \
+    fast_gradie = map0.d_target_d_fdp()[i_scatterer] \
                 * f_obs.space_group().n_ltr()
     match = judge(scatterer, "fdp", direct_summ, fast_gradie, top_gradient)
     if (0 or verbose):
