@@ -57,20 +57,6 @@ namespace cctbx { namespace af {
       return false;
   }
 
-  template <typename AnyType, std::size_t N>
-  inline
-  std::size_t
-  min_index(const tiny<AnyType, N>& a) {
-    return std::min_element(a.begin(), a.end()) - a.begin();
-  }
-
-  template <typename AnyType, std::size_t N>
-  inline
-  std::size_t
-  max_index(const tiny<AnyType, N>& a) {
-    return std::max_element(a.begin(), a.end()) - a.begin();
-  }
-
   template<typename NumType, std::size_t N>
   inline
   tiny<NumType,N>
@@ -177,15 +163,6 @@ namespace cctbx { namespace af {
           if (!(lhs[i] >= rhs)) return false;
       }
       return true;
-  }
-
-  template<typename NumType, std::size_t N>
-  inline
-  NumType
-  sum(const tiny<NumType,N>& a) {
-    NumType result = 0;
-    for (std::size_t i = 0; i < a.size(); i++) result += a[i];
-    return result;
   }
 
   template <typename NumType, std::size_t N>

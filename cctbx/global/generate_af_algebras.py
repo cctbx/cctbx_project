@@ -28,16 +28,6 @@ misc_functions_2arg = (
    ["const ElementType& tolerance", "tolerance"]),
 )
 
-reduction_functions_1arg = (
-  "max_index", "min_index",
-  "max", "min",
-  "sum", "sum_sq", "product",
-  "mean", "mean_sq",
-)
-reduction_functions_2arg = (
-  "mean_weighted", "mean_sq_weighted",
-)
-
 class empty:
   def join(self, other):
     self.__dict__.update(other.__dict__)
@@ -439,38 +429,6 @@ def generate_reducing_boolean_op(array_type_name, op_symbol):
   for type_flags in ((1,1), (1,0), (0,1)):
     reducing_boolean_op(array_type_name, op_symbol, type_flags)
 
-def generate_1arg_reductions(array_type_name):
-  hp = get_template_header_and_parameters(array_type_name, 1)
-  for function_name in reduction_functions_1arg:
-    return_type = "ElementType"
-    if (function_name in ("max_index", "min_index")):
-      return_type = "std::size_t"
-    print """%s
-  inline
-  %s
-  %s(const %s& a) {
-    return %s(a.const_ref());
-  }
-""" % (format_header("  ", hp.header),
-       return_type,
-       function_name, hp.params[0],
-       function_name)
-
-def generate_2arg_reductions(array_type_name):
-  hp = get_template_header_and_parameters(array_type_name, 2)
-  for function_name in reduction_functions_2arg:
-    print """%s
-  inline
-  ElementType1
-  %s(
-    const %s& a1,
-    const %s& a2) {
-    return %s(a1.const_ref(), a2.const_ref());
-  }
-""" % (format_header("  ", hp.header),
-       function_name, hp.params[0], hp.params[1],
-       function_name)
-
 def generate_1arg_element_wise(array_type_name, function_names):
   result_constructor_args = get_result_constructor_args(array_type_name)
   d = operator_decl_params(array_type_name, "unary", "arithmetic", (1,0))
@@ -741,9 +699,6 @@ namespace cctbx { namespace af {
     generate_element_wise_special(array_type_name, special_def)
   for args in misc_functions_2arg:
     apply(generate_2arg_addl_element_wise, (array_type_name,) + args)
-  if (array_type_name != "ref"):
-    generate_1arg_reductions(array_type_name)
-    generate_2arg_reductions(array_type_name)
 
   print "}} // namespace cctbx::af"
   print
