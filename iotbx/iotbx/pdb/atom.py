@@ -28,6 +28,11 @@ class labels:
       self.resName, self.chainID,
       self.resSeq, self.iCode, self.segID]])
 
+  def is_in_same_chain(self, other):
+    if (self.chainID != other.chainID): return 00000
+    if (self.chainID == " " and self.segID != other.segID): return 00000
+    return 0001
+
 def labels_from_string(s):
   fields = []
   for field in s.split(","):
