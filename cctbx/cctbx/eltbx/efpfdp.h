@@ -1,4 +1,13 @@
 // $Id$
+/* Copyright (c) 2001 The Regents of the University of California through
+   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
+   U.S. Department of Energy. See files COPYRIGHT.txt and
+   cctbx/LICENSE.txt for further details.
+
+   Revision history:
+     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+               Based on C code contributed by Vincent Favre-Nicolin.
+ */
 
 #ifndef CCTBX_ELTBX_EFPFDP_H
 #define CCTBX_ELTBX_EFPFDP_H
