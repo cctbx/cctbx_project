@@ -1,19 +1,8 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Renamed cctbx/sgtbx/change_basis.h (rwgk)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_SGTBX_CHANGE_OF_BASIS_OP_H
 #define CCTBX_SGTBX_CHANGE_OF_BASIS_OP_H
 
 #include <cctbx/sgtbx/rt_mx.h>
+#include <cctbx/sgtbx/utils.h>
 #include <cctbx/uctbx.h>
 
 namespace cctbx { namespace sgtbx {
@@ -203,6 +192,20 @@ namespace cctbx { namespace sgtbx {
       apply(uctbx::unit_cell const& ucell) const
       {
         return ucell.change_basis(c_inv().r());
+      }
+
+      //! Transforms a Miller index.
+      /*! result = h * c_inv()
+       */
+      miller::index<>
+      apply(miller::index<> const& h) const
+      {
+        miller::index<> hr = h * c_inv_.r().num();
+        if (utils::change_denominator(
+              hr.begin(), c_inv_.r().den(), hr.begin(), 1, 3) != 0) {
+          throw error("Change of basis yields non-integral Miller index.");
+        }
+        return hr;
       }
 
       //! Transforms an array of Miller indices.

@@ -1,18 +1,4 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Renamed sgtbx/change_basis.cpp (rwgk)
-     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/sgtbx/change_of_basis_op.h>
-#include <cctbx/sgtbx/utils.h>
-#include <cctbx/uctbx.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -53,15 +39,9 @@ namespace cctbx { namespace sgtbx {
   change_of_basis_op::apply(
     af::const_ref<miller::index<> > const& miller_indices) const
   {
-    sg_mat3 r = c_inv_.r().num();
-    int d = c_inv_.r().den();
     af::shared<miller::index<> > result((af::reserve(miller_indices.size())));
     for(std::size_t i=0;i<miller_indices.size();i++) {
-      miller::index<> hr = miller_indices[i] * r;
-      if (utils::change_denominator(hr.begin(), d, hr.begin(), 1, 3) != 0) {
-        throw error("Change of basis yields non-integral Miller index.");
-      }
-      result.push_back(hr);
+      result.push_back(apply(miller_indices[i]));
     }
     return result;
   }

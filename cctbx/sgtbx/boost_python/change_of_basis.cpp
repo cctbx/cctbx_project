@@ -75,6 +75,9 @@ namespace {
           (uctbx::unit_cell(w_t::*)(uctbx::unit_cell const&) const)
           &w_t::apply)
         .def("apply",
+          (miller::index<>(w_t::*)(miller::index<> const&) const)
+          &w_t::apply)
+        .def("apply",
           (af::shared<miller::index<> >(w_t::*)
             (af::const_ref<miller::index<> > const&) const)
               &w_t::apply)
