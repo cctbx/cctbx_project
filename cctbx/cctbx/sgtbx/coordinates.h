@@ -294,6 +294,32 @@ namespace sgtbx {
             "Ustar tensor is incompatible with site symmetry.");
         }
       }
+      /*! \briev Average symmetry copies of Ustar tensor to obtain a
+          tensor that satisfies the symmetry constraints.
+       */
+      /*! The averaged tensor is equivalent to beta_inv
+          of Giacovazzo, Fundamentals of Crystallography 1992,
+          p. 189.
+       */
+      template <class FloatType>
+      boost::array<FloatType, 6>
+      AverageUstar(const boost::array<FloatType, 6>& Ustar) const
+      {
+        boost::array<FloatType, 9>
+        U = adptbx::Xaniso_as_SymMx33(Ustar, adptbx::return_type<FloatType>());
+        boost::array<FloatType, 9> SumRURt;
+        SumRURt.assign(0.);
+        for (std::size_t i=0;i<m_PointGroup.Matrices.size();i++) {
+          boost::array<FloatType, 9>
+          R = m_PointGroup.Matrices[i].Rpart().as_array(FloatType());
+          boost::array<FloatType, 9>
+          RURt = adptbx::A_X_At(R, U);
+          SumRURt = SumRURt + RURt;
+        }
+        return adptbx::SymMx33_as_Xaniso(SumRURt,
+          adptbx::return_type<FloatType>())
+          / FloatType(m_PointGroup.Matrices.size());
+      }
       //! Expand the special position symmetry operation.
       /*! The SpecialOp() is multiplied with all symmetry operations.
           The unique results are stored in an internal list which

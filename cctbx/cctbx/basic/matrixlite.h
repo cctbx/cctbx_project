@@ -43,6 +43,13 @@ namespace boost {
     }
 
     template<class T, std::size_t N>
+    const array<T,N> operator/ (const array<T,N>& lhs, const T& rhs) {
+        array<T,N> result;
+        for (std::size_t i = 0; i < lhs.size(); i++) result[i] = lhs[i] / rhs;
+        return result;
+    }
+
+    template<class T, std::size_t N>
     const array<T,N> operator* (const T& lhs, const array<T,N>& rhs) {
         array<T,N> result;
         for (std::size_t i = 0; i < rhs.size(); i++) result[i] = lhs * rhs[i];
