@@ -63,7 +63,7 @@ namespace cctbx { namespace af {
             typename ElementType2,
             typename ElementTypeResult>
   void // not inline
-  array_operation_binary(
+  array_operation_binary_a_a(
     const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
@@ -91,7 +91,7 @@ namespace cctbx { namespace af {
             typename ElementType2,
             typename ElementTypeResult>
   inline void
-  array_operation_binary(
+  array_operation_binary_a_a(
     const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
@@ -111,7 +111,7 @@ namespace cctbx { namespace af {
             typename ElementType2,
             typename ElementTypeResult>
   void // not inline
-  array_operation_binary(
+  array_operation_binary_a_s(
     const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2& a2,
@@ -139,7 +139,7 @@ namespace cctbx { namespace af {
             typename ElementType2,
             typename ElementTypeResult>
   inline void
-  array_operation_binary(
+  array_operation_binary_a_s(
     const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2& a2,
@@ -159,7 +159,7 @@ namespace cctbx { namespace af {
             typename ElementType2,
             typename ElementTypeResult>
   void // not inline
-  array_operation_binary(
+  array_operation_binary_s_a(
     const BinaryFunctorType& ftor,
     const ElementType1& a1,
     const ElementType2* a2,
@@ -187,7 +187,7 @@ namespace cctbx { namespace af {
             typename ElementType2,
             typename ElementTypeResult>
   inline void
-  array_operation_binary(
+  array_operation_binary_s_a(
     const BinaryFunctorType& ftor,
     const ElementType1& a1,
     const ElementType2* a2,
@@ -208,7 +208,7 @@ namespace cctbx { namespace af {
             typename ElementType3,
             typename ElementTypeResult>
   void // not inline
-  array_operation_binary_addl(
+  array_operation_binary_addl_a_a(
     const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
@@ -238,7 +238,7 @@ namespace cctbx { namespace af {
             typename ElementType3,
             typename ElementTypeResult>
   inline void
-  array_operation_binary_addl(
+  array_operation_binary_addl_a_a(
     const BinaryFunctorType& ftor,
     const ElementType1* a1,
     const ElementType2* a2,
@@ -258,7 +258,7 @@ namespace cctbx { namespace af {
             typename ElementType,
             typename ElementTypeResult>
   void // not inline
-  array_operation_binary_addl(
+  array_operation_binary_addl_a_s(
     const BinaryFunctorType& ftor,
     const ElementType* a1,
     const ElementType& a2,
@@ -286,7 +286,7 @@ namespace cctbx { namespace af {
             typename ElementType,
             typename ElementTypeResult>
   inline void
-  array_operation_binary_addl(
+  array_operation_binary_addl_a_s(
     const BinaryFunctorType& ftor,
     const ElementType* a1,
     const ElementType& a2,
@@ -306,7 +306,7 @@ namespace cctbx { namespace af {
             typename ElementType,
             typename ElementTypeResult>
   void // not inline
-  array_operation_binary_addl(
+  array_operation_binary_addl_s_a(
     const BinaryFunctorType& ftor,
     const ElementType& a1,
     const ElementType* a2,
@@ -334,7 +334,7 @@ namespace cctbx { namespace af {
             typename ElementType,
             typename ElementTypeResult>
   inline void
-  array_operation_binary_addl(
+  array_operation_binary_addl_s_a(
     const BinaryFunctorType& ftor,
     const ElementType& a1,
     const ElementType* a2,

@@ -233,6 +233,7 @@ def binary_operator_algo_params(array_type_name, type_flags):
   r.begin = ["", ""]
   for i in xrange(2):
     if (type_flags[i]): r.begin[i] = ".begin()"
+  r.type_flags_code = "sa"[type_flags[0]] + "_" + "sa"[type_flags[1]]
   return r
 
 def set_size_back_door(array_type_name):
@@ -283,7 +284,7 @@ def elementwise_binary_op(
     result_array_type;
     typedef typename result_array_type::value_type return_element_type;
     %sresult_array_type result%s;
-    array_operation_binary(functor_%s<
+    array_operation_binary_%s(functor_%s<
         return_element_type,
         %s,
         %s>(),
@@ -297,6 +298,7 @@ def elementwise_binary_op(
        format_list("    ", d.typedef_return_array_type),
        a.size_assert,
        a.result_constructor_args,
+       a.type_flags_code,
        binary_functors[op_symbol], d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1], a.loop_n,
        d.false_or_true_type_selector,
@@ -451,7 +453,7 @@ def generate_2arg_element_wise(
     result_array_type;
     typedef typename result_array_type::value_type return_element_type;
     %sresult_array_type result%s;
-    array_operation_binary(functor_%s<
+    array_operation_binary_%s(functor_%s<
         return_element_type, %s, %s>(),
       a1%s, a2%s, result.begin(), %s,
       %s);
@@ -463,6 +465,7 @@ def generate_2arg_element_wise(
        format_list("    ", d.typedef_return_array_type),
        a.size_assert,
        a.result_constructor_args,
+       a.type_flags_code,
        function_name, d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1], a.loop_n,
        d.false_or_true_type_selector,
@@ -489,7 +492,7 @@ def generate_2arg_addl_element_wise(
     result_array_type;
     typedef typename result_array_type::value_type return_element_type;
     %sresult_array_type result%s;
-    array_operation_binary_addl(functor_%s<
+    array_operation_binary_addl_%s(functor_%s<
         return_element_type, %s, %s, %s>(),
       a1%s, a2%s, %s, result.begin(), %s,
       %s);
@@ -501,6 +504,7 @@ def generate_2arg_addl_element_wise(
        format_list("    ", d.typedef_return_array_type),
        a.size_assert,
        a.result_constructor_args,
+       a.type_flags_code,
        function_name, "ElementType", "ElementType", "ElementType",
        a.begin[0], a.begin[1], addl_args[1], a.loop_n,
        d.false_or_true_type_selector,
@@ -549,7 +553,7 @@ def generate_element_wise_special(
     const %s& a1,
     const %s& a2) {
     %s result%s;
-    %sarray_operation_binary(functor_%s<
+    %sarray_operation_binary_%s(functor_%s<
         %s,
         %s,
         %s >(),
@@ -562,6 +566,7 @@ def generate_element_wise_special(
        p.return_array_type,
        a.result_constructor_args,
        a.size_assert,
+       a.type_flags_code,
        p.function_name,
        special_def[0], special_def[2], special_def[3],
        a.begin[0], a.begin[1], a.loop_n,
