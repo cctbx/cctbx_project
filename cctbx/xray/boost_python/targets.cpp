@@ -100,7 +100,7 @@ namespace {
                   af::const_ref<double> const&,
                   af::const_ref<double> const&,
                   af::const_ref<int> const&,
-                  af::const_ref<int> const&,
+                  af::const_ref<bool> const&,
                   bool const&,
                   af::const_ref<cctbx::hendrickson_lattman<double> > const&,
                   double const& >())
