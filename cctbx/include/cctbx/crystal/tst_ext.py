@@ -710,7 +710,7 @@ i_seq: 4
 """
   out = StringIO()
   for i_seq in xrange(5):
-    sym_table.select(flex.size_t([i_seq])).show(f=out)
+    sym_table.proxy_select(flex.size_t([i_seq])).show(f=out)
   assert out.getvalue() == """\
 i_seq: 0
   j_seq: 0
@@ -728,7 +728,7 @@ i_seq: 0
     -x,-y+1,z
 """
   out = StringIO()
-  sym_table.select(flex.size_t([1,2,4])).show(f=out)
+  sym_table.proxy_select(flex.size_t([1,2,4])).show(f=out)
   assert out.getvalue() == """\
 i_seq: 0
   j_seq: 2
@@ -743,7 +743,7 @@ i_seq: 2
     -x,-y+1,z
 """
   out = StringIO()
-  sym_table.select(flex.size_t([3,0,2])).show(f=out)
+  sym_table.proxy_select(flex.size_t([3,0,2])).show(f=out)
   assert out.getvalue() == """\
 i_seq: 0
   j_seq: 0

@@ -58,11 +58,11 @@ class manager:
         iselection)
     selected_bond_params_table = None
     if (self.bond_params_table is not None):
-      selected_bond_params_table = self.bond_params_table.select(
+      selected_bond_params_table = self.bond_params_table.proxy_select(
         iselection)
     selected_shell_sym_tables = None
     if (self.shell_sym_tables is not None):
-      selected_shell_sym_tables = [shell_sym_table.select(iselection)
+      selected_shell_sym_tables = [shell_sym_table.proxy_select(iselection)
         for shell_sym_table in self.shell_sym_tables]
     selected_nonbonded_types = None
     if (self.nonbonded_types is not None):
@@ -70,19 +70,19 @@ class manager:
         iselection)
     selected_angle_proxies = None
     if (self.angle_proxies is not None):
-      selected_angle_proxies = self.angle_proxies.select(
+      selected_angle_proxies = self.angle_proxies.proxy_select(
         selection.size(), iselection)
     selected_dihedral_proxies = None
     if (self.dihedral_proxies is not None):
-      selected_dihedral_proxies = self.dihedral_proxies.select(
+      selected_dihedral_proxies = self.dihedral_proxies.proxy_select(
         selection.size(), iselection)
     selected_chirality_proxies = None
     if (self.chirality_proxies is not None):
-      selected_chirality_proxies = self.chirality_proxies.select(
+      selected_chirality_proxies = self.chirality_proxies.proxy_select(
         selection.size(), iselection)
     selected_planarity_proxies = None
     if (self.planarity_proxies is not None):
-      selected_planarity_proxies = self.planarity_proxies.select(
+      selected_planarity_proxies = self.planarity_proxies.proxy_select(
         selection.size(), iselection)
     return manager(
       crystal_symmetry=self.crystal_symmetry,
@@ -100,6 +100,22 @@ class manager:
       dihedral_proxies=selected_dihedral_proxies,
       chirality_proxies=selected_chirality_proxies,
       planarity_proxies=selected_planarity_proxies)
+
+  def remove_angles_in_place(self, selection):
+    self.angle_proxies = self.angle_proxies.proxy_remove(
+      selection=selection)
+
+  def remove_dihedrals_in_place(self, selection):
+    self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
+      selection=selection)
+
+  def remove_chiralities_in_place(self, selection):
+    self.chirality_proxies = self.chirality_proxies.proxy_remove(
+      selection=selection)
+
+  def remove_planarities_in_place(self, selection):
+    self.planarity_proxies = self.planarity_proxies.proxy_remove(
+      selection=selection)
 
   def pair_proxies(self,
         sites_cart=None,
