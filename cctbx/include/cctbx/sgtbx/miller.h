@@ -355,18 +355,6 @@ namespace cctbx {
           if (FriedelFlag && !isCentric()) return 2 * N();
           return N();
         }
-        //! Number of equivalent indices that will appear in a P1 listing.
-        /*! If FriedelFlag == false (anomalous listing) the result is
-            always equal to N(). If FriedelFlag == true the result is
-            N() for non-centric reflections and N()/2 for centric
-            reflections. In the latter case the N()/2 indices
-            for the listing can be obtained with operator[]() or
-            operator()() by looping from 0 to N()/2-1.
-         */
-        int n_p1_listing(bool FriedelFlag) const {
-          if (FriedelFlag && isCentric()) return N() / 2;
-          return N();
-        }
         //! Flag for Friedel mates == M(FriedelFlag)/N().
         /*! Useful for looping over all symmetrically equivalent reflections
             including Friedel mates (if FriedelFlag == true).<br>
@@ -431,6 +419,15 @@ namespace cctbx {
                           double tolerance = 1.e-5) const {
           return getPhaseRestriction().isValidPhase(phi, deg, tolerance);
         }
+        //! Equivalent indices for a P1 listing.
+        /*! If friedel_flag == false (anomalous listing) the number of
+            indices in P1 is always equal to N().
+            If friedel_flag == true the number of indices in P1 is
+            N() for non-centric reflections and N()/2 for centric
+            reflections.
+         */
+        af::shared<Miller::SymEquivIndex>
+        p1_listing(bool friedel_flag) const;
       private:
         int m_TBF;
         int m_OrderP;
@@ -439,7 +436,6 @@ namespace cctbx {
         SymEquivMillerIndices(int TBF, int OrderP)
           : m_TBF(TBF), m_OrderP(OrderP), m_HT_Restriction(-1), m_List() {}
         void add(const Miller::SymEquivIndex& SEI);
-        void sort_in_hemispheres();
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
         friend class SpaceGroup;
 #endif // DOXYGEN_SHOULD_SKIP_THIS

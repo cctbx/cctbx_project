@@ -215,8 +215,10 @@ namespace cctbx {
     {
       for(std::size_t i_in = 0; i_in < h_in.size(); i_in++) {
         SymEquivMillerIndices h_seq = SgOps.getEquivMillerIndices(h_in[i_in]);
-        for (int i_eq = 0; i_eq < h_seq.n_p1_listing(friedel_flag); i_eq++) {
-          h_out.push_back(h_seq(i_eq).H());
+        af::shared<Miller::SymEquivIndex>
+        p1_listing = h_seq.p1_listing(friedel_flag);
+        for (int i_eq = 0; i_eq < p1_listing.size(); i_eq++) {
+          h_out.push_back(p1_listing[i_eq].H());
         }
       }
     }
@@ -241,14 +243,16 @@ namespace cctbx {
       cctbx_assert(h_in.size() == phase_in.size() || phase_in.size() == 0);
       for(std::size_t i_in = 0; i_in < h_in.size(); i_in++) {
         SymEquivMillerIndices h_seq = SgOps.getEquivMillerIndices(h_in[i_in]);
-        for (int i_eq = 0; i_eq < h_seq.n_p1_listing(friedel_flag); i_eq++) {
-          h_out.push_back(h_seq(i_eq).H());
+        af::shared<Miller::SymEquivIndex>
+        p1_listing = h_seq.p1_listing(friedel_flag);
+        for (int i_eq = 0; i_eq < p1_listing.size(); i_eq++) {
+          h_out.push_back(p1_listing[i_eq].H());
           if (ampl_in.size()) {
             ampl_out.push_back(ampl_in[i_in]);
           }
           if (phase_in.size()) {
             phase_out.push_back(
-              h_seq(i_eq).phase_eq(phase_in[i_in], phase_degrees));
+              p1_listing[i_eq].phase_eq(phase_in[i_in], phase_degrees));
           }
         }
       }

@@ -853,8 +853,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     &SymEquivMillerIndices::isCentric, "isCentric");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "N");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::M, "M");
-  py_SymEquivMillerIndices.def(
-    &SymEquivMillerIndices::n_p1_listing, "n_p1_listing");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::fMates, "fMates");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::epsilon, "epsilon");
   py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "__len__");
