@@ -445,27 +445,29 @@ namespace cctbx {
   }
 
   //! Matrix * vector product.
-  template <typename NumType>
+  template <typename NumTypeMatrix,
+            typename NumTypeVector>
   inline
-  vec3<NumType>
+  vec3<NumTypeVector>
   operator*(
-    const mat3<NumType>& lhs,
-    const af::tiny_plain<NumType,3>& rhs)
+    const mat3<NumTypeMatrix>& lhs,
+    const af::tiny_plain<NumTypeVector,3>& rhs)
   {
-    vec3<NumType> result;
+    vec3<NumTypeVector> result;
     MatrixLite::multiply(lhs.begin(), rhs.begin(), 3, 3, 1, result.begin());
     return result;
   }
 
   //! Vector * matrix product.
-  template <typename NumType>
+  template <typename NumTypeVector,
+            typename NumTypeMatrix>
   inline
-  vec3<NumType>
+  vec3<NumTypeVector>
   operator*(
-    const af::tiny_plain<NumType,3>& lhs,
-    const mat3<NumType>& rhs)
+    const af::tiny_plain<NumTypeVector,3>& lhs,
+    const mat3<NumTypeMatrix>& rhs)
   {
-    vec3<NumType> result;
+    vec3<NumTypeVector> result;
     MatrixLite::multiply(lhs.begin(), rhs.begin(), 1, 3, 3, result.begin());
     return result;
   }
