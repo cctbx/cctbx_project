@@ -268,8 +268,16 @@ namespace direct_space_asu {
       cartesian<FloatType> mapped_site_;
   };
 
+  //! Grouping of indices for site in asu_mappings container.
+  /*! Not available in Python.
+   */
+  struct asu_mapping_index
+  {
+    std::size_t i_seq;
+    std::size_t i_sym;
+  };
+
   //! Grouping of indices for pair of sites in asu_mappings container.
-  template <typename FloatType=double>
   struct asu_mapping_index_pair
   {
     //! Main index of first site.
@@ -282,7 +290,7 @@ namespace direct_space_asu {
 
   //! asu_mapping_index_pair plus difference vector and distance squared.
   template <typename FloatType=double>
-  struct asu_mapping_index_pair_and_diff : asu_mapping_index_pair<FloatType>
+  struct asu_mapping_index_pair_and_diff : asu_mapping_index_pair
   {
     //! Difference vector.
     cartesian<FloatType> diff_vec;
@@ -471,6 +479,13 @@ namespace direct_space_asu {
       cartesian<FloatType> const&
       mapped_sites_max() const { return mapped_sites_max_; }
 
+      //! mapped_sites_max() - mapped_sites_min().
+      cartesian<FloatType>
+      mapped_sites_span() const
+      {
+        return mapped_sites_max_ - mapped_sites_min_;
+      }
+
       //! mappings()[i_seq][i_sym] with range checking of i_seq and i_sym.
       /*! Not available in Python.
        */
@@ -498,7 +513,7 @@ namespace direct_space_asu {
       /*! result = site(j_seq,j_sym) - site(i_seq,0).
        */
       cartesian<FloatType>
-      diff_vec(asu_mapping_index_pair<FloatType> const& pair) const
+      diff_vec(asu_mapping_index_pair const& pair) const
       {
         return get_asu_mapping(pair.j_seq, pair.j_sym).mapped_site()
              - get_asu_mapping(pair.i_seq, 0).mapped_site();
