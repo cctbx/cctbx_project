@@ -341,8 +341,7 @@ namespace cctbx { namespace xray {
         base_t(unit_cell, scatterers, scattering_dict,
                u_base, wing_cutoff,
                exp_table_one_over_step_size, tolerance_positive_definite),
-        sampling_may_only_be_called_once(true),
-        n_scatterers_expected(scatterers.size())
+        sampling_may_only_be_called_once(true)
       {}
 
       void
@@ -400,7 +399,6 @@ namespace cctbx { namespace xray {
 
     private:
       bool sampling_may_only_be_called_once;
-      std::size_t n_scatterers_expected;
       af::shared<FloatType> packed_;
       af::shared<scitbx::vec3<FloatType> > d_target_d_site_cart_;
       af::shared<FloatType> d_target_d_u_iso_;
@@ -435,7 +433,7 @@ namespace cctbx { namespace xray {
   {
     CCTBX_ASSERT(sampling_may_only_be_called_once);
     sampling_may_only_be_called_once = false;
-    CCTBX_ASSERT(scatterers.size() == n_scatterers_expected);
+    CCTBX_ASSERT(scatterers.size() == this->n_scatterers_passed_);
     CCTBX_ASSERT(scattering_dict.n_scatterers() == scatterers.size());
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
