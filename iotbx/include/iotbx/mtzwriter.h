@@ -32,6 +32,11 @@ public:
   void oneCrystal(const std::string&,const std::string&,
                   const cctbx::uctbx::unit_cell&);
   void oneDataset(const std::string&,const double&);
+  void addColumn(
+    const std::string& name,
+    char type_code,
+    af::const_ref<cctbx::miller::index<> > const& miller_indices,
+    af::const_ref<double> const& data);
   void write(const std::string&);
 };
 }} //namespaces
