@@ -998,7 +998,7 @@ namespace sgtbx {
     }
 
     const char* SelectHall(const tables::Main_Symbol_Dict_Entry* Entry,
-                           char WorkExtension,
+                           char& WorkExtension,
                            const string& StdTableId)
     {
       const char* Hall2 = &Entry->Hall[string(Entry->Hall).size() + 1];
