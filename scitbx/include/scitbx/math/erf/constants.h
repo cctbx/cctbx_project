@@ -31,29 +31,46 @@ Explanation of machine-dependent constants
 </pre>
    */
   template <typename FloatType>
-  struct machine_dependent
+  struct machine_dependent_base
   {
-    static const FloatType xinf;
-    static const FloatType xneg;
-    static const FloatType xsmall;
-    static const FloatType xbig;
-    static const FloatType xhuge;
-    static const FloatType xmax;
+    machine_dependent_base(
+      FloatType const& xinf_,
+      FloatType const& xneg_,
+      FloatType const& xsmall_,
+      FloatType const& xbig_,
+      FloatType const& xhuge_,
+      FloatType const& xmax_)
+    :
+      xinf(xinf_),
+      xneg(xneg_),
+      xsmall(xsmall_),
+      xbig(xbig_),
+      xhuge(xhuge_),
+      xmax(xmax_)
+    {}
+
+    FloatType xinf, xneg, xsmall, xbig, xhuge, xmax;
   };
 
-  template<> const float machine_dependent<float>::xinf = 3.40e+38;
-  template<> const float machine_dependent<float>::xneg = -9.382e0;
-  template<> const float machine_dependent<float>::xsmall = 5.96e-8;
-  template<> const float machine_dependent<float>::xbig = 9.194e0;
-  template<> const float machine_dependent<float>::xhuge = 2.90e3;
-  template<> const float machine_dependent<float>::xmax = 4.79e37;
+  template <typename FloatType,
+            std::size_t SizeOfFloatType=sizeof(FloatType)>
+  struct machine_dependent;
 
-  template<> const double machine_dependent<double>::xinf = 1.79e308;
-  template<> const double machine_dependent<double>::xneg = -26.628e0;
-  template<> const double machine_dependent<double>::xsmall = 1.11e-16;
-  template<> const double machine_dependent<double>::xbig = 26.543e0;
-  template<> const double machine_dependent<double>::xhuge = 6.71e7;
-  template<> const double machine_dependent<double>::xmax = 2.53e307;
+  template <typename FloatType>
+  struct machine_dependent<FloatType, 4> : machine_dependent_base<FloatType>
+  {
+    machine_dependent() : machine_dependent_base<FloatType>(
+      3.40e38, -9.382, 5.96e-8, 9.194, 2.90e3, 4.79e37)
+    {}
+  };
+
+  template <typename FloatType>
+  struct machine_dependent<FloatType, 8> : machine_dependent_base<FloatType>
+  {
+    machine_dependent() : machine_dependent_base<FloatType>(
+      1.79e308, -26.628e0, 1.11e-16, 26.543e0, 6.71e7, 2.53e307)
+    {}
+  };
 
 }}} // namespace scitbx::math::erf_constants
 

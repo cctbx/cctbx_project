@@ -13,7 +13,7 @@ namespace scitbx { namespace math {
   FloatType
   erf(FloatType const& x)
   {
-    return erf_engine<FloatType>::compute(x, 0);
+    return erf_engine<FloatType>().compute(x, 0);
   }
 
   //! Approximate values for erfc(x).
@@ -24,7 +24,7 @@ namespace scitbx { namespace math {
   FloatType
   erfc(FloatType const& x)
   {
-    return erf_engine<FloatType>::compute(x, 1);
+    return erf_engine<FloatType>().compute(x, 1);
   }
 
   //! Approximate values for exp(x*x) * erfc(x).
@@ -35,7 +35,7 @@ namespace scitbx { namespace math {
   FloatType
   erfcx(FloatType const& x)
   {
-    return erf_engine<FloatType>::compute(x, 2);
+    return erf_engine<FloatType>().compute(x, 2);
   }
 
 }} // namespace scitbx::math
