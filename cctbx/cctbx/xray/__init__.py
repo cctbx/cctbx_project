@@ -11,6 +11,7 @@ from cctbx import adptbx
 from cctbx import maptbx
 from cctbx.eltbx.caasf import wk1995
 from cctbx.array_family import flex
+from cctbx import sgtbx
 from cctbx import matrix
 from scitbx import fftpack
 from scitbx.python_utils import dicts
@@ -128,6 +129,20 @@ class structure(crystal.special_position_settings):
       site_symmetry = self.site_symmetry(self.scatterers()[i].site)
       r = matrix.sqr(site_symmetry.special_op().r().as_double())
       d_target_d_site[i] = (matrix.row(d_target_d_site[i]) * r).elems
+
+  def expand_to_p1(self):
+    new_structure = structure(
+      crystal.special_position_settings(
+        crystal.symmetry.cell_equivalent_p1(self)))
+    for scatterer in self.scatterers():
+      assert not scatterer.anisotropic_flag, "Not implemented." # XXX
+      site_symmetry = self.site_symmetry(scatterer.site)
+      equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
+      new_scatterer = scatterer.copy()
+      for site in equiv_sites.coordinates():
+        new_scatterer.site = site
+        new_structure.add_scatterer(new_scatterer)
+    return new_structure
 
   def change_basis(self, cb_op):
     new_structure = structure(
