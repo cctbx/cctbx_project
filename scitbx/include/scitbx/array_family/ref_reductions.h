@@ -1,14 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Aug: Copied from cctbx/array_family (R.W. Grosse-Kunstleve)
-     2002 Aug: Renamed: reductions.h -> ref_reductions.h (rwgk)
-     2002 Feb: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef SCITBX_ARRAY_FAMILY_REDUCTIONS_H
 #define SCITBX_ARRAY_FAMILY_REDUCTIONS_H
 
@@ -38,12 +27,12 @@ namespace scitbx { namespace af {
   std::size_t
   max_index(const_ref<ElementType, AccessorType> const& a)
   {
-    std::size_t result;
-    if (a.size() > 0) {
-      result = 0;
-      for(std::size_t i=1;i<a.size();i++) {
-        if (a[result] < a[i]) result = i;
-      }
+    if (a.size() == 0) {
+      throw std::runtime_error("max_index() argument is an empty array");
+    }
+    std::size_t result = 0;
+    for(std::size_t i=1;i<a.size();i++) {
+      if (a[result] < a[i]) result = i;
     }
     return result;
   }
@@ -52,12 +41,12 @@ namespace scitbx { namespace af {
   std::size_t
   min_index(const_ref<ElementType, AccessorType> const& a)
   {
-    std::size_t result;
-    if (a.size() > 0) {
-      result = 0;
-      for(std::size_t i=1;i<a.size();i++) {
-        if (a[result] > a[i]) result = i;
-      }
+    if (a.size() == 0) {
+      throw std::runtime_error("min_index() argument is an empty array");
+    }
+    std::size_t result = 0;
+    for(std::size_t i=1;i<a.size();i++) {
+      if (a[result] > a[i]) result = i;
     }
     return result;
   }
@@ -66,12 +55,12 @@ namespace scitbx { namespace af {
   ElementType
   max(const_ref<ElementType, AccessorType> const& a)
   {
-    ElementType result;
-    if (a.size() > 0) {
-      result = a[0];
-      for(std::size_t i=1;i<a.size();i++) {
-        if (result < a[i]) result = a[i];
-      }
+    if (a.size() == 0) {
+      throw std::runtime_error("max() argument is an empty array");
+    }
+    ElementType result = a[0];
+    for(std::size_t i=1;i<a.size();i++) {
+      if (result < a[i]) result = a[i];
     }
     return result;
   }
@@ -80,12 +69,12 @@ namespace scitbx { namespace af {
   ElementType
   min(const_ref<ElementType, AccessorType> const& a)
   {
-    ElementType result;
-    if (a.size() > 0) {
-      result = a[0];
-      for(std::size_t i=1;i<a.size();i++) {
-        if (result > a[i]) result = a[i];
-      }
+    if (a.size() == 0) {
+      throw std::runtime_error("min() argument is an empty array");
+    }
+    ElementType result = a[0];
+    for(std::size_t i=1;i<a.size();i++) {
+      if (result > a[i]) result = a[i];
     }
     return result;
   }
@@ -94,13 +83,13 @@ namespace scitbx { namespace af {
   ElementType
   max_absolute(const_ref<ElementType, AccessorType> const& a)
   {
-    ElementType result;
-    if (a.size() > 0) {
-      result = fn::absolute(a[0]);
-      for(std::size_t i=1;i<a.size();i++) {
-        ElementType aai = fn::absolute(a[i]);
-        if (result < aai) result = aai;
-      }
+    if (a.size() == 0) {
+      throw std::runtime_error("max_absolute() argument is an empty array");
+    }
+    ElementType result = fn::absolute(a[0]);
+    for(std::size_t i=1;i<a.size();i++) {
+      ElementType aai = fn::absolute(a[i]);
+      if (result < aai) result = aai;
     }
     return result;
   }
@@ -138,6 +127,9 @@ namespace scitbx { namespace af {
   ElementType
   mean(const_ref<ElementType, AccessorType> const& a)
   {
+    if (a.size() == 0) {
+      throw std::runtime_error("mean() argument is an empty array");
+    }
     return sum(a) / a.size();
   }
 
@@ -145,6 +137,9 @@ namespace scitbx { namespace af {
   ElementType
   mean_sq(const_ref<ElementType, AccessorType> const& a)
   {
+    if (a.size() == 0) {
+      throw std::runtime_error("mean_sq() argument is an empty array");
+    }
     return sum_sq(a) / a.size();
   }
 
@@ -156,7 +151,9 @@ namespace scitbx { namespace af {
     const_ref<ElementTypeWeights, AccessorTypeWeights> const& weights)
   {
     if (values.size() != weights.size()) throw_range_error();
-    if (!values.size()) return 0;
+    if (values.size() == 0) {
+      throw std::runtime_error("mean_weighted() argument is an empty array");
+    }
     ElementTypeValues sum_vw = 0;
     ElementTypeWeights sum_w = 0;
     for(std::size_t i=0;i<values.size();i++) {
@@ -174,7 +171,10 @@ namespace scitbx { namespace af {
     const_ref<ElementTypeWeights, AccessorTypeWeights> const& weights)
   {
     if (values.size() != weights.size()) throw_range_error();
-    if (!values.size()) return 0;
+    if (values.size() == 0) {
+      throw std::runtime_error(
+        "mean_sq_weighted() argument is an empty array");
+    }
     ElementTypeValues sum_vvw = 0;
     ElementTypeWeights sum_w = 0;
     for(std::size_t i=0;i<values.size();i++) {
