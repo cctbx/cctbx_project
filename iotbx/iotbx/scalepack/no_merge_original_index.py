@@ -22,7 +22,7 @@ class no_merge_original_index_file:
       line = f.readline()
       t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in xrange(3)], 12)
       self.space_group.expand_smx(sgtbx.rt_mx(r, t))
-    assert self.space_group.order_z() == n_sym_ops_from_file
+    assert self.space_group.order_p() == n_sym_ops_from_file
     f.close()
     all_arrays = scalepack_ext.no_merge_original_index_arrays(
       file_name, n_sym_ops_from_file*2+1)
@@ -46,30 +46,55 @@ class no_merge_original_index_file:
       data=self.i_obs,
       sigmas=self.sigmas).merge_equivalents()
 
-from scitbx.python_utils.misc import user_plus_sys_time
-t = user_plus_sys_time()
-#s = no_merge_original_index_file("head_tail.sca")
-s = no_merge_original_index_file("pk1-unmerged.sca")
-#s = no_merge_original_index_file("tt.sca")
-print t.delta()
-print tuple(s.original_indices[:3])
-print tuple(s.unique_indices[:3])
-print tuple(s.batch_numbers[:3])
-print tuple(s.centric_tags[:3])
-print tuple(s.spindle_flags[:3])
-print tuple(s.asymmetric_unit_indices[:3])
-print tuple(s.i_obs[:3])
-print tuple(s.sigmas[:3])
-print tuple(s.original_indices[-3:])
-print tuple(s.unique_indices[-3:])
-print tuple(s.batch_numbers[-3:])
-print tuple(s.centric_tags[-3:])
-print tuple(s.spindle_flags[-3:])
-print tuple(s.asymmetric_unit_indices[-3:])
-print tuple(s.i_obs[-3:])
-print tuple(s.sigmas[-3:])
-m = s.merge_equivalents()
-m.array().show_summary()
-print "min redundancies:", flex.min(m.redundancies())
-print "max redundancies:", flex.max(m.redundancies())
-print "mean redundancies:", flex.mean(m.redundancies().as_double())
+def quick_test(file_name):
+  from scitbx.python_utils.misc import user_plus_sys_time
+  t = user_plus_sys_time()
+  s = no_merge_original_index_file(file_name)
+  print "Time read:", t.delta()
+  print tuple(s.original_indices[:3])
+  print tuple(s.unique_indices[:3])
+  print tuple(s.batch_numbers[:3])
+  print tuple(s.centric_tags[:3])
+  print tuple(s.spindle_flags[:3])
+  print tuple(s.asymmetric_unit_indices[:3])
+  print tuple(s.i_obs[:3])
+  print tuple(s.sigmas[:3])
+  print tuple(s.original_indices[-3:])
+  print tuple(s.unique_indices[-3:])
+  print tuple(s.batch_numbers[-3:])
+  print tuple(s.centric_tags[-3:])
+  print tuple(s.spindle_flags[-3:])
+  print tuple(s.asymmetric_unit_indices[-3:])
+  print tuple(s.i_obs[-3:])
+  print tuple(s.sigmas[-3:])
+  m = s.merge_equivalents()
+  m.array().show_summary()
+  print "min redundancies:", flex.min(m.redundancies())
+  print "max redundancies:", flex.max(m.redundancies())
+  print "mean redundancies:", flex.mean(m.redundancies().as_double())
+  print
+
+def run():
+  file_names = """
+/net/redbelly/lbnl1/share/structure-lib/p9/data/infl.sca
+/net/redbelly/lbnl1/share/structure-lib/p9/data/peak.sca
+/net/redbelly/lbnl1/share/structure-lib/p9/data/high.sca
+/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/auki_rd_1.sca
+/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/hgi2_rd_1.sca
+/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/hgki_rd_1.sca
+/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/ndac_rd_1.sca
+/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/rt_rd_1.sca
+/net/redbelly/lbnl1/share/structure-lib/rh-dehalogenase/data/smac_1.sca
+/net/redbelly/lbnl1/share/structure-lib/vmp/data/infl.sca
+/net/redbelly/lbnl1/share/structure-lib/vmp/data/peak.sca
+/net/redbelly/lbnl1/share/structure-lib/vmp/data/high.sca
+/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/p123-unmerged.sca
+/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/pk1-unmerged.sca
+/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/pk12-unmerged.sca
+/net/redbelly/scratch1/rwgk/bnl/karen/shelxd/pk1234-unmerged.sca""".split()
+  for file_name in file_names:
+    print "File name:", file_name
+    quick_test(file_name)
+
+if (__name__ == "__main__"):
+  run()
