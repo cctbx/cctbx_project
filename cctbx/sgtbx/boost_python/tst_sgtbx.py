@@ -695,6 +695,17 @@ def exercise_phase_info():
   assert approx_equal(p.ht_angle(), float(p.ht()) / p.t_den() * math.pi)
   assert p.ht_angle(0) == p.ht_angle()
   assert approx_equal(p.ht_angle(1), p.ht_angle()*180/math.pi)
+  p = phase_info(sgtbx.space_group("P 2ac 2ab"), (0,10,8))
+  assert approx_equal(p.nearest_valid_phase(1.e15), 0)
+  assert approx_equal(p.nearest_valid_phase(-1.e15), 0)
+  assert approx_equal(p.nearest_valid_phase(math.pi+1.e15), math.pi)
+  assert approx_equal(p.nearest_valid_phase(math.pi-1.e15), math.pi)
+  p = phase_info(g, (1,0,0))
+  phi = p.ht_angle()
+  assert approx_equal(p.nearest_valid_phase(phi+1.e15), phi)
+  assert approx_equal(p.nearest_valid_phase(phi-1.e15), phi)
+  assert approx_equal(p.nearest_valid_phase(phi+math.pi+1.e15), phi+math.pi)
+  assert approx_equal(p.nearest_valid_phase(phi+math.pi-1.e15), phi+math.pi)
   for i in xrange(-3, 4):
     phi = p.ht_angle() + i * math.pi
     assert p.is_valid_phase(phi)
@@ -707,7 +718,15 @@ def exercise_phase_info():
     assert p.is_valid_phase(phi, 0, 1.e6)
     assert p.is_valid_phase(p.nearest_valid_phase(phi))
     assert p.is_valid_phase(p.nearest_valid_phase(phi, 0), 0)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+1.e-15, 0), 0)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, 0), 0)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+math.pi+1.e-15, 0), 0)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+math.pi-1.e-15, 0), 0)
     assert p.is_valid_phase(p.nearest_valid_phase(phi, 1), 1)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+1.e-15, 1), 1)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi-1.e-15, 1), 1)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+180+1.e-15, 1), 1)
+    assert p.is_valid_phase(p.nearest_valid_phase(phi+180-1.e-15, 1), 1)
 
 def exercise_reciprocal_space_asu():
   reciprocal_space_asu = sgtbx.reciprocal_space_asu
