@@ -471,3 +471,17 @@ class model_matches:
     for pair in self.refined_matches[i_refined_matches].pairs:
       result.add_position(source_model.positions()[pair[i_model]])
     return result
+
+  def transform_model(self, i_model, i_refined_matches=0):
+    assert i_model in (1,2)
+    assert 0 <= i_refined_matches < self.n_matches()
+    rt = self.refined_matches[i_refined_matches].rt
+    if (i_model == 1):
+      source_model = self.model1
+      rt = rt.inverse()
+    else:
+      source_model = self.model2
+    result = model(special_position_settings=source_model)
+    for pos in source_model.positions():
+      result.add_position(position(label=pos.label, site=(rt*pos.site).elems))
+    return result

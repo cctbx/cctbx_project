@@ -189,6 +189,30 @@ def run_call_back(flags, space_group_info):
   assert model_matches.consensus_model(i_model=2).size() >= model2.size()-3
   model1.expand_to_p1()
   model2.as_xray_structure()
+  for i1,i2,m1,m2 in [(1,2,model1,model2),(2,1,model2,model1)]:
+    m2_t = model_matches.transform_model(i_model=i2)
+    for pair in model_matches.refined_matches[0].pairs:
+      site1 = m1.positions()[pair[i1-1]].site
+      site2 = m2_t.positions()[pair[i2-1]].site
+      equiv_sites1 = sgtbx.sym_equiv_sites(m1.site_symmetry(site1))
+      dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites1, site2)
+      assert dist_info.dist() < model_matches.tolerance + 1.e-6
+    if (i1 == 1):
+      singles = model_matches.refined_matches[0].singles2
+    else:
+      singles = model_matches.refined_matches[0].singles1
+    for i_site2 in singles:
+      site2 = m2_t.positions()[i_site2].site
+      for i_site1 in xrange(len(model1.positions())):
+        site1 = m1.positions()[i_site1].site
+        equiv_sites1 = sgtbx.sym_equiv_sites(m1.site_symmetry(site1))
+        dist_info = sgtbx.min_sym_equiv_distance_info(equiv_sites1, site2)
+        if (dist_info.dist() < model_matches.tolerance - 1.e-6):
+          ok = 00000
+          for pair in model_matches.refined_matches[0].pairs:
+            if (pair[i1-1] == i_site1):
+              ok = 0001
+          assert ok
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
