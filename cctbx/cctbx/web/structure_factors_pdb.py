@@ -31,15 +31,11 @@ def run(server_info, inp, status):
                                        d_min          = float(inp.d_min)).f_calc()
   print "\nNumber of Miller indices:", f_calc.indices().size()
   print
-  print "</pre><table border=2 cellpadding=2>"
   status.in_table = True
-  print "<tr>"
-  print "<th>hkl<th>Amplitude<th>Phase"
+  print "    h     k     l           Fcalc      Pcalc"
   for i,h in enumerate(f_calc.indices()):
-    print "<tr>"
-    print "<td>%4d %4d %4d<td>%15.6f<td align=right>%10.3f" % (
+    print "%5d %5d %5d %15.6f %10.4f" % (
       h + complex_math.abs_arg(f_calc.data()[i], deg=True))
-  print "</table><pre>"
   status.in_table = False
   print
 
