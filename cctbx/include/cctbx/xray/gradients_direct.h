@@ -35,7 +35,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
     {
       typedef float_type f_t;
       typedef std::complex<f_t> c_t;
-      f_t two_pi(scitbx::constants::two_pi);
       if (grad_flags_site) d_target_d_site.fill(0);
       if (grad_flags_u_aniso) d_target_d_u_star.fill(0);
       fractional<float_type> dtds_term;
