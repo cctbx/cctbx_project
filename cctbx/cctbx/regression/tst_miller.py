@@ -133,6 +133,18 @@ def exercise_array():
   assert approx_equal(tuple(ma.data()), tuple(v.data()))
   assert s.sigmas() == None
   assert v.sigmas() == None
+  ma = miller.array(ms)
+  s = ma[:]
+  assert s.data() == None
+  assert s.sigmas() == None
+  ma = miller.array(ms, flex.double((1,2)))
+  s = ma[:]
+  assert s.data().all_eq(ma.data())
+  assert s.sigmas() == None
+  ma = miller.array(ms, flex.double((1,2)), flex.double(3,4))
+  s = ma[:]
+  assert s.data().all_eq(ma.data())
+  assert s.sigmas().all_eq(ma.sigmas())
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")

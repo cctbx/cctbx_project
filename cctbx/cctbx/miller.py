@@ -12,6 +12,12 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 import sys
 import math
+import types
+
+def _slice_or_none(array, slice_object):
+  assert type(slice_object) == types.SliceType
+  if (array == None): return None
+  return array.__getitem__(slice_object)
 
 class binner(ext.binner):
 
@@ -58,6 +64,14 @@ class set(crystal.symmetry):
 
   def anomalous_flag(self):
     return self._anomalous_flag
+
+  def __getitem__(self, slice_object):
+    assert type(slice_object) == types.SliceType
+    assert self.indices() != None
+    return set(
+      crystal_symmetry=self,
+      indices=self.indices().__getitem__(slice_object),
+      anomalous_flag=self.anomalous_flag())
 
   def show_summary(self, f=sys.stdout):
     print >> f, "Number of Miller indices:", len(self.indices())
@@ -194,6 +208,12 @@ class array(set):
 
   def info(self):
     return self._info
+
+  def __getitem__(self, slice_object):
+    return array(
+      miller_set=set.__getitem__(self, slice_object),
+      data=_slice_or_none(self.data(), slice_object),
+      sigmas=_slice_or_none(self.sigmas(), slice_object))
 
   def show_summary(self, f=sys.stdout):
     print >> f, "Miller array info:", self.info()
