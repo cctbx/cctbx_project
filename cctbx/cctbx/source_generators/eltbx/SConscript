@@ -27,10 +27,11 @@ generated_sasaki_files = Split("""
   sasaki_tables_73_82.cpp
 """)
 
-for module, generated_files in ((generate_henke_cpp, generated_henke_files),
-                                (generate_sasaki_cpp, generated_sasaki_files)):
+for module_file_name,module,generated_files in (
+    ("generate_henke_cpp.py", generate_henke_cpp, generated_henke_files),
+    ("generate_sasaki_cpp.py", generate_sasaki_cpp, generated_sasaki_files)):
   files = ["#cctbx/eltbx/" + name for name in generated_files]
   env_base.Command(
     files,
-    module.__file__,
+    module_file_name,
     module.scons_command)

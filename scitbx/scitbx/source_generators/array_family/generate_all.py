@@ -1,10 +1,10 @@
-import os.path
 import generate_reductions
 import generate_std_imports
 import generate_operator_functors
 import generate_operator_traits_builtin
 import generate_algebras
 import generate_apply
+import os
 
 def run(env, target, source):
   array_family = os.path.split(str(target[0]))[0]
