@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/xray/scatterer.h>
@@ -29,9 +20,6 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       apply_symmetry_overloads, apply_symmetry, 2, 6)
-
-    static w_t
-    raw_copy(w_t const& o) { return o; }
 
     static void
     wrap()
@@ -87,7 +75,6 @@ namespace {
         .def("multiplicity", &w_t::multiplicity)
         .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)
-        .def("raw_copy", raw_copy)
       ;
     }
   };
