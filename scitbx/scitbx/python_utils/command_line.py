@@ -19,3 +19,18 @@ class parse_options:
       else:
         setattr(self, flds[0], flds[1])
       self.n += 1
+
+def parse_options_with_chunk(argv, keywords=[]):
+  flags = parse_options(argv, ["ChunkSize", "ChunkMember"] + keywords)
+  if (flags.ChunkSize == 00000):
+    flags.ChunkSize = 1
+  else:
+     flags.ChunkSize = int(flags.ChunkSize)
+  if (flags.ChunkMember == 00000):
+    flags.ChunkMember = 0
+  else:
+     flags.ChunkMember = int(flags.ChunkMember)
+  assert flags.ChunkSize > 0
+  assert flags.ChunkMember >= 0
+  assert flags.ChunkMember < flags.ChunkSize
+  return flags
