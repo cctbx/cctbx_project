@@ -278,17 +278,6 @@ def generate_unary_ops(array_type_name):
   }
 """ % (result_constructor_args,
        unary_functors[op_symbol])
-    if (array_type_name == "ref"):
-      print """%s
-  inline
-%s
-  operator%s(const %s& a) {
-    return operator%s(a.const_ref());
-  }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       op_symbol, d.params[0].replace("const_ref", "ref"),
-       op_symbol)
 
 def generate_unary_apply(array_type_name):
   result_constructor_args = get_result_constructor_args(array_type_name)
@@ -336,29 +325,6 @@ def generate_unary_apply(array_type_name):
        return_array_type.replace(
          "ReturnElementType", "typename UnaryOperation::result_type"),
        d.params[0])
-  if (array_type_name == "ref"):
-    print """%s
-  inline
-  %s
-  apply(UnaryOperation op,
-        const %s& a,
-        type_holder<ReturnElementType> result_type_holder) {
-    return apply(op, a.const_ref(), result_type_holder);
-  }""" % (format_header("  ", header1),
-          return_array_type,
-          d.params[0].replace("const_ref", "ref"))
-    print """
-%s
-  inline
-  %s
-  apply(UnaryOperation op,
-        const %s& a) {
-    return apply(op, a.const_ref());
-  }
-""" % (format_header("  ", header2),
-       return_array_type.replace(
-         "ReturnElementType", "typename UnaryOperation::result_type"),
-       d.params[0].replace("const_ref", "ref"))
 
 def elementwise_binary_op(
       array_type_name, op_class, op_symbol, type_flags, function_name):
@@ -402,23 +368,6 @@ def elementwise_binary_op(
        a.type_flags_code,
        binary_functors[op_symbol], d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1])
-  if (array_type_name == "ref"):
-    print """%s
-  inline
-%s
-  %s(
-    const %s& a1,
-    const %s& a2) {
-      return %s(a1%s, a2%s);
-  }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       function_name,
-       d.params[0].replace("const_ref", "ref"),
-       d.params[1].replace("const_ref", "ref"),
-       function_name,
-       a.begin[0].replace("begin", "const_ref"),
-       a.begin[1].replace("begin", "const_ref"))
 
 def elementwise_inplace_binary_op(
       array_type_name, op_class, op_symbol, type_flags):
@@ -445,21 +394,6 @@ def elementwise_inplace_binary_op(
        d.return_element_type[0],
        d.element_types[1],
        a.begin[1], a.loop_n);
-  if (array_type_name == "ref" and type_flags == (1,1)):
-    print """%s
-  inline
-  %s&
-  operator%s(
-    %s& a1,
-    const %s& a2) {
-    return operator%s(a1, a2.const_ref());
-  }
-""" % (format_header("  ", d.header),
-       d.params[0],
-       op_symbol,
-       d.params[0],
-       d.params[1].replace("const_ref", "ref"),
-       op_symbol)
 
 def generate_elementwise_binary_op(
       array_type_name, op_class, op_symbol, function_name = None):
@@ -507,23 +441,6 @@ def reducing_boolean_op(array_type_name, op_symbol, type_flags):
        format_list("        ", d.return_element_type),
        d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1], a.loop_n)
-  if (array_type_name == "ref"):
-    print """%s
-  inline
-%s
-  operator%s(
-    const %s& a1,
-    const %s& a2) {
-    return operator%s(a1%s, a2%s);
-  }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_element_type),
-       op_symbol,
-       d.params[0].replace("const_ref", "ref"),
-       d.params[1].replace("const_ref", "ref"),
-       op_symbol,
-       a.begin[0].replace("begin", "const_ref"),
-       a.begin[1].replace("begin", "const_ref"))
 
 def generate_reducing_boolean_op(array_type_name, op_symbol):
   for type_flags in ((1,1), (1,0), (0,1)):
@@ -589,17 +506,6 @@ def generate_1arg_element_wise(array_type_name, function_names):
         functor_%s<return_element_type, ElementType>(), a.begin()));
   }
 """ % (result_constructor_args, function_name)
-    if (array_type_name == "ref"):
-      print """%s
-  inline
-%s
-  %s(const %s& a) {
-    return %s(a.const_ref());
-  }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       function_name, d.params[0].replace("const_ref", "ref"),
-       function_name)
 
 def generate_2arg_element_wise(
   array_type_name, function_names,
@@ -646,23 +552,6 @@ def generate_2arg_element_wise(
        a.type_flags_code,
        function_name, d.element_types[0], d.element_types[1],
        a.begin[0], a.begin[1])
-      if (array_type_name == "ref"):
-        print """%s
-  inline
-%s
-  %s(
-    const %s& a1,
-    const %s& a2) {
-      return %s(a1%s, a2%s);
-  }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       function_name,
-       d.params[0].replace("const_ref", "ref"),
-       d.params[1].replace("const_ref", "ref"),
-       function_name,
-       a.begin[0].replace("begin", "const_ref"),
-       a.begin[1].replace("begin", "const_ref"))
 
 def generate_2arg_addl_element_wise(
   array_type_name, function_names,
@@ -713,27 +602,6 @@ def generate_2arg_addl_element_wise(
        a.type_flags_code,
        function_name, "ElementType", "ElementType", "ElementType",
        a.begin[0], a.begin[1], addl_args[1])
-      if (array_type_name == "ref"):
-        print """%s
-  inline
-%s
-  %s(
-    const %s& a1,
-    const %s& a2,
-    %s) {
-      return %s(
-        a1%s, a2%s, %s);
-  }
-""" % (format_header("  ", d.header),
-       format_list("  ", d.return_array_type),
-       function_name,
-       d.params[0].replace("const_ref", "ref"),
-       d.params[1].replace("const_ref", "ref"),
-       addl_args[0],
-       function_name,
-       a.begin[0].replace("begin", "const_ref"),
-       a.begin[1].replace("begin", "const_ref"),
-       addl_args[1])
 
 def generate_element_wise_special(
   array_type_name, special_def
@@ -771,18 +639,6 @@ def generate_element_wise_special(
 """ % (result_constructor_args,
        p.function_name,
        special_def[0], special_def[2])
-    if (array_type_name == "ref"):
-      print """%s
-  inline
-  %s
-  %s(const %s& a) {
-    return %s(a.const_ref());
-  }
-""" % (format_header("  ", p.header),
-       p.return_array_type,
-       p.function_name,
-       p.arg_array_types[0].replace("const_ref", "ref"),
-       p.function_name)
   else:
     for type_flags in ((1,1), (1,0), (0,1)):
       a = binary_operator_algo_params(array_type_name, type_flags)
@@ -829,22 +685,6 @@ def generate_element_wise_special(
        p.function_name,
        special_def[0], special_def[2], special_def[3],
        a.begin[0], a.begin[1])
-      if (array_type_name == "ref"):
-        print """%s
-  inline
-  %s
-  %s(
-    const %s& a1,
-    const %s& a2) {
-      return %s(a1%s, a2%s);
-  }
-""" % (format_header("  ", p.header), p.return_array_type,
-       p.function_name,
-       params[0].replace("const_ref", "ref"),
-       params[1].replace("const_ref", "ref"),
-       p.function_name,
-       a.begin[0].replace("begin", "const_ref"),
-       a.begin[1].replace("begin", "const_ref"))
 
 def one_type(array_type_name):
   f = open("%s_algebra.h" % (array_type_name,), "w")
@@ -908,8 +748,9 @@ namespace cctbx { namespace af {
     generate_element_wise_special(array_type_name, special_def)
   for args in misc_functions_2arg:
     apply(generate_2arg_addl_element_wise, (array_type_name,) + args)
-  generate_1arg_reductions(array_type_name)
-  generate_2arg_reductions(array_type_name)
+  if (array_type_name != "ref"):
+    generate_1arg_reductions(array_type_name)
+    generate_2arg_reductions(array_type_name)
 
   print "}} // namespace cctbx::af"
   print
