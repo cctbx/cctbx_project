@@ -215,12 +215,12 @@ namespace cctbx { namespace af {
       }
 
       // non-std
-            handle_type& handle()       {
+            handle_type* handle()       {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         return m_handle;
       }
       // non-std
-      const handle_type& handle() const {
+      const handle_type* handle() const {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         return m_handle;
       }
@@ -258,15 +258,24 @@ namespace cctbx { namespace af {
       void reserve(const size_type& sz) {
         if (capacity() < sz) {
           shared_base_v2<ElementType> new_this(sz, reserve_flag());
-          new_this.assign(begin(), end());
+          std::uninitialized_copy(begin(), end(), new_this.begin());
+          new_this.m_set_size(size());
           new_this.swap(*this);
         }
       }
 
+      // non-std
+      shared_base_v2<ElementType>
+      deep_copy() const {
+        return shared_base_v2<ElementType>(begin(), end());
+      }
+
       void assign(const size_type& sz, const ElementType& x) {
         if (sz > capacity()) {
-          shared_base_v2<ElementType> new_this(sz, x);
-          new_this.swap(*this);
+          clear();
+          reserve(sz);
+          std::uninitialized_fill_n(begin(), sz, x);
+          m_handle->size = m_handle->capacity;
         }
         else if (sz > size()) {
           std::fill(begin(), end(), x);
@@ -283,8 +292,10 @@ namespace cctbx { namespace af {
       {
         size_type sz = last - first;
         if (sz > capacity()) {
-          shared_base_v2<ElementType> new_this(first, last);
-          new_this.swap(*this);
+          clear();
+          reserve(sz);
+          std::uninitialized_copy(first, last, begin());
+          m_handle->size = m_handle->capacity;
         }
         else if (sz > size()) {
           const ElementType* mid = first + size() ;
@@ -304,9 +315,12 @@ namespace cctbx { namespace af {
           m_incr_size(1);
         }
         else {
-          m_insert_overflow(end(), x, size_type(1), true);
+          m_insert_overflow(end(), size_type(1), x, true);
         }
       }
+
+      // non-std
+      void append(const ElementType& x) { push_back(x); }
 
       void pop_back() {
         m_decr_size(1);
@@ -316,7 +330,7 @@ namespace cctbx { namespace af {
       ElementType* insert(ElementType* pos, const ElementType& x) {
         size_type n = pos - begin();
         if (size() == capacity()) {
-          m_insert_overflow(pos, x, size_type(1), false);
+          m_insert_overflow(pos, size_type(1), x, false);
         }
         else {
           if (pos == end()) {
@@ -340,8 +354,10 @@ namespace cctbx { namespace af {
       {
         size_type n = last - first;
         if (n == 0) return;
-        size_type new_size = size() + n;
-        if (new_size <= capacity()) {
+        if (size() + n > capacity()) {
+          m_insert_overflow(pos, first, last);
+        }
+        else {
           size_type n_move_up = end() - pos;
           ElementType* old_end = end();
           if (n_move_up > n) {
@@ -359,25 +375,12 @@ namespace cctbx { namespace af {
             std::copy(first, mid, pos);
           }
         }
-        else {
-          size_type old_size = size();
-          size_type new_capacity = old_size + std::max(old_size, n);
-          shared_base_v2<ElementType>
-          new_this(new_capacity, reserve_flag());
-          std::uninitialized_copy(begin(), pos, new_this.begin());
-          new_this.m_set_size(pos - begin());
-          std::uninitialized_copy(first, last, new_this.end());
-          new_this.m_incr_size(n);
-          std::uninitialized_copy(pos, end(), new_this.end());
-          new_this.m_set_size(new_size);
-          new_this.swap(*this);
-        }
       }
 
       void insert(ElementType* pos, const size_type& n, const ElementType& x) {
         if (n == 0) return;
         if (size() + n > capacity()) {
-          m_insert_overflow(pos, x, n, false);
+          m_insert_overflow(pos, n, x, false);
         }
         else {
           ElementType x_copy = x;
@@ -432,14 +435,6 @@ namespace cctbx { namespace af {
         erase(begin(), end());
       }
 
-      // non-std
-      shared_base_v2<ElementType>
-      deep_copy() const {
-        shared_base_v2<ElementType> result(size(), reserve_flag());
-        result.assign(begin(), end());
-        return result;
-      }
-
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
       template <typename OtherElementType>
@@ -462,12 +457,16 @@ namespace cctbx { namespace af {
 
     protected:
 
-      void m_insert_overflow(ElementType* pos, const ElementType& x,
-                             const size_type& n, bool at_end) {
-        size_type old_size = size();
-        size_type new_capacity = old_size + std::max(old_size, n);
+      size_type m_compute_new_capacity(const size_type& old_size,
+                                       const size_type& n) {
+        return old_size + std::max(old_size, n);
+      }
+
+      void m_insert_overflow(ElementType* pos,
+                             const size_type& n, const ElementType& x,
+                             bool at_end) {
         shared_base_v2<ElementType>
-        new_this(new_capacity, reserve_flag());
+        new_this(m_compute_new_capacity(size(), n), reserve_flag());
         std::uninitialized_copy(begin(), pos, new_this.begin());
         new_this.m_set_size(pos - begin());
         if (n == 1) {
@@ -480,8 +479,23 @@ namespace cctbx { namespace af {
         }
         if (!at_end) {
           std::uninitialized_copy(pos, end(), new_this.end());
-          new_this.m_set_size(old_size + n);
+          new_this.m_set_size(size() + n);
         }
+        new_this.swap(*this);
+      }
+
+      void m_insert_overflow(ElementType* pos,
+                             const ElementType* first,
+                             const ElementType* last) {
+        size_type n = last - first;
+        shared_base_v2<ElementType>
+        new_this(m_compute_new_capacity(size(), n), reserve_flag());
+        std::uninitialized_copy(begin(), pos, new_this.begin());
+        new_this.m_set_size(pos - begin());
+        std::uninitialized_copy(first, last, new_this.end());
+        new_this.m_incr_size(n);
+        std::uninitialized_copy(pos, end(), new_this.end());
+        new_this.m_set_size(size() + n);
         new_this.swap(*this);
       }
 
