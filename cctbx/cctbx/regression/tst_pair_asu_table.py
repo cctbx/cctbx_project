@@ -1,4 +1,5 @@
 from iotbx.kriber import strudat
+from cctbx import geometry_restraints
 from cctbx import crystal
 from scitbx.python_utils.misc import adopt_init_args
 import math
@@ -96,8 +97,58 @@ def exercise(
       bond_asu_table=bond_asu_table,
       weak=weak_check_sym_equiv)
 
+def exercise_bond_sorted_asu_proxies(
+      structure,
+      distance_cutoff):
+  asu_mappings = structure.asu_mappings(buffer_thickness=distance_cutoff)
+  bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  bond_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
+  bond_sym_table = bond_asu_table.extract_pair_sym_table()
+  bond_params_table = geometry_restraints.bond_params_table(
+    structure.scatterers().size())
+  for i_seq,bond_sym_dict in enumerate(bond_sym_table):
+    for j_seq in bond_sym_dict.keys():
+      if (i_seq > j_seq):
+        j_seq,i_seq = i_seq,j_seq
+      bond_params_table[i_seq][j_seq] = geometry_restraints.bond_params(
+        distance_ideal=3.1, weight=1)
+  proxies_fast = geometry_restraints.bond_sorted_asu_proxies(
+    bond_params_table=bond_params_table,
+    bond_asu_table=bond_asu_table)
+  pair_generator = crystal.neighbors_simple_pair_generator(
+    asu_mappings=asu_mappings,
+    distance_cutoff=distance_cutoff,
+    minimal=False)
+  proxies_slow = geometry_restraints.bond_sorted_asu_proxies(
+    asu_mappings=asu_mappings)
+  for pair in pair_generator:
+    proxies_slow.process(geometry_restraints.bond_asu_proxy(
+      pair=pair,
+      distance_ideal=3.1,
+      weight=1))
+  assert proxies_slow.simple.size() == proxies_fast.simple.size()
+  assert proxies_slow.asu.size() == proxies_fast.asu.size()
+  ctrl = {}
+  for proxy in proxies_slow.simple:
+    assert not ctrl.has_key(proxy.i_seqs)
+    ctrl[proxy.i_seqs] = 0
+  for proxy in proxies_fast.simple:
+    assert ctrl.has_key(proxy.i_seqs)
+    ctrl[proxy.i_seqs] += 1
+  assert ctrl.values() == [1]*len(ctrl)
+  ctrl = {}
+  for proxy in proxies_slow.asu:
+    key = proxy.i_seq,proxy.j_seq,proxy.j_sym
+    assert not ctrl.has_key(key)
+    ctrl[key] = 0
+  for proxy in proxies_fast.asu:
+    key = proxy.i_seq,proxy.j_seq,proxy.j_sym
+    assert ctrl.has_key(key)
+    ctrl[key] += 1
+  assert ctrl.values() == [1]*len(ctrl)
+
 def run():
-  verbose = "--Verbose" in sys.argv[1:]
+  verbose = "--verbose" in sys.argv[1:]
   default_distance_cutoff=3.5
   regression_misc = os.path.join(
     os.environ["LIBTBX_DIST_ROOT"], "regression", "misc")
@@ -121,14 +172,19 @@ def run():
       weak_check_sym_equiv = (
         entry.reference.find("weak_check_sym_equiv") >= 0)
       connectivities = entry.connectivities(all_or_nothing=True)
-      exercise(
-        structure=structure,
-        distance_cutoff=distance_cutoff,
-        connectivities=connectivities,
-        weak_check_sym_equiv=weak_check_sym_equiv,
-        verbose=verbose)
+      if (1):
+        exercise(
+          structure=structure,
+          distance_cutoff=distance_cutoff,
+          connectivities=connectivities,
+          weak_check_sym_equiv=weak_check_sym_equiv,
+          verbose=verbose)
       if (0 or verbose):
         print
+      if (file_name.endswith("strudat_zeolite_atlas")):
+        exercise_bond_sorted_asu_proxies(
+          structure=structure,
+          distance_cutoff=distance_cutoff)
   print "OK"
 
 if (__name__ == "__main__"):

@@ -141,15 +141,13 @@ def exercise(verbose=0):
   nonbonded_params.distance_table.setdefault(
     "Default")["Default"] = default_vdw_distance
   pair_proxies = geometry_restraints.pair_proxies(
+    bond_params_table=bond_params_table,
+    shell_asu_tables=shell_asu_tables,
     model_indices=None,
     conformer_indices=None,
     nonbonded_params=nonbonded_params,
     nonbonded_types=atom_energy_types,
-    bond_params_table=bond_params_table,
-    shell_asu_tables=shell_asu_tables,
-    bonded_distance_cutoff=0,
-    nonbonded_distance_cutoff=nonbonded_cutoff,
-    nonbonded_buffer=0)
+    nonbonded_distance_cutoff_plus_buffer=nonbonded_cutoff)
   if (0 or verbose):
     print "pair_proxies.bond_proxies.n_total():", \
            pair_proxies.bond_proxies.n_total(),
@@ -159,8 +157,9 @@ def exercise(verbose=0):
            pair_proxies.nonbonded_proxies.n_total(),
     print "simple:", pair_proxies.nonbonded_proxies.simple.size(),
     print "sym:", pair_proxies.nonbonded_proxies.asu.size()
-    print "pair_proxies.n_nonbonded:", pair_proxies.n_nonbonded
-    print "pair_proxies.n_1_4:      ", pair_proxies.n_1_4
+    print "pair_proxies.n_nonbonded:", \
+      pair_proxies.nonbonded_proxies.n_nonbonded
+    print "pair_proxies.n_1_4:      ", pair_proxies.nonbonded_proxies.n_1_4
     print "min_distance_nonbonded: %.2f" % flex.min(
       geometry_restraints.nonbonded_deltas(
         sites_cart=sites_cart,
@@ -214,8 +213,8 @@ def exercise(verbose=0):
         angle_proxies=angle_proxies)
       pair_proxies = manager.pair_proxies(sites_cart=sites_cart)
       if (0 or verbose):
-        print "len(vdw_1):", pair_proxies.n_nonbonded
-        print "len(vdw_2):", pair_proxies.n_1_4
+        print "len(vdw_1):", pair_proxies.nonbonded_proxies.n_nonbonded
+        print "len(vdw_2):", pair_proxies.nonbonded_proxies.n_1_4
       minimized = geometry_restraints.lbfgs.lbfgs(
         sites_cart=sites_cart,
         geometry_restraints_manager=manager,
