@@ -2,7 +2,7 @@ from scitbx.array_family import flex
 
 # see boost/libs/python/doc/tutorial/doc/quickstart.txt
 
-boost_python_metaclass = flex.double.__class__ 
+boost_python_metaclass = flex.double.__class__
 
 class injector(object):
 
