@@ -261,17 +261,18 @@ def pickle_large_arrays(max_exp):
           tl = time.time() - t0
         else:
           pickler_name = pickler.__name__
-          f = open("pickle.tmp", "w")
+          f = open("pickle.tmp", "wb")
           t0 = time.time()
           pickler.dump(a, f, 1)
           td = time.time() - t0
           f.close()
-          f = open("pickle.tmp", "r")
+          f = open("pickle.tmp", "rb")
           t0 = time.time()
           b = pickle.load(f)
           tl = time.time() - t0
           f.close()
         print array_type.__name__, n, pickler_name, "%.2f %.2f" % (td, tl)
+        sys.stdout.flush()
 
 def run(iterations):
   i = 0

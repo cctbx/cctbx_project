@@ -622,7 +622,7 @@ namespace cctbx { namespace af {
 
   boost::python::ref shared_float_getstate(shared<float> const& a)
   {
-    return picklers::array_fast<float>::getstate(a, 13);
+    return picklers::array_fast<float>::getstate(a, 14);
   }
 
   void shared_float_setstate(shared<float>& a, boost::python::ref state)
@@ -632,7 +632,7 @@ namespace cctbx { namespace af {
 
   boost::python::ref shared_double_getstate(shared<double> const& a)
   {
-    return picklers::array_fast<double>::getstate(a, 19);
+    return picklers::array_fast<double>::getstate(a, 20);
   }
 
   void shared_double_setstate(shared<double>& a, boost::python::ref state)
@@ -643,7 +643,7 @@ namespace cctbx { namespace af {
   boost::python::ref shared_complex_double_getstate(
     shared<std::complex<double> > const& a)
   {
-    return picklers::array_fast<std::complex<double> >::getstate(a, 2*19);
+    return picklers::array_fast<std::complex<double> >::getstate(a, 2*20);
   }
 
   void shared_complex_double_setstate(
@@ -670,7 +670,7 @@ namespace cctbx { namespace af {
     shared<hendrickson_lattman<double> > const& a)
   {
     return
-      picklers::array_fast<hendrickson_lattman<double> >::getstate(a, 4*19);
+      picklers::array_fast<hendrickson_lattman<double> >::getstate(a, 4*20);
   }
 
   void shared_hendrickson_lattman_double_setstate(
