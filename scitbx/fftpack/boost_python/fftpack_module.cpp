@@ -17,7 +17,9 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <scitbx/array_family/boost_python/tiny_conversions.h>
-#include <boost/python/module.hpp>
+#include <boost/python/module_init.hpp>
+#include <boost/python/scope.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 
 namespace scitbx { namespace fftpack { namespace {
@@ -74,7 +76,7 @@ namespace scitbx { namespace fftpack { namespace {
     af::flex_grid_default_index_type const& mandatory_factors)
   {
     return adjust_gridding_array_flex(min_grid, max_prime,
-                                             mandatory_factors);
+                                      mandatory_factors);
   }
 
   struct factorization_wrappers
@@ -82,16 +84,15 @@ namespace scitbx { namespace fftpack { namespace {
     typedef factorization w_t;
 
     static void
-    def_all(boost::python::module& this_module)
+    def_all()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t>("factorization",
-          args<>())
-          .def_init(args<std::size_t, bool>())
-          .def("n", &w_t::n)
-          .def("factors", &w_t::factors)
-      );
+      class_<w_t>("factorization",
+        args<>())
+        .def_init(args<std::size_t, bool>())
+        .def("n", &w_t::n)
+        .def("factors", &w_t::factors)
+      ;
     }
   };
 
@@ -145,19 +146,18 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all(boost::python::module& this_module)
+    def_all()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t, bases<factorization> >("complex_to_complex",
-          args<>())
-          .def_init(args<std::size_t>())
-          .def("wa", &w_t::wa)
-          .def("forward", forward_complex)
-          .def("forward", forward_real)
-          .def("backward", backward_complex)
-          .def("backward", backward_real)
-      );
+      class_<w_t, bases<factorization> >("complex_to_complex",
+        args<>())
+        .def_init(args<std::size_t>())
+        .def("wa", &w_t::wa)
+        .def("forward", forward_complex)
+        .def("forward", forward_real)
+        .def("backward", backward_complex)
+        .def("backward", backward_real)
+      ;
     }
   };
 
@@ -206,22 +206,21 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all(boost::python::module& this_module)
+    def_all()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t, bases<factorization> >("real_to_complex",
-          args<>())
-          .def_init(args<std::size_t>())
-          .def("n_real", &w_t::n_real)
-          .def("m_real", &w_t::m_real)
-          .def("n_complex", &w_t::n_complex)
-          .def("wa", &w_t::wa)
-          .def("forward", forward_complex)
-          .def("forward", forward_real)
-          .def("backward", backward_complex)
-          .def("backward", backward_real)
-      );
+      class_<w_t, bases<factorization> >("real_to_complex",
+        args<>())
+        .def_init(args<std::size_t>())
+        .def("n_real", &w_t::n_real)
+        .def("m_real", &w_t::m_real)
+        .def("n_complex", &w_t::n_complex)
+        .def("wa", &w_t::wa)
+        .def("forward", forward_complex)
+        .def("forward", forward_real)
+        .def("backward", backward_complex)
+        .def("backward", backward_real)
+      ;
     }
   };
 
@@ -276,20 +275,19 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all(boost::python::module& this_module)
+    def_all()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t>("complex_to_complex_3d",
-          args<>())
-          .def_init(args<std::size_t, std::size_t, std::size_t>())
-          .def_init(args<af::int3>())
-          .def("n", &w_t::n)
-          .def("forward", forward_complex)
-          .def("forward", forward_real)
-          .def("backward", backward_complex)
-          .def("backward", backward_real)
-      );
+      class_<w_t>("complex_to_complex_3d",
+        args<>())
+        .def_init(args<std::size_t, std::size_t, std::size_t>())
+        .def_init(args<af::int3>())
+        .def("n", &w_t::n)
+        .def("forward", forward_complex)
+        .def("forward", forward_real)
+        .def("backward", backward_complex)
+        .def("backward", backward_real)
+      ;
     }
   };
 
@@ -345,53 +343,49 @@ namespace scitbx { namespace fftpack { namespace {
     }
 
     static void
-    def_all(boost::python::module& this_module)
+    def_all()
     {
       using namespace boost::python;
-      this_module.add(
-        class_<w_t>("real_to_complex_3d",
-          args<>())
-          .def_init(args<std::size_t, std::size_t, std::size_t>())
-          .def_init(args<af::int3>())
-          .def("n_real", &w_t::n_real)
-          .def("m_real", &w_t::m_real)
-          .def("n_complex", &w_t::n_complex)
-          .def("forward", forward_complex)
-          .def("forward", forward_real)
-          .def("backward", backward_complex)
-          .def("backward", backward_real)
-      );
+      class_<w_t>("real_to_complex_3d",
+        args<>())
+        .def_init(args<std::size_t, std::size_t, std::size_t>())
+        .def_init(args<af::int3>())
+        .def("n_real", &w_t::n_real)
+        .def("m_real", &w_t::m_real)
+        .def("n_complex", &w_t::n_complex)
+        .def("forward", forward_complex)
+        .def("forward", forward_real)
+        .def("backward", backward_complex)
+        .def("backward", backward_real)
+      ;
     }
   };
 
-  void init_module(boost::python::module& this_module)
+  void init_module()
   {
-    this_module
-      .setattr("__version__",
-        scitbx::boost_python::cvs_revision("$Revision$"))
-    ;
+    using namespace boost::python;
+
+    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
+      "$Revision$");
 
     scitbx::af::boost_python::register_tiny_types_conversions();
     scitbx::boost_python::import_module("scitbx_boost.array_family.flex");
 
-    this_module
-      .def("adjust_gridding", adjust_gridding_2)
-      .def("adjust_gridding", adjust_gridding_3)
-      .def("adjust_gridding_triple", adjust_gridding_triple_2)
-      .def("adjust_gridding_triple", adjust_gridding_triple_3)
-    ;
+    def("adjust_gridding", adjust_gridding_2);
+    def("adjust_gridding", adjust_gridding_3);
+    def("adjust_gridding_triple", adjust_gridding_triple_2);
+    def("adjust_gridding_triple", adjust_gridding_triple_3);
 
-    factorization_wrappers::def_all(this_module);
-    complex_to_complex_wrappers::def_all(this_module);
-    real_to_complex_wrappers::def_all(this_module);
-    complex_to_complex_3d_wrappers::def_all(this_module);
-    real_to_complex_3d_wrappers::def_all(this_module);
+    factorization_wrappers::def_all();
+    complex_to_complex_wrappers::def_all();
+    real_to_complex_wrappers::def_all();
+    complex_to_complex_3d_wrappers::def_all();
+    real_to_complex_3d_wrappers::def_all();
   }
 
 }}} // namespace scitbx::fftpack::<anonymous>
 
 BOOST_PYTHON_MODULE_INIT(fftpack)
 {
-  boost::python::module this_module("fftpack");
-  scitbx::fftpack::init_module(this_module);
+  scitbx::fftpack::init_module();
 }
