@@ -316,7 +316,7 @@ else:
     env_etc.shlinkflags_bpl = [
       "-w", # for some odd reason -bundle cannot be the first option
       "-bundle",
-      "-bundle_loader", env_etc.python_framework, env_etc.python_framework,]
+      "-framework", "Python"]
   elif (env_etc.compiler == "darwin_c++"):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
