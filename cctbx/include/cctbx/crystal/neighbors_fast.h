@@ -4,6 +4,7 @@
 #include <cctbx/crystal/neighbors_simple.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <cstdio>
 
 namespace cctbx { namespace crystal { namespace neighbors {
 
