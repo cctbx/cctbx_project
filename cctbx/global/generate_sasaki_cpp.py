@@ -233,7 +233,6 @@ def print_sasaki_cpp(tables_combined):
   {
     fpfdp result(Efpfdp_undefined, Efpfdp_undefined);
     double given = constants::factor_eV_Angstrom / Energy;
-    long i = -1;
     if (detail::sasaki::interpolate(
           given, m_info->first_k, m_info->k, true, result)) {
       return result;
