@@ -1,8 +1,11 @@
+from cctbx.development import random_structure
+from cctbx.development import debug_utils
 from cctbx import xray
 from cctbx import crystal
 from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx.test_utils import approx_equal
+import sys
 
 def exercise_structure():
   cs = crystal.symmetry((5.01, 5.01, 5.47, 90, 90, 120), "P 62 2 2")
@@ -86,9 +89,55 @@ def exercise_u_extra():
       xray.structure_factors.quality_factor_from_any(
         quality_factor=quality_factor))
 
+def exercise_from_scatterers_direct(space_group_info,
+                                    n_elements=3,
+                                    volume_per_atom=1000,
+                                    d_min=2,
+                                    fdp_flag=0,
+                                    anisotropic_flag=0,
+                                    verbose=0):
+  structure = random_structure.xray_structure(
+    space_group_info,
+    elements=("Se",)*n_elements,
+    volume_per_atom=volume_per_atom,
+    min_distance=5,
+    general_positions_only=1,
+    random_f_prime_d_min=d_min-1,
+    random_f_prime_scale=0.6,
+    random_f_double_prime=fdp_flag,
+    anisotropic_flag=anisotropic_flag,
+    random_u_iso=0001,
+    random_u_iso_scale=.3,
+    random_u_cart_scale=.3,
+    random_occupancy=0001)
+  if (0 or verbose):
+    structure.show_summary().show_scatterers()
+  f_obs_exact = abs(structure.structure_factors(
+    d_min=d_min, anomalous_flag=fdp_flag, direct=0001,
+    cos_sin_table=00000).f_calc())
+  f_obs_table = f_obs_exact.structure_factors_from_scatterers(
+    xray_structure=structure,
+    direct=0001,
+    cos_sin_table=0001).f_calc()
+  ls = xray.targets_least_squares_residual(
+    f_obs_exact.data(), f_obs_table.data(), 00000, 1)
+  if (0 or verbose):
+    print "r-factor:", ls.target()
+  assert ls.target() < 1.e-4
+
+def run_call_back(flags, space_group_info):
+  for fdp_flag in [0,1]:
+    for anisotropic_flag in [0,1]:
+      exercise_from_scatterers_direct(
+        space_group_info=space_group_info,
+        fdp_flag=fdp_flag,
+        anisotropic_flag=anisotropic_flag,
+        verbose=flags.Verbose)
+
 def run():
   exercise_structure()
   exercise_u_extra()
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 
 if (__name__ == "__main__"):

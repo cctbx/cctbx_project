@@ -11,14 +11,19 @@ class options:
 class lbfgs:
 
   def __init__(self, target_functor, options, xray_structure,
-                     min_iterations=10, max_iterations=None):
+                     min_iterations=10, max_iterations=None,
+                     cos_sin_table=0001,
+                     direct=0001, # XXX TODO stabilize u, occ refinement
+                     fft=00000):
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
-        miller_set=self.target_functor.f_obs())
+        miller_set=self.target_functor.f_obs(),
+        cos_sin_table=cos_sin_table)
     self.structure_factor_gradients = \
       cctbx.xray.structure_factors.gradients(
-        miller_set=self.target_functor.f_obs())
+        miller_set=self.target_functor.f_obs(),
+        cos_sin_table=cos_sin_table)
     self.pack_parameters()
     self.first_target_value = None
     self.minimizer = scitbx.lbfgs.run(
@@ -50,7 +55,9 @@ class lbfgs:
   def compute_target(self, compute_derivatives):
     self.f_calc = self.structure_factors_from_scatterers(
       xray_structure=self.xray_structure,
-      miller_set=self.target_functor.f_obs()).f_calc()
+      miller_set=self.target_functor.f_obs(),
+      direct=self.direct,
+      fft=self.fft).f_calc()
     self.target_result = self.target_functor(
       self.f_calc,
       compute_derivatives)
@@ -67,7 +74,8 @@ class lbfgs:
         site=self.options.site,
         u_iso=self.options.u_iso,
         occupancy=self.options.occupancy),
-      direct=0001)
+      direct=self.direct,
+      fft=self.fft)
     self.g = flex.double()
     if (self.options.site):
       d_target_d_site = sf.d_target_d_site_frac()

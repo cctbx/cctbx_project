@@ -3,6 +3,7 @@ from scitbx import test_utils
 
 def run():
   tst_list = (
+  "$D/math/boost_python/tst_math.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$D/uctbx/boost_python/tst_uctbx.py",
   "$D/sgtbx/boost_python/tst_sgtbx.py",
@@ -30,7 +31,7 @@ def run():
   "$D/cctbx/sgtbx/symbol_confidence.py",
   "$D/cctbx/sgtbx/bravais_types.py",
   "$D/cctbx/regression/tst_crystal.py",
-  "$D/cctbx/regression/tst_xray.py",
+  ["$D/cctbx/regression/tst_xray.py", "I41/acd"],
   ["$D/cctbx/regression/tst_miller.py", "P31"],
   ["$D/cctbx/regression/tst_reciprocal_space_asu.py", "P312"],
   ["$D/cctbx/regression/tst_triplet_generator.py", "P41"],

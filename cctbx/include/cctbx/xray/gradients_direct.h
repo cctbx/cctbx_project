@@ -1,8 +1,9 @@
-#ifndef CCTBX_XRAY_STRUCTURE_FACTORS_H
-#define CCTBX_XRAY_STRUCTURE_FACTORS_H
+#ifndef CCTBX_XRAY_GRADIENTS_DIRECT_H
+#define CCTBX_XRAY_GRADIENTS_DIRECT_H
 
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/xray/gradient_flags.h>
+#include <cctbx/math/cos_sin_table.h>
 #include <cctbx/sgtbx/miller_ops.h>
 
 namespace cctbx { namespace xray { namespace structure_factors {
@@ -15,12 +16,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
      d(f_calc)/d(fdp) = j f_calc_h / (f0 + fp + j * fdp)
    */
 
-  template <typename ScattererType = scatterer<> >
-  struct direct_with_first_derivatives_one_h_one_scatterer
+  template <typename CosSinType, typename ScattererType>
+  struct gradients_direct_one_h_one_scatterer
   {
     typedef typename ScattererType::float_type float_type;
 
-    direct_with_first_derivatives_one_h_one_scatterer(
+    gradients_direct_one_h_one_scatterer(
+      CosSinType const& cos_sin,
       sgtbx::space_group const& space_group,
       miller::index<> const& h,
       float_type d_star_sq,
@@ -60,9 +62,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
           c_t sum_ltr(0,0);
           for(std::size_t l=0;l<space_group.n_ltr();l++) {
             f_t ht = f_t(h * (t + space_group.ltr(l))) / space_group.t_den();
-            f_t phase = two_pi * (hrx + ht);
-            c_t e_j_phase(std::cos(phase), std::sin(phase));
-            sum_ltr += e_j_phase;
+            sum_ltr += cos_sin.get(hrx + ht);
           }
           if (grad_flags_site) {
             c_t f = f0_fp_fdp_w * sum_ltr;
@@ -102,17 +102,17 @@ namespace cctbx { namespace xray { namespace structure_factors {
     scitbx::sym_mat3<float_type> d_target_d_u_star;
   };
 
-  template <typename ScattererType = scatterer<> >
-  struct direct_with_first_derivatives_one_scatterer
+  template <typename CosSinType, typename ScattererType>
+  struct gradients_direct_one_scatterer
   {
     typedef typename ScattererType::float_type float_type;
 
-    direct_with_first_derivatives_one_scatterer(
+    gradients_direct_one_scatterer(
+      CosSinType const& cos_sin,
       uctbx::unit_cell const& unit_cell,
       sgtbx::space_group const& space_group,
       af::const_ref<miller::index<> > const& miller_indices,
       ScattererType const& scatterer,
-      af::ref<std::complex<float_type> > const& f_calc,
       af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
       gradient_flags const& grad_flags)
     :
@@ -129,7 +129,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
       for(std::size_t i=0;i<miller_indices.size();i++) {
         miller::index<> const& h = miller_indices[i];
         f_t d_star_sq = unit_cell.d_star_sq(h);
-        direct_with_first_derivatives_one_h_one_scatterer<ScattererType> sf(
+        gradients_direct_one_h_one_scatterer<CosSinType, ScattererType> sf(
+          cos_sin,
           space_group,
           h,
           d_star_sq,
@@ -137,9 +138,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
           d_t_d_f,
           grad_flags.site,
           grad_flags.u_aniso);
-        if (f_calc.size()) {
-          f_calc[i] += sf.const_h_sum * sf.f0_fp_fdp_w;
-        }
         if (d_t_d_f) {
           if (grad_flags.site) d_target_d_site += sf.d_target_d_site;
           if (grad_flags.u_aniso) d_target_d_u_star += sf.d_target_d_u_star;
@@ -182,16 +180,71 @@ namespace cctbx { namespace xray { namespace structure_factors {
     float_type d_target_d_fdp;
   };
 
-  template <typename ScattererType = scatterer<> >
-  class direct_with_first_derivatives
+  template <typename ScattererType=scatterer<> >
+  class gradients_direct
   {
     public:
       typedef ScattererType scatterer_type;
       typedef typename ScattererType::float_type float_type;
 
-      direct_with_first_derivatives() {}
+      gradients_direct() {}
 
-      direct_with_first_derivatives(
+      gradients_direct(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<ScattererType> const& scatterers,
+        af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
+        gradient_flags const& grad_flags)
+      {
+        math::cos_sin_exact<float_type> cos_sin;
+        compute(cos_sin, unit_cell, space_group, miller_indices, scatterers,
+                d_target_d_f_calc, grad_flags);
+      }
+
+      gradients_direct(
+        math::cos_sin_table<float_type> const& cos_sin,
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<ScattererType> const& scatterers,
+        af::const_ref<std::complex<float_type> > const& d_target_d_f_calc,
+        gradient_flags const& grad_flags)
+      {
+        compute(cos_sin, unit_cell, space_group, miller_indices, scatterers,
+                d_target_d_f_calc, grad_flags);
+      }
+
+      af::shared<scitbx::vec3<float_type> >
+      d_target_d_site() const { return d_target_d_site_; }
+
+      af::shared<float_type>
+      d_target_d_u_iso() const { return d_target_d_u_iso_; }
+
+      af::shared<scitbx::sym_mat3<float_type> >
+      d_target_d_u_star() const { return d_target_d_u_star_; }
+
+      af::shared<float_type>
+      d_target_d_occupancy() const { return d_target_d_occupancy_; }
+
+      af::shared<float_type>
+      d_target_d_fp() const { return d_target_d_fp_; }
+
+      af::shared<float_type>
+      d_target_d_fdp() const { return d_target_d_fdp_; }
+
+    protected:
+      af::shared<scitbx::vec3<float_type> > d_target_d_site_;
+      af::shared<float_type> d_target_d_u_iso_;
+      af::shared<scitbx::sym_mat3<float_type> > d_target_d_u_star_;
+      af::shared<float_type> d_target_d_occupancy_;
+      af::shared<float_type> d_target_d_fp_;
+      af::shared<float_type> d_target_d_fdp_;
+
+      template <typename CosSinType>
+      void
+      compute(
+        CosSinType const& cos_sin,
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
@@ -203,7 +256,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
                      || d_target_d_f_calc.size() == miller_indices.size());
         CCTBX_ASSERT(   grad_flags.all_false()
                      || d_target_d_f_calc.size() == miller_indices.size());
-        if (grad_flags.all_false()) f_calc_.resize(miller_indices.size());
         if (grad_flags.site) d_target_d_site_.reserve(scatterers.size());
         if (grad_flags.u_iso) d_target_d_u_iso_.reserve(scatterers.size());
         if (grad_flags.u_aniso) d_target_d_u_star_.reserve(scatterers.size());
@@ -213,12 +265,12 @@ namespace cctbx { namespace xray { namespace structure_factors {
         if (grad_flags.fdp) d_target_d_fdp_.reserve(scatterers.size());
         for(std::size_t i=0;i<scatterers.size();i++) {
           ScattererType const& scatterer = scatterers[i];
-          direct_with_first_derivatives_one_scatterer<ScattererType> sf(
+          gradients_direct_one_scatterer<CosSinType, ScattererType> sf(
+            cos_sin,
             unit_cell,
             space_group,
             miller_indices,
             scatterer,
-            f_calc_.ref(),
             d_target_d_f_calc,
             grad_flags.adjust(scatterer.anisotropic_flag));
           if (grad_flags.site) {
@@ -241,38 +293,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
           }
         }
       }
-
-      af::shared<std::complex<float_type> >
-      f_calc() const { return f_calc_; }
-
-      af::shared<scitbx::vec3<float_type> >
-      d_target_d_site() const { return d_target_d_site_; }
-
-      af::shared<float_type>
-      d_target_d_u_iso() const { return d_target_d_u_iso_; }
-
-      af::shared<scitbx::sym_mat3<float_type> >
-      d_target_d_u_star() const { return d_target_d_u_star_; }
-
-      af::shared<float_type>
-      d_target_d_occupancy() const { return d_target_d_occupancy_; }
-
-      af::shared<float_type>
-      d_target_d_fp() const { return d_target_d_fp_; }
-
-      af::shared<float_type>
-      d_target_d_fdp() const { return d_target_d_fdp_; }
-
-    protected:
-      af::shared<std::complex<float_type> > f_calc_;
-      af::shared<scitbx::vec3<float_type> > d_target_d_site_;
-      af::shared<float_type> d_target_d_u_iso_;
-      af::shared<scitbx::sym_mat3<float_type> > d_target_d_u_star_;
-      af::shared<float_type> d_target_d_occupancy_;
-      af::shared<float_type> d_target_d_fp_;
-      af::shared<float_type> d_target_d_fdp_;
   };
 
 }}} // namespace cctbx::xray::structure_factors
 
-#endif // CCTBX_XRAY_STRUCTURE_FACTORS_H
+#endif // CCTBX_XRAY_GRADIENTS_DIRECT_H

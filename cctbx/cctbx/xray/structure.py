@@ -90,11 +90,19 @@ class structure(crystal.special_position_settings):
     self.apply_symmetry(i, update_special_position_indices=00000)
 
   def structure_factors(self, anomalous_flag=None, d_min=None,
-                              direct=00000, fft=00000):
+                              direct=00000, fft=00000,
+                              cos_sin_table=00000,
+                              quality_factor=None,
+                              u_extra=None,
+                              b_extra=None):
     miller_set = miller.build_set(self, anomalous_flag, d_min)
     return structure_factors.from_scatterers(
       crystal_symmetry=self,
-      d_min=d_min)(
+      d_min=d_min,
+      cos_sin_table=cos_sin_table,
+      quality_factor=quality_factor,
+      u_extra=u_extra,
+      b_extra=b_extra)(
         xray_structure=self,
         miller_set=miller_set,
         direct=direct,
