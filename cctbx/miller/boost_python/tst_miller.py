@@ -4,7 +4,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
 from cctbx.array_family import flex
-from cctbx import utils
+import scitbx.math
 from scitbx.python_utils.complex_math import polar
 from libtbx.test_utils import approx_equal
 
@@ -136,7 +136,7 @@ def exercise_map_to_asu(sg_symbol):
     for i,h_asym in m.items():
       assert h_asym == m_random_copy[i]
     for i,p_asym in p[deg].items():
-      assert utils.phase_error(p_asym, p_random[deg][i], deg) < 1.e-5
+      assert scitbx.math.phase_error(p_asym, p_random[deg][i], deg) < 1.e-5
   m_random_copy = m_random.deep_copy()
   miller.map_to_asu(sg_type, anomalous_flag, m_random_copy, c_random)
   for i,h_asym in m.items():

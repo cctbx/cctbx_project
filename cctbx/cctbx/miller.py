@@ -7,9 +7,9 @@ from cctbx_miller_ext import *
 from cctbx import crystal
 from cctbx import maptbx
 from cctbx import uctbx
-from cctbx.utils import phase_error
 from cctbx.array_family import flex
 from scitbx import fftpack
+import scitbx.math
 from libtbx.itertbx import count
 import sys
 import math
@@ -825,11 +825,7 @@ class array(set):
       p2 = flex.arg(phase_source)
     else:
       p2 = phase_source
-    assert p1.size() == p2.size()
-    e = flex.double()
-    # XXX push to C++
-    for i in p1.indices():
-      e.append(phase_error(p1[i], p2[i]))
+    e = scitbx.math.phase_error(phi1=p1, phi2=p2)
     w = flex.abs(self.data())
     sum_w = flex.sum(w)
     assert sum_w != 0

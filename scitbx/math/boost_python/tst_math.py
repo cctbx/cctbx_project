@@ -9,6 +9,7 @@ from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx.math import principal_axes_of_inertia
 from scitbx.math import sphere_3d, minimum_covering_sphere
+from scitbx.math import signed_phase_error, phase_error, nearest_phase
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, eps_eq
@@ -830,6 +831,28 @@ def exercise_principal_axes_of_inertia():
     assert approx_equal(paip.center_of_mass(), paiw.center_of_mass())
     assert approx_equal(paip.inertia_tensor(), paiw.inertia_tensor())
 
+def exercise_phase_error():
+  for deg in [00000, 0001]:
+    if (deg): f = 1
+    else: f = math.pi/180
+    assert approx_equal(signed_phase_error(phi1=-30*f, phi2=270*f, deg=deg),
+      -60*f)
+    assert approx_equal(signed_phase_error(phi1=330*f, phi2=630*f, deg=deg),
+      -60*f)
+    assert approx_equal(phase_error(phi1=330*f, phi2=630*f, deg=deg),
+      60*f)
+    assert approx_equal(nearest_phase(reference=-30*f, other=335*f, deg=deg),
+      -25*f)
+    assert approx_equal(signed_phase_error(
+      phi1=flex.double([-30*f]),
+      phi2=flex.double([270*f]), deg=deg), [-60*f])
+    assert approx_equal(phase_error(
+      phi1=flex.double([-30*f]),
+      phi2=flex.double([270*f]), deg=deg), [60*f])
+    assert approx_equal(nearest_phase(
+      reference=flex.double([-30*f]),
+      other=flex.double([345*f]), deg=deg), [-15*f])
+
 def exercise_minimum_covering_sphere(epsilon=1.e-3):
   s3 = sphere_3d(center=[1,2,3], radius=4)
   assert approx_equal(s3.center(), [1,2,3])
@@ -956,6 +979,7 @@ def run():
   exercise_gaussian_fit()
   exercise_golay()
   exercise_principal_axes_of_inertia()
+  exercise_phase_error()
   forever = "--Forever" in sys.argv[1:]
   while 1:
     exercise_minimum_covering_sphere()
