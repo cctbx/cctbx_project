@@ -374,10 +374,11 @@ def run(args):
       anom_signal = cache_0.input.anomalous_signal(use_binning=True)
       anom_signal.show()
       print
-      print "Observed measurabilities of %s:" % str(cache_0.input.info())
-      print cache_0.input.measurability.__doc__
-      meas_obs = cache_0.input.measurability(use_binning=True)
-      meas_obs.show()
+      if (cache_0.input.sigmas() is not None):
+        print "Observed measurabilities of %s:" % str(cache_0.input.info())
+        print cache_0.input.measurability.__doc__
+        meas_obs = cache_0.input.measurability(use_binning=True)
+        meas_obs.show()
       print
 
     if (not command_line.options.quick):
