@@ -15,7 +15,7 @@ def exercise_symmetry_flags():
     assert f.use_space_group_symmetry() == is_isotropic_search_model
     assert f.use_normalizer_k2l() \
         == (is_isotropic_search_model and (not have_f_part))
-    assert f.use_seminvariant() == (not have_f_part)
+    assert f.use_seminvariants() == (not have_f_part)
 
 def exercise_fast_nv1995():
   space_group = sgtbx.space_group_info("P 21 21 21").group()

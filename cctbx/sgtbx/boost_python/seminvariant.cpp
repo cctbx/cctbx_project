@@ -25,9 +25,9 @@ namespace {
     }
   };
 
-  struct structure_seminvariant_wrappers
+  struct structure_seminvariants_wrappers
   {
-    typedef structure_seminvariant w_t;
+    typedef structure_seminvariants w_t;
 
     static void
     wrap()
@@ -35,7 +35,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef boost::python::arg arg_; // gcc 2.96 workaround
-      class_<w_t>("structure_seminvariant", no_init)
+      class_<w_t>("structure_seminvariants", no_init)
         .def(init<space_group const&>((arg_("space_group"))))
         .def("vectors_and_moduli", &w_t::vectors_and_moduli, ccr())
         .def("size", &w_t::size)
@@ -58,7 +58,7 @@ namespace {
   void wrap_seminvariant()
   {
     ss_vec_mod_wrappers::wrap();
-    structure_seminvariant_wrappers::wrap();
+    structure_seminvariants_wrappers::wrap();
   }
 
 }}} // namespace cctbx::sgtbx::boost_python

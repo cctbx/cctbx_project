@@ -22,12 +22,12 @@ namespace {
         .def(init<bool, optional<int, bool, bool, bool> >(
           (arg_("use_space_group_symmetry"),
            arg_("use_space_group_ltr")=0,
-           arg_("use_seminvariant")=false,
+           arg_("use_seminvariants")=false,
            arg_("use_normalizer_k2l")=false,
            arg_("use_normalizer_l2n")=false)))
         .def("use_space_group_symmetry", &w_t::use_space_group_symmetry)
         .def("use_space_group_ltr", &w_t::use_space_group_ltr)
-        .def("use_seminvariant", &w_t::use_seminvariant)
+        .def("use_seminvariants", &w_t::use_seminvariants)
         .def("use_normalizer_k2l", &w_t::use_normalizer_k2l)
         .def("use_normalizer_l2n", &w_t::use_normalizer_l2n)
         .def("__eq__", &w_t::operator==)
@@ -54,17 +54,17 @@ namespace {
            arg_("space_group_type"))))
         .def(init<search_symmetry_flags const&,
                   space_group_type const&,
-                  structure_seminvariant const&>(
+                  structure_seminvariants const&>(
           (arg_("flags"),
            arg_("space_group_type"),
            arg_("seminvariant"))))
         .def("flags", &w_t::flags, rir())
-        .def("group", &w_t::group, rir())
+        .def("subgroup", &w_t::subgroup, rir())
         .def("continuous_shifts", &w_t::continuous_shifts, ccr())
         .def("continuous_shifts_are_principal",
           &w_t::continuous_shifts_are_principal)
         .def("continuous_shift_flags", &w_t::continuous_shift_flags)
-        .def("projected_group", &w_t::projected_group)
+        .def("projected_subgroup", &w_t::projected_subgroup)
       ;
     }
   };

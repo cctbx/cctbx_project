@@ -131,12 +131,12 @@ class euclidean_match_symmetry:
       flags=sgtbx.search_symmetry_flags(
         use_space_group_symmetry=00000,
         use_space_group_ltr=-1,
-        use_seminvariant=0001,
+        use_seminvariants=0001,
         use_normalizer_k2l=use_k2l,
         use_normalizer_l2n=use_l2n),
       space_group_type=space_group_info.type(),
-      seminvariant=space_group_info.structure_seminvariant())
-    self.rt_mx = search_symmetry.group()
+      seminvariant=space_group_info.structure_seminvariants())
+    self.rt_mx = search_symmetry.subgroup()
     self.continuous_shifts = search_symmetry.continuous_shifts()
     assert search_symmetry.continuous_shifts_are_principal()
     self.continuous_shift_flags = search_symmetry.continuous_shift_flags()

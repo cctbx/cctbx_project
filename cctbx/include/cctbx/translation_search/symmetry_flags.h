@@ -5,11 +5,18 @@
 
 namespace cctbx { namespace translation_search {
 
+  //! Grouping of flags determining the symmetry of the translation function.
   class symmetry_flags : public sgtbx::search_symmetry_flags
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       symmetry_flags() {}
 
+      /*! \brief Custom sgtbx::search_symmetry_flags initializer
+          for translation searches.
+       */
+      /*! See implementation.
+       */
       symmetry_flags(bool is_isotropic_search_model,
                      bool have_f_part)
       :
@@ -21,11 +28,17 @@ namespace cctbx { namespace translation_search {
           false)
       {}
 
+      //! Value as passed to the constructor.
+      /*! Equivalent to use_space_group_symmetry().
+       */
       bool
       is_isotropic_search_model() const { return use_space_group_symmetry_; }
 
+      //! Value as passed to the constructor.
+      /*! Equivalent to !use_seminvariants().
+       */
       bool
-      have_f_part() const { return !use_seminvariant_; }
+      have_f_part() const { return !use_seminvariants_; }
   };
 
 }} // namespace cctbx::translation_search

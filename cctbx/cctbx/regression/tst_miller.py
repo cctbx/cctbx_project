@@ -127,7 +127,7 @@ def exercise_crystal_gridding():
   symmetry_flags = sgtbx.search_symmetry_flags(
     use_space_group_symmetry=00000,
     use_space_group_ltr=0,
-    use_seminvariant=0001,
+    use_seminvariants=0001,
     use_normalizer_k2l=00000,
     use_normalizer_l2n=00000)
   crystal_gridding_tags = f_obs.crystal_gridding(

@@ -3,7 +3,10 @@
 
 #include <cctbx/crystal/direct_space_asu.h>
 
-namespace cctbx { namespace crystal { namespace close_packing {
+namespace cctbx { namespace crystal {
+
+//! Sampling of search spaces based on close sphere packings.
+namespace close_packing {
 
   namespace detail {
 
@@ -22,12 +25,39 @@ namespace cctbx { namespace crystal { namespace close_packing {
 
   } // namespace detail
 
+  //! Generator for sampling based on a hexagonal close packing.
   template <typename FloatType=double>
   class hexagonal_sampling_generator
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       hexagonal_sampling_generator() {}
 
+      //! Initialization with preprocessed symmetry information.
+      /*! The preprocessing is implemented in Python. See
+          cctbx.crystal.close_packing.hexagonal_sampling().
+          The Python function returns an instance of this
+          generator.
+
+          point_distance is the distance between the centers of
+          the spheres in the hexagonal close packing.
+
+          buffer_thickness is used to enlarge the asymmetric unit
+          using direct_space_asu::float_asu<>::add_buffer.
+          A negative value is reset internally to the maximum
+          distance from any point in space to a sampling point:
+
+              buffer_thickness = point_distance * (2/3 * (1/2 * sqrt(3)))
+
+          If all_twelve_neighbors is true all 12 next-nearest neighbors
+          are generated for each sampling point that is strictly in
+          the asymmetric unit. The generator is significantly slower
+          if all_twelve_neighbors is true, but for most applications
+          this should not be necessary since the automatically
+          determined buffer_thickness() ensures that no point in the
+          asymmetric unit is further than buffer_thickness() away
+          from a sampling point.
+       */
       hexagonal_sampling_generator(
         sgtbx::change_of_basis_op const& cb_op_original_to_sampling,
         direct_space_asu::float_asu<FloatType> const& float_asu,
@@ -63,27 +93,43 @@ namespace cctbx { namespace crystal { namespace close_packing {
         incr();
       }
 
+      //! Change of basis matrix as passed to the constructor.
       sgtbx::change_of_basis_op const&
       cb_op_original_to_sampling() const {return cb_op_original_to_sampling_;}
 
+      //! Asymmetric unit as passed to the constructor.
       direct_space_asu::float_asu<FloatType> const&
       float_asu() const { return float_asu_; }
 
+      //! Continuous allowed origin shift flags as passed to the constructor.
+      /*! See also: sgtbx::search_symmetry::continuous_shift_flags
+       */
       af::tiny<bool, 3> const&
       continuous_shift_flags() const { return continuous_shift_flags_; }
 
+      //! Value as passed to the constructor.
       FloatType const&
       point_distance() const { return point_distance_; }
 
+      /*! \brief Buffer thickness as determined internally or as
+          passed to the constructor.
+       */
       FloatType const&
       buffer_thickness() const { return buffer_thickness_; }
 
+      //! Flag as passed to the constructor.
       bool
       all_twelve_neighbors() const { return all_twelve_neighbors_; }
 
+      //! Indices of lower-left corner of hexagonal sampling box.
+      /*! Exposed mainly for internal testing purposes.
+       */
       scitbx::vec3<int> const&
       box_lower() const { return box_lower_; }
 
+      //! Indices of upper-right corner of hexagonal sampling box.
+      /*! Exposed mainly for internal testing purposes.
+       */
       scitbx::vec3<int> const&
       box_upper() const { return box_upper_; }
 
@@ -93,6 +139,16 @@ namespace cctbx { namespace crystal { namespace close_packing {
       bool
       at_end() const { return loop_status_ < 0; }
 
+      //! Returns the fractional coordinates of the next sampling point.
+      /*! The coordinates are with respect to the basis system of
+          the original crystal symmetry as passed to the preprocessing
+          function. I.e. cb_op_original_to_sampling() is applied
+          internally to transform from the basis system used in
+          the sampling procedure to the original basis system.
+
+          An exception is thrown if at_end() is true at the time
+          of the call.
+       */
       fractional<FloatType>
       next_site_frac()
       {
@@ -102,6 +158,12 @@ namespace cctbx { namespace crystal { namespace close_packing {
         return result;
       }
 
+      //! Returns the fractional coordinates of all remaining sampling points.
+      /*! See next_site_frac() for details.
+
+          An exception is thrown if at_end() is true at the time
+          of the call.
+       */
       af::shared<scitbx::vec3<FloatType> >
       all_sites_frac()
       {
@@ -122,7 +184,9 @@ namespace cctbx { namespace crystal { namespace close_packing {
         incr();
       }
 
-      //! Counts the number of sites.
+      //! Counts the number of remaining sampling sites.
+      /*! at_end() is true after this function returns.
+       */
       std::size_t
       count_sites()
       {
