@@ -101,7 +101,7 @@ namespace cctbx { namespace xray {
     {
       CCTBX_ASSERT(scatterer->weight() >= 0);
       if (scatterer->weight() == 0) continue;
-      FloatType fdp = scatterer->fp_fdp.imag();
+      FloatType fdp = scatterer->fdp;
       fractional<FloatType> coor_frac = scatterer->site;
       FloatType u_iso;
       scitbx::sym_mat3<FloatType> u_cart;
@@ -114,7 +114,7 @@ namespace cctbx { namespace xray {
       CCTBX_ASSERT(u_iso >= 0);
       detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
         exp_table,
-        scatterer->caasf, scatterer->fp_fdp, scatterer->weight(),
+        scatterer->caasf, scatterer->fp, scatterer->fdp, scatterer->weight(),
         u_iso, this->u_extra_);
       detail::calc_shell<FloatType, grid_point_type> shell(
         this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
@@ -129,7 +129,7 @@ namespace cctbx { namespace xray {
       if (scatterer->anisotropic_flag) {
         caasf_ft = detail::caasf_fourier_transformed<FloatType,caasf_type>(
           exp_table,
-          scatterer->caasf, scatterer->fp_fdp, scatterer->weight(),
+          scatterer->caasf, scatterer->fp, scatterer->fdp, scatterer->weight(),
           u_cart, this->u_extra_);
       }
       grid_point_type pivot = detail::calc_nearest_grid_point(

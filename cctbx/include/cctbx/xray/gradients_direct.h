@@ -41,7 +41,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       fractional<float_type> dtds_term;
       scitbx::sym_mat3<f_t> dw_coeff;
       f_t f0 = scatterer.caasf.at_d_star_sq(d_star_sq);
-      f0_fp_fdp = f0 + scatterer.fp_fdp;
+      f0_fp_fdp = f0 + c_t(scatterer.fp, scatterer.fdp);
       f0_fp_fdp_w = f0_fp_fdp * scatterer.weight();
       for(std::size_t s=0;s<space_group.n_smx();s++) {
         miller::index<> hr = h * space_group.smx(s).r();

@@ -60,8 +60,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
       typedef float_type f_t;
       typedef std::complex<float_type> c_t;
       f_t w = scatterer.weight();
-      f_t fp_w = scatterer.fp_fdp.real();
-      f_t fdp_w = scatterer.fp_fdp.imag();
+      f_t fp_w = scatterer.fp;
+      f_t fdp_w = scatterer.fdp;
       bool have_fdp = fdp_w != 0;
       bool caasf_is_const = std::strcmp(scatterer.caasf.label(), "const") == 0;
       if (caasf_is_const) fp_w += scatterer.caasf.c();

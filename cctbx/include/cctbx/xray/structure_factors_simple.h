@@ -47,7 +47,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         f_calc += e_j_phase * dw;
       }
       f_t f0 = scatterer.caasf.at_d_star_sq(d_star_sq);
-      f_calc *= (f0 + scatterer.fp_fdp) * scatterer.weight();
+      f_calc *= (f0 + c_t(scatterer.fp, scatterer.fdp)) * scatterer.weight();
     }
 
     std::complex<float_type> f_calc;

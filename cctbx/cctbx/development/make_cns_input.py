@@ -43,8 +43,8 @@ def coordinates(scatterers):
     assert not scatterer.anisotropic_flag
     b = adptbx.u_as_b(scatterer.u_iso)
     caasf = it1992(scatterer.caasf.label())
-    fp = scatterer.fp_fdp.real
-    fdp = scatterer.fp_fdp.imag
+    fp = scatterer.fp
+    fdp = scatterer.fdp
     for i in xrange(3):
       a("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
     a("do (q=%.12g) (resid=%d)" % (q, resid))

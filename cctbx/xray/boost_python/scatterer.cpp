@@ -35,20 +35,24 @@ namespace {
                   flt_t const&,
                   flt_t const&,
                   eltbx::caasf::wk1995 const&,
-                  std::complex<flt_t> const&>())
+                  flt_t const&,
+                  flt_t const&>())
         .def(init<std::string const&,
                   fractional<flt_t> const&,
                   scitbx::sym_mat3<flt_t> const&,
                   flt_t const&,
                   eltbx::caasf::wk1995 const&,
-                  std::complex<flt_t> const&>())
+                  flt_t const&,
+                  flt_t const&>())
 #if BOOST_VERSION >= 103000
         .add_property("label", make_getter(&w_t::label, rbv()),
                                make_setter(&w_t::label, dcp()))
         .add_property("caasf", make_getter(&w_t::caasf, rbv()),
                                make_setter(&w_t::caasf, dcp()))
-        .add_property("fp_fdp", make_getter(&w_t::fp_fdp, rbv()),
-                                make_setter(&w_t::fp_fdp, dcp()))
+        .add_property("fp", make_getter(&w_t::fp, rbv()),
+                            make_setter(&w_t::fp, dcp()))
+        .add_property("fdp", make_getter(&w_t::fdp, rbv()),
+                             make_setter(&w_t::fdp, dcp()))
         .add_property("site", make_getter(&w_t::site, rbv()),
                               make_setter(&w_t::site, dcp()))
         .add_property("occupancy", make_getter(&w_t::occupancy, rbv()),
@@ -63,7 +67,8 @@ namespace {
 #else
         .def_readwrite("label", &w_t::label)
         .def_readwrite("caasf", &w_t::caasf)
-        .def_readwrite("fp_fdp", &w_t::fp_fdp)
+        .def_readwrite("fp", &w_t::fp)
+        .def_readwrite("fdp", &w_t::fdp)
         .def_readwrite("site", &w_t::site)
         .def_readwrite("occupancy", &w_t::occupancy)
         .def_readwrite("anisotropic_flag", &w_t::anisotropic_flag)

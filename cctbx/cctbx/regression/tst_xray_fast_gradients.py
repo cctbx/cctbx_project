@@ -411,7 +411,7 @@ class shifted_fp:
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
-    self.structure_shifted.scatterers()[i_scatterer].fp_fdp += shift
+    self.structure_shifted.scatterers()[i_scatterer].fp += shift
     if (f_obs is not None):
       self.f_calc = f_obs.structure_factors_from_scatterers(
         xray_structure=self.structure_shifted).f_calc()
@@ -458,7 +458,7 @@ class shifted_fdp:
 
   def __init__(self, f_obs, structure, i_scatterer, shift):
     self.structure_shifted = structure.deep_copy_scatterers()
-    self.structure_shifted.scatterers()[i_scatterer].fp_fdp += complex(0,shift)
+    self.structure_shifted.scatterers()[i_scatterer].fdp += shift
     if (f_obs is not None):
       self.f_calc = f_obs.structure_factors_from_scatterers(
         xray_structure=self.structure_shifted).f_calc()

@@ -229,7 +229,8 @@ namespace cctbx { namespace xray {
         caasf_fourier_transformed(
           exponent_table<FloatType>& exp_table,
           CaasfType const& caasf,
-          std::complex<FloatType> const& fp_fdp,
+          FloatType const& fp,
+          FloatType const& fdp,
           FloatType const& w,
           FloatType const& u_iso,
           FloatType const& u_extra)
@@ -245,17 +246,18 @@ namespace cctbx { namespace xray {
               as_real_[i], bs_real_[i]);
           }
           isotropic_3d_gaussian_fourier_transform(
-            w * (caasf.c() + fp_fdp.real()), b_incl_extra,
+            w * (caasf.c() + fp), b_incl_extra,
             as_real_[i], bs_real_[i]);
           isotropic_3d_gaussian_fourier_transform(
-            w * (fp_fdp.imag()), b_incl_extra,
+            w * fdp, b_incl_extra,
             as_imag_, bs_imag_);
         }
 
         caasf_fourier_transformed(
           exponent_table<FloatType>& exp_table,
           CaasfType const& caasf,
-          std::complex<FloatType> const& fp_fdp,
+          FloatType const& fp,
+          FloatType const& fdp,
           FloatType const& w,
           scitbx::sym_mat3<FloatType> const& u_cart,
           FloatType const& u_extra)
@@ -271,11 +273,11 @@ namespace cctbx { namespace xray {
               as_real_[i], aniso_bs_real_[i]);
           }
           anisotropic_3d_gaussian_fourier_transform(
-            w * (caasf.c() + fp_fdp.real()),
+            w * (caasf.c() + fp),
             compose_anisotropic_b_all(0, u_extra, u_cart),
             as_real_[i], aniso_bs_real_[i]);
           anisotropic_3d_gaussian_fourier_transform(
-            w * (fp_fdp.imag()),
+            w * fdp,
             compose_anisotropic_b_all(0, u_extra, u_cart),
             as_imag_, aniso_bs_imag_);
         }
@@ -581,7 +583,7 @@ namespace cctbx { namespace xray {
     for(scatterer=scatterers.begin();scatterer!=scatterers.end();scatterer++) {
       if (scatterer->weight() == 0) continue;
       n_contributing_scatterers_++;
-      if (scatterer->fp_fdp.imag() != 0) {
+      if (scatterer->fdp != 0) {
         n_anomalous_scatterers_++;
       }
     }

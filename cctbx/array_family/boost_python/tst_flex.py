@@ -67,7 +67,7 @@ def exercise_flex_xray_scatterer():
     xray.scatterer("Si1", (0.1,0.2,0.3)),
     xray.scatterer("O1", (0.2,0.3,0.4), (1,2,3,-0.1,0.2,-0.3), 0.9),
     xray.scatterer("K1", (0.3,0.4,0.5), (3,1,2,-0.2,0.3,-0.1), 0.8,
-                         fp_fdp=5+7j)))
+                         fp=5, fdp=7)))
   assert a.size() == 3
   assert a[1].multiplicity() == 0
   a[1].apply_symmetry(uc, sg.group())
@@ -83,7 +83,8 @@ def exercise_flex_xray_scatterer():
     bi = b[i]
     assert ai.label == bi.label
     assert ai.caasf.label() == bi.caasf.label()
-    assert approx_equal(ai.fp_fdp, bi.fp_fdp)
+    assert approx_equal(ai.fp, bi.fp)
+    assert approx_equal(ai.fdp, bi.fdp)
     assert approx_equal(ai.site, bi.site)
     assert ai.anisotropic_flag == bi.anisotropic_flag
     assert ai.u_iso == bi.u_iso

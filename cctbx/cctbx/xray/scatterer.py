@@ -11,7 +11,8 @@ class scatterer(ext.scatterer):
                      u=None,
                      occupancy=1,
                      caasf="",
-                     fp_fdp=0j,
+                     fp=0,
+                     fdp=0,
                      b=None):
     assert u is None or b is None
     if   (b is not None): u = adptbx.b_as_u(b)
@@ -21,7 +22,7 @@ class scatterer(ext.scatterer):
         caasf = wk1995(label, 0)
       else:
         caasf = wk1995(caasf, 1)
-    ext.scatterer.__init__(self, label, site, u, occupancy, caasf, fp_fdp)
+    ext.scatterer.__init__(self, label, site, u, occupancy, caasf, fp, fdp)
 
 class _scatterer(injector, ext.scatterer):
 
@@ -31,7 +32,8 @@ class _scatterer(injector, ext.scatterer):
                  b=None,
                  occupancy=None,
                  caasf=None,
-                 fp_fdp=None):
+                 fp=None,
+                 fdp=None):
     assert u is None or b is None
     if (b is not None): u = adptbx.b_as_u(b)
     if (label is None): label = self.label
@@ -41,14 +43,16 @@ class _scatterer(injector, ext.scatterer):
       else: u = self.u_iso
     if (occupancy is None): occupancy = self.occupancy
     if (caasf is None): caasf = self.caasf
-    if (fp_fdp is None): fp_fdp = self.fp_fdp
+    if (fp is None): fp = self.fp
+    if (fdp is None): fdp = self.fdp
     return scatterer(
       label=label,
       site=site,
       u=u,
       occupancy=occupancy,
       caasf=caasf,
-      fp_fdp=fp_fdp)
+      fp=fp,
+      fdp=fdp)
 
   def show(self, f=None, unit_cell=None):
     if (f is None): f = sys.stdout
@@ -63,7 +67,7 @@ class _scatterer(injector, ext.scatterer):
       print >> f, ("%6.3f " * 5 + "%6.3f") % adptbx.u_star_as_u_cart(
         unit_cell, self.u_star),
     print >> f
-    if (abs(self.fp_fdp) != 0):
+    if (self.fp != 0 or self.fdp != 0):
       print >> f, "     fp,fdp = %6.4f,%6.4f" % (
-        self.fp_fdp.real,
-        self.fp_fdp.imag)
+        self.fp,
+        self.fdp)

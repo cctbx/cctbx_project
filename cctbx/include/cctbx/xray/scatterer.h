@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored (rwgk)
-     2001 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_XRAY_SCATTERER_H
 #define CCTBX_XRAY_SCATTERER_H
 
@@ -55,11 +45,13 @@ namespace xray {
                 FloatType const& u_iso_,
                 FloatType const& occupancy_,
                 CaasfType const& caasf_,
-                std::complex<FloatType> const& fp_fdp_)
+                FloatType fp_,
+                FloatType fdp_)
       :
         label(label_),
         caasf(caasf_),
-        fp_fdp(fp_fdp_),
+        fp(fp_),
+        fdp(fdp_),
         site(site_),
         occupancy(occupancy_),
         anisotropic_flag(false),
@@ -75,11 +67,13 @@ namespace xray {
                 scitbx::sym_mat3<FloatType> const& u_star_,
                 FloatType const& occupancy_,
                 CaasfType const& caasf_,
-                std::complex<FloatType> const& fp_fdp_)
+                FloatType fp_,
+                FloatType fdp_)
       :
         label(label_),
         caasf(caasf_),
-        fp_fdp(fp_fdp_),
+        fp(fp_),
+        fdp(fdp_),
         site(site_),
         occupancy(occupancy_),
         anisotropic_flag(true),
@@ -98,11 +92,17 @@ namespace xray {
        */
       CaasfType caasf;
 
-      //! Direct access to f-prime and f-double-prime.
+      //! Direct access to f-prime.
       /*! f-prime is the dispersive contribution to the scattering
-          factor. f-double-prime is the anomalous contribution.
+          factor.
        */
-      std::complex<FloatType> fp_fdp;
+      FloatType fp;
+
+      //! Direct access to f-double-prime.
+      /*! f-double-prime is the anomalous contribution to the scattering
+          factor.
+       */
+      FloatType fdp;
 
       //! Direct access to fractional coordinates.
       /*! See also: apply_symmetry()
