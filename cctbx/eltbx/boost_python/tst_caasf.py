@@ -35,6 +35,9 @@ def exercise_it1992():
     d = caasf.it1992(c.label(), 1)
     assert d.label() == c.label()
   assert n == 216
+  i = caasf.it1992_iterator()
+  j = iter(i)
+  assert i is j
 
 def exercise_wk1995():
   c = caasf.wk1995("const")
