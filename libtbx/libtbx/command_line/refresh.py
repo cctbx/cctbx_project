@@ -22,14 +22,16 @@ class create_bin_sh_dispatcher:
     else:
       essentials.append("LD_LIBRARY_PATH")
     for v in essentials:
-      print >> f, 'if [ ! -n "$%s" ]; then' % v
-      print >> f, '  %s="$LIBTBX0%s"' % (v, v)
-      print >> f, '  export %s' % v
-      print >> f, 'elif [ "$%s" != "$LIBTBX0%s" ]; then' % (v, v)
-      print >> f, '  x=`echo "$%s" | grep libtbx`' % v
-      print >> f, '  if [ ! -n "$x" ]; then'
-      print >> f, '    %s="$LIBTBX0%s:$%s"' % (v, v, v)
+      print >> f, 'if [ -n "$LIBTBX0%s" ]; then' % v
+      print >> f, '  if [ ! -n "$%s" ]; then' % v
+      print >> f, '    %s="$LIBTBX0%s"' % (v, v)
       print >> f, '    export %s' % v
+      print >> f, '  elif [ "$%s" != "$LIBTBX0%s" ]; then' % (v, v)
+      print >> f, '    x=`echo "$%s" | grep libtbx`' % v
+      print >> f, '    if [ ! -n "$x" ]; then'
+      print >> f, '      %s="$LIBTBX0%s:$%s"' % (v, v, v)
+      print >> f, '      export %s' % v
+      print >> f, '    fi'
       print >> f, '  fi'
       print >> f, 'fi'
     if (self.precall_commands is not None):
