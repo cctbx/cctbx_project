@@ -25,7 +25,7 @@ namespace {
           repulsion_radius_table const&,
           double,
           std::vector<crystal::pair_asu_table<> > const&,
-          af::const_ref<double> const&,
+          double,
           double,
           double,
           double>((
@@ -35,7 +35,7 @@ namespace {
            arg_("repulsion_radius_table"),
            arg_("repulsion_distance_default"),
            arg_("shell_asu_tables"),
-           arg_("shell_distance_cutoffs"),
+           arg_("bonded_distance_cutoff"),
            arg_("nonbonded_distance_cutoff"),
            arg_("nonbonded_buffer"),
            arg_("vdw_1_4_factor"))))

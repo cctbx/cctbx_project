@@ -158,7 +158,7 @@ class lbfgs:
         repulsion_radius_table=self.repulsion_radius_table,
         repulsion_distance_default=self.repulsion_distance_default,
         shell_asu_tables=shell_asu_tables,
-        shell_distance_cutoffs=flex.double(shell_distance_cutoffs),
+        bonded_distance_cutoff=max(shell_distance_cutoffs),
         nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
         nonbonded_buffer=self.nonbonded_buffer,
         vdw_1_4_factor=2/3.)
