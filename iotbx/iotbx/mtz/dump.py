@@ -1,5 +1,4 @@
 from iotbx import mtz
-from cctbx import uctbx
 import sys
 
 def dump(file_name):
@@ -17,7 +16,7 @@ def dump(file_name):
     print "  Name:", cryst.crystal_name()
     print "  Project:", cryst.project_name()
     print " ",
-    uctbx.show_parameters(cryst.UnitCell())
+    cryst.UnitCell().show_parameters()
     print "  Number of datasets:", cryst.ndatasets()
     for i_dataset in xrange(cryst.ndatasets()):
       print "  Dataset %d:" % (i_dataset+1)

@@ -12,16 +12,16 @@ from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
 import sys
 
-class statistics(ext.statistics):
+def statistics(map):
+  return ext.statistics(map)
 
-  def __init__(self, map):
-    ext.statistics.__init__(self, map)
+def statistics_show_summary(self, f=sys.stdout):
+  print >> f, "max %.6g" % (self.max())
+  print >> f, "min %.6g" % (self.min())
+  print >> f, "mean %.6g" % (self.mean())
+  print >> f, "sigma %.6g" % (self.sigma())
 
-  def show_summary(self, f=sys.stdout):
-    print >> f, "max %.6g" % (self.max())
-    print >> f, "min %.6g" % (self.min())
-    print >> f, "mean %.6g" % (self.mean())
-    print >> f, "sigma %.6g" % (self.sigma())
+ext.statistics.show_summary = statistics_show_summary
 
 def symmetry_flags(use_space_group_symmetry,
                    use_normalizer_k2l=00000,

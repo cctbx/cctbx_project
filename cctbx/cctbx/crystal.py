@@ -39,7 +39,7 @@ class symmetry(object):
     return self.space_group_info().group()
 
   def show_summary(self, f=sys.stdout):
-    uctbx.show_parameters(self.unit_cell(), f)
+    self.unit_cell().show_parameters(f)
     self.space_group_info().show_summary(f)
 
   def is_compatible_unit_cell(self):
