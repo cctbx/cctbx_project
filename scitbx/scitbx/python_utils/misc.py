@@ -106,49 +106,6 @@ def adopt_init_args(obj, args, exclude=(), hide=00000):
       assert not hasattr(obj.__dict__, _key)
       obj.__dict__[_key] = args[key]
 
-def import_regular_symbols(dict_target, dict_source):
-  import warnings
-  warnings.warn("""\
-The import_regular_symbols() function is obsolete and will be
-removed in the future. Use import * instead.
-Here is an example for the recommended new way of importing
-Boost.Python extension modules:
-
-import boost.python
-ext = boost.python.import_ext("scitbx_fftpack_ext")
-from scitbx_fftpack_ext import *
-""",
-    DeprecationWarning)
-  for key, value in dict_source.items():
-    if (not key.startswith("_") and not key in dict_target):
-      dict_target[key] = value
-
-def import_ext(name):
-  import warnings
-  warnings.warn("""\
-The import_ext() function was moved to boost.python.
-Here is an example for the recommended new way of importing
-Boost.Python extension modules:
-
-import boost.python
-ext = boost.python.import_ext("scitbx_fftpack_ext")
-from scitbx_fftpack_ext import *
-""",
-    DeprecationWarning)
-  components = name.split(".")
-  if (len(components) > 1):
-    __import__(".".join(components[:-1]))
-  previous_dlopenflags = None
-  if (sys.platform == "linux2"):
-    previous_dlopenflags = sys.getdlopenflags()
-    sys.setdlopenflags(0x100|0x2)
-  mod = __import__(name)
-  for comp in components[1:]:
-    mod = getattr(mod, comp)
-  if (previous_dlopenflags is not None):
-    sys.setdlopenflags(previous_dlopenflags)
-  return mod
-
 class line_feeder:
 
   def __init__(self, f):
