@@ -3,17 +3,20 @@ ext = misc.import_ext("scitbx_boost.rational_ext")
 misc.import_regular_symbols(globals(), ext.__dict__)
 del misc
 
+builtin_int = __builtins__["int"]
+
 def from_string(s):
-  flds = [__builtins__["int"](i) for i in s.split("/")]
+  flds = [builtin_int(i) for i in s.split("/")]
   assert len(flds) in (1,2)
   if (len(flds) == 1):
     return int(flds[0])
   return int(flds[0], flds[1])
 
 def vector(numerators, denominators):
-  assert len(numerators) == len(denominators) or len(denominators) == 1
-  if (len(denominators) == 1):
+  if (isinstance(denominators, builtin_int)):
     denominators = [denominators] * len(numerators)
+  else:
+    assert len(numerators) == len(denominators)
   result = []
   for i in xrange(len(numerators)):
     result.append(int(numerators[i], denominators[i]))
