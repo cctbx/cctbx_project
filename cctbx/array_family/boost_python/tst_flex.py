@@ -1,5 +1,5 @@
-from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from cctbx.array_family import flex
 import pickle
 
 def exercise_flex_miller_index():
