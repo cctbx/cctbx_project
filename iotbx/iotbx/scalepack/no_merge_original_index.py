@@ -1,3 +1,5 @@
+from cctbx import miller
+from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 import os
@@ -33,6 +35,17 @@ class no_merge_original_index_file:
     self.i_obs = all_arrays.i_obs()
     self.sigmas = all_arrays.sigmas()
 
+  def merge_equivalents(self, crystal_symmetry=None):
+    if (crystal_symmetry == None):
+      crystal_symmetry = crystal.symmetry(space_group=self.space_group)
+    return miller.array(
+      miller_set=miller.set(
+        crystal_symmetry=crystal_symmetry,
+        indices=self.original_indices,
+        anomalous_flag=0001),
+      data=self.i_obs,
+      sigmas=self.sigmas).merge_equivalents()
+
 from scitbx.python_utils.misc import user_plus_sys_time
 t = user_plus_sys_time()
 #s = no_merge_original_index_file("head_tail.sca")
@@ -55,3 +68,8 @@ print tuple(s.spindle_flags[-3:])
 print tuple(s.asymmetric_unit_indices[-3:])
 print tuple(s.i_obs[-3:])
 print tuple(s.sigmas[-3:])
+m = s.merge_equivalents()
+m.array().show_summary()
+print "min redundancies:", flex.min(m.redundancies())
+print "max redundancies:", flex.max(m.redundancies())
+print "mean redundancies:", flex.mean(m.redundancies().as_double())
