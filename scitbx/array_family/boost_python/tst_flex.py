@@ -439,8 +439,15 @@ def exercise_functions():
   a = flex.int((-1, 0, 1))
   assert tuple(flex.abs(a)) == (1, 0, 1)
   assert tuple(flex.pow2(a)) == (1, 0, 1)
+  assert a.count(0) == 1
+  assert a.count(2) == 0
+  a = flex.int((1,1,1,3,3,3,3))
+  assert a.count(1) == 3
+  assert a.count(3) == 4
   a = flex.double((1, 0, 3, 2))
   b = flex.double((4, 5, 6))
+  assert a.count(3) == 1
+  assert b.count(3) == 0
   assert flex.min_index(a) == 1
   assert flex.min_index(b) == 0
   assert flex.max_index(a) == 2
@@ -464,6 +471,10 @@ def exercise_functions():
   b = flex.double((1, 1, 1))
   assert (flex.mean(a) - flex.mean_weighted(a, b)) < 1.e-6
   assert (flex.mean_sq(a) - flex.mean_sq_weighted(a, b)) < 1.e-6
+  a = flex.std_string(["a"]*3 + ["b"]*4)
+  assert a.count("a") == 3
+  assert a.count("b") == 4
+  assert a.count("c") == 0
 
 def exercise_complex_functions():
   c = 1+2j
