@@ -21,49 +21,6 @@ namespace sgtbx {
       TrVec Z; // centred cell
     };
 
-  }
-
-#ifdef JUNK
-
-  int Is_ss(const T_ssVM *ssVM, int n_ssVM, int h, int k, int l)
-  {
-    int  i_ssVM, u;
-
-    range1(i_ssVM, n_ssVM)
-    {
-      u =  ssVM[i_ssVM].V[0] * h;
-      u += ssVM[i_ssVM].V[1] * k;
-      u += ssVM[i_ssVM].V[2] * l;
-
-      if (ssVM[i_ssVM].M) {
-        if (u % ssVM[i_ssVM].M) return 0; }
-      else {
-        if (u)                  return 0; }
-    }
-
-    return 1;
-  }
-
-
-  void Set_uvw(const T_ssVM *ssVM, int n_ssVM, int h, int k, int l, int uvw[3])
-  {
-    int  i_ssVM, u;
-
-    range1(i_ssVM, n_ssVM)
-    {
-      u =  ssVM[i_ssVM].V[0] * h;
-      u += ssVM[i_ssVM].V[1] * k;
-      u += ssVM[i_ssVM].V[2] * l;
-
-      if (ssVM[i_ssVM].M) u %= ssVM[i_ssVM].M;
-
-      uvw[i_ssVM] = u;
-    }
-  }
-#endif
-
-  namespace detail {
-
     struct AnyGenerators { // see also: StdGenerators
       AnyGenerators(const SgOps& sgo);
       inline int nAll() const {
@@ -286,6 +243,7 @@ namespace sgtbx {
     cctbx::static_vector<detail::DiscrList,
                          detail::mDiscrList>& DiscrLst) const
   {
+    if (sgo.nLTr() == 1 && m_size == 0) return;
     int LTBF = 1;
     int iDL;
     for (iDL = 1; iDL < DiscrLst.size(); iDL++) {
@@ -314,7 +272,6 @@ namespace sgtbx {
     cctbx_assert(LTBF > 0);
     if (LTBF > 6) LTBF = lcm(LTBF,  6);
     else          LTBF = lcm(LTBF, 12);
-    if (sgo.nLTr() == 1 && m_size == 0) return; // XXX move up
     TrVec OrigZf[detail::mDiscrList];
     TrVec BestZf[detail::mDiscrList];
     TrVec BestZc[detail::mDiscrList];
@@ -439,6 +396,30 @@ namespace sgtbx {
       m_size++;
     }
     std::sort(m_VM.begin(), m_VM.begin() + m_size, Cmp_ssVM());
+  }
+
+  bool StructureSeminvariant::is_ss(const Miller::Index& H) const
+  {
+    for(std::size_t i=0;i<m_size;i++) {
+      int u = m_VM[i].V * H;
+      if (m_VM[i].M) {
+        if (u % m_VM[i].M) return false;
+      }
+      else {
+        if (u)             return false;
+      }
+    }
+    return true;
+  }
+
+  Vec3 StructureSeminvariant::get_uvw(const Miller::Index& H) const
+  {
+    Vec3 result;
+    for(std::size_t i=0;i<m_size;i++) {
+      result[i] = m_VM[i].V * H;
+      if (m_VM[i].M) result[i] %= m_VM[i].M;
+    }
+    return result;
   }
 
 } // namespace sgtbx

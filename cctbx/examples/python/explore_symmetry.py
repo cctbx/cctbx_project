@@ -79,15 +79,15 @@ def RTMxAnalysis(M):
     print "<td>1<td>-<td>-<td>-"
   elif (RI.Rtype() == -1):
     print "<td>%d<td>-<td>-<td>(%s)" % (
-      RI.Rtype(), TI.OriginShift().as_xyz(),)
+      RI.Rtype(), TI.OriginShift())
   elif (abs(RI.Rtype()) == 2):
     print "<td>%d<td>%s<td>(%s)<td>(%s)" % (
       RI.Rtype(), StrEV(RI.EV()),
-      TI.IntrinsicPart().as_xyz(), TI.OriginShift().as_xyz())
+      TI.IntrinsicPart(), TI.OriginShift())
   else:
     print "<td>%d^%d<td>%s<td>(%s)<td>(%s)" % (
        RI.Rtype(), RI.SenseOfRotation(), StrEV(RI.EV()),
-       TI.IntrinsicPart().as_xyz(), TI.OriginShift().as_xyz())
+       TI.IntrinsicPart(), TI.OriginShift())
   print "</tr>"
 
 def ShowSgOpsGeneric(SgOps):
@@ -210,6 +210,7 @@ try:
     print
 
   ShowSgOpsGeneric(SgOps)
+  SgType = SgOps.getSpaceGroupType(1)
 
   if (inp.convention == "Hall" or len(inp.symxyz) != 0):
     Symbols_Match = SgOps.MatchTabulatedSettings()
@@ -224,16 +225,14 @@ try:
         print "Additional symmetry operations are redundant."
         print
     else:
-      SgType = SgOps.getSpaceGroupType(1)
       print "Space group number:", SgType.SgNumber()
       print "Conventional Hermann-Mauguin symbol:", \
         sgtbx.SpaceGroupSymbols(SgType.SgNumber()).ExtendedHermann_Mauguin()
       print "Hall symbol:", SgOps.BuildHallSymbol(SgType, 1)
-      print "Change-of-basis matrix:", SgType.CBOp().M().as_xyz()
-      print "               Inverse:", SgType.CBOp().InvM().as_xyz()
+      print "Change-of-basis matrix:", SgType.CBOp().M()
+      print "               Inverse:", SgType.CBOp().InvM()
       print
 
-  SgType = SgOps.getSpaceGroupType(1)
   UnitCell = get_unitcell(SgType)
   SnapParameters = sgtbx.SpecialPositionSnapParameters(
     UnitCell, SgOps, 1, 1.e-6)
@@ -262,22 +261,28 @@ try:
     print "</tr>"
   print "</table><pre>"
   InTable = 0
+  print
 
-# Not implemented.
-#  print "Additional generators of Euclidean normalizer:"
-#  ssVM = SgOps.get_ss()
-#  print "  Number of structure-seminvariant vectors and moduli:", ssVM["N"]
-#  print "    vector        modulus"
-#  for i in xrange(ssVM["N"]):
-#    v = ssVM["VM"][i][0]
-#    m = ssVM["VM"][i][1]
-#    print "    (%2d, %2d, %2d)  %d" % (v[0], v[1], v[2], m)
-#  AddlG = SgOps.get_AddlGenEuclNorm(K2L=1, L2N=1)
-#  print "  Number of rotational generators:", AddlG["N"]
-#  for i in xrange(AddlG["N"]):
-#    print "   ", sglite.RTMx2XYZ(RTMx=AddlG["SMx"][i],
-#                                 RBF=sglite.SRBF, TBF=sglite.STBF)
-#  print
+  print "Additional generators of Euclidean normalizer:"
+  ss = sgtbx.StructureSeminvariant(SgOps)
+  print "  Number of structure-seminvariant vectors and moduli:", len(ss)
+  if (len(ss)):
+    print "    Vector    Modulus"
+    for i in xrange(len(ss)): print "   ", ss.V(i), ss.M(i)
+  K2L = SgType.getAddlGeneratorsOfEuclideanNormalizer(1, 0)
+  L2N = SgType.getAddlGeneratorsOfEuclideanNormalizer(0, 1)
+  if (len(K2L)):
+    print "  Inversion through a centre at:",
+    print K2L[0].analyzeTpart().OriginShift()
+  if (len(L2N)):
+    print "  Further generators:"
+    print "</pre><table border=2 cellpadding=2>"
+    InTable = 1
+    RTMxAnalysisHeader()
+    for M in L2N: RTMxAnalysis(M)
+    print "</table><pre>"
+    InTable = 0
+  print
 
 except RuntimeError, e:
   if (InTable): print "</table><pre>"
