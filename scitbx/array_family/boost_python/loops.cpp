@@ -31,7 +31,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("nested_loop", no_init)
         .def(init<array_t const&, optional<bool> >(

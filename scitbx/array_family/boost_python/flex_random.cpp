@@ -89,7 +89,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<mersenne_twister>("mersenne_twister", no_init)
         .def(init<optional<unsigned> >((arg_("seed")=0)))
         .def("random_size_t", &w_t::random_size_t, (arg_("size")))

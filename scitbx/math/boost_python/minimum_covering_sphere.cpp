@@ -15,7 +15,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t>("sphere_3d", no_init)
         .def(init<vec3<double> const&, double>(
           (arg_("center"), arg_("radius"))))
@@ -37,7 +36,6 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      typedef boost::python::arg arg_; // gcc 2.96 workaround
       class_<w_t, bases<sphere_3d<> > >("minimum_covering_sphere_3d", no_init)
         .def(init<af::const_ref<vec3<double> > const&,
                   optional<double> >((arg_("points"), arg_("epsilon"))))
