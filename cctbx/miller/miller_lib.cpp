@@ -12,7 +12,6 @@
 #include <cctbx/miller/asu.h>
 #include <cctbx/miller/build.h>
 #include <cctbx/miller/join.h>
-#include <cctbx/miller/selection.h>
 
 namespace cctbx { namespace miller {
 
@@ -367,39 +366,6 @@ namespace cctbx { namespace miller {
       result.push_back(miller_indices_[pairs_[i][j]]);
     }
     return result;
-  }
-
-  std::size_t selection::n_selected() const
-  {
-    size_assert_intrinsic();
-    std::size_t result = 0;
-    for(std::size_t i=0;i<flags_.size();i++) {
-      if (flags_[i]) result++;
-    }
-    return result;
-  }
-
-  void selection::negate()
-  {
-    size_assert_intrinsic();
-    for(std::size_t i=0;i<flags_.size();i++) {
-      flags_[i] = !flags_[i];
-    }
-  }
-
-  void
-  selection::operator()(af::shared<bool> flags)
-  {
-    size_assert(flags.size());
-    for(std::size_t i=0;i<flags_.size();i++) {
-      if (!flags[i]) flags_[i] = false;
-    }
-  }
-
-  af::shared<Index>
-  selection::selected_miller_indices() const
-  {
-    return selected_data(miller_indices_);
   }
 
 }} // namespace cctbx::miller

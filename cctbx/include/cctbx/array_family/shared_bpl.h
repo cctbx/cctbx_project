@@ -228,6 +228,20 @@ namespace cctbx { namespace af {
       return shared_items<e_t>(v);
     }
 
+    static
+    sh_t
+    select(sh_t const& v, shared<bool> const& flags)
+    {
+      if (v.size() != flags.size()) raise_incompatible_sizes();
+      std::size_t n = 0;
+      std::size_t i;
+      for(i=0;i<flags.size();i++) if (flags[i]) n++;
+      sh_t result;
+      result.reserve(n);
+      for(i=0;i<flags.size();i++) if (flags[i]) result.push_back(v[i]);
+      return result;
+    }
+
     typedef
     std::pair<
       boost::python::class_builder<
@@ -286,6 +300,7 @@ namespace cctbx { namespace af {
       py_shared.def(append, "append");
       py_shared.def(indices, "indices");
       py_shared.def(items, "items");
+      py_shared.def(select, "select");
 
       return std::make_pair(py_shared, py_shared_items);
     }
@@ -323,6 +338,49 @@ namespace cctbx { namespace af {
     }
 
     static
+    shared<bool>
+    iand_a_a(shared<bool> a1, shared<bool> const& a2)
+    {
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      for(std::size_t i=0;i<a1.size();i++) if(!a2[i]) a1[i] = false;
+      return a1;
+    }
+
+    static
+    shared<bool>
+    ior_a_a(shared<bool> a1, shared<bool> const& a2)
+    {
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      for(std::size_t i=0;i<a1.size();i++) if(a2[i]) a1[i] = true;
+      return a1;
+    }
+
+    static
+    shared<bool>
+    iand_a_s(shared<bool> a1, bool a2)
+    {
+      if (!a2) std::fill(a1.begin(), a1.end(), false);
+      return a1;
+    }
+
+    static
+    shared<bool>
+    ior_a_s(shared<bool> a1, bool a2)
+    {
+      if (a2) std::fill(a1.begin(), a1.end(), true);
+      return a1;
+    }
+
+    static
+    std::size_t
+    count(shared<bool> const& a1, bool a2)
+    {
+      std::size_t result = 0;
+      for(std::size_t i=0;i<a1.size();i++) if(a1[i] == a2) result++;
+      return result;
+    }
+
+    static
     sh_class_builders
     logical(
       boost::python::module_builder& bpl_module,
@@ -332,6 +390,11 @@ namespace cctbx { namespace af {
       class_blds.first.def(invert_a, "__invert__");
       class_blds.first.def(and_a_a, "__and__");
       class_blds.first.def(or_a_a, "__or__");
+      class_blds.first.def(iand_a_a, "__iand__");
+      class_blds.first.def(ior_a_a, "__ior__");
+      class_blds.first.def(iand_a_s, "__iand__");
+      class_blds.first.def(ior_a_s, "__ior__");
+      class_blds.first.def(count, "count");
       return class_blds;
     }
 

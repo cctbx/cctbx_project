@@ -65,4 +65,9 @@ data_set = xutils.reciprocal_space_array(
 selected_data_set = data_set.rms_filter(cutoff_factor=0.5)
 assert tuple(selected_data_set.H) == ((1,2,3),)
 assert tuple(selected_data_set.F) == (0,)
+data_set.friedel_flag = 0
+selected_data_set = data_set.rms_filter(
+  cutoff_factor=0.5, use_multiplicities=1)
+assert tuple(selected_data_set.H) == ((1,2,3),)
+assert tuple(selected_data_set.F) == (0,)
 print "OK"
