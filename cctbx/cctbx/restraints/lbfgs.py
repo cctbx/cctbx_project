@@ -1,3 +1,4 @@
+from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 
@@ -45,16 +46,10 @@ class lbfgs:
       site_symmetry_table = self.tmp.restraints_manager.site_symmetry_table
       assert site_symmetry_table is not None
       for i_seq in site_symmetry_table.special_position_indices():
-        site_frac = unit_cell.fractionalize(self.tmp.sites_shifted[i_seq])
-        site_special_frac = site_symmetry_table.get(i_seq).special_op() \
-                          * site_frac
-        distance_moved = unit_cell.distance(site_special_frac, site_frac)
-        if (distance_moved > 1.e-2):
-          raise AssertionError("Corrupt gradient calculations.")
-        # it is essential to reset the site here because
-        # otherwise rounding error accumulate over many cycles
-        self.tmp.sites_shifted[i_seq] = unit_cell.orthogonalize(
-          site_special_frac)
+        self.tmp.sites_shifted[i_seq] = crystal.correct_special_position(
+          unit_cell=unit_cell,
+          special_op=site_symmetry_table.get(i_seq).special_op(),
+          site_cart=self.tmp.sites_shifted[i_seq])
 
   def compute_target(self, compute_gradients):
     self.tmp.target_result = self.tmp.restraints_manager.energies(
