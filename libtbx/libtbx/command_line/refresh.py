@@ -30,6 +30,23 @@ def create_dispatchers(target_dir, package_name, source_dir):
       source_dir=source_dir,
       file_name=file_name)
 
+def create_show_path_duplicates(target_dir):
+  package_names = {}
+  for file_name in os.listdir(target_dir):
+    if (file_name.startswith(".")): continue
+    if (file_name.startswith("libtbx.")): continue
+    if (file_name == "python"): continue
+    package_names[file_name.split(".")[0]] = None
+  package_names = package_names.keys()
+  for command in ["show_build_path", "show_dist_paths"]:
+    source_file = libtbx.env.under_dist(
+      "libtbx", "libtbx/command_line/"+command+".py")
+    for package_name in package_names:
+      target_file = os.path.join(target_dir, package_name+"."+command)
+      libtbx.env.cache.create_dispatcher(
+        source_file=source_file,
+        target_file=target_file)
+
 def run():
   target_dir = libtbx.env.under_build("libtbx/bin")
   if (not isdir(target_dir)):
@@ -56,6 +73,7 @@ def run():
       libtbx.env.cache.create_dispatcher(
         source_file=norm(join(exe_path, file_name)),
         target_file=norm(join(target_dir, file_name)))
+  create_show_path_duplicates(target_dir)
 
 if (__name__ == "__main__"):
   run()
