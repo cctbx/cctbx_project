@@ -55,6 +55,16 @@ namespace {
       sgtbx::SpaceGroupInfo const&,
       af::shared<Miller::Index>,
       af::shared<double> >());
+    py_triplet_invariants.def(
+      &dmtbx::triplet_invariants<double>::total_number_of_triplets,
+                                         "total_number_of_triplets");
+    py_triplet_invariants.def(
+      &dmtbx::triplet_invariants<double
+        >::average_number_of_triplets_per_reflection,
+          "average_number_of_triplets_per_reflection");
+    py_triplet_invariants.def(
+      &dmtbx::triplet_invariants<double>::refine_phases,
+                                         "refine_phases");
 
     this_module.def(inplace_sort, "inplace_sort");
   }
