@@ -1,3 +1,4 @@
+import sys
 Import("env_base", "env_etc")
 env_etc.boost_dist = env_etc.libtbx_env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
@@ -81,3 +82,89 @@ if (not env_etc.no_boost_python):
     env.StaticLibrary(target="#libtbx/boost_python", source=bpl_dll_sources)
   else:
     env.SharedLibrary(target="#libtbx/boost_python", source=bpl_dll_sources)
+
+  if (int(ARGUMENTS.get("boost_python_tests", 0))):
+    # based on boost/libs/python/test/Jamfile revision 1.60
+    bpl_tests = Split("""
+staticmethod
+shared_ptr
+polymorphism
+auto_ptr
+minimal
+args
+numpy
+enum
+exception_translator
+test_pointer_adoption
+operators
+callbacks
+defaults
+object
+list
+long
+dict
+tuple
+str
+virtual_functions
+back_reference
+implicit
+data_members
+ben_scott1
+bienstman1
+bienstman2
+bienstman3
+multi_arg_constructor
+extract
+opaque
+pickle1
+pickle2
+pickle3
+nested
+docstring
+bienstman4
+bienstman5
+test_builtin_converters,builtin_converters,test_builtin_converters
+cltree,cltree,test_cltree
+m1,m1,newtest
+m2,m2,newtest
+iterator,iterator_ext,iterator
+input_iterator,input_iterator,iterator
+""")
+    Import("env_boost_python_ext")
+    env = env_boost_python_ext.Copy()
+    env.Replace(CPPPATH=[env_etc.boost_include, env_etc.python_include])
+    all_tst = []
+    for bpl_test in bpl_tests:
+      flds = bpl_test.split(",")
+      assert len(flds) in (1,3)
+      if (len(flds) == 1):
+        src = bpl_test
+        pyd = bpl_test + "_ext"
+        tst = bpl_test
+      else:
+        src = flds[0]
+        pyd = flds[1]
+        tst = flds[2]
+      if (not tst in all_tst):
+        all_tst.append(tst)
+      env.SharedLibrary(
+        target="#libtbx/%s" % pyd,
+        source="#boost/libs/python/test/%s.cpp" % src,
+      )
+    if (sys.platform == "win32"):
+      boost_python_run_tests = \
+        "%s\\boost_python_run_tests.bat" % env_etc.libtbx_env.LIBTBX_BUILD
+      f = open(boost_python_run_tests, "w")
+      for tst in all_tst:
+        print >> f, "python %BOOST_DIST%/libs/python/test/%s.py" % tst
+      f.close()
+    else:
+      boost_python_run_tests = \
+        "%s/boost_python_run_tests.csh" % env_etc.libtbx_env.LIBTBX_BUILD
+      f = open(boost_python_run_tests, "w")
+      print >> f, "#! /bin/csh -f"
+      print >> f, "set verbose"
+      for tst in all_tst:
+        print >> f, "python $BOOST_DIST/libs/python/test/%s.py" % tst
+      f.close()
+      os.chmod(boost_python_run_tests, 0755)
