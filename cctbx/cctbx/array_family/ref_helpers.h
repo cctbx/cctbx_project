@@ -32,33 +32,21 @@ const ElementType& at(size_type i) const { \
 }
 
 #define CCTBX_ARRAY_FAMILY_TAKE_REF(beg, sz) \
-ref<ElementType> \
-take_ref() { \
-  return ref<ElementType>(beg, sz); \
+af::ref<ElementType> \
+ref() { \
+  return af::ref<ElementType>(beg, sz); \
 } \
-const_ref<ElementType> \
-take_const_ref() const { \
-  return const_ref<ElementType>(beg, sz); \
-} \
-operator ref<ElementType>() { \
-  return ref<ElementType>(beg, sz); \
-} \
-operator const_ref<ElementType>() const { \
-  return const_ref<ElementType>(beg, sz); \
+af::const_ref<ElementType> \
+const_ref() const { \
+  return af::const_ref<ElementType>(beg, sz); \
 }
 
 #define CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(beg, ac) \
-ref<ElementType, AccessorType> \
-take_ref() { \
-  return ref<ElementType, AccessorType>(beg, ac); \
+af::ref<ElementType, AccessorType> \
+ref() { \
+  return af::ref<ElementType, AccessorType>(beg, ac); \
 } \
-const_ref<ElementType, AccessorType> \
-take_const_ref() const { \
-  return const_ref<ElementType, AccessorType>(beg, ac); \
-} \
-operator ref<ElementType, AccessorType>() { \
-  return ref<ElementType, AccessorType>(beg, ac); \
-} \
-operator const_ref<ElementType, AccessorType>() const { \
-  return const_ref<ElementType, AccessorType>(beg, ac); \
+af::const_ref<ElementType, AccessorType> \
+const_ref() const { \
+  return af::const_ref<ElementType, AccessorType>(beg, ac); \
 }

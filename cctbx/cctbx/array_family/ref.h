@@ -184,8 +184,9 @@ namespace cctbx { namespace af {
         return ref<ElementType>(m_begin, size());
       }
 
-      operator const_ref<ElementType, AccessorType>() const {
-        return const_ref<ElementType, AccessorType>(m_begin, m_accessor);
+      af::const_ref<ElementType, AccessorType>
+      const_ref() const {
+        return af::const_ref<ElementType, AccessorType>(m_begin, m_accessor);
       }
 
             value_type& operator()(const index_type& i) const {
