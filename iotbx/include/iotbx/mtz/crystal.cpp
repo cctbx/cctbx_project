@@ -51,6 +51,14 @@ namespace iotbx { namespace mtz {
     return result;
   }
 
+  crystal&
+  crystal::set_unit_cell_parameters(af::small<double, 6> const& parameters)
+  {
+    float* cell = ptr()->cell;
+    for(std::size_t i=0;i<6;i++) cell[i] = static_cast<float>(parameters[i]);
+    return *this;
+  }
+
   dataset
   crystal::add_dataset(
     const char *name,

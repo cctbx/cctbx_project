@@ -256,6 +256,27 @@ class _object(boost.python.injector, ext.object):
           for fields in fields_list:
             print >> out, format % tuple(fields)
 
+  def change_basis_in_place(self, cb_op):
+    # force update if column_type_legend is changed
+    assert len(column_type_legend) == 16 # programmer alert
+    for column_type in self.column_types():
+      if (column_type == "P"):
+        raise RuntimeError(
+          "In-place transformation of phase angles not implemented.")
+      if (column_type == "A"):
+        raise RuntimeError(
+          "In-place transformation of Hendrickson-Lattman coefficients"
+          " not implemented.")
+    self.replace_miller_indices(cb_op.apply(self.extract_miller_indices()))
+    space_group_info = self.space_group_info().change_basis(cb_op)
+    self.set_space_group_info(space_group_info=space_group_info)
+    for crystal in self.crystals():
+      crystal_symmetry = cctbx.crystal.symmetry(
+        unit_cell=cb_op.apply(crystal.unit_cell()),
+        space_group_info=space_group_info)
+      crystal.set_unit_cell_parameters(
+        crystal_symmetry.unit_cell().parameters())
+
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=False,
                              merge_equivalents=True,
                              info_prefix=""):
@@ -575,13 +596,13 @@ class _dataset(boost.python.injector, ext.dataset):
       elif (default_col_types == "AAAA"):
         mtz_reflection_indices = self.add_column(
           label=label_decorator.hendrickson_lattman(column_root_label, 0),
-          type=column_types).set_reals(
+          type=column_types[0]).set_reals(
             miller_indices=miller_array.indices(),
             data=miller_array.data().slice(0))
         for i in xrange(1,4):
           self.add_column(
             label=label_decorator.hendrickson_lattman(column_root_label, i),
-            type=column_types).set_reals(
+            type=column_types[i]).set_reals(
               mtz_reflection_indices=mtz_reflection_indices,
               data=miller_array.data().slice(i))
       else:

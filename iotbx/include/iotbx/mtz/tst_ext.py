@@ -463,6 +463,12 @@ Crystal 3:
   Unit cell: (12, 20, 20, 90, 90, 120)
   Number of datasets: 0
 """
+  mtz_object.crystals()[1].set_unit_cell_parameters([13,21,23,81,82,83])
+  assert approx_equal(mtz_object.crystals()[1].unit_cell_parameters(),
+    [13,21,23,81,82,83])
+  mtz_object.crystals()[1].set_unit_cell_parameters([11,20,20,90,90,120])
+  assert approx_equal(mtz_object.crystals()[1].unit_cell_parameters(),
+    [11,20,20,90,90,120])
   for stage in [0,1]:
     for i_crystal,crystal in enumerate(mtz_object.crystals()):
       for i_dataset in xrange(5-i_crystal):

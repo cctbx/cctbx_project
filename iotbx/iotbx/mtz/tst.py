@@ -160,9 +160,28 @@ def recycle(miller_array, column_root_label, column_types=None, verbose=0):
   assert len(restored_miller_arrays) == 1
   verify_miller_arrays(miller_array, restored_miller_arrays[0])
   mtz_object = miller_array.as_mtz_object(column_root_label=column_root_label)
-  restored_miller_arrays = restored.as_miller_arrays()
+  restored_miller_arrays = mtz_object.as_miller_arrays()
   assert len(restored_miller_arrays) == 1
   verify_miller_arrays(miller_array, restored_miller_arrays[0])
+  if (   miller_array.is_bool_array()
+      or miller_array.is_integer_array()
+      or miller_array.is_real_array()):
+    cb_op = miller_array.change_of_basis_op_to_niggli_cell()
+    mtz_object.change_basis_in_place(cb_op=cb_op)
+    cb_array = miller_array.change_basis(cb_op=cb_op)
+    assert mtz_object.space_group() == cb_array.space_group()
+    for mtz_crystal in mtz_object.crystals():
+      assert mtz_crystal.unit_cell().is_similar_to(cb_array.unit_cell())
+    restored_miller_arrays = mtz_object.as_miller_arrays()
+    assert len(restored_miller_arrays) == 1
+    verify_miller_arrays(cb_array, restored_miller_arrays[0])
+    mtz_object.change_basis_in_place(cb_op=cb_op.inverse())
+    assert mtz_object.space_group() == miller_array.space_group()
+    for mtz_crystal in mtz_object.crystals():
+      assert mtz_crystal.unit_cell().is_similar_to(miller_array.unit_cell())
+    restored_miller_arrays = mtz_object.as_miller_arrays()
+    assert len(restored_miller_arrays) == 1
+    verify_miller_arrays(miller_array, restored_miller_arrays[0])
 
 def verify_miller_arrays(a1, a2, eps=1.e-5):
   v = a2.adopt_set(a1)

@@ -75,12 +75,14 @@ namespace iotbx { namespace mtz {
     const char *label,
     const char *type)
   {
+    CMtz::MTZCOL* column_ptr = 0;
     CCTBX_ASSERT(label != 0);
+    CCTBX_ASSERT(strlen(label) < sizeof(column_ptr->label));
     CCTBX_ASSERT(type != 0);
+    CCTBX_ASSERT(strlen(type) < sizeof(column_ptr->type));
     CCTBX_ASSERT(!mtz_object().has_column(label));
     int i_column = n_columns();
-    CMtz::MTZCOL* column_ptr = CMtz::MtzAddColumn(
-      mtz_object().ptr(), ptr(), label, type);
+    column_ptr = CMtz::MtzAddColumn(mtz_object().ptr(), ptr(), label, type);
     CCTBX_ASSERT(column_ptr != 0);
     CCTBX_ASSERT(n_columns() == i_column+1);
     column result(*this, i_column);

@@ -64,6 +64,10 @@ namespace iotbx { namespace mtz {
         return cctbx::uctbx::unit_cell(unit_cell_parameters());
       }
 
+      //! Write access.
+      crystal&
+      set_unit_cell_parameters(af::small<double, 6> const& parameters);
+
       //! Read-only access.
       int
       n_datasets() const { return CMtz::MtzNsetsInXtal(ptr()); }
