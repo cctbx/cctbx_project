@@ -1,72 +1,10 @@
 import iotbx.mtz
 import iotbx.cns.miller_array
 import iotbx.scalepack.merge
+import iotbx.shelx.hklf
 from iotbx import reflection_file_reader
+from iotbx import reflection_file_utils
 from iotbx.option_parser import iotbx_option_parser
-from cctbx import miller
-from libtbx.utils import UserError
-from libtbx.itertbx import count
-import sys, os
-
-def construct_output_file_name(input_file_names,
-                               user_file_name,
-                               file_type_label,
-                               file_extension,
-                               extension_seperator="."):
-  if (user_file_name == "."):
-    if (len(input_file_names) > 1):
-      raise UserError(
-        "Ambiguous name for output %s file (more than one input file)."
-          % file_type_label)
-    user_file_name = os.path.basename(input_file_names[0])
-  if (not user_file_name.lower().endswith(file_extension)):
-    user_file_name += extension_seperator + file_extension
-  return user_file_name
-
-def show_possible_data_labels(labels, scores=None, high_score=None):
-  print "Possible choices:"
-  if (scores is None):
-    for p_array,label in zip(count(1), labels):
-      print "  %d:" % p_array, label
-  else:
-    for p_array,label,score in zip(count(1), labels, scores):
-      if (score == high_score):
-        print "  %d:" % p_array, label
-  print
-  print "Please specify a number or an unambiguous substring of the",
-  print "target data label."
-  print
-
-def match_data_label(input_arrays, label):
-  labels = []
-  for p_array,input_array in zip(count(1), input_arrays):
-    lbl = input_array.info()
-    if (lbl is not None):
-      labels.append(lbl)
-    else:
-      labels.append(str(p_array))
-  scores = []
-  label_lower = label.lower()
-  for lbl in labels:
-    if (lbl.lower().find(label_lower) < 0):
-      scores.append(0)
-    elif (lbl.find(label) < 0):
-      scores.append(1)
-    else:
-      scores.append(2)
-  selected_array = None
-  for high_score in [2,1]:
-    if (scores.count(high_score) > 0):
-      if (scores.count(high_score) > 1):
-        print
-        print "Ambiguous --label=%s" % label
-        show_possible_data_labels(labels, scores, high_score)
-        return None
-      return input_arrays[scores.index(high_score)]
-  print
-  print "Unknown --label=%s" % label
-  show_possible_data_labels(labels)
-  return None
 
 def run(args):
   command_line = (iotbx_option_parser(
@@ -151,8 +89,9 @@ def run(args):
     crystal_symmetry=command_line.symmetry,
     force_symmetry=not command_line.options.weak_symmetry,
     discard_arrays=00000,
-    verbose=1,
-    report_out=sys.stdout)
+    verbose=1)
+  label_table = reflection_file_utils.label_table(
+    miller_arrays=all_miller_arrays)
   if (len(all_miller_arrays) == 1):
     selected_array = all_miller_arrays[0]
   elif (command_line.options.label is None):
@@ -160,22 +99,14 @@ def run(args):
     print "Please use --label to select a reflection array."
     print "For example: --label=2"
     print "         or: --label=%s"%all_miller_arrays[1].info().split(":")[-1]
-    print "Possible choices are:"
-    for i,miller_array in zip(count(1), all_miller_arrays):
-      print "  %d:" % i, miller_array.info()
     print
+    label_table.show_possible_choices()
     return None
   else:
-    try: i = int(command_line.options.label)-1
-    except: i = None
-    if (i is not None and i >= 0 and i < len(all_miller_arrays)):
-      selected_array = all_miller_arrays[i]
-    else:
-      selected_array = match_data_label(
-        input_arrays=all_miller_arrays,
-        label=command_line.options.label)
-      if (selected_array is None):
-        return None
+    selected_array = label_table.match_data_label(
+      label=command_line.options.label)
+    if (selected_array is None):
+      return None
   if (selected_array.unit_cell() is None):
     command_line.parser.show_help()
     print "Unit cell parameters unknown. Please use --symmetry or --unit_cell."
@@ -224,7 +155,7 @@ def run(args):
     print
   n_output_files = 0
   if (command_line.options.sca is not None):
-    file_name = construct_output_file_name(
+    file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=command_line.args,
       user_file_name=command_line.options.sca,
       file_type_label="Scalepack",
@@ -236,7 +167,7 @@ def run(args):
     n_output_files += 1
     print
   if (command_line.options.mtz is not None):
-    file_name = construct_output_file_name(
+    file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=command_line.args,
       user_file_name=command_line.options.mtz,
       file_type_label="MTZ",
@@ -246,7 +177,7 @@ def run(args):
     n_output_files += 1
     print
   if (command_line.options.cns is not None):
-    file_name = construct_output_file_name(
+    file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=command_line.args,
       user_file_name=command_line.options.cns,
       file_type_label="CNS",
@@ -256,7 +187,7 @@ def run(args):
     n_output_files += 1
     print
   if (command_line.options.shelx is not None):
-    file_name = construct_output_file_name(
+    file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=command_line.args,
       user_file_name=command_line.options.shelx,
       file_type_label="SHELX",

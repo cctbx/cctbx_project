@@ -85,6 +85,9 @@ class iotbx_option_parser(OptionParser):
     if (min_nargs is None): min_nargs = nargs
     if (min_nargs is not None):
       if (len(args) < min_nargs):
+        if (len(args) == 0):
+          self.show_help()
+          sys.exit(1)
         self.error("Not enough arguments (at least %d required, %d given)." % (
           min_nargs, len(args)))
     if (max_nargs is None): max_nargs = nargs
