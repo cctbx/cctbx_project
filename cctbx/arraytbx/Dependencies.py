@@ -6,6 +6,8 @@ class write_makefiles(makefile_generator.write_makefiles):
 
   def dependencies(self):
 
+    self.lib_python_subdir = "cctbx_boost/arraytbx"
+
     self.files = (
       "global/error.cpp",
       "global/bpl_utils.cpp",

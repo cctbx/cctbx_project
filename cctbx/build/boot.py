@@ -15,6 +15,14 @@ def create_makefile(path_cctbx, configuration, subdir):
   f.close()
   shutil.copy(subdir + "/Makefile", subdir + "/Makefile.nodepend")
 
+def create_lib_python_dir():
+  lib_python_dir = "lib_python/cctbx_boost"
+  for subdir in ("arraytbx", "eltbx"):
+    try: os.makedirs(lib_python_dir + "/" + subdir)
+    except OSError: pass
+    open(lib_python_dir + "/" + subdir + "/__init__.py", "a+").close()
+  open(lib_python_dir + "/__init__.py", "a+").close()
+
 if (__name__ == "__main__"):
   path_cctbx = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[0])))
   sys.path.insert(0, path_cctbx + "/build")
@@ -43,6 +51,7 @@ if (__name__ == "__main__"):
   if (hasattr(os, "symlink")):
     try: os.symlink(path_cctbx + "/examples/python", "examples/python")
     except: pass
+  create_lib_python_dir()
   if (hasattr(os, "symlink")):
     for file in ("Makefile", "make.py", "test_imports.py"):
       print "Linking:", file

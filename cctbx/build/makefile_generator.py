@@ -40,6 +40,13 @@ class write_makefiles:
     expand_cf(self.macros, "@(CCTBXLIBDIR_UNIX)", paths_lib[0])
     expand_cf(self.macros, "@(CCTBXLIBDIR_WIN)", paths_lib[1])
     self.dependencies()
+    if (hasattr(self, "lib_python_subdir")):
+      paths_lib_python = paths_relative(
+        subdir, "lib_python/" + self.lib_python_subdir)
+    else:
+      paths_lib_python = ("", "")
+    expand_cf(self.macros, "@(CCTBXLIB_PYTHONDIR_UNIX)", paths_lib_python[0])
+    expand_cf(self.macros, "@(CCTBXLIB_PYTHONDIR_WIN)", paths_lib_python[1])
 
   def head(self):
     print r"""# Usage:
@@ -205,10 +212,9 @@ class write_makefiles:
     if (self.platform  in ("vc60", "mingw32", "win32_mwcc")):
       print "\t-mkdir $(CCTBXLIBDIR_WIN)"
       print "\tcopy %s $(CCTBXLIBDIR_WIN)" % (lib,)
-      print "\tdel %s" % (lib,)
     else:
       print "\t-mkdir $(CCTBXLIBDIR_UNIX)"
-      print "\tmv %s $(CCTBXLIBDIR_UNIX)" % (lib,)
+      print "\tcp %s $(CCTBXLIBDIR_UNIX)" % (lib,)
     print
     self.make_targets["libraries"].append(lib)
     self.update_depend(objects)
@@ -254,6 +260,7 @@ class write_makefiles:
     print "%s: %s" % (nameso, objstr)
     print "\t$(LD) $(LDDLL) -o %s %s %s" \
           % (nameso, objstr, libstr)
+    print "\tcp %s $(CCTBXLIB_PYTHONDIR_UNIX)" % (nameso,)
     print
     self.make_targets["boost_python_modules"].append(nameso)
 
@@ -265,6 +272,7 @@ class write_makefiles:
     print (  "\tdllwrap -s --driver-name g++ --entry _DllMainCRTStartup@12"
            + " --target=i386-mingw32 --dllname %s --def %s"
            + " %s %s") % (namepyd, namedef, objstr, libstr)
+    print "\tcopy %s $(CCTBXLIB_PYTHONDIR_WIN)" % (namepyd,)
     print
     print "%s:" % (namedef,)
     print "\techo EXPORTS > %s" % (namedef,)
@@ -278,6 +286,7 @@ class write_makefiles:
     print "%s: %s" % (namepyd, objstr)
     print (  "\t$(LD) $(LDDLL) /out:%s /export:init%s %s"
            + " %s") % (namepyd, name, objstr, libstr)
+    print "\tcopy %s $(CCTBXLIB_PYTHONDIR_WIN)" % (namepyd,)
     self.make_targets["boost_python_modules"].append(namepyd)
 
   def win32_mwcc_pyd(self, name, objstr, libs):
@@ -286,6 +295,7 @@ class write_makefiles:
     print "%s: %s" % (namepyd, objstr)
     print (  "\t$(LD) $(LDDLL) -o %s %s %s") % (
       namepyd, objstr, libstr)
+    print "\tcopy %s $(CCTBXLIB_PYTHONDIR_WIN)" % (namepyd,)
     self.make_targets["boost_python_modules"].append(namepyd)
 
   def make_clean(self):
