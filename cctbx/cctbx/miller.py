@@ -756,6 +756,7 @@ class fft_map(maptbx.crystal_gridding):
     assert fourier_coefficients.anomalous_flag() in (00000, 0001)
     assert fourier_coefficients.unit_cell().is_similar_to(self.unit_cell())
     assert fourier_coefficients.space_group() == self.space_group()
+    assert isinstance(fourier_coefficients.data(), flex.complex_double)
     self._anomalous_flag = fourier_coefficients.anomalous_flag()
     if (not self.anomalous_flag()):
       rfft = fftpack.real_to_complex_3d(self.n_real())
@@ -764,7 +765,6 @@ class fft_map(maptbx.crystal_gridding):
       cfft = fftpack.complex_to_complex_3d(self.n_real())
       n_complex = cfft.n()
     conjugate_flag = 0001
-    assert isinstance(fourier_coefficients.data(), flex.complex_double)
     map = maptbx.structure_factors.to_map(
       self.space_group(),
       self.anomalous_flag(),
