@@ -16,6 +16,7 @@
 #include <scitbx/array_family/versa_reductions.h>
 #include <scitbx/array_family/versa_algebra.h>
 #include <scitbx/boost_python/utils.h>
+#include <scitbx/boost_python/slice.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
@@ -160,6 +161,18 @@ namespace scitbx { namespace af { namespace boost_python {
       if (!a.check_shared_size()) raise_shared_size_mismatch();
       std::size_t j = positive_getitem_index(i, a.size());
       return a[j];
+    }
+
+    static f_t
+    getitem_1d_slice(f_t const& a, scitbx::boost_python::slice const& slice)
+    {
+      if (!a.check_shared_size()) raise_shared_size_mismatch();
+      scitbx::boost_python::adapted_slice a_sl(slice, a.size());
+      af::shared_plain<e_t> result(af::reserve(a_sl.size));
+      for(long i=a_sl.start;i!=a_sl.stop;i+=a_sl.step) {
+        result.push_back(a[i]);
+      }
+      return f_t(result, flex_grid<>(result.size()));
     }
 
     static e_t&
@@ -708,6 +721,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__len__", size)
         .def("capacity", capacity)
         .def("__getitem__", getitem_1d, GetitemReturnValuePolicy())
+        .def("__getitem__", getitem_1d_slice)
         .def("__getitem__", getitem_flex_grid, GetitemReturnValuePolicy())
         .def("__setitem__", setitem_1d)
         .def("__setitem__", setitem_flex_grid)

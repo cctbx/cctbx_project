@@ -208,6 +208,45 @@ def exercise_misc():
   assert f.focus_size_1d() == 2*3*4
   assert f.shift_origin().accessor() == g.shift_origin()
 
+def exercise_1d_slicing_core(a):
+  assert tuple(a[:]) == (1,2,3,4,5)
+  assert tuple(a[::]) == (1,2,3,4,5)
+  assert tuple(a[0:]) == (1,2,3,4,5)
+  assert tuple(a[1:]) == (2,3,4,5)
+  assert tuple(a[-2:]) == (4,5)
+  assert tuple(a[-1:]) == (5,)
+  assert tuple(a[:-1]) == (1,2,3,4)
+  assert tuple(a[:-2]) == (1,2,3)
+  assert tuple(a[:-4]) == (1,)
+  assert tuple(a[:-5]) == ()
+  assert tuple(a[:0]) == ()
+  assert tuple(a[:1]) == (1,)
+  assert tuple(a[:2]) == (1,2)
+  assert tuple(a[::1]) == (1,2,3,4,5)
+  assert tuple(a[::2]) == (1,3,5)
+  assert tuple(a[1::2]) == (2,4)
+  assert tuple(a[1:-1:2]) == (2,4)
+  assert tuple(a[1:-2:2]) == (2,)
+  assert tuple(a[4:2]) == ()
+  assert tuple(a[4:2:-1]) == (5,4)
+  assert tuple(a[2:4:-1]) == ()
+  assert tuple(a[::-1]) == (5,4,3,2,1)
+  assert tuple(a[::-2]) == (5,3,1)
+  assert tuple(a[-1::-2]) == (5,3,1)
+  assert tuple(a[-1:1:-2]) == (5,3)
+  assert tuple(a[-1:2:-2]) == (5,)
+
+def exercise_1d_slicing():
+  exercise_1d_slicing_core(flex.int((1,2,3,4,5)))
+  try:
+    import Numeric
+  except:
+    pass
+  else:
+    print "Testing compatibility with Numeric slicing...",
+    exercise_1d_slicing_core(Numeric.array((1,2,3,4,5)))
+    print "OK"
+
 def exercise_push_back_etc():
   a = flex.double(3)
   assert a.size() == 3
@@ -593,6 +632,7 @@ def run(iterations):
     exercise_flex_grid()
     exercise_flex_constructors()
     exercise_misc()
+    exercise_1d_slicing()
     exercise_push_back_etc()
     exercise_setitem()
     exercise_select_shuffle()
