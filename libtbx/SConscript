@@ -17,7 +17,7 @@ if (not env_etc.no_boost_python):
   env.Replace(LINKFLAGS=env_etc.shlinkflags)
 
   jamfile_path = os.path.normpath(os.path.join(
-    os.environ["LIBTBX_BOOST"], "libs/python/build/Jamfile"))
+    os.environ["BOOST_DIST"], "libs/python/build/Jamfile"))
 
   try:  #appropriate for Boost.Python snapshot on 2003-Feb-25
     jamfile_all =   open(str(jamfile_path), "r").read()

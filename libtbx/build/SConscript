@@ -188,7 +188,7 @@ else:
     env_etc.cxxflags_base = Split("""
         -I%s/boost/compatibility/cpp_c_headers
         -woff 1001,1234,1311,1682,3439
-    """ % (os.environ["LIBTBX_BOOST"],))
+    """ % (os.environ["BOOST_DIST"],))
     env_etc.ccflags_base = Split("""
     """)
     if (not env_etc.debug_build):
@@ -273,8 +273,8 @@ env_etc.cxxflags_bpl_defines_base = Split("""
 env_etc.libtbx_build = os.environ["LIBTBX_BUILD"]
 env_etc.libtbx_include = norm_join(env_etc.libtbx_build, "libtbx/include")
 env_etc.libtbx_lib = norm_join(env_etc.libtbx_build, "libtbx")
-env_etc.libtbx_boost = os.environ["LIBTBX_BOOST"]
-env_etc.boost_include = env_etc.libtbx_boost
+env_etc.boost_dist = os.environ["BOOST_DIST"]
+env_etc.boost_include = env_etc.boost_dist
 
 try:
   CScanRegisterFlags(
