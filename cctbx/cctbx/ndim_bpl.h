@@ -16,25 +16,22 @@
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 
-  template <std::size_t N>
-  cctbx::dimension<N> from_python(PyObject* p,
-    boost::python::type<const cctbx::dimension<N>&>)
+  cctbx::dimension<3> from_python(PyObject* p,
+    boost::python::type<const cctbx::dimension<3>&>)
   {
-    return cctbx::dimension<N>(from_python(p,
-      boost::python::type<const cctbx::carray<int, N>&>()));
+    return cctbx::dimension<3>(from_python(p,
+      boost::python::type<const cctbx::carray<int, 3>&>()));
   }
 
-  template <std::size_t N>
-  cctbx::dimension<N> from_python(PyObject* p,
-    boost::python::type<cctbx::dimension<N>&>)
+  cctbx::dimension<3> from_python(PyObject* p,
+    boost::python::type<cctbx::dimension<3>&>)
   {
-    return cctbx::dimension<N>(from_python(p,
-      boost::python::type<const cctbx::carray<int, N>&>()));
+    return cctbx::dimension<3>(from_python(p,
+      boost::python::type<const cctbx::carray<int, 3>&>()));
   }
 
-  template <std::size_t N>
-  PyObject* to_python(const cctbx::dimension<N>& dim) {
-    return to_python(static_cast<const cctbx::carray<int, N>&>(dim));
+  PyObject* to_python(const cctbx::dimension<3>& dim) {
+    return to_python(static_cast<const cctbx::carray<int, 3>&>(dim));
   }
 
 BOOST_PYTHON_END_CONVERSION_NAMESPACE

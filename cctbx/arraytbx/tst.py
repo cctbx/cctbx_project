@@ -1,4 +1,4 @@
-from  cctbx.arraytbx import shared_storage
+from cctbx.arraytbx import shared_storage
 store = shared_storage.int(5)
 store.fill(1)
 print store.as_tuple()

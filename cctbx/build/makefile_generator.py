@@ -108,6 +108,8 @@ class write_makefiles:
         all.append(t)
     if (len(all)):
       print "compile:", join(all)
+    else:
+      print "compile:"
     print
 
     if (hasattr(self, "make_test")):

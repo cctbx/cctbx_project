@@ -8,6 +8,7 @@ softlinks:
 	cd external/boost_python; make softlinks
 	cd uctbx; make softlinks
 	cd sgtbx; make softlinks
+	cd arraytbx; make softlinks
 	cd adptbx; make softlinks
 	cd eltbx; make softlinks
 	cd sftbx; make softlinks
@@ -18,6 +19,7 @@ unlink:
 	cd external/boost_python; make unlink
 	cd uctbx; make unlink
 	cd sgtbx; make unlink
+	cd arraytbx; make unlink
 	cd adptbx; make unlink
 	cd eltbx; make unlink
 	cd sftbx; make unlink
@@ -28,6 +30,7 @@ cp:
 	cd external/boost_python; make cp
 	cd uctbx; make cp
 	cd sgtbx; make cp
+	cd arraytbx; make cp
 	cd adptbx; make cp
 	cd eltbx; make cp
 	cd sftbx; make cp
@@ -38,6 +41,7 @@ rm:
 	cd external/boost_python; make rm
 	cd uctbx; make rm
 	cd sgtbx; make rm
+	cd arraytbx; make rm
 	cd adptbx; make rm
 	cd eltbx; make rm
 	cd sftbx; make rm
@@ -48,6 +52,7 @@ clean:
 	cd external/boost_python; make clean
 	cd uctbx; make clean
 	cd sgtbx; make clean
+	cd arraytbx; make clean
 	cd adptbx; make clean
 	cd eltbx; make clean
 	cd sftbx; make clean
@@ -58,6 +63,7 @@ depend:
 	cd external/boost_python; make -f Makefile.nodepend depend > Makefile
 	cd uctbx; make -f Makefile.nodepend depend > Makefile
 	cd sgtbx; make -f Makefile.nodepend depend > Makefile
+	cd arraytbx; make -f Makefile.nodepend depend > Makefile
 	cd adptbx; make -f Makefile.nodepend depend > Makefile
 	cd eltbx; make -f Makefile.nodepend depend > Makefile
 	cd sftbx; make -f Makefile.nodepend depend > Makefile
@@ -73,6 +79,7 @@ compile:
 	cd external/boost_python; make
 	cd uctbx; make
 	cd sgtbx; make
+	cd arraytbx; make
 	cd adptbx; make
 	cd eltbx; make
 	cd sftbx; make
@@ -82,10 +89,13 @@ compile:
 lib_python_dir:
 	-test ! -d lib_python/cctbx && mkdir -p lib_python/cctbx
 	touch lib_python/cctbx/__init__.py
+	-test ! -d lib_python/cctbx/arraytbx && mkdir lib_python/cctbx/arraytbx
+	touch lib_python/cctbx/arraytbx/__init__.py
 	-test ! -d lib_python/cctbx/eltbx && mkdir lib_python/cctbx/eltbx
 	touch lib_python/cctbx/eltbx/__init__.py
 	cp uctbx/*.so lib_python/cctbx
 	cp sgtbx/*.so lib_python/cctbx
+	cp arraytbx/*.so lib_python/cctbx/arraytbx
 	cp adptbx/*.so lib_python/cctbx
 	cp eltbx/*.so lib_python/cctbx/eltbx
 	cp sftbx/*.so lib_python/cctbx
