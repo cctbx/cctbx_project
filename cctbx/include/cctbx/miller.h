@@ -82,8 +82,11 @@ namespace cctbx {
           }
           return false;
         }
-        bool operator>(const Index& m2) const {
-          return !(*this < m2);
+        bool operator>(const Index& m2) const
+        {
+          if (*this < m2) return false;
+          for(std::size_t i=0;i<3;i++) if (elems[i] != m2[i]) return true;
+          return false;
         }
         //@}
     };
