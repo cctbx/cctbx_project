@@ -907,13 +907,14 @@ class environment:
         target_file=file_name)
     for module in self.module_list:
       module.process_command_line_directories()
-    if (os.path.isdir(self.exe_path)):
-      print 'Processing: "%s"' % self.exe_path
-      for file_name in os.listdir(self.exe_path):
-        if (file_name[0] == "."): continue
-        self.write_dispatcher_in_bin(
-          source_file=libtbx.path.norm_join(self.exe_path, file_name),
-          target_file=file_name)
+    for path in [self.exe_path, self.under_build("exe_dev")]:
+      if (os.path.isdir(path)):
+        print 'Processing: "%s"' % path
+        for file_name in os.listdir(path):
+          if (file_name[0] == "."): continue
+          self.write_dispatcher_in_bin(
+            source_file=libtbx.path.norm_join(path, file_name),
+            target_file=file_name)
     self.write_python_and_show_path_duplicates()
     self.write_command_version_duplicates()
     os.environ["LIBTBX_BUILD"] = self.build_path # to support libtbx.load_env
