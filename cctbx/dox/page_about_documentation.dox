@@ -1,0 +1,59 @@
+/*! \page page_about_documentation cctbx - About the documentation
+
+<hr>
+
+\par
+The %cctbx documentation is available at:
+<ul>
+<li>http://cctbx.sourceforge.net/
+</ul>
+
+\par
+The entire %cctbx documentation is automatically generated using
+<a href="http://www.doxygen.org/index.html">Doxygen</a>. This program
+is freely available under the GNU General Public License (GPL).
+
+\par
+To regenerate the %cctbx documentation, Doxygen first needs to be
+installed on your system. A binary distribution for Linux is available
+and can be installed without root permissions. Essentially, only one
+file in the binary distribution, the <tt>Doxygen</tt> executable, is
+needed. I.e., installing Doxygen can be as easy as copying this one
+file to your system.
+
+\par
+The (one!) Doxygen configuration file for the %cctbx is located at
+<tt>%cctbx/dox/Doxyfile</tt>, along with the file
+<tt>%cctbx/dox/Doxyfile.orig</tt>. The latter is the output of
+<tt>doxygen -g</tt>.
+There are only a few differences (use <tt>diff Doxyfile.orig
+Doxyfile</tt> to see them all). The more interesting ones are:
+
+\verbatim
+OUTPUT_DIRECTORY       = /home/groups/c/cc/cctbx/doc
+INPUT                  = . ../cctbx
+FILE_PATTERNS          = *.cpp *.h *.dox
+\endverbatim
+
+\par
+To regenerate the %cctbx documentation, adjust the
+<tt>OUTPUT_DIRECTORY</tt> pathname and run the command <tt>doxygen</tt>
+in the directory <tt>%cctbx/dox</tt>. Doxygen will recursively
+use all C++ header files in the directory tree <tt>%cctbx/%cctbx</tt>,
+and the <tt>*.dox</tt> files in <tt>%cctbx/dox</tt>.
+
+\par
+When using the %cctbx <tt>Doxyfile</tt> as distributed, only HTML
+documentation will be generated. Other output formats supported by
+Doxygen include LATEX, MAN, and RTF. The latter format can be used
+with Microsoft Word. To generate the %cctbx documentation in
+formats other than HTML, change the <tt>GENERATE_LATEX</tt>,
+<tt>GENERATE_MAN</tt>, etc.  definitions in the <tt>Doxyfile</tt>
+and run Doxygen again.
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, April 2001
+
+*/
