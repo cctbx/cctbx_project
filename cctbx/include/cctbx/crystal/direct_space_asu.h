@@ -455,6 +455,25 @@ namespace direct_space_asu {
         CCTBX_ASSERT(have_site_in_asu);
       }
 
+      void
+      process_sites_frac(
+        af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
+      {
+        for(std::size_t i=0;i<original_sites.size();i++) {
+          process(original_sites[i]);
+        }
+      }
+
+      void
+      process_sites_cart(
+        af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
+      {
+        scitbx::mat3<FloatType> frac = unit_cell().fractionalization_matrix();
+        for(std::size_t i=0;i<original_sites.size();i++) {
+          process(frac * original_sites[i]);
+        }
+      }
+
       //! Locks the array of mappings().
       /*! An exception is raised if process() is called subsequently.
        */

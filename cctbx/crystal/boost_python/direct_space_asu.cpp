@@ -160,6 +160,10 @@ namespace {
         .def("sym_equiv_epsilon", &w_t::sym_equiv_epsilon)
         .def("buffer_covering_sphere", &w_t::buffer_covering_sphere, rir())
         .def("process", &w_t::process, (arg_("original_site")))
+        .def("process_sites_frac", &w_t::process_sites_frac,
+          (arg_("original_sites")))
+        .def("process_sites_cart", &w_t::process_sites_cart,
+          (arg_("original_sites")))
         .def("lock", &w_t::lock)
         .def("is_locked", &w_t::is_locked)
         .def("mappings", &w_t::mappings, ccr())

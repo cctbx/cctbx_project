@@ -49,3 +49,33 @@ class _float_asu(boost.python.injector, float_asu):
     if (thickness is None):
       thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
     return self._add_buffer(thickness)
+
+def non_crystallographic_asu_mappings(sites_cart):
+  sites_min = sites_cart.min()
+  sites_max = sites_cart.max()
+  sites_span = matrix.col(sites_max) - matrix.col(sites_min)
+  buffer_layer = max(list(sites_span))*0.01
+  if (buffer_layer == 0):
+    buffer_layer = 0.5
+  unit_cell_lengths = list(sites_span + matrix.col([buffer_layer]*3)*2)
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=unit_cell_lengths,
+    space_group=sgtbx.space_group())
+  sites_min = crystal_symmetry.unit_cell().fractionalize(sites_min)
+  sites_max = crystal_symmetry.unit_cell().fractionalize(sites_max)
+  asu_facets = [float_cut_plane(n=n,c=c) for n,c in [
+    ([1,0,0],-sites_min[0]),
+    ([-1,0,0],sites_max[0]),
+    ([0,1,0],-sites_min[1]),
+    ([0,-1,0],sites_max[1]),
+    ([0,0,1],-sites_min[2]),
+    ([0,0,-1],sites_max[2]),
+  ]]
+  result = asu_mappings(
+    space_group=crystal_symmetry.space_group(),
+    asu=float_asu(
+      unit_cell=crystal_symmetry.unit_cell(),
+      facets=asu_facets).add_buffer(thickness=buffer_layer),
+    buffer_thickness=0)
+  result.process_sites_cart(original_sites=sites_cart)
+  return result
