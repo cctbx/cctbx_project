@@ -1,3 +1,5 @@
+#include <scitbx/array_family/boost_python/flex_fwd.h>
+
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <boost/python/module.hpp>
 #include <vector>
