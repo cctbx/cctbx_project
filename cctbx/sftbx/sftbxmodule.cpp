@@ -89,12 +89,22 @@ namespace {
       sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>());
     python::export_converters(py_vector_of_XrayScatterer);
 
-    (void) python::wrap_std_vector(this_module,
+    python::class_builder<
+      std::vector<Miller::Index>,
+      python::std_vector_wrapper<Miller::Index> >
+    py_vector_of_Miller_Index =
+    python::wrap_std_vector(this_module,
       "vector_of_Miller_Index",
       Miller::Index());
-    (void) python::wrap_std_vector(this_module,
+    python::export_converters(py_vector_of_Miller_Index);
+    python::class_builder<
+      std::vector<std::complex<double> >,
+      python::std_vector_wrapper<std::complex<double> > >
+    py_vector_of_complex =
+    python::wrap_std_vector(this_module,
       "vector_of_complex",
       std::complex<double>());
+    python::export_converters(py_vector_of_complex);
 
     py_XrayScatterer.def(constructor<>());
     py_XrayScatterer.def(constructor<
