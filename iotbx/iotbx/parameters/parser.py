@@ -52,7 +52,8 @@ def collect_objects(
       scope = parameters.scope(
         name=lead_word.value,
         objects=None,
-        is_disabled=is_disabled)
+        is_disabled=is_disabled,
+        where_str=lead_word.where_str())
       while True:
         if (word.value == "{"):
           break
@@ -89,7 +90,8 @@ def collect_objects(
         objects.append(parameters.definition(
           name=lead_word.value,
           words=collect_assigned_words(word_iterator, lead_word),
-          is_disabled=is_disabled))
+          is_disabled=is_disabled,
+          where_str=lead_word.where_str()))
       else:
         if (len(objects) == 0
             or not isinstance(objects[-1], parameters.definition)

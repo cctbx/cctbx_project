@@ -885,26 +885,30 @@ b {}
 c { a=None
 }
 d { a {} }
-""")
-  source = iotbx.parameters.parse(input_string="a { }")
+""", source_info="master")
+  source = iotbx.parameters.parse(input_string="a { }", source_info="source")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects.'
+    assert str(e) == 'Incompatible parameter objects "a" ' \
+      '(master, line 1) and "a" (source, line 1)'
   else: raise RuntimeError("Exception expected.")
   source = iotbx.parameters.parse(input_string="b=None")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects.'
+    assert str(e) == 'Incompatible parameter objects "b" ' \
+      '(master, line 2) and "b" (input line 1)'
   else: raise RuntimeError("Exception expected.")
   source = iotbx.parameters.parse(input_string="c { a { } }")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects.'
+    assert str(e) == 'Incompatible parameter objects "a" ' \
+      '(master, line 3) and "a" (input line 1)'
   else: raise RuntimeError("Exception expected.")
   source = iotbx.parameters.parse(input_string="d { a=None\n}")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects.'
+    assert str(e) == 'Incompatible parameter objects "a" ' \
+      '(master, line 5) and "a" (input line 1)'
   else: raise RuntimeError("Exception expected.")
   #
   master = iotbx.parameters.parse(input_string="""\
