@@ -107,11 +107,34 @@ def adopt_init_args(obj, args, exclude=(), hide=00000):
       obj.__dict__[_key] = args[key]
 
 def import_regular_symbols(dict_target, dict_source):
+  import warnings
+  warnings.warn("""\
+The import_regular_symbols() function is obsolete and will be
+removed in the future. Use import * instead.
+Here is an example for the recommended new way of importing
+Boost.Python extension modules:
+
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("scitbx_fftpack_ext")
+from scitbx_fftpack_ext import *
+""",
+    DeprecationWarning)
   for key, value in dict_source.items():
     if (not key.startswith("_") and not key in dict_target):
       dict_target[key] = value
 
 def import_ext(name):
+  import warnings
+  warnings.warn("""\
+The import_ext() function was moved to libtbx.boost_python.
+Here is an example for the recommended new way of importing
+Boost.Python extension modules:
+
+import libtbx.boost_python
+ext = libtbx.boost_python.import_ext("scitbx_fftpack_ext")
+from scitbx_fftpack_ext import *
+""",
+    DeprecationWarning)
   components = name.split(".")
   if (len(components) > 1):
     __import__(".".join(components[:-1]))
