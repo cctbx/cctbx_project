@@ -1,5 +1,7 @@
 import sys
 
+from generate_af_std_imports import *
+
 def write_copyright():
   print \
 """/* Copyright (c) 2001 The Regents of the University of California through
@@ -25,12 +27,10 @@ logical_unary_ops = ("!")
 logical_binary_ops = ("&&", "||")
 boolean_ops = ("==", "!=", ">", "<", ">=", "<=")
 
-from generate_af_std_imports import *
-
 misc_functions_2arg = (
-  ("", ["approx_equal_scaled"], 1,
+  (["approx_equal_scaled"], 1,
    [", const ElementType& scaled_tolerance", ", scaled_tolerance"]),
-  ("", ["approx_equal_unscaled"], 1,
+  (["approx_equal_unscaled"], 1,
    [", const ElementType& tolerance", ", tolerance"]),
 )
 
@@ -355,7 +355,7 @@ def generate_2arg_reductions(array_type_name):
        function_name, hp.params[0], hp.params[1],
        function_name)
 
-def generate_1arg_element_wise(array_type_name, prefix, function_names):
+def generate_1arg_element_wise(array_type_name, function_names):
   hp = get_template_header_and_parameters(array_type_name, 1)
   rt = derive_return_array_type_simple(hp.params[0])
   result_constructor_args = get_result_constructor_args(array_type_name)
@@ -371,10 +371,10 @@ def generate_1arg_element_wise(array_type_name, prefix, function_names):
 """ % (format_header("  ", hp.header), rt,
        function_name, hp.params[0],
        rt, result_constructor_args,
-       prefix + function_name)
+       function_name)
 
 def generate_2arg_element_wise(
-  array_type_name, prefix, function_names,
+  array_type_name, function_names,
   equal_element_type = 0,
   addl_args = ["", ""]
 ):
@@ -398,7 +398,7 @@ def generate_2arg_element_wise(
 """ % (format_header("  ", hp.header), rt,
        function_name, hp.params[0], hp.params[1], addl_args[0],
        rt, result_constructor_args,
-       prefix + function_name, addl_args[1])
+       function_name, addl_args[1])
 
 def one_type(array_type_name):
   f = open("%s_algebra.h" % (array_type_name,), "w")
@@ -438,10 +438,8 @@ namespace cctbx { namespace af {
         array_type_name, "boolean", op_symbol, function_name)
     for op_symbol in boolean_ops:
       generate_reducing_boolean_op(array_type_name, op_symbol)
-    generate_1arg_element_wise(array_type_name,
-      "", cmath_1arg + cstdlib_1arg)
-    generate_2arg_element_wise(array_type_name,
-      "", cmath_2arg)
+    generate_1arg_element_wise(array_type_name, cmath_1arg + cstdlib_1arg)
+    generate_2arg_element_wise(array_type_name, cmath_2arg)
     for args in misc_functions_2arg:
       apply(generate_2arg_element_wise, (array_type_name,) + args)
   generate_1arg_reductions(array_type_name)
@@ -454,6 +452,7 @@ namespace cctbx { namespace af {
   f.close()
 
 def run():
+  print __name__
   for array_type_name in ("ref", "tiny", "small", "shared", "versa"):
     one_type(array_type_name)
 
