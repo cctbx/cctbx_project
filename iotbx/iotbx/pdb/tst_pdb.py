@@ -9,6 +9,7 @@ from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 import scitbx.math
+from libtbx.test_utils import show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -18,7 +19,7 @@ def exercise_format_records():
     unit_cell=(10,10,13,90,90,120),
     space_group_symbol="R 3").primitive_setting()
   assert iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry) \
-    == "CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R3:R"
+    == "CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R 3 :R"
   assert iotbx.pdb.format_scale_records(
     unit_cell=crystal_symmetry.unit_cell()).splitlines() \
       == ["SCALE1      0.138527 -0.005617 -0.005402        0.00000",
@@ -32,9 +33,11 @@ def exercise_format_records():
           "SCALE2      0.000000  0.138641 -0.005402        2.00000",
           "SCALE3      0.000000  0.000000  0.138746       -3.00000"]
   assert iotbx.pdb.format_atom_record() \
-      == "ATOM      0  C   DUM     1       0.000   0.000   0.000  1.00  0.00"
+    == "ATOM      0  C   DUM     1       0.000   0.000   0.000  1.00  0.00"
+  assert iotbx.pdb.format_anisou_record() \
+    == "ANISOU    0  C   DUM     1        0      0      0      0      0      0"
   assert iotbx.pdb.format_ter_record() \
-      == "TER       0      DUM     1"
+    == "TER       0      DUM     1"
 
 def exercise_parser():
   for i,raw_record in enumerate("""\
@@ -94,7 +97,7 @@ SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
   assert str(attr) == " N  ,A,CYS,\",6, ,1ETN,None"
   s = StringIO()
   attr.show(f=s, prefix="  ")
-  assert s.getvalue() == """\
+  assert not show_diff(s.getvalue(), """\
   record name: ATOM
   name:        " N  "
   altLoc:      "A"
@@ -113,7 +116,7 @@ SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
   sigTemp:     0.03
   Ucart:       (0.0441, 0.058, 0.0402, 0.0048, -0.0072, -0.0088)
   sigUcart:    (0.0003, 0.0002, 0.0008, 0.0003, 0.0008, 0.0006)
-"""
+""")
 
 def exercise_altLoc_grouping():
   altLoc_groups = pdb.interpretation.altLoc_grouping()
@@ -230,7 +233,7 @@ END
     infer_scattering_types_from_names=True)
   s = StringIO()
   xray_structure.show_summary(f=s).show_scatterers(f=s)
-  assert s.getvalue() == """\
+  assert not show_diff(s.getvalue(), """\
 Number of scatterers: 9
 At special positions: 0
 Unit cell: (8.098, 5.953, 8.652, 90, 124.4, 90)
@@ -245,11 +248,11 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso
 "6H   UNK     0 " H      4 ( 0.1242  0.0590  0.4554) 1.00 0.0000
 " C5  UNK     0 " C      4 (-0.0132 -0.1902  0.2546) 1.00 0.0000
 "9H   UNK     0 " H      4 (-0.0334 -0.2951  0.3313) 1.00 0.0000
-"""
+""")
   s = StringIO()
   stage_1.write_modified(out=s)
-  assert s.getvalue().replace("-0.000000", " 0.000000") == """\
-CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P121/c1
+  assert not show_diff(s.getvalue().replace("-0.000000", " 0.000000"), """\
+CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P 1 21/c 1
 SCALE1      0.123487  0.000000  0.084554        0.00000
 SCALE2      0.000000  0.167983  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.140078        0.00000
@@ -264,14 +267,14 @@ HETATM    8  C5  UNK     0      -0.088  -1.132   2.263  1.00  0.00
 HETATM    9 9H   UNK     0      -0.223  -1.757   3.019  1.00  0.00
 TER      10      UNK     0
 END
-"""
+""")
   s = StringIO()
   stage_1.write_modified(out=s,
     new_sites_cart=xray_structure.sites_cart(),
     new_occupancies=flex.double([x*0.1 for x in xrange(1,10)]),
     new_u_iso=flex.double([adptbx.b_as_u(b) for b in xrange(1,10)]))
-  assert s.getvalue().replace("-0.000000", " 0.000000") == """\
-CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P121/c1
+  assert not show_diff(s.getvalue().replace("-0.000000", " 0.000000"), """\
+CRYST1    8.098    5.953    8.652  90.00 124.40  90.00 P 1 21/c 1
 SCALE1      0.123487  0.000000  0.084554        0.00000
 SCALE2      0.000000  0.167983  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.140078        0.00000
@@ -286,7 +289,7 @@ HETATM    8  C5  UNK     0      -1.351  -1.132   1.818  0.80  8.00
 HETATM    9 9H   UNK     0      -1.890  -1.757   2.365  0.90  9.00
 TER      10      UNK     0
 END
-"""
+""")
   stage_1 = pdb.interpretation.stage_1(raw_records=s.getvalue().splitlines())
   sites_cart = stage_1.get_sites_cart(always_apply_scale_records=True)
   assert sites_cart.rms_difference(xray_structure.sites_cart()) < 1.e-2

@@ -1,4 +1,5 @@
 from iotbx.pdb.xray_structure import from_pdb as as_xray_structure
+from scitbx.python_utils.math_utils import iround
 
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
@@ -14,7 +15,7 @@ def format_cryst1_record(crystal_symmetry, z=None):
   else: z = str(z)
   return ("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11.11s%4.4s" % (
     crystal_symmetry.unit_cell().parameters()
-    + (str(crystal_symmetry.space_group_info()).replace(" ", ""), z))).rstrip()
+    + (str(crystal_symmetry.space_group_info()), z))).rstrip()
 
 def format_scale_records(unit_cell=None,
                          fractionalization_matrix=None,
@@ -72,12 +73,51 @@ def format_atom_record(record_name="ATOM",
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
   return ((
-      "%-6.6s%5d %-4.4s%1.1s%-3.3s %1.1s%4d%1.1s   %8.3f%8.3f%8.3f"
-    + "%6.2f%6.2f      %-4.4s%2.2s%2.2s") % (
-    record_name, serial,
-    name, altLoc, resName, chainID, resSeq, iCode,
-    site[0], site[1], site[2], occupancy, tempFactor,
-    segID, element, charge)).rstrip()
+    "%-6.6s%5d %-4.4s%1.1s%-3.3s %1.1s%4d%1.1s"
+    "   %8.3f%8.3f%8.3f%6.2f%6.2f    "
+    "  %-4.4s%2.2s%2.2s") % (
+      record_name,
+      serial%100000, name, altLoc, resName, chainID, resSeq%10000, iCode,
+      site[0], site[1], site[2], occupancy, tempFactor,
+      segID, element, charge)).rstrip()
+
+def format_anisou_record(
+      serial=0,
+      name=" C  ",
+      altLoc=" ",
+      resName="DUM",
+      chainID=" ",
+      resSeq=1,
+      iCode=" ",
+      u_cart=(0,0,0,0,0,0),
+      segID="    ",
+      element="  ",
+      charge="  "):
+  # ANISOU
+  #  7 - 11  Integer       serial        Atom serial number.
+  # 13 - 16  Atom          name          Atom name.
+  # 17       Character     altLoc        Alternate location indicator.
+  # 18 - 20  Residue name  resName       Residue name.
+  # 22       Character     chainID       Chain identifier.
+  # 23 - 26  Integer       resSeq        Residue sequence number.
+  # 27       AChar         iCode         Code for insertion of residues.
+  # 29 - 35  Integer       u[0][0]       U(1,1)
+  # 36 - 42  Integer       u[1][1]       U(2,2)
+  # 43 - 49  Integer       u[2][2]       U(3,3)
+  # 50 - 56  Integer       u[0][1]       U(1,2)
+  # 57 - 63  Integer       u[0][2]       U(1,3)
+  # 64 - 70  Integer       u[1][2]       U(2,3)
+  # 73 - 76  LString(4)    segID         Segment identifier, left-justified.
+  # 77 - 78  LString(2)    element       Element symbol, right-justified.
+  # 79 - 80  LString(2)    charge        Charge on the atom.
+  return ((
+    "%-6.6s%5d %-4.4s%1.1s%-3.3s %1.1s%4d%1.1s"
+    " %7d%7d%7d%7d%7d%7d"
+    "  %-4.4s%2.2s%2.2s") % ((
+      "ANISOU",
+      serial%100000, name, altLoc, resName, chainID, resSeq%10000, iCode)
+    + tuple([iround(u*10000) for u in u_cart])
+    + (segID, element, charge))).rstrip()
 
 def format_ter_record(serial=0,
                       resName="DUM",
