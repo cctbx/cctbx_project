@@ -9,7 +9,7 @@
  */
 
 /*! \file
-    Toolbox for the handling of anisotropic displacement parameters.
+    Toolbox for the handling of atomic displacement parameters (adp).
  */
 
 #ifndef CCTBX_ADPTBX_H
@@ -23,7 +23,7 @@ namespace adptbx {
   using namespace cctbx;
 
   static const error
-    not_positive_definite("adp tensor is not positive definite.");
+    not_positive_definite("anisotropic adp tensor is not positive definite.");
 
   const double   TwoPiSquared = 2. * constants::pi * constants::pi;
   const double EightPiSquared = 8. * constants::pi * constants::pi;
@@ -64,6 +64,7 @@ namespace adptbx {
     return Xaniso;
   }
 
+  // XXX implement using tensor formula, move to matrixlite
   template <class FloatType>
   boost::array<FloatType, 9>
   A_X_At(const boost::array<FloatType, 9>& A,
@@ -111,6 +112,20 @@ namespace adptbx {
   }
 
   //! Convert anisotropic adp Uuvrs -> Ustar.
+  /*! The transformation matrix used is:<pre>
+              (a*  0  0)
+          C = ( 0 b*  0)
+              ( 0  0 c*)</pre>
+      The formula for the transformation is Ustar = C Uuvrs Ct,
+      where Ct is the transposed of C. In this particular case
+      the expression simplifies to:<pre>
+          Ustar11 = a*^2  Uuvrs11
+          Ustar22 = b*^2  Uuvrs22
+          Ustar33 = c*^2  Uuvrs33
+          Ustar12 = a* b* Uuvrs12
+          Ustar13 = a* c* Uuvrs13
+          Ustar23 = b* c* Uuvrs23</pre>
+   */
   template <class FloatType>
   boost::array<FloatType, 6>
   Uuvrs_as_Ustar(const uctbx::UnitCell& uc,
@@ -126,6 +141,8 @@ namespace adptbx {
     return Ustar;
   }
   //! Convert anisotropic adp Ustar -> Uuvrs.
+  /*! Inverse of Uuvrs_as_Ustar().
+   */
   template <class FloatType>
   boost::array<FloatType, 6>
   Ustar_as_Uuvrs(const uctbx::UnitCell& uc,
@@ -142,55 +159,150 @@ namespace adptbx {
   }
 
   //! Convert anisotropic adp Ucart -> Ustar.
+  /*! The transformation matrix C used is the orthogonalization
+      matrix for the given UnitCell.
+      The formula for the transformation is Ustar = C Ucart Ct,
+      where Ct is the transposed of C.
+   */
   template <class FloatType>
-  boost::array<FloatType, 6>
+  inline boost::array<FloatType, 6>
   Ucart_as_Ustar(const uctbx::UnitCell& uc,
                  const boost::array<FloatType, 6>& Ucart) {
     return A_Xaniso_At(uc.getFractionalizationMatrix(), Ucart);
   }
   //! Convert anisotropic adp Ustar -> Ucart.
+  /*! Inverse of Ucart_as_Ustar(). I.e., the transformation matrix
+      C used is the fractionalization matrix for the given
+      UnitCell.
+      The formula for the transformation is Ucart = C Ustar Ct,
+      where Ct is the transposed of C.
+   */
   template <class FloatType>
-  boost::array<FloatType, 6>
+  inline boost::array<FloatType, 6>
   Ustar_as_Ucart(const uctbx::UnitCell& uc,
                  const boost::array<FloatType, 6>& Ustar) {
     return A_Xaniso_At(uc.getOrthogonalizationMatrix(), Ustar);
   }
 
+  //! Convert anisotropic adp Ucart -> Uuvrs.
+  /*! This is implemented without a significant loss of efficiency
+      as Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  Ucart_as_Uuvrs(const uctbx::UnitCell& uc,
+                 const boost::array<FloatType, 6>& Ucart) {
+    return Ustar_as_Uuvrs(uc, Ucart_as_Ustar(uc, Ucart));
+  }
+  //! Convert anisotropic adp Uuvrs -> Ucart.
+  /*! This is implemented without a significant loss of efficiency
+      as Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  Uuvrs_as_Ucart(const uctbx::UnitCell& uc,
+                 const boost::array<FloatType, 6>& Uuvrs) {
+    return Ustar_as_Ucart(uc, Uuvrs_as_Ustar(uc, Uuvrs));
+  }
+
+  //! Convert anisotropic adp Ustar -> beta.
+  /*! The elements of Ustar are multiplied by 2pi^2.
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  Ustar_as_beta(const boost::array<FloatType, 6>& Ustar) {
+    return TwoPiSquared * Ustar;
+  }
+  //! Convert anisotropic adp beta -> Ustar.
+  /*! The elements of beta are divided by 2pi^2.
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  beta_as_Ustar(const boost::array<FloatType, 6>& beta) {
+    return beta / TwoPiSquared;
+  }
+
+  //! Convert anisotropic adp Ucart -> beta.
+  /*! This is implemented as Ustar_as_beta(Ucart_as_Ustar(uc, Ucart)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  Ucart_as_beta(const uctbx::UnitCell& uc,
+                const boost::array<FloatType, 6>& Ucart) {
+    return Ustar_as_beta(Ucart_as_Ustar(uc, Ucart));
+  }
+  //! Convert anisotropic adp beta -> Ucart.
+  /*! This is implemented as Ustar_as_Ucart(uc, beta_as_Ustar(beta)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  beta_as_Ucart(const uctbx::UnitCell& uc,
+                const boost::array<FloatType, 6>& beta) {
+    return Ustar_as_Ucart(uc, beta_as_Ustar(beta));
+  }
+
+  //! Convert anisotropic adp Uuvrs -> beta.
+  /*! This is implemented as Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  Uuvrs_as_beta(const uctbx::UnitCell& uc,
+                const boost::array<FloatType, 6>& Uuvrs) {
+    return Ustar_as_beta(Uuvrs_as_Ustar(uc, Uuvrs));
+  }
+  //! Convert anisotropic adp beta -> Uuvrs.
+  /*! This is implemented as Ustar_as_Uuvrs(uc, beta_as_Ustar(beta)).
+   */
+  template <class FloatType>
+  inline boost::array<FloatType, 6>
+  beta_as_Uuvrs(const uctbx::UnitCell& uc,
+                const boost::array<FloatType, 6>& beta) {
+    return Ustar_as_Uuvrs(uc, beta_as_Ustar(beta));
+  }
+
+  //! Convert Ucart -> Uiso.
+  /*! Uiso is defined as the mean of the diagonal elements of Ucart:<pre>
+          Uiso = 1/3 (Ucart11 + Ucart22 + Ucart33)</pre>
+   */
+  template <class FloatType>
+  inline FloatType
+  Ucart_as_Uiso(const boost::array<FloatType, 6>& Ucart)
+  {
+    return (Ucart[0] + Ucart[1] + Ucart[2]) / 3.;
+  }
+  //! Convert Uiso -> Ucart.
+  /*! The diagonal elements of Ucart are set to the value of Uiso.
+      The off-diagonal components Ucart are set to zero.
+   */
+  template <class FloatType>
+  boost::array<FloatType, 6>
+  Uiso_as_Ucart(const FloatType& Uiso)
+  {
+    boost::array<FloatType, 6> result;
+    result.assign(0.);
+    for(std::size_t i=0;i<3;i++) result[i] = Uiso;
+    return result;
+  }
+
   //! Convert Uuvrs -> Uiso.
-  // From Xtal 3.7.1 source code.
+  /*! This is implemented as Ucart_as_Uiso(Uuvrs_as_Ucart(uc, Uuvrs)).
+   */
   template <class FloatType>
   inline FloatType
   Uuvrs_as_Uiso(const uctbx::UnitCell& uc,
                 const boost::array<FloatType, 6>& Uuvrs)
   {
-    const uctbx::Vec3&   Len = uc.getLen(false);
-    const uctbx::Vec3& R_Len = uc.getLen(true);
-    const uctbx::Vec3& cosAng = uc.get_cosAng(false);
-    FloatType Uiso = 0.;
-    FloatType LRL[3];
-    for(std::size_t i=0;i<3;i++) {
-      LRL[i] = Len[i] * R_Len[i];
-      Uiso += Uuvrs[i] * LRL[i] * LRL[i];
-    }
-    Uiso += Uuvrs[3] * 2. * LRL[0] * LRL[1] * cosAng[2];
-    Uiso += Uuvrs[4] * 2. * LRL[0] * LRL[2] * cosAng[1];
-    Uiso += Uuvrs[5] * 2. * LRL[1] * LRL[2] * cosAng[0];
-    return Uiso / 3.;
+    return Ucart_as_Uiso(Uuvrs_as_Ucart(uc, Uuvrs));
   }
   //! Convert Uiso -> Uuvrs.
-  // From Xtal 3.7.1 source code.
+  /*! This is implemented as Ucart_as_Uuvrs(uc, Uiso_as_Ucart(Uiso)).
+   */
   template <class FloatType>
   inline boost::array<FloatType, 6>
   Uiso_as_Uuvrs(const uctbx::UnitCell& uc,
                 const FloatType& Uiso)
   {
-    const uctbx::Vec3& R_cosAng = uc.get_cosAng(true);
-    boost::array<FloatType, 6> Uuvrs;
-    Uuvrs.assign(Uiso);
-    Uuvrs[3] *= R_cosAng[2];
-    Uuvrs[4] *= R_cosAng[1];
-    Uuvrs[5] *= R_cosAng[0];
-    return Uuvrs;
+    return Ucart_as_Uuvrs(uc, Uiso_as_Ucart(Uiso));
   }
 
   //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and Biso.
@@ -239,6 +351,21 @@ namespace adptbx {
       + (2 * MIx[1] * MIx[2]) * Ustar[5]));
   }
 
+  //! Anisotropic Debye-Waller factor given Miller index and beta.
+  template <class FloatType>
+  inline FloatType
+  DebyeWallerFactor_beta(const Miller::Index& MIx,
+                         const boost::array<FloatType, 6>& beta)
+  {
+    return std::exp(-(
+        (MIx[0] * MIx[0]) * beta[0]
+      + (MIx[1] * MIx[1]) * beta[1]
+      + (MIx[2] * MIx[2]) * beta[2]
+      + (2 * MIx[0] * MIx[1]) * beta[3]
+      + (2 * MIx[0] * MIx[2]) * beta[4]
+      + (2 * MIx[1] * MIx[2]) * beta[5]));
+  }
+
   //! Anisotropic Debye-Waller factor given Miller index and Uuvrs.
   template <class FloatType>
   inline FloatType
@@ -258,9 +385,10 @@ namespace adptbx {
     return DebyeWallerFactorUstar(MIx, Ucart_as_Ustar(uc, Ucart));
   }
 
-  //! Determine the eigenvalues of the adp tensor.
-  /*! The eigenvalues lambda are determined as the three real roots
-      of the cubic equation
+  //! Determine the eigenvalues of the anisotropic adp tensor.
+  /*! Since the anisotropic adp tensor is a symmetric matrix, all
+      eigenvalues lambda are real. The eigenvalues are determined
+      as the three real roots of the cubic equation
       <p>
           |(adp - lambda * I)| = 0
       <p>
@@ -268,20 +396,20 @@ namespace adptbx {
       obtained analytically using Cardan's formula.
       Detailed comments are embedded in the source code.
       <p>
-      An exception is thrown if the cubic equation has imaginary
-      roots. This indicates that the adp tensor is not
-      positive definite.
+      An exception is thrown if the cubic equation has
+      negative roots. This indicates that the anisotropic
+      adp tensor is not positive definite.
    */
   template <class FloatType>
   boost::array<FloatType, 3>
-  EigenValues(const boost::array<FloatType, 6>& adp)
+  Eigenvalues(const boost::array<FloatType, 6>& adp)
   {
     /* The eigenvalues lambda are found by:
          1. Determining the elements of the matrix (adp - lambda * I),
             where I is the identity matrix.
          2. Computing the determinant of that matrix as a function
             of lambda. This results in a cubic equation.
-         3. Finding the three real roots of the cubic equation with
+         3. Finding the real roots of the cubic equation with
             Cardan's formula, taken from Taschenbuch der Mathematik
             by Bronstein & Semendjajew (p. 183 in the reprint of
             the 20th edition from 1983).
@@ -306,14 +434,12 @@ namespace adptbx {
     // reduced form: y^3 + p y + q == 0
     FloatType p = s - r * r / 3.;
     FloatType q = 2. * r * r * r / 27. - r * s / 3. + t;
-    /* "D" is computed to test for the number of real roots.
-       There are three real roots only if D < 0.
-     */
+    // "D" is computed to test for the number of real roots.
     FloatType p3 = p * p * p;
     FloatType q2 = q * q;
     FloatType D = p3 / 27. + q2 / 4.;
-    if (D >= 0.) throw not_positive_definite;
-    /* At this point it is clear that there are three real eigenvaues.
+    cctbx_assert(D <= 0.); // If D > 0 there are imaginary roots.
+    /* At this point it is clear that there are only real eigenvalues.
        They can now be determined without involving complex numbers.
      */
     FloatType zeta = std::sqrt(-p3 / 27);
@@ -342,14 +468,14 @@ namespace adptbx {
       for (;;) {
         boost::array<FloatType, 3> MV;
         MatrixLite::multiply<FloatType>(M.elems, V.elems, 3, 3, 1, MV.elems);
-        FloatType LenMV = std::sqrt(MV * MV);
-        if (LenMV == 0.) return MV;
-        MV = MV / LenMV;
+        FloatType abs_lambda = std::sqrt(MV * MV);
+        if (abs_lambda == 0.) return MV;
+        MV = MV / abs_lambda;
         boost::array<FloatType, 3> absMV = boost::array_abs(MV);
         std::size_t iMax = boost::array_max_index(absMV);
         FloatType scaled_tolerance = absMV[iMax] * tolerance;
         if (MatrixLite::approx_equal(MV, -V, scaled_tolerance)) {
-          throw not_positive_definite;
+          throw not_positive_definite; // lambda < 0
         }
         bool converged = MatrixLite::approx_equal(MV, V, scaled_tolerance);
         V = MV;
@@ -362,12 +488,22 @@ namespace adptbx {
 
   } // namespace detail
 
-  //! Determine the eigenvalues of the adp tensor.
-  /*! XXX
+  //! Determine the eigenvectors of the anisotropic adp tensor.
+  /*! Since the anisotropic adp tensor is a symmetric matrix, all
+      eigenvalues lambda are real and the eigenvectors can
+      be chosen orthonormal.
+      <p>
+      The eigenvectors are determined according to the procedure
+      outlined in J.F. Nye, Physical Properties of Crystals,
+      Oxford Science Publications, 1992, pp.165-168.
+      <p>
+      An exception is thrown if any of the eigenvalues is
+      less than or equal to zero. This indicates that the
+      anisotropic adp tensor is not positive definite.
    */
   template <class FloatType>
   boost::array<boost::array<FloatType, 3>, 3>
-  EigenVectors(const boost::array<FloatType, 6>& adp, double tolerance = 1.e-6)
+  Eigenvectors(const boost::array<FloatType, 6>& adp, double tolerance = 1.e-6)
   {
     boost::array<FloatType, 9> M[2];
     M[0] = Xaniso_as_SymMx33(adp, return_type<FloatType>());
