@@ -36,6 +36,12 @@ namespace scitbx { namespace math {
       minimum_covering_sphere() {}
 
       //! Execution of Lawson's algorithm.
+      /*! The iterative algorithm is terminated if
+
+          tau - sigma < tau * epsilon,
+
+          using Lawson's notation.
+       */
       minimum_covering_sphere(
         af::const_ref<vec3<FloatType> > const& points,
         FloatType const& epsilon=1.e-6)
@@ -62,7 +68,7 @@ namespace scitbx { namespace math {
             weights[i] *= r;
             sum_w_r += weights[i];
           }
-          if (radius_ - std::sqrt(sum_w_r_sq) < epsilon) {
+          if (radius_ - std::sqrt(sum_w_r_sq) < radius_ * epsilon) {
             break;
           }
           SCITBX_ASSERT(sum_w_r != 0);
