@@ -70,6 +70,11 @@ class structure(crystal.special_position_settings):
       u_iso_values = b_iso*adptbx.b_as_u(1)
       s.set_u_iso(u_iso_values)
 
+  def set_b_iso_random(self):
+    s = self._scatterers
+    b_iso_new = flex.random_double(s.size())*100.
+    self.set_b_iso(values = b_iso_new)
+
   def shake_b_iso(self, deviation):
     assert deviation >= 0.0 and deviation <= 100.0
     s = self._scatterers
