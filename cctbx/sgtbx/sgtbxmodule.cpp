@@ -211,11 +211,10 @@ namespace {
   }
   std::complex<double>
   SpaceGroup_StructureFactor_aniso(const SpaceGroup& SgOps,
-                                   const uctbx::UnitCell& uc,
                                    const Miller::Index& H,
                                    const cctbx::fractional<double>& X,
-                                   const boost::array<double, 6>& Uij) {
-    return SgOps.StructureFactor(uc, H, X, Uij);
+                                   const boost::array<double, 6>& Ustar) {
+    return SgOps.StructureFactor(H, X, Ustar);
   }
 
   int SpaceGroup_cmp_equal(const SpaceGroup& lhs, const SpaceGroup& rhs) {

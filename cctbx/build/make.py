@@ -70,10 +70,12 @@ def make_libpythondir(platform):
     system_verbose("cp eltbx/*%s lib/python/eltbx" % (libpyd,))
     system_verbose("cp sgtbx/*%s lib/python" % (libpyd,))
     system_verbose("cp uctbx/*%s lib/python" % (libpyd,))
+    system_verbose("cp adptbx/*%s lib/python" % (libpyd,))
   else:
     system_verbose(r"copy eltbx\*.pyd lib\python\eltbx")
     system_verbose(r"copy sgtbx\*.pyd lib\python")
     system_verbose(r"copy uctbx\*.pyd lib\python")
+    system_verbose(r"copy adptbx\*.pyd lib\python")
 
 if (__name__ == "__main__"):
   cf = read_configuration()
@@ -85,7 +87,7 @@ if (__name__ == "__main__"):
   compile_dev = "compile_dev" in sys.argv
   compile_all = "compile_all" in sys.argv or compile_dev
 
-  toolboxes = ("eltbx", "sgtbx", "uctbx")
+  toolboxes = ("eltbx", "sgtbx", "uctbx", "adptbx")
   examples = ("examples/cpp",)
 
   if (hasattr(os, "symlink")):

@@ -130,62 +130,6 @@ namespace {
     return uc.orthogonalize(Xf);
   }
 
-  boost::array<double, 6>
-  UnitCell_Uij_as_Bij(const UnitCell& uc,
-                      const boost::array<double, 6>& Uij) {
-    return uc.Uij_as_Bij(Uij);
-  }
-  boost::array<double, 6>
-  UnitCell_Bij_as_Uij(const UnitCell& uc,
-                      const boost::array<double, 6>& Bij) {
-    return uc.Bij_as_Uij(Bij);
-  }
-  double
-  UnitCell_Uij_as_Uiso(const UnitCell& uc,
-                       const boost::array<double, 6>& Uij) {
-    return uc.Uij_as_Uiso(Uij);
-  }
-  boost::array<double, 6>
-  UnitCell_Uiso_as_Uij(const UnitCell& uc,
-                       double Uiso) {
-    return uc.Uiso_as_Uij(Uiso);
-  }
-  double
-  UnitCell_TemperatureFactor_Biso_stol2(const UnitCell& uc,
-                                        double stol2,
-                                        double Uiso) {
-    return uc.TemperatureFactorB(stol2, Uiso);
-  }
-  double
-  UnitCell_TemperatureFactor_Uiso_stol2(const UnitCell& uc,
-                                        double stol2,
-                                        double Uiso) {
-    return uc.TemperatureFactorU(stol2, Uiso);
-  }
-  double
-  UnitCell_TemperatureFactor_Biso_MIx(const UnitCell& uc,
-                                      const Miller::Index& MIx,
-                                      double Uiso) {
-    return uc.TemperatureFactorB(MIx, Uiso);
-  }
-  double
-  UnitCell_TemperatureFactor_Uiso_MIx(const UnitCell& uc,
-                                      const Miller::Index& MIx,
-                                      double Uiso) {
-    return uc.TemperatureFactorU(MIx, Uiso);
-  }
-  double
-  UnitCell_TemperatureFactor_Bij(const UnitCell& uc,
-                                 const Miller::Index& MIx,
-                                 const boost::array<double, 6>& Bij) {
-    return uc.TemperatureFactorB(MIx, Bij);
-  }
-  double
-  UnitCell_TemperatureFactor_Uij(const UnitCell& uc,
-                                 const Miller::Index& MIx,
-                                 const boost::array<double, 6>& Uij) {
-    return uc.TemperatureFactorU(MIx, Uij);
-  }
 }
 
 BOOST_PYTHON_MODULE_INIT(uctbx)
@@ -231,24 +175,6 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
     UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
     UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
     UnitCell_class.def(&UnitCell::isEqual, "isEqual");
-    UnitCell_class.def(&UnitCell::Uiso_as_Biso, "Uiso_as_Biso");
-    UnitCell_class.def(&UnitCell::Biso_as_Uiso, "Biso_as_Uiso");
-    UnitCell_class.def(UnitCell_Uij_as_Bij, "Uij_as_Bij");
-    UnitCell_class.def(UnitCell_Bij_as_Uij, "Bij_as_Uij");
-    UnitCell_class.def(UnitCell_Uij_as_Uiso, "Uij_as_Uiso");
-    UnitCell_class.def(UnitCell_Uiso_as_Uij, "Uiso_as_Uij");
-    UnitCell_class.def(UnitCell_TemperatureFactor_Biso_stol2,
-                               "TemperatureFactorB");
-    UnitCell_class.def(UnitCell_TemperatureFactor_Biso_MIx,
-                               "TemperatureFactorB");
-    UnitCell_class.def(UnitCell_TemperatureFactor_Bij,
-                               "TemperatureFactorB");
-    UnitCell_class.def(UnitCell_TemperatureFactor_Uiso_stol2,
-                               "TemperatureFactorU");
-    UnitCell_class.def(UnitCell_TemperatureFactor_Uiso_MIx,
-                               "TemperatureFactorU");
-    UnitCell_class.def(UnitCell_TemperatureFactor_Uij,
-                               "TemperatureFactorU");
   }
   catch(...)
   {

@@ -265,9 +265,11 @@ namespace uctbx {
     return MaxMIx;
   }
 
-  double UnitCell::MaxResolution(Miller::Index Mix) const
+  double UnitCell::MaxResolution(const Miller::Index& MIx) const
   {
-    Miller::Index MaxMIx(std::abs(Mix[Miller::H]),std::abs(Mix[Miller::K]),std::abs(Mix[Miller::L]));
+    Miller::Index MaxMIx(std::abs(MIx[Miller::H]),
+                         std::abs(MIx[Miller::K]),
+                         std::abs(MIx[Miller::L]));
     double maxres = 0.0;
     int i, j;
     for(i=0;i<3;i++) {
@@ -277,7 +279,7 @@ namespace uctbx {
       uxv = CrossG(1., R_G, u, v); // Since length of uxv is not used
                                    //   sqrt(det(G)) is set to 1
       double uxv2 = DotG(uxv, R_G, uxv);
-      double dmin = ((double)uxv[i]/(double)MaxMIx[i]/std::sqrt(uxv2)) -1.e-4;
+      double dmin = ((double)uxv[i]/(double)MaxMIx[i]/std::sqrt(uxv2)) - 1.e-4;
       maxres = i?((dmin<maxres)?dmin:maxres):dmin;
     }
     return maxres;
