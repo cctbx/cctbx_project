@@ -99,6 +99,7 @@ class T_N:
 
 def run():
   T_N_List = (
+    T_N("int", 2),
     T_N("int", 3),
     T_N("int", 9),
     T_N("long", 3),

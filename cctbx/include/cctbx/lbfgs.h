@@ -53,11 +53,12 @@
 
 #include <vector>
 #include <string>
+#include <stdio.h>
+#include <boost/config.hpp>
 #include <cctbx/error.h>
 #include <cctbx/fixes/cstdlib>
 #include <cctbx/fixes/cmath>
-#include <stdio.h>
-#include <boost/config.hpp>
+#include <cctbx/array_family/shared.h>
 
 namespace cctbx {
 
@@ -273,9 +274,8 @@ namespace cctbx {
 
          @param wa Temporary storage array, of length <code>n</code>.
        */
-      void run(
+      bool run(
         const lbfgs_parameters& lbfgs_params,
-        std::vector<std::string>& log,
         int n,
         double* x,
         double f,
@@ -298,7 +298,7 @@ namespace cctbx {
           if (  n <= 0 || stp[0] <= 0 || ftol < 0
               || lbfgs_params.gtol < 0 || xtol < 0 || lbfgs_params.stpmin < 0
               || lbfgs_params.stpmax < lbfgs_params.stpmin || maxfev <= 0) {
-            return;
+            return true;
           }
           // Compute the initial gradient in the search direction
           // and check that s is a descent direction.
@@ -307,8 +307,7 @@ namespace cctbx {
             dginit = dginit + g [j -1] * s [is0+j -1];
           }
           if (dginit >= 0) {
-            log.push_back("The search direction is not a descent direction.\n");
-            return;
+            return false;
           }
           brackt[0] = false;
           stage1 = true;
@@ -363,7 +362,7 @@ namespace cctbx {
               x [j -1] = wa [j -1] + stp[0] * s [is0+j -1];
             }
             info[0]=-1;
-            return;
+            break;
           }
           info[0]=0;
           nfev[0] = nfev[0] + 1;
@@ -393,7 +392,7 @@ namespace cctbx {
             info[0] = 1;
           }
           // Check for termination.
-          if (info[0] != 0) return;
+          if (info[0] != 0) break;
           // In the first stage we seek a step for which the modified
           // function has a nonpositive value and nonnegative derivative.
 
@@ -440,6 +439,7 @@ namespace cctbx {
             width = std::abs(sty[0] - stx[0]);
           }
         }
+        return true;
       }
 
       /* The purpose of this function is to compute a safeguarded step
@@ -759,14 +759,6 @@ namespace cctbx {
         */
       std::vector<double> solution_cache;
 
-      /*! This method returns the total number of evaluations of the
-          objective function since the last time LBFGS was restarted.
-          The total number of function evaluations increases by the
-          number of evaluations required for the line search; the total
-          is only increased after a successful line search.
-        */
-      int nfevaluations() { return nfun; }
-
       /*! This subroutine solves the unconstrained minimization problem
           <pre>
               min f(x),  x = (x1,x2,...,x_n),
@@ -1051,8 +1043,11 @@ namespace cctbx {
               w[i -1] = g[i -1];
             }
           }
-          mcsrch_instance.run(params, m_log, n, x, f, g, w, ispt + point * n,
-            stp, ftol, xtol, maxfev, info, nfev, diag);
+          if (!mcsrch_instance.run(params, n, x, f, g, w, ispt + point * n,
+                stp, ftol, xtol, maxfev, info, nfev, diag)) {
+            m_log.push_back(
+              "The search direction is not a descent direction.\n");
+          }
           if (info[0] == -1) {
             iflag = 1;
             return;
@@ -1095,10 +1090,18 @@ namespace cctbx {
         }
       }
 
+      /*! This method returns the total number of evaluations of the
+          objective function since the last time LBFGS was restarted.
+          The total number of function evaluations increases by the
+          number of evaluations required for the line search; the total
+          is only increased after a successful line search.
+        */
+      int nfevaluations() const { return nfun; }
+
       int flag() const { return iflag; }
 
-      const std::vector<std::string>& log() const { return m_log; }
-            std::vector<std::string>& log()       { return m_log; }
+      const af::shared<std::string>& log() const { return m_log; }
+            af::shared<std::string>  log()       { return m_log; }
 
     protected:
 
@@ -1361,7 +1364,7 @@ namespace cctbx {
       int iscn;
       bool finish;
       std::vector<double> m_w;
-      std::vector<std::string> m_log;
+      af::shared<std::string> m_log;
   };
 
 } // namespace cctbx
