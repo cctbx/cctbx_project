@@ -9,6 +9,21 @@ from scitbx.python_utils.misc import adopt_init_args
 from libtbx import introspection
 from stdlib import math
 
+def add_gradients(
+      scatterers,
+      gradient_flags,
+      xray_gradients,
+      site_gradients=None,
+      u_iso_gradients=None,
+      occupancy_gradients=None):
+  ext.minimization_add_gradients(
+    scatterers=scatterers,
+    gradient_flags=gradient_flags,
+    xray_gradients=xray_gradients,
+    site_gradients=site_gradients,
+    u_iso_gradients=u_iso_gradients,
+    occupancy_gradients=occupancy_gradients)
+
 class u_penalty_singular_at_zero:
 
   def __init__(self,
@@ -52,10 +67,31 @@ class u_penalty_exp:
     s = self.penalty_scale
     return -s*self.penalty_factor*math.exp(-s*u*self.penalty_factor)
 
+class occupancy_penalty_exp:
+
+  def __init__(self,
+        penalty_factor=1,
+        penalty_scale=100,
+        min_functional=1.e-10):
+    introspection.adopt_init_args()
+    self.occupancy_max = -math.log(min_functional) \
+                       / (penalty_factor * penalty_scale)
+
+  def functional(self, occupancy):
+    if (occupancy > self.occupancy_max): return 0
+    s = self.penalty_scale
+    return math.exp(-s*occupancy*self.penalty_factor)
+
+  def gradient(self, occupancy):
+    if (occupancy > self.occupancy_max): return 0
+    s = self.penalty_scale
+    return -s*self.penalty_factor*math.exp(-s*occupancy*self.penalty_factor)
+
 class lbfgs:
 
   def __init__(self, target_functor, gradient_flags, xray_structure,
                      u_penalty=None,
+                     occupancy_penalty=None,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
                      cos_sin_table=True,
@@ -125,6 +161,11 @@ class lbfgs:
         unit_cell=self.xray_structure.unit_cell())
       for u_iso in u_isos:
         self.f += self.u_penalty.functional(u=u_iso)
+    if (self.occupancy_penalty is not None
+        and self.gradient_flags.occupancy):
+      occupancies = self.xray_structure.scatterers().extract_occupancies()
+      for occupancy in occupancies:
+        self.f += self.occupancy_penalty.functional(occupancy=occupancy)
     self.g = self.structure_factor_gradients(
       xray_structure=self.xray_structure,
       mean_displacements=mean_displacements,
@@ -143,11 +184,24 @@ class lbfgs:
         for u_iso in u_isos:
           g.append(self.u_penalty.gradient(u=u_iso))
       del u_isos
-      ext.minimization_add_u_iso_gradients(
+      add_gradients(
         scatterers=self.xray_structure.scatterers(),
         gradient_flags=self.gradient_flags,
         xray_gradients=self.g,
         u_iso_gradients=g)
+      del g
+    if (self.occupancy_penalty is not None
+        and self.gradient_flags.occupancy):
+      g = flex.double()
+      for occupancy in occupancies:
+        g.append(self.occupancy_penalty.gradient(occupancy=occupancy))
+      del occupancies
+      add_gradients(
+        scatterers=self.xray_structure.scatterers(),
+        gradient_flags=self.gradient_flags,
+        xray_gradients=self.g,
+        occupancy_gradients=g)
+      del g
     if (self.verbose > 1):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))

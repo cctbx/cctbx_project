@@ -78,25 +78,38 @@ namespace cctbx { namespace xray { namespace minimization {
   template <typename XrayScattererType,
             typename FloatType>
   void
-  add_site_gradients(
+  add_gradients(
     af::const_ref<XrayScattererType> const& scatterers,
     xray::gradient_flags const& gradient_flags,
     af::ref<FloatType> const& xray_gradients,
-    af::const_ref<scitbx::vec3<FloatType> > const& site_gradients)
+    af::const_ref<scitbx::vec3<FloatType> > const& site_gradients,
+    af::const_ref<FloatType> const& u_iso_gradients,
+    af::const_ref<FloatType> const& occupancy_gradients)
   {
-    CCTBX_ASSERT(site_gradients.size() == scatterers.size());
-    CCTBX_ASSERT(gradient_flags.site == true);
     BOOST_STATIC_ASSERT(packing_order_convention == 1);
+    CCTBX_ASSERT(site_gradients.size() == 0
+              || site_gradients.size() == scatterers.size());
+    CCTBX_ASSERT(u_iso_gradients.size() == 0
+              || u_iso_gradients.size() == scatterers.size());
+    CCTBX_ASSERT(occupancy_gradients.size() == 0
+              || occupancy_gradients.size() == scatterers.size());
     scitbx::af::block_iterator<FloatType> next_xray_gradients(
       xray_gradients, "Array of xray gradients is too small.");
     for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
       XrayScattererType const& sc = scatterers[i_sc];
-      FloatType* xg = next_xray_gradients(3);
-      scitbx::vec3<FloatType> const& grsg = site_gradients[i_sc];
-      for(std::size_t i=0;i<3;i++) xg[i] += grsg[i];
+      if (gradient_flags.site) {
+        FloatType* xg = next_xray_gradients(3);
+        if (site_gradients.size() != 0) {
+          scitbx::vec3<FloatType> const& grsg = site_gradients[i_sc];
+          for(std::size_t i=0;i<3;i++) xg[i] += grsg[i];
+        }
+      }
       if (!sc.anisotropic_flag) {
         if (gradient_flags.u_iso) {
-          next_xray_gradients();
+          FloatType& xg = next_xray_gradients();
+          if (u_iso_gradients.size() != 0) {
+            xg += u_iso_gradients[i_sc];
+          }
         }
       }
       else {
@@ -105,7 +118,10 @@ namespace cctbx { namespace xray { namespace minimization {
         }
       }
       if (gradient_flags.occupancy) {
-        next_xray_gradients();
+        FloatType& xg = next_xray_gradients();
+        if (occupancy_gradients.size() != 0) {
+          xg += occupancy_gradients[i_sc];
+        }
       }
       if (gradient_flags.fp) {
         next_xray_gradients();
@@ -163,50 +179,6 @@ namespace cctbx { namespace xray { namespace minimization {
       throw error("Array of xray gradients is too large.");
     }
     return result;
-  }
-
-  template <typename XrayScattererType,
-            typename FloatType>
-  void
-  add_u_iso_gradients(
-    af::const_ref<XrayScattererType> const& scatterers,
-    xray::gradient_flags const& gradient_flags,
-    af::ref<FloatType> const& xray_gradients,
-    af::const_ref<FloatType> const& u_iso_gradients)
-  {
-    CCTBX_ASSERT(u_iso_gradients.size() == scatterers.size());
-    CCTBX_ASSERT(gradient_flags.u_iso == true);
-    BOOST_STATIC_ASSERT(packing_order_convention == 1);
-    scitbx::af::block_iterator<FloatType> next_xray_gradients(
-      xray_gradients, "Array of xray gradients is too small.");
-    for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
-      XrayScattererType const& sc = scatterers[i_sc];
-      if (gradient_flags.site) {
-        next_xray_gradients(3);
-      }
-      if (!sc.anisotropic_flag) {
-        if (gradient_flags.u_iso) {
-          next_xray_gradients() += u_iso_gradients[i_sc];
-        }
-      }
-      else {
-        if (gradient_flags.u_aniso) {
-          next_xray_gradients(6);
-        }
-      }
-      if (gradient_flags.occupancy) {
-        next_xray_gradients();
-      }
-      if (gradient_flags.fp) {
-        next_xray_gradients();
-      }
-      if (gradient_flags.fdp) {
-        next_xray_gradients();
-      }
-    }
-    if (!next_xray_gradients.is_at_end()) {
-      throw error("Array of xray gradients is too large.");
-    }
   }
 
 }}} // namespace cctbx::xray::targets
