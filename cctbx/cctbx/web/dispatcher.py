@@ -22,11 +22,12 @@ target_module = form["target_module"].value
 exec "import " + target_module + " as target"
 inp = target.interpret_form_data(form)
 
-if (1):
-  # capture input to facilitate debugging
+# optionally capture input to facilitate debugging
+capture_input_dir = "/var/tmp/cctbx_web"
+if (capture_input_dir is not None and os.path.isdir(capture_input_dir)):
   import time, pickle
   time_stamp = "%d_%02d_%02d_%02d_%02d_%02d" % time.localtime(time.time())[:6]
-  f = open("/var/tmp/cctbx_web/"+target_module+"_"+time_stamp, "wb")
+  f = open(capture_input_dir+"/"+target_module+"_"+time_stamp, "wb")
   pickle.dump([server_info, target_module, inp], f)
   f.close()
 
