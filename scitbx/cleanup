@@ -1,4 +1,5 @@
 find . -name '*.pyc' -print -exec rm {} \;
+find . -name '.sconsign' -print -exec rm {} \;
 echo ''
 find . \( -name \*.c -o -name \*.cpp -o -name \*.h -o -name \*.hpp -o -name \*.py -o -name \*.dox \) -exec egrep -l '	|[ 	]$$|
 ' {} /dev/null \;

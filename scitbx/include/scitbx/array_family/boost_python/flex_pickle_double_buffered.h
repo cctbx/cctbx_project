@@ -1,0 +1,61 @@
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
+
+   Revision history:
+     2002 Aug: Created (R.W. Grosse-Kunstleve)
+ */
+
+#ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_DOUBLE_BUFFERED_H
+#define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_DOUBLE_BUFFERED_H
+
+#include <scitbx/boost_python/pickle_double_buffered.h>
+#include <boost/python/tuple.hpp>
+#include <boost/python/extract.hpp>
+#include <boost/python/detail/api_placeholder.hpp>
+
+namespace scitbx { namespace af { namespace boost_python {
+
+  template <typename ElementType>
+  struct flex_pickle_double_buffered : boost::python::pickle_suite
+  {
+    static
+    boost::python::tuple
+    getstate(versa<ElementType, flex_grid<> > const& a)
+    {
+      scitbx::boost_python::pickle_double_buffered::to_string accu;
+      accu << a.size();
+      for(std::size_t i=0;i<a.size();i++) accu << a[i];
+      return boost::python::make_tuple(a.accessor(), accu.buffer);
+    }
+
+    static
+    void
+    setstate(versa<ElementType, flex_grid<> >& a, boost::python::tuple state)
+    {
+      SCITBX_ASSERT(boost::python::len(state) == 2);
+      SCITBX_ASSERT(a.size() == 0);
+      flex_grid<> a_accessor = boost::python::extract<flex_grid<> >(
+        state[0])();
+      PyObject* py_str = boost::python::object(state[1]).ptr();
+      scitbx::boost_python::pickle_double_buffered::from_string inp(py_str);
+      std::size_t a_capacity;
+      inp >> a_capacity;
+      shared_plain<ElementType> b = a.as_base_array();
+      b.reserve(a_capacity);
+      for(std::size_t i=0;i<a_capacity;i++) {
+        scitbx::boost_python::pickle_single_buffered::from_string<ElementType>
+          proxy(inp.str_ptr);
+        inp.str_ptr = proxy.end;
+        b.push_back(proxy.value);
+      }
+      inp.assert_end();
+      SCITBX_ASSERT(b.size() == a_accessor.size1d());
+      a.resize(a_accessor);
+    }
+  };
+
+}}} // namespace scitbx::af::boost_python
+
+#endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_DOUBLE_BUFFERED_H
