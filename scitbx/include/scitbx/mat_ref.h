@@ -105,10 +105,10 @@ namespace scitbx {
       {}
 
       NumType*
-      begin() const { return const_cast<NumType*>(this->m_begin); }
+      begin() const { return const_cast<NumType*>(this->begin_); }
 
       NumType*
-      end() const { return begin() + this->size(); }
+      end() const { return const_cast<NumType*>(this->end_); }
 
       NumType&
       front() const { return begin()[0]; }
@@ -210,7 +210,8 @@ namespace scitbx {
         for (size_type ic=0;ic<this->n_columns();ic++)
           mt(ic, ir) = (*this)(ir, ic);
       std::copy(mt.begin(), mt.end(), this->begin());
-      this->m_accessor = mt.accessor();
+      this->accessor_ = mt.accessor();
+      this->init();
     }
   }
 
