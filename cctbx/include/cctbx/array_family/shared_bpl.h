@@ -53,12 +53,82 @@ namespace cctbx { namespace af {
     shared<ElementType> data_;
   };
 
+  boost::python::ref shared_int_getstate(shared<int> const& a);
+  void shared_int_setstate(shared<int>& a, boost::python::ref state);
+  boost::python::ref shared_long_getstate(shared<long> const& a);
+  void shared_long_setstate(shared<long>& a, boost::python::ref state);
+  boost::python::ref shared_float_getstate(shared<float> const& a);
+  void shared_float_setstate(shared<float>& a, boost::python::ref state);
+  boost::python::ref shared_double_getstate(shared<double> const& a);
+  void shared_double_setstate(shared<double>& a, boost::python::ref state);
+
+  template <typename ElementType>
+  struct shared_pickle
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr) {}
+  };
+
+  template <>
+  struct shared_pickle<int>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(shared_int_getstate, "__getstate__");
+      class_bldr.def(shared_int_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct shared_pickle<long>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(shared_long_getstate, "__getstate__");
+      class_bldr.def(shared_long_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct shared_pickle<float>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(shared_float_getstate, "__getstate__");
+      class_bldr.def(shared_float_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct shared_pickle<double>
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(shared_double_getstate, "__getstate__");
+      class_bldr.def(shared_double_setstate, "__setstate__");
+    }
+  };
+
   template <typename ElementType>
   struct shared_wrapper : shared<ElementType>
   {
     typedef ElementType e_t;
     typedef shared<ElementType> sh_t;
     typedef typename integer_to_float<ElementType>::float_type f_e_t;
+
+    typedef
+    std::pair<
+      boost::python::class_builder<
+        sh_t,
+        shared_wrapper<ElementType> >,
+      boost::python::class_builder<
+        shared_items<ElementType> >
+    >
+    sh_class_builders;
 
     // Tell the compiler how to convert a base class object to
     // this wrapper object.
@@ -242,16 +312,6 @@ namespace cctbx { namespace af {
       return result;
     }
 
-    typedef
-    std::pair<
-      boost::python::class_builder<
-        sh_t,
-        shared_wrapper<ElementType> >,
-      boost::python::class_builder<
-        shared_items<ElementType> >
-    >
-    sh_class_builders;
-
     static
     sh_class_builders
     plain(
@@ -301,6 +361,8 @@ namespace cctbx { namespace af {
       py_shared.def(indices, "indices");
       py_shared.def(items, "items");
       py_shared.def(select, "select");
+
+      shared_pickle<e_t>::def(py_shared);
 
       return std::make_pair(py_shared, py_shared_items);
     }
