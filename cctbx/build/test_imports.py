@@ -14,5 +14,6 @@ import cctbx_boost.eltbx.sasaki
 from cctbx_boost import adptbx
 from cctbx_boost import sftbx
 from cctbx_boost import fftbx
+from cctbx_boost import dmtbx
 from cctbx_boost import lbfgs
 print "OK: cctbx_boost imports"
