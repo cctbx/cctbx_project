@@ -1,10 +1,10 @@
-#ifndef CCTBX_SGTBX_DIRECT_SPACE_ASU_H
-#define CCTBX_SGTBX_DIRECT_SPACE_ASU_H
+#ifndef CCTBX_CRYSTAL_DIRECT_SPACE_ASU_H
+#define CCTBX_CRYSTAL_DIRECT_SPACE_ASU_H
 
 #include <cctbx/sgtbx/sym_equiv_sites.h>
 #include <scitbx/math/minimum_covering_sphere.h>
 
-namespace cctbx { namespace sgtbx {
+namespace cctbx { namespace crystal {
 
 //! Direct-space asymmetric units.
 namespace direct_space_asu {
@@ -417,6 +417,6 @@ namespace direct_space_asu {
       array_of_array_of_mappings_for_one_site mappings_;
   };
 
-}}} // namespace cctbx::sgtbx::direct_space_asu
+}}} // namespace cctbx::crystal::direct_space_asu
 
-#endif // CCTBX_SGTBX_DIRECT_SPACE_ASU_H
+#endif // CCTBX_CRYSTAL_DIRECT_SPACE_ASU_H

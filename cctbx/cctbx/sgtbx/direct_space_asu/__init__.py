@@ -1,13 +1,5 @@
 from cctbx import sgtbx
-from cctbx.array_family import flex
-from scitbx.math import minimum_covering_sphere
-import boost.python
 import sys
-
-float_cut_plane = sgtbx.direct_space_asu_float_cut_plane
-float_asu = sgtbx.direct_space_asu_float_asu
-asu_mapping = sgtbx.direct_space_asu_asu_mapping
-asu_mappings = sgtbx.direct_space_asu_asu_mappings
 
 class direct_space_asu:
 
@@ -72,47 +64,11 @@ class direct_space_asu:
     return cb_asu
 
   def define_metric(self, unit_cell):
-    return direct_space_asu_with_metric(asu=self, unit_cell=unit_cell)
+    import cctbx.crystal.direct_space_asu
+    return cctbx.crystal.direct_space_asu.direct_space_asu(
+      asu=self, unit_cell=unit_cell)
 
   def add_buffer(self, unit_cell, thickness=None, relative_thickness=None):
     return self.define_metric(unit_cell).add_buffer(
       thickness=thickness,
       relative_thickness=relative_thickness)
-
-class direct_space_asu_with_metric(direct_space_asu):
-
-  def __init__(self, asu, unit_cell):
-    direct_space_asu.__init__(self, asu.hall_symbol, asu.facets)
-    self.unit_cell = unit_cell
-
-  def minimum_covering_sphere(self, epsilon=None):
-    if (epsilon is None): epsilon = 1.e-3
-    points = flex.vec3_double()
-    orth = self.unit_cell.orthogonalize
-    for vertex in self.volume_vertices():
-      points.append(orth([float(e) for e in vertex]))
-    return minimum_covering_sphere(points=points, epsilon=epsilon)
-
-  def as_float_asu(self, is_inside_epsilon=None):
-    if (is_inside_epsilon is None):
-      is_inside_epsilon = 1.e-6
-    return float_asu(
-      unit_cell=self.unit_cell,
-      facets=[facet.as_float_cut_plane() for facet in self.facets],
-      is_inside_epsilon=is_inside_epsilon)
-
-  def add_buffer(self, thickness=None, relative_thickness=None,
-                       is_inside_epsilon=None):
-    return self.as_float_asu(is_inside_epsilon=is_inside_epsilon).add_buffer(
-      thickness=thickness,
-      relative_thickness=relative_thickness)
-
-class _float_asu(boost.python.injector, float_asu):
-
-  def add_buffer(self, thickness=None, relative_thickness=None):
-    assert [thickness, relative_thickness].count(None) > 0
-    if (relative_thickness is None):
-      relative_thickness = 1.e-6
-    if (thickness is None):
-      thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
-    return self._add_buffer(thickness)
