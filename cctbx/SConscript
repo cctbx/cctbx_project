@@ -63,6 +63,7 @@ lib_cctbx_sources = [
 
   "sgtbx/bricks.cpp",
   "sgtbx/change_of_basis_op.cpp",
+  "sgtbx/find_affine.cpp",
   "sgtbx/group_codes.cpp",
   "sgtbx/hall_in.cpp",
   "sgtbx/lattice_tr.cpp",

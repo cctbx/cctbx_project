@@ -62,7 +62,7 @@ def exercise_symmetry():
     uctbx.unit_cell((3.91005,3,4,90,101.598,90)))
   assert str(bc.space_group_info()) == "P 1 2 1"
   cb = xs.change_of_basis_op_to_best_cell()
-  assert str(cb.c()) == "-x,-y,-x+z"
+  assert str(cb.c()) == "x,-y,x-z"
 
 def exercise_special_position_settings():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")

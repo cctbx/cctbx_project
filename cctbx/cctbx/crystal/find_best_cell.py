@@ -1,6 +1,4 @@
 from cctbx import sgtbx
-from cctbx.array_family import flex
-from cctbx import matrix
 
 def cmp_orthorhombic_cell_parameters(lhs, rhs):
   for i in xrange(3):
@@ -58,10 +56,9 @@ class find_best_cell:
       ev = list(two_fold_info.ev())
       assert ev.count(0) == 2
       unique_axis = ev.index(1) + 3
-      for elems in flex.nested_loop([-2]*9,[2]*9,00000):
-        m = matrix.rec(elems, (3,3))
-        if (m.determinant() != 1): continue
-        cb_op = sgtbx.change_of_basis_op(sgtbx.rt_mx(sgtbx.rot_mx(elems)))
+      affine = sgtbx.find_affine(input_symmetry.space_group())
+      for cb_mx in affine.cb_mx():
+        cb_op = sgtbx.change_of_basis_op(cb_mx).new_denominators(best_cb_op)
         alt_symmetry = input_symmetry.change_basis(cb_op)
         if (alt_symmetry.space_group() == input_symmetry.space_group()):
           self._all_cells.append(alt_symmetry)
