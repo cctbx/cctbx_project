@@ -501,8 +501,12 @@ namespace {
     py_join_sets.def(&join_sets::singles, "singles");
     py_join_sets.def(&join_sets::have_singles, "have_singles");
     py_join_sets.def(&join_sets::size_processed, "size_processed");
-    py_join_sets.def(&join_sets::common_miller_indices,
-                                "common_miller_indices");
+    py_join_sets.def(&join_sets::pair_selection,
+                                "pair_selection");
+    py_join_sets.def(&join_sets::single_selection,
+                                "single_selection");
+    py_join_sets.def(&join_sets::paired_miller_indices,
+                                "paired_miller_indices");
     py_join_sets.def(join_sets_plus, "plus");
     py_join_sets.def(join_sets_minus, "minus");
     py_join_sets.def(join_sets_multiplies, "multiplies");
@@ -578,7 +582,7 @@ namespace {
     py_binner.def(&binner::bin_indices, "bin_indices");
     py_binner.def(&binner::count, "count");
     py_binner.def(&binner::counts, "counts");
-    py_binner.def(&binner::bin_selection, "bin_selection");
+    py_binner.def(&binner::operator(), "__call__");
 
     this_module.def(py_expand_to_p1_4, "expand_to_p1");
     this_module.def(py_expand_to_p1_9, "expand_to_p1");

@@ -130,8 +130,14 @@ namespace cctbx { namespace miller {
         cctbx_assert(sz_1 == size_processed(1));
       }
 
+      af::shared<bool>
+      pair_selection(std::size_t i_array) const;
+
+      af::shared<bool>
+      single_selection(std::size_t i_array) const;
+
       af::shared<Index>
-      common_miller_indices() const;
+      paired_miller_indices(std::size_t i_array) const;
 
       template <typename NumType>
       af::shared<NumType>
