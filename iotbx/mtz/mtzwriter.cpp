@@ -1,7 +1,7 @@
-#include <iotbx/mtzwriter.h>
 #include <cctbx/sgtbx/space_group_type.h>
 #include <scitbx/mat3.h>
 #include <iostream>
+#include <iotbx/mtzwriter.h>
 #include <string.h>
 
 using namespace CMtz;

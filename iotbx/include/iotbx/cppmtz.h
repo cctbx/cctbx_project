@@ -5,14 +5,14 @@
 #include <exception>
 #include <string>
 
-#include <sys/stat.h> // a cure for errors in irix compile
-#include "cmtzlib.h"
-#include "ccp4_array.h"
 #include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
 #include <cctbx/hendrickson_lattman.h>
 #include <cctbx/uctbx.h>
 #include <cctbx/sgtbx/space_group.h>
+#include <sys/stat.h> // a cure for errors in irix compile
+#include <cmtzlib.h>
+#include <ccp4_array.h>
 
 /* Correction 1:  in mtzdata.h, changed CCP4File to CCP4:CCP4File*/
 
@@ -141,3 +141,4 @@ public:
 };
 }} //namespaces
 #endif /* CPPMTZ_H*/
+
