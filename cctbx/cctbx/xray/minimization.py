@@ -4,6 +4,7 @@ from cctbx.xray.structure import structure as cctbx_xray_structure
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from scitbx.python_utils.misc import adopt_init_args
+from stdlib import math
 
 class lbfgs:
 
@@ -77,8 +78,8 @@ class lbfgs:
       algorithm=self.structure_factor_algorithm)
     self.g = sf.packed()
     if (self.verbose > 1):
-      print "xray.minimization line search: f,|g|:",
-      print self.f, flex.sum(flex.pow2(self.g))
+      print "xray.minimization line search: f,rms(g):",
+      print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.x, self.f, self.g
 
   def callback_after_step(self, minimizer):
