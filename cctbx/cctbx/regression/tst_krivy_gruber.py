@@ -355,7 +355,7 @@ def random_gruber_matrix(type_conditions):
   return random_abcpq(random.choice(
     type_conditions.ck_types)).eval_defks(type_conditions.defks)
 
-def exercise_gruber_types(n_trials_per_type, verbose=0):
+def exercise_gruber_types(n_trials_per_type, dump=0, verbose=0):
   mk2_sets = gruber_1973_table_1.get_mk2_sets()
   type_conditions = gruber_1973_table_1.get_type_conditions()
   random_unimodular = random_unimodular_integer_matrix_generator()
@@ -403,6 +403,11 @@ def exercise_gruber_types(n_trials_per_type, verbose=0):
               print "  Random:", random_cell, r_inv
             red = reduce(random_cell)
             krivy_cell = red.as_unit_cell()
+            if (dump):
+              print "type_cell:", type_cell
+              print "random_cell:", random_cell
+              print "krivy_cell:", krivy_cell
+              print
             if (not krivy_cell.is_similar_to(type_cell)):
               print "  Error: Random cell recovery."
               print "  gruber_matrix:", gruber_matrix
@@ -468,7 +473,11 @@ def exercise():
   exercise_grid(quick=quick, verbose=verbose)
   if (quick): n_trials_per_type=10
   else:       n_trials_per_type=100
-  exercise_gruber_types(n_trials_per_type, verbose)
+  if ("--dump" in sys.argv[1:]):
+    random.seed(0)
+    exercise_gruber_types(n_trials_per_type, dump=0001, verbose=verbose)
+    return
+  exercise_gruber_types(n_trials_per_type, verbose=verbose)
   exercise_real_world_examples()
   if (0 or verbose):
     print time_krivy_gruber_1976.report()
