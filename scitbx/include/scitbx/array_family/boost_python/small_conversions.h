@@ -18,7 +18,8 @@ namespace scitbx { namespace af { namespace boost_python {
   template <typename ElementType, std::size_t N>
   struct tuple_mapping_small
   {
-    tuple_mapping_small() {
+    tuple_mapping_small()
+    {
       scitbx::boost_python::container_conversions
         ::tuple_mapping_fixed_capacity<small<ElementType, N> >();
     }

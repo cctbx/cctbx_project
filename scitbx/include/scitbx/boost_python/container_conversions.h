@@ -61,9 +61,9 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     template <typename ContainerType>
     static void assert_size(boost::type<ContainerType>, std::size_t sz)
     {
-      if (!check_size(boost::type<ContainerType>(sz))) {
+      if (!check_size(boost::type<ContainerType>(), sz)) {
         PyErr_SetString(PyExc_RuntimeError,
-          "insufficient elements for fixed-size array");
+          "Insufficient elements for fixed-size array.");
         boost::python::throw_error_already_set();
       }
     }
@@ -73,7 +73,7 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     {
       if (sz > ContainerType::size()) {
         PyErr_SetString(PyExc_RuntimeError,
-          "too many elements for fixed-size array");
+          "Too many elements for fixed-size array.");
         boost::python::throw_error_already_set();
       }
     }
