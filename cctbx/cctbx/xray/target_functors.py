@@ -40,13 +40,15 @@ class target_functors_manager:
     if(self.target_name == "mlhl"):
       assert self.abcd is not None and self.step_for_integration
     if(self.abcd is not None):
-      assert self.target_name == "mlhl"
-      if(self.flags.count(True) > 0):
-        self.abcd_w = self.abcd.select(~self.flags)
-        self.abcd_t = self.abcd.select( self.flags)
+      if(self.target_name == "mlhl"):
+        if(self.flags.count(True) > 0):
+          self.abcd_w = self.abcd.select(~self.flags)
+          self.abcd_t = self.abcd.select( self.flags)
+        else:
+          self.abcd_w = self.abcd
+          self.abcd_t = self.abcd
       else:
-        self.abcd_w = self.abcd
-        self.abcd_t = self.abcd
+        self.abcd_w, self.abcd_t = None, None
     else:
       self.abcd_w, self.abcd_t = None, None
     if(self.weights is not None):
@@ -218,6 +220,7 @@ class maximum_likelihood_criterion_hl:
   def __call__(self, f_calc,
                      alpha,
                      beta,
+                     k,
                      compute_derivatives):
     assert f_calc.unit_cell().is_similar_to(self.f_obs().unit_cell())
     assert f_calc.space_group() == self.f_obs().space_group()
