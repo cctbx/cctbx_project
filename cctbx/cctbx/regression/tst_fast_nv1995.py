@@ -16,7 +16,7 @@ def run_fast_nv1995(f_obs_array, f_calc_fixed_array, f_calc_p1_array,
   else:
     f_part = f_calc_fixed_array.data()
   fast_nv1995 = translation_search.fast_nv1995(
-    gridding=gridding,
+    gridding=gridding.target(),
     space_group=f_obs_array.space_group(),
     anomalous_flag=00000,
     miller_indices_f_obs=f_obs_array.indices(),
