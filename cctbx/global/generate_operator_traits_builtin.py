@@ -71,18 +71,10 @@ def run():
 
 namespace cctbx { namespace af {
 
-  template<typename T>
-  struct unary_operator_traits{
-    typedef T arithmetic;
-    typedef bool logical;
-  };
-
   // The default traits: the result type is the type of the lhs argument.
   template<typename TypeLHS, typename TypeRHS>
   struct binary_operator_traits {
     typedef TypeLHS arithmetic;
-    typedef bool logical;
-    typedef bool boolean;
   };
 
   // The remainder of this file defines the traits where the
@@ -94,8 +86,6 @@ namespace cctbx { namespace af {
         print """  template<>
   struct binary_operator_traits<%s, %s > {
     typedef %s arithmetic;
-    typedef bool logical;
-    typedef bool boolean;
   };
 """ % (op_types[i].lhs, op_types[i].rhs, result_type[i])
 
