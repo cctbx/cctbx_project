@@ -33,6 +33,20 @@
         return at_stol_sq(d_star_sq / 4.);
       }
 
+      //! Analytical approximation to the scattering factor.
+      /*! See also: at_stol_sq(), uctbx::unit_cell::d_star_sq()
+       */
+      af::shared<double>
+      at_d_star_sq(af::const_ref<double> const& d_star_sq) const
+      {
+        af::shared<double> result(
+          d_star_sq.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<d_star_sq.size();i++) {
+          result[i] = at_d_star_sq(d_star_sq[i]);
+        }
+        return result;
+      }
+
       //! Analytical gradient of the scattering factor at the point d_star.
       double
       gradient_at_d_star(double d_star) const

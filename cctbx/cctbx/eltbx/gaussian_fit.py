@@ -16,13 +16,14 @@ def d_star_sq_points(d_min, n_points):
 
 class minimize:
 
-  def __init__(self, diff_gaussian, d_star_sq,
+  def __init__(self, diff_gaussian, target_power, d_star_sq,
                      weights=None,
                      b_min=-1,
                      enforce_positive_b=0001,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=lbfgs.core_parameters(m=7)):
     adopt_init_args(self, locals())
+    assert target_power in [2,4]
     self.n = diff_gaussian.n_ab() * 2
     if (weights is None):
       self.weights = flex.double(d_star_sq.size(), 1)
@@ -58,10 +59,13 @@ class minimize:
   def compute_target(self, compute_gradients):
     dg = self.diff_gaussian_shifted
     tt = dg.target_terms_at_points(self.d_star_sq)
-    self.f = flex.sum(self.weights * flex.pow2(tt))
+    self.f = flex.pow2(tt)
+    if (self.target_power == 4):
+      self.f = flex.pow2(self.f)
+    self.f = flex.sum(self.weights * self.f)
     if (compute_gradients):
       self.g = dg.sum_of_gradients_at_points(
-        self.d_star_sq, self.weights, tt, 00000)
+        self.target_power, self.d_star_sq, self.weights, tt, 00000)
       if (self.enforce_positive_b):
         n_ab = self.diff_gaussian.n_ab()
         b = flex.double(self.diff_gaussian.b())
@@ -162,6 +166,7 @@ def get_errors(diff_gaussian, d_min, n_points):
 class find_d_min:
 
   def __init__(self, diff_gaussian,
+                     target_power,
                      n_points,
                      max_max_error,
                      start_interval,
@@ -172,7 +177,10 @@ class find_d_min:
     while 1:
       self.d_min = (interval[0] + interval[1]) / 2.
       d_star_sq = d_star_sq_points(d_min=self.d_min, n_points=n_points)
-      self.min = minimize(diff_gaussian, d_star_sq=d_star_sq)
+      self.min = minimize(
+        diff_gaussian=diff_gaussian,
+        target_power=target_power,
+        d_star_sq=d_star_sq)
       self.max_error = flex.max(flex.abs(get_errors(
         diff_gaussian=self.min.final_diff_gaussian,
         d_min=self.d_min,
@@ -202,6 +210,7 @@ class find_d_min_multi:
 
   def __init__(self, reference_gaussian,
                      existing_gaussian,
+                     target_powers,
                      start_interval,
                      n_trial_points_factor,
                      n_start_fractions,
@@ -222,15 +231,17 @@ class find_d_min_multi:
           start_interval=start_interval,
           i_start_fraction=i_start_fraction,
           f_range=f_range/2)
-        fit = find_d_min(
-          diff_gaussian=diff_gaussian,
-          n_points=n_points,
-          max_max_error=max_max_error,
-          start_interval=start_interval,
-          min_interval=min_interval)
-        if (fit.d_min is not None):
-          if (best_fit is None or best_fit.d_min > fit.d_min):
-            best_fit = fit
+        for target_power in target_powers:
+          fit = find_d_min(
+            diff_gaussian=diff_gaussian,
+            target_power=target_power,
+            n_points=n_points,
+            max_max_error=max_max_error,
+            start_interval=start_interval,
+            min_interval=min_interval)
+          if (fit.d_min is not None):
+            if (best_fit is None or best_fit.d_min > fit.d_min):
+              best_fit = fit
     if (best_fit is None):
       self.d_min = None
       self.min = None
@@ -292,10 +303,11 @@ def write_plots(plots_dir, label, reference_gaussian, gaussian,
 
 class fit_parameters:
 
-  def __init__(self, n_points=50,
+  def __init__(self, target_powers=[2,4],
+                     n_points=50,
                      max_max_error=0.01,
-                     n_trial_points_factor=3,
-                     n_start_fractions=2,
+                     n_trial_points_factor=5,
+                     n_start_fractions=3,
                      find_d_min_min_interval=0.01):
     adopt_init_args(self, locals())
 
@@ -336,6 +348,7 @@ def run(args=[], params=fit_parameters(), verbose=0):
       fit = find_d_min_multi(
         reference_gaussian=reference_gaussian,
         existing_gaussian=existing_gaussian,
+        target_powers=params.target_powers,
         start_interval=start_interval,
         n_trial_points_factor=params.n_trial_points_factor,
         n_start_fractions=params.n_start_fractions,

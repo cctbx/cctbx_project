@@ -53,9 +53,12 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
       }
 
       double
-      target_at_d_star_sq(double d_star_sq, double weight) const
+      target_at_d_star_sq(int power, double d_star_sq, double weight) const
       {
-        return weight * scitbx::fn::pow2(target_term_at_d_star_sq(d_star_sq));
+        double ptt = scitbx::fn::pow2(target_term_at_d_star_sq(d_star_sq));
+        if (power == 2) return weight * ptt;
+        if (power == 4) return weight * ptt * ptt;
+        throw error("power must be 2 or 4.");
       }
 
       af::shared<double>
@@ -71,11 +74,13 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
 
       af::shared<double>
       sum_of_gradients_at_points(
+        int power,
         af::const_ref<double> const& d_star_sq,
         af::const_ref<double> const& weights,
         af::const_ref<double> const& target_terms,
         bool include_constant_term)
       {
+        CCTBX_ASSERT(power == 2 || power == 4);
         CCTBX_ASSERT(weights.size() == d_star_sq.size());
         CCTBX_ASSERT(target_terms.size() == d_star_sq.size());
         af::shared<double> result(n_ab() * 2 + 1, 0);
@@ -83,16 +88,18 @@ namespace cctbx { namespace eltbx { namespace xray_scattering {
         af::ref<double> g = result.ref();
         for(std::size_t i_point=0;i_point<d_star_sq.size();i_point++) {
           gaussian grg = gradients_at_d_star_sq(d_star_sq[i_point]);
-          double twtt = 2 * weights[i_point] * target_terms[i_point];
+          double tt = target_terms[i_point];
+          double nwptt = 2 * weights[i_point] * tt;
+          if (power == 4) nwptt *= 2 * tt * tt;
           std::size_t i=0;
           for(;i<n_ab();i++) {
-            g[i] += twtt * grg.a(i);
+            g[i] += nwptt * grg.a(i);
           }
           for(std::size_t j=0;j<n_ab();j++,i++) {
-            g[i] += twtt * grg.b(j);
+            g[i] += nwptt * grg.b(j);
           }
           if (include_constant_term) {
-            g[i] += twtt * grg.c();
+            g[i] += nwptt * grg.c();
           }
         }
         return result;

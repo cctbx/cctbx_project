@@ -9,6 +9,7 @@
 #include <scitbx/math/erf.h>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/small.h>
+#include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 #include <boost/config.hpp>
 #include <cstddef>
