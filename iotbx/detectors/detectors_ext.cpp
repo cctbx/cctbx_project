@@ -42,6 +42,12 @@ af::flex_int ReadADSC(const std::string& filename,
   return z;
 }
 
+af::flex_int ReadMAR(const std::string& filename,
+                      const long& ptr, const long& size1,
+                      const long& size2,const int& big_endian ) {
+  return ReadADSC(filename,ptr,size1,size2,big_endian);
+}
+
 struct dummy {}; // work around gcc-3.3-darwin bug
 
 } // namespace <anonymous>
@@ -57,4 +63,5 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
    class_<dummy>("_dummy", no_init);
 #endif
    def("ReadADSC", ReadADSC);
+   def("ReadMAR", ReadMAR);
 }
