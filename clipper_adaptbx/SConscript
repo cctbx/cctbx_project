@@ -1,0 +1,84 @@
+Import("env_base", "env_etc")
+
+env_etc.clipper_dist = env_etc.libtbx_env.dist_path("clipper")
+env_etc.clipper_include = env_etc.norm_join(env_etc.clipper_dist)
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  CCFLAGS=env_etc.ccflags_base,
+  SHCCFLAGS=env_etc.ccflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
+  LIBS=env_etc.libm,
+)
+env.Prepend(CPPPATH=[env_etc.clipper_include])
+
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(target='#libtbx/clipper',
+  source = ["../clipper/clipper/core/"+file_name for file_name in """
+  atomsf.cpp
+  cell.cpp
+  clipper_memory.cpp
+  clipper_message.cpp
+  clipper_stats.cpp
+  clipper_types.cpp
+  clipper_util.cpp
+  container.cpp
+  container_hkl.cpp
+  container_map.cpp
+  container_types.cpp
+  coords.cpp
+  derivs.cpp
+  hkl_compute.cpp
+  hkl_data.cpp
+  hkl_datatypes.cpp
+  hkl_info.cpp
+  hkl_lookup.cpp
+  hkl_operators.cpp
+  map_interp.cpp
+  map_utils.cpp
+  nxmap.cpp
+  nxmap_operator.cpp
+  ramachandran.cpp
+  resol_basisfn.cpp
+  resol_fn.cpp
+  resol_targetfn.cpp
+  rotation.cpp
+  spacegroup.cpp
+  spacegroup_data.cpp
+  symop.cpp
+  xmap.cpp
+""".split()])
+# fftmap_sparse.cpp
+# fftmap.cpp
+
+env_exe = env.Copy(
+  LIBPATH=["#libtbx"],
+)
+env_exe.Prepend(LIBS=["clipper"])
+
+env_exe.Program(target='#libtbx/bin/clipper.symtest',
+  source = ["../clipper/examples/symtest.cpp",
+           ])
+env_exe.Program(target='#libtbx/bin/clipper.sanity_check',
+  source = ["sanity_check.cpp",
+           ])
+
+if (hasattr(env_etc, "cctbx_include")):
+  if (not env_etc.no_boost_python):
+    Import("env_no_includes_boost_python_ext")
+    env_clipper_boost_python_ext = env_no_includes_boost_python_ext.Copy()
+    env_clipper_boost_python_ext.Replace(
+      SHCXXFLAGS=env_etc.cxxflags_base)
+    env_etc.include_registry.append(
+      env=env_clipper_boost_python_ext,
+      paths=[
+        env_etc.clipper_include,
+        env_etc.libtbx_include,
+        env_etc.cctbx_include,
+        env_etc.scitbx_include,
+        env_etc.boost_include,
+        env_etc.python_include])
+    Export("env_clipper_boost_python_ext")
+    SConscript("clipper/SConscript")
