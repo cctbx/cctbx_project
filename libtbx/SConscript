@@ -170,6 +170,7 @@ else:
       -w
     """)
     env_etc.ccflags_base = Split("""
+      -fPIC
       -w
     """)
     if (libtbx.config.build_options.optimization):
