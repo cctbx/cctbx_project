@@ -10,25 +10,40 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
+from scitbx.boost_python_utils import injector
 import sys
 
-def statistics(map):
-  return ext.statistics(map)
+class statistics(ext.statistics):
 
-def statistics_show_summary(self, f=sys.stdout):
-  print >> f, "max %.6g" % (self.max())
-  print >> f, "min %.6g" % (self.min())
-  print >> f, "mean %.6g" % (self.mean())
-  print >> f, "sigma %.6g" % (self.sigma())
+  def __init__(self, map):
+    ext.statistics.__init__(self, map)
 
-ext.statistics.show_summary = statistics_show_summary
+class _statistics(injector, ext.statistics):
 
-def symmetry_flags(use_space_group_symmetry,
-                   use_normalizer_k2l=00000,
-                   use_structure_seminvariants=00000):
-  return ext.symmetry_flags(use_space_group_symmetry,
-                            use_normalizer_k2l,
-                            use_structure_seminvariants)
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "max %.6g" % (self.max())
+    print >> f, "min %.6g" % (self.min())
+    print >> f, "mean %.6g" % (self.mean())
+    print >> f, "sigma %.6g" % (self.sigma())
+
+class symmetry_flags(ext.symmetry_flags):
+
+  def __init__(self, use_space_group_symmetry,
+                     use_normalizer_k2l=00000,
+                     use_structure_seminvariants=00000):
+    ext.symmetry_flags.__init__(self, use_space_group_symmetry,
+                                      use_normalizer_k2l,
+                                      use_structure_seminvariants)
+
+class _symmetry_flags(injector, ext.symmetry_flags):
+
+  def show_summary(self, f=None):
+    if (f is None): f = sys.stdout
+    print >> f, "use_space_group_symmetry:", self.use_space_group_symmetry()
+    print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
+    print >> f, "use_structure_seminvariants:",
+    print >> f, self.use_structure_seminvariants()
 
 use_space_group_symmetry = symmetry_flags(use_space_group_symmetry=0001)
 

@@ -133,6 +133,15 @@ namespace cctbx { namespace sgtbx {
                                    norm_denominator(ss.v[i], ss.m));
         }
       }
+      else {
+        typename GridTupleType::value_type l = 1;
+        for(std::size_t i=0;i<3;i++) {
+          if (ss.v[i]) l = boost::lcm(l, ref_grid[i]);
+        }
+        for(std::size_t i=0;i<3;i++) {
+          if (ss.v[i]) ref_grid[i] = l;
+        }
+      }
     }
     return ref_grid;
   }
