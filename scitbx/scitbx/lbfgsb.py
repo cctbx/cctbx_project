@@ -5,7 +5,6 @@ ext = boost.python.import_ext("scitbx_lbfgsb_ext")
 from scitbx_lbfgsb_ext import *
 
 from scitbx.array_family import flex
-from scitbx.python_utils.misc import adopt_init_args
 
 class minimizer(ext.minimizer):
 
