@@ -58,15 +58,7 @@ class package:
       for dist_path_suf in ppd.adaptbx_first():
         path = norm(join(dist_path_suf, "libtbx_config"))
         if (isfile(path)):
-          try:
-            f = open(path)
-          except:
-            raise UserError("Cannot open configuration file: " + path)
-          try:
-            self.config = eval(" ".join(f.readlines()))
-          except:
-            raise UserError("Corrupt file: " + path)
-          f.close()
+          self.config = libtbx.config.read_libtbx_config(path=path)
           if (not self.needs_adaptbx):
             self.needs_adaptbx = (    self.name == ppn.primary
                                   and dist_path_suf is ppd.adaptbx)

@@ -100,6 +100,18 @@ class package_pair:
   def zip_adaptbx_first(self, other):
     return ((self.adaptbx, other.adaptbx), (self.primary, other.primary))
 
+def read_libtbx_config(path):
+  try:
+    f = open(path)
+  except:
+    raise UserError("Cannot open configuration file: " + path)
+  try:
+    result = eval(" ".join(f.readlines()), {}, {})
+  except:
+    raise UserError("Corrupt file: " + path)
+  f.close()
+  return result
+
 class env:
 
   def __init__(self):
