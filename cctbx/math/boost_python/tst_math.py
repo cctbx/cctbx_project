@@ -10,6 +10,7 @@ def exercise():
     u = i / float(n)
     x = u * 2 * math.pi
     assert approx_equal(cos_sin_table.get(u), complex(math.cos(x),math.sin(x)))
+  print "OK"
 
 if (__name__ == "__main__"):
   exercise()
