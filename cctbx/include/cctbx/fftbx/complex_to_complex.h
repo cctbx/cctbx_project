@@ -15,10 +15,9 @@
 #include <algorithm>
 #include <complex>
 #include <cctbx/fixes/cmath>
-#include <cctbx/array_family/tiny_types.h>
-#include <cctbx/array_family/ref.h>
 #include <cctbx/array_family/shared.h>
 #include <cctbx/fftbx/factorization.h>
+#include <cctbx/fftbx/detail/ref.h>
 
 namespace cctbx { namespace fftbx {
 
@@ -82,10 +81,8 @@ namespace cctbx { namespace fftbx {
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
       typedef RealType real_type;
       typedef ComplexType complex_type;
-      typedef af::ref<
-        real_type, af::grid<2, af::fortran_index_1d_calculator<2> > > dim2;
-      typedef af::ref<
-        real_type, af::grid<3, af::fortran_index_1d_calculator<3> > > dim3;
+      typedef detail::ref_2d_tp<real_type> dim2;
+      typedef detail::ref_3d_tp<real_type> dim3;
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
       //! Default constructor.
