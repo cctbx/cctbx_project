@@ -16,7 +16,7 @@ namespace scitbx { namespace af {
   matrix_diagonal(
     const_ref<NumType, c_grid<2> > const& a)
   {
-    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(a.accessor().is_square());
     shared<NumType> result(a.accessor()[0], init_functor_null<NumType>());
     matrix::diagonal(
       a.begin(), a.accessor()[0], result.begin());
@@ -28,7 +28,7 @@ namespace scitbx { namespace af {
   matrix_diagonal_sum(
     const_ref<NumType, c_grid<2> > const& a)
   {
-    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(a.accessor().is_square());
     return matrix::diagonal_sum(a.begin(), a.accessor()[0]);
   }
 
@@ -37,7 +37,7 @@ namespace scitbx { namespace af {
   matrix_diagonal_product(
     const_ref<NumType, c_grid<2> > const& a)
   {
-    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(a.accessor().is_square());
     return matrix::diagonal_product(a.begin(), a.accessor()[0]);
   }
 
@@ -119,7 +119,7 @@ namespace scitbx { namespace af {
   matrix_lu_decomposition_in_place(
     ref<FloatType, c_grid<2> > const& a)
   {
-    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(a.accessor().is_square());
     shared<std::size_t>
       pivot_indices(a.accessor()[0]+1, init_functor_null<std::size_t>());
     matrix::lu_decomposition_in_place(
@@ -134,7 +134,7 @@ namespace scitbx { namespace af {
     const_ref<std::size_t> const& pivot_indices,
     const_ref<FloatType> const& b)
   {
-    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(a.accessor().is_square());
     SCITBX_ASSERT(pivot_indices.size() == a.accessor()[0]+1);
     SCITBX_ASSERT(b.size() == a.accessor()[0]);
     shared<FloatType> x(b.begin(), b.end());
@@ -149,7 +149,7 @@ namespace scitbx { namespace af {
     const_ref<FloatType, c_grid<2> > const& a,
     const_ref<std::size_t> const& pivot_indices)
   {
-    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(a.accessor().is_square());
     SCITBX_ASSERT(pivot_indices.size() == a.accessor()[0]+1);
     FloatType result = matrix_diagonal_product(a);
     if (pivot_indices[a.accessor()[0]] % 2) result = -result;
@@ -161,7 +161,7 @@ namespace scitbx { namespace af {
   matrix_determinant_via_lu(
     const_ref<FloatType, c_grid<2> > const& a)
   {
-    SCITBX_ASSERT(a.accessor()[0] == a.accessor()[1]);
+    SCITBX_ASSERT(a.accessor().is_square());
     std::vector<FloatType> a_;
     a_.reserve(a.accessor().size_1d());
     std::copy(a.begin(), a.end(), a_.begin());
@@ -188,10 +188,7 @@ namespace scitbx { namespace af {
     af::ref<FloatType, af::c_grid<2> > const& a,
     af::ref<FloatType, af::c_grid<2> > const& b)
   {
-    if (a.accessor()[1] != a.accessor()[0]) {
-      throw std::runtime_error(
-        "matrix_inversion_in_place: a square matrix is required");
-    }
+    SCITBX_ASSERT(a.accessor().is_square());
     if (   b.accessor()[0] != 0
         && b.accessor()[1] != a.accessor()[0]) {
       throw std::runtime_error(

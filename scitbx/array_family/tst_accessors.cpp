@@ -108,6 +108,8 @@ int main(int argc, char* argv[])
     verify(__LINE__, a.as_flex_grid().all(), a);
     check_true(__LINE__, a.size() == 2);
     check_true(__LINE__, a.size_1d() == 6);
+    check_true(__LINE__, af::c_grid<2>(2,2).is_square());
+    check_false(__LINE__, af::c_grid<2>(2,3).is_square());
     check_false(__LINE__, a.is_valid_index(af::tiny<std::size_t, 2>(3,1)));
     check_false(__LINE__, a.is_valid_index(af::tiny<std::size_t, 2>(2,2)));
     check_true(__LINE__, a.is_valid_index(2,1));
