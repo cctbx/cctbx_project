@@ -114,13 +114,17 @@ if (not env_etc.no_boost_python):
       [line.rstrip() for line in open(jamfile_path).readlines()])
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile revision 1.79
-    jamfile_md5 = "1af054a4ee426478ce85a0683fa29c1b"
+    # based on boost/libs/python/test/Jamfile revision 1.80
+    jamfile_md5 = "43a3311d27c605839e1bc08c2e864944"
     if (m.hexdigest() != jamfile_md5):
       print "***************************************************"
       print "Warning: boost/libs/python/test/Jamfile has changed"
       print "New md5 signature:", m.hexdigest()
       print "***************************************************"
+    if (env_etc.compiler in ["irix_CC", "tru64_cxx"]):
+      disabled = "#"
+    else:
+      disabled = ""
     bpl_tests = Split("""
 staticmethod
 shared_ptr
@@ -172,13 +176,13 @@ crossmod_exception_b,crossmod_exception_b,crossmod_exception
 vector_indexing_suite
 return_arg
 keywords,keywords,keywords_test
-properties
+%sproperties
 map_indexing_suite;int_map_indexing_suite,map_indexing_suite_ext,map_indexing_suite
 injected
 slice
 const_argument
 raw_ctor
-""")
+""" % disabled)
     Import("env_boost_python_ext")
     all_tst = []
     for bpl_test in bpl_tests:
