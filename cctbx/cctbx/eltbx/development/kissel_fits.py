@@ -65,7 +65,7 @@ def run(args, cutoff, max_n_terms, six_term=00000, params=None,
         n_terms=6,
         target_powers=params.target_powers,
         minimize_using_sigmas=params.minimize_using_sigmas,
-        enforce_positive_b_mod_n=params.enforce_positive_b_mod_n,
+        shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
         b_min=params.b_min,
         n_repeats_minimization=params.n_repeats_minimization)
       g = best_min.final_gaussian_fit

@@ -431,6 +431,9 @@ def exercise_gaussian_fit():
   gf = gaussian.fit(
     x, reference_gaussian, flex.double(x.size(), 1),
     gaussian.sum((1,2), (4,5)))
+  assert list(gf.bound_flags(00000, 00000)) == [00000,00000,00000,00000]
+  assert list(gf.bound_flags(0001, 00000)) == [0001,00000,0001,00000]
+  assert list(gf.bound_flags(00000, 0001)) == [00000,0001,00000,0001]
   sgf = gf.apply_shifts(flex.double((3,-3,4,6)), 0001)
   assert approx_equal(sgf.array_of_a(), (1+3,2+4))
   assert approx_equal(sgf.array_of_b(),
@@ -454,6 +457,9 @@ def exercise_gaussian_fit():
   gfc = gaussian.fit(
     x, reference_gaussian, flex.double(x.size(), 1),
     gaussian.sum((1,2), (4,5), 6))
+  assert list(gfc.bound_flags(00000, 00000)) == [00000,00000,00000,00000,00000]
+  assert list(gfc.bound_flags(0001, 00000)) == [0001,00000,0001,00000,0001]
+  assert list(gfc.bound_flags(00000, 0001)) == [00000,0001,00000,0001,00000]
   sgfc = gfc.apply_shifts(flex.double((3,-3,4,6,-5)), 0001)
   assert approx_equal(sgfc.array_of_a(), (1+3,2+4))
   assert approx_equal(sgfc.array_of_b(),

@@ -1,9 +1,11 @@
 import scitbx.math.gaussian
 from scitbx.math import golay_24_12_generator
 from scitbx import lbfgs
+from scitbx import lbfgsb
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import ifloor
 from scitbx.python_utils.misc import adopt_init_args
+from scitbx.python_utils import dicts
 import math
 import sys
 
@@ -13,13 +15,50 @@ def n_less_than(sorted_array, cutoff, eps=1.e-6):
   assert selection[:result].all_eq(0001)
   return result
 
-class minimize:
+class LargeNegativeB(RuntimeError): pass
+
+class minimize_mixin:
+
+  def apply_shifts(self):
+    self.gaussian_fit_shifted = self.gaussian_fit.apply_shifts(
+      self.x, self.shift_sqrt_b)
+    min_b = min(self.gaussian_fit_shifted.array_of_b())
+    if (min_b < self.hard_b_min):
+      raise LargeNegativeB("gaussian_fit error: large negative b")
+
+  def compute_fg(self):
+    self.apply_shifts()
+    differences = self.gaussian_fit_shifted.differences()
+    self.f = self.gaussian_fit_shifted.target_function(
+      self.target_power, self.use_sigmas, differences)
+    self.g = self.gaussian_fit_shifted.gradients_d_abc(
+      self.target_power, self.use_sigmas, differences)
+    if (self.shift_sqrt_b):
+      self.g = self.gaussian_fit.gradients_d_shifts(self.x, self.g)
+
+  def finalize(self):
+    self.compute_fg()
+    self.final_target_value = self.f
+    self.final_gaussian_fit = self.gaussian_fit_shifted
+    self.max_error = flex.max(
+      self.final_gaussian_fit.significant_relative_errors())
+
+  def show_minimization_parameters(self, f=None):
+    if (f is None): f = sys.stdout
+    s = str(self)
+    if (hasattr(self, "shift_sqrt_b_mod_n")):
+      s += " shift_sqrt_b_mod_n:%d" % self.shift_sqrt_b_mod_n
+      s += " i_repeat:%d" % self.i_repeat
+    print >> f, s
+
+class minimize_lbfgs(minimize_mixin):
 
   def __init__(self, gaussian_fit, target_power,
-                     use_sigmas=00000,
-                     enforce_positive_b=0001,
+                     use_sigmas,
+                     shift_sqrt_b,
                      lbfgs_termination_params=None,
-                     lbfgs_core_params=lbfgs.core_parameters(m=7)):
+                     lbfgs_core_params=lbfgs.core_parameters(m=20),
+                     hard_b_min=-1):
     adopt_init_args(self, locals())
     assert target_power in [2,4]
     self.n = gaussian_fit.n_terms() * 2
@@ -29,57 +68,91 @@ class minimize:
       target_evaluator=self,
       termination_params=lbfgs_termination_params,
       core_params=lbfgs_core_params)
-    self.apply_shifts()
-    self.compute_target(compute_gradients=00000)
-    self.final_target_value = self.f
-    self.final_gaussian_fit = self.gaussian_fit_shifted
-    self.max_error = flex.max(
-      self.final_gaussian_fit.significant_relative_errors())
+    self.finalize()
 
-  def apply_shifts(self):
-    self.gaussian_fit_shifted = self.gaussian_fit.apply_shifts(
-      self.x, self.enforce_positive_b)
-
-  def compute_target(self, compute_gradients):
-    differences = self.gaussian_fit_shifted.differences()
-    self.f = self.gaussian_fit_shifted.target_function(
-      self.target_power, self.use_sigmas, differences)
-    if (compute_gradients):
-      self.g = self.gaussian_fit_shifted.gradients_d_abc(
-        self.target_power, self.use_sigmas, differences)
-      if (self.enforce_positive_b):
-        self.g = self.gaussian_fit.gradients_d_shifts(self.x, self.g)
-    else:
-      self.g = None
+  def __str__(self):
+    return "lbfgs:m=%d:tp=%d:us=%d:sq=%d" % (
+      self.lbfgs_core_params.m,
+      self.target_power,
+      int(self.use_sigmas),
+      int(self.shift_sqrt_b))
 
   def __call__(self):
-    if (self.first_target_value is None):
-      assert self.x.all_eq(0)
-      self.gaussian_fit_shifted = self.gaussian_fit
-    else:
-      self.apply_shifts()
-    self.compute_target(compute_gradients=0001)
+    self.compute_fg()
     if (self.first_target_value is None):
       self.first_target_value = self.f
     return self.x, self.f, self.g
 
-def minimize_multi(start_fit,
-                   target_powers,
-                   minimize_using_sigmas,
-                   enforce_positive_b_mod_n,
-                   b_min,
-                   n_repeats_minimization):
+class minimize_lbfgsb(minimize_mixin):
+
+  def __init__(self, gaussian_fit, target_power,
+                     use_sigmas,
+                     shift_sqrt_b,
+                     apply_lower_bounds_on_b,
+                     lbfgsb_m=20,
+                     hard_b_min=-1):
+    adopt_init_args(self, locals())
+    assert target_power in [2,4]
+    self.n = gaussian_fit.n_terms() * 2
+    self.run()
+    self.finalize()
+
+  def __str__(self):
+    return "lbfgsb:m=%d:tp=%d:us=%d:sq=%d:lb=%d" % (
+      self.lbfgsb_m,
+      self.target_power,
+      int(self.use_sigmas),
+      int(self.shift_sqrt_b),
+      int(self.apply_lower_bounds_on_b))
+
+  def run(self):
+    l = flex.double(self.n, 0)
+    u = flex.double(self.n, 0)
+    nbd = flex.int(self.n, 0)
+    if (self.apply_lower_bounds_on_b):
+      bound_flags = self.gaussian_fit.bound_flags(00000, 0001)
+      nbd.set_selected(bound_flags, flex.int(bound_flags.count(0001), 1))
+    self.minimizer = lbfgsb.minimizer(
+      n=self.n,
+      m=self.lbfgsb_m,
+      l=l,
+      u=u,
+      nbd=nbd)
+    self.x = flex.double(self.n, 0)
+    self.f = 0
+    self.g = flex.double(self.n, 0)
+    while 0001:
+      task = self.minimizer.process(self.x, self.f, self.g)
+      if (task[:2] == "FG"):
+        self.compute_fg()
+      elif (task[:5] != "NEW_X"):
+        break
+
+def minimize_multi_lbfgs(start_fit,
+                         target_powers,
+                         minimize_using_sigmas,
+                         shift_sqrt_b_mod_n,
+                         b_min,
+                         n_repeats_minimization):
   best_min = None
   for target_power in target_powers:
     min_gaussian_fit = start_fit
     for i in xrange(n_repeats_minimization):
-      enforce_positive_b_this_time = (i % enforce_positive_b_mod_n == 0)
+      if (shift_sqrt_b_mod_n > 0):
+        shift_sqrt_b_this_time = (i % shift_sqrt_b_mod_n == 0)
+      else:
+        shift_sqrt_b_this_time = 0
       try:
-        minimized = minimize(
+        minimized = minimize_lbfgs(
           gaussian_fit=min_gaussian_fit,
           target_power=target_power,
           use_sigmas=minimize_using_sigmas,
-          enforce_positive_b=enforce_positive_b_this_time)
+          shift_sqrt_b=shift_sqrt_b_this_time)
+        minimized.shift_sqrt_b_mod_n = shift_sqrt_b_mod_n
+        minimized.i_repeat = i
+      except LargeNegativeB:
+        minimized = None
+        break
       except RuntimeError, e:
         if (str(e).find("lbfgs error: ") < 0): raise
         print e
@@ -96,11 +169,86 @@ def minimize_multi(start_fit,
         best_min = minimized
   return best_min
 
+def minimize_multi_lbfgsb(start_fit,
+                          target_powers,
+                          minimize_using_sigmas,
+                          shift_sqrt_b_mod_n,
+                          b_min,
+                          n_repeats_minimization):
+  best_min = None
+  for target_power in target_powers:
+    for apply_lower_bounds_on_b in [00000, 0001]:
+      min_gaussian_fit = start_fit
+      for i in xrange(n_repeats_minimization):
+        if (shift_sqrt_b_mod_n > 0):
+          shift_sqrt_b_this_time = (i % shift_sqrt_b_mod_n == 0)
+        else:
+          shift_sqrt_b_this_time = 0
+        try:
+          minimized = minimize_lbfgsb(
+            gaussian_fit=min_gaussian_fit,
+            target_power=target_power,
+            use_sigmas=minimize_using_sigmas,
+            shift_sqrt_b=shift_sqrt_b_this_time,
+            apply_lower_bounds_on_b=apply_lower_bounds_on_b)
+          minimized.shift_sqrt_b_mod_n = shift_sqrt_b_mod_n
+          minimized.i_repeat = i
+        except LargeNegativeB:
+          minimized = None
+          break
+        if (min(minimized.final_gaussian_fit.array_of_b()) < b_min):
+          minimized = None
+          break
+        min_gaussian_fit = minimized.final_gaussian_fit
+        if (best_min is None or best_min.max_error > minimized.max_error):
+          best_min = minimized
+  return best_min
+
+minimize_multi_histogram = dicts.with_default_value(0)
+
+def show_minimize_multi_histogram(f=None, reset=0001):
+  global minimize_multi_histogram
+  minimizer_types = minimize_multi_histogram.keys()
+  counts = flex.double(minimize_multi_histogram.values())
+  perm = flex.sort_permutation(counts, 0001)
+  minimizer_types = flex.select(minimizer_types, perm)
+  counts = counts.select(perm)
+  n_total = flex.sum(counts)
+  for m,c in zip(minimizer_types, counts):
+    print >> f, "%-32s  %5.3f" % (m, c/n_total)
+  print >> f
+  if (reset):
+    minimize_multi_histogram = dicts.with_default_value(0)
+
+def minimize_multi(start_fit,
+                   target_powers,
+                   minimize_using_sigmas,
+                   shift_sqrt_b_mod_n,
+                   b_min,
+                   n_repeats_minimization):
+  best_min_list = []
+  for current_shift_sqrt_b_mod_n in shift_sqrt_b_mod_n:
+    for minimize_multi_type in [minimize_multi_lbfgs, minimize_multi_lbfgsb]:
+      best_min_list.append(minimize_multi_type(
+        start_fit=start_fit,
+        target_powers=target_powers,
+        minimize_using_sigmas=minimize_using_sigmas,
+        shift_sqrt_b_mod_n=current_shift_sqrt_b_mod_n,
+        b_min=b_min,
+        n_repeats_minimization=n_repeats_minimization))
+  best_best_min = None
+  for best_min in best_min_list:
+    if (best_min is None): continue
+    if (best_best_min is None or best_best_min.max_error > best_min.max_error):
+      best_best_min = best_min
+  minimize_multi_histogram[str(best_best_min)] += 1
+  return best_best_min
+
 def find_max_x(gaussian_fit,
                target_powers,
                minimize_using_sigmas,
                n_repeats_minimization,
-               enforce_positive_b_mod_n,
+               shift_sqrt_b_mod_n,
                b_min,
                max_max_error):
   table_x = gaussian_fit.table_x()
@@ -129,7 +277,7 @@ def find_max_x(gaussian_fit,
       start_fit=start_fit,
       target_powers=target_powers,
       minimize_using_sigmas=minimize_using_sigmas,
-      enforce_positive_b_mod_n=enforce_positive_b_mod_n,
+      shift_sqrt_b_mod_n=shift_sqrt_b_mod_n,
       b_min=b_min,
       n_repeats_minimization=n_repeats_minimization)
     if (best_min is None or best_min.max_error > max_max_error):
@@ -204,7 +352,7 @@ def find_max_x_multi(null_fit,
                      existing_gaussian,
                      target_powers,
                      minimize_using_sigmas,
-                     enforce_positive_b_mod_n,
+                     shift_sqrt_b_mod_n,
                      b_min,
                      max_max_error,
                      n_start_fractions,
@@ -242,7 +390,7 @@ def find_max_x_multi(null_fit,
             target_powers=[target_power],
             minimize_using_sigmas=minimize_using_sigmas,
             n_repeats_minimization=n_repeats_minimization,
-            enforce_positive_b_mod_n=enforce_positive_b_mod_n,
+            shift_sqrt_b_mod_n=shift_sqrt_b_mod_n,
             b_min=b_min,
             max_max_error=max_max_error)
           if (good_min is not None):
@@ -280,7 +428,7 @@ def fit_with_golay_starts(label,
                           n_terms,
                           target_powers,
                           minimize_using_sigmas,
-                          enforce_positive_b_mod_n,
+                          shift_sqrt_b_mod_n,
                           b_min,
                           n_repeats_minimization,
                           negligible_max_error=0.001,
@@ -297,7 +445,7 @@ def fit_with_golay_starts(label,
       start_fit=start_fit,
       target_powers=target_powers,
       minimize_using_sigmas=minimize_using_sigmas,
-      enforce_positive_b_mod_n=enforce_positive_b_mod_n,
+      shift_sqrt_b_mod_n=shift_sqrt_b_mod_n,
       b_min=b_min,
       n_repeats_minimization=n_repeats_minimization)
     if (best_min is not None):
@@ -325,5 +473,7 @@ def fit_with_golay_starts(label,
       print >> print_to, "Final:", label, "max_error fitted=%.4f, more=%.4f" % (
         good_min.max_error,
         flex.max(fit_more.significant_relative_errors()))
+    good_min.show_minimization_parameters(f=print_to)
     print >> print_to
+    show_minimize_multi_histogram(f=print_to)
   return good_min

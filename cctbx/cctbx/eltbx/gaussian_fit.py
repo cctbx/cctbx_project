@@ -2,6 +2,7 @@ from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
 import scitbx.math.gaussian
 from scitbx.math.gaussian_fit import find_max_x_multi
+from scitbx.math.gaussian_fit import show_minimize_multi_histogram
 from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import adopt_init_args, user_plus_sys_time
 import sys, os
@@ -95,7 +96,7 @@ class fit_parameters:
                      target_powers=[2,4],
                      minimize_using_sigmas=00000,
                      n_repeats_minimization=5,
-                     enforce_positive_b_mod_n=1,
+                     shift_sqrt_b_mod_n=[0,1,2],
                      b_min=1.e-6,
                      max_max_error=0.01,
                      n_start_fractions=5):
@@ -120,7 +121,7 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
       target_powers=params.target_powers,
       minimize_using_sigmas=params.minimize_using_sigmas,
       n_repeats_minimization=params.n_repeats_minimization,
-      enforce_positive_b_mod_n=params.enforce_positive_b_mod_n,
+      shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
       b_min=params.b_min,
       max_max_error=params.max_max_error,
       n_start_fractions=params.n_start_fractions)
@@ -140,8 +141,10 @@ def incremental_fits(label, null_fit, params=None, plots_dir=None, verbose=0):
       n_points=best_min.final_gaussian_fit.table_x().size(),
       e_other=best_min.max_error)
     best_min.final_gaussian_fit.show()
+    best_min.show_minimization_parameters()
     existing_gaussian = best_min.final_gaussian_fit
     print
+    show_minimize_multi_histogram()
     sys.stdout.flush()
     if (plots_dir):
       write_plots(
@@ -185,7 +188,7 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
             start_fit=start_fit,
             target_powers=params.target_powers,
             minimize_using_sigmas=params.minimize_using_sigmas,
-            enforce_positive_b_mod_n=params.enforce_positive_b_mod_n,
+            shift_sqrt_b_mod_n=params.shift_sqrt_b_mod_n,
             b_min=params.b_min,
             n_repeats_minimization=params.n_repeats_minimization)
           if (best_min is None):
@@ -216,8 +219,10 @@ def decremental_fits(label, null_fit, full_fit=None, params=None,
       n_points=good_min.final_gaussian_fit.table_x().size(),
       e_other=good_min.max_error)
     good_min.final_gaussian_fit.show()
+    good_min.show_minimization_parameters()
     last_fit = good_min.final_gaussian_fit
     print
+    show_minimize_multi_histogram()
     sys.stdout.flush()
     if (plots_dir):
       write_plots(

@@ -106,6 +106,7 @@ namespace {
         .def("fitted_values", &w_t::fitted_values)
         .def("differences", &w_t::differences)
         .def("significant_relative_errors", &w_t::significant_relative_errors)
+        .def("bound_flags", &w_t::bound_flags)
         .def("apply_shifts", &w_t::apply_shifts)
         .def("target_function", &w_t::target_function)
         .def("gradients_d_abc", &w_t::gradients_d_abc)

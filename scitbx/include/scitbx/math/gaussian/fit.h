@@ -112,6 +112,20 @@ namespace scitbx { namespace math { namespace gaussian {
         return results;
       }
 
+      af::shared<bool>
+      bound_flags(bool a_bounded, bool b_bounded) const
+      {
+        af::shared<bool> result((af::reserve(this->n_parameters())));
+        for(std::size_t i=0;i<this->n_terms();i++) {
+          result.push_back(a_bounded);
+          result.push_back(b_bounded);
+        }
+        if (this->use_c()) {
+          result.push_back(a_bounded);
+        }
+        return result;
+      }
+
       fit
       apply_shifts(
         af::const_ref<FloatType> const& shifts,
