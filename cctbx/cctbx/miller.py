@@ -323,6 +323,13 @@ class array(set):
     if (s != None): s = s.shuffle(p)
     return array(miller_set=other, data=d, sigmas=s)
 
+  def common_set(self, other):
+    assert self.unit_cell().is_similar_to(other.unit_cell())
+    assert self.space_group() == other.space_group()
+    assert self.anomalous_flag() == other.anomalous_flag()
+    match = match_indices(self.indices(), other.indices())
+    return self.apply_selection(match.pair_selection(0))
+
   def sort(self, by_value="resolution", reverse=00000):
     assert reverse in (00000, 0001)
     if (by_value == "resolution"):

@@ -27,8 +27,8 @@ class scalepack_reader:
     if (line.rstrip() != "    1"):
       raise ScalepackFormatError, "line 1: expecting '    1'"
     line = self.file_handle.readline()
-    if (line.rstrip() != " -987"):
-      raise ScalepackFormatError, "line 2: expecting ' -987'"
+    if (line.rstrip()[:2] != " -"):
+      raise ScalepackFormatError, "line 2: expecting ' -###'"
     line_error = "line 3: expecting unit cell parameters and space group label"
     line = self.file_handle.readline()
     if (len(line) < 63 or line[60] != ' '):
