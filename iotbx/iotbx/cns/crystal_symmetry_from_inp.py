@@ -1,7 +1,4 @@
-#! /usr/bin/env python
-
-"""
-Extracts crystal symmetry from CNS input file.
+"""Extracts crystal symmetry from CNS input file.
 
 For example, the input
 
@@ -13,21 +10,16 @@ For example, the input
 {===>} beta=90;
 {===>} gamma=120;
 
-is reformatted as:
+is returned as:
 
 crystal.symmetry(
   unit_cell=(76.4, 76.4, 180.94, 90, 90, 120),
   space_group_symbol="P3(2)21")
 """
 
-import sys
+from cctbx import crystal
 
-def run():
-  assert len(sys.argv) in (1,2)
-  if (len(sys.argv) == 1):
-    file = sys.stdin
-  else:
-    file = open(sys.argv[1], "r")
+def extract_from(file):
   unit_cell = [None for i in xrange(6)]
   space_group_symbol = None
   for line in file:
@@ -44,13 +36,8 @@ def run():
           assert line[-1] == ';'
           assert unit_cell[i] == None, "Duplicate unit cell parameter %s." % label
           unit_cell[i] = float(line[8+len(label):-1])
-  assert space_group_symbol != None
   assert unit_cell.count(None) == 0
-  print """\
-crystal.symmetry(
-  unit_cell=(%.6g, %.6g, %.6g, %.6g, %.6g, %.6g),
-  space_group_symbol="%s")
-""" % tuple(unit_cell + [space_group_symbol])
-
-if (__name__ == "__main__"):
-  run()
+  assert space_group_symbol != None
+  return crystal.symmetry(
+    unit_cell=unit_cell,
+    space_group_symbol=space_group_symbol)
