@@ -32,10 +32,12 @@ namespace neighbors {
        */
       simple_pair_generator(
         asu_mappings_t* asu_mappings,
-        FloatType const& distance_cutoff=0)
+        FloatType const& distance_cutoff=0,
+        bool full_matrix=false)
       :
         asu_mappings_(asu_mappings),
-        distance_cutoff_sq_(distance_cutoff*distance_cutoff)
+        distance_cutoff_sq_(distance_cutoff*distance_cutoff),
+        full_matrix_(full_matrix)
       {
         CCTBX_ASSERT(distance_cutoff >= 0);
         asu_mappings->lock();
@@ -45,6 +47,10 @@ namespace neighbors {
       //! Square of value as passed to the constructor.
       FloatType
       distance_cutoff_sq() const { return distance_cutoff_sq_; }
+
+      //! Value as passed to the constructor.
+      bool
+      full_matrix() const { return full_matrix_; }
 
       /*! \brief True if the last pair returned by next() was the last
           one to be generated.
@@ -94,6 +100,7 @@ namespace neighbors {
     protected:
       direct_space_asu::asu_mappings<FloatType>* asu_mappings_;
       FloatType distance_cutoff_sq_;
+      bool full_matrix_;
       bool at_end_;
       direct_space_asu::asu_mapping_index_pair_and_diff<FloatType> pair_;
 
@@ -114,7 +121,7 @@ namespace neighbors {
     for(pair_.i_seq=0;
         pair_.i_seq<mappings.size();
         pair_.i_seq++) {
-      for(pair_.j_seq=pair_.i_seq;
+      for(pair_.j_seq=(full_matrix_ ? 0 : pair_.i_seq);
           pair_.j_seq<mappings.size();
           pair_.j_seq++) {
         for(pair_.j_sym=(pair_.i_seq == pair_.j_seq ? 1 : 0);
