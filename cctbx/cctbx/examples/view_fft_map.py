@@ -76,3 +76,6 @@ def show_fft():
   show_peaks(fft_map.unit_cell(), clusters)
   cmd.zoom('all', 15.0) # zoom with additional border of 15 Ang.
   print
+
+if (__name__ == "pymol"):
+  show_fft()
