@@ -35,7 +35,8 @@ class copy_libtbx_files:
   def is_disposable_file(self, name, path):
     if (    self.dispatcher_front_end_exe is not None
         and name.endswith(".exe")):
-      if (open(path, "rb").read() == self.dispatcher_front_end_exe):
+      if (open(path, "rb").read(len(self.dispatcher_front_end_exe)+1)
+          == self.dispatcher_front_end_exe):
         return True
     else:
       f = open(path, "r")

@@ -114,7 +114,8 @@ def read_libtbx_config(path):
 
 class env:
 
-  def __init__(self):
+  def __init__(self, application_prefix="LIBTBX"):
+    self.application_prefix = application_prefix
     libtbx_build = os.environ["LIBTBX_BUILD"]
     file_name = join(libtbx_build, "libtbx_env")
     try:
@@ -153,11 +154,21 @@ class env:
   def current_working_directory_is_libtbx_build(self):
     return norm(os.getcwd()) == self.LIBTBX_BUILD
 
-  def dispatcher_front_end_exe(self):
+  def dispatcher_front_end_exe(self,
+       application_prefix_placeholder="3A7P0P0L4I8C3A5T5I6O3N490P0R7E6F8I6X4"):
     if (    os.name == "nt"
         and self._dispatcher_front_end_exe is None):
       self._dispatcher_front_end_exe = open(join(
         self.dist_path("libtbx"), "dispatcher_front_end.exe"), "rb").read()
+      application_prefix_index = self._dispatcher_front_end_exe.find(
+        application_prefix_placeholder)
+      assert application_prefix_index >= 0
+      assert len(self.application_prefix) <= len(application_prefix_placeholder)
+      self._dispatcher_front_end_exe \
+        = self._dispatcher_front_end_exe[:application_prefix_index] \
+        + self.application_prefix + "\0" \
+        + self._dispatcher_front_end_exe[
+            application_prefix_index+len(self.application_prefix)+1:]
     return self._dispatcher_front_end_exe
 
 class include_registry:
