@@ -159,7 +159,7 @@ namespace {
     return result;
   }
 
-  void pack_coordinates(
+  void pack_coordinates_frac(
     const af::shared<ex_xray_scatterer>& sites,
     af::shared<double> x)
   {
@@ -169,7 +169,7 @@ namespace {
     }
   }
 
-  void unpack_coordinates(
+  void unpack_coordinates_frac(
     af::shared<double> x,
     std::size_t start,
     af::shared<ex_xray_scatterer> sites)
@@ -180,9 +180,44 @@ namespace {
     }
   }
 
+  void pack_coordinates_cart(
+    const uctbx::UnitCell& UCell,
+    const af::shared<ex_xray_scatterer>& sites,
+    af::shared<double> x)
+  {
+    for(std::size_t i=0;i<sites.size();i++) {
+      const af::double3& c = UCell.orthogonalize(sites[i].Coordinates());
+      x.insert(x.end(), c.begin(), c.end());
+    }
+  }
+
+  void unpack_coordinates_cart(
+    const uctbx::UnitCell& UCell,
+    af::shared<double> x,
+    std::size_t start,
+    af::shared<ex_xray_scatterer> sites)
+  {
+    cctbx_assert(x.size() >= start + sites.size() * 3);
+    for(std::size_t i=0;i<sites.size();i++) {
+      sites[i].set_Coordinates(
+        UCell.fractionalize(cartesian<double>(&x[i * 3])));
+    }
+  }
+
   af::shared<double>
-  flatten_dF_dX(af::shared<af::double3> dF_dX) {
-    return af::shared<double>(dF_dX.handle());
+  flatten(af::shared<af::double3> a) {
+    return af::shared<double>(a.handle());
+  }
+
+  void
+  dF_dX_inplace_frac_as_cart(
+    const uctbx::UnitCell& UCell,
+    af::shared<af::double3> dF_dX)
+  {
+    for(std::size_t i=0;i<dF_dX.size();i++) {
+      dF_dX[i] = MatrixLite::vector_mul_matrix(
+        dF_dX[i], UCell.getFractionalizationMatrix());
+    }
   }
 
 #   include <cctbx/basic/from_bpl_import.h>
@@ -295,9 +330,12 @@ namespace {
     this_module.def(py_BuildMillerIndices_MaxIndex,
                       "BuildMillerIndices");
 
-    this_module.def(pack_coordinates, "pack_coordinates");
-    this_module.def(unpack_coordinates, "unpack_coordinates");
-    this_module.def(flatten_dF_dX, "flatten_dF_dX");
+    this_module.def(pack_coordinates_frac, "pack_coordinates");
+    this_module.def(unpack_coordinates_frac, "unpack_coordinates");
+    this_module.def(pack_coordinates_cart, "pack_coordinates");
+    this_module.def(unpack_coordinates_cart, "unpack_coordinates");
+    this_module.def(flatten, "flatten");
+    this_module.def(dF_dX_inplace_frac_as_cart, "dF_dX_inplace_frac_as_cart");
   }
 
 }

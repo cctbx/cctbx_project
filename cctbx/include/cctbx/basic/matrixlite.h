@@ -188,6 +188,19 @@ namespace cctbx {
             type_holder<FloatTypeT>());
     }
 
+    template <typename NumType>
+    inline
+    af::tiny<NumType, 3>
+    vector_mul_matrix(
+      const af::tiny<NumType, 3>& v,
+      const af::tiny<NumType, 9>& m)
+    {
+      return af::tiny<NumType, 3>(
+        m[0] * v[0] + m[3] * v[1] + m[6] * v[2],
+        m[1] * v[0] + m[4] * v[1] + m[7] * v[2],
+        m[2] * v[0] + m[5] * v[1] + m[8] * v[2]);
+    }
+
   } // namespace MatrixLite
 } // namespace cctbx
 
