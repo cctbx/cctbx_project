@@ -41,6 +41,19 @@ namespace cctbx { namespace af {
     return result;
   }
 
+  namespace detail {
+
+    template <class ElementType>
+    inline
+    void destroy_array_elements(ElementType* first, ElementType* last) {
+      while (first != last) {
+        first->~ElementType();
+        ++first;
+      }
+    }
+
+  } // namespace detail
+
 }} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_MISC_H

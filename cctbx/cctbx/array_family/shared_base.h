@@ -242,14 +242,16 @@ namespace cctbx { namespace af {
         m_handle.reserve(element_size() * new_size);
       }
 
-      void resize(const size_type& new_size) {
+      void resize(const size_type& new_size,
+                  const ElementType& x = ElementType()) {
+        size_type old_size = this->size();
+        if (new_size < old_size) {
+          detail::destroy_array_elements(this->begin()+new_size, this->end());
+        }
         m_handle.resize(element_size() * new_size);
-      }
-
-      void resize(const size_type& new_size, const ElementType& x) {
-        ElementType* old_end = end();
-        resize(new_size);
-        if (end() > old_end) std::fill(old_end, end(), x);
+        if (new_size > old_size) {
+          std::fill(this->begin()+old_size, this->end(), x);
+        }
       }
 
     protected:

@@ -46,8 +46,15 @@ namespace cctbx { namespace af {
         this->handle().swap(other.handle());
       }
 
-      void auto_resize(const size_type& sz) {
-        this->handle().auto_resize(this->element_size() * sz);
+      void auto_resize(const size_type& new_size, const ElementType& x) {
+        size_type old_size = this->size();
+        if (new_size < old_size) {
+          detail::destroy_array_elements(this->begin()+new_size, this->end());
+        }
+        this->handle().auto_resize(this->element_size() * new_size);
+        if (new_size > old_size) {
+          std::fill(this->begin()+old_size, this->end(), x);
+        }
       }
 
 #     include <cctbx/array_family/push_back_etc.h>

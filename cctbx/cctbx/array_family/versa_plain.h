@@ -42,9 +42,11 @@ namespace cctbx { namespace af {
         this->resize(accessor_type(sz));
       }
 
-      void resize(const accessor_type& ac) {
+      void resize(const accessor_type& ac,
+                  const ElementType& x = ElementType()) {
         m_accessor = ac;
-        shared_base<ElementType>(*this).resize(m_accessor.size1d());
+        shared_base<ElementType>(*this).resize(
+          m_accessor.size1d(), x);
       }
 
       const accessor_type& accessor() const { return m_accessor; }

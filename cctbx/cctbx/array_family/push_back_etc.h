@@ -5,8 +5,7 @@
       void clear() { this->resize(0); }
 
       void push_back(const ElementType& x) {
-        this->auto_resize(this->size()+1);
-        this->operator[](this->size()-1) = x;
+        this->auto_resize(this->size()+1, x);
       }
       void pop_back() { this->resize(this->size()-1); }
 
