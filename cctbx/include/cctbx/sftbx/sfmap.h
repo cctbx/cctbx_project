@@ -223,10 +223,16 @@ namespace cctbx { namespace sftbx {
             }
             if (max_d_sq < d_sq) max_d_sq = d_sq;
           }
+          if (ig == 1) {
+            throw error(
+              "Error determining sampling radius for"
+              " model electron density. This may be due to incorrectly"
+              " defined atomic scattering factors.");
+          }
           if (ig == grid_n[i_basis_vec]) {
             throw error(
-              "Excessive radius for real-space sampling"
-              " of model electron density.");
+              "Excessive radius for real-space sampling of"
+              " model electron density.");
           }
           radii[i_basis_vec] = ig - 1;
         }
@@ -283,7 +289,10 @@ namespace cctbx { namespace sftbx {
   class sampled_model_density
   {
     public:
-      typedef af::versa<FloatType, sfmap::accessor_type> map_type;
+      typedef af::versa<FloatType, sfmap::accessor_type>
+        map_real_type;
+      typedef af::versa<std::complex<FloatType>, sfmap::accessor_type>
+        map_complex_type;
 
       sampled_model_density() {}
 
@@ -305,15 +314,24 @@ namespace cctbx { namespace sftbx {
         const FloatType& exp_table_one_over_step_size = -100,
         bool electron_density_must_be_positive = true)
         : ucell_(ucell),
-          map_(sfmap::accessor_type(grid_logical, grid_physical)),
+          map_accessor_(grid_logical, grid_physical),
           u_extra_(u_extra),
           wing_cutoff_(wing_cutoff),
           exp_table_one_over_step_size_(exp_table_one_over_step_size),
           exp_table_size_(0),
-          max_shell_radii_(0,0,0)
+          max_shell_radii_(0,0,0),
+          n_anomalous_scatterers_(0)
       {
-        detail::exponent_table<FloatType> exp_table(
-          exp_table_one_over_step_size);
+        typedef
+#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
+          XrayScattererType
+#else
+          sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>
+#endif
+            xray_scatterer_type;
+        typedef typename
+          xray_scatterer_type::caasf_type::base_type
+            caasf_type;
         af::tiny<FloatType, 9> orth_mx = ucell_.getOrthogonalizationMatrix();
         if (orth_mx[3] != 0 || orth_mx[6] != 0 || orth_mx[7] != 0) {
           throw error(
@@ -323,28 +341,32 @@ namespace cctbx { namespace sftbx {
             " according to the PDB convention. The orthogonalization"
             " matrix passed is not compatible with this convention.");
         }
-        for(
-#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
-            const XrayScattererType*
-#else
-            const sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>*
-#endif
-            site=sites.begin();site!=sites.end();site++)
+        const xray_scatterer_type* site;
+        for(site=sites.begin();site!=sites.end();site++)
         {
-#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
-          typedef typename XrayScattererType::caasf_type::base_type caasf_type;
-#else
-          typedef typename sftbx::XrayScatterer<
-            double, eltbx::CAASF_WK1995>::caasf_type::base_type caasf_type;
-#endif
+          if (site->w() == 0) continue;
+          if (site->fpfdp().imag() != 0) {
+            n_anomalous_scatterers_++;
+          }
+        }
+        if (n_anomalous_scatterers_ == 0) {
+          map_real_.resize(map_accessor_);
+        }
+        else {
+          map_complex_.resize(map_accessor_);
+        }
+        detail::exponent_table<FloatType> exp_table(
+          exp_table_one_over_step_size);
+        for(site=sites.begin();site!=sites.end();site++)
+        {
           if (site->w() == 0) continue;
           cctbx_assert(site->fpfdp().imag() == 0);
           cctbx_assert(!site->isAnisotropic());
           const fractional<FloatType>& coor_frac = site->Coordinates();
           detail::caasf_fourier_transformed<FloatType, caasf_type> caasf_ft(
             site->CAASF(), site->fpfdp(), site->w(), site->Uiso() + u_extra_);
-          const sfmap::grid_point_type& grid_nl = map_.accessor().n_logical();
-          const sfmap::grid_point_type& grid_np = map_.accessor().n_physical();
+          const sfmap::grid_point_type& grid_nl = map_accessor_.n_logical();
+          const sfmap::grid_point_type& grid_np = map_accessor_.n_physical();
           detail::calc_shell<FloatType> shell(
             ucell_, wing_cutoff_, grid_nl, caasf_ft, exp_table);
           if (electron_density_must_be_positive) {
@@ -363,7 +385,13 @@ namespace cctbx { namespace sftbx {
           sfmap::grid_point_element_type g01, g0112;
           FloatType f0, f1, f2;
           FloatType c00, c01, c11, c02, c12, c22;
-          FloatType* map_begin = map_.begin();
+          FloatType* map_begin;
+          if (n_anomalous_scatterers_ == 0) {
+            map_begin = map_real_.begin();
+          }
+          else {
+            map_begin = reinterpret_cast<FloatType*>(map_complex_.begin());
+          }
           for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
             g01 = detail::mod_positive(gp[0],grid_nl[0]) * grid_np[1];
             f0 = FloatType(gp[0]) / grid_nl[0] - coor_frac[0];
@@ -380,8 +408,15 @@ namespace cctbx { namespace sftbx {
             c22 = orth_mx[8] * f2;
             FloatType d_sq = c02*c02 + c12*c12 + c22*c22;
             if (d_sq > shell.max_d_sq) continue;
-            map_begin[g0112 + detail::mod_positive(gp[2],grid_nl[2])]
-             += caasf_ft.rho_real(exp_table, d_sq);
+            std::size_t i_map = g0112 + detail::mod_positive(gp[2],grid_nl[2]);
+            if (n_anomalous_scatterers_ == 0) {
+              map_begin[i_map] += caasf_ft.rho_real(exp_table, d_sq);
+            }
+            else {
+              i_map *= 2;
+              map_begin[i_map  ] += caasf_ft.rho_real(exp_table, d_sq);
+              map_begin[i_map+1] += caasf_ft.rho_imag(exp_table, d_sq);
+            }
           }}}
         }
         exp_table_size_ = exp_table.table().size();
@@ -397,14 +432,17 @@ namespace cctbx { namespace sftbx {
       const sfmap::grid_point_type& max_shell_radii() const {
         return max_shell_radii_;
       }
-      const map_type& map() const { return map_; }
-            map_type& map()       { return map_; }
+      const map_real_type& map_real() const { return map_real_; }
+            map_real_type  map_real()       { return map_real_; }
+      const map_complex_type& map_complex() const { return map_complex_; }
+            map_complex_type  map_complex()       { return map_complex_; }
 
       template <typename TagType>
       void
       apply_symmetry(const maps::grid_tags<TagType>& tags)
       {
-        tags.sum_sym_equiv_points(map_.ref());
+        cctbx_assert(map_complex_.size() == 0); // XXX XXX XXX XXX
+        tags.sum_sym_equiv_points(map_real_.ref());
       }
 
       void
@@ -413,19 +451,22 @@ namespace cctbx { namespace sftbx {
         af::ref<std::complex<FloatType> > structure_factors) const
       {
         FloatType norm = ucell_.getVolume()
-          / af::product(map_.accessor().n_logical().const_ref());
+          / af::product(map_accessor_.n_logical().const_ref());
         eliminate_u_extra(
           ucell_, u_extra_, miller_indices, structure_factors, norm);
       }
 
     private:
       uctbx::UnitCell ucell_;
-      map_type map_;
+      sfmap::accessor_type map_accessor_;
       FloatType u_extra_;
       FloatType wing_cutoff_;
       FloatType exp_table_one_over_step_size_;
       std::size_t exp_table_size_;
       sfmap::grid_point_type max_shell_radii_;
+      std::size_t n_anomalous_scatterers_;
+      map_real_type map_real_;
+      map_complex_type map_complex_;
   };
 
   template <typename FloatType,
