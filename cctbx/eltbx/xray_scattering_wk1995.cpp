@@ -1,6 +1,6 @@
-#include <cctbx/eltbx/caasf.h>
+#include <cctbx/eltbx/xray_scattering.h>
 
-namespace cctbx { namespace eltbx { namespace caasf {
+namespace cctbx { namespace eltbx { namespace xray_scattering {
 
   namespace {
 
@@ -706,4 +706,4 @@ namespace cctbx { namespace eltbx { namespace caasf {
     return result;
   }
 
-}}} // namespace cctbx::eltbx::caasf
+}}} // namespace cctbx::eltbx::xray_scattering

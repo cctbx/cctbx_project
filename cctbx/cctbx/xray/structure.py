@@ -3,6 +3,7 @@ from cctbx.xray import structure_factors
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
+import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx import matrix
 from cctbx.array_family import flex
@@ -52,10 +53,10 @@ class structure(crystal.special_position_settings):
     if (   self._scattering_dict_is_out_of_date
         or custom_dict is not None
         or d_min is not None):
-      new_dict = {"const": eltbx.caasf.custom(1) }
+      new_dict = {"const": eltbx.xray_scattering.gaussian(1) }
       if (self._scattering_dict is not None and d_min is None):
         for k,v in self._scattering_dict.dict().items():
-          new_dict[k] = v.coefficients
+          new_dict[k] = v.gaussian
       if (custom_dict is not None):
         new_dict.update(custom_dict)
       if (d_min is None): d_min = 0
@@ -65,9 +66,9 @@ class structure(crystal.special_position_settings):
           val = new_dict[key_undef]
         else:
           if (d_min >= d_min_it1992):
-            val = eltbx.caasf.it1992(key_undef, 1).as_custom()
+            val = eltbx.xray_scattering.it1992(key_undef, 1).fetch()
           else:
-            val = eltbx.caasf.wk1995(key_undef, 1).as_custom()
+            val = eltbx.xray_scattering.wk1995(key_undef, 1).fetch()
         self._scattering_dict.assign(key_undef, val)
       self._scattering_dict_is_out_of_date = 00000
     return self._scattering_dict
@@ -238,7 +239,7 @@ class structure(crystal.special_position_settings):
     for scatterer in self.scatterers():
       scattering_type = scatterer.scattering_type
       try:
-        label = eltbx.caasf.wk1995(scattering_type, 1).label()
+        label = eltbx.xray_scattering.wk1995(scattering_type, 1).label()
       except RuntimeError:
         raise RuntimeError("Unknown atomic weight: " + scattering_type)
       result.append(tiny_pse.table(label).weight())

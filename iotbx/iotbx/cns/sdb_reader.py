@@ -3,6 +3,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import xray
+import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from scitbx.python_utils import easy_pickle
 from scitbx.python_utils.misc import adopt_init_args
@@ -16,9 +17,9 @@ class sdb_site:
 
   def as_xray_scatterer(self, unit_cell=None):
     scattering_type = None
-    try: scattering_type = eltbx.caasf.wk1995(self.type).label()
+    try: scattering_type = eltbx.xray_scattering.wk1995(self.type).label()
     except RuntimeError:
-      try: scattering_type = eltbx.caasf.wk1995(self.segid).label()
+      try: scattering_type = eltbx.xray_scattering.wk1995(self.segid).label()
       except RuntimeError: pass
     if (scattering_type is None): scattering_type = "unknown"
     site = (self.x, self.y, self.z)

@@ -1,4 +1,5 @@
 from cctbx import adptbx
+import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 import sys, os
 
@@ -42,7 +43,7 @@ def coordinates(scatterers):
     q = scatterer.occupancy
     assert not scatterer.anisotropic_flag
     b = adptbx.u_as_b(scatterer.u_iso)
-    caasf = eltbx.caasf.it1992(scatterer.scattering_type)
+    gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type)
     fp = scatterer.fp
     fdp = scatterer.fdp
     for i in xrange(3):
@@ -52,8 +53,8 @@ def coordinates(scatterers):
     a("xray")
     a("  scatter (chemical=%s)" % (scatterer.label,))
     for i in xrange(4):
-      a("    %.6g %.6g" % (caasf.a()[i], caasf.b()[i]))
-    a("    %.6g" % (caasf.c(),))
+      a("    %.6g %.6g" % (gaussian.a()[i], gaussian.b()[i]))
+    a("    %.6g" % (gaussian.c(),))
     a("end")
     a("do (scatter_fp=%.12g) (resid=%d)" % (fp, resid))
     a("do (scatter_fdp=%.12g) (resid=%d)" % (fdp, resid))

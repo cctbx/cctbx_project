@@ -10,19 +10,19 @@ namespace cctbx { namespace xray {
   namespace detail {
 
     template <typename FloatType>
-    class d_caasf_fourier_transformed
+    class d_gaussian_fourier_transformed
     :
-      public caasf_fourier_transformed<FloatType>
+      public gaussian_fourier_transformed<FloatType>
     {
       public:
-        typedef caasf_fourier_transformed<FloatType> base_t;
+        typedef gaussian_fourier_transformed<FloatType> base_t;
 
-        d_caasf_fourier_transformed() {}
+        d_gaussian_fourier_transformed() {}
 
-        d_caasf_fourier_transformed(
+        d_gaussian_fourier_transformed(
           gradient_flags const& gf,
           exponent_table<FloatType>& exp_table,
-          eltbx::caasf::custom const& caasf,
+          eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
           FloatType const& fdp,
           FloatType const& occupancy,
@@ -31,27 +31,27 @@ namespace cctbx { namespace xray {
           FloatType const& u_iso,
           FloatType const& u_extra)
         :
-          base_t(exp_table, caasf, fp, fdp, w, u_iso, u_extra)
+          base_t(exp_table, gaussian, fp, fdp, w, u_iso, u_extra)
         {
           if (gf.u_iso || gf.occupancy || gf.fp || gf.fdp) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
             if (gf.u_iso)
             {
               std::size_t i = 0;
-              for(;i<caasf.n_ab();i++) {
-                b_[i] = caasf.b(i) + b_incl_extra;
+              for(;i<gaussian.n_ab();i++) {
+                b_[i] = gaussian.b(i) + b_incl_extra;
               }
               b_[i] = b_incl_extra;
             }
             if (gf.occupancy) {
               std::size_t i = 0;
-              for(;i<caasf.n_ab();i++) {
+              for(;i<gaussian.n_ab();i++) {
                 as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
-                  weight_without_occupancy * caasf.a(i),
-                  caasf.b(i) + b_incl_extra);
+                  weight_without_occupancy * gaussian.a(i),
+                  gaussian.b(i) + b_incl_extra);
               }
               as_occupancy_real_[i]=isotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * (caasf.c() + fp),
+                weight_without_occupancy * (gaussian.c() + fp),
                 b_incl_extra);
               as_occupancy_imag_=isotropic_3d_gaussian_fourier_transform(
                 weight_without_occupancy * fdp,
@@ -64,10 +64,10 @@ namespace cctbx { namespace xray {
           }
         }
 
-        d_caasf_fourier_transformed(
+        d_gaussian_fourier_transformed(
           gradient_flags const& gf,
           exponent_table<FloatType>& exp_table,
-          eltbx::caasf::custom const& caasf,
+          eltbx::xray_scattering::gaussian const& gaussian,
           FloatType const& fp,
           FloatType const& fdp,
           FloatType const& occupancy,
@@ -76,12 +76,13 @@ namespace cctbx { namespace xray {
           scitbx::sym_mat3<FloatType> const& u_cart,
           FloatType const& u_extra)
         :
-          base_t(exp_table, caasf, fp, fdp, w, u_cart, u_extra)
+          base_t(exp_table, gaussian, fp, fdp, w, u_cart, u_extra)
         {
           if (gf.u_aniso) {
-            for(std::size_t i=0;i<caasf.n_ab();i++) {
+            for(std::size_t i=0;i<gaussian.n_ab();i++) {
               scitbx::sym_mat3<FloatType>
-                b_all = compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart);
+                b_all = compose_anisotropic_b_all(
+                  gaussian.b(i), u_extra, u_cart);
               detb_[i] = b_all.determinant();
               bcfmt_[i] = b_all.co_factor_matrix_transposed();
             }
@@ -101,15 +102,15 @@ namespace cctbx { namespace xray {
           }
           if (gf.occupancy) {
             std::size_t i = 0;
-            for(;i<caasf.n_ab();i++) {
+            for(;i<gaussian.n_ab();i++) {
               as_occupancy_real_[i] =
                 anisotropic_3d_gaussian_fourier_transform(
-                  weight_without_occupancy * caasf.a(i),
-                  compose_anisotropic_b_all(caasf.b(i), u_extra, u_cart));
+                  weight_without_occupancy * gaussian.a(i),
+                  compose_anisotropic_b_all(gaussian.b(i), u_extra, u_cart));
             }
             as_occupancy_real_[i] =
               anisotropic_3d_gaussian_fourier_transform(
-                weight_without_occupancy * (caasf.c() + fp),
+                weight_without_occupancy * (gaussian.c() + fp),
                 compose_anisotropic_b_all(0, u_extra, u_cart));
             as_occupancy_imag_ =
               anisotropic_3d_gaussian_fourier_transform(
@@ -421,7 +422,7 @@ namespace cctbx { namespace xray {
     typedef dict_type::const_iterator dict_iter;
     dict_type const& scd = scattering_dict.dict();
     for(dict_iter di=scd.begin();di!=scd.end();di++) {
-      eltbx::caasf::custom const& caasf = di->second.coefficients;
+      eltbx::xray_scattering::gaussian const& gaussian = di->second.gaussian;
       af::const_ref<std::size_t>
         member_indices = di->second.member_indices.const_ref();
       for(std::size_t mi=0;mi<member_indices.size();mi++) {
@@ -445,27 +446,27 @@ namespace cctbx { namespace xray {
             u_iso = this->get_u_cart_and_u_iso(scatterer.u_star, u_cart);
           }
           CCTBX_ASSERT(u_iso >= 0);
-          detail::d_caasf_fourier_transformed<FloatType> caasf_ft(
+          detail::d_gaussian_fourier_transformed<FloatType> gaussian_ft(
             grad_flags,
             exp_table,
-            caasf, scatterer.fp, scatterer.fdp, scatterer.occupancy,
+            gaussian, scatterer.fp, scatterer.fdp, scatterer.occupancy,
             scatterer.weight_without_occupancy(), scatterer.weight(),
             u_iso, this->u_extra_);
           detail::calc_shell<FloatType, grid_point_type> shell(
-            this->unit_cell_, this->wing_cutoff_, grid_f, caasf_ft);
+            this->unit_cell_, this->wing_cutoff_, grid_f, gaussian_ft);
           detail::array_update_max(this->max_shell_radii_, shell.radii);
           if (electron_density_must_be_positive) {
-            if (   caasf_ft.rho_real_0() < 0
-                || caasf_ft.rho_real(shell.max_d_sq) < 0) {
+            if (   gaussian_ft.rho_real_0() < 0
+                || gaussian_ft.rho_real(shell.max_d_sq) < 0) {
 
               throw error("Negative electron density at sampling point.");
             }
           }
           if (scatterer.anisotropic_flag) {
-            caasf_ft = detail::d_caasf_fourier_transformed<FloatType>(
+            gaussian_ft = detail::d_gaussian_fourier_transformed<FloatType>(
               grad_flags,
               exp_table,
-              caasf, scatterer.fp, scatterer.fdp, scatterer.occupancy,
+              gaussian, scatterer.fp, scatterer.fdp, scatterer.occupancy,
               scatterer.weight_without_occupancy(), scatterer.weight(),
               u_cart, this->u_extra_);
           }
@@ -485,62 +486,66 @@ namespace cctbx { namespace xray {
             }
             if (grad_flags.site) {
               if (!scatterer.anisotropic_flag) {
-                gr_site += f_real * caasf_ft.d_rho_real_d_site(d, d_sq);
+                gr_site += f_real * gaussian_ft.d_rho_real_d_site(d, d_sq);
                 if (fdp && !gradient_map_is_real) {
-                  gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d, d_sq);
+                  gr_site += f_imag * gaussian_ft.d_rho_imag_d_site(d, d_sq);
                 }
               }
               else {
-                gr_site += f_real * caasf_ft.d_rho_real_d_site(d);
+                gr_site += f_real * gaussian_ft.d_rho_real_d_site(d);
                 if (fdp && !gradient_map_is_real) {
-                  gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d);
+                  gr_site += f_imag * gaussian_ft.d_rho_imag_d_site(d);
                 }
               }
             }
             if (!scatterer.anisotropic_flag) {
               if (grad_flags.u_iso) {
-                gr_b_iso += f_real * caasf_ft.d_rho_real_d_b_iso(d_sq);
+                gr_b_iso += f_real * gaussian_ft.d_rho_real_d_b_iso(d_sq);
                 if (fdp && !gradient_map_is_real) {
-                  gr_b_iso += f_imag * caasf_ft.d_rho_imag_d_b_iso(d_sq);
+                  gr_b_iso += f_imag * gaussian_ft.d_rho_imag_d_b_iso(d_sq);
                 }
               }
             }
             else {
               if (grad_flags.u_aniso) {
-                gr_b_cart += f_real * caasf_ft.d_rho_real_d_b_cart(d);
+                gr_b_cart += f_real * gaussian_ft.d_rho_real_d_b_cart(d);
                 if (fdp && !gradient_map_is_real) {
-                  gr_b_cart += f_imag * caasf_ft.d_rho_imag_d_b_cart(d);
+                  gr_b_cart += f_imag * gaussian_ft.d_rho_imag_d_b_cart(d);
                 }
               }
             }
             if (grad_flags.occupancy) {
               if (!scatterer.anisotropic_flag) {
-                gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d_sq);
+                gr_occupancy += f_real
+                              * gaussian_ft.d_rho_real_d_occupancy(d_sq);
                 if (fdp && !gradient_map_is_real) {
-                  gr_occupancy += f_imag*caasf_ft.d_rho_imag_d_occupancy(d_sq);
+                  gr_occupancy += f_imag
+                                * gaussian_ft.d_rho_imag_d_occupancy(d_sq);
                 }
               }
               else {
-                gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d);
+                gr_occupancy += f_real
+                              * gaussian_ft.d_rho_real_d_occupancy(d);
                 if (fdp && !gradient_map_is_real) {
-                  gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d);
+                  gr_occupancy += f_imag
+                                * gaussian_ft.d_rho_imag_d_occupancy(d);
                 }
               }
             }
             if (grad_flags.fp) {
               if (!scatterer.anisotropic_flag) {
-                gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d_sq);
+                gr_fp += f_real * gaussian_ft.d_rho_real_d_fp(d_sq);
               }
               else {
-                gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d);
+                gr_fp += f_real * gaussian_ft.d_rho_real_d_fp(d);
               }
             }
             if (grad_flags.fdp && !gradient_map_is_real) {
               if (!scatterer.anisotropic_flag) {
-                gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d_sq);
+                gr_fdp += f_imag * gaussian_ft.d_rho_imag_d_fdp(d_sq);
               }
               else {
-                gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d);
+                gr_fdp += f_imag * gaussian_ft.d_rho_imag_d_fdp(d);
               }
             }
           }}}

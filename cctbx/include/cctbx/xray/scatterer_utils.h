@@ -7,14 +7,12 @@
 
 namespace cctbx { namespace xray {
 
-  template <typename FloatType,
-            typename CaasfType,
-            typename LabelType>
+  template <typename ScattererType>
   af::shared<std::size_t>
   apply_symmetry(
     uctbx::unit_cell const& unit_cell,
     sgtbx::space_group const& space_group,
-    af::ref<scatterer<FloatType,CaasfType,LabelType> > const& scatterers,
+    af::ref<ScattererType> const& scatterers,
     double min_distance_sym_equiv=0.5,
     double u_star_tolerance=0,
     bool assert_is_positive_definite=false,
@@ -36,16 +34,14 @@ namespace cctbx { namespace xray {
     return special_position_indices;
   }
 
-  template <typename FloatType,
-            typename CaasfType,
-            typename LabelType>
-  af::shared<scatterer<FloatType,CaasfType,LabelType> >
+  template <typename ScattererType>
+  af::shared<ScattererType>
   rotate(
     uctbx::unit_cell const& unit_cell,
     scitbx::mat3<double> const& rotation_matrix,
-    af::const_ref<scatterer<FloatType,CaasfType,LabelType> > const& scatterers)
+    af::const_ref<ScattererType> const& scatterers)
   {
-    af::shared<scatterer<FloatType,CaasfType,LabelType> >
+    af::shared<ScattererType>
       rot_scatterers(af::reserve(scatterers.size()));
     for(std::size_t i=0;i<scatterers.size();i++) {
       CCTBX_ASSERT(!scatterers[i].anisotropic_flag);

@@ -1,5 +1,6 @@
 from cctbx.xray import ext
-from cctbx.eltbx import caasf
+import cctbx.eltbx.xray_scattering
+from cctbx import eltbx
 from cctbx import adptbx
 from scitbx.boost_python_utils import injector
 import sys
@@ -18,7 +19,7 @@ class scatterer(ext.scatterer):
     if   (b is not None): u = adptbx.b_as_u(b)
     elif (u is None): u = 0
     if (scattering_type is None):
-      scattering_type = caasf.wk1995(label, 0).label()
+      scattering_type = eltbx.xray_scattering.wk1995(label, 0).label()
     ext.scatterer.__init__(
       self, label, site, u, occupancy, scattering_type, fp, fdp)
 

@@ -9,7 +9,7 @@ def run():
   "$D/sgtbx/boost_python/tst_sgtbx.py",
   "$D/adptbx/boost_python/tst_adptbx.py",
   "$D/miller/boost_python/tst_miller.py",
-  "$D/eltbx/boost_python/tst_caasf.py",
+  "$D/eltbx/boost_python/tst_xray_scattering.py",
   "$D/eltbx/boost_python/tst_henke.py",
   "$D/eltbx/boost_python/tst_icsd_radii.py",
   "$D/eltbx/boost_python/tst_neutron.py",

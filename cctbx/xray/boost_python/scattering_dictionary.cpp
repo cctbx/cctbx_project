@@ -26,7 +26,7 @@ namespace {
       w_t const& w = extract<w_t const&>(w_obj)();
       return make_tuple(
         w_obj.attr("__dict__"),
-        w.coefficients,
+        w.gaussian,
         w.member_indices);
     }
 
@@ -46,7 +46,7 @@ namespace {
       dict d = extract<dict>(w_obj.attr("__dict__"))();
       d.update(state[0]);
       // restore the internal state of the C++ object
-      w.coefficients = extract<eltbx::caasf::custom const&>(state[1])();
+      w.gaussian =extract<eltbx::xray_scattering::gaussian const&>(state[1])();
       w.member_indices = extract<af::shared<std::size_t> >(state[2])();
     }
 
@@ -58,7 +58,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("scatterer_group")
-        .def_readonly("coefficients", &w_t::coefficients)
+        .def_readonly("gaussian", &w_t::gaussian)
         .add_property("member_indices",
           make_getter(&w_t::member_indices, rbv()))
         .def_pickle(scatterer_group_wrappers())

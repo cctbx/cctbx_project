@@ -153,7 +153,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       dict_type const& scd = scattering_dict.dict();
       std::size_t gr_pos = 0;
       for(dict_iter di=scd.begin();di!=scd.end();di++) {
-        f_t f0 = di->second.coefficients.at_d_star_sq(d_star_sq);
+        f_t f0 = di->second.gaussian.at_d_star_sq(d_star_sq);
         af::const_ref<std::size_t>
           member_indices = di->second.member_indices.const_ref();
         for(std::size_t mi=0;mi<member_indices.size();mi++,gr_pos++) {

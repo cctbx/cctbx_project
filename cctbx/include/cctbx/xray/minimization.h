@@ -58,7 +58,7 @@ namespace cctbx { namespace xray { namespace minimization {
         if (d_star_sq_max != 0) {
           sc_f_t f0 = scattering_dict
             .lookup(sc.scattering_type)
-            .coefficients.at_d_star_sq(d_star_sq_max);
+            .gaussian.at_d_star_sq(d_star_sq_max);
           if (f0 + sc.fp < 0) {
             sc.fp = -f0;
           }
