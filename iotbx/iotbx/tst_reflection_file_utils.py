@@ -191,16 +191,26 @@ def exercise_get_r_free_flags():
                 reflection_file_srv.get_r_free_flags(
                   file_name=None,
                   label=trial_label,
-                  parameter_scope="r_free_flags",
-                  test_flag_value=trial_test_flag_value)
+                  test_flag_value=trial_test_flag_value,
+                  disable_suitability_test=False,
+                  parameter_scope="r_free_flags")
             except UserError, e:
               if (trial_label != "foo"):
                 assert i_exercise > 0
                 if (trial_label is None):
-                  assert str(e) == "No array of R-free flags found."
+                  assert str(e) == """\
+No array of R-free flags found.
+
+For manual selection define:
+  r_free_flags.label
+  r_free_flags.test_flag_value
+  r_free_flags.disable_suitability_test=True"""
                 else:
-                  assert str(e) == "Not a suitable array of R-free flags:" \
-                                 + " r_free_flags.label=free"
+                  assert str(e) == \
+                      "Not a suitable array of R-free flags:" \
+                    + " r_free_flags.label=free\n" \
+                    + "To override the suitability test define:" \
+                    + " r_free_flags.disable_suitability_test=True"
               else:
                 assert str(e) == "No matching array: r_free_flags.label=foo"
                 if (i_exercise == 0):
@@ -241,12 +251,12 @@ No matching array: r_free_flags.label=foo
       reflection_files=reflection_files,
       err=err)
     try:
-      r_free_flags, actual_test_flag_value = \
-        reflection_file_srv.get_r_free_flags(
-          file_name=None,
-          label=None,
-          parameter_scope="r_free_flags",
-          test_flag_value=None)
+      reflection_file_srv.get_r_free_flags(
+        file_name=None,
+        label=None,
+        test_flag_value=None,
+        disable_suitability_test=False,
+        parameter_scope="r_free_flags")
     except UserError, e:
       assert str(e)=="Multiple equally suitable arrays of R-free flags found."
       assert err.getvalue() == """\
@@ -264,6 +274,28 @@ to specify an unambiguous substring of the target label.
       err = reflection_file_srv.err = StringIO()
     else:
       assert str(r_free_flags.info()) == "tmp.mtz:FreeRflags"
+  r_free_flags, actual_test_flag_value = \
+    reflection_file_srv.get_r_free_flags(
+      file_name=None,
+      label="FreeRflags",
+      test_flag_value=3,
+      disable_suitability_test=True,
+      parameter_scope="r_free_flags")
+  assert r_free_flags.info().label_string() == "FreeRflags"
+  assert actual_test_flag_value == 3
+  for label,test_flag_value in [(None,3), ("FreeRflags",None)]:
+    try:
+      reflection_file_srv.get_r_free_flags(
+        file_name=None,
+        label=label,
+        test_flag_value=test_flag_value,
+        disable_suitability_test=True,
+        parameter_scope="r_free_flags")
+    except UserError, e:
+      assert str(e) == "r_free_flags.disable_suitability_test=True:" \
+        " Suitability test for R-free flags can only be disabled if both" \
+        " r_free_flags.label and r_free_flags.test_flag_value are defined."
+    else: raise RuntimeError("Exception expected.")
 
 def exercise_get_experimental_phases():
   crystal_symmetry = crystal.symmetry(
