@@ -1,7 +1,7 @@
 import cctbx.sgtbx
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("cctbx_maptbx_ext")
+import boost.python
+ext = boost.python.import_ext("cctbx_maptbx_ext")
 from cctbx_maptbx_ext import *
 
 from cctbx import crystal
@@ -9,7 +9,6 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from scitbx.python_utils.misc import adopt_init_args
-from scitbx.boost_python_utils import injector
 import sys
 
 class statistics(ext.statistics):
@@ -17,7 +16,7 @@ class statistics(ext.statistics):
   def __init__(self, map):
     ext.statistics.__init__(self, map)
 
-class _statistics(injector, ext.statistics):
+class _statistics(boost.python.injector, ext.statistics):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
@@ -35,7 +34,7 @@ class symmetry_flags(ext.symmetry_flags):
                                       use_normalizer_k2l,
                                       use_structure_seminvariants)
 
-class _symmetry_flags(injector, ext.symmetry_flags):
+class _symmetry_flags(boost.python.injector, ext.symmetry_flags):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout

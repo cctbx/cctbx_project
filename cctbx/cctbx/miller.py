@@ -1,7 +1,7 @@
 import cctbx.sgtbx
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("cctbx_miller_ext")
+import boost.python
+ext = boost.python.import_ext("cctbx_miller_ext")
 from cctbx_miller_ext import *
 
 from cctbx import crystal

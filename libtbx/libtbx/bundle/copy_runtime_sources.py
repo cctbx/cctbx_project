@@ -40,10 +40,10 @@ def run(target_root):
   libtbx_env = libtbx.config.env()
   dist_root = libtbx_env.LIBTBX_DIST_ROOT
   for package in ["libtbx"] + libtbx_env.package_list:
-    for suffix in ("", "_adaptbx"):
-      dist = libtbx.path.norm_join(dist_root, package+suffix)
+    for package_suf in libtbx.config.package_pair(package).primary_first():
+      dist = libtbx.path.norm_join(dist_root, package_suf)
       if (os.path.isdir(dist) and is_required(dist, package)):
-        dist_copy = libtbx.path.norm_join(abs_target_root, package+suffix)
+        dist_copy = libtbx.path.norm_join(abs_target_root, package_suf)
         os.chdir(dist)
         os.path.walk(".", copy_dist_files, dist_copy)
   libtbx.bundle.utils.write_bundle_info(dist_root, abs_target_root)

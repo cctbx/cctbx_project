@@ -96,7 +96,8 @@ namespace scitbx { namespace math { namespace gaussian {
       }
 
       af::shared<FloatType>
-      significant_relative_errors() const
+      significant_relative_errors(
+        FloatType const& table_rounding_error=0.0005) const
       {
         using scitbx::fn::absolute;
         af::shared<FloatType> diffs_ = differences();
@@ -106,10 +107,10 @@ namespace scitbx { namespace math { namespace gaussian {
         FloatType zero(0);
         af::shared<FloatType> results(af::reserve(diffs.size()));
         for(std::size_t i=0;i<diffs.size();i++) {
-          FloatType result = std::max(zero, absolute(diffs[i]) - sigmas[i]);
+          FloatType result = std::max(zero, absolute(diffs[i]) - 2*sigmas[i]);
           if (result > 0) {
-            SCITBX_ASSERT(y[i] != 0);
-            result /= absolute(y[i]);
+            SCITBX_ASSERT(absolute(y[i]) > 0 || table_rounding_error > 0);
+            result /= std::max(table_rounding_error, absolute(y[i]));
           }
           results.push_back(result);
         }

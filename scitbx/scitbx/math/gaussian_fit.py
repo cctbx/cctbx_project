@@ -61,7 +61,8 @@ class minimize:
 def make_start_gaussian(null_fit,
                         existing_gaussian,
                         i_x,
-                        start_fraction):
+                        start_fraction,
+                        b_range=1.e-3):
   x_sq = null_fit.table_x()[i_x]**2
   y0_table = null_fit.table_y()[0]
   yx_table = null_fit.table_y()[i_x]
@@ -77,6 +78,10 @@ def make_start_gaussian(null_fit,
     a = flex.double(existing_gaussian.array_of_a()) * scale_old
     a.append(y0_table - flex.sum(a))
     b = flex.double(existing_gaussian.array_of_b())
+    b_max = flex.max(flex.abs(b))
+    b_min = b_max * b_range
+    sel = b < b_min
+    b.set_selected(sel, flex.double(sel.count(0001), b_min))
     yx_part = yx_table - yx_existing * scale_old
   addl_b = 0
   if (a[-1] != 0):
@@ -132,6 +137,8 @@ class find_max_x:
         gaussian_fit)
       best_minimized = None
       best_max_error = None
+      minimized = None
+      max_error = None
       for i in xrange(n_repeats_minimization):
         enforce_positive_b_this_time = (i % enforce_positive_b_mod_n == 0)
         try:
@@ -159,7 +166,7 @@ class find_max_x:
       if (best_minimized is not None):
         minimized = best_minimized
         max_error = best_max_error
-      if (    max_error > max_max_error
+      if (   max_error is None or max_error > max_max_error
           or min(minimized.final_gaussian_fit.array_of_b()) < b_min):
         if (good_n_points != 0):
           break

@@ -1,5 +1,5 @@
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("scitbx_rational_ext")
+import boost.python
+ext = boost.python.import_ext("scitbx_rational_ext")
 from scitbx_rational_ext import *
 
 builtin_int = __builtins__["int"]

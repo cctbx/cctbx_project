@@ -34,7 +34,8 @@ international_tables_sigmas = flex.double(
    0.0005, 0.0005, 0.0005, 0.0005, 0.0005,
    0.0008, 0.0008, 0.0008, 0.0008, 0.0008, 0.0008])
 
-def show_fit_summary(source, label, gaussian_fit, e, e_other=None):
+def show_fit_summary(source, label, gaussian_fit, e,
+                     e_other=None, n_terms_other=None):
   n_terms = str(gaussian_fit.n_terms())
   if (gaussian_fit.c() != 0): n_terms += "+c"
   n_terms += ","
@@ -42,17 +43,21 @@ def show_fit_summary(source, label, gaussian_fit, e, e_other=None):
   d_min = 1/(2*stol)
   print "%24s: %s n_terms=%-4s stol=%.2f, d_min=%.2f, e=%.4f" % (
     source, label, n_terms, stol, d_min, e),
-  if (e_other is not None and e_other > e):
+  if (e_other is not None and e_other > e and n_terms_other == n_terms):
     print "Better",
   print
 
 def show_literature_fits(label, n_terms, null_fit, n_points,
                          e_other=None):
-  for lib in [xray_scattering.it1992,
+  for lib in [xray_scattering.wk1995,
+              xray_scattering.it1992,
               xray_scattering.two_gaussian_agarwal_isaacs,
               xray_scattering.two_gaussian_agarwal_1978,
               xray_scattering.one_gaussian_agarwal_1978]:
-    if (lib == xray_scattering.it1992):
+    if (lib == xray_scattering.wk1995):
+      lib_gaussian = xray_scattering.wk1995(label, 1).fetch()
+      lib_source = "WK1995"
+    elif (lib == xray_scattering.it1992):
       lib_gaussian = xray_scattering.it1992(label, 1).fetch()
       lib_source = "IT1992"
     elif (lib.table.has_key(label)):
@@ -60,14 +65,15 @@ def show_literature_fits(label, n_terms, null_fit, n_points,
       lib_source = lib.source_short
     else:
       lib_gaussian = None
-    if (lib_gaussian is not None and lib_gaussian.n_terms() == n_terms):
+    if (lib_gaussian is not None):
       gaussian_fit = scitbx.math.gaussian.fit(
         null_fit.table_x()[:n_points],
         null_fit.table_y()[:n_points],
         null_fit.table_sigmas()[:n_points],
         lib_gaussian)
       e = flex.max(gaussian_fit.significant_relative_errors())
-      show_fit_summary(lib_source, label, gaussian_fit, e, e_other)
+      show_fit_summary(lib_source, label, gaussian_fit, e,
+                       e_other, lib_gaussian.n_terms())
 
 def write_plot(f, xs, ys):
   for x,y in zip(xs,ys):
@@ -81,15 +87,24 @@ def write_plots(plots_dir, label, gaussian_fit):
   write_plot(f, gaussian_fit.table_x(), gaussian_fit.table_y())
   write_plot(f, gaussian_fit.table_x(), gaussian_fit.fitted_values())
   f.close()
+  file_name = os.path.join(plots_dir, label+".cmp")
+  f = open(file_name, "w")
+  for x,y,a,e in zip(gaussian_fit.table_x(),
+                     gaussian_fit.table_y(),
+                     gaussian_fit.fitted_values(),
+                     gaussian_fit.significant_relative_errors()):
+    print >> f, "%4.2f %6.3f %6.3f %8.4f %6.3f" % (x, y, a, a-y, e)
+  f.close()
+  return file_name
 
 class fit_parameters:
 
-  def __init__(self, max_n_terms=5,
+  def __init__(self, max_n_terms=6,
                      target_powers=[2,4],
                      minimize_using_sigmas=00000,
                      n_repeats_minimization=5,
-                     enforce_positive_b_mod_n=2,
-                     b_min=0,
+                     enforce_positive_b_mod_n=1,
+                     b_min=1.e-6,
                      max_max_error=0.01,
                      n_start_fractions=5):
     adopt_init_args(self, locals())

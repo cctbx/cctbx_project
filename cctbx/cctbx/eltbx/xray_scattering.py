@@ -1,13 +1,12 @@
 import scitbx.math.gaussian # base class for gaussian
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("cctbx_eltbx_xray_scattering_ext")
+import boost.python
+ext = boost.python.import_ext("cctbx_eltbx_xray_scattering_ext")
 from cctbx_eltbx_xray_scattering_ext import *
 
-from scitbx.boost_python_utils import injector
 import sys
 
-class _gaussian(injector, ext.gaussian):
+class _gaussian(boost.python.injector, ext.gaussian):
 
   def show(self, f=None, format=None):
     if (f is None): f = sys.stdout

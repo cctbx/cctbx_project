@@ -30,6 +30,10 @@ if (not env_etc.no_boost_python):
     paths=[env_etc.libtbx_include])
   Export("env_boost_python_ext")
 
+  env_pure_boost_python_ext.SharedLibrary(
+    target="#libtbx/boost_python_meta_ext",
+    source="meta_ext.cpp")
+
   import os, os.path
   env = env_base.Copy(
     LIBS=env_etc.libs_python,

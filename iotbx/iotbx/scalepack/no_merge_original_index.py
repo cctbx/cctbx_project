@@ -4,8 +4,8 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 import sys, os
 
-import libtbx.boost_python
-scalepack_ext = libtbx.boost_python.import_ext("iotbx_scalepack_ext")
+import boost.python
+scalepack_ext = boost.python.import_ext("iotbx_scalepack_ext")
 
 class reader:
 

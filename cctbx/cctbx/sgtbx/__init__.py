@@ -1,7 +1,7 @@
 from cctbx import uctbx
 
-import libtbx.boost_python
-ext = libtbx.boost_python.import_ext("cctbx_sgtbx_ext")
+import boost.python
+ext = boost.python.import_ext("cctbx_sgtbx_ext")
 from cctbx_sgtbx_ext import *
 
 class empty: pass
@@ -9,7 +9,6 @@ class empty: pass
 from cctbx.array_family import flex
 from cctbx import matrix
 from scitbx import rational
-from scitbx.boost_python_utils import injector
 import sys
 
 class space_group_info:
@@ -130,17 +129,17 @@ class space_group_info:
 def row_echelon_back_substitution(rt_mx, v=None, sol=None, indep=None):
   return ext.row_echelon_back_substitution(rt_mx, v, sol, indep)
 
-class _tr_vec(injector, tr_vec):
+class _tr_vec(boost.python.injector, tr_vec):
 
   def as_rational(self):
     return matrix.col(rational.vector(self.num(), self.den()))
 
-class _rot_mx(injector, rot_mx):
+class _rot_mx(boost.python.injector, rot_mx):
 
   def as_rational(self):
     return matrix.sqr(rational.vector(self.num(), self.den()))
 
-class _rt_mx(injector, rt_mx):
+class _rt_mx(boost.python.injector, rt_mx):
 
   def as_rational(self):
     return matrix.rt((self.r().as_rational(), self.t().as_rational()))
