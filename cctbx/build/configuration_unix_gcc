@@ -29,5 +29,5 @@ WARNOPTS=-w
 OPTOPTS=-g
 MAKEDEP=-M
 LDEXE=
-LDDLL=-shared
+LDDLL=-shared -Wl,-E
 LDMATH=-lm
