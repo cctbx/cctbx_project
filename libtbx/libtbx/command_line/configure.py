@@ -295,10 +295,12 @@ def emit_SConstruct(env, build_options, packages_dict):
   print >> f
   print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
   print >> f, 'SConscript("libtbx/SConscript")'
+  done = {}
   for package_name in env.package_list:
     p = packages_dict[package_name].SConscript_path
-    if (p):
+    if (p is not None and not done.has_key(p)):
       print >> f, 'SConscript("%s")' % p
+      done[p] = 0
   f.close()
 
 def run(libtbx_dist, args):
