@@ -18,151 +18,205 @@ boolean_ops = ("==", "!=", ">", "<", ">=", "<=")
 
 class empty: pass
 
-def form_param(array_type_name, access, Xhs, distinct_N):
-  if (access == ""): return "ElementType" + Xhs
-  if (array_type_name in ("tiny", "small")):
-    NXhs = ""
-    if (distinct_N):
-      NXhs = ", N" + Xhs
-    else:
-      NXhs = ", N"
-    return "%s<ElementType%s%s>" % (array_type_name, Xhs, NXhs)
+def decl_params(array_type_name, op_class, type_flags):
+  v = empty
+  if (array_type_name == "tiny"):
+    if (type_flags == (1,1)):
+      v.typelist = \
+       ["typename ElementTypeLhs, typename ElementTypeRhs, std::size_t N"]
+      v.return_type = (
+        "tiny<",
+        "  typename binary_operator_traits<",
+        "    ElementTypeLhs, ElementTypeRhs>::%s, N>" % (op_class,))
+      v.param_lhs = "tiny<ElementTypeLhs, N>"
+      v.param_rhs = "tiny<ElementTypeRhs, N>"
+    elif (type_flags == (1,0)):
+      v.typelist = ["typename ElementTypeLhs, std::size_t N"]
+      v.return_type = ("tiny<ElementTypeLhs, N>",)
+      v.param_lhs = "tiny<ElementTypeLhs, N>"
+      v.param_rhs = "ElementTypeLhs"
+    elif (type_flags == (0,1)):
+      v.typelist = ["typename ElementTypeRhs, std::size_t N"]
+      v.return_type = ("tiny<ElementTypeRhs, N>",)
+      v.param_lhs = "ElementTypeRhs"
+      v.param_rhs = "tiny<ElementTypeRhs, N>"
+  elif (array_type_name == "small"):
+    if (type_flags == (1,1)):
+      v.typelist = [
+        "typename ElementTypeLhs, std::size_t NLhs,",
+        "          typename ElementTypeRhs, std::size_t NRhs"]
+      v.return_type = (
+        "small<",
+        "  typename binary_operator_traits<",
+        "    ElementTypeLhs, ElementTypeRhs>::%s, (NLhs>NRhs?NLhs:NRhs)>" % (
+          op_class,))
+      v.param_lhs = "small<ElementTypeLhs, NLhs>"
+      v.param_rhs = "small<ElementTypeRhs, NRhs>"
+    elif (type_flags == (1,0)):
+      v.typelist = ["typename ElementTypeLhs, std::size_t NLhs"]
+      v.return_type = ("small<ElementTypeLhs, NLhs>",)
+      v.param_lhs = "small<ElementTypeLhs, NLhs>"
+      v.param_rhs = "ElementTypeLhs"
+    elif (type_flags == (0,1)):
+      v.typelist = ["typename ElementTypeRhs, std::size_t NRhs"]
+      v.return_type = ("small<ElementTypeRhs, NRhs>",)
+      v.param_lhs = "ElementTypeRhs"
+      v.param_rhs = "small<ElementTypeRhs, NRhs>"
   else:
-    return "%s<ElementType%s>" % (array_type_name, Xhs)
+    if (type_flags == (1,1)):
+      v.typelist = ["typename ElementTypeLhs, typename ElementTypeRhs"]
+      v.return_type = (
+        "%s<" %(array_type_name,),
+        "  typename binary_operator_traits<",
+        "    ElementTypeLhs, ElementTypeRhs>::%s>" % (op_class,))
+      v.param_lhs = "%s<ElementTypeLhs>" % (array_type_name,)
+      v.param_rhs = "%s<ElementTypeRhs>" % (array_type_name,)
+    elif (type_flags == (1,0)):
+      v.typelist = ["typename ElementTypeLhs"]
+      v.return_type = ("%s<ElementTypeLhs>" % (array_type_name,),)
+      v.param_lhs = "%s<ElementTypeLhs>" % (array_type_name,)
+      v.param_rhs = "ElementTypeLhs"
+    elif (type_flags == (0,1)):
+      v.typelist = ["typename ElementTypeRhs"]
+      v.return_type = ("%s<ElementTypeRhs>" % (array_type_name,),)
+      v.param_lhs = "ElementTypeRhs"
+      v.param_rhs = "%s<ElementTypeRhs>" % (array_type_name,)
+  v.typelist[0] = "template <" + v.typelist[0]
+  v.typelist[-1] += ">"
+  return v
 
-def op_vars(array_type_name, access_lhs, access_rhs):
+def algo_params(array_type_name, type_flags):
   v = empty()
   v.result_constructor_args = ""
-  v.loop_n = "N"
   v.size_assert = ""
+  v.loop_n = "N"
   if (array_type_name != "tiny"):
-    if (access_lhs != ""):
+    if (type_flags == (1,1)):
+      v.result_constructor_args = "(lhs.size())"
+      v.size_assert = """if (lhs.size() != rhs.size()) throw_range_error();
+    """
+      v.loop_n = "lhs.size()"
+    elif (type_flags == (1,0)):
       v.result_constructor_args = "(lhs.size())"
       v.loop_n = "lhs.size()"
     else:
       v.result_constructor_args = "(rhs.size())"
       v.loop_n = "rhs.size()"
-    if (access_lhs != "" and access_rhs != ""):
-      v.size_assert = """if (lhs.size() != rhs.size()) throw_range_error();
-    """
-  if (array_type_name in ("tiny", "small")):
-    if (array_type_name != "tiny" and access_lhs != "" and access_rhs != ""):
-      v.template_head = \
-"""template <typename ElementTypeLhs, std::size_t NLhs,
-            typename ElementTypeRhs, std::size_t NRhs>"""
-      v.Nresult = ", ((NLhs<NRhs)?NLhs:NRhs)"
-      distinct_N = 1
-    else:
-      v.template_head = \
-"""template <typename ElementTypeLhs,
-            typename ElementTypeRhs, std::size_t N>"""
-      v.Nresult = ", N"
-      distinct_N = 0
-  else:
-    v.template_head = \
-"""template <typename ElementTypeLhs, typename ElementTypeRhs>"""
-    v.Nresult = ""
-    distinct_N = 0
-  v.param_lhs = form_param(array_type_name, access_lhs, "Lhs", distinct_N)
-  v.param_rhs = form_param(array_type_name, access_rhs, "Rhs", distinct_N)
+  v.index_lhs = ""
+  v.index_rhs = ""
+  if (type_flags[0]): v.index_lhs = "[i]"
+  if (type_flags[1]): v.index_rhs = "[i]"
   return v
 
+def format_list(list, indent):
+  r = ""
+  for line in list[:-1]:
+    r += indent + line + "\n"
+  return r + indent + list[-1]
+
 def elementwise_binary_op(
-      op_class, op_symbol, function_name,
-      array_type_name, access_lhs, access_rhs):
-  v = op_vars(array_type_name, access_lhs, access_rhs)
-  print """  %s
+      array_type_name, op_class, op_symbol, type_flags, function_name):
+  d = decl_params(array_type_name, op_class, type_flags)
+  a = algo_params(array_type_name, type_flags)
+  print """%s
   inline
-  %s<
-    typename binary_operator_traits<
-      ElementTypeLhs, ElementTypeRhs>::%s%s>
+%s
   %s(
     const %s& lhs,
     const %s& rhs) {
-    %s<
-      typename binary_operator_traits<
-        ElementTypeLhs, ElementTypeRhs>::%s%s>
+%s
     result%s;
     %sfor(std::size_t i=0;i<%s;i++) result[i] = lhs%s %s rhs%s;
     return result;
   }
-""" % (v.template_head, array_type_name, op_class, v.Nresult,
-       function_name, v.param_lhs, v.param_rhs,
-       array_type_name, op_class, v.Nresult,
-       v.result_constructor_args, v.size_assert, v.loop_n,
-       access_lhs, op_symbol, access_rhs)
+""" % (format_list(d.typelist, "  "),
+       format_list(d.return_type, "  "),
+       function_name, d.param_lhs, d.param_rhs,
+       format_list(d.return_type, "    "),
+       a.result_constructor_args, a.size_assert, a.loop_n,
+       a.index_lhs, op_symbol, a.index_rhs)
 
 def elementwise_inplace_binary_op(
-      op_symbol, function_name,
-      array_type_name, access_rhs):
-  v = op_vars(array_type_name, "[i]", access_rhs)
-  print """  %s
+      array_type_name, op_class, op_symbol, type_flags):
+  d = decl_params(array_type_name, op_class, type_flags)
+  a = algo_params(array_type_name, type_flags)
+  print """%s
   inline
-  %s<ElementTypeLhs%s>&
-  %s(
-    %s<ElementTypeLhs%s>& lhs,
+  %s&
+  operator%s(
+    %s& lhs,
     const %s& rhs) {
-    %sfor(std::size_t i=0;i<%s;i++) lhs[i] %s= rhs%s;
+    %sfor(std::size_t i=0;i<%s;i++) lhs[i] %s rhs%s;
     return lhs;
   }
-""" % (v.template_head, array_type_name, v.Nresult,
-       function_name, array_type_name, v.Nresult,
-       v.param_rhs, v.size_assert, v.loop_n, op_symbol, access_rhs)
+""" % (format_list(d.typelist, "  "),
+       d.param_lhs,
+       op_symbol, d.param_lhs, d.param_rhs,
+       a.size_assert, a.loop_n,
+       op_symbol, a.index_rhs)
 
 def generate_elementwise_binary_op(
-      array_type_name,
-      inplace, op_class, op_symbol, function_name = None):
+      array_type_name, op_class, op_symbol, function_name = None):
   if (function_name == None):
     function_name = "operator" + op_symbol
-  elementwise_binary_op(op_class, op_symbol, function_name,
-    array_type_name, "[i]", "[i]")
-  elementwise_binary_op(op_class, op_symbol, function_name,
-    array_type_name, "[i]", "")
-  elementwise_binary_op(op_class, op_symbol, function_name,
-    array_type_name, "", "[i]")
-  if (inplace):
-    elementwise_inplace_binary_op(op_symbol, "operator" + op_symbol + "=",
-      array_type_name, "[i]")
-    elementwise_inplace_binary_op(op_symbol, "operator" + op_symbol + "=",
-      array_type_name, "")
+  for type_flags in ((1,1), (1,0), (0,1)):
+    elementwise_binary_op(
+      array_type_name, op_class, op_symbol, type_flags, function_name)
 
-def reducing_boolean_op(
-      op_symbol,
-      array_type_name, access_lhs, access_rhs,
-      truth_test_type):
-  v = op_vars(array_type_name, access_lhs, access_rhs)
+def generate_elementwise_inplace_binary_op(
+      array_type_name, op_class, op_symbol):
+  for type_flags in ((1,1), (1,0)):
+    elementwise_inplace_binary_op(
+      array_type_name, op_class, op_symbol, type_flags)
+
+def reducing_boolean_op(array_type_name, op_symbol, type_flags):
+  d = decl_params(array_type_name, "boolean", type_flags)
+  a = algo_params(array_type_name, type_flags)
+  truth_test_type = "ElementTypeRhs"
+  if (type_flags[0]): truth_test_type = "ElementTypeLhs"
   if (op_symbol == "=="):
-    if (v.size_assert != ""):
-      v.size_assert = """if (lhs.size() != rhs.size()) return %s() != %s();
+    if (a.size_assert != ""):
+      a.size_assert = """if (lhs.size() != rhs.size()) return %s() != %s();
     """ % (truth_test_type, truth_test_type)
     tests = (
 """      if (lhs%s != rhs%s) return %s() != %s();"""
-    % (access_lhs, access_rhs, truth_test_type, truth_test_type))
+    % (a.index_lhs, a.index_rhs, truth_test_type, truth_test_type))
     final_op = "=="
   elif (op_symbol == "!="):
-    if (v.size_assert != ""):
-      v.size_assert = """if (lhs.size() != rhs.size()) return %s() == %s();
+    if (a.size_assert != ""):
+      a.size_assert = """if (lhs.size() != rhs.size()) return %s() == %s();
     """ % (truth_test_type, truth_test_type)
     tests = (
 """      if (lhs%s != rhs%s) return %s() == %s();"""
-    % (access_lhs, access_rhs, truth_test_type, truth_test_type))
+    % (a.index_lhs, a.index_rhs, truth_test_type, truth_test_type))
     final_op = "!="
   elif (op_symbol in ("<", ">")):
     tests = (
 """      if (lhs%s %s rhs%s) return %s() == %s();
       if (rhs%s %s lhs%s) return %s() != %s();"""
-    % (access_lhs, op_symbol, access_rhs, truth_test_type, truth_test_type,
-       access_rhs, op_symbol, access_lhs, truth_test_type, truth_test_type))
+    % (a.index_lhs, op_symbol, a.index_rhs, truth_test_type, truth_test_type,
+       a.index_rhs, op_symbol, a.index_lhs, truth_test_type, truth_test_type))
     final_op = "!="
   elif (op_symbol in ("<=", ">=")):
     tests = (
 """      if (!(lhs%s %s rhs%s)) return %s() != %s();"""
-    % (access_lhs, op_symbol, access_rhs, truth_test_type, truth_test_type))
+    % (a.index_lhs, op_symbol, a.index_rhs, truth_test_type, truth_test_type))
     final_op = "=="
-  print """  %s
+  if (type_flags == (1,1)):
+    return_type = [
+      "typename binary_operator_traits<",
+      "  ElementTypeLhs, ElementTypeRhs>::boolean"]
+  elif (type_flags == (1,0)):
+    return_type = [
+      "typename binary_operator_traits<",
+      "  ElementTypeLhs, ElementTypeLhs>::boolean"]
+  else:
+    return_type = [
+      "typename binary_operator_traits<",
+      "  ElementTypeRhs, ElementTypeRhs>::boolean"]
+  print """%s
   inline
-  typename binary_operator_traits<
-    ElementTypeLhs, ElementTypeRhs>::boolean
+%s
   operator%s(
     const %s& lhs,
     const %s& rhs) {
@@ -171,17 +225,15 @@ def reducing_boolean_op(
     }
     return %s() %s %s();
   }
-""" % (v.template_head, op_symbol, v.param_lhs, v.param_rhs,
-       v.size_assert, v.loop_n, tests,
+""" % (format_list(d.typelist, "  "),
+       format_list(return_type, "  "),
+       op_symbol, d.param_lhs, d.param_rhs,
+       a.size_assert, a.loop_n, tests,
        truth_test_type, final_op, truth_test_type)
 
 def generate_reducing_boolean_op(array_type_name, op_symbol):
-  reducing_boolean_op(op_symbol,
-    array_type_name, "[i]", "[i]", "ElementTypeLhs")
-  reducing_boolean_op(op_symbol,
-    array_type_name, "[i]", "", "ElementTypeLhs")
-  reducing_boolean_op(op_symbol,
-    array_type_name, "", "[i]", "ElementTypeRhs")
+  for type_flags in ((1,1), (1,0), (0,1)):
+    reducing_boolean_op(array_type_name, op_symbol, type_flags)
 
 def generate_unary_ops(array_type_name):
   Nresult = ""
@@ -229,19 +281,21 @@ namespace cctbx { namespace af {
   generate_unary_ops(array_type_name)
   for op_symbol in arithmetic_binary_ops:
     generate_elementwise_binary_op(
-      array_type_name, 1, "arithmetic", op_symbol)
+      array_type_name, "arithmetic", op_symbol)
+    generate_elementwise_inplace_binary_op(
+      array_type_name, "arithmetic", op_symbol + "=")
   for op_symbol in logical_binary_ops:
     generate_elementwise_binary_op(
-      array_type_name, 0, "logical", op_symbol)
+      array_type_name, "logical", op_symbol)
   for op_symbol, function_name in (
     ("==", "equal_to"),
     ("!=", "not_equal_to"),
     (">", "greater"),
     ("<", "less"),
-    (">", "greater_equal"),
-    ("<", "less_equal")):
+    (">=", "greater_equal"),
+    ("<=", "less_equal")):
     generate_elementwise_binary_op(
-      array_type_name, 0, "boolean", op_symbol, function_name)
+      array_type_name, "boolean", op_symbol, function_name)
   for op_symbol in boolean_ops:
     generate_reducing_boolean_op(array_type_name, op_symbol)
 
