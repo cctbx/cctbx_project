@@ -19,7 +19,7 @@ import sys, os
 
 class any_reflection_file:
 
-  def __init__(self, file_name):
+  def __init__(self, file_name, ensure_read_access=True):
     if (   file_name.startswith("amplitudes=")
         or file_name.startswith("hklf3=")
         or file_name.startswith("intensities=")
@@ -37,9 +37,13 @@ class any_reflection_file:
       self._observation_type = "amplitudes"
     elif (self._observation_type == "hklf4"):
       self._observation_type = "intensities"
-    file_name = self._file_name
-    open(file_name) # test read access
     self._file_type = None
+    file_name = self._file_name
+    try:
+      open(file_name) # test read access
+    except IOError:
+      if (ensure_read_access): raise
+      return
     if (self._observation_type is not None):
       try: self._file_content = shelx_hklf.reader(
         open(file_name))
