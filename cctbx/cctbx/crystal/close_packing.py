@@ -40,10 +40,24 @@ def hex_indices_as_site(point, layer=0):
       return [-point[0]-1/3.,-point[1]-2/3.,point[2]*.5]
 
 def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
-                 buffer_thickness=-1, all_twelve_neighbors=00000):
+                 buffer_thickness=-1, all_twelve_neighbors=00000,
+                 exercise_cpp=0001):
+  if (exercise_cpp):
+    cpp = crystal.close_packing_hexagonal_sampling(
+      float_asu=float_asu,
+      continuous_shift_flags=continuous_shift_flags,
+      point_distance=point_distance,
+      buffer_thickness=buffer_thickness,
+      all_twelve_neighbors=all_twelve_neighbors)
   assert point_distance > 0
   if (buffer_thickness < 0):
     buffer_thickness = point_distance * (2/3. * (.5 * math.sqrt(3)))
+  if (exercise_cpp):
+    assert cpp.float_asu().unit_cell().is_similar_to(float_asu.unit_cell())
+    assert cpp.continuous_shift_flags() == continuous_shift_flags
+    assert approx_equal(cpp.point_distance(), point_distance)
+    assert approx_equal(cpp.buffer_thickness(), buffer_thickness)
+    assert cpp.all_twelve_neighbors() == all_twelve_neighbors
   float_asu_buffer = float_asu.add_buffer(thickness=buffer_thickness)
   hex_cell = hexagonal_sampling_cell(point_distance=point_distance)
   hex_box = hexagonal_box(
@@ -62,6 +76,9 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
       n = iceil(abs(hex_box.max[i]-hex_box.pivot[i]))
       box_lower.append(min(-2,ifloor(hex_box_buffer.min[i]-hex_box.pivot[i])))
       box_upper.append(n+max(2,iceil(hex_box_buffer.max[i]-hex_box.max[i])))
+  if (exercise_cpp):
+    assert list(cpp.box_lower()) == box_lower
+    assert list(cpp.box_upper()) == box_upper
   hex_to_frac_matrix = (
       matrix.sqr(float_asu.unit_cell().fractionalization_matrix())
     * matrix.sqr(hex_cell.orthogonalization_matrix()))
@@ -85,6 +102,9 @@ def hcp_fill_box(float_asu, continuous_shift_flags, point_distance,
           sites_frac.append(site_frac)
           break
   assert sites_frac.size() > 0
+  if (exercise_cpp):
+    assert cpp.all_sites_frac().size() == sites_frac.size()
+    assert approx_equal(cpp.all_sites_frac(), sites_frac)
   return sites_frac
 
 def hexagonal_close_packing_sampling(crystal_symmetry,
