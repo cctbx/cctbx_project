@@ -6,7 +6,7 @@ import scitbx_array_family_flex_ext as ext
 import sys
 
 def export_to(target_module_name):
-  export_list = ["to_list", "select", "linear_regression"]
+  export_list = ["to_list", "select", "py_object", "linear_regression"]
   target_module = sys.modules[target_module_name]
   g = globals()
   for attr in export_list:
@@ -25,6 +25,31 @@ def select(sequence, permutation):
   for i in permutation:
     result.append(sequence[i])
   return result
+
+class py_object:
+
+  def __init__(self, accessor, value=None, values=None, value_factory=None):
+    assert [value, values, value_factory].count(None) >= 2
+    self._accessor = accessor
+    if (value_factory is not None):
+      self._data = [value_factory() for i in xrange(accessor.size_1d())]
+    elif (values is not None):
+      assert len(values) == accessor.size_1d()
+      self._data = values[:]
+    else:
+      self._data = [value for i in xrange(accessor.size_1d())]
+
+  def accessor(self):
+    return self._accessor
+
+  def data(self):
+    return self._data
+
+  def __getitem__(self, index):
+    return self._data[self._accessor(index)]
+
+  def __setitem__(self, index, value):
+    self._data[self._accessor(index)] = value
 
 class linear_regression(ext.linear_regression):
 
