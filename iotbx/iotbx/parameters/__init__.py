@@ -168,12 +168,13 @@ class definition: # FUTURE definition(object)
     "help", "caption", "short_caption", "optional",
     "type", "multiple", "input_size", "expert_level"]
 
-  __slots__ = ["name", "words", "is_disabled"] + attribute_names
+  __slots__ = ["name", "words", "is_disabled", "where_str"] + attribute_names
 
   def __init__(self,
         name,
         words,
         is_disabled=False,
+        where_str="",
         help=None,
         caption=None,
         short_caption=None,
@@ -185,6 +186,7 @@ class definition: # FUTURE definition(object)
     self.name = name
     self.words = words
     self.is_disabled = is_disabled
+    self.where_str = where_str
     self.help = help
     self.caption = caption
     self.short_caption = short_caption
@@ -206,7 +208,8 @@ class definition: # FUTURE definition(object)
 
   def fetch(self, source, substitution_scope=None):
     if (not isinstance(source, definition)):
-      raise RuntimeError("Incompatible parameter objects.") # XXX where
+      raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
+        (self.name, self.where_str, source.name, source.where_str))
     if (substitution_scope):
       source = substitution_scope.variable_substitution(
         object=source, path_memory={})
@@ -368,7 +371,7 @@ class definition: # FUTURE definition(object)
     raise RuntimeError(
        ('No converter for parameter definition type "%s"'
       + ' required for converting words assigned to "%s"%s') % (
-        self.type, self.name, self.words[0].where_str()))
+        self.type, self.name, self.where_str))
 
   def format(self, python_object, custom_converters=None):
     words = None
@@ -414,7 +417,7 @@ class definition: # FUTURE definition(object)
       raise RuntimeError(
          ('No converter for parameter definition type "%s"'
         + ' required for converting values for "%s"%s') % (
-          self.type, self.name, self.words[0].where_str()))
+          self.type, self.name, self.where_str))
     return self.copy(words=words)
 
 class scope_extract:
@@ -459,6 +462,7 @@ class scope:
         name,
         objects,
         is_disabled=False,
+        where_str="",
         style=None,
         help=None,
         caption=None,
@@ -470,7 +474,7 @@ class scope:
         disable_delete=None,
         expert_level=None):
     introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[4:]
+    self.attribute_names = self.__init__varnames__[5:]
     assert style in [None, "row", "column", "block", "page"]
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
@@ -670,7 +674,8 @@ class scope:
       substitution_scope = source
     if (source.name == self.name):
       if (not isinstance(source, scope)):
-        raise RuntimeError("Incompatible parameter objects.") # XXX where
+        raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
+          (self.name, self.where_str, source.name, source.where_str))
     else:
       assert source.name.startswith(self.name+".")
       source_name = source.name[len(self.name)+1:]
