@@ -1,5 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
+#include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/math/erf.h>
 #include <scitbx/math/eigensystem.h>
 #include <boost/python/module.hpp>
@@ -36,6 +37,12 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
+
+    def("floating_point_epsilon_float_get",
+      &floating_point_epsilon<float>::get);
+    def("floating_point_epsilon_double_get",
+      &floating_point_epsilon<double>::get);
+
     def("erf", (double(*)(double const&)) erf);
     def("erfc", (double(*)(double const&)) erfc);
     def("erfcx", (double(*)(double const&)) erfcx);
