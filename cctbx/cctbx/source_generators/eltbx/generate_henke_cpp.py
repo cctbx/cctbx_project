@@ -6,6 +6,9 @@ import sys, os
 
 this = "cctbx.source_generators.eltbx.generate_henke_cpp"
 
+reference_tables_directory = libtbx.env.under_dist(
+  "cctbx", "reference/henke/tables")
+
 def print_header(f):
   write_this_is_auto_generated(f, this)
   print >> f, """\
@@ -39,15 +42,13 @@ def print_ftp_info(f):
 """
 
 def collect_tables():
-  cctbx_dist = libtbx.env.dist_path("cctbx")
-  henke_tables_dir = norm_join(cctbx_dist, "reference/henke/tables")
   nff_files = []
-  for file in os.listdir(henke_tables_dir):
+  for file in os.listdir(reference_tables_directory):
     fn = file.lower().capitalize()
     if (fn[-4:] == ".nff"): nff_files.append(file)
   tables = [0] * 120
   for file in nff_files:
-    f = join_open(henke_tables_dir, file, "r")
+    f = join_open(reference_tables_directory, file, "r")
     header = f.readline()
     table = f.readlines()
     f.close()
@@ -177,11 +178,6 @@ def run(target_dir):
     print_header(f)
     print_table_block(f, tables, Z_begin, Z_end)
     f.close()
-
-def scons_command(env, target, source):
-  target_dir = os.path.split(str(target[0]))[0]
-  assert os.path.isdir(target_dir)
-  run(target_dir)
 
 if (__name__ == "__main__"):
   run(".")
