@@ -24,6 +24,15 @@ def _slice_or_none(array, slice_object):
   if (array is None): return None
   return array.__getitem__(slice_object)
 
+class _binning(boost.python.injector, ext.binning):
+
+  def __getinitargs__(self):
+    raise RuntimeError(
+      "cctbx.miller.binning instances are not picklable."
+      " If this error appears while pickling a cctbx.miller.set"
+      " or cctbx.miller.array instance use the clear_binner()"
+      " method before pickling.")
+
 class binner(ext.binner):
 
   def __init__(self, binning, miller_set):
@@ -34,6 +43,13 @@ class binner(ext.binner):
     self._counts_given = None
     self._counts_complete = None
     self._have_format_strings = False
+
+  def __getinitargs__(self):
+    raise RuntimeError(
+      "cctbx.miller.binner instances are not picklable."
+      " If this error appears while pickling a cctbx.miller.set"
+      " or cctbx.miller.array instance use the clear_binner()"
+      " method before pickling.")
 
   def counts_given(self):
     if (self._counts_given is None):
@@ -203,11 +219,13 @@ class set(crystal.symmetry):
     crystal.symmetry._copy_constructor(self, crystal_symmetry)
     self._indices = indices
     self._anomalous_flag = anomalous_flag
+    self._binner = None
 
   def _copy_constructor(self, other):
     crystal.symmetry._copy_constructor(self, other)
     self._indices = other._indices
     self._anomalous_flag = other._anomalous_flag
+    self._binner = None
 
   def indices(self):
     return self._indices
@@ -615,7 +633,7 @@ class set(crystal.symmetry):
     return self.binner()
 
   def binner(self):
-    return getattr(self, "_binner", None)
+    return self._binner
 
   def use_binning_of(self, other):
     self._binner = binner(other.binner(), self)
@@ -623,6 +641,9 @@ class set(crystal.symmetry):
   def use_binner_of(self, other):
     assert self.indices().all_eq(other.indices())
     self._binner = other._binner
+
+  def clear_binner(self):
+    self._binner = None
 
 def build_set(crystal_symmetry, anomalous_flag, d_min):
   return set(
