@@ -897,6 +897,11 @@ class array(set):
       return self.f_sq_as_f()
     return self
 
+  def as_intensity_array(self):
+    if (not self.is_xray_intensity_array()):
+      return self.f_as_f_sq()
+    return self
+
   def map_to_asu(self):
     i = self.indices().deep_copy()
     d = self.data().deep_copy()

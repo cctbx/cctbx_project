@@ -263,6 +263,9 @@ def exercise_array():
   assert ac.is_xray_intensity_array()
   aa = ac.as_amplitude_array()
   assert aa.as_amplitude_array() is aa
+  ai = aa.as_intensity_array()
+  assert approx_equal(ai.data(), ac.data())
+  assert ai.as_intensity_array() is ai
   assert aa.eliminate_sys_absent() is aa
   aa = miller.array(
     miller_set=miller.set(
