@@ -1,3 +1,4 @@
+import math
 from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
@@ -75,7 +76,12 @@ class miller_set(crystal_symmetry):
     return self
 
   def multiplicities(self):
-    return self.SgOps.multiplicity(self.H, self.friedel_flag)
+    return reciprocal_space_array(
+      self, self.SgOps.multiplicity(self.H, self.friedel_flag))
+
+  def sin_theta_over_lambda_sq(self):
+    return reciprocal_space_array(
+      self, self.UnitCell.stol2(self.H))
 
   def expand_to_p1(self):
     set_p1_H = shared.miller_Index()
@@ -151,12 +157,12 @@ class reciprocal_space_array(miller_set):
 
   def rms(self, use_binning=0, use_multiplicities=0):
     if (use_multiplicities):
-      mult = self.multiplicities().as_double()
+      mult = self.multiplicities().F.as_double()
     if (not use_binning):
       if (not use_multiplicities):
-        result = shared.rms(self.F)
+        result = math.sqrt(shared.mean_sq(self.F))
       else:
-        result = shared.rms_weighted(self.F, mult)
+        result = math.sqrt(shared.mean_sq_weighted(self.F, mult))
     else:
       result = shared.double()
       for i_bin in self.binner.range_all():
@@ -166,10 +172,11 @@ class reciprocal_space_array(miller_set):
         else:
           sel_data = self.F.select(sel)
           if (not use_multiplicities):
-            result.append(shared.rms(sel_data))
+            result.append(math.sqrt(shared.mean_sq(sel_data)))
           else:
             sel_mult = mult.select(sel)
-            result.append(shared.rms_weighted(sel_data, sel_mult))
+            result.append(
+              math.sqrt(shared.mean_sq_weighted(sel_data, sel_mult)))
     return result
 
   def rms_filter(self, cutoff_factor,

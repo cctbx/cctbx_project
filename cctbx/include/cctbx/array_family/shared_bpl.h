@@ -750,6 +750,18 @@ namespace cctbx { namespace af {
 
     static
     sh_t
+    fmod_a_s(sh_t const& a1, e_t const& a2)
+    {
+      sh_t result;
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) {
+        result.append(std::fmod(a1[i], a2));
+      }
+      return result;
+    }
+
+    static
+    sh_t
     pow_a_s(sh_t const& a, e_t const& exponent)
     {
       sh_t result;
@@ -762,15 +774,46 @@ namespace cctbx { namespace af {
 
     static
     sh_t
-    sqrt_a(sh_t const& a)
+    atan2_a_a(sh_t const& a1, sh_t const& a2)
     {
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       sh_t result;
-      result.reserve(a.size());
-      for(std::size_t i=0;i<a.size();i++) {
-        result.append(std::sqrt(a[i]));
+      result.reserve(a1.size());
+      for(std::size_t i=0;i<a1.size();i++) {
+        result.append(std::atan2(a1[i], a2[i]));
       }
       return result;
     }
+
+#define CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(func) \
+    static \
+    sh_t \
+    func ## _a(sh_t const& a) \
+    { \
+      sh_t result; \
+      result.reserve(a.size()); \
+      for(std::size_t i=0;i<a.size();i++) { \
+        result.append(std::func(a[i])); \
+      } \
+      return result; \
+    }
+
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(acos)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(cos)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(tan)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(asin)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(cosh)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(tanh)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(atan)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(exp)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sin)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(fabs)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(log)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sinh)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(ceil)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(floor)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(log10)
+CCTBX_ARRAY_FAMILY_SHARED_BPL_CMATH_1ARG(sqrt)
 
     static std::size_t
     max_index_a(sh_t const& a) { return af::max_index(a.const_ref()); }
@@ -779,9 +822,10 @@ namespace cctbx { namespace af {
     static e_t max_a(sh_t const& a) { return af::max(a.const_ref()); }
     static e_t min_a(sh_t const& a) { return af::min(a.const_ref()); }
     static e_t sum_a(sh_t const& a) { return af::sum(a.const_ref()); }
+    static e_t sum_sq_a(sh_t const& a) { return af::sum_sq(a.const_ref()); }
     static e_t product_a(sh_t const& a) { return af::product(a.const_ref()); }
     static e_t mean_a(sh_t const& a) { return af::mean(a.const_ref()); }
-    static e_t rms_a(sh_t const& a) { return af::rms(a.const_ref()); }
+    static e_t mean_sq_a(sh_t const& a) { return af::mean_sq(a.const_ref()); }
 
     static
     e_t
@@ -792,9 +836,9 @@ namespace cctbx { namespace af {
 
     static
     e_t
-    rms_weighted_a_a(sh_t const& a1, sh_t const& a2)
+    mean_sq_weighted_a_a(sh_t const& a1, sh_t const& a2)
     {
-      return af::rms_weighted(a1.const_ref(), a2.const_ref());
+      return af::mean_sq_weighted(a1.const_ref(), a2.const_ref());
     }
 
     static
@@ -995,6 +1039,7 @@ namespace cctbx { namespace af {
       class_blds.first.def(imul_a_s, "__imul__");
       class_blds.first.def(idiv_a_s, "__idiv__");
       bpl_module.def(sum_a, "sum");
+      bpl_module.def(sum_sq_a, "sum_sq");
       bpl_module.def(product_a, "product");
       return class_blds;
     }
@@ -1033,11 +1078,28 @@ namespace cctbx { namespace af {
     {
       sh_class_builders class_blds = numeric_no_pow(bpl_module, python_name);
       bpl_module.def(pow_a_s, "pow");
+      bpl_module.def(fmod_a_s, "fmod");
+      bpl_module.def(atan2_a_a, "atan2");
+      bpl_module.def(acos_a, "acos");
+      bpl_module.def(cos_a, "cos");
+      bpl_module.def(tan_a, "tan");
+      bpl_module.def(asin_a, "asin");
+      bpl_module.def(cosh_a, "cosh");
+      bpl_module.def(tanh_a, "tanh");
+      bpl_module.def(atan_a, "atan");
+      bpl_module.def(exp_a, "exp");
+      bpl_module.def(sin_a, "sin");
+      bpl_module.def(fabs_a, "fabs");
+      bpl_module.def(log_a, "log");
+      bpl_module.def(sinh_a, "sinh");
+      bpl_module.def(ceil_a, "ceil");
+      bpl_module.def(floor_a, "floor");
+      bpl_module.def(log10_a, "log10");
       bpl_module.def(sqrt_a, "sqrt");
       bpl_module.def(mean_a, "mean");
-      bpl_module.def(rms_a, "rms");
+      bpl_module.def(mean_sq_a, "mean_sq");
       bpl_module.def(mean_weighted_a_a, "mean_weighted");
-      bpl_module.def(rms_weighted_a_a, "rms_weighted");
+      bpl_module.def(mean_sq_weighted_a_a, "mean_sq_weighted");
       return class_blds;
     }
 

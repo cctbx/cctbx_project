@@ -167,8 +167,9 @@ namespace {
   void
   exercise_1arg_float_reductions(const ArrayType& a)
   {
-    check_true(__LINE__, af::rms(a)
-      == std::sqrt((a[0]*a[0] + a[1]*a[1] + a[2]*a[2]) / 3));
+    check_true(__LINE__, std::abs(
+      af::mean_sq(a)
+      - (a[0]*a[0] + a[1]*a[1] + a[2]*a[2]) / 3) < 1.e-6);
   }
 
   template <typename ArrayType1,
@@ -180,9 +181,9 @@ namespace {
       af::mean_weighted(a1, a2)
       - af::sum(a1 * a2) / af::sum(a2)) < 1.e-6);
     check_true(__LINE__, std::abs(
-      af::rms_weighted(a1, a2)
-      - std::sqrt(af::sum((a1 * a1).const_ref() * af::make_const_ref(a2))
-                  / af::sum(a2))) < 1.e-6);
+      af::mean_sq_weighted(a1, a2)
+      - (af::sum((a1 * a1).const_ref() * af::make_const_ref(a2))
+         / af::sum(a2))) < 1.e-6);
   }
 
   template <typename ArrayType1,

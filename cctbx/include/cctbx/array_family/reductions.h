@@ -82,6 +82,15 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
+  sum_sq(const const_ref<ElementType, AccessorType>& a)
+  {
+    ElementType result = 0;
+    for(std::size_t i=0;i<a.size();i++) result += a[i] * a[i];
+    return result;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  ElementType
   product(const const_ref<ElementType, AccessorType>& a)
   {
     ElementType result = 1;
@@ -98,11 +107,9 @@ namespace cctbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
-  rms(const const_ref<ElementType, AccessorType>& a)
+  mean_sq(const const_ref<ElementType, AccessorType>& a)
   {
-    ElementType result = 0;
-    for(std::size_t i=0;i<a.size();i++) result += a[i] * a[i];
-    return std::sqrt(result / a.size());
+    return sum_sq(a) / a.size();
   }
 
   template <typename ElementTypeValues, typename AccessorTypeValues,
@@ -112,39 +119,33 @@ namespace cctbx { namespace af {
     const const_ref<ElementTypeValues, AccessorTypeValues>& values,
     const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights)
   {
-    ElementTypeValues result;
     if (values.size() != weights.size()) throw_range_error();
-    if (values.size() > 0) {
-      ElementTypeValues sum_vw = 0;
-      ElementTypeWeights sum_w = 0;
-      for(std::size_t i=0;i<values.size();i++) {
-        sum_vw += values[i] * weights[i];
-        sum_w += weights[i];
-      }
-      result = sum_vw / sum_w;
+    if (!values.size()) return 0;
+    ElementTypeValues sum_vw = 0;
+    ElementTypeWeights sum_w = 0;
+    for(std::size_t i=0;i<values.size();i++) {
+      sum_vw += values[i] * weights[i];
+      sum_w += weights[i];
     }
-    return result;
+    return sum_vw / sum_w;
   }
 
   template <typename ElementTypeValues, typename AccessorTypeValues,
             typename ElementTypeWeights, typename AccessorTypeWeights>
   ElementTypeValues
-  rms_weighted(
+  mean_sq_weighted(
     const const_ref<ElementTypeValues, AccessorTypeValues>& values,
     const const_ref<ElementTypeWeights, AccessorTypeWeights>& weights)
   {
-    ElementTypeValues result;
     if (values.size() != weights.size()) throw_range_error();
-    if (values.size() > 0) {
-      ElementTypeValues sum_vvw = 0;
-      ElementTypeWeights sum_w = 0;
-      for(std::size_t i=0;i<values.size();i++) {
-        sum_vvw += values[i] * values[i] * weights[i];
-        sum_w += weights[i];
-      }
-      result = std::sqrt(sum_vvw / sum_w);
+    if (!values.size()) return 0;
+    ElementTypeValues sum_vvw = 0;
+    ElementTypeWeights sum_w = 0;
+    for(std::size_t i=0;i<values.size();i++) {
+      sum_vvw += values[i] * values[i] * weights[i];
+      sum_w += weights[i];
     }
-    return result;
+    return sum_vvw / sum_w;
   }
 
 }} // namespace cctbx::af
