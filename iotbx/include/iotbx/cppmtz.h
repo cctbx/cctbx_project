@@ -112,6 +112,9 @@ public:
   // Information indexed by crystal and dataset
   int& ncolumns(const int& xtal, const int& set);
 
+  af::double2
+  max_min_resolution();
+
   af::shared<cctbx::miller::index<> > MIx();
 
   af::shared<cctbx::miller::index<> >

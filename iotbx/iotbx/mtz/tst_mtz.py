@@ -5,6 +5,7 @@ from cctbx.development import debug_utils
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
+from libtbx.test_utils import eps_eq
 import sys
 
 def to_mtz(miller_array, mtz_label):
@@ -38,6 +39,8 @@ def recycle(miller_array, mtz_label, verbose=0):
   assert cryst.crystal_name() == "test_crystal"
   assert cryst.project_name() == "test_project"
   assert cryst.UnitCell().is_similar_to(miller_array.unit_cell())
+  assert eps_eq(
+    p.max_min_resolution(), miller_array.resolution_range(), eps=1.e-5)
   crystal_symmetry = crystal.symmetry(
     unit_cell=cryst.UnitCell(),
     space_group_info=p.get_space_group_info())
