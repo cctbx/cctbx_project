@@ -87,6 +87,7 @@ int main(int argc, char* argv[])
   }
   {
     vec3<double> a(2., 3., 4.);
+    check_true(__LINE__, std::fabs(a.length2() - 29.) < 1.e-6);
     check_true(__LINE__, std::fabs(a.length() - std::sqrt(29.)) < 1.e-6);
     check_true(__LINE__, std::fabs(abs(a) - std::sqrt(29.)) < 1.e-6);
     check_true(__LINE__, std::fabs(a.normalize().length() - 1.) < 1.e-6);

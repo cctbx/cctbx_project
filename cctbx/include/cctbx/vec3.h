@@ -12,6 +12,7 @@
 #define CCTBX_VEC3_H
 
 #include <cctbx/fixes/cmath>
+#include <cctbx/basic/matrixlite.h>
 #include <cctbx/array_family/tiny_plain.h>
 
 namespace cctbx {
@@ -51,16 +52,19 @@ namespace cctbx {
       //! Cross product.
       vec3 cross(const vec3& other) const
       {
-        return vec3(
-          this->elems[1] * other[2] - this->elems[2] * other[1],
-          this->elems[2] * other[0] - this->elems[0] * other[2],
-          this->elems[0] * other[1] - this->elems[1] * other[0]);
+        return MatrixLite::cross_product(*this, other);
+      }
+
+      //! Return the length squared of the vector.
+      NumType length2() const
+      {
+        return (*this) * (*this);
       }
 
       //! Return the length of the vector.
       NumType length() const
       {
-        return NumType(std::sqrt((*this) * (*this)));
+        return NumType(std::sqrt(length2()));
       }
 
       //! Return normalized vector.
