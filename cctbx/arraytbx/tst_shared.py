@@ -179,4 +179,27 @@ p = pickle.dumps(a)
 b = pickle.loads(p)
 assert b.size() == 3
 assert tuple(b) == ((1,2,3,4), (-2,3,-4,5), (3,-4,5,-6))
+from cctbx_boost import sftbx
+from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
+sf = CAASF_WK1995("C")
+sites = (
+  sftbx.XrayScatterer("C1", sf, 1+2j, (0.1,0.2,0.3), 1, 0.1),
+  sftbx.XrayScatterer("C2", sf, 2+3j, (0.2,0.3,0.4), 0.5, (1,2,3,4,5,6)),
+  sftbx.XrayScatterer("C3", sf, 3+4j, (0.3,0.4,0.5), 1, (6,5,4,3,2,1)),
+  sftbx.XrayScatterer("C4", sf, 4+5j, (0.4,0.5,0.6), 0.5, 0.2),
+)
+a = shared.XrayScatterer(sites)
+p = pickle.dumps(a)
+b = pickle.loads(p)
+for i in xrange(len(sites)):
+  assert sites[i].Label() == b[i].Label()
+  assert sites[i].CAASF().Label() == b[i].CAASF().Label()
+  assert sites[i].fpfdp() == b[i].fpfdp()
+  assert sites[i].Coordinates() == b[i].Coordinates()
+  assert sites[i].Occ() == b[i].Occ()
+  assert sites[i].isAnisotropic() == b[i].isAnisotropic()
+  if (b[i].isAnisotropic()):
+    assert sites[i].Uaniso() == b[i].Uaniso()
+  else:
+    assert sites[i].Uiso() == b[i].Uiso()
 print "OK"

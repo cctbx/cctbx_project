@@ -33,6 +33,11 @@ namespace cctbx { namespace af {
   void shared_hendrickson_lattman_double_setstate(
     shared<hendrickson_lattman<double> >& a,
     boost::python::ref state);
+  boost::python::ref shared_xray_scatterer_double_wk1995_getstate(
+    shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> > const& a);
+  void shared_xray_scatterer_double_wk1995_setstate(
+    shared<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >& a,
+    boost::python::ref state);
 
   template <>
   struct shared_pickle<miller::Index>
@@ -55,6 +60,19 @@ namespace cctbx { namespace af {
         shared_hendrickson_lattman_double_getstate, "__getstate__");
       class_bldr.def(
         shared_hendrickson_lattman_double_setstate, "__setstate__");
+    }
+  };
+
+  template <>
+  struct shared_pickle<sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >
+  {
+    template <typename ClassBuilderType>
+    static void def(ClassBuilderType& class_bldr)
+    {
+      class_bldr.def(
+        shared_xray_scatterer_double_wk1995_getstate, "__getstate__");
+      class_bldr.def(
+        shared_xray_scatterer_double_wk1995_setstate, "__setstate__");
     }
   };
 
