@@ -20,7 +20,9 @@ def create_makefile(pkg_dir, configuration, subdir, package):
   f.close()
   shutil.copy(subdir + "/Makefile", subdir + "/Makefile.nodepend")
 
-def create_lib_python_dir(pkg):
+def create_lib_dir_and_lib_python_dir(pkg):
+  try: os.makedirs("../lib")
+  except OSError: pass
   lib_python_dir = "../lib_python/%s_boost"%(pkg.name)
   try: os.makedirs(lib_python_dir)
   except OSError: pass
@@ -30,18 +32,24 @@ def create_lib_python_dir(pkg):
     open(lib_python_dir + "/" + subdir + "/__init__.py", "a+").close()
   open(lib_python_dir + "/__init__.py", "a+").close()
 
-if (__name__ == "__main__"):
+def run():
   sys.path.insert(0,os.getcwd())
   from PackageStructure import PackageStructure as package
   print "***Booting package: ", package.name.upper()
   pks = (package.name,) + package.supporting
 
-  if len(sys.argv) >= 2:
+  custom_subdir = None
+  if len(sys.argv) == 2:
     structured_package_dir = sys.argv[1]
   elif os.path.isfile("PackageSource"):
     f = open("PackageSource","r")
     structured_package_dir = f.readline().strip()
     f.close()
+    if (len(sys.argv) == 3):
+      assert sys.argv[1] == "--custom"
+      custom_subdir = sys.argv[2]
+    else:
+      assert len(sys.argv) == 1
 
   assert os.path.isdir(structured_package_dir)
 
@@ -56,13 +64,18 @@ if (__name__ == "__main__"):
     print "Error: Must run under Windows!"
     sys.exit(1)
 
+  if (custom_subdir):
+    create_makefile(structured_package_dir, cf, custom_subdir, package)
+    return
+
   for subdir in package.externals + package.toolboxes + package.examples:
     create_makefile(structured_package_dir, cf, subdir, package)
 
   if (hasattr(os, "symlink")):
-    try: os.symlink(structured_package_dir + "/examples/python", "examples/python")
+    try: os.symlink(
+      structured_package_dir + "/examples/python", "examples/python")
     except: pass
-  create_lib_python_dir(package)
+  create_lib_dir_and_lib_python_dir(package)
 
   # emit the pythonpath command file
   if (hasattr(os, "symlink")):
@@ -98,3 +111,6 @@ set PYTHONPATH=.;%s;%s;%%PYTHONPATH%%
   f = open(file, "a")
   f.write(proc)
   f.close()
+
+if (__name__ == "__main__"):
+  run()
