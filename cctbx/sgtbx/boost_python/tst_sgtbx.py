@@ -536,6 +536,8 @@ def exercise_space_group():
   g.reset()
   g.parse_hall_symbol(p)
   assert g.order_z() == 4
+  assert len(g) == 4
+  assert g.n_equivalent_positions() == 4
   p = sgtbx.parse_string("P 2x")
   g.parse_hall_symbol(p, 1)
   assert g.order_z() == 8
