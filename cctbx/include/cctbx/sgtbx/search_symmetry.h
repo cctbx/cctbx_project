@@ -96,13 +96,13 @@ namespace cctbx { namespace sgtbx {
       space_group const&
       group() const { return group_; }
 
-      scitbx::af::small<sg_vec3, 3> const&
+      af::small<scitbx::vec3<int>, 3> const&
       continuous_shifts() const { return continuous_shifts_; }
 
     protected:
       search_symmetry_flags flags_;
       space_group group_;
-      scitbx::af::small<sg_vec3, 3> continuous_shifts_;
+      af::small<scitbx::vec3<int>, 3> continuous_shifts_;
 
       void
       init(
