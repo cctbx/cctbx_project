@@ -111,11 +111,6 @@ namespace {
     return DebyeWallerFactorUcart(uc, MIx, Ucart);
   }
 
-  bool
-  py_isPositiveDefinite_adpTensor(const boost::array<double, 6>& adp) {
-    return isPositiveDefinite_adpTensor(adp);
-  }
-
   boost::array<double, 3>
   py_EigenValues(const boost::array<double, 6>& adp) {
     return EigenValues(adp);
@@ -159,8 +154,6 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
     this_module.def(py_DebyeWallerFactorUuvrs, "DebyeWallerFactorUuvrs");
     this_module.def(py_DebyeWallerFactorUcart, "DebyeWallerFactorUcart");
 
-    this_module.def(py_isPositiveDefinite_adpTensor,
-                      "isPositiveDefinite_adpTensor");
     this_module.def(py_EigenValues, "EigenValues");
   }
   catch(...)
