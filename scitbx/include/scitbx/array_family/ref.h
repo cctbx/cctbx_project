@@ -27,61 +27,79 @@ namespace scitbx { namespace af {
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
 
-      const_ref()
-        : m_begin(0)
-      {}
-      const_ref(const ElementType* begin, accessor_type ac)
-        : m_begin(begin), m_accessor(ac)
-      {}
+      const_ref() {}
+
+      const_ref(const ElementType* begin, accessor_type const& accessor)
+      : begin_(begin), accessor_(accessor)
+      {
+        init();
+      }
+
       // convenience constructors
-      const_ref(
-        const ElementType* begin, long n0)
-        : m_begin(begin), m_accessor(n0)
-      {}
-      const_ref(
-        const ElementType* begin, long n0, long n1)
-        : m_begin(begin), m_accessor(n0, n1)
-      {}
-      const_ref(
-        const ElementType* begin, long n0, long n1, long n2)
-        : m_begin(begin), m_accessor(n0, n1, n2)
-      {}
-
-      accessor_type const& accessor() const { return m_accessor; }
-      size_type size() const { return m_accessor.size_1d(); }
-
-      const ElementType* begin() const { return m_begin; }
-      const ElementType* end() const { return m_begin + size(); }
-      ElementType const& front() const { return m_begin[0]; }
-      ElementType const& back() const { return m_begin[size()-1]; }
-
-      ElementType const& operator[](size_type i) const { return m_begin[i]; }
-
-      ElementType const& at(size_type i) const {
-        if (i >= size()) throw_range_error();
-        return m_begin[i];
+      const_ref(const ElementType* begin, long n0)
+      : begin_(begin), accessor_(n0)
+      {
+        init();
       }
 
-      const_ref<ElementType> as_1d() const {
-        return const_ref<ElementType>(m_begin, size());
+      const_ref(const ElementType* begin, long n0, long n1)
+      : begin_(begin), accessor_(n0, n1)
+      {
+        init();
       }
 
-      value_type const& operator()(index_type const& i) const {
-        return this->begin()[m_accessor(i)];
+      const_ref(const ElementType* begin, long n0, long n1, long n2)
+      : begin_(begin), accessor_(n0, n1, n2)
+      {
+        init();
+      }
+
+      accessor_type const& accessor() const { return accessor_; }
+      size_type size() const { return size_; }
+
+      const ElementType* begin() const { return begin_; }
+      const ElementType* end() const { return end_; }
+      ElementType const& front() const { return begin_[0]; }
+      ElementType const& back() const { return end_[-1]; }
+
+      ElementType const&
+      operator[](size_type i) const { return begin_[i]; }
+
+      ElementType const&
+      at(size_type i) const
+      {
+        if (i >= size_) throw_range_error();
+        return begin_[i];
+      }
+
+      const_ref<ElementType>
+      as_1d() const
+      {
+        return const_ref<ElementType>(begin_, size_);
+      }
+
+      value_type const&
+      operator()(index_type const& i) const
+      {
+        return this->begin_[accessor_(i)];
       }
 
       // Convenience operator()
-
-      value_type const& operator()(long i0) const {
+      value_type const& operator()(long i0) const
+      {
         return operator()(index_type(i0));
       }
+
       value_type const& operator()(long i0,
-                                   long i1) const {
+                                   long i1) const
+      {
         return operator()(index_type(i0, i1));
       }
+
       value_type const& operator()(long i0,
                                    long i1,
-                                   long i2) const {
+                                   long i2) const
+      {
         return operator()(index_type(i0, i1, i2));
       }
 
@@ -120,8 +138,17 @@ namespace scitbx { namespace af {
         ElementType const& tolerance) const;
 
     protected:
-      const ElementType* m_begin;
-      accessor_type m_accessor;
+      void
+      init()
+      {
+        size_ = accessor_.size_1d();
+        end_ = begin_ + size_;
+      }
+
+      const ElementType* begin_;
+      accessor_type accessor_;
+      size_type size_;
+      const ElementType* end_;
   };
 
   template <typename ElementType,
@@ -135,11 +162,10 @@ namespace scitbx { namespace af {
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
 
-      ref()
-      {}
+      ref() {}
 
-      ref(ElementType* begin, accessor_type ac)
-        : base_class(begin, ac)
+      ref(ElementType* begin, accessor_type accessor)
+      : base_class(begin, accessor)
       {}
 
       // convenience constructors
@@ -156,10 +182,10 @@ namespace scitbx { namespace af {
       {}
 
       ElementType*
-      begin() const { return const_cast<ElementType*>(this->m_begin); }
+      begin() const { return const_cast<ElementType*>(this->begin_); }
 
       ElementType*
-      end() const { return begin() + this->size(); }
+      end() const { return const_cast<ElementType*>(this->end_); }
 
       ElementType&
       front() const { return begin()[0]; }
@@ -173,7 +199,7 @@ namespace scitbx { namespace af {
       ElementType&
       at(size_type i) const
       {
-        if (i >= this->size()) throw_range_error();
+        if (i >= this->size_) throw_range_error();
         return begin()[i];
       }
 
@@ -187,17 +213,16 @@ namespace scitbx { namespace af {
       ref<ElementType>
       as_1d() const
       {
-        return ref<ElementType>(this->begin(), this->size());
+        return ref<ElementType>(this->begin(), this->size_);
       }
 
       value_type&
       operator()(index_type const& i) const
       {
-        return begin()[this->m_accessor(i)];
+        return begin()[this->accessor_(i)];
       }
 
       // Convenience operator()
-
       value_type&
       operator()(long i0) const
       {
