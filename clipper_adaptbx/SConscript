@@ -69,8 +69,6 @@ if (hasattr(env_etc, "cctbx_include")):
   if (not env_etc.no_boost_python):
     Import("env_no_includes_boost_python_ext")
     env_clipper_boost_python_ext = env_no_includes_boost_python_ext.Copy()
-    env_clipper_boost_python_ext.Replace(
-      SHCXXFLAGS=env_etc.cxxflags_base)
     env_etc.include_registry.append(
       env=env_clipper_boost_python_ext,
       paths=[
