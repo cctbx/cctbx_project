@@ -29,7 +29,6 @@ def exercise(SgInfo,
              number_of_point_atoms = 10,
              d_min=1.,
              e_min=1.2,
-             loop_k_equiv=0,
              verbose=0):
   elements = ["const"] * number_of_point_atoms
   xtal = debug_utils.random_structure(
@@ -56,26 +55,42 @@ def exercise(SgInfo,
   Fcalc.F = e_values
   if (0 or verbose):
     debug_utils.print_structure_factors(Fcalc)
-  tprs = dmtbx.triplet_invariants(
-   xtal.SgInfo, MillerIndices.H, e_values, loop_k_equiv)
+  tprs = dmtbx.triplet_invariants(xtal.SgInfo, MillerIndices.H, e_values)
+  utprs = tprs.unique_triplets()
   print "number_of_weighted_triplets:", \
-       tprs.number_of_weighted_triplets()
+       tprs.number_of_weighted_triplets(), \
+       utprs.number_of_weighted_triplets()
   print "total_number_of_triplets:", \
-       tprs.total_number_of_triplets()
-  print "average_number_of_triplets_per_reflection:", \
-       tprs.average_number_of_triplets_per_reflection()
-  new_phases = tprs.refine_phases(MillerIndices.H, e_values, phases)
-  sum_w_phase_error = 0
-  sum_w = 0
-  for i in xrange(MillerIndices.H.size()):
-    phase_error = debug_utils.phase_error(
-      phases[i], new_phases[i], deg=0) * 180/math.pi
-    if (0 or verbose):
-      print MillerIndices.H[i], "%.3f %.3f %.3f" % (
-        phases[i], new_phases[i], phase_error)
-    sum_w_phase_error += e_values[i] * phase_error
-    sum_w += e_values[i]
-  print "mean weighted phase error: %.2f" % (sum_w_phase_error / sum_w,)
+       tprs.total_number_of_triplets(), \
+       utprs.total_number_of_triplets()
+  print "average_number_of_triplets_per_reflection: %.2f %.2f" % (
+       tprs.average_number_of_triplets_per_reflection(),
+       utprs.average_number_of_triplets_per_reflection())
+  means = []
+  for t in (tprs, utprs):
+    mean_weightd_phase_error = []
+    for ignore_weights in (0, 1):
+      new_phases = t.refine_phases(
+        MillerIndices.H, e_values, phases, ignore_weights)
+      sum_w_phase_error = 0
+      sum_w = 0
+      for i in xrange(MillerIndices.H.size()):
+        phase_error = debug_utils.phase_error(
+          phases[i], new_phases[i], deg=0) * 180/math.pi
+        if (0 or verbose):
+          print MillerIndices.H[i], "%.3f %.3f %.3f" % (
+            phases[i], new_phases[i], phase_error)
+        sum_w_phase_error += e_values[i] * phase_error
+        sum_w += e_values[i]
+      mean_weightd_phase_error.append(sum_w_phase_error / sum_w)
+    print "mean weighted phase error: %.2f %.2f delta: %.2f" % (
+      mean_weightd_phase_error[0],
+      mean_weightd_phase_error[1],
+      mean_weightd_phase_error[1] - mean_weightd_phase_error[0])
+    means.append(mean_weightd_phase_error)
+  print "        delta phase error: %.2f %.2f" % (
+    means[1][0] - means[0][0],
+    means[1][1] - means[0][1])
   if (0 or verbose):
     tprs.dump_triplets(MillerIndices.H)
   print
@@ -85,7 +100,6 @@ def run():
     "RandomSeed",
     "AllSpaceGroups",
     "IncludeVeryHighSymmetry",
-    "loop_k_equiv",
     "ShowSymbolOnly",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
@@ -114,7 +128,7 @@ def run():
     if (Flags.ShowSymbolOnly):
       print "Space group:", LookupSymbol
     else:
-      exercise(SgInfo, loop_k_equiv=Flags.loop_k_equiv)
+      exercise(SgInfo)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):

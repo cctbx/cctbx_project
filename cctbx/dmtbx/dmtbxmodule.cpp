@@ -29,6 +29,15 @@ namespace {
     }
   }
 
+  af::shared<double>
+  refine_phases_3(dmtbx::triplet_invariants<double> const& ti,
+                  af::shared<Miller::Index> miller_indices,
+                  af::shared<double> e_values,
+                  af::shared<double> phases)
+  {
+    return ti.refine_phases(miller_indices, e_values, phases);
+  }
+
 # include <cctbx/basic/from_bpl_import.h>
 
   void init_module(python::module_builder& this_module)
@@ -54,8 +63,7 @@ namespace {
     py_triplet_invariants.def(constructor<
       sgtbx::SpaceGroupInfo const&,
       af::shared<Miller::Index>,
-      af::shared<double>,
-      bool>());
+      af::shared<double> >());
     py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::number_of_weighted_triplets,
                                          "number_of_weighted_triplets");
@@ -70,7 +78,13 @@ namespace {
       &dmtbx::triplet_invariants<double>::dump_triplets,
                                          "dump_triplets");
     py_triplet_invariants.def(
+      &dmtbx::triplet_invariants<double>::unique_triplets,
+                                         "unique_triplets");
+    py_triplet_invariants.def(
       &dmtbx::triplet_invariants<double>::refine_phases,
+                                         "refine_phases");
+    py_triplet_invariants.def(
+                                         &refine_phases_3,
                                          "refine_phases");
 
     this_module.def(inplace_sort, "inplace_sort");
