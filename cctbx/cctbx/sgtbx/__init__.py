@@ -26,6 +26,7 @@ class space_group_info:
       if (table_id is None):
         self._group = space_group(space_group_symbols(symbol))
       else:
+        if (isinstance(symbol, int)): symbol = str(symbol)
         self._group = space_group(space_group_symbols(symbol, table_id))
     if (self._group is not None):
       self._group.make_tidy()
@@ -111,7 +112,7 @@ class space_group_info:
     sg_number = self.type().number()
     if   (sg_number <   3):
       params = (1., 1.3, 1.7, 83, 109, 129)
-    elif (sg_number <  15):
+    elif (sg_number <  16):
       params = (1., 1.3, 1.7, 90, 109, 90)
     elif (sg_number <  75):
       params = (1., 1.3, 1.7, 90, 90, 90)
