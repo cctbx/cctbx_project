@@ -2,6 +2,9 @@ from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
 from cctbx_boost import sftbx
 
+def space_group_info(space_group_symbol):
+  return sgtbx.SpaceGroup(sgtbx.SpaceGroupSymbols(space_group_symbol)).Info()
+
 class crystal_symmetry:
 
   def __init__(self, UnitCell, SgInfo):

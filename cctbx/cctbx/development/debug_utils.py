@@ -6,6 +6,7 @@ from cctbx_boost import sgtbx
 from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
 from cctbx_boost import adptbx
 from cctbx_boost import sftbx
+from cctbx.misc import python_utils
 from cctbx import xutils
 from cctbx.macro_mol import rotation_parameters
 
@@ -99,13 +100,10 @@ class random_structure(xutils.symmetrized_sites):
                volume_per_atom = 1000.,
                min_distance = 3.0,
                general_positions_only = 0,
+               uiso = 0,
                anisotropic_displacement_parameters = 0,
                defer_build = 0):
-    self.elements = elements
-    self.volume_per_atom = volume_per_atom
-    self.general_positions_only = general_positions_only
-    self.anisotropic_displacement_parameters = \
-         anisotropic_displacement_parameters
+    python_utils.adopt_init_args(self, locals())
     xutils.symmetrized_sites.__init__(self,
       get_compatible_unit_cell(
         SgInfo,
@@ -128,7 +126,9 @@ class random_structure(xutils.symmetrized_sites):
     for Elem, Pos in zip(self.elements, positions):
       n += 1
       SF = CAASF_WK1995(Elem)
-      U = 0.01 + abs(random.gauss(0, 0.05))
+      U = self.uiso
+      if (not U):
+        U = 0.01 + abs(random.gauss(0, 0.05))
       if (self.anisotropic_displacement_parameters):
         Uiso = U
         run_away_counter = 0

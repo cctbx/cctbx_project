@@ -21,9 +21,13 @@ def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
     "RandomSeed",
     "AllSpaceGroups",
+    "Isotropic",
     "Anisotropic",
   ))
   if (not Flags.RandomSeed): debug_utils.set_random_seed(0)
+  if (not (Flags.Isotropic or Flags.Anisotropic)):
+    Flags.Isotropic = 1
+    Flags.Anisotropic = 1
   symbols_to_stdout = 0
   if (len(sys.argv) > 1 + Flags.n):
     symbols = sys.argv[1:]
@@ -41,7 +45,10 @@ def run():
     if (symbols_to_stdout):
       print LookupSymbol
       sys.stdout.flush()
-    print_structure_factors(SgInfo, Flags.Anisotropic)
+    if (Flags.Isotropic):
+      print_structure_factors(SgInfo, adp=0)
+    if (Flags.Anisotropic):
+      print_structure_factors(SgInfo, adp=1)
     sys.stdout.flush()
 
 if (__name__ == "__main__"):
