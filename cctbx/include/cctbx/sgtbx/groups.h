@@ -475,10 +475,10 @@ namespace cctbx { namespace sgtbx {
           the 32 crystallographic point group types.
        */
       tables::MatrixGroup::Code getPointGroupType() const;
-      //! Match given symmetry operations with the 656 tabulated settings.
+      //! Match given symmetry operations with the 530 tabulated settings.
       /*! This is a light-weight alternative to using
           class SpaceGroupInfo, but will only work for the
-          656 tabulated settings.
+          530 tabulated settings.
           <p>
           This algorithm is not particularly optimized. Therefore
           the runtimes for MatchTabulatedSettings() and
@@ -656,7 +656,7 @@ namespace cctbx { namespace sgtbx {
       std::string BuildHallSymbol(bool TidyCBOp = true) const;
       //! Determine conventional Hermann-Mauguin symbol or Hall symbol.
       /*! First, SgOps().MatchTabulatedSettings() is called. If the given
-          symmetry operations correspond to one of the 656 tabulated
+          symmetry operations correspond to one of the 530 tabulated
           settings, the extended Hermann-Mauguin symbol is returned
           (e.g. "P n n n :2").  Otherwise the string "Hall: " + the
           result of BuildHallSymbol() is returned (e.g. "Hall:  P 2 2
