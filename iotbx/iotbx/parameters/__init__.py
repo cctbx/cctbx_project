@@ -271,8 +271,12 @@ class definition: # FUTURE definition(object)
         out=None,
         merged_names=[],
         prefix="",
+        expert_level=None,
         attributes_level=0,
         print_width=None):
+    if (self.expert_level is not None
+        and expert_level is not None
+        and self.expert_level > expert_level): return
     if (out is None): out = sys.stdout
     if (print_width is None): print_width = default_print_width
     if (self.is_disabled): hash = "#"
@@ -297,12 +301,14 @@ class definition: # FUTURE definition(object)
 
   def as_str(self,
         prefix="",
+        expert_level=None,
         attributes_level=0,
         print_width=None):
     out = StringIO()
     self.show(
       out=out,
       prefix=prefix,
+      expert_level=expert_level,
       attributes_level=attributes_level,
       print_width=print_width)
     return out.getvalue()
@@ -615,8 +621,12 @@ class scope:
         out=None,
         merged_names=[],
         prefix="",
+        expert_level=None,
         attributes_level=0,
         print_width=None):
+    if (self.expert_level is not None
+        and expert_level is not None
+        and self.expert_level > expert_level): return
     if (out is None): out = sys.stdout
     if (print_width is None): print_width = default_print_width
     is_proper_scope = False
@@ -651,6 +661,7 @@ class scope:
         out=out,
         merged_names=merged_names,
         prefix=prefix,
+        expert_level=expert_level,
         attributes_level=attributes_level,
         print_width=print_width)
     if (is_proper_scope):
@@ -658,12 +669,14 @@ class scope:
 
   def as_str(self,
         prefix="",
+        expert_level=None,
         attributes_level=0,
         print_width=None):
     out = StringIO()
     self.show(
       out=out,
       prefix=prefix,
+      expert_level=expert_level,
       attributes_level=attributes_level,
       print_width=print_width)
     return out.getvalue()
