@@ -28,22 +28,6 @@ namespace cctbx { namespace uctbx {
       throw error("Corrupt metrical matrix.");
     }
 
-    inline double
-    sin_eps(double arg, double eps_pi = 1.e-6)
-    {
-      using scitbx::constants::pi_2;
-      if (pi_2 - eps_pi <= arg && arg <= pi_2 + eps_pi) return 1.;
-      return std::sin(arg);
-    }
-
-    inline double
-    cos_eps(double arg, double eps_pi = 1.e-6)
-    {
-      using scitbx::constants::pi_2;
-      if (pi_2 - eps_pi <= arg && arg <= pi_2 + eps_pi) return 0.;
-      return std::cos(arg);
-    }
-
     double
     dot_g(uc_vec3 const& u, uc_sym_mat3 const& g, uc_vec3 const& v)
     {
@@ -116,8 +100,8 @@ namespace cctbx { namespace uctbx {
     for(std::size_t i=0;i<3;i++) {
       double a_rad = std::acos(r_cos_ang_[i]);
       r_params_[i+3] = scitbx::rad_as_deg(a_rad);
-      r_sin_ang_[i] = sin_eps(a_rad);
-      r_cos_ang_[i] = cos_eps(a_rad);
+      r_sin_ang_[i] = std::sin(a_rad);
+      r_cos_ang_[i] = std::cos(a_rad);
     }
   }
 
