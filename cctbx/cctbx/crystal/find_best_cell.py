@@ -27,6 +27,10 @@ class find_best_cell:
 
   def __init__(self, input_symmetry, angular_tolerance):
     space_group_number = input_symmetry.space_group_info().type().number()
+    if (space_group_number == 1):
+      self._cb_op = input_symmetry.change_of_basis_op_to_niggli_cell()
+      self._symmetry = input_symmetry.change_basis(self._cb_op)
+      return
     if (space_group_number < 3 or space_group_number >= 75):
       self._cb_op = sgtbx.change_of_basis_op()
       self._symmetry = input_symmetry
@@ -84,7 +88,7 @@ class find_best_cell:
 def exercise():
   from cctbx import crystal
   cb_op = sgtbx.change_of_basis_op("y,z,x")
-  for space_group_number in xrange(3,76):
+  for space_group_number in [1] + range(3,76):
     sgi = sgtbx.space_group_info(symbol=space_group_number)
     uc = sgi.any_compatible_unit_cell(volume=1000)
     best = find_best_cell(
