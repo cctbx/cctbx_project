@@ -388,6 +388,18 @@ namespace direct_space_asu {
       FloatType
       sym_equiv_epsilon() const { return sym_equiv_epsilon_; }
 
+      //! Third root of unit cell volume times sym_equiv_epsilon().
+      /*! See also: cctbx::sgtbx::site_symmetry
+       */
+      FloatType
+      sym_equiv_tolerance() const { return sym_equiv_tolerance_; }
+
+      //! 10 * sym_equiv_tolerance().
+      /*! See also: cctbx::sgtbx::site_symmetry
+       */
+      FloatType
+      sym_equiv_minimum_distance() const { return sym_equiv_minimum_distance_;}
+
       //! Sphere covering the asymmetric unit + buffer_thickness().
       /*! The sphere is computed as the minimum covering sphere
           for the vertices of asu(), followed by adding buffer_thickness()
