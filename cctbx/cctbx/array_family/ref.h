@@ -27,7 +27,7 @@
 namespace cctbx { namespace af {
 
   template <typename ElementType,
-            typename AccessorType = grid_accessor<1> >
+            typename AccessorType = grid<1> >
   class const_ref
   {
     public:
@@ -109,7 +109,7 @@ namespace cctbx { namespace af {
   };
 
   template <typename ElementType,
-            typename AccessorType = grid_accessor<1> >
+            typename AccessorType = grid<1> >
   class ref
   {
     public:

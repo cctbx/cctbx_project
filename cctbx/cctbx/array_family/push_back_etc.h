@@ -145,6 +145,8 @@
 
       ElementType* erase(ElementType* first, ElementType* last) {
         ElementType* i = std::copy(last, end(), first);
+        // XXX erase backwards, update size after each destroy
+        // XXX use type_traits to skip destroy
         detail::destroy_array_elements(i, end());
         m_decr_size(last - first);
         return first;

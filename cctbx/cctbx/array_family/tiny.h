@@ -26,11 +26,8 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(tiny)
       CCTBX_ARRAY_FAMILY_TINY_COPY_AND_ASSIGNMENT(tiny)
-      CCTBX_ARRAY_FAMILY_TAKE_REF(this->elems, N)
   };
 
 }} // namespace cctbx::af
-
-#include <cctbx/array_family/tiny_algebra.h>
 
 #endif // CCTBX_ARRAY_FAMILY_TINY_H

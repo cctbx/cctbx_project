@@ -29,6 +29,8 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
+#if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
+
 #include <cctbx/array_family/flagged_value_algebra.h>
 
 namespace cctbx { namespace af {
@@ -44,5 +46,7 @@ namespace cctbx { namespace af {
   };
 
 }} // namespace cctbx::af
+
+#endif // !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
 
 #endif // CCTBX_ARRAY_FAMILY_FLAGGED_VALUE_H

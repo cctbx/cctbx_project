@@ -11,9 +11,10 @@
 #ifndef CCTBX_ARRAY_FAMILY_PLAIN_H
 #define CCTBX_ARRAY_FAMILY_PLAIN_H
 
-#include <cctbx/array_family/tiny_plain.h>
-#include <cctbx/array_family/small_plain.h>
-#include <cctbx/array_family/shared_plain.h>
-#include <cctbx/array_family/versa_plain.h>
+#include <cctbx/array_family.h>
+#include <cctbx/array_family/tiny_algebra.h>
+#include <cctbx/array_family/small_algebra.h>
+#include <cctbx/array_family/shared_algebra.h>
+#include <cctbx/array_family/versa_algebra.h>
 
 #endif // CCTBX_ARRAY_FAMILY_PLAIN_H
