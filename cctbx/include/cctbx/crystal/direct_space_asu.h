@@ -736,25 +736,6 @@ namespace direct_space_asu {
         return (get_rt_mx_i(pair) == get_rt_mx_j(pair));
       }
 
-      /*! \brief Classification of interactions as
-            1: simple,
-            0: symmetry,
-            -1: redundant symmetry,
-            -2: redundant simple.
-       */
-      int
-      interaction_type_id(asu_mapping_index_pair const& pair) const
-      {
-        if (is_simple_interaction(pair)) {
-          if (pair.i_seq < pair.j_seq) return 1;
-          return -2;
-        }
-        else if (pair.is_active()) {
-          return 0;
-        }
-        return -1;
-      }
-
       //! Returns a new pair after checking the indices.
       asu_mapping_index_pair
       make_trial_pair(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
