@@ -21,7 +21,8 @@ def update_libtbx_info(env, package_name, package_dist):
   libtbx_info = {
     "LD_LIBRARY_PATH": [],
     "PYTHONPATH": [norm(join(env.libtbx_build, "libtbx")), env.libtbx_dist],
-    "PATH": [norm(join(env.libtbx_dist, "libtbx/command_line"))],
+    "PATH": [norm(join(env.libtbx_dist, "libtbx/command_line")),
+             norm(join(env.libtbx_build, "libtbx/bin"))],
     "LIBTBX_PYTHON_EXE": env.libtbx_python_exe,
     "LIBTBX_DIST": env.libtbx_dist,
     "LIBTBX_BUILD": env.libtbx_build,
