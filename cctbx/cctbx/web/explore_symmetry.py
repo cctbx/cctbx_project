@@ -7,7 +7,7 @@ in_table = False
 
 class empty: pass
 
-def get_form_data(form):
+def interpret_form_data(form):
   inp = empty()
   for key in (("sgsymbol", ""),
               ("convention", "")):
@@ -172,11 +172,9 @@ def expand_shelx_latt(sg, n_fld):
   sg.expand_conventional_centring_type(z)
   print
 
-def run(cctbx_url, form):
+def run(cctbx_url, inp):
   print "Content-type: text/html"
   print
-
-  inp = get_form_data(form)
 
   print "<pre>"
   show_input_symbol(inp.sgsymbol, inp.convention)
@@ -320,5 +318,8 @@ def run(cctbx_url, form):
   except RuntimeError, e:
     if (in_table): print "</table><pre>"
     print e
+  except AssertionError:
+    ei = sys.exc_info()
+    print traceback.format_exception_only(ei[0], ei[1])[0]
 
   print "</pre>"

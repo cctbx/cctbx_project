@@ -77,9 +77,10 @@ class model(crystal.special_position_settings):
   def show(self, title, f=sys.stdout):
     print >> f, title
     crystal.special_position_settings.show_summary(self, f)
-    print >> f, "Change of basis:"
-    print >> f, "  c:", self.cb_op().c()
-    print >> f, "  c_inv:", self.cb_op().c_inv()
+    if (not self.cb_op().is_identity_op()):
+      print >> f, "Change of basis:"
+      print >> f, "  c:", self.cb_op().c()
+      print >> f, "  c_inv:", self.cb_op().c_inv()
     for pos in self.positions(): print >> f, pos
     print >> f
 

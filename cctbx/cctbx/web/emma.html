@@ -1,0 +1,137 @@
+<html>
+<head>
+<title>cctbx - Emma: Euclidean Model Matching</title>
+</head>
+<body bgcolor=#ffffff>
+
+<h1>cctbx - Emma: Euclidean Model Matching</h1>
+
+<hr>
+
+<h2>Superposition of atomic models:</h2>
+
+<hr>
+
+<FORM ENCTYPE="multipart/form-data" METHOD=POST ACTION="cctbx_web.cgi">
+<input type="HIDDEN" name="target_module" value="emma">
+
+<h3>Reference model</h3>
+
+<strong>Unit cell parameters: </strong><input
+name="ucparams_1" size=40
+value="">
+<br>(Leave blank if read from file.)
+
+<p>
+<strong>Space group symbol: </strong><input
+name="sgsymbol_1" size=40
+value=""><br>
+Convention:
+<select name="convention_1">
+  <option value="" selected
+    >Default</option>
+  <option value="A1983"
+    >International Tables for Crystallography, Volume A 1983</option>
+  <option value="I1952"
+    >International Tables for Crystallography, Volume I 1952</option>
+  <option value="Hall"
+    >Hall symbol</option>
+</select>
+<br>(Leave blank if read from file.)
+
+<p>
+<strong>Coordinates:</strong>
+<p>
+Format:
+<select name="format_1">
+  <option value="generic" selected
+    >Generic</option>
+  <option value="cns_sdb"
+    >CNS sdb</option>
+</select>
+<p>
+Generic format only:
+<blockquote>
+<input type=radio name="coor_type_1" value="Fractional" checked>Fractional
+<br>
+<input type=radio name="coor_type_1" value="Cartesian">Cartesian
+<br>
+Skip the left <input name="skip_columns_1" size=4 value="0"> columns.
+</blockquote>
+Specify file: <INPUT NAME="coor_file_1" TYPE="file">,
+or paste in coordinates:
+<br>
+<textarea name="coordinates_1" rows=16 cols=60></textarea>
+
+<hr>
+
+<h3>Other models:</h3>
+
+<strong>Unit cell parameters: </strong><input
+name="ucparams_2" size=40
+value="">
+<br>(Leave blank if identical to reference model.)
+
+<p>
+<strong>Space group symbol: </strong><input
+name="sgsymbol_2" size=40
+value=""><br>
+Convention:
+<select name="convention_2">
+  <option value="" selected
+    >Default</option>
+  <option value="A1983"
+    >International Tables for Crystallography, Volume A 1983</option>
+  <option value="I1952"
+    >International Tables for Crystallography, Volume I 1952</option>
+  <option value="Hall"
+    >Hall symbol</option>
+</select>
+<br>(Leave blank if identical to reference model.)
+
+<p>
+<strong>Coordinates:</strong>
+<p>
+Format:
+<select name="format_2">
+  <option value="generic" selected
+    >Generic</option>
+  <option value="cns_sdb"
+    >CNS sdb</option>
+</select>
+<p>
+Generic format only:
+<blockquote>
+<input type=radio name="coor_type_2" value="Fractional" checked>Fractional
+<br>
+<input type=radio name="coor_type_2" value="Cartesian">Cartesian
+<p>
+Skip the left <input name="skip_columns_2" size=4 value="0"> columns.
+</blockquote>
+Specify file: <INPUT NAME="coor_file_2" TYPE="file">,
+or paste in coordinates:
+<br>
+<textarea name="coordinates_2" rows=16 cols=60></textarea>
+
+<hr>
+
+<p>
+<strong>Match tolerance: </strong><input
+name="tolerance" size=8
+value="1.0">
+
+<p>
+<strong>Are the models derived from the same diffraction data?</strong>
+<br>
+<input type=radio name="diffraction_index_equivalent" value="1" checked>Yes
+<br>
+<input type=radio name="diffraction_index_equivalent" value="0">No
+
+<p>
+<input type="submit" value="Compute matches">
+<p>
+<input type="reset"  value="Reset">
+</FORM>
+<hr>
+</body>
+</html>

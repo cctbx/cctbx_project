@@ -7,16 +7,13 @@
 # symbol is given, all 530 entries in the internal table are listed.
 
 import traceback
-import exceptions
-class FormatError(exceptions.Exception): pass
-
 import sys, urllib, urlparse
 
 from cctbx import sgtbx
 
 class empty: pass
 
-def get_form_data(form):
+def interpret_form_data(form):
   inp = empty()
   for key in (("sgsymbol", ""),
               ("convention", "")):
@@ -26,7 +23,7 @@ def get_form_data(form):
       inp.__dict__[key[0]] = key[1]
   return inp
 
-def run(cctbx_url, form):
+def run(cctbx_url, inp):
   print "Content-type: text/html"
   print
   print "<td><a href=\"%s\">%s</a>" % (
@@ -37,7 +34,6 @@ def run(cctbx_url, form):
       cctbx_url[:2]
     + [cctbx_url[2] + "/cctbx_web.cgi"]
     + cctbx_url[3:])
-  inp = get_form_data(form)
   try:
     sg_number = 0
     if (len(inp.sgsymbol.strip()) != 0):
@@ -56,7 +52,8 @@ def run(cctbx_url, form):
         print "<tr>"
         print "<td>(%d)<td>%s" % (
           symbols.number(), symbols.schoenflies())
-        print "<td><a href=\"%s?target_module=explore_symmetry&sgsymbol=%s\">%s</a>" % (
+        print ("<td><a href=\"%s?target_module=explore_symmetry"
+              +"&sgsymbol=%s\">%s</a>") % (
           url_cctbx_web,
           urllib.quote_plus(symbols.extended_hermann_mauguin()),
           symbols.extended_hermann_mauguin())
@@ -73,6 +70,6 @@ def run(cctbx_url, form):
 
   except RuntimeError, e:
     print e
-  except:
+  except AssertionError:
     ei = sys.exc_info()
     print traceback.format_exception_only(ei[0], ei[1])[0]

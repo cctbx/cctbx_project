@@ -60,8 +60,8 @@ class raw_parameters:
 
   def __init__(self, file_name):
     self.file_name = file_name
-    self.unit_cell = 0
-    self.space_group_info = 0
+    self.unit_cell = None
+    self.space_group_info = None
     self.action = []
     self.segid = []
     self.type = []
