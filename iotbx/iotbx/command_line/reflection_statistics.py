@@ -11,6 +11,17 @@ from libtbx.itertbx import count
 import math
 import sys
 
+def show_average_of_binned_data(binned_data_list):
+  l = len(binned_data_list[0].binner.bin_legend(0))
+  print " "*(l-9), "average:",
+  for binned_data in binned_data_list:
+    data = flex.double()
+    for d in binned_data.data[1:-1]:
+      if (d is not None): data.append(d)
+    if (data.size() == 0): print " "*7,
+    print "%7.4f" % flex.mean(data),
+  print
+
 class array_cache:
 
   def __init__(self, input, lattice_symmetry_max_delta):
@@ -133,6 +144,7 @@ class array_cache:
         if (v is None): print " "*7,
         else: print "%7.4f" % v,
       print
+    show_average_of_binned_data([sm, wr])
     print
 
   def show_second_moments_of_intensities(self, n_bins=None):
@@ -147,7 +159,9 @@ class array_cache:
       if (f.binner().n_bins_used() > 30):
         f.setup_binner(n_bins=30)
     print f.second_moment_of_intensities.__doc__.split()[0]
-    f.second_moment_of_intensities(use_binning=True).show()
+    sm = f.second_moment_of_intensities(use_binning=True)
+    sm.show()
+    show_average_of_binned_data([sm])
     print
 
   def unique_reindexing_operators(self,
