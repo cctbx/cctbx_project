@@ -45,30 +45,14 @@ namespace cctbx { namespace af {
               long& use_count()       { return m_use_count; }
         const long& use_count() const { return m_use_count; }
 
-        // data are not considered part of the type
+        // no const: data are not considered part of the type
         ElementType* begin() const { return m_data; }
 
-        void swap (basic_storage<ElementType>& other){
+        void swap(basic_storage<ElementType>& other){
           std::swap(*this, other);
         }
 
-        void resize(const size_type& new_size) {
-          expand_capacity(new_size);
-          m_size = new_size;
-        }
-
-        void auto_resize(const size_type& new_size) {
-          if (new_size > 0 && m_capacity == 0) {
-            expand_capacity(SmallestAutoCapacity);
-          }
-          else {
-            expand_capacity(std::max(new_size, m_capacity * 2));
-          }
-          m_size = new_size;
-        }
-
-      private:
-        void expand_capacity(const size_type& new_capacity) {
+        void reserve(const size_type& new_capacity) {
           if (new_capacity > m_capacity) {
             m_capacity = new_capacity;
             ElementType* new_data = new ElementType[m_capacity];
@@ -78,6 +62,20 @@ namespace cctbx { namespace af {
           }
         }
 
+        void resize(const size_type& new_size) {
+          reserve(new_size);
+          m_size = new_size;
+        }
+
+        void auto_resize(const size_type& new_size) {
+          if (new_size > 0) {
+            reserve(std::max(std::max(
+              new_size, SmallestAutoCapacity), m_capacity * 2));
+          }
+          m_size = new_size;
+        }
+
+      private:
         size_type m_capacity;
         size_type m_size;
         long m_use_count;
@@ -122,8 +120,12 @@ namespace cctbx { namespace af {
         size_type capacity() const { return m_ptr_basic_storage->capacity(); }
         long use_count() const { return m_ptr_basic_storage->use_count(); }
 
-        // data are not considered part of the type
+        // no const: data are not considered part of the type
         element_type* begin() const { return m_ptr_basic_storage->begin(); }
+
+        void reserve(const size_type& new_size) {
+          m_ptr_basic_storage->reserve(new_size);
+        }
 
         void resize(const size_type& new_size) {
           m_ptr_basic_storage->resize(new_size);
@@ -167,18 +169,17 @@ namespace cctbx { namespace af {
       {}
 
       size_type size() const { return m_handle.size() / element_size(); }
+      bool empty() const { if (size() == 0) return true; return false; }
+      size_type capacity() const {
+        return m_handle.capacity() / element_size();
+      }
+      long use_count() const { return m_handle.use_count(); }
 
       CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
         reinterpret_cast<ElementType*>(m_handle.begin()), size())
 
             handle_type& handle()       { return m_handle; }
       const handle_type& handle() const { return m_handle; }
-
-      shared_base<ElementType>&
-      fill(const ElementType& x) {
-        std::fill(begin(), end(), x);
-        return *this;
-      }
 
       shared_base<ElementType>
       deep_copy() const {
@@ -196,6 +197,10 @@ namespace cctbx { namespace af {
 
       CCTBX_ARRAY_FAMILY_TAKE_REF(begin(), size())
 
+      void reserve(const size_type& new_size) {
+        m_handle.reserve(element_size() * new_size);
+      }
+
       void resize(const size_type& new_size) {
         m_handle.resize(element_size() * new_size);
       }
@@ -204,6 +209,12 @@ namespace cctbx { namespace af {
         ElementType* old_end = end();
         resize(new_size);
         if (end() > old_end) std::fill(old_end, end(), x);
+      }
+
+      shared_base<ElementType>&
+      fill(const ElementType& x) {
+        std::fill(begin(), end(), x);
+        return *this;
       }
 
     protected:
