@@ -552,7 +552,7 @@ class definition: # FUTURE definition(object)
           fragment.result = variable_words
         else:
           fragment.result = tokenizer.word(
-            value=" ".join([str(v) for v in variable_words]),
+            value=" ".join([word.value for word in variable_words]),
             quote_token='"')
       new_words.extend(substitution_proxy.get_new_words())
     return self.customized_copy(words=new_words)
