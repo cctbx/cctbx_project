@@ -25,6 +25,10 @@ class iotbx_option_parser(OptionParser):
       result.append("\n")
     return "".join(result)
 
+  def option(self, *args, **kw):
+    self.add_option(apply(make_option, args, kw))
+    return self
+
   def enable_unit_cell(self):
     self.add_option(make_option(None, "--unit_cell",
       action="callback",
