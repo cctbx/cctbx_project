@@ -10,6 +10,7 @@ from cctbx import crystal
 from cctbx import adptbx
 from cctbx.eltbx import caasf
 from iotbx.shelx import crystal_symmetry_from_ins
+from cctbx.eltbx.caasf import wk1995
 
 def from_ins(file_name=None,
              crystal_symmetry=None, force_symmetry=00000,
@@ -28,7 +29,8 @@ def from_ins(file_name=None,
   assert crystal_symmetry.space_group_info() is not None,"Unknown space group."
 
   structure = xray.structure(
-    special_position_settings = crystal.special_position_settings(crystal_symmetry=crystal_symmetry,
+    special_position_settings = crystal.special_position_settings(
+      crystal_symmetry=crystal_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv))
 
   k=0
@@ -46,38 +48,39 @@ def from_ins(file_name=None,
     if(record.record_iden == "ATOM" and record.rec_part == 1):
       record_next = pdb_records[i+1]
       b = record.tempFactor + record_next.tempFactor
-      scatterer = xray.scatterer(label     = dict_allowed_atoms[record.name_id],
+      print record.name,dict_allowed_atoms[record.name_id]
+      scatterer = xray.scatterer(label     = " %s" % record.name, 
                                  site      = record.coordinates,
                                  b         = record.tempFactor + record_next.tempFactor,
-                                 occupancy = record.occupancy)
+                                 occupancy = record.occupancy,
+                                 caasf     = wk1995(dict_allowed_atoms[record.name_id], 1))
       scatterer = scatterer.copy(u=adptbx.u_cif_as_u_star(structure.unit_cell(), b))
       structure.add_scatterer(scatterer)
     elif(record.record_iden == "ATOM" and record.rec_part == 0):
       u_cif_iso_diag = record.tempFactor
       u_star=adptbx.u_cif_as_u_star(structure.unit_cell(), u_cif_iso_diag)
       u_iso = adptbx.u_star_as_u_iso(structure.unit_cell(), u_star)
-      if(u_iso <0.0): u_iso_negative = 1
-      scatterer = xray.scatterer(label     = dict_allowed_atoms[record.name_id],
+      if(u_iso < 0.0): u_iso_negative = 1
+      scatterer = xray.scatterer(label     = " %s" % record.name, 
                                  site      = record.coordinates,
                                  u         = u_iso,
-                                 occupancy = record.occupancy)
-      structure.add_scatterer(scatterer)
-
-  if(u_iso_negative == 1): if_u_iso_negative(structure)
-
+                                 occupancy = record.occupancy,
+                                 caasf     = wk1995(dict_allowed_atoms[record.name_id], 1))
+      structure.add_scatterer(scatterer)  
+  if(u_iso_negative == 1): if_u_iso_negative(structure)  
   return structure
-
+  
 def if_u_iso_negative(structure):
   for j in xrange(structure.scatterers().size()):
     atom_chem_type = caasf.wk1995(structure.scatterers()[j].label).label()
-    if(atom_chem_type == "H" and structure.scatterers()[j].u_iso < 0.0):
+    if(atom_chem_type == "H" and structure.scatterers()[j].u_iso < 0.0): 
       check_bond_number = 0
       for i in xrange(structure.scatterers().size()):
         site_i = structure.unit_cell().orthogonalize(structure.scatterers()[i].site)
         site_j = structure.unit_cell().orthogonalize(structure.scatterers()[j].site)
         atom_chem_type = caasf.wk1995(structure.scatterers()[i].label).label()
         if(atom_chem_type != "H"):
-          dist = math.sqrt((site_i[0]-site_j[0])**2 +
+          dist = math.sqrt((site_i[0]-site_j[0])**2 + 
                            (site_i[1]-site_j[1])**2 +
                            (site_i[2]-site_j[2])**2)
           if(dist < 1.2 and dist > 0.6):
