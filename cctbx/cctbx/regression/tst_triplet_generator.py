@@ -39,8 +39,11 @@ def reciprocal_space_squaring(start, verbose):
   tprs = dmtbx.triplet_generator(start.space_group(), start.indices())
   if (0 or verbose):
     for ih in start.indices()[:1].indices():
-      for relation in tprs.relations_for(0, 00000):
-        print relation.format(start.indices(), 0)
+      for relation in tprs.relations_for(ih):
+        print relation.format(start.indices(), ih),
+        if (not relation.is_sigma_2(ih)):
+          print "not sigma-2",
+        print
   return tprs.apply_tangent_formula(
     amplitudes=abs(start).data(),
     phases=flex.arg(start.data()))
