@@ -254,6 +254,25 @@ C  pair count:   2       <<  0.0200,  0.0000,  0.1000>>
 C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   C:   0.0000             (  0.0000,  0.0000,  0.1000)
 """
+  # exercise set_b_iso()
+  cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("C", (1./2, 1./2, 0.3)),
+    xray.scatterer("C", (0.18700, -0.20700, 0.83333))))
+  xs = xray.structure(sp, scatterers)
+  b_iso_value = 25.0
+  xs.set_b_iso(value = b_iso_value)
+  result = flex.double([25,25])
+  assert approx_equal(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1), result)
+  b_iso_values = flex.double([7,9])
+  xs.set_b_iso(values = b_iso_values)
+  assert approx_equal(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1), b_iso_values)
+  # exercise shake_b_iso()
+  xs.shake_b_iso(deviation = 10)
+  results = [[7.7,9.9],[7.7,8.1],[6.3,9.9],[6.3,8.1]]
+  result = flex.to_list(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1))
+  assert result in results
 
 def exercise_u_base():
   d_min = 9
