@@ -217,6 +217,7 @@ def exercise_direct_space_asu():
         assert approx_equal(
           matrix.col(asu_mappings.diff_vec(pair=index_pair)).norm(),
           index_pair.dist_sq)
+        assert asu_mappings.is_symmetry_interaction(pair=index_pair)
         dist_sq.append(index_pair.dist_sq)
       assert pair_generator.at_end()
       if (pair_generator_type is crystal.neighbors_simple_pair_generator):

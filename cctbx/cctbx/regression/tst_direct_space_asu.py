@@ -1,5 +1,6 @@
 from cctbx import crystal
 import cctbx.crystal.direct_space_asu
+from cctbx import xray
 from cctbx import sgtbx
 from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu import facet_analysis
@@ -7,6 +8,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import matrix
+from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 from boost import rational
 import sys
@@ -186,6 +188,32 @@ def exercise_neighbors_pair_generators(space_group_info, n_elements=10,
           asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym).inverse() * j_frac,
           sc[pair.j_seq].site)
 
+def exercise_is_symmetry_interaction():
+  for space_group_symbol in ["P1", "P4"]:
+    for shifts in flex.nested_loop((-2,-2,-2),(2,2,2),00000):
+      shifts = matrix.col(shifts)
+      structure = xray.structure(
+        crystal_symmetry=crystal.symmetry(
+          unit_cell=(10,10,20,90,90,90),
+          space_group_symbol=space_group_symbol),
+        scatterers=flex.xray_scatterer([
+          xray.scatterer(label="O", site=shifts+matrix.col((0,0,0))),
+          xray.scatterer(label="N", site=shifts+matrix.col((0.5,0.5,0))),
+          xray.scatterer(label="C", site=shifts+matrix.col((0.25,0.25,0)))]))
+      asu_mappings = structure.asu_mappings(buffer_thickness=7)
+      pair_generator = crystal.neighbors_simple_pair_generator(
+        asu_mappings=asu_mappings,
+        distance_cutoff=7)
+      direct_interactions = {}
+      for i_pair,pair in zip(count(),pair_generator):
+        if (not asu_mappings.is_symmetry_interaction(pair)):
+          key = (pair.i_seq,pair.j_seq)
+          assert direct_interactions.get(key, None) is None
+          direct_interactions[key] = 1
+      assert len(direct_interactions) == 2
+      assert direct_interactions[(0,2)] == 1
+      assert direct_interactions[(1,2)] == 1
+
 def exercise_all(flags, space_group_info):
   exercise_float_asu(space_group_info)
   exercise_asu_mappings(space_group_info)
@@ -199,6 +227,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  exercise_is_symmetry_interaction()
   print "OK"
 
 if (__name__ == "__main__"):
