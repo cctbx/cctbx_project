@@ -66,6 +66,9 @@ def exercise_bond():
   assert p.pair.j_sym == 0
   assert approx_equal(p.distance_ideal, 2)
   assert approx_equal(p.weight, 10)
+  assert p.as_direct_proxy().i_seqs == (0,1)
+  assert approx_equal(p.as_direct_proxy().distance_ideal, 2)
+  assert approx_equal(p.as_direct_proxy().weight, 10)
   sym_proxies = restraints.shared_bond_sym_proxy([p,p])
   for proxy in sym_proxies:
     assert approx_equal(proxy.distance_ideal, 2)
@@ -115,6 +118,10 @@ def exercise_bond():
   #
   sorted_proxies = restraints.bond_sorted_proxies(asu_mappings=asu_mappings)
   assert sorted_proxies.asu_mappings().is_locked()
+  sorted_proxies.push_back(proxy=sym_proxies[0])
+  assert sorted_proxies.proxies.size() == 0
+  assert sorted_proxies.sym_proxies.size() == 1
+  sorted_proxies = restraints.bond_sorted_proxies(asu_mappings=asu_mappings)
   assert not sorted_proxies.process(proxy=proxies[0])
   assert not sorted_proxies.process(proxy=sym_proxies[0])
   assert sorted_proxies.proxies.size() == 2

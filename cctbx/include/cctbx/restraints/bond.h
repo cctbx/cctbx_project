@@ -41,7 +41,6 @@ namespace cctbx { namespace restraints {
       weight(weight_)
     {}
 
-    // Not available in Python.
     bond_proxy
     as_direct_proxy() const
     {

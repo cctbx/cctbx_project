@@ -28,6 +28,7 @@ namespace cctbx { namespace restraints {
       bool
       process(ProxyType const& proxy)
       {
+        CCTBX_ASSERT(proxy.i_seqs[0] < proxy.i_seqs[1]);
         proxies.push_back(proxy);
         return false;
       }
@@ -41,10 +42,16 @@ namespace cctbx { namespace restraints {
           proxies.push_back(proxy.as_direct_proxy());
           return false;
         }
+        push_back(proxy);
+        return true;
+      }
+
+      void
+      push_back(SymProxyType const& proxy)
+      {
         sym_proxies.push_back(proxy);
         sym_active_flags[proxy.pair.i_seq] = true;
         sym_active_flags[proxy.pair.j_seq] = true;
-        return true;
       }
 
       std::size_t
