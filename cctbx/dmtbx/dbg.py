@@ -125,6 +125,8 @@ def test_triplet_invariants(sginfo, miller_indices_h, e_values, phases,
   print "mean weighted phase error: %.2f" % (mean_weighted_phase_error,)
   if (0 or verbose):
     tprs.dump_triplets(miller_indices_h)
+  if (0 or verbose):
+    tprs.weights_and_epsilon(sginfo, miller_indices_h)
   return tprs
 
 class simulated_data:
@@ -169,7 +171,8 @@ class simulated_data:
     print "number of structure factors:", e_values.size()
     erase_small(MillerIndices.H, e_values, e_min)
     print "number of structure factors:", e_values.size()
-    normalize_quasi_normalized(xtal.SgOps, MillerIndices.H, e_values)
+    if (0): # XXX
+      normalize_quasi_normalized(xtal.SgOps, MillerIndices.H, e_values)
     Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal, abs_F=0)
     dummy, phases = ampl_phase(Fcalc.F) # XXX use shared.arg()
     Fcalc.F = e_values
@@ -328,23 +331,23 @@ def recycle(SgInfo,
       sim.xtal.SgOps, sim.miller_indices.H, sim.e_values)
     if (0 or verbose):
       show_ampl_phases(sim.miller_indices.H, sim.e_values, random_phi)
-    for exponent in (2,3,4,5):
+    for exponent in [2]:
       new_phases = random_phi
       if (0): # XXX
         new_phases = sim.phases
       n_matches = []
       for cycle in xrange(n_cycles_per_trial):
-        print LookupSymbol, "exponent:", exponent,
-        print "i_trial:", i_trial, "cycle:", cycle
+        print LookupSymbol,
+        print "i_trial:", i_trial,
+        print "exponent:", exponent,
+        print "cycle:", cycle
         sys.stdout.flush()
         new_phases = raise_emap(
           sim.xtal, sim.e000,
           p1_H, sim.miller_indices.H, sim.e_values, new_phases,
           use_e000, zero_out_negative, exponent=exponent)
         use_emma = (cycle == 0 or cycle == n_cycles_per_trial-1)
-        if (not use_emma):
-          n_matches.append(-1)
-        else:
+        if (use_emma):
           if (0): # XXX
             new_phases = sim.phases
           map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
@@ -365,8 +368,10 @@ def recycle(SgInfo,
             print "No matches"
             n_matches.append(0)
           sys.stdout.flush()
-      print LookupSymbol, "exponent:", exponent,
-      print "i_trial:", i_trial, "n_matches:", n_matches
+      print LookupSymbol,
+      print "i_trial:", i_trial,
+      print "exponent:", exponent,
+      print "n_matches:", n_matches
       print
       sys.stdout.flush()
 
