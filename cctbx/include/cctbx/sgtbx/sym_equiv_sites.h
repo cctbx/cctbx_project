@@ -416,6 +416,7 @@ namespace cctbx { namespace sgtbx {
           principal_continuous_allowed_origin_shift_flags
             = no_continuous_allowed_shifts)
       {
+        CCTBX_ASSERT(others.size() > 0);
         init(
           reference_sites,
           others,
