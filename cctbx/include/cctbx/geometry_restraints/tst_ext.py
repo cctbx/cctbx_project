@@ -810,6 +810,7 @@ def exercise_planarity():
     assert eps_eq(l.residual(), l.lambda_min())
     assert eps_eq(l.center_of_mass(),
       (-5.7061446613913009, 0.11105869285849694, -0.42071347654387559))
+    assert eps_eq(l.center_of_mass(), l.sites.mean_weighted(weights=l.weights))
     assert eps_eq(l.residual_tensor(),
       (10.250312599815825, 8.7000194514224525, 10.265208176541265,
        2.7229147081229312, 10.19874296603952, 3.6750425846794936))

@@ -364,15 +364,7 @@ class structure(crystal.special_position_settings):
   def center_of_mass(self, atomic_weights=None):
     if (atomic_weights is None):
       atomic_weights = self.atomic_weights()
-    sites_cart = self.sites_cart()
-    sum_w = 0
-    sum_wc = matrix.col((0,0,0))
-    for i,site_cart in enumerate(sites_cart):
-      w = atomic_weights[i]
-      sum_w += w
-      sum_wc += matrix.col(site_cart) * w
-    if (sum_w == 0): return sum_wc
-    return sum_wc / sum_w
+    return self.sites_cart().mean_weighted(weights=atomic_weights)
 
   def n_parameters(self, gradient_flags):
     n_scatterers = self.scatterers().size()
