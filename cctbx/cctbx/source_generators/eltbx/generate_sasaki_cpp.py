@@ -6,6 +6,9 @@ import sys, os
 
 this = "cctbx.source_generators.eltbx.generate_sasaki_cpp"
 
+reference_tables_directory = libtbx.env.under_dist(
+  "cctbx", "reference/sasaki")
+
 def print_header(f):
   write_this_is_auto_generated(f, this)
   print >> f, """\
@@ -268,14 +271,13 @@ def print_sasaki_cpp(f, tables_combined):
 }}} // namespace cctbx::eltbx::sasaki"""
 
 def run(target_dir):
-  cctbx_dist = libtbx.env.dist_path("cctbx")
-  f = join_open(cctbx_dist, "reference/sasaki/fpwide.tbl", "r")
+  f = join_open(reference_tables_directory, "fpwide.tbl", "r")
   tables_wide = collect_tables(f, 0)
   f.close()
-  f = join_open(cctbx_dist, "reference/sasaki/fpk.tbl", "r")
+  f = join_open(reference_tables_directory, "fpk.tbl", "r")
   tables_k = collect_tables(f, 1)
   f.close()
-  f = join_open(cctbx_dist, "reference/sasaki/fpl.tbl", "r")
+  f = join_open(reference_tables_directory, "fpl.tbl", "r")
   tables_l = collect_tables(f, 1)
   f.close()
   tables_combined = combine_tables(tables_wide, tables_k, tables_l)
@@ -292,11 +294,6 @@ def run(target_dir):
     print_header(f)
     print_table_block(f, tables_combined, i_begin, i_end)
     f.close()
-
-def scons_command(env, target, source):
-  target_dir = os.path.split(str(target[0]))[0]
-  assert os.path.isdir(target_dir)
-  run(target_dir)
 
 if (__name__ == "__main__"):
   run(".")
