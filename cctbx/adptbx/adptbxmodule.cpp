@@ -217,6 +217,15 @@ namespace {
     CheckPositiveDefinite(adp);
   }
 
+  // expose computation of C.Tcond.Ct
+  af::double6
+  py_CondensedTensorTransformation(
+    const af::double9& C,
+    const af::double6& Tcond)
+  {
+    return MatrixLite::CondensedTensorTransformation(C, Tcond);
+  }
+
   // We need this wrapper only to make Visual C++ 6 happy.
   af::double3
   py_Eigensystem_vectors(const Eigensystem<double>& ES, std::size_t i) {
@@ -286,6 +295,9 @@ BOOST_PYTHON_MODULE_INIT(adptbx)
                     "CheckPositiveDefinite");
   this_module.def(py_CheckPositiveDefinite_adp,
                     "CheckPositiveDefinite");
+
+  this_module.def(py_CondensedTensorTransformation,
+                    "CondensedTensorTransformation");
 
   py_Eigensystem.def(constructor<>());
   py_Eigensystem.def(constructor<const af::double6&>());

@@ -6,6 +6,7 @@ from cctbx_boost import sgtbx
 from cctbx_boost.eltbx.caasf_wk1995 import CAASF_WK1995
 from cctbx_boost import adptbx
 from cctbx_boost import sftbx
+from cctbx.macro_mol import rotation_parameters
 
 def set_random_seed(seed):
   random.seed(seed)
@@ -104,6 +105,11 @@ def perturb_coordinates(ucell, sgops, x, sigma, vary_z_only = 0):
   assert have_position, "Cannot find position matching all constraints."
   return xps
 
+def random_rotate_ellipsoid(Ucart):
+  C = rotation_parameters.amore_alpha_beta_gamma_as_matrix(
+    [random.uniform(0,360) for i in xrange(3)]).elems
+  return adptbx.CondensedTensorTransformation(C, Ucart)
+
 class random_structure:
 
   def __init__(self, SgInfo, Elements,
@@ -125,9 +131,12 @@ class random_structure:
     for Elem, Pos in zip(Elements, Positions):
       n += 1
       SF = CAASF_WK1995(Elem)
-      U = 0.035 # XXX random Uiso
+      U = 0.01 + abs(random.gauss(0, 0.05))
       if (anisotropic_displacement_parameters):
-        U = adptbx.Uiso_as_Ustar(self.UnitCell, U)
+        U = [(U + abs(random.gauss(U, 0.05))) / 2
+          for i in xrange(3)] + [0.,0.,0.]
+        U = random_rotate_ellipsoid(U)
+        U = adptbx.Ucart_as_Ustar(self.UnitCell, U)
       Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
       Site.ApplySymmetry(
         self.UnitCell, self.SgInfo.SgOps(), min_distance, 0, 1)
