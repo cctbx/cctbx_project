@@ -13,8 +13,7 @@
 
 #include <stdexcept>
 
-// FIXES for broken compilers
-#include <boost/config.hpp>
+#include <cctbx/array_family/type_traits.h>
 
 // XXX
 #include <iostream>
@@ -28,6 +27,38 @@ namespace cctbx { namespace af {
   }
 
   struct reserve_flag {};
+  struct no_initialization_flag {};
+
+  namespace detail {
+
+    template <class ElementType>
+    inline
+    void destroy_array_element(ElementType* elem, false_type) {
+      elem->~ElementType();
+    }
+
+    template <class ElementType>
+    inline
+    void destroy_array_element(ElementType* elem, true_type) {
+    }
+
+    template <class ElementType>
+    inline
+    void destroy_array_elements(ElementType* first, ElementType* last,
+                                false_type) {
+      while (first != last) {
+        first->~ElementType();
+        ++first;
+      }
+    }
+
+    template <class ElementType>
+    inline
+    void destroy_array_elements(ElementType* first, ElementType* last,
+                                true_type) {
+    }
+
+  } // namespace detail
 
   // XXX use std::copy if compiler permits
   template <typename InputElementType,
@@ -53,29 +84,17 @@ namespace cctbx { namespace af {
     OutputElementType* result)
   {
     OutputElementType* p = result;
-    // XXX catch exceptions
-    while (first != last) new (p++) OutputElementType(*first++);
-    return result;
-  }
-
-  namespace detail {
-
-    template <class ElementType>
-    inline
-    void destroy_array_element(ElementType* elem) {
-      elem->~ElementType();
-    }
-
-    template <class ElementType>
-    inline
-    void destroy_array_elements(ElementType* first, ElementType* last) {
-      while (first != last) {
-        first->~ElementType();
-        ++first;
+    try {
+      for (; first != last; p++, first++) {
+        new (p) OutputElementType(*first);
       }
     }
-
-  } // namespace detail
+    catch (...) {
+      detail::destroy_array_elements(result, p);
+      throw;
+    }
+    return result;
+  }
 
 }} // namespace cctbx::af
 

@@ -11,11 +11,27 @@
 #ifndef CCTBX_ARRAY_FAMILY_TYPE_TRAITS_H
 #define CCTBX_ARRAY_FAMILY_TYPE_TRAITS_H
 
+namespace cctbx { namespace af {
+
+  struct false_type {};
+  struct true_type {};
+
+}}
+
 #include <boost/config.hpp>
 
 #if defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
 
 #define CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+
+namespace cctbx { namespace af {
+
+  template <typename T>
+  struct has_trivial_destructor {
+    typedef false_type value;
+  };
+
+}}
 
 #else
 
@@ -35,6 +51,29 @@ namespace boost {
     static const bool value = true;
   };
 }
+
+namespace cctbx { namespace af {
+
+  template <bool T>
+  struct bool_as_type;
+
+  template <>
+  struct bool_as_type<false> {
+    typedef false_type value;
+  };
+
+  template <>
+  struct bool_as_type<true> {
+    typedef true_type value;
+  };
+
+  template <typename T>
+  struct has_trivial_destructor {
+    typedef typename bool_as_type<
+      ::boost::has_trivial_destructor<T>::value>::value value;
+  };
+
+}}
 
 #endif // defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION)
 

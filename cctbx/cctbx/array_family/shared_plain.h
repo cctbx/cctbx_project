@@ -124,6 +124,15 @@ namespace cctbx { namespace af {
           m_handle(new handle_type(sz * element_size()))
       {}
 
+      // non-std
+      shared_plain(const size_type& sz, no_initialization_flag)
+        : m_is_weak_ref(false),
+          m_handle(new handle_type(sz * element_size()))
+      {
+        CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
+        m_handle->size = m_handle->capacity;
+      }
+
       shared_plain(const size_type& sz, const ElementType& x)
         : m_is_weak_ref(false),
           m_handle(new handle_type(sz * element_size()))
@@ -206,7 +215,7 @@ namespace cctbx { namespace af {
         return *this;
       }
 
-      // non-std, XXX const correctness?
+      // non-std, const correctness is lost
       handle_type* handle() const {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         return m_handle;
@@ -255,6 +264,12 @@ namespace cctbx { namespace af {
       shared_plain<ElementType>
       deep_copy() const {
         return shared_plain<ElementType>(begin(), end());
+      }
+
+      // non-std
+      shared_plain<ElementType>
+      weak_ref() const {
+        return shared_plain<ElementType>(*this, weak_ref_flag());
       }
 
 #     include <cctbx/array_family/push_back_etc.h>

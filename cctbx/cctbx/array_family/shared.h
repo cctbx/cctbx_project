@@ -29,12 +29,6 @@ namespace cctbx { namespace af {
       shared()
       {}
 
-      // non-std
-      explicit
-      shared(weak_ref_flag)
-        : base_class(weak_ref_flag())
-      {}
-
       explicit
       shared(const size_type& sz)
         : base_class(sz)
@@ -43,6 +37,11 @@ namespace cctbx { namespace af {
       // non-std
       shared(const size_type& sz, reserve_flag)
         : base_class(sz, reserve_flag())
+      {}
+
+      // non-std
+      shared(const size_type& sz, no_initialization_flag)
+        : base_class(sz, no_initialization_flag())
       {}
 
       shared(const size_type& sz, const ElementType& x)
@@ -81,6 +80,12 @@ namespace cctbx { namespace af {
       shared<ElementType>
       deep_copy() const {
         return shared<ElementType>(this->begin(), this->end());
+      }
+
+      // non-std
+      shared<ElementType>
+      weak_ref() const {
+        return shared<ElementType>(*this, weak_ref_flag());
       }
   };
 

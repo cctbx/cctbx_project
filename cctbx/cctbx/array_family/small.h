@@ -37,6 +37,11 @@ namespace cctbx { namespace af {
         : base_class(sz, reserve_flag())
       {}
 
+      // non-std
+      small(const size_type& sz, no_initialization_flag)
+        : base_class(sz, no_initialization_flag())
+      {}
+
       small(const size_type& sz, const ElementType& x)
         : base_class(sz, x)
       {}
