@@ -82,6 +82,12 @@ def exercise_bond():
   for proxy in proxies:
     assert approx_equal(proxy.weight, 12)
     proxy.weight = 1
+  tab = restraints.extract_bond_params(
+    n_seq=2, bond_simple_proxies=proxies)
+  assert tab[0].keys() == [1]
+  assert approx_equal(tab[0].values()[0].distance_ideal, 3.5)
+  assert approx_equal(tab[0].values()[0].weight, 1)
+  assert tab[1].keys() == []
   assert approx_equal(restraints.bond_deltas(
     sites_cart=sites_cart,
     proxies=proxies), [-0.241657386774]*2)
@@ -202,6 +208,13 @@ def exercise_bond():
   assert approx_equal(gradient_array,
     [(5.1354626519124107, 5.1354626519124107, 5.1354626519124107),
      (-5.1354626519124107, -5.1354626519124107, -5.1354626519124107)])
+  #
+  pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  assert pair_asu_table.table()[0].keys() == []
+  restraints.add_pairs(
+    pair_asu_table=pair_asu_table,
+    bond_simple_proxies=proxies)
+  assert pair_asu_table.table()[0].keys() == [1]
 
 def exercise_repulsion():
   p = restraints.repulsion_simple_proxy(

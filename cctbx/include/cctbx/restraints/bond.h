@@ -205,6 +205,28 @@ namespace cctbx { namespace restraints {
   };
 
   inline
+  bond_params_table
+  extract_bond_params(
+    std::size_t n_seq,
+    af::const_ref<bond_simple_proxy> const& bond_simple_proxies)
+  {
+    bond_params_table tab(n_seq);
+    af::ref<bond_params_dict> tab_ref = tab.ref();
+    for(std::size_t i_proxy=0;i_proxy<bond_simple_proxies.size();i_proxy++) {
+      af::tiny<unsigned, 2> const& i_seqs=bond_simple_proxies[i_proxy].i_seqs;
+      CCTBX_ASSERT(i_seqs[0] < tab_ref.size());
+      CCTBX_ASSERT(i_seqs[1] < tab_ref.size());
+      if (i_seqs[0] < i_seqs[1]) {
+        tab_ref[i_seqs[0]][i_seqs[1]] = bond_simple_proxies[i_proxy];
+      }
+      else {
+        tab_ref[i_seqs[1]][i_seqs[0]] = bond_simple_proxies[i_proxy];
+      }
+    }
+    return tab;
+  }
+
+  inline
   af::shared<double>
   bond_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
