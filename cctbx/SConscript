@@ -16,8 +16,10 @@ env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
-  CPPPATH=env_etc.cctbx_common_includes,
 )
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.cctbx_common_includes)
 envlm = env.Copy(
   LIBS=env_etc.libm
 )
@@ -100,12 +102,13 @@ SConscript("cctbx/source_generators/eltbx/SConscript")
 SConscript("examples/SConscript")
 
 if (not env_etc.no_boost_python):
-  Import("env_boost_python_ext")
+  Import("env_no_includes_boost_python_ext")
 
-  env_cctbx_boost_python_ext = env_boost_python_ext.Copy()
-  env_cctbx_boost_python_ext.Replace(
-    CPPPATH=env_etc.cctbx_common_includes + [env_etc.python_include])
+  env_cctbx_boost_python_ext = env_no_includes_boost_python_ext.Copy()
   env_cctbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
+  env_etc.include_registry.append(
+    env=env_cctbx_boost_python_ext,
+    paths=env_etc.cctbx_common_includes + [env_etc.python_include])
   Export("env_cctbx_boost_python_ext")
 
   env_cctbx_boost_python_ext.Command(

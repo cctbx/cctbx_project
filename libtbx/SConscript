@@ -27,6 +27,9 @@ env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.touch_init = touch_init
 env_etc.norm_join = norm_join
 
+env_etc.include_registry = libtbx.config.include_registry() \
+  .scan_boost(flag=libtbx.config.build_options.scan_boost)
+
 compiler = libtbx.config.build_options.compiler
 if (sys.platform == "win32"):
   env_etc.compiler = "win32_cl"

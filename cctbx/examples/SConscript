@@ -1,11 +1,13 @@
 Import("env_base", "env_etc")
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
-  CPPPATH=["."] + env_etc.cctbx_common_includes,
 )
 env.Append(LIBPATH=["#libtbx"])
 env.Prepend(LIBS=["cctbx"])
 env.Append(LIBS=env_etc.libm)
+env_etc.include_registry.append(
+  env=env,
+  paths=["."] + env_etc.cctbx_common_includes)
 env.Program(target="getting_started",
             source="getting_started.cpp")
 env.Program(target="convert_ccp4_symop_lib",

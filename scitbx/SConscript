@@ -18,11 +18,12 @@ SConscript("fftpack/timing/SConscript")
 SConscript("lbfgs/SConscript")
 
 if (not env_etc.no_boost_python):
-  Import("env_boost_python_ext")
-  env_scitbx_boost_python_ext = env_boost_python_ext.Copy()
-  env_scitbx_boost_python_ext.Replace(
-    CPPPATH=env_etc.scitbx_common_includes + [env_etc.python_include])
+  Import("env_no_includes_boost_python_ext")
+  env_scitbx_boost_python_ext = env_no_includes_boost_python_ext.Copy()
   env_scitbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
+  env_etc.include_registry.append(
+    env=env_scitbx_boost_python_ext,
+    paths=env_etc.scitbx_common_includes + [env_etc.python_include])
   Export("env_scitbx_boost_python_ext")
 
   env_scitbx_boost_python_ext.Command(
