@@ -15,11 +15,7 @@ unalias grep
 unalias ls
 unalias mkdir
 
-set pythonhome_was_defined=0
-if ($?PYTHONHOME) then
-  set pythonhome_was_defined=1
-  unsetenv PYTHONHOME
-endif
+unsetenv PYTHONHOME
 
 if (-f "$sources/TAG") then
   echo "Build tag:"
@@ -187,24 +183,6 @@ if (-f "$test_py") then
   set cmd="python $test_py"
   echo "$cmd"
   eval $cmd
-endif
-
-if ($pythonhome_was_defined != 0) then
-  echo ""
-  echo "####################"
-  echo "     \!\!\!\!\!\!\!\!\!       "
-  echo "     ATTENTION        "
-  echo "     \!\!\!\!\!\!\!\!\!       "
-  echo "####################"
-  echo "PYTHONHOME conflict\!"
-  echo "####################"
-  echo "This $bundle installation will work only if the PYTHONHOME"
-  echo "environment variable is *not* defined. Therefore the"
-  echo "PYTHONHOME variable will be undefined each time this"
-  echo "$bundle installation is initialized. Software packages"
-  echo "that require PYTHONHOME (such as the MGL Tools) cannot be"
-  echo "used in the same shell. Please open a separate shell for"
-  echo "each application."
 endif
 
 cat << EOT
