@@ -2,6 +2,7 @@
 #define CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
 
 #include <cctbx/geometry_restraints/utils.h>
+#include <scitbx/array_family/sort.h>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -20,6 +21,27 @@ namespace cctbx { namespace geometry_restraints {
       weights(weights_)
     {
       CCTBX_ASSERT(weights.size() == i_seqs.size());
+    }
+
+    //! Sorts i_seqs such that i_seq[0] < i_seq[2].
+    planarity_proxy
+    sort_i_seqs() const
+    {
+      af::const_ref<std::size_t> i_seqs_cr = i_seqs.const_ref();
+      af::const_ref<double> weights_cr = weights.const_ref();
+      CCTBX_ASSERT(i_seqs_cr.size() == weights_cr.size());
+      planarity_proxy result;
+      result.i_seqs.reserve(i_seqs_cr.size());
+      result.weights.reserve(i_seqs_cr.size());
+      af::shared<std::size_t> perm = af::sort_permutation(i_seqs_cr);
+      af::const_ref<std::size_t> perm_cr = perm.const_ref();
+      for(std::size_t i=0;i<perm_cr.size();i++) {
+        result.i_seqs.push_back(i_seqs_cr[perm_cr[i]]);
+      }
+      for(std::size_t i=0;i<perm_cr.size();i++) {
+        result.weights.push_back(weights_cr[perm_cr[i]]);
+      }
+      return result;
     }
 
     //! Indices into array of sites.
