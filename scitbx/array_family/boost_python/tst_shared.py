@@ -37,8 +37,11 @@ def exercise_stl_vector_unsigned():
   assert native(a) == [(1, 2), (2, 3)]
   del a[:1]
   assert native(a) == [(2, 3)]
+  b = a.deep_copy()
+  assert native(b) == [(2, 3)]
   a.clear()
   assert a.size() == 0
+  assert b.size() == 1
   a = shared.stl_vector_unsigned([[1,2],[2,3]])
   assert native(a) == [(1, 2), (2, 3)]
   a = shared.stl_vector_unsigned(0)
