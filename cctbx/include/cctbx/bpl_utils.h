@@ -15,6 +15,7 @@
 
 namespace cctbx { namespace bpl_utils {
 
+  void throw_index_out_of_range();
   boost::python::tuple tuple_from_python_list_or_tuple(PyObject* p);
 }}
 

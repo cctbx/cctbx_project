@@ -16,7 +16,6 @@
 #include <ctype.h> // cannot use cctype b/o non-conforming compilers
 #include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/groups.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
   namespace lattice {
@@ -102,7 +101,7 @@ namespace cctbx { namespace sgtbx {
     };
 
     bool FirstIsShorter(const af::int3& a, const af::int3& b) {
-      rangei(3) {
+      for(std::size_t i=0;i<3;i++) {
         if (a[i]) {
           if (math::abs(a[i]) > math::abs(b[i])) return false;
           return true;
@@ -144,7 +143,7 @@ namespace cctbx { namespace sgtbx {
 
       std::sort(TLT->begin(), TLT->end(), CmpTrVec());
 
-      rangei(3) {
+      for(std::size_t i=0;i<3;i++) {
         TrVec V(TBF);
         V[i] = TBF;
         TLT->push_back(V);

@@ -15,5 +15,6 @@ class write_makefiles(makefile_generator.write_makefiles):
 
     self.boost_python_modules = {
       "dmtbx": (("dmtbxmodule",),
-                ("sgtbx", "uctbx", "cctbx_misc", "cctbx_bpl1")),
+                ("cctbx_miller", "sgtbx", "uctbx",
+                 "cctbx_misc", "cctbx_bpl1")),
     }

@@ -8,10 +8,102 @@
      Jul 2002: Created (R.W. Grosse-Kunstleve)
  */
 
+#include <cctbx/miller/sym_equiv.h>
+#include <cctbx/miller/asu.h>
 #include <cctbx/miller/build.h>
 #include <cctbx/miller/join.h>
 
 namespace cctbx { namespace miller {
+
+  SymEquivIndices::SymEquivIndices(
+    sgtbx::SpaceGroup const& sgops,
+    Index const& h_in)
+  : m_TBF(sgops.TBF()),
+    m_OrderP(sgops.OrderP()),
+    m_HT_Restriction(-1)
+  {
+    using namespace sgtbx;
+    int iInv;
+    for(iInv=0;iInv<sgops.fInv();iInv++) {
+      int iSMx;
+      for(iSMx=0;iSMx<sgops.nSMx();iSMx++) {
+        RTMx M = sgops(0, iInv, iSMx);
+        Index HR = h_in * M.Rpart();
+        bool found = false;
+        for(int i=0;i<N();i++) {
+          if (m_List[i].HR() == HR) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          add(SymEquivIndex(HR, HT_mod_1(h_in, M.Tpart()), m_TBF, false));
+        }
+      }
+    }
+    cctbx_assert((sgops.nSMx() * sgops.fInv()) % N() == 0);
+    cctbx_assert(!isCentric() || N() % 2 == 0);
+  }
+
+  void SymEquivIndices::add(SymEquivIndex const& SEI)
+  {
+    m_List.push_back(SEI);
+    if (m_List.size() > 1) {
+      if (SEI.HR() == -m_List[0].HR()) {
+        cctbx_assert(m_HT_Restriction < 0 || m_HT_Restriction == SEI.HT());
+        m_HT_Restriction = SEI.HT();
+      }
+    }
+  }
+
+  SymEquivIndex
+  SymEquivIndices::operator()(int iMate, int iList) const
+  {
+    if (   iMate < 0 || iMate >= fMates(true)
+        || iList < 0 || iList >= N()) {
+      throw error_index();
+    }
+    return m_List[iList].Mate(iMate);
+  }
+
+  SymEquivIndices::iIL_decomposition
+  SymEquivIndices::decompose_iIL(int iIL) const
+  {
+    // iIL = iMate * N + iList
+    if (iIL < 0 || iIL >= M(true)) {
+      throw error_index();
+    }
+    return iIL_decomposition(iIL / N(), iIL % N());
+  }
+
+  SymEquivIndex
+  SymEquivIndices::operator()(int iIL) const
+  {
+    iIL_decomposition d = decompose_iIL(iIL);
+    return operator()(d.iMate, d.iList);
+  }
+
+  af::shared<SymEquivIndex>
+  SymEquivIndices::p1_listing(bool friedel_flag) const
+  {
+    af::shared<SymEquivIndex> result;
+    if (!friedel_flag) {
+      result.reserve(N());
+      for(std::size_t i=0;i<N();i++) result.push_back(m_List[i]);
+    }
+    else {
+      if (isCentric()) result.reserve(N() / 2);
+      else             result.reserve(N());
+      for(std::size_t i=0;i<M(true);i++) {
+        SymEquivIndex h_eq = operator()(i);
+        if (sgtbx::isInReferenceReciprocalSpaceASU_1b(h_eq.H())) {
+          result.push_back(h_eq);
+        }
+      }
+    }
+    cctbx_assert(result.size() == result.capacity());
+    return result;
+  }
 
   void IndexGenerator::InitializeLoop(Index const& ReferenceHmax)
   {
@@ -131,6 +223,65 @@ namespace cctbx { namespace miller {
       }
     }
     return m_previous;
+  }
+
+  AsymIndex::AsymIndex(
+    const sgtbx::SpaceGroup& SgOps,
+    const sgtbx::ReciprocalSpaceASU& ASU,
+    const Index& H)
+  {
+    m_TBF = SgOps.TBF();
+    m_FriedelFlag = false;
+    for(int iInv=0;iInv<SgOps.fInv();iInv++) {
+      for(int iSMx=0;iSMx<SgOps.nSMx();iSMx++) {
+        sgtbx::RTMx M = SgOps(0, iInv, iSMx);
+        m_HR = H * M.Rpart();
+        if (ASU.isInASU(m_HR)) {
+          m_HT = sgtbx::HT_mod_1(H, M.Tpart());
+          return;
+        }
+      }
+    }
+    cctbx_assert(!SgOps.isCentric());
+    for(int iSMx=0;iSMx<SgOps.nSMx();iSMx++) {
+      sgtbx::RTMx M = SgOps(0, 0, iSMx);
+      m_HR = H * M.Rpart();
+      if (ASU.isInASU(-m_HR)) {
+        m_HT = sgtbx::HT_mod_1(H, M.Tpart());
+        m_FriedelFlag = true;
+        return;
+      }
+    }
+    throw cctbx_internal_error();
+  }
+
+  AsymIndex::AsymIndex(SymEquivIndices const& SEMI)
+  {
+    m_TBF = SEMI[0].TBF();
+    int iSelected = 0;
+    Index SelectedH = SEMI[0].HR();
+    m_FriedelFlag = false;
+    for(int iList=0;iList<SEMI.N();iList++) {
+      const SymEquivIndex& SEI = SEMI[iList];
+      Index TrialH = SEI.HR();
+      for(int iMate = 0; iMate < SEMI.fMates(true); iMate++) {
+        if (iMate) TrialH = -TrialH;
+        if (TrialH < SelectedH) {
+          iSelected = iList;
+          SelectedH = TrialH;
+          m_FriedelFlag = (iMate != 0);
+        }
+      }
+    }
+    m_HR = SEMI[iSelected].HR();
+    m_HT = SEMI[iSelected].HT();
+  }
+
+  AsymIndex::AsymIndex(
+    const sgtbx::SpaceGroup& SgOps,
+    const Index& H)
+  {
+    *this = AsymIndex(SymEquivIndices(SgOps, H));
   }
 
   join_sets::join_sets(

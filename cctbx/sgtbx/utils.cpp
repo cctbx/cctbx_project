@@ -15,13 +15,12 @@
 #include <cctbx/math/utils.h>
 #include <cctbx/sgtbx/utils.h>
 #include <cctbx/sgtbx/math.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 
   int ChangeBaseFactor(const int *Old, int OldBF, int *New, int NewBF, int n)
   {
-    rangei(n) {
+    for(std::size_t i=0;i<n;i++) {
           New[i] = Old[i] * NewBF;
       if (New[i] %  OldBF) return -1;
           New[i] /= OldBF;

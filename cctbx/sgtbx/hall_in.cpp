@@ -14,7 +14,6 @@
 #include <string.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/rotation_matrices.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
   namespace hall {
@@ -120,7 +119,7 @@ namespace cctbx { namespace sgtbx {
         { 6, '\0', &R_6_001 },
       };
       const int n = (sizeof TabRMx / sizeof (*TabRMx));
-      rangei(n) {
+      for(std::size_t i=0;i<n;i++) {
         if (   TabRMx[i].Order == AbsOrder
             && TabRMx[i].DirCode == DirCode) {
           RotMx R;

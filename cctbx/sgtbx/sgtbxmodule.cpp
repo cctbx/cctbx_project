@@ -19,9 +19,9 @@
 #include <cctbx/sgtbx/miller_asu.h>
 #include <cctbx/sgtbx/seminvariant.h>
 #include <boost/python/cross_module.hpp>
+#include <cctbx/bpl_utils.h>
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
-#include <cctbx/hendrickson_lattman_bpl.h>
 
 using namespace cctbx;
 using namespace cctbx::sgtbx;
@@ -29,12 +29,6 @@ using namespace cctbx::sgtbx;
 namespace {
 
 # include <cctbx/basic/from_bpl_import.h>
-
-  void throw_index_out_of_range()
-  {
-    PyErr_SetString(PyExc_IndexError, "Index out of range.");
-    boost::python::throw_error_already_set();
-  }
 
   int rational_numerator(const rational& r) {
     return r.numerator();
@@ -161,7 +155,7 @@ namespace {
   }
   RTMx SpaceGroup_getitem(const SpaceGroup& SgOps, std::size_t key)
   {
-    if (key >= SgOps.OrderZ()) throw_index_out_of_range();
+    if (key >= SgOps.OrderZ()) bpl_utils::throw_index_out_of_range();
     return SgOps(key);
   }
 
@@ -306,105 +300,11 @@ namespace {
     return phinfo.nearest_valid_phase(phi);
   }
 
-  double miller_SymEquivIndex_HT_angle_0(
-    miller::SymEquivIndex const& SEI)
-  {
-    return SEI.HT_angle();
-  }
-
-  miller::SymEquivIndex miller_SymEquivIndex_Mate_0(
-    const miller::SymEquivIndex& SEI)
-  {
-    return SEI.Mate();
-  }
-
-  double miller_SymEquivIndex_phase_eq_1(
-    const miller::SymEquivIndex& SEI,
-    double phi_in)
-  {
-    return SEI.phase_eq(phi_in);
-  }
-  double miller_SymEquivIndex_phase_eq_2(
-    const miller::SymEquivIndex& SEI,
-    double phi_in,
-    bool deg)
-  {
-    return SEI.phase_eq(phi_in, deg);
-  }
-  double miller_SymEquivIndex_phase_in_1(
-    const miller::SymEquivIndex& SEI,
-    double phi_eq)
-  {
-    return SEI.phase_in(phi_eq);
-  }
-  double miller_SymEquivIndex_phase_in_2(
-    const miller::SymEquivIndex& SEI,
-    double phi_eq,
-    bool deg)
-  {
-    return SEI.phase_in(phi_eq, deg);
-  }
-  std::complex<double>
-  miller_SymEquivIndex_complex_eq(
-    const miller::SymEquivIndex& SEI,
-    const std::complex<double>& f_in)
-  {
-    return SEI.complex_eq(f_in);
-  }
-  std::complex<double>
-  miller_SymEquivIndex_complex_in(
-    const miller::SymEquivIndex& SEI,
-    const std::complex<double>& f_eq)
-  {
-    return SEI.complex_in(f_eq);
-  }
-  hendrickson_lattman<double>
-  miller_SymEquivIndex_hl_eq(
-    miller::SymEquivIndex const& SEI,
-    hendrickson_lattman<double> const& coeff_in)
-  {
-    return SEI.hl_eq(coeff_in);
-  }
-  hendrickson_lattman<double>
-  miller_SymEquivIndex_hl_in(
-    miller::SymEquivIndex const& SEI,
-    hendrickson_lattman<double> const& coeff_eq)
-  {
-    return SEI.hl_in(coeff_eq);
-  }
-
-  miller::SymEquivIndex
-  SymEquivMillerIndices_getitem(const SymEquivMillerIndices& SEMI,
-                                std::size_t key) {
-    if (key >= SEMI.N()) throw_index_out_of_range();
-    return SEMI[key];
-  }
-  miller::SymEquivIndex
-  SymEquivMillerIndices_call_1(const SymEquivMillerIndices& SEMI,
-                               int iIL) {
-    return SEMI(iIL);
-  }
-  miller::SymEquivIndex
-  SymEquivMillerIndices_call_2(const SymEquivMillerIndices& SEMI,
-                               int iInv, int iList) {
-    return SEMI(iInv, iList);
-  }
-  bool
-  SymEquivMillerIndices_isValidPhase_2(const SymEquivMillerIndices& SEMI,
-                                       double phi, bool deg) {
-    return SEMI.isValidPhase(phi, deg);
-  }
-  bool
-  SymEquivMillerIndices_isValidPhase_1(const SymEquivMillerIndices& SEMI,
-                                       double phi) {
-    return SEMI.isValidPhase(phi);
-  }
-
   RTMx WyckoffPosition_getitem(const WyckoffPosition& WP,
                                std::size_t key)
   {
     WP.CheckExpanded();
-    if (key >= WP.M()) throw_index_out_of_range();
+    if (key >= WP.M()) bpl_utils::throw_index_out_of_range();
     return WP(key);
   }
 
@@ -420,7 +320,7 @@ namespace {
   WyckoffPosition WyckoffTable_getitem(const WyckoffTable& WTab,
                                        std::size_t key)
   {
-    if (key >= WTab.N()) throw_index_out_of_range();
+    if (key >= WTab.N()) bpl_utils::throw_index_out_of_range();
     return WTab(key);
   }
 
@@ -482,7 +382,7 @@ namespace {
   RTMx SiteSymmetry_getitem(const SiteSymmetry& SS,
                             std::size_t key)
   {
-    if (key >= SS.M()) throw_index_out_of_range();
+    if (key >= SS.M()) bpl_utils::throw_index_out_of_range();
     return SS(key);
   }
 
@@ -490,7 +390,7 @@ namespace {
   SymEquivCoordinates_getitem(const SymEquivCoordinates<double>& SymEqCoor,
                               std::size_t key)
   {
-    if (key >= SymEqCoor.M()) throw_index_out_of_range();
+    if (key >= SymEqCoor.M()) bpl_utils::throw_index_out_of_range();
     return SymEqCoor(key);
   }
 
@@ -576,12 +476,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   python::export_converters(py_RTMx);
   class_builder<ChOfBasisOp>
   py_ChOfBasisOp(this_module, "ChOfBasisOp");
-  class_builder<miller::SymEquivIndex>
-  py_miller_SymEquivIndex(this_module, "miller_SymEquivIndex");
   class_builder<PhaseInfo>
   py_PhaseInfo(this_module, "PhaseInfo");
-  class_builder<SymEquivMillerIndices>
-  py_SymEquivMillerIndices(this_module, "SymEquivMillerIndices");
+  python::export_converters(py_PhaseInfo);
   class_builder<SpaceGroup>
   py_SpaceGroup(this_module, "SpaceGroup");
   python::export_converters(py_SpaceGroup);
@@ -613,18 +510,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   class_builder<ReciprocalSpaceASU>
   py_ReciprocalSpaceASU(this_module, "ReciprocalSpaceASU");
   python::export_converters(py_ReciprocalSpaceASU);
-  class_builder<miller::IndexTableLayoutAdaptor>
-  py_miller_IndexTableLayoutAdaptor(this_module,
-    "miller_IndexTableLayoutAdaptor");
-  class_builder<miller::AsymIndex>
-  py_miller_AsymIndex(this_module, "miller_AsymIndex");
   class_builder<StructureSeminvariant>
   py_StructureSeminvariant(this_module, "StructureSeminvariant");
-
-  py_miller_IndexTableLayoutAdaptor.declare_base(
-    py_miller_SymEquivIndex, python::without_downcast);
-  py_miller_AsymIndex.declare_base(
-    py_miller_SymEquivIndex, python::without_downcast);
 
   py_rational.def(constructor<>());
   py_rational.def(constructor<int>());
@@ -730,36 +617,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_ChOfBasisOp.def(ChOfBasisOp_apply_RTMx, "apply");
   py_ChOfBasisOp.def(ChOfBasisOp_apply_UnitCell, "apply");
 
-  py_miller_SymEquivIndex.def(constructor<>());
-  py_miller_SymEquivIndex.def(
-    constructor<const miller::Index&, int, int, bool>());
-  py_miller_SymEquivIndex.def(&miller::SymEquivIndex::H, "H");
-  py_miller_SymEquivIndex.def(&miller::SymEquivIndex::HR, "HR");
-  py_miller_SymEquivIndex.def(&miller::SymEquivIndex::HT, "HT");
-  py_miller_SymEquivIndex.def(&miller::SymEquivIndex::TBF, "TBF");
-  py_miller_SymEquivIndex.def(&miller::SymEquivIndex::HT_angle, "HT_angle");
-  py_miller_SymEquivIndex.def(miller_SymEquivIndex_HT_angle_0, "HT_angle");
-  py_miller_SymEquivIndex.def(
-    &miller::SymEquivIndex::FriedelFlag, "FriedelFlag");
-  py_miller_SymEquivIndex.def(miller_SymEquivIndex_Mate_0, "Mate");
-  py_miller_SymEquivIndex.def(&miller::SymEquivIndex::Mate, "Mate");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_phase_eq_1, "phase_eq");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_phase_eq_2, "phase_eq");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_phase_in_1, "phase_in");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_phase_in_2, "phase_in");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_complex_eq, "complex_eq");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_complex_in, "complex_in");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_hl_eq, "hl_eq");
-  py_miller_SymEquivIndex.def(
-    miller_SymEquivIndex_hl_in, "hl_in");
-
   py_PhaseInfo.def(constructor<>());
   py_PhaseInfo.def(
     constructor<SpaceGroup const&, miller::Index const&>());
@@ -777,26 +634,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_PhaseInfo.def(PhaseInfo_isValidPhase_1, "isValidPhase");
   py_PhaseInfo.def(&PhaseInfo::nearest_valid_phase, "nearest_valid_phase");
   py_PhaseInfo.def(PhaseInfo_nearest_valid_phase_1, "nearest_valid_phase");
-
-  py_SymEquivMillerIndices.def(constructor<>());
-  py_SymEquivMillerIndices.def(
-    &SymEquivMillerIndices::getPhaseRestriction, "getPhaseRestriction");
-  py_SymEquivMillerIndices.def(
-    &SymEquivMillerIndices::isCentric, "isCentric");
-  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "N");
-  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::M, "M");
-  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::fMates, "fMates");
-  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::epsilon, "epsilon");
-  py_SymEquivMillerIndices.def(&SymEquivMillerIndices::N, "__len__");
-  py_SymEquivMillerIndices.def(SymEquivMillerIndices_getitem, "__getitem__");
-  py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_1, "__call__");
-  py_SymEquivMillerIndices.def(SymEquivMillerIndices_call_2, "__call__");
-  py_SymEquivMillerIndices.def(
-    &SymEquivMillerIndices::isValidPhase, "isValidPhase");
-  py_SymEquivMillerIndices.def(
-    SymEquivMillerIndices_isValidPhase_2, "isValidPhase");
-  py_SymEquivMillerIndices.def(
-    SymEquivMillerIndices_isValidPhase_1, "isValidPhase");
 
   py_SpaceGroup.def(constructor<>());
   py_SpaceGroup.def(constructor<parse_string&>());
@@ -844,8 +681,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroup.def(SpaceGroup_epsilon_s, "epsilon");
   py_SpaceGroup.def(SpaceGroup_multiplicity_a, "multiplicity");
   py_SpaceGroup.def(SpaceGroup_multiplicity_s, "multiplicity");
-  py_SpaceGroup.def(&SpaceGroup::getEquivMillerIndices,
-                                "getEquivMillerIndices");
   py_SpaceGroup.def(SpaceGroup_CheckMetricalMatrix_1, "CheckMetricalMatrix");
   py_SpaceGroup.def(&SpaceGroup::CheckMetricalMatrix, "CheckMetricalMatrix");
   py_SpaceGroup.def(SpaceGroup_CheckUnitCell_1, "CheckUnitCell");
@@ -1033,27 +868,6 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_ReciprocalSpaceASU.def(
     &ReciprocalSpaceASU::isReferenceASU, "isReferenceASU");
   py_ReciprocalSpaceASU.def(&ReciprocalSpaceASU::isInASU, "isInASU");
-
-  py_miller_IndexTableLayoutAdaptor.def(constructor<>());
-  py_miller_IndexTableLayoutAdaptor.def(
-    &miller::IndexTableLayoutAdaptor::H, "H");
-  py_miller_IndexTableLayoutAdaptor.def(
-    &miller::IndexTableLayoutAdaptor::iColumn, "iColumn");
-
-  py_miller_AsymIndex.def(constructor<>());
-  py_miller_AsymIndex.def(constructor<
-    const SpaceGroup&,
-    const ReciprocalSpaceASU&,
-    const miller::Index&>());
-  py_miller_AsymIndex.def(constructor<
-    const SpaceGroup&,
-    const miller::Index&>());
-  py_miller_AsymIndex.def(constructor<
-    const SymEquivMillerIndices&>());
-  py_miller_AsymIndex.def(
-    &miller::AsymIndex::one_column, "one_column");
-  py_miller_AsymIndex.def(
-    &miller::AsymIndex::two_column, "two_column");
 
   py_StructureSeminvariant.def(constructor<>());
   py_StructureSeminvariant.def(constructor<const SpaceGroup&>());

@@ -11,7 +11,6 @@
  */
 
 #include <cctbx/uctbx.h>
-#include <cctbx/basic/define_range.h>
 
 namespace { // Helper functions in anonymous namespace.
 
@@ -53,7 +52,7 @@ namespace { // Helper functions in anonymous namespace.
   ConstructMetricalMatrix(const af::double3& Len, const af::double3& cosAng)
   {
     af::double9 G;
-    rangei(3) G[i * 4] = Len[i] * Len[i];
+    for(std::size_t i=0;i<3;i++) G[i * 4] = Len[i] * Len[i];
     G[1] = G[3] = Len[0] * Len[1] * cosAng[2];
     G[2] = G[6] = Len[0] * Len[2] * cosAng[1];
     G[5] = G[7] = Len[1] * Len[2] * cosAng[0];
@@ -78,7 +77,7 @@ namespace cctbx { namespace uctbx {
                               + 2 * cos(alpha) * cos(beta) * cos(gamma))
      */
     double D = 1.;
-    rangei(3) D -= cosAng[i] * cosAng[i];
+    for(std::size_t i=0;i<3;i++) D -= cosAng[i] * cosAng[i];
     D += 2. * cosAng[0] * cosAng[1] * cosAng[2];
     if (D < 0.) throw corrupt_unit_cell_parameters;
 
@@ -221,7 +220,7 @@ namespace cctbx { namespace uctbx {
     uc_params ucp;
     if (reciprocal == false) ucp = uc_params(Len, Ang);
     else                     ucp = uc_params(R_Len, R_Ang);
-    rangei(3) ucp.Ang()[i] = rad_as_deg(ucp.Ang()[i]);
+    for(std::size_t i=0;i<3;i++) ucp.Ang()[i] = rad_as_deg(ucp.Ang()[i]);
     return ucp;
   }
 
@@ -329,7 +328,7 @@ namespace cctbx { namespace uctbx {
   UnitCell UnitCell::ChangeBasis(const af::double9& InvCBMxR, double RBF) const
   {
     af::double9 R = InvCBMxR;
-    if (RBF != 0.) rangei(9) R[i] /= RBF;
+    if (RBF != 0.) for(std::size_t i=0;i<9;i++) R[i] /= RBF;
     af::double9 RtGR = getRtGR(G, R);
     return UnitCell(RtGR);
   }

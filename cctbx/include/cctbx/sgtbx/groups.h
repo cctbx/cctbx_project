@@ -23,7 +23,7 @@
 #include <cctbx/sgtbx/change_basis.h>
 #include <cctbx/sgtbx/lattice_tr.h>
 #include <cctbx/sgtbx/utils.h>
-#include <cctbx/sgtbx/miller.h>
+#include <cctbx/sgtbx/phase_info.h>
 #include <cctbx/sgtbx/group_codes.h>
 #include <cctbx/uctbx.h>
 #include <cctbx/adptbx.h>
@@ -391,7 +391,7 @@ namespace cctbx { namespace sgtbx {
           index H is mapped onto itself by symmetry. This factor
           is used for "statistical averaging" and in direct methods
           formulae.<br>
-          See also: sgtbx::SymEquivIndices::epsilon()
+          See also: cctbx::miller::SymEquivIndices::epsilon()
        */
       int
       epsilon(const miller::Index& H) const;
@@ -400,11 +400,6 @@ namespace cctbx { namespace sgtbx {
        */
       af::shared<int>
       epsilon(const af::shared<miller::Index>& H) const;
-      //! Generate list of symmetrically equivalent reflections.
-      /*! See class SymEquivMillerIndices
-       */
-      SymEquivMillerIndices
-      getEquivMillerIndices(const miller::Index& H) const;
 
       //! Check if a unit cell is compatible with the symmetry operations.
       /*! This function is designed to work together with the UnitCell

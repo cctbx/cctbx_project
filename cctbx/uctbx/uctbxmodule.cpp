@@ -14,7 +14,6 @@
 #include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/uctbx.h>
-#include <cctbx/basic/define_range.h>
 
 using namespace cctbx;
 using namespace cctbx::uctbx;
@@ -38,7 +37,7 @@ BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
       boost::python::throw_error_already_set();
     }
     uc_params ucp = uc_params();
-    rangei(tup.size()) {
+    for(std::size_t i=0;i<tup.size();i++) {
       ucp[i] = from_python(tup[i].get(), python::type<double>());
     }
     return ucp;

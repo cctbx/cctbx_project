@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -61,7 +60,7 @@ namespace cctbx { namespace sgtbx {
     m_nSMx = 1;
     m_LTr.reset();
     m_InvT = TrVec(0);
-    rangei(m_SMx.max_size()) m_SMx[i] = RTMx(0, 0);
+    for(std::size_t i=0;i<m_SMx.max_size();i++) m_SMx[i] = RTMx(0, 0);
     m_SMx[0] = RTMx();
     m_isTidy = false;
   }
@@ -179,7 +178,7 @@ namespace cctbx { namespace sgtbx {
     if (mapping == 0) {
       throw error("Illegal symbol for centring type of cell.");
     }
-    rangei(mapping->nTrs) {
+    for(std::size_t i=0;i<mapping->nTrs;i++) {
       expandLTr(mapping->Trs[i]);
     }
     return mapping->nTrs;
@@ -217,7 +216,7 @@ namespace cctbx { namespace sgtbx {
     SpaceGroup tidy_rhs = rhs; tidy_rhs.makeTidy();
     if (tidy_lhs.m_InvT != tidy_rhs.m_InvT) return false;
     if (tidy_lhs.m_LTr.Vects() != tidy_rhs.m_LTr.Vects()) return false;
-    rangei(tidy_lhs.nSMx()) {
+    for(std::size_t i=0;i<tidy_lhs.nSMx();i++) {
       if (tidy_lhs[i] != tidy_rhs[i]) return false;
     }
     return true;

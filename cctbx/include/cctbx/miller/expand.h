@@ -25,7 +25,7 @@ namespace cctbx { namespace miller {
       number of unique symmetrically equivalent indices for
       a given centric index, only N/2 indices will be generated.
       <p>
-      See also: class SymEquivMillerIndices
+      See also: class SymEquivIndices
    */
   template <typename MillerIndexArrayType>
   void
@@ -36,8 +36,7 @@ namespace cctbx { namespace miller {
     MillerIndexArrayType& h_out)
   {
     for(std::size_t i_in = 0; i_in < h_in.size(); i_in++) {
-      sgtbx::SymEquivMillerIndices
-      h_seq = SgOps.getEquivMillerIndices(h_in[i_in]);
+      SymEquivIndices h_seq(SgOps, h_in[i_in]);
       af::shared<miller::SymEquivIndex>
       p1_listing = h_seq.p1_listing(friedel_flag);
       for (int i_eq = 0; i_eq < p1_listing.size(); i_eq++) {
@@ -65,8 +64,7 @@ namespace cctbx { namespace miller {
     cctbx_assert(h_in.size() == ampl_in.size() || ampl_in.size() == 0);
     cctbx_assert(h_in.size() == phase_in.size() || phase_in.size() == 0);
     for(std::size_t i_in = 0; i_in < h_in.size(); i_in++) {
-      sgtbx::SymEquivMillerIndices
-      h_seq = SgOps.getEquivMillerIndices(h_in[i_in]);
+      SymEquivIndices h_seq(SgOps, h_in[i_in]);
       af::shared<miller::SymEquivIndex>
       p1_listing = h_seq.p1_listing(friedel_flag);
       for (int i_eq = 0; i_eq < p1_listing.size(); i_eq++) {

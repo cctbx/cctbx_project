@@ -17,7 +17,6 @@
 #include <cctbx/array_family/tiny.h>
 #include <cctbx/sgtbx/math.h>
 #include <cctbx/sgtbx/utils.h>
-#include <cctbx/basic/define_range.h>
 
 namespace cctbx { namespace sgtbx {
 
