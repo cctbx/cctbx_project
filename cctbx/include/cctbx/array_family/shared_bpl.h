@@ -12,6 +12,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 #define CCTBX_ARRAY_FAMILY_SHARED_BPL_H
 
+#include <cctbx/constants.h>
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/array_family/operator_functors.h>
 #include <cctbx/array_family/generic_array_functors.h>
@@ -21,6 +22,11 @@ namespace cctbx { namespace af {
 
   inline void raise_IndexError() {
     PyErr_SetString(PyExc_IndexError, "index out of range");
+    boost::python::throw_error_already_set();
+  }
+
+  inline void raise_incompatible_sizes() {
+    PyErr_SetString(PyExc_RuntimeError, "incompatible array sizes");
     boost::python::throw_error_already_set();
   }
 
@@ -46,49 +52,44 @@ namespace cctbx { namespace af {
     shared<ElementType> data_;
   };
 
-  // A wrapper is used to define additional constructors.
   template <typename ElementType>
   struct shared_wrapper : shared<ElementType>
   {
     typedef ElementType e_t;
-    typedef af::shared<ElementType> sh_t;
-    typedef typename af::integer_to_float<ElementType>::float_type f_e_t;
+    typedef shared<ElementType> sh_t;
+    typedef typename integer_to_float<ElementType>::float_type f_e_t;
 
     // Tell the compiler how to convert a base class object to
     // this wrapper object.
-    shared_wrapper(PyObject*,
-                   const shared<ElementType>& v)
-      : shared<ElementType>(v)
+    shared_wrapper(PyObject*, sh_t const& v)
+      : sh_t(v)
     {}
     shared_wrapper(PyObject*)
-      : shared<ElementType>()
+      : sh_t()
     {}
-    shared_wrapper(PyObject* self,
-                   std::size_t n)
-      : shared<ElementType>(n)
+    shared_wrapper(PyObject* self, std::size_t n)
+      : sh_t(n)
     {}
-    shared_wrapper(PyObject* self,
-                   boost::python::tuple tuple)
-      : shared<ElementType>(tuple.size())
+    shared_wrapper(PyObject* self, boost::python::tuple tuple)
+      : sh_t(tuple.size())
     {
-      shared<ElementType>::iterator v = this->begin();
+      sh_t::iterator v = this->begin();
       for (std::size_t i = 0; i < tuple.size(); i++)
         v[i] = BOOST_PYTHON_CONVERSION::from_python(
-          tuple[i].get(), boost::python::type<const ElementType&>());
+          tuple[i].get(), boost::python::type<e_t const&>());
     }
 
     static
     std::size_t
-    size(shared<ElementType>& v) { return v.size(); }
+    size(sh_t const& v) { return v.size(); }
 
     static
     std::size_t
-    capacity(shared<ElementType>& v) { return v.capacity(); }
+    capacity(sh_t const& v) { return v.capacity(); }
 
     static
-    ElementType
-    getitem(const shared<ElementType>& v,
-            std::size_t i)
+    e_t
+    getitem(sh_t const& v, std::size_t i)
     {
       if (i >= v.size()) raise_IndexError();
       return v[i];
@@ -96,92 +97,96 @@ namespace cctbx { namespace af {
 
     static
     void
-    setitem(shared<ElementType>& v,
-            std::size_t i,
-            const ElementType& x)
+    setitem(sh_t& v, std::size_t i, e_t const& x)
     {
       if (i >= v.size()) raise_IndexError();
       v[i] = x;
     }
 
     static
-    ElementType
-    front(shared<ElementType>& v) {
+    e_t
+    front(sh_t const& v)
+    {
       if (v.size() == 0) raise_IndexError();
       return v.front();
     }
 
     static
-    ElementType
-    back(shared<ElementType>& v) {
+    e_t
+    back(sh_t const& v) {
       if (v.size() == 0) raise_IndexError();
       return v.back();
     }
 
     static
     void
-    fill(shared<ElementType>& v,
-         const ElementType& x) { v.fill(x); }
+    fill(sh_t& v, e_t const& x)
+    {
+      v.fill(x);
+    }
 
     static
     void
-    reserve(shared<ElementType>& v,
-            std::size_t sz) { v.reserve(sz); }
+    reserve(sh_t& v, std::size_t sz)
+    {
+      v.reserve(sz);
+    }
 
     static
-    shared<ElementType>
-    deep_copy(shared<ElementType>& v) { return v.deep_copy(); }
-
-    static
-    void
-    assign(shared<ElementType>& v,
-           std::size_t sz,
-           const ElementType& x) { v.assign(sz, x); }
-
-    static
-    void
-    push_back(shared<ElementType>& v,
-              const ElementType& x) { v.push_back(x); }
+    sh_t
+    deep_copy(sh_t const& v)
+    {
+      return v.deep_copy();
+    }
 
     static
     void
-    pop_back(shared<ElementType>& v) {
+    assign(sh_t& v, std::size_t sz, e_t const& x)
+    {
+      v.assign(sz, x);
+    }
+
+    static
+    void push_back(sh_t& v, e_t const& x)
+    {
+      v.push_back(x);
+    }
+
+    static
+    void
+    pop_back(sh_t& v)
+    {
       if (v.size() == 0) raise_IndexError();
       v.pop_back();
     }
 
     static
     void
-    insert_i_x(shared<ElementType>& v,
-               std::size_t i,
-               const ElementType& x) {
+    insert_i_x(sh_t& v, std::size_t i, e_t const& x)
+    {
       if (i >= v.size()) raise_IndexError();
       v.insert(&v[i], x);
     }
 
     static
     void
-    insert_i_n_x(shared<ElementType>& v,
-                 std::size_t i,
-                 std::size_t n,
-                 const ElementType& x) {
+    insert_i_n_x(sh_t& v, std::size_t i, std::size_t n, e_t const& x)
+    {
       if (i >= v.size()) raise_IndexError();
       v.insert(&v[i], n, x);
     }
 
     static
     void
-    erase_i(shared<ElementType>& v,
-            std::size_t i) {
+    erase_i(sh_t& v, std::size_t i)
+    {
       if (i >= v.size()) raise_IndexError();
       v.erase(&v[i]);
     }
 
     static
-    void
-    erase_i_j(shared<ElementType>& v,
-              std::size_t i,
-              std::size_t j) {
+    void erase_i_j(sh_t& v, std::size_t i, std::size_t j)
+    {
       if (i >= v.size()) raise_IndexError();
       if (j >= v.size()) raise_IndexError();
       v.erase(&v[i], &v[j]);
@@ -189,36 +194,43 @@ namespace cctbx { namespace af {
 
     static
     void
-    resize(shared<ElementType>& v,
-           std::size_t sz) { v.resize(sz); }
+    resize(sh_t& v, std::size_t sz)
+    {
+      v.resize(sz);
+    }
 
     static
     void
-    clear(shared<ElementType>& v) { v.clear(); }
+    clear(sh_t& v)
+    {
+      v.clear();
+    }
 
     static
     void
-    append(shared<ElementType>& v, shared<ElementType>& other) {
+    append(sh_t& v, sh_t& other)
+    {
       v.insert(v.end(), other.begin(), other.end());
     }
 
     static
     boost::python::ref
-    indices(shared<ElementType> const& v) {
+    indices(sh_t const& v)
+    {
       return boost::python::ref(PyRange_New(0, v.size(), 1, 1));
     }
 
     static
-    shared_items<ElementType>
-    items(shared<ElementType> const& v) {
-      return shared_items<ElementType>(v);
+    shared_items<e_t>
+    items(sh_t const& v)
+    {
+      return shared_items<e_t>(v);
     }
 
-    // This type is needed only to work around a Visual C++ 6 bug.
     typedef
     std::pair<
       boost::python::class_builder<
-        shared<ElementType>,
+        sh_t,
         shared_wrapper<ElementType> >,
       boost::python::class_builder<
         shared_items<ElementType> >
@@ -229,7 +241,7 @@ namespace cctbx { namespace af {
     sh_class_builders
     plain(
       boost::python::module_builder& bpl_module,
-      const std::string& python_name)
+      std::string const& python_name)
     {
       using namespace boost::python;
 
@@ -237,13 +249,13 @@ namespace cctbx { namespace af {
       py_shared_items(bpl_module, (python_name+"_items").c_str());
 
       class_builder<
-        shared<ElementType>,
-        shared_wrapper<ElementType> >
+        sh_t,
+        shared_wrapper<e_t> >
       py_shared(bpl_module, python_name.c_str());
       export_converters(py_shared);
 
       py_shared_items.def(constructor<>());
-      py_shared_items.def(constructor<shared<ElementType> const&>());
+      py_shared_items.def(constructor<sh_t const&>());
       py_shared_items.def(&shared_items<ElementType>::size, "__len__");
       py_shared_items.def(&shared_items<ElementType>::getitem, "__getitem__");
 
@@ -281,7 +293,7 @@ namespace cctbx { namespace af {
     shared<bool>
     invert_a(shared<bool> const& a)
     {
-      shared<ElementType> result;
+      sh_t result;
       result.reserve(a.size());
       for(std::size_t i=0;i<a.size();i++) result.append(!a[i]);
       return result;
@@ -291,7 +303,7 @@ namespace cctbx { namespace af {
     shared<bool>
     and_a_a(shared<bool> const& a1, shared<bool> const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] && a2[i]);
@@ -302,7 +314,7 @@ namespace cctbx { namespace af {
     shared<bool>
     or_a_a(shared<bool> const& a1, shared<bool> const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] || a2[i]);
@@ -313,7 +325,7 @@ namespace cctbx { namespace af {
     sh_class_builders
     logical(
       boost::python::module_builder& bpl_module,
-      const std::string& python_name)
+      std::string const& python_name)
     {
       sh_class_builders class_blds = plain(bpl_module, python_name);
       class_blds.first.def(invert_a, "__invert__");
@@ -324,7 +336,7 @@ namespace cctbx { namespace af {
 
     static
     shared<double>
-    as_double(shared<ElementType> const& a)
+    as_double(sh_t const& a)
     {
       shared<double> result;
       result.reserve(a.size());
@@ -333,155 +345,155 @@ namespace cctbx { namespace af {
     }
 
     static
-    shared<ElementType>
-    neg_a(shared<ElementType> const& a)
+    sh_t
+    neg_a(sh_t const& a)
     {
-      shared<ElementType> result;
+      sh_t result;
       result.reserve(a.size());
       for(std::size_t i=0;i<a.size();i++) result.append(-a[i]);
       return result;
     }
 
     static
-    shared<ElementType>
-    add_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    sh_t
+    add_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
-      shared<ElementType> result;
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] + a2[i]);
       return result;
     }
 
     static
-    shared<ElementType>
-    sub_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    sh_t
+    sub_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
-      shared<ElementType> result;
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] - a2[i]);
       return result;
     }
 
     static
-    shared<ElementType>
-    mul_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    sh_t
+    mul_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
-      shared<ElementType> result;
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] * a2[i]);
       return result;
     }
 
     static
-    shared<ElementType>
-    div_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    sh_t
+    div_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
-      shared<ElementType> result;
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] / a2[i]);
       return result;
     }
 
     static
-    shared<ElementType>
-    mod_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    sh_t
+    mod_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
-      shared<ElementType> result;
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] % a2[i]);
       return result;
     }
 
     static
-    shared<ElementType>
-    add_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    sh_t
+    add_a_s(sh_t const& a1, e_t const& a2)
     {
-      shared<ElementType> result;
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] + a2);
       return result;
     }
 
     static
-    shared<ElementType>
-    sub_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    sh_t
+    sub_a_s(sh_t const& a1, e_t const& a2)
     {
-      shared<ElementType> result;
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] - a2);
       return result;
     }
 
     static
-    shared<ElementType>
-    mul_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    sh_t
+    mul_a_s(sh_t const& a1, e_t const& a2)
     {
-      shared<ElementType> result;
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] * a2);
       return result;
     }
 
     static
-    shared<ElementType>
-    div_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    sh_t
+    div_a_s(sh_t const& a1, e_t const& a2)
     {
-      shared<ElementType> result;
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] / a2);
       return result;
     }
 
     static
-    shared<ElementType>
-    mod_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    sh_t
+    mod_a_s(sh_t const& a1, e_t const& a2)
     {
-      shared<ElementType> result;
+      sh_t result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] % a2);
       return result;
     }
 
     static
-    shared<ElementType>
-    iadd_a_s(shared<ElementType>& a1, ElementType const& a2)
+    sh_t
+    iadd_a_s(sh_t& a1, e_t const& a2)
     {
       for(std::size_t i=0;i<a1.size();i++) a1[i] += a2;
       return a1;
     }
 
     static
-    shared<ElementType>
-    isub_a_s(shared<ElementType>& a1, ElementType const& a2)
+    sh_t
+    isub_a_s(sh_t& a1, e_t const& a2)
     {
       for(std::size_t i=0;i<a1.size();i++) a1[i] -= a2;
       return a1;
     }
 
     static
-    shared<ElementType>
-    imul_a_s(shared<ElementType>& a1, ElementType const& a2)
+    sh_t
+    imul_a_s(sh_t& a1, e_t const& a2)
     {
       for(std::size_t i=0;i<a1.size();i++) a1[i] *= a2;
       return a1;
     }
 
     static
-    shared<ElementType>
-    idiv_a_s(shared<ElementType>& a1, ElementType const& a2)
+    sh_t
+    idiv_a_s(sh_t& a1, e_t const& a2)
     {
       for(std::size_t i=0;i<a1.size();i++) a1[i] /= a2;
       return a1;
     }
 
     static
-    shared<ElementType>
-    imod_a_s(shared<ElementType>& a1, ElementType const& a2)
+    sh_t
+    imod_a_s(sh_t& a1, e_t const& a2)
     {
       for(std::size_t i=0;i<a1.size();i++) a1[i] %= a2;
       return a1;
@@ -489,9 +501,9 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    eq_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    eq_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] == a2[i]);
@@ -500,9 +512,9 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    ne_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    ne_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] != a2[i]);
@@ -511,9 +523,9 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    lt_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    lt_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] < a2[i]);
@@ -522,9 +534,9 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    gt_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    gt_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] > a2[i]);
@@ -533,9 +545,9 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    le_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    le_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] <= a2[i]);
@@ -544,9 +556,9 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    ge_a_a(shared<ElementType> const& a1, shared<ElementType> const& a2)
+    ge_a_a(sh_t const& a1, sh_t const& a2)
     {
-      if (a1.size() != a2.size()) throw_range_error();
+      if (a1.size() != a2.size()) raise_incompatible_sizes();
       shared<bool> result;
       result.reserve(a1.size());
       for(std::size_t i=0;i<a1.size();i++) result.append(a1[i] >= a2[i]);
@@ -555,7 +567,7 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    eq_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    eq_a_s(sh_t const& a1, e_t const& a2)
     {
       shared<bool> result;
       result.reserve(a1.size());
@@ -565,7 +577,7 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    ne_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    ne_a_s(sh_t const& a1, e_t const& a2)
     {
       shared<bool> result;
       result.reserve(a1.size());
@@ -575,7 +587,7 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    lt_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    lt_a_s(sh_t const& a1, e_t const& a2)
     {
       shared<bool> result;
       result.reserve(a1.size());
@@ -585,7 +597,7 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    gt_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    gt_a_s(sh_t const& a1, e_t const& a2)
     {
       shared<bool> result;
       result.reserve(a1.size());
@@ -595,7 +607,7 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    le_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    le_a_s(sh_t const& a1, e_t const& a2)
     {
       shared<bool> result;
       result.reserve(a1.size());
@@ -605,7 +617,7 @@ namespace cctbx { namespace af {
 
     static
     shared<bool>
-    ge_a_s(shared<ElementType> const& a1, ElementType const& a2)
+    ge_a_s(sh_t const& a1, e_t const& a2)
     {
       shared<bool> result;
       result.reserve(a1.size());
@@ -626,12 +638,11 @@ namespace cctbx { namespace af {
 
     static
     sh_class_builders
-    numeric(
+    numeric_common(
       boost::python::module_builder& bpl_module,
-      const std::string& python_name)
+      std::string const& python_name)
     {
       sh_class_builders class_blds = plain(bpl_module, python_name);
-      class_blds.first.def(as_double, "as_double");
       class_blds.first.def(neg_a, "__neg__");
       class_blds.first.def(add_a_a, "__add__");
       class_blds.first.def(sub_a_a, "__sub__");
@@ -647,12 +658,25 @@ namespace cctbx { namespace af {
       class_blds.first.def(idiv_a_s, "__idiv__");
       class_blds.first.def(eq_a_a, "__eq__");
       class_blds.first.def(ne_a_a, "__ne__");
+      class_blds.first.def(eq_a_s, "__eq__");
+      class_blds.first.def(ne_a_s, "__ne__");
+      bpl_module.def(sum, "sum");
+      bpl_module.def(product, "product");
+      return class_blds;
+    }
+
+    static
+    sh_class_builders
+    numeric(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = numeric_common(bpl_module, python_name);
+      class_blds.first.def(as_double, "as_double");
       class_blds.first.def(lt_a_a, "__lt__");
       class_blds.first.def(gt_a_a, "__gt__");
       class_blds.first.def(le_a_a, "__le__");
       class_blds.first.def(ge_a_a, "__ge__");
-      class_blds.first.def(eq_a_s, "__eq__");
-      class_blds.first.def(ne_a_s, "__ne__");
       class_blds.first.def(lt_a_s, "__lt__");
       class_blds.first.def(gt_a_s, "__gt__");
       class_blds.first.def(le_a_s, "__le__");
@@ -661,8 +685,6 @@ namespace cctbx { namespace af {
       bpl_module.def(max_index, "max_index");
       bpl_module.def(min, "min");
       bpl_module.def(max, "max");
-      bpl_module.def(sum, "sum");
-      bpl_module.def(product, "product");
       bpl_module.def(mean, "mean");
       bpl_module.def(rms, "rms");
       return class_blds;
@@ -672,12 +694,104 @@ namespace cctbx { namespace af {
     sh_class_builders
     integer(
       boost::python::module_builder& bpl_module,
-      const std::string& python_name)
+      std::string const& python_name)
     {
       sh_class_builders class_blds = numeric(bpl_module, python_name);
       class_blds.first.def(mod_a_a, "__mod__");
       class_blds.first.def(mod_a_s, "mod");
       class_blds.first.def(imod_a_s, "__imod__");
+      return class_blds;
+    }
+
+    static
+    shared<double>
+    abs_complex(shared<std::complex<double> > const& a)
+    {
+      shared<double> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) {
+        result.push_back(std::abs(a[i]));
+      }
+      return result;
+    }
+
+    static
+    shared<double>
+    arg_complex_2(shared<std::complex<double> > const& a, bool deg)
+    {
+      shared<double> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) {
+        result.push_back(std::arg(a[i]));
+        if (deg) result[i] /= constants::pi_180;
+      }
+      return result;
+    }
+
+    static
+    shared<double>
+    arg_complex_1(shared<std::complex<double> > const& a)
+    {
+      return arg_complex_2(a, false);
+    }
+
+    static
+    shared<double>
+    norm_complex(shared<std::complex<double> > const& a)
+    {
+      shared<double> result;
+      result.reserve(a.size());
+      for(std::size_t i=0;i<a.size();i++) {
+        result.push_back(std::norm(a[i]));
+      }
+      return result;
+    }
+
+    static
+    shared<std::complex<double> >
+    polar_complex_3(
+      shared<double> const& rho,
+      shared<double> const& theta,
+      bool deg)
+    {
+      if (rho.size() != theta.size()) raise_incompatible_sizes();
+      shared<std::complex<double> > result;
+      result.reserve(rho.size());
+      if (deg) {
+        for(std::size_t i=0;i<rho.size();i++) {
+          result.push_back(std::polar(rho[i], theta[i] * constants::pi_180));
+        }
+      }
+      else {
+        for(std::size_t i=0;i<rho.size();i++) {
+          result.push_back(std::polar(rho[i], theta[i]));
+        }
+      }
+      return result;
+    }
+
+    static
+    shared<std::complex<double> >
+    polar_complex_2(
+      shared<double> const& rho,
+      shared<double> const& theta)
+    {
+      return polar_complex_3(rho, theta, false);
+    }
+
+    static
+    sh_class_builders
+    complex(
+      boost::python::module_builder& bpl_module,
+      std::string const& python_name)
+    {
+      sh_class_builders class_blds = numeric_common(bpl_module, python_name);
+      bpl_module.def(abs_complex, "abs");
+      bpl_module.def(arg_complex_2, "arg");
+      bpl_module.def(arg_complex_1, "arg");
+      bpl_module.def(norm_complex, "norm");
+      bpl_module.def(polar_complex_3, "polar");
+      bpl_module.def(polar_complex_2, "polar");
       return class_blds;
     }
   };

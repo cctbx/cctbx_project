@@ -54,76 +54,6 @@ namespace {
     }
   }
 
-  // to preserve VC6 compatibility we are not using shared_algebra.h
-  cctbx::af::shared<double>
-  py_abs_complex(cctbx::af::shared<std::complex<double> > a)
-  {
-    cctbx::af::shared<double> result;
-    result.reserve(a.size());
-    for(std::size_t i=0;i<a.size();i++) {
-      result.push_back(std::abs(a[i]));
-    }
-    return result;
-  }
-  cctbx::af::shared<double>
-  py_arg_complex_2(
-    cctbx::af::shared<std::complex<double> > a,
-    bool deg)
-  {
-    cctbx::af::shared<double> result;
-    result.reserve(a.size());
-    for(std::size_t i=0;i<a.size();i++) {
-      result.push_back(std::arg(a[i]));
-      if (deg) result[i] /= cctbx::constants::pi_180;
-    }
-    return result;
-  }
-  cctbx::af::shared<double>
-  py_arg_complex_1(
-    cctbx::af::shared<std::complex<double> > a)
-  {
-    return py_arg_complex_2(a, false);
-  }
-  cctbx::af::shared<double>
-  py_norm_complex(cctbx::af::shared<std::complex<double> > a)
-  {
-    cctbx::af::shared<double> result;
-    result.reserve(a.size());
-    for(std::size_t i=0;i<a.size();i++) {
-      result.push_back(std::norm(a[i]));
-    }
-    return result;
-  }
-  cctbx::af::shared<std::complex<double> >
-  py_polar_complex_3(
-    cctbx::af::shared<double> rho,
-    cctbx::af::shared<double> theta,
-    bool deg)
-  {
-    cctbx_assert(rho.size() == theta.size());
-    cctbx::af::shared<std::complex<double> > result;
-    result.reserve(rho.size());
-    if (deg) {
-      for(std::size_t i=0;i<rho.size();i++) {
-        result.push_back(
-          std::polar(rho[i], theta[i] * cctbx::constants::pi_180));
-      }
-    }
-    else {
-      for(std::size_t i=0;i<rho.size();i++) {
-        result.push_back(std::polar(rho[i], theta[i]));
-      }
-    }
-    return result;
-  }
-  cctbx::af::shared<std::complex<double> >
-  py_polar_complex_2(
-    cctbx::af::shared<double> rho,
-    cctbx::af::shared<double> theta)
-  {
-    return py_polar_complex_3(rho, theta, false);
-  }
-
   template <typename FloatType>
   struct ex_linear_regression : cctbx::math::linear_regression<FloatType>
   {
@@ -192,8 +122,9 @@ namespace {
 #define WRAP_INTEGER(python_name, element_type) \
     cctbx::af::shared_wrapper<element_type >::integer( \
       this_module, python_name)
-#define WRAP_REDUCTIONS(element_type) \
-    cctbx::af::wrap_shared_reductions<element_type>::run(this_module)
+#define WRAP_COMPLEX(python_name, element_type) \
+    cctbx::af::shared_wrapper<element_type >::complex( \
+      this_module, python_name)
 
     // bool is wrapped here to enable boolean operators for numeric types
     cctbx::af::shared_wrapper<bool>::logical(this_module, "bool");
@@ -202,11 +133,11 @@ namespace {
     WRAP_NUMERIC("double", double);
 
     WRAP_INTEGER("int", int);
-    WRAP_PLAIN("float", float);
-    WRAP_PLAIN("complex_double", std::complex<double>);
+    WRAP_NUMERIC("float", float);
+    WRAP_COMPLEX("complex_double", std::complex<double>);
 
-#ifdef FAST_COMPILE
-    WRAP_PLAIN("long", long);
+#ifndef FAST_COMPILE
+    WRAP_INTEGER("long", long);
     WRAP_PLAIN("std_string", std::string);
 
     WRAP_PLAIN("miller_Index", cctbx::miller::Index);
@@ -229,12 +160,6 @@ namespace {
 
     this_module.def(py_pow, "pow");
     this_module.def(py_set_if_less_than, "set_if_less_than");
-    this_module.def(py_abs_complex, "abs");
-    this_module.def(py_arg_complex_2, "arg");
-    this_module.def(py_arg_complex_1, "arg");
-    this_module.def(py_norm_complex, "norm");
-    this_module.def(py_polar_complex_3, "polar");
-    this_module.def(py_polar_complex_2, "polar");
 
     class_builder<ex_linear_regression<double> >
     py_linear_regression(this_module, "linear_regression");
