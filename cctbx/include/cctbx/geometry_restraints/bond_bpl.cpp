@@ -60,7 +60,7 @@ namespace {
       ;
       {
         typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
+        scitbx::af::boost_python::shared_wrapper<bond_simple_proxy, rir>::wrap(
           "shared_bond_simple_proxy");
       }
     }
@@ -84,7 +84,7 @@ namespace {
       ;
       {
         typedef return_internal_reference<> rir;
-        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
+        scitbx::af::boost_python::shared_wrapper<bond_asu_proxy, rir>::wrap(
           "shared_bond_asu_proxy");
       }
     }
