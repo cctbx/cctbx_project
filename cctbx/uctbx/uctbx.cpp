@@ -39,6 +39,15 @@ namespace cctbx { namespace uctbx {
       return params;
     }
 
+    af::double6
+    parameters_from_orthogonalization_matrix(
+      uc_mat3 const& orthogonalization_matrix)
+    {
+      uc_mat3 g = orthogonalization_matrix.transpose()
+                * orthogonalization_matrix;
+      return parameters_from_metrical_matrix(uc_sym_mat3(g).begin());
+    }
+
     uc_sym_mat3
     construct_metrical_matrix(
       af::double6 const& params, uc_vec3 const& cos_ang)
@@ -163,17 +172,10 @@ namespace cctbx { namespace uctbx {
     shortest_vector_sq_ = -1.;
   }
 
-  unit_cell::unit_cell(af::small<double, 6> const& parameters,
-                       bool is_metrical_matrix)
+  unit_cell::unit_cell(af::small<double, 6> const& parameters)
   : params_(1,1,1,90,90,90)
   {
-    if (!is_metrical_matrix) {
-      std::copy(parameters.begin(), parameters.end(), params_.begin());
-    }
-    else {
-      if (parameters.size() != 6) throw_corrupt_metrical_matrix();
-      params_ = parameters_from_metrical_matrix(parameters.begin());
-    }
+    std::copy(parameters.begin(), parameters.end(), params_.begin());
     initialize();
   }
 
@@ -191,6 +193,17 @@ namespace cctbx { namespace uctbx {
     }
     catch (error const&) {
       throw_corrupt_metrical_matrix();
+    }
+  }
+
+  unit_cell::unit_cell(uc_mat3 const& orthogonalization_matrix)
+  : params_(parameters_from_orthogonalization_matrix(orthogonalization_matrix))
+  {
+    try {
+      initialize();
+    }
+    catch (error const&) {
+      throw error("Corrupt orthogonalization matrix.");
     }
   }
 

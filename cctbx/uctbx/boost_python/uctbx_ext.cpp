@@ -55,7 +55,12 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("unit_cell", no_init)
-        .def(init<af::small<double, 6> const&, optional<bool> >())
+        .def(init<scitbx::mat3<double> const&>((
+          arg_("orthogonalization_matrix"))))
+        .def(init<scitbx::sym_mat3<double> const&>((
+          arg_("metrical_matrix"))))
+        .def(init<af::small<double, 6> const&>((
+          arg_("parameters"))))
         .def("parameters", &w_t::parameters, ccr())
         .def("reciprocal_parameters", &w_t::reciprocal_parameters, ccr())
         .def("metrical_matrix", &w_t::metrical_matrix, ccr())
@@ -67,10 +72,15 @@ namespace {
         .def("shortest_vector_sq", &w_t::shortest_vector_sq)
         .def("is_degenerate",
           &w_t::is_degenerate,
-          is_degenerate_overloads())
+          is_degenerate_overloads((
+            arg_("min_min_length_over_max_length")=1.e-10,
+            arg_("min_volume_over_min_length")=1.e-5)))
         .def("is_similar_to",
           &w_t::is_similar_to,
-          is_similar_to_overloads())
+          is_similar_to_overloads((
+            arg_("other"),
+            arg_("relative_length_tolerance")=0.01,
+            arg_("absolute_angle_tolerance")=1.)))
         .def("fractionalization_matrix", &w_t::fractionalization_matrix, ccr())
         .def("orthogonalization_matrix", &w_t::orthogonalization_matrix, ccr())
         .def("fractionalize",

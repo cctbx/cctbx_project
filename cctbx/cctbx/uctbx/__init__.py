@@ -8,10 +8,24 @@ import sys
 
 class unit_cell(ext.unit_cell):
 
-  def __init__(self, parameters, is_metrical_matrix=False):
-    if (isinstance(parameters, str)):
-      parameters = [float(p) for p in parameters.replace(",", " ").split()]
-    ext.unit_cell.__init__(self, parameters, is_metrical_matrix)
+  def __init__(self,
+        parameters=None,
+        metrical_matrix=None,
+        orthogonalization_matrix=None):
+    assert [parameters, metrical_matrix, orthogonalization_matrix].count(None) >= 2
+    if (parameters is not None):
+      if (isinstance(parameters, str)):
+        parameters = [float(p) for p in parameters.replace(",", " ").split()]
+      ext.unit_cell.__init__(self,
+        parameters=parameters)
+    elif (metrical_matrix is not None):
+      ext.unit_cell.__init__(self,
+        metrical_matrix=metrical_matrix)
+    elif (orthogonalization_matrix is not None):
+      ext.unit_cell.__init__(self,
+        orthogonalization_matrix=orthogonalization_matrix)
+    else:
+      ext.unit_cell.__init__(self, parameters=[])
 
 class _unit_cell(boost.python.injector, ext.unit_cell):
 
