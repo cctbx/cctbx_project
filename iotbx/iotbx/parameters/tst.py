@@ -644,6 +644,90 @@ y 2
 x 1
 """
 
+def exercise_extract():
+  parameters = iotbx.parameters.parse(input_string="""\
+group {
+  a yes
+    .type bool
+  a yes
+  b 13
+    .type int
+  c 1.3
+    .type float
+  d abc def ghi
+    .type str
+  e a *b c
+    .type choice
+  e a *b *c
+    .type choice
+  e a b c
+    .type choice
+  f a *b c
+    .type multi_choice
+  f a *b *c
+    .type multi_choice
+  f a b c
+    .type multi_choice
+  g "/var/tmp/junk"
+    .type path
+  h "var.tmp.junk"
+    .type key
+  u 10,12 13 80,90 100
+    .type unit_cell
+  s 19
+    .type space_group
+}
+""")
+  assert parameters.get(path="group.a").objects[0].extract() is True
+  try: parameters.get(path="group.a").objects[1].extract()
+  except RuntimeError, e:
+    assert str(e) == 'Undefined parameter definition type for' \
+                   + ' values of "a" (input line 4).'
+  else: raise RuntimeError("Exception expected.")
+  assert parameters.get(path="group.b").objects[0].extract() == 13
+  assert parameters.get(path="group.c").objects[0].extract() == 1.3
+  assert parameters.get(path="group.d").objects[0].extract() == "abc def ghi"
+  assert parameters.get(path="group.e").objects[0].extract() == "b"
+  try: parameters.get(path="group.e").objects[1].extract()
+  except RuntimeError, e:
+    assert str(e) \
+      == 'Multiple choices where only one is possible (input line 13).'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get(path="group.e").objects[2].extract()
+  except RuntimeError, e:
+    assert str(e) == 'Unspecified choice (input line 15).'
+  else: raise RuntimeError("Exception expected.")
+  assert parameters.get(path="group.f").objects[0].extract() == ["b"]
+  assert parameters.get(path="group.f").objects[1].extract() == ["b", "c"]
+  assert parameters.get(path="group.f").objects[2].extract() == []
+  assert parameters.get(path="group.g").objects[0].extract() == "/var/tmp/junk"
+  assert parameters.get(path="group.h").objects[0].extract() == "var.tmp.junk"
+  assert str(parameters.get(path="group.u").objects[0].extract()) \
+      == "(10, 12, 13, 80, 90, 100)"
+  assert str(parameters.get(path="group.s").objects[0].extract()) \
+      == "P 21 21 21"
+  definition = parameters.get(path="group.a").objects[0]
+  definition.type = "junk"
+  try: definition.extract()
+  except RuntimeError, e:
+    str(e) == 'No converter for parameter definition type "junk"' \
+            + ' required for converting values of "a" (input line 3).'
+  else: raise RuntimeError("Exception expected.")
+  parameters = iotbx.parameters.parse(input_string="""\
+group {
+  a yes
+    .type bool
+  b 13
+    .type int
+  s P 21 21 21
+    .type space_group
+}
+""")
+  group = parameters.get(path="group").objects[0].extract()
+  assert group.a is True
+  assert group.b == 13
+  assert group.s.type().number() == 19
+
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
@@ -651,6 +735,7 @@ def exercise():
   exercise_nested()
   exercise_get_with_variable_substitution()
   exercise_include()
+  exercise_extract()
   print "OK"
 
 if (__name__ == "__main__"):
