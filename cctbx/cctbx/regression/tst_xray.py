@@ -73,6 +73,8 @@ def exercise_structure():
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
   ys.shift_occupancy(1, -0.1)
   assert approx_equal(ys.scatterers()[1].weight(),0.2)
+  assert xs.n_parameters(xray.structure_factors.gradient_flags(default=0001)) \
+         == 14
 
 def exercise_u_extra():
   d_min = 9

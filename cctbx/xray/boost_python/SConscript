@@ -7,6 +7,7 @@ env.SharedLibrary(target="#libtbx/cctbx_boost/xray_ext", source=[
   "gradient_flags.cpp",
   "gradients_direct.cpp",
   "fast_gradients.cpp",
+  "minimization.cpp",
   "scatterer.cpp",
   "sampling_base.cpp",
   "sampled_model_density.cpp",

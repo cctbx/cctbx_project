@@ -11,6 +11,7 @@ class gradients(manager):
                      miller_set,
                      d_target_d_f_calc,
                      gradient_flags,
+                     n_parameters,
                      direct=00000,
                      fft=00000):
     assert direct == 00000 or fft == 00000
@@ -33,4 +34,5 @@ class gradients(manager):
       xray_structure=xray_structure,
       miller_set=miller_set,
       d_target_d_f_calc=d_target_d_f_calc,
-      gradient_flags=gradient_flags)
+      gradient_flags=gradient_flags,
+      n_parameters=n_parameters)

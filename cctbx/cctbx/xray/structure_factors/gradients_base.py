@@ -5,7 +5,11 @@ class gradients_base(managed_calculation_base):
   def d_target_d_f_calc(self):
     return self._d_target_d_f_calc
 
+  def packed(self):
+    return self._results.packed()
+
   def check_size(self, array):
+    assert self.packed().size() == 0
     assert array.size() == self.xray_structure().scatterers().size()
     return array
 

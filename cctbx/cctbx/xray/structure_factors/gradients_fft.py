@@ -14,7 +14,8 @@ class gradients_fft(gradients_base):
                      xray_structure,
                      miller_set,
                      d_target_d_f_calc,
-                     gradient_flags):
+                     gradient_flags,
+                     n_parameters):
     gradients_base.__init__(self, manager, xray_structure, miller_set)
     self._d_target_d_f_calc = d_target_d_f_calc
     manager.setup_fft() # before timing
@@ -39,6 +40,7 @@ class gradients_fft(gradients_base):
       gradient_map_real,
       gradient_map_complex,
       gradient_flags,
+      n_parameters,
       manager.u_extra(),
       manager.wing_cutoff(),
       manager.exp_table_one_over_step_size(),

@@ -23,10 +23,12 @@ namespace {
                   af::const_ref<std::complex<double>,
                                 maptbx::c_grid_padded_p1<3> > const&,
                   gradient_flags const&,
+                  std::size_t,
                   optional<double const&,
                            double const&,
                            double const&,
                            bool> >())
+        .def("packed", &w_t::packed)
         .def("d_target_d_site_cart", &w_t::d_target_d_site_cart)
         .def("d_target_d_u_iso", &w_t::d_target_d_u_iso)
         .def("d_target_d_u_cart", &w_t::d_target_d_u_cart)

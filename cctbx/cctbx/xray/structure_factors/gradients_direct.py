@@ -11,6 +11,7 @@ class gradients_direct(gradients_base):
                      miller_set,
                      d_target_d_f_calc,
                      gradient_flags,
+                     n_parameters,
                      manager=None,
                      cos_sin_table=00000):
     gradients_base.__init__(self, manager, xray_structure, miller_set)
@@ -29,7 +30,8 @@ class gradients_direct(gradients_base):
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
         d_target_d_f_calc,
-        gradient_flags)
+        gradient_flags,
+        n_parameters)
     else:
       self._results = ext.structure_factors_gradients_direct(
         cos_sin_table,
@@ -38,7 +40,8 @@ class gradients_direct(gradients_base):
         self._miller_set.indices(),
         self._xray_structure.scatterers(),
         d_target_d_f_calc,
-        gradient_flags)
+        gradient_flags,
+        n_parameters)
     if (manager is not None):
       manager.estimate_time_direct.register(
         xray_structure.scatterers().size() * miller_set.indices().size(),
@@ -47,7 +50,7 @@ class gradients_direct(gradients_base):
     self.d_target_d_u_cart_was_used = 00000
 
   def d_target_d_site_frac(self):
-    return self.check_size(self._results.d_target_d_site())
+    return self.check_size(self._results.d_target_d_site_frac())
 
   def d_target_d_site_cart(self):
     if (self.d_target_d_site_cart_was_used):

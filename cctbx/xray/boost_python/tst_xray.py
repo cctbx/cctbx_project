@@ -307,6 +307,108 @@ def exercise_sampled_model_density():
   xray.apply_u_extra(d.unit_cell(), -0.2, i, f, m)
   assert approx_equal(f, f_orig)
 
+def exercise_minimization_apply_shifts():
+  uc = uctbx.unit_cell((20, 20, 23))
+  sg = sgtbx.space_group_info("P 4")
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("Si1", site=(0.01,0.02,0.3), fp_fdp=(-1+2j)),
+    xray.scatterer("O1", site=(0.3,0.4,0.5),
+                   u=adptbx.u_cart_as_u_star(uc,
+                     (0.04,0.05,0.06,-.005,0.02,-0.002)))))
+  f = xray.ext.gradient_flags(0001, 0001, 0001, 0001, 0001, 0001)
+  shifts = flex.double(19, 0.001)
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 0)
+  for a,b in zip(scatterers, shifted_scatterers):
+    assert a.caasf.label() == b.caasf.label()
+    assert a.site != b.site
+    if (not a.anisotropic_flag):
+      assert a.u_iso != b.u_iso
+      assert approx_equal(a.u_star, b.u_star)
+    else:
+      assert a.u_iso == b.u_iso
+      assert not approx_equal(a.u_star, b.u_star)
+    assert a.occupancy != b.occupancy
+    assert a.fp_fdp != b.fp_fdp
+  shifts = flex.double(19, -0.001)
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), shifted_scatterers, f, shifts, 0)
+  for a,b in zip(scatterers, shifted_scatterers):
+    assert a.caasf.label() == b.caasf.label()
+    assert approx_equal(a.site, b.site)
+    assert approx_equal(a.u_iso, b.u_iso)
+    assert approx_equal(a.u_star, b.u_star)
+    assert approx_equal(a.occupancy, b.occupancy)
+    assert approx_equal(a.fp_fdp, b.fp_fdp)
+  f = xray.ext.gradient_flags(0001, 00000, 00000, 00000, 00000, 00000)
+  shifts = flex.double((-1,2,-3,4,-5,-6))
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 0)
+  assert approx_equal(
+    shifted_scatterers[0].site,
+    (0.01-1/20.,0.02+2/20.,0.3-3/23.))
+  assert approx_equal(
+    shifted_scatterers[1].site,
+    (0.3+4/20.,0.4-5/20.,0.5-6/23.))
+  f = xray.ext.gradient_flags(00000, 0001, 00000, 00000, 00000, 00000)
+  shifts = flex.double(1, -10)
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 0)
+  assert shifted_scatterers[0].u_iso == 0
+  f = xray.ext.gradient_flags(00000, 00000, 0001, 00000, 00000, 00000)
+  shifts = flex.double(6, -100)
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 0)
+  assert not approx_equal(scatterers[1].u_star, shifted_scatterers[1].u_star)
+  shifts = flex.double(6, -1000)
+  shifted_scatterers_2 = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 0)
+  # due to eigenvalue filtering two extreme shifts
+  # should produce the same result
+  assert approx_equal(shifted_scatterers[1].u_star,
+                      shifted_scatterers_2[1].u_star)
+  f = xray.ext.gradient_flags(00000, 00000, 00000, 0001, 00000, 00000)
+  shifts = flex.double(2, -10)
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 0)
+  for i in xrange(2):
+    assert shifted_scatterers[i].occupancy == 0
+  f = xray.ext.gradient_flags(00000, 00000, 00000, 00000, 0001, 00000)
+  shifts = flex.double(2, -10)
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 0)
+  assert approx_equal(shifted_scatterers[0].fp_fdp.real, -11)
+  assert shifted_scatterers[1].fp_fdp.real == -10
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 3)
+  for i in xrange(2):
+    assert approx_equal(
+      shifted_scatterers[i].fp_fdp.real,
+      -shifted_scatterers[i].caasf.at_d_star_sq(1/9.))
+    assert shifted_scatterers[i].fp_fdp.imag == scatterers[i].fp_fdp.imag
+  f = xray.ext.gradient_flags(00000, 00000, 00000, 00000, 00000, 0001)
+  shifts = flex.double((2,3))
+  shifted_scatterers = xray.ext.minimization_apply_shifts(
+    uc, sg.type(), scatterers, f, shifts, 3)
+  assert shifted_scatterers[0].fp_fdp.real == -1
+  assert approx_equal(shifted_scatterers[0].fp_fdp.imag, 4)
+  assert shifted_scatterers[1].fp_fdp.real == 0
+  assert shifted_scatterers[1].fp_fdp.imag == 3
+  shifts = flex.double(1)
+  try:
+    xray.ext.minimization_apply_shifts(uc, sg.type(), scatterers, f, shifts, 0)
+  except Exception, e:
+    assert str(e) == "scitbx Error: Array of shifts is too small."
+  else:
+    raise RuntimeError("Exception expected.")
+  shifts = flex.double(3)
+  try:
+    xray.ext.minimization_apply_shifts(uc, sg.type(), scatterers, f, shifts, 0)
+  except Exception, e:
+    assert str(e) == "cctbx Error: Array of shifts is too large."
+  else:
+    raise RuntimeError("Exception expected.")
+
 def run():
   exercise_conversions()
   exercise_gradient_flags()
@@ -316,6 +418,7 @@ def run():
   exercise_structure_factors()
   exercise_targets()
   exercise_sampled_model_density()
+  exercise_minimization_apply_shifts()
   print "OK"
 
 if (__name__ == "__main__"):

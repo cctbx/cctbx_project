@@ -3,6 +3,7 @@
 
 #include <cctbx/xray/sampling_base.h>
 #include <cctbx/xray/gradient_flags.h>
+#include <cctbx/xray/packing_order.h>
 
 namespace cctbx { namespace xray {
 
@@ -326,10 +327,14 @@ namespace cctbx { namespace xray {
         af::const_ref<std::complex<FloatType>, accessor_type> const&
           ft_d_target_d_f_calc_complex,
         gradient_flags const& grad_flags,
+        std::size_t n_parameters=0,
         FloatType const& u_extra=0.25,
         FloatType const& wing_cutoff=1.e-6,
         FloatType const& exp_table_one_over_step_size=-100,
         bool electron_density_must_be_positive=true);
+
+      af::shared<FloatType>
+      packed() const { return packed_; }
 
       af::shared<scitbx::vec3<FloatType> >
       d_target_d_site_cart() const { return d_target_d_site_cart_; }
@@ -350,6 +355,7 @@ namespace cctbx { namespace xray {
       d_target_d_fdp() const { return d_target_d_fdp_; }
 
     private:
+      af::shared<FloatType> packed_;
       af::shared<scitbx::vec3<FloatType> > d_target_d_site_cart_;
       af::shared<FloatType> d_target_d_u_iso_;
       af::shared<scitbx::sym_mat3<FloatType> > d_target_d_u_cart_;
@@ -369,6 +375,7 @@ namespace cctbx { namespace xray {
     af::const_ref<std::complex<FloatType>, accessor_type> const&
       ft_d_target_d_f_calc_complex,
     gradient_flags const& grad_flags,
+    std::size_t n_parameters,
     FloatType const& u_extra,
     FloatType const& wing_cutoff,
     FloatType const& exp_table_one_over_step_size,
@@ -381,6 +388,18 @@ namespace cctbx { namespace xray {
                  != (ft_d_target_d_f_calc_complex.size() == 0));
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
+    }
+    if (n_parameters != 0) {
+      packed_.reserve(n_parameters);
+    }
+    else {
+      if (grad_flags.site) d_target_d_site_cart_.reserve(scatterers.size());
+      if (grad_flags.u_iso) d_target_d_u_iso_.reserve(scatterers.size());
+      if (grad_flags.u_aniso) d_target_d_u_cart_.reserve(scatterers.size());
+      if (grad_flags.occupancy) d_target_d_occupancy_.reserve(
+                                  scatterers.size());
+      if (grad_flags.fp) d_target_d_fp_.reserve(scatterers.size());
+      if (grad_flags.fdp) d_target_d_fdp_.reserve(scatterers.size());
     }
     bool gradient_map_is_real = ft_d_target_d_f_calc_real.size() != 0;
     if (gradient_map_is_real) {
@@ -517,24 +536,58 @@ namespace cctbx { namespace xray {
           }
         }
       }}}
-      if (grad_flags.site) {
-        d_target_d_site_cart_.push_back(gr_site);
+      if (n_parameters != 0) {
+        packing_order_convention<1>::check_version_at_compile_time();
+        if (grad_flags.site) {
+          for(std::size_t i=0;i<3;i++) {
+            packed_.push_back(gr_site[i]);
+          }
+        }
+        if (!scatterer->anisotropic_flag) {
+          if (grad_flags.u_iso) {
+            packed_.push_back(adptbx::u_as_b(gr_b_iso));
+          }
+        }
+        else {
+          if (grad_flags.u_aniso) {
+            for(std::size_t i=0;i<6;i++) {
+              packed_.push_back(adptbx::u_as_b(gr_b_cart[i]));
+            }
+          }
+        }
+        if (grad_flags.occupancy) {
+          packed_.push_back(gr_occupancy);
+        }
+        if (grad_flags.fp) {
+          packed_.push_back(gr_fp);
+        }
+        if (grad_flags.fdp) {
+          packed_.push_back(gr_fdp);
+        }
       }
-      if (grad_flags.u_iso) {
-        d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
+      else {
+        if (grad_flags.site) {
+          d_target_d_site_cart_.push_back(gr_site);
+        }
+        if (grad_flags.u_iso) {
+          d_target_d_u_iso_.push_back(adptbx::u_as_b(gr_b_iso));
+        }
+        if (grad_flags.u_aniso) {
+          d_target_d_u_cart_.push_back(adptbx::u_as_b(gr_b_cart));
+        }
+        if (grad_flags.occupancy) {
+          d_target_d_occupancy_.push_back(gr_occupancy);
+        }
+        if (grad_flags.fp) {
+          d_target_d_fp_.push_back(gr_fp);
+        }
+        if (grad_flags.fdp) {
+          d_target_d_fdp_.push_back(gr_fdp);
+        }
       }
-      if (grad_flags.u_aniso) {
-        d_target_d_u_cart_.push_back(adptbx::u_as_b(gr_b_cart));
-      }
-      if (grad_flags.occupancy) {
-        d_target_d_occupancy_.push_back(gr_occupancy);
-      }
-      if (grad_flags.fp) {
-        d_target_d_fp_.push_back(gr_fp);
-      }
-      if (grad_flags.fdp) {
-        d_target_d_fdp_.push_back(gr_fdp);
-      }
+    }
+    if (n_parameters != 0) {
+      CCTBX_ASSERT(packed_.size() == n_parameters);
     }
     this->exp_table_size_ = exp_table.table().size();
   }
