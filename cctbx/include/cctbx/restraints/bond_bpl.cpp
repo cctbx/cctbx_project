@@ -165,9 +165,7 @@ namespace {
   };
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    bond_residual_sum_overloads_1, bond_residual_sum, 4, 5)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    bond_residual_sum_overloads_2, bond_residual_sum, 3, 4)
+    bond_residual_sum_overloads, bond_residual_sum, 3, 4)
 
   void
   wrap_all()
@@ -204,37 +202,22 @@ namespace {
     def("bond_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        asu_mappings const&,
-        af::const_ref<bond_asu_proxy> const&))
+        bond_sorted_asu_proxies const&))
       bond_deltas,
-      (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies")));
+      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
     def("bond_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        asu_mappings const&,
-        af::const_ref<bond_asu_proxy> const&))
+        bond_sorted_asu_proxies const&))
       bond_residuals,
-      (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies")));
-    def("bond_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        asu_mappings const&,
-        af::const_ref<bond_asu_proxy> const&,
-        af::ref<scitbx::vec3<double> > const&,
-        bool)) bond_residual_sum,
-      bond_residual_sum_overloads_1((
-        arg_("sites_cart"),
-        arg_("asu_mappings"),
-        arg_("proxies"),
-        arg_("gradient_array"),
-        arg_("disable_cache")=false)));
+      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
     def("bond_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         bond_sorted_asu_proxies const&,
         af::ref<scitbx::vec3<double> > const&,
         bool)) bond_residual_sum,
-      bond_residual_sum_overloads_2((
+      bond_residual_sum_overloads((
         arg_("sites_cart"),
         arg_("sorted_asu_proxies"),
         arg_("gradient_array"),

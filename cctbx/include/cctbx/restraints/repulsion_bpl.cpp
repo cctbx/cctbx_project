@@ -154,21 +154,13 @@ namespace {
   };
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    repulsion_deltas_overloads_1, repulsion_deltas, 2, 3)
+    repulsion_deltas_overloads, repulsion_deltas, 2, 3)
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    repulsion_residuals_overloads_1, repulsion_residuals, 2, 3)
+    repulsion_residuals_overloads, repulsion_residuals, 2, 3)
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     repulsion_residual_sum_overloads_1, repulsion_residual_sum, 3, 4)
-
   BOOST_PYTHON_FUNCTION_OVERLOADS(
-    repulsion_deltas_overloads_2, repulsion_deltas, 3, 4)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    repulsion_residuals_overloads_2, repulsion_residuals, 3, 4)
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    repulsion_residual_sum_overloads_2, repulsion_residual_sum, 4, 6)
-
-  BOOST_PYTHON_FUNCTION_OVERLOADS(
-    repulsion_residual_sum_overloads_3, repulsion_residual_sum, 3, 5)
+    repulsion_residual_sum_overloads_2, repulsion_residual_sum, 3, 5)
 
   void
   wrap_all()
@@ -185,14 +177,14 @@ namespace {
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<repulsion_simple_proxy> const&,
         repulsion_function const& function)) repulsion_deltas,
-      repulsion_deltas_overloads_1(
+      repulsion_deltas_overloads(
         (arg_("sites_cart"), arg_("proxies"), arg_("function"))));
     def("repulsion_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
         af::const_ref<repulsion_simple_proxy> const&,
         repulsion_function const& function)) repulsion_residuals,
-      repulsion_residuals_overloads_1(
+      repulsion_residuals_overloads(
         (arg_("sites_cart"), arg_("proxies"), arg_("function"))));
     def("repulsion_residual_sum",
       (double(*)(
@@ -206,33 +198,19 @@ namespace {
     def("repulsion_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        asu_mappings const&,
-        af::const_ref<repulsion_asu_proxy> const&,
+        repulsion_sorted_asu_proxies const&,
         repulsion_function const& function)) repulsion_deltas,
-      repulsion_deltas_overloads_2(
-        (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies"),
+      repulsion_deltas_overloads(
+        (arg_("sites_cart"), arg_("sorted_asu_proxies"),
          arg_("function"))));
     def("repulsion_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        asu_mappings const&,
-        af::const_ref<repulsion_asu_proxy> const&,
+        repulsion_sorted_asu_proxies const&,
         repulsion_function const& function)) repulsion_residuals,
-      repulsion_residuals_overloads_2(
-        (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies"),
+      repulsion_residuals_overloads(
+        (arg_("sites_cart"), arg_("sorted_asu_proxies"),
          arg_("function"))));
-    def("repulsion_residual_sum",
-      (double(*)(
-        af::const_ref<scitbx::vec3<double> > const&,
-        asu_mappings const&,
-        af::const_ref<repulsion_asu_proxy> const&,
-        af::ref<scitbx::vec3<double> > const&,
-        repulsion_function const&,
-        bool)) repulsion_residual_sum,
-      repulsion_residual_sum_overloads_2(
-        (arg_("sites_cart"), arg_("asu_mappings"), arg_("proxies"),
-         arg_("gradient_array"), arg_("function"),
-         arg_("disable_cache")=false)));
     def("repulsion_residual_sum",
       (double(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -240,7 +218,7 @@ namespace {
         af::ref<scitbx::vec3<double> > const&,
         repulsion_function const&,
         bool)) repulsion_residual_sum,
-      repulsion_residual_sum_overloads_3(
+      repulsion_residual_sum_overloads_2(
         (arg_("sites_cart"), arg_("sorted_asu_proxies"),
          arg_("gradient_array"), arg_("function"),
          arg_("disable_cache")=false)));
