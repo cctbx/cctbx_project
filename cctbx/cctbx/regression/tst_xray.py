@@ -101,6 +101,9 @@ def exercise_structure():
   assert s.getvalue().strip() == "Si:0+c*1 O:4+c*1"
   am = xs.asu_mappings(buffer_thickness=1)
   assert am.mappings().size() == xs.scatterers().size()
+  rs = p1.random_shift_sites(max_shift_cart=0.2)
+  assert flex.max(flex.abs(p1.difference_vectors_cart(rs).as_double())) <= 0.2
+  assert p1.rms(rs) > 0
 
 def exercise_u_base():
   d_min = 9
