@@ -226,14 +226,14 @@ def column_group(crystal_symmetry, primary_column_type, labels,
                  data, sigmas=None):
   assert data is not None
   if (sigmas is not None): assert sigmas.size() == data.size()
-  result = miller.array(
+  result = (miller.array(
     miller_set=miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=indices,
       anomalous_flag=anomalous_flag),
     data=data,
-    sigmas=sigmas,
-    info=",".join(labels))
+    sigmas=sigmas)
+    .set_info(",".join(labels)))
   if (primary_column_type in "FG"):
     result.set_observation_type_xray_amplitude()
   elif (primary_column_type in "JK"):

@@ -87,7 +87,7 @@ class reader:
 
   def as_miller_array(self, crystal_symmetry=None, force_symmetry=00000,
                             info_prefix=""):
-    return miller.array(
+    return (miller.array(
       miller_set=miller.set(
         crystal_symmetry=crystal.symmetry(
           unit_cell=self.unit_cell,
@@ -97,8 +97,8 @@ class reader:
         indices=self.miller_indices,
         anomalous_flag=self.anomalous),
       data=self.i_obs,
-      sigmas=self.sigmas,
-      info=info_prefix+self.info()).set_observation_type_xray_intensity()
+      sigmas=self.sigmas)
+      .set_info(info_prefix+self.info()).set_observation_type_xray_intensity())
 
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
                              info_prefix=""):

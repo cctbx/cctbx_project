@@ -351,13 +351,12 @@ def _array_info(array):
 
 class array(set):
 
-  def __init__(self, miller_set, data=None, sigmas=None,
-                     info=None, observation_type=None):
+  def __init__(self, miller_set, data=None, sigmas=None):
     set._copy_constructor(self, miller_set)
     self._data = data
     self._sigmas = sigmas
-    self._info = info
-    self._observation_type = observation_type
+    self._info = None
+    self._observation_type = None
 
   def _copy_constructor(self, other):
     set._copy_constructor(self, other)
@@ -414,10 +413,12 @@ class array(set):
     s = None
     if (self.data() is not None): d = self.data().deep_copy()
     if (self.sigmas() is not None): s = self.sigmas().deep_copy()
-    return array(
+    return (array(
       miller_set = set.deep_copy(self),
       data=d,
-      sigmas=s).set_observation_type(self)
+      sigmas=s)
+      .set_info(self.info())
+      .set_observation_type(self))
 
   def __getitem__(self, slice_object):
     return array(

@@ -58,15 +58,15 @@ class reader:
       crystal_symmetry=crystal_symmetry,
       indices=self.indices()).auto_anomalous()
     miller_arrays = []
-    obs = miller.array(
+    obs = (miller.array(
       miller_set=miller_set,
       data=self.data(),
-      sigmas=self.sigmas(),
-      info=info_prefix+"obs,sigmas")
+      sigmas=self.sigmas())
+      .set_info(info_prefix+"obs,sigmas"))
     miller_arrays.append(obs)
     if (self.count_alphas() > 0):
       miller_arrays.append(miller.array(
         miller_set=miller_set,
-        data=self.alphas(),
-        info=info_prefix+"alphas"))
+        data=self.alphas())
+        .set_info(info_prefix+"alphas"))
     return miller_arrays

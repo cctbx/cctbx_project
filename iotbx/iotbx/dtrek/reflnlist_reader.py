@@ -150,6 +150,6 @@ class reflnlist:
           crystal_symmetry=crystal_symmetry,
           indices=self.miller_indices,
           anomalous_flag=False),
-        data=self.column_dict[column_name],
-        info=info_prefix+column_name[1:]))
+        data=self.column_dict[column_name])
+        .set_info(info_prefix+column_name[1:]))
     return miller_arrays
