@@ -12,7 +12,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_SINGLE_BUFFERED_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_PICKLE_SINGLE_BUFFERED_H
 
-#include <scitbx/array_family/type_holder.h>
+#include <scitbx/type_holder.h>
 #include <scitbx/boost_python/pickle_single_buffered.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/extract.hpp>

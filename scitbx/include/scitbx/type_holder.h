@@ -9,13 +9,13 @@
      2002 Jan: Created (R.W. Grosse-Kunstleve)
  */
 
-#ifndef SCITBX_ARRAY_FAMILY_TYPE_HOLDER_H
-#define SCITBX_ARRAY_FAMILY_TYPE_HOLDER_H
+#ifndef SCITBX_TYPE_HOLDER_H
+#define SCITBX_TYPE_HOLDER_H
 
-namespace scitbx { namespace af {
+namespace scitbx {
 
     template <class T> struct type_holder { typedef T type; };
 
-}} // namespace scitbx::af
+} // namespace scitbx
 
-#endif // SCITBX_ARRAY_FAMILY_TYPE_HOLDER_H
+#endif // SCITBX_TYPE_HOLDER_H
