@@ -81,7 +81,7 @@ namespace cctbx { namespace eltbx {
       //! Number of a and b coefficients. Currently either 4 or 5.
       /*! Note that the total number of coefficients is 2*n_ab()+1.
        */
-      int n_ab() const { return N; }
+      static std::size_t n_ab() { return N; }
       //! Return coefficient a(i), with 0 <= i < n_ab().
       /*! No range checking (for runtime efficiency).
        */

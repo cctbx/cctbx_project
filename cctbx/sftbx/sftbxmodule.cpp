@@ -11,7 +11,8 @@
 #include <boost/python/cross_module.hpp>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/coordinates_bpl.h>
-#include <cctbx/xray_scatterer.h>
+#include <cctbx/sftbx/xray_scatterer.h>
+#include <cctbx/sftbx/sfmap.h>
 
 namespace {
 
@@ -369,6 +370,22 @@ namespace {
     }
   }
 
+  // XXX
+  void
+  debug_sfmap(
+    const uctbx::UnitCell& ucell,
+    af::shared<ex_xray_scatterer> sites)
+  {
+    sftbx::exponent_table<double> et1(-10);
+    et1(-2.);
+    double max_q = ucell.Q(Miller::Index(11,13,17));
+    double resolution_factor = 1/3.;
+    sftbx::sampled_density<double> sd1;
+    sftbx::sampled_density<double> sd2(
+      ucell, sites.const_ref(),
+      max_q, resolution_factor, af::grid<3>(33,39,51));
+  }
+
 #   include <cctbx/basic/from_bpl_import.h>
 
   tuple
@@ -530,6 +547,8 @@ namespace {
     this_module.def(unpack_parameters_cart, "unpack_parameters");
     this_module.def(flatten, "flatten");
     this_module.def(dT_dX_inplace_frac_as_cart, "dT_dX_inplace_frac_as_cart");
+
+    this_module.def(debug_sfmap, "debug_sfmap");
   }
 
 }
