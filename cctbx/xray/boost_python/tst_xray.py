@@ -291,9 +291,9 @@ def exercise_targets():
   assert approx_equal(ls.scale_factor(), 0.6307845)
   assert approx_equal(ls.target(), 0.06211855)
   assert approx_equal(tuple(ls.derivatives()), (
-    (0.0013784963+0.002756992j), (0.0103982354+0.013864313j),
-    (0.0160141831+0.032028366j), (0.0004572786-0.000365822j),
-    (0.0014117387-0.001694086j)))
+    (0.0013784963-0.002756992j), (0.0103982354-0.013864313j),
+    (0.0160141831-0.032028366j), (0.0004572786+0.000365822j),
+    (0.0014117387+0.001694086j)))
   f_obs = flex.double((1,2,3,4,5))
   w = flex.int((1,1,1,1,1))
   f_calc = flex.complex_double((1,2,3,4,5))
@@ -320,9 +320,9 @@ def exercise_targets():
   assert approx_equal(ic.correlation(), 0.8932460)
   assert approx_equal(ic.target(), 1-ic.correlation())
   assert approx_equal(tuple(ic.derivatives()), (
-    (0.002855645+0.005711291j), (0.035410006+0.047213342j),
-    (0.010851453+0.021702907j), (0.005711291-0.004569033j),
-    (0.024748929-0.029698715j)))
+    (0.002855645-0.005711291j), (0.035410006-0.047213342j),
+    (0.010851453-0.021702907j), (0.005711291+0.004569033j),
+    (0.024748929+0.029698715j)))
 
 def exercise_sampled_model_density():
   assert approx_equal(xray.calc_u_base(2, 1./3), 0.1350949)

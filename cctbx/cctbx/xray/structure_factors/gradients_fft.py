@@ -64,7 +64,7 @@ class gradients_fft(gradients_base):
                   / matrix.row(self.manager().rfft().n_real()).product()
                   * self.manager().space_group().order_z()
                   / self.miller_set().multiplicities().data().as_double())
-    coeff = self.d_target_d_f_calc().deep_copy()
+    coeff = flex.conj(self.d_target_d_f_calc())
     ext.apply_u_extra(
       self.manager().unit_cell(),
       self._results.u_extra(),

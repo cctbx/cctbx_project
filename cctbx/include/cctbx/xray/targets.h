@@ -170,7 +170,7 @@ namespace cctbx { namespace xray { namespace targets {
       target_ += w * delta * delta;
       if (compute_derivatives && abs_fcalc != 0) {
         derivatives_[i] = -2. * scale_factor_ * w * delta
-                        / (sum_w_fobs2 * abs_fcalc) * fcalc[i];
+                        / (sum_w_fobs2 * abs_fcalc) * std::conj(fcalc[i]);
       }
     }
     target_ /= sum_w_fobs2;
@@ -285,7 +285,7 @@ namespace cctbx { namespace xray { namespace targets {
           FobsValueType factor_deriv =
               (y - sum_y / sum_w) * correlation_ / y2yy
             - (x - sum_x / sum_w) / correlation_denom;
-          derivatives_[i] = fcalc[i] * two_w * factor_deriv;
+          derivatives_[i] = std::conj(fcalc[i]) * two_w * factor_deriv;
         }
       }
     }

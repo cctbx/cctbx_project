@@ -530,6 +530,10 @@ class array(set):
       .set_info(self.info())
       .set_observation_type(self))
 
+  def conjugate(self):
+    assert self.is_complex()
+    return array(miller_set=self, data=flex.conj(self.data()))
+
   def __getitem__(self, slice_object):
     return array(
       miller_set=set.__getitem__(self, slice_object),
