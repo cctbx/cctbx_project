@@ -82,9 +82,7 @@ class web_to_models:
     self.i_next_model = 0
 
   def get_unit_cell(self, other_unit_cell=None):
-    if (self.ucparams):
-      return uctbx.unit_cell(
-        [float(p) for p in self.ucparams.replace(",", " ").split()])
+    if (self.ucparams): return uctbx.unit_cell(self.ucparams)
     assert other_unit_cell != None, "Unit cell parameters unknown."
     return other_unit_cell
 
