@@ -17,8 +17,7 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
   debug_utils.print_sites(SymSites)
   MillerIndices = xutils.miller_index_set(xsym, d_min)
   Fcalc = xutils.structure_factors(MillerIndices, SymSites)
-  for i in xrange(len(Fcalc.H)):
-    print Fcalc.H[i], "%.3g %.0f" % xutils.f_as_ampl_phase(Fcalc.F[i])
+  debug_utils.print_structure_factors(Fcalc)
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
