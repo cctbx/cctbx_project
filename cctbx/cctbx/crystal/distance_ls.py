@@ -342,6 +342,17 @@ def find_node(test_node, node_list):
       return 0001
   return 00000
 
+class bond_registry:
+
+  def __init__(self):
+    self.shells = []
+
+  def start_next_shell(self):
+    self.shells.append([])
+
+  def enter(self, entry):
+    self.shells[-1].append(entry)
+
 def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   scatterers = structure.scatterers()
   pair_lists = [[] for i in xrange(scatterers.size())]
@@ -357,10 +368,14 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
   asu_mappings = proxies.asu_mappings
   special_ops = [site_symmetry.special_op()
     for site_symmetry in proxies.site_symmetries]
+  bond_registries = []
   sums_terms = flex.double()
   multiplicities = flex.double()
   for i_seq_pivot in xrange(len(pair_lists)):
-    if (len(pair_lists[i_seq_pivot]) == 0): continue
+    bond_reg = bond_registry()
+    if (len(pair_lists[i_seq_pivot]) == 0):
+      bond_registries.append(bond_reg)
+      continue
     nodes_middle = []
     nodes_next = [node(
       i_seq=i_seq_pivot, rt_mx=sgtbx.rt_mx(), special_ops=special_ops)]
@@ -368,10 +383,6 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
       nodes_for_pdb = nodes_next[:]
     terms = flex.size_t([1])
     for i_shell in xrange(1,n_shells+1):
-      if (1):
-        # XXX currently for testing only
-        for n in nodes_next:
-          i_sym = asu_mappings.find_i_sym(i_seq=n.i_seq, rt_mx=n.rt_mx)
       nodes_previous = nodes_middle
       nodes_middle = nodes_next
       nodes_next = []
@@ -396,12 +407,19 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
               and not find_node(test_node=new_node, node_list=nodes_next)):
             nodes_next.append(new_node)
       terms.append(len(nodes_next))
+      if (i_shell <= 3):
+        bond_reg.start_next_shell()
+        for n in nodes_next:
+          i_sym = asu_mappings.find_i_sym(i_seq=n.i_seq, rt_mx=n.rt_mx)
+          if (i_sym > 0 or i_sym == 0  and i_seq_pivot < n.i_seq):
+            bond_reg.enter((n.i_seq, i_sym))
       if (0):
         nodes_for_pdb.extend(nodes_next)
         write_nodes_as_pdb(
           label="shell_%02d_%02d" % (i_seq_pivot, i_shell),
           structure=structure,
           node_list=nodes_for_pdb)
+    bond_registries.append(bond_reg)
     sums_terms.append(flex.sum(terms))
     multiplicities.append(scatterers[i_seq_pivot].multiplicity())
     print scatterers[i_seq_pivot].label, list(terms)
@@ -418,6 +436,7 @@ def coordination_sequences(structure, proxies, n_shells=10, coseq_terms=None):
         print "Found coordination sequence"
   print "TD%d:" % (terms.size()-1), \
         flex.mean_weighted(sums_terms, multiplicities)
+  print [bond_reg.shells for bond_reg in bond_registries]
 
 def run(distance_cutoff=3.5):
   command_line = (iotbx_option_parser(
