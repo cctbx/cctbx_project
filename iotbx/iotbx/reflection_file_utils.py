@@ -204,7 +204,7 @@ class get_r_free_flags_scores:
               if (c_keys == range(min(c_keys), max(c_keys)+1)):
                 c_values = flex.size_t(c_values)
                 count_not_almost_full = (
-                  c_values < int(flex.max(c_values)*0.8)).count(True)
+                  c_values < int(flex.max(c_values)*0.5)).count(True)
                 if (count_not_almost_full == 0):
                   if (looks_like_r_free_flags_info(miller_array.info())):
                     flag_score = 2
