@@ -7,6 +7,59 @@
 
 namespace scitbx { namespace math {
 
+  template <typename FloatType=double>
+  class sphere_3d
+  {
+    public:
+      //! Default constructor. Some data members are not initialized!
+      sphere_3d() {}
+
+      sphere_3d(
+        vec3<FloatType> const& center,
+        FloatType const& radius)
+      :
+        center_(center),
+        radius_(radius)
+      {}
+
+      //! Center of the minimum covering sphere.
+      vec3<FloatType>
+      center() const { return center_; }
+
+      //! Radius of the minimum covering sphere.
+      FloatType
+      radius() const { return radius_; }
+
+      //! New sphere with expanded radius.
+      sphere_3d
+      expand(FloatType const& additional_radius) const
+      {
+        return sphere_3d(center_, radius_+additional_radius);
+      }
+
+      //! True if point is inside sphere.
+      bool
+      is_inside(vec3<FloatType> const& point)
+      {
+        if ((point - center_).length_sq() <= radius_ * radius_) {
+          return true;
+        }
+        return false;
+      }
+
+      //! Coordinates of lower-left corner of covering box.
+      vec3<FloatType>
+      box_min() const { return center_ - radius_; }
+
+      //! Coordinates of upper-right corner of covering box.
+      vec3<FloatType>
+      box_max() const { return center_ + radius_; }
+
+    protected:
+      vec3<FloatType> center_;
+      FloatType radius_;
+  };
+
   //! Minimum covering sphere of a set of 3-dimensional points.
   /*! Algorithm due to
 
@@ -29,11 +82,11 @@ namespace scitbx { namespace math {
       case.
    */
   template <typename FloatType=double>
-  class minimum_covering_sphere
+  class minimum_covering_sphere_3d : public sphere_3d<FloatType>
   {
     public:
       //! Default constructor. Some data members are not initialized!
-      minimum_covering_sphere() {}
+      minimum_covering_sphere_3d() {}
 
       //! Execution of Lawson's algorithm.
       /*! The iterative algorithm is terminated if
@@ -42,7 +95,7 @@ namespace scitbx { namespace math {
 
           using Lawson's notation.
        */
-      minimum_covering_sphere(
+      minimum_covering_sphere_3d(
         af::const_ref<vec3<FloatType> > const& points,
         FloatType const& epsilon=1.e-6)
       :
@@ -53,22 +106,22 @@ namespace scitbx { namespace math {
         typedef FloatType f_t;
         std::vector<f_t> weights(points.size(), 1./points.size());
         while (true) {
-          center_.fill(0);
+          this->center_.fill(0);
           for(std::size_t i=0;i<points.size();i++) {
-            center_ += weights[i] * points[i];
+            this->center_ += weights[i] * points[i];
           }
           f_t sum_w_r_sq = 0;
           f_t sum_w_r = 0;
-          radius_ = 0;
+          this->radius_ = 0;
           for(std::size_t i=0;i<points.size();i++) {
-            f_t r_sq = (center_ - points[i]).length_sq();
+            f_t r_sq = (this->center_ - points[i]).length_sq();
             sum_w_r_sq += weights[i] * r_sq;
             f_t r = std::sqrt(r_sq);
-            if (radius_ < r) radius_ = r;
+            if (this->radius_ < r) this->radius_ = r;
             weights[i] *= r;
             sum_w_r += weights[i];
           }
-          if (radius_ - std::sqrt(sum_w_r_sq) < radius_ * epsilon) {
+          if (this->radius_ - std::sqrt(sum_w_r_sq) < this->radius_*epsilon) {
             break;
           }
           SCITBX_ASSERT(sum_w_r != 0);
@@ -83,18 +136,8 @@ namespace scitbx { namespace math {
       std::size_t
       n_iterations() const { return n_iterations_; }
 
-      //! Center of the minimum covering sphere.
-      vec3<FloatType>
-      center() const { return center_; }
-
-      //! Radius of the minimum covering sphere.
-      FloatType
-      radius() const { return radius_; }
-
     protected:
       std::size_t n_iterations_;
-      vec3<FloatType> center_;
-      FloatType radius_;
   };
 
 }} // namespace scitbx::math

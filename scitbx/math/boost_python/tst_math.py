@@ -3,7 +3,7 @@ from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import eigensystem
 from scitbx.math import gaussian
 from scitbx.math import golay_24_12_generator
-from scitbx.math import minimum_covering_sphere
+from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, eps_eq
@@ -591,11 +591,23 @@ def exercise_golay():
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
 
 def exercise_minimum_covering_sphere(epsilon=1.e-3):
+  s3 = sphere_3d(center=[1,2,3], radius=4)
+  assert approx_equal(s3.center(), [1,2,3])
+  assert approx_equal(s3.radius(), 4)
+  s3 = s3.expand(additional_radius=2)
+  assert approx_equal(s3.center(), [1,2,3])
+  assert approx_equal(s3.radius(), 6)
+  assert s3.is_inside(point=[1,2,3])
+  assert s3.is_inside(point=[1,2,3+6-1.e-6])
+  assert not s3.is_inside([1,2,3+6+1.e-6])
+  assert approx_equal(s3.box_min(), [1-6,2-6,3-6])
+  assert approx_equal(s3.box_max(), [1+6,2+6,3+6])
   points = flex.vec3_double([(0,0,0),(1,0,0),(0,1,0),(1,1,1)])
-  mcs = minimum_covering_sphere(points=points)
+  mcs = scitbx.math.minimum_covering_sphere_3d(points=points)
   assert mcs.n_iterations() > 0
   assert approx_equal(mcs.center(), (0.5,0.5,0.5), eps=1.e-3)
   assert approx_equal(mcs.radius(), math.sqrt(3)/2, eps=1.e-5)
+  assert mcs.is_inside(mcs.center()) # base class method
   eps = epsilon*10
   eps_loose = eps*10
   for i,j,k in flex.nested_loop((1,1,1),(2,3,2),00000):
