@@ -5,6 +5,11 @@ from libtbx.test_utils import approx_equal
 import sys, os
 
 def exercise_basic():
+  assert mtz.wrapper.ccp4_liberr_verbosity(-1) == 0
+  assert mtz.wrapper.ccp4_liberr_verbosity(1) == 1
+  assert mtz.wrapper.ccp4_liberr_verbosity(-1) == 1
+  assert mtz.wrapper.ccp4_liberr_verbosity(0) == 0
+  assert mtz.wrapper.ccp4_liberr_verbosity(-1) == 0
   mtz_object = mtz.wrapper.object()
   assert mtz_object.title() == ""
   assert mtz_object.history().size() == 0
@@ -111,6 +116,33 @@ def exercise_basic():
                 == column.valid_indices().size()
           lookup_column = mtz_object.lookup_column(column.label())
           assert lookup_column.label() == column.label()
+    assert mtz_object.valid_indices_anomalous(
+      column_label_plus="Frem",
+      column_label_minus="DANOrem").size() == 326
+    assert mtz_object.valid_values_anomalous(
+      column_label_plus="Frem",
+      column_label_minus="DANOrem").size() == 326
+    assert mtz_object.valid_complex(
+      column_label_ampl="Frem",
+      column_label_phi="DANOrem").size() == 163
+    assert mtz_object.valid_complex_anomalous(
+      column_label_ampl_plus="Frem",
+      column_label_phi_plus="DANOrem",
+      column_label_ampl_minus="Frem",
+      column_label_phi_minus="DANOrem").size() == 326
+    observations = mtz_object.valid_delta_anomalous(
+      column_label_f_data="Frem",
+      column_label_f_sigmas="SIGFrem",
+      column_label_d_data="DANOrem",
+      column_label_d_sigmas="SIGDANOrem")
+    assert observations.indices.size() == 326
+    assert observations.data.size() == 326
+    assert observations.sigmas.size() == 326
+    assert mtz_object.valid_hl(
+      column_label_a="Frem",
+      column_label_b="DANOrem",
+      column_label_c="Frem",
+      column_label_d="DANOrem").size() == 163
 
 def exercise():
   forever = "--forever" in sys.argv[1:]
