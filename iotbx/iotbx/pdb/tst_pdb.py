@@ -1,4 +1,5 @@
 import iotbx.pdb.xray_structure
+from iotbx.pdb import remark_290_interpretation
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
@@ -38,11 +39,35 @@ LINK        MN    MN   391                 OE2 GLU   217            2565
     _1 = [r.name1,r.altLoc1,r.resName1,r.chainID1,r.resSeq1,r.iCode1,r.sym1]
     _2 = [r.name2,r.altLoc2,r.resName2,r.chainID2,r.resSeq2,r.iCode2,r.sym2]
     if (i == 0):
-      assert _1 == [' O1 ', ' ', 'DDA', ' ', '   1', ' ', '      ']
-      assert _2 == [' C3 ', ' ', 'DDL', ' ', '   2', ' ', '      ']
+      assert _1 == [' O1 ', ' ', 'DDA', ' ', 1, ' ', '      ']
+      assert _2 == [' C3 ', ' ', 'DDL', ' ', 2, ' ', '      ']
     else:
-      assert _1 == ['MN  ', ' ', ' MN', ' ', ' 391', ' ', '      ']
-      assert _2 == [' OE2', ' ', 'GLU', ' ', ' 217', ' ', '  2565']
+      assert _1 == ['MN  ', ' ', ' MN', ' ', 391, ' ', '      ']
+      assert _2 == [' OE2', ' ', 'GLU', ' ', 217, ' ', '  2565']
+
+def exercise_remark_290_interpretation():
+  symmetry_operators = remark_290_interpretation.extract_symmetry_operators(
+    remark_290_records=remark_290_interpretation.example.splitlines())
+  assert symmetry_operators is not None
+  assert len(symmetry_operators) == 4
+  assert symmetry_operators[0] == sgtbx.rt_mx("X,Y,Z")
+  assert symmetry_operators[1] == sgtbx.rt_mx("1/2-X,-Y,1/2+Z")
+  assert symmetry_operators[2] == sgtbx.rt_mx("-X,1/2+Y,1/2-Z")
+  assert symmetry_operators[3] == sgtbx.rt_mx("1/2+X,1/2-Y,-Z")
+  for link_sym,expected_sym_op in [("1555", "x,y,z"),
+                                   ("1381", "x-2,y+3,z-4"),
+                                   ("3729", "-x+2,1/2+y-3,1/2-z+4"),
+                                   (" 3_729 ", "-x+2,1/2+y-3,1/2-z+4"),
+                                   (" 3 729 ", "-x+2,1/2+y-3,1/2-z+4"),
+                                   ("_3729", None),
+                                   ("37_29", None)]:
+    sym_op = remark_290_interpretation.get_link_symmetry_operator(
+      symmetry_operators=symmetry_operators,
+      link_sym=link_sym)
+    if (sym_op is None):
+      assert expected_sym_op is None
+    else:
+      assert sym_op == sgtbx.rt_mx(expected_sym_op)
 
 def exercise_xray_structure(anisotropic_flag, verbose=0):
   structure = random_structure.xray_structure(
@@ -78,6 +103,7 @@ def exercise_xray_structure(anisotropic_flag, verbose=0):
 def run():
   verbose = "--Verbose" in sys.argv[1:]
   exercise_format_records()
+  exercise_remark_290_interpretation()
   exercise_parser()
   for anisotropic_flag in (00000, 0001):
     exercise_xray_structure(anisotropic_flag, verbose=verbose)
