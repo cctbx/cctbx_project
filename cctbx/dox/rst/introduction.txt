@@ -155,7 +155,7 @@ cctbx@cci.lbl.gov
 
 .. _Boost.Python: http://www.boost.org/libs/python/doc/
 
-.. _Clipper: http://www.yorvic.york.ac.uk/~cowtan/clipper/clipper.html
+.. _Clipper: http://www.ysbl.york.ac.uk/~cowtan/clipper/clipper.html
 
 .. _PHENIX: http://phenix-online.org/
 
