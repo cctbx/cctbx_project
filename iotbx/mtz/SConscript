@@ -16,14 +16,14 @@ env = env_base.Copy(
 )
 
 env.StaticLibrary(target='#libtbx/cmtz',
-  source = ["../../newsrc/library_err.c",
-            "../../newsrc/library_file.c",
-            "../../newsrc/library_utils.c",
-            "../../newsrc/ccp4_array.c",
-            "../../newsrc/ccp4_parser.c",
-            "../../newsrc/cvecmat.c",
-            "../../newsrc/cmtzlib.c",
-            "../../newsrc/csymlib.c",
+  source = ["../../ccp4/lib/src/library_err.c",
+            "../../ccp4/lib/src/library_file.c",
+            "../../ccp4/lib/src/library_utils.c",
+            "../../ccp4/lib/src/ccp4_array.c",
+            "../../ccp4/lib/src/ccp4_parser.c",
+            "../../ccp4/lib/src/cvecmat.c",
+            "../../ccp4/lib/src/cmtzlib.c",
+            "../../ccp4/lib/src/csymlib.c",
            ])
 
 env.Append(LIBPATH=["#libtbx",])
