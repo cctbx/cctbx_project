@@ -71,6 +71,13 @@ class sqr(rec):
     assert l == n * n
     rec.__init__(self, elems, (n,n))
 
+  def determinant(self):
+    assert self.n == (3,3)
+    m = self.elems
+    return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
+           - m[1] * (m[3] * m[8] - m[5] * m[6]) \
+           + m[2] * (m[3] * m[7] - m[4] * m[6])
+
 class sym(rec):
 
   def __init__(self, elems):
