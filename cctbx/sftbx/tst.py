@@ -40,8 +40,7 @@ def run():
     SgInfo = sgtbx.SpaceGroup(SgSymbols).Info()
     LookupSymbol = SgInfo.BuildLookupSymbol()
     sys.stdout.flush()
-    #Can't print to stderr if comparing (err+out) output to (out) reference
-    #print >> sys.stderr, LookupSymbol
+    print >> sys.stderr, LookupSymbol
     sys.stderr.flush()
     if (symbols_to_stdout):
       print LookupSymbol
