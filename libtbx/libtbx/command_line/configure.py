@@ -253,10 +253,6 @@ def emit_setpaths_bat(env):
       print >> f, 'set %s=%s%s%%%s%%' % (var_name, val, os.pathsep, var_name)
     else:
       print >> f, 'set %s=%s' % (var_name, values)
-  print >> f, 'if not defined PATHEXT set PATHEXT='
-  print >> f, 'set PATHEXT=.PX;.PY;%PATHEXT%'
-  print >> f, \
-   'call "%LIBTBX_PYTHON_EXE%" "%LIBTBX_DIST%\\libtbx\\assoc_ftype.py"'
   f.close()
 
 class build_options_t:
