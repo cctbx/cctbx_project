@@ -119,10 +119,11 @@ class binner(ext.binner):
         show_bin_number=True,
         show_d_range=True,
         show_counts=True,
-        f=None):
+        f=None,
+        prefix=""):
     if (f is None): f = sys.stdout
     for i_bin in self.range_all():
-      print >> f, self.bin_legend(
+      print >> f, prefix + self.bin_legend(
         i_bin=i_bin,
         show_bin_number=show_bin_number,
         show_d_range=show_d_range,
@@ -134,11 +135,12 @@ class binner(ext.binner):
         show_bin_number=True,
         show_d_range=True,
         show_counts=True,
-        f=None):
+        f=None,
+        prefix=""):
     assert len(data) == self.n_bins_all()
     if (f is None): f = sys.stdout
     for i_bin in self.range_all():
-      print >> f, self.bin_legend(
+      print >> f, prefix + self.bin_legend(
         i_bin=i_bin,
         show_bin_number=show_bin_number,
         show_d_range=show_d_range,
@@ -165,7 +167,8 @@ class binned_data:
         show_bin_number=True,
         show_d_range=True,
         show_counts=True,
-        f=None):
+        f=None,
+        prefix=""):
     if (data_fmt is None): data_fmt = self.data_fmt
     self.binner.show_data(
       data=self.data,
@@ -173,7 +176,8 @@ class binned_data:
       show_bin_number=show_bin_number,
       show_d_range=show_d_range,
       show_counts=show_counts,
-      f=f)
+      f=f,
+      prefix=prefix)
 
 def make_lookup_dict(indices): # XXX push to C++
   result = {}
@@ -245,28 +249,29 @@ class set(crystal.symmetry):
       indices=self.indices().__getitem__(slice_object),
       anomalous_flag=self.anomalous_flag())
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "Number of Miller indices:", len(self.indices())
-    print >> f, "Anomalous flag:", self.anomalous_flag()
-    crystal.symmetry.show_summary(self, f)
+    print >> f, prefix + "Number of Miller indices:", len(self.indices())
+    print >> f, prefix + "Anomalous flag:", self.anomalous_flag()
+    crystal.symmetry.show_summary(self, f=f, prefix=prefix)
     return self
 
-  def show_comprehensive_summary(self, f=None):
+  def show_comprehensive_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    self.show_summary(f=f)
+    self.show_summary(f=f, prefix=prefix)
     no_sys_abs = self.copy()
     if (self.space_group_info() is not None):
       sys_absent_flags = self.sys_absent_flags().data()
       n_sys_abs = sys_absent_flags.count(True)
-      print >> f, "Systematic absences:", n_sys_abs
+      print >> f, prefix + "Systematic absences:", n_sys_abs
       if (n_sys_abs != 0):
         no_sys_abs = self.select(selection=~sys_absent_flags)
-        print >> f, "Systematic absences not included in following:"
+        print >> f, prefix + "Systematic absences not included in following:"
       n_centric = no_sys_abs.centric_flags().data().count(True)
-      print >> f, "Centric reflections:", n_centric
+      print >> f, prefix + "Centric reflections:", n_centric
     if (self.unit_cell() is not None):
-      print >> f, "Resolution range: %.6g %.6g" % no_sys_abs.resolution_range()
+      print >> f, prefix + "Resolution range: %.6g %.6g" % (
+        no_sys_abs.resolution_range())
       if (self.space_group_info() is not None and self.indices().size() > 0):
         no_sys_abs.setup_binner(n_bins=1)
         completeness_d_max_d_min = no_sys_abs.completeness(use_binning=True)
@@ -276,18 +281,20 @@ class set(crystal.symmetry):
         n_obs = binner.counts_given()[1]
         n_complete = binner.counts_complete()[1]
         if (n_complete != 0):
-          print >> f, "Completeness in resolution range: %.6g" % (
+          print >> f, prefix + "Completeness in resolution range: %.6g" % (
             float(n_obs) / n_complete)
         n_complete += binner.counts_complete()[0]
         if (n_complete != 0):
-          print >> f, "Completeness with d_max=infinity: %.6g" % (
+          print >> f, prefix + "Completeness with d_max=infinity: %.6g" % (
             float(n_obs) / n_complete)
     if (self.space_group_info() is not None and no_sys_abs.anomalous_flag()):
       asu, matches = no_sys_abs.match_bijvoet_mates()
-      print >> f, "Bijvoet pairs:", matches.pairs().size()
-      print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
+      print >> f, prefix + "Bijvoet pairs:", matches.pairs().size()
+      print >> f, prefix + "Lone Bijvoet mates:", \
+        matches.n_singles() - n_centric
       if (isinstance(self, array) and self.is_real_array()):
-        print >> f, "Anomalous signal: %.4f" % no_sys_abs.anomalous_signal()
+        print >> f, prefix + "Anomalous signal: %.4f" % (
+          no_sys_abs.anomalous_signal())
     return self
 
   def sys_absent_flags(self):
@@ -803,13 +810,14 @@ class array(set):
       data=_slice_or_none(self.data(), slice_object),
       sigmas=_slice_or_none(self.sigmas(), slice_object))
 
-  def show_summary(self, f=None):
+  def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, "Miller %s info:" % self.__class__.__name__, self.info()
-    print >> f, "Observation type:", self.observation_type()
-    print >> f, "Type of data:", raw_array_summary(self.data())
-    print >> f, "Type of sigmas:", raw_array_summary(self.sigmas())
-    set.show_summary(self, f)
+    print >> f, prefix + "Miller %s info:" % (
+      self.__class__.__name__), self.info()
+    print >> f, prefix + "Observation type:", self.observation_type()
+    print >> f, prefix + "Type of data:", raw_array_summary(self.data())
+    print >> f, prefix + "Type of sigmas:", raw_array_summary(self.sigmas())
+    set.show_summary(self, f=f, prefix=prefix)
     return self
 
   def f_sq_as_f(self, tolerance=1.e-6):
@@ -1417,16 +1425,16 @@ class array(set):
       else: data.append(correlation.coefficient())
     return binned_data(binner=lhs.binner(), data=data, data_fmt="%6.3f")
 
-  def show_array(self, f=None):
+  def show_array(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
     assert self.data().size() == self.indices().size()
     if (self.sigmas() is None):
       for h,d in zip(self.indices(), self.data()):
-        print >> f, h, d
+        print >> f, prefix + str(h), d
     else:
-      assert self.indices().size() == self.sigmas().size()
+      assert self.sigmas().size() == self.indices().size()
       for h,d,s in zip(self.indices(), self.data(), self.sigmas()):
-        print >> f, h, d, s
+        print >> f, prefix + str(h), d, s
     return self
 
   def fft_map(self, resolution_factor=1/3.,
