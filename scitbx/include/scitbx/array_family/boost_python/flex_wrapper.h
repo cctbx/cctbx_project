@@ -6,7 +6,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <boost/python/overloads.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
@@ -645,9 +644,6 @@ namespace scitbx { namespace af { namespace boost_python {
 
     typedef boost::python::class_<f_t, flex_wrapper<ElementType> > class_f_t;
 
-    BOOST_PYTHON_FUNCTION_OVERLOADS(
-      select_size_t_overloads, select_size_t, 2, 3)
-
     static class_f_t
     plain(std::string const& python_name)
     {
@@ -714,8 +710,17 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("extend", extend)
         .def("reversed", reversed)
         .def("select", select_bool)
-        .def("select", select_size_t, select_size_t_overloads((
-          arg_("self"), arg_("indices"), arg_("reverse")=false)))
+        .def("select",
+          (shared<e_t>(*)(
+            af::const_ref<e_t> const&,
+            af::const_ref<std::size_t> const&)) select_size_t, (
+          arg_("self"), arg_("indices")))
+        .def("select",
+          (shared<e_t>(*)(
+            af::const_ref<e_t> const&,
+            af::const_ref<std::size_t> const&,
+            bool)) select_size_t, (
+          arg_("self"), arg_("indices"), arg_("reverse")))
         .def("set_selected", set_selected_bool_a)
         .def("set_selected", set_selected_bool_s)
         .def("set_selected",
