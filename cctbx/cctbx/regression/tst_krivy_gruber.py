@@ -4,7 +4,7 @@ from cctbx.uctbx import gruber_1973_table_1
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import matrix
-from scitbx.python_utils.misc import time_log
+from scitbx.python_utils.misc import time_log, get_caller_name
 from scitbx.test_utils import approx_equal
 import math
 import random
@@ -45,8 +45,47 @@ class check_is_niggli_cell(reduction_base.gruber_parameterization):
         if (gt(a, abs(e) + abs(f)/2)): return 00000
     return 0001
 
-relative_epsilon = None
+class reduction_with_tracking(krivy_gruber_1976.reduction):
 
+  def __init__(self, unit_cell, relative_epsilon=0, iteration_limit=100):
+    self.action_log = []
+    self.cell_log = []
+    self.type_log = []
+    self.meets_primary_conditions_log = []
+    self.meets_main_conditions_log = []
+    self.is_niggli_cell_log = []
+    try:
+      krivy_gruber_1976.reduction.__init__(self,
+        unit_cell=unit_cell,
+        relative_epsilon=relative_epsilon,
+        iteration_limit=iteration_limit)
+      self.iteration_limit_exceeded = 00000
+    except StopIteration:
+      self.iteration_limit_exceeded = 0001
+
+  def cb_update(self, m_elems):
+    self.action_log.append(int(get_caller_name()[1]))
+    self.cell_log.append(self.as_unit_cell())
+    self.type_log.append(self.type())
+    self.meets_primary_conditions_log.append(self.meets_primary_conditions())
+    self.meets_main_conditions_log.append(self.meets_main_conditions())
+    self.is_niggli_cell_log.append(self.is_niggli_cell())
+    if (self._n_iterations == self._iteration_limit):
+      raise StopIteration
+    self._r_inv *= matrix.sqr(m_elems)
+    self._n_iterations += 1
+
+class reduction_with_tracking_and_eq_always_false(reduction_with_tracking):
+
+  def __init__(self, unit_cell):
+    reduction_with_tracking.__init__(self, unit_cell)
+
+  def eps_eq(self, x, y):
+    return 00000
+
+relative_epsilon = None
+track_infinite = 00000
+eq_always_false = 00000
 time_reduce = time_log("krivy_gruber_1976.reduction")
 
 def reduce(inp):
@@ -57,6 +96,25 @@ def reduce(inp):
   assert inp.change_basis(red.r_inv().elems).is_similar_to(red.as_unit_cell())
   if (relative_epsilon is None):
     assert check_is_niggli_cell(red.as_unit_cell()).itva_is_niggli_cell()
+  if (track_infinite):
+    if (eq_always_false):
+      red0 = reduction_with_tracking_and_eq_always_false(inp)
+    else:
+      red0 = reduction_with_tracking(inp)
+    if (red0.iteration_limit_exceeded):
+      n = 20
+      print inp
+      print "red0.action_log:", red0.action_log[-n:]
+      print "red0.type_log:", red0.type_log[-n:]
+      print "red0.meets_primary_conditions_log:", \
+             red0.meets_primary_conditions_log[-n:]
+      print "red0.meets_main_conditions_log:", \
+             red0.meets_main_conditions_log[-n:]
+      print "red0.is_niggli_cell_log:", red0.is_niggli_cell_log[-n:]
+      if (1):
+        for cell in red0.cell_log[-n:]:
+          print cell
+        print
   return red
 
 def ucgmx((a,b,c,d,e,f)): # unit cell given Gruber matrix
@@ -339,9 +397,16 @@ def exercise():
   verbose = "--Verbose" in sys.argv[1:]
   exercise_gruber_1973_example()
   exercise_krivy_gruber_1976_example()
+  global relative_epsilon
+  global track_infinite
+  global eq_always_false
   if ("--zero_epsilon" in sys.argv[1:]):
-    global relative_epsilon
     relative_epsilon = 0
+  if ("--track_infinite" in sys.argv[1:]):
+    track_infinite = 0001
+  if ("--eq_always_false" in sys.argv[1:]):
+    track_infinite = 0001
+    eq_always_false = 0001
   exercise_bravais_plus()
   exercise_grid(quick=quick, verbose=verbose)
   if (quick): n_trials_per_type=10
