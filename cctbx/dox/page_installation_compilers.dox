@@ -1,35 +1,183 @@
-/*! \page page_installation_compilers Computational Crystallography Toolbox
+/*! \page page_installation_compilers C++ compiler notes
 
 <hr>
-<h2>Notes on using and installing C++ compilers</h2>
-<hr>
 
-\par
-To be done.
+After a long gestation period that lasted more than a decade, the
+international standard for the C++ programming language was finally
+approved in November 1997 (see
+<a href="http://www.research.att.com/~bs/iso_release.html">Bjarne
+Stroustrup's page</a>).
+Even in the computing world this is not a long time ago and a fully
+standard-compliant compiler is still not available. This is reflected
+by the necessity for the sections below.  Fortunately, most of the
+deficiencies are not too difficult to fix.
+
+<hr>
 
 \section compilers_vc60 Microsoft Visual C++ 6.0 Service Pack 4
 
 \par
-To be done.
+The cctbx has only been tested with
+<a href="http://msdn.microsoft.com/vstudio/sp/vs6sp4/">Service Pack 4</a>.
+The service packs are freely available.
+It is not known if the cctbx installation works with the original
+Visual C++ 6.0 CD distribution.
+There is a more recent
+<a href="http://msdn.microsoft.com/vstudio/sp/vs6sp5/">Service Pack 5</a>
+that has not yet been tested for installing the cctbx but that should
+be preferred.
 
-\section compilers_mingw32 MINGW32 (a free compiler for Windows)
+<hr>
+
+\section compilers_mingw32 mingw32 (a free compiler for Windows)
 
 \par
-To be done.
+Mingw32 (Minimal GNU Win32) is a gcc 2.95.2 based compiler for Windows.
+To install mingw32, follow the instructions at:
+
+  http://starship.python.net/crew/kernr/mingw32/Notes.html
+
+In particular, install these three files:
+
+<ul>
+<li>ftp://ftp.xraylith.wisc.edu/pub/khan/gnu-win32/mingw32/gcc-2.95.2/gcc-2.95.2-msvcrt.exe
+<li>ftp://ftp.xraylith.wisc.edu/pub/khan/gnu-win32/mingw32/gcc-2.95.2/fixes/quote-fix-msvcrt.exe
+<li>http://starship.python.net/crew/kernr/mingw32/Python-1.5.2-mingw32.zip
+</ul>
+
+Unpack the first two archives in the
+<strong>suggested default locations</strong>
+and update your <tt>PATH</tt> by editing <tt>C:\autoexec.bat</tt>.
+For example:<pre>
+set PATH="C:\gcc-2.95.2\bin;%PATH%"
+</pre>
+
+Unpack the third archive in <tt>C:\usr</tt>. If you want to be
+certain that the changes in <tt>C:\autoexec.bat</tt> take full
+effect, reboot your system. To test the installation, enter
+<tt>gcc --version</tt>.
+You should see the output <tt>2.95.2</tt>.
+
+<hr>
 
 \section compilers_linux Linux (gcc 2.95.2 and gcc 2.95.3)
 
 \par
-To be done.
+First, log on to your Linux system and enter <tt>gcc --version</tt>.
+If the output is <tt>2.95.2</tt> or <tt>2.95.3</tt> you may skip the
+rest of this section. Otherwise, take a deep breath and read on.
+
+\par
+The compiler that ships with RedHat 6.1 and RedHat 6.2 (egcs-2.91.66)
+is out of date and cannot be used to install the cctbx. Unfortunately,
+the compiler that ships with RedHat 7.0 (gcc 2.96) is a development
+snapshot that is
+<a href="http://gcc.gnu.org/gcc-2.96.html">not recommended</a>
+for production use. This is, no matter which version of RedHat you
+are running, you have to install
+<a href="http://gcc.gnu.org/gcc-2.95/gcc-2.95.2.html">gcc 2.95.2</a>
+or
+<a href="http://gcc.gnu.org/gcc-2.95/gcc-2.95.3.html">gcc 2.95.3</a>.
+The latter version has not yet been tested for installing the cctbx
+but should be preferred.
+
+This is what we used to install gcc 2.95.2 on our x86 RedHat 6.1
+system:<pre>
+cd /scratch
+gunzip -c gcc-2.95.2.tar.gz | tar xf -
+mkdir gccbuild
+cd gccbuild
+../gcc-2.95.2/configure --enable-shared --prefix=/usr
+make bootstrap
+make install</pre>
+
+Please note:
+<ul>
+<li>Use the commands above at <strong>your own risk</strong>!
+<li>This will replace the system compiler!
+<li>Installing gcc takes a long time, even on a fast machine.
+<li>You may remove <tt>/scratch/gcc-2.95.2</tt> and
+    <tt>/scratch/gccbuild</tt> after the installation is completed.
+</ul>
+
+\par
+Unfortunately, there were problems with a less intrusive approach that
+installed gcc 2.95.2 into a non-system location.
+
+\par
+We have no experience with installing gcc on Linux systems other
+than RedHat 6.1. However, the installation procedure should be very
+similar for other Linux based systems.
+
+<hr>
 
 \section compilers_compaq_tru64 Compaq Tru64
 
 \par
-To be done.
+The Compaq C++ compiler that is being used for the development of
+the cctbx is
+<tt>Compaq C++ V6.2-024</tt>
+for Tru64 Unix 5.0. This is an excellent compiler
+that is based on a high-quality
+<a href="http://www.edg.com/">EDG</a>
+front-end.
+However, unfortunately the standard "C++ C headers" such as
+<tt>cstdio</tt> or <tt>cstdlib</tt> are missing.
+
+\par
+A Python script <tt>generate_c++_c_headers.py</tt> is provided in
+the <tt>cctbx/build</tt> directory. This script can be used in
+the following way:<pre>
+        mkdir C++_C_headers
+        cd C++_C_headers
+        python ../cctbx/build/generate_c++_c_headers.py</pre>
+
+The last command suggests that the <tt>C++_C_headers</tt> directory is
+created in the same directory where the cctbx distribution is unpacked.
+This configuration facilitates the use of the
+<tt>fast_track_tru64_cxx</tt> script.
+See \ref installing_fast_track for more details.
+
+\par
+It is possible to install the surrogate C++ C header files in any other
+location. However, in that case the corresponding path name in the
+Boost.Python makefile and the <tt>configuration</tt> file for the
+cctbx have to be adjusted by hand. This is explained in more detail
+in the \ref page_installation_advanced section.
+
+Remark: gcc 2.95.2 has been used to successfully compile the cctbx
+under Tru64 Unix. Use the Boost.Python <tt>linux_gcc.mak</tt> makefile
+and <tt>cctbx/build/configuration_linux_gcc</tt> as a starting point.
+It should be sufficient to adjust the pathnames for Python.
+
+<hr>
 
 \section compilers_silicon_graphics_irix Silicon Graphics IRIX 6.5
 
 \par
-To be done.
+The Silicon Graphics C++ compiler that is being used for the
+development of the cctbx is
+<tt>MIPSpro Compilers: Version 7.3.1.1m</tt>.
+This compiler is based on a high-quality
+<a href="http://www.edg.com/">EDG</a>
+front-end.
+However, unfortunately the standard "C++ C headers" such as
+<tt>cstdio</tt> or <tt>cstdlib</tt> are missing.
+
+\par
+Instructions for installing surrogate C++ C header files
+are given in the previous section (\ref compilers_compaq_tru64).
+
+\par
+Remark: Both gcc 2.95.2 and gcc 2.95.3 cannot be used to compile the
+cctbx under IRIX. Both versions of gcc issue an "Internal compiler
+error." A full bug report for gcc 2.95.3 has been submitted
+(go to http://gcc.gnu.org/cgi-bin/gnatsweb.pl and paste in the
+number 2367 in the "view" field) and is awaiting a response.
+
+<hr>
+
+\par
+R.W. Grosse-Kunstleve, April 2001
 
 */

@@ -1,2 +1,2 @@
 find . -name '*.pyc' -print -exec rm {} \;
-find . \( -name \*.c -o -name \*.cpp -o -name \*.h -o -name \*.hpp -o -name \*.py \) -exec egrep '	|[ 	]$$' {} /dev/null \;
+find . \( -name \*.c -o -name \*.cpp -o -name \*.h -o -name \*.hpp -o -name \*.py -o -name \*.dox \) -exec egrep '	|[ 	]$$' {} /dev/null \;
