@@ -7,6 +7,7 @@
 #if !defined(CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_OVERZEALOUS_OPTIMIZER)
 # if defined(__GNUC__) && __GNUC__ == 2 && __GNUC_MINOR__ == 96
 #  define CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_OVERZEALOUS_OPTIMIZER
+#  include <scitbx/serialization/base_256.h>
 # endif
 #endif
 
@@ -234,7 +235,14 @@ namespace cctbx { namespace uctbx {
         FloatType diff = new_value - last_abc_significant_change_test_[i];
         FloatType m_new_plus_diff = spoil_optimization(m_new + diff);
 #if defined(CCTBX_UCTBX_FAST_MINIMUM_REDUCTION_OVERZEALOUS_OPTIMIZER)
-        char buf[80]; std::sprintf(buf, "%g", m_new_plus_diff);
+        {
+          char buf[4*sizeof(FloatType)];
+          scitbx::serialization::base_256::floating_point
+            ::to_string(buf, m_new_plus_diff);
+          scitbx::serialization::base_256::floating_point
+            ::from_string<FloatType> fs(buf);
+          m_new_plus_diff = fs.value;
+        }
 #endif
         FloatType m_new_plus_diff_minus_m_new = m_new_plus_diff - m_new;
         return m_new_plus_diff_minus_m_new != 0;
