@@ -47,6 +47,7 @@ assert env_etc.compiler in (
   "tru64_cxx",
   "irix_CC",
   "darwin_c++",
+  "darwin_g++",
 )
 
 if (sys.platform == "win32"):
@@ -200,6 +201,43 @@ else:
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-dynamiclib"
     env_etc.shlinkflags_bpl = "-bundle -flat_namespace -undefined warning"
+  elif (env_etc.compiler == "darwin_g++"):
+    env_etc.static_libraries = 1
+    env_etc.static_bpl = 0
+    print env_base.Dictionary()
+    env_base.Replace(
+      CC="gcc",
+      SHCC="gcc",
+      CXX="g++",
+      LINK="g++",
+      SHCXX="g++",
+      SHLINK="g++",
+      SHLIBSUFFIX=".dylib",
+    )
+    env_etc.cxxflags_base = Split("""
+        -ftemplate-depth-100
+        -fPIC
+        -DBOOST_PYTHON_DYNAMIC_LIB
+    """)
+    env_etc.ccflags_base = Split("""
+    """)
+    if (env_etc.release_build):
+      opts = ["-DNDEBUG", "-O3"]
+    else:
+      opts = ["-O0", "-g", "-fno-inline",
+              #"-Wall"
+              ]
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
+    env_etc.shlinkflags = "-dynamiclib"
+    env_etc.shlinkflags_bpl = ["-nostdlib",
+                               "-Wl,-read_only_relocs,warning",
+                               "-g",
+                               "-Wl,-bundle",
+                               "-Wl,-framework,Python",
+                               '-Wl,-bundle_loader,"/Library/Frameworks/Python.framework/Versions/2.3/bin/python2.3"',
+                               "/usr/lib/bundle1.o",
+                               ]
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 
