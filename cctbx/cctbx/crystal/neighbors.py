@@ -226,7 +226,7 @@ def show_distances(structure, distance_cutoff=3.5):
         if (is_sym_equiv_results.count(00000) != 2):
           print "is_sym_equiv_interaction"
         if (is_sym_equiv_results.count(00000) % 2 != 0):
-          print "is_sym_equiv mismatch:", is_sym_equiv_results
+          print "WATCH is_sym_equiv MISMATCH:", is_sym_equiv_results
       prev_c = curr_c
 
 def test_hcp():
