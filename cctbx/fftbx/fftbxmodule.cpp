@@ -29,77 +29,60 @@ namespace {
     throw boost::python::error_already_set();
   }
 
-  struct vd3d_accessor
-    : public ndim_vector_accessor<dimension_end<3>,
-                                  std::vector<double> > {
-    vd3d_accessor() {}
-    vd3d_accessor(const boost::array<std::size_t, 3>& dim,
-                  std::vector<double>& vec,
-                  bool resize_vector = true) // XXX default false
-      : ndim_vector_accessor<
-          dimension_end<3>,
-          std::vector<double> >(dim, vec, resize_vector)
-    {}
-    vd3d_accessor(const boost::array<std::size_t, 3>& dim,
-                  std::vector<std::complex<double> >& cvec)
+  template <typename ElementType, typename CastElementType>
+  struct v3d_accessor
+    : public ndim_accessor<dimension_end<3>, ElementType*, ElementType>
+  {
+    v3d_accessor() {}
+    v3d_accessor(const boost::array<std::size_t, 3>& dim,
+                 std::vector<ElementType>& vec,
+                 bool resize_vector)
+      : ndim_accessor<dimension_end<3>, ElementType*, ElementType>
+          (dim, 0)
     {
-      elems[0] = dim[0];
-      elems[1] = dim[1];
-      elems[2] = 2 * dim[2];
-      // XXX this cast is not kosher
-      m_start = reinterpret_cast<std::vector<double>::iterator>(
-        cvec.begin());
+      if (resize_vector) vec.resize(N1d());
+      m_start = &(*(vec.begin()));
     }
-    double
+    v3d_accessor(const boost::array<std::size_t, 3>& dim,
+                 std::vector<CastElementType>& vec,
+                 bool resize_vector
+#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1200)
+                 , bool MSVC_DUMMY = false
+#endif
+                )
+      : ndim_accessor<dimension_end<3>, ElementType*, ElementType>
+          (dim, 0)
+    {
+      std::size_t se = sizeof(ElementType);
+      std::size_t sc = sizeof(CastElementType);
+      if (se >= sc) {
+        if (resize_vector) vec.resize(N1d() * se / sc);
+      }
+      else {
+        if (dim[2] % (sc / se)) {
+          PyErr_SetString(PyExc_RuntimeError,
+            "Vector not properly dimensioned:"
+            " number of elements in third dimension must be even.");
+          throw boost::python::error_already_set();
+        }
+        if (resize_vector) vec.resize(N1d() * se / sc);
+      }
+      m_start = reinterpret_cast<ElementType*>(&(*(vec.begin())));
+    }
+    ElementType
     getitem(const boost::array<std::size_t, 3>& I) const {
       if (!is_valid_index(I)) throw_index_error();
       return operator[](I);
     }
     void setitem(const boost::array<std::size_t, 3>& I,
-                 double value) {
+                 ElementType value) {
       if (!is_valid_index(I)) throw_index_error();
       operator[](I) = value;
     }
   };
 
-  struct vc3d_accessor
-    : public ndim_vector_accessor<dimension_end<3>,
-                                  std::vector<std::complex<double> > > {
-    vc3d_accessor() {}
-    vc3d_accessor(const boost::array<std::size_t, 3>& dim,
-                  std::vector<std::complex<double> >& vec,
-                  bool resize_vector = true)
-      : ndim_vector_accessor<
-          dimension_end<3>,
-          std::vector<std::complex<double> > >(dim, vec, resize_vector)
-    {}
-    vc3d_accessor(const boost::array<std::size_t, 3>& dim,
-                  std::vector<double>& dvec)
-    {
-      if (dim[2] % 2) {
-        PyErr_SetString(PyExc_RuntimeError,
-          "Vector not properly dimensioned:"
-          " number of elements in third dimension must be even.");
-        throw boost::python::error_already_set();
-      }
-      elems[0] = dim[0];
-      elems[1] = dim[1];
-      elems[2] = dim[2] / 2;
-      // XXX this cast is not kosher
-      m_start = reinterpret_cast<std::vector<std::complex<double> >::iterator>(
-        dvec.begin());
-    }
-    std::complex<double>
-    getitem(const boost::array<std::size_t, 3>& I) const {
-      if (!is_valid_index(I)) throw_index_error();
-      return operator[](I);
-    }
-    void setitem(const boost::array<std::size_t, 3>& I,
-                 std::complex<double> value) {
-      if (!is_valid_index(I)) throw_index_error();
-      operator[](I) = value;
-    }
-  };
+  typedef v3d_accessor<double, std::complex<double> > vd3d_accessor;
+  typedef v3d_accessor<std::complex<double>, double>  vc3d_accessor;
 
   void cc_forward_complex(fftbx::complex_to_complex<double>& fft,
                           std::vector<std::complex<double> >& vec) {
@@ -216,28 +199,24 @@ namespace {
     py_vd3d_accessor.def(constructor<>());
     py_vd3d_accessor.def(constructor<
       const boost::array<std::size_t, 3>&,
-      std::vector<double>&>());
-    py_vd3d_accessor.def(constructor<
-      const boost::array<std::size_t, 3>&,
       std::vector<double>&,
       bool>());
     py_vd3d_accessor.def(constructor<
       const boost::array<std::size_t, 3>&,
-      std::vector<std::complex<double> >&>());
+      std::vector<std::complex<double> >&,
+      bool>());
     py_vd3d_accessor.def(&vd3d_accessor::getitem, "__getitem__");
     py_vd3d_accessor.def(&vd3d_accessor::setitem, "__setitem__");
 
     py_vc3d_accessor.def(constructor<>());
     py_vc3d_accessor.def(constructor<
       const boost::array<std::size_t, 3>&,
-      std::vector<std::complex<double> >&>());
-    py_vc3d_accessor.def(constructor<
-      const boost::array<std::size_t, 3>&,
       std::vector<std::complex<double> >&,
       bool>());
     py_vc3d_accessor.def(constructor<
       const boost::array<std::size_t, 3>&,
-      std::vector<double>&>());
+      std::vector<double>&,
+      bool>());
     py_vc3d_accessor.def(&vc3d_accessor::getitem, "__getitem__");
     py_vc3d_accessor.def(&vc3d_accessor::setitem, "__setitem__");
 

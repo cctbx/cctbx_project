@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Dec 21: iterator-based interface (rwgk)
      2001 Nov 03: fftbx started, based on fftpack41 (rwgk)
  */
 
@@ -17,7 +18,7 @@
 namespace cctbx { namespace fftbx {
   namespace detail {
 
-    // XXX use ndim_accessor
+    // TODO: use ndim_accessor
     template <std::size_t D,
               typename IteratorType,
               typename ValueType = typename IteratorType::value_type>

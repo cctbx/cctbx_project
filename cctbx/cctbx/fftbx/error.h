@@ -5,13 +5,12 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Dec 21: iterator-based interface (rwgk)
      2001 Nov 15: Created, based on cctbx/error.h (rwgk)
  */
 
 #ifndef CCTBX_FFTBX_ERROR_H
 #define CCTBX_FFTBX_ERROR_H
-
-// XXX do we still need this file?
 
 #include <exception>
 #include <string>
@@ -38,25 +37,6 @@ namespace cctbx {
     with a support library. Only the optional Python
     bindings that are provided for convenience need to be
     compiled.
-    <p>
-    Currently, the fftbx is templated on the vector type
-    that contains the sequence to be transformed. At the
-    point of this writing this has only been tested with
-    std::vector<double>, but should work with other
-    vector types that implement a similar interface.
-    <p>
-    The vector type is expected to contain instances
-    of a floating-point type, such as float or double.
-    Currently, vectors of std::complex<> are not
-    directly supported. This will be resolved as
-    the fftbx matures.
-    <p>
-    A related problem is that the in-place real-to-complex
-    forward transform expects as input an array of
-    real numbers and transforms this to an array of
-    complex numbers (or vice versa for the backward
-    transform). It is not yet clear how this could
-    be handled in a type-safe way.
     <p>
     The fftbx is reasonably fast on the machines where it
     was tested (Tru64 Unix, Linux, Windows with Visual C++

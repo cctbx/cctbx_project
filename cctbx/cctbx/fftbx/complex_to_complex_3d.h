@@ -7,13 +7,13 @@
    Revision history:
      2001 Dec 21: iterator-based interface (rwgk)
      2001 Nov 03: fftbx started, based on fftpack41 (rwgk)
-     XXX update all
  */
 
 #ifndef CCTBX_FFTBX_COMPLEX_TO_COMPLEX_3D_H
 #define CCTBX_FFTBX_COMPLEX_TO_COMPLEX_3D_H
 
 #include <cctbx/array.h>
+#include <cctbx/fftbx/error.h>
 #include <cctbx/fftbx/complex_to_complex.h>
 
 namespace cctbx { namespace fftbx {
@@ -70,9 +70,13 @@ namespace cctbx { namespace fftbx {
       // Cast map of real to map of complex.
       template <typename Tag, typename NdimAccessor>
       void transform(select_sign<Tag> tag, NdimAccessor Map, real_type) {
+        if (Map.elems[2] % 2 != 0) {
+          throw error("Number of elements in third dimension must be even.");
+        }
         typedef typename NdimAccessor::dimension_type dim_type;
+        dim_type dim(Map.elems[0], Map.elems[1], Map.elems[2] / 2);
         ndim_accessor<dim_type, complex_type*, complex_type>
-        cmap(Map, reinterpret_cast<complex_type*>(&Map[triple(0,0,0)]));
+        cmap(dim, reinterpret_cast<complex_type*>(&Map[triple(0,0,0)]));
         transform(tag, cmap, complex_type());
       }
       // Core routine always works on complex maps.

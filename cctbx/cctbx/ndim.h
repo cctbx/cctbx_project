@@ -114,32 +114,6 @@ namespace cctbx {
       iterator_type m_start;
   };
 
-  template <typename DimensionType,
-            typename VectorType>
-  class ndim_vector_accessor
-    : public ndim_accessor<DimensionType,
-                           typename VectorType::iterator,
-                           typename VectorType::value_type> {
-    public:
-      typedef DimensionType dimension_type;
-      typedef VectorType vector_type;
-      typedef typename vector_type::iterator iterator_type;
-      typedef typename vector_type::value_type value_type;
-
-      ndim_vector_accessor() {}
-      ndim_vector_accessor(const dimension_type& dim,
-                           vector_type& vec,
-                           bool resize_vector = true)
-        : ndim_accessor<dimension_type, iterator_type, value_type>(
-            dim, vec.begin())
-      {
-        if (resize_vector) {
-          vec.resize(N1d());
-          m_start = vec.begin();
-        }
-      }
-  };
-
 }
 
 #endif // CCTBX_NDIM_H
