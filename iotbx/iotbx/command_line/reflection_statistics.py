@@ -76,6 +76,7 @@ def run(args):
               miller_array = miller_array.resolution_filter(
                 d_max=command_line.options.low_resolution,
                 d_min=command_line.options.resolution)
+            miller_array = miller_array.map_to_asu()
             miller_array.set_info(info=info)
             all_miller_arrays.append(miller_array)
             if (miller_array.anomalous_flag()):
@@ -130,11 +131,13 @@ def run(args):
           print " ", array_0.info()
           print " ", array_1.info()
           correlation = anom_diffs_0.correlation(
-            other=anom_diffs_1)
+            other=anom_diffs_1,
+            assert_is_similar_symmetry=False)
           print "Overall correlation: %6.3f" % correlation.coefficient()
           correlation = anom_diffs_0.correlation(
             other=anom_diffs_1,
-            use_binning=True)
+            use_binning=True,
+            assert_is_similar_symmetry=False)
           correlation.show(data_fmt=binned_correlation_fmt)
           print
     print "=" * 79
