@@ -189,6 +189,8 @@ namespace {
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
         .def("is_symmetry_interaction", &w_t::is_symmetry_interaction,
           (arg_("pair")))
+        .def("make_pair", &w_t::make_pair,
+          (arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
       ;
       {
         using namespace scitbx::boost_python::container_conversions;
