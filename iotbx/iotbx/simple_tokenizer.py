@@ -1,21 +1,21 @@
 class character_iterator:
 
   def __init__(self, input_string):
-    self.remaining = input_string
+    self.input_string = input_string
     self.i_char = 0
     self.line_number = 1
 
   def next(self):
-    if (len(self.remaining) == 0): return None
-    result = self.remaining[0]
-    self.remaining = self.remaining[1:]
+    if (self.i_char == len(self.input_string)): return None
+    result = self.input_string[self.i_char]
     self.i_char += 1
     if (result == "\n"): self.line_number += 1
     return result
 
   def look_ahead(self, n=1):
-    if (len(self.remaining) < n): return None
-    return self.remaining[:n]
+    end = self.i_char + n
+    if (end > len(self.input_string)): return None
+    return self.input_string[self.i_char:end]
 
 def where(file_name, line_number):
   result = []
@@ -28,7 +28,9 @@ def where(file_name, line_number):
   if (len(result) == 0): return None
   return ", ".join(result)
 
-class word:
+class word(object):
+
+  __slots__ = ["value", "quote_token", "line_number", "file_name"]
 
   def __init__(self,
         value,
@@ -149,26 +151,29 @@ def split_into_words(
 class word_stack:
 
   def __init__(self, words):
-    self.stack = words[:]
-    self.stack.reverse()
+    self.words = words
+    self.i_word = 0
 
   def __len__(self):
-    return len(self.stack)
+    return len(self.words) - self.i_word
 
   def pop(self):
-    if (len(self.stack) == 0):
+    if (self.i_word == len(self.words)):
       raise RuntimeError("Unexpected end of input.")
-    return self.stack.pop()
+    word = self.words[self.i_word]
+    self.i_word += 1
+    return word
 
   def pop_unquoted(self):
-    result = self.pop()
-    if (result.quote_token is not None):
-      raise RuntimeError('Unquoted word expected: line=%d, word="%s"' % (
-        result.line_number, result.value))
-    return result
+    word = self.pop()
+    if (word.quote_token is not None):
+      raise RuntimeError('Unquoted word expected, found %s%s' % (
+        str(word), word.where_str()))
+    return word
 
   def push_back(self, word):
-    self.stack.append(word)
+    self.i_word -= 1
+    assert self.words[self.i_word] is word
 
 def as_word_stack(
       input_string,
