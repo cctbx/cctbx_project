@@ -235,7 +235,8 @@ try:
 
   SgType = SgOps.getSpaceGroupType(1)
   UnitCell = get_unitcell(SgType)
-  SnapParameters = sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps)
+  SnapParameters = sgtbx.SpecialPositionSnapParameters(
+    UnitCell, SgOps, 1, 1.e-6)
   WyckoffTable = sgtbx.WyckoffTable(SgType)
   print "List of Wyckoff positions:"
   print "</pre><table border=2 cellpadding=2>"
