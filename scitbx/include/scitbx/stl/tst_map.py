@@ -65,8 +65,23 @@ def exercise_stl_string_double():
   l = pickle.loads(d)
   assert l.items() == zip(["c","r","s","x","y"], [3,9,8,-1,-2])
 
+def exercise_stl_stl_string_stl_map_stl_string_double():
+  mm = map.stl_string_stl_map_stl_string_double()
+  m = mm.setdefault("a")
+  assert mm["a"].size() == 0
+  m["b"] = 10
+  assert mm["a"].size() == 1
+  m["c"] = 20
+  assert mm["a"].size() == 2
+  assert mm["a"]["b"] == 10
+  assert mm["a"]["c"] == 20
+  del mm["a"]["b"]
+  assert mm["a"].size() == 1
+  assert m.size() == 1
+
 def exercise():
   exercise_stl_string_double()
+  exercise_stl_stl_string_stl_map_stl_string_double()
   print "OK"
 
 if (__name__ == "__main__"):
