@@ -312,19 +312,21 @@ def exercise_setitem():
       a[(i,j)] = i * 3 + j
   assert list(a) == range(6)
 
-def exercise_select_shuffle():
+def exercise_select():
   a = flex.double((1,2,3,4,5))
   b = flex.bool((0,1,0,1,1))
+  c = flex.size_t((0,2))
   assert tuple(a.select(b)) == (2,4,5)
+  assert tuple(a.select(c)) == (1,3)
   assert tuple(a.set_selected(b, flex.double((7,8,9)))) == (1,7,3,8,9)
+  assert tuple(a.set_selected(c, flex.double((-1,-2)))) == (-1,7,-2,8,9)
   a = flex.double((1,2,3,4,5))
   b = flex.size_t((3,1,0,4,2))
-  assert tuple(a.shuffle(b)) == (4,2,1,5,3)
-  assert tuple(a.unshuffle(b)) == (3,2,5,1,4)
+  assert tuple(a.select(b)) == (4,2,1,5,3)
   b = flex.size_t((1,4,2))
-  assert tuple(a.shuffle(b)) == (2,5,3)
+  assert tuple(a.select(b)) == (2,5,3)
   b = flex.size_t((2,4,1,2,4))
-  assert tuple(a.shuffle(b)) == (3,5,2,3,5)
+  assert tuple(a.select(b)) == (3,5,2,3,5)
 
 def exercise_operators():
   a = flex.bool((0, 1, 0, 1))
@@ -500,13 +502,13 @@ def exercise_sort():
     x = flex_type((3,1,2))
     p = flex.sort_permutation(x)
     assert tuple(p) == (1,2,0)
-    assert approx_equal(x.shuffle(p), (1,2,3))
+    assert approx_equal(x.select(p), (1,2,3))
     p = flex.sort_permutation(x, 00000)
     assert tuple(p) == (1,2,0)
-    assert approx_equal(x.shuffle(p), (1,2,3))
+    assert approx_equal(x.select(p), (1,2,3))
     p = flex.sort_permutation(x, 0001)
     assert tuple(p) == (0,2,1)
-    assert approx_equal(x.shuffle(p), (3,2,1))
+    assert approx_equal(x.select(p), (3,2,1))
 
 def exercise_histogram():
   x = flex.double(xrange(20))
@@ -748,7 +750,7 @@ def run(iterations):
     exercise_1d_slicing()
     exercise_push_back_etc()
     exercise_setitem()
-    exercise_select_shuffle()
+    exercise_select()
     exercise_operators()
     exercise_bool_inplace_operators()
     exercise_arith_inplace_operators()

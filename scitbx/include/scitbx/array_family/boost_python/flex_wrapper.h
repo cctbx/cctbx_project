@@ -377,37 +377,43 @@ namespace scitbx { namespace af { namespace boost_python {
       return flex_items<e_t>(a);
     }
 
-    static f_t
-    select(f_t const& a, flex_bool const& flags)
+    static shared<e_t>
+    select_bool(
+      af::const_ref<e_t> const& a,
+      af::const_ref<bool> const& flags)
     {
-      if (!a.check_shared_size()) raise_shared_size_mismatch();
-      if (!flags.check_shared_size()) raise_shared_size_mismatch();
-      assert_0_based_1d(a.accessor());
-      assert_0_based_1d(flags.accessor());
-      if (a.size() != flags.size()) {
-        raise_incompatible_arrays();
-      }
+      if (a.size() != flags.size()) raise_incompatible_arrays();
       std::size_t n = 0;
-      std::size_t i;
-      for(i=0;i<flags.size();i++) if (flags[i]) n++;
-      base_array_type result;
-      result.reserve(n);
-      for(i=0;i<flags.size();i++) if (flags[i]) result.push_back(a[i]);
-      return f_t(result, flex_grid<>(result.size()));
+      for(std::size_t i=0;i<flags.size();i++) if (flags[i]) n++;
+      shared<e_t> result((af::reserve(n)));
+      for(std::size_t i=0;i<flags.size();i++) {
+        if (flags[i]) result.push_back(a[i]);
+      }
+      return result;
     }
 
-    static f_t
-    set_selected(f_t& a, flex_bool const& flags, f_t const& new_values)
+    static shared<e_t>
+    select_size_t(
+      af::const_ref<e_t> const& a,
+      af::const_ref<std::size_t> const& indices)
     {
-      if (!a.check_shared_size()) raise_shared_size_mismatch();
-      if (!flags.check_shared_size()) raise_shared_size_mismatch();
-      if (!new_values.check_shared_size()) raise_shared_size_mismatch();
-      assert_0_based_1d(a.accessor());
-      assert_0_based_1d(flags.accessor());
-      assert_0_based_1d(new_values.accessor());
-      if (a.size() != flags.size()) {
-        raise_incompatible_arrays();
+      shared<e_t> result((af::reserve(indices.size())));
+      for(std::size_t i=0;i<indices.size();i++) {
+        SCITBX_ASSERT(indices[i] < a.size());
+        result.push_back(a[indices[i]]);
       }
+      return result;
+    }
+
+    static boost::python::object
+    set_selected_bool(
+      boost::python::object flex_object,
+      af::const_ref<bool> const& flags,
+      af::const_ref<e_t> const& new_values)
+    {
+      boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
+      af::ref<e_t> a = a_proxy();
+      SCITBX_ASSERT(a.size() == flags.size());
       std::size_t i_new_value = 0;
       for(std::size_t i=0;i<flags.size();i++) {
         if (flags[i]) {
@@ -417,50 +423,23 @@ namespace scitbx { namespace af { namespace boost_python {
         }
       }
       SCITBX_ASSERT(i_new_value == new_values.size());
-      return a;
+      return flex_object;
     }
 
-    static void
-    shuffle_assertions(f_t const& a, flex_size_t const& permutation)
+    static boost::python::object
+    set_selected_size_t(
+      boost::python::object const& flex_object,
+      af::const_ref<std::size_t> const& indices,
+      af::const_ref<e_t> const& new_values)
     {
-      if (!a.check_shared_size()) raise_shared_size_mismatch();
-      assert_0_based_1d(a.accessor());
-      assert_0_based_1d(permutation.accessor());
-    }
-
-    static f_t
-    shuffle(f_t const& a, flex_size_t const& permutation)
-    {
-      shuffle_assertions(a, permutation);
-      std::size_t a_size = a.size();
-      std::size_t p_size = permutation.size();
-      base_array_type result;
-      result.reserve(p_size);
-      for(std::size_t i=0;i<p_size;i++) {
-        std::size_t permutation_i = permutation[i];
-        SCITBX_ASSERT(permutation_i < a_size);
-        result.push_back(a[permutation_i]);
+      boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
+      af::ref<e_t> a = a_proxy();
+      SCITBX_ASSERT(indices.size() == new_values.size());
+      for(std::size_t i=0;i<indices.size();i++) {
+        SCITBX_ASSERT(indices[i] < a.size());
+        a[indices[i]] = new_values[i];
       }
-      return f_t(result, flex_grid<>(p_size));
-    }
-
-    static f_t
-    unshuffle(f_t const& a, flex_size_t const& permutation)
-    {
-      shuffle_assertions(a, permutation);
-      if (a.size() != permutation.size()) {
-        raise_incompatible_arrays();
-      }
-      base_array_type result;
-      if (a.size()) {
-        result.resize(a.size(), a[0]); // avoid requirement that e_t is
-        for(std::size_t i=1;i<a.size();i++) {  // default constructible
-          std::size_t j = permutation[i];
-          SCITBX_ASSERT(j < a.size());
-          result[j] = a[i];
-        }
-      }
-      return f_t(result, a.accessor());
+      return flex_object;
     }
 
     static flex_bool
@@ -723,10 +702,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("append", append)
         .def("indices", indices)
         .def("items", items)
-        .def("select", select)
-        .def("set_selected", set_selected)
-        .def("shuffle", shuffle)
-        .def("unshuffle", unshuffle)
+        .def("select", select_bool)
+        .def("select", select_size_t)
+        .def("set_selected", set_selected_bool)
+        .def("set_selected", set_selected_size_t)
       ;
     }
 
