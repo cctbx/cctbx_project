@@ -83,8 +83,8 @@ def exercise(space_group_info, anomalous_flag=00000, d_min=2., verbose=0):
     elements=("N", "C", "C", "O"),
     random_u_iso=0001,
     random_occupancy=0001
-    ).structure_factors_direct(
-      anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array()
+    ).structure_factors(
+      anomalous_flag=anomalous_flag, d_min=d_min, method="direct").f_calc_array()
   sg_hl = generate_random_hl(sg_fcalc_array)
   write_cns_input(sg_fcalc_array, sg_hl)
   try: os.unlink("tmp.hkl")

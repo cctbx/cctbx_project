@@ -15,8 +15,8 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     volume_per_atom=200,
     random_u_iso=0001,
     random_occupancy=0001)
-  f_obs_array = abs(structure_ideal.structure_factors_direct(
-    anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array())
+  f_obs_array = abs(structure_ideal.structure_factors(
+    anomalous_flag=anomalous_flag, d_min=d_min, method="direct").f_calc_array())
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
     print "n_special_positions:", \

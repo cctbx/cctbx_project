@@ -26,8 +26,8 @@ def exercise(space_group_info, use_primitive_setting, anomalous_flag,
   if (0 or verbose):
     structure_p1.show_summary().show_scatterers()
   assert structure_p1.special_position_indices().size() == 0
-  f_calc = structure.structure_factors_direct(
-    anomalous_flag=anomalous_flag, d_min=d_min).f_calc_array()
+  f_calc = structure.structure_factors(
+    anomalous_flag=anomalous_flag, d_min=d_min, method="direct").f_calc_array()
   miller_set_p1 = miller.set.expand_to_p1(f_calc)
   f_calc_p1 = f_calc.expand_to_p1()
   assert flex.order(miller_set_p1.indices(), f_calc_p1.indices()) == 0

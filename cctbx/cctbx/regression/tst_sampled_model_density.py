@@ -22,9 +22,10 @@ def exercise(space_group_info, anomalous_flag, anisotropic_flag,
     random_u_iso=0001,
     random_occupancy=0001
     )
-  f_direct_array = structure.structure_factors_direct(
+  f_direct_array = structure.structure_factors(
     anomalous_flag=anomalous_flag,
-    d_min=d_min).f_calc_array()
+    d_min=d_min,
+    method="direct").f_calc_array()
   n_real = f_direct_array.determine_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
