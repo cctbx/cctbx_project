@@ -374,6 +374,12 @@ def run(args):
       anom_signal = cache_0.input.anomalous_signal(use_binning=True)
       anom_signal.show()
       print
+      print "Observed measurabilities of %s:" % str(cache_0.input.info())
+      print cache_0.input.measurability.__doc__
+      meas_obs = cache_0.input.measurability(use_binning=True)
+      meas_obs.show()
+      print
+
     if (not command_line.options.quick):
       for i_1,cache_1 in enumerate(array_caches):
         if (i_1 == i_0): break
