@@ -12,7 +12,7 @@
 #define CCTBX_ARRAY_FAMILY_SIMPLE_IO_H
 
 #include <iostream>
-#include <cctbx/array_family/ref.h>
+#include <cctbx/array_family/tiny.h>
 
 namespace cctbx { namespace af {
 

@@ -11,10 +11,8 @@
 #ifndef CCTBX_ARRAY_FAMILY_SMALL_PLAIN_H
 #define CCTBX_ARRAY_FAMILY_SMALL_PLAIN_H
 
-#include <algorithm>
-#include <cctbx/array_family/ref.h>
+#include <cctbx/array_family/tiny.h>
 #include <cctbx/array_family/auto_allocator.h>
-#include <cctbx/array_family/type_traits.h>
 
 namespace cctbx { namespace af {
 
@@ -152,7 +150,5 @@ namespace cctbx { namespace af {
   };
 
 }} // namespace cctbx::af
-
-#include <cctbx/array_family/small_plain_apply.h>
 
 #endif // CCTBX_ARRAY_FAMILY_SMALL_PLAIN_H

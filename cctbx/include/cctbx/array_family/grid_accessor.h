@@ -13,7 +13,6 @@
 
 #include <cstddef>
 #include <algorithm>
-#include <cctbx/array_family/misc.h>
 #include <cctbx/array_family/tiny_helpers.h>
 
 // forward declaration
@@ -82,17 +81,13 @@ namespace cctbx { namespace af {
       typedef IndexType index_type;
       typedef typename IndexType::value_type value_type;
 
-      grid() { init_default(); }
+      grid() { std::fill(this->begin(), this->end(), value_type(0)); }
 
       grid(const IndexType& n) : IndexType(n) {}
 
       CCTBX_ARRAY_FAMILY_TINY_CONVENIENCE_CONSTRUCTORS(grid)
 
       static std::size_t nd() { return Nd; }
-
-      void init_default() { // XXX check direct calls to this
-        std::fill(this->begin(), this->end(), 0);
-      }
 
       std::size_t size1d() const {
         return compile_time_product<Nd>::get(IndexType(*this));

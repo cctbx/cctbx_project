@@ -11,7 +11,7 @@
 #ifndef CCTBX_ARRAY_FAMILY_GENERIC_ARRAY_FUNCTORS_H
 #define CCTBX_ARRAY_FAMILY_GENERIC_ARRAY_FUNCTORS_H
 
-#include <cctbx/array_family/misc.h>
+#include <cctbx/array_family/generic_array_operators.h>
 
 namespace cctbx { namespace af {
 

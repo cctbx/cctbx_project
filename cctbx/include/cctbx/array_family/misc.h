@@ -11,16 +11,9 @@
 #ifndef CCTBX_ARRAY_FAMILY_MISC_H
 #define CCTBX_ARRAY_FAMILY_MISC_H
 
-#include <stdexcept>
-
 #include <cctbx/array_family/type_traits.h>
 
 namespace cctbx { namespace af {
-
-  inline
-  void throw_range_error() {
-    throw std::range_error("array_family");
-  }
 
   struct reserve_flag {};
 

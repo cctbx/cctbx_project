@@ -140,6 +140,4 @@ namespace cctbx { namespace af {
 
 }} // namespace cctbx::af
 
-#include <cctbx/array_family/versa_apply.h>
-
 #endif // CCTBX_ARRAY_FAMILY_VERSA_H

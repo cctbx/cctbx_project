@@ -13,7 +13,6 @@
 #define CCTBX_MATH_UTILS_H
 
 #include <cctbx/fixes/cmath>
-#include <cctbx/array_family/tiny.h> // XXX
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/array_family/shared.h>
 

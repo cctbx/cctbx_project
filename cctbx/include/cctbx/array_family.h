@@ -11,10 +11,14 @@
 #ifndef CCTBX_ARRAY_FAMILY_H
 #define CCTBX_ARRAY_FAMILY_H
 
-#include <cctbx/array_family/tiny.h>
-#include <cctbx/array_family/small.h>
-#include <cctbx/array_family/shared.h>
-#include <cctbx/array_family/versa.h>
+#include <cctbx/array_family/tiny_plain_apply.h>
+#include <cctbx/array_family/tiny_apply.h>
+#include <cctbx/array_family/small_plain_apply.h>
+#include <cctbx/array_family/small_apply.h>
+#include <cctbx/array_family/shared_plain_apply.h>
+#include <cctbx/array_family/shared_apply.h>
+#include <cctbx/array_family/versa_plain_apply.h>
+#include <cctbx/array_family/versa_apply.h>
 #include <cctbx/array_family/flagged_value.h>
 
 #endif // CCTBX_ARRAY_FAMILY_H
