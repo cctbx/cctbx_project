@@ -108,14 +108,15 @@ class reflnlist:
         force=force_symmetry)
     miller_arrays = []
     sigmas=self.column_dict["fSigmaI"]
-    miller_arrays.append(miller.intensity_array(miller.array(
+    i_obs = miller.array(
       miller_set=miller.set(
         crystal_symmetry=crystal_symmetry,
         indices=self.miller_indices,
         anomalous_flag=False),
       data=self.column_dict["fIntensity"],
-      sigmas=sigmas,
-      info=info_prefix+"Intensity,SigmaI").apply_selection(sigmas > 0)))
+      sigmas=sigmas).apply_selection(sigmas > 0)
+    i_obs.set_info(info_prefix+"Intensity,SigmaI")
+    miller_arrays.append(miller.intensity_array(i_obs))
     if ("fIntensity+" in self.column_dict):
       assert "fSigmaI+" in self.column_dict
       assert "fIntensity-" in self.column_dict
@@ -130,7 +131,7 @@ class reflnlist:
         self.column_dict["fSigmaI-"])
       miller_arrays.append(miller.intensity_array(miller.array(
         miller_set=miller.set(
-          crystal_symmetry=self.crystal_symmetry(),
+          crystal_symmetry=crystal_symmetry,
           indices=ac.miller_indices(),
           anomalous_flag=True),
         data=ac.data(),

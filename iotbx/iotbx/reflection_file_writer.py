@@ -1,4 +1,5 @@
 from iotbx import mtz
+import  iotbx.cns.miller_array
 from scitbx.python_utils import easy_pickle
 import sys
 
@@ -37,6 +38,9 @@ def run(args):
       if (file_name.lower().endswith(".mtz")):
         print "Writing MTZ file:", file_name
         miller_array.export_as_mtz(file_name, file_name[:-4])
+      if (file_name.lower().endswith(".cns")):
+        print "Writing CNS reflection file:", file_name
+        miller_array.export_as_cns_hkl(open(file_name, "w"), file_name)
       elif (file_name.lower().endswith(".pickle")):
         print "Writing pickle file:", file_name
         easy_pickle.dump(file_name, miller_array)
