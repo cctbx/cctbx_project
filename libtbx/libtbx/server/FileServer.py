@@ -130,6 +130,9 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       rc = self._UnlockFile(file, id)
       time.sleep(.1)
 
+  def FileExists(self, file):
+    return os.path.exists(file)
+
 #------------------------------------------------------------------------------
 # Server information
 #------------------------------------------------------------------------------
