@@ -2,6 +2,7 @@
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <boost/python/module.hpp>
+#include <boost/python/return_internal_reference.hpp>
 #include <vector>
 #include <set>
 
@@ -10,8 +11,9 @@ namespace {
 
   void init_module()
   {
-    shared_wrapper<std::vector<unsigned> >::wrap("stl_vector_unsigned");
-    shared_wrapper<std::set<unsigned> >::wrap("stl_set_unsigned");
+    typedef boost::python::return_internal_reference<> rir;
+    shared_wrapper<std::vector<unsigned>, rir>::wrap("stl_vector_unsigned");
+    shared_wrapper<std::set<unsigned>, rir>::wrap("stl_set_unsigned");
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
