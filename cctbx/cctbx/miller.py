@@ -138,7 +138,7 @@ class set(crystal.symmetry):
   def show_comprehensive_summary(self, f=None):
     if (f is None): f = sys.stdout
     self.show_summary(f=f)
-    no_sys_abs = self
+    no_sys_abs = self.copy()
     if (self.space_group_info() is not None):
       sys_absent_flags = self.sys_absent_flags().data()
       n_sys_abs = sys_absent_flags.count(0001)
@@ -151,7 +151,18 @@ class set(crystal.symmetry):
     if (self.unit_cell() is not None):
       print >> f, "Resolution range: %.6g %.6g" % no_sys_abs.resolution_range()
       if (self.space_group_info() is not None and self.indices().size() > 0):
-        print >> f, "Completeness: %.6g" % no_sys_abs.completeness()
+        no_sys_abs.setup_binner(n_bins=1)
+        completeness_d_max_d_min = no_sys_abs.completeness(use_binning=0001)
+        assert completeness_d_max_d_min.data()[0][0] == 0
+        assert completeness_d_max_d_min.data()[2] == (0, 0)
+        n_obs, n_complete = completeness_d_max_d_min.data()[1]
+        if (n_complete != 0):
+          print >> f, "Completeness in resolution range: %.6g" % (
+            float(n_obs) / n_complete)
+        n_complete += completeness_d_max_d_min.data()[0][1]
+        if (n_complete != 0):
+          print >> f, "Completeness with d_max=infinity: %.6g" % (
+            float(n_obs) / n_complete)
     if (self.space_group_info() is not None and no_sys_abs.anomalous_flag()):
       asu, matches = no_sys_abs.match_bijvoet_mates()
       print >> f, "Bijvoet pairs:", matches.pairs().size()
@@ -517,6 +528,14 @@ class array(set):
 
   def is_complex(self):
     return isinstance(self.data(), flex.complex_double)
+
+  def copy(self):
+    return (array(
+      miller_set=self,
+      data=self.data(),
+      sigmas=self.sigmas())
+      .set_info(self.info())
+      .set_observation_type(self))
 
   def deep_copy(self):
     d = None
