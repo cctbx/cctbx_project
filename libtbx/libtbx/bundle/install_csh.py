@@ -1,13 +1,14 @@
 import sys
 
-def create_script(bundle, top_modules, prefer_usr_bin_python=00001):
-  result = """\
+def create_script(bundle, top_modules, prefer_usr_bin_python=0):
+  return """\
 #! /bin/csh -f
 
 set install_root="$cwd"
 set bundle="%(bundle)s"
 set sources="$cwd/${bundle}_sources"
 set build="$cwd/${bundle}_build"
+set prefer_usr_bin_python=%(prefer_usr_bin_python)d
 
 unalias cat
 unalias cd
@@ -49,8 +50,28 @@ if ($have_sources == 0) then
 
   if (-d "$build/python") then
     set python_exe="$build/python/bin/python"
-  else if ("$python_exe" == None) then
-    set python_exe=python
+  endif
+  if ($prefer_usr_bin_python) then
+    if ("$python_exe" == None && -x /usr/bin/python) then
+      /usr/bin/python -V |& head -1
+      if ($status == 0) then
+        set python_exe=/usr/bin/python
+      endif
+    endif
+  endif
+  if ("$python_exe" == None) then
+    python -V |& head -1
+    if ($status == 0) then
+      set python_exe=python
+    endif
+  endif
+  if (! $prefer_usr_bin_python) then
+    if ("$python_exe" == None && -x /usr/bin/python) then
+      /usr/bin/python -V |& head -1
+      if ($status == 0) then
+        set python_exe=/usr/bin/python
+      endif
+    endif
   endif
 
 else
@@ -98,17 +119,6 @@ else
           set python_exe="$build/python/bin/python"
         endif
       endif
-""" % vars()
-  if (prefer_usr_bin_python):
-    result += """\
-      if ("$python_exe" == None && -x /usr/bin/python) then
-        /usr/bin/python -V |& head -1
-        if ($status == 0) then
-          set python_exe=/usr/bin/python
-        endif
-      endif
-""" % vars()
-  result += """\
       if ("$python_exe" == None) then
         python -V |& head -1
         if ($status == 0) then
@@ -121,17 +131,12 @@ else
           set python_exe=python2
         endif
       endif
-""" % vars()
-  if (not prefer_usr_bin_python):
-    result += """\
       if ("$python_exe" == None && -x /usr/bin/python) then
         /usr/bin/python -V |& head -1
         if ($status == 0) then
           set python_exe=/usr/bin/python
         endif
       endif
-""" % vars()
-  result += """\
       if ("$python_exe" != None) then
         set python_version=(`"$python_exe" -V |& tr "." " "`)
         if ("$python_version[2]") then
@@ -222,7 +227,6 @@ cat << EOT
 ***
 EOT
 """ % vars()
-  return result
 
 if (__name__ == "__main__"):
   assert len(sys.argv) == 3

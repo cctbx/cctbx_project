@@ -11,12 +11,13 @@ def run(args):
     print "usage: libtbx.start_binary_bundle [--application]",
     print "bundle_name top_modules"
     return
+  prefer_usr_bin_python = 0
   if (len(args) == 2):
     bundle_name, top_modules = args
-    prefer_usr_bin_python = 00000
   else:
     bundle_name, top_modules = args[1:]
-    prefer_usr_bin_python = 0001
+    if (sys.executable == "/usr/bin/python"):
+      prefer_usr_bin_python = 1
   copy_all.run(bundle_name)
   if (os.name == "nt"):
     install_script = bundle_name+"_install_script.bat"
