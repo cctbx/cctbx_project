@@ -2286,13 +2286,13 @@ namespace cctbx { namespace sgtbx {
       TrVec Pb = P * b;
       int i;
       for (i = nd; i < 3; i++) {
-        if (Pb.vec()[i] != 0) return TrVec(0);
+        if (Pb[i] != 0) return TrVec(0);
       }
       TrVec xp(1);
       for (i = 0; i < nd; i++) {
         int d = M[i * nd + i];
-        if (Pb.vec()[i] % d != 0) return TrVec(0);
-        xp.vec()[i] = Pb.vec()[i] / d;
+        if (Pb[i] % d != 0) return TrVec(0);
+        xp[i] = Pb[i] / d;
       }
       return Q * xp;
     }

@@ -35,8 +35,8 @@ namespace cctbx { namespace sgtbx {
     public:
       bool operator()(const TrVec& a, const TrVec& b) {
         rangei(3) {
-          if (a.vec()[i] < b.vec()[i]) return true;
-          if (a.vec()[i] > b.vec()[i]) return false;
+          if (a[i] < b[i]) return true;
+          if (a[i] > b[i]) return false;
         }
         return false;
       }
@@ -65,8 +65,8 @@ namespace cctbx { namespace sgtbx {
           if (a.Rpart()[i] > b.Rpart()[i]) return false;
         }
         for(i=0;i<3;i++) {
-          if (a.Tpart().vec()[i] < b.Tpart().vec()[i]) return true;
-          if (a.Tpart().vec()[i] > b.Tpart().vec()[i]) return false;
+          if (a.Tpart()[i] < b.Tpart()[i]) return true;
+          if (a.Tpart()[i] > b.Tpart()[i]) return false;
         }
         return false;
       }

@@ -42,7 +42,7 @@ namespace cctbx { namespace maps {
   {
     IndexTupleType result = M.Rpart() * X;
     for(int i=0;i<3;i++) {
-      result[i] = result[i] * M.TBF() + M.Tpart().vec()[i] * M.RBF() * N[i];
+      result[i] = result[i] * M.TBF() + M.Tpart()[i] * M.RBF() * N[i];
       if (result[i] % (M.RBF() * M.TBF())) {
         return tagged_value<IndexTupleType>(result, false);
       }

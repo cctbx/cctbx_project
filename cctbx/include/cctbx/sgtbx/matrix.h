@@ -40,6 +40,8 @@ namespace cctbx { namespace sgtbx {
       {}
       const af::int3& vec() const { return m_vec; }
             af::int3& vec()       { return m_vec; }
+      const int& operator[](std::size_t i) const { return m_vec[i]; }
+            int& operator[](std::size_t i)       { return m_vec[i]; }
       const int& BF() const { return m_BF; }
             int& BF()       { return m_BF; }
       bool isValid() const { return m_BF != 0; }
@@ -445,7 +447,7 @@ namespace cctbx { namespace sgtbx {
           result[i    ] = FloatType(Rpart()[i]) / FloatType(RBF());
         }
         for(i=0;i<3;i++) {
-          result[i + 9] = FloatType(Tpart().vec()[i]) / FloatType(TBF());
+          result[i + 9] = FloatType(Tpart()[i]) / FloatType(TBF());
         }
         return result;
       }
@@ -642,7 +644,7 @@ namespace cctbx { namespace sgtbx {
         GridTupleType result;
         for(int ir=0;ir<3;ir++) {
           result[ir] = lcm(
-            grid[ir], norm_denominator(m_T.vec()[ir], m_T.BF()));
+            grid[ir], norm_denominator(m_T[ir], m_T.BF()));
           for(int ic=0;ic<3;ic++) {
             result[ir] = lcm(
               result[ir], norm_denominator(m_R(ir, ic), grid[ic]));
@@ -664,7 +666,7 @@ namespace cctbx { namespace sgtbx {
   inline af::double3
   operator+(const af::double3& lhs, const TrVec& rhs) {
     af::double3 result;
-    for(int i=0;i<3;i++) result[i] = lhs[i] + double(rhs.vec()[i]) / rhs.BF();
+    for(int i=0;i<3;i++) result[i] = lhs[i] + double(rhs[i]) / rhs.BF();
     return result;
   }
 
@@ -678,7 +680,7 @@ namespace cctbx { namespace sgtbx {
     for(int i=0;i<3;i++) {
       result[i] = (  R(i,0) * rhs[0]
                    + R(i,1) * rhs[1]
-                   + R(i,2) * rhs[2]) / RBF + T.vec()[i] / TBF;
+                   + R(i,2) * rhs[2]) / RBF + T[i] / TBF;
     }
     return result;
   }

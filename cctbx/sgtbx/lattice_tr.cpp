@@ -119,7 +119,7 @@ namespace cctbx { namespace sgtbx {
       {
         af::int3 nUTr(1,1,1);
         int i;
-        for(i=0;i<3;i++) if (LTr[iLTr].vec()[i]) nUTr[i] = 2;
+        for(i=0;i<3;i++) if (LTr[iLTr][i]) nUTr[i] = 2;
 
         af::int3 UnitTr;
         for (UnitTr[0] = 0; UnitTr[0] < nUTr[0]; UnitTr[0]++)
@@ -145,7 +145,7 @@ namespace cctbx { namespace sgtbx {
 
       rangei(3) {
         TrVec V(TBF);
-        V.vec()[i] = TBF;
+        V[i] = TBF;
         TLT->push_back(V);
       }
 
@@ -164,11 +164,11 @@ namespace cctbx { namespace sgtbx {
     int iTLT[3], i;
     af::int9 Basis;
     for (iTLT[0] =           0; iTLT[0] < TLT->size() - 2; iTLT[0]++) {
-      for (i=0;i<3;i++) Basis[i * 3 + 0] = (*TLT)[iTLT[0]].vec()[i];
+      for (i=0;i<3;i++) Basis[i * 3 + 0] = (*TLT)[iTLT[0]][i];
     for (iTLT[1] = iTLT[0] + 1; iTLT[1] < TLT->size() - 1; iTLT[1]++) {
-      for (i=0;i<3;i++) Basis[i * 3 + 1] = (*TLT)[iTLT[1]].vec()[i];
+      for (i=0;i<3;i++) Basis[i * 3 + 1] = (*TLT)[iTLT[1]][i];
     for (iTLT[2] = iTLT[1] + 1; iTLT[2] < TLT->size();     iTLT[2]++) {
-      for (i=0;i<3;i++) Basis[i * 3 + 2] = (*TLT)[iTLT[2]].vec()[i];
+      for (i=0;i<3;i++) Basis[i * 3 + 2] = (*TLT)[iTLT[2]][i];
       int f = RotMx(Basis, RBF).det() * nLTr();
       if (f == RBF3 || -f == RBF3) {
         if (f < 0) for(i=0;i<3;i++) Basis[i * 3] *= -1;

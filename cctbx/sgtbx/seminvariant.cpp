@@ -105,7 +105,7 @@ namespace cctbx { namespace sgtbx {
         TrVec Zf = (OrigZf[iDL] + Shift).modPositive();
         TrVec Zc = Zf.cancel();
         for(int i=0;i<3;i++) {
-          if (Zf.vec()[i]) {
+          if (Zf[i]) {
             if (   CmpOLen2()(Zc.vec(), BestZc[iDL].vec())
                 || (Zc.vec() == BestZc[iDL].vec()
                     && Zc.BF() < BestZc[iDL].BF())) {
@@ -128,7 +128,7 @@ namespace cctbx { namespace sgtbx {
       for (iDL = 1; iDL < DiscrZ.size(); iDL++) {
         int BF = DiscrZ[iDL].BF();
         for(int i=0;i<3;i++) {
-          int g = gcd(DiscrZ[iDL].vec()[i], BF);
+          int g = gcd(DiscrZ[iDL][i], BF);
           LTBF = lcm(LTBF, BF / g);
         }
       }
@@ -136,7 +136,7 @@ namespace cctbx { namespace sgtbx {
       for (iLTr = 1; iLTr < SgOps.nLTr(); iLTr++) {
         int BF = SgOps.LTr(iLTr).BF();
         for(int i=0;i<3;i++) {
-          int g = gcd(SgOps.LTr(iLTr).vec()[i], BF);
+          int g = gcd(SgOps.LTr(iLTr)[i], BF);
           LTBF = lcm(LTBF, BF / g);
         }
       }
