@@ -88,11 +88,17 @@ namespace {
           }
         }
         std::getline(cin, line);
-        int expected_9999 = std::atoi(line.substr(0,8).c_str());
-        SCITBX_ASSERT(expected_9999 == -9999);
-        std::getline(cin, line);
-        average = std::atof(line.substr(0,12).c_str());
-        standard_deviation = std::atof(line.substr(12,12).c_str());
+        if (line.size() == 0) {
+          average = -1;
+          standard_deviation = -1;
+        }
+        else {
+          int expected_9999 = std::atoi(line.substr(0,8).c_str());
+          SCITBX_ASSERT(expected_9999 == -9999);
+          std::getline(cin, line);
+          average = std::atof(line.substr(0,12).c_str());
+          standard_deviation = std::atof(line.substr(12,12).c_str());
+        }
         cin.close();
       }
 
