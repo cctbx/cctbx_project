@@ -278,8 +278,9 @@ def emit_SConstruct(env, build_options, packages_dict):
   print >> f, 'except:'
   print >> f, '  pass'
   print >> f, '#SetContentSignatureType("timestamp")'
-  print >> f, 'try: SConsignFile()'
-  print >> f, 'except: pass'
+  print >> f, 'if ("SConsignFile" in dir()):'
+  print >> f, \
+    '  SConsignFile(dbm_module=libtbx.config.select_sconsign_dbm_module())'
   print >> f
   print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
   print >> f, 'SConscript("libtbx/SConscript")'
