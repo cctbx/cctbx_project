@@ -4,6 +4,7 @@
 #include <scitbx/math/erf.h>
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/eigensystem.h>
+#include <scitbx/math/matrix_inversion.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -52,6 +53,22 @@ namespace {
     return result / static_cast<double>(n_repetitions);
   }
 
+  void
+  matrix_inversion_in_place_wrapper(
+    af::ref<double, af::c_grid<2> > const& a)
+  {
+    if (a.accessor()[0] != a.accessor()[1]) {
+      throw error("matrix_inversion_in_place requires a square matrix.");
+    }
+    if (matrix_inversion_in_place(
+          a.begin(),
+          static_cast<std::size_t>(a.accessor()[0]),
+          static_cast<double*>(0),
+          static_cast<std::size_t>(0)) != 0) {
+      throw error("matrix is singular.");
+    }
+  }
+
   void init_module()
   {
     using namespace boost::python;
@@ -78,6 +95,7 @@ namespace {
     wrap_principal_axes_of_inertia();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
+    def("matrix_inversion_in_place", matrix_inversion_in_place_wrapper);
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
