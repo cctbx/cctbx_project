@@ -14,6 +14,9 @@ class rec:
   def n_columns(self):
     return self.n[1]
 
+  def __neg__(self):
+    return rec([-e for e in self.elems], self.n)
+
   def __add__(self, other):
     assert self.n == other.n
     a = self.elems
@@ -189,6 +192,7 @@ if (__name__ == "__main__"):
   b = rec(range(1,7), (2,3))
   c = a * b
   d = rt((c, (1,2,3)))
+  assert (-a).mathematica_form() == "{{-1, -2}, {-3, -4}, {-5, -6}}"
   assert d.r.mathematica_form() == "{{9, 12, 15}, {19, 26, 33}, {29, 40, 51}}"
   assert d.t.mathematica_form() == "{{1}, {2}, {3}}"
   e = d + col((3,5,6))
