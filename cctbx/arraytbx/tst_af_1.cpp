@@ -242,6 +242,14 @@ namespace {
       check_true(__LINE__, a1.use_count() == 1);
       {
         ArrayType a2(a1);
+        check_true(__LINE__, a1.id() == a2.id());
+        a2 = ArrayType();
+        check_true(__LINE__, a1.id() != a2.id());
+        a2 = a1;
+        check_true(__LINE__, a1.id() == a2.id());
+      }
+      {
+        ArrayType a2(a1);
         bool ok = true;
         for(int i=0;i<256;i++) {
           a2.push_back(element_type(i));

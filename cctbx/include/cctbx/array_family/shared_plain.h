@@ -216,6 +216,12 @@ namespace cctbx { namespace af {
       }
 
       // non-std
+      std::size_t id() const
+      {
+        return reinterpret_cast<std::size_t>(m_handle);
+      }
+
+      // non-std
       sharing_handle* handle() {
         CCTBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         return m_handle;
