@@ -285,19 +285,18 @@ namespace {
     return SgInfo.BuildHallSymbol(TidyCBOp);
   }
 
-  double PhaseRestriction_HT_angle_0(
-    const PhaseRestriction& PR)
+  double PhaseInfo_HT_angle_0(const PhaseInfo& phinfo)
   {
-    return PR.HT_angle();
+    return phinfo.HT_angle();
   }
 
-  bool PhaseRestriction_isValidPhase_2(const PhaseRestriction& PR,
-                                       double phi, bool deg) {
-    return PR.isValidPhase(phi, deg);
+  bool PhaseInfo_isValidPhase_2(const PhaseInfo& phinfo, double phi, bool deg)
+  {
+    return phinfo.isValidPhase(phi, deg);
   }
-  bool PhaseRestriction_isValidPhase_1(const PhaseRestriction& PR,
-                                       double phi) {
-    return PR.isValidPhase(phi);
+  bool PhaseInfo_isValidPhase_1(const PhaseInfo& phinfo, double phi)
+  {
+    return phinfo.isValidPhase(phi);
   }
 
   Miller::SymEquivIndex Miller_SymEquivIndex_Mate_0(
@@ -627,8 +626,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_ChOfBasisOp(this_module, "ChOfBasisOp");
   class_builder<Miller::SymEquivIndex>
   py_Miller_SymEquivIndex(this_module, "Miller_SymEquivIndex");
-  class_builder<PhaseRestriction>
-  py_PhaseRestriction(this_module, "PhaseRestriction");
+  class_builder<PhaseInfo>
+  py_PhaseInfo(this_module, "PhaseInfo");
   class_builder<SymEquivMillerIndices>
   py_SymEquivMillerIndices(this_module, "SymEquivMillerIndices");
   class_builder<SpaceGroup>
@@ -803,15 +802,18 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_Miller_SymEquivIndex.def(
     Miller_SymEquivIndex_complex_in, "complex_in");
 
-  py_PhaseRestriction.def(constructor<>());
-  py_PhaseRestriction.def(&PhaseRestriction::isCentric, "isCentric");
-  py_PhaseRestriction.def(&PhaseRestriction::HT, "HT");
-  py_PhaseRestriction.def(&PhaseRestriction::TBF, "TBF");
-  py_PhaseRestriction.def(&PhaseRestriction::HT_angle, "HT_angle");
-  py_PhaseRestriction.def(PhaseRestriction_HT_angle_0, "HT_angle");
-  py_PhaseRestriction.def(&PhaseRestriction::isValidPhase, "isValidPhase");
-  py_PhaseRestriction.def(PhaseRestriction_isValidPhase_2, "isValidPhase");
-  py_PhaseRestriction.def(PhaseRestriction_isValidPhase_1, "isValidPhase");
+  py_PhaseInfo.def(constructor<>());
+  py_PhaseInfo.def(constructor<SpaceGroup const&, Miller::Index const&>());
+  py_PhaseInfo.def(&PhaseInfo::SysAbsChecked, "SysAbsChecked");
+  py_PhaseInfo.def(&PhaseInfo::isSysAbsent, "isSysAbsent");
+  py_PhaseInfo.def(&PhaseInfo::isCentric, "isCentric");
+  py_PhaseInfo.def(&PhaseInfo::HT, "HT");
+  py_PhaseInfo.def(&PhaseInfo::TBF, "TBF");
+  py_PhaseInfo.def(&PhaseInfo::HT_angle, "HT_angle");
+  py_PhaseInfo.def(PhaseInfo_HT_angle_0, "HT_angle");
+  py_PhaseInfo.def(&PhaseInfo::isValidPhase, "isValidPhase");
+  py_PhaseInfo.def(PhaseInfo_isValidPhase_2, "isValidPhase");
+  py_PhaseInfo.def(PhaseInfo_isValidPhase_1, "isValidPhase");
 
   py_SymEquivMillerIndices.def(constructor<>());
   py_SymEquivMillerIndices.def(

@@ -262,7 +262,7 @@ namespace cctbx {
         double m_Qhigh;
         af::nested_loop<Miller::Index> m_loop;
         bool m_next_is_minus_previous;
-        sys_absent_test m_sys_abs_test;
+        PhaseInfo m_phase_info;
         Miller::Index m_previous;
     };
 

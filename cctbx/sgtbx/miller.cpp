@@ -16,9 +16,10 @@
 
 namespace cctbx { namespace sgtbx {
 
-  sys_absent_test::sys_absent_test(
-    const SpaceGroup& sgops, const Miller::Index& h)
-    : ht_restriction_(-1)
+  PhaseInfo::PhaseInfo(
+    SpaceGroup const& sgops,
+    Miller::Index const& h)
+    : m_HT(-1), m_SysAbsChecked(true)
   {
     // systematically absent reflection: if HR == H and HT != 0 mod 1
     // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
@@ -39,7 +40,7 @@ namespace cctbx { namespace sgtbx {
       if (TS.isValid()) {
         for(int iLTr=0;iLTr<sgops.nLTr();iLTr++) {
           if ((h * (TS + sgops.LTr(iLTr))) % TS.BF() != 0) {
-            ht_restriction_ = -2;
+            m_HT = -2;
             return;
           }
         }
@@ -47,9 +48,9 @@ namespace cctbx { namespace sgtbx {
       if (TR.isValid()) {
         for(int iLTr=0;iLTr<sgops.nLTr();iLTr++) {
           int HT = HT_mod_1(h, TR + sgops.LTr(iLTr));
-          if      (ht_restriction_ < 0) ht_restriction_ = HT;
-          else if (ht_restriction_ != HT) {
-            ht_restriction_ = -2;
+          if      (m_HT < 0) m_HT = HT;
+          else if (m_HT != HT) {
+            m_HT = -2;
             return;
           }
         }
@@ -57,17 +58,13 @@ namespace cctbx { namespace sgtbx {
     }
   }
 
-  bool SpaceGroup::isSysAbsent(const Miller::Index& H) const
-  {
-    return sys_absent_test(*this, H).is_sys_absent();
-  }
-
   af::shared<bool>
-  SpaceGroup::isSysAbsent(const af::shared<Miller::Index>& H) const
+  SpaceGroup::isSysAbsent(af::shared<Miller::Index> H) const
   {
-    af::shared<bool> result(H.size()); // FUTURE: avoid initialization
+    af::shared<bool> result;
+    result.reserve(H.size());
     for(std::size_t i=0;i<H.size();i++) {
-      result[i] = isSysAbsent(H[i]);
+      result.push_back(isSysAbsent(H[i]));
     }
     return result;
   }
@@ -76,7 +73,7 @@ namespace cctbx { namespace sgtbx {
   {
     if (isCentric()) return true;
     rangei(m_nSMx) {
-      if (H * m_SMx[i].Rpart() == H.FriedelMate()) return true;
+      if (H * m_SMx[i].Rpart() == -H) return true;
     }
     return false;
   }
@@ -84,26 +81,27 @@ namespace cctbx { namespace sgtbx {
   af::shared<bool>
   SpaceGroup::isCentric(const af::shared<Miller::Index>& H) const
   {
-    af::shared<bool> result(H.size()); // FUTURE: avoid initialization
+    af::shared<bool> result;
+    result.reserve(H.size());
     for(std::size_t i=0;i<H.size();i++) {
-      result[i] = isCentric(H[i]);
+      result.push_back(isCentric(H[i]));
     }
     return result;
   }
 
-  PhaseRestriction
+  PhaseInfo
   SpaceGroup::getPhaseRestriction(const Miller::Index& H) const
   {
     // restricted phase: if HR == -H: phi(H) = pi*HT + n*pi
     if (isCentric()) {
-      return PhaseRestriction(HT_mod_1(H, m_InvT), TBF());
+      return PhaseInfo(HT_mod_1(H, m_InvT), TBF(), false);
     }
     rangei(m_nSMx) {
       if (H * m_SMx[i].Rpart() == H.FriedelMate()) {
-        return PhaseRestriction(HT_mod_1(H, m_SMx[i].Tpart()), TBF());
+        return PhaseInfo(HT_mod_1(H, m_SMx[i].Tpart()), TBF(), false);
       }
     }
-    return PhaseRestriction(-1, TBF()); // no restriction
+    return PhaseInfo(-1, TBF(), false); // no restriction
   }
 
   int SpaceGroup::epsilon(const Miller::Index& H) const
@@ -121,9 +119,10 @@ namespace cctbx { namespace sgtbx {
   af::shared<int>
   SpaceGroup::epsilon(const af::shared<Miller::Index>& H) const
   {
-    af::shared<int> result(H.size()); // FUTURE: avoid initialization
+    af::shared<int> result;
+    result.reserve(H.size());
     for(std::size_t i=0;i<H.size();i++) {
-      result[i] = epsilon(H[i]);
+      result.push_back(epsilon(H[i]));
     }
     return result;
   }
@@ -149,15 +148,16 @@ namespace cctbx { namespace sgtbx {
   SpaceGroup::multiplicity(const af::shared<Miller::Index>& H,
                            bool FriedelFlag) const
   {
-    af::shared<int> result(H.size()); // FUTURE: avoid initialization
+    af::shared<int> result;
+    result.reserve(H.size());
     for(std::size_t i=0;i<H.size();i++) {
-      result[i] = multiplicity(H[i], FriedelFlag);
+      result.push_back(multiplicity(H[i], FriedelFlag));
     }
     return result;
   }
 
-  bool PhaseRestriction::isValidPhase_(double Period,
-                                       double phi, double tolerance) const
+  bool
+  PhaseInfo::isValidPhase_(double Period, double phi, double tolerance) const
   {
     if (m_HT < 0) return true;
     double delta = std::fmod(phi - HT_angle(Period), Period);

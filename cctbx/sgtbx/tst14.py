@@ -25,8 +25,9 @@ def OneCycle(settings):
         UnitCell, SgInfo, friedel_flag, 2.)
       for h_asym in miller_indices:
         h_seq = SgOps.getEquivMillerIndices(h_asym)
-        # exercise class PhaseRestriction
+        # exercise class PhaseInfo
         restr = h_seq.getPhaseRestriction()
+        assert not restr.SysAbsChecked()
         if (h_seq.isCentric()):
           phi_asym = restr.HT_angle() + random.choice((0,1)) * math.pi
         else:
