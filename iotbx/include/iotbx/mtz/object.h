@@ -129,9 +129,10 @@ namespace iotbx { namespace mtz {
       }
 
       object(const char* file_name)
-      :
-        ptr_(CMtz::MtzGet(file_name, true), ptr_deleter)
       {
+        CCTBX_ASSERT(file_name != 0);
+        ptr_ = boost::shared_ptr<CMtz::MTZ>(
+          CMtz::MtzGet(file_name, true), ptr_deleter);
         if (ptr_.get() == 0) {
           throw cctbx::error(std::string("MTZ file read error: ") + file_name);
         }
@@ -151,6 +152,7 @@ namespace iotbx { namespace mtz {
       object&
       set_title(const char* title, bool append=false)
       {
+        CCTBX_ASSERT(title != 0);
         int set_title_success = CMtz::ccp4_lwtitl(ptr(), title, append);
         CCTBX_ASSERT(set_title_success);
         ptr()->title[sizeof(ptr()->title)-1] = '\0';
@@ -197,6 +199,7 @@ namespace iotbx { namespace mtz {
       object&
       add_history(const char* line)
       {
+        CCTBX_ASSERT(line != 0);
         return add_history(af::tiny<std::string, 1>(line).const_ref());
       }
 
@@ -206,6 +209,7 @@ namespace iotbx { namespace mtz {
       object&
       set_space_group_name(const char* name)
       {
+        CCTBX_ASSERT(name != 0);
         char* target = ptr()->mtzsymm.spcgrpname;
         const unsigned target_size = sizeof(ptr()->mtzsymm.spcgrpname);
         strncpy(target, name, target_size-1);
@@ -229,6 +233,7 @@ namespace iotbx { namespace mtz {
       object&
       set_point_group_name(const char* name)
       {
+        CCTBX_ASSERT(name != 0);
         char* target = ptr()->mtzsymm.pgname;
         const unsigned target_size = sizeof(ptr()->mtzsymm.pgname);
         strncpy(target, name, target_size-1);
@@ -473,6 +478,7 @@ namespace iotbx { namespace mtz {
       void
       write(const char* file_name)
       {
+        CCTBX_ASSERT(file_name != 0);
         if (!CMtz::MtzPut(ptr(), file_name)) {
           throw cctbx::error("MTZ write failed.");
         }
