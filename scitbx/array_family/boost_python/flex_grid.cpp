@@ -8,12 +8,12 @@
      2002 Aug: Created, based on sharedmodule.cpp, shared_bpl.h (rwgk)
  */
 
-#include <scitbx/array_family/accessors/flex_grid.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <scitbx/array_family/accessors/flex_grid.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 

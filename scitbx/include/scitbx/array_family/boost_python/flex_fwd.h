@@ -10,6 +10,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 
+#include <pyconfig.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/flex_grid.h>

@@ -11,6 +11,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_UTILS_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_UTILS_H
 
+#include <pyconfig.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
 

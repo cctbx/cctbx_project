@@ -11,6 +11,11 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_WRAPPER_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_WRAPPER_H
 
+#include <boost/python/def.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/scope.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_non_const_reference.hpp>
 #include <scitbx/constants.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/versa_reductions.h>
@@ -21,11 +26,6 @@
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
 #include <scitbx/array_family/boost_python/utils.h>
-#include <boost/python/def.hpp>
-#include <boost/python/class.hpp>
-#include <boost/python/scope.hpp>
-#include <boost/python/return_value_policy.hpp>
-#include <boost/python/copy_non_const_reference.hpp>
 
 namespace scitbx { namespace af { namespace boost_python {
 

@@ -7,8 +7,8 @@
      2003 Jan: Created (R.W. Grosse-Kunstleve)
  */
 
-#include <boost/rational.hpp>
 #include <scitbx/boost_python/utils.h>
+#include <boost/rational.hpp>
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/error.h>
 #include <boost/python/module.hpp>
