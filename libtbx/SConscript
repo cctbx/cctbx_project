@@ -16,6 +16,10 @@ def set_python_include_and_libs(env_etc):
   else:
     env_etc.libs_python = []
     env_etc.libpath_python = []
+  if (env_etc.compiler == "darwin_g++"):
+    print env_etc.python_include
+    env_etc.python_framework = "/".join(
+      env_etc.python_include.split("/")[:-2] + ["Python"])
 
 env_etc = empty()
 env_etc.libtbx_env = libtbx.config.env()
@@ -226,7 +230,10 @@ else:
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = []
-    env_etc.shlinkflags_bpl = []
+    env_etc.shlinkflags_bpl = [
+      "-w", # for some odd reason -bundle cannot be the first option
+      "-bundle", env_etc.python_framework,
+      "-bundle_loader", env_etc.python_framework]
   else:
     raise "Unknown compiler choice:", env_etc.compiler
 
