@@ -61,6 +61,8 @@ class symmetry(object):
     return symmetry(self.unit_cell(), space_group_symbol="P 1")
 
   def change_basis(self, cb_op):
+    if (isinstance(cb_op, str)):
+      cb_op = sgtbx.change_of_basis_op(cb_op)
     return symmetry(
       unit_cell=cb_op.apply(self.unit_cell()),
       space_group_info=self.space_group_info().change_basis(cb_op))
