@@ -34,13 +34,23 @@ def GetFormData():
       inp.__dict__[key[0]] = string.strip(form[key[0]].value)
     else:
       inp.__dict__[key[0]] = key[1]
+  inp.SHELX_LATT = []
   inp.symxyz = []
   if (form.has_key("symxyz")):
     lines = string.split(form["symxyz"].value, "\015\012")
     for l in lines:
-      for s in string.split(l, ";"):
-        s = string.strip(s)
-        if (s != ""): inp.symxyz.append(string.strip(s))
+      # Treat SHELX LATT & SYMM cards
+      s = string.strip(l)
+      CARD = string.upper(s[:4])
+      if   (CARD == "LATT"):
+        inp.SHELX_LATT.append(s[4:])
+      elif (CARD == "SYMM"):
+        inp.symxyz.append(string.strip(s[4:]))
+      else:
+        # Plain symmetry operations
+        for s in string.split(l, ";"):
+          s = string.strip(s)
+          if (s != ""): inp.symxyz.append(string.strip(s))
   return inp
 
 
@@ -159,6 +169,31 @@ def get_unitcell(SgInfo):
     RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
   return RefUnitCell.ChangeBasis(SgInfo.CBOp().M().as_tuple()[0])
 
+def expandSHELX_LATT(SgOps, N_fld):
+  Z_dict = {
+    "P": 1,
+    "I": 2,
+    "R": 3,
+    "F": 4,
+    "A": 5,
+    "B": 6,
+    "C": 7,
+  }
+  N_dict = {}
+  for Z in Z_dict.keys(): N_dict[Z_dict[Z]] = Z
+  try:
+    N = string.atoi(N_fld)
+    Z = N_dict[abs(N)]
+  except:
+    raise RuntimeError, "Format Error: LATT " + str(N_fld)
+  print "Addition of SHELX LATT " + str(N) + ":"
+  if (N > 0):
+    print "  Addition of centre of inversion at the origin."
+    SgOps.expandSMx(sgtbx.RTMx("-x,-y,-z"))
+  print "  Addition of lattice translations for centring type " + str(Z) + "."
+  SgOps.expandConventionalCentringType(Z)
+  print
+
 inp = GetFormData()
 
 print "<pre>"
@@ -188,6 +223,10 @@ try:
     print "--&gt;" + ps.string() + "&lt;--"
     print ("-" * (ps.where() + 3)) + "^"
     raise
+
+  if (len(inp.SHELX_LATT) != 0):
+    for N_fld in inp.SHELX_LATT:
+      expandSHELX_LATT(SgOps, N_fld)
 
   if (len(inp.symxyz) != 0):
     print "Addition of symmetry operations:"
