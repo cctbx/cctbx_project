@@ -34,6 +34,6 @@ bpl_dll_sources = Split("""
   src/object_operators.cpp
 """)
 bpl_dll_sources = [
-  os.path.join("#/boost/libs/python", path)
+  os.path.join("#boost/libs/python", path)
     for path in bpl_dll_sources]
 env.SharedLibrary(target="bpl", source=bpl_dll_sources)
