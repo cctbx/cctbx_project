@@ -26,6 +26,9 @@ namespace {
     typedef grid_tags<> w_t;
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      dependent_correlation_overloads, dependent_correlation, 1, 2)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       verify_overloads, verify, 1, 2)
 
     static void
@@ -45,16 +48,28 @@ namespace {
         .def("n_grid_misses", &w_t::n_grid_misses)
         .def("n_independent", &w_t::n_independent)
         .def("n_dependent", &w_t::n_dependent)
+        .def("dependent_correlation",
+          (scitbx::math::linear_correlation<>(w_t::*)(
+            af::const_ref<float, af::c_grid_padded<3> > const&,
+            double) const)
+              &w_t::dependent_correlation,
+              dependent_correlation_overloads(args("data", "epsilon")))
+        .def("dependent_correlation",
+          (scitbx::math::linear_correlation<>(w_t::*)(
+            af::const_ref<double, af::c_grid_padded<3> > const&,
+            double) const)
+              &w_t::dependent_correlation,
+              dependent_correlation_overloads(args("data", "epsilon")))
         .def("verify",
           (bool(w_t::*)(
             af::const_ref<float, af::c_grid_padded<3> > const&,
             double) const)
-              &w_t::verify, verify_overloads(args("data", "min_correlation")))
+              &w_t::verify, verify_overloads(args("data", "epsilon")))
         .def("verify",
           (bool(w_t::*)(
             af::const_ref<double, af::c_grid_padded<3> > const&,
             double) const)
-              &w_t::verify, verify_overloads(args("data", "min_correlation")))
+              &w_t::verify, verify_overloads(args("data", "epsilon")))
         .def("sum_sym_equiv_points",
           (void(w_t::*)(af::ref<float, c_grid_padded_p1<3> > const&) const)
             &w_t::sum_sym_equiv_points)

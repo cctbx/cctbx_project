@@ -41,9 +41,9 @@ class wilson_plot:
     assert fit.is_well_defined()
     self.fit_y_intercept = fit.y_intercept()
     self.fit_slope = fit.slope()
-    self.fit_correlation = fit.correlation()
     self.wilson_k = math.exp(self.fit_y_intercept)
     self.wilson_b = -self.fit_slope / 2
+    self.fit_correlation = flex.linear_correlation(self.x,self.y).coefficient()
 
   def xy_plot_info(self):
     r = empty()

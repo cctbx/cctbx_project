@@ -15,10 +15,9 @@ def to_list(array):
 
 class linear_regression(ext.linear_regression):
 
-  def __init__(self, x, y, epsilon=1.e-6):
+  def __init__(self, x, y, epsilon=1.e-15):
     ext.linear_regression.__init__(self, x, y, epsilon)
 
   def show_summary(self, f=sys.stdout):
     print >> f, "y_intercept:", self.y_intercept()
     print >> f, "slope:", self.slope()
-    print >> f, "correlation:", self.correlation()

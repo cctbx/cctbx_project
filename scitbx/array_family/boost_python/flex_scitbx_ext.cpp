@@ -11,6 +11,7 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/math/linear_regression.h>
+#include <scitbx/math/linear_correlation.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
@@ -64,7 +65,6 @@ namespace {
         .def("is_well_defined", &w_t::is_well_defined)
         .def("y_intercept", &w_t::y_intercept)
         .def("slope", &w_t::slope)
-        .def("correlation", &w_t::correlation)
       ;
     }
   };
@@ -83,6 +83,32 @@ namespace {
         .def(init<af::const_ref<float_t> const&,
                   af::const_ref<float_t> const&,
                   optional<float_t const&> >());
+      ;
+    }
+  };
+
+  struct linear_correlation_wrappers
+  {
+    typedef math::linear_correlation<> w_t;
+    typedef w_t::float_type float_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("linear_correlation", no_init)
+        .def(init<af::const_ref<float_t> const&,
+                  af::const_ref<float_t> const&,
+                  optional<float_t const&> >())
+        .def("is_well_defined", &w_t::is_well_defined)
+        .def("n", &w_t::n)
+        .def("mean_x", &w_t::mean_x)
+        .def("mean_y", &w_t::mean_y)
+        .def("numerator", &w_t::numerator)
+        .def("sum_denominator_x", &w_t::sum_denominator_x)
+        .def("sum_denominator_y", &w_t::sum_denominator_y)
+        .def("denominator", &w_t::denominator)
+        .def("coefficient", &w_t::coefficient)
       ;
     }
   };
@@ -115,6 +141,7 @@ namespace {
 
     linear_regression_core_wrappers::wrap();
     linear_regression_wrappers::wrap();
+    linear_correlation_wrappers::wrap();
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>

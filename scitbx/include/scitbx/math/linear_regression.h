@@ -13,28 +13,11 @@
 #define SCITBX_MATH_LINEAR_REGRESSION_H
 
 #include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/misc_functions.h>
 #include <scitbx/error.h>
 #include <cmath>
 
 namespace scitbx { namespace math {
-
-  template <typename FloatType>
-  FloatType
-  std_linear_correlation(
-    FloatType const& sum_weights,
-    FloatType const& sum_x, FloatType const& sum_x2,
-    FloatType const& sum_y, FloatType const& sum_y2,
-    FloatType const& sum_xy)
-  {
-    FloatType correlation_denom2 = (sum_x2 - sum_x * sum_x / sum_weights)
-                                 * (sum_y2 - sum_y * sum_y / sum_weights);
-    FloatType correlation(1);
-    if (correlation_denom2 > FloatType(0)) {
-      correlation = (sum_xy - sum_x * sum_y / sum_weights)
-                  / std::sqrt(correlation_denom2);
-    }
-    return correlation;
-  }
 
   template <typename FloatType = double,
             typename IntegerType = std::size_t>
@@ -48,7 +31,7 @@ namespace scitbx { namespace math {
       reset()
       {
         is_well_defined_ = false;
-        y_intercept_ = slope_ = correlation_ = FloatType(0);
+        y_intercept_ = slope_ = FloatType(0);
       }
 
       void
@@ -58,14 +41,7 @@ namespace scitbx { namespace math {
           FloatType const& sum_x, FloatType const& sum_x2,
           FloatType const& sum_y, FloatType const& sum_y2,
           FloatType const& sum_xy,
-          FloatType const& epsilon = 1.e-6);
-
-      //! Work-around for broken compilers.
-      static FloatType f_abs(FloatType const& x)
-      {
-        if (x < 0) return -x;
-        return x;
-      }
+          FloatType const& epsilon = 1.e-15);
 
       //! Flag.
       bool
@@ -79,15 +55,10 @@ namespace scitbx { namespace math {
       FloatType
       slope() const { return slope_; }
 
-      //! Standard linear correlation coefficient.
-      FloatType
-      correlation() const { return correlation_; }
-
     protected:
       bool is_well_defined_;
       FloatType y_intercept_;
       FloatType slope_;
-      FloatType correlation_;
   };
 
   template <typename FloatType,
@@ -107,19 +78,17 @@ namespace scitbx { namespace math {
     if (min_x == max_x) return;
     if (min_y == max_y) {
       y_intercept_ = min_y;
-      correlation_ = FloatType(0);
       is_well_defined_ = true;
       return;
     }
     FloatType fn(n);
-    FloatType dx = std::max(f_abs(min_x - sum_x / fn),
-                            f_abs(max_x - sum_x / fn));
-    FloatType dy = std::max(f_abs(min_y - sum_y / fn),
-                            f_abs(max_y - sum_y / fn));
+    FloatType dx = std::max(fn::absolute(min_x - sum_x / fn),
+                            fn::absolute(max_x - sum_x / fn));
+    FloatType dy = std::max(fn::absolute(min_y - sum_y / fn),
+                            fn::absolute(max_y - sum_y / fn));
     if (dx == 0) return;
     if (dy == 0) {
       y_intercept_ = sum_y / fn;
-      correlation_ = FloatType(0);
       is_well_defined_ = true;
       return;
     }
@@ -129,7 +98,6 @@ namespace scitbx { namespace math {
       y_intercept_ = (sum_x2 * sum_y - sum_x * sum_xy) / d;
       slope_ = (fn * sum_xy - sum_x * sum_y) / d;
     }
-    correlation_ = std_linear_correlation(fn,sum_x,sum_x2,sum_y,sum_y2,sum_xy);
     is_well_defined_ = true;
   }
 
@@ -144,7 +112,7 @@ namespace scitbx { namespace math {
 
       linear_regression(af::const_ref<FloatType> const& x,
                         af::const_ref<FloatType> const& y,
-                        FloatType const& epsilon = 1.e-6);
+                        FloatType const& epsilon = 1.e-15);
   };
 
   template <typename FloatType>
