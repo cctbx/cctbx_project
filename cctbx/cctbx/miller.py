@@ -958,6 +958,18 @@ class array(set):
     return [self.select(pairs.column(1)),
             other.select(pairs.column(0))]
 
+  def lone_set(self, other, assert_is_similar_symmetry=True):
+    return self.select(other.match_indices(
+      other=self,
+      assert_is_similar_symmetry=assert_is_similar_symmetry).singles(1))
+
+  def lone_sets(self, other, assert_is_similar_symmetry=True):
+    matches = other.match_indices(
+      other=self,
+      assert_is_similar_symmetry=assert_is_similar_symmetry)
+    return [self.select(matches.singles(1)),
+            other.select(matches.singles(0))]
+
   def sort_permutation(self, by_value="resolution", reverse=False):
     assert reverse in (False, True)
     if (by_value in ["resolution", "packed_indices"]):

@@ -469,6 +469,15 @@ def exercise_array():
   assert tuple(c2.indices()) == ((1,-2,3),)
   assert tuple(c2.data()) == (4,)
   assert tuple(c2.sigmas()) == (6,)
+  l1 = a1.lone_set(a2)
+  assert list(l1.indices()) == [(0,0,-4)]
+  assert list(l1.data()) == [2]
+  l2 = a2.lone_set(a1)
+  assert list(l2.indices()) == [(0,0,-5)]
+  assert list(l2.data()) == [3]
+  l1, l2 = a1.lone_sets(a2)
+  assert list(l1.indices()) == [(0,0,-4)]
+  assert list(l2.indices()) == [(0,0,-5)]
   assert tuple(c1.adopt_set(c2).indices()) == ((1,-2,3),)
   sg = miller.array(
     miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3))), False),
