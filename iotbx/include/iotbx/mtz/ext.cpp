@@ -23,7 +23,7 @@ namespace {
 
 }}}} // namespace iotbx::mtz::boost_python::<anonymous>
 
-BOOST_PYTHON_MODULE(iotbx_mtz_wrapper_ext)
+BOOST_PYTHON_MODULE(iotbx_mtz_ext)
 {
   iotbx::mtz::boost_python::init_module();
 }

@@ -1,11 +1,10 @@
 from iotbx import mtz
-import iotbx.mtz.wrapper
 from iotbx.option_parser import iotbx_option_parser
 import sys, os
 
 def process(file_name, show_batches):
   print "Processing:", file_name
-  mtz_object = mtz.wrapper.object(file_name=file_name)
+  mtz_object = mtz.object(file_name=file_name)
   mtz_object.show_summary()
   print
   if (show_batches):
