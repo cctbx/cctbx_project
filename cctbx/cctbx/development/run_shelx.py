@@ -39,9 +39,9 @@ def SFAC_DISP_UNIT(xray_structure, short_sfac):
       UNIT.append(str(max(1, int(celcon[sf] + 0.5))))
   else:
     for scatterer in xray_structure.scatterers():
-      gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type)
-      a = gaussian.a()
-      b = gaussian.b()
+      gaussian=eltbx.xray_scattering.it1992(scatterer.scattering_type).fetch()
+      a = gaussian.array_of_a()
+      b = gaussian.array_of_b()
       l("SFAC %s %.6g %.6g %.6g %.6g %.6g %.6g =" %
         (scatterer.label,
          a[0], b[0],

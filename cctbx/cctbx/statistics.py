@@ -24,7 +24,8 @@ class wilson_plot:
     # cache scattering factor info
     gaussians = {}
     for chemical_type in asu_contents.keys():
-      gaussians[chemical_type] = eltbx.xray_scattering.wk1995(chemical_type)
+      gaussians[chemical_type] = eltbx.xray_scattering.wk1995(
+        chemical_type).fetch()
     # compute expected f_calc^2 in resolution shells
     self.expected_f_sq = flex.double()
     for stol_sq in self.mean_stol_sq:

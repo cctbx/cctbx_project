@@ -90,11 +90,11 @@ def exercise_structure():
   assert xs.scatterers().size() == 1
   assert tuple(xs.special_position_indices()) == (0,)
   sd = ys.scattering_dict()
-  assert sd.lookup("Si").gaussian.n_ab() == 5
+  assert sd.lookup("Si").gaussian.n_terms() == 5
   sd = ys.scattering_dict(d_min=3)
-  assert sd.lookup("Si").gaussian.n_ab() == 4
+  assert sd.lookup("Si").gaussian.n_terms() == 4
   sd = ys.scattering_dict(custom_dict={"Si":eltbx.xray_scattering.gaussian(1)})
-  assert sd.lookup("Si").gaussian.n_ab() == 0
+  assert sd.lookup("Si").gaussian.n_terms() == 0
 
 def exercise_u_extra():
   d_min = 9
@@ -185,11 +185,11 @@ def exercise_n_gaussian(space_group_info, verbose=0):
   structure_2g.scattering_dict(
     custom_dict=eltbx.xray_scattering.two_gaussian_agarwal_isaacs.table)
   for scatterer_group in structure_5g.scattering_dict().dict().values():
-    assert scatterer_group.gaussian.n_ab() == 5
+    assert scatterer_group.gaussian.n_terms() == 5
   for scatterer_group in structure_4g.scattering_dict().dict().values():
-    assert scatterer_group.gaussian.n_ab() == 4
+    assert scatterer_group.gaussian.n_terms() == 4
   for scatterer_group in structure_2g.scattering_dict().dict().values():
-    assert scatterer_group.gaussian.n_ab() == 2
+    assert scatterer_group.gaussian.n_terms() == 2
   d_min = 1
   f_calc_5g = structure_5g.structure_factors(
     d_min=d_min,

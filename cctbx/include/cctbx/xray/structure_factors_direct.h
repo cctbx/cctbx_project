@@ -68,7 +68,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       f_t d_star_sq = unit_cell.d_star_sq(h);
       dict_type const& scd = scattering_dict.dict();
       for(dict_iter di=scd.begin();di!=scd.end();di++) {
-        bool gaussian_is_const = di->second.gaussian.n_ab() == 0;
+        bool gaussian_is_const = di->second.gaussian.n_terms() == 0;
         f_t gaussian_c = di->second.gaussian.c();
         f_t f0 = di->second.gaussian.at_d_star_sq(d_star_sq);
         af::const_ref<std::size_t>

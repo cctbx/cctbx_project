@@ -158,7 +158,7 @@ def exercise_scattering_dictionary():
     elif (k == "Al"): assert tuple(v.member_indices) == (4,6)
     elif (k == "const"): assert tuple(v.member_indices) == (7,)
     elif (k == "custom"): assert tuple(v.member_indices) == (8,)
-    assert v.gaussian.n_ab() == 0
+    assert v.gaussian.n_terms() == 0
     assert v.gaussian.c() == 0
     assert tuple(sd.lookup(k).member_indices) == tuple(v.member_indices)
   z = list(sd.find_undefined())
@@ -167,36 +167,36 @@ def exercise_scattering_dictionary():
   p = list(sd.scatterer_permutation())
   p.sort()
   assert p == range(9)
-  for table,n_ab in (("IT1992",4), ("WK1995",5)):
+  for table,n_terms in (("IT1992",4), ("WK1995",5)):
     sd = xray.scattering_dictionary(scatterers)
     sd.assign("const", eltbx.xray_scattering.gaussian(10))
     sd.assign("custom", eltbx.xray_scattering.gaussian((1,2),(3,4),5))
     sd.assign_from_table(table)
     for k,v in sd.dict().items():
       if (k in ("Al", "O", "Si")):
-        assert v.gaussian.n_ab() == n_ab
+        assert v.gaussian.n_terms() == n_terms
       elif (k == "const"):
-        assert v.gaussian.n_ab() == 0
+        assert v.gaussian.n_terms() == 0
         assert approx_equal(v.gaussian.c(), 10)
       else:
-        assert v.gaussian.n_ab() == 2
+        assert v.gaussian.n_terms() == 2
         assert approx_equal(v.gaussian.c(), 5)
     sd.assign("Al", eltbx.xray_scattering.gaussian(20))
     assert approx_equal(sd.lookup("Al").gaussian.c(), 20)
   assert sd.find_undefined().size() == 0
   g = sd.dict()["custom"]
   c = g.gaussian
-  assert c.n_ab() == 2
-  assert approx_equal(c.a(), (1,2))
-  assert approx_equal(c.b(), (3,4))
+  assert c.n_terms() == 2
+  assert approx_equal(c.array_of_a(), (1,2))
+  assert approx_equal(c.array_of_b(), (3,4))
   assert approx_equal(c.c(), 5)
   assert tuple(g.member_indices) == (8,)
   s = pickle.dumps(g)
   l = pickle.loads(s)
   c = l.gaussian
-  assert c.n_ab() == 2
-  assert approx_equal(c.a(), (1,2))
-  assert approx_equal(c.b(), (3,4))
+  assert c.n_terms() == 2
+  assert approx_equal(c.array_of_a(), (1,2))
+  assert approx_equal(c.array_of_b(), (3,4))
   assert approx_equal(c.c(), 5)
   assert tuple(l.member_indices) == (8,)
   s = pickle.dumps(sd)
@@ -207,8 +207,8 @@ def exercise_scattering_dictionary():
     assert tuple(v.member_indices) == tuple(w.member_indices)
     vc = v.gaussian
     wc = w.gaussian
-    assert vc.a() == wc.a()
-    assert vc.b() == wc.b()
+    assert vc.array_of_a() == wc.array_of_a()
+    assert vc.array_of_b() == wc.array_of_b()
     assert vc.c() == wc.c()
   try:
     sd.lookup("undef")

@@ -1,9 +1,10 @@
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx import gaussian_fit
 from cctbx.array_family import flex
-import sys
+import scitbx.math.gaussian
+import sys, os
 
-def run(args):
+def run(args, plots_dir="wk1995_it1992_plots"):
   if ("--help" in args or len(args) not in [0,1]):
     print "usage: python wk1995_it1992.py [d_min]"
     return
@@ -19,17 +20,22 @@ def run(args):
   max_errors = flex.double()
   for wk in xray_scattering.wk1995_iterator():
     it = xray_scattering.it1992(wk.label(), 1)
-    fit_object = xray_scattering.gaussian_fit(
+    gfit = scitbx.math.gaussian.fit(
       gaussian_fit.international_tables_sampling_stols[:n_points],
       wk.fetch(),
       gaussian_fit.international_tables_sampled_value_sigmas[:n_points],
       it.fetch())
     labels.append(wk.label())
-    max_errors.append(flex.max(fit_object.significant_relative_errors()))
-    gaussian_fit.write_plots(
-      plots_dir="wk1995_it1992_plots",
-      label=wk.label(),
-      fit_object=fit_object)
+    max_errors.append(flex.max(gfit.significant_relative_errors()))
+    if (plots_dir is not None):
+      if (not os.path.isdir(plots_dir)):
+        print "No plots because the directory %s does not exist." % plots_dir
+        plots_dir = None
+      else:
+        gaussian_fit.write_plots(
+          plots_dir=plots_dir,
+          label=wk.label(),
+          gaussian_fit=gfit)
   perm = flex.sort_permutation(max_errors, 0001)
   labels = labels.select(perm)
   max_errors = max_errors.select(perm)

@@ -5,7 +5,7 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
-#include <cctbx/eltbx/gaussian_fit.h>
+#include <cctbx/eltbx/xray_scattering.h>
 #include <scitbx/boost_python/iterator_wrappers.h>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
@@ -13,75 +13,29 @@ namespace boost_python {
 
 namespace {
 
-  struct gaussian_wrappers : boost::python::pickle_suite
+  struct gaussian_wrappers
   {
     typedef gaussian w_t;
-
-    static
-    boost::python::tuple
-    getinitargs(w_t const& w)
-    {
-      return boost::python::make_tuple(w.a(), w.b(), w.c());
-    }
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("gaussian", no_init)
-        .def(init<double>())
-        .def(init<af::small<double, w_t::max_n_ab> const&,
-                  af::small<double, w_t::max_n_ab> const&,
-                  optional<double> >())
-        .def("n_ab", &w_t::n_ab)
-        .def("a", (af::small<double, w_t::max_n_ab> const&(w_t::*)()const)
-          &w_t::a, ccr())
-        .def("b", (af::small<double, w_t::max_n_ab> const&(w_t::*)()const)
-          &w_t::b, ccr())
-        .def("c", &w_t::c)
-        .def("all_zero", &w_t::all_zero)
+      class_<w_t, bases<scitbx::math::gaussian::sum<double> > >(
+        "gaussian", no_init)
+        .def(init<scitbx::math::gaussian::sum<double> const&>())
+        .def(init<double, optional<bool> >())
+        .def(init<
+          af::small<double,
+                    scitbx::math::gaussian::sum<double>::max_n_terms> const&,
+          af::small<double,
+                    scitbx::math::gaussian::sum<double>::max_n_terms> const&,
+          optional<double, bool> >())
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
-        .def("at_d_star_sq", (double(w_t::*)(double) const) &w_t::at_d_star_sq)
-        .def("at_d_star_sq",
-          (af::shared<double>(w_t::*)(af::const_ref<double> const&) const)
-          &w_t::at_d_star_sq)
-        .def("gradient_at_d_star", &w_t::gradient_at_d_star)
-        .def("integral_at_d_star", &w_t::integral_at_d_star)
-        .def("gradients_at_stol", &w_t::gradients_at_stol)
-        .def_pickle(gaussian_wrappers())
-      ;
-    }
-  };
-
-  struct gaussian_fit_wrappers
-  {
-    typedef gaussian_fit w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      class_<w_t, bases<gaussian> >("gaussian_fit", no_init)
-        .def(init<af::shared<double> const&,
-                  af::shared<double> const&,
-                  af::shared<double> const&,
-                  gaussian const&>())
-        .def(init<af::shared<double> const&,
-                  gaussian const&,
-                  af::shared<double> const&,
-                  gaussian const&>())
-        .def("stols", &w_t::stols)
-        .def("target_values", &w_t::target_values)
-        .def("sigmas", &w_t::sigmas)
-        .def("fitted_values", &w_t::fitted_values)
-        .def("differences", &w_t::differences)
-        .def("significant_relative_errors", &w_t::significant_relative_errors)
-        .def("apply_shifts", &w_t::apply_shifts)
-        .def("target_function", &w_t::target_function)
-        .def("gradients_w_r_t_abc", &w_t::gradients_w_r_t_abc)
-        .def("gradients_w_r_t_shifts", &w_t::gradients_w_r_t_shifts)
+        .def("at_d_star_sq", &w_t::at_d_star_sq)
+        .def("at_d_star", &w_t::at_d_star)
       ;
     }
   };
@@ -98,21 +52,7 @@ namespace {
       class_<w_t>(python_name, no_init)
         .def("table", &w_t::table)
         .def("label", &w_t::label)
-        .def("a", (af::small<double, gaussian::max_n_ab>(w_t::*)()const)
-          &w_t::a)
-        .def("b", (af::small<double, gaussian::max_n_ab>(w_t::*)()const)
-          &w_t::b)
-        .def("c", &w_t::c)
         .def("fetch", &w_t::fetch)
-        .def("at_stol_sq", &w_t::at_stol_sq)
-        .def("at_stol", &w_t::at_stol)
-        .def("at_d_star_sq", (double(w_t::*)(double) const) &w_t::at_d_star_sq)
-        .def("at_d_star_sq",
-          (af::shared<double>(w_t::*)(af::const_ref<double> const&) const)
-          &w_t::at_d_star_sq)
-        .def("gradient_at_d_star", &w_t::gradient_at_d_star)
-        .def("integral_at_d_star", &w_t::integral_at_d_star)
-        .def("gradients_at_stol", &w_t::gradients_at_stol)
       ;
     }
   };
@@ -152,7 +92,6 @@ namespace {
     using namespace boost::python;
 
     gaussian_wrappers::wrap();
-    gaussian_fit_wrappers::wrap();
 
     it1992_wrappers::wrap();
     scitbx::boost_python::iterator_wrappers<
