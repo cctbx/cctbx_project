@@ -8,6 +8,7 @@ from cctbx_crystal_ext import *
 from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import uctbx
 
+import scitbx.array_family.shared
 import scitbx.stl.set
 import scitbx.stl.vector
 import sys

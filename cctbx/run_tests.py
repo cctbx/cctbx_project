@@ -33,6 +33,7 @@ def run():
   "$D/cctbx/sgtbx/bravais_types.py",
   ["$D/cctbx/regression/tst_crystal.py", "I41/acd"],
   ["$D/cctbx/regression/tst_direct_space_asu.py", "I41/acd"],
+  "$D/cctbx/regression/tst_coordination_sequences.py",
   ["$D/cctbx/regression/tst_crystal_close_packing.py", "R-3mr"],
   "$D/cctbx/crystal/pair_asu_table.py",
   ["$D/cctbx/regression/tst_xray.py", "I41/acd"],

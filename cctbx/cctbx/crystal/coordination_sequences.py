@@ -66,7 +66,7 @@ def show_terms(structure, term_table, coseq_dict=None):
   for scatterer,terms in zip(structure.scatterers(), term_table):
     print scatterer.label, list(terms),
     if (coseq_dict is not None):
-      terms_to_match = terms[1:]
+      terms_to_match = list(terms[1:])
       have_match = 00000
       tags = coseq_dict.keys()
       tags.sort()
@@ -82,7 +82,7 @@ def show_terms(structure, term_table, coseq_dict=None):
   sums_terms = flex.double()
   multiplicities = flex.double()
   for scatterer,terms in zip(structure.scatterers(), term_table):
-    sums_terms.append(flex.sum(flex.size_t(terms)))
+    sums_terms.append(flex.sum(flex.size_t(list(terms))))
     multiplicities.append(scatterer.multiplicity())
   print "TD%d: %.2f" % (
     len(terms)-1, flex.mean_weighted(sums_terms, multiplicities))
