@@ -370,7 +370,6 @@ class table:
 
   def __init__(self,
         name,
-        row_names,
         row_objects,
         style=None,
         help=None,
@@ -381,7 +380,7 @@ class table:
         disable_delete=None,
         expert_level=None):
     introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[4:]
+    self.attribute_names = self.__init__varnames__[3:]
     assert style in [None, "row", "column", "block", "page"]
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
@@ -410,8 +409,7 @@ class table:
     for attribute_name in self.__init__varnames__[1:]:
       setattr(self, attribute_name, getattr(other, attribute_name))
 
-  def add_row(self, name, objects):
-    self.row_names.append(name)
+  def add_row(self, objects):
     self.row_objects.append(objects)
 
   def show(self, out, prefix="", attributes_level=0, print_width=79,
@@ -426,12 +424,8 @@ class table:
       attributes_level=attributes_level,
       print_width=print_width)
     print >> out, prefix+"{"
-    assert len(self.row_names) == len(self.row_objects)
-    for name,objects in zip(self.row_names, self.row_objects):
-      s = prefix + "  "
-      if (name is not None):
-        s += name + " "
-      print >> out, s+"{"
+    for objects in self.row_objects:
+      print >> out, prefix+"  {"
       previous_object = None
       for object in objects:
         object.show(
@@ -446,12 +440,8 @@ class table:
 
   def all_definitions(self, parent, parent_path, result):
     parent_path += self.name + "."
-    assert len(self.row_names) == len(self.row_objects)
-    for n_row,row_name,row_objects in zip(count(1),
-                                          self.row_names,
-                                          self.row_objects):
-      if (row_name is None): row_name = str(n_row)
-      row_path = parent_path + row_name + "."
+    for n_row,row_objects in zip(count(1), self.row_objects):
+      row_path = parent_path + str(n_row) + "."
       for object in row_objects:
         object.all_definitions(
           parent=self, parent_path=row_path, result=result)
@@ -461,17 +451,15 @@ class table:
     if (not path.startswith(self.name+".")): return []
     path = path[len(self.name)+1:]
     result = []
-    for n_row,row_name,row_objects in zip(count(1),
-                                          self.row_names,
-                                          self.row_objects):
-      for alt_row_name in [row_name, str(n_row)]:
-        if (alt_row_name is None): continue
-        if (alt_row_name == path):
-          result.extend(row_objects)
-        elif (path.startswith(alt_row_name+".")):
-          for row_object in row_objects:
-            result.extend(row_object.get_without_substitution(
-              path=path[len(alt_row_name)+1:]))
+    for n_row,row_objects in zip(count(1), self.row_objects):
+      row_name = str(n_row)
+      if (row_name is None): continue
+      if (row_name == path):
+        result.extend(row_objects)
+      elif (path.startswith(row_name+".")):
+        for row_object in row_objects:
+          result.extend(row_object.get_without_substitution(
+            path=path[len(row_name)+1:]))
     return result
 
 class object_list:

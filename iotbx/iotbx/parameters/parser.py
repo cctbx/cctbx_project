@@ -33,7 +33,7 @@ def collect_objects(
       word = word_iterator.pop_unquoted()
       if (not parameters.is_standard_identifier(word.value)):
         word.raise_syntax_error("improper table name ")
-      table = parameters.table(name=word.value, row_names=[], row_objects=[])
+      table = parameters.table(name=word.value, row_objects=[])
       while True:
         word = word_iterator.pop_unquoted()
         if (word.value[:1] != "."): break
@@ -48,15 +48,8 @@ def collect_objects(
       word.assert_expected("{")
       word = word_iterator.pop_unquoted()
       while (word.value != "}"):
-        row_name = None
-        if (word.value != "{"):
-          row_name = word.value
-          if (not parameters.is_standard_identifier(row_name)):
-            word.raise_syntax_error("improper table row name ")
-          word = word_iterator.pop_unquoted()
-          word.assert_expected("{")
+        word.assert_expected("{")
         table.add_row(
-          name=row_name,
           objects=collect_objects(
             word_iterator=word_iterator,
             definition_type_names=definition_type_names,
