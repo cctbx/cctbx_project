@@ -1,4 +1,5 @@
 import cctbx.array_family.flex
+from cctbx import sgtbx
 
 import boost.python
 ext = boost.python.import_ext("cctbx_crystal_ext")
@@ -6,7 +7,6 @@ from cctbx_crystal_ext import *
 
 from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import uctbx
-from cctbx import sgtbx
 
 import sys
 
