@@ -12,6 +12,7 @@
 
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/math/linear_correlation.h>
+#include <scitbx/sym_mat3.h>
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
@@ -54,6 +55,12 @@ namespace {
     tuple_mapping_fixed_size<double3>();
     tuple_mapping_fixed_size<double6>();
     tuple_mapping_fixed_size<double9>();
+
+    tuple_mapping_fixed_size<vec3<int> >();
+    tuple_mapping_fixed_size<mat3<int> >();
+    tuple_mapping_fixed_size<vec3<double> >();
+    tuple_mapping_fixed_size<mat3<double> >();
+    tuple_mapping_fixed_size<sym_mat3<double> >();
 
     tuple_mapping_fixed_capacity<flex_grid_default_index_type>();
   }

@@ -30,6 +30,8 @@ namespace boost_python { namespace {
       class_<w_t>("real_symmetric", no_init)
         .def(init<af::const_ref<double, af::c_grid<2> > const&,
                   optional<double> >())
+        .def(init<scitbx::sym_mat3<double> const&,
+                  optional<double> >())
         .def("vectors", &w_t::vectors)
         .def("values", &w_t::values)
       ;
