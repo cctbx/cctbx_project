@@ -28,6 +28,8 @@ def exercise_functions():
 
 def exercise_basic():
   d = (1,1,1,90,90,90)
+  u = uctbx.unit_cell()
+  assert approx_equal(u.parameters(), d)
   u = uctbx.unit_cell(d)
   assert u.parameters() == d
   assert approx_equal(u.parameters(), u.reciprocal_parameters())
@@ -38,7 +40,7 @@ def exercise_basic():
   for i in xrange(7):
     u = uctbx.unit_cell(p[:i])
     assert u.parameters() == p[:i] + d[i:]
-    v = uctbx.unit_cell(p[:i], 0)
+    v = uctbx.unit_cell(p[:i])
     assert v.parameters() == u.parameters()
     if (i):
       assert not approx_equal(u.parameters(), u.reciprocal_parameters())
@@ -67,7 +69,7 @@ def exercise_basic():
   n = (2*2, 3*3, 4*4,
        2*3*cos(110*pi/180), 2*4*cos(100*pi/180), 3*4*cos(80*pi/180))
   assert approx_equal(m, n)
-  v = uctbx.unit_cell(m, 1)
+  v = uctbx.unit_cell(metrical_matrix=m)
   assert approx_equal(u.parameters(), v.parameters())
   u = uctbx.unit_cell((2,3,4))
   assert approx_equal(u.volume(), 2*3*4)
@@ -75,6 +77,13 @@ def exercise_basic():
   assert approx_equal(u.shortest_vector_sq(), 4*4)
   u = uctbx.unit_cell(p)
   assert approx_equal(u.volume(), 22.04006625)
+  for alpha in xrange(70,121,10):
+    for beta in xrange(70,121,10):
+      for gamma in xrange(70,121,10):
+        u = uctbx.unit_cell([7,11,13,alpha, beta, gamma])
+        v = uctbx.unit_cell(
+          orthogonalization_matrix=u.orthogonalization_matrix())
+        assert v.is_similar_to(u)
 
 def exercise_frac_orth():
   u = uctbx.unit_cell(())
@@ -200,7 +209,7 @@ def exercise_exceptions():
   else:
     raise AssertionError, 'exception expected'
   try:
-    u = uctbx.unit_cell((0,0,0,0,0,0), 1)
+    u = uctbx.unit_cell(metrical_matrix=(0,0,0,0,0,0))
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Corrupt metrical matrix."
   else:

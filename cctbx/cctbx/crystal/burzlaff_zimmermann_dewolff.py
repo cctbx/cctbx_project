@@ -13,7 +13,12 @@ Tables is apparently uncorrected from the 1989 edition.
 Author: N.K. Sauter
 '''
 
+from iotbx.command_line.lattice_symmetry import metric_subgroups
+from cctbx import crystal
+from cctbx.uctbx import unit_cell
+from scitbx import matrix
 import math
+import sys
 
 class MetricCriteria:
   def equal(self,A,B):
@@ -175,7 +180,6 @@ class MetricCriteria:
       #print "%.0f %.0f %.0f %.0f %.0f %.0f"%(A,B,C,D,E,F)
       # Program only gets here if either 0 or 2 of D,E,F are negative,
       # and if D~0 or E~0 or F~0
-      from scitbx import matrix
       orth = matrix.sqr(cell.orthogonalization_matrix())
       if D0 and E0:
         if F>0: inversion = matrix.sqr((-1.,0.,0.,0.,1.,0.,0.,0.,-1.))
@@ -186,12 +190,7 @@ class MetricCriteria:
       elif E0 and F>0: inversion = matrix.sqr((-1.,0.,0.,0.,1.,0.,0.,0.,-1.))
       elif F0 and D>0: inversion = matrix.sqr((-1.,0.,0.,0.,-1.,0.,0.,0.,1.))
       elif D0 and E>0: inversion = matrix.sqr((1.,0.,0.,0.,-1.,0.,0.,0.,-1.))
-      neworth = orth*inversion
-      newortht=neworth.transpose()
-      MM = newortht*neworth
-      from cctbx.uctbx import unit_cell
-      metrical = (MM[0],MM[4],MM[8],MM[1],MM[2],MM[5])
-      uc = unit_cell(metrical,True)
+      uc = unit_cell(orthogonalization_matrix=orth*inversion)
       print "Adjusted cell:",uc
       return uc
     return cell
@@ -324,30 +323,25 @@ def counterexamples():
     # Stated example known to be tI, Table lookup gives oI
     (100.66, 100.78, 101.00, 116.96,  95.54, 116.63), ]:
 
-    from cctbx.uctbx import unit_cell
     uc = unit_cell(example)
     assert uc.is_niggli_cell()
     print "Input Niggli cell:",uc
     print "BZW Table lookup:"
     LatticeCharacter(uc,3.0).show_summary()
 
-    from cctbx import crystal
     input_symmetry = crystal.symmetry(
       unit_cell=uc,space_group_symbol="P 1")
-    from iotbx.command_line.lattice_symmetry import metric_subgroups
     Groups = metric_subgroups(input_symmetry, 3.0)
     Groups.show()
     print;print
 
 if __name__=='__main__':
-  import sys
   if len(sys.argv) < 2:
     counterexamples()
     sys.exit()
   # first six arguments are unit cell parameters a,b,c,alpha,beta,gamma
   # (degrees)
   params = [float(i) for i in sys.argv[1:7]]
-  from cctbx.uctbx import unit_cell
   uc = unit_cell(params)
   niggli = uc.is_niggli_cell()
   print "Input cell:",uc,['is not Niggli reduced','is Niggli reduced'][niggli]

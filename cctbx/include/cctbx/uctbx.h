@@ -87,18 +87,14 @@ namespace cctbx {
       //! Constructor using parameters (a, b, c, alpha, beta, gamma).
       /*! Missing lengths are set to 1, missing angles to 90.
           <p>
-          If is_metrical_matrix == true, the input is assumed to
-          consist of the coefficients of the matrical matrix, of
-          which there must be exactly six in the order:
-          a*a, b*b, c*c, a*b*cos(gamma), a*c*cos(beta), b*c*cos(alpha)
-          <p>
-          See also: paramters(), metrical_matrix()
+          See also: paramters()
        */
       explicit
-      unit_cell(af::small<double, 6> const& parameters,
-                bool is_metrical_matrix = false);
+      unit_cell(af::small<double, 6> const& parameters);
 
       //! Constructor using parameters (a, b, c, alpha, beta, gamma).
+      /*! See also: paramters()
+       */
       explicit
       unit_cell(af::double6 const& parameters);
 
@@ -109,9 +105,16 @@ namespace cctbx {
          ( a*b*cos(gamma), b*b,            b*c*cos(alpha) )
          ( a*c*cos(beta),  b*c*cos(alpha), c*c            )
          </pre>
+          See also: metrical_matrix()
        */
       explicit
       unit_cell(uc_sym_mat3 const& metrical_matrix);
+
+      //! Constructor using an orthogonalization matrix.
+      /*! See also: orthogonalization_matrix()
+       */
+      explicit
+      unit_cell(uc_mat3 const& orthogonalization_matrix);
 
       //! Access to parameters.
       af::double6 const&

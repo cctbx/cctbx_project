@@ -182,7 +182,7 @@ def reduce(inp):
     raise
 
 def ucgmx((a,b,c,d,e,f)): # unit cell given Gruber matrix
-  return uctbx.unit_cell((a,b,c,f/2.,e/2.,d/2.), is_metrical_matrix=True)
+  return uctbx.unit_cell(metrical_matrix=(a,b,c,f/2.,e/2.,d/2.))
 
 def exercise_gruber_1973_example():
   start = ucgmx((4,136,76,-155,-31,44))

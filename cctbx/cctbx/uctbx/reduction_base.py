@@ -24,7 +24,7 @@ class gruber_parameterization:
     return (self.a, self.b, self.c, self.f/2, self.e/2, self.d/2)
 
   def as_unit_cell(self):
-    return uctbx.unit_cell(self.as_sym_mat3(), is_metrical_matrix=True)
+    return uctbx.unit_cell(metrical_matrix=self.as_sym_mat3())
 
   def eps_lt(self, x, y):
     return x < y - self.epsilon
