@@ -1232,7 +1232,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     results = []
     for i_bin in self.binner().range_all():
       sel = self.binner().selection(i_bin)
-      results.append(self.select(sel).measurability())
+      results.append(self.select(sel).measurability(cutoff=cutoff))
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
   def second_moment(self, use_binning=False):
