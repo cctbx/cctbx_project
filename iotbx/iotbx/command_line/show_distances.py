@@ -37,11 +37,11 @@ def run():
   if (len(command_line.args) == 0):
     command_line.parser.show_help()
     return
-  n_shells = command_line.options.cs
+  max_shell = command_line.options.cs
   if (command_line.options.coseq is not None):
     coseq_dict = coordination_sequences.get_kriber_coseq_file(
       file_name=command_line.options.coseq)
-    if (n_shells is None): n_shells = 10
+    if (max_shell is None): max_shell = 10
   else:
     coseq_dict = None
   for file_name in command_line.args:
@@ -67,10 +67,10 @@ def run():
       print
       print "Pair counts:", list(pairs.pair_counts)
       print
-      if (n_shells is not None):
-        term_table = crystal.coordination_sequences_simple(
+      if (max_shell is not None):
+        term_table = crystal.coordination_sequences.simple(
           pair_asu_table=pair_asu_table,
-          n_shells=n_shells)
+          max_shell=max_shell)
         coordination_sequences.show_terms(
           structure=structure,
           term_table=term_table,
