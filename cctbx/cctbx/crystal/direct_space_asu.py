@@ -50,6 +50,11 @@ class _float_asu(boost.python.injector, float_asu):
       thickness = self.unit_cell().volume()**(1/3.)*relative_thickness
     return self._add_buffer(thickness)
 
+class _asu_mappings(boost.python.injector, asu_mappings):
+
+  def get_rt_mx_ji(self, pair):
+    return self.get_rt_mx_i(pair).inverse().multiply(self.get_rt_mx_j(pair))
+
 def non_crystallographic_asu_mappings(sites_cart, default_buffer_layer=0.5):
   sites_min = sites_cart.min()
   sites_max = sites_cart.max()
