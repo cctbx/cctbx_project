@@ -38,6 +38,7 @@ env_etc.libtbx_env = libtbx.config.env()
 env_etc.libtbx_env.write_api_file()
 env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
 env_etc.norm_join = norm_join
+env_etc.darwin_framework_path = darwin_framework_path
 
 env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.config.build_options.scan_boost)
