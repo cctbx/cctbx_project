@@ -7,6 +7,8 @@ def run_tests(build_dir, dist_dir, tst_list):
     if (type(tst) == type([])):
       if ("--Verbose" in sys.argv[1:]):
         cmd_args = " " + " ".join(["--Verbose"] + tst[1:])
+      elif ("--Quick" in sys.argv[1:]):
+        cmd_args = " " + " ".join(tst[1:])
       tst = tst[0]
     else:
       if ("--Verbose" in sys.argv[1:]):
