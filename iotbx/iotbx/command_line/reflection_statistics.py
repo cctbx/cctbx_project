@@ -102,7 +102,10 @@ def run(args):
       print
     for array_1,anom_diffs_1 in zip(all_miller_arrays[i_0+1:],
                                     all_anom_diffs[i_0+1:]):
-      if (not array_0.is_similar_symmetry(array_1)):
+      if (not array_0.is_similar_symmetry(
+                other=array_1,
+                relative_length_tolerance=0.05,
+                absolute_angle_tolerance=5)):
         print "Incompatible symmetries:"
         print " ", array_0.info()
         print " ", array_1.info()
@@ -113,11 +116,13 @@ def run(args):
         print " ", array_0.info()
         print " ", array_1.info()
         correlation = array_0.correlation(
-          other=array_1)
+          other=array_1,
+          assert_is_similar_symmetry=False)
         print "Overall correlation: %6.3f" % correlation.coefficient()
         correlation = array_0.correlation(
           other=array_1,
-          use_binning=True)
+          use_binning=True,
+          assert_is_similar_symmetry=False)
         correlation.show(data_fmt=binned_correlation_fmt)
         print
         if (anom_diffs_0 is not None and anom_diffs_1 is not None):
