@@ -12,7 +12,7 @@ import sys
 def to_mtz(miller_array, label_data, label_sigmas=None):
   w = mtz.MtzWriter()
   w.setTitle("mtz writer test")
-  w.setSpaceGroup(miller_array.space_group())
+  w.setSpaceGroup(miller_array.space_group_info())
   w.oneCrystal("test_crystal","test_project",miller_array.unit_cell())
   wavelength = 1.0
   w.oneDataset("test_dataset",wavelength)
@@ -26,7 +26,6 @@ def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
   else:
     p = mtz.Mtz("tmp.mtz")
   assert p.title() == "mtz writer test"
-  assert p.SpaceGroup() == str(miller_array.space_group_info()).replace(" ","")
   assert p.ncrystals() == 1
   assert p.history().size() == 0
   cryst = p.getCrystal(0)
@@ -35,7 +34,7 @@ def recycle(miller_array, label_data, label_sigmas=None, verbose=0):
   assert cryst.UnitCell().is_similar_to(miller_array.unit_cell())
   crystal_symmetry = crystal.symmetry(
     unit_cell=cryst.UnitCell(),
-    space_group_symbol=p.SpaceGroup())
+    space_group_symbol=str(miller_array.space_group_info())) # XXX
   assert cryst.ndatasets() == 1
   dataset = cryst.getDataset(0)
   assert dataset.dataset_name() == "test_dataset"

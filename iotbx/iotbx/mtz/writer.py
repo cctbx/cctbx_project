@@ -1,3 +1,4 @@
+from iotbx.mtz import extract_from_symop_lib
 from cctbx.array_family import flex
 
 def _DoubleOrComplex(writer,label,datatype,item_miller,item_data):
@@ -41,14 +42,10 @@ def add_miller_array(self, miller_array, label_data, label_sigmas=None):
       _columnCombinations(self,label_sigmas,"Q",
         [miller_array.indices()],[miller_array.sigmas()])
 
-def Hall_to_CCP4_Converter(spacegroup):
-  symbol = spacegroup.type().lookup_symbol().replace(" ","")
-  return symbol
-
-def setSpaceGroup(self, spacegroup, symbol=None):
-  if symbol==None:
-    symbol = Hall_to_CCP4_Converter(spacegroup)
+def setSpaceGroup(self, space_group_info, symbol=None):
+  if (symbol == None):
+    symbol = extract_from_symop_lib.ccp4_symbol(space_group_info)
+    if (symbol == None):
+      symbol = "No.%d" % space_group_info.type().number()
   assert not " " in symbol
-  assert len(symbol)<=10
-  self.ll_setSpaceGroup(spacegroup,symbol)
-  
+  self.raw_setSpaceGroup(space_group_info.group(), symbol)

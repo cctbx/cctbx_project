@@ -61,10 +61,10 @@ BOOST_PYTHON_MODULE(mtz)
     class_<iotbx::mtz::Foo>("Foo")
       .def("value",&iotbx::mtz::Foo::value)
     ;
-    
+
     class_<iotbx::mtz::MtzWriter>("MtzWriter", init<>())
       .def("setTitle",      &iotbx::mtz::MtzWriter::setTitle)
-      .def("ll_setSpaceGroup", &iotbx::mtz::MtzWriter::setSpaceGroup)
+      .def("raw_setSpaceGroup", &iotbx::mtz::MtzWriter::setSpaceGroup)
       .def("oneCrystal",    &iotbx::mtz::MtzWriter::oneCrystal)
       .def("oneDataset",    &iotbx::mtz::MtzWriter::oneDataset)
       .def("addColumn",     &iotbx::mtz::MtzWriter::addColumn)
