@@ -2006,7 +2006,8 @@ namespace raw {
       int ipntr = head + col - 1;
       if (ipntr > m) ipntr = ipntr - m;
       int jpntr = head;
-      for(int jy=1;jy<=col;jy++) {
+      int jy;
+      for(jy=1;jy<=col;jy++) {
         int js = m + jy;
         FloatType temp1 = 0;
         FloatType temp2 = 0;
@@ -2028,7 +2029,7 @@ namespace raw {
         jpntr = jpntr % m + 1;
       }
       // put new column in block (2,1).
-      int jy = col;
+      jy = col;
       jpntr = head + col - 1;
       if (jpntr > m) jpntr = jpntr - m;
       ipntr = head;
