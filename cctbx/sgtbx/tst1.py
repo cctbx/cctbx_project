@@ -66,15 +66,19 @@ assert sgo == sgoz
 x = (0.123, 0.456, 0.789)
 px = Z2POp(x)
 zx = P2ZOp(px)
-print "x", str(x)
-print "px", str(px)
-print "zx", str(zx)
-assert str(x) == str(zx)
+print "x (%.6g, %.6g, %.6g)" % x
+print "px (%.6g, %.6g, %.6g)" % px
+print "zx (%.6g, %.6g, %.6g)" % zx
+assert ("(%.6g, %.6g, %.6g)" % x) == ("(%.6g, %.6g, %.6g)" % zx)
 
 sgo = sgtbx.SgOps("P 2")
 sgo.ParseHallSymbol("P 2x")
 print sgo.OrderZ()
 assert sgo == sgtbx.SgOps("P 2 2")
+
+asu = sgtbx.CCP4_ReciprocalSpaceASU(sgo)
+print "asu", asu.isInASU((1,2,3))
+print "asu", asu.isInASU((1,2,-3))
 
 sgo = sgtbx.SgOps("P 4c -2ab -1b -1ac -1a -1bc")
 Z2POp = sgo.getZ2POp()

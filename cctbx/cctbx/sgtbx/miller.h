@@ -220,16 +220,11 @@ namespace cctbx {
 
 namespace sgtbx {
 
-  // XXX Is this used? It is confusing that this computes R.transposed*H...
-  inline Miller::Index operator*(const RotMx& lhs, const Miller::Index& rhs) {
-    return Miller::Index(
-      lhs[0] * rhs[0] + lhs[3] * rhs[1] + lhs[6] * rhs[2],
-      lhs[1] * rhs[0] + lhs[4] * rhs[1] + lhs[7] * rhs[2],
-      lhs[2] * rhs[0] + lhs[5] * rhs[1] + lhs[8] * rhs[2]);
-  }
-
   inline Miller::Index operator*(const Miller::Index& lhs, const RotMx& rhs) {
-    return rhs * lhs;
+    return Miller::Index(
+      lhs[0] * rhs[0] + lhs[1] * rhs[3] + lhs[2] * rhs[6],
+      lhs[0] * rhs[1] + lhs[1] * rhs[4] + lhs[2] * rhs[7],
+      lhs[0] * rhs[2] + lhs[1] * rhs[5] + lhs[2] * rhs[8]);
   }
 
   inline int operator*(const Miller::Index& lhs, const TrVec& rhs) {

@@ -13,6 +13,7 @@
 #include <cctbx/sgtbx/symbols.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/coordinates.h>
+#include <cctbx/sgtbx/miller_asu.h>
 #include <boost/python/cross_module.hpp>
 #include <cctbx/basic/boost_array_bpl.h>
 #include <cctbx/coordinates_bpl.h>
@@ -511,6 +512,8 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_BrickPoint(this_module, "BrickPoint");
     class_builder<Brick>
     py_Brick(this_module, "Brick");
+    class_builder<CCP4_ReciprocalSpaceASU>
+    py_CCP4_ReciprocalSpaceASU(this_module, "CCP4_ReciprocalSpaceASU");
 
     python::import_converters<uctbx::UnitCell>
     UnitCell_converters("uctbx", "UnitCell");
@@ -853,6 +856,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_Brick.def(&Brick::operator(), "__call__");
     py_Brick.def(&Brick::format, "format");
     py_Brick.def(&Brick::format, "__repr__");
+
+    py_CCP4_ReciprocalSpaceASU.def(constructor<const SgOps&>());
+    py_CCP4_ReciprocalSpaceASU.def(
+      &CCP4_ReciprocalSpaceASU::isInASU, "isInASU");
 
     sgtbx::sanity_check();
   }
