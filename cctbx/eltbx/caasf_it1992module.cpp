@@ -39,7 +39,9 @@ BOOST_PYTHON_MODULE_INIT(caasf_it1992)
     py_CAASF_IT1992.def(&CAASF_IT1992::a, "a");
     py_CAASF_IT1992.def(&CAASF_IT1992::b, "b");
     py_CAASF_IT1992.def(&CAASF_IT1992::c, "c");
-    py_CAASF_IT1992.def(&CAASF_IT1992::operator(), "__call__");
+    py_CAASF_IT1992.def(&CAASF_IT1992::stol2, "stol2");
+    py_CAASF_IT1992.def(&CAASF_IT1992::stol, "stol");
+    py_CAASF_IT1992.def(&CAASF_IT1992::Q, "Q");
   }
   catch(...)
   {

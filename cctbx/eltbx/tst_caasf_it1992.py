@@ -15,5 +15,5 @@ i = 0
 while 1:
   stol = start_stol + i * step_stol
   if (stol > end_stol + 1.e-4): break
-  print "%5.3f %.6g" % (stol, sf(stol * stol))
+  print "%5.3f %.6g" % (stol, sf.stol(stol))
   i = i + 1

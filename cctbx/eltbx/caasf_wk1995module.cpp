@@ -39,7 +39,9 @@ BOOST_PYTHON_MODULE_INIT(caasf_wk1995)
     py_CAASF_WK1995.def(&CAASF_WK1995::a, "a");
     py_CAASF_WK1995.def(&CAASF_WK1995::b, "b");
     py_CAASF_WK1995.def(&CAASF_WK1995::c, "c");
-    py_CAASF_WK1995.def(&CAASF_WK1995::operator(), "__call__");
+    py_CAASF_WK1995.def(&CAASF_WK1995::stol2, "stol2");
+    py_CAASF_WK1995.def(&CAASF_WK1995::stol, "stol");
+    py_CAASF_WK1995.def(&CAASF_WK1995::Q, "Q");
   }
   catch(...)
   {

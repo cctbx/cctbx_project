@@ -170,7 +170,7 @@ class MillerIndexSet:
               Master = SgOps.getMasterIndex(H, CutP, 1)
               key = tuple(H)
               if (key == Master.H()):
-                self.IndexDict[key] = Q
+                self.IndexDict[key] = Q / 4.
 
 def ComputeStructureFactors(Sites, IndexSet):
   EightPiSquared = 8. * math.pi * math.pi
@@ -181,9 +181,8 @@ def ComputeStructureFactors(Sites, IndexSet):
     SymEquivCoordinates = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
                                                     Site.Coordinates)
     for H in IndexSet.IndexDict.keys():
-      Q = IndexSet.IndexDict[H]
-      stol2 = Q / 4.
-      f0 = Site.Sf(stol2)
+      stol2 = IndexSet.IndexDict[H]
+      f0 = Site.Sf.stol2(stol2)
       B = EightPiSquared * Site.Uiso
       f = f0 * math.exp(-B * stol2) * Site.Occ
       FcalcDict[H] = FcalcDict[H] + f * SymEquivCoordinates.StructureFactor(H)

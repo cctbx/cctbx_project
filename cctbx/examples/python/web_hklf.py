@@ -113,54 +113,26 @@ class SiteInfo:
        self.SiteSymmetry)
       + tuple(self.Coordinates) + (self.Occ, self.Uiso))
 
-class MillerIndexSet:
+def BuildMillerIndices(UnitCell, SgOps, Resolution_d_min):
+  Indices = {}
+  MIG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, Resolution_d_min)
+  for H in MIG: Indices[H] = UnitCell.Q(H) / 4. # (sin(theta)/lambda)^2 = Q/4
+  return Indices
 
-  def __init__(self, SgOps, UnitCell):
-    self.SgOps = SgOps
-    self.UnitCell = UnitCell
-    self.IndexDict = {}
-
-  def BuildIndices(self, Resolution_d_min):
-    SgOps = self.SgOps
-    CutP = SgOps.getCutParameters()
-    Hmax = self.UnitCell.MaxMillerIndices(Resolution_d_min)
-    Qlow = 0.
-    Qhigh = 1. / (Resolution_d_min * Resolution_d_min)
-    Hmin = [0] * 3
-    for i in xrange(3): Hmin[i] = CutP[i] * Hmax[i]
-
-    # short-cuts for (slightly) better performance
-    isSysAbsent = SgOps.isSysAbsent
-    UnitCell_Q = self.UnitCell.Q
-
-    # loop over all possible indices
-    H = [0] * 3
-    for H[0] in xrange(Hmin[0], Hmax[0] + 1):
-      for H[1] in xrange(Hmin[1], Hmax[1] + 1):
-        for H[2] in xrange(Hmin[2], Hmax[2] + 1):
-          Q = UnitCell_Q(H)
-          if (Q != 0 and Qlow <= Q <= Qhigh): # resolution filter
-            if (not isSysAbsent(H)):
-              Master = SgOps.getMasterIndex(H, CutP, 1)
-              key = tuple(H)
-              if (key == Master.H()):
-                self.IndexDict[key] = Q
-
-def ComputeStructureFactors(Sites, IndexSet):
+def ComputeStructureFactors(Sites, MillerIndices):
   EightPiSquared = 8. * math.pi * math.pi
   FcalcDict = {}
-  for H in IndexSet.IndexDict.keys():
+  for H in MillerIndices.keys():
     FcalcDict[H] = 0j
   for Site in Sites:
     SymEquivCoordinates = sgtbx.SymEquivCoordinates(Site.WyckoffMapping,
                                                     Site.Coordinates)
-    for H in IndexSet.IndexDict.keys():
-      Q = IndexSet.IndexDict[H]
-      stol2 = Q / 4.
-      f0 = Site.Sf(stol2)
+    for H in MillerIndices.keys():
+      stol2 = MillerIndices[H]
+      f0 = Site.Sf.stol2(stol2)
       B = EightPiSquared * Site.Uiso
       f = f0 * math.exp(-B * stol2) * Site.Occ
-      FcalcDict[H] = FcalcDict[H] + f * SymEquivCoordinates.StructureFactor(H)
+      FcalcDict[H] += f * SymEquivCoordinates.StructureFactor(H)
   return FcalcDict
 
 def polar(c):
@@ -238,10 +210,8 @@ if (__name__ == "__main__"):
     InTable = 0
     print
 
-    IndexSet = MillerIndexSet(SgOps, UnitCell)
-    IndexSet.BuildIndices(d_min)
-
-    FcalcDict = ComputeStructureFactors(Sites, IndexSet)
+    MillerIndices = BuildMillerIndices(UnitCell, SgOps, d_min)
+    FcalcDict = ComputeStructureFactors(Sites, MillerIndices)
 
     print "Number of Miller indices:", len(FcalcDict)
     print
