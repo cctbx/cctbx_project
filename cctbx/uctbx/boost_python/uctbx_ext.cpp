@@ -23,14 +23,6 @@
 namespace cctbx { namespace uctbx { namespace boost_python {
 namespace {
 
-#if defined(__sgi) && defined(_COMPILER_VERSION) && _COMPILER_VERSION <= 730
-  // This works around an odd bug/feature of the MIPSpro RTTI system.
-  // If af::const_ref<mix_t> is seen first in this translation unit
-  // the Boost.Python converter for af::const_ref<miller::index<> >
-  // is not found.
-  typedef af::const_ref<miller::index<> > ignore_me_;
-#endif
-
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     d_star_sq_as_two_theta_overloads, d_star_sq_as_two_theta, 2, 3)
 
