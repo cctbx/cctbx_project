@@ -28,10 +28,10 @@ namespace {
         .def(init<af::const_ref<double> const&,
                   af::const_ref<double> const&,
                   af::const_ref<std::complex<double> > const&,
-                  optional<bool> >())
+                  optional<bool, double> >())
         .def(init<af::const_ref<double> const&,
                   af::const_ref<std::complex<double> > const&,
-                  optional<bool> >())
+                  optional<bool, double> >())
         .def("scale_factor", &w_t::scale_factor)
         .def("target", &w_t::target)
         .def("derivatives", &w_t::derivatives)
