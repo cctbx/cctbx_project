@@ -95,12 +95,27 @@ namespace {
   template <typename ArrayType1,
             typename ArrayType2>
   void
+  exercise_logical(const ArrayType1& a1, ArrayType2& a2)
+  {
+    typedef typename ArrayType1::value_type element_type1;
+    verify(__LINE__, !a1,
+      af::tiny<bool, 3>(true,false,false));
+    verify(__LINE__, a1 && a2,
+      af::tiny<bool, 3>(false,true,true));
+    verify(__LINE__, a1 && element_type1(1),
+      af::tiny<bool, 3>(false,true,true));
+    verify(__LINE__, element_type1(2) && a1,
+      af::tiny<bool, 3>(false,true,true));
+  }
+
+  template <typename ArrayType1,
+            typename ArrayType2>
+  void
   exercise_arithmetic(const ArrayType1& a1, ArrayType2& a2)
   {
     typedef typename ArrayType1::value_type element_type1;
     typedef typename ArrayType2::value_type element_type2;
     verify(__LINE__, -a1, af::tiny<element_type1, 3>(0,-1,-2));
-    verify(__LINE__, !a1, af::tiny<bool, 3>(true,false,false));
     verify(__LINE__, a1 + a2, af::tiny<element_type2, 3>(3,5,7));
     verify(__LINE__, a1 + element_type1(1), af::tiny<element_type1, 3>(1,2,3));
     verify(__LINE__, element_type1(2) + a1, af::tiny<element_type1, 3>(2,3,4));
@@ -110,18 +125,53 @@ namespace {
     verify(__LINE__, a2, af::tiny<element_type2, 3>(4,6,8));
   }
 
+  template <typename ArrayType>
+  void
+  exercise_functions(ArrayType& a)
+  {
+    typedef typename ArrayType::value_type element_type;
+    a[0] = 0.1;
+    a[1] = 0.2;
+    a[2] = 0.3;
+    { ArrayType r = af::acos(a);
+      check_true(__LINE__, r[2] == std::acos(a[2])); }
+    { ArrayType r = af::pow(a, a);
+      check_true(__LINE__, r[2] == std::pow(a[2], a[2])); }
+    { ArrayType r = af::pow(a, a[0]);
+      check_true(__LINE__, r[2] == std::pow(a[2], a[0])); }
+    { ArrayType r = af::pow(a[0], a);
+      check_true(__LINE__, r[2] == std::pow(a[0], a[2])); }
+    { ArrayType r = af::approx_equal_scaled(a, a, element_type(1));
+      check_true(__LINE__, r[2] == af::approx_equal_scaled(
+        a[2], a[2], element_type(1))); }
+    { ArrayType r = af::approx_equal_scaled(a, a[0], element_type(1));
+      check_true(__LINE__, r[2] == af::approx_equal_scaled(
+        a[2], a[0], element_type(1))); }
+    { ArrayType r = af::approx_equal_scaled(a[0], a, element_type(1));
+      check_true(__LINE__, r[2] == af::approx_equal_scaled(
+        a[0], a[2], element_type(1))); }
+  }
+
+  template <typename ArrayType>
+  void
+  exercise_1arg_reductions(const ArrayType& a)
+  {
+    check_true(__LINE__, af::max_index(a) == 2);
+    check_true(__LINE__, af::min_index(a) == 0);
+    check_true(__LINE__, af::max(a) == a[2]);
+    check_true(__LINE__, af::min(a) == a[0]);
+    check_true(__LINE__, af::sum(a) == a[0] + a[1] + a[2]);
+    check_true(__LINE__, af::product(a) == a[0] * a[1] * a[2]);
+    check_true(__LINE__, af::mean(a) == (a[0] + a[1] + a[2]) / 3);
+  }
+
   template <typename ArrayType1,
             typename ArrayType2>
   void
-  exercise_functions(const ArrayType1& a1, const ArrayType2& a2)
+  exercise_2arg_reductions(const ArrayType1& a1, const ArrayType2& a2)
   {
-    typedef typename ArrayType1::value_type element_type1;
-    typedef typename ArrayType2::value_type element_type2;
-    af::acos(a1);
-    af::pow(a1, a2);
-    af::pow(a1, element_type1(2));
-    af::pow(element_type2(2), a2);
-    af::approx_equal_scaled(a1, a2, element_type1(1));
+    check_true(__LINE__, std::abs(
+      af::weighted_mean(a1, a2) - af::sum(a1 * a2) / af::sum(a2)) < 1.e-6);
   }
 
   template <typename ArrayType1,
@@ -136,15 +186,70 @@ namespace {
     exercise_reducing_bool(a1, a3);
     exercise_ew_bool(a1, a2);
     exercise_ew_bool(a1, a3);
+    exercise_logical(a1, a2);
+    exercise_logical(a1, a3);
+    exercise_1arg_reductions(a1);
+    exercise_1arg_reductions(a3);
+    exercise_2arg_reductions(a3, a1);
+    exercise_2arg_reductions(a3, a3);
     exercise_arithmetic(a1, a2);
     exercise_arithmetic(a1, a3);
-    exercise_functions(a3, a3);
+    exercise_functions(a3);
   }
 
-// XXX exercise_logical
-// XXX exercise_complex_special
-// XXX exercise_1arg_reductions
-// XXX exercise_2arg_reductions
+  template <typename ElementType>
+  struct exercise_complex_special
+  {
+    static void run()
+    {
+      af::shared<int> i;
+      i.assign(af::tiny<int, 3>(0, 1, 2));
+      af::shared<ElementType> e;
+      e.assign(af::tiny<ElementType, 3>(0.1, 0.2, 0.3));
+      af::shared<std::complex<ElementType> > c;
+      c.assign(af::tiny<ElementType, 3>(0.4, 0.5, 2.0));
+      { af::shared<ElementType> r = af::real(c);
+        check_true(__LINE__, r[2] == std::real(c[2])); }
+      { af::shared<ElementType> r = af::imag(c);
+        check_true(__LINE__, r[2] == std::imag(c[2])); }
+      { af::shared<ElementType> r = af::abs(c);
+        check_true(__LINE__, r[2] == std::abs(c[2])); }
+      { af::shared<ElementType> r = af::arg(c);
+        check_true(__LINE__, r[2] == std::arg(c[2])); }
+      { af::shared<ElementType> r = af::norm(c);
+        check_true(__LINE__, r[2] == std::norm(c[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c, i);
+        check_true(__LINE__, r[2] == std::pow(c[2], i[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c, i[0]);
+        check_true(__LINE__, r[2] == std::pow(c[2], i[0])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c[0], i);
+        check_true(__LINE__, r[2] == std::pow(c[0], i[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c, e);
+        check_true(__LINE__, r[2] == std::pow(c[2], e[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c, e[0]);
+        check_true(__LINE__, r[2] == std::pow(c[2], e[0])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c[0], e);
+        check_true(__LINE__, r[2] == std::pow(c[0], e[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c, c);
+        check_true(__LINE__, r[2] == std::pow(c[2], c[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c, c[0]);
+        check_true(__LINE__, r[2] == std::pow(c[2], c[0])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(c[0], c);
+        check_true(__LINE__, r[2] == std::pow(c[0], c[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(e, c);
+        check_true(__LINE__, r[2] == std::pow(e[2], c[2])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(e, c[0]);
+        check_true(__LINE__, r[2] == std::pow(e[2], c[0])); }
+      { af::shared<std::complex<ElementType> > r = af::pow(e[0], c);
+        check_true(__LINE__, r[2] == std::pow(e[0], c[2])); }
+      { af::shared<std::complex<ElementType> > r = af::polar(e, e);
+        check_true(__LINE__, r[2] == std::polar(e[2], e[2])); }
+      { af::shared<std::complex<ElementType> > r = af::polar(e, e[0]);
+        check_true(__LINE__, r[2] == std::polar(e[2], e[0])); }
+      { af::shared<std::complex<ElementType> > r = af::polar(e[0], e);
+        check_true(__LINE__, r[2] == std::polar(e[0], e[2])); }
+    }
+  };
 
   template <typename IntType, typename FloatType>
   struct exercise_main
@@ -190,6 +295,7 @@ namespace {
         a3.as_shared().assign(t2);
         exercise_all(a1, a2, a3);
       }
+      exercise_complex_special<double>::run();
     }
   };
 
@@ -224,6 +330,13 @@ namespace {
 
     template <typename OtherValueType>
     a_value<ValueType>&
+    operator*=(const a_value<OtherValueType>& other) {
+      (*m_value) *= *(other.m_value);
+      return *this;
+    }
+
+    template <typename OtherValueType>
+    a_value<ValueType>&
     operator+=(const OtherValueType& other) {
       (*m_value) += other;
       return *this;
@@ -237,12 +350,15 @@ namespace {
   };
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-  exercise_main<int, double>::run();
-  exercise_main<a_value<int>, double>::run();
-  exercise_main<int, a_value<double> >::run();
-  exercise_main<a_value<int>, a_value<double> >::run();
+  for(;;) {
+    exercise_main<int, double>::run();
+    exercise_main<a_value<int>, double>::run();
+    exercise_main<int, a_value<double> >::run();
+    exercise_main<a_value<int>, a_value<double> >::run();
+    if (argc == 1) break;
+  }
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {
     std::cout << "Total Errors: " << error_counter << std::endl;

@@ -384,28 +384,32 @@ namespace {
 
 }
 
-int main(void)
+int main(int argc, char* argv[])
 {
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  array_excercise<af::small_plain<int, 128> >::run();
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  array_excercise<af::small<int, 128> >::run();
+  for(;;)
+  {
+    if (verbose) std::cout << __LINE__ << ":" << std::endl;
+    array_excercise<af::small_plain<int, 128> >::run();
+    if (verbose) std::cout << __LINE__ << ":" << std::endl;
+    array_excercise<af::small<int, 128> >::run();
 
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  array_excercise<af::shared_plain<int> >::run();
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  shared_excercise<af::shared_plain<int> >::run();
+    if (verbose) std::cout << __LINE__ << ":" << std::endl;
+    array_excercise<af::shared_plain<int> >::run();
+    if (verbose) std::cout << __LINE__ << ":" << std::endl;
+    shared_excercise<af::shared_plain<int> >::run();
 
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  array_excercise<af::shared<int> >::run();
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  shared_excercise<af::shared<int> >::run();
+    if (verbose) std::cout << __LINE__ << ":" << std::endl;
+    array_excercise<af::shared<int> >::run();
+    if (verbose) std::cout << __LINE__ << ":" << std::endl;
+    shared_excercise<af::shared<int> >::run();
 
-  if (verbose) std::cout << __LINE__ << ":" << std::endl;
-  versa_excercise<af::versa_plain<int>,
-                  af::versa_plain<int, af::grid<2> > >::run();
-  versa_excercise<af::versa<int>,
-                  af::versa<int, af::grid<2> > >::run();
+    if (verbose) std::cout << __LINE__ << ":" << std::endl;
+    versa_excercise<af::versa_plain<int>,
+                    af::versa_plain<int, af::grid<2> > >::run();
+    versa_excercise<af::versa<int>,
+                    af::versa<int, af::grid<2> > >::run();
+    if (argc == 1) break;
+  }
 
   std::cout << "Total OK: " << ok_counter << std::endl;
   if (error_counter || verbose) {

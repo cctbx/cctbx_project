@@ -107,13 +107,14 @@ namespace cctbx { namespace af {
 
   // ftor(array, scalar), non-POD result type
   template <typename BinaryFunctorType,
-            typename ElementType,
+            typename ElementType1,
+            typename ElementType2,
             typename ElementTypeResult>
   void // not inline
   array_operation_binary(
     const BinaryFunctorType& ftor,
-    const ElementType* a1,
-    const ElementType& a2,
+    const ElementType1* a1,
+    const ElementType2& a2,
     ElementTypeResult* result,
     const std::size_t& sz,
     false_type) // non-POD result type
@@ -134,13 +135,14 @@ namespace cctbx { namespace af {
 
   // ftor(array, scalar), POD result type
   template <typename BinaryFunctorType,
-            typename ElementType,
+            typename ElementType1,
+            typename ElementType2,
             typename ElementTypeResult>
   inline void
   array_operation_binary(
     const BinaryFunctorType& ftor,
-    const ElementType* a1,
-    const ElementType& a2,
+    const ElementType1* a1,
+    const ElementType2& a2,
     ElementTypeResult* result,
     const std::size_t& sz,
     true_type) // POD result type
@@ -153,13 +155,14 @@ namespace cctbx { namespace af {
 
   // ftor(scalar, array), non-POD result type
   template <typename BinaryFunctorType,
-            typename ElementType,
+            typename ElementType1,
+            typename ElementType2,
             typename ElementTypeResult>
   void // not inline
   array_operation_binary(
     const BinaryFunctorType& ftor,
-    const ElementType& a1,
-    const ElementType* a2,
+    const ElementType1& a1,
+    const ElementType2* a2,
     ElementTypeResult* result,
     const std::size_t& sz,
     false_type) // non-POD result type
@@ -180,13 +183,14 @@ namespace cctbx { namespace af {
 
   // ftor(scalar, array), POD result type
   template <typename BinaryFunctorType,
-            typename ElementType,
+            typename ElementType1,
+            typename ElementType2,
             typename ElementTypeResult>
   inline void
   array_operation_binary(
     const BinaryFunctorType& ftor,
-    const ElementType& a1,
-    const ElementType* a2,
+    const ElementType1& a1,
+    const ElementType2* a2,
     ElementTypeResult* result,
     const std::size_t& sz,
     true_type) // POD result type
@@ -284,8 +288,8 @@ namespace cctbx { namespace af {
   inline void
   array_operation_binary_addl(
     const BinaryFunctorType& ftor,
-    const ElementType& a1,
-    const ElementType* a2,
+    const ElementType* a1,
+    const ElementType& a2,
     const ElementType& a3,
     ElementTypeResult* result,
     const std::size_t& sz,
@@ -332,8 +336,8 @@ namespace cctbx { namespace af {
   inline void
   array_operation_binary_addl(
     const BinaryFunctorType& ftor,
-    const ElementType* a1,
-    const ElementType& a2,
+    const ElementType& a1,
+    const ElementType* a2,
     const ElementType& a3,
     ElementTypeResult* result,
     const std::size_t& sz,
