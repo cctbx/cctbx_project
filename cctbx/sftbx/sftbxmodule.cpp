@@ -115,6 +115,9 @@ namespace {
       >::Coordinates, "Coordinates");
     py_XrayScatterer.def(
       &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
+      >::Occ, "Occ");
+    py_XrayScatterer.def(
+      &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
       >::isAnisotropic, "isAnisotropic");
     py_XrayScatterer.def(
       &cctbx::XrayScatterer<double, eltbx::CAASF_WK1995
