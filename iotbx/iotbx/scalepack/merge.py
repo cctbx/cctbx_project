@@ -1,4 +1,4 @@
-"Transfer of scalepack merge reflection files to flex arrays."
+"Reading and writing of scalepack merge reflection files."
 
 # Sample scalepack OUTPUT FILE
 #    1
@@ -15,6 +15,7 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
 from scitbx.python_utils import easy_pickle
+from scitbx.python_utils.math_utils import iround
 import exceptions
 import os
 import sys
@@ -103,6 +104,73 @@ class reader:
   def as_miller_arrays(self, crystal_symmetry=None, force_symmetry=00000,
                              info_prefix=""):
     return [self.as_miller_array(crystal_symmetry,force_symmetry,info_prefix)]
+
+def format_f8_1_or_i8(value):
+  if (value < 1.e6): return "%8.1f" % value
+  result = "%8d" % iround(value)
+  if (len(result) > 8):
+    raise ValueError(
+      "Value is too large for scalepack merge format: " + str(value))
+  return result
+
+def write(file_name=None, file_object=None, miller_array=None,
+          space_group_symbol=None,
+          line_1="    1",
+          line_2=" -987"):
+  assert [file_name, file_object].count(None) == 1
+  assert miller_array.is_xray_intensity_array() or miller_array.is_xray_amplitude_array()
+  assert miller_array.sigmas() is not None
+  if (file_object is None):
+    file_object = open(file_name, "w")
+  if (not miller_array.is_xray_intensity_array()):
+    miller_array = miller_array.f_as_f_sq()
+  if (space_group_symbol is None):
+    space_group_symbol = str(miller_array.space_group_info())
+    if (not space_group_symbol.startswith("Hall:")):
+      space_group_symbol = space_group_symbol.replace(" ", "").lower()
+  print >> file_object, line_1
+  print >> file_object, line_2
+  print >> file_object, ("%10.3f"*6) % miller_array.unit_cell().parameters(),
+  print >> file_object, space_group_symbol
+  if (not miller_array.anomalous_flag()):
+    for h,f,s in zip(miller_array.indices(),
+                     miller_array.data(),
+                     miller_array.sigmas()):
+      print >> file_object, ((("%4d"*3) % h)
+        + format_f8_1_or_i8(f)
+        + format_f8_1_or_i8(s))
+  else:
+    asu, matches = miller_array.match_bijvoet_mates()
+    sel_pairs_plus = matches.pairs_hemisphere_selection("+")
+    sel_pairs_minus = matches.pairs_hemisphere_selection("-")
+    indices = asu.indices().select(sel_pairs_plus)
+    data_plus = asu.data().select(sel_pairs_plus)
+    data_minus = asu.data().select(sel_pairs_minus)
+    sigmas_plus = asu.sigmas().select(sel_pairs_plus)
+    sigmas_minus = asu.sigmas().select(sel_pairs_minus)
+    for h,fp,sp,fm,sm in zip(indices, data_plus, sigmas_plus,
+                                      data_minus, sigmas_minus):
+      print >> file_object, ((("%4d"*3) % h)
+        + format_f8_1_or_i8(fp)
+        + format_f8_1_or_i8(sp)
+        + format_f8_1_or_i8(fm)
+        + format_f8_1_or_i8(sm))
+    sel_singles = matches.singles_hemisphere_selection("+")
+    indices = asu.indices().select(sel_singles)
+    data = asu.data().select(sel_singles)
+    sigmas = asu.sigmas().select(sel_singles)
+    for h,f,s in zip(indices, data, sigmas):
+      print >> file_object, ((("%4d"*3) % h)
+        + format_f8_1_or_i8(f)
+        + format_f8_1_or_i8(s))
+    sel_singles = matches.singles_hemisphere_selection("-")
+    indices = -asu.indices().select(sel_singles)
+    data = asu.data().select(sel_singles)
+    sigmas = asu.sigmas().select(sel_singles)
+    for h,f,s in zip(indices, data, sigmas):
+      print >> file_object, ((("%4d"*3) % h) + (" "*16)
+        + format_f8_1_or_i8(f)
+        + format_f8_1_or_i8(s))
 
 def run(args):
   to_pickle = "--pickle" in args

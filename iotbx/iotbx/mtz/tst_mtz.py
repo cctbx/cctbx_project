@@ -1,12 +1,10 @@
 from iotbx import mtz
 from iotbx.mtz.dump import dump
-from cctbx.development import random_structure
+from iotbx.regression.utils import random_f_calc
 from cctbx.development import debug_utils
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
-import random
 import sys
 
 def to_mtz(miller_array, mtz_label):
@@ -123,32 +121,13 @@ def verify_miller_arrays(a1, a2):
 
 def exercise(space_group_info, n_scatterers=8, d_min=2.5,
              anomalous_flag=00000, verbose=0):
-  if (anomalous_flag and space_group_info.group().is_centric()):
-    return
-  assert mtz.ccp4_liberr_verbosity(-1) == 0
-  assert mtz.ccp4_liberr_verbosity(1) == 1
-  assert mtz.ccp4_liberr_verbosity(-1) == 1
-  assert mtz.ccp4_liberr_verbosity(0) == 0
-  assert mtz.ccp4_liberr_verbosity(-1) == 0
-  structure = random_structure.xray_structure(
-    space_group_info,
-    elements=["const"]*n_scatterers,
-    volume_per_atom=500,
-    min_distance=2.,
-    general_positions_only=0001)
-  if (0 or verbose):
-    structure.show_summary().show_scatterers()
-  f_calc = structure.structure_factors(
-    d_min=d_min, anomalous_flag=anomalous_flag).f_calc()
-  f_calc = miller.array(
-    miller_set=f_calc,
-    data=f_calc.data()/flex.mean(flex.abs(f_calc.data())))
-  if (f_calc.anomalous_flag()):
-    selection = flex.bool(f_calc.indices().size(), 0001)
-    for i in xrange(f_calc.indices().size()/10):
-      j = random.randrange(f_calc.indices().size())
-      selection[j] = 00000
-    f_calc = f_calc.apply_selection(selection)
+  f_calc = random_f_calc(
+    space_group_info=space_group_info,
+    n_scatterers=n_scatterers,
+    d_min=d_min,
+    anomalous_flag=anomalous_flag,
+    verbose=verbose)
+  if (f_calc is None): return
   recycle(f_calc, "f_calc", verbose=verbose)
   recycle(abs(f_calc), "f_obs", verbose=verbose)
   recycle(miller.array(
@@ -175,6 +154,11 @@ def run_call_back(flags, space_group_info):
       verbose=flags.Verbose)
 
 def run():
+  assert mtz.ccp4_liberr_verbosity(-1) == 0
+  assert mtz.ccp4_liberr_verbosity(1) == 1
+  assert mtz.ccp4_liberr_verbosity(-1) == 1
+  assert mtz.ccp4_liberr_verbosity(0) == 0
+  assert mtz.ccp4_liberr_verbosity(-1) == 0
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
