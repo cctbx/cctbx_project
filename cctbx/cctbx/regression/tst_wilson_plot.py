@@ -1,4 +1,5 @@
 from cctbx import statistics
+from cctbx import miller
 from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -20,21 +21,26 @@ def exercise(space_group_info, anomalous_flag,
         anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
-  f_obs = abs(structure_factors.f_calc())
-  f_obs.setup_binner(
+  asu_contents = dicts.with_default_value(0)
+  for elem in elements: asu_contents[elem] += 1
+  f_calc = abs(structure_factors.f_calc())
+  f_calc.setup_binner(
     auto_binning=0001,
     reflections_per_bin=reflections_per_bin,
     n_bins=n_bins)
   if (0 or verbose):
-    f_obs.binner().show_summary()
-  asu_contents = dicts.with_default_value(0)
-  for elem in elements: asu_contents[elem] += 1
-  wp = statistics.wilson_plot(f_obs, asu_contents)
-  if (0 or verbose):
-    print "wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b
-  assert 0.6 < wp.wilson_k < 1.4
-  assert 9 < wp.wilson_b < 11
-  assert wp.xy_plot_info().fit_correlation == wp.fit_correlation
+    f_calc.binner().show_summary()
+  for k_given in [1,0.1,0.01,10,100]:
+    f_obs = miller.array(
+      miller_set=f_calc,
+      data=f_calc.data()*k_given)
+    f_obs.use_binner_of(f_calc)
+    wp = statistics.wilson_plot(f_obs, asu_contents)
+    if (0 or verbose):
+      print "wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b
+    assert 0.8 < wp.wilson_k/k_given < 1.2
+    assert 9 < wp.wilson_b < 11
+    assert wp.xy_plot_info().fit_correlation == wp.fit_correlation
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in (00000, 0001):
