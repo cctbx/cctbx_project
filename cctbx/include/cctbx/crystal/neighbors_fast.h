@@ -114,6 +114,29 @@ namespace cctbx { namespace crystal { namespace neighbors {
         return result;
       }
 
+      /*! \brief Selection of all neighbors within distance_cutoff
+          of primary_selection.
+       */
+      /*! The result includes the primary_selection.
+       */
+      af::shared<bool>
+      neighbors_of(af::const_ref<bool> const& primary_selection)
+      {
+        CCTBX_ASSERT(primary_selection.size()
+                  == this->asu_mappings_->mappings_const_ref().size());
+        af::shared<bool> result(
+          primary_selection.begin(),
+          primary_selection.end());
+        af::ref<bool> result_ = result.ref();
+        while (!this->at_end_) {
+          direct_space_asu::asu_mapping_index_pair_and_diff<FloatType>
+            pair = next();
+          if      (primary_selection[pair.i_seq]) result_[pair.j_seq] = true;
+          else if (primary_selection[pair.j_seq]) result_[pair.i_seq] = true;
+        }
+        return result;
+      }
+
     protected:
       FloatType epsilon_;
       typedef std::vector<direct_space_asu::asu_mapping_index> box_content_t;

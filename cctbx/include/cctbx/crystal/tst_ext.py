@@ -199,6 +199,10 @@ def exercise_direct_space_asu():
       assert not pair_generator.at_end()
     assert pair_generator.count_pairs() == len(index_pairs)
     pair_generator.restart()
+    if (two_flag):
+      assert pair_generator.neighbors_of(
+        primary_selection=flex.bool([True,False])).count(True) == 2
+    pair_generator.restart()
     index_pairs = []
     for index_pair in pair_generator:
       index_pairs.append((index_pair.i_seq,index_pair.j_seq,index_pair.j_sym))
@@ -282,6 +286,12 @@ def exercise_direct_space_asu():
       assert pair_generator.count_pairs() == 0
       pair_generator.restart()
       assert pair_generator.count_pairs() == len(index_pairs)
+      pair_generator.restart()
+      primary_selection = flex.bool(
+        pair_generator.asu_mappings().mappings().size(), False)
+      primary_selection[0] = True
+      assert pair_generator.neighbors_of(
+        primary_selection=primary_selection).count(False) == 0
   pair = asu_mappings.make_trial_pair(i_seq=1, j_seq=0, j_sym=0)
   assert pair.i_seq == 1
   assert pair.j_seq == 0
