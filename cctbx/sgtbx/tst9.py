@@ -70,10 +70,10 @@ def OneCycle():
       for SymOp in [random.choice(SgOps)]:
         UM = sgtbx.RTMx("x-2,y+3,z-5", "", 1, 1).multiply(SymOp)
         UMWX = UM.multiply(WX)
-        SP = sgtbx.SpecialPosition(SnapParameters, UMWX, 1)
-        assert SP.DistanceMoved2() < 1.e-5
+        SS = sgtbx.SiteSymmetry(SnapParameters, UMWX, 1)
+        assert SS.DistanceMoved2() < 1.e-5
         try:
-          WMap = WTab.getWyckoffMapping(SP)
+          WMap = WTab.getWyckoffMapping(SS)
         except RuntimeError, e:
           print e
           nUndetermined = nUndetermined + 1
@@ -87,9 +87,9 @@ def OneCycle():
             nMismatches = nMismatches + 1
           WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, UMWX, 0.04)
           assert WMap.WP().Letter() == WWMap.WP().Letter()
-          assert UnitCell.Distance2(WWMap.snap(UMWX),SP.SnapPosition()) < 1.e-5
+          assert UnitCell.Distance2(WWMap.snap(UMWX),SS.SnapPosition()) < 1.e-5
           if (not CheckLettersOnly):
-            SES = sgtbx.SymEquivCoordinates(SP)
+            SES = sgtbx.SymEquivCoordinates(SS)
             print "  Mapping", WMap.Mapping()
             x = WMap.snap_to_representative(UMWX)
             d = SES.getShortestDistance2(UnitCell, x)

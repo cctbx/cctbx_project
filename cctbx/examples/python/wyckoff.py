@@ -121,10 +121,9 @@ try:
     skipped, coordinates = InterpretCoordinateLine(line, skip_columns)
     if (inp.coor_type != "Fractional"):
       coordinates = UnitCell.fractionalize(coordinates)
-    SP = sgtbx.SpecialPosition(SnapParameters, coordinates, 0, 1)
-    SnapPosition = SP.SnapPosition()
-    SiteSymmetry = SP.getPointGroupType()
-    WyckoffMapping = WyckoffTable.getWyckoffMapping(SP)
+    SS = sgtbx.SiteSymmetry(SnapParameters, coordinates, 0)
+    SnapPosition = SS.SnapPosition()
+    WyckoffMapping = WyckoffTable.getWyckoffMapping(SS)
     if (inp.coor_type != "Fractional"):
       SnapPosition = UnitCell.orthogonalize(SnapPosition)
     print "<tr>"
@@ -132,8 +131,8 @@ try:
     for elem in SnapPosition: print "<td><tt>%.6g</tt>" % (elem,)
     print "<td align=center>", WyckoffMapping.WP().M()
     print "<td align=center>", WyckoffMapping.WP().Letter()
-    print "<td align=center>", SiteSymmetry
-    print "<td><tt>" + str(SP.SpecialOp()) + "</tt>"
+    print "<td align=center>", SS.PointGroupType()
+    print "<td><tt>" + str(SS.SpecialOp()) + "</tt>"
     print "</tr>"
   print "</table><pre>"
   InTable = 0

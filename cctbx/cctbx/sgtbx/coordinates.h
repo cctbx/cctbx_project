@@ -5,6 +5,7 @@
    cctbx/LICENSE.txt for further details.
 
    Revision history:
+     2001 Oct 12: SpecialPosition -> SiteSymmetry (R.W. Grosse-Kunstleve)
      2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
      2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
      Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
@@ -52,7 +53,7 @@ namespace sgtbx {
     public:
       //! Define special position snap parameters.
       /*! The definitions are used in a constructor of
-          class SpecialPosition. The parameters are used in a
+          class SiteSymmetry. The parameters are used in a
           numerically robust algorithm that first determines the site
           symmetry (point group) of a special position, and then moves
           ("snaps") the input coordinates to the exact location of the
@@ -69,7 +70,7 @@ namespace sgtbx {
           small relative to MinMateDistance.
           <p>
           If MustBeWellBehaved == false, no exception is raised
-          because of this condition. SpecialPosition::isWellBehaved()
+          because of this condition. SiteSymmetry::isWellBehaved()
           can be used to query the status.
           <p>
           For efficiency, the UnitCell object and the SpaceGroup object are
@@ -87,7 +88,7 @@ namespace sgtbx {
           m_MustBeWellBehaved(MustBeWellBehaved),
           m_MinMateDistance2(MinMateDistance * MinMateDistance) {}
     private:
-      friend class SpecialPosition;
+      friend class SiteSymmetry;
       friend class WyckoffTable;
       const uctbx::UnitCell& m_UnitCell;
       const SpaceGroup& m_SgOps;
@@ -156,34 +157,43 @@ namespace sgtbx {
       double m_Tolerance2;
   };
 
-  namespace detail { class RT_PointGroup; }
+  namespace detail {
 
-  //! Implementation of a robust special position algorithm.
-  class SpecialPosition {
+    class RT_PointGroup {
+      public:
+        typedef std::vector<RTMx> vec_type;
+        vec_type Matrices;
+        bool invalid;
+        RT_PointGroup() : invalid(false) {}
+        void reset(const RTMx& M);
+        void add(const RTMx& M);
+        void expand(const RTMx& M);
+        bool try_expand(const RTMx& M);
+        RTMx accumulate() const;
+    };
+
+  } // namespace detail
+
+  //! Robust algorithm for the determination of site-symmetries.
+  class SiteSymmetry {
     public:
-      //! Apply the robust special position algorithm to X.
+      //! Determine the site symmetry of X.
       /*! The SpecialPositionSnapParameters are used in a numerically
           robust algorithm that first determines the point group of the
-          site symmetry of X. If the site point group symmetry is
-          higher than 1, the exact location of the special position
-          (SnapPosition()) is determined.
-          See SpecialPositionSnapParameters and
+          site symmetry of X. If the site symmetry is higher than 1,
+          the exact location of the special position (SnapPosition())
+          is determined. See SpecialPositionSnapParameters and
           SpecialPositionTolerances for details.
           <p>
           If auto_expand == true, expand() is called at the
           end of the constructor.
           <p>
-          If determinePointGroupType == true, the point group type of
-          the site symmetry is determined and can later be accessed via
-          getPointGroupType().
-          <p>
           See also: WyckoffTable, SymEquivCoordinates,
                     examples/python/generate_hklf.py
        */
-      SpecialPosition(const SpecialPositionSnapParameters& params,
-                      const fractional<double>& X,
-                      bool auto_expand = false,
-                      bool determinePointGroupType = false);
+      SiteSymmetry(const SpecialPositionSnapParameters& params,
+                   const fractional<double>& X,
+                   bool auto_expand = false);
       //! Retrieve the original coordinates (X in the constructor).
       inline const fractional<double>& OriginalPosition() const {
         return m_OriginalPosition;
@@ -227,19 +237,14 @@ namespace sgtbx {
           </ul>
        */
       inline const RTMx& SpecialOp() const { return m_SpecialOp; }
-      /*! \brief Access the site symmetry point group type that has been
-          determined in the constructor.
-       */
-      /*! An exception is thrown if the point group type has not been
-          determined in the constructor (determinePointGroupType == false).
-       */
-      tables::MatrixGroup::Code getPointGroupType() const;
+      //! Determine the site symmetry point group type.
+      tables::MatrixGroup::Code PointGroupType() const;
       //! Expand the special position symmetry operation.
       /*! The SpecialOp() is multiplied with all symmetry operations.
           The unique results are stored in an internal list which
           can be accessed with the operator()().
           <p>
-          expand() must be called before an instance of SpecialPosition
+          expand() must be called before an instance of SiteSymmetry
           can be used as an argument in the constructor of
           SymEquivCoordinates.
        */
@@ -252,7 +257,8 @@ namespace sgtbx {
        */
       inline bool isExpanded() const { return m_UniqueOps.size() != 0; }
       //! Assert that expand() has been called.
-      /*! An exception is thrown if this assertion fails.<br>
+      /*! An exception is thrown if this assertion fails.
+          <p>
           See also: isExpanded()
        */
       inline void CheckExpanded() const {
@@ -279,14 +285,14 @@ namespace sgtbx {
       }
     private:
       friend class WyckoffTable;
-      void BuildSpecialOp(detail::RT_PointGroup& SiteSymmetry);
+      void BuildSpecialOp();
       const SpecialPositionSnapParameters& m_Parameters;
       const fractional<double> m_OriginalPosition;
+      detail::RT_PointGroup m_PointGroup;
       fractional<double> m_SnapPosition;
       double m_ShortestDistance2;
       int m_M;
       RTMx m_SpecialOp;
-      tables::MatrixGroup::Code m_PointGroupType;
       std::vector<RTMx> m_UniqueOps;
   };
 
@@ -406,7 +412,7 @@ namespace sgtbx {
         return (*m_WP).SpecialOp() * (m_Mapping * X);
       }
       //! Exact location of the special position.
-      /*! This is equivalent to SpecialPosition::SnapPosition().
+      /*! This is equivalent to SiteSymmetry::SnapPosition().
           <p>
           Formula used: Mapping().inverse() * WP().SpecialOp() * Mapping() * X
        */
@@ -425,7 +431,7 @@ namespace sgtbx {
       for a given space group.
       <p>
       See also: WyckoffPosition, WyckoffMapping,
-                SpecialPosition, SymEquivCoordinates
+                SiteSymmetry, SymEquivCoordinates
       <p>
       An example for the use of this class is given in the file
       examples/python/generate_hklf.py.
@@ -496,20 +502,20 @@ namespace sgtbx {
           one-to-one correspondence between letters and indices.
        */
       std::size_t LookupIndex(char Letter) const;
-      //! Determine the Wyckoff position using SpecialPosition::SpecialOp().
+      //! Determine the Wyckoff position using SiteSymmetry::SpecialOp().
       /*! Use this overload for maximum reliability and flexibility.
-          In general, determining SpecialPosition::SpecialOp() followed
+          In general, determining SiteSymmetry::SpecialOp() followed
           by using this overload is also faster than the alternative.
           Usage:<pre>
           uctbx::UnitCell uc = ...;
           sgtbx::SpaceGroup SgOps = ...;
           fractional<double> X = ...;
           SpecialPositionSnapParameters SnapParameters(uc, SgOps);
-          SpecialPosition SP = SpecialPosition(SnapParameters, X);
-          WyckoffMapping WM = getWyckoffMapping(SP);</pre>
+          SiteSymmetry SS = SiteSymmetry(SnapParameters, X);
+          WyckoffMapping WM = getWyckoffMapping(SS);</pre>
        */
       const WyckoffMapping
-      getWyckoffMapping(const SpecialPosition& SP) const;
+      getWyckoffMapping(const SiteSymmetry& SS) const;
       //! Determine the Wyckoff position of X.
       /*! This overload is included mainly for debugging purposes.
           It is recommended to use the alternative algorithm.
@@ -534,28 +540,28 @@ namespace sgtbx {
       SymEquivCoordinates(const SpecialPositionSnapParameters& params,
                           const fractional<T>& X)
       {
-        SpecialPosition SP(params, X, true);
-        for(std::size_t i=0;i<SP.M();i++) {
-          m_Coordinates.push_back(SP[i] * SP.SnapPosition());
+        SiteSymmetry SS(params, X, true);
+        for(std::size_t i=0;i<SS.M();i++) {
+          m_Coordinates.push_back(SS[i] * SS.SnapPosition());
         }
       }
       //! Compute symmetry equivalent coordinates using a robust algorithm.
-      /*! See class SpecialPosition for details.
+      /*! See class SiteSymmetry for details.
           <p>
-          SpecialPosition::expand() has to be called for SP before SP
+          SiteSymmetry::expand() has to be called for SS before SS
           can be used in this constructor.
        */
-      SymEquivCoordinates(const SpecialPosition& SP)
+      SymEquivCoordinates(const SiteSymmetry& SS)
       {
-        SP.CheckExpanded();
-        for(std::size_t i=0;i<SP.M();i++) {
-          m_Coordinates.push_back(SP[i] * SP.SnapPosition());
+        SS.CheckExpanded();
+        for(std::size_t i=0;i<SS.M();i++) {
+          m_Coordinates.push_back(SS[i] * SS.SnapPosition());
         }
       }
       //! Compute symmetry equivalent coordinates using a WyckoffMapping.
       /*! See class WyckoffMapping for details.
           <p>
-          WyckoffPosition::expand() has to be called for SP before SP
+          WyckoffPosition::expand() has to be called for WM.WP() before WM
           can be used in this constructor. This is normally achieved
           by calling WyckoffTable::expand().
        */

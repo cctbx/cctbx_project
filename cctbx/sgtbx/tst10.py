@@ -53,15 +53,15 @@ def OneCycle():
                  random.uniform(-2,2))
       print "RandomX ", RandomX
       #
-      SP = sgtbx.SpecialPosition(SnapParametersLarge, RandomX, 1, 1)
-      SWMap = WTab.getWyckoffMapping(SP)
+      SS = sgtbx.SiteSymmetry(SnapParametersLarge, RandomX, 1)
+      SWMap = WTab.getWyckoffMapping(SS)
       print SWMap.WP().M(), SWMap.WP().Letter(), SWMap.WP().SpecialOp(),
-      print SP.getPointGroupType()
-      WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, SP.SnapPosition(), 0.1)
+      print SS.PointGroupType()
+      WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, SS.SnapPosition(), 0.1)
       assert SWMap.WP().Letter() == WWMap.WP().Letter()
-      assert UnitCell.Distance2(SWMap.snap(RandomX), SP.SnapPosition()) < 1.e-5
-      assert UnitCell.Distance2(WWMap.snap(RandomX), SP.SnapPosition()) < 1.e-5
-      SES = sgtbx.SymEquivCoordinates(SP)
+      assert UnitCell.Distance2(SWMap.snap(RandomX), SS.SnapPosition()) < 1.e-5
+      assert UnitCell.Distance2(WWMap.snap(RandomX), SS.SnapPosition()) < 1.e-5
+      SES = sgtbx.SymEquivCoordinates(SS)
       x = SWMap.snap_to_representative(RandomX)
       d = SES.getShortestDistance2(UnitCell, x)
       assert d < 1.e-5
@@ -70,14 +70,14 @@ def OneCycle():
       assert d < 1.e-5
       #
       WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, RandomX, 2.0)
-      SP = sgtbx.SpecialPosition(SnapParametersSmall, WWMap.snap(RandomX), 0,1)
+      SS = sgtbx.SiteSymmetry(SnapParametersSmall, WWMap.snap(RandomX), 0)
       print WWMap.WP().M(), WWMap.WP().Letter(), WWMap.WP().SpecialOp(),
-      print SP.getPointGroupType()
-      assert SP.DistanceMoved2() < SmallSnapDist2
-      SWMap = WTab.getWyckoffMapping(SP)
+      print SS.PointGroupType()
+      assert SS.DistanceMoved2() < SmallSnapDist2
+      SWMap = WTab.getWyckoffMapping(SS)
       assert SWMap.WP().Letter() == WWMap.WP().Letter()
-      assert UnitCell.Distance2(SWMap.snap(RandomX), SP.SnapPosition()) < 1.e-5
-      assert UnitCell.Distance2(WWMap.snap(RandomX), SP.SnapPosition()) < 1.e-5
+      assert UnitCell.Distance2(SWMap.snap(RandomX), SS.SnapPosition()) < 1.e-5
+      assert UnitCell.Distance2(WWMap.snap(RandomX), SS.SnapPosition()) < 1.e-5
       SEW = sgtbx.SymEquivCoordinates(WWMap, RandomX)
       x = WWMap.snap_to_representative(RandomX)
       d = SEW.getShortestDistance2(UnitCell, x)

@@ -47,17 +47,17 @@ def OneCycle():
                  random.uniform(-2,2),
                  random.uniform(-2,2))
       print "RandomX ", RandomX
-      SP = sgtbx.SpecialPosition(SnapParameters, RandomX, 1, 1)
-      X = SP.SnapPosition()
-      n = float(SP.M()) / SgOps.OrderZ()
+      SS = sgtbx.SiteSymmetry(SnapParameters, RandomX, 1)
+      X = SS.SnapPosition()
+      n = float(SS.M()) / SgOps.OrderZ()
       print "X ", X, n,
-      if (SP.M() != SgOps.OrderZ()): print "special",
+      if (SS.M() != SgOps.OrderZ()): print "special",
       print
-      SEC = sgtbx.SymEquivCoordinates(SP)
+      SEC = sgtbx.SymEquivCoordinates(SS)
       RandomH = (1, 2, 3)
       print "RandomH ", RandomH
       FC = SEC.StructureFactor(RandomH)
-      FH = n * SgOps.StructureFactor(UnitCell, RandomH, X, (0,0,0,0,0,0))
+      FH = n * SgOps.StructureFactor(RandomH, X, (0,0,0,0,0,0))
       print FC, FH
       assert abs(FC - FH) < 1.e-5
   t = os.times()

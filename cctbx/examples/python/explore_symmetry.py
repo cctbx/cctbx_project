@@ -250,15 +250,15 @@ try:
   for WP in WyckoffTable:
     # The site symmetry point group type is not tabulated.
     # Generate dummy coordinates to obtain it the indirectly using
-    # the SpecialPosition class.
+    # the SiteSymmetry class.
     X = WP.SpecialOp().multiply((math.sqrt(2),math.sqrt(3),math.sqrt(5)))
-    SP = sgtbx.SpecialPosition(SnapParameters, X, 0, 1)
-    assert SP.DistanceMoved2() < 1.e-5
-    WMap = WyckoffTable.getWyckoffMapping(SP)
+    SS = sgtbx.SiteSymmetry(SnapParameters, X, 0)
+    assert SS.DistanceMoved2() < 1.e-5
+    WMap = WyckoffTable.getWyckoffMapping(SS)
     assert WMap.WP().Letter() == WP.Letter()
     print "<tr>"
     print "<td>%s<td>%d<td>%s<td><tt>%s</tt>" % (
-      WP.Letter(), WP.M(), SP.getPointGroupType(), str(WP.SpecialOp()))
+      WP.Letter(), WP.M(), SS.PointGroupType(), str(WP.SpecialOp()))
     print "</tr>"
   print "</table><pre>"
   InTable = 0

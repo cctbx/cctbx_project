@@ -136,9 +136,9 @@ class StructureInfo:
     SnapParameters = \
       sgtbx.SpecialPositionSnapParameters(self.UnitCell, self.SgOps)
     for Site in self.Sites:
-      SP = sgtbx.SpecialPosition(SnapParameters, Site.Coordinates, 0, 1)
-      Site.WyckoffMapping = self.WyckoffTable.getWyckoffMapping(SP)
-      Site.SiteSymmetry = SP.getPointGroupType()
+      SS = sgtbx.SiteSymmetry(SnapParameters, Site.Coordinates, 0)
+      Site.WyckoffMapping = self.WyckoffTable.getWyckoffMapping(SS)
+      Site.SiteSymmetry = SS.PointGroupType()
 
 class MillerIndexSet:
 
