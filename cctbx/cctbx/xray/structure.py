@@ -97,7 +97,7 @@ class structure(crystal.special_position_settings):
     self.apply_symmetry(i, update_special_position_indices=00000)
 
   def structure_factors(self, anomalous_flag=None, d_min=None,
-                              direct=00000, fft=00000,
+                              algorithm=None,
                               cos_sin_table=00000,
                               quality_factor=None,
                               u_extra=None,
@@ -112,8 +112,7 @@ class structure(crystal.special_position_settings):
       b_extra=b_extra)(
         xray_structure=self,
         miller_set=miller_set,
-        direct=direct,
-        fft=fft)
+        algorithm=algorithm)
 
   def show_summary(self, f=sys.stdout):
     print >> f, "Number of scatterers:", self.scatterers().size()

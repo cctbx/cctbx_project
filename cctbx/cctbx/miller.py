@@ -315,14 +315,13 @@ class set(crystal.symmetry):
     return array(miller_set=self, data=from_map.data())
 
   def structure_factors_from_scatterers(self, xray_structure,
-                                              direct=00000, fft=00000,
+                                              algorithm=None,
                                               cos_sin_table=00000,
                                               quality_factor=None,
                                               u_extra=None,
                                               b_extra=None):
     from cctbx import xray
-    assert direct == 00000 or fft == 00000
-    if (direct):
+    if (algorithm == "direct"):
       return xray.structure_factors.from_scatterers_direct(
         xray_structure=xray_structure,
         miller_set=self,
@@ -335,8 +334,7 @@ class set(crystal.symmetry):
       b_extra=b_extra)(
         xray_structure=xray_structure,
         miller_set=self,
-        direct=direct,
-        fft=fft)
+        algorithm=algorithm)
 
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=0,

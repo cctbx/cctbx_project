@@ -26,7 +26,7 @@ def exercise(space_group_info, use_primitive_setting, anomalous_flag,
     structure_p1.show_summary().show_scatterers()
   assert structure_p1.special_position_indices().size() == 0
   f_calc = structure.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc()
+    anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc()
   miller_set_p1 = miller.set.expand_to_p1(f_calc)
   f_calc_p1 = f_calc.expand_to_p1()
   assert flex.order(miller_set_p1.indices(), f_calc_p1.indices()) == 0
@@ -49,7 +49,7 @@ def exercise(space_group_info, use_primitive_setting, anomalous_flag,
       assert e < 1.e-6
   ctrl_amplitudes_p1 = abs(miller_set_p1.structure_factors_from_scatterers(
     xray_structure=structure_p1,
-    direct=0001).f_calc())
+    algorithm="direct").f_calc())
   c = flex.linear_correlation(amplitudes_p1.data(), ctrl_amplitudes_p1.data())
   assert c.is_well_defined()
   if (0 or verbose):

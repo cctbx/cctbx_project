@@ -232,7 +232,7 @@ def exercise(space_group_info,
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
+        anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
   shelx_titl = str(space_group_info) \

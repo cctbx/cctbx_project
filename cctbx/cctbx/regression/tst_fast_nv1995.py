@@ -62,7 +62,7 @@ def run_fast_terms(structure_fixed, structure_p1,
         if (test_origin):
           assert i_sample != 0
       i_grid = flex.norm(f_obs.structure_factors_from_scatterers(
-        xray_structure=structure_shifted, direct=0001).f_calc().data())
+        xray_structure=structure_shifted, algorithm="direct").f_calc().data())
       map_value = map[grid_point]
       if (not squared_flag):
         sum_m_i_grid = flex.sum(m * i_grid)
@@ -136,7 +136,7 @@ def test_atom(space_group_info, use_primitive_setting,
     structure.show_summary().show_scatterers()
   f_obs = abs(miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
-    direct=0001).f_calc())
+    algorithm="direct").f_calc())
   if (0 or verbose):
     f_obs.show_summary()
   if (0 or verbose):
@@ -154,14 +154,14 @@ def test_atom(space_group_info, use_primitive_setting,
       structure_p1.show_summary().show_scatterers()
     f_calc_p1 = miller_set_p1.structure_factors_from_scatterers(
       xray_structure=structure_p1,
-      direct=0001).f_calc()
+      algorithm="direct").f_calc()
     if (0 or verbose):
       f_calc_p1.show_array()
     f_calc_fixed = None
     if (structure_fixed.scatterers().size() > 0):
       f_calc_fixed = f_obs.structure_factors_from_scatterers(
         xray_structure=structure_fixed,
-        direct=0001).f_calc()
+        algorithm="direct").f_calc()
     symmetry_flags = translation_search.symmetry_flags(
       is_isotropic_search_model=0001,
       have_f_part=(f_calc_fixed is not None))
@@ -210,7 +210,7 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     d_min=d_min)
   f_obs = abs(miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
-    direct=0001).f_calc())
+    algorithm="direct").f_calc())
   if (0 or verbose):
     f_obs.show_summary()
   if (0 or verbose):
@@ -235,10 +235,10 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
   if (flag_f_part):
     f_calc_fixed = f_obs.structure_factors_from_scatterers(
       xray_structure=structure_fixed,
-      direct=0001).f_calc()
+      algorithm="direct").f_calc()
   f_calc_p1 = miller_set_p1.structure_factors_from_scatterers(
     xray_structure=structure_p1,
-    direct=0001).f_calc()
+    algorithm="direct").f_calc()
   symmetry_flags = translation_search.symmetry_flags(
     is_isotropic_search_model=00000,
     have_f_part=flag_f_part)

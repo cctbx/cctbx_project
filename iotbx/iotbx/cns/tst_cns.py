@@ -16,7 +16,7 @@ def exercise_sdb(verbose=0):
     general_positions_only=00000,
     random_u_iso=0001)
   f_abs = abs(structure.structure_factors(
-    anomalous_flag=00000, d_min=2, direct=0001).f_calc())
+    anomalous_flag=00000, d_min=2, algorithm="direct").f_calc())
   sdb_out = structure.as_cns_sdb_file(
     file="foo.sdb",
     description="random_structure",
@@ -31,7 +31,7 @@ def exercise_sdb(verbose=0):
       unit_cell=structure.unit_cell(),
       space_group_info=None))
   f_read = abs(f_abs.structure_factors_from_scatterers(
-    xray_structure=structure_read, direct=0001).f_calc())
+    xray_structure=structure_read, algorithm="direct").f_calc())
   regression = flex.linear_regression(f_abs.data(), f_read.data())
   assert regression.is_well_defined()
   if (0 or verbose):

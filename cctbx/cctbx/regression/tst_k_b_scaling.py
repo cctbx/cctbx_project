@@ -75,7 +75,7 @@ def exercise(space_group_info, anomalous_flag, d_min=2., verbose=0):
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
+        anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
   f_ref = abs(structure_factors.f_calc())

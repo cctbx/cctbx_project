@@ -39,7 +39,7 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
   f_calc = structure.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
-    direct=0001).f_calc()
+    algorithm="direct").f_calc()
   n_real = f_calc.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
@@ -104,7 +104,7 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
   miller_p1 = miller.set.expand_to_p1(f_calc)
   f_calc_p1 = miller_p1.structure_factors_from_scatterers(
     xray_structure=structure_p1,
-    direct=0001).f_calc()
+    algorithm="direct").f_calc()
   map = maptbx.structure_factors.to_map(
     f_calc_p1.space_group(),
     anomalous_flag,
@@ -135,7 +135,7 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     random_u_iso=0001,
     random_occupancy=0001
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
+        anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
   f_calc = structure_factors.f_calc()
   n_real = maptbx.crystal_gridding(
     unit_cell=f_calc.unit_cell(),

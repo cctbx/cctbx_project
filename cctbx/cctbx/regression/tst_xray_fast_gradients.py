@@ -212,7 +212,7 @@ class shifted_site:
     self.structure_shifted.scatterers()[i_scatterer].site = site
     if (f_obs is not None):
       self.f_calc = f_obs.structure_factors_from_scatterers(
-        xray_structure=self.structure_shifted, direct=0001).f_calc()
+        xray_structure=self.structure_shifted, algorithm="direct").f_calc()
 
 def site(structure_ideal, d_min, f_obs, verbose=0):
   sh = shifted_site(f_obs, structure_ideal, 0, 0, 0.01)
@@ -564,14 +564,14 @@ def exercise_gradient_manager(structure_ideal, f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
     n_parameters=n_parameters,
-    direct=0001)
+    algorithm="direct")
   gf = grad_manager(
     xray_structure=sh.structure_shifted,
     miller_set=f_obs,
     d_target_d_f_calc=ls.derivatives(),
     gradient_flags=gradient_flags,
     n_parameters=n_parameters,
-    fft=0001)
+    algorithm="fft")
   if (n_parameters == 0):
     d = gd.d_target_d_site_frac()
     f = gf.d_target_d_site_frac()
@@ -624,7 +624,7 @@ def run_one(space_group_info, n_elements=3, volume_per_atom=1000, d_min=2,
         print "u_iso:", adptbx.u_star_as_u_iso(uc, scatterer.u_star)
     print
   f_obs = abs(structure_ideal.structure_factors(
-    d_min=d_min, anomalous_flag=anomalous_flag, direct=0001).f_calc())
+    d_min=d_min, anomalous_flag=anomalous_flag, algorithm="direct").f_calc())
   if (1):
     site(structure_ideal, d_min, f_obs, verbose=verbose)
   if (1):
