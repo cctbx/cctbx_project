@@ -35,7 +35,6 @@ def exercise_space_group_info():
   j = i.primitive_setting()
   asu = j.direct_space_asu()
   assert len(asu.facets) == 6
-  asu.show_summary()
   assert sgtbx.space_group(asu.hall_symbol) == j.group()
 
 def test_enantiomorphic_pairs():
