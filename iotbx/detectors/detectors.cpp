@@ -12,7 +12,7 @@ namespace {
 
 af::flex_int ReadADSC(const std::string& filename,
                       const long& ptr, const long& size1,
-                      const long& size2) {
+                      const long& size2,const int& big_endian ) {
   std::ifstream cin(filename.c_str());
   long fileLength = ptr + 2 * size1 * size2;
   std::vector<char> chardata(fileLength);
@@ -29,8 +29,14 @@ af::flex_int ReadADSC(const std::string& filename,
   //af::ref<int> r(z.begin(),z.size());
   //the redesign; use r[i] = and r.size()
 
-  for (std::size_t i = 0; i < sz; i++) {
-    begin[i] = 256 * uchardata[ptr+2*i] + uchardata[ptr + 2*i +1];
+  if (big_endian) {
+    for (std::size_t i = 0; i < sz; i++) {
+      begin[i] = 256 * uchardata[ptr+2*i] + uchardata[ptr + 2*i +1];
+    }
+  } else {
+    for (std::size_t i = 0; i < sz; i++) {
+      begin[i] = 256 * uchardata[ptr+2*i+1] + uchardata[ptr + 2*i];
+    }
   }
 
   return z;
