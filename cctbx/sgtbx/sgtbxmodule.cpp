@@ -274,6 +274,16 @@ namespace {
     return initargs;
   }
 
+  // Support for pickle.
+  tuple SpaceGroupInfo_getinitargs(const SpaceGroupInfo& SgInfo) {
+    tuple initargs(4);
+    initargs.set_item(0, boost::python::make_ref(SgInfo.SgOps()));
+    initargs.set_item(1, boost::python::make_ref(1));
+    initargs.set_item(2, boost::python::make_ref(SgInfo.CBOp().M().RBF()));
+    initargs.set_item(3, boost::python::make_ref(SgInfo.CBOp().M().TBF()));
+    return initargs;
+  }
+
   std::string SpaceGroupInfo_BuildHallSymbol_0(const SpaceGroupInfo& SgInfo) {
     return SgInfo.BuildHallSymbol();
   }
@@ -721,6 +731,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
   py_SpaceGroupInfo.def(SpaceGroupInfo_BuildHallSymbol_1, "BuildHallSymbol");
   py_SpaceGroupInfo.def(&SpaceGroupInfo::BuildLookupSymbol,
                                         "BuildLookupSymbol");
+  py_SpaceGroupInfo.def(SpaceGroupInfo_getinitargs, "__getinitargs__");
 
   py_WyckoffPosition.def(constructor<>());
   py_WyckoffPosition.def(&WyckoffPosition::M, "M");
