@@ -4,6 +4,7 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/overloads.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <cctbx/sgtbx/direct_space_asu.h>
 
@@ -14,6 +15,9 @@ namespace {
   struct float_cut_plane_wrappers
   {
     typedef float_cut_plane<> w_t;
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      is_inside_overloads, is_inside, 1, 2)
 
     static void
     wrap()
@@ -28,8 +32,9 @@ namespace {
           make_getter(&w_t::n, rbv()),
           make_setter(&w_t::n, dcp()))
         .def_readwrite("c", &w_t::c)
-        .def("evaluate", &w_t::evaluate)
-        .def("is_inside", &w_t::is_inside)
+        .def("evaluate", &w_t::evaluate, (arg_("point")))
+        .def("is_inside", &w_t::is_inside, is_inside_overloads(
+          (arg_("point"), arg_("epsilon"))))
         .def("get_point_in_plane", &w_t::get_point_in_plane)
         .def("add_buffer", &w_t::add_buffer,
           (arg_("unit_cell"), arg_("thickness")))
@@ -40,6 +45,12 @@ namespace {
   struct float_asu_wrappers
   {
     typedef float_asu<> w_t;
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      is_inside_overloads, is_inside, 1, 2)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      volume_vertices_overloads, volume_vertices, 0, 1)
 
     static void
     wrap()
@@ -53,8 +64,11 @@ namespace {
           (arg_("unit_cell"), arg_("facets"))))
         .def("unit_cell", &w_t::unit_cell, rir())
         .def("facets", &w_t::facets, ccr())
-        .def("is_inside", &w_t::is_inside)
+        .def("is_inside", &w_t::is_inside, is_inside_overloads(
+          (arg_("point"), arg_("epsilon"))))
         .def("_add_buffer", &w_t::add_buffer)
+        .def("volume_vertices", &w_t::volume_vertices,
+          volume_vertices_overloads((arg_("epsilon"))))
       ;
     }
   };

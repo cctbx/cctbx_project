@@ -1198,9 +1198,9 @@ def exercise_direct_space_asu():
   cp = sgtbx.direct_space_asu_float_cut_plane(n=[-1,0,0], c=1)
   assert approx_equal(cp.n, [-1,0,0])
   assert approx_equal(cp.c, 1)
-  assert approx_equal(cp.evaluate([0,2,3]), 1)
-  assert approx_equal(cp.evaluate([1,2,3]), 0)
-  assert cp.is_inside([0.99,0,0])
+  assert approx_equal(cp.evaluate(point=[0,2,3]), 1)
+  assert approx_equal(cp.evaluate(point=[1,2,3]), 0)
+  assert cp.is_inside(point=[0.99,0,0],epsilon=0)
   assert not cp.is_inside([1.01,0,0])
   assert approx_equal(cp.get_point_in_plane(), [1,0,0])
   cp.n = [0,-1,0]
@@ -1231,6 +1231,8 @@ def exercise_direct_space_asu():
   assert buf_asu.is_inside([0.99+0.2,0.49+0.2,0.32+0.2])
   eps = 0.02
   assert not buf_asu.is_inside([0.99+0.2+eps,0.49+0.2+eps,0.32+0.2+eps])
+  assert len(asu.volume_vertices()) == 1
+  assert approx_equal(asu.volume_vertices(epsilon=1.e-6)[0], (1.0, 2.0, 3.0))
 
 def run():
   exercise_symbols()
