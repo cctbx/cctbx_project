@@ -1,7 +1,35 @@
+import math
 from scitbx.array_family import flex
-from scitbx_boost import lbfgs
+from scitbx import lbfgs
 
-def run(verbose = 1):
+def exercise_drop_convergence_test():
+  c = lbfgs.drop_convergence_test()
+  assert c.p() > 0
+  assert c.max_drop_eps() > 0
+  assert c.iteration_coefficient() > 0
+  assert c.objective_function_values().size() == 0
+  assert c.max_drop() == 0
+  c = lbfgs.drop_convergence_test(6)
+  c = lbfgs.drop_convergence_test(6, 1.e-3)
+  c = lbfgs.drop_convergence_test(6, 1.e-3, 3)
+  assert c.p() == 6
+  assert c.max_drop_eps() == 1.e-3
+  assert c.iteration_coefficient() == 3
+  assert c.objective_function_values().size() == 0
+  assert c.max_drop() == 0
+  for p in (2, 7):
+    c = lbfgs.drop_convergence_test(p, 1.e-3)
+    assert c.p() == p
+    converged = []
+    for x in xrange(10):
+      converged.append(c(math.exp(-x)))
+    c.objective_function_values().size() == 10
+    if (p == 2):
+      assert converged == [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    else:
+      assert converged == [0, 0, 0, 0, 0, 0, 0, 0, 1, 1]
+
+def exercise_minimization(verbose):
   n = 100
   x = flex.double(n)
   g = flex.double(n)
@@ -29,12 +57,22 @@ def run(verbose = 1):
     if (is_converged(x, g)): break
     if (minimizer.nfun() > 2000): break
     assert minimizer.run(x, f, g)
+  assert f < 1.e-12
+  assert minimizer.euclidean_norm(g) < 1.e-4
+  assert minimizer.iter() < 40
+  assert minimizer.nfun() < 50
+  assert abs(minimizer.stp() - 1) < 1.e-6
 
-if (__name__ == "__main__"):
+def run():
   import os, sys
   Endless = "--Endless" in sys.argv
+  verbose = "--verbose" in sys.argv and not Endless
+  exercise_drop_convergence_test()
   while 1:
-    run(not Endless)
+    exercise_minimization(verbose)
     if (not Endless): break
   t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  print "OK"
+
+if (__name__ == "__main__"):
+  run()

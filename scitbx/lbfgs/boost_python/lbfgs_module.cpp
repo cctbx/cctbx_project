@@ -145,7 +145,7 @@ namespace {
           .def("max_drop_eps", &w_t::max_drop_eps)
           .def("iteration_coefficient", &w_t::iteration_coefficient)
           .def("__call__", &w_t::operator())
-          //XXX .def("objective_function_values", &w_t::objective_function_values)
+          .def("objective_function_values", &w_t::objective_function_values)
           .def("max_drop", &w_t::max_drop)
       );
     }
