@@ -575,6 +575,7 @@ def exercise_space_group():
   hx = [str(s) for s in h]
   assert gx != hx
   g.make_tidy()
+  assert g.is_tidy()
   h.make_tidy()
   gx = [str(s) for s in g]
   hx = [str(s) for s in h]
