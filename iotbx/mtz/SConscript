@@ -1,11 +1,6 @@
-Import("env_base","env_etc")
+Import("env_base", "env_etc", "mtz_env")
 
-env = env_base.Copy(
-  CXXFLAGS=env_etc.cxxflags_base,
-  CCFLAGS=env_etc.ccflags_base,
-  CPPPATH=["."] + env_etc.iotbx_common_includes,
-)
-
+env = mtz_env.Copy()
 env.Append(LIBPATH=["#libtbx",])
 env.Prepend(LIBS=["iotbx","cmtz","cctbx"])
 env.Append(LIBS=env_etc.libm)
