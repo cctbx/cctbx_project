@@ -115,10 +115,10 @@ namespace cctbx { namespace fftbx {
       //! In-place "forward" Fourier transformation.
       /*! See also: complex_to_complex, real_to_complex
        */
-      template <typename RealOrComplexNdimAccessor>
-      void forward(RealOrComplexNdimAccessor Map) {
+      template <typename RealOrComplexVecRefNd>
+      void forward(RealOrComplexVecRefNd Map) {
         typedef
-        typename RealOrComplexNdimAccessor::value_type real_or_complex_type;
+        typename RealOrComplexVecRefNd::value_type real_or_complex_type;
         forward(Map, real_or_complex_type());
       }
       //! In-place "backward" Fourier transformation.
@@ -127,26 +127,26 @@ namespace cctbx { namespace fftbx {
           <p>
           See also: complex_to_complex, real_to_complex
        */
-      template <typename RealOrComplexNdimAccessor>
-      void backward(RealOrComplexNdimAccessor Map) {
+      template <typename RealOrComplexVecRefNd>
+      void backward(RealOrComplexVecRefNd Map) {
         typedef
-        typename RealOrComplexNdimAccessor::value_type real_or_complex_type;
+        typename RealOrComplexVecRefNd::value_type real_or_complex_type;
         backward(Map, real_or_complex_type());
       }
     private:
       void init();
       // Cast map of complex to map of real.
-      template <typename NdimAccessor>
-      void forward(NdimAccessor Map, complex_type) {
-        typedef typename NdimAccessor::dimension_type dim_type;
-        dim_type dim(Map.elems[0], Map.elems[1], Map.elems[2] * 2);
-        ndim_accessor<dim_type, real_type*, real_type>
-        rmap(dim, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
+      template <typename VecRefNd>
+      void forward(VecRefNd Map, complex_type) {
+        typedef typename VecRefNd::dimension_type dim_type;
+        dim_type
+        dim(Map.dimension()[0], Map.dimension()[1], Map.dimension()[2] * 2);
+        vecrefnd<real_type, dim_type> rmap(Map.cast(), dim);
         forward(rmap, real_type());
       }
       // Core routine always works on real maps.
-      template <typename NdimAccessor>
-      void forward(NdimAccessor Map, real_type)
+      template <typename VecRefNd>
+      void forward(VecRefNd Map, real_type)
   // FUTURE: move out of class body
   {
     // TODO: avoid i, i+1 by casting to complex
@@ -154,19 +154,19 @@ namespace cctbx { namespace fftbx {
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.forward(&Map[triple(ix, iy, 0)]);
+        m_fft1d_z.forward(&Map(triple(ix, iy, 0)));
       }
       for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t iy;
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Seq[2*iy] = Map[triple(ix, iy, 2*iz)];
-          Seq[2*iy+1] = Map[triple(ix, iy, 2*iz+1)];
+          Seq[2*iy] = Map(triple(ix, iy, 2*iz));
+          Seq[2*iy+1] = Map(triple(ix, iy, 2*iz+1));
         }
         // Transform along y (medium direction)
         m_fft1d_y.transform(select_sign<forward_tag>(), Seq);
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Map[triple(ix, iy, 2*iz)] = Seq[2*iy];
-          Map[triple(ix, iy, 2*iz+1)] = Seq[2*iy+1];
+          Map(triple(ix, iy, 2*iz)) = Seq[2*iy];
+          Map(triple(ix, iy, 2*iz+1)) = Seq[2*iy+1];
         }
       }
     }
@@ -174,30 +174,30 @@ namespace cctbx { namespace fftbx {
       for (std::size_t iz = 0; iz < m_fft1d_z.Ncomplex(); iz++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Seq[2*ix] = Map[triple(ix, iy, 2*iz)];
-          Seq[2*ix+1] = Map[triple(ix, iy, 2*iz+1)];
+          Seq[2*ix] = Map(triple(ix, iy, 2*iz));
+          Seq[2*ix+1] = Map(triple(ix, iy, 2*iz+1));
         }
         // Transform along x (slow direction)
         m_fft1d_x.transform(select_sign<forward_tag>(), Seq);
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Map[triple(ix, iy, 2*iz)] = Seq[2*ix];
-          Map[triple(ix, iy, 2*iz+1)] = Seq[2*ix+1];
+          Map(triple(ix, iy, 2*iz)) = Seq[2*ix];
+          Map(triple(ix, iy, 2*iz+1)) = Seq[2*ix+1];
         }
       }
     }
   }
       // Cast map of complex to map of real.
-      template <typename NdimAccessor>
-      void backward(NdimAccessor Map, complex_type) {
-        typedef typename NdimAccessor::dimension_type dim_type;
-        dim_type dim(Map.elems[0], Map.elems[1], Map.elems[2] * 2);
-        ndim_accessor<dim_type, real_type*, real_type>
-        rmap(dim, reinterpret_cast<real_type*>(&Map[triple(0,0,0)]));
+      template <typename VecRefNd>
+      void backward(VecRefNd Map, complex_type) {
+        typedef typename VecRefNd::dimension_type dim_type;
+        dim_type
+        dim(Map.dimension()[0], Map.dimension()[1], Map.dimension()[2] * 2);
+        vecrefnd<real_type, dim_type> rmap(Map.cast(), dim);
         backward(rmap, real_type());
       }
       // Core routine always works on real maps.
-      template <typename NdimAccessor>
-      void backward(NdimAccessor Map, real_type)
+      template <typename VecRefNd>
+      void backward(VecRefNd Map, real_type)
   // FUTURE: move out of class body
   {
     // TODO: avoid i, i+1 by casting to complex
@@ -206,34 +206,34 @@ namespace cctbx { namespace fftbx {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         std::size_t ix;
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Seq[2*ix] = Map[triple(ix, iy, 2*iz)];
-          Seq[2*ix+1] = Map[triple(ix, iy, 2*iz+1)];
+          Seq[2*ix] = Map(triple(ix, iy, 2*iz));
+          Seq[2*ix+1] = Map(triple(ix, iy, 2*iz+1));
         }
         // Transform along x (slow direction)
         m_fft1d_x.transform(select_sign<backward_tag>(), Seq);
         for (ix = 0; ix < m_Nreal[0]; ix++) {
-          Map[triple(ix, iy, 2*iz)] = Seq[2*ix];
-          Map[triple(ix, iy, 2*iz+1)] = Seq[2*ix+1];
+          Map(triple(ix, iy, 2*iz)) = Seq[2*ix];
+          Map(triple(ix, iy, 2*iz+1)) = Seq[2*ix+1];
         }
       }
       for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
         std::size_t iy;
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Seq[2*iy] = Map[triple(ix, iy, 2*iz)];
-          Seq[2*iy+1] = Map[triple(ix, iy, 2*iz+1)];
+          Seq[2*iy] = Map(triple(ix, iy, 2*iz));
+          Seq[2*iy+1] = Map(triple(ix, iy, 2*iz+1));
         }
         // Transform along y (medium direction)
         m_fft1d_y.transform(select_sign<backward_tag>(), Seq);
         for (iy = 0; iy < m_Nreal[1]; iy++) {
-          Map[triple(ix, iy, 2*iz)] = Seq[2*iy];
-          Map[triple(ix, iy, 2*iz+1)] = Seq[2*iy+1];
+          Map(triple(ix, iy, 2*iz)) = Seq[2*iy];
+          Map(triple(ix, iy, 2*iz+1)) = Seq[2*iy+1];
         }
       }
     }
     for (std::size_t ix = 0; ix < m_Nreal[0]; ix++) {
       for (std::size_t iy = 0; iy < m_Nreal[1]; iy++) {
         // Transform along z (fast direction)
-        m_fft1d_z.backward(&Map[triple(ix, iy, 0)]);
+        m_fft1d_z.backward(&Map(triple(ix, iy, 0)));
       }
     }
   }

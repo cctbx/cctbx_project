@@ -56,11 +56,10 @@ namespace {
   {
     fftbx::complex_to_complex_3d<double> fft(N);
     shared_complex_vector cseq = init_cseq(N);
-    ndim_accessor<
-      dimension_end<3>,
-      shared_complex_vector::element_type::iterator,
-      shared_complex_vector::element_type::value_type>
-    cmap(N, cseq->begin());
+    vecrefnd<
+      shared_complex_vector::element_type::value_type,
+      dimension_end<3> >
+    cmap(cseq->begin(), N);
     if (dir == 'f') {
       fft.forward(cmap);
     }
@@ -74,11 +73,10 @@ namespace {
   {
     fftbx::real_to_complex_3d<double> fft(N);
     shared_real_vector rseq = init_rseq(fft.Mreal());
-    ndim_accessor<
-      dimension_end<3>,
-      shared_real_vector::element_type::iterator,
-      shared_real_vector::element_type::value_type>
-    rmap(fft.Mreal(), rseq->begin());
+    vecrefnd<
+      shared_real_vector::element_type::value_type,
+      dimension_end<3> >
+    rmap(rseq->begin(), fft.Mreal());
     if (dir == 'f') {
       fft.forward(rmap);
     }
@@ -125,11 +123,10 @@ namespace {
       rfftwnd_one_real_to_complex(Plan, (fftw_real *) &(*rseq)[0], 0);
     }
     else {
-      ndim_accessor<
-        dimension_end<3>,
-        shared_real_vector::element_type::iterator,
-        shared_real_vector::element_type::value_type>
-      rmap(fft.Mreal(), rseq->begin());
+      vecrefnd<
+        shared_real_vector::element_type::value_type,
+        dimension_end<3> >
+      rmap(rseq->begin(), fft.Mreal());
       fft.forward(rmap); // complex values have some symmetry
       Plan = rfftw3d_create_plan(
         N[0], N[1], N[2], FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
@@ -171,11 +168,10 @@ namespace {
   {
     shared_complex_vector cseq(new shared_complex_vector::element_type);
     cseq->resize(cctbx::vector::product(N));
-    ndim_accessor<
-      dimension_end<3>,
-      shared_complex_vector::element_type::iterator,
-      shared_complex_vector::element_type::value_type>
-    cmap(N, cseq->begin());
+    vecrefnd<
+      shared_complex_vector::element_type::value_type,
+      dimension_end<3> >
+    cmap(cseq->begin(), N);
     fftbx::complex_to_complex_3d<double> fft(N);
     if (dir == 'f') {
       std::cout << "timing_complex_to_complex_3d forward " << N << std::endl;
@@ -198,11 +194,10 @@ namespace {
     fftbx::real_to_complex_3d<double> fft(N);
     shared_real_vector rseq(new shared_real_vector::element_type);
     rseq->resize(cctbx::vector::product(fft.Mreal()));
-    ndim_accessor<
-      dimension_end<3>,
-      shared_real_vector::element_type::iterator,
-      shared_real_vector::element_type::value_type>
-    rmap(fft.Mreal(), rseq->begin());
+    vecrefnd<
+      shared_real_vector::element_type::value_type,
+      dimension_end<3> >
+    rmap(rseq->begin(), fft.Mreal());
     if (dir == 'f') {
       std::cout << "timing_real_to_complex_3d forward " << N << std::endl;
       for (std::size_t i=0;i<loop_iterations;i++) {
