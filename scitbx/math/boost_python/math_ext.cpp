@@ -14,7 +14,7 @@ namespace boost_python {
   void wrap_gaussian();
   void wrap_golay();
   void wrap_minimum_covering_sphere();
-  void wrap_principle_axes_of_inertia();
+  void wrap_principal_axes_of_inertia();
 
 namespace {
 
@@ -72,7 +72,7 @@ namespace {
     wrap_gaussian();
     wrap_golay();
     wrap_minimum_covering_sphere();
-    wrap_principle_axes_of_inertia();
+    wrap_principal_axes_of_inertia();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
   }

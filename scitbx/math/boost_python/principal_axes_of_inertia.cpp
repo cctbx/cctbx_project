@@ -5,14 +5,14 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
-#include <scitbx/math/principle_axes_of_inertia.h>
+#include <scitbx/math/principal_axes_of_inertia.h>
 
 namespace scitbx { namespace math {
 namespace {
 
-  struct principle_axes_of_inertia_wrappers
+  struct principal_axes_of_inertia_wrappers
   {
-    typedef principle_axes_of_inertia<> w_t;
+    typedef principal_axes_of_inertia<> w_t;
 
     static void
     wrap()
@@ -21,7 +21,7 @@ namespace {
       typedef boost::python::arg arg_; // gcc 2.96 workaround
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_internal_reference<> rir;
-      class_<w_t>("principle_axes_of_inertia", no_init)
+      class_<w_t>("principal_axes_of_inertia", no_init)
         .def(init<af::const_ref<vec3<double> > const&>((arg_("points"))))
         .def(init<af::const_ref<vec3<double> > const&,
                   af::const_ref<double> const&>(
@@ -37,9 +37,9 @@ namespace {
 
 namespace boost_python {
 
-  void wrap_principle_axes_of_inertia()
+  void wrap_principal_axes_of_inertia()
   {
-    principle_axes_of_inertia_wrappers::wrap();
+    principal_axes_of_inertia_wrappers::wrap();
   }
 
 }}} // namespace scitbx::math::boost_python

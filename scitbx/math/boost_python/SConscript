@@ -7,5 +7,5 @@ env_scitbx_boost_python_ext.SharedLibrary(
     "gaussian.cpp",
     "golay.cpp",
     "minimum_covering_sphere.cpp",
-    "principle_axes_of_inertia.cpp"],
+    "principal_axes_of_inertia.cpp"],
 )
