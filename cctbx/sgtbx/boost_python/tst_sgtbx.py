@@ -409,6 +409,7 @@ def exercise_rt_mx():
   assert str(rt_mx(r, t, 2)) == "-x+y+1/12,y+1/6,-z+1/4"
   assert str(rt_mx(r, t, 2, 24)) == "-x+y+1/12,y+1/6,-z+1/4"
   assert str(rt_mx("+0*x-1*y+0*z,+0*x+0*y+1*z,-1*x+0*y-1*z")) == "-y,z,-x-z"
+  assert str(rt_mx("-x+y,-x+1/4,z+2/3") + (2,-1,3)) == "-x+y+2,-x-3/4,z+11/3"
 
 def exercise_change_of_basis_op():
   rt_mx = sgtbx.rt_mx

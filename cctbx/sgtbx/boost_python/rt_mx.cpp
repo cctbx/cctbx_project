@@ -74,6 +74,7 @@ namespace {
         .def("inverse_cancel", &w_t::inverse_cancel)
         .def("multiply", &w_t::multiply)
         .def("__mul__", mul)
+        .def("__add__", (rt_mx(w_t::*)(sg_vec3 const&) const)&w_t::operator+)
       ;
     }
   };

@@ -332,6 +332,13 @@ namespace cctbx { namespace sgtbx {
         return *this;
       }
 
+      //! rt_mx + integer vector
+      rt_mx
+      operator+(sg_vec3 const& t) const
+      {
+        return rt_mx(r_, tr_vec(t_.num() + t*t_.den(), t_.den()));
+      }
+
       //! Multiplication of homogeneous rt_mx with r().den()=1.
       /*! The rotation denominator of both matrices must be equal to 1.
           The translation denominators of the two matrices must be equal.
