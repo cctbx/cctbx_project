@@ -350,6 +350,28 @@ namespace cctbx { namespace geometry_restraints {
   typedef sorted_asu_proxies<bond_simple_proxy, bond_asu_proxy>
     bond_sorted_asu_proxies_base;
 
+  //! Fast computation of bond::distance_model given managed proxies.
+  inline
+  af::shared<double>
+  bond_distances_model(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    bond_sorted_asu_proxies_base const& sorted_asu_proxies)
+  {
+    af::shared<double> result = bond_distances_model(
+      sites_cart, sorted_asu_proxies.simple.const_ref());
+    af::const_ref<bond_asu_proxy> sym = sorted_asu_proxies.asu.const_ref();
+    if (sym.size() > 0) {
+      result.reserve(sorted_asu_proxies.simple.size() + sym.size());
+      direct_space_asu::asu_mappings<> const&
+        asu_mappings = *sorted_asu_proxies.asu_mappings();
+      for(std::size_t i=0;i<sym.size();i++) {
+        bond restraint(sites_cart, asu_mappings, sym[i]);
+        result.push_back(restraint.distance_model);
+      }
+    }
+    return result;
+  }
+
   //! Fast computation of bond::delta given managed proxies.
   inline
   af::shared<double>

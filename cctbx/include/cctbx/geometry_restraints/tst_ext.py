@@ -145,6 +145,11 @@ def exercise_bond():
     asu_mappings=asu_mappings)
   sorted_asu_proxies.process(proxies=sym_proxies)
   assert approx_equal(
+    geometry_restraints.bond_distances_model(
+      sites_cart=sites_cart,
+      sorted_asu_proxies=sorted_asu_proxies),
+    [3**.5]*2)
+  assert approx_equal(
     geometry_restraints.bond_deltas(
       sites_cart=sites_cart,
       sorted_asu_proxies=sorted_asu_proxies),
