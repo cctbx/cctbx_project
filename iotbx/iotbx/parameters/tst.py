@@ -182,6 +182,59 @@ d=a b c # 1 2 3 \\
 }
 d = a b c
 """)
+  #
+  params = iotbx.parameters.parse(input_string="""\
+x=1
+y=2
+  .expert_level=1
+z=3
+  .expert_level=2
+s {
+  a=x
+}
+t
+  .expert_level=1
+{
+  a=y
+}
+u
+  .expert_level=2
+{
+  a=z
+}
+""")
+  for expert_level in [-1,0]:
+    assert params.as_str(expert_level=expert_level) == """\
+x = 1
+s {
+  a = x
+}
+"""
+  assert params.as_str(expert_level=1) == """\
+x = 1
+y = 2
+s {
+  a = x
+}
+t {
+  a = y
+}
+"""
+  for expert_level in [2,3,None]:
+    assert params.as_str(expert_level=expert_level) == """\
+x = 1
+y = 2
+z = 3
+s {
+  a = x
+}
+t {
+  a = y
+}
+u {
+  a = z
+}
+"""
 
 def test_exception(input_string, exception_string=None):
   try: iotbx.parameters.parse(input_string=input_string)
