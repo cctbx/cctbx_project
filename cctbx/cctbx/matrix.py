@@ -57,6 +57,26 @@ class rec:
   def __call__(self, ir, ic):
     return self.elems[ir * self.n_columns() + ic]
 
+  def min_index(self):
+    result = None
+    for i in xrange(len(self.elems)):
+      if (result is None or self.elems[result] > self.elems[i]):
+        result = i
+    return result
+
+  def max_index(self):
+    result = None
+    for i in xrange(len(self.elems)):
+      if (result is None or self.elems[result] < self.elems[i]):
+        result = i
+    return result
+
+  def sum(self):
+    result = 0
+    for e in self.elems:
+      result += e
+    return result
+
   def product(self):
     result = 1
     for e in self.elems:
@@ -254,6 +274,9 @@ if (__name__ == "__main__"):
   assert mi.mathematica_form() == "{{7, -1, -3}, {12, -3, -5}, {33, -7, -14}}"
   assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
+  assert col((5,3,4)).min_index() == 1
+  assert col((4,5,3)).max_index() == 1
+  assert col((4,5,3)).sum() == 12
   assert col((2,3,4)).product() == 2*3*4
   assert diag((1,2,3)).mathematica_form() == \
     "{{1, 0, 0}, {0, 2, 0}, {0, 0, 3}}"
