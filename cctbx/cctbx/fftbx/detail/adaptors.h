@@ -18,7 +18,6 @@
 namespace cctbx { namespace fftbx {
   namespace detail {
 
-    // TODO: use ndim_accessor
     template <std::size_t D,
               typename IteratorType,
               typename ValueType = typename IteratorType::value_type>

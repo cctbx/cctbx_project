@@ -11,6 +11,7 @@ class write_makefiles(makefile_generator.write_makefiles):
     self.files = (
       "libs/python/src/classes.cpp",
       "libs/python/src/conversions.cpp",
+      "libs/python/src/errors.cpp",
       "libs/python/src/extension_class.cpp",
       "libs/python/src/functions.cpp",
       "libs/python/src/init_function.cpp",
@@ -24,6 +25,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "boost_python": (
         "classes",
         "conversions",
+        "errors",
         "extension_class",
         "functions",
         "init_function",

@@ -9,7 +9,7 @@
      2001 Nov 03: Created (R.W. Grosse-Kunstleve)
  */
 
-#include <boost/python/class_builder.hpp>
+#include <boost/python/cross_module.hpp>
 #include <cctbx/fftbx/complex_to_complex_3d.h>
 #include <cctbx/fftbx/real_to_complex_3d.h>
 #include <cctbx/std_vector_bpl.h>
@@ -170,10 +170,22 @@ namespace {
 
     (void) python::wrap_std_vector(this_module,
       "vector_of_std_size_t", std::size_t());
-    (void) python::wrap_std_vector(this_module,
-      "vector_of_double", double());
-    (void) python::wrap_std_vector(this_module,
-      "vector_of_complex", std::complex<double>());
+    python::class_builder<
+      std::vector<double>,
+      python::std_vector_wrapper<double> >
+    py_vector_of_double =
+    python::wrap_std_vector(this_module,
+      "vector_of_double",
+      double());
+    python::export_converters(py_vector_of_double);
+    python::class_builder<
+      std::vector<std::complex<double> >,
+      python::std_vector_wrapper<std::complex<double> > >
+    py_vector_of_complex =
+    python::wrap_std_vector(this_module,
+      "vector_of_complex",
+      std::complex<double>());
+    python::export_converters(py_vector_of_complex);
 
     class_builder<vd3d_accessor>
     py_vd3d_accessor(this_module, "vd3d_accessor");
