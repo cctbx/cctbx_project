@@ -48,7 +48,7 @@ namespace cctbx {
         }
         for (int l = 0; l < SgOps.nLTr(); l++) {
           FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = 2. * pi * (HRX + HT);
+          FloatType phase = FloatType(2 * pi) * (HRX + HT);
           F += std::complex<FloatType>(std::cos(phase), std::sin(phase));
         }
       }
@@ -124,7 +124,7 @@ namespace cctbx {
         }
         for (int l = 0; l < SgOps.nLTr(); l++) {
           FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = 2. * pi * (HRX + HT);
+          FloatType phase = FloatType(2 * pi) * (HRX + HT);
           Fs += std::complex<FloatType>(std::cos(phase), std::sin(phase));
         }
       }
@@ -158,7 +158,7 @@ namespace cctbx {
         }
         for (int l = 0; l < SgOps.nLTr(); l++) {
           FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = 2. * pi * (HRX + HT);
+          FloatType phase = FloatType(2 * pi) * (HRX + HT);
           std::complex<FloatType> fX = std::complex<FloatType>(
             std::cos(phase), std::sin(phase));
           fX *= phase_indep_coeff;
@@ -170,7 +170,7 @@ namespace cctbx {
         }
       }
     }
-    result *= 2. * pi;
+    result *= FloatType(2 * pi);
     return result;
   }
 
@@ -198,7 +198,43 @@ namespace cctbx {
         }
         for (int l = 0; l < SgOps.nLTr(); l++) {
           FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
-          FloatType phase = 2. * pi * (HRX + HT);
+          FloatType phase = FloatType(2 * pi) * (HRX + HT);
+          std::complex<FloatType> fX = std::complex<FloatType>(
+            std::cos(phase), std::sin(phase));
+          fX *= phase_indep_coeff;
+          result +=   fX.real() * dTarget_dFcalc.real()
+                    + fX.imag() * dTarget_dFcalc.imag();
+        }
+      }
+    }
+    return result;
+  }
+
+  //! XXX
+  template <typename FloatType>
+  FloatType
+  StructureFactor_dT_dUiso(
+    const sgtbx::SpaceGroup& SgOps,
+    const Miller::Index& H,
+    const fractional<FloatType>& X,
+    const std::complex<FloatType>& phase_indep_coeff,
+    const std::complex<FloatType>& dTarget_dFcalc)
+  {
+    using constants::pi;
+    FloatType result(0);
+    for (int s = 0; s < SgOps.nSMx(); s++) {
+      Miller::Index HR = H * SgOps[s].Rpart();
+      FloatType HRX = HR * X;
+      sgtbx::TrVec T = SgOps[s].Tpart();
+      for (int i = 0; i < SgOps.fInv(); i++) {
+        if (i) {
+          HR = -HR;
+          HRX = -HRX;
+          T = SgOps.InvT() - T;
+        }
+        for (int l = 0; l < SgOps.nLTr(); l++) {
+          FloatType HT = FloatType(H * (T + SgOps.LTr(l))) / SgOps.TBF();
+          FloatType phase = FloatType(2 * pi) * (HRX + HT);
           std::complex<FloatType> fX = std::complex<FloatType>(
             std::cos(phase), std::sin(phase));
           fX *= phase_indep_coeff;
@@ -232,7 +268,7 @@ namespace cctbx {
       typedef FloatType float_type;
       //! Default constructor. Data members are not initialized!
       XrayScatterer() {}
-      //! Constructor with isotropic Debye-Waller factor.
+      //! Constructor with isotropic displacement parameter.
       XrayScatterer(const std::string& Label,
                     const CAASF_Type& CAASF,
                     const std::complex<FloatType>& fpfdp,
@@ -251,7 +287,7 @@ namespace cctbx {
         m_U.fill(0.);
         m_U[0] = Uiso;
       }
-      //! Constructor with anisotropic Debye-Waller factor.
+      //! Constructor with anisotropic displacement parameters.
       XrayScatterer(const std::string& Label,
                     const CAASF_Type& CAASF,
                     const std::complex<FloatType>& fpfdp,
@@ -324,6 +360,13 @@ namespace cctbx {
       void set_Occ(const FloatType& Occ, const sgtbx::SpaceGroup& SgOps) {
         m_Occ = Occ;
         m_w = m_Occ * m_M / SgOps.OrderZ();
+      }
+      //! Redefinition of the isotropic displacement parameter.
+      /*! Requires isAnisotropic() == <code>false</code>.
+       */
+      void set_Uiso(const FloatType& Uiso) {
+        cctbx_assert(!m_Anisotropic);
+        m_U[0] = Uiso;
       }
       //! Compute multiplicity and average anisotropic displacement parameters.
       /*! The given unit cell and space group are used to determine
@@ -465,6 +508,25 @@ namespace cctbx {
         }
         throw cctbx_not_implemented();
       }
+      //! XXX
+      FloatType
+      StructureFactor_dT_dUiso(
+        const sgtbx::SpaceGroup& SgOps,
+        const Miller::Index& H,
+        double Q,
+        const std::complex<FloatType>& dTarget_dFcalc) const
+      {
+        if (!m_Anisotropic) {
+          return FloatType(-adptbx::U_as_B(1.) * Q / 4.)
+            * sftbx::StructureFactor_dT_dUiso(
+                SgOps, H, m_Coordinates,
+                  m_w
+                * adptbx::DebyeWallerFactorUiso(Q / 4., m_U[0])
+                * (m_CAASF.Q(Q) + m_fpfdp),
+                dTarget_dFcalc);
+        }
+        throw cctbx_not_implemented();
+      }
       /*! \brief Contribution of the (one) scatterer to an array of
           structure factors.
        */
@@ -536,6 +598,26 @@ namespace cctbx {
         cctbx_assert(dTarget_dFcalc.size() == H.size());
         for (std::size_t i = 0; i < H.size(); i++) {
           dT_dOcc += StructureFactor_dT_dOcc(
+            SgOps, H[i], Q[i], dTarget_dFcalc[i]);
+        }
+      }
+      //! XXX
+      template <typename MillerIndexArrayType,
+                typename QArrayType,
+                typename DerivativesArrayType>
+      void
+      StructureFactor_dT_dUiso_Array(
+        const sgtbx::SpaceGroup& SgOps,
+        const MillerIndexArrayType& H,
+        const QArrayType& Q,
+        const DerivativesArrayType& dTarget_dFcalc,
+        FloatType& dT_dUiso) const
+      {
+        CheckMultiplicity();
+        cctbx_assert(Q.size() == H.size());
+        cctbx_assert(dTarget_dFcalc.size() == H.size());
+        for (std::size_t i = 0; i < H.size(); i++) {
+          dT_dUiso += StructureFactor_dT_dUiso(
             SgOps, H[i], Q[i], dTarget_dFcalc[i]);
         }
       }
@@ -752,6 +834,50 @@ namespace cctbx {
     }
     StructureFactor_dT_dOcc_Array(
       SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dT_dOcc);
+  }
+
+  //! XXX
+  template <typename MillerIndexArrayType,
+            typename QArrayType,
+            typename DerivativesArrayType,
+            typename SiteArrayType,
+            typename DerivativesUisoArrayType>
+  void
+  StructureFactor_dT_dUiso_Array(
+    const sgtbx::SpaceGroup& SgOps,
+    const MillerIndexArrayType& H,
+    const QArrayType& Q,
+    const DerivativesArrayType& dTarget_dFcalc,
+    const SiteArrayType& Sites,
+    DerivativesUisoArrayType dT_dUiso)
+  {
+    cctbx_assert(Sites.size() == dT_dUiso.size());
+    for (std::size_t i = 0; i < Sites.size(); i++) {
+      Sites[i].StructureFactor_dT_dUiso_Array(
+        SgOps, H, Q, dTarget_dFcalc, dT_dUiso[i]);
+    }
+  }
+
+  //! XXX
+  template <typename MillerIndexArrayType,
+            typename DerivativesArrayType,
+            typename SiteArrayType,
+            typename DerivativesUisoArrayType>
+  void
+  StructureFactor_dT_dUiso_Array(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const MillerIndexArrayType& H,
+    const DerivativesArrayType& dTarget_dFcalc,
+    const SiteArrayType& Sites,
+    DerivativesUisoArrayType dT_dUiso)
+  {
+    af::shared<double> Q(H.size()); // FUTURE: avoid default initialization
+    for (std::size_t i = 0; i < H.size(); i++) {
+      Q[i] = UC.Q(H[i]);
+    }
+    StructureFactor_dT_dUiso_Array(
+      SgOps, H, Q.const_ref(), dTarget_dFcalc, Sites, dT_dUiso);
   }
 
 }} // namespace cctbx::sftbx

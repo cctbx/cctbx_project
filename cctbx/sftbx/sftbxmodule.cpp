@@ -168,6 +168,35 @@ namespace {
     return dT_dOcc;
   }
 
+  void
+  py_StructureFactor_dT_dUiso_Array_add(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<std::complex<double> >& dTarget_dFcalc,
+    const af::shared<ex_xray_scatterer>& Sites,
+    af::shared<double> dT_dUiso)
+  {
+    sftbx::StructureFactor_dT_dUiso_Array(
+      UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
+      dT_dUiso.ref());
+  }
+
+  af::shared<double>
+  py_StructureFactor_dT_dUiso_Array_new(
+    const uctbx::UnitCell& UC,
+    const sgtbx::SpaceGroup& SgOps,
+    const af::shared<Miller::Index>& H,
+    const af::shared<std::complex<double> >& dTarget_dFcalc,
+    const af::shared<ex_xray_scatterer>& Sites)
+  {
+    af::shared<double> dT_dUiso(Sites.size());
+    sftbx::StructureFactor_dT_dUiso_Array(
+      UC, SgOps, H.const_ref(), dTarget_dFcalc.const_ref(), Sites.const_ref(),
+      dT_dUiso.ref());
+    return dT_dUiso;
+  }
+
   void py_apply_special_position_ops(
     af::shared<af::double3> dT_dX,
     af::shared<sgtbx::RTMx> special_position_ops)
@@ -362,11 +391,15 @@ namespace {
     py_XrayScatterer.def(
       xray_scatterer_set_Occ_2, "set_Occ");
     py_XrayScatterer.def(
+      &ex_xray_scatterer::set_Uiso, "set_Uiso");
+    py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor, "StructureFactor");
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor_dT_dX, "StructureFactor_dT_dX");
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor_dT_dOcc, "StructureFactor_dT_dOcc");
+    py_XrayScatterer.def(
+      &ex_xray_scatterer::StructureFactor_dT_dUiso,"StructureFactor_dT_dUiso");
 
     this_module.def(py_least_squares_shift, "least_squares_shift");
     this_module.def(py_rms_coordinates_plain, "rms_coordinates");
@@ -382,6 +415,10 @@ namespace {
       py_StructureFactor_dT_dOcc_Array_add, "StructureFactor_dT_dOcc_Array");
     this_module.def(
       py_StructureFactor_dT_dOcc_Array_new, "StructureFactor_dT_dOcc_Array");
+    this_module.def(
+      py_StructureFactor_dT_dUiso_Array_add, "StructureFactor_dT_dUiso_Array");
+    this_module.def(
+      py_StructureFactor_dT_dUiso_Array_new, "StructureFactor_dT_dUiso_Array");
 
     this_module.def(py_apply_special_position_ops, "apply");
 
