@@ -5,6 +5,7 @@ import generate_vector_algebra_traits
 import generate_vector_algebra_operators
 import generate_operator_traits_builtin
 import generate_af_std_imports
+import generate_af_operator_functors
 import generate_af_algebras
 import generate_flagged_value_algebra
 generate_carray_bpl.run()
@@ -13,6 +14,7 @@ generate_vector_algebra_traits.run()
 generate_vector_algebra_operators.run()
 generate_operator_traits_builtin.run()
 generate_af_std_imports.run()
+generate_af_operator_functors.run()
 generate_af_algebras.run()
 generate_flagged_value_algebra.run()
 for file, dir in (
@@ -22,6 +24,7 @@ for file, dir in (
   ("algebra_operators.h", "../cctbx/vector/"),
   ("operator_traits_builtin.h", "../cctbx/array_family/"),
   ("std_imports.h", "../cctbx/array_family/"),
+  ("operator_functors.h", "../cctbx/array_family/"),
   ("flagged_value_algebra.h", "../cctbx/array_family/"),
   ("ref_algebra.h", "../cctbx/array_family/"),
   ("tiny_algebra.h", "../cctbx/array_family/"),
