@@ -15,6 +15,7 @@ class manager:
         shell_sym_tables=None,
         nonbonded_params=None,
         nonbonded_types=None,
+        nonbonded_function=None,
         nonbonded_distance_cutoff=5,
         nonbonded_buffer=1,
         angle_proxies=None,
@@ -111,12 +112,15 @@ class manager:
       lock=lock_pair_proxies)
     (bond_proxies,
      nonbonded_proxies,
+     nonbonded_function,
      angle_proxies,
      dihedral_proxies,
      chirality_proxies,
-     planarity_proxies) = [None]*6
+     planarity_proxies) = [None]*7
     if (flags.bond):      bond_proxies = pair_proxies.bond_proxies
-    if (flags.nonbonded): nonbonded_proxies = pair_proxies.nonbonded_proxies
+    if (flags.nonbonded and self.nonbonded_types is not None):
+      nonbonded_proxies = pair_proxies.nonbonded_proxies
+      nonbonded_function = self.nonbonded_function
     if (flags.angle):     angle_proxies = self.angle_proxies
     if (flags.dihedral):  dihedral_proxies = self.dihedral_proxies
     if (flags.chirality): chirality_proxies = self.chirality_proxies
@@ -125,6 +129,7 @@ class manager:
       sites_cart=sites_cart,
       bond_proxies=bond_proxies,
       nonbonded_proxies=nonbonded_proxies,
+      nonbonded_function=nonbonded_function,
       angle_proxies=angle_proxies,
       dihedral_proxies=dihedral_proxies,
       chirality_proxies=chirality_proxies,

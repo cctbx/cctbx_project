@@ -7,12 +7,14 @@ class energies:
   def __init__(self, sites_cart,
                      bond_proxies=None,
                      nonbonded_proxies=None,
+                     nonbonded_function=None,
                      angle_proxies=None,
                      dihedral_proxies=None,
                      chirality_proxies=None,
                      planarity_proxies=None,
                      compute_gradients=0001,
                      disable_asu_cache=00000):
+    if (nonbonded_proxies is not None): assert nonbonded_function is not None
     if (compute_gradients):
       self.gradients = flex.vec3_double(sites_cart.size(), [0,0,0])
     else:
@@ -36,7 +38,7 @@ class energies:
         sites_cart=sites_cart,
         sorted_asu_proxies=nonbonded_proxies,
         gradient_array=self.gradients,
-        function=geometry_restraints.repulsion_function(),
+        function=nonbonded_function,
         disable_cache=00000)
     if (angle_proxies is None):
       self.n_angle_proxies = None

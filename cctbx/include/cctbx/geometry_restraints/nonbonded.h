@@ -107,10 +107,10 @@ namespace cctbx { namespace geometry_restraints {
   /*! energy(delta) = c_rep*(max(0,(k_rep*vdw_distance)**irexp
                              -delta**irexp))**rexp
    */
-  struct repulsion_function
+  struct prolsq_repulsion_function
   {
     //! Definition of coefficients.
-    repulsion_function(
+    prolsq_repulsion_function(
       double c_rep_=16,
       double k_rep_=1,
       double irexp_=1,
@@ -124,7 +124,7 @@ namespace cctbx { namespace geometry_restraints {
       CCTBX_ASSERT(rexp > 0);
     }
 
-    //! Support for respulsion class.
+    //! Support for nonbonded class.
     /*! Not available in Python.
      */
     double
@@ -134,7 +134,7 @@ namespace cctbx { namespace geometry_restraints {
       return std::pow(k_rep*vdw_distance, irexp) - std::pow(delta, irexp);
     }
 
-    //! Support for respulsion class.
+    //! Support for nonbonded class.
     /*! Not available in Python.
      */
     double
@@ -148,7 +148,7 @@ namespace cctbx { namespace geometry_restraints {
       return c_rep * std::pow(term, rexp);
     }
 
-    //! Support for respulsion class.
+    //! Support for nonbonded class.
     /*! Not available in Python.
      */
     double
@@ -170,7 +170,56 @@ namespace cctbx { namespace geometry_restraints {
     double rexp;
   };
 
+  //! energy(delta) = k_rep*vdw_distance/(delta**irexp) repulsive function.
+  struct inverse_power_repulsion_function
+  {
+    //! Definition of coefficients.
+    inverse_power_repulsion_function(
+      double nonbonded_distance_cutoff_,
+      double k_rep_=1,
+      double irexp_=1)
+    :
+      nonbonded_distance_cutoff(nonbonded_distance_cutoff_),
+      k_rep(k_rep_),
+      irexp(irexp_)
+    {}
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    term(double vdw_distance, double delta) const
+    {
+      CCTBX_ASSERT(delta != 0);
+      if (delta >= nonbonded_distance_cutoff) return 0;
+      if (irexp == 1) return k_rep*vdw_distance / delta;
+      if (irexp == 2) return k_rep*vdw_distance / delta / delta;
+      return k_rep*vdw_distance / std::pow(delta, irexp);
+    }
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    residual(double term) const { return term; }
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    gradient_factor(double delta, double term) const
+    {
+      if (term == 0) return 0;
+      return -irexp * term / delta / delta;
+    }
+
+    double nonbonded_distance_cutoff;
+    double k_rep;
+    double irexp;
+  };
+
   //! Residual and gradient calculations for nonbonded restraints.
+  template <typename NonbondedFunction>
   class nonbonded
   {
     public:
@@ -184,7 +233,7 @@ namespace cctbx { namespace geometry_restraints {
       nonbonded(
         af::tiny<scitbx::vec3<double>, 2> const& sites_,
         double vdw_distance_,
-        repulsion_function const& function_=repulsion_function())
+        NonbondedFunction const& function_)
       :
         sites(sites_),
         vdw_distance(vdw_distance_),
@@ -199,7 +248,7 @@ namespace cctbx { namespace geometry_restraints {
       nonbonded(
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         nonbonded_simple_proxy const& proxy,
-        repulsion_function const& function_=repulsion_function())
+        NonbondedFunction const& function_)
       :
         vdw_distance(proxy.vdw_distance),
         function(function_)
@@ -219,7 +268,7 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         direct_space_asu::asu_mappings<> const& asu_mappings,
         nonbonded_asu_proxy const& proxy,
-        repulsion_function const& function_=repulsion_function())
+        NonbondedFunction const& function_)
       :
         vdw_distance(proxy.vdw_distance),
         function(function_)
@@ -235,7 +284,7 @@ namespace cctbx { namespace geometry_restraints {
       nonbonded(
         asu_cache<> const& cache,
         nonbonded_asu_proxy const& proxy,
-        repulsion_function const& function_=repulsion_function())
+        NonbondedFunction const& function_)
       :
         vdw_distance(proxy.vdw_distance),
         function(function_)
@@ -317,7 +366,7 @@ namespace cctbx { namespace geometry_restraints {
       //! Parameter (usually as passed to the constructor).
       double vdw_distance;
       //! Function (usually as passed to the constructor).
-      repulsion_function function;
+      NonbondedFunction function;
       //! Difference vector sites[0] - sites[1].
       scitbx::vec3<double> diff_vec;
       //! Length of diff_vec.
@@ -335,16 +384,16 @@ namespace cctbx { namespace geometry_restraints {
   };
 
   //! Fast computation of nonbonded::delta given an array of nonbonded proxies.
-  inline
+  template <typename NonbondedFunction>
   af::shared<double>
   nonbonded_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<nonbonded_simple_proxy> const& proxies,
-    repulsion_function const& function=repulsion_function())
+    NonbondedFunction const& function)
   {
     af::shared<double> result((af::reserve(proxies.size())));
     for(std::size_t i=0;i<proxies.size();i++) {
-      nonbonded restraint(sites_cart, proxies[i], function);
+      nonbonded<NonbondedFunction> restraint(sites_cart, proxies[i], function);
       result.push_back(restraint.delta);
     }
     return result;
@@ -353,16 +402,16 @@ namespace cctbx { namespace geometry_restraints {
   /*! \brief Fast computation of nonbonded::residual() given an array of
       nonbonded proxies.
    */
-  inline
+  template <typename NonbondedFunction>
   af::shared<double>
   nonbonded_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<nonbonded_simple_proxy> const& proxies,
-    repulsion_function const& function=repulsion_function())
+    NonbondedFunction const& function)
   {
     af::shared<double> result((af::reserve(proxies.size())));
     for(std::size_t i=0;i<proxies.size();i++) {
-      nonbonded restraint(sites_cart, proxies[i], function);
+      nonbonded<NonbondedFunction> restraint(sites_cart, proxies[i], function);
       result.push_back(restraint.residual());
     }
     return result;
@@ -377,17 +426,17 @@ namespace cctbx { namespace geometry_restraints {
       is called.
       No gradient calculations are performed if gradient_array.size() == 0.
    */
-  inline
+  template <typename NonbondedFunction>
   double
   nonbonded_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     af::const_ref<nonbonded_simple_proxy> const& proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
-    repulsion_function const& function=repulsion_function())
+    NonbondedFunction const& function)
   {
     double result = 0;
     for(std::size_t i=0;i<proxies.size();i++) {
-      nonbonded restraint(sites_cart, proxies[i], function);
+      nonbonded<NonbondedFunction> restraint(sites_cart, proxies[i], function);
       result += restraint.residual();
       if (gradient_array.size() != 0) {
         restraint.add_gradients(gradient_array, proxies[i].i_seqs);
@@ -401,22 +450,24 @@ namespace cctbx { namespace geometry_restraints {
     nonbonded_sorted_asu_proxies;
 
   //! Fast computation of nonbonded::delta given managed proxies.
-  inline
+  template <typename NonbondedFunction>
   af::shared<double>
   nonbonded_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     nonbonded_sorted_asu_proxies const& sorted_asu_proxies,
-    repulsion_function const& function=repulsion_function())
+    NonbondedFunction const& function)
   {
     af::shared<double> result = nonbonded_deltas(
-      sites_cart, sorted_asu_proxies.simple.const_ref());
-    af::const_ref<nonbonded_asu_proxy> sym = sorted_asu_proxies.asu.const_ref();
+      sites_cart, sorted_asu_proxies.simple.const_ref(), function);
+    af::const_ref<nonbonded_asu_proxy>
+      sym = sorted_asu_proxies.asu.const_ref();
     if (sym.size() > 0) {
       result.reserve(sorted_asu_proxies.simple.size() + sym.size());
       direct_space_asu::asu_mappings<> const&
         asu_mappings = *sorted_asu_proxies.asu_mappings();
       for(std::size_t i=0;i<sym.size();i++) {
-        nonbonded restraint(sites_cart, asu_mappings, sym[i], function);
+        nonbonded<NonbondedFunction> restraint(
+          sites_cart, asu_mappings, sym[i], function);
         result.push_back(restraint.delta);
       }
     }
@@ -424,22 +475,24 @@ namespace cctbx { namespace geometry_restraints {
   }
 
   //! Fast computation of nonbonded::residual() given managed proxies.
-  inline
+  template <typename NonbondedFunction>
   af::shared<double>
   nonbonded_residuals(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     nonbonded_sorted_asu_proxies const& sorted_asu_proxies,
-    repulsion_function const& function=repulsion_function())
+    NonbondedFunction const& function)
   {
     af::shared<double> result = nonbonded_residuals(
-      sites_cart, sorted_asu_proxies.simple.const_ref());
-    af::const_ref<nonbonded_asu_proxy> sym = sorted_asu_proxies.asu.const_ref();
+      sites_cart, sorted_asu_proxies.simple.const_ref(), function);
+    af::const_ref<nonbonded_asu_proxy>
+      sym = sorted_asu_proxies.asu.const_ref();
     if (sym.size() > 0) {
       result.reserve(sorted_asu_proxies.simple.size() + sym.size());
       direct_space_asu::asu_mappings<> const&
         asu_mappings = *sorted_asu_proxies.asu_mappings();
       for(std::size_t i=0;i<sym.size();i++) {
-        nonbonded restraint(sites_cart, asu_mappings, sym[i], function);
+        nonbonded<NonbondedFunction> restraint(
+          sites_cart, asu_mappings, sym[i], function);
         result.push_back(restraint.residual());
       }
     }
@@ -448,7 +501,7 @@ namespace cctbx { namespace geometry_restraints {
 
   namespace detail {
 
-    inline
+    template <typename NonbondedFunction>
     double
     nonbonded_residual_sum(
       af::const_ref<scitbx::vec3<double> > const& sites_cart,
@@ -456,7 +509,7 @@ namespace cctbx { namespace geometry_restraints {
       af::const_ref<nonbonded_asu_proxy> const& proxies,
       std::vector<bool> const& sym_active_flags,
       af::ref<scitbx::vec3<double> > const& gradient_array,
-      repulsion_function const& function=repulsion_function(),
+      NonbondedFunction const& function,
       bool disable_cache=false)
     {
       double result = 0;
@@ -467,7 +520,7 @@ namespace cctbx { namespace geometry_restraints {
           sym_active_flags,
           gradient_array.size() != 0);
         for(std::size_t i=0;i<proxies.size();i++) {
-          nonbonded restraint(cache, proxies[i], function);
+          nonbonded<NonbondedFunction> restraint(cache, proxies[i], function);
           if (proxies[i].j_sym == 0) result += restraint.residual();
           else                       result += restraint.residual()*.5;
           if (gradient_array.size() != 0) {
@@ -480,7 +533,8 @@ namespace cctbx { namespace geometry_restraints {
       }
       else {
         for(std::size_t i=0;i<proxies.size();i++) {
-          nonbonded restraint(sites_cart, asu_mappings, proxies[i], function);
+          nonbonded<NonbondedFunction> restraint(
+            sites_cart, asu_mappings, proxies[i], function);
           if (proxies[i].j_sym == 0) result += restraint.residual();
           else                       result += restraint.residual()*.5;
           if (gradient_array.size() != 0) {
@@ -507,13 +561,13 @@ namespace cctbx { namespace geometry_restraints {
       to the original sites at the end of the calculation. This is
       faster but requires more memory.
    */
-  inline
+  template <typename NonbondedFunction>
   double
   nonbonded_residual_sum(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
     nonbonded_sorted_asu_proxies const& sorted_asu_proxies,
     af::ref<scitbx::vec3<double> > const& gradient_array,
-    repulsion_function const& function=repulsion_function(),
+    NonbondedFunction const& function,
     bool disable_cache=false)
   {
     double result = nonbonded_residual_sum(
