@@ -14,7 +14,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "global/tiny_bpl.cpp",
       "sftbx/sftbxmodule.cpp",
       "sftbx/tst.py",
-      "sftbx/tst2.py",
+      "sftbx/tst_basic.py",
     )
 
     self.boost_python_modules = {
