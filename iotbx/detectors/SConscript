@@ -1,0 +1,7 @@
+Import("env_iotbx_boost_python_ext")
+env = env_iotbx_boost_python_ext.Copy()
+
+pyd = env.SharedLibrary(target="detectors", source=[
+  "detectors.cpp",
+])
+env.Install("#libtbx/iotbx_boost", pyd)
