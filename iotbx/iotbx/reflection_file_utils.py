@@ -37,15 +37,6 @@ class label_table:
       labels = [label]
     else:
       assert len(labels) > 0
-      label = labels[0]
-    if (len(labels) == 1):
-      try: i = int(label)-1
-      except (TypeError, ValueError): pass
-      else:
-        if (0 <= i < len(self.miller_arrays)):
-          result = [0]*len(self.miller_arrays)
-          result[i] = 2
-          return result
     result = []
     labels_lower = [lbl.lower() for lbl in labels]
     for info_string,info_labels in zip(self.info_strings, self.info_labels):
