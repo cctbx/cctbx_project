@@ -57,14 +57,16 @@ def exercise(SgInfo,
   Fcalc.F = e_values
   if (0 or verbose):
     debug_utils.print_structure_factors(Fcalc)
-  t = dmtbx.triplet_invariants(
+  tprs = dmtbx.triplet_invariants(
    xtal.SgInfo, MillerIndices.H, e_values,
      loop_k_equiv, use_weights)
+  print "number_of_weighted_triplets:", \
+       tprs.number_of_weighted_triplets()
   print "total_number_of_triplets:", \
-       t.total_number_of_triplets()
+       tprs.total_number_of_triplets()
   print "average_number_of_triplets_per_reflection:", \
-       t.average_number_of_triplets_per_reflection()
-  new_phases = t.refine_phases(MillerIndices.H, e_values, phases)
+       tprs.average_number_of_triplets_per_reflection()
+  new_phases = tprs.refine_phases(MillerIndices.H, e_values, phases)
   sum_w_phase_error = 0
   sum_w = 0
   for i in xrange(MillerIndices.H.size()):
@@ -76,6 +78,8 @@ def exercise(SgInfo,
     sum_w_phase_error += e_values[i] * phase_error
     sum_w += e_values[i]
   print "mean weighted phase error: %.2f" % (sum_w_phase_error / sum_w,)
+  if (1 or verbose):
+    tprs.dump_triplets(MillerIndices.H)
   print
 
 def run():

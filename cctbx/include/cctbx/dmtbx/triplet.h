@@ -22,6 +22,7 @@
 #include <map>
 #include <cctbx/error.h>
 #include <cctbx/array_family/shared.h>
+#include <cctbx/array_family/simple_io.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/miller_asu.h>
 
@@ -93,11 +94,22 @@ namespace cctbx { namespace dmtbx {
         }
       }
 
-      std::size_t total_number_of_triplets() const
+      std::size_t number_of_weighted_triplets() const
       {
         std::size_t result = 0;
         for(std::size_t i=0;i<list_of_list_of_triplets_.size();i++) {
           result += list_of_list_of_triplets_[i].size();
+        }
+        return result;
+      }
+
+      std::size_t total_number_of_triplets() const
+      {
+        std::size_t result = 0;
+        for(std::size_t i=0;i<list_of_list_of_triplets_.size();i++) {
+          for(std::size_t j=0;j<list_of_list_of_triplets_[i].size();j++) {
+            result += list_of_list_of_triplets_[i][j].weight;
+          }
         }
         return result;
       }
@@ -108,15 +120,32 @@ namespace cctbx { namespace dmtbx {
              / list_of_list_of_triplets_.size();
       }
 
+      void dump_triplets(af::shared<Miller::Index> miller_indices)
+      {
+        cctbx_assert(
+          miller_indices.size() == list_of_list_of_triplets_.size());
+        for(std::size_t i=0;i<list_of_list_of_triplets_.size();i++) {
+          for(std::size_t j=0;j<list_of_list_of_triplets_[i].size();j++) {
+            triplet_phase_relation const&
+            tpr = list_of_list_of_triplets_[i][j];
+            std::cout << miller_indices[i].ref()
+               << " " << miller_indices[tpr.ik].ref()
+               << " " << miller_indices[tpr.ihmk].ref()
+               << " " << tpr.weight
+               << std::endl;
+          }
+        }
+      }
+
       af::shared<FloatType>
       refine_phases(af::shared<Miller::Index> miller_indices,
                     af::shared<FloatType> e_values,
                     af::shared<FloatType> phases) const
       {
-        cctbx_assert(miller_indices.size() == phases.size());
-        cctbx_assert(miller_indices.size() == e_values.size());
         cctbx_assert(
           miller_indices.size() == list_of_list_of_triplets_.size());
+        cctbx_assert(miller_indices.size() == phases.size());
+        cctbx_assert(miller_indices.size() == e_values.size());
         af::shared<FloatType> result;
         result.reserve(miller_indices.size());
         for(std::size_t i=0;i<list_of_list_of_triplets_.size();i++) {
@@ -152,7 +181,8 @@ namespace cctbx { namespace dmtbx {
       {
         if (use_weights) {
           for(std::size_t i=0;i<tpr_array.size();i++) {
-            if (tpr_array[i].ik == tpr.ihmk && tpr_array[i].ihmk == tpr.ik) {
+            if ((tpr_array[i].ik == tpr.ik && tpr_array[i].ihmk == tpr.ihmk)
+             || (tpr_array[i].ik == tpr.ihmk && tpr_array[i].ihmk == tpr.ik)) {
               tpr_array[i].weight++;
               return;
             }
