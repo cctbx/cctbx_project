@@ -1,16 +1,12 @@
 from iotbx.pdb import parser
 from iotbx.pdb import cryst1_interpretation
-from iotbx.pdb import residue_info
+from iotbx.pdb import caasf_interpretation
 from cctbx import xray
 from cctbx import crystal
-from cctbx import uctbx
-from cctbx import sgtbx
 from cctbx import adptbx
-from cctbx.eltbx.caasf import wk1995
 from cctbx.array_family import flex
 from scitbx.python_utils.math_utils import iround
 from cStringIO import StringIO
-import string
 
 def xray_structure_as_pdb_file(self, remark=None, remarks=[],
                                      fractional_coordinates=00000,
@@ -92,12 +88,16 @@ xray.structure.as_pdb_file = xray_structure_as_pdb_file
 
 def from_pdb(file_name=None, file_iterator=None,
              crystal_symmetry=None, force_symmetry=00000,
+             ignore_atom_element_q=0001,
+             scan_atom_element_columns=0001,
              fractional_coordinates=00000,
              min_distance_sym_equiv=0.5):
   assert [file_name, file_iterator].count(None) == 1
   if (file_iterator is None):
     file_iterator = open(file_name)
-  pdb_records = parser.collect_records(raw_records=file_iterator)
+  pdb_records = parser.collect_records(
+    raw_records=file_iterator,
+    ignore_master=0001)
   cryst1_symmetry = None
   for record in pdb_records:
     if (record.record_name.startswith("CRYST1")):
@@ -113,39 +113,37 @@ def from_pdb(file_name=None, file_iterator=None,
   assert crystal_symmetry is not None, "Unknown crystal symmetry."
   assert crystal_symmetry.unit_cell() is not None, "Unknown unit cell."
   assert crystal_symmetry.space_group_info() is not None,"Unknown space group."
+  if (scan_atom_element_columns):
+    have_useful_atom_element_columns = (
+      caasf_interpretation.scan_atom_element_columns(pdb_records)
+        .n_uninterpretable == 0)
+  else:
+    have_useful_atom_element_columns = None
   structure = xray.structure(
     special_position_settings=crystal.special_position_settings(
       crystal_symmetry=crystal_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv))
   scatterers = flex.xray_scatterer()
+  scatterer = None
   prev_record = None
   for record in pdb_records:
     if (record.record_name in ("ATOM", "HETATM")):
-      if (fractional_coordinates):
-        site=record.coordinates
+      if (ignore_atom_element_q
+          and (record.element == " Q" or record.name[1] == "Q")):
+        scatterer = None
       else:
-        site=structure.unit_cell().fractionalize(record.coordinates)
-      try:
-        caasf = residue_info.get(
-          residue_name=record.resName,
-          atom_name=record.name).scattering_label
-      except KeyError:
-        try:
-          caasf = wk1995(record.name, 0)
-        except:
-          if (record.name[0] in string.digits and record.name[1] == "H"):
-            caasf = wk1995("H", 1)
-          else:
-            raise RuntimeError(
-              '%sUnknown scattering coefficients for "%s" "%s"' % (
-                record.error_prefix(), record.name, record.resName))
-      scatterer = xray.scatterer(
-        label="%s%03d" % (record.name, record.serial),
-        site=site,
-        b=record.tempFactor,
-        occupancy=record.occupancy,
-        caasf=caasf)
-      scatterers.append(scatterer)
+        if (fractional_coordinates):
+          site=record.coordinates
+        else:
+          site=structure.unit_cell().fractionalize(record.coordinates)
+        scatterer = xray.scatterer(
+          label="%s%03d" % (record.name, record.serial),
+          site=site,
+          b=record.tempFactor,
+          occupancy=record.occupancy,
+          caasf=caasf_interpretation.from_pdb_atom_record(
+            record, have_useful_atom_element_columns))
+        scatterers.append(scatterer)
     elif (record.record_name == "ANISOU"):
       if (not prev_record.record_name in ("ATOM", "HETATM")):
         record.raise_FormatError(
@@ -154,8 +152,11 @@ def from_pdb(file_name=None, file_iterator=None,
         record.raise_FormatError(
           "ANISOU record does not match preceeding %s record."
             % prev_record.record_name)
-      scatterers[-1] = scatterer.copy(
-        u=adptbx.u_cart_as_u_star(structure.unit_cell(), record.Ucart))
+      if (scatterer is not None):
+        scatterers[-1] = scatterer.copy(
+          u=adptbx.u_cart_as_u_star(structure.unit_cell(), record.Ucart))
+    else:
+      scatterer = None
     prev_record = record
   structure.add_scatterers(scatterers)
   return structure
