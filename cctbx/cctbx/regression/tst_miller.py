@@ -108,6 +108,15 @@ bin  2:   14.1305 >= d >   11.4473: (3, 3)
 bin  3:   11.4473 >= d >   10.0715: (2, 2)
 unused:   10.0715 >  d            : (8, 8)
 """
+    s = StringIO.StringIO()
+    binned_ratios.show(show_n=0001, f=s)
+    assert s.getvalue() == """\
+unused:              d >   28.7186: n=    0, (0, 0)
+bin  1:   28.7186 >= d >   14.1305: n=    3, (3, 3)
+bin  2:   14.1305 >= d >   11.4473: n=    3, (3, 3)
+bin  3:   11.4473 >= d >   10.0715: n=    2, (2, 2)
+unused:   10.0715 >  d            : n=    8, (8, 8)
+"""
 
 def exercise_crystal_gridding():
   crystal_symmetry = crystal.symmetry(
