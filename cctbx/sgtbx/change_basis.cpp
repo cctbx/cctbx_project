@@ -42,7 +42,7 @@ namespace cctbx { namespace sgtbx {
       (m_M * (RT.scale(1, m_M.TBF()/RT.TBF()) * m_InvM)).newBaseFactors(RT);
   }
 
-  RTMx ChOfBasisOp::apply(const RTMx& RT) {
+  RTMx ChOfBasisOp::apply(const RTMx& RT) const {
     return m_M.multiply(RT.multiply(m_InvM));
   }
 
