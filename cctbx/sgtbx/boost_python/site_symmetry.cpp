@@ -98,6 +98,7 @@ namespace {
                   af::shared<site_symmetry_ops> const&,
                   af::shared<std::size_t> const&>()) // for pickle
         .def("process", &w_t::process, (arg_("site_symmetry_ops")))
+        .def("is_special_position", &w_t::is_special_position, (arg_("i_seq")))
         .def("get", &w_t::get, (arg_("i_seq")), rir())
         .def("n_special_positions", &w_t::n_special_positions)
         .def("special_position_indices",&w_t::special_position_indices,ccr())
@@ -106,6 +107,7 @@ namespace {
         .def("table", &w_t::table, ccr())
         .def("reserve", &w_t::reserve)
         .def("deep_copy", &w_t::deep_copy)
+        .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
         .def("select", &w_t::select, (arg_("indices")))
       ;
     }
