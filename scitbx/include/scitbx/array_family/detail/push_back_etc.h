@@ -55,8 +55,8 @@
 
       void pop_back() {
         m_decr_size(1);
-        detail::destroy_array_element(end(),
-          has_trivial_destructor<ElementType>::value());
+        typedef typename has_trivial_destructor<ElementType>::value htd;
+        detail::destroy_array_element(end(), htd());
       }
 
       ElementType* insert(ElementType* pos, ElementType const& x) {
@@ -144,8 +144,8 @@
 
       ElementType* erase(ElementType* first, ElementType* last) {
         ElementType* i = std::copy(last, end(), first);
-        detail::destroy_array_elements(i, end(),
-          has_trivial_destructor<ElementType>::value());
+        typedef typename has_trivial_destructor<ElementType>::value htd;
+        detail::destroy_array_elements(i, end(), htd());
         m_decr_size(last - first);
         return first;
       }
