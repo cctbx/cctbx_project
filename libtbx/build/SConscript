@@ -270,7 +270,6 @@ else:
     raise "Unknown compiler choice:", env_etc.compiler
 
 env_etc.cxxflags_bpl_defines_base = Split("""
-    -DBOOST_PYTHON_MAX_ARITY=12
     -DBOOST_PYTHON_MAX_BASES=2
 """)
 
