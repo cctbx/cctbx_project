@@ -97,23 +97,4 @@ namespace sgtbx {
     return false;
   }
 
-  int NextOf_n_from_m(int m, int n, int *ix)
-  {
-    int  p, l;
-    p = l = n - 1;
-    for (; p >= 0;) {
-          ix[p]++;
-      if (ix[p] == m - l + p)
-        p--;
-      else if (p < l) {
-        ix[p + 1] = ix[p];
-           p++;
-      }
-      else {
-        return 1;
-      }
-    }
-    return 0;
-  }
-
 } // namespace sgtbx
