@@ -48,6 +48,9 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       add_all_pairs_overloads, add_all_pairs, 1, 2)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      extract_pair_sym_table_overloads, extract_pair_sym_table, 0, 1)
+
     static void
     wrap()
     {
@@ -59,7 +62,7 @@ namespace {
         .def(init<
           boost::shared_ptr<direct_space_asu::asu_mappings<> >&>(
             (arg_("asu_mappings"))))
-        .def("asu_mappings", &w_t::asu_mappings, ccr())
+        .def("asu_mappings", &w_t::asu_mappings)
         .def("table", &w_t::table, ccr())
         .def("__contains__",
           (bool(w_t::*)(direct_space_asu::asu_mapping_index_pair const&))
@@ -69,6 +72,8 @@ namespace {
           (bool(w_t::*)(unsigned, unsigned, unsigned))
             &w_t::contains, (
           arg_("i_seq"), arg_("j_seq"), arg_("j_sym")))
+        .def("__eq__", &w_t::operator==)
+        .def("__ne__", &w_t::operator!=)
         .def("add_all_pairs", &w_t::add_all_pairs,
           add_all_pairs_overloads((
             arg_("distance_cutoff"), arg_("epsilon")=1.e-6))[return_self<>()])
@@ -80,7 +85,9 @@ namespace {
         .def("add_pair", (pair_asu_table<>&(w_t::*)(
             af::tiny<unsigned, 2> const&)) &w_t::add_pair,
           (arg_("i_seqs")), return_self<>())
-        .def("extract_pair_sym_table", &w_t::extract_pair_sym_table)
+        .def("extract_pair_sym_table", &w_t::extract_pair_sym_table,
+          extract_pair_sym_table_overloads((
+            arg_("skip_j_seq_less_than_i_seq")=true)))
       ;
     }
   };

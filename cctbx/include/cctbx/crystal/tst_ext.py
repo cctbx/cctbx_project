@@ -8,6 +8,18 @@ from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
 import sys
 
+def trial_structure():
+  from cctbx import xray
+  return xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell="12.548 12.548 20.789 90.000 90.000 120.000",
+      space_group_symbol="P63/mmc"),
+    scatterers=flex.xray_scatterer(
+      [xray.scatterer(label="Si", site=site) for site in [
+        (0.2466,0.9965,0.2500),
+        (0.5817,0.6706,0.1254),
+        (0.2478,0.0000,0.0000)]]))
+
 def exercise_direct_space_asu():
   cp = crystal.direct_space_asu.float_cut_plane(n=[-1,0,0], c=1)
   assert approx_equal(cp.n, [-1,0,0])
@@ -278,15 +290,7 @@ def exercise_direct_space_asu():
   assert pair.j_sym == 1
   assert pair.is_active()
   from cctbx import xray
-  structure = xray.structure(
-    crystal_symmetry=crystal.symmetry(
-      unit_cell="12.548 12.548 20.789 90.000 90.000 120.000",
-      space_group_symbol="P63/mmc"),
-    scatterers=flex.xray_scatterer(
-      [xray.scatterer(label="Si", site=site) for site in [
-        (0.2466,0.9965,0.2500),
-        (0.5817,0.6706,0.1254),
-        (0.2478,0.0000,0.0000)]]))
+  structure = trial_structure()
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   assert list(asu_mappings.site_symmetry_table().indices()) == [1,0,2]
   assert asu_mappings.n_sites_in_asu_and_buffer() == 33
@@ -340,9 +344,10 @@ def check_pair_asu_table(asu_table, expected_asu_pairs):
     for j_seq,j_sym_groups in asu_dict.items():
       for j_sym_group in j_sym_groups:
         for j_sym in j_sym_group:
-          if (0 or "--Verbose" in sys.argv[1:]):
+          if (0 or "--Verbose" in sys.argv[1:] or expected_asu_pairs is None):
             print str([i_seq, j_seq, j_sym]) + ","
-          assert [i_seq, j_seq, j_sym] == expected_asu_pairs[ip.next()]
+          if (expected_asu_pairs is not None):
+            assert [i_seq, j_seq, j_sym] == expected_asu_pairs[ip.next()]
 
 def exercise_pair_tables():
   d = crystal.pair_sym_dict()
@@ -392,16 +397,7 @@ def exercise_pair_tables():
   t[1][10][1].insert([4,5,4])
   assert t[1][10][1].size() == 2
   #
-  from cctbx import xray
-  structure = xray.structure(
-    crystal_symmetry=crystal.symmetry(
-      unit_cell="12.548 12.548 20.789 90.000 90.000 120.000",
-      space_group_symbol="P63/mmc"),
-    scatterers=flex.xray_scatterer(
-      [xray.scatterer(label="Si", site=site) for site in [
-        (0.2466,0.9965,0.2500),
-        (0.5817,0.6706,0.1254),
-        (0.2478,0.0000,0.0000)]]))
+  structure = trial_structure()
   asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   assert asu_table.asu_mappings().is_locked()
@@ -423,31 +419,55 @@ def exercise_pair_tables():
   assert not asu_table.contains(i_seq=1, j_seq=1, j_sym=10)
   pair = asu_mappings.make_trial_pair(i_seq=1, j_seq=1, j_sym=10)
   assert not pair in asu_table
-  sym_table = asu_table.extract_pair_sym_table()
-  assert sym_table.size() == asu_table.table().size()
-  expected_sym_pairs = [
-    [0, 0, '-y+1,-x+1,-z+1/2'],
-    [0, 0, 'x,x-y+2,-z+1/2'],
-    [0, 1, '-y+1,x-y+1,-z+1/2'],
-    [1, 1, 'x,x-y+1,z'],
-    [1, 1, '-y+1,-x+1,z'],
-    [1, 2, '-x+1,-x+y+1,-z'],
-    [2, 2, 'y,-x+y,-z']]
-  ip = count()
-  for i_seq,sym_dict in enumerate(sym_table):
-    for j_seq,rt_mx_list in sym_dict.items():
-      for rt_mx in rt_mx_list:
-        if (0 or "--Verbose" in sys.argv[1:]):
-          print str([i_seq, j_seq, str(rt_mx)]) + ","
-        assert [i_seq, j_seq, str(rt_mx)] == expected_sym_pairs[ip.next()]
+  assert asu_table == asu_table
+  assert not asu_table != asu_table
+  other = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  assert not asu_table == other
+  assert asu_table != other
+  for skip_j_seq_less_than_i_seq in [00000, 0001]:
+    sym_table = asu_table.extract_pair_sym_table(
+      skip_j_seq_less_than_i_seq=skip_j_seq_less_than_i_seq)
+    assert sym_table.size() == asu_table.table().size()
+    expected_sym_pairs = [
+      [0, 0, '-y+1,-x+1,-z+1/2'],
+      [0, 0, 'x,x-y+2,-z+1/2'],
+      [0, 1, '-y+1,x-y+1,-z+1/2'],
+        [1, 0, '-x+y,-x+1,-z+1/2'],
+      [1, 1, 'x,x-y+1,z'],
+      [1, 1, '-y+1,-x+1,z'],
+      [1, 2, '-x+1,-x+y+1,-z'],
+        [2, 1, '-x+1,-x+y,-z'],
+      [2, 2, 'y,-x+y,-z']]
+    ip = count()
+    for i_seq,sym_dict in enumerate(sym_table):
+      for j_seq,rt_mx_list in sym_dict.items():
+        for rt_mx in rt_mx_list:
+          while 1:
+            expected = expected_sym_pairs[ip.next()]
+            if (not (skip_j_seq_less_than_i_seq and expected[1]<expected[0])):
+              break
+          if (0 or "--Verbose" in sys.argv[1:]):
+            print str([i_seq, j_seq, str(rt_mx)]) + ","
+          assert [i_seq, j_seq, str(rt_mx)] == expected
+    asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    assert asu_table.add_pair_sym_table(sym_table=sym_table) is asu_table
+    check_pair_asu_table(asu_table, expected_asu_pairs)
+    eq_flags = []
+    asu_table_2 = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    for p in expected_sym_pairs:
+      assert asu_table_2.add_pair(
+        i_seq=p[0], j_seq=p[1], rt_mx_ji=sgtbx.rt_mx(p[2])) is asu_table_2
+      eq_flags.append(asu_table_2 == asu_table)
+      assert (asu_table_2 == asu_table) != (asu_table_2 != asu_table)
+    check_pair_asu_table(asu_table_2, expected_asu_pairs)
+    assert eq_flags[:-1].count(eq_flags[0]) == len(eq_flags)-1
+    assert eq_flags[-1]
+
+def exercise_coordination_sequences_simple():
+  structure = trial_structure()
+  asu_mappings = structure.asu_mappings(buffer_thickness=3.5)
   asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-  assert asu_table.add_pair_sym_table(sym_table=sym_table) is asu_table
-  check_pair_asu_table(asu_table, expected_asu_pairs)
-  asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-  for p in expected_sym_pairs:
-    assert asu_table.add_pair(
-      i_seq=p[0], j_seq=p[1], rt_mx_ji=sgtbx.rt_mx(p[2])) is asu_table
-  check_pair_asu_table(asu_table, expected_asu_pairs)
+  asu_table.add_all_pairs(distance_cutoff=3.5)
   term_table = crystal.coordination_sequences_simple(
     pair_asu_table=asu_table,
     n_shells=5)
@@ -463,6 +483,35 @@ def exercise_pair_tables():
     [1, 0, 67], [1, 2, 67],
     [2, 0, 8], [2, 0, 79], [2, 1, 107], [2, 1, 120]]
   check_pair_asu_table(asu_table, expected_asu_pairs)
+
+def exercise_coordination_sequences_shell_asu_tables():
+  structure = trial_structure()
+  asu_mappings = structure.asu_mappings(buffer_thickness=12)
+  asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  asu_table.add_all_pairs(distance_cutoff=3.5)
+  expected_asu_pairs = [
+    [0, 0, 25], [0, 0, 3], [0, 1, 0], [0, 1, 64],
+    [1, 0, 0], [1, 1, 27], [1, 1, 4], [1, 2, 0],
+    [2, 1, 0], [2, 1, 83], [2, 2, 3], [2, 2, 25]]
+  check_pair_asu_table(asu_table, expected_asu_pairs)
+  shell_asu_tables = crystal.coordination_sequences_shell_asu_tables(
+    pair_asu_table=asu_table,
+    n_shells=3)
+  check_pair_asu_table(shell_asu_tables[0], expected_asu_pairs)
+  if (0):
+    from cctbx.crystal import distance_ls
+    distance_ls.show_pairs(
+      structure=structure,
+      pair_asu_table=shell_asu_tables[1])
+    print
+    s1_sym_table = shell_asu_tables[1].extract_pair_sym_table(
+      skip_j_seq_less_than_i_seq=00000)
+    s1_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    s1_asu_table.add_pair_sym_table(sym_table=s1_sym_table)
+    distance_ls.show_pairs(
+      structure=structure,
+      pair_asu_table=s1_asu_table)
+    print
 
 def exercise_symmetry():
   symmetry = crystal.ext.symmetry(
@@ -481,6 +530,8 @@ def exercise_symmetry():
 def run():
   exercise_direct_space_asu()
   exercise_pair_tables()
+  exercise_coordination_sequences_simple()
+  exercise_coordination_sequences_shell_asu_tables()
   exercise_symmetry()
   print "OK"
 

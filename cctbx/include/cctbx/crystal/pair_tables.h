@@ -25,7 +25,7 @@ namespace cctbx { namespace crystal {
       pair_asu_table(
         boost::shared_ptr<
           direct_space_asu::asu_mappings<
-            FloatType, IntShiftType> >& asu_mappings)
+            FloatType, IntShiftType> > asu_mappings)
       :
         asu_mappings_owner_(asu_mappings),
         asu_mappings_(asu_mappings.get()),
@@ -35,7 +35,7 @@ namespace cctbx { namespace crystal {
       }
 
       //! Instance as passed to the constructor.
-      boost::shared_ptr<direct_space_asu::asu_mappings<> > const&
+      boost::shared_ptr<direct_space_asu::asu_mappings<> >
       asu_mappings() const { return asu_mappings_owner_; }
 
       pair_asu_table_table const&
@@ -64,6 +64,47 @@ namespace cctbx { namespace crystal {
         }
         return false;
       }
+
+      //! The order of the pair_asu_j_sym_groups is irrelevant.
+      bool
+      operator==(pair_asu_table const& other)
+      {
+        af::const_ref<pair_asu_dict> tab_a = table_.const_ref();
+        af::const_ref<pair_asu_dict> tab_b = other.table_.const_ref();
+        if (tab_a.size() != tab_b.size()) return false;
+        for(unsigned i_seq=0;i_seq<tab_a.size();i_seq++) {
+          pair_asu_dict const& dict_a = tab_a[i_seq];
+          pair_asu_dict const& dict_b = tab_b[i_seq];
+          if (dict_a.size() != dict_b.size()) return false;
+          for(pair_asu_dict::const_iterator
+                dict_a_i=dict_a.begin();
+                dict_a_i!=dict_a.end();
+                dict_a_i++) {
+            pair_asu_dict::const_iterator
+              dict_b_i = dict_b.find(dict_a_i->first);
+            if (dict_b_i == dict_b.end()) return false;
+            pair_asu_j_sym_groups const& jgs_a = dict_a_i->second;
+            pair_asu_j_sym_groups const& jgs_b = dict_b_i->second;
+            if (jgs_a.size() != jgs_b.size()) return false;
+            std::vector<bool> is_matched(jgs_b.size(), false);
+            for(unsigned ig_a=0;ig_a<jgs_a.size();ig_a++) {
+              unsigned ig_b=0;
+              for(;ig_b<jgs_b.size();ig_b++) {
+                if (is_matched[ig_b]) continue;
+                if (jgs_a[ig_a] == jgs_b[ig_b]) {
+                  is_matched[ig_b] = true;
+                  break;
+                }
+              }
+              if (ig_b == jgs_b.size()) return false;
+            }
+          }
+        }
+        return true;
+      }
+
+      bool
+      operator!=(pair_asu_table const& other) { return !((*this) == other); }
 
       pair_asu_table&
       add_all_pairs(
@@ -131,7 +172,7 @@ namespace cctbx { namespace crystal {
       }
 
       pair_sym_table
-      extract_pair_sym_table() const
+      extract_pair_sym_table(bool skip_j_seq_less_than_i_seq=true) const
       {
         pair_sym_table sym_table(asu_mappings_->mappings_const_ref().size());
         af::const_ref<pair_asu_dict> table_ref = table_.const_ref();
@@ -145,7 +186,7 @@ namespace cctbx { namespace crystal {
                 asu_dict_i != asu_dict.end();
                 asu_dict_i++) {
             unsigned j_seq = asu_dict_i->first;
-            if (j_seq < i_seq) continue;
+            if (skip_j_seq_less_than_i_seq && j_seq < i_seq) continue;
             std::vector<sgtbx::rt_mx>& rt_mx_list = sym_dict[j_seq];
             for(pair_asu_j_sym_groups::const_iterator
                   j_sym_groups_i = asu_dict_i->second.begin();
@@ -160,7 +201,7 @@ namespace cctbx { namespace crystal {
         return sym_table;
       }
 
-    protected:
+      //! Not available in Python.
       bool
       process_pair(
         unsigned i_seq,
@@ -170,6 +211,18 @@ namespace cctbx { namespace crystal {
         sgtbx::rt_mx rt_mx_i = asu_mappings_->get_rt_mx(i_seq, 0);
         sgtbx::rt_mx rt_mx_j = rt_mx_i.multiply(rt_mx_ji);
         int j_sym = asu_mappings_->find_i_sym(j_seq, rt_mx_j);
+        return process_pair(i_seq, j_seq, rt_mx_ji, rt_mx_i, j_sym);
+      }
+
+      //! Not available in Python.
+      bool
+      process_pair(
+        unsigned i_seq,
+        unsigned j_seq,
+        sgtbx::rt_mx const& rt_mx_ji,
+        sgtbx::rt_mx const& rt_mx_i,
+        int j_sym)
+      {
         CCTBX_ASSERT(j_sym >= 0);
         if (contains(i_seq, j_seq, j_sym)) {
           return false;
@@ -196,6 +249,7 @@ namespace cctbx { namespace crystal {
         return true;
       };
 
+    protected:
       boost::shared_ptr<direct_space_asu::asu_mappings<> > asu_mappings_owner_;
       const direct_space_asu::asu_mappings<>* asu_mappings_;
       pair_asu_table_table table_;

@@ -55,7 +55,7 @@ namespace neighbors {
       //! Instance as passed to the constructor.
       boost::shared_ptr<
         direct_space_asu::asu_mappings<
-          FloatType, IntShiftType> > const&
+          FloatType, IntShiftType> >
       asu_mappings() const { return asu_mappings_owner_; }
 
       //! Square of value as passed to the constructor.
