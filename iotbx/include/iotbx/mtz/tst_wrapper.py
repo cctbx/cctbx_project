@@ -330,7 +330,7 @@ class exercise_extract_any:
 def walk_callback(arg, top, names):
   exercise_function, out = arg
   for name in names:
-    if (not name.endswith(".mtz")): continue
+    if (not name.lower().endswith(".mtz")): continue
     file_name = os.path.normpath(os.path.join(top, name))
     print >> out, "Processing:", file_name
     exercise_function(file_name=file_name, out=out)
@@ -855,7 +855,7 @@ def exercise():
     .option(None, "--full",
       action="store_true",
       dest="full",
-      help="Visit all MTZ file.")
+      help="Visit all MTZ files")
   ).process(args=sys.argv[1:])
   exercise_read_corrupt()
   exercise_basic()
