@@ -1371,42 +1371,28 @@ namespace lbfgs {
   };
 
   //! Convergence test based on monitoring the objective function.
-  /*! This test monitors the behavior of objective function <code>f</code>
-      in the course of the minimization. A combination of criteria
-      is used to determine when the objective function has
-      reached a plateau without making assumptions about
-      the absolute values of the objective function:
+  /*! This test monitors the objective function <code>f</code>
+      in the course of the minimization to determine when it
+      has reached a plateau. The test is independent of the
+      absolute scale of the objective function.
 
       <ul>
       <li>The maximum value of the drop in the objective function
           is determined (max_drop()).
           <p>
       <li>A straight line is fitted to the last p() values
-          of the objective function. Let <code>slope1</code>
-          be the slope of this fitted line. A necessary condition
-          for the detection of convergence is:
+          of the objective function. Let <code>slope</code>
+          be the slope of this fitted line. Convergence is
+          detected if:
           <pre>
-          -slope &lt; max_drop * max_drop_eps * number_of_iterations^2
+          -slope &lt;=   max_drop() * max_drop_eps()
+                       * number_of_iterations^iteration_coefficient()
           </pre>
-          Note that this test becomes increasingly
-          tolerant with the number of iterations. The rationale
-          is that after a large number of iterations the second test
-          desribed below should be dominant.
-          <p>
-      <li>If the test for the slope passes, all points of the
-          objective function are fitted to
-          an exponential curve: f = r * exp(s * number_of_iteration).
-          <p>
-      <li>The exponential fit is used to compute idealized
-          values for the objective function at the
-          last p() iterations.
-          <p>
-      <li>A straight line is fitted to the idealized values.
-          Let <code>slope2</code> be the slope of this fitted line.
-          Convergence is detected if the following is true:
-          <pre>
-          abs(slope2 - slope1) < slope_eps
-          </pre>
+	  Note that with iteration_coefficient() > 1 this
+	  test becomes increasingly tolerant with the
+	  number of iterations. The rationale is that the
+	  slope will not change very much for parameters
+	  that are already close to the optimum.
       </ul>
    */
   template <typename FloatType, typename SizeType = std::size_t>
@@ -1421,8 +1407,10 @@ namespace lbfgs {
       drop_convergence_test(
         SizeType p = 5,
         FloatType max_drop_eps = FloatType(1.e-5),
-        FloatType slope_eps = FloatType(1.e-4))
-      : p_(p), max_drop_eps_(max_drop_eps), slope_eps_(slope_eps),
+        FloatType iteration_coefficient = FloatType(2))
+      : p_(p),
+        max_drop_eps_(max_drop_eps),
+        iteration_coefficient_(iteration_coefficient),
         max_drop_(0)
       {
         if (p_ < 2) {
@@ -1431,8 +1419,8 @@ namespace lbfgs {
         if (max_drop_eps_ < FloatType(0)) {
           throw error_improper_input_parameter("max_drop_eps < 0.");
         }
-        if (slope_eps_ < FloatType(0)) {
-          throw error_improper_input_parameter("slope_eps < 0.");
+        if (iteration_coefficient_ < FloatType(1)) {
+          throw error_improper_input_parameter("iteration_coefficient < 1.");
         }
       }
 
@@ -1449,7 +1437,9 @@ namespace lbfgs {
       /*! \brief Tolerance for comparison of slopes
            (as passed to the constructor).
        */
-      FloatType slope_eps() const { return slope_eps_; }
+      FloatType iteration_coefficient() const {
+        return iteration_coefficient_;
+      }
 
       //! Execution of the convergence test.
       /*! Note that at least p() executions are required before
@@ -1469,10 +1459,9 @@ namespace lbfgs {
     protected:
       const SizeType p_;
       const FloatType max_drop_eps_;
-      const FloatType slope_eps_;
+      const FloatType iteration_coefficient_;
       af::shared<FloatType> x_;
       af::shared<FloatType> y_;
-      af::shared<FloatType> ln_y_;
       FloatType max_drop_;
   };
 
@@ -1485,7 +1474,6 @@ namespace lbfgs {
     }
     x_.push_back(x_.size() + 1);
     y_.push_back(f);
-    ln_y_.push_back(std::log(f));
     if (x_.size() < p_) return false;
     // fit last p_ points to straight line: y = m*x + b
     math::linear_regression<FloatType> linreg_y(
@@ -1494,28 +1482,9 @@ namespace lbfgs {
     cctbx_assert(linreg_y.is_well_defined());
     // check absolute value of slope
     FloatType sliding_tolerance =
-      max_drop_ * max_drop_eps_ * detail::pow2(FloatType(x_.size()));
-    if (-linreg_y.m() > sliding_tolerance) {
-      return false;
-    }
-    // fit all points to exponential: y = r * exp(s * x)
-    math::linear_regression<FloatType> linreg_ln_y(
-      x_.const_ref(), ln_y_.const_ref());
-    cctbx_assert(linreg_ln_y.is_well_defined());
-    FloatType r = std::exp(linreg_ln_y.b());
-    FloatType s = linreg_ln_y.m();
-    // compute exponentially fitted values for last p_ points
-    af::shared<FloatType> ideal_y;
-    for(SizeType i = x_.size() - p_; i < x_.size(); i++) {
-      ideal_y.push_back(r * std::exp(s * x_[i]));
-    }
-    // fit computed values to straight line
-    math::linear_regression<FloatType> linreg_ideal_y(
-      af::const_ref<FloatType>(x_.end() - p_, p_),
-      ideal_y.const_ref());
-    cctbx_assert(linreg_ideal_y.is_well_defined());
-    // compare slopes
-    if (detail::abs(linreg_ideal_y.m() - linreg_y.m()) < slope_eps_) {
+      max_drop_ * max_drop_eps_ * std::pow(
+        FloatType(x_.size()), iteration_coefficient_);
+    if (-linreg_y.m() <= sliding_tolerance) {
       return true;
     }
     return false;

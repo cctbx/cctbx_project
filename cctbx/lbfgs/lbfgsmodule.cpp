@@ -131,7 +131,8 @@ namespace {
     py_drop_convergence_test.def(
       &lbfgs::drop_convergence_test<double>::max_drop_eps, "max_drop_eps");
     py_drop_convergence_test.def(
-      &lbfgs::drop_convergence_test<double>::slope_eps, "slope_eps");
+      &lbfgs::drop_convergence_test<double>::iteration_coefficient,
+                                            "iteration_coefficient");
     py_drop_convergence_test.def(
       &lbfgs::drop_convergence_test<double>::operator(), "__call__");
     py_drop_convergence_test.def(
