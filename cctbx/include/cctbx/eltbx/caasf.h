@@ -1,17 +1,9 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #ifndef CCTBX_ELTBX_CAASF_H
 #define CCTBX_ELTBX_CAASF_H
 
 #include <cctbx/eltbx/basic.h>
+#include <scitbx/array_family/small.h>
+#include <cctbx/import_scitbx_af.h>
 #include <boost/config.hpp>
 #include <cstddef>
 #include <cmath>
@@ -91,34 +83,7 @@ namespace cctbx { namespace eltbx { namespace caasf {
       //! Coefficient c.
       float c() const { return entry_->c; }
 
-      //! Analytical approximation to the scattering factor.
-      /*! stol_sq = sin-theta-over-lambda-squared: (sin(theta)/lambda)^2
-          <p>
-          See also: uctbx::unit_cell::at_stol_sq()
-       */
-      double at_stol_sq(double stol_sq) const
-      {
-        double sf = c();
-        for (std::size_t i = 0; i < n_ab(); i++)
-          sf += a(i) * std::exp(-b(i) * stol_sq);
-        return sf;
-      }
-
-      //! Analytical approximation to the scattering factor.
-      /*! See also: at_stol_sq(), uctbx::unit_cell::stol()
-       */
-      double at_stol(double stol) const
-      {
-        return at_stol_sq(stol * stol);
-      }
-
-      //! Analytical approximation to the scattering factor.
-      /*! See also: at_stol_sq(), uctbx::unit_cell::d_star_sq()
-       */
-      double at_d_star_sq(double d_star_sq) const
-      {
-        return at_stol_sq(d_star_sq / 4.);
-      }
+#     include <cctbx/eltbx/caasf_at_d_star_sq.h>
 
     protected:
       const char *table_;
@@ -141,6 +106,9 @@ namespace cctbx { namespace eltbx { namespace caasf {
          entry->label;
          entry++) {
       if (std::string(entry->label) == "const" && work_label != "CONST") {
+        continue;
+      }
+      if (std::string(entry->label) == "custom" && work_label != "CUSTOM") {
         continue;
       }
       int i = basic::match_labels(work_label, entry->label);
@@ -323,6 +291,80 @@ namespace cctbx { namespace eltbx { namespace caasf {
 
     private:
       wk1995 current_;
+  };
+
+#ifndef CCTBX_ELTBX_CAASF_CUSTOM_MAX_N_AB
+#define CCTBX_ELTBX_CAASF_CUSTOM_MAX_N_AB 5
+#endif
+
+  class custom
+  {
+    public:
+      //! Maximum number of a,b pairs.
+      BOOST_STATIC_CONSTANT(std::size_t,
+        max_n_ab=CCTBX_ELTBX_CAASF_CUSTOM_MAX_N_AB);
+
+      //! Default constructor. Some data members are not initialized!
+      custom() {}
+
+      //! Initialization with label and coefficients.
+      custom(
+        std::string const& label,
+        af::small<float, max_n_ab> const& a,
+        af::small<float, max_n_ab> const& b,
+        float c)
+      :
+        label_(label),
+        a_(a),
+        b_(b),
+        c_(c)
+      {
+        CCTBX_ASSERT(a_.size() == b_.size());
+      }
+
+      //! Scattering factor label as passed to the constructor.
+      std::string const&
+      label() const { return label_; }
+
+      //! Number of a and b coefficients as passed to the constructor.
+      std::size_t
+      n_ab() const { return a_.size(); }
+
+      //! Array of coefficients a.
+      af::small<float, max_n_ab> const&
+      a() const { return a_; }
+
+      //! Array of coefficients b.
+      af::small<float, max_n_ab> const&
+      b() const { return b_; }
+
+      //! Coefficient a(i), with 0 <= i < n_ab().
+      /*! No range checking (for runtime efficiency).
+          <p>
+          Not available in Python.
+       */
+      float
+      a(int i) const { return a_[i]; }
+
+      //! Coefficient b(i), with 0 <= i < n_ab().
+      /*! No range checking (for runtime efficiency).
+          <p>
+          Not available in Python.
+       */
+      float
+      b(int i) const { return b_[i]; }
+
+      //! Coefficient c.
+      float
+      c() const { return c_; }
+
+#     include <cctbx/eltbx/caasf_at_d_star_sq.h>
+
+    private:
+      std::string label_;
+      af::small<float, max_n_ab> a_;
+      af::small<float, max_n_ab> b_;
+      float c_;
   };
 
 }}} // cctbx::eltbx::caasf

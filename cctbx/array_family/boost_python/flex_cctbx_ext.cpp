@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Sep: Created, based on scitbx/flex_module.cpp, shared_bpl.h (rwgk)
- */
-
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <scitbx/array_family/tiny.h>
@@ -23,7 +14,6 @@
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <boost/python/module.hpp>
-#include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
 
@@ -45,8 +35,6 @@ namespace {
     tuple_mapping_fixed_size<tiny<bool, 3> >();
     tuple_mapping_fixed_size<tiny<int, 12> >();
     tuple_mapping_fixed_size<tiny<std::size_t, 2> >();
-    tuple_mapping_fixed_size<tiny<float, 4> >();
-    tuple_mapping_fixed_size<tiny<float, 5> >();
     tuple_mapping_fixed_size<tiny<double, 12> >();
 
     tuple_mapping_fixed_capacity<small<double, 6> >();
@@ -55,6 +43,9 @@ namespace {
     tuple_mapping_fixed_size<cctbx::fractional<> >();
     tuple_mapping_fixed_size<cctbx::hendrickson_lattman<> >();
     tuple_mapping_fixed_size<cctbx::miller::index<> >();
+
+    tuple_mapping_fixed_capacity<
+      small<float, cctbx::eltbx::caasf::custom::max_n_ab> >();
   }
 
   void register_cctbx_c_grid_conversions()
@@ -76,9 +67,6 @@ namespace {
   void init_module()
   {
     using namespace boost::python;
-
-    scope().attr("__version__") = scitbx::boost_python::cvs_revision(
-      "$Revision$");
 
     object flex_root_scope(scitbx::boost_python::import_module(
       "scitbx_boost.array_family.flex_scitbx_ext"));

@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
- */
-
 #include <cctbx/eltbx/caasf.h>
 
 namespace cctbx { namespace eltbx { namespace caasf {
@@ -35,9 +25,8 @@ namespace cctbx { namespace eltbx { namespace caasf {
 
     static const detail::raw_table_entry<4> it1992_raw_table[] =
     {
-      { "const", { 0., 0., 0., 0. },
-                 { 0., 0., 0., 0. },
-                 1. },
+      { "const", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 1. },
+      { "custom", { 0., 0., 0., 0. }, { 0., 0., 0., 0. }, 0. },
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       { "H",     { 0.493002, 0.322912, 0.140191, 0.040810 },
                  { 10.5109, 26.1257, 3.14236, 57.7997 },
