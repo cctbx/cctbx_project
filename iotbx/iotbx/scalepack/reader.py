@@ -24,15 +24,14 @@ class ScalepackFormatError(exceptions.Exception): pass
 class scalepack_file:
 
   def __init__(self, file_handle, header_only=00000):
-    self.file_handle = file_handle
-    line = self.file_handle.readline()
+    line = file_handle.readline()
     if (line.rstrip() != "    1"):
       raise ScalepackFormatError, "line 1: expecting '    1'"
-    line = self.file_handle.readline()
+    line = file_handle.readline()
     if (line.rstrip()[:2] != " -"):
       raise ScalepackFormatError, "line 2: expecting ' -###'"
     line_error = "line 3: expecting unit cell parameters and space group label"
-    line = self.file_handle.readline()
+    line = file_handle.readline()
     if (len(line) < 63 or line[60] != ' '):
       raise ScalepackFormatError, line_error
     try:
@@ -54,7 +53,7 @@ class scalepack_file:
     self.anomalous = 0
     line_count = 3
     while 1:
-      line = self.file_handle.readline()
+      line = file_handle.readline()
       line_count += 1
       line_error = "line %d: expecting (3I4, 4F8.1)" % line_count
       if (line == ""): break
