@@ -156,9 +156,48 @@ class definition:
       attributes_level=attributes_level,
       print_width=print_width)
 
+  def all_definitions(self):
+    return [self]
+
   def get(self, path):
     if (self.name == path): return [self]
     return []
+
+  def automatic_type(self):
+    types = {}
+    for word in self.values:
+      if (word.quote_token is not None):
+        types["str"] = None
+        continue
+      word_lower = word.value.lower()
+      if (word_lower in ["false", "no", "off"
+                         "true", "yes", "on"]):
+        types["bool"] = None
+        continue
+      try: py_value = eval(word.value, {}, {})
+      except:
+        if (word.value[0] in standard_identifier_start_characters):
+          types["str"] = None
+        else:
+          types["unknown"] = None
+        continue
+      if (isinstance(py_value, float)):
+        types["float"] = None
+        continue
+      if (isinstance(py_value, int)):
+        types["int"] = None
+        continue
+    types = types.keys()
+    types.sort()
+    if (types == ["int", "float"]): return "float"
+    if (len(types) == 1): return types[0]
+    return None
+
+  def automatic_type_assignment(self, assignment_if_unknown=None):
+    if (self.type is None):
+      self.type = self.automatic_type()
+      if (self.type is None):
+        self.type = assignment_if_unknown
 
 class scope:
 
@@ -183,6 +222,12 @@ class scope:
         previous_object=previous_object)
       previous_object = object
     print >> out, prefix + "}"
+
+  def all_definitions(self):
+    result = []
+    for object in self.objects:
+      result.extend(object.all_definitions())
+    return result
 
   def get(self, path):
     if (self.name == path): return [self]
@@ -267,6 +312,13 @@ class table:
       print >> out, prefix+"  }"
     print >> out, prefix+"}"
 
+  def all_definitions(self):
+    result = []
+    for row_object in self.row_objects:
+      for object in row_object:
+        result.extend(object.all_definitions())
+    return result
+
   def get(self, path):
     if (self.name == path): return [self]
     if (not path.startswith(self.name+".")): return []
@@ -302,6 +354,12 @@ class object_list:
         previous_object=previous_object)
       previous_object = object
     return self
+
+  def all_definitions(self):
+    result = []
+    for object in self.objects:
+      result.extend(object.all_definitions())
+    return result
 
   def get(self, path):
     result = []
@@ -390,6 +448,11 @@ class object_list:
               reference_directory=os.path.dirname(file_name_normalized),
               include_memory=include_memory).objects)
     return object_list(objects=result)
+
+  def automatic_type_assignment(self, assignment_if_unknown=None):
+    for object in self.all_definitions():
+      object.automatic_type_assignment(
+        assignment_if_unknown=assignment_if_unknown)
 
 class variable_substitution_fragment:
 

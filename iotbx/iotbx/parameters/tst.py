@@ -384,7 +384,7 @@ b z
   check_get(parameters, path="name.row_3", expected_out="")
 
 def exercise_nested():
-  r = recycle(
+  parameters = recycle(
     input_string="""\
 a0 {
   d1 a b c
@@ -392,17 +392,17 @@ a0 {
     table t0 {
       row0
       {
-        c 3
+        c yes
         table t1 {
           {
             x 0
-            y 1
+            y 1.
           }
         }
       }
     }
   }
-  d2 e f g
+  d2 e f 0g
 }
 """,
     expected_out="""\
@@ -413,26 +413,58 @@ a0 {
     table t0
     {
       row0 {
-        c 3
+        c yes
 
         table t1
         {
           {
             x 0
-            y 1
+            y 1.
           }
         }
       }
     }
   }
 
-  d2 e f g
+  d2 e f 0g
 }
-""")
-  check_get(r.parameters, path="a0.d1", expected_out="d1 a b c\n")
-  check_get(r.parameters, path="a0.a1.t0.row0.c", expected_out="c 3\n")
-  check_get(r.parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x 0\n")
-  check_get(r.parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y 1\n")
+""").parameters
+  check_get(parameters, path="a0.d1", expected_out="d1 a b c\n")
+  check_get(parameters, path="a0.a1.t0.row0.c", expected_out="c yes\n")
+  check_get(parameters, path="a0.a1.t0.row0.t1.1.x", expected_out="x 0\n")
+  check_get(parameters, path="a0.a1.t0.row0.t1.1.y", expected_out="y 1.\n")
+  parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
+  out = StringIO()
+  parameters.show(out=out, attributes_level=2)
+  assert out.getvalue() == """\
+a0 {
+  d1 a b c
+    .type "str"
+
+  a1 {
+    table t0
+    {
+      row0 {
+        c yes
+          .type "bool"
+
+        table t1
+        {
+          {
+            x 0
+              .type "int"
+            y 1.
+              .type "float"
+          }
+        }
+      }
+    }
+  }
+
+  d2 e f 0g
+    .type "UNKNOWN"
+}
+"""
 
 def exercise_get_with_variable_substitution():
   parameters = iotbx.parameters.parse(input_string="""\
