@@ -79,6 +79,10 @@ class miller_set(crystal_symmetry):
     return reciprocal_space_array(
       self, self.SgOps.multiplicity(self.H, self.friedel_flag))
 
+  def d_spacings(self):
+    return reciprocal_space_array(
+      self, self.UnitCell.d(self.H))
+
   def sin_theta_over_lambda_sq(self):
     return reciprocal_space_array(
       self, self.UnitCell.stol2(self.H))
@@ -131,8 +135,8 @@ class reciprocal_space_array(miller_set):
       return "unknown"
 
   def show_summary(self):
-    miller_set.show_summary(self)
     if (self.info != 0): print "Info:", self.info
+    miller_set.show_summary(self)
     print "Type of data:", self.type_of_data()
     print "Type of sigmas:", self.type_of_sigmas()
 
@@ -159,6 +163,13 @@ class reciprocal_space_array(miller_set):
     s = 0
     if (self.sigmas): s = self.sigmas.select(flags)
     return reciprocal_space_array(miller_set(self, h), f, s)
+
+  def resolution_filter(self, d_max=0, d_min=0, negate=0):
+    d = self.d_spacings().F
+    keep = self.all_selection()
+    if (d_max): keep &= d <= d_max
+    if (d_min): keep &= d >= d_min
+    return self.apply_selection(keep, negate)
 
   def sigma_filter(self, cutoff_factor, negate=0):
     flags = shared.abs(self.F) >= self.sigmas.mul(cutoff_factor)
