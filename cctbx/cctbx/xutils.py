@@ -164,14 +164,16 @@ class reciprocal_space_array(miller_set):
     flags = shared.abs(self.F) >= self.sigmas.mul(cutoff_factor)
     return self.apply_selection(flags, negate)
 
-  def mean_sq(self, use_binning=0, use_multiplicities=0):
+  def generic_binner_operation(self, use_binning, use_multiplicities,
+                               function,
+                               function_weighted):
     if (use_multiplicities):
       mult = self.multiplicities().F.as_double()
     if (not use_binning):
       if (not use_multiplicities):
-        result = shared.mean_sq(self.F)
+        result = function(self.F)
       else:
-        result = shared.mean_sq_weighted(self.F, mult)
+        result = function_weighted(self.F, mult)
     else:
       result = shared.double()
       for i_bin in self.binner.range_used():
@@ -181,11 +183,21 @@ class reciprocal_space_array(miller_set):
         else:
           sel_data = self.F.select(sel)
           if (not use_multiplicities):
-            result.append(shared.mean_sq(sel_data))
+            result.append(function(sel_data))
           else:
             sel_mult = mult.select(sel)
-            result.append(shared.mean_sq_weighted(sel_data, sel_mult))
+            result.append(function_weighted(sel_data, sel_mult))
     return result
+
+  def mean(self, use_binning=0, use_multiplicities=0):
+    return self.generic_binner_operation(use_binning, use_multiplicities,
+      shared.mean,
+      shared.mean_weighted)
+
+  def mean_sq(self, use_binning=0, use_multiplicities=0):
+    return self.generic_binner_operation(use_binning, use_multiplicities,
+      shared.mean_sq,
+      shared.mean_sq_weighted)
 
   def rms(self, use_binning=0, use_multiplicities=0):
     ms = self.mean_sq(use_binning, use_multiplicities)
