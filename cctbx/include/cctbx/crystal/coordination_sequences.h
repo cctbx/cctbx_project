@@ -114,7 +114,8 @@ namespace coordination_sequences {
         continue;
       }
       three_shells shells(asu_mappings, i_seq_pivot);
-      std::vector<unsigned> terms(1, 1);
+      std::vector<unsigned> terms;
+      terms.push_back(1);
       for(unsigned i_shell_minus_1=0;
                    i_shell_minus_1<n_shells;
                    i_shell_minus_1++) {
