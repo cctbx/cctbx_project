@@ -37,7 +37,7 @@ class manager(crystal.symmetry):
     quality_factor = quality_factor_from_any(
       d_min, grid_resolution_factor, quality_factor, u_extra, b_extra)
     if (wing_cutoff is None):
-      wing_cutoff = 1.e-6
+      wing_cutoff = 1.e-3
     if (exp_table_one_over_step_size is None):
       exp_table_one_over_step_size = -100
     del miller_set

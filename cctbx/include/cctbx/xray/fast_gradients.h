@@ -338,7 +338,7 @@ namespace cctbx { namespace xray {
         gradient_flags const& grad_flags,
         std::size_t n_parameters=0,
         FloatType const& u_extra=0.25,
-        FloatType const& wing_cutoff=1.e-6,
+        FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
         bool electron_density_must_be_positive=true,
         FloatType const& tolerance_positive_definite=1.e-5);

@@ -31,7 +31,7 @@ namespace cctbx { namespace xray {
         grid_point_type const& fft_n_real,
         grid_point_type const& fft_m_real,
         FloatType const& u_extra=0.25,
-        FloatType const& wing_cutoff=1.e-6,
+        FloatType const& wing_cutoff=1.e-3,
         FloatType const& exp_table_one_over_step_size=-100,
         bool force_complex=false,
         bool electron_density_must_be_positive=true,

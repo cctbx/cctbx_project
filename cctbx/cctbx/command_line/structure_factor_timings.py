@@ -9,7 +9,7 @@ import sys
 
 def timings(structure, d_min, fft_only=00000,
             wing_cutoff_reference=1.e-6,
-            wing_cutoff_others=1.e-4):
+            wing_cutoff_others=1.e-3):
   structure_ng = structure.deep_copy_scatterers()
   structure_5g = structure.deep_copy_scatterers()
   structure_4g = structure.deep_copy_scatterers()
