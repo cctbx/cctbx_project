@@ -28,7 +28,9 @@ namespace cctbx { namespace maps {
     double min_d = cctbx::uctbx::Q_as_d(max_Q);
     cctbx::af::int3 grid(
       UCell.MaxMillerIndices(min_d * 2 * resolution_factor));
-    grid = 2 * grid + 1;
+    for(std::size_t i=0;i<3;i++) {
+      grid[i] = 2 * grid[i] + 1;
+    }
     return cctbx::fftbx::adjust_gridding_array(
       grid, max_prime, mandatory_factors);
   }

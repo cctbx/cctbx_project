@@ -170,6 +170,17 @@ namespace cctbx { namespace af {
 
   template<typename NumType, std::size_t N>
   inline
+  bool
+  operator>=(const af::tiny<NumType,N>& lhs,
+             const NumType& rhs) {
+      for (std::size_t i = 0; i < lhs.size(); i++) {
+          if (!(lhs[i] >= rhs)) return false;
+      }
+      return true;
+  }
+
+  template<typename NumType, std::size_t N>
+  inline
   NumType
   sum(const af::tiny<NumType,N>& a) {
     NumType result = 0;
