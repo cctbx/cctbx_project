@@ -51,6 +51,10 @@ class rec:
       return sqr(result)
     return rec(result, (ar, bc))
 
+  def __rmul__(self, other):
+    "scalar * matrix"
+    return self * other
+
   def __div__(self, other):
     return rec([e/other for e in self.elems], self.n)
 
@@ -112,6 +116,9 @@ class rec:
 
   def __abs__(self):
     return math.sqrt(self.norm())
+
+  def normalize(self):
+    return self / abs(self)
 
   def dot(self, other):
     assert self.n_rows() == 1 or self.n_columns() == 1
@@ -261,6 +268,8 @@ if (__name__ == "__main__"):
   from libtbx.test_utils import approx_equal
   from boost import rational
   a = rec(range(1,7), (3,2))
+  assert (a*3).mathematica_form() == "{{3, 6}, {9, 12}, {15, 18}}"
+  assert (-2*a).mathematica_form() == "{{-2, -4}, {-6, -8}, {-10, -12}}"
   b = rec(range(1,7), (2,3))
   c = a * b
   d = rt((c, (1,2,3)))
@@ -297,6 +306,7 @@ if (__name__ == "__main__"):
   assert (m*mi).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert (mi*m).mathematica_form() == "{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}"
   assert approx_equal(float(col((rational.int(3,4),2,1.5))).elems,(0.75,2,1.5))
+  assert approx_equal(col((-2,3,-6)).normalize().elems, (-2/7.,3/7.,-6/7.))
   assert col((-1,2,-3)).each_abs().elems == (1,2,3)
   assert col((5,3,4)).min() == 3
   assert col((4,5,3)).max() == 5
