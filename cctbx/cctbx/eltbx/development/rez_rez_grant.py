@@ -3,6 +3,7 @@ import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
 
+# D. Rez, P. Rez & I. Grant
 # Acta Cryst. (1994). A50, 481-497
 table_2_stol = flex.double([
 0.00,
