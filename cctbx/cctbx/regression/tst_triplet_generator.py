@@ -48,7 +48,7 @@ def direct_space_squaring(start, selection_fixed):
   return result
 
 def reciprocal_space_squaring(start, selection_fixed, verbose):
-  tprs = dmtbx.triplet_generator(start.space_group(), start.indices())
+  tprs = dmtbx.triplet_generator(miller_set=start)
   if (0 or verbose):
     for ih in start.indices()[:1].indices():
       for relation in tprs.relations_for(ih):
