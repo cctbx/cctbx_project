@@ -204,7 +204,7 @@ if (os.name == "nt"):
   windows_pathext = _windows_pathext()
 
 def open_info(path, mode="w", info="Creating:"):
-  print info, path
+  print info, repr(path)
   try: return open(path, mode)
   except IOError, e:
     raise UserError(str(e))
@@ -796,7 +796,7 @@ class environment:
     pickle.dump(self, open(file_name, "wb"), 0)
 
   def write_setpath_files(self):
-    print "Python:", sys.version.split()[0], sys.executable
+    print "Python:", sys.version.split()[0], repr(sys.executable)
     if (len(self.missing_for_build) == 0):
       self.build_options.report()
     print "command_version_suffix:", self.command_version_suffix
@@ -822,7 +822,6 @@ class environment:
         self.write_setpaths_csh(suffix)
       else:
         self.write_setpaths_bat(suffix)
-    self.pickle()
 
   def write_python_and_show_path_duplicates(self):
     module_names = {}
@@ -876,6 +875,7 @@ class environment:
   def refresh(self):
     self.assemble_pythonpath()
     self.write_setpath_files()
+    self.pickle()
     if (len(self.missing_for_build) == 0):
       self.write_SConstruct()
     if (os.name != "nt"):
@@ -890,7 +890,7 @@ class environment:
     for module in self.module_list:
       module.process_command_line_directories()
     if (os.path.isdir(self.exe_path)):
-      print "Processing:", self.exe_path
+      print "Processing:", repr(self.exe_path)
       for file_name in os.listdir(self.exe_path):
         if (file_name[0] == "."): continue
         self.write_dispatcher_in_bin(
@@ -898,6 +898,11 @@ class environment:
           target_file=file_name)
     self.write_python_and_show_path_duplicates()
     self.write_command_version_duplicates()
+    os.environ["LIBTBX_BUILD"] = self.build_path # to support libtbx.load_env
+    for path in self.pythonpath:
+      sys.path.insert(0, path)
+    for module in self.module_list:
+      module.process_libtbx_refresh_py()
 
 class module:
 
@@ -1032,9 +1037,16 @@ class module:
             libtbx.path.norm_join(dist_path, "command_line"),
             libtbx.path.norm_join(dist_path, self.name, "command_line")]:
         if (not os.path.isdir(source_dir)): continue
-        print "Processing:", source_dir
+        print "Processing:", repr(source_dir)
         for file_name in os.listdir(source_dir):
           self.write_dispatcher(source_dir=source_dir, file_name=file_name)
+
+  def process_libtbx_refresh_py(self):
+    for dist_path in self.dist_paths_active():
+      custom_refresh = libtbx.path.norm_join(dist_path, "libtbx_refresh.py")
+      if (os.path.isfile(custom_refresh)):
+        print "Processing:", repr(custom_refresh)
+        execfile(custom_refresh, {}, {})
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):
