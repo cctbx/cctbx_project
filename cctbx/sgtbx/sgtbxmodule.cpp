@@ -490,8 +490,7 @@ namespace {
   py_expand_to_p1_3(
     const SpaceGroup& SgOps,
     const af::shared<Miller::Index>& in,
-    af::shared<Miller::Index>& out,
-    bool friedel_flag) {
+    af::shared<Miller::Index>& out) {
     expand_to_p1(SgOps, in, out);
   }
 
@@ -1033,8 +1032,9 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     StructureSeminvariant_refine_gridding_0, "refine_gridding");
   py_StructureSeminvariant.def(
     StructureSeminvariant_refine_gridding_1, "refine_gridding");
-  sgtbx::sanity_check();
 
   this_module.def(py_expand_to_p1_4, "expand_to_p1");
   this_module.def(py_expand_to_p1_3, "expand_to_p1");
+
+  sgtbx::sanity_check();
 }
