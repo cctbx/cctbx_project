@@ -98,7 +98,7 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
     volume_per_atom=50.,
     min_distance=1.5,
     general_positions_only=0)
-  if (verbose):
+  if (0 or verbose):
     print "Unit cell:", xtal.UnitCell
     print "Space group:", xtal.SgInfo.BuildLookupSymbol()
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
@@ -107,11 +107,11 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
   assert binning1.n_bins_used() == n_bins
   assert binning1.limits().size() == n_bins + 1
   assert binning1.n_bins_all() == n_bins + 2
-  if (verbose):
+  if (0 or verbose):
     print "binning1.d_max():", binning1.d_max()
     print "binning1.d_min():", binning1.d_min()
   binner1 = miller.binner(binning1, miller_set.H)
-  if (verbose): xutils.show_binner_info(binner1)
+  if (0 or verbose): xutils.show_binner_summary(binner1)
   assert binner1.count(binner1.i_bin_d_too_large()) == 0
   assert binner1.count(binner1.i_bin_d_too_small()) == 0
   counts = binner1.counts()
@@ -124,10 +124,10 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, verbose=0):
     binning1.bin_d_min(2),
     binning1.bin_d_min(n_bins))
   binner2 = miller.binner(binning2, miller_set.H)
-  if (verbose): xutils.show_binner_info(binner2)
+  if (0 or verbose): xutils.show_binner_summary(binner2)
   assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
   fcalc_set.setup_binner(reflections_per_bin=100)
-  if (0 or verbose): xutils.show_binner_info(fcalc_set.binner)
+  if (0 or verbose): xutils.show_binner_summary(fcalc_set.binner)
   for use_multiplicities in (0,1):
     filtered_set = []
     for negate in (0,1):
