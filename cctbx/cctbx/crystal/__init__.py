@@ -11,6 +11,7 @@ from cctbx import uctbx
 import scitbx.array_family.shared
 import scitbx.stl.set
 import scitbx.stl.vector
+import libtbx.itertbx
 import sys
 
 pair_sym_ops = sgtbx.stl_vector_rt_mx
