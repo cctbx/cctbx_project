@@ -175,7 +175,7 @@ class match_refine:
   def show(self):
     print self.eucl_symop.as_xyz(),
     print self.adjusted_shift,
-    print self.rms()
+    print "%.2f" % (self.rms(),)
     for pair in self.pairs:
       print self.ref_model1[pair[0]].label,
       print self.ref_model2[pair[1]].label
@@ -209,7 +209,7 @@ def match_models(model1, model2,
     i_pivot2 = -1
     for pivot2 in ref_model2:
       i_pivot2 += 1
-      for eucl_symop in match_symmetry.rtmx:
+      for eucl_symop in match_symmetry.rtmx: # XXX loop only over addl. gen.
         eq_pivot2 = eucl_symop.multiply(pivot2.coordinates)
         shift = uctbx.modShortDifference(pivot1.coordinates, eq_pivot2)
         unallowed_shift = match_symmetry.filter_shift(shift, selector=0)
@@ -253,15 +253,46 @@ class test_model(model):
   # XXX 2 polar directions
   # XXX 1 poloar direction
 
-  def shuffle_positions(self):
-    import random
-    shuffled_positions = list(self.labelled_positions)
-    random.shuffle(shuffled_positions)
+  def create_new_test_model(self, new_labelled_positions):
     new_test_model = test_model(None)
     model.__init__(new_test_model,
       xutils.crystal_symmetry(self.UnitCell, self.SgInfo),
-      shuffled_positions)
+      new_labelled_positions)
     return new_test_model
+
+  def shuffle_positions(self):
+    from cctbx.development import debug_utils
+    shuffled_positions = list(self.labelled_positions)
+    debug_utils.random.shuffle(shuffled_positions)
+    return self.create_new_test_model(shuffled_positions)
+
+  def random_symmetry_mates(self):
+    from cctbx.development import debug_utils
+    new_labelled_positions = []
+    for lp in self.labelled_positions:
+      equiv_coor = sgtbx.SymEquivCoordinates(self.SgOps, lp.coordinates)
+      i = debug_utils.random.randrange(equiv_coor.M())
+      new_labelled_positions.append(labelled_position(
+        lp.label, equiv_coor(i)))
+    return self.create_new_test_model(new_labelled_positions)
+
+  def apply_random_eucl_op(self, models_are_diffraction_index_equivalent = 0):
+    from cctbx.development import debug_utils
+    match_symmetry = euclidean_match_symmetry(
+      self.SgInfo,
+      use_K2L=1, use_L2N=(not models_are_diffraction_index_equivalent))
+    match_symmetry.set_sum_polar_axes()
+    i = debug_utils.random.randrange(match_symmetry.rtmx.OrderZ())
+    eucl_symop = match_symmetry.rtmx(i)
+    shift = [debug_utils.random.random() for i in xrange(3)]
+    allowed_shift = match_symmetry.filter_shift(shift, selector=1)
+    new_labelled_positions = []
+    for lp in self.labelled_positions:
+      new_coor = eucl_symop.multiply(lp.coordinates)
+      new_coor = python_utils.list_plus(new_coor, allowed_shift)
+      new_labelled_positions.append(labelled_position(
+        lp.label, new_coor))
+    return self.create_new_test_model(new_labelled_positions)
 
   def add_random_positions(self, number_of_new_positions = 3, label = "R",
                            min_distance = 1.0):
@@ -283,15 +314,21 @@ class test_model(model):
       i += 1
       new_labelled_positions.append(labelled_position(
         "%s%02d" % (label, i), coor))
-    new_test_model = test_model(None)
-    model.__init__(new_test_model,
-      xutils.crystal_symmetry(self.UnitCell, self.SgInfo),
+    return self.create_new_test_model(
       list(self.labelled_positions) + new_labelled_positions)
-    return new_test_model
 
-  # replace each position with random symmetry mate
-  # apply random of from match_symmetry (both eucl_symop and random shift)
-  # XXX method to slightly move sites (but maintain site symmetry)
+  def shake_positions(self, sigma = 0.2, min_distance = 1.0):
+    from cctbx.development import debug_utils
+    snap_parameters = sgtbx.SpecialPositionSnapParameters(
+      self.UnitCell, self.SgOps, 1, min_distance)
+    new_labelled_positions = []
+    for lp in self.labelled_positions:
+      new_coor = debug_utils.shake_position(
+        self, snap_parameters, lp.coordinates,
+        sigma, max_diff = min_distance * 0.99)
+      new_labelled_positions.append(labelled_position(
+        lp.label, new_coor))
+    return self.create_new_test_model(new_labelled_positions)
 
 def run_test(argv):
   from cctbx.development import debug_utils
@@ -307,8 +344,17 @@ def run_test(argv):
     symbols = debug_utils.get_test_space_group_symbols(Flags.AllSpaceGroups)
     symbols_to_stdout = 1
   if (not Flags.AllSpaceGroups):
-    model1 = test_model().add_random_positions(2, "A").shuffle_positions()
-    model2 = test_model().add_random_positions(3, "B").shuffle_positions()
+    model1 = (test_model()
+      .add_random_positions(2, "A")
+      .shuffle_positions()
+      .random_symmetry_mates()
+      .apply_random_eucl_op())
+    model2 = (test_model()
+      .add_random_positions(3, "B")
+      .shuffle_positions()
+      .random_symmetry_mates()
+      .apply_random_eucl_op()
+      .shake_positions())
     model1.show("Model1")
     model2.show("Model2")
     match_models(model1, model2)

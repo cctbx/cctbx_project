@@ -157,9 +157,10 @@ class random_structure(xutils.symmetrized_sites):
       Site = sftbx.XrayScatterer(Elem + str(n), SF, 0j, Pos, 1., U)
       self.add_site(Site)
 
-def shake_position(xtal, x, sigma, vary_z_only):
-  SSx = xtal.get_site_symmetry(x)
-  xc = xtal.UnitCell.orthogonalize(x)
+def shake_position(xsym, special_position_snap_parameters,
+                   x, sigma, max_diff = 0, vary_z_only = 0):
+  SSx = sgtbx.SiteSymmetry(special_position_snap_parameters, x)
+  xc = xsym.UnitCell.orthogonalize(x)
   max_placement_trials = 100
   have_position = 0
   for t in xrange(max_placement_trials):
@@ -167,12 +168,15 @@ def shake_position(xtal, x, sigma, vary_z_only):
       xcp = [xc[0], xc[1], xc[2] + random.gauss(0, sigma)]
     else:
       xcp = [e + random.gauss(0, sigma) for e in xc]
-    xp = xtal.UnitCell.fractionalize(xcp)
+    xp = xsym.UnitCell.fractionalize(xcp)
     xps = SSx.ApplySpecialOp(xp)
-    SSxps = xtal.get_site_symmetry(xps)
-    if (str(SSxps.SpecialOp()) == str(SSx.SpecialOp())):
-      have_position = 1
-      break
+    SSxps = sgtbx.SiteSymmetry(special_position_snap_parameters, xps)
+    if (str(SSxps.SpecialOp()) != str(SSx.SpecialOp())): continue
+    if (max_diff):
+      diff = xsym.UnitCell.Distance2(x, xps)
+      if (diff > max_diff): continue
+    have_position = 1
+    break
   assert have_position, "Cannot find position matching all constraints."
   return xps
 
@@ -180,7 +184,8 @@ def shake_structure(xtal, sigma = 0.0001, vary_z_only = 0):
   xtal_shake = xtal.copy_attributes()
   for site in xtal:
     site.set_Coordinates(shake_position(
-      xtal, site.Coordinates(), sigma, vary_z_only))
+      xtal, xtal.SnapParameters,
+      site.Coordinates(), sigma, vary_z_only))
     xtal_shake.add_site(site)
   return xtal_shake
 
