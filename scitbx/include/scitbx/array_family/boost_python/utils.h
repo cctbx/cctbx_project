@@ -27,6 +27,7 @@ namespace scitbx { namespace af { namespace boost_python {
   shared_plain<ElementType>
   flex_as_base_array(versa<ElementType, flex_grid<> > const& a)
   {
+    if (!a.check_shared_size()) raise_shared_size_mismatch();
     assert_0_based_1d(a.accessor());
     shared_plain<ElementType> b = a.as_base_array();
     if (a.size() != b.size()) raise_shared_size_mismatch();
