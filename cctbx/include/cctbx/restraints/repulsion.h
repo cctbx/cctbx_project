@@ -6,6 +6,11 @@
 
 namespace cctbx { namespace restraints {
 
+  typedef std::map<std::string, double>
+    repulsion_distance_dict;
+  typedef std::map<std::string, repulsion_distance_dict>
+    repulsion_distance_table;
+
   struct repulsion_simple_proxy
   {
     repulsion_simple_proxy() {}

@@ -1,4 +1,5 @@
 from cctbx import restraints
+from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
 import scitbx.lbfgs
@@ -89,6 +90,7 @@ class lbfgs:
     self._sites_cart = structure.sites_cart()
     self._sites_shifted = self._sites_cart
     self.x = flex.double(self.n, 0)
+    self._sites_cart_proxy_calculation = None
     self.activate_repulsion = 0001
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
@@ -129,15 +131,15 @@ class lbfgs:
       self._sites_shifted[i_seq] = unit_cell.orthogonalize(site_special_frac)
 
   def compute_target(self, compute_gradients):
-    from cctbx.crystal import distance_ls
-    from cctbx import crystal
     if (   self._sites_cart_proxy_calculation is None
         or self._sites_cart_proxy_calculation.max_distance(self._sites_shifted)
-            > self.nonbonded_buffer):
-      shell_distance_cutoffs = [flex.max(distance_ls.get_distances(
-        unit_cell=self.structure.unit_cell(),
-        sites_cart=self._sites_shifted,
-        pair_sym_table=shell_sym_table)) * (1+1.e-6)
+            >= self.nonbonded_buffer):
+      shell_distance_cutoffs = [flex.max(crystal.get_distances(
+        pair_sym_table=shell_sym_table,
+        orthogonalization_matrix
+          =self.structure.unit_cell().orthogonalization_matrix(),
+        sites_frac=self.structure.unit_cell().fractionalization_matrix()
+                  *self._sites_shifted)) * (1+1.e-6)
           for shell_sym_table in self.shell_sym_tables]
       asu_mappings = crystal.symmetry.asu_mappings(self.structure,
         buffer_thickness=max(
@@ -150,19 +152,21 @@ class lbfgs:
         asu_mappings=asu_mappings).add_pair_sym_table(
           sym_table=shell_sym_table)
             for shell_sym_table in self.shell_sym_tables]
-      bond_asu_proxies, repulsion_asu_proxies = distance_ls.get_all_proxies(
+      pair_proxies = restraints.pair_proxies(
         scatterers=self.structure.scatterers(),
         bond_params_table=self.bond_params_table,
         repulsion_distance_table=self.repulsion_distance_table,
         shell_asu_tables=shell_asu_tables,
-        shell_distance_cutoffs=shell_distance_cutoffs,
+        shell_distance_cutoffs=flex.double(shell_distance_cutoffs),
         nonbonded_distance_cutoff=self.nonbonded_distance_cutoff,
-        nonbonded_buffer=self.nonbonded_buffer)
-      if (not self.activate_repulsion):
-        repulsion_asu_proxies = None
+        nonbonded_buffer=self.nonbonded_buffer,
+        vdw_1_4_factor=2/3.)
       self._asu_mappings = asu_mappings
-      self._bond_asu_proxies = bond_asu_proxies
-      self._repulsion_asu_proxies = repulsion_asu_proxies
+      self._bond_asu_proxies = pair_proxies.bond_asu_proxies
+      if (not self.activate_repulsion):
+        self._repulsion_asu_proxies = None
+      else:
+        self._repulsion_asu_proxies = pair_proxies.repulsion_asu_proxies
       self._sites_cart_proxy_calculation = self._sites_shifted
     self._target_result = energies(
       sites_cart=self._sites_shifted,

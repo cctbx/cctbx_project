@@ -81,6 +81,8 @@ namespace {
             "bond_asu_proxy", no_init)
         .def(init<asu_mapping_index_pair const&, double, double>(
           (arg_("pair"), arg_("distance_ideal"), arg_("weight"))))
+        .def(init<asu_mapping_index_pair const&, bond_params const&>(
+          (arg_("pair"), arg_("params"))))
         .def("as_simple_proxy", &w_t::as_simple_proxy)
       ;
       {

@@ -8,6 +8,7 @@ namespace cctbx { namespace restraints { namespace boost_python {
   void wrap_dihedral();
   void wrap_chirality();
   void wrap_planarity();
+  void wrap_pair_proxies();
   void wrap_bonded_interactions();
 
 namespace {
@@ -20,6 +21,7 @@ namespace {
     wrap_dihedral();
     wrap_chirality();
     wrap_planarity();
+    wrap_pair_proxies();
     wrap_bonded_interactions();
   }
 

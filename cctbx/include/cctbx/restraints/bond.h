@@ -53,6 +53,14 @@ namespace cctbx { namespace restraints {
       asu_mapping_index_pair(pair_)
     {}
 
+    bond_asu_proxy(
+      asu_mapping_index_pair const& pair_,
+      bond_params const& params)
+    :
+      bond_params(params),
+      asu_mapping_index_pair(pair_)
+    {}
+
     bond_simple_proxy
     as_simple_proxy() const
     {

@@ -462,6 +462,21 @@ def exercise_pair_tables():
     check_pair_asu_table(asu_table_2, expected_asu_pairs)
     assert eq_flags[:-1].count(eq_flags[0]) == len(eq_flags)-1
     assert eq_flags[-1]
+    distances = crystal.get_distances(
+      pair_sym_table=sym_table,
+      orthogonalization_matrix
+        =structure.unit_cell().orthogonalization_matrix(),
+      sites_frac=structure.sites_frac())
+    if (not skip_j_seq_less_than_i_seq):
+      assert approx_equal(distances,
+        [3.0504188000000001, 3.1821727999999987, 3.1703090658301503,
+         3.1703090658301503, 3.0177940000000003, 3.1658603999999984,
+         3.1986122507292754, 3.1986122507292754, 3.1093943999999989])
+    else:
+      assert approx_equal(distances,
+        [3.0504188000000001, 3.1821727999999987, 3.1703090658301503,
+         3.0177940000000003, 3.1658603999999984, 3.1986122507292754,
+         3.1093943999999989])
 
 def exercise_coordination_sequences_simple():
   structure = trial_structure()
