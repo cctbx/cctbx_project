@@ -11,8 +11,8 @@
 #ifndef SCITBX_BOOST_PYTHON_UTILS_H
 #define SCITBX_BOOST_PYTHON_UTILS_H
 
-#include <string>
 #include <boost/python/object.hpp>
+#include <string>
 
 namespace scitbx { namespace boost_python {
 
