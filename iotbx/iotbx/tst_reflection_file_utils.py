@@ -145,16 +145,9 @@ def exercise_get_r_free_flags():
     anomalous_flag=False,
     d_min=3)
   n = miller_set.indices().size()
-  sorted_flags = flex.int(range(10))
-  while (sorted_flags.size() <= n/2):
-    sorted_flags.extend(sorted_flags)
-  if (sorted_flags.size() < n):
-    sorted_flags.extend(sorted_flags[:n-sorted_flags.size()])
-  assert sorted_flags.size() == n
-  perm = flex.sort_permutation(
-    flex.random_double(size=miller_set.indices().size()))
   exercise_flag_arrays = []
-  exercise_flag_arrays.append(sorted_flags.select(perm))
+  exercise_flag_arrays.append(
+    flex.int(list(flex.random_permutation(size=n)%10)))
   exercise_flag_arrays.append(flex.int(xrange(n)))
   exercise_flag_arrays.append(flex.int(n, 0))
   for style in ["ccp4", "cns", "shelx", "bool"]:
