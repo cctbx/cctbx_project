@@ -1,5 +1,5 @@
 from iotbx.xplor import XplorMap
-import urllib
+import urllib,filecmp
 
 def get_test_files():
   urllib.urlretrieve('http://cci.lbl.gov/build/NSFN_C2221.xplor','NSFN_C2221.xplor')
@@ -30,10 +30,12 @@ def write_xplor(map,f):
   
   
 def run():
-  #get_test_files()
+  get_test_files()
   map = read_xplor('NSFN_C2221.xplor')
   write_xplor(map,'comparison.xplor')
-
+  assert filecmp.cmp('NSFN_C2221.xplor','comparison.xplor')
+  print "OK"
+  
 if __name__=="__main__":
   run()
 
