@@ -119,7 +119,7 @@ class structure(crystal.special_position_settings):
       self.u_star_tolerance(),
       self.assert_is_positive_definite(),
       self.assert_min_distance_sym_equiv())
-    
+
   def structure_factors(self, anomalous_flag=None, d_min=None,
                               direct=00000, fft=00000):
     miller_set = miller.build_set(self, anomalous_flag, d_min)
