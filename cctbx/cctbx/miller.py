@@ -589,6 +589,9 @@ class array(set):
       .set_info(self.info())
       .set_observation_type(self))
 
+  def discard_sigmas(self):
+    return array(miller_set=self, data=self.data())
+
   def conjugate(self):
     assert self.is_complex_array()
     return array(miller_set=self, data=flex.conj(self.data()))
