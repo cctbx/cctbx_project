@@ -10,7 +10,7 @@
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <scitbx/array_family/misc_functions.h>
-#include <scitbx/array_family/grid_accessor.h>
+#include <scitbx/array_family/c_grid_accessor.h>
 #include <scitbx/array_family/simple_io.h>
 #include <boost/bind.hpp>
 #include <vector>
@@ -366,7 +366,7 @@ namespace {
       check_true(__LINE__, w1.use_count() == 1);
       check_true(__LINE__, w1.weak_count() == 1);
       {
-        AltArrayType a2(af::grid<2>(3, 4));
+        AltArrayType a2(af::c_grid<2>(3, 4));
         ArrayType a3(a2, 12);
         ArrayType a4(a2, 12);
         ArrayType a5(a2, 14, element_type(1));
@@ -382,7 +382,7 @@ namespace {
         check_true(__LINE__, a4.end() - a4.begin() == a4.size());
         check_true(__LINE__, a5.end() - a5.begin() == a5.size());
         check_true(__LINE__, a6.end() - a6.begin() == a6.size());
-        a2.resize(af::grid<2>(4, 5), element_type(3));
+        a2.resize(af::c_grid<2>(4, 5), element_type(3));
         ArrayType a2_1d = a2.as_1d();
         check_true(__LINE__, a2.use_count() == 6);
         af::small<element_type, 20> v;
@@ -573,9 +573,9 @@ int main(int argc, char* argv[])
 
     if (verbose) std::cout << __LINE__ << ":" << std::endl;
     versa_exercise<af::versa_plain<int>,
-                    af::versa_plain<int, af::grid<2> > >::run();
+                    af::versa_plain<int, af::c_grid<2> > >::run();
     versa_exercise<af::versa<int>,
-                    af::versa<int, af::grid<2> > >::run();
+                    af::versa<int, af::c_grid<2> > >::run();
 
     exercise_apply_all<int, double>::run();
 

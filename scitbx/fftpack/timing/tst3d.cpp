@@ -15,7 +15,7 @@
 
 #include <scitbx/fftpack/complex_to_complex_3d.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
-#include <scitbx/array_family/grid_accessor.h>
+#include <scitbx/array_family/c_grid_accessor.h>
 
 #include <fftw.h>
 #include <rfftw.h>
@@ -51,8 +51,8 @@ namespace {
   {
     fftpack::complex_to_complex_3d<double> fft(n);
     shared_complex_array cseq = init_cseq(n);
-    af::ref<shared_complex_array::value_type, af::grid<3> >
-    cmap(cseq.begin(), af::grid<3>(n));
+    af::ref<shared_complex_array::value_type, af::c_grid<3> >
+    cmap(cseq.begin(), af::c_grid<3>(n));
     if (dir == 'f') {
       fft.forward(cmap);
     }
@@ -66,8 +66,8 @@ namespace {
   {
     fftpack::real_to_complex_3d<double> fft(n);
     shared_real_array rseq = init_rseq(fft.m_real());
-    af::ref<shared_real_array::value_type, af::grid<3> >
-    rmap(rseq.begin(), af::grid<3>(fft.m_real()));
+    af::ref<shared_real_array::value_type, af::c_grid<3> >
+    rmap(rseq.begin(), af::c_grid<3>(fft.m_real()));
     if (dir == 'f') {
       fft.forward(rmap);
     }
@@ -114,8 +114,8 @@ namespace {
       rfftwnd_one_real_to_complex(Plan, (fftw_real *) rseq.begin(), 0);
     }
     else {
-      af::ref<shared_real_array::value_type, af::grid<3> >
-      rmap(rseq.begin(), af::grid<3>(fft.m_real()));
+      af::ref<shared_real_array::value_type, af::c_grid<3> >
+      rmap(rseq.begin(), af::c_grid<3>(fft.m_real()));
       fft.forward(rmap); // complex values have some symmetry
       Plan = rfftw3d_create_plan(
         n[0], n[1], n[2], FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
@@ -137,12 +137,13 @@ namespace {
   {
     af::int3 m = fftpack::m_real_from_n_real(n);
     assert(rseq.size() == af::product(m));
-    af::c_index_1d_calculator<3> i1d;
+    af::const_ref<shared_real_array::value_type, af::c_grid<3> >
+      r3d(rseq.begin(), af::c_grid<3>(m));
     af::int3 I;
     for(I[0]=0;I[0]<n[0];I[0]++)
     for(I[1]=0;I[1]<n[1];I[1]++)
     for(I[2]=0;I[2]<n[2];I[2]++) {
-      std::cout << rseq[i1d.get(m, I)] << std::endl;
+      std::cout << r3d(I) << std::endl;
     }
   }
 
@@ -156,8 +157,8 @@ namespace {
                                     std::size_t loop_iterations)
   {
     shared_complex_array cseq(af::product(n));
-    af::ref<shared_complex_array::value_type, af::grid<3> >
-    cmap(cseq.begin(), af::grid<3>(n));
+    af::ref<shared_complex_array::value_type, af::c_grid<3> >
+    cmap(cseq.begin(), af::c_grid<3>(n));
     fftpack::complex_to_complex_3d<double> fft(n);
     if (dir == 'f') {
       std::cout << "timing_complex_to_complex_3d forward " << n << std::endl;
@@ -179,8 +180,8 @@ namespace {
   {
     fftpack::real_to_complex_3d<double> fft(n);
     shared_real_array rseq(af::product(fft.m_real()));
-    af::ref<shared_real_array::value_type, af::grid<3> >
-    rmap(rseq.begin(), af::grid<3>(fft.m_real()));
+    af::ref<shared_real_array::value_type, af::c_grid<3> >
+    rmap(rseq.begin(), af::c_grid<3>(fft.m_real()));
     if (dir == 'f') {
       std::cout << "timing_real_to_complex_3d forward " << n << std::endl;
       for (std::size_t i=0;i<loop_iterations;i++) {
