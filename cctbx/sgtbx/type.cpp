@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/reference.h>
+#include <cctbx/sgtbx/select_generators.h>
 #include <cctbx/basic/define_range.h>
 
 namespace sgtbx {
@@ -410,138 +411,6 @@ namespace sgtbx {
 namespace sgtbx {
   namespace ConstructCBOpTpart {
 
-    struct StdGenerators { // see also: AnyGenerators
-      StdGenerators(const SgOps& WorkSgOps,
-                    const tables::MatrixGroup::Code& PG_MGC);
-      void setPrimitive();
-      ChOfBasisOp Z2POp;
-      TrVec ZInvT;
-      TrVec PInvT;
-      int nGen;
-      RTMx ZGen[2];
-      RTMx PGen[2];
-    };
-
-    StdGenerators::StdGenerators(const SgOps& WorkSgOps,
-                                 const tables::MatrixGroup::Code& PG_MGC)
-      : nGen(0)
-    {
-      using namespace tables::CrystalSystem;
-
-      const Vec3 EV_001 = { 0, 0, 1};
-      const Vec3 EV_100 = { 1, 0, 0};
-      const Vec3 EV_110 = { 1, 1, 0};
-      const Vec3 EV_m10 = {-1, 1, 0};
-      const Vec3 EV_111 = { 1, 1, 1};
-
-      Z2POp = WorkSgOps.getZ2POp();
-
-      ZInvT = WorkSgOps.InvT(true);
-      PInvT = TrVec(0);
-      int i;
-      for(i=0;i<2;i++) ZGen[i] = RTMx(0, 0);
-      for(i=0;i<2;i++) PGen[i] = RTMx(0, 0);
-
-      int PrincipalProperOrder = 0;
-
-      switch (PG_MGC.CrystalSystem())
-      {
-        case Triclinic:
-          break;
-
-        case Monoclinic:
-          ZGen[0] = WorkSgOps[1];
-          nGen = 1;
-          break;
-
-        case Orthorhombic:
-          for(i = 1; i < WorkSgOps.nSMx(); i++) {
-            RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if      (RI.EV() == EV_001) { ZGen[0] = WorkSgOps[i]; nGen++; }
-            else if (RI.EV() == EV_100) { ZGen[1] = WorkSgOps[i]; nGen++; }
-          }
-          cctbx_assert(nGen == 2);
-          break;
-
-        case Tetragonal:
-                                     PrincipalProperOrder = 4;
-        case Trigonal:
-          if (!PrincipalProperOrder) PrincipalProperOrder = 3;
-        case Hexagonal:
-          if (!PrincipalProperOrder) PrincipalProperOrder = 6;
-
-          for(i = 1; i < WorkSgOps.nSMx(); i++) {
-            RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if (std::abs(RI.Rtype()) == PrincipalProperOrder) {
-              if (RI.SenseOfRotation() > 0) {
-                ZGen[0] = WorkSgOps[i]; nGen++;
-              }
-            }
-            else if (PrincipalProperOrder == 4) {
-              if (RI.EV() == EV_100) { ZGen[1] = WorkSgOps[i]; nGen++; }
-            }
-            else if (PrincipalProperOrder == 3) {
-              if      (RI.EV() == EV_m10) { ZGen[1] = WorkSgOps[i]; nGen++; }
-              else if (RI.EV() == EV_110) { ZGen[1] = WorkSgOps[i]; nGen++; }
-            }
-            else { // PrinicipalProperOrder == 6
-              if (RI.EV() == EV_m10) { ZGen[1] = WorkSgOps[i]; nGen++; }
-            }
-          }
-          cctbx_assert(nGen == 1 || nGen == 2);
-          for (i=0;i<nGen;i++) cctbx_assert(ZGen[i].isValid());
-          break;
-
-        case Cubic:
-          for(i = 1; i < WorkSgOps.nSMx(); i++) {
-            RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if      (std::abs(RI.Rtype()) == 4) {
-              if (RI.SenseOfRotation() > 0 && RI.EV() == EV_001) {
-                if (!ZGen[0].isValid()) nGen++;
-                ZGen[0] = WorkSgOps[i];
-              }
-            }
-            else if (std::abs(RI.Rtype()) == 2) {
-              if (!ZGen[0].isValid() && RI.EV() == EV_001) {
-                ZGen[0] = WorkSgOps[i]; nGen++;
-              }
-            }
-            else if (std::abs(RI.Rtype()) == 3) {
-              if (RI.SenseOfRotation() > 0 && RI.EV() == EV_111) {
-                cctbx_assert(!ZGen[1].isValid());
-                ZGen[1] = WorkSgOps[i]; nGen++;
-              }
-            }
-          }
-          cctbx_assert(nGen == 1 || nGen == 2);
-          for (i=0;i<nGen;i++) cctbx_assert(ZGen[i].isValid());
-          break;
-
-        default:
-          throw cctbx_internal_error();
-      }
-
-      // Tidy generators
-      if (ZInvT.isValid()) {
-        for (i = 0; i < nGen; i++) {
-          if (ZGen[i].Rpart().det() < 0) {
-            ZGen[i] = ZGen[i].pre_multiply_InvT(ZInvT);
-          }
-        }
-      }
-      for (i = 0; i < nGen; i++) ZGen[i].modPositiveInPlace();
-    }
-
-    void StdGenerators::setPrimitive()
-    {
-      for (int i = 0; i < nGen; i++) {
-        PGen[i] = Z2POp(ZGen[i]).modPositive();
-      }
-      if (ZInvT.isValid()) {
-        PInvT = Z2POp(ZInvT, -1).modPositive();
-      }
-    }
-
     bool SolveInhomModZ(int *M, int nr, int nc, int *b, int BF, int *x)
     {
       const int maxr = 9;
@@ -577,8 +446,8 @@ namespace sgtbx {
       return true;
     }
 
-    TrVec FindOriginShift(const StdGenerators& TabGenerators,
-                          const StdGenerators& TstGenerators,
+    TrVec FindOriginShift(const detail::StdGenerators& TabGenerators,
+                          const detail::StdGenerators& TstGenerators,
                           int TBF)
     {
       /*    (I|K)(R|T)(I|-K)=(R|S)
@@ -628,7 +497,7 @@ namespace sgtbx {
                                 const SgOps& WorkSgOps,
                                 const tables::MatrixGroup::Code& PG_MGC,
                                 char TabZ,
-                                const StdGenerators& TabGenerators)
+                                const detail::StdGenerators& TabGenerators)
     {
       if (TabGenerators.nGen == 0 && !TabGenerators.ZInvT.isValid())
         return ChOfBasisOp(RBF, TBF); // space group P 1
@@ -674,7 +543,7 @@ namespace sgtbx {
             cctbx_assert(TstZ != '\0' && TstZ != 'Q');
             if (TstZ != TabZ)
               continue;
-            StdGenerators TstGenerators(TstSgOps, PG_MGC);
+            detail::StdGenerators TstGenerators(TstSgOps, PG_MGC);
             cctbx_assert(TstGenerators.nGen == TabGenerators.nGen);
             if (    TabGenerators.nGen != 2
                 ||  (      TabGenerators.ZGen[0].Rpart()[8]
@@ -692,7 +561,7 @@ namespace sgtbx {
         }
       }
       else {
-        StdGenerators TstGenerators(WorkSgOps, PG_MGC);
+        detail::StdGenerators TstGenerators(WorkSgOps, PG_MGC);
         cctbx_assert(TstGenerators.nGen == TabGenerators.nGen);
         TstGenerators.setPrimitive();
         TrVec CBT = FindOriginShift(TabGenerators, TstGenerators, TBF);
@@ -704,7 +573,7 @@ namespace sgtbx {
       return ChOfBasisOp(0, 0);
     }
 
-    void TidyCBOpT(const StdGenerators& TargetGenerators,
+    void TidyCBOpT(const detail::StdGenerators& TargetGenerators,
                    const SgOps& GivenSgOps,
                    const tables::MatrixGroup::Code& PG_MGC,
                    ChOfBasisOp& TrialCBOp)
@@ -719,7 +588,7 @@ namespace sgtbx {
       if (GivenSgOps.nSMx() == 1 && !GivenSgOps.isCentric()) return;
 
       SgOps TransformedSgOps = GivenSgOps.ChangeBasis(TrialCBOp);
-      StdGenerators TransformedGenerators(TransformedSgOps, PG_MGC);
+      detail::StdGenerators TransformedGenerators(TransformedSgOps, PG_MGC);
       TransformedGenerators.setPrimitive();
       TrVec
       CBT = FindOriginShift(TargetGenerators, TransformedGenerators,
@@ -784,7 +653,7 @@ namespace sgtbx {
                              int SgNumber,
                              const ChOfBasisOp& RefCBOp,
                              const SgOps& TargetSgOps,
-                             const StdGenerators& TargetGenerators,
+                             const detail::StdGenerators& TargetGenerators,
                              const ChOfBasisOp& RawCBOp)
     {
       std::vector<RTMx>
@@ -951,7 +820,7 @@ namespace sgtbx {
       if (TabSgOps.nLTr() != WorkSgOps.nLTr())
         continue;
 
-      ConstructCBOpTpart::StdGenerators TabGenerators(TabSgOps, PG_MGC);
+      detail::StdGenerators TabGenerators(TabSgOps, PG_MGC);
       TabGenerators.setPrimitive();
       ChOfBasisOp AddCBOp = ConstructCBOpTpart::MatchGenerators(
         RBF, TBF, WorkSgOps, PG_MGC, HallSymbol[1], TabGenerators);
@@ -988,7 +857,7 @@ namespace sgtbx {
     }
     if (TidyCBOp) {
       tables::MatrixGroup::Code PG_MGC = TargetSgOps.getPointGroupType();
-      ConstructCBOpTpart::StdGenerators TargetGenerators(TargetSgOps, PG_MGC);
+      detail::StdGenerators TargetGenerators(TargetSgOps, PG_MGC);
       TargetGenerators.setPrimitive();
       CBOp = ConstructCBOpTpart::FindBestCBOp(
         *this, PG_MGC,

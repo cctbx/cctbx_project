@@ -30,6 +30,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "sgtbx/bricks.cpp",
       "sgtbx/miller_asu.cpp",
       "sgtbx/seminvariant.cpp",
+      "sgtbx/select_generators.cpp",
       "sgtbx/sgtbxmodule.cpp",
       "sgtbx/sgtbxdriver.cpp",
       "sgtbx/symbols.py",
@@ -70,6 +71,7 @@ class write_makefiles(makefile_generator.write_makefiles):
       "bricks",
       "miller_asu",
       "seminvariant",
+      "select_generators",
     )
 
     self.libraries = {
