@@ -75,9 +75,6 @@ def exercise_ref_flex_conversions(verbose=0):
 
 def exercise_to_tuple(verbose=0):
   if (verbose): print 'Checking to_tuple conversions'
-  if (not hasattr(rt, "make_boost_int_2")): # XXX
-    if (verbose): print 'SKIPPED'
-    return
   assert rt.make_boost_int_2(3, 5) == (3, 5)
   assert rt.make_boost_int_2(3) == (3, 2)
   assert rt.make_boost_int_2() == (7, 2)

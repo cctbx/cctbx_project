@@ -98,7 +98,8 @@ namespace scitbx { namespace {
     return result;
   }
 
-BOOST_PYTHON_FUNCTION_GENERATOR(make_boost_int_2_stubs, make_boost_int_2, 0, 2)
+  BOOST_PYTHON_FUNCTION_GENERATOR(
+    make_boost_int_2_stubs, make_boost_int_2, 0, 2)
 
   void init_module()
   {
@@ -119,9 +120,8 @@ BOOST_PYTHON_FUNCTION_GENERATOR(make_boost_int_2_stubs, make_boost_int_2, 0, 2)
     def("modify_shared", modify_shared);
     def("use_const_ref", use_const_ref);
     def("modify_ref", modify_ref);
-#if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
-    def("make_boost_int_2", make_boost_int_2, make_boost_int_2_stubs());
-#endif
+    def("make_boost_int_2", (boost::array<int, 2>(*)(int, int)) 0,
+      make_boost_int_2_stubs());
 
     boost::python::to_python_converter<
       boost::array<int, 2>,
