@@ -18,34 +18,12 @@ namespace sgtbx {
 
   namespace detail {
 
-    uctbx::Vec3 ModPositive(const uctbx::Vec3& X)
+    TrVec getUnitShifts(const coordinates::fractional<double>& Delta)
     {
-      uctbx::Vec3 result;
+      TrVec result(1);
       rangei(3) {
-        result[i] = std::fmod(X[i], 1.);
-        while (result[i] <  0.) result[i] += 1.;
-        while (result[i] >= 1.) result[i] -= 1.;
-      }
-      return result;
-    }
-
-    uctbx::Vec3 ModShort(const uctbx::Vec3& X)
-    {
-      uctbx::Vec3 result;
-      rangei(3) {
-        result[i] = std::fmod(X[i], 1.);
-        if      (result[i] <= -.5) result[i] += 1.;
-        else if (result[i] >   .5) result[i] -= 1.;
-      }
-      return result;
-    }
-
-    TrVec getUnitShifts(const uctbx::Vec3& Delta, int TBF)
-    {
-      TrVec result(TBF);
-      rangei(3) {
-        if (Delta[i] >= 0.) result[i] = TBF * static_cast<int>(Delta[i] + 0.5);
-        else                result[i] = TBF * static_cast<int>(Delta[i] - 0.5);
+        if (Delta[i] >= 0.) result[i] = static_cast<int>(Delta[i] + 0.5);
+        else                result[i] = static_cast<int>(Delta[i] - 0.5);
       }
       return result;
     }
@@ -62,10 +40,6 @@ namespace sgtbx {
           UniqueOps.push_back(SS);
         }
       }
-    }
-
-    double ModLength2(const uctbx::UnitCell& uc, const uctbx::Vec3& Diff) {
-      return uc.Length2(ModShort(Diff));
     }
 
     class CloseMate {
@@ -161,19 +135,21 @@ namespace sgtbx {
     for (int iOp = 1; iOp < sgo.OrderP(); iOp++) {
       RTMx M = sgo(iOp);
       RotMx CumR = M.Rpart().accumulate();
-      uctbx::Vec3 Mate0 = M * m_SnapPosition;
+      coordinates::fractional<double> Mate0 = M * m_SnapPosition;
       for (int iLTr = 0; iLTr < sgo.nLTr(); iLTr++) {
-        uctbx::Vec3 Mate = Mate0 + sgo.LTr(iLTr);
-        uctbx::Vec3 Delta0 = detail::ModShort(Mate - m_SnapPosition);
+        coordinates::fractional<double> Mate = Mate0 + sgo.LTr(iLTr);
+        coordinates::fractional<double> Delta0 = Mate - m_SnapPosition;
+        Delta0 = Delta0.ModShort();
         TrVec
-        UShifts = detail::getUnitShifts((m_SnapPosition + Delta0) - Mate,TBF);
+        UShifts = detail::getUnitShifts((m_SnapPosition + Delta0) - Mate);
+        UShifts = UShifts.scale(TBF);
         TrVec MT = M.Tpart() + sgo.LTr(iLTr) + UShifts;
         bool special = false;
         double SD2 = m_ShortestDistance2;
         for (UShifts[0] = -TBF; UShifts[0] <= TBF; UShifts[0] += TBF)
         for (UShifts[1] = -TBF; UShifts[1] <= TBF; UShifts[1] += TBF)
         for (UShifts[2] = -TBF; UShifts[2] <= TBF; UShifts[2] += TBF) {
-          uctbx::Vec3 Delta = Delta0 + UShifts;
+          coordinates::fractional<double> Delta = Delta0 + UShifts;
           double CartDelta2 = uc.Length2(Delta);
           if (SD2 > CartDelta2) SD2 = CartDelta2;
           if (CartDelta2 <= m_Parameters.m_MinMateDistance2) {
@@ -208,7 +184,7 @@ namespace sgtbx {
   }
 
   SpecialPosition::SpecialPosition(const SpecialPositionSnapParameters& params,
-                                   const uctbx::Vec3& X,
+                                   const coordinates::fractional<double>& X,
                                    bool auto_expand)
 
     : m_Parameters(params),
@@ -232,7 +208,7 @@ namespace sgtbx {
 
   SymEquivCoordinates::SymEquivCoordinates(
     const SpecialPositionSnapParameters& params,
-    const uctbx::Vec3& X)
+    const coordinates::fractional<double>& X)
   {
     SpecialPosition SP(params, X, true);
     for(std::size_t i=0;i<SP.M();i++) {
@@ -248,19 +224,21 @@ namespace sgtbx {
     }
   }
 
-  SymEquivCoordinates::SymEquivCoordinates(const WyckoffMapping& WM,
-                                           const uctbx::Vec3& X)
+  SymEquivCoordinates::SymEquivCoordinates(
+     const WyckoffMapping& WM,
+     const coordinates::fractional<double>& X)
   {
     const WyckoffPosition& WP = WM.WP();
     WP.CheckExpanded();
-    uctbx::Vec3 Xr = WM.snap_to_representative(X);
+    coordinates::fractional<double> Xr = WM.snap_to_representative(X);
     for(std::size_t i=0;i<WP.M();i++) {
       m_Coordinates.push_back(WP[i] * Xr);
     }
   }
 
-  SymEquivCoordinates::SymEquivCoordinates(const WyckoffPosition& WP,
-                                           const uctbx::Vec3& X)
+  SymEquivCoordinates::SymEquivCoordinates(
+     const WyckoffPosition& WP,
+     const coordinates::fractional<double>& X)
   {
     WP.CheckExpanded();
     for(std::size_t i=0;i<WP.M();i++) {
@@ -270,11 +248,11 @@ namespace sgtbx {
 
   SymEquivCoordinates::SymEquivCoordinates(
     const SpecialPositionTolerances& params,
-    const uctbx::Vec3& X)
+    const coordinates::fractional<double>& X)
   {
     m_Coordinates.push_back(X);
     for(int i=1;i<params.m_SgOps.OrderZ();i++) {
-      uctbx::Vec3 SX = params.m_SgOps(i) * X;
+      coordinates::fractional<double> SX = params.m_SgOps(i) * X;
       double Delta2 = getShortestDistance2(params.m_UnitCell, SX);
       if (Delta2 >= params.m_Tolerance2) {
         if (Delta2 < params.m_MinimumDistance2) {
@@ -293,19 +271,28 @@ namespace sgtbx {
     }
   }
 
-  SymEquivCoordinates::SymEquivCoordinates(const SgOps& sgo,
-                                           const uctbx::Vec3& X)
+  SymEquivCoordinates::SymEquivCoordinates(
+    const SgOps& sgo,
+    const coordinates::fractional<double>& X)
   {
     m_Coordinates.push_back(X);
     for(int i=1;i<sgo.OrderZ();i++) {
-      uctbx::Vec3 SX = sgo(i) * X;
+      coordinates::fractional<double> SX = sgo(i) * X;
       m_Coordinates.push_back(SX);
     }
   }
 
+  namespace detail {
+    double ModLength2(const uctbx::UnitCell& uc,
+                      const coordinates::fractional<double>& Diff) {
+      return uc.Length2(Diff.ModShort());
+    }
+  }
+
   double
-  SymEquivCoordinates::getShortestDistance2(const uctbx::UnitCell& uc,
-                                            const uctbx::Vec3& Y) const
+  SymEquivCoordinates::getShortestDistance2(
+    const uctbx::UnitCell& uc,
+    const coordinates::fractional<double>& Y) const
   {
     double result = detail::ModLength2(uc, Y - m_Coordinates[0]);
     for(std::size_t i=1;i<m_Coordinates.size();i++) {

@@ -12,6 +12,7 @@
 #include <boost/python/cross_module.hpp>
 #include <cctbx/bpl_utils.h>
 #include <cctbx/basic/boost_array_bpl.h>
+#include <cctbx/coordinates_bpl.h>
 #include <cctbx/miller_bpl.h>
 #include <cctbx/uctbx.h>
 #include <cctbx/basic/define_range.h>
@@ -89,12 +90,44 @@ namespace {
   Mx33 UnitCell_getMetricalMatrix_0(const UnitCell& uc) {
     return uc.getMetricalMatrix();
   }
+  double
+  UnitCell_Length2(const UnitCell& uc,
+                   const coordinates::fractional<double>& Xf) {
+    return uc.Length2(Xf);
+  }
+  double
+  UnitCell_Length(const UnitCell& uc,
+                  const coordinates::fractional<double>& Xf) {
+    return uc.Length(Xf);
+  }
+  double
+  UnitCell_Distance2(const UnitCell& uc,
+                     const coordinates::fractional<double>& Xf,
+                     const coordinates::fractional<double>& Yf) {
+    return uc.Distance2(Xf, Yf);
+  }
+  double
+  UnitCell_Distance(const UnitCell& uc,
+                    const coordinates::fractional<double>& Xf,
+                    const coordinates::fractional<double>& Yf) {
+    return uc.Distance(Xf, Yf);
+  }
   UnitCell UnitCell_ChangeBasis_1(const UnitCell& uc, const Mx33& InvCBMxR) {
     return uc.ChangeBasis(InvCBMxR);
   }
   UnitCell UnitCell_ChangeBasis_2(const UnitCell& uc,
                                   const Mx33& InvCBMxR, double RBF) {
     return uc.ChangeBasis(InvCBMxR, RBF);
+  }
+  coordinates::fractional<double>
+  UnitCell_fractionalize(const UnitCell& uc,
+                         const coordinates::cartesian<double>& Xc) {
+    return uc.fractionalize(Xc);
+  }
+  coordinates::cartesian<double>
+  UnitCell_orthogonalize(const UnitCell& uc,
+                         const coordinates::fractional<double>& Xf) {
+    return uc.orthogonalize(Xf);
   }
 }
 
@@ -126,18 +159,18 @@ BOOST_PYTHON_MODULE_INIT(uctbx)
                                  "getFractionalizationMatrix");
     UnitCell_class.def(&UnitCell::getOrthogonalizationMatrix,
                                  "getOrthogonalizationMatrix");
-    UnitCell_class.def(&UnitCell::Length2, "Length2");
-    UnitCell_class.def(&UnitCell::Length, "Length");
-    UnitCell_class.def(&UnitCell::Distance2, "Distance2");
-    UnitCell_class.def(&UnitCell::Distance, "Distance");
+    UnitCell_class.def(UnitCell_Length2, "Length2");
+    UnitCell_class.def(UnitCell_Length, "Length");
+    UnitCell_class.def(UnitCell_Distance2, "Distance2");
+    UnitCell_class.def(UnitCell_Distance, "Distance");
     UnitCell_class.def(&UnitCell::MaxMillerIndices, "MaxMillerIndices");
     UnitCell_class.def(UnitCell_ChangeBasis_1, "ChangeBasis");
     UnitCell_class.def(UnitCell_ChangeBasis_2, "ChangeBasis");
     UnitCell_class.def(&UnitCell::Q, "Q");
     UnitCell_class.def(&UnitCell::s, "s");
     UnitCell_class.def(&UnitCell::d, "d");
-    UnitCell_class.def(&UnitCell::fractionalize, "fractionalize");
-    UnitCell_class.def(&UnitCell::orthogonalize, "orthogonalize");
+    UnitCell_class.def(UnitCell_fractionalize, "fractionalize");
+    UnitCell_class.def(UnitCell_orthogonalize, "orthogonalize");
     UnitCell_class.def(&UnitCell::getLongestVector2, "getLongestVector2");
   }
   catch(...)
