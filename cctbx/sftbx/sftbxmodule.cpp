@@ -22,6 +22,12 @@ namespace {
   typedef sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> ex_xray_scatterer;
 
   void
+  xray_scatterer_set_fpfdp(ex_xray_scatterer& site,
+                           const std::complex<double>& fpfdp) {
+    site.set_fpfdp(fpfdp);
+  }
+
+  void
   xray_scatterer_set_Occ_1(ex_xray_scatterer& site,
                            double Occ) {
     site.set_Occ(Occ);
@@ -628,6 +634,8 @@ namespace {
     py_XrayScatterer.def(
       &ex_xray_scatterer::ApplySymmetry, "ApplySymmetry");
     py_XrayScatterer.def(
+      xray_scatterer_set_fpfdp, "set_fpfdp");
+    py_XrayScatterer.def(
       &ex_xray_scatterer::set_Coordinates, "set_Coordinates");
     py_XrayScatterer.def(
       xray_scatterer_set_Occ_1, "set_Occ");
@@ -635,6 +643,8 @@ namespace {
       xray_scatterer_set_Occ_2, "set_Occ");
     py_XrayScatterer.def(
       &ex_xray_scatterer::set_Uiso, "set_Uiso");
+    py_XrayScatterer.def(
+      &ex_xray_scatterer::set_Uaniso, "set_Uaniso");
     py_XrayScatterer.def(
       &ex_xray_scatterer::StructureFactor, "StructureFactor");
     py_XrayScatterer.def(
@@ -660,6 +670,15 @@ namespace {
       double,
       double,
       double>());
+    py_sampled_model_density.def(constructor<
+      const uctbx::UnitCell&,
+      const af::shared<ex_xray_scatterer>&,
+      const af::tiny<long, 3>&,
+      const af::tiny<long, 3>&,
+      double,
+      double,
+      double,
+      bool>());
     py_sampled_model_density.def(
       &sftbx::sampled_model_density<double>::ucell,
                                             "ucell");

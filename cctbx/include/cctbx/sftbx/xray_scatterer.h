@@ -358,6 +358,10 @@ namespace cctbx {
           parameters are provided by the cctbx::adptbx.
        */
       const af::tiny<FloatType, 6>& Uaniso() { return m_U; }
+      //! Redefinition of f-prime and f-double-prime.
+      void set_fpfdp(const std::complex<FloatType> fpfdp) {
+        m_fpfdp = fpfdp;
+      }
       //! Redefinition of the coordinates.
       /*! It is the user's responsibility to ensure that the
           multiplicity is still correct or updated.
@@ -386,6 +390,13 @@ namespace cctbx {
       void set_Uiso(const FloatType& Uiso) {
         cctbx_assert(!m_Anisotropic);
         m_U[0] = Uiso;
+      }
+      //! Redefinition of the anisotropic displacement parameters.
+      /*! Requires isAnisotropic() == <code>true</code>.
+       */
+      void set_Uaniso(const af::tiny<FloatType, 6>& Uaniso) {
+        cctbx_assert(m_Anisotropic);
+        m_U = Uaniso;
       }
       //! Compute multiplicity and average anisotropic displacement parameters.
       /*! The given unit cell and space group are used to determine
