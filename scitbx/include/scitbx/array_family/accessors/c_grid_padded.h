@@ -1,12 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Created (R.W. Grosse-Kunstleve)
- */
-
 // The implementations in this file are highly redundant in order
 // to help the optimizer.
 
@@ -19,11 +10,11 @@
 
 namespace scitbx { namespace af {
 
-  template <std::size_t Nd>
+  template <std::size_t Nd, typename IndexValueType=std::size_t>
   class c_grid_padded
   {
     public:
-      typedef tiny<std::size_t, Nd> index_type;
+      typedef tiny<IndexValueType, Nd> index_type;
       typedef typename index_type::value_type index_value_type;
 
       c_grid_padded()
@@ -101,12 +92,12 @@ namespace scitbx { namespace af {
       index_type focus_;
   };
 
-  template <>
-  class c_grid_padded<2>
+  template <typename IndexValueType>
+  class c_grid_padded<2, IndexValueType>
   {
     public:
-      typedef tiny<std::size_t, 2> index_type;
-      typedef index_type::value_type index_value_type;
+      typedef IndexValueType index_value_type;
+      typedef tiny<IndexValueType, 2> index_type;
 
       c_grid_padded() : all_(0,0), focus_(0,0) {}
 
@@ -202,12 +193,12 @@ namespace scitbx { namespace af {
       index_type focus_;
   };
 
-  template <>
-  class c_grid_padded<3>
+  template <typename IndexValueType>
+  class c_grid_padded<3, IndexValueType>
   {
     public:
-      typedef tiny<std::size_t, 3> index_type;
-      typedef index_type::value_type index_value_type;
+      typedef IndexValueType index_value_type;
+      typedef tiny<IndexValueType, 3> index_type;
 
       c_grid_padded() : all_(0,0,0), focus_(0,0,0) {}
 
