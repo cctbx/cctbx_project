@@ -1,4 +1,6 @@
 import iotbx.parameters
+import iotbx.parameters.command_line
+from libtbx.utils import UserError
 from cStringIO import StringIO
 import copy
 import sys, os
@@ -287,12 +289,14 @@ def exercise_nested():
 d0=0
 a0 {
   d1=a b c
+  include file
   a1 {
     t0 {
       c=yes
       t1 {
         x=0
         y=1.
+          .multiple=True
       }
     }
   }
@@ -304,6 +308,7 @@ a0 {
 d0 = 0
 a0 {
   d1 = a b c
+  include file
   a1 {
     t0 {
       c = yes
@@ -323,6 +328,9 @@ a0 {
   check_get(parameters, path="a0.a1.t0.t1.y", expected_out="y = 1.\n")
   assert [item.path for item in parameters.all_definitions()] == [
     "d0", "a0.d1", "a0.a1.t0.c", "a0.a1.t0.t1.x", "a0.a1.t0.t1.y", "a0.d2"]
+  assert [item.path for item in parameters.all_definitions(
+    suppress_multiple=True)] == [
+    "d0", "a0.d1", "a0.a1.t0.c", "a0.a1.t0.t1.x", "a0.d2"]
   parameters.automatic_type_assignment(assignment_if_unknown="UNKNOWN")
   out = StringIO()
   parameters.show(out=out, attributes_level=2)
@@ -332,6 +340,7 @@ d0 = 0
 a0 {
   d1 = a b c
     .type = str
+  include file
   a1 {
     t0 {
       c = yes
@@ -341,6 +350,7 @@ a0 {
           .type = int
         y = 1.
           .type = float
+          .multiple = True
       }
     }
   }
@@ -2129,6 +2139,68 @@ d {
 }
 """
 
+def exercise_command_line():
+  master_params = iotbx.parameters.parse(input_string="""\
+foo {
+  min=0
+  max=10
+  index=3
+  limit=6
+}
+bar {
+  max=5
+  sub {
+    limit=8
+  }
+}
+""")
+  itpr_bar = iotbx.parameters.command_line.argument_interpreter(
+    master_params=master_params,
+    home_scope="bar")
+  itpr_neutral = iotbx.parameters.command_line.argument_interpreter(
+    master_params=master_params)
+  for itpr in [itpr_bar, itpr_neutral]:
+    itpr.process(arg="foo.limit=4\nbar.max=2").as_str() == """\
+foo.limit = 4
+bar.max = 2
+"""
+  assert itpr_bar.process(arg="max=5").as_str() == "bar.max = 5\n"
+  try: assert itpr_neutral.process(arg="max=5")
+  except UserError, e:
+    assert str(e) == """\
+Ambiguous parameter definition: max = 5
+Best matches:
+  foo.max
+  bar.max"""
+  else: raise RuntimeError("Exception expected.")
+  assert itpr_bar.process(arg="limit=0").as_str() == "bar.sub.limit = 0\n"
+  assert itpr_bar.process(arg="imit=0").as_str() == "bar.sub.limit = 0\n"
+  for itpr in [itpr_bar, itpr_neutral]:
+    assert itpr.process(arg="index=0").as_str() == "foo.index = 0\n"
+    assert itpr.process(arg="ndex=0").as_str() == "foo.index = 0\n"
+  try: itpr_bar.process(arg="xyz=")
+  except UserError, e:
+    assert str(e) == """\
+Error interpreting command line argument as parameter definition:
+  "xyz="
+  Missing value for xyz (command line argument, line 1)"""
+  else: raise RuntimeError("Exception expected.")
+  try: itpr_bar.process(arg="xyz=8")
+  except UserError, e:
+    assert str(e) == "Unknown command line parameter definition: xyz = 8"
+  else: raise RuntimeError("Exception expected.")
+  try: itpr_bar.process(arg="  ")
+  except UserError, e:
+    assert str(e) == 'Command line parameter definition has no effect: "  "'
+  else: raise RuntimeError("Exception expected.")
+  itpr = iotbx.parameters.command_line.argument_interpreter(
+    master_params=master_params,
+    argument_description="")
+  try: itpr.process(arg="bar {}")
+  except UserError, e:
+    assert str(e) == 'Parameter definition has no effect: "bar {}"'
+  else: raise RuntimeError("Exception expected.")
+
 def exercise():
   exercise_parse_and_show()
   exercise_syntax_errors()
@@ -2140,6 +2212,7 @@ def exercise():
   exercise_fetch()
   exercise_extract()
   exercise_format()
+  exercise_command_line()
   print "OK"
 
 if (__name__ == "__main__"):

@@ -43,7 +43,7 @@ def bool_from_assigned_words(assigned_words):
   if (word_lower in ["true", "yes", "on", "1"]): return True
   assert len(assigned_words) > 0
   raise RuntimeError(
-    'One True of False value expected, "%s" found%s' % (
+    'One True or False value expected, "%s" found%s' % (
       value_string, assigned_words[0].where_str()))
 
 def number_from_assigned_words(assigned_words):
@@ -308,7 +308,9 @@ class definition: # FUTURE definition(object)
   def has_same_definitions(self, other):
     return self.as_str() == other.as_str()
 
-  def _all_definitions(self, parent, parent_path, result):
+  def _all_definitions(self, suppress_multiple, parent, parent_path, result):
+    if (suppress_multiple and self.multiple): return
+    if (self.name == "include"): return
     result.append(object_locator(
       parent=parent, path=parent_path+self.name, object=self))
 
@@ -667,16 +669,25 @@ class scope:
   def has_same_definitions(self, other):
     return self.as_str() == other.as_str()
 
-  def _all_definitions(self, parent, parent_path, result):
+  def _all_definitions(self, suppress_multiple, parent, parent_path, result):
     parent_path += self.name+"."
     for object in self.active_objects():
+      if (suppress_multiple and object.multiple): continue
       object._all_definitions(
-        parent=self, parent_path=parent_path, result=result)
+        suppress_multiple=suppress_multiple,
+        parent=self,
+        parent_path=parent_path,
+        result=result)
 
-  def all_definitions(self):
+  def all_definitions(self, suppress_multiple=False):
     result = []
     for object in self.active_objects():
-      object._all_definitions(parent=self, parent_path="", result=result)
+      if (suppress_multiple and object.multiple): continue
+      object._all_definitions(
+        suppress_multiple=suppress_multiple,
+        parent=self,
+        parent_path="",
+        result=result)
     return result
 
   def automatic_type_assignment(self, assignment_if_unknown=None):
