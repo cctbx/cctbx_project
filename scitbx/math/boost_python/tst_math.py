@@ -860,6 +860,8 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
   s3 = s3.expand(additional_radius=2)
   assert approx_equal(s3.center(), [1,2,3])
   assert approx_equal(s3.radius(), 6)
+  assert approx_equal(
+    s3.expand_relative(additional_relative_radius=0.1).radius(), 6.6)
   assert s3.is_inside(point=[1,2,3])
   assert s3.is_inside(point=[1,2,3+6-1.e-6])
   assert not s3.is_inside([1,2,3+6+1.e-6])
