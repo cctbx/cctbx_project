@@ -33,7 +33,7 @@ class write_makefiles:
 
   def __init__(self, subdir, configuration, package):
     self.platform = strip(configuration[0])
-    if (not (self.platform in ("tru64_cxx", "unix_gcc", "irix_CC",
+    if (not (self.platform in ("tru64_cxx", "unix_gcc", "sun_gcc", "irix_CC",
                                "macosx", "mingw32", "vc60", "win32_mwcc"))):
       stdout = sys.stdout
       sys.stdout = sys.__stdout__
