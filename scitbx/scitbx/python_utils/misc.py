@@ -140,3 +140,7 @@ class input_with_prompt:
       del sys.tracebacklimit
     else:
       sys.tracebacklimit = self.previous_tracebacklimit
+
+def plural_s(n):
+  if (n == 1): return n, ""
+  return n, "s"
