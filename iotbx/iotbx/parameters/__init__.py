@@ -322,41 +322,74 @@ class object_list:
     for object in result_raw.objects:
       if (not isinstance(object, definition)):
         result_sub.append(object)
-        continue
-      new_values = []
-      for word in object.values:
-        if (word.quote_token == "'"): continue
-        substitution_proxy = variable_substitution_proxy(word)
-        for fragment in substitution_proxy.fragments:
-          if (not fragment.is_variable):
-            fragment.result = simple_tokenizer.word(
-              value=fragment.value, quote_token='"')
-            continue
-          variable_values = None
-          for variable_object in self.get_with_variable_substitution(
-                                   path=fragment.value,
-                                   path_memory=path_memory).objects:
-            if (isinstance(variable_object, definition)):
-              variable_values = variable_object.values
-          if (variable_values is None):
-            env_var = os.environ.get(fragment.value, None)
-            if (env_var is not None):
-              variable_values = [simple_tokenizer.word(
-                value=env_var,
-                quote_token='"')]
-          if (variable_values is None):
-            raise RuntimeError("Undefined variable: $%s%s" % (
-              fragment.value, word.where_str()))
-          if (not substitution_proxy.force_string):
-            fragment.result = variable_values
-          else:
-            fragment.result = simple_tokenizer.word(
-              value=" ".join([str(v) for v in variable_values]),
-              quote_token='"')
-        new_values.extend(substitution_proxy.get_new_values())
-      result_sub.append(object.copy(values=new_values))
+      else:
+        result_sub.append(self.variable_substitution(
+          object=object, path_memory=path_memory))
     del path_memory[path]
     return object_list(objects=result_sub)
+
+  def variable_substitution(self, object, path_memory):
+    new_values = []
+    for word in object.values:
+      if (word.quote_token == "'"): continue
+      substitution_proxy = variable_substitution_proxy(word)
+      for fragment in substitution_proxy.fragments:
+        if (not fragment.is_variable):
+          fragment.result = simple_tokenizer.word(
+            value=fragment.value, quote_token='"')
+          continue
+        variable_values = None
+        for variable_object in self.get_with_variable_substitution(
+                                 path=fragment.value,
+                                 path_memory=path_memory).objects:
+          if (isinstance(variable_object, definition)):
+            variable_values = variable_object.values
+        if (variable_values is None):
+          env_var = os.environ.get(fragment.value, None)
+          if (env_var is not None):
+            variable_values = [simple_tokenizer.word(
+              value=env_var,
+              quote_token='"')]
+        if (variable_values is None):
+          raise RuntimeError("Undefined variable: $%s%s" % (
+            fragment.value, word.where_str()))
+        if (not substitution_proxy.force_string):
+          fragment.result = variable_values
+        else:
+          fragment.result = simple_tokenizer.word(
+            value=" ".join([str(v) for v in variable_values]),
+            quote_token='"')
+      new_values.extend(substitution_proxy.get_new_values())
+    return object.copy(values=new_values)
+
+  def process_includes(self,
+        definition_type_names,
+        reference_directory,
+        include_memory=None):
+    if (definition_type_names is None):
+      definition_type_names = default_definition_type_names
+    if (include_memory is None): include_memory = {}
+    result = []
+    for object in self.objects:
+      if (not isinstance(object, definition)
+          or object.name != "include"):
+        result.append(object)
+      else:
+        object_sub = self.variable_substitution(object=object, path_memory={})
+        for file_name in [word.value for word in object_sub.values]:
+          if (reference_directory is not None
+              and not os.path.isabs(file_name)):
+            file_name = os.path.join(reference_directory, file_name)
+          file_name_normalized = os.path.normpath(os.path.abspath(file_name))
+          if (file_name_normalized in include_memory): continue
+          include_memory[file_name_normalized] = None
+          result.extend(parse(
+            file_name=file_name,
+            definition_type_names=definition_type_names).process_includes(
+              definition_type_names=definition_type_names,
+              reference_directory=os.path.dirname(file_name_normalized),
+              include_memory=include_memory).objects)
+    return object_list(objects=result)
 
 class variable_substitution_fragment:
 
@@ -434,17 +467,30 @@ class variable_substitution_proxy:
       value="".join([fragment.result.value for fragment in self.fragments]),
       quote_token='"')]
 
-def parse(input_string=None, file_name=None, definition_type_names=None):
+def parse(
+      input_string=None,
+      file_name=None,
+      definition_type_names=None,
+      process_includes=False):
   from iotbx.parameters import parser
   if (input_string is None):
     assert file_name is not None
     input_string = open(file_name).read()
   if (definition_type_names is None):
     definition_type_names = default_definition_type_names
-  return object_list(objects=parser.collect_objects(
+  result = object_list(objects=parser.collect_objects(
     word_stack=simple_tokenizer.as_word_stack(
       input_string=input_string,
       file_name=file_name,
       contiguous_word_characters="",
       auto_split_unquoted={"{}": ("{", "}")}),
     definition_type_names=definition_type_names))
+  if (process_includes):
+    if (file_name is None):
+      reference_directory = None
+    else:
+      reference_directory = os.path.dirname(os.path.abspath(file_name))
+    result = result.process_includes(
+      definition_type_names=definition_type_names,
+      reference_directory=reference_directory)
+  return result

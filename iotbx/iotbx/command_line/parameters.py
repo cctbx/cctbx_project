@@ -17,6 +17,10 @@ def run(args):
       action="store_true",
       dest="show_all_attributes",
       help="Display all attributes for each parameter.")
+    .option(None, "--process_includes",
+      action="store_true",
+      dest="process_includes",
+      help="Inline include files.")
     .option(None, "--print_width",
       action="store",
       type="int",
@@ -41,7 +45,9 @@ def run(args):
   for file_name in command_line.args:
     print prefix + 'parameter_file "%s"' % file_name.replace('"', '\\"')
     print prefix.rstrip()
-    parameters = iotbx.parameters.parse(file_name=file_name)
+    parameters = iotbx.parameters.parse(
+      file_name=file_name,
+      process_includes=command_line.options.process_includes)
     parameters.show(
       out=sys.stdout,
       prefix=prefix,
