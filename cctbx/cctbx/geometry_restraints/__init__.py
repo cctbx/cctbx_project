@@ -289,6 +289,27 @@ class _bond_sorted_asu_proxies(boost.python.injector, bond_sorted_asu_proxies):
       print >> f, "%sWarning: very large bond lengths." % prefix
     return histogram
 
+  def show_histogram_of_deltas(self,
+        sites_cart,
+        n_slots=5,
+        f=None,
+        prefix=""):
+    if (self.n_total() == 0): return
+    if (f is None): f = sys.stdout
+    print >> f, "%sHistogram of bond deltas:" % prefix
+    histogram = flex.histogram(
+      data=flex.abs(bond_deltas(
+        sites_cart=sites_cart,
+        sorted_asu_proxies=self)),
+      n_slots=n_slots)
+    low_cutoff = histogram.data_min()
+    for i,n in enumerate(histogram.slots()):
+      high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
+      print >> f, "%s  %8.3f - %8.3f: %d" % (
+        prefix, low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+    return histogram
+
   def show_sorted_by_residual(self,
         sites_cart,
         labels=None,
