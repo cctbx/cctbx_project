@@ -12,6 +12,7 @@
 #define CCTBX_MAPS_SYM_FLAGS_H
 
 #include <cctbx/sgtbx/groups.h>
+#include <cctbx/vector/linear_regression.h>
 
 namespace cctbx { namespace maps {
 
@@ -136,6 +137,82 @@ namespace cctbx { namespace maps {
     }
     return grid_misses;
   }
+
+  template <typename VectorType>
+  std::size_t
+  optimize_flags(VectorType& flags)
+  {
+    std::size_t n_independent = 0;
+    for(std::size_t i=0;i<flags.size();i++) {
+      if (flags[i] < 0) {
+        n_independent++;
+      }
+      else {
+        std::size_t j = flags[i];
+        while (flags[j] >= 0) j = flags[j];
+        flags[i] = j;
+      }
+    }
+    return n_independent;
+  }
+
+  template <class VectorTypeData>
+  struct verify_symmetry_flags
+    : vector::linear_regression_core<typename VectorTypeData::size_type,
+                                     typename VectorTypeData::value_type>
+  {
+    typedef typename VectorTypeData::size_type size_type;
+    typedef typename VectorTypeData::value_type value_type;
+
+    verify_symmetry_flags() {}
+    template <typename VectorTypeFlags>
+    verify_symmetry_flags(const VectorTypeData& data,
+                          const VectorTypeFlags& flags,
+                          const value_type& epsilon = 1.e-6)
+    {
+      cctbx_assert(data.size() <= flags.size());
+      n_dependent = 0;
+      size_type i;
+      for(i=0;i<data.size();i++) {
+        if (flags[i] >= 0) break;
+      }
+      if (i == data.size()) {
+        reset();
+        return;
+      }
+      n_dependent = 1;
+      value_type x = data[i];
+      value_type y = data[flags[i]];
+      value_type min_x = x;
+      value_type max_x = x;
+      value_type min_y = y;
+      value_type max_y = y;
+      value_type sum_x = x;
+      value_type sum_x2 = x * x;
+      value_type sum_y = y;
+      value_type sum_y2 = y * y;
+      value_type sum_xy = x * y;
+      for(i++;i<data.size();i++) {
+        if (flags[i] < 0) continue;
+        n_dependent++;
+        x = data[i];
+        y = data[flags[i]];
+        if (min_x > x) min_x = x;
+        if (max_x < x) max_x = x;
+        if (min_y > y) min_y = y;
+        if (max_y < y) max_y = y;
+        sum_x += x;
+        sum_x2 += x * x;
+        sum_y += y;
+        sum_y2 += y * y;
+        sum_xy += x * y;
+      }
+      set(n_dependent,
+          min_x, max_x, min_y, max_y, sum_x, sum_x2, sum_y, sum_y2, sum_xy,
+          epsilon);
+    }
+    size_type n_dependent;
+  };
 
 }} // namespace cctbx::maps
 
