@@ -15,6 +15,8 @@ namespace cctbx { namespace xray {
       public caasf_fourier_transformed<FloatType>
     {
       public:
+        typedef caasf_fourier_transformed<FloatType> base_t;
+
         d_caasf_fourier_transformed() {}
 
         d_caasf_fourier_transformed(
@@ -29,8 +31,7 @@ namespace cctbx { namespace xray {
           FloatType const& u_iso,
           FloatType const& u_extra)
         :
-          caasf_fourier_transformed<FloatType>(
-            exp_table, caasf, fp, fdp, w, u_iso, u_extra)
+          base_t(exp_table, caasf, fp, fdp, w, u_iso, u_extra)
         {
           if (gf.u_iso || gf.occupancy || gf.fp || gf.fdp) {
             FloatType b_incl_extra = adptbx::u_as_b(u_iso + u_extra);
@@ -75,8 +76,7 @@ namespace cctbx { namespace xray {
           scitbx::sym_mat3<FloatType> const& u_cart,
           FloatType const& u_extra)
         :
-          caasf_fourier_transformed<FloatType>(
-            exp_table, caasf, fp, fdp, w, u_cart, u_extra)
+          base_t(exp_table, caasf, fp, fdp, w, u_cart, u_extra)
         {
           if (gf.u_aniso) {
             for(std::size_t i=0;i<caasf.n_ab();i++) {
@@ -292,10 +292,10 @@ namespace cctbx { namespace xray {
         }
 
       protected:
-        af::tiny<FloatType, max_n_rho_real_terms> b_;
-        af::tiny<FloatType, max_n_rho_real_terms> detb_;
-        af::tiny<scitbx::sym_mat3<FloatType>, max_n_rho_real_terms> bcfmt_;
-        af::tiny<FloatType, max_n_rho_real_terms> as_occupancy_real_;
+        af::tiny<FloatType, base_t::max_n_rho_real_terms> b_;
+        af::tiny<FloatType, base_t::max_n_rho_real_terms> detb_;
+        af::tiny<scitbx::sym_mat3<FloatType>, base_t::max_n_rho_real_terms> bcfmt_;
+        af::tiny<FloatType, base_t::max_n_rho_real_terms> as_occupancy_real_;
         FloatType as_occupancy_imag_;
         FloatType eight_pi_pow_3_2_w_d_;
     };
