@@ -89,10 +89,10 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("site_symmetry_table")
         .def("process", &w_t::process, (arg_("site_symmetry_ops")))
-        .def("get_site_symmetry_ops", &w_t::get_site_symmetry_ops,
-          (arg_("i_seq")), rir())
-        .def("n_unique_site_symmetry_ops", &w_t::n_unique_site_symmetry_ops)
+        .def("get", &w_t::get, (arg_("i_seq")), rir())
+        .def("n_unique", &w_t::n_unique)
         .def("indices", &w_t::indices, ccr())
+        .def("reserve", &w_t::reserve)
       ;
     }
   };
