@@ -12,6 +12,7 @@ import scitbx.lbfgs
 from scitbx import matrix
 from libtbx.itertbx import count
 from stdlib import math
+from cStringIO import StringIO
 import sys
 
 def exercise(verbose=0):
@@ -76,6 +77,8 @@ def exercise(verbose=0):
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
       max_iterations=1000))
   sites_cart_minimized_1 = sites_cart.deep_copy()
+  s = StringIO()
+  manager.show_interactions(f=s)
   if (0 or verbose):
     f = open("minimized_1.pdb", "w")
     for serial,site in zip(count(1), sites_cart_minimized_1):
@@ -214,6 +217,8 @@ def exercise(verbose=0):
         geometry_restraints_manager=manager,
         lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
           max_iterations=1000))
+      s = StringIO()
+      manager.show_interactions(f=s)
       if (0 or verbose):
         minimized.final_target_result.show()
         print "number of function evaluations:", minimized.minimizer.nfun()

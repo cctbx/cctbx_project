@@ -4,6 +4,7 @@ import cctbx.geometry_restraints.energies
 from cctbx import crystal
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
+import sys
 
 class manager:
 
@@ -125,3 +126,30 @@ class manager:
       planarity_proxies=planarity_proxies,
       compute_gradients=compute_gradients,
       disable_asu_cache=disable_asu_cache)
+
+  def show_interactions(self, sites_cart=None, i_seq=None, f=None):
+    if (f is None): f = sys.stdout
+    pair_proxies = self.pair_proxies(sites_cart=sites_cart)
+    if (pair_proxies.bond_proxies is not None):
+      for proxy in pair_proxies.bond_proxies.simple:
+        if (i_seq is None or i_seq in proxy.i_seqs):
+          print >> f, "bond simple:", proxy.i_seqs
+      for proxy in pair_proxies.bond_proxies.asu:
+        if (i_seq is None or i_seq in [proxy.i_seq, proxy.j_seq]):
+          print >> f, "bond asu:", (proxy.i_seq, proxy.j_seq, proxy.j_sym)
+    if (self.angle_proxies is not None):
+      for proxy in self.angle_proxies:
+        if (i_seq is None or i_seq in proxy.i_seqs):
+          print >> f, "angle:", proxy.i_seqs
+    if (self.dihedral_proxies is not None):
+      for proxy in self.dihedral_proxies:
+        if (i_seq is None or i_seq in proxy.i_seqs):
+          print >> f, "dihedral:", proxy.i_seqs
+    if (self.chirality_proxies is not None):
+      for proxy in self.chirality_proxies:
+        if (i_seq is None or i_seq in proxy.i_seqs):
+          print >> f, "chirality:", proxy.i_seqs
+    if (self.planarity_proxies is not None):
+      for proxy in self.planarity_proxies:
+        if (i_seq is None or i_seq in proxy.i_seqs):
+          print >> f, "planarity:", tuple(proxy.i_seqs)
