@@ -679,6 +679,10 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_ChOfBasisOp.def(constructor<>());
     py_ChOfBasisOp.def(constructor<int>());
     py_ChOfBasisOp.def(constructor<int, int>());
+    py_ChOfBasisOp.def(constructor<const std::string&>());
+    py_ChOfBasisOp.def(constructor<const std::string&, const char*>());
+    py_ChOfBasisOp.def(constructor<const std::string&, const char*,int>());
+    py_ChOfBasisOp.def(constructor<const std::string&, const char*,int,int>());
     py_ChOfBasisOp.def(&ChOfBasisOp::isValid, "isValid");
     py_ChOfBasisOp.def(&ChOfBasisOp::M, "M");
     py_ChOfBasisOp.def(&ChOfBasisOp::InvM, "InvM");

@@ -38,6 +38,18 @@ namespace sgtbx {
        */
       explicit inline ChOfBasisOp(const RTMx& M)
         : Mx(M), InvMx(M.inverse()) { }
+      /*! \brief Initialize the change-of-basis operator with
+          matrix given as xyz string.
+       */
+      /*! The inverse matrix is computed by inversion.
+          An exception is thrown if the given matrix is not invertible.
+          <p>
+          See also: constructor of class RTMx
+       */
+      inline ChOfBasisOp(const std::string& StrXYZ,
+                         const char* StopChars = "",
+                         int RBF = CRBF, int TBF = CTBF)
+        : Mx(RTMx(StrXYZ, StopChars, RBF, TBF)), InvMx(Mx.inverse()) {}
       //! Initialize the change-of-basis operator with unit matrices.
       /*! The unit matrices are initialized with the rotation base factor
           RBF and the translation base factor TBF.
