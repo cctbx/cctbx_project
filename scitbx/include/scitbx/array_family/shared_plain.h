@@ -45,7 +45,7 @@ namespace scitbx { namespace af {
   struct weak_ref_flag {};
 
   namespace detail {
-    const std::size_t global_max_size(std::size_t(-1));
+    const std::size_t global_max_size(static_cast<std::size_t>(-1));
   }
 
   class sharing_handle {
