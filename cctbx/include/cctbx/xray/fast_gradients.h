@@ -321,8 +321,10 @@ namespace cctbx { namespace xray {
       fast_gradients(
         uctbx::unit_cell const& unit_cell,
         af::const_ref<XrayScattererType> const& scatterers,
+        af::const_ref<FloatType, accessor_type> const&
+          ft_d_target_d_f_calc_real,
         af::const_ref<std::complex<FloatType>, accessor_type> const&
-          ft_d_target_d_f_calc,
+          ft_d_target_d_f_calc_complex,
         gradient_flags const& grad_flags,
         FloatType const& u_extra=0.25,
         FloatType const& wing_cutoff=1.e-3,
@@ -362,8 +364,10 @@ namespace cctbx { namespace xray {
   ::fast_gradients(
     uctbx::unit_cell const& unit_cell,
     af::const_ref<XrayScattererType> const& scatterers,
+    af::const_ref<FloatType, accessor_type> const&
+      ft_d_target_d_f_calc_real,
     af::const_ref<std::complex<FloatType>, accessor_type> const&
-      ft_d_target_d_f_calc,
+      ft_d_target_d_f_calc_complex,
     gradient_flags const& grad_flags,
     FloatType const& u_extra,
     FloatType const& wing_cutoff,
@@ -373,10 +377,18 @@ namespace cctbx { namespace xray {
     base_t(unit_cell, scatterers, u_extra, wing_cutoff,
            exp_table_one_over_step_size)
   {
+    CCTBX_ASSERT(   (ft_d_target_d_f_calc_real.size() == 0)
+                 != (ft_d_target_d_f_calc_complex.size() == 0));
     if (this->n_anomalous_scatterers_ != 0) {
       this->anomalous_flag_ = true;
     }
-    this->map_accessor_ = ft_d_target_d_f_calc.accessor();
+    bool gradient_map_is_real = ft_d_target_d_f_calc_real.size() != 0;
+    if (gradient_map_is_real) {
+      this->map_accessor_ = ft_d_target_d_f_calc_real.accessor();
+    }
+    else {
+      this->map_accessor_ = ft_d_target_d_f_calc_complex.accessor();
+    }
     grid_point_type const& grid_f = this->map_accessor_.focus();
     detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
     scitbx::mat3<FloatType>
@@ -431,6 +443,8 @@ namespace cctbx { namespace xray {
       FloatType gr_fdp(0);
       grid_point_type pivot = detail::calc_nearest_grid_point(
         coor_frac, grid_f);
+      FloatType f_real(-1.e20); // could be uninitialized
+      FloatType f_imag(-1.e20); // could be uninitialized
       // highly hand-optimized loop over points in shell
       grid_point_type g_min = pivot - shell.radii;
       grid_point_type g_max = pivot + shell.radii;
@@ -452,19 +466,25 @@ namespace cctbx { namespace xray {
           orth_mx[8] * f2);
         FloatType d_sq = d.length_sq();
         if (d_sq > shell.max_d_sq) continue;
-        std::complex<FloatType> ft_dt_dfc_gp = ft_d_target_d_f_calc(gp);
-        FloatType f_real = -ft_dt_dfc_gp.real();
-        FloatType f_imag = -ft_dt_dfc_gp.imag();
+        if (gradient_map_is_real) {
+          f_real = -ft_d_target_d_f_calc_real(gp);
+        }
+        else {
+          std::complex<FloatType>
+            ft_dt_dfc_gp = ft_d_target_d_f_calc_complex(gp);
+          f_real = -ft_dt_dfc_gp.real();
+          f_imag = -ft_dt_dfc_gp.imag();
+        }
         if (grad_flags.site) {
           if (!scatterer->anisotropic_flag) {
             gr_site += f_real * caasf_ft.d_rho_real_d_site(d, d_sq);
-            if (fdp) {
+            if (fdp && !gradient_map_is_real) {
               gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d, d_sq);
             }
           }
           else {
             gr_site += f_real * caasf_ft.d_rho_real_d_site(d);
-            if (fdp) {
+            if (fdp && !gradient_map_is_real) {
               gr_site += f_imag * caasf_ft.d_rho_imag_d_site(d);
             }
           }
@@ -472,7 +492,7 @@ namespace cctbx { namespace xray {
         if (!scatterer->anisotropic_flag) {
           if (grad_flags.u_iso) {
             gr_b_iso += f_real * caasf_ft.d_rho_real_d_b_iso(d_sq);
-            if (fdp) {
+            if (fdp && !gradient_map_is_real) {
               gr_b_iso += f_imag * caasf_ft.d_rho_imag_d_b_iso(d_sq);
             }
           }
@@ -480,7 +500,7 @@ namespace cctbx { namespace xray {
         else {
           if (grad_flags.u_aniso) {
             gr_b_cart += f_real * caasf_ft.d_rho_real_d_b_cart(d);
-            if (fdp) {
+            if (fdp && !gradient_map_is_real) {
               gr_b_cart += f_imag * caasf_ft.d_rho_imag_d_b_cart(d);
             }
           }
@@ -488,13 +508,13 @@ namespace cctbx { namespace xray {
         if (grad_flags.occupancy) {
           if (!scatterer->anisotropic_flag) {
             gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d_sq);
-            if (fdp) {
+            if (fdp && !gradient_map_is_real) {
               gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d_sq);
             }
           }
           else {
             gr_occupancy += f_real * caasf_ft.d_rho_real_d_occupancy(d);
-            if (fdp) {
+            if (fdp && !gradient_map_is_real) {
               gr_occupancy += f_imag * caasf_ft.d_rho_imag_d_occupancy(d);
             }
           }
@@ -507,7 +527,7 @@ namespace cctbx { namespace xray {
             gr_fp += f_real * caasf_ft.d_rho_real_d_fp(d);
           }
         }
-        if (grad_flags.fdp) {
+        if (grad_flags.fdp && !gradient_map_is_real) {
           if (!scatterer->anisotropic_flag) {
             gr_fdp += f_imag * caasf_ft.d_rho_imag_d_fdp(d_sq);
           }
