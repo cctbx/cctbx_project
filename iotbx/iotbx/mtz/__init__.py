@@ -228,11 +228,17 @@ def column_group(crystal_symmetry, primary_column_type, labels,
                  data, sigmas=None):
   assert data is not None
   if (sigmas is not None): assert sigmas.size() == data.size()
-  result = (miller.array(
-    miller_set=miller.set(
+  if (anomalous_flag is 0001):
+    miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
       indices=indices,
-      anomalous_flag=anomalous_flag),
+      anomalous_flag=0001)
+  else:
+    miller_set = miller.set(
+      crystal_symmetry=crystal_symmetry,
+      indices=indices).auto_anomalous(min_fraction_bijvoet_pairs=2/3.)
+  result = (miller.array(
+    miller_set=miller_set,
     data=data,
     sigmas=sigmas)
     .set_info(",".join(labels)))
