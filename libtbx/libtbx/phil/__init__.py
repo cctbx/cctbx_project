@@ -589,7 +589,7 @@ class scope_extract_is_disabled: pass
 
 class scope_extract:
 
-  def __set__(self, name, multiple, value):
+  def __set__(self, name, optional, multiple, value):
     assert not "." in name
     node = getattr(self, name, scope_extract_attribute_error)
     if (not multiple):
@@ -603,11 +603,10 @@ class scope_extract:
         node.__dict__.update(value.__dict__)
     else:
       if (node is scope_extract_attribute_error):
-        if (value is scope_extract_is_disabled):
-          setattr(self, name, [])
-        else:
-          setattr(self, name, [value])
-      elif (not value is scope_extract_is_disabled):
+        node = []
+        setattr(self, name, node)
+      if (not value is scope_extract_is_disabled
+          and (value is not None or optional is not True)):
         node.append(value)
 
   def __get__(self, name):
@@ -849,22 +848,31 @@ class scope:
         value = scope_extract_is_disabled
       else:
         value = object.extract()
-      result.__set__(name=object.name, multiple=object.multiple, value=value)
+      result.__set__(
+        name=object.name,
+        optional=object.optional,
+        multiple=object.multiple,
+        value=value)
     return result
 
   def format(self, python_object):
     result = []
     for object in self.active_objects():
-      if (isinstance(python_object, scope_extract)):
-        python_object = [python_object]
-      for python_object_i in python_object:
-        sub_python_object = python_object_i.__get__(object.name)
-        if (sub_python_object is not scope_extract_attribute_error):
-          if (not object.multiple):
-            result.append(object.format(sub_python_object))
-          else:
-            for sub_python_object_i in sub_python_object:
-              result.append(object.format(sub_python_object_i))
+      if (python_object is None):
+        result.append(object.format(None))
+      else:
+        if (isinstance(python_object, scope_extract)):
+          python_object = [python_object]
+        for python_object_i in python_object:
+          sub_python_object = python_object_i.__get__(object.name)
+          if (sub_python_object is not scope_extract_attribute_error):
+            if (not object.multiple):
+              result.append(object.format(sub_python_object))
+            else:
+              if (len(sub_python_object) == 0):
+                sub_python_object.append(None)
+              for sub_python_object_i in sub_python_object:
+                result.append(object.format(sub_python_object_i))
     return self.customized_copy(objects=result)
 
   def clone(self, python_object, converter_registry=None):

@@ -38,8 +38,8 @@ class argument_interpreter:
         'Error interpreting %sargument as parameter definition:\n'
         '  "%s"\n  %s') % (self.argument_description, arg, str(e)))
     if (self.target_paths is None):
-      self.target_paths = [object_locator.path for object_locator in
-        self.master_params.all_definitions(suppress_multiple=True)]
+      self.target_paths = [object_locator.path
+        for object_locator in self.master_params.all_definitions()]
     source_definitions = params.all_definitions()
     complete_definitions = ""
     for object_locator in source_definitions:

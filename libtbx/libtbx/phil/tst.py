@@ -1,6 +1,7 @@
 from libtbx import phil
 import libtbx.phil.command_line
 from libtbx.utils import UserError
+from libtbx.test_utils import show_diff
 from cStringIO import StringIO
 import copy
 import sys, os
@@ -1799,6 +1800,17 @@ b {
   extracted = parameters.extract()
   assert extracted.a == 2
   assert extracted.b.b == 6
+  #
+  parameters = phil.parse(input_string="""\
+s {
+  a=None
+   .optional=True
+   .type=int
+   .multiple=True
+}
+""")
+  extracted = parameters.extract()
+  assert extracted.s.a == []
 
 def exercise_format():
   parameters = phil.parse(input_string="""\
@@ -1956,7 +1968,9 @@ a = 1
   assert extracted.a == []
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == ""
+  assert out.getvalue() == """\
+a = None
+"""
   custom = phil.parse(input_string="""\
 a=None
 """)
@@ -1964,7 +1978,9 @@ a=None
   assert extracted.a == []
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == ""
+  assert out.getvalue() == """\
+a = None
+"""
   #
   master = phil.parse(input_string="""\
 s
@@ -2115,8 +2131,11 @@ s
   assert extracted.s == []
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
-"""
+  assert not show_diff(out.getvalue(), """\
+s {
+  a = None
+}
+""")
   custom = phil.parse(input_string="""\
 s {
   a=None
@@ -2126,8 +2145,11 @@ s {
   assert extracted.s == []
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
-"""
+  assert not show_diff(out.getvalue(), """\
+s {
+  a = None
+}
+""")
   custom = phil.parse(input_string="""\
 s {
   a=1
@@ -2233,12 +2255,13 @@ c {
   assert extracted.d[0].a is None
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 1
 a = 2
 b {
   a = 3
   a = 4
+  b = None
   c = 20
 }
 b {
@@ -2247,10 +2270,13 @@ b {
   b = 6
   c = None
 }
+c {
+  a = None
+}
 d {
   a = None
 }
-"""
+""")
   #
   params = phil.parse(input_string="""\
 a=1
