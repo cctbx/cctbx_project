@@ -14,7 +14,8 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from scitbx.python_utils import easy_pickle
-import sys
+from libtbx.utils import UserError
+import sys, os
 
 class any_reflection_file:
 
@@ -108,15 +109,6 @@ class any_reflection_file:
       force_symmetry=force_symmetry,
       info_prefix=info_prefix)
 
-def usage():
-  return (  "usage: iotbx.any_reflection_file_reader"
-          + " [--unit_cell=1,1,1,90,90,90]"
-          + " [--space_group=P212121]"
-          + " [--extract_symmetry=any_file_format]"
-          + " [--force_symmetry]"
-          + " [--pickle=file_name]"
-          + " any_reflection_file_format ...")
-
 def run(args):
   command_line = (iotbx_option_parser(
     usage="iotbx.reflection_file_reader [options] reflection_file ...",
@@ -131,7 +123,7 @@ def run(args):
       action="store",
       type="string",
       dest="pickle",
-      help="write all data to FILE",
+      help="write all data to FILE ('--pickle .' copies name of input file)",
       metavar="FILE")
   ).process()
   if (command_line.options.pickle is None):
@@ -139,6 +131,7 @@ def run(args):
   else:
     all_miller_arrays = []
   for file_name in command_line.args:
+    print
     print "file_name:", file_name
     sys.stdout.flush()
     reflection_file = any_reflection_file(file_name)
@@ -147,17 +140,24 @@ def run(args):
       crystal_symmetry=command_line.symmetry,
       force_symmetry=not command_line.options.weak_symmetry)
     for miller_array in miller_arrays:
-      miller_array.show_comprehensive_summary()
       print
+      miller_array.show_comprehensive_summary()
     if (all_miller_arrays is not None):
       all_miller_arrays.extend(miller_arrays)
-    print
-  if (all_miller_arrays is not None):
+  if (all_miller_arrays is not None and len(all_miller_arrays) > 0):
     if (len(all_miller_arrays) == 1):
       all_miller_arrays = all_miller_arrays[0]
     pickle_file_name = command_line.options.pickle
+    if (pickle_file_name == "."):
+      if (len(command_line.args) > 1):
+        raise UserError(
+          "Ambiguous name for pickle file (more than one input file).")
+      pickle_file_name = os.path.basename(command_line.args[0])
+      if (pickle_file_name.lower().endswith(".pickle")):
+        raise UserError("Input file is already a pickle file.")
     if (not pickle_file_name.lower().endswith(".pickle")):
       pickle_file_name += ".pickle"
+    print
     print "Writing all Miller arrays to file:", pickle_file_name
     easy_pickle.dump(pickle_file_name, all_miller_arrays)
     print
