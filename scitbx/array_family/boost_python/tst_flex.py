@@ -1,5 +1,6 @@
 import math
 from scitbx.array_family import flex
+from scitbx.test_utils import approx_equal
 
 def exercise_flex_grid():
   g = flex.grid()
@@ -350,6 +351,28 @@ def exercise_complex_functions():
   assert abs(d.real - c.real) > 1.e-6
   assert abs(d.imag - c.imag) > 1.e-6
 
+def exercise_linear_regression():
+  x = flex.double((1,2,3))
+  r = flex.linear_regression(x, x, 1.e-6)
+  assert r.is_well_defined()
+  assert approx_equal(r.y_intercept(), 0)
+  assert approx_equal(r.slope(), 1)
+  assert approx_equal(r.cc(), 1)
+  y = flex.double((-1./2+1,-2./2+1,-3./2+1))
+  r = flex.linear_regression(x, y)
+  assert r.is_well_defined()
+  assert approx_equal(r.y_intercept(), 1)
+  assert approx_equal(r.slope(), -1./2)
+  assert approx_equal(r.cc(), -1)
+  y = flex.double((0,0,0))
+  r = flex.linear_regression(x, y)
+  assert r.is_well_defined()
+  assert approx_equal(r.y_intercept(), 0)
+  assert approx_equal(r.slope(), 0)
+  assert approx_equal(r.cc(), 1)
+  r = flex.linear_regression(y, y)
+  assert not r.is_well_defined()
+
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
   try: f.assign(1, 0)
@@ -499,6 +522,7 @@ def run(iterations):
     exercise_arith_inplace_operators()
     exercise_functions()
     exercise_complex_functions()
+    exercise_linear_regression()
     exercise_exceptions()
     exercise_pickle_single_buffered()
     exercise_pickle_double_buffered()

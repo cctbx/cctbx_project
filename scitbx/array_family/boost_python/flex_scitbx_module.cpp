@@ -9,6 +9,7 @@
  */
 
 #include <scitbx/array_family/flex_grid_accessor.h>
+#include <scitbx/math/linear_regression.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
@@ -89,6 +90,41 @@ namespace {
     }
   };
 
+  struct linear_regression_core_wrappers
+  {
+    typedef math::linear_regression_core<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("linear_regression_core", no_init)
+        .def("is_well_defined", &w_t::is_well_defined)
+        .def("y_intercept", &w_t::y_intercept)
+        .def("slope", &w_t::slope)
+        .def("cc", &w_t::cc)
+      ;
+    }
+  };
+
+  struct linear_regression_wrappers
+  {
+    typedef math::linear_regression<> w_t;
+    typedef w_t::float_type float_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<math::linear_regression_core<> > >(
+            "linear_regression", no_init)
+        .def(init<af::const_ref<float_t> const&,
+                  af::const_ref<float_t> const&,
+                  optional<float_t const&> >());
+      ;
+    }
+  };
+
   void init_module()
   {
     using namespace boost::python;
@@ -98,6 +134,8 @@ namespace {
 
     register_flex_grid_default_index_type_conversions();
     flex_grid_wrappers::wrap();
+    linear_regression_core_wrappers::wrap();
+    linear_regression_wrappers::wrap();
 
     wrap_flex_bool();
     wrap_flex_size_t();

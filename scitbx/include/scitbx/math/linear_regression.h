@@ -12,9 +12,9 @@
 #ifndef SCITBX_MATH_LINEAR_REGRESSION_H
 #define SCITBX_MATH_LINEAR_REGRESSION_H
 
-#include <cmath>
-#include <scitbx/error.h>
 #include <scitbx/array_family/tiny.h>
+#include <scitbx/error.h>
+#include <cmath>
 
 namespace scitbx { namespace math {
 
@@ -35,117 +35,153 @@ namespace scitbx { namespace math {
     return cc;
   }
 
-  template <class IntegerType, class FloatType>
+  template <typename FloatType = double,
+            typename IntegerType = std::size_t>
   class linear_regression_core
   {
     public:
-      void reset() {
-        m_is_well_defined = false;
-        m_b = m_m = m_cc = FloatType(0);
-      }
-      void set(IntegerType const& n,
-               FloatType const& min_x, FloatType const& max_x,
-               FloatType const& min_y, FloatType const& max_y,
-               FloatType const& sum_x, FloatType const& sum_x2,
-               FloatType const& sum_y, FloatType const& sum_y2,
-               FloatType const& sum_xy,
-               FloatType const& epsilon = 1.e-6)
+      typedef FloatType float_type;
+      typedef std::size_t size_type;
+
+      void
+      reset()
       {
-        reset();
-        if (n < 1) return;
-        if (min_x == max_x) return;
-        if (min_y == max_y) {
-          m_b = min_y;
-          m_cc = FloatType(1);
-          m_is_well_defined = true;
-          return;
-        }
-        FloatType fn(n);
-        FloatType dx = std::max(f_abs(min_x - sum_x / fn),
-                                f_abs(max_x - sum_x / fn));
-        FloatType dy = std::max(f_abs(min_y - sum_y / fn),
-                                f_abs(max_y - sum_y / fn));
-        if (dx == 0) return;
-        if (dy == 0) {
-          m_b = sum_y / fn;
-          m_cc = FloatType(1);
-          m_is_well_defined = true;
-          return;
-        }
-        if (dx < dy * epsilon) return;
-        FloatType d = fn * sum_x2 - sum_x * sum_x;
-        if (d != 0) {
-          m_b = (sum_x2 * sum_y - sum_x * sum_xy) / d;
-          m_m = (fn * sum_xy - sum_x * sum_y) / d;
-        }
-        m_cc = std_linear_correlation(
-          fn, sum_x, sum_x2, sum_y, sum_y2, sum_xy);
-        m_is_well_defined = true;
+        is_well_defined_ = false;
+        y_intercept_ = slope_ = cc_ = FloatType(0);
       }
+
+      void
+      set(IntegerType const& n,
+          FloatType const& min_x, FloatType const& max_x,
+          FloatType const& min_y, FloatType const& max_y,
+          FloatType const& sum_x, FloatType const& sum_x2,
+          FloatType const& sum_y, FloatType const& sum_y2,
+          FloatType const& sum_xy,
+          FloatType const& epsilon = 1.e-6);
+
       //! Work-around for broken compilers.
-      static FloatType f_abs(FloatType const& x) {
+      static FloatType f_abs(FloatType const& x)
+      {
         if (x < 0) return -x;
         return x;
       }
+
       //! Flag.
-      bool is_well_defined() const { return m_is_well_defined; }
+      bool
+      is_well_defined() const { return is_well_defined_; }
+
       //! Linear regression coefficients b: y = mx + b.
-      FloatType const& b() const { return m_b; }
+      FloatType
+      y_intercept() const { return y_intercept_; }
+
       //! Linear regression coefficients m: y = mx + b.
-      FloatType const& m() const { return m_m; }
+      FloatType
+      slope() const { return slope_; }
+
       //! Standard linear correlation coefficient.
-      FloatType const& cc() const { return m_cc; }
+      FloatType
+      cc() const { return cc_; }
+
     protected:
-      bool m_is_well_defined;
-      FloatType m_b;
-      FloatType m_m;
-      FloatType m_cc;
+      bool is_well_defined_;
+      FloatType y_intercept_;
+      FloatType slope_;
+      FloatType cc_;
   };
 
-  template <class FloatType>
-  class linear_regression
-    : public linear_regression_core<std::size_t, FloatType>
+  template <typename FloatType,
+            typename IntegerType>
+  void
+  linear_regression_core<FloatType, IntegerType>
+  ::set(IntegerType const& n,
+        FloatType const& min_x, FloatType const& max_x,
+        FloatType const& min_y, FloatType const& max_y,
+        FloatType const& sum_x, FloatType const& sum_x2,
+        FloatType const& sum_y, FloatType const& sum_y2,
+        FloatType const& sum_xy,
+        FloatType const& epsilon)
+  {
+    reset();
+    if (n < 1) return;
+    if (min_x == max_x) return;
+    if (min_y == max_y) {
+      y_intercept_ = min_y;
+      cc_ = FloatType(1);
+      is_well_defined_ = true;
+      return;
+    }
+    FloatType fn(n);
+    FloatType dx = std::max(f_abs(min_x - sum_x / fn),
+                            f_abs(max_x - sum_x / fn));
+    FloatType dy = std::max(f_abs(min_y - sum_y / fn),
+                            f_abs(max_y - sum_y / fn));
+    if (dx == 0) return;
+    if (dy == 0) {
+      y_intercept_ = sum_y / fn;
+      cc_ = FloatType(1);
+      is_well_defined_ = true;
+      return;
+    }
+    if (dx < dy * epsilon) return;
+    FloatType d = fn * sum_x2 - sum_x * sum_x;
+    if (d != 0) {
+      y_intercept_ = (sum_x2 * sum_y - sum_x * sum_xy) / d;
+      slope_ = (fn * sum_xy - sum_x * sum_y) / d;
+    }
+    cc_ = std_linear_correlation(fn, sum_x, sum_x2, sum_y, sum_y2, sum_xy);
+    is_well_defined_ = true;
+  }
+
+  template <typename FloatType = double>
+  class linear_regression : public linear_regression_core<FloatType>
   {
     public:
-      typedef std::size_t size_type;
-      typedef FloatType value_type;
+      typedef FloatType float_type;
+      typedef typename linear_regression_core<FloatType>::size_type size_type;
 
       linear_regression() {}
+
       linear_regression(af::const_ref<FloatType> const& x,
                         af::const_ref<FloatType> const& y,
-                        FloatType const& epsilon = 1.e-6)
-      {
-        size_type n = x.size();
-        SCITBX_ASSERT(n == y.size());
-        if (n == 0) {
-          this->reset();
-          return;
-        }
-        value_type min_x = x[0];
-        value_type max_x = x[0];
-        value_type min_y = y[0];
-        value_type max_y = y[0];
-        value_type sum_x = x[0];
-        value_type sum_x2 = x[0] * x[0];
-        value_type sum_y = y[0];
-        value_type sum_y2 = y[0] * y[0];
-        value_type sum_xy = x[0] * y[0];
-        for(size_type i=1;i<n;i++) {
-          if (min_x > x[i]) min_x = x[i];
-          if (max_x < x[i]) max_x = x[i];
-          if (min_y > y[i]) min_y = y[i];
-          if (max_y < y[i]) max_y = y[i];
-          sum_x += x[i];
-          sum_x2 += x[i] * x[i];
-          sum_y += y[i];
-          sum_y2 += y[i] * y[i];
-          sum_xy += x[i] * y[i];
-        }
-        this->set(n, min_x, max_x, min_y, max_y,
-                  sum_x, sum_x2, sum_y, sum_y2, sum_xy,
-                  epsilon);
-      }
+                        FloatType const& epsilon = 1.e-6);
   };
+
+  template <typename FloatType>
+  linear_regression<FloatType>
+  ::linear_regression(af::const_ref<FloatType> const& x,
+                      af::const_ref<FloatType> const& y,
+                      FloatType const& epsilon)
+  {
+    size_type n = x.size();
+    SCITBX_ASSERT(n == y.size());
+    if (n == 0) {
+      this->reset();
+      return;
+    }
+    float_type min_x = x[0];
+    float_type max_x = x[0];
+    float_type min_y = y[0];
+    float_type max_y = y[0];
+    float_type sum_x = x[0];
+    float_type sum_x2 = x[0] * x[0];
+    float_type sum_y = y[0];
+    float_type sum_y2 = y[0] * y[0];
+    float_type sum_xy = x[0] * y[0];
+    for(size_type i=1;i<n;i++) {
+      if (min_x > x[i]) min_x = x[i];
+      if (max_x < x[i]) max_x = x[i];
+      if (min_y > y[i]) min_y = y[i];
+      if (max_y < y[i]) max_y = y[i];
+      sum_x += x[i];
+      sum_x2 += x[i] * x[i];
+      sum_y += y[i];
+      sum_y2 += y[i] * y[i];
+      sum_xy += x[i] * y[i];
+    }
+    this->set(n, min_x, max_x, min_y, max_y,
+              sum_x, sum_x2, sum_y, sum_y2, sum_xy,
+              epsilon);
+  }
 
 }} // namespace scitbx::math
 
