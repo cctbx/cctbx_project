@@ -134,7 +134,7 @@ bpmtz::Mtz::valid_indices(
   bpmtz::Column v(getColumn(column_label));
   af::shared<cctbx::miller::index<> > result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
-    if (!v.isnan(j)) {
+    if (!v.ccp4_isnan(j)) {
       result.push_back(cctbx::miller::index<>(
         static_cast<int>(h.lookup(j)),
         static_cast<int>(k.lookup(j)),
@@ -156,11 +156,11 @@ bpmtz::Mtz::valid_indices_anomalous(
   bpmtz::Column v_minus(getColumn(column_label_minus));
   af::shared<cctbx::miller::index<> > result((af::reserve(2*size())));
   for (int j=0; j<size(); j++) {
-    if (!v_plus.isnan(j)) {
+    if (!v_plus.ccp4_isnan(j)) {
       result.push_back(cctbx::miller::index<>(
         h.lookup(j), k.lookup(j), l.lookup(j)));
     }
-    if (!v_minus.isnan(j)) {
+    if (!v_minus.ccp4_isnan(j)) {
       result.push_back(cctbx::miller::index<>(
         -h.lookup(j), -k.lookup(j), -l.lookup(j)));
     }
@@ -175,7 +175,7 @@ bpmtz::Mtz::valid_values(
   bpmtz::Column v(getColumn(column_label));
   af::shared<double> result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
-    if (!v.isnan(j)) result.push_back(v.lookup(j));
+    if (!v.ccp4_isnan(j)) result.push_back(v.lookup(j));
   }
   return result;
 }
@@ -192,8 +192,8 @@ bpmtz::Mtz::valid_values_anomalous(
   bpmtz::Column v_minus(getColumn(column_label_minus));
   af::shared<double> result((af::reserve(2*size())));
   for (int j=0; j<size(); j++) {
-    if (!v_plus.isnan(j)) result.push_back(v_plus.lookup(j));
-    if (!v_minus.isnan(j)) result.push_back(v_minus.lookup(j));
+    if (!v_plus.ccp4_isnan(j)) result.push_back(v_plus.lookup(j));
+    if (!v_minus.ccp4_isnan(j)) result.push_back(v_minus.lookup(j));
   }
   return result;
 }
@@ -215,10 +215,10 @@ bpmtz::Mtz::valid_complex(
   bpmtz::Column v_phi(getColumn(column_label_phi));
   af::shared<std::complex<double> > result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
-    if (v_ampl.isnan(j) != v_phi.isnan(j)) {
+    if (v_ampl.ccp4_isnan(j) != v_phi.ccp4_isnan(j)) {
       throw bpmtz::Error("Unexpected NAN while extracting complex array.");
     }
-    if (!v_ampl.isnan(j)) {
+    if (!v_ampl.ccp4_isnan(j)) {
       result.push_back(polar_deg(
         v_ampl.lookup(j), v_phi.lookup(j)));
     }
@@ -239,17 +239,17 @@ bpmtz::Mtz::valid_complex_anomalous(
   bpmtz::Column v_phi_minus(getColumn(column_label_phi_minus));
   af::shared<std::complex<double> > result((af::reserve(2*size())));
   for (int j=0; j<size(); j++) {
-    if (v_ampl_plus.isnan(j) != v_phi_plus.isnan(j)) {
+    if (v_ampl_plus.ccp4_isnan(j) != v_phi_plus.ccp4_isnan(j)) {
       throw bpmtz::Error("Unexpected NAN while extracting complex array.");
     }
-    if (!v_ampl_plus.isnan(j)) {
+    if (!v_ampl_plus.ccp4_isnan(j)) {
       result.push_back(polar_deg(
         v_ampl_plus.lookup(j), v_phi_plus.lookup(j)));
     }
-    if (v_ampl_minus.isnan(j) != v_phi_minus.isnan(j)) {
+    if (v_ampl_minus.ccp4_isnan(j) != v_phi_minus.ccp4_isnan(j)) {
       throw bpmtz::Error("Unexpected NAN while extracting complex array.");
     }
-    if (!v_ampl_minus.isnan(j)) {
+    if (!v_ampl_minus.ccp4_isnan(j)) {
       result.push_back(polar_deg(
         v_ampl_minus.lookup(j), v_phi_minus.lookup(j)));
     }
@@ -270,13 +270,13 @@ bpmtz::Mtz::valid_hl(
   bpmtz::Column v_d(getColumn(column_label_d));
   af::shared<cctbx::hendrickson_lattman<> > result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
-    if (   v_a.isnan(j) != v_b.isnan(j)
-        || v_a.isnan(j) != v_c.isnan(j)
-        || v_a.isnan(j) != v_d.isnan(j)) {
+    if (   v_a.ccp4_isnan(j) != v_b.ccp4_isnan(j)
+        || v_a.ccp4_isnan(j) != v_c.ccp4_isnan(j)
+        || v_a.ccp4_isnan(j) != v_d.ccp4_isnan(j)) {
       throw bpmtz::Error(
         "Unexpected NAN while extracting Hendrickson-Lattman array.");
     }
-    if (!v_a.isnan(j)) {
+    if (!v_a.ccp4_isnan(j)) {
       result.push_back(cctbx::hendrickson_lattman<>(
         v_a.lookup(j), v_b.lookup(j), v_c.lookup(j), v_d.lookup(j)));
     }
@@ -297,7 +297,7 @@ bpmtz::Mtz::valid_integers(
   }
   af::shared<int> result((af::reserve(size())));
   for (int j=0; j<size(); j++) {
-    if (!v.isnan(j)) result.push_back(static_cast<int>(v.lookup(j)));
+    if (!v.ccp4_isnan(j)) result.push_back(static_cast<int>(v.lookup(j)));
   }
   return result;
 }

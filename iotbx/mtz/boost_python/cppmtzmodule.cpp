@@ -73,7 +73,7 @@ namespace iotbx { namespace mtz { namespace boost_python {
       .def("type",        &Column::type)
       .def("__getitem__", &Column::lookup) // XXX potential crash!
       .def("__call__",    &Column::lookup) // XXX potential crash!
-      .def("isnan",       &Column::isnan) // XXX potential crash!
+      .def("isnan",       &Column::ccp4_isnan) // XXX potential crash!
     ;
   }
 
