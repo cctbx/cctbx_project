@@ -2,6 +2,7 @@ import cctbx.crystal.direct_space_asu
 from cctbx.array_family import flex
 import scitbx.array_family.shared
 from scitbx.python_utils.misc import adopt_init_args
+from libtbx.test_utils import approx_equal
 
 import boost.python
 ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
