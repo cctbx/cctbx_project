@@ -1,27 +1,103 @@
 from iotbx.mtz import extract_from_symop_lib
 from cctbx.array_family import flex
 
-def _DoubleOrComplex(writer,label,datatype,item_miller,item_data):
+def setSpaceGroup(self, space_group_info, symbol=None):
+  if (symbol == None):
+    symbol = extract_from_symop_lib.ccp4_symbol(space_group_info)
+    if (symbol == None):
+      symbol = "No.%d" % space_group_info.type().number()
+  assert not " " in symbol
+  self.raw_setSpaceGroup(space_group_info.group(), symbol)
+
+def label_phases(self, root_label):
+  return self.phases_prefix() + root_label + self.phases_suffix()
+
+def label_sigmas(self, root_label):
+  return self.sigmas_prefix() + root_label + self.sigmas_suffix()
+
+def label_plus(self, root_label):
+  return root_label + self.plus_suffix()
+
+def label_minus(self, root_label):
+  return root_label + self.minus_suffix()
+
+def set_phases_prefix(self, prefix):
+  self._phases_prefix = prefix
+
+def phases_prefix(self):
+  if (not hasattr(self, "_phases_prefix")):
+    self._phases_prefix = "PHI"
+  return self._phases_prefix
+
+def set_phases_suffix(self, suffix):
+  self._phases_suffix = suffix
+
+def phases_suffix(self):
+  if (not hasattr(self, "_phases_suffix")):
+    self._phases_suffix = ""
+  return self._phases_suffix
+
+def set_sigmas_prefix(self, prefix):
+  self._sigmas_prefix = prefix
+
+def sigmas_prefix(self):
+  if (not hasattr(self, "_sigmas_prefix")):
+    self._sigmas_prefix = "SIG"
+  return self._sigmas_prefix
+
+def set_sigmas_suffix(self, suffix):
+  self._sigmas_suffix = suffix
+
+def sigmas_suffix(self):
+  if (not hasattr(self, "_sigmas_suffix")):
+    self._sigmas_suffix = ""
+  return self._sigmas_suffix
+
+def set_plus_suffix(self, suffix):
+  self._plus_suffix = suffix
+
+def plus_suffix(self):
+  if (not hasattr(self, "_plus_suffix")):
+    self._plus_suffix = "(+)"
+  return self._plus_suffix
+
+def set_minus_suffix(self, suffix):
+  self._minus_suffix = suffix
+
+def minus_suffix(self):
+  if (not hasattr(self, "_minus_suffix")):
+    self._minus_suffix = "(-)"
+  return self._minus_suffix
+
+def _DoubleOrComplex(self,label,datatype,item_miller,item_data):
   if isinstance(item_data,flex.double):
-    writer.addColumn(label,datatype,item_miller,item_data)
+    self.addColumn(label,datatype,item_miller,item_data)
   elif isinstance(item_data,flex.complex_double):
-    writer.addColumn(label,datatype,item_miller,flex.abs(item_data))
-    writer.addColumn("phi_"+label,"P",item_miller,flex.arg(item_data, True))
+    self.addColumn(label,datatype,item_miller,flex.abs(item_data))
+    self.addColumn(
+      self.label_phases(label),"P",item_miller,flex.arg(item_data, True))
   else:
     raise RuntimeError, "Not implemented." # XXX
 
-def _columnCombinations(writer,label,datatype,carry_miller,carry_data):
+def _columnCombinations(self,label,datatype,carry_miller,carry_data):
   if len(carry_miller)==1:  # anomalous flag is False
-    _DoubleOrComplex(writer,label,datatype,carry_miller[0],carry_data[0])
+    self._DoubleOrComplex(label,datatype,carry_miller[0],carry_data[0])
   elif len(carry_miller)==2:  # anomalous data
-    _DoubleOrComplex(writer,label+"+",datatype,carry_miller[0],carry_data[0])
-    _DoubleOrComplex(writer,label+"-",datatype,carry_miller[1],carry_data[1])
+    self._DoubleOrComplex(
+      self.label_plus(label),datatype,carry_miller[0],carry_data[0])
+    self._DoubleOrComplex(
+      self.label_minus(label),datatype,carry_miller[1],carry_data[1])
   else:
     raise RuntimeError, "Internal error."
 
-def add_miller_array(self, miller_array, label_data, label_sigmas=None):
-  assert (miller_array.sigmas() == None) == (label_sigmas == None)
-  if (miller_array.anomalous_flag()):
+def add_miller_array(self, miller_array, mtz_label):
+  if (not miller_array.anomalous_flag()):
+    self._columnCombinations(mtz_label,"F",
+      [miller_array.indices()],[miller_array.data()])
+    if (miller_array.sigmas()):
+      self._columnCombinations(self.label_sigmas(mtz_label),"Q",
+        [miller_array.indices()],[miller_array.sigmas()])
+  else:
     carry_miller = []
     carry_data = []
     carry_sigma = []
@@ -36,20 +112,7 @@ def add_miller_array(self, miller_array, label_data, label_sigmas=None):
       carry_data.append(asu.data().select(sel))
       if (asu.sigmas() != None):
         carry_sigma.append(asu.sigmas().select(sel))
-    _columnCombinations(self,label_data,"G",carry_miller,carry_data)
+    self._columnCombinations(mtz_label,"G",carry_miller,carry_data)
     if (asu.sigmas()):
-      _columnCombinations(self,label_sigmas,"L",carry_miller,carry_sigma)
-  else:
-    _columnCombinations(self,label_data,"F",
-      [miller_array.indices()],[miller_array.data()])
-    if (miller_array.sigmas()):
-      _columnCombinations(self,label_sigmas,"Q",
-        [miller_array.indices()],[miller_array.sigmas()])
-
-def setSpaceGroup(self, space_group_info, symbol=None):
-  if (symbol == None):
-    symbol = extract_from_symop_lib.ccp4_symbol(space_group_info)
-    if (symbol == None):
-      symbol = "No.%d" % space_group_info.type().number()
-  assert not " " in symbol
-  self.raw_setSpaceGroup(space_group_info.group(), symbol)
+      self._columnCombinations(
+        self.label_sigmas(mtz_label),"L",carry_miller,carry_sigma)
