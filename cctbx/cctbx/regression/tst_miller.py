@@ -221,6 +221,21 @@ def exercise_array():
   assert ma.indices() == mi
   assert ma.data() == data
   assert ma.sigmas() == sigmas
+  a1 = miller.array(
+    miller.set(xs, flex.miller_index(((1,-2,3), (0,0,-4)))),
+    flex.double((1,2)))
+  a2 = miller.array(
+    miller.set(xs, flex.miller_index(((0,0,-5), (1,-2,3)))),
+    flex.double((3,4)),
+    flex.double((5,6)))
+  c1 = a1.common_set(a2)
+  assert tuple(c1.indices()) == ((1,-2,3),)
+  assert tuple(c1.data()) == (1,)
+  c2 = a2.common_set(a1)
+  assert tuple(c2.indices()) == ((1,-2,3),)
+  assert tuple(c2.data()) == (4,)
+  assert tuple(c2.sigmas()) == (6,)
+  assert tuple(c1.adopt_set(c2).indices()) == ((1,-2,3),)
 
 def exercise_fft_map():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
