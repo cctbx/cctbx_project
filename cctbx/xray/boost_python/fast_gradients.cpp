@@ -20,6 +20,7 @@ namespace {
                   af::const_ref<scatterer<> > const&,
                   af::const_ref<std::complex<double>,
                                 maptbx::c_grid_padded_p1<3> > const&,
+                  gradient_flags const&,
                   optional<double const&,
                            double const&,
                            double const&,

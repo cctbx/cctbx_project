@@ -15,6 +15,7 @@ namespace {
       using namespace boost::python;
       class_<w_t>("gradient_flags", no_init)
         .def(init<bool, bool, bool, bool, bool, bool>())
+        .def(init<w_t const&>())
         .def_readwrite("site", &w_t::site)
         .def_readwrite("u_iso", &w_t::u_iso)
         .def_readwrite("u_aniso", &w_t::u_aniso)
