@@ -390,6 +390,7 @@ namespace cctbx { namespace xray {
       this->map_accessor_ = ft_d_target_d_f_calc_complex.accessor();
     }
     grid_point_type const& grid_f = this->map_accessor_.focus();
+    grid_point_type const& grid_a = this->map_accessor_.all();
     detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
     scitbx::mat3<FloatType>
       orth_mx = this->unit_cell_.orthogonalization_matrix();
@@ -445,33 +446,13 @@ namespace cctbx { namespace xray {
         coor_frac, grid_f);
       FloatType f_real(-1.e20); // could be uninitialized
       FloatType f_imag(-1.e20); // could be uninitialized
-      // highly hand-optimized loop over points in shell
-      grid_point_type g_min = pivot - shell.radii;
-      grid_point_type g_max = pivot + shell.radii;
-      grid_point_type gp;
-      FloatType f0, f1, f2;
-      FloatType c00, c01, c11;
-      for(gp[0] = g_min[0]; gp[0] <= g_max[0]; gp[0]++) {
-        f0 = FloatType(gp[0]) / grid_f[0] - coor_frac[0];
-        c00 = orth_mx[0] * f0;
-      for(gp[1] = g_min[1]; gp[1] <= g_max[1]; gp[1]++) {
-        f1 = FloatType(gp[1]) / grid_f[1] - coor_frac[1];
-        c01 = orth_mx[1] * f1 + c00;
-        c11 = orth_mx[4] * f1;
-      for(gp[2] = g_min[2]; gp[2] <= g_max[2]; gp[2]++) {
-        f2 = FloatType(gp[2]) / grid_f[2] - coor_frac[2];
-        scitbx::vec3<FloatType> d(
-          orth_mx[2] * f2 + c01,
-          orth_mx[5] * f2 + c11,
-          orth_mx[8] * f2);
-        FloatType d_sq = d.length_sq();
-        if (d_sq > shell.max_d_sq) continue;
+#     include <cctbx/xray/sampling_loop.h>
         if (gradient_map_is_real) {
-          f_real = -ft_d_target_d_f_calc_real(gp);
+          f_real = -ft_d_target_d_f_calc_real[i_map];
         }
         else {
-          std::complex<FloatType>
-            ft_dt_dfc_gp = ft_d_target_d_f_calc_complex(gp);
+          std::complex<FloatType> const&
+            ft_dt_dfc_gp = ft_d_target_d_f_calc_complex[i_map];
           f_real = -ft_dt_dfc_gp.real();
           f_imag = -ft_dt_dfc_gp.imag();
         }
