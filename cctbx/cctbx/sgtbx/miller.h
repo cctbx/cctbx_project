@@ -130,7 +130,7 @@ namespace cctbx {
           if (m_haveCutP && !isInActiveArea(TrialH)) return;
           if (m_TBF == 0
               || (m_Pretty ? TrialH < m_H // operator< is very slow
-                           : Miller::hashCompare()(TrialH, m_H))) {
+                           : Miller::hashCompare()(m_H, TrialH))) {
             m_H = TrialH;
             m_iMate = iMate;
             m_HR = HS.HR();
