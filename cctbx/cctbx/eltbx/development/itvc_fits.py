@@ -8,7 +8,7 @@ from scitbx.python_utils import easy_pickle
 from libtbx.optparse_wrapper import OptionParser
 import sys, os
 
-def run(file_name, args, incremental=00000, params=None,
+def run(file_name, args, cutoff, six_term=00000, params=None,
         plots_dir="itvc_fits_plots", verbose=0):
   timer = user_plus_sys_time()
   tab = itvc_section61_io.read_table6111(file_name)
@@ -18,13 +18,16 @@ def run(file_name, args, incremental=00000, params=None,
   if (len(args) > 0 and len(args[0].split(",")) == 2):
     chunk_n, chunk_i = [int(i) for i in args[0].split(",")]
     args = args[1:]
-  if (incremental):
+  if (not six_term):
     if (not os.path.isdir(plots_dir)):
       print "No plots because target directory does not exist (mkdir %s)." % \
         plots_dir
       plots_dir = None
     if (chunk_n > 1):
       assert plots_dir is not None
+  stols_more = cctbx.eltbx.gaussian_fit.international_tables_stols
+  sel = stols_more <= cutoff + 1.e-6
+  stols = stols_more.select(sel)
   results = {}
   results["fit_parameters"] = params
   i_chunk = 0
@@ -33,14 +36,20 @@ def run(file_name, args, incremental=00000, params=None,
     i_chunk += 1
     if (not flag):
       continue
+    if (len(args) > 0 and element not in args): continue
     wk = xray_scattering.wk1995(element, 1)
     entry = tab.entries[element]
     null_fit = scitbx.math.gaussian.fit(
-      cctbx.eltbx.gaussian_fit.international_tables_stols,
-      entry.table_y,
-      cctbx.eltbx.gaussian_fit.international_tables_sigmas,
+      stols,
+      entry.table_y[:stols.size()],
+      entry.table_sigmas[:stols.size()],
       xray_scattering.gaussian(0, 00000))
-    if (incremental):
+    null_fit_more = scitbx.math.gaussian.fit(
+      stols_more,
+      entry.table_y[:stols_more.size()],
+      entry.table_sigmas[:stols_more.size()],
+      xray_scattering.gaussian(0, 00000))
+    if (not six_term):
       results[wk.label()] = cctbx.eltbx.gaussian_fit.incremental_fits(
         label=wk.label(),
         null_fit=null_fit,
@@ -51,7 +60,9 @@ def run(file_name, args, incremental=00000, params=None,
       print "label:", wk.label()
       sys.stdout.flush()
       fit = scitbx.math.gaussian_fit.fit_with_golay_starts(
+        label=wk.label(),
         null_fit=null_fit,
+        null_fit_more=null_fit_more,
         n_terms=6,
         target_powers=params.target_powers,
         minimize_using_sigmas=params.minimize_using_sigmas,
@@ -69,13 +80,24 @@ def main():
   parser = OptionParser(
     usage="usage: python %prog file_name [n_chunks,i_chunk] [scatterer...]")
   parser.add_option("-v", "--verbose",
-                    action="store_true", dest="verbose", default=0,
-                    help="show comparison table for each element")
+    action="store_true", dest="verbose", default=0,
+    help="show comparison table for each element")
+  parser.add_option("-c", "--cutoff",
+    type="float", dest="cutoff", default=6, metavar="FLOAT",
+    help="maximum sin(theta)/lambda")
+  parser.add_option("-s", "--six_term",
+    action="store_true", dest="six_term", default=0,
+    help="fit six-term Gaussians using Golay based starts")
   (options, args) = parser.parse_args()
   if (len(args) < 1):
     parser.print_help()
     return
-  run(file_name=args[0], args=args[1:], verbose=options.verbose)
+  run(
+    file_name=args[0],
+    args=args[1:],
+    cutoff=options.cutoff,
+    six_term=options.six_term,
+    verbose=options.verbose)
 
 if (__name__ == "__main__"):
   main()

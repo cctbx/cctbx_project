@@ -1,7 +1,6 @@
 from cctbx.eltbx import xray_scattering
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.gaussian_fit import international_tables_stols
-from cctbx.eltbx.gaussian_fit import international_tables_sigmas
 from cctbx.array_family import flex
 import scitbx.math.gaussian
 from scitbx.python_utils import easy_pickle
@@ -55,12 +54,10 @@ def run(gaussian_fit_pickle_file_names, itvc_file_name):
         if (itvc_tab is not None):
           entry = itvc_tab.entries[wk.label()]
           sel = international_tables_stols <= fit.stol + 1.e-6
-          stols = international_tables_stols.select(sel)
-          sigmas = international_tables_sigmas.select(sel)
           gaussian_fit = scitbx.math.gaussian.fit(
-            stols,
-            entry.table_y,
-            sigmas,
+            international_tables_stols.select(sel),
+            entry.table_y.select(sel),
+            entry.table_sigmas.select(sel),
             fit)
           max_errors.append(
             flex.max(gaussian_fit.significant_relative_errors()))
