@@ -159,7 +159,7 @@ namespace cctbx { namespace mintbx {
           if (anisotropic_) {
             af::tiny<FloatType, 6> dwc = B_as_U(Ucif_as_Ustar(ucell,
               DebyeWallerFactorUstarCoefficients(
-                miller_indices[i], type_holder<FloatType>())));
+                miller_indices[i], af::type_holder<FloatType>())));
             for(std::size_t j=0;j<dwc.size();j++) {
               gradients_b_cif_[j] += dwc[j] * gk;
             }
