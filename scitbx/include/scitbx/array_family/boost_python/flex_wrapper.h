@@ -5,6 +5,8 @@
 
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_non_const_reference.hpp>
@@ -357,13 +359,28 @@ namespace scitbx { namespace af { namespace boost_python {
 
     static shared<e_t>
     select_size_t(
-      af::const_ref<e_t> const& a,
-      af::const_ref<std::size_t> const& indices)
+      af::const_ref<e_t> const& self,
+      af::const_ref<std::size_t> const& indices,
+      bool reverse=false)
     {
-      shared<e_t> result((af::reserve(indices.size())));
-      for(std::size_t i=0;i<indices.size();i++) {
-        SCITBX_ASSERT(indices[i] < a.size());
-        result.push_back(a[indices[i]]);
+      if (!reverse) {
+        shared<e_t> result((af::reserve(indices.size())));
+        for(std::size_t i=0;i<indices.size();i++) {
+          SCITBX_ASSERT(indices[i] < self.size());
+          result.push_back(self[indices[i]]);
+        }
+        return result;
+      }
+      if (self.size() != indices.size()) {
+        raise_incompatible_arrays();
+      }
+      shared<e_t> result;
+      if (self.size()) {
+        result.resize(self.size(), self[0]); // avoid requirement that e_t is
+        for(std::size_t i=1;i<self.size();i++) {     // default constructible
+          SCITBX_ASSERT(indices[i] < self.size());
+          result[indices[i]] = self[i];
+        }
       }
       return result;
     }
@@ -628,6 +645,9 @@ namespace scitbx { namespace af { namespace boost_python {
 
     typedef boost::python::class_<f_t, flex_wrapper<ElementType> > class_f_t;
 
+    BOOST_PYTHON_FUNCTION_OVERLOADS(
+      select_size_t_overloads, select_size_t, 2, 3)
+
     static class_f_t
     plain(std::string const& python_name)
     {
@@ -694,7 +714,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("extend", extend)
         .def("reversed", reversed)
         .def("select", select_bool)
-        .def("select", select_size_t)
+        .def("select", select_size_t, select_size_t_overloads((
+          arg_("self"), arg_("indices"), arg_("reverse")=false)))
         .def("set_selected", set_selected_bool_a)
         .def("set_selected", set_selected_bool_s)
         .def("set_selected",
