@@ -54,6 +54,8 @@ namespace cctbx {
   class dimension : public carray<int, D>
   {
     public:
+      typedef carray<int, D> index_tuple_type;
+
       dimension() {};
       dimension(const carray<int, D>& N) {
         std::copy(N.begin(), N.end(), this->begin());
@@ -73,13 +75,13 @@ namespace cctbx {
 
       std::size_t size1d() const { return cctbx::vector::product(*this); }
 
-      template <typename IndexTuple>
-      std::size_t operator()(const IndexTuple& I) const {
+      template <typename IndexTupleType>
+      std::size_t operator()(const IndexTupleType& I) const {
         return Index1dType()(*this, I);
       }
 
-      template <typename IndexTuple>
-      bool is_valid_index(const IndexTuple& I) const {
+      template <typename IndexTupleType>
+      bool is_valid_index(const IndexTupleType& I) const {
         if (I.size() != size()) return false;
         for(std::size_t j=0;j<size();j++) {
           std::size_t i = I[j];
@@ -109,8 +111,8 @@ namespace cctbx {
 
       const vecref<ValueType>& as_1d() const { return *this; }
 
-      template <typename IndexTuple>
-      value_type& operator()(const IndexTuple& I) const {
+      template <typename IndexTupleType>
+      value_type& operator()(const IndexTupleType& I) const {
         return m_begin[m_dim(I)];
       }
 

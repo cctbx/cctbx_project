@@ -18,7 +18,7 @@ namespace cctbx { namespace vector {
   template <class IntegerType, class FloatType>
   struct linear_regression_core
   {
-    void reset() { b = m = cc = 0; }
+    void reset() { is_well_defined = false; b = m = cc = 0; }
     void set(const IntegerType& n,
              const FloatType& min_x, const FloatType& max_x,
              const FloatType& min_y, const FloatType& max_y,
@@ -58,12 +58,15 @@ namespace cctbx { namespace vector {
           * (sum_y2 - sum_y * sum_y / fn);
       if (d > 0.)
         cc = (sum_xy - sum_x * sum_y / fn) / std::sqrt(d);
+      is_well_defined = true;
     }
     //! Work-around for broken compilers.
     FloatType f_abs(const FloatType& x) {
       if (x < 0) return -x;
       return x;
     }
+    //! Flag.
+    bool is_well_defined;
     //! Linear regression coefficients b: y = mx + b.
     FloatType b;
     //! Linear regression coefficients m: y = mx + b.
