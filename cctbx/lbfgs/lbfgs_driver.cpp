@@ -42,7 +42,7 @@ int main(int argc, const char* argv[])
         std::cout << " " << minimizer.stp();
         std::cout << std::endl;
       }
-      if (is_converged(xb, f, gb)) break;
+      if (is_converged(xb, gb)) break;
       if (minimizer.nfun() > 2000) break;
       minimizer.run(xb, f, gb);
     }

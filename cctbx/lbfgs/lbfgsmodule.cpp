@@ -53,12 +53,11 @@ namespace {
   bool py_traditional_convergence_test_call(
     const lbfgs::traditional_convergence_test<double>& is_converged,
     af::shared<double> x,
-    double f,
     const af::shared<double>& g)
   {
     cctbx_assert(x.size() == is_converged.n());
     cctbx_assert(g.size() == is_converged.n());
-    return is_converged(x.begin(), f, g.begin());
+    return is_converged(x.begin(), g.begin());
   }
 
 # include <cctbx/basic/from_bpl_import.h>
@@ -79,6 +78,10 @@ namespace {
     python::class_builder<lbfgs::traditional_convergence_test<double> >
     py_traditional_convergence_test(
       this_module, "traditional_convergence_test");
+
+    python::class_builder<lbfgs::drop_convergence_test<double> >
+    py_drop_convergence_test(
+      this_module, "drop_convergence_test");
 
     py_minimizer.def(constructor<>());
     py_minimizer.def(constructor<std::size_t>());
@@ -118,6 +121,24 @@ namespace {
       &lbfgs::traditional_convergence_test<double>::eps, "eps");
     py_traditional_convergence_test.def(
       py_traditional_convergence_test_call, "__call__");
+
+    py_drop_convergence_test.def(constructor<>());
+    py_drop_convergence_test.def(constructor<std::size_t>());
+    py_drop_convergence_test.def(constructor<std::size_t, double>());
+    py_drop_convergence_test.def(constructor<std::size_t, double, double>());
+    py_drop_convergence_test.def(
+      &lbfgs::drop_convergence_test<double>::p, "p");
+    py_drop_convergence_test.def(
+      &lbfgs::drop_convergence_test<double>::max_drop_eps, "max_drop_eps");
+    py_drop_convergence_test.def(
+      &lbfgs::drop_convergence_test<double>::slope_eps, "slope_eps");
+    py_drop_convergence_test.def(
+      &lbfgs::drop_convergence_test<double>::operator(), "__call__");
+    py_drop_convergence_test.def(
+      &lbfgs::drop_convergence_test<double>::objective_function_values,
+                                            "objective_function_values");
+    py_drop_convergence_test.def(
+      &lbfgs::drop_convergence_test<double>::max_drop, "max_drop");
   }
 
 }

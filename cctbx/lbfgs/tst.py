@@ -26,7 +26,7 @@ def run(verbose = 1):
     if (verbose):
       print "f:", f, "gnorm:", minimizer.euclidean_norm(g)
       print minimizer.iter(), minimizer.nfun(), minimizer.stp()
-    if (is_converged(x, f, g)): break
+    if (is_converged(x, g)): break
     if (minimizer.nfun() > 2000): break
     assert minimizer.run(x, f, g)
 

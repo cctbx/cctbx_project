@@ -17,8 +17,18 @@
 #include <vector>
 #include <string>
 #include <stdio.h>
-#include <boost/config.hpp>
+// The core minimizer can easily be used outside the cctbx and without
+// the Boost library if the following includes are removed or
+// substituted, depending on the compiler.
+#include <boost/config.hpp> // fixes for broken compilers
 #include <cctbx/fixes/cmath>
+// Includes for drop_convergence_test.
+// May be removed if drop_convergence_test is not needed.
+#include <cctbx/array_family/shared.h>
+#include <cctbx/array_family/tiny_types.h>
+#include <cctbx/array_family/tiny_algebra.h>
+#include <cctbx/basic/matrixlite.h>
+#include <cctbx/math/linear_regression.h>
 
 namespace cctbx {
 
@@ -132,7 +142,30 @@ namespace lbfgs {
       {}
   };
 
+  //! Specific exception class.
+  class error_line_search_failed_rounding_errors
+  : public error_line_search_failed {
+    public:
+      //! Constructor.
+      error_line_search_failed_rounding_errors(const std::string& msg) throw()
+        : error_line_search_failed(msg)
+      {}
+  };
+
   namespace detail {
+
+    template <typename NumType>
+    inline
+    NumType
+    pow2(const NumType& x) { return x * x; }
+
+    template <typename NumType>
+    inline
+    NumType
+    abs(const NumType& x) {
+      if (x < NumType(0)) return -x;
+      return x;
+    }
 
     // This class implements an algorithm for multi-dimensional line search.
     template <typename FloatType>
@@ -156,19 +189,12 @@ namespace lbfgs {
         FloatType stmin;
         FloatType stmax;
 
-        static FloatType sqr(const FloatType& x) { return x * x; }
-
         static const FloatType& max3(
           const FloatType& x,
           const FloatType& y,
           const FloatType& z)
         {
           return x < y ? (y < z ? z : y ) : (x < z ? z : x );
-        }
-
-        static FloatType abs(const FloatType& x) {
-          if (x < FloatType(0)) return -x;
-          return x;
         }
 
       public:
@@ -460,7 +486,7 @@ namespace lbfgs {
         FloatType ftest1 = finit + stp*dgtest;
         // Test for convergence.
         if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
-          throw error_line_search_failed(
+          throw error_line_search_failed_rounding_errors(
             "Rounding errors prevent further progress."
             " There may not be a step which satisfies the"
             " sufficient decrease and curvature conditions."
@@ -569,7 +595,7 @@ namespace lbfgs {
         bound = true;
         theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
         s = max3(abs(theta), abs(dx), abs(dp));
-        gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
+        gamma = s * std::sqrt(pow2(theta / s) - (dx / s) * (dp / s));
         if (stp < stx) gamma = - gamma;
         p = (gamma - dx) + theta;
         q = ((gamma - dx) + gamma) + dp;
@@ -595,7 +621,7 @@ namespace lbfgs {
         bound = false;
         theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
         s = max3(abs(theta), abs(dx), abs(dp));
-        gamma = s * std::sqrt(sqr(theta / s) - (dx / s) * (dp / s));
+        gamma = s * std::sqrt(pow2(theta / s) - (dx / s) * (dp / s));
         if (stp > stx) gamma = - gamma;
         p = (gamma - dp) + theta;
         q = ((gamma - dp) + gamma) + dx;
@@ -624,7 +650,7 @@ namespace lbfgs {
         theta = FloatType(3) * (fx - fp) / (stp - stx) + dx + dp;
         s = max3(abs(theta), abs(dx), abs(dp));
         gamma = s * std::sqrt(
-          std::max(FloatType(0), sqr(theta / s) - (dx / s) * (dp / s)));
+          std::max(FloatType(0), pow2(theta / s) - (dx / s) * (dp / s)));
         if (stp > stx) gamma = -gamma;
         p = (gamma - dp) + theta;
         q = (gamma + (dx - dp)) + gamma;
@@ -666,7 +692,7 @@ namespace lbfgs {
         if (brackt) {
           theta = FloatType(3) * (fp - fy) / (sty - stp) + dy + dp;
           s = max3(abs(theta), abs(dy), abs(dp));
-          gamma = s * std::sqrt(sqr(theta / s) - (dy / s) * (dp / s));
+          gamma = s * std::sqrt(pow2(theta / s) - (dy / s) * (dp / s));
           if (stp > sty) gamma = -gamma;
           p = (gamma - dp) + theta;
           q = ((gamma - dp) + gamma) + dy;
@@ -1110,7 +1136,7 @@ namespace lbfgs {
       bool requests_f_and_g_;
       bool requests_diag_;
       std::size_t iter_;
-      std::size_t nfun_; // XXX make this nrun_ = number of times the run ...
+      std::size_t nfun_;
       FloatType stp_;
       FloatType stp1;
       FloatType ftol;
@@ -1124,83 +1150,6 @@ namespace lbfgs {
       std::size_t nfev;
       std::vector<FloatType> w_;
       std::vector<FloatType> diag_;
-  };
-
-  //! Traditional LBFGS convergence test.
-  /*! This convergence test is equivalent to the test embedded
-      in the <code>lbfgs.f</code> Fortran code. The test assumes that
-      there is a meaningful relation between the Euclidean norm of the
-      parameter vector <code>x</code> and the norm of the gradient
-      vector <code>g</code>. Therefore this test should not be used if
-      this assumption is not correct for a given problem.
-   */
-  template <typename FloatType>
-  class traditional_convergence_test
-  {
-    public:
-      //! Default constructor.
-      traditional_convergence_test()
-      : n_(0), eps_(0)
-      {}
-
-      //! Constructor.
-      /*! @param n The number of variables in the minimization problem.
-             Restriction: <code>n &gt; 0</code>.
-
-          @param eps Determines the accuracy with which the solution
-            is to be found. The subroutine terminates when
-            <pre>
-                    ||G|| &lt; eps max(1,||X||),
-            </pre>
-            where <code>||.||</code> denotes the Euclidean norm.
-       */
-      explicit
-      traditional_convergence_test(
-        std::size_t n,
-        FloatType eps = FloatType(1.e-5))
-      : n_(n), eps_(eps)
-      {
-        if (n_ == 0) {
-          throw error_improper_input_parameter("n = 0.");
-        }
-        if (eps_ < FloatType(0)) {
-          throw error_improper_input_parameter("eps < 0.");
-        }
-      }
-
-      //! Number of free parameters (as passed to the constructor).
-      std::size_t n() const { return n_; }
-
-      /*! \brief Accuracy with which the solution is to be found
-          (as passed to the constructor).
-       */
-      FloatType eps() const { return eps_; }
-
-      //! Execution of the convergence test for the given parameters.
-      /*! Returns <code>true</code> if
-          <pre>
-            ||g|| &lt; eps * max(1,||x||),
-          </pre>
-          where <code>||.||</code> denotes the Euclidean norm.
-
-          @param x Current solution vector.
-
-          @param f Current value of the objective function.
-
-          @param g Components of the gradient at the current
-            point <code>x</code>.
-       */
-      bool
-      operator()(const FloatType* x, FloatType f, const FloatType* g) const
-      {
-        FloatType xnorm = std::sqrt(detail::ddot(n_, x, 0, 1, x, 0, 1));
-        FloatType gnorm = std::sqrt(detail::ddot(n_, g, 0, 1, g, 0, 1));
-        if (gnorm <= eps_ * std::max(FloatType(1), xnorm)) return true;
-        return false;
-      }
-    protected:
-      const std::size_t n_;
-      const FloatType eps_;
   };
 
   template <typename FloatType>
@@ -1320,6 +1269,228 @@ namespace lbfgs {
     }
     point++;
     if (point == m_) point = 0;
+    return false;
+  }
+
+  //! Traditional LBFGS convergence test.
+  /*! This convergence test is equivalent to the test embedded
+      in the <code>lbfgs.f</code> Fortran code. The test assumes that
+      there is a meaningful relation between the Euclidean norm of the
+      parameter vector <code>x</code> and the norm of the gradient
+      vector <code>g</code>. Therefore this test should not be used if
+      this assumption is not correct for a given problem.
+   */
+  template <typename FloatType>
+  class traditional_convergence_test
+  {
+    public:
+      //! Default constructor.
+      traditional_convergence_test()
+      : n_(0), eps_(0)
+      {}
+
+      //! Constructor.
+      /*! @param n The number of variables in the minimization problem.
+             Restriction: <code>n &gt; 0</code>.
+
+          @param eps Determines the accuracy with which the solution
+            is to be found.
+       */
+      explicit
+      traditional_convergence_test(
+        std::size_t n,
+        FloatType eps = FloatType(1.e-5))
+      : n_(n), eps_(eps)
+      {
+        if (n_ == 0) {
+          throw error_improper_input_parameter("n = 0.");
+        }
+        if (eps_ < FloatType(0)) {
+          throw error_improper_input_parameter("eps < 0.");
+        }
+      }
+
+      //! Number of free parameters (as passed to the constructor).
+      std::size_t n() const { return n_; }
+
+      /*! \brief Accuracy with which the solution is to be found
+          (as passed to the constructor).
+       */
+      FloatType eps() const { return eps_; }
+
+      //! Execution of the convergence test for the given parameters.
+      /*! Returns <code>true</code> if
+          <pre>
+            ||g|| &lt; eps * max(1,||x||),
+          </pre>
+          where <code>||.||</code> denotes the Euclidean norm.
+
+          @param x Current solution vector.
+
+          @param g Components of the gradient at the current
+            point <code>x</code>.
+       */
+      bool
+      operator()(const FloatType* x, const FloatType* g) const
+      {
+        FloatType xnorm = std::sqrt(detail::ddot(n_, x, 0, 1, x, 0, 1));
+        FloatType gnorm = std::sqrt(detail::ddot(n_, g, 0, 1, g, 0, 1));
+        if (gnorm <= eps_ * std::max(FloatType(1), xnorm)) return true;
+        return false;
+      }
+    protected:
+      const std::size_t n_;
+      const FloatType eps_;
+  };
+
+  //! Convergence test based on monitoring the objective function.
+  /*! This test monitors the behavior of objective function <code>f</code>
+      in the course of the minimization. A combination of criteria
+      is used to determine when the objective function has
+      reached a plateau without making assumptions about
+      the absolute values of the objective function:
+
+      <ul>
+      <li>The maximum value of the drop in the objective function
+          is determined (max_drop()).
+          <p>
+      <li>A straight line is fitted to the last p() values
+          of the objective function. Let <code>slope1</code>
+          be the slope of this fitted line. A necessary condition
+          for the detection of convergence is:
+          <pre>
+          -slope &lt; max_drop * max_drop_eps * number_of_iterations^2
+          </pre>
+          Note that this test becomes increasingly
+          tolerant with the number of iterations. The rationale
+          is that after a large number of iterations the second test
+          desribed below should be dominant.
+          <p>
+      <li>If the test for the slope passes, all points of the
+          objective function are fitted to
+          an exponential curve: f = r * exp(s * number_of_iteration).
+          <p>
+      <li>The exponential fit is used to compute idealized
+          values for the objective function at the
+          last p() iterations. Let <code>slope2</code> be
+          the slope of this fitted line.
+          <p>
+      <li>A straight line is fitted to the idealized values.
+          Convergence is detected if the following is true:
+          <pre>
+          abs(slope2 - slope1) < slope_eps
+          </pre>
+      </ul>
+   */
+  template <typename FloatType>
+  class drop_convergence_test
+  {
+    public:
+      //! Constructor.
+      /*! See the class details for an outline of the convergence
+          detection algorithm and the meaning of the parameters.
+       */
+      explicit
+      drop_convergence_test(
+        std::size_t p = 5,
+        FloatType max_drop_eps = FloatType(1.e-5),
+        FloatType slope_eps = FloatType(1.e-4))
+      : p_(p), max_drop_eps_(max_drop_eps), slope_eps_(slope_eps),
+        max_drop_(0)
+      {
+        if (p_ < 2) {
+          throw error_improper_input_parameter("p < 2.");
+        }
+        if (max_drop_eps_ < FloatType(0)) {
+          throw error_improper_input_parameter("max_drop_eps < 0.");
+        }
+        if (slope_eps_ < FloatType(0)) {
+          throw error_improper_input_parameter("slope_eps < 0.");
+        }
+      }
+
+      /*! \brief Number of most recent objective function values used
+           in fit of straight lines (as passed to the constructor).
+       */
+      std::size_t p() const { return p_; }
+
+      /*! \brief Base tolerance for test of drop of objective function
+           (as passed to the constructor).
+       */
+      FloatType max_drop_eps() const { return max_drop_eps_; }
+
+      /*! \brief Tolerance for comparison of slopes
+           (as passed to the constructor).
+       */
+      FloatType slope_eps() const { return slope_eps_; }
+
+      //! Execution of the convergence test.
+      /*! Note that at least p() executions are required before
+          convergence will be evaluated.
+       */
+      bool
+      operator()(FloatType f);
+
+      //! Values of the objective function monitored so far.
+      af::shared<FloatType> objective_function_values() const {
+        return y_;
+      }
+
+      //! Maximum drop monitored so far.
+      FloatType max_drop() const { return max_drop_; }
+
+    protected:
+      const std::size_t p_;
+      const FloatType max_drop_eps_;
+      const FloatType slope_eps_;
+      af::shared<FloatType> x_;
+      af::shared<FloatType> y_;
+      af::shared<FloatType> ln_y_;
+      FloatType max_drop_;
+  };
+
+  template <typename FloatType>
+  bool
+  drop_convergence_test<FloatType>::operator()(FloatType f)
+  {
+    if (x_.size()) {
+      max_drop_ = std::max(max_drop_, y_.back() - f);
+    }
+    x_.push_back(x_.size() + 1);
+    y_.push_back(f);
+    ln_y_.push_back(std::log(f));
+    if (x_.size() < p_) return false;
+    // fit last p_ points to straight line: y = m*x + b
+    math::linear_regression<FloatType> linreg_y(
+      af::const_ref<FloatType>(x_.end() - p_, p_),
+      af::const_ref<FloatType>(y_.end() - p_, p_));
+    cctbx_assert(linreg_y.is_well_defined());
+    // check absolute value of slope
+    FloatType sliding_tolerance =
+      max_drop_ * max_drop_eps_ * detail::pow2(FloatType(x_.size()));
+    if (-linreg_y.m() > sliding_tolerance) {
+      return false;
+    }
+    // fit all points to exponential: y = r * exp(s * x)
+    math::linear_regression<FloatType> linreg_ln_y(
+      x_.const_ref(), ln_y_.const_ref());
+    cctbx_assert(linreg_ln_y.is_well_defined());
+    FloatType r = std::exp(linreg_ln_y.b());
+    FloatType s = linreg_ln_y.m();
+    // compute exponentially fitted values for last p_ points
+    af::shared<FloatType> ideal_y;
+    for(std::size_t i = x_.size() - p_; i < x_.size(); i++) {
+      ideal_y.push_back(r * std::exp(s * x_[i]));
+    }
+    // fit computed values to straight line
+    math::linear_regression<FloatType> linreg_ideal_y(
+      af::const_ref<FloatType>(x_.end() - p_, p_),
+      ideal_y.const_ref());
+    cctbx_assert(linreg_ideal_y.is_well_defined());
+    // compare slopes
+    if (detail::abs(linreg_ideal_y.m() - linreg_y.m()) < slope_eps_) {
+      return true;
+    }
     return false;
   }
 
