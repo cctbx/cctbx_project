@@ -2,14 +2,27 @@ from iotbx import reflection_file_reader
 from iotbx.option_parser import iotbx_option_parser
 from cctbx import crystal
 from cctbx import sgtbx
+import cctbx.sgtbx.lattice_symmetry
+import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
+from scitbx import matrix
 from libtbx.itertbx import count
+import math
 import sys
+
+def unit_cell_bases_rmsd(self, other):
+  diff_sqs = flex.double()
+  for basis_vector in [(1,0,0),(0,1,0),(0,0,1)]:
+    self_v = matrix.col(self.orthogonalize(basis_vector))
+    other_v = matrix.col(other.orthogonalize(basis_vector))
+    diff_sqs.append((self_v - other_v).norm())
+  return math.sqrt(flex.mean(diff_sqs))
 
 class array_cache:
 
-  def __init__(self, input):
+  def __init__(self, input, lattice_symmetry_max_delta):
     self.input = input
+    self.resolution_range = self.input.resolution_range()
     self.change_of_basis_op_to_minimum_cell \
       = self.input.change_of_basis_op_to_minimum_cell()
     self.observations = self.input.change_basis(
@@ -26,45 +39,74 @@ class array_cache:
     self.minimum_cell_symmetry = crystal.symmetry.change_basis(
       self.input,
       cb_op=self.change_of_basis_op_to_minimum_cell)
-    self.patterson_group = self.minimum_cell_symmetry.space_group() \
-      .build_derived_patterson_group()
-    self.patterson_group.make_tidy()
-    self.resolution_range = self.input.resolution_range()
+    self.intensity_symmetry = \
+      self.minimum_cell_symmetry.reflection_intensity_symmetry(
+        anomalous_flag=self.input.anomalous_flag())
+    self.lattice_group = sgtbx.lattice_symmetry.group(
+      self.minimum_cell_symmetry.unit_cell(),
+      max_delta=lattice_symmetry_max_delta)
+    self.lattice_group.expand_inv(sgtbx.tr_vec((0,0,0)))
+    self.lattice_group.make_tidy()
+    self.lattice_symmetry = crystal.symmetry(
+      unit_cell=self.minimum_cell_symmetry.unit_cell(),
+      space_group_info=sgtbx.space_group_info(group=self.lattice_group),
+      assert_is_compatible_unit_cell=False)
 
-  def similarity_transformations(self,
+  def idealized_input_unit_cell(self):
+    return self.change_of_basis_op_to_minimum_cell.inverse().apply(
+      self.lattice_symmetry.unit_cell())
+
+  def possible_twin_laws(self):
+    result = []
+    for partition in sgtbx.cosets.left_decomposition(
+      g=self.lattice_group,
+      h=self.intensity_symmetry.space_group()
+          .build_derived_acentric_group()
+          .make_tidy()).partitions[1:]:
+      if (partition[0].r().determinant() > 0):
+        result.append(partition[0])
+    return result
+
+  def unique_reindexing_operators(self,
         other,
-        relative_length_tolerance=0.02,
-        absolute_angle_tolerance=2):
+        relative_length_tolerance,
+        absolute_angle_tolerance):
     c_inv_rs = self.minimum_cell_symmetry.unit_cell() \
       .similarity_transformations(
         other=other.minimum_cell_symmetry.unit_cell(),
         relative_length_tolerance=relative_length_tolerance,
         absolute_angle_tolerance=absolute_angle_tolerance)
-    expanded_groups = [self.patterson_group]
-    if (other.patterson_group != self.patterson_group):
-      expanded_groups.append(other.patterson_group)
-    patterson_groups = tuple(expanded_groups)
-    result = []
+    min_bases_rmsd = None
+    similarity_cb_op = None
     for c_inv_r in c_inv_rs:
       c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r))
-      if (c_inv.is_unit_mx()):
-        result.append(sgtbx.change_of_basis_op(c_inv))
-      else:
-        for patterson_group in patterson_groups:
-          expanded_group = sgtbx.space_group(patterson_group)
-          try:
-            expanded_group.expand_smx(c_inv)
-          except:
-            result.append(sgtbx.change_of_basis_op(c_inv).inverse())
-          else:
-            expanded_group.make_tidy()
-            def is_in_expanded_groups():
-              for g in expanded_groups:
-                if (g == expanded_group): return True
-              return False
-            if (not is_in_expanded_groups()):
-              expanded_groups.append(expanded_group)
-              result.append(sgtbx.change_of_basis_op(c_inv).inverse())
+      cb_op = sgtbx.change_of_basis_op(c_inv).inverse()
+      bases_rmsd = unit_cell_bases_rmsd(
+        self.minimum_cell_symmetry.unit_cell(),
+        other=cb_op.apply(other.minimum_cell_symmetry.unit_cell()))
+      if (min_bases_rmsd is None
+          or min_bases_rmsd > bases_rmsd):
+        min_bases_rmsd = bases_rmsd
+        similarity_cb_op = cb_op
+    if (similarity_cb_op is None): return []
+    common_lattice_group = sgtbx.space_group(self.lattice_group)
+    for s in other.lattice_group.build_derived_acentric_group() \
+               .change_basis(similarity_cb_op):
+      try: common_lattice_group.expand_smx(s)
+      except RuntimeError: return []
+    common_lattice_group.make_tidy()
+    result = []
+    for s in sgtbx.cosets.double_unique(
+               g=common_lattice_group,
+               h1=self.intensity_symmetry.space_group()
+                   .build_derived_acentric_group()
+                   .make_tidy(),
+               h2=other.intensity_symmetry.space_group()
+                   .build_derived_acentric_group()
+                   .change_basis(similarity_cb_op)
+                   .make_tidy()):
+      if (s.r().determinant() > 0):
+        result.append(sgtbx.change_of_basis_op(s) * similarity_cb_op)
     return result
 
   def combined_cb_op(self, other, cb_op):
@@ -175,7 +217,9 @@ def run(args):
               d_min=command_line.options.resolution)
           miller_array = miller_array.map_to_asu()
           miller_array.set_info(info=info)
-          array_caches.append(array_cache(input=miller_array))
+          array_caches.append(array_cache(
+            input=miller_array,
+            lattice_symmetry_max_delta=0.1))
   if (len(array_caches) > 2):
     print "Array indices (for quick searching):"
     for i_0,cache_0 in enumerate(array_caches):
@@ -192,21 +236,23 @@ def run(args):
     print "Summary", i_0+1
     cache_0.input.show_comprehensive_summary()
     print
-    reindexing_info = cache_0.input.reindexing_info(max_delta=0.1)
-    if (len(reindexing_info.matrices) == 0):
+    print "Space group of the intensities:", \
+      cache_0.intensity_symmetry.space_group_info() \
+        .as_reference_setting()
+    print "Space group of the metric:     ", \
+      cache_0.lattice_symmetry.space_group_info() \
+        .as_reference_setting()
+    twin_laws = cache_0.possible_twin_laws()
+    if (len(twin_laws) == 0):
       print "Possible twin laws: None"
       print
     else:
-      print "Space group of the metric:", \
-        reindexing_info.lattice_symmetry() \
-          .as_reference_setting() \
-          .space_group_info()
-      s = str(reindexing_info.idealized_unit_cell())
+      s = str(cache_0.idealized_input_unit_cell())
       if (s != str(cache_0.input.unit_cell())):
         print "Idealized unit cell:", s
       print "Possible twin laws:"
-      for c in reindexing_info.matrices:
-        print " ", c.r().as_hkl()
+      for s in twin_laws:
+        print " ", s.r().as_hkl()
       print
     print "Completeness of %s:" % str(cache_0.input.info())
     cache_0.input.setup_binner(n_bins=n_bins)
@@ -221,11 +267,11 @@ def run(args):
     if (not command_line.options.quick):
       for j_1,cache_1 in enumerate(array_caches[i_0+1:]):
         i_1 = j_1+i_0+1
-        similarity_transformations = cache_0.similarity_transformations(
+        unique_reindexing_operators = cache_0.unique_reindexing_operators(
           other=cache_1,
           relative_length_tolerance=0.05,
           absolute_angle_tolerance=5)
-        if (len(similarity_transformations) == 0):
+        if (len(unique_reindexing_operators) == 0):
           print "Incompatible unit cells:"
           print " ", cache_0.input.info()
           print " ", cache_1.input.info()
@@ -233,7 +279,7 @@ def run(args):
           print
         else:
           ccs = flex.double()
-          for cb_op in similarity_transformations:
+          for cb_op in unique_reindexing_operators:
             similar_array_1 = cache_1.observations \
               .change_basis(cb_op) \
               .map_to_asu()
@@ -242,10 +288,10 @@ def run(args):
               assert_is_similar_symmetry=False).coefficient())
           permutation = flex.sort_permutation(ccs, reverse=True)
           ccs = ccs.select(permutation)
-          similarity_transformations = flex.select(
-            similarity_transformations, permutation=permutation)
+          unique_reindexing_operators = flex.select(
+            unique_reindexing_operators, permutation=permutation)
           for i_cb_op,cb_op,cc in zip(count(),
-                                      similarity_transformations,
+                                      unique_reindexing_operators,
                                       ccs):
             combined_cb_op = cache_0.combined_cb_op(other=cache_1, cb_op=cb_op)
             if (not combined_cb_op.c().is_unit_mx()):
@@ -286,7 +332,7 @@ def run(args):
               print "Anomalous difference correlation of:"
               print " ", cache_0.input.info()
               print " ", cache_1.input.info()
-              print "Overall correlation%s: %6.3f%s" % (
+              print "Overall anomalous difference correlation%s: %6.3f%s" % (
                 reindexing_note, correlation.coefficient(), hkl_str)
               if (show_in_bins):
                 correlation = cache_0.anom_diffs.correlation(

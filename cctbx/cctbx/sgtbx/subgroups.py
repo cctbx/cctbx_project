@@ -1,5 +1,22 @@
 from cctbx import sgtbx
 
+def anomalous_reflection_intensity_primitive_cell(space_group):
+  assert space_group.n_ltr() == 1
+  assert not space_group.is_centric()
+  subgroup = sgtbx.space_group(space_group)
+  subgroup.make_tidy()
+  result = [subgroup]
+  for s1 in space_group:
+    assert s1.t().num() == (0,0,0)
+    for s2 in space_group:
+      subgroup = sgtbx.space_group()
+      subgroup.expand_smx(s1)
+      subgroup.expand_smx(s2)
+      subgroup.make_tidy()
+      if (not subgroup in result):
+        result.append(subgroup)
+  return result
+
 class subgroups:
 
   def __init__(self, parent_group_info):

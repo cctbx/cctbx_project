@@ -56,6 +56,12 @@ def exercise_symmetry():
   p1 = xs.cell_equivalent_p1()
   assert p1.unit_cell().is_similar_to(uctbx.unit_cell((5,3,4)))
   assert p1.space_group().order_z() == 1
+  ri = xs.reflection_intensity_symmetry(anomalous_flag=True)
+  assert ri.unit_cell().is_similar_to(xs.unit_cell())
+  assert str(ri.space_group_info()) == "P 2 2 2"
+  ri = xs.reflection_intensity_symmetry(anomalous_flag=False)
+  assert ri.unit_cell().is_similar_to(xs.unit_cell())
+  assert str(ri.space_group_info()) == "P m m m"
   ps = xs.patterson_symmetry()
   assert ps.unit_cell().is_similar_to(xs.unit_cell())
   assert str(ps.space_group_info()) == "P m m m"
@@ -130,58 +136,12 @@ def exercise_site_symmetry(space_group_info):
     testees.sort()
     assert " ".join(testees) == " ".join(references)
 
-number_of_reindexing_possibilities_by_patterson_group = {
-  "P 4/m": 1, "I 4/m": 1, "C 1 2/m 1": 0, "I m -3 m": 0, "I m -3": 1,
-  "F m -3 m": 0, "P 4/m m m": 0, "P -3 1 m": 1, "I 4/m m m": 0, "P m m m": 0,
-  "F m m m": 0, "P m -3 m": 0, "P -3 m 1": 1, "P -1": 0, "R -3 :H": 1,
-  "P 1 2/m 1": 0, "P 6/m m m": 0, "P 6/m": 1, "P -3": 3, "R -3 m :H": 0,
-  "C m m m": 0, "P m -3": 1, "F m -3": 1, "I m m m": 0}
-
-def exercise_reindexing_matrices_general(space_group_info):
-  crystal_symmetry = crystal.symmetry(
-    unit_cell=space_group_info.any_compatible_unit_cell(volume=1000),
-    space_group_info=space_group_info)
-  reindexing_matrices = crystal_symmetry.reindexing_matrices()
-  label = str(crystal_symmetry
-    .patterson_symmetry()
-    .as_reference_setting()
-    .space_group_info())
-  assert number_of_reindexing_possibilities_by_patterson_group[label] \
-      == len(reindexing_matrices)
-
-def exercise_reindexing_matrices_special():
-  crystal_symmetry = crystal.symmetry(
-    unit_cell=(10,10,10,90,90,90),
-    space_group_symbol="P112")
-  reindexing_matrices = crystal_symmetry.reindexing_matrices()
-  assert len(reindexing_matrices) == 6
-  crystal_symmetry = crystal.symmetry(
-    unit_cell=(10,10,10,90,90,120),
-    space_group_symbol="P112")
-  reindexing_matrices = crystal_symmetry.reindexing_matrices()
-  assert len(reindexing_matrices) == 4
-  crystal_symmetry = crystal.symmetry(
-    unit_cell=(10,10,10,90,90,90),
-    space_group_symbol="P4")
-  reindexing_matrices = crystal_symmetry.reindexing_matrices()
-  assert len(reindexing_matrices) == 2
-  crystal_symmetry = crystal.symmetry(
-    unit_cell=(10,10,12,90,90,90),
-    space_group_symbol="I4")
-  reindexing_matrices = crystal_symmetry.reindexing_matrices()
-  assert len(reindexing_matrices) == 1
-  cb_symmetry = crystal_symmetry.change_basis(str(reindexing_matrices[0]))
-  assert cb_symmetry.space_group() == crystal_symmetry.space_group()
-  assert cb_symmetry.unit_cell().is_similar_to(crystal_symmetry.unit_cell())
-
 def run_call_back(flags, space_group_info):
   exercise_site_symmetry(space_group_info)
-  exercise_reindexing_matrices_general(space_group_info)
 
 def run():
   exercise_symmetry()
   exercise_special_position_settings()
-  exercise_reindexing_matrices_special()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
   print "OK"
 

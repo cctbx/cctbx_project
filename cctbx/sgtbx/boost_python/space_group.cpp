@@ -3,7 +3,9 @@
 #include <cctbx/sgtbx/space_group_type.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/utils.h>
 
 namespace cctbx { namespace sgtbx { namespace boost_python {
@@ -65,10 +67,12 @@ namespace {
         .def(init<space_group_symbols const&>())
         .def(init<space_group const&>())
         .def("reset", &w_t::reset, reset_overloads())
-        .def("expand_ltr", &w_t::expand_ltr)
-        .def("expand_inv", &w_t::expand_inv)
-        .def("expand_smx", (void(w_t::*)(rt_mx const&)) &w_t::expand_smx)
-        .def("expand_smx", (void(w_t::*)(std::string const&)) &w_t::expand_smx)
+        .def("expand_ltr", &w_t::expand_ltr, return_self<>())
+        .def("expand_inv", &w_t::expand_inv, return_self<>())
+        .def("expand_smx", (space_group&(w_t::*)(rt_mx const&))
+          &w_t::expand_smx, return_self<>())
+        .def("expand_smx", (space_group&(w_t::*)(std::string const&))
+          &w_t::expand_smx, return_self<>())
         .def("expand_conventional_centring_type",
           &w_t::expand_conventional_centring_type)
         .def("parse_hall_symbol",
@@ -89,7 +93,7 @@ namespace {
         .def("__call__", call_3)
         .def("__call__", getitem)
         .def("__getitem__", getitem)
-        .def("make_tidy", &w_t::make_tidy)
+        .def("make_tidy", &w_t::make_tidy, return_self<>())
         .def("is_tidy", &w_t::is_tidy)
         .def("__eq__", &w_t::operator==)
         .def("__ne__", &w_t::operator!=)
@@ -139,6 +143,11 @@ namespace {
         .def("is_compatible_unit_cell",
           &w_t::is_compatible_unit_cell,
           is_compatible_unit_cell_overloads())
+        .def("build_derived_acentric_group",
+          &w_t::build_derived_acentric_group)
+        .def("build_derived_reflection_intensity_group",
+          &w_t::build_derived_reflection_intensity_group, (
+           arg_("anomalous_flag")))
         .def("build_derived_patterson_group",
           &w_t::build_derived_patterson_group)
         .def("build_derived_point_group",

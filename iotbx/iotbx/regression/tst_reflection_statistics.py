@@ -63,6 +63,8 @@ def exercise_reflection_statistics(anomalous_flag, file_names, verbose):
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in [False, True]:
+    if (flags.Verbose):
+      print space_group_info, "anomalous_flag:", anomalous_flag
     if (anomalous_flag and space_group_info.group().is_centric()): continue
     file_names = generate_mtz_files(
       space_group_info=space_group_info,
