@@ -36,7 +36,7 @@ namespace cctbx { namespace miller {
       }
       else {
         result.push_back(std::polar(
-          std::abs(amplitude_source[i]),
+          FloatType(std::abs(amplitude_source[i])),
           space_group.phase_restriction(miller_indices[i])
             .nearest_valid_phase(std::arg(p))));
       }
