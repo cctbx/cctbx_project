@@ -22,6 +22,36 @@
 #include <cctbx/miller/bins.h>
 #include <cctbx/miller/math.h>
 
+#include <cctbx/array_family/shared_bpl_.h>
+
+namespace cctbx { namespace af { namespace bpl {
+
+  typedef tiny<std::size_t, 2> tiny_size_t_2;
+
+  void import_flex()
+  {
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(bool, "bool")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(std::size_t, "size_t")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::miller::Index, "miller_Index")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(tiny_size_t_2, "tiny_size_t_2")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(std::complex<double>, "complex_double");
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(
+      cctbx::hendrickson_lattman<double>,
+      "hendrickson_lattman");
+  }
+
+}}} // namespace cctbx::af::bpl
+
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(bool)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(std::size_t)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::af::bpl::tiny_size_t_2)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(std::complex<double>)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(
+  cctbx::hendrickson_lattman<double>)
+
 namespace {
 
   using namespace cctbx;
@@ -165,7 +195,7 @@ namespace {
     map_to_asu_no_bool(
       sgtbx::SpaceGroupInfo const& sginfo,
       bool friedel_flag,
-      af::shared<miller::Index> miller_indices,
+      af::shared<Index> miller_indices,
       af::shared<ValueType> data_array)
     {
       map_to_asu(sginfo, friedel_flag, miller_indices, data_array);
@@ -176,7 +206,7 @@ namespace {
     map_to_asu_with_bool(
       sgtbx::SpaceGroupInfo const& sginfo,
       bool friedel_flag,
-      af::shared<miller::Index> miller_indices,
+      af::shared<Index> miller_indices,
       af::shared<ValueType> data_array,
       bool deg)
     {
@@ -276,7 +306,7 @@ namespace {
     sgtbx::SpaceGroup const& SgOps,
     bool friedel_flag,
     const af::shared<Index>& in,
-    af::shared<Index>& out)
+    af::shared<Index> out)
   {
     expand_to_p1(SgOps, friedel_flag, in, out);
   }
@@ -349,27 +379,7 @@ namespace {
     python::import_converters<sgtbx::ReciprocalSpaceASU>
     py_ReciprocalSpaceASU("cctbx_boost.sgtbx", "ReciprocalSpaceASU");
 
-    python::import_converters<af::shared<std::complex<double> > >
-    py_sh_complex_double("cctbx_boost.arraytbx.shared", "complex_double");
-
-    python::import_converters<af::shared<hendrickson_lattman<double> > >
-    py_sh_hendrickson_lattman_double(
-      "cctbx_boost.arraytbx.shared", "hendrickson_lattman");
-
-    python::import_converters<af::shared<bool> >
-    py_sh_bool("cctbx_boost.arraytbx.shared", "bool");
-
-    python::import_converters<af::shared<double> >
-    py_sh_double("cctbx_boost.arraytbx.shared", "double");
-
-    python::import_converters<af::shared<size_t> >
-    py_sh_size_t("cctbx_boost.arraytbx.shared", "size_t");
-
-    python::import_converters<af::shared<af::tiny<size_t, 2> > >
-    py_sh_tiny_size_t_2("cctbx_boost.arraytbx.shared", "tiny_size_t_2");
-
-    python::import_converters<af::shared<Index> >
-    py_sh_miller_Index("cctbx_boost.arraytbx.shared", "miller_Index");
+    af::bpl::import_flex();
 
     class_builder<SymEquivIndex>
     py_SymEquivIndex(this_module, "SymEquivIndex");

@@ -1,5 +1,5 @@
 import sys, os
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import fftbx
 from cctbx.development import debug_utils
 
@@ -32,8 +32,8 @@ def assert_complex_eq_real(vc, vd):
 
 def test_complex_to_complex(verbose):
   fft = fftbx.complex_to_complex(5)
-  vc = shared.complex_double(fft.N())
-  vd = shared.double(fft.N() * 2)
+  vc = flex.complex_double(fft.N())
+  vd = flex.double(fft.N() * 2)
   for i in xrange(fft.N()):
     vc[i] = complex(2.*i, 2.*i+1.)
     vd[2*i] = 2.*i
@@ -50,8 +50,8 @@ def test_complex_to_complex(verbose):
 def test_complex_to_complex_3d(verbose):
   fft = fftbx.complex_to_complex_3d((3,4,5))
   N = fft.N()
-  vc = shared.complex_double(N[0] * N[1] * N[2])
-  vd = shared.double(2 * vc.size())
+  vc = flex.complex_double(N[0] * N[1] * N[2])
+  vd = flex.double(2 * vc.size())
   for i in xrange(vc.size()):
     vc[i] = complex(2*i, 2*i+1)
   for i in xrange(vd.size()):
@@ -67,8 +67,8 @@ def test_complex_to_complex_3d(verbose):
 
 def test_real_to_complex(verbose):
   fft = fftbx.real_to_complex(6)
-  vd = shared.double(fft.Mreal())
-  vc = shared.complex_double(fft.Ncomplex())
+  vd = flex.double(fft.Mreal())
+  vc = flex.complex_double(fft.Ncomplex())
   for i in xrange(fft.Nreal()):
     vd[i] = 1.*i
   for i in xrange(fft.Ncomplex()):
@@ -85,8 +85,8 @@ def test_real_to_complex(verbose):
 def test_real_to_complex_3d(verbose):
   fft = fftbx.real_to_complex_3d((3,4,5))
   M = fft.Mreal()
-  vd = shared.double(M[0] * M[1] * M[2])
-  vc = shared.complex_double(vd.size() / 2)
+  vd = flex.double(M[0] * M[1] * M[2])
+  vc = flex.complex_double(vd.size() / 2)
   for i in xrange(vd.size()):
     vd[i] = i
   for i in xrange(vc.size()):
@@ -110,7 +110,7 @@ def test_comprehensive_cc_1d(max_transform_size):
   for n in xrange(1,max_transform_size+1):
     fft = fftbx.complex_to_complex(n)
     m = n * 2
-    v_in = shared.double()
+    v_in = flex.double()
     for i in xrange(m):
       v_in.append(debug_utils.random.random())
     for f,b in ((fft.forward, fft.backward), (fft.backward, fft.forward)):
@@ -123,7 +123,7 @@ def test_comprehensive_rc_1d(max_transform_size):
   for n in xrange(1,max_transform_size+1):
     fft = fftbx.real_to_complex(n)
     m = fft.Mreal()
-    v_in = shared.double()
+    v_in = flex.double()
     for i in xrange(n):
       v_in.append(debug_utils.random.random())
     for i in xrange(n, m):

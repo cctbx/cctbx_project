@@ -18,11 +18,38 @@
 
 #include <cctbx/maps/peak_search.h>
 
+#include <cctbx/array_family/shared_bpl_.h>
+
+namespace {
+  typedef
+    cctbx::sftbx::XrayScatterer<double, cctbx::eltbx::CAASF_WK1995>
+      ex_xray_scatterer;
+}
+
+namespace cctbx { namespace af { namespace bpl {
+
+  void import_flex()
+  {
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(double, "double")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::miller::Index, "miller_Index")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::af::double3, "double3")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(std::complex<double>, "complex_double");
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(cctbx::sgtbx::RTMx, "RTMx")
+    CCTBX_ARRAY_FAMILY_FLEX_IMPORT(ex_xray_scatterer, "XrayScatterer");
+  }
+
+}}} // namespace cctbx::af::bpl
+
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(double)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::miller::Index)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::af::double3)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(std::complex<double>)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(cctbx::sgtbx::RTMx)
+CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(ex_xray_scatterer)
+
 namespace {
 
   using namespace cctbx;
-
-  typedef sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> ex_xray_scatterer;
 
   void
   xray_scatterer_set_fpfdp(ex_xray_scatterer& site,
@@ -227,34 +254,38 @@ namespace {
   std::size_t
   pack_parameters_generic(
     const uctbx::UnitCell* UCell,
-    const af::shared<ex_xray_scatterer>& sites,
-    af::shared<double> x,
+    af::shared<ex_xray_scatterer> const& sites,
+    af::versa<double, af::flex_grid<> >& x,
     bool coordinates, bool occ, bool uiso)
   {
+    af::shared_plain<double> xb = x.as_base_array();
     if (coordinates) {
       if (!UCell) {
         for(std::size_t i=0;i<sites.size();i++) {
           const af::double3& c = sites[i].Coordinates();
-          x.insert(x.end(), c.begin(), c.end());
+          xb.insert(xb.end(), c.begin(), c.end());
         }
       }
       else {
         for(std::size_t i=0;i<sites.size();i++) {
           const af::double3 c = UCell->orthogonalize(sites[i].Coordinates());
-          x.insert(x.end(), c.begin(), c.end());
+          xb.insert(xb.end(), c.begin(), c.end());
         }
       }
     }
     if (occ) {
       for(std::size_t i=0;i<sites.size();i++) {
-        x.push_back(sites[i].Occ());
+        xb.push_back(sites[i].Occ());
       }
     }
     if (uiso) {
       for(std::size_t i=0;i<sites.size();i++) {
-        x.push_back(sites[i].Uiso());
+        xb.push_back(sites[i].Uiso());
       }
     }
+    af::flex_grid_default_index_type grid; // XXX use make_flex_grid_1d()
+    grid.push_back(xb.size());
+    x.resize(af::flex_grid<>(grid));
     return x.size();
   }
 
@@ -301,7 +332,7 @@ namespace {
   std::size_t
   pack_parameters_frac(
     const af::shared<ex_xray_scatterer>& sites,
-    af::shared<double> x,
+    af::versa<double, af::flex_grid<> >& x,
     bool coordinates, bool occ, bool uiso)
   {
     return pack_parameters_generic(
@@ -323,7 +354,7 @@ namespace {
   pack_parameters_cart(
     const uctbx::UnitCell& UCell,
     const af::shared<ex_xray_scatterer>& sites,
-    af::shared<double> x,
+    af::versa<double, af::flex_grid<> >& x,
     bool coordinates, bool occ, bool uiso)
   {
     return pack_parameters_generic(
@@ -646,26 +677,7 @@ namespace {
     python::import_converters<eltbx::CAASF_WK1995>
     py_CAASF_WK1995("cctbx_boost.eltbx.caasf_wk1995", "CAASF_WK1995");
 
-    python::import_converters<af::shared<double> >
-    py_shared_double("cctbx_boost.arraytbx.shared", "double");
-
-    python::import_converters<af::shared<std::complex<double> > >
-    py_shared_complex_double(
-      "cctbx_boost.arraytbx.shared", "complex_double");
-
-    python::import_converters<af::shared<miller::Index> >
-    py_shared_miller_Index(
-      "cctbx_boost.arraytbx.shared", "miller_Index");
-
-    python::import_converters<af::shared<ex_xray_scatterer> >
-    py_shared_XrayScatterer("cctbx_boost.arraytbx.shared", "XrayScatterer");
-
-    python::import_converters<af::shared<af::double3> >
-    py_shared_double3("cctbx_boost.arraytbx.shared", "double3");
-
-    python::import_converters<af::shared<sgtbx::RTMx> >
-    py_shared_RTMx(
-      "cctbx_boost.arraytbx.shared", "RTMx");
+    af::bpl::import_flex();
 
     class_builder<ex_xray_scatterer>
     py_XrayScatterer(this_module, "XrayScatterer");

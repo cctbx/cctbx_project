@@ -1,7 +1,7 @@
 import sys
 import math
 import random
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
 from cctbx_boost import sftbx
@@ -64,7 +64,7 @@ def OneCycle(settings):
       p1_sgops = sgtbx.SpaceGroup()
       p1_sginfo = p1_sgops.Info()
       p1_asu = sgtbx.ReciprocalSpaceASU(p1_sginfo)
-      p1_miller_indices = shared.miller_Index()
+      p1_miller_indices = flex.miller_Index()
       miller.expand_to_p1(
         SgOps, friedel_flag, miller_indices, p1_miller_indices)
       h_dict = {}

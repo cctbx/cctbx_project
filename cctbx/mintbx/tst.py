@@ -1,6 +1,6 @@
 import sys, os
 from cctbx.misc import python_utils
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import sgtbx
 from cctbx_boost import adptbx
 from cctbx_boost import lbfgs
@@ -59,7 +59,7 @@ class k_b_scaling_minimizer:
     if (self.refine_b):
       if (self.anisotropic): v += list(b)
       else:                  v.append(b)
-    return shared.double(tuple(v))
+    return flex.double(tuple(v))
 
   def unpack_x(self):
     i = 0
@@ -102,7 +102,7 @@ def exercise_k_b_scaling(SgInfo, d_min=2., verbose=0):
   f_ref = xutils.calculate_structure_factors_direct(
     miller_set, xtal, abs_F=1)
   for anisotropic in (0,1):
-    f_sca = xutils.reciprocal_space_array(miller_set, shared.double())
+    f_sca = xutils.reciprocal_space_array(miller_set, flex.double())
     k_sim = 1000
     b_iso = 13
     b_cif = [5,10,15,20,25,30]

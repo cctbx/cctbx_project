@@ -1,5 +1,4 @@
 import sys, os
-from cctbx_boost.arraytbx import shared
 from cctbx_boost import sgtbx
 from cctbx_boost import adptbx
 from cctbx_boost import fftbx

@@ -1,6 +1,6 @@
 import sys, os, math
 from cctbx.misc import python_utils
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import sgtbx
 from cctbx_boost import adptbx
 from cctbx_boost import miller
@@ -19,14 +19,14 @@ def add_u_extra(xtal, u_extra):
   return xtal_mod
 
 def zero_out_fpfdp(xtal):
-  new_sites = shared.XrayScatterer()
+  new_sites = flex.XrayScatterer()
   for site in xtal.Sites:
     site.set_fpfdp(0j)
     new_sites.append(site)
   xtal.Sites = new_sites
 
 def set_equiv_adp(xtal):
-  new_sites = shared.XrayScatterer()
+  new_sites = flex.XrayScatterer()
   for site in xtal.Sites:
     if (not site.isAnisotropic()):
       site.set_Uaniso(adptbx.Uiso_as_Ustar(xtal.UnitCell, site.Uiso()))
@@ -76,7 +76,7 @@ def exercise(SgInfo,
     site.set_Coordinates((0,0,0))
     site.set_Uiso(0)
     print site.CAASF().Label(), site.w()
-    new_sites = shared.XrayScatterer()
+    new_sites = flex.XrayScatterer()
     new_sites.append(site)
     xtal.Sites = new_sites
   if (0):

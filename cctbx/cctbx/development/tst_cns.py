@@ -1,5 +1,5 @@
 import sys, os, random
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
 from cctbx import xutils
@@ -15,7 +15,7 @@ def make_miller_lookup_dict(miller_indices): # XXX push to C++
 
 def generate_random_hl(miller_set, coeff_range=100):
   is_centric = miller_set.SgOps.isCentric
-  hl = shared.hendrickson_lattman()
+  hl = flex.hendrickson_lattman()
   for h in miller_set.H:
     if (is_centric(h)):
       hl.append((0,0,0,0))

@@ -1,6 +1,7 @@
 import sys, os
 import math
-from cctbx_boost.arraytbx import shared
+from cctbx_boost.arraytbx import flex
+from cctbx_boost.arraytbx import flex_utils
 from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
 from cctbx_boost import miller
@@ -29,10 +30,10 @@ def exercise_build_indices(SgInfo, index_abs_range = (6,6,6)):
           assert found_h_asu != 0
 
 def exercise_join_sets():
-  h0 = shared.miller_Index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
-  d0 = shared.double((1,2,3,4,5))
-  h1 = shared.miller_Index(((-1,-2,-3), (-2,-3,-4), (1,2,3), (2,3,4)))
-  d1 = shared.double((10,20,30,40))
+  h0 = flex.miller_Index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
+  d0 = flex.double((1,2,3,4,5))
+  h1 = flex.miller_Index(((-1,-2,-3), (-2,-3,-4), (1,2,3), (2,3,4)))
+  d1 = flex.double((10,20,30,40))
   js = miller.join_sets(h0, h0)
   assert js.have_singles() == 0
   assert list(js.pairs()) == zip(range(5), range(5))
@@ -91,7 +92,7 @@ def exercise_join_sets():
   selected_data_set0 = data_set0.sigma_filter(cutoff_factor=2, negate=1)
   assert tuple(selected_data_set0.H) == tuple(h0)
   assert tuple(selected_data_set0.F) == tuple(d0)
-  data_set0.sigmas = shared.double((0.6, 0.4, 2., 0.5, 0.5))
+  data_set0.sigmas = flex.double((0.6, 0.4, 2., 0.5, 0.5))
   selected_data_set0 = data_set0.sigma_filter(cutoff_factor=2)
   assert tuple(selected_data_set0.H) == ((-1, -2, -3), (-2, -3, -4), (3, 4, 5))
   assert tuple(selected_data_set0.F) == (2,4,5)
@@ -101,8 +102,8 @@ def exercise_join_sets():
   assert tuple(selected_data_set0.F) == (1,3)
   assert tuple(selected_data_set0.sigmas) == (0.6, 2.)
   data_set = xutils.reciprocal_space_array(
-    xutils.miller_set(xtal, shared.miller_Index(((1,2,3), (2,3,4)))),
-    shared.double((0,1)))
+    xutils.miller_set(xtal, flex.miller_Index(((1,2,3), (2,3,4)))),
+    flex.double((0,1)))
   selected_data_set = data_set.rms_filter(cutoff_factor=0.5)
   assert tuple(selected_data_set.H) == ((1,2,3),)
   assert tuple(selected_data_set.F) == (0,)
@@ -152,9 +153,9 @@ def exercise_bins(SgInfo, n_bins=10, d_min=1, friedel_flag=1, verbose=0):
   binner2 = miller.binner(binning2, miller_set.H)
   if (0 or verbose): xutils.show_binner_summary(binner2)
   assert tuple(binner1.counts())[1:-1] == tuple(binner2.counts())
-  array_indices = shared.size_t(tuple(xrange(miller_set.H.size())))
-  perm_array_indices1 = shared.size_t()
-  perm_array_indices2 = shared.size_t()
+  array_indices = flex.size_t(tuple(xrange(miller_set.H.size())))
+  perm_array_indices1 = flex.size_t()
+  perm_array_indices2 = flex.size_t()
   for i_bin in binner1.range_all():
     perm_array_indices1.append(array_indices.select(binner1(i_bin)))
     perm_array_indices2.append(binner1.array_indices(i_bin))
@@ -188,15 +189,15 @@ def exercise_map_to_asu(SgInfo, d_min=2.5, friedel_flag=1, verbose=0):
   xtal = get_random_structure(SgInfo, verbose)
   miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
   fcalc_set = xutils.calculate_structure_factors_direct(miller_set, xtal)
-  fabs_set = xutils.reciprocal_space_array(fcalc_set, shared.abs(fcalc_set.F))
-  phases = [shared.arg(fcalc_set.F, deg) for deg in (0,1)]
-  hlc = shared.hendrickson_lattman()
+  fabs_set = xutils.reciprocal_space_array(fcalc_set, flex.abs(fcalc_set.F))
+  phases = [flex.arg(fcalc_set.F, deg) for deg in (0,1)]
+  hlc = flex.hendrickson_lattman()
   for i in fcalc_set.H.indices():
     hlc.append([random.random() for i in xrange(4)])
-  h_random = shared.miller_Index()
-  c_random = shared.complex_double()
-  p_random = [shared.double(), shared.double()]
-  hlc_random = shared.hendrickson_lattman()
+  h_random = flex.miller_Index()
+  c_random = flex.complex_double()
+  p_random = [flex.double(), flex.double()]
+  hlc_random = flex.hendrickson_lattman()
   for i,h_asym in miller_set.H.items():
     h_seq = miller.SymEquivIndices(xtal.SgOps, h_asym)
     i_eq = random.randrange(h_seq.M(friedel_flag))
@@ -242,7 +243,7 @@ def exercise_map_fft(SgInfo, d_min=2.5, verbose=0):
     miller_set = xutils.build_miller_set(xtal, friedel_flag, d_min)
     fcalc_set = xutils.calculate_structure_factors_direct(miller_set, xtal)
     map_set = xutils.fft_map(fcalc_set)
-    s = shared.statistics(map_set.get_real_map())
+    s = flex_utils.statistics(map_set.get_real_map())
     if (0 or verbose):
       print "friedel_flag=%d, map min: %f" % (map_set.friedel_flag, s.min())
       print "                map max: %f" % (s.max(),)
