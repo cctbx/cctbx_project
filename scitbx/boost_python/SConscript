@@ -9,7 +9,7 @@ env = env_base.Copy(
 env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
 env.Append(LIBPATH=["#libtbx"])
-env.Append(LIBS=["bpl"])
+env.Append(LIBS=["boost_python"])
 
 lib_scitbx_boost_python_sources = [
   "#scitbx/boost_python/utils.cpp",

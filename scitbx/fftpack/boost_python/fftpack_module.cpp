@@ -17,7 +17,7 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <scitbx/array_family/boost_python/tiny_conversions.h>
-#include <boost/python/module_init.hpp>
+#include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -370,7 +370,7 @@ namespace scitbx { namespace fftpack { namespace {
 
 }}} // namespace scitbx::fftpack::<anonymous>
 
-BOOST_PYTHON_MODULE_INIT(fftpack)
+BOOST_PYTHON_MODULE(fftpack)
 {
   scitbx::fftpack::init_module();
 }
