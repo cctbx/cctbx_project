@@ -420,7 +420,7 @@ namespace {
   sampled_model_density_map_as_shared(
     sftbx::sampled_model_density<double>& smd)
   {
-    return smd.map().as_base_array();
+    return smd.map_real().as_base_array();
   }
 
   af::shared<double>
