@@ -1,10 +1,11 @@
-from cctbx.web.shelx import LATT_SYMM
+from iotbx.shelx.write_ins import LATT_SYMM
 from cctbx import adptbx
 from cctbx.eltbx.caasf import it1992
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.development.fmt_utils import *
 from scitbx.python_utils import dicts
+from cStringIO import StringIO
 import sys, os
 
 def check_shelx_availability():
@@ -178,7 +179,9 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=00000, verbose=0):
   l("TITL " + shelx_titl)
   l("CELL 1.0 " + dot6gdot_list(xray_structure.unit_cell().parameters()))
   l("ZERR 1 0.01 0.01 0.01 0 0 0")
-  lines += LATT_SYMM(xray_structure.space_group())
+  s = StringIO()
+  LATT_SYMM(s, xray_structure.space_group())
+  l(s.getvalue()[:-1])
   lines += SFAC_DISP_UNIT(xray_structure, short_sfac)
   l("FVAR 1.")
   l("L.S. 1")
