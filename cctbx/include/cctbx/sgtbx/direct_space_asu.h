@@ -187,7 +187,7 @@ namespace direct_space_asu {
       fractional<FloatType> const&
       box_min() const
       {
-        if (not have_box_) compute_box();
+        if (!have_box_) compute_box();
         return box_min_;
       }
 
@@ -197,7 +197,7 @@ namespace direct_space_asu {
       fractional<FloatType> const&
       box_max() const
       {
-        if (not have_box_) compute_box();
+        if (!have_box_) compute_box();
         return box_max_;
       }
 
@@ -364,8 +364,8 @@ namespace direct_space_asu {
         af::const_ref<std::size_t>
           sym_op_indices = equiv_sites.sym_op_indices().const_ref();
         bool have_site_in_asu = false;
-        for(std::size_t i=0;i<coordinates.size();i++) {
-          scitbx::vec3<FloatType> const& site = coordinates[i];
+        for(std::size_t i_sym_eq=0;i_sym_eq<coordinates.size();i_sym_eq++) {
+          scitbx::vec3<FloatType> const& site = coordinates[i_sym_eq];
           scitbx::vec3<IntShiftType> unit_shifts_min;
           scitbx::vec3<IntShiftType> unit_shifts_max;
           for(std::size_t i=0;i<3;i++) {
@@ -386,7 +386,7 @@ namespace direct_space_asu {
                 && buffer_covering_sphere_.is_inside(
                      asu_.unit_cell().orthogonalize(mapped_site))) {
               asu_mapping<FloatType, IntShiftType>
-                mapping(sym_op_indices[i], u, mapped_site);
+                mapping(sym_op_indices[i_sym_eq], u, mapped_site);
               if (!have_site_in_asu && asu_.is_inside(mapped_site)) {
                 site_mappings.insert(site_mappings.begin(), mapping);
                 have_site_in_asu = true;
