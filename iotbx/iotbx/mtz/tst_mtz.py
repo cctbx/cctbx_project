@@ -151,6 +151,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2.5,
     miller_array=miller.array(
       miller_set=miller.set(
         crystal_symmetry=f_calc,
+        anomalous_flag=anomalous_flag,
         indices=f_calc.indices()),
       data=flex.abs(f_calc.data())),
     mtz_label="f_obs").write("tmp.mtz")
