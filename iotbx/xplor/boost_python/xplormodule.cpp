@@ -1,3 +1,4 @@
+#include <scitbx/array_family/boost_python/flex_fwd.h>
 #include <string>
 #include <cstdlib>
 #include <fstream>
@@ -10,7 +11,6 @@
 # include <boost/python/module.hpp>
 
 #include <scitbx/array_family/flex_types.h>
-#include <scitbx/array_family/boost_python/flex_fwd.h>
 #include <cctbx/uctbx.h>
 namespace af = scitbx::af;
 
