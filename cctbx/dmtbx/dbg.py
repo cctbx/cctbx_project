@@ -54,10 +54,11 @@ def compute_mean_weighted_phase_error(tprs, sgops, h, f, phi1, phi2, verbose=0):
     sum_w += m * f[i]
   return sum_w_phase_error / sum_w
 
-def square_emap(xtal, e000, p1_miller_indices,
-                miller_indices, e_values, phases,
-                use_e000, zero_out_negative,
-                verbose = 0):
+def raise_emap(xtal, e000, p1_miller_indices,
+               miller_indices, e_values, phases,
+               use_e000, zero_out_negative,
+               exponent=2,
+               verbose=0):
   index_span = sftbx.index_span(p1_miller_indices)
   # XXX index_span = xtal.SgOps.get_index_span(miller_indices)
   if (0 or verbose):
@@ -93,7 +94,7 @@ def square_emap(xtal, e000, p1_miller_indices,
   rmap = shared.reinterpret_complex_as_real(map)
   if (zero_out_negative):
     shared.set_if_less_than(rmap, 0, 0)
-  shared.square(rmap)
+  shared.pow(rmap, exponent)
   rfft.forward(map)
   new_e_complex = sftbx.collect_structure_factors(
     friedel_flag, miller_indices, map, n_complex, conjugate)
@@ -237,7 +238,7 @@ def exercise(SgInfo,
       if (0 or verbose):
         print
   if (exercise_squaring):
-    new_phases = square_emap(
+    new_phases = raise_emap(
       sim.xtal, sim.e000, p1_H, sim.miller_indices.H, sim.e_values, sim.phases,
       use_e000, zero_out_negative)
     tprs_plus = [tprs_sg]
@@ -327,39 +328,47 @@ def recycle(SgInfo,
       sim.xtal.SgOps, sim.miller_indices.H, sim.e_values)
     if (0 or verbose):
       show_ampl_phases(sim.miller_indices.H, sim.e_values, random_phi)
-    new_phases = random_phi
-    if (0): # XXX
-      new_phases = sim.phases
-    n_matches = []
-    for cycle in xrange(n_cycles_per_trial):
-      print LookupSymbol, "i_trial:", i_trial, "cycle:", cycle
-      sys.stdout.flush()
-      new_phases = square_emap(
-        sim.xtal, sim.e000,
-        p1_H, sim.miller_indices.H, sim.e_values, new_phases,
-        use_e000, zero_out_negative)
+    for exponent in (2,3,4,5):
+      new_phases = random_phi
       if (0): # XXX
         new_phases = sim.phases
-      map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
-      peak_list = map_calculator.get_peak_list(map, 3, 20)
-      if (0 or verbose):
-        for peak in peak_list:
-          print "peak (%d,%d,%d)" % peak["index"], "%.6g" % (peak["value"],)
-      peaks_emma_model = peak_list_as_emma_model(
-        sim.xtal, map_calculator.rfft.Nreal(), peak_list)
-      if (0 or verbose):
-        peaks_emma_model.show("Peak list")
-      refined_matches = emma.match_models(sim_emma_model, peaks_emma_model)
-      if (len(refined_matches)):
-        refined_matches[0].show()
-        n_matches.append(len(refined_matches[0].pairs))
-      else:
-        print "No matches"
-        n_matches.append(0)
+      n_matches = []
+      for cycle in xrange(n_cycles_per_trial):
+        print LookupSymbol, "exponent:", exponent,
+        print "i_trial:", i_trial, "cycle:", cycle
+        sys.stdout.flush()
+        new_phases = raise_emap(
+          sim.xtal, sim.e000,
+          p1_H, sim.miller_indices.H, sim.e_values, new_phases,
+          use_e000, zero_out_negative, exponent=exponent)
+        use_emma = (cycle == 0 or cycle == n_cycles_per_trial-1)
+        if (not use_emma):
+          n_matches.append(-1)
+        else:
+          if (0): # XXX
+            new_phases = sim.phases
+          map = map_calculator(sim.miller_indices.H, sim.e_values, new_phases)
+          peak_list = map_calculator.get_peak_list(map, 3, 20)
+          if (0 or verbose):
+            for peak in peak_list:
+              print "peak (%d,%d,%d)" % peak["index"], "%.6g" % (
+                peak["value"],)
+          peaks_emma_model = peak_list_as_emma_model(
+            sim.xtal, map_calculator.rfft.Nreal(), peak_list)
+          if (0 or verbose):
+            peaks_emma_model.show("Peak list")
+          refined_matches = emma.match_models(sim_emma_model, peaks_emma_model)
+          if (len(refined_matches)):
+            refined_matches[0].show()
+            n_matches.append(len(refined_matches[0].pairs))
+          else:
+            print "No matches"
+            n_matches.append(0)
+          sys.stdout.flush()
+      print LookupSymbol, "exponent:", exponent,
+      print "i_trial:", i_trial, "n_matches:", n_matches
+      print
       sys.stdout.flush()
-    print  LookupSymbol, "i_trial:", i_trial, "n_matches:", n_matches
-    print
-    sys.stdout.flush()
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (
