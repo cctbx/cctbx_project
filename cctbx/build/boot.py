@@ -106,7 +106,7 @@ set path = (%s/command_line $path)
     """ % ( norm(join(os.getcwd(),"../lib")),
             structured_package_dir,
             norm(join(os.getcwd(),"../lib_python")),
-            structured_package_dir)
+            norm(join(structured_package_dir, package.name)))
 
   else:
     for file in ( "test_imports.py",):
@@ -121,7 +121,7 @@ set PATH=%s\command_line;%%PATH%%
 set PATHEXT=.PY;%%PATHEXT%%
     """ % ( structured_package_dir,
             norm(join(os.getcwd(),"../lib_python")),
-            structured_package_dir)
+            norm(join(structured_package_dir, package.name)))
   print "Updating:", file
   f = open(file, "a")
   f.write(proc)
