@@ -21,6 +21,7 @@ def run():
   "$D/dmtbx/boost_python/tst_dmtbx.py",
   "$D/translation_search/boost_python/tst_translation_search.py",
   "$D/cctbx/matrix.py",
+  ["$D/cctbx/regression/tst_krivy_gruber.py", "--Quick"],
   "$D/cctbx/regression/tst_sgtbx.py",
   "$D/cctbx/regression/tst_sgtbx_harker.py",
   "$D/cctbx/sgtbx/symbol_confidence.py",

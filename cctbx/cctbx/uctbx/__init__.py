@@ -23,3 +23,18 @@ class _unit_cell(injector, ext.unit_cell):
   def show_parameters(self, f=None):
     if (f is None): f = sys.stdout
     print >> f, "Unit cell:", str(self)
+
+  def is_buerger_cell(self, relative_epsilon=None):
+    from cctbx.uctbx.reduction_base import gruber_parameterization
+    return gruber_parameterization(self, relative_epsilon).is_buerger_cell()
+
+  def is_niggli_cell(self, relative_epsilon=None):
+    from cctbx.uctbx.reduction_base import gruber_parameterization
+    return gruber_parameterization(self, relative_epsilon).is_niggli_cell()
+
+  def niggli_reduction(self, relative_epsilon=None, iteration_limit=None):
+    from cctbx.uctbx import krivy_gruber_1976
+    return krivy_gruber_1976.reduction(self, relative_epsilon, iteration_limit)
+
+  def niggli_cell(self):
+    return self.niggli_reduction().as_unit_cell()
