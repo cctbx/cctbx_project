@@ -10,7 +10,7 @@ def set_python_include_and_libs(env_etc):
   elif (env_etc.compiler == "tru64_cxx"):
     env_etc.python_include = sys.prefix + "/include/python" + sys.version[0:3]
     env_etc.libs_python = ["pthread",]
-    env_etc.libpath_python = []    
+    env_etc.libpath_python = []
   else:
     env_etc.python_include = sys.prefix + "/include/python" + sys.version[0:3]
     env_etc.libs_python = []
