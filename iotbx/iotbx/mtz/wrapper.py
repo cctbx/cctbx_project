@@ -47,7 +47,8 @@ def default_column_types(miller_array):
       if (miller_array.sigmas() is not None):
         result += "Q"
   elif (miller_array.is_xray_amplitude_array()
-        or (miller_array.is_real() and miller_array.sigmas() is not None)):
+        or (miller_array.is_real_array()
+            and miller_array.sigmas() is not None)):
     if (miller_array.anomalous_flag()):
       result = "G"
       if (miller_array.sigmas() is not None):
@@ -60,12 +61,12 @@ def default_column_types(miller_array):
          or miller_array.is_integer_array())
         and miller_array.sigmas() is None):
     result = "I"
-  elif (miller_array.is_real()):
+  elif (miller_array.is_real_array()):
     if (miller_array.anomalous_flag()):
       result = "G"
     else:
       result = "F"
-  elif (miller_array.is_complex() and miller_array.sigmas() is None):
+  elif (miller_array.is_complex_array() and miller_array.sigmas() is None):
     if (miller_array.anomalous_flag()):
       result = "GP"
     else:

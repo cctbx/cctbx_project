@@ -66,7 +66,7 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
   restored_dataset = restored.crystals()[1].datasets()[0]
   if (not miller_array.anomalous_flag()):
     if (miller_array.sigmas() is None):
-      if (miller_array.is_complex()):
+      if (miller_array.is_complex_array()):
         assert restored_dataset.n_columns() == 3+2
         group = restored.extract_complex(
           column_label_ampl=root_label,
@@ -102,7 +102,7 @@ def recycle(miller_array, root_label, column_types=None, verbose=0):
         sigmas=group.sigmas)
   else:
     if (miller_array.sigmas() is None):
-      if (miller_array.is_complex()):
+      if (miller_array.is_complex_array()):
         assert restored_dataset.n_columns() == 3+4
         group = restored.extract_complex_anomalous(
           column_label_ampl_plus=original_dataset.label_plus(root_label),

@@ -173,7 +173,7 @@ class set(crystal.symmetry):
       asu, matches = no_sys_abs.match_bijvoet_mates()
       print >> f, "Bijvoet pairs:", matches.pairs().size()
       print >> f, "Lone Bijvoet mates:", matches.n_singles() - n_centric
-      if (isinstance(self, array) and self.is_real()):
+      if (isinstance(self, array) and self.is_real_array()):
         print >> f, "Anomalous signal: %.4f" % no_sys_abs.anomalous_signal()
     return self
 
@@ -545,11 +545,11 @@ class array(set):
     return isinstance(self.data(), flex.int) \
         or isinstance(self.data(), flex.long)
 
-  def is_real(self):
+  def is_real_array(self):
     return isinstance(self.data(), flex.float) \
         or isinstance(self.data(), flex.double)
 
-  def is_complex(self):
+  def is_complex_array(self):
     return isinstance(self.data(), flex.complex_double)
 
   def is_hendrickson_lattman_array(self):
@@ -584,7 +584,7 @@ class array(set):
       .set_observation_type(self))
 
   def conjugate(self):
-    assert self.is_complex()
+    assert self.is_complex_array()
     return array(miller_set=self, data=flex.conj(self.data()))
 
   def __getitem__(self, slice_object):
@@ -634,7 +634,7 @@ class array(set):
   def map_to_asu(self):
     i = self.indices().deep_copy()
     d = self.data().deep_copy()
-    if (self.is_complex() or self.is_hendrickson_lattman_array()):
+    if (self.is_complex_array() or self.is_hendrickson_lattman_array()):
       map_to_asu(
         self.space_group_info().type(),
         self.anomalous_flag(),
@@ -716,7 +716,7 @@ class array(set):
 
   def patterson_symmetry(self):
     data = self.data()
-    if (self.is_complex()):
+    if (self.is_complex_array()):
       data = flex.abs(self.data())
     return array(
       set.patterson_symmetry(self),
@@ -729,7 +729,7 @@ class array(set):
     assert self.anomalous_flag() is not None
     assert self.data() is not None
     new_sigmas = None
-    if (self.is_complex()):
+    if (self.is_complex_array()):
       assert phase_deg is None
       p1 = expand_to_p1(
         self.space_group(), self.anomalous_flag(), self.indices(),
@@ -1075,7 +1075,7 @@ class array(set):
     sigmas = None
     if (self.data() is not None):
       data = self.data().deep_copy()
-      if (self.is_complex()):
+      if (self.is_complex_array()):
         data.extend(flex.conj(data.select(sel)))
       else:
         data.extend(data.select(sel))
@@ -1092,8 +1092,8 @@ class array(set):
 
   def correlation(self, other, use_binning=False):
     assert self.is_similar_symmetry(other)
-    assert self.is_real()
-    assert other.is_real()
+    assert self.is_real_array()
+    assert other.is_real_array()
     assert not use_binning or self.binner() is not None
     lhs = self
     if (lhs.anomalous_flag() and not other.anomalous_flag()):
