@@ -40,14 +40,18 @@ class sdb_file:
       unit_cell=self.unit_cell,
       space_group_info=self.space_group_info)
 
-  def as_xray_structure(self, min_distance_sym_equiv=0.5):
-    assert self.unit_cell is not None
-    assert self.space_group_info is not None
+  def as_xray_structure(self, crystal_symmetry=None, force_symmetry=00000,
+                              min_distance_sym_equiv=0.5):
+    crystal_symmetry = self.crystal_symmetry().join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=force_symmetry)
+    assert crystal_symmetry.unit_cell() is not None
+    assert crystal_symmetry.space_group_info() is not None
     structure = xray.structure(crystal.special_position_settings(
-      crystal_symmetry=self.crystal_symmetry(),
+      crystal_symmetry=crystal_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv))
     for site in self.sites:
-      structure.add_scatterer(site.as_xray_scatterer(self.unit_cell))
+      structure.add_scatterer(site.as_xray_scatterer(structure.unit_cell()))
     return structure
 
 def generic_add_str(m, buffer):
