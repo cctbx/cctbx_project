@@ -14,5 +14,6 @@ tiny_apply.h
 tiny_plain_apply.h
 versa_apply.h
 versa_plain_apply.h
+ref_apply.h
 flagged_value_algebra.h
 tiny_bpl.h

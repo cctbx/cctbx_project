@@ -19,6 +19,7 @@
 #include <cctbx/array_family/shared_apply.h>
 #include <cctbx/array_family/versa_plain_apply.h>
 #include <cctbx/array_family/versa_apply.h>
+#include <cctbx/array_family/ref_apply.h>
 #include <cctbx/array_family/flagged_value.h>
 
 #endif // CCTBX_ARRAY_FAMILY_H

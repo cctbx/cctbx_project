@@ -73,7 +73,7 @@ namespace cctbx { namespace fftbx {
           throw error("Number of elements in third dimension must be even.");
         }
         af::ref<complex_type, accessor_type> cmap(
-          reinterpret_cast<real_type*>(map.begin()),
+          reinterpret_cast<complex_type*>(map.begin()),
           accessor_type(dim_real[0], dim_real[1], dim_real[2] / 2));
         transform(tag, cmap, complex_type());
       }

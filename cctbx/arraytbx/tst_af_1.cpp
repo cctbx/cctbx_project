@@ -431,6 +431,8 @@ namespace {
         af::versa_plain<IntType> a2(af::grid<1>(t1.size()));
         a2.as_shared_plain().assign(t1);
         exercise_apply(a2, af::versa_plain<FloatType>());
+        exercise_apply(a2.const_ref(), af::versa_plain<FloatType>());
+        exercise_apply(a2.ref(), af::versa_plain<FloatType>());
       }
     }
   };
