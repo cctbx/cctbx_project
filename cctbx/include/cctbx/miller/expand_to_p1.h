@@ -1,13 +1,3 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Oct: Refactored (rwgk)
-     2002 Jul: Created from fragments of cctbx/sgtbx/miller_asu.h (rwgk)
- */
-
 #ifndef CCTBX_MILLER_EXPAND_TO_P1_H
 #define CCTBX_MILLER_EXPAND_TO_P1_H
 
@@ -74,6 +64,14 @@ namespace cctbx { namespace miller {
         af::const_ref<index<> > const& indices,
         af::const_ref<std::complex<FloatType> > const& structure_factors);
 
+      //! \brief Expands a list of Hendrickson-Lattman coefficients.
+      expand_to_p1(
+        sgtbx::space_group const& space_group,
+        bool anomalous_flag,
+        af::const_ref<index<> > const& indices,
+        af::const_ref<hendrickson_lattman<> > const&
+          hendrickson_lattman_coefficients);
+
       //! Indices in P1.
       af::shared<index<> > const&
       indices() const { return indices_; }
@@ -90,11 +88,19 @@ namespace cctbx { namespace miller {
       af::shared<std::complex<FloatType> > const&
       structure_factors() const { return structure_factors_; }
 
+      //! Hendrickson-Lattman coefficients in P1.
+      af::shared<hendrickson_lattman<> > const&
+      hendrickson_lattman_coefficients() const
+      {
+        return hendrickson_lattman_coefficients_;
+      }
+
     protected:
       af::shared<index<> > indices_;
       af::shared<FloatType> amplitudes_;
       af::shared<FloatType> phases_;
       af::shared<std::complex<FloatType> > structure_factors_;
+      af::shared<hendrickson_lattman<> > hendrickson_lattman_coefficients_;
 
       void
       work(
@@ -104,7 +110,9 @@ namespace cctbx { namespace miller {
         af::const_ref<FloatType> const& amplitudes,
         af::const_ref<FloatType> const& phases,
         bool phase_degrees,
-        af::const_ref<std::complex<FloatType> > const& structure_factors);
+        af::const_ref<std::complex<FloatType> > const& structure_factors,
+        af::const_ref<hendrickson_lattman<> > const&
+          hendrickson_lattman_coefficients);
   };
 
   template <typename FloatType>
@@ -116,7 +124,8 @@ namespace cctbx { namespace miller {
     work(space_group, anomalous_flag, indices,
          af::const_ref<FloatType>(0,0),
          af::const_ref<FloatType>(0,0), false,
-         af::const_ref<std::complex<FloatType> >(0,0));
+         af::const_ref<std::complex<FloatType> >(0,0),
+         af::const_ref<hendrickson_lattman<> >(0,0));
   }
 
   template <typename FloatType>
@@ -129,7 +138,8 @@ namespace cctbx { namespace miller {
     work(space_group, anomalous_flag, indices,
          amplitudes,
          af::const_ref<FloatType>(0,0), false,
-         af::const_ref<std::complex<FloatType> >(0,0));
+         af::const_ref<std::complex<FloatType> >(0,0),
+         af::const_ref<hendrickson_lattman<> >(0,0));
   }
 
   template <typename FloatType>
@@ -142,7 +152,8 @@ namespace cctbx { namespace miller {
     work(space_group, anomalous_flag, indices,
          af::const_ref<FloatType>(0,0),
          phases, phase_degrees,
-         af::const_ref<std::complex<FloatType> >(0,0));
+         af::const_ref<std::complex<FloatType> >(0,0),
+         af::const_ref<hendrickson_lattman<> >(0,0));
   }
 
   template <typename FloatType>
@@ -156,7 +167,8 @@ namespace cctbx { namespace miller {
   {
     work(space_group, anomalous_flag, indices,
          amplitudes, phases, phase_degrees,
-         af::const_ref<std::complex<FloatType> >(0,0));
+         af::const_ref<std::complex<FloatType> >(0,0),
+         af::const_ref<hendrickson_lattman<> >(0,0));
   }
 
   template <typename FloatType>
@@ -169,7 +181,23 @@ namespace cctbx { namespace miller {
     work(space_group, anomalous_flag, indices,
          af::const_ref<FloatType>(0,0),
          af::const_ref<FloatType>(0,0), false,
-         structure_factors);
+         structure_factors,
+         af::const_ref<hendrickson_lattman<> >(0,0));
+  }
+
+  template <typename FloatType>
+  expand_to_p1<FloatType>::expand_to_p1(
+    sgtbx::space_group const& space_group,
+    bool anomalous_flag,
+    af::const_ref<index<> > const& indices,
+    af::const_ref<hendrickson_lattman<> > const&
+      hendrickson_lattman_coefficients)
+  {
+    work(space_group, anomalous_flag, indices,
+         af::const_ref<FloatType>(0,0),
+         af::const_ref<FloatType>(0,0), false,
+         af::const_ref<std::complex<FloatType> >(0,0),
+         hendrickson_lattman_coefficients);
   }
 
   template <typename FloatType>
@@ -180,7 +208,9 @@ namespace cctbx { namespace miller {
     af::const_ref<index<> > const& indices,
     af::const_ref<FloatType> const& amplitudes,
     af::const_ref<FloatType> const& phases, bool phase_degrees,
-    af::const_ref<std::complex<FloatType> > const& structure_factors)
+    af::const_ref<std::complex<FloatType> > const& structure_factors,
+    af::const_ref<hendrickson_lattman<> > const&
+      hendrickson_lattman_coefficients)
   {
     CCTBX_ASSERT(   amplitudes.size() == indices.size()
                  || amplitudes.size() == 0);
@@ -188,6 +218,8 @@ namespace cctbx { namespace miller {
                  || phases.size() == 0);
     CCTBX_ASSERT(   structure_factors.size() == indices.size()
                  || structure_factors.size() == 0);
+    CCTBX_ASSERT(   hendrickson_lattman_coefficients.size() == indices.size()
+                 || hendrickson_lattman_coefficients.size() == 0);
     for(std::size_t i_indices=0;i_indices<indices.size();i_indices++) {
       sym_equiv_indices eq(space_group, indices[i_indices]);
       af::shared<sym_equiv_index> p1_list = eq.p1_listing(anomalous_flag);
@@ -203,6 +235,11 @@ namespace cctbx { namespace miller {
         if (structure_factors.size()) {
           structure_factors_.push_back(
             p1->complex_eq(structure_factors[i_indices]));
+        }
+        if (hendrickson_lattman_coefficients.size()) {
+          hendrickson_lattman_coefficients_.push_back(
+            p1->hendrickson_lattman_eq(
+              hendrickson_lattman_coefficients[i_indices]));
         }
       }
     }

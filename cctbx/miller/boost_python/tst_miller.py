@@ -420,6 +420,23 @@ def exercise_merge_equivalents():
   assert approx_equal(m.sigmas(), (math.sqrt(1/2.), 0.84077140277, 1/5.))
   assert tuple(m.redundancies()) == (2,3,1)
 
+def exercise_phase_integral():
+  sg = sgtbx.space_group_info("P 21 21 21").group()
+  i = flex.miller_index([(1,2,3), (3,0,3)])
+  hl = flex.hendrickson_lattman([(1,2,3,4),(-2,3,-4,-5)])
+  integrator = miller.phase_integrator(n_steps=10)
+  assert integrator.n_steps() == 10
+  integrator = miller.phase_integrator()
+  assert integrator.n_steps() == 360/5
+  assert approx_equal(integrator(sg.phase_restriction(i[0]), hl[0]),
+    0.78832161462+0.466993941292j)
+  assert approx_equal(integrator(sg.phase_restriction(i[1]), hl[1]),
+    6.09275186883e-17+0.995054753687j)
+  assert approx_equal(integrator(
+      space_group=sg, miller_indices=i, hendrickson_lattman_coefficients=hl),
+    [(0.78832161462020822+0.46699394129187444j),
+     (6.0927518688296534e-17+0.99505475368673046j)])
+
 def exercise_phase_transfer():
   sg = sgtbx.space_group_info("P 21 21 21").group()
   i = flex.miller_index(((1,2,3), (3,0,3)))
@@ -450,6 +467,7 @@ def run():
   exercise_match_bijvoet_mates()
   exercise_merge_equivalents()
   exercise_match_indices()
+  exercise_phase_integral()
   exercise_phase_transfer()
   print "OK"
 

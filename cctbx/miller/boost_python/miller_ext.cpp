@@ -5,6 +5,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/args.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 
 namespace cctbx { namespace miller { namespace boost_python {
@@ -18,9 +19,20 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_match_indices();
   void wrap_merge_equivalents();
   void wrap_phase_transfer();
+  void wrap_phase_integrator();
   void wrap_sym_equiv();
 
 namespace {
+
+  hendrickson_lattman<>
+  as_hendrickson_lattman(
+    bool centric_flag,
+    std::complex<double> const& phase_integral,
+    double const& max_figure_of_merit)
+  {
+    return hendrickson_lattman<>(
+      centric_flag, phase_integral, max_figure_of_merit);
+  }
 
   void register_tuple_mappings()
   {
@@ -44,6 +56,7 @@ namespace {
     wrap_match_bijvoet_mates();
     wrap_match_indices();
     wrap_merge_equivalents();
+    wrap_phase_integrator();
     wrap_phase_transfer();
 
     def("statistical_mean",
@@ -51,6 +64,11 @@ namespace {
                  bool,
                  af::const_ref<index<> > const&,
                  af::const_ref<double> const&)) statistical_mean);
+
+    def("as_hendrickson_lattman", as_hendrickson_lattman, (
+      arg_("centric_flag"),
+      arg_("phase_integral"),
+      arg_("max_figure_of_merit")));
   }
 
 } // namespace <anonymous>

@@ -11,6 +11,7 @@ env.SharedLibrary(target="#libtbx/cctbx_miller_ext", source=[
   "match_bijvoet_mates.cpp",
   "match_indices.cpp",
   "merge_equivalents.cpp",
+  "phase_integrator.cpp",
   "phase_transfer.cpp",
   "sym_equiv.cpp",
 ])

@@ -6,8 +6,12 @@ from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
+from cctbx import utils
+import cctbx
+from scitbx.python_utils import complex_math
 from libtbx.test_utils import approx_equal
 import StringIO
+import random
 import math
 import sys
 
@@ -538,10 +542,102 @@ def exercise_array_correlation(space_group_info,
       if (c0.n() > 0):
         assert approx_equal(c0.coefficient(), c1.coefficient())
 
+def exercise_as_hendrickson_lattman(space_group_info, n_scatterers=5, d_min=3,
+                                    verbose=0):
+  phase_integrator = miller.phase_integrator()
+  phase_restriction = space_group_info.group().phase_restriction
+  for anomalous_flag in [00000, 0001]:
+    structure = random_structure.xray_structure(
+      space_group_info,
+      elements=["const"]*n_scatterers,
+      volume_per_atom=200,
+      random_f_double_prime=00000)
+    f_calc = structure.structure_factors(
+      d_min=d_min,
+      anomalous_flag=anomalous_flag,
+      algorithm="direct").f_calc()
+    max_f_calc = flex.max(flex.abs(f_calc.data()))
+    phase_integrals = f_calc.data() / (max_f_calc/.95)
+    for h,pi_calc in zip(f_calc.indices(), phase_integrals):
+      phase_info = phase_restriction(h)
+      assert abs(pi_calc - phase_info.valid_structure_factor(pi_calc)) < 1.e-6
+      hl = miller.as_hendrickson_lattman(
+        centric_flag=phase_info.is_centric(),
+        phase_integral=pi_calc,
+        max_figure_of_merit=1-1.e-6)
+      pi_int = phase_integrator(phase_info, hl)
+      assert abs(pi_calc - pi_int) < 1.e-1
+
+def one_random_hl(f, min_coeff=1.e-3):
+  result = f * (random.random() - 0.5)
+  if (result < 0):
+    if (result > -min_coeff): return min_coeff
+  else:
+    if (result < min_coeff): return min_coeff
+  return result
+
+def generate_random_hl(miller_set, coeff_range=5):
+  phase_restriction = miller_set.space_group().phase_restriction
+  hl = flex.hendrickson_lattman()
+  for h in miller_set.indices():
+    phase_info = phase_restriction(h)
+    if (phase_info.is_centric()):
+      fom = max(0.01, random.random()*0.95)
+      if (random.random() < 0.5): fom *= -1
+      angle = phase_info.ht_angle()
+      f = fom * complex(math.cos(angle), math.sin(angle))
+      assert abs(f - phase_info.valid_structure_factor(f)) < 1.e-6
+      hl.append(cctbx.hendrickson_lattman(
+        centric_flag=0001,
+        phase_integral=f,
+        max_figure_of_merit=1-1.e-6))
+    else:
+      f = 2 * coeff_range * random.random()
+      hl.append([one_random_hl(f) for i in xrange(4)])
+  return miller.array(miller_set=miller_set, data=hl)
+
+def exercise_phase_integrals(space_group_info):
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=space_group_info.any_compatible_unit_cell(
+      volume=250*space_group_info.group().n_ltr()),
+    space_group_info=space_group_info)
+  is_centric = space_group_info.group().is_centric
+  for anomalous_flag in [00000, 0001]:
+    miller_set = miller.build_set(
+      crystal_symmetry=crystal_symmetry,
+      anomalous_flag=anomalous_flag,
+      d_min=1)
+    sg_hl = generate_random_hl(miller_set=miller_set)
+    p1_hl = sg_hl.expand_to_p1()
+    sg_phase_integrals = sg_hl.phase_integrals(n_steps=360/5)
+    p1_phase_integrals = p1_hl.phase_integrals()
+    p1_sg_phase_integrals = sg_phase_integrals.expand_to_p1()
+    assert p1_sg_phase_integrals.indices().all_eq(p1_phase_integrals.indices())
+    for h,pi_p1,pi_p1_sg in zip(p1_phase_integrals.indices(),
+                                p1_phase_integrals.data(),
+                                p1_sg_phase_integrals.data()):
+      if (is_centric(h)):
+        if (utils.phase_error(complex_math.arg(pi_p1),
+                              complex_math.arg(pi_p1_sg)) > 1.e-6):
+          print "Error:", h, pi_p1, pi_p1_sg
+          print "arg(pi_p1):", complex_math.arg(pi_p1)
+          print "arg(pi_p1_sg):", complex_math.arg(pi_p1_sg)
+          raise AssertionError
+        if (not (0.5 < abs(pi_p1)/abs(pi_p1_sg) < 0.75)):
+          print "Error:", h, pi_p1, pi_p1_sg
+          print "abs(pi_p1):", abs(pi_p1)
+          print "abs(pi_p1_sg):", abs(pi_p1_sg)
+          raise AssertionError
+      elif (abs(pi_p1 - pi_p1_sg) > 1.e-6):
+        print "Error:", h, pi_p1, pi_p1_sg
+        raise AssertionError
+
 def run_call_back(flags, space_group_info):
   exercise_array_2(space_group_info)
   exercise_squaring_and_patterson_map(space_group_info, verbose=flags.Verbose)
   exercise_array_correlation(space_group_info)
+  exercise_as_hendrickson_lattman(space_group_info)
+  exercise_phase_integrals(space_group_info)
 
 def run():
   exercise_set()

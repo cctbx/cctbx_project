@@ -1,24 +1,15 @@
-/* Copyright (c) 2001-2002 The Regents of the University of California
-   through E.O. Lawrence Berkeley National Laboratory, subject to
-   approval by the U.S. Department of Energy.
-   See files COPYRIGHT.txt and LICENSE.txt for further details.
-
-   Revision history:
-     2002 Jul: created, based on a fragment from clipper/lib/hkl_datatypes.h:
-               (C) 2000-2002 Kevin Cowtan
-               This code is provided as free software under the CCP4
-               license part (i)
- */
-
 #ifndef CCTBX_HENDRICKSON_LATTMAN_H
 #define CCTBX_HENDRICKSON_LATTMAN_H
 
 #include <scitbx/array_family/tiny.h>
+#include <scitbx/math/bessel.h>
 #include <cctbx/import_scitbx_af.h>
+#include <boost/math/special_functions/atanh.hpp>
+#include <complex>
 
 namespace cctbx {
 
-  //! Group of Hendrickson-Lattman coefficients.
+  //! Grouping of Hendrickson-Lattman coefficients.
   /*! Reference: Jan Drenth,
                  Principles of Protein X-Ray Crystallography,
                  Second edition, 1999, Chapter 14.
@@ -43,7 +34,7 @@ namespace cctbx {
         std::copy(coeff, coeff + 4, this->begin());
       }
 
-      //! Construct given individual coefficients.
+      //! Initializtion given individual coefficients.
       hendrickson_lattman(
         FloatType const& a,
         FloatType const& b,
@@ -54,6 +45,34 @@ namespace cctbx {
         (*this)[1] = b;
         (*this)[2] = c;
         (*this)[3] = d;
+      }
+
+      /*! \brief Initialization given a phase integral (complex
+          representation of centroid phase and figure of merit).
+       */
+      /*! The absolute value of the phase integral is truncated
+          at max_figure_of_merit to avoid singularities.
+          <p>
+          See also: cctbx::miller::phase_integrator
+       */
+      hendrickson_lattman(
+        bool centric_flag,
+        std::complex<FloatType> const& phase_integral,
+        FloatType const& max_figure_of_merit)
+      {
+        FloatType fom = std::min(std::abs(phase_integral),max_figure_of_merit);
+        FloatType weight;
+        if (centric_flag) {
+          weight = boost::math::atanh(fom);
+        }
+        else {
+          weight = scitbx::math::bessel::inverse_i1_over_i0(fom);
+        }
+        FloatType angle = std::arg(phase_integral);
+        this->elems[0] = weight * std::cos(angle);
+        this->elems[1] = weight * std::sin(angle);
+        this->elems[2] = 0;
+        this->elems[3] = 0;
       }
 
       //! Coefficients a,b,c,d as array.
@@ -95,24 +114,40 @@ namespace cctbx {
           See also: cctbx::miller::sym_equiv_index
        */
       hendrickson_lattman
-      shift_phase(FloatType const& delta_phi) const;
-  };
+      shift_phase(FloatType const& delta_phi) const
+      {
+        FloatType c1 = std::cos(delta_phi);
+        FloatType s1 = std::sin(delta_phi);
+        FloatType c2 = std::cos(2. * delta_phi);
+        FloatType s2 = std::sin(2. * delta_phi);
+        return hendrickson_lattman(
+          a()*c1 - b()*s1,
+          a()*s1 + b()*c1,
+          c()*c2 - d()*s2,
+          c()*s2 + d()*c2);
+      }
 
-  template<typename FloatType>
-  hendrickson_lattman<FloatType>
-  hendrickson_lattman<FloatType>
-  ::shift_phase(FloatType const& delta_phi) const
-  {
-    FloatType c1 = std::cos(delta_phi);
-    FloatType s1 = std::sin(delta_phi);
-    FloatType c2 = std::cos(2. * delta_phi);
-    FloatType s2 = std::sin(2. * delta_phi);
-    return hendrickson_lattman(
-      a()*c1 - b()*s1,
-      a()*s1 + b()*c1,
-      c()*c2 - d()*s2,
-      c()*s2 + d()*c2);
-  }
+      //! Phase combination.
+      hendrickson_lattman
+      operator+(hendrickson_lattman const& rhs) const
+      {
+        hendrickson_lattman result;
+        for(unsigned i=0;i<4;i++) {
+          result[i] = this->elems[i] + rhs[i];
+        }
+        return result;
+      }
+
+      //! In-place phase combination.
+      hendrickson_lattman&
+      operator+=(hendrickson_lattman const& rhs)
+      {
+        for(unsigned i=0;i<4;i++) {
+          this->elems[i] += rhs[i];
+        }
+        return *this;
+      }
+  };
 
 } // namespace cctbx
 
