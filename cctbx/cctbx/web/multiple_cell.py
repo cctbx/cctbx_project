@@ -1,4 +1,4 @@
-URL_cctbx_web = "http://cci.lbl.gov/cctbx/cctbx_web.cgi"
+URL_cctbx_web = "cctbx_web.cgi"
 URL_target_module = "explore_symmetry"
 
 # this list was generated with generate_multiple_cell_stage2.py
