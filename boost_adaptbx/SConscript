@@ -1,0 +1,79 @@
+Import("env_base", "env_etc")
+if (not env_etc.no_boost_python):
+  env_etc.boost_dist = env_etc.libtbx_env.dist_path("boost")
+  env_etc.boost_include = env_etc.boost_dist
+  env_etc.cxxflags_bpl_defines_base = ["-DBOOST_PYTHON_MAX_BASES=2"]
+  try:
+    CScanRegisterFlags(
+      boost=env_etc.boost_include)
+  except:
+    pass
+  env_boost_python_ext = env_base.Copy(
+    CPPPATH=[env_etc.libtbx_include,
+             env_etc.boost_include,
+             env_etc.python_include],
+    CXXFLAGS=env_etc.cxxflags_base,
+    CCFLAGS=env_etc.ccflags_base,
+    SHCXXFLAGS=env_etc.cxxflags_base,
+    SHLINKFLAGS=env_etc.shlinkflags_bpl,
+      SHLIBPREFIX="",
+    LIBPATH=["#libtbx"] + env_etc.libpath_python,
+    LIBS=["boost_python"] + env_etc.libs_python + env_etc.libm,
+  )
+  env_boost_python_ext.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+  env_boost_python_ext.Replace(SHLIBSUFFIX=env_etc.extension_module_suffix)
+  Export("env_boost_python_ext")
+
+  import os, os.path
+  env = env_base.Copy(
+    CPPPATH=[env_etc.boost_include, env_etc.python_include],
+    LIBS=env_etc.libs_python,
+    LIBPATH=env_etc.libpath_python,
+  )
+  env.Replace(SHCXXFLAGS=env_etc.cxxflags_base)
+  env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+  env.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
+  env.Replace(CXXFLAGS=env_etc.cxxflags_base)
+  env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
+  env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  env.Replace(LINKFLAGS=env_etc.shlinkflags)
+
+  jamfile_path = os.path.normpath(os.path.join(
+    env_etc.boost_dist, "libs/python/build/Jamfile"))
+
+  try:  #appropriate for Boost.Python snapshot on 2003-Feb-25
+    jamfile_all =   open(str(jamfile_path), "r").read()
+    jam_rhs = jamfile_all.split("local sources =")[1]
+    jam_middle = jam_rhs.split(";")[0]
+    jamfile_lines = jam_middle.split("\n")
+    jamfile_lines = [line.strip() for line in jamfile_lines]
+    while jamfile_lines.count("")>0:
+      jamfile_lines.remove("")
+    bpl_dll_sources = []
+    for line in jamfile_lines:
+      bpl_dll_sources.append(os.path.join("#boost/libs/python/build/../src", line))
+    assert len(bpl_dll_sources) > 0
+
+  except:  #appropriate for previous Boost release 1.29.0
+    jamfile_lines = [
+      line.strip() for line in open(str(jamfile_path), "r").readlines()]
+    for i in xrange(len(jamfile_lines)):
+      line = jamfile_lines[i]
+      if (line == "dll boost_python"):
+        assert jamfile_lines[i+1] == ":"
+        jamfile_lines = jamfile_lines[i+2:]
+        break
+    bpl_dll_sources = []
+    for i in xrange(len(jamfile_lines)):
+      line = jamfile_lines[i]
+      if (line == ":"): break
+      if (line):
+        bpl_dll_sources.append(os.path.join("#boost/libs/python/build", line))
+
+  assert len(bpl_dll_sources) > 0
+
+  if (env_etc.static_bpl):
+    env.StaticLibrary(target="#libtbx/boost_python", source=bpl_dll_sources)
+  else:
+    env.SharedLibrary(target="#libtbx/boost_python", source=bpl_dll_sources)
