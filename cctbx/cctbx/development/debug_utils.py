@@ -1,6 +1,6 @@
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
-import sys, os, random
+import sys, os, time, random
 
 def get_test_space_group_symbols(flag_AllSpaceGroups,
                                  flag_ChiralSpaceGroups,
@@ -27,6 +27,18 @@ def report_cpu_times():
   print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
 
 def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
+  chunk_size = 1
+  chunk_member = 0
+  if (flags.ChunkSize != 00000):
+    chunk_size = int(flags.ChunkSize)
+  if (flags.ChunkMember != 00000):
+    chunk_member = int(flags.ChunkMember)
+  assert chunk_size > 0 and chunk_member < chunk_size
+  n_threads = int(flags.Threads)
+  threading = None
+  if (n_threads > 1):
+    import threading
+    print "Number of threads:", n_threads
   if (not flags.RandomSeed): random.seed(0)
   if (len(argv) > 0 + flags.n):
     symbols = argv
@@ -35,8 +47,11 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
       flags.AllSpaceGroups,
       flags.ChiralSpaceGroups,
       flags.AllSettings)
+  i_loop = -1
   for symbol in symbols:
     if (symbol.startswith("--")): continue
+    i_loop += 1
+    if (i_loop % chunk_size != chunk_member): continue
     space_group_info = sgtbx.space_group_info(symbol)
     sys.stdout.flush()
     print >> sys.stderr, space_group_info
@@ -44,9 +59,22 @@ def loop_space_groups(argv, flags, call_back, symbols_to_stdout=0):
     if (symbols_to_stdout):
       print space_group_info
       sys.stdout.flush()
-    continue_flag = call_back(flags, space_group_info)
-    sys.stdout.flush()
-    if (continue_flag == 00000): break
+    if (threading == None):
+      continue_flag = call_back(flags, space_group_info)
+      sys.stdout.flush()
+      if (continue_flag == 00000): break
+    else:
+      while 1:
+        if (threading.activeCount() < n_threads): break
+        time.sleep(1)
+      t = threading.Thread(target=call_back, args=(flags, space_group_info))
+      t.setDaemon(0001)
+      t.start()
+  if (threading != None):
+    while 1:
+      if (threading.activeCount() == 1): break
+      time.sleep(1)
+  sys.stdout.flush()
   report_cpu_times()
 
 def parse_options_loop_space_groups(argv, call_back,
@@ -54,6 +82,9 @@ def parse_options_loop_space_groups(argv, call_back,
                                     symbols_to_stdout=0):
   flags = parse_options(argv, (
     "Verbose",
+    "Threads",
+    "ChunkSize",
+    "ChunkMember",
     "RandomSeed",
     "AllSpaceGroups",
     "ChiralSpaceGroups",
