@@ -250,12 +250,14 @@ class build_options_t:
     self.mode = "release"
     self.static_libraries = 00000
     self.static_exe = 00000
+    self.scan_boost = 00000
 
   def report(self):
     print "Compiler:", self.compiler
     print "Build mode:", self.mode
     print "Static libraries:", self.static_libraries
     print "Static exe:", self.static_exe
+    print "Scan Boost headers:", self.scan_boost
 
 def emit_SConstruct(env, build_options, packages_dict):
   SConstruct_path = norm(join(env.LIBTBX_BUILD, "SConstruct"))
@@ -266,7 +268,8 @@ def emit_SConstruct(env, build_options, packages_dict):
   print >> f, '  optimization=%d,' % int(build_options.mode == "release")
   print >> f, '  debug_symbols=%d,' % int(build_options.mode == "debug")
   print >> f, '  static_libraries=%d,' % int(build_options.static_libraries)
-  print >> f, '  static_exe=%d)' % int(build_options.static_exe)
+  print >> f, '  static_exe=%d,' % int(build_options.static_exe)
+  print >> f, '  scan_boost=%d)' % int(build_options.scan_boost)
   print >> f, 'try:'
   print >> f, '  CScanSetFlags('
   print >> f, '    python=0,'
@@ -302,10 +305,12 @@ def run(libtbx_dist, args):
       build_options.mode = arg.split("=", 1)[1].strip().lower()
       assert build_options.mode in ("quick", "release", "debug")
     elif (arg == "--static_libraries"):
-      build_options.static_libraries = 1
+      build_options.static_libraries = 0001
     elif (arg == "--static_exe"):
-      build_options.static_libraries = 1
-      build_options.static_exe = 1
+      build_options.static_libraries = 0001
+      build_options.static_exe = 0001
+    elif (arg == "--scan_boost"):
+      build_options.scan_boost = 0001
     elif (arg.startswith("--")):
       raise UserError("Unknown option: " + arg)
     else:

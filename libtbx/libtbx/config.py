@@ -74,6 +74,52 @@ def select_sconsign_dbm_module():
     return dumbdbm
   return None # use default
 
+class include_registry:
+
+  def __init__(self):
+    self.scan_boost()
+    self._had_message = {}
+
+  def scan_boost(self, flag=00000):
+    self._scan_boost = flag
+    return self
+
+  def scan_flag(self, path):
+    if (not self._scan_boost and path.lower().endswith("boost")):
+      if (not path in self._had_message):
+        print "libtbx.scons: implicit dependency scan disabled for directory",
+        print path
+        self._had_message[path] = 1
+      return 00000
+    return 0001
+
+  def prepend_include_switch(self, env, path):
+    assert isinstance(path, str)
+    if (env["CXX"].lower() == "cl"):
+      return "/I" + path
+    return "-I" + path
+
+  def append(self, env, paths):
+    assert isinstance(paths, list)
+    for path in paths:
+      if (self.scan_flag(path)):
+        env.Append(CPPPATH=[path])
+      else:
+        ipath = self.prepend_include_switch(env, path)
+        env.Append(CXXFLAGS=[ipath])
+        env.Append(SHCXXFLAGS=[ipath])
+
+  def prepend(self, env, paths):
+    assert isinstance(paths, list)
+    paths.reverse()
+    for path in paths:
+      if (self.scan_flag(path)):
+        env.Prepend(CPPPATH=[path])
+      else:
+        ipath = self.prepend_include_switch(env, path)
+        env.Prepend(CXXFLAGS=[ipath])
+        env.Prepend(SHCXXFLAGS=[ipath])
+
 class _build_options:
 
   def set(self, **kw):
