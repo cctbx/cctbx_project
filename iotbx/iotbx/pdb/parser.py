@@ -365,14 +365,14 @@ class columns_73_76_evaluator:
           except KeyError: columns_73_76_dict[field] = 1
     if (len(atom_columns_73_76_dict) == 0):
       self.finding = "Blank columns 73-76 on ATOM and HETATM records."
-      self.is_old = 00000
+      self.is_old_style = 00000
       return
     if (    len(other_columns_73_76_dict) == 1
         and len(atom_columns_73_76_dict) == 1
         and len(other_columns_73_76_dict.keys()[0].strip()) == 4
         and other_columns_73_76_dict.keys() == atom_columns_73_76_dict.keys()):
       self.finding = "Exactly one common label in columns 73-76."
-      self.is_old = 0001
+      self.is_old_style = 0001
       return
     common_four_character_field = None
     sum_counts_common_four_character_field = 0
@@ -384,7 +384,7 @@ class columns_73_76_evaluator:
             and other_columns_73_76_dict[field]
                 > is_frequent_threshold_other_records):
           self.finding = "Frequent common labels in columns 73-76."
-          self.is_old = 0001
+          self.is_old_style = 0001
           return
         sum_counts = atom_columns_73_76_dict[field] \
                    + other_columns_73_76_dict[field]
@@ -393,7 +393,7 @@ class columns_73_76_evaluator:
           sum_counts_common_four_character_field = sum_counts
     if (sum_counts_common_four_character_field == 0):
       self.finding =  "No common label in columns 73-76."
-      self.is_old = 00000
+      self.is_old_style = 00000
       return
     three_char_dicts = []
     for columns_73_76_dict in [atom_columns_73_76_dict,
@@ -410,10 +410,10 @@ class columns_73_76_evaluator:
         and three_char_dicts[0].keys() == three_char_dicts[1].keys()):
       self.finding = "Exactly one common label in columns 73-76" \
                    + " comparing only the first three characters."
-      self.is_old = 0001
+      self.is_old_style = 0001
       return
     self.finding = "Undecided."
-    self.is_old = 00000
+    self.is_old_style = 00000
 
 def collect_records(raw_records,
                     ignore_unknown=0001,
@@ -425,7 +425,7 @@ def collect_records(raw_records,
     evaluation = columns_73_76_evaluator(
       raw_records=raw_records)
     raw_records = evaluation.raw_records
-    ignore_columns_73_and_following = evaluation.is_old
+    ignore_columns_73_and_following = evaluation.is_old_style
   records = []
   line_number = 0
   for raw_record in raw_records:
