@@ -127,6 +127,8 @@ namespace sgtbx {
       SpaceGroup(const char* HSym,
             bool Pedantic = false, bool NoCType = false,
             bool NoExpand = false);
+      //! Initizalize with the Hall symbol in the SpaceGroupSymbols object.
+      SpaceGroup(const SpaceGroupSymbols& SgSymbols);
       //! Add a lattice translation vector to the space group.
       /*! Group multiplication is automatically performed
           (unless NoExpand == true).

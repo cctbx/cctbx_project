@@ -401,7 +401,7 @@ namespace sgtbx {
   }
 
   SpaceGroup::SpaceGroup(const std::string& HSym, bool Pedantic, bool NoCType,
-               bool NoExpand)
+                         bool NoExpand)
     : m_NoExpand(NoExpand)
   {
     reset();
@@ -410,12 +410,20 @@ namespace sgtbx {
   }
 
   SpaceGroup::SpaceGroup(const char* HSym, bool Pedantic, bool NoCType,
-               bool NoExpand)
+                         bool NoExpand)
     : m_NoExpand(NoExpand)
   {
     reset();
     parse_string HSymPS(HSym);
     ParseHallSymbol(HSymPS, Pedantic, NoCType);
+  }
+
+  SpaceGroup::SpaceGroup(const SpaceGroupSymbols& SgSymbols)
+    : m_NoExpand(false)
+  {
+    reset();
+    parse_string HSymPS(SgSymbols.Hall());
+    ParseHallSymbol(HSymPS, true);
   }
 
 } // namespace sgtbx

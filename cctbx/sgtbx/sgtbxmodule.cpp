@@ -772,6 +772,7 @@ BOOST_PYTHON_MODULE_INIT(sgtbx)
     py_SpaceGroup.def(constructor<const std::string&>());
     py_SpaceGroup.def(constructor<const std::string&, bool>());
     py_SpaceGroup.def(constructor<const std::string&, bool, bool>());
+    py_SpaceGroup.def(constructor<const SpaceGroupSymbols&>());
     py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_parse_string,
                                 "ParseHallSymbol");
     py_SpaceGroup.def(SpaceGroup_ParseHallSymbol_std_string,
