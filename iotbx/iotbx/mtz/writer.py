@@ -74,6 +74,7 @@ def _DoubleOrComplex(self,label,datatype,item_miller,item_data):
   if isinstance(item_data,flex.double):
     self.addColumn(label,datatype,item_miller,item_data)
   elif isinstance(item_data,flex.complex_double):
+    assert datatype in ("F", "G")
     self.addColumn(label,datatype,item_miller,flex.abs(item_data))
     self.addColumn(
       self.label_phases(label),"P",item_miller,flex.arg(item_data, True))
@@ -93,12 +94,20 @@ def _columnCombinations(self,label,datatype,carry_miller,carry_data):
 
 def add_miller_array(self, miller_array, mtz_label):
   if (not miller_array.anomalous_flag()):
-    self._columnCombinations(mtz_label,"F",
+    if (miller_array.is_intensity_array()):
+      column_types = "JQ"
+    else:
+      column_types = "FQ"
+    self._columnCombinations(mtz_label, column_types[0],
       [miller_array.indices()],[miller_array.data()])
     if (miller_array.sigmas()):
-      self._columnCombinations(self.label_sigmas(mtz_label),"Q",
+      self._columnCombinations(self.label_sigmas(mtz_label), column_types[1],
         [miller_array.indices()],[miller_array.sigmas()])
   else:
+    if (miller_array.is_intensity_array()):
+      column_types = "KM"
+    else:
+      column_types = "GL"
     carry_miller = []
     carry_data = []
     carry_sigma = []
@@ -113,10 +122,12 @@ def add_miller_array(self, miller_array, mtz_label):
       carry_data.append(asu.data().select(sel))
       if (asu.sigmas() != None):
         carry_sigma.append(asu.sigmas().select(sel))
-    self._columnCombinations(mtz_label,"G",carry_miller,carry_data)
+    self._columnCombinations(mtz_label, column_types[0],
+      carry_miller,carry_data)
     if (asu.sigmas()):
       self._columnCombinations(
-        self.label_sigmas(mtz_label),"L",carry_miller,carry_sigma)
+        self.label_sigmas(mtz_label), column_types[1],
+          carry_miller,carry_sigma)
 
 def miller_array_export_as_mtz(self, file_name, column_label,
                                      title=None,
