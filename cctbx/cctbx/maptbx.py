@@ -118,6 +118,12 @@ class crystal_gridding:
       unit_cell=self.unit_cell(),
       space_group_info=self.space_group_info())
 
+  def n_grid_points(self):
+    result = 1
+    for n in self.n_real():
+      result *= n
+    return result
+
   def tags(self):
     return crystal_gridding_tags(self)
 
