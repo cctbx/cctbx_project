@@ -97,6 +97,23 @@ namespace {
     }
   };
 
+  struct asu_mapping_index_pair_wrappers
+  {
+    typedef asu_mapping_index_pair<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("direct_space_asu_asu_mapping_index_pair", no_init)
+        .def_readonly("i_seq", &w_t::i_seq)
+        .def_readonly("j_seq", &w_t::j_seq)
+        .def_readonly("j_sym", &w_t::j_sym)
+        .def_readonly("dist_sq", &w_t::dist_sq)
+      ;
+    }
+  };
+
   struct asu_mappings_wrappers
   {
     typedef asu_mappings<> w_t;
@@ -126,6 +143,8 @@ namespace {
         .def("sym_equiv_epsilon", &w_t::sym_equiv_epsilon)
         .def("buffer_covering_sphere", &w_t::buffer_covering_sphere, rir())
         .def("process", &w_t::process, (arg_("original_site")))
+        .def("lock", &w_t::lock)
+        .def("is_locked", &w_t::is_locked)
         .def("mappings", &w_t::mappings, ccr())
       ;
       {
@@ -151,6 +170,7 @@ namespace boost_python {
     direct_space_asu::float_cut_plane_wrappers::wrap();
     direct_space_asu::float_asu_wrappers::wrap();
     direct_space_asu::asu_mapping_wrappers::wrap();
+    direct_space_asu::asu_mapping_index_pair_wrappers::wrap();
     direct_space_asu::asu_mappings_wrappers::wrap();
   }
 

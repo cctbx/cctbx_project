@@ -3,12 +3,14 @@
 namespace cctbx { namespace crystal { namespace boost_python {
 
   void wrap_direct_space_asu();
+  void wrap_neighbors();
 
 namespace {
 
   void init_module()
   {
     wrap_direct_space_asu();
+    wrap_neighbors();
   }
 
 } // namespace <anonymous>

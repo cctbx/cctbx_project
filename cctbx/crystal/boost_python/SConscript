@@ -4,4 +4,5 @@ env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(target="#libtbx/cctbx_crystal_ext", source=[
   "crystal_ext.cpp",
   "direct_space_asu.cpp",
+  "neighbors.cpp",
 ])
