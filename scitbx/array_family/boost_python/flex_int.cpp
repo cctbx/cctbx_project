@@ -18,7 +18,7 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_int()
   {
     wrap_flex_int_2(
-      flex_wrapper<int>::integer("int", boost::python::scope()));
+      flex_wrapper<int>::signed_integer("int", boost::python::scope()));
   }
 
 }}} // namespace scitbx::af::boost_python
