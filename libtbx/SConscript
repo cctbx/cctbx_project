@@ -33,12 +33,6 @@ env_etc.include_registry = libtbx.config.include_registry() \
 compiler = libtbx.config.build_options.compiler
 if (sys.platform == "win32"):
   env_etc.compiler = "win32_cl"
-elif (sys.platform.startswith("linux")):
-  if (compiler == "default"):
-    env_etc.compiler = "unix_gcc"
-  else:
-    env_etc.compiler = "unix_"+compiler
-    compiler = None
 elif (sys.platform.startswith("osf")):
   if (compiler == "default"):
     env_etc.compiler = "tru64_cxx"
