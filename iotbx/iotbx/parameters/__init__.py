@@ -789,6 +789,13 @@ class scope:
                 sub_python_object_i, custom_converters))
     return self.customized_copy(objects=result)
 
+  def clone(self, python_object, custom_converters=None):
+    return parse(
+      input_string=self.format(
+        python_object=python_object,
+        custom_converters=custom_converters).as_str(
+          attributes_level=3)).extract()
+
   def fetch(self, source=None, sources=None):
     assert [source, sources].count(None) == 1
     if (sources is not None):

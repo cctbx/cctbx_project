@@ -2237,6 +2237,25 @@ d {
   a = None
 }
 """
+  #
+  params = iotbx.parameters.parse(input_string="""\
+a=1
+  .type=int
+s {
+  b=2
+    .type=int
+}
+""")
+  orig = params.extract()
+  assert orig.a == 1
+  assert orig.s.b == 2
+  clone = params.clone(python_object=orig)
+  assert clone.a == 1
+  assert clone.s.b == 2
+  clone.a = 10
+  clone.s.b = 20
+  assert orig.a == 1
+  assert orig.s.b == 2
 
 def exercise_command_line():
   master_params = iotbx.parameters.parse(input_string="""\
