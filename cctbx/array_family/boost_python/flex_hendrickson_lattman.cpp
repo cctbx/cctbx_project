@@ -48,7 +48,9 @@ namespace scitbx { namespace af { namespace boost_python {
     using namespace cctbx;
 
     flex_wrapper<hendrickson_lattman<> >::plain("hendrickson_lattman")
-      .def_pickle(flex_pickle_single_buffered<hendrickson_lattman<>, 4*20>());
+      .def_pickle(flex_pickle_single_buffered<hendrickson_lattman<>,
+        4*pickle_size_per_element<
+          hendrickson_lattman<>::base_type::value_type>::value>());
   }
 
 }}} // namespace scitbx::af::boost_python

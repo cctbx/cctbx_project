@@ -46,7 +46,8 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_sym_mat3_double()
   {
     flex_wrapper<sym_mat3<double> >::plain("sym_mat3_double")
-      .def_pickle(flex_pickle_single_buffered<sym_mat3<double>, 6*20>());
+      .def_pickle(flex_pickle_single_buffered<sym_mat3<double>,
+        6*pickle_size_per_element<double>::value>());
   }
 
 }}} // namespace scitbx::af::boost_python

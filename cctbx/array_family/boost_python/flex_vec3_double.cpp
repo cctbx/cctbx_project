@@ -85,7 +85,8 @@ namespace scitbx { namespace af { namespace boost_python {
   void wrap_flex_vec3_double()
   {
     flex_wrapper<vec3<double> >::plain("vec3_double")
-      .def_pickle(flex_pickle_single_buffered<vec3<double>, 3*20>())
+      .def_pickle(flex_pickle_single_buffered<vec3<double>,
+        3*pickle_size_per_element<double>::value>())
       .def("as_double", as_double)
       .def("from_double", from_double)
     ;
