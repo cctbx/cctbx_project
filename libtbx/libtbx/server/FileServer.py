@@ -281,7 +281,7 @@ def StartServer():
   port = (s.getsockname()[1])
   t = threading.Thread(target=FileServer,
                        args=(port,))
-  t.setDaemon(1)
+  #t.setDaemon(1)
   return (t,port)
 
 def BindClient(host, port):
