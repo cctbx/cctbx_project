@@ -16,7 +16,11 @@
 #ifndef CCTBX_UCTBX_H
 #define CCTBX_UCTBX_H
 
-#include <ostream>
+#if defined(__GNUC__) && __GNUC__ < 3
+# include <iostream>
+#else
+# include <ostream>
+#endif
 #include <cctbx/fixes/cmath>
 #include <cctbx/error.h>
 #include <cctbx/basic/matrixlite.h>

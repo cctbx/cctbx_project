@@ -16,7 +16,11 @@
 #ifndef CCTBX_MILLER_H
 #define CCTBX_MILLER_H
 
-#include <ostream>
+#if defined(__GNUC__) && __GNUC__ < 3
+# include <iostream>
+#else
+# include <ostream>
+#endif
 #include <cctbx/fixes/cstdlib>
 #include <cctbx/coordinates.h>
 #include <cctbx/array_family/tiny_types.h>
