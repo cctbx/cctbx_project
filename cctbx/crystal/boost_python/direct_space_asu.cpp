@@ -172,6 +172,8 @@ namespace {
         .def("mapped_sites_span", &w_t::mapped_sites_span)
         .def("get_rt_mx", &w_t::get_rt_mx, (arg_("i_seq"), arg_("i_sym")))
         .def("diff_vec", &w_t::diff_vec, (arg_("pair")))
+        .def("map_moved_site_to_asu", &w_t::map_moved_site_to_asu,
+          (arg_("moved_original_site"), arg_("i_seq"), arg_("i_sym")))
         .def("r_inv_cart", &w_t::r_inv_cart, (arg_("i_seq"), arg_("i_sym")))
         .def("is_symmetry_interaction", &w_t::is_symmetry_interaction,
           (arg_("pair")))

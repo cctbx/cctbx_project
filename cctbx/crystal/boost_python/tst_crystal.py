@@ -109,6 +109,13 @@ def exercise_direct_space_asu():
       site_frac = rt_mx * sites_seq[i_seq]
       site_cart = asu_mappings.unit_cell().orthogonalize(site_frac)
       assert approx_equal(m_i_seq[i_sym].mapped_site(), site_cart)
+      assert approx_equal(
+        asu_mappings.map_moved_site_to_asu(
+          moved_original_site
+            =asu_mappings.unit_cell().orthogonalize(sites_seq[i_seq]),
+          i_seq=i_seq,
+          i_sym=i_sym),
+        site_cart)
       r = matrix.sqr(float(rt_mx.r().inverse()))
       assert approx_equal(
         asu_mappings.r_inv_cart(i_seq=i_seq, i_sym=i_sym),

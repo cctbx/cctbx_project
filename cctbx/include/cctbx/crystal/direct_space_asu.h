@@ -455,6 +455,7 @@ namespace direct_space_asu {
         CCTBX_ASSERT(have_site_in_asu);
       }
 
+      //! Calls process() for each original site.
       void
       process_sites_frac(
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
@@ -464,6 +465,7 @@ namespace direct_space_asu {
         }
       }
 
+      //! Calls process() for each original site.
       void
       process_sites_cart(
         af::const_ref<scitbx::vec3<FloatType> > const& original_sites)
@@ -542,6 +544,35 @@ namespace direct_space_asu {
              - get_asu_mapping(pair.i_seq, 0).mapped_site();
       }
 
+      //! Maps a moved site (e.g. during refinement) to the asymmetric unit.
+      cartesian<FloatType>
+      map_moved_site_to_asu(
+        cartesian<FloatType> const& moved_original_site,
+        std::size_t i_seq,
+        std::size_t i_sym) const
+      {
+        if (r_cart_.size() == 0) {
+          scitbx::mat3<FloatType> o(unit_cell().orthogonalization_matrix());
+          scitbx::mat3<FloatType> f(unit_cell().fractionalization_matrix());
+          r_cart_.reserve(space_group_.order_z());
+          t_cart_.reserve(space_group_.order_z());
+          for(std::size_t i_sym_op=0;
+              i_sym_op<space_group_.order_z();
+              i_sym_op++) {
+            sgtbx::rt_mx s = space_group_(i_sym_op);
+            typedef scitbx::type_holder<FloatType> t_h;
+            r_cart_.push_back(o*s.r().as_floating_point(t_h())*f);
+            t_cart_.push_back(o*s.t().as_floating_point(t_h()));
+          }
+        }
+        asu_mapping<FloatType, IntShiftType> const&
+          am = get_asu_mapping(i_seq, i_sym);
+        return r_cart_[am.i_sym_op()] * moved_original_site
+             + t_cart_[am.i_sym_op()]
+             + scitbx::vec3<FloatType>(
+                 unit_cell().orthogonalization_matrix() * am.unit_shifts());
+      }
+
       /*! \brief Rotation part of
           space_group(mappings()[i_seq][i_sym].i_sym_op()).inverse()
           in the cartesian system.
@@ -557,12 +588,14 @@ namespace direct_space_asu {
         if (r_inv_cart_.size() == 0) {
           scitbx::mat3<FloatType> o(unit_cell().orthogonalization_matrix());
           scitbx::mat3<FloatType> f(unit_cell().fractionalization_matrix());
+          r_inv_cart_.reserve(space_group_.order_z());
           for(std::size_t i_sym_op=0;
               i_sym_op<space_group_.order_z();
               i_sym_op++) {
-            scitbx::mat3<FloatType> r = space_group_(i_sym_op).r().inverse()
-              .as_floating_point(scitbx::type_holder<FloatType>());
-            r_inv_cart_.push_back(o*r*f);
+            sgtbx::rt_mx s = space_group_(i_sym_op);
+            typedef scitbx::type_holder<FloatType> t_h;
+            r_inv_cart_
+              .push_back(o*s.r().inverse().as_floating_point(t_h())*f);
           }
         }
         return r_inv_cart_[get_asu_mapping(i_seq, i_sym).i_sym_op()];
@@ -601,6 +634,8 @@ namespace direct_space_asu {
       cartesian<FloatType> mapped_sites_min_;
       cartesian<FloatType> mapped_sites_max_;
       bool is_locked_;
+      mutable std::vector<scitbx::mat3<FloatType> > r_cart_;
+      mutable std::vector<scitbx::vec3<FloatType> > t_cart_;
       mutable std::vector<scitbx::mat3<FloatType> > r_inv_cart_;
   };
 

@@ -188,6 +188,20 @@ def exercise_neighbors_pair_generators(space_group_info, n_elements=10,
         assert approx_equal(
           asu_mappings.get_rt_mx(pair.j_seq, pair.j_sym).inverse() * j_frac,
           sc[pair.j_seq].site)
+        assert approx_equal(
+          asu_mappings.map_moved_site_to_asu(
+            moved_original_site
+              =asu_mappings.unit_cell().orthogonalize(sc[pair.i_seq].site),
+            i_seq=pair.i_seq,
+            i_sym=0),
+          mp_i.mapped_site())
+        assert approx_equal(
+          asu_mappings.map_moved_site_to_asu(
+            moved_original_site
+              =asu_mappings.unit_cell().orthogonalize(sc[pair.j_seq].site),
+            i_seq=pair.j_seq,
+            i_sym=pair.j_sym),
+          mp_j.mapped_site())
 
 def exercise_is_symmetry_interaction():
   for space_group_symbol in ["P1", "P4"]:
