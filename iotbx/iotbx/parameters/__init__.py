@@ -144,6 +144,12 @@ def show_attributes(self, out, prefix, attributes_level, print_width):
             else:
               print >> out, indent+'"'+block+'"'
 
+class get_stopper:
+
+  def __init__(self, object):
+    self.object = object
+    self.stop = False
+
 class object_locator:
 
   def __init__(self, parent, path, object):
@@ -272,9 +278,12 @@ class definition: # FUTURE definition(object)
     result.append(object_locator(
       parent=parent, path=parent_path+self.name, object=self))
 
-  def get_without_substitution(self, path):
-    if (self.name == path): return [self]
-    return []
+  def get_without_substitution(self, path, stopper):
+    if (stopper is not None and self is stopper.object):
+      stopper.stop = True
+      return []
+    if (self.is_disabled or self.name != path): return []
+    return [self]
 
   def substitute_all(self, substitution_scope, path_memory):
     return substitution_scope.variable_substitution(
@@ -531,24 +540,37 @@ class scope:
       item.object.automatic_type_assignment(
         assignment_if_unknown=assignment_if_unknown)
 
-  def get_without_substitution(self, path):
+  def get_without_substitution(self, path, stopper):
+    if (self.is_disabled): return []
     if (len(self.name) == 0):
       if (len(path) == 0):
         result = [self]
       else:
         result = []
         for object in self.objects:
-          result.extend(object.get_without_substitution(path=path))
+          result.extend(object.get_without_substitution(
+            path=path,
+            stopper=stopper))
+          if (stopper is not None and stopper.stop): break
     else:
       if (self.name == path):
         result = [self]
       elif (not path.startswith(self.name+".")):
         result = []
+        if (stopper is not None):
+          for object in self.objects:
+            object.get_without_substitution(
+              path="",
+              stopper=stopper)
+            if (stopper.stop): break
       else:
         path = path[len(self.name)+1:]
         result = []
         for object in self.objects:
-          result.extend(object.get_without_substitution(path=path))
+          result.extend(object.get_without_substitution(
+            path=path,
+            stopper=stopper))
+          if (stopper is not None and stopper.stop): break
     return result
 
   def substitute_all(self, substitution_scope, path_memory):
@@ -559,10 +581,19 @@ class scope:
         path_memory=path_memory))
     return self.copy(objects=result)
 
-  def get(self, path, with_substitution=True, path_memory=None):
-    result_raw = self.get_without_substitution(path=path)
+  def get(self,
+        path,
+        with_substitution=True,
+        substitution_scope=None,
+        path_memory=None,
+        stopper=None):
+    result_raw = self.get_without_substitution(
+      path=path,
+      stopper=stopper)
     if (not with_substitution):
       return scope(name="", objects=result_raw)
+    if (substitution_scope is None):
+      substitution_scope = self
     if (path_memory is None):
       path_memory = {path: None}
     elif (path not in path_memory):
@@ -573,7 +604,7 @@ class scope:
     result_sub = []
     for object in result_raw:
       result_sub.append(object.substitute_all(
-        substitution_scope=self,
+        substitution_scope=substitution_scope,
         path_memory=path_memory))
     del path_memory[path]
     return scope(name="", objects=result_sub)
@@ -666,7 +697,8 @@ class scope:
         variable_words = None
         for variable_object in self.get(
                                  path=fragment.value,
-                                 path_memory=path_memory).objects:
+                                 path_memory=path_memory,
+                                 stopper=get_stopper(object)).objects:
           if (isinstance(variable_object, definition)):
             variable_words = variable_object.words
         if (variable_words is None):
