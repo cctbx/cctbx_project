@@ -243,13 +243,30 @@ def emit_setpaths_bat(env):
   print >> f, 'set PATHEXT=.PY;%PATHEXT%'
   f.close()
 
-def emit_SConstruct(env, build_mode, packages_dict):
+class build_options_t:
+
+  def __init__(self):
+    self.compiler = "default"
+    self.mode = "release"
+    self.static_libraries = 00000
+    self.static_exe = 00000
+
+  def report(self):
+    print "Compiler:", self.compiler
+    print "Build mode:", self.mode
+    print "Static libraries:", self.static_libraries
+    print "Static exe:", self.static_exe
+
+def emit_SConstruct(env, build_options, packages_dict):
   SConstruct_path = norm(join(env.LIBTBX_BUILD, "SConstruct"))
   f = open_info(SConstruct_path)
   print >> f, 'import libtbx.config'
   print >> f, 'libtbx.config.build_options.set('
-  print >> f, '  optimization=%d,' % int(build_mode == "release")
-  print >> f, '  debug_symbols=%d)' % int(build_mode == "debug")
+  print >> f, '  compiler="%s",' % build_options.compiler
+  print >> f, '  optimization=%d,' % int(build_options.mode == "release")
+  print >> f, '  debug_symbols=%d,' % int(build_options.mode == "debug")
+  print >> f, '  static_libraries=%d,' % int(build_options.static_libraries)
+  print >> f, '  static_exe=%d)' % int(build_options.static_exe)
   print >> f, 'try:'
   print >> f, '  CScanSetFlags('
   print >> f, '    python=0,'
@@ -275,12 +292,19 @@ def emit_SConstruct(env, build_mode, packages_dict):
 def run(libtbx_dist, args):
   env = libtbx_env(os.getcwd(), libtbx_dist)
   packages = registry()
-  build_mode = "release"
+  build_options = build_options_t()
   remaining_args = []
   for arg in args:
-    if (arg.startswith("--build=")):
-      build_mode = arg.split("=", 1)[1]
-      assert build_mode in ("quick", "release", "debug")
+    if (arg.startswith("--compiler=")):
+      build_options.compiler = arg.split("=", 1)[1].strip().lower()
+    elif (arg.startswith("--build=")):
+      build_options.mode = arg.split("=", 1)[1].strip().lower()
+      assert build_options.mode in ("quick", "release", "debug")
+    elif (arg == "--static_libraries"):
+      build_options.static_libraries = 1
+    elif (arg == "--static_exe"):
+      build_options.static_libraries = 1
+      build_options.static_exe = 1
     elif (arg.startswith("--")):
       raise UserError("Unknown option: " + arg)
     else:
@@ -291,7 +315,7 @@ def run(libtbx_dist, args):
   if (len(packages.list) == 0):
     raise UserError("At least one package must be specified.")
   if (not packages.build_disabled):
-    print "Build mode:", build_mode
+    build_options.report()
   print "Top-down list of all packages involved:"
   for package_name in packages.list:
     p = packages.dict[package_name]
@@ -309,7 +333,7 @@ def run(libtbx_dist, args):
   if (packages.build_disabled):
     env.check_python_api()
   else:
-    emit_SConstruct(env, build_mode, packages.dict)
+    emit_SConstruct(env, build_options, packages.dict)
   return env
 
 def cold_start(args):
