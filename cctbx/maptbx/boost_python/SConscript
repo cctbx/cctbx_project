@@ -1,0 +1,13 @@
+Import("env_cctbx_boost_python_ext")
+env = env_cctbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["cctbx"])
+pyd = env.SharedLibrary(target="maptbx_ext", source=[
+  "maptbx_ext.cpp",
+  "grid_tags.cpp",
+  "peak_search.cpp",
+  "pymol_interface.cpp",
+  "statistics.cpp",
+  "structure_factors.cpp",
+  "symmetry_flags.cpp",
+])
+env.Install("#libtbx/cctbx_boost", pyd)

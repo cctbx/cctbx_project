@@ -1,11 +1,10 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
                Based on C code contributed by Vincent Favre-Nicolin.
  */
 
@@ -15,14 +14,16 @@
 #include <string>
 #include <complex>
 
-namespace cctbx { namespace eltbx {
+namespace cctbx { namespace eltbx { namespace neutron {
 
-  namespace detail {
-    struct RawNeutronNews1992Record {
-      const char* Symbol;
-      float       BoundCohScattLengthReal;
-      float       BoundCohScattLengthImag;
-      float       AbsCrossSect; // For 2200 m/s neutrons
+  namespace detail
+  {
+    struct raw_record_neutron_news_1992
+    {
+      const char* label;
+      float       bound_coh_scatt_length_real;
+      float       bound_coh_scatt_length_imag;
+      float       abs_cross_sect; // For 2200 m/s neutrons
     };
   }
 
@@ -32,47 +33,102 @@ namespace cctbx { namespace eltbx {
       <p>
       http://www.ncnr.nist.gov/resources/n-lengths/list.html
    */
-  class NeutronNews1992Record {
+  class neutron_news_1992_table
+  {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
-      NeutronNews1992Record() : m_RawEntry(0) {}
+      neutron_news_1992_table() : record_(0) {}
+
       //! Search internal table for the given element label.
-      /*! If Exact == true, the element label must exactly
+      /*! If exact == true, the element label must exactly
           match the tabulated label. However, the lookup is not
-          case-sensitive.<br>
-          See also: eltbx::StripLabel()
+          case-sensitive.
+          <p>
+          See also: eltbx::basic::strip_label()
        */
       explicit
-      NeutronNews1992Record(const std::string& Label, bool Exact = false);
-      //! Return element label from internal table.
-      const char* Symbol() const {
-        return m_RawEntry->Symbol; }
-      //! Return bound coherent scattering length (fm) as a complex number.
-      /*! 1 fm = 1e-15 m
+      neutron_news_1992_table(std::string const& label, bool exact=false);
+
+      //! Tests if the instance is constructed properly.
+      /*! Shorthand for: label() != 0
+          <p>
+          Not available in Python.
        */
-      std::complex<float> BoundCohScattLength() const {
-        return std::complex<float>(m_RawEntry->BoundCohScattLengthReal,
-                                   m_RawEntry->BoundCohScattLengthImag);
+      bool
+      is_valid() const { return record_->label != 0; }
+
+      //! Element label from internal table.
+      const char*
+      label() const
+      {
+        return record_->label;
       }
-      //! Return real part of bound coherent scattering length (fm).
+
+      //! Bound coherent scattering length (fm) as a complex number.
       /*! 1 fm = 1e-15 m
        */
-      float BoundCohScattLengthReal() const {
-        return m_RawEntry->BoundCohScattLengthReal; }
-      //! Return imaginary part of bound coherent scattering length (fm).
+      std::complex<float>
+      bound_coh_scatt_length() const
+      {
+        return std::complex<float>(record_->bound_coh_scatt_length_real,
+                                   record_->bound_coh_scatt_length_imag);
+      }
+
+      //! Real part of bound coherent scattering length (fm).
       /*! 1 fm = 1e-15 m
+          <p>
+          Not available in Python.
        */
-      float BoundCohScattLengthImag() const {
-        return m_RawEntry->BoundCohScattLengthImag; }
-      //! Return absorption cross section (barn) for 2200 m/s neutrons.
+      float
+      bound_coh_scatt_length_real() const
+      {
+        return record_->bound_coh_scatt_length_real;
+      }
+
+      //! Imaginary part of bound coherent scattering length (fm).
+      /*! 1 fm = 1e-15 m
+          <p>
+          Not available in Python.
+       */
+      float
+      bound_coh_scatt_length_imag() const
+      {
+        return record_->bound_coh_scatt_length_imag;
+      }
+
+      //! Absorption cross section (barn) for 2200 m/s neutrons.
       /*! 1 barn = 1e-24 cm^2
        */
-      float AbsCrossSect() const {
-        return m_RawEntry->AbsCrossSect; }
+      float
+      abs_cross_sect() const
+      {
+        return record_->abs_cross_sect;
+      }
+
     private:
-      const detail::RawNeutronNews1992Record* m_RawEntry;
+      const detail::raw_record_neutron_news_1992* record_;
+      friend class neutron_news_1992_table_iterator;
   };
 
-}} // cctbx::eltbx
+  /*! \brief Iterator over neutron_news_1992_table entries.
+   */
+  class neutron_news_1992_table_iterator
+  {
+    public:
+      //! Initialization of the iterator.
+      neutron_news_1992_table_iterator();
+
+      //! Retrieves the next entry from the internal table.
+      /*! Use neutron_news_1992_table_iterator::is_valid() to detect
+          end-of-iteration.
+       */
+      neutron_news_1992_table
+      next();
+
+    private:
+      neutron_news_1992_table current_;
+  };
+
+}}} // cctbx::eltbx::neutron
 
 #endif // CCTBX_ELTBX_NEUTRON_H

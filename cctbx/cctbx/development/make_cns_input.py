@@ -1,12 +1,18 @@
-from cctbx_boost import adptbx
-from cctbx_boost.eltbx.caasf_it1992 import CAASF_IT1992
+from cctbx import adptbx
+from cctbx.eltbx.caasf import it1992
+import sys, os
 
-def topology(sites):
+def check_cns_availability():
+  if (not os.environ.has_key("CNS_INST")):
+    print "CNS not available."
+    sys.exit(1)
+
+def topology(structure):
   cns_input = []
   l = cns_input.append
   l("topology")
-  for site in sites:
-    lbl = site.Label()
+  for atom in structure:
+    lbl = atom.label()
     l("  residue %s" % (lbl,))
     l("    atom %s mass=1 charge=0 {chemical}type=%s end" % (lbl, lbl))
     l("  end")
@@ -14,33 +20,34 @@ def topology(sites):
   l("")
   l("segment")
   l("  name=A")
-  for site in sites:
-    lbl = site.Label()
+  for atom in structure:
+    lbl = atom.label()
     l("  molecule {res}name=%s number=1 end" % (lbl,))
   l("end")
   l("")
   return cns_input
 
-def coordinates(Sites):
+def coordinates(xray_structure):
   cns_input = []
   l = cns_input.append
   resid = 1
-  for Site in Sites:
-    X = Site.Coordinates()
-    q = Site.Occ()
-    b = adptbx.U_as_B(Site.Uiso())
-    sf = CAASF_IT1992(Site.CAASF().Label())
-    fp = Site.fpfdp().real
-    fdp = Site.fpfdp().imag
+  for scatterer in xray_structure.scatterers():
+    x = scatterer.site
+    q = scatterer.occupancy
+    assert not scatterer.anisotropic_flag
+    b = adptbx.u_as_b(scatterer.u_iso)
+    caasf = it1992(scatterer.caasf.label())
+    fp = scatterer.fp_fdp.real
+    fdp = scatterer.fp_fdp.imag
     for i in xrange(3):
-      l("do (%s=%.12g) (resid=%d)" % ("xyz"[i], X[i], resid))
+      l("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
     l("do (q=%.12g) (resid=%d)" % (q, resid))
     l("do (b=%.12g) (resid=%d)" % (b, resid))
     l("xray")
-    l("  scatter (chemical=%s)" % (Site.Label(),))
+    l("  scatter (chemical=%s)" % (scatterer.label,))
     for i in xrange(4):
-      l("    %.6g %.6g" % (sf.a(i), sf.b(i)))
-    l("    %.6g" % (sf.c(),))
+      l("    %.6g %.6g" % (caasf.a(i), caasf.b(i)))
+    l("    %.6g" % (caasf.c(),))
     l("end")
     l("do (scatter_fp=%.12g) (resid=%d)" % (fp, resid))
     l("do (scatter_fdp=%.12g) (resid=%d)" % (fdp, resid))
@@ -54,28 +61,49 @@ def coordinates(Sites):
   l("")
   return cns_input
 
-def unit_cell(unit_cell):
+def xray_unit_cell(unit_cell):
   cns_input = []
   l = cns_input.append
   l("xray")
   l("  a=%.12g b=%.12g c=%.12g alpha=%.12g beta=%.12g gamma=%.12g"
-    % unit_cell.getParameters())
+    % unit_cell.parameters())
   l("end")
   l("")
   return cns_input
 
-def symmetry(space_group_ops):
+def xray_symmetry(space_group):
   cns_input = []
   l = cns_input.append
   l("xray")
-  for m in space_group_ops:
-    mp = m.modPositive()
+  for m in space_group:
+    mp = m.mod_positive()
     l("  symm=(" + mp.as_xyz() + ")")
   l("end")
   l("")
   return cns_input
 
-def predict(reciprocal_space_array_name, method):
+def xray_anomalous(flag):
+  cns_input = []
+  l = cns_input.append
+  l("xray")
+  if (flag):
+    l("  anomalous=true")
+  else:
+    l("  anomalous=false")
+  l("end")
+  l("")
+  return cns_input
+
+def xray_generate(d_max, d_min):
+  cns_input = []
+  l = cns_input.append
+  l("xray")
+  l("  generate %.6g %.6g" % (d_max, d_min))
+  l("end")
+  l("")
+  return cns_input
+
+def xray_predict(reciprocal_space_array_name, method):
   cns_input = []
   l = cns_input.append
   l("""xray

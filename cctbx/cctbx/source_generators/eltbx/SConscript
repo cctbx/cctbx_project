@@ -1,0 +1,36 @@
+import sys, os
+Import("env_base")
+
+from cctbx.source_generators.eltbx import generate_henke_cpp
+from cctbx.source_generators.eltbx import generate_sasaki_cpp
+
+generated_henke_files = Split("""
+  henke.cpp
+  henke_tables_01_12.cpp
+  henke_tables_13_24.cpp
+  henke_tables_25_36.cpp
+  henke_tables_37_48.cpp
+  henke_tables_49_60.cpp
+  henke_tables_61_72.cpp
+  henke_tables_73_84.cpp
+  henke_tables_85_92.cpp
+""")
+
+generated_sasaki_files = Split("""
+  sasaki.cpp
+  sasaki_tables_01_12.cpp
+  sasaki_tables_13_24.cpp
+  sasaki_tables_25_36.cpp
+  sasaki_tables_37_48.cpp
+  sasaki_tables_49_60.cpp
+  sasaki_tables_61_72.cpp
+  sasaki_tables_73_82.cpp
+""")
+
+for module, generated_files in ((generate_henke_cpp, generated_henke_files),
+                                (generate_sasaki_cpp, generated_sasaki_files)):
+  files = ["#cctbx/eltbx/" + name for name in generated_files]
+  env_base.Command(
+    files,
+    module.__file__,
+    module.scons_command)

@@ -1,0 +1,121 @@
+import os
+Import("env_base", "env_etc")
+
+env_etc.cctbx_dist = os.environ["CCTBX_DIST"]
+env_etc.cctbx_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.norm_join(env_etc.cctbx_dist, "include"),
+  env_etc.norm_join(env_etc.scitbx_dist, "include"),
+  env_etc.boost_include,
+]
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
+  CPPPATH=env_etc.cctbx_common_includes,
+)
+envlm = env.Copy(
+  LIBS=env_etc.libm
+)
+
+lib_cctbx_sources = [
+  "global/error.cpp",
+
+  "eltbx/basic.cpp",
+  "eltbx/caasf_it1992.cpp",
+  "eltbx/caasf_wk1995.cpp",
+  "eltbx/fp_fdp.cpp",
+  "eltbx/henke.cpp",
+  "eltbx/henke_tables_01_12.cpp",
+  "eltbx/henke_tables_13_24.cpp",
+  "eltbx/henke_tables_25_36.cpp",
+  "eltbx/henke_tables_37_48.cpp",
+  "eltbx/henke_tables_49_60.cpp",
+  "eltbx/henke_tables_61_72.cpp",
+  "eltbx/henke_tables_73_84.cpp",
+  "eltbx/henke_tables_85_92.cpp",
+  "eltbx/icsd_radii.cpp",
+  "eltbx/neutron.cpp",
+  "eltbx/sasaki.cpp",
+  "eltbx/sasaki_tables_01_12.cpp",
+  "eltbx/sasaki_tables_13_24.cpp",
+  "eltbx/sasaki_tables_25_36.cpp",
+  "eltbx/sasaki_tables_37_48.cpp",
+  "eltbx/sasaki_tables_49_60.cpp",
+  "eltbx/sasaki_tables_61_72.cpp",
+  "eltbx/sasaki_tables_73_82.cpp",
+  "eltbx/tiny_pse.cpp",
+  "eltbx/wavelengths.cpp",
+
+  "miller/asu.cpp",
+  "miller/bins.cpp",
+  "miller/index_generator.cpp",
+  "miller/index_span.cpp",
+  "miller/match_bijvoet_mates.cpp",
+  "miller/match_indices.cpp",
+  "miller/sym_equiv.cpp",
+
+  "sgtbx/bricks.cpp",
+  "sgtbx/change_of_basis_op.cpp",
+  "sgtbx/group_codes.cpp",
+  "sgtbx/hall_in.cpp",
+  "sgtbx/lattice_tr.cpp",
+  "sgtbx/miller.cpp",
+  "sgtbx/reciprocal_space_asu.cpp",
+  "sgtbx/reciprocal_space_ref_asu.cpp",
+  "sgtbx/rot_mx.cpp",
+  "sgtbx/rot_mx_info.cpp",
+  "sgtbx/row_echelon_solve.cpp",
+  "sgtbx/rt_mx.cpp",
+  "sgtbx/select_generators.cpp",
+  "sgtbx/seminvariant.cpp",
+  "sgtbx/site_symmetry.cpp",
+  "sgtbx/space_group.cpp",
+  "sgtbx/space_group_type.cpp",
+  "sgtbx/symbols.cpp",
+  "sgtbx/tr_group.cpp",
+  "sgtbx/tr_vec.cpp",
+  "sgtbx/utils.cpp",
+  "sgtbx/wyckoff.cpp",
+  "sgtbx/reference_settings/hall_symbol_table.cpp",
+  "sgtbx/reference_settings/matrix_group_code_table.cpp",
+  "sgtbx/reference_settings/normalizer.cpp",
+  "sgtbx/reference_settings/wyckoff.cpp",
+
+  "uctbx/uctbx.cpp",
+]
+if (env_etc.static_libraries): builder = envlm.StaticLibrary
+else:                          builder = envlm.SharedLibrary
+lib_cctbx_node = builder(
+    target="cctbx",
+    source=lib_cctbx_sources)
+env.Install("#libtbx", lib_cctbx_node)
+
+SConscript("cctbx/source_generators/eltbx/SConscript")
+SConscript("examples/SConscript")
+
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+
+  env_cctbx_boost_python_ext = env_boost_python_ext.Copy()
+  env_cctbx_boost_python_ext.Replace(
+    CPPPATH=env_etc.cctbx_common_includes + [env_etc.python_include])
+  env_cctbx_boost_python_ext.Prepend(LIBS=["scitbx_boost_python"])
+  Export("env_cctbx_boost_python_ext")
+
+  env_cctbx_boost_python_ext.Command(
+    "#libtbx/cctbx_boost/__init__.py",
+    "#libtbx/build/SConscript", env_etc.touch_init)
+
+  SConscript("array_family/boost_python/SConscript")
+  SConscript("eltbx/boost_python/SConscript")
+  SConscript("uctbx/boost_python/SConscript")
+  SConscript("sgtbx/boost_python/SConscript")
+  SConscript("adptbx/boost_python/SConscript")
+  SConscript("miller/boost_python/SConscript")
+  SConscript("xray/boost_python/SConscript")
+  SConscript("maptbx/boost_python/SConscript")
+  SConscript("translation_search/boost_python/SConscript")
+  SConscript("mintbx/boost_python/SConscript")
+  SConscript("dmtbx/boost_python/SConscript")

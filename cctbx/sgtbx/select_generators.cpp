@@ -1,244 +1,244 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Sep 10: created from fragments in type.cpp, seminvariant.cpp (rwgk)
+     2002 Sep: Refactored (rwgk)
+     2001 Sep: created from fragments in type.cpp, seminvariant.cpp (rwgk)
  */
 
 #include <cctbx/sgtbx/select_generators.h>
+#include <cctbx/sgtbx/rot_mx_info.h>
 
-namespace cctbx { namespace sgtbx {
-  namespace detail {
+namespace cctbx { namespace sgtbx { namespace select_generators {
 
-    AnyGenerators::AnyGenerators(const SpaceGroup& SgOps) : nGen(0)
+  any::any(space_group const& sg)
+  : n_gen(0)
+  {
+    using namespace crystal_system;
+    using scitbx::fn::absolute;
+
+    z2p_op = sg.z2p_op();
+
+    z_inv_t = sg.inv_t(true);
+    p_inv_t = tr_vec(0);
+    for(std::size_t i=0;i<2;i++) z_gen[i] = rt_mx(0, 0);
+    for(std::size_t i=0;i<2;i++) p_gen[i] = rt_mx(0, 0);
+
+    int principal_proper_order = 0;
+
+    matrix_group::code point_group_mx_group_code = sg.point_group_type();
+    switch (point_group_mx_group_code.crystal_system())
     {
-      using namespace tables::CrystalSystem;
+      case triclinic:
+        break;
 
-      Z2POp = SgOps.getZ2POp();
+      case monoclinic:
+        z_gen[0] = sg.smx(1);
+        n_gen = 1;
+        break;
 
-      ZInvT = SgOps.InvT(true);
-      PInvT = TrVec(0);
-      int i;
-      for(i=0;i<2;i++) ZGen[i] = RTMx(0, 0);
-      for(i=0;i<2;i++) PGen[i] = RTMx(0, 0);
+      case orthorhombic:
+        z_gen[0] = sg.smx(1);
+        z_gen[1] = sg.smx(2);
+        n_gen = 2;
+        break;
 
-      int PrincipalProperOrder = 0;
-
-      tables::MatrixGroup::Code PG_MGC = SgOps.getPointGroupType();
-      switch (PG_MGC.CrystalSystem())
-      {
-        case Triclinic:
-          break;
-
-        case Monoclinic:
-          ZGen[0] = SgOps[1];
-          nGen = 1;
-          break;
-
-        case Orthorhombic:
-          ZGen[0] = SgOps[1];
-          ZGen[1] = SgOps[2];
-          nGen = 2;
-          break;
-
-        case Tetragonal:
-                                     PrincipalProperOrder = 4;
-        case Trigonal:
-          if (!PrincipalProperOrder) PrincipalProperOrder = 3;
-        case Hexagonal:
-          if (!PrincipalProperOrder) PrincipalProperOrder = 6;
-          {
-            RotMxInfo PrincipalRI;
-            for(i = 1; i < SgOps.nSMx(); i++) {
-              PrincipalRI = SgOps[i].Rpart().getInfo();
-              if (fn::absolute(PrincipalRI.Rtype()) == PrincipalProperOrder) {
-                if (PrincipalRI.SenseOfRotation() > 0) {
-                  ZGen[0] = SgOps[i];
-                  nGen++;
-                  break;
-                }
-              }
-            }
-            cctbx_assert(nGen == 1);
-            int iPrincipal = i;
-            for(i = 1; i < SgOps.nSMx(); i++) {
-              if (i == iPrincipal) continue;
-              RotMxInfo RI = SgOps[i].Rpart().getInfo();
-              if (fn::absolute(RI.Rtype()) == 2) {
-                if (af::cmp(PrincipalRI.EV(), RI.EV())) {
-                  ZGen[1] = SgOps[i];
-                  nGen++;
-                  break;
-                }
+      case tetragonal:
+                                     principal_proper_order = 4;
+      case trigonal:
+        if (!principal_proper_order) principal_proper_order = 3;
+      case hexagonal:
+        if (!principal_proper_order) principal_proper_order = 6;
+        {
+          rot_mx_info principal_ri;
+          std::size_t i=1;
+          for(;i<sg.n_smx();i++) {
+            principal_ri = sg.smx(i).r().info();
+            if (absolute(principal_ri.type()) == principal_proper_order) {
+              if (principal_ri.sense() > 0) {
+                z_gen[0] = sg.smx(i);
+                n_gen++;
+                break;
               }
             }
           }
-          break;
-
-        case Cubic:
-          for(i = 1; i < SgOps.nSMx(); i++) {
-            RotMxInfo RI = SgOps[i].Rpart().getInfo();
-            if      (fn::absolute(RI.Rtype()) == 3) {
-              if (RI.SenseOfRotation() > 0) {
-                if (!ZGen[0].isValid()) {
-                  ZGen[0] = SgOps[i];
-                  nGen++;
-                  if (nGen == 2) break;
-                }
+          CCTBX_ASSERT(n_gen == 1);
+          std::size_t i_principal = i;
+          for(i=1;i<sg.n_smx();i++) {
+            if (i == i_principal) continue;
+            rot_mx_info ri(sg.smx(i).r());
+            if (absolute(ri.type()) == 2) {
+              if (principal_ri.ev() != ri.ev()) {
+                z_gen[1] = sg.smx(i);
+                n_gen++;
+                break;
               }
             }
-            else if (fn::absolute(RI.Rtype()) == SgOps.nSMx() / 6) {
-              if (RI.SenseOfRotation() >= 0) {
-                if (!ZGen[1].isValid()) {
-                  ZGen[1] = SgOps[i];
-                  nGen++;
-                  if (nGen == 2) break;
-                }
-              }
-            }
-          }
-          cctbx_assert(nGen == 2);
-          break;
-
-        default:
-          throw cctbx_internal_error();
-      }
-    }
-
-    void AnyGenerators::setPrimitive()
-    {
-      for (int i = 0; i < nGen; i++) {
-        PGen[i] = Z2POp(ZGen[i]).modPositive();
-      }
-      if (ZInvT.isValid()) {
-        PInvT = Z2POp(ZInvT, -1).modPositive();
-      }
-    }
-
-    StdGenerators::StdGenerators(const SpaceGroup& WorkSgOps,
-                                 const tables::MatrixGroup::Code& PG_MGC)
-      : AnyGenerators()
-    {
-      using namespace tables::CrystalSystem;
-
-      const af::int3 EV_001( 0, 0, 1);
-      const af::int3 EV_100( 1, 0, 0);
-      const af::int3 EV_110( 1, 1, 0);
-      const af::int3 EV_m10(-1, 1, 0);
-      const af::int3 EV_111( 1, 1, 1);
-
-      Z2POp = WorkSgOps.getZ2POp();
-
-      ZInvT = WorkSgOps.InvT(true);
-      PInvT = TrVec(0);
-      int i;
-      for(i=0;i<2;i++) ZGen[i] = RTMx(0, 0);
-      for(i=0;i<2;i++) PGen[i] = RTMx(0, 0);
-
-      int PrincipalProperOrder = 0;
-
-      switch (PG_MGC.CrystalSystem())
-      {
-        case Triclinic:
-          break;
-
-        case Monoclinic:
-          ZGen[0] = WorkSgOps[1];
-          nGen = 1;
-          break;
-
-        case Orthorhombic:
-          for(i = 1; i < WorkSgOps.nSMx(); i++) {
-            RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if      (!af::cmp(RI.EV(), EV_001)) {
-              ZGen[0] = WorkSgOps[i]; nGen++;
-            }
-            else if (!af::cmp(RI.EV(), EV_100)) {
-              ZGen[1] = WorkSgOps[i]; nGen++;
-            }
-          }
-          cctbx_assert(nGen == 2);
-          break;
-
-        case Tetragonal:
-                                     PrincipalProperOrder = 4;
-        case Trigonal:
-          if (!PrincipalProperOrder) PrincipalProperOrder = 3;
-        case Hexagonal:
-          if (!PrincipalProperOrder) PrincipalProperOrder = 6;
-
-          for(i = 1; i < WorkSgOps.nSMx(); i++) {
-            RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if (fn::absolute(RI.Rtype()) == PrincipalProperOrder) {
-              if (RI.SenseOfRotation() > 0) {
-                ZGen[0] = WorkSgOps[i]; nGen++;
-              }
-            }
-            else if (PrincipalProperOrder == 4) {
-              if (!af::cmp(RI.EV(), EV_100)) {
-                ZGen[1] = WorkSgOps[i]; nGen++;
-              }
-            }
-            else if (PrincipalProperOrder == 3) {
-              if      (!af::cmp(RI.EV(), EV_m10)) {
-                ZGen[1] = WorkSgOps[i]; nGen++;
-              }
-              else if (!af::cmp(RI.EV(), EV_110)) {
-                ZGen[1] = WorkSgOps[i]; nGen++;
-              }
-            }
-            else { // PrinicipalProperOrder == 6
-              if (!af::cmp(RI.EV(), EV_m10)) {
-                ZGen[1] = WorkSgOps[i]; nGen++;
-              }
-            }
-          }
-          cctbx_assert(nGen == 1 || nGen == 2);
-          for (i=0;i<nGen;i++) cctbx_assert(ZGen[i].isValid());
-          break;
-
-        case Cubic:
-          for(i = 1; i < WorkSgOps.nSMx(); i++) {
-            RotMxInfo RI = WorkSgOps[i].Rpart().getInfo();
-            if      (fn::absolute(RI.Rtype()) == 4) {
-              if (RI.SenseOfRotation() > 0 && !af::cmp(RI.EV(), EV_001)) {
-                if (!ZGen[0].isValid()) nGen++;
-                ZGen[0] = WorkSgOps[i];
-              }
-            }
-            else if (fn::absolute(RI.Rtype()) == 2) {
-              if (!ZGen[0].isValid() && !af::cmp(RI.EV(), EV_001)) {
-                ZGen[0] = WorkSgOps[i]; nGen++;
-              }
-            }
-            else if (fn::absolute(RI.Rtype()) == 3) {
-              if (RI.SenseOfRotation() > 0 && !af::cmp(RI.EV(), EV_111)) {
-                cctbx_assert(!ZGen[1].isValid());
-                ZGen[1] = WorkSgOps[i]; nGen++;
-              }
-            }
-          }
-          cctbx_assert(nGen == 1 || nGen == 2);
-          for (i=0;i<nGen;i++) cctbx_assert(ZGen[i].isValid());
-          break;
-
-        default:
-          throw cctbx_internal_error();
-      }
-
-      // Tidy generators
-      if (ZInvT.isValid()) {
-        for (i = 0; i < nGen; i++) {
-          if (ZGen[i].Rpart().det() < 0) {
-            ZGen[i] = ZGen[i].pre_multiply_InvT(ZInvT);
           }
         }
-      }
-      for (i = 0; i < nGen; i++) ZGen[i].modPositiveInPlace();
+        break;
+
+      case cubic:
+        for(std::size_t i=1;i<sg.n_smx();i++) {
+          rot_mx_info ri(sg.smx(i).r());
+          if      (absolute(ri.type()) == 3) {
+            if (ri.sense() > 0) {
+              if (!z_gen[0].is_valid()) {
+                z_gen[0] = sg.smx(i);
+                n_gen++;
+                if (n_gen == 2) break;
+              }
+            }
+          }
+          else if (absolute(ri.type()) == sg.n_smx() / 6) {
+            if (ri.sense() >= 0) {
+              if (!z_gen[1].is_valid()) {
+                z_gen[1] = sg.smx(i);
+                n_gen++;
+                if (n_gen == 2) break;
+              }
+            }
+          }
+        }
+        CCTBX_ASSERT(n_gen == 2);
+        break;
+
+      default:
+        throw CCTBX_INTERNAL_ERROR();
+    }
+  }
+
+  void any::set_primitive()
+  {
+    for (std::size_t i=0;i<n_gen;i++) {
+      p_gen[i] = z2p_op(z_gen[i]).mod_positive();
+    }
+    if (z_inv_t.is_valid()) {
+      p_inv_t = z2p_op(z_inv_t, -1).mod_positive();
+    }
+  }
+
+  standard::standard(space_group const& work_sg,
+                     matrix_group::code const& point_group_mx_group_code)
+  {
+    using namespace crystal_system;
+    using scitbx::fn::absolute;
+
+    const sg_vec3 ev_001( 0, 0, 1);
+    const sg_vec3 ev_100( 1, 0, 0);
+    const sg_vec3 ev_110( 1, 1, 0);
+    const sg_vec3 ev_m10(-1, 1, 0);
+    const sg_vec3 ev_111( 1, 1, 1);
+
+    z2p_op = work_sg.z2p_op();
+
+    z_inv_t = work_sg.inv_t(true);
+    p_inv_t = tr_vec(0);
+    for(std::size_t i=0;i<2;i++) z_gen[i] = rt_mx(0, 0);
+    for(std::size_t i=0;i<2;i++) p_gen[i] = rt_mx(0, 0);
+
+    int principal_proper_order = 0;
+
+    switch (point_group_mx_group_code.crystal_system())
+    {
+      case triclinic:
+        break;
+
+      case monoclinic:
+        z_gen[0] = work_sg.smx(1);
+        n_gen = 1;
+        break;
+
+      case orthorhombic:
+        for(std::size_t i=1;i<work_sg.n_smx();i++) {
+          rot_mx_info ri(work_sg.smx(i).r());
+          if      (ri.ev() == ev_001) {
+            z_gen[0] = work_sg.smx(i); n_gen++;
+          }
+          else if (ri.ev() == ev_100) {
+            z_gen[1] = work_sg.smx(i); n_gen++;
+          }
+        }
+        CCTBX_ASSERT(n_gen == 2);
+        break;
+
+      case tetragonal:
+                                     principal_proper_order = 4;
+      case trigonal:
+        if (!principal_proper_order) principal_proper_order = 3;
+      case hexagonal:
+        if (!principal_proper_order) principal_proper_order = 6;
+
+        for(std::size_t i=1;i<work_sg.n_smx();i++) {
+          rot_mx_info ri(work_sg.smx(i).r());
+          if (absolute(ri.type()) == principal_proper_order) {
+            if (ri.sense() > 0) {
+              z_gen[0] = work_sg.smx(i); n_gen++;
+            }
+          }
+          else if (principal_proper_order == 4) {
+            if (ri.ev() == ev_100) {
+              z_gen[1] = work_sg.smx(i); n_gen++;
+            }
+          }
+          else if (principal_proper_order == 3) {
+            if      (ri.ev() == ev_m10) {
+              z_gen[1] = work_sg.smx(i); n_gen++;
+            }
+            else if (ri.ev() == ev_110) {
+              z_gen[1] = work_sg.smx(i); n_gen++;
+            }
+          }
+          else { // principal_proper_order == 6
+            if (ri.ev() == ev_m10) {
+              z_gen[1] = work_sg.smx(i); n_gen++;
+            }
+          }
+        }
+        CCTBX_ASSERT(n_gen == 1 || n_gen == 2);
+        for (std::size_t i=0;i<n_gen;i++) CCTBX_ASSERT(z_gen[i].is_valid());
+        break;
+
+      case cubic:
+        for(std::size_t i=1;i<work_sg.n_smx();i++) {
+          rot_mx_info ri(work_sg.smx(i).r());
+          if      (absolute(ri.type()) == 4) {
+            if (ri.sense() > 0 && ri.ev() == ev_001) {
+              if (!z_gen[0].is_valid()) n_gen++;
+              z_gen[0] = work_sg.smx(i);
+            }
+          }
+          else if (absolute(ri.type()) == 2) {
+            if (!z_gen[0].is_valid() && ri.ev() == ev_001) {
+              z_gen[0] = work_sg.smx(i); n_gen++;
+            }
+          }
+          else if (absolute(ri.type()) == 3) {
+            if (ri.sense() > 0 && ri.ev() == ev_111) {
+              CCTBX_ASSERT(!z_gen[1].is_valid());
+              z_gen[1] = work_sg.smx(i); n_gen++;
+            }
+          }
+        }
+        CCTBX_ASSERT(n_gen == 1 || n_gen == 2);
+        for (std::size_t i=0;i<n_gen;i++) CCTBX_ASSERT(z_gen[i].is_valid());
+        break;
+
+      default:
+        throw CCTBX_INTERNAL_ERROR();
     }
 
-  } // namespace detail
-}} // namespace cctbx::sgtbx
+    // Tidy generators
+    if (z_inv_t.is_valid()) {
+      for (std::size_t i=0;i<n_gen;i++) {
+        if (z_gen[i].r().num().determinant() < 0) {
+          z_gen[i] = z_gen[i].pre_multiply_inv_t(z_inv_t);
+        }
+      }
+    }
+    for (std::size_t i=0;i<n_gen;i++) z_gen[i].mod_positive_in_place();
+  }
+
+}}} // namespace cctbx::sgtbx::select_generators

@@ -1,37 +1,35 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_ELTBX_CAASF_H
 #define CCTBX_ELTBX_CAASF_H
 
-#include <cstddef>
-#include <string>
-#include <ctype.h> // cannot use cctype b/o non-conforming compilers
-#include <cctbx/fixes/cmath>
 #include <cctbx/eltbx/basic.h>
-#include <cctbx/eltbx/caasf.h>
-
-// FIXES for broken compilers
 #include <boost/config.hpp>
+#include <cstddef>
+#include <cmath>
+#include <ctype.h>
 
-namespace cctbx { namespace eltbx {
-
-  static const float caasf_undefined = -99999.;
+namespace cctbx { namespace eltbx { namespace caasf {
 
   namespace detail {
+
+    static const float undefined = -99999.;
+
     template <std::size_t N>
-    struct CAASF_Raw {
-      const char* Label;
+    struct raw_table_entry
+    {
+      const char* label;
       float a[N], b[N], c;
     };
+
   }
 
   //! Coefficients for the Analytical Approximation to the Scattering Factor.
@@ -40,85 +38,138 @@ namespace cctbx { namespace eltbx {
       Kirfel (1995), Acta Cryst. A51, 416-431 (template parameter N = 5).
    */
   template <std::size_t N>
-  class CAASF {
+  class base
+  {
     public:
-      //! Hook for compile-time array allocation in other procedures.
+      //! Enables compile-time array allocation in other procedures.
       BOOST_STATIC_CONSTANT(std::size_t, n_plus_1 = N + 1);
+
       //! Default constructor. Calling certain methods may cause crashes!
-      CAASF() : m_Entry(0), m_Table(0) {}
+      base() : entry_(0), table_(0) {}
+
       //! Constructor. For internal use only.
-      CAASF(const detail::CAASF_Raw<N>* TableRaw,
-            const char* Table,
-            const std::string& Label,
-            bool Exact)
-        : m_Entry(0), m_Table(Table)
-      {
-        std::string WorkLabel = StripLabel(Label, Exact);
-        int m = 0;
-        for (const detail::CAASF_Raw<N>* Entry = TableRaw;
-             Entry->Label;
-             Entry++) {
-          int i = eltbx::MatchLabels(WorkLabel, Entry->Label);
-          if (i < 0) {
-            if (Entry->c == eltbx::caasf_undefined) {
-              throw eltbx::error(
-                "Analytical approximation for given label not known.");
-            }
-            m_Entry = Entry;
-            return;
-          }
-          if (i > m && !isdigit(Entry->Label[i - 1])) {
-            m = i;
-            m_Entry = Entry;
-          }
-        }
-        if (Exact || !m_Entry) {
-          throw eltbx::error("Unknown scattering factor label.");
-        }
-      }
+      base(const detail::raw_table_entry<N>* table_raw,
+           const char* table,
+           std::string const& label,
+           bool exact);
+
+      //! Tests if the instance is constructed properly.
+      /*! Shorthand for: label() != 0
+          <p>
+          Not available in Python.
+       */
+      bool
+      is_valid() const { return entry_->label != 0; }
+
       //! Label of table. Currently either "IT1992" or "WK1995".
-      const char* Table() const { return m_Table; }
+      const char* table() const { return table_; }
+
       //! Scattering factor label. E.g. "Si4+".
-      const char* Label() const { return m_Entry->Label; }
+      const char* label() const { return entry_->label; }
+
       //! Number of a and b coefficients. Currently either 4 or 5.
       /*! Note that the total number of coefficients is 2*n_ab()+1.
+          <p>
+          Not available in Python.
        */
       static std::size_t n_ab() { return N; }
-      //! Return coefficient a(i), with 0 <= i < n_ab().
+
+      //! Coefficient a(i), with 0 <= i < n_ab().
       /*! No range checking (for runtime efficiency).
+          <p>
+          Python: a() returns a tuple of N floats.
        */
-      float a(int i) const { return m_Entry->a[i]; }
-      //! Return coefficient b(i), with 0 <= i < n_ab().
+      float a(int i) const { return entry_->a[i]; }
+
+      //! Coefficient b(i), with 0 <= i < n_ab().
       /*! No range checking (for runtime efficiency).
+          <p>
+          Python: b() returns a tuple of N floats.
        */
-      float b(int i) const { return m_Entry->b[i]; }
-      //! Return coefficient c.
-      float c() const { return m_Entry->c; }
-      //! Return the analytical approximation to the scattering factor.
-      /*! stol2 = sin-theta-over-lambda-squared: (sin(theta)/lambda)^2<br>
-          See also: uctbx::UnitCell::Q()
+      float b(int i) const { return entry_->b[i]; }
+
+      //! Coefficient c.
+      float c() const { return entry_->c; }
+
+      //! Analytical approximation to the scattering factor.
+      /*! stol_sq = sin-theta-over-lambda-squared: (sin(theta)/lambda)^2
+          <p>
+          See also: uctbx::unit_cell::at_stol_sq()
        */
-      double stol2(double stol2_value) const
+      double at_stol_sq(double stol_sq) const
       {
         double sf = c();
-        for (int i = 0; i < n_ab(); i++)
-          sf += a(i) * std::exp(-b(i) * stol2_value);
+        for (std::size_t i = 0; i < n_ab(); i++)
+          sf += a(i) * std::exp(-b(i) * stol_sq);
         return sf;
       }
-      //! Return the analytical approximation to the scattering factor.
-      /*! See also: stol2(), uctbx::UnitCell::Q()
+
+      //! Analytical approximation to the scattering factor.
+      /*! See also: at_stol_sq(), uctbx::unit_cell::stol()
        */
-      double stol(double stol_value) const {
-        return stol2(stol_value * stol_value);
+      double at_stol(double stol) const
+      {
+        return at_stol_sq(stol * stol);
       }
-      //! Return the analytical approximation to the scattering factor.
-      /*! See also: stol2(), uctbx::UnitCell::Q()
+
+      //! Analytical approximation to the scattering factor.
+      /*! See also: at_stol_sq(), uctbx::unit_cell::d_star_sq()
        */
-      double Q(double Q_value) const { return stol2(Q_value / 4.); }
-    private:
-      const char *m_Table;
-      const detail::CAASF_Raw<N>* m_Entry;
+      double at_d_star_sq(double d_star_sq) const
+      {
+        return at_stol_sq(d_star_sq / 4.);
+      }
+
+    protected:
+      const char *table_;
+      const detail::raw_table_entry<N>* entry_;
+      void next_entry();
   };
+
+  // non-inline constructor
+  template <std::size_t N>
+  base<N>::base(const detail::raw_table_entry<N>* table_raw,
+                const char* table,
+                std::string const& label,
+                bool exact)
+  :
+    entry_(0), table_(table)
+  {
+    std::string work_label = basic::strip_label(label, exact);
+    int m = 0;
+    for (const detail::raw_table_entry<N>* entry = table_raw;
+         entry->label;
+         entry++) {
+      int i = basic::match_labels(work_label, entry->label);
+      if (i < 0) {
+        if (entry->c == detail::undefined) {
+          throw error("Analytical approximation for given label not known.");
+        }
+        entry_ = entry;
+        return;
+      }
+      if (i > m && !isdigit(entry->label[i - 1])) {
+        m = i;
+        entry_ = entry;
+      }
+    }
+    if (exact || !entry_) {
+      throw error("Unknown scattering factor label.");
+    }
+  }
+
+  // non-inline member function
+  template <std::size_t N>
+  void
+  base<N>::next_entry()
+  {
+    if (is_valid()) {
+      for(;;) {
+        entry_++;
+        if (entry_->c != detail::undefined) break;
+      }
+    }
+  }
 
   //! Coefficients for the Analytical Approximation to the Scattering Factor.
   /*! Coefficients from the International Tables for Crystallography,
@@ -140,31 +191,60 @@ namespace cctbx { namespace eltbx {
       The value from IT Vol IV is presumed to be the correct one
       and used here.
       <p>
-      If possible, the class CAASF_WK1995 should be used
+      If possible, the class caasf::wk1995 should be used
       instead of this class.
       The coefficients of Waasmaier & Kirfel give more precise
       approximations than the coefficients of Volume C
       and some errors are corrected.
       <p>
-      See also: class CAASF, class CAASF_WK1995
+      See also:
+        caasf::it1992_iterator,
+        caasf::wk1995,
+        caasf::base
    */
-  class CAASF_IT1992: public CAASF<4> {
+  class it1992: public base<4>
+  {
     public:
-      typedef CAASF<4> base_type;
+      //! Facilitates meta-programming.
+      typedef base<4> base_type;
+
       //! Default constructor. Calling certain methods may cause crashes!
-      CAASF_IT1992() {}
-      //! Lookup coefficients for the given scattering factor label.
-      /*! If Exact == true, the scattering factor label must exactly
+      it1992() {}
+
+      //! Looks up coefficients for the given scattering factor label.
+      /*! If exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not
           case-sensitive.<br>
           E.g., "SI4" will be matched with "Si".<br>
           "Si4+" and "Si+4" will be matched with "Si4+".<br>
-          See also: eltbx::StripLabel()
+          See also: eltbx::basic::strip_label()
           <p>
           Note that the other methods of this class are inherited from
-          class CAASF.
+          class caasf::base.
        */
-      CAASF_IT1992(const std::string& Label, bool Exact = false);
+      it1992(std::string const& label, bool exact=false);
+
+    protected:
+      friend class it1992_iterator;
+  };
+
+  /*! \brief Iterator over table of Coefficients for the Analytical
+      Approximation to the Scattering Factor, International Tables 1992.
+   */
+  class it1992_iterator
+  {
+    public:
+      //! Initialization of the iterator.
+      it1992_iterator();
+
+      //! Retrieves the next entry from the internal table.
+      /*! Use it1992::is_valid() to detect end-of-iteration.
+       */
+      it1992
+      next();
+
+    private:
+      it1992 current_;
   };
 
   //! Coefficients for the Analytical Approximation to the Scattering Factor.
@@ -192,27 +272,56 @@ namespace cctbx { namespace eltbx {
           (International Tables for Crystallography, Vol. C, 1992).
       </pre>
       <p>
-      See also: class CAASF, class CAASF_IT1992
+      See also:
+        caasf::wk1995_iterator,
+        caasf::it1992,
+        caasf::base
    */
-  class CAASF_WK1995: public CAASF<5> {
+  class wk1995: public base<5>
+  {
     public:
-      typedef CAASF<5> base_type;
+      //! Facilitates meta-programming.
+      typedef base<5> base_type;
+
       //! Default constructor. Calling certain methods may cause crashes!
-      CAASF_WK1995() {}
-      //! Lookup coefficients for the given scattering factor label.
-      /*! If Exact == true, the scattering factor label must exactly
+      wk1995() {}
+
+      //! Looks up coefficients for the given scattering factor label.
+      /*! If exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not
           case-sensitive.<br>
           E.g., "SI4" will be matched with "Si".<br>
           "Si4+" and "Si+4" will be matched with "Si4+".<br>
-          See also: eltbx::StripLabel()
+          See also: eltbx::basic::strip_label()
           <p>
           Note that the other methods of this class are inherited from
-          class CAASF.
+          class base.
        */
-      CAASF_WK1995(const std::string& Label, bool Exact = false);
+      wk1995(std::string const& label, bool exact=false);
+
+    protected:
+      friend class wk1995_iterator;
   };
 
-}} // cctbx::eltbx
+  /*! \brief Iterator over table of Coefficients for the Analytical
+      Approximation to the Scattering Factor, Waasmaier & Kirfel 1995.
+   */
+  class wk1995_iterator
+  {
+    public:
+      //! Initialization of the iterator.
+      wk1995_iterator();
+
+      //! Retrieves the next entry from the internal table.
+      /*! Use wk1995::is_valid() to detect end-of-iteration.
+       */
+      wk1995
+      next();
+
+    private:
+      wk1995 current_;
+  };
+
+}}} // cctbx::eltbx::caasf
 
 #endif // CCTBX_ELTBX_CAASF_H

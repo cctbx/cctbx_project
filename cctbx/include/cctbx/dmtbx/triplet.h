@@ -1,8 +1,7 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
      2002 Jul: Created (R.W. Grosse-Kunstleve)
@@ -16,15 +15,15 @@
      Methods in Enzymology, in press.
  */
 
-#ifndef CCTBX_TRIPLETS_H
-#define CCTBX_TRIPLETS_H
+#ifndef CCTBX_DMTBX_TRIPLET_H
+#define CCTBX_DMTBX_TRIPLET_H
 
-#include <map>
-#include <cctbx/error.h>
-#include <cctbx/array_family/shared.h>
-#include <cctbx/array_family/simple_io.h>
 #include <cctbx/miller/asu.h>
-#include <cctbx/miller/span.h>
+#include <cctbx/miller/index_span.h>
+#include <cctbx/error.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/simple_io.h>
+#include <map>
 
 namespace cctbx { namespace dmtbx {
 
@@ -33,27 +32,27 @@ namespace cctbx { namespace dmtbx {
     triplet_phase_relation(
       std::size_t ik,
       std::size_t ihmk,
-      miller::SymEquivIndex const& k_seq,
-      miller::AsymIndex const& asym_hmk)
+      miller::sym_equiv_index const& k_seq,
+      miller::asym_index const& asym_hmk)
     {
-      cctbx_assert(k_seq.TBF() == asym_hmk.TBF());
-      cctbx_assert(k_seq.HT() >= 0);
-      cctbx_assert(asym_hmk.HT() >= 0);
+      CCTBX_ASSERT(k_seq.t_den() == asym_hmk.t_den());
+      CCTBX_ASSERT(k_seq.ht() >= 0);
+      CCTBX_ASSERT(asym_hmk.ht() >= 0);
       if (ik <= ihmk) {
         ik_ = ik;
         ihmk_ = ihmk;
-        friedel_flag_k_ = k_seq.FriedelFlag();
-        friedel_flag_hmk_ = asym_hmk.FriedelFlag();
+        friedel_flag_k_ = k_seq.friedel_flag();
+        friedel_flag_hmk_ = asym_hmk.friedel_flag();
       }
       else {
         ik_ = ihmk;
         ihmk_ = ik;
-        friedel_flag_k_ = asym_hmk.FriedelFlag();
-        friedel_flag_hmk_ = k_seq.FriedelFlag();
+        friedel_flag_k_ = asym_hmk.friedel_flag();
+        friedel_flag_hmk_ = k_seq.friedel_flag();
       }
-      int k_ht = k_seq.HT();
-      if (k_seq.FriedelFlag()) k_ht *= -1;
-      ht_sum_ = sgtbx::modPositive(-k_ht + asym_hmk.HT(), k_seq.TBF());
+      int k_ht = k_seq.ht();
+      if (k_seq.friedel_flag()) k_ht *= -1;
+      ht_sum_ = math::mod_positive(-k_ht + asym_hmk.ht(), k_seq.t_den());
     }
 
     bool operator<(triplet_phase_relation const& other) const
@@ -72,13 +71,13 @@ namespace cctbx { namespace dmtbx {
 
     template <typename FloatType>
     FloatType
-    phi_k_phi_hmk(const FloatType* phases, int TBF) const
+    phi_k_phi_hmk(const FloatType* phases, int t_den) const
     {
       FloatType phi_k = phases[ik_];
       if (friedel_flag_k_) phi_k = -phi_k;
       FloatType phi_hmk = phases[ihmk_];
       if (friedel_flag_hmk_) phi_hmk = -phi_hmk;
-      return phi_k + phi_hmk + (constants::two_pi * ht_sum_) / TBF;
+      return phi_k + phi_hmk + (scitbx::constants::two_pi * ht_sum_) / t_den;
     }
 
     std::size_t ik_;
@@ -88,7 +87,7 @@ namespace cctbx { namespace dmtbx {
     int ht_sum_;
   };
 
-  template <typename FloatType>
+  template <typename FloatType = double>
   class triplet_invariants
   {
     private:
@@ -98,18 +97,20 @@ namespace cctbx { namespace dmtbx {
     public:
       triplet_invariants() {}
 
-      triplet_invariants(sgtbx::SpaceGroupInfo const& SgInfo,
-                         af::shared<miller::Index> miller_indices,
-                         bool sigma_2,
-                         bool other_than_sigma_2)
-      : TBF_(SgInfo.SgOps().TBF())
+      triplet_invariants(
+        sgtbx::space_group_type const& sg_type,
+        af::const_ref<miller::index<> > const& miller_indices,
+        bool sigma_2,
+        bool other_than_sigma_2)
+      :
+        t_den_(sg_type.group().t_den())
       {
-        sgtbx::ReciprocalSpaceASU asu(SgInfo);
+        sgtbx::reciprocal_space::asu asu(sg_type);
         std::size_t i=0;
         // Assert that all Miller indices are in the standard asymmetric unit.
         for(i=0;i<miller_indices.size();i++) {
-          cctbx_assert(
-               miller::AsymIndex(SgInfo.SgOps(), asu, miller_indices[i]).H()
+          CCTBX_ASSERT(
+               miller::asym_index(sg_type.group(), asu, miller_indices[i]).h()
             == miller_indices[i]);
         }
         miller::index_span miller_index_span(miller_indices);
@@ -118,30 +119,31 @@ namespace cctbx { namespace dmtbx {
         for(i=0;i<miller_indices.size();i++) {
           lookup_dict[miller_index_span.pack(miller_indices[i])] = i;
         }
-        cctbx_assert(lookup_dict.size() == miller_indices.size());
+        CCTBX_ASSERT(lookup_dict.size() == miller_indices.size());
         list_of_tpr_maps_.reserve(miller_indices.size());
         for(i=0;i<miller_indices.size();i++) {
           list_of_tpr_maps_.push_back(tpr_map_type());
         }
         for(std::size_t ih=0;ih<miller_indices.size();ih++) {
-          miller::Index h = miller_indices[ih];
+          miller::index<> h = miller_indices[ih];
           for(std::size_t ik=0;ik<miller_indices.size();ik++) {
             if (ik == ih) { if (!other_than_sigma_2) continue; }
             else          { if (!sigma_2) continue; }
-            miller::Index k = miller_indices[ik];
-            miller::SymEquivIndices sym_eq_k(SgInfo.SgOps(), k);
-            for (std::size_t ik_eq=0;ik_eq<sym_eq_k.M(true);ik_eq++) {
-              miller::SymEquivIndex k_seq = sym_eq_k(ik_eq);
-              miller::Index k_eq = k_seq.H();
-              miller::Index hmk = h - k_eq;
-              miller::AsymIndex asym_hmk(SgInfo.SgOps(), asu, hmk);
-              miller::Index asym_hmk_h = asym_hmk.H();
+            miller::index<> k = miller_indices[ik];
+            miller::sym_equiv_indices sym_eq_k(sg_type.group(), k);
+            int mult = sym_eq_k.multiplicity(false);
+            for(std::size_t ik_eq=0;ik_eq<mult;ik_eq++) {
+              miller::sym_equiv_index k_seq = sym_eq_k(ik_eq);
+              miller::index<> k_eq = k_seq.h();
+              miller::index<> hmk = h - k_eq;
+              miller::asym_index asym_hmk(sg_type.group(), asu, hmk);
+              miller::index<> asym_hmk_h = asym_hmk.h();
               if (miller_index_span.is_in_domain(asym_hmk_h)) {
                 typename lookup_dict_type::const_iterator
                 ld_pos = lookup_dict.find(miller_index_span.pack(asym_hmk_h));
                 if (ld_pos != lookup_dict.end()) {
                   std::size_t ihmk = ld_pos->second;
-                  cctbx_assert(miller_indices[ihmk] == asym_hmk_h);
+                  CCTBX_ASSERT(miller_indices[ihmk] == asym_hmk_h);
                   if (ihmk == ih || ihmk == ik) {
                     if (!other_than_sigma_2) continue;
                   }
@@ -157,7 +159,8 @@ namespace cctbx { namespace dmtbx {
         }
       }
 
-      std::size_t number_of_weighted_triplets() const
+      std::size_t
+      number_of_weighted_triplets() const
       {
         std::size_t result = 0;
         for(std::size_t i=0;i<list_of_tpr_maps_.size();i++) {
@@ -166,7 +169,8 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
-      std::size_t total_number_of_triplets() const
+      std::size_t
+      total_number_of_triplets() const
       {
         std::size_t result = 0;
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
@@ -179,16 +183,18 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
-      FloatType average_number_of_triplets_per_reflection() const
+      FloatType
+      average_number_of_triplets_per_reflection() const
       {
         return FloatType(total_number_of_triplets())
              / list_of_tpr_maps_.size();
       }
 
-      std::size_t n_relations(std::size_t ih) const
+      std::size_t
+      n_relations(std::size_t ih) const
       {
         std::size_t result = 0;
-        cctbx_assert(ih < list_of_tpr_maps_.size());
+        CCTBX_ASSERT(ih < list_of_tpr_maps_.size());
         list_of_tpr_maps_type::const_iterator
         li = list_of_tpr_maps_.begin() + ih;
         for(tpr_map_type::const_iterator
@@ -198,18 +204,19 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
-      void dump_triplets(af::shared<miller::Index> miller_indices)
+      void
+      dump_triplets(af::const_ref<miller::index<> > const& miller_indices)
       {
-        cctbx_assert(miller_indices.size() == list_of_tpr_maps_.size());
+        CCTBX_ASSERT(miller_indices.size() == list_of_tpr_maps_.size());
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
         for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
           for(tpr_map_type::const_iterator
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const& tpr = lij->first;
-            std::cout << miller_indices[i].ref()
-               << " " << miller_indices[tpr.ik_].ref()
+            std::cout << miller_indices[i].const_ref()
+               << " " << miller_indices[tpr.ik_].const_ref()
                << " " << tpr.friedel_flag_k_
-               << " " << miller_indices[tpr.ihmk_].ref()
+               << " " << miller_indices[tpr.ihmk_].const_ref()
                << " " << tpr.friedel_flag_hmk_
                << " shift: " << tpr.ht_sum_
                << " w: " << lij->second
@@ -219,12 +226,12 @@ namespace cctbx { namespace dmtbx {
       }
 
       af::shared<FloatType>
-      apply_tangent_formula(af::shared<FloatType> e_values,
-                            af::shared<FloatType> phases) const
+      apply_tangent_formula(af::const_ref<FloatType> const& e_values,
+                            af::const_ref<FloatType> const& phases) const
       {
         FloatType sum_cutoff(1.e-10); // XXX
-        cctbx_assert(e_values.size() == list_of_tpr_maps_.size());
-        cctbx_assert(e_values.size() == phases.size());
+        CCTBX_ASSERT(e_values.size() == list_of_tpr_maps_.size());
+        CCTBX_ASSERT(e_values.size() == phases.size());
         af::shared<FloatType> result;
         result.reserve(e_values.size());
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
@@ -235,17 +242,17 @@ namespace cctbx { namespace dmtbx {
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const&
             tpr = lij->first;
-            cctbx_assert(tpr.ik_ < e_values.size());
-            cctbx_assert(tpr.ihmk_ < e_values.size());
+            CCTBX_ASSERT(tpr.ik_ < e_values.size());
+            CCTBX_ASSERT(tpr.ihmk_ < e_values.size());
             FloatType e_k = e_values[tpr.ik_];
             FloatType e_hmk = e_values[tpr.ihmk_];
             FloatType e_k_e_hmk = lij->second * e_k * e_hmk;
-            FloatType phi_k_phi_hmk = tpr.phi_k_phi_hmk(phases.begin(), TBF_);
+            FloatType phi_k_phi_hmk = tpr.phi_k_phi_hmk(phases.begin(), t_den_);
             sum_sin += e_k_e_hmk * std::sin(phi_k_phi_hmk);
             sum_cos += e_k_e_hmk * std::cos(phi_k_phi_hmk);
           }
-          if (   fn::absolute(sum_sin) < sum_cutoff
-              && fn::absolute(sum_cos) < sum_cutoff) {
+          if (   scitbx::fn::absolute(sum_sin) < sum_cutoff
+              && scitbx::fn::absolute(sum_cos) < sum_cutoff) {
             result.push_back(phases[i]);
           }
           else {
@@ -255,20 +262,21 @@ namespace cctbx { namespace dmtbx {
         return result;
       }
 
-      void weights_and_epsilon(
-        sgtbx::SpaceGroupInfo const& sginfo,
-        af::shared<miller::Index> miller_indices) const
+      void
+      weights_and_epsilon(
+        sgtbx::space_group_type const& sg_type,
+        af::const_ref<miller::index<> > const& miller_indices) const
       {
-        cctbx_assert(miller_indices.size() == list_of_tpr_maps_.size());
-        af::shared<int> epsilons = sginfo.SgOps().epsilon(miller_indices);
+        CCTBX_ASSERT(miller_indices.size() == list_of_tpr_maps_.size());
+        af::shared<int> epsilons = sg_type.group().epsilon(miller_indices);
         list_of_tpr_maps_type::const_iterator li = list_of_tpr_maps_.begin();
         for(std::size_t i=0;i<list_of_tpr_maps_.size();i++,li++) {
           for(tpr_map_type::const_iterator
               lij=li->begin();lij!=li->end();lij++) {
             triplet_phase_relation const& tpr = lij->first;
-            miller::Index h = miller_indices[i];
-            miller::Index k = miller_indices[tpr.ik_];
-            miller::Index hmk = miller_indices[tpr.ihmk_];
+            miller::index<> h = miller_indices[i];
+            miller::index<> k = miller_indices[tpr.ik_];
+            miller::index<> hmk = miller_indices[tpr.ihmk_];
             std::cout << h.ref()
                << " " << k.ref()
                << " " << hmk.ref()
@@ -282,10 +290,10 @@ namespace cctbx { namespace dmtbx {
       }
 
     private:
-      int TBF_;
+      int t_den_;
       list_of_tpr_maps_type list_of_tpr_maps_;
   };
 
 }} // namespace cctbx::dmtbx
 
-#endif // CCTBX_TRIPLETS_H
+#endif // CCTBX_DMTBX_TRIPLET_H

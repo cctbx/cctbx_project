@@ -1,12 +1,11 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Mar 2002: modified copy of cctbx/maps/utils.h (rwgk)
-     Jan 2002: Created (R.W. Grosse-Kunstleve)
+     2002 Mar: modified copy of cctbx/maps/utils.h (rwgk)
+     2002 Jan: Created (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_MATH_ARRAY_UTILS_H

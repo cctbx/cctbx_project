@@ -1,0 +1,10 @@
+Import("env_cctbx_boost_python_ext")
+env = env_cctbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["cctbx"])
+pyd = env.SharedLibrary(target="translation_search_ext", source=[
+  "translation_search_ext.cpp",
+  "fast_nv1995.cpp",
+  "map_gridding.cpp",
+  "symmetry_flags.cpp",
+])
+env.Install("#libtbx/cctbx_boost", pyd)

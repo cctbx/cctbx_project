@@ -1,21 +1,20 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
                Based on C code contributed by Vincent Favre-Nicolin.
  */
 
 #ifndef CCTBX_ELTBX_HENKE_H
 #define CCTBX_ELTBX_HENKE_H
 
-#include <string>
-#include <cctbx/eltbx/efpfdp.h>
+#include <cctbx/eltbx/fp_fdp.h>
+#include <scitbx/constants.h>
 
-namespace cctbx { namespace eltbx {
+namespace cctbx { namespace eltbx { namespace henke {
 
   //! Access to Henke tables.
   /*! Henke tables are available for elements with Z=1-92.
@@ -30,35 +29,100 @@ namespace cctbx { namespace eltbx {
       <p>
       Reference: B. L. Henke, E. M. Gullikson, and J. C. Davis,
       Atomic Data and Nuclear Data Tables Vol. 54 No. 2 (July 1993).<br>
-      ftp://grace.lbl.gov/pub/sf/<br>
+      ftp://grace.lbl.gov/pub/sf/
+      <p>
       See also:
-      http://www.esrf.fr/computing/expg/subgroups/theory/DABAX/tmp_file/FileDesc.html
+        http://www-cxro.lbl.gov/optical_constants/asf.html <br>
+        http://www.esrf.fr/computing/scientific/dabax/
    */
-  class Henke {
+  class table
+  {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
-      Henke() : m_Label_Z_Efpfdp(0) {}
-      //! Search Henke table for the given scattering factor label.
-      /*! If Exact == true, the scattering factor label must exactly
-          match the tabulated label. However, the lookup is not
-          case-sensitive.<br>
-          See also: eltbx::StripLabel()
+      table() : label_z_e_fp_fdp_(0) {}
+
+      //! Searches Henke tables for the given scattering factor label.
+      /*! If exact == true, the scattering factor label must exactly
+          match the tabulated label. However, the search is not
+          case-sensitive.
+          <p>
+          See also: eltbx::basic::strip_label()
        */
-      Henke(const std::string& Label, bool Exact = false);
-      //! Return scattering factor label.
-      const char* Label() const { return m_Label_Z_Efpfdp->Label; }
-      //! Return atomic number.
-      int Z() const { return m_Label_Z_Efpfdp->Z; }
-      //! Compute f-prime (f') and f-double-prime (f") for given energy.
+      explicit
+      table(std::string const& label, bool exact=false);
+
+      //! Tests if the instance is constructed properly.
+      /*! Shorthand for: label() != 0
+          <p>
+          Not available in Python.
+       */
+      bool
+      is_valid() const { return label_z_e_fp_fdp_->label != 0; }
+
+      //! Returns the scattering factor label.
+      const char*
+      label() const { return label_z_e_fp_fdp_->label; }
+
+      //! Returns the atomic number.
+      int
+      atomic_number() const { return label_z_e_fp_fdp_->z; }
+
+      //! Computes f-prime (f') and f-double-prime (f") for given energy [eV].
       /*! f-prime and f-double-prime are determined by linear
-          interpolation.<br>
-          See also: cctbx::constants::factor_keV_Angstrom
+          interpolation.
+          <p>
+          See also:
+            at_kev(),
+            at_angstrom()
        */
-      fpfdp operator()(double Energy);
+      fp_fdp
+      at_ev(double energy) const;
+
+      //! Computes f-prime (f') and f-double-prime (f") for given energy [keV].
+      /*! See also:
+            at_ev()
+            at_angstrom()
+       */
+      fp_fdp
+      at_kev(double energy) const { return at_ev(energy * 1000); }
+
+      /*! \brief Computes f-prime (f') and f-double-prime (f") for
+          given wavelength [Angstrom].
+       */
+      /*! See also:
+            at_kev(),
+            at_ev(),
+            scitbx::constants::factor_ev_angstrom
+       */
+      fp_fdp
+      at_angstrom(double wavelength) const
+      {
+        return at_ev(scitbx::constants::factor_ev_angstrom / wavelength);
+      }
+
     private:
-      const eltbx::detail::Label_Z_Efpfdp* m_Label_Z_Efpfdp;
+      const anomalous::label_z_e_fp_fdp* label_z_e_fp_fdp_;
+      friend class table_iterator;
   };
 
-}} // cctbx::eltbx
+  /*! \brief Iterator over Henke tables.
+   */
+  class table_iterator
+  {
+    public:
+      //! Initialization of the iterator.
+      table_iterator();
+
+      //! Retrieves the next entry from the internal table.
+      /*! Use table::is_valid() to detect end-of-iteration.
+       */
+      table
+      next();
+
+    private:
+      table current_;
+  };
+
+}}} // cctbx::eltbx::henke
 
 #endif // CCTBX_ELTBX_HENKE_H

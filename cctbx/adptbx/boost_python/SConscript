@@ -1,0 +1,7 @@
+Import("env_cctbx_boost_python_ext")
+env = env_cctbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["cctbx"])
+pyd = env.SharedLibrary(target="adptbx_ext", source=[
+  "adptbx_ext.cpp",
+])
+env.Install("#libtbx/cctbx_boost", pyd)

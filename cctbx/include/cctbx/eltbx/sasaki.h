@@ -1,37 +1,38 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
                Based on C code contributed by Vincent Favre-Nicolin.
  */
 
 #ifndef CCTBX_ELTBX_SASAKI_H
 #define CCTBX_ELTBX_SASAKI_H
 
-#include <string>
-#include <cctbx/eltbx/efpfdp.h>
+#include <cctbx/eltbx/fp_fdp.h>
+#include <scitbx/constants.h>
 
-namespace cctbx { namespace eltbx {
+namespace cctbx { namespace eltbx { namespace sasaki {
 
-  namespace detail { namespace sasaki {
+  namespace detail {
 
     const long n_raw = 280; // All tables have exactly 280 data points.
     const double first_wide = 0.1; // All tables in fpwide.tbl start at 0.1.
     const double wide_incr = 0.01;
     const double edge_incr = 0.0001;
 
-    struct raw {
+    struct raw
+    {
       float fp;
       float fdp;
     };
 
-    struct info {
-      char* Label;
-      int Z;
+    struct info
+    {
+      char* label;
+      int z;
       raw* wide;
       double first_k;
       raw* k;
@@ -43,7 +44,7 @@ namespace cctbx { namespace eltbx {
       raw* l3;
     };
 
-  }} // namespace detail::sasaki
+  } // namespace detail
 
   //! Access to Sasaki tables.
   /*! Sasaki tables are available for elements with Z=4-83 and Z=92.
@@ -55,35 +56,99 @@ namespace cctbx { namespace eltbx {
       Reference: S.Sasaki (1989) Numerical Tables of Anomalous
       Scattering Factors Calculated by the Cromer and Liberman Method,
       KEK Report, 88-14, 1-136<br>
-      ftp://pfweis.kek.jp/pub/Sasaki-table/<br>
-      See also: http://www.esrf.fr/computing/expg/subgroups/theory/DABAX/tmp_file/FileDesc.html
+      ftp://pfweis.kek.jp/pub/Sasaki-table/
+      <p>
+      See also:
+        http://www.esrf.fr/computing/scientific/dabax/
    */
-  class Sasaki {
+  class table
+  {
     public:
       //! Default constructor. Calling certain methods may cause crashes!
-      Sasaki() : m_info(0) {}
-      //! Search Sasaki table for the given scattering factor label.
-      /*! If Exact == true, the scattering factor label must exactly
+      table() : info_(0) {}
+
+      //! Searches Sasaki tables for the given scattering factor label.
+      /*! If exact == true, the scattering factor label must exactly
           match the tabulated label. However, the lookup is not
-          case-sensitive.<br>
-          See also: eltbx::StripLabel()
+          case-sensitive.
+          <p>
+          See also: eltbx::basic::strip_label()
        */
       explicit
-      Sasaki(const std::string& Label, bool Exact = false);
-      //! Return scattering factor label.
-      const char* Label() const { return m_info->Label; }
-      //! Return atomic number.
-      int Z() const { return m_info->Z; }
-      //! Compute f-prime (f') and f-double-prime (f") for given energy [eV].
-      /*! f-prime and f-double-prime are determined by linear
-          interpolation.<br>
-          See also: cctbx::constants::factor_keV_Angstrom
+      table(std::string const& label, bool exact=false);
+
+      //! Tests if the instance is constructed properly.
+      /*! Shorthand for: label() != 0
+          <p>
+          Not available in Python.
        */
-      fpfdp operator()(double Energy);
+      bool
+      is_valid() const { return info_->label != 0; }
+
+      //! Returns the scattering factor label.
+      const char*
+      label() const { return info_->label; }
+
+      //! Returns the atomic number.
+      int
+      atomic_number() const { return info_->z; }
+
+      //! Computes f-prime (f') and f-double-prime (f") for given energy [eV].
+      /*! f-prime and f-double-prime are determined by linear
+          interpolation.
+          <p>
+          See also:
+            at_kev(),
+            at_angstrom()
+       */
+      fp_fdp
+      at_ev(double energy) const;
+
+      //! Computes f-prime (f') and f-double-prime (f") for given energy [keV].
+      /*! See also:
+            at_ev()
+            at_angstrom()
+       */
+      fp_fdp
+      at_kev(double energy) const { return at_ev(energy * 1000); }
+
+      /*! \brief Computes f-prime (f') and f-double-prime (f") for
+          given wavelength [Angstrom].
+       */
+      /*! See also:
+            at_kev(),
+            at_ev(),
+            scitbx::constants::factor_ev_angstrom
+       */
+      fp_fdp
+      at_angstrom(double wavelength) const
+      {
+        return at_ev(scitbx::constants::factor_ev_angstrom / wavelength);
+      }
+
     private:
-      const detail::sasaki::info* m_info;
+      const detail::info* info_;
+      friend class table_iterator;
   };
 
-}} // cctbx::eltbx
+  /*! \brief Iterator over Sasaki tables.
+   */
+  class table_iterator
+  {
+    public:
+      //! Initialization of the iterator.
+      table_iterator();
+
+      //! Retrieves the next entry from the internal table.
+      /*! Use table::is_valid() to detect end-of-iteration.
+       */
+      table
+      next();
+
+    private:
+      table current_;
+  };
+
+}}} // cctbx::eltbx::sasaki
 
 #endif // CCTBX_ELTBX_SASAKI_H

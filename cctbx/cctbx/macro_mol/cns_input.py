@@ -4,11 +4,10 @@
 __version__="$Revision$"[11:-2]
 
 import exceptions
-from cctbx_boost.arraytbx import flex
-from cctbx_boost import uctbx
-from cctbx_boost import sgtbx
-from cctbx_boost import miller
-from cctbx import xutils
+from cctbx import crystal
+from cctbx import miller
+from cctbx.array_family import flex
+from scitbx.python_utils import complex_math
 
 # <xray-reflection-statement> :==
 #   nreflection=<integer>
@@ -76,17 +75,12 @@ class CNS_input:
       "line %d, word \"%s\": " % (self._LineNo,
                                   self._LastWord) + message
 
-def _ampl_phase_to_complex(ampl, phase):
-  import math
-  phase = phase * math.pi / 180. # convert to radians
-  return complex(ampl * math.cos(phase), ampl * math.sin(phase))
-
 class cns_reciprocal_space_object:
 
   def __init__(self, name, type):
     self.name = name
     self.type = type
-    self.H = flex.miller_Index()
+    self.indices = flex.miller_index()
     if   (type == "real"):
       self.data = flex.double()
     elif (type == "complex"):
@@ -100,8 +94,8 @@ class cns_reciprocal_space_object:
     print "name=%s type=%s len(data)=%d" % (
       self.name, self.type, self.data.size())
 
-  def append(self, H, value):
-    self.H.append(H)
+  def append(self, h, value):
+    self.indices.append(h)
     self.data.append(value)
 
 class CNS_xray_reflection_Reader(CNS_input):
@@ -195,7 +189,7 @@ class CNS_xray_reflection_Reader(CNS_input):
         if (xray_objects[name].type != "real"):
           self.raiseError(
             "Hendrickson-Lattman coefficients must be of type real")
-        if (xray_objects[name].H.size()):
+        if (xray_objects[name].indices.size()):
           self.raiseError(
             "GROUp statement must appear before reflection data")
         this_group.append(name)
@@ -226,14 +220,14 @@ class CNS_xray_reflection_Reader(CNS_input):
         reuse_word = 0
         if (word == "INDE"):
           self.level = self.level + 1
-          H = [None] * 3
+          h = [None] * 3
           for i in xrange(3):
             word = gNW()
             try:
-              H[i] = int(word)
+              h[i] = int(word)
             except ValueError:
               self.raiseError("integer values expected for hkl")
-          current_hkl = tuple(H)
+          current_hkl = tuple(h)
           self.level = self.level - 1
         elif (word == "NREF"):
           to_obj.nreflections = self._read_nreflections()
@@ -262,8 +256,10 @@ class CNS_xray_reflection_Reader(CNS_input):
                 self.raiseError("integer value expected for array " + name)
             else:
               try:
-                if (i == 0): value = float(word)
-                else:        value = _ampl_phase_to_complex(value,float(word))
+                if (i == 0):
+                  value = float(word)
+                else:
+                  value = complex_math.polar((value, float(word)), deg=True)
               except ValueError:
                 if (i == 0):
                   self.raiseError("floating-point value expected for array "
@@ -275,13 +271,12 @@ class CNS_xray_reflection_Reader(CNS_input):
     except EOFError:
       if (self.level != 0): raise CNS_input_Error, "premature end-of-file"
 
-def as_reciprocal_space_array(crystal_symmetry, friedel_flag,
-                              miller_indices, data, info):
-  data_set = xutils.reciprocal_space_array(
-    xutils.miller_set(crystal_symmetry, miller_indices), data)
-  data_set.set_friedel_flag(friedel_flag)
-  data_set.info = info
-  return data_set
+def as_miller_array(crystal_symmetry, anomalous_flag,
+                    miller_indices, data, info):
+  return miller.array(
+    miller.set(crystal_symmetry, miller_indices, anomalous_flag),
+    data,
+    info=info)
 
 class cns_reflection_file:
 
@@ -301,11 +296,11 @@ class cns_reflection_file:
   def optimize(self):
     rsos = self.reciprocal_space_objects.values()
     for i in xrange(len(rsos)-1):
-      h_i = rsos[i].H
+      h_i = rsos[i].indices
       for j in xrange(i+1, len(rsos)):
-        h_j = rsos[j].H
-        if (cmp(h_i, h_j) == 0):
-          rsos[j].H = h_i
+        h_j = rsos[j].indices
+        if (flex.order(h_i, h_j) == 0):
+          rsos[j].indices = h_i
 
   def join_hl_group(self, group_index=None):
     if (group_index == None):
@@ -315,42 +310,42 @@ class cns_reflection_file:
     assert len(selected_group) == 4
     miller_indices = 0
     rsos = []
-    joined_sets = []
+    matches = []
     for name in selected_group:
       rso = self.reciprocal_space_objects[name]
       assert rso.type == "real"
       rsos.append(rso)
-      if (type(miller_indices) == type(0)): miller_indices = rso.H
-      js = miller.join_sets(miller_indices, rso.H)
-      assert not js.have_singles()
-      joined_sets.append(js)
+      if (type(miller_indices) == type(0)): miller_indices = rso.indices
+      match = miller.match_indices(miller_indices, rso.indices)
+      assert not match.have_singles()
+      matches.append(match)
     hl = flex.hendrickson_lattman()
-    for ih in xrange(miller_indices.size()):
+    for ih in miller_indices.indices():
       coeff = []
       for ic in xrange(4):
-        ih0, ih1 = joined_sets[ic].pairs()[ih]
+        ih0, ih1 = matches[ic].pairs()[ih]
         assert ih0 == ih
         coeff.append(rsos[ic].data[ih1])
       hl.append(coeff)
     return miller_indices, hl
 
-  def as_reciprocal_space_arrays(self, crystal_symmetry, prefix):
-    data_sets = []
+  def as_miller_arrays(self, crystal_symmetry, prefix):
+    miller_arrays = []
     done = {}
     for group_index in xrange(len(self.groups)):
       miller_indices, hl = self.join_hl_group(group_index)
-      data_sets.append(as_reciprocal_space_array(
-        crystal_symmetry, not self.anomalous, miller_indices, hl,
+      miller_arrays.append(as_miller_array(
+        crystal_symmetry, self.anomalous, miller_indices, hl,
         prefix + "hl_group_%d" % (group_index+1,)))
       for name in self.groups[group_index]:
         done[name] = 1
     for rso in self.reciprocal_space_objects.values():
       if rso.name in done: continue
-      data_sets.append(as_reciprocal_space_array(
-        crystal_symmetry, not self.anomalous, rso.H, rso.data,
+      miller_arrays.append(as_miller_array(
+        crystal_symmetry, self.anomalous, rso.indices, rso.data,
         prefix + rso.name.lower()))
       done[rso.name] = 1
-    return data_sets
+    return miller_arrays
 
 def run():
   import sys, os
@@ -368,12 +363,11 @@ def run():
     f.close()
     reflection_file.show_summary()
     print
-    crystal_symmetry = xutils.crystal_symmetry(
-      uctbx.UnitCell(), sgtbx.SpaceGroupInfo())
-    data_sets = reflection_file.as_reciprocal_space_arrays(
+    crystal_symmetry = crystal.symmetry((), "P 1")
+    miller_arrays = reflection_file.as_miller_arrays(
       crystal_symmetry, prefix="")
-    for data_set in data_sets:
-      data_set.show_summary()
+    for miller_array in miller_arrays:
+      miller_array.show_summary()
       print
     if (to_pickle):
       pickle_file_name = file_name + ".pickle"

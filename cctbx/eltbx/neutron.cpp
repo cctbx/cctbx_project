@@ -1,19 +1,20 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
                Based on C code contributed by Vincent Favre-Nicolin.
  */
 
-#include <cctbx/eltbx/basic.h>
 #include <cctbx/eltbx/neutron.h>
+#include <cctbx/eltbx/basic.h>
 
-namespace cctbx { namespace eltbx {
-  namespace tables {
+namespace cctbx { namespace eltbx { namespace neutron {
+
+namespace detail {
+namespace {
 
     /*
       Neutron bound scattering lengths & cross-sections
@@ -24,7 +25,7 @@ namespace cctbx { namespace eltbx {
       neutron scattering lengths and cross sections of the elements and
       their isotopes in Neutron News, Vol. 3, No. 3, 1992, pp. 29-37.
      */
-    const detail::RawNeutronNews1992Record RawNeutronNews1992Records[] =
+    const raw_record_neutron_news_1992 table[] =
     {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
       {"H", -3.7390, 0, 0.3326},
@@ -117,43 +118,46 @@ namespace cctbx { namespace eltbx {
 // END_COMPILED_IN_REFERENCE_DATA
     };
 
-  } // namespace tables
-}} // namespace cctbx::eltbx
-
-namespace {
-
-  const cctbx::eltbx::detail::RawNeutronNews1992Record*
-  FindEntry(const std::string& WorkLabel, bool Exact)
+  const raw_record_neutron_news_1992*
+  find_record(std::string const& work_label, bool exact)
   {
     int m = 0;
-    const cctbx::eltbx::detail::RawNeutronNews1992Record* mEntry = 0;
-    for (const cctbx::eltbx::detail::RawNeutronNews1992Record*
-         Entry = cctbx::eltbx::tables::RawNeutronNews1992Records;
-         Entry->Symbol;
-         Entry++)
-    {
-      int i = cctbx::eltbx::MatchLabels(WorkLabel, Entry->Symbol);
-      if (i < 0) return Entry;
+    const raw_record_neutron_news_1992* matching_record = 0;
+    for (const raw_record_neutron_news_1992* r=table; r->label; r++) {
+      int i = basic::match_labels(work_label, r->label);
+      if (i < 0) return r;
       if (i > m) {
         m = i;
-        mEntry = Entry;
+        matching_record = r;
       }
     }
-    if (Exact || !mEntry) {
-      throw cctbx::eltbx::error("Unknown element symbol.");
+    if (exact || !matching_record) {
+      throw error("Unknown element label.");
     }
-    return mEntry;
+    return matching_record;
   }
 
 } // namespace <anonymous>
+} // namespace detail
 
-namespace cctbx { namespace eltbx {
-
-  NeutronNews1992Record::NeutronNews1992Record(const std::string& Label,
-                                               bool Exact)
+  neutron_news_1992_table::neutron_news_1992_table(std::string const& label,
+                                                   bool exact)
   {
-    std::string WorkLabel = StripLabel(Label, Exact);
-    m_RawEntry = FindEntry(WorkLabel, Exact);
+    std::string work_label = basic::strip_label(label, exact);
+    record_ = detail::find_record(work_label, exact);
   }
 
-}} // namespace cctbx::eltbx
+  neutron_news_1992_table_iterator::neutron_news_1992_table_iterator()
+  :
+    current_("H", true)
+  {}
+
+  neutron_news_1992_table
+  neutron_news_1992_table_iterator::next()
+  {
+    neutron_news_1992_table result = current_;
+    if (current_.is_valid()) current_.record_++;
+    return result;
+  }
+
+}}} // namespace cctbx::eltbx::neutron

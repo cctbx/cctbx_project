@@ -11,10 +11,11 @@
 # Format: (3I4, 4F8.1)
 
 import exceptions
-from cctbx_boost.arraytbx import flex
-from cctbx_boost import uctbx
-from cctbx_boost import sgtbx
-from cctbx import xutils
+from cctbx import uctbx
+from cctbx import sgtbx
+from cctbx import crystal
+from cctbx import miller
+from cctbx.array_family import flex
 
 class ScalepackFormatError(exceptions.Exception): pass
 
@@ -36,15 +37,15 @@ class scalepack_reader:
       uc_params = [float(line[i * 10 : (i + 1) * 10]) for i in xrange(6)]
     except:
       raise ScalepackFormatError, line_error
-    self.unit_cell = uctbx.UnitCell(uc_params)
+    self.unit_cell = uctbx.unit_cell(uc_params)
     self.space_group_symbol = line[61:].strip()
     if (len(self.space_group_symbol) == 0):
       raise ScalepackFormatError, line_error
     try:
-      self.space_group_info = xutils.space_group_info(self.space_group_symbol)
+      self.space_group_info = sgtbx.space_group_info(self.space_group_symbol)
     except:
-      self.space_group_info = 0
-    self.miller_indices = flex.miller_Index()
+      self.space_group_info = None
+    self.miller_indices = flex.miller_index()
     self.fobs = flex.double()
     self.sigmas = flex.double()
     self.anomalous = 0
@@ -85,14 +86,13 @@ class scalepack_reader:
   def redefine_space_group(self, space_group_info):
     self.space_group_info = space_group_info
 
-  def as_reciprocal_space_array(self, info=0):
-    assert self.space_group_info != 0
-    xsym = xutils.crystal_symmetry(
-      self.unit_cell, self.space_group_info, auto_check=1)
-    miller_set = xutils.miller_set(xsym, self.miller_indices)
-    miller_set.set_friedel_flag(not self.anomalous)
-    return xutils.reciprocal_space_array(
-      miller_set, self.fobs, self.sigmas, info=info)
+  def as_miller_array(self, info=0):
+    assert self.space_group_info != None
+    crystal_symmetry = crystal.symmetry(
+      self.unit_cell, space_group_info=self.space_group_info)
+    miller_set = miller.set(
+      crystal_symmetry, self.miller_indices, self.anomalous)
+    return miller.array(miller_set, self.fobs, self.sigmas, info=info)
 
 def run():
   import sys, os
@@ -105,12 +105,12 @@ def run():
     f = open(file_name, "r")
     s = scalepack_reader(f)
     f.close()
-    miller_data = s.as_reciprocal_space_array(info="From file: "+file_name)
-    miller_data.show_summary()
+    miller_array = s.as_miller_array(info="From file: "+file_name)
+    miller_array.show_summary()
     if (to_pickle):
       pickle_file_name = file_name + ".pickle"
       f = open(pickle_file_name, "wb")
-      pickle.dump(miller_data, f, binary_pickle)
+      pickle.dump(miller_array, f, binary_pickle)
       f.close()
       f = open(pickle_file_name, "rb")
       cPickle.load(f)

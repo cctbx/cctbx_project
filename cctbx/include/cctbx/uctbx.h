@@ -1,12 +1,12 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2002 Sep: Refactored (R.W. Grosse-Kunstleve)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 /*! \file
@@ -16,115 +16,67 @@
 #ifndef CCTBX_UCTBX_H
 #define CCTBX_UCTBX_H
 
-#if defined(__GNUC__) && __GNUC__ < 3
-# include <iostream>
-#else
-# include <ostream>
-#endif
-#include <cctbx/fixes/cmath>
-#include <cctbx/error.h>
-#include <cctbx/basic/matrixlite.h>
+#include <cmath>
+#include <scitbx/constants.h>
+#include <scitbx/sym_mat3.h>
+#include <scitbx/array_family/tiny_types.h>
+#include <scitbx/array_family/small.h>
+#include <scitbx/array_family/shared.h>
+#include <cctbx/math/utils.h>
 #include <cctbx/coordinates.h>
 #include <cctbx/miller.h>
-#include <cctbx/sgtbx/matrix.h>
-#include <cctbx/constants.h>
-#include <cctbx/array_family/shared.h>
 
 namespace cctbx {
+
+  // forward declaration
+  namespace sgtbx { class rot_mx; }
+
+  //! Shorthand for default vec3 type in unit cell toolbox.
+  typedef scitbx::vec3<double> uc_vec3;
+  //! Shorthand for default mat3 type in unit cell toolbox.
+  typedef scitbx::mat3<double> uc_mat3;
+  //! Shorthand for default sym_mat3 type in unit cell toolbox.
+  typedef scitbx::sym_mat3<double> uc_sym_mat3;
+
   //! Unit Cell Toolbox namespace.
   namespace uctbx {
 
-  static const error
-    corrupt_unit_cell_parameters("Corrupt unit cell parameters.");
-  static const error
-    corrupt_metrical_matrix("Corrupt metrical matrix.");
-
-  //! @name Conversions between radians and degrees.
-  //@{
-  inline double deg_as_rad(double deg) { return deg * constants::pi_180;}
-  inline double rad_as_deg(double rad) { return rad / constants::pi_180;}
-  //@}
-
-  //! inline function for fast matrix * vector computation.
-  template <class FloatType>
-  inline af::tiny<FloatType, 3>
-  operator*(const af::double9& m, const af::tiny<FloatType, 3>& v)
+  //! Conversion of d-spacing measures.
+  inline double d_star_sq_as_stol_sq(double d_star_sq)
   {
-    af::tiny<FloatType, 3> mv;
-    mv[0] = m[0] * v[0] + m[1] * v[1] + m[2] * v[2];
-    mv[1] = m[3] * v[0] + m[4] * v[1] + m[5] * v[2];
-    mv[2] = m[6] * v[0] + m[7] * v[1] + m[8] * v[2];
-    return mv;
+    return d_star_sq * .25;
   }
 
-  //! Helper function for transforming metrical matrices.
-  inline af::double9 getRtGR(const af::double9& G, const af::double9& R)
+  //! Conversion of d-spacing measures.
+  inline double d_star_sq_as_two_stol(double d_star_sq)
   {
-    af::double9 Rt, GR, RtGR;
-    MatrixLite::transpose<double>(R.begin(), 3, 3, Rt.begin());
-    MatrixLite::multiply<double>(G.begin(), R.begin(), 3,3,3, GR.begin());
-    MatrixLite::multiply<double>(Rt.begin(), GR.begin(), 3,3,3, RtGR.begin());
-    return RtGR;
+    return std::sqrt(d_star_sq);
   }
 
-  //! @name inline functions for fast conversions of d-spacing measures.
-  //@{
-  inline double Q_as_stol2(double Q) { return Q * .25; }
-  inline double Q_as_two_stol(double Q) { return std::sqrt(Q); }
-  inline double Q_as_stol(double Q) { return std::sqrt(Q) * .5; }
-  inline double Q_as_two_theta(double Q, double wavelength, bool deg = false)
+  //! Conversion of d-spacing measures.
+  inline double d_star_sq_as_stol(double d_star_sq)
   {
-    double result = 2. * std::asin(Q_as_stol(Q) * wavelength);
-    if (deg) return rad_as_deg(result);
+    return std::sqrt(d_star_sq) * .5;
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double d_star_sq_as_d(double d_star_sq)
+  {
+    if (d_star_sq == 0.) return -1.;
+    return 1. / std::sqrt(d_star_sq);
+  }
+
+  //! Conversion of d-spacing measures.
+  inline double d_star_sq_as_two_theta(double d_star_sq, double wavelength,
+                                       bool deg = false)
+  {
+    double result = 2. * std::asin(d_star_sq_as_stol(d_star_sq) * wavelength);
+    if (deg) return scitbx::rad_as_deg(result);
     return result;
   }
-  inline double Q_as_d(double Q) {
-    if (Q == 0.) return -1.;
-    /* else */   return 1. / std::sqrt(Q);
-  }
-  //@}
 
-  //! Helper class for passing unit cell parameters.
-  class uc_params : public af::double6 {
-    public:
-      //! @name Constructors.
-      //@{
-      //! Constructor using parameters (a, b, c, alpha, beta, gamma).
-      explicit
-      uc_params(double a = 1.,
-                double b = 1.,
-                double c = 1.,
-                double alpha = 90.,
-                double beta  = 90.,
-                double gamma = 90.) {
-        elems[0] = a; elems[1] = b; elems[2] = c;
-        elems[3] = alpha; elems[4] = beta; elems[5] = gamma;
-      }
-      //! Constructor using arrays for lengths and angles.
-      uc_params(const af::double3& Len, const af::double3& Ang) {
-        int i;
-        for(i=0;i<3;i++) elems[i]     = Len[i];
-        for(i=0;i<3;i++) elems[i + 3] = Ang[i];
-      }
-      //@}
-      //! @name Access to arrays of lengths and angles.
-      //@{
-      //!
-      double* Len() { return &elems[0]; }
-      double* Ang() { return &elems[3]; }
-      const double* Len() const { return &elems[0]; }
-      const double* Ang() const { return &elems[3]; }
-      //@}
-      //! @name Access to individual lengths and angles.
-      //@{
-      double Len(int i) const { return elems[i]; }
-      double Ang(int i) const { return elems[3 + i]; }
-      //@}
-  };
-
-  //! Main class for the handling of unit cell information.
-  /*! All angels accessed through the public interface are in degrees.
-      Internally, the angles are stored in radians.
+  //! Class for the handling of unit cell information.
+  /*! All angles are in degrees.
       <p>
       The PDB convention for orthogonalization and fractionalization
       of coordinates is used:
@@ -136,16 +88,35 @@ namespace cctbx {
       k = i x j
       </pre>
     */
-  class UnitCell {
-
+  class unit_cell
+  {
     public:
-      //! @name Constructors.
-      //@{
-      //! Default (1, 1, 1, 90, 90, 90).
-      UnitCell();
+      //! Default constructor. Some data members are not initialized!
+      /*! volume() of default constructed instances == 0.
+          This may be used to test if a unit_cell instance is valid.
+          <p>
+          Not available in Python.
+       */
+      unit_cell() : volume_(0) {}
+
+      //! Constructor using parameters (a, b, c, alpha, beta, gamma).
+      /*! Missing lengths are set to 1, missing angles to 90.
+          <p>
+          If is_metrical_matrix == true, the input is assumed to
+          consist of the coefficients of the matrical matrix, of
+          which there must be exactly six in the order:
+          a*a, b*b, c*c, a*b*cos(gamma), a*c*cos(beta), b*c*cos(alpha)
+          <p>
+          See also: paramters(), metrical_matrix()
+       */
+      explicit
+      unit_cell(af::small<double, 6> const& parameters,
+                bool is_metrical_matrix = false);
+
       //! Constructor using parameters (a, b, c, alpha, beta, gamma).
       explicit
-      UnitCell(const uc_params& ucp);
+      unit_cell(af::double6 const& parameters);
+
       //! Constructor using parameters derived from a metrical matrix.
       /*! The metrical matrix is defined as:
          <pre>
@@ -155,257 +126,427 @@ namespace cctbx {
          </pre>
        */
       explicit
-      UnitCell(const af::double9& MetricalMatrix);
-      //@}
+      unit_cell(uc_sym_mat3 const& metrical_matrix);
 
-      //! @name Query parameters and volume.
-      //@{
-      uc_params getParameters(bool reciprocal = false) const;
-      const af::double3& getLen(bool reciprocal = false) const {
-        if (reciprocal == false) return Len;
-        /* else */               return R_Len;
-      }
-      const af::double3& getAng(bool reciprocal = false) const {
-        if (reciprocal == false) return Ang;
-        /* else */               return R_Ang;
-      }
-      const af::double3& get_sinAng(bool reciprocal = false) const {
-        if (reciprocal == false) return sinAng;
-        /* else */               return R_sinAng;
-      }
-      const af::double3& get_cosAng(bool reciprocal = false) const {
-        if (reciprocal == false) return cosAng;
-        /* else */               return R_cosAng;
-      }
-      const af::double9& getMetricalMatrix(bool reciprocal = false) const {
-        if (reciprocal == false) return G;
-        /* else */               return R_G;
-      }
-      double getVolume() const { return Vol; }
-      //@}
+      //! Access to parameters.
+      af::double6 const&
+      parameters() const { return params_; }
 
-      //! @name Length^2 of the longest lattice vector in the unit cell.
-      //@{
-      double getLongestVector2() const { return LongestVector2; }
-      //@}
+      //! Access to reciprocal cell parameters.
+      af::double6 const&
+      reciprocal_parameters() const { return r_params_; }
 
-      //! @name Test equality.
-      //@{
-      //! Test the equality of two Unit Cell instances.
-      /*! Test if
-          2 * abs(  (self.paramter - other.paramter)
-                  / (self.paramter + other.paramter))
-          is less then the given tolerance for all six unit cell
-          parameters.
-       */
-      bool isEqual(const UnitCell& other, double tolerance = 1.e-6) const;
-      //@}
+      //! Access to metrical matrix.
+      uc_sym_mat3 const&
+      metrical_matrix() const { return metr_mx_; }
 
-      //! @name Orthogonalization and fractionalization of coordinates.
-      //@{
-      //! This matrix converts cartesian to fractional coordinates.<br>
-      //! x(fractional) = matrix * x(cartesian).
-      const af::double9& getFractionalizationMatrix() const { return Frac; }
-      //! This matrix converts fractional to cartesian coordinates.<br>
-      //! x(cartesian) = matrix * x(fractional).
-      const af::double9& getOrthogonalizationMatrix() const { return Orth; }
-      //! Converts cartesian coordinates Xc to fractional coordinates.
+      //! Access to reciprocal cell metrical matrix.
+      uc_sym_mat3 const&
+      reciprocal_metrical_matrix() const { return r_metr_mx_; }
+
+      //! Volume of the unit cell.
+      double
+      volume() const { return volume_; }
+
+      //! Corresponding reciprocal cell.
+      unit_cell
+      reciprocal() const;
+
+      //! Length^2 of the longest lattice vector in the unit cell.
+      double
+      longest_vector_sq() const;
+
+      //! Comparison of unit cell parameters.
+      bool
+      is_similar_to(unit_cell const& other,
+                    double relative_length_tolerance=0.01,
+                    double absolute_angle_tolerance=1.) const;
+
+      //! Matrix for the conversion of cartesian to fractional coordinates.
+      /*! x(fractional) = matrix * x(cartesian). */
+      uc_mat3 const& fractionalization_matrix() const { return frac_; }
+
+      //! Matrix for the conversion of fractional to cartesian coordinates.
+      /*! x(cartesian) = matrix * x(fractional). */
+      uc_mat3 const& orthogonalization_matrix() const { return orth_; }
+
+      //! Conversion of cartesian coordinates to fractional coordinates.
       template <class FloatType>
       fractional<FloatType>
-      fractionalize(const cartesian<FloatType>& Xc) const {
-        return Frac * Xc;
+      fractionalize(cartesian<FloatType> const& xc) const
+      {
+        return frac_ * xc;
       }
-      //! Converts fractional coordinates Xf to cartesian coordinates.
+
+      //! Conversion of fractional coordinates to cartesian coordinates.
       template <class FloatType>
       cartesian<FloatType>
-      orthogonalize(const fractional<FloatType>& Xf) const {
-        return Orth * Xf;
+      orthogonalize(fractional<FloatType> const& xf) const
+      {
+        return orth_ * xf;
       }
-      //@}
 
-      //! @name Measurements, given fractional coordinates.
-      //@{
-      //! Length squared of vector.
+      //! Length^2 of a vector of fractional coordinates.
+      /*! Not available in Python.
+       */
       template <class FloatType>
-      FloatType Length2(const fractional<FloatType>& Xf) const {
-        return orthogonalize(Xf).Length2();
+      FloatType
+      length_sq(fractional<FloatType> const& xf) const
+      {
+        return orthogonalize(xf).length_sq();
       }
-      //! Length of vector.
-      template <class FloatType>
-      FloatType Length(const fractional<FloatType>& Xf) const {
-        return std::sqrt(Length2(Xf));
-      }
-      //! Distance squared.
-      template <class FloatType>
-      FloatType Distance2(const fractional<FloatType>& Xf,
-                          const fractional<FloatType>& Yf) const {
-        return Length2(fractional<FloatType>(Xf - Yf));
-      }
-      //! Distance.
-      template <class FloatType>
-      FloatType Distance(const fractional<FloatType>& Xf,
-                         const fractional<FloatType>& Yf) const {
-        return Length(fractional<FloatType>(Xf - Yf));
-      }
-      //! Shortest length squared under applicaton of periodicity.
-      template <class FloatType>
-      FloatType modShortLength2(const af::tiny<FloatType, 3>& Xf) const {
-        return Length2(fractional<FloatType>(Xf).modShort());
-      }
-      //! Shortest length under applicaton of periodicity.
-      template <class FloatType>
-      FloatType modShortLength(const af::tiny<FloatType, 3>& Xf) const {
-        return std::sqrt(modShortLength2(Xf));
-      }
-      //! Shortest distance squared under applicaton of periodicity.
-      template <class FloatType>
-      FloatType modShortDistance2(const fractional<FloatType>& Xf,
-                                  const fractional<FloatType>& Yf) const {
-        return modShortLength2(fractional<FloatType>(Xf - Yf));
-      }
-      //! Shortest distance under applicaton of periodicity.
-      template <class FloatType>
-      FloatType modShortDistance(const fractional<FloatType>& Xf,
-                                 const fractional<FloatType>& Yf) const {
-        return std::sqrt(modShortDistance2(Xf, Yf));
-      }
-      //@}
 
-      //! @name Transformation (change-of-basis) of unit cell parameters.
-      //@{
-      //! InvCBMxR is the inverse of the 3x3 change-of-basis matrix
-      //! that transforms coordinates in the old basis system to
-      //! coodinates in the new basis system.
-      UnitCell ChangeBasis(const af::double9& InvCBMxR, double RBF = 1.) const;
-      UnitCell ChangeBasis(const sgtbx::RotMx& InvCBMxR) const;
-      //@}
+      //! Length of a vector of fractional coordinates.
+      template <class FloatType>
+      FloatType
+      length(fractional<FloatType> const& xf) const
+      {
+        return std::sqrt(length_sq(xf));
+      }
 
-      //! @name Methods using Miller indices.
-      //@{
-      //! Compute the maximum Miller indices for a given minimum d-spacing.
-      miller::Index MaxMillerIndices(double dmin) const;
-      //! d-spacing measure Q = 1/d^2 = (2*sin(theta)/lambda)^2.
+      //! Distance^2 between two vectors of fractional coordinates.
+      /*! Not available in Python.
+       */
+      template <class FloatType>
+      FloatType
+      distance_sq(fractional<FloatType> const& xf,
+                  fractional<FloatType> const& yf) const
+      {
+        return length_sq(fractional<FloatType>(xf - yf));
+      }
+
+      //! Distance between two vectors of fractional coordinates.
+      template <class FloatType>
+      FloatType
+      distance(fractional<FloatType> const& xf,
+               fractional<FloatType> const& yf) const
+      {
+        return length(fractional<FloatType>(xf - yf));
+      }
+
+      /*! \brief Shortest length^2 of a vector of fractional coordinates
+          under application of periodicity. */
+      /*! Not available in Python.
+       */
+      template <class FloatType>
+      FloatType
+      mod_short_length_sq(fractional<FloatType> const& xf) const
+      {
+        return length_sq(xf.mod_short());
+      }
+
+      /*! \brief Shortest length of a vector of fractional coordinates
+          under application of periodicity. */
+      template <class FloatType>
+      FloatType
+      mod_short_length(fractional<FloatType> const& xf) const
+      {
+        return std::sqrt(mod_short_length_sq(xf));
+      }
+
+      /*! \brief Shortest distance^2 between two vectors of fractional
+          coordinates under application of periodicity. */
+      /*! Not available in Python.
+       */
+      template <class FloatType>
+      FloatType
+      mod_short_distance_sq(fractional<FloatType> const& xf,
+                            fractional<FloatType> const& yf) const
+      {
+        return mod_short_length_sq(fractional<FloatType>(xf - yf));
+      }
+
+      /*! \brief Shortest distance between two vectors of fractional
+          coordinates under application of periodicity. */
+      template <class FloatType>
+      FloatType
+      mod_short_distance(fractional<FloatType> const& xf,
+                         fractional<FloatType> const& yf) const
+      {
+        return std::sqrt(mod_short_distance_sq(xf, yf));
+      }
+
+      /*! \brief Shortest distance^2 between all sites in xf and yf
+          under application of periodicity.
+       */
+      /*! Not available in Python.
+       */
+      template <class FloatType>
+      FloatType
+      min_mod_short_distance_sq(
+        af::const_ref<scitbx::vec3<FloatType> > const& xf,
+        fractional<FloatType> const& yf) const
+      {
+        FloatType
+          result = mod_short_distance_sq(fractional<FloatType>(xf[0]), yf);
+        for(std::size_t i=1;i<xf.size();i++) {
+          math::update_min(
+            result, mod_short_distance_sq(fractional<FloatType>(xf[i]), yf));
+        }
+        return result;
+      }
+
+      /*! \brief Shortest distance between all sites in xf and yf
+          under application of periodicity.
+       */
+      template <class FloatType>
+      FloatType
+      min_mod_short_distance(
+        af::const_ref<scitbx::vec3<FloatType> > const& xf,
+        fractional<FloatType> const& yf) const
+      {
+        return std::sqrt(min_mod_short_distance_sq(xf, yf));
+      }
+
+      //! Transformation (change-of-basis) of unit cell parameters.
+      /*! r is the inverse of the 3x3 change-of-basis matrix
+          that transforms coordinates in the old basis system to
+          coodinates in the new basis system.
+       */
+      unit_cell
+      change_basis(uc_mat3 const& r, double r_den=1.) const;
+
+      //! Transformation (change-of-basis) of unit cell parameters.
+      /*! r is the inverse of the 3x3 change-of-basis matrix
+          that transforms coordinates in the old basis system to
+          coodinates in the new basis system.
+          <p>
+          See also: sgtbx::change_of_basis::apply()
+          <p>
+          Not available in Python.
+       */
+      unit_cell
+      change_basis(sgtbx::rot_mx const& c_inv_r) const;
+
+      /*! \brief Computation of the maximum Miller indices for a given
+          minimum d-spacing.
+       */
+      /*! d_min is the minimum d-spacing. tolerance compensates for
+          rounding errors.
+       */
+      miller::index<>
+      max_miller_indices(double d_min, double tolerance=1.e-4) const;
+
+      //! d-spacing measure d_star_sq = 1/d^2 = (2*sin(theta)/lambda)^2.
+      template <typename NumType>
       double
-      Q(const miller::Index& MIx) const
+      d_star_sq(miller::index<NumType> const& h) const
       {
         return
-            (MIx[0] * MIx[0]) * R_G[0]
-          + (MIx[1] * MIx[1]) * R_G[4]
-          + (MIx[2] * MIx[2]) * R_G[8]
-          + (2 * MIx[0] * MIx[1]) * R_G[1]
-          + (2 * MIx[0] * MIx[2]) * R_G[2]
-          + (2 * MIx[1] * MIx[2]) * R_G[5];
+            (h[0] * h[0]) * r_metr_mx_[0]
+          + (h[1] * h[1]) * r_metr_mx_[1]
+          + (h[2] * h[2]) * r_metr_mx_[2]
+          + (2 * h[0] * h[1]) * r_metr_mx_[3]
+          + (2 * h[0] * h[2]) * r_metr_mx_[4]
+          + (2 * h[1] * h[2]) * r_metr_mx_[5];
       }
-      //! d-spacing measure Q = 1/d^2 = (2*sin(theta)/lambda)^2.
-      af::shared<double>
-      Q(const af::shared<miller::Index>& MIx) const;
-      //! Maximum Q for given list of Miller indices.
-      double
-      max_Q(const af::shared<miller::Index>& MIx) const;
-      //! Minimum and maximum Q for given list of Miller indices.
-      af::double2
-      min_max_Q(const af::shared<miller::Index>& MIx) const;
 
-      //! d-spacing measure (sin(theta)/lambda)^2 = Q/4.
-      double
-      stol2(const miller::Index& MIx) const {
-        return Q_as_stol2(Q(MIx));
-      }
-      //! d-spacing measure (sin(theta)/lambda)^2 = Q/4.
+      //! d-spacing measure d_star_sq = 1/d^2 = (2*sin(theta)/lambda)^2.
+      template <typename NumType>
       af::shared<double>
-      stol2(const af::shared<miller::Index>& MIx) const;
-
-      //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(Q).
-      double
-      two_stol(const miller::Index& MIx) const {
-        return Q_as_two_stol(Q(MIx));
-      }
-      //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(Q).
-      af::shared<double>
-      two_stol(const af::shared<miller::Index>& MIx) const;
-
-      //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(Q)/2.
-      double
-      stol(const miller::Index& MIx) const {
-        return Q_as_stol(Q(MIx));
-      }
-      //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(Q)/2.
-      af::shared<double>
-      stol(const af::shared<miller::Index>& MIx) const;
-
-      //! d-spacing measure d = 1/(2*sin(theta)/lambda).
-      double
-      d(const miller::Index& MIx) const { return Q_as_d(Q(MIx));}
-      //! d-spacing measure d = 1/(2*sin(theta)/lambda).
-      af::shared<double>
-      d(const af::shared<miller::Index>& MIx) const;
-
-      //! Diffraction angle 2-theta in degrees, given wavelength lamdda.
-      double
-      two_theta(
-        const miller::Index& MIx, double wavelength, bool deg = false) const
+      d_star_sq(af::const_ref<miller::index<NumType> > const& h) const
       {
-        return Q_as_two_theta(Q(MIx), wavelength);
+        af::shared<double> result(h.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<result.size();i++) {
+          result[i] = d_star_sq(h[i]);
+        }
+        return result;
       }
-      //! Diffraction angle 2-theta in degrees, given wavelength lamdda.
+
+      //! Maximum d_star_sq for given list of Miller indices.
+      template <typename NumType>
+      double
+      max_d_star_sq(af::const_ref<miller::index<NumType> > const& h) const
+      {
+        double result = 0;
+        for(std::size_t i=0;i<h.size();i++) {
+          math::update_max(result, d_star_sq(h[i]));
+        }
+        return result;
+      }
+
+      //! Minimum and maximum d_star_sq for given list of Miller indices.
+      template <typename NumType>
+      af::double2
+      min_max_d_star_sq(af::const_ref<miller::index<NumType> > const& h) const
+      {
+        af::double2 result(0, 0);
+        if (h.size()) {
+          result.fill(d_star_sq(h[0]));
+          for(std::size_t i=1;i<h.size();i++) {
+            double q = d_star_sq(h[i]);
+            math::update_min(result[0], q);
+            math::update_max(result[1], q);
+          }
+        }
+        return result;
+      }
+
+      //! d-spacing measure (sin(theta)/lambda)^2 = d_star_sq/4.
+      template <typename NumType>
+      double
+      stol_sq(miller::index<NumType> const& h) const
+      {
+        return d_star_sq_as_stol_sq(d_star_sq(h));
+      }
+
+      //! d-spacing measure (sin(theta)/lambda)^2 = d_star_sq/4.
+      template <typename NumType>
+      af::shared<double>
+      stol_sq(af::const_ref<miller::index<NumType> > const& h) const
+      {
+        af::shared<double> result(h.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<result.size();i++) {
+          result[i] = stol_sq(h[i]);
+        }
+        return result;
+      }
+
+      //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(d_star_sq).
+      template <typename NumType>
+      double
+      two_stol(miller::index<NumType> const& h) const
+      {
+        return d_star_sq_as_two_stol(d_star_sq(h));
+      }
+
+      //! d-spacing measure 2*sin(theta)/lambda = 1/d = sqrt(d_star_sq).
+      template <typename NumType>
+      af::shared<double>
+      two_stol(af::const_ref<miller::index<NumType> > const& h) const
+      {
+        af::shared<double> result(h.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<result.size();i++) {
+          result[i] = two_stol(h[i]);
+        }
+        return result;
+      }
+
+      //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(d_star_sq)/2.
+      template <typename NumType>
+      double
+      stol(miller::index<NumType> const& h) const
+      {
+        return d_star_sq_as_stol(d_star_sq(h));
+      }
+
+      //! d-spacing measure sin(theta)/lambda = 1/(2*d) = sqrt(d_star_sq)/2.
+      template <typename NumType>
+      af::shared<double>
+      stol(af::const_ref<miller::index<NumType> > const& h) const
+      {
+        af::shared<double> result(h.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<result.size();i++) {
+          result[i] = stol(h[i]);
+        }
+        return result;
+      }
+
+      //! d-spacing measure d = 1/(2*sin(theta)/lambda).
+      template <typename NumType>
+      double
+      d(miller::index<NumType> const& h) const
+      {
+        return d_star_sq_as_d(d_star_sq(h));
+      }
+
+      //! d-spacing measure d = 1/(2*sin(theta)/lambda).
+      template <typename NumType>
+      af::shared<double>
+      d(af::const_ref<miller::index<NumType> > const& h) const
+      {
+        af::shared<double> result(h.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<result.size();i++) {
+          result[i] = d(h[i]);
+        }
+        return result;
+      }
+
+      //! Diffraction angle 2-theta, given wavelength.
+      template <typename NumType>
+      double
+      two_theta(
+        miller::index<NumType> const& h,
+        double wavelength,
+        bool deg = false) const
+      {
+        return d_star_sq_as_two_theta(d_star_sq(h), wavelength, deg);
+      }
+
+      //! Diffraction angle 2-theta, given wavelength.
+      template <typename NumType>
       af::shared<double>
       two_theta(
-        af::shared<miller::Index> MIx,
+        af::const_ref<miller::index<NumType> > const& h,
         double wavelength,
-        bool deg = false) const;
-      //@}
+        bool deg = false) const
+      {
+        af::shared<double> result(h.size(), af::init_functor_null<double>());
+        for(std::size_t i=0;i<result.size();i++) {
+          result[i] = two_theta(h[i], wavelength, deg);
+        }
+        return result;
+      }
 
-      //! @name Stream I/O.
-      //@{
-      //! Print the unit cell parameters to an output stream.
-      std::ostream& print(std::ostream& os) const;
-      //@}
+    protected:
+      void init_volume();
+      void init_reciprocal();
+      void init_metrical_matrices();
+      void init_orth_and_frac_matrices();
+      void initialize();
 
-    private:
-      void SetVolume();
-      void SetReciprocal();
-      void SetMetricalMatrices();
-      void SetOrthAndFracMatrix();
-      void SetLongestVector2();
-      void Initialize();
+      af::double6 params_;
+      af::double3 sin_ang_;
+      af::double3 cos_ang_;
+      double volume_;
+      uc_sym_mat3 metr_mx_;
+      af::double6 r_params_;
+      af::double3 r_sin_ang_;
+      af::double3 r_cos_ang_;
+      uc_sym_mat3 r_metr_mx_;
+      uc_mat3 frac_;
+      uc_mat3 orth_;
+      mutable double longest_vector_sq_;
 
-      af::double3 Len;
-      af::double3 Ang;
-      af::double3 sinAng;
-      af::double3 cosAng;
-      double      Vol;
-      af::double9 G;
-      af::double3 R_Len;
-      af::double3 R_Ang;
-      af::double3 R_sinAng;
-      af::double3 R_cosAng;
-      af::double9 R_G;
-      af::double9 Frac;
-      af::double9 Orth;
-      double      LongestVector2;
+      // used by reciprocal()
+      unit_cell(
+        af::double6 const& params,
+        af::double3 const& sin_ang,
+        af::double3 const& cos_ang,
+        double volume,
+        uc_sym_mat3 const& metr_mx,
+        af::double6 const& r_params,
+        af::double3 const& r_sin_ang,
+        af::double3 const& r_cos_ang,
+        uc_sym_mat3 const& r_metr_mx);
   };
 
-  //! ostream output operator for class UnitCell.
-  std::ostream& operator<<(std::ostream& os, const UnitCell& uc);
-
-  //! XXX
+  /*! \brief Helper class for optimizing d_star_sq computations in
+      loops over a grid of Miller indices.
+   */
   template <typename FloatType>
   class incremental_d_star_sq
   {
     public:
+      //! Default contructor. Some data members are not initialized!
       incremental_d_star_sq() {}
 
-      incremental_d_star_sq(const UnitCell& ucell)
+      //! Initialization from unit_cell object.
+      /*! This copies the elements of the metrical matrix.
+       */
+      incremental_d_star_sq(unit_cell const& ucell)
       {
-        initialize(ucell.getMetricalMatrix(true));
+        initialize(ucell.reciprocal_metrical_matrix());
       }
 
+      //! Stores h0 and performs computations that only involve h0.
       void update0(int h0)
       {
         h0_ = h0;
         im0_ = (h0_ * h0_) * r_g00_;
       }
 
+      //! Stores h1 and performs computations that only involve h0 and h1.
       void update1(int h1)
       {
         h1_ = h1;
@@ -413,6 +554,7 @@ namespace cctbx {
                     + (2 * h0_ * h1_) * r_g01_;
       }
 
+      //! Returns d_star_sq using (h0,h1,h2).
       FloatType get(int h2)
       {
         return im1_ + (h2 * h2) * r_g22_
@@ -425,13 +567,13 @@ namespace cctbx {
       int h0_, h1_;
       FloatType im0_, im1_;
 
-      void initialize(const af::tiny<FloatType, 9>& r_g)
+      void initialize(uc_sym_mat3 const& r_g)
       {
         r_g00_ = r_g[0];
-        r_g11_ = r_g[4];
-        r_g22_ = r_g[8];
-        r_g01_ = r_g[1];
-        r_g02_ = r_g[2];
+        r_g11_ = r_g[1];
+        r_g22_ = r_g[2];
+        r_g01_ = r_g[3];
+        r_g02_ = r_g[4];
         r_g12_ = r_g[5];
       }
   };

@@ -1,4 +1,4 @@
-class matrix:
+class rec:
 
   def __init__(self, elems, n):
     assert len(n) == 2
@@ -10,15 +10,17 @@ class matrix:
     assert self.n == other.n
     a = self.elems
     b = other.elems
-    return matrix([a[i] + b[i] for i in xrange(len(other.elems))], self.n)
+    return rec([a[i] + b[i] for i in xrange(len(other.elems))], self.n)
 
   def __sub__(self, other):
     assert self.n == other.n
     a = self.elems
     b = other.elems
-    return matrix([a[i] - b[i] for i in xrange(len(other.elems))], self.n)
+    return rec([a[i] - b[i] for i in xrange(len(other.elems))], self.n)
 
   def __mul__(self, other):
+    if (not hasattr(other, "elems")):
+      return rec([x * other for x in self.elems], self.n)
     a = self.elems
     ar = self.n[0]
     ac = self.n[1]
@@ -34,7 +36,7 @@ class matrix:
         result.append(s)
     if (ar == bc):
       return sqr(result)
-    return matrix(result, (ar, bc))
+    return rec(result, (ar, bc))
 
   def __call__(self, ir, ic):
     return self.elems[ir * self.n[1] + ic]
@@ -51,23 +53,34 @@ class matrix:
       s = s[:-2] + "}, "
     return s[:-2] + "}"
 
-class row(matrix):
+class row(rec):
 
   def __init__(self, elems):
-    matrix.__init__(self, elems, (1, len(elems)))
+    rec.__init__(self, elems, (1, len(elems)))
 
-class col(matrix):
+class col(rec):
 
   def __init__(self, elems):
-    matrix.__init__(self, elems, (len(elems), 1))
+    rec.__init__(self, elems, (len(elems), 1))
 
-class sqr(matrix):
+class sqr(rec):
 
   def __init__(self, elems):
     l = len(elems)
     n = int(l**(.5) + 0.5)
     assert l == n * n
-    matrix.__init__(self, elems, (n,n))
+    rec.__init__(self, elems, (n,n))
+
+class sym(rec):
+
+  def __init__(self, elems):
+    l = len(elems)
+    n = int((-1 + (1+8*l)**(.5))/2. + 0.5)
+    assert 2 * l == (n**2 + n), "Wrong number of unique elements."
+    assert n == 3, "Not implemented."
+    rec.__init__(self, (elems[0], elems[3], elems[4],
+                        elems[3], elems[1], elems[5],
+                        elems[4], elems[5], elems[2]), (n,n))
 
 class rt:
 
@@ -100,8 +113,8 @@ class rt:
     return self.r * col(other) + self.t
 
 if (__name__ == "__main__"):
-  a = matrix(range(1,7), (3,2))
-  b = matrix(range(1,7), (2,3))
+  a = rec(range(1,7), (3,2))
+  b = rec(range(1,7), (2,3))
   c = a * b
   d = rt((c, (1,2,3)))
   assert d.r.mathematica_form() == "{{9, 12, 15}, {19, 26, 33}, {29, 40, 51}}"

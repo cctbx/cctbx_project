@@ -1,9 +1,9 @@
 #! /usr/local_cci/Python-2.2.1/bin/python
 
 # Revision history:
-#   2001 Nov 26: Use sftbx (rwgk).
-#   2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-#   2001 Aug 09: Derived from generate_hklf.py (rwgk)
+#   2001 Nov: Use sftbx (rwgk).
+#   2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
+#   2001 Aug: Derived from generate_hklf.py (rwgk)
 
 PATH_cctbx_lib_python = "/net/boa/srv/html/cci/cctbx/lib_python"
 

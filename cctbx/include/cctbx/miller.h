@@ -1,12 +1,11 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Jul 02: Merged from CVS branch sgtbx_special_pos (rwgk)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 Jul: Merged from CVS branch sgtbx_special_pos (rwgk)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 /*! \file
@@ -16,127 +15,105 @@
 #ifndef CCTBX_MILLER_H
 #define CCTBX_MILLER_H
 
-#if defined(__GNUC__) && __GNUC__ < 3
-# include <iostream>
-#else
-# include <ostream>
-#endif
-#include <cctbx/fixes/cstdlib>
-#include <cctbx/error.h>
-#include <cctbx/coordinates.h>
-#include <cctbx/array_family/tiny_types.h>
-#include <cctbx/array_family/tiny_reductions.h>
+#include <scitbx/vec3.h>
+#include <scitbx/array_family/misc_functions.h>
+#include <cctbx/import_scitbx_af.h>
 
 namespace cctbx {
   //! Miller index namespace.
   namespace miller {
 
-    //! Enumeration for symbolic subscripting (e.g. MillerIndex[H]).
-    enum {H, K, L};
+  //! Miller index class.
+  template <typename NumType = int>
+  class index : public scitbx::vec3<NumType>
+  {
+    public:
+      typedef scitbx::vec3<NumType> base_type;
 
-    //! Miller index class.
-    class Index : public af::int3 {
-      public:
-        //! @name Constructors.
-        //@{
-        Index() {
-          for(std::size_t i=0;i<3;i++) elems[i] = 0;
-        }
-        Index(const af::int3& v) {
-          for(std::size_t i=0;i<3;i++) elems[i] = v[i];
-        }
-        explicit Index(const int* hkl) {
-          for(std::size_t i=0;i<3;i++) elems[i] = hkl[i];
-        }
-        Index(int h, int k, int l) {
-          elems[0] = h; elems[1] = k; elems[2] = l;
-        }
-        //@}
+      //! Default constructor: (h,k,l) = (0,0,0)
+      index() : base_type(0,0,0) {}
 
-        //! @name Convenience methods.
-        //@{
-        bool is000() const {
-          return !(elems[0] || elems[1] || elems[2]);
-        }
-        Index operator-() const {
-          return Index(-elems[0], -elems[1], -elems[2]);
-        }
-        //@}
+      //! Construction with an instance of the base type.
+      index(base_type const& h) : base_type(h) {}
 
-        //! @name Definition of sort order for human-readable listings.
-        //@{
-        /*! This comparison is computationally more expensive than
-            the miller::hashCompare below.
-         */
-        bool operator<(const Index& m2) const
-        {
-          const int P[3] = {2, 0, 1};
-          std::size_t i;
-          for(i=0;i<3;i++) {
-            if (elems[P[i]] >= 0 && m2[P[i]] <  0) return true;
-            if (elems[P[i]] <  0 && m2[P[i]] >= 0) return false;
-          }
-          for(i=0;i<3;i++) {
-            if (  fn::absolute(elems[P[i]])
-                < fn::absolute(m2[P[i]])) return true;
-            if (  fn::absolute(elems[P[i]])
-                > fn::absolute(m2[P[i]])) return false;
-          }
-          return false;
+      //! Construction from the highest array type in the inheritance tree.
+      template <typename OtherNumType>
+      index(af::tiny_plain<OtherNumType, 3> const& v)
+      {
+        for(std::size_t i=0;i<3;i++) this->elems[i] = v[i];
+      }
+
+      //! Construction with raw pointer to index elements.
+      template <typename OtherNumType>
+      explicit
+      index(const OtherNumType* hkl)
+      {
+        for(std::size_t i=0;i<3;i++) this->elems[i] = hkl[i];
+      }
+
+      //! Construction from individual h,k,l.
+      index(NumType const& h, NumType const& k, NumType const& l)
+      : base_type(h, k, l)
+      {}
+
+      //! Definition of sort order for human-readable listings.
+      /*! This comparison is computationally more expensive than
+          hash_compare below.
+       */
+      bool operator<(index const& other) const
+      {
+        using scitbx::fn::absolute;
+        const int P[3] = {2, 0, 1};
+        for(std::size_t i=0;i<3;i++) {
+          if (this->elems[P[i]] >= 0 && other[P[i]] <  0) return true;
+          if (this->elems[P[i]] <  0 && other[P[i]] >= 0) return false;
         }
-        bool operator>(const Index& m2) const
-        {
-          if (*this < m2) return false;
-          for(std::size_t i=0;i<3;i++) if (elems[i] != m2[i]) return true;
-          return false;
+        for(std::size_t i=0;i<3;i++) {
+          if (  absolute(this->elems[P[i]])
+              < absolute(other[P[i]])) return true;
+          if (  absolute(this->elems[P[i]])
+              > absolute(other[P[i]])) return false;
         }
-        //@}
+        return false;
+      }
 
-        //! Test for equality.
-        bool operator==(const Index& m2) const
-        {
-          return !af::cmp(*this, m2);
+      //! Test this > other, based on sort order defined by operator<().
+      bool operator>(index const& other) const
+      {
+        if (*this < other) return false;
+        for(std::size_t i=0;i<3;i++) {
+          if (this->elems[i] != other[i]) return true;
         }
+        return false;
+      }
 
-        //! Test for inequality.
-        bool operator!=(const Index& m2) const
-        {
-          return af::cmp(*this, m2);
+#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
+      // work around compiler bug
+      index operator-() const
+      {
+        return index(-static_cast<base_type>(*this));
+      }
+#endif
+  };
+
+  /*! \brief Definition of fast comparison for use in,
+      e.g., std::map<miller::index<> >.
+   */
+  template <typename NumType = int>
+  class hash_compare
+  {
+    public:
+      //! This fast comparison function is implemented as operator().
+      bool operator()(index<NumType> const& h1, index<NumType> const& h2) const
+      {
+        for(std::size_t i=0;i<3;i++) {
+          if (h1[i] < h2[i]) return true;
+          if (h1[i] > h2[i]) return false;
         }
-    };
+        return false;
+      }
+  };
 
-    //! Multiplication of Miller indices and fractional coordiantes.
-    template <class FloatType>
-    inline FloatType
-    operator*(const Index& lhs, const fractional<FloatType>& rhs) {
-      FloatType result = 0.;
-      for(std::size_t i=0;i<3;i++) result += lhs[i] * rhs[i];
-      return result;
-    }
-
-    /*! \brief Definition of fast comparison for use in,
-        e.g., std::map<miller::Index>.
-     */
-    class hashCompare {
-      public:
-        //! This fast comparison function is implemented as operator().
-        bool operator()(const Index& m1,const Index& m2) const {
-          for(std::size_t i=0;i<3;i++) {
-            if (m1[i] < m2[i]) return true;
-            if (m1[i] > m2[i]) return false;
-          }
-          return false;
-        }
-    };
-
-    //! ostream output operator for class miller::Index.
-    inline std::ostream& operator<<(std::ostream& os, const miller::Index& MIx)
-    {
-      os << "H=" << MIx[0] << " K=" << MIx[1] << " L=" << MIx[2];
-      return os;
-    }
-
-  } // namespace miller
-} // namespace cctbx
+}} // namespace cctbx::miller
 
 #endif // CCTBX_MILLER_H

@@ -1,43 +1,47 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Sep 10: created from fragments in type.cpp, seminvariant.cpp (rwgk)
+     2001 Sep: created from fragments in type.cpp, seminvariant.cpp (rwgk)
  */
 
 #ifndef CCTBX_SGTBX_SELECT_GENERATORS_H
 #define CCTBX_SGTBX_SELECT_GENERATORS_H
 
-#include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/space_group.h>
 
-namespace cctbx { namespace sgtbx {
-  namespace detail {
+namespace cctbx { namespace sgtbx { namespace select_generators {
 
-    struct AnyGenerators {
-      AnyGenerators() : nGen(0) {}
-      AnyGenerators(const SpaceGroup& SgOps);
-      int nAll() const {
-        if (ZInvT.isValid()) return nGen + 1;
-        return nGen;
-      }
-      void setPrimitive();
-      ChOfBasisOp Z2POp;
-      TrVec ZInvT;
-      TrVec PInvT;
-      int nGen;
-      RTMx ZGen[2];
-      RTMx PGen[2];
-    };
+  struct any
+  {
+    any() : n_gen(0) {}
 
-    struct StdGenerators: AnyGenerators {
-      StdGenerators(const SpaceGroup& WorkSgOps,
-                    const tables::MatrixGroup::Code& PG_MGC);
-    };
+    any(space_group const& sg);
 
-  } // namespace detail
-}} // namespace cctbx::sgtbx
+    std::size_t n_all() const
+    {
+      if (z_inv_t.is_valid()) return n_gen + 1;
+      return n_gen;
+    }
+
+    void set_primitive();
+
+    change_of_basis_op z2p_op;
+    tr_vec z_inv_t;
+    tr_vec p_inv_t;
+    std::size_t n_gen;
+    rt_mx z_gen[2];
+    rt_mx p_gen[2];
+  };
+
+  struct standard : any
+  {
+    standard(space_group const& work_sg,
+             matrix_group::code const& point_group_mx_group_code);
+  };
+
+}}} // namespace cctbx::sgtbx::select_generators
 
 #endif // CCTBX_SGTBX_SELECT_GENERATORS_H

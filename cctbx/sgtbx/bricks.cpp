@@ -1,28 +1,29 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
-     2001 Sep 13: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
-     Created: 11-Jul-2001 (R.W. Grosse-Kunstleve)
+     2001 Sep: SpaceGroupType -> SpaceGroupInfo (R.W. Grosse-Kunstleve)
+     2001 Jul: Created (R.W. Grosse-Kunstleve)
  */
 
-#include <cctbx/sgtbx/groups.h>
-#include <cctbx/sgtbx/asym_units.h>
+#include <cctbx/sgtbx/brick.h>
+#include <cctbx/rational.h>
 
 namespace cctbx { namespace sgtbx {
-  namespace tables {
 
-    struct RawBrick
+  namespace raw_bricks {
+  namespace {
+
+    struct entry
     {
-      int SgNumber;
-      const char *HallSymbol;
-      int Points[3][2];
+      int sg_number;
+      const char *hall_symbol;
+      int points[3][2];
     };
 
-    static const RawBrick TabRawBricks[] = {
+    static const entry table[] = {
 // BEGIN_COMPILED_IN_REFERENCE_DATA
 {  1," P 1",{{0,49},{0,49},{0,49}}}, // P 1
 {  2,"-P 1",{{0,49},{0,24},{0,49}}}, // P -1
@@ -781,86 +782,98 @@ namespace cctbx { namespace sgtbx {
 // END_COMPILED_IN_REFERENCE_DATA
     };
 
-  } // namespace tables
+  } // namespace <anonymous>
+  } // namespace raw_bricks
 
-  BrickPoint::BrickPoint(int RawPoint)
+  brick_point::brick_point(int raw_point)
   {
-    m_Point = rational(RawPoint / 2, 24);
-    m_Off = RawPoint % 2;
+    value_ = boost::rational<int>(raw_point / 2, 24);
+    off_ = raw_point % 2;
   }
 
-  namespace detail {
+  namespace {
 
-    const tables::RawBrick*
-    FindTabulatedBrick(const SpaceGroupInfo& SgInfo)
+    const raw_bricks::entry*
+    find_raw_brick(space_group_type const& sg_type)
     {
-      for (std::size_t i = 0; tables::TabRawBricks[i].SgNumber != 0; i++) {
-        if (tables::TabRawBricks[i].SgNumber > SgInfo.SgNumber()) break;
-        if (tables::TabRawBricks[i].SgNumber == SgInfo.SgNumber()) {
-          SpaceGroup TabSgOps(tables::TabRawBricks[i].HallSymbol);
-          if (SgInfo.SgOps() == TabSgOps) return &tables::TabRawBricks[i];
+      int sg_number = sg_type.number();
+      for (const raw_bricks::entry* b = raw_bricks::table; b->sg_number; b++) {
+        if (b->sg_number > sg_number) break;
+        if (b->sg_number == sg_number) {
+          space_group tab_sg(b->hall_symbol);
+          if (sg_type.group() == tab_sg) return b;
         }
       }
       return 0;
     }
 
-  } // namespace detail
+  }
 
-  Brick::Brick(const SpaceGroupInfo& SgInfo)
+  brick::brick(space_group_type const& sg_type)
   {
-    const tables::RawBrick* RB = detail::FindTabulatedBrick(SgInfo);
-    if (RB == 0) {
+    const raw_bricks::entry* raw_brick = find_raw_brick(sg_type);
+    if (raw_brick == 0) {
       throw error(
         "Brick is not available for the given space group representation.");
     }
     for(std::size_t i=0;i<3;i++) {
       for(std::size_t j=0;j<2;j++) {
-        m_Points[i][j] = BrickPoint(RB->Points[i][j]);
+        points_[i][j] = brick_point(raw_brick->points[i][j]);
       }
     }
   }
 
-  BrickPoint
-  Brick::operator()(std::size_t iBasisVector, std::size_t iMinMax) const
+  brick_point
+  brick::operator()(std::size_t i_axis, std::size_t i_min_max) const
   {
-    cctbx_assert(iBasisVector < 3);
-    cctbx_assert(iMinMax < 2);
-    return m_Points[iBasisVector][iMinMax];
+    CCTBX_ASSERT(i_axis < 3);
+    CCTBX_ASSERT(i_min_max < 2);
+    return points_[i_axis][i_min_max];
   }
 
-  std::string Brick::format() const
+  std::string brick::as_string() const
   {
     std::string result;
     for(std::size_t i=0;i<3;i++) {
-      result += m_Points[i][0].Point().format();
+      result += format(points_[i][0].value());
       result += "<";
-      if (!m_Points[i][0].Off()) result += "=";
+      if (!points_[i][0].off()) result += "=";
       result += "xyz"[i];
       result += "<";
-      if (!m_Points[i][1].Off()) result += "=";
-      result += m_Points[i][1].Point().format();
+      if (!points_[i][1].off()) result += "=";
+      result += format(points_[i][1].value());
       if (i < 2) result += "; ";
     }
     return result;
   }
 
-  bool Brick::isInBrick(const af::tiny<rational, 3>& P) const
+  bool brick::is_inside(scitbx::vec3<boost::rational<int> > const& p) const
   {
     for(std::size_t i=0;i<3;i++) {
-      if (!m_Points[i][0].Off()) {
-        if (!(m_Points[i][0].Point() <= P[i])) return false;
+      if (!points_[i][0].off()) {
+        if (!(points_[i][0].value() <= p[i])) return false;
       }
       else {
-        if (!(m_Points[i][0].Point() <  P[i])) return false;
+        if (!(points_[i][0].value() <  p[i])) return false;
       }
-      if (!m_Points[i][1].Off()) {
-        if (!(P[i] <= m_Points[i][1].Point())) return false;
+      if (!points_[i][1].off()) {
+        if (!(p[i] <= points_[i][1].value())) return false;
       }
       else {
-        if (!(P[i] <  m_Points[i][1].Point())) return false;
+        if (!(p[i] <  points_[i][1].value())) return false;
       }
     }
     return true;
+  }
+
+  bool brick::is_inside(tr_vec const& p) const
+  {
+    typedef boost::rational<int> rational;
+    int den = p.den();
+    return is_inside(scitbx::vec3<rational>(
+      rational(p[0], den),
+      rational(p[1], den),
+      rational(p[2], den)));
   }
 
 }} // namespace cctbx::sgtbx

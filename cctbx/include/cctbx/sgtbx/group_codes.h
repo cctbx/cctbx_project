@@ -1,173 +1,130 @@
-// $Id$
-/* Copyright (c) 2001 The Regents of the University of California through
-   E.O. Lawrence Berkeley National Laboratory, subject to approval by the
-   U.S. Department of Energy. See files COPYRIGHT.txt and
-   cctbx/LICENSE.txt for further details.
+/* Copyright (c) 2001-2002 The Regents of the University of California
+   through E.O. Lawrence Berkeley National Laboratory, subject to
+   approval by the U.S. Department of Energy.
+   See files COPYRIGHT.txt and LICENSE.txt for further details.
 
    Revision history:
      2002 Jul: split of tables.h (R.W. Grosse-Kunstleve)
-     2001 May 31: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
-     Apr 2001: SourceForge release (R.W. Grosse-Kunstleve)
+     2001 May: merged from CVS branch sgtbx_type (R.W. Grosse-Kunstleve)
+     2001 Apr: SourceForge release (R.W. Grosse-Kunstleve)
  */
 
 #ifndef CCTBX_SGTBX_GROUP_CODES_H
 #define CCTBX_SGTBX_GROUP_CODES_H
 
-namespace cctbx { namespace sgtbx { namespace tables {
+namespace cctbx { namespace sgtbx {
 
-  namespace CrystalSystem {
+  namespace crystal_system {
 
-    enum Code {
-      Undefined,
-      Triclinic,
-      Monoclinic,
-      Orthorhombic,
-      Tetragonal,
-      Trigonal,
-      Hexagonal,
-      Cubic
+    enum code
+    {
+      undefined,
+      triclinic,
+      monoclinic,
+      orthorhombic,
+      tetragonal,
+      trigonal,
+      hexagonal,
+      cubic
     };
 
-    inline const char* LabelOf(const Code& c) {
-      static const char* Names[] = {
-        "Undefined",
-        "Triclinic",
-        "Monoclinic",
-        "Orthorhombic",
-        "Tetragonal",
-        "Trigonal",
-        "Hexagonal",
-        "Cubic",
-      };
-      return Names[c];
-    }
+    const char* label(code const& c);
 
-  } // namespace CrystalSystem
+  } // namespace crystal_system
 
-  namespace MatrixGroup {
+  namespace matrix_group {
 
-    class Code {
+    class code
+    {
       public:
-        Code(const CrystalSystem::Code& X, int L, int P, int M)
-          : m_X(X), m_L(L), m_P(P), m_M(M) {}
-        bool operator==(const Code& rhs) const {
-          return    m_X == rhs.m_X
-                 && m_L == rhs.m_L
-                 && m_P == rhs.m_P
-                 && m_M == rhs.m_M;
+        code(crystal_system::code const& x, int l, int p, int m)
+        : x_(x), l_(l), p_(p), m_(m)
+        {}
+
+        bool operator==(code const& rhs) const
+        {
+          return    x_ == rhs.x_
+                 && l_ == rhs.l_
+                 && p_ == rhs.p_
+                 && m_ == rhs.m_;
         }
-        bool operator!=(const Code& rhs) const {
+
+        bool operator!=(code const& rhs) const
+        {
           return !(*this == rhs);
         }
-        int index() const { return m_M; }
-        Code PointGroupType() const {
-          return Code(m_X, m_L - m_P, 0, m_M + m_P);
+
+        int index() const { return m_; }
+
+        code point_group_type() const
+        {
+          return code(x_, l_ - p_, 0, m_ + p_);
         }
-        Code LaueGroupType() const {
-          return Code(m_X, 0, 0, m_M + m_L);
+
+        code laue_group_type() const
+        {
+          return code(x_, 0, 0, m_ + l_);
         }
-        CrystalSystem::Code CrystalSystem() const {
-          return m_X;
+
+        crystal_system::code crystal_system() const
+        {
+          return x_;
         }
-        const char* Label() const {
-          static const char* Names[] = {
-            "Undefined",
-            "Unknown",
-            "1",
-            "-1",
-            "2",
-            "m",
-            "2/m",
-            "222",
-            "mm2",
-            "mmm",
-            "4",
-            "-4",
-            "4/m",
-            "422",
-            "4mm",
-            "-4m2",
-            "-42m",
-            "4/mmm",
-            "3",
-            "-3",
-            "321",
-            "312",
-            "32",
-            "3m1",
-            "31m",
-            "3m",
-            "-3m1",
-            "-31m",
-            "-3m",
-            "6",
-            "-6",
-            "6/m",
-            "622",
-            "6mm",
-            "-6m2",
-            "-62m",
-            "6/mmm",
-            "23",
-            "m-3",
-            "432",
-            "-43m",
-            "m-3m"
-          };
-          return Names[m_M];
-        }
+
+        const char* label() const;
+
       private:
-        CrystalSystem::Code m_X;
-        int m_L;
-        int m_P;
-        int m_M;
+        crystal_system::code x_;
+        int l_;
+        int p_;
+        int m_;
     };
 
-    static const Code Undefined  (CrystalSystem::Undefined,     0,  0,  0);
-    static const Code Unknown    (CrystalSystem::Undefined,     0,  0,  1);
-    static const Code MGC_1      (CrystalSystem::Triclinic,     1,  0,  2);
-    static const Code MGC_1b     (CrystalSystem::Triclinic,     0,  0,  3);
-    static const Code MGC_2      (CrystalSystem::Monoclinic,    2,  0,  4);
-    static const Code MGC_m      (CrystalSystem::Monoclinic,    1,  0,  5);
-    static const Code MGC_2_m    (CrystalSystem::Monoclinic,    0,  0,  6);
-    static const Code MGC_222    (CrystalSystem::Orthorhombic,  2,  0,  7);
-    static const Code MGC_mm2    (CrystalSystem::Orthorhombic,  1,  0,  8);
-    static const Code MGC_mmm    (CrystalSystem::Orthorhombic,  0,  0,  9);
-    static const Code MGC_4      (CrystalSystem::Tetragonal,    2,  0, 10);
-    static const Code MGC_4b     (CrystalSystem::Tetragonal,    1,  0, 11);
-    static const Code MGC_4_m    (CrystalSystem::Tetragonal,    0,  0, 12);
-    static const Code MGC_422    (CrystalSystem::Tetragonal,    4,  0, 13);
-    static const Code MGC_4mm    (CrystalSystem::Tetragonal,    3,  0, 14);
-    static const Code MGC_4b2m   (CrystalSystem::Tetragonal,    2,  1, 15);
-    static const Code MGC_4bm2   (CrystalSystem::Tetragonal,    1,  0, 16);
-    static const Code MGC_4_mmm  (CrystalSystem::Tetragonal,    0,  0, 17);
-    static const Code MGC_3      (CrystalSystem::Trigonal,      1,  0, 18);
-    static const Code MGC_3b     (CrystalSystem::Trigonal,      0,  0, 19);
-    static const Code MGC_321    (CrystalSystem::Trigonal,      8,  2, 20);
-    static const Code MGC_312    (CrystalSystem::Trigonal,      7,  1, 21);
-    static const Code MGC_32     (CrystalSystem::Trigonal,      6,  0, 22);
-    static const Code MGC_3m1    (CrystalSystem::Trigonal,      5,  2, 23);
-    static const Code MGC_31m    (CrystalSystem::Trigonal,      4,  1, 24);
-    static const Code MGC_3m     (CrystalSystem::Trigonal,      3,  0, 25);
-    static const Code MGC_3bm1   (CrystalSystem::Trigonal,      2,  2, 26);
-    static const Code MGC_3b1m   (CrystalSystem::Trigonal,      1,  1, 27);
-    static const Code MGC_3bm    (CrystalSystem::Trigonal,      0,  0, 28);
-    static const Code MGC_6      (CrystalSystem::Hexagonal,     2,  0, 29);
-    static const Code MGC_6b     (CrystalSystem::Hexagonal,     1,  0, 30);
-    static const Code MGC_6_m    (CrystalSystem::Hexagonal,     0,  0, 31);
-    static const Code MGC_622    (CrystalSystem::Hexagonal,     4,  0, 32);
-    static const Code MGC_6mm    (CrystalSystem::Hexagonal,     3,  0, 33);
-    static const Code MGC_6b2m   (CrystalSystem::Hexagonal,     2,  1, 34);
-    static const Code MGC_6bm2   (CrystalSystem::Hexagonal,     1,  0, 35);
-    static const Code MGC_6_mmm  (CrystalSystem::Hexagonal,     0,  0, 36);
-    static const Code MGC_23     (CrystalSystem::Cubic,         1,  0, 37);
-    static const Code MGC_m3b    (CrystalSystem::Cubic,         0,  0, 38);
-    static const Code MGC_432    (CrystalSystem::Cubic,         2,  0, 39);
-    static const Code MGC_4b3m   (CrystalSystem::Cubic,         1,  0, 40);
-    static const Code MGC_m3bm   (CrystalSystem::Cubic,         0,  0, 41);
+    static const code undefined   (crystal_system::undefined,     0,  0,  0);
+    static const code unknown     (crystal_system::undefined,     0,  0,  1);
+    static const code code_1      (crystal_system::triclinic,     1,  0,  2);
+    static const code code_1b     (crystal_system::triclinic,     0,  0,  3);
+    static const code code_2      (crystal_system::monoclinic,    2,  0,  4);
+    static const code code_m      (crystal_system::monoclinic,    1,  0,  5);
+    static const code code_2_m    (crystal_system::monoclinic,    0,  0,  6);
+    static const code code_222    (crystal_system::orthorhombic,  2,  0,  7);
+    static const code code_mm2    (crystal_system::orthorhombic,  1,  0,  8);
+    static const code code_mmm    (crystal_system::orthorhombic,  0,  0,  9);
+    static const code code_4      (crystal_system::tetragonal,    2,  0, 10);
+    static const code code_4b     (crystal_system::tetragonal,    1,  0, 11);
+    static const code code_4_m    (crystal_system::tetragonal,    0,  0, 12);
+    static const code code_422    (crystal_system::tetragonal,    4,  0, 13);
+    static const code code_4mm    (crystal_system::tetragonal,    3,  0, 14);
+    static const code code_4b2m   (crystal_system::tetragonal,    2,  1, 15);
+    static const code code_4bm2   (crystal_system::tetragonal,    1,  0, 16);
+    static const code code_4_mmm  (crystal_system::tetragonal,    0,  0, 17);
+    static const code code_3      (crystal_system::trigonal,      1,  0, 18);
+    static const code code_3b     (crystal_system::trigonal,      0,  0, 19);
+    static const code code_321    (crystal_system::trigonal,      8,  2, 20);
+    static const code code_312    (crystal_system::trigonal,      7,  1, 21);
+    static const code code_32     (crystal_system::trigonal,      6,  0, 22);
+    static const code code_3m1    (crystal_system::trigonal,      5,  2, 23);
+    static const code code_31m    (crystal_system::trigonal,      4,  1, 24);
+    static const code code_3m     (crystal_system::trigonal,      3,  0, 25);
+    static const code code_3bm1   (crystal_system::trigonal,      2,  2, 26);
+    static const code code_3b1m   (crystal_system::trigonal,      1,  1, 27);
+    static const code code_3bm    (crystal_system::trigonal,      0,  0, 28);
+    static const code code_6      (crystal_system::hexagonal,     2,  0, 29);
+    static const code code_6b     (crystal_system::hexagonal,     1,  0, 30);
+    static const code code_6_m    (crystal_system::hexagonal,     0,  0, 31);
+    static const code code_622    (crystal_system::hexagonal,     4,  0, 32);
+    static const code code_6mm    (crystal_system::hexagonal,     3,  0, 33);
+    static const code code_6b2m   (crystal_system::hexagonal,     2,  1, 34);
+    static const code code_6bm2   (crystal_system::hexagonal,     1,  0, 35);
+    static const code code_6_mmm  (crystal_system::hexagonal,     0,  0, 36);
+    static const code code_23     (crystal_system::cubic,         1,  0, 37);
+    static const code code_m3b    (crystal_system::cubic,         0,  0, 38);
+    static const code code_432    (crystal_system::cubic,         2,  0, 39);
+    static const code code_4b3m   (crystal_system::cubic,         1,  0, 40);
+    static const code code_m3bm   (crystal_system::cubic,         0,  0, 41);
 
-  } // namespace MatrixGroup
+  } // namespace matrix_group
 
-}}} // namespace cctbx::sgtbx::tables
+}} // namespace cctbx::sgtbx
 
 #endif // CCTBX_SGTBX_GROUP_CODES_H
