@@ -17,7 +17,6 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
     anisotropic_displacement_parameters=adp)
   print xtal.UnitCell
   debug_utils.print_sites(xtal)
-  d_min = 1.
   max_q = 1. / (d_min**2)
   resolution_factor = 1./3
   max_prime = 5
@@ -49,6 +48,38 @@ def print_structure_factors(SgInfo, adp=0, d_min=3.):
   print "min %.6g" % (map_stats.min())
   print "mean %.6g" % (map_stats.mean())
   print "sigma %.6g" % (map_stats.sigma())
+  miller_indices, fcal = sftbx.collect_structure_factors(
+    xtal.UnitCell, xtal.SgInfo,
+    max_q, map, fft.Ncomplex())
+  MillerIndices = xutils.build_miller_indices(xtal, d_min)
+  js = shared.join_sets(MillerIndices.H, miller_indices)
+  if (0):
+    for i,j in js.pairs():
+      print MillerIndices.H[i], miller_indices[j]
+    print "singles 1:"
+    for i in js.singles(0):
+      print MillerIndices.H[i]
+    print "singles 2:"
+    for i in js.singles(1):
+      print miller_indices[i]
+  assert js.pairs().size() + js.singles(0).size() == MillerIndices.H.size()
+  assert js.pairs().size() + js.singles(1).size() == miller_indices.size()
+  assert js.pairs().size() == MillerIndices.H.size()
+  for i in xrange(2):
+    assert js.singles(i).size() == 0
+  Fcalc = xutils.calculate_structure_factors(MillerIndices, xtal)
+  x = shared.double()
+  y = shared.double()
+  for i,j in js.pairs():
+    assert MillerIndices.H[i] == miller_indices[j]
+    print MillerIndices.H[i],
+    print "(" + debug_utils.format_structure_factor(Fcalc.F[i]) + ")",
+    print "(" + debug_utils.format_structure_factor(fcal[j]) + ")"
+    x.append(abs(Fcalc.F[i]))
+    y.append(abs(fcal[j]))
+  xy_regr = shared.linear_regression(x, y)
+  assert xy_regr.is_well_defined()
+  print "cc:", xy_regr.cc()
 
 def run():
   Flags = debug_utils.command_line_options(sys.argv[1:], (

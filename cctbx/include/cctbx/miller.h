@@ -21,9 +21,11 @@
 #else
 # include <ostream>
 #endif
+#include <map>
 #include <cctbx/fixes/cstdlib>
 #include <cctbx/coordinates.h>
 #include <cctbx/array_family/tiny_types.h>
+#include <cctbx/array_family/shared.h>
 
 namespace cctbx {
   //! %Miller index namespace.
@@ -137,6 +139,47 @@ namespace cctbx {
       for(std::size_t j=0;j<3;j++) result[j]++;
       return result;
     }
+
+    class join_sets
+    {
+      public:
+        join_sets() {}
+
+        join_sets(const af::shared<Index>& a1,
+                  const af::shared<Index>& a2)
+        {
+          typedef std::map<Index, std::size_t> lookup_map_type;
+          lookup_map_type lookup_map;
+          std::size_t i;
+          for(i=0;i<a2.size();i++) lookup_map[a2[i]] = i;
+          std::vector<bool> a2_flags(a2.size(), false);
+          for(i=0;i<a1.size();i++) {
+            lookup_map_type::const_iterator l = lookup_map.find(a1[i]);
+            if (l == lookup_map.end()) {
+              singles_[0].push_back(i);
+            }
+            else {
+              pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
+              a2_flags[l->second] = true;
+            }
+          }
+          for(i=0;i<a2.size();i++) {
+            if (!a2_flags[i]) singles_[1].push_back(i);
+          }
+        }
+
+        af::shared<af::tiny<std::size_t, 2> > pairs() const {
+          return pairs_;
+        }
+
+        af::shared<std::size_t> singles(std::size_t i) const {
+          if (i) return singles_[1];
+          return singles_[0];
+        }
+      protected:
+        af::shared<af::tiny<std::size_t, 2> > pairs_;
+        af::shared<std::size_t> singles_[2];
+    };
 
   } // namespace Miller
 } // namespace cctbx

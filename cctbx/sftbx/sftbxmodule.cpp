@@ -382,6 +382,13 @@ namespace {
       ucell, max_q, resolution_factor, max_prime, mandatory_factors);
   }
 
+  af::shared<double>
+  sampled_model_density_map_as_shared(
+    sftbx::sampled_model_density<double>& smd)
+  {
+    return smd.map().as_base_array();
+  }
+
 #   include <cctbx/basic/from_bpl_import.h>
 
   tuple
@@ -404,11 +411,22 @@ namespace {
     return result;
   }
 
-  af::shared<double>
-  sampled_model_density_map_as_shared(
-    sftbx::sampled_model_density<double>& smd)
+  tuple
+  py_collect_structure_factors(
+    const uctbx::UnitCell& ucell,
+    const sgtbx::SpaceGroupInfo& sginfo,
+    double max_q,
+    const af::shared<double>& transformed_real_map,
+    const af::tiny<long, 3>& n_complex)
   {
-    return smd.map().as_base_array();
+    std::pair<af::shared<Miller::Index>,
+              af::shared<std::complex<double> > >
+    indexed_structure_factors = sftbx::collect_structure_factors(
+      ucell, sginfo, max_q, transformed_real_map.const_ref(), n_complex);
+    tuple result(2);
+    result.set_item(0, indexed_structure_factors.first);
+    result.set_item(1, indexed_structure_factors.second);
+    return result;
   }
 
   void init_module(python::module_builder& this_module)
@@ -582,6 +600,7 @@ namespace {
     this_module.def(dT_dX_inplace_frac_as_cart, "dT_dX_inplace_frac_as_cart");
 
     this_module.def(py_determine_grid, "determine_grid");
+    this_module.def(py_collect_structure_factors, "collect_structure_factors");
   }
 
 }

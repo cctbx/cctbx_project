@@ -20,6 +20,12 @@
 #include <cctbx/array_family/reductions.h>
 #include <cctbx/maps/accessors.h>
 #include <cctbx/maps/gridding.h>
+#include <cctbx/sgtbx/groups.h>
+#include <cctbx/sgtbx/miller_asu.h>
+
+#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
+#include <cctbx/sftbx/xray_scatterer.h>
+#endif
 
 namespace cctbx { namespace sftbx {
 
@@ -143,10 +149,17 @@ namespace cctbx { namespace sftbx {
 
       sampled_model_density() {}
 
+#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
       template <typename XrayScattererType>
+#endif
       sampled_model_density(
         const uctbx::UnitCell& ucell,
+#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
         const af::shared<XrayScattererType>& sites,
+#else
+        const af::shared<
+          sftbx::XrayScatterer<double, eltbx::CAASF_WK1995> >& sites,
+#endif
         const FloatType& max_q,
         const FloatType& resolution_factor,
         const grid_point_type& grid_logical,
@@ -162,7 +175,12 @@ namespace cctbx { namespace sftbx {
           exp_table_(exp_table_one_over_step_size)
       {
         u_extra_ = calc_u_extra(max_q, resolution_factor, quality_factor_);
-        for(const XrayScattererType*
+        for(
+#if !((defined(BOOST_MSVC) && BOOST_MSVC <= 1300)) // VC++ 7.0
+            const XrayScattererType*
+#else
+            const sftbx::XrayScatterer<double, eltbx::CAASF_WK1995>*
+#endif
             site=sites.begin();site!=sites.end();site++)
         {
           using constants::four_pi;
@@ -258,6 +276,69 @@ namespace cctbx { namespace sftbx {
         }
       }
   };
+
+  // XXX consolidate this and code from phenix/fast_translation/summations.h
+  // XXX in cctbx/map
+  template <typename IntegerType>
+  inline
+  IntegerType
+  ih_as_h(IntegerType ih, std::size_t n)
+  {
+    if (ih <= n/2) return ih;
+    return ih - n;
+  }
+
+  template <typename FloatType,
+            typename IndexType>
+  std::pair<
+    af::shared<Miller::Index>,
+    af::shared<std::complex<FloatType> > >
+  collect_structure_factors(
+    const uctbx::UnitCell& ucell,
+    const sgtbx::SpaceGroupInfo& sginfo,
+    const FloatType& max_q,
+    const af::const_ref<FloatType>& transformed_real_map,
+    const IndexType& n_complex)
+  {
+    cctbx_assert(
+         transformed_real_map.size()
+      >= 2 * af::compile_time_product<3>::get(n_complex));
+    af::const_ref<std::complex<FloatType> > complex_map(
+      reinterpret_cast<const std::complex<FloatType>*>(
+        transformed_real_map.begin()), transformed_real_map.size()/2);
+    sgtbx::ReciprocalSpaceASU asu(sginfo);
+    af::shared<Miller::Index> miller_indices;
+    af::shared<std::complex<FloatType> > structure_factors;
+    Miller::Index h;
+    Miller::Index mh;
+    IndexType loop_i;
+    std::size_t map_i = 0;
+    for(loop_i[0] = 0; loop_i[0] < n_complex[0]; loop_i[0]++) {
+      h[0] = ih_as_h(loop_i[0], n_complex[0]);
+      mh[0] = -h[0];
+    for(loop_i[1] = 0; loop_i[1] < n_complex[1]; loop_i[1]++) {
+      h[1] = ih_as_h(loop_i[1], n_complex[1]);
+      mh[1] = -h[1];
+    for(loop_i[2] = 0; loop_i[2] < n_complex[2]; loop_i[2]++, map_i++) {
+      h[2] = loop_i[2];
+      mh[2] = -h[2];
+      if (ucell.Q(h) <= max_q && map_i) {
+        if (asu.isInASU(h)) {
+          if (!sginfo.SgOps().isSysAbsent(h)) {
+            miller_indices.push_back(h);
+            structure_factors.push_back(complex_map[map_i]);
+          }
+        }
+        else if (h[2] && asu.isInASU(mh)) {
+          if (!sginfo.SgOps().isSysAbsent(h)) {
+            miller_indices.push_back(mh);
+            structure_factors.push_back(std::conj(complex_map[map_i]));
+          }
+        }
+      }
+    }}}
+    return std::make_pair(miller_indices, structure_factors);
+  }
 
 }} // namespace cctbx::sftbx
 

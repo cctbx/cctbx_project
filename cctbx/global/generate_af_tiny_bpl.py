@@ -106,6 +106,7 @@ def run():
     T_N("double", 3),
     T_N("double", 6),
     T_N("double", 9),
+    T_N("std::size_t", 2),
   )
   import sys
   f = open("tiny_bpl.h", "w")
