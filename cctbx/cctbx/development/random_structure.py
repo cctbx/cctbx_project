@@ -20,6 +20,7 @@ def random_site(special_position_settings,
                 min_hetero_distance=1.5,
                 general_position_only=00000,
                 grid=None,
+                t_centre_of_inversion=None,
                 max_trials=100):
   for trial in xrange(max_trials):
     if (grid == None):
@@ -33,7 +34,19 @@ def random_site(special_position_settings,
     if (not have_suitable_hetero_distance(
               existing_sites, sym_equiv_sites, min_hetero_distance)):
       continue
-    return site_symmetry.exact_site()
+    site = site_symmetry.exact_site()
+    if (t_centre_of_inversion == None):
+      return site
+    site_inv = [-x+t for x,t in zip(site, t_centre_of_inversion)]
+    site_symmetry_inv = special_position_settings.site_symmetry(site_inv)
+    if (general_position_only and not site_symmetry_inv.is_point_group_1()):
+      continue
+    sym_equiv_sites_inv = sgtbx.sym_equiv_sites(site_symmetry_inv)
+    if (not have_suitable_hetero_distance(
+              existing_sites + [site],
+              sym_equiv_sites_inv, min_hetero_distance)):
+      continue
+    return site, site_symmetry_inv.exact_site()
   return None
 
 def random_sites(special_position_settings,
@@ -42,21 +55,29 @@ def random_sites(special_position_settings,
                  min_hetero_distance=1.5,
                  general_positions_only=00000,
                  grid=None,
+                 t_centre_of_inversion=None,
                  max_trials=100,
                  max_back_track=100):
+  n_loop = n_new
+  if (t_centre_of_inversion != None):
+    assert n_new % 2 == 0
+    n_loop /= 2
   for i_back_track in xrange(max_back_track):
     all_sites = existing_sites[:]
-    for i_new in xrange(n_new):
-      site = random_site(
-               special_position_settings,
-               all_sites,
-               min_hetero_distance,
-               general_positions_only,
-               grid,
-               max_trials)
+    for i_new in xrange(n_loop):
+      site = random_site(special_position_settings,
+                         all_sites,
+                         min_hetero_distance,
+                         general_positions_only,
+                         grid,
+                         t_centre_of_inversion,
+                         max_trials)
       if (site == None):
         break
-      all_sites.append(site)
+      if (t_centre_of_inversion == None):
+        all_sites.append(site)
+      else:
+        all_sites.extend(site)
     if (len(all_sites) == len(existing_sites) + n_new):
       return all_sites
   raise RuntimeError, "Cannot find sites matching all constraints."
@@ -123,14 +144,15 @@ class xray_structure(xray.structure):
     if (elements != None):
       self.build_scatterers(elements)
 
-  def build_scatterers(self, elements, grid=None):
+  def build_scatterers(self, elements, grid=None, t_centre_of_inversion=None):
     all_sites = random_sites(
       special_position_settings=self,
       existing_sites=[scatterer.site for scatterer in self.scatterers()],
       n_new=len(elements),
       min_hetero_distance=self.min_distance,
       general_positions_only=self.general_positions_only,
-      grid=grid)
+      grid=grid,
+      t_centre_of_inversion=t_centre_of_inversion)
     assert len(all_sites) <= self.n_scatterers
     fp = 0
     fdp = 0
