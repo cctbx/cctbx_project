@@ -292,7 +292,7 @@ def test_loop_internal_symbol_table():
   assert len(enantiomorphic_pairs) == 22
 
 def run():
-  import sys
+  import sys, os
   Flags = debug_utils.command_line_options(sys.argv[1:], (
     "RandomSeed",
     "ShortCut",
@@ -321,6 +321,8 @@ def run():
   tst11.run(0)
   tst12.run(0)
   tst13.run(0)
+  t = os.times()
+  print "u+s,u,s:", t[0] + t[1], t[0], t[1]
 
 def run_other(args, timing, function_object, shortcut_settings=None):
   import os
