@@ -32,6 +32,9 @@ class grid_(boost.python.injector, grid):
 def export_to(target_module_name):
   export_list = [
     "to_list",
+    "min_default",
+    "max_default",
+    "mean_default",
     "select",
     "get_random_seed",
     "random_generator",
@@ -53,6 +56,18 @@ def to_list(array):
   for i in xrange(array.size()):
     result.append(array[i])
   return result
+
+def min_default(values, default):
+  if (values.size() == 0): return default
+  return min(values)
+
+def max_default(values, default):
+  if (values.size() == 0): return default
+  return max(values)
+
+def mean_default(values, default):
+  if (values.size() == 0): return default
+  return mean(values)
 
 def select(sequence, permutation=None, flags=None):
   result = []
