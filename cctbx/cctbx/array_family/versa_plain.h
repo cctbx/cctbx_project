@@ -53,12 +53,8 @@ namespace cctbx { namespace af {
           m_accessor(n0)
       {}
 
-      versa_plain(const versa_plain<ElementType, AccessorType>& other)
-        : base_class(other),
-          m_accessor(other.m_accessor)
-      {}
-
-      versa_plain(const versa_plain<ElementType>& other, weak_ref_flag)
+      versa_plain(const versa_plain<ElementType, AccessorType>& other,
+                  weak_ref_flag)
         : base_class(other, weak_ref_flag()),
           m_accessor(other.m_accessor)
       {}
@@ -66,7 +62,7 @@ namespace cctbx { namespace af {
       template <typename OtherAccessorType>
       versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
                   const accessor_type& ac)
-        : base_class(this->handle()),
+        : base_class(other.handle()),
           m_accessor(ac)
       {
         if (other.size() < size()) throw_range_error();
@@ -75,7 +71,7 @@ namespace cctbx { namespace af {
       template <typename OtherAccessorType>
       versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
                   long n0)
-        : base_class(this->handle()),
+        : base_class(other.handle()),
           m_accessor(n0)
       {
         if (other.size() < size()) throw_range_error();
@@ -85,7 +81,7 @@ namespace cctbx { namespace af {
       versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
                   const accessor_type& ac,
                   const ElementType& x)
-        : base_class(this->handle()),
+        : base_class(other.handle()),
           m_accessor(ac)
       {
         base_class::resize(m_accessor.size1d(), x);
@@ -95,7 +91,7 @@ namespace cctbx { namespace af {
       versa_plain(versa_plain<ElementType, OtherAccessorType>& other,
                   long n0,
                   const ElementType& x)
-        : base_class(this->handle()),
+        : base_class(other.handle()),
           m_accessor(n0)
       {
         base_class::resize(m_accessor.size1d(), x);
@@ -138,7 +134,10 @@ namespace cctbx { namespace af {
       const accessor_type& accessor() const { return m_accessor; }
       size_type size() const { return m_accessor.size1d(); }
 
-      CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(this->begin(), this->accessor())
+      // since size() is not a virtual function end() needs to be redefined.
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(base_class::begin(), size())
+
+      CCTBX_ARRAY_FAMILY_TAKE_VERSA_REF(begin(), m_accessor)
 
       void resize(const accessor_type& ac) {
         m_accessor = ac;
@@ -151,20 +150,20 @@ namespace cctbx { namespace af {
       }
 
       versa_plain<ElementType> as_1d() {
-        return versa_plain<ElementType>(*this, long(this->size()));
+        return versa_plain<ElementType>(*this, long(size()));
       }
 
       versa_plain<ElementType, AccessorType>
       deep_copy() const {
-        base_class c(this->begin(), this->end());
+        base_class c(begin(), end());
         return versa_plain<ElementType, AccessorType>(c.handle(), m_accessor);
       }
 
             value_type& operator()(const index_type& i)       {
-        return this->begin()[m_accessor(i)];
+        return begin()[m_accessor(i)];
       }
       const value_type& operator()(const index_type& i) const {
-        return this->begin()[m_accessor(i)];
+        return begin()[m_accessor(i)];
       }
 
       // Convenience operator()
