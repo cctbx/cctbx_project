@@ -37,7 +37,6 @@ envlm = env.Copy(
 )
 
 lib_iotbx_sources = [
-  "mtz/testcppmtz.cpp",
   "mtz/cppmtz.cpp",
   "mtz/mtzwriter.cpp",
 ]

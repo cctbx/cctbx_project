@@ -20,10 +20,6 @@ namespace af = scitbx::af;
 
 namespace iotbx{ namespace mtz {
 
-struct Foo {
-  af::shared<std::string> value();
-};
-
 class Error : public std::exception {
 private:
   std::string s;

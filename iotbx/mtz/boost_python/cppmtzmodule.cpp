@@ -61,10 +61,6 @@ BOOST_PYTHON_MODULE(mtz)
       .def("isnan",       &iotbx::mtz::Column::isnan) // XXX potential crash!
     ;
 
-    class_<iotbx::mtz::Foo>("Foo")
-      .def("value",&iotbx::mtz::Foo::value)
-    ;
-
     class_<iotbx::mtz::MtzWriter>("MtzWriter", init<>())
       .def("setTitle",      &iotbx::mtz::MtzWriter::setTitle)
       .def("raw_setSpaceGroup", &iotbx::mtz::MtzWriter::setSpaceGroup)
