@@ -254,6 +254,16 @@ def round_scaled(x, scale):
   if (-0.5 < y <= 0): return 0.
   return y / scale
 
+def round_scaled_list(l, scale):
+  return [round_scaled(x, scale) for x in l]
+
+def format_round_scaled_list(l, precision=4, fmt="f"):
+  s = ""
+  if (len(l) == 0): return s
+  for x in round_scaled_list(l, 10**precision):
+    s += (" %%.%d%s" % (precision, fmt)) % (x,)
+  return s[1:]
+
 def print_structure_factors(F, precision_ampl=3, precision_phase=0):
   for i in xrange(len(F.H)):
     a, p = xutils.f_as_ampl_phase(F.F[i])

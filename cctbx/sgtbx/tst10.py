@@ -1,35 +1,11 @@
-# $Id$
-
 import sys
 import random
-from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
+from cctbx.development import debug_utils
 
-ShortCut = "--ShortCut" in sys.argv
-StandardOnly = "--StandardOnly" in sys.argv
-RandomSeed0 = "--RandomSeed0" in sys.argv
-Endless = "--Endless" in sys.argv
-
-if (RandomSeed0):
-  random.seed(0)
-
-def get_unitcell(SgInfo):
-  if (143 <= SgInfo.SgNumber() < 195):
-    RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 120))
-  else:
-    RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  return RefUnitCell.ChangeBasis(SgInfo.CBOp().M().as_tuple()[0])
-
-if (ShortCut):
-  settings = ("Hall: -P 6 2c (z,1/2*x,1/2*y)",)
-else:
-  from settings import * # see examples/python/make_settings.py
-
-
-def OneCycle():
-  print "# Starting over"
+def OneCycle(settings):
+  print "Testing SiteSymmetry and WyckoffMapping 2"
   for LookupSymbol in settings:
-    if (StandardOnly and LookupSymbol[:5] == "Hall:"): continue
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
@@ -39,8 +15,7 @@ def OneCycle():
       SgInfo.SgNumber(),
       SgInfo.BuildHallSymbol())
     sys.stdout.flush()
-    UnitCell = get_unitcell(SgInfo)
-    SgOps.CheckUnitCell(UnitCell)
+    UnitCell = debug_utils.get_compatible_unit_cell(SgInfo, 1000).UnitCell
     SnapParametersLarge = \
     sgtbx.SpecialPositionSnapParameters(UnitCell, SgOps, 0, 2.0)
     SmallSnapDist2 = 1.e-5
@@ -51,7 +26,7 @@ def OneCycle():
       RandomX = (random.uniform(-2,2),
                  random.uniform(-2,2),
                  random.uniform(-2,2))
-      print "RandomX ", RandomX
+      print "RandomX", debug_utils.format_round_scaled_list(RandomX)
       #
       SS = sgtbx.SiteSymmetry(SnapParametersLarge, RandomX, 1)
       SWMap = WTab.getWyckoffMapping(SS)
@@ -87,7 +62,10 @@ def OneCycle():
       assert d < 1.e-5
     print
 
-print "# RandomSeed0 =", RandomSeed0
-while 1:
-  OneCycle()
-  if (not Endless): break
+def run(timing=1):
+  from tst import run_other
+  run_other(sys.argv[1:], timing, OneCycle,
+    ("Hall: -P 6 2c (z,1/2*x,1/2*y)",))
+
+if (__name__ == "__main__"):
+  run()

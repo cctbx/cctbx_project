@@ -1,38 +1,13 @@
-# $Id$
-
 import sys
 import random
-from cctbx_boost import uctbx
 from cctbx_boost import sgtbx
+from cctbx.development import debug_utils
 
-ShortCut = "--ShortCut" in sys.argv
-StandardOnly = "--StandardOnly" in sys.argv
-CheckLettersOnly = "--CheckLettersOnly" in sys.argv
-RandomSeed0 = "--RandomSeed0" in sys.argv
-Endless = "--Endless" in sys.argv
-
-if (RandomSeed0):
-  random.seed(0)
-
-def get_unitcell(SgInfo):
-  if (143 <= SgInfo.SgNumber() < 195):
-    RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 120))
-  else:
-    RefUnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
-  return RefUnitCell.ChangeBasis(SgInfo.CBOp().M().as_tuple()[0])
-
-if (ShortCut):
-  settings = ("P 61 2 2",)
-else:
-  from settings import * # see examples/python/make_settings.py
-
-
-def OneCycle():
+def OneCycle(settings, CheckLettersOnly=0, ignore_exceptions=0):
+  print "Testing SiteSymmetry and WyckoffMapping 1"
   nUndetermined = 0
   nMismatches = 0
-  print "# Starting over"
   for LookupSymbol in settings:
-    if (StandardOnly and LookupSymbol[:5] == "Hall:"): continue
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
@@ -42,8 +17,7 @@ def OneCycle():
       SgInfo.SgNumber(),
       SgInfo.BuildHallSymbol())
     sys.stdout.flush()
-    UnitCell = get_unitcell(SgInfo)
-    SgOps.CheckUnitCell(UnitCell)
+    UnitCell = debug_utils.get_compatible_unit_cell(SgInfo, 1000).UnitCell
     SpecialPositionTolerances = \
     sgtbx.SpecialPositionTolerances(UnitCell, SgOps, 0.1, 0.1)
     SnapParameters = \
@@ -63,10 +37,12 @@ def OneCycle():
         except RuntimeError, e:
           print e
           print "ERROR: WX =", WX
+          assert not ignore_exceptions
         else:
           if (SE.M() == WP.M()): break
-      print "      WX =", WX
-      print "  Ref WX =", SgInfo.CBOp()(WX)
+      print "      WX =", debug_utils.format_round_scaled_list(WX)
+      print "  Ref WX =", debug_utils.format_round_scaled_list(
+        SgInfo.CBOp()(WX))
       for SymOp in [random.choice(SgOps)]:
         UM = sgtbx.RTMx("x-2,y+3,z-5", "", 1, 1).multiply(SymOp)
         UMWX = UM.multiply(WX)
@@ -77,6 +53,7 @@ def OneCycle():
         except RuntimeError, e:
           print e
           nUndetermined = nUndetermined + 1
+          assert not ignore_exceptions
         else:
           WPX = WMap.WP()
           if (WP.Letter() != WPX.Letter()):
@@ -85,6 +62,7 @@ def OneCycle():
             print "ERROR: Wyckoff letter mismatch!"
             print "ERROR: Ref WX =", SgInfo.CBOp()(WX)
             nMismatches = nMismatches + 1
+            assert not ignore_exceptions
           WWMap = WTab.getWyckoffMapping(UnitCell, SgOps, UMWX, 0.04)
           assert WMap.WP().Letter() == WWMap.WP().Letter()
           assert UnitCell.Distance2(WWMap.snap(UMWX),SS.SnapPosition()) < 1.e-5
@@ -101,8 +79,10 @@ def OneCycle():
   assert nUndetermined == 0
   assert nMismatches == 0
 
-print "# CheckLettersOnly =", CheckLettersOnly
-print "# RandomSeed0 =", RandomSeed0
-while 1:
-  OneCycle()
-  if (not Endless): break
+def run(timing=1):
+  from tst import run_other
+  run_other(sys.argv[1:], timing, OneCycle,
+    ("P 61 2 2",))
+
+if (__name__ == "__main__"):
+  run()

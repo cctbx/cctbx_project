@@ -1,14 +1,6 @@
-# $Id$
-
-import sys, string
-
-ShortCut = "--ShortCut" in sys.argv
-StandardOnly = "--StandardOnly" in sys.argv
-TidyCBOp = "--TidyCBOp" in sys.argv
-QuickMode = "--Quick" in sys.argv
-Endless = "--Endless" in sys.argv
-
+import sys
 from cctbx_boost import sgtbx
+from cctbx.development import debug_utils
 
 #Shifts = (0, 1, 2, 3, 5, 7, 11)
 #Shifts = (1, 3)
@@ -17,15 +9,9 @@ Shifts = (1,)
 RBF = 36
 TBF = 144
 
-if (ShortCut):
-  settings = ("Hall:  P 2c 2",)
-else:
-  from settings import * # see examples/python/make_settings.py
-
-def OneCycle():
-  print "# Starting over"
+def OneCycle(settings, TidyCBOp=0):
+  print "Testing SpaceGroupInfo: shift and rotation"
   for LookupSymbol in settings:
-    if (StandardOnly and LookupSymbol[:5] == "Hall:"): continue
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
@@ -51,15 +37,17 @@ def OneCycle():
             print "CBMx:", t.CBOp().M().as_xyz()
             print "InvCBMx:", t.CBOp().InvM().as_xyz()
             assert t.SgNumber() == SgNumber
-            if (not QuickMode):
-              assert s.ChangeBasis(t.CBOp()) == RefSgOps
-              assert s == RefSgOps.ChangeBasis(t.CBOp().swap())
+            assert s.ChangeBasis(t.CBOp()) == RefSgOps
+            assert s == RefSgOps.ChangeBasis(t.CBOp().swap())
             h = s.Info().BuildHallSymbol(TidyCBOp)
             print "BuildHallSymbol:", h
-            if (not QuickMode):
-              assert s == sgtbx.SpaceGroup(h)
+            assert s == sgtbx.SpaceGroup(h)
             print
 
-while 1:
-  OneCycle()
-  if (not Endless): break
+def run(timing=1):
+  from tst import run_other
+  run_other(sys.argv[1:], timing, OneCycle,
+    ("Hall:  P 2c 2",))
+
+if (__name__ == "__main__"):
+  run()

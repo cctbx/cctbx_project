@@ -1,22 +1,9 @@
-# test ReciprocalSpaceASU
-
 import sys
 from cctbx_boost import sgtbx
 
-ShortCut = "--ShortCut" in sys.argv
-StandardOnly = "--StandardOnly" in sys.argv
-Endless = "--Endless" in sys.argv
-
-if (ShortCut):
-  #settings = ("H 3 2 1",)
-  settings = ("P 3 1 2",)
-else:
-  from settings import * # see examples/python/make_settings.py
-
-def OneCycle():
-
+def OneCycle(settings):
+  print "Testing ReciprocalSpaceASU"
   for LookupSymbol in settings:
-    if (StandardOnly and LookupSymbol[:5] == "Hall:"): continue
     SgSymbols = sgtbx.SpaceGroupSymbols(LookupSymbol)
     HSym = SgSymbols.Hall()
     SgOps = sgtbx.SpaceGroup(HSym)
@@ -54,6 +41,10 @@ def OneCycle():
             mHR = (-HR[0], -HR[1], -HR[2])
             assert (mHR == K) == asu.isInASU(mHR)
 
-while 1:
-  OneCycle()
-  if (not Endless): break
+def run(timing=1):
+  from tst import run_other
+  run_other(sys.argv[1:], timing, OneCycle,
+    ("P 3 1 2",))
+
+if (__name__ == "__main__"):
+  run()
