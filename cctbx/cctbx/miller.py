@@ -51,14 +51,17 @@ class binner(ext.binner):
       return "unused: %9.4f >  d            :" % bin_d_range[0]
     return "bin %2d:" % i_bin + " %9.4f >= d > %9.4f:" % bin_d_range
 
-  def show_data(self, data, data_fmt=None, f=None):
+  def show_data(self, data, data_fmt=None, show_n=00000, f=None):
     assert len(data) == self.n_bins_all()
     if (f is None): f = sys.stdout
     for i_bin in self.range_all():
+      print >> f, self.bin_legend(i_bin),
+      if (show_n):
+        print >> f, "n=%5d," % self.count(i_bin),
       if (data_fmt is None):
-        print >> f, self.bin_legend(i_bin), data[i_bin]
+        print >> f, data[i_bin]
       else:
-        print >> f, self.bin_legend(i_bin), data_fmt % data[i_bin]
+        print >> f, data_fmt % data[i_bin]
 
 class binned_data:
 
@@ -72,8 +75,12 @@ class binned_data:
   def data(self):
     return self._data
 
-  def show(self, data_fmt=None, f=None):
-    self.binner().show_data(data=self.data(), data_fmt=data_fmt, f=f)
+  def show(self, data_fmt=None, show_n=00000, f=None):
+    self.binner().show_data(
+      data=self.data(),
+      data_fmt=data_fmt,
+      show_n=show_n,
+      f=f)
 
 def make_lookup_dict(indices): # XXX push to C++
   result = {}
