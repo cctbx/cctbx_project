@@ -4,6 +4,7 @@ from cctbx.uctbx import gruber_1973_table_1
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import matrix
+from scitbx.python_utils.misc import time_log
 from scitbx.test_utils import approx_equal
 import random
 import sys
@@ -45,8 +46,12 @@ class check_is_niggli_cell(reduction_base.gruber_parameterization):
 
 relative_epsilon = None
 
+time_reduce = time_log("krivy_gruber_1976.reduction")
+
 def reduce(inp):
+  time_reduce.start()
   red = krivy_gruber_1976.reduction(inp, relative_epsilon=relative_epsilon)
+  time_reduce.stop()
   assert red.is_niggli_cell()
   if (relative_epsilon is None):
     assert check_is_niggli_cell(red.as_unit_cell()).itva_is_niggli_cell()
@@ -131,13 +136,14 @@ def exercise_bravais_plus():
       reduce(sgi.any_compatible_unit_cell(volume=100).change_basis(
         r_inv.num(),r_inv.den()))
 
-def exercise_grid(quick=00000):
+def exercise_grid(quick=00000, verbose=0):
   if (quick):
     sample_lengths = (10,)
     sample_angles = (60,)
   else:
     sample_lengths = (10,20,30)
     sample_angles = (10,30,45,60,90,120,150,170)
+  n_trials = 0
   for a in sample_lengths:
     for b in sample_lengths:
       for c in sample_lengths:
@@ -147,7 +153,10 @@ def exercise_grid(quick=00000):
               try: unit_cell = uctbx.unit_cell((a,b,c,alpha,beta,gamma))
               except: continue
               if (unit_cell.volume() < a*b*c/1000): continue
+              n_trials += 1
               reduce(unit_cell)
+  if (0 or verbose):
+    print "exercise_grid n_trials:", n_trials
 
 class random_unimodular_integer_matrix_generator:
 
@@ -285,10 +294,12 @@ def exercise():
     global relative_epsilon
     relative_epsilon = 0
   exercise_bravais_plus()
-  exercise_grid(quick=quick)
+  exercise_grid(quick=quick, verbose=verbose)
   if (quick): n_trials_per_type=10
   else:       n_trials_per_type=100
   exercise_gruber_types(n_trials_per_type, verbose)
+  if (0 or verbose):
+    print time_reduce.report()
   print "OK"
 
 if (__name__ == "__main__"):
