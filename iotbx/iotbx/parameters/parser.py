@@ -26,7 +26,8 @@ def collect_assigned_words(word_iterator, lead_word):
 def collect_objects(
       word_iterator,
       definition_type_names,
-      parser_parent_scope,
+      primary_id_generator,
+      primary_parent_scope,
       stop_token=None,
       start_word=None):
   active_definition = None
@@ -53,6 +54,7 @@ def collect_objects(
       active_definition = None
       scope = parameters.scope(
         name=lead_word.value,
+        primary_id=primary_id_generator.next(),
         is_disabled=is_disabled,
         where_str=lead_word.where_str())
       while True:
@@ -78,10 +80,11 @@ def collect_objects(
       collect_objects(
         word_iterator=word_iterator,
         definition_type_names=definition_type_names,
-        parser_parent_scope=scope,
+        primary_id_generator=primary_id_generator,
+        primary_parent_scope=scope,
         stop_token="}",
         start_word=word)
-      parser_parent_scope.adopt(scope)
+      primary_parent_scope.adopt(scope)
     else:
       word_iterator.backup()
       if (lead_word.value[:1] != "."):
@@ -92,9 +95,10 @@ def collect_objects(
         active_definition = parameters.definition(
           name=lead_word.value,
           words=collect_assigned_words(word_iterator, lead_word),
+          primary_id=primary_id_generator.next(),
           is_disabled=is_disabled,
           where_str=lead_word.where_str())
-        parser_parent_scope.adopt(active_definition)
+        primary_parent_scope.adopt(active_definition)
       else:
         if (active_definition is None
             or not active_definition.has_attribute_with_name(

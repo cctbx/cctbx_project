@@ -495,6 +495,16 @@ d.e = 0
 e = 0
 """)
 
+def check_resolve_variables(parameters, path, expected_out=None, n_matches=1):
+  matches = parameters.get(path=path, with_substitution=False)
+  assert len(matches.objects) == n_matches
+  result = matches.objects[0].resolve_variables().as_str()
+  if (expected_out is None):
+    print '  check_resolve_variables(parameters, "%s", "%s")' % (
+      path, result.replace("\n", "\\n"))
+  elif (result != expected_out):
+    raise AssertionError('"%s" != "%s"' % (result, expected_out))
+
 def exercise_get_with_substitution():
   parameters = iotbx.parameters.parse(input_string="""\
 a=b
@@ -502,6 +512,74 @@ c = d   e   2
 """)
   check_get_sub(parameters, path="a", expected_out="a = b\n")
   check_get_sub(parameters, path="c", expected_out="c = d e 2\n")
+  check_resolve_variables(parameters, "a", "a = b\n")
+  check_resolve_variables(parameters, "c", "c = d e 2\n")
+  parameters = iotbx.parameters.parse(input_string="""\
+a=1
+b=$a
+c=$b
+d=2
+e=${.d} $c
+s {
+  i=10
+  j=$i
+  k=$j
+  l=20
+  m=$l $k
+  n=$a
+  t {
+    x=$l
+    y=$k
+    z=$n
+    n=$a $j $y
+  }
+  d=9
+  e=${d}
+  f=${.d}
+  g=${.s.t.x}
+}
+d=x
+f=${s.i}
+g=${s.a}
+s {
+  t {
+    x=30
+    a=40
+  }
+}
+h=${s.t.x}
+i=${s.t.a}
+j=${s.t.n}
+k=${.s.t.x}
+""")
+  check_resolve_variables(parameters, "a", "a = 1\n")
+  check_resolve_variables(parameters, "b", "b = 1\n")
+  check_resolve_variables(parameters, "c", "c = 1\n")
+  check_resolve_variables(parameters, "d", "d = 2\n", n_matches=2)
+  check_resolve_variables(parameters, "e", "e = 2 1\n")
+  check_resolve_variables(parameters, "s.i", "i = 10\n")
+  check_resolve_variables(parameters, "s.j", "j = 10\n")
+  check_resolve_variables(parameters, "s.k", "k = 10\n")
+  check_resolve_variables(parameters, "s.m", "m = 20 10\n")
+  check_resolve_variables(parameters, "s.n", "n = 1\n")
+  check_resolve_variables(parameters, "s.t.x", "x = 20\n", n_matches=2)
+  check_resolve_variables(parameters, "s.t.y", "y = 10\n")
+  check_resolve_variables(parameters, "s.t.z", "z = 1\n")
+  check_resolve_variables(parameters, "s.t.n", "n = 1 10 10\n")
+  check_resolve_variables(parameters, "f", "f = 10\n")
+  try:
+    check_resolve_variables(parameters, "g")
+  except RuntimeError, e:
+    assert str(e) == 'Undefined variable: $s.a (input line 26)'
+  else: raise RuntimeError("Exception expected.")
+  check_resolve_variables(parameters, "h", "h = 30\n")
+  check_resolve_variables(parameters, "i", "i = 40\n")
+  check_resolve_variables(parameters, "j", "j = 1 10 10\n")
+  check_resolve_variables(parameters, "k", "k = 30\n")
+  check_resolve_variables(parameters, "s.e", "e = 9\n")
+  check_resolve_variables(parameters, "s.f", "f = 2\n")
+  check_resolve_variables(parameters, "s.g", "g = 20\n")
+  #
   parameters = iotbx.parameters.parse(input_string="""\
 a=$a
 b=$c

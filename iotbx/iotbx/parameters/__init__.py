@@ -9,6 +9,8 @@ import copy
 import math
 import sys, os
 
+default_print_width = 79
+
 standard_identifier_start_characters = {}
 for c in "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
   standard_identifier_start_characters[c] = None
@@ -165,13 +167,14 @@ class definition: # FUTURE definition(object)
     "help", "caption", "short_caption", "optional",
     "type", "multiple", "input_size", "expert_level"]
 
-  __slots__ = ["name", "words", "parser_parent_scope",
+  __slots__ = ["name", "words", "primary_id", "primary_parent_scope",
                "is_disabled", "where_str", "merge_names"] + attribute_names
 
   def __init__(self,
         name,
         words,
-        parser_parent_scope=None,
+        primary_id=None,
+        primary_parent_scope=None,
         is_disabled=False,
         where_str="",
         merge_names=False,
@@ -187,7 +190,8 @@ class definition: # FUTURE definition(object)
       raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     self.name = name
     self.words = words
-    self.parser_parent_scope = None
+    self.primary_id = primary_id
+    self.primary_parent_scope = primary_parent_scope
     self.is_disabled = is_disabled
     self.where_str = where_str
     self.merge_names = merge_names
@@ -265,11 +269,13 @@ class definition: # FUTURE definition(object)
     setattr(self, name, value)
 
   def show(self,
-        out,
+        out=None,
         merged_names=[],
         prefix="",
         attributes_level=0,
-        print_width=79):
+        print_width=None):
+    if (out is None): out = sys.stdout
+    if (print_width is None): print_width = default_print_width
     if (self.is_disabled): hash = "#"
     else:                  hash = ""
     line = prefix + hash + ".".join(merged_names + [self.name])
@@ -290,12 +296,20 @@ class definition: # FUTURE definition(object)
       attributes_level=attributes_level,
       print_width=print_width)
 
+  def as_str(self,
+        prefix="",
+        attributes_level=0,
+        print_width=None):
+    out = StringIO()
+    self.show(
+      out=out,
+      prefix=prefix,
+      attributes_level=attributes_level,
+      print_width=print_width)
+    return out.getvalue()
+
   def has_same_definitions(self, other):
-    out_self = StringIO()
-    out_other = StringIO()
-    self.show(out=out_self)
-    other.show(out=out_other)
-    return out_self.getvalue() == out_other.getvalue()
+    return self.as_str() == other.as_str()
 
   def _all_definitions(self, parent, parent_path, result):
     result.append(object_locator(
@@ -427,6 +441,44 @@ class definition: # FUTURE definition(object)
   def unique(self):
     return self
 
+  def resolve_variables(self):
+    new_words = []
+    for word in self.words:
+      if (word.quote_token == "'"):
+        new_words.append(word)
+        continue
+      substitution_proxy = variable_substitution_proxy(word)
+      for fragment in substitution_proxy.fragments:
+        if (not fragment.is_variable):
+          fragment.result = simple_tokenizer.word(
+            value=fragment.value, quote_token='"')
+          continue
+        variable_words = None
+        if (self.primary_parent_scope is not None):
+          substitution_source = self.primary_parent_scope.lexical_get(
+            path=fragment.value, stop_id=self.primary_id)
+          if (substitution_source is not None):
+            assert isinstance(substitution_source, definition)
+            variable_words = substitution_source.resolve_variables().words
+        if (variable_words is None):
+          env_var = os.environ.get(fragment.value, None)
+          if (env_var is not None):
+            variable_words = [simple_tokenizer.word(
+              value=env_var,
+              quote_token='"',
+              source_info='environment: "%s"'%fragment.value)]
+        if (variable_words is None):
+          raise RuntimeError("Undefined variable: $%s%s" % (
+            fragment.value, word.where_str()))
+        if (not substitution_proxy.force_string):
+          fragment.result = variable_words
+        else:
+          fragment.result = simple_tokenizer.word(
+            value=" ".join([str(v) for v in variable_words]),
+            quote_token='"')
+      new_words.extend(substitution_proxy.get_new_words())
+    return self.copy(words=new_words)
+
 class scope_extract_attribute_error: pass
 class scope_extract_is_disabled: pass
 
@@ -462,7 +514,8 @@ class scope:
   def __init__(self,
         name,
         objects=None,
-        parser_parent_scope=None,
+        primary_id=None,
+        primary_parent_scope=None,
         is_disabled=False,
         where_str="",
         merge_names=False,
@@ -477,7 +530,7 @@ class scope:
         disable_delete=None,
         expert_level=None):
     introspection.adopt_init_args()
-    self.attribute_names = self.__init__varnames__[7:]
+    self.attribute_names = self.__init__varnames__[8:]
     if (objects is None):
       self.objects = []
     assert style in [None, "row", "column", "block", "page"]
@@ -498,7 +551,7 @@ class scope:
 
   def adopt(self, object):
     assert len(object.name) > 0
-    parser_parent_scope = self
+    primary_parent_scope = self
     name_components = object.name.split(".")
     merge_names = False
     for name in name_components[:-1]:
@@ -506,14 +559,14 @@ class scope:
       child_scope.merge_names = merge_names
       child_scope.optional = object.optional
       child_scope.multiple = object.multiple
-      parser_parent_scope.adopt(child_scope)
-      parser_parent_scope = child_scope
+      primary_parent_scope.adopt(child_scope)
+      primary_parent_scope = child_scope
       merge_names = True
     if (len(name_components) > 1):
       object.name = name_components[-1]
       object.merge_names = True
-    object.parser_parent_scope = parser_parent_scope
-    parser_parent_scope.objects.append(object)
+    object.primary_parent_scope = primary_parent_scope
+    primary_parent_scope.objects.append(object)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
@@ -547,8 +600,7 @@ class scope:
         attributes_level=0,
         print_width=None):
     if (out is None): out = sys.stdout
-    if (print_width is None):
-      print_width = 79
+    if (print_width is None): print_width = default_print_width
     is_proper_scope = False
     if (len(self.name) == 0):
       assert len(merged_names) == 0
@@ -586,12 +638,20 @@ class scope:
     if (is_proper_scope):
       print >> out, prefix[:-2] + "}"
 
+  def as_str(self,
+        prefix="",
+        attributes_level=0,
+        print_width=None):
+    out = StringIO()
+    self.show(
+      out=out,
+      prefix=prefix,
+      attributes_level=attributes_level,
+      print_width=print_width)
+    return out.getvalue()
+
   def has_same_definitions(self, other):
-    out_self = StringIO()
-    out_other = StringIO()
-    self.show(out=out_self)
-    other.show(out=out_other)
-    return out_self.getvalue() == out_other.getvalue()
+    return self.as_str() == other.as_str()
 
   def _all_definitions(self, parent, parent_path, result):
     parent_path += self.name+"."
@@ -620,12 +680,12 @@ class scope:
       path = path[len(self.name)+1:]
     else:
       if (stopper is not None):
-        parser_parent_scope = stopper.object.parser_parent_scope
-        while (parser_parent_scope is not None):
-          if (parser_parent_scope is self):
+        primary_parent_scope = stopper.object.primary_parent_scope
+        while (primary_parent_scope is not None):
+          if (primary_parent_scope is self):
             stopper.stop = True
             break
-          parser_parent_scope = parser_parent_scope.parser_parent_scope
+          primary_parent_scope = primary_parent_scope.primary_parent_scope
       return []
     result = []
     for object in self.active_objects():
@@ -670,6 +730,30 @@ class scope:
         path_memory=path_memory))
     del path_memory[path]
     return scope(name="", objects=result_sub)
+
+  def lexical_get(self, path, stop_id, search_up=True):
+    if (path.startswith(".")):
+      while (self.primary_parent_scope is not None):
+        self = self.primary_parent_scope
+      path = path[1:]
+    candidates = []
+    for object in self.objects:
+      if (object.primary_id >= stop_id): break
+      if (isinstance(object, definition)):
+        if (object.name == path):
+          candidates.append(object)
+      elif (object.name == path
+            or path.startswith(object.name+".")):
+        candidates.append(object)
+    while (len(candidates) > 0):
+      object = candidates.pop()
+      if (object.name == path): return object
+      object = object.lexical_get(
+        path=path[len(object.name)+1:], stop_id=stop_id, search_up=False)
+      if (object is not None): return object
+    if (not search_up): return None
+    if (self.primary_parent_scope is None): return None
+    return self.primary_parent_scope.lexical_get(path=path, stop_id=stop_id)
 
   def extract(self, custom_converters=None):
     result = scope_extract()
@@ -771,7 +855,6 @@ class scope:
             value=fragment.value, quote_token='"')
           continue
         variable_words = None
-        # XXX print fragment.value
         for variable_object in self.get(
                                  path=fragment.value,
                                  path_memory=path_memory,
@@ -908,7 +991,8 @@ class variable_substitution_proxy(object):
               c = char_iter.next()
               break
             fragment_value += c
-          if (not is_standard_identifier(fragment_value)):
+          offs = int(fragment_value.startswith("."))
+          if (not is_standard_identifier(fragment_value[offs:])):
             word.raise_syntax_error("improper variable name ")
           self.fragments.append(variable_substitution_fragment(
             is_variable=True,
@@ -957,7 +1041,7 @@ def parse(
     input_string = open(file_name).read()
   if (definition_type_names is None):
     definition_type_names = default_definition_type_names
-  result = scope(name="")
+  result = scope(name="", primary_id=0)
   parser.collect_objects(
     word_iterator=simple_tokenizer.word_iterator(
       input_string=input_string,
@@ -972,7 +1056,8 @@ def parse(
           unquoted_single_character_words="",
           contiguous_word_characters="")]),
     definition_type_names=definition_type_names,
-    parser_parent_scope=result)
+    primary_id_generator=count(1),
+    primary_parent_scope=result)
   if (process_includes):
     if (file_name is None):
       file_name_normalized = None
