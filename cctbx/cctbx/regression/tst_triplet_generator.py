@@ -59,8 +59,7 @@ def reciprocal_space_squaring(start, selection_fixed, verbose):
         print
   amplitudes = abs(start).data()
   if (selection_fixed is not None):
-    sel_var = ~selection_fixed
-    amplitudes.set_selected(sel_var, flex.double(sel_var.count(0001), 0))
+    amplitudes.set_selected(~selection_fixed, 0)
   input_phases = flex.arg(start.data())
   result = tprs.apply_tangent_formula(
     amplitudes=amplitudes,

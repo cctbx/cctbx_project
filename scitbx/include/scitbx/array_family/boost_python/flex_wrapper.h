@@ -408,7 +408,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static boost::python::object
-    set_selected_bool(
+    set_selected_bool_a(
       boost::python::object flex_object,
       af::const_ref<bool> const& flags,
       af::const_ref<e_t> const& new_values)
@@ -429,7 +429,22 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static boost::python::object
-    set_selected_size_t(
+    set_selected_bool_s(
+      boost::python::object flex_object,
+      af::const_ref<bool> const& flags,
+      e_t const& new_value)
+    {
+      boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
+      af::ref<e_t> a = a_proxy();
+      SCITBX_ASSERT(a.size() == flags.size());
+      for(std::size_t i=0;i<flags.size();i++) {
+        if (flags[i]) a[i] = new_value;
+      }
+      return flex_object;
+    }
+
+    static boost::python::object
+    set_selected_size_t_a(
       boost::python::object const& flex_object,
       af::const_ref<std::size_t> const& indices,
       af::const_ref<e_t> const& new_values)
@@ -440,6 +455,21 @@ namespace scitbx { namespace af { namespace boost_python {
       for(std::size_t i=0;i<indices.size();i++) {
         SCITBX_ASSERT(indices[i] < a.size());
         a[indices[i]] = new_values[i];
+      }
+      return flex_object;
+    }
+
+    static boost::python::object
+    set_selected_size_t_s(
+      boost::python::object const& flex_object,
+      af::const_ref<std::size_t> const& indices,
+      e_t const& new_value)
+    {
+      boost::python::extract<af::ref<e_t> > a_proxy(flex_object);
+      af::ref<e_t> a = a_proxy();
+      for(std::size_t i=0;i<indices.size();i++) {
+        SCITBX_ASSERT(indices[i] < a.size());
+        a[indices[i]] = new_value;
       }
       return flex_object;
     }
@@ -706,8 +736,10 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("items", items)
         .def("select", select_bool)
         .def("select", select_size_t)
-        .def("set_selected", set_selected_bool)
-        .def("set_selected", set_selected_size_t)
+        .def("set_selected", set_selected_bool_a)
+        .def("set_selected", set_selected_bool_s)
+        .def("set_selected", set_selected_size_t_a)
+        .def("set_selected", set_selected_size_t_s)
       ;
     }
 
