@@ -107,6 +107,8 @@ class space_group_info:
     return self.change_basis(self.type().cb_op())
 
   def change_basis(self, cb_op):
+    if (isinstance(cb_op, str)):
+      cb_op = change_of_basis_op(cb_op)
     return space_group_info(group=self.group().change_basis(cb_op))
 
   def change_hand(self):
