@@ -39,9 +39,13 @@ def exercise_bond():
   assert approx_equal(t[1][10].distance_ideal, 3)
   #
   p = geometry_restraints.bond_simple_proxy(
-    i_seqs=[0,1],
+    i_seqs=[1,0],
     distance_ideal=3.5,
     weight=1)
+  assert p.i_seqs == (1,0)
+  assert approx_equal(p.distance_ideal, 3.5)
+  assert approx_equal(p.weight, 1)
+  p = p.sort_i_seqs()
   assert p.i_seqs == (0,1)
   assert approx_equal(p.distance_ideal, 3.5)
   assert approx_equal(p.weight, 1)

@@ -28,6 +28,34 @@ class proxy_registry_add_result:
   def __init__(self, tabulated_proxy=None, is_new=False, is_conflicting=False):
     adopt_init_args(self, locals())
 
+class bond_simple_proxy_registry:
+
+  def __init__(self, n_seq):
+    self.table = [{} for i in xrange(n_seq)]
+    self.proxies = shared_bond_simple_proxy()
+    self.counts = flex.size_t()
+
+  def process(self, proxy, tolerance=1.e-6):
+    result = proxy_registry_add_result()
+    proxy = proxy.sort_i_seqs()
+    if (not self.table[proxy.i_seqs[0]].has_key(proxy.i_seqs[1])):
+      self.table[proxy.i_seqs[0]][proxy.i_seqs[1]] = self.proxies.size()
+      self.proxies.append(proxy)
+      self.counts.append(1)
+      result.tabulated_proxy = proxy
+      result.is_new = True
+    else:
+      i_list = self.table[proxy.i_seqs[0]][proxy.i_seqs[1]]
+      result.tabulated_proxy = self.proxies[i_list]
+      if (   abs(result.tabulated_proxy.distance_ideal
+                                - proxy.distance_ideal) > tolerance
+          or abs(result.tabulated_proxy.weight - proxy.weight)
+               > tolerance):
+        result.is_conflicting = True
+      else:
+        self.counts[i_list] += 1
+    return result
+
 class angle_proxy_registry:
 
   def __init__(self):
