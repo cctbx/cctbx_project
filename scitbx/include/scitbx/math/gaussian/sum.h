@@ -51,8 +51,8 @@ namespace scitbx { namespace math { namespace gaussian {
           set to true.
        */
       sum(
-        af::const_ref<FloatType> const& a,
-        af::const_ref<FloatType> const& b,
+        af::small<FloatType, max_n_terms> const& a,
+        af::small<FloatType, max_n_terms> const& b,
         FloatType const& c=0,
         bool use_c=false)
       :
@@ -60,7 +60,6 @@ namespace scitbx { namespace math { namespace gaussian {
         use_c_(use_c || c != 0)
       {
         SCITBX_ASSERT(a.size() == b.size());
-        SCITBX_ASSERT(a.size() <= max_n_terms);
         for(std::size_t i=0;i<a.size();i++) {
           terms_.push_back(term<FloatType>(a[i], b[i]));
         }
@@ -77,10 +76,10 @@ namespace scitbx { namespace math { namespace gaussian {
       terms() const { return terms_; }
 
       //! Array of coefficients a.
-      af::shared<FloatType>
+      af::small<FloatType, max_n_terms>
       array_of_a() const
       {
-        af::shared<FloatType> result(af::reserve(terms_.size()));
+        af::small<FloatType, max_n_terms> result;
         for(std::size_t i=0;i<terms_.size();i++) {
           result.push_back(terms_[i].a);
         }
@@ -88,10 +87,10 @@ namespace scitbx { namespace math { namespace gaussian {
       }
 
       //! Array of coefficients b.
-      af::shared<FloatType>
+      af::small<FloatType, max_n_terms>
       array_of_b() const
       {
-        af::shared<FloatType> result(af::reserve(terms_.size()));
+        af::small<FloatType, max_n_terms> result;
         for(std::size_t i=0;i<terms_.size();i++) {
           result.push_back(terms_[i].b);
         }
@@ -126,9 +125,31 @@ namespace scitbx { namespace math { namespace gaussian {
         return result;
       }
 
+      //! Sum of Gaussian terms at the points x, given x^2.
+      af::shared<FloatType>
+      at_x_sq(af::const_ref<FloatType> const& x_sq) const
+      {
+        af::shared<double> result(x_sq.size(),af::init_functor_null<double>());
+        for(std::size_t i=0;i<x_sq.size();i++) {
+          result[i] = at_x_sq(x_sq[i]);
+        }
+        return result;
+      }
+
       //! Sum of Gaussian terms at the point x.
       FloatType
       at_x(FloatType const& x) const { return at_x_sq(x * x); }
+
+      //! Sum of Gaussian terms at the points x.
+      af::shared<FloatType>
+      at_x(af::const_ref<FloatType> const& x) const
+      {
+        af::shared<double> result(x.size(),af::init_functor_null<double>());
+        for(std::size_t i=0;i<x.size();i++) {
+          result[i] = at_x(x[i]);
+        }
+        return result;
+      }
 
       //! Gradient w.r.t. x at the point x.
       FloatType
