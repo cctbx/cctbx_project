@@ -15,25 +15,25 @@
 
 BOOST_PYTHON_BEGIN_CONVERSION_NAMESPACE
 
-  cctbx::coordinates::cartesian<double> from_python(PyObject* p,
-    boost::python::type<const cctbx::coordinates::cartesian<double>&>)
+  cctbx::cartesian<double> from_python(PyObject* p,
+    boost::python::type<const cctbx::cartesian<double>&>)
   {
-    return cctbx::coordinates::cartesian<double>(from_python(p,
+    return cctbx::cartesian<double>(from_python(p,
       boost::python::type<const boost::array<double, 3>&>()));
   }
 
-  PyObject* to_python(const cctbx::coordinates::cartesian<double>& Xc) {
+  PyObject* to_python(const cctbx::cartesian<double>& Xc) {
     return to_python(static_cast<const boost::array<double, 3>&>(Xc));
   }
 
-  cctbx::coordinates::fractional<double> from_python(PyObject* p,
-    boost::python::type<const cctbx::coordinates::fractional<double>&>)
+  cctbx::fractional<double> from_python(PyObject* p,
+    boost::python::type<const cctbx::fractional<double>&>)
   {
-    return cctbx::coordinates::fractional<double>(from_python(p,
+    return cctbx::fractional<double>(from_python(p,
       boost::python::type<const boost::array<double, 3>&>()));
   }
 
-  PyObject* to_python(const cctbx::coordinates::fractional<double>& Xf) {
+  PyObject* to_python(const cctbx::fractional<double>& Xf) {
     return to_python(static_cast<const boost::array<double, 3>&>(Xf));
   }
 

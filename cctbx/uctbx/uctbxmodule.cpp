@@ -92,24 +92,24 @@ namespace {
   }
   double
   UnitCell_Length2(const UnitCell& uc,
-                   const coordinates::fractional<double>& Xf) {
+                   const fractional<double>& Xf) {
     return uc.Length2(Xf);
   }
   double
   UnitCell_Length(const UnitCell& uc,
-                  const coordinates::fractional<double>& Xf) {
+                  const fractional<double>& Xf) {
     return uc.Length(Xf);
   }
   double
   UnitCell_Distance2(const UnitCell& uc,
-                     const coordinates::fractional<double>& Xf,
-                     const coordinates::fractional<double>& Yf) {
+                     const fractional<double>& Xf,
+                     const fractional<double>& Yf) {
     return uc.Distance2(Xf, Yf);
   }
   double
   UnitCell_Distance(const UnitCell& uc,
-                    const coordinates::fractional<double>& Xf,
-                    const coordinates::fractional<double>& Yf) {
+                    const fractional<double>& Xf,
+                    const fractional<double>& Yf) {
     return uc.Distance(Xf, Yf);
   }
   UnitCell UnitCell_ChangeBasis_1(const UnitCell& uc, const Mx33& InvCBMxR) {
@@ -119,14 +119,14 @@ namespace {
                                   const Mx33& InvCBMxR, double RBF) {
     return uc.ChangeBasis(InvCBMxR, RBF);
   }
-  coordinates::fractional<double>
+  fractional<double>
   UnitCell_fractionalize(const UnitCell& uc,
-                         const coordinates::cartesian<double>& Xc) {
+                         const cartesian<double>& Xc) {
     return uc.fractionalize(Xc);
   }
-  coordinates::cartesian<double>
+  cartesian<double>
   UnitCell_orthogonalize(const UnitCell& uc,
-                         const coordinates::fractional<double>& Xf) {
+                         const fractional<double>& Xf) {
     return uc.orthogonalize(Xf);
   }
 }

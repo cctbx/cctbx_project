@@ -18,7 +18,7 @@ namespace sgtbx {
 
   namespace detail {
 
-    TrVec getUnitShifts(const coordinates::fractional<double>& Delta)
+    TrVec getUnitShifts(const fractional<double>& Delta)
     {
       TrVec result(1);
       rangei(3) {
@@ -135,10 +135,10 @@ namespace sgtbx {
     for (int iOp = 1; iOp < sgo.OrderP(); iOp++) {
       RTMx M = sgo(iOp);
       RotMx CumR = M.Rpart().accumulate();
-      coordinates::fractional<double> Mate0 = M * m_SnapPosition;
+      fractional<double> Mate0 = M * m_SnapPosition;
       for (int iLTr = 0; iLTr < sgo.nLTr(); iLTr++) {
-        coordinates::fractional<double> Mate = Mate0 + sgo.LTr(iLTr);
-        coordinates::fractional<double> Delta0 = Mate - m_SnapPosition;
+        fractional<double> Mate = Mate0 + sgo.LTr(iLTr);
+        fractional<double> Delta0 = Mate - m_SnapPosition;
         Delta0 = Delta0.ModShort();
         TrVec
         UShifts = detail::getUnitShifts((m_SnapPosition + Delta0) - Mate);
@@ -149,7 +149,7 @@ namespace sgtbx {
         for (UShifts[0] = -TBF; UShifts[0] <= TBF; UShifts[0] += TBF)
         for (UShifts[1] = -TBF; UShifts[1] <= TBF; UShifts[1] += TBF)
         for (UShifts[2] = -TBF; UShifts[2] <= TBF; UShifts[2] += TBF) {
-          coordinates::fractional<double> Delta = Delta0 + UShifts;
+          fractional<double> Delta = Delta0 + UShifts;
           double CartDelta2 = uc.Length2(Delta);
           if (SD2 > CartDelta2) SD2 = CartDelta2;
           if (CartDelta2 <= m_Parameters.m_MinMateDistance2) {
@@ -184,7 +184,7 @@ namespace sgtbx {
   }
 
   SpecialPosition::SpecialPosition(const SpecialPositionSnapParameters& params,
-                                   const coordinates::fractional<double>& X,
+                                   const fractional<double>& X,
                                    bool auto_expand)
 
     : m_Parameters(params),
@@ -208,7 +208,7 @@ namespace sgtbx {
 
   SymEquivCoordinates::SymEquivCoordinates(
     const SpecialPositionSnapParameters& params,
-    const coordinates::fractional<double>& X)
+    const fractional<double>& X)
   {
     SpecialPosition SP(params, X, true);
     for(std::size_t i=0;i<SP.M();i++) {
@@ -226,11 +226,11 @@ namespace sgtbx {
 
   SymEquivCoordinates::SymEquivCoordinates(
      const WyckoffMapping& WM,
-     const coordinates::fractional<double>& X)
+     const fractional<double>& X)
   {
     const WyckoffPosition& WP = WM.WP();
     WP.CheckExpanded();
-    coordinates::fractional<double> Xr = WM.snap_to_representative(X);
+    fractional<double> Xr = WM.snap_to_representative(X);
     for(std::size_t i=0;i<WP.M();i++) {
       m_Coordinates.push_back(WP[i] * Xr);
     }
@@ -238,7 +238,7 @@ namespace sgtbx {
 
   SymEquivCoordinates::SymEquivCoordinates(
      const WyckoffPosition& WP,
-     const coordinates::fractional<double>& X)
+     const fractional<double>& X)
   {
     WP.CheckExpanded();
     for(std::size_t i=0;i<WP.M();i++) {
@@ -248,11 +248,11 @@ namespace sgtbx {
 
   SymEquivCoordinates::SymEquivCoordinates(
     const SpecialPositionTolerances& params,
-    const coordinates::fractional<double>& X)
+    const fractional<double>& X)
   {
     m_Coordinates.push_back(X);
     for(int i=1;i<params.m_SgOps.OrderZ();i++) {
-      coordinates::fractional<double> SX = params.m_SgOps(i) * X;
+      fractional<double> SX = params.m_SgOps(i) * X;
       double Delta2 = getShortestDistance2(params.m_UnitCell, SX);
       if (Delta2 >= params.m_Tolerance2) {
         if (Delta2 < params.m_MinimumDistance2) {
@@ -273,18 +273,18 @@ namespace sgtbx {
 
   SymEquivCoordinates::SymEquivCoordinates(
     const SgOps& sgo,
-    const coordinates::fractional<double>& X)
+    const fractional<double>& X)
   {
     m_Coordinates.push_back(X);
     for(int i=1;i<sgo.OrderZ();i++) {
-      coordinates::fractional<double> SX = sgo(i) * X;
+      fractional<double> SX = sgo(i) * X;
       m_Coordinates.push_back(SX);
     }
   }
 
   namespace detail {
     double ModLength2(const uctbx::UnitCell& uc,
-                      const coordinates::fractional<double>& Diff) {
+                      const fractional<double>& Diff) {
       return uc.Length2(Diff.ModShort());
     }
   }
@@ -292,7 +292,7 @@ namespace sgtbx {
   double
   SymEquivCoordinates::getShortestDistance2(
     const uctbx::UnitCell& uc,
-    const coordinates::fractional<double>& Y) const
+    const fractional<double>& Y) const
   {
     double result = detail::ModLength2(uc, Y - m_Coordinates[0]);
     for(std::size_t i=1;i<m_Coordinates.size();i++) {
