@@ -1,5 +1,5 @@
 import iotbx.parameters
-from libtbx.utils import UserError
+from libtbx.utils import Sorry
 
 class argument_interpreter:
 
@@ -34,7 +34,7 @@ class argument_interpreter:
         input_string=arg.replace(r"\n", "\n"),
         source_info=self.argument_description+"argument")
     except RuntimeError, e:
-      raise UserError((
+      raise Sorry((
         'Error interpreting %sargument as parameter definition:\n'
         '  "%s"\n  %s') % (self.argument_description, arg, str(e)))
     if (self.target_paths is None):
@@ -48,7 +48,7 @@ class argument_interpreter:
         for target_path in self.target_paths]
       max_score = max(scores)
       if (max_score == 0):
-        raise UserError("Unknown %sparameter definition: %s" % (
+        raise Sorry("Unknown %sparameter definition: %s" % (
           self.argument_description, object.as_str().strip()))
       if (scores.count(max_score) > 1):
         error = ["Ambiguous parameter definition: %s" %
@@ -57,11 +57,11 @@ class argument_interpreter:
         for target_path,score in zip(self.target_paths, scores):
           if (score == max_score):
             error.append("  " + target_path)
-        raise UserError("\n".join(error))
+        raise Sorry("\n".join(error))
       complete_definitions += object.customized_copy(
         name=self.target_paths[scores.index(max_score)]).as_str()
     if (complete_definitions == ""):
-      raise UserError(('%sparameter definition has no effect: "%s"' % (
+      raise Sorry(('%sparameter definition has no effect: "%s"' % (
         self.argument_description, arg)).capitalize())
     return iotbx.parameters.parse(
       input_string=complete_definitions,

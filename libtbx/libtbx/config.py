@@ -2,7 +2,7 @@ from __future__ import generators
 import libtbx.path
 from libtbx.optparse_wrapper import option_parser
 from libtbx import introspection
-from libtbx.utils import UserError
+from libtbx.utils import Sorry
 import shutil
 import pickle
 from cStringIO import StringIO
@@ -113,7 +113,7 @@ def open_info(path, mode="w", info="   "):
   print info, os.path.basename(path)
   try: return open(path, mode)
   except IOError, e:
-    raise UserError(str(e))
+    raise Sorry(str(e))
 
 class common_setpaths:
 
@@ -255,7 +255,7 @@ class environment:
       prev_python_api_version = open(path).read().strip()
       if (prev_python_api_version != self.python_api_version):
         if (prev_python_api_version != "UNKNOWN"):
-          raise UserError(
+          raise Sorry(
             "Incompatible Python API's\n"
             "  Current version:        %s\n"
             "  Used to build binaries: %s" % (
@@ -347,7 +347,7 @@ class environment:
     path = self.under_build("command_version_suffix")
     try: f = open(path, "w")
     except IOError:
-      raise UserError('Cannot write command_version_suffix file: "%s"' % path)
+      raise Sorry('Cannot write command_version_suffix file: "%s"' % path)
     print >> f, self.command_version_suffix
 
   def read_command_version_suffix(self):
@@ -358,7 +358,7 @@ class environment:
       try:
         self.command_version_suffix = open(path).read().strip()
       except IOError:
-        raise UserError('Cannot read command_version_suffix file: "%s"' % path)
+        raise Sorry('Cannot read command_version_suffix file: "%s"' % path)
 
   def register_module(self, dependent_module, module):
     if (dependent_module is None):
@@ -386,7 +386,7 @@ class environment:
              "  Repository directories searched:"]
       for path in self.repository_paths:
         msg.append('    "%s"' % path)
-      raise UserError("\n".join(msg))
+      raise Sorry("\n".join(msg))
     return None
 
   def process_module(self, dependent_module, module_name, optional):
@@ -473,7 +473,7 @@ class environment:
         module_name, redirection = module_name.split("=")
         dist_path = self.abs_path_clean(os.path.expandvars(redirection))
         if (not os.path.isdir(dist_path)):
-          raise UserError(
+          raise Sorry(
             'Invalid command line redirection:\n'
             '  module name = "%s"\n'
             '  redirection = "%s"\n'
@@ -509,7 +509,7 @@ class environment:
 
   def option_repository(self, option, opt, value, parser):
     if (not os.path.isdir(value)):
-      raise UserError('Not a directory: --repository "%s"' % value)
+      raise Sorry('Not a directory: --repository "%s"' % value)
     self.add_repository(value)
 
   def dispatcher_precall_commands(self):
@@ -531,7 +531,7 @@ class environment:
       if (os.name == "posix" and self.build_options.compiler == "icc"):
         addl_lines = self.create_posix_icc_ld_preload()
         if (addl_lines is None):
-          raise UserError("Cannot determine LD_PRELOAD for icc.")
+          raise Sorry("Cannot determine LD_PRELOAD for icc.")
         lines.extend(addl_lines)
       self._dispatcher_precall_commands = lines
     return self._dispatcher_precall_commands
@@ -583,7 +583,7 @@ class environment:
         if (    file_name.startswith("dispatcher_include")
             and file_name.endswith(".sh")):
           try: lines = open(file_name).read().splitlines()
-          except IOError, e: raise UserError(str(e))
+          except IOError, e: raise Sorry(str(e))
           lines.insert(0, "# included from %s" % file_name)
           highlight_dispatcher_include_lines(lines)
           self._dispatcher_include.extend(lines)
@@ -829,7 +829,7 @@ class environment:
     print "command_version_suffix:", self.command_version_suffix
     self.show_module_listing()
     if (len(self.missing_for_use) > 0):
-      raise UserError("Missing modules: "
+      raise Sorry("Missing modules: "
         + " ".join(self.missing_for_use.keys()))
     if (not self.is_ready_for_build()):
       if (self.scons_dist_path is not None):
@@ -983,17 +983,17 @@ class module:
             config = None
             break
           try: f = open(path)
-          except IOError: raise UserError(
+          except IOError: raise Sorry(
             'Cannot open configuration file: "%s"' % path)
           try: config = eval(" ".join(f.readlines()), {}, {})
           except KeyboardInterrupt: raise
-          except: raise UserError('Corrupt configuration file: "%s"' % path)
+          except: raise Sorry('Corrupt configuration file: "%s"' % path)
           f.close()
           redirection = config.get("redirection", None)
           if (redirection is None):
             break
           if (not isinstance(redirection, str)):
-            raise UserError(
+            raise Sorry(
               'Corrupt configuration file:\n'
               '  file = "%s"\n'
               '  redirection must be a Python string' % path)
@@ -1002,7 +1002,7 @@ class module:
             new_dist_path = libtbx.path.norm_join(dist_path, new_dist_path)
           new_dist_path = self.env.abs_path_clean(new_dist_path)
           if (not os.path.isdir(new_dist_path)):
-            raise UserError(
+            raise Sorry(
               'Invalid redirection:\n'
               '  file = "%s"\n'
               '  redirection = "%s"\n'
@@ -1057,7 +1057,7 @@ class module:
     elif (ext != ".sh" and ext != ".py"):
       try: hash_bang = open(source_file).read(2)
       except IOError:
-        raise UserError('Cannot read file: "%s"' % source_file)
+        raise Sorry('Cannot read file: "%s"' % source_file)
       if (hash_bang != "#!"):
         if (ext != ".bat"):
           msg = 'WARNING: Ignoring file "%s" due to missing "#!"' % (
@@ -1170,7 +1170,7 @@ def unpickle():
   libtbx_env = open(os.path.expandvars("$LIBTBX_BUILD/libtbx_env"), "rb")
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
-    raise UserError("Python version incompatible with this build.\n"
+    raise Sorry("Python version incompatible with this build.\n"
      + "  Version used to configure: %d.%d\n" % env.python_version_major_minor
      + "  Version used now: %d.%d" % sys.version_info[:2])
   return env

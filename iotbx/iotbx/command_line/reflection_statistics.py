@@ -6,7 +6,7 @@ from cctbx import sgtbx
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 from cctbx.array_family import flex
-from libtbx.utils import UserError
+from libtbx.utils import Sorry
 from libtbx.itertbx import count
 import math
 import sys
@@ -299,7 +299,7 @@ def run(args):
       try:
         miller_arrays = reflection_file.as_miller_arrays(
           crystal_symmetry=command_line.symmetry)
-      except UserError, KeyboardInterrupt: raise
+      except Sorry, KeyboardInterrupt: raise
       except: pass
     if (miller_arrays is None):
       print >> sys.stderr, "Warning: unknown file format:", file_name
