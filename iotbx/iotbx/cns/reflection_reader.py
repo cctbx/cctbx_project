@@ -272,6 +272,10 @@ class CNS_xray_reflection_Reader(CNS_input):
 
 def as_miller_array(crystal_symmetry, anomalous_flag,
                     miller_indices, data, info):
+  if (crystal_symmetry is None):
+    crystal_symmetry = crystal.symmetry(
+      unit_cell=None,
+      space_group_info=None)
   return (miller.array(
     miller_set=miller.set(
       crystal_symmetry=crystal_symmetry,
