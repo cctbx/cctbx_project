@@ -54,6 +54,12 @@ namespace {
         .def("grad_y", &w_t::grad_y)
         .def("grad_z", &w_t::grad_z)
         .def("grad_u_iso", &w_t::grad_u_iso)
+        .def("grad_u_00", &w_t::grad_u_00)
+        .def("grad_u_11", &w_t::grad_u_11)
+        .def("grad_u_22", &w_t::grad_u_22)
+        .def("grad_u_01", &w_t::grad_u_01)
+        .def("grad_u_02", &w_t::grad_u_02)
+        .def("grad_u_12", &w_t::grad_u_12)
         .def("grad_occupancy", &w_t::grad_occupancy)
         .def("apply_symmetry",
           (void(w_t::*)(maptbx::grid_tags<> const&))
