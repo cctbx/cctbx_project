@@ -4,7 +4,6 @@ import generate_af_std_imports
 import generate_af_operator_functors
 import generate_af_algebras
 import generate_af_apply
-import generate_flagged_value_algebra
 import generate_af_tiny_bpl
 import generate_henke_cpp
 import generate_sasaki_cpp
@@ -13,7 +12,6 @@ generate_af_std_imports.run()
 generate_af_operator_functors.run()
 generate_af_algebras.run()
 generate_af_apply.run()
-generate_flagged_value_algebra.run()
 generate_af_tiny_bpl.run()
 generate_henke_cpp.run()
 generate_sasaki_cpp.run()
@@ -24,7 +22,6 @@ for file, dir in (
   ("operator_traits_builtin.h", array_family_include),
   ("std_imports.h", array_family_include),
   ("operator_functors.h", array_family_include),
-  ("flagged_value_algebra.h", array_family_include),
   ("ref_algebra.h", array_family_include),
   ("tiny_algebra.h", array_family_include),
   ("small_algebra.h", array_family_include),

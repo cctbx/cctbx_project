@@ -444,13 +444,6 @@ af::shared<double> s(1000, 1.);
 af::shared<double> e = af::exp(s);
 </pre>
 
-\subsection af_flagged_value flagged_value<ValueType>
-
-XXX current implementation has full functionality incl. overloads for
-arithmetic, logical and boolean operators. However, the interface
-needs serious refinement work. (compare with MA module of Python Numeric
-extension?)
-
 \subsection af_restrictions Restrictions and deliberate limitations
 
 <ul>
@@ -514,9 +507,7 @@ overloads. Therefore you find me back on the beaten path.
 <ul>
 <li>Urgent: tiny, small: avoid default construction of non-POD types
 <li>Urgent: Refinement of shared_base
-<li>Urgent: Refinement of flagged_value
 <li>Urgent: Comprehensive tests and examples
-<li>reductions.h for arrays with flagged_value
 <li>Matrix types:
   <ul>
   <li>tiny_matrix
@@ -537,7 +528,6 @@ overloads. Therefore you find me back on the beaten path.
     number of dimensions configurable at runtime (i.e. we will need
     a new accessor). Otherwise there will be too many Python types.
 <li>Limited selection of value types:<br>
-    plain value, flagged_value of:
     <ul>
     <li>bool
     <li>int
