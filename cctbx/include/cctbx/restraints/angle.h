@@ -10,7 +10,7 @@ namespace cctbx { namespace restraints {
     angle_proxy() {}
 
     angle_proxy(
-      af::tiny<std::size_t, 3> const& i_seqs_,
+      af::tiny<unsigned, 3> const& i_seqs_,
       double angle_ideal_,
       double weight_)
     :
@@ -19,7 +19,7 @@ namespace cctbx { namespace restraints {
       weight(weight_)
     {}
 
-    af::tiny<std::size_t, 3> i_seqs;
+    af::tiny<unsigned, 3> i_seqs;
     double angle_ideal;
     double weight;
   };
@@ -89,7 +89,7 @@ namespace cctbx { namespace restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<std::size_t, 3> const& i_seqs) const
+        af::tiny<unsigned, 3> const& i_seqs) const
       {
         af::tiny<scitbx::vec3<double>, 3> grads = gradients();
         for(int i=0;i<3;i++) {

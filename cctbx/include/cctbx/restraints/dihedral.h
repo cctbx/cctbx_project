@@ -10,7 +10,7 @@ namespace cctbx { namespace restraints {
     dihedral_proxy() {}
 
     dihedral_proxy(
-      af::tiny<std::size_t, 4> const& i_seqs_,
+      af::tiny<unsigned, 4> const& i_seqs_,
       double angle_ideal_,
       double weight_,
       int periodicity_=0)
@@ -21,7 +21,7 @@ namespace cctbx { namespace restraints {
       periodicity(periodicity_)
     {}
 
-    af::tiny<std::size_t, 4> i_seqs;
+    af::tiny<unsigned, 4> i_seqs;
     double angle_ideal;
     double weight;
     int periodicity;
@@ -103,7 +103,7 @@ namespace cctbx { namespace restraints {
       void
       add_gradients(
         af::ref<scitbx::vec3<double> > const& gradient_array,
-        af::tiny<std::size_t, 4> const& i_seqs) const
+        af::tiny<unsigned, 4> const& i_seqs) const
       {
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
