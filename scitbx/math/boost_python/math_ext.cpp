@@ -15,6 +15,7 @@
 namespace scitbx { namespace math {
 namespace boost_python {
 
+  void wrap_basic_statistics();
   void wrap_gaussian();
   void wrap_golay();
   void wrap_minimum_covering_sphere();
@@ -93,6 +94,7 @@ namespace {
 
     eigensystem_real_symmetric_wrappers::wrap();
 
+    wrap_basic_statistics();
     wrap_gaussian();
     wrap_golay();
     wrap_minimum_covering_sphere();

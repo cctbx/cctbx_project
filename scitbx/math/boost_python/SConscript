@@ -4,6 +4,7 @@ env_scitbx_boost_python_ext.SharedLibrary(
   target="#libtbx/scitbx_math_ext",
   source=[
     "math_ext.cpp",
+    "basic_statistics.cpp",
     "gaussian.cpp",
     "golay.cpp",
     "minimum_covering_sphere.cpp",

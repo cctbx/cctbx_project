@@ -43,6 +43,16 @@ namespace scitbx { namespace fn {
     return x * x * x;
   }
 
+  //! Fourth power of x.
+  // Not available as array function.
+  template <typename NumType>
+  inline
+  NumType
+  pow4(NumType const& x)
+  {
+    return pow2(pow2(x));
+  }
+
   //! Tests if abs(a-b) <= tolerance.
   template <class FloatType>
   bool

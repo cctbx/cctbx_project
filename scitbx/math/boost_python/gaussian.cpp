@@ -118,7 +118,7 @@ namespace {
     }
   };
 
-}} // gaussian::namespace <anoymous>
+}} // gaussian::namespace <anonymous>
 
 namespace boost_python {
 

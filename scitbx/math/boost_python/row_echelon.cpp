@@ -101,7 +101,7 @@ namespace {
       row_echelon_back_substitution_float);
   }
 
-}}} // namespace matrix::boost_python::<anoymous>
+}}} // namespace matrix::boost_python::<anonymous>
 
 namespace math { namespace boost_python {
 
