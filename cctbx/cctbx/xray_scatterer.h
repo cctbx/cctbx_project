@@ -14,34 +14,63 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/sgtbx/groups.h>
 #include <cctbx/sgtbx/coordinates.h>
+#include <cctbx/sgtbx/miller_asu.h>
 #include <cctbx/eltbx/caasf.h>
 #include <cctbx/adptbx.h>
 
 namespace cctbx {
 
-  template <class FloatType, std::size_t CAASF_N>
+  template <class FloatType, class CAASF_Type>
   class XrayScatterer : public fractional<FloatType>
   {
     public:
       XrayScatterer() {}
       XrayScatterer(const std::string& Label,
-                    const eltbx::CAASF<CAASF_N>& CAASF,
+                    const CAASF_Type& CAASF,
+                    const std::complex<FloatType>& fpfdp,
                     const fractional<FloatType>& Coordinates,
                     const FloatType& Occ,
-                    const FloatType& Uiso,
-                    const std::complex<FloatType>& fpfdp)
+                    const FloatType& Uiso)
         : m_Label(Label),
           m_CAASF(CAASF),
+          m_fpfdp(fpfdp),
           fractional<FloatType>(Coordinates),
           m_Occ(Occ),
           m_Anisotropic(false),
-          m_fpfdp(fpfdp),
           m_M(0),
           m_w(0)
       {
         m_U.assign(0.);
         m_U[0] = Uiso;
       }
+      XrayScatterer(const std::string& Label,
+                    const CAASF_Type& CAASF,
+                    const std::complex<FloatType>& fpfdp,
+                    const fractional<FloatType>& Coordinates,
+                    const FloatType& Occ,
+                    const boost::array<FloatType, 6>& Uaniso)
+        : m_Label(Label),
+          m_CAASF(CAASF),
+          m_fpfdp(fpfdp),
+          fractional<FloatType>(Coordinates),
+          m_Occ(Occ),
+          m_Anisotropic(true),
+          m_U(Uaniso),
+          m_M(0),
+          m_w(0)
+      {
+      }
+      inline const std::string& Label() const { return m_Label; }
+      inline const CAASF_Type& CAASF() const { return m_CAASF; }
+      inline const std::complex<FloatType>& fpfdp() const { return m_fpfdp; }
+      inline const fractional<FloatType>& Coordinates() const {
+        return static_cast<const fractional<FloatType>&>(*this);
+      }
+      inline bool isAnisotropic() const { return m_Anisotropic; }
+      inline const FloatType& Uiso() const { return m_U[0]; }
+      inline const boost::array<FloatType, 6>& Uaniso() { return m_U; }
+      inline int M() const { return m_M; }
+      inline const FloatType& w() const { return m_w; }
       void DetermineMultiplicity(const uctbx::UnitCell& UC,
                                  const sgtbx::SpaceGroup& SgOps,
                                  double MinMateDistance = 0.5)
@@ -54,24 +83,86 @@ namespace cctbx {
         m_M = SS.M();
         m_w = m_Occ * m_M / SgOps.OrderZ();
       }
+      inline std::complex<FloatType>
+      StructureFactor(const sgtbx::SpaceGroup& SgOps,
+                      const Miller::Index& H,
+                      double Q) const
+      {
+        if (!m_Anisotropic) {
+          return
+              m_w * (m_CAASF.Q(Q) + m_fpfdp)
+            * SgOps.StructureFactor(Q / 4., H, *this, m_U[0]);
+        }
+        return
+            m_w * (m_CAASF.Q(Q) + m_fpfdp)
+          * SgOps.StructureFactor(H, *this, m_U);
+      }
+      inline void
+      StructureFactorVector(const sgtbx::SpaceGroup& SgOps,
+                            const std::vector<Miller::Index>& H,
+                            const std::vector<double>& Q,
+                            std::vector<std::complex<FloatType> >& Fcalc) const
+      {
+        cctbx_assert(Q.size() == H.size());
+        cctbx_assert(Fcalc.size() == H.size());
+        for (std::size_t i = 0; i < H.size(); i++) {
+          Fcalc[i] += StructureFactor(SgOps, H[i], Q[i]);
+        }
+      }
     private:
       std::string m_Label;
-      eltbx::CAASF<CAASF_N> m_CAASF;
+      CAASF_Type m_CAASF;
+      std::complex<FloatType> m_fpfdp;
       FloatType m_Occ;
       bool m_Anisotropic;
       boost::array<FloatType, 6> m_U;
-      std::complex<FloatType> m_fpfdp;
-      FloatType m_M;
+      int m_M;
       FloatType m_w;
   };
 
-  template <class FloatType, std::size_t CAASF_N>
-  std::complex<FloatType>
-  inline StructureFactor(const uctbx::UnitCell& UC,
-                         const sgtbx::SpaceGroup& SgOps,
-                         const XrayScatterer<FloatType, CAASF_N>& Site)
+  template<class FloatType, class XrayScattererType>
+  inline void
+  StructureFactorVector(const sgtbx::SpaceGroup& SgOps,
+                        const std::vector<Miller::Index>& H,
+                        const std::vector<double>& Q,
+                        const std::vector<XrayScattererType>& Sites,
+                        std::vector<std::complex<FloatType> >& Fcalc)
   {
-    return std::complex<FloatType>(0);
+    for (std::size_t i = 0; i < Sites.size(); i++) {
+      Sites[i].StructureFactorVector(SgOps, H, Q, Fcalc);
+    }
+  }
+
+  template<class FloatType, class XrayScattererType>
+  inline void
+  StructureFactorVector(const uctbx::UnitCell& UC,
+                        const sgtbx::SpaceGroup& SgOps,
+                        const std::vector<Miller::Index>& H,
+                        const std::vector<XrayScattererType>& Sites,
+                        std::vector<std::complex<FloatType> >& Fcalc)
+  {
+    std::vector<double> Q(H.size());
+    for (std::size_t i = 0; i < H.size(); i++) {
+      Q[i] = UC.Q(H[i]);
+    }
+    StructureFactorVector(SgOps, H, Q, Sites, Fcalc);
+  }
+
+  inline
+  boost::shared_ptr<std::vector<Miller::Index> >
+  BuildMillerIndices(const uctbx::UnitCell& UC,
+                     const sgtbx::SpaceGroup& SgOps,
+                     double Resolution_d_min)
+  {
+    boost::shared_ptr<std::vector<Miller::Index> >
+    ListOfH(new std::vector<Miller::Index>);
+    sgtbx::MillerIndexGenerator MIG(UC, SgOps, Resolution_d_min);
+    for (;;) {
+      Miller::Index H = MIG.next();
+      if (H.is000()) break;
+      ListOfH->push_back(H);
+    }
+    return ListOfH;
   }
 
 } // namespace cctbx
