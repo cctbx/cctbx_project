@@ -121,6 +121,12 @@ namespace scitbx { namespace af { namespace boost_python {
     static bool
     is_padded(f_t const& a) { return a.accessor().is_padded(); }
 
+    static f_t
+    shift_origin(f_t const& a)
+    {
+      return f_t(a, a.accessor().shift_origin());
+    }
+
     static std::size_t
     id(f_t const& a) { return a.id(); }
 
@@ -673,6 +679,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("layout", layout)
         .def("is_0_based", is_0_based)
         .def("is_padded", is_padded)
+        .def("shift_origin", shift_origin)
         .def("id", id)
         .def("size", size)
         .def("__len__", size)

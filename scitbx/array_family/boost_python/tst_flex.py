@@ -72,6 +72,18 @@ def exercise_flex_grid():
   l = flex.grid((1,2,3), (4,6,8), 0).set_layout((4,-9,5))
   assert not g == l
   assert g != l
+  g = flex.grid((1,2,3))
+  assert g.shift_origin() == g
+  g = flex.grid((1,2,3), (4,6,8))
+  s = g.shift_origin()
+  assert s.origin() == (0,0,0)
+  assert s.grid() == g.grid()
+  assert s.layout() == ()
+  g = flex.grid((1,2,3), (4,6,8)).set_layout((3,5,7))
+  s = g.shift_origin()
+  assert s.origin() == (0,0,0)
+  assert s.grid() == g.grid()
+  assert s.layout() == (2,3,4)
 
 def exercise_flex_constructors():
   f = flex.double()
@@ -154,6 +166,9 @@ def exercise_misc():
   i = flex.double_items(f)
   assert list(f.indices()) == range(6)
   assert list(f.items()) == zip(range(6), [12] * 6)
+  g = flex.grid((1,2,3), (4,6,8)).set_layout((3,5,7))
+  f = flex.double(g)
+  assert f.shift_origin().accessor() == g.shift_origin()
 
 def exercise_push_back_etc():
   a = flex.double(3)
