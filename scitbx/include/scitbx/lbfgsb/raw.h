@@ -1,3 +1,6 @@
+#ifndef SCITBX_LBFGSB_RAW_H
+#define SCITBX_LBFGSB_RAW_H
+
 #include <scitbx/lbfgs.h>
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/array_family/ref.h>
@@ -3028,6 +3031,9 @@ namespace raw {
       if (stp == stpmin && (f > ftest || g >= gtest)) {
         task = "WARNING: STP = STPMIN";
       }
+      if (stp == stx) {
+        task = "WARNING: STP = STX";
+      }
       // Test for convergence.
       if (f <= ftest && fn::absolute(g) <= gtol*(-ginit)) {
         task = "CONVERGENCE";
@@ -4400,3 +4406,5 @@ namespace raw {
   }
 
 }}} // namspace scitbx::lbfgsb::raw
+
+#endif // SCITBX_LBFGSB_RAW_H
