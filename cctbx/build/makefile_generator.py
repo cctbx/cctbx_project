@@ -1,7 +1,7 @@
 # $Id$
 
 import sys, os
-from string import split, strip, maketrans, translate
+from string import split, strip, maketrans, translate, join
 transl_table_slash_backslash = maketrans("/", "\\")
 
 class write_makefiles:
@@ -38,12 +38,16 @@ class write_makefiles:
 #   make del           Remove source code and tests
 """
 
-    self.all = []
-    self.depend = []
-    self.clean = []
+    self.make_targets = {
+      "libraries": [],
+      "executables": [],
+      "boost_python_modules": [],
+      "depend": [],
+      "clean": [],
+    }
     for m in self.macros: print m
     print
-    print "all: all_deferred"
+    print "all: compile"
     print
 
   def format_objects(self, objects):
@@ -58,11 +62,15 @@ class write_makefiles:
 
   def tail(self):
 
-    if (len(self.all) != 0):
-      s = "all_deferred:"
-      for t in self.all: s = s + " " + t
-      print s
-      print
+    all = []
+    for t in ("libraries", "executables", "boost_python_modules"):
+      s = join(self.make_targets[t])
+      if (len(s)):
+        print "%s: %s" % (t, s)
+        all.append(t)
+    if (len(all)):
+      print "compile:", join(all)
+    print
 
     if (hasattr(self, "make_test")):
       self.make_test()
@@ -86,7 +94,7 @@ CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \
         print "\t@type Makefile.nodepend"
       else:
         print "\t@cat Makefile.nodepend"
-      for src in self.depend:
+      for src in self.make_targets["depend"]:
         print "\t@$(CPP) $(CPPOPTS) $(MAKEDEP) %s.cpp" % (src,)
       print
 
@@ -121,8 +129,8 @@ CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \
 
   def update_depend(self, objects):
     for obj in objects:
-      if (not obj in self.depend):
-        self.depend.append(obj)
+      if (not obj in self.make_targets["depend"]):
+        self.make_targets["depend"].append(obj)
 
   def make_library(self, name, objects):
     objstr = self.format_objects(objects)
@@ -145,7 +153,7 @@ CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \
       print "\t-del %s" % (lib,)
       print "\t$(LD) -lib /nologo /out:%s %s" % (lib, objstr)
     print
-    self.all.append(lib)
+    self.make_targets["libraries"].append(lib)
     self.update_depend(objects)
 
   def make_executable(self, name, objects, libs = "$(LDMATH)"):
@@ -161,9 +169,9 @@ CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \
     print "%s: %s" % (nameexe, objstr)
     print "\t$(LD) $(LDEXE) %s %s%s %s" % (objstr, out, nameexe, libs)
     print
-    self.all.append(nameexe)
+    self.make_targets["executables"].append(nameexe)
+    self.make_targets["clean"].append(nameexe)
     self.update_depend(objects)
-    self.clean.append(nameexe)
 
   def make_boost_python_module(self, name, objects):
     objstr = self.format_objects(objects)
@@ -182,7 +190,7 @@ CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \
     print "\t$(LD) $(LDDLL) -o %s %s $(BOOST_PYTHONLIB) $(PYLIB) $(LDMATH)" \
           % (nameso, objstr)
     print
-    self.all.append(nameso)
+    self.make_targets["boost_python_modules"].append(nameso)
 
   def mingw32_pyd(self, name, objstr):
     namepyd = name + ".pyd"
@@ -196,25 +204,25 @@ CPPOPTS=$(STDFIXINC) $(STDOPTS) $(WARNOPTS) $(OPTOPTS) \
     print "\techo EXPORTS > %s" % (namedef,)
     print "\techo \tinit%s >> %s" % (name, namedef)
     print
-    self.all.append(namepyd)
+    self.make_targets["boost_python_modules"].append(namepyd)
 
   def vc60_pyd(self, name, objstr):
     namepyd = name + ".pyd"
     print "%s: %s" % (namepyd, objstr)
     print (  "\t$(LD) $(LDDLL) /out:%s /export:init%s %s"
            + " $(BOOST_PYTHONLIB) $(PYLIB)") % (namepyd, name, objstr)
-    self.all.append(namepyd)
+    self.make_targets["boost_python_modules"].append(namepyd)
 
   def make_clean(self):
     print "clean_unix:"
-    for f in self.clean:
+    for f in self.make_targets["clean"]:
       print "\trm -f " + f
     print "\trm -f *.o *.a *.so *.pyc"
     print "\trm -f *.obj *.lib *.exp *.idb *.exe *.def *.pyd"
     print "\trm -rf cxx_repository so_locations ii_files"
     print
     print "clean_win:"
-    for f in self.clean:
+    for f in self.make_targets["clean"]:
       print "\t-del " + f
     for ext in ("o", "a", "so", "pyc",
                 "obj", "lib", "exp", "idb", "exe", "def", "pyd"):

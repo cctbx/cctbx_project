@@ -1,10 +1,12 @@
 linux_gcc
 
-CCTBX_UNIX=$(HOME)/cctbx
-CCTBX_WIN=
-CCTBXINC=-I$(CCTBX_UNIX)
+ROOT=@(ROOT)
 
-BOOSTINC=-I$(HOME)/boost
+CCTBX_UNIX="$(ROOT)/cctbx"
+CCTBX_WIN=
+CCTBXINC=-I"$(ROOT)/cctbx"
+
+BOOSTINC=-I"$(ROOT)/boost"
 BOOST_PYTHONLIB=@(CWD)/../boost/libboost_python.a
 
 PYEXE=/usr/bin/python

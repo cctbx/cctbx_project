@@ -1,8 +1,8 @@
 # $Id$
 
-import MakeMakefilesMaster
+import makefile_generator
 
-class write_makefiles(MakeMakefilesMaster.write_makefiles):
+class write_makefiles(makefile_generator.write_makefiles):
 
   def dependencies(self):
     self.files = (
