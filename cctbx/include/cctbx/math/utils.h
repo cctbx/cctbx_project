@@ -31,7 +31,7 @@ namespace cctbx { namespace math {
         af::shared<FloatType> a2(a.begin(), a.end());
         af::ref<FloatType> a2r = a2.ref();
         for(std::size_t i=0;i<a2r.size();i++) a2r[i] *= a2r[i];
-        m_mean2 = af::mean(a2r.const_ref());
+        m_mean2 = af::mean(a2r);
         m_sigma = m_mean2 - m_mean * m_mean;
         if (m_sigma < FloatType(0)) m_sigma = 0;
         m_sigma = std::sqrt(m_sigma);

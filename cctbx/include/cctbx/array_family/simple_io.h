@@ -32,12 +32,6 @@ namespace cctbx { namespace af {
     return os;
   }
 
-  template <typename ElementType>
-  std::ostream&
-  operator<<(std::ostream& os, const ref<ElementType>& a) {
-    return os << a.const_ref();
-  }
-
 }} // namespace cctbx::af
 
 #endif // CCTBX_ARRAY_FAMILY_SIMPLE_IO_H

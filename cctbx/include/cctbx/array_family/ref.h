@@ -85,87 +85,81 @@ namespace cctbx { namespace af {
         return operator()(index_type(i0, i1, i2));
       }
 
-    private:
+    protected:
       const ElementType* m_begin;
       accessor_type m_accessor;
   };
 
   template <typename ElementType,
             typename AccessorType = grid<1> >
-  class ref
+  class ref : public const_ref<ElementType, AccessorType>
   {
     public:
       CCTBX_ARRAY_FAMILY_TYPEDEFS
 
+      typedef const_ref<ElementType, AccessorType> base_class;
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
 
       ref()
-        : m_begin(0)
       {}
       ref(ElementType* begin, accessor_type ac)
-        : m_begin(begin), m_accessor(ac)
+        : base_class(begin, ac)
       {}
       // convenience constructors
       ref(
         ElementType* begin, long n0)
-        : m_begin(begin), m_accessor(n0)
+        : base_class(begin, n0)
       {}
       ref(
         ElementType* begin, long n0, long n1)
-        : m_begin(begin), m_accessor(n0, n1)
+        : base_class(begin, n0, n1)
       {}
       ref(
         ElementType* begin, long n0, long n1, long n2)
-        : m_begin(begin), m_accessor(n0, n1, n2)
+        : base_class(begin, n0, n1, n2)
       {}
 
-      const accessor_type& accessor() const { return m_accessor; }
-      size_type size() const { return m_accessor.size1d(); }
-
-      ElementType* begin() const { return m_begin; }
-      ElementType* end() const { return m_begin + size(); }
-      ElementType& front() const { return m_begin[0]; }
-      ElementType& back() const { return m_begin[size()-1]; }
-
-      ElementType& operator[](size_type i) const { return m_begin[i]; }
-
-      ElementType& at(size_type i) const {
-        if (i >= size()) throw_range_error();
-        return m_begin[i];
-      }
+      CCTBX_ARRAY_FAMILY_BEGIN_END_ETC(
+        const_cast<ElementType*>(this->m_begin), this->size())
 
       ref<ElementType> as_1d() const {
-        return ref<ElementType>(m_begin, size());
+        return ref<ElementType>(this->begin(), this->size());
       }
 
-      af::const_ref<ElementType, AccessorType>
-      const_ref() const {
-        return af::const_ref<ElementType, AccessorType>(m_begin, m_accessor);
+      const value_type& operator()(const index_type& i) const {
+        return this->begin()[this->m_accessor(i)];
       }
-
-            value_type& operator()(const index_type& i) const {
-        return this->begin()[m_accessor(i)];
+            value_type& operator()(const index_type& i) {
+        return this->begin()[this->m_accessor(i)];
       }
 
       // Convenience operator()
 
-            value_type& operator()(long i0) const {
+      const value_type& operator()(long i0) const {
         return operator()(index_type(i0));
       }
-            value_type& operator()(long i0,
+            value_type& operator()(long i0) {
+        return operator()(index_type(i0));
+      }
+      const value_type& operator()(long i0,
                                    long i1) const {
         return operator()(index_type(i0, i1));
       }
             value_type& operator()(long i0,
+                                   long i1) {
+        return operator()(index_type(i0, i1));
+      }
+      const value_type& operator()(long i0,
                                    long i1,
                                    long i2) const {
         return operator()(index_type(i0, i1, i2));
       }
-
-    private:
-      ElementType* m_begin;
-      accessor_type m_accessor;
+            value_type& operator()(long i0,
+                                   long i1,
+                                   long i2) {
+        return operator()(index_type(i0, i1, i2));
+      }
   };
 
 }} // namespace cctbx::af
