@@ -213,6 +213,7 @@ else:
       SHLINK="g++",
       SHLIBSUFFIX=".dylib",
     )
+    env_base.Append(LIBSUFFIXES=[".dylib"])
     env_etc.cxxflags_base = Split("""
       -fPIC
       -ftemplate-depth-120
