@@ -59,6 +59,7 @@ except:
   sys.exit(1)
 
 print "valid build call for",structured_package_dirs
+sys.stdout.flush()
 
 sys.path.insert(0, build_system_dir)
 from make import read_configuration
@@ -72,6 +73,7 @@ else:
   make = "make"
 
 if (hasattr(os, "symlink")):
+  os.environ["LD_LIBRARY_PATH"] = os.path.abspath("./lib")
   link_cmd = "softlinks"
 else:
   link_cmd = "copy"
@@ -79,6 +81,8 @@ else:
 def system_checked(cmd):
   if (os.system(cmd) != 0):
     sys.exit(1)
+  sys.stdout.flush()
+  sys.stderr.flush()
 
 for sp in structured_package_dirs:
   os.chdir(this_target)
@@ -107,6 +111,8 @@ for sp in structured_package_dirs:
       os.environ["PYTHONPATH"] = norm(join(os.getcwd(),"../lib_python"))
       system_checked(
         pyexe + " " + norm(sp + "/examples/python/getting_started.py"))
-    print "Done with ",structured_package
+    print "Done with %s." % (structured_package,)
   except:
-    pass # for now, failure to compile sp doesn't kill entire list
+    # for now, failure to compile sp doesn't kill entire list
+    ei = sys.exc_info()
+    print traceback.format_exception_only(ei[0], ei[1])[0]
