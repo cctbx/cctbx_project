@@ -6,11 +6,18 @@
 
 namespace cctbx { namespace crystal {
 
+  //! Symmetry operation characterizing one pair interaction.
   typedef sgtbx::rt_mx pair_sym_op;
+  //! Group of symmetry operations for a given i_seq and j_seq.
   typedef std::vector<sgtbx::rt_mx> pair_sym_ops;
+  //! Dictionary of pair interactions for a given i_seq.
   typedef std::map<unsigned, pair_sym_ops> pair_sym_dict;
+  //! Table of pair interactions indexed by i_seq.
   typedef af::shared<pair_sym_dict> pair_sym_table;
 
+  /*! \brief Determination of distances of all pair interactions
+      defined by pair_sym_table.
+   */
   inline
   af::shared<double>
   get_distances(
@@ -41,17 +48,26 @@ namespace cctbx { namespace crystal {
     return distances;
   }
 
+  //! Set of j_sym indices of symmetrically equivalent pair interactions.
   typedef std::set<unsigned> pair_asu_j_sym_group;
+  //! Array of sets of symmetrically equivalent pair interactions.
   typedef std::vector<pair_asu_j_sym_group> pair_asu_j_sym_groups;
+  //! Dictionary of pair interactions for a given i_seq.
   typedef std::map<unsigned, pair_asu_j_sym_groups> pair_asu_dict;
+  //! Table of pair interactions indexed by i_seq.
   typedef af::shared<pair_asu_dict> pair_asu_table_table;
 
+  /*! \brief Managed table of pair interactions based on
+      direct_space_asu::asu_mappings.
+   */
   template <typename FloatType=double, typename IntShiftType=int>
   class pair_asu_table
   {
     public:
+      //! Default constructor. Some data members are not initialized!
       pair_asu_table() {}
 
+      //! Initialization of an empty table().
       pair_asu_table(
         boost::shared_ptr<
           direct_space_asu::asu_mappings<
@@ -68,15 +84,18 @@ namespace cctbx { namespace crystal {
       boost::shared_ptr<direct_space_asu::asu_mappings<> >
       asu_mappings() const { return asu_mappings_owner_; }
 
+      //! Access to raw table.
       pair_asu_table_table const&
       table() const { return table_; }
 
+      //! True if pair is in table().
       bool
       contains(direct_space_asu::asu_mapping_index_pair const& pair) const
       {
         return contains(pair.i_seq, pair.j_seq, pair.j_sym);
       }
 
+      //! True if pair characterized by i_seq, j_seq, j_sym is in table().
       bool
       contains(unsigned i_seq, unsigned j_seq, unsigned j_sym) const
       {
@@ -133,12 +152,18 @@ namespace cctbx { namespace crystal {
         return true;
       }
 
+      //! Shorthand for: !operator==
       bool
       operator!=(pair_asu_table const& other) const
       {
         return !((*this) == other);
       }
 
+      /*! \brief Uses neighbors::fast_pair_generator to add all pairs with
+          distances <= distance_cutoff*(1+epsilon).
+       */
+      /*! All symmetrically equivalent pairs are automatically generated.
+       */
       pair_asu_table&
       add_all_pairs(
         FloatType const& distance_cutoff,
@@ -147,7 +172,7 @@ namespace cctbx { namespace crystal {
         bool minimal = true;
         neighbors::fast_pair_generator<FloatType, IntShiftType> pair_generator(
           asu_mappings_owner_,
-          distance_cutoff,
+          distance_cutoff*(1+epsilon),
           minimal);
         while (!pair_generator.at_end()) {
           direct_space_asu::asu_mapping_index_pair
@@ -162,6 +187,9 @@ namespace cctbx { namespace crystal {
         return *this;
       }
 
+      //! Adds all pairs defined by sym_table.
+      /*! All symmetrically equivalent pairs are automatically generated.
+       */
       pair_asu_table&
       add_pair_sym_table(pair_sym_table const& sym_table)
       {
@@ -181,6 +209,13 @@ namespace cctbx { namespace crystal {
         return *this;
       }
 
+      //! Adds the pair defined by i_seq, j_seq and rt_mx_ji.
+      /*! rt_mx_ji is the symmetry operation that maps the original site
+          referenced by j_seq to the site interacting with the original
+          site referenced by i_seq.
+
+          All symmetrically equivalent pairs are automatically generated.
+       */
       pair_asu_table&
       add_pair(unsigned i_seq, unsigned j_seq, sgtbx::rt_mx const& rt_mx_ji)
       {
@@ -192,6 +227,9 @@ namespace cctbx { namespace crystal {
         return *this;
       }
 
+      /*! \brief Adds the pair defined by i_seq, j_seq assuming
+          rt_mx_ji is the identity matrix.
+       */
       pair_asu_table&
       add_pair(af::tiny<unsigned, 2> const& i_seqs)
       {
@@ -204,6 +242,14 @@ namespace cctbx { namespace crystal {
         return *this;
       }
 
+      //! Extracts pair_sym_table of interactions unique under symmetry.
+      /*! The result may be interpreted as an "asymmetric unit of pair
+          interactions."
+
+          If skip_j_seq_less_than_i_seq == false the result may
+          contain redundancies. This option is mainly for debugging
+          and development purposes.
+       */
       pair_sym_table
       extract_pair_sym_table(bool skip_j_seq_less_than_i_seq=true) const
       {
@@ -234,7 +280,14 @@ namespace cctbx { namespace crystal {
         return sym_table;
       }
 
-      //! Not available in Python.
+      /*! \brief Addition of a pair interaction and all its
+          symmetrically equivalent interactions to table().
+       */
+      /*! This functions calls the other overload to perform
+          the actual work.
+
+          Not available in Python.
+       */
       bool
       process_pair(
         unsigned i_seq,
@@ -247,7 +300,14 @@ namespace cctbx { namespace crystal {
         return process_pair(i_seq, j_seq, rt_mx_ji, rt_mx_i, j_sym);
       }
 
-      //! Not available in Python.
+      /*! \brief Addition of a pair interaction and all its
+          symmetrically equivalent interactions to table().
+       */
+      /*! The site_symmetry of i_seq is used to generate the
+          symmetrically equivalent interactions.
+
+          Not available in Python.
+       */
       bool
       process_pair(
         unsigned i_seq,
