@@ -174,21 +174,25 @@ def exercise_grid(quick=00000, verbose=0):
 
 class random_unimodular_integer_matrix_generator:
 
-  def __init__(self, reset_frequency=100):
-    self.reset_frequency = reset_frequency
-    self._n_calls = reset_frequency
+  def __init__(self, reset_threshold=50):
+    self.reset_threshold = reset_threshold
     self._m1 = matrix.sqr((0,0,1,1,0,0,0,1,0))
     self._m2 = matrix.sqr((1,-1,0,1,0,0,0,0,1))
+    self._mi = self._m1 * self._m2
+
+  def has_elements_which_are_to_large(self):
+    e = self._mi.elems
+    return max(abs(min(e)), abs(max(e))) >= self.reset_threshold
 
   def next(self):
-    if (self._n_calls >= self.reset_frequency):
+    while 1:
+      if (random.randrange(0,2)):
+        self._mi = self._m2 * self._mi
+      else:
+        self._mi = self._m1 * self._mi
+      if (not self.has_elements_which_are_to_large()):
+        break
       self._mi = random.choice((self._m1, self._m2))
-      self._n_calls = 0
-    self._n_calls += 1
-    if (random.randrange(0,2)):
-      self._mi = self._m2 * self._mi
-    else:
-      self._mi = self._m1 * self._mi
     return self._mi
 
 class random_abcpq:
