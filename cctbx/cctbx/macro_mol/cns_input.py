@@ -8,6 +8,7 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
 from scitbx.python_utils import complex_math
+from scitbx.python_utils import dicts
 import sys
 
 # <xray-reflection-statement> :==
@@ -330,21 +331,21 @@ class cns_reflection_file:
       hl.append(coeff)
     return miller_indices, hl
 
-  def as_miller_arrays(self, crystal_symmetry, prefix):
-    miller_arrays = []
+  def as_miller_arrays(self, crystal_symmetry, prefix=""):
+    miller_arrays = dicts.easy()
     done = {}
     for group_index in xrange(len(self.groups)):
       miller_indices, hl = self.join_hl_group(group_index)
-      miller_arrays.append(as_miller_array(
-        crystal_symmetry, self.anomalous, miller_indices, hl,
-        prefix + "hl_group_%d" % (group_index+1,)))
+      info = prefix + "hl_group_%d" % (group_index+1,)
+      miller_arrays[info] = as_miller_array(
+        crystal_symmetry, self.anomalous, miller_indices, hl, info)
       for name in self.groups[group_index]:
         done[name] = 1
     for rso in self.reciprocal_space_objects.values():
       if rso.name in done: continue
-      miller_arrays.append(as_miller_array(
-        crystal_symmetry, self.anomalous, rso.indices, rso.data,
-        prefix + rso.name.lower()))
+      info = prefix + rso.name.lower()
+      miller_arrays[info] = as_miller_array(
+        crystal_symmetry, self.anomalous, rso.indices, rso.data, info)
       done[rso.name] = 1
     return miller_arrays
 
@@ -365,9 +366,8 @@ def run():
     reflection_file.show_summary()
     print
     crystal_symmetry = crystal.symmetry((), "P 1")
-    miller_arrays = reflection_file.as_miller_arrays(
-      crystal_symmetry, prefix="")
-    for miller_array in miller_arrays:
+    miller_arrays = reflection_file.as_miller_arrays(crystal_symmetry)
+    for miller_array in miller_arrays.values():
       miller_array.show_summary()
       print
     if (to_pickle):
