@@ -8,7 +8,7 @@ def norm(path):
 def run(args):
   assert len(args) == 3
   mode = args[0]
-  assert mode in ("prepend", "delete")
+  assert mode in ("prepend", "append", "delete")
   env_key = args[1]
   arg_paths = args[2].split(os.pathsep)
   try: env_val = os.environ[env_key]
@@ -26,7 +26,11 @@ def run(args):
         remaining_env_paths.append(path)
   else:
     remaining_env_paths_norm = []
-    for path in arg_paths + env_paths:
+    if (mode == "prepend"):
+      all_paths = arg_paths + env_paths
+    else:
+      all_paths = env_paths + arg_paths
+    for path in all_paths:
       if (path == ""): continue
       if (not norm(path) in remaining_env_paths_norm):
         remaining_env_paths.append(path)
