@@ -68,31 +68,39 @@ namespace scitbx { namespace boost_python {
     step(1),
     size(0)
   {
+    long signed_sz = static_cast<long>(sz);
     if (sl.step.is_valid) {
       step = sl.step.value;
     }
-    SCITBX_ASSERT(step != 0);
-    int sign;
-    if (step > 0) {
-      sign = 1;
-      start = 0;
-      stop = static_cast<long>(sz);
+    if (!sl.start.is_valid) {
+      start = step < 0 ? signed_sz-1 : 0;
     }
     else {
-      sign = -1;
-      start = static_cast<long>(sz) - 1;
-      stop = -1;
+      start = sl.start.value;
+      if (start < 0) start += signed_sz;
     }
-    if (sl.start.is_valid) {
-      start = positive_getitem_index(sl.start.value, sz);
+    if (!sl.stop.is_valid) {
+      stop = step < 0 ? -1 : signed_sz;
     }
-    if (sl.stop.is_valid) {
-      stop = positive_getitem_index(sl.stop.value, sz);
+    else {
+      stop = sl.stop.value;
+      if (stop < 0) stop += signed_sz;
     }
-    if (sign * stop > sign * start) {
-      size = (stop - start) / step;
-      if (stop != start + step * size) size++;
+    if (start > signed_sz-1) start = signed_sz;
+    if (start < 0) start = 0;
+    if      (stop < -1) stop = -1;
+    else if (stop > signed_sz) stop = signed_sz;
+    SCITBX_ASSERT(step != 0 || stop == start);
+    long signed_size = stop - start + step;
+    if      (step < 0) signed_size++;
+    else if (step > 0) signed_size--;
+    else {
+      signed_size = 0;
+      step = 1;
     }
+    signed_size /= step;
+    if (signed_size < 0) signed_size = 0;
+    size = static_cast<std::size_t>(signed_size);
     stop = start + step * size;
   }
 
