@@ -170,6 +170,10 @@ class structure(crystal.special_position_settings):
       new_structure.add_scatterer(new_scatterer)
     return new_structure
 
+  def change_hand(self):
+    ch_op = self.space_group_info().type().change_of_hand_op()
+    return self.change_basis(ch_op)
+
   def as_emma_model(self):
     from cctbx import euclidean_model_matching as emma
     positions = []
