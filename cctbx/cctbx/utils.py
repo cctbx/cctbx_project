@@ -11,5 +11,5 @@ def signed_phase_error(phi1, phi2, deg=00000):
 def phase_error(phi1, phi2, deg=00000):
   return abs(signed_phase_error(phi1, phi2, deg))
 
-def closest_phase(reference, other, deg=00000):
+def nearest_phase(reference, other, deg=00000):
   return reference + signed_phase_error(reference, other, deg)
