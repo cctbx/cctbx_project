@@ -24,7 +24,7 @@
 
 #include <cctbx/array_family/shared_bpl_.h>
 
-namespace cctbx { namespace af { namespace bpl {
+namespace cctbx { namespace af { namespace bpl { namespace {
 
   typedef tiny<std::size_t, 2> tiny_size_t_2;
 
@@ -41,7 +41,7 @@ namespace cctbx { namespace af { namespace bpl {
       "hendrickson_lattman");
   }
 
-}}} // namespace cctbx::af::bpl
+}}}} // namespace cctbx::af::bpl<anonymous>
 
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(bool)
 CCTBX_ARRAY_FAMILY_IMPLICIT_SHARED_CONVERTERS(std::size_t)
