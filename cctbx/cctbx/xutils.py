@@ -48,9 +48,38 @@ class miller_set(crystal_symmetry):
 
 class reciprocal_space_array(miller_set):
 
-  def __init__(self, miller_indices, F):
-    miller_set.__init__(self, miller_indices, miller_indices.H)
+  def __init__(self, miller_set_obj, F, sigmas=0):
+    miller_set.__init__(self, miller_set_obj, miller_set_obj.H)
     self.F = F
+    self.sigmas = sigmas
+
+  def anomalous_differences(self):
+    jbm = miller.join_bijvoet_mates(self.H)
+    h = jbm.select(self.H, 1)
+    f = jbm.minus(self.F)
+    s = 0
+    if (self.sigmas):
+      s = jbm.additive_sigmas(self.sigmas)
+    return reciprocal_space_array(miller_set(self, h), f, s)
+
+  def __add__(self, other):
+    if (type(other) != type(self)):
+      # add a scalar
+      f = self.F.deep_copy()
+      for i in f.indices(): f[i] += other
+      s = 0
+      if (self.sigmas):
+        s = self.sigmas.deep_copy()
+        for i in s.indices(): s[i] += other
+      return reciprocal_space_array(self, f, s)
+    # add arrays
+    js = miller.join_sets(self.H, other.H)
+    h = js.select(self.H)
+    f = js.plus(self.F, other.F)
+    s = 0
+    if (self.sigmas):
+      s = js.additive_sigmas(self.sigmas, other.sigmas)
+    return reciprocal_space_array(miller_set(self, h), f, s)
 
 class symmetrized_sites(crystal_symmetry):
 

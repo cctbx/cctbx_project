@@ -285,26 +285,26 @@ namespace cctbx { namespace miller {
   }
 
   join_sets::join_sets(
-    af::shared<Index> a1,
-    af::shared<Index> a2)
+    af::shared<Index> indices0,
+    af::shared<Index> indices1)
   {
     typedef std::map<Index, std::size_t> lookup_map_type;
     lookup_map_type lookup_map;
     std::size_t i;
-    for(i=0;i<a2.size();i++) lookup_map[a2[i]] = i;
-    std::vector<bool> a2_flags(a2.size(), false);
-    for(i=0;i<a1.size();i++) {
-      lookup_map_type::const_iterator l = lookup_map.find(a1[i]);
+    for(i=0;i<indices1.size();i++) lookup_map[indices1[i]] = i;
+    std::vector<bool> indices1_flags(indices1.size(), false);
+    for(i=0;i<indices0.size();i++) {
+      lookup_map_type::const_iterator l = lookup_map.find(indices0[i]);
       if (l == lookup_map.end()) {
         singles_[0].push_back(i);
       }
       else {
         pairs_.push_back(af::tiny<std::size_t, 2>(i, l->second));
-        a2_flags[l->second] = true;
+        indices1_flags[l->second] = true;
       }
     }
-    for(i=0;i<a2.size();i++) {
-      if (!a2_flags[i]) singles_[1].push_back(i);
+    for(i=0;i<indices1.size();i++) {
+      if (!indices1_flags[i]) singles_[1].push_back(i);
     }
   }
 
@@ -340,8 +340,21 @@ namespace cctbx { namespace miller {
   }
 
   af::shared<Index>
+  join_sets::select(af::shared<Index> indices0) const
+  {
+    size_assert_1(indices0.size(), 0);
+    af::shared<Index> result;
+    result.reserve(pairs_.size());
+    for(std::size_t i=0;i<pairs_.size();i++) {
+      result.push_back(indices0[pairs_[i][0]]);
+    }
+    return result;
+  }
+
+  af::shared<Index>
   join_bijvoet_mates::select(af::shared<Index> miller_indices, bool plus) const
   {
+    size_assert(miller_indices.size());
     std::size_t j = 0;
     if (!plus) j = 1;
     af::shared<Index> result;

@@ -20,15 +20,78 @@
 
 namespace cctbx { namespace miller {
 
+  namespace detail {
+
+    template <typename NumType>
+    struct additive_sigma : std::binary_function<NumType, NumType, NumType>
+    {
+      typedef std::binary_function<NumType, NumType, NumType> base_type;
+
+      typedef typename base_type::second_argument_type second_argument_type;
+      typedef typename base_type::first_argument_type first_argument_type;
+      typedef typename base_type::result_type result_type;
+
+      NumType operator()(NumType const& x, NumType const& y)
+      {
+        return std::sqrt(x*x + y*y);
+      }
+    };
+
+    template <typename NumType>
+    struct average : std::binary_function<NumType, NumType, NumType>
+    {
+      typedef std::binary_function<NumType, NumType, NumType> base_type;
+
+      typedef typename base_type::second_argument_type second_argument_type;
+      typedef typename base_type::first_argument_type first_argument_type;
+      typedef typename base_type::result_type result_type;
+
+      NumType operator()(NumType const& x, NumType const& y)
+      {
+        return (x + y) / NumType(2);
+      }
+    };
+
+    typedef af::tiny<std::size_t, 2> pair_type;
+
+    template <typename Op>
+    struct pair_op
+    {
+      typedef typename Op::second_argument_type second_argument_type;
+      typedef typename Op::first_argument_type first_argument_type;
+      typedef typename Op::result_type result_type;
+
+      pair_op(af::shared<pair_type> pairs)
+      : pairs_(pairs)
+      {}
+
+      af::shared<result_type>
+      operator()(
+        af::shared<first_argument_type> a0,
+        af::shared<second_argument_type> a1) const
+      {
+        af::shared<result_type> result;
+        result.reserve(pairs_.size());
+        for(std::size_t i=0;i<pairs_.size();i++) {
+          result.push_back(Op()(a0[pairs_[i][0]], a1[pairs_[i][1]]));
+        }
+        return result;
+      }
+
+      af::shared<pair_type> pairs_;
+    };
+
+  } // namespace detail
+
   class join_sets
   {
     public:
       join_sets() {}
 
-      join_sets(af::shared<Index> a1,
-                af::shared<Index> a2);
+      join_sets(af::shared<Index> indices0,
+                af::shared<Index> indices1);
 
-      af::shared<af::tiny<std::size_t, 2> > pairs() const {
+      af::shared<detail::pair_type> pairs() const {
         return pairs_;
       }
 
@@ -41,8 +104,73 @@ namespace cctbx { namespace miller {
         return singles_[0].size() || singles_[1].size();
       }
 
+      void size_assert_1(std::size_t sz, std::size_t i) const
+      {
+        cctbx_assert(sz == pairs_.size() + singles_[i].size());
+      }
+
+      void size_assert_2(std::size_t sz0, std::size_t sz1) const
+      {
+        size_assert_1(sz0, 0);
+        size_assert_1(sz1, 1);
+      }
+
+      af::shared<Index>
+      select(af::shared<Index> indices0) const;
+
+      template <typename NumType>
+      af::shared<NumType>
+      plus(
+        af::shared<NumType> data0,
+        af::shared<NumType> data1) const
+      {
+        size_assert_2(data0.size(), data1.size());
+        return detail::pair_op<std::plus<NumType> >(pairs_)(data0, data1);
+      }
+
+      template <typename NumType>
+      af::shared<NumType>
+      minus(
+        af::shared<NumType> data0,
+        af::shared<NumType> data1) const
+      {
+        size_assert_2(data0.size(), data1.size());
+        return detail::pair_op<std::minus<NumType> >(pairs_)(data0, data1);
+      }
+
+      template <typename NumType>
+      af::shared<NumType>
+      multiplies(
+        af::shared<NumType> data0,
+        af::shared<NumType> data1) const
+      {
+        size_assert_2(data0.size(), data1.size());
+        return detail::pair_op<std::multiplies<NumType> >(pairs_)(data0, data1);
+      }
+
+      template <typename NumType>
+      af::shared<NumType>
+      divides(
+        af::shared<NumType> data0,
+        af::shared<NumType> data1) const
+      {
+        size_assert_2(data0.size(), data1.size());
+        return detail::pair_op<std::divides<NumType> >(pairs_)(data0, data1);
+      }
+
+      template <typename NumType>
+      af::shared<NumType>
+      additive_sigmas(
+        af::shared<NumType> sigmas0,
+        af::shared<NumType> sigmas1) const
+      {
+        size_assert_2(sigmas0.size(), sigmas1.size());
+        return detail::pair_op<detail::additive_sigma<NumType> >(pairs_)(
+          sigmas0, sigmas1);
+      }
+
     protected:
-      af::shared<af::tiny<std::size_t, 2> > pairs_;
+      af::shared<detail::pair_type> pairs_;
       af::shared<std::size_t> singles_[2];
   };
 
@@ -72,7 +200,7 @@ namespace cctbx { namespace miller {
           sgtbx::ReciprocalSpaceASU(sgtbx::SpaceGroupInfo()), miller_indices);
       }
 
-      af::shared<af::tiny<std::size_t, 2> > pairs() const {
+      af::shared<detail::pair_type> pairs() const {
         return pairs_;
       }
 
@@ -84,15 +212,46 @@ namespace cctbx { namespace miller {
         return singles_.size();
       }
 
+      void size_assert(std::size_t sz) const
+      {
+        cctbx_assert(sz == 2 * pairs_.size() + singles_.size());
+      }
+
       af::shared<Index>
       select(af::shared<Index> miller_indices, bool plus) const;
+
+      template <typename NumType>
+      af::shared<NumType>
+      minus(af::shared<NumType> data) const
+      {
+        size_assert(data.size());
+        return detail::pair_op<std::minus<NumType> >(pairs_)(data, data);
+      }
+
+      template <typename NumType>
+      af::shared<NumType>
+      additive_sigmas(af::shared<NumType> sigmas) const
+      {
+        size_assert(sigmas.size());
+        return detail::pair_op<detail::additive_sigma<NumType> >(pairs_)(
+          sigmas, sigmas);
+      }
+
+      template <typename NumType>
+      af::shared<NumType>
+      average(af::shared<NumType> data) const
+      {
+        size_assert(data.size());
+        return detail::pair_op<detail::average<NumType> >(pairs_)(
+          data, data);
+      }
 
     protected:
       void join_(
         sgtbx::ReciprocalSpaceASU const& asu,
         af::shared<Index> miller_indices);
 
-      af::shared<af::tiny<std::size_t, 2> > pairs_;
+      af::shared<detail::pair_type> pairs_;
       af::shared<std::size_t> singles_;
   };
 
