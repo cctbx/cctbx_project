@@ -22,8 +22,14 @@ class env:
        + " Version used to configure: %d.%d." % self.python_version_major_minor
        + " Version used now: %d.%d." % sys.version_info[:2])
 
+  def dist_name(self, package_name):
+    return package_name.upper() + "_DIST"
+
+  def has_dist(self, package_name):
+    return self.dist_name(package_name) in self.dist_paths
+
   def dist_path(self, package_name):
-    return self.dist_paths[package_name.upper() + "_DIST"]
+    return self.dist_paths[self.dist_name(package_name)]
 
   def current_working_directory_is_libtbx_build(self):
     return os.path.normpath(os.getcwd()) == self.LIBTBX_BUILD

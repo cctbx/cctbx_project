@@ -1,5 +1,5 @@
 import sys, os, pickle
-from os.path import normpath, join, abspath, dirname, isdir
+from os.path import normpath, join, abspath, dirname, isdir, isfile
 norm = normpath
 
 from libtbx.config import UserError
@@ -9,6 +9,7 @@ class registry:
   def __init__(self):
     self.dict = {}
     self.list = []
+    self.build_disabled = 0
 
   def append(self, key, value):
     self.dict[key] = value
@@ -24,26 +25,49 @@ class registry:
       if (not name in self.dict):
         self.insert(i, name, other.dict[name])
         i += 1
+    if (other.build_disabled):
+      self.build_disabled = 1
 
 class package:
 
-  def __init__(self, dist_root, name):
+  def __init__(self, dist_root, name, must_exist=1):
     self.dist_root = dist_root
     self.name = name
     self.dist_path = norm(join(dist_root, name))
+    self.config = None
+    self.native_config = 1
+    self.SConscript_path = None
+    self.native_SConscript = 1
+    self.python_path = None
     if (not isdir(self.dist_path)):
-      raise UserError("Not a package directory: " + self.dist_path)
-    config_path = norm(join(self.dist_path, "libtbx_config"))
-    try:
-      f = open(config_path)
-    except:
-      self.config = None
+      if (must_exist):
+        raise UserError("Not a directory: " + self.dist_path)
+      self.dist_path = None
     else:
-      try:
-        self.config = eval(" ".join(f.readlines()))
-      except:
-        raise UserError("Corrupt file: " + config_path)
-    self._build_dependency_registry()
+      for tail in ("_adaptbx", ""):
+        path = norm(join(self.dist_path+tail, "libtbx_config"))
+        if (isfile(path)):
+          try:
+            f = open(path)
+          except:
+            raise UserError("Cannot open configuration file: " + path)
+          try:
+            self.config = eval(" ".join(f.readlines()))
+          except:
+            raise UserError("Corrupt file: " + path)
+          f.close()
+          self.native_config = (tail == "")
+          break
+      for tail in ("_adaptbx", ""):
+        if (isfile(norm(join(self.dist_path+tail, "SConscript")))):
+          self.SConscript_path = norm(join(name+tail, "SConscript"))
+          self.native_SConscript = (tail == "")
+          break
+      for tail in ("_adaptbx", ""):
+        if (isfile(norm(join(self.dist_path+tail, name, "__init__.py")))):
+          self.python_path = norm(self.dist_path+tail)
+          break
+      self._build_dependency_registry()
 
   def _build_dependency_registry(self):
     self.dependency_registry = registry()
@@ -55,9 +79,25 @@ class package:
         + str(registry.list) + " + " + self.name)
     registry.append(self.name, self)
     if (self.config != None):
-      for required_package_name in self.config["required_packages"]:
-        package(self.dist_root, required_package_name)._resolve_dependencies(
-          registry)
+      try:
+        required_packages = self.config["packages_required_for_use"]
+      except:
+        pass
+      else:
+        for required_package_name in required_packages:
+          package(self.dist_root, required_package_name)._resolve_dependencies(
+            registry)
+      try:
+        required_packages = self.config["packages_required_for_build"]
+      except:
+        pass
+      else:
+        for required_package_name in required_packages:
+          p = package(self.dist_root, required_package_name, must_exist=0)
+          if (p.dist_path == None):
+            registry.build_disabled = 1
+          else:
+            p._resolve_dependencies(registry)
 
 def insert_normed_path(path_list, addl_path):
   addl_path = norm(addl_path)
@@ -86,7 +126,8 @@ class libtbx_env:
   def add_package(self, package):
     self.package_list.insert(0, package.name)
     self.dist_paths[package.name.upper() + "_DIST"] = package.dist_path
-    insert_normed_path(self.PYTHONPATH, package.dist_path)
+    if (package.python_path != None):
+      insert_normed_path(self.PYTHONPATH, package.python_path)
 
   def items(self):
     return self.__dict__.items() + self.dist_paths.items()
@@ -158,7 +199,7 @@ def emit_setpaths_bat(env):
   print >> f, 'set PATHEXT=.PY;%PATHEXT%'
   f.close()
 
-def emit_SConstruct(env, build_mode):
+def emit_SConstruct(env, build_mode, packages_dict):
   SConstruct_path = norm(join(env.LIBTBX_BUILD, "SConstruct"))
   f = open_info(SConstruct_path)
   print >> f, 'import libtbx.config'
@@ -179,11 +220,10 @@ def emit_SConstruct(env, build_mode):
   print >> f
   print >> f, 'Repository(r"%s")' % (env.LIBTBX_DIST_ROOT,)
   print >> f, 'SConscript("libtbx/SConscript")'
-  print >> f, 'Import("env_etc")'
-  print >> f, 'env_etc.use_SConscript_if_present('
   for package_name in env.package_list:
-    print >> f, '  "%s",' % package_name
-  print >> f, ')'
+    p = packages_dict[package_name].SConscript_path
+    if (p):
+      print >> f, 'SConscript("%s")' % p
   f.close()
 
 def run(libtbx_dist, args):
@@ -200,15 +240,20 @@ def run(libtbx_dist, args):
     else:
       remaining_args.append(arg)
   args = remaining_args
-  print "Build mode:", build_mode
   for arg in args:
     packages.merge(package(env.LIBTBX_DIST_ROOT, arg).dependency_registry)
   if (len(packages.list) == 0):
     print "Error: At least one package must be specified."
     return
+  if (not packages.build_disabled):
+    print "Build mode:", build_mode
   print "Top-down list of all packages involved:"
   for package_name in packages.list:
-    print " ", package_name
+    p = packages.dict[package_name]
+    print " ", package_name,
+    if (not p.native_config or not p.native_SConscript):
+      print "+", package_name+"_adaptbx",
+    print
     env.add_package(packages.dict[package_name])
   env.pickle_dict()
   if (hasattr(os, "symlink")):
@@ -216,7 +261,8 @@ def run(libtbx_dist, args):
     emit_setpaths_csh(env)
   else:
     emit_setpaths_bat(env)
-  emit_SConstruct(env, build_mode)
+  if (not packages.build_disabled):
+    emit_SConstruct(env, build_mode, packages.dict)
   return env
 
 def cold_start(args):
@@ -245,4 +291,5 @@ def warm_start(args):
     refresh.run()
 
 if (__name__ == "__main__"):
-  warm_start(sys.argv)
+  from libtbx.command_line import configure
+  configure.warm_start(sys.argv)
