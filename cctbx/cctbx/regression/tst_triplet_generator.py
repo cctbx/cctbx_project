@@ -150,7 +150,7 @@ def exercise(space_group_info, n_scatterers=8, d_min=2, verbose=0,
     u_iso=0.0)
   assert other_structure.unit_cell().is_similar_to(structure.unit_cell())
   q_calc = q_large.structure_factors_from_scatterers(
-    other_structure, direct=0001).f_calc()
+    other_structure, algorithm="direct").f_calc()
   start = q_large.phase_transfer(q_calc.data())
   for selection_fixed in (
         None,

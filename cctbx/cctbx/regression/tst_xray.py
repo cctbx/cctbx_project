@@ -130,7 +130,7 @@ def exercise_from_scatterers_direct(space_group_info,
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_obs_exact = structure.structure_factors(
-    d_min=d_min, anomalous_flag=anomalous_flag, direct=0001,
+    d_min=d_min, anomalous_flag=anomalous_flag, algorithm="direct",
     cos_sin_table=00000).f_calc()
   f_obs_simple = xray.ext.structure_factors_simple(
     f_obs_exact.unit_cell(),
@@ -149,7 +149,7 @@ def exercise_from_scatterers_direct(space_group_info,
   assert mismatch < 1.e-10, mismatch
   f_obs_table = f_obs_exact.structure_factors_from_scatterers(
     xray_structure=structure,
-    direct=0001,
+    algorithm="direct",
     cos_sin_table=0001).f_calc()
   ls = xray.targets_least_squares_residual(
     abs(f_obs_exact).data(), f_obs_table.data(), 00000, 1)

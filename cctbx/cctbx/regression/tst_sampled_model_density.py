@@ -31,7 +31,7 @@ def exercise(space_group_info, caasf_const,
   f_direct = structure.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
-    direct=0001).f_calc()
+    algorithm="direct").f_calc()
   crystal_gridding = f_direct.crystal_gridding(
     resolution_factor=resolution_factor,
     d_min=d_min,
@@ -106,7 +106,7 @@ def exercise(space_group_info, caasf_const,
     max_prime=max_prime)(
       xray_structure=structure,
       miller_set=f_direct,
-      fft=0001).f_calc()
+      algorithm="fft").f_calc()
   structure_factor_utils.check_correlation(
     "direct/fft_xray", f_direct.indices(), 0,
     f_direct.data(), f_fft.data(),

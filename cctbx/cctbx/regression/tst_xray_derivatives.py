@@ -27,7 +27,7 @@ def finite_differences_site(cartesian_flag, target_ftor, structure,
         ms.site = site
         f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
             xray_structure=modified_structure,
-            direct=0001).f_calc()
+            algorithm="direct").f_calc()
         target_result = target_ftor(f_calc, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -51,7 +51,7 @@ def finite_differences_u_star(target_ftor, structure,
         ms.u_star = u_star
         f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
           xray_structure=modified_structure,
-          direct=0001).f_calc()
+          algorithm="direct").f_calc()
         target_result = target_ftor(f_calc, compute_derivatives=00000)
         target_values.append(target_result.target())
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -80,7 +80,7 @@ def finite_differences_scalar(parameter_name, target_ftor, structure,
         raise RuntimeError
       f_calc = target_ftor.f_obs().structure_factors_from_scatterers(
         xray_structure=modified_structure,
-        direct=0001).f_calc()
+        algorithm="direct").f_calc()
       target_result = target_ftor(f_calc, compute_derivatives=00000)
       target_values.append(target_result.target())
     derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -134,7 +134,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     random_u_iso=0001,
     random_occupancy=0001)
   f_obs = abs(structure_ideal.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
+    anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
   if (0 or verbose):
     structure_ideal.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -151,7 +151,7 @@ def exercise(target_functor, parameter_name, space_group_info,
   for structure in (structure_ideal, structure_shake)[:]: #SWITCH
     f_calc = f_obs.structure_factors_from_scatterers(
       xray_structure=structure,
-      direct=0001).f_calc()
+      algorithm="direct").f_calc()
     target_result = target_ftor(f_calc, compute_derivatives=0001)
     if (structure == structure_ideal):
       assert abs(target_result.target()) < 1.e-5

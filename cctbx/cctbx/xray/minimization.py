@@ -11,8 +11,7 @@ class lbfgs:
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
                      cos_sin_table=0001,
-                     direct=00000,
-                     fft=00000):
+                     structure_factor_algorithm=None):
     adopt_init_args(self, locals())
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
@@ -51,8 +50,7 @@ class lbfgs:
     self.f_calc = self.structure_factors_from_scatterers(
       xray_structure=self.xray_structure,
       miller_set=self.target_functor.f_obs(),
-      direct=self.direct,
-      fft=self.fft).f_calc()
+      algorithm=self.structure_factor_algorithm).f_calc()
     self.target_result = self.target_functor(
       self.f_calc,
       compute_gradients)
@@ -72,7 +70,6 @@ class lbfgs:
       d_target_d_f_calc=self.target_result.derivatives(),
       gradient_flags=self.gradient_flags,
       n_parameters=self.x.size(),
-      direct=self.direct,
-      fft=self.fft)
+      algorithm=self.structure_factor_algorithm)
     self.g = sf.packed()
     return self.x, self.f, self.g

@@ -15,7 +15,7 @@ def exercise(space_group_info, anomalous_flag,
     random_u_iso=0001,
     random_occupancy=0001)
   f_abs_z = abs(structure_z.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, direct=0001).f_calc())
+    anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
   if (0 or verbose):
     structure_z.show_summary().show_scatterers()
     print "n_special_positions:", \
@@ -33,7 +33,7 @@ def exercise(space_group_info, anomalous_flag,
   assert structure_pz.space_group() == structure_z.space_group()
   f_abs_pz = abs(f_abs_z.structure_factors_from_scatterers(
     xray_structure=structure_pz,
-    direct=0001).f_calc())
+    algorithm="direct").f_calc())
   c = flex.linear_correlation(f_abs_z.data(), f_abs_pz.data())
   assert c.is_well_defined()
   if (0 or verbose):
@@ -49,7 +49,7 @@ def exercise(space_group_info, anomalous_flag,
   assert flex.order(f_abs_pz.indices(), f_abs_z.indices()) == 0
   f_abs_p_sf = abs(f_abs_p_cb.structure_factors_from_scatterers(
     xray_structure=structure_p,
-    direct=0001).f_calc())
+    algorithm="direct").f_calc())
   c = flex.linear_correlation(f_abs_p_sf.data(), f_abs_p_cb.data())
   assert c.is_well_defined()
   if (0 or verbose):

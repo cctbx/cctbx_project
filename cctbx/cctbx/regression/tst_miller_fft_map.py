@@ -39,7 +39,7 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
     d_min=d_min)
   f_obs = miller_set_f_obs.structure_factors_from_scatterers(
     xray_structure=structure,
-    direct=0001).f_calc()
+    algorithm="direct").f_calc()
   structure_factor_utils.check_phase_restrictions(f_obs, verbose=verbose)
   if (0 or verbose):
     f_obs.show_summary()

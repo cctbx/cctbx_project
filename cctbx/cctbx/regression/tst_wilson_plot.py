@@ -17,7 +17,7 @@ def exercise(space_group_info, anomalous_flag,
     anisotropic_flag=00000,
     u_iso=adptbx.b_as_u(10)
     ).structure_factors(
-        anomalous_flag=anomalous_flag, d_min=d_min, direct=0001)
+        anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct")
   if (0 or verbose):
     structure_factors.xray_structure().show_summary()
   f_obs = abs(structure_factors.f_calc())

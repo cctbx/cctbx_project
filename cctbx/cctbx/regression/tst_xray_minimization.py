@@ -17,7 +17,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   f_obs = abs(structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
-    direct=0001,
+    algorithm="direct",
     cos_sin_table=0001).f_calc())
   if (0 or verbose):
     print "structure_ideal:"
@@ -45,7 +45,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     target_functor=target_functor(f_obs),
     gradient_flags=gradient_flags,
     xray_structure=structure_shake,
-    direct=0001)
+    structure_factor_algorithm="direct")
   if (0 or verbose):
     print "first:", minimizer.first_target_value
     print "final:", minimizer.final_target_value
@@ -57,7 +57,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     print
   f_final = abs(f_obs.structure_factors_from_scatterers(
     xray_structure=structure_shake,
-    direct=0001,
+    algorithm="direct",
     cos_sin_table=0001).f_calc())
   c = flex.linear_correlation(f_obs.data(), f_final.data())
   assert c.is_well_defined()
