@@ -268,20 +268,32 @@ def exercise_real_space_refinement():
   sites_cart = flex.vec3_double()
   sites_cart.append((0.468661,-1.549268,3.352108))
   sites_cart.append((0.624992,1.553980,1.205578))
-  assert approx_equal(maptbx.residual(map=map,
+  assert approx_equal(maptbx.real_space_refinement_residual(map=map,
                                       gridding_matrix=grid_mat,
                                       sites_cart=sites_cart),
                       0.260325417539)
   sites_cart = flex.vec3_double()
   sites_cart.append((0.5,0.5,0.5))
   sites_cart.append((0.25,-0.25,0.25))
-  expected_grads=[(0.11210999738405786,
-                   0.054035130900231883,
-                   -0.019751974451977447),
-                  (0.077865472603990016,
-                   -0.042424083871381954,
-                   0.041516193903453458)]
-  for grad, correct in zip(maptbx.gradients(map=map,
+  sites_cart.append((0.25,0.0,0.5))
+  sites_cart.append((0.5,-0.25,0.0))
+  sites_cart.append((0,0.25,0.5))
+  expected_grads=[(-0.11210999738405786,
+                   -0.054035130900231883,
+                   0.019751974451977447),
+                  (-0.077865472603990016,
+                   0.042424083871381954,
+                   -0.041516193903453458),
+                  (-0.062901734945740237,
+                   0.012726058468002122,
+                   -0.04725412710938201),
+                  (-0.1200936645006829,
+                   0.042460230048265907,
+                   -0.030121635675126573),
+                  (-0.05517232417432183,
+                   -0.0043710248947356201,
+                   -0.046833897401769242)]
+  for grad, correct in zip(maptbx.real_space_refinement_gradients(map=map,
                                gridding_matrix=grid_mat,
                                sites_cart=sites_cart),
                            expected_grads):

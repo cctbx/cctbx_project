@@ -1,5 +1,6 @@
 #ifndef CCTBX_MAPTBX_REAL_SPACE_REFINEMENT_H
 #define CCTBX_MAPTBX_REAL_SPACE_REFINEMENT_H
+// Done by Erik McKee
 
 #include <cctbx/maptbx/eight_point_interpolation.h>
 
@@ -31,42 +32,26 @@ gradients(
 {
   af::shared<scitbx::vec3<FloatType> > grad_vals;
   scitbx::vec3<FloatType> grad_val;
-  FloatType delta_x, delta_y, delta_z;
-  delta_x = delta_y = delta_z = 1.0;
+  scitbx::vec3<FloatType> deltas;
   std::size_t num = sites_cart.size();
+  for(std::size_t i = 0; i < 3; ++i) {
+    deltas[i] = 1.0;
+  }
 
   for(std::size_t i = 0; i < num; ++i) {
-    scitbx::vec3<FloatType> temp;
-    temp = sites_cart[i];
-    temp[0] = sites_cart[i][0] + delta_x;
-    grad_val[0] = cctbx::maptbx::
-      non_crystallographic_eight_point_interpolation<FloatType>(
-      map, gridding_matrix, temp, false);
-    temp[0] = sites_cart[i][0] - delta_x;
-    grad_val[0] -= cctbx::maptbx::
-      non_crystallographic_eight_point_interpolation<FloatType>(
-      map, gridding_matrix, temp, false);
-    grad_val[0] /= 2.0;
-    temp = sites_cart[i];
-    temp[1] = sites_cart[i][1] + delta_y;
-    grad_val[1] = cctbx::maptbx::
-      non_crystallographic_eight_point_interpolation<FloatType>(
-      map, gridding_matrix, temp, false);
-    temp[1] = sites_cart[i][1] - delta_y;
-    grad_val[1] -= cctbx::maptbx::
-      non_crystallographic_eight_point_interpolation<FloatType>(
-      map, gridding_matrix, temp, false);
-    grad_val[1] /= 2.0;
-    temp = sites_cart[i];
-    temp[2] = sites_cart[i][2] + delta_z;
-    grad_val[2] = cctbx::maptbx::
-      non_crystallographic_eight_point_interpolation<FloatType>(
-      map, gridding_matrix, temp, false);
-    temp[2] = sites_cart[i][2] - delta_z;
-    grad_val[2] -= cctbx::maptbx::
-      non_crystallographic_eight_point_interpolation<FloatType>(
-      map, gridding_matrix, temp, false);
-    grad_val[2] /= 2.0;
+    for(std::size_t j = 0; j < 3; ++j) {
+      scitbx::vec3<FloatType> temp;
+      temp = sites_cart[i];
+      temp[j] = sites_cart[i][j] - deltas[j];
+      grad_val[j] = cctbx::maptbx::
+        non_crystallographic_eight_point_interpolation<FloatType>(
+        map, gridding_matrix, temp, false);
+      temp[j] = sites_cart[i][j] + deltas[j];
+      grad_val[j] -= cctbx::maptbx::
+        non_crystallographic_eight_point_interpolation<FloatType>(
+        map, gridding_matrix, temp, false);
+      grad_val[j] /= 2.0;
+    }
     grad_vals.push_back(grad_val);
   }
 
