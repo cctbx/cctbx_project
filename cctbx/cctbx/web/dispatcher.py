@@ -30,20 +30,18 @@ if (1):
   pickle.dump([cctbx_url, target_module, inp], f)
   f.close()
 
-from cctbx.web import utils
 import traceback
 class empty: pass
 status = empty()
 status.in_table = False
 try:
   target.run(cctbx_url, inp, status)
-except RuntimeError, e:
-  if (status.in_table): print "</table><pre>"
-  print e
-except (AssertionError, ValueError, utils.FormatError):
+except:
   if (status.in_table): print "</table><pre>"
   ei = sys.exc_info()
   print traceback.format_exception_only(ei[0], ei[1])[0]
-except:
-  if (status.in_table): print "</table><pre>"
-  raise
+  print
+  print
+  print "Details:"
+  print
+  traceback.print_exc()

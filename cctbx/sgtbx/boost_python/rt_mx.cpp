@@ -25,6 +25,9 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       as_xyz_overloads, as_xyz, 0, 4)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      new_denominators_overloads, new_denominators, 1, 2)
+
     static std::string
     str(w_t const& o) { return o.as_xyz(); }
 
@@ -54,6 +57,12 @@ namespace {
         .def("__str__", str)
         .def("as_int_array", &w_t::as_int_array)
         .def("as_double_array", &w_t::as_double_array)
+        .def("new_denominators",
+          (rt_mx(w_t::*)(int, int) const) 0,
+            new_denominators_overloads())
+        .def("new_denominators",
+          (rt_mx(w_t::*)(rt_mx const&) const)
+            &w_t::new_denominators)
         .def("mod_positive", &w_t::mod_positive)
         .def("mod_short", &w_t::mod_short)
         .def("inverse", &w_t::inverse)
