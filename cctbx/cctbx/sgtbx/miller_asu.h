@@ -132,33 +132,115 @@ namespace sgtbx
 
 namespace sgtbx {
 
+  /*! \brief Contiguous reciprocal space asymmetric units for
+      the 230 reference settings.
+   */
+  /*! 12 contiguous reciprocal space asymmetric units (11 Laue
+      classes, two settings for Laue class -3m) are
+      tabulated. The tabulated asymmetric units are
+      compatible with the asymmetric units of the CCP4
+      package.
+      <p>
+      This implementation is based on work by Kevin Cowtan.
+      <p>
+      See also: class ReciprocalSpaceASU, class MillerIndexGenerator
+   */
   class ReferenceReciprocalSpaceASU {
     public:
+      //! Returns one of exactly 12 Laue group codes.
+      /*! The labels of the possible return codes are:<br>
+            -1, 2/m, mmm, 4/m, 4/mmm, -3, -31m, -3m1, 6/m, 6/mmm, m-3, m-3m
+          <p>
+          For Laue class -3m there are two possible orientations of the
+          mirror plane with respect to the periodic lattice.
+       */
       virtual tables::MatrixGroup::Code LaueGroupCode() const {
         throw cctbx_internal_error();
       }
+      //! Test if given Miller index is in the tabulated asymmetric unit.
       virtual bool isInASU(const Miller::Index& H) const {
         throw cctbx_internal_error();
       }
+      //! String representation of the tabluated asymmetric unit.
+      /*! Example: "h>=k and k>=0 and (k>0 or l>=0)"
+       */
       virtual const char* representation() const {
         throw cctbx_internal_error();
       }
+      //! "Cut parameters" for building Miller indices.
+      /*! When building (or generating) a large list of Miller indices,
+          it is useful to restrict the loop over all possible indices
+          to 1/2, 1/4, or 1/8 of reciprocal space, if possible.
+          <p>
+          The cut parameters are used in the next() method
+          of the class MillerIndexGenerator. In general it
+          should be much more convenient to use that higher-level
+          class rather than hand-crafting a loop for building
+          Miller indices.
+          <p>
+          Each element of CutP is either -1 or 0. A value
+          of 0 indicates that the corresponding negative half-space
+          can be omitted in the loop over possible indices.
+          <p>
+          Friedel symmetry is implied. If the Friedel mates
+          are needed explicitly, they have to be added in a
+          separate step. Note that the Friedel mate appears
+          explicitly only for acentric reflections (use e.g.
+          !SgOps::isCentric(H) to determine which reflections
+          are acentric).
+       */
       virtual const Miller::Vec3& getCutParameters() const {
         throw cctbx_internal_error();
       }
   };
 
+  //! Access to general contiguous reciprocal space asymmetric units.
+  /*! class ReferenceReciprocalSpaceASU implements 12 contiguous
+      reciprocal space asymmetric units that cover the 230
+      reference settings. The algorithm for the determination of the
+      space group type (SgOps::getSpaceGroupType) is used to derive a
+      change-of-basis matrix for the transformation of the tabulated
+      asymmetric units. In this way a contiguous asymmetric unit is
+      available for any arbitrary setting.
+   */
   class ReciprocalSpaceASU
   {
     public:
+      //! Default constructor.
+      /*! Default constructed instances will throw exceptions if
+          some of the member functions are used.
+       */
       inline ReciprocalSpaceASU()
         : m_CBOp(), m_isReferenceASU(true), m_ReferenceASU() {}
+      //! Initialization.
+      /*! Based on the space group number (SpaceGroupType::SgNumber),
+          the Laue group class is derived which is in turn used
+          to select the corresponding tabulated
+          ReferenceReciprocalSpaceASU.
+       */
       ReciprocalSpaceASU(const SpaceGroupType& SgType);
+      //! Access to the selected tabulated ReferenceReciprocalSpaceASU.
       inline const ReferenceReciprocalSpaceASU* ReferenceASU() const {
         return m_ReferenceASU;
       }
+      //! Access to the change-of-basis operator.
+      /*! This operator is a copy of SgType.CBOp() as passed to
+          the constructor.
+       */
       inline const ChOfBasisOp& CBOp() const { return m_CBOp; }
+      //! Test if the given asymmetric unit is one of the tabulated units.
+      /*! This test is equivalent to the test CBOp().M().Rpart().isUnit().
+          That is, it is tested if the rotation part of the
+          change-of-basis matrix is the unit matrix. (If this
+          is the case, some optimizations are possible.)
+       */
       inline bool isReferenceASU() const { return m_isReferenceASU; }
+      //! Test if the given Miller index is in the asymmetric unit.
+      /*! The change-of-basis matrix is used to transform
+          the Miller index (H * CBOp().InvM()). It is then
+          tested if the result is in the tabulated reference
+          asymmetric unit.
+       */
       inline bool isInASU(const Miller::Index& H) const {
         if (m_isReferenceASU) return m_ReferenceASU->isInASU(H);
         return m_ReferenceASU->isInASU(H * m_CBOp.InvM().Rpart());
@@ -169,15 +251,45 @@ namespace sgtbx {
       const ReferenceReciprocalSpaceASU* m_ReferenceASU;
   };
 
+  /*! \brief Efficient, easy-to-use algorithm for building
+      Miller indices up to a given high-resolution limit.
+   */
+  /*! Example (Python syntax):<pre>
+        UnitCell = uctbx.UnitCell((10, 10, 10, 90, 90, 90))
+        MIG = sgtbx.MillerIndexGenerator(UnitCell, SgOps, 3.0)
+        for H in MIG: print H
+      </pre>
+      This class is implemented as an iterator. That is,
+      the generation of Miller indices does not consume any
+      significant amounts of memory. The key to efficiency
+      is class ReferenceReciprocalSpaceASU.
+   */
   class MillerIndexGenerator
   {
     public:
+      //! Default constructor.
+      /*! Default constructed instances will throw exceptions if
+          some of the member functions are used.
+       */
       MillerIndexGenerator() {}
+      //! Initialization.
+      /*! Miller indices up to and including Resolution_d_min will
+          be generated.
+       */
       MillerIndexGenerator(const uctbx::UnitCell& uc,
                            const SgOps& sgo,
                            double Resolution_d_min);
-      Miller::Index next();
+      //! Access to the reciprocal space asymmetric unit.
+      /*! The Miller indices that are generated by this class (member
+          function next()) are inside this asymmetric unit.
+       */
       inline const ReciprocalSpaceASU& ASU() const { return m_ASU; }
+      //! Iterator over Miller indices.
+      /*! Each call to this member function will return the next
+          Miller index in the sequence. The indices are inside
+          ReciprocalSpaceASU().
+       */
+      Miller::Index next();
     private:
       uctbx::UnitCell m_UnitCell;
       SgOps m_SgOps;
