@@ -1,7 +1,6 @@
 from cctbx import restraints
 from cctbx.array_family import flex
 from scitbx.python_utils.misc import adopt_init_args
-from scitbx.python_utils.misc import time_log
 import scitbx.lbfgs
 import sys
 
@@ -61,79 +60,117 @@ class energies:
 
 class lbfgs:
 
-  def __init__(self, sites_cart,
-                     asu_mappings=None,
-                     bond_asu_proxies=None,
-                     repulsion_asu_proxies=None,
+  def __init__(self, structure,
+                     bond_sym_proxies,
+                     nonbonded_distance_cutoff,
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None):
     adopt_init_args(self, locals())
-    self.time_total = time_log("lbfgs total").start()
-    self.time_compute_target = time_log("lbfgs compute_target")
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
-    self.n = sites_cart.size()*3
+    self._sites_cart = structure.sites_cart()
+    self._sites_shifted = self._sites_cart
+    self.n = self._sites_cart.size()*3
     self.x = flex.double(self.n, 0)
-    self._sites_shifted = self.sites_cart
-    self.first_target_value = None
+    self.first_target_result = None
+    self.activate_repulsion = 00000
+    self.minimizer = scitbx.lbfgs.run(
+      target_evaluator=self,
+      termination_params=lbfgs_termination_params,
+      core_params=lbfgs_core_params)
+    structure.set_sites_cart(sites_cart=self._sites_shifted)
+    structure.random_shift_sites(max_shift_cart=0.2)
+    structure.apply_symmetry_sites()
+    self._sites_cart = structure.sites_cart()
+    self._sites_shifted = self._sites_cart
+    self.x = flex.double(self.n, 0)
+    self.activate_repulsion = 0001
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=lbfgs_termination_params,
       core_params=lbfgs_core_params)
     self.apply_shifts()
     self.compute_target(compute_gradients=0001)
-    sites_cart.clear()
-    sites_cart.extend(self._sites_shifted)
+    structure.set_sites_cart(sites_cart=self._sites_shifted)
+    self.final_target_result = self._target_result
+    del self.x
+    del self.f
+    del self.g
+    del self.activate_repulsion
+    del self.minimizer
+    del self._target_result
     del self._sites_shifted
-    self.final_target_value = self.target_result.target()
-    self.time_total.stop()
+    del self._sites_cart
 
   def apply_shifts(self):
-    self._sites_shifted = self.sites_cart + flex.vec3_double(self.x)
+    self._sites_shifted = self._sites_cart + flex.vec3_double(self.x)
     if (1):
-      unit_cell = self.asu_mappings.unit_cell()
-      site_symmetry_table = self.asu_mappings.site_symmetry_table()
+      unit_cell = self.structure.unit_cell()
+      site_symmetry_table = self.structure.site_symmetry_table()
       for i_seq in site_symmetry_table.special_position_indices():
         site_frac = unit_cell.fractionalize(self._sites_shifted[i_seq])
         site_special_frac = site_symmetry_table.get(i_seq).special_op() \
                           * site_frac
         distance_moved = unit_cell.distance(site_special_frac, site_frac)
         if (distance_moved > 1.e-2):
-          print "LARGE distance_moved: i_seq+1=%d, %.6g" % (
+          print "WARNING: LARGE distance_moved: i_seq+1=%d, %.6g" % (
             i_seq+1, distance_moved)
 
   def compute_target(self, compute_gradients):
-    self.time_compute_target.start()
-    self.target_result = energies(
+    import cctbx.crystal
+    from cctbx.crystal import pair_asu_table
+    from cctbx.crystal import distance_ls
+    bonded_distance_cutoff = flex.max(distance_ls.get_distances(
+      unit_cell=self.structure.unit_cell(),
       sites_cart=self._sites_shifted,
-      asu_mappings=self.asu_mappings,
-      bond_asu_proxies=self.bond_asu_proxies,
-      repulsion_asu_proxies=self.repulsion_asu_proxies,
+      pair_sym_proxies=self.bond_sym_proxies)) * (1+1.e-6)
+    asu_mappings = cctbx.crystal.symmetry.asu_mappings(self.structure,
+      buffer_thickness=max(
+        self.nonbonded_distance_cutoff,
+        bonded_distance_cutoff))
+    asu_mappings.process_sites_cart(
+      original_sites=self._sites_shifted,
+      site_symmetry_table=self.structure.site_symmetry_table())
+    bond_asu_table = pair_asu_table.pair_asu_table(
+      asu_mappings=asu_mappings).add_pair_sym_proxies(
+        proxies=self.bond_sym_proxies)
+    bond_asu_proxies, repulsion_asu_proxies = distance_ls.get_all_proxies(
+      structure=self.structure,
+      bond_asu_table=bond_asu_table,
+      bonded_distance_cutoff=bonded_distance_cutoff,
+      nonbonded_distance_cutoff=self.nonbonded_distance_cutoff)
+    distance_ls.edit_bond_asu_proxies(
+      structure=self.structure,
+      asu_mappings=asu_mappings,
+      bond_asu_proxies=bond_asu_proxies)
+    distance_ls.edit_repulsion_asu_proxies(
+      structure=self.structure,
+      asu_mappings=asu_mappings,
+      repulsion_asu_proxies=repulsion_asu_proxies)
+    if (not self.activate_repulsion):
+      repulsion_asu_proxies = None
+    self._target_result = energies(
+      sites_cart=self._sites_shifted,
+      asu_mappings=asu_mappings,
+      bond_asu_proxies=bond_asu_proxies,
+      repulsion_asu_proxies=repulsion_asu_proxies,
       compute_gradients=compute_gradients)
-    self.time_compute_target.stop()
 
   def __call__(self):
-    if (self.first_target_value is None):
+    if (self.first_target_result is None):
       assert self.x.all_eq(0)
     else:
       self.apply_shifts()
     self.compute_target(compute_gradients=0001)
-    self.f = self.target_result.target()
-    if (self.first_target_value is None):
-      self.first_target_value = self.f
-    self.g = self.target_result.gradients.as_double()
+    if (self.first_target_result is None):
+      self.first_target_result = self._target_result
+    self.f = self._target_result.target()
+    self.g = self._target_result.gradients.as_double()
     return self.x, self.f, self.g
 
   def callback_after_step(self, minimizer):
     if (0):
       print "minimizer f,iter,nfun:", self.f,minimizer.iter(),minimizer.nfun()
     if (0):
-      self.target_result.show()
-
-  def show_times(self):
-    print self.time_total.report()
-    print self.time_compute_target.report()
-    print "time unaccounted for: %.2f" % (
-      self.time_total.accumulation
-      - self.time_compute_target.accumulation)
+      self._target_result.show()

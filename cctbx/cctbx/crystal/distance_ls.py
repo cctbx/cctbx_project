@@ -80,19 +80,20 @@ def make_o_si_o_asu_table(si_o_structure, si_o_bond_asu_table):
 def get_all_proxies(
       structure,
       bond_asu_table,
+      bonded_distance_cutoff,
       nonbonded_distance_cutoff,
       minimal=00000):
   bond_asu_proxies = restraints.shared_bond_asu_proxy()
   repulsion_asu_proxies = restraints.shared_repulsion_asu_proxy()
   pair_generator = crystal.neighbors_fast_pair_generator(
     asu_mappings=bond_asu_table.asu_mappings,
-    distance_cutoff=nonbonded_distance_cutoff,
+    distance_cutoff=max(bonded_distance_cutoff, nonbonded_distance_cutoff),
     minimal=minimal)
   for pair in pair_generator:
     if (pair in bond_asu_table):
       bond_asu_proxies.append(restraints.bond_asu_proxy(
         pair=pair, distance_ideal=0, weight=0))
-    else:
+    elif (pair.dist_sq**.5 <= nonbonded_distance_cutoff):
       repulsion_asu_proxies.append(restraints.repulsion_asu_proxy(
         pair=pair, vdw_radius=-1))
   return bond_asu_proxies, repulsion_asu_proxies
@@ -100,20 +101,33 @@ def get_all_proxies(
 def edit_bond_asu_proxies(structure, asu_mappings, bond_asu_proxies):
   scatterers = structure.scatterers()
   for proxy in bond_asu_proxies:
-    i_seqs = proxy.pair.i_seq, proxy.pair.j_seq
-    scattering_types = [scatterers[i].scattering_type for i in i_seqs]
-    scattering_types.sort()
-    if (scattering_types == ["Si", "Si"]):
-      proxy.distance_ideal = restraint_parameters_si_o_si.distance_ideal
-      proxy.weight = restraint_parameters_si_o_si.weight
-    elif (scattering_types == ["O", "Si"]):
-      proxy.distance_ideal = restraint_parameters_si_o.distance_ideal
-      proxy.weight = restraint_parameters_si_o.weight
-    elif (scattering_types == ["O", "O"]):
-      proxy.distance_ideal = restraint_parameters_o_si_o.distance_ideal
-      proxy.weight = restraint_parameters_o_si_o.weight
-    else:
-      raise AssertionError("Unknown scattering type pair.")
+    edit_bond_proxy(
+      scatterers=scatterers,
+      i_seqs=(proxy.pair.i_seq, proxy.pair.j_seq),
+      proxy=proxy)
+
+def edit_bond_sym_proxies(structure, bond_sym_proxies):
+  scatterers = structure.scatterers()
+  for proxy in bond_sym_proxies:
+    edit_bond_proxy(
+      scatterers=scatterers,
+      i_seqs=proxy.i_seqs,
+      proxy=proxy)
+
+def edit_bond_proxy(scatterers, i_seqs, proxy):
+  scattering_types = [scatterers[i].scattering_type for i in i_seqs]
+  scattering_types.sort()
+  if (scattering_types == ["Si", "Si"]):
+    proxy.distance_ideal = restraint_parameters_si_o_si.distance_ideal
+    proxy.weight = restraint_parameters_si_o_si.weight
+  elif (scattering_types == ["O", "Si"]):
+    proxy.distance_ideal = restraint_parameters_si_o.distance_ideal
+    proxy.weight = restraint_parameters_si_o.weight
+  elif (scattering_types == ["O", "O"]):
+    proxy.distance_ideal = restraint_parameters_o_si_o.distance_ideal
+    proxy.weight = restraint_parameters_o_si_o.weight
+  else:
+    raise AssertionError("Unknown scattering type pair.")
 
 def edit_repulsion_asu_proxies(structure, asu_mappings, repulsion_asu_proxies):
   scatterers = structure.scatterers()
@@ -179,11 +193,23 @@ def show_nonbonded_interactions(structure, asu_mappings, nonbonded_proxies):
     print "%-20s %8.4f" % (pair_labels, distance)
   return distances
 
+def get_distances(unit_cell, sites_cart, pair_sym_proxies):
+  sites_frac = unit_cell.fractionalization_matrix() * sites_cart
+  distances = flex.double()
+  for proxy in pair_sym_proxies:
+    distance = unit_cell.distance(
+      sites_frac[proxy.i_seqs[0]],
+      proxy.rt_mx*sites_frac[proxy.i_seqs[1]])
+    distances.append(distance)
+  return distances
+
 def distance_and_repulsion_least_squares(
       si_structure,
       distance_cutoff,
       nonbonded_distance_cutoff,
+      n_trials=1,
       connectivities=None):
+  assert n_trials > 0
   si_structure.show_summary().show_scatterers()
   print
   si_asu_mappings = si_structure.asu_mappings(
@@ -233,50 +259,43 @@ def distance_and_repulsion_least_squares(
   if (1):
     si_o_bond_asu_table.add_pair_sym_proxies(
       proxies=o_si_o_asu_table.extract_pair_sym_proxies())
-  bond_asu_proxies, repulsion_asu_proxies = get_all_proxies(
-    structure=si_o.structure,
-    bond_asu_table=si_o_bond_asu_table,
-    nonbonded_distance_cutoff=nonbonded_distance_cutoff)
-  nonbonded_distances = show_nonbonded_interactions(
-    structure=si_o.structure,
-    asu_mappings=si_o_asu_mappings,
-    nonbonded_proxies=repulsion_asu_proxies)
-  assert flex.min(nonbonded_distances) \
-       > flex.min(si_o_bonds.distances)*(1-1.e-6)
+  bond_sym_proxies = si_o_bond_asu_table.extract_pair_sym_proxies()
+  minimized = None
+  for i_trial in xrange(n_trials):
+    trial_structure = si_o.structure.deep_copy_scatterers()
+    if (i_trial > 0):
+      n_scatterers = trial_structure.scatterers().size()
+      trial_structure.set_sites_frac(flex.vec3_double(flex.random_double(
+        size=n_scatterers*3)))
+      trial_structure.apply_symmetry_sites()
+    trial_minimized = minimization.lbfgs(
+      structure=trial_structure,
+      bond_sym_proxies=bond_sym_proxies,
+      nonbonded_distance_cutoff=nonbonded_distance_cutoff,
+      lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=100))
+    print "i_trial, target value: %d, %.6g" % (
+      i_trial, trial_minimized.final_target_result.target())
+    if (minimized is None or       minimized.final_target_result.target()
+                           > trial_minimized.final_target_result.target()):
+      minimized = trial_minimized
+      minimized_structure = trial_structure
+      best_i_trial = i_trial
+  assert minimized is not None
   print
-  edit_bond_asu_proxies(
-    structure=si_o.structure,
-    asu_mappings=si_o_asu_mappings,
-    bond_asu_proxies=bond_asu_proxies)
-  edit_repulsion_asu_proxies(
-    structure=si_o.structure,
-    asu_mappings=si_o_asu_mappings,
-    repulsion_asu_proxies=repulsion_asu_proxies)
-  if (0):
-    repulsion_asu_proxies = None
-  sites_cart = si_o.structure.sites_cart()
   print "Energies at start:"
-  energies = minimization.energies(
-    sites_cart=sites_cart,
-    asu_mappings=si_o_asu_mappings,
-    bond_asu_proxies=bond_asu_proxies,
-    repulsion_asu_proxies=repulsion_asu_proxies,
-    compute_gradients=0001)
-  energies.show()
+  minimized.first_target_result.show()
   print
-  minimized = minimization.lbfgs(
-    sites_cart=sites_cart,
-    asu_mappings=si_o_asu_mappings,
-    bond_asu_proxies=bond_asu_proxies,
-    repulsion_asu_proxies=repulsion_asu_proxies,
-    lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-      max_iterations=1000))
   print "Energies at end:"
-  minimized.target_result.show()
+  minimized.final_target_result.show()
   print
-  minimized_si_o_structure = si_o.structure.deep_copy_scatterers()
-  minimized_si_o_structure.set_sites_cart(sites_cart)
+  print "Final target value (i_trial=%d): %.6g" % (
+    best_i_trial, minimized.final_target_result.target())
+  if (minimized.final_target_result.target() > 0.1):
+    print "WARNING: LARGE final target value: %.6g" % (
+      minimized.final_target_result.target())
+  print
   show_pairs(
-    structure=minimized_si_o_structure,
+    structure=minimized_structure,
     pair_asu_table=si_o_bond_asu_table)
   print
