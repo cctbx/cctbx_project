@@ -5,6 +5,7 @@ def dump(file_name):
   p = mtz.Mtz(file_name)
   print "Title:", p.title()
   print "Space group symbol:", p.SpaceGroup()
+  print "Space group info:", p.get_space_group_info()
   print "Number of crystals:", p.ncrystals()
   print "Number of Miller indices:", p.size()
   print "History:"

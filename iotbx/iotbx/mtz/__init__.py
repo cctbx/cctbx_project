@@ -6,6 +6,7 @@ import_regular_symbols(globals(), ext.__dict__)
 del import_regular_symbols
 
 from iotbx.mtz import writer
+from cctbx import sgtbx
 
 column_type_legend_source = \
   "http://www.ccp4.ac.uk/dist/html/mtzlib.html#fileformat"
@@ -45,6 +46,9 @@ class Mtz (ext.Mtz):
         for k in xrange(data.ncolumns()):
           if data.getColumn(k).label() == label:
             return cryst
+
+  def get_space_group_info(self):
+    return sgtbx.space_group_info(group=self.getSgtbxSpaceGroup())
 
 MtzWriter.add_miller_array = writer.add_miller_array
 MtzWriter.setSpaceGroup = writer.setSpaceGroup
